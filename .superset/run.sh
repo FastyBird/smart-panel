@@ -58,21 +58,82 @@ alloc_ports() {
 	' "$@"
 }
 
+starts_backend=no
+starts_admin=no
+starts_website=no
+starts_testing=no
+
+case "$TARGET" in
+default | backend | all) starts_backend=yes ;;
+esac
+case "$TARGET" in
+default | admin | all) starts_admin=yes ;;
+esac
+case "$TARGET" in
+website | all) starts_website=yes ;;
+esac
+case "$TARGET" in
+testing) starts_testing=yes ;;
+esac
+
+if [ "$starts_backend$starts_admin$starts_website$starts_testing" = "nononono" ]; then
+	echo "Unknown target '$TARGET' — use: backend | admin | website | testing | all" >&2
+	exit 1
+fi
+
+# Only allocate a port for a server this invocation actually starts. Allocating
+# FB_BACKEND_PORT for an admin-only run would export a port that is free by
+# construction, pointing the admin's /api proxy at nothing — an admin-only run
+# has to keep whatever backend endpoint .env/.env.local already configures.
 pinned=""
 for port in "${FB_BACKEND_PORT:-}" "${FB_ADMIN_PORT:-}" "${FB_WEBSITE_PORT:-}"; do
-	[ -n "$port" ] && pinned="$pinned,$port"
+	if [ -n "$port" ]; then
+		pinned="$pinned,$port"
+	fi
 done
 
-read -r auto_backend auto_admin auto_website <<<"$(alloc_ports "$pinned" 3000 3003 3006)"
+bases=""
+if [ "$starts_backend" = yes ] && [ -z "${FB_BACKEND_PORT:-}" ]; then
+	bases="$bases 3000"
+fi
+if [ "$starts_admin" = yes ] && [ -z "${FB_ADMIN_PORT:-}" ]; then
+	bases="$bases 3003"
+fi
+if [ "$starts_website" = yes ] && [ -z "${FB_WEBSITE_PORT:-}" ]; then
+	bases="$bases 3006"
+fi
+
+allocated=""
+if [ -n "$bases" ]; then
+	allocated="$(alloc_ports "$pinned" $bases)"
+fi
+
+# Consume the allocations in the same order the bases were queued.
+set -- $allocated
+if [ "$starts_backend" = yes ] && [ -z "${FB_BACKEND_PORT:-}" ]; then
+	FB_BACKEND_PORT="$1"
+	shift
+fi
+if [ "$starts_admin" = yes ] && [ -z "${FB_ADMIN_PORT:-}" ]; then
+	FB_ADMIN_PORT="$1"
+	shift
+fi
+if [ "$starts_website" = yes ] && [ -z "${FB_WEBSITE_PORT:-}" ]; then
+	FB_WEBSITE_PORT="$1"
+	shift
+fi
 
 # The backend reads these from process.env before .env/.env.local, and the admin
 # vite config exposes any FB_APP_/FB_BACKEND_/FB_ADMIN_ prefixed process.env var
 # with priority over the root .env files — so exporting them here wins.
 export NODE_ENV="${NODE_ENV:-development}"
 export FB_APP_HOST="${FB_APP_HOST:-http://127.0.0.1}"
-export FB_BACKEND_PORT="${FB_BACKEND_PORT:-$auto_backend}"
-export FB_ADMIN_PORT="${FB_ADMIN_PORT:-$auto_admin}"
-FB_WEBSITE_PORT="${FB_WEBSITE_PORT:-$auto_website}"
+if [ -n "${FB_BACKEND_PORT:-}" ]; then
+	export FB_BACKEND_PORT
+fi
+if [ -n "${FB_ADMIN_PORT:-}" ]; then
+	export FB_ADMIN_PORT
+fi
 
 pids=""
 
@@ -122,59 +183,46 @@ start() {
 
 printf '\n\033[1mFastyBird Smart Panel — %s\033[0m\n' "${SUPERSET_WORKSPACE_NAME:-workspace}"
 
-case "$TARGET" in
-default | backend | all)
+if [ "$starts_backend" = yes ]; then
 	printf '  backend   %s:%s  (docs at /api/docs)\n' "$FB_APP_HOST" "$FB_BACKEND_PORT"
-	;;
-esac
+fi
 
-case "$TARGET" in
-default | admin | all)
+if [ "$starts_admin" = yes ]; then
 	printf '  admin     http://localhost:%s\n' "$FB_ADMIN_PORT"
-	;;
-esac
 
-case "$TARGET" in
-website | all)
+	if [ "$starts_backend" = no ]; then
+		if [ -n "${FB_BACKEND_PORT:-}" ]; then
+			printf '  api proxy %s:%s\n' "$FB_APP_HOST" "$FB_BACKEND_PORT"
+		else
+			printf '  api proxy → FB_BACKEND_PORT from .env/.env.local (export it to point elsewhere)\n'
+		fi
+	fi
+fi
+
+if [ "$starts_website" = yes ]; then
 	printf '  website   http://localhost:%s\n' "$FB_WEBSITE_PORT"
-	;;
-esac
+fi
 
-case "$TARGET" in
-testing)
+if [ "$starts_testing" = yes ]; then
 	printf '  testing app — vite prints its URL below\n'
-	;;
-esac
+fi
 
 printf '\n'
 
-case "$TARGET" in
-default | backend | all)
+if [ "$starts_backend" = yes ]; then
 	start "backend (nest --watch)" pnpm --filter @fastybird/smart-panel-backend run start:dev
-	;;
-esac
+fi
 
-case "$TARGET" in
-default | admin | all)
+if [ "$starts_admin" = yes ]; then
 	start "admin (vite)" pnpm --filter @fastybird/smart-panel-admin run start:dev
-	;;
-esac
+fi
 
-case "$TARGET" in
-website | all)
+if [ "$starts_website" = yes ]; then
 	start "website (next)" pnpm --filter @fastybird/smart-panel-website exec next dev -p "$FB_WEBSITE_PORT"
-	;;
-esac
+fi
 
-case "$TARGET" in
-testing)
+if [ "$starts_testing" = yes ]; then
 	start "testing app (vite)" pnpm --filter @fastybird/smart-panel-testing run start:dev
-	;;
-esac
-
-if [ -z "$pids" ]; then
-	echo "Unknown target '$TARGET' — use: backend | admin | website | testing | all" >&2
-	exit 1
 fi
 
 wait

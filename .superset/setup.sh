@@ -15,7 +15,8 @@
 # Knobs:
 #   SUPERSET_SKIP_DB_COPY=1   start from an empty database instead of copying
 #                             the root checkout's SQLite database
-#   SUPERSET_SKIP_FLUTTER=1   skip `flutter pub get` for apps/panel
+#   SUPERSET_SKIP_FLUTTER=1   skip the apps/panel steps (`flutter pub get` and
+#                             the `melos rebuild-all` client generation, ~2 min)
 #
 set -euo pipefail
 
@@ -111,31 +112,85 @@ if [ -n "${SUPERSET_ROOT_PATH:-}" ] && [ -d "$SUPERSET_ROOT_PATH" ] && [ "$SUPER
 		' "$SUPERSET_ROOT_PATH/.env.local" .env.local "$SUPERSET_ROOT_PATH" "$ROOT_DIR"
 	fi
 
-	if [ -f "$SUPERSET_ROOT_PATH/var/data/config.yaml" ] && [ ! -f var/data/config.yaml ]; then
-		log "Copying var/data/config.yaml from the root checkout"
-		cp "$SUPERSET_ROOT_PATH/var/data/config.yaml" var/data/config.yaml
-		chmod 600 var/data/config.yaml
+fi
+
+# --- effective config & database locations -----------------------------------
+#
+# FB_CONFIG_PATH and FB_DB_PATH may move either directory somewhere other than
+# var/data and var/db, so resolve them from the env files rather than assuming
+# the defaults — copying into (and migrating) the wrong directory would leave
+# the workspace with empty state.
+
+env_path() { # env_path <checkout> <KEY> <fallback>
+	node -e '
+		const fs = require("fs");
+		const path = require("path");
+		const [checkout, key, fallback] = process.argv.slice(1);
+		const DOUBLE_QUOTE = 34;
+		const SINGLE_QUOTE = 39;
+
+		const resolveValue = () => {
+			for (const file of [".env.local", ".env"]) {
+				const full = path.join(checkout, file);
+				if (!fs.existsSync(full)) continue;
+
+				for (const line of fs.readFileSync(full, "utf8").split(/\r?\n/)) {
+					const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+					if (!match || match[1] !== key) continue;
+
+					let value = match[2].trim();
+					const first = value.charCodeAt(0);
+					if (
+						value.length > 1 &&
+						(first === DOUBLE_QUOTE || first === SINGLE_QUOTE) &&
+						value.charCodeAt(value.length - 1) === first
+					) {
+						value = value.slice(1, -1);
+					}
+
+					if (value) return path.resolve(checkout, value);
+				}
+			}
+
+			return fallback;
+		};
+
+		console.log(resolveValue());
+	' "$1" "$2" "$3"
+}
+
+config_dir="$(env_path "$ROOT_DIR" FB_CONFIG_PATH "$ROOT_DIR/var/data")"
+db_dir="$(env_path "$ROOT_DIR" FB_DB_PATH "$ROOT_DIR/var/db")"
+mkdir -p "$config_dir" "$db_dir"
+
+if [ -n "${SUPERSET_ROOT_PATH:-}" ] && [ -d "$SUPERSET_ROOT_PATH" ] && [ "$SUPERSET_ROOT_PATH" != "$ROOT_DIR" ]; then
+	root_config_dir="$(env_path "$SUPERSET_ROOT_PATH" FB_CONFIG_PATH "$SUPERSET_ROOT_PATH/var/data")"
+	root_db_dir="$(env_path "$SUPERSET_ROOT_PATH" FB_DB_PATH "$SUPERSET_ROOT_PATH/var/db")"
+
+	if [ -f "$root_config_dir/config.yaml" ] && [ ! -f "$config_dir/config.yaml" ]; then
+		log "Copying config.yaml from the root checkout"
+		cp "$root_config_dir/config.yaml" "$config_dir/config.yaml"
+		chmod 600 "$config_dir/config.yaml"
 		# ConfigService stores its own absolute location in the file — repoint it
 		# at this workspace so the copied value is not misleading.
 		node -e '
 			const fs = require("fs");
-			const file = "var/data/config.yaml";
-			const target = `${process.cwd()}/${file}`;
+			const [file] = process.argv.slice(1);
 			const content = fs.readFileSync(file, "utf8");
 			if (/^path: .*$/m.test(content)) {
-				fs.writeFileSync(file, content.replace(/^path: .*$/m, `path: ${target}`));
+				fs.writeFileSync(file, content.replace(/^path: .*$/m, `path: ${file}`));
 			}
-		'
+		' "$config_dir/config.yaml"
 	fi
 
-	if [ -z "${SUPERSET_SKIP_DB_COPY:-}" ] && [ -f "$SUPERSET_ROOT_PATH/var/db/database.sqlite" ] && [ ! -f var/db/database.sqlite ]; then
+	if [ -z "${SUPERSET_SKIP_DB_COPY:-}" ] && [ -f "$root_db_dir/database.sqlite" ] && [ ! -f "$db_dir/database.sqlite" ]; then
 		log "Copying the SQLite database from the root checkout"
 		# Always go through the SQLite backup API. A plain cp of a database the
 		# root backend is writing to can miss committed data still sitting in the
 		# -wal file, or capture a torn page — and setup would report success while
 		# handing over a database that is short of rows or will not open at all.
 		if command -v sqlite3 >/dev/null 2>&1; then
-			db_copied=$(sqlite3 "$SUPERSET_ROOT_PATH/var/db/database.sqlite" ".backup '$ROOT_DIR/var/db/database.sqlite'" && echo yes || echo no)
+			db_copied=$(sqlite3 "$root_db_dir/database.sqlite" ".backup '$db_dir/database.sqlite'" && echo yes || echo no)
 		else
 			# Node >= 24 is required by this repo and ships the same backup API.
 			db_copied=$(node -e '
@@ -147,11 +202,11 @@ if [ -n "${SUPERSET_ROOT_PATH:-}" ] && [ -d "$SUPERSET_ROOT_PATH" ] && [ "$SUPER
 					() => db.close(),
 					(error) => { db.close(); console.error(error.message); process.exit(1); },
 				);
-			' "$SUPERSET_ROOT_PATH/var/db/database.sqlite" "$ROOT_DIR/var/db/database.sqlite" && echo yes || echo no)
+			' "$root_db_dir/database.sqlite" "$db_dir/database.sqlite" && echo yes || echo no)
 		fi
 
 		if [ "$db_copied" != "yes" ]; then
-			rm -f var/db/database.sqlite
+			rm -f "$db_dir/database.sqlite"
 			warn "Could not snapshot the root database — starting empty. Create a user with 'pnpm run onboard'."
 		fi
 	fi
@@ -172,13 +227,25 @@ log "Generating the OpenAPI spec and typed API clients"
 pnpm run generate:openapi
 
 log "Applying database migrations"
-pnpm --filter @fastybird/smart-panel-backend run typeorm:migration:run
+# The migration CLI reads its env from apps/backend, not the repo root, so it
+# would default to var/db even when FB_DB_PATH moves the database elsewhere.
+FB_DB_PATH="$db_dir" pnpm --filter @fastybird/smart-panel-backend run typeorm:migration:run
 
 # --- Flutter panel (optional) ------------------------------------------------
+#
+# apps/panel/lib/api and apps/panel/lib/spec are generated and untracked, so the
+# panel does not compile in a fresh worktree until they are rebuilt.
 
 if [ -z "${SUPERSET_SKIP_FLUTTER:-}" ] && command -v flutter >/dev/null 2>&1; then
 	log "Fetching Flutter packages for apps/panel"
-	(cd apps/panel && flutter pub get) || warn "flutter pub get failed — run it manually before working on the panel app"
+	if ! (cd apps/panel && flutter pub get); then
+		warn "flutter pub get failed — run it manually before working on the panel app"
+	elif command -v melos >/dev/null 2>&1; then
+		log "Generating the panel API client and specs (melos rebuild-all)"
+		melos rebuild-all || warn "melos rebuild-all failed — run it manually before working on the panel app"
+	else
+		warn "melos not found — run 'melos rebuild-all' after installing it to generate apps/panel/lib/{api,spec}"
+	fi
 fi
 
 printf '\n\033[1;32m✓ Workspace ready\033[0m\n'
