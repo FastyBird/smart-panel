@@ -19,6 +19,16 @@ cd "$ROOT_DIR"
 
 TARGET="${1:-default}"
 
+# Knobs are read through this, so SUPERSET_ALLOW_SHARED_STATE=0 turns sharing
+# off rather than on — a bare non-empty test would have read "0" and "false" as
+# "enabled", which is the opposite of what anyone typing them means.
+flag_enabled() {
+	case "$(printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]')" in
+	'' | 0 | false | no | off) return 1 ;;
+	*) return 0 ;;
+	esac
+}
+
 # Pick one free port per base, all in a single pass: every probe socket stays
 # bound until the last port is chosen, and ports already claimed by the caller
 # are excluded. Probing each base independently would hand two services the same
@@ -217,7 +227,7 @@ clamp_state_path() { # clamp_state_path <KEY> <workspace default>
 	current="$(node -e 'console.log(require("path").resolve(process.argv[1], process.argv[2]))' \
 		"$ROOT_DIR" "$(env_value "$key" "$workspace_default")")"
 
-	if [ -z "${SUPERSET_ALLOW_SHARED_STATE:-}" ] && ! inside_workspace "$current"; then
+	if ! flag_enabled "${SUPERSET_ALLOW_SHARED_STATE:-}" && ! inside_workspace "$current"; then
 		state_notes="$state_notes  note      $key pointed outside the workspace ($current); using $workspace_default
 "
 		current="$workspace_default"

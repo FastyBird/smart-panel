@@ -30,6 +30,16 @@ cd "$ROOT_DIR"
 log() { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33m! %s\033[0m\n' "$*"; }
 
+# Knobs are read through this, so SUPERSET_ALLOW_SHARED_STATE=0 turns sharing
+# off rather than on — a bare non-empty test would have read "0" and "false" as
+# "enabled", which is the opposite of what anyone typing them means.
+flag_enabled() {
+	case "$(printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]')" in
+	'' | 0 | false | no | off) return 1 ;;
+	*) return 0 ;;
+	esac
+}
+
 # --- toolchain ---------------------------------------------------------------
 
 if ! command -v pnpm >/dev/null 2>&1 && command -v corepack >/dev/null 2>&1; then
@@ -195,7 +205,7 @@ inside_workspace() {
 	esac
 }
 
-if [ -n "${SUPERSET_ALLOW_SHARED_STATE:-}" ]; then
+if flag_enabled "${SUPERSET_ALLOW_SHARED_STATE:-}"; then
 	if ! inside_workspace "$config_dir" || ! inside_workspace "$db_dir"; then
 		warn "SUPERSET_ALLOW_SHARED_STATE is set — using state outside this workspace as-is"
 		warn "Migrations from this branch will be applied to whatever else runs on it"
@@ -239,7 +249,7 @@ if [ -n "$root_config_dir" ]; then
 		' "$config_dir/config.yaml"
 	fi
 
-	if [ -z "${SUPERSET_SKIP_DB_COPY:-}" ] && [ -f "$root_db_dir/database.sqlite" ] && [ ! -f "$db_dir/database.sqlite" ]; then
+	if ! flag_enabled "${SUPERSET_SKIP_DB_COPY:-}" && [ -f "$root_db_dir/database.sqlite" ] && [ ! -f "$db_dir/database.sqlite" ]; then
 		log "Copying the SQLite database from the root checkout"
 		# Always go through the SQLite backup API. A plain cp of a database the
 		# root backend is writing to can miss committed data still sitting in the
@@ -292,7 +302,7 @@ pnpm --filter @fastybird/smart-panel-backend run typeorm:migration:run
 # apps/panel/lib/api and apps/panel/lib/spec are generated and untracked, so the
 # panel does not compile in a fresh worktree until they are rebuilt.
 
-if [ -z "${SUPERSET_SKIP_FLUTTER:-}" ] && command -v flutter >/dev/null 2>&1; then
+if ! flag_enabled "${SUPERSET_SKIP_FLUTTER:-}" && command -v flutter >/dev/null 2>&1; then
 	log "Fetching Flutter packages for apps/panel"
 	if ! (cd apps/panel && flutter pub get); then
 		warn "flutter pub get failed — run it manually before working on the panel app"
