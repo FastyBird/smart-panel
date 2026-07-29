@@ -25,6 +25,8 @@ import { WebsocketGateway } from './websocket.gateway';
 describe('WebsocketGateway', () => {
 	let gateway: WebsocketGateway;
 	let eventRegistry: CommandEventRegistryService;
+	let wsAuthService: WsAuthService;
+	let eventEmitter: EventEmitter2;
 
 	const mockServer = {
 		emit: jest.fn(),
@@ -87,6 +89,8 @@ describe('WebsocketGateway', () => {
 
 		gateway = module.get<WebsocketGateway>(WebsocketGateway);
 		eventRegistry = module.get<CommandEventRegistryService>(CommandEventRegistryService);
+		wsAuthService = module.get<WsAuthService>(WsAuthService);
+		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 
 		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
 		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
@@ -116,6 +120,8 @@ describe('WebsocketGateway', () => {
 
 	describe('handleConnection', () => {
 		it('should log when a client connects and join the default room', async () => {
+			jest.spyOn(wsAuthService, 'validateClient').mockResolvedValue(true);
+
 			const logSpy = jest.spyOn(Logger.prototype, 'log');
 
 			await gateway.handleConnection(mockSocket);
@@ -125,6 +131,24 @@ describe('WebsocketGateway', () => {
 				expect.objectContaining({ tag: 'websocket-module' }),
 			);
 			expect(mockSocket.join).toHaveBeenCalledWith('default-room');
+		});
+
+		it('should disconnect an unauthorized client without admitting it', async () => {
+			// validateClient resolves false when the handshake carries no token at all - an
+			// invalid one throws instead - so this is the plain unauthenticated connection.
+			jest.spyOn(wsAuthService, 'validateClient').mockResolvedValue(false);
+
+			const logSpy = jest.spyOn(Logger.prototype, 'log');
+
+			await gateway.handleConnection(mockSocket);
+
+			expect(mockSocket.disconnect).toHaveBeenCalled();
+			expect(mockSocket.join).not.toHaveBeenCalled();
+			expect(logSpy).not.toHaveBeenCalledWith(
+				`[WebsocketGateway] Client connected: ${mockSocket.id}`,
+				expect.anything(),
+			);
+			expect(eventEmitter.emit).not.toHaveBeenCalled();
 		});
 	});
 

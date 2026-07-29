@@ -89,6 +89,10 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 				this.logger.warn(`Unauthorized client is trying to connect: ${client.handshake?.headers.host}`);
 
 				client.disconnect();
+
+				// Without this the rejected client carried on into the admission below: it joined
+				// the broadcast rooms, logged itself as connected and raised CLIENT_CONNECTED.
+				return;
 			}
 
 			this.logger.log(`Client connected: ${client.id}`);
