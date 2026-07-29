@@ -217,18 +217,16 @@ clamp_state_path() { # clamp_state_path <KEY> <workspace default>
 	current="$(node -e 'console.log(require("path").resolve(process.argv[1], process.argv[2]))' \
 		"$ROOT_DIR" "$(env_value "$key" "$workspace_default")")"
 
-	if [ -n "${SUPERSET_ALLOW_SHARED_STATE:-}" ]; then
-		return 0
-	fi
-
-	if ! inside_workspace "$current"; then
+	if [ -z "${SUPERSET_ALLOW_SHARED_STATE:-}" ] && ! inside_workspace "$current"; then
 		state_notes="$state_notes  note      $key pointed outside the workspace ($current); using $workspace_default
 "
 		current="$workspace_default"
 	fi
 
-	# Always hand over the resolved path, so every process this script starts
-	# agrees with setup.sh regardless of its own working directory.
+	# Always hand over the resolved path — including when shared state is allowed,
+	# where the point is to reach the very directory setup used. The backend
+	# resolves a relative value against apps/backend, so passing the raw string
+	# through would land it somewhere setup never prepared.
 	export "$key=$current"
 }
 
@@ -261,14 +259,20 @@ app_host="$(env_value FB_APP_HOST http://127.0.0.1)"
 overridden_host=""
 
 if [ "$starts_admin" = yes ] && [ "$starts_backend" = no ] && [ -f "$backend_port_file" ]; then
-	# Only trust the record while something is answering on it: a pane that died
-	# without cleanup would otherwise point the proxy at a closed port.
-	candidate="$(cat "$backend_port_file")"
-	if [ -n "$candidate" ] && port_is_live "$candidate"; then
-		recorded_backend="$candidate"
-		app_host="http://127.0.0.1"
-		export FB_APP_HOST="$app_host"
-		export FB_BACKEND_PORT="$recorded_backend"
+	# The record is "<pid of the backend pane> <port>". Trust it while that pane
+	# is alive — Nest takes tens of seconds to bind, and an admin pane started in
+	# the meantime would otherwise reject a perfectly good allocation and spend
+	# its whole life proxying to the fallback. A port that answers is trusted too,
+	# for a backend that outlived its pane; anything else is stale.
+	read -r recorded_pid candidate < "$backend_port_file" || true
+
+	if [ -n "${candidate:-}" ]; then
+		if kill -0 "$recorded_pid" 2>/dev/null || port_is_live "$candidate"; then
+			recorded_backend="$candidate"
+			app_host="http://127.0.0.1"
+			export FB_APP_HOST="$app_host"
+			export FB_BACKEND_PORT="$recorded_backend"
+		fi
 	fi
 fi
 
@@ -398,7 +402,7 @@ printf '\n'
 
 if [ "$starts_backend" = yes ]; then
 	mkdir -p "$run_state_dir"
-	printf '%s' "$FB_BACKEND_PORT" > "$backend_port_file"
+	printf '%s %s\n' "$$" "$FB_BACKEND_PORT" > "$backend_port_file"
 
 	start "backend (nest --watch)" pnpm --filter @fastybird/smart-panel-backend run start:dev
 fi
