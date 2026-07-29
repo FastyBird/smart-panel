@@ -16,6 +16,7 @@
 			"home": "Administrace"
 		},
 		"messages": {
+			"connectionRecoveryFailed": "Připojení se nepodařilo obnovit. Zobrazená data mohou být neaktuální.",
 			"notFound": "Stránka, kterou hledáte, neexistuje nebo byla přesunuta."
 		},
 		"subHeadings": {

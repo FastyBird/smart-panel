@@ -16,6 +16,7 @@
 			"home": "Administration"
 		},
 		"messages": {
+			"connectionRecoveryFailed": "Die Verbindung konnte nicht wiederhergestellt werden. Die angezeigten Daten sind möglicherweise veraltet.",
 			"notFound": "Die gesuchte Seite existiert nicht oder wurde verschoben."
 		},
 		"subHeadings": {

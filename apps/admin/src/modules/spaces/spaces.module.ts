@@ -6,7 +6,7 @@ import { defaultsDeep } from 'lodash';
 
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
-import { injectLogger, injectModulesManager, injectSockets, injectStoresManager } from '../../common';
+import { injectDataRefreshRegistry, injectLogger, injectModulesManager, injectSockets, injectStoresManager, refreshLoadedStores } from '../../common';
 
 import { EventType, SPACES_MODULE_EVENT_PREFIX, SPACES_MODULE_NAME } from './spaces.constants';
 import { locales } from './locales';
@@ -14,12 +14,15 @@ import { ModuleRoutes } from './router';
 import { registerSpacesStore } from './store/spaces.store';
 import { spacesRefreshSignalsKey, spacesStoreKey } from './store/keys';
 
+const spacesDataRefreshKey = Symbol('FB-Module-Spaces-DataRefresh');
+
 export default {
 	install: (app: App, options: IModuleOptions): void => {
 		const storesManager = injectStoresManager(app);
 		const sockets = injectSockets(app);
 		const logger = injectLogger(app);
 		const modulesManager = injectModulesManager(app);
+		const dataRefreshRegistry = injectDataRefreshRegistry(app);
 
 		// Register module translations
 		for (const [locale, translations] of Object.entries(locales)) {
@@ -69,6 +72,15 @@ export default {
 		}
 
 		// Set up WebSocket event listeners
+		// Events emitted while the browser was suspended are gone for good - re-read what we hold.
+		dataRefreshRegistry.register(
+			spacesDataRefreshKey,
+			(): Promise<void> =>
+				refreshLoadedStores([
+					{ loaded: (): boolean => spacesStore.firstLoadFinished(), refresh: (): Promise<unknown> => spacesStore.fetch() },
+				])
+		);
+
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(SPACES_MODULE_EVENT_PREFIX)) {
 				return;

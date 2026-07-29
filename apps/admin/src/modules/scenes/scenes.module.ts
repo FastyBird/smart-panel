@@ -6,9 +6,11 @@ import { defaultsDeep } from 'lodash';
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
 import {
+	injectDataRefreshRegistry,
 	injectModulesManager,
 	injectSockets,
 	injectStoresManager,
+	refreshLoadedStores,
 	type IModule,
 	type ModuleInjectionKey,
 } from '../../common';
@@ -32,6 +34,7 @@ export default {
 		const storesManager = injectStoresManager(app);
 		const sockets = injectSockets(app);
 		const modulesManager = injectModulesManager(app);
+		const dataRefreshRegistry = injectDataRefreshRegistry(app);
 
 		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
@@ -78,6 +81,15 @@ export default {
 				options.router.addRoute(AppRouteNames.ROOT, route);
 			});
 		}
+
+		// Events emitted while the browser was suspended are gone for good - re-read what we hold.
+		dataRefreshRegistry.register(
+			scenesAdminModuleKey,
+			(): Promise<void> =>
+				refreshLoadedStores([
+					{ loaded: (): boolean => scenesStore.firstLoadFinished(), refresh: (): Promise<unknown> => scenesStore.fetch() },
+				])
+		);
 
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(SCENES_MODULE_EVENT_PREFIX)) {

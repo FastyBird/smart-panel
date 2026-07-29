@@ -6,10 +6,12 @@ import { defaultsDeep } from 'lodash';
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
 import {
+	injectDataRefreshRegistry,
 	injectLogger,
 	injectModulesManager,
 	injectSockets,
 	injectStoresManager,
+	refreshLoadedStores,
 	type IModule,
 	type ModuleInjectionKey,
 } from '../../common';
@@ -28,6 +30,7 @@ export default {
 		const sockets = injectSockets(app);
 		const logger = injectLogger(app);
 		const modulesManager = injectModulesManager(app);
+		const dataRefreshRegistry = injectDataRefreshRegistry(app);
 
 		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
@@ -55,6 +58,15 @@ export default {
 			description: 'See how your system is performing and track key metrics over time.',
 			elements: [],
 		});
+
+		// Events emitted while the browser was suspended are gone for good - re-read what we hold.
+		dataRefreshRegistry.register(
+			statsAdminModuleKey,
+			(): Promise<void> =>
+				refreshLoadedStores([
+					{ loaded: (): boolean => statsStore.firstLoadFinished(), refresh: (): Promise<unknown> => statsStore.get() },
+				])
+		);
 
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(STATS_MODULE_EVENT_PREFIX)) {

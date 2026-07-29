@@ -15,6 +15,7 @@ import AppMain from './app.main.vue';
 import type { IModuleOptions } from './app.types';
 import './assets/styles/base.scss';
 import {
+	DataRefreshRegistry,
 	type Events,
 	ModulesManager,
 	PluginsManager,
@@ -24,6 +25,7 @@ import {
 	injectAccountManager,
 	logger,
 	provideBackendClient,
+	provideDataRefreshRegistry,
 	provideEventBus,
 	provideModulesManager,
 	providePluginsManager,
@@ -33,8 +35,8 @@ import {
 } from './common';
 import { provideLogger } from './common';
 import CommonModule from './common/common.module';
-import i18n from './locales';
 import { detectBrowserLocale, getStoredLocale, setHtmlLang } from './common/composables/useLanguage';
+import i18n from './locales';
 import { AuthModule } from './modules/auth';
 import { BuddyModule } from './modules/buddy';
 import { ConfigModule } from './modules/config';
@@ -43,7 +45,6 @@ import { DevicesModule } from './modules/devices';
 import { DisplaysModule } from './modules/displays';
 import { EnergyModule } from './modules/energy';
 import { ExtensionsModule, installRemoteExtensions, installStaticExtensions } from './modules/extensions';
-import { StorageModule } from './modules/storage';
 import { IntentsModule } from './modules/intents';
 import { MdnsModule } from './modules/mdns';
 import { OnboardingModule } from './modules/onboarding';
@@ -51,6 +52,7 @@ import { ScenesModule } from './modules/scenes';
 import { SecurityModule } from './modules/security';
 import { SpacesModule } from './modules/spaces';
 import { StatsModule } from './modules/stats';
+import { StorageModule } from './modules/storage';
 import { SystemModule } from './modules/system';
 import { UsersModule } from './modules/users';
 import { WeatherModule } from './modules/weather';
@@ -68,9 +70,6 @@ import { BuddyTelegramPlugin } from './plugins/buddy-telegram';
 import { BuddyVoiceaiPlugin } from './plugins/buddy-voiceai';
 import { BuddyWhatsappPlugin } from './plugins/buddy-whatsapp';
 import { DeviceChannelDataSourcesPlugin } from './plugins/data-sources-device-channel';
-import { InfluxV1Plugin } from './plugins/influx-v1';
-import { InfluxV2Plugin } from './plugins/influx-v2';
-import { MemoryStoragePlugin } from './plugins/memory-storage';
 import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant';
 import { DevicesReTerminalPlugin } from './plugins/devices-reterminal';
@@ -79,7 +78,10 @@ import { DevicesShellyV1Plugin } from './plugins/devices-shelly-v1';
 import { DevicesThirdPartyPlugin } from './plugins/devices-third-party';
 import { DevicesWledPlugin } from './plugins/devices-wled';
 import { DevicesZigbee2mqttPlugin } from './plugins/devices-zigbee2mqtt';
+import { InfluxV1Plugin } from './plugins/influx-v1';
+import { InfluxV2Plugin } from './plugins/influx-v2';
 import { LoggerRotatingFilePlugin } from './plugins/logger-rotating-file';
+import { MemoryStoragePlugin } from './plugins/memory-storage';
 import { PagesCardsPlugin } from './plugins/pages-cards';
 import { PagesDeviceDetailPlugin } from './plugins/pages-device-detail';
 import { PagesTilesPlugin } from './plugins/pages-tiles';
@@ -128,6 +130,13 @@ providePluginsManager(app, pluginsManager);
 const modulesManager = new ModulesManager();
 app.config.globalProperties['modulesManager'] = modulesManager;
 provideModulesManager(app, modulesManager);
+
+// Data refresh - modules register here how to re-fetch what they missed while the socket was down
+const dataRefreshRegistry = new DataRefreshRegistry((error: unknown): void => {
+	logger.error('Refreshing module data after a reconnect failed', error);
+});
+app.config.globalProperties['dataRefreshRegistry'] = dataRefreshRegistry;
+provideDataRefreshRegistry(app, dataRefreshRegistry);
 
 // Detect HA ingress prefix from current URL
 const ingressMatch = window.location.pathname.match(/^(\/api\/hassio_ingress\/[^/]+)/);

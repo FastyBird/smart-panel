@@ -6,10 +6,12 @@ import { defaultsDeep } from 'lodash';
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
 import {
+	injectDataRefreshRegistry,
 	injectLogger,
 	injectModulesManager,
 	injectSockets,
 	injectStoresManager,
+	refreshLoadedStores,
 	type IModule,
 	type ModuleInjectionKey,
 } from '../../common';
@@ -33,6 +35,7 @@ export default {
 		const sockets = injectSockets(app);
 		const logger = injectLogger(app);
 		const modulesManager = injectModulesManager(app);
+		const dataRefreshRegistry = injectDataRefreshRegistry(app);
 
 		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
@@ -86,6 +89,17 @@ export default {
 				options.router.addRoute(AppRouteNames.ROOT, route);
 			});
 		}
+
+		// Events emitted while the browser was suspended are gone for good - re-read what we hold.
+		dataRefreshRegistry.register(
+			weatherAdminModuleKey,
+			(): Promise<void> =>
+				refreshLoadedStores([
+					{ loaded: (): boolean => weatherDayStore.firstLoadFinished(), refresh: (): Promise<unknown> => weatherDayStore.get() },
+					{ loaded: (): boolean => weatherForecastStore.firstLoadFinished(), refresh: (): Promise<unknown> => weatherForecastStore.get() },
+					{ loaded: (): boolean => weatherLocationsStore.firstLoadFinished(), refresh: (): Promise<unknown> => weatherLocationsStore.fetch() },
+				])
+		);
 
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(WEATHER_MODULE_EVENT_PREFIX)) {

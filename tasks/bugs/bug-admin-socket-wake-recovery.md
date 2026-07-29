@@ -4,7 +4,7 @@ Type: bug
 Scope: admin
 Size: medium
 Parent: (none)
-Status: planned
+Status: review
 
 ## 1. Business goal
 
@@ -86,18 +86,18 @@ refetch-on-reconnect anywhere. Stores therefore keep pre-sleep data until the us
 
 ## 4. Acceptance criteria
 
-- [ ] With the tab left on `/stats`, a sleep longer than the access-token TTL followed by a wake restores the indicator to **connected** without navigating.
-- [ ] Recovery refreshes the session first, so it succeeds even when the access token expired during sleep.
-- [ ] Recovery triggers on `visibilitychange` (to visible), `window` `focus`, and `window` `online`, coalesced so one wake does not fire it repeatedly.
-- [ ] Recovery is a no-op when the socket is already connected.
-- [ ] After a *re*connect, every module re-fetches the data it had already loaded.
-- [ ] The **first** connect after app start does not trigger a re-fetch (views already fetch on mount).
-- [ ] A module whose refresh handler throws does not prevent the other modules from refreshing.
-- [ ] Concurrent refresh runs are collapsed into one.
-- [ ] When recovery fails (backend down, refresh token expired), an error toast is shown via `useFlashMessage` and the indicator stays disconnected.
-- [ ] The connect-and-authenticate logic is defined once and shared by the router guard and the recovery path.
-- [ ] Unit tests cover the registry, the recovery composable, and the reconnect-vs-first-connect distinction.
-- [ ] `pnpm --filter ./apps/admin run lint:js`, `type-check` and `test:unit` all pass.
+- [x] With the tab left on `/stats`, a sleep longer than the access-token TTL followed by a wake restores the indicator to **connected** without navigating.
+- [x] Recovery refreshes the session first, so it succeeds even when the access token expired during sleep.
+- [x] Recovery triggers on `visibilitychange` (to visible), `window` `focus`, and `window` `online`, coalesced so one wake does not fire it repeatedly.
+- [x] Recovery is a no-op when the socket is already connected.
+- [x] After a *re*connect, every module re-fetches the data it had already loaded.
+- [x] The **first** connect after app start does not trigger a re-fetch (views already fetch on mount).
+- [x] A module whose refresh handler throws does not prevent the other modules from refreshing.
+- [x] Concurrent refresh runs are collapsed into one.
+- [x] When recovery fails (backend down, refresh token expired), an error toast is shown via `useFlashMessage` and the indicator stays disconnected.
+- [x] The connect-and-authenticate logic is defined once and shared by the router guard and the recovery path.
+- [x] Unit tests cover the registry, the recovery composable, and the reconnect-vs-first-connect distinction.
+- [x] `pnpm --filter ./apps/admin run lint:js`, `type-check` and `test:unit` all pass.
 
 ## 5. Example scenarios
 
@@ -179,6 +179,19 @@ from later ones.
 Parameterized stores (channels for a device, properties for a channel) are not blanket-refreshed;
 each module refreshes its top-level collections and nested collections stay view-driven.
 Making those fully consistent needs per-module decisions and is deliberately left out of this task.
+
+Ten modules register a refresh handler: config, dashboard, devices, displays, scenes, spaces,
+stats, system, users and weather. Three of the socket subscribers register none, because every
+store they own is keyed by a parent id and there is nothing safe to re-fetch without one:
+
+| Subscriber | Why no handler |
+| --- | --- |
+| `intents` | its store exposes no fetch at all |
+| `pages-cards` plugin | `cards` is fetched per `pageId` |
+| `spaces-signage-info-panel` plugin | `announcements` is fetched per `spaceId` |
+
+`system`'s `logs-entries` store is also skipped deliberately - it backs a live log tail that the
+view drives itself.
 
 ## 9. AI instructions
 
