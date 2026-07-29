@@ -173,6 +173,31 @@ refresh repopulates, so the predicate cannot drift out of sync with reality the 
 The unused `firstLoad` on those six stores is a pre-existing defect. Nothing else reads it, so it
 is dead rather than harmful, and it is left alone here rather than widening this task.
 
+Collection stores need one more allowance: a detail route can populate a single entity through
+`get()` without ever calling `fetch()` — `useSpace.ts:34` does exactly that for
+`/space/:id/plugin` — and `get()` does not set `firstLoad` either. Gating on the flag alone would
+skip the very entity on screen. They gate on `firstLoadFinished() || findAll().length > 0`, which
+covers both paths while still refreshing an empty-but-loaded collection.
+
+### 7.2c `fetch()` must retire deleted entities
+
+The refresh is only as authoritative as the `fetch()` behind it. `devices`, `users`, `displays`
+and `pages` rebuild their collection from the response, so deletions reconcile. `spaces` and
+`scenes` merged each returned entity in and never dropped the ids missing from the response, so a
+space or scene deleted while the browser slept stayed on screen after the refresh — the deletion
+event was missed, and the re-fetch was the only thing that could have retired it. Both now prune
+the ids the response omits.
+
+### 7.2d Contract mismatch worth revisiting
+
+Every defect found in review so far traces to the same assumption: that these stores share a
+contract. They do not — `firstLoad` is maintained by some and not others, `fetch()` replaces in
+some and merges in others, and backing shapes vary between records and maps. Each handler now
+states the condition that is actually true for its own stores, which works but is a per-store
+allowance rather than a guarantee. Giving stores an explicit `isLoaded()` / `refresh()` pair would
+make this class of bug structurally impossible; that is a larger refactor and is not attempted
+here.
+
 ### 7.2b `connect` is not proof of authorisation
 
 `socket.io` sends the namespace CONNECT packet *before* Nest runs `handleConnection`, which is

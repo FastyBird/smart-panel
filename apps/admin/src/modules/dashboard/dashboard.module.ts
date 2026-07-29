@@ -76,7 +76,7 @@ export default {
 			dashboardAdminModuleKey,
 			(): Promise<void> =>
 				refreshLoadedStores([
-					{ loaded: (): boolean => pagesStore.firstLoadFinished(), refresh: (): Promise<unknown> => pagesStore.fetch() },
+					{ loaded: (): boolean => pagesStore.firstLoadFinished() || pagesStore.findAll().length > 0, refresh: (): Promise<unknown> => pagesStore.fetch() },
 				])
 		);
 

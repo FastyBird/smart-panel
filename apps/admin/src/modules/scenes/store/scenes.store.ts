@@ -210,6 +210,7 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 				}
 
 				const scenes: IScene[] = [];
+				const fetched = new Set<IScene['id']>();
 
 				for (const sceneData of responseData.data) {
 					const transformed = transformSceneResponse(sceneData, SceneSchema);
@@ -219,6 +220,7 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 						data: transformed,
 					});
 
+					fetched.add(transformed.id);
 					scenes.push(transformed);
 
 					// Store actions in the actions store
@@ -234,6 +236,15 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 								logger.error('Failed to transform scene action:', e);
 							}
 						}
+					}
+				}
+
+				// The response is the whole collection, so anything missing from it is gone.
+				// Merging alone would keep a deleted scene on screen whenever its event was
+				// missed - which is exactly the case after the browser has been asleep.
+				for (const knownId of [...data.value.keys()]) {
+					if (!fetched.has(knownId)) {
+						data.value.delete(knownId);
 					}
 				}
 

@@ -77,7 +77,7 @@ export default {
 			spacesDataRefreshKey,
 			(): Promise<void> =>
 				refreshLoadedStores([
-					{ loaded: (): boolean => spacesStore.firstLoadFinished(), refresh: (): Promise<unknown> => spacesStore.fetch() },
+					{ loaded: (): boolean => spacesStore.firstLoadFinished() || spacesStore.findAll().length > 0, refresh: (): Promise<unknown> => spacesStore.fetch() },
 				])
 		);
 

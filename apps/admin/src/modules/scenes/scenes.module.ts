@@ -87,7 +87,7 @@ export default {
 			scenesAdminModuleKey,
 			(): Promise<void> =>
 				refreshLoadedStores([
-					{ loaded: (): boolean => scenesStore.firstLoadFinished(), refresh: (): Promise<unknown> => scenesStore.fetch() },
+					{ loaded: (): boolean => scenesStore.firstLoadFinished() || scenesStore.findAll().length > 0, refresh: (): Promise<unknown> => scenesStore.fetch() },
 				])
 		);
 

@@ -102,8 +102,8 @@ export default {
 			devicesAdminModuleKey,
 			(): Promise<void> =>
 				refreshLoadedStores([
-					{ loaded: (): boolean => devicesStore.firstLoadFinished(), refresh: (): Promise<unknown> => devicesStore.fetch() },
-					{ loaded: (): boolean => devicesValidationStore.firstLoadFinished(), refresh: (): Promise<unknown> => devicesValidationStore.fetch() },
+					{ loaded: (): boolean => devicesStore.firstLoadFinished() || devicesStore.findAll().length > 0, refresh: (): Promise<unknown> => devicesStore.fetch() },
+					{ loaded: (): boolean => devicesValidationStore.firstLoadFinished() || devicesValidationStore.findAll().length > 0, refresh: (): Promise<unknown> => devicesValidationStore.fetch() },
 				])
 		);
 

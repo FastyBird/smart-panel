@@ -84,7 +84,7 @@ export default {
 			displaysAdminModuleKey,
 			(): Promise<void> =>
 				refreshLoadedStores([
-					{ loaded: (): boolean => displaysStore.firstLoadFinished(), refresh: (): Promise<unknown> => displaysStore.fetch() },
+					{ loaded: (): boolean => displaysStore.firstLoadFinished() || displaysStore.findAll().length > 0, refresh: (): Promise<unknown> => displaysStore.fetch() },
 				])
 		);
 

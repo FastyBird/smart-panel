@@ -83,8 +83,8 @@ export default {
 			(): Promise<void> =>
 				refreshLoadedStores([
 					{ loaded: (): boolean => configAppStore.data !== null, refresh: (): Promise<unknown> => configAppStore.get() },
-					{ loaded: (): boolean => configModulesStore.firstLoadFinished(), refresh: (): Promise<unknown> => configModulesStore.fetch() },
-					{ loaded: (): boolean => configPluginsStore.firstLoadFinished(), refresh: (): Promise<unknown> => configPluginsStore.fetch() },
+					{ loaded: (): boolean => configModulesStore.firstLoadFinished() || configModulesStore.findAll().length > 0, refresh: (): Promise<unknown> => configModulesStore.fetch() },
+					{ loaded: (): boolean => configPluginsStore.firstLoadFinished() || configPluginsStore.findAll().length > 0, refresh: (): Promise<unknown> => configPluginsStore.fetch() },
 				])
 		);
 

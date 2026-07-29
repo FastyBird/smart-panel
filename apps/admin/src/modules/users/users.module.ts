@@ -71,7 +71,7 @@ export default {
 			usersAdminModuleKey,
 			(): Promise<void> =>
 				refreshLoadedStores([
-					{ loaded: (): boolean => usersStore.firstLoadFinished(), refresh: (): Promise<unknown> => usersStore.fetch() },
+					{ loaded: (): boolean => usersStore.firstLoadFinished() || usersStore.findAll().length > 0, refresh: (): Promise<unknown> => usersStore.fetch() },
 				])
 		);
 

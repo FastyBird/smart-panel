@@ -97,7 +97,7 @@ export default {
 				refreshLoadedStores([
 					{ loaded: (): boolean => weatherDayStore.data !== null, refresh: (): Promise<unknown> => weatherDayStore.get() },
 					{ loaded: (): boolean => weatherForecastStore.data !== null, refresh: (): Promise<unknown> => weatherForecastStore.get() },
-					{ loaded: (): boolean => weatherLocationsStore.firstLoadFinished(), refresh: (): Promise<unknown> => weatherLocationsStore.fetch() },
+					{ loaded: (): boolean => weatherLocationsStore.firstLoadFinished() || weatherLocationsStore.findAll().length > 0, refresh: (): Promise<unknown> => weatherLocationsStore.fetch() },
 				])
 		);
 
