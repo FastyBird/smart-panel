@@ -38,6 +38,10 @@ export const createConnectionRecovery = (options: IConnectionRecoveryOptions): I
 			if (!(await ensureSocketConnection(socket, session, timeout !== undefined ? { timeout } : undefined))) {
 				onFailure?.();
 			}
+		} catch {
+			// Nothing awaits this, so anything escaping here would become an unhandled rejection
+			// and the user would be left with a silent, permanently disconnected panel.
+			onFailure?.();
 		} finally {
 			recovering = false;
 		}

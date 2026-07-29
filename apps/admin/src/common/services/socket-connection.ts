@@ -46,17 +46,24 @@ const waitForConnection = (socket: IAuthenticatedSocket, timeout: number): Promi
  * therefore what makes recovery work at all, not an optimisation.
  *
  * Resolves `true` once the socket is connected, `false` when there is no usable session or the
- * handshake failed.
+ * handshake failed. It never rejects - both call sites fire it without awaiting, so a rejection
+ * would surface as an unhandled one rather than as a failed recovery.
  */
 export const ensureSocketConnection = async (
 	socket: IAuthenticatedSocket,
 	session: ISocketSession,
 	options?: { timeout?: number }
 ): Promise<boolean> => {
-	if (session.isExpired() && !(await session.refresh())) {
-		dropConnection(socket);
+	if (session.isExpired()) {
+		// The session store awaits the refresh request inside a try/finally with no catch, so an
+		// unreachable backend rejects here instead of returning false.
+		const refreshed = await session.refresh().catch((): boolean => false);
 
-		return false;
+		if (!refreshed) {
+			dropConnection(socket);
+
+			return false;
+		}
 	}
 
 	const token = session.accessToken();

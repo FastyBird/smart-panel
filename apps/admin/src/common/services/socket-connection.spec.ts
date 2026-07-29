@@ -61,6 +61,25 @@ describe('ensureSocketConnection', () => {
 		expect(socket.auth).toEqual({});
 	});
 
+	it('reports failure when the session refresh throws', async () => {
+		// The store awaits the refresh request inside a try/finally with no catch, so an
+		// unreachable backend rejects instead of returning false.
+		socket.connected = true;
+
+		const session = createSession({
+			isExpired: (): boolean => true,
+			refresh: async (): Promise<boolean> => {
+				throw new Error('backend unreachable');
+			},
+		});
+
+		await expect(ensureSocketConnection(socket, session)).resolves.toBe(false);
+
+		expect(socket.connectCalls).toBe(0);
+		expect(socket.disconnectCalls).toBe(1);
+		expect(socket.auth).toEqual({});
+	});
+
 	it('drops an existing connection when there is no access token', async () => {
 		socket.connected = true;
 

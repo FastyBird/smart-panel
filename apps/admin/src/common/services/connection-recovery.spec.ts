@@ -122,6 +122,53 @@ describe('createConnectionRecovery', () => {
 		expect(onFailure).toHaveBeenCalledTimes(1);
 	});
 
+	it('reports a failed recovery when the session refresh throws', async () => {
+		const onFailure = vi.fn();
+
+		const session = createSession({
+			isExpired: (): boolean => true,
+			refresh: async (): Promise<boolean> => {
+				throw new Error('backend unreachable');
+			},
+		});
+
+		recovery = createConnectionRecovery({ socket, session, onFailure });
+		recovery.start();
+
+		window.dispatchEvent(new Event('focus'));
+
+		await flush();
+
+		expect(onFailure).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps recovering after a trigger threw, instead of latching', async () => {
+		const session = createSession({
+			isExpired: (): boolean => true,
+			refresh: async (): Promise<boolean> => {
+				throw new Error('backend unreachable');
+			},
+		});
+
+		recovery = createConnectionRecovery({ socket, session });
+		recovery.start();
+
+		window.dispatchEvent(new Event('focus'));
+
+		await flush();
+
+		// A stuck `recovering` flag would make every later wake a silent no-op.
+		recovery.stop();
+		recovery = createConnectionRecovery({ socket, session: createSession() });
+		recovery.start();
+
+		window.dispatchEvent(new Event('focus'));
+
+		await flush();
+
+		expect(socket.connected).toBe(true);
+	});
+
 	it('retries on the next trigger after a failed recovery', async () => {
 		recovery = createConnectionRecovery({ socket, session: createSession() });
 		recovery.start();
