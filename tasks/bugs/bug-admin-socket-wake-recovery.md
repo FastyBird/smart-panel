@@ -158,8 +158,20 @@ refreshRegistry.refreshAll(): Promise<void>   // errors isolated per handler, co
 ```
 
 Each module registers its handler in `install()`, next to its existing `sockets.on('event', …)`
-subscription. Handlers guard on `firstLoadFinished()` so a wake never fetches data the user
-never opened.
+subscription. Handlers guard on whether the store holds anything, so a wake never fetches data the
+user never opened.
+
+Which signal to guard on differs, and the difference matters: collection stores set
+`firstLoad.value = true` inside `fetch()` (see `devices.store.ts`), so `firstLoadFinished()` works
+for them. The singleton stores built around `get()` — `stats`, `config-app`, `system-info`,
+`throttle-status`, `weather-day`, `weather-forecast` — declare `firstLoad` and expose
+`firstLoadFinished()` but **never assign it**, so it is permanently `false`. Gating those on the
+flag silently excluded them from every reconnect refresh, `stats` included, which is precisely the
+screen this task came from. They compare their own `data` against null instead: the same value the
+refresh repopulates, so the predicate cannot drift out of sync with reality the way the flag did.
+
+The unused `firstLoad` on those six stores is a pre-existing defect. Nothing else reads it, so it
+is dead rather than harmful, and it is left alone here rather than widening this task.
 
 ### 7.2b `connect` is not proof of authorisation
 
@@ -172,6 +184,20 @@ user-set events. A rejected token therefore reaches the client as `connect` imme
 Treating `connect` alone as success would skip the failure toast and re-fetch every store over a
 socket already on its way out. Both the handshake wait and the reconnect refresh hold their verdict
 for a short grace window (`DEFAULT_AUTH_GRACE`) and confirm the socket is still up.
+
+The grace window alone is not enough, because `WsAuthService.validateUserAccessToken` does two
+database round trips before deciding, with no latency bound. So recovery also watches for a
+`disconnect` whose reason is `io server disconnect` — the gateway's only two `client.disconnect()`
+calls are both authorisation refusals, which makes that reason an unambiguous, latency-independent
+signal. The grace window catches the common fast refusal and keeps the pointless refresh from
+firing; the disconnect reason catches a slow one whenever it lands. An attempt in flight reports
+its own verdict, so the two never raise the same failure twice.
+
+An explicit server acknowledgement would be better still, but is not available today: the ack
+Nest generates for `handleSubscribeExchange` is processed independently of the in-flight
+`validateClient`, so it can arrive before the authorisation decision and does not prove anything.
+Making this deterministic means authenticating in a Socket.IO middleware so refusal happens before
+CONNECT — a backend change, tracked separately.
 
 ### 7.3 Recovery composable
 

@@ -95,8 +95,8 @@ export default {
 			weatherAdminModuleKey,
 			(): Promise<void> =>
 				refreshLoadedStores([
-					{ loaded: (): boolean => weatherDayStore.firstLoadFinished(), refresh: (): Promise<unknown> => weatherDayStore.get() },
-					{ loaded: (): boolean => weatherForecastStore.firstLoadFinished(), refresh: (): Promise<unknown> => weatherForecastStore.get() },
+					{ loaded: (): boolean => weatherDayStore.data !== null, refresh: (): Promise<unknown> => weatherDayStore.get() },
+					{ loaded: (): boolean => weatherForecastStore.data !== null, refresh: (): Promise<unknown> => weatherForecastStore.get() },
 					{ loaded: (): boolean => weatherLocationsStore.firstLoadFinished(), refresh: (): Promise<unknown> => weatherLocationsStore.fetch() },
 				])
 		);

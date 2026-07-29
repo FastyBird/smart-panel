@@ -71,6 +71,20 @@ export const createConnectionRecovery = (options: IConnectionRecoveryOptions): I
 		}
 	};
 
+	/**
+	 * The gateway refuses a client by calling `disconnect()` on it, which is the only reason this
+	 * server sends `io server disconnect`. It decides only after two database round trips, so the
+	 * refusal can land long after any grace window - this reports it whenever it arrives.
+	 *
+	 * While an attempt is in flight it reports its own verdict, so this stays quiet to avoid
+	 * raising the same failure twice.
+	 */
+	const onDisconnect = (reason: string): void => {
+		if (reason === 'io server disconnect' && !recovering) {
+			onFailure?.();
+		}
+	};
+
 	const onConnect = (): void => {
 		if (!hasConnected) {
 			hasConnected = true;
@@ -101,6 +115,7 @@ export const createConnectionRecovery = (options: IConnectionRecoveryOptions): I
 			window.addEventListener('online', onWake);
 
 			socket.on('connect', onConnect);
+			socket.on('disconnect', onDisconnect);
 		},
 
 		stop: (): void => {
@@ -115,6 +130,7 @@ export const createConnectionRecovery = (options: IConnectionRecoveryOptions): I
 			window.removeEventListener('online', onWake);
 
 			socket.off('connect', onConnect);
+			socket.off('disconnect', onDisconnect);
 		},
 	};
 };

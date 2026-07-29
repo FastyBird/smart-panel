@@ -117,8 +117,8 @@ export default {
 			systemAdminModuleKey,
 			(): Promise<void> =>
 				refreshLoadedStores([
-					{ loaded: (): boolean => systemInfoStore.firstLoadFinished(), refresh: (): Promise<unknown> => systemInfoStore.get() },
-					{ loaded: (): boolean => throttleStatusStore.firstLoadFinished(), refresh: (): Promise<unknown> => throttleStatusStore.get() },
+					{ loaded: (): boolean => systemInfoStore.data !== null, refresh: (): Promise<unknown> => systemInfoStore.get() },
+					{ loaded: (): boolean => throttleStatusStore.data !== null, refresh: (): Promise<unknown> => throttleStatusStore.get() },
 				])
 		);
 

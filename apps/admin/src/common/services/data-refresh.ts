@@ -6,7 +6,9 @@ import type { DataRefreshErrorHandler, DataRefreshHandler, DataRefreshKey, IData
  * Re-fetches the given stores, skipping the ones that never loaded.
  *
  * A wake must not pull data the user never opened, so each candidate reports whether it holds
- * anything worth refreshing.
+ * anything worth refreshing. Collection stores answer that with `firstLoadFinished()`; the
+ * singleton stores built around `get()` never set that flag, so they compare their own `data`
+ * against null instead. Each store reports through the signal it actually maintains.
  */
 export const refreshLoadedStores = async (candidates: IRefreshableStore[]): Promise<void> => {
 	await Promise.all(candidates.filter((candidate) => candidate.loaded()).map((candidate) => candidate.refresh()));

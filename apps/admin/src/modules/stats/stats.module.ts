@@ -64,7 +64,7 @@ export default {
 			statsAdminModuleKey,
 			(): Promise<void> =>
 				refreshLoadedStores([
-					{ loaded: (): boolean => statsStore.firstLoadFinished(), refresh: (): Promise<unknown> => statsStore.get() },
+					{ loaded: (): boolean => statsStore.data !== null, refresh: (): Promise<unknown> => statsStore.get() },
 				])
 		);
 

@@ -301,6 +301,62 @@ describe('createConnectionRecovery', () => {
 		expect(onReconnected).not.toHaveBeenCalled();
 	});
 
+	it('reports a rejection that lands after the attempt already settled', async () => {
+		const onFailure = vi.fn();
+
+		// The gateway does two database round trips before it decides, so the rejection can
+		// arrive well after any fixed grace window has elapsed.
+		recovery = createConnectionRecovery({ authGrace: 5, socket, session: createSession(), onFailure });
+		recovery.start();
+
+		window.dispatchEvent(new Event('focus'));
+
+		await flush();
+
+		expect(onFailure).not.toHaveBeenCalled();
+
+		socket.connected = false;
+		socket.emit('disconnect', 'io server disconnect');
+
+		await flush();
+
+		expect(onFailure).toHaveBeenCalledTimes(1);
+	});
+
+	it('ignores a disconnect the server did not initiate', async () => {
+		const onFailure = vi.fn();
+
+		recovery = createConnectionRecovery({ authGrace: 5, socket, session: createSession(), onFailure });
+		recovery.start();
+
+		window.dispatchEvent(new Event('focus'));
+
+		await flush();
+
+		// A dropped transport is not a refusal - recovery handles it on the next wake.
+		socket.connected = false;
+		socket.emit('disconnect', 'transport close');
+
+		await flush();
+
+		expect(onFailure).not.toHaveBeenCalled();
+	});
+
+	it('reports a rejection inside the attempt window only once', async () => {
+		const onFailure = vi.fn();
+
+		socket.handshake = 'rejected_after_connect';
+
+		recovery = createConnectionRecovery({ authGrace: 50, socket, session: createSession(), onFailure });
+		recovery.start();
+
+		window.dispatchEvent(new Event('focus'));
+
+		await flush();
+
+		expect(onFailure).toHaveBeenCalledTimes(1);
+	});
+
 	it('stops listening once stopped', async () => {
 		recovery = createConnectionRecovery({ authGrace: 5, socket, session: createSession() });
 		recovery.start();
