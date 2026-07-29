@@ -32,6 +32,15 @@ export const createConnectionRecovery = (options: IConnectionRecoveryOptions): I
 			return;
 		}
 
+		// Signed out, so the socket is down on purpose and there is nothing to recover. Without
+		// this, every focus on the login page would raise a "could not be restored" toast.
+		//
+		// A session that slept past its refresh token still has its stale access token here, so
+		// that case is not caught by this and is still reported as the failure it is.
+		if (session.accessToken() === null) {
+			return;
+		}
+
 		recovering = true;
 
 		try {

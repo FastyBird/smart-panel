@@ -122,6 +122,46 @@ describe('createConnectionRecovery', () => {
 		expect(onFailure).toHaveBeenCalledTimes(1);
 	});
 
+	it('stays quiet when there is no session to recover', async () => {
+		const onFailure = vi.fn();
+
+		// Signed out: the socket is meant to be down, so focusing the login page must not be
+		// reported as a failed recovery.
+		const session = createSession({ accessToken: (): string | null => null });
+
+		recovery = createConnectionRecovery({ socket, session, onFailure });
+		recovery.start();
+
+		window.dispatchEvent(new Event('focus'));
+		document.dispatchEvent(new Event('visibilitychange'));
+
+		await flush();
+
+		expect(onFailure).not.toHaveBeenCalled();
+		expect(socket.connectCalls).toBe(0);
+	});
+
+	it('still reports a failure when a session exists but cannot be refreshed', async () => {
+		const onFailure = vi.fn();
+
+		// Slept past the refresh token lifetime: the stale access token is still in the store,
+		// so this is a genuine recovery failure and the user needs to be told.
+		const session = createSession({
+			isExpired: (): boolean => true,
+			refresh: async (): Promise<boolean> => false,
+			accessToken: (): string | null => 'stale-token',
+		});
+
+		recovery = createConnectionRecovery({ socket, session, onFailure });
+		recovery.start();
+
+		window.dispatchEvent(new Event('focus'));
+
+		await flush();
+
+		expect(onFailure).toHaveBeenCalledTimes(1);
+	});
+
 	it('reports a failed recovery when the session refresh throws', async () => {
 		const onFailure = vi.fn();
 
