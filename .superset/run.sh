@@ -209,19 +209,27 @@ clamp_state_path() { # clamp_state_path <KEY> <workspace default>
 	local workspace_default="$2"
 	local current
 
-	current="$(env_value "$key" "$workspace_default")"
-	case "$current" in
-	/*) ;;
-	*) current="$ROOT_DIR/$current" ;;
-	esac
+	# Resolve before comparing: string-prefixing the worktree onto the raw value
+	# lets `var/../../shared` look contained while the backend's path.resolve
+	# lands outside it. Resolving against the worktree also matches how setup.sh
+	# read the same value — the backend would otherwise resolve a relative path
+	# against apps/backend and miss the state setup prepared.
+	current="$(node -e 'console.log(require("path").resolve(process.argv[1], process.argv[2]))' \
+		"$ROOT_DIR" "$(env_value "$key" "$workspace_default")")"
 
-	if inside_workspace "$current" || [ -n "${SUPERSET_ALLOW_SHARED_STATE:-}" ]; then
+	if [ -n "${SUPERSET_ALLOW_SHARED_STATE:-}" ]; then
 		return 0
 	fi
 
-	state_notes="$state_notes  note      $key pointed outside the workspace ($current); using $workspace_default
+	if ! inside_workspace "$current"; then
+		state_notes="$state_notes  note      $key pointed outside the workspace ($current); using $workspace_default
 "
-	export "$key=$workspace_default"
+		current="$workspace_default"
+	fi
+
+	# Always hand over the resolved path, so every process this script starts
+	# agrees with setup.sh regardless of its own working directory.
+	export "$key=$current"
 }
 
 if [ "$starts_backend" = yes ]; then
@@ -229,8 +237,40 @@ if [ "$starts_backend" = yes ]; then
 	clamp_state_path FB_DB_PATH "$ROOT_DIR/var/db"
 fi
 
+# A backend pane records the port it actually got, so an admin pane started
+# later proxies to this workspace instead of whatever the env files name — with
+# the configured port taken, the allocator moves on and .env alone would send
+# /api to the root checkout's backend.
+run_state_dir="$ROOT_DIR/.superset/.run-state"
+backend_port_file="$run_state_dir/backend-port"
+recorded_backend=""
+
+port_is_live() {
+	node -e '
+		const net = require("net");
+		const socket = net.connect(Number(process.argv[1]), "127.0.0.1");
+		const done = (code) => { socket.destroy(); process.exit(code); };
+		socket.setTimeout(500);
+		socket.once("connect", () => done(0));
+		socket.once("timeout", () => done(1));
+		socket.once("error", () => done(1));
+	' "$1"
+}
+
 app_host="$(env_value FB_APP_HOST http://127.0.0.1)"
 overridden_host=""
+
+if [ "$starts_admin" = yes ] && [ "$starts_backend" = no ] && [ -f "$backend_port_file" ]; then
+	# Only trust the record while something is answering on it: a pane that died
+	# without cleanup would otherwise point the proxy at a closed port.
+	candidate="$(cat "$backend_port_file")"
+	if [ -n "$candidate" ] && port_is_live "$candidate"; then
+		recorded_backend="$candidate"
+		app_host="http://127.0.0.1"
+		export FB_APP_HOST="$app_host"
+		export FB_BACKEND_PORT="$recorded_backend"
+	fi
+fi
 
 if [ "$starts_backend" = yes ] && [ "$starts_admin" = yes ]; then
 	# Vite builds its proxy target by pairing FB_APP_HOST with FB_BACKEND_PORT,
@@ -276,6 +316,10 @@ descendants() {
 
 cleanup() {
 	trap - INT TERM EXIT
+
+	if [ "$starts_backend" = yes ]; then
+		rm -f "$backend_port_file"
+	fi
 
 	# Snapshot the trees while they are still intact — once a parent dies its
 	# children are reparented and can no longer be found through it.
@@ -326,10 +370,19 @@ fi
 if [ "$starts_admin" = yes ]; then
 	printf '  admin     http://localhost:%s\n' "$FB_ADMIN_PORT"
 
-	# An admin-only run proxies /api at whatever the env files configure, which
-	# is the point — say so, since nothing on screen would otherwise reveal it.
+	# An admin-only run proxies /api somewhere it did not start — say where,
+	# since nothing else on screen would reveal it.
 	if [ "$starts_backend" = no ]; then
-		printf '  api proxy %s:%s (from .env/.env.local)\n' "$app_host" "$(env_value FB_BACKEND_PORT 3000)"
+		if [ -n "$recorded_backend" ]; then
+			printf '  api proxy %s:%s (backend started by this workspace)\n' "$app_host" "$recorded_backend"
+		else
+			proxy_port="$(env_value FB_BACKEND_PORT 3000)"
+			printf '  api proxy %s:%s (from .env/.env.local)\n' "$app_host" "$proxy_port"
+
+			if ! port_is_live "$proxy_port"; then
+				printf '            nothing is listening there yet\n'
+			fi
+		fi
 	fi
 fi
 
@@ -344,6 +397,9 @@ fi
 printf '\n'
 
 if [ "$starts_backend" = yes ]; then
+	mkdir -p "$run_state_dir"
+	printf '%s' "$FB_BACKEND_PORT" > "$backend_port_file"
+
 	start "backend (nest --watch)" pnpm --filter @fastybird/smart-panel-backend run start:dev
 fi
 
