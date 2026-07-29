@@ -186,17 +186,28 @@ if [ -z "$(env_value NODE_ENV '' .env.local)" ]; then
 	export NODE_ENV=development
 fi
 
-if [ "$starts_backend" = yes ]; then
-	# This invocation starts the backend, so it listens locally on the port just
-	# allocated. The host has to match: pairing a configured remote FB_APP_HOST
-	# with a local port would aim the admin proxy at neither backend.
-	export FB_APP_HOST="${FB_APP_HOST:-http://127.0.0.1}"
-	app_host="$FB_APP_HOST"
-else
-	# Nothing local to point at — keep whatever endpoint is configured, which is
-	# the whole point of an admin-only run, and only read it for the banner.
-	app_host="$(env_value FB_APP_HOST http://127.0.0.1)"
+app_host="$(env_value FB_APP_HOST http://127.0.0.1)"
+overridden_host=""
+
+if [ "$starts_backend" = yes ] && [ "$starts_admin" = yes ]; then
+	# Vite builds its proxy target by pairing FB_APP_HOST with FB_BACKEND_PORT,
+	# and the port is the local one allocated above — so any host but loopback
+	# sends /api to a machine that is not running this backend. This wins over an
+	# exported value too: it is the one combination that cannot be correct.
+	if [ "$app_host" != "http://127.0.0.1" ]; then
+		overridden_host="$app_host"
+	fi
+
+	app_host="http://127.0.0.1"
+	export FB_APP_HOST="$app_host"
+elif [ "$starts_backend" = yes ]; then
+	# No admin proxy in this invocation, so nothing pairs the host with our port.
+	# Keep the configured public origin — it is what the backend puts in absolute
+	# URLs, and it stays reachable because the backend binds 0.0.0.0.
+	export FB_APP_HOST="$app_host"
 fi
+# An admin-only run exports nothing: keeping the configured endpoint is the
+# entire point, and app_host above is only used for the banner.
 
 # The ports are different — these are ports this script picked, so the servers
 # and the proxy have to be told about them.
@@ -257,6 +268,11 @@ printf '\n\033[1mFastyBird Smart Panel — %s\033[0m\n' "${SUPERSET_WORKSPACE_NA
 
 if [ "$starts_backend" = yes ]; then
 	printf '  backend   %s:%s  (docs at /api/docs)\n' "$app_host" "$FB_BACKEND_PORT"
+
+	if [ -n "$overridden_host" ]; then
+		printf '  note      FB_APP_HOST %s ignored: the admin proxy has to reach the backend started here\n' "$overridden_host"
+		printf '            run the backend on its own to keep it as the public origin\n'
+	fi
 fi
 
 if [ "$starts_admin" = yes ]; then
