@@ -16,6 +16,7 @@
 			"home": "Administración"
 		},
 		"messages": {
+			"connectionRecoveryFailed": "No se pudo restablecer la conexión. Los datos mostrados pueden estar desactualizados.",
 			"notFound": "La página que buscas no existe o pudo haber sido movida."
 		},
 		"subHeadings": {

@@ -6,10 +6,12 @@ import { defaultsDeep, get } from 'lodash';
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
 import {
+	injectDataRefreshRegistry,
 	injectLogger,
 	injectModulesManager,
 	injectSockets,
 	injectStoresManager,
+	refreshLoadedStores,
 	snakeToCamel,
 	type IModule,
 	type ModuleInjectionKey,
@@ -41,6 +43,7 @@ export default {
 		const sockets = injectSockets(app);
 		const logger = injectLogger(app);
 		const modulesManager = injectModulesManager(app);
+		const dataRefreshRegistry = injectDataRefreshRegistry(app);
 
 		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
@@ -93,6 +96,16 @@ export default {
 				options.router.addRoute(AppRouteNames.ROOT, route);
 			});
 		}
+
+		// Events emitted while the browser was suspended are gone for good - re-read what we hold.
+		dataRefreshRegistry.register(
+			devicesAdminModuleKey,
+			(): Promise<void> =>
+				refreshLoadedStores([
+					{ loaded: (): boolean => devicesStore.firstLoadFinished() || devicesStore.findAll().length > 0, refresh: (): Promise<unknown> => devicesStore.fetch() },
+					{ loaded: (): boolean => devicesValidationStore.firstLoadFinished() || devicesValidationStore.findAll().length > 0, refresh: (): Promise<unknown> => devicesValidationStore.fetch() },
+				])
+		);
 
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(DEVICES_MODULE_EVENT_PREFIX)) {

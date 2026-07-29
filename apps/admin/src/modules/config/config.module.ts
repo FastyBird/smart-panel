@@ -6,10 +6,12 @@ import { defaultsDeep } from 'lodash';
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
 import {
+	injectDataRefreshRegistry,
 	injectLogger,
 	injectModulesManager,
 	injectSockets,
 	injectStoresManager,
+	refreshLoadedStores,
 	type IModule,
 	type ModuleInjectionKey,
 } from '../../common';
@@ -34,6 +36,7 @@ export default {
 		const sockets = injectSockets(app);
 		const logger = injectLogger(app);
 		const modulesManager = injectModulesManager(app);
+		const dataRefreshRegistry = injectDataRefreshRegistry(app);
 
 		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
@@ -73,6 +76,17 @@ export default {
 				options.router.addRoute(AppRouteNames.ROOT, route);
 			});
 		}
+
+		// Events emitted while the browser was suspended are gone for good - re-read what we hold.
+		dataRefreshRegistry.register(
+			configAdminModuleKey,
+			(): Promise<void> =>
+				refreshLoadedStores([
+					{ loaded: (): boolean => configAppStore.data !== null, refresh: (): Promise<unknown> => configAppStore.get() },
+					{ loaded: (): boolean => configModulesStore.firstLoadFinished() || configModulesStore.findAll().length > 0, refresh: (): Promise<unknown> => configModulesStore.fetch() },
+					{ loaded: (): boolean => configPluginsStore.firstLoadFinished() || configPluginsStore.findAll().length > 0, refresh: (): Promise<unknown> => configPluginsStore.fetch() },
+				])
+		);
 
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(CONFIG_MODULE_EVENT_PREFIX)) {

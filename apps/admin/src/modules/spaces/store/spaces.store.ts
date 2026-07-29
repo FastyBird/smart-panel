@@ -58,11 +58,22 @@ export const useSpacesStore = defineStore<'spaces_module-spaces', SpacesStoreSet
 			}
 
 			const spaces: ISpace[] = [];
+			const fetched = new Set<ISpace['id']>();
 
 			for (const spaceData of responseData.data ?? []) {
 				const space = transformSpaceResponse(spaceData);
 				data.value[space.id] = space;
+				fetched.add(space.id);
 				spaces.push(space);
+			}
+
+			// This response is the whole collection, so anything missing from it is gone. Merging
+			// alone would keep a deleted space on screen whenever its event was missed - which is
+			// exactly the case after the browser has been asleep.
+			for (const knownId of Object.keys(data.value)) {
+				if (!fetched.has(knownId)) {
+					delete data.value[knownId];
+				}
 			}
 
 			firstLoad.value = true;

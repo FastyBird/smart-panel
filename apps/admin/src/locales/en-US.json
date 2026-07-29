@@ -16,6 +16,7 @@
 			"home": "Administration"
 		},
 		"messages": {
+			"connectionRecoveryFailed": "Connection could not be restored. The displayed data may be out of date.",
 			"notFound": "The page you are looking for doesn't exist or may have been moved."
 		},
 		"subHeadings": {

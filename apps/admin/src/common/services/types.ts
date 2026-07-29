@@ -38,6 +38,69 @@ export interface IStoresManager {
 	getStore<Id extends string = string, S extends StateTree = object, G = object, A = object>(key: StoreInjectionKey<Id, S, G, A>): Store<Id, S, G, A>;
 }
 
+/**
+ * The slice of the socket.io client the connection helper needs. Keeping it structural lets the
+ * helper be exercised without standing up a real socket.
+ */
+export interface IAuthenticatedSocket {
+	connected: boolean;
+	auth: Record<string, unknown> | ((cb: (data: object) => void) => void);
+	connect(): unknown;
+	disconnect(): unknown;
+	// Mirrors the socket.io listener signature so the real client satisfies this structurally.
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	on(event: string, listener: (...args: any[]) => void): unknown;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	off(event: string, listener: (...args: any[]) => void): unknown;
+}
+
+/**
+ * The slice of the session store the connection helper needs.
+ */
+export interface ISocketSession {
+	isExpired(): boolean;
+	refresh(): Promise<boolean>;
+	accessToken(): string | null;
+}
+
+export interface IConnectionRecovery {
+	start(): void;
+	stop(): void;
+}
+
+export interface IConnectionRecoveryOptions {
+	socket: IAuthenticatedSocket;
+	session: ISocketSession;
+	/** Run after the socket comes back, to reconcile the events missed while it was down. */
+	onReconnected?: () => Promise<void> | void;
+	/** Run when the socket could not be brought back up. */
+	onFailure?: () => void;
+	/** Handshake timeout, in milliseconds. */
+	timeout?: number;
+	/** How long to wait after `connect` for a server side rejection, in milliseconds. */
+	authGrace?: number;
+}
+
+export interface IRefreshableStore {
+	/** Whether the store already holds data, i.e. whether refreshing it is worthwhile. */
+	loaded: () => boolean;
+	refresh: () => Promise<unknown>;
+}
+
+export type DataRefreshKey = symbol;
+
+export type DataRefreshHandler = () => Promise<void>;
+
+export type DataRefreshErrorHandler = (error: unknown) => void;
+
+export interface IDataRefreshRegistry {
+	register(key: DataRefreshKey, handler: DataRefreshHandler): void;
+
+	unregister(key: DataRefreshKey): void;
+
+	refreshAll(): Promise<void>;
+}
+
 export interface IRouterGuards {
 	register: (guard: RouteGuard) => void;
 	handle: (appUser: IAppUser | undefined, to: RouteRecordRaw) => Error | boolean | RouteLocationRaw;

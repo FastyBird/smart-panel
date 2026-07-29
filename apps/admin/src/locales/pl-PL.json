@@ -16,6 +16,7 @@
 			"home": "Administracja"
 		},
 		"messages": {
+			"connectionRecoveryFailed": "Nie udało się przywrócić połączenia. Wyświetlane dane mogą być nieaktualne.",
 			"notFound": "Strona, której szukasz, nie istnieje lub mogła zostać przeniesiona."
 		},
 		"subHeadings": {

@@ -1,14 +1,17 @@
 import { type App, computed, ref, watch } from 'vue';
 import type { RouteLocation, RouteRecordRaw } from 'vue-router';
 
-import { defaultsDeep, get } from 'lodash';
+import { defaultsDeep } from 'lodash';
 
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IAppUser, IModuleOptions } from '../../app.types';
 import {
 	type IModule,
 	type ModuleInjectionKey,
+	createConnectionRecovery,
+	ensureSocketConnection,
 	injectBackendClient,
+	injectDataRefreshRegistry,
 	injectEventBus,
 	injectLogger,
 	injectModulesManager,
@@ -16,12 +19,14 @@ import {
 	injectSockets,
 	injectStoresManager,
 	provideAccountManager,
+	useFlashMessage,
 } from '../../common';
-import type { IUser } from '../users';
-
+import { LANGUAGE_CHANGED_EVENT, applyLocale, clearStoredLocale, detectBrowserLocale, setHtmlLang } from '../../common/composables/useLanguage';
+import i18n from '../../locales';
 import type { AppLocale } from '../../locales';
 import { LOCALE_LANGUAGE_MAP } from '../../locales';
-import { applyLocale, clearStoredLocale, detectBrowserLocale, LANGUAGE_CHANGED_EVENT, setHtmlLang } from '../../common/composables/useLanguage';
+import type { IUser } from '../users';
+
 import { AUTH_MODULE_NAME, LOCK_SCREEN_STORAGE_KEY, RouteNames } from './auth.constants';
 import { locales } from './locales';
 import {
@@ -47,6 +52,8 @@ export default {
 		const sockets = injectSockets(app);
 		const logger = injectLogger(app);
 		const modulesManager = injectModulesManager(app);
+		const dataRefreshRegistry = injectDataRefreshRegistry(app);
+		const flashMessage = useFlashMessage();
 
 		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
@@ -128,29 +135,25 @@ export default {
 		});
 		// Sockets connections
 		options.router.beforeEach((): boolean | { name: string } | undefined => {
-			const token = sessionStore.tokenPair?.accessToken ?? null;
-
-			if (!token) {
-				if (sockets.connected) {
-					sockets.disconnect();
-				}
-
-				sockets.auth = {};
-
-				return true;
-			}
-
-			if (!sockets.connected || get(sockets.auth ?? {}, 'token', undefined) !== token) {
-				if (sockets.connected) {
-					sockets.disconnect();
-				}
-
-				sockets.auth = { token };
-				sockets.connect();
-			}
+			// Not awaited - navigation must not wait for the handshake.
+			void ensureSocketConnection(sockets, sessionStore);
 
 			return true;
 		});
+
+		// Bring the socket back after the machine wakes up, and reconcile what was missed.
+		//
+		// Without this the only thing that ever reconnects is the guard above, because a rejected
+		// handshake makes socket.io stop reconnecting for good - so the panel would sit there
+		// showing "disconnected" until the user navigated somewhere.
+		createConnectionRecovery({
+			socket: sockets,
+			session: sessionStore,
+			onReconnected: (): Promise<void> => dataRefreshRegistry.refreshAll(),
+			onFailure: (): void => {
+				flashMessage.error(i18n.global.t('application.messages.connectionRecoveryFailed'));
+			},
+		}).start();
 
 		routerGuard.register((appUser: IAppUser | undefined, route: RouteRecordRaw) => {
 			return anonymousGuard(storesManager, route);
@@ -280,7 +283,7 @@ export default {
 					setHtmlLang(browserLocale);
 				}
 			},
-			{ immediate: true },
+			{ immediate: true }
 		);
 
 		// Persist language preference to backend when user changes it via the UI

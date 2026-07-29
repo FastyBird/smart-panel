@@ -9,10 +9,12 @@ import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
 import {
 	injectAccountManager,
+	injectDataRefreshRegistry,
 	injectLogger,
 	injectModulesManager,
 	injectSockets,
 	injectStoresManager,
+	refreshLoadedStores,
 	type IModule,
 	type ModuleInjectionKey,
 } from '../../common';
@@ -41,6 +43,7 @@ export default {
 		const logger = injectLogger(app);
 		const accountManager = injectAccountManager(app);
 		const modulesManager = injectModulesManager(app);
+		const dataRefreshRegistry = injectDataRefreshRegistry(app);
 
 		const isTest = import.meta.env.NODE_ENV === 'test' || ('VITEST' in import.meta.env && import.meta.env.VITEST);
 
@@ -108,6 +111,16 @@ export default {
 
 		let networkModeNotification: NotificationHandle | null = null;
 		let lastNetworkMode: string = SystemModuleNetworkMode.online;
+
+		// Events emitted while the browser was suspended are gone for good - re-read what we hold.
+		dataRefreshRegistry.register(
+			systemAdminModuleKey,
+			(): Promise<void> =>
+				refreshLoadedStores([
+					{ loaded: (): boolean => systemInfoStore.data !== null, refresh: (): Promise<unknown> => systemInfoStore.get() },
+					{ loaded: (): boolean => throttleStatusStore.data !== null, refresh: (): Promise<unknown> => throttleStatusStore.get() },
+				])
+		);
 
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(SYSTEM_MODULE_EVENT_PREFIX)) {
