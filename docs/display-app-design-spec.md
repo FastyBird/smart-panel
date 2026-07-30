@@ -1118,7 +1118,7 @@ Everything in this table can be absent. **A design that assumes any of it is pre
 | Entry **locks** badge | The space has ≥ 1 lock |
 | Entry **alarm** badge | The space has ≥ 1 alarm |
 | Sensor pills (room status strip) | Corresponding averages exist (temp / humidity / illuminance — each independently) |
-| Room domain card **quick actions** | Per domain; media actions are rendered but **disabled** when nothing is playing |
+| Room domain card **quick actions** | Per domain; media actions are rendered but **disabled only when there is no active media activity** — they stay enabled while an activity is paused or stopped (§8.1) |
 | Room domain card **target value** | Hidden on landscape and small screens |
 | Lights role selector | > 1 configured role |
 | Lights capability switcher | The role supports ≥ 2 capabilities |
@@ -1143,7 +1143,7 @@ Everything in this table can be absent. **A design that assumes any of it is pre
 | Screen power-off | Enabled **and** screen saver disabled |
 | Inactivity overlay at all | `screenLockDuration > 0`. **Note:** it is registered globally and currently fires on signage displays too (see §8.4) |
 | Deck nav chrome on a signage display | Currently **always** present — signage does not suppress the bottom bar / side dock today (see §8.4) |
-| Device **Offline** chip / overlay | Device is unreachable |
+| Device offline indication | Device is unreachable. Two different mechanisms: the **rich** detail screens dim the controls behind a `DeviceOfflineOverlay`, while the **generic fallback** screen shows an *Offline* warning chip in its `AppTopBar` (§12) |
 | Role sheet footer (*Sync all* / *Retry*) | The role is mixed, or has offline devices |
 
 ---
@@ -1223,7 +1223,7 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
 2. **Three size classes** (small / medium / large) per orientation, with real layout differences at each.
 3. **Touch-only.** No hover states, no right-click, no keyboard shortcuts. Minimum comfortable target ≈ 40–44 px at the DPR-2 baseline (current nav pills are 36–40 and are already at the low end — increasing them is welcome).
 4. **Both themes.** Dark mode is not an inversion: the `lightN` steps flip direction. Supply both.
-5. **Six states per screen** (§17), plus a pending/settling treatment for every control listed in the settling table — and deliberately *no* pending treatment for direct-write actions. Note media sits on both sides: the domain-view transport is optimistic, the room-card buttons are not.
+5. **Six states per screen** (§17), plus a locked/pending + rollback treatment for the controls that run the **shared state machine** — *not* for everything in the settling table. Media transport is in that table but supports only an **immediate active-state change** (no lock, no rollback), and the room-card media buttons support nothing at all. See the three-level table in §17 before designing any media feedback.
 6. **Everything is conditional** (§18). Mock the sparse variants, not just the full one.
 7. **Bundled assets only.** No web fonts, no remote imagery. New icon needs should map to Material Design Icons or ship as vectors.
 8. **Performance:** Raspberry Pi class GPU. Avoid multiple stacked `BackdropFilter`s, large blurs, per-frame custom painting outside the existing sky/charts/ring, and long shadow chains.
