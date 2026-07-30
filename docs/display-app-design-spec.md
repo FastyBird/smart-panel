@@ -83,9 +83,14 @@ scaleFactor = 2.0 / devicePixelRatio
 size        = designValue × scaleFactor × densityMultiplier
 ```
 
-`densityMultiplier` comes from a per-display **visual density** setting: `compact = 0.85`, `normal = 1.0`, `large = 1.15`.
+`densityMultiplier` comes from **visual density**: `compact = 0.85`, `normal = 1.0`, `large = 1.15`.
 
-**Design at the DPR-2.0 baseline.** When this document says "28 px" it means the design value that gets multiplied — this is the number to put in the design file.
+Two caveats a designer should know about density, because it is weaker than it looks:
+
+- **It is a build-time choice, not a user setting.** Density is resolved once from the compile-time `FB_DISPLAY_DENSITY` value (`compact` / `normal` / `large`). When that is unset it falls back to **`compact` for DPR ≥ 2.5, `normal` otherwise**. There is no field on the display model and no runtime control — nothing in Settings changes it, and it never updates while the app is running.
+- **It is not applied to every dimension.** The multiplier only reaches values that go through the density-aware token helpers (`AppSpacings.*`, `AppFontSize.*`, `AppBorderRadius.*`). Code that calls `ScreenService.scale(x)` directly gets `normal` regardless. So a `compact` build shrinks the token system but leaves ad-hoc dimensions untouched.
+
+Practical consequence: **design against the DPR-2.0 baseline at `normal` density.** Treat `compact` as a global tightening of spacing/type on very high-DPR panels, not as a layout you need to redraw. When this document says "28 px" it means the design value that gets multiplied — that is the number to put in the design file.
 
 ### 3.2 Screen-size classes
 
@@ -520,14 +525,24 @@ For a door-side panel.
 
 ### 8.4 Signage info panel
 
-Deliberately minimal and **read-only**: no top bar, no bottom navigation, **no inactivity overlay** (it must never blank).
+The signage page itself is minimal and **read-only**:
 
-- Transparent scaffold, 32 padding.
+- Transparent scaffold, 32 padding, **no page header of its own**.
 - Left: clock `HH:mm` at 120 / weight 200, date "Weekday, Month D" at 28 / weight 300.
 - Right: campaign icon 56 + panel title 22.
 - Bottom: a placeholder announcements card (radius 16, white @ 6 %, 24 padding, icon 32 + copy).
 
-> ⚠️ **This screen is a stub.** Announcement, weather and feed rendering are not wired yet; only the clock and a welcome shell exist. It is also the one screen that does **not** use the app's date localisation (hard-coded English weekday/month names). A redesign should treat it as a greenfield surface but keep the "no chrome, never sleeps" constraint.
+**What the surrounding app actually does today** — the page's own source comment describes an intended "no chrome, never sleeps" surface, but that is *not* what a signage-assigned display currently renders:
+
+| Intended | Actual behaviour today |
+|---|---|
+| No deck navigation | The deck still wraps **every** page — a signage display shows the **bottom nav bar** (portrait) or **side dock** (landscape) |
+| Signage is the only page | The deck also contains the **Security view** (it is added unconditionally), and any dashboard pages, so the panel is swipeable |
+| Never blanks | The **inactivity overlay is registered globally** and fires whenever `screenLockDuration > 0` — a signage display will show the screen saver or the black lock screen like any other panel |
+
+> ⚠️ **This screen is a stub, and its isolation is unimplemented.** Announcement, weather and feed rendering are not wired yet — only the clock and a welcome shell exist. It is also the one screen that does **not** use the app's date localisation (hard-coded English weekday/month names).
+>
+> **For the designer:** treat signage as a greenfield surface. Design it as the chrome-free, always-on board it is meant to be, but be aware the current build does not yet suppress the deck chrome or the idle overlay — that suppression is follow-up engineering work, not existing behaviour to preserve.
 
 ---
 
@@ -710,10 +725,17 @@ A page whose entire body is one device's detail screen (§12).
 
 Opened via the route `/device/{id}`, from device-preview tiles, from domain sheets, and from the security entry-point grid.
 
-Two tiers:
+**Three tiers.** 30 of the 31 device categories are registered in the detail registry and bring their **own** `Scaffold` + `PageHeader`; only unregistered categories fall through to the shared top bar. The important nuance for a designer is that "registered" does **not** mean "designed" — 12 of those 30 are registered placeholders.
 
-1. **Rich, purpose-built screens** — these bring their **own** `Scaffold` + `PageHeader` and their own portrait/landscape layouts: lighting, window covering, sensor, thermostat, air conditioner, air humidifier, air dehumidifier, air purifier, fan, heating unit, water heater, television, speaker, AV receiver, projector, set-top box, streaming service, game console, media.
-2. **Generic screens** — a shared `AppTopBar` (device name + category icon, an **Offline** warning chip when disconnected, and a close ✕) over a simple body: alarm, camera, door, doorbell, lock, outlet, pump, robot vacuum, sprinkler, switcher, valve, generic.
+| Tier | Shell | Categories | Body |
+|---|---|---|---|
+| **1 — Rich** (18) | Own `Scaffold` + `PageHeader` + portrait/landscape layouts | lighting, window covering, sensor, thermostat, air conditioner, air humidifier, air dehumidifier, air purifier, fan, heating unit, television, speaker, AV receiver, projector, set-top box, streaming service, game console, media | Full purpose-built controls |
+| **2 — Registered placeholder** (12) | **Same** own `Scaffold` + `PageHeader` (back button + device icon + name, optional trailing) | alarm, camera, door, doorbell, lock, outlet, pump, robot vacuum, sprinkler, switcher, valve, water heater | A centred **"detail preparing"** state: warning-tinted alert icon 64, title, description. **No controls at all.** |
+| **3 — Generic fallback** | Shared **`AppTopBar`** (device name + category icon, an **Offline** warning chip when disconnected, and a close ✕) | Anything *not* registered — `generic`, `terminal`, unknown | `GenericDeviceDetail` body |
+
+The header of tiers 1 and 2 is configurable per call site (`DeviceDetailConfig`): the header can be suppressed entirely, the back button hidden, and the title/icon/trailing overridden — this is how a device detail gets embedded inside a dashboard "device detail" page rather than pushed as its own route.
+
+> **Design opportunity:** tier 2 is 12 categories — including everything security-adjacent (alarm, lock, door, doorbell, camera) — currently showing a dead-end placeholder. These are prime candidates for the new design, and they already have the correct shell, so a design drops straight in.
 
 Shared building blocks:
 
@@ -758,7 +780,12 @@ A grid of large tiles — **2 columns portrait (aspect 1.3), 3 columns landscape
 
 ### 13.3 Language settings
 
-Selection list of the six supported languages.
+Four cards, each opening a selection dialog:
+
+- **Language** — the six supported languages
+- **Timezone**
+- **Time format** — 12 h / 24 h ⚠️ *see §20: this setting currently has no effect on any clock in the app*
+- **Number format** — System default / `1,234.56` / `1.234,56` / `1 234,56` / none
 
 ### 13.4 Audio settings
 
@@ -921,7 +948,22 @@ IDLE
   ← on failure: roll back to the previous IDLE value
 ```
 
-Timings currently in use: control settling **2000 ms**; on/off settling **3000 ms**; mode settling **3000 ms**; role-toggle settling **2500 ms**; slider debounce **300 ms**; room-overview optimistic override expiry **5 s** with a **6 s** cleanup sweep.
+**Settling windows differ per subsystem — there is no single global value.** This matters for design because it sets how long a pending treatment stays on screen, and a device-detail control settles more than twice as fast as a room-level one:
+
+| Subsystem | Interaction | Settling window |
+|---|---|---|
+| **Device detail** (`DeviceControlStateService`, per device/channel/property) | any channel control | **800 ms** (the service default; individual group configs may override) |
+| **Lights domain** | brightness / hue / saturation / colour temp / white | 2000 ms |
+| | on/off | 3000 ms |
+| | mode (off/work/relax/night) | 3000 ms |
+| | role toggle | 2500 ms |
+| **Shading domain** | position | 2000 ms |
+| | mode (open/daylight/privacy/closed) | 3000 ms |
+| **Climate domain** | setpoint | 2500 ms (convergence tolerance ±0.5°) |
+| | mode | 3000 ms |
+| **Room overview** | domain quick actions | optimistic override expires after **5 s**, swept at **6 s** |
+
+Slider drags are debounced at **300 ms** across lights, shading and climate before a command is sent.
 
 There is also **mixed-state detection** across devices in a role, with tolerances: brightness ±3, hue ±5, saturation ±3, colour temperature ±100 K, white ±5. A mixed role shows a `tune` icon instead of the normal group icon, and its sheet offers *Sync all*.
 
@@ -983,7 +1025,8 @@ Everything in this table can be absent. **A design that assumes any of it is pre
 | Settings **Audio** and **Voice activation** tiles | The display reports speaker or microphone support |
 | Screen saver | Enabled in display settings |
 | Screen power-off | Enabled **and** screen saver disabled |
-| Inactivity overlay at all | `screenLockDuration > 0`, and never on the signage panel |
+| Inactivity overlay at all | `screenLockDuration > 0`. **Note:** it is registered globally and currently fires on signage displays too (see §8.4) |
+| Deck nav chrome on a signage display | Currently **always** present — signage does not suppress the bottom bar / side dock today (see §8.4) |
 | Device **Offline** chip / overlay | Device is unreachable |
 | Role sheet footer (*Sync all* / *Retry*) | The role is mixed, or has offline devices |
 
@@ -1030,8 +1073,17 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
 
 - **Languages (6):** English `en_US`, Czech `cs_CZ`, German `de_DE`, Spanish `es_ES`, Polish `pl_PL`, Slovak `sk_SK`. The active language is pushed from the backend config and cached locally so the first frame after boot is already correct.
 - **Text expansion:** German, Czech and Polish run noticeably longer than English. Nav labels, tile labels and mode names are all single-line and ellipsised — designs must survive ~1.6× English width in those slots, or accept truncation.
-- **Time:** 12 h / 24 h configurable. The sky panel currently renders `HH:mm` and `EEEE, d MMMM` via `intl` with the active locale.
-- **Number format:** `comma_dot`, `dot_comma`, `space_comma`, `none`.
+- **Time — ⚠️ every clock in the display app is 24-hour today.** A 12 h / 24 h setting exists in the backend config and is exposed in Settings › Language, but **no clock consumes it**. All four clock surfaces hard-code 24-hour output:
+
+  | Surface | Implementation |
+  |---|---|
+  | Sky panel clock | `DateFormat('HH:mm')` |
+  | Time tile | `getFormattedTime()`, whose format argument defaults to `'HH:mm'` |
+  | Screen-saver flip clock | reads `DateTime.hour` directly (0–23) |
+  | Signage clock | manually zero-pads `dt.hour` |
+
+  **Do not design an AM/PM clock treatment on the assumption it can be dropped in.** If 12-hour support is wanted, say so explicitly — it is engineering work in all four places (and an AM/PM affix needs a designed slot, especially in the flip clock). Dates *are* properly localised everywhere except the signage panel.
+- **Number format:** `comma_dot` (`1,234.56`), `dot_comma` (`1.234,56`), `space_comma` (`1 234,56`), `none`. Selectable in Settings › Language with a "System default" option.
 - **Units** (each independently overridable per display, with a "system default" option):
   - Temperature: Celsius / Fahrenheit — also changes the ± step (0.5 °C vs 1 °F) and the setpoint rounding.
   - Wind speed: m/s, km/h, mph, knots
@@ -1056,7 +1108,7 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
 7. **Bundled assets only.** No web fonts, no remote imagery. New icon needs should map to Material Design Icons or ship as vectors.
 8. **Performance:** Raspberry Pi class GPU. Avoid multiple stacked `BackdropFilter`s, large blurs, per-frame custom painting outside the existing sky/charts/ring, and long shadow chains.
 9. **Immersive kiosk:** no OS chrome; the vertical swipe-down for Settings and the horizontal deck swipe are the only global gestures — do not design a screen that fights them (e.g. a full-page vertical carousel).
-10. **Never blank the signage panel.**
+10. **Signage should never blank** — but note this is a *target*, not current behaviour: today a signage display still carries the deck chrome and still runs the idle overlay (§8.4). Design for the intended end state and flag the gap.
 
 **Strong conventions worth keeping**
 
@@ -1068,11 +1120,14 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
 
 **Known weak spots — a redesign is explicitly welcome here**
 
-- The **signage info panel** is a shell.
+- The **signage info panel** is a shell, and it does not yet suppress the deck chrome or the idle overlay (§8.4).
+- **12 device-detail screens are registered placeholders** showing only a "detail preparing" message — alarm, camera, door, doorbell, lock, outlet, pump, robot vacuum, sprinkler, switcher, valve, water heater (§12, tier 2). The shell is already correct, so designs drop straight in.
 - The **lock screen** is a plain black rectangle; there is no PIN keypad implemented in the display app today despite the concept appearing in older docs.
+- **All clocks are 24-hour**; the 12 h/24 h setting is surfaced in Settings but wired to nothing (§20).
 - **Master** and **Entry** overviews still use the older `AppTopBar` + ad-hoc cards idiom rather than the newer `PageHeader` + `HeroCard` design language used by the room and domain views. They look visibly older.
 - **Climate Auto mode** is intentionally disabled pending a dual-setpoint control.
 - The **scene tile** (dashboard) uses a raw Material `Card` and does not match `UniversalTile`.
+- **Visual density is build-time only** (§3.1) — there is no runtime density control despite the token system supporting three levels.
 
 ---
 
@@ -1104,7 +1159,7 @@ For the new design to be droppable onto the current app, please deliver:
 - [ ] Security (all three tabs)
 - [ ] Master overview · Entry overview · Signage panel
 - [ ] Tiles page · Cards page · the four tile widgets
-- [ ] Device detail: one rich example (lighting), one media example, one generic example
+- [ ] Device detail: one rich example (lighting), one media example, the **tier-2 placeholder** shell, and the generic fallback
 - [ ] Settings: general grid + each sub-page
 - [ ] Buddy chat (empty / typing / error) + voice indicator + voice overlay
 - [ ] Startup: loading, discovery (all six sub-states), space selection, fatal error
