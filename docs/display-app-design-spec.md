@@ -144,7 +144,7 @@ The two orientations are **not** the same layout reflowed. They are deliberately
 
 ### 3.4 Dashboard grid
 
-User-designed pages use a unit grid. Defaults: **4 columns × 6 rows**. Unit size is derived from width: `÷4` up to 480, `÷6` up to 600, `÷8` up to 720, otherwise `÷10`; clamped to 40–200. A page can override rows/cols, or supply a `tileSize` — which is a **target, not an absolute**: it only picks how many rows/columns fit, and the container is then divided by those counts (see §11.1).
+User-designed pages use a unit grid. Defaults: **4 columns × 6 rows**. Unit size is derived from width: `÷4` up to 480, `÷6` up to 600, `÷8` up to 720, otherwise `÷10`. ⚠️ **There is no clamp.** `GridConfig` generates `minUnitSize`/`maxUnitSize` constants of 40 and 200, but nothing in the panel reads them — neither the width division nor an explicitly configured `tileSize` is bounded. Very narrow or very wide displays, and out-of-range configured sizes, are passed through as-is. A page can override rows/cols, or supply a `tileSize` — which is a **target, not an absolute**: it only picks how many rows/columns fit, and the container is then divided by those counts (see §11.1).
 
 ---
 
@@ -509,6 +509,7 @@ A live, weather- and time-driven scene. Five stacked layers:
 - **Portrait, centred:** clock `HH:mm` at 56 / weight 100 / tracking −1.5 · date `EEEE, d MMMM` at 14 · compact weather card (icon 16 + temp 16 bold + description 12).
 - **Landscape, left-aligned, vertically centred:** clock 72 (48 compact) / weight 200 / tracking −2 · date 16 (14 compact) · full weather card (icon 22 + temp 22 bold, description 14 underneath) · **scene pills** as a `Wrap` capped at 4 rows (3 compact).
 - Weather card is the frosted-glass component; tapping it opens the **weather detail page** for the display's weather location.
+- ⚠️ **The sky panel ignores the display's temperature-unit override.** It formats the provider's raw value to 0 decimals and appends a bare `°` — no conversion, no unit symbol. The weather *tiles* and the weather *detail page* do convert properly, so on a display set to Fahrenheit while the provider reports Celsius, the sky panel and the tiles disagree. Treat the bare `°` as an implementation gap, not a deliberate style choice.
 - **Text colour rule:** night and evening always use light text (`#E6FFFFFF` / `#80FFFFFF`). Morning and noon use dark ink (`#DD2A3E4A` / `#994A5E6A`) *except* under rain/heavy-rain/storm, which switch to white.
 
 #### Scene pills
@@ -787,7 +788,7 @@ A page whose entire body is one device's detail screen (§12).
 | **Scene** | Card with a 32 icon (default `movie-open`), label, and status line. When on: elevation 4, primary `light8` fill, 2 px primary border, bold label | ⚠️ **None — the tile is read-only today.** It has no tap handler and cannot trigger its scene. It reflects state only. |
 | **Time** | DIN1451 clock at 90 (bold, `height 0.95`) over a 25 date, left-aligned, auto-shrinking to fit | — |
 | **Weather (current)** | ⚠️ Just three things: **condition icon, temperature (with unit symbol), and the condition description.** Nothing else — no feels-like, humidity, wind, precipitation, UV or cloud cover. Those exist in the weather *data* but no tile renders them; putting them on the tile is new functionality. | Tap → **weather detail page** (only when weather data is present) |
-| **Weather (forecast)** | ⚠️ Per day: **short weekday name, condition icon, and two temperatures** — a day average (morning+day) and a night average (evening+night), each with its unit symbol. No precipitation probability and no wind. | Tap → **weather detail page** |
+| **Weather (forecast)** | ⚠️ Per day: **short weekday name, condition icon, and two temperatures.** The two values are **fallbacks, not averages** — day = `temperatureDay ?? temperatureMorn`, night = `temperatureNight ?? temperatureEve` — and a **single** unit symbol is rendered for the pair, not one per value. No precipitation probability and no wind. | Tap → **weather detail page** |
 
 ---
 
@@ -1211,7 +1212,7 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
   **Do not design an AM/PM clock treatment on the assumption it can be dropped in.** If 12-hour support is wanted, say so explicitly — it is engineering work in all four places (and an AM/PM affix needs a designed slot, especially in the flip clock). Dates *are* properly localised everywhere except the signage panel.
 - **Number format:** `comma_dot` (`1,234.56`), `dot_comma` (`1.234,56`), `space_comma` (`1 234,56`), `none`. Selectable in Settings › Language with a "System default" option.
 - **Units** (each independently overridable per display, with a "system default" option):
-  - Temperature: Celsius / Fahrenheit — also changes the ± step (0.5 °C vs 1 °F) and the setpoint rounding.
+  - Temperature: Celsius / Fahrenheit — also changes the ± step (0.5 °C vs 1 °F) and the setpoint rounding. ⚠️ **Not applied by the room sky panel** (§8.1), which renders the provider value with a bare `°`.
   - Wind speed: m/s, km/h, mph, knots
   - Pressure: hPa, mbar, inHg, mmHg
   - Precipitation: mm, inches
@@ -1252,6 +1253,7 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
 - **12 device-detail screens are registered placeholders** showing only a "detail preparing" message — alarm, camera, door, doorbell, lock, outlet, pump, robot vacuum, sprinkler, switcher, valve, water heater (§12, tier 2). The shell is already correct, so designs drop straight in.
 - The **lock screen** is a plain black rectangle; there is no PIN keypad implemented in the display app today despite the concept appearing in older docs.
 - **All clocks are 24-hour, and the timezone setting is unwired**; both are surfaced in Settings › Language but consumed by nothing (§20).
+- **The sky panel ignores the temperature-unit override**, rendering a bare `°` while the weather tiles and detail page convert correctly (§8.1).
 - **Master** and **Entry** overviews still use the older `AppTopBar` + ad-hoc cards idiom rather than the newer `PageHeader` + `HeroCard` design language used by the room and domain views. They look visibly older.
 - **Climate Auto mode** is intentionally disabled pending a dual-setpoint control.
 - **Auxiliary-only Climate rooms are a dead end** (§17): the deck keeps the page because `isActuator` accepts the `auxiliary` role, but the page has no actuators to show, so it renders not-configured forever while the fan/humidifier it *does* have sits unreachable behind the auxiliary sheet.
