@@ -116,8 +116,9 @@ melos build-panel-arm64-release
 ```
 
 This writes a self-contained flutter-pi bundle to
-`apps/panel/build/flutter-pi/aarch64-generic/` — the Flutter assets plus
-`icudtl.dat`, `libflutter_engine.so` and the `flutter-pi` binary itself.
+`build/flutter-pi/aarch64-generic/` (relative to this `apps/panel` directory)
+— the Flutter assets plus `icudtl.dat`, `libflutter_engine.so` and the
+`flutter-pi` binary itself.
 
 Then run it on the Pi:
 
@@ -150,7 +151,7 @@ melos build-panel-arm64-release
 ### 2️⃣ Transfer the app to your Pi
 
 ```shell
-scp -r apps/panel/build/flutter-pi/aarch64-generic pi@raspberrypi:/home/pi/smart-panel
+scp -r build/flutter-pi/aarch64-generic pi@raspberrypi:/home/pi/smart-panel
 ```
 
 ### 3️⃣ Run on Raspberry Pi
