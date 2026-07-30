@@ -1059,7 +1059,7 @@ IDLE
 | Subsystem | Interaction | Settling window |
 |---|---|---|
 | **Device detail** (`DeviceControlStateService`, per device/channel/property) | ⚠️ **only the controls that actually enter the machine** — not every control on the screen. See the note below. | **800 ms** (the service default; individual group configs may override) |
-| **Domain *sheet* toggles** — the single-light toggle in the lights role sheet, and the device toggle in the climate auxiliary sheet | Both run the machine **and** install a backup overlay: `setPending`/`setSettling` on `DeviceControlStateService` *plus* `createLocalOverlay(ttlMs: 5000)` on `IntentOverlayService` | **800 ms** settling, with the overlay holding the desired value for up to **5 s** — so the effective optimistic window is the longer of the two |
+| **Domain *sheet* toggles** — the single-light toggle in the lights role sheet, and the device toggle in the climate auxiliary sheet | Both run the machine **and** install a backup overlay: `setPending`/`setSettling` on `DeviceControlStateService` *plus* `createLocalOverlay(ttlMs: 5000)` on `IntentOverlayService` | **800 ms** settling + a **5 s** overlay. Classified as **level 2** below — *not* the plain state machine |
 | **Lights domain** | brightness / hue / saturation / colour temp / white | 2000 ms |
 | | on/off | 3000 ms |
 | | mode (off/work/relax/night) | 3000 ms |
@@ -1085,18 +1085,17 @@ There is also **mixed-state detection** across devices in a role, with tolerance
 
 The pattern that holds across the rich screens is that continuous/slider values tend to run the machine while discrete commands tend to be direct writes — but treat that as a tendency to verify per screen, not a rule.
 
-**Design requirement — scoped to the controls that run the shared state machine**: those device-detail controls that call `setPending`/`setSettling`, plus the lights / shading / climate domain and role controls. Those get the full treatment — locked/pending appearance *and* a defined rollback. Each of those needs a visible locked/pending treatment and a defined rollback appearance. Today that is expressed mostly by disabled styling and by the value simply showing the desired number; a redesign is free to make it richer but must not remove it.
+**Design requirement — read the classification table below before designing any control feedback.** Only **level 1** gets the full treatment (locked/pending appearance *and* a defined rollback). Today that is expressed mostly by disabled styling and by the value simply showing the desired number; a redesign is free to make it richer but must not remove it. Levels 2–5 each support strictly less, and giving them more shows feedback the implementation cannot honour.
 
-**Feedback comes in four levels, not two.** Some actions bypass every optimistic path and change nothing until real state arrives over the socket; others update a value but never lock. Giving any of them a treatment richer than they support would show feedback the implementation cannot honour.
-
-⚠️ **The four levels — do not flatten them:**
+⚠️ **The five levels — do not flatten them.** This table is the **authoritative classification**; the settling table above supplies *timings only*. Adding a row there does not classify it — add it here too.
 
 | Control | What it actually does | What to design |
 |---|---|---|
-| **Media *domain view*** transport (play / pause / stop) | The displayed playback state flips **immediately** and socket truth is suppressed for 3 s, after which the device is re-read. But the command is fire-and-forget: it is not awaited, there is **no failure branch and no rollback**, and the buttons stay **tappable** throughout. | An **immediate active-state change** on the transport buttons — nothing more. No lock, no spinner, no disabled state, no rollback animation: the implementation cannot drive any of them. |
-| **Room-overview card** media buttons | Direct property write. No flip, no suppression, no lock — nothing changes until real state arrives (§8.1). | No pending affordance at all. |
-| **Room-overview** quick actions (lights / climate / shading) | `_setOptimistic` swaps the **displayed card value** for up to 5 s. The buttons stay tappable, nothing is locked, and a failure just drops the override. | An **updated value** on the card. No lock, no disabled state, no rollback animation. |
-| Everything else in the settling table above — i.e. **every row except Media and Room overview** | The shared optimistic state machine | Full locked/pending + rollback. |
+| **1 — Shared state machine.** Device-detail controls that call `setPending`/`setSettling`, and the lights / shading / climate **domain and role** controls | Locks the control, tracks the desired value, settles when the real value matches or the window expires, and rolls back on failure | Full **locked/pending appearance + rollback**. |
+| **2 — Sheet toggles.** The single-light toggle in the lights role sheet; the device toggle in the climate auxiliary sheet | Runs the machine **and** installs a 5 s `createLocalOverlay`. But the command result is **discarded** — `setSettling` is called unconditionally — so nothing rolls back on failure, and the overlay keeps forcing the desired value on screen for seconds after the 800 ms lock has released | A **brief lock** (~800 ms), then the value stays put, **unlocked**, until the overlay expires. **No rollback.** Do not hold the lock for the full 5 s, and do not drop the value at 800 ms — both are wrong. |
+| **3 — Media domain transport** (play / pause / stop) | The displayed playback state flips **immediately** and socket truth is suppressed for 3 s, after which the device is re-read. Fire-and-forget: not awaited, **no failure branch, no rollback**, buttons stay **tappable** | An **immediate active-state change** — nothing more. No lock, no spinner, no disabled state, no rollback animation. |
+| **4 — Room-overview quick actions** (lights / climate / shading) | `_setOptimistic` swaps the **displayed card value** for up to 5 s. Buttons stay tappable, nothing locks, a failure just drops the override | An **updated value** on the card. No lock, no disabled state, no rollback animation. |
+| **5 — Room-overview card media buttons** | Direct property write. No flip, no suppression, no lock — nothing changes until real state arrives (§8.1) | **No pending affordance at all.** |
 
 ---
 
@@ -1243,7 +1242,7 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
 2. **Three size classes** (small / medium / large) per orientation, with real layout differences at each.
 3. **Touch-only.** No hover states, no right-click, no keyboard shortcuts. Minimum comfortable target ≈ 40–44 px at the DPR-2 baseline (current nav pills are 36–40 and are already at the low end — increasing them is welcome).
 4. **Both themes.** Dark mode is not an inversion: the `lightN` steps flip direction. Supply both.
-5. **Six states per screen** (§17), plus a locked/pending + rollback treatment for the controls that run the **shared state machine** — *not* for everything in the settling table. Media transport supports only an **immediate active-state change**, room-overview quick actions only a **value swap**, and the room-card media buttons nothing at all. See the four-level table in §17 before designing any feedback.
+5. **Six states per screen** (§17), plus control feedback matched to the **five-level classification table** in §17 — which is authoritative, while the settling table supplies timings only. Only level 1 gets locked/pending + rollback; levels 2–5 each support strictly less, down to no affordance at all. Never infer a level from the settling table.
 6. **Everything is conditional** (§18). Mock the sparse variants, not just the full one.
 7. **Bundled assets only.** No web fonts, no remote imagery. New icon needs should map to Material Design Icons or ship as vectors.
 8. **Performance:** Raspberry Pi class GPU. Avoid multiple stacked `BackdropFilter`s, large blurs, per-frame custom painting outside the existing sky/charts/ring, and long shadow chains.
