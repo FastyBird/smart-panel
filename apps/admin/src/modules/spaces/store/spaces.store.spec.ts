@@ -58,6 +58,41 @@ describe('Spaces store', () => {
 		vi.clearAllMocks();
 	});
 
+	describe('refresh contract', () => {
+		it('reports itself unloaded before anything is fetched', () => {
+			expect(store.isLoaded()).toBe(false);
+		});
+
+		it('reports itself loaded after a fetch, even when the collection came back empty', async () => {
+			backendClient.GET.mockResolvedValueOnce({ data: { data: [] }, error: undefined });
+
+			await store.fetch();
+
+			// An empty collection is still a loaded one - a space created during sleep has to be
+			// picked up, so this must not read as "nothing to refresh".
+			expect(store.isLoaded()).toBe(true);
+		});
+
+		it('reports itself loaded when only a detail route populated it', async () => {
+			// `/space/:id/plugin` populates a single entity through get(), never touching fetch()
+			// and so never setting firstLoad. Gating on that flag alone skipped the space on screen.
+			backendClient.GET.mockResolvedValueOnce({ data: { data: spaceResponse(keptId, 'Kept') }, error: undefined });
+
+			await store.get({ id: keptId });
+
+			expect(store.firstLoadFinished()).toBe(false);
+			expect(store.isLoaded()).toBe(true);
+		});
+
+		it('re-reads the collection when refreshed', async () => {
+			backendClient.GET.mockResolvedValueOnce({ data: { data: [spaceResponse(keptId, 'Kept')] }, error: undefined });
+
+			await store.refresh();
+
+			expect(store.findById(keptId)).not.toBeNull();
+		});
+	});
+
 	it('drops spaces the server no longer returns', async () => {
 		backendClient.GET.mockResolvedValueOnce({
 			data: { data: [spaceResponse(keptId, 'Kept'), spaceResponse(removedId, 'Removed')] },

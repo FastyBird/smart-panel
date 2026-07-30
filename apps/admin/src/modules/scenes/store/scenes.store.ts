@@ -527,7 +527,15 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 		}
 	};
 
+	// Reconnect refresh contract: the store itself says whether it holds anything worth
+	// re-reading, so the caller never has to guess from a flag it does not maintain.
+	const isLoaded = (): boolean => firstLoadFinished() || findAll().length > 0;
+
+	const refresh = (): Promise<unknown> => fetch();
+
 	return {
+		isLoaded,
+		refresh,
 		data,
 		semaphore,
 		firstLoad,

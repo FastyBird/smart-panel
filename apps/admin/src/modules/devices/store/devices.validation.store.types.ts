@@ -56,6 +56,8 @@ export interface IDevicesValidationStoreActions {
 	fetch: () => Promise<IDevicesValidation>;
 	get: (payload: IDevicesValidationGetActionPayload) => Promise<IDeviceValidationResult>;
 	clear: () => void;
+	isLoaded: () => boolean;
+	refresh: () => Promise<unknown>;
 }
 
 export type DevicesValidationStoreSetup = IDevicesValidationStoreState & IDevicesValidationStoreActions;

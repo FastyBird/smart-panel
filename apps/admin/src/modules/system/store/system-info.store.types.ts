@@ -43,6 +43,8 @@ export interface ISystemInfoStoreActions {
 	onEvent: (payload: ISystemInfoOnEventActionPayload) => ISystemInfo;
 	set: (payload: ISystemInfoSetActionPayload) => ISystemInfo;
 	get: () => Promise<ISystemInfo>;
+	isLoaded: () => boolean;
+	refresh: () => Promise<unknown>;
 }
 
 export type SystemInfoStoreSetup = ISystemInfoStoreState & ISystemInfoStoreActions;

@@ -6,16 +6,15 @@ import { defaultsDeep } from 'lodash';
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
 import {
+	type IModule,
+	type ModuleInjectionKey,
 	injectDataRefreshRegistry,
 	injectLogger,
 	injectModulesManager,
 	injectSockets,
 	injectStoresManager,
 	refreshLoadedStores,
-	type IModule,
-	type ModuleInjectionKey,
 } from '../../common';
-
 import { CONFIG_MODULE_MODULE_TYPE, CONFIG_MODULE_NAME } from '../config';
 
 import { DisplaysConfigForm } from './components/components';
@@ -80,13 +79,7 @@ export default {
 		}
 
 		// Events emitted while the browser was suspended are gone for good - re-read what we hold.
-		dataRefreshRegistry.register(
-			displaysAdminModuleKey,
-			(): Promise<void> =>
-				refreshLoadedStores([
-					{ loaded: (): boolean => displaysStore.firstLoadFinished() || displaysStore.findAll().length > 0, refresh: (): Promise<unknown> => displaysStore.fetch() },
-				])
-		);
+		dataRefreshRegistry.register(displaysAdminModuleKey, (): Promise<void> => refreshLoadedStores([displaysStore]));
 
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(DISPLAYS_MODULE_EVENT_PREFIX)) {

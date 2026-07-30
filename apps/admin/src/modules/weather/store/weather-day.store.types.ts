@@ -43,6 +43,8 @@ export interface IWeatherDayStoreActions {
 	onEvent: (payload: IWeatherDayOnEventActionPayload) => IWeatherDay;
 	set: (payload: IWeatherDaySetActionPayload) => IWeatherDay;
 	get: () => Promise<IWeatherDay>;
+	isLoaded: () => boolean;
+	refresh: () => Promise<unknown>;
 }
 
 export type WeatherDayStoreSetup = IWeatherDayStoreState & IWeatherDayStoreActions;

@@ -334,7 +334,15 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 			return { valid: false, errors: [{ message: 'Validation request failed' }] };
 		};
 
+		// Reconnect refresh contract: the store itself says whether it holds anything worth
+		// re-reading, so the caller never has to guess from a flag it does not maintain.
+		const isLoaded = (): boolean => firstLoadFinished() || findAll().length > 0;
+
+		const refresh = (): Promise<unknown> => fetch();
+
 		return {
+			isLoaded,
+			refresh,
 			semaphore,
 			firstLoad,
 			data,

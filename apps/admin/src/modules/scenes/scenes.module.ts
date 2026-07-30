@@ -6,26 +6,25 @@ import { defaultsDeep } from 'lodash';
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
 import {
+	type IModule,
+	type ModuleInjectionKey,
 	injectDataRefreshRegistry,
 	injectModulesManager,
 	injectSockets,
 	injectStoresManager,
 	refreshLoadedStores,
-	type IModule,
-	type ModuleInjectionKey,
 } from '../../common';
-
 import { CONFIG_MODULE_MODULE_TYPE, CONFIG_MODULE_NAME } from '../config';
 
 import { ScenesConfigForm } from './components/components';
-import { SCENES_MODULE_EVENT_PREFIX, SCENES_MODULE_NAME, EventType } from './scenes.constants';
-import { ScenesConfigEditFormSchema } from './schemas/config.schemas';
-import { ScenesConfigSchema, ScenesConfigUpdateReqSchema } from './store/config.store.schemas';
 import { locales } from './locales';
 import { ModuleRoutes } from './router';
+import { EventType, SCENES_MODULE_EVENT_PREFIX, SCENES_MODULE_NAME } from './scenes.constants';
+import { ScenesConfigEditFormSchema } from './schemas/config.schemas';
+import { ScenesConfigSchema, ScenesConfigUpdateReqSchema } from './store/config.store.schemas';
+import { scenesActionsStoreKey, scenesStoreKey } from './store/keys';
 import { registerScenesActionsStore } from './store/scenes.actions.store';
 import { registerScenesStore } from './store/scenes.store';
-import { scenesActionsStoreKey, scenesStoreKey } from './store/keys';
 
 const scenesAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Scenes');
 
@@ -83,13 +82,7 @@ export default {
 		}
 
 		// Events emitted while the browser was suspended are gone for good - re-read what we hold.
-		dataRefreshRegistry.register(
-			scenesAdminModuleKey,
-			(): Promise<void> =>
-				refreshLoadedStores([
-					{ loaded: (): boolean => scenesStore.firstLoadFinished() || scenesStore.findAll().length > 0, refresh: (): Promise<unknown> => scenesStore.fetch() },
-				])
-		);
+		dataRefreshRegistry.register(scenesAdminModuleKey, (): Promise<void> => refreshLoadedStores([scenesStore]));
 
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(SCENES_MODULE_EVENT_PREFIX)) {

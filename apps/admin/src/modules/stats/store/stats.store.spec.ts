@@ -75,6 +75,28 @@ describe('Stats Store', () => {
 		vi.clearAllMocks();
 	});
 
+	describe('refresh contract', () => {
+		it('reports itself unloaded before anything is read', () => {
+			expect(store.isLoaded()).toBe(false);
+		});
+
+		it('reports itself loaded once it holds data', () => {
+			store.set({ data: mockStats });
+
+			// firstLoad is never set on this store, which is why loaded state is answered from the
+			// data itself rather than from that flag.
+			expect(store.isLoaded()).toBe(true);
+		});
+
+		it('re-reads its data when refreshed', async () => {
+			(backendClient.GET as Mock).mockResolvedValue({ data: { data: mockStatsRes }, error: undefined });
+
+			await store.refresh();
+
+			expect(store.data).toEqual(mockStats);
+		});
+	});
+
 	it('should set stats data successfully', () => {
 		const result = store.set({ data: mockStats });
 

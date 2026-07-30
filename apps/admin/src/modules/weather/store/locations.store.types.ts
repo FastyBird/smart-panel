@@ -89,6 +89,8 @@ export interface IWeatherLocationsStoreActions {
 	edit: (payload: IWeatherLocationsEditActionPayload) => Promise<IWeatherLocation>;
 	save: (payload: IWeatherLocationsSaveActionPayload) => Promise<IWeatherLocation>;
 	remove: (payload: IWeatherLocationsRemoveActionPayload) => Promise<boolean>;
+	isLoaded: () => boolean;
+	refresh: () => Promise<unknown>;
 }
 
 export type WeatherLocationsStoreSetup = IWeatherLocationsStoreState & IWeatherLocationsStoreActions;

@@ -8,8 +8,8 @@ describe('refreshLoadedStores', () => {
 		const untouchedRefresh = vi.fn(async (): Promise<void> => {});
 
 		await refreshLoadedStores([
-			{ loaded: (): boolean => true, refresh: loadedRefresh },
-			{ loaded: (): boolean => false, refresh: untouchedRefresh },
+			{ isLoaded: (): boolean => true, refresh: loadedRefresh },
+			{ isLoaded: (): boolean => false, refresh: untouchedRefresh },
 		]);
 
 		expect(loadedRefresh).toHaveBeenCalledTimes(1);
@@ -20,7 +20,7 @@ describe('refreshLoadedStores', () => {
 		await expect(
 			refreshLoadedStores([
 				{
-					loaded: (): boolean => true,
+					isLoaded: (): boolean => true,
 					refresh: async (): Promise<void> => {
 						throw new Error('fetch failed');
 					},

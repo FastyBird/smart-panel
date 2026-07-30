@@ -74,6 +74,8 @@ export interface IConfigPluginsStoreActions {
 	fetch: () => Promise<IConfigPlugin[]>;
 	edit: (payload: IConfigPluginsEditActionPayload) => Promise<IConfigPlugin>;
 	validateConfig: (payload: IConfigPluginsValidateActionPayload) => Promise<IConfigPluginValidationResult>;
+	isLoaded: () => boolean;
+	refresh: () => Promise<unknown>;
 }
 
 export type ConfigPluginsStoreSetup = IConfigPluginsStoreState & IConfigPluginsStoreActions;

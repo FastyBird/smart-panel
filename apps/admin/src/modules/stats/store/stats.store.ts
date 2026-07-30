@@ -105,7 +105,15 @@ export const useStats = defineStore<'stats_module-stats', StatsStoreSetup>('stat
 		}
 	};
 
+	// Reconnect refresh contract: the store itself says whether it holds anything worth
+	// re-reading, so the caller never has to guess from a flag it does not maintain.
+	const isLoaded = (): boolean => data.value !== null;
+
+	const refresh = (): Promise<unknown> => get();
+
 	return {
+		isLoaded,
+		refresh,
 		semaphore,
 		firstLoad,
 		data,

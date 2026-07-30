@@ -80,6 +80,8 @@ export interface IDevicesStoreActions {
 	remove: (payload: IDevicesRemoveActionPayload) => Promise<boolean>;
 	addZone: (payload: IDevicesAddZoneActionPayload) => Promise<IDevice>;
 	removeZone: (payload: IDevicesRemoveZoneActionPayload) => Promise<IDevice>;
+	isLoaded: () => boolean;
+	refresh: () => Promise<unknown>;
 }
 
 export type DevicesStoreSetup = IDevicesStoreState & IDevicesStoreActions;

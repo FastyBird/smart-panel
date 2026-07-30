@@ -81,9 +81,18 @@ export interface IConnectionRecoveryOptions {
 	authGrace?: number;
 }
 
+/**
+ * What a store must expose to take part in the reconnect refresh.
+ *
+ * Both answers belong to the store rather than to the caller. Callers previously had to work out
+ * "is this loaded" from the outside, which meant knowing that `firstLoad` is set by `fetch()` but
+ * not by `get()`, and not at all by the singleton stores - a distinction that silently excluded
+ * whole modules from the refresh.
+ */
 export interface IRefreshableStore {
-	/** Whether the store already holds data, i.e. whether refreshing it is worthwhile. */
-	loaded: () => boolean;
+	/** Whether the store holds anything worth re-reading. */
+	isLoaded: () => boolean;
+	/** Re-read whatever this store is responsible for. */
 	refresh: () => Promise<unknown>;
 }
 

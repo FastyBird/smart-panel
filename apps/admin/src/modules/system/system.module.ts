@@ -8,6 +8,8 @@ import { defaultsDeep } from 'lodash';
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
 import {
+	type IModule,
+	type ModuleInjectionKey,
 	injectAccountManager,
 	injectDataRefreshRegistry,
 	injectLogger,
@@ -15,21 +17,18 @@ import {
 	injectSockets,
 	injectStoresManager,
 	refreshLoadedStores,
-	type IModule,
-	type ModuleInjectionKey,
 } from '../../common';
-
 import { SystemModuleNetworkMode } from '../../openapi.constants';
 import { CONFIG_MODULE_MODULE_TYPE, CONFIG_MODULE_NAME } from '../config';
 
 import { SystemConfigForm } from './components/components';
 import { locales } from './locales';
-import { SystemConfigEditFormSchema } from './schemas/config.schemas';
-import { SystemConfigSchema, SystemConfigUpdateReqSchema } from './store/config.store.schemas';
 import { ModuleMaintenanceRoutes, ModuleRoutes } from './router';
+import { SystemConfigEditFormSchema } from './schemas/config.schemas';
 import { SystemActionsService, provideSystemActionsService } from './services/system-actions.service';
 import { SystemLogsReporterService, provideSystemLogsReporter } from './services/system-logs-reporter.service';
 import { emitUpdateEvent } from './services/update-events.service';
+import { SystemConfigSchema, SystemConfigUpdateReqSchema } from './store/config.store.schemas';
 import { logsEntriesStoreKey, systemInfoStoreKey, throttleStatusStoreKey } from './store/keys';
 import { registerLogsEntriesStore, registerSystemInfoStore, registerThrottleStatusStore } from './store/stores';
 import { EventType, SYSTEM_MODULE_EVENT_PREFIX, SYSTEM_MODULE_NAME } from './system.constants';
@@ -113,14 +112,7 @@ export default {
 		let lastNetworkMode: string = SystemModuleNetworkMode.online;
 
 		// Events emitted while the browser was suspended are gone for good - re-read what we hold.
-		dataRefreshRegistry.register(
-			systemAdminModuleKey,
-			(): Promise<void> =>
-				refreshLoadedStores([
-					{ loaded: (): boolean => systemInfoStore.data !== null, refresh: (): Promise<unknown> => systemInfoStore.get() },
-					{ loaded: (): boolean => throttleStatusStore.data !== null, refresh: (): Promise<unknown> => throttleStatusStore.get() },
-				])
-		);
+		dataRefreshRegistry.register(systemAdminModuleKey, (): Promise<void> => refreshLoadedStores([systemInfoStore, throttleStatusStore]));
 
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(SYSTEM_MODULE_EVENT_PREFIX)) {
