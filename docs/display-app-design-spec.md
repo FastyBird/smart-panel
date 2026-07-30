@@ -1234,8 +1234,15 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
   | Time tile | `getFormattedTime()`, whose format argument defaults to `'HH:mm'` |
   | Screen-saver flip clock | reads `DateTime.hour` directly (0–23) |
   | Signage clock | manually zero-pads `dt.hour` |
+  | **Weather detail — sunrise / sunset** | `getFormattedTime()` (same 24 h default) |
+  | **Weather detail — hourly forecast labels** | `'${localTime.hour.toString().padLeft(2,'0')}:00'` |
+  | **Sensor detail — event timestamps** | `DateFormat.Hm()` and `DateFormat('MMM d, HH:mm')` |
+  | **Buddy chat — message timestamps** | `DateFormat.Hm()` |
+  | **Energy chart — x-axis hour labels** | `'${hour.toString().padLeft(2,'0')}:00'` |
 
-  **Do not design an AM/PM clock treatment on the assumption it can be dropped in.** If 12-hour support is wanted, say so explicitly — it is engineering work in all four places (and an AM/PM affix needs a designed slot, especially in the flip clock). Dates *are* properly localised everywhere except the signage panel.
+  (Time also drives non-displayed logic — log lines, metric bucketing, the sky panel's day-part fallback, the night-hours suggestion rule. Those are unaffected by a format setting and are not design surfaces.)
+
+**Do not design an AM/PM clock treatment on the assumption it can be dropped in.** If 12-hour support is wanted, say so explicitly — it is engineering work in **all nine places**, and an AM/PM affix needs a designed slot in each: the flip clock has no room for one, and the chart axis and hourly labels would need re-spacing. Dates *are* properly localised everywhere except the signage panel.
 - **Number format:** `comma_dot` (`1,234.56`), `dot_comma` (`1.234,56`), `space_comma` (`1 234,56`), `none`. Selectable in Settings › Language with a "System default" option.
 - **Units** (each independently overridable per display, with a "system default" option):
   - Temperature: Celsius / Fahrenheit — changes the setpoint rounding, and changes the ± step **in the Climate domain hero only** (0.5 °C vs 1 °F). Two exceptions:
@@ -1280,7 +1287,7 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
 - The **signage info panel** is a shell, and it does not yet suppress the deck chrome or the idle overlay (§8.4).
 - **12 device-detail screens are registered placeholders** showing only a "detail preparing" message — alarm, camera, door, doorbell, lock, outlet, pump, robot vacuum, sprinkler, switcher, valve, water heater (§12, tier 2). The shell is already correct, so designs drop straight in.
 - The **lock screen** is a plain black rectangle; there is no PIN keypad implemented in the display app today despite the concept appearing in older docs.
-- **All clocks are 24-hour, and the timezone setting is unwired**; both are surfaced in Settings › Language but consumed by nothing (§20).
+- **All nine time surfaces are 24-hour, and the timezone setting is unwired**; both settings are surfaced in Settings › Language but consumed by nothing (§20).
 - **The sky panel ignores the temperature-unit override**, rendering a bare `°` while the weather tiles and detail page convert correctly (§8.1).
 - **Master** and **Entry** overviews still use the older `AppTopBar` + ad-hoc cards idiom rather than the newer `PageHeader` + `HeroCard` design language used by the room and domain views. They look visibly older.
 - **Climate Auto mode is disabled in the Climate *domain view* only**, pending a dual-setpoint control. The **room-overview** climate mode dialog still offers Auto and applies it (§8.1) — so the two surfaces disagree about whether Auto exists.
