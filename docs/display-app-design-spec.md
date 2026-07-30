@@ -1226,7 +1226,7 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
 
 - **Languages (6):** English `en_US`, Czech `cs_CZ`, German `de_DE`, Spanish `es_ES`, Polish `pl_PL`, Slovak `sk_SK`. The active language is pushed from the backend config and cached locally so the first frame after boot is already correct.
 - **Text expansion:** German, Czech and Polish run noticeably longer than English. Nav labels, tile labels and mode names are all single-line and ellipsised — designs must survive ~1.6× English width in those slots, or accept truncation.
-- **Time — ⚠️ every clock in the display app is 24-hour today.** A 12 h / 24 h setting exists in the backend config and is exposed in Settings › Language, but **no clock consumes it**. All four clock surfaces hard-code 24-hour output:
+- **Time — ⚠️ every time display in the app is 24-hour today.** A 12 h / 24 h setting exists in the backend config and is exposed in Settings › Language, but **nothing consumes it**. All **nine** user-visible time surfaces hard-code 24-hour output:
 
   | Surface | Implementation |
   |---|---|
