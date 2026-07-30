@@ -12,6 +12,10 @@ on:
         required: true
         type: string
 
+concurrency:
+  group: alpha-release-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
   id-token: write

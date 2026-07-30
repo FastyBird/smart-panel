@@ -84,7 +84,12 @@ runs:
 
     - name: "Install flutter-elinux"
       run: |
-        git clone --depth 1 https://github.com/sony/flutter-elinux.git /tmp/flutter-elinux
+        # Pinned to a specific commit rather than tracking the default branch, so
+        # the bundled Flutter/Dart toolchain cannot change underneath us. Upstream
+        # has been dormant since 2025-07 (latest tag 3.27.1) and still ships Dart
+        # 3.7.2, which is below this project's `sdk: ^3.11.0` — see issue #618.
+        git clone https://github.com/sony/flutter-elinux.git /tmp/flutter-elinux
+        git -C /tmp/flutter-elinux checkout --quiet cdc9622651ee7b217697258cd5ca0b8963f1d6a4
         sudo mv /tmp/flutter-elinux /opt/flutter-elinux
         echo "/opt/flutter-elinux/bin" >> "$GITHUB_PATH"
       shell: bash
