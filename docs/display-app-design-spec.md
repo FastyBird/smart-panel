@@ -45,7 +45,7 @@ Three ideas drive everything:
 
 1. **A display belongs to a space.** During first boot the panel is assigned to a *space* (a room, or a synthetic "whole-home"/"entry"/"signage" space). That single assignment decides which screens exist. A display in the living room shows living-room lights/climate/media; a display in the hallway can show the whole-house overview.
 
-2. **Screens are generated, not authored.** Apart from optional user-designed dashboard pages, the panel builds its own screen list from what is actually installed and configured: which devices exist in the space, which roles have been assigned to them in the Admin, whether energy metering is available, and so on. **Nothing is hard-coded to be present.** This is the single most important thing for a redesign — see §18.
+2. **Screens are generated, not authored.** Apart from optional user-designed dashboard pages, the panel builds its own screen list from what is actually installed and configured: which devices exist in the space, which roles have been assigned to them in the Admin, whether energy metering is available, and so on. **Almost nothing is hard-coded to be present** — the one exception is the **Security view**, which `buildDeck` appends to every initialized deck regardless of space type (including Zone and Signage panels). Everything else — every system view, every domain view, every dashboard page — is conditional. This is the single most important thing for a redesign: see §18.
 
 3. **A flat, swipeable deck instead of a menu tree.** All top-level screens live in one horizontal carousel ("the deck"). Depth is reserved for detail pages, sheets and overlays.
 
@@ -63,10 +63,23 @@ The panel talks to a local backend over REST (Dio) + WebSocket (Socket.io). It i
 | **Input** | Touch only. No mouse, **no hover states**, no physical keyboard. The on-screen keyboard appears only for the manual backend-URL field and the Buddy chat input. |
 | **Haptics** | Used on Android for slider/toggle feedback (`HapticFeedback.selectionClick`, `lightImpact`, `mediumImpact`). Not available on flutter-pi. |
 | **Typical panel sizes** | 5"–10" embedded panels (roughly 480×800 up to 1280×800 physical) and 10"–13" Android tablets. Both portrait-mounted and landscape-mounted installations exist and are equally supported. |
-| **Fonts (bundled, no network)** | **Roboto** (Regular / Bold / Italic) — the app-wide family. **DIN 1451** — used *only* for oversized numerals (hero values, time tile). |
+| **Fonts (bundled, no network)** | **Roboto** (Regular / Bold / Italic) — the app-wide default family. **DIN 1451** — the "data" face. See the note below for where it is actually used. |
 | **Icon sets** | Material Design Icons (`material_design_icons_flutter`, referenced as `MdiIcons.*`) for everything; `weather_icons` (`BoxedIcon`) for meteorological glyphs on the sky panel and weather tiles. Space and device icons are resolved from backend-configured icon names with category fallbacks. |
 | **Blur** | `BackdropFilter` is used in exactly **one** place: the frosted weather card on the sky panel (`sigma 16`). Everything else that looks like glass is flat alpha. Treat real blur as expensive on Pi. |
-| **Assets** | No remote images, no CDN. Everything ships in the bundle. Device/scene artwork is icon-based, not photographic (media artwork URLs are the one exception, fetched from the media device). |
+| **Assets** | No remote images, no CDN. Everything ships in the bundle. All imagery is icon-based, not photographic. **There is no network image loading anywhere in the panel** — no `Image.network`, no `NetworkImage`, no caching layer. (The channel spec defines an `artwork_url` property, but nothing consumes it; see §9.5.) |
+
+**Where DIN 1451 is actually used.** It is *not* limited to hero numerals — it is applied wherever the app wants a "data readout" look, at every size:
+
+| Surface | Use |
+|---|---|
+| Lights / Climate / Shading hero values | The giant 48–160 numerals |
+| Time tile | 90 clock + 25 date |
+| Weather tiles (current + forecast) | Temperature and other readouts |
+| Weather data-source widgets | Values and units |
+| **Device-channel data-source widgets** | 12 px values, units — **and even the loading / unavailable placeholder text** |
+| **`ButtonTile` title and subtitle** | Small dashboard-tile labels |
+
+The last two are small-text uses and sit oddly next to Roboto body copy — treat them as an inventory item to decide on deliberately (unify on Roboto, or embrace DIN as the numeric/data face at all sizes) rather than as a rule to preserve blindly.
 
 **Implication for design:** the app must render smoothly on a Raspberry Pi 4-class GPU at 30–60 fps. Prefer flat fills, gradients and simple shadows. Avoid stacked translucency, large blurs, per-frame shader work, and heavy shadow layering.
 
@@ -682,7 +695,7 @@ The most state-heavy screen. Media is modelled as **activities** (Watch / Listen
 | **Off / deactivating** | Hero card with a large "off" composition + the activity `ModeSelector` below (portrait) or activity tiles in the sidebar (landscape). Shown only if more than one activity is available. |
 | **Activating** | A step list: each activation plan step with its own spinner/tick, tinted by the mode colour. |
 | **Failed** | Failure summary + details + retry. |
-| **Active** | Hero (now playing: artwork, title/artist, progress bar, transport buttons, volume, source) · activity mode selector · **composition card** (a horizontal tile listing which devices are in play, tapping opens the full list). |
+| **Active** | Hero (now playing — **text only**: track / artist / album, progress bar, transport buttons, volume, source) · activity mode selector · **composition card** (a horizontal tile listing which devices are in play, tapping opens the full list). ⚠️ **No artwork today.** The view reads track, artist, album, position and duration and renders them as text; the media links model exposes no artwork URL and the panel has no network-image loader at all. Reserving an album-art region is a *new feature*, not a re-skin — design it if you want it, but flag it as such. |
 | **No endpoints** | Full "no media devices" empty state with a pull-to-refresh list. |
 | **No bindings** | The standard **not-configured** state ("Media not configured"). |
 
@@ -943,7 +956,7 @@ After `screenLockDuration` seconds with no touch:
 - **Screen saver disabled** → a plain **black lock screen**.
 - If "screen power off" is on **and** the screen saver is off, the panel additionally powers the physical display down (and back up on dismissal).
 - The overlay is **skipped** if another full-screen overlay is already active (the timer simply restarts).
-- Any touch dismisses it, restores screen power, and restarts the timer.
+- ⚠️ **An unhandled *tap* dismisses it — not "any touch".** The renderer wraps the closable full-screen entry in a `GestureDetector` with only `onTap`, and because the overlay sits *above* the app-wide interaction detector and is opaque, a pan or swipe reaches neither: swiping the screen saver does nothing. Dismissal restores screen power and restarts the timer. If the new design implies "touch anywhere to wake", a pan handler has to be added.
 - `screenLockDuration = 0` disables the whole mechanism.
 
 ### 15.5 Toasts
@@ -1030,6 +1043,7 @@ IDLE
 | | role toggle | 2500 ms |
 | **Shading domain** | position | 2000 ms |
 | | mode (open/daylight/privacy/closed) | 3000 ms |
+| **Media domain** | playback transport (play / pause / stop) | **3 s** — a simpler, self-contained variant: the button state flips immediately and socket truth is suppressed until the window closes, then the device is re-read. Not the shared state machine, but it *is* optimistic, so the transport buttons do need an active/pending look. |
 | **Climate domain** | setpoint | 2500 ms (convergence tolerance ±0.5°) |
 | | mode | 3000 ms |
 | **Room overview** | domain quick actions | optimistic override expires after **5 s**, swept at **6 s** |
@@ -1038,9 +1052,16 @@ Slider drags are debounced at **300 ms** across lights, shading and climate befo
 
 There is also **mixed-state detection** across devices in a role, with tolerances: brightness ±3, hue ±5, saturation ±3, colour temperature ±100 K, white ±5. A mixed role shows a `tune` icon instead of the normal group icon, and its sheet offers *Sync all*.
 
-**Design requirement — scoped to controls that actually run the state machine.** Those are the ones listed in the table above: device-detail channel controls, and the lights / shading / climate domain and role controls. Each of those needs a visible locked/pending treatment and a defined rollback appearance. Today that is expressed mostly by disabled styling and by the value simply showing the desired number; a redesign is free to make it richer but must not remove it.
+**Design requirement — scoped to the controls in the table above.** Most run the shared state machine (device-detail channel controls, and the lights / shading / climate domain and role controls); media-domain playback runs its own simpler 3 s variant but still needs the treatment. Each of those needs a visible locked/pending treatment and a defined rollback appearance. Today that is expressed mostly by disabled styling and by the value simply showing the desired number; a redesign is free to make it richer but must not remove it.
 
-**Do not add pending states to direct-write controls.** Some actions bypass the machine entirely and change nothing until real state arrives over the socket — most visibly the room-overview Media play/pause/stop buttons (§8.1). Giving those a pending treatment would show feedback the implementation cannot honour.
+**Do not add pending states to direct-write controls.** Some actions bypass every optimistic path and change nothing until real state arrives over the socket. Giving those a pending treatment would show feedback the implementation cannot honour.
+
+⚠️ **Media appears on both sides of this line — do not conflate them:**
+
+| Control | Behaviour |
+|---|---|
+| **Media *domain view*** transport (play / pause / stop) | **Optimistic.** Button flips immediately, socket truth suppressed for 3 s. Needs an active/pending look. |
+| **Room-overview card** media buttons (play / pause / stop) | **Direct write.** No override, no lock, no suppression — nothing changes until real state arrives (§8.1). Must *not* get a pending look. |
 
 ---
 
@@ -1185,7 +1206,7 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
 2. **Three size classes** (small / medium / large) per orientation, with real layout differences at each.
 3. **Touch-only.** No hover states, no right-click, no keyboard shortcuts. Minimum comfortable target ≈ 40–44 px at the DPR-2 baseline (current nav pills are 36–40 and are already at the low end — increasing them is welcome).
 4. **Both themes.** Dark mode is not an inversion: the `lightN` steps flip direction. Supply both.
-5. **Six states per screen** (§17), plus a pending/settling treatment for every control that runs the optimistic state machine — and deliberately *no* pending treatment for direct-write actions such as the room-card media buttons.
+5. **Six states per screen** (§17), plus a pending/settling treatment for every control listed in the settling table — and deliberately *no* pending treatment for direct-write actions. Note media sits on both sides: the domain-view transport is optimistic, the room-card buttons are not.
 6. **Everything is conditional** (§18). Mock the sparse variants, not just the full one.
 7. **Bundled assets only.** No web fonts, no remote imagery. New icon needs should map to Material Design Icons or ship as vectors.
 8. **Performance:** Raspberry Pi class GPU. Avoid multiple stacked `BackdropFilter`s, large blurs, per-frame custom painting outside the existing sky/charts/ring, and long shadow chains.
