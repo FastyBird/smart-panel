@@ -137,7 +137,7 @@ prepare_display_files() {
 	melos bootstrap
 
 	# Build the flutter-pi bundle (ARM64)
-	# This produces flutter_assets/ — NOT a Linux desktop app.
+	# This produces build/flutter-pi/aarch64-generic/ — NOT a Linux desktop app.
 	# flutter-pi uses flutter engine assets, not the desktop build path.
 	echo "  -> Building flutter-pi bundle (arm64 release, variant: ${VARIANT})..."
 
@@ -152,7 +152,7 @@ prepare_display_files() {
 	melos run build-panel-arm64-release
 
 	# Copy the built flutter assets bundle
-	cp -r "${PROJECT_ROOT}/apps/panel/build/flutter_assets/"* \
+	cp -r "${PROJECT_ROOT}/apps/panel/build/flutter-pi/aarch64-generic/"* \
 		"${DISPLAY_FILES_DIR}/display-app/"
 
 	echo "  -> Display files prepared in ${DISPLAY_FILES_DIR}/display-app"

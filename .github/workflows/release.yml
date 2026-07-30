@@ -390,7 +390,7 @@ jobs:
 
       - name: "Archive ARM64 Flutter Assets"
         run: |
-          tar -czvf smart-panel-display-flutterpi-${{ needs.sync-versions.outputs.version }}-arm64.tar.gz -C ./apps/panel/build/flutter_assets .
+          tar -czvf smart-panel-display-flutterpi-${{ needs.sync-versions.outputs.version }}-arm64.tar.gz -C ./apps/panel/build/flutter-pi/aarch64-generic .
           shasum -a 256 smart-panel-display-flutterpi-${{ needs.sync-versions.outputs.version }}-arm64.tar.gz > smart-panel-display-flutterpi-${{ needs.sync-versions.outputs.version }}-arm64.tar.gz.sha256
 
       - name: "Upload ARM64 Artifact (64-bit)"

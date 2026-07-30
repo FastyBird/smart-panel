@@ -86,7 +86,7 @@ lib/
 
 ```shell
 git clone https://github.com/fastybird/smart-panel.git
-cd apps/panel
+cd smart-panel/apps/panel
 ```
 
 ### 2️⃣ Install Dependencies
@@ -109,17 +109,32 @@ flutter run
 
 ## 📦 Building for Raspberry Pi (flutter-pi)
 
-If deploying to **Raspberry Pi** using flutter-pi, build with:
+If deploying to **Raspberry Pi** using flutter-pi, build the ARM64 bundle with:
 
 ```shell
-flutter build bundle
+dart run flutterpi_tool build --arch=arm64 --release
 ```
 
-Then run on the Pi:
+`flutterpi_tool` is already a dependency of this package, so this works
+straight after `flutter pub get` — no extra tooling required.
+
+This writes a self-contained flutter-pi bundle to
+`build/flutter-pi/aarch64-generic/` (relative to this `apps/panel` directory)
+— the Flutter assets plus `icudtl.dat`, `libflutter_engine.so` and the
+`flutter-pi` binary itself.
+
+Then run it on the Pi. The bundle ships its own `flutter-pi`, so invoke that
+binary directly — a bare `flutter-pi` only works if one is installed on your
+`PATH`:
 
 ```shell
-flutter-pi --release /path/to/flutter_assets
+/path/to/bundle/flutter-pi --release /path/to/bundle
 ```
+
+> From the repository root the same build is available as the Melos script
+> `melos build-panel-arm64-release`, which additionally stamps the app
+> version. Melos is not part of this package, so install it first with
+> `dart pub global activate melos`.
 
 ### 🧪 Running Tests
 
@@ -140,19 +155,28 @@ dart analyze .
 ### 1️⃣ Build the app
 
 ```shell
-flutter build bundle
+dart run flutterpi_tool build --arch=arm64 --release
 ```
 
 ### 2️⃣ Transfer the app to your Pi
 
+Recreate the destination first, then copy the bundle's **contents** into it.
+Copying the directory itself would nest it on every redeploy
+(`smart-panel/aarch64-generic`), leaving the Pi running the previous build:
+
 ```shell
-scp -r build/flutter_assets pi@raspberrypi:/home/pi/
+ssh pi@raspberrypi 'rm -rf ~/smart-panel && mkdir -p ~/smart-panel'
+scp -rp build/flutter-pi/aarch64-generic/. pi@raspberrypi:~/smart-panel/
 ```
 
 ### 3️⃣ Run on Raspberry Pi
 
+Run the `flutter-pi` binary that came with the bundle (`-p` above preserves
+its executable bit). Only use a bare `flutter-pi` if you have installed one
+on your `PATH`:
+
 ```shell
-flutter-pi /home/pi/flutter_assets
+~/smart-panel/flutter-pi --release ~/smart-panel
 ```
 
 ## 👨‍💻 Contributing
