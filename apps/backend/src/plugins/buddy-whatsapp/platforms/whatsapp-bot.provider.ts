@@ -47,6 +47,9 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 	private reconnecting = false;
 	private reconnectAttempts = 0;
 
+	/** In-flight socket close, so overlapping stops await it instead of racing past it. */
+	private stopping: Promise<void> | null = null;
+
 	/** Snapshot of the last applied config to detect actual changes */
 	private activeConfig: {
 		allowedPhoneNumbers: string | null;
@@ -363,29 +366,53 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 		}
 	}
 
+	/**
+	 * Close the socket, at most once at a time.
+	 *
+	 * A detached socket is not proof that shutdown finished: the webhook exposes logout publicly,
+	 * so a second call can arrive while `end()` is still pending. If that call saw only
+	 * `this.socket === null` it would skip the close and report 'stopped' straight away, and the
+	 * manager accepts a start from there - so a new socket could come up before the first close
+	 * resolved, and the first continuation would then overwrite its state and delete its auth
+	 * directory. Overlapping callers therefore await the same in-flight close.
+	 */
 	private async stopBot(): Promise<void> {
-		this.state = 'stopping';
-		this.reconnecting = false;
-		this.reconnectAttempts = 0;
-
-		if (this.socket) {
-			const socket = this.socket;
-
-			// Detach first so a slow close cannot be raced by a second stop.
-			this.socket = null;
-
-			// baileys 7.0.0-rc12 made end() async. A rejected close is not worth failing shutdown
-			// over, but it must be caught - an unhandled rejection would take the process down.
-			try {
-				await socket.end(undefined);
-			} catch (error) {
-				this.logger.warn(`Closing the WhatsApp socket failed: ${String(error)}`);
-			}
+		if (this.stopping !== null) {
+			return this.stopping;
 		}
 
-		this.status = WhatsAppConnectionStatus.DISCONNECTED;
-		this.currentQr = null;
-		this.state = 'stopped';
+		const stopping = (async (): Promise<void> => {
+			this.state = 'stopping';
+			this.reconnecting = false;
+			this.reconnectAttempts = 0;
+
+			const socket = this.socket;
+
+			this.socket = null;
+
+			if (socket) {
+				// baileys 7.0.0-rc12 made end() async. A rejected close is not worth failing
+				// shutdown over, but it must be caught - an unhandled rejection would take the
+				// process down.
+				try {
+					await socket.end(undefined);
+				} catch (error) {
+					this.logger.warn(`Closing the WhatsApp socket failed: ${String(error)}`);
+				}
+			}
+
+			this.status = WhatsAppConnectionStatus.DISCONNECTED;
+			this.currentQr = null;
+			this.state = 'stopped';
+		})();
+
+		this.stopping = stopping;
+
+		try {
+			await stopping;
+		} finally {
+			this.stopping = null;
+		}
 	}
 
 	private async handleMessage(msg: { key: { remoteJid?: string | null }; message?: object | null }): Promise<void> {
