@@ -123,10 +123,12 @@ This writes a self-contained flutter-pi bundle to
 — the Flutter assets plus `icudtl.dat`, `libflutter_engine.so` and the
 `flutter-pi` binary itself.
 
-Then run it on the Pi:
+Then run it on the Pi. The bundle ships its own `flutter-pi`, so invoke that
+binary directly — a bare `flutter-pi` only works if one is installed on your
+`PATH`:
 
 ```shell
-flutter-pi --release /path/to/bundle
+/path/to/bundle/flutter-pi --release /path/to/bundle
 ```
 
 > From the repository root the same build is available as the Melos script
@@ -164,16 +166,17 @@ Copying the directory itself would nest it on every redeploy
 
 ```shell
 ssh pi@raspberrypi 'rm -rf ~/smart-panel && mkdir -p ~/smart-panel'
-scp -r build/flutter-pi/aarch64-generic/. pi@raspberrypi:~/smart-panel/
+scp -rp build/flutter-pi/aarch64-generic/. pi@raspberrypi:~/smart-panel/
 ```
 
 ### 3️⃣ Run on Raspberry Pi
 
-The bundle ships its own `flutter-pi` binary, so you can run either the one
-you copied or a system-wide install:
+Run the `flutter-pi` binary that came with the bundle (`-p` above preserves
+its executable bit). Only use a bare `flutter-pi` if you have installed one
+on your `PATH`:
 
 ```shell
-flutter-pi --release ~/smart-panel
+~/smart-panel/flutter-pi --release ~/smart-panel
 ```
 
 ## 👨‍💻 Contributing
