@@ -564,7 +564,7 @@ A horizontal scroll strip 22 high — **top** in landscape, **bottom** in portra
 |---|---|
 | Loading | Centred spinner in the content area (sky panel still renders) |
 | Error | Alert icon 64 (danger), message, **Retry** filled button |
-| Empty (no domains, no scenes) | Success check-circle 48, "Nothing to control here" title + description naming the space |
+| Empty — condition is **no domain *cards* and no qualifying scenes** | Success check-circle 48, "Nothing to control here" title + description naming the space. ⚠️ Because Sensors and Energy never produce cards, a room with only those devices lands here **with its status strip still showing live sensor/energy pills** — design that pairing deliberately. |
 | No room assigned / display not configured | Error variant with the corresponding message |
 
 ### 8.2 Master overview (synthetic "whole home" space)
@@ -862,7 +862,12 @@ Four cards, each opening a selection dialog:
 
 ### 13.4 Audio settings
 
-Speaker toggle + speaker volume slider; microphone toggle + microphone volume slider, each under its own section heading. If the hardware supports neither, the page shows a "no audio support" message instead.
+Two independently conditional sections:
+
+- **Speaker** (heading + toggle + volume slider) — rendered only when the display reports **audio output** support.
+- **Microphone** (heading + toggle + volume slider) — rendered only when the display reports **audio input** support.
+
+So there are **three** reachable layouts to design, not one: both sections, speaker-only, and microphone-only. The "no audio support" message appears only when the hardware has **neither** capability — and in that case the page is not reachable from the General grid anyway, since its tile is gated on the same flags (§13.1).
 
 ### 13.5 Voice activation
 
@@ -1054,6 +1059,7 @@ IDLE
 | Subsystem | Interaction | Settling window |
 |---|---|---|
 | **Device detail** (`DeviceControlStateService`, per device/channel/property) | ⚠️ **only the controls that actually enter the machine** — not every control on the screen. See the note below. | **800 ms** (the service default; individual group configs may override) |
+| **Domain *sheet* toggles** — the single-light toggle in the lights role sheet, and the device toggle in the climate auxiliary sheet | Both run the machine **and** install a backup overlay: `setPending`/`setSettling` on `DeviceControlStateService` *plus* `createLocalOverlay(ttlMs: 5000)` on `IntentOverlayService` | **800 ms** settling, with the overlay holding the desired value for up to **5 s** — so the effective optimistic window is the longer of the two |
 | **Lights domain** | brightness / hue / saturation / colour temp / white | 2000 ms |
 | | on/off | 3000 ms |
 | | mode (off/work/relax/night) | 3000 ms |
