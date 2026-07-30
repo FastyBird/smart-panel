@@ -363,7 +363,9 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 		this.reconnectAttempts = 0;
 
 		if (this.socket) {
-			this.socket.end(undefined);
+			// baileys 7.0.0-rc12 made end() async. Shutdown stays synchronous, so the close is
+			// deliberately not awaited - the socket is dropped either way.
+			void this.socket.end(undefined);
 			this.socket = null;
 		}
 
