@@ -53,13 +53,9 @@ export class WledMdnsDiscovererService implements OnModuleDestroy {
 				this.handleServiceFound(service);
 			});
 
-			// Handle browser errors
-			this.browser.on('error', (error: Error) => {
-				this.logger.error('Browser error', {
-					message: error.message,
-					stack: error.stack,
-				});
-			});
+			// bonjour-service's Browser only ever emits up/down/txt-update/srv-update - it has no
+			// 'error' event in 1.3 either, so the handler that used to sit here never ran. Typed
+			// events in 1.4 surfaced that rather than introducing it.
 
 			this.isRunning = true;
 			this.logger.log('mDNS discovery started');

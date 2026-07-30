@@ -47,6 +47,9 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 	private reconnecting = false;
 	private reconnectAttempts = 0;
 
+	/** In-flight socket close, so overlapping stops await it instead of racing past it. */
+	private stopping: Promise<void> | null = null;
+
 	/** Snapshot of the last applied config to detect actual changes */
 	private activeConfig: {
 		allowedPhoneNumbers: string | null;
@@ -91,9 +94,10 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 	 * don't need to re-message after a config change. The maps are in-memory
 	 * and will be garbage-collected on full shutdown anyway.
 	 */
-	// eslint-disable-next-line @typescript-eslint/require-await
 	async stop(): Promise<void> {
-		this.stopBot();
+		// Await the close so the manager does not report the service stopped while the socket
+		// is still open.
+		await this.stopBot();
 	}
 
 	/**
@@ -187,8 +191,13 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 	 * Instead we just close the connection and delete the local auth state —
 	 * the old server-side session will expire on its own.
 	 */
-	logout(): void {
-		this.stopBot();
+	async logout(): Promise<void> {
+		// Must finish closing before restarting. stopBot sets the state to 'stopping' up front,
+		// and the manager's stopService() returns early for that state while startService() does
+		// not - so a fire-and-forget close lets a new socket start underneath, and the old close
+		// then resolves and overwrites the new connection's status and QR with DISCONNECTED.
+		// It would also race the auth directory deletion below.
+		await this.stopBot();
 
 		// Clear auth state so a fresh QR code is generated on next start
 		const authDir = join(process.cwd(), WHATSAPP_AUTH_DIR);
@@ -357,19 +366,53 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 		}
 	}
 
-	private stopBot(): void {
-		this.state = 'stopping';
-		this.reconnecting = false;
-		this.reconnectAttempts = 0;
-
-		if (this.socket) {
-			this.socket.end(undefined);
-			this.socket = null;
+	/**
+	 * Close the socket, at most once at a time.
+	 *
+	 * A detached socket is not proof that shutdown finished: the webhook exposes logout publicly,
+	 * so a second call can arrive while `end()` is still pending. If that call saw only
+	 * `this.socket === null` it would skip the close and report 'stopped' straight away, and the
+	 * manager accepts a start from there - so a new socket could come up before the first close
+	 * resolved, and the first continuation would then overwrite its state and delete its auth
+	 * directory. Overlapping callers therefore await the same in-flight close.
+	 */
+	private async stopBot(): Promise<void> {
+		if (this.stopping !== null) {
+			return this.stopping;
 		}
 
-		this.status = WhatsAppConnectionStatus.DISCONNECTED;
-		this.currentQr = null;
-		this.state = 'stopped';
+		const stopping = (async (): Promise<void> => {
+			this.state = 'stopping';
+			this.reconnecting = false;
+			this.reconnectAttempts = 0;
+
+			const socket = this.socket;
+
+			this.socket = null;
+
+			if (socket) {
+				// baileys 7.0.0-rc12 made end() async. A rejected close is not worth failing
+				// shutdown over, but it must be caught - an unhandled rejection would take the
+				// process down.
+				try {
+					await socket.end(undefined);
+				} catch (error) {
+					this.logger.warn(`Closing the WhatsApp socket failed: ${String(error)}`);
+				}
+			}
+
+			this.status = WhatsAppConnectionStatus.DISCONNECTED;
+			this.currentQr = null;
+			this.state = 'stopped';
+		})();
+
+		this.stopping = stopping;
+
+		try {
+			await stopping;
+		} finally {
+			this.stopping = null;
+		}
 	}
 
 	private async handleMessage(msg: { key: { remoteJid?: string | null }; message?: object | null }): Promise<void> {
