@@ -1052,15 +1052,25 @@ SETTLING (still locked; waiting for the real value to match)
   ├─ values match ─────────────► IDLE (shows confirmed value)
   └─ window expires ───────────► MIXED  ⚠️
                                   (STILL LOCKED, still showing the desired
-                                   value — the device never confirmed. Cleared
-                                   only by a later property update that
-                                   converges. Can persist indefinitely.)
+                                   value — the device never confirmed.
+                                   How it clears depends on the control
+                                   kind — see below.)
   ← on failure: roll back to the previous IDLE value
 ```
 
-⚠️ **MIXED is a fourth state, and it is the one most likely to be missed.** A timeout does **not** return the control to IDLE: both control-state services transition to `mixed`, and both state models count `mixed` as locked. So a device that never confirms leaves its control **locked, displaying a value the hardware may not have applied**, until some later property update happens to converge.
+⚠️ **MIXED is a fourth state, and it is the one most likely to be missed.** A timeout does **not** return the control to IDLE: both control-state services transition to `mixed`, and both state models count `mixed` as locked. The control stays locked showing a value the hardware may not have applied.
 
-This needs its own presentation — something that reads as *"we asked, we never heard back"* rather than either a confirmed value or a still-in-flight spinner. Today it is visually indistinguishable from SETTLING, which is arguably the single biggest gap in the current control feedback.
+**How long it lasts depends on the control kind** — only one of the three can hang indefinitely:
+
+| Control kind | How MIXED clears |
+|---|---|
+| **Domain controls** (lights / shading / climate mode, role, setpoint) | The **next backend update of any kind** clears it — converged *or* not. The code comments this deliberately: accept new data "rather than staying locked forever", so another client changing the value also releases it. |
+| **Single-property device controls** | Same — the next property update clears the state whether it converged or diverged, so the real value is shown. |
+| **Grouped device controls** | ⚠️ **Only genuine convergence clears it.** That branch has no `else`, so if the group never converges the control **stays locked indefinitely**. |
+
+So design MIXED as a state that usually resolves on the next update, but **must not assume it will** — the grouped case can stick.
+
+It needs its own presentation regardless: something that reads as *"we asked, we never heard back"* rather than either a confirmed value or a still-in-flight spinner. Today it is visually indistinguishable from SETTLING, which is arguably the single biggest gap in the current control feedback.
 
 **Settling windows differ per subsystem — there is no single global value.** This matters for design because it sets how long a pending treatment stays on screen, and a device-detail control settles more than twice as fast as a room-level one:
 
@@ -1275,7 +1285,7 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
 - **Master** and **Entry** overviews still use the older `AppTopBar` + ad-hoc cards idiom rather than the newer `PageHeader` + `HeroCard` design language used by the room and domain views. They look visibly older.
 - **Climate Auto mode is disabled in the Climate *domain view* only**, pending a dual-setpoint control. The **room-overview** climate mode dialog still offers Auto and applies it (§8.1) — so the two surfaces disagree about whether Auto exists.
 - **Auxiliary-only Climate rooms are a dead end** (§17): the deck keeps the page because `isActuator` accepts the `auxiliary` role, but the page has no actuators to show, so it renders not-configured forever while the fan/humidifier it *does* have sits unreachable behind the auxiliary sheet.
-- **MIXED has no visual identity.** When a control times out without the device confirming, it stays locked showing an unconfirmed value, looking exactly like it is still settling (§17). Users get no signal that the command may not have landed.
+- **MIXED has no visual identity.** When a control times out without the device confirming, it stays locked showing an unconfirmed value, looking exactly like it is still settling (§17). Users get no signal that the command may not have landed — and for **grouped** device controls that state can persist indefinitely.
 - **The Security screen has no arm/disarm control** — its selector is a tab switcher and the only write action is acknowledging alerts.
 - **The room overview and the deck disagree about which domains exist.** The deck hides a domain once its target/binding count loads as `0`, but the overview rebuilds counts from raw device categories without those numbers, so it keeps rendering a card for the hidden domain. The card then navigates nowhere. Any redesign of the room overview should assume this gets fixed — do not design around the dead card.
 - The **scene tile** (dashboard) uses a raw Material `Card` and does not match `UniversalTile`.
