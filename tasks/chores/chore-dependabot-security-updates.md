@@ -115,8 +115,29 @@ moves; bisecting on top of a broken tree cannot identify anything.
 | package | how |
 | --- | --- |
 | `next` (22 alerts) | override `^15.5.21`; website static export verified green |
-| `file-type` (2 alerts) | not forced across a major. It arrives via `@xhmikosr/decompress`, whose v11 already depends on the plugin packages built for `file-type` 21, so the parent was bumped instead and the supported combination kept intact. Dev-only chain: `@swc/cli` / `@nestjs/cli` → `bin-wrapper` → `downloader` → `decompress` |
+| `file-type` (2 alerts) | by **deleting** an override rather than adding one — see below |
 | `brace-expansion` (1 alert) | per-line: 1.1.18, 2.1.4, 5.0.9 |
+
+### `file-type` was held back by our own override
+
+`file-type` 20.5.0 arrived through `@xhmikosr/decompress`, and the obvious reading was that
+`decompress` needed forcing across a major to reach the plugin versions built for `file-type` 21.
+That reading was wrong. `@xhmikosr/downloader@16.3.0` — already installed, unchanged — declares
+`@xhmikosr/decompress: ^11.1.3`. What actually pinned it to the 10 line was an override this repo
+added in the previous round, when a critical advisory required `>= 10.2.1`:
+
+```json
+"@xhmikosr/decompress": "^10.2.1"
+```
+
+That override outlived its purpose and became the thing holding a vulnerable `file-type`
+underneath it. Deleting it lets `decompress` resolve to 11.1.3 naturally, which is what its parent
+asked for all along, drags `file-type` to 21.x, and still satisfies the original `>= 10.2.1`
+advisory. One fewer override, not one more.
+
+Worth generalising: a version override is a claim about a moment. Left in place it keeps asserting
+that claim long after the ecosystem has moved past it, and can hold a transitive dependency below
+its own fix. These are worth re-reading whenever they block something, not just adding to.
 
 ### A note on the `brace-expansion` alert
 
