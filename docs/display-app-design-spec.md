@@ -238,7 +238,7 @@ Surfaces:
 | `slow` | 300 ms | Modals, page transitions |
 
 Specific behaviours:
-- **Route transitions are fades**, not slides (deliberate — cheaper on GPU). `easeOut`.
+- **Route transitions are fades**, not slides (deliberate — cheaper on GPU). `easeOut`. This is installed **theme-wide**: both `AppTheme.lightTheme` and `AppTheme.darkTheme` set a `pageTransitionsTheme` whose builder is a fade for *every* `TargetPlatform`, and `MaterialPageRoute` resolves its transition through that theme. So ordinary pushes (device details, Buddy chat, weather detail, a room overview pushed from Master) all fade — there is no platform-specific slide anywhere inside the main app.
 - **Deck adjacent page:** native `PageView` slide, 300 ms `easeInOut`.
 - **Deck distant jump (> 1 page):** crossfade — fade out 150 ms → instant jump → fade in 150 ms. Swipe is disabled during the crossfade.
 - **Nav tab expand/collapse:** `AnimatedSize` 250 ms `easeInOut`.
@@ -331,6 +331,19 @@ While configuration counts are still loading (`null`), the domain is shown if de
 - **"More" tab** appears only when ≥ 1 dashboard page exists. Its icon is `dots-horizontal`; it counts as "active" whenever a dashboard page is on screen; tapping opens the **More sheet**.
 - **Mode button** (far right, after a divider) appears only when the current domain view registers a mode config. It is icon-only, 22, tinted with the mode's colour family. Tapping opens the **mode popup**, anchored above the bar (fixed 68 offset from the bottom, 8 from the right).
 
+  **Only four of the six domains register one:**
+
+  | Domain | Mode control | What the popup selects |
+  |---|---|---|
+  | Lights | ✅ | Off / Work / Relax / Night |
+  | Climate | ✅ | Heat / Cool / Off (capability-dependent) |
+  | Shading | ✅ | Open / Daylight / Privacy / Closed |
+  | Energy | ✅ | **Time range** — Today / Week / Month (info-coloured; registered only once a summary exists) |
+  | Media | ❌ | *clears the config* — activities are chosen in the body instead |
+  | Sensors | ❌ | *clears the config* — category filtering lives in the section title |
+
+  Note that Energy's chip is a **range selector**, not a "mode" — same component, different semantics. Do not design Media/Sensors mode chips; do design the Energy range one.
+
 ### 6.2 Side dock (landscape)
 
 - Column width **90** on large screens (icon + 8 px label), **65** otherwise (icon only).
@@ -400,13 +413,25 @@ Behind all of this, a **background retry pings the known backend every 5 s** and
 
 Shown when the display is registered but `spaceId == null`. Title, "N spaces available", a selectable list of spaces (icon + name), and a *Confirm* button. Has its own **empty state** (no spaces configured yet) and **saving state** (spinner + "saving…").
 
-### 7.4 Fatal error
+### 7.4 Where failures actually surface
 
-Full-screen error with a localized message and a **Restart** action. Message variants: connection to the stored backend failed; connection to a named backend at an address failed; connection to a manually entered URL failed; generic initialization failure; raw exception text.
+Connection failures and fatal errors go to **two different screens** — worth knowing, because the failure a user is most likely to hit never reaches the fatal screen:
 
-### 7.5 Deck empty state
+| Failure | State | Screen shown |
+|---|---|---|
+| Stored backend unreachable | `connectionFailed` | **Discovery screen in retry mode** — the error message is rendered inside discovery, with a background retry running |
+| A selected discovered backend fails to connect | `connectionFailed` | Same — discovery, retry mode |
+| A manually entered URL fails to connect | `connectionFailed` | Same — discovery, retry mode |
+| Initialization returned an error / needed discovery unexpectedly | `error` | **Fatal error screen** |
+| Initialization threw | `error` | **Fatal error screen** (raw exception text) |
 
-Once ready, if the deck ends up with **zero** items (unassigned space *and* no dashboard pages), the deck shows a centred warning-icon empty state with a title and description.
+The **fatal error screen** is a full-screen error with a localized message and a **Restart** action. It is reserved for the last two rows: the three connection-failure messages are surfaced *within* the discovery flow instead, so the panel stays in a recoverable state that self-heals when the backend returns.
+
+### 7.5 Deck empty state (defensive only)
+
+The deck widget has a centred warning-icon empty state with a title and description for the case where it has zero items.
+
+> ⚠️ **This is a defensive branch, not a shipped state.** `buildDeck` appends the Security view **unconditionally**, so an initialized deck always has at least one item; and a display with no space is held in the space-selection flow (§7.3) before the deck ever renders. Design it if you want belt-and-braces coverage, but do not plan around users seeing it.
 
 ---
 
@@ -518,8 +543,8 @@ For a door-side panel.
 
 - **Top bar badges:** locks (`all locked` or `n/m`, success/warning) and alarm (`Armed`/`Disarmed`, danger when armed, neutral otherwise).
 - **House modes section** — heading with icon, then either:
-  - the configured house-mode **scenes** as a centred `Wrap` of 70×70 filled buttons with a 32 icon and a label below (active = primary theme, inactive = info theme; a spinner replaces the button while triggering), or
-  - **four default buttons** (Home / Away / Night / Movie) when no house-mode scenes exist.
+  - the configured house-mode **scenes** as a centred `Wrap` of 70×70 filled buttons with a 32 icon and a label below (active = primary theme, inactive = info theme; a spinner replaces the button while triggering) — these actually trigger the scene, or
+  - **four default buttons** (Home / Away / Night / Movie) when no house-mode scenes exist. ⚠️ **These are cosmetic.** Their tap handlers only move a local highlight — no intent is fired, nothing in the house changes. Treat them as a visual placeholder for an unconfigured system, not as functional controls.
 - **Security section** below.
 - Loading / error (retry) states.
 
@@ -664,6 +689,7 @@ The most state-heavy screen. Media is modelled as **activities** (Watch / Listen
 Exists both as a **room domain view** and as a **standalone deck view** (the standalone one is added only when the room has no energy domain).
 
 - **Header** — "Energy", flash icon in info; subtitle `"12.4 kWh"`, extended to `"12.4 kWh / 3.1 kWh production"` when production data exists; a **podium** trailing button appears only when a per-device breakdown is available.
+- **Time range selector** — Energy is the one domain whose mode chip / bottom-nav mode button is not a mode at all but a **range picker: Today / Week / Month**, coloured `info`. Its icon and label reflect the current range. It is registered **only once a summary has loaded** — while the page is empty or loading, the chip disappears. Changing the range refetches the summary, the chart and the breakdown together.
 - **Portrait:** consumption card on top, time-series chart filling the rest.
 - **Landscape:** chart in the main column; consumption card in the sidebar, plus a **production** card (solar icon, success) and a **net** card (swap icon; warning when net > 0, success when ≤ 0) — both only when production data exists.
 - **Top consumers** open in a sheet/drawer as ranked rows with proportional bars.
@@ -714,10 +740,10 @@ A page whose entire body is one device's detail screen (§12).
 | Tile | Content | Interaction |
 |---|---|---|
 | **Device preview** | Button tile: device icon (tile icon → device icon → category icon), device name as title, and a centred row of the tile's data-source values as subtitle | Body tap → device detail route. Icon tap → toggle on/off (only when the device exposes an on-state); failure raises an error toast. Renders an info-tinted spinner card while the device is unknown. |
-| **Scene** | Card with a 32 icon (default `movie-open`), label, and status line. When on: elevation 4, primary `light8` fill, 2 px primary border, bold label | Trigger |
+| **Scene** | Card with a 32 icon (default `movie-open`), label, and status line. When on: elevation 4, primary `light8` fill, 2 px primary border, bold label | ⚠️ **None — the tile is read-only today.** It has no tap handler and cannot trigger its scene. It reflects state only. |
 | **Time** | DIN1451 clock at 90 (bold, `height 0.95`) over a 25 date, left-aligned, auto-shrinking to fit | — |
-| **Weather (current)** | Condition icon, temperature, feels-like, humidity, wind, precipitation, UV, cloud cover | — |
-| **Weather (forecast)** | Multi-day: highs/lows, precipitation probability, wind | — |
+| **Weather (current)** | Condition icon, temperature, feels-like, humidity, wind, precipitation, UV, cloud cover | Tap → **weather detail page** (only when weather data is present) |
+| **Weather (forecast)** | Multi-day: highs/lows, precipitation probability, wind | Tap → **weather detail page** |
 
 ---
 
@@ -929,9 +955,17 @@ Every data-backed screen must be designed in **six** states, not one.
 | **Loading** | Centred circular progress in the content area. The header (and the sky panel, on the room overview) stays visible. |
 | **Error** | Alert-circle icon **64** in danger, a localized message, and a **Retry** filled primary button with a refresh icon. |
 | **Empty** | A neutral or success icon (48–64), a 16/w600 title, a 12 placeholder-coloured description. |
-| **Not configured** | *Distinct from empty.* The **header is still rendered** with the subtitle "not configured", and the body carries a domain-specific icon + title + description (e.g. "No lighting roles assigned"). This is the state a room ends in when devices exist but the Admin has not assigned roles. |
+| **Not configured** | *Distinct from empty.* The **header is still rendered** with the subtitle "not configured", and the body carries a domain-specific icon + title + description (e.g. "No lighting roles assigned"). **Mostly transient** — see the note below. |
 | **Offline (device)** | Tiles invert their two text lines (label becomes primary, "Offline" becomes status) and show a warning badge. Device details dim behind an offline overlay. |
 | **Pending / settling** | See below. |
+
+#### How long the "not configured" state actually lives
+
+For the five **room domains** it is a **transient/startup state, not a resting one**. Deck construction and the page body use the same rule from opposite ends: `DomainCounts.hasDomain` drops Lights, Climate, Shading and Media when their configuration count is `0`, and drops Sensors when its reading count is `0` — so a fully-loaded room with nothing configured simply has **no page in the deck at all**. The not-configured body is what you see in the window where the counts are still `null` (not yet fetched), which is exactly the live-reconfiguration case in §19D.
+
+The one place it **is** a resting state is the **standalone Energy view**: that page is added whenever energy is supported, and it renders its not-configured body whenever no summary is available.
+
+Design both — but budget effort accordingly: for the room domains this is a sub-second flash worth making calm and non-alarming, whereas the Energy variant can sit on screen indefinitely.
 
 ### Optimistic UI (this is a *visual* requirement)
 
@@ -995,7 +1029,7 @@ Everything in this table can be absent. **A design that assumes any of it is pre
 |---|---|
 | Bottom nav **Home** tab / side dock Home tab | A system view exists |
 | Bottom nav **More** tab (+ its badge) | ≥ 1 dashboard page |
-| Bottom nav **Mode** button / landscape mode chip | The active domain view registers a mode config |
+| Bottom nav **Mode** button / landscape mode chip | The active domain view registers a mode config — **Lights, Climate, Shading and Energy only**; Media and Sensors explicitly clear it (§6.1) |
 | Nav tab **labels** | Portrait: tab is active **and** screen is not small · Landscape: screen is large |
 | Buddy FAB, chat, voice indicator, suggestion toasts | Buddy module enabled |
 | Weather card + weather-driven sky | Weather data available for the display's location |
@@ -1041,7 +1075,7 @@ These are the shapes a designer should mock, because they are what actually ship
 *Devices:* 4 Shelly Dimmer 2 (ceiling + wall sconces + 2 lamps), a Home Assistant thermostat, 2 Shelly 2.5 roller shutters, an LG TV + Sonos beam via Home Assistant, a Zigbee2MQTT temp/humidity sensor, and a Shelly PM plug. Roles fully assigned, media bindings configured.
 
 *Deck:* `Room overview · Lights · Climate · Shading · Media · Sensors · Energy · Security · Dashboard "Kitchen"`
-*Side dock:* 9 items → scrolls. Mode chip present on all six domain headers.
+*Side dock:* 9 items → scrolls. Mode chip present on the Lights, Climate, Shading and Energy headers only (Media and Sensors do not register one).
 *Room overview:* full sky panel with weather, scene pills on the sky, status strip on top with temp + humidity + energy pill, 5 domain cards in a 2-up grid (Lights, Climate, Shading, Media, Sensors).
 
 ### B. Bedroom panel, portrait, minimal
