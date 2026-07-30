@@ -13,10 +13,18 @@ on:
         type: string
 
 concurrency:
-  group: alpha-release-${{ github.ref }}
-  # Never cancel a running release: npm and GitHub Packages publishes are
-  # irreversible, so killing a run mid-publish would strand a partially
-  # published version that the next run then increments past. Queue instead.
+  group: release-publish
+  # One global group for ALL release publishing — deliberately excludes
+  # github.ref. Alpha, beta and production all publish the same package set
+  # and all push a version-sync commit to main, so any two running at once
+  # can race on the registry and on that push. Splitting by ref would put a
+  # dispatch from main and a push to `beta` in different groups, which is no
+  # guard at all.
+  #
+  # Note: Actions concurrency is not a FIFO queue. Only one run may be
+  # pending; dispatching a third while one runs discards the second. Releases
+  # are manual and infrequent, so a dropped request is visible and can simply
+  # be re-dispatched — but do not treat this as a durable queue.
   cancel-in-progress: false
 
 permissions:
