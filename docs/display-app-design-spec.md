@@ -284,7 +284,7 @@ The deck is a flat, ordered list of full-screen pages, built fresh whenever anyt
 | **Master** (synthetic) | `Master overview` only |
 | **Entry** (synthetic) | `Entry overview` only |
 | **Signage info panel** | `Signage overview` only |
-| **Zone** | *none* — a panel assigned to a zone falls back to dashboard pages |
+| **Zone** | *none* — no system view is built. ⚠️ Because Security is appended unconditionally it becomes **index 0**, so with `homeMode = auto` a zone panel **lands on the Security view**, not on a dashboard page. |
 | **Unassigned** (`spaceId == null`) | *none* — the app shows the space picker at startup instead |
 
 ### 5.2 Landing page
@@ -369,14 +369,15 @@ Bottom sheet titled **"All pages"**. A responsive `Wrap` of square-ish buttons (
 | **Vertical swipe down** (> 20 px, dy dominant) anywhere in the app | Opens **Settings**. Fires once per gesture; ignored if Settings is already open. |
 | **Vertical swipe up** inside Settings | Closes Settings. |
 | **Any tap or pan** | Resets the inactivity timer. |
-| **Tap** | The only selection primitive. There is no long-press, no drag-to-reorder, no swipe-to-delete anywhere in the display app. |
+| **Tap** | The main selection primitive. There is no long-press and no drag-to-reorder anywhere in the display app. |
+| **Horizontal swipe on the suggestion toast** | The one swipe-to-dismiss in the app: the toast card is wrapped in a horizontal `Dismissible`, and dismissing it reports feedback back to the suggestion provider. Keep this affordance — it is the toast's only dismissal path. |
 | **Pull to refresh** | Only on the media domain's "no endpoints" state. |
 
 ### 6.6 Persistent floating elements on the deck
 
 - **Buddy FAB** — 48 circle, primary fill, white robot icon 24, shadow (primary @ 30 %, blur 12, y+4). Positioned 16 from the right; bottom = `52 + 8` in portrait (clearing the nav bar), 16 in landscape. **Hidden entirely when the Buddy module is disabled.**
-- **Voice-activation indicator** — centred at the top, 4 px below the top edge. Only rendered when the voice-activation service exists. Shows listening / recording (with a countdown) / processing.
-- **Suggestion toast** — positioned card that animates in when the assistant surfaces a proactive suggestion. Has a warning variant with a heavier 2 px border.
+- **Voice-activation indicator** — centred at the top, 4 px below the top edge. Rendered when the voice-activation service is registered, and **collapses to nothing while its state is `stopped`** — so it is invisible until the wake word is armed. Shows listening / recording (with a countdown) / processing. Independent of the Buddy module.
+- **Suggestion toast** — positioned card that animates in when a proactive suggestion is enqueued. Has a warning variant with a heavier 2 px border. **Swipe it horizontally to dismiss** (§6.5). Mounted unconditionally and fed by *any* registered suggestion provider, so it is **not** gated on the Buddy module.
 
 ---
 
@@ -689,7 +690,7 @@ The most state-heavy screen. Media is modelled as **activities** (Watch / Listen
 Exists both as a **room domain view** and as a **standalone deck view** (the standalone one is added only when the room has no energy domain).
 
 - **Header** — "Energy", flash icon in info; subtitle `"12.4 kWh"`, extended to `"12.4 kWh / 3.1 kWh production"` when production data exists; a **podium** trailing button appears only when a per-device breakdown is available.
-- **Time range selector** — Energy is the one domain whose mode chip / bottom-nav mode button is not a mode at all but a **range picker: Today / Week / Month**, coloured `info`. Its icon and label reflect the current range. It is registered **only once a summary has loaded** — while the page is empty or loading, the chip disappears. Changing the range refetches the summary, the chart and the breakdown together.
+- **Time range selector** — Energy is the one domain whose mode chip / bottom-nav mode button is not a mode at all but a **range picker: Today / Week / Month**, coloured `info`. Its icon and label reflect the current range. It appears once a summary has loaded and **stays visible while a range change reloads** — neither the room-domain nor the standalone energy screen clears the config during an in-flight range switch (the standalone one retains it explicitly while the repository is `loading`). It is absent only on the *initial* load and in a definitive no-data state. So the loading treatment for a range change must keep the selector on screen and interactive-looking rather than collapsing the header. Changing the range refetches summary, chart and breakdown together.
 - **Portrait:** consumption card on top, time-series chart filling the rest.
 - **Landscape:** chart in the main column; consumption card in the sidebar, plus a **production** card (solar icon, success) and a **net** card (swap icon; warning when net > 0, success when ≤ 0) — both only when production data exists.
 - **Top consumers** open in a sheet/drawer as ranked rows with proportional bars.
@@ -720,7 +721,7 @@ User-designed pages authored in the Admin. Three page types.
 
 - Optional top bar (`showTopBar`): page title, the page's icon (default `view-dashboard-variant`), and, on the right, one small widget per page-level **data source**.
 - Body: a grid with 8 padding. Two modes:
-  - **fixed tile size** — when the page defines `tileSize`, tiles are laid out at an absolute unit size;
+  - **fixed tile size** — when the page defines `tileSize`, that value is a **target, not an absolute**: the grid derives `floor(containerWidth / tileSize)` columns and `floor(containerHeight / tileSize)` rows (minimum 1 each), then divides the *full* container by those counts. Rendered cells therefore rarely equal `tileSize`, and if the target exceeds the container a single cell fills it entirely. Treat it as "approximately this big", never as a fixed pixel contract;
   - **fixed grid size** — otherwise the page's `rows × cols` define the grid and tiles scale to fit.
 - Every tile declares `row`, `col`, `rowSpan`, `colSpan`.
 - States: *page not found* (alert icon 64 in warning + copy) and *no tiles configured* (dashboard icon + copy).
@@ -847,13 +848,14 @@ Copy differs depending on whether the action targets **the display only** or **t
 
 ## 14. Buddy AI assistant and voice
 
-- **Entry point:** the floating robot FAB on the deck. **The FAB and everything below it disappear when the Buddy module is disabled** — design must not depend on it.
+- **Entry point:** the floating robot FAB on the deck. **The FAB and the chat page disappear when the Buddy module is disabled** — design must not depend on them.
+- ⚠️ **Scope note:** disabling Buddy does *not* remove the suggestion toast or the wake-word indicator. The toast is driven by the shared suggestion service, which the `spaces-home-control` plugin feeds independently, and voice activation is a separate globally-registered service toggled in Settings. Treat the three as independently optional (§18).
 - **Chat page:** `PageHeader` + a message list of bubbles + an input row (text field, mic button, send button).
 - **States:** empty (illustration + invitation copy), initialization failed (message + retry), provider not configured (title + description), typing indicator ("thinking…" with animated dots), and a family of error messages (load conversations / create conversation / load messages / send message / provider not configured / timeout / connection error / generic).
 - **Input hint text** changes with state: default, "starting conversation…", "initialization failed", "provider not configured" (which also disables input).
 - **Voice input overlay** — a dedicated recording overlay with waveform/level feedback.
 - **Wake-word indicator** — the small top-centre pill on the deck: Listening / Recording (with an elapsed/limit counter) / Processing.
-- **Suggestion toast** — a proactive card that animates in over the deck; a warning variant uses a heavier border. It carries its own action buttons.
+- **Suggestion toast** — a proactive card that animates in over the deck; a warning variant uses a heavier border. It carries its own action buttons and is dismissed by a horizontal swipe, which also reports feedback to the provider that raised it.
 
 ---
 
@@ -875,23 +877,39 @@ Priority bands: `0–99` informational · `100–199` module (security = 100) ·
 
 A **single** entry that escalates over time:
 
+**Two distinct paths — only one of them escalates over time.**
+
+**Path A — generic disconnect** (the socket simply dropped). This is the timed escalation:
+
 | Elapsed disconnect | Presentation |
 |---|---|
 | < 2 s | nothing (2 s debounce absorbs flapping) |
-| ≥ 2 s | **banner** — warning, spinner, "Reconnecting…", outlined *Retry*. Closable. |
-| ≥ 10 s | **overlay** — warning, wifi-strength-2 icon, "Reconnecting", message changes after 30 s to "still trying…", filled *Retry* (shows "Retrying…" for 2 s after a tap). Closable. |
-| ≥ 60 s | **fullScreen** — not closable. |
+| ≥ 2 s | **banner** — warning, spinner, "Reconnecting…", outlined *Retry* |
+| ≥ 10 s | **overlay** — warning, wifi-strength-2 icon, "Reconnecting", message changes after 30 s to "still trying…", filled *Retry* (shows "Retrying…" for 2 s after a tap) |
+| ≥ 60 s | **fullScreen** "Connection lost" — not closable |
 
-Full-screen variants by cause:
+**Path B — a cause-specific failure.** Auth, network and server failures **jump straight to full screen with no delay at all** — the manager cancels the escalation timer and those three states report full-screen severity immediately. There is no banner or overlay stage for them.
 
-| Cause | Icon | Scheme | Actions |
-|---|---|---|---|
-| Auth error | lock-alert | error | *Reset / change gateway* |
-| Network unavailable | network-off | error | *Retry* |
-| Server unavailable | server-off | warning | *Retry* |
-| Offline (generic) | wifi-off | error | *Reconnect* (filled) + *Change gateway* (outlined) |
+| Cause | Timing | Icon | Scheme | Actions |
+|---|---|---|---|---|
+| Auth error | **immediate** | lock-alert | error | *Reset / change gateway* |
+| Network unavailable | **immediate** | network-off | error | *Retry* |
+| Server unavailable | **immediate** | server-off | warning | *Retry* |
+| Offline (generic) | after 60 s (path A) | wifi-off | error | *Reconnect* (filled) + *Change gateway* (outlined) |
 
-On recovery, a **success toast** ("Connected") is shown for 2 s — unless the app had already escalated to full screen. A 3 s recovery cooldown suppresses immediate re-warnings; a disconnect during that window is deferred, not dropped. If the user dismisses a banner/overlay, it stays dismissed **until the severity changes**.
+So a design must not assume the user always sees a gentle banner first — an auth failure takes the panel from fully working to a blocking screen in one step.
+
+On recovery, a **success toast** ("Connected") is shown for 2 s. This includes recovery from the full-screen offline state: by the time the check runs the manager is already `online`, so severity is `none` and the toast is shown, then the full-screen overlay is torn down behind it. A 3 s recovery cooldown suppresses immediate re-warnings; a disconnect during that window is deferred, not dropped.
+
+**Dismissal is not uniform across the three display types.** The renderer only wraps `overlay` and `fullScreen` entries in the tap-to-hide gesture, so:
+
+| Type | Can the user dismiss it? |
+|---|---|
+| **banner** | ❌ **No.** Despite being flagged closable, the banner offers no dismissal path — it renders only its message and the *Retry* action, and there is no close button or tap target. It disappears on its own when the connection state changes. |
+| **overlay** | ✅ Tap anywhere outside to hide |
+| **fullScreen** | ❌ Not closable by design |
+
+If a design adds a close affordance to the banner, that is new behaviour and needs renderer work. When the user does dismiss an overlay, it stays dismissed **until the severity changes**.
 
 ### 15.2 Security alerts (priority 100)
 
@@ -1031,7 +1049,9 @@ Everything in this table can be absent. **A design that assumes any of it is pre
 | Bottom nav **More** tab (+ its badge) | ≥ 1 dashboard page |
 | Bottom nav **Mode** button / landscape mode chip | The active domain view registers a mode config — **Lights, Climate, Shading and Energy only**; Media and Sensors explicitly clear it (§6.1) |
 | Nav tab **labels** | Portrait: tab is active **and** screen is not small · Landscape: screen is large |
-| Buddy FAB, chat, voice indicator, suggestion toasts | Buddy module enabled |
+| Buddy FAB and chat page | Buddy module enabled (`BuddyService.isModuleEnabled`) — this is the **only** element that checks it |
+| Suggestion toast | **Not** gated on Buddy. The toast is mounted over the deck unconditionally and renders whenever *any* registered provider enqueues a suggestion — the `spaces-home-control` plugin registers its own provider and enqueues independently, so toasts still appear with Buddy disabled |
+| Voice-activation (wake-word) indicator | The voice service is registered globally and can be enabled from Settings › Voice activation; the indicator hides only while its state is `stopped`. **Not** gated on Buddy |
 | Weather card + weather-driven sky | Weather data available for the display's location |
 | Scene pills (room) | The space has ≥ 1 enabled + triggerable scene |
 | Energy pill (room status strip) | The space has an `energy` status widget configured |
