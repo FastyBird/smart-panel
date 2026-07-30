@@ -112,8 +112,11 @@ flutter run
 If deploying to **Raspberry Pi** using flutter-pi, build the ARM64 bundle with:
 
 ```shell
-melos build-panel-arm64-release
+dart run flutterpi_tool build --arch=arm64 --release
 ```
+
+`flutterpi_tool` is already a dependency of this package, so this works
+straight after `flutter pub get` — no extra tooling required.
 
 This writes a self-contained flutter-pi bundle to
 `build/flutter-pi/aarch64-generic/` (relative to this `apps/panel` directory)
@@ -125,6 +128,11 @@ Then run it on the Pi:
 ```shell
 flutter-pi --release /path/to/bundle
 ```
+
+> From the repository root the same build is available as the Melos script
+> `melos build-panel-arm64-release`, which additionally stamps the app
+> version. Melos is not part of this package, so install it first with
+> `dart pub global activate melos`.
 
 ### 🧪 Running Tests
 
@@ -145,7 +153,7 @@ dart analyze .
 ### 1️⃣ Build the app
 
 ```shell
-melos build-panel-arm64-release
+dart run flutterpi_tool build --arch=arm64 --release
 ```
 
 ### 2️⃣ Transfer the app to your Pi
