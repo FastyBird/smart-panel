@@ -19,6 +19,7 @@ import { ClientUserDto } from '../dto/client-user.dto';
 import { CommandMessageDto } from '../dto/command-message.dto';
 import { CommandEventRegistryService } from '../services/command-event-registry.service';
 import { WsAuthService } from '../services/ws-auth.service';
+import { WebsocketNotAllowedException } from '../websocket.exceptions';
 
 import { WebsocketGateway } from './websocket.gateway';
 
@@ -30,7 +31,22 @@ describe('WebsocketGateway', () => {
 
 	const mockServer = {
 		emit: jest.fn(),
+		use: jest.fn(),
 	} as unknown as Server;
+
+	/** Runs the handshake middleware the gateway registered and reports what it passed to next(). */
+	const runHandshakeMiddleware = async (socket: Socket): Promise<Error | undefined> => {
+		gateway.afterInit();
+
+		const middleware = (mockServer.use as jest.Mock).mock.calls[0][0] as (
+			socket: Socket,
+			next: (err?: Error) => void,
+		) => void;
+
+		return new Promise<Error | undefined>((resolve) => {
+			middleware(socket, (err?: Error) => resolve(err));
+		});
+	};
 
 	const mockClientUser: ClientUserDto = {
 		id: null,
@@ -116,12 +132,53 @@ describe('WebsocketGateway', () => {
 		it('should not throw when the gateway starts', () => {
 			expect(() => gateway.afterInit()).not.toThrow();
 		});
+
+		it('should register a handshake middleware', () => {
+			gateway.afterInit();
+
+			expect(mockServer.use).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('handshake authentication', () => {
+		it('should admit a client with valid credentials', async () => {
+			jest.spyOn(wsAuthService, 'validateClient').mockResolvedValue(true);
+
+			await expect(runHandshakeMiddleware(mockSocket)).resolves.toBeUndefined();
+
+			expect(mockSocket.disconnect).not.toHaveBeenCalled();
+		});
+
+		it('should refuse a client with no credentials before it is admitted', async () => {
+			jest.spyOn(wsAuthService, 'validateClient').mockResolvedValue(false);
+
+			const error = await runHandshakeMiddleware(mockSocket);
+
+			expect(error).toBeInstanceOf(Error);
+			// The panel classifies an auth failure by matching the message, so the wording is
+			// part of the contract rather than cosmetic.
+			expect(error?.message.toLowerCase()).toContain('unauthorized');
+
+			// Refusing during the handshake means the socket is never admitted, so there is
+			// nothing to disconnect and no room to leave.
+			expect(mockSocket.disconnect).not.toHaveBeenCalled();
+			expect(mockSocket.join).not.toHaveBeenCalled();
+		});
+
+		it('should refuse a client whose token validation throws', async () => {
+			jest
+				.spyOn(wsAuthService, 'validateClient')
+				.mockRejectedValue(new WebsocketNotAllowedException('Invalid or expired token'));
+
+			const error = await runHandshakeMiddleware(mockSocket);
+
+			expect(error).toBeInstanceOf(Error);
+			expect(mockSocket.join).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('handleConnection', () => {
 		it('should log when a client connects and join the default room', async () => {
-			jest.spyOn(wsAuthService, 'validateClient').mockResolvedValue(true);
-
 			const logSpy = jest.spyOn(Logger.prototype, 'log');
 
 			await gateway.handleConnection(mockSocket);
@@ -133,22 +190,13 @@ describe('WebsocketGateway', () => {
 			expect(mockSocket.join).toHaveBeenCalledWith('default-room');
 		});
 
-		it('should disconnect an unauthorized client without admitting it', async () => {
-			// validateClient resolves false when the handshake carries no token at all - an
-			// invalid one throws instead - so this is the plain unauthenticated connection.
-			jest.spyOn(wsAuthService, 'validateClient').mockResolvedValue(false);
-
-			const logSpy = jest.spyOn(Logger.prototype, 'log');
+		it('should not re-authenticate a client the handshake already cleared', async () => {
+			const validateSpy = jest.spyOn(wsAuthService, 'validateClient');
 
 			await gateway.handleConnection(mockSocket);
 
-			expect(mockSocket.disconnect).toHaveBeenCalled();
-			expect(mockSocket.join).not.toHaveBeenCalled();
-			expect(logSpy).not.toHaveBeenCalledWith(
-				`[WebsocketGateway] Client connected: ${mockSocket.id}`,
-				expect.anything(),
-			);
-			expect(eventEmitter.emit).not.toHaveBeenCalled();
+			expect(validateSpy).not.toHaveBeenCalled();
+			expect(eventEmitter.emit).toHaveBeenCalled();
 		});
 	});
 

@@ -77,24 +77,50 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		return this.server?.of('/')?.adapter?.rooms?.get(room)?.size ?? 0;
 	}
 
-	afterInit(): void {
+	afterInit(server?: Server): void {
+		const io = server ?? this.server;
+
+		// Authenticate during the handshake, before the namespace sends its CONNECT packet.
+		//
+		// Refusing from handleConnection instead admits the socket first and only then kicks it,
+		// because socket.io emits `connection` after CONNECT has already gone out. The client
+		// therefore sees `connect` followed by `disconnect` and cannot tell a refusal from a
+		// dropped link without waiting to see what happens next. Refusing here surfaces as
+		// `connect_error`, which says what it means and arrives before the client is ever admitted.
+		io?.use((client: Socket, next: (err?: Error) => void): void => {
+			this.wsAuthService
+				.validateClient(client)
+				.then((isAllowed): void => {
+					if (!isAllowed) {
+						this.logger.warn(`Unauthorized client is trying to connect: ${client.handshake?.headers.host}`);
+
+						next(new WebsocketNotAllowedException('Unauthorized'));
+
+						return;
+					}
+
+					next();
+				})
+				.catch((error: unknown): void => {
+					const err = error as Error;
+
+					this.logger.warn(
+						`Unauthorized client is trying to connect: ${client.handshake?.headers.host}, ${err.message}`,
+					);
+
+					// Deliberately not forwarding err.message: the client only needs to know it was
+					// refused, and the reason is already in the log.
+					next(new WebsocketNotAllowedException('Unauthorized'));
+				});
+		});
+
 		this.logger.debug('Websockets gateway started');
 	}
 
+	// Only reached by clients the handshake middleware in afterInit already cleared, so this
+	// admits rather than authenticates.
 	async handleConnection(client: Socket): Promise<void> {
 		try {
-			const isAllowed = await this.wsAuthService.validateClient(client);
-
-			if (!isAllowed) {
-				this.logger.warn(`Unauthorized client is trying to connect: ${client.handshake?.headers.host}`);
-
-				client.disconnect();
-
-				// Without this the rejected client carried on into the admission below: it joined
-				// the broadcast rooms, logged itself as connected and raised CLIENT_CONNECTED.
-				return;
-			}
-
 			this.logger.log(`Client connected: ${client.id}`);
 
 			await client.join(CLIENT_DEFAULT_ROOM);
@@ -124,7 +150,9 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.warn(`Unauthorized client is trying to connect: ${client.handshake?.headers.host}, ${err.message}`);
+			// Authentication is settled before we get here, so anything failing now is the
+			// admission itself - joining a room or announcing the client.
+			this.logger.error(`Admitting client failed: ${client.id}, ${err.message}`);
 
 			client.disconnect();
 		}
