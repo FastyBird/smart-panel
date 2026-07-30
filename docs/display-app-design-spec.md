@@ -786,8 +786,8 @@ A page whose entire body is one device's detail screen (§12).
 | **Device preview** | Button tile: device icon (tile icon → device icon → category icon), device name as title, and a centred row of the tile's data-source values as subtitle | Body tap → device detail route. Icon tap → toggle on/off (only when the device exposes an on-state); failure raises an error toast. Renders an info-tinted spinner card while the device is unknown. |
 | **Scene** | Card with a 32 icon (default `movie-open`), label, and status line. When on: elevation 4, primary `light8` fill, 2 px primary border, bold label | ⚠️ **None — the tile is read-only today.** It has no tap handler and cannot trigger its scene. It reflects state only. |
 | **Time** | DIN1451 clock at 90 (bold, `height 0.95`) over a 25 date, left-aligned, auto-shrinking to fit | — |
-| **Weather (current)** | Condition icon, temperature, feels-like, humidity, wind, precipitation, UV, cloud cover | Tap → **weather detail page** (only when weather data is present) |
-| **Weather (forecast)** | Multi-day: highs/lows, precipitation probability, wind | Tap → **weather detail page** |
+| **Weather (current)** | ⚠️ Just three things: **condition icon, temperature (with unit symbol), and the condition description.** Nothing else — no feels-like, humidity, wind, precipitation, UV or cloud cover. Those exist in the weather *data* but no tile renders them; putting them on the tile is new functionality. | Tap → **weather detail page** (only when weather data is present) |
+| **Weather (forecast)** | ⚠️ Per day: **short weekday name, condition icon, and two temperatures** — a day average (morning+day) and a night average (evening+night), each with its unit symbol. No precipitation probability and no wind. | Tap → **weather detail page** |
 
 ---
 
@@ -1086,7 +1086,7 @@ The pattern that holds across the rich screens is that continuous/slider values 
 |---|---|---|
 | **Media *domain view*** transport (play / pause / stop) | The displayed playback state flips **immediately** and socket truth is suppressed for 3 s, after which the device is re-read. But the command is fire-and-forget: it is not awaited, there is **no failure branch and no rollback**, and the buttons stay **tappable** throughout. | An **immediate active-state change** on the transport buttons — nothing more. No lock, no spinner, no disabled state, no rollback animation: the implementation cannot drive any of them. |
 | **Room-overview card** media buttons | Direct property write. No flip, no suppression, no lock — nothing changes until real state arrives (§8.1). | No pending affordance at all. |
-| Everything in the settling table above | The shared optimistic state machine | Full locked/pending + rollback. |
+| Everything else in the settling table above — i.e. **every row except Media** | The shared optimistic state machine | Full locked/pending + rollback. |
 
 ---
 
