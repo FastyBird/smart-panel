@@ -94,6 +94,8 @@ import { DEVICES_WLED_PLUGIN_PREFIX } from './plugins/devices-wled/devices-wled.
 import { DevicesWledPlugin } from './plugins/devices-wled/devices-wled.plugin';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX } from './plugins/devices-zigbee2mqtt/devices-zigbee2mqtt.constants';
 import { DevicesZigbee2mqttPlugin } from './plugins/devices-zigbee2mqtt/devices-zigbee2mqtt.plugin';
+import { DEVICES_ZIGBEE_HERDSMAN_PLUGIN_PREFIX } from './plugins/devices-zigbee-herdsman/devices-zigbee-herdsman.constants';
+import { DevicesZigbeeHerdsmanPlugin } from './plugins/devices-zigbee-herdsman/devices-zigbee-herdsman.plugin';
 import { InfluxV1Plugin } from './plugins/influx-v1/influx-v1.plugin';
 import { InfluxV2Plugin } from './plugins/influx-v2/influx-v2.plugin';
 import { LoggerRotatingFilePlugin } from './plugins/logger-rotating-file/logger-rotating-file.plugin';
@@ -324,6 +326,10 @@ export class AppModule {
 								module: DevicesWledPlugin,
 							},
 							{
+								path: DEVICES_ZIGBEE_HERDSMAN_PLUGIN_PREFIX,
+								module: DevicesZigbeeHerdsmanPlugin,
+							},
+							{
 								path: DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX,
 								module: DevicesZigbee2mqttPlugin,
 							},
@@ -427,6 +433,7 @@ export class AppModule {
 				DevicesShellyNgPlugin,
 				DevicesShellyV1Plugin,
 				DevicesWledPlugin,
+				DevicesZigbeeHerdsmanPlugin,
 				DevicesZigbee2mqttPlugin,
 				SimulatorPlugin,
 				PagesCardsPlugin,
