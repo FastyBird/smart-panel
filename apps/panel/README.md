@@ -86,7 +86,7 @@ lib/
 
 ```shell
 git clone https://github.com/fastybird/smart-panel.git
-cd apps/panel
+cd smart-panel/apps/panel
 ```
 
 ### 2️⃣ Install Dependencies
@@ -158,14 +158,22 @@ dart run flutterpi_tool build --arch=arm64 --release
 
 ### 2️⃣ Transfer the app to your Pi
 
+Recreate the destination first, then copy the bundle's **contents** into it.
+Copying the directory itself would nest it on every redeploy
+(`smart-panel/aarch64-generic`), leaving the Pi running the previous build:
+
 ```shell
-scp -r build/flutter-pi/aarch64-generic pi@raspberrypi:/home/pi/smart-panel
+ssh pi@raspberrypi 'rm -rf ~/smart-panel && mkdir -p ~/smart-panel'
+scp -r build/flutter-pi/aarch64-generic/. pi@raspberrypi:~/smart-panel/
 ```
 
 ### 3️⃣ Run on Raspberry Pi
 
+The bundle ships its own `flutter-pi` binary, so you can run either the one
+you copied or a system-wide install:
+
 ```shell
-flutter-pi /home/pi/smart-panel
+flutter-pi --release ~/smart-panel
 ```
 
 ## 👨‍💻 Contributing
