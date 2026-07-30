@@ -438,7 +438,15 @@ Behind all of this, a **background retry pings the known backend every 5 s** and
 
 ### 7.3 Space selection
 
-Shown when the display is registered but `spaceId == null`. Title, "N spaces available", a selectable list of spaces (icon + name), and a *Confirm* button. Has its own **empty state** (no spaces configured yet) and **saving state** (spinner + "saving…").
+Shown when the display is registered but `spaceId == null`.
+
+⚠️ **It is a *room* picker, not a space picker.** It reads the rooms getter, which filters to `type == room` and sorts by display order — zones and the synthetic master / entry / signage spaces are never listed. Consequences:
+
+- The **empty state means "no *rooms* configured"**, and it appears even when the installation has plenty of zones or synthetic spaces.
+- A display intended for a zone, master, entry or signage space **cannot be assigned from the panel at all** — that assignment has to be made in the Admin. Worth knowing before designing this screen as a general-purpose space chooser.
+- With exactly **one** room the screen pre-selects it, so the user only has to confirm.
+
+Content: title, "N rooms available", a selectable list of rooms (icon + name), and a *Confirm* button. Also has a **saving state** (spinner + "saving…").
 
 ### 7.4 Where failures actually surface
 
@@ -1281,7 +1289,7 @@ For the new design to be droppable onto the current app, please deliver:
 - [ ] Lights, Climate, Shading, Media (all 6 body states), Sensors, Energy
 - [ ] Security (all three tabs)
 - [ ] Master overview · Entry overview · Signage panel
-- [ ] Tiles page · Cards page · the four tile widgets
+- [ ] Tiles page · Cards page · **all five rendered tile variants** — device preview, scene, time, weather *current*, weather *forecast* (weather is one plugin but two distinct layouts, so it needs two designs)
 - [ ] Device detail: one rich example (lighting), one media example, the **tier-2 placeholder** shell, and the generic fallback
 - [ ] Settings: general grid + each sub-page
 - [ ] Buddy chat (empty / typing / error) + voice indicator + voice overlay
