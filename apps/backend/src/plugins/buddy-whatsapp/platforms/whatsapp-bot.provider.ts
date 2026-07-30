@@ -188,9 +188,13 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 	 * Instead we just close the connection and delete the local auth state —
 	 * the old server-side session will expire on its own.
 	 */
-	logout(): void {
-		// stopBot swallows its own close failure, so this cannot reject.
-		void this.stopBot();
+	async logout(): Promise<void> {
+		// Must finish closing before restarting. stopBot sets the state to 'stopping' up front,
+		// and the manager's stopService() returns early for that state while startService() does
+		// not - so a fire-and-forget close lets a new socket start underneath, and the old close
+		// then resolves and overwrites the new connection's status and QR with DISCONNECTED.
+		// It would also race the auth directory deletion below.
+		await this.stopBot();
 
 		// Clear auth state so a fresh QR code is generated on next start
 		const authDir = join(process.cwd(), WHATSAPP_AUTH_DIR);
