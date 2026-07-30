@@ -7,6 +7,7 @@ eslint-disable @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
+import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -365,5 +366,64 @@ describe('ShellyNgService', () => {
 		// Access the private config getter by triggering a method that uses it
 		// This would normally be done by PluginServiceManagerService
 		expect(svc.getState()).toBe('started');
+	});
+
+	describe('mDNS discovery errors', () => {
+		const startService = async (): Promise<void> => {
+			const moduleRef = await Test.createTestingModule({
+				providers: [
+					ShellyNgService,
+					{ provide: ConfigService, useFactory: () => mockConfigService(pluginConfigEnabled) },
+					{ provide: DatabaseDiscovererService, useFactory: mockDbDiscoverer },
+					{ provide: DelegatesManagerService, useFactory: mockDelegates },
+					{ provide: DevicesService, useFactory: () => mockDevicesService() },
+					{ provide: DeviceManagerService, useValue: mockDeviceManagerService },
+					{ provide: DeviceConnectivityService, useValue: mockDeviceConnectivityService },
+					{ provide: PluginServiceManagerService, useValue: mockPluginServiceManager },
+					{ provide: ShellyWsServerService, useValue: mockWsServer },
+				],
+			}).compile();
+
+			svc = moduleRef.get(ShellyNgService);
+
+			await svc.start();
+		};
+
+		const emitDiscovererError = (message: string): void => {
+			const ds9 = require('shellies-ds9');
+
+			const discoverer = ds9.__testing.mdnsInstances[0] as { listeners: Record<string, ((error: Error) => void)[]> };
+
+			for (const listener of discoverer.listeners['error'] ?? []) {
+				listener(new Error(message));
+			}
+		};
+
+		test.each([['Cannot decode name (bad label)'], ['Cannot decode name (bad pointer)']])(
+			'reports %s at debug level, since it comes from other devices on the network',
+			async (message) => {
+				const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+				const debugSpy = jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
+
+				await startService();
+
+				emitDiscovererError(message);
+
+				// The packet is not ours to parse - any mDNS speaker on the network can produce it,
+				// so it must not surface as a warning about the Shelly plugin.
+				expect(warnSpy).not.toHaveBeenCalled();
+				expect(debugSpy).toHaveBeenCalled();
+			},
+		);
+
+		test('still reports a genuine discovery failure at error level', async () => {
+			const errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+
+			await startService();
+
+			emitDiscovererError('EADDRINUSE: address already in use');
+
+			expect(errorSpy).toHaveBeenCalled();
+		});
 	});
 });

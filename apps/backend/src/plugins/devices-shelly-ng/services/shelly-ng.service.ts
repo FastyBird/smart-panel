@@ -283,9 +283,13 @@ export class ShellyNgService extends BaseManagedPluginService {
 				this.shellies.registerDiscoverer(discoverer);
 
 				discoverer.on('error', (error: Error): void => {
-					// Malformed mDNS packets from other devices on the network are expected noise
+					// mDNS is a shared multicast bus: we receive every announcement on the network,
+					// not just Shelly ones, and any speaker with a quirky encoder produces packets
+					// the decoder rejects. There is nothing to act on and nothing wrong with this
+					// plugin, so it belongs at debug - kept rather than dropped because it is still
+					// the first thing worth looking at when discovery misbehaves.
 					if (/bad label|cannot decode/i.test(error.message)) {
-						this.logger.warn('Received malformed mDNS packet (non-Shelly device on network)', {
+						this.logger.debug('Ignoring malformed mDNS packet from another device on the network', {
 							message: error.message,
 						});
 					} else {
