@@ -95,7 +95,9 @@ before linting, so verifying against an already-generated spec misses it entirel
 
 ## 5. Result
 
-All 186 original advisories are cleared, along with the follow-up round.
+All 186 original advisories are cleared, along with the follow-up round - with one
+caveat on `brace-expansion` recorded in §6: the dependency is patched, but the alert stays open
+until the advisory metadata catches up.
 
 ### The website was never blocked by `next`
 
@@ -139,4 +141,17 @@ backports, not an unpatched dependency — worth confirming before anyone "fixes
 
 ## 6. Follow-up
 
-None outstanding.
+**One alert stays open, and should.** While GHSA-mh99-v99m-4gvg keeps its single `<= 5.0.7`
+affected range, Dependabot will go on classifying the installed 1.1.18 and 2.1.4 as vulnerable no
+matter what those releases contain. So this task cannot both leave them installed and claim a clean
+board — the dependency is patched, the alert is not closed, and those are different statements.
+
+It closes one of two ways:
+
+1. GitHub amends the advisory with per-line ranges (`1.x` → 1.1.18, `2.x` → 2.1.4), after which the
+   alert clears on its own; or
+2. someone dismisses it explicitly as `tolerable_risk`, citing the backport evidence in §5.
+
+What must **not** happen is forcing `brace-expansion` 5.x under consumers that declare `^1` or
+`^2`, purely to make the counter read zero. That trades a fixed dependency for a real
+compatibility risk in order to satisfy a metadata lag.
