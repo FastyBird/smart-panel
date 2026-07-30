@@ -326,7 +326,9 @@ A domain view exists **only when both a device and a configuration exist**. This
 
 While configuration counts are still loading (`null`), the domain is shown if devices exist — this avoids a blank deck during the first seconds after boot. Once loaded, `0` hides the domain.
 
-**Device categories that never generate a domain view:** `alarm`, `door`, `doorbell`, `lock`, `outlet`, `pump`, `robot_vacuum`, `sprinkler`, `switcher`, `valve`, `water_heater`, `terminal`, `generic`. They are reachable only through the Security view, dashboard tiles, or a device detail page.
+**Device categories that never generate a domain view:** `alarm`, `door`, `doorbell`, `lock`, `outlet`, `pump`, `robot_vacuum`, `sprinkler`, `switcher`, `valve`, `water_heater`, `terminal`, `generic`. They are reachable through the Security view, dashboard tiles, or a device detail page.
+
+⚠️ **One exception: Energy is channel-based, not category-based.** Any device — including these "unclassified" ones — that exposes an `electrical_power`, `electrical_energy` or `electrical_generation` channel is counted by `countEnergyDevices` and can bring the room **Energy** domain into the deck. A room whose only devices are metering outlets or switchers therefore gets an Energy page and nothing else.
 
 ---
 
@@ -544,7 +546,7 @@ Per-domain card contents:
 
 Tapping the card body navigates to that domain view. Tapping an action behaves differently per domain:
 
-- **Lights, Climate, Shading** — fire an intent and apply an **optimistic override for up to 5 s** (cleared as soon as the backend agrees, or when it expires). These get the pending treatment.
+- **Lights, Climate, Shading** — fire an intent and swap the **displayed card value** for up to 5 s (cleared as soon as the backend agrees, or when it expires). Note this is a *value override only*: the buttons stay tappable, nothing is locked, and a failure simply drops the override (§17).
 - **Media (play / pause / stop)** — ⚠️ **no optimistic override at all.** They write the playback command straight onto the matching device properties; nothing is locked, nothing is held, and the card only changes once the real state arrives over the socket. Do not design a pending state for these three unless the behaviour is also implemented.
 
 The climate mode action opens a **centred mode dialog**: a 180–220 wide card listing Heat (fire, danger), Cool (snowflake, info), Auto (autorenew, success), Off (power, neutral); each row 8 padded, active row `light9` fill + `light7` border + check mark.
@@ -1027,7 +1029,7 @@ For the five **room domains** it is a **transient/startup state, not a resting o
 
 **Two cases are genuinely persistent, though**, and both need a designed resting state:
 
-1. **The standalone Energy view** — added whenever energy is supported, and it renders its not-configured body whenever no summary is available.
+1. **Either Energy view — standalone *or* room domain.** The standalone one is added whenever energy is supported; the room one is added on `energyDeviceCount` alone. Both render the not-configured body for as long as no summary is available, so this is a resting state in both places, not just the standalone view.
 2. **An auxiliary-only Climate room** — the deck-side check counts any target whose role passes `isActuator`, and that predicate is *not sensor and not hidden*, so an `auxiliary` role (fan, humidifier, dehumidifier, purifier) satisfies it. The Climate page therefore stays in the deck. But the page itself only puts `heatingOnly` / `coolingOnly` / `auto` targets into its actuator list — `auxiliary` targets are routed to the auxiliary-devices sheet instead — so the actuator list is empty and the page renders **not-configured indefinitely**. A room with a smart fan and nothing else lands exactly here.
 
 Design all three variants — but budget effort accordingly: for the ordinary room-domain case this is a sub-second flash worth making calm and non-alarming, whereas the Energy and auxiliary-only-Climate variants can sit on screen forever and deserve a genuinely useful empty state (ideally one that points at the auxiliary devices that *do* exist).
@@ -1061,7 +1063,7 @@ IDLE
 | **Media domain** | playback transport (play / pause / stop) | **3 s** — but this is *not* the state machine. See the scoping note below: immediate state flip + socket suppression only. |
 | **Climate domain** | setpoint | 2500 ms (convergence tolerance ±0.5°) |
 | | mode | 3000 ms |
-| **Room overview** | domain quick actions | optimistic override expires after **5 s**, swept at **6 s** |
+| **Room overview** | domain quick actions (lights / climate / shading) | **value override only**, expiring after **5 s** and swept at **6 s**. Not the state machine — see the levels table below. |
 
 Slider drags are debounced at **300 ms** across lights, shading and climate before a command is sent.
 
@@ -1079,15 +1081,16 @@ The pattern that holds across the rich screens is that continuous/slider values 
 
 **Design requirement — scoped to the controls that run the shared state machine**: those device-detail controls that call `setPending`/`setSettling`, plus the lights / shading / climate domain and role controls. Those get the full treatment — locked/pending appearance *and* a defined rollback. Each of those needs a visible locked/pending treatment and a defined rollback appearance. Today that is expressed mostly by disabled styling and by the value simply showing the desired number; a redesign is free to make it richer but must not remove it.
 
-**Do not add pending states to direct-write controls.** Some actions bypass every optimistic path and change nothing until real state arrives over the socket. Giving those a pending treatment would show feedback the implementation cannot honour.
+**Feedback comes in four levels, not two.** Some actions bypass every optimistic path and change nothing until real state arrives over the socket; others update a value but never lock. Giving any of them a treatment richer than they support would show feedback the implementation cannot honour.
 
-⚠️ **Media has three different levels of feedback — do not flatten them:**
+⚠️ **The four levels — do not flatten them:**
 
 | Control | What it actually does | What to design |
 |---|---|---|
 | **Media *domain view*** transport (play / pause / stop) | The displayed playback state flips **immediately** and socket truth is suppressed for 3 s, after which the device is re-read. But the command is fire-and-forget: it is not awaited, there is **no failure branch and no rollback**, and the buttons stay **tappable** throughout. | An **immediate active-state change** on the transport buttons — nothing more. No lock, no spinner, no disabled state, no rollback animation: the implementation cannot drive any of them. |
 | **Room-overview card** media buttons | Direct property write. No flip, no suppression, no lock — nothing changes until real state arrives (§8.1). | No pending affordance at all. |
-| Everything else in the settling table above — i.e. **every row except Media** | The shared optimistic state machine | Full locked/pending + rollback. |
+| **Room-overview** quick actions (lights / climate / shading) | `_setOptimistic` swaps the **displayed card value** for up to 5 s. The buttons stay tappable, nothing is locked, and a failure just drops the override. | An **updated value** on the card. No lock, no disabled state, no rollback animation. |
+| Everything else in the settling table above — i.e. **every row except Media and Room overview** | The shared optimistic state machine | Full locked/pending + rollback. |
 
 ---
 
@@ -1187,7 +1190,7 @@ These are the shapes a designer should mock, because they are what actually ship
 *Deck:* `Room overview · Security` — because no roles/bindings exist yet, so no domain views qualify.
 *Room overview:* ⚠️ **not** the empty state — it still shows domain cards for Lights, Climate, Shading and Media, and those cards are **dead ends**. The overview rebuilds its own `DomainCounts` from the raw device categories and does **not** pass the loaded target/binding counts, so they stay `null` and `hasDomain` returns true for anything with a device. Tapping such a card fires a navigation event for a deck item that `DeckService` has already removed, the lookup returns −1, and nothing happens.
 
-The success-icon empty state ("Nothing to control here") only appears when the room has **no domain-classified devices at all** — not merely when nothing is configured.
+The success-icon empty state ("Nothing to control here") is driven by **`no domain cards AND no qualifying scenes`** — not by "no domains". Because Sensors and Energy never produce cards (§8.1), a room with *only* sensors and/or energy devices and no triggerable scenes shows the empty state **while its status strip still displays sensor and energy pills**. Design that combination deliberately: a success message sitting above live readings looks wrong if the two are drawn without reference to each other.
 If the installer assigns light roles in the Admin, a Lights view appears **live** without restarting the panel, and until the first fetch completes it may briefly show the *not-configured* state with the header intact.
 
 ### E. Panel that lost its backend
@@ -1212,7 +1215,9 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
   **Do not design an AM/PM clock treatment on the assumption it can be dropped in.** If 12-hour support is wanted, say so explicitly — it is engineering work in all four places (and an AM/PM affix needs a designed slot, especially in the flip clock). Dates *are* properly localised everywhere except the signage panel.
 - **Number format:** `comma_dot` (`1,234.56`), `dot_comma` (`1.234,56`), `space_comma` (`1 234,56`), `none`. Selectable in Settings › Language with a "System default" option.
 - **Units** (each independently overridable per display, with a "system default" option):
-  - Temperature: Celsius / Fahrenheit — also changes the ± step (0.5 °C vs 1 °F) and the setpoint rounding. ⚠️ **Not applied by the room sky panel** (§8.1), which renders the provider value with a bare `°`.
+  - Temperature: Celsius / Fahrenheit — changes the setpoint rounding, and changes the ± step **in the Climate domain hero only** (0.5 °C vs 1 °F). Two exceptions:
+    - ⚠️ The **room-overview Climate `−`/`+`** actions always add or subtract a fixed **1.0 °C**, converting only for display — so on a Fahrenheit panel they move the setpoint by 1.8 °F, not 1 °F.
+    - ⚠️ The **room sky panel** ignores the override entirely (§8.1), rendering the provider value with a bare `°`.
   - Wind speed: m/s, km/h, mph, knots
   - Pressure: hPa, mbar, inHg, mmHg
   - Precipitation: mm, inches
@@ -1232,7 +1237,7 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
 2. **Three size classes** (small / medium / large) per orientation, with real layout differences at each.
 3. **Touch-only.** No hover states, no right-click, no keyboard shortcuts. Minimum comfortable target ≈ 40–44 px at the DPR-2 baseline (current nav pills are 36–40 and are already at the low end — increasing them is welcome).
 4. **Both themes.** Dark mode is not an inversion: the `lightN` steps flip direction. Supply both.
-5. **Six states per screen** (§17), plus a locked/pending + rollback treatment for the controls that run the **shared state machine** — *not* for everything in the settling table. Media transport is in that table but supports only an **immediate active-state change** (no lock, no rollback), and the room-card media buttons support nothing at all. See the three-level table in §17 before designing any media feedback.
+5. **Six states per screen** (§17), plus a locked/pending + rollback treatment for the controls that run the **shared state machine** — *not* for everything in the settling table. Media transport supports only an **immediate active-state change**, room-overview quick actions only a **value swap**, and the room-card media buttons nothing at all. See the four-level table in §17 before designing any feedback.
 6. **Everything is conditional** (§18). Mock the sparse variants, not just the full one.
 7. **Bundled assets only.** No web fonts, no remote imagery. New icon needs should map to Material Design Icons or ship as vectors.
 8. **Performance:** Raspberry Pi class GPU. Avoid multiple stacked `BackdropFilter`s, large blurs, per-frame custom painting outside the existing sky/charts/ring, and long shadow chains.
@@ -1255,7 +1260,7 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
 - **All clocks are 24-hour, and the timezone setting is unwired**; both are surfaced in Settings › Language but consumed by nothing (§20).
 - **The sky panel ignores the temperature-unit override**, rendering a bare `°` while the weather tiles and detail page convert correctly (§8.1).
 - **Master** and **Entry** overviews still use the older `AppTopBar` + ad-hoc cards idiom rather than the newer `PageHeader` + `HeroCard` design language used by the room and domain views. They look visibly older.
-- **Climate Auto mode** is intentionally disabled pending a dual-setpoint control.
+- **Climate Auto mode is disabled in the Climate *domain view* only**, pending a dual-setpoint control. The **room-overview** climate mode dialog still offers Auto and applies it (§8.1) — so the two surfaces disagree about whether Auto exists.
 - **Auxiliary-only Climate rooms are a dead end** (§17): the deck keeps the page because `isActuator` accepts the `auxiliary` role, but the page has no actuators to show, so it renders not-configured forever while the fan/humidifier it *does* have sits unreachable behind the auxiliary sheet.
 - **The Security screen has no arm/disarm control** — its selector is a tab switcher and the only write action is acknowledging alerts.
 - **The room overview and the deck disagree about which domains exist.** The deck hides a domain once its target/binding count loads as `0`, but the overview rebuilds counts from raw device categories without those numbers, so it keeps rendering a card for the hidden domain. The card then navigates nowhere. Any redesign of the room overview should assume this gets fixed — do not design around the dead card.
