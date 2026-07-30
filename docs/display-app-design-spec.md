@@ -1070,6 +1070,8 @@ SETTLING (still locked; waiting for the real value to match)
 
 So design MIXED as a state that usually resolves on the next update, but **must not assume it will** — the grouped case can stick.
 
+⚠️ **Climate does not roll back on failure.** Lights and shading call `setIdle` on a failed dispatch (15 and 3 call sites respectively) and release the control. The climate view calls it **zero** times: `_setMode` discards the returned future entirely, and both setpoint paths only surface an offline alert via `showOfflineAlertIfNeededForClimate`. A failed climate command therefore leaves the control **locked on the optimistic value** until the settling window expires and it ages into MIXED. So for climate specifically, the "rollback" half of level 1 does not exist — design the failure path as *offline alert + value stays put*, not as a revert.
+
 It needs its own presentation regardless: something that reads as *"we asked, we never heard back"* rather than either a confirmed value or a still-in-flight spinner. Today it is visually indistinguishable from SETTLING, which is arguably the single biggest gap in the current control feedback.
 
 **Settling windows differ per subsystem — there is no single global value.** This matters for design because it sets how long a pending treatment stays on screen, and a device-detail control settles more than twice as fast as a room-level one:
@@ -1081,7 +1083,7 @@ It needs its own presentation regardless: something that reads as *"we asked, we
 | **Lights domain** | brightness / hue / saturation / colour temp / white | 2000 ms |
 | | on/off | 3000 ms |
 | | mode (off/work/relax/night) | 3000 ms |
-| | role toggle | 2500 ms |
+| | role toggle | ⚠️ **3000 ms, not the 2500 ms the constant suggests.** A role-toggle state machine *is* configured with a 2500 ms window, but nothing ever calls `setPending` on it — it is dead configuration. Both real paths (the landscape role-tile icon and the hero/sheet toggle) use a **local pending flag** cleared by a timer of `onOffSettlingWindowMs` = **3000 ms** |
 | **Shading domain** | position | 2000 ms |
 | | mode (open/daylight/privacy/closed) | 3000 ms |
 | **Media domain** | playback transport (play / pause / stop) | **3 s** — but this is *not* the state machine. See the scoping note below: immediate state flip + socket suppression only. |
@@ -1109,7 +1111,7 @@ The pattern that holds across the rich screens is that continuous/slider values 
 
 | Control | What it actually does | What to design |
 |---|---|---|
-| **1 — Shared state machine.** Device-detail controls that call `setPending`/`setSettling`, and the lights / shading / climate **domain and role** controls | Locks the control and tracks the desired value. On convergence → IDLE; **on timeout → MIXED, which stays locked** (see above); on failure → rollback | Full **locked/pending appearance + rollback**, **plus a distinct MIXED / "never confirmed" state**. |
+| **1 — Shared state machine.** Device-detail controls that call `setPending`/`setSettling`, and the lights / shading / climate **domain and role** controls | Locks the control and tracks the desired value. On convergence → IDLE; **on timeout → MIXED, which stays locked** (see above); on failure → rollback — ⚠️ **except Climate, see below** | Full **locked/pending appearance + rollback**, **plus a distinct MIXED / "never confirmed" state**. |
 | **2 — Sheet toggles.** The single-light toggle in the lights role sheet; the device toggle in the climate auxiliary sheet | Calls `setPending`/`setSettling` **and** installs a 5 s `createLocalOverlay`, but ⚠️ **the tile never consults `isLocked`** — `onIconTap` is nulled only for *offline* devices. So the state entry changes which value is displayed and nothing more. The command result is also discarded and `setSettling` runs unconditionally, so there is no rollback | **Immediate value change, control stays tappable.** No lock, no disabled state, no rollback — the tile can be tapped again mid-flight. Do **not** design a locked treatment here, however brief. |
 | **3 — Media domain transport** (play / pause / stop) | The displayed playback state flips **immediately** and socket truth is suppressed for 3 s, after which the device is re-read. Fire-and-forget: not awaited, **no failure branch, no rollback**, buttons stay **tappable** | An **immediate active-state change** — nothing more. No lock, no spinner, no disabled state, no rollback animation. |
 | **4 — Room-overview quick actions** (lights / climate / shading) | `_setOptimistic` swaps the **displayed card value** for up to 5 s. Buttons stay tappable, nothing locks, a failure just drops the override | An **updated value** on the card. No lock, no disabled state, no rollback animation. |
@@ -1292,6 +1294,7 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
 - **Master** and **Entry** overviews still use the older `AppTopBar` + ad-hoc cards idiom rather than the newer `PageHeader` + `HeroCard` design language used by the room and domain views. They look visibly older.
 - **Climate Auto mode is disabled in the Climate *domain view* only**, pending a dual-setpoint control. The **room-overview** climate mode dialog still offers Auto and applies it (§8.1) — so the two surfaces disagree about whether Auto exists.
 - **Auxiliary-only Climate rooms are a dead end** (§17): the deck keeps the page because `isActuator` accepts the `auxiliary` role, but the page has no actuators to show, so it renders not-configured forever while the fan/humidifier it *does* have sits unreachable behind the auxiliary sheet.
+- **Climate never rolls back a failed command** — unlike lights and shading it never calls `setIdle`, so a failed mode or setpoint change leaves the control locked on a value the system did not apply, with only a transient offline alert to signal it (§17).
 - **MIXED has no visual identity.** When a control times out without the device confirming, it stays locked showing an unconfirmed value, looking exactly like it is still settling (§17). Users get no signal that the command may not have landed — and for **grouped** device controls that state can persist indefinitely.
 - **The Security screen has no arm/disarm control** — its selector is a tab switcher and the only write action is acknowledging alerts.
 - **The room overview and the deck disagree about which domains exist.** The deck hides a domain once its target/binding count loads as `0`, but the overview rebuilds counts from raw device categories without those numbers, so it keeps rendering a card for the hidden domain. The card then navigates nowhere. Any redesign of the room overview should assume this gets fixed — do not design around the dead card.
