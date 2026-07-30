@@ -66,6 +66,7 @@
       "@eslint/plugin-kit": "^0.3.4",
       "@nestjs/core": "^11.1.18",
       "@nestjs/platform-fastify": "^11.1.24",
+      "@nestjs/swagger": "11.2.6",
       "@protobufjs/utf8": "^1.1.1",
       "@tootallnate/once": "^3.0.1",
       "@types/node": "^24.12.0",

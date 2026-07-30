@@ -84,6 +84,15 @@ Overrides are scoped per major line where a package has several installed
 `uri-js` was aliased to `npm:fast-uri@^3.0.6`, which held `fast-uri` below its patch no matter what
 the direct override said. The alias had to be raised too.
 
+`@nestjs/swagger` is pinned at 11.2.6. The `@nestjs/core` advisory pulls the whole Nest family
+forward, which carried swagger to 11.4.6 — and 11.4 infers an untyped property as `object` rather
+than `string`. That changed the generated spec (`type` became `"type": "object"` with a string
+example, failing `oas3-valid-schema-example`) and the admin types built from it (`type` became
+`Record<string, never>`, breaking `vue-tsc`). Swagger has no advisory, so it stays put.
+
+This one only shows up if the spec is regenerated: CI runs `generate:spec && generate:openapi`
+before linting, so verifying against an already-generated spec misses it entirely.
+
 ## 5. Result
 
 **168 of 186 advisories cleared.** What remains, and why:
