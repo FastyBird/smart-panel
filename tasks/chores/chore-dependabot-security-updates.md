@@ -95,27 +95,84 @@ before linting, so verifying against an already-generated spec misses it entirel
 
 ## 5. Result
 
-**168 of 186 advisories cleared.** What remains, and why:
+All 186 original advisories are cleared, along with the follow-up round - with one
+caveat on `brace-expansion` recorded in §6: the dependency is patched, but the alert stays open
+until the advisory metadata catches up.
 
-| package | alerts | why it is left |
-| --- | --- | --- |
-| `next` | 16 | website only, and the website's build breaks on the refreshed tree — see below |
-| `file-type` | 2 | installed at 20.5.0; the only patch is 21.3.1, a major bump on a transitive |
+### The website was never blocked by `next`
 
-`protobufjs@6.8.8` was also refused for the same cross-major reason, but is no longer reachable
-after the 7.x override, so it raises no remaining alert.
+The first attempt deferred `next` because the website's static export broke. That diagnosis was
+wrong, and wrong for a methodological reason worth recording: the bisect ran on a tree where
+`pnpm update -r` had already moved everything, so "pin `next` back and it still fails" only showed
+that *something else* was also broken. Repeating the experiment from a working baseline — one
+override, nothing else touched — the website builds cleanly on `next@15.5.22`.
+
+The lesson is not about `next`. It is that a bisect is only meaningful when a single variable
+moves; bisecting on top of a broken tree cannot identify anything.
+
+### Second round
+
+| package | how |
+| --- | --- |
+| `next` (22 alerts) | override `^15.5.21`; website static export verified green |
+| `file-type` (2 alerts) | by **deleting** an override rather than adding one — see below |
+| `brace-expansion` (1 alert) | per-line: 1.1.18, 2.1.4, 5.0.9 |
+
+### `file-type` was held back by our own override
+
+`file-type` 20.5.0 arrived through `@xhmikosr/decompress`, and the obvious reading was that
+`decompress` needed forcing across a major to reach the plugin versions built for `file-type` 21.
+That reading was wrong. `@xhmikosr/downloader@16.3.0` — already installed, unchanged — declares
+`@xhmikosr/decompress: ^11.1.3`. What actually pinned it to the 10 line was an override this repo
+added in the previous round, when a critical advisory required `>= 10.2.1`:
+
+```json
+"@xhmikosr/decompress": "^10.2.1"
+```
+
+That override outlived its purpose and became the thing holding a vulnerable `file-type`
+underneath it. Deleting it lets `decompress` resolve to 11.1.3 naturally, which is what its parent
+asked for all along, drags `file-type` to 21.x, and still satisfies the original `>= 10.2.1`
+advisory. One fewer override, not one more.
+
+Worth generalising: a version override is a claim about a moment. Left in place it keeps asserting
+that claim long after the ecosystem has moved past it, and can hold a transitive dependency below
+its own fix. These are worth re-reading whenever they block something, not just adding to.
+
+### A note on the `brace-expansion` alert
+
+GHSA-mh99-v99m-4gvg carries a single range, `<= 5.0.7`, patched in 5.0.8 — so GitHub may keep
+flagging the 1.x and 2.x lines even though they are fixed. They are: 1.1.18, 2.1.4 and 5.0.9 were
+published within seventeen minutes of each other on 2026-07-30, six days after the advisory, and
+diffing 1.1.17 against 1.1.18 shows the backported guard:
+
+```js
+if (length + c.length > maxLength) break
+```
+
+That is the unbounded-expansion fix. If the alert stays open it is advisory metadata lagging the
+backports, not an unpatched dependency — worth confirming before anyone "fixes" it by forcing
+`brace-expansion` 5.x under consumers that ask for `^1`.
 
 ### Verification
 
-- website: `build` exit 0 — the thing the blanket refresh broke
-- backend: `build` exit 0, `lint:js` 0 errors (2 pre-existing warnings), 220 suites / 2847 tests
-- admin: `build` exit 0, `type-check` clean, `lint` exit 0, 223 files / 1408 tests
+- website: `build` exit 0
+- backend: `build` exit 0, spectral clean on a regenerated spec, `lint:js` 0 errors, 220 suites / 2847 tests
+- admin: `build` exit 0, `type-check` clean, 223 files / 1408 tests
 
 ## 6. Follow-up
 
-Two things are deliberately left:
+**One alert stays open, and should.** While GHSA-mh99-v99m-4gvg keeps its single `<= 5.0.7`
+affected range, Dependabot will go on classifying the installed 1.1.18 and 2.1.4 as vulnerable no
+matter what those releases contain. So this task cannot both leave them installed and claim a clean
+board — the dependency is patched, the alert is not closed, and those are different statements.
 
-1. **The website's `next` alerts.** Clearing them means moving the website's dependency tree, which
-   currently breaks its static export. Isolating that needs a bisect of nextra's markdown pipeline
-   (`shiki`, `rehype-*`, `remark-*`), all of which move together.
-2. **`file-type`.** Whoever pulls 20.5.0 has to move to 21.x first.
+It closes one of two ways:
+
+1. GitHub amends the advisory with per-line ranges (`1.x` → 1.1.18, `2.x` → 2.1.4), after which the
+   alert clears on its own; or
+2. someone dismisses it explicitly as `tolerable_risk`, citing the backport evidence in §5.
+
+What must **not** happen is forcing `brace-expansion` 5.x under consumers that declare `^1` or
+`^2`, purely to make the counter read zero. That trades a fixed dependency for a real
+compatibility risk in order to satisfy a metadata lag.
