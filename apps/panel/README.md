@@ -109,16 +109,20 @@ flutter run
 
 ## 📦 Building for Raspberry Pi (flutter-pi)
 
-If deploying to **Raspberry Pi** using flutter-pi, build with:
+If deploying to **Raspberry Pi** using flutter-pi, build the ARM64 bundle with:
 
 ```shell
-flutter build bundle
+melos build-panel-arm64-release
 ```
 
-Then run on the Pi:
+This writes a self-contained flutter-pi bundle to
+`apps/panel/build/flutter-pi/aarch64-generic/` — the Flutter assets plus
+`icudtl.dat`, `libflutter_engine.so` and the `flutter-pi` binary itself.
+
+Then run it on the Pi:
 
 ```shell
-flutter-pi --release /path/to/flutter_assets
+flutter-pi --release /path/to/bundle
 ```
 
 ### 🧪 Running Tests
@@ -140,19 +144,19 @@ dart analyze .
 ### 1️⃣ Build the app
 
 ```shell
-flutter build bundle
+melos build-panel-arm64-release
 ```
 
 ### 2️⃣ Transfer the app to your Pi
 
 ```shell
-scp -r build/flutter_assets pi@raspberrypi:/home/pi/
+scp -r apps/panel/build/flutter-pi/aarch64-generic pi@raspberrypi:/home/pi/smart-panel
 ```
 
 ### 3️⃣ Run on Raspberry Pi
 
 ```shell
-flutter-pi /home/pi/flutter_assets
+flutter-pi /home/pi/smart-panel
 ```
 
 ## 👨‍💻 Contributing
