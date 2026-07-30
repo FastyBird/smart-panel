@@ -1026,7 +1026,7 @@ Every data-backed screen must be designed in **six** states, not one.
 | **Empty** | A neutral or success icon (48–64), a 16/w600 title, a 12 placeholder-coloured description. |
 | **Not configured** | *Distinct from empty.* The **header is still rendered** with the subtitle "not configured", and the body carries a domain-specific icon + title + description (e.g. "No lighting roles assigned"). **Mostly transient** — see the note below. |
 | **Offline (device)** | Tiles invert their two text lines (label becomes primary, "Offline" becomes status) and show a warning badge. Device details dim behind an offline overlay. |
-| **Pending / settling** | See below. |
+| **Pending / settling / mixed** | See below — note **MIXED** is a distinct, potentially permanent "never confirmed" state, not a transient one. |
 
 #### How long the "not configured" state actually lives
 
@@ -1049,10 +1049,18 @@ IDLE (shows the confirmed server value)
 PENDING (shows the desired value; the control is LOCKED)
   ↓ API accepted
 SETTLING (still locked; waiting for the real value to match)
-  ↓ values match, or the settling window expires
-IDLE
+  ├─ values match ─────────────► IDLE (shows confirmed value)
+  └─ window expires ───────────► MIXED  ⚠️
+                                  (STILL LOCKED, still showing the desired
+                                   value — the device never confirmed. Cleared
+                                   only by a later property update that
+                                   converges. Can persist indefinitely.)
   ← on failure: roll back to the previous IDLE value
 ```
+
+⚠️ **MIXED is a fourth state, and it is the one most likely to be missed.** A timeout does **not** return the control to IDLE: both control-state services transition to `mixed`, and both state models count `mixed` as locked. So a device that never confirms leaves its control **locked, displaying a value the hardware may not have applied**, until some later property update happens to converge.
+
+This needs its own presentation — something that reads as *"we asked, we never heard back"* rather than either a confirmed value or a still-in-flight spinner. Today it is visually indistinguishable from SETTLING, which is arguably the single biggest gap in the current control feedback.
 
 **Settling windows differ per subsystem — there is no single global value.** This matters for design because it sets how long a pending treatment stays on screen, and a device-detail control settles more than twice as fast as a room-level one:
 
@@ -1091,8 +1099,8 @@ The pattern that holds across the rich screens is that continuous/slider values 
 
 | Control | What it actually does | What to design |
 |---|---|---|
-| **1 — Shared state machine.** Device-detail controls that call `setPending`/`setSettling`, and the lights / shading / climate **domain and role** controls | Locks the control, tracks the desired value, settles when the real value matches or the window expires, and rolls back on failure | Full **locked/pending appearance + rollback**. |
-| **2 — Sheet toggles.** The single-light toggle in the lights role sheet; the device toggle in the climate auxiliary sheet | Runs the machine **and** installs a 5 s `createLocalOverlay`. But the command result is **discarded** — `setSettling` is called unconditionally — so nothing rolls back on failure, and the overlay keeps forcing the desired value on screen for seconds after the 800 ms lock has released | A **brief lock** (~800 ms), then the value stays put, **unlocked**, until the overlay expires. **No rollback.** Do not hold the lock for the full 5 s, and do not drop the value at 800 ms — both are wrong. |
+| **1 — Shared state machine.** Device-detail controls that call `setPending`/`setSettling`, and the lights / shading / climate **domain and role** controls | Locks the control and tracks the desired value. On convergence → IDLE; **on timeout → MIXED, which stays locked** (see above); on failure → rollback | Full **locked/pending appearance + rollback**, **plus a distinct MIXED / "never confirmed" state**. |
+| **2 — Sheet toggles.** The single-light toggle in the lights role sheet; the device toggle in the climate auxiliary sheet | Calls `setPending`/`setSettling` **and** installs a 5 s `createLocalOverlay`, but ⚠️ **the tile never consults `isLocked`** — `onIconTap` is nulled only for *offline* devices. So the state entry changes which value is displayed and nothing more. The command result is also discarded and `setSettling` runs unconditionally, so there is no rollback | **Immediate value change, control stays tappable.** No lock, no disabled state, no rollback — the tile can be tapped again mid-flight. Do **not** design a locked treatment here, however brief. |
 | **3 — Media domain transport** (play / pause / stop) | The displayed playback state flips **immediately** and socket truth is suppressed for 3 s, after which the device is re-read. Fire-and-forget: not awaited, **no failure branch, no rollback**, buttons stay **tappable** | An **immediate active-state change** — nothing more. No lock, no spinner, no disabled state, no rollback animation. |
 | **4 — Room-overview quick actions** (lights / climate / shading) | `_setOptimistic` swaps the **displayed card value** for up to 5 s. Buttons stay tappable, nothing locks, a failure just drops the override | An **updated value** on the card. No lock, no disabled state, no rollback animation. |
 | **5 — Room-overview card media buttons** | Direct property write. No flip, no suppression, no lock — nothing changes until real state arrives (§8.1) | **No pending affordance at all.** |
@@ -1242,7 +1250,7 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
 2. **Three size classes** (small / medium / large) per orientation, with real layout differences at each.
 3. **Touch-only.** No hover states, no right-click, no keyboard shortcuts. Minimum comfortable target ≈ 40–44 px at the DPR-2 baseline (current nav pills are 36–40 and are already at the low end — increasing them is welcome).
 4. **Both themes.** Dark mode is not an inversion: the `lightN` steps flip direction. Supply both.
-5. **Six states per screen** (§17), plus control feedback matched to the **five-level classification table** in §17 — which is authoritative, while the settling table supplies timings only. Only level 1 gets locked/pending + rollback; levels 2–5 each support strictly less, down to no affordance at all. Never infer a level from the settling table.
+5. **Six states per screen** (§17), plus control feedback matched to the **five-level classification table** in §17 — which is authoritative, while the settling table supplies timings only. Only level 1 gets locked/pending + rollback — **and it also needs a distinct MIXED / "never confirmed" presentation**, which today is indistinguishable from settling. Levels 2–5 each support strictly less, down to no affordance at all. Never infer a level from the settling table.
 6. **Everything is conditional** (§18). Mock the sparse variants, not just the full one.
 7. **Bundled assets only.** No web fonts, no remote imagery. New icon needs should map to Material Design Icons or ship as vectors.
 8. **Performance:** Raspberry Pi class GPU. Avoid multiple stacked `BackdropFilter`s, large blurs, per-frame custom painting outside the existing sky/charts/ring, and long shadow chains.
@@ -1267,6 +1275,7 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
 - **Master** and **Entry** overviews still use the older `AppTopBar` + ad-hoc cards idiom rather than the newer `PageHeader` + `HeroCard` design language used by the room and domain views. They look visibly older.
 - **Climate Auto mode is disabled in the Climate *domain view* only**, pending a dual-setpoint control. The **room-overview** climate mode dialog still offers Auto and applies it (§8.1) — so the two surfaces disagree about whether Auto exists.
 - **Auxiliary-only Climate rooms are a dead end** (§17): the deck keeps the page because `isActuator` accepts the `auxiliary` role, but the page has no actuators to show, so it renders not-configured forever while the fan/humidifier it *does* have sits unreachable behind the auxiliary sheet.
+- **MIXED has no visual identity.** When a control times out without the device confirming, it stays locked showing an unconfirmed value, looking exactly like it is still settling (§17). Users get no signal that the command may not have landed.
 - **The Security screen has no arm/disarm control** — its selector is a tab switcher and the only write action is acknowledging alerts.
 - **The room overview and the deck disagree about which domains exist.** The deck hides a domain once its target/binding count loads as `0`, but the overview rebuilds counts from raw device categories without those numbers, so it keeps rendering a card for the hidden domain. The card then navigates nowhere. Any redesign of the room overview should assume this gets fixed — do not design around the dead card.
 - The **scene tile** (dashboard) uses a raw Material `Card` and does not match `UniversalTile`.
