@@ -7,7 +7,10 @@ on:
 
 concurrency:
   group: production-release-${{ github.ref }}
-  cancel-in-progress: true
+  # Never cancel a running release: npm and GitHub Packages publishes are
+  # irreversible, so killing a run mid-publish would strand a partially
+  # published version that the next run then increments past. Queue instead.
+  cancel-in-progress: false
 
 permissions:
   contents: write
