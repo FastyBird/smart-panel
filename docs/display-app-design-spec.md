@@ -425,7 +425,7 @@ Centred circular progress indicator, 50×50 (scaled). Held for **at least 500 ms
 
 ### 7.2 Backend discovery
 
-A dedicated screen with five sub-states, each laid out separately for portrait and landscape:
+A dedicated screen with **six** sub-states, each laid out separately for portrait and landscape:
 
 1. **Searching** — animated **pulse rings** behind a spinner, title, description, live "N found" counter, and a Cancel button.
 2. **Found** — title + "N found", a selectable list of discovered gateways (name + address), and buttons: *Connect selected*, *Rescan*, *Manual*.
@@ -694,7 +694,7 @@ Same skeleton as Lights, with roles `primary`, `blackout`, `sheer`, `outdoor` (i
 
 The most state-heavy screen. Media is modelled as **activities** (Watch / Listen / Gaming / Background / Off) that map to endpoints.
 
-**Five mutually exclusive body states:**
+**Six mutually exclusive body states:**
 
 | State | Body |
 |---|---|
@@ -787,7 +787,7 @@ A page whose entire body is one device's detail screen (§12).
 
 Opened via the route `/device/{id}`, from device-preview tiles, from domain sheets, and from the security entry-point grid.
 
-**Three tiers.** 30 of the 31 device categories are registered in the detail registry and bring their **own** `Scaffold` + `PageHeader`; only unregistered categories fall through to the shared top bar. The important nuance for a designer is that "registered" does **not** mean "designed" — 12 of those 30 are registered placeholders.
+**Three tiers.** 30 of the 32 device categories are registered in the detail registry and bring their **own** `Scaffold` + `PageHeader`; only unregistered categories fall through to the shared top bar. The important nuance for a designer is that "registered" does **not** mean "designed" — 12 of those 30 are registered placeholders.
 
 | Tier | Shell | Categories | Body |
 |---|---|---|---|
@@ -803,7 +803,7 @@ Shared building blocks:
 
 - **`DevicePortraitLayout`** — scrolling content with gradient edges plus an optional **sticky bottom** panel (used for channel selectors), separated by a 1 px top border.
 - **`DeviceLandscapeLayout`** — main + side composition.
-- **Offline overlay** — a dimming layer over the controls when the device is unreachable.
+- **`DeviceOfflineState`** (in `device_offline_overlay.dart`) — a dimming layer over the controls when the device is unreachable. Used by all 18 rich detail screens; the generic fallback screen uses an *Offline* chip in its `AppTopBar` instead.
 - **Power button** — a shared component for the primary on/off action.
 - **Channels section** — for multi-channel devices, a selector of channels (e.g. a 4-gang dimmer, a two-motor blind).
 - Media devices reuse a common kit: info card, playback card, volume card, source-select card, remote card (D-pad + transport), brightness card, and a playback sheet.
@@ -1143,7 +1143,7 @@ Everything in this table can be absent. **A design that assumes any of it is pre
 | Screen power-off | Enabled **and** screen saver disabled |
 | Inactivity overlay at all | `screenLockDuration > 0`. **Note:** it is registered globally and currently fires on signage displays too (see §8.4) |
 | Deck nav chrome on a signage display | Currently **always** present — signage does not suppress the bottom bar / side dock today (see §8.4) |
-| Device offline indication | Device is unreachable. Two different mechanisms: the **rich** detail screens dim the controls behind a `DeviceOfflineOverlay`, while the **generic fallback** screen shows an *Offline* warning chip in its `AppTopBar` (§12) |
+| Device offline indication | Device is unreachable. Two different mechanisms: the **rich** detail screens dim the controls behind a `DeviceOfflineState` widget (defined in `device_offline_overlay.dart`), while the **generic fallback** screen shows an *Offline* warning chip in its `AppTopBar` (§12) |
 | Role sheet footer (*Sync all* / *Retry*) | The role is mixed, or has offline devices |
 
 ---
