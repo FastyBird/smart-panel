@@ -1304,7 +1304,7 @@ For the new design to be droppable onto the current app, please deliver:
 - [ ] Master overview · Entry overview · Signage panel
 - [ ] Tiles page · Cards page · **all five rendered tile variants** — device preview, scene, time, weather *current*, weather *forecast* (weather is one plugin but two distinct layouts, so it needs two designs)
 - [ ] Device detail: one rich example (lighting), one media example, the **tier-2 placeholder** shell, and the generic fallback
-- [ ] Settings: general grid + each sub-page
+- [ ] Settings: general grid + each sub-page — note **Audio needs three variants** (both sections / speaker-only / microphone-only, §13.4)
 - [ ] Buddy chat (empty / typing / error) + voice indicator + voice overlay
 - [ ] Startup: loading, discovery (all six sub-states), space selection, fatal error
 - [ ] Screen saver + lock screen
