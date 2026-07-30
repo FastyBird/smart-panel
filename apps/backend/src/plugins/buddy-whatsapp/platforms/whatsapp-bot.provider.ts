@@ -91,9 +91,10 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 	 * don't need to re-message after a config change. The maps are in-memory
 	 * and will be garbage-collected on full shutdown anyway.
 	 */
-	// eslint-disable-next-line @typescript-eslint/require-await
 	async stop(): Promise<void> {
-		this.stopBot();
+		// Await the close so the manager does not report the service stopped while the socket
+		// is still open.
+		await this.stopBot();
 	}
 
 	/**
@@ -188,7 +189,8 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 	 * the old server-side session will expire on its own.
 	 */
 	logout(): void {
-		this.stopBot();
+		// stopBot swallows its own close failure, so this cannot reject.
+		void this.stopBot();
 
 		// Clear auth state so a fresh QR code is generated on next start
 		const authDir = join(process.cwd(), WHATSAPP_AUTH_DIR);
@@ -357,16 +359,24 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 		}
 	}
 
-	private stopBot(): void {
+	private async stopBot(): Promise<void> {
 		this.state = 'stopping';
 		this.reconnecting = false;
 		this.reconnectAttempts = 0;
 
 		if (this.socket) {
-			// baileys 7.0.0-rc12 made end() async. Shutdown stays synchronous, so the close is
-			// deliberately not awaited - the socket is dropped either way.
-			void this.socket.end(undefined);
+			const socket = this.socket;
+
+			// Detach first so a slow close cannot be raced by a second stop.
 			this.socket = null;
+
+			// baileys 7.0.0-rc12 made end() async. A rejected close is not worth failing shutdown
+			// over, but it must be caught - an unhandled rejection would take the process down.
+			try {
+				await socket.end(undefined);
+			} catch (error) {
+				this.logger.warn(`Closing the WhatsApp socket failed: ${String(error)}`);
+			}
 		}
 
 		this.status = WhatsAppConnectionStatus.DISCONNECTED;
