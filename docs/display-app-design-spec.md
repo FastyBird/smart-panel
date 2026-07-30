@@ -885,7 +885,7 @@ All interrupts go through one **overlay manager** with a priority stack and thre
 | **overlay** | Dimmed background + a centred modal card |
 | **fullScreen** | A blocking page |
 
-Every overlay declares: an icon, a **colour scheme** (`error` / `warning` / `info` / `success` / `primary`), an optional progress spinner, a title, a message or custom content widget, and a list of **actions** (filled or outlined, each with its own loading state). Overlays may be closable or not. A few overlays bypass the standard layout with a custom builder (lock screen, screen saver).
+Every overlay declares: an icon, a **colour scheme** (`error` / `warning` / `info` / `success` / `primary`), an optional progress spinner, a title, a message or custom content widget, and a list of **actions** (filled or outlined, each with its own loading state). Overlays may be closable or not — but see §15.1 for the catch: the closable flag only produces a dismissal path for `overlay` and `fullScreen` entries, never for banners. A few overlays bypass the standard layout with a custom builder (lock screen, screen saver).
 
 Priority bands: `0–99` informational · `100–199` module (security = 100) · `200–299` core (connection = 200) · `300+` critical. Inactivity sits at 50.
 
@@ -917,13 +917,13 @@ So a design must not assume the user always sees a gentle banner first — an au
 
 On recovery, a **success toast** ("Connected") is shown for 2 s. This includes recovery from the full-screen offline state: by the time the check runs the manager is already `online`, so severity is `none` and the toast is shown, then the full-screen overlay is torn down behind it. A 3 s recovery cooldown suppresses immediate re-warnings; a disconnect during that window is deferred, not dropped.
 
-**Dismissal is not uniform across the three display types.** The renderer only wraps `overlay` and `fullScreen` entries in the tap-to-hide gesture, so:
+**Dismissal is not uniform across the three display types.** The renderer applies the tap-to-hide gesture only to `overlay` and `fullScreen` entries, and only when the entry is flagged closable. For the **connection** overlay specifically:
 
 | Type | Can the user dismiss it? |
 |---|---|
-| **banner** | ❌ **No.** Despite being flagged closable, the banner offers no dismissal path — it renders only its message and the *Retry* action, and there is no close button or tap target. It disappears on its own when the connection state changes. |
+| **banner** | ❌ **No.** Despite being flagged closable, the banner offers no dismissal path — the renderer never wraps banners in the gesture, and the banner itself renders only its message and the *Retry* action. It disappears on its own when the connection state changes. |
 | **overlay** | ✅ Tap to hide — but note the hit area is the **whole screen, including the card itself**. The renderer wraps the entire card in the opaque tap-to-hide gesture and the card installs no absorber, so any tap that is not consumed by an action button dismisses it. If the new design wants the card to be a safe area, that needs an absorber adding. |
-| **fullScreen** | ❌ Not closable by design |
+| **fullScreen** | ❌ Not closable — the connection provider sets `closable: false` here. Note this is a per-entry choice, not a property of the type: the **inactivity** overlay is also `fullScreen` but *is* closable, which is exactly how a tap wakes the panel from the screen saver or lock screen (§15.4). |
 
 If a design adds a close affordance to the banner, that is new behaviour and needs renderer work. When the user does dismiss an overlay, it stays dismissed **until the severity changes**.
 
@@ -1189,7 +1189,7 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
 6. **Everything is conditional** (§18). Mock the sparse variants, not just the full one.
 7. **Bundled assets only.** No web fonts, no remote imagery. New icon needs should map to Material Design Icons or ship as vectors.
 8. **Performance:** Raspberry Pi class GPU. Avoid multiple stacked `BackdropFilter`s, large blurs, per-frame custom painting outside the existing sky/charts/ring, and long shadow chains.
-9. **Immersive kiosk:** no OS chrome; the vertical swipe-down for Settings and the horizontal deck swipe are the only global gestures — do not design a screen that fights them (e.g. a full-page vertical carousel).
+9. **Immersive kiosk:** no OS chrome; the vertical swipe-down for Settings and the horizontal deck swipe are the only *global* gestures (the suggestion toast adds its own local horizontal swipe, §6.5) — do not design a screen that fights them (e.g. a full-page vertical carousel).
 10. **Signage should never blank** — but note this is a *target*, not current behaviour: today a signage display still carries the deck chrome and still runs the idle overlay (§8.4). Design for the intended end state and flag the gap.
 
 **Strong conventions worth keeping**
