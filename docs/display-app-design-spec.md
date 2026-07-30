@@ -299,7 +299,7 @@ A domain view exists **only when both a device and a configuration exist**. This
 | Domain | Requires devices of category… | …**and** configuration |
 |---|---|---|
 | **Lights** | `lighting` | ≥ 1 light target with a role that is not `other`/`hidden` |
-| **Climate** | `thermostat`, `heating_unit`, `air_conditioner`, `fan`, `air_humidifier`, `air_dehumidifier`, `air_purifier` | ≥ 1 climate target with an **actuator** role |
+| **Climate** | `thermostat`, `heating_unit`, `air_conditioner`, `fan`, `air_humidifier`, `air_dehumidifier`, `air_purifier` | ≥ 1 climate target whose role passes `isActuator` — which is defined as *not sensor and not hidden*, so it **also counts `auxiliary`**. See the auxiliary-only trap below. |
 | **Shading** | `window_covering` | ≥ 1 covers target with a role that is not `hidden` |
 | **Media** | `television`, `media`, `speaker`, `av_receiver`, `game_console`, `projector`, `set_top_box`, `streaming_service` | ≥ 1 media **activity binding** |
 | **Sensors** | `sensor`, `camera` | backend reports ≥ 1 **sensor reading** (i.e. sensor roles assigned) |
@@ -370,14 +370,21 @@ Bottom sheet titled **"All pages"**. A responsive `Wrap` of square-ish buttons (
 | **Vertical swipe up** inside Settings | Closes Settings. |
 | **Any tap or pan** | Resets the inactivity timer. |
 | **Tap** | The main selection primitive. There is no long-press and no drag-to-reorder anywhere in the display app. |
-| **Horizontal swipe on the suggestion toast** | The one swipe-to-dismiss in the app: the toast card is wrapped in a horizontal `Dismissible`, and dismissing it reports feedback back to the suggestion provider. Keep this affordance — it is the toast's only dismissal path. |
+| **Horizontal swipe on the suggestion toast** | The one swipe-to-dismiss gesture in the app: the card is wrapped in a horizontal `Dismissible`, and dismissing reports feedback back to the suggestion provider. It is one of **four** dismissal paths — see §6.6. |
 | **Pull to refresh** | Only on the media domain's "no endpoints" state. |
 
 ### 6.6 Persistent floating elements on the deck
 
 - **Buddy FAB** — 48 circle, primary fill, white robot icon 24, shadow (primary @ 30 %, blur 12, y+4). Positioned 16 from the right; bottom = `52 + 8` in portrait (clearing the nav bar), 16 in landscape. **Hidden entirely when the Buddy module is disabled.**
 - **Voice-activation indicator** — centred at the top, 4 px below the top edge. Rendered when the voice-activation service is registered, and **collapses to nothing while its state is `stopped`** — so it is invisible until the wake word is armed. Shows listening / recording (with a countdown) / processing. Independent of the Buddy module.
-- **Suggestion toast** — positioned card that animates in when a proactive suggestion is enqueued. Has a warning variant with a heavier 2 px border. **Swipe it horizontally to dismiss** (§6.5). Mounted unconditionally and fed by *any* registered suggestion provider, so it is **not** gated on the Buddy module.
+- **Suggestion toast** — positioned card that animates in when a proactive suggestion is enqueued. Has a warning variant with a heavier 2 px border. Mounted unconditionally and fed by *any* registered suggestion provider, so it is **not** gated on the Buddy module. It has **four dismissal paths, all of which must survive a redesign**:
+
+  | Path | Behaviour |
+  |---|---|
+  | Horizontal swipe | `Dismissible` → dismiss + provider feedback |
+  | Explicit **Dismiss** text button | Same callback as the swipe |
+  | The suggestion's **action button** | Accepts the suggestion, which also removes the toast |
+  | **30 s auto-dismiss** | The notification service times the toast out on its own — sized for wall-mounted displays where nobody is standing there to dismiss it |
 
 ---
 
@@ -505,7 +512,10 @@ Per-domain card contents:
 | **Media** | Active activity name (`Watch`/`Listen`/`Gaming`/`Background`) or `Off`; icon changes to a filled play-circle when active | — | `play` · `pause` · `stop` (all **disabled** when nothing is playing) |
 | **Sensors** | Reading count | Averages: temperature · humidity · illuminance | — (no actions) |
 
-Tapping the card body navigates to that domain view. Tapping an action fires an intent and applies an **optimistic override for up to 5 s** (cleared as soon as the backend agrees, or when it expires).
+Tapping the card body navigates to that domain view. Tapping an action behaves differently per domain:
+
+- **Lights, Climate, Shading** — fire an intent and apply an **optimistic override for up to 5 s** (cleared as soon as the backend agrees, or when it expires). These get the pending treatment.
+- **Media (play / pause / stop)** — ⚠️ **no optimistic override at all.** They write the playback command straight onto the matching device properties; nothing is locked, nothing is held, and the card only changes once the real state arrives over the socket. Do not design a pending state for these three unless the behaviour is also implemented.
 
 The climate mode action opens a **centred mode dialog**: a 180–220 wide card listing Heat (fire, danger), Cool (snowflake, info), Auto (autorenew, success), Off (power, neutral); each row 8 padded, active row `light9` fill + `light7` border + check mark.
 
@@ -703,7 +713,8 @@ Exists both as a **room domain view** and as a **standalone deck view** (the sta
 Always present in the deck; also reachable as a standalone route.
 
 - **Hero:** a circular **status ring** — background circle plus a foreground arc — with an icon and a status label in the middle, and optional summary pills beneath. It **pulses** while the alarm is triggered. Colour follows the security state (armed / disarmed / triggered / alerts).
-- **Mode selector** for arming states (shown when entry points exist).
+- **Tab selector** — ⚠️ *not* an arming control. It is a `ModeSelector` over three tabs — **Entry points · Alerts · Events** — and selecting one only switches the body. It is **always rendered**; only the *Entry points* option is conditional on entry points existing, because Alerts and Events are always available.
+- There is **no arming / disarming control on this screen today.** The status ring reports the armed state; the only write actions are acknowledging alerts. If the new design introduces arm/disarm affordances, that is new functionality, not a re-skin.
 - **Tabbed content:**
   - **Entry points** — a grid of door/window tiles with status badges; tapping opens that device's detail page.
   - **Alerts** — a scrolling list of active alerts, each with its own acknowledge button, plus an **Acknowledge all** action.
@@ -855,7 +866,7 @@ Copy differs depending on whether the action targets **the display only** or **t
 - **Input hint text** changes with state: default, "starting conversation…", "initialization failed", "provider not configured" (which also disables input).
 - **Voice input overlay** — a dedicated recording overlay with waveform/level feedback.
 - **Wake-word indicator** — the small top-centre pill on the deck: Listening / Recording (with an elapsed/limit counter) / Processing.
-- **Suggestion toast** — a proactive card that animates in over the deck; a warning variant uses a heavier border. It carries its own action buttons and is dismissed by a horizontal swipe, which also reports feedback to the provider that raised it.
+- **Suggestion toast** — a proactive card that animates in over the deck; a warning variant uses a heavier border. It carries an action button and a Dismiss button, and can also be swiped away or left to time out after 30 s (§6.6).
 
 ---
 
@@ -981,9 +992,12 @@ Every data-backed screen must be designed in **six** states, not one.
 
 For the five **room domains** it is a **transient/startup state, not a resting one**. Deck construction and the page body use the same rule from opposite ends: `DomainCounts.hasDomain` drops Lights, Climate, Shading and Media when their configuration count is `0`, and drops Sensors when its reading count is `0` — so a fully-loaded room with nothing configured simply has **no page in the deck at all**. The not-configured body is what you see in the window where the counts are still `null` (not yet fetched), which is exactly the live-reconfiguration case in §19D.
 
-The one place it **is** a resting state is the **standalone Energy view**: that page is added whenever energy is supported, and it renders its not-configured body whenever no summary is available.
+**Two cases are genuinely persistent, though**, and both need a designed resting state:
 
-Design both — but budget effort accordingly: for the room domains this is a sub-second flash worth making calm and non-alarming, whereas the Energy variant can sit on screen indefinitely.
+1. **The standalone Energy view** — added whenever energy is supported, and it renders its not-configured body whenever no summary is available.
+2. **An auxiliary-only Climate room** — the deck-side check counts any target whose role passes `isActuator`, and that predicate is *not sensor and not hidden*, so an `auxiliary` role (fan, humidifier, dehumidifier, purifier) satisfies it. The Climate page therefore stays in the deck. But the page itself only puts `heatingOnly` / `coolingOnly` / `auto` targets into its actuator list — `auxiliary` targets are routed to the auxiliary-devices sheet instead — so the actuator list is empty and the page renders **not-configured indefinitely**. A room with a smart fan and nothing else lands exactly here.
+
+Design all three variants — but budget effort accordingly: for the ordinary room-domain case this is a sub-second flash worth making calm and non-alarming, whereas the Energy and auxiliary-only-Climate variants can sit on screen forever and deserve a genuinely useful empty state (ideally one that points at the auxiliary devices that *do* exist).
 
 ### Optimistic UI (this is a *visual* requirement)
 
@@ -1144,6 +1158,7 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
   - Pressure: hPa, mbar, inHg, mmHg
   - Precipitation: mm, inches
   - Distance: km, miles, meters, feet
+- ⚠️ Minor gap: the suggestion toast's **Dismiss** button label is a hard-coded English literal rather than a localized string, so it does not translate.
 - Temperatures render with **1 decimal** in summaries, **0 decimals** in the climate hero.
 - Energy renders with a value-dependent decimal count.
 
@@ -1180,6 +1195,8 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
 - **All clocks are 24-hour**; the 12 h/24 h setting is surfaced in Settings but wired to nothing (§20).
 - **Master** and **Entry** overviews still use the older `AppTopBar` + ad-hoc cards idiom rather than the newer `PageHeader` + `HeroCard` design language used by the room and domain views. They look visibly older.
 - **Climate Auto mode** is intentionally disabled pending a dual-setpoint control.
+- **Auxiliary-only Climate rooms are a dead end** (§17): the deck keeps the page because `isActuator` accepts the `auxiliary` role, but the page has no actuators to show, so it renders not-configured forever while the fan/humidifier it *does* have sits unreachable behind the auxiliary sheet.
+- **The Security screen has no arm/disarm control** — its selector is a tab switcher and the only write action is acknowledging alerts.
 - The **scene tile** (dashboard) uses a raw Material `Card` and does not match `UniversalTile`.
 - **Visual density is build-time only** (§3.1) — there is no runtime density control despite the token system supporting three levels.
 
