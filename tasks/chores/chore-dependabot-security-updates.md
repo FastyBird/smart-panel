@@ -95,27 +95,48 @@ before linting, so verifying against an already-generated spec misses it entirel
 
 ## 5. Result
 
-**168 of 186 advisories cleared.** What remains, and why:
+All 186 original advisories are cleared, along with the follow-up round.
 
-| package | alerts | why it is left |
-| --- | --- | --- |
-| `next` | 16 | website only, and the website's build breaks on the refreshed tree — see below |
-| `file-type` | 2 | installed at 20.5.0; the only patch is 21.3.1, a major bump on a transitive |
+### The website was never blocked by `next`
 
-`protobufjs@6.8.8` was also refused for the same cross-major reason, but is no longer reachable
-after the 7.x override, so it raises no remaining alert.
+The first attempt deferred `next` because the website's static export broke. That diagnosis was
+wrong, and wrong for a methodological reason worth recording: the bisect ran on a tree where
+`pnpm update -r` had already moved everything, so "pin `next` back and it still fails" only showed
+that *something else* was also broken. Repeating the experiment from a working baseline — one
+override, nothing else touched — the website builds cleanly on `next@15.5.22`.
+
+The lesson is not about `next`. It is that a bisect is only meaningful when a single variable
+moves; bisecting on top of a broken tree cannot identify anything.
+
+### Second round
+
+| package | how |
+| --- | --- |
+| `next` (22 alerts) | override `^15.5.21`; website static export verified green |
+| `file-type` (2 alerts) | not forced across a major. It arrives via `@xhmikosr/decompress`, whose v11 already depends on the plugin packages built for `file-type` 21, so the parent was bumped instead and the supported combination kept intact. Dev-only chain: `@swc/cli` / `@nestjs/cli` → `bin-wrapper` → `downloader` → `decompress` |
+| `brace-expansion` (1 alert) | per-line: 1.1.18, 2.1.4, 5.0.9 |
+
+### A note on the `brace-expansion` alert
+
+GHSA-mh99-v99m-4gvg carries a single range, `<= 5.0.7`, patched in 5.0.8 — so GitHub may keep
+flagging the 1.x and 2.x lines even though they are fixed. They are: 1.1.18, 2.1.4 and 5.0.9 were
+published within seventeen minutes of each other on 2026-07-30, six days after the advisory, and
+diffing 1.1.17 against 1.1.18 shows the backported guard:
+
+```js
+if (length + c.length > maxLength) break
+```
+
+That is the unbounded-expansion fix. If the alert stays open it is advisory metadata lagging the
+backports, not an unpatched dependency — worth confirming before anyone "fixes" it by forcing
+`brace-expansion` 5.x under consumers that ask for `^1`.
 
 ### Verification
 
-- website: `build` exit 0 — the thing the blanket refresh broke
-- backend: `build` exit 0, `lint:js` 0 errors (2 pre-existing warnings), 220 suites / 2847 tests
-- admin: `build` exit 0, `type-check` clean, `lint` exit 0, 223 files / 1408 tests
+- website: `build` exit 0
+- backend: `build` exit 0, spectral clean on a regenerated spec, `lint:js` 0 errors, 220 suites / 2847 tests
+- admin: `build` exit 0, `type-check` clean, 223 files / 1408 tests
 
 ## 6. Follow-up
 
-Two things are deliberately left:
-
-1. **The website's `next` alerts.** Clearing them means moving the website's dependency tree, which
-   currently breaks its static export. Isolating that needs a bisect of nextra's markdown pipeline
-   (`shiki`, `rehype-*`, `remark-*`), all of which move together.
-2. **`file-type`.** Whoever pulls 20.5.0 has to move to 21.x first.
+None outstanding.
