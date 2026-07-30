@@ -138,7 +138,7 @@ The two orientations are **not** the same layout reflowed. They are deliberately
 | Domain view body | Vertical stack: hero on top, secondary content below | Two columns: secondary content (flex 1) then hero (flex 2) |
 | Mode control | Mode button on the right of the bottom bar → popup above | Mode chip in the page header → popup below |
 | Room overview | Sky panel on top (40 % of height, max 500), content below | Sky panel on the left (42 % of width), content on the right |
-| Sheets | Bottom sheet | Right drawer |
+| Sheets | Bottom sheet | Right drawer — **except the deck "More" sheet, which is a bottom sheet in both orientations** (§6.3) |
 
 **Left-to-right order in landscape is: side dock → secondary column → main/hero column.**
 
@@ -528,7 +528,7 @@ Per-domain card contents:
 | **Lights** | Mode name when an intent is active and confirmed (`Work`/`Relax`/`Night`), else `Custom` when any light is on, else `Off` | "n of m on" or "m lights" | `Off` · `50%` · `100%` |
 | **Climate** | `Off` when off, else target temperature, else current temperature, else device count | "n devices" | mode button (label + icon = current mode, opens a mode dialog) · `−` · `+` |
 | **Shading** | Detected mode when intent-driven (`Open`/`Closed`/`Privacy`/`Daylight`), else `Closed` when all closed, else `Custom` | "fully closed" / "fully open" / "n % open" / device count | `Open` · `50%` · `Close` (icon-only on compact) |
-| **Media** | Active activity name (`Watch`/`Listen`/`Gaming`/`Background`) or `Off`; icon changes to a filled play-circle when active | — | `play` · `pause` · `stop` (all **disabled** when nothing is playing) |
+| **Media** | Active activity name (`Watch`/`Listen`/`Gaming`/`Background`) or `Off`; icon changes to a filled play-circle when active | — | `play` · `pause` · `stop` — **disabled only when there is no active media *activity***. They stay enabled while an activity is running but paused or stopped, since the flag reads the activity state, not the playback status. |
 
 
 **There is no Sensors card and no Energy card.** The card builder skips both domains outright, so only Lights, Climate, Shading and Media can ever produce a card — at most **four**. Sensor readings reach the room overview solely through the status pill strip, and energy solely through the energy pill. (The builder still contains an unreachable Sensors branch; ignore it.)
@@ -1042,7 +1042,7 @@ IDLE
 
 | Subsystem | Interaction | Settling window |
 |---|---|---|
-| **Device detail** (`DeviceControlStateService`, per device/channel/property) | any channel control | **800 ms** (the service default; individual group configs may override) |
+| **Device detail** (`DeviceControlStateService`, per device/channel/property) | ⚠️ **only the controls that actually enter the machine** — not every control on the screen. See the note below. | **800 ms** (the service default; individual group configs may override) |
 | **Lights domain** | brightness / hue / saturation / colour temp / white | 2000 ms |
 | | on/off | 3000 ms |
 | | mode (off/work/relax/night) | 3000 ms |
@@ -1058,7 +1058,17 @@ Slider drags are debounced at **300 ms** across lights, shading and climate befo
 
 There is also **mixed-state detection** across devices in a role, with tolerances: brightness ±3, hue ±5, saturation ±3, colour temperature ±100 K, white ±5. A mixed role shows a `tune` icon instead of the normal group icon, and its sheet offers *Sync all*.
 
-**Design requirement — scoped to the controls that run the shared state machine**: device-detail channel controls, and the lights / shading / climate domain and role controls. Those get the full treatment — locked/pending appearance *and* a defined rollback. Each of those needs a visible locked/pending treatment and a defined rollback appearance. Today that is expressed mostly by disabled styling and by the value simply showing the desired number; a redesign is free to make it richer but must not remove it.
+**Within a device-detail screen, participation is per control, not per screen.** The rich screens mix both kinds freely. Taking the television detail as the worked example:
+
+| Control | Path |
+|---|---|
+| Brightness, volume | `setPending` → `setSettling` — **the full state machine** |
+| Power, source, seek, remote keys | **Direct write.** No pending, no lock, no rollback |
+| Playback transport | A **local 3 s override**, like the media domain view — not the machine |
+
+The pattern that holds across the rich screens is that continuous/slider values tend to run the machine while discrete commands tend to be direct writes — but treat that as a tendency to verify per screen, not a rule.
+
+**Design requirement — scoped to the controls that run the shared state machine**: those device-detail controls that call `setPending`/`setSettling`, plus the lights / shading / climate domain and role controls. Those get the full treatment — locked/pending appearance *and* a defined rollback. Each of those needs a visible locked/pending treatment and a defined rollback appearance. Today that is expressed mostly by disabled styling and by the value simply showing the desired number; a redesign is free to make it richer but must not remove it.
 
 **Do not add pending states to direct-write controls.** Some actions bypass every optimistic path and change nothing until real state arrives over the socket. Giving those a pending treatment would show feedback the implementation cannot honour.
 
@@ -1224,7 +1234,7 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
 
 - The **domain colour bindings** (lights = amber, climate = blue, shading = teal, media = red, sensors = cyan, energy = green) are used consistently across the deck, room cards, headers and nav — changing them means changing them everywhere at once.
 - The **giant numeral + gradient slider + presets** hero pattern is the app's signature interaction and is shared by lights, climate and shading. Diverging per domain would cost a lot of code.
-- **Sheets in portrait, drawers in landscape** for the same content.
+- **Sheets in portrait, drawers in landscape** for the same content — with one exception: the deck **"More" sheet is a bottom sheet in landscape too**, because the side dock calls the same unconditional `showBottomSheetDialog` helper as the bottom bar.
 - **"+N more" overflow tiles** rather than scrolling secondary lists off-screen.
 - **Header subtitle as the live-state line** (and its colour as the state indicator).
 
