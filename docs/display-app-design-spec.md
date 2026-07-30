@@ -510,7 +510,9 @@ Per-domain card contents:
 | **Climate** | `Off` when off, else target temperature, else current temperature, else device count | "n devices" | mode button (label + icon = current mode, opens a mode dialog) · `−` · `+` |
 | **Shading** | Detected mode when intent-driven (`Open`/`Closed`/`Privacy`/`Daylight`), else `Closed` when all closed, else `Custom` | "fully closed" / "fully open" / "n % open" / device count | `Open` · `50%` · `Close` (icon-only on compact) |
 | **Media** | Active activity name (`Watch`/`Listen`/`Gaming`/`Background`) or `Off`; icon changes to a filled play-circle when active | — | `play` · `pause` · `stop` (all **disabled** when nothing is playing) |
-| **Sensors** | Reading count | Averages: temperature · humidity · illuminance | — (no actions) |
+
+
+**There is no Sensors card and no Energy card.** The card builder skips both domains outright, so only Lights, Climate, Shading and Media can ever produce a card — at most **four**. Sensor readings reach the room overview solely through the status pill strip, and energy solely through the energy pill. (The builder still contains an unreachable Sensors branch; ignore it.)
 
 Tapping the card body navigates to that domain view. Tapping an action behaves differently per domain:
 
@@ -821,7 +823,7 @@ A grid of large tiles — **2 columns portrait (aspect 1.3), 3 columns landscape
 Four cards, each opening a selection dialog:
 
 - **Language** — the six supported languages
-- **Timezone**
+- **Timezone** ⚠️ *unwired, same as time format below — no clock applies it*
 - **Time format** — 12 h / 24 h ⚠️ *see §20: this setting currently has no effect on any clock in the app*
 - **Number format** — System default / `1,234.56` / `1.234,56` / `1 234,56` / none
 
@@ -1110,7 +1112,7 @@ These are the shapes a designer should mock, because they are what actually ship
 
 *Deck:* `Room overview · Lights · Climate · Shading · Media · Sensors · Energy · Security · Dashboard "Kitchen"`
 *Side dock:* 9 items → scrolls. Mode chip present on the Lights, Climate, Shading and Energy headers only (Media and Sensors do not register one).
-*Room overview:* full sky panel with weather, scene pills on the sky, status strip on top with temp + humidity + energy pill, 5 domain cards in a 2-up grid (Lights, Climate, Shading, Media, Sensors).
+*Room overview:* full sky panel with weather, scene pills on the sky, status strip on top with temp + humidity + energy pill, **4** domain cards in a 2-up grid (Lights, Climate, Shading, Media) — sensors and energy appear only as pills in the strip, never as cards.
 
 ### B. Bedroom panel, portrait, minimal
 
@@ -1118,7 +1120,7 @@ These are the shapes a designer should mock, because they are what actually ship
 
 *Deck:* `Room overview · Lights · Sensors · Security`
 *Bottom bar:* Home + Lights + Sensors + Security. **No More tab** (no dashboard pages). Mode button appears only on Lights.
-*Room overview:* sky panel (40 % height), **no scene pills** (no scenes), 2 domain cards, status strip with one temperature pill and **no energy pill**.
+*Room overview:* sky panel (40 % height), **no scene pills** (no scenes), **1** domain card (Lights — sensors never produce a card), status strip with one temperature pill and **no energy pill**.
 
 ### C. Hallway panel assigned to the "entry" space
 
@@ -1128,7 +1130,9 @@ These are the shapes a designer should mock, because they are what actually ship
 ### D. Freshly installed panel, room has devices but nothing configured yet
 
 *Deck:* `Room overview · Security` — because no roles/bindings exist yet, so no domain views qualify.
-*Room overview:* the success-icon **empty state** ("Nothing to control here").
+*Room overview:* ⚠️ **not** the empty state — it still shows domain cards for Lights, Climate, Shading and Media, and those cards are **dead ends**. The overview rebuilds its own `DomainCounts` from the raw device categories and does **not** pass the loaded target/binding counts, so they stay `null` and `hasDomain` returns true for anything with a device. Tapping such a card fires a navigation event for a deck item that `DeckService` has already removed, the lookup returns −1, and nothing happens.
+
+The success-icon empty state ("Nothing to control here") only appears when the room has **no domain-classified devices at all** — not merely when nothing is configured.
 If the installer assigns light roles in the Admin, a Lights view appears **live** without restarting the panel, and until the first fetch completes it may briefly show the *not-configured* state with the header intact.
 
 ### E. Panel that lost its backend
@@ -1158,6 +1162,7 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
   - Pressure: hPa, mbar, inHg, mmHg
   - Precipitation: mm, inches
   - Distance: km, miles, meters, feet
+- **Timezone — ⚠️ also unwired.** Settings › Language offers a timezone selection and it is persisted to the system configuration, but **no display surface applies it**: the sky panel, time tile, screen saver and signage clock all read `DateTime.now()`, i.e. the panel's OS timezone. A search for `timezone` across the panel finds consumers only in the settings page, the config models and the generated API client. On a panel whose OS timezone differs from the configured one, changing the setting changes nothing on screen.
 - ⚠️ Minor gap: the suggestion toast's **Dismiss** button label is a hard-coded English literal rather than a localized string, so it does not translate.
 - Temperatures render with **1 decimal** in summaries, **0 decimals** in the climate hero.
 - Energy renders with a value-dependent decimal count.
@@ -1192,11 +1197,12 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
 - The **signage info panel** is a shell, and it does not yet suppress the deck chrome or the idle overlay (§8.4).
 - **12 device-detail screens are registered placeholders** showing only a "detail preparing" message — alarm, camera, door, doorbell, lock, outlet, pump, robot vacuum, sprinkler, switcher, valve, water heater (§12, tier 2). The shell is already correct, so designs drop straight in.
 - The **lock screen** is a plain black rectangle; there is no PIN keypad implemented in the display app today despite the concept appearing in older docs.
-- **All clocks are 24-hour**; the 12 h/24 h setting is surfaced in Settings but wired to nothing (§20).
+- **All clocks are 24-hour, and the timezone setting is unwired**; both are surfaced in Settings › Language but consumed by nothing (§20).
 - **Master** and **Entry** overviews still use the older `AppTopBar` + ad-hoc cards idiom rather than the newer `PageHeader` + `HeroCard` design language used by the room and domain views. They look visibly older.
 - **Climate Auto mode** is intentionally disabled pending a dual-setpoint control.
 - **Auxiliary-only Climate rooms are a dead end** (§17): the deck keeps the page because `isActuator` accepts the `auxiliary` role, but the page has no actuators to show, so it renders not-configured forever while the fan/humidifier it *does* have sits unreachable behind the auxiliary sheet.
 - **The Security screen has no arm/disarm control** — its selector is a tab switcher and the only write action is acknowledging alerts.
+- **The room overview and the deck disagree about which domains exist.** The deck hides a domain once its target/binding count loads as `0`, but the overview rebuilds counts from raw device categories without those numbers, so it keeps rendering a card for the hidden domain. The card then navigates nowhere. Any redesign of the room overview should assume this gets fixed — do not design around the dead card.
 - The **scene tile** (dashboard) uses a raw Material `Card` and does not match `UniversalTile`.
 - **Visual density is build-time only** (§3.1) — there is no runtime density control despite the token system supporting three levels.
 
