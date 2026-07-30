@@ -6,14 +6,14 @@ import { defaultsDeep } from 'lodash';
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
 import {
+	type IModule,
+	type ModuleInjectionKey,
 	injectDataRefreshRegistry,
 	injectLogger,
 	injectModulesManager,
 	injectSockets,
 	injectStoresManager,
 	refreshLoadedStores,
-	type IModule,
-	type ModuleInjectionKey,
 } from '../../common';
 
 import { DASHBOARD_MODULE_EVENT_PREFIX, DASHBOARD_MODULE_NAME, EventType } from './dashboard.constants';
@@ -72,13 +72,7 @@ export default {
 		}
 
 		// Events emitted while the browser was suspended are gone for good - re-read what we hold.
-		dataRefreshRegistry.register(
-			dashboardAdminModuleKey,
-			(): Promise<void> =>
-				refreshLoadedStores([
-					{ loaded: (): boolean => pagesStore.firstLoadFinished() || pagesStore.findAll().length > 0, refresh: (): Promise<unknown> => pagesStore.fetch() },
-				])
-		);
+		dataRefreshRegistry.register(dashboardAdminModuleKey, (): Promise<void> => refreshLoadedStores([pagesStore]));
 
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(DASHBOARD_MODULE_EVENT_PREFIX)) {

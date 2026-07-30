@@ -43,6 +43,8 @@ export interface IThrottleStatusStoreActions {
 	onEvent: (payload: IThrottleStatusOnEventActionPayload) => IThrottleStatus;
 	set: (payload: IThrottleStatusSetActionPayload) => IThrottleStatus;
 	get: () => Promise<IThrottleStatus | null>;
+	isLoaded: () => boolean;
+	refresh: () => Promise<unknown>;
 }
 
 export type ThrottleStatusStoreSetup = IThrottleStatusStoreState & IThrottleStatusStoreActions;

@@ -3,15 +3,14 @@ import { type App, type InjectionKey, inject as _inject, hasInjectionContext } f
 import type { DataRefreshErrorHandler, DataRefreshHandler, DataRefreshKey, IDataRefreshRegistry, IRefreshableStore } from './types';
 
 /**
- * Re-fetches the given stores, skipping the ones that never loaded.
+ * Re-reads the given stores, skipping the ones that never loaded.
  *
- * A wake must not pull data the user never opened, so each candidate reports whether it holds
- * anything worth refreshing. Collection stores answer that with `firstLoadFinished()`; the
- * singleton stores built around `get()` never set that flag, so they compare their own `data`
- * against null instead. Each store reports through the signal it actually maintains.
+ * A wake must not pull data the user never opened, so each store is asked whether it holds
+ * anything worth re-reading. What that means differs per store, which is exactly why the store
+ * answers it rather than the caller.
  */
-export const refreshLoadedStores = async (candidates: IRefreshableStore[]): Promise<void> => {
-	await Promise.all(candidates.filter((candidate) => candidate.loaded()).map((candidate) => candidate.refresh()));
+export const refreshLoadedStores = async (stores: IRefreshableStore[]): Promise<void> => {
+	await Promise.all(stores.filter((store) => store.isLoaded()).map((store) => store.refresh()));
 };
 
 export const dataRefreshRegistryKey: InjectionKey<DataRefreshRegistry | undefined> = Symbol('FB-App-DataRefreshRegistry');

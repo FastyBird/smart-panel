@@ -6,6 +6,8 @@ import { defaultsDeep, get } from 'lodash';
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
 import {
+	type IModule,
+	type ModuleInjectionKey,
 	injectDataRefreshRegistry,
 	injectLogger,
 	injectModulesManager,
@@ -13,8 +15,6 @@ import {
 	injectStoresManager,
 	refreshLoadedStores,
 	snakeToCamel,
-	type IModule,
-	type ModuleInjectionKey,
 } from '../../common';
 
 import { DEVICES_MODULE_EVENT_PREFIX, DEVICES_MODULE_NAME, EventType } from './devices.constants';
@@ -98,14 +98,7 @@ export default {
 		}
 
 		// Events emitted while the browser was suspended are gone for good - re-read what we hold.
-		dataRefreshRegistry.register(
-			devicesAdminModuleKey,
-			(): Promise<void> =>
-				refreshLoadedStores([
-					{ loaded: (): boolean => devicesStore.firstLoadFinished() || devicesStore.findAll().length > 0, refresh: (): Promise<unknown> => devicesStore.fetch() },
-					{ loaded: (): boolean => devicesValidationStore.firstLoadFinished() || devicesValidationStore.findAll().length > 0, refresh: (): Promise<unknown> => devicesValidationStore.fetch() },
-				])
-		);
+		dataRefreshRegistry.register(devicesAdminModuleKey, (): Promise<void> => refreshLoadedStores([devicesStore, devicesValidationStore]));
 
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(DEVICES_MODULE_EVENT_PREFIX)) {

@@ -8,11 +8,11 @@ import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
 import { injectDataRefreshRegistry, injectLogger, injectModulesManager, injectSockets, injectStoresManager, refreshLoadedStores } from '../../common';
 
-import { EventType, SPACES_MODULE_EVENT_PREFIX, SPACES_MODULE_NAME } from './spaces.constants';
 import { locales } from './locales';
 import { ModuleRoutes } from './router';
-import { registerSpacesStore } from './store/spaces.store';
+import { EventType, SPACES_MODULE_EVENT_PREFIX, SPACES_MODULE_NAME } from './spaces.constants';
 import { spacesRefreshSignalsKey, spacesStoreKey } from './store/keys';
+import { registerSpacesStore } from './store/spaces.store';
 
 const spacesDataRefreshKey = Symbol('FB-Module-Spaces-DataRefresh');
 
@@ -73,13 +73,7 @@ export default {
 
 		// Set up WebSocket event listeners
 		// Events emitted while the browser was suspended are gone for good - re-read what we hold.
-		dataRefreshRegistry.register(
-			spacesDataRefreshKey,
-			(): Promise<void> =>
-				refreshLoadedStores([
-					{ loaded: (): boolean => spacesStore.firstLoadFinished() || spacesStore.findAll().length > 0, refresh: (): Promise<unknown> => spacesStore.fetch() },
-				])
-		);
+		dataRefreshRegistry.register(spacesDataRefreshKey, (): Promise<void> => refreshLoadedStores([spacesStore]));
 
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(SPACES_MODULE_EVENT_PREFIX)) {

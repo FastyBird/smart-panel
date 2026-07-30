@@ -72,6 +72,8 @@ export interface IPagesStoreActions {
 	edit: (payload: IPagesEditActionPayload) => Promise<IPage>;
 	save: (payload: IPagesSaveActionPayload) => Promise<IPage>;
 	remove: (payload: IPagesRemoveActionPayload) => Promise<boolean>;
+	isLoaded: () => boolean;
+	refresh: () => Promise<unknown>;
 }
 
 export type PagesStoreSetup = IPagesStoreState & IPagesStoreActions;

@@ -190,6 +190,11 @@ the ids the response omits.
 
 ### 7.2d Contract mismatch worth revisiting
 
+> **Resolved** by TECH-ADMIN-STORE-REFRESH-CONTRACT. Stores now expose `isLoaded()` / `refresh()`
+> themselves, so the per-store allowances described below no longer live in the modules. The
+> analysis is kept because it is why that task exists.
+
+
 Every defect found in review so far traces to the same assumption: that these stores share a
 contract. They do not — `firstLoad` is maintained by some and not others, `fetch()` replaces in
 some and merges in others, and backing shapes vary between records and maps. Each handler now

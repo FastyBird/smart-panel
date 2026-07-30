@@ -75,6 +75,8 @@ export interface IScenesStoreActions {
 	save: (payload: IScenesSaveActionPayload) => Promise<IScene>;
 	remove: (payload: IScenesRemoveActionPayload) => Promise<void>;
 	trigger: (payload: IScenesTriggerActionPayload) => Promise<ISceneExecutionResult>;
+	isLoaded: () => boolean;
+	refresh: () => Promise<unknown>;
 }
 
 export interface IScenesStore extends IScenesStoreState, IScenesStoreActions {}

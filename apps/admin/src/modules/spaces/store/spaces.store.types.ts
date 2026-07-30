@@ -75,6 +75,8 @@ export interface ISpacesStoreActions {
 	set: (payload: { id: ISpace['id']; data: Partial<ISpace> }) => void;
 	unset: (payload: { id: ISpace['id'] }) => void;
 	onEvent: (payload: { id: ISpace['id']; data: Record<string, unknown> }) => void;
+	isLoaded: () => boolean;
+	refresh: () => Promise<unknown>;
 }
 
 export type ISpacesStore = ISpacesStoreState & ISpacesStoreActions;

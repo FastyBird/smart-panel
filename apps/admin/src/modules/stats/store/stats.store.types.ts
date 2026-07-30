@@ -43,6 +43,8 @@ export interface IStatsStoreActions {
 	onEvent: (payload: IStatsOnEventActionPayload) => IStats;
 	set: (payload: IStatsSetActionPayload) => IStats;
 	get: () => Promise<IStats>;
+	isLoaded: () => boolean;
+	refresh: () => Promise<unknown>;
 }
 
 export type StatsStoreSetup = IStatsStoreState & IStatsStoreActions;

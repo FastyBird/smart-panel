@@ -6,14 +6,14 @@ import { defaultsDeep } from 'lodash';
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
 import {
+	type IModule,
+	type ModuleInjectionKey,
 	injectDataRefreshRegistry,
 	injectLogger,
 	injectModulesManager,
 	injectSockets,
 	injectStoresManager,
 	refreshLoadedStores,
-	type IModule,
-	type ModuleInjectionKey,
 } from '../../common';
 
 import { CONFIG_MODULE_EVENT_PREFIX, CONFIG_MODULE_NAME, EventType } from './config.constants';
@@ -21,11 +21,7 @@ import { locales } from './locales';
 import { ModuleRoutes } from './router';
 import { registerConfigModuleStore } from './store/config-modules.store';
 import { registerConfigPluginStore } from './store/config-plugins.store';
-import {
-	configAppStoreKey,
-	configModulesStoreKey,
-	configPluginsStoreKey,
-} from './store/keys';
+import { configAppStoreKey, configModulesStoreKey, configPluginsStoreKey } from './store/keys';
 import { registerConfigAppStore } from './store/stores';
 
 const configAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Config');
@@ -80,12 +76,7 @@ export default {
 		// Events emitted while the browser was suspended are gone for good - re-read what we hold.
 		dataRefreshRegistry.register(
 			configAdminModuleKey,
-			(): Promise<void> =>
-				refreshLoadedStores([
-					{ loaded: (): boolean => configAppStore.data !== null, refresh: (): Promise<unknown> => configAppStore.get() },
-					{ loaded: (): boolean => configModulesStore.firstLoadFinished() || configModulesStore.findAll().length > 0, refresh: (): Promise<unknown> => configModulesStore.fetch() },
-					{ loaded: (): boolean => configPluginsStore.firstLoadFinished() || configPluginsStore.findAll().length > 0, refresh: (): Promise<unknown> => configPluginsStore.fetch() },
-				])
+			(): Promise<void> => refreshLoadedStores([configAppStore, configModulesStore, configPluginsStore])
 		);
 
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {

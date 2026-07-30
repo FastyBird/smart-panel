@@ -82,6 +82,8 @@ export interface IDisplaysStoreActions {
 	getTokens: (payload: IDisplaysGetActionPayload) => Promise<IDisplayToken[]>;
 	revokeToken: (payload: IDisplaysRevokeTokenActionPayload) => Promise<boolean>;
 	refreshTokensForDisplay: (payload: IDisplaysGetActionPayload) => void;
+	isLoaded: () => boolean;
+	refresh: () => Promise<unknown>;
 }
 
 export type DisplaysStoreSetup = IDisplaysStoreState & IDisplaysStoreActions;

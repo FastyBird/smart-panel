@@ -107,7 +107,15 @@ export const useWeatherDay = defineStore<'weather_module-weather-day', WeatherDa
 			}
 		};
 
+		// Reconnect refresh contract: the store itself says whether it holds anything worth
+		// re-reading, so the caller never has to guess from a flag it does not maintain.
+		const isLoaded = (): boolean => data.value !== null;
+
+		const refresh = (): Promise<unknown> => get();
+
 		return {
+			isLoaded,
+			refresh,
 			semaphore,
 			firstLoad,
 			data,

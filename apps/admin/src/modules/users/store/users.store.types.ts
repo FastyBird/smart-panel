@@ -72,6 +72,8 @@ export interface IUsersStoreActions {
 	edit: (payload: IUsersEditActionPayload) => Promise<IUser>;
 	save: (payload: IUsersSaveActionPayload) => Promise<IUser>;
 	remove: (payload: IUsersRemoveActionPayload) => Promise<boolean>;
+	isLoaded: () => boolean;
+	refresh: () => Promise<unknown>;
 }
 
 export type UsersStoreSetup = IUsersStoreState & IUsersStoreActions;

@@ -56,6 +56,8 @@ export interface IConfigModulesStoreActions {
 	get: (payload: IConfigModulesGetActionPayload) => Promise<IConfigModule>;
 	fetch: () => Promise<IConfigModule[]>;
 	edit: (payload: IConfigModulesEditActionPayload) => Promise<IConfigModule>;
+	isLoaded: () => boolean;
+	refresh: () => Promise<unknown>;
 }
 
 export type ConfigModulesStoreSetup = IConfigModulesStoreState & IConfigModulesStoreActions;

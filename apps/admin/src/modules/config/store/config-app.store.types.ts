@@ -43,6 +43,8 @@ export interface IConfigAppStoreActions {
 	onEvent: (payload: IConfigAppOnEventActionPayload) => IConfigApp;
 	set: (payload: IConfigAppSetActionPayload) => IConfigApp;
 	get: () => Promise<IConfigApp>;
+	isLoaded: () => boolean;
+	refresh: () => Promise<unknown>;
 }
 
 export type ConfigAppStoreSetup = IConfigAppStoreState & IConfigAppStoreActions;

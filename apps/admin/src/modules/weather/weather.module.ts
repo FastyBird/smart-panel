@@ -6,16 +6,15 @@ import { defaultsDeep } from 'lodash';
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
 import {
+	type IModule,
+	type ModuleInjectionKey,
 	injectDataRefreshRegistry,
 	injectLogger,
 	injectModulesManager,
 	injectSockets,
 	injectStoresManager,
 	refreshLoadedStores,
-	type IModule,
-	type ModuleInjectionKey,
 } from '../../common';
-
 import { CONFIG_MODULE_MODULE_TYPE, CONFIG_MODULE_NAME } from '../config';
 
 import { WeatherConfigForm } from './components/components';
@@ -93,12 +92,7 @@ export default {
 		// Events emitted while the browser was suspended are gone for good - re-read what we hold.
 		dataRefreshRegistry.register(
 			weatherAdminModuleKey,
-			(): Promise<void> =>
-				refreshLoadedStores([
-					{ loaded: (): boolean => weatherDayStore.data !== null, refresh: (): Promise<unknown> => weatherDayStore.get() },
-					{ loaded: (): boolean => weatherForecastStore.data !== null, refresh: (): Promise<unknown> => weatherForecastStore.get() },
-					{ loaded: (): boolean => weatherLocationsStore.firstLoadFinished() || weatherLocationsStore.findAll().length > 0, refresh: (): Promise<unknown> => weatherLocationsStore.fetch() },
-				])
+			(): Promise<void> => refreshLoadedStores([weatherDayStore, weatherForecastStore, weatherLocationsStore])
 		);
 
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
@@ -127,12 +121,7 @@ export default {
 
 				case EventType.LOCATION_CREATED:
 				case EventType.LOCATION_UPDATED:
-					if (
-						'id' in data.payload &&
-						typeof data.payload.id === 'string' &&
-						'type' in data.payload &&
-						typeof data.payload.type === 'string'
-					) {
+					if ('id' in data.payload && typeof data.payload.id === 'string' && 'type' in data.payload && typeof data.payload.type === 'string') {
 						weatherLocationsStore.onEvent({
 							id: data.payload.id,
 							type: data.payload.type,
