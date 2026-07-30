@@ -125,7 +125,7 @@ The two orientations are **not** the same layout reflowed. They are deliberately
 
 ### 3.4 Dashboard grid
 
-User-designed pages use a unit grid. Defaults: **4 columns × 6 rows**. Unit size is derived from width: `÷4` up to 480, `÷6` up to 600, `÷8` up to 720, otherwise `÷10`; clamped to 40–200. A page can override rows/cols or pin an absolute tile size.
+User-designed pages use a unit grid. Defaults: **4 columns × 6 rows**. Unit size is derived from width: `÷4` up to 480, `÷6` up to 600, `÷8` up to 720, otherwise `÷10`; clamped to 40–200. A page can override rows/cols, or supply a `tileSize` — which is a **target, not an absolute**: it only picks how many rows/columns fit, and the container is then divided by those counts (see §11.1).
 
 ---
 
@@ -544,7 +544,7 @@ A different, denser composition — this panel is a hallway/overview device.
 - **Top bar** (`AppTopBar`, not `PageHeader`): title + home icon, with status badges on the right:
   - **Devices badge** — `n/m` online with a check-circle (success tint) or alert (warning tint) on a `light9` pill.
   - **Alerts badge** — only when > 0; danger `light9` pill with count.
-  - **Energy pill** — only when energy is supported.
+  - **Energy pill** — only when energy is supported. Whole-home figures, and **tapping it navigates to the standalone Energy deck view**.
 - **Summary row** — three equal stat cards (rooms · devices · scenes): 28 icon in primary, 16 bold value, 10 label; translucent page-overlay fill.
 - **Quick actions** — a `Wrap` of `ActionChip`s, one per triggerable scene, with a spinner in the avatar slot while triggering. Hidden when there are no global scenes.
 - **Rooms list** — a scrolling list of room cards: 32 primary icon, name (14/w600), "n/m devices" (10, success when all online else warning), optional current temperature (14/w500), chevron. Tapping **pushes** the Room overview as a normal route (not a deck page) and sets the room context intent.
@@ -554,7 +554,10 @@ A different, denser composition — this panel is a hallway/overview device.
 
 For a door-side panel.
 
-- **Top bar badges:** locks (`all locked` or `n/m`, success/warning) and alarm (`Armed`/`Disarmed`, danger when armed, neutral otherwise).
+- **Top bar badges** — each independently conditional:
+  - **Locks** — only when the space has locks; `all locked` or `n/m`, success when all locked else warning.
+  - **Alarm** — only when the space has alarms; `Armed` (danger) / `Disarmed` (neutral).
+  - **Energy pill** — only when energy is supported. Shows **whole-home** consumption/production (`spaceId: 'home'`), and **tapping it navigates to the standalone Energy deck view** — an interactive entry point, not a passive badge.
 - **House modes section** — heading with icon, then either:
   - the configured house-mode **scenes** as a centred `Wrap` of 70×70 filled buttons with a 32 icon and a label below (active = primary theme, inactive = info theme; a spinner replaces the button while triggering) — these actually trigger the scene, or
   - **four default buttons** (Home / Away / Night / Movie) when no house-mode scenes exist. ⚠️ **These are cosmetic.** Their tap handlers only move a local highlight — no intent is fired, nothing in the house changes. Treat them as a visual placeholder for an unconfigured system, not as functional controls.
@@ -919,7 +922,7 @@ On recovery, a **success toast** ("Connected") is shown for 2 s. This includes r
 | Type | Can the user dismiss it? |
 |---|---|
 | **banner** | ❌ **No.** Despite being flagged closable, the banner offers no dismissal path — it renders only its message and the *Retry* action, and there is no close button or tap target. It disappears on its own when the connection state changes. |
-| **overlay** | ✅ Tap anywhere outside to hide |
+| **overlay** | ✅ Tap to hide — but note the hit area is the **whole screen, including the card itself**. The renderer wraps the entire card in the opaque tap-to-hide gesture and the card installs no absorber, so any tap that is not consumed by an action button dismisses it. If the new design wants the card to be a safe area, that needs an absorber adding. |
 | **fullScreen** | ❌ Not closable by design |
 
 If a design adds a close affordance to the banner, that is new behaviour and needs renderer work. When the user does dismiss an overlay, it stays dismissed **until the severity changes**.
@@ -1035,7 +1038,9 @@ Slider drags are debounced at **300 ms** across lights, shading and climate befo
 
 There is also **mixed-state detection** across devices in a role, with tolerances: brightness ±3, hue ±5, saturation ±3, colour temperature ±100 K, white ±5. A mixed role shows a `tune` icon instead of the normal group icon, and its sheet offers *Sync all*.
 
-**Design requirement:** every interactive control needs a visible locked/pending treatment and a defined rollback appearance. Today this is expressed mostly by disabled styling and by the value simply showing the desired number; a redesign is free to make it richer but must not remove it.
+**Design requirement — scoped to controls that actually run the state machine.** Those are the ones listed in the table above: device-detail channel controls, and the lights / shading / climate domain and role controls. Each of those needs a visible locked/pending treatment and a defined rollback appearance. Today that is expressed mostly by disabled styling and by the value simply showing the desired number; a redesign is free to make it richer but must not remove it.
+
+**Do not add pending states to direct-write controls.** Some actions bypass the machine entirely and change nothing until real state arrives over the socket — most visibly the room-overview Media play/pause/stop buttons (§8.1). Giving those a pending treatment would show feedback the implementation cannot honour.
 
 ---
 
@@ -1071,6 +1076,9 @@ Everything in this table can be absent. **A design that assumes any of it is pre
 | Weather card + weather-driven sky | Weather data available for the display's location |
 | Scene pills (room) | The space has ≥ 1 enabled + triggerable scene |
 | Energy pill (room status strip) | The space has an `energy` status widget configured |
+| Energy pill (Master and Entry top bars) | Energy is supported. Whole-home figures; tapping navigates to the standalone Energy view |
+| Entry **locks** badge | The space has ≥ 1 lock |
+| Entry **alarm** badge | The space has ≥ 1 alarm |
 | Sensor pills (room status strip) | Corresponding averages exist (temp / humidity / illuminance — each independently) |
 | Room domain card **quick actions** | Per domain; media actions are rendered but **disabled** when nothing is playing |
 | Room domain card **target value** | Hidden on landscape and small screens |
@@ -1177,7 +1185,7 @@ Deck stays on screen; after 2 s a warning banner appears; after 10 s a modal ove
 2. **Three size classes** (small / medium / large) per orientation, with real layout differences at each.
 3. **Touch-only.** No hover states, no right-click, no keyboard shortcuts. Minimum comfortable target ≈ 40–44 px at the DPR-2 baseline (current nav pills are 36–40 and are already at the low end — increasing them is welcome).
 4. **Both themes.** Dark mode is not an inversion: the `lightN` steps flip direction. Supply both.
-5. **Six states per screen** (§17), plus the pending/settling treatment for every control.
+5. **Six states per screen** (§17), plus a pending/settling treatment for every control that runs the optimistic state machine — and deliberately *no* pending treatment for direct-write actions such as the room-card media buttons.
 6. **Everything is conditional** (§18). Mock the sparse variants, not just the full one.
 7. **Bundled assets only.** No web fonts, no remote imagery. New icon needs should map to Material Design Icons or ship as vectors.
 8. **Performance:** Raspberry Pi class GPU. Avoid multiple stacked `BackdropFilter`s, large blurs, per-frame custom painting outside the existing sky/charts/ring, and long shadow chains.
