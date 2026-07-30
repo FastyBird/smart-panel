@@ -70,16 +70,22 @@ The panel talks to a local backend over REST (Dio) + WebSocket (Socket.io). It i
 
 **Where DIN 1451 is actually used.** It is *not* limited to hero numerals — it is applied wherever the app wants a "data readout" look, at every size:
 
-| Surface | Use |
-|---|---|
-| Lights / Climate / Shading hero values | The giant 48–160 numerals |
-| Time tile | 90 clock + 25 date |
-| Weather tiles (current + forecast) | Temperature and other readouts |
-| Weather data-source widgets | Values and units |
-| **Device-channel data-source widgets** | 12 px values, units — **and even the loading / unavailable placeholder text** |
-| **`ButtonTile` title and subtitle** | Small dashboard-tile labels |
+**27 uses across 12 files** — the complete inventory:
 
-The last two are small-text uses and sit oddly next to Roboto body copy — treat them as an inventory item to decide on deliberately (unify on Roboto, or embrace DIN as the numeric/data face at all sizes) rather than as a rule to preserve blindly.
+| Surface | File | Uses |
+|---|---|---|
+| Lights / Climate / Shading domain hero values | 3 domain views | 1 each |
+| **Lighting device-detail value** | `device_details/lighting.dart` | 1 |
+| **Energy consumption card giant value** | `energy_consumption_card.dart` | 1 |
+| Time tile | `tiles-time` | 2 (clock 90 + date 25) |
+| Weather tile — forecast | `tiles-weather/forecast.dart` | 5 |
+| Weather tile — current | `tiles-weather/weather.dart` | 3 |
+| Weather data source — current | `data-sources-weather/weather_current.dart` | 3 |
+| Weather data source — forecast day | `data-sources-weather/weather_forecast_day.dart` | 3 |
+| **Device-channel data-source widget** | `data-sources-device-channel` | 4 — 12 px values, units, **and the loading / unavailable placeholder text** |
+| **`ButtonTile` title + subtitle** | `core/widgets/button_tile.dart` | 2 — small dashboard-tile labels |
+
+The last two rows are small-text uses that sit oddly next to Roboto body copy — treat them as an inventory item to decide on deliberately (unify on Roboto, or embrace DIN as the numeric/data face at all sizes) rather than as a rule to preserve blindly.
 
 **Implication for design:** the app must render smoothly on a Raspberry Pi 4-class GPU at 30–60 fps. Prefer flat fills, gradients and simple shadows. Avoid stacked translucency, large blurs, per-frame shader work, and heavy shadow layering.
 
@@ -591,7 +597,7 @@ The signage page itself is minimal and **read-only**:
 | Intended | Actual behaviour today |
 |---|---|
 | No deck navigation | The deck still wraps **every** page — a signage display shows the **bottom nav bar** (portrait) or **side dock** (landscape) |
-| Signage is the only page | The deck also contains the **Security view** (it is added unconditionally), and any dashboard pages, so the panel is swipeable |
+| Signage is the only page | The deck also contains the **Security view** (added unconditionally), the **standalone Energy view** whenever energy is supported (only a *room* space with its own Energy domain suppresses it), and any dashboard pages — so the panel is swipeable |
 | Never blanks | The **inactivity overlay is registered globally** and fires whenever `screenLockDuration > 0` — a signage display will show the screen saver or the black lock screen like any other panel |
 
 > ⚠️ **This screen is a stub, and its isolation is unimplemented.** Announcement, weather and feed rendering are not wired yet — only the clock and a welcome shell exist. It is also the one screen that does **not** use the app's date localisation (hard-coded English weekday/month names).
@@ -1043,7 +1049,7 @@ IDLE
 | | role toggle | 2500 ms |
 | **Shading domain** | position | 2000 ms |
 | | mode (open/daylight/privacy/closed) | 3000 ms |
-| **Media domain** | playback transport (play / pause / stop) | **3 s** — a simpler, self-contained variant: the button state flips immediately and socket truth is suppressed until the window closes, then the device is re-read. Not the shared state machine, but it *is* optimistic, so the transport buttons do need an active/pending look. |
+| **Media domain** | playback transport (play / pause / stop) | **3 s** — but this is *not* the state machine. See the scoping note below: immediate state flip + socket suppression only. |
 | **Climate domain** | setpoint | 2500 ms (convergence tolerance ±0.5°) |
 | | mode | 3000 ms |
 | **Room overview** | domain quick actions | optimistic override expires after **5 s**, swept at **6 s** |
@@ -1052,16 +1058,17 @@ Slider drags are debounced at **300 ms** across lights, shading and climate befo
 
 There is also **mixed-state detection** across devices in a role, with tolerances: brightness ±3, hue ±5, saturation ±3, colour temperature ±100 K, white ±5. A mixed role shows a `tune` icon instead of the normal group icon, and its sheet offers *Sync all*.
 
-**Design requirement — scoped to the controls in the table above.** Most run the shared state machine (device-detail channel controls, and the lights / shading / climate domain and role controls); media-domain playback runs its own simpler 3 s variant but still needs the treatment. Each of those needs a visible locked/pending treatment and a defined rollback appearance. Today that is expressed mostly by disabled styling and by the value simply showing the desired number; a redesign is free to make it richer but must not remove it.
+**Design requirement — scoped to the controls that run the shared state machine**: device-detail channel controls, and the lights / shading / climate domain and role controls. Those get the full treatment — locked/pending appearance *and* a defined rollback. Each of those needs a visible locked/pending treatment and a defined rollback appearance. Today that is expressed mostly by disabled styling and by the value simply showing the desired number; a redesign is free to make it richer but must not remove it.
 
 **Do not add pending states to direct-write controls.** Some actions bypass every optimistic path and change nothing until real state arrives over the socket. Giving those a pending treatment would show feedback the implementation cannot honour.
 
-⚠️ **Media appears on both sides of this line — do not conflate them:**
+⚠️ **Media has three different levels of feedback — do not flatten them:**
 
-| Control | Behaviour |
-|---|---|
-| **Media *domain view*** transport (play / pause / stop) | **Optimistic.** Button flips immediately, socket truth suppressed for 3 s. Needs an active/pending look. |
-| **Room-overview card** media buttons (play / pause / stop) | **Direct write.** No override, no lock, no suppression — nothing changes until real state arrives (§8.1). Must *not* get a pending look. |
+| Control | What it actually does | What to design |
+|---|---|---|
+| **Media *domain view*** transport (play / pause / stop) | The displayed playback state flips **immediately** and socket truth is suppressed for 3 s, after which the device is re-read. But the command is fire-and-forget: it is not awaited, there is **no failure branch and no rollback**, and the buttons stay **tappable** throughout. | An **immediate active-state change** on the transport buttons — nothing more. No lock, no spinner, no disabled state, no rollback animation: the implementation cannot drive any of them. |
+| **Room-overview card** media buttons | Direct property write. No flip, no suppression, no lock — nothing changes until real state arrives (§8.1). | No pending affordance at all. |
+| Everything in the settling table above | The shared optimistic state machine | Full locked/pending + rollback. |
 
 ---
 
