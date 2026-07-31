@@ -1,13 +1,22 @@
-import { type ComputedRef, type Reactive, computed, reactive, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { orderBy } from 'natural-orderby';
 
-import { tryOnMounted, tryOnUnmounted } from '@vueuse/core';
+import { useNow } from '@vueuse/core';
 
 import { PLUGINS_PREFIX } from '../../../app.constants';
 import { getErrorReason, useBackend, useFlashMessage, useLogger } from '../../../common';
-import { FormResult, type FormResultType } from '../../../modules/devices';
+import { RouteNames as ConfigRouteNames } from '../../../modules/config';
+import {
+	FormResult,
+	type FormResultType,
+	type IDeviceWizardAdapter,
+	type IWizardAdoptSelection,
+	type IWizardControl,
+	type IWizardResult,
+	type IWizardRow,
+} from '../../../modules/devices';
 import {
 	DevicesModuleDeviceCategory,
 	type DevicesZigbee2mqttPluginAdoptWizardOperation,
@@ -17,7 +26,7 @@ import {
 	type DevicesZigbee2mqttPluginEnableWizardPermitJoinOperation,
 	type DevicesZigbee2mqttPluginGetWizardOperation,
 } from '../../../openapi.constants';
-import { DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX } from '../devices-zigbee2mqtt.constants';
+import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX } from '../devices-zigbee2mqtt.constants';
 import { DevicesZigbee2mqttApiException } from '../devices-zigbee2mqtt.exceptions';
 import type { IZ2mWizardAdoptionResult, IZ2mWizardDevice, IZ2mWizardSession } from '../schemas/wizard.types';
 import {
@@ -32,35 +41,16 @@ import { useFriendlyNameHumanizer } from './useFriendlyNameHumanizer';
 
 export const isAdoptableStatus = (status: IZ2mWizardDevice['status']): boolean => status === 'ready' || status === 'already_registered';
 
-export interface IUseDevicesWizard {
-	session: ComputedRef<IZ2mWizardSession | null>;
-	sessionReady: ComputedRef<boolean>;
-	devices: ComputedRef<IZ2mWizardDevice[]>;
-	selectedDevices: ComputedRef<IZ2mWizardDevice[]>;
-	permitJoin: ComputedRef<IZ2mWizardSession['permitJoin']>;
-	bridgeOnline: ComputedRef<boolean>;
-	formResult: ComputedRef<FormResultType>;
-	selected: Reactive<Record<string, boolean>>;
-	categoryByIeee: Reactive<Record<string, DevicesModuleDeviceCategory | null>>;
-	nameByIeee: Reactive<Record<string, string>>;
-	adoptionResults: ComputedRef<IZ2mWizardAdoptionResult[]>;
-	canContinue: ComputedRef<boolean>;
-	startSession: () => Promise<void>;
-	refreshSession: () => Promise<void>;
-	endSession: () => Promise<void>;
-	enablePermitJoin: () => Promise<void>;
-	disablePermitJoin: () => Promise<void>;
-	adoptSelected: () => Promise<IZ2mWizardAdoptionResult[]>;
-	categoryOptions: () => { value: DevicesModuleDeviceCategory; label: string }[];
-}
-
 const DEFAULT_PERMIT_JOIN: IZ2mWizardSession['permitJoin'] = {
 	active: false,
 	expiresAt: null,
 	remainingSeconds: 0,
 };
 
-export const useDevicesWizard = (): IUseDevicesWizard => {
+// Typical Zigbee permit-join window in seconds — used only to scale the progress bar.
+const PERMIT_JOIN_WINDOW_SECONDS = 254;
+
+export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const { t } = useI18n();
 	const backend = useBackend();
 	const logger = useLogger();
@@ -70,10 +60,7 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 	const session = ref<IZ2mWizardSession | null>(null);
 	const formResult = ref<FormResultType>(FormResult.NONE);
 	const adoptionResults = ref<IZ2mWizardAdoptionResult[]>([]);
-	const selected = reactive<Record<string, boolean>>({});
-	const categoryByIeee = reactive<Record<string, DevicesModuleDeviceCategory | null>>({});
-	const nameByIeee = reactive<Record<string, string>>({});
-	const readyAddresses = new Set<string>();
+	const permitJoinPending = ref<boolean>(false);
 
 	let pollingTimer: number | null = null;
 
@@ -84,26 +71,14 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 	// back to `session.value` after deletion and looping on 404s.
 	let sessionGeneration = 0;
 
+	// Tick the countdown locally between backend polls so the progress bar and "Xs remaining"
+	// text update smoothly instead of freezing for a full second between server responses.
+	// Resolution of 250 ms gives a perceptibly fluid bar without overdrawing.
+	const now = useNow({ interval: 250 });
+
 	const devices = computed<IZ2mWizardDevice[]>(() =>
 		orderBy(session.value?.devices ?? [], [(device) => (isAdoptableStatus(device.status) ? 0 : 1), (device) => device.ieeeAddress], ['asc', 'asc'])
 	);
-
-	const selectedDevices = computed<IZ2mWizardDevice[]>(() =>
-		devices.value.filter((device) => selected[device.ieeeAddress] === true && isAdoptableStatus(device.status))
-	);
-
-	const canContinue = computed<boolean>(() => {
-		if (selectedDevices.value.length === 0) {
-			return false;
-		}
-
-		return selectedDevices.value.every((device) => {
-			const name = nameByIeee[device.ieeeAddress];
-			const category = categoryByIeee[device.ieeeAddress];
-
-			return typeof name === 'string' && name.trim().length > 0 && category !== null && category !== undefined;
-		});
-	});
 
 	const permitJoin = computed<IZ2mWizardSession['permitJoin']>(() => session.value?.permitJoin ?? DEFAULT_PERMIT_JOIN);
 
@@ -114,6 +89,89 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 	// for healthy bridges. `sessionReady` lets consumers gate that alert until we have a real
 	// answer from the backend.
 	const sessionReady = computed<boolean>(() => session.value !== null);
+
+	const categoryOptions = (): { value: DevicesModuleDeviceCategory; label: string }[] => {
+		// The wizard always lets users pick any DeviceCategory — `suggestedCategory` and
+		// `registeredDeviceCategory` are pre-fill defaults, not constraints. Render the
+		// full enum sorted by translated label for stable, predictable ordering.
+		return orderBy(
+			Object.values(DevicesModuleDeviceCategory) as DevicesModuleDeviceCategory[],
+			[(category: string) => t(`devicesModule.categories.devices.${category}`)],
+			['asc']
+		).map((value) => ({
+			value,
+			label: t(`devicesModule.categories.devices.${value}`),
+		}));
+	};
+
+	const rows = computed<IWizardRow[]>(() =>
+		devices.value.map((device) => ({
+			key: device.ieeeAddress,
+			label: device.registeredDeviceName ?? humanize(device.friendlyName),
+			subLabel: [device.manufacturer, device.model].filter(Boolean).join(' · ') || null,
+			identifier: device.friendlyName,
+			status: device.status,
+			adoptable: isAdoptableStatus(device.status),
+			willUpdate: device.status === 'already_registered',
+			suggestedName: device.registeredDeviceName ?? humanize(device.friendlyName),
+			suggestedCategory: device.registeredDeviceCategory ?? device.suggestedCategory,
+			categoryOptions: categoryOptions(),
+			cells: {
+				channels: {
+					render: 'tag',
+					value: t('devicesZigbee2mqttPlugin.wizard.columns.channelsCount', { count: device.previewChannelCount }),
+					tooltip: device.previewChannelIdentifiers.join(', '),
+				},
+			},
+		}))
+	);
+
+	const results = computed<IWizardResult[]>(() =>
+		adoptionResults.value.map((result) => ({
+			key: result.ieeeAddress,
+			name: result.name,
+			identifier: session.value?.devices.find((device) => device.ieeeAddress === result.ieeeAddress)?.friendlyName ?? result.ieeeAddress,
+			status: result.status,
+			error: result.error,
+		}))
+	);
+
+	// Smoothed remaining seconds derived from the server-supplied `expiresAt`. Falls back to
+	// the server's `remainingSeconds` if `expiresAt` isn't available yet (e.g. a transient null
+	// during the first poll), so the UI still shows something sensible. `now` is deliberately
+	// read last so the computed stays inert — and stops re-evaluating every 250 ms — whenever
+	// pairing is not running.
+	const smoothRemainingSeconds = computed<number>(() => {
+		if (!permitJoin.value.active) {
+			return 0;
+		}
+
+		if (permitJoin.value.expiresAt === null) {
+			return permitJoin.value.remainingSeconds;
+		}
+
+		const expiresAtMs = new Date(permitJoin.value.expiresAt).getTime();
+
+		if (Number.isNaN(expiresAtMs)) {
+			return permitJoin.value.remainingSeconds;
+		}
+
+		return Math.max(0, Math.ceil((expiresAtMs - now.value.getTime()) / 1_000));
+	});
+
+	const permitJoinPercentage = computed<number>(() => {
+		if (!permitJoin.value.active) {
+			return 0;
+		}
+
+		// `el-progress` shows "how much is complete", so we render elapsed time (filling up
+		// toward the deadline) rather than remaining time. Clamp to [0, 100] in case
+		// `remainingSeconds` briefly exceeds the nominal window. Drives off the smoothed
+		// countdown so the bar advances visibly between polls.
+		const elapsedSeconds = Math.max(0, PERMIT_JOIN_WINDOW_SECONDS - smoothRemainingSeconds.value);
+
+		return Math.min(100, Math.round((elapsedSeconds / PERMIT_JOIN_WINDOW_SECONDS) * 100));
+	});
 
 	const stopPolling = (): void => {
 		if (pollingTimer !== null) {
@@ -146,59 +204,12 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 	};
 
 	const applySession = (nextSession: IZ2mWizardSession): void => {
-		const previousDevices = session.value?.devices ?? [];
-
+		// Row-level bookkeeping (selection, editable names, categories) belongs to the wizard
+		// shell — the adapter only owns the raw session snapshot.
 		session.value = nextSession;
-
-		for (const device of nextSession.devices) {
-			const previousDevice = previousDevices.find((item) => item.ieeeAddress === device.ieeeAddress);
-			const becameAlreadyRegistered =
-				previousDevice !== undefined && previousDevice.status !== 'already_registered' && device.status === 'already_registered';
-			const wasPreviouslyReady = readyAddresses.has(device.ieeeAddress);
-
-			// `ready` devices are pre-selected so the user can adopt new pairings in a single step.
-			// `already_registered` devices stay deselected — the user must opt in explicitly to override
-			// the category/name the main service auto-adopted them with.
-			if (selected[device.ieeeAddress] === undefined) {
-				selected[device.ieeeAddress] = device.status === 'ready';
-			} else if (becameAlreadyRegistered) {
-				selected[device.ieeeAddress] = false;
-			} else if (device.status === 'ready' && !wasPreviouslyReady && previousDevice === undefined) {
-				selected[device.ieeeAddress] = true;
-			}
-
-			// Pre-fill the category dropdown so the wizard never lands on an empty selector for
-			// already-adopted devices: prefer the existing DB category over the descriptor's
-			// suggestion.
-			const initialCategory = device.registeredDeviceCategory ?? device.suggestedCategory;
-
-			if (categoryByIeee[device.ieeeAddress] === undefined || (categoryByIeee[device.ieeeAddress] === null && initialCategory !== null)) {
-				categoryByIeee[device.ieeeAddress] = initialCategory;
-			}
-
-			// Pre-fill an editable name from the existing registration, otherwise humanize the
-			// zigbee2mqtt friendlyName so the user sees a sensible default instead of a slug.
-			if (nameByIeee[device.ieeeAddress] === undefined) {
-				nameByIeee[device.ieeeAddress] = device.registeredDeviceName ?? humanize(device.friendlyName);
-			}
-
-			if (device.status === 'ready') {
-				readyAddresses.add(device.ieeeAddress);
-			}
-		}
 	};
 
 	const resetSessionScopedState = (): void => {
-		for (const key of Object.keys(selected)) {
-			delete selected[key];
-		}
-		for (const key of Object.keys(categoryByIeee)) {
-			delete categoryByIeee[key];
-		}
-		for (const key of Object.keys(nameByIeee)) {
-			delete nameByIeee[key];
-		}
-		readyAddresses.clear();
 		adoptionResults.value = [];
 	};
 
@@ -330,7 +341,7 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 			},
 		});
 
-		// Drop the response if endSession (or onRestart) ran during the await — otherwise
+		// Drop the response if endSession (or restart) ran during the await — otherwise
 		// applySession would resurrect the deleted session and trigger a 404 polling loop.
 		if (sessionGeneration !== requestGeneration) {
 			return;
@@ -372,7 +383,7 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 			},
 		});
 
-		// Drop the response if endSession (or onRestart) ran during the await — otherwise
+		// Drop the response if endSession (or restart) ran during the await — otherwise
 		// applySession would resurrect the deleted session and trigger a 404 polling loop.
 		if (sessionGeneration !== requestGeneration) {
 			return;
@@ -394,20 +405,99 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		throw new DevicesZigbee2mqttApiException(errorReason, response.status);
 	};
 
-	const adoptSelected = async (): Promise<IZ2mWizardAdoptionResult[]> => {
+	// Wraps the permit-join round-trip so the action control can render a loading state. Errors
+	// are already surfaced by the transport calls via flashMessage; the flag is released either
+	// way, and the rejection is swallowed because the shell invokes control handlers directly.
+	const togglePermitJoin = async (): Promise<void> => {
+		permitJoinPending.value = true;
+
+		try {
+			if (permitJoin.value.active) {
+				await disablePermitJoin();
+			} else {
+				await enablePermitJoin();
+			}
+		} catch {
+			// Error already surfaced by the transport call.
+		} finally {
+			permitJoinPending.value = false;
+		}
+	};
+
+	const controls = computed<IWizardControl[]>(() => {
+		// Until the first session snapshot lands, `bridgeOnline` is false for a healthy bridge
+		// too — offering nothing beats flashing a misleading "Bridge offline" banner.
+		if (!sessionReady.value) {
+			return [];
+		}
+
+		if (!bridgeOnline.value) {
+			return [
+				{
+					type: 'banner',
+					id: 'bridge-offline',
+					severity: 'warning',
+					title: t('devicesZigbee2mqttPlugin.wizard.bridge.offline.title'),
+					message: t('devicesZigbee2mqttPlugin.wizard.bridge.offline.message'),
+					link: {
+						label: t('devicesZigbee2mqttPlugin.wizard.bridge.offline.openConfig'),
+						to: { name: ConfigRouteNames.CONFIG_PLUGIN_EDIT, params: { plugin: DEVICES_ZIGBEE2MQTT_PLUGIN_NAME } },
+					},
+				},
+			];
+		}
+
+		return [
+			{
+				type: 'progress',
+				id: 'pairing',
+				label: t('devicesZigbee2mqttPlugin.wizard.steps.discovery.pairingActive', { remaining: smoothRemainingSeconds.value }),
+				percentage: permitJoinPercentage.value,
+				state: permitJoinPercentage.value >= 75 ? 'warning' : undefined,
+				visible: permitJoin.value.active,
+			},
+			permitJoin.value.active
+				? {
+						type: 'action',
+						id: 'permit-join',
+						label: t('devicesZigbee2mqttPlugin.wizard.steps.discovery.cancelPairing'),
+						icon: 'mdi:close-circle-outline',
+						variant: 'warning',
+						loading: permitJoinPending.value,
+						disabled: permitJoinPending.value,
+						handler: togglePermitJoin,
+					}
+				: {
+						type: 'action',
+						id: 'permit-join',
+						label: t('devicesZigbee2mqttPlugin.wizard.steps.discovery.permitJoin'),
+						icon: 'mdi:plus-circle-outline',
+						variant: 'primary',
+						loading: permitJoinPending.value,
+						disabled: permitJoinPending.value,
+						handler: togglePermitJoin,
+					},
+		];
+	});
+
+	const adopt = async (selection: IWizardAdoptSelection[]): Promise<IWizardResult[]> => {
 		if (session.value === null) {
 			return [];
 		}
 
 		formResult.value = FormResult.WORKING;
 
-		const userSelections = selectedDevices.value.slice();
+		const adoptDevices = selection.map((item) => {
+			const device = session.value?.devices.find((candidate) => candidate.ieeeAddress === item.key);
 
-		const adoptDevices = userSelections.map((device) => ({
-			ieeeAddress: device.ieeeAddress,
-			name: (nameByIeee[device.ieeeAddress] || humanize(device.friendlyName) || device.ieeeAddress).trim(),
-			category: (categoryByIeee[device.ieeeAddress] ?? DevicesModuleDeviceCategory.generic) as DevicesModuleDeviceCategory,
-		}));
+			return {
+				ieeeAddress: item.key,
+				// The shell already trims and defaults the name, but a blank one must never reach
+				// the backend — fall back to the humanized friendly name, then the address.
+				name: item.name.trim() || (device !== undefined ? humanize(device.friendlyName) : '') || item.key,
+				category: item.category ?? DevicesModuleDeviceCategory.generic,
+			};
+		});
 
 		const {
 			data: responseData,
@@ -423,12 +513,10 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		});
 
 		if (typeof responseData !== 'undefined') {
-			const results = transformWizardAdoptionResponse((responseData as { data: ApiWizardAdoption }).data);
+			adoptionResults.value = transformWizardAdoptionResponse((responseData as { data: ApiWizardAdoption }).data);
+			formResult.value = adoptionResults.value.some((result) => result.status === 'failed') ? FormResult.ERROR : FormResult.OK;
 
-			adoptionResults.value = results;
-			formResult.value = results.some((result) => result.status === 'failed') ? FormResult.ERROR : FormResult.OK;
-
-			return results;
+			return results.value;
 		}
 
 		const fallback = t('devicesZigbee2mqttPlugin.messages.wizard.adoptionFailed');
@@ -440,55 +528,44 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		throw new DevicesZigbee2mqttApiException(errorReason, response.status);
 	};
 
-	const categoryOptions = (): { value: DevicesModuleDeviceCategory; label: string }[] => {
-		// The wizard always lets users pick any DeviceCategory — `suggestedCategory` and
-		// `registeredDeviceCategory` are pre-fill defaults, not constraints. Render the
-		// full enum sorted by translated label for stable, predictable ordering.
-		return orderBy(
-			Object.values(DevicesModuleDeviceCategory) as DevicesModuleDeviceCategory[],
-			[(category: string) => t(`devicesModule.categories.devices.${category}`)],
-			['asc']
-		).map((value) => ({
-			value,
-			label: t(`devicesModule.categories.devices.${value}`),
-		}));
-	};
-
-	tryOnMounted(() => {
-		startSession().catch(() => {
-			// The error is already surfaced via flashMessage / formResult.
-		});
-	});
-
-	tryOnUnmounted(() => {
-		stopPolling();
-
-		if (session.value !== null) {
-			endSession().catch(() => {
-				// Best-effort cleanup — backend will time the session out anyway.
-			});
-		}
-	});
-
 	return {
-		session: computed(() => session.value),
-		sessionReady,
-		devices,
-		selectedDevices,
-		permitJoin,
-		bridgeOnline,
-		formResult: computed(() => formResult.value),
-		selected,
-		categoryByIeee,
-		nameByIeee,
-		adoptionResults: computed(() => adoptionResults.value),
-		canContinue,
-		startSession,
-		refreshSession,
-		endSession,
-		enablePermitJoin,
-		disablePermitJoin,
-		adoptSelected,
-		categoryOptions,
+		title: t('devicesZigbee2mqttPlugin.wizard.title'),
+		subtitle: t('devicesZigbee2mqttPlugin.wizard.subtitle'),
+		breadcrumbLabel: t('devicesZigbee2mqttPlugin.wizard.breadcrumb'),
+		pluginType: DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
+		identifierLabel: t('devicesZigbee2mqttPlugin.wizard.columns.friendlyName'),
+		rows,
+		results,
+		columns: [
+			{
+				key: 'channels',
+				label: t('devicesZigbee2mqttPlugin.wizard.columns.channels'),
+				steps: ['confirm'],
+				width: 120,
+				sortable: true,
+			},
+		],
+		controls,
+		ready: sessionReady,
+		busy: computed<boolean>(() => formResult.value === FormResult.WORKING),
+		capabilities: { addMore: true },
+		start: startSession,
+		adopt,
+		beforeLeaveDiscover: async (): Promise<void> => {
+			// Pairing must never stay open once the user moves on — silently turn it off so the
+			// gateway stops accepting new joins while the confirm step is in focus.
+			if (permitJoin.value.active) {
+				await disablePermitJoin();
+
+				flashMessage.info(t('devicesZigbee2mqttPlugin.wizard.steps.discovery.pairingDisabled'));
+			}
+		},
+		// "Add more" wipes the previous session so the next round of pairings starts clean.
+		// Teardown is best-effort — a failed DELETE must not block the fresh session.
+		restart: async (): Promise<void> => {
+			await endSession().catch(() => undefined);
+			await startSession();
+		},
+		dispose: endSession,
 	};
 };

@@ -351,6 +351,7 @@
 			"status": "Stav",
 			"category": "Kategorie",
 			"channels": "Kanály",
+			"channelsCount": "{count} kanál | {count} kanály | {count} kanálů",
 			"error": "Chyba"
 		},
 		"status": {

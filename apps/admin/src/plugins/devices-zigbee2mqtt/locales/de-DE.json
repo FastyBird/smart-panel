@@ -351,6 +351,7 @@
 			"status": "Status",
 			"category": "Kategorie",
 			"channels": "Kanäle",
+			"channelsCount": "{count} Kanal | {count} Kanäle",
 			"error": "Fehler"
 		},
 		"status": {
