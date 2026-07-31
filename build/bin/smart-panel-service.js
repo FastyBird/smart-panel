@@ -36,6 +36,25 @@ const packageJsonPath = join(__dirname, '..', 'package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
 const version = packageJson.version;
 
+/**
+ * Detect a display installed by the retired eLinux path, by the systemd unit the old installer
+ * wrote. Its description is the only durable marker: the install directory and binary name are
+ * shared with the desktop build.
+ */
+function isLegacyElinuxInstall() {
+	try {
+		const unitPath = '/etc/systemd/system/smart-panel-display.service';
+
+		if (!existsSync(unitPath)) {
+			return false;
+		}
+
+		return readFileSync(unitPath, 'utf-8').includes('eLinux DRM-GBM');
+	} catch {
+		return false;
+	}
+}
+
 const program = new Command();
 
 program
@@ -661,6 +680,17 @@ program
 				} else if (arch === 'armv7') {
 					platform = 'flutter-pi-armv7';
 				} else if (arch === 'x64') {
+					// A display installed by the retired eLinux path shares its directory and
+					// binary name with the desktop build, so updating it would extract the GTK
+					// bundle over it and restart a unit that runs against DRM/GBM with no
+					// graphical session. eLinux builds are no longer produced either, so refuse
+					// rather than leave the panel dead with no obvious cause.
+					if (isLegacyElinuxInstall()) {
+						logger.error('This display was installed with the eLinux build, which is no longer produced.');
+						logger.error('Reinstall with install-display.sh to move to a supported build before updating.');
+						process.exit(1);
+					}
+
 					platform = 'linux';
 				} else {
 					logger.error('Could not detect platform. Use --platform to specify.');

@@ -52,6 +52,18 @@ export class UpdatePanelCommand extends CommandRunner {
 		console.log('\n\x1b[36m  FastyBird Smart Panel - Panel Update\x1b[0m');
 		console.log('\x1b[90m  ─────────────────────────────────────\x1b[0m\n');
 
+		// Refuse before anything is downloaded or stopped. A display installed by the retired
+		// eLinux path shares its directory and binary name with the desktop build, so an update
+		// would extract the GTK bundle over it and restart a unit that runs against DRM/GBM with
+		// no graphical session — leaving the panel dead with no obvious cause. eLinux builds are
+		// no longer produced, so there is nothing valid to update it to either.
+		if (this.isLegacyElinuxInstall()) {
+			printError('This display was installed with the eLinux build, which is no longer produced.');
+			printWarning('Reinstall with install-display.sh to move to a supported build before updating.');
+
+			return;
+		}
+
 		// Determine platform
 		let platform: PanelPlatform;
 
@@ -235,7 +247,8 @@ export class UpdatePanelCommand extends CommandRunner {
 				return 'flutter-pi-arm64';
 			}
 
-			// x64 Linux - check if display service exists
+			// x64 Linux - check if display service exists. A legacy eLinux install is rejected in
+			// run() before detection is reached, so reaching here means a desktop deployment.
 			if (arch === 'x64' && existsSync(DEFAULT_INSTALL_DIR)) {
 				return 'linux';
 			}
@@ -244,6 +257,25 @@ export class UpdatePanelCommand extends CommandRunner {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Detect a display installed by the retired eLinux path, by the systemd unit the old
+	 * installer wrote. Its description is the only durable marker: the install directory and
+	 * binary name are shared with the desktop build.
+	 */
+	private isLegacyElinuxInstall(): boolean {
+		try {
+			const unitPath = `/etc/systemd/system/${DISPLAY_SERVICE_NAME}.service`;
+
+			if (!existsSync(unitPath)) {
+				return false;
+			}
+
+			return readFileSync(unitPath, 'utf-8').includes('eLinux DRM-GBM');
+		} catch {
+			return false;
+		}
 	}
 
 	private async updateLinuxPanel(asset: ReleaseAsset, installDir: string, _platform: PanelPlatform): Promise<void> {

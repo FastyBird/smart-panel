@@ -267,28 +267,31 @@ install_linux_desktop_deps() {
 	case $distro in
 		debian|ubuntu)
 			apt-get update -qq
-			apt-get install -y -qq libgtk-3-0 libblkid1 liblzma5 2>/dev/null
+			# libsecret is required at runtime by the flutter_secure_storage_linux plugin, which
+			# is linked into the binary (apps/panel/linux/flutter/generated_plugins.cmake).
+			# Without it the executable will not load on a minimal install.
+			apt-get install -y -qq libgtk-3-0 libblkid1 liblzma5 libsecret-1-0 2>/dev/null
 
 			if [[ "$KIOSK" == true ]]; then
 				apt-get install -y -qq cage 2>/dev/null || true
 			fi
 			;;
 		fedora|centos|rhel|rocky|almalinux)
-			dnf install -y gtk3 xz-libs 2>/dev/null || yum install -y gtk3 xz-libs 2>/dev/null
+			dnf install -y gtk3 xz-libs libsecret 2>/dev/null || yum install -y gtk3 xz-libs libsecret 2>/dev/null
 
 			if [[ "$KIOSK" == true ]]; then
 				dnf install -y cage 2>/dev/null || true
 			fi
 			;;
 		arch|manjaro)
-			pacman -Sy --noconfirm gtk3 xz 2>/dev/null
+			pacman -Sy --noconfirm gtk3 xz libsecret 2>/dev/null
 
 			if [[ "$KIOSK" == true ]]; then
 				pacman -Sy --noconfirm cage 2>/dev/null || true
 			fi
 			;;
 		*)
-			print_warning "Unknown distro '$distro'. Please ensure GTK3 is installed."
+			print_warning "Unknown distro '$distro'. Please ensure GTK3 and libsecret are installed."
 			;;
 	esac
 
