@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory, DevicesModuleDeviceCategory } from '../../../openapi.constants';
-
 import type { IWizardRowStatus } from '../components/wizard/device-wizard.types';
+
 import { locales } from './index';
 
 type CategoryGroup = 'devices' | 'channels' | 'channelsProperties';
@@ -13,14 +13,7 @@ const CATEGORY_GROUPS: { group: CategoryGroup; values: string[] }[] = [
 	{ group: 'channelsProperties', values: Object.values(DevicesModuleChannelPropertyCategory) },
 ];
 
-const WIZARD_STATUSES: IWizardRowStatus[] = [
-	'checking',
-	'ready',
-	'needs_credentials',
-	'already_registered',
-	'unsupported',
-	'failed',
-];
+const WIZARD_STATUSES: IWizardRowStatus[] = ['checking', 'ready', 'needs_credentials', 'already_registered', 'unsupported', 'failed'];
 
 const readGroup = (messages: Record<string, unknown>, group: CategoryGroup): Record<string, unknown> => {
 	const categories = messages.categories as Record<string, unknown> | undefined;
