@@ -14,9 +14,11 @@ import { DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyValueState } from '../models/property-value-state.model';
 
+import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
 
 describe('PropertyValueService', () => {
+	let module: TestingModule;
 	let service: PropertyValueService;
 	let storageService: jest.Mocked<StorageService>;
 
@@ -27,13 +29,14 @@ describe('PropertyValueService', () => {
 			isConnected: jest.fn().mockReturnValue(true),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				PropertyValueService,
 				{
 					provide: StorageService,
 					useValue: mockStorageService,
 				},
+				PropertyValueSourceRegistryService,
 			],
 		}).compile();
 
@@ -309,6 +312,72 @@ describe('PropertyValueService', () => {
 			// Should accept above min (no max constraint)
 			const resultAbove = await service.write(property, 1000);
 			expect(resultAbove).toBe(true);
+		});
+	});
+
+	describe('value source dereferencing', () => {
+		const linked = (): ChannelPropertyEntity =>
+			({
+				id: 'virtual-prop',
+				type: 'virtual',
+				dataType: DataTypeType.FLOAT,
+				format: null,
+				invalid: null,
+			}) as unknown as ChannelPropertyEntity;
+
+		beforeEach(() => {
+			const registry = module.get<PropertyValueSourceRegistryService>(PropertyValueSourceRegistryService);
+
+			registry.register({
+				getType: () => 'virtual',
+				resolve: (p) => (p.id === 'virtual-prop' ? 'source-prop' : null),
+			});
+		});
+
+		it('writes under the source key', async () => {
+			await service.write(linked(), 21.5);
+
+			expect(storageService.writePoints).toHaveBeenCalledWith([
+				expect.objectContaining({ tags: { propertyId: 'source-prop' } }),
+			]);
+		});
+
+		it('reads the value written by the source property', async () => {
+			const sourceProperty = {
+				id: 'source-prop',
+				type: 'shelly-ng',
+				dataType: DataTypeType.FLOAT,
+				format: null,
+				invalid: null,
+			} as unknown as ChannelPropertyEntity;
+
+			await service.write(sourceProperty, 21.5);
+
+			const state = await service.readLatest(linked());
+
+			expect(state?.value).toBe(21.5);
+			// served from the shared cache, so storage is never queried
+			expect(storageService.query).not.toHaveBeenCalled();
+		});
+
+		it('does not delete the source series when a projected property is deleted', async () => {
+			await service.delete(linked());
+
+			expect(storageService.query).not.toHaveBeenCalled();
+		});
+
+		it('deletes its own series for a non-projected property', async () => {
+			const own = {
+				id: 'own-prop',
+				type: 'shelly-ng',
+				dataType: DataTypeType.FLOAT,
+			} as unknown as ChannelPropertyEntity;
+
+			await service.delete(own);
+
+			expect(storageService.query).toHaveBeenCalledWith(
+				expect.stringContaining("DELETE FROM property_value WHERE propertyId = 'own-prop'"),
+			);
 		});
 	});
 });
