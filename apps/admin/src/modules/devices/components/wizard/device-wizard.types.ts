@@ -153,3 +153,35 @@ export interface IWizardAction {
 export interface IDeviceWizardProps {
 	adapterFactory: () => IDeviceWizardAdapter;
 }
+
+/**
+ * Tag colour per normalized status. Owned by the shell so the same status can never render
+ * two different ways across plugins.
+ */
+export const wizardStatusTagType = (status: IWizardRowStatus): 'success' | 'info' | 'warning' | 'danger' => {
+	if (status === 'ready') {
+		return 'success';
+	}
+
+	if (status === 'checking' || status === 'already_registered') {
+		return 'info';
+	}
+
+	if (status === 'needs_credentials' || status === 'unsupported') {
+		return 'warning';
+	}
+
+	return 'danger';
+};
+
+export const wizardResultTagType = (status: IWizardResult['status']): 'success' | 'info' | 'danger' => {
+	if (status === 'created') {
+		return 'success';
+	}
+
+	if (status === 'updated') {
+		return 'info';
+	}
+
+	return 'danger';
+};
