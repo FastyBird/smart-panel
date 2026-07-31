@@ -52,18 +52,6 @@ export class UpdatePanelCommand extends CommandRunner {
 		console.log('\n\x1b[36m  FastyBird Smart Panel - Panel Update\x1b[0m');
 		console.log('\x1b[90m  ─────────────────────────────────────\x1b[0m\n');
 
-		// Refuse before anything is downloaded or stopped. A display installed by the retired
-		// eLinux path shares its directory and binary name with the desktop build, so an update
-		// would extract the GTK bundle over it and restart a unit that runs against DRM/GBM with
-		// no graphical session — leaving the panel dead with no obvious cause. eLinux builds are
-		// no longer produced, so there is nothing valid to update it to either.
-		if (this.isLegacyElinuxInstall()) {
-			printError('This display was installed with the eLinux build, which is no longer produced.');
-			printWarning('Reinstall with install-display.sh to move to a supported build before updating.');
-
-			return;
-		}
-
 		// Determine platform
 		let platform: PanelPlatform;
 
@@ -74,6 +62,22 @@ export class UpdatePanelCommand extends CommandRunner {
 		}
 
 		console.log(`  Platform:         \x1b[37m${platform}\x1b[0m`);
+
+		// Only the desktop Linux path replaces the local display bundle and restarts its unit, so
+		// only it can damage an install left behind by the retired eLinux build: the two share a
+		// directory and binary name, and that unit runs against DRM/GBM under multi-user.target
+		// with no graphical session. Other platforms — an Android panel over ADB, a flutter-pi
+		// device — are unaffected and must not be blocked by a stale unit on this host.
+		//
+		// Checked after the platform is known but before anything is downloaded or stopped.
+		// Returning null from detection instead would fall through to a prompt that still offers
+		// "linux", which is the very update that breaks the panel.
+		if (platform === 'linux' && this.isLegacyElinuxInstall()) {
+			printError('This display was installed with the eLinux build, which is no longer produced.');
+			printWarning('Reinstall with install-display.sh to move to a supported build before updating.');
+
+			return;
+		}
 
 		// Check for updates
 		console.log('  Checking for releases...\n');

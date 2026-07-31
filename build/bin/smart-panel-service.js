@@ -680,23 +680,21 @@ program
 				} else if (arch === 'armv7') {
 					platform = 'flutter-pi-armv7';
 				} else if (arch === 'x64') {
-					// A display installed by the retired eLinux path shares its directory and
-					// binary name with the desktop build, so updating it would extract the GTK
-					// bundle over it and restart a unit that runs against DRM/GBM with no
-					// graphical session. eLinux builds are no longer produced either, so refuse
-					// rather than leave the panel dead with no obvious cause.
-					if (isLegacyElinuxInstall()) {
-						logger.error('This display was installed with the eLinux build, which is no longer produced.');
-						logger.error('Reinstall with install-display.sh to move to a supported build before updating.');
-						process.exit(1);
-					}
-
 					platform = 'linux';
 				} else {
 					logger.error('Could not detect platform. Use --platform to specify.');
 					process.exit(1);
 				}
 			}
+		}
+
+		// Only the desktop Linux path replaces the local display bundle and restarts its unit,
+		// so only it can damage an install left behind by the retired eLinux build. An Android
+		// panel over ADB or a flutter-pi device must not be blocked by a stale unit on this host.
+		if (platform === 'linux' && isLegacyElinuxInstall()) {
+			logger.error('This display was installed with the eLinux build, which is no longer produced.');
+			logger.error('Reinstall with install-display.sh to move to a supported build before updating.');
+			process.exit(1);
 		}
 
 		logger.info(`Platform: ${platform}`);
