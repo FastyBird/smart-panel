@@ -1,3 +1,5 @@
+import { ref } from 'vue';
+
 import { describe, expect, it } from 'vitest';
 
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
@@ -145,5 +147,111 @@ describe('useDeviceWizardState — reconciliation', () => {
 
 		state.reconcile([row({ status: 'ready' })]);
 		expect(state.selected['shelly-1.local']).toBe(true);
+	});
+});
+
+describe('useDeviceWizardState — derived state', () => {
+	it('exposes only adoptable rows', () => {
+		const rows = ref<IWizardRow[]>([row(), row({ key: 'b', identifier: 'b', status: 'unsupported', adoptable: false })]);
+		const state = useDeviceWizardState(rows);
+
+		expect(state.adoptableRows.value.map((item) => item.key)).toEqual(['shelly-1.local']);
+	});
+
+	it('canContinue is false with nothing selected', () => {
+		const rows = ref<IWizardRow[]>([row()]);
+		const state = useDeviceWizardState(rows);
+
+		state.reconcile(rows.value);
+		state.selected['shelly-1.local'] = false;
+
+		expect(state.canContinue.value).toBe(false);
+	});
+
+	it('canContinue is false when a selected row has a blank name', () => {
+		const rows = ref<IWizardRow[]>([row()]);
+		const state = useDeviceWizardState(rows);
+
+		state.reconcile(rows.value);
+		state.nameByKey['shelly-1.local'] = '   ';
+
+		expect(state.canContinue.value).toBe(false);
+	});
+
+	it('canContinue is false when a selected row has no category', () => {
+		const rows = ref<IWizardRow[]>([row()]);
+		const state = useDeviceWizardState(rows);
+
+		state.reconcile(rows.value);
+		state.categoryByKey['shelly-1.local'] = null;
+
+		expect(state.canContinue.value).toBe(false);
+	});
+
+	it('canContinue is true when every selected row has a name and category', () => {
+		const rows = ref<IWizardRow[]>([row()]);
+		const state = useDeviceWizardState(rows);
+
+		state.reconcile(rows.value);
+
+		expect(state.canContinue.value).toBe(true);
+	});
+
+	it('toggleAll selects and clears every adoptable row', () => {
+		const rows = ref<IWizardRow[]>([
+			row(),
+			row({ key: 'b', identifier: 'b' }),
+			row({ key: 'c', identifier: 'c', adoptable: false, status: 'failed' }),
+		]);
+		const state = useDeviceWizardState(rows);
+
+		// Deliberately not calling reconcile() here: adoptableRows/toggleAll/allSelected/someSelected
+		// are derived directly from the rows ref and the selected map, so this isolates toggleAll's
+		// own behaviour. Reconciling first would seed `selected['c']` to `false` (a non-ready row is
+		// initialised on first sight regardless of adoptability — see the reconciliation describe
+		// block above), which would make the toBeUndefined() assertion below fail even though
+		// toggleAll correctly left the non-adoptable row untouched.
+		state.toggleAll(false);
+		expect(state.allSelected.value).toBe(false);
+		expect(state.someSelected.value).toBe(false);
+
+		state.toggleAll(true);
+		expect(state.allSelected.value).toBe(true);
+		expect(state.selected['c']).toBeUndefined();
+	});
+
+	it('someSelected is true and allSelected false on a partial selection', () => {
+		const rows = ref<IWizardRow[]>([row(), row({ key: 'b', identifier: 'b' })]);
+		const state = useDeviceWizardState(rows);
+
+		state.reconcile(rows.value);
+		state.selected['b'] = false;
+
+		expect(state.someSelected.value).toBe(true);
+		expect(state.allSelected.value).toBe(false);
+	});
+
+	it('buildSelection returns trimmed names and resolved categories for selected rows only', () => {
+		const rows = ref<IWizardRow[]>([row(), row({ key: 'b', identifier: 'b' })]);
+		const state = useDeviceWizardState(rows);
+
+		state.reconcile(rows.value);
+		state.selected['b'] = false;
+		state.nameByKey['shelly-1.local'] = '  Trimmed  ';
+
+		expect(state.buildSelection()).toEqual([{ key: 'shelly-1.local', name: 'Trimmed', category: DevicesModuleDeviceCategory.lighting }]);
+	});
+
+	it('activeStepIndex maps each step to its el-steps index', () => {
+		const rows = ref<IWizardRow[]>([]);
+		const state = useDeviceWizardState(rows);
+
+		expect(state.activeStepIndex.value).toBe(0);
+
+		state.activeStep.value = 'confirm';
+		expect(state.activeStepIndex.value).toBe(1);
+
+		state.activeStep.value = 'results';
+		expect(state.activeStepIndex.value).toBe(2);
 	});
 });
