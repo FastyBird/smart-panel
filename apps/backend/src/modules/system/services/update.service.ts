@@ -57,10 +57,19 @@ export class UpdateService {
 
 	private cachedServerInfo: Map<string, VersionInfo> = new Map();
 	private cachedPanelInfo: Map<string, PanelVersionInfo> = new Map();
-	private serverCacheTimestamp: Map<string, number> = new Map();
+	// Absolute expiry rather than write time, so a lookup that only partially succeeded can be
+	// given a shorter life than a complete one.
+	private serverCacheExpiresAt: Map<string, number> = new Map();
 	private panelCacheTimestamp: Map<string, number> = new Map();
 	private cachedReleaseNotes: Map<string, ReleaseNotes> = new Map();
 	private readonly CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
+
+	// A lookup that could not consult every accepted channel — the releases API was unavailable,
+	// or the scan ran out of budget — still produces a usable answer, but an incomplete one: the
+	// channel it failed to reach may hold something newer. Caching that for the full TTL would
+	// let one transient failure report "up to date" to GET /status for half a day. It is kept
+	// only briefly instead, so the next poll retries without hammering a failing API.
+	private static readonly PARTIAL_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 	private updateStatus: UpdateStatusInfo = {
 		status: UpdateStatusType.IDLE,
@@ -260,9 +269,9 @@ export class UpdateService {
 	async checkServerUpdate(channel?: 'latest' | 'beta' | 'alpha'): Promise<VersionInfo> {
 		const resolvedChannel = channel ?? this.detectChannel();
 		const cached = this.cachedServerInfo.get(resolvedChannel);
-		const cacheTime = this.serverCacheTimestamp.get(resolvedChannel) ?? 0;
+		const expiresAt = this.serverCacheExpiresAt.get(resolvedChannel) ?? 0;
 
-		if (cached && Date.now() - cacheTime < this.CACHE_TTL_MS) {
+		if (cached && Date.now() < expiresAt) {
 			return cached;
 		}
 
@@ -272,12 +281,17 @@ export class UpdateService {
 
 		try {
 			let latestVersion: string | null = null;
+			let complete = true;
 
 			if (installType === 'image') {
 				// Image installs: check GitHub version.json or releases API
-				latestVersion = await this.fetchLatestVersionFromGitHub(candidateChannels);
+				const lookup = await this.fetchLatestVersionFromGitHub(candidateChannels);
+
+				latestVersion = lookup.version;
+				complete = lookup.complete;
 			} else {
-				// npm installs: check npm registry dist-tags
+				// npm installs: a single registry document carries every dist-tag, so the lookup
+				// either succeeds outright or throws — it is never partial.
 				latestVersion = await this.fetchLatestVersionFromNpm(candidateChannels);
 			}
 
@@ -301,7 +315,10 @@ export class UpdateService {
 			};
 
 			this.cachedServerInfo.set(resolvedChannel, result);
-			this.serverCacheTimestamp.set(resolvedChannel, Date.now());
+			this.serverCacheExpiresAt.set(
+				resolvedChannel,
+				Date.now() + (complete ? this.CACHE_TTL_MS : UpdateService.PARTIAL_CACHE_TTL_MS),
+			);
 
 			return result;
 		} catch (error) {
@@ -334,9 +351,12 @@ export class UpdateService {
 	 * API rate limit and, unlike the paged releases listing, it cannot be pushed out of view by a
 	 * run of pre-releases. Pre-release channels have no such URL and must come from the API.
 	 */
-	private async fetchLatestVersionFromGitHub(channels: Array<'latest' | 'beta' | 'alpha'>): Promise<string | null> {
+	private async fetchLatestVersionFromGitHub(
+		channels: Array<'latest' | 'beta' | 'alpha'>,
+	): Promise<{ version: string | null; complete: boolean }> {
 		const found: string[] = [];
 		let stableResolved = false;
+		let complete = true;
 
 		// One deadline for the whole lookup. It starts here rather than inside the scan, because
 		// a fall-forward install runs the probe first and the caller waits for both.
@@ -356,20 +376,26 @@ export class UpdateService {
 
 		if (remaining.length > 0) {
 			try {
-				found.push(...(await this.fetchVersionsFromReleasesApi(remaining, deadline)));
+				const scan = await this.fetchVersionsFromReleasesApi(remaining, deadline);
+
+				found.push(...scan.versions);
+				complete = scan.complete;
 			} catch (error) {
 				const err = error as Error;
 
-				// A rate-limited or failing API must not discard a stable version we already hold.
+				// A rate-limited or failing API must not discard a stable version we already hold,
+				// but the channels it would have covered are now unknown rather than absent.
 				if (found.length === 0) {
 					throw error;
 				}
+
+				complete = false;
 
 				this.logger.warn(`Releases API lookup failed (${err.message}), using directly probed version only`);
 			}
 		}
 
-		return this.pickHighestVersion(found, channels);
+		return { version: this.pickHighestVersion(found, channels), complete };
 	}
 
 	/**
@@ -409,13 +435,13 @@ export class UpdateService {
 	private async fetchVersionsFromReleasesApi(
 		channels: Array<'latest' | 'beta' | 'alpha'>,
 		deadline: number,
-	): Promise<string[]> {
+	): Promise<{ versions: string[]; complete: boolean }> {
 		// The probe may already have consumed the lookup's budget. Bail out rather than issue a
 		// request with a non-positive timeout, which AbortSignal.timeout rejects outright.
 		if (this.requestBudget(deadline) <= 0) {
 			this.logger.warn('GitHub lookup budget spent before the releases listing; skipping the scan');
 
-			return [];
+			return { versions: [], complete: false };
 		}
 
 		const response = await fetch(`${this.GITHUB_PRERELEASE_API_URL}?per_page=20`, {
@@ -438,6 +464,7 @@ export class UpdateService {
 
 		const wanted = new Set<string>(channels);
 		const resolved = new Map<string, string>();
+		let truncated = false;
 
 		for (const release of releases) {
 			if (resolved.size === wanted.size) break;
@@ -450,6 +477,8 @@ export class UpdateService {
 					`GitHub lookup hit its ${UpdateService.GITHUB_LOOKUP_TIMEOUT_MS}ms budget after resolving ` +
 						`${resolved.size}/${wanted.size} channel(s); continuing with partial results`,
 				);
+
+				truncated = true;
 
 				break;
 			}
@@ -467,21 +496,27 @@ export class UpdateService {
 				if (!assetResponse.ok) continue;
 
 				const versionData = (await assetResponse.json()) as { version?: string; channel?: string };
-				const channel = versionData.channel;
-
-				if (!channel || !wanted.has(channel) || resolved.has(channel)) continue;
-
 				const version = versionData.version?.replace(/^v/, '');
 
-				if (version) {
-					resolved.set(channel, version);
-				}
+				if (!version) continue;
+
+				// Classify by the version itself rather than by version.json's `channel`, which is
+				// hand-written in the release workflow. Keying on the label lets a release that
+				// mislabels an alpha as beta mark the beta channel answered, so the genuine beta
+				// below it is never examined and the install is told there is no update.
+				const channel = this.detectChannel(version);
+
+				if (!wanted.has(channel) || resolved.has(channel)) continue;
+
+				resolved.set(channel, version);
 			} catch {
 				continue;
 			}
 		}
 
-		return [...resolved.values()];
+		// Walking the whole page without finding a channel is a complete answer — that channel has
+		// no release. Stopping early is not: the rest of the page went unread.
+		return { versions: [...resolved.values()], complete: !truncated };
 	}
 
 	/**
@@ -627,7 +662,7 @@ export class UpdateService {
 
 	invalidateServerCache(): void {
 		this.cachedServerInfo.clear();
-		this.serverCacheTimestamp.clear();
+		this.serverCacheExpiresAt.clear();
 	}
 
 	async checkPanelUpdate(prerelease: boolean = false): Promise<PanelVersionInfo> {

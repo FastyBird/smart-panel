@@ -378,15 +378,15 @@ describe('UpdateService', () => {
 		it('should abandon the releases scan once the overall time budget is spent', async () => {
 			mockImageInstall('0.7.0-alpha.1');
 
-			// Twenty releases, none carrying an accepted channel, so the scan can never
-			// satisfy every requested channel and has nothing to short-circuit on.
+			// Twenty releases that are all alphas, so beta and latest are never resolved and the
+			// "every channel answered" short-circuit can never fire.
 			const releases = Array.from({ length: 20 }, (_, i) =>
-				release(`v9.9.${i}`, true, `https://example.test/r${i}/version.json`),
+				release(`v9.9.${i}-alpha.0`, true, `https://example.test/r${i}/version.json`),
 			);
 			const routes: Record<string, unknown> = { [RELEASES_API]: releases };
 
 			releases.forEach((_, i) => {
-				routes[`https://example.test/r${i}/version.json`] = { version: `9.9.${i}`, channel: 'nightly' };
+				routes[`https://example.test/r${i}/version.json`] = { version: `9.9.${i}-alpha.0`, channel: 'alpha' };
 			});
 
 			mockFetchRoutes(routes);
@@ -402,10 +402,9 @@ describe('UpdateService', () => {
 				return routed(input);
 			});
 
-			const result = await service.checkServerUpdate();
+			await service.checkServerUpdate();
 
-			expect(result.latest).toBeNull();
-			// Without a shared deadline this walks all 20 releases.
+			// Without a budget this walks all 20 releases looking for beta and latest.
 			expect(fetchSpy.mock.calls.length).toBeLessThan(10);
 
 			nowSpy.mockRestore();
@@ -451,6 +450,79 @@ describe('UpdateService', () => {
 			nowSpy.mockRestore();
 		});
 
+		it('should classify a release by its version, not by the channel its version.json claims', async () => {
+			// The `channel` field is hand-written in the release workflow. If the newest release
+			// mislabels an alpha as beta, keying the scan on that label marks beta as answered and
+			// the genuinely newer beta below it is never examined.
+			mockImageInstall('1.0.0-beta.2');
+			mockFetchRoutes({
+				[RELEASES_API]: [
+					release('v1.1.0-alpha.0', true, 'https://example.test/mislabelled/version.json'),
+					release('v1.0.0-beta.5', true, 'https://example.test/beta/version.json'),
+				],
+				'https://example.test/mislabelled/version.json': { version: '1.1.0-alpha.0', channel: 'beta' },
+				'https://example.test/beta/version.json': { version: '1.0.0-beta.5', channel: 'beta' },
+			});
+
+			const result = await service.checkServerUpdate();
+
+			expect(result.latest).toBe('1.0.0-beta.5');
+			expect(result.updateAvailable).toBe(true);
+		});
+
+		it('should not cache a stable-only fallback for the full TTL', async () => {
+			// The releases API failed, so the beta/alpha channels were never consulted. Caching
+			// that as a complete answer hides a newer pre-release from GET /status until the TTL
+			// expires, even though the failure was transient.
+			mockImageInstall('1.0.0-beta.2');
+			mockFetchRoutes({
+				[STABLE_VERSION_JSON]: { version: '0.9.0', channel: 'latest' },
+			});
+
+			let now = 1_000_000;
+			const nowSpy = jest.spyOn(Date, 'now').mockImplementation(() => now);
+
+			const first = await service.checkServerUpdate();
+
+			expect(first.latest).toBe('0.9.0');
+			expect(first.updateAvailable).toBe(false);
+
+			const callsAfterFirst = fetchSpy.mock.calls.length;
+
+			// Ten minutes later the partial answer must no longer be served from cache.
+			now += 10 * 60 * 1000;
+
+			await service.checkServerUpdate();
+
+			expect(fetchSpy.mock.calls.length).toBeGreaterThan(callsAfterFirst);
+
+			nowSpy.mockRestore();
+		});
+
+		it('should cache a complete lookup for the full TTL', async () => {
+			mockImageInstall('1.0.0-beta.2');
+			mockFetchRoutes({
+				[STABLE_VERSION_JSON]: { version: '0.9.0', channel: 'latest' },
+				[RELEASES_API]: [release('v1.0.0-beta.5', true, 'https://example.test/beta/version.json')],
+				'https://example.test/beta/version.json': { version: '1.0.0-beta.5', channel: 'beta' },
+			});
+
+			let now = 1_000_000;
+			const nowSpy = jest.spyOn(Date, 'now').mockImplementation(() => now);
+
+			await service.checkServerUpdate();
+
+			const callsAfterFirst = fetchSpy.mock.calls.length;
+
+			now += 10 * 60 * 1000;
+
+			await service.checkServerUpdate();
+
+			expect(fetchSpy.mock.calls.length).toBe(callsAfterFirst);
+
+			nowSpy.mockRestore();
+		});
+
 		it('should still report a result when the releases API fails but the stable probe succeeds', async () => {
 			mockImageInstall('0.9.0-beta.1');
 			mockFetchRoutes({
@@ -475,7 +547,7 @@ describe('UpdateService', () => {
 			};
 
 			(service as any).cachedServerInfo.set('latest', cached);
-			(service as any).serverCacheTimestamp.set('latest', Date.now());
+			(service as any).serverCacheExpiresAt.set('latest', Date.now() + 60_000);
 
 			const result = await service.checkServerUpdate('latest');
 
