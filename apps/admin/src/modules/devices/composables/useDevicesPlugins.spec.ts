@@ -46,7 +46,7 @@ const mockPluginList = [
 				type: 'wizard-type',
 				name: 'Wizard Type',
 				components: {
-					deviceWizard: {},
+					deviceWizardAdapter: () => ({}),
 				},
 			},
 			{

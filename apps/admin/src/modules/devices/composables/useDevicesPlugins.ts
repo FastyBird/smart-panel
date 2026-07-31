@@ -14,7 +14,7 @@ export const useDevicesPlugins = (): IUseDevicesPlugins => {
 
 	const { enabled } = useConfigPlugins();
 
-	const pluginComponents: (keyof IDevicePluginsComponents)[] = ['deviceAddForm', 'deviceEditForm', 'deviceWizard'];
+	const pluginComponents: (keyof IDevicePluginsComponents)[] = ['deviceAddForm', 'deviceEditForm', 'deviceWizard', 'deviceWizardAdapter'];
 	const typeOptionComponents: (keyof IDevicePluginsComponents)[] = ['deviceAddForm', 'deviceEditForm'];
 
 	const pluginSchemas: (keyof IDevicePluginsSchemas)[] = [
@@ -75,7 +75,11 @@ export const useDevicesPlugins = (): IUseDevicesPlugins => {
 	const wizardOptions = computed<{ value: IPlugin['type']; label: string; description: string; disabled: boolean }[]>(() => {
 		const flat = plugins.value
 			.filter((plugin) =>
-				(plugin.elements ?? []).some((el) => (el.modules === undefined || el.modules.includes(DEVICES_MODULE_NAME)) && !!el.components?.deviceWizard)
+				(plugin.elements ?? []).some(
+					(el) =>
+						(el.modules === undefined || el.modules.includes(DEVICES_MODULE_NAME)) &&
+						(!!el.components?.deviceWizard || !!el.components?.deviceWizardAdapter)
+				)
 			)
 			.map((plugin) => ({
 				value: plugin.type,

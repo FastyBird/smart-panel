@@ -9,6 +9,7 @@ import { type IChannelPropertyAddFormProps, channelPropertyAddFormEmits } from '
 import { type IChannelPropertyEditFormProps, channelPropertyEditFormEmits } from './components/channels/channel-property-edit-form.types';
 import { type IDeviceAddFormProps, deviceAddFormEmits } from './components/devices/device-add-form.types';
 import { type IDeviceEditFormProps, deviceEditFormEmits } from './components/devices/device-edit-form.types';
+import type { IDeviceWizardAdapter } from './components/wizard/device-wizard.types';
 import { ChannelPropertyAddFormSchema, ChannelPropertyEditFormSchema } from './schemas/channels.properties.schemas';
 import { ChannelAddFormSchema, ChannelEditFormSchema } from './schemas/channels.schemas';
 import { DeviceAddFormSchema, type DeviceEditFormSchema } from './schemas/devices.schemas';
@@ -23,7 +24,9 @@ import { DeviceCreateReqSchema, DeviceSchema, DeviceUpdateReqSchema } from './st
 export type IDevicePluginsComponents = {
 	deviceAddForm?: DefineComponent<IDeviceAddFormProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, typeof deviceAddFormEmits>;
 	deviceEditForm?: DefineComponent<IDeviceEditFormProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, typeof deviceEditFormEmits>;
+	/** @deprecated Superseded by `deviceWizardAdapter`; removed once every plugin has migrated. */
 	deviceWizard?: DefineComponent<{}, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}>;
+	deviceWizardAdapter?: () => IDeviceWizardAdapter;
 };
 
 export type IDevicePluginsSchemas = {
