@@ -31,7 +31,12 @@ import { BackupContributionRegistry, BackupContributionType } from './backup-con
 
 const execFileAsync = promisify(execFile);
 
-const packageJson = JSON.parse(readFileSync(resolve(__dirname, '../../../../../../package.json'), 'utf-8')) as {
+// Four levels up from `dist/modules/system/services` is this package's own root — the same
+// depth used by update.service, system.controller and mdns.service. Six levels reaches the
+// monorepo root, which exists in a dev checkout but overshoots to the install's parent
+// directory once deployed (`/opt/package.json`). Because this read happens at module scope,
+// getting it wrong takes the whole app down at require time rather than failing a backup.
+const packageJson = JSON.parse(readFileSync(resolve(__dirname, '../../../../package.json'), 'utf-8')) as {
 	version: string;
 };
 
