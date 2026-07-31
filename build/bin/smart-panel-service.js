@@ -626,7 +626,7 @@ program
 program
 	.command('update-panel')
 	.description('Update the Smart Panel display app')
-	.option('--platform <platform>', 'Panel platform: flutter-pi-armv7, flutter-pi-arm64, elinux, linux, android')
+	.option('--platform <platform>', 'Panel platform: flutter-pi-armv7, flutter-pi-arm64, linux, android')
 	.option('--version <version>', 'Install specific version')
 	.option('--beta', 'Install latest beta release')
 	.option('-d, --install-dir <dir>', 'Installation directory', '/opt/smart-panel-display')
@@ -661,7 +661,7 @@ program
 				} else if (arch === 'armv7') {
 					platform = 'flutter-pi-armv7';
 				} else if (arch === 'x64') {
-					platform = 'elinux';
+					platform = 'linux';
 				} else {
 					logger.error('Could not detect platform. Use --platform to specify.');
 					process.exit(1);
@@ -707,7 +707,6 @@ program
 			const assetPatterns = {
 				'flutter-pi-armv7': /smart-panel-display-armv7\.tar\.gz/,
 				'flutter-pi-arm64': /smart-panel-display-arm64\.tar\.gz/,
-				elinux: /smart-panel-display-elinux-x64\.tar\.gz/,
 				linux: /smart-panel-display-linux-x64\.tar\.gz/,
 				android: /smart-panel-display\.apk/,
 			};

@@ -16,7 +16,7 @@
 #   --version <ver>   Install specific version
 #   --alpha           Install alpha (dev) version
 #   --beta            Install beta version
-#   --platform <p>    Force platform: flutter-pi, elinux, linux, android
+#   --platform <p>    Force platform: flutter-pi, linux, android
 #   --kiosk           Enable kiosk mode (auto-start on boot, no desktop)
 #
 
@@ -146,9 +146,9 @@ detect_platform() {
 		return
 	fi
 
-	# x64 Linux - use elinux (no desktop environment required)
+	# x64 Linux - use the Flutter desktop build (X11/Wayland, or cage for kiosk)
 	if [[ "$arch" == "x64" ]]; then
-		echo "elinux"
+		echo "linux"
 		return
 	fi
 
@@ -254,37 +254,6 @@ install_flutter_pi_deps() {
 	print_success "flutter-pi dependencies installed"
 }
 
-install_elinux_deps() {
-	print_step "Installing eLinux (DRM-GBM) dependencies..."
-
-	local distro=""
-	if [[ -f /etc/os-release ]]; then
-		. /etc/os-release
-		distro="$ID"
-	fi
-
-	case $distro in
-		debian|ubuntu)
-			apt-get update -qq
-			apt-get install -y -qq libegl1-mesa libgles2-mesa libxkbcommon0 \
-				libdrm2 libgbm1 libinput10 libudev1 libsystemd0 2>/dev/null
-			;;
-		fedora|centos|rhel|rocky|almalinux)
-			dnf install -y mesa-libEGL mesa-libGLES libxkbcommon \
-				libdrm mesa-libgbm libinput systemd-libs 2>/dev/null || \
-			yum install -y mesa-libEGL mesa-libGLES libxkbcommon \
-				libdrm mesa-libgbm libinput systemd-libs 2>/dev/null
-			;;
-		arch|manjaro)
-			pacman -Sy --noconfirm mesa libxkbcommon libdrm libinput systemd 2>/dev/null
-			;;
-		*)
-			print_warning "Unknown distro '$distro'. Please ensure EGL/DRM/GBM libraries are installed."
-			;;
-	esac
-
-	print_success "eLinux dependencies installed"
-}
 
 install_linux_desktop_deps() {
 	print_step "Installing Linux desktop dependencies..."
@@ -376,46 +345,6 @@ EOF
 	systemctl enable "$SERVICE_NAME"
 }
 
-create_systemd_service_elinux() {
-	local service_file="/etc/systemd/system/${SERVICE_NAME}.service"
-
-	# Find the main executable (ELF binary, not data files)
-	local exec_name="${INSTALL_DIR}/fastybird_smart_panel"
-	if [[ ! -x "$exec_name" ]]; then
-		exec_name=$(find "${INSTALL_DIR}" -maxdepth 1 -type f -executable -exec file {} \; | grep -i 'elf' | head -1 | cut -d: -f1)
-	fi
-	if [[ -z "$exec_name" ]]; then
-		print_error "Could not find executable in ${INSTALL_DIR}"
-		exit 1
-	fi
-
-	cat > "$service_file" << EOF
-[Unit]
-Description=FastyBird Smart Panel Display (eLinux DRM-GBM)
-After=multi-user.target
-Wants=multi-user.target
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=${INSTALL_DIR}
-Environment=FLUTTER_DRM_DEVICE=/dev/dri/card0
-ExecStart=${exec_name} --bundle=${INSTALL_DIR} --fullscreen --no-cursor
-Restart=on-failure
-RestartSec=5
-StandardOutput=journal
-StandardError=journal
-
-# Allow GPU and input access
-SupplementaryGroups=video render input
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-	systemctl daemon-reload
-	systemctl enable "$SERVICE_NAME"
-}
 
 create_systemd_service_linux() {
 	local service_file="/etc/systemd/system/${SERVICE_NAME}.service"
@@ -578,21 +507,6 @@ print_completion() {
 			echo -e "    sudo systemctl status ${SERVICE_NAME}"
 			echo -e "    sudo journalctl -u ${SERVICE_NAME} -f"
 			;;
-		elinux)
-			echo -e "  Smart Panel Display installed for ${CYAN}Linux (eLinux DRM-GBM, no GUI required)${NC}"
-			echo ""
-			echo -e "  ${CYAN}The app renders directly to the display via DRM/KMS.${NC}"
-			echo -e "  ${CYAN}No X11 or Wayland desktop environment is needed.${NC}"
-			echo ""
-			echo -e "  ${CYAN}Manage the service:${NC}"
-			echo -e "    sudo systemctl start ${SERVICE_NAME}"
-			echo -e "    sudo systemctl stop ${SERVICE_NAME}"
-			echo -e "    sudo systemctl status ${SERVICE_NAME}"
-			echo -e "    sudo journalctl -u ${SERVICE_NAME} -f"
-			echo ""
-			echo -e "  ${CYAN}Run manually:${NC}"
-			echo -e "    sudo FLUTTER_DRM_DEVICE=/dev/dri/card0 ${INSTALL_DIR}/<app_binary> --bundle=${INSTALL_DIR} --fullscreen"
-			;;
 		linux)
 			echo -e "  Smart Panel Display installed for ${CYAN}Linux Desktop${NC}"
 			echo ""
@@ -662,19 +576,6 @@ main() {
 			configure_backend_url
 			install_discovery_service "$tag"
 			create_systemd_service_flutterpi
-
-			if [[ "$KIOSK" == true ]]; then
-				systemctl start "$SERVICE_NAME" || true
-			fi
-			;;
-		elinux)
-			check_root
-			install_elinux_deps
-
-			download_and_extract "$tag" "smart-panel-display-elinux-${version}-x64.tar.gz" "$INSTALL_DIR"
-			chmod +x "${INSTALL_DIR}/fastybird_smart_panel" 2>/dev/null || true
-			configure_backend_url
-			create_systemd_service_elinux
 
 			if [[ "$KIOSK" == true ]]; then
 				systemctl start "$SERVICE_NAME" || true

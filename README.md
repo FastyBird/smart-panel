@@ -133,7 +133,7 @@ Install the panel app on a device that connects to an existing server:
 curl -fsSL https://get.smart-panel.fastybird.com/panel | sudo bash -s -- --backend http://YOUR_SERVER_IP:3000
 ```
 
-Supports Raspberry Pi (flutter-pi), Linux x64 (eLinux DRM or GTK desktop), and Android (APK via ADB).
+Supports Raspberry Pi and other ARM64 boards (flutter-pi, DRM/KMS — no desktop required), Linux x64 (GTK desktop), and Android (APK via ADB).
 
 For detailed installation instructions, see the [Installation Guide](build/docs/INSTALLATION.md) or the [online documentation](https://smart-panel.fastybird.com/docs/get-started/installation).
 

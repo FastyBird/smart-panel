@@ -9,14 +9,16 @@ for manual installations. If you used the install script or a pre-built image, t
 
 ## Platform Setup
 
-<Tabs items={['Raspberry Pi (flutter-pi)', 'Linux x64 (eLinux)', 'Linux Desktop', 'Android']}>
+<Tabs items={['ARM64 / Raspberry Pi (flutter-pi)', 'Linux Desktop', 'Android']}>
 	<Tabs.Tab>
-		### Raspberry Pi (flutter-pi)
+		### ARM64 boards, including Raspberry Pi (flutter-pi)
 
 		The display app uses [flutter-pi](https://github.com/ardera/flutter-pi) to render directly to the
 		display via DRM/KMS. No desktop environment (X11 or Wayland) is needed.
 
-		**Supported boards:** Raspberry Pi 3B+, 4, 5, Zero 2W
+		**Supported boards:** Raspberry Pi 3B+, 4, 5, Zero 2W, and other ARM64 boards exposing a
+		standard DRM/KMS device — Rockchip, Allwinner and similar SoCs. The Pi-specific step below
+		applies only to Raspberry Pi hardware.
 
 		#### Prerequisites
 
@@ -128,76 +130,6 @@ for manual installations. If you used the install script or a pre-built image, t
 			and auto-discovery does not work, you can enter the server URL by hand during onboarding, or
 			set up the mDNS proxy service yourself.
 		</Callout>
-	</Tabs.Tab>
-
-	<Tabs.Tab>
-		### Linux x64 (eLinux DRM-GBM)
-
-		This mode renders directly to the display via DRM without a desktop environment — ideal for
-		headless kiosk deployments on x64 hardware.
-
-		#### Prerequisites
-
-		Install the required EGL, GLES, and DRM libraries:
-
-		```bash copy
-		sudo apt install -y libegl1-mesa libgles2-mesa libxkbcommon0 \
-			libdrm2 libgbm1 libinput10 libudev1 libsystemd0
-		```
-
-		#### Release Assets
-
-		- **x64:** `smart-panel-display-elinux-{version}-x64.tar.gz`
-		- **ARM64:** `smart-panel-display-elinux-{version}-arm64.tar.gz` (for ARM64 boards running without a desktop)
-
-		#### Manual Install
-
-		<Steps>
-			## Download the Display App
-
-			```bash copy
-			VERSION="latest"
-
-			sudo mkdir -p /opt/smart-panel-display
-			curl -sL "https://github.com/FastyBird/smart-panel/releases/${VERSION}/download/smart-panel-display-elinux-${VERSION}-x64.tar.gz" \
-				| sudo tar -xzf - -C /opt/smart-panel-display
-			sudo chmod +x /opt/smart-panel-display/fastybird_smart_panel
-			```
-
-			## Create a Systemd Service
-
-			```bash copy
-			sudo tee /etc/systemd/system/smart-panel-display.service > /dev/null <<'EOF'
-			[Unit]
-			Description=Smart Panel Display (eLinux DRM-GBM)
-			After=multi-user.target
-
-			[Service]
-			User=root
-			WorkingDirectory=/opt/smart-panel-display
-			Environment=FLUTTER_DRM_DEVICE=/dev/dri/card0
-			ExecStart=/opt/smart-panel-display/fastybird_smart_panel --bundle=/opt/smart-panel-display --fullscreen --no-cursor
-			Restart=on-failure
-			RestartSec=5
-			SupplementaryGroups=video render input
-
-			[Install]
-			WantedBy=multi-user.target
-			EOF
-			```
-
-			<Callout type="default">
-				If your display is on a different DRM device, change `FLUTTER_DRM_DEVICE` to the correct
-				path (e.g., `/dev/dri/card1`). Check available devices with `ls /dev/dri/`.
-			</Callout>
-
-			## Enable and Start
-
-			```bash copy
-			sudo systemctl enable smart-panel-display
-			sudo systemctl start smart-panel-display
-			```
-		</Steps>
 	</Tabs.Tab>
 
 	<Tabs.Tab>
