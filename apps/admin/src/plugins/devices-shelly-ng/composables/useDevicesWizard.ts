@@ -1,21 +1,31 @@
-import { type ComputedRef, type Reactive, computed, reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { orderBy } from 'natural-orderby';
 import { v4 as uuid } from 'uuid';
 
-import { tryOnMounted, tryOnUnmounted, useNow } from '@vueuse/core';
+import { useNow } from '@vueuse/core';
 
 import { PLUGINS_PREFIX } from '../../../app.constants';
 import { getErrorReason, injectStoresManager, useBackend, useFlashMessage } from '../../../common';
-import { FormResult, type FormResultType, devicesStoreKey } from '../../../modules/devices';
 import {
-	DevicesModuleDeviceCategory,
+	FormResult,
+	type FormResultType,
+	type IDeviceWizardAdapter,
+	type IWizardAdoptSelection,
+	type IWizardControl,
+	type IWizardResult,
+	type IWizardRow,
+	type IWizardRowStatus,
+	devicesStoreKey,
+} from '../../../modules/devices';
+import {
+	type DevicesModuleDeviceCategory,
 	type DevicesShellyNgPluginCreateDiscoveryManualOperation,
 	type DevicesShellyNgPluginCreateDiscoveryOperation,
 	type DevicesShellyNgPluginGetDiscoveryOperation,
 } from '../../../openapi.constants';
-import { DEVICES_SHELLY_NG_PLUGIN_PREFIX, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
+import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_PLUGIN_PREFIX, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgApiException } from '../devices-shelly-ng.exceptions';
 import type { IShellyNgDiscoveryDevice, IShellyNgDiscoverySession } from '../schemas/devices.types';
 import { transformDeviceInfoRequest, transformDiscoverySessionResponse } from '../utils/devices.transformers';
@@ -29,29 +39,17 @@ export interface IShellyNgWizardAdoptionResult {
 
 export const isAdoptableStatus = (status: IShellyNgDiscoveryDevice['status']): boolean => status === 'ready' || status === 'already_registered';
 
-export interface IUseDevicesWizard {
-	session: ComputedRef<IShellyNgDiscoverySession | null>;
-	devices: ComputedRef<IShellyNgDiscoveryDevice[]>;
-	selectedDevices: ComputedRef<IShellyNgDiscoveryDevice[]>;
-	scanPercentage: ComputedRef<number>;
-	formResult: ComputedRef<FormResultType>;
-	manual: Reactive<{
-		hostname: string;
-		password: string;
-	}>;
-	selected: Reactive<Record<string, boolean>>;
-	categoryByHostname: Reactive<Record<string, DevicesModuleDeviceCategory | null>>;
-	nameByHostname: Reactive<Record<string, string>>;
-	adoptionResults: ComputedRef<IShellyNgWizardAdoptionResult[]>;
-	canContinue: ComputedRef<boolean>;
-	startDiscovery: () => Promise<void>;
-	refreshDiscovery: () => Promise<void>;
-	addManualDevice: () => Promise<void>;
-	adoptSelected: () => Promise<IShellyNgWizardAdoptionResult[]>;
-	categoryOptions: (device: IShellyNgDiscoveryDevice) => { value: DevicesModuleDeviceCategory; label: string }[];
-}
+// The shared contract renames `needs_password` to the provider-neutral `needs_credentials`;
+// every other Shelly status maps through unchanged.
+const toWizardStatus = (status: IShellyNgDiscoveryDevice['status']): IWizardRowStatus => (status === 'needs_password' ? 'needs_credentials' : status);
 
-export const useDevicesWizard = (): IUseDevicesWizard => {
+// Single source of truth for the name we show and the name we send: an already registered
+// device keeps its stored name, everything else falls back through the descriptor down to
+// the hostname so the field is never blank.
+const suggestedNameFor = (device: IShellyNgDiscoveryDevice): string =>
+	device.registeredDeviceName ?? device.name ?? device.displayName ?? device.hostname;
+
+export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const { t } = useI18n();
 	const backend = useBackend();
 	const storesManager = injectStoresManager();
@@ -61,15 +59,9 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 	const session = ref<IShellyNgDiscoverySession | null>(null);
 	const formResult = ref<FormResultType>(FormResult.NONE);
 	const adoptionResults = ref<IShellyNgWizardAdoptionResult[]>([]);
-	const selected = reactive<Record<string, boolean>>({});
-	const categoryByHostname = reactive<Record<string, DevicesModuleDeviceCategory | null>>({});
-	const nameByHostname = reactive<Record<string, string>>({});
+	// Passwords typed into the manual-add form never come back from the discovery endpoint,
+	// so we remember them here to hand over on adoption.
 	const passwordByHostname = reactive<Record<string, string | null>>({});
-	const manual = reactive({
-		hostname: '',
-		password: '',
-	});
-	const readyHostnames = new Set<string>();
 
 	let pollingTimer: number | null = null;
 
@@ -106,13 +98,42 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		return Math.min(100, Math.max(0, Math.round((elapsed / sessionDurationMs.value) * 100)));
 	});
 
-	const selectedDevices = computed<IShellyNgDiscoveryDevice[]>(() =>
-		devices.value.filter(
-			(device) => selected[device.hostname] === true && isAdoptableStatus(device.status) && categoryByHostname[device.hostname] !== null
-		)
+	// Unlike Zigbee2MQTT, Shelly narrows the choice per model: a Plus 1 supports both
+	// `lighting` and `switcher`, a dimmer only `lighting`. Offering the full enum would let
+	// the user pick a category the descriptor cannot back.
+	const categoryOptions = (device: IShellyNgDiscoveryDevice): { value: DevicesModuleDeviceCategory; label: string }[] =>
+		orderBy(device.categories, [(category: string) => t(`devicesModule.categories.devices.${category}`)], ['asc']).map((value) => ({
+			value,
+			label: t(`devicesModule.categories.devices.${value}`),
+		}));
+
+	const rows = computed<IWizardRow[]>(() =>
+		devices.value.map((device) => ({
+			key: device.hostname,
+			label: device.registeredDeviceName ?? device.name ?? device.displayName ?? device.model ?? device.hostname,
+			subLabel: device.displayName ?? device.model,
+			identifier: device.hostname,
+			status: toWizardStatus(device.status),
+			adoptable: isAdoptableStatus(device.status),
+			willUpdate: device.status === 'already_registered',
+			suggestedName: suggestedNameFor(device),
+			// Prefer the existing DB category over the descriptor's suggestion — the descriptor
+			// only suggests when the model maps to exactly one category, so a Plus 1 would
+			// otherwise show as blank even though we already picked one when adopting it.
+			suggestedCategory: device.registeredDeviceCategory ?? device.suggestedCategory,
+			categoryOptions: categoryOptions(device),
+		}))
 	);
 
-	const canContinue = computed<boolean>(() => selectedDevices.value.length > 0);
+	const results = computed<IWizardResult[]>(() =>
+		adoptionResults.value.map((result) => ({
+			key: result.hostname,
+			name: result.name,
+			identifier: result.hostname,
+			status: result.status,
+			error: result.error,
+		}))
+	);
 
 	const startPolling = (): void => {
 		stopPolling();
@@ -132,8 +153,8 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 	};
 
 	const applySession = (nextSession: IShellyNgDiscoverySession): void => {
-		const previousDevices = session.value?.devices ?? [];
-
+		// Row-level bookkeeping (selection, editable names, categories) belongs to the wizard
+		// shell — the adapter only owns the raw session snapshot and the scan progress anchor.
 		session.value = nextSession;
 
 		// Snap the client-side progress reference to the moment we received this snapshot.
@@ -143,79 +164,17 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		sessionRemainingMsAtReceipt.value = nextSession.remainingSeconds * 1_000;
 		sessionDurationMs.value = Math.max(1, new Date(nextSession.expiresAt).getTime() - new Date(nextSession.startedAt).getTime());
 
-		for (const device of nextSession.devices) {
-			const previousDevice = previousDevices.find((item) => item.hostname === device.hostname);
-			const becameReady = previousDevice?.status === 'checking' && device.status === 'ready';
-			const becameAdoptable = previousDevice?.status === 'checking' && isAdoptableStatus(device.status);
-			const becameAlreadyRegistered =
-				previousDevice !== undefined && previousDevice.status !== 'already_registered' && device.status === 'already_registered';
-			const wasPreviouslyReady = readyHostnames.has(device.hostname);
-
-			// `ready` devices are pre-selected so the user can adopt new devices in one step.
-			// `already_registered` devices stay deselected — the user must opt in explicitly to override
-			// the category/name the main service auto-adopted them with.
-			//
-			// If a device that was previously `ready` (and possibly user-selected) refreshes to
-			// `already_registered` — typically because the main connector auto-adopted it during the
-			// session — clear the selection so the next Adopt click doesn't silently update an
-			// existing device. `adoptSelected` snapshots the user's selections before its own
-			// refresh, so an in-flight adopt isn't dropped by this rule.
-			if (selected[device.hostname] === undefined || (becameReady && !wasPreviouslyReady)) {
-				selected[device.hostname] = device.status === 'ready';
-			} else if (becameAlreadyRegistered) {
-				selected[device.hostname] = false;
-			}
-
-			// Pre-fill the category dropdown so the wizard never lands on an empty selector for
-			// already-adopted devices: prefer the existing DB category over the descriptor's
-			// suggestion (the descriptor's `suggestedCategory` is only set when the model maps
-			// to a single category, so a Plus 1 — which supports both `lighting` and `switcher` —
-			// would otherwise show as blank even though we already picked one when adopting).
-			const initialCategory = device.registeredDeviceCategory ?? device.suggestedCategory;
-
-			if (categoryByHostname[device.hostname] === undefined || (categoryByHostname[device.hostname] === null && initialCategory !== null)) {
-				categoryByHostname[device.hostname] = initialCategory;
-			}
-
-			// Refresh the editable name when the inspect step finishes (checking → ready or
-			// checking → already_registered) and the user hasn't typed anything yet — otherwise
-			// `already_registered` devices would keep the hostname placeholder and overwrite the
-			// existing registered name on update.
-			if (nameByHostname[device.hostname] === undefined || (becameAdoptable && nameByHostname[device.hostname] === device.hostname)) {
-				nameByHostname[device.hostname] = device.registeredDeviceName ?? device.name ?? device.displayName ?? device.hostname;
-			}
-
-			// `readyHostnames` records devices that have been observed in the `ready` state at
-			// least once during the session. Its only consumer is the `becameReady &&
-			// !wasPreviouslyReady` guard above, which prevents re-selecting a device the user
-			// already deselected. We must NOT include `already_registered` here — otherwise a
-			// device that started as `already_registered`, was deleted from the DB mid-session,
-			// then transitioned `checking → ready` would be treated as previously-ready and skip
-			// auto-selection.
-			if (device.status === 'ready') {
-				readyHostnames.add(device.hostname);
-			}
-		}
-
 		if (nextSession.status !== 'running') {
 			stopPolling();
 		}
 	};
 
 	const resetSessionScopedState = (): void => {
-		for (const key of Object.keys(selected)) {
-			delete selected[key];
-		}
-		for (const key of Object.keys(categoryByHostname)) {
-			delete categoryByHostname[key];
-		}
-		for (const key of Object.keys(nameByHostname)) {
-			delete nameByHostname[key];
-		}
 		for (const key of Object.keys(passwordByHostname)) {
 			delete passwordByHostname[key];
 		}
-		readyHostnames.clear();
+
+		adoptionResults.value = [];
 	};
 
 	const startDiscovery = async (): Promise<void> => {
@@ -228,11 +187,9 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		} = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_SHELLY_NG_PLUGIN_PREFIX}/devices/discovery`);
 
 		if (typeof responseData !== 'undefined') {
-			// Drop any selections / inputs from a previous scan before applying the new snapshot.
-			// Otherwise a device that was `ready` last time and now shows as `already_registered`
-			// would carry over `selected=true` and silently update an existing device on adopt.
+			// Drop any manual-add password from a previous scan before applying the new snapshot.
 			// Refreshes within the same session keep their state — only `startDiscovery` resets,
-			// so the per-device race fallback in `adoptSelected` still works.
+			// so the per-device race fallback in `adopt` still works.
 			resetSessionScopedState();
 			applySession(transformDiscoverySessionResponse(responseData.data));
 			formResult.value = FormResult.NONE;
@@ -281,19 +238,26 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		throw new DevicesShellyNgApiException(errorReason, response.status);
 	};
 
-	const addManualDevice = async (): Promise<void> => {
+	// Rejecting is meaningful here: the shell keeps whatever the user typed in the form so the
+	// hostname or password can be corrected and resubmitted.
+	const addManualDevice = async (values: Record<string, string>): Promise<void> => {
+		const hostname = (values.hostname ?? '').trim();
+
+		if (hostname.length === 0) {
+			return;
+		}
+
+		const password = (values.password ?? '').trim() || null;
+
 		if (session.value === null) {
 			await startDiscovery();
 		}
 
-		if (session.value === null || manual.hostname.trim().length === 0) {
+		if (session.value === null) {
 			return;
 		}
 
 		formResult.value = FormResult.WORKING;
-
-		const hostname = manual.hostname.trim();
-		const password = manual.password.trim() || null;
 
 		const {
 			data: responseData,
@@ -315,8 +279,6 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 
 		if (typeof responseData !== 'undefined') {
 			passwordByHostname[hostname] = password;
-			manual.hostname = '';
-			manual.password = '';
 			applySession(transformDiscoverySessionResponse(responseData.data));
 			formResult.value = FormResult.NONE;
 
@@ -333,16 +295,96 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		throw new DevicesShellyNgApiException(errorReason, response.status);
 	};
 
-	const adoptSelected = async (): Promise<IShellyNgWizardAdoptionResult[]> => {
+	// The shell invokes action handlers without awaiting them, so letting `startDiscovery`
+	// reject here would leak an unhandled promise rejection. The reason is already flashed
+	// by the transport call.
+	const restartDiscovery = async (): Promise<void> => {
+		try {
+			await startDiscovery();
+		} catch {
+			// Error already surfaced by the transport call.
+		}
+	};
+
+	const controls = computed<IWizardControl[]>(() => [
+		{
+			type: 'banner',
+			id: 'hint',
+			severity: 'info',
+			title: t('devicesShellyNgPlugin.texts.wizard.discovery'),
+		},
+		{
+			type: 'progress',
+			id: 'scan',
+			label: t('devicesShellyNgPlugin.texts.wizard.scanStatus', { count: devices.value.length }),
+			percentage: scanPercentage.value,
+			state: session.value?.status === 'finished' ? 'success' : undefined,
+			visible: true,
+		},
+		{
+			type: 'action',
+			id: 'restart-scan',
+			label: t('devicesShellyNgPlugin.buttons.wizard.restart.title'),
+			icon: 'mdi:radar',
+			loading: formResult.value === FormResult.WORKING,
+			handler: restartDiscovery,
+		},
+		{
+			type: 'form',
+			id: 'manual',
+			fields: [
+				{
+					key: 'hostname',
+					label: t('devicesShellyNgPlugin.fields.devices.hostname.title'),
+					placeholder: t('devicesShellyNgPlugin.fields.devices.hostname.placeholder'),
+				},
+				{
+					key: 'password',
+					label: t('devicesShellyNgPlugin.fields.devices.password.title'),
+					placeholder: t('devicesShellyNgPlugin.fields.devices.password.placeholder'),
+					secret: true,
+				},
+			],
+			submitLabel: t('devicesShellyNgPlugin.buttons.wizard.addManual.title'),
+			submitIcon: 'mdi:plus',
+			submitDisabled: formResult.value === FormResult.WORKING,
+			loading: formResult.value === FormResult.WORKING,
+			handler: addManualDevice,
+		},
+	]);
+
+	const updateRegistered = async (
+		id: string,
+		{ name, category, password }: { name: string; category: DevicesModuleDeviceCategory; password: string | null }
+	): Promise<void> => {
+		const data: { type: string; name: string; category: DevicesModuleDeviceCategory; password?: string } = {
+			type: DEVICES_SHELLY_NG_TYPE,
+			name,
+			category,
+		};
+
+		if (password !== null) {
+			data.password = password;
+		}
+
+		// `devicesStore.edit` requires the device to be present in the local store. When the
+		// main connector auto-adopts a device after the wizard's snapshot was taken, the new
+		// row may not be in the admin store yet — pull it in first so the edit can land.
+		if (devicesStore.findById(id) === null) {
+			await devicesStore.get({ id });
+		}
+
+		await devicesStore.edit({ id, data });
+	};
+
+	const adopt = async (selection: IWizardAdoptSelection[]): Promise<IWizardResult[]> => {
 		formResult.value = FormResult.WORKING;
 
-		// Snapshot the user's intent BEFORE refreshing. The refresh below can flip a
-		// `ready` device to `already_registered` (because the main connector auto-adopted
-		// it concurrently), and `applySession` deselects on that transition to keep the
-		// opt-in-for-updates contract on subsequent clicks. We still want THIS click to
-		// adopt the device the user chose — as an update, since that's what the new
-		// status means.
-		const userSelections = selectedDevices.value.slice();
+		// Snapshot the descriptors BEFORE refreshing. The shell already captured the user's
+		// intent (name / category) in `selection`, but the refresh below can drop a device from
+		// the live list entirely, and we still need its identifier and registration state to
+		// adopt the device the user chose.
+		const snapshot = devices.value.slice();
 
 		// Refresh once so we see any device the main service auto-adopted between scan and adoption.
 		// Lets us route those through `edit` instead of getting a duplicate-identifier error from `add`.
@@ -354,19 +396,34 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 			}
 		}
 
-		const results: IShellyNgWizardAdoptionResult[] = [];
+		const outcomes: IShellyNgWizardAdoptionResult[] = [];
 
-		for (const selection of userSelections) {
-			const device = devices.value.find((item) => item.hostname === selection.hostname) ?? selection;
-			const name = nameByHostname[device.hostname] || device.name || device.displayName || device.hostname;
-			const category = categoryByHostname[device.hostname] as DevicesModuleDeviceCategory;
+		for (const item of selection) {
+			const device =
+				devices.value.find((candidate) => candidate.hostname === item.key) ?? snapshot.find((candidate) => candidate.hostname === item.key);
+
+			if (device === undefined) {
+				outcomes.push({
+					hostname: item.key,
+					name: item.name,
+					status: 'failed',
+					error: t('devicesShellyNgPlugin.messages.wizard.adoptionNotCreated'),
+				});
+
+				continue;
+			}
+
+			// The shell already trims and defaults the name, but a blank one must never reach
+			// the backend — fall back to the same chain that seeded the field.
+			const name = item.name.trim() || suggestedNameFor(device);
+			const category = item.category;
 			const password = passwordByHostname[device.hostname] ?? null;
 
 			try {
 				if (device.status === 'already_registered' && device.registeredDeviceId !== null) {
 					await updateRegistered(device.registeredDeviceId, { name, category, password });
 
-					results.push({
+					outcomes.push({
 						hostname: device.hostname,
 						name,
 						status: 'updated',
@@ -395,7 +452,7 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 						},
 					});
 
-					results.push({
+					outcomes.push({
 						hostname: device.hostname,
 						name,
 						status: 'created',
@@ -410,12 +467,12 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 						// ignore — handled below
 					}
 
-					const refreshed = devices.value.find((item) => item.hostname === device.hostname);
+					const refreshed = devices.value.find((candidate) => candidate.hostname === device.hostname);
 
 					if (refreshed?.status === 'already_registered' && refreshed.registeredDeviceId !== null) {
 						await updateRegistered(refreshed.registeredDeviceId, { name, category, password });
 
-						results.push({
+						outcomes.push({
 							hostname: device.hostname,
 							name,
 							status: 'updated',
@@ -428,7 +485,7 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 					throw createError;
 				}
 			} catch (error: unknown) {
-				results.push({
+				outcomes.push({
 					hostname: device.hostname,
 					name,
 					status: 'failed',
@@ -437,68 +494,36 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 			}
 		}
 
-		adoptionResults.value = results;
-		formResult.value = results.some((result) => result.status === 'failed') ? FormResult.ERROR : FormResult.OK;
+		adoptionResults.value = outcomes;
+		formResult.value = outcomes.some((result) => result.status === 'failed') ? FormResult.ERROR : FormResult.OK;
 
-		return results;
+		return results.value;
 	};
-
-	const updateRegistered = async (
-		id: string,
-		{ name, category, password }: { name: string; category: DevicesModuleDeviceCategory; password: string | null }
-	): Promise<void> => {
-		const data: { type: string; name: string; category: DevicesModuleDeviceCategory; password?: string } = {
-			type: DEVICES_SHELLY_NG_TYPE,
-			name,
-			category,
-		};
-
-		if (password !== null) {
-			data.password = password;
-		}
-
-		// `devicesStore.edit` requires the device to be present in the local store. When the
-		// main connector auto-adopts a device after the wizard's snapshot was taken, the new
-		// row may not be in the admin store yet — pull it in first so the edit can land.
-		if (devicesStore.findById(id) === null) {
-			await devicesStore.get({ id });
-		}
-
-		await devicesStore.edit({ id, data });
-	};
-
-	const categoryOptions = (device: IShellyNgDiscoveryDevice): { value: DevicesModuleDeviceCategory; label: string }[] =>
-		orderBy(device.categories, [(category: string) => t(`devicesModule.categories.devices.${category}`)], ['asc']).map((value) => ({
-			value,
-			label: t(`devicesModule.categories.devices.${value}`),
-		}));
-
-	tryOnMounted(() => {
-		startDiscovery().catch(() => {
-			// The message is already surfaced to the user.
-		});
-	});
-
-	tryOnUnmounted(() => {
-		stopPolling();
-	});
 
 	return {
-		session: computed(() => session.value),
-		devices,
-		selectedDevices,
-		scanPercentage,
-		formResult: computed(() => formResult.value),
-		manual,
-		selected,
-		categoryByHostname,
-		nameByHostname,
-		adoptionResults: computed(() => adoptionResults.value),
-		canContinue,
-		startDiscovery,
-		refreshDiscovery,
-		addManualDevice,
-		adoptSelected,
-		categoryOptions,
+		title: t('devicesShellyNgPlugin.headings.wizard.title'),
+		subtitle: t('devicesShellyNgPlugin.subHeadings.wizard'),
+		breadcrumbLabel: t('devicesShellyNgPlugin.breadcrumbs.wizard'),
+		pluginType: DEVICES_SHELLY_NG_PLUGIN_NAME,
+		identifierLabel: t('devicesShellyNgPlugin.fields.devices.hostname.title'),
+		rows,
+		results,
+		columns: [],
+		controls,
+		// Always ready: none of the Shelly controls render misleading state before the first
+		// snapshot lands, and a session-gated overlay would hide the manual-add form and the
+		// rescan button — the only two escape hatches when the initial scan fails to start.
+		ready: computed<boolean>(() => true),
+		busy: computed<boolean>(() => formResult.value === FormResult.WORKING),
+		// Shelly has no gateway-side pairing window to reopen, so a second round is just
+		// another scan the user can trigger from the discover step.
+		capabilities: { addMore: false },
+		start: startDiscovery,
+		adopt,
+		// There is no server-side session to tear down, but the 1s poll must not outlive the
+		// wizard view.
+		dispose: async (): Promise<void> => {
+			stopPolling();
+		},
 	};
 };
