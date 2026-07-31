@@ -90,6 +90,7 @@ import { DEVICES_SHELLY_V1_PLUGIN_PREFIX } from './plugins/devices-shelly-v1/dev
 import { DevicesShellyV1Plugin } from './plugins/devices-shelly-v1/devices-shelly-v1.plugin';
 import { DEVICES_THIRD_PARTY_PLUGIN_PREFIX } from './plugins/devices-third-party/devices-third-party.constants';
 import { DevicesThirdPartyPlugin } from './plugins/devices-third-party/devices-third-party.plugin';
+import { DevicesVirtualPlugin } from './plugins/devices-virtual/devices-virtual.plugin';
 import { DEVICES_WLED_PLUGIN_PREFIX } from './plugins/devices-wled/devices-wled.constants';
 import { DevicesWledPlugin } from './plugins/devices-wled/devices-wled.plugin';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX } from './plugins/devices-zigbee2mqtt/devices-zigbee2mqtt.constants';
@@ -428,6 +429,7 @@ export class AppModule {
 				DevicesShellyV1Plugin,
 				DevicesWledPlugin,
 				DevicesZigbee2mqttPlugin,
+				DevicesVirtualPlugin,
 				SimulatorPlugin,
 				PagesCardsPlugin,
 				SpacesHomeControlPlugin,
