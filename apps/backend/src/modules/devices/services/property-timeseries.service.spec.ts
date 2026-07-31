@@ -12,10 +12,12 @@ import { DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 
 import { PropertyTimeseriesService } from './property-timeseries.service';
+import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 
 describe('PropertyTimeseriesService', () => {
 	let service: PropertyTimeseriesService;
 	let storageService: jest.Mocked<StorageService>;
+	let module: TestingModule;
 
 	const mockProperty: ChannelPropertyEntity = {
 		id: 'prop-123',
@@ -29,9 +31,10 @@ describe('PropertyTimeseriesService', () => {
 			query: jest.fn(),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				PropertyTimeseriesService,
+				PropertyValueSourceRegistryService,
 				{
 					provide: StorageService,
 					useValue: mockStorageService,
@@ -268,6 +271,25 @@ describe('PropertyTimeseriesService', () => {
 			const query = storageService.query.mock.calls[0][0];
 
 			expect(query).toContain('GROUP BY time(15m)');
+		});
+
+		it('queries history under the source key for a projected property', async () => {
+			const registry = module.get<PropertyValueSourceRegistryService>(PropertyValueSourceRegistryService);
+
+			registry.register({
+				getType: () => 'virtual',
+				resolve: () => 'source-prop',
+			});
+
+			const property = {
+				id: 'virtual-prop',
+				type: 'virtual',
+				dataType: DataTypeType.FLOAT,
+			} as unknown as ChannelPropertyEntity;
+
+			await service.queryTimeseries(property, new Date('2026-01-01'), new Date('2026-01-02'));
+
+			expect(storageService.query).toHaveBeenCalledWith(expect.stringContaining("propertyId = 'source-prop'"));
 		});
 	});
 });
