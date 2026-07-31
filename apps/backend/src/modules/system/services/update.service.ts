@@ -354,48 +354,72 @@ export class UpdateService {
 	private async fetchLatestVersionFromGitHub(
 		channels: Array<'latest' | 'beta' | 'alpha'>,
 	): Promise<{ version: string | null; complete: boolean }> {
-		const found: string[] = [];
-		let stableResolved = false;
-		let complete = true;
+		const wanted = new Set<'latest' | 'beta' | 'alpha'>(channels);
+		// Keyed by the channel a version *actually* belongs to. Every source feeds this same map
+		// through the same classification, so no source can claim a channel it did not answer.
+		const answered = new Map<'latest' | 'beta' | 'alpha', string>();
+		let apiFailed = false;
 
 		// One deadline for the whole lookup. It starts here rather than inside the scan, because
 		// a fall-forward install runs the probe first and the caller waits for both.
 		const deadline = Date.now() + UpdateService.GITHUB_LOOKUP_TIMEOUT_MS;
 
-		if (channels.includes('latest')) {
-			const stable = await this.fetchStableVersionFromDownloadUrl(deadline);
+		if (wanted.has('latest')) {
+			const probed = await this.fetchStableVersionFromDownloadUrl(deadline);
 
-			if (stable) {
-				found.push(stable);
-				stableResolved = true;
-			}
+			// The download URL is just another source of a version string. If what it returns is
+			// not in fact stable, the stable channel is still unanswered and the API must cover it.
+			this.recordCandidate(answered, wanted, probed);
 		}
 
-		// Anything the direct probe did not already answer still has to come from the API.
-		const remaining = channels.filter((channel) => channel !== 'latest' || !stableResolved);
+		const remaining = channels.filter((channel) => !answered.has(channel));
 
 		if (remaining.length > 0) {
 			try {
-				const scan = await this.fetchVersionsFromReleasesApi(remaining, deadline);
-
-				found.push(...scan.versions);
-				complete = scan.complete;
+				for (const version of await this.fetchVersionsFromReleasesApi(remaining, deadline)) {
+					this.recordCandidate(answered, wanted, version);
+				}
 			} catch (error) {
 				const err = error as Error;
 
-				// A rate-limited or failing API must not discard a stable version we already hold,
-				// but the channels it would have covered are now unknown rather than absent.
-				if (found.length === 0) {
+				// A rate-limited or failing API must not discard a version we already hold, but the
+				// channels it would have covered are now unknown rather than absent.
+				if (answered.size === 0) {
 					throw error;
 				}
 
-				complete = false;
+				apiFailed = true;
 
 				this.logger.warn(`Releases API lookup failed (${err.message}), using directly probed version only`);
 			}
 		}
 
-		return { version: this.pickHighestVersion(found, channels), complete };
+		// Completeness is derived once, here, rather than tracked at each exit path. The lookup saw
+		// everything if every accepted channel has an answer; failing that, it is only complete if
+		// it ran the search to the end without the API failing and without running out of time.
+		const complete = answered.size === wanted.size || (!apiFailed && this.requestBudget(deadline) > 0);
+
+		return { version: this.pickHighestVersion([...answered.values()], channels), complete };
+	}
+
+	/**
+	 * File a version under the channel its own version string puts it in, keeping the first (and
+	 * therefore newest, since sources are consulted newest-first) answer per channel. Versions
+	 * outside the accepted channels are dropped rather than recorded, so a channel is only ever
+	 * marked answered by a version that genuinely belongs to it.
+	 */
+	private recordCandidate(
+		answered: Map<'latest' | 'beta' | 'alpha', string>,
+		wanted: Set<'latest' | 'beta' | 'alpha'>,
+		version: string | null | undefined,
+	): void {
+		if (!version) return;
+
+		const channel = this.detectChannel(version);
+
+		if (!wanted.has(channel) || answered.has(channel)) return;
+
+		answered.set(channel, version);
 	}
 
 	/**
@@ -435,13 +459,13 @@ export class UpdateService {
 	private async fetchVersionsFromReleasesApi(
 		channels: Array<'latest' | 'beta' | 'alpha'>,
 		deadline: number,
-	): Promise<{ versions: string[]; complete: boolean }> {
+	): Promise<string[]> {
 		// The probe may already have consumed the lookup's budget. Bail out rather than issue a
 		// request with a non-positive timeout, which AbortSignal.timeout rejects outright.
 		if (this.requestBudget(deadline) <= 0) {
 			this.logger.warn('GitHub lookup budget spent before the releases listing; skipping the scan');
 
-			return { versions: [], complete: false };
+			return [];
 		}
 
 		const response = await fetch(`${this.GITHUB_PRERELEASE_API_URL}?per_page=20`, {
@@ -463,22 +487,20 @@ export class UpdateService {
 		}>;
 
 		const wanted = new Set<string>(channels);
-		const resolved = new Map<string, string>();
-		let truncated = false;
+		const seen = new Set<string>();
+		const versions: string[] = [];
 
 		for (const release of releases) {
-			if (resolved.size === wanted.size) break;
+			if (seen.size === wanted.size) break;
 
 			// A channel with no release at all never satisfies the check above, so the sweep
-			// would otherwise open every release on the page. Stop at the budget instead and
-			// report on whatever was resolved.
+			// would otherwise open every release on the page. Stop at the budget instead; the
+			// caller notices the spent budget and treats the answer as partial.
 			if (this.requestBudget(deadline) <= 0) {
 				this.logger.warn(
 					`GitHub lookup hit its ${UpdateService.GITHUB_LOOKUP_TIMEOUT_MS}ms budget after resolving ` +
-						`${resolved.size}/${wanted.size} channel(s); continuing with partial results`,
+						`${seen.size}/${wanted.size} channel(s); continuing with partial results`,
 				);
-
-				truncated = true;
 
 				break;
 			}
@@ -500,23 +522,20 @@ export class UpdateService {
 
 				if (!version) continue;
 
-				// Classify by the version itself rather than by version.json's `channel`, which is
-				// hand-written in the release workflow. Keying on the label lets a release that
-				// mislabels an alpha as beta mark the beta channel answered, so the genuine beta
-				// below it is never examined and the install is told there is no update.
+				// Classified by the version itself, never by version.json's hand-written `channel`.
+				// The caller re-derives the same way, so this only decides when to stop early.
 				const channel = this.detectChannel(version);
 
-				if (!wanted.has(channel) || resolved.has(channel)) continue;
+				if (!wanted.has(channel) || seen.has(channel)) continue;
 
-				resolved.set(channel, version);
+				seen.add(channel);
+				versions.push(version);
 			} catch {
 				continue;
 			}
 		}
 
-		// Walking the whole page without finding a channel is a complete answer — that channel has
-		// no release. Stopping early is not: the rest of the page went unread.
-		return { versions: [...resolved.values()], complete: !truncated };
+		return versions;
 	}
 
 	/**

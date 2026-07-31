@@ -523,6 +523,57 @@ describe('UpdateService', () => {
 			nowSpy.mockRestore();
 		});
 
+		it('should keep scanning when the stable probe returns a pre-release', async () => {
+			// The direct download URL is just another source of a version string. If what it
+			// returns is not actually stable, the stable channel is still unanswered and the
+			// releases API has to be consulted for it.
+			mockImageInstall('1.0.0');
+			mockFetchRoutes({
+				[STABLE_VERSION_JSON]: { version: '1.1.0-alpha.0', channel: 'latest' },
+				[RELEASES_API]: [release('v1.2.0', false, 'https://example.test/stable/version.json')],
+				'https://example.test/stable/version.json': { version: '1.2.0', channel: 'latest' },
+			});
+
+			const result = await service.checkServerUpdate();
+
+			expect(result.latest).toBe('1.2.0');
+			expect(result.updateAvailable).toBe(true);
+		});
+
+		it('should treat a scan whose last request exhausts the budget as partial', async () => {
+			// The budget check runs at the top of each iteration, so a request that spends the
+			// budget on the final release leaves the loop without it ever firing.
+			mockImageInstall('1.0.0-beta.2');
+			mockFetchRoutes({
+				[STABLE_VERSION_JSON]: { version: '0.9.0', channel: 'latest' },
+				[RELEASES_API]: [release('v1.0.0-beta.5', true, 'https://example.test/missing/version.json')],
+				// version.json deliberately absent → the request 404s after consuming the budget
+			});
+
+			let now = 1_000_000;
+			const nowSpy = jest.spyOn(Date, 'now').mockImplementation(() => now);
+			const routed = fetchSpy.getMockImplementation() as (input: RequestInfo | URL) => Promise<Response>;
+
+			fetchSpy.mockImplementation((input: RequestInfo | URL) => {
+				now += 12_000;
+
+				return routed(input);
+			});
+
+			await service.checkServerUpdate();
+
+			const callsAfterFirst = fetchSpy.mock.calls.length;
+
+			// The beta channel was never actually answered, so this must not be cached for 12h.
+			now += 10 * 60 * 1000;
+
+			await service.checkServerUpdate();
+
+			expect(fetchSpy.mock.calls.length).toBeGreaterThan(callsAfterFirst);
+
+			nowSpy.mockRestore();
+		});
+
 		it('should still report a result when the releases API fails but the stable probe succeeds', async () => {
 			mockImageInstall('0.9.0-beta.1');
 			mockFetchRoutes({
