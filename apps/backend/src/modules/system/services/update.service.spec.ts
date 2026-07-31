@@ -186,6 +186,20 @@ describe('UpdateService', () => {
 			expect(service.detectChannel('1.0.0+build-7')).toBe('latest');
 			expect(service.detectChannel('v1.0.0+2026-07-31')).toBe('latest');
 		});
+
+		it('should ignore channel words appearing inside build metadata', () => {
+			expect(service.detectChannel('1.0.1+build-alpha')).toBe('latest');
+			expect(service.detectChannel('1.0.1+beta-meta')).toBe('latest');
+		});
+
+		it('should match the pre-release identifier rather than a substring of it', () => {
+			// "alpharelease" is not the alpha channel; only the first dot-separated identifier
+			// decides, so anything else is unknown.
+			expect(service.detectChannel('1.0.0-alpharelease.1')).toBeNull();
+			expect(service.detectChannel('1.0.0-prebeta')).toBeNull();
+			expect(service.detectChannel('1.0.0-alpha')).toBe('alpha');
+			expect(service.detectChannel('1.0.0-beta.7')).toBe('beta');
+		});
 	});
 
 	describe('update lock', () => {

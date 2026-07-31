@@ -224,14 +224,25 @@ export class UpdateService {
 	 * guarantee is enforced with, an unrecognised identifier has to mean "unknown", not "safe".
 	 */
 	detectChannel(version?: string): 'latest' | 'beta' | 'alpha' | null {
-		const v = version ?? this.getCurrentVersion();
+		const raw = version ?? this.getCurrentVersion();
 
-		if (v.includes('-alpha')) return 'alpha';
-		if (v.includes('-beta')) return 'beta';
+		// Build metadata carries no precedence and may contain anything, including the words
+		// "alpha" and "beta" — so it is discarded before anything is classified, not after.
+		const core = raw.replace(/^v/, '').split('+')[0];
+		const separator = core.indexOf('-');
 
-		// Strip build metadata before looking for a pre-release separator: in semver the
-		// pre-release component sits between '-' and '+', so "1.0.0+build-7" is stable.
-		return v.replace(/^v/, '').split('+')[0].includes('-') ? null : 'latest';
+		if (separator === -1) {
+			return 'latest';
+		}
+
+		// Compare the first dot-separated pre-release identifier as a whole. A substring match
+		// would read "1.0.0-alpharelease.1" as the alpha channel.
+		const [identifier] = core.slice(separator + 1).split('.');
+
+		if (identifier === 'alpha') return 'alpha';
+		if (identifier === 'beta') return 'beta';
+
+		return null;
 	}
 
 	/**
