@@ -24,8 +24,8 @@ Smart Panel has two main components that can be installed independently or toget
 
 ## Display Requirements
 
-- **Raspberry Pi**: flutter-pi runtime (no desktop environment needed)
-- **Linux x64**: eLinux DRM-GBM mode (headless) or Linux desktop with GTK3
+- **Raspberry Pi and other ARM64 boards**: flutter-pi runtime, rendering via DRM/KMS (no desktop environment needed)
+- **Linux x64**: Linux desktop with GTK3
 - **Android**: Android 5.0+ (sideloaded via ADB)
 
 ---
@@ -452,7 +452,7 @@ Available options:
 - `--backend <url>` — Backend server URL (e.g., `http://192.168.1.100:3000`)
 - `--version <ver>` — Install a specific version
 - `--beta` — Install latest beta version
-- `--platform <p>` — Force platform: `flutter-pi`, `elinux`, `linux`, `android`
+- `--platform <p>` — Force platform: `flutter-pi`, `linux`, `android`
 - `--kiosk` — Enable kiosk mode (auto-start on boot, no desktop)
 
 ### Manual Installation
@@ -461,8 +461,7 @@ The pre-built display app is available as release assets on GitHub:
 
 | Asset | Platform |
 |-------|----------|
-| `smart-panel-display-flutterpi-{version}-arm64.tar.gz` | Raspberry Pi (64-bit) via flutter-pi |
-| `smart-panel-display-elinux-{version}-x64.tar.gz` | Linux x64 headless (DRM-GBM, no desktop needed) |
+| `smart-panel-display-flutterpi-{version}-arm64.tar.gz` | Raspberry Pi and other ARM64 boards via flutter-pi (DRM/KMS, no desktop needed) |
 | `smart-panel-display-linux-{version}-x64.tar.gz` | Linux x64 desktop (GTK) |
 | `smart-panel-display-android-{version}.apk` | Android (sideload via ADB) |
 
@@ -516,48 +515,6 @@ Download from: `https://github.com/FastyBird/smart-panel/releases/latest`
    ```
 
 6. Enable and start:
-   ```bash
-   sudo systemctl enable smart-panel-display
-   sudo systemctl start smart-panel-display
-   ```
-
-#### Linux x64 (eLinux DRM-GBM, Headless)
-
-1. Install dependencies:
-   ```bash
-   sudo apt install -y libegl1-mesa libgles2-mesa libxkbcommon0 \
-       libdrm2 libgbm1 libinput10 libudev1 libsystemd0
-   ```
-
-2. Download and extract:
-   ```bash
-   VERSION="0.1.0"  # Set the version you want to install
-   sudo mkdir -p /opt/smart-panel-display
-   curl -sL "https://github.com/FastyBird/smart-panel/releases/download/v${VERSION}/smart-panel-display-elinux-${VERSION}-x64.tar.gz" \
-       | sudo tar -xzf - -C /opt/smart-panel-display
-   sudo chmod +x /opt/smart-panel-display/fastybird_smart_panel
-   ```
-
-3. Create a systemd service (`/etc/systemd/system/smart-panel-display.service`):
-   ```ini
-   [Unit]
-   Description=Smart Panel Display (eLinux DRM-GBM)
-   After=multi-user.target
-
-   [Service]
-   User=root
-   WorkingDirectory=/opt/smart-panel-display
-   Environment=FLUTTER_DRM_DEVICE=/dev/dri/card0
-   ExecStart=/opt/smart-panel-display/fastybird_smart_panel --bundle=/opt/smart-panel-display --fullscreen --no-cursor
-   Restart=on-failure
-   RestartSec=5
-   SupplementaryGroups=video render input
-
-   [Install]
-   WantedBy=multi-user.target
-   ```
-
-4. Enable and start:
    ```bash
    sudo systemctl enable smart-panel-display
    sudo systemctl start smart-panel-display

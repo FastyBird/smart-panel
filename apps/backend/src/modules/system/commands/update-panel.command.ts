@@ -13,7 +13,7 @@ import { SYSTEM_MODULE_NAME } from '../system.constants';
 
 import { printError, printStep, printSuccess, printWarning } from './command.utils';
 
-type PanelPlatform = 'flutter-pi-arm64' | 'elinux' | 'linux' | 'android';
+type PanelPlatform = 'flutter-pi-arm64' | 'linux' | 'android';
 
 interface UpdatePanelOptions {
 	platform?: string;
@@ -25,7 +25,6 @@ interface UpdatePanelOptions {
 
 const PANEL_ASSET_PATTERNS: Record<PanelPlatform, RegExp> = {
 	'flutter-pi-arm64': /smart-panel-display-flutterpi-[\w.-]+-arm64\.tar\.gz/,
-	elinux: /smart-panel-display-elinux-[\w.-]+-x64\.tar\.gz/,
 	linux: /smart-panel-display-linux-[\w.-]+-x64\.tar\.gz/,
 	android: /smart-panel-display-android-[\w.-]+\.apk/,
 };
@@ -35,7 +34,7 @@ const DISPLAY_SERVICE_NAME = 'smart-panel-display';
 
 @Command({
 	name: 'system:update:panel',
-	description: 'Update the panel display application (flutter-pi, elinux, linux, android)',
+	description: 'Update the panel display application (flutter-pi, linux, android)',
 })
 @Injectable()
 export class UpdatePanelCommand extends CommandRunner {
@@ -63,6 +62,22 @@ export class UpdatePanelCommand extends CommandRunner {
 		}
 
 		console.log(`  Platform:         \x1b[37m${platform}\x1b[0m`);
+
+		// Only the desktop Linux path replaces the local display bundle and restarts its unit, so
+		// only it can damage an install left behind by the retired eLinux build: the two share a
+		// directory and binary name, and that unit runs against DRM/GBM under multi-user.target
+		// with no graphical session. Other platforms — an Android panel over ADB, a flutter-pi
+		// device — are unaffected and must not be blocked by a stale unit on this host.
+		//
+		// Checked after the platform is known but before anything is downloaded or stopped.
+		// Returning null from detection instead would fall through to a prompt that still offers
+		// "linux", which is the very update that breaks the panel.
+		if (platform === 'linux' && this.isLegacyElinuxInstall()) {
+			printError('This display was installed with the eLinux build, which is no longer produced.');
+			printWarning('Reinstall with install-display.sh to move to a supported build before updating.');
+
+			return;
+		}
 
 		// Check for updates
 		console.log('  Checking for releases...\n');
@@ -144,10 +159,10 @@ export class UpdatePanelCommand extends CommandRunner {
 
 	@Option({
 		flags: '-p, --platform <platform>',
-		description: 'Panel platform: flutter-pi-arm64, elinux, linux, android',
+		description: 'Panel platform: flutter-pi-arm64, linux, android',
 	})
 	parsePlatform(val: string): string {
-		const allowed: PanelPlatform[] = ['flutter-pi-arm64', 'elinux', 'linux', 'android'];
+		const allowed: PanelPlatform[] = ['flutter-pi-arm64', 'linux', 'android'];
 
 		if (!allowed.includes(val as PanelPlatform)) {
 			console.error(`\x1b[31m❌ Invalid platform: ${val}. Allowed: ${allowed.join(', ')}\x1b[0m`);
@@ -208,7 +223,6 @@ export class UpdatePanelCommand extends CommandRunner {
 				message: 'Select the panel platform to update:',
 				choices: [
 					{ name: 'Raspberry Pi - ARM 64-bit (flutter-pi-arm64)', value: 'flutter-pi-arm64' },
-					{ name: 'Embedded Linux - DRM/GBM (elinux)', value: 'elinux' },
 					{ name: 'Linux Desktop (linux)', value: 'linux' },
 					{ name: 'Android (android)', value: 'android' },
 				],
@@ -237,15 +251,35 @@ export class UpdatePanelCommand extends CommandRunner {
 				return 'flutter-pi-arm64';
 			}
 
-			// x64 Linux - check if display service exists
+			// x64 Linux - check if display service exists. A legacy eLinux install is rejected in
+			// run() before detection is reached, so reaching here means a desktop deployment.
 			if (arch === 'x64' && existsSync(DEFAULT_INSTALL_DIR)) {
-				return 'elinux';
+				return 'linux';
 			}
 		} catch {
 			// Detection failed
 		}
 
 		return null;
+	}
+
+	/**
+	 * Detect a display installed by the retired eLinux path, by the systemd unit the old
+	 * installer wrote. Its description is the only durable marker: the install directory and
+	 * binary name are shared with the desktop build.
+	 */
+	private isLegacyElinuxInstall(): boolean {
+		try {
+			const unitPath = `/etc/systemd/system/${DISPLAY_SERVICE_NAME}.service`;
+
+			if (!existsSync(unitPath)) {
+				return false;
+			}
+
+			return readFileSync(unitPath, 'utf-8').includes('eLinux DRM-GBM');
+		} catch {
+			return false;
+		}
 	}
 
 	private async updateLinuxPanel(asset: ReleaseAsset, installDir: string, _platform: PanelPlatform): Promise<void> {

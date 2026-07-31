@@ -470,18 +470,6 @@ jobs:
             smart-panel-display-linux-${{ needs.sync-versions.outputs.version }}-x64.tar.gz
             smart-panel-display-linux-${{ needs.sync-versions.outputs.version }}-x64.tar.gz.sha256
 
-  build-elinux:
-    needs: ["sync-versions", "pre-release-beta"]
-    name: "Build eLinux Display Apps"
-    uses: "./.github/workflows/build-elinux.yml"
-    with:
-      version: "${{ needs.sync-versions.outputs.version }}"
-      build-number: "${{ needs.sync-versions.outputs.buildNumber }}"
-      tag_name: "v${{ needs.sync-versions.outputs.version }}"
-      target-arch: "all"
-    permissions:
-      contents: write
-
   build-application:
     needs: ["sync-versions", "build-display", "publish-admin", "publish-backend"]
     name: "Pre-Build Application"

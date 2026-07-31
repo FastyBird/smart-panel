@@ -55,7 +55,7 @@ curl -fsSL https://get.smart-panel.fastybird.com/display | sudo bash \
 
 Replace `YOUR_SERVER_IP` with the IP address of your Smart Panel server.
 
-The script auto-detects the platform (Raspberry Pi flutter-pi, Linux x64 eLinux, etc.) and installs
+The script auto-detects the platform (Raspberry Pi and ARM64 boards via flutter-pi, Linux x64 desktop, etc.) and installs
 the correct variant automatically.
 
 <Callout type="info">
@@ -63,7 +63,7 @@ the correct variant automatically.
 
 	- `--backend <url>` — server URL (**required**)
 	- `--kiosk` — auto-start the display on boot
-	- `--platform <type>` — force a specific platform: `flutterpi`, `elinux`, `linux`
+	- `--platform <type>` — force a specific platform: `flutterpi`, `linux`
 </Callout>
 
 ---

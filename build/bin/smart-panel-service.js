@@ -36,6 +36,25 @@ const packageJsonPath = join(__dirname, '..', 'package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
 const version = packageJson.version;
 
+/**
+ * Detect a display installed by the retired eLinux path, by the systemd unit the old installer
+ * wrote. Its description is the only durable marker: the install directory and binary name are
+ * shared with the desktop build.
+ */
+function isLegacyElinuxInstall() {
+	try {
+		const unitPath = '/etc/systemd/system/smart-panel-display.service';
+
+		if (!existsSync(unitPath)) {
+			return false;
+		}
+
+		return readFileSync(unitPath, 'utf-8').includes('eLinux DRM-GBM');
+	} catch {
+		return false;
+	}
+}
+
 const program = new Command();
 
 program
@@ -626,7 +645,7 @@ program
 program
 	.command('update-panel')
 	.description('Update the Smart Panel display app')
-	.option('--platform <platform>', 'Panel platform: flutter-pi-armv7, flutter-pi-arm64, elinux, linux, android')
+	.option('--platform <platform>', 'Panel platform: flutter-pi-armv7, flutter-pi-arm64, linux, android')
 	.option('--version <version>', 'Install specific version')
 	.option('--beta', 'Install latest beta release')
 	.option('-d, --install-dir <dir>', 'Installation directory', '/opt/smart-panel-display')
@@ -661,12 +680,21 @@ program
 				} else if (arch === 'armv7') {
 					platform = 'flutter-pi-armv7';
 				} else if (arch === 'x64') {
-					platform = 'elinux';
+					platform = 'linux';
 				} else {
 					logger.error('Could not detect platform. Use --platform to specify.');
 					process.exit(1);
 				}
 			}
+		}
+
+		// Only the desktop Linux path replaces the local display bundle and restarts its unit,
+		// so only it can damage an install left behind by the retired eLinux build. An Android
+		// panel over ADB or a flutter-pi device must not be blocked by a stale unit on this host.
+		if (platform === 'linux' && isLegacyElinuxInstall()) {
+			logger.error('This display was installed with the eLinux build, which is no longer produced.');
+			logger.error('Reinstall with install-display.sh to move to a supported build before updating.');
+			process.exit(1);
 		}
 
 		logger.info(`Platform: ${platform}`);
@@ -707,7 +735,6 @@ program
 			const assetPatterns = {
 				'flutter-pi-armv7': /smart-panel-display-armv7\.tar\.gz/,
 				'flutter-pi-arm64': /smart-panel-display-arm64\.tar\.gz/,
-				elinux: /smart-panel-display-elinux-x64\.tar\.gz/,
 				linux: /smart-panel-display-linux-x64\.tar\.gz/,
 				android: /smart-panel-display\.apk/,
 			};

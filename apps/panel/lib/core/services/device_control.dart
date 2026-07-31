@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 /// screen brightness, speaker volume, and microphone volume.
 ///
 /// Supports multiple platforms:
-/// - **Linux/DRM-KMS** (flutter-pi, eLinux): Backlight sysfs for brightness,
+/// - **Linux/DRM-KMS** (flutter-pi): Backlight sysfs for brightness,
 ///   ALSA (amixer) for audio
 /// - **Linux/X11** (kiosk): xrandr for brightness, ALSA (amixer) for audio
 /// - **Android**: MethodChannel to native WindowManager and AudioManager APIs
@@ -124,7 +124,7 @@ class DeviceControlService {
 	// ---- Linux: Brightness ----
 
 	Future<bool> _linuxSetBrightness(int percent) async {
-		// Strategy 1: Backlight sysfs (Raspberry Pi, eLinux, flutter-pi)
+		// Strategy 1: Backlight sysfs (Raspberry Pi and other ARM64 boards via flutter-pi)
 		if (await _linuxSetBacklightBrightness(percent)) {
 			return true;
 		}

@@ -15,7 +15,7 @@ enum _LinuxScreenOffMethod {
 ///
 /// Supports turning the screen on/off across multiple platforms:
 /// - **Linux/X11** (kiosk): Uses `xset dpms force off/on`
-/// - **Linux/DRM-KMS** (flutter-pi, eLinux): Uses backlight sysfs interface
+/// - **Linux/DRM-KMS** (flutter-pi): Uses backlight sysfs interface
 /// - **Linux fallback**: Uses framebuffer blanking (`/sys/class/graphics/fb0/blank`)
 /// - **Android**: Uses a MethodChannel to control screen brightness via WindowManager
 class ScreenPowerService {
