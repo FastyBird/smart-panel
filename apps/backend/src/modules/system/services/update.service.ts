@@ -217,14 +217,21 @@ export class UpdateService {
 	/**
 	 * Detect the release channel from a semver version string.
 	 * e.g. "0.2.0-alpha.1" → "alpha", "1.0.0-beta.3" → "beta", "1.0.0" → "latest"
+	 *
+	 * Returns null for a version carrying a pre-release identifier this project does not publish,
+	 * such as "2.0.0-rc.1". Falling back to "latest" there would classify a pre-release as stable
+	 * and offer it to a stable install — and since this method is what the minimum-stability
+	 * guarantee is enforced with, an unrecognised identifier has to mean "unknown", not "safe".
 	 */
-	detectChannel(version?: string): 'latest' | 'beta' | 'alpha' {
+	detectChannel(version?: string): 'latest' | 'beta' | 'alpha' | null {
 		const v = version ?? this.getCurrentVersion();
 
 		if (v.includes('-alpha')) return 'alpha';
 		if (v.includes('-beta')) return 'beta';
 
-		return 'latest';
+		// Strip build metadata before looking for a pre-release separator: in semver the
+		// pre-release component sits between '-' and '+', so "1.0.0+build-7" is stable.
+		return v.replace(/^v/, '').split('+')[0].includes('-') ? null : 'latest';
 	}
 
 	/**
@@ -267,7 +274,11 @@ export class UpdateService {
 	}
 
 	async checkServerUpdate(channel?: 'latest' | 'beta' | 'alpha'): Promise<VersionInfo> {
-		const resolvedChannel = channel ?? this.detectChannel();
+		// An install whose own version carries an identifier we do not recognise cannot be placed
+		// on a pre-release line, so it is treated as stable-only: the only thing we can safely
+		// offer it is a release with no pre-release component at all. Normalising here also keeps
+		// the cache keyed by a real channel.
+		const resolvedChannel = channel ?? this.detectChannel() ?? 'latest';
 		const cached = this.cachedServerInfo.get(resolvedChannel);
 		const expiresAt = this.serverCacheExpiresAt.get(resolvedChannel) ?? 0;
 
@@ -394,10 +405,11 @@ export class UpdateService {
 			}
 		}
 
-		// Completeness is derived once, here, rather than tracked at each exit path. The lookup saw
-		// everything if every accepted channel has an answer; failing that, it is only complete if
-		// it ran the search to the end without the API failing and without running out of time.
-		const complete = answered.size === wanted.size || (!apiFailed && this.requestBudget(deadline) > 0);
+		// Completeness is derived once, here, rather than tracked at each exit path. Since the scan
+		// now reads the whole page instead of stopping at the first hit per channel, having an
+		// answer for every channel no longer proves the search finished — only running out of
+		// neither time nor API does.
+		const complete = !apiFailed && this.requestBudget(deadline) > 0;
 
 		return { version: this.pickHighestVersion([...answered.values()], channels), complete };
 	}
@@ -417,9 +429,15 @@ export class UpdateService {
 
 		const channel = this.detectChannel(version);
 
-		if (!wanted.has(channel) || answered.has(channel)) return;
+		if (channel === null || !wanted.has(channel)) return;
 
-		answered.set(channel, version);
+		const held = answered.get(channel);
+
+		// Highest wins, not first seen. GitHub lists releases newest-created first, which is not
+		// the same order as semver: a backport cut after a major pre-release is listed above it.
+		if (held === undefined || compareSemver(held, version) < 0) {
+			answered.set(channel, version);
+		}
 	}
 
 	/**
@@ -486,20 +504,16 @@ export class UpdateService {
 			assets: Array<{ name: string; browser_download_url: string }>;
 		}>;
 
-		const wanted = new Set<string>(channels);
-		const seen = new Set<string>();
 		const versions: string[] = [];
 
+		// The whole page is read rather than stopping at the first hit per channel: releases are
+		// listed newest-created first, so stopping early can miss a higher version further down.
+		// The caller keeps the highest per channel and treats a budget-truncated read as partial.
 		for (const release of releases) {
-			if (seen.size === wanted.size) break;
-
-			// A channel with no release at all never satisfies the check above, so the sweep
-			// would otherwise open every release on the page. Stop at the budget instead; the
-			// caller notices the spent budget and treats the answer as partial.
 			if (this.requestBudget(deadline) <= 0) {
 				this.logger.warn(
-					`GitHub lookup hit its ${UpdateService.GITHUB_LOOKUP_TIMEOUT_MS}ms budget after resolving ` +
-						`${seen.size}/${wanted.size} channel(s); continuing with partial results`,
+					`GitHub lookup hit its ${UpdateService.GITHUB_LOOKUP_TIMEOUT_MS}ms budget after reading ` +
+						`${versions.length} release(s); continuing with partial results`,
 				);
 
 				break;
@@ -520,16 +534,11 @@ export class UpdateService {
 				const versionData = (await assetResponse.json()) as { version?: string; channel?: string };
 				const version = versionData.version?.replace(/^v/, '');
 
-				if (!version) continue;
-
-				// Classified by the version itself, never by version.json's hand-written `channel`.
-				// The caller re-derives the same way, so this only decides when to stop early.
-				const channel = this.detectChannel(version);
-
-				if (!wanted.has(channel) || seen.has(channel)) continue;
-
-				seen.add(channel);
-				versions.push(version);
+				// Only the version is taken. version.json's `channel` is hand-written in the release
+				// workflow and is never consulted — the caller classifies from the version itself.
+				if (version) {
+					versions.push(version);
+				}
 			} catch {
 				continue;
 			}

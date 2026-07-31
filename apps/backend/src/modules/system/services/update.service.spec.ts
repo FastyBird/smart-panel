@@ -174,6 +174,18 @@ describe('UpdateService', () => {
 			expect(service.detectChannel('2.0.0-beta.1')).toBe('beta');
 			expect(service.detectChannel('2.0.0')).toBe('latest');
 		});
+
+		it('should return null for a pre-release identifier it does not recognise', () => {
+			expect(service.detectChannel('2.0.0-rc.1')).toBeNull();
+			expect(service.detectChannel('2.0.0-nightly')).toBeNull();
+		});
+
+		it('should treat build metadata as stable', () => {
+			// In semver the pre-release sits between '-' and '+', so a '-' inside build metadata
+			// does not make the version a pre-release.
+			expect(service.detectChannel('1.0.0+build-7')).toBe('latest');
+			expect(service.detectChannel('v1.0.0+2026-07-31')).toBe('latest');
+		});
 	});
 
 	describe('update lock', () => {
@@ -572,6 +584,57 @@ describe('UpdateService', () => {
 			expect(fetchSpy.mock.calls.length).toBeGreaterThan(callsAfterFirst);
 
 			nowSpy.mockRestore();
+		});
+
+		it('should not treat an unrecognised pre-release identifier as stable', async () => {
+			// detectChannel knows alpha and beta. Anything else carrying a pre-release component is
+			// still a pre-release and must not be handed to a stable install just because its
+			// identifier is unfamiliar.
+			mockImageInstall('1.0.0');
+			mockFetchRoutes({
+				[RELEASES_API]: [release('v2.0.0-rc.1', true, 'https://example.test/rc/version.json')],
+				'https://example.test/rc/version.json': { version: '2.0.0-rc.1', channel: 'latest' },
+			});
+
+			const result = await service.checkServerUpdate();
+
+			expect(result.latest).toBeNull();
+			expect(result.updateAvailable).toBe(false);
+		});
+
+		it('should offer only stable releases to an install on an unrecognised pre-release', async () => {
+			// We cannot place such an install on a pre-release line, so the conservative floor is
+			// stable-only rather than assuming it belongs to the least stable channel.
+			mockNpmInstall('2.0.0-rc.1');
+			mockFetchRoutes({
+				[NPM_REGISTRY]: {
+					'dist-tags': { latest: '3.0.0', beta: '3.1.0-beta.0', alpha: '3.2.0-alpha.0' },
+				},
+			});
+
+			const result = await service.checkServerUpdate();
+
+			expect(result.latest).toBe('3.0.0');
+			expect(result.updateAvailable).toBe(true);
+		});
+
+		it('should take the highest version in a channel, not the first one listed', async () => {
+			// Releases come back newest-created first, which is not the same as highest version: a
+			// backport published after a major pre-release appears above it.
+			mockImageInstall('1.0.0-beta.2');
+			mockFetchRoutes({
+				[RELEASES_API]: [
+					release('v1.5.1-beta.0', true, 'https://example.test/backport/version.json'),
+					release('v2.0.0-beta.0', true, 'https://example.test/major/version.json'),
+				],
+				'https://example.test/backport/version.json': { version: '1.5.1-beta.0', channel: 'beta' },
+				'https://example.test/major/version.json': { version: '2.0.0-beta.0', channel: 'beta' },
+			});
+
+			const result = await service.checkServerUpdate();
+
+			expect(result.latest).toBe('2.0.0-beta.0');
+			expect(result.updateAvailable).toBe(true);
 		});
 
 		it('should still report a result when the releases API fails but the stable probe succeeds', async () => {
