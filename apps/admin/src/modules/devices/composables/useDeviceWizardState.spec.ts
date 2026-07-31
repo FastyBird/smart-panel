@@ -134,4 +134,16 @@ describe('useDeviceWizardState — reconciliation', () => {
 
 		expect(state.selected['shelly-1.local']).toBe(true);
 	});
+
+	it('reset clears the ready-transition memory so a repeat device can be auto-selected on its next ready transition', () => {
+		const state = useDeviceWizardState();
+
+		state.reconcile([row()]);
+		state.reset();
+		state.reconcile([row({ status: 'checking', adoptable: false })]);
+		expect(state.selected['shelly-1.local']).toBe(false);
+
+		state.reconcile([row({ status: 'ready' })]);
+		expect(state.selected['shelly-1.local']).toBe(true);
+	});
 });
