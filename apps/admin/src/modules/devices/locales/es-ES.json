@@ -946,5 +946,45 @@
       "constraint_one_or_more_of_violation": "Violación de restricción (uno o más de)",
       "constraint_mutually_exclusive_violation": "Violación de restricción (mutuamente excluyente)"
     }
+  },
+  "wizard": {
+    "steps": {
+      "discover": "Búsqueda",
+      "confirm": "Confirmación",
+      "results": "Resultados"
+    },
+    "actions": {
+      "cancel": "Cancelar",
+      "back": "Atrás",
+      "next": "Siguiente",
+      "adopt": "Añadir dispositivos",
+      "addMore": "Añadir más",
+      "done": "Hecho"
+    },
+    "statuses": {
+      "checking": "Comprobando",
+      "ready": "Listo",
+      "needs_credentials": "Credenciales necesarias",
+      "already_registered": "Ya añadido",
+      "unsupported": "No compatible",
+      "failed": "Fallido",
+      "willCreate": "Se creará",
+      "willUpdate": "Se actualizará",
+      "created": "Creado",
+      "updated": "Actualizado"
+    },
+    "columns": {
+      "name": "Nombre",
+      "status": "Estado",
+      "category": "Categoría",
+      "change": "Acción",
+      "error": "Error"
+    },
+    "texts": {
+      "empty": "Todavía no se han encontrado dispositivos",
+      "noSelection": "No se seleccionó ningún dispositivo",
+      "resultsSuccess": "Todos los dispositivos seleccionados se añadieron correctamente",
+      "resultsFailed": "Algunos dispositivos no se pudieron añadir"
+    }
   }
 }
