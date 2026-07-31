@@ -411,6 +411,46 @@ describe('UpdateService', () => {
 			nowSpy.mockRestore();
 		});
 
+		it('should bound the stable probe and the releases scan under one shared budget', async () => {
+			// A fall-forward install does both: probe the stable URL, then scan the releases page.
+			// Giving each its own budget means the caller can wait for their sum, so the deadline
+			// has to start before the probe, not after it.
+			mockImageInstall('0.7.0-alpha.1');
+
+			const releases = Array.from({ length: 20 }, (_, i) =>
+				release(`v9.9.${i}`, true, `https://example.test/r${i}/version.json`),
+			);
+			const routes: Record<string, unknown> = {
+				[STABLE_VERSION_JSON]: { version: '0.1.0', channel: 'latest' },
+				[RELEASES_API]: releases,
+			};
+
+			releases.forEach((_, i) => {
+				routes[`https://example.test/r${i}/version.json`] = { version: `9.9.${i}`, channel: 'nightly' };
+			});
+
+			mockFetchRoutes(routes);
+
+			const start = 1_000_000;
+			let now = start;
+			const nowSpy = jest.spyOn(Date, 'now').mockImplementation(() => now);
+			const routed = fetchSpy.getMockImplementation() as (input: RequestInfo | URL) => Promise<Response>;
+
+			fetchSpy.mockImplementation((input: RequestInfo | URL) => {
+				now += 6_000;
+
+				return routed(input);
+			});
+
+			await service.checkServerUpdate();
+
+			const budget = (UpdateService as unknown as { GITHUB_LOOKUP_TIMEOUT_MS: number }).GITHUB_LOOKUP_TIMEOUT_MS;
+
+			expect(now - start).toBeLessThanOrEqual(budget);
+
+			nowSpy.mockRestore();
+		});
+
 		it('should still report a result when the releases API fails but the stable probe succeeds', async () => {
 			mockImageInstall('0.9.0-beta.1');
 			mockFetchRoutes({

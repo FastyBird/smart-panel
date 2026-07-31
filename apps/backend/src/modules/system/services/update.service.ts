@@ -75,12 +75,13 @@ export class UpdateService {
 	private readonly UPDATE_LOCK_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 	private static readonly FETCH_TIMEOUT_MS = 15_000; // 15 seconds
 
-	// Budget for the entire releases sweep — the listing plus every version.json it opens.
-	// FETCH_TIMEOUT_MS bounds a single request, which is no bound at all on a sequential scan:
-	// when a requested channel has no release at all the loop cannot short-circuit and would
-	// walk the whole page, so the worst case is per-request timeout × page size while an HTTP
-	// caller waits on it.
-	private static readonly RELEASES_SCAN_TIMEOUT_MS = 30_000; // 30 seconds
+	// Budget for the *entire* GitHub lookup: the stable probe, the releases listing, and every
+	// version.json the scan opens. FETCH_TIMEOUT_MS bounds a single request, which is no bound at
+	// all across a sequence of them — when a requested channel has no release the scan cannot
+	// short-circuit and would walk the whole page, and a fall-forward install runs the probe
+	// before that scan, so separate budgets would let a caller wait for their sum. One deadline
+	// is created per lookup and every request inside it draws from what is left.
+	private static readonly GITHUB_LOOKUP_TIMEOUT_MS = 30_000; // 30 seconds
 
 	/** Release channels ordered least → most stable. */
 	private static readonly CHANNEL_PRECEDENCE: ReadonlyArray<'latest' | 'beta' | 'alpha'> = ['alpha', 'beta', 'latest'];
@@ -318,6 +319,15 @@ export class UpdateService {
 	}
 
 	/**
+	 * Timeout for one request drawing on a shared lookup deadline: never longer than a single
+	 * request is allowed to take, and never longer than the lookup has left. A value of zero or
+	 * below means the budget is spent and the caller should stop rather than issue the request.
+	 */
+	private requestBudget(deadline: number): number {
+		return Math.min(UpdateService.FETCH_TIMEOUT_MS, deadline - Date.now());
+	}
+
+	/**
 	 * Fetch the highest version advertised by GitHub across the accepted channels (image installs).
 	 *
 	 * The stable channel is probed through the direct `releases/latest/download` URL: it costs no
@@ -328,8 +338,12 @@ export class UpdateService {
 		const found: string[] = [];
 		let stableResolved = false;
 
+		// One deadline for the whole lookup. It starts here rather than inside the scan, because
+		// a fall-forward install runs the probe first and the caller waits for both.
+		const deadline = Date.now() + UpdateService.GITHUB_LOOKUP_TIMEOUT_MS;
+
 		if (channels.includes('latest')) {
-			const stable = await this.fetchStableVersionFromDownloadUrl();
+			const stable = await this.fetchStableVersionFromDownloadUrl(deadline);
 
 			if (stable) {
 				found.push(stable);
@@ -342,7 +356,7 @@ export class UpdateService {
 
 		if (remaining.length > 0) {
 			try {
-				found.push(...(await this.fetchVersionsFromReleasesApi(remaining)));
+				found.push(...(await this.fetchVersionsFromReleasesApi(remaining, deadline)));
 			} catch (error) {
 				const err = error as Error;
 
@@ -362,11 +376,11 @@ export class UpdateService {
 	 * Probe the stable channel via the direct asset download URL — no API rate limit,
 	 * follows the redirect to the asset of whichever release GitHub marks as latest.
 	 */
-	private async fetchStableVersionFromDownloadUrl(): Promise<string | null> {
+	private async fetchStableVersionFromDownloadUrl(deadline: number): Promise<string | null> {
 		try {
 			const response = await fetch(this.GITHUB_VERSION_JSON_URL, {
 				headers: { 'User-Agent': 'FastyBird-SmartPanel' },
-				signal: AbortSignal.timeout(UpdateService.FETCH_TIMEOUT_MS),
+				signal: AbortSignal.timeout(this.requestBudget(deadline)),
 			});
 
 			if (response.ok) {
@@ -392,17 +406,24 @@ export class UpdateService {
 	 * they disagree. The scan stops as soon as every requested channel has an answer, which
 	 * bounds the per-release asset fetches.
 	 */
-	private async fetchVersionsFromReleasesApi(channels: Array<'latest' | 'beta' | 'alpha'>): Promise<string[]> {
-		const deadline = Date.now() + UpdateService.RELEASES_SCAN_TIMEOUT_MS;
-		// Never let a single request outlive the sweep it belongs to.
-		const budgetFor = (): number => Math.min(UpdateService.FETCH_TIMEOUT_MS, deadline - Date.now());
+	private async fetchVersionsFromReleasesApi(
+		channels: Array<'latest' | 'beta' | 'alpha'>,
+		deadline: number,
+	): Promise<string[]> {
+		// The probe may already have consumed the lookup's budget. Bail out rather than issue a
+		// request with a non-positive timeout, which AbortSignal.timeout rejects outright.
+		if (this.requestBudget(deadline) <= 0) {
+			this.logger.warn('GitHub lookup budget spent before the releases listing; skipping the scan');
+
+			return [];
+		}
 
 		const response = await fetch(`${this.GITHUB_PRERELEASE_API_URL}?per_page=20`, {
 			headers: {
 				Accept: 'application/vnd.github.v3+json',
 				'User-Agent': 'FastyBird-SmartPanel',
 			},
-			signal: AbortSignal.timeout(budgetFor()),
+			signal: AbortSignal.timeout(this.requestBudget(deadline)),
 		});
 
 		if (!response.ok) {
@@ -424,9 +445,9 @@ export class UpdateService {
 			// A channel with no release at all never satisfies the check above, so the sweep
 			// would otherwise open every release on the page. Stop at the budget instead and
 			// report on whatever was resolved.
-			if (budgetFor() <= 0) {
+			if (this.requestBudget(deadline) <= 0) {
 				this.logger.warn(
-					`Releases scan hit its ${UpdateService.RELEASES_SCAN_TIMEOUT_MS}ms budget after resolving ` +
+					`GitHub lookup hit its ${UpdateService.GITHUB_LOOKUP_TIMEOUT_MS}ms budget after resolving ` +
 						`${resolved.size}/${wanted.size} channel(s); continuing with partial results`,
 				);
 
@@ -440,7 +461,7 @@ export class UpdateService {
 			try {
 				const assetResponse = await fetch(versionAsset.browser_download_url, {
 					headers: { 'User-Agent': 'FastyBird-SmartPanel' },
-					signal: AbortSignal.timeout(budgetFor()),
+					signal: AbortSignal.timeout(this.requestBudget(deadline)),
 				});
 
 				if (!assetResponse.ok) continue;
