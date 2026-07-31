@@ -76,10 +76,34 @@ describe('DeviceWizardDiscoverStep', () => {
 			},
 		]);
 
-		await wrapper.find('[data-test-id="wizard-control-manual"] input').setValue('shelly-9.local');
+		const input = wrapper.find<HTMLInputElement>('[data-test-id="wizard-control-manual"] input');
+		await input.setValue('shelly-9.local');
 		await wrapper.find('[data-test-id="wizard-control-manual"] form').trigger('submit');
+		await flushPromises();
 
 		expect(handler).toHaveBeenCalledWith({ hostname: 'shelly-9.local' });
+		expect(input.element.value).toBe('');
+	});
+
+	it('retains the input value when the form handler rejects', async () => {
+		const handler = vi.fn().mockRejectedValue(new Error('boom'));
+		const wrapper = mountStep([
+			{
+				type: 'form',
+				id: 'manual',
+				fields: [{ key: 'hostname', label: 'Hostname' }],
+				submitLabel: 'Add',
+				submitDisabled: false,
+				handler,
+			},
+		]);
+
+		const input = wrapper.find<HTMLInputElement>('[data-test-id="wizard-control-manual"] input');
+		await input.setValue('shelly-9.local');
+		await wrapper.find('[data-test-id="wizard-control-manual"] form').trigger('submit');
+		await flushPromises();
+
+		expect(input.element.value).toBe('shelly-9.local');
 	});
 
 	it('renders a row with its label, sub-label and identifier', async () => {
