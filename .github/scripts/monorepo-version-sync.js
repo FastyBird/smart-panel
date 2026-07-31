@@ -216,7 +216,15 @@ const updatePubspecYaml = (filePath, baseVersion, tag, buildNumber) => {
 
 	const { fullVersion, buildNumber } = computeVersionInfo(baseVersion, allPublishedVersions);
 
-	const appVersion = tag === "latest" ? baseVersion : `${baseVersion}-${tag}`;
+	// A release must have exactly ONE identity. `fullVersion` is what gets written into
+	// every package.json, so it is also what the git tag, version.json and asset names
+	// have to carry. Publishing the build-number-less `1.0.0-beta` alongside a package
+	// version of `1.0.0-beta.2` made image installs compare their own version against a
+	// lower-precedence advertised one, rank themselves as newer, and never be offered an
+	// update again. It also meant every beta of a base version re-used the same tag and
+	// silently overwrote the previous release.
+	// For the stable channel `fullVersion === baseVersion`, so this is a no-op there.
+	const appVersion = fullVersion;
 
 	// Update all target files
 	for (const pkg of PACKAGES) {
