@@ -14,6 +14,7 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../module
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
+import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 import { PropertyValueSourceRegistryService } from '../../modules/devices/services/property-value-source.registry.service';
 import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
@@ -42,6 +43,7 @@ import {
 	VirtualDeviceEntity,
 } from './entities/devices-virtual.entity';
 import { VirtualConfigModel } from './models/config.model';
+import { VirtualDevicePlatform } from './platforms/virtual-device.platform';
 import { VirtualValueSourceService } from './services/virtual-value-source.service';
 
 @ApiTag({
@@ -57,7 +59,7 @@ import { VirtualValueSourceService } from './services/virtual-value-source.servi
 		ExtensionsModule,
 		SwaggerModule,
 	],
-	providers: [VirtualValueSourceService],
+	providers: [VirtualValueSourceService, VirtualDevicePlatform],
 })
 export class DevicesVirtualPlugin {
 	constructor(
@@ -70,6 +72,8 @@ export class DevicesVirtualPlugin {
 		private readonly extensionsService: ExtensionsService,
 		private readonly virtualValueSourceService: VirtualValueSourceService,
 		private readonly propertyValueSourceRegistry: PropertyValueSourceRegistryService,
+		private readonly virtualDevicePlatform: VirtualDevicePlatform,
+		private readonly platformRegistryService: PlatformRegistryService,
 	) {}
 
 	onModuleInit() {
@@ -172,6 +176,8 @@ export class DevicesVirtualPlugin {
 		});
 
 		this.propertyValueSourceRegistry.register(this.virtualValueSourceService);
+
+		this.platformRegistryService.register(this.virtualDevicePlatform);
 
 		// Register extension metadata
 		this.extensionsService.registerPluginMetadata({

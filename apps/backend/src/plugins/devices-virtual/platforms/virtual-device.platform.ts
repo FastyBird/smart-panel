@@ -1,0 +1,139 @@
+import { Injectable } from '@nestjs/common';
+
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { ConnectionState } from '../../../modules/devices/devices.constants';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
+import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
+import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
+import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
+
+@Injectable()
+export class VirtualDevicePlatform implements IDevicePlatform {
+	private readonly logger = createExtensionLogger(DEVICES_VIRTUAL_PLUGIN_NAME, 'VirtualDevicePlatform');
+
+	constructor(
+		private readonly devicesService: DevicesService,
+		private readonly channelsService: ChannelsService,
+		private readonly channelsPropertiesService: ChannelsPropertiesService,
+		private readonly platformRegistryService: PlatformRegistryService,
+	) {}
+
+	getType(): string {
+		return DEVICES_VIRTUAL_TYPE;
+	}
+
+	async process(data: IDevicePropertyData): Promise<boolean> {
+		return this.processBatch([data]);
+	}
+
+	async processBatch(updates: IDevicePropertyData[]): Promise<boolean> {
+		const bySourceDevice = new Map<string, { device: DeviceEntity; updates: IDevicePropertyData[] }>();
+
+		for (const update of updates) {
+			const property = update.property;
+
+			if (!(property instanceof VirtualChannelPropertyEntity)) {
+				this.logger.error(`Property id=${property.id} is not a virtual property`);
+
+				return false;
+			}
+
+			// Owned properties are read-only in this release — the only ones that exist are the
+			// synthesized device information strings. Writable setpoints arrive with controller support.
+			if (property.valueOrigin === VirtualValueOrigin.LOCAL) {
+				this.logger.warn(`Property id=${property.id} is owned and not writable`);
+
+				return false;
+			}
+
+			if (property.sourcePropertyId === null) {
+				this.logger.warn(`Property id=${property.id} has no source, it was deleted`);
+
+				return false;
+			}
+
+			const resolved = await this.resolveSource(property.sourcePropertyId);
+
+			if (!resolved) {
+				return false;
+			}
+
+			const { device, channel, property: sourceProperty } = resolved;
+
+			// Nesting is rejected at creation; this is the backstop against a stale or hand-edited row.
+			if (device.type === DEVICES_VIRTUAL_TYPE) {
+				this.logger.error(`Source device id=${device.id} is itself virtual, refusing to forward`);
+
+				return false;
+			}
+
+			if (!device.status.online && device.status.status !== ConnectionState.UNKNOWN) {
+				this.logger.warn(`Source device id=${device.id} is offline`);
+
+				return false;
+			}
+
+			const group = bySourceDevice.get(device.id) ?? { device, updates: [] };
+
+			group.updates.push({ device, channel, property: sourceProperty, value: update.value });
+
+			bySourceDevice.set(device.id, group);
+		}
+
+		for (const { device, updates: sourceUpdates } of bySourceDevice.values()) {
+			const platform = this.platformRegistryService.get(device);
+
+			if (!platform) {
+				this.logger.warn(`No platform registered for source device id=${device.id} type=${device.type}`);
+
+				return false;
+			}
+
+			const success = await platform.processBatch(sourceUpdates);
+
+			if (!success) {
+				this.logger.error(`Forwarded batch failed for source device id=${device.id}`);
+
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	private async resolveSource(
+		sourcePropertyId: string,
+	): Promise<{ device: DeviceEntity; channel: ChannelEntity; property: ChannelPropertyEntity } | null> {
+		const property = await this.channelsPropertiesService.findOne(sourcePropertyId);
+
+		if (!property) {
+			this.logger.warn(`Source property id=${sourcePropertyId} not found`);
+
+			return null;
+		}
+
+		const channelId = typeof property.channel === 'string' ? property.channel : property.channel?.id;
+		const channel = channelId ? await this.channelsService.findOne(channelId) : null;
+
+		if (!channel) {
+			this.logger.warn(`Source channel for property id=${sourcePropertyId} not found`);
+
+			return null;
+		}
+
+		const deviceId = typeof channel.device === 'string' ? channel.device : channel.device?.id;
+		const device = deviceId ? await this.devicesService.findOne(deviceId) : null;
+
+		if (!device) {
+			this.logger.warn(`Source device for property id=${sourcePropertyId} not found`);
+
+			return null;
+		}
+
+		return { device, channel, property };
+	}
+}
