@@ -14,6 +14,7 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../module
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
+import { PropertyValueSourceRegistryService } from '../../modules/devices/services/property-value-source.registry.service';
 import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
@@ -41,6 +42,7 @@ import {
 	VirtualDeviceEntity,
 } from './entities/devices-virtual.entity';
 import { VirtualConfigModel } from './models/config.model';
+import { VirtualValueSourceService } from './services/virtual-value-source.service';
 
 @ApiTag({
 	tagName: DEVICES_VIRTUAL_PLUGIN_NAME,
@@ -55,6 +57,7 @@ import { VirtualConfigModel } from './models/config.model';
 		ExtensionsModule,
 		SwaggerModule,
 	],
+	providers: [VirtualValueSourceService],
 })
 export class DevicesVirtualPlugin {
 	constructor(
@@ -65,6 +68,8 @@ export class DevicesVirtualPlugin {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly virtualValueSourceService: VirtualValueSourceService,
+		private readonly propertyValueSourceRegistry: PropertyValueSourceRegistryService,
 	) {}
 
 	onModuleInit() {
@@ -165,6 +170,8 @@ export class DevicesVirtualPlugin {
 			discriminatorValue: DEVICES_VIRTUAL_TYPE,
 			modelClass: UpdateVirtualChannelPropertyDto,
 		});
+
+		this.propertyValueSourceRegistry.register(this.virtualValueSourceService);
 
 		// Register extension metadata
 		this.extensionsService.registerPluginMetadata({
