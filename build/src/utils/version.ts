@@ -9,7 +9,11 @@
  */
 export function compareSemver(a: string, b: string): number {
 	const parseVersion = (v: string) => {
-		const cleaned = v.replace(/^v/, '');
+		// Build metadata is ignored when determining precedence (semver §10), and it has to go
+		// before the pre-release split rather than after: it may itself contain a '-', so
+		// "1.0.0+build-7" would otherwise parse as a pre-release of 1.0.0 and rank below it,
+		// and "1.0.1+build-alpha" would leave "1.0.1+build" as the base, making the patch NaN.
+		const cleaned = v.replace(/^v/, '').split('+')[0];
 		const [base, ...prereleaseParts] = cleaned.split('-');
 		const parts = base.split('.').map(Number);
 		const prerelease = prereleaseParts.length > 0 ? prereleaseParts.join('-') : null;
