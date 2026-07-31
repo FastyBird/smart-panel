@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
 
+import { useBreakpoints } from '../../../../common';
 import { DevicesModuleDeviceCategory } from '../../../../openapi.constants';
 
 import type { IDeviceWizardAdapter, IWizardResult, IWizardRow } from './device-wizard.types';
@@ -44,7 +45,9 @@ vi.mock('../../../../common', async () => {
 			props: { heading: { type: String, default: '' }, subHeading: { type: String, default: '' } },
 			template: '<div>{{ heading }} {{ subHeading }}<slot name="extra" /></div>',
 		}),
-		useBreakpoints: () => ({ isMDDevice: ref(true), isLGDevice: ref(true) }),
+		// Wrapped in vi.fn() so a single test can override it with mockReturnValueOnce to cover
+		// the mobile footer branch, which this default never exercises.
+		useBreakpoints: vi.fn(() => ({ isMDDevice: ref(true), isLGDevice: ref(true) })),
 	};
 });
 
@@ -186,6 +189,87 @@ describe('DeviceWizard', () => {
 		await flushPromises();
 
 		expect(restart).toHaveBeenCalledOnce();
+		expect(wrapper.find('[data-test-id="wizard-step-discover"]').exists()).toBe(true);
+	});
+
+	it('clears selection and name state when Add more resets', async () => {
+		const restart = vi.fn().mockResolvedValue(undefined);
+		const wrapper = mountWizard(buildAdapter({ capabilities: { addMore: true }, restart }));
+		await flushPromises();
+
+		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+
+		// Reconciliation pre-selects a `ready` row on first sight and fills the name from the
+		// adapter's suggestion, so both are populated before we ever touch Add more.
+		const nameInputBefore = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]');
+		const checkboxBefore = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="checkbox"]');
+		expect(nameInputBefore.element.value).toBe('Living room switch');
+		expect(checkboxBefore.element.checked).toBe(true);
+
+		await wrapper.find('[data-test-id="wizard-action-adopt"]').trigger('click');
+		await flushPromises();
+		await wrapper.find('[data-test-id="wizard-action-addMore"]').trigger('click');
+		await flushPromises();
+
+		// The mock adapter's `rows` never change, so the wizard only ever reconciles once, on
+		// mount. Revisiting confirm after Add more therefore renders straight from whatever
+		// `reset()` left behind, with no second reconcile to refill it — the row shows blank/
+		// unchecked here if and only if `reset()` actually cleared the state.
+		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+
+		const nameInputAfter = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]');
+		const checkboxAfter = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="checkbox"]');
+		expect(nameInputAfter.element.value).toBe('');
+		expect(checkboxAfter.element.checked).toBe(false);
+	});
+
+	it('renders the same action set in the mobile footer when isMDDevice is false', async () => {
+		vi.mocked(useBreakpoints).mockReturnValueOnce({
+			isXSDevice: computed(() => false),
+			isSMDevice: computed(() => false),
+			isMDDevice: computed(() => false),
+			isLGDevice: computed(() => true),
+			isXLDevice: computed(() => true),
+			isXXLDevice: computed(() => true),
+		});
+
+		const wrapper = mountWizard(buildAdapter());
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="wizard-action-mobile-cancel"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="wizard-action-mobile-next"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="wizard-action-cancel"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="wizard-action-next"]').exists()).toBe(false);
+	});
+
+	it('does not switch back to discover until restart resolves', async () => {
+		let resolveRestart: () => void = () => {};
+		const restart = vi.fn(
+			() =>
+				new Promise<void>((resolve) => {
+					resolveRestart = resolve;
+				})
+		);
+		const wrapper = mountWizard(buildAdapter({ capabilities: { addMore: true }, restart }));
+		await flushPromises();
+
+		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		await wrapper.find('[data-test-id="wizard-action-adopt"]').trigger('click');
+		await flushPromises();
+
+		await wrapper.find('[data-test-id="wizard-action-addMore"]').trigger('click');
+		await flushPromises();
+
+		// restart() is still in flight: the shell must stay on results, not jump to discover.
+		expect(wrapper.find('[data-test-id="wizard-step-results"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="wizard-step-discover"]').exists()).toBe(false);
+
+		resolveRestart();
+		await flushPromises();
+
 		expect(wrapper.find('[data-test-id="wizard-step-discover"]').exists()).toBe(true);
 	});
 });
