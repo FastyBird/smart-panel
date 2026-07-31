@@ -28,7 +28,7 @@
 
 | File | Responsibility |
 |---|---|
-| `services/property-value-source.registry.ts` *(new)* | Answers "where does this property's value live?" |
+| `services/property-value-source.registry.service.ts` *(new)* | Answers "where does this property's value live?" |
 | `services/property-value.service.ts` *(modify)* | Read/write under resolved key; delete never dereferences |
 | `services/property-timeseries.service.ts` *(modify)* | Query history under resolved key |
 | `entities/devices.entity.ts` *(modify)* | `DeviceEntity.hidden` |
@@ -68,8 +68,8 @@
 The choke point the whole design rests on. Core asks a generic question; plugins answer.
 
 **Files:**
-- Create: `apps/backend/src/modules/devices/services/property-value-source.registry.ts`
-- Test: `apps/backend/src/modules/devices/services/property-value-source.registry.spec.ts`
+- Create: `apps/backend/src/modules/devices/services/property-value-source.registry.service.ts`
+- Test: `apps/backend/src/modules/devices/services/property-value-source.registry.service.spec.ts`
 - Modify: `apps/backend/src/modules/devices/devices.module.ts` (providers + exports)
 
 **Interfaces:**
@@ -90,7 +90,7 @@ import { Logger } from '@nestjs/common';
 
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 
-import { IPropertyValueSource, PropertyValueSourceRegistryService } from './property-value-source.registry';
+import { IPropertyValueSource, PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 
 describe('PropertyValueSourceRegistryService', () => {
 	let service: PropertyValueSourceRegistryService;
@@ -148,8 +148,8 @@ describe('PropertyValueSourceRegistryService', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter ./apps/backend run test:unit -- property-value-source.registry.spec.ts`
-Expected: FAIL — `Cannot find module './property-value-source.registry'`
+Run: `pnpm --filter ./apps/backend run test:unit -- property-value-source.registry.service.spec.ts`
+Expected: FAIL — `Cannot find module './property-value-source.registry.service'`
 
 - [ ] **Step 3: Write the implementation**
 
@@ -218,7 +218,7 @@ export class PropertyValueSourceRegistryService {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm --filter ./apps/backend run test:unit -- property-value-source.registry.spec.ts`
+Run: `pnpm --filter ./apps/backend run test:unit -- property-value-source.registry.service.spec.ts`
 Expected: PASS, 5 tests
 
 - [ ] **Step 5: Register in the module**
@@ -228,8 +228,8 @@ In `apps/backend/src/modules/devices/devices.module.ts`, import the service, add
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/backend/src/modules/devices/services/property-value-source.registry.ts \
-        apps/backend/src/modules/devices/services/property-value-source.registry.spec.ts \
+git add apps/backend/src/modules/devices/services/property-value-source.registry.service.ts \
+        apps/backend/src/modules/devices/services/property-value-source.registry.service.spec.ts \
         apps/backend/src/modules/devices/devices.module.ts
 git commit -m "feat(devices): add property value source registry"
 ```
@@ -1051,7 +1051,7 @@ Expected: FAIL — module not found
 import { Injectable } from '@nestjs/common';
 
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
-import { IPropertyValueSource } from '../../../modules/devices/services/property-value-source.registry';
+import { IPropertyValueSource } from '../../../modules/devices/services/property-value-source.registry.service';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
 

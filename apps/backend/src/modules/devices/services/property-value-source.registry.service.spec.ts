@@ -9,7 +9,7 @@ import { Logger } from '@nestjs/common';
 
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 
-import { IPropertyValueSource, PropertyValueSourceRegistryService } from './property-value-source.registry';
+import { IPropertyValueSource, PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 
 describe('PropertyValueSourceRegistryService', () => {
 	let service: PropertyValueSourceRegistryService;
