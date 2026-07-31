@@ -204,6 +204,159 @@ describe('UpdateService', () => {
 		});
 	});
 
+	describe('checkServerUpdate channel fall-forward', () => {
+		const NPM_REGISTRY = 'https://registry.npmjs.org/@fastybird/smart-panel';
+		const RELEASES_API = 'https://api.github.com/repos/FastyBird/smart-panel/releases?per_page=20';
+		const STABLE_VERSION_JSON = 'https://github.com/FastyBird/smart-panel/releases/latest/download/version.json';
+
+		let fetchSpy: jest.SpyInstance;
+
+		const mockFetchRoutes = (routes: Record<string, unknown>): void => {
+			fetchSpy = jest.spyOn(global, 'fetch').mockImplementation((input: RequestInfo | URL) => {
+				const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+
+				if (!(url in routes)) {
+					return Promise.resolve({ ok: false, status: 404 } as Response);
+				}
+
+				return Promise.resolve({
+					ok: true,
+					status: 200,
+					json: () => Promise.resolve(routes[url]),
+				} as Response);
+			});
+		};
+
+		/** Install detection: no `.image-install` marker anywhere → npm install. */
+		const mockNpmInstall = (currentVersion: string): void => {
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ version: currentVersion }));
+			(readlinkSync as jest.Mock).mockImplementation(() => {
+				throw new Error('Not a symlink');
+			});
+			(existsSync as jest.Mock).mockReturnValue(false);
+		};
+
+		/** Install detection: `.image-install` marker present → Raspbian image install. */
+		const mockImageInstall = (currentVersion: string): void => {
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ version: currentVersion }));
+			(readlinkSync as jest.Mock).mockReturnValue('v0.7.0-alpha');
+			(existsSync as jest.Mock).mockImplementation(
+				(path: string) => path === '/opt/smart-panel/v0.7.0-alpha/.image-install',
+			);
+		};
+
+		const release = (tag: string, prerelease: boolean, assetUrl: string | null) => ({
+			tag_name: tag,
+			prerelease,
+			assets: assetUrl ? [{ name: 'version.json', browser_download_url: assetUrl }] : [],
+		});
+
+		afterEach(() => {
+			fetchSpy?.mockRestore();
+		});
+
+		it('should offer the beta release to an npm install stranded on a dead alpha channel', async () => {
+			mockNpmInstall('0.7.0-alpha.1');
+			mockFetchRoutes({
+				[NPM_REGISTRY]: {
+					'dist-tags': { latest: '0.5.0-alpha.2', alpha: '0.7.0-alpha.1', beta: '1.0.0-beta.2' },
+				},
+			});
+
+			const result = await service.checkServerUpdate();
+
+			expect(result.latest).toBe('1.0.0-beta.2');
+			expect(result.updateAvailable).toBe(true);
+			expect(result.updateType).toBe('major');
+		});
+
+		it('should offer the beta release to an image install stranded on a dead alpha channel', async () => {
+			mockImageInstall('0.7.0-alpha.1');
+			mockFetchRoutes({
+				[RELEASES_API]: [
+					release('v1.0.0-beta.2', true, 'https://example.test/beta/version.json'),
+					release('v0.7.0-alpha.1', true, 'https://example.test/alpha/version.json'),
+				],
+				'https://example.test/beta/version.json': { version: '1.0.0-beta.2', channel: 'beta' },
+				'https://example.test/alpha/version.json': { version: '0.7.0-alpha.1', channel: 'alpha' },
+			});
+
+			const result = await service.checkServerUpdate();
+
+			expect(result.latest).toBe('1.0.0-beta.2');
+			expect(result.updateAvailable).toBe(true);
+			expect(result.updateType).toBe('major');
+		});
+
+		it('should offer the stable release to a beta install once the beta line ends', async () => {
+			mockNpmInstall('1.0.0-beta.2');
+			mockFetchRoutes({
+				[NPM_REGISTRY]: {
+					'dist-tags': { latest: '1.0.0', alpha: '0.7.0-alpha.1', beta: '1.0.0-beta.2' },
+				},
+			});
+
+			const result = await service.checkServerUpdate();
+
+			expect(result.latest).toBe('1.0.0');
+			expect(result.updateAvailable).toBe(true);
+		});
+
+		it('should never offer a less stable channel to a stable install', async () => {
+			mockNpmInstall('1.0.0');
+			mockFetchRoutes({
+				[NPM_REGISTRY]: {
+					'dist-tags': { latest: '1.0.0', alpha: '1.1.0-alpha.0', beta: '1.1.0-beta.0' },
+				},
+			});
+
+			const result = await service.checkServerUpdate();
+
+			expect(result.latest).toBe('1.0.0');
+			expect(result.updateAvailable).toBe(false);
+		});
+
+		it('should not offer a newer alpha to a beta install', async () => {
+			mockNpmInstall('1.0.0-beta.2');
+			mockFetchRoutes({
+				[NPM_REGISTRY]: {
+					'dist-tags': { latest: '0.5.0-alpha.2', alpha: '1.1.0-alpha.0', beta: '1.0.0-beta.2' },
+				},
+			});
+
+			const result = await service.checkServerUpdate();
+
+			expect(result.latest).toBe('1.0.0-beta.2');
+			expect(result.updateAvailable).toBe(false);
+		});
+
+		it('should reach the stable release for an image install even when it is absent from the releases page', async () => {
+			mockImageInstall('1.0.0-beta.2');
+			mockFetchRoutes({
+				[STABLE_VERSION_JSON]: { version: '1.0.0', channel: 'latest' },
+				[RELEASES_API]: [release('v1.0.0-beta.2', true, 'https://example.test/beta/version.json')],
+				'https://example.test/beta/version.json': { version: '1.0.0-beta.2', channel: 'beta' },
+			});
+
+			const result = await service.checkServerUpdate();
+
+			expect(result.latest).toBe('1.0.0');
+			expect(result.updateAvailable).toBe(true);
+		});
+
+		it('should still report a result when the releases API fails but the stable probe succeeds', async () => {
+			mockImageInstall('0.9.0-beta.1');
+			mockFetchRoutes({
+				[STABLE_VERSION_JSON]: { version: '1.0.0', channel: 'latest' },
+			});
+
+			const result = await service.checkServerUpdate();
+
+			expect(result.latest).toBe('1.0.0');
+			expect(result.updateAvailable).toBe(true);
+		});
+	});
+
 	describe('checkServerUpdate cache', () => {
 		it('should return cached result within TTL', async () => {
 			// Pre-populate cache

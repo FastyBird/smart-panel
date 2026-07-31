@@ -75,6 +75,9 @@ export class UpdateService {
 	private readonly UPDATE_LOCK_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 	private static readonly FETCH_TIMEOUT_MS = 15_000; // 15 seconds
 
+	/** Release channels ordered least → most stable. */
+	private static readonly CHANNEL_PRECEDENCE: ReadonlyArray<'latest' | 'beta' | 'alpha'> = ['alpha', 'beta', 'latest'];
+
 	private static readonly IMAGE_BASE_DIR = '/opt/smart-panel';
 	private static readonly IMAGE_CURRENT_LINK = '/opt/smart-panel/current';
 	private static readonly IMAGE_MARKER_FILE = '.image-install';
@@ -207,6 +210,32 @@ export class UpdateService {
 		return 'latest';
 	}
 
+	/**
+	 * Channels an install is willing to accept, ordered least → most stable.
+	 *
+	 * A channel is a *minimum stability*, not an exact match. Every pre-release line is
+	 * finite: once a base version's alpha (or beta) series ends, no further release will
+	 * ever carry that channel again. Matching the channel exactly therefore strands the
+	 * device on it permanently — it keeps asking a dead channel and is truthfully told it
+	 * is up to date, forever. Falling forward lets an alpha install move on to beta and
+	 * then to stable, while never offering anything *less* stable than what is installed.
+	 */
+	private resolveCandidateChannels(channel: 'latest' | 'beta' | 'alpha'): Array<'latest' | 'beta' | 'alpha'> {
+		const index = UpdateService.CHANNEL_PRECEDENCE.indexOf(channel);
+
+		// An unknown channel is treated as stable-only rather than opening the device up
+		// to every pre-release line.
+		return index === -1 ? ['latest'] : [...UpdateService.CHANNEL_PRECEDENCE.slice(index)];
+	}
+
+	/** Highest version by semver precedence, or null when nothing was resolved. */
+	private pickHighestVersion(versions: string[]): string | null {
+		return versions.reduce<string | null>(
+			(highest, version) => (highest === null || compareSemver(highest, version) < 0 ? version : highest),
+			null,
+		);
+	}
+
 	async checkServerUpdate(channel?: 'latest' | 'beta' | 'alpha'): Promise<VersionInfo> {
 		const resolvedChannel = channel ?? this.detectChannel();
 		const cached = this.cachedServerInfo.get(resolvedChannel);
@@ -218,16 +247,17 @@ export class UpdateService {
 
 		const currentVersion = this.getCurrentVersion();
 		const installType = this.getInstallType();
+		const candidateChannels = this.resolveCandidateChannels(resolvedChannel);
 
 		try {
 			let latestVersion: string | null = null;
 
 			if (installType === 'image') {
 				// Image installs: check GitHub version.json or releases API
-				latestVersion = await this.fetchLatestVersionFromGitHub(resolvedChannel);
+				latestVersion = await this.fetchLatestVersionFromGitHub(candidateChannels);
 			} else {
 				// npm installs: check npm registry dist-tags
-				latestVersion = await this.fetchLatestVersionFromNpm(resolvedChannel);
+				latestVersion = await this.fetchLatestVersionFromNpm(candidateChannels);
 			}
 
 			let updateAvailable = false;
@@ -268,46 +298,81 @@ export class UpdateService {
 	}
 
 	/**
-	 * Fetch latest version from GitHub version.json (for image installs).
-	 * For the 'latest' channel, tries the direct download URL first (avoids API rate limits),
-	 * then falls back to the releases API if no stable release exists yet.
-	 * For pre-release channels (alpha/beta), queries the releases API to find matching releases.
+	 * Fetch the highest version advertised by GitHub across the accepted channels (image installs).
+	 *
+	 * The stable channel is probed through the direct `releases/latest/download` URL: it costs no
+	 * API rate limit and, unlike the paged releases listing, it cannot be pushed out of view by a
+	 * run of pre-releases. Pre-release channels have no such URL and must come from the API.
 	 */
-	private async fetchLatestVersionFromGitHub(channel: 'latest' | 'beta' | 'alpha'): Promise<string | null> {
-		if (channel === 'latest') {
-			// Try direct download first — no API rate limit, follows redirect to the asset
-			try {
-				const response = await fetch(this.GITHUB_VERSION_JSON_URL, {
-					headers: { 'User-Agent': 'FastyBird-SmartPanel' },
-					signal: AbortSignal.timeout(UpdateService.FETCH_TIMEOUT_MS),
-				});
+	private async fetchLatestVersionFromGitHub(channels: Array<'latest' | 'beta' | 'alpha'>): Promise<string | null> {
+		const found: string[] = [];
+		let stableResolved = false;
 
-				if (response.ok) {
-					const data = (await response.json()) as { version?: string; channel?: string };
+		if (channels.includes('latest')) {
+			const stable = await this.fetchStableVersionFromDownloadUrl();
 
-					return data.version?.replace(/^v/, '') ?? null;
-				}
-
-				this.logger.debug(`Direct version.json returned ${response.status}, falling back to releases API`);
-			} catch {
-				this.logger.debug('Direct version.json fetch failed, falling back to releases API');
+			if (stable) {
+				found.push(stable);
+				stableResolved = true;
 			}
-
-			// Fallback: check non-prerelease releases via API
-			return this.fetchVersionFromReleasesApi(channel, false);
 		}
 
-		// Pre-release channels: query the releases API
-		return this.fetchVersionFromReleasesApi(channel, true);
+		// Anything the direct probe did not already answer still has to come from the API.
+		const remaining = channels.filter((channel) => channel !== 'latest' || !stableResolved);
+
+		if (remaining.length > 0) {
+			try {
+				found.push(...(await this.fetchVersionsFromReleasesApi(remaining)));
+			} catch (error) {
+				const err = error as Error;
+
+				// A rate-limited or failing API must not discard a stable version we already hold.
+				if (found.length === 0) {
+					throw error;
+				}
+
+				this.logger.warn(`Releases API lookup failed (${err.message}), using directly probed version only`);
+			}
+		}
+
+		return this.pickHighestVersion(found);
 	}
 
 	/**
-	 * Query the GitHub releases API for a version.json matching the requested channel.
+	 * Probe the stable channel via the direct asset download URL — no API rate limit,
+	 * follows the redirect to the asset of whichever release GitHub marks as latest.
 	 */
-	private async fetchVersionFromReleasesApi(
-		channel: 'latest' | 'beta' | 'alpha',
-		prereleaseOnly: boolean,
-	): Promise<string | null> {
+	private async fetchStableVersionFromDownloadUrl(): Promise<string | null> {
+		try {
+			const response = await fetch(this.GITHUB_VERSION_JSON_URL, {
+				headers: { 'User-Agent': 'FastyBird-SmartPanel' },
+				signal: AbortSignal.timeout(UpdateService.FETCH_TIMEOUT_MS),
+			});
+
+			if (response.ok) {
+				const data = (await response.json()) as { version?: string; channel?: string };
+
+				return data.version?.replace(/^v/, '') ?? null;
+			}
+
+			this.logger.debug(`Direct version.json returned ${response.status}, falling back to releases API`);
+		} catch {
+			this.logger.debug('Direct version.json fetch failed, falling back to releases API');
+		}
+
+		return null;
+	}
+
+	/**
+	 * Query the GitHub releases API for the newest version.json of each requested channel.
+	 *
+	 * Releases come back newest-first, so the first hit for a channel is that channel's head.
+	 * Matching is done on the version.json `channel` field alone rather than on the release's
+	 * `prerelease` flag — the two encode the same thing, and trusting one avoids the case where
+	 * they disagree. The scan stops as soon as every requested channel has an answer, which
+	 * bounds the per-release asset fetches.
+	 */
+	private async fetchVersionsFromReleasesApi(channels: Array<'latest' | 'beta' | 'alpha'>): Promise<string[]> {
 		const response = await fetch(`${this.GITHUB_PRERELEASE_API_URL}?per_page=20`, {
 			headers: {
 				Accept: 'application/vnd.github.v3+json',
@@ -326,9 +391,11 @@ export class UpdateService {
 			assets: Array<{ name: string; browser_download_url: string }>;
 		}>;
 
+		const wanted = new Set<string>(channels);
+		const resolved = new Map<string, string>();
+
 		for (const release of releases) {
-			if (prereleaseOnly && !release.prerelease) continue;
-			if (!prereleaseOnly && release.prerelease) continue;
+			if (resolved.size === wanted.size) break;
 
 			const versionAsset = release.assets.find((a) => a.name === 'version.json');
 
@@ -343,22 +410,28 @@ export class UpdateService {
 				if (!assetResponse.ok) continue;
 
 				const versionData = (await assetResponse.json()) as { version?: string; channel?: string };
+				const channel = versionData.channel;
 
-				if (versionData.channel === channel) {
-					return versionData.version?.replace(/^v/, '') ?? null;
+				if (!channel || !wanted.has(channel) || resolved.has(channel)) continue;
+
+				const version = versionData.version?.replace(/^v/, '');
+
+				if (version) {
+					resolved.set(channel, version);
 				}
 			} catch {
 				continue;
 			}
 		}
 
-		return null;
+		return [...resolved.values()];
 	}
 
 	/**
-	 * Fetch latest version from npm registry (for npm installs).
+	 * Fetch the highest version across the accepted channels' dist-tags (npm installs).
+	 * The registry document carries every dist-tag, so all channels cost a single request.
 	 */
-	private async fetchLatestVersionFromNpm(channel: 'latest' | 'beta' | 'alpha'): Promise<string | null> {
+	private async fetchLatestVersionFromNpm(channels: Array<'latest' | 'beta' | 'alpha'>): Promise<string | null> {
 		const response = await fetch(this.NPM_REGISTRY_URL, {
 			signal: AbortSignal.timeout(UpdateService.FETCH_TIMEOUT_MS),
 		});
@@ -368,8 +441,9 @@ export class UpdateService {
 		}
 
 		const data = (await response.json()) as { 'dist-tags'?: Record<string, string> };
+		const distTags = data['dist-tags'] ?? {};
 
-		return data['dist-tags']?.[channel] ?? null;
+		return this.pickHighestVersion(channels.map((channel) => distTags[channel]).filter((v): v is string => !!v));
 	}
 
 	async fetchReleaseNotes(version: string): Promise<ReleaseNotes> {
