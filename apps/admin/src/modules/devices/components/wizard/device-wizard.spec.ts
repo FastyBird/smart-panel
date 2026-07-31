@@ -108,6 +108,27 @@ describe('DeviceWizard', () => {
 		expect(dispose).toHaveBeenCalledOnce();
 	});
 
+	it('swallows a dispose rejection on unmount instead of leaving it unhandled', async () => {
+		// Deliberately NOT vi.fn(): vi.fn() attaches its own tracking around the call and masks
+		// whether the shell itself ever attaches a rejection handler to the returned promise.
+		let disposeCalled = false;
+		const dispose = (): Promise<void> => {
+			disposeCalled = true;
+
+			return Promise.reject(new Error('teardown failed'));
+		};
+		const wrapper = mountWizard(buildAdapter({ dispose }));
+		await flushPromises();
+
+		wrapper.unmount();
+		await flushPromises();
+
+		// If the shell doesn't await/catch dispose()'s promise, this rejection surfaces as an
+		// unhandled rejection and fails the test run — there is nothing else this test needs to
+		// assert to catch that regression.
+		expect(disposeCalled).toBe(true);
+	});
+
 	it('renders the adapter title', async () => {
 		const wrapper = mountWizard(buildAdapter());
 		await flushPromises();
@@ -137,18 +158,29 @@ describe('DeviceWizard', () => {
 		expect(wrapper.find('[data-test-id="wizard-step-confirm"]').exists()).toBe(true);
 	});
 
-	it('stays on confirm when adopt rejects', async () => {
+	it('stays on confirm when adopt rejects, keeping the user input intact', async () => {
 		const adopt = vi.fn().mockRejectedValue(new Error('network'));
 		const wrapper = mountWizard(buildAdapter({ adopt }));
 		await flushPromises();
 
 		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
 		await flushPromises();
+
+		// Edit the name so a real user edit is distinguishable from the adapter's own suggested
+		// default, then leave the row selected (the default state).
+		await wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]').setValue('Custom name');
+
 		await wrapper.find('[data-test-id="wizard-action-adopt"]').trigger('click');
 		await flushPromises();
 
 		expect(wrapper.find('[data-test-id="wizard-step-confirm"]').exists()).toBe(true);
 		expect(wrapper.find('[data-test-id="wizard-step-results"]').exists()).toBe(false);
+
+		// The rejection must not wipe what the user typed or ticked.
+		const nameInput = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]');
+		const checkbox = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="checkbox"]');
+		expect(nameInput.element.value).toBe('Custom name');
+		expect(checkbox.element.checked).toBe(true);
 	});
 
 	it('advances to results when adopt resolves', async () => {

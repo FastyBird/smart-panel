@@ -204,9 +204,13 @@ onMounted(async (): Promise<void> => {
 	}
 });
 
-onBeforeUnmount((): void => {
-	// Best-effort teardown — a failure here must never block navigation away.
-	void adapter.dispose?.();
+onBeforeUnmount(async (): Promise<void> => {
+	try {
+		// Best-effort teardown — a failure here must never block navigation away.
+		await adapter.dispose?.();
+	} catch {
+		// Errors are surfaced by the adapter via flashMessage.
+	}
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(() => [
