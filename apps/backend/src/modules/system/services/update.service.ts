@@ -75,6 +75,13 @@ export class UpdateService {
 	private readonly UPDATE_LOCK_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 	private static readonly FETCH_TIMEOUT_MS = 15_000; // 15 seconds
 
+	// Budget for the entire releases sweep — the listing plus every version.json it opens.
+	// FETCH_TIMEOUT_MS bounds a single request, which is no bound at all on a sequential scan:
+	// when a requested channel has no release at all the loop cannot short-circuit and would
+	// walk the whole page, so the worst case is per-request timeout × page size while an HTTP
+	// caller waits on it.
+	private static readonly RELEASES_SCAN_TIMEOUT_MS = 30_000; // 30 seconds
+
 	/** Release channels ordered least → most stable. */
 	private static readonly CHANNEL_PRECEDENCE: ReadonlyArray<'latest' | 'beta' | 'alpha'> = ['alpha', 'beta', 'latest'];
 
@@ -228,12 +235,25 @@ export class UpdateService {
 		return index === -1 ? ['latest'] : [...UpdateService.CHANNEL_PRECEDENCE.slice(index)];
 	}
 
-	/** Highest version by semver precedence, or null when nothing was resolved. */
-	private pickHighestVersion(versions: string[]): string | null {
-		return versions.reduce<string | null>(
-			(highest, version) => (highest === null || compareSemver(highest, version) < 0 ? version : highest),
-			null,
-		);
+	/**
+	 * Highest version by semver precedence among those whose *own* pre-release identifier is
+	 * within the accepted channels, or null when nothing qualifies.
+	 *
+	 * The channel a version arrives under is only a label: an npm dist-tag is a mutable pointer
+	 * that can be moved to any version (this project's `latest` tag has pointed at an alpha),
+	 * and a release's version.json `channel` is hand-written in the workflow. Trusting either
+	 * would let a version labelled `latest` but numbered `1.1.0-alpha.0` reach a beta install
+	 * and quietly downgrade its stability. The version string is the only self-evident source,
+	 * so the guarantee is enforced against that.
+	 */
+	private pickHighestVersion(versions: string[], channels: Array<'latest' | 'beta' | 'alpha'>): string | null {
+		const accepted = new Set<string>(channels);
+
+		return versions
+			.filter((version) => accepted.has(this.detectChannel(version)))
+			.reduce<
+				string | null
+			>((highest, version) => (highest === null || compareSemver(highest, version) < 0 ? version : highest), null);
 	}
 
 	async checkServerUpdate(channel?: 'latest' | 'beta' | 'alpha'): Promise<VersionInfo> {
@@ -335,7 +355,7 @@ export class UpdateService {
 			}
 		}
 
-		return this.pickHighestVersion(found);
+		return this.pickHighestVersion(found, channels);
 	}
 
 	/**
@@ -373,12 +393,16 @@ export class UpdateService {
 	 * bounds the per-release asset fetches.
 	 */
 	private async fetchVersionsFromReleasesApi(channels: Array<'latest' | 'beta' | 'alpha'>): Promise<string[]> {
+		const deadline = Date.now() + UpdateService.RELEASES_SCAN_TIMEOUT_MS;
+		// Never let a single request outlive the sweep it belongs to.
+		const budgetFor = (): number => Math.min(UpdateService.FETCH_TIMEOUT_MS, deadline - Date.now());
+
 		const response = await fetch(`${this.GITHUB_PRERELEASE_API_URL}?per_page=20`, {
 			headers: {
 				Accept: 'application/vnd.github.v3+json',
 				'User-Agent': 'FastyBird-SmartPanel',
 			},
-			signal: AbortSignal.timeout(UpdateService.FETCH_TIMEOUT_MS),
+			signal: AbortSignal.timeout(budgetFor()),
 		});
 
 		if (!response.ok) {
@@ -397,6 +421,18 @@ export class UpdateService {
 		for (const release of releases) {
 			if (resolved.size === wanted.size) break;
 
+			// A channel with no release at all never satisfies the check above, so the sweep
+			// would otherwise open every release on the page. Stop at the budget instead and
+			// report on whatever was resolved.
+			if (budgetFor() <= 0) {
+				this.logger.warn(
+					`Releases scan hit its ${UpdateService.RELEASES_SCAN_TIMEOUT_MS}ms budget after resolving ` +
+						`${resolved.size}/${wanted.size} channel(s); continuing with partial results`,
+				);
+
+				break;
+			}
+
 			const versionAsset = release.assets.find((a) => a.name === 'version.json');
 
 			if (!versionAsset) continue;
@@ -404,7 +440,7 @@ export class UpdateService {
 			try {
 				const assetResponse = await fetch(versionAsset.browser_download_url, {
 					headers: { 'User-Agent': 'FastyBird-SmartPanel' },
-					signal: AbortSignal.timeout(UpdateService.FETCH_TIMEOUT_MS),
+					signal: AbortSignal.timeout(budgetFor()),
 				});
 
 				if (!assetResponse.ok) continue;
@@ -443,7 +479,10 @@ export class UpdateService {
 		const data = (await response.json()) as { 'dist-tags'?: Record<string, string> };
 		const distTags = data['dist-tags'] ?? {};
 
-		return this.pickHighestVersion(channels.map((channel) => distTags[channel]).filter((v): v is string => !!v));
+		return this.pickHighestVersion(
+			channels.map((channel) => distTags[channel]).filter((v): v is string => !!v),
+			channels,
+		);
 	}
 
 	async fetchReleaseNotes(version: string): Promise<ReleaseNotes> {
