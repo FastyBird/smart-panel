@@ -108,6 +108,17 @@ export class DeviceEntity extends BaseEntity {
 	@Column({ nullable: false, default: true })
 	enabled: boolean = true;
 
+	@ApiProperty({
+		description: 'Whether the device is hidden from selection UIs, e.g. because virtual devices replace it',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose()
+	@IsBoolean()
+	@Index()
+	@Column({ nullable: false, default: false })
+	hidden: boolean = false;
+
 	@ApiPropertyOptional({
 		name: 'room_id',
 		description: 'Room this device is located in (must be a space with type=room)',

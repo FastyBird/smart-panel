@@ -73,6 +73,12 @@ export enum DeviceCategory {
 	WINDOW_COVERING = 'window_covering',
 }
 
+export enum DeviceHiddenFilter {
+	TRUE = 'true',
+	FALSE = 'false',
+	ALL = 'all',
+}
+
 export enum ChannelCategory {
 	GENERIC = 'generic',
 	ACCELEROMETER = 'accelerometer',

@@ -13,11 +13,12 @@ import {
 	ParseUUIDPipe,
 	Patch,
 	Post,
+	Query,
 	Req,
 	Res,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance, toSnakeCaseKeys } from '../../../common/utils/transform.utils';
@@ -32,9 +33,15 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { DEVICES_MODULE_API_TAG_NAME, DEVICES_MODULE_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
+import {
+	DEVICES_MODULE_API_TAG_NAME,
+	DEVICES_MODULE_NAME,
+	DEVICES_MODULE_PREFIX,
+	DeviceHiddenFilter,
+} from '../devices.constants';
 import { DevicesException, DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateDeviceDto, ReqCreateDeviceDto } from '../dto/create-device.dto';
+import { ListDevicesQueryDto } from '../dto/list-devices-query.dto';
 import { ReqUpdateDeviceDto, UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
 import { DeviceValidationResponseModel, DevicesValidationResponseModel } from '../models/device-validation.model';
@@ -69,11 +76,17 @@ export class DevicesController {
 	)
 	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@ApiQuery({
+		name: 'hidden',
+		required: false,
+		enum: DeviceHiddenFilter,
+		description: 'Filter by hidden flag. Omit to return every device.',
+	})
 	@Get()
-	async findAll(): Promise<DevicesResponseModel> {
+	async findAll(@Query() query: ListDevicesQueryDto): Promise<DevicesResponseModel> {
 		this.logger.debug('Fetching all devices');
 
-		const devices = await this.devicesService.findAll();
+		const devices = await this.devicesService.findAll(undefined, query.hidden ?? DeviceHiddenFilter.ALL);
 
 		this.logger.debug(`Retrieved ${devices.length} devices`);
 

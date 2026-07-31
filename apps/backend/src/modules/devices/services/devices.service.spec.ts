@@ -18,7 +18,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
-import { ConnectionState, DeviceCategory, EventType } from '../devices.constants';
+import { ConnectionState, DeviceCategory, DeviceHiddenFilter, EventType } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
@@ -73,6 +73,7 @@ describe('DevicesService', () => {
 		name: 'Test Device',
 		description: null,
 		enabled: true,
+		hidden: false,
 		roomId: null,
 		room: null,
 		deviceZones: [],
@@ -210,6 +211,25 @@ describe('DevicesService', () => {
 					'deviceZones',
 				],
 			});
+		});
+
+		it('returns only visible devices when hidden=false', async () => {
+			const visibleDevice = toInstance(MockDevice, { ...mockDevice, hidden: false });
+
+			jest.spyOn(repository, 'find').mockResolvedValue([visibleDevice]);
+
+			const devices = await service.findAll(undefined, DeviceHiddenFilter.FALSE);
+
+			expect(repository.find).toHaveBeenCalledWith(expect.objectContaining({ where: { hidden: false } }));
+			expect(devices.every((device) => !device.hidden)).toBe(true);
+		});
+
+		it('returns every device by default', async () => {
+			const spy = jest.spyOn(repository, 'find').mockResolvedValue([]);
+
+			await service.findAll();
+
+			expect(spy).toHaveBeenCalledWith(expect.not.objectContaining({ where: expect.anything() }));
 		});
 	});
 

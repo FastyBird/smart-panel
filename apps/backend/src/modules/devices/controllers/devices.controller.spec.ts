@@ -12,7 +12,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
-import { ConnectionState, DeviceCategory } from '../devices.constants';
+import { ConnectionState, DeviceCategory, DeviceHiddenFilter } from '../devices.constants';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
@@ -36,6 +36,7 @@ describe('DevicesController', () => {
 		name: 'Test Device',
 		description: null,
 		enabled: true,
+		hidden: false,
 		roomId: null,
 		room: null,
 		deviceZones: [],
@@ -111,10 +112,17 @@ describe('DevicesController', () => {
 
 	describe('Devices', () => {
 		it('should return all devices', async () => {
-			const result = await controller.findAll();
+			const result = await controller.findAll({});
 
 			expect(result.data).toEqual([toInstance(DeviceEntity, mockDevice)]);
-			expect(service.findAll).toHaveBeenCalled();
+			expect(service.findAll).toHaveBeenCalledWith(undefined, DeviceHiddenFilter.ALL);
+		});
+
+		it('should forward the hidden filter to the service', async () => {
+			const result = await controller.findAll({ hidden: DeviceHiddenFilter.FALSE });
+
+			expect(result.data).toEqual([toInstance(DeviceEntity, mockDevice)]);
+			expect(service.findAll).toHaveBeenCalledWith(undefined, DeviceHiddenFilter.FALSE);
 		});
 
 		it('should return a single device', async () => {
