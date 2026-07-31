@@ -14,7 +14,7 @@
 
 - Indentation is **tabs**; print width 120; single quotes; semicolons always; trailing commas on multiline.
 - Imports: external first, then relative (`../` then `./`), blank line between groups.
-- Backend is the source of truth for OpenAPI. Never edit `spec/api/v1/openapi.json`, `apps/admin/src/openapi.ts`, or `apps/panel/lib/api/` by hand — run `pnpm run generate:openapi`.
+- Backend is the source of truth for OpenAPI. Never edit `spec/api/v1/openapi.json`, `apps/admin/src/openapi.ts`, or `apps/panel/lib/api/` by hand — run `pnpm run generate:openapi`. **These generated artifacts are gitignored and untracked** (commit 75738c754 removed them from version control), so regenerate them to verify your Swagger decorators are correct, but never `git add` them — the add will fail or be a no-op.
 - Swagger decorators must come **before** NestJS decorators (`@Get`, `@Post`, …).
 - Response schema naming: `{ModuleName}Res{Name}`; data models `{ModuleName}Data{Name}`; DTOs `{ModuleName}{Action}{Entity}`.
 - Migrations are incremental and additive. **Never** modify `1000000000000-InitialSetup.ts` — alpha releases are deployed. Next free number is `1000000000007`.
@@ -680,7 +680,7 @@ Expected: `spec/api/v1/openapi.json` gains the `hidden` field and query paramete
 
 ```bash
 git add apps/backend/src/modules/devices apps/backend/src/migrations/1000000000007-AddVirtualDevicesSupport.ts \
-        spec/api/v1/openapi.json apps/admin/src/openapi.ts apps/panel/lib/api
+       
 git commit -m "feat(devices): add hidden flag with query filter and virtual property columns"
 ```
 
@@ -975,7 +975,7 @@ Run: `pnpm run generate:openapi`
 
 ```bash
 git add apps/backend/src/plugins/devices-virtual apps/backend/src/app.module.ts \
-        spec/api/v1/openapi.json apps/admin/src/openapi.ts apps/panel/lib/api
+       
 git commit -m "feat(devices-virtual): add plugin entities and registration"
 ```
 
@@ -1787,7 +1787,7 @@ Expected: PASS, 6 tests
 
 ```bash
 pnpm run generate:openapi
-git add apps/backend/src/plugins/devices-virtual spec/api/v1/openapi.json apps/admin/src/openapi.ts apps/panel/lib/api
+git add apps/backend/src/plugins/devices-virtual
 git commit -m "feat(devices-virtual): validate creation and expose source devices"
 ```
 
