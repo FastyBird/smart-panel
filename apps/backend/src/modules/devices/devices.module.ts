@@ -79,6 +79,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 import { ChannelExistsConstraintValidator } from './validators/channel-exists-constraint.validator';
 import { ChannelPropertyExistsConstraintValidator } from './validators/channel-property-exists-constraint.validator';
 import { DeviceExistsConstraintValidator } from './validators/device-exists-constraint.validator';
+import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidden-constraint.validator';
 
 @ApiTag({
 	tagName: DEVICES_MODULE_NAME,
@@ -118,6 +119,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		ChannelsPropertiesService,
 		DeviceValidationService,
 		DeviceExistsConstraintValidator,
+		DeviceNotHiddenConstraintValidator,
 		ChannelExistsConstraintValidator,
 		ChannelPropertyExistsConstraintValidator,
 		DeviceEntitySubscriber,
@@ -163,6 +165,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		PlatformRegistryService,
 		PropertyValueSourceRegistryService,
 		DeviceExistsConstraintValidator,
+		DeviceNotHiddenConstraintValidator,
 		ChannelExistsConstraintValidator,
 		ChannelPropertyExistsConstraintValidator,
 		DeviceConnectivityService,
