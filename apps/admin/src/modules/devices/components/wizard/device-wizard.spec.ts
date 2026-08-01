@@ -263,6 +263,38 @@ describe('DeviceWizard', () => {
 		expect(checkboxAfter.element.checked).toBe(false);
 	});
 
+	it('promotes a plugin action control into the header and wires it to the control handler', async () => {
+		const handler = vi.fn();
+		const wrapper = mountWizard(
+			buildAdapter({
+				controls: computed(() => [{ type: 'action' as const, id: 'restart-scan', label: 'Scan again', icon: 'mdi:radar', handler }]),
+			})
+		);
+		await flushPromises();
+
+		const promoted = wrapper.find('[data-test-id="wizard-action-control-restart-scan"]');
+		expect(promoted.exists()).toBe(true);
+		expect(promoted.text()).toContain('Scan again');
+
+		await promoted.trigger('click');
+
+		expect(handler).toHaveBeenCalledOnce();
+	});
+
+	it('drops the promoted action once the user leaves the discover step', async () => {
+		const wrapper = mountWizard(
+			buildAdapter({
+				controls: computed(() => [{ type: 'action' as const, id: 'restart-scan', label: 'Scan again', icon: 'mdi:radar', handler: vi.fn() }]),
+			})
+		);
+		await flushPromises();
+
+		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="wizard-action-control-restart-scan"]').exists()).toBe(false);
+	});
+
 	it('reconciles the replacement session when Add more installs new rows', async () => {
 		// Zigbee2MQTT's `restart()` tears the session down and starts a new one, assigning the
 		// replacement session *before* it resolves. That assignment queues the `rows` watcher,

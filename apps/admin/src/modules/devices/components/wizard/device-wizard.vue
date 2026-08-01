@@ -50,12 +50,18 @@
 					:key="action.id"
 					:data-test-id="`wizard-action-${action.id}`"
 					:link="action.variant === 'link'"
-					:type="action.variant === 'primary' ? 'primary' : undefined"
+					:type="buttonType(action)"
 					class="px-4!"
 					:disabled="action.disabled"
 					:loading="action.loading"
 					@click="action.handler"
 				>
+					<template
+						v-if="action.icon"
+						#icon
+					>
+						<icon :icon="action.icon" />
+					</template>
 					{{ action.label }}
 				</el-button>
 			</div>
@@ -119,18 +125,24 @@
 
 			<div
 				v-if="!isMDDevice"
-				class="flex justify-end gap-2 p-4 border-t border-t-solid"
+				class="flex flex-wrap justify-end gap-2 p-4 border-t border-t-solid"
 			>
 				<el-button
 					v-for="action in actions"
 					:key="action.id"
 					:data-test-id="`wizard-action-mobile-${action.id}`"
 					:link="action.variant === 'link'"
-					:type="action.variant === 'primary' ? 'primary' : undefined"
+					:type="buttonType(action)"
 					:disabled="action.disabled"
 					:loading="action.loading"
 					@click="action.handler"
 				>
+					<template
+						v-if="action.icon"
+						#icon
+					>
+						<icon :icon="action.icon" />
+					</template>
 					{{ action.label }}
 				</el-button>
 			</div>
@@ -156,7 +168,7 @@ import DeviceWizardConfirmStep from './device-wizard-confirm-step.vue';
 import DeviceWizardDiscoverStep from './device-wizard-discover-step.vue';
 import DeviceWizardResultsStep from './device-wizard-results-step.vue';
 import { buildWizardActions } from './device-wizard.actions';
-import type { IDeviceWizardProps, IWizardAction, IWizardRow } from './device-wizard.types';
+import type { IDeviceWizardProps, IWizardAction, IWizardActionControl, IWizardRow } from './device-wizard.types';
 
 defineOptions({
 	name: 'DeviceWizard',
@@ -311,6 +323,18 @@ const onDone = (): void => {
 	onCancel();
 };
 
+// The plugin's discovery actions ("Scan again", "Pair new device") are lifted out of the step
+// body and into the action bar, so the discover step renders only its banners, progress and
+// forms. `buildWizardActions` decides where they land and ignores them off the discover step.
+const actionControls = computed<IWizardActionControl[]>(() =>
+	adapter.controls.value.filter((control): control is IWizardActionControl => control.type === 'action')
+);
+
+// Element Plus takes `warning` and `primary` as button types; `link` is a separate prop and
+// `default` is the absence of a type.
+const buttonType = (action: IWizardAction): 'primary' | 'warning' | undefined =>
+	action.variant === 'primary' || action.variant === 'warning' ? action.variant : undefined;
+
 const actions = computed<IWizardAction[]>(() =>
 	buildWizardActions(activeStep.value, {
 		t,
@@ -318,6 +342,7 @@ const actions = computed<IWizardAction[]>(() =>
 		canContinue: canContinue.value,
 		hasAdoptable: adoptableRows.value.length > 0,
 		busy: adapter.busy.value,
+		actionControls: actionControls.value,
 		onCancel,
 		onBack,
 		onNext,

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { type IWizardActionsContext, buildWizardActions } from './device-wizard.actions';
+import type { IWizardActionControl } from './device-wizard.types';
 
 const context = (overrides: Partial<IWizardActionsContext> = {}): IWizardActionsContext => ({
 	t: (key: string) => key,
@@ -8,6 +9,7 @@ const context = (overrides: Partial<IWizardActionsContext> = {}): IWizardActions
 	canContinue: true,
 	hasAdoptable: true,
 	busy: false,
+	actionControls: [],
 	onCancel: vi.fn(),
 	onBack: vi.fn(),
 	onNext: vi.fn(),
@@ -17,9 +19,69 @@ const context = (overrides: Partial<IWizardActionsContext> = {}): IWizardActions
 	...overrides,
 });
 
+const actionControl = (overrides: Partial<IWizardActionControl> = {}): IWizardActionControl => ({
+	type: 'action',
+	id: 'restart-scan',
+	label: 'Scan again',
+	icon: 'mdi:radar',
+	handler: vi.fn(),
+	...overrides,
+});
+
 describe('buildWizardActions', () => {
 	it('offers cancel and next on the discover step', () => {
 		expect(buildWizardActions('discover', context()).map((action) => action.id)).toEqual(['cancel', 'next']);
+	});
+
+	it('promotes plugin action controls ahead of cancel on the discover step', () => {
+		const actions = buildWizardActions('discover', context({ actionControls: [actionControl()] }));
+
+		expect(actions.map((action) => action.id)).toEqual(['control-restart-scan', 'cancel', 'next']);
+	});
+
+	it('namespaces a promoted id so a plugin cannot collide with a shell action', () => {
+		const actions = buildWizardActions('discover', context({ actionControls: [actionControl({ id: 'next' })] }));
+
+		expect(actions.map((action) => action.id)).toEqual(['control-next', 'cancel', 'next']);
+	});
+
+	it('carries the promoted control label, icon, disabled and loading through', () => {
+		const actions = buildWizardActions('discover', context({ actionControls: [actionControl({ disabled: true, loading: true })] }));
+		const promoted = actions.find((action) => action.id === 'control-restart-scan');
+
+		expect(promoted?.label).toBe('Scan again');
+		expect(promoted?.icon).toBe('mdi:radar');
+		expect(promoted?.disabled).toBe(true);
+		expect(promoted?.loading).toBe(true);
+	});
+
+	it('demotes a primary control so the step keeps a single primary action', () => {
+		const actions = buildWizardActions('discover', context({ actionControls: [actionControl({ variant: 'primary' })] }));
+
+		expect(actions.find((action) => action.id === 'control-restart-scan')?.variant).toBe('default');
+		expect(actions.find((action) => action.id === 'next')?.variant).toBe('primary');
+	});
+
+	it('preserves the warning variant so an active pairing window stays visually distinct', () => {
+		const actions = buildWizardActions('discover', context({ actionControls: [actionControl({ variant: 'warning' })] }));
+
+		expect(actions.find((action) => action.id === 'control-restart-scan')?.variant).toBe('warning');
+	});
+
+	it('wires a promoted action to the control handler', () => {
+		const handler = vi.fn();
+		const actions = buildWizardActions('discover', context({ actionControls: [actionControl({ handler })] }));
+
+		actions.find((action) => action.id === 'control-restart-scan')?.handler();
+
+		expect(handler).toHaveBeenCalledOnce();
+	});
+
+	it('ignores plugin action controls on the confirm and results steps', () => {
+		const controls = [actionControl()];
+
+		expect(buildWizardActions('confirm', context({ actionControls: controls })).map((action) => action.id)).toEqual(['back', 'cancel', 'adopt']);
+		expect(buildWizardActions('results', context({ actionControls: controls })).map((action) => action.id)).toEqual(['done']);
 	});
 
 	it('disables next when there is nothing adoptable', () => {

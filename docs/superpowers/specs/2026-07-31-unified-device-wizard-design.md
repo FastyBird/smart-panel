@@ -254,7 +254,7 @@ Coverage of the existing plugins:
 | `action` | "Restart scan" | a single button whose label, icon and variant flip between "Pair new device" and "Cancel pairing" |
 | `form` | manual add — `hostname` plus `password` (`secret: true`) | none |
 
-Layout, matching what both plugins render today: banners stack full-width at the top; `progress` and `action` controls share one row with progress growing and actions right-aligned; `form` controls sit below in a responsive grid. Within each group, controls render in adapter-declared order.
+Layout: banners stack full-width at the top, then `progress` controls full-width, then `form` controls in a responsive grid. Within each group, controls render in adapter-declared order. `action` controls are the exception — they are not rendered in the step body at all, but promoted into the wizard action bar (see *Action bar* below).
 
 **Extension rule:** if a future plugin needs something these four cannot express, the fix is a fifth descriptor type — never an escape-hatch slot. A slot would silently reintroduce the per-plugin UI divergence this design exists to remove.
 
@@ -369,7 +369,8 @@ One model, rendered twice — desktop `view-header` `#extra` and the mobile foot
 export interface IWizardAction {
 	id: string;
 	label: string;
-	variant: 'link' | 'default' | 'primary';
+	variant: 'link' | 'default' | 'primary' | 'warning';
+	icon?: string;
 	disabled?: boolean;
 	loading?: boolean;
 	handler: () => void | Promise<void>;
@@ -378,11 +379,23 @@ export interface IWizardAction {
 
 | Step | Actions |
 |---|---|
-| Discover | Cancel *(link)* · Next *(primary; disabled when no adoptable rows)* |
+| Discover | *promoted plugin actions* · Cancel *(link)* · Next *(primary; disabled when no adoptable rows)* |
 | Confirm | Back · Cancel *(link)* · Adopt *(primary; disabled unless `canContinue`; loading while `busy`)* |
 | Results | Add more *(default; only when `capabilities.addMore`)* · Done *(primary)* |
 
 This also removes today's inconsistency where Z2M's results buttons sit inside the step body and the footer disappears entirely.
+
+**Promoted plugin actions.** The adapter's `action` controls do not render in the discover step body — `buildWizardActions` lifts them into the bar ahead of Cancel, so the step's primary verb ("Scan again" for Shelly, "Pair new device" for Zigbee2MQTT) sits with the navigation rather than being buried above the table. They appear on the discover step only; confirm and results ignore them.
+
+Three rules govern the mapping:
+
+- **The id is namespaced to `control-<id>`.** It becomes both the `:key` and the `data-test-id` in a bar that already contains `cancel` / `next` / `back` / `adopt` / `addMore` / `done`, so a plugin action called `next` would otherwise collide with the shell's own.
+- **`primary` is demoted to `default`**, keeping exactly one primary action per step (Next). Zigbee2MQTT's "Pair new device" declares `primary` for its own sake; the bar overrides it.
+- **`warning` survives.** Zigbee2MQTT flips the same button to "Cancel pairing" while a pairing window is open, and that state must stay visually distinct. This is the only way `warning` reaches `IWizardAction`; the shell's own actions never use it.
+
+`icon` exists on `IWizardAction` solely to carry a promoted control's icon (`mdi:radar`, `mdi:plus-circle-outline`) into the bar — the shell's own actions render label-only.
+
+Two states fall out correctly without special handling: Zigbee2MQTT returns `controls: []` until `sessionReady`, so no pair button appears while the session is loading; and when its bridge is offline it returns only the banner, so no pair button appears when pairing is impossible.
 
 ## Error Handling
 

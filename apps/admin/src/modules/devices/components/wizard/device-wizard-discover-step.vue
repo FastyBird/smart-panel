@@ -36,45 +36,26 @@
 			</template>
 		</el-alert>
 
+		<!-- `action` controls are deliberately absent: the shell promotes them into the wizard
+		     action bar so the step's primary verb sits beside Cancel and Next. Progress bars
+		     therefore span the full width they used to share with those buttons. -->
 		<div
-			v-if="progressBars.length > 0 || actionButtons.length > 0"
-			class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between shrink-0"
+			v-if="progressBars.length > 0"
+			class="flex min-w-0 flex-col gap-3 shrink-0"
 		>
-			<div class="flex min-w-0 flex-1 flex-col gap-3">
-				<div
-					v-for="control in progressBars"
-					:key="control.id"
-					:data-test-id="`wizard-control-${control.id}`"
-					class="flex min-w-0 flex-col gap-1"
-					:class="{ invisible: !control.visible }"
-					aria-live="polite"
-				>
-					<el-text>{{ control.label }}</el-text>
-					<el-progress
-						:percentage="control.percentage"
-						:status="control.state"
-					/>
-				</div>
-			</div>
-
-			<div class="flex flex-wrap gap-2">
-				<span
-					v-for="control in actionButtons"
-					:key="control.id"
-					:data-test-id="`wizard-control-${control.id}`"
-				>
-					<el-button
-						:type="control.variant === 'default' ? undefined : control.variant"
-						:disabled="control.disabled"
-						:loading="control.loading"
-						@click="control.handler"
-					>
-						<template #icon>
-							<icon :icon="control.icon" />
-						</template>
-						{{ control.label }}
-					</el-button>
-				</span>
+			<div
+				v-for="control in progressBars"
+				:key="control.id"
+				:data-test-id="`wizard-control-${control.id}`"
+				class="flex min-w-0 flex-col gap-1"
+				:class="{ invisible: !control.visible }"
+				aria-live="polite"
+			>
+				<el-text>{{ control.label }}</el-text>
+				<el-progress
+					:percentage="control.percentage"
+					:status="control.state"
+				/>
 			</div>
 		</div>
 
@@ -200,7 +181,6 @@ import { Icon } from '@iconify/vue';
 import DeviceWizardCell from './device-wizard-cell.vue';
 import { compareLocale } from './device-wizard.sort';
 import {
-	type IWizardActionControl,
 	type IWizardBannerControl,
 	type IWizardColumn,
 	type IWizardControl,
@@ -231,8 +211,6 @@ const banners = computed<IWizardBannerControl[]>(() => props.controls.filter((it
 const progressBars = computed<IWizardProgressControl[]>(() =>
 	props.controls.filter((item): item is IWizardProgressControl => item.type === 'progress')
 );
-
-const actionButtons = computed<IWizardActionControl[]>(() => props.controls.filter((item): item is IWizardActionControl => item.type === 'action'));
 
 const forms = computed<IWizardFormControl[]>(() => props.controls.filter((item): item is IWizardFormControl => item.type === 'form'));
 

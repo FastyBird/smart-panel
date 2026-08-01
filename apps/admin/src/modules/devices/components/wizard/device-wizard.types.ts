@@ -157,7 +157,10 @@ export type IDeviceWizardAdapter =
 export interface IWizardAction {
 	id: string;
 	label: string;
-	variant: 'link' | 'default' | 'primary';
+	/** `warning` reaches the bar only via a promoted `IWizardActionControl`. */
+	variant: 'link' | 'default' | 'primary' | 'warning';
+	/** Set only on promoted plugin actions; the shell's own actions render label-only. */
+	icon?: string;
 	disabled?: boolean;
 	loading?: boolean;
 	handler: () => void | Promise<void>;

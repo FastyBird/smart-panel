@@ -54,13 +54,23 @@ describe('DeviceWizardDiscoverStep', () => {
 		expect(wrapper.find('[data-test-id="wizard-control-pairing"]').classes()).toContain('invisible');
 	});
 
-	it('invokes an action control handler on click', async () => {
-		const handler = vi.fn();
-		const wrapper = mountStep([{ type: 'action', id: 'restart', label: 'Restart scan', icon: 'mdi:radar', handler }]);
+	it('does not render action controls — the shell promotes them into the wizard action bar', async () => {
+		const wrapper = mountStep([{ type: 'action', id: 'restart', label: 'Restart scan', icon: 'mdi:radar', handler: vi.fn() }]);
+		await flushPromises();
 
-		await wrapper.find('[data-test-id="wizard-control-restart"] button').trigger('click');
+		expect(wrapper.find('[data-test-id="wizard-control-restart"]').exists()).toBe(false);
+		expect(wrapper.text()).not.toContain('Restart scan');
+	});
 
-		expect(handler).toHaveBeenCalledOnce();
+	it('still renders a progress control when no action control shares its row', async () => {
+		const wrapper = mountStep([
+			{ type: 'progress', id: 'scan', label: 'Found 3 devices', percentage: 40, visible: true },
+			{ type: 'action', id: 'restart', label: 'Restart scan', icon: 'mdi:radar', handler: vi.fn() },
+		]);
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="wizard-control-scan"]').exists()).toBe(true);
+		expect(wrapper.text()).toContain('Found 3 devices');
 	});
 
 	it('submits a form control with its field values and clears them on success', async () => {
