@@ -17,7 +17,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelCategory, DataTypeType, EventType, PermissionType, PropertyCategory } from '../devices.constants';
-import { DevicesException } from '../devices.exceptions';
+import { DevicesException, DevicesValidationException } from '../devices.exceptions';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
@@ -441,6 +441,79 @@ describe('ChannelsPropertiesService', () => {
 				toInstance(MockChannelProperty, mockUpdatedProperty),
 			);
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('property.id = :id', { id: mockUpdatedProperty.id });
+		});
+
+		// The hook exists so a type owner can judge an invariant spanning a field the PATCH sent and a
+		// field it did not — which is only decidable once the two are merged, and only useful if that
+		// happens before anything is written.
+
+		it('should call the mapping beforeUpdate hook with the merged row, before saving it', async () => {
+			const beforeUpdate = jest.fn().mockResolvedValue(undefined);
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+				beforeUpdate,
+			});
+
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(ChannelPropertyEntity, mockChannelProperty));
+
+			await channelsPropertiesService.update(mockChannelProperty.id, {
+				type: 'mock',
+				name: 'New name',
+			} as UpdateMockChannelPropertyDto);
+
+			expect(beforeUpdate).toHaveBeenCalledTimes(1);
+			// The merged row: the field the PATCH sent, on the entity that was loaded from storage.
+			expect((beforeUpdate.mock.calls[0][0] as MockChannelProperty).name).toBe('New name');
+			expect((beforeUpdate.mock.calls[0][0] as MockChannelProperty).id).toBe(mockChannelProperty.id);
+			expect(beforeUpdate.mock.invocationCallOrder[0]).toBeLessThan(
+				(repository.save as jest.Mock).mock.invocationCallOrder[0],
+			);
+		});
+
+		it('should leave the row untouched when the beforeUpdate hook rejects it', async () => {
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+				beforeUpdate: jest.fn().mockRejectedValue(new DevicesValidationException('Merged row is not supported.')),
+			});
+
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(ChannelPropertyEntity, mockChannelProperty));
+
+			await expect(
+				channelsPropertiesService.update(mockChannelProperty.id, {
+					type: 'mock',
+					name: 'New name',
+				} as UpdateMockChannelPropertyDto),
+			).rejects.toThrow(DevicesValidationException);
+
+			expect(repository.save).not.toHaveBeenCalled();
+			expect(eventEmitter.emit).not.toHaveBeenCalled();
 		});
 	});
 

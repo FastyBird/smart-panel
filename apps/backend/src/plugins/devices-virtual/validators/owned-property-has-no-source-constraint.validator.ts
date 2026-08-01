@@ -5,35 +5,28 @@ import {
 	registerDecorator,
 } from 'class-validator';
 
-import { VirtualValueOrigin } from '../entities/devices-virtual.entity';
+import { VirtualValueOrigin, isUnsupportedValueOriginPair } from '../entities/devices-virtual.entity';
 
 /**
- * Rejects the one (`value_origin`, `source_property`) pair the entity's state model has no state for.
- *
- * VirtualChannelPropertyEntity defines exactly three states (see its `isProjecting` / `isOrphaned` /
- * `isLinked` getters, and the design spec's state table):
- *
- * | `valueOrigin` | `sourcePropertyId` | state    |
- * |---------------|--------------------|----------|
- * | `source`      | set                | linked   |
- * | `source`      | `null`             | orphaned |
- * | `local`       | `null`             | owned    |
- *
- * `local` + a source is the missing fourth row. Each field validates fine on its own, so without this
- * the API accepts it and produces a property that neither mirrors nor forwards: VirtualValueSourceService
- * resolves an owned property to its *own* storage key and never looks at the source, VirtualPropertyIndexService
- * skips owned properties entirely so nothing projects into it, and VirtualDevicePlatform refuses to
- * forward a write for a property that is not in the index. The named source is inert in all three, and
- * silently so.
+ * Rejects the one (`value_origin`, `source_property`) pair the entity's state model has no state for —
+ * `local` plus a source. See `isUnsupportedValueOriginPair` (../entities/devices-virtual.entity.ts) for
+ * the state table and for why that pair produces a property which neither mirrors nor forwards.
  *
  * ## Scope: what one payload can see
  *
  * This is a DTO constraint, so it can only judge the pair when both halves are in the same request —
  * which is always the case on create (`value_origin` defaults to `source`, so an absent field is still
- * a known value) but not on a PATCH that sends only one of them. Two partial PATCHes can still reach
- * the same incoherent row: `{value_origin: 'local'}` against a linked property, and
- * `{source_property: <id>}` against an owned one. Closing those needs the stored row, which no
- * class-validator constraint has access to — recorded as a follow-up rather than half-solved here.
+ * a known value) but not on a PATCH that sends only one of them. Two partial PATCHes reach the same
+ * incoherent row without ever tripping this: `{value_origin: 'local'}` against a linked property, and
+ * `{source_property: <id>}` against an owned one. Deciding those needs the *stored* row, which no
+ * class-validator constraint has access to — `VirtualDevicesService.assertValueOriginPairSupported`,
+ * called from the `beforeUpdate` mapping hook in ../devices-virtual.plugin.ts, judges the merged row
+ * there instead.
+ *
+ * The two are complementary, not alternatives. This one runs first and produces the better error —
+ * a 400 naming the offending field — for the payload that carries both halves, which is the shape the
+ * admin UI actually sends; the hook is the backstop that no partial PATCH can slip past, and reports
+ * a less specific 422 because that is all the service layer's failure vocabulary can express.
  *
  * Attached to `source_property` rather than `value_origin` so the error names the field that has to be
  * dropped: `value_origin: 'local'` is a deliberate choice about what the property *is*, whereas the
@@ -51,7 +44,7 @@ export class OwnedPropertyHasNoSourceConstraintValidator implements ValidatorCon
 
 		const { value_origin } = args.object as { value_origin?: VirtualValueOrigin };
 
-		return value_origin !== VirtualValueOrigin.LOCAL;
+		return !isUnsupportedValueOriginPair(value_origin, sourcePropertyId);
 	}
 
 	defaultMessage(args: ValidationArguments): string {

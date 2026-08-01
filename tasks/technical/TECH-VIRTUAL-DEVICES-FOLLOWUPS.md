@@ -53,11 +53,26 @@ On a virtual device created with linked channels and properties in one request, 
 
 **Resolved** by the `afterCreate` hook described in §2.7 — which makes the orphan state unreachable regardless of who wins — plus a bounded retry in `ensureConnectionStateProperty()` that re-reads and claims the winning row instead of swallowing the constraint violation.
 
-### 2.9 A partial PATCH can still reach `local` + a source (low)
+### 2.9 A partial PATCH can still reach `local` + a source (low) — DONE
 
-`CreateVirtualChannelPropertyDto` and `UpdateVirtualChannelPropertyDto` now reject `value_origin: 'local'` sent together with a `source_property` — the one `(value_origin, sourcePropertyId)` pair `VirtualChannelPropertyEntity`'s state model has no state for, and which produces a property that neither mirrors nor forwards.
+`CreateVirtualChannelPropertyDto` and `UpdateVirtualChannelPropertyDto` reject `value_origin: 'local'` sent together with a `source_property` — the one `(value_origin, sourcePropertyId)` pair `VirtualChannelPropertyEntity`'s state model has no state for, and which produces a property that neither mirrors nor forwards.
 
-A DTO constraint can only judge the pair when both halves are in the same payload. Two partial PATCHes still reach the same row: `{value_origin: 'local'}` against a linked property, and `{source_property: <id>}` against an owned one. Closing those needs the stored row, which no `class-validator` constraint has access to — it belongs either in `ChannelsPropertiesService.update()` (which holds the loaded entity) or in a plugin-owned guard invoked from there.
+A DTO constraint can only judge the pair when both halves are in the same payload, so two partial PATCHes reached the same row without tripping it: `{value_origin: 'local'}` against a linked property, and `{source_property: <id>}` against an owned one. Each validates perfectly on its own and only becomes the unsupported pair once `ChannelsPropertiesService.update()` merges it into the stored row.
+
+**Resolved** by moving the half of the rule a payload cannot see down to the layer that holds the merged row:
+
+- `ChannelPropertyTypeMapping` gains a `beforeUpdate` hook, the mirror of the existing `afterCreate` / `afterUpdate`. `ChannelsPropertiesService.update()` calls it on the loaded entity *after* the update's fields are assigned onto it and *before* `repository.save`, so a throw leaves the row untouched.
+- The plugin registers it against `VirtualDevicesService.assertValueOriginPairSupported`, a fourth `assert*` alongside the three that already police the creation flow. Its `VirtualValueOriginConflictException` is translated to `DevicesValidationException` at the registration site — the same shape as `SourceNotVirtualConstraintValidator`'s translation — so the HTTP layer reports 422 rather than 500. Any other exception is re-thrown untouched.
+- Both callers now share one predicate, `isUnsupportedValueOriginPair` in `entities/devices-virtual.entity.ts`, so the DTO constraint and the merged-row guard cannot drift.
+
+The DTO constraint is **kept**, not replaced: it runs first and gives the better error — a 400 naming the offending field — for the combined payload the admin UI actually sends, whereas the hook can only manage a generic 422 because that is all the service layer's failure vocabulary can express. They are complementary.
+
+Only `update` is hooked. `create` needs no equivalent: `value_origin` has a known default there, so both halves of the pair are always decidable from the one payload the DTO constraint already sees.
+
+Two consequences accepted deliberately:
+
+- The guard judges the merged row, not the delta, so a PATCH touching *neither* field is still rejected against a row that was already in the bad state — one an alpha installation could hold, since the two partial PATCHes used to be accepted. That is repairable rather than a trap: `{source_property: null}` or `{value_origin: 'source'}` fixes the row and passes, and every other edit is refused until it does.
+- `VirtualDeviceInformationListener.claimProperty()` now sends `source_property: null` alongside `value_origin`. It previously relied on its callers only ever reaching it with a null source; `ensureConnectionStateProperty` guards on `isProjecting` alone, so a linked status property POSTed into the `device_information` channel by hand would have merged into exactly the pair the hook refuses — a throw out of a listener rather than the inert row it produced before. Clearing the source makes the claim mean what its name says in every path.
 
 ### 2.10 A disabled virtual device still reports CONNECTED (low)
 
@@ -144,6 +159,14 @@ Not caused by this branch's listener work and not fixable there: `SecurityStateL
 Fixing it means deciding, in the provider, which of the two channels represents the sensor. The obvious rule — skip a channel whose properties are all projections — is wrong for the case virtual devices exist to serve, where the virtual device is the one the user thinks of as the sensor. It is a product decision about which device an alert should name, not a mechanical de-duplication.
 
 The same shape almost certainly applies to any other provider or module that scans `devices → channels → properties` and aggregates per match; only the security sensors provider was checked.
+
+### 3.8 Two virtual properties projecting one non-qualifying source both ingest (low)
+
+`EnergyIngestionListener`'s projection guard was narrowed in round 5 to "skip only when the *source* event was itself eligible" — the same asymmetry as §3.7's, found in energy after the security one: a `consumption` property in a `generic` channel projected into an `electrical_energy` one was ingested by nobody, because the source event failed the `SOURCE_TYPE_MAP` lookup and the guard discarded the only event carrying the qualifying classification. Unlike the security case the guard could not simply be removed — `processPropertyValue()` writes one delta per event, so a source and a projection that both qualify would genuinely bill the same kWh twice.
+
+One residual case is knowingly left: if **two** virtual properties project the *same* non-qualifying source into two qualifying channels, both ingest. Each has its own `(deviceId, channelId)` delta key, so they are two meters as far as `DeltaComputationService` is concerned, and the household total counts the watts twice.
+
+It is out of reach of the rule as stated — the guard is a per-event question about the source, and "am I the only projection of this source that qualifies?" is a question about the *set* of projections, which only `VirtualPropertyIndexService` can answer and which the energy module has no business reaching into. Fixing it means either an election (lowest property id wins) or moving de-duplication into `DeltaComputationService`, keyed by storage key rather than by device+channel. Both are larger than the defect: it needs a user to deliberately wire one physical meter into two virtual devices, and unlike the dropped-meter case it is visible — an inflated total, not a silent omission.
 
 ## 4. Not to be done
 

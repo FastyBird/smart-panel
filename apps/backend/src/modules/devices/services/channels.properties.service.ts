@@ -291,6 +291,12 @@ export class ChannelsPropertiesService {
 
 		Object.assign(property, updateFields);
 
+		// The type owner's last look at the merged row, before anything is written — the only point at
+		// which an invariant spanning a field the PATCH sent and a field it did not is decidable.
+		if (mapping.beforeUpdate) {
+			await mapping.beforeUpdate(property as TProperty);
+		}
+
 		const raw = await repository.save(property as TProperty);
 
 		// Track if value actually changed

@@ -14,6 +14,39 @@ export enum VirtualValueOrigin {
 	LOCAL = 'local',
 }
 
+/**
+ * True for the one (`valueOrigin`, `sourcePropertyId`) pair the state model below has no state for.
+ *
+ * VirtualChannelPropertyEntity defines exactly three states (see its `isProjecting` / `isOrphaned` /
+ * `isLinked` getters, and the design spec's state table):
+ *
+ * | `valueOrigin` | `sourcePropertyId` | state    |
+ * |---------------|--------------------|----------|
+ * | `source`      | set                | linked   |
+ * | `source`      | `null`             | orphaned |
+ * | `local`       | `null`             | owned    |
+ *
+ * `local` + a source is the missing fourth row: a property that neither mirrors nor forwards.
+ * VirtualValueSourceService resolves an owned property to its *own* storage key and never looks at
+ * the source, VirtualPropertyIndexService skips owned properties entirely so nothing projects into
+ * it, and VirtualDevicePlatform refuses to forward a write for a property that is not in the index.
+ * The named source is inert in all three, and silently so.
+ *
+ * A free function rather than a getter, because the two callers judge the pair at different points
+ * in its life and neither always holds an entity: the DTO constraint
+ * (../validators/owned-property-has-no-source-constraint.validator.ts) sees only the fields of one
+ * request payload, and VirtualDevicesService.assertValueOriginPairSupported sees the merged row a
+ * PATCH is about to persist. Both must apply the same rule; this is it.
+ *
+ * `undefined` is deliberately not LOCAL — `valueOrigin` carries no class field initializer (see the
+ * entity), so an entity built in memory and never round-tripped through the database has it
+ * `undefined`, which the column default makes mean SOURCE.
+ */
+export const isUnsupportedValueOriginPair = (
+	valueOrigin: VirtualValueOrigin | undefined,
+	sourcePropertyId: string | null | undefined,
+): boolean => valueOrigin === VirtualValueOrigin.LOCAL && !!sourcePropertyId;
+
 @ApiSchema({ name: 'DevicesVirtualPluginDataDevice' })
 @ChildEntity()
 export class VirtualDeviceEntity extends DeviceEntity {

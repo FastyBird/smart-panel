@@ -8,7 +8,9 @@ import {
 	VirtualCategoryNotSupportedException,
 	VirtualNestingNotAllowedException,
 	VirtualSourceNotFoundException,
+	VirtualValueOriginConflictException,
 } from '../devices-virtual.exceptions';
+import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
 
 import { VirtualDevicesService } from './virtual-devices.service';
 import { VirtualPropertyIndexService, VirtualPropertyLink } from './virtual-property-index.service';
@@ -102,6 +104,43 @@ describe('VirtualDevicesService', () => {
 
 		it('accepts a read-write source for a read-only spec slot', () => {
 			expect(() => service.assertPermissionsCompatible([PermissionType.READ_ONLY], readWriteSource)).not.toThrow();
+		});
+	});
+
+	describe('assertValueOriginPairSupported', () => {
+		// The merged row a partial PATCH produces. Built the way the entity actually is after
+		// ChannelsPropertiesService.update() has assigned the update's fields onto the loaded row.
+		const merged = (
+			valueOrigin: VirtualValueOrigin | undefined,
+			sourcePropertyId: string | null,
+		): VirtualChannelPropertyEntity =>
+			Object.assign(new VirtualChannelPropertyEntity(), { id: 'virtual-prop', valueOrigin, sourcePropertyId });
+
+		it('rejects local plus a source — the state the entity has no state for', () => {
+			expect(() => service.assertValueOriginPairSupported(merged(VirtualValueOrigin.LOCAL, 'source-prop'))).toThrow(
+				VirtualValueOriginConflictException,
+			);
+		});
+
+		it('accepts an owned property', () => {
+			expect(() => service.assertValueOriginPairSupported(merged(VirtualValueOrigin.LOCAL, null))).not.toThrow();
+		});
+
+		it('accepts a linked property', () => {
+			expect(() =>
+				service.assertValueOriginPairSupported(merged(VirtualValueOrigin.SOURCE, 'source-prop')),
+			).not.toThrow();
+		});
+
+		it('accepts an orphaned property', () => {
+			expect(() => service.assertValueOriginPairSupported(merged(VirtualValueOrigin.SOURCE, null))).not.toThrow();
+		});
+
+		// `valueOrigin` has no class field initializer, so it is undefined on a row that has not
+		// round-tripped through the database — which the column default makes mean SOURCE, not LOCAL.
+		// Reading it as LOCAL here would reject every freshly created linked property.
+		it('accepts an undefined value origin with a source, which the column default makes linked', () => {
+			expect(() => service.assertValueOriginPairSupported(merged(undefined, 'source-prop'))).not.toThrow();
 		});
 	});
 

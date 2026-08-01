@@ -330,10 +330,20 @@ export class VirtualDeviceInformationListener {
 	/**
 	 * Converts a projecting property to owned, and does nothing to one that already is.
 	 *
-	 * Sends `value_origin` and nothing else besides the `type` discriminator
+	 * Sends `value_origin` and `source_property` and nothing else besides the `type` discriminator
 	 * ChannelsPropertiesService.update() requires to resolve the mapping: every other column on the
 	 * entity is left `undefined` and dropped by that method's `omitBy(..., isUndefined)`, so this cannot
 	 * disturb a name, permissions or format someone has since edited.
+	 *
+	 * The source is cleared rather than left alone because owned means owned outright. Both callers
+	 * reach here with a null source in every path either has been observed to take — one guards on
+	 * `isOrphaned`, and the row the other finds was created by DeviceConnectivityService, which has no
+	 * source to give — but `ensureConnectionStateProperty` only guards on `isProjecting`, so a *linked*
+	 * status property somebody POSTed into the device_information channel by hand would arrive here
+	 * still holding its source. Sending only `value_origin` would then merge into `local` + a source:
+	 * the one pair the entity has no state for, which `VirtualDevicesService
+	 * .assertValueOriginPairSupported` now refuses to persist — turning a silently inert row into a
+	 * throw out of a listener. Clearing it makes the claim mean what it says instead, in every path.
 	 */
 	private async claimProperty(property: VirtualChannelPropertyEntity): Promise<void> {
 		if (!property.isProjecting) {
@@ -343,6 +353,7 @@ export class VirtualDeviceInformationListener {
 		await this.channelsPropertiesService.update(property.id, {
 			type: property.type,
 			value_origin: VirtualValueOrigin.LOCAL,
+			source_property: null,
 		});
 
 		this.logger.debug(`Marked property id=${property.id} as owned by its virtual device`);

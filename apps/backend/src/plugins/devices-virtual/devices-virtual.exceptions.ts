@@ -29,6 +29,14 @@ export class VirtualSourceNotFoundException extends VirtualException {
 	}
 }
 
+/** A property would end up `local` with a source: the one state pair the entity has no state for. */
+export class VirtualValueOriginConflictException extends VirtualException {
+	constructor(message: string) {
+		super(message);
+		this.name = 'VirtualValueOriginConflictException';
+	}
+}
+
 /** A source property's permissions cannot satisfy a required spec slot. */
 export class VirtualPermissionsIncompatibleException extends VirtualException {
 	constructor(message: string) {

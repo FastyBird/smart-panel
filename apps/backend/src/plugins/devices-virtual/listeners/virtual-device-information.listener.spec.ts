@@ -484,6 +484,19 @@ describe('VirtualDeviceInformationListener', () => {
 			);
 		});
 
+		// Owned means owned outright. The payload has to say so rather than rely on the row's source
+		// already being null: `ensureConnectionStateProperty` claims on `isProjecting` alone, and a
+		// `value_origin` sent without a matching `source_property` would merge into `local` + a source —
+		// the one pair VirtualDevicesService.assertValueOriginPairSupported refuses to persist.
+		it('clears the source when it claims, rather than assuming there is none', async () => {
+			await listener.claimDeviceInformationProperty(propertyIn(ChannelCategory.DEVICE_INFORMATION, undefined));
+
+			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+				'recreated-prop',
+				expect.objectContaining({ value_origin: VirtualValueOrigin.LOCAL, source_property: null }),
+			);
+		});
+
 		it('leaves an already owned property alone', async () => {
 			await listener.claimDeviceInformationProperty(
 				propertyIn(ChannelCategory.DEVICE_INFORMATION, VirtualValueOrigin.LOCAL),

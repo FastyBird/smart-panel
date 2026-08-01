@@ -11,14 +11,16 @@ import {
 	VirtualNestingNotAllowedException,
 	VirtualPermissionsIncompatibleException,
 	VirtualSourceNotFoundException,
+	VirtualValueOriginConflictException,
 } from '../devices-virtual.exceptions';
+import { VirtualChannelPropertyEntity, isUnsupportedValueOriginPair } from '../entities/devices-virtual.entity';
 
 import { VirtualPropertyIndexService } from './virtual-property-index.service';
 
 /**
  * Validation guards for assembling a virtual device, plus a read of the physical devices behind one.
  *
- * The three `assert*` methods each police one rule from the design's creation flow
+ * The four `assert*` methods each police one rule from the design's creation flow
  * (docs/superpowers/specs/2026-07-31-virtual-devices-design.md, "Creation flow" / "v1 category
  * boundary"):
  *
@@ -30,6 +32,9 @@ import { VirtualPropertyIndexService } from './virtual-property-index.service';
  *   language that presupposes a *primary* guard exists elsewhere. This is that guard.
  * - `assertPermissionsCompatible` — a writable spec slot fed by a read-only source could never
  *   actually be written.
+ * - `assertValueOriginPairSupported` — the entity's state model has no state for `local` + a source.
+ *   Wired differently from the other three: it judges the *merged* row rather than a payload, so it
+ *   hangs off a `beforeUpdate` mapping hook rather than a class-validator constraint (see the method).
  *
  * `assertCategoryAllowed` and `assertSourceNotVirtual` are wired into the create/update HTTP path via
  * class-validator constraints (`../validators/category-allowed-constraint.validator.ts`,
@@ -88,6 +93,31 @@ export class VirtualDevicesService {
 		if (device.type === DEVICES_VIRTUAL_TYPE) {
 			throw new VirtualNestingNotAllowedException(
 				`Source property id=${sourcePropertyId} belongs to virtual device id=${device.id}; nesting virtual devices is not allowed`,
+			);
+		}
+	}
+
+	/**
+	 * Throws when the property's *merged* (`valueOrigin`, `sourcePropertyId`) pair is the unsupported
+	 * fourth row — see `isUnsupportedValueOriginPair` for what that row is and why it is inert.
+	 *
+	 * Takes an entity rather than DTO fields on purpose: this is the half of the rule a request payload
+	 * cannot see. `ValidateOwnedPropertyHasNoSource` on the create/update DTOs judges the pair only when
+	 * both halves are in the same payload — always true on create, where `value_origin` has a known
+	 * default, but not on a PATCH. `{value_origin: 'local'}` sent to a *linked* property and
+	 * `{source_property: <id>}` sent to an *owned* one each validate perfectly on their own and only
+	 * become the unsupported pair once ChannelsPropertiesService.update() has merged them into the
+	 * stored row. This is called from a `beforeUpdate` mapping hook, on that merged row, before it is
+	 * saved — see the registration in ../devices-virtual.plugin.ts.
+	 *
+	 * The two are complementary, not alternatives: the DTO constraint still gives the better error (400,
+	 * naming the offending field) for the combined payload, and this is the backstop no partial PATCH
+	 * can slip past.
+	 */
+	assertValueOriginPairSupported(property: VirtualChannelPropertyEntity): void {
+		if (isUnsupportedValueOriginPair(property.valueOrigin, property.sourcePropertyId)) {
+			throw new VirtualValueOriginConflictException(
+				`Property id=${property.id} would be stored with value origin '${property.valueOrigin}' and source property id=${property.sourcePropertyId}; an owned property stores its own value and has no source`,
 			);
 		}
 	}

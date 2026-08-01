@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
+import { DevicesValidationException } from '../../modules/devices/devices.exceptions';
 import { DevicesModule } from '../../modules/devices/devices.module';
 import { CreateChannelPropertyDto } from '../../modules/devices/dto/create-channel-property.dto';
 import { CreateChannelDto } from '../../modules/devices/dto/create-channel.dto';
@@ -30,6 +31,7 @@ import {
 	DEVICES_VIRTUAL_PLUGIN_NAME,
 	DEVICES_VIRTUAL_TYPE,
 } from './devices-virtual.constants';
+import { VirtualValueOriginConflictException } from './devices-virtual.exceptions';
 import { DEVICES_VIRTUAL_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-virtual.openapi';
 import { CreateVirtualChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateVirtualChannelDto } from './dto/create-channel.dto';
@@ -96,6 +98,7 @@ export class DevicesVirtualPlugin {
 		private readonly virtualDevicePlatform: VirtualDevicePlatform,
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly deviceInformationListener: VirtualDeviceInformationListener,
+		private readonly virtualDevicesService: VirtualDevicesService,
 	) {}
 
 	onModuleInit() {
@@ -141,6 +144,33 @@ export class DevicesVirtualPlugin {
 				await this.deviceInformationListener.claimDeviceInformationProperty(property);
 
 				return property;
+			},
+			// Runs inside ChannelsPropertiesService.update() on the loaded row with the PATCH already
+			// merged into it, and before that row is saved. `ValidateOwnedPropertyHasNoSource` on the
+			// update DTO can only judge (`value_origin`, `source_property`) when both arrive together;
+			// `{value_origin: 'local'}` against a linked property and `{source_property: <id>}` against
+			// an owned one are each valid in isolation and only become the unsupported pair here. The
+			// two are complementary — the DTO still gives the better, field-named error for the
+			// combined payload.
+			//
+			// The plugin's own exception is translated to DevicesValidationException rather than left to
+			// escape, mirroring SourceNotVirtualConstraintValidator's translation of the same service's
+			// exceptions into its caller's failure vocabulary: this hook's caller reports a
+			// DevicesException as an unprocessable entity and anything else as a 500, and a rejected
+			// payload is not a server fault. Any *other* exception is re-thrown untouched — a bug in
+			// here must not be reported to the client as invalid input.
+			beforeUpdate: (property: VirtualChannelPropertyEntity): Promise<void> => {
+				try {
+					this.virtualDevicesService.assertValueOriginPairSupported(property);
+				} catch (error) {
+					if (error instanceof VirtualValueOriginConflictException) {
+						throw new DevicesValidationException(error.message);
+					}
+
+					throw error;
+				}
+
+				return Promise.resolve();
 			},
 		});
 

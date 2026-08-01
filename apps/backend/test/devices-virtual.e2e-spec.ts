@@ -634,6 +634,69 @@ describe('devices-virtual plugin (e2e)', () => {
 			expect(patchedBody.data.value?.value).toBe('FastyBird');
 		});
 
+		// ─── A partial PATCH cannot merge into `local` + a source ───────────────────────
+		//
+		// The one (value_origin, source_property) pair VirtualChannelPropertyEntity's state model has
+		// no state for. `ValidateOwnedPropertyHasNoSource` on the DTO rejects it when both halves are
+		// in one payload, but a PATCH carrying only one half validates perfectly on its own and only
+		// becomes that pair once ChannelsPropertiesService.update() merges it into the stored row —
+		// producing a property that neither mirrors (VirtualValueSourceService resolves an owned
+		// property to its own key) nor forwards (it is not in the index, so VirtualDevicePlatform
+		// refuses the write). Both directions are checked, and each asserts the row is *unchanged*
+		// rather than merely that the request failed.
+
+		it('rejects switching a linked property to local without dropping its source', async () => {
+			await authPatch(`/modules/devices/channels/${lightChannelId}/properties/${lightOnPropertyId}`)
+				.send({ data: { type: DEVICES_VIRTUAL_TYPE, value_origin: 'local' } })
+				.expect(422);
+
+			const response = await authGet(`/modules/devices/channels/${lightChannelId}/properties/${lightOnPropertyId}`);
+			const body = response.body as { data: ChannelPropertyBody };
+
+			expect(body.data.value_origin).toBe('source');
+			expect(body.data.source_property).toBe(sourceOnPropertyId);
+		});
+
+		it('rejects giving an owned property a source without dropping its local origin', async () => {
+			const deviceResponse = await authGet(`/modules/devices/devices/${virtualDeviceId}`).expect(200);
+			const deviceBody = deviceResponse.body as { data: DeviceBody };
+
+			const informationChannel = deviceBody.data.channels.find(
+				(channel) => channel.category === String(ChannelCategory.DEVICE_INFORMATION),
+			);
+			const manufacturer = informationChannel?.properties.find(
+				(property) => property.category === PropertyCategory.MANUFACTURER,
+			);
+
+			expect(manufacturer?.value_origin).toBe('local');
+
+			await authPatch(`/modules/devices/channels/${informationChannel?.id}/properties/${manufacturer?.id}`)
+				.send({ data: { type: DEVICES_VIRTUAL_TYPE, source_property: sourceOnPropertyId } })
+				.expect(422);
+
+			const response = await authGet(
+				`/modules/devices/channels/${informationChannel?.id}/properties/${manufacturer?.id}`,
+			);
+			const body = response.body as { data: ChannelPropertyBody };
+
+			expect(body.data.value_origin).toBe('local');
+			expect(body.data.source_property).toBeNull();
+			// The stored value survives too: had the source landed, the property would have started
+			// reading the relay's series instead of its own synthesized one.
+			expect(body.data.value?.value).toBe('FastyBird');
+		});
+
+		it('still rejects both halves in one payload, at the DTO layer', async () => {
+			const rejected = await authPatch(
+				`/modules/devices/channels/${lightChannelId}/properties/${lightOnPropertyId}`,
+			).send({
+				data: { type: DEVICES_VIRTUAL_TYPE, value_origin: 'local', source_property: sourceOnPropertyId },
+			});
+
+			expect(rejected.status).toBe(400);
+			expect(JSON.stringify(rejected.body)).toContain('an owned property stores its own value');
+		});
+
 		// ─── Step 4: deleting the source orphans the (still-required) property ───────────
 
 		it('orphans a required property instead of breaking the device when its source is deleted', async () => {
