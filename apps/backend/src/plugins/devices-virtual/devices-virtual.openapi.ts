@@ -14,6 +14,7 @@ import {
 	VirtualDeviceEntity,
 } from './entities/devices-virtual.entity';
 import { VirtualConfigModel } from './models/config.model';
+import { VirtualSourceDevicesResponseModel } from './models/virtual-response.model';
 
 export const DEVICES_VIRTUAL_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	// DTOs
@@ -26,6 +27,8 @@ export const DEVICES_VIRTUAL_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	VirtualUpdatePluginConfigDto,
 	// Data models
 	VirtualConfigModel,
+	// Response models
+	VirtualSourceDevicesResponseModel,
 	// Entities
 	VirtualDeviceEntity,
 	VirtualChannelEntity,

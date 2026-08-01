@@ -90,6 +90,7 @@ import { DEVICES_SHELLY_V1_PLUGIN_PREFIX } from './plugins/devices-shelly-v1/dev
 import { DevicesShellyV1Plugin } from './plugins/devices-shelly-v1/devices-shelly-v1.plugin';
 import { DEVICES_THIRD_PARTY_PLUGIN_PREFIX } from './plugins/devices-third-party/devices-third-party.constants';
 import { DevicesThirdPartyPlugin } from './plugins/devices-third-party/devices-third-party.plugin';
+import { DEVICES_VIRTUAL_PLUGIN_PREFIX } from './plugins/devices-virtual/devices-virtual.constants';
 import { DevicesVirtualPlugin } from './plugins/devices-virtual/devices-virtual.plugin';
 import { DEVICES_WLED_PLUGIN_PREFIX } from './plugins/devices-wled/devices-wled.constants';
 import { DevicesWledPlugin } from './plugins/devices-wled/devices-wled.plugin';
@@ -315,6 +316,10 @@ export class AppModule {
 							{
 								path: DEVICES_RETERMINAL_PLUGIN_PREFIX,
 								module: DevicesReTerminalPlugin,
+							},
+							{
+								path: DEVICES_VIRTUAL_PLUGIN_PREFIX,
+								module: DevicesVirtualPlugin,
 							},
 							{
 								path: DEVICES_SHELLY_V1_PLUGIN_PREFIX,

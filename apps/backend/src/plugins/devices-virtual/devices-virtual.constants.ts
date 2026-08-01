@@ -4,6 +4,8 @@ export const DEVICES_VIRTUAL_TYPE = 'virtual';
 
 export const DEVICES_VIRTUAL_PLUGIN_NAME = 'devices-virtual';
 
+export const DEVICES_VIRTUAL_PLUGIN_PREFIX = 'devices-virtual';
+
 export const DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME = 'Devices virtual plugin';
 
 export const DEVICES_VIRTUAL_PLUGIN_API_TAG_DESCRIPTION =

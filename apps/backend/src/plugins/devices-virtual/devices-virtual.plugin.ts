@@ -23,6 +23,7 @@ import { ExtendedDiscriminatorService } from '../../modules/swagger/services/ext
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
+import { VirtualDevicesController } from './controllers/virtual-devices.controller';
 import {
 	DEVICES_VIRTUAL_PLUGIN_API_TAG_DESCRIPTION,
 	DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME,
@@ -42,11 +43,13 @@ import {
 	VirtualChannelPropertyEntity,
 	VirtualDeviceEntity,
 } from './entities/devices-virtual.entity';
+import { VirtualDeviceInformationListener } from './listeners/virtual-device-information.listener';
 import { VirtualIndexMaintenanceListener } from './listeners/virtual-index-maintenance.listener';
 import { VirtualProjectionListener } from './listeners/virtual-projection.listener';
 import { VirtualStatusListener } from './listeners/virtual-status.listener';
 import { VirtualConfigModel } from './models/config.model';
 import { VirtualDevicePlatform } from './platforms/virtual-device.platform';
+import { VirtualDevicesService } from './services/virtual-devices.service';
 import { VirtualPropertyIndexService } from './services/virtual-property-index.service';
 import { VirtualValueSourceService } from './services/virtual-value-source.service';
 
@@ -67,10 +70,13 @@ import { VirtualValueSourceService } from './services/virtual-value-source.servi
 		VirtualValueSourceService,
 		VirtualDevicePlatform,
 		VirtualPropertyIndexService,
+		VirtualDevicesService,
 		VirtualProjectionListener,
 		VirtualStatusListener,
 		VirtualIndexMaintenanceListener,
+		VirtualDeviceInformationListener,
 	],
+	controllers: [VirtualDevicesController],
 })
 export class DevicesVirtualPlugin {
 	constructor(
