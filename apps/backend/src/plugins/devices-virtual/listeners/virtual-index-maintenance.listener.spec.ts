@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { DataSource } from 'typeorm';
 
 import { Logger } from '@nestjs/common';
 
@@ -40,9 +41,19 @@ describe('VirtualIndexMaintenanceListener', () => {
 		return { promise, resolve };
 	};
 
+	// A stand-in for the shared, single-connection QueryRunner deferPastOpenTransaction() polls.
+	// Never mid-transaction here — these tests exercise coalescing/retry, not commit ordering, which
+	// has its own real-sqlite coverage below — so every poll's `isTransactionActive` reads false, and
+	// each deferPastOpenTransaction() call still costs exactly the one `setImmediate` hop the rest of
+	// this file's flushMicrotasks()-based timing already assumes.
+	const dataSourceStub = { createQueryRunner: () => ({ isTransactionActive: false }) };
+
 	beforeEach(() => {
 		index = { rebuild: jest.fn().mockResolvedValue(undefined) };
-		listener = new VirtualIndexMaintenanceListener(index as unknown as VirtualPropertyIndexService);
+		listener = new VirtualIndexMaintenanceListener(
+			index as unknown as VirtualPropertyIndexService,
+			dataSourceStub as unknown as DataSource,
+		);
 	});
 
 	afterEach(() => {
@@ -149,5 +160,144 @@ describe('VirtualIndexMaintenanceListener', () => {
 		expect(index.rebuild).toHaveBeenCalledTimes(2);
 
 		loggerWarnSpy.mockRestore();
+	});
+
+	// -- Task 12b: retry on a transient-looking SQLite failure ----------------------------------
+
+	// Repeatedly flushes macrotasks until either `predicate` is satisfied or `maxFlushes` is
+	// reached, rather than a fixed hop count: rebuildWithRetry()'s retry defers past a macrotask the
+	// same way the initial defer does (see deferPastOpenTransaction()), so a retry spans more than
+	// one flushMicrotasks() call, and pinning an exact count here would just re-encode an
+	// implementation detail the brief says not to assert on.
+	const flushUntil = async (predicate: () => boolean, maxFlushes = 10): Promise<void> => {
+		for (let i = 0; i < maxFlushes && !predicate(); i++) {
+			await flushMicrotasks();
+		}
+	};
+
+	it('retries a transient-looking SQLite failure and the index ends up current', async () => {
+		const transientFailure = new Error('SQLITE_ERROR: cannot start a transaction within a transaction');
+
+		index.rebuild.mockRejectedValueOnce(transientFailure).mockResolvedValueOnce(undefined);
+
+		listener.handleStructuralChange();
+
+		await flushUntil(() => index.rebuild.mock.calls.length >= 2);
+
+		// The retry succeeded: exactly one extra attempt, not a fresh pass per flush, and the pass
+		// completed (implied by reaching call #2 with nothing left pending).
+		expect(index.rebuild).toHaveBeenCalledTimes(2);
+	});
+
+	it('gives up after MAX_REBUILD_ATTEMPTS consecutive transient failures, and still rebuilds on a later event', async () => {
+		const loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn');
+		const transientFailure = new Error('SQLITE_ERROR: cannot start a transaction within a transaction');
+
+		// Every attempt in this pass fails — proves the retry loop is bounded rather than retrying
+		// forever, which would contradict "does not wedge the loop permanently" just as surely as
+		// never retrying at all would.
+		index.rebuild.mockRejectedValue(transientFailure);
+
+		listener.handleStructuralChange();
+
+		await flushUntil(() => index.rebuild.mock.calls.length >= 3);
+
+		expect(index.rebuild).toHaveBeenCalledTimes(3);
+
+		// Falls back to exactly Task 12a's original guarantee once attempts are exhausted: a later,
+		// unrelated event still triggers a fresh rebuild rather than the listener staying stuck.
+		index.rebuild.mockResolvedValueOnce(undefined);
+		listener.handleStructuralChange();
+		await flushMicrotasks();
+
+		expect(index.rebuild).toHaveBeenCalledTimes(4);
+
+		loggerWarnSpy.mockRestore();
+	});
+
+	it('does not retry a non-transient failure — matches Task 12a exactly', async () => {
+		const loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn');
+		const genericFailure = new Error('unexpected boom');
+
+		index.rebuild.mockRejectedValueOnce(genericFailure).mockResolvedValueOnce(undefined);
+
+		listener.handleStructuralChange();
+		await flushMicrotasks();
+
+		// No retry attempted for a generic error, even though attempts remain — retrying here would
+		// be indistinguishable, from the outside, from a rebuild silently running twice per event.
+		expect(index.rebuild).toHaveBeenCalledTimes(1);
+
+		loggerWarnSpy.mockRestore();
+	});
+
+	// -- Task 12b: the rebuild must not read while the emitting transaction is still open -------
+
+	// Real DataSource + dataSource.transaction() — the same call this app's DevicesService.remove()
+	// and ChannelsPropertiesService.remove() make — so this exercises the actual TypeORM + sqlite3
+	// mechanics the class docstring's correctness argument rests on: SqliteDriver.createQueryRunner()
+	// handing out one shared, single-connection QueryRunner to every non-transactional-manager query
+	// in the app, and that connection only clearing `isTransactionActive` once COMMIT/ROLLBACK has
+	// actually completed. A mocked-only test cannot prove this property — there is no real
+	// transaction, and no real (threadpool-backed, not same-tick) COMMIT, to be "inside" of. This is
+	// also the test that falsified this class's first implementation: an earlier version deferred
+	// with a single bare `setImmediate` hop, reasoning (wrongly) that submitting the read after
+	// COMMIT was submitted would be enough — this test caught that COMMIT's *completion* is what
+	// matters, not its submission, before that version ever shipped.
+	describe('defers past an open transaction (real sqlite)', () => {
+		let dataSource: DataSource;
+
+		beforeAll(async () => {
+			dataSource = new DataSource({ type: 'sqlite', database: ':memory:', entities: [], synchronize: false });
+			await dataSource.initialize();
+			await dataSource.query('CREATE TABLE probe (id TEXT PRIMARY KEY)');
+		});
+
+		afterAll(async () => {
+			await dataSource.destroy();
+		});
+
+		it('does not observe the emitting transaction as still open by the time it reads', async () => {
+			// The exact query runner obtainQueryRunner() falls back to for any unscoped query —
+			// including VirtualPropertyIndexService.rebuild()'s repository.find() — because sqlite is
+			// not pooled (see AbstractSqliteDriver): this one instance is shared by every
+			// non-transactional caller in the app, ours included.
+			const sharedQueryRunner = dataSource.createQueryRunner();
+
+			let observedTransactionActive: boolean | undefined;
+			let resolveObserved!: () => void;
+			const observed = new Promise<void>((resolve) => {
+				resolveObserved = resolve;
+			});
+
+			const probeIndex = {
+				rebuild: jest.fn().mockImplementation(async () => {
+					// A real query through the shared connection, exactly like rebuild()'s own
+					// repository.find() — waiting for *its* completion is what lets this observe the
+					// driver's actual transaction state, rather than a flag that may not have caught up.
+					await sharedQueryRunner.query('SELECT 1');
+					observedTransactionActive = sharedQueryRunner.isTransactionActive;
+					resolveObserved();
+				}),
+			};
+
+			const probeListener = new VirtualIndexMaintenanceListener(
+				probeIndex as unknown as VirtualPropertyIndexService,
+				dataSource,
+			);
+
+			await dataSource.transaction(async (manager) => {
+				await manager.query('INSERT INTO probe (id) VALUES (?)', ['row-1']);
+
+				// Mimics DevicesService.remove()/ChannelsPropertiesService.remove(): a synchronous
+				// emit() of a structural event as the last statement inside the open transaction.
+				probeListener.handleStructuralChange();
+			});
+
+			await observed;
+
+			expect(probeIndex.rebuild).toHaveBeenCalledTimes(1);
+			expect(observedTransactionActive).toBe(false);
+		});
 	});
 });
