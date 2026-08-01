@@ -21,6 +21,14 @@ export class VirtualNestingNotAllowedException extends VirtualException {
 	}
 }
 
+/** A `source_property` does not resolve to a real property/channel/device chain. */
+export class VirtualSourceNotFoundException extends VirtualException {
+	constructor(message: string) {
+		super(message);
+		this.name = 'VirtualSourceNotFoundException';
+	}
+}
+
 /** A source property's permissions cannot satisfy a required spec slot. */
 export class VirtualPermissionsIncompatibleException extends VirtualException {
 	constructor(message: string) {

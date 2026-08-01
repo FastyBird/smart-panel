@@ -14,6 +14,8 @@ import { VirtualPropertyIndexService } from '../services/virtual-property-index.
  *
  * Nesting is rejected at creation, so a virtual property is never anyone's source: the index
  * lookup returns empty for the events this listener itself emits, and recursion terminates.
+ * Enforced by SourceNotVirtualConstraintValidator (../validators/source-not-virtual-constraint.validator.ts)
+ * on `source_property` in both the create and update channel-property DTOs.
  */
 @Injectable()
 export class VirtualProjectionListener {

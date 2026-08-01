@@ -10,6 +10,7 @@ import {
 	VirtualCategoryNotSupportedException,
 	VirtualNestingNotAllowedException,
 	VirtualPermissionsIncompatibleException,
+	VirtualSourceNotFoundException,
 } from '../devices-virtual.exceptions';
 import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
 
@@ -31,9 +32,16 @@ import { VirtualPropertyIndexService } from './virtual-property-index.service';
  * - `assertPermissionsCompatible` — a writable spec slot fed by a read-only source could never
  *   actually be written.
  *
- * None of the three is wired into the create/update HTTP path yet — nothing outside this class's own
- * tests calls them. They are the validation primitives the (not-yet-built) creation flow needs, not
- * an enforced gate on their own; see the Task 13 report for that gap.
+ * `assertCategoryAllowed` and `assertSourceNotVirtual` are wired into the create/update HTTP path via
+ * class-validator constraints (`../validators/category-allowed-constraint.validator.ts`,
+ * `../validators/source-not-virtual-constraint.validator.ts`) on the `category` and `source_property`
+ * fields of the virtual device/channel-property DTOs — see those files for how. This is what makes
+ * `VirtualProjectionListener`'s "nesting is rejected at creation" doc comment actually true rather
+ * than aspirational. `assertPermissionsCompatible` is deliberately NOT wired the same way: it needs
+ * the target spec slot's required permissions, which depend on the channel category and are not
+ * available from a property DTO in isolation — the design spec assigns that filtering to the admin
+ * wizard (a follow-up, not part of this backend+panel plan), so this method is called by the wizard,
+ * not by a DTO constraint.
  */
 @Injectable()
 export class VirtualDevicesService {
@@ -54,18 +62,31 @@ export class VirtualDevicesService {
 	}
 
 	/**
-	 * Throws when `sourcePropertyId` resolves to a property whose owning device is itself virtual.
+	 * Throws when `sourcePropertyId` does not resolve to a real property/channel/device chain, or
+	 * resolves to one whose owning device is itself virtual.
 	 *
 	 * Resolves property -> channel -> device strictly by id, one hop at a time — the same defensive
 	 * shape VirtualDevicePlatform.resolveSource uses — rather than trusting relations to already be
-	 * loaded on whatever entity a caller passes in. A source that cannot be resolved at all (deleted,
-	 * or never existed) is not rejected here: existence is a different concern, and there is nothing
-	 * to call virtual.
+	 * loaded on whatever entity a caller passes in.
+	 *
+	 * Rejecting an unresolvable source (rather than passing it through) matches this method's actual
+	 * caller: a DTO field where the id was just supplied by whoever is creating or remapping the
+	 * property, so "points at nothing" is exactly as invalid as "points at a virtual device" — neither
+	 * is a legitimate value to accept here. This differs from a property that *becomes* orphaned after
+	 * having been validly linked (VirtualChannelPropertyEntity.isOrphaned): that is a lifecycle state
+	 * this method is never consulted for, since nothing re-validates an existing row's source_property
+	 * after the fact.
 	 */
 	async assertSourceNotVirtual(sourcePropertyId: string): Promise<void> {
 		const device = await this.resolveOwningDevice(sourcePropertyId);
 
-		if (device && device.type === DEVICES_VIRTUAL_TYPE) {
+		if (!device) {
+			throw new VirtualSourceNotFoundException(
+				`Source property id=${sourcePropertyId} does not resolve to an existing property/channel/device chain`,
+			);
+		}
+
+		if (device.type === DEVICES_VIRTUAL_TYPE) {
 			throw new VirtualNestingNotAllowedException(
 				`Source property id=${sourcePropertyId} belongs to virtual device id=${device.id}; nesting virtual devices is not allowed`,
 			);

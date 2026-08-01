@@ -52,6 +52,8 @@ import { VirtualDevicePlatform } from './platforms/virtual-device.platform';
 import { VirtualDevicesService } from './services/virtual-devices.service';
 import { VirtualPropertyIndexService } from './services/virtual-property-index.service';
 import { VirtualValueSourceService } from './services/virtual-value-source.service';
+import { CategoryAllowedConstraintValidator } from './validators/category-allowed-constraint.validator';
+import { SourceNotVirtualConstraintValidator } from './validators/source-not-virtual-constraint.validator';
 
 @ApiTag({
 	tagName: DEVICES_VIRTUAL_PLUGIN_NAME,
@@ -75,6 +77,8 @@ import { VirtualValueSourceService } from './services/virtual-value-source.servi
 		VirtualStatusListener,
 		VirtualIndexMaintenanceListener,
 		VirtualDeviceInformationListener,
+		CategoryAllowedConstraintValidator,
+		SourceNotVirtualConstraintValidator,
 	],
 	controllers: [VirtualDevicesController],
 })

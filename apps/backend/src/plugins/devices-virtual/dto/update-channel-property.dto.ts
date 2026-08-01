@@ -6,6 +6,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { UpdateChannelPropertyDto } from '../../../modules/devices/dto/update-channel-property.dto';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { VirtualValueOrigin } from '../entities/devices-virtual.entity';
+import { ValidateSourceNotVirtual } from '../validators/source-not-virtual-constraint.validator';
 
 @ApiSchema({ name: 'DevicesVirtualPluginUpdateChannelProperty' })
 export class UpdateVirtualChannelPropertyDto extends UpdateChannelPropertyDto {
@@ -46,5 +47,6 @@ export class UpdateVirtualChannelPropertyDto extends UpdateChannelPropertyDto {
 		message: '[{"field":"source_property","reason":"Source property must be a valid UUID (version 4)."}]',
 	})
 	@ValidateIf((_, value) => value !== null)
+	@ValidateSourceNotVirtual()
 	source_property?: string | null;
 }

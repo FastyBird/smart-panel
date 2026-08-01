@@ -64,7 +64,8 @@ export class VirtualDevicePlatform implements IDevicePlatform {
 
 			const { device, channel, property: sourceProperty } = resolved;
 
-			// Nesting is rejected at creation; this is the backstop against a stale or hand-edited row.
+			// Nesting is rejected at creation (SourceNotVirtualConstraintValidator, on `source_property` in
+			// the create/update channel-property DTOs); this is the backstop against a stale or hand-edited row.
 			if (device.type === DEVICES_VIRTUAL_TYPE) {
 				this.logger.error(`Source device id=${device.id} is itself virtual, refusing to forward`);
 

@@ -3,8 +3,12 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../mod
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
-import { VirtualCategoryNotSupportedException, VirtualNestingNotAllowedException } from '../devices-virtual.exceptions';
+import { DEVICES_VIRTUAL_TYPE, VIRTUAL_BLOCKED_CATEGORIES } from '../devices-virtual.constants';
+import {
+	VirtualCategoryNotSupportedException,
+	VirtualNestingNotAllowedException,
+	VirtualSourceNotFoundException,
+} from '../devices-virtual.exceptions';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
 
 import { VirtualDevicesService } from './virtual-devices.service';
@@ -77,6 +81,14 @@ describe('VirtualDevicesService', () => {
 
 		it('accepts a category that only needs wiring', () => {
 			expect(() => service.assertCategoryAllowed(DeviceCategory.LIGHTING)).not.toThrow();
+		});
+
+		it('rejects every category in VIRTUAL_BLOCKED_CATEGORIES', () => {
+			expect(VIRTUAL_BLOCKED_CATEGORIES.length).toBeGreaterThan(0);
+
+			for (const category of VIRTUAL_BLOCKED_CATEGORIES) {
+				expect(() => service.assertCategoryAllowed(category)).toThrow(VirtualCategoryNotSupportedException);
+			}
 		});
 	});
 
@@ -163,10 +175,25 @@ describe('VirtualDevicesService', () => {
 			);
 		});
 
-		it('does not reject when the source property cannot be resolved at all', async () => {
+		it('rejects when the source property does not exist', async () => {
 			channelsPropertiesService.findOne.mockResolvedValue(null);
 
-			await expect(service.assertSourceNotVirtual('missing')).resolves.toBeUndefined();
+			await expect(service.assertSourceNotVirtual('missing')).rejects.toThrow(VirtualSourceNotFoundException);
+		});
+
+		it('rejects when the property exists but its channel does not', async () => {
+			channelsPropertiesService.findOne.mockResolvedValue(property({ id: 'dangling-prop', channel: 'chan-4' }));
+			channelsService.findOne.mockResolvedValue(null);
+
+			await expect(service.assertSourceNotVirtual('dangling-prop')).rejects.toThrow(VirtualSourceNotFoundException);
+		});
+
+		it('rejects when the channel exists but its device does not', async () => {
+			channelsPropertiesService.findOne.mockResolvedValue(property({ id: 'dangling-prop-2', channel: 'chan-5' }));
+			channelsService.findOne.mockResolvedValue(Object.assign(new ChannelEntity(), { id: 'chan-5', device: 'dev-6' }));
+			devicesService.findOne.mockResolvedValue(null);
+
+			await expect(service.assertSourceNotVirtual('dangling-prop-2')).rejects.toThrow(VirtualSourceNotFoundException);
 		});
 	});
 

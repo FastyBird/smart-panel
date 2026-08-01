@@ -16,10 +16,10 @@ import { VirtualPropertyIndexService } from '../services/virtual-property-index.
  * change affects.
  *
  * `setConnectionState` re-emits DEVICE_CONNECTION_CHANGED for the virtual device this listener just
- * updated, re-entering `handleConnectionChanged`. Nesting is rejected at creation, so the index
- * would report no virtual devices for a virtual device's own id regardless — but the type check
- * below makes that termination obvious rather than incidental, and skips a pointless aggregation
- * pass on every virtual status write.
+ * updated, re-entering `handleConnectionChanged`. Nesting is rejected at creation (enforced by
+ * SourceNotVirtualConstraintValidator), so the index would report no virtual devices for a virtual
+ * device's own id regardless — but the type check below makes that termination obvious rather than
+ * incidental, and skips a pointless aggregation pass on every virtual status write.
  */
 @Injectable()
 export class VirtualStatusListener {
