@@ -8,10 +8,15 @@ const mockTimeout = vi.fn(() => ({
 	emitWithAck: mockEmitWithAck,
 }));
 
+const mockOn = vi.fn();
+const mockOff = vi.fn();
+
 const socketInstanceMock = {
 	connected: false,
 	active: false,
 	timeout: mockTimeout,
+	on: mockOn,
+	off: mockOff,
 };
 
 vi.mock('../services/sockets', () => ({
@@ -24,6 +29,62 @@ describe('useSockets', () => {
 		socketInstanceMock.active = true;
 
 		mockEmitWithAck.mockReset();
+		mockOn.mockReset();
+		mockOff.mockReset();
+	});
+
+	it('subscribes to connect and disconnect when called outside a component setup', () => {
+		// `useSockets` is called from `scenes.store.ts` — a Pinia store setup, which runs with no
+		// active component instance. Plain `onMounted` silently declines to register there (Vue
+		// only warns), so the listeners were never attached and `connected` / `active` on that
+		// instance stayed frozen at their initial values for the life of the app.
+		useSockets();
+
+		expect(mockOn).toHaveBeenCalledWith('connect', expect.any(Function));
+		expect(mockOn).toHaveBeenCalledWith('disconnect', expect.any(Function));
+	});
+
+	it('tracks connect and disconnect events when called outside a component setup', () => {
+		socketInstanceMock.connected = false;
+		socketInstanceMock.active = false;
+
+		const { connected, active } = useSockets();
+
+		const onConnect = mockOn.mock.calls.find(([event]) => event === 'connect')?.[1] as () => void;
+		const onDisconnect = mockOn.mock.calls.find(([event]) => event === 'disconnect')?.[1] as () => void;
+
+		onConnect();
+		expect(connected.value).toBe(true);
+		expect(active.value).toBe(true);
+
+		onDisconnect();
+		expect(connected.value).toBe(false);
+		expect(active.value).toBe(false);
+	});
+
+	it('still defers to the component lifecycle when called inside a component setup', async () => {
+		// The fix must not regress the ordinary path: inside a component the subscription has to
+		// wait for mount and be released on unmount, not run eagerly during setup.
+		const { defineComponent } = await import('vue');
+		const { mount } = await import('@vue/test-utils');
+
+		const Host = defineComponent({
+			setup() {
+				useSockets();
+
+				return () => null;
+			},
+		});
+
+		const wrapper = mount(Host);
+
+		expect(mockOn).toHaveBeenCalledWith('connect', expect.any(Function));
+		expect(mockOff).not.toHaveBeenCalled();
+
+		wrapper.unmount();
+
+		expect(mockOff).toHaveBeenCalledWith('connect', expect.any(Function));
+		expect(mockOff).toHaveBeenCalledWith('disconnect', expect.any(Function));
 	});
 
 	it('returns connected and active state', () => {
