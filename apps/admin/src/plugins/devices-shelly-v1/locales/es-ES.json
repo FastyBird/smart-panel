@@ -12,11 +12,7 @@
       "firmware": "Firmware"
     },
     "wizard": {
-      "title": "Asistente de descubrimiento de Shelly Gen 1",
-      "discovery": "Descubrimiento",
-      "categories": "Categorías",
-      "results": "Resultados",
-      "status": "Estado"
+      "title": "Asistente de descubrimiento de Shelly Gen 1"
     }
   },
   "subHeadings": {
@@ -34,7 +30,6 @@
       "category": {
         "title": "Categoría",
         "placeholder": "Categoría del dispositivo",
-        "description": "Acerca de la categoría",
         "validation": {
           "required": "Por favor, seleccione la categoría del dispositivo"
         }
@@ -57,9 +52,6 @@
       "password": {
         "title": "Contraseña de administrador",
         "placeholder": "Proporcione la contraseña del dispositivo si está protegido"
-      },
-      "error": {
-        "title": "Error"
       },
       "hostname": {
         "title": "Nombre de host del dispositivo",
@@ -131,13 +123,7 @@
     "aboutTimeouts": "Configure los tiempos de espera para la comunicación HTTP con los dispositivos Shelly Gen 1. Estos ajustes controlan el manejo de solicitudes y la monitorización del estado del dispositivo.",
     "wizard": {
       "discovery": "El asistente escanea la red local en busca de dispositivos Shelly Gen 1 y también acepta un nombre de host o dirección IP introducidos manualmente.",
-      "categories": "Confirme qué dispositivos preparados deben ser adoptados y elija la categoría de destino para cada uno.",
-      "scanStatus": "{count} dispositivos encontrados",
-      "noDevices": "No se encontraron dispositivos Shelly",
-      "results": {
-        "success": "Todos los dispositivos se adoptaron correctamente.",
-        "failed": "Algunos dispositivos no pudieron ser adoptados. Revise los errores a continuación."
-      }
+      "scanStatus": "{count} dispositivos encontrados"
     }
   },
   "buttons": {
@@ -150,27 +136,7 @@
       },
       "addManual": {
         "title": "Añadir"
-      },
-      "adopt": {
-        "title": "Adoptar seleccionados"
-      },
-      "finish": {
-        "title": "Volver a los dispositivos"
       }
-    }
-  },
-  "statuses": {
-    "wizard": {
-      "checking": "Comprobando",
-      "ready": "Listo",
-      "needs_password": "Necesita contraseña",
-      "already_registered": "Registrado",
-      "unsupported": "No compatible",
-      "failed": "Fallido",
-      "created": "Creado",
-      "updated": "Actualizado",
-      "willCreate": "Se creará",
-      "willUpdate": "Actualizará el existente"
     }
   }
 }

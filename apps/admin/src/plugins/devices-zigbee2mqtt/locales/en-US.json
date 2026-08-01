@@ -318,57 +318,16 @@
 		},
 		"steps": {
 			"discovery": {
-				"title": "Discovery",
-				"loading": "Loading discovered devices...",
 				"permitJoin": "Pair new device",
 				"cancelPairing": "Cancel pairing",
 				"pairingActive": "Pairing mode active — {remaining}s remaining",
-				"pairingDisabled": "Pairing mode disabled",
-				"autoPickAll": "Select all",
-				"clearSelection": "Clear selection",
-				"empty": "No Zigbee devices discovered. Click \"Pair new device\" to put the bridge into pairing mode."
-			},
-			"categorize": {
-				"title": "Categorize",
-				"willCreate": "Will create",
-				"willUpdate": "Will update",
-				"channels": "{count} channel | {count} channels"
-			},
-			"results": {
-				"title": "Results",
-				"created": "Created",
-				"updated": "Updated",
-				"failed": "Failed",
-				"done": "Done",
-				"addMore": "Add more"
+				"pairingDisabled": "Pairing mode disabled"
 			}
 		},
 		"columns": {
-			"name": "Name",
 			"friendlyName": "Friendly name",
-			"manufacturer": "Manufacturer",
-			"model": "Model",
-			"status": "Status",
-			"category": "Category",
 			"channels": "Channels",
-			"channelsCount": "{count} channel | {count} channels",
-			"error": "Error"
-		},
-		"status": {
-			"ready": "Ready",
-			"unsupported": "Unsupported",
-			"alreadyRegistered": "Already adopted",
-			"failed": "Failed"
-		},
-		"actions": {
-			"next": "Next",
-			"back": "Back",
-			"adopt": "Adopt selected",
-			"cancel": "Cancel"
-		},
-		"validation": {
-			"nameRequired": "Name is required",
-			"categoryRequired": "Category is required"
+			"channelsCount": "{count} channel | {count} channels"
 		}
 	}
 }

@@ -12,11 +12,7 @@
 			"firmware": "Firmware"
 		},
 		"wizard": {
-			"title": "Kreator wyszukiwania Shelly Gen 1",
-			"discovery": "Wyszukiwanie",
-			"categories": "Kategorie",
-			"results": "Wyniki",
-			"status": "Status"
+			"title": "Kreator wyszukiwania Shelly Gen 1"
 		}
 	},
 	"subHeadings": {
@@ -34,7 +30,6 @@
 			"category": {
 				"title": "Kategoria",
 				"placeholder": "Kategoria urzadzenia",
-				"description": "O kategorii",
 				"validation": {
 					"required": "Prosze wybrac kategorie urzadzenia"
 				}
@@ -57,9 +52,6 @@
 			"password": {
 				"title": "Haslo administratora",
 				"placeholder": "Podaj haslo urzadzenia, jesli urzadzenie jest chronione"
-			},
-			"error": {
-				"title": "Blad"
 			},
 			"hostname": {
 				"title": "Nazwa hosta urzadzenia",
@@ -131,13 +123,7 @@
 		"aboutTimeouts": "Skonfiguruj ustawienia limitow czasu komunikacji HTTP z urzadzeniami Shelly Gen 1.",
 		"wizard": {
 			"discovery": "Kreator skanuje siec lokalna w poszukiwaniu urzadzen Shelly Gen 1 i akceptuje takze recznie wprowadzona nazwe hosta lub adres IP.",
-			"categories": "Potwierdz, ktore gotowe urzadzenia maja zostac adoptowane, i wybierz docelowa kategorie dla kazdego z nich.",
-			"scanStatus": "Znaleziono urzadzen: {count}",
-			"noDevices": "Nie znaleziono zadnych urzadzen Shelly",
-			"results": {
-				"success": "Wszystkie urzadzenia zostaly pomyslnie adoptowane.",
-				"failed": "Niektore urzadzenia nie mogly zostac adoptowane. Sprawdz blody ponizej."
-			}
+			"scanStatus": "Znaleziono urzadzen: {count}"
 		}
 	},
 	"buttons": {
@@ -150,27 +136,7 @@
 			},
 			"addManual": {
 				"title": "Dodaj"
-			},
-			"adopt": {
-				"title": "Adoptuj wybrane"
-			},
-			"finish": {
-				"title": "Powrot do urzadzen"
 			}
-		}
-	},
-	"statuses": {
-		"wizard": {
-			"checking": "Sprawdzanie",
-			"ready": "Gotowe",
-			"needs_password": "Wymaga hasla",
-			"already_registered": "Zarejestrowane",
-			"unsupported": "Nieobslugiwane",
-			"failed": "Nieudane",
-			"created": "Utworzone",
-			"updated": "Zaktualizowano",
-			"willCreate": "Zostanie utworzone",
-			"willUpdate": "Zaktualizuje istniejace"
 		}
 	}
 }

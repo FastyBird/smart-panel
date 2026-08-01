@@ -12,11 +12,6 @@ const OtherWizard = defineComponent({
 	template: '<div data-test-id="other-wizard" />',
 });
 
-const DevicesWizard = defineComponent({
-	name: 'DevicesWizard',
-	template: '<div data-test-id="devices-wizard" />',
-});
-
 const adapterFactory = vi.fn(() => ({ title: 'Adapter wizard' }));
 
 vi.mock('vue-i18n', () => ({
@@ -77,20 +72,7 @@ vi.mock('../composables/composables', () => ({
 							},
 						],
 					}
-				: type === 'legacy-plugin'
-					? {
-							type: 'legacy-plugin',
-							elements: [
-								{
-									type: 'legacy-wizard',
-									modules: ['devices-module'],
-									components: {
-										deviceWizard: DevicesWizard,
-									},
-								},
-							],
-						}
-					: undefined,
+				: undefined,
 	}),
 }));
 
@@ -121,16 +103,6 @@ describe('ViewDevicesWizard', () => {
 		});
 
 		expect(adapterFactory).not.toHaveBeenCalled();
-	});
-
-	it('falls back to a legacy deviceWizard component while plugins are still being migrated', () => {
-		const wrapper = mount(ViewDevicesWizard, {
-			props: {
-				type: 'legacy-plugin',
-			},
-		});
-
-		expect(wrapper.find('[data-test-id="devices-wizard"]').exists()).toBe(true);
 	});
 
 	it('renders the not-found state for an unknown plugin type', () => {

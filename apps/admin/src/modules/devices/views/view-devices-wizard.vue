@@ -5,11 +5,6 @@
 		:adapter-factory="adapterFactory"
 	/>
 
-	<component
-		:is="legacyWizard"
-		v-else-if="legacyWizard"
-	/>
-
 	<entity-not-found
 		v-else
 		icon="mdi:wizard-hat"
@@ -49,6 +44,4 @@ const eligibleElements = computed(() =>
 const adapterFactory = computed<(() => IDeviceWizardAdapter) | undefined>(
 	() => eligibleElements.value.find((el) => !!el.components?.deviceWizardAdapter)?.components?.deviceWizardAdapter
 );
-
-const legacyWizard = computed(() => eligibleElements.value.find((el) => !!el.components?.deviceWizard)?.components?.deviceWizard);
 </script>

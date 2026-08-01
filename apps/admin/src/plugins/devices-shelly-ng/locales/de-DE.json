@@ -12,11 +12,7 @@
 			"firmware": "Firmware"
 		},
 		"wizard": {
-			"title": "Shelly NG Discovery-Assistent",
-			"discovery": "Discovery",
-			"categories": "Categories",
-			"results": "Results",
-			"status": "Status"
+			"title": "Shelly NG Discovery-Assistent"
 		}
 	},
 	"subHeadings": {
@@ -34,7 +30,6 @@
 			"category": {
 				"title": "Kategorie",
 				"placeholder": "Gerätekategorie",
-				"description": "Über Kategorie",
 				"validation": {
 					"required": "Bitte wählen Sie eine Gerätekategorie"
 				}
@@ -57,9 +52,6 @@
 			"password": {
 				"title": "Admin-Passwort",
 				"placeholder": "Gerätepasswort eingeben, falls das Gerät geschützt ist"
-			},
-			"error": {
-				"title": "Fehler"
 			},
 			"hostname": {
 				"title": "Geräte-Hostname",
@@ -138,13 +130,7 @@
 		"aboutWebsockets": "Verwalten Sie WebSocket-Verbindungsparameter für Shelly-Geräte. Diese Einstellungen steuern Kommunikationsstabilität, Anfrageverarbeitung und Wiederverbindungsverhalten.",
 		"wizard": {
 			"discovery": "The wizard scans the local network for Shelly NG devices and also accepts a manually entered hostname or IP address.",
-			"categories": "Confirm which ready devices should be adopted and choose the target category for each one.",
-			"scanStatus": "{count} devices found",
-			"noDevices": "No Shelly devices found",
-			"results": {
-				"success": "Alle Geräte wurden erfolgreich übernommen.",
-				"failed": "Einige Geräte konnten nicht übernommen werden. Überprüfen Sie die Fehler unten."
-			}
+			"scanStatus": "{count} devices found"
 		}
 	},
 	"buttons": {
@@ -157,27 +143,7 @@
 			},
 			"addManual": {
 				"title": "Add"
-			},
-			"adopt": {
-				"title": "Adopt selected"
-			},
-			"finish": {
-				"title": "Back to devices"
 			}
-		}
-	},
-	"statuses": {
-		"wizard": {
-			"checking": "Checking",
-			"ready": "Ready",
-			"needs_password": "Needs password",
-			"already_registered": "Registered",
-			"unsupported": "Unsupported",
-			"failed": "Failed",
-			"created": "Created",
-			"updated": "Aktualisiert",
-			"willCreate": "Wird erstellt",
-			"willUpdate": "Bestehendes wird aktualisiert"
 		}
 	}
 }

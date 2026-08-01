@@ -12,11 +12,7 @@
 			"firmware": "Firmware"
 		},
 		"wizard": {
-			"title": "Shelly NG discovery wizard",
-			"discovery": "Discovery",
-			"categories": "Categories",
-			"results": "Results",
-			"status": "Status"
+			"title": "Shelly NG discovery wizard"
 		}
 	},
 	"subHeadings": {
@@ -34,7 +30,6 @@
 			"category": {
 				"title": "Category",
 				"placeholder": "Device category",
-				"description": "About category",
 				"validation": {
 					"required": "Please select device category"
 				}
@@ -57,9 +52,6 @@
 			"password": {
 				"title": "Admin password",
 				"placeholder": "Provide device password if device is protected"
-			},
-			"error": {
-				"title": "Error"
 			},
 			"hostname": {
 				"title": "Device hostname",
@@ -146,13 +138,7 @@
 		"aboutWebsockets": "Manage WebSocket connection parameters for Shelly devices. These settings control communication stability, request handling, and reconnection behavior.",
 		"wizard": {
 			"discovery": "The wizard scans the local network for Shelly NG devices and also accepts a manually entered hostname or IP address.",
-			"categories": "Confirm which ready devices should be adopted and choose the target category for each one.",
-			"scanStatus": "{count} devices found",
-			"noDevices": "No Shelly devices found",
-			"results": {
-				"success": "All devices were adopted successfully.",
-				"failed": "Some devices could not be adopted. Review the errors below."
-			}
+			"scanStatus": "{count} devices found"
 		}
 	},
 	"buttons": {
@@ -165,27 +151,7 @@
 			},
 			"addManual": {
 				"title": "Add"
-			},
-			"adopt": {
-				"title": "Adopt selected"
-			},
-			"finish": {
-				"title": "Back to devices"
 			}
-		}
-	},
-	"statuses": {
-		"wizard": {
-			"checking": "Checking",
-			"ready": "Ready",
-			"needs_password": "Needs password",
-			"already_registered": "Registered",
-			"unsupported": "Unsupported",
-			"failed": "Failed",
-			"created": "Created",
-			"updated": "Updated",
-			"willCreate": "Will create",
-			"willUpdate": "Will update existing"
 		}
 	}
 }

@@ -24,8 +24,6 @@ import { DeviceCreateReqSchema, DeviceSchema, DeviceUpdateReqSchema } from './st
 export type IDevicePluginsComponents = {
 	deviceAddForm?: DefineComponent<IDeviceAddFormProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, typeof deviceAddFormEmits>;
 	deviceEditForm?: DefineComponent<IDeviceEditFormProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, typeof deviceEditFormEmits>;
-	/** @deprecated Superseded by `deviceWizardAdapter`; removed once every plugin has migrated. */
-	deviceWizard?: DefineComponent<{}, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}>;
 	deviceWizardAdapter?: () => IDeviceWizardAdapter;
 };
 

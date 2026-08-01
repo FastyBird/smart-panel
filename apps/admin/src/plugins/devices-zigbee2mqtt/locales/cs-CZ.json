@@ -318,57 +318,16 @@
 		},
 		"steps": {
 			"discovery": {
-				"title": "Vyhledávání",
-				"loading": "Načítání objevených zařízení...",
 				"permitJoin": "Spárovat nové zařízení",
 				"cancelPairing": "Zrušit párování",
 				"pairingActive": "Režim párování aktivní — zbývá {remaining}s",
-				"pairingDisabled": "Režim párování deaktivován",
-				"autoPickAll": "Vybrat vše",
-				"clearSelection": "Zrušit výběr",
-				"empty": "Nebyla objevena žádná Zigbee zařízení. Klepněte na \"Spárovat nové zařízení\" pro přepnutí bridge do režimu párování."
-			},
-			"categorize": {
-				"title": "Kategorizace",
-				"willCreate": "Bude vytvořeno",
-				"willUpdate": "Bude aktualizováno",
-				"channels": "{count} kanál | {count} kanály | {count} kanálů"
-			},
-			"results": {
-				"title": "Výsledky",
-				"created": "Vytvořeno",
-				"updated": "Aktualizováno",
-				"failed": "Selhalo",
-				"done": "Hotovo",
-				"addMore": "Přidat další"
+				"pairingDisabled": "Režim párování deaktivován"
 			}
 		},
 		"columns": {
-			"name": "Název",
 			"friendlyName": "Přátelské jméno",
-			"manufacturer": "Výrobce",
-			"model": "Model",
-			"status": "Stav",
-			"category": "Kategorie",
 			"channels": "Kanály",
-			"channelsCount": "{count} kanál | {count} kanály | {count} kanálů",
-			"error": "Chyba"
-		},
-		"status": {
-			"ready": "Připraveno",
-			"unsupported": "Nepodporováno",
-			"alreadyRegistered": "Již přidáno",
-			"failed": "Selhalo"
-		},
-		"actions": {
-			"next": "Další",
-			"back": "Zpět",
-			"adopt": "Přidat vybrané",
-			"cancel": "Zrušit"
-		},
-		"validation": {
-			"nameRequired": "Název je povinný",
-			"categoryRequired": "Kategorie je povinná"
+			"channelsCount": "{count} kanál | {count} kanály | {count} kanálů"
 		}
 	}
 }
