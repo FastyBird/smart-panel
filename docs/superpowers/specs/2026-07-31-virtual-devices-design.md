@@ -240,11 +240,10 @@ A source property may feed more than one virtual device — one sensor legitimat
 
 Source property deleted → FK sets `sourcePropertyId` to `null` → property becomes orphaned:
 
-- `DeviceValidationService` reports a missing required property
+- connection status aggregation forces the device `DISCONNECTED` — an orphaned property fails the aggregate check (see [Connection status](#connection-status)). `DeviceValidationService` does **not** catch this: `validateChannelProperties` builds its set of existing property categories from structural presence only (`device-validation.service.ts:554-595`), with no awareness of `isOrphaned` or `sourceProperty`. The row still exists with the correct category, so `MISSING_PROPERTY` never fires for an orphan
 - admin shows a warning with a *remap* action
 - panel renders the device unavailable
 - writes rejected
-- status forced degraded
 
 Deleting the last virtual device referencing a hidden source auto-unhides it, per the epic's rule.
 

@@ -1,6 +1,6 @@
 # Smart Panel — Task Roadmap
 
-> Last updated: 2026-04-08. Reflects actual codebase state.
+> Last updated: 2026-08-01. Reflects actual codebase state.
 
 ---
 
@@ -207,16 +207,15 @@ All onboarding device setup tasks complete.
 
 ## 8. Virtual Devices (Epic)
 
-> [EPIC-VIRTUAL-DEVICES](epics/EPIC-VIRTUAL-DEVICES.md) — Status: :clipboard: Planned
+> [EPIC-VIRTUAL-DEVICES](epics/EPIC-VIRTUAL-DEVICES.md) — Status: :construction: In Progress
 
-Split multi-channel devices into independent child devices and compose new logical devices from channels across multiple physical devices. Enables flexible room assignment, category remapping, and spec-compliant virtual devices.
+Build a device from properties of other devices — splitting one physical device into several, or composing one logical device from several — so the result is indistinguishable from a native device. The two originally-planned plugins (`devices-split`, `devices-combined`) were superseded before implementation by a single `devices-virtual` plugin; see [`docs/superpowers/specs/2026-07-31-virtual-devices-design.md`](../docs/superpowers/specs/2026-07-31-virtual-devices-design.md).
 
-| # | Task | Scope | Status |
-|---|------|-------|--------|
-| 1 | [FEATURE-DEVICE-SPLITTER-PLUGIN](features/FEATURE-DEVICE-SPLITTER-PLUGIN.md) | backend, admin, panel | :clipboard: Planned |
-| 2 | [FEATURE-DEVICE-COMPOSITE-PLUGIN](features/FEATURE-DEVICE-COMPOSITE-PLUGIN.md) | backend, admin, panel | :clipboard: Planned |
+| # | Task | Scope | Status | Notes |
+|---|------|-------|--------|-------|
+| 1 | [FEATURE-DEVICE-VIRTUAL-PLUGIN](../docs/superpowers/specs/2026-07-31-virtual-devices-design.md) | backend, admin, panel | :construction: In Progress | Backend `devices-virtual` plugin + panel registration done; admin creation wizard and `hidden`-flag filtering in admin pickers not started |
 
-**Next up:** Split device plugin first (provides `hidden` flag foundation), then combined device plugin.
+**Next up:** Admin creation wizard (spec-driven channel/property mapping) and `hidden`-flag filtering in the admin device pickers — the backend API and panel rendering are already in place.
 
 ---
 
@@ -378,7 +377,7 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | Onboarding Device Setup | 3 | 0 | 0 | 3 |
 | Space/Climate | 1 | 0 | 0 | 1 |
 | Security | 1 | 0 | 0 | 1 |
-| Virtual Devices | 0 | 0 | 2 | 2 |
+| Virtual Devices | 0 | 1 | 0 | 1 |
 | Companion Display | 0 | 0 | 9 | 9 |
 | Plugins | 1 | 0 | 2 | 3 |
 | Extension Actions | 3 | 0 | 5 | 8 |
@@ -386,4 +385,4 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | Technical | 6 | 0 | 0 | 6 |
 | Other Features | 4 | 0 | 1 | 5 |
 | Plans | 2 | 0 | 1 | 3 |
-| **Total** | **72** | **0** | **32** | **104** |
+| **Total** | **72** | **1** | **30** | **103** |
