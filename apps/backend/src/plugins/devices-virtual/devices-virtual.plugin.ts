@@ -44,6 +44,7 @@ import {
 } from './entities/devices-virtual.entity';
 import { VirtualConfigModel } from './models/config.model';
 import { VirtualDevicePlatform } from './platforms/virtual-device.platform';
+import { VirtualPropertyIndexService } from './services/virtual-property-index.service';
 import { VirtualValueSourceService } from './services/virtual-value-source.service';
 
 @ApiTag({
@@ -53,13 +54,13 @@ import { VirtualValueSourceService } from './services/virtual-value-source.servi
 })
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([VirtualDeviceEntity]),
+		TypeOrmModule.forFeature([VirtualDeviceEntity, VirtualChannelPropertyEntity]),
 		DevicesModule,
 		ConfigModule,
 		ExtensionsModule,
 		SwaggerModule,
 	],
-	providers: [VirtualValueSourceService, VirtualDevicePlatform],
+	providers: [VirtualValueSourceService, VirtualDevicePlatform, VirtualPropertyIndexService],
 })
 export class DevicesVirtualPlugin {
 	constructor(
