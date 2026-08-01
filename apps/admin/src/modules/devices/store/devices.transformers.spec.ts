@@ -32,6 +32,7 @@ const validDeviceResponse: IDeviceRes = {
 	name: 'Some device',
 	description: 'With description',
 	enabled: true,
+	hidden: false,
 	room_id: null,
 	zone_ids: [],
 	status: {
