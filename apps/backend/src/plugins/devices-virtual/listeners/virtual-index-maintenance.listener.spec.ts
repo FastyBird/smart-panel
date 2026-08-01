@@ -41,6 +41,17 @@ describe('VirtualIndexMaintenanceListener', () => {
 		return { promise, resolve };
 	};
 
+	// Repeatedly flushes macrotasks until either `predicate` is satisfied or `maxFlushes` is reached,
+	// rather than a fixed hop count. Every pass through runRebuildLoop() — not just the first — defers
+	// past any open transaction before reading (see deferPastOpenTransaction()), so a follow-up pass
+	// costs at least one more flushMicrotasks() than the pass that triggered it, and pinning that
+	// count here would just re-encode an implementation detail the brief says not to assert on.
+	const flushUntil = async (predicate: () => boolean, maxFlushes = 10): Promise<void> => {
+		for (let i = 0; i < maxFlushes && !predicate(); i++) {
+			await flushMicrotasks();
+		}
+	};
+
 	// A stand-in for the shared, single-connection QueryRunner deferPastOpenTransaction() polls.
 	// Never mid-transaction here — these tests exercise coalescing/retry, not commit ordering, which
 	// has its own real-sqlite coverage below — so every poll's `isTransactionActive` reads false, and
@@ -128,7 +139,11 @@ describe('VirtualIndexMaintenanceListener', () => {
 		listener.handleStructuralChange();
 
 		first.resolve();
-		await flushMicrotasks();
+
+		// The follow-up pass defers past any open transaction before it reads, same as the first pass
+		// did — see runRebuildLoop() — so it costs at least one more flush than the first pass's own
+		// call did; flushUntil() waits however many that turns out to be instead of assuming a count.
+		await flushUntil(() => index.rebuild.mock.calls.length >= 2);
 
 		// Exactly one follow-up for the three events above, not three.
 		expect(index.rebuild).toHaveBeenCalledTimes(2);
@@ -137,6 +152,8 @@ describe('VirtualIndexMaintenanceListener', () => {
 		await flushMicrotasks();
 
 		// Nothing arrived during the follow-up, so the loop stops instead of running a third pass.
+		// Stopping needs no further defer — only a fresh pass would — so a single flush still suffices
+		// here to prove a third call does *not* happen.
 		expect(index.rebuild).toHaveBeenCalledTimes(2);
 	});
 
@@ -163,17 +180,6 @@ describe('VirtualIndexMaintenanceListener', () => {
 	});
 
 	// -- Task 12b: retry on a transient-looking SQLite failure ----------------------------------
-
-	// Repeatedly flushes macrotasks until either `predicate` is satisfied or `maxFlushes` is
-	// reached, rather than a fixed hop count: rebuildWithRetry()'s retry defers past a macrotask the
-	// same way the initial defer does (see deferPastOpenTransaction()), so a retry spans more than
-	// one flushMicrotasks() call, and pinning an exact count here would just re-encode an
-	// implementation detail the brief says not to assert on.
-	const flushUntil = async (predicate: () => boolean, maxFlushes = 10): Promise<void> => {
-		for (let i = 0; i < maxFlushes && !predicate(); i++) {
-			await flushMicrotasks();
-		}
-	};
 
 	it('retries a transient-looking SQLite failure and the index ends up current', async () => {
 		const transientFailure = new Error('SQLITE_ERROR: cannot start a transaction within a transaction');
@@ -272,11 +278,15 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			const probeIndex = {
 				rebuild: jest.fn().mockImplementation(async () => {
-					// A real query through the shared connection, exactly like rebuild()'s own
-					// repository.find() — waiting for *its* completion is what lets this observe the
-					// driver's actual transaction state, rather than a flag that may not have caught up.
-					await sharedQueryRunner.query('SELECT 1');
+					// Sampled *before* issuing any query of our own: this is what deferPastOpenTransaction()
+					// actually promises — that the flag already reads false at the moment it hands control
+					// back to rebuild() — not merely that it reads false once some later query of ours
+					// happens to resolve. Sampling after a query resolves would still usually read false
+					// even for a caller that read the flag while it was still true and got lucky with
+					// queue timing, which would make this assertion pass for the wrong reason.
 					observedTransactionActive = sharedQueryRunner.isTransactionActive;
+
+					await sharedQueryRunner.query('SELECT 1');
 					resolveObserved();
 				}),
 			};

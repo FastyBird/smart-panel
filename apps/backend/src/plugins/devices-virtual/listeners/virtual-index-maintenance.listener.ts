@@ -42,14 +42,25 @@ import { VirtualPropertyIndexService } from '../services/virtual-property-index.
  *
  * Getting "after commit" right is *not* a matter of picking a long-enough delay: sqlite3 (the
  * driver's underlying npm package) executes queued commands via libuv's threadpool, so `COMMIT`
- * completing is a real async I/O round trip, not merely a same-tick submission — one `setImmediate`
- * hop is not enough to guarantee it has landed (verified directly: an earlier version of this class
- * that deferred with a single `setImmediate` failed the "does not observe the emitting transaction
- * as still open" test below). deferPastOpenTransaction() therefore does not guess a hop count at
- * all — it polls the shared QueryRunner's own `isTransactionActive` flag, which the driver itself
- * only clears once `COMMIT`/`ROLLBACK` has actually completed (see AbstractSqliteQueryRunner). That
- * makes "has the transaction settled" an observed fact, not a timing assumption, for both commit and
- * rollback alike.
+ * completing is a real async I/O round trip, not merely a same-tick submission. A single
+ * `setImmediate` hop is not sufficient — confirmed empirically, not just argued: with the read
+ * sampled at the moment rebuild() is actually invoked (see the "does not observe the emitting
+ * transaction as still open" test below), an earlier version of this class that deferred with one
+ * bare `setImmediate` hop observed `isTransactionActive === true` in 15 out of 15 repeated trials.
+ * deferPastOpenTransaction() therefore does not guess a hop count at all — it polls the shared
+ * QueryRunner's own `isTransactionActive` flag, which the driver itself only clears once
+ * `COMMIT`/`ROLLBACK` has actually completed (see AbstractSqliteQueryRunner). That makes "has the
+ * transaction settled" an observed fact rather than a timing assumption, for both commit and
+ * rollback alike — the same test passes 15/15 against this version.
+ *
+ * That guarantee is scoped to the transaction which was actually open when handleStructuralChange()
+ * fired — it does not mean no transaction is open at all by the time rebuild() reads. A different,
+ * unrelated transaction can start in the gap between the poll returning and rebuild()'s own read
+ * executing, because `dataSource.createQueryRunner()` is a single connection shared by every
+ * unscoped query in the app, not just this listener's. That is a separate, pre-existing hazard (two
+ * unrelated transactions racing each other for that one connection) this task does not fix — see
+ * rebuildWithRetry() / looksTransientSqliteError() for how a rebuild() that loses that particular
+ * race still recovers rather than leaving the index stale.
  */
 @Injectable()
 export class VirtualIndexMaintenanceListener {
@@ -106,30 +117,42 @@ export class VirtualIndexMaintenanceListener {
 	}
 
 	/**
-	 * Runs rebuild() passes until one completes with no further event pending. Defers past the
-	 * caller's current transaction (see deferPastOpenTransaction()) before the first pass so a
-	 * synchronous burst of handleStructuralChange() calls all lands and folds into that single pass,
-	 * rather than the first event in the burst kicking off its own rebuild before the rest arrive —
-	 * and, when that first event was DEVICE_DELETED or CHANNEL_PROPERTY_DELETED, before the emitting
-	 * transaction has committed. `running` stays true for the whole loop — including between passes
-	 * — so an event arriving mid-rebuild can never start a second, overlapping loop; it can only
-	 * extend this one via `pending`, which is exactly why at most one further rebuild ever follows a
-	 * pass that was already in flight.
+	 * Runs rebuild() passes until one completes with no further event pending. Defers past whatever
+	 * transaction is open (see deferPastOpenTransaction()) before *every* pass, not just the first —
+	 * a follow-up pass triggered by `pending` runs on exactly the same shared connection the first
+	 * one did, and an event arriving while that first pass was in flight could just as easily have
+	 * come from inside a second, independently-opened transaction as the first event did. Deferring
+	 * only once, before the loop, would leave that follow-up read exposed to precisely the hazard
+	 * this task exists to close. The same defer before the first pass also still does its original
+	 * job of letting a synchronous burst of handleStructuralChange() calls land before ever reading,
+	 * so it folds into a single pass rather than the first event in the burst kicking off its own
+	 * rebuild before the rest arrive.
 	 *
-	 * Failures are caught and logged here rather than left to reject: this loop is started
-	 * fire-and-forget from an event handler, detached from any request that could otherwise observe
-	 * or handle the rejection.
+	 * `running` stays true for the whole loop — including between passes — so an event arriving
+	 * mid-rebuild can never start a second, overlapping loop; it can only extend this one via
+	 * `pending`, which is exactly why at most one further rebuild ever follows a pass that was
+	 * already in flight. `running` is reset in `finally` rather than after the loop so that even an
+	 * unexpected throw here (deferPastOpenTransaction() and rebuildWithRetry() are not expected to
+	 * throw, but "not expected to" is not a guarantee) can't leave it stuck `true` forever — which
+	 * would silently stop every future structural event from ever triggering another rebuild, the
+	 * exact permanently-stale-index failure this listener exists to prevent.
+	 *
+	 * Failures from rebuild() itself are caught and logged inside rebuildWithRetry() rather than left
+	 * to reject here: this loop is started fire-and-forget from an event handler, detached from any
+	 * request that could otherwise observe or handle the rejection.
 	 */
 	private async runRebuildLoop(): Promise<void> {
-		await this.deferPastOpenTransaction();
+		try {
+			do {
+				await this.deferPastOpenTransaction();
 
-		do {
-			this.pending = false;
+				this.pending = false;
 
-			await this.rebuildWithRetry();
-		} while (this.pending);
-
-		this.running = false;
+				await this.rebuildWithRetry();
+			} while (this.pending);
+		} finally {
+			this.running = false;
+		}
 	}
 
 	/**
