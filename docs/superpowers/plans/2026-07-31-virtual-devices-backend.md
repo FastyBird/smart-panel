@@ -1739,6 +1739,27 @@ git commit -m "feat(devices-virtual): aggregate connection status from source de
 
 ---
 
+### Task 12a: Index maintenance listener
+
+**Added mid-execution.** Tasks 9 and 12 revealed that `VirtualPropertyIndexService` is populated **only** at `onApplicationBootstrap` — nothing calls `add()`, `rebuild()` or `removeVirtualDevice()` at runtime. Three consequences, all user-visible:
+
+- A virtual device created after boot is absent from the index, so the projection listener never fires for it and its properties look frozen until the backend restarts.
+- When a source property is deleted, the FK sets `sourcePropertyId` to null in the database, but the index still holds a stale in-memory entity with it set — so status never degrades and the spec's "orphaned" state is unreachable at runtime.
+- A deleted virtual device leaves entries behind, so the projection listener keeps emitting events for properties that no longer exist.
+
+**Files:**
+- Create: `apps/backend/src/plugins/devices-virtual/listeners/virtual-index-maintenance.listener.ts`
+- Test: `apps/backend/src/plugins/devices-virtual/listeners/virtual-index-maintenance.listener.spec.ts`
+- Modify: `apps/backend/src/plugins/devices-virtual/devices-virtual.plugin.ts` (providers)
+
+**Approach: coalesced rebuild.** Subscribe to the structural events — `DEVICE_CREATED`, `DEVICE_UPDATED`, `DEVICE_DELETED`, `DEVICE_RESET`, `CHANNEL_PROPERTY_CREATED`, `CHANNEL_PROPERTY_UPDATED`, `CHANNEL_PROPERTY_DELETED`, `CHANNEL_PROPERTY_RESET`, `MODULE_RESET` — and schedule one `rebuild()` rather than mutating the maps incrementally.
+
+**`CHANNEL_PROPERTY_VALUE_SET` must NOT be subscribed.** It fires on every property report from every device; rebuilding on it would put a database query on the hot path this index exists to keep off.
+
+Coalesce so a burst of provisioning events costs one reload, not one per event, and so a rebuild already in flight is not run concurrently with itself. A full rebuild is a single relation-loaded query and structural changes are rare, so precision here buys less than the partial-state bugs incremental maintenance would risk.
+
+---
+
 ### Task 13: VirtualDevicesService — creation validation and source listing
 
 **Files:**
