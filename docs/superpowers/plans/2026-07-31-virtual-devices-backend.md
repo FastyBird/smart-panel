@@ -1271,6 +1271,11 @@ export class VirtualDevicePlatform implements IDevicePlatform {
 			bySourceDevice.set(device.id, group);
 		}
 
+		// Resolve every group's platform BEFORE forwarding to any of them. get() is a pure
+		// synchronous registry lookup, so this costs nothing and keeps a missing platform from
+		// being discovered only after an earlier group's hardware has already moved.
+		const resolvedGroups: Array<{ platform: IDevicePlatform; updates: IDevicePropertyData[] }> = [];
+
 		for (const { device, updates: sourceUpdates } of bySourceDevice.values()) {
 			const platform = this.platformRegistryService.get(device);
 
@@ -1280,6 +1285,14 @@ export class VirtualDevicePlatform implements IDevicePlatform {
 				return false;
 			}
 
+			resolvedGroups.push({ platform, updates: sourceUpdates });
+		}
+
+		// Past this point a multi-source batch is NOT atomic: if a later group's processBatch
+		// fails, earlier groups have already been applied. IDevicePlatform exposes no pre-flight
+		// hook, and adding one would change a contract shared by eight plugins, so this is an
+		// accepted tradeoff rather than an oversight. A test pins the behaviour.
+		for (const { platform, updates: sourceUpdates } of resolvedGroups) {
 			const success = await platform.processBatch(sourceUpdates);
 
 			if (!success) {
