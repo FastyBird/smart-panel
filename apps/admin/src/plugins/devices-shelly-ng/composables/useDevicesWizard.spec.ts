@@ -634,6 +634,84 @@ describe('useDevicesWizard', () => {
 		expect(adapter.sessionKey?.value).toBe('session-2');
 	});
 
+	it('keeps polling the retained session when a rescan fails to start', async () => {
+		// "Scan again" stops the interval before its POST so no poll targets the session being
+		// replaced. If that POST then fails, the old session stays on screen — and must stay
+		// live. Leaving it stopped freezes the snapshot while the backend session is very much
+		// still discovering, so the table silently stops updating with no visible cause.
+		backendClient.POST.mockResolvedValueOnce({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(backendClient.GET).toHaveBeenCalledTimes(1);
+
+		backendClient.POST.mockResolvedValueOnce({
+			data: undefined,
+			error: { error: 'boom' },
+			response: { status: 500 },
+		});
+		await expect(adapter.start()).rejects.toThrow();
+
+		// The retained session must still be polled.
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(backendClient.GET).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not let a stale poll rejection stop the replacement session polling', async () => {
+		// A rejected GET skips everything after its `await`, so `refreshDiscovery`'s generation
+		// check never runs and the rejection reaches the interval's catch. That catch calls
+		// `stopPolling()` on the shared timer handle — which by then belongs to session B, not to
+		// the session whose poll just failed. B would be installed and never polled again.
+		const sessionB: IShellyNgDiscoverySession = { ...discoverySession, id: 'session-2' };
+
+		backendClient.POST.mockResolvedValueOnce({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+
+		let rejectStalePoll: (() => void) | undefined;
+		backendClient.GET.mockImplementationOnce(
+			() =>
+				new Promise((_resolve, reject) => {
+					rejectStalePoll = (): void => reject(new Error('session not found'));
+				})
+		);
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(typeof rejectStalePoll).toBe('function');
+
+		backendClient.POST.mockResolvedValueOnce({
+			data: { data: sessionB },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: { data: sessionB },
+			response: { status: 200 },
+		});
+		await adapter.start();
+
+		// Session A's poll now fails, long after A stopped being the current session.
+		rejectStalePoll?.();
+		await vi.advanceTimersByTimeAsync(0);
+
+		backendClient.GET.mockClear();
+		await vi.advanceTimersByTimeAsync(1_000);
+
+		expect(backendClient.GET).toHaveBeenCalledTimes(1);
+	});
+
 	it('adopts the selection handed over by the shell through the devices store', async () => {
 		backendClient.POST.mockResolvedValue({
 			data: { data: discoverySession },

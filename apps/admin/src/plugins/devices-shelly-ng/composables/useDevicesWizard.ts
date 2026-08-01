@@ -149,7 +149,19 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		stopPolling();
 
 		pollingTimer = window.setInterval(() => {
+			// Captured per tick, not per interval: the handle this callback would stop belongs to
+			// whichever session is current when the rejection lands, which is not necessarily the
+			// one this poll was issued against.
+			const pollGeneration = sessionGeneration;
+
 			refreshDiscovery().catch(() => {
+				// A rejected GET skips everything after its `await`, so `refreshDiscovery`'s own
+				// generation guard never runs and the rejection arrives here instead. Stopping
+				// unconditionally would clear the replacement session's brand new interval.
+				if (sessionGeneration !== pollGeneration) {
+					return;
+				}
+
 				// Stop polling on any error — the most likely failure is a 404 after the server
 				// cleaned up the session, and there's no point re-hitting a missing endpoint every
 				// second until the component unmounts. The user can hit "Scan again" to start a
@@ -231,6 +243,13 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 
 		formResult.value = FormResult.ERROR;
 		flashMessage.error(errorReason);
+
+		// The rescan never happened, so the previous session is still what the user is looking at
+		// — and still discovering on the backend. We stopped its interval before the POST; hand it
+		// back, or the table silently freezes with no visible cause.
+		if (session.value !== null && session.value.status === 'running') {
+			startPolling();
+		}
 
 		throw new DevicesShellyNgApiException(errorReason, response.status);
 	};
