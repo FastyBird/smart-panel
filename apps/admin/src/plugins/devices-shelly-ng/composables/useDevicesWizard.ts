@@ -51,6 +51,10 @@ const toWizardStatus = (status: IShellyNgDiscoveryDevice['status']): IWizardRowS
 const suggestedNameFor = (device: IShellyNgDiscoveryDevice): string =>
 	device.registeredDeviceName || device.name || device.displayName || device.hostname;
 
+// Five seconds of unbroken failures before a scan is abandoned — long enough to ride out
+// a blip, short enough not to hammer a backend that is genuinely down.
+const MAX_CONSECUTIVE_POLL_FAILURES = 5;
+
 export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const { t } = useI18n();
 	const backend = useBackend();
@@ -74,6 +78,10 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	// `applySession` would stop the timer, and the new scan would be orphaned with the UI still
 	// showing the old one — "Scan again" appearing to do nothing.
 	let sessionGeneration = 0;
+
+	// Consecutive failed polls, reset by any successful snapshot. Bounds how long a broken
+	// backend is retried before the wizard gives up.
+	let consecutivePollFailures = 0;
 
 	// Captured at every applySession so scanPercentage can tick forward independent of any
 	// drift between the client and server clocks. We resnap to the server's `remainingSeconds`
@@ -154,7 +162,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			// one this poll was issued against.
 			const pollGeneration = sessionGeneration;
 
-			refreshDiscovery().catch(() => {
+			refreshDiscovery().catch((pollError: unknown) => {
 				// A rejected GET skips everything after its `await`, so `refreshDiscovery`'s own
 				// generation guard never runs and the rejection arrives here instead. Stopping
 				// unconditionally would clear the replacement session's brand new interval.
@@ -162,11 +170,25 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 					return;
 				}
 
-				// Stop polling on any error — the most likely failure is a 404 after the server
-				// cleaned up the session, and there's no point re-hitting a missing endpoint every
-				// second until the component unmounts. The user can hit "Scan again" to start a
-				// fresh session.
-				stopPolling();
+				// A 404 is definitive: the server cleaned the session up and it will never come
+				// back, so there is nothing left to poll. Stop immediately rather than re-hitting
+				// a missing endpoint every second until the component unmounts — the user can hit
+				// "Scan again" to start a fresh session.
+				if (pollError instanceof DevicesShellyNgApiException && pollError.code === 404) {
+					stopPolling();
+
+					return;
+				}
+
+				// Anything else — a blip, a 5xx, a dropped connection — may recover, and treating
+				// it as a dead session would freeze an otherwise healthy scan on one bad request.
+				// Keep polling, but give up eventually so a persistently broken backend is not
+				// hammered for the life of the view.
+				consecutivePollFailures += 1;
+
+				if (consecutivePollFailures >= MAX_CONSECUTIVE_POLL_FAILURES) {
+					stopPolling();
+				}
 			});
 		}, 1_000);
 	};
@@ -182,6 +204,9 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		// Row-level bookkeeping (selection, editable names, categories) belongs to the wizard
 		// shell — the adapter only owns the raw session snapshot and the scan progress anchor.
 		session.value = nextSession;
+
+		// A snapshot arrived, so whatever was failing has recovered.
+		consecutivePollFailures = 0;
 
 		// Snap the client-side progress reference to the moment we received this snapshot.
 		// scanPercentage ticks forward from here using `useNow`, so it stays accurate even
@@ -203,6 +228,15 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		adoptionResults.value = [];
 	};
 
+	// A rescan that never happened leaves the previous session on screen — and still
+	// discovering on the backend. Its interval was stopped before the POST; hand it back, or the
+	// table silently freezes with no visible cause.
+	const resumeRetainedPolling = (): void => {
+		if (session.value !== null && session.value.status === 'running') {
+			startPolling();
+		}
+	};
+
 	const startDiscovery = async (): Promise<void> => {
 		formResult.value = FormResult.WORKING;
 
@@ -213,11 +247,23 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		sessionGeneration += 1;
 		const startGeneration = sessionGeneration;
 
-		const {
-			data: responseData,
-			error,
-			response,
-		} = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_SHELLY_NG_PLUGIN_PREFIX}/devices/discovery`);
+		let started;
+
+		try {
+			started = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_SHELLY_NG_PLUGIN_PREFIX}/devices/discovery`);
+		} catch (transportError: unknown) {
+			// `openapi-fetch` rethrows a transport failure rather than returning `{ error, response }`,
+			// so this path never reaches the recovery below. Without it the wizard is left behind a
+			// spinner that never resolves, with the retained session no longer polling.
+			if (sessionGeneration === startGeneration) {
+				formResult.value = FormResult.ERROR;
+				resumeRetainedPolling();
+			}
+
+			throw transportError;
+		}
+
+		const { data: responseData, error, response } = started;
 
 		// A newer start (or a dispose) landed while this POST was in flight — its session is the
 		// one the user is looking at, so this response is stale.
@@ -244,12 +290,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		formResult.value = FormResult.ERROR;
 		flashMessage.error(errorReason);
 
-		// The rescan never happened, so the previous session is still what the user is looking at
-		// — and still discovering on the backend. We stopped its interval before the POST; hand it
-		// back, or the table silently freezes with no visible cause.
-		if (session.value !== null && session.value.status === 'running') {
-			startPolling();
-		}
+		resumeRetainedPolling();
 
 		throw new DevicesShellyNgApiException(errorReason, response.status);
 	};

@@ -561,17 +561,21 @@ describe('useDevicesWizard', () => {
 		expect(backendClient.GET).not.toHaveBeenCalled();
 	});
 
-	it('stops polling after a refresh error instead of hammering a cleaned-up session', async () => {
-		// The most likely refresh failure is a 404 after the backend garbage-collects a finished
-		// session — there is no point re-hitting a missing endpoint every second until the
-		// component unmounts. The user can hit "Scan again" to start a fresh one. Swallowing the
-		// error and continuing also never self-heals: `applySession` never runs, so the session
+	it('stops polling once the backend reports the session is gone', async () => {
+		// A 404 is definitive: the backend garbage-collected the session and it will never come
+		// back, so there is no point re-hitting a missing endpoint every second until the
+		// component unmounts. The user can hit "Scan again" to start a fresh one. Swallowing it
+		// and continuing never self-heals either — `applySession` never runs, so the session
 		// status stays `running` and the non-running `stopPolling()` escape never fires.
 		backendClient.POST.mockResolvedValue({
 			data: { data: discoverySession },
 			response: { status: 200 },
 		});
-		backendClient.GET.mockRejectedValue(new Error('session not found'));
+		backendClient.GET.mockResolvedValue({
+			data: undefined,
+			error: { error: 'not found' },
+			response: { status: 404 },
+		});
 
 		const adapter = useDevicesWizard();
 
@@ -580,9 +584,88 @@ describe('useDevicesWizard', () => {
 		await vi.advanceTimersByTimeAsync(1_000);
 		expect(backendClient.GET).toHaveBeenCalledTimes(1);
 
-		// The interval must NOT fire again — the failed poll stopped it.
+		// The interval must NOT fire again — the 404 stopped it.
+		await vi.advanceTimersByTimeAsync(2_000);
+		expect(backendClient.GET).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps polling through a transient refresh failure', async () => {
+		// A blip or a 5xx is not a dead session. Treating every failure as the 404 case would
+		// permanently freeze an otherwise healthy scan on one dropped request.
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockRejectedValueOnce(new Error('network blip')).mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
 		await vi.advanceTimersByTimeAsync(1_000);
 		expect(backendClient.GET).toHaveBeenCalledTimes(1);
+
+		// The scan survives the blip and keeps updating.
+		await vi.advanceTimersByTimeAsync(2_000);
+		expect(backendClient.GET).toHaveBeenCalledTimes(3);
+	});
+
+	it('gives up after repeated refresh failures rather than retrying forever', async () => {
+		// The flip side of tolerating a blip: a backend that is persistently broken must not be
+		// hammered at 1 req/s for the life of the view.
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockRejectedValue(new Error('backend down'));
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		await vi.advanceTimersByTimeAsync(20_000);
+
+		const calls = backendClient.GET.mock.calls.length;
+
+		expect(calls).toBeGreaterThan(1);
+		expect(calls).toBeLessThanOrEqual(5);
+
+		// Confirm it has actually stopped, not merely slowed.
+		backendClient.GET.mockClear();
+		await vi.advanceTimersByTimeAsync(5_000);
+		expect(backendClient.GET).not.toHaveBeenCalled();
+	});
+
+	it('restores polling and clears the busy flag when the rescan request rejects outright', async () => {
+		// `openapi-fetch` rethrows a transport failure rather than returning `{ error, response }`,
+		// so execution leaves `startDiscovery` at the await. The interval was already stopped and
+		// `formResult` is still WORKING — without recovery the wizard is frozen behind a spinner
+		// that never resolves, with the retained session no longer updating.
+		backendClient.POST.mockResolvedValueOnce({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(backendClient.GET).toHaveBeenCalledTimes(1);
+
+		backendClient.POST.mockRejectedValueOnce(new Error('backend unreachable'));
+		await expect(adapter.start()).rejects.toThrow('backend unreachable');
+
+		expect(adapter.busy.value).toBe(false);
+
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(backendClient.GET).toHaveBeenCalledTimes(2);
 	});
 
 	it('drops a poll response that resolves after a rescan replaced the session', async () => {
