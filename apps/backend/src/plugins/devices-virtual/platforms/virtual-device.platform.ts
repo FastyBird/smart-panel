@@ -31,6 +31,23 @@ export class VirtualDevicePlatform implements IDevicePlatform {
 	}
 
 	async processBatch(updates: IDevicePropertyData[]): Promise<boolean> {
+		// `enabled` is enforced here rather than upstream because that is where every other device
+		// plugin enforces it — devices-shelly-v1, devices-wled and devices-zigbee2mqtt each open
+		// processBatch() with the same check. PropertyCommandService only tests connection state
+		// (`device.status.online`), never `enabled`, so without this a disabled virtual device
+		// resolves its sources and forwards every command exactly as an enabled one does.
+		//
+		// Checked across the whole batch and before a single source is resolved, so a disabled device
+		// never partially applies — the same all-or-nothing discipline as the platform-resolution
+		// pre-pass below. `find` rather than `updates[0]` because an empty batch has no first element.
+		const disabled = updates.find((update) => !update.device.enabled);
+
+		if (disabled) {
+			this.logger.warn(`Virtual device id=${disabled.device.id} is disabled, refusing to forward`);
+
+			return false;
+		}
+
 		const bySourceDevice = new Map<string, { device: DeviceEntity; updates: IDevicePropertyData[] }>();
 
 		for (const update of updates) {

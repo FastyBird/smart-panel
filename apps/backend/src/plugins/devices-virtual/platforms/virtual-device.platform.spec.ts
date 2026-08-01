@@ -36,11 +36,17 @@ describe('VirtualDevicePlatform', () => {
 	let channelsById: Record<string, ChannelEntity>;
 	let devicesById: Record<string, DeviceEntity>;
 
-	// The virtual device/channel/property the command originally targeted. `processBatch` never
-	// reads the virtual device/channel back out of an update — only `property` and `value` drive
-	// resolution — so a single shared fixture is enough for every test.
+	// The virtual device/channel/property the command originally targeted. Apart from the `enabled`
+	// check, `processBatch` reads nothing off the virtual device/channel — only `property` and `value`
+	// drive resolution — so a single shared fixture is enough for every test.
 	const virtualDevice = new VirtualDeviceEntity();
 	virtualDevice.id = 'virtual-device';
+
+	// `enabled` carries a `= true` class field initializer on DeviceEntity, so it has to be turned off
+	// explicitly; the fixture above is enabled without saying so.
+	const disabledVirtualDevice = new VirtualDeviceEntity();
+	disabledVirtualDevice.id = 'disabled-virtual-device';
+	disabledVirtualDevice.enabled = false;
 
 	const virtualChannel = new VirtualChannelEntity();
 	virtualChannel.id = 'virtual-channel';
@@ -345,6 +351,93 @@ describe('VirtualDevicePlatform', () => {
 
 		expect(result).toBe(false);
 		expect(platformRegistryService.get).not.toHaveBeenCalled();
+	});
+
+	// -- the disabled virtual device (P1) --------------------------------------------------------
+	//
+	// Setting `enabled: false` on a virtual device used to block nothing at all. PropertyCommandService
+	// checks only connection state, not `enabled`, and this platform did not check either — so the
+	// command resolved its sources and moved real hardware. The three sibling plugins that own physical
+	// transports (devices-shelly-v1, devices-wled, devices-zigbee2mqtt) all reject on `enabled` at the
+	// top of processBatch(); this brings the virtual platform in line with them.
+
+	it('rejects the batch when the virtual device is disabled', async () => {
+		// The source is fully resolvable and online, so the ONLY thing that can reject this write is
+		// the `enabled` check. Without it, resolution succeeds and the command is forwarded.
+		const sourceDevice = makeDevice('source-device');
+
+		linkSource('source-prop', sourceDevice);
+
+		const sourcePlatform = createMockPlatform();
+		platformRegistryService.get.mockReturnValue(sourcePlatform);
+
+		const linkedProperty = virtualProperty({ id: 'linked-prop', sourcePropertyId: 'source-prop' });
+
+		const result = await platform.processBatch([
+			{ device: disabledVirtualDevice, channel: virtualChannel, property: linkedProperty, value: true },
+		]);
+
+		expect(result).toBe(false);
+		// Rejected before anything is resolved, so no source platform is ever reached.
+		expect(channelsPropertiesService.findOne).not.toHaveBeenCalled();
+		expect(platformRegistryService.get).not.toHaveBeenCalled();
+		expect(sourcePlatform.processBatch).not.toHaveBeenCalled();
+	});
+
+	it('rejects the whole batch when only a later update names the disabled device', async () => {
+		// All-or-nothing: a batch is rejected on the disabled device's flag before any group has been
+		// forwarded, so an earlier enabled update in the same batch cannot slip through first. This is
+		// the discriminator against checking only `updates[0].device`.
+		const sourceDevice = makeDevice('source-device');
+
+		linkSource('source-prop-a', sourceDevice);
+		linkSource('source-prop-b', sourceDevice);
+
+		const sourcePlatform = createMockPlatform();
+		platformRegistryService.get.mockReturnValue(sourcePlatform);
+
+		const result = await platform.processBatch([
+			{
+				device: virtualDevice,
+				channel: virtualChannel,
+				property: virtualProperty({ id: 'linked-a', sourcePropertyId: 'source-prop-a' }),
+				value: true,
+			},
+			{
+				device: disabledVirtualDevice,
+				channel: virtualChannel,
+				property: virtualProperty({ id: 'linked-b', sourcePropertyId: 'source-prop-b' }),
+				value: false,
+			},
+		]);
+
+		expect(result).toBe(false);
+		expect(sourcePlatform.processBatch).not.toHaveBeenCalled();
+	});
+
+	it('still forwards for an enabled virtual device', async () => {
+		// Guards the check above against rejecting everything: `enabled` defaults to true on
+		// DeviceEntity, and an enabled device must be unaffected.
+		const sourceDevice = makeDevice('source-device');
+		const { property: sourceProperty } = linkSource('source-prop', sourceDevice);
+
+		const sourcePlatform = createMockPlatform();
+		platformRegistryService.get.mockReturnValue(sourcePlatform);
+
+		const result = await platform.processBatch([
+			{
+				device: virtualDevice,
+				channel: virtualChannel,
+				property: virtualProperty({ id: 'linked-prop', sourcePropertyId: 'source-prop' }),
+				value: true,
+			},
+		]);
+
+		expect(result).toBe(true);
+		expect(virtualDevice.enabled).toBe(true);
+		expect(sourcePlatform.processBatch).toHaveBeenCalledWith([
+			expect.objectContaining({ device: sourceDevice, property: sourceProperty, value: true }),
+		]);
 	});
 
 	it('forwards normally when a source device status is unknown rather than offline', async () => {
