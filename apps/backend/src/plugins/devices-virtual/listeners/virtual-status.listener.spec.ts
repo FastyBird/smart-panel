@@ -272,7 +272,7 @@ describe('VirtualStatusListener', () => {
 			const repository = { find: jest.fn().mockResolvedValue(rows) };
 			const realIndex = new VirtualPropertyIndexService(repository as never);
 
-			await realIndex.onApplicationBootstrap();
+			await realIndex.rebuild();
 
 			return realIndex;
 		};

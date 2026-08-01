@@ -22,6 +22,8 @@ Fix: recompute affected virtual devices' status directly after a rebuild that or
 
 **Resolved.** `VirtualPropertyIndexService.rebuild()` now reports which virtual devices came out wired differently than they went in, and `VirtualIndexMaintenanceListener` recomputes those through `VirtualStatusListener.recompute()`.
 
+**The same defect one process restart later, also resolved (round 6).** The recompute above is scheduled fire-and-forget, so a process that stops between a source property's deletion committing and that pass running leaves the deletion durable and the status stale. The bootstrap rebuild rediscovered the orphan on the next start and then discarded what it reported, and — because an orphan is in no source device's reverse index — nothing afterwards could ever select that device again. `VirtualIndexMaintenanceListener` now owns the bootstrap hydration as well (the index exposes no lifecycle hook of its own) and feeds its result through the same `recomputeStatuses()`, so a restart repairs the window instead of freezing it. The hook stays failure-tolerant: a rebuild against a schema that does not exist yet — a fresh install before migrations, and `generate:openapi` — logs and lets the app start, exactly as before.
+
 ### 2.2 `hidden` enforcement is unwired (medium) — DONE for the four picker plugins
 
 `DeviceEntity.hidden` is settable, persisted, serialized and filterable via `?hidden=`. But `ValidateDeviceNotHidden` / `DeviceNotHiddenConstraintValidator` are applied to **zero** DTOs, so nothing rejects a hidden device from being selected.

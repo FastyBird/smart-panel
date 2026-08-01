@@ -131,44 +131,35 @@ describe('VirtualPropertyIndexService', () => {
 		expect(service.findBySourceProperty('source-prop')).toEqual([]);
 	});
 
-	it('indexes virtual properties by source property on bootstrap', async () => {
+	it('indexes virtual properties by source property on hydration', async () => {
 		repository.find.mockResolvedValue([linkedProperty]);
 
-		await service.onApplicationBootstrap();
+		await service.rebuild();
 
 		expect(service.findBySourceProperty('source-prop')).toEqual([linkedProperty]);
 	});
 
-	// Regression test for bootstrap hydration aborting application startup. The rebuild query is the
-	// first thing to touch the schema, so it is also the first thing to fail when there is no schema:
-	// a fresh install before migrations, and `generate:openapi`, which boots the whole Nest app purely
-	// to read Swagger metadata. An unguarded `await this.rebuild()` turned that into
-	// `SQLITE_ERROR: no such table: devices_module_channels_properties` escaping onApplicationBootstrap
-	// and killing the process. The index is an optimization — VirtualIndexMaintenanceListener rebuilds
-	// it on the next structural event — so a failed first pass must degrade to an empty index, never to
-	// a dead application.
-	it('survives a bootstrap hydration failure, leaving the index empty rather than aborting startup', async () => {
-		const error = new Error('SQLITE_ERROR: no such table: devices_module_channels_properties');
+	// This service exposes no lifecycle hook of its own — VirtualIndexMaintenanceListener owns the
+	// bootstrap hydration as well as every later rebuild, precisely so that the transitions rebuild()
+	// reports have an owner that acts on them. Asserted rather than merely stated, because the
+	// alternative (a hook here that swallows its own result) is the exact shape a virtual device
+	// orphaned while the process was down needs in order to keep a stale CONNECTED status forever.
+	it('exposes no bootstrap hook of its own, leaving hydration to the maintenance listener', () => {
+		expect((service as { onApplicationBootstrap?: unknown }).onApplicationBootstrap).toBeUndefined();
+	});
 
-		repository.find.mockRejectedValue(error);
+	// A failed rebuild must not be terminal for the index: it leaves the maps as they were (here,
+	// empty), and the very next rebuild — what the maintenance listener issues on the next structural
+	// event — has to hydrate normally. The failure itself propagates rather than being swallowed here;
+	// the callers decide what a failure costs (bootstrap logs it, the rebuild loop retries it), which
+	// is why neither branch can be judged from inside this service.
+	it('hydrates normally on a later rebuild after one rebuild failed', async () => {
+		repository.find.mockRejectedValueOnce(new Error('SQLITE_ERROR: no such table: x'));
 
-		const logged = jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
-
-		await expect(service.onApplicationBootstrap()).resolves.toBeUndefined();
+		await expect(service.rebuild()).rejects.toThrow('no such table');
 
 		expect(service.findBySourceProperty('source-prop')).toEqual([]);
 		expect(service.findLinksByVirtualDevice('virtual-device')).toEqual([]);
-		expect(logged).toHaveBeenCalledWith(expect.stringContaining('no such table'));
-	});
-
-	// The failure above must not be terminal for the index either: the very next rebuild — which is
-	// what the maintenance listener issues on the next structural event — has to hydrate normally.
-	it('hydrates normally on a later rebuild after bootstrap hydration failed', async () => {
-		repository.find.mockRejectedValueOnce(new Error('SQLITE_ERROR: no such table: x'));
-
-		jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
-
-		await service.onApplicationBootstrap();
 
 		repository.find.mockResolvedValue([linkedProperty]);
 
@@ -180,7 +171,7 @@ describe('VirtualPropertyIndexService', () => {
 	it('indexes several virtual properties sharing one source', async () => {
 		repository.find.mockResolvedValue([linkedA, linkedB]);
 
-		await service.onApplicationBootstrap();
+		await service.rebuild();
 
 		expect(service.findBySourceProperty('source-prop')).toHaveLength(2);
 	});
@@ -188,7 +179,7 @@ describe('VirtualPropertyIndexService', () => {
 	it('skips owned and orphaned properties', async () => {
 		repository.find.mockResolvedValue([ownedProperty, orphanedProperty]);
 
-		await service.onApplicationBootstrap();
+		await service.rebuild();
 
 		expect(service.findBySourceProperty('source-prop')).toEqual([]);
 	});
@@ -203,7 +194,7 @@ describe('VirtualPropertyIndexService', () => {
 	it('records an orphaned property against its virtual device, with no source ids', async () => {
 		repository.find.mockResolvedValue([orphanedProperty]);
 
-		await service.onApplicationBootstrap();
+		await service.rebuild();
 
 		expect(service.findLinksByVirtualDevice('virtual-device')).toEqual([
 			{ propertyId: 'orphaned-prop', sourcePropertyId: null, sourceDeviceId: null },
@@ -213,7 +204,7 @@ describe('VirtualPropertyIndexService', () => {
 	it('keeps an owned property out of every map, including its own virtual device', async () => {
 		repository.find.mockResolvedValue([ownedProperty]);
 
-		await service.onApplicationBootstrap();
+		await service.rebuild();
 
 		expect(service.findLinksByVirtualDevice('virtual-device')).toEqual([]);
 		expect(service.findBySourceProperty('source-prop')).toEqual([]);
@@ -223,7 +214,7 @@ describe('VirtualPropertyIndexService', () => {
 	it('maps a source device to the virtual devices projecting it', async () => {
 		repository.find.mockResolvedValue([linkedProperty]);
 
-		await service.onApplicationBootstrap();
+		await service.rebuild();
 
 		expect(service.findVirtualDeviceIdsBySourceDevice('source-device')).toEqual(['virtual-device']);
 	});
@@ -231,7 +222,7 @@ describe('VirtualPropertyIndexService', () => {
 	it('drops every entry for a removed virtual device', async () => {
 		repository.find.mockResolvedValue([linkedProperty]);
 
-		await service.onApplicationBootstrap();
+		await service.rebuild();
 		service.removeVirtualDevice('virtual-device');
 
 		expect(service.findBySourceProperty('source-prop')).toEqual([]);
@@ -247,7 +238,7 @@ describe('VirtualPropertyIndexService', () => {
 	it('loads exactly the relations needed to resolve both the virtual and source device in one query', async () => {
 		repository.find.mockResolvedValue([]);
 
-		await service.onApplicationBootstrap();
+		await service.rebuild();
 
 		expect(repository.find).toHaveBeenCalledTimes(1);
 		expect(repository.find).toHaveBeenCalledWith({
@@ -264,7 +255,7 @@ describe('VirtualPropertyIndexService', () => {
 	it('removing one virtual device does not evict a sibling sharing the same source property and source device', async () => {
 		repository.find.mockResolvedValue([linkedA, linkedB]);
 
-		await service.onApplicationBootstrap();
+		await service.rebuild();
 		service.removeVirtualDevice('virtual-device-a');
 
 		expect(service.findBySourceProperty('source-prop')).toEqual([linkedB]);
@@ -273,7 +264,7 @@ describe('VirtualPropertyIndexService', () => {
 
 	it('rebuild() clears previously indexed state instead of merging with it', async () => {
 		repository.find.mockResolvedValue([linkedProperty]);
-		await service.onApplicationBootstrap();
+		await service.rebuild();
 
 		expect(service.findBySourceProperty('source-prop')).toEqual([linkedProperty]);
 
@@ -342,7 +333,7 @@ describe('VirtualPropertyIndexService', () => {
 
 		repository.find.mockResolvedValue([property]);
 
-		await service.onApplicationBootstrap();
+		await service.rebuild();
 
 		expect(service.findBySourceProperty('source-prop-x')).toEqual([property]);
 
@@ -365,7 +356,7 @@ describe('VirtualPropertyIndexService', () => {
 	it('returns an id-only link for every projection indexed for a given virtual device', async () => {
 		repository.find.mockResolvedValue([linkedProperty]);
 
-		await service.onApplicationBootstrap();
+		await service.rebuild();
 
 		expect(service.findLinksByVirtualDevice('virtual-device')).toEqual([
 			{ propertyId: 'linked-prop', sourcePropertyId: 'source-prop', sourceDeviceId: 'source-device' },
@@ -386,7 +377,7 @@ describe('VirtualPropertyIndexService', () => {
 
 		repository.find.mockResolvedValue([property]);
 
-		await service.onApplicationBootstrap();
+		await service.rebuild();
 
 		// Still linked (its source property id survives — it is not an orphan), just with nothing
 		// resolvable on the source-device side.
@@ -401,7 +392,7 @@ describe('VirtualPropertyIndexService', () => {
 	// empty index and silently did nothing. Building into locals and swapping at the end closes it.
 	it('rebuild() keeps serving the previous index until its query has returned', async () => {
 		repository.find.mockResolvedValue([linkedProperty]);
-		await service.onApplicationBootstrap();
+		await service.rebuild();
 
 		let releaseQuery: (rows: VirtualChannelPropertyEntity[]) => void;
 

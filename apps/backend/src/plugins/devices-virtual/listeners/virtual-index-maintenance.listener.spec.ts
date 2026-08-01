@@ -1,10 +1,14 @@
 import 'reflect-metadata';
-import { DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 
 import { Logger } from '@nestjs/common';
 
-import { EventType } from '../../../modules/devices/devices.constants';
+import { ConnectionState, EventType } from '../../../modules/devices/devices.constants';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
+import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
 import { VirtualIndexRebuildResult, VirtualPropertyIndexService } from '../services/virtual-property-index.service';
 
 import { VirtualIndexMaintenanceListener } from './virtual-index-maintenance.listener';
@@ -341,6 +345,222 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 		expect(index.rebuild).toHaveBeenCalledTimes(1);
 		expect(status.recompute).toHaveBeenCalledTimes(1);
+	});
+
+	// -- bootstrap hydration, and the restart it has to repair ----------------------------------
+	//
+	// Regression tests for the bootstrap rebuild's result being discarded. The window is small but
+	// durable: a source property's deletion commits, and the fire-and-forget pass that would have
+	// degraded the virtual device to DISCONNECTED has not run yet when the process stops. The deletion
+	// survives the restart; the status does not. On the next start the hydration below is the only
+	// thing that can ever notice — an orphaned link names no source device, so the virtual device sits
+	// in no `bySourceDevice` set and no DEVICE_CONNECTION_CHANGED event can select it again — which is
+	// precisely why swallowing what that first pass reported left the device stale forever.
+
+	it('hydrates the index at bootstrap', async () => {
+		await listener.onApplicationBootstrap();
+
+		expect(index.rebuild).toHaveBeenCalledTimes(1);
+	});
+
+	it('recomputes the connection state of every virtual device the bootstrap hydration re-wired', async () => {
+		index.rebuild.mockResolvedValue({
+			rewiredVirtualDeviceIds: ['virtual-a', 'virtual-b'],
+			abandonedSourceDeviceIds: [],
+		});
+
+		await listener.onApplicationBootstrap();
+
+		expect(status.recompute).toHaveBeenCalledTimes(2);
+		expect(status.recompute).toHaveBeenCalledWith('virtual-a', expect.any(String));
+		expect(status.recompute).toHaveBeenCalledWith('virtual-b', expect.any(String));
+	});
+
+	it('recomputes nothing when the bootstrap hydration found no virtual device wiring at all', async () => {
+		await listener.onApplicationBootstrap();
+
+		expect(status.recompute).not.toHaveBeenCalled();
+	});
+
+	// The bootstrap rebuild is the first query in the process to touch the schema, so it is also the
+	// first to fail when there is no schema — a fresh install before migrations, and `generate:openapi`,
+	// which boots the whole Nest app purely to read Swagger metadata against whatever database happens
+	// to be there. An unguarded await here rejects out of `onApplicationBootstrap`, which aborts Nest's
+	// bootstrap and kills the process; this repo has shipped that failure once already. Hydration is an
+	// optimization — the next structural event rebuilds regardless — so it must degrade to an empty
+	// index, never to a dead application.
+	it('survives a bootstrap hydration failure, leaving the index empty rather than aborting startup', async () => {
+		const loggerErrorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+
+		index.rebuild.mockRejectedValue(new Error('SQLITE_ERROR: no such table: devices_module_channels_properties'));
+
+		await expect(listener.onApplicationBootstrap()).resolves.toBeUndefined();
+
+		expect(status.recompute).not.toHaveBeenCalled();
+		expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringContaining('no such table'), undefined, expect.anything());
+
+		loggerErrorSpy.mockRestore();
+	});
+
+	// The same guarantee one step further in: a recompute that throws is a repair that did not happen,
+	// which is a cost paid in staleness. Letting it reject out of the hook would cost the whole
+	// application instead.
+	it('still starts when a bootstrap recompute throws', async () => {
+		const loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+		index.rebuild.mockResolvedValue({
+			rewiredVirtualDeviceIds: ['virtual-a', 'virtual-b'],
+			abandonedSourceDeviceIds: [],
+		});
+		status.recompute.mockRejectedValueOnce(new Error('boom')).mockResolvedValue(undefined);
+
+		await expect(listener.onApplicationBootstrap()).resolves.toBeUndefined();
+
+		expect(status.recompute).toHaveBeenCalledTimes(2);
+
+		loggerWarnSpy.mockRestore();
+	});
+
+	// The deliberate asymmetry with a structural pass, pinned. rebuild() derives
+	// `abandonedSourceDeviceIds` from source devices in the *outgoing* index that are absent from the
+	// incoming one, and the outgoing index is empty at bootstrap — so the real value is structurally
+	// always `[]` and there is no bootstrap equivalent of "the last virtual device referencing this
+	// source went away". Forced non-empty here only to prove the hook does not act on it: unhiding at
+	// startup would silently reverse a `hidden` flag the operator set, on nothing more than an empty
+	// map on the other side of a restart.
+	it('unhides nothing at bootstrap, whatever the hydration reports abandoned', async () => {
+		index.rebuild.mockResolvedValue({ rewiredVirtualDeviceIds: [], abandonedSourceDeviceIds: ['source-a'] });
+
+		await listener.onApplicationBootstrap();
+
+		expect(devicesService.findOne).not.toHaveBeenCalled();
+		expect(devicesService.update).not.toHaveBeenCalled();
+	});
+
+	// The restart shape end-to-end within this plugin: a durably orphaned row is what the database
+	// actually holds at hydration, and the real index and the real status listener decide the rest.
+	// Everything between rebuild() and the connection-state write is genuine here, because the stale
+	// status this fixes is produced by their interaction — an index that files an orphan under its
+	// virtual device but under no source device, and an aggregation that degrades on exactly that.
+	describe('against the real index and status listener', () => {
+		let repository: { find: jest.Mock };
+		let realIndex: VirtualPropertyIndexService;
+		let connectivity: { setConnectionState: jest.Mock };
+		let connectionState: { readLatest: jest.Mock };
+		let bootstrapping: VirtualIndexMaintenanceListener;
+
+		// A property row exactly as TypeORM returns it once rebuild()'s relations are loaded. `channel`
+		// walks to the owning virtual device; `sourceProperty` is what the FK's ON DELETE SET NULL left
+		// behind, or a live source, depending on the test.
+		const propertyRow = (overrides: Partial<VirtualChannelPropertyEntity>): VirtualChannelPropertyEntity => {
+			const device = new DeviceEntity();
+
+			Object.assign(device, { id: 'virtual-device' });
+
+			const channel = new ChannelEntity();
+
+			Object.assign(channel, { id: 'virtual-channel', device });
+
+			const property = new VirtualChannelPropertyEntity();
+
+			Object.assign(
+				property,
+				{
+					id: 'projecting-prop',
+					valueOrigin: VirtualValueOrigin.SOURCE,
+					sourcePropertyId: null,
+					sourceProperty: null,
+					channel,
+				},
+				overrides,
+			);
+
+			return property;
+		};
+
+		const liveSourceProperty = (): ChannelPropertyEntity => {
+			const device = new DeviceEntity();
+
+			Object.assign(device, { id: 'source-device' });
+
+			const channel = new ChannelEntity();
+
+			Object.assign(channel, { id: 'source-channel', device });
+
+			const property = new ChannelPropertyEntity();
+
+			Object.assign(property, { id: 'source-prop', channel });
+
+			return property;
+		};
+
+		beforeEach(() => {
+			repository = { find: jest.fn().mockResolvedValue([]) };
+			realIndex = new VirtualPropertyIndexService(repository as unknown as Repository<VirtualChannelPropertyEntity>);
+			connectivity = { setConnectionState: jest.fn().mockResolvedValue(undefined) };
+			// Reports every source device as online, so nothing in these tests can produce DISCONNECTED
+			// except the orphan branch itself.
+			connectionState = {
+				readLatest: jest
+					.fn()
+					.mockResolvedValue({ online: true, status: ConnectionState.CONNECTED, lastChanged: new Date() }),
+			};
+			bootstrapping = new VirtualIndexMaintenanceListener(
+				realIndex,
+				new VirtualStatusListener(
+					realIndex,
+					connectivity as unknown as DeviceConnectivityService,
+					connectionState as unknown as DeviceConnectionStateService,
+				),
+				devicesService as unknown as DevicesService,
+				dataSourceStub as unknown as DataSource,
+			);
+		});
+
+		it('degrades a virtual device whose source property was deleted while the process was down', async () => {
+			repository.find.mockResolvedValue([propertyRow({ sourcePropertyId: null, sourceProperty: null })]);
+
+			await bootstrapping.onApplicationBootstrap();
+
+			// Nothing else in the process can reach this device: the orphan put it in no source device's
+			// reverse index, so without this write it keeps whatever status it was left with — CONNECTED,
+			// with nothing behind it — for the entire life of the process.
+			expect(realIndex.findVirtualDeviceIdsBySourceDevice('source-device')).toEqual([]);
+			expect(connectivity.setConnectionState).toHaveBeenCalledWith(
+				'virtual-device',
+				expect.objectContaining({ state: ConnectionState.DISCONNECTED }),
+			);
+		});
+
+		// The other half of the same pass: hydration must not blanket-degrade everything it indexes. A
+		// device still linked to a source that reports online comes out CONNECTED.
+		it('reports a virtual device whose source survived as connected', async () => {
+			const sourceProperty = liveSourceProperty();
+
+			repository.find.mockResolvedValue([
+				propertyRow({ sourcePropertyId: sourceProperty.id, sourceProperty: sourceProperty }),
+			]);
+
+			await bootstrapping.onApplicationBootstrap();
+
+			expect(connectivity.setConnectionState).toHaveBeenCalledWith(
+				'virtual-device',
+				expect.objectContaining({ state: ConnectionState.CONNECTED }),
+			);
+		});
+
+		// An owned (LOCAL) property is nobody's projection, so it never enters the index and the
+		// hydration has no transition to report for its device — the vacuous case must stay silent
+		// rather than write a state nothing asked for.
+		it('writes nothing for a virtual device assembled only from owned properties', async () => {
+			repository.find.mockResolvedValue([
+				propertyRow({ valueOrigin: VirtualValueOrigin.LOCAL, sourcePropertyId: null, sourceProperty: null }),
+			]);
+
+			await bootstrapping.onApplicationBootstrap();
+
+			expect(connectivity.setConnectionState).not.toHaveBeenCalled();
+		});
 	});
 
 	// -- unhiding a source device abandoned by its last virtual device -------------------------

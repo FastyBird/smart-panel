@@ -1,6 +1,6 @@
 import { Repository } from 'typeorm';
 
-import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
@@ -72,6 +72,17 @@ export interface VirtualIndexRebuildResult {
  * - `findLinksByVirtualDevice` — read by the same connection-status listener to enumerate one
  *   affected virtual device's projections, so it can aggregate a CONNECTED/DISCONNECTED state.
  *
+ * ## This service never fills itself
+ *
+ * There is no lifecycle hook here: VirtualIndexMaintenanceListener owns both the bootstrap hydration
+ * and every rebuild after it, and this class only exposes rebuild() / add() / removeVirtualDevice()
+ * for it to call. That is not merely tidier — rebuild() reports which virtual devices came out wired
+ * differently (see VirtualIndexRebuildResult), and *something has to act on that report*. Hydrating
+ * from in here would mean either discarding the first pass's report, which is how a virtual device
+ * orphaned while the process was down keeps a stale CONNECTED status forever, or reaching from this
+ * service back into the status listener that already depends on it. One owner for every pass,
+ * bootstrap included, removes the choice.
+ *
  * ## Ids, not hydrated entities
  *
  * `byVirtualDevice` and `bySourceDevice` hold ids only (see VirtualPropertyLink). A cached entity is
@@ -99,7 +110,7 @@ export interface VirtualIndexRebuildResult {
  * unreachable by construction.
  */
 @Injectable()
-export class VirtualPropertyIndexService implements OnApplicationBootstrap {
+export class VirtualPropertyIndexService {
 	private readonly logger = createExtensionLogger(DEVICES_VIRTUAL_PLUGIN_NAME, 'VirtualPropertyIndexService');
 
 	private bySourceProperty = new Map<string, VirtualChannelPropertyEntity[]>();
@@ -110,31 +121,6 @@ export class VirtualPropertyIndexService implements OnApplicationBootstrap {
 		@InjectRepository(VirtualChannelPropertyEntity)
 		private readonly repository: Repository<VirtualChannelPropertyEntity>,
 	) {}
-
-	/**
-	 * Hydrated here rather than onModuleInit: every plugin's entities must already be registered for a
-	 * query spanning the devices module's STI hierarchy to see virtual rows correctly.
-	 *
-	 * A failure is logged and swallowed rather than propagated, because bootstrap hydration is an
-	 * optimization, not a precondition: this index starts empty and VirtualIndexMaintenanceListener
-	 * rebuilds it on the next structural event regardless, so a failed first pass costs staleness until
-	 * then — whereas letting the rejection escape aborts Nest's bootstrap and takes the whole
-	 * application down with it. The realistic trigger is a schema that does not exist yet: a fresh
-	 * install whose migrations have not run, and `generate:openapi`, which boots the app purely to
-	 * extract Swagger metadata against whatever database happens to be there. Both produce
-	 * `SQLITE_ERROR: no such table: devices_module_channels_properties` from the query below. Logged at
-	 * error level, not warn — outside those two known-benign cases a failure here means the index is
-	 * silently empty, and an operator should see that.
-	 */
-	async onApplicationBootstrap(): Promise<void> {
-		try {
-			await this.rebuild();
-		} catch (error) {
-			this.logger.error(
-				`Failed to hydrate the virtual property index at bootstrap: ${error}. The index starts empty and will be rebuilt on the next structural change.`,
-			);
-		}
-	}
 
 	/** Which virtual properties project the given source property. O(1), synchronous, no I/O. */
 	findBySourceProperty(id: string): VirtualChannelPropertyEntity[] {

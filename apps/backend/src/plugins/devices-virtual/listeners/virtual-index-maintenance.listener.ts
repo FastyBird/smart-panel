@@ -1,6 +1,6 @@
 import { DataSource } from 'typeorm';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
@@ -12,12 +12,12 @@ import { VirtualIndexRebuildResult, VirtualPropertyIndexService } from '../servi
 import { VirtualStatusListener } from './virtual-status.listener';
 
 /**
- * Keeps VirtualPropertyIndexService current after bootstrap.
+ * Owns VirtualPropertyIndexService's contents — the first hydration at bootstrap and every rebuild
+ * after it.
  *
- * The index is hydrated once at onApplicationBootstrap and nothing else ever calls add(),
- * rebuild() or removeVirtualDevice() on it at runtime (see its own class docstring) — so without
- * this listener a virtual device created after boot never projects, an orphaned property never
- * degrades, and a deleted virtual device's entries linger forever.
+ * Nothing else ever calls add(), rebuild() or removeVirtualDevice() on the index (see its own class
+ * docstring) — so without this listener a virtual device created after boot never projects, an
+ * orphaned property never degrades, and a deleted virtual device's entries linger forever.
  *
  * Reacts to structural events only — device and channel-property lifecycle, plus the module-wide
  * reset — by scheduling a full rebuild() rather than maintaining the three maps incrementally. A
@@ -92,7 +92,7 @@ import { VirtualStatusListener } from './virtual-status.listener';
  * loses that particular race still recovers rather than leaving the index stale.
  */
 @Injectable()
-export class VirtualIndexMaintenanceListener {
+export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	private readonly logger = createExtensionLogger(DEVICES_VIRTUAL_PLUGIN_NAME, 'VirtualIndexMaintenanceListener');
 
 	/**
@@ -165,6 +165,73 @@ export class VirtualIndexMaintenanceListener {
 		private readonly devicesService: DevicesService,
 		private readonly dataSource: DataSource,
 	) {}
+
+	/**
+	 * Fills the index for the first time, and recomputes the connection state of every virtual device
+	 * that first pass found wired differently than the empty index it started from.
+	 *
+	 * `onApplicationBootstrap` rather than `onModuleInit`: every plugin's entities must already be
+	 * registered for rebuild()'s query, which spans the devices module's STI hierarchy, to see virtual
+	 * rows correctly. The plugin's own `onModuleInit` also has to have run by then, since the mapping it
+	 * registers there carries the `afterCreate` hook that keeps a connection-state property created
+	 * below from being born an orphan.
+	 *
+	 * ## Why the result cannot be discarded
+	 *
+	 * At bootstrap the outgoing index is empty, so `rewiredVirtualDeviceIds` is simply every virtual
+	 * device that has a projecting property at all — including one whose source property was deleted
+	 * while this process was *not* running. That case is the reason this runs at all. A source-property
+	 * deletion commits, and the fire-and-forget pass that would have degraded the virtual device to
+	 * DISCONNECTED (see recomputeStatuses()) is scheduled but not yet run when the process stops. The
+	 * deletion is durable; the status is not. On the next start the rebuild below duly discovers the
+	 * orphan — and nothing else ever will: an orphaned link has no source device, so the device is in
+	 * no `bySourceDevice` set and no DEVICE_CONNECTION_CHANGED event can ever select it again. Feeding
+	 * this result through the same recomputeStatuses() a structural rebuild uses is what turns a
+	 * restart into the repair for that, instead of leaving a device that renders fine, reports
+	 * plausible values and is permanently, silently wrong.
+	 *
+	 * `abandonedSourceDeviceIds` is deliberately *not* fed to unhideAbandonedSources(): rebuild()
+	 * derives it from source devices present in the outgoing index and absent from the incoming one,
+	 * and the outgoing index is empty here, so it is structurally always `[]` on this pass. There is no
+	 * bootstrap equivalent of "the last virtual device referencing this source went away".
+	 *
+	 * ## Why it is awaited, and why it still cannot abort startup
+	 *
+	 * Awaited rather than started fire-and-forget so the index is populated and the repair complete
+	 * before the app serves its first request — the same guarantee this hook gave when the index
+	 * hydrated itself. The added cost is bounded by the number of virtual devices with links, which is
+	 * a hand-assembled, small number, and setConnectionState() writes nothing at all when the state it
+	 * computes matches what is already stored.
+	 *
+	 * Nothing in here may propagate, because an `onApplicationBootstrap` rejection aborts Nest's
+	 * bootstrap and takes the whole application down. The realistic trigger is a schema that does not
+	 * exist yet — a fresh install whose migrations have not run, and `generate:openapi`, which boots
+	 * the app purely to extract Swagger metadata against whatever database happens to be there; both
+	 * make rebuild()'s query fail with `SQLITE_ERROR: no such table:
+	 * devices_module_channels_properties`. Hydration is an optimization, not a precondition: the index
+	 * starts empty and the next structural event rebuilds it regardless, so a failed first pass costs
+	 * staleness until then rather than a dead process. Logged at error level, not warn — outside those
+	 * two known-benign cases a failure here means the index is silently empty, and an operator should
+	 * see that. recomputeStatuses() additionally contains its own per-device failures, so one virtual
+	 * device that cannot be recomputed neither costs the others their repair nor reaches this catch.
+	 *
+	 * Deliberately not routed through handleStructuralChange()/runRebuildLoop(). That path is
+	 * fire-and-forget by construction and defers past whatever transaction is open on the shared
+	 * connection — both of which exist because a structural event is emitted from *inside* an
+	 * uncommitted transaction. Bootstrap has no such emitter and no such transaction to outlive, and
+	 * routing through it would trade this hook's awaited guarantee for a wait it has no reason to pay.
+	 */
+	async onApplicationBootstrap(): Promise<void> {
+		try {
+			const hydrated = await this.index.rebuild();
+
+			await this.recomputeStatuses(hydrated.rewiredVirtualDeviceIds, 'aggregated from source devices at startup');
+		} catch (error) {
+			this.logger.error(
+				`Failed to hydrate the virtual property index at bootstrap: ${error}. The index starts empty and will be rebuilt on the next structural change.`,
+			);
+		}
+	}
 
 	@OnEvent(EventType.DEVICE_CREATED)
 	@OnEvent(EventType.DEVICE_UPDATED)
@@ -298,6 +365,10 @@ export class VirtualIndexMaintenanceListener {
 	 * because a fully orphaned device has dropped out of `bySourceDevice` and no source device change
 	 * can select it. It stays reported as connected forever, with nothing behind it.
 	 *
+	 * Shared with the bootstrap hydration (see onApplicationBootstrap()), which is the same problem one
+	 * process restart later; `reason` is a parameter only so the state written there does not claim a
+	 * wiring change nobody made during this process's lifetime.
+	 *
 	 * ## Why this cannot loop
 	 *
 	 * The write below (DeviceConnectivityService.setConnectionState) can emit two things, and neither
@@ -318,19 +389,20 @@ export class VirtualIndexMaintenanceListener {
 	 * Failures are logged per device and do not abort the rest: this runs inside the fire-and-forget
 	 * rebuild loop, and one virtual device that cannot be recomputed must not cost the others theirs.
 	 */
-	private async recomputeStatuses(virtualDeviceIds: string[]): Promise<void> {
+	private async recomputeStatuses(
+		virtualDeviceIds: string[],
+		reason = 'aggregated after a source wiring change',
+	): Promise<void> {
 		for (const virtualDeviceId of virtualDeviceIds) {
 			try {
-				await this.status.recompute(virtualDeviceId, 'aggregated after a source wiring change');
+				await this.status.recompute(virtualDeviceId, reason);
 			} catch (error) {
 				this.logger.warn(`Failed to recompute connection state for virtual device id=${virtualDeviceId}: ${error}`);
 			}
 		}
 
 		if (virtualDeviceIds.length > 0) {
-			this.logger.debug(
-				`Recomputed connection state for ${virtualDeviceIds.length} virtual device(s) whose source wiring changed`,
-			);
+			this.logger.debug(`Recomputed connection state for ${virtualDeviceIds.length} virtual device(s): ${reason}`);
 		}
 	}
 
