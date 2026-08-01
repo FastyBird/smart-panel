@@ -6,6 +6,7 @@ import { ChannelsPropertiesService } from '../../../modules/devices/services/cha
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
+import { VirtualValueOrigin } from '../entities/devices-virtual.entity';
 import { VirtualDevicesService } from '../services/virtual-devices.service';
 import { VirtualPropertyIndexService } from '../services/virtual-property-index.service';
 import { SourceNotVirtualConstraintValidator } from '../validators/source-not-virtual-constraint.validator';
@@ -139,5 +140,139 @@ describe('source_property field validation on CreateVirtualChannelPropertyDto / 
 
 		expect(errors.filter((error) => error.property === 'source_property')).toHaveLength(0);
 		expect(channelsPropertiesService.findOne).not.toHaveBeenCalled();
+	});
+
+	// -- value_origin / source_property must name a state the entity actually has ---------------
+	//
+	// VirtualChannelPropertyEntity models exactly three: linked (source + a source id), orphaned
+	// (source + null) and owned (local + null). `local` plus a named source is the missing fourth row:
+	// both fields validate independently, so the API used to accept it and produce a property that
+	// neither mirrors nor forwards — VirtualValueSourceService resolves an owned property to its own
+	// storage key and never reads the source, VirtualPropertyIndexService skips owned properties so
+	// nothing projects into it, and VirtualDevicePlatform refuses to forward a write for a property
+	// that is not in the index.
+
+	// Resolves any source_property to a property on a physical device, so @ValidateSourceNotVirtual
+	// passes and the only thing left that can reject the payload is the pair constraint.
+	const withPhysicalSource = (): void => {
+		const physicalDevice = { id: 'physical-device-pair', type: 'simulator' } as DeviceEntity;
+		const channel = Object.assign(new ChannelEntity(), { id: 'chan-pair', device: physicalDevice });
+
+		channelsPropertiesService.findOne.mockResolvedValue(
+			Object.assign(new ChannelPropertyEntity(), { id: 'phys-source-pair', channel }),
+		);
+		channelsService.findOne.mockResolvedValue(channel);
+		devicesService.findOne.mockResolvedValue(physicalDevice);
+	};
+
+	const ownedSourceError = (errors: { property: string; constraints?: Record<string, string> }[]): boolean =>
+		errors.some((error) => error.property === 'source_property' && !!error.constraints?.OwnedPropertyHasNoSource);
+
+	it('CreateVirtualChannelPropertyDto rejects value_origin=local together with a source_property', async () => {
+		withPhysicalSource();
+
+		const dto = toInstance(CreateVirtualChannelPropertyDto, {
+			...basePropertyFields,
+			value_origin: VirtualValueOrigin.LOCAL,
+			source_property: '550e8400-e29b-41d4-a716-446655440010',
+		});
+
+		expect(ownedSourceError(await validate(dto))).toBe(true);
+	});
+
+	it('UpdateVirtualChannelPropertyDto rejects value_origin=local together with a source_property', async () => {
+		withPhysicalSource();
+
+		const dto = toInstance(UpdateVirtualChannelPropertyDto, {
+			type: DEVICES_VIRTUAL_TYPE,
+			value_origin: VirtualValueOrigin.LOCAL,
+			source_property: '550e8400-e29b-41d4-a716-446655440011',
+		});
+
+		expect(ownedSourceError(await validate(dto))).toBe(true);
+	});
+
+	// The three legitimate states, one test each — the constraint must not narrow the schema beyond
+	// the one combination that has no meaning.
+
+	it('CreateVirtualChannelPropertyDto accepts an owned property with no source at all', async () => {
+		const dto = toInstance(CreateVirtualChannelPropertyDto, {
+			...basePropertyFields,
+			value_origin: VirtualValueOrigin.LOCAL,
+		});
+
+		expect(await validate(dto)).toHaveLength(0);
+	});
+
+	it('CreateVirtualChannelPropertyDto accepts an owned property whose source is explicitly null', async () => {
+		const dto = toInstance(CreateVirtualChannelPropertyDto, {
+			...basePropertyFields,
+			value_origin: VirtualValueOrigin.LOCAL,
+			source_property: null,
+		});
+
+		expect(await validate(dto)).toHaveLength(0);
+	});
+
+	it('CreateVirtualChannelPropertyDto accepts a linked property that names its source explicitly', async () => {
+		withPhysicalSource();
+
+		const dto = toInstance(CreateVirtualChannelPropertyDto, {
+			...basePropertyFields,
+			value_origin: VirtualValueOrigin.SOURCE,
+			source_property: '550e8400-e29b-41d4-a716-446655440012',
+		});
+
+		expect(await validate(dto)).toHaveLength(0);
+	});
+
+	// An orphan — the state a property lands in when its source is deleted, and the one a remap starts
+	// from. `source` with no source is legal and must stay legal.
+	it('UpdateVirtualChannelPropertyDto accepts clearing the source of a projecting property', async () => {
+		const dto = toInstance(UpdateVirtualChannelPropertyDto, {
+			type: DEVICES_VIRTUAL_TYPE,
+			value_origin: VirtualValueOrigin.SOURCE,
+			source_property: null,
+		});
+
+		expect(await validate(dto)).toHaveLength(0);
+	});
+
+	// -- the class-validator override trap ------------------------------------------------------
+	//
+	// class-validator *replaces* rather than merges the decorator stack for a redeclared
+	// (propertyName, type) pair, and nearly every decorator registers under the type
+	// `customValidation` — so adding one decorator to a property can silently delete the @IsUUID /
+	// @IsEnum / @IsOptional already on it. These assert the neighbours of the new constraint survived
+	// it, on both DTOs.
+
+	it('CreateVirtualChannelPropertyDto still rejects a malformed uuid after the pair constraint was added', async () => {
+		const dto = toInstance(CreateVirtualChannelPropertyDto, { ...basePropertyFields, source_property: 'not-a-uuid' });
+
+		const errors = await validate(dto);
+
+		expect(errors.some((error) => error.property === 'source_property' && !!error.constraints?.isUuid)).toBe(true);
+	});
+
+	it('UpdateVirtualChannelPropertyDto still rejects a malformed uuid after the pair constraint was added', async () => {
+		const dto = toInstance(UpdateVirtualChannelPropertyDto, {
+			type: DEVICES_VIRTUAL_TYPE,
+			source_property: 'not-a-uuid',
+		});
+
+		const errors = await validate(dto);
+
+		expect(errors.some((error) => error.property === 'source_property' && !!error.constraints?.isUuid)).toBe(true);
+	});
+
+	it.each([
+		['CreateVirtualChannelPropertyDto', CreateVirtualChannelPropertyDto, basePropertyFields],
+		['UpdateVirtualChannelPropertyDto', UpdateVirtualChannelPropertyDto, { type: DEVICES_VIRTUAL_TYPE }],
+	])('%s still rejects an unknown value_origin', async (_name, DtoClass, baseFields) => {
+		const dto = toInstance(DtoClass as new () => object, { ...baseFields, value_origin: 'somewhere-else' });
+
+		const errors = await validate(dto);
+
+		expect(errors.some((error) => error.property === 'value_origin' && !!error.constraints?.isEnum)).toBe(true);
 	});
 });

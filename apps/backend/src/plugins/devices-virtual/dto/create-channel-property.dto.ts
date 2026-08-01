@@ -6,6 +6,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { CreateChannelPropertyDto } from '../../../modules/devices/dto/create-channel-property.dto';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { VirtualValueOrigin } from '../entities/devices-virtual.entity';
+import { ValidateOwnedPropertyHasNoSource } from '../validators/owned-property-has-no-source-constraint.validator';
 import { ValidateSourceNotVirtual } from '../validators/source-not-virtual-constraint.validator';
 
 @ApiSchema({ name: 'DevicesVirtualPluginCreateChannelProperty' })
@@ -37,7 +38,8 @@ export class CreateVirtualChannelPropertyDto extends CreateChannelPropertyDto {
 
 	@ApiPropertyOptional({
 		name: 'source_property',
-		description: 'Property whose value this one should project',
+		description:
+			'Property whose value this one should project. Must be omitted or null when value_origin is local — an owned property stores its own value and has no source.',
 		type: 'string',
 		format: 'uuid',
 		nullable: true,
@@ -50,5 +52,6 @@ export class CreateVirtualChannelPropertyDto extends CreateChannelPropertyDto {
 	})
 	@ValidateIf((_, value) => value !== null)
 	@ValidateSourceNotVirtual()
+	@ValidateOwnedPropertyHasNoSource()
 	source_property?: string | null;
 }
