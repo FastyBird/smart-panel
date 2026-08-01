@@ -85,10 +85,29 @@ export class VirtualPropertyIndexService implements OnApplicationBootstrap {
 		private readonly repository: Repository<VirtualChannelPropertyEntity>,
 	) {}
 
-	// Hydrated here rather than onModuleInit: every plugin's entities must already be registered
-	// for a query spanning the devices module's STI hierarchy to see virtual rows correctly.
+	/**
+	 * Hydrated here rather than onModuleInit: every plugin's entities must already be registered for a
+	 * query spanning the devices module's STI hierarchy to see virtual rows correctly.
+	 *
+	 * A failure is logged and swallowed rather than propagated, because bootstrap hydration is an
+	 * optimization, not a precondition: this index starts empty and VirtualIndexMaintenanceListener
+	 * rebuilds it on the next structural event regardless, so a failed first pass costs staleness until
+	 * then — whereas letting the rejection escape aborts Nest's bootstrap and takes the whole
+	 * application down with it. The realistic trigger is a schema that does not exist yet: a fresh
+	 * install whose migrations have not run, and `generate:openapi`, which boots the app purely to
+	 * extract Swagger metadata against whatever database happens to be there. Both produce
+	 * `SQLITE_ERROR: no such table: devices_module_channels_properties` from the query below. Logged at
+	 * error level, not warn — outside those two known-benign cases a failure here means the index is
+	 * silently empty, and an operator should see that.
+	 */
 	async onApplicationBootstrap(): Promise<void> {
-		await this.rebuild();
+		try {
+			await this.rebuild();
+		} catch (error) {
+			this.logger.error(
+				`Failed to hydrate the virtual property index at bootstrap: ${error}. The index starts empty and will be rebuilt on the next structural change.`,
+			);
+		}
 	}
 
 	/** Which virtual properties project the given source property. O(1), synchronous, no I/O. */

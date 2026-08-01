@@ -139,6 +139,44 @@ describe('VirtualPropertyIndexService', () => {
 		expect(service.findBySourceProperty('source-prop')).toEqual([linkedProperty]);
 	});
 
+	// Regression test for bootstrap hydration aborting application startup. The rebuild query is the
+	// first thing to touch the schema, so it is also the first thing to fail when there is no schema:
+	// a fresh install before migrations, and `generate:openapi`, which boots the whole Nest app purely
+	// to read Swagger metadata. An unguarded `await this.rebuild()` turned that into
+	// `SQLITE_ERROR: no such table: devices_module_channels_properties` escaping onApplicationBootstrap
+	// and killing the process. The index is an optimization — VirtualIndexMaintenanceListener rebuilds
+	// it on the next structural event — so a failed first pass must degrade to an empty index, never to
+	// a dead application.
+	it('survives a bootstrap hydration failure, leaving the index empty rather than aborting startup', async () => {
+		const error = new Error('SQLITE_ERROR: no such table: devices_module_channels_properties');
+
+		repository.find.mockRejectedValue(error);
+
+		const logged = jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
+
+		await expect(service.onApplicationBootstrap()).resolves.toBeUndefined();
+
+		expect(service.findBySourceProperty('source-prop')).toEqual([]);
+		expect(service.findLinksByVirtualDevice('virtual-device')).toEqual([]);
+		expect(logged).toHaveBeenCalledWith(expect.stringContaining('no such table'));
+	});
+
+	// The failure above must not be terminal for the index either: the very next rebuild — which is
+	// what the maintenance listener issues on the next structural event — has to hydrate normally.
+	it('hydrates normally on a later rebuild after bootstrap hydration failed', async () => {
+		repository.find.mockRejectedValueOnce(new Error('SQLITE_ERROR: no such table: x'));
+
+		jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
+
+		await service.onApplicationBootstrap();
+
+		repository.find.mockResolvedValue([linkedProperty]);
+
+		await service.rebuild();
+
+		expect(service.findBySourceProperty('source-prop')).toEqual([linkedProperty]);
+	});
+
 	it('indexes several virtual properties sharing one source', async () => {
 		repository.find.mockResolvedValue([linkedA, linkedB]);
 
