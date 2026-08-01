@@ -540,6 +540,17 @@ describe('devices-virtual plugin (e2e)', () => {
 			expect(body.data.map((device) => device.id)).toContain(sourceDeviceId);
 		});
 
+		// Regression test for the same route accepting any device that merely exists. The simulator
+		// device below is a real, ordinary physical device with no linked virtual properties of its own,
+		// so an existence-only check let it through to a 200 with `data: []` — the identical response a
+		// genuine virtual device assembled purely from owned properties gives, which made "this device
+		// draws from nothing" and "you asked the wrong kind of question" indistinguishable to a client.
+		// 422 rather than 404 because the device demonstrably exists; see the controller for the
+		// codebase precedent that split follows.
+		it('rejects a non-virtual device on the source-devices route instead of reporting no sources', async () => {
+			await authGet(`/plugins/devices-virtual/devices/${sourceDeviceId}/source-devices`).expect(422);
+		});
+
 		// ─── Additional coverage 1: STI hydration through the BASE repository ────────────
 
 		it('resolves a linked property loaded through the BASE ChannelPropertyEntity repository (STI hydration)', async () => {
