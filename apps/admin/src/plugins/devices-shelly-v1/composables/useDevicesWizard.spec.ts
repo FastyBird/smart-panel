@@ -549,15 +549,16 @@ describe('useDevicesWizard', () => {
 		expect(adapter.rows.value[0]!.suggestedName).toBe('Bathroom heater');
 	});
 
-	it('keeps polling after a refresh error so a transient failure does not end the scan', async () => {
+	it('stops polling after a refresh error instead of hammering a cleaned-up session', async () => {
+		// The most likely refresh failure is a 404 after the backend garbage-collects a finished
+		// session — there is no point re-hitting a missing endpoint every second until the
+		// component unmounts. The user can hit "Scan again" to start a fresh one. This guard was
+		// added deliberately in commit cdf62c37a after a Bugbot review; it must not regress.
 		backendClient.POST.mockResolvedValue({
 			data: { data: discoverySession },
 			response: { status: 200 },
 		});
-		backendClient.GET.mockRejectedValueOnce(new Error('network blip')).mockResolvedValue({
-			data: { data: discoverySession },
-			response: { status: 200 },
-		});
+		backendClient.GET.mockRejectedValue(new Error('session not found'));
 
 		const adapter = useDevicesWizard();
 
@@ -566,9 +567,9 @@ describe('useDevicesWizard', () => {
 		await vi.advanceTimersByTimeAsync(1_000);
 		expect(backendClient.GET).toHaveBeenCalledTimes(1);
 
-		// A single failed poll must not stop the interval — the next tick still fires.
+		// The interval must NOT fire again — the failed poll stopped it.
 		await vi.advanceTimersByTimeAsync(1_000);
-		expect(backendClient.GET).toHaveBeenCalledTimes(2);
+		expect(backendClient.GET).toHaveBeenCalledTimes(1);
 	});
 
 	it('stops polling once the shell disposes the adapter', async () => {

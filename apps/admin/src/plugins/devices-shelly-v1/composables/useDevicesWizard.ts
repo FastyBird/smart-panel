@@ -140,7 +140,11 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 
 		pollingTimer = window.setInterval(() => {
 			refreshDiscovery().catch(() => {
-				// User can trigger discovery again if polling fails.
+				// Stop polling on any error — the most likely failure is a 404 after the server
+				// cleaned up the session, and there's no point re-hitting a missing endpoint every
+				// second until the component unmounts. The user can hit "Scan again" to start a
+				// fresh session.
+				stopPolling();
 			});
 		}, 1_000);
 	};
