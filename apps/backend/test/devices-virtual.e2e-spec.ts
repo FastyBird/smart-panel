@@ -800,6 +800,133 @@ describe('devices-virtual plugin (e2e)', () => {
 		});
 	});
 
+	// ─── Deleting the last virtual device unhides the source it replaced ────────────────
+
+	// Regression test for the spec's "Deleting the last virtual device referencing a hidden source
+	// auto-unhides it". The DEVICE_DELETED handler discarded its payload and only rebuilt the index, so
+	// a physical device hidden because a virtual device replaced it stayed hidden once that replacement
+	// was gone: excluded from every picker, absent from the default device list, and — since `hidden` is
+	// only reachable through a PATCH the admin no longer offers for a device it does not show — with no
+	// route back through the UI.
+	//
+	// A self-contained device pair rather than the lifecycle flow's, so the hide/delete sequence here
+	// cannot perturb what those steps observe.
+	describe('unhiding an abandoned source device', () => {
+		let ownSourceDeviceId: string;
+		let ownSourcePropertyId: string;
+		let ownVirtualDeviceId: string;
+
+		it('unhides the source once the last virtual device referencing it is deleted', async () => {
+			const sourceResponse = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: SIMULATOR_TYPE,
+						category: DeviceCategory.OUTLET,
+						name: 'E2E Unhide Source Outlet',
+						channels: [
+							{
+								type: SIMULATOR_TYPE,
+								category: ChannelCategory.OUTLET,
+								identifier: 'outlet',
+								name: 'Outlet',
+								properties: [
+									{
+										type: SIMULATOR_TYPE,
+										category: PropertyCategory.ON,
+										identifier: 'on',
+										name: 'On',
+										permissions: [PermissionType.READ_WRITE],
+										data_type: DataTypeType.BOOL,
+										value: false,
+									},
+								],
+							},
+						],
+					},
+				})
+				.expect(201);
+
+			const sourceBody = sourceResponse.body as { data: DeviceBody };
+
+			ownSourceDeviceId = sourceBody.data.id;
+			ownSourcePropertyId = sourceBody.data.channels[0].properties[0].id;
+
+			const virtualResponse = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: DeviceCategory.LIGHTING,
+						name: 'E2E Unhide Virtual Light',
+					},
+				})
+				.expect(201);
+
+			ownVirtualDeviceId = (virtualResponse.body as { data: DeviceBody }).data.id;
+
+			const channelResponse = await authPost('/modules/devices/channels')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: ChannelCategory.LIGHT,
+						identifier: 'light',
+						name: 'Light',
+						device: ownVirtualDeviceId,
+					},
+				})
+				.expect(201);
+
+			const virtualChannelId = (channelResponse.body as { data: ChannelBody }).data.id;
+
+			await authPost(`/modules/devices/channels/${virtualChannelId}/properties`)
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: PropertyCategory.ON,
+						identifier: 'on',
+						name: 'On',
+						permissions: [PermissionType.READ_WRITE],
+						data_type: DataTypeType.BOOL,
+						source_property: ownSourcePropertyId,
+					},
+				})
+				.expect(201);
+
+			// The source is hidden because the virtual device now stands in for it.
+			await authPatch(`/modules/devices/devices/${ownSourceDeviceId}`)
+				.send({ data: { type: SIMULATOR_TYPE, hidden: true } })
+				.expect(200);
+
+			// The link has to be in the index before the deletion, or there would be no record of which
+			// source the deleted device referenced — that capture is the whole mechanism.
+			await waitUntil(async () => {
+				const response = await authGet(`/plugins/devices-virtual/devices/${ownVirtualDeviceId}/source-devices`);
+				const body = response.body as { data?: DeviceBody[] };
+
+				return { done: !!body.data?.some((device) => device.id === ownSourceDeviceId), value: null };
+			});
+
+			await ensureDeviceDeleted(authGet, authDelete, ownVirtualDeviceId);
+
+			// The unhide runs off the rebuild that follows the deletion, which is deferred past the
+			// deleting transaction's commit — so poll rather than read once.
+			const hidden = await waitUntil(async () => {
+				const response = await authGet(`/modules/devices/devices/${ownSourceDeviceId}`);
+				const body = response.body as { data: DeviceBody };
+
+				return { done: body.data.hidden === false, value: body.data.hidden };
+			});
+
+			expect(hidden).toBe(false);
+
+			// Unhidden means genuinely back in the pickers, not merely a flipped column.
+			const visibleList = await authGet('/modules/devices/devices?hidden=false').expect(200);
+
+			expect((visibleList.body as { data: DeviceBody[] }).data.map((device) => device.id)).toContain(
+				ownSourceDeviceId,
+			);
+		});
+	});
+
 	// ─── Auth enforcement ────────────────────────────────────────────────────────────────
 
 	describe('authentication', () => {

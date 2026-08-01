@@ -5,7 +5,9 @@ import { OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { EventType } from '../../../modules/devices/devices.constants';
-import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
+import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { VirtualPropertyIndexService } from '../services/virtual-property-index.service';
 
 import { VirtualStatusListener } from './virtual-status.listener';
@@ -90,9 +92,17 @@ export class VirtualIndexMaintenanceListener {
 	private running = false;
 	private pending = false;
 
+	/**
+	 * Source devices that just lost one of the virtual devices referencing them, captured at
+	 * DEVICE_DELETED time and drained once the following rebuild has settled. See
+	 * handleVirtualDeviceDeleted() for why the capture cannot wait for the rebuild.
+	 */
+	private abandonedSourceCandidates = new Set<string>();
+
 	constructor(
 		private readonly index: VirtualPropertyIndexService,
 		private readonly status: VirtualStatusListener,
+		private readonly devicesService: DevicesService,
 		private readonly dataSource: DataSource,
 	) {}
 
@@ -117,6 +127,35 @@ export class VirtualIndexMaintenanceListener {
 		this.running = true;
 
 		void this.runRebuildLoop();
+	}
+
+	/**
+	 * Notes which source devices a just-deleted virtual device was drawing from, so
+	 * unhideAbandonedSources() can check afterwards whether any of them is now referenced by nothing.
+	 *
+	 * A second subscriber on DEVICE_DELETED rather than a branch inside handleStructuralChange(), which
+	 * deliberately takes no payload and treats every structural event identically. Order between the two
+	 * does not matter: handleStructuralChange() only sets a flag and kicks off runRebuildLoop(), whose
+	 * very first act is to await deferPastOpenTransaction(), so both handlers have run to completion
+	 * before any rebuild reads anything.
+	 *
+	 * The capture has to happen here, not after the rebuild, and it has to read the index rather than
+	 * the database. The device row is already gone by the time DEVICE_DELETED fires — it is emitted from
+	 * inside DevicesService.remove()'s transaction — so its properties, and with them any record of
+	 * which sources it referenced, are gone too. The index is the last place that knowledge still exists,
+	 * and only until the rebuild this same event schedules overwrites it.
+	 */
+	@OnEvent(EventType.DEVICE_DELETED)
+	handleVirtualDeviceDeleted(device: DeviceEntity): void {
+		if (device?.type !== DEVICES_VIRTUAL_TYPE) {
+			return;
+		}
+
+		for (const link of this.index.findLinksByVirtualDevice(device.id)) {
+			if (link.sourceDeviceId) {
+				this.abandonedSourceCandidates.add(link.sourceDeviceId);
+			}
+		}
 	}
 
 	/**
@@ -151,7 +190,15 @@ export class VirtualIndexMaintenanceListener {
 
 				this.pending = false;
 
-				await this.recomputeStatuses(await this.rebuildWithRetry());
+				const rewiredVirtualDeviceIds = await this.rebuildWithRetry();
+
+				// null means the index was never refreshed, so every question either of these would ask
+				// of it would be answered from pre-event state. Left for the next pass / next structural
+				// event, which is exactly how a failed rebuild already behaved.
+				if (rewiredVirtualDeviceIds) {
+					await this.recomputeStatuses(rewiredVirtualDeviceIds);
+					await this.unhideAbandonedSources();
+				}
 			} while (this.pending);
 		} finally {
 			this.running = false;
@@ -213,11 +260,12 @@ export class VirtualIndexMaintenanceListener {
 	 * returns, so runRebuildLoop() always reaches its `while (this.pending)` check and eventually
 	 * sets `running = false`.
 	 *
-	 * Returns the virtual device ids rebuild() reported as re-wired, for recomputeStatuses(). A failure
-	 * returns none: nothing was swapped in, so nothing changed to recompute — and guessing otherwise
-	 * would aggregate a virtual device's state from an index the failed pass left untouched.
+	 * Returns the virtual device ids rebuild() reported as re-wired, or null if no attempt succeeded —
+	 * a distinction the caller needs, because an empty array means "the index is current and nothing
+	 * changed" while null means "the index still holds whatever it held before the event", and every
+	 * follow-up step reads that index to decide something.
 	 */
-	private async rebuildWithRetry(): Promise<string[]> {
+	private async rebuildWithRetry(): Promise<string[] | null> {
 		for (let attempt = 1; ; attempt++) {
 			try {
 				return await this.index.rebuild();
@@ -225,10 +273,63 @@ export class VirtualIndexMaintenanceListener {
 				this.logger.warn(`Failed to rebuild the virtual property index: ${error}`);
 
 				if (attempt >= VirtualIndexMaintenanceListener.MAX_REBUILD_ATTEMPTS || !this.looksTransientSqliteError(error)) {
-					return [];
+					return null;
 				}
 
 				await this.deferPastOpenTransaction();
+			}
+		}
+	}
+
+	/**
+	 * Unhides every source device that the just-rebuilt index shows is no longer referenced by any
+	 * virtual device — the spec's "Deleting the last virtual device referencing a hidden source
+	 * auto-unhides it".
+	 *
+	 * Without this a source hidden because a virtual device replaced it stays hidden after that
+	 * replacement is gone: excluded from every picker, absent from the default device list, with no
+	 * route back through the UI. The candidate set comes from handleVirtualDeviceDeleted(), which read
+	 * it off the pre-rebuild index; "still referenced" is then answered against the post-rebuild one,
+	 * which no longer contains the deleted device — so a source that another virtual device still draws
+	 * from is left alone, and only a genuinely abandoned one is touched.
+	 *
+	 * Drained unconditionally, including for candidates that turn out to still be referenced or to not
+	 * be hidden at all: a candidate is a question about one specific deletion, and re-asking it after
+	 * some later, unrelated structural event would be asking about state that has since moved on.
+	 *
+	 * The patch emits DEVICE_UPDATED, which schedules one further rebuild pass. That pass converges
+	 * rather than looping: the candidate set is empty by then, so it unhides nothing and emits nothing.
+	 */
+	private async unhideAbandonedSources(): Promise<void> {
+		const candidates = this.abandonedSourceCandidates;
+
+		if (candidates.size === 0) {
+			return;
+		}
+
+		this.abandonedSourceCandidates = new Set<string>();
+
+		for (const sourceDeviceId of candidates) {
+			try {
+				if (this.index.findVirtualDeviceIdsBySourceDevice(sourceDeviceId).length > 0) {
+					continue;
+				}
+
+				const sourceDevice = await this.devicesService.findOne(sourceDeviceId);
+
+				// Already visible, or gone entirely — the source device can be deleted in the same sweep
+				// as the virtual device that replaced it.
+				if (!sourceDevice?.hidden) {
+					continue;
+				}
+
+				await this.devicesService.update(sourceDevice.id, { type: sourceDevice.type, hidden: false });
+
+				this.logger.debug(
+					`Unhid source device id=${sourceDevice.id} after the last virtual device referencing it was deleted`,
+				);
+			} catch (error) {
+				this.logger.warn(`Failed to unhide abandoned source device id=${sourceDeviceId}: ${error}`);
 			}
 		}
 	}

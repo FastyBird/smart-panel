@@ -4,6 +4,9 @@ import { DataSource } from 'typeorm';
 import { Logger } from '@nestjs/common';
 
 import { EventType } from '../../../modules/devices/devices.constants';
+import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { VirtualPropertyIndexService } from '../services/virtual-property-index.service';
 
 import { VirtualIndexMaintenanceListener } from './virtual-index-maintenance.listener';
@@ -22,8 +25,13 @@ interface OnEventMetadataEntry {
 
 describe('VirtualIndexMaintenanceListener', () => {
 	let listener: VirtualIndexMaintenanceListener;
-	let index: { rebuild: jest.Mock };
+	let index: {
+		rebuild: jest.Mock;
+		findLinksByVirtualDevice: jest.Mock;
+		findVirtualDeviceIdsBySourceDevice: jest.Mock;
+	};
 	let status: { recompute: jest.Mock };
+	let devicesService: { findOne: jest.Mock; update: jest.Mock };
 
 	// Drains Node's microtask queue completely — including microtasks newly queued while draining —
 	// before the callback runs. Unlike a fixed number of `await Promise.resolve()` hops, this needs
@@ -68,11 +76,17 @@ describe('VirtualIndexMaintenanceListener', () => {
 	beforeEach(() => {
 		// rebuild() resolves to the virtual device ids it re-wired; [] is "nothing changed", the
 		// ordinary case for a structural event that did not touch any virtual device's links.
-		index = { rebuild: jest.fn().mockResolvedValue([]) };
+		index = {
+			rebuild: jest.fn().mockResolvedValue([]),
+			findLinksByVirtualDevice: jest.fn().mockReturnValue([]),
+			findVirtualDeviceIdsBySourceDevice: jest.fn().mockReturnValue([]),
+		};
 		status = { recompute: jest.fn().mockResolvedValue(undefined) };
+		devicesService = { findOne: jest.fn().mockResolvedValue(null), update: jest.fn().mockResolvedValue(undefined) };
 		listener = new VirtualIndexMaintenanceListener(
 			index as unknown as VirtualPropertyIndexService,
 			status as unknown as VirtualStatusListener,
+			devicesService as unknown as DevicesService,
 			dataSourceStub as unknown as DataSource,
 		);
 	});
@@ -321,6 +335,153 @@ describe('VirtualIndexMaintenanceListener', () => {
 		expect(status.recompute).toHaveBeenCalledTimes(1);
 	});
 
+	// -- unhiding a source device whose last virtual device was deleted ------------------------
+	//
+	// Regression tests for the spec's "Deleting the last virtual device referencing a hidden source
+	// auto-unhides it". The DEVICE_DELETED handler discarded its payload and only rebuilt, so a
+	// physical device hidden because a virtual device replaced it stayed hidden after that replacement
+	// was gone — excluded from every picker, absent from the default device list, with no route back
+	// through the UI.
+
+	const virtualDevice = { id: 'virtual-device', type: DEVICES_VIRTUAL_TYPE } as DeviceEntity;
+
+	// The deleted virtual device drew from `source-device`, and after the rebuild nothing else does.
+	const arrangeAbandonedSource = (hidden: boolean): void => {
+		index.findLinksByVirtualDevice.mockReturnValue([
+			{ propertyId: 'link-1', sourcePropertyId: 'source-prop', sourceDeviceId: 'source-device' },
+		]);
+		index.findVirtualDeviceIdsBySourceDevice.mockReturnValue([]);
+		devicesService.findOne.mockResolvedValue({ id: 'source-device', type: 'simulator', hidden } as DeviceEntity);
+	};
+
+	it('unhides a source device once the last virtual device referencing it is deleted', async () => {
+		arrangeAbandonedSource(true);
+
+		listener.handleVirtualDeviceDeleted(virtualDevice);
+		listener.handleStructuralChange();
+		await flushMicrotasks();
+
+		expect(devicesService.update).toHaveBeenCalledWith(
+			'source-device',
+			expect.objectContaining({ hidden: false, type: 'simulator' }),
+		);
+	});
+
+	// The reference count has to be read from the index the rebuild just produced — the one that no
+	// longer contains the deleted device — not from the pre-deletion one the links were captured off.
+	it('leaves a source device hidden while another virtual device still references it', async () => {
+		arrangeAbandonedSource(true);
+		index.findVirtualDeviceIdsBySourceDevice.mockReturnValue(['other-virtual-device']);
+
+		listener.handleVirtualDeviceDeleted(virtualDevice);
+		listener.handleStructuralChange();
+		await flushMicrotasks();
+
+		expect(devicesService.update).not.toHaveBeenCalled();
+	});
+
+	it('does not patch a source device that was never hidden', async () => {
+		arrangeAbandonedSource(false);
+
+		listener.handleVirtualDeviceDeleted(virtualDevice);
+		listener.handleStructuralChange();
+		await flushMicrotasks();
+
+		expect(devicesService.update).not.toHaveBeenCalled();
+	});
+
+	// The source device can be deleted in the same sweep as the virtual device that replaced it.
+	it('skips a source device that no longer exists', async () => {
+		arrangeAbandonedSource(true);
+		devicesService.findOne.mockResolvedValue(null);
+
+		listener.handleVirtualDeviceDeleted(virtualDevice);
+		listener.handleStructuralChange();
+		await flushMicrotasks();
+
+		expect(devicesService.update).not.toHaveBeenCalled();
+	});
+
+	it('ignores the deletion of a device that is not virtual', async () => {
+		arrangeAbandonedSource(true);
+
+		listener.handleVirtualDeviceDeleted({ id: 'simulator-device', type: 'simulator' } as DeviceEntity);
+		listener.handleStructuralChange();
+		await flushMicrotasks();
+
+		expect(index.findLinksByVirtualDevice).not.toHaveBeenCalled();
+		expect(devicesService.update).not.toHaveBeenCalled();
+	});
+
+	// The links have to be read synchronously, at event time: the device row is already gone when
+	// DEVICE_DELETED fires, and the rebuild this same event schedules is about to overwrite the only
+	// remaining record of which sources it referenced.
+	it('captures the deleted device links before any rebuild can overwrite them', () => {
+		arrangeAbandonedSource(true);
+
+		listener.handleVirtualDeviceDeleted(virtualDevice);
+
+		expect(index.findLinksByVirtualDevice).toHaveBeenCalledWith('virtual-device');
+		expect(index.rebuild).not.toHaveBeenCalled();
+	});
+
+	// A failed rebuild leaves the index holding pre-deletion state, in which the deleted device still
+	// references its source — so the reference count would be answered from stale data. The candidates
+	// stay pending for the next pass instead.
+	it('does not unhide anything when the rebuild failed', async () => {
+		const loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+		arrangeAbandonedSource(true);
+		index.rebuild.mockRejectedValue(new Error('unexpected boom'));
+
+		listener.handleVirtualDeviceDeleted(virtualDevice);
+		listener.handleStructuralChange();
+		await flushMicrotasks();
+
+		expect(devicesService.update).not.toHaveBeenCalled();
+
+		loggerWarnSpy.mockRestore();
+	});
+
+	// The patch emits DEVICE_UPDATED, which schedules one further pass. That pass must find the
+	// candidate set already drained, or the same source would be looked up and patched forever.
+	it('drains its candidates, so a follow-up pass unhides nothing again', async () => {
+		arrangeAbandonedSource(true);
+
+		listener.handleVirtualDeviceDeleted(virtualDevice);
+		listener.handleStructuralChange();
+		await flushMicrotasks();
+
+		expect(devicesService.update).toHaveBeenCalledTimes(1);
+
+		// Stands in for the DEVICE_UPDATED the patch above emits.
+		listener.handleStructuralChange();
+		await flushMicrotasks();
+
+		expect(devicesService.update).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps unhiding the remaining candidates after one of them throws', async () => {
+		const loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+		index.findLinksByVirtualDevice.mockReturnValue([
+			{ propertyId: 'link-1', sourcePropertyId: 'prop-1', sourceDeviceId: 'source-a' },
+			{ propertyId: 'link-2', sourcePropertyId: 'prop-2', sourceDeviceId: 'source-b' },
+		]);
+		index.findVirtualDeviceIdsBySourceDevice.mockReturnValue([]);
+		devicesService.findOne
+			.mockRejectedValueOnce(new Error('boom'))
+			.mockResolvedValue({ id: 'source-b', type: 'simulator', hidden: true } as DeviceEntity);
+
+		listener.handleVirtualDeviceDeleted(virtualDevice);
+		listener.handleStructuralChange();
+		await flushMicrotasks();
+
+		expect(devicesService.update).toHaveBeenCalledTimes(1);
+
+		loggerWarnSpy.mockRestore();
+	});
+
 	// -- Task 12b: the rebuild must not read while the emitting transaction is still open -------
 
 	// Real DataSource + dataSource.transaction() — the same call this app's DevicesService.remove()
@@ -380,6 +541,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 			const probeListener = new VirtualIndexMaintenanceListener(
 				probeIndex as unknown as VirtualPropertyIndexService,
 				{ recompute: jest.fn().mockResolvedValue(undefined) } as unknown as VirtualStatusListener,
+				{ findOne: jest.fn(), update: jest.fn() } as unknown as DevicesService,
 				dataSource,
 			);
 
