@@ -340,6 +340,38 @@ describe('devices-virtual plugin (e2e)', () => {
 			expect(body.data.category).toBe(DeviceCategory.LIGHTING);
 		});
 
+		// Regression test for every virtual device being permanently uncommandable. The `status`
+		// property under device_information is synthesized by DeviceConnectivityService — generic module
+		// code with no `value_origin` to give — so on a virtual device it took the SOURCE column default
+		// with a null source: verbatim VirtualPropertyIndexService's definition of an ORPHAN. Once the
+		// device had any linked property, the next source connection change made
+		// VirtualStatusListener.aggregateState() return DISCONNECTED however healthy the real sources
+		// were, and PropertyCommandService rejects every command against an offline device. The property
+		// is owned by the virtual device and projected from nowhere, so it must be `local`.
+		it('synthesizes the connection state property as owned, not as an orphaned projection', async () => {
+			// VirtualDeviceInformationListener runs fire-and-forget off DEVICE_CREATED, so poll rather
+			// than assume the synthesis finished before the POST above returned.
+			const statusProperty = await waitUntil(async () => {
+				const response = await authGet(`/modules/devices/devices/${virtualDeviceId}`);
+				const body = response.body as { data: DeviceBody };
+
+				const informationChannel = body.data.channels.find(
+					(channel) => channel.category === String(ChannelCategory.DEVICE_INFORMATION),
+				);
+
+				const property = informationChannel?.properties.find(
+					(candidate) => candidate.category === PropertyCategory.STATUS,
+				);
+
+				return { done: property?.value_origin === 'local', value: property ?? null };
+			});
+
+			expect(statusProperty?.value_origin).toBe('local');
+			// Owned means owned outright: `local` with a lingering source_property would still be read
+			// through the source registry.
+			expect(statusProperty?.source_property).toBeNull();
+		});
+
 		it('adds a light channel to the virtual device', async () => {
 			const response = await authPost('/modules/devices/channels')
 				.send({

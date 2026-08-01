@@ -15,7 +15,7 @@ import { ChannelsPropertiesService } from '../../../modules/devices/services/cha
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
-import { VirtualValueOrigin } from '../entities/devices-virtual.entity';
+import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
 
 interface OwnedPropertyDefinition {
 	identifier: string;
@@ -36,6 +36,10 @@ interface OwnedPropertyDefinition {
  * virtual device has no linked properties yet, so it is vacuously CONNECTED by the same rule
  * VirtualStatusListener applies to a source-less device — CONNECTED is therefore the correct initial
  * state to record here, not an arbitrary choice.
+ *
+ * Borrowing that generic path has one consequence this listener must then repair: it creates the
+ * `status` property without a `value_origin`, which on a virtual device means the SOURCE column
+ * default and therefore an orphan. See claimConnectionStateProperty().
  *
  * Each property is created only if missing (matching DeviceConnectivityService's own
  * find-or-create idempotency), so a redelivered or duplicate DEVICE_CREATED event is harmless.
@@ -72,6 +76,8 @@ export class VirtualDeviceInformationListener {
 				return;
 			}
 
+			await this.claimConnectionStateProperty(channel);
+
 			for (const definition of this.ownedPropertyDefinitions(device)) {
 				await this.ensureOwnedProperty(channel, definition);
 			}
@@ -84,6 +90,62 @@ export class VirtualDeviceInformationListener {
 			// rationale for catching within the handler.
 			this.logger.warn(`Failed to synthesize device information for virtual device id=${device.id}: ${error}`);
 		}
+	}
+
+	/**
+	 * Re-marks the connection-state property as LOCAL, because the generic path that just synthesized
+	 * it cannot know to.
+	 *
+	 * DeviceConnectivityService.findOrCreateConnectionProperty creates the `status` property through
+	 * the ordinary ChannelsPropertiesService.create() with no `value_origin` in its DTO — it is module
+	 * code and has no business knowing a plugin-specific column exists. On a virtual device that lands
+	 * on VirtualChannelPropertyEntity, whose column default is SOURCE, with `sourcePropertyId` null:
+	 * exactly the shape VirtualPropertyIndexService classifies as an *orphan*.
+	 *
+	 * That misclassification is not cosmetic. The next connection change on any source device makes
+	 * VirtualStatusListener.aggregateState() see an orphaned link and return DISCONNECTED however
+	 * healthy the real sources are, and PropertyCommandService then refuses every command against an
+	 * offline device — every virtual device permanently uncommandable. This property is owned by the
+	 * virtual device and projected from nowhere, so LOCAL is what it has always meant.
+	 *
+	 * Correcting after the fact rather than pre-creating the property here keeps the ten-entry
+	 * ConnectionState `format` list and the identifier/name/permissions shape in
+	 * DeviceConnectivityService as their single definition, instead of a second copy to drift. The
+	 * intervening window is not observable: a device this handler is running for was created moments
+	 * ago with no linked properties at all, so it appears in no source device's reverse index and no
+	 * DEVICE_CONNECTION_CHANGED event can select it for aggregation until the user links something.
+	 * Storage does not move either — VirtualValueSourceService.resolve() returns null for an orphan
+	 * *and* for an owned property, so the state written by setConnectionState() above is already under
+	 * this property's own key.
+	 *
+	 * Idempotent: a redelivered DEVICE_CREATED finds the property already LOCAL and issues no write,
+	 * matching the find-or-create behaviour of the rest of this listener.
+	 */
+	private async claimConnectionStateProperty(channel: ChannelEntity): Promise<void> {
+		const property = await this.channelsPropertiesService.findOneBy<VirtualChannelPropertyEntity>(
+			'category',
+			PropertyCategory.STATUS,
+			channel.id,
+		);
+
+		if (!property) {
+			this.logger.warn(
+				`Connection state property missing for virtual device channel id=${channel.id}, cannot mark it as owned`,
+			);
+
+			return;
+		}
+
+		if (!property.isProjecting) {
+			return;
+		}
+
+		await this.channelsPropertiesService.update(property.id, {
+			type: property.type,
+			value_origin: VirtualValueOrigin.LOCAL,
+		});
+
+		this.logger.debug(`Marked connection state property id=${property.id} as owned by its virtual device`);
 	}
 
 	private ownedPropertyDefinitions(device: DeviceEntity): OwnedPropertyDefinition[] {
