@@ -80,8 +80,22 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 		}
 	}
 
-	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_CREATED)
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET)
+	async handlePropertyValueSet(property: ChannelPropertyEntity | null): Promise<void> {
+		// A projected property shares its state with the source, which already triggered a
+		// recalculation when the source emitted. Recalculating here too would double-count the
+		// same sensor's contribution. This guard is scoped to value-set only — it's the only
+		// property event ever re-emitted for a projection, so CREATED/UPDATED/DELETED/RESET below
+		// carry no such risk and must stay unguarded (e.g. removing a virtual device's linked
+		// property still needs to clear a stale alarm state via CHANNEL_PROPERTY_DELETED).
+		if (property && this.valueSourceRegistry.isProjected(property)) {
+			return;
+		}
+
+		await this.handlePropertyChanged(property);
+	}
+
+	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_CREATED)
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_UPDATED)
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_DELETED)
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_RESET)
@@ -122,12 +136,6 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 	}
 
 	private async processPropertyChange(property: ChannelPropertyEntity): Promise<void> {
-		// A projected property shares its state with the source, which already triggered a
-		// recalculation when the source emitted. Counting it again would double the same sensor.
-		if (this.valueSourceRegistry.isProjected(property)) {
-			return;
-		}
-
 		// Quick-filter by property category
 		if (!SECURITY_PROPERTY_CATEGORIES.includes(property.category)) {
 			return;

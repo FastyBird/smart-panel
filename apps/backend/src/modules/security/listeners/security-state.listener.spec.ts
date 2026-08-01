@@ -78,11 +78,13 @@ describe('SecurityStateListener', () => {
 	});
 
 	// -- guard case, mirroring the energy listener's pinned brief case -------------------------------
+	// The guard lives in handlePropertyValueSet (the CHANNEL_PROPERTY_VALUE_SET-only handler), not in
+	// handlePropertyChanged — see the discriminator case below for why.
 
 	it('ignores a projected property so the same sensor state is not counted twice', async () => {
 		valueSourceRegistry.isProjected.mockReturnValue(true);
 
-		await listener.handlePropertyChanged(sensorProperty);
+		await listener.handlePropertyValueSet(sensorProperty);
 
 		expect(channelRepository.createQueryBuilder).not.toHaveBeenCalled();
 	});
@@ -94,6 +96,24 @@ describe('SecurityStateListener', () => {
 	// proves a relevant, non-projected property still reaches the channel lookup exactly as before.
 	it('still looks up the channel for a non-projected property with a relevant category', async () => {
 		valueSourceRegistry.isProjected.mockReturnValue(false);
+
+		await listener.handlePropertyValueSet(sensorProperty);
+
+		expect(channelRepository.createQueryBuilder).toHaveBeenCalled();
+	});
+
+	// -- discriminator case -----------------------------------------------------------------------
+	// Pins the post-review fix. handlePropertyChanged is what CHANNEL_PROPERTY_CREATED/UPDATED/
+	// DELETED/RESET dispatch to (handlePropertyValueSet delegates to it only after clearing its own
+	// guard). Unlike a value-set, these four are never re-emitted for a projection by the virtual
+	// projection listener, so a projected property's own delete/update/etc. must NOT be swallowed —
+	// e.g. removing a virtual device's linked motion sensor must still be able to clear a stale
+	// triggered/alarm state instead of leaving it stuck until an unrelated event happens to recalculate.
+	// This is the behavioural discriminator between the old (over-broad) guard and the current one:
+	// same projected property, same mocked isProjected() === true, but the outcome now differs by
+	// entry point.
+	it('still looks up the channel for a projected property changed via create/update/delete/reset', async () => {
+		valueSourceRegistry.isProjected.mockReturnValue(true);
 
 		await listener.handlePropertyChanged(sensorProperty);
 
