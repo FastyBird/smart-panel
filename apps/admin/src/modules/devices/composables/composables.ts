@@ -32,5 +32,6 @@ export * from './useDeviceValidation';
 export * from './useDeviceControl';
 export * from './useDeviceControls';
 export * from './useDeviceLogs';
+export * from './useDeviceWizardState';
 
 export * from './types';

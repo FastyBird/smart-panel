@@ -12,11 +12,7 @@
       "firmware": "Firmware"
     },
     "wizard": {
-      "title": "Shelly Gen 1 Discovery-Assistent",
-      "discovery": "Erkennung",
-      "categories": "Kategorien",
-      "results": "Ergebnisse",
-      "status": "Status"
+      "title": "Shelly Gen 1 Discovery-Assistent"
     }
   },
   "subHeadings": {
@@ -34,7 +30,6 @@
       "category": {
         "title": "Kategorie",
         "placeholder": "Gerätekategorie",
-        "description": "Über Kategorie",
         "validation": {
           "required": "Bitte wählen Sie eine Gerätekategorie"
         }
@@ -57,9 +52,6 @@
       "password": {
         "title": "Admin-Passwort",
         "placeholder": "Gerätepasswort eingeben, falls das Gerät geschützt ist"
-      },
-      "error": {
-        "title": "Fehler"
       },
       "hostname": {
         "title": "Geräte-Hostname",
@@ -131,13 +123,7 @@
     "aboutTimeouts": "Konfigurieren Sie Zeitlimit-Einstellungen für die HTTP-Kommunikation mit Shelly Gen 1-Geräten. Diese Einstellungen steuern die Anfrageverarbeitung und Gerätestatusüberwachung.",
     "wizard": {
       "discovery": "Der Assistent durchsucht das lokale Netzwerk nach Shelly Gen 1-Geräten und akzeptiert auch einen manuell eingegebenen Hostname oder eine IP-Adresse.",
-      "categories": "Bestätigen Sie, welche bereiten Geräte übernommen werden sollen, und wählen Sie für jedes die Zielkategorie aus.",
-      "scanStatus": "{count} Geräte gefunden",
-      "noDevices": "Keine Shelly-Geräte gefunden",
-      "results": {
-        "success": "Alle Geräte wurden erfolgreich übernommen.",
-        "failed": "Einige Geräte konnten nicht übernommen werden. Überprüfen Sie die Fehler unten."
-      }
+      "scanStatus": "{count} Geräte gefunden"
     }
   },
   "buttons": {
@@ -150,27 +136,7 @@
       },
       "addManual": {
         "title": "Hinzufügen"
-      },
-      "adopt": {
-        "title": "Ausgewählte übernehmen"
-      },
-      "finish": {
-        "title": "Zurück zu den Geräten"
       }
-    }
-  },
-  "statuses": {
-    "wizard": {
-      "checking": "Wird geprüft",
-      "ready": "Bereit",
-      "needs_password": "Passwort erforderlich",
-      "already_registered": "Registriert",
-      "unsupported": "Nicht unterstützt",
-      "failed": "Fehlgeschlagen",
-      "created": "Erstellt",
-      "updated": "Aktualisiert",
-      "willCreate": "Wird erstellt",
-      "willUpdate": "Bestehendes wird aktualisiert"
     }
   }
 }

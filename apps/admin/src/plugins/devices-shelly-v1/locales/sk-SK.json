@@ -12,11 +12,7 @@
 			"firmware": "Firmware"
 		},
 		"wizard": {
-			"title": "Sprievodca vyhľadaním Shelly Gen 1",
-			"discovery": "Vyhľadávanie",
-			"categories": "Kategórie",
-			"results": "Výsledky",
-			"status": "Stav"
+			"title": "Sprievodca vyhľadaním Shelly Gen 1"
 		}
 	},
 	"subHeadings": {
@@ -34,7 +30,6 @@
 			"category": {
 				"title": "Kategória",
 				"placeholder": "Kategória zariadenia",
-				"description": "O kategórii",
 				"validation": {
 					"required": "Prosím vyberte kategóriu zariadenia"
 				}
@@ -57,9 +52,6 @@
 			"password": {
 				"title": "Heslo administrátora",
 				"placeholder": "Zadajte heslo zariadenia, ak je chránené"
-			},
-			"error": {
-				"title": "Chyba"
 			},
 			"hostname": {
 				"title": "Hostname zariadenia",
@@ -131,13 +123,7 @@
 		"aboutTimeouts": "Nakonfigurujte nastavenia časových limitov pre HTTP komunikáciu so zariadeniami Shelly Gen 1. Tieto nastavenia ovládajú spracovanie požiadaviek a monitorovanie stavu zariadení.",
 		"wizard": {
 			"discovery": "Sprievodca vyhľadá zariadenia Shelly Gen 1 v lokálnej sieti a prijíma aj manuálne zadaný hostname alebo IP adresu.",
-			"categories": "Potvrďte, ktoré pripravené zariadenia sa majú adoptovať, a vyberte cieľovú kategóriu pre každé z nich.",
-			"scanStatus": "Nájdené zariadenia: {count}",
-			"noDevices": "Neboli nájdené žiadne zariadenia Shelly",
-			"results": {
-				"success": "Všetky zariadenia boli úspešne adoptované.",
-				"failed": "Niektoré zariadenia nebolo možné adoptovať. Skontrolujte chyby nižšie."
-			}
+			"scanStatus": "Nájdené zariadenia: {count}"
 		}
 	},
 	"buttons": {
@@ -150,27 +136,7 @@
 			},
 			"addManual": {
 				"title": "Pridať"
-			},
-			"adopt": {
-				"title": "Adoptovať vybrané"
-			},
-			"finish": {
-				"title": "Späť na zariadenia"
 			}
-		}
-	},
-	"statuses": {
-		"wizard": {
-			"checking": "Kontrola",
-			"ready": "Pripravené",
-			"needs_password": "Vyžaduje heslo",
-			"already_registered": "Registrované",
-			"unsupported": "Nepodporované",
-			"failed": "Zlyhalo",
-			"created": "Vytvorené",
-			"updated": "Aktualizované",
-			"willCreate": "Bude vytvorené",
-			"willUpdate": "Aktualizuje existujúce"
 		}
 	}
 }

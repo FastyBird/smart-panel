@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory, DevicesModuleDeviceCategory } from '../../../openapi.constants';
+import type { IWizardRowStatus } from '../components/wizard/device-wizard.types';
 
 import { locales } from './index';
 
@@ -11,6 +12,8 @@ const CATEGORY_GROUPS: { group: CategoryGroup; values: string[] }[] = [
 	{ group: 'channels', values: Object.values(DevicesModuleChannelCategory) },
 	{ group: 'channelsProperties', values: Object.values(DevicesModuleChannelPropertyCategory) },
 ];
+
+const WIZARD_STATUSES: IWizardRowStatus[] = ['checking', 'ready', 'needs_credentials', 'already_registered', 'unsupported', 'failed'];
 
 const readGroup = (messages: Record<string, unknown>, group: CategoryGroup): Record<string, unknown> => {
 	const categories = messages.categories as Record<string, unknown> | undefined;
@@ -26,6 +29,17 @@ describe('Devices module locales', () => {
 			const missing = values.filter((value) => typeof translations[value] !== 'string' || translations[value] === '');
 
 			expect(missing, `Missing "${group}" category translations in ${locale}: ${missing.join(', ')}`).toEqual([]);
+		});
+	});
+
+	describe.each(Object.keys(locales))('%s wizard', (locale: string): void => {
+		it('translates every wizard row status', (): void => {
+			const wizard = locales[locale].wizard as Record<string, unknown> | undefined;
+			const statuses = (wizard?.statuses as Record<string, unknown> | undefined) ?? {};
+
+			const missing = WIZARD_STATUSES.filter((status) => typeof statuses[status] !== 'string' || statuses[status] === '');
+
+			expect(missing, `Missing wizard status translations in ${locale}: ${missing.join(', ')}`).toEqual([]);
 		});
 	});
 });

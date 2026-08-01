@@ -1,0 +1,267 @@
+import { ref } from 'vue';
+
+import { describe, expect, it } from 'vitest';
+
+import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
+import type { IWizardRow } from '../components/wizard/device-wizard.types';
+
+import { useDeviceWizardState } from './useDeviceWizardState';
+
+const row = (overrides: Partial<IWizardRow> = {}): IWizardRow => ({
+	key: 'shelly-1.local',
+	label: 'Living room switch',
+	subLabel: 'Shelly Plus 1',
+	identifier: 'shelly-1.local',
+	status: 'ready',
+	adoptable: true,
+	willUpdate: false,
+	suggestedName: 'Living room switch',
+	suggestedCategory: DevicesModuleDeviceCategory.lighting,
+	categoryOptions: [{ value: DevicesModuleDeviceCategory.lighting, label: 'Lighting' }],
+	...overrides,
+});
+
+describe('useDeviceWizardState — reconciliation', () => {
+	it('pre-selects a ready row on first sight', () => {
+		const state = useDeviceWizardState();
+
+		state.reconcile([row()]);
+
+		expect(state.selected['shelly-1.local']).toBe(true);
+	});
+
+	it('does not pre-select a non-ready row on first sight', () => {
+		const state = useDeviceWizardState();
+
+		state.reconcile([row({ status: 'already_registered', willUpdate: true })]);
+
+		expect(state.selected['shelly-1.local']).toBe(false);
+	});
+
+	it('selects a row on its first transition to ready', () => {
+		const state = useDeviceWizardState();
+
+		state.reconcile([row({ status: 'checking', adoptable: false })]);
+		expect(state.selected['shelly-1.local']).toBe(false);
+
+		state.reconcile([row({ status: 'ready' })]);
+		expect(state.selected['shelly-1.local']).toBe(true);
+	});
+
+	it('never re-selects a row the user deselected', () => {
+		const state = useDeviceWizardState();
+
+		state.reconcile([row()]);
+		state.selected['shelly-1.local'] = false;
+		state.reconcile([row()]);
+
+		expect(state.selected['shelly-1.local']).toBe(false);
+	});
+
+	it('deselects a row that becomes already_registered', () => {
+		const state = useDeviceWizardState();
+
+		state.reconcile([row()]);
+		state.reconcile([row({ status: 'already_registered', willUpdate: true })]);
+
+		expect(state.selected['shelly-1.local']).toBe(false);
+	});
+
+	it('fills the name from the adapter suggestion on first sight', () => {
+		const state = useDeviceWizardState();
+
+		state.reconcile([row({ suggestedName: 'Kitchen dimmer' })]);
+
+		expect(state.nameByKey['shelly-1.local']).toBe('Kitchen dimmer');
+	});
+
+	it('preserves a name the user typed', () => {
+		const state = useDeviceWizardState();
+
+		state.reconcile([row({ status: 'checking', adoptable: false })]);
+		state.nameByKey['shelly-1.local'] = 'My name';
+		state.reconcile([row({ status: 'ready', suggestedName: 'Suggested' })]);
+
+		expect(state.nameByKey['shelly-1.local']).toBe('My name');
+	});
+
+	it('refreshes a name still showing the raw identifier once the row becomes adoptable', () => {
+		const state = useDeviceWizardState();
+
+		state.reconcile([row({ status: 'checking', adoptable: false, suggestedName: 'shelly-1.local' })]);
+		expect(state.nameByKey['shelly-1.local']).toBe('shelly-1.local');
+
+		state.reconcile([row({ status: 'ready', adoptable: true, suggestedName: 'Living room switch' })]);
+		expect(state.nameByKey['shelly-1.local']).toBe('Living room switch');
+	});
+
+	it('fills a null category from a late-arriving suggestion', () => {
+		const state = useDeviceWizardState();
+
+		state.reconcile([row({ suggestedCategory: null })]);
+		expect(state.categoryByKey['shelly-1.local']).toBeNull();
+
+		state.reconcile([row({ suggestedCategory: DevicesModuleDeviceCategory.switcher })]);
+		expect(state.categoryByKey['shelly-1.local']).toBe(DevicesModuleDeviceCategory.switcher);
+	});
+
+	it('never overwrites a category the user chose', () => {
+		const state = useDeviceWizardState();
+
+		state.reconcile([row({ suggestedCategory: null })]);
+		state.categoryByKey['shelly-1.local'] = DevicesModuleDeviceCategory.lighting;
+		state.reconcile([row({ suggestedCategory: DevicesModuleDeviceCategory.switcher })]);
+
+		expect(state.categoryByKey['shelly-1.local']).toBe(DevicesModuleDeviceCategory.lighting);
+	});
+
+	it('reset clears every map', () => {
+		const state = useDeviceWizardState();
+
+		state.reconcile([row()]);
+		state.reset();
+
+		expect(state.selected).toEqual({});
+		expect(state.nameByKey).toEqual({});
+		expect(state.categoryByKey).toEqual({});
+	});
+
+	it('reset lets a previously-deselected row be pre-selected again', () => {
+		const state = useDeviceWizardState();
+
+		state.reconcile([row()]);
+		state.selected['shelly-1.local'] = false;
+		state.reset();
+		state.reconcile([row()]);
+
+		expect(state.selected['shelly-1.local']).toBe(true);
+	});
+
+	it('reset clears the ready-transition memory so a repeat device can be auto-selected on its next ready transition', () => {
+		const state = useDeviceWizardState();
+
+		state.reconcile([row()]);
+		state.reset();
+		state.reconcile([row({ status: 'checking', adoptable: false })]);
+		expect(state.selected['shelly-1.local']).toBe(false);
+
+		state.reconcile([row({ status: 'ready' })]);
+		expect(state.selected['shelly-1.local']).toBe(true);
+	});
+});
+
+describe('useDeviceWizardState — derived state', () => {
+	it('exposes only adoptable rows', () => {
+		const rows = ref<IWizardRow[]>([row(), row({ key: 'b', identifier: 'b', status: 'unsupported', adoptable: false })]);
+		const state = useDeviceWizardState(rows);
+
+		expect(state.adoptableRows.value.map((item) => item.key)).toEqual(['shelly-1.local']);
+	});
+
+	it('canContinue is false with nothing selected', () => {
+		const rows = ref<IWizardRow[]>([row()]);
+		const state = useDeviceWizardState(rows);
+
+		state.reconcile(rows.value);
+		state.selected['shelly-1.local'] = false;
+
+		expect(state.canContinue.value).toBe(false);
+	});
+
+	it('canContinue is false when a selected row has a blank name', () => {
+		const rows = ref<IWizardRow[]>([row()]);
+		const state = useDeviceWizardState(rows);
+
+		state.reconcile(rows.value);
+		state.nameByKey['shelly-1.local'] = '   ';
+
+		expect(state.canContinue.value).toBe(false);
+	});
+
+	it('canContinue is false when a selected row has no category', () => {
+		const rows = ref<IWizardRow[]>([row()]);
+		const state = useDeviceWizardState(rows);
+
+		state.reconcile(rows.value);
+		state.categoryByKey['shelly-1.local'] = null;
+
+		expect(state.canContinue.value).toBe(false);
+	});
+
+	it('canContinue is false when a selected row has an undefined category', () => {
+		const rows = ref<IWizardRow[]>([row()]);
+		const state = useDeviceWizardState(rows);
+
+		state.reconcile(rows.value);
+		delete state.categoryByKey['shelly-1.local'];
+
+		expect(state.canContinue.value).toBe(false);
+	});
+
+	it('canContinue is true when every selected row has a name and category', () => {
+		const rows = ref<IWizardRow[]>([row()]);
+		const state = useDeviceWizardState(rows);
+
+		state.reconcile(rows.value);
+
+		expect(state.canContinue.value).toBe(true);
+	});
+
+	it('toggleAll selects and clears every adoptable row', () => {
+		const rows = ref<IWizardRow[]>([
+			row(),
+			row({ key: 'b', identifier: 'b' }),
+			row({ key: 'c', identifier: 'c', adoptable: false, status: 'failed' }),
+		]);
+		const state = useDeviceWizardState(rows);
+
+		// Deliberately not calling reconcile() here: adoptableRows/toggleAll/allSelected/someSelected
+		// are derived directly from the rows ref and the selected map, so this isolates toggleAll's
+		// own behaviour. Reconciling first would seed `selected['c']` to `false` (a non-ready row is
+		// initialised on first sight regardless of adoptability — see the reconciliation describe
+		// block above), which would make the toBeUndefined() assertion below fail even though
+		// toggleAll correctly left the non-adoptable row untouched.
+		state.toggleAll(false);
+		expect(state.allSelected.value).toBe(false);
+		expect(state.someSelected.value).toBe(false);
+
+		state.toggleAll(true);
+		expect(state.allSelected.value).toBe(true);
+		expect(state.selected['c']).toBeUndefined();
+	});
+
+	it('someSelected is true and allSelected false on a partial selection', () => {
+		const rows = ref<IWizardRow[]>([row(), row({ key: 'b', identifier: 'b' })]);
+		const state = useDeviceWizardState(rows);
+
+		state.reconcile(rows.value);
+		state.selected['b'] = false;
+
+		expect(state.someSelected.value).toBe(true);
+		expect(state.allSelected.value).toBe(false);
+	});
+
+	it('buildSelection returns trimmed names and resolved categories for selected rows only', () => {
+		const rows = ref<IWizardRow[]>([row(), row({ key: 'b', identifier: 'b' })]);
+		const state = useDeviceWizardState(rows);
+
+		state.reconcile(rows.value);
+		state.selected['b'] = false;
+		state.nameByKey['shelly-1.local'] = '  Trimmed  ';
+
+		expect(state.buildSelection()).toEqual([{ key: 'shelly-1.local', name: 'Trimmed', category: DevicesModuleDeviceCategory.lighting }]);
+	});
+
+	it('activeStepIndex maps each step to its el-steps index', () => {
+		const rows = ref<IWizardRow[]>([]);
+		const state = useDeviceWizardState(rows);
+
+		expect(state.activeStepIndex.value).toBe(0);
+
+		state.activeStep.value = 'confirm';
+		expect(state.activeStepIndex.value).toBe(1);
+
+		state.activeStep.value = 'results';
+		expect(state.activeStepIndex.value).toBe(2);
+	});
+});

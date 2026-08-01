@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { IWizardActionControl, IWizardFormControl, IWizardProgressControl } from '../../../modules/devices';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
-import { DEVICES_SHELLY_NG_PLUGIN_PREFIX, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
-import type { IShellyNgDiscoverySession } from '../schemas/devices.types';
+import { DEVICES_SHELLY_V1_PLUGIN_PREFIX, DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
+import type { IShellyV1DiscoverySession } from '../schemas/devices.types';
 
 import { useDevicesWizard } from './useDevicesWizard';
 
@@ -51,7 +51,7 @@ vi.mock('../../../common', async () => {
 	};
 });
 
-const discoverySession: IShellyNgDiscoverySession = {
+const discoverySession: IShellyV1DiscoverySession = {
 	id: 'session-1',
 	status: 'running',
 	startedAt: '2026-04-29T12:00:00.000Z',
@@ -59,19 +59,19 @@ const discoverySession: IShellyNgDiscoverySession = {
 	remainingSeconds: 30,
 	devices: [
 		{
-			identifier: 'shellyplus1-aabbcc',
-			hostname: '192.168.1.10',
-			name: 'Kitchen relay',
-			model: 'SNSW-001X16EU',
-			displayName: 'Shelly Plus 1',
-			firmware: '1.2.3',
+			identifier: 'shelly1-aabbcc',
+			hostname: 'shelly-1.local',
+			name: 'Bathroom heater',
+			model: 'SHSW-1',
+			displayName: 'Shelly 1',
+			firmware: '1.12.0',
 			status: 'ready',
 			source: 'mdns',
 			categories: [DevicesModuleDeviceCategory.lighting, DevicesModuleDeviceCategory.switcher],
 			suggestedCategory: DevicesModuleDeviceCategory.lighting,
 			authentication: {
 				enabled: false,
-				domain: null,
+				valid: null,
 			},
 			registeredDeviceId: null,
 			registeredDeviceName: null,
@@ -82,7 +82,7 @@ const discoverySession: IShellyNgDiscoverySession = {
 	],
 };
 
-const checkingDiscoverySession: IShellyNgDiscoverySession = {
+const checkingDiscoverySession: IShellyV1DiscoverySession = {
 	...discoverySession,
 	devices: [
 		{
@@ -96,7 +96,7 @@ const checkingDiscoverySession: IShellyNgDiscoverySession = {
 	],
 };
 
-const emptySession: IShellyNgDiscoverySession = {
+const emptySession: IShellyV1DiscoverySession = {
 	...discoverySession,
 	devices: [],
 };
@@ -126,7 +126,7 @@ describe('useDevicesWizard', () => {
 		vi.useRealTimers();
 	});
 
-	it('starts discovery and maps a discovered device to a wizard row', async () => {
+	it('maps a discovery device to a wizard row', async () => {
 		backendClient.POST.mockResolvedValue({
 			data: {
 				data: discoverySession,
@@ -138,19 +138,19 @@ describe('useDevicesWizard', () => {
 
 		await adapter.start();
 
-		expect(backendClient.POST).toHaveBeenCalledWith(`/plugins/${DEVICES_SHELLY_NG_PLUGIN_PREFIX}/devices/discovery`);
+		expect(backendClient.POST).toHaveBeenCalledWith(`/plugins/${DEVICES_SHELLY_V1_PLUGIN_PREFIX}/devices/discovery`);
 
 		const [row] = adapter.rows.value;
 
 		expect(row).toBeDefined();
-		expect(row!.key).toBe('192.168.1.10');
-		expect(row!.identifier).toBe('192.168.1.10');
-		expect(row!.label).toBe('Kitchen relay');
-		expect(row!.subLabel).toBe('Shelly Plus 1');
+		expect(row!.key).toBe('shelly-1.local');
+		expect(row!.identifier).toBe('shelly-1.local');
+		expect(row!.label).toBe('Bathroom heater');
+		expect(row!.subLabel).toBe('Shelly 1');
 		expect(row!.status).toBe('ready');
 		expect(row!.adoptable).toBe(true);
 		expect(row!.willUpdate).toBe(false);
-		expect(row!.suggestedName).toBe('Kitchen relay');
+		expect(row!.suggestedName).toBe('Bathroom heater');
 		expect(row!.suggestedCategory).toBe(DevicesModuleDeviceCategory.lighting);
 	});
 
@@ -159,7 +159,7 @@ describe('useDevicesWizard', () => {
 		// not render a blank Name column or a blank name input, which would leave `canContinue`
 		// false with no visible reason. `||` must fall through the same way `??` falls through
 		// on `null`; a regression to `??` here would stop at the empty string instead.
-		const blankNameSession: IShellyNgDiscoverySession = {
+		const blankNameSession: IShellyV1DiscoverySession = {
 			...discoverySession,
 			devices: [
 				{
@@ -180,18 +180,18 @@ describe('useDevicesWizard', () => {
 
 		const [row] = adapter.rows.value;
 
-		expect(row!.suggestedName).toBe('Shelly Plus 1');
-		expect(row!.label).toBe('Shelly Plus 1');
+		expect(row!.suggestedName).toBe('Shelly 1');
+		expect(row!.label).toBe('Shelly 1');
 	});
 
 	it('renames the needs_password status to needs_credentials', async () => {
-		const protectedSession: IShellyNgDiscoverySession = {
+		const protectedSession: IShellyV1DiscoverySession = {
 			...discoverySession,
 			devices: [
 				{
 					...discoverySession.devices[0]!,
 					status: 'needs_password',
-					authentication: { enabled: true, domain: 'shelly' },
+					authentication: { enabled: true, valid: false },
 				},
 			],
 		};
@@ -219,8 +219,8 @@ describe('useDevicesWizard', () => {
 
 		await adapter.start();
 
-		// The Plus 1 descriptor supports exactly these two — the wizard must not offer the
-		// full DeviceCategory enum the way Zigbee2MQTT does.
+		// The descriptor supports exactly these two — the wizard must not offer the full
+		// DeviceCategory enum the way Zigbee2MQTT does.
 		expect(adapter.rows.value[0]!.categoryOptions.map((option) => option.value)).toEqual([
 			DevicesModuleDeviceCategory.lighting,
 			DevicesModuleDeviceCategory.switcher,
@@ -241,10 +241,10 @@ describe('useDevicesWizard', () => {
 	});
 
 	it('marks an already registered device as an update and prefers its stored name and category', async () => {
-		// A Plus 1 supports both `lighting` and `switcher`, so the descriptor leaves
-		// `suggestedCategory` null. Without `registeredDeviceCategory` the confirm step would
-		// land on an empty selector even though we already chose a category when adopting.
-		const alreadyRegisteredSession: IShellyNgDiscoverySession = {
+		// The descriptor supports both `lighting` and `switcher`, so it leaves `suggestedCategory`
+		// null. Without `registeredDeviceCategory` the confirm step would land on an empty
+		// selector even though we already chose a category when adopting.
+		const alreadyRegisteredSession: IShellyV1DiscoverySession = {
 			...discoverySession,
 			devices: [
 				{
@@ -252,7 +252,7 @@ describe('useDevicesWizard', () => {
 					status: 'already_registered',
 					suggestedCategory: null,
 					registeredDeviceId: 'device-uuid-1',
-					registeredDeviceName: 'Existing kitchen relay',
+					registeredDeviceName: 'Existing bathroom heater',
 					registeredDeviceCategory: DevicesModuleDeviceCategory.switcher,
 				},
 			],
@@ -272,12 +272,19 @@ describe('useDevicesWizard', () => {
 		expect(row!.status).toBe('already_registered');
 		expect(row!.adoptable).toBe(true);
 		expect(row!.willUpdate).toBe(true);
-		expect(row!.suggestedName).toBe('Existing kitchen relay');
+		expect(row!.suggestedName).toBe('Existing bathroom heater');
 		expect(row!.suggestedCategory).toBe(DevicesModuleDeviceCategory.switcher);
 	});
 
-	it('offers a manual-add form control', () => {
+	it('offers a manual-add form control with a secret password field', async () => {
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+
 		const adapter = useDevicesWizard();
+
+		await adapter.start();
 
 		expect(adapter.controls.value).toContainEqual(
 			expect.objectContaining({
@@ -308,9 +315,9 @@ describe('useDevicesWizard', () => {
 
 		await adapter.start();
 
-		await findControl<IWizardFormControl>(adapter.controls.value, 'manual').handler({ hostname: '192.168.1.10', password: 'secret' });
+		await findControl<IWizardFormControl>(adapter.controls.value, 'manual').handler({ hostname: 'shelly-1.local', password: 'secret' });
 
-		expect(backendClient.POST).toHaveBeenLastCalledWith(`/plugins/${DEVICES_SHELLY_NG_PLUGIN_PREFIX}/devices/discovery/{id}/manual`, {
+		expect(backendClient.POST).toHaveBeenLastCalledWith(`/plugins/${DEVICES_SHELLY_V1_PLUGIN_PREFIX}/devices/discovery/{id}/manual`, {
 			params: {
 				path: {
 					id: 'session-1',
@@ -318,7 +325,7 @@ describe('useDevicesWizard', () => {
 			},
 			body: {
 				data: {
-					hostname: '192.168.1.10',
+					hostname: 'shelly-1.local',
 					password: 'secret',
 				},
 			},
@@ -339,14 +346,14 @@ describe('useDevicesWizard', () => {
 
 		await adapter.start();
 
-		await findControl<IWizardFormControl>(adapter.controls.value, 'manual').handler({ hostname: '  192.168.1.10  ', password: '   ' });
+		await findControl<IWizardFormControl>(adapter.controls.value, 'manual').handler({ hostname: '  shelly-1.local  ', password: '   ' });
 
 		expect(backendClient.POST).toHaveBeenLastCalledWith(
-			`/plugins/${DEVICES_SHELLY_NG_PLUGIN_PREFIX}/devices/discovery/{id}/manual`,
+			`/plugins/${DEVICES_SHELLY_V1_PLUGIN_PREFIX}/devices/discovery/{id}/manual`,
 			expect.objectContaining({
 				body: {
 					data: {
-						hostname: '192.168.1.10',
+						hostname: 'shelly-1.local',
 						password: null,
 					},
 				},
@@ -392,7 +399,7 @@ describe('useDevicesWizard', () => {
 		await adapter.start();
 
 		await expect(
-			findControl<IWizardFormControl>(adapter.controls.value, 'manual').handler({ hostname: '192.168.1.10', password: 'secret' })
+			findControl<IWizardFormControl>(adapter.controls.value, 'manual').handler({ hostname: 'shelly-1.local', password: 'secret' })
 		).rejects.toThrow();
 		expect(flashMessage.error).toHaveBeenCalled();
 	});
@@ -413,16 +420,60 @@ describe('useDevicesWizard', () => {
 		const adapter = useDevicesWizard();
 
 		await adapter.start();
-		await findControl<IWizardFormControl>(adapter.controls.value, 'manual').handler({ hostname: '192.168.1.10', password: 'secret' });
+		await findControl<IWizardFormControl>(adapter.controls.value, 'manual').handler({ hostname: 'shelly-1.local', password: 'secret' });
 
-		await adapter.adopt([{ key: '192.168.1.10', name: 'Kitchen relay', category: DevicesModuleDeviceCategory.lighting }]);
+		await adapter.adopt([{ key: 'shelly-1.local', name: 'Bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
 
 		expect(mockAdd).toHaveBeenCalledWith(
 			expect.objectContaining({
 				data: expect.objectContaining({
 					password: 'secret',
-					wifiAddress: '192.168.1.10',
+					hostname: 'shelly-1.local',
 				}),
+			})
+		);
+	});
+
+	it('does not persist a manually entered password when the inspect step reports invalid credentials', async () => {
+		// An already-registered device whose descriptor comes back with `authentication.valid:
+		// false` means the typed password was checked against real stored credentials and
+		// failed. Caching it anyway would let a later Adopt click overwrite the correct on-disk
+		// password with the wrong one (this exact bug shipped once — see commit 45750b9fb).
+		const invalidPasswordSession: IShellyV1DiscoverySession = {
+			...discoverySession,
+			devices: [
+				{
+					...discoverySession.devices[0]!,
+					status: 'already_registered',
+					registeredDeviceId: 'device-uuid-9',
+					registeredDeviceName: 'Existing bathroom heater',
+					authentication: { enabled: true, valid: false },
+				},
+			],
+		};
+
+		backendClient.POST.mockResolvedValueOnce({
+			data: { data: emptySession },
+			response: { status: 200 },
+		}).mockResolvedValueOnce({
+			data: { data: invalidPasswordSession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: { data: invalidPasswordSession },
+			response: { status: 200 },
+		});
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+		await findControl<IWizardFormControl>(adapter.controls.value, 'manual').handler({ hostname: 'shelly-1.local', password: 'wrong-password' });
+
+		await adapter.adopt([{ key: 'shelly-1.local', name: 'Existing bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
+
+		expect(mockEdit).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.not.objectContaining({ password: expect.anything() }),
 			})
 		);
 	});
@@ -448,13 +499,13 @@ describe('useDevicesWizard', () => {
 		const adapter = useDevicesWizard();
 
 		await adapter.start();
-		await findControl<IWizardFormControl>(adapter.controls.value, 'manual').handler({ hostname: '192.168.1.10', password: 'secret' });
+		await findControl<IWizardFormControl>(adapter.controls.value, 'manual').handler({ hostname: 'shelly-1.local', password: 'secret' });
 
 		// Rescanning opens a brand new session — the password belonged to the old one and must
 		// not silently travel with the device into the next adoption.
 		await adapter.start();
 
-		await adapter.adopt([{ key: '192.168.1.10', name: 'Kitchen relay', category: DevicesModuleDeviceCategory.lighting }]);
+		await adapter.adopt([{ key: 'shelly-1.local', name: 'Bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
 
 		expect(mockAdd).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -526,13 +577,36 @@ describe('useDevicesWizard', () => {
 
 		expect(adapter.rows.value[0]!.status).toBe('checking');
 		expect(adapter.rows.value[0]!.adoptable).toBe(false);
-		expect(adapter.rows.value[0]!.suggestedName).toBe('192.168.1.10');
+		expect(adapter.rows.value[0]!.suggestedName).toBe('shelly-1.local');
 
 		await vi.advanceTimersByTimeAsync(1_000);
 
 		expect(adapter.rows.value[0]!.status).toBe('ready');
 		expect(adapter.rows.value[0]!.adoptable).toBe(true);
-		expect(adapter.rows.value[0]!.suggestedName).toBe('Kitchen relay');
+		expect(adapter.rows.value[0]!.suggestedName).toBe('Bathroom heater');
+	});
+
+	it('stops polling after a refresh error instead of hammering a cleaned-up session', async () => {
+		// The most likely refresh failure is a 404 after the backend garbage-collects a finished
+		// session — there is no point re-hitting a missing endpoint every second until the
+		// component unmounts. The user can hit "Scan again" to start a fresh one. This guard was
+		// added deliberately in commit cdf62c37a after a Bugbot review; it must not regress.
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockRejectedValue(new Error('session not found'));
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(backendClient.GET).toHaveBeenCalledTimes(1);
+
+		// The interval must NOT fire again — the failed poll stopped it.
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(backendClient.GET).toHaveBeenCalledTimes(1);
 	});
 
 	it('stops polling once the shell disposes the adapter', async () => {
@@ -561,6 +635,25 @@ describe('useDevicesWizard', () => {
 		expect(backendClient.GET).not.toHaveBeenCalled();
 	});
 
+	it('builds the adopt payload from the shell selection', async () => {
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+
+		const adapter = useDevicesWizard();
+		await adapter.start();
+
+		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Living room switch', category: DevicesModuleDeviceCategory.lighting }]);
+
+		expect(results).toHaveLength(1);
+		expect(results[0]!.key).toBe('shelly-1.local');
+	});
+
 	it('adopts the selection handed over by the shell through the devices store', async () => {
 		backendClient.POST.mockResolvedValue({
 			data: { data: discoverySession },
@@ -575,25 +668,25 @@ describe('useDevicesWizard', () => {
 
 		await adapter.start();
 
-		const results = await adapter.adopt([{ key: '192.168.1.10', name: 'Kitchen relay', category: DevicesModuleDeviceCategory.lighting }]);
+		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
 
 		expect(mockAdd).toHaveBeenCalledWith({
 			id: expect.any(String),
 			draft: false,
 			data: expect.objectContaining({
-				type: DEVICES_SHELLY_NG_TYPE,
+				type: DEVICES_SHELLY_V1_TYPE,
 				category: DevicesModuleDeviceCategory.lighting,
-				identifier: 'shellyplus1-aabbcc',
-				name: 'Kitchen relay',
+				identifier: 'shelly1-aabbcc',
+				name: 'Bathroom heater',
 				password: null,
-				wifiAddress: '192.168.1.10',
+				hostname: 'shelly-1.local',
 			}),
 		});
 		expect(results).toEqual([
 			{
-				key: '192.168.1.10',
-				name: 'Kitchen relay',
-				identifier: '192.168.1.10',
+				key: 'shelly-1.local',
+				name: 'Bathroom heater',
+				identifier: 'shelly-1.local',
 				status: 'created',
 				error: null,
 			},
@@ -614,7 +707,7 @@ describe('useDevicesWizard', () => {
 		const adapter = useDevicesWizard();
 
 		await adapter.start();
-		await adapter.adopt([{ key: '192.168.1.10', name: 'Hallway light', category: DevicesModuleDeviceCategory.switcher }]);
+		await adapter.adopt([{ key: 'shelly-1.local', name: 'Hallway light', category: DevicesModuleDeviceCategory.switcher }]);
 
 		expect(mockAdd).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -639,26 +732,26 @@ describe('useDevicesWizard', () => {
 		const adapter = useDevicesWizard();
 
 		await adapter.start();
-		await adapter.adopt([{ key: '192.168.1.10', name: '   ', category: DevicesModuleDeviceCategory.lighting }]);
+		await adapter.adopt([{ key: 'shelly-1.local', name: '   ', category: DevicesModuleDeviceCategory.lighting }]);
 
 		expect(mockAdd).toHaveBeenCalledWith(
 			expect.objectContaining({
 				data: expect.objectContaining({
-					name: 'Kitchen relay',
+					name: 'Bathroom heater',
 				}),
 			})
 		);
 	});
 
 	it('updates an already registered device via edit instead of creating a duplicate', async () => {
-		const alreadyRegisteredSession: IShellyNgDiscoverySession = {
+		const alreadyRegisteredSession: IShellyV1DiscoverySession = {
 			...discoverySession,
 			devices: [
 				{
 					...discoverySession.devices[0]!,
 					status: 'already_registered',
 					registeredDeviceId: 'device-uuid-1',
-					registeredDeviceName: 'Existing kitchen relay',
+					registeredDeviceName: 'Existing bathroom heater',
 					registeredDeviceCategory: DevicesModuleDeviceCategory.lighting,
 				},
 			],
@@ -676,34 +769,34 @@ describe('useDevicesWizard', () => {
 		const adapter = useDevicesWizard();
 
 		await adapter.start();
-		await adapter.adopt([{ key: '192.168.1.10', name: 'Existing kitchen relay', category: DevicesModuleDeviceCategory.switcher }]);
+		await adapter.adopt([{ key: 'shelly-1.local', name: 'Existing bathroom heater', category: DevicesModuleDeviceCategory.switcher }]);
 
 		expect(mockEdit).toHaveBeenCalledWith({
 			id: 'device-uuid-1',
 			data: expect.objectContaining({
-				type: DEVICES_SHELLY_NG_TYPE,
+				type: DEVICES_SHELLY_V1_TYPE,
 				category: DevicesModuleDeviceCategory.switcher,
-				name: 'Existing kitchen relay',
+				name: 'Existing bathroom heater',
 			}),
 		});
 		expect(mockAdd).not.toHaveBeenCalled();
 		expect(adapter.results.value).toEqual([
 			expect.objectContaining({
-				key: '192.168.1.10',
+				key: 'shelly-1.local',
 				status: 'updated',
 			}),
 		]);
 	});
 
 	it('falls back to update when create fails because the main service auto-adopted the device', async () => {
-		const racedSession: IShellyNgDiscoverySession = {
+		const racedSession: IShellyV1DiscoverySession = {
 			...discoverySession,
 			devices: [
 				{
 					...discoverySession.devices[0]!,
 					status: 'already_registered',
 					registeredDeviceId: 'device-uuid-2',
-					registeredDeviceName: 'Auto-adopted relay',
+					registeredDeviceName: 'Auto-adopted heater',
 				},
 			],
 		};
@@ -727,34 +820,34 @@ describe('useDevicesWizard', () => {
 		const adapter = useDevicesWizard();
 
 		await adapter.start();
-		await adapter.adopt([{ key: '192.168.1.10', name: 'Kitchen relay', category: DevicesModuleDeviceCategory.lighting }]);
+		await adapter.adopt([{ key: 'shelly-1.local', name: 'Bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
 
 		expect(mockAdd).toHaveBeenCalledTimes(1);
 		expect(mockEdit).toHaveBeenCalledWith({
 			id: 'device-uuid-2',
 			data: expect.objectContaining({
-				type: DEVICES_SHELLY_NG_TYPE,
+				type: DEVICES_SHELLY_V1_TYPE,
 				category: DevicesModuleDeviceCategory.lighting,
-				name: 'Kitchen relay',
+				name: 'Bathroom heater',
 			}),
 		});
 		expect(adapter.results.value).toEqual([
 			expect.objectContaining({
-				key: '192.168.1.10',
+				key: 'shelly-1.local',
 				status: 'updated',
 			}),
 		]);
 	});
 
 	it('loads the device into the local store before editing if it was just auto-adopted', async () => {
-		const racedSession: IShellyNgDiscoverySession = {
+		const racedSession: IShellyV1DiscoverySession = {
 			...discoverySession,
 			devices: [
 				{
 					...discoverySession.devices[0]!,
 					status: 'already_registered',
 					registeredDeviceId: 'device-uuid-fresh',
-					registeredDeviceName: 'Auto-adopted relay',
+					registeredDeviceName: 'Auto-adopted heater',
 				},
 			],
 		};
@@ -775,7 +868,7 @@ describe('useDevicesWizard', () => {
 		const adapter = useDevicesWizard();
 
 		await adapter.start();
-		await adapter.adopt([{ key: '192.168.1.10', name: 'Auto-adopted relay', category: DevicesModuleDeviceCategory.switcher }]);
+		await adapter.adopt([{ key: 'shelly-1.local', name: 'Auto-adopted heater', category: DevicesModuleDeviceCategory.switcher }]);
 
 		expect(mockGet).toHaveBeenCalledWith({ id: 'device-uuid-fresh' });
 		expect(mockEdit).toHaveBeenCalledWith(
@@ -785,21 +878,21 @@ describe('useDevicesWizard', () => {
 		);
 		expect(adapter.results.value).toEqual([
 			expect.objectContaining({
-				key: '192.168.1.10',
+				key: 'shelly-1.local',
 				status: 'updated',
 			}),
 		]);
 	});
 
 	it('still adopts a device the shell selected if the refresh inside adopt flips it to already_registered', async () => {
-		const racedSession: IShellyNgDiscoverySession = {
+		const racedSession: IShellyV1DiscoverySession = {
 			...discoverySession,
 			devices: [
 				{
 					...discoverySession.devices[0]!,
 					status: 'already_registered',
 					registeredDeviceId: 'device-uuid-in-flight',
-					registeredDeviceName: 'Auto-adopted relay',
+					registeredDeviceName: 'Auto-adopted heater',
 				},
 			],
 		};
@@ -819,7 +912,7 @@ describe('useDevicesWizard', () => {
 		await adapter.start();
 
 		// The user chose the device while it was still `ready`; the shell handed that intent over.
-		await adapter.adopt([{ key: '192.168.1.10', name: 'Kitchen relay', category: DevicesModuleDeviceCategory.lighting }]);
+		await adapter.adopt([{ key: 'shelly-1.local', name: 'Bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
 
 		expect(mockEdit).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -829,7 +922,7 @@ describe('useDevicesWizard', () => {
 		expect(mockAdd).not.toHaveBeenCalled();
 		expect(adapter.results.value).toEqual([
 			expect.objectContaining({
-				key: '192.168.1.10',
+				key: 'shelly-1.local',
 				status: 'updated',
 			}),
 		]);
@@ -853,20 +946,20 @@ describe('useDevicesWizard', () => {
 
 		await adapter.start();
 
-		const results = await adapter.adopt([{ key: '192.168.1.10', name: 'Kitchen relay', category: DevicesModuleDeviceCategory.lighting }]);
+		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
 
 		expect(mockAdd).toHaveBeenCalledWith(
 			expect.objectContaining({
 				data: expect.objectContaining({
-					identifier: 'shellyplus1-aabbcc',
-					name: 'Kitchen relay',
-					wifiAddress: '192.168.1.10',
+					identifier: 'shelly1-aabbcc',
+					name: 'Bathroom heater',
+					hostname: 'shelly-1.local',
 				}),
 			})
 		);
 		expect(results).toEqual([
 			expect.objectContaining({
-				key: '192.168.1.10',
+				key: 'shelly-1.local',
 				status: 'created',
 			}),
 		]);
@@ -888,11 +981,11 @@ describe('useDevicesWizard', () => {
 
 		await adapter.start();
 
-		const results = await adapter.adopt([{ key: '192.168.1.10', name: 'Kitchen relay', category: DevicesModuleDeviceCategory.lighting }]);
+		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
 
 		expect(results).toEqual([
 			expect.objectContaining({
-				key: '192.168.1.10',
+				key: 'shelly-1.local',
 				status: 'failed',
 				error: 'Backend refused the device',
 			}),
@@ -911,7 +1004,7 @@ describe('useDevicesWizard', () => {
 
 		const progress = findControl<IWizardProgressControl>(adapter.controls.value, 'scan');
 
-		expect(progress.label).toBe('devicesShellyNgPlugin.texts.wizard.scanStatus:{"count":1}');
+		expect(progress.label).toBe('devicesShellyV1Plugin.texts.wizard.scanStatus:{"count":1}');
 		expect(progress.visible).toBe(true);
 		expect(progress.state).toBeUndefined();
 	});
@@ -935,7 +1028,7 @@ describe('useDevicesWizard', () => {
 	});
 
 	it('jumps scan progress to 100 and flags success when the session finishes', async () => {
-		const finishedSession: IShellyNgDiscoverySession = {
+		const finishedSession: IShellyV1DiscoverySession = {
 			...discoverySession,
 			status: 'finished',
 			remainingSeconds: 0,

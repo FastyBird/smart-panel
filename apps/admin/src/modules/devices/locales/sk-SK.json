@@ -946,5 +946,46 @@
 			"constraint_one_or_more_of_violation": "Porušenie obmedzenia (jeden alebo viac z)",
 			"constraint_mutually_exclusive_violation": "Porušenie obmedzenia (vzájomne vylučujúce)"
 		}
+	},
+	"wizard": {
+		"steps": {
+			"discover": "Vyhľadávanie",
+			"confirm": "Potvrdenie",
+			"results": "Výsledky"
+		},
+		"actions": {
+			"cancel": "Zrušiť",
+			"back": "Späť",
+			"next": "Ďalej",
+			"adopt": "Pridať zariadenia",
+			"addMore": "Pridať ďalšie",
+			"done": "Hotovo"
+		},
+		"statuses": {
+			"checking": "Overuje sa",
+			"ready": "Pripravené",
+			"needs_credentials": "Vyžaduje prihlasovacie údaje",
+			"already_registered": "Už pridané",
+			"unsupported": "Nepodporované",
+			"failed": "Zlyhalo",
+			"willCreate": "Bude vytvorené",
+			"willUpdate": "Bude aktualizované",
+			"created": "Vytvorené",
+			"updated": "Aktualizované"
+		},
+		"columns": {
+			"name": "Názov",
+			"status": "Stav",
+			"category": "Kategória",
+			"change": "Akcia",
+			"error": "Chyba"
+		},
+		"texts": {
+			"loading": "Načítavanie relácie vyhľadávania...",
+			"empty": "Zatiaľ neboli nájdené žiadne zariadenia",
+			"noSelection": "Neboli vybrané žiadne zariadenia",
+			"resultsSuccess": "Všetky vybrané zariadenia boli úspešne pridané",
+			"resultsFailed": "Niektoré zariadenia sa nepodarilo pridať"
+		}
 	}
 }

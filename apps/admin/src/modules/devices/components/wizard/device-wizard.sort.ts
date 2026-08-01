@@ -6,5 +6,6 @@
 export const compareLocale = (a: string | null | undefined, b: string | null | undefined): number => {
 	const left = (a ?? '').toString();
 	const right = (b ?? '').toString();
+
 	return left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
 };

@@ -15,12 +15,8 @@ import {
 	type IDevicePluginsSchemas,
 } from '../../modules/devices';
 
-import {
-	Zigbee2mqttConfigForm,
-	Zigbee2mqttDeviceAddFormMultiStep,
-	Zigbee2mqttDeviceEditForm,
-	Zigbee2mqttDevicesWizard,
-} from './components/components';
+import { Zigbee2mqttConfigForm, Zigbee2mqttDeviceAddFormMultiStep, Zigbee2mqttDeviceEditForm } from './components/components';
+import { useDevicesWizard } from './composables/composables';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from './devices-zigbee2mqtt.constants';
 import { locales } from './locales';
 import { Zigbee2mqttConfigEditFormSchema } from './schemas/config.schemas';
@@ -89,7 +85,7 @@ export default {
 					components: {
 						deviceAddForm: Zigbee2mqttDeviceAddFormMultiStep,
 						deviceEditForm: Zigbee2mqttDeviceEditForm,
-						deviceWizard: Zigbee2mqttDevicesWizard,
+						deviceWizardAdapter: useDevicesWizard,
 					},
 					schemas: {
 						deviceSchema: Zigbee2mqttDeviceSchema,

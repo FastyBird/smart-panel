@@ -12,11 +12,7 @@
 			"firmware": "Firmware"
 		},
 		"wizard": {
-			"title": "Kreator wyszukiwania Shelly NG",
-			"discovery": "Discovery",
-			"categories": "Categories",
-			"results": "Results",
-			"status": "Status"
+			"title": "Kreator wyszukiwania Shelly NG"
 		}
 	},
 	"subHeadings": {
@@ -34,7 +30,6 @@
 			"category": {
 				"title": "Kategoria",
 				"placeholder": "Kategoria urzadzenia",
-				"description": "O kategorii",
 				"validation": {
 					"required": "Prosze wybrac kategorie urzadzenia"
 				}
@@ -57,9 +52,6 @@
 			"password": {
 				"title": "Haslo administratora",
 				"placeholder": "Podaj haslo urzadzenia, jesli urzadzenie jest chronione"
-			},
-			"error": {
-				"title": "Blad"
 			},
 			"hostname": {
 				"title": "Nazwa hosta urzadzenia",
@@ -138,13 +130,7 @@
 		"aboutWebsockets": "Zarzadzaj parametrami polaczenia WebSocket dla urzadzen Shelly. Te ustawienia kontroluja stabilnosc komunikacji, obsluge zadan i zachowanie ponownego polaczenia.",
 		"wizard": {
 			"discovery": "The wizard scans the local network for Shelly NG devices and also accepts a manually entered hostname or IP address.",
-			"categories": "Confirm which ready devices should be adopted and choose the target category for each one.",
-			"scanStatus": "{count} devices found",
-			"noDevices": "No Shelly devices found",
-			"results": {
-				"success": "Wszystkie urzadzenia zostaly pomyslnie adoptowane.",
-				"failed": "Niektore urzadzenia nie mogly zostac adoptowane. Sprawdz blody ponizej."
-			}
+			"scanStatus": "{count} devices found"
 		}
 	},
 	"buttons": {
@@ -157,27 +143,7 @@
 			},
 			"addManual": {
 				"title": "Add"
-			},
-			"adopt": {
-				"title": "Adopt selected"
-			},
-			"finish": {
-				"title": "Back to devices"
 			}
-		}
-	},
-	"statuses": {
-		"wizard": {
-			"checking": "Checking",
-			"ready": "Ready",
-			"needs_password": "Needs password",
-			"already_registered": "Registered",
-			"unsupported": "Unsupported",
-			"failed": "Failed",
-			"created": "Created",
-			"updated": "Zaktualizowano",
-			"willCreate": "Zostanie utworzone",
-			"willUpdate": "Zaktualizuje istniejace"
 		}
 	}
 }

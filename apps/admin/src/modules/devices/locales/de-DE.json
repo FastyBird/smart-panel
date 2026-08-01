@@ -946,5 +946,46 @@
       "constraint_one_or_more_of_violation": "Bedingungsverletzung (einer oder mehr von)",
       "constraint_mutually_exclusive_violation": "Bedingungsverletzung (gegenseitig ausschließend)"
     }
+  },
+  "wizard": {
+    "steps": {
+      "discover": "Suche",
+      "confirm": "Bestätigung",
+      "results": "Ergebnisse"
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "back": "Zurück",
+      "next": "Weiter",
+      "adopt": "Geräte hinzufügen",
+      "addMore": "Weitere hinzufügen",
+      "done": "Fertig"
+    },
+    "statuses": {
+      "checking": "Wird geprüft",
+      "ready": "Bereit",
+      "needs_credentials": "Anmeldedaten erforderlich",
+      "already_registered": "Bereits hinzugefügt",
+      "unsupported": "Nicht unterstützt",
+      "failed": "Fehlgeschlagen",
+      "willCreate": "Wird erstellt",
+      "willUpdate": "Wird aktualisiert",
+      "created": "Erstellt",
+      "updated": "Aktualisiert"
+    },
+    "columns": {
+      "name": "Name",
+      "status": "Status",
+      "category": "Kategorie",
+      "change": "Aktion",
+      "error": "Fehler"
+    },
+    "texts": {
+      "loading": "Suchsitzung wird geladen...",
+      "empty": "Noch keine Geräte gefunden",
+      "noSelection": "Es wurden keine Geräte ausgewählt",
+      "resultsSuccess": "Alle ausgewählten Geräte wurden erfolgreich hinzugefügt",
+      "resultsFailed": "Einige Geräte konnten nicht hinzugefügt werden"
+    }
   }
 }

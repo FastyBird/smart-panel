@@ -12,11 +12,7 @@
 			"firmware": "Firmware"
 		},
 		"wizard": {
-			"title": "Průvodce vyhledáním Shelly NG",
-			"discovery": "Vyhledávání",
-			"categories": "Kategorie",
-			"results": "Výsledky",
-			"status": "Stav"
+			"title": "Průvodce vyhledáním Shelly NG"
 		}
 	},
 	"subHeadings": {
@@ -34,7 +30,6 @@
 			"category": {
 				"title": "Kategorie",
 				"placeholder": "Kategorie zařízení",
-				"description": "O kategorii",
 				"validation": {
 					"required": "Vyberte prosím kategorii zařízení"
 				}
@@ -57,9 +52,6 @@
 			"password": {
 				"title": "Heslo administrátora",
 				"placeholder": "Zadejte heslo zařízení, pokud je chráněno"
-			},
-			"error": {
-				"title": "Chyba"
 			},
 			"hostname": {
 				"title": "Název hostitele zařízení",
@@ -138,13 +130,7 @@
 		"aboutWebsockets": "Spravujte parametry WebSocket připojení pro zařízení Shelly. Tato nastavení řídí stabilitu komunikace, zpracování požadavků a chování opětovného připojení.",
 		"wizard": {
 			"discovery": "Průvodce vyhledá zařízení Shelly NG v lokální síti a přijímá také ručně zadaný hostname nebo IP adresu.",
-			"categories": "Potvrďte, která připravená zařízení mají být adoptována, a vyberte cílovou kategorii pro každé z nich.",
-			"scanStatus": "Nalezeno zařízení: {count}",
-			"noDevices": "Nebyla nalezena žádná zařízení Shelly",
-			"results": {
-				"success": "Všechna zařízení byla úspěšně adoptována.",
-				"failed": "Některá zařízení se nepodařilo adoptovat. Zkontrolujte chyby níže."
-			}
+			"scanStatus": "Nalezeno zařízení: {count}"
 		}
 	},
 	"buttons": {
@@ -157,27 +143,7 @@
 			},
 			"addManual": {
 				"title": "Přidat"
-			},
-			"adopt": {
-				"title": "Adoptovat vybrané"
-			},
-			"finish": {
-				"title": "Zpět na zařízení"
 			}
-		}
-	},
-	"statuses": {
-		"wizard": {
-			"checking": "Kontrola",
-			"ready": "Připraveno",
-			"needs_password": "Vyžaduje heslo",
-			"already_registered": "Registrováno",
-			"unsupported": "Nepodporováno",
-			"failed": "Selhalo",
-			"created": "Vytvořeno",
-			"updated": "Aktualizováno",
-			"willCreate": "Bude vytvořeno",
-			"willUpdate": "Aktualizuje stávající"
 		}
 	}
 }

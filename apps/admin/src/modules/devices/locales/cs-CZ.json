@@ -946,5 +946,46 @@
       "constraint_one_or_more_of_violation": "Porušení omezení (jeden nebo více z)",
       "constraint_mutually_exclusive_violation": "Porušení omezení (vzájemně vylučující)"
     }
+  },
+  "wizard": {
+    "steps": {
+      "discover": "Vyhledávání",
+      "confirm": "Potvrzení",
+      "results": "Výsledky"
+    },
+    "actions": {
+      "cancel": "Zrušit",
+      "back": "Zpět",
+      "next": "Další",
+      "adopt": "Přidat zařízení",
+      "addMore": "Přidat další",
+      "done": "Hotovo"
+    },
+    "statuses": {
+      "checking": "Ověřování",
+      "ready": "Připraveno",
+      "needs_credentials": "Vyžaduje přihlašovací údaje",
+      "already_registered": "Již přidáno",
+      "unsupported": "Nepodporováno",
+      "failed": "Selhalo",
+      "willCreate": "Bude vytvořeno",
+      "willUpdate": "Bude aktualizováno",
+      "created": "Vytvořeno",
+      "updated": "Aktualizováno"
+    },
+    "columns": {
+      "name": "Název",
+      "status": "Stav",
+      "category": "Kategorie",
+      "change": "Akce",
+      "error": "Chyba"
+    },
+    "texts": {
+      "loading": "Načítání vyhledávací relace...",
+      "empty": "Zatím nebyla nalezena žádná zařízení",
+      "noSelection": "Nebyla vybrána žádná zařízení",
+      "resultsSuccess": "Všechna vybraná zařízení byla úspěšně přidána",
+      "resultsFailed": "Některá zařízení se nepodařilo přidat"
+    }
   }
 }

@@ -947,5 +947,46 @@
       "constraint_one_or_more_of_violation": "Constraint violation (one or more of)",
       "constraint_mutually_exclusive_violation": "Constraint violation (mutually exclusive)"
     }
+  },
+  "wizard": {
+    "steps": {
+      "discover": "Discovery",
+      "confirm": "Confirm",
+      "results": "Results"
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "back": "Back",
+      "next": "Next",
+      "adopt": "Add devices",
+      "addMore": "Add more",
+      "done": "Done"
+    },
+    "statuses": {
+      "checking": "Checking",
+      "ready": "Ready",
+      "needs_credentials": "Credentials required",
+      "already_registered": "Already added",
+      "unsupported": "Unsupported",
+      "failed": "Failed",
+      "willCreate": "Will create",
+      "willUpdate": "Will update",
+      "created": "Created",
+      "updated": "Updated"
+    },
+    "columns": {
+      "name": "Name",
+      "status": "Status",
+      "category": "Category",
+      "change": "Action",
+      "error": "Error"
+    },
+    "texts": {
+      "loading": "Loading discovery session...",
+      "empty": "No devices found yet",
+      "noSelection": "No devices were selected",
+      "resultsSuccess": "All selected devices were added successfully",
+      "resultsFailed": "Some devices could not be added"
+    }
   }
 }
