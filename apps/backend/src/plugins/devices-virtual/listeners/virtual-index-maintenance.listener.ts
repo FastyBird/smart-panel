@@ -273,6 +273,18 @@ export class VirtualIndexMaintenanceListener {
 	 * The patch emits DEVICE_UPDATED, which schedules one further rebuild pass. That converges rather
 	 * than looping: the source device is already absent from `bySourceDevice` by then, so the next pass
 	 * reports no transition and unhides nothing.
+	 *
+	 * ## Why the patch echoes `enabled` back
+	 *
+	 * `hidden: false` alone would silently re-enable a device the user had explicitly disabled.
+	 * `DevicesService.update()` transforms the DTO into the mapped entity class and saves the result,
+	 * and `DeviceEntity.enabled` carries a `= true` class field initializer — class-transformer builds
+	 * its target with `new Target()`, so that initializer is already on the instance before anything is
+	 * copied across, and `omitBy(..., isUndefined)` therefore cannot drop it. Any PATCH that omits
+	 * `enabled` writes `true`. That is the pre-existing defect documented on the entity itself
+	 * (devices.entity.ts) and as follow-up 3.1; fixing it at the root is blocked on
+	 * `devices-shelly-v1`'s afterInsert subscriber reading `event.entity.enabled` before the row is
+	 * re-read, so this call defends itself by sending the value it just read back unchanged.
 	 */
 	private async unhideAbandonedSources(sourceDeviceIds: string[]): Promise<void> {
 		for (const sourceDeviceId of sourceDeviceIds) {
@@ -285,7 +297,11 @@ export class VirtualIndexMaintenanceListener {
 					continue;
 				}
 
-				await this.devicesService.update(sourceDevice.id, { type: sourceDevice.type, hidden: false });
+				await this.devicesService.update(sourceDevice.id, {
+					type: sourceDevice.type,
+					hidden: false,
+					enabled: sourceDevice.enabled,
+				});
 
 				this.logger.debug(`Unhid source device id=${sourceDevice.id}, no virtual device references it anymore`);
 			} catch (error) {

@@ -369,6 +369,44 @@ describe('VirtualIndexMaintenanceListener', () => {
 		);
 	});
 
+	// `hidden: false` on its own would silently re-enable a device the user had explicitly disabled:
+	// DevicesService.update() transforms the DTO into the mapped entity class before saving it, and
+	// DeviceEntity.enabled carries a `= true` class field initializer that class-transformer cannot
+	// drop (it is already on the instance `new Target()` produced), so `omitBy(..., isUndefined)`
+	// keeps it and any PATCH omitting `enabled` writes `true`. That is the pre-existing defect
+	// documented on the entity and as follow-up 3.1, whose root fix is blocked on devices-shelly-v1's
+	// afterInsert subscriber — so this call defends itself by echoing back the value it just read.
+	it('keeps a disabled source device disabled when it unhides it', async () => {
+		index.rebuild.mockResolvedValue(rebuiltWithAbandoned('source-device'));
+		devicesService.findOne.mockResolvedValue({
+			id: 'source-device',
+			type: 'simulator',
+			hidden: true,
+			enabled: false,
+		});
+
+		listener.handleStructuralChange();
+		await flushMicrotasks();
+
+		expect(devicesService.update).toHaveBeenCalledWith(
+			'source-device',
+			expect.objectContaining({ hidden: false, enabled: false }),
+		);
+	});
+
+	it('leaves an enabled source device enabled when it unhides it', async () => {
+		index.rebuild.mockResolvedValue(rebuiltWithAbandoned('source-device'));
+		devicesService.findOne.mockResolvedValue({ id: 'source-device', type: 'simulator', hidden: true, enabled: true });
+
+		listener.handleStructuralChange();
+		await flushMicrotasks();
+
+		expect(devicesService.update).toHaveBeenCalledWith(
+			'source-device',
+			expect.objectContaining({ hidden: false, enabled: true }),
+		);
+	});
+
 	// "Still referenced" is not this method's question to ask — rebuild() answers it by reporting only
 	// source devices that dropped out of bySourceDevice entirely.
 	it('touches no source device when the rebuild reports none abandoned', async () => {
