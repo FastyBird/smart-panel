@@ -654,6 +654,55 @@ describe('useDevicesWizard', () => {
 		expect(results[0]!.key).toBe('shelly-1.local');
 	});
 
+	it('drops a poll response that resolves after a rescan replaced the session', async () => {
+		// The poll interval fires against session A, then the user hits "Scan again". If the
+		// in-flight GET for A resolves after the POST installed session B, applying it would
+		// clobber B — and polling would then run against a session the backend already finished,
+		// so `applySession` stops the timer and the new scan is orphaned with the UI showing the
+		// old one. The user sees "Scan again" apparently do nothing.
+		const sessionB: IShellyV1DiscoverySession = { ...discoverySession, id: 'session-2' };
+
+		backendClient.POST.mockResolvedValueOnce({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+
+		let releaseStalePoll: (() => void) | undefined;
+		backendClient.GET.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					releaseStalePoll = (): void =>
+						resolve({
+							data: { data: discoverySession },
+							response: { status: 200 },
+						});
+				})
+		);
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+		expect(adapter.sessionKey?.value).toBe('session-1');
+
+		// Poll for session A goes out and stays in flight.
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(typeof releaseStalePoll).toBe('function');
+
+		// The user rescans; session B is installed while A's poll is still pending.
+		backendClient.POST.mockResolvedValueOnce({
+			data: { data: sessionB },
+			response: { status: 200 },
+		});
+		await adapter.start();
+		expect(adapter.sessionKey?.value).toBe('session-2');
+
+		// A's response finally lands. It must be dropped, not applied.
+		releaseStalePoll?.();
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(adapter.sessionKey?.value).toBe('session-2');
+	});
+
 	it('adopts the selection handed over by the shell through the devices store', async () => {
 		backendClient.POST.mockResolvedValue({
 			data: { data: discoverySession },

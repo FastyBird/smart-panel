@@ -67,6 +67,14 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 
 	let pollingTimer: number | null = null;
 
+	// Generation counter — bumped on every session boundary (start / dispose). A request captures
+	// the generation before its await and drops its response if the generation moved on. Without
+	// it, a poll issued against session A that resolves after "Scan again" installed session B
+	// would overwrite B; polling would then run against a session the backend already finished,
+	// `applySession` would stop the timer, and the new scan would be orphaned with the UI still
+	// showing the old one — "Scan again" appearing to do nothing.
+	let sessionGeneration = 0;
+
 	// Captured at every applySession so scanPercentage can tick forward independent of any
 	// drift between the client and server clocks. We resnap to the server's `remainingSeconds`
 	// on every poll, so any local drift is bounded by the polling interval (~1s).
@@ -142,7 +150,11 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 
 		pollingTimer = window.setInterval(() => {
 			refreshDiscovery().catch(() => {
-				// User can trigger discovery again if polling fails.
+				// Stop polling on any error — the most likely failure is a 404 after the server
+				// cleaned up the session, and there's no point re-hitting a missing endpoint every
+				// second until the component unmounts. The user can hit "Scan again" to start a
+				// fresh session.
+				stopPolling();
 			});
 		}, 1_000);
 	};
@@ -182,11 +194,24 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const startDiscovery = async (): Promise<void> => {
 		formResult.value = FormResult.WORKING;
 
+		// Kill the running interval before the POST so it cannot queue further polls against the
+		// session we are about to replace, and bump the generation so a poll already in flight
+		// drops its response instead of overwriting the new session.
+		stopPolling();
+		sessionGeneration += 1;
+		const startGeneration = sessionGeneration;
+
 		const {
 			data: responseData,
 			error,
 			response,
 		} = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_SHELLY_NG_PLUGIN_PREFIX}/devices/discovery`);
+
+		// A newer start (or a dispose) landed while this POST was in flight — its session is the
+		// one the user is looking at, so this response is stale.
+		if (sessionGeneration !== startGeneration) {
+			return;
+		}
 
 		if (typeof responseData !== 'undefined') {
 			// Drop any manual-add password from a previous scan before applying the new snapshot.
@@ -215,6 +240,8 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			return;
 		}
 
+		const pollGeneration = sessionGeneration;
+
 		const {
 			data: responseData,
 			error,
@@ -226,6 +253,12 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 				},
 			},
 		});
+
+		// The session was replaced or torn down while this poll was in flight; applying it would
+		// resurrect the old snapshot over the current one.
+		if (sessionGeneration !== pollGeneration) {
+			return;
+		}
 
 		if (typeof responseData !== 'undefined') {
 			applySession(transformDiscoverySessionResponse(responseData.data));
@@ -538,6 +571,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		// wizard view.
 		dispose: async (): Promise<void> => {
 			stopPolling();
+			sessionGeneration += 1;
 		},
 	};
 };

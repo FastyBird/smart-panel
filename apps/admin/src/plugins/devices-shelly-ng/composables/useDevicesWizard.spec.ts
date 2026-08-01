@@ -561,6 +561,79 @@ describe('useDevicesWizard', () => {
 		expect(backendClient.GET).not.toHaveBeenCalled();
 	});
 
+	it('stops polling after a refresh error instead of hammering a cleaned-up session', async () => {
+		// The most likely refresh failure is a 404 after the backend garbage-collects a finished
+		// session — there is no point re-hitting a missing endpoint every second until the
+		// component unmounts. The user can hit "Scan again" to start a fresh one. Swallowing the
+		// error and continuing also never self-heals: `applySession` never runs, so the session
+		// status stays `running` and the non-running `stopPolling()` escape never fires.
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockRejectedValue(new Error('session not found'));
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(backendClient.GET).toHaveBeenCalledTimes(1);
+
+		// The interval must NOT fire again — the failed poll stopped it.
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(backendClient.GET).toHaveBeenCalledTimes(1);
+	});
+
+	it('drops a poll response that resolves after a rescan replaced the session', async () => {
+		// The poll interval fires against session A, then the user hits "Scan again". If the
+		// in-flight GET for A resolves after the POST installed session B, applying it would
+		// clobber B — and polling would then run against a session the backend already finished,
+		// so `applySession` stops the timer and the new scan is orphaned with the UI showing the
+		// old one. The user sees "Scan again" apparently do nothing.
+		const sessionB: IShellyNgDiscoverySession = { ...discoverySession, id: 'session-2' };
+
+		backendClient.POST.mockResolvedValueOnce({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+
+		let releaseStalePoll: (() => void) | undefined;
+		backendClient.GET.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					releaseStalePoll = (): void =>
+						resolve({
+							data: { data: discoverySession },
+							response: { status: 200 },
+						});
+				})
+		);
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+		expect(adapter.sessionKey?.value).toBe('session-1');
+
+		// Poll for session A goes out and stays in flight.
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(typeof releaseStalePoll).toBe('function');
+
+		// The user rescans; session B is installed while A's poll is still pending.
+		backendClient.POST.mockResolvedValueOnce({
+			data: { data: sessionB },
+			response: { status: 200 },
+		});
+		await adapter.start();
+		expect(adapter.sessionKey?.value).toBe('session-2');
+
+		// A's response finally lands. It must be dropped, not applied.
+		releaseStalePoll?.();
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(adapter.sessionKey?.value).toBe('session-2');
+	});
+
 	it('adopts the selection handed over by the shell through the devices store', async () => {
 		backendClient.POST.mockResolvedValue({
 			data: { data: discoverySession },
