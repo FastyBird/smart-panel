@@ -428,6 +428,51 @@ describe('useDevicesWizard', () => {
 		);
 	});
 
+	it('exposes a fresh session key on rescan so the shell drops the previous scan selections', async () => {
+		// Shelly declares no `addMore`, so "Scan again" never routes through the shell's
+		// `onAddMore` reset. The session key is the only signal the shell gets that scan 2 has
+		// begun — without it, a device that was `ready` in scan 1 and returns as
+		// `already_registered` in scan 2 stays ticked and silently overwrites its stored name.
+		backendClient.POST.mockResolvedValueOnce({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		}).mockResolvedValueOnce({
+			data: { data: { ...discoverySession, id: 'session-2' } },
+			response: { status: 200 },
+		});
+
+		const adapter = useDevicesWizard();
+
+		expect(adapter.sessionKey?.value).toBeNull();
+
+		await adapter.start();
+
+		expect(adapter.sessionKey?.value).toBe('session-1');
+
+		await adapter.start();
+
+		expect(adapter.sessionKey?.value).toBe('session-2');
+	});
+
+	it('keeps the session key stable across a polling refresh', async () => {
+		// Only a genuinely new session may reset the shell's state — an ordinary poll must not.
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+		await vi.advanceTimersByTimeAsync(1_000);
+
+		expect(adapter.sessionKey?.value).toBe('session-1');
+	});
+
 	it('promotes polling placeholders when discovered devices become ready', async () => {
 		backendClient.POST.mockResolvedValue({
 			data: { data: checkingDiscoverySession },
@@ -749,6 +794,43 @@ describe('useDevicesWizard', () => {
 			expect.objectContaining({
 				key: '192.168.1.10',
 				status: 'updated',
+			}),
+		]);
+	});
+
+	it('adopts a device that the refresh inside adopt dropped from the session entirely', async () => {
+		// The refresh at the top of `adopt` can return a session that no longer lists the device
+		// — the scan expired it, or it stopped answering mDNS. The shell's selection carries only
+		// key / name / category, so without the pre-refresh descriptor snapshot we would lose the
+		// identifier and fail a device the user explicitly asked for.
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: { data: emptySession },
+			response: { status: 200 },
+		});
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		const results = await adapter.adopt([{ key: '192.168.1.10', name: 'Kitchen relay', category: DevicesModuleDeviceCategory.lighting }]);
+
+		expect(mockAdd).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({
+					identifier: 'shellyplus1-aabbcc',
+					name: 'Kitchen relay',
+					wifiAddress: '192.168.1.10',
+				}),
+			})
+		);
+		expect(results).toEqual([
+			expect.objectContaining({
+				key: '192.168.1.10',
+				status: 'created',
 			}),
 		]);
 	});

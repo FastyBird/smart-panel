@@ -196,6 +196,22 @@ watch(
 	{ immediate: true }
 );
 
+// A rescan opens a brand new discovery session, and the previous session's selections must not
+// survive into it: a device that was `ready` last time may come back as `already_registered`,
+// and a carried-over tick would silently overwrite its stored name and category on adopt.
+// `restart()` handles this for adapters that declare `addMore`, but plugins without it (Shelly)
+// reopen a session from a discover-step control the shell never sees — hence the session key.
+// Both bounds must be non-null: the first session arriving (null → id) must NOT reset, or it
+// would wipe the reconciliation that already ran against those rows.
+watch(
+	() => adapter.sessionKey?.value ?? null,
+	(next: string | null, previous: string | null): void => {
+		if (next !== null && previous !== null && next !== previous) {
+			reset();
+		}
+	}
+);
+
 onMounted(async (): Promise<void> => {
 	try {
 		await adapter.start();

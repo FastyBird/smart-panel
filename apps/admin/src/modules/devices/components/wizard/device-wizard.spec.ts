@@ -257,6 +257,66 @@ describe('DeviceWizard', () => {
 		expect(checkboxAfter.element.checked).toBe(false);
 	});
 
+	it('clears selection and name state when the adapter reports a new session', async () => {
+		// Plugins without `addMore` (Shelly NG) reopen a discovery session from a discover-step
+		// control the shell never sees, so `reset()` is never reached via Add more. Without the
+		// session-key watch, a device that was `ready` in scan 1 and comes back as
+		// `already_registered` in scan 2 would stay ticked and silently overwrite its stored
+		// name and category on adopt.
+		const sessionKey = ref<string | null>('session-1');
+		const wrapper = mountWizard(buildAdapter({ sessionKey: computed(() => sessionKey.value) }));
+		await flushPromises();
+
+		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+
+		const nameInputBefore = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]');
+		const checkboxBefore = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="checkbox"]');
+		expect(nameInputBefore.element.value).toBe('Living room switch');
+		expect(checkboxBefore.element.checked).toBe(true);
+
+		// The user hits "Scan again": a second session id lands.
+		sessionKey.value = 'session-2';
+		await flushPromises();
+
+		// The mock adapter's `rows` never change, so there is no second reconcile to refill the
+		// state — the row renders blank/unchecked if and only if the watch actually reset it.
+		const nameInputAfter = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]');
+		const checkboxAfter = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="checkbox"]');
+		expect(nameInputAfter.element.value).toBe('');
+		expect(checkboxAfter.element.checked).toBe(false);
+	});
+
+	it('does not reset when the first session key arrives', async () => {
+		// null → id is the initial session landing, not a rescan. Reconciliation has already run
+		// against these rows by then, so resetting here would wipe state nothing will refill.
+		const sessionKey = ref<string | null>(null);
+		const wrapper = mountWizard(buildAdapter({ sessionKey: computed(() => sessionKey.value) }));
+		await flushPromises();
+
+		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+
+		sessionKey.value = 'session-1';
+		await flushPromises();
+
+		const nameInput = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]');
+		const checkbox = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="checkbox"]');
+		expect(nameInput.element.value).toBe('Living room switch');
+		expect(checkbox.element.checked).toBe(true);
+	});
+
+	it('keeps working for an adapter that declares no session key', async () => {
+		const wrapper = mountWizard(buildAdapter());
+		await flushPromises();
+
+		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+
+		const nameInput = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]');
+		expect(nameInput.element.value).toBe('Living room switch');
+	});
+
 	it('renders the same action set in the mobile footer when isMDDevice is false', async () => {
 		vi.mocked(useBreakpoints).mockReturnValueOnce({
 			isXSDevice: computed(() => false),

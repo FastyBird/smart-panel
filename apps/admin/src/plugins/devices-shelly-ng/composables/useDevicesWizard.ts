@@ -510,6 +510,10 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		results,
 		columns: [],
 		controls,
+		// "Scan again" opens a new session from the discover step, a path the shell cannot see.
+		// Handing over the session id lets it drop the previous scan's selections, which would
+		// otherwise silently update a device the main connector adopted between the two scans.
+		sessionKey: computed<string | null>(() => session.value?.id ?? null),
 		// Always ready: none of the Shelly controls render misleading state before the first
 		// snapshot lands, and a session-gated overlay would hide the manual-add form and the
 		// rescan button — the only two escape hatches when the initial scan fails to start.

@@ -125,6 +125,15 @@ export interface IDeviceWizardAdapter {
 	columns: IWizardColumn[];
 	controls: ComputedRef<IWizardControl[]>;
 
+	/**
+	 * Identifies the discovery session the current rows belong to. The shell resets its
+	 * selection / name / category state whenever this changes between two non-null values,
+	 * so a rescan cannot carry a stale selection into a fresh session. Adapters that only
+	 * ever open a new session through `restart()` (which already routes through the shell's
+	 * reset) may omit it.
+	 */
+	sessionKey?: ComputedRef<string | null>;
+
 	/** false renders the loading overlay on the discover step. */
 	ready: ComputedRef<boolean>;
 	busy: ComputedRef<boolean>;
