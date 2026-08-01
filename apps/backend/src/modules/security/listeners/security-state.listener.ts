@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { createExtensionLogger } from '../../../common/logger';
 import { ChannelCategory, EventType as DevicesEventType, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
+import { PropertyValueSourceRegistryService } from '../../devices/services/property-value-source.registry.service';
 import { EventType, SECURITY_MODULE_NAME, SECURITY_STATE_DEBOUNCE_MS } from '../security.constants';
 import { SecurityAggregatorService } from '../services/security-aggregator.service';
 import { SecurityAlertAckService } from '../services/security-alert-ack.service';
@@ -57,6 +58,7 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 		private readonly eventsService: SecurityEventsService,
 		private readonly ackService: SecurityAlertAckService,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly valueSourceRegistry: PropertyValueSourceRegistryService,
 	) {}
 
 	async onModuleInit(): Promise<void> {
@@ -120,6 +122,12 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 	}
 
 	private async processPropertyChange(property: ChannelPropertyEntity): Promise<void> {
+		// A projected property shares its state with the source, which already triggered a
+		// recalculation when the source emitted. Counting it again would double the same sensor.
+		if (this.valueSourceRegistry.isProjected(property)) {
+			return;
+		}
+
 		// Quick-filter by property category
 		if (!SECURITY_PROPERTY_CATEGORIES.includes(property.category)) {
 			return;

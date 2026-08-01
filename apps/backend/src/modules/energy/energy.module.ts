@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { createExtensionLogger } from '../../common/logger/extension-logger.service';
 import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { DevicesModule } from '../devices/devices.module';
 import { ChannelEntity } from '../devices/entities/devices.entity';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
@@ -36,6 +37,7 @@ import { EnergyModuleResetService } from './services/module-reset.service';
 @Module({
 	imports: [
 		TypeOrmModule.forFeature([EnergyDeltaEntity, ChannelEntity]),
+		DevicesModule,
 		SwaggerModule,
 		ConfigModule,
 		ExtensionsModule,

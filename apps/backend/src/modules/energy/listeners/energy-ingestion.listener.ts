@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, EventType as DevicesEventType, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
+import { PropertyValueSourceRegistryService } from '../../devices/services/property-value-source.registry.service';
 import { ENERGY_MODULE_NAME, EnergySourceType } from '../energy.constants';
 import { DeltaComputationService } from '../services/delta-computation.service';
 import { EnergyDataService } from '../services/energy-data.service';
@@ -52,6 +53,7 @@ export class EnergyIngestionListener implements OnModuleInit {
 		private readonly deltaComputation: DeltaComputationService,
 		private readonly energyData: EnergyDataService,
 		private readonly metrics: EnergyMetricsService,
+		private readonly valueSourceRegistry: PropertyValueSourceRegistryService,
 	) {}
 
 	onModuleInit(): void {
@@ -69,6 +71,12 @@ export class EnergyIngestionListener implements OnModuleInit {
 	}
 
 	private async processPropertyValue(property: ChannelPropertyEntity): Promise<void> {
+		// A projected property shares its series with the source, which was already ingested when the
+		// source emitted. Counting it again would double the household total.
+		if (this.valueSourceRegistry.isProjected(property)) {
+			return;
+		}
+
 		// Quick check: is this a property category we care about?
 		const isRelevantProperty =
 			property.category === PropertyCategory.CONSUMPTION ||
