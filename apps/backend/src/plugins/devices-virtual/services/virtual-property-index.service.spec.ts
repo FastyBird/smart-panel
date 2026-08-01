@@ -429,4 +429,92 @@ describe('VirtualPropertyIndexService', () => {
 		expect(service.findVirtualDeviceIdsBySourceDevice('source-device')).toEqual([]);
 		expect(service.findLinksByVirtualDevice('virtual-device')).toEqual([]);
 	});
+
+	// -- rebuild() reports which virtual devices came out re-wired --------------------------------
+	//
+	// A virtual device's aggregated connection state is invalidated by a change to *which* sources it
+	// draws from, not only by those sources going up and down. Nothing carried that signal, so a
+	// device whose last linked source property was deleted — which drops it out of `bySourceDevice`
+	// entirely, beyond the reach of any DEVICE_CONNECTION_CHANGED event — stayed reported as connected
+	// forever. This is the one moment the outgoing and incoming maps both exist, so it is the only
+	// place the comparison can be made.
+
+	it('reports a virtual device that gained its first link', async () => {
+		repository.find.mockResolvedValue([linkedProperty]);
+
+		await expect(service.rebuild()).resolves.toEqual(['virtual-device']);
+	});
+
+	it('reports a virtual device whose link lost its source (the deletion that orphans it)', async () => {
+		repository.find.mockResolvedValue([linkedProperty]);
+		await service.rebuild();
+
+		// Same property id, but its source property is gone — exactly what ON DELETE SET NULL leaves
+		// behind, and the case no connection event can ever reach afterwards.
+		repository.find.mockResolvedValue([
+			virtualProperty({ id: 'linked-prop', sourcePropertyId: null, sourceProperty: null }),
+		]);
+
+		await expect(service.rebuild()).resolves.toEqual(['virtual-device']);
+	});
+
+	it('reports a virtual device whose links disappeared entirely', async () => {
+		repository.find.mockResolvedValue([linkedProperty]);
+		await service.rebuild();
+
+		repository.find.mockResolvedValue([]);
+
+		await expect(service.rebuild()).resolves.toEqual(['virtual-device']);
+	});
+
+	it('reports nothing when a rebuild leaves every virtual device wired identically', async () => {
+		repository.find.mockResolvedValue([linkedProperty]);
+		await service.rebuild();
+
+		await expect(service.rebuild()).resolves.toEqual([]);
+	});
+
+	// Row order out of find() is not guaranteed stable, and a reordering is not a re-wiring — a
+	// per-index comparison would report every virtual device as changed on an arbitrary subset of
+	// rebuilds, and recompute the whole system's connection state for nothing.
+	it('does not report a virtual device whose links merely came back in a different order', async () => {
+		const first = virtualProperty({ id: 'link-1', sourcePropertyId: 'source-prop', sourceProperty });
+		const second = virtualProperty({ id: 'link-2', sourcePropertyId: 'source-prop', sourceProperty });
+
+		repository.find.mockResolvedValue([first, second]);
+		await service.rebuild();
+
+		repository.find.mockResolvedValue([second, first]);
+
+		await expect(service.rebuild()).resolves.toEqual([]);
+	});
+
+	it('reports only the virtual devices that actually changed, not every indexed one', async () => {
+		repository.find.mockResolvedValue([linkedA, linkedB]);
+		await service.rebuild();
+
+		// linkedA loses its source; linkedB is untouched.
+		repository.find.mockResolvedValue([
+			virtualProperty({
+				id: 'linked-a',
+				sourcePropertyId: null,
+				sourceProperty: null,
+				channel: makeChannel('virtual-channel-a', makeDevice('virtual-device-a')),
+			}),
+			linkedB,
+		]);
+
+		await expect(service.rebuild()).resolves.toEqual(['virtual-device-a']);
+	});
+
+	// An owned property is in none of the maps, so adding or removing one is not a re-wiring and must
+	// not drag the whole device through a pointless status recompute.
+	it('does not report a virtual device when only an owned property changed', async () => {
+		repository.find.mockResolvedValue([linkedProperty]);
+		await service.rebuild();
+
+		repository.find.mockResolvedValue([linkedProperty, ownedProperty]);
+
+		await expect(service.rebuild()).resolves.toEqual([]);
+	});
 });

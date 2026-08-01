@@ -646,6 +646,23 @@ describe('devices-virtual plugin (e2e)', () => {
 			);
 
 			expect(missingPropertyIssues).toEqual([]);
+
+			// Regression test for a virtual device staying reported as connected with nothing behind it.
+			// The orphan above invalidates the device's aggregated state — aggregateState() degrades on
+			// any orphaned link — but no DEVICE_CONNECTION_CHANGED event was involved in a property
+			// deletion, and VirtualStatusListener runs on nothing else. The structural rebuild that
+			// recorded the orphan is now what triggers the recompute, which is the only signal that can
+			// reach a device whose last source is gone: such a device has dropped out of the source-device
+			// reverse index entirely, so no connection event can ever select it again.
+			const status = await waitUntil(async () => {
+				const response = await authGet(`/modules/devices/devices/${virtualDeviceId}`);
+				const body = response.body as { data: DeviceBody };
+
+				return { done: body.data.status.online === false, value: body.data.status };
+			});
+
+			expect(status.online).toBe(false);
+			expect(status.status).toBe('disconnected');
 		});
 
 		// ─── Step 5 / additional coverage 2: the data-loss guard ─────────────────────────

@@ -181,7 +181,8 @@ export class VirtualPropertyIndexService implements OnApplicationBootstrap {
 	}
 
 	/**
-	 * Re-hydrates all three maps from the database in a single query.
+	 * Re-hydrates all three maps from the database in a single query, and reports which virtual devices
+	 * came out of it wired differently than they went in.
 	 *
 	 * Builds into fresh local maps and swaps them in only once the query has returned, rather than
 	 * clearing the live maps up front. The query is a five-hop relation-loaded SELECT — a real,
@@ -190,8 +191,15 @@ export class VirtualPropertyIndexService implements OnApplicationBootstrap {
 	 * of every rebuild: projections silently not emitted, connection changes silently not propagated.
 	 * The swap itself is three plain assignments with no await between them, so no reader can ever
 	 * observe a half-replaced index.
+	 *
+	 * The returned ids are the virtual devices whose links differ between the outgoing and incoming
+	 * `byVirtualDevice` maps (see diffVirtualDevices). This is the only moment the two versions coexist,
+	 * which is why the comparison belongs here rather than in the caller: a link change is precisely
+	 * what invalidates a virtual device's aggregated connection state, and — for a device whose last
+	 * source was just deleted — the only signal that will ever say so, since such a device drops out of
+	 * `bySourceDevice` entirely and no DEVICE_CONNECTION_CHANGED event can reach it again.
 	 */
-	async rebuild(): Promise<void> {
+	async rebuild(): Promise<string[]> {
 		const bySourceProperty = new Map<string, VirtualChannelPropertyEntity[]>();
 		const bySourceDevice = new Map<string, Set<string>>();
 		const byVirtualDevice = new Map<string, VirtualPropertyLink[]>();
@@ -224,9 +232,51 @@ export class VirtualPropertyIndexService implements OnApplicationBootstrap {
 			);
 		}
 
+		const changedVirtualDeviceIds = this.diffVirtualDevices(this.byVirtualDevice, byVirtualDevice);
+
 		this.bySourceProperty = bySourceProperty;
 		this.bySourceDevice = bySourceDevice;
 		this.byVirtualDevice = byVirtualDevice;
+
+		return changedVirtualDeviceIds;
+	}
+
+	/**
+	 * Virtual device ids whose set of links is not identical between two `byVirtualDevice` maps.
+	 *
+	 * Keyed off the union of both maps' keys, so it reports a device that gained links, one that lost
+	 * every link it had (its entry disappears — indistinguishable here from the device itself having
+	 * been deleted, which is harmless: recomputing a deleted device is a no-op, because
+	 * DeviceConnectivityService.setConnectionState() finds no device and returns), and one whose links
+	 * merely changed shape — a source property deleted out from under it, leaving a link that is now an
+	 * orphan.
+	 *
+	 * Compared as an order-independent fingerprint rather than field by field: the links for one device
+	 * come out of a `find()` whose row order is not guaranteed stable across calls, and a reordering is
+	 * not a change. All three fields participate, because all three feed aggregateState() — the orphan
+	 * test reads `sourcePropertyId`, and the set of devices to poll for online-ness reads
+	 * `sourceDeviceId`.
+	 */
+	private diffVirtualDevices(
+		before: Map<string, VirtualPropertyLink[]>,
+		after: Map<string, VirtualPropertyLink[]>,
+	): string[] {
+		const changed: string[] = [];
+
+		for (const virtualDeviceId of new Set([...before.keys(), ...after.keys()])) {
+			if (this.fingerprintLinks(before.get(virtualDeviceId)) !== this.fingerprintLinks(after.get(virtualDeviceId))) {
+				changed.push(virtualDeviceId);
+			}
+		}
+
+		return changed;
+	}
+
+	private fingerprintLinks(links: VirtualPropertyLink[] | undefined): string {
+		return (links ?? [])
+			.map((link) => `${link.propertyId}>${link.sourcePropertyId ?? ''}@${link.sourceDeviceId ?? ''}`)
+			.sort()
+			.join('|');
 	}
 
 	/**

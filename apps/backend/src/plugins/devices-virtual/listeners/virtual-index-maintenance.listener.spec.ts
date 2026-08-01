@@ -7,6 +7,7 @@ import { EventType } from '../../../modules/devices/devices.constants';
 import { VirtualPropertyIndexService } from '../services/virtual-property-index.service';
 
 import { VirtualIndexMaintenanceListener } from './virtual-index-maintenance.listener';
+import { VirtualStatusListener } from './virtual-status.listener';
 
 // The metadata key @nestjs/event-emitter's @OnEvent() decorator stores its subscriptions under.
 // Not part of the package's public exports (only the decorator itself is), so the key is
@@ -22,6 +23,7 @@ interface OnEventMetadataEntry {
 describe('VirtualIndexMaintenanceListener', () => {
 	let listener: VirtualIndexMaintenanceListener;
 	let index: { rebuild: jest.Mock };
+	let status: { recompute: jest.Mock };
 
 	// Drains Node's microtask queue completely — including microtasks newly queued while draining —
 	// before the callback runs. Unlike a fixed number of `await Promise.resolve()` hops, this needs
@@ -32,10 +34,14 @@ describe('VirtualIndexMaintenanceListener', () => {
 	// A promise plus its own resolver, so a test can decide exactly when a mocked rebuild() call
 	// settles — needed to observe listener state while a rebuild is genuinely still in flight,
 	// without racing real timers or guessing at microtask counts.
-	const createDeferred = (): { promise: Promise<void>; resolve: () => void } => {
+	// Resolves to rebuild()'s own return shape — the ids it re-wired — so a deferred pass drives
+	// recomputeStatuses() exactly as a real one would.
+	const createDeferred = (
+		value: string[] = [],
+	): { promise: Promise<string[]>; resolve: () => void } => {
 		let resolve!: () => void;
-		const promise = new Promise<void>((res) => {
-			resolve = res;
+		const promise = new Promise<string[]>((res) => {
+			resolve = () => res(value);
 		});
 
 		return { promise, resolve };
@@ -60,9 +66,13 @@ describe('VirtualIndexMaintenanceListener', () => {
 	const dataSourceStub = { createQueryRunner: () => ({ isTransactionActive: false }) };
 
 	beforeEach(() => {
-		index = { rebuild: jest.fn().mockResolvedValue(undefined) };
+		// rebuild() resolves to the virtual device ids it re-wired; [] is "nothing changed", the
+		// ordinary case for a structural event that did not touch any virtual device's links.
+		index = { rebuild: jest.fn().mockResolvedValue([]) };
+		status = { recompute: jest.fn().mockResolvedValue(undefined) };
 		listener = new VirtualIndexMaintenanceListener(
 			index as unknown as VirtualPropertyIndexService,
+			status as unknown as VirtualStatusListener,
 			dataSourceStub as unknown as DataSource,
 		);
 	});
@@ -161,7 +171,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 		const loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn');
 		const failure = new Error('rebuild boom');
 
-		index.rebuild.mockRejectedValueOnce(failure).mockResolvedValueOnce(undefined);
+		index.rebuild.mockRejectedValueOnce(failure).mockResolvedValueOnce([]);
 
 		listener.handleStructuralChange();
 		await flushMicrotasks();
@@ -184,7 +194,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 	it('retries a transient-looking SQLite failure and the index ends up current', async () => {
 		const transientFailure = new Error('SQLITE_ERROR: cannot start a transaction within a transaction');
 
-		index.rebuild.mockRejectedValueOnce(transientFailure).mockResolvedValueOnce(undefined);
+		index.rebuild.mockRejectedValueOnce(transientFailure).mockResolvedValueOnce([]);
 
 		listener.handleStructuralChange();
 
@@ -212,7 +222,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 		// Falls back to exactly Task 12a's original guarantee once attempts are exhausted: a later,
 		// unrelated event still triggers a fresh rebuild rather than the listener staying stuck.
-		index.rebuild.mockResolvedValueOnce(undefined);
+		index.rebuild.mockResolvedValueOnce([]);
 		listener.handleStructuralChange();
 		await flushMicrotasks();
 
@@ -225,7 +235,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 		const loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn');
 		const genericFailure = new Error('unexpected boom');
 
-		index.rebuild.mockRejectedValueOnce(genericFailure).mockResolvedValueOnce(undefined);
+		index.rebuild.mockRejectedValueOnce(genericFailure).mockResolvedValueOnce([]);
 
 		listener.handleStructuralChange();
 		await flushMicrotasks();
@@ -235,6 +245,80 @@ describe('VirtualIndexMaintenanceListener', () => {
 		expect(index.rebuild).toHaveBeenCalledTimes(1);
 
 		loggerWarnSpy.mockRestore();
+	});
+
+	// -- recomputing connection state after a rebuild that re-wired something -------------------
+	//
+	// Regression tests for a virtual device whose last linked source property was deleted staying
+	// reported as connected forever. The FK's ON DELETE SET NULL fires and the rebuild duly records an
+	// orphan, but VirtualStatusListener runs only on DEVICE_CONNECTION_CHANGED — and a fully orphaned
+	// device has dropped out of `bySourceDevice`, so no source device change can ever select it again.
+	// Nothing else recomputed it, so nothing ever would.
+
+	it('recomputes the connection state of every virtual device the rebuild re-wired', async () => {
+		index.rebuild.mockResolvedValue(['virtual-a', 'virtual-b']);
+
+		listener.handleStructuralChange();
+		await flushMicrotasks();
+
+		expect(status.recompute).toHaveBeenCalledTimes(2);
+		expect(status.recompute).toHaveBeenCalledWith('virtual-a', expect.any(String));
+		expect(status.recompute).toHaveBeenCalledWith('virtual-b', expect.any(String));
+	});
+
+	it('recomputes nothing when the rebuild changed no virtual device wiring', async () => {
+		listener.handleStructuralChange();
+		await flushMicrotasks();
+
+		expect(index.rebuild).toHaveBeenCalledTimes(1);
+		expect(status.recompute).not.toHaveBeenCalled();
+	});
+
+	// A failed rebuild swapped nothing in, so there is nothing re-wired to recompute — and aggregating
+	// against an index the failed pass left untouched would write a state derived from stale wiring.
+	it('recomputes nothing when the rebuild failed outright', async () => {
+		const loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+		index.rebuild.mockRejectedValue(new Error('unexpected boom'));
+
+		listener.handleStructuralChange();
+		await flushMicrotasks();
+
+		expect(status.recompute).not.toHaveBeenCalled();
+
+		loggerWarnSpy.mockRestore();
+	});
+
+	// The recompute runs inside the fire-and-forget rebuild loop, so one virtual device that cannot be
+	// recomputed must cost only its own result, not everyone else's.
+	it('keeps recomputing the remaining devices after one of them throws', async () => {
+		const loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+		index.rebuild.mockResolvedValue(['virtual-a', 'virtual-b']);
+		status.recompute.mockRejectedValueOnce(new Error('boom')).mockResolvedValue(undefined);
+
+		listener.handleStructuralChange();
+		await flushMicrotasks();
+
+		expect(status.recompute).toHaveBeenCalledTimes(2);
+
+		loggerWarnSpy.mockRestore();
+	});
+
+	// The loop-safety claim in recomputeStatuses()'s docstring, made observable: recomputing must not
+	// itself schedule another rebuild. Nothing here calls handleStructuralChange() again, which is the
+	// point — the real emissions a recompute causes (DEVICE_CONNECTION_CHANGED,
+	// CHANNEL_PROPERTY_VALUE_SET) are both outside this listener's subscription list, so the pass that
+	// recomputed must be the last one.
+	it('does not schedule a further rebuild as a result of recomputing', async () => {
+		index.rebuild.mockResolvedValue(['virtual-a']);
+
+		listener.handleStructuralChange();
+
+		await flushUntil(() => index.rebuild.mock.calls.length >= 2);
+
+		expect(index.rebuild).toHaveBeenCalledTimes(1);
+		expect(status.recompute).toHaveBeenCalledTimes(1);
 	});
 
 	// -- Task 12b: the rebuild must not read while the emitting transaction is still open -------
@@ -288,11 +372,14 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 					await sharedQueryRunner.query('SELECT 1');
 					resolveObserved();
+
+					return [];
 				}),
 			};
 
 			const probeListener = new VirtualIndexMaintenanceListener(
 				probeIndex as unknown as VirtualPropertyIndexService,
+				{ recompute: jest.fn().mockResolvedValue(undefined) } as unknown as VirtualStatusListener,
 				dataSource,
 			);
 

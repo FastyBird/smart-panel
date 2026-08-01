@@ -56,10 +56,7 @@ export class VirtualStatusListener {
 		const virtualDeviceIds = this.index.findVirtualDeviceIdsBySourceDevice(payload.device.id);
 
 		for (const virtualDeviceId of virtualDeviceIds) {
-			await this.deviceConnectivityService.setConnectionState(virtualDeviceId, {
-				state: await this.aggregateState(virtualDeviceId),
-				reason: 'aggregated from source devices',
-			});
+			await this.recompute(virtualDeviceId, 'aggregated from source devices');
 		}
 
 		if (virtualDeviceIds.length > 0) {
@@ -67,6 +64,26 @@ export class VirtualStatusListener {
 				`Recomputed connection state for ${virtualDeviceIds.length} virtual device(s) after source device id=${payload.device.id} changed to ${payload.state}`,
 			);
 		}
+	}
+
+	/**
+	 * Re-aggregates one virtual device's connection state and records it.
+	 *
+	 * Public because a source device connection change is not the only thing that invalidates the
+	 * answer: so does a change to *which* sources the device draws from, which arrives as a structural
+	 * event rather than a connection one. VirtualIndexMaintenanceListener calls this after a rebuild
+	 * that altered a virtual device's links — the only path that can ever recompute a device whose last
+	 * source property was deleted, since such a device is in no source device's reverse index and no
+	 * DEVICE_CONNECTION_CHANGED event can select it again.
+	 *
+	 * Terminates rather than recursing: the write below emits DEVICE_CONNECTION_CHANGED for a device of
+	 * DEVICES_VIRTUAL_TYPE, which handleConnectionChanged() above returns on immediately.
+	 */
+	async recompute(virtualDeviceId: string, reason: string): Promise<void> {
+		await this.deviceConnectivityService.setConnectionState(virtualDeviceId, {
+			state: await this.aggregateState(virtualDeviceId),
+			reason,
+		});
 	}
 
 	/**

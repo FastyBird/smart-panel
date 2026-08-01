@@ -8,6 +8,8 @@ import { EventType } from '../../../modules/devices/devices.constants';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
 import { VirtualPropertyIndexService } from '../services/virtual-property-index.service';
 
+import { VirtualStatusListener } from './virtual-status.listener';
+
 /**
  * Keeps VirtualPropertyIndexService current after bootstrap.
  *
@@ -90,6 +92,7 @@ export class VirtualIndexMaintenanceListener {
 
 	constructor(
 		private readonly index: VirtualPropertyIndexService,
+		private readonly status: VirtualStatusListener,
 		private readonly dataSource: DataSource,
 	) {}
 
@@ -148,10 +151,55 @@ export class VirtualIndexMaintenanceListener {
 
 				this.pending = false;
 
-				await this.rebuildWithRetry();
+				await this.recomputeStatuses(await this.rebuildWithRetry());
 			} while (this.pending);
 		} finally {
 			this.running = false;
+		}
+	}
+
+	/**
+	 * Re-aggregates the connection state of every virtual device the rebuild just re-wired.
+	 *
+	 * Without this, a virtual device whose last linked source property was deleted is never recomputed
+	 * again by anything. The FK's ON DELETE SET NULL fires, the rebuild duly records an orphan, and
+	 * VirtualStatusListener — which runs only on DEVICE_CONNECTION_CHANGED — never hears about it,
+	 * because a fully orphaned device has dropped out of `bySourceDevice` and no source device change
+	 * can select it. It stays reported as connected forever, with nothing behind it.
+	 *
+	 * ## Why this cannot loop
+	 *
+	 * The write below (DeviceConnectivityService.setConnectionState) can emit two things, and neither
+	 * re-enters this listener:
+	 * - DEVICE_CONNECTION_CHANGED, which is not among the subscriptions on handleStructuralChange()
+	 *   above, and which VirtualStatusListener itself discards for a virtual device by type;
+	 * - CHANNEL_PROPERTY_VALUE_SET, from writing the new state onto the existing connection-state
+	 *   property. ChannelsPropertiesService.update() emits CHANNEL_PROPERTY_UPDATED only when a
+	 *   non-`value`, non-`type` field changes, and this write sends neither. VALUE_SET is deliberately
+	 *   not subscribed to here (see the class docstring), so it schedules nothing.
+	 *
+	 * The one path that does schedule another pass is a device whose connection-state property does not
+	 * exist yet, where setConnectionState find-or-creates it and CHANNEL_PROPERTY_CREATED fires. That
+	 * converges rather than oscillating: the following pass finds the property already there, so its
+	 * write is value-only and emits VALUE_SET. Recomputing is also idempotent in itself — an unchanged
+	 * state writes nothing and emits nothing at all.
+	 *
+	 * Failures are logged per device and do not abort the rest: this runs inside the fire-and-forget
+	 * rebuild loop, and one virtual device that cannot be recomputed must not cost the others theirs.
+	 */
+	private async recomputeStatuses(virtualDeviceIds: string[]): Promise<void> {
+		for (const virtualDeviceId of virtualDeviceIds) {
+			try {
+				await this.status.recompute(virtualDeviceId, 'aggregated after a source wiring change');
+			} catch (error) {
+				this.logger.warn(`Failed to recompute connection state for virtual device id=${virtualDeviceId}: ${error}`);
+			}
+		}
+
+		if (virtualDeviceIds.length > 0) {
+			this.logger.debug(
+				`Recomputed connection state for ${virtualDeviceIds.length} virtual device(s) whose source wiring changed`,
+			);
 		}
 	}
 
@@ -164,18 +212,20 @@ export class VirtualIndexMaintenanceListener {
 	 * one-shot rebuild() call behaved. This never wedges the loop: every path through this method
 	 * returns, so runRebuildLoop() always reaches its `while (this.pending)` check and eventually
 	 * sets `running = false`.
+	 *
+	 * Returns the virtual device ids rebuild() reported as re-wired, for recomputeStatuses(). A failure
+	 * returns none: nothing was swapped in, so nothing changed to recompute — and guessing otherwise
+	 * would aggregate a virtual device's state from an index the failed pass left untouched.
 	 */
-	private async rebuildWithRetry(): Promise<void> {
+	private async rebuildWithRetry(): Promise<string[]> {
 		for (let attempt = 1; ; attempt++) {
 			try {
-				await this.index.rebuild();
-
-				return;
+				return await this.index.rebuild();
 			} catch (error) {
 				this.logger.warn(`Failed to rebuild the virtual property index: ${error}`);
 
 				if (attempt >= VirtualIndexMaintenanceListener.MAX_REBUILD_ATTEMPTS || !this.looksTransientSqliteError(error)) {
-					return;
+					return [];
 				}
 
 				await this.deferPastOpenTransaction();
