@@ -15,7 +15,8 @@ import {
 	type IDevicePluginsSchemas,
 } from '../../modules/devices';
 
-import { ShellyV1ConfigForm, ShellyV1DeviceAddForm, ShellyV1DeviceEditForm, ShellyV1DevicesWizard } from './components/components';
+import { ShellyV1ConfigForm, ShellyV1DeviceAddForm, ShellyV1DeviceEditForm } from './components/components';
+import { useDevicesWizard } from './composables/composables';
 import { DEVICES_SHELLY_V1_PLUGIN_NAME, DEVICES_SHELLY_V1_TYPE } from './devices-shelly-v1.constants';
 import { locales } from './locales';
 import { ShellyV1ConfigEditFormSchema } from './schemas/config.schemas';
@@ -75,7 +76,7 @@ export default {
 					components: {
 						deviceAddForm: ShellyV1DeviceAddForm,
 						deviceEditForm: ShellyV1DeviceEditForm,
-						deviceWizard: ShellyV1DevicesWizard,
+						deviceWizardAdapter: useDevicesWizard,
 					},
 					schemas: {
 						deviceSchema: ShellyV1DeviceSchema,
