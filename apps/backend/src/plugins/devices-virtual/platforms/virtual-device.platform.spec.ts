@@ -211,6 +211,73 @@ describe('VirtualDevicePlatform', () => {
 		]);
 	});
 
+	it('resolves every source device platform before forwarding to any of them', async () => {
+		// A missing platform for a LATER group must prevent forwarding to an EARLIER group too —
+		// otherwise real hardware could already be commanded before the batch as a whole is even known
+		// to be forwardable. This is the pre-pass fix itself: platformA must never be called here.
+		const deviceA = makeDevice('source-device-a');
+		const deviceB = makeDevice('source-device-b');
+
+		linkSource('source-prop-a', deviceA);
+		linkSource('source-prop-b', deviceB);
+
+		const linkedToA = virtualProperty({ id: 'linked-a', sourcePropertyId: 'source-prop-a' });
+		const linkedToB = virtualProperty({ id: 'linked-b', sourcePropertyId: 'source-prop-b' });
+
+		const platformA = createMockPlatform();
+
+		// deviceB has no registered platform.
+		platformRegistryService.get.mockImplementation((device: DeviceEntity) =>
+			device.id === deviceA.id ? platformA : null,
+		);
+
+		const result = await platform.processBatch([
+			{ device: virtualDevice, channel: virtualChannel, property: linkedToA, value: true },
+			{ device: virtualDevice, channel: virtualChannel, property: linkedToB, value: false },
+		]);
+
+		expect(result).toBe(false);
+		expect(platformA.processBatch).not.toHaveBeenCalled();
+	});
+
+	it('does not undo an earlier successful forward when a later source device batch fails', async () => {
+		// IDevicePlatform has no pre-flight/dry-run hook, so once every group's platform is resolved
+		// (both here and now up front, before either group is forwarded to), a later group's
+		// processBatch can still legitimately fail after an earlier group already succeeded and moved
+		// real hardware. This pins that accepted tradeoff: the overall result is false, but the first
+		// (successful) platform was still called — nothing rolls it back.
+		const deviceA = makeDevice('source-device-a');
+		const deviceB = makeDevice('source-device-b');
+
+		const { property: sourcePropertyA } = linkSource('source-prop-a', deviceA);
+		linkSource('source-prop-b', deviceB);
+
+		const linkedToA = virtualProperty({ id: 'linked-a', sourcePropertyId: 'source-prop-a' });
+		const linkedToB = virtualProperty({ id: 'linked-b', sourcePropertyId: 'source-prop-b' });
+
+		const platformA = createMockPlatform();
+		const platformB = createMockPlatform();
+		platformB.processBatch.mockResolvedValue(false);
+
+		platformRegistryService.get.mockImplementation((device: DeviceEntity) => {
+			if (device.id === deviceA.id) return platformA;
+			if (device.id === deviceB.id) return platformB;
+
+			return null;
+		});
+
+		const result = await platform.processBatch([
+			{ device: virtualDevice, channel: virtualChannel, property: linkedToA, value: true },
+			{ device: virtualDevice, channel: virtualChannel, property: linkedToB, value: false },
+		]);
+
+		expect(result).toBe(false);
+		expect(platformA.processBatch).toHaveBeenCalledWith([
+			expect.objectContaining({ property: sourcePropertyA, value: true }),
+		]);
+		expect(platformB.processBatch).toHaveBeenCalledTimes(1);
+	});
+
 	it('rejects a write to an orphaned property', async () => {
 		const orphanedProperty = virtualProperty({ id: 'orphaned-prop', sourcePropertyId: null });
 
@@ -278,5 +345,32 @@ describe('VirtualDevicePlatform', () => {
 
 		expect(result).toBe(false);
 		expect(platformRegistryService.get).not.toHaveBeenCalled();
+	});
+
+	it('forwards normally when a source device status is unknown rather than offline', async () => {
+		// Matches PropertyCommandService's convention: ConnectionState.UNKNOWN is permissible — e.g.
+		// storage is unavailable or no status data has arrived yet — so it must not be treated the same
+		// as a definitively offline device. Only `online: false` combined with a status other than
+		// UNKNOWN is rejected.
+		const sourceDevice = makeDevice('unknown-status-source-device', {
+			status: { online: false, status: ConnectionState.UNKNOWN, lastChanged: null },
+		});
+		const { property: sourceProperty } = linkSource('unknown-status-source-prop', sourceDevice);
+		const linkedProperty = virtualProperty({ id: 'linked-prop', sourcePropertyId: 'unknown-status-source-prop' });
+
+		const sourcePlatform = createMockPlatform();
+
+		platformRegistryService.get.mockImplementation((device: DeviceEntity) =>
+			device.id === sourceDevice.id ? sourcePlatform : null,
+		);
+
+		const result = await platform.processBatch([
+			{ device: virtualDevice, channel: virtualChannel, property: linkedProperty, value: true },
+		]);
+
+		expect(result).toBe(true);
+		expect(sourcePlatform.processBatch).toHaveBeenCalledWith([
+			expect.objectContaining({ device: sourceDevice, property: sourceProperty, value: true }),
+		]);
 	});
 });

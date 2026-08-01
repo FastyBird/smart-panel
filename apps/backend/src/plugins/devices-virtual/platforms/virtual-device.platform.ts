@@ -84,6 +84,12 @@ export class VirtualDevicePlatform implements IDevicePlatform {
 			bySourceDevice.set(device.id, group);
 		}
 
+		// Resolve every group's platform before forwarding to any of them. PlatformRegistryService.get()
+		// is a pure synchronous lookup with no I/O, so this pre-pass costs nothing and guarantees a
+		// "no platform registered" failure can never happen after an earlier group has already forwarded.
+		const forwardTargets: Array<{ device: DeviceEntity; platform: IDevicePlatform; updates: IDevicePropertyData[] }> =
+			[];
+
 		for (const { device, updates: sourceUpdates } of bySourceDevice.values()) {
 			const platform = this.platformRegistryService.get(device);
 
@@ -93,6 +99,16 @@ export class VirtualDevicePlatform implements IDevicePlatform {
 				return false;
 			}
 
+			forwardTargets.push({ device, platform, updates: sourceUpdates });
+		}
+
+		// Past this point every group has a resolved platform, but a batch spanning several source
+		// devices is still not atomic: IDevicePlatform has no pre-flight/dry-run hook, so there is no
+		// way to check that a later group would succeed before an earlier group's processBatch has
+		// already moved real hardware. If a later group legitimately fails, this returns false for the
+		// whole batch even though earlier groups already forwarded — accepted, not fixed, because adding
+		// such a hook would change a contract shared by eight plugins.
+		for (const { device, platform, updates: sourceUpdates } of forwardTargets) {
 			const success = await platform.processBatch(sourceUpdates);
 
 			if (!success) {
