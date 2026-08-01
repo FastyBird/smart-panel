@@ -6,40 +6,79 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelEntity } from '../../../modules/devices/entities/devices.entity';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
-import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
+import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
 
 /**
- * In-memory index over LINKED virtual properties (valueOrigin === SOURCE with a non-null
- * sourcePropertyId — see VirtualChannelPropertyEntity.isOrphaned). OWNED (LOCAL) properties store
- * their own value and have nothing to index; ORPHANED properties lost their source and are
- * likewise skipped — none of the three maps below ever holds one.
+ * One virtual property's projection wiring, reduced to plain ids.
+ *
+ * Deliberately *not* an entity reference. Everything a consumer needs to decide what a virtual
+ * device's connection state should be is either an id (resolve it live, against whatever service
+ * owns the current answer) or the single fact that no id is left at all (`sourcePropertyId === null`
+ * — orphaned). Caching a hydrated `DeviceEntity` here instead would freeze `device.status` at the
+ * moment of the last rebuild(), and nothing rebuilds on a connection change — that is exactly the
+ * staleness this shape exists to remove.
+ */
+export interface VirtualPropertyLink {
+	/** The virtual property's own id. */
+	propertyId: string;
+	/**
+	 * The property whose value this one projects, or null once that source row was deleted and the
+	 * `sourcePropertyId` FK's ON DELETE SET NULL fired. Null here is precisely "orphaned".
+	 */
+	sourcePropertyId: string | null;
+	/**
+	 * The device owning `sourcePropertyId`. Null when the property is orphaned (there is no source to
+	 * own it) and, defensively, when the relation hops needed to reach it were not loaded.
+	 */
+	sourceDeviceId: string | null;
+}
+
+/**
+ * In-memory index over every PROJECTING virtual property — `valueOrigin === SOURCE`, whether or not
+ * it still has a source. OWNED (LOCAL) properties store their own value, are nobody's projection and
+ * never affect a virtual device's connection state, so they are the only kind skipped outright.
  *
  * Three lookups matter, all driven off system-wide, per-event traffic where a database query would
  * not scale:
  * - `findBySourceProperty` — read by the projection listener on every property value change.
  * - `findVirtualDeviceIdsBySourceDevice` — read by the connection-status listener on every source
  *   device connection change, to find which virtual devices a source device change affects.
- * - `findByVirtualDevice` — read by the same connection-status listener to enumerate one affected
- *   virtual device's properties, so it can aggregate a CONNECTED/DISCONNECTED state from them.
+ * - `findLinksByVirtualDevice` — read by the same connection-status listener to enumerate one
+ *   affected virtual device's projections, so it can aggregate a CONNECTED/DISCONNECTED state.
  *
- * `byVirtualDevice` started as bookkeeping that let `removeVirtualDevice` undo everything one
- * virtual device contributed to the other two maps without a linear scan over every indexed
- * property; `findByVirtualDevice` exposes that same map read-only rather than adding a fourth.
- * Because it is only ever populated with properties that were LINKED at add()/rebuild() time, a
- * virtual device with solely owned properties reports no properties here at all (vacuously — see
- * the connection-status listener, which treats that as CONNECTED). A property that orphans in the
- * database via the sourceProperty FK's ON DELETE SET NULL — after already being indexed — is a
- * different case: nothing currently re-runs add() for it, so its cached copy lingers here exactly
- * as it looked when indexed, `isOrphaned` and all, until the next full `rebuild()`. Orphan checks
- * against this map are therefore only as fresh as the last add()/rebuild(), not live.
+ * ## Ids, not hydrated entities
+ *
+ * `byVirtualDevice` and `bySourceDevice` hold ids only (see VirtualPropertyLink). A cached entity is
+ * a snapshot: `DeviceEntitySubscriber.afterLoad` copies a device's connection status field by field
+ * at load time, so an indexed `sourceProperty.channel.device.status` reflects whenever the last
+ * rebuild() ran and nothing ever refreshes it — no structural event fires on a connection change,
+ * and the connection-state property's own PATCH emits CHANNEL_PROPERTY_VALUE_SET, which this index
+ * deliberately does not subscribe to. Holding ids makes the question "is this source online?" a live
+ * read at the point of use instead.
+ *
+ * `bySourceProperty` is the one exception and holds entities on purpose: its consumer
+ * (VirtualProjectionListener) needs a full ChannelPropertyEntity to re-emit as the event payload,
+ * and it runs on every property value change in the entire system. Resolving that live would put a
+ * database read on the exact hot path this index exists to keep clear. What it caches is a property
+ * row's own structure — refreshed by rebuild() on every CHANNEL_PROPERTY_* event — not another
+ * device's connection status, so it does not carry the staleness described above.
+ *
+ * ## Orphans are indexed, not skipped
+ *
+ * An orphaned property (SOURCE origin, `sourcePropertyId === null`) contributes nothing to
+ * `bySourceProperty` (there is no key to file it under) or to `bySourceDevice` (no source device),
+ * but it *is* recorded in `byVirtualDevice`, because "this virtual device has a projection that lost
+ * its source" is precisely the condition the connection-status listener degrades on. Filtering
+ * orphans out of the index entirely — as an earlier version did — made that degradation branch
+ * unreachable by construction.
  */
 @Injectable()
 export class VirtualPropertyIndexService implements OnApplicationBootstrap {
 	private readonly logger = createExtensionLogger(DEVICES_VIRTUAL_PLUGIN_NAME, 'VirtualPropertyIndexService');
 
-	private readonly bySourceProperty = new Map<string, VirtualChannelPropertyEntity[]>();
-	private readonly bySourceDevice = new Map<string, Set<string>>();
-	private readonly byVirtualDevice = new Map<string, VirtualChannelPropertyEntity[]>();
+	private bySourceProperty = new Map<string, VirtualChannelPropertyEntity[]>();
+	private bySourceDevice = new Map<string, Set<string>>();
+	private byVirtualDevice = new Map<string, VirtualPropertyLink[]>();
 
 	constructor(
 		@InjectRepository(VirtualChannelPropertyEntity)
@@ -65,43 +104,45 @@ export class VirtualPropertyIndexService implements OnApplicationBootstrap {
 	}
 
 	/**
-	 * Every LINKED property currently indexed for the given virtual device. O(1), synchronous, no
-	 * I/O. See the class docstring: owned properties are never in here, and an orphaned one lingers
-	 * only as stale, still-linked-looking data until the next add()/rebuild() — this is not a live
-	 * enumeration of everything the virtual device owns.
+	 * Every projecting property indexed for the given virtual device, as ids (see
+	 * VirtualPropertyLink). O(1), synchronous, no I/O. Owned (LOCAL) properties are never in here, so
+	 * a virtual device assembled solely from owned properties reports nothing at all — the
+	 * connection-status listener treats that vacuous case as CONNECTED. Orphaned properties *are*
+	 * reported, with `sourcePropertyId: null`.
 	 */
-	findByVirtualDevice(id: string): VirtualChannelPropertyEntity[] {
+	findLinksByVirtualDevice(id: string): VirtualPropertyLink[] {
 		return this.byVirtualDevice.get(id) ?? [];
 	}
 
 	/**
-	 * Indexes one linked property after a CRUD create/update, without a full reload. `sourceDeviceId`
-	 * is supplied by the caller — by the time a property is linked, whoever created/updated it has
-	 * already resolved and validated its source, so re-deriving it here would be redundant work.
-	 * The owning virtual device id, in contrast, is local to `property` itself and is resolved from
-	 * its own channel relation.
+	 * Indexes one projecting property after a CRUD create/update, without a full reload.
+	 * `sourceDeviceId` is supplied by the caller — by the time a property is linked, whoever
+	 * created/updated it has already resolved and validated its source, so re-deriving it here would
+	 * be redundant work. It is ignored for an orphaned property, which by definition has no source
+	 * device. The owning virtual device id, in contrast, is local to `property` itself and is
+	 * resolved from its own channel relation.
 	 *
 	 * Safe to call again for a property id already indexed: existing entries for that id are
 	 * replaced, not duplicated, so this also serves an update in place.
 	 */
 	add(property: VirtualChannelPropertyEntity, sourceDeviceId: string): void {
-		if (!this.isLinked(property)) {
+		if (!property.isProjecting) {
 			return;
 		}
 
-		this.indexLinkedProperty(property, sourceDeviceId);
+		this.indexProperty(this.bySourceProperty, this.bySourceDevice, this.byVirtualDevice, property, sourceDeviceId);
 	}
 
 	/** Removes every trace of one virtual device, leaving no stale entries in any of the three maps. */
 	removeVirtualDevice(id: string): void {
-		const properties = this.byVirtualDevice.get(id);
+		const links = this.byVirtualDevice.get(id);
 
-		if (!properties) {
+		if (!links) {
 			return;
 		}
 
-		for (const property of properties) {
-			this.unindexBySourceProperty(property);
+		for (const link of links) {
+			this.unindexBySourceProperty(this.bySourceProperty, link);
 		}
 
 		this.byVirtualDevice.delete(id);
@@ -120,11 +161,21 @@ export class VirtualPropertyIndexService implements OnApplicationBootstrap {
 		}
 	}
 
-	/** Clears all three maps and re-hydrates them from the database in a single query. */
+	/**
+	 * Re-hydrates all three maps from the database in a single query.
+	 *
+	 * Builds into fresh local maps and swaps them in only once the query has returned, rather than
+	 * clearing the live maps up front. The query is a five-hop relation-loaded SELECT — a real,
+	 * awaited round trip — and the maps are read synchronously by listeners that fire on ordinary
+	 * traffic throughout that window. Clearing first would make the index look empty for the duration
+	 * of every rebuild: projections silently not emitted, connection changes silently not propagated.
+	 * The swap itself is three plain assignments with no await between them, so no reader can ever
+	 * observe a half-replaced index.
+	 */
 	async rebuild(): Promise<void> {
-		this.bySourceProperty.clear();
-		this.bySourceDevice.clear();
-		this.byVirtualDevice.clear();
+		const bySourceProperty = new Map<string, VirtualChannelPropertyEntity[]>();
+		const bySourceDevice = new Map<string, Set<string>>();
+		const byVirtualDevice = new Map<string, VirtualPropertyLink[]>();
 
 		// Both the property's own device (via channel) and its source's device (via
 		// sourceProperty.channel) are loaded so every row carries everything needed for both
@@ -141,33 +192,45 @@ export class VirtualPropertyIndexService implements OnApplicationBootstrap {
 		});
 
 		for (const property of properties) {
-			if (!this.isLinked(property)) {
+			if (!property.isProjecting) {
 				continue;
 			}
 
-			this.indexLinkedProperty(property, this.resolveSourceDeviceId(property));
+			this.indexProperty(
+				bySourceProperty,
+				bySourceDevice,
+				byVirtualDevice,
+				property,
+				this.resolveSourceDeviceId(property),
+			);
 		}
-	}
 
-	/** Linked = projects a source (SOURCE) and still has one (sourcePropertyId set). */
-	private isLinked(property: VirtualChannelPropertyEntity): boolean {
-		return property.valueOrigin === VirtualValueOrigin.SOURCE && property.sourcePropertyId !== null;
+		this.bySourceProperty = bySourceProperty;
+		this.bySourceDevice = bySourceDevice;
+		this.byVirtualDevice = byVirtualDevice;
 	}
 
 	/**
-	 * Indexes one already-linked property into all three maps, shared by `add()` (caller-supplied
-	 * `sourceDeviceId`, always resolvable by contract) and `rebuild()` (a resolved-from-relations
-	 * `sourceDeviceId` that, on a malformed row, may not be).
+	 * Indexes one already-projecting property into the three supplied maps, shared by `add()` (which
+	 * passes the live maps and a caller-supplied `sourceDeviceId`, always resolvable by contract) and
+	 * `rebuild()` (which passes its fresh local maps and a resolved-from-relations `sourceDeviceId`
+	 * that, on a malformed row, may not be).
 	 *
-	 * `bySourceProperty` is populated unconditionally, before either device id is looked at: it
-	 * reads only `property.sourcePropertyId`, a plain column already on the row with no relation
-	 * dependency, so a failure to resolve a device below must never evict the property from the
-	 * index the projection listener depends on for every value change in the system. The two
-	 * device-level maps are populated independently — `byVirtualDevice` only needs `virtualDeviceId`
-	 * to resolve; `bySourceDevice` additionally needs `sourceDeviceId`.
+	 * `bySourceProperty` is populated first, before either device id is looked at: it reads only
+	 * `property.sourcePropertyId`, a plain column already on the row with no relation dependency, so
+	 * a failure to resolve a device below must never evict the property from the index the projection
+	 * listener depends on for every value change in the system. The two device-level maps are
+	 * populated independently — `byVirtualDevice` only needs `virtualDeviceId` to resolve;
+	 * `bySourceDevice` additionally needs `sourceDeviceId`.
 	 */
-	private indexLinkedProperty(property: VirtualChannelPropertyEntity, sourceDeviceId: string | undefined): void {
-		this.indexBySourceProperty(property);
+	private indexProperty(
+		bySourceProperty: Map<string, VirtualChannelPropertyEntity[]>,
+		bySourceDevice: Map<string, Set<string>>,
+		byVirtualDevice: Map<string, VirtualPropertyLink[]>,
+		property: VirtualChannelPropertyEntity,
+		sourceDeviceId: string | undefined,
+	): void {
+		this.indexBySourceProperty(bySourceProperty, property);
 
 		const virtualDeviceId = this.resolveDeviceId(property.channel);
 
@@ -182,21 +245,29 @@ export class VirtualPropertyIndexService implements OnApplicationBootstrap {
 			return;
 		}
 
-		this.indexByVirtualDevice(virtualDeviceId, property);
+		// An orphaned property has no source device by definition — not a failure, just nothing to
+		// resolve. A LINKED one that still cannot resolve is: its source channel and device are
+		// required (non-nullable) relations, so this means the query did not load what it expected to.
+		const resolvedSourceDeviceId = property.isOrphaned ? null : (sourceDeviceId ?? null);
 
-		if (!sourceDeviceId) {
-			// Every linked property's source channel and device are required (non-nullable)
-			// relations, so this indicates the query above did not load what it expected to rather
-			// than a legitimate state. bySourceProperty and byVirtualDevice still hold this property;
-			// only the source-device side is left incomplete for it.
+		if (property.isLinked && !resolvedSourceDeviceId) {
 			this.logger.warn(
 				`Could not resolve the source device for property id=${property.id}, skipping its source-device index`,
 			);
-
-			return;
 		}
 
-		this.indexBySourceDevice(sourceDeviceId, virtualDeviceId);
+		// Recorded against its virtual device either way, orphan included — bySourceProperty above
+		// already holds whatever it could, and this single record is what lets the connection-status
+		// listener see an orphan at all.
+		this.indexByVirtualDevice(byVirtualDevice, virtualDeviceId, {
+			propertyId: property.id,
+			sourcePropertyId: property.sourcePropertyId,
+			sourceDeviceId: resolvedSourceDeviceId,
+		});
+
+		if (resolvedSourceDeviceId) {
+			this.indexBySourceDevice(bySourceDevice, resolvedSourceDeviceId, virtualDeviceId);
+		}
 	}
 
 	private resolveSourceDeviceId(property: VirtualChannelPropertyEntity): string | undefined {
@@ -215,51 +286,65 @@ export class VirtualPropertyIndexService implements OnApplicationBootstrap {
 		return typeof channel.device === 'string' ? channel.device : channel.device?.id;
 	}
 
-	private indexBySourceProperty(property: VirtualChannelPropertyEntity): void {
+	private indexBySourceProperty(
+		bySourceProperty: Map<string, VirtualChannelPropertyEntity[]>,
+		property: VirtualChannelPropertyEntity,
+	): void {
 		const key = property.sourcePropertyId;
 
 		if (!key) {
 			return;
 		}
 
-		const siblings = (this.bySourceProperty.get(key) ?? []).filter((candidate) => candidate.id !== property.id);
+		const siblings = (bySourceProperty.get(key) ?? []).filter((candidate) => candidate.id !== property.id);
 
 		siblings.push(property);
 
-		this.bySourceProperty.set(key, siblings);
+		bySourceProperty.set(key, siblings);
 	}
 
-	private unindexBySourceProperty(property: VirtualChannelPropertyEntity): void {
-		const key = property.sourcePropertyId;
+	private unindexBySourceProperty(
+		bySourceProperty: Map<string, VirtualChannelPropertyEntity[]>,
+		link: VirtualPropertyLink,
+	): void {
+		const key = link.sourcePropertyId;
 
 		if (!key) {
 			return;
 		}
 
-		const remaining = (this.bySourceProperty.get(key) ?? []).filter((candidate) => candidate.id !== property.id);
+		const remaining = (bySourceProperty.get(key) ?? []).filter((candidate) => candidate.id !== link.propertyId);
 
 		if (remaining.length > 0) {
-			this.bySourceProperty.set(key, remaining);
+			bySourceProperty.set(key, remaining);
 		} else {
-			this.bySourceProperty.delete(key);
+			bySourceProperty.delete(key);
 		}
 	}
 
-	private indexByVirtualDevice(virtualDeviceId: string, property: VirtualChannelPropertyEntity): void {
-		const siblings = (this.byVirtualDevice.get(virtualDeviceId) ?? []).filter(
-			(candidate) => candidate.id !== property.id,
+	private indexByVirtualDevice(
+		byVirtualDevice: Map<string, VirtualPropertyLink[]>,
+		virtualDeviceId: string,
+		link: VirtualPropertyLink,
+	): void {
+		const siblings = (byVirtualDevice.get(virtualDeviceId) ?? []).filter(
+			(candidate) => candidate.propertyId !== link.propertyId,
 		);
 
-		siblings.push(property);
+		siblings.push(link);
 
-		this.byVirtualDevice.set(virtualDeviceId, siblings);
+		byVirtualDevice.set(virtualDeviceId, siblings);
 	}
 
-	private indexBySourceDevice(sourceDeviceId: string, virtualDeviceId: string): void {
-		const virtualDeviceIds = this.bySourceDevice.get(sourceDeviceId) ?? new Set<string>();
+	private indexBySourceDevice(
+		bySourceDevice: Map<string, Set<string>>,
+		sourceDeviceId: string,
+		virtualDeviceId: string,
+	): void {
+		const virtualDeviceIds = bySourceDevice.get(sourceDeviceId) ?? new Set<string>();
 
 		virtualDeviceIds.add(virtualDeviceId);
 
-		this.bySourceDevice.set(sourceDeviceId, virtualDeviceIds);
+		bySourceDevice.set(sourceDeviceId, virtualDeviceIds);
 	}
 }

@@ -57,6 +57,7 @@ interface DeviceBody {
 	id: string;
 	type: string;
 	category: string;
+	hidden: boolean;
 	status: DeviceStatusBody;
 	channels: ChannelBody[];
 }
@@ -469,6 +470,78 @@ describe('devices-virtual plugin (e2e)', () => {
 			// VirtualChannelPropertyEntity` would be false, VirtualValueSourceService.resolve() would
 			// return null, and this would resolve to the property's own id instead of the source's.
 			expect(valueSourceRegistry.resolve(reloaded)).toBe(sourceOnPropertyId);
+		});
+
+		// ─── The `hidden` flag on the replaced source device ────────────────────────────
+
+		it('hides the source device the virtual device replaces, and keeps it hidden across later edits', async () => {
+			// The design's "optionally hide the source device" (see the spec's DeviceEntity.hidden
+			// section). Until `hidden` was exposed on the update DTO there was no way to set it at all,
+			// so `?hidden=true` could only ever return an empty list.
+			await authPatch(`/modules/devices/devices/${sourceDeviceId}`)
+				.send({ data: { type: SIMULATOR_TYPE, hidden: true } })
+				.expect(200);
+
+			const hiddenList = await authGet('/modules/devices/devices?hidden=true').expect(200);
+
+			expect((hiddenList.body as { data: DeviceBody[] }).data.map((device) => device.id)).toContain(sourceDeviceId);
+
+			const visibleList = await authGet('/modules/devices/devices?hidden=false').expect(200);
+
+			expect((visibleList.body as { data: DeviceBody[] }).data.map((device) => device.id)).not.toContain(
+				sourceDeviceId,
+			);
+
+			// The half that a unit test cannot show end to end: an unrelated PATCH must not silently
+			// un-hide it. DeviceEntity.hidden carries no class field initializer precisely so that
+			// `omitBy(toInstance(...), isUndefined)` yields no `hidden` key for a patch that omits it.
+			await authPatch(`/modules/devices/devices/${sourceDeviceId}`)
+				.send({ data: { type: SIMULATOR_TYPE, name: 'Renamed Source' } })
+				.expect(200);
+
+			const reloaded = await authGet(`/modules/devices/devices/${sourceDeviceId}`).expect(200);
+
+			expect((reloaded.body as { data: DeviceBody }).data.hidden).toBe(true);
+
+			// Unhide again so the remaining lifecycle steps see the source exactly as they did before.
+			await authPatch(`/modules/devices/devices/${sourceDeviceId}`)
+				.send({ data: { type: SIMULATOR_TYPE, hidden: false } })
+				.expect(200);
+		});
+
+		// ─── Owned properties stay owned across an unrelated PATCH ──────────────────────
+
+		it('keeps a synthesized device_information property owned when it is renamed', async () => {
+			// VirtualDeviceInformationListener synthesizes manufacturer / model / serial_number as
+			// `local` (owned) properties. A PATCH that only renames one must not flip it to `source`:
+			// that would make it a projection with no source — an orphan — and lose its stored value.
+			// VirtualChannelPropertyEntity.valueOrigin carries no class field initializer for exactly
+			// this reason.
+			const deviceResponse = await authGet(`/modules/devices/devices/${virtualDeviceId}`).expect(200);
+			const deviceBody = deviceResponse.body as { data: DeviceBody };
+
+			const informationChannel = deviceBody.data.channels.find(
+				(channel) => channel.category === String(ChannelCategory.DEVICE_INFORMATION),
+			);
+
+			expect(informationChannel).toBeDefined();
+
+			const manufacturer = informationChannel?.properties.find(
+				(property) => property.category === PropertyCategory.MANUFACTURER,
+			);
+
+			expect(manufacturer?.value_origin).toBe('local');
+
+			const patched = await authPatch(
+				`/modules/devices/channels/${informationChannel?.id}/properties/${manufacturer?.id}`,
+			)
+				.send({ data: { type: DEVICES_VIRTUAL_TYPE, name: 'Vendor' } })
+				.expect(200);
+
+			const patchedBody = patched.body as { data: ChannelPropertyBody };
+
+			expect(patchedBody.data.value_origin).toBe('local');
+			expect(patchedBody.data.value?.value).toBe('FastyBird');
 		});
 
 		// ─── Step 4: deleting the source orphans the (still-required) property ───────────

@@ -12,7 +12,6 @@ import {
 	VirtualPermissionsIncompatibleException,
 	VirtualSourceNotFoundException,
 } from '../devices-virtual.exceptions';
-import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
 
 import { VirtualPropertyIndexService } from './virtual-property-index.service';
 
@@ -115,30 +114,33 @@ export class VirtualDevicesService {
 	}
 
 	/**
-	 * Distinct physical devices a virtual device's linked properties currently draw from. Read off
-	 * VirtualPropertyIndexService rather than a fresh query, per this task's Consumes interface — see
-	 * that service's class docstring for the staleness this inherits: only as fresh as the last
-	 * add()/rebuild() pass, not a live read. A virtual device built solely from owned properties (or
-	 * one that does not exist) resolves to an empty list.
+	 * Distinct physical devices a virtual device's linked properties currently draw from. A virtual
+	 * device built solely from owned properties (or one that does not exist) resolves to an empty
+	 * list, as does one whose every projection has been orphaned.
 	 *
-	 * Returns a Promise (rather than being synchronous) to match the interface this task commits to
-	 * — `findSourceDevices(virtualDeviceId): Promise<DeviceEntity[]>` — even though today's lookup is
-	 * a synchronous, in-memory index read; no `await` is needed internally.
+	 * The index supplies source device *ids*; each is loaded here rather than served from a
+	 * relation cached at index-build time. This is an HTTP read path — a handful of lookups per
+	 * request, not per event — and loading gives the caller a device whose connection status is
+	 * current, which a cached relation could not (see VirtualPropertyIndexService's docstring).
 	 */
-	findSourceDevices(virtualDeviceId: string): Promise<DeviceEntity[]> {
-		const properties = this.index.findByVirtualDevice(virtualDeviceId);
+	async findSourceDevices(virtualDeviceId: string): Promise<DeviceEntity[]> {
+		const links = this.index.findLinksByVirtualDevice(virtualDeviceId);
 
-		const devices = new Map<string, DeviceEntity>();
+		const sourceDeviceIds = new Set(
+			links.map((link) => link.sourceDeviceId).filter((sourceDeviceId): sourceDeviceId is string => !!sourceDeviceId),
+		);
 
-		for (const property of properties) {
-			const device = this.resolveIndexedSourceDevice(property);
+		const devices: DeviceEntity[] = [];
+
+		for (const sourceDeviceId of sourceDeviceIds) {
+			const device = await this.devicesService.findOne(sourceDeviceId);
 
 			if (device) {
-				devices.set(device.id, device);
+				devices.push(device);
 			}
 		}
 
-		return Promise.resolve(Array.from(devices.values()));
+		return devices;
 	}
 
 	private permissionSatisfied(required: PermissionType, sourcePermissions: Set<PermissionType>): boolean {
@@ -174,16 +176,5 @@ export class VirtualDevicesService {
 		const deviceId = typeof channel.device === 'string' ? channel.device : channel.device?.id;
 
 		return deviceId ? await this.devicesService.findOne(deviceId) : null;
-	}
-
-	/** Mirrors VirtualStatusListener's own resolveSourceDevice: relation-based, not an id lookup. */
-	private resolveIndexedSourceDevice(property: VirtualChannelPropertyEntity): DeviceEntity | null {
-		const channel = property.sourceProperty?.channel;
-
-		if (!channel || typeof channel === 'string') {
-			return null;
-		}
-
-		return typeof channel.device === 'string' ? null : (channel.device ?? null);
 	}
 }

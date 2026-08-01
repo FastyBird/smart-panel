@@ -60,8 +60,17 @@ export class VirtualChannelPropertyEntity extends ChannelPropertyEntity {
 			obj.value_origin ?? obj.valueOrigin,
 		{ toClassOnly: true },
 	)
+	// Deliberately declared WITHOUT a class field initializer, relying on the @Column default instead.
+	// A field initializer runs in the constructor, and class-transformer builds its target with
+	// `new Target()` before copying anything across — so an initialized value survives
+	// `plainToInstance` even when the source object never mentioned the field, and
+	// `omitBy(toInstance(...), isUndefined)` in ChannelsPropertiesService.update() would then write
+	// it back on every PATCH. A PATCH that only renamed a synthesized (LOCAL) device_information
+	// property would silently reset it to SOURCE, converting an owned property into an orphan. New
+	// rows still get 'source' from the column default; see isProjecting/isOrphaned below for how an
+	// entity that has not round-tripped through the database is read.
 	@Column({ type: 'text', enum: VirtualValueOrigin, default: VirtualValueOrigin.SOURCE })
-	valueOrigin: VirtualValueOrigin = VirtualValueOrigin.SOURCE;
+	valueOrigin: VirtualValueOrigin;
 
 	@ApiPropertyOptional({
 		name: 'source_property',
@@ -100,8 +109,28 @@ export class VirtualChannelPropertyEntity extends ChannelPropertyEntity {
 		return DEVICES_VIRTUAL_TYPE;
 	}
 
+	/**
+	 * True when this property draws its value from somewhere else rather than storing its own —
+	 * whether it still has a source (linked) or has lost it (orphaned).
+	 *
+	 * Tested as "not LOCAL" rather than "=== SOURCE" on purpose: `valueOrigin` carries no class field
+	 * initializer (see above), so an entity built in memory and never round-tripped through the
+	 * database — `repository.create(...)` before the row is read back — has it `undefined`. The
+	 * column default is SOURCE, so undefined means the same thing, and reading it as LOCAL would
+	 * silently route a freshly created linked property's value into its own series instead of its
+	 * source's.
+	 */
+	get isProjecting(): boolean {
+		return this.valueOrigin !== VirtualValueOrigin.LOCAL;
+	}
+
 	/** True when this property was meant to project a source that has since been deleted. */
 	get isOrphaned(): boolean {
-		return this.valueOrigin === VirtualValueOrigin.SOURCE && this.sourcePropertyId === null;
+		return this.isProjecting && this.sourcePropertyId === null;
+	}
+
+	/** True when this property projects a source that still exists. */
+	get isLinked(): boolean {
+		return this.isProjecting && this.sourcePropertyId !== null;
 	}
 }

@@ -4,9 +4,9 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ConnectionState, EventType } from '../../../modules/devices/devices.constants';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
-import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
 import { VirtualPropertyIndexService } from '../services/virtual-property-index.service';
 
 /**
@@ -14,6 +14,18 @@ import { VirtualPropertyIndexService } from '../services/virtual-property-index.
  * it draws a property from is online and none of its properties is orphaned, and DISCONNECTED
  * otherwise. Runs once per source device connection change, recomputing every virtual device that
  * change affects.
+ *
+ * Both halves of that rule are answered from live state, not from anything cached at index time:
+ * - orphan-ness comes from VirtualPropertyLink.sourcePropertyId being null, and the index records
+ *   orphans specifically so this branch is reachable;
+ * - online-ness comes from DeviceConnectionStateService, which is the same in-memory map
+ *   DeviceConnectivityService writes to *before* it emits the event that lands here — so by the time
+ *   this runs, the changed device's new state is already the answer that map gives. Reading a
+ *   `DeviceEntity.status` hydrated at index-build time instead would pin every source to whatever it
+ *   was during the last rebuild(): after a restart the index hydrates before plugins connect, so
+ *   every source reads offline, and the first genuine "source came online" event would aggregate
+ *   from that stale `false` and write DISCONNECTED — which PropertyCommandService then refuses every
+ *   command against, permanently, since no structural event ever re-runs the rebuild.
  *
  * `setConnectionState` re-emits DEVICE_CONNECTION_CHANGED for the virtual device this listener just
  * updated, re-entering `handleConnectionChanged`. Nesting is rejected at creation (enforced by
@@ -28,6 +40,7 @@ export class VirtualStatusListener {
 	constructor(
 		private readonly index: VirtualPropertyIndexService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
+		private readonly deviceConnectionStateService: DeviceConnectionStateService,
 	) {}
 
 	@OnEvent(EventType.DEVICE_CONNECTION_CHANGED)
@@ -44,7 +57,7 @@ export class VirtualStatusListener {
 
 		for (const virtualDeviceId of virtualDeviceIds) {
 			await this.deviceConnectivityService.setConnectionState(virtualDeviceId, {
-				state: this.aggregateState(virtualDeviceId),
+				state: await this.aggregateState(virtualDeviceId),
 				reason: 'aggregated from source devices',
 			});
 		}
@@ -59,42 +72,34 @@ export class VirtualStatusListener {
 	/**
 	 * CONNECTED when every distinct source device backing this virtual device is online and none of
 	 * its properties is orphaned; DISCONNECTED otherwise. A virtual device with only owned properties
-	 * has no sources at all, which is vacuously CONNECTED. Reads only the in-memory index — no I/O.
+	 * has no links at all, which is vacuously CONNECTED.
+	 *
+	 * The index supplies only ids; the per-device answer is read from DeviceConnectionStateService,
+	 * which serves its in-memory status map first and only falls through to storage for a device that
+	 * has not reported since this process started (caching the result, so that is at most one read
+	 * per device per process — not per event).
 	 */
-	private aggregateState(virtualDeviceId: string): ConnectionState {
-		const properties = this.index.findByVirtualDevice(virtualDeviceId);
+	private async aggregateState(virtualDeviceId: string): Promise<ConnectionState> {
+		const links = this.index.findLinksByVirtualDevice(virtualDeviceId);
 
-		if (properties.some((property) => property.isOrphaned)) {
+		if (links.some((link) => link.sourcePropertyId === null)) {
 			return ConnectionState.DISCONNECTED;
 		}
 
-		// Keyed by device id, not by object identity: the same physical source device reached
-		// through two different properties is very likely two different DeviceEntity instances (each
-		// property's relation was hydrated on its own), so deduplicating by reference would fail to
-		// collapse them.
-		const sourceDevices = new Map<string, DeviceEntity>();
+		// Deduplicated by id: the same physical source device very commonly backs several of a virtual
+		// device's properties, and each would otherwise cost its own status read.
+		const sourceDeviceIds = new Set(
+			links.map((link) => link.sourceDeviceId).filter((sourceDeviceId): sourceDeviceId is string => !!sourceDeviceId),
+		);
 
-		for (const property of properties) {
-			const device = this.resolveSourceDevice(property);
+		for (const sourceDeviceId of sourceDeviceIds) {
+			const status = await this.deviceConnectionStateService.readLatest({ id: sourceDeviceId });
 
-			if (device) {
-				sourceDevices.set(device.id, device);
+			if (!status.online) {
+				return ConnectionState.DISCONNECTED;
 			}
 		}
 
-		const everySourceOnline = Array.from(sourceDevices.values()).every((device) => device.status?.online === true);
-
-		return everySourceOnline ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED;
-	}
-
-	/** The DeviceEntity behind a linked property's source, or undefined if a relation hop is unresolved. */
-	private resolveSourceDevice(property: VirtualChannelPropertyEntity): DeviceEntity | undefined {
-		const channel = property.sourceProperty?.channel;
-
-		if (!channel || typeof channel === 'string') {
-			return undefined;
-		}
-
-		return typeof channel.device === 'string' ? undefined : channel.device;
+		return ConnectionState.CONNECTED;
 	}
 }

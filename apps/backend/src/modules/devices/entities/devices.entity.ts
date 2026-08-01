@@ -101,6 +101,15 @@ export class DeviceEntity extends BaseEntity {
 	@Column({ nullable: true })
 	description: string | null;
 
+	// NOTE: this initializer has the same defect `hidden` below was fixed for — class-transformer
+	// builds its target with `new Target()`, so `true` survives `plainToInstance` even for a PATCH
+	// that never mentioned `enabled`, survives `omitBy(..., isUndefined)` in DevicesService.update()
+	// and is written back by `Object.assign`, silently re-enabling a disabled device on the next
+	// unrelated edit. It is left in place deliberately: three device plugins' `afterInsert`
+	// subscribers read `event.entity.enabled` before the row is re-read (e.g.
+	// devices-shelly-v1/subscribers/device-entity.subscriber.ts), so dropping the initializer would
+	// register freshly created devices as `undefined` rather than enabled. Fixing it needs those call
+	// sites moved off the in-memory entity first — tracked separately, out of scope here.
 	@ApiProperty({ description: 'Device enabled status', type: 'boolean', example: true })
 	@Expose()
 	@IsBoolean()
@@ -108,6 +117,12 @@ export class DeviceEntity extends BaseEntity {
 	@Column({ nullable: false, default: true })
 	enabled: boolean = true;
 
+	// Deliberately declared WITHOUT a class field initializer, relying on the @Column default instead
+	// — see the note on `enabled` above for the mechanism. Nothing reads `hidden` off an entity that
+	// has not been read back from the database (the only consumers are
+	// DeviceNotHiddenConstraintValidator, which loads the device itself, and the `?hidden=` list
+	// filter, which is a SQL predicate), so it can be dropped here safely. New rows still get `false`
+	// from the column default.
 	@ApiProperty({
 		description: 'Whether the device is hidden from selection UIs, e.g. because virtual devices replace it',
 		type: 'boolean',
@@ -117,7 +132,7 @@ export class DeviceEntity extends BaseEntity {
 	@IsBoolean()
 	@Index()
 	@Column({ nullable: false, default: false })
-	hidden: boolean = false;
+	hidden: boolean;
 
 	@ApiPropertyOptional({
 		name: 'room_id',

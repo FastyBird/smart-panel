@@ -1,86 +1,81 @@
 import { ConnectionState } from '../../../modules/devices/devices.constants';
-import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
-import { VirtualPropertyIndexService } from '../services/virtual-property-index.service';
+import { VirtualPropertyIndexService, VirtualPropertyLink } from '../services/virtual-property-index.service';
 
 import { VirtualStatusListener } from './virtual-status.listener';
 
 describe('VirtualStatusListener', () => {
 	let listener: VirtualStatusListener;
-	let index: { findVirtualDeviceIdsBySourceDevice: jest.Mock; findByVirtualDevice: jest.Mock };
+	let index: { findVirtualDeviceIdsBySourceDevice: jest.Mock; findLinksByVirtualDevice: jest.Mock };
 	let connectivity: { setConnectionState: jest.Mock };
+	let connectionState: { readLatest: jest.Mock };
 
 	// The device whose connectivity change drives most tests below. Never the virtual type, so it
 	// never trips the recursion guard on its own; its identity does not need to match any of the
 	// fabricated sources below since `findVirtualDeviceIdsBySourceDevice` is mocked independently.
 	const sourceDevice = { id: 'source-device', type: 'generic' } as DeviceEntity;
 
-	// A source device stub carrying just enough of DeviceEntity for aggregateState to read: an id
-	// (so distinct devices can be told apart) and a status.online flag.
-	const makeSourceDevice = (id: string, online: boolean): DeviceEntity => ({ id, status: { online } }) as DeviceEntity;
+	// A link to a source that still exists, as VirtualPropertyIndexService records one: plain ids.
+	const link = (propertyId: string, sourceDeviceId: string): VirtualPropertyLink => ({
+		propertyId,
+		sourcePropertyId: `${propertyId}-source`,
+		sourceDeviceId,
+	});
 
-	// A linked virtual property projecting a freshly-made, distinct source device, mirroring the
-	// relation shape VirtualPropertyIndexService actually indexes (channel -> device,
-	// sourceProperty -> channel -> device).
-	const makeLinkedProperty = (id: string, deviceId: string, online: boolean): VirtualChannelPropertyEntity => {
-		const property = new VirtualChannelPropertyEntity();
-
-		Object.assign(property, {
-			id,
-			valueOrigin: VirtualValueOrigin.SOURCE,
-			sourcePropertyId: `${id}-source`,
-			sourceProperty: { channel: { device: makeSourceDevice(deviceId, online) } },
-		});
-
-		return property;
-	};
-
-	// An orphaned property: SOURCE origin, but its source was deleted (sourcePropertyId null). See
+	// An orphaned projection: its source property was deleted, so both source ids are null. See
 	// VirtualChannelPropertyEntity.isOrphaned.
-	const makeOrphanedProperty = (id: string): VirtualChannelPropertyEntity => {
-		const property = new VirtualChannelPropertyEntity();
+	const orphanedLink = (propertyId: string): VirtualPropertyLink => ({
+		propertyId,
+		sourcePropertyId: null,
+		sourceDeviceId: null,
+	});
 
-		Object.assign(property, {
-			id,
-			valueOrigin: VirtualValueOrigin.SOURCE,
-			sourcePropertyId: null,
-			sourceProperty: null,
-		});
-
-		return property;
-	};
-
-	// Arranges the mocked index so `findByVirtualDevice(virtualDeviceId)` returns one linked
-	// property per entry in `sources` (each projecting its own distinct device), plus one orphaned
-	// property when `orphaned` is set.
+	// Arranges the mocked index so `findLinksByVirtualDevice(virtualDeviceId)` returns one link per
+	// entry in `sources` (each pointing at its own distinct source device), plus one orphaned link
+	// when `orphaned` is set, and teaches the connection-state service each source's online-ness.
 	const sourcesFor = (
 		virtualDeviceId: string,
 		sources: { online: boolean }[],
 		options: { orphaned?: boolean } = {},
 	): void => {
-		const properties = sources.map((source, i) =>
-			makeLinkedProperty(`${virtualDeviceId}-prop-${i}`, `${virtualDeviceId}-device-${i}`, source.online),
-		);
+		const online = new Map<string, boolean>();
+
+		const links = sources.map((source, i) => {
+			const sourceDeviceId = `${virtualDeviceId}-device-${i}`;
+
+			online.set(sourceDeviceId, source.online);
+
+			return link(`${virtualDeviceId}-prop-${i}`, sourceDeviceId);
+		});
 
 		if (options.orphaned) {
-			properties.push(makeOrphanedProperty(`${virtualDeviceId}-orphan`));
+			links.push(orphanedLink(`${virtualDeviceId}-orphan`));
 		}
 
-		index.findByVirtualDevice.mockReturnValue(properties);
+		index.findLinksByVirtualDevice.mockReturnValue(links);
+		connectionState.readLatest.mockImplementation((device: { id: string }) =>
+			Promise.resolve({ online: online.get(device.id) ?? false, status: ConnectionState.UNKNOWN, lastChanged: null }),
+		);
 	};
 
 	beforeEach(() => {
 		index = {
 			findVirtualDeviceIdsBySourceDevice: jest.fn(),
-			findByVirtualDevice: jest.fn().mockReturnValue([]),
+			findLinksByVirtualDevice: jest.fn().mockReturnValue([]),
 		};
 		connectivity = { setConnectionState: jest.fn().mockResolvedValue(undefined) };
+		connectionState = {
+			readLatest: jest.fn().mockResolvedValue({ online: false, status: ConnectionState.UNKNOWN, lastChanged: null }),
+		};
 
 		listener = new VirtualStatusListener(
 			index as unknown as VirtualPropertyIndexService,
 			connectivity as unknown as DeviceConnectivityService,
+			connectionState as unknown as DeviceConnectionStateService,
 		);
 	});
 
@@ -147,8 +142,8 @@ describe('VirtualStatusListener', () => {
 	// checklist ("is every distinct source device genuinely deduplicated?").
 
 	it('treats a virtual device with only owned properties as always connected', async () => {
-		// No sourcesFor() call: findByVirtualDevice keeps its default [] — an owned-only device has
-		// nothing indexed (byVirtualDevice only ever holds LINKED properties), so there are no
+		// No sourcesFor() call: findLinksByVirtualDevice keeps its default [] — an owned-only device
+		// has nothing indexed (byVirtualDevice only ever holds PROJECTING properties), so there are no
 		// sources and, per the rule, that is vacuously CONNECTED rather than a zero-source failure.
 		index.findVirtualDeviceIdsBySourceDevice.mockReturnValue(['virtual-device']);
 
@@ -158,19 +153,17 @@ describe('VirtualStatusListener', () => {
 			'virtual-device',
 			expect.objectContaining({ state: ConnectionState.CONNECTED }),
 		);
+		expect(connectionState.readLatest).not.toHaveBeenCalled();
 	});
 
-	it('counts a source device once even when two properties project through it', async () => {
+	it('reads a source device once even when two properties project through it', async () => {
 		index.findVirtualDeviceIdsBySourceDevice.mockReturnValue(['virtual-device']);
-
-		// Two DISTINCT property/device object instances that happen to share one device id — exactly
-		// what VirtualPropertyIndexService produces in practice, since TypeORM hydrates a fresh
-		// DeviceEntity per relation path rather than reusing one instance for the same row. If the
-		// listener deduplicated by object identity instead of by id, this would not collapse.
-		const propertyA = makeLinkedProperty('prop-a', 'shared-device', true);
-		const propertyB = makeLinkedProperty('prop-b', 'shared-device', true);
-
-		index.findByVirtualDevice.mockReturnValue([propertyA, propertyB]);
+		index.findLinksByVirtualDevice.mockReturnValue([link('prop-a', 'shared-device'), link('prop-b', 'shared-device')]);
+		connectionState.readLatest.mockResolvedValue({
+			online: true,
+			status: ConnectionState.CONNECTED,
+			lastChanged: null,
+		});
 
 		await listener.handleConnectionChanged({ device: sourceDevice, state: ConnectionState.CONNECTED });
 
@@ -178,18 +171,26 @@ describe('VirtualStatusListener', () => {
 			'virtual-device',
 			expect.objectContaining({ state: ConnectionState.CONNECTED }),
 		);
+		// Deduplicated by id, so one status read — not one per property.
+		expect(connectionState.readLatest).toHaveBeenCalledTimes(1);
 	});
 
 	it('aggregates independently for every virtual device the changed source device affects', async () => {
 		index.findVirtualDeviceIdsBySourceDevice.mockReturnValue(['virtual-online', 'virtual-offline']);
 
-		index.findByVirtualDevice.mockImplementation((virtualDeviceId: string) => {
-			if (virtualDeviceId === 'virtual-online') {
-				return [makeLinkedProperty('online-prop', 'online-device', true)];
-			}
+		index.findLinksByVirtualDevice.mockImplementation((virtualDeviceId: string) =>
+			virtualDeviceId === 'virtual-online'
+				? [link('online-prop', 'online-device')]
+				: [link('offline-prop', 'offline-device')],
+		);
 
-			return [makeLinkedProperty('offline-prop', 'offline-device', false)];
-		});
+		connectionState.readLatest.mockImplementation((device: { id: string }) =>
+			Promise.resolve({
+				online: device.id === 'online-device',
+				status: ConnectionState.UNKNOWN,
+				lastChanged: null,
+			}),
+		);
 
 		await listener.handleConnectionChanged({ device: sourceDevice, state: ConnectionState.CONNECTED });
 
@@ -201,5 +202,134 @@ describe('VirtualStatusListener', () => {
 			'virtual-offline',
 			expect.objectContaining({ state: ConnectionState.DISCONNECTED }),
 		);
+	});
+
+	// -- regression cases, wired against the REAL index ------------------------------------------
+	// Both failures below were invisible to a mocked index, because the mock could return whatever
+	// the test wanted rather than what VirtualPropertyIndexService can actually produce. These build
+	// the real service over a mocked repository, so the listener sees exactly the index shape the
+	// running system would hand it.
+
+	describe('against a real VirtualPropertyIndexService', () => {
+		const buildRealIndex = async (rows: VirtualChannelPropertyEntity[]): Promise<VirtualPropertyIndexService> => {
+			const repository = { find: jest.fn().mockResolvedValue(rows) };
+			const realIndex = new VirtualPropertyIndexService(repository as never);
+
+			await realIndex.onApplicationBootstrap();
+
+			return realIndex;
+		};
+
+		// Mirrors a row TypeORM returns once rebuild()'s relations are loaded: the virtual property's
+		// own channel -> device, plus sourceProperty -> channel -> device. `sourceOnlineAtIndexTime`
+		// controls the *hydrated* status on that source DeviceEntity — the snapshot
+		// DeviceEntitySubscriber.afterLoad copies in field by field at load time.
+		const hydratedRow = (options: {
+			id: string;
+			sourcePropertyId: string | null;
+			sourceOnlineAtIndexTime?: boolean;
+		}): VirtualChannelPropertyEntity => {
+			const property = new VirtualChannelPropertyEntity();
+
+			const virtualDevice = Object.assign(new DeviceEntity(), { id: 'virtual-device' });
+			const virtualChannel = Object.assign(new ChannelEntity(), { id: 'virtual-channel', device: virtualDevice });
+
+			Object.assign(property, {
+				id: options.id,
+				valueOrigin: VirtualValueOrigin.SOURCE,
+				sourcePropertyId: options.sourcePropertyId,
+				channel: virtualChannel,
+				sourceProperty: null,
+			});
+
+			if (options.sourcePropertyId !== null) {
+				const hydratedSourceDevice = Object.assign(new DeviceEntity(), { id: 'source-device' });
+
+				hydratedSourceDevice.status.online = options.sourceOnlineAtIndexTime ?? false;
+
+				const sourceChannel = Object.assign(new ChannelEntity(), {
+					id: 'source-channel',
+					device: hydratedSourceDevice,
+				});
+
+				property.sourceProperty = Object.assign(new ChannelPropertyEntity(), {
+					id: options.sourcePropertyId,
+					channel: sourceChannel,
+				});
+			}
+
+			return property;
+		};
+
+		const listenerOver = (realIndex: VirtualPropertyIndexService, live: { online: boolean }): VirtualStatusListener =>
+			new VirtualStatusListener(
+				realIndex,
+				connectivity as unknown as DeviceConnectivityService,
+				{
+					readLatest: jest
+						.fn()
+						.mockResolvedValue({ online: live.online, status: ConnectionState.UNKNOWN, lastChanged: null }),
+				} as unknown as DeviceConnectionStateService,
+			);
+
+		// CC-1. On a fresh restart the index hydrates before any plugin has connected, so every source
+		// row carries `status.online === false`. Nothing rebuilds the index on a connection change:
+		// VirtualIndexMaintenanceListener subscribes to structural events only, and the connection-state
+		// property's own PATCH emits CHANNEL_PROPERTY_VALUE_SET rather than CHANNEL_PROPERTY_UPDATED.
+		// Aggregating off the hydrated snapshot therefore pinned the virtual device to DISCONNECTED
+		// forever — and PropertyCommandService refuses every command to an offline device.
+		it('follows the live status of a source that came online after the index was hydrated', async () => {
+			const realIndex = await buildRealIndex([
+				hydratedRow({ id: 'linked-prop', sourcePropertyId: 'source-prop', sourceOnlineAtIndexTime: false }),
+			]);
+
+			const realListener = listenerOver(realIndex, { online: true });
+
+			await realListener.handleConnectionChanged({ device: sourceDevice, state: ConnectionState.CONNECTED });
+
+			expect(connectivity.setConnectionState).toHaveBeenCalledWith(
+				'virtual-device',
+				expect.objectContaining({ state: ConnectionState.CONNECTED }),
+			);
+		});
+
+		// The inverse, so the test above cannot pass by simply always answering CONNECTED: a source
+		// hydrated as online that has since dropped must drag the virtual device down with it.
+		it('follows the live status of a source that went offline after the index was hydrated', async () => {
+			const realIndex = await buildRealIndex([
+				hydratedRow({ id: 'linked-prop', sourcePropertyId: 'source-prop', sourceOnlineAtIndexTime: true }),
+			]);
+
+			const realListener = listenerOver(realIndex, { online: false });
+
+			await realListener.handleConnectionChanged({ device: sourceDevice, state: ConnectionState.DISCONNECTED });
+
+			expect(connectivity.setConnectionState).toHaveBeenCalledWith(
+				'virtual-device',
+				expect.objectContaining({ state: ConnectionState.DISCONNECTED }),
+			);
+		});
+
+		// CC-2. The orphan degradation branch was unreachable: the index stored only properties that
+		// were SOURCE *and* had a non-null source, while `isOrphaned` means SOURCE *and* a null source.
+		// A real index could never hand the listener an orphan, so the branch was dead code and the
+		// unit test above ("marks the virtual device offline when any property is orphaned") asserted a
+		// state the system could not reach. Here the orphan comes from the real index.
+		it('degrades a virtual device whose projection lost its source, as the real index reports it', async () => {
+			const realIndex = await buildRealIndex([
+				hydratedRow({ id: 'linked-prop', sourcePropertyId: 'source-prop', sourceOnlineAtIndexTime: true }),
+				hydratedRow({ id: 'orphaned-prop', sourcePropertyId: null }),
+			]);
+
+			// Every source that still exists is online — the orphan is the only reason to degrade.
+			const realListener = listenerOver(realIndex, { online: true });
+
+			await realListener.handleConnectionChanged({ device: sourceDevice, state: ConnectionState.CONNECTED });
+
+			expect(connectivity.setConnectionState).toHaveBeenCalledWith(
+				'virtual-device',
+				expect.objectContaining({ state: ConnectionState.DISCONNECTED }),
+			);
+		});
 	});
 });

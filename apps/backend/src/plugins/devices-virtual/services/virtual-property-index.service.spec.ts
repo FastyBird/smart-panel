@@ -155,6 +155,33 @@ describe('VirtualPropertyIndexService', () => {
 		expect(service.findBySourceProperty('source-prop')).toEqual([]);
 	});
 
+	// Regression test for the orphan branch being structurally unreachable. The index used to store
+	// only LINKED properties (SOURCE *and* a non-null source), while `isOrphaned` means SOURCE *and* a
+	// null source — mutually exclusive by construction, so the connection-status listener's
+	// "any property orphaned -> DISCONNECTED" branch could never fire against a real index, and its
+	// unit test proved nothing because it fabricated a state the index could not produce. An orphan
+	// contributes nothing to the two source-keyed maps (there is no source to key on), but it MUST
+	// appear against its own virtual device, which is the only place that degradation can be seen.
+	it('records an orphaned property against its virtual device, with no source ids', async () => {
+		repository.find.mockResolvedValue([orphanedProperty]);
+
+		await service.onApplicationBootstrap();
+
+		expect(service.findLinksByVirtualDevice('virtual-device')).toEqual([
+			{ propertyId: 'orphaned-prop', sourcePropertyId: null, sourceDeviceId: null },
+		]);
+	});
+
+	it('keeps an owned property out of every map, including its own virtual device', async () => {
+		repository.find.mockResolvedValue([ownedProperty]);
+
+		await service.onApplicationBootstrap();
+
+		expect(service.findLinksByVirtualDevice('virtual-device')).toEqual([]);
+		expect(service.findBySourceProperty('source-prop')).toEqual([]);
+		expect(service.findVirtualDeviceIdsBySourceDevice('source-device')).toEqual([]);
+	});
+
 	it('maps a source device to the virtual devices projecting it', async () => {
 		repository.find.mockResolvedValue([linkedProperty]);
 
@@ -291,20 +318,77 @@ describe('VirtualPropertyIndexService', () => {
 		expect(service.findBySourceProperty('source-prop-x')).toEqual([]);
 	});
 
-	// -- Task 12 addition: findByVirtualDevice -------------------------------------------------
-	// The connection-status listener needs to enumerate one virtual device's properties (to check
-	// for orphans and collect distinct source devices) without querying the database. byVirtualDevice
-	// already holds exactly that, so this exposes it read-only instead of adding a fourth map.
+	// -- findLinksByVirtualDevice ----------------------------------------------------------------
+	// The connection-status listener needs to enumerate one virtual device's projections (to check
+	// for orphans and collect distinct source device ids) without querying the database.
+	// byVirtualDevice already holds exactly that, so this exposes it read-only instead of adding a
+	// fourth map. It yields plain ids, never hydrated entities — see the service docstring.
 
-	it('returns every property indexed for a given virtual device', async () => {
+	it('returns an id-only link for every projection indexed for a given virtual device', async () => {
 		repository.find.mockResolvedValue([linkedProperty]);
 
 		await service.onApplicationBootstrap();
 
-		expect(service.findByVirtualDevice('virtual-device')).toEqual([linkedProperty]);
+		expect(service.findLinksByVirtualDevice('virtual-device')).toEqual([
+			{ propertyId: 'linked-prop', sourcePropertyId: 'source-prop', sourceDeviceId: 'source-device' },
+		]);
 	});
 
 	it('returns an empty array for a virtual device with nothing indexed', () => {
-		expect(service.findByVirtualDevice('unknown-virtual-device')).toEqual([]);
+		expect(service.findLinksByVirtualDevice('unknown-virtual-device')).toEqual([]);
+	});
+
+	it('records a link with no source device when the source relation cannot be resolved', async () => {
+		const property = virtualProperty({
+			id: 'linked-unresolvable-source',
+			sourcePropertyId: 'source-prop-x',
+			sourceProperty: makeSourceProperty('source-prop-x', 'bare-source-channel-id'),
+			channel: makeChannel('virtual-channel-x', makeDevice('virtual-device-x')),
+		});
+
+		repository.find.mockResolvedValue([property]);
+
+		await service.onApplicationBootstrap();
+
+		// Still linked (its source property id survives — it is not an orphan), just with nothing
+		// resolvable on the source-device side.
+		expect(service.findLinksByVirtualDevice('virtual-device-x')).toEqual([
+			{ propertyId: 'linked-unresolvable-source', sourcePropertyId: 'source-prop-x', sourceDeviceId: null },
+		]);
+	});
+
+	// Regression test: rebuild() used to clear all three maps and only THEN await its five-hop,
+	// relation-loaded SELECT. Every reader during that window — the projection listener on each
+	// property value change, the connection-status listener on each source device change — saw an
+	// empty index and silently did nothing. Building into locals and swapping at the end closes it.
+	it('rebuild() keeps serving the previous index until its query has returned', async () => {
+		repository.find.mockResolvedValue([linkedProperty]);
+		await service.onApplicationBootstrap();
+
+		let releaseQuery: (rows: VirtualChannelPropertyEntity[]) => void;
+
+		repository.find.mockReturnValue(
+			new Promise<VirtualChannelPropertyEntity[]>((resolve) => {
+				releaseQuery = resolve;
+			}),
+		);
+
+		const rebuilding = service.rebuild();
+
+		// Let the rebuild run up to its await — the point at which the old code had already emptied
+		// every map.
+		await Promise.resolve();
+
+		expect(service.findBySourceProperty('source-prop')).toEqual([linkedProperty]);
+		expect(service.findVirtualDeviceIdsBySourceDevice('source-device')).toEqual(['virtual-device']);
+		expect(service.findLinksByVirtualDevice('virtual-device')).toHaveLength(1);
+
+		releaseQuery([]);
+		await rebuilding;
+
+		// ...and the swap still happens once the query returns.
+		expect(service.findBySourceProperty('source-prop')).toEqual([]);
+		expect(service.findVirtualDeviceIdsBySourceDevice('source-device')).toEqual([]);
+		expect(service.findLinksByVirtualDevice('virtual-device')).toEqual([]);
 	});
 });

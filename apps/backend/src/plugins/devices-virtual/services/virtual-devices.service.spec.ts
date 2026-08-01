@@ -9,17 +9,16 @@ import {
 	VirtualNestingNotAllowedException,
 	VirtualSourceNotFoundException,
 } from '../devices-virtual.exceptions';
-import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
 
 import { VirtualDevicesService } from './virtual-devices.service';
-import { VirtualPropertyIndexService } from './virtual-property-index.service';
+import { VirtualPropertyIndexService, VirtualPropertyLink } from './virtual-property-index.service';
 
 describe('VirtualDevicesService', () => {
 	let service: VirtualDevicesService;
 	let channelsPropertiesService: { findOne: jest.Mock };
 	let channelsService: { findOne: jest.Mock };
 	let devicesService: { findOne: jest.Mock };
-	let index: { findByVirtualDevice: jest.Mock };
+	let index: { findLinksByVirtualDevice: jest.Mock };
 
 	// -- fixtures --------------------------------------------------------------------------------
 
@@ -34,29 +33,18 @@ describe('VirtualDevicesService', () => {
 	const readOnlySource = property({ id: 'ro-source', permissions: [PermissionType.READ_ONLY] });
 	const readWriteSource = property({ id: 'rw-source', permissions: [PermissionType.READ_WRITE] });
 
-	// A linked virtual property carrying a fully-hydrated relation chain, mirroring exactly what
-	// VirtualPropertyIndexService indexes (see its own spec's fixture builders).
-	const linkedTo = (id: string, deviceId: string): VirtualChannelPropertyEntity => {
-		const device = Object.assign(new DeviceEntity(), { id: deviceId });
-		const channel = Object.assign(new ChannelEntity(), { id: `${deviceId}-channel`, device });
-		const sourceProperty = Object.assign(new ChannelPropertyEntity(), { id: `${id}-source`, channel });
-		const virtualProperty = new VirtualChannelPropertyEntity();
-
-		Object.assign(virtualProperty, {
-			id,
-			valueOrigin: VirtualValueOrigin.SOURCE,
-			sourcePropertyId: `${id}-source`,
-			sourceProperty,
-		});
-
-		return virtualProperty;
-	};
+	// A link exactly as VirtualPropertyIndexService records one: plain ids, never a hydrated entity.
+	const linkedTo = (id: string, deviceId: string): VirtualPropertyLink => ({
+		propertyId: id,
+		sourcePropertyId: `${id}-source`,
+		sourceDeviceId: deviceId,
+	});
 
 	beforeEach(() => {
 		channelsPropertiesService = { findOne: jest.fn() };
 		channelsService = { findOne: jest.fn() };
 		devicesService = { findOne: jest.fn() };
-		index = { findByVirtualDevice: jest.fn().mockReturnValue([]) };
+		index = { findLinksByVirtualDevice: jest.fn().mockReturnValue([]) };
 
 		service = new VirtualDevicesService(
 			channelsPropertiesService as unknown as ChannelsPropertiesService,
@@ -119,16 +107,11 @@ describe('VirtualDevicesService', () => {
 			const deviceA = Object.assign(new DeviceEntity(), { id: 'device-a' });
 			const deviceB = Object.assign(new DeviceEntity(), { id: 'device-b' });
 
-			const propA = linkedTo('prop-a', 'device-a');
-			const propB = linkedTo('prop-b', 'device-b');
+			index.findLinksByVirtualDevice.mockReturnValue([linkedTo('prop-a', 'device-a'), linkedTo('prop-b', 'device-b')]);
 
-			// Re-point the fixtures' devices at the exact instances asserted below (linkedTo() builds
-			// its own DeviceEntity per call, matching how TypeORM hydrates a fresh instance per
-			// relation path rather than reusing one object for the same row).
-			(propA.sourceProperty.channel as ChannelEntity).device = deviceA;
-			(propB.sourceProperty.channel as ChannelEntity).device = deviceB;
-
-			index.findByVirtualDevice.mockReturnValue([propA, propB]);
+			// Loaded by id rather than read off a relation the index cached, so the devices returned
+			// carry a current connection status.
+			devicesService.findOne.mockImplementation((id: string) => Promise.resolve(id === 'device-a' ? deviceA : deviceB));
 
 			await expect(service.findSourceDevices('virtual-device')).resolves.toEqual([deviceA, deviceB]);
 		});
@@ -221,21 +204,29 @@ describe('VirtualDevicesService', () => {
 		it('counts a source device once even when two properties project through it', async () => {
 			const sharedDevice = Object.assign(new DeviceEntity(), { id: 'shared-device' });
 
-			const propA = linkedTo('prop-a', 'shared-device');
-			const propB = linkedTo('prop-b', 'shared-device');
-
-			(propA.sourceProperty.channel as ChannelEntity).device = sharedDevice;
-			(propB.sourceProperty.channel as ChannelEntity).device = sharedDevice;
-
-			index.findByVirtualDevice.mockReturnValue([propA, propB]);
+			index.findLinksByVirtualDevice.mockReturnValue([
+				linkedTo('prop-a', 'shared-device'),
+				linkedTo('prop-b', 'shared-device'),
+			]);
+			devicesService.findOne.mockResolvedValue(sharedDevice);
 
 			await expect(service.findSourceDevices('virtual-device')).resolves.toEqual([sharedDevice]);
+			expect(devicesService.findOne).toHaveBeenCalledTimes(1);
 		});
 
 		it('returns an empty list for a virtual device with only owned properties', async () => {
-			index.findByVirtualDevice.mockReturnValue([]);
+			index.findLinksByVirtualDevice.mockReturnValue([]);
 
 			await expect(service.findSourceDevices('virtual-device')).resolves.toEqual([]);
+		});
+
+		it('skips an orphaned projection, which has no source device left to list', async () => {
+			index.findLinksByVirtualDevice.mockReturnValue([
+				{ propertyId: 'orphaned-prop', sourcePropertyId: null, sourceDeviceId: null },
+			]);
+
+			await expect(service.findSourceDevices('virtual-device')).resolves.toEqual([]);
+			expect(devicesService.findOne).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -360,6 +360,40 @@ describe('PropertyValueService', () => {
 			expect(storageService.query).not.toHaveBeenCalled();
 		});
 
+		// The post-restart path, and the only one that actually proves readLatest() dereferences.
+		// Every other test in this block is served from the shared in-memory `valuesMap` before
+		// storage is ever reached, so reverting readLatest()'s storage query from the resolved key back
+		// to `property.id` would leave them all green while breaking the thing the design promises: a
+		// linked property must see the source's *persisted* history once the process has restarted and
+		// the cache is cold.
+		it('queries the source key, not its own id, when the cache is cold', async () => {
+			service['valuesMap'].clear();
+
+			storageService.query.mockResolvedValue([{ numberValue: 21.5, time: '2026-07-31T12:00:00.000Z' }]);
+
+			const state = await service.readLatest(linked());
+
+			expect(state?.value).toBe(21.5);
+			expect(storageService.query).toHaveBeenCalledTimes(1);
+			expect(storageService.query).toHaveBeenCalledWith(expect.stringContaining("propertyId = 'source-prop'"));
+			expect(storageService.query).not.toHaveBeenCalledWith(expect.stringContaining("propertyId = 'virtual-prop'"));
+		});
+
+		it('caches a cold storage read under the source key, so a sibling projection reuses it', async () => {
+			service['valuesMap'].clear();
+
+			storageService.query.mockResolvedValue([{ numberValue: 21.5, time: '2026-07-31T12:00:00.000Z' }]);
+
+			await service.readLatest(linked());
+
+			// A second projection of the same source — or the source itself — must hit the cache the
+			// first read populated, rather than re-querying under a different key.
+			const again = await service.readLatest(linked());
+
+			expect(again?.value).toBe(21.5);
+			expect(storageService.query).toHaveBeenCalledTimes(1);
+		});
+
 		it('does not delete the source series when a projected property is deleted', async () => {
 			await service.delete(linked());
 

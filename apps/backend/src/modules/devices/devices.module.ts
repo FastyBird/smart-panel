@@ -169,6 +169,7 @@ import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidd
 		ChannelExistsConstraintValidator,
 		ChannelPropertyExistsConstraintValidator,
 		DeviceConnectivityService,
+		DeviceConnectionStateService,
 		DeviceProvisionQueueService,
 		DeviceValidationService,
 	],

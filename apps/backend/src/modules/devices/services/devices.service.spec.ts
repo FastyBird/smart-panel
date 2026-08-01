@@ -359,6 +359,12 @@ describe('DevicesService', () => {
 				name: updateDto.name,
 				description: mockDevice.description,
 				enabled: mockDevice.enabled,
+				// Carried over from the loaded device rather than reset: `hidden` is absent from the
+				// update DTO, so nothing in the patch may touch it. DeviceEntity.hidden deliberately
+				// carries no class field initializer for exactly this reason — with one,
+				// `omitBy(toInstance(...), isUndefined)` produced `hidden: false` for every PATCH and
+				// silently un-hid the device on the next unrelated edit.
+				hidden: mockDevice.hidden,
 				roomId: null,
 				room: null,
 				deviceZones: [],
@@ -377,6 +383,7 @@ describe('DevicesService', () => {
 				name: mockUpdateDevice.name,
 				description: mockUpdateDevice.description,
 				enabled: mockUpdateDevice.enabled,
+				hidden: mockUpdateDevice.hidden,
 				roomId: null,
 				room: null,
 				deviceZones: [],
@@ -419,6 +426,71 @@ describe('DevicesService', () => {
 				EventType.DEVICE_UPDATED,
 				toInstance(MockDevice, mockUpdatedDevice),
 			);
+		});
+
+		// Regression test. `hidden` is what marks a physical device as replaced by a virtual one, and
+		// nothing else in the system ever re-sets it — so a PATCH that silently reverts it to `false`
+		// makes the flag unusable in practice: the first unrelated edit (a rename, a room change) undoes
+		// it. The mechanism is class-transformer building its target with `new Target()`, which runs
+		// class field initializers before any source value is copied; the initializer's value then
+		// survives `omitBy(..., isUndefined)` and gets written back by `Object.assign`. Asserted against
+		// `save`, not the returned entity, because the return value is re-read from the database and
+		// would hide the clobber.
+		//
+		// `enabled` is affected by the identical mechanism but is deliberately NOT asserted here: its
+		// initializer is still in place, because three device plugins read `event.entity.enabled` in
+		// `afterInsert` before the row is re-read. See the note on DeviceEntity.enabled — pre-existing,
+		// tracked separately.
+		it('does not reset hidden when the patch does not mention it', async () => {
+			const hiddenDevice = { ...mockDevice, hidden: true };
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(toInstance(MockDevice, hiddenDevice)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockDevice, hiddenDevice));
+
+			await service.update(hiddenDevice.id, { type: 'mock', name: 'Renamed' } as UpdateMockDeviceDto);
+
+			expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({ hidden: true }));
+		});
+
+		it('applies hidden when the patch does set it', async () => {
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(toInstance(MockDevice, mockDevice)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockDevice, { ...mockDevice, hidden: true }));
+
+			await service.update(mockDevice.id, { type: 'mock', hidden: true } as UpdateMockDeviceDto);
+
+			expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({ hidden: true }));
 		});
 	});
 

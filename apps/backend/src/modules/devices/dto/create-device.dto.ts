@@ -99,6 +99,17 @@ export class CreateDeviceDto {
 	enabled?: boolean;
 
 	@ApiPropertyOptional({
+		description: 'Whether the device is hidden from selection UIs, e.g. because a virtual device replaces it',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"hidden","reason":"Hidden attribute must be a valid true or false."}]' })
+	hidden?: boolean;
+
+	@ApiPropertyOptional({
 		description: 'Device controls',
 		type: 'array',
 		items: { $ref: getSchemaPath(CreateDeviceControlDto) },
