@@ -59,6 +59,19 @@ On a virtual device created with linked channels and properties in one request, 
 
 A DTO constraint can only judge the pair when both halves are in the same payload. Two partial PATCHes still reach the same row: `{value_origin: 'local'}` against a linked property, and `{source_property: <id>}` against an owned one. Closing those needs the stored row, which no `class-validator` constraint has access to — it belongs either in `ChannelsPropertiesService.update()` (which holds the loaded entity) or in a plugin-owned guard invoked from there.
 
+### 2.10 A disabled virtual device still reports CONNECTED (low)
+
+`VirtualDevicePlatform.processBatch()` now rejects every command against a device with `enabled: false`, matching `devices-shelly-v1`, `devices-wled` and `devices-zigbee2mqtt` — the platform is where every device plugin enforces `enabled`, since `PropertyCommandService` only ever checks connection state.
+
+The device's *connection state* is untouched by that: `VirtualStatusListener` aggregates purely over source online-ness and orphan-ness, so a disabled virtual device keeps whatever state its sources imply, and the `DEVICE_UPDATED` rebuild does not report it as re-wired (its links did not change), so nothing recomputes it either.
+
+**Deliberately left alone**, for two reasons:
+
+- No sibling plugin ties the two together. None of `devices-shelly-v1`, `devices-wled` or `devices-zigbee2mqtt` writes a connection state on disable — `enabled` and connectivity are separate axes everywhere in this codebase, and a virtual device folding them together would be the odd one out.
+- It would make `enabled` a *second* input to the aggregation rule the design spec states in terms of sources only, and the rule is already load-bearing for `PropertyCommandService`'s offline check. Conflating "the user turned this off" with "a source went away" loses the distinction the admin UI needs to explain either one.
+
+If it is ever wanted, the place is `VirtualStatusListener.aggregateState()` plus a `DEVICE_UPDATED` subscription that recomputes on an `enabled` transition — not a special case in the rebuild's re-wiring diff, which is about links.
+
 ### 2.3 Projection listener mutates the index's own entity (low)
 
 `virtual-projection.listener.ts` assigns `projection.value` onto the entity stored in `bySourceProperty` and emits that same reference. Two rapid source writes emit the same object, so a listener that defers past the tick sees the newest value rather than the one at emit time. No consumer reads `value` off those instances today. Emitting a shallow copy costs nothing and decouples three components from shared mutable state.
@@ -112,6 +125,18 @@ Jest's "worker process has failed to exit gracefully" warning appears across the
 - `property-timeseries.service.spec.ts` never mocks `storageService.query`, so the test silently exercises the catch branch rather than the success path. The key assertion still runs, so it is not a false pass — just fragile.
 - No test exercises `DeviceHiddenFilter.TRUE`; a mutation flipping only that branch would go undetected.
 - `permissionSatisfied` is restated in `VirtualDevicesService` rather than reused, because the canonical method is private on `DeviceValidationService`. Extracting it would remove the drift risk.
+
+### 3.7 The security aggregator double-counts a projected sensor (medium)
+
+`SecuritySensorsProvider.buildSignals()` walks every device's channels and emits one alert per channel matching a detection rule, keyed `sensor:<deviceId>:<alertType>`. A virtual device that projects a physical motion/smoke/contact sensor has its own channel of that category, and `ChannelPropertyEntitySubscriber.afterLoad` populates the projection's `value` through `PropertyValueService.readLatest()` — which resolves the storage key through the value-source registry — so the provider reads the source's live value off the virtual device too.
+
+The result is two alerts with different ids for one physical sensor: `activeAlertsCount` counts it twice, and both survive `SecurityAggregatorService.mergeAlerts()`, which de-duplicates by alert id.
+
+Not caused by this branch's listener work and not fixable there: `SecurityStateListener` only ever *schedules* a recalculation, and the recalculation recomputes from scratch, so no guard in that listener has ever affected what the aggregation counts. (A projection guard in that listener was briefly justified on these grounds; it was removed in round 3 because it dropped genuinely-needed events without preventing this.)
+
+Fixing it means deciding, in the provider, which of the two channels represents the sensor. The obvious rule — skip a channel whose properties are all projections — is wrong for the case virtual devices exist to serve, where the virtual device is the one the user thinks of as the sensor. It is a product decision about which device an alert should name, not a mechanical de-duplication.
+
+The same shape almost certainly applies to any other provider or module that scans `devices → channels → properties` and aggregates per match; only the security sensors provider was checked.
 
 ## 4. Not to be done
 
