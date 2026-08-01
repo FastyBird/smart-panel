@@ -608,15 +608,25 @@ describe('useDevicesWizard', () => {
 		await vi.advanceTimersByTimeAsync(1_000);
 		expect(backendClient.GET).toHaveBeenCalledTimes(1);
 
-		// The scan survives the blip and keeps updating.
-		await vi.advanceTimersByTimeAsync(2_000);
-		expect(backendClient.GET).toHaveBeenCalledTimes(3);
+		// The scan survives the blip: it retries and the next snapshot lands. The gap widens after
+		// a failure, so this asserts recovery rather than a fixed cadence.
+		await vi.advanceTimersByTimeAsync(5_000);
+		expect(backendClient.GET.mock.calls.length).toBeGreaterThan(1);
+		expect(findControl<IWizardProgressControl>(adapter.controls.value, 'scan').percentage).toBeGreaterThanOrEqual(0);
+		expect(adapter.rows.value.length).toBe(1);
 	});
 
-	it('keeps retrying a recoverable outage for as long as the session could still be running', async () => {
-		// The session runs for 30s. An outage lasting several ticks must not abandon it — the
-		// backend is still discovering, and devices found after connectivity returns would never
-		// reach the UI. Any fixed retry cap shorter than the window has this failure mode.
+	it('keeps retrying past the nominal expiry and still picks up the final snapshot', async () => {
+		// The backend keeps a finished session fetchable for five minutes
+		// (FINISHED_SESSION_TTL_MS), so passing `remainingSeconds` is not a definitive failure.
+		// Giving up at expiry during an outage strands the UI on stale devices and a `running`
+		// status that never resolves, because the terminal snapshot is what stops polling.
+		const finishedSession: IShellyNgDiscoverySession = {
+			...discoverySession,
+			status: 'finished',
+			remainingSeconds: 0,
+		};
+
 		backendClient.POST.mockResolvedValue({
 			data: { data: discoverySession },
 			response: { status: 200 },
@@ -627,16 +637,29 @@ describe('useDevicesWizard', () => {
 
 		await adapter.start();
 
-		await vi.advanceTimersByTimeAsync(10_000);
+		// Outage spans the whole 30s window and beyond.
+		await vi.advanceTimersByTimeAsync(60_000);
 
-		// Ten seconds into a thirty-second window: still trying.
-		expect(backendClient.GET.mock.calls.length).toBeGreaterThanOrEqual(9);
+		// Connectivity returns well after expiry — the final snapshot must still be fetched.
+		backendClient.GET.mockResolvedValue({
+			data: { data: finishedSession },
+			response: { status: 200 },
+		});
+
+		await vi.advanceTimersByTimeAsync(60_000);
+
+		// The terminal snapshot landed: the scan reads as complete rather than perpetually running.
+		expect(findControl<IWizardProgressControl>(adapter.controls.value, 'scan').percentage).toBe(100);
+
+		// And polling stopped on its own, because the session is no longer running.
+		backendClient.GET.mockClear();
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(backendClient.GET).not.toHaveBeenCalled();
 	});
 
-	it('stops once the session can no longer be running', async () => {
-		// The flip side: the natural bound is the session's own lifetime. Once it has certainly
-		// expired there is nothing left to discover, so a persistently broken backend is not
-		// polled for the life of the view.
+	it('backs off while the backend is unreachable instead of polling every second', async () => {
+		// Never giving up must not mean hammering: an unreachable backend should see a widening
+		// gap, not one request per second for as long as the wizard stays open.
 		backendClient.POST.mockResolvedValue({
 			data: { data: discoverySession },
 			response: { status: 200 },
@@ -647,13 +670,37 @@ describe('useDevicesWizard', () => {
 
 		await adapter.start();
 
-		// The fixture session has 30s left when it arrives.
-		await vi.advanceTimersByTimeAsync(35_000);
+		await vi.advanceTimersByTimeAsync(60_000);
 
-		backendClient.GET.mockClear();
+		// One request per second would be 60; backoff must keep it far below that.
+		expect(backendClient.GET.mock.calls.length).toBeLessThan(15);
+		expect(backendClient.GET.mock.calls.length).toBeGreaterThan(3);
+	});
+
+	it('returns to the normal cadence once polling recovers', async () => {
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockRejectedValueOnce(new Error('blip'))
+			.mockRejectedValueOnce(new Error('blip'))
+			.mockResolvedValue({
+				data: { data: discoverySession },
+				response: { status: 200 },
+			});
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		// Ride out the two failures and the recovery.
+		await vi.advanceTimersByTimeAsync(10_000);
+		const afterRecovery = backendClient.GET.mock.calls.length;
+
+		// Back at a 1s cadence, ten more seconds is roughly ten more polls.
 		await vi.advanceTimersByTimeAsync(10_000);
 
-		expect(backendClient.GET).not.toHaveBeenCalled();
+		expect(backendClient.GET.mock.calls.length - afterRecovery).toBeGreaterThanOrEqual(8);
 	});
 
 	it('restores polling and clears the busy flag when the rescan request rejects outright', async () => {

@@ -51,6 +51,11 @@ const toWizardStatus = (status: IShellyV1DiscoveryDevice['status']): IWizardRowS
 const suggestedNameFor = (device: IShellyV1DiscoveryDevice): string =>
 	device.registeredDeviceName || device.name || device.displayName || device.hostname;
 
+// Normal polling cadence, and the ceiling a failing backend is backed off to. Retries never
+// stop on a recoverable error — only the gap between them widens.
+const POLL_INTERVAL_MS = 1_000;
+const MAX_POLL_BACKOFF_MS = 30_000;
+
 export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const { t } = useI18n();
 	const backend = useBackend();
@@ -74,6 +79,10 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	// `applySession` would stop the timer, and the new scan would be orphaned with the UI still
 	// showing the old one — "Scan again" appearing to do nothing.
 	let sessionGeneration = 0;
+
+	// Current gap between polls: reset to POLL_INTERVAL_MS by any successful snapshot, doubled by
+	// each recoverable failure.
+	let pollDelayMs = POLL_INTERVAL_MS;
 
 	// Captured at every applySession so scanPercentage can tick forward independent of any
 	// drift between the client and server clocks. We resnap to the server's `remainingSeconds`
@@ -145,61 +154,58 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		}))
 	);
 
-	// Whether the session could still be alive, measured from the last snapshot we actually
-	// received. Failed polls do not refresh that anchor, so a long outage is counted against the
-	// session's remaining lifetime rather than against a request counter.
-	const sessionMayStillBeRunning = (): boolean => {
-		if (sessionReceivedAt.value === null) {
-			return false;
-		}
+	// A self-scheduling timeout rather than a fixed interval, so a failing backend can be backed
+	// off without ever being abandoned. Expiry is not a failure: the backend keeps a finished
+	// session fetchable for minutes (FINISHED_SESSION_TTL_MS), and that terminal snapshot is what
+	// moves the UI out of the `running` state. Giving up at expiry during an outage would strand
+	// the wizard on stale devices and a scan that never completes. Only a definitive 404 or a
+	// terminal snapshot ends polling.
+	const schedulePoll = (): void => {
+		stopPolling();
 
-		return Date.now() - sessionReceivedAt.value < sessionRemainingMsAtReceipt.value;
+		const scheduledGeneration = sessionGeneration;
+
+		pollingTimer = window.setTimeout(async (): Promise<void> => {
+			pollingTimer = null;
+
+			try {
+				await refreshDiscovery();
+
+				pollDelayMs = POLL_INTERVAL_MS;
+			} catch (pollError: unknown) {
+				// The server dropped the session for good; there is nothing left to fetch.
+				if (pollError instanceof DevicesShellyV1ApiException && pollError.code === 404) {
+					return;
+				}
+
+				// Anything else — a blip, a 5xx, a dropped connection — may recover. Widen the gap
+				// so an unreachable backend is not hit every second, but keep trying.
+				pollDelayMs = Math.min(pollDelayMs * 2, MAX_POLL_BACKOFF_MS);
+			}
+
+			// A newer session, or a dispose, took over while this poll was in flight.
+			if (sessionGeneration !== scheduledGeneration) {
+				return;
+			}
+
+			// A terminal snapshot means the scan is done and there is nothing left to discover.
+			if (session.value === null || session.value.status !== 'running') {
+				return;
+			}
+
+			schedulePoll();
+		}, pollDelayMs);
 	};
 
 	const startPolling = (): void => {
-		stopPolling();
+		pollDelayMs = POLL_INTERVAL_MS;
 
-		pollingTimer = window.setInterval(() => {
-			// Captured per tick, not per interval: the handle this callback would stop belongs to
-			// whichever session is current when the rejection lands, which is not necessarily the
-			// one this poll was issued against.
-			const pollGeneration = sessionGeneration;
-
-			refreshDiscovery().catch((pollError: unknown) => {
-				// A rejected GET skips everything after its `await`, so `refreshDiscovery`'s own
-				// generation guard never runs and the rejection arrives here instead. Stopping
-				// unconditionally would clear the replacement session's brand new interval.
-				if (sessionGeneration !== pollGeneration) {
-					return;
-				}
-
-				// A 404 is definitive: the server cleaned the session up and it will never come
-				// back, so there is nothing left to poll. Stop immediately rather than re-hitting
-				// a missing endpoint every second until the component unmounts — the user can hit
-				// "Scan again" to start a fresh session.
-				if (pollError instanceof DevicesShellyV1ApiException && pollError.code === 404) {
-					stopPolling();
-
-					return;
-				}
-
-				// Anything else — a blip, a 5xx, a dropped connection — may recover, and treating
-				// it as a dead session would freeze an otherwise healthy scan on one bad request.
-				// Keep retrying for as long as the session could still be running: the backend's
-				// own expiry is the natural bound, so an outage inside a live scan recovers and
-				// picks up whatever was discovered meanwhile, while a session that has certainly
-				// expired is not polled for the life of the view. A fixed retry count cannot do
-				// both — any cap shorter than the window abandons a scan that is still running.
-				if (!sessionMayStillBeRunning()) {
-					stopPolling();
-				}
-			});
-		}, 1_000);
+		schedulePoll();
 	};
 
 	const stopPolling = (): void => {
 		if (pollingTimer !== null) {
-			window.clearInterval(pollingTimer);
+			window.clearTimeout(pollingTimer);
 			pollingTimer = null;
 		}
 	};
