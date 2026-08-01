@@ -13,9 +13,10 @@ import {
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
-import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
+
+import { VirtualStatusListener } from './virtual-status.listener';
 
 interface OwnedPropertyDefinition {
 	identifier: string;
@@ -45,9 +46,27 @@ interface OwnedPropertyDefinition {
  * on every single virtual device creation. A LOCAL property is skipped by the index entirely, so no
  * rebuild ever sees a link change and none of that fires.
  *
- * A freshly created virtual device has no linked properties yet, so it is vacuously CONNECTED by the
- * same rule VirtualStatusListener applies to a source-less device — CONNECTED is therefore the correct
- * initial state to record, not an arbitrary choice.
+ * ## Why the initial state is aggregated rather than assumed
+ *
+ * A virtual device created on its own has no linked properties yet, so it is vacuously CONNECTED by
+ * the same rule VirtualStatusListener applies to a source-less device. This class used to record that
+ * CONNECTED directly — which is right for that device and wrong for the other creation shape the API
+ * allows: channels and linked properties nested in the same request as the device.
+ *
+ * There, CHANNEL_PROPERTY_CREATED fires for each nested property *before* DEVICE_CREATED, so
+ * VirtualIndexMaintenanceListener's rebuild can correctly aggregate DISCONNECTED for an offline source
+ * before this handler has run at all — and an unconditional CONNECTED landing afterwards silently
+ * overwrote it. Nothing corrected it: the next rebuild pass reports no re-wiring, because by then the
+ * links have not changed again, so no further recompute is ever scheduled.
+ *
+ * Delegating to VirtualStatusListener.recompute() fixes both halves. It aggregates from the indexed
+ * sources rather than assuming, so the answer is right whenever the index is current; and it takes
+ * that listener's serialization queue, which holds across the index read as well as the write, so this
+ * synthesis and a concurrent rebuild-driven recompute cannot interleave read-then-write at all — see
+ * recompute()'s own docstring.
+ *
+ * The afterCreate ownership hook below closed the concurrent *property creation*; this closes the
+ * later *status write*, which that hook does not touch.
  *
  * Every channel and property here is created only if missing (matching DeviceConnectivityService's own
  * find-or-create idempotency), so a redelivered or duplicate DEVICE_CREATED event is harmless.
@@ -94,7 +113,7 @@ export class VirtualDeviceInformationListener {
 	constructor(
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
-		private readonly deviceConnectivityService: DeviceConnectivityService,
+		private readonly statusListener: VirtualStatusListener,
 	) {}
 
 	@OnEvent(EventType.DEVICE_CREATED)
@@ -114,14 +133,15 @@ export class VirtualDeviceInformationListener {
 				return;
 			}
 
-			// Strictly before setConnectionState below, so that call never has to create it — see the
-			// class docstring for why creating it afterwards is not equivalent.
+			// Strictly before the connectivity write below, so that call never has to create it — see
+			// the class docstring for why creating it afterwards is not equivalent.
 			await this.ensureConnectionStateProperty(channel);
 
-			await this.deviceConnectivityService.setConnectionState(device.id, {
-				state: ConnectionState.CONNECTED,
-				reason: 'virtual device created',
-			});
+			// Aggregated from whatever sources the device actually has, never hard-coded — see the
+			// "Why the initial state is aggregated" section of the class docstring. A device with no
+			// linked properties yet still comes out CONNECTED, vacuously, which is the case this used
+			// to state directly.
+			await this.statusListener.recompute(device.id, 'virtual device created');
 
 			for (const definition of this.ownedPropertyDefinitions(device)) {
 				await this.ensureOwnedProperty(channel, definition);

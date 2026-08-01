@@ -10,17 +10,22 @@ import {
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
+import { VirtualPropertyIndexService, VirtualPropertyLink } from '../services/virtual-property-index.service';
 
 import { VirtualDeviceInformationListener } from './virtual-device-information.listener';
+import { VirtualStatusListener } from './virtual-status.listener';
 
 describe('VirtualDeviceInformationListener', () => {
 	let listener: VirtualDeviceInformationListener;
 	let channelsService: { findOneBy: jest.Mock; create: jest.Mock };
 	let channelsPropertiesService: { findOneBy: jest.Mock; create: jest.Mock; update: jest.Mock };
 	let connectivity: { setConnectionState: jest.Mock };
+	let index: { findVirtualDeviceIdsBySourceDevice: jest.Mock; findLinksByVirtualDevice: jest.Mock };
+	let connectionState: { readLatest: jest.Mock };
 
 	const virtualDevice = { id: 'virtual-device', type: DEVICES_VIRTUAL_TYPE } as DeviceEntity;
 	const infoChannel = { id: 'info-channel', type: DEVICES_VIRTUAL_TYPE } as ChannelEntity;
@@ -49,6 +54,22 @@ describe('VirtualDeviceInformationListener', () => {
 		);
 	};
 
+	// Arranges the mocked index so the device under synthesis is reported with one link to a source
+	// device of the given online-ness. No call at all leaves the index empty, which is what a virtual
+	// device created on its own genuinely looks like.
+	const withIndexedSource = (options: { online: boolean }): void => {
+		const links: VirtualPropertyLink[] = [
+			{ propertyId: 'linked-prop', sourcePropertyId: 'source-prop', sourceDeviceId: 'source-device' },
+		];
+
+		index.findLinksByVirtualDevice.mockReturnValue(links);
+		connectionState.readLatest.mockResolvedValue({
+			online: options.online,
+			status: options.online ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED,
+			lastChanged: null,
+		});
+	};
+
 	beforeEach(() => {
 		channelsService = { findOneBy: jest.fn().mockResolvedValue(infoChannel), create: jest.fn() };
 		channelsPropertiesService = {
@@ -57,11 +78,25 @@ describe('VirtualDeviceInformationListener', () => {
 			update: jest.fn().mockResolvedValue(undefined),
 		};
 		connectivity = { setConnectionState: jest.fn().mockResolvedValue(undefined) };
+		index = {
+			findVirtualDeviceIdsBySourceDevice: jest.fn().mockReturnValue([]),
+			findLinksByVirtualDevice: jest.fn().mockReturnValue([]),
+		};
+		connectionState = {
+			readLatest: jest.fn().mockResolvedValue({ online: false, status: ConnectionState.UNKNOWN, lastChanged: null }),
+		};
 
+		// A real VirtualStatusListener over mocked collaborators, rather than a mock of it: what this
+		// class now has to get right is the *aggregated* state, and a mocked recompute() could not tell
+		// an assumed CONNECTED from an aggregated one.
 		listener = new VirtualDeviceInformationListener(
 			channelsService as unknown as ChannelsService,
 			channelsPropertiesService as unknown as ChannelsPropertiesService,
-			connectivity as unknown as DeviceConnectivityService,
+			new VirtualStatusListener(
+				index as unknown as VirtualPropertyIndexService,
+				connectivity as unknown as DeviceConnectivityService,
+				connectionState as unknown as DeviceConnectionStateService,
+			),
 		);
 	});
 
@@ -76,7 +111,9 @@ describe('VirtualDeviceInformationListener', () => {
 		expect(channelsService.findOneBy).not.toHaveBeenCalled();
 	});
 
-	it('records the device as connected, and resolves its device_information channel', async () => {
+	it('records a device with no sources yet as connected, and resolves its device_information channel', async () => {
+		// The index reports no links (its default here), which is exactly a virtual device created on
+		// its own: vacuously CONNECTED, by the same rule VirtualStatusListener applies everywhere else.
 		await listener.handleDeviceCreated(virtualDevice);
 
 		expect(connectivity.setConnectionState).toHaveBeenCalledWith(
@@ -87,6 +124,40 @@ describe('VirtualDeviceInformationListener', () => {
 			'category',
 			ChannelCategory.DEVICE_INFORMATION,
 			'virtual-device',
+		);
+	});
+
+	// -- the initial state is aggregated, not assumed (P2) --------------------------------------
+	//
+	// The API allows a virtual device to be created with its channels and linked properties nested in
+	// the same request. CHANNEL_PROPERTY_CREATED then fires for each of those *before* DEVICE_CREATED,
+	// so VirtualIndexMaintenanceListener's rebuild can correctly record DISCONNECTED for an offline
+	// source before this handler runs at all — and the unconditional CONNECTED this class used to write
+	// silently overwrote it, with nothing left to correct it (the next rebuild pass sees no re-wiring,
+	// so it schedules no further recompute). Fails against that version, which answered CONNECTED
+	// whatever the sources said.
+
+	it('records the state aggregated from its sources, not an assumed CONNECTED', async () => {
+		withIndexedSource({ online: false });
+
+		await listener.handleDeviceCreated(virtualDevice);
+
+		expect(connectivity.setConnectionState).toHaveBeenCalledWith(
+			'virtual-device',
+			expect.objectContaining({ state: ConnectionState.DISCONNECTED }),
+		);
+	});
+
+	// The discriminator for the case above: it must not have become "always DISCONNECTED once anything
+	// is indexed". A device whose sources are all online is still CONNECTED.
+	it('records CONNECTED when every indexed source is online', async () => {
+		withIndexedSource({ online: true });
+
+		await listener.handleDeviceCreated(virtualDevice);
+
+		expect(connectivity.setConnectionState).toHaveBeenCalledWith(
+			'virtual-device',
+			expect.objectContaining({ state: ConnectionState.CONNECTED }),
 		);
 	});
 

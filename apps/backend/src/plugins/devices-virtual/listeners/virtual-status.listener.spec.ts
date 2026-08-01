@@ -204,6 +204,63 @@ describe('VirtualStatusListener', () => {
 		);
 	});
 
+	// -- recompute() serialization ----------------------------------------------------------------
+	//
+	// Three callers reach recompute() and none awaits the others: a source connection change, a
+	// rebuild that re-wired a device, and VirtualDeviceInformationListener's synthesis on
+	// DEVICE_CREATED. Serializing only the write would still let a recompute aggregate off an index
+	// that a concurrent recompute replaces before its own write lands — the exact interleaving that
+	// let an assumed CONNECTED overwrite an aggregated DISCONNECTED on a device created with nested
+	// linked properties. The queue therefore has to hold across the index read as well.
+
+	it('does not read the index for a second recompute until the first has finished writing', async () => {
+		const order: string[] = [];
+		let releaseFirstWrite: () => void = () => {};
+		const firstWrite = new Promise<void>((resolve) => (releaseFirstWrite = resolve));
+		let writes = 0;
+
+		index.findLinksByVirtualDevice.mockImplementation(() => {
+			order.push('read');
+
+			return [];
+		});
+
+		connectivity.setConnectionState.mockImplementation(() => {
+			writes += 1;
+			order.push('write');
+
+			return writes === 1 ? firstWrite : Promise.resolve();
+		});
+
+		const first = listener.recompute('virtual-device', 'first');
+		const second = listener.recompute('virtual-device', 'second');
+
+		// Give the second recompute every chance to run ahead. Without the queue it reads here, which
+		// is what makes this the discriminator: the assertion below would then already see two reads.
+		for (let turn = 0; turn < 10; turn++) {
+			await Promise.resolve();
+		}
+
+		expect(order).toEqual(['read', 'write']);
+
+		releaseFirstWrite();
+
+		await Promise.all([first, second]);
+
+		expect(order).toEqual(['read', 'write', 'read', 'write']);
+	});
+
+	it('lets the next recompute through when one fails', async () => {
+		// The queue entry is settled from a `finally`, so a rejected recompute neither wedges the chain
+		// nor pushes its own failure onto whoever is waiting behind it.
+		connectivity.setConnectionState.mockRejectedValueOnce(new Error('boom'));
+
+		await expect(listener.recompute('virtual-device', 'first')).rejects.toThrow('boom');
+		await expect(listener.recompute('virtual-device', 'second')).resolves.toBeUndefined();
+
+		expect(connectivity.setConnectionState).toHaveBeenCalledTimes(2);
+	});
+
 	// -- regression cases, wired against the REAL index ------------------------------------------
 	// Both failures below were invisible to a mocked index, because the mock could return whatever
 	// the test wanted rather than what VirtualPropertyIndexService can actually produce. These build

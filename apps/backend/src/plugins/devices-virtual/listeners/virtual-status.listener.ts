@@ -37,6 +37,13 @@ import { VirtualPropertyIndexService } from '../services/virtual-property-index.
 export class VirtualStatusListener {
 	private readonly logger = createExtensionLogger(DEVICES_VIRTUAL_PLUGIN_NAME, 'VirtualStatusListener');
 
+	/**
+	 * Serializes recompute() — see its docstring for why it has to cover the *read* as well as the
+	 * write. Always resolved, never rejected: the settle callback is invoked from a `finally`, so a
+	 * caller whose own recompute throws cannot wedge or reject the next one waiting behind it.
+	 */
+	private recomputeQueue: Promise<void> = Promise.resolve();
+
 	constructor(
 		private readonly index: VirtualPropertyIndexService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
@@ -78,12 +85,49 @@ export class VirtualStatusListener {
 	 *
 	 * Terminates rather than recursing: the write below emits DEVICE_CONNECTION_CHANGED for a device of
 	 * DEVICES_VIRTUAL_TYPE, which handleConnectionChanged() above returns on immediately.
+	 *
+	 * ## Why the read and the write are serialized together
+	 *
+	 * Three independent callers reach this method — a source device connection change, a rebuild that
+	 * re-wired a virtual device, and the synthesis that runs on DEVICE_CREATED — and none of them is
+	 * awaited by the others: all three start from EventEmitter2 handlers, which `.emit()` never awaits.
+	 * So two recomputes for the same device genuinely overlap.
+	 *
+	 * Serializing only the write would not be enough, and this is the failure it exists to prevent: on
+	 * a virtual device created with linked properties nested in the same request,
+	 * CHANNEL_PROPERTY_CREATED fires for each of those *before* DEVICE_CREATED. The rebuild those
+	 * events trigger correctly aggregates DISCONNECTED for an offline source, while the synthesis
+	 * behind DEVICE_CREATED may already have read the index *before* that rebuild swapped its maps in —
+	 * reading no links at all, which aggregates to a vacuous CONNECTED. Whichever of those two writes
+	 * lands second wins, and nothing is guaranteed to correct it afterwards: the next rebuild pass
+	 * reports no re-wiring, because by then the links have not changed again.
+	 *
+	 * Holding the queue across `aggregateState()` as well as the write removes that ordering question
+	 * entirely. Whichever recompute runs second re-reads the index at that point, so it aggregates from
+	 * the same state it is about to overwrite — and the last write is therefore always the one computed
+	 * from the most recent index, not merely the one that happened to finish last.
+	 *
+	 * The queue is global rather than per-device: both loops that call this already await one device at
+	 * a time, so there is no concurrency to lose, and a single chain cannot leak an entry per device
+	 * that ever existed. It cannot deadlock — everything re-entered by the write below
+	 * (`handleConnectionChanged` for a virtual device, VirtualIndexMaintenanceListener's fire-and-forget
+	 * rebuild loop) either returns without calling recompute() or is not awaited by this call.
 	 */
 	async recompute(virtualDeviceId: string, reason: string): Promise<void> {
-		await this.deviceConnectivityService.setConnectionState(virtualDeviceId, {
-			state: await this.aggregateState(virtualDeviceId),
-			reason,
-		});
+		const previous = this.recomputeQueue;
+		let settle: () => void = () => {};
+		this.recomputeQueue = new Promise<void>((resolve) => (settle = resolve));
+
+		try {
+			await previous;
+
+			await this.deviceConnectivityService.setConnectionState(virtualDeviceId, {
+				state: await this.aggregateState(virtualDeviceId),
+				reason,
+			});
+		} finally {
+			settle();
+		}
 	}
 
 	/**
