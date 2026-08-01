@@ -561,6 +561,304 @@ describe('useDevicesWizard', () => {
 		expect(backendClient.GET).not.toHaveBeenCalled();
 	});
 
+	it('stops polling once the backend reports the session is gone', async () => {
+		// A 404 is definitive: the backend garbage-collected the session and it will never come
+		// back, so there is no point re-hitting a missing endpoint every second until the
+		// component unmounts. The user can hit "Scan again" to start a fresh one. Swallowing it
+		// and continuing never self-heals either — `applySession` never runs, so the session
+		// status stays `running` and the non-running `stopPolling()` escape never fires.
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: undefined,
+			error: { error: 'not found' },
+			response: { status: 404 },
+		});
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(backendClient.GET).toHaveBeenCalledTimes(1);
+
+		// The interval must NOT fire again — the 404 stopped it.
+		await vi.advanceTimersByTimeAsync(2_000);
+		expect(backendClient.GET).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps polling through a transient refresh failure', async () => {
+		// A blip or a 5xx is not a dead session. Treating every failure as the 404 case would
+		// permanently freeze an otherwise healthy scan on one dropped request.
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockRejectedValueOnce(new Error('network blip')).mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(backendClient.GET).toHaveBeenCalledTimes(1);
+
+		// The scan survives the blip: it retries and the next snapshot lands. The gap widens after
+		// a failure, so this asserts recovery rather than a fixed cadence.
+		await vi.advanceTimersByTimeAsync(5_000);
+		expect(backendClient.GET.mock.calls.length).toBeGreaterThan(1);
+		expect(findControl<IWizardProgressControl>(adapter.controls.value, 'scan').percentage).toBeGreaterThanOrEqual(0);
+		expect(adapter.rows.value.length).toBe(1);
+	});
+
+	it('keeps retrying past the nominal expiry and still picks up the final snapshot', async () => {
+		// The backend keeps a finished session fetchable for five minutes
+		// (FINISHED_SESSION_TTL_MS), so passing `remainingSeconds` is not a definitive failure.
+		// Giving up at expiry during an outage strands the UI on stale devices and a `running`
+		// status that never resolves, because the terminal snapshot is what stops polling.
+		const finishedSession: IShellyNgDiscoverySession = {
+			...discoverySession,
+			status: 'finished',
+			remainingSeconds: 0,
+		};
+
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockRejectedValue(new Error('network outage'));
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		// Outage spans the whole 30s window and beyond.
+		await vi.advanceTimersByTimeAsync(60_000);
+
+		// Connectivity returns well after expiry — the final snapshot must still be fetched.
+		backendClient.GET.mockResolvedValue({
+			data: { data: finishedSession },
+			response: { status: 200 },
+		});
+
+		await vi.advanceTimersByTimeAsync(60_000);
+
+		// The terminal snapshot landed: the scan reads as complete rather than perpetually running.
+		expect(findControl<IWizardProgressControl>(adapter.controls.value, 'scan').percentage).toBe(100);
+
+		// And polling stopped on its own, because the session is no longer running.
+		backendClient.GET.mockClear();
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(backendClient.GET).not.toHaveBeenCalled();
+	});
+
+	it('backs off while the backend is unreachable instead of polling every second', async () => {
+		// Never giving up must not mean hammering: an unreachable backend should see a widening
+		// gap, not one request per second for as long as the wizard stays open.
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockRejectedValue(new Error('backend down'));
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		await vi.advanceTimersByTimeAsync(60_000);
+
+		// One request per second would be 60; backoff must keep it far below that.
+		expect(backendClient.GET.mock.calls.length).toBeLessThan(15);
+		expect(backendClient.GET.mock.calls.length).toBeGreaterThan(3);
+	});
+
+	it('returns to the normal cadence once polling recovers', async () => {
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockRejectedValueOnce(new Error('blip'))
+			.mockRejectedValueOnce(new Error('blip'))
+			.mockResolvedValue({
+				data: { data: discoverySession },
+				response: { status: 200 },
+			});
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		// Ride out the two failures and the recovery.
+		await vi.advanceTimersByTimeAsync(10_000);
+		const afterRecovery = backendClient.GET.mock.calls.length;
+
+		// Back at a 1s cadence, ten more seconds is roughly ten more polls.
+		await vi.advanceTimersByTimeAsync(10_000);
+
+		expect(backendClient.GET.mock.calls.length - afterRecovery).toBeGreaterThanOrEqual(8);
+	});
+
+	it('restores polling and clears the busy flag when the rescan request rejects outright', async () => {
+		// `openapi-fetch` rethrows a transport failure rather than returning `{ error, response }`,
+		// so execution leaves `startDiscovery` at the await. The interval was already stopped and
+		// `formResult` is still WORKING — without recovery the wizard is frozen behind a spinner
+		// that never resolves, with the retained session no longer updating.
+		backendClient.POST.mockResolvedValueOnce({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(backendClient.GET).toHaveBeenCalledTimes(1);
+
+		backendClient.POST.mockRejectedValueOnce(new Error('backend unreachable'));
+		await expect(adapter.start()).rejects.toThrow('backend unreachable');
+
+		expect(adapter.busy.value).toBe(false);
+
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(backendClient.GET).toHaveBeenCalledTimes(2);
+	});
+
+	it('drops a poll response that resolves after a rescan replaced the session', async () => {
+		// The poll interval fires against session A, then the user hits "Scan again". If the
+		// in-flight GET for A resolves after the POST installed session B, applying it would
+		// clobber B — and polling would then run against a session the backend already finished,
+		// so `applySession` stops the timer and the new scan is orphaned with the UI showing the
+		// old one. The user sees "Scan again" apparently do nothing.
+		const sessionB: IShellyNgDiscoverySession = { ...discoverySession, id: 'session-2' };
+
+		backendClient.POST.mockResolvedValueOnce({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+
+		let releaseStalePoll: (() => void) | undefined;
+		backendClient.GET.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					releaseStalePoll = (): void =>
+						resolve({
+							data: { data: discoverySession },
+							response: { status: 200 },
+						});
+				})
+		);
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+		expect(adapter.sessionKey?.value).toBe('session-1');
+
+		// Poll for session A goes out and stays in flight.
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(typeof releaseStalePoll).toBe('function');
+
+		// The user rescans; session B is installed while A's poll is still pending.
+		backendClient.POST.mockResolvedValueOnce({
+			data: { data: sessionB },
+			response: { status: 200 },
+		});
+		await adapter.start();
+		expect(adapter.sessionKey?.value).toBe('session-2');
+
+		// A's response finally lands. It must be dropped, not applied.
+		releaseStalePoll?.();
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(adapter.sessionKey?.value).toBe('session-2');
+	});
+
+	it('keeps polling the retained session when a rescan fails to start', async () => {
+		// "Scan again" stops the interval before its POST so no poll targets the session being
+		// replaced. If that POST then fails, the old session stays on screen — and must stay
+		// live. Leaving it stopped freezes the snapshot while the backend session is very much
+		// still discovering, so the table silently stops updating with no visible cause.
+		backendClient.POST.mockResolvedValueOnce({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(backendClient.GET).toHaveBeenCalledTimes(1);
+
+		backendClient.POST.mockResolvedValueOnce({
+			data: undefined,
+			error: { error: 'boom' },
+			response: { status: 500 },
+		});
+		await expect(adapter.start()).rejects.toThrow();
+
+		// The retained session must still be polled.
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(backendClient.GET).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not let a stale poll rejection stop the replacement session polling', async () => {
+		// A rejected GET skips everything after its `await`, so `refreshDiscovery`'s generation
+		// check never runs and the rejection reaches the interval's catch. That catch calls
+		// `stopPolling()` on the shared timer handle — which by then belongs to session B, not to
+		// the session whose poll just failed. B would be installed and never polled again.
+		const sessionB: IShellyNgDiscoverySession = { ...discoverySession, id: 'session-2' };
+
+		backendClient.POST.mockResolvedValueOnce({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+
+		let rejectStalePoll: (() => void) | undefined;
+		backendClient.GET.mockImplementationOnce(
+			() =>
+				new Promise((_resolve, reject) => {
+					rejectStalePoll = (): void => reject(new Error('session not found'));
+				})
+		);
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(typeof rejectStalePoll).toBe('function');
+
+		backendClient.POST.mockResolvedValueOnce({
+			data: { data: sessionB },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: { data: sessionB },
+			response: { status: 200 },
+		});
+		await adapter.start();
+
+		// Session A's poll now fails, long after A stopped being the current session.
+		rejectStalePoll?.();
+		await vi.advanceTimersByTimeAsync(0);
+
+		backendClient.GET.mockClear();
+		await vi.advanceTimersByTimeAsync(1_000);
+
+		expect(backendClient.GET).toHaveBeenCalledTimes(1);
+	});
+
 	it('adopts the selection handed over by the shell through the devices store', async () => {
 		backendClient.POST.mockResolvedValue({
 			data: { data: discoverySession },

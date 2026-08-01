@@ -51,6 +51,11 @@ const toWizardStatus = (status: IShellyV1DiscoveryDevice['status']): IWizardRowS
 const suggestedNameFor = (device: IShellyV1DiscoveryDevice): string =>
 	device.registeredDeviceName || device.name || device.displayName || device.hostname;
 
+// Normal polling cadence, and the ceiling a failing backend is backed off to. Retries never
+// stop on a recoverable error — only the gap between them widens.
+const POLL_INTERVAL_MS = 1_000;
+const MAX_POLL_BACKOFF_MS = 30_000;
+
 export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const { t } = useI18n();
 	const backend = useBackend();
@@ -66,6 +71,18 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const passwordByHostname = reactive<Record<string, string | null>>({});
 
 	let pollingTimer: number | null = null;
+
+	// Generation counter — bumped on every session boundary (start / dispose). A request captures
+	// the generation before its await and drops its response if the generation moved on. Without
+	// it, a poll issued against session A that resolves after "Scan again" installed session B
+	// would overwrite B; polling would then run against a session the backend already finished,
+	// `applySession` would stop the timer, and the new scan would be orphaned with the UI still
+	// showing the old one — "Scan again" appearing to do nothing.
+	let sessionGeneration = 0;
+
+	// Current gap between polls: reset to POLL_INTERVAL_MS by any successful snapshot, doubled by
+	// each recoverable failure.
+	let pollDelayMs = POLL_INTERVAL_MS;
 
 	// Captured at every applySession so scanPercentage can tick forward independent of any
 	// drift between the client and server clocks. We resnap to the server's `remainingSeconds`
@@ -137,23 +154,58 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		}))
 	);
 
-	const startPolling = (): void => {
+	// A self-scheduling timeout rather than a fixed interval, so a failing backend can be backed
+	// off without ever being abandoned. Expiry is not a failure: the backend keeps a finished
+	// session fetchable for minutes (FINISHED_SESSION_TTL_MS), and that terminal snapshot is what
+	// moves the UI out of the `running` state. Giving up at expiry during an outage would strand
+	// the wizard on stale devices and a scan that never completes. Only a definitive 404 or a
+	// terminal snapshot ends polling.
+	const schedulePoll = (): void => {
 		stopPolling();
 
-		pollingTimer = window.setInterval(() => {
-			refreshDiscovery().catch(() => {
-				// Stop polling on any error — the most likely failure is a 404 after the server
-				// cleaned up the session, and there's no point re-hitting a missing endpoint every
-				// second until the component unmounts. The user can hit "Scan again" to start a
-				// fresh session.
-				stopPolling();
-			});
-		}, 1_000);
+		const scheduledGeneration = sessionGeneration;
+
+		pollingTimer = window.setTimeout(async (): Promise<void> => {
+			pollingTimer = null;
+
+			try {
+				await refreshDiscovery();
+
+				pollDelayMs = POLL_INTERVAL_MS;
+			} catch (pollError: unknown) {
+				// The server dropped the session for good; there is nothing left to fetch.
+				if (pollError instanceof DevicesShellyV1ApiException && pollError.code === 404) {
+					return;
+				}
+
+				// Anything else — a blip, a 5xx, a dropped connection — may recover. Widen the gap
+				// so an unreachable backend is not hit every second, but keep trying.
+				pollDelayMs = Math.min(pollDelayMs * 2, MAX_POLL_BACKOFF_MS);
+			}
+
+			// A newer session, or a dispose, took over while this poll was in flight.
+			if (sessionGeneration !== scheduledGeneration) {
+				return;
+			}
+
+			// A terminal snapshot means the scan is done and there is nothing left to discover.
+			if (session.value === null || session.value.status !== 'running') {
+				return;
+			}
+
+			schedulePoll();
+		}, pollDelayMs);
+	};
+
+	const startPolling = (): void => {
+		pollDelayMs = POLL_INTERVAL_MS;
+
+		schedulePoll();
 	};
 
 	const stopPolling = (): void => {
 		if (pollingTimer !== null) {
-			window.clearInterval(pollingTimer);
+			window.clearTimeout(pollingTimer);
 			pollingTimer = null;
 		}
 	};
@@ -183,14 +235,48 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		adoptionResults.value = [];
 	};
 
+	// A rescan that never happened leaves the previous session on screen — and still
+	// discovering on the backend. Its interval was stopped before the POST; hand it back, or the
+	// table silently freezes with no visible cause.
+	const resumeRetainedPolling = (): void => {
+		if (session.value !== null && session.value.status === 'running') {
+			startPolling();
+		}
+	};
+
 	const startDiscovery = async (): Promise<void> => {
 		formResult.value = FormResult.WORKING;
 
-		const {
-			data: responseData,
-			error,
-			response,
-		} = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_SHELLY_V1_PLUGIN_PREFIX}/devices/discovery`);
+		// Kill the running interval before the POST so it cannot queue further polls against the
+		// session we are about to replace, and bump the generation so a poll already in flight
+		// drops its response instead of overwriting the new session.
+		stopPolling();
+		sessionGeneration += 1;
+		const startGeneration = sessionGeneration;
+
+		let started;
+
+		try {
+			started = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_SHELLY_V1_PLUGIN_PREFIX}/devices/discovery`);
+		} catch (transportError: unknown) {
+			// `openapi-fetch` rethrows a transport failure rather than returning `{ error, response }`,
+			// so this path never reaches the recovery below. Without it the wizard is left behind a
+			// spinner that never resolves, with the retained session no longer polling.
+			if (sessionGeneration === startGeneration) {
+				formResult.value = FormResult.ERROR;
+				resumeRetainedPolling();
+			}
+
+			throw transportError;
+		}
+
+		const { data: responseData, error, response } = started;
+
+		// A newer start (or a dispose) landed while this POST was in flight — its session is the
+		// one the user is looking at, so this response is stale.
+		if (sessionGeneration !== startGeneration) {
+			return;
+		}
 
 		if (typeof responseData !== 'undefined') {
 			// Drop any manual-add password from a previous scan before applying the new snapshot.
@@ -211,6 +297,8 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		formResult.value = FormResult.ERROR;
 		flashMessage.error(errorReason);
 
+		resumeRetainedPolling();
+
 		throw new DevicesShellyV1ApiException(errorReason, response.status);
 	};
 
@@ -218,6 +306,8 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		if (session.value === null) {
 			return;
 		}
+
+		const pollGeneration = sessionGeneration;
 
 		const {
 			data: responseData,
@@ -230,6 +320,12 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 				},
 			},
 		});
+
+		// The session was replaced or torn down while this poll was in flight; applying it would
+		// resurrect the old snapshot over the current one.
+		if (sessionGeneration !== pollGeneration) {
+			return;
+		}
 
 		if (typeof responseData !== 'undefined') {
 			applySession(transformDiscoverySessionResponse(responseData.data));
@@ -555,6 +651,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		// wizard view.
 		dispose: async (): Promise<void> => {
 			stopPolling();
+			sessionGeneration += 1;
 		},
 	};
 };
