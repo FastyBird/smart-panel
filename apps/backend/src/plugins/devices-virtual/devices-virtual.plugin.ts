@@ -43,6 +43,7 @@ import {
 	VirtualDeviceEntity,
 } from './entities/devices-virtual.entity';
 import { VirtualProjectionListener } from './listeners/virtual-projection.listener';
+import { VirtualStatusListener } from './listeners/virtual-status.listener';
 import { VirtualConfigModel } from './models/config.model';
 import { VirtualDevicePlatform } from './platforms/virtual-device.platform';
 import { VirtualPropertyIndexService } from './services/virtual-property-index.service';
@@ -61,7 +62,13 @@ import { VirtualValueSourceService } from './services/virtual-value-source.servi
 		ExtensionsModule,
 		SwaggerModule,
 	],
-	providers: [VirtualValueSourceService, VirtualDevicePlatform, VirtualPropertyIndexService, VirtualProjectionListener],
+	providers: [
+		VirtualValueSourceService,
+		VirtualDevicePlatform,
+		VirtualPropertyIndexService,
+		VirtualProjectionListener,
+		VirtualStatusListener,
+	],
 })
 export class DevicesVirtualPlugin {
 	constructor(

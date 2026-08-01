@@ -12,17 +12,26 @@ import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/de
  * In-memory index over LINKED virtual properties (valueOrigin === SOURCE with a non-null
  * sourcePropertyId — see VirtualChannelPropertyEntity.isOrphaned). OWNED (LOCAL) properties store
  * their own value and have nothing to index; ORPHANED properties lost their source and are
- * likewise skipped.
+ * likewise skipped — none of the three maps below ever holds one.
  *
- * Two lookups matter, both driven off system-wide, per-event traffic where a database query would
+ * Three lookups matter, all driven off system-wide, per-event traffic where a database query would
  * not scale:
  * - `findBySourceProperty` — read by the projection listener on every property value change.
  * - `findVirtualDeviceIdsBySourceDevice` — read by the connection-status listener on every source
- *   device connection change.
+ *   device connection change, to find which virtual devices a source device change affects.
+ * - `findByVirtualDevice` — read by the same connection-status listener to enumerate one affected
+ *   virtual device's properties, so it can aggregate a CONNECTED/DISCONNECTED state from them.
  *
- * `byVirtualDevice` is not a third public index — it is bookkeeping that lets `removeVirtualDevice`
- * undo everything one virtual device contributed to the other two maps without a linear scan over
- * every indexed property.
+ * `byVirtualDevice` started as bookkeeping that let `removeVirtualDevice` undo everything one
+ * virtual device contributed to the other two maps without a linear scan over every indexed
+ * property; `findByVirtualDevice` exposes that same map read-only rather than adding a fourth.
+ * Because it is only ever populated with properties that were LINKED at add()/rebuild() time, a
+ * virtual device with solely owned properties reports no properties here at all (vacuously — see
+ * the connection-status listener, which treats that as CONNECTED). A property that orphans in the
+ * database via the sourceProperty FK's ON DELETE SET NULL — after already being indexed — is a
+ * different case: nothing currently re-runs add() for it, so its cached copy lingers here exactly
+ * as it looked when indexed, `isOrphaned` and all, until the next full `rebuild()`. Orphan checks
+ * against this map are therefore only as fresh as the last add()/rebuild(), not live.
  */
 @Injectable()
 export class VirtualPropertyIndexService implements OnApplicationBootstrap {
@@ -53,6 +62,16 @@ export class VirtualPropertyIndexService implements OnApplicationBootstrap {
 		const virtualDeviceIds = this.bySourceDevice.get(id);
 
 		return virtualDeviceIds ? Array.from(virtualDeviceIds) : [];
+	}
+
+	/**
+	 * Every LINKED property currently indexed for the given virtual device. O(1), synchronous, no
+	 * I/O. See the class docstring: owned properties are never in here, and an orphaned one lingers
+	 * only as stale, still-linked-looking data until the next add()/rebuild() — this is not a live
+	 * enumeration of everything the virtual device owns.
+	 */
+	findByVirtualDevice(id: string): VirtualChannelPropertyEntity[] {
+		return this.byVirtualDevice.get(id) ?? [];
 	}
 
 	/**

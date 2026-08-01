@@ -290,4 +290,21 @@ describe('VirtualPropertyIndexService', () => {
 
 		expect(service.findBySourceProperty('source-prop-x')).toEqual([]);
 	});
+
+	// -- Task 12 addition: findByVirtualDevice -------------------------------------------------
+	// The connection-status listener needs to enumerate one virtual device's properties (to check
+	// for orphans and collect distinct source devices) without querying the database. byVirtualDevice
+	// already holds exactly that, so this exposes it read-only instead of adding a fourth map.
+
+	it('returns every property indexed for a given virtual device', async () => {
+		repository.find.mockResolvedValue([linkedProperty]);
+
+		await service.onApplicationBootstrap();
+
+		expect(service.findByVirtualDevice('virtual-device')).toEqual([linkedProperty]);
+	});
+
+	it('returns an empty array for a virtual device with nothing indexed', () => {
+		expect(service.findByVirtualDevice('unknown-virtual-device')).toEqual([]);
+	});
 });
