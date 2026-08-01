@@ -79,11 +79,19 @@ interface DeviceValidationBody {
  * Polls `fetchAndCheck` until it reports `done: true`, returning its `value`. Used wherever a write
  * is followed by a fire-and-forget side effect (command forwarding, event-driven aggregation) so the
  * assertion isn't racing an in-flight promise the HTTP response didn't wait for.
+ *
+ * `intervalMs` is deliberately not tighter than this. DisplayAwareThrottlerGuard applies
+ * `{ ttl: 60000, limit: 30 }` to a user access token, and @nestjs/throttler keys that counter per
+ * *route*, not globally — so several polls of the same endpoint share one budget of 30 requests for
+ * the whole run. At a 100ms interval a single three-second poll spends that entire budget by itself,
+ * and the next poll of that route comes back 429 for the rest of the minute: a failure that reads as
+ * "the thing under test never happened" but is really "the test asked too often".
  */
 async function waitUntil<T>(
 	fetchAndCheck: () => Promise<{ done: boolean; value: T }>,
+	label = 'condition',
 	timeoutMs = 3000,
-	intervalMs = 100,
+	intervalMs = 250,
 ): Promise<T> {
 	const deadline = Date.now() + timeoutMs;
 
@@ -94,8 +102,11 @@ async function waitUntil<T>(
 			return value;
 		}
 
+		// `label` and the last observed value are in the message because several calls in this file poll
+		// different things with the same helper: without them a timeout says only that *something* never
+		// settled, which is the least useful part of what this already knows.
 		if (Date.now() >= deadline) {
-			throw new Error('waitUntil: condition was not met within the timeout');
+			throw new Error(`waitUntil: ${label} was not met within ${timeoutMs}ms (last value: ${JSON.stringify(value)})`);
 		}
 
 		await new Promise((resolve) => setTimeout(resolve, intervalMs));
@@ -353,6 +364,11 @@ describe('devices-virtual plugin (e2e)', () => {
 			// than assume the synthesis finished before the POST above returned.
 			const statusProperty = await waitUntil(async () => {
 				const response = await authGet(`/modules/devices/devices/${virtualDeviceId}`);
+
+				if (response.status !== 200) {
+					return { done: false, value: null };
+				}
+
 				const body = response.body as { data: DeviceBody };
 
 				const informationChannel = body.data.channels.find(
@@ -364,7 +380,7 @@ describe('devices-virtual plugin (e2e)', () => {
 				);
 
 				return { done: property?.value_origin === 'local', value: property ?? null };
-			});
+			}, 'the synthesized connection state property becoming local');
 
 			expect(statusProperty?.value_origin).toBe('local');
 			// Owned means owned outright: `local` with a lingering source_property would still be read
@@ -451,7 +467,7 @@ describe('devices-virtual plugin (e2e)', () => {
 				const body = response.body as { data: ChannelPropertyBody };
 
 				return { done: body.data.value?.value === true, value: body.data.value?.value ?? null };
-			});
+			}, 'the command reaching the source property');
 
 			expect(sourceValue).toBe(true);
 
@@ -656,10 +672,15 @@ describe('devices-virtual plugin (e2e)', () => {
 			// reverse index entirely, so no connection event can ever select it again.
 			const status = await waitUntil(async () => {
 				const response = await authGet(`/modules/devices/devices/${virtualDeviceId}`);
+
+				if (response.status !== 200) {
+					return { done: false, value: null };
+				}
+
 				const body = response.body as { data: DeviceBody };
 
 				return { done: body.data.status.online === false, value: body.data.status };
-			});
+			}, 'the virtual device degrading to disconnected after its source property was deleted');
 
 			expect(status.online).toBe(false);
 			expect(status.status).toBe('disconnected');
@@ -902,28 +923,46 @@ describe('devices-virtual plugin (e2e)', () => {
 				const response = await authGet(`/plugins/devices-virtual/devices/${ownVirtualDeviceId}/source-devices`);
 				const body = response.body as { data?: DeviceBody[] };
 
-				return { done: !!body.data?.some((device) => device.id === ownSourceDeviceId), value: null };
-			});
+				return { done: !!body.data?.some((device) => device.id === ownSourceDeviceId), value: body.data ?? null };
+			}, 'the source device appearing in the virtual device index');
 
 			await ensureDeviceDeleted(authGet, authDelete, ownVirtualDeviceId);
 
 			// The unhide runs off the rebuild that follows the deletion, which is deferred past the
 			// deleting transaction's commit — so poll rather than read once.
-			const hidden = await waitUntil(async () => {
-				const response = await authGet(`/modules/devices/devices/${ownSourceDeviceId}`);
-				const body = response.body as { data: DeviceBody };
+			const hidden = await waitUntil<boolean | string>(
+				async () => {
+					const response = await authGet(`/modules/devices/devices/${ownSourceDeviceId}`);
 
-				return { done: body.data.hidden === false, value: body.data.hidden };
-			});
+					// This poll runs immediately after the only call in this spec that opens a transaction, so
+					// it is the one most exposed to the Zigbee2mqtt transaction collision documented on
+					// ensureDeviceDeleted() — which surfaces here as a transient 500 on an unrelated read.
+					// Treated as "not settled yet" rather than dereferenced blindly: a polling loop that throws
+					// on one bad sample turns an external flake into a failure of the thing under test, while
+					// retrying costs nothing and leaves the assertion below just as strict.
+					if (response.status !== 200) {
+						return { done: false, value: `HTTP ${response.status}: ${JSON.stringify(response.body)}` };
+					}
+
+					const body = response.body as { data: DeviceBody };
+
+					return { done: body.data.hidden === false, value: body.data.hidden };
+					// Slower and longer than the default: this poll shares its route budget (see waitUntil)
+					// with two other polls in this file, and it waits on the longest chain of deferred work in
+					// the plugin — a deletion, a rebuild deferred past that deletion's commit, and only then
+					// the unhide.
+				},
+				'the abandoned source device being unhidden',
+				6000,
+				500,
+			);
 
 			expect(hidden).toBe(false);
 
 			// Unhidden means genuinely back in the pickers, not merely a flipped column.
 			const visibleList = await authGet('/modules/devices/devices?hidden=false').expect(200);
 
-			expect((visibleList.body as { data: DeviceBody[] }).data.map((device) => device.id)).toContain(
-				ownSourceDeviceId,
-			);
+			expect((visibleList.body as { data: DeviceBody[] }).data.map((device) => device.id)).toContain(ownSourceDeviceId);
 		});
 	});
 

@@ -442,7 +442,9 @@ describe('VirtualPropertyIndexService', () => {
 	it('reports a virtual device that gained its first link', async () => {
 		repository.find.mockResolvedValue([linkedProperty]);
 
-		await expect(service.rebuild()).resolves.toEqual(['virtual-device']);
+		await expect(service.rebuild()).resolves.toEqual(
+			expect.objectContaining({ rewiredVirtualDeviceIds: ['virtual-device'] }),
+		);
 	});
 
 	it('reports a virtual device whose link lost its source (the deletion that orphans it)', async () => {
@@ -455,7 +457,9 @@ describe('VirtualPropertyIndexService', () => {
 			virtualProperty({ id: 'linked-prop', sourcePropertyId: null, sourceProperty: null }),
 		]);
 
-		await expect(service.rebuild()).resolves.toEqual(['virtual-device']);
+		await expect(service.rebuild()).resolves.toEqual(
+			expect.objectContaining({ rewiredVirtualDeviceIds: ['virtual-device'] }),
+		);
 	});
 
 	it('reports a virtual device whose links disappeared entirely', async () => {
@@ -464,14 +468,19 @@ describe('VirtualPropertyIndexService', () => {
 
 		repository.find.mockResolvedValue([]);
 
-		await expect(service.rebuild()).resolves.toEqual(['virtual-device']);
+		await expect(service.rebuild()).resolves.toEqual(
+			expect.objectContaining({ rewiredVirtualDeviceIds: ['virtual-device'] }),
+		);
 	});
 
 	it('reports nothing when a rebuild leaves every virtual device wired identically', async () => {
 		repository.find.mockResolvedValue([linkedProperty]);
 		await service.rebuild();
 
-		await expect(service.rebuild()).resolves.toEqual([]);
+		await expect(service.rebuild()).resolves.toEqual({
+			rewiredVirtualDeviceIds: [],
+			abandonedSourceDeviceIds: [],
+		});
 	});
 
 	// Row order out of find() is not guaranteed stable, and a reordering is not a re-wiring — a
@@ -486,7 +495,7 @@ describe('VirtualPropertyIndexService', () => {
 
 		repository.find.mockResolvedValue([second, first]);
 
-		await expect(service.rebuild()).resolves.toEqual([]);
+		await expect(service.rebuild()).resolves.toEqual(expect.objectContaining({ rewiredVirtualDeviceIds: [] }));
 	});
 
 	it('reports only the virtual devices that actually changed, not every indexed one', async () => {
@@ -504,7 +513,9 @@ describe('VirtualPropertyIndexService', () => {
 			linkedB,
 		]);
 
-		await expect(service.rebuild()).resolves.toEqual(['virtual-device-a']);
+		await expect(service.rebuild()).resolves.toEqual(
+			expect.objectContaining({ rewiredVirtualDeviceIds: ['virtual-device-a'] }),
+		);
 	});
 
 	// An owned property is in none of the maps, so adding or removing one is not a re-wiring and must
@@ -515,6 +526,58 @@ describe('VirtualPropertyIndexService', () => {
 
 		repository.find.mockResolvedValue([linkedProperty, ownedProperty]);
 
-		await expect(service.rebuild()).resolves.toEqual([]);
+		await expect(service.rebuild()).resolves.toEqual(expect.objectContaining({ rewiredVirtualDeviceIds: [] }));
+	});
+
+	// -- rebuild() reports which source devices nothing references anymore -----------------------
+	//
+	// The signal the "unhide the source its virtual device replaced" rule runs on. It cannot be taken
+	// from DEVICE_DELETED instead: DevicesService.remove() deletes a device's channels and properties
+	// before it emits that event, and a rebuild triggered by one of those deletions routinely lands in
+	// between — so by the time the device event arrives the index has already forgotten every link the
+	// device had. A transition between two index versions has no such dependency on event ordering.
+
+	it('reports a source device that lost its last referencing virtual device', async () => {
+		repository.find.mockResolvedValue([linkedProperty]);
+		await service.rebuild();
+
+		repository.find.mockResolvedValue([]);
+
+		await expect(service.rebuild()).resolves.toEqual(
+			expect.objectContaining({ abandonedSourceDeviceIds: ['source-device'] }),
+		);
+	});
+
+	// Fires on the last *reference* going, not only on a whole virtual device being deleted: unlinking
+	// the property leaves the source just as unreferenced.
+	it('reports a source device whose last link was orphaned rather than deleted', async () => {
+		repository.find.mockResolvedValue([linkedProperty]);
+		await service.rebuild();
+
+		repository.find.mockResolvedValue([
+			virtualProperty({ id: 'linked-prop', sourcePropertyId: null, sourceProperty: null }),
+		]);
+
+		await expect(service.rebuild()).resolves.toEqual(
+			expect.objectContaining({ abandonedSourceDeviceIds: ['source-device'] }),
+		);
+	});
+
+	it('does not report a source device another virtual device still references', async () => {
+		repository.find.mockResolvedValue([linkedA, linkedB]);
+		await service.rebuild();
+
+		// linkedA is gone; linkedB still projects the same source property on the same source device.
+		repository.find.mockResolvedValue([linkedB]);
+
+		await expect(service.rebuild()).resolves.toEqual(expect.objectContaining({ abandonedSourceDeviceIds: [] }));
+	});
+
+	// The index starts empty, so the first rebuild only ever adds source devices. Reporting an addition
+	// as an abandonment would unhide every hidden source on the first structural event after boot.
+	it('reports nothing abandoned on the first rebuild after boot', async () => {
+		repository.find.mockResolvedValue([linkedProperty]);
+
+		await expect(service.rebuild()).resolves.toEqual(expect.objectContaining({ abandonedSourceDeviceIds: [] }));
 	});
 });

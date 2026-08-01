@@ -34,6 +34,32 @@ export interface VirtualPropertyLink {
 }
 
 /**
+ * What one rebuild() pass changed, as the two transitions its callers have to react to.
+ *
+ * Reported by rebuild() rather than derived by a caller because rebuild() is the only place the
+ * outgoing and incoming index versions both exist. Deriving either from an event instead is not
+ * equivalent, and not merely less tidy: DevicesService.remove() deletes a device's channels and
+ * properties before it emits DEVICE_DELETED, and a rebuild triggered by those property deletions can
+ * and does complete in between — so by the time the deletion event arrives, the index has already
+ * forgotten everything the device was linked to.
+ */
+export interface VirtualIndexRebuildResult {
+	/**
+	 * Virtual devices whose set of links is not what it was, so their aggregated connection state has
+	 * to be recomputed. Includes a device that lost every link it had — which is the only signal such a
+	 * device will ever get, since it drops out of `bySourceDevice` and no DEVICE_CONNECTION_CHANGED
+	 * event can select it again.
+	 */
+	rewiredVirtualDeviceIds: string[];
+	/**
+	 * Source devices that were referenced by at least one virtual device before this pass and by none
+	 * after it. Hidden ones among them have nothing standing in for them anymore and should be visible
+	 * again.
+	 */
+	abandonedSourceDeviceIds: string[];
+}
+
+/**
  * In-memory index over every PROJECTING virtual property — `valueOrigin === SOURCE`, whether or not
  * it still has a source. OWNED (LOCAL) properties store their own value, are nobody's projection and
  * never affect a virtual device's connection state, so they are the only kind skipped outright.
@@ -192,14 +218,11 @@ export class VirtualPropertyIndexService implements OnApplicationBootstrap {
 	 * The swap itself is three plain assignments with no await between them, so no reader can ever
 	 * observe a half-replaced index.
 	 *
-	 * The returned ids are the virtual devices whose links differ between the outgoing and incoming
-	 * `byVirtualDevice` maps (see diffVirtualDevices). This is the only moment the two versions coexist,
-	 * which is why the comparison belongs here rather than in the caller: a link change is precisely
-	 * what invalidates a virtual device's aggregated connection state, and — for a device whose last
-	 * source was just deleted — the only signal that will ever say so, since such a device drops out of
-	 * `bySourceDevice` entirely and no DEVICE_CONNECTION_CHANGED event can reach it again.
+	 * Both halves of the returned VirtualIndexRebuildResult are computed by comparing the outgoing maps
+	 * with the incoming ones, in the one moment both versions coexist — see that interface for why
+	 * neither can be derived from an event instead.
 	 */
-	async rebuild(): Promise<string[]> {
+	async rebuild(): Promise<VirtualIndexRebuildResult> {
 		const bySourceProperty = new Map<string, VirtualChannelPropertyEntity[]>();
 		const bySourceDevice = new Map<string, Set<string>>();
 		const byVirtualDevice = new Map<string, VirtualPropertyLink[]>();
@@ -232,13 +255,18 @@ export class VirtualPropertyIndexService implements OnApplicationBootstrap {
 			);
 		}
 
-		const changedVirtualDeviceIds = this.diffVirtualDevices(this.byVirtualDevice, byVirtualDevice);
+		const result: VirtualIndexRebuildResult = {
+			rewiredVirtualDeviceIds: this.diffVirtualDevices(this.byVirtualDevice, byVirtualDevice),
+			abandonedSourceDeviceIds: [...this.bySourceDevice.keys()].filter(
+				(sourceDeviceId) => !bySourceDevice.has(sourceDeviceId),
+			),
+		};
 
 		this.bySourceProperty = bySourceProperty;
 		this.bySourceDevice = bySourceDevice;
 		this.byVirtualDevice = byVirtualDevice;
 
-		return changedVirtualDeviceIds;
+		return result;
 	}
 
 	/**

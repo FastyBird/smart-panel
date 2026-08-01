@@ -67,7 +67,10 @@ describe('ValidateDeviceNotHidden on the device selection DTOs', () => {
 				DeviceNotHiddenConstraintValidator,
 				new DeviceNotHiddenConstraintValidator(devicesService as unknown as DevicesService),
 			],
-			[DeviceExistsConstraintValidator, new DeviceExistsConstraintValidator(devicesService as unknown as DevicesService)],
+			[
+				DeviceExistsConstraintValidator,
+				new DeviceExistsConstraintValidator(devicesService as unknown as DevicesService),
+			],
 			[
 				DataSourceDeviceExistsConstraintValidator,
 				new DataSourceDeviceExistsConstraintValidator(devicesService as unknown as DevicesService),
@@ -153,8 +156,7 @@ describe('ValidateDeviceNotHidden on the device selection DTOs', () => {
 	];
 
 	describe.each(cases)('$name', ({ dto, field, rest }) => {
-		const validateWith = (deviceId: unknown) =>
-			validate(toInstance(dto, { ...rest, [field]: deviceId }));
+		const validateWith = (deviceId: unknown) => validate(toInstance(dto, { ...rest, [field]: deviceId }));
 
 		it('rejects a hidden device', async () => {
 			const errors = await validateWith(HIDDEN_DEVICE_ID);

@@ -16,7 +16,7 @@ import { VirtualDeviceInformationListener } from './virtual-device-information.l
 
 describe('VirtualDeviceInformationListener', () => {
 	let listener: VirtualDeviceInformationListener;
-	let channelsService: { findOneBy: jest.Mock };
+	let channelsService: { findOneBy: jest.Mock; create: jest.Mock };
 	let channelsPropertiesService: { findOneBy: jest.Mock; create: jest.Mock; update: jest.Mock };
 	let connectivity: { setConnectionState: jest.Mock };
 
@@ -39,8 +39,8 @@ describe('VirtualDeviceInformationListener', () => {
 	};
 
 	// findOneBy is shared by the STATUS lookup and the three device-information lookups, so route by
-	// category: the connection-state property exists (DeviceConnectivityService just made it), the
-	// other three do not yet.
+	// category: an already-present connection-state property (a device from before this listener owned
+	// it, or a redelivered event), while the other three are still missing.
 	const withConnectionStateProperty = (property: VirtualChannelPropertyEntity | null): void => {
 		channelsPropertiesService.findOneBy.mockImplementation((_column: string, category: PropertyCategory) =>
 			Promise.resolve(category === PropertyCategory.STATUS ? property : null),
@@ -48,7 +48,7 @@ describe('VirtualDeviceInformationListener', () => {
 	};
 
 	beforeEach(() => {
-		channelsService = { findOneBy: jest.fn().mockResolvedValue(infoChannel) };
+		channelsService = { findOneBy: jest.fn().mockResolvedValue(infoChannel), create: jest.fn() };
 		channelsPropertiesService = {
 			findOneBy: jest.fn().mockResolvedValue(null),
 			create: jest.fn().mockResolvedValue(undefined),
@@ -74,7 +74,7 @@ describe('VirtualDeviceInformationListener', () => {
 		expect(channelsService.findOneBy).not.toHaveBeenCalled();
 	});
 
-	it('ensures the device_information channel via setConnectionState before looking it up', async () => {
+	it('records the device as connected, and resolves its device_information channel', async () => {
 		await listener.handleDeviceCreated(virtualDevice);
 
 		expect(connectivity.setConnectionState).toHaveBeenCalledWith(
@@ -85,6 +85,21 @@ describe('VirtualDeviceInformationListener', () => {
 			'category',
 			ChannelCategory.DEVICE_INFORMATION,
 			'virtual-device',
+		);
+	});
+
+	it('creates the device_information channel itself when it does not exist yet', async () => {
+		channelsService.findOneBy.mockResolvedValueOnce(null);
+		channelsService.create.mockResolvedValue(infoChannel);
+
+		await listener.handleDeviceCreated(virtualDevice);
+
+		expect(channelsService.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				device: 'virtual-device',
+				category: ChannelCategory.DEVICE_INFORMATION,
+				identifier: 'device_information',
+			}),
 		);
 	});
 
@@ -133,10 +148,10 @@ describe('VirtualDeviceInformationListener', () => {
 		);
 	});
 
-	it('creates exactly the three owned properties, no more', async () => {
+	it('creates exactly the three owned properties plus the connection state one, no more', async () => {
 		await listener.handleDeviceCreated(virtualDevice);
 
-		expect(channelsPropertiesService.create).toHaveBeenCalledTimes(3);
+		expect(channelsPropertiesService.create).toHaveBeenCalledTimes(4);
 	});
 
 	it('does not recreate a property that already exists', async () => {
@@ -147,8 +162,9 @@ describe('VirtualDeviceInformationListener', () => {
 		expect(channelsPropertiesService.create).not.toHaveBeenCalled();
 	});
 
-	it('skips synthesis when the device information channel cannot be resolved', async () => {
+	it('skips synthesis when the device information channel can be neither found nor created', async () => {
 		channelsService.findOneBy.mockResolvedValue(null);
+		channelsService.create.mockRejectedValue(new Error('constraint violation'));
 
 		await listener.handleDeviceCreated(virtualDevice);
 
@@ -161,19 +177,72 @@ describe('VirtualDeviceInformationListener', () => {
 		await expect(listener.handleDeviceCreated(virtualDevice)).resolves.toBeUndefined();
 	});
 
-	// -- the synthesized connection-state property is owned, not projected ----------------------
+	// -- the connection-state property is owned, not projected ---------------------------------
 	//
-	// Regression tests for every virtual device being permanently uncommandable. setConnectionState
-	// creates the `status` property through generic module code, which has no `value_origin` to give —
-	// so on a virtual device it takes the SOURCE column default with a null sourcePropertyId, which is
-	// verbatim VirtualPropertyIndexService's definition of an ORPHAN. VirtualStatusListener then
-	// returns DISCONNECTED for the device on the next source connection change no matter how healthy
-	// the real sources are, and PropertyCommandService rejects every command against an offline
-	// device. The property is owned by the virtual device and projected from nowhere, so it must be
-	// LOCAL. Latent until the index started recording orphans at all — before that the degradation
-	// branch was unreachable, which is why this only became an outage recently.
+	// Regression tests for every virtual device being permanently uncommandable. Left to
+	// DeviceConnectivityService, the `status` property is created by generic module code with no
+	// `value_origin` to give — so on a virtual device it takes the SOURCE column default with a null
+	// sourcePropertyId, which is verbatim VirtualPropertyIndexService's definition of an ORPHAN.
+	// VirtualStatusListener then returns DISCONNECTED for the device however healthy its real sources
+	// are, and PropertyCommandService rejects every command against an offline device. The property is
+	// owned by the virtual device and projected from nowhere, so it must be LOCAL. Latent until the
+	// index started recording orphans at all — before that the degradation branch was unreachable,
+	// which is why this only became an outage recently.
 
-	it('marks the synthesized connection state property as owned rather than leaving it an orphan', async () => {
+	it('creates the connection state property itself, as owned', async () => {
+		await listener.handleDeviceCreated(virtualDevice);
+
+		expect(channelsPropertiesService.create).toHaveBeenCalledWith(
+			'info-channel',
+			expect.objectContaining({
+				category: PropertyCategory.STATUS,
+				value_origin: VirtualValueOrigin.LOCAL,
+				permissions: [PermissionType.READ_ONLY],
+				data_type: DataTypeType.ENUM,
+			}),
+		);
+	});
+
+	// The whole point of creating it here rather than repairing it afterwards. A property that exists
+	// and is already LOCAL before setConnectionState runs is never an orphan for even an instant, so the
+	// index rebuild that CHANNEL_PROPERTY_CREATED triggers sees no link change and no spurious
+	// DISCONNECTED recompute races the fix.
+	it('creates the connection state property before recording connectivity', async () => {
+		const order: string[] = [];
+
+		channelsPropertiesService.create.mockImplementation((_channelId: string, dto: { category: PropertyCategory }) => {
+			order.push(`create:${dto.category}`);
+
+			return Promise.resolve(undefined);
+		});
+		connectivity.setConnectionState.mockImplementation(() => {
+			order.push('setConnectionState');
+
+			return Promise.resolve(undefined);
+		});
+
+		await listener.handleDeviceCreated(virtualDevice);
+
+		expect(order.indexOf(`create:${PropertyCategory.STATUS}`)).toBeLessThan(order.indexOf('setConnectionState'));
+	});
+
+	// The format has to accept every state DeviceConnectivityService can write, or its own value writes
+	// would fail validation against a property this listener created.
+	it('accepts every connection state the connectivity service can write', async () => {
+		await listener.handleDeviceCreated(virtualDevice);
+
+		const calls = channelsPropertiesService.create.mock.calls as [
+			string,
+			{ category: PropertyCategory; format: string[] },
+		][];
+		const statusCreate = calls.find(([, dto]) => dto.category === PropertyCategory.STATUS);
+
+		expect(statusCreate?.[1].format).toEqual(Object.values(ConnectionState));
+	});
+
+	// A device from before this listener owned the property, or one whose earlier synthesis failed
+	// partway: it already exists, still projecting, and has to be repaired rather than duplicated.
+	it('repairs an existing connection state property that is still an orphan', async () => {
 		withConnectionStateProperty(connectionStateProperty(VirtualValueOrigin.SOURCE));
 
 		await listener.handleDeviceCreated(virtualDevice);
@@ -188,7 +257,7 @@ describe('VirtualDeviceInformationListener', () => {
 	// entity that has not round-tripped through the database reads it as undefined — which means the
 	// SOURCE column default, and therefore still an orphan. isProjecting is written as "not LOCAL"
 	// precisely so this case is caught too.
-	it('marks the connection state property as owned even when its origin has not been read back yet', async () => {
+	it('repairs an existing connection state property whose origin has not been read back yet', async () => {
 		withConnectionStateProperty(connectionStateProperty(undefined));
 
 		await listener.handleDeviceCreated(virtualDevice);
