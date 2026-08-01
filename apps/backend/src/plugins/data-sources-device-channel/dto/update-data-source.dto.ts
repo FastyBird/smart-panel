@@ -4,6 +4,7 @@ import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf } from 'class-vali
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdateSingleDataSourceDto } from '../../../modules/dashboard/dto/update-data-source.dto';
+import { ValidateDeviceNotHidden } from '../../../modules/devices/validators/device-not-hidden-constraint.validator';
 import { DATA_SOURCES_DEVICE_TYPE } from '../data-sources-device-channel.constants';
 import { ValidateChannelPropertyExists } from '../validators/channel-property-exists-constraint.validator';
 import { ValidateChannelExists } from '../validators/device-channel-exists-constraint.validator';
@@ -30,6 +31,7 @@ export class UpdateDeviceChannelDataSourceDto extends UpdateSingleDataSourceDto 
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
 	@ValidateDeviceExists({ message: '[{"field":"device","reason":"The specified device does not exist."}]' })
+	@ValidateDeviceNotHidden()
 	device?: string;
 
 	@ApiPropertyOptional({
