@@ -70,23 +70,7 @@ export class VirtualPropertyIndexService implements OnApplicationBootstrap {
 			return;
 		}
 
-		this.indexBySourceProperty(property);
-
-		const virtualDeviceId = this.resolveDeviceId(property.channel);
-
-		if (!virtualDeviceId) {
-			// The property's own channel relation was not loaded far enough to reach a device. The
-			// source-property index above still stands — that is the one the projection listener's
-			// correctness depends on — but the device-level bookkeeping has nothing to key on.
-			this.logger.warn(
-				`Could not resolve the owning virtual device for property id=${property.id} from its channel relation`,
-			);
-
-			return;
-		}
-
-		this.indexByVirtualDevice(virtualDeviceId, property);
-		this.indexBySourceDevice(sourceDeviceId, virtualDeviceId);
+		this.indexLinkedProperty(property, sourceDeviceId);
 	}
 
 	/** Removes every trace of one virtual device, leaving no stale entries in any of the three maps. */
@@ -142,25 +126,58 @@ export class VirtualPropertyIndexService implements OnApplicationBootstrap {
 				continue;
 			}
 
-			const sourceDeviceId = this.resolveSourceDeviceId(property);
-
-			if (!sourceDeviceId) {
-				// Every linked property's source channel and device are required (non-nullable)
-				// relations, so this indicates the query above did not load what it expected to
-				// rather than a legitimate state. Skip rather than index a property this index
-				// cannot later find by source device.
-				this.logger.warn(`Could not resolve the source device for property id=${property.id}, skipping`);
-
-				continue;
-			}
-
-			this.add(property, sourceDeviceId);
+			this.indexLinkedProperty(property, this.resolveSourceDeviceId(property));
 		}
 	}
 
 	/** Linked = projects a source (SOURCE) and still has one (sourcePropertyId set). */
 	private isLinked(property: VirtualChannelPropertyEntity): boolean {
 		return property.valueOrigin === VirtualValueOrigin.SOURCE && property.sourcePropertyId !== null;
+	}
+
+	/**
+	 * Indexes one already-linked property into all three maps, shared by `add()` (caller-supplied
+	 * `sourceDeviceId`, always resolvable by contract) and `rebuild()` (a resolved-from-relations
+	 * `sourceDeviceId` that, on a malformed row, may not be).
+	 *
+	 * `bySourceProperty` is populated unconditionally, before either device id is looked at: it
+	 * reads only `property.sourcePropertyId`, a plain column already on the row with no relation
+	 * dependency, so a failure to resolve a device below must never evict the property from the
+	 * index the projection listener depends on for every value change in the system. The two
+	 * device-level maps are populated independently — `byVirtualDevice` only needs `virtualDeviceId`
+	 * to resolve; `bySourceDevice` additionally needs `sourceDeviceId`.
+	 */
+	private indexLinkedProperty(property: VirtualChannelPropertyEntity, sourceDeviceId: string | undefined): void {
+		this.indexBySourceProperty(property);
+
+		const virtualDeviceId = this.resolveDeviceId(property.channel);
+
+		if (!virtualDeviceId) {
+			// The property's own channel relation was not loaded far enough to reach a device. The
+			// source-property index above still stands regardless — the device-level bookkeeping
+			// below simply has nothing to key on.
+			this.logger.warn(
+				`Could not resolve the owning virtual device for property id=${property.id} from its channel relation`,
+			);
+
+			return;
+		}
+
+		this.indexByVirtualDevice(virtualDeviceId, property);
+
+		if (!sourceDeviceId) {
+			// Every linked property's source channel and device are required (non-nullable)
+			// relations, so this indicates the query above did not load what it expected to rather
+			// than a legitimate state. bySourceProperty and byVirtualDevice still hold this property;
+			// only the source-device side is left incomplete for it.
+			this.logger.warn(
+				`Could not resolve the source device for property id=${property.id}, skipping its source-device index`,
+			);
+
+			return;
+		}
+
+		this.indexBySourceDevice(sourceDeviceId, virtualDeviceId);
 	}
 
 	private resolveSourceDeviceId(property: VirtualChannelPropertyEntity): string | undefined {

@@ -260,4 +260,34 @@ describe('VirtualPropertyIndexService', () => {
 		expect(service.findBySourceProperty('source-prop')).toEqual([property]);
 		expect(service.findVirtualDeviceIdsBySourceDevice('source-device')).toEqual([]);
 	});
+
+	// Regression test: rebuild() used to resolve sourceDeviceId and `continue` past the whole row
+	// — including the bySourceProperty index — when that resolution failed, even though
+	// bySourceProperty only reads property.sourcePropertyId and never depended on it. This fixture's
+	// source chain is deliberately unresolvable (sourceProperty.channel is a bare id, no nested
+	// device) while its OWN channel/device resolves fine, isolating the source side as the cause of
+	// failure so this cannot pass by coincidence via the virtual-side guard tested above.
+	it('rebuild() keeps a property in bySourceProperty even when its source device relation cannot be resolved', async () => {
+		const property = virtualProperty({
+			id: 'linked-unresolvable-source',
+			sourcePropertyId: 'source-prop-x',
+			sourceProperty: makeSourceProperty('source-prop-x', 'bare-source-channel-id'),
+			channel: makeChannel('virtual-channel-x', makeDevice('virtual-device-x')),
+		});
+
+		repository.find.mockResolvedValue([property]);
+
+		await service.onApplicationBootstrap();
+
+		expect(service.findBySourceProperty('source-prop-x')).toEqual([property]);
+
+		// Nothing could be indexed under any source device for this property.
+		expect(service.findVirtualDeviceIdsBySourceDevice('source-device')).toEqual([]);
+
+		// byVirtualDevice was still populated — the virtual side resolved independently of the
+		// broken source side — proven by removeVirtualDevice finding and clearing this property.
+		service.removeVirtualDevice('virtual-device-x');
+
+		expect(service.findBySourceProperty('source-prop-x')).toEqual([]);
+	});
 });
