@@ -51,10 +51,6 @@ const toWizardStatus = (status: IShellyNgDiscoveryDevice['status']): IWizardRowS
 const suggestedNameFor = (device: IShellyNgDiscoveryDevice): string =>
 	device.registeredDeviceName || device.name || device.displayName || device.hostname;
 
-// Five seconds of unbroken failures before a scan is abandoned — long enough to ride out
-// a blip, short enough not to hammer a backend that is genuinely down.
-const MAX_CONSECUTIVE_POLL_FAILURES = 5;
-
 export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const { t } = useI18n();
 	const backend = useBackend();
@@ -78,10 +74,6 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	// `applySession` would stop the timer, and the new scan would be orphaned with the UI still
 	// showing the old one — "Scan again" appearing to do nothing.
 	let sessionGeneration = 0;
-
-	// Consecutive failed polls, reset by any successful snapshot. Bounds how long a broken
-	// backend is retried before the wizard gives up.
-	let consecutivePollFailures = 0;
 
 	// Captured at every applySession so scanPercentage can tick forward independent of any
 	// drift between the client and server clocks. We resnap to the server's `remainingSeconds`
@@ -153,6 +145,17 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		}))
 	);
 
+	// Whether the session could still be alive, measured from the last snapshot we actually
+	// received. Failed polls do not refresh that anchor, so a long outage is counted against the
+	// session's remaining lifetime rather than against a request counter.
+	const sessionMayStillBeRunning = (): boolean => {
+		if (sessionReceivedAt.value === null) {
+			return false;
+		}
+
+		return Date.now() - sessionReceivedAt.value < sessionRemainingMsAtReceipt.value;
+	};
+
 	const startPolling = (): void => {
 		stopPolling();
 
@@ -182,11 +185,12 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 
 				// Anything else — a blip, a 5xx, a dropped connection — may recover, and treating
 				// it as a dead session would freeze an otherwise healthy scan on one bad request.
-				// Keep polling, but give up eventually so a persistently broken backend is not
-				// hammered for the life of the view.
-				consecutivePollFailures += 1;
-
-				if (consecutivePollFailures >= MAX_CONSECUTIVE_POLL_FAILURES) {
+				// Keep retrying for as long as the session could still be running: the backend's
+				// own expiry is the natural bound, so an outage inside a live scan recovers and
+				// picks up whatever was discovered meanwhile, while a session that has certainly
+				// expired is not polled for the life of the view. A fixed retry count cannot do
+				// both — any cap shorter than the window abandons a scan that is still running.
+				if (!sessionMayStillBeRunning()) {
 					stopPolling();
 				}
 			});
@@ -204,9 +208,6 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		// Row-level bookkeeping (selection, editable names, categories) belongs to the wizard
 		// shell — the adapter only owns the raw session snapshot and the scan progress anchor.
 		session.value = nextSession;
-
-		// A snapshot arrived, so whatever was failing has recovered.
-		consecutivePollFailures = 0;
 
 		// Snap the client-side progress reference to the moment we received this snapshot.
 		// scanPercentage ticks forward from here using `useNow`, so it stays accurate even

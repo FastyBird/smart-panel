@@ -638,9 +638,30 @@ describe('useDevicesWizard', () => {
 		expect(backendClient.GET).toHaveBeenCalledTimes(3);
 	});
 
-	it('gives up after repeated refresh failures rather than retrying forever', async () => {
-		// The flip side of tolerating a blip: a backend that is persistently broken must not be
-		// hammered at 1 req/s for the life of the view.
+	it('keeps retrying a recoverable outage for as long as the session could still be running', async () => {
+		// The session runs for 30s. An outage lasting several ticks must not abandon it — the
+		// backend is still discovering, and devices found after connectivity returns would never
+		// reach the UI. Any fixed retry cap shorter than the window has this failure mode.
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockRejectedValue(new Error('network outage'));
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		await vi.advanceTimersByTimeAsync(10_000);
+
+		// Ten seconds into a thirty-second window: still trying.
+		expect(backendClient.GET.mock.calls.length).toBeGreaterThanOrEqual(9);
+	});
+
+	it('stops once the session can no longer be running', async () => {
+		// The flip side: the natural bound is the session's own lifetime. Once it has certainly
+		// expired there is nothing left to discover, so a persistently broken backend is not
+		// polled for the life of the view.
 		backendClient.POST.mockResolvedValue({
 			data: { data: discoverySession },
 			response: { status: 200 },
@@ -651,16 +672,12 @@ describe('useDevicesWizard', () => {
 
 		await adapter.start();
 
-		await vi.advanceTimersByTimeAsync(20_000);
+		// The fixture session has 30s left when it arrives.
+		await vi.advanceTimersByTimeAsync(35_000);
 
-		const calls = backendClient.GET.mock.calls.length;
-
-		expect(calls).toBeGreaterThan(1);
-		expect(calls).toBeLessThanOrEqual(5);
-
-		// Confirm it has actually stopped, not merely slowed.
 		backendClient.GET.mockClear();
-		await vi.advanceTimersByTimeAsync(5_000);
+		await vi.advanceTimersByTimeAsync(10_000);
+
 		expect(backendClient.GET).not.toHaveBeenCalled();
 	});
 
