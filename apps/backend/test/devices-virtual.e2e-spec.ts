@@ -57,6 +57,7 @@ interface DeviceBody {
 	id: string;
 	type: string;
 	category: string;
+	enabled: boolean;
 	hidden: boolean;
 	status: DeviceStatusBody;
 	channels: ChannelBody[];
@@ -832,12 +833,186 @@ describe('devices-virtual plugin (e2e)', () => {
 	//
 	// A self-contained device pair rather than the lifecycle flow's, so the hide/delete sequence here
 	// cannot perturb what those steps observe.
+	// ─── A connection-state property deleted by hand comes back owned ────────────────────
+
+	// Regression test for follow-up 2.7. VirtualDeviceInformationListener synthesizes the
+	// connection-state property as owned, but only on DEVICE_CREATED. The property is deletable
+	// through DELETE /channels/:id/properties/:id, and the next setConnectionState recreated it
+	// through the generic DeviceConnectivityService find-or-create — module code with no
+	// `value_origin` to give, so it came back with the SOURCE column default and a null source: an
+	// orphan. Nothing re-ran the synthesis, VirtualStatusListener.aggregateState() returns
+	// DISCONNECTED for any device with an orphaned property however healthy its real sources are, and
+	// PropertyCommandService refuses every command against an offline device. The device was
+	// permanently offline and uncommandable, exactly as before the original fix.
+	//
+	// Fixed by claiming the property inside ChannelsPropertiesService.create() itself, through the
+	// plugin's afterCreate mapping hook — so the recreation comes back owned whoever performed it,
+	// with no deletion event to subscribe to and no special case on a generic endpoint.
+	describe('recreating a manually deleted connection state property', () => {
+		it('brings it back owned, and leaves the device online', async () => {
+			const sourceResponse = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: SIMULATOR_TYPE,
+						category: DeviceCategory.OUTLET,
+						name: 'E2E Resynthesis Source Outlet',
+						channels: [
+							{
+								type: SIMULATOR_TYPE,
+								category: ChannelCategory.OUTLET,
+								identifier: 'outlet',
+								name: 'Outlet',
+								properties: [
+									{
+										type: SIMULATOR_TYPE,
+										category: PropertyCategory.ON,
+										identifier: 'on',
+										name: 'On',
+										permissions: [PermissionType.READ_WRITE],
+										data_type: DataTypeType.BOOL,
+										value: false,
+									},
+								],
+							},
+						],
+					},
+				})
+				.expect(201);
+
+			const resynthSourcePropertyId = (sourceResponse.body as { data: DeviceBody }).data.channels[0].properties[0].id;
+
+			const virtualResponse = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: DeviceCategory.LIGHTING,
+						name: 'E2E Resynthesis Virtual Light',
+					},
+				})
+				.expect(201);
+
+			const resynthVirtualDeviceId = (virtualResponse.body as { data: DeviceBody }).data.id;
+
+			// Synthesis is fire-and-forget off DEVICE_CREATED, so poll for it rather than assume the POST
+			// above waited for it. Polled through `/devices/:id/channels` rather than `/devices/:id`
+			// because the throttler budgets 30 requests per 60s *per route* across the whole run (see
+			// waitUntil), and `/devices/:id` is already the busiest route in this file — this one is
+			// otherwise unused, and carries the channel's properties just the same.
+			const synthesized = await waitUntil<{ channelId: string; statusPropertyId: string }>(async () => {
+				const response = await authGet(`/modules/devices/devices/${resynthVirtualDeviceId}/channels`);
+
+				if (response.status !== 200) {
+					return { done: false, value: { channelId: '', statusPropertyId: '' } };
+				}
+
+				const channel = (response.body as { data: ChannelBody[] }).data.find(
+					(candidate) => candidate.category === String(ChannelCategory.DEVICE_INFORMATION),
+				);
+
+				const status = channel?.properties.find((property) => property.category === PropertyCategory.STATUS);
+
+				return {
+					done: !!status,
+					value: { channelId: channel?.id ?? '', statusPropertyId: status?.id ?? '' },
+				};
+			}, 'the synthesized device_information channel and its connection state property');
+
+			const propertiesPath = `/modules/devices/channels/${synthesized.channelId}/properties`;
+
+			expect(synthesized.statusPropertyId).toBeTruthy();
+
+			// A linked property, so that deleting it later re-wires the virtual device and makes the
+			// index rebuild recompute its connection state — which is what drives setConnectionState
+			// into recreating the property this test deletes.
+			const channelResponse = await authPost('/modules/devices/channels')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: ChannelCategory.LIGHT,
+						identifier: 'light',
+						name: 'Light',
+						device: resynthVirtualDeviceId,
+					},
+				})
+				.expect(201);
+
+			const resynthLightChannelId = (channelResponse.body as { data: ChannelBody }).data.id;
+
+			const linkedResponse = await authPost(`/modules/devices/channels/${resynthLightChannelId}/properties`)
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: PropertyCategory.ON,
+						identifier: 'on',
+						name: 'On',
+						permissions: [PermissionType.READ_WRITE],
+						data_type: DataTypeType.BOOL,
+						source_property: resynthSourcePropertyId,
+					},
+				})
+				.expect(201);
+
+			const linkedPropertyId = (linkedResponse.body as { data: ChannelPropertyBody }).data.id;
+
+			// The link has to be in the index before the deletion below, or removing it is not a
+			// transition and no recompute follows.
+			await waitUntil(
+				async () => {
+					const response = await authGet(`/plugins/devices-virtual/devices/${resynthVirtualDeviceId}/source-devices`);
+					const body = response.body as { data?: DeviceBody[] };
+
+					return { done: !!body.data?.length, value: body.data ?? null };
+				},
+				'the linked property reaching the virtual device index',
+				5000,
+				500,
+			);
+
+			// The deletion the finding is about. Reachable by any admin through the public API.
+			await authDelete(`${propertiesPath}/${synthesized.statusPropertyId}`).expect(204);
+
+			// Removing the only link re-wires the virtual device, which makes the rebuild recompute its
+			// state, which calls setConnectionState — the path that recreates the property just deleted.
+			await authDelete(`/modules/devices/channels/${resynthLightChannelId}/properties/${linkedPropertyId}`).expect(204);
+
+			const recreated = await waitUntil<ChannelPropertyBody | null>(
+				async () => {
+					const response = await authGet(propertiesPath);
+
+					if (response.status !== 200) {
+						return { done: false, value: null };
+					}
+
+					const property =
+						(response.body as { data: ChannelPropertyBody[] }).data.find(
+							(candidate) => candidate.category === PropertyCategory.STATUS,
+						) ?? null;
+
+					// `local` is the assertion; the value confirms the device did not simply come back
+					// offline, which is the harm the orphan actually caused.
+					return { done: property?.value_origin === 'local' && !!property.value?.value, value: property };
+				},
+				'the connection state property being recreated as owned',
+				6000,
+				500,
+			);
+
+			expect(recreated?.value_origin).toBe('local');
+			// Owned means owned outright — `local` with a lingering source would still be read through
+			// the source registry.
+			expect(recreated?.source_property).toBeNull();
+			// No links left at all, so the aggregate is vacuously connected. An orphaned status property
+			// would have forced `disconnected` here instead, permanently.
+			expect(recreated?.value?.value).toBe('connected');
+		});
+	});
+
 	describe('unhiding an abandoned source device', () => {
 		let ownSourceDeviceId: string;
 		let ownSourcePropertyId: string;
 		let ownVirtualDeviceId: string;
 
-		it('unhides the source once the last virtual device referencing it is deleted', async () => {
+		it('unhides the source once the last virtual device referencing it is deleted, without re-enabling it', async () => {
 			const sourceResponse = await authPost('/modules/devices/devices')
 				.send({
 					data: {
@@ -912,9 +1087,15 @@ describe('devices-virtual plugin (e2e)', () => {
 				})
 				.expect(201);
 
-			// The source is hidden because the virtual device now stands in for it.
+			// The source is hidden because the virtual device now stands in for it, and disabled because
+			// the user does not want it polled either. The auto-unhide must give back exactly the one
+			// flag it took: `DevicesService.update()` builds the mapped entity class from the DTO before
+			// saving, and DeviceEntity.enabled carries a `= true` class field initializer that
+			// class-transformer cannot drop, so a patch of `{hidden: false}` alone silently re-enables a
+			// device the user had explicitly disabled (follow-up 3.1, whose root fix is blocked on
+			// devices-shelly-v1's afterInsert subscriber).
 			await authPatch(`/modules/devices/devices/${ownSourceDeviceId}`)
-				.send({ data: { type: SIMULATOR_TYPE, hidden: true } })
+				.send({ data: { type: SIMULATOR_TYPE, hidden: true, enabled: false } })
 				.expect(200);
 
 			// The link has to be in the index before the deletion, or there would be no record of which
@@ -930,7 +1111,7 @@ describe('devices-virtual plugin (e2e)', () => {
 
 			// The unhide runs off the rebuild that follows the deletion, which is deferred past the
 			// deleting transaction's commit — so poll rather than read once.
-			const hidden = await waitUntil<boolean | string>(
+			const unhidden = await waitUntil<DeviceBody | string>(
 				async () => {
 					const response = await authGet(`/modules/devices/devices/${ownSourceDeviceId}`);
 
@@ -946,7 +1127,7 @@ describe('devices-virtual plugin (e2e)', () => {
 
 					const body = response.body as { data: DeviceBody };
 
-					return { done: body.data.hidden === false, value: body.data.hidden };
+					return { done: body.data.hidden === false, value: body.data };
 					// Slower and longer than the default: this poll shares its route budget (see waitUntil)
 					// with two other polls in this file, and it waits on the longest chain of deferred work in
 					// the plugin — a deletion, a rebuild deferred past that deletion's commit, and only then
@@ -957,7 +1138,10 @@ describe('devices-virtual plugin (e2e)', () => {
 				500,
 			);
 
-			expect(hidden).toBe(false);
+			expect(typeof unhidden === 'string' ? unhidden : unhidden.hidden).toBe(false);
+			// The unhide gives back the flag it took and nothing else — a device the user disabled stays
+			// disabled.
+			expect(typeof unhidden === 'string' ? unhidden : unhidden.enabled).toBe(false);
 
 			// Unhidden means genuinely back in the pickers, not merely a flipped column.
 			const visibleList = await authGet('/modules/devices/devices?hidden=false').expect(200);

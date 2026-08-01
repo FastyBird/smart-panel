@@ -10,7 +10,7 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
-import { ChannelEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
@@ -51,10 +51,45 @@ interface OwnedPropertyDefinition {
  *
  * Every channel and property here is created only if missing (matching DeviceConnectivityService's own
  * find-or-create idempotency), so a redelivered or duplicate DEVICE_CREATED event is harmless.
+ *
+ * ## Ordering alone is not enough, so this class does not rely on it
+ *
+ * Creating the property first only wins if this listener gets there first, and on a virtual device
+ * created with linked channels and properties in one request it may not: CHANNEL_PROPERTY_CREATED is
+ * emitted for each of those *before* DEVICE_CREATED, VirtualIndexMaintenanceListener rebuilds on it and
+ * recomputes the affected virtual device's connection state, and that recompute reaches the very same
+ * generic DeviceConnectivityService.setConnectionState() find-or-create — concurrently with this
+ * handler, since EventEmitter2 does not await listeners. Whoever loses that insert loses it on the
+ * `@Unique(['identifier', 'channel'])` constraint.
+ *
+ * Two independent mechanisms close that, because ordering cannot:
+ *
+ * 1. `claimDeviceInformationProperty()` below is registered as the `afterCreate` hook on this plugin's
+ *    channel-property mapping, so *whatever* code path creates a property in a virtual device's
+ *    `device_information` channel — this listener, the generic connectivity service, a redelivery —
+ *    the property is converted to owned inside `ChannelsPropertiesService.create()` itself, before that
+ *    call returns and before it emits CHANNEL_PROPERTY_CREATED. No caller, and no event, ever observes
+ *    the row as an orphan; there is no window to lose.
+ * 2. `ensureConnectionStateProperty()` retries its lookup when its own insert loses, and applies the
+ *    ownership update to the row that won, instead of swallowing the constraint violation and leaving
+ *    an orphan behind.
+ *
+ * (1) is what makes the guarantee unconditional; (2) is what makes this listener's postcondition — "the
+ * connection-state property exists and is owned when I return" — true rather than merely likely, and is
+ * also the repair path for a device created before any of this existed.
  */
 @Injectable()
 export class VirtualDeviceInformationListener {
 	private readonly logger = createExtensionLogger(DEVICES_VIRTUAL_PLUGIN_NAME, 'VirtualDeviceInformationListener');
+
+	/**
+	 * Bounds ensureConnectionStateProperty()'s find-or-create loop. A losing insert is resolved by the
+	 * very next lookup — the winning row is committed by the time the unique constraint rejects ours —
+	 * so one retry is the realistic worst case; the extra attempt covers the pathological interleaving
+	 * where the winner is deleted again in between, and the bound is what guarantees the loop cannot
+	 * spin forever against a create that fails for some reason other than losing a race.
+	 */
+	private static readonly MAX_CONNECTION_STATE_ATTEMPTS = 3;
 
 	constructor(
 		private readonly channelsService: ChannelsService,
@@ -100,6 +135,66 @@ export class VirtualDeviceInformationListener {
 			// rationale for catching within the handler.
 			this.logger.warn(`Failed to synthesize device information for virtual device id=${device.id}: ${error}`);
 		}
+	}
+
+	/**
+	 * `afterCreate` hook for this plugin's channel-property mapping — see DevicesVirtualPlugin.
+	 *
+	 * Claims any property created as an orphan inside a virtual device's `device_information` channel.
+	 * That channel is owned end to end: the design spec's creation flow exempts it from mapping
+	 * entirely ("it is synthesized automatically as owned properties and is never presented for
+	 * mapping"), so a property there that projects a source it does not have is never something anyone
+	 * asked for — it is VirtualChannelPropertyEntity's SOURCE column default showing through code that
+	 * had no `value_origin` to give.
+	 *
+	 * Two separate paths produce exactly that, and this hook is what makes both safe:
+	 *
+	 * - **The creation race** (class docstring): the generic DeviceConnectivityService wins the insert
+	 *   for the connection-state property. Repairing that afterwards from this listener is a second
+	 *   statement racing a third — the winner's own `setConnectionState` continues into a value write,
+	 *   which reloads the row and saves it back, so a repair landing in the middle of that is written
+	 *   straight back out. Running *inside* `create()` has no such window: the row is corrected before
+	 *   `create()` re-reads it, before it emits CHANNEL_PROPERTY_CREATED, and before its caller holds a
+	 *   copy at all, so no in-memory entity anywhere is ever a stale `source`.
+	 * - **Deletion and recreation**: the connection-state property is reachable through
+	 *   `DELETE /channels/:id/properties/:id`. Synthesis runs only on DEVICE_CREATED, so before this
+	 *   hook the next `setConnectionState` recreated it generically as an orphan and nothing ever
+	 *   re-owned it — the device went permanently DISCONNECTED (follow-up 2.7). The recreation now goes
+	 *   through here, so it comes back owned, and no deletion event has to be watched for.
+	 *
+	 * Deliberately narrow: only an *orphan* is claimed. A property in that channel that names a real
+	 * source is a deliberate act, and silently rewriting it would be worse than the incoherent state
+	 * the DTO constraints exist to reject up front.
+	 *
+	 * Returns the property because that is the mapping hook's signature; the caller ignores the return
+	 * and re-reads the row itself, which is what makes the value written here the one that is published.
+	 */
+	async claimDeviceInformationProperty(property: ChannelPropertyEntity): Promise<ChannelPropertyEntity> {
+		if (!(property instanceof VirtualChannelPropertyEntity) || !property.isOrphaned) {
+			return property;
+		}
+
+		const channel = property.channel;
+
+		if (!channel || typeof channel === 'string') {
+			// Every path into this hook re-reads the property through ChannelsPropertiesService, whose
+			// queries always join `channel`, so this is unreachable in practice — but the alternative to
+			// checking is dereferencing a string, and an unclaimed device_information property is an
+			// offline device, which is worth a log rather than a silent skip.
+			this.logger.warn(
+				`Could not resolve the channel of property id=${property.id}, cannot decide whether it is device information`,
+			);
+
+			return property;
+		}
+
+		if (channel.category !== ChannelCategory.DEVICE_INFORMATION) {
+			return property;
+		}
+
+		await this.claimProperty(property);
+
+		return property;
 	}
 
 	/**
@@ -157,37 +252,80 @@ export class VirtualDeviceInformationListener {
 	 * Correcting it is not sufficient on its own — see the class docstring on why creating it correctly
 	 * in the first place is what actually avoids the spurious DISCONNECTED — but it is the right repair
 	 * for a device that is already in that state.
+	 *
+	 * ## Why the create is a retry loop rather than a single attempt
+	 *
+	 * The lookup above and the create below are two statements, and the generic
+	 * DeviceConnectivityService.setConnectionState() runs the same find-or-create concurrently on a
+	 * device created with linked properties (see the class docstring). Losing that insert raises the
+	 * `@Unique(['identifier', 'channel'])` violation, and a version of this method that let it escape
+	 * left the *winner's* row — created generically, with no `value_origin`, so SOURCE with a null
+	 * source — in place unrepaired: an orphan, and a permanently DISCONNECTED, uncommandable device.
+	 * Going back round the loop finds that row and applies the ownership update to it instead. It is
+	 * guaranteed to find it: SQLite raises the constraint only against a row that is already committed
+	 * and therefore already visible to the very next read.
+	 *
+	 * Mirrors ensureDeviceInformationChannel()'s re-find above, and DeviceConnectivityService's own
+	 * re-find, with the one difference that a found row here also has to be *claimed*, not merely used.
 	 */
 	private async ensureConnectionStateProperty(channel: ChannelEntity): Promise<void> {
-		const existing = await this.channelsPropertiesService.findOneBy<VirtualChannelPropertyEntity>(
-			'category',
-			PropertyCategory.STATUS,
-			channel.id,
-		);
+		for (let attempt = 1; ; attempt++) {
+			const existing = await this.channelsPropertiesService.findOneBy<VirtualChannelPropertyEntity>(
+				'category',
+				PropertyCategory.STATUS,
+				channel.id,
+			);
 
-		if (existing) {
-			if (existing.isProjecting) {
-				await this.channelsPropertiesService.update(existing.id, {
-					type: existing.type,
+			if (existing) {
+				await this.claimProperty(existing);
+
+				return;
+			}
+
+			try {
+				await this.channelsPropertiesService.create(channel.id, {
+					type: channel.type,
+					identifier: 'connection_state',
+					name: 'Connection State',
+					category: PropertyCategory.STATUS,
+					permissions: [PermissionType.READ_ONLY],
+					data_type: DataTypeType.ENUM,
+					format: Object.values(ConnectionState),
 					value_origin: VirtualValueOrigin.LOCAL,
 				});
 
-				this.logger.debug(`Marked connection state property id=${existing.id} as owned by its virtual device`);
-			}
+				return;
+			} catch (error) {
+				if (attempt >= VirtualDeviceInformationListener.MAX_CONNECTION_STATE_ATTEMPTS) {
+					throw error;
+				}
 
+				this.logger.debug(
+					`Lost the race to create the connection state property in channel id=${channel.id}, re-reading to claim the row that won: ${error}`,
+				);
+			}
+		}
+	}
+
+	/**
+	 * Converts a projecting property to owned, and does nothing to one that already is.
+	 *
+	 * Sends `value_origin` and nothing else besides the `type` discriminator
+	 * ChannelsPropertiesService.update() requires to resolve the mapping: every other column on the
+	 * entity is left `undefined` and dropped by that method's `omitBy(..., isUndefined)`, so this cannot
+	 * disturb a name, permissions or format someone has since edited.
+	 */
+	private async claimProperty(property: VirtualChannelPropertyEntity): Promise<void> {
+		if (!property.isProjecting) {
 			return;
 		}
 
-		await this.channelsPropertiesService.create(channel.id, {
-			type: channel.type,
-			identifier: 'connection_state',
-			name: 'Connection State',
-			category: PropertyCategory.STATUS,
-			permissions: [PermissionType.READ_ONLY],
-			data_type: DataTypeType.ENUM,
-			format: Object.values(ConnectionState),
+		await this.channelsPropertiesService.update(property.id, {
+			type: property.type,
 			value_origin: VirtualValueOrigin.LOCAL,
 		});
+
+		this.logger.debug(`Marked property id=${property.id} as owned by its virtual device`);
 	}
 
 	private ownedPropertyDefinitions(device: DeviceEntity): OwnedPropertyDefinition[] {

@@ -1,3 +1,5 @@
+import { Logger } from '@nestjs/common';
+
 import {
 	ChannelCategory,
 	ConnectionState,
@@ -5,7 +7,7 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
-import { ChannelEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
@@ -283,5 +285,178 @@ describe('VirtualDeviceInformationListener', () => {
 
 		expect(channelsPropertiesService.update).toHaveBeenCalledTimes(1);
 		expect(channelsPropertiesService.create).toHaveBeenCalledTimes(3);
+	});
+
+	// -- losing the insert race against the generic connectivity service -----------------------
+	//
+	// Regression tests for the P1. On a virtual device created with linked channels and properties in
+	// one request, CHANNEL_PROPERTY_CREATED fires for each of those *before* DEVICE_CREATED — so
+	// VirtualIndexMaintenanceListener's rebuild can drive DeviceConnectivityService.setConnectionState()
+	// into the same find-or-create concurrently with this handler. The loser of that insert hits
+	// @Unique(['identifier', 'channel']). An earlier version let the violation escape to the handler's
+	// outer catch, which logged it and returned: the winner's row — created generically, hence SOURCE
+	// with a null source — stayed an orphan, and the device stayed permanently DISCONNECTED and
+	// uncommandable, which is the exact outcome creating the property here was supposed to prevent.
+
+	// A losing insert: the first STATUS lookup finds nothing, the create is rejected by the unique
+	// constraint, and by then the winner's row is committed and visible to the next read.
+	const withLostInsertRace = (winner: VirtualChannelPropertyEntity): void => {
+		let statusLookups = 0;
+
+		channelsPropertiesService.findOneBy.mockImplementation((_column: string, category: PropertyCategory) => {
+			if (category !== PropertyCategory.STATUS) {
+				return Promise.resolve(null);
+			}
+
+			statusLookups += 1;
+
+			return Promise.resolve(statusLookups === 1 ? null : winner);
+		});
+
+		channelsPropertiesService.create.mockImplementation((_channelId: string, dto: { category: PropertyCategory }) =>
+			dto.category === PropertyCategory.STATUS
+				? Promise.reject(new Error('SQLITE_CONSTRAINT: UNIQUE constraint failed: identifier, channel'))
+				: Promise.resolve(undefined),
+		);
+	};
+
+	it('claims the row that won when its own insert loses the race', async () => {
+		withLostInsertRace(connectionStateProperty(VirtualValueOrigin.SOURCE));
+
+		await listener.handleDeviceCreated(virtualDevice);
+
+		expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+			'connection-state-prop',
+			expect.objectContaining({ value_origin: VirtualValueOrigin.LOCAL }),
+		);
+	});
+
+	// The winner's row is what the generic path just created, so it has never round-tripped through a
+	// `value_origin` — undefined here, which means the SOURCE column default, which means an orphan.
+	it('claims a won row whose origin has not been read back yet', async () => {
+		withLostInsertRace(connectionStateProperty(undefined));
+
+		await listener.handleDeviceCreated(virtualDevice);
+
+		expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+			'connection-state-prop',
+			expect.objectContaining({ value_origin: VirtualValueOrigin.LOCAL }),
+		);
+	});
+
+	// Losing the race is not a failure of the synthesis — the rest of it still has to happen, or the
+	// device ends up with no manufacturer/model/serial and no recorded connectivity.
+	it('carries on with the rest of the synthesis after losing the race', async () => {
+		withLostInsertRace(connectionStateProperty(VirtualValueOrigin.SOURCE));
+
+		await listener.handleDeviceCreated(virtualDevice);
+
+		expect(connectivity.setConnectionState).toHaveBeenCalledWith(
+			'virtual-device',
+			expect.objectContaining({ state: ConnectionState.CONNECTED }),
+		);
+		expect(channelsPropertiesService.create).toHaveBeenCalledTimes(4);
+	});
+
+	// The retry is bounded, so a create that fails for a reason other than losing a race — a genuinely
+	// broken database, say — still terminates rather than spinning forever against a lookup that keeps
+	// returning nothing.
+	it('gives up after a bounded number of attempts when the create never succeeds', async () => {
+		const loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+		channelsPropertiesService.create.mockRejectedValue(new Error('database is closed'));
+
+		await expect(listener.handleDeviceCreated(virtualDevice)).resolves.toBeUndefined();
+
+		expect(channelsPropertiesService.create).toHaveBeenCalledTimes(3);
+
+		loggerWarnSpy.mockRestore();
+	});
+
+	// -- claimDeviceInformationProperty: the afterCreate mapping hook ---------------------------
+	//
+	// Registered by DevicesVirtualPlugin on the virtual channel-property mapping, so it runs inside
+	// ChannelsPropertiesService.create() — before that call re-reads the row, before it emits
+	// CHANNEL_PROPERTY_CREATED, and before its caller holds a copy. That is what makes the guarantee
+	// unconditional rather than a narrower race: whichever path creates a property in a virtual
+	// device's device_information channel, nothing ever observes it as an orphan.
+	//
+	// It is also the fix for follow-up 2.7: the connection-state property is deletable through
+	// DELETE /channels/:id/properties/:id, synthesis only runs on DEVICE_CREATED, and the next
+	// setConnectionState used to recreate it generically as an orphan with nothing left to re-own it.
+
+	describe('claimDeviceInformationProperty', () => {
+		const propertyIn = (
+			channelCategory: ChannelCategory,
+			valueOrigin: VirtualValueOrigin | undefined,
+			sourcePropertyId: string | null = null,
+		): VirtualChannelPropertyEntity => {
+			const property = new VirtualChannelPropertyEntity();
+
+			Object.assign(property, {
+				id: 'recreated-prop',
+				category: PropertyCategory.STATUS,
+				valueOrigin,
+				sourcePropertyId,
+				channel: Object.assign(new ChannelEntity(), { id: 'info-channel', category: channelCategory }),
+			});
+
+			return property;
+		};
+
+		it('claims an orphan recreated in a device_information channel', async () => {
+			await listener.claimDeviceInformationProperty(propertyIn(ChannelCategory.DEVICE_INFORMATION, undefined));
+
+			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+				'recreated-prop',
+				expect.objectContaining({ value_origin: VirtualValueOrigin.LOCAL }),
+			);
+		});
+
+		it('leaves an already owned property alone', async () => {
+			await listener.claimDeviceInformationProperty(
+				propertyIn(ChannelCategory.DEVICE_INFORMATION, VirtualValueOrigin.LOCAL),
+			);
+
+			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+		});
+
+		// Deliberately narrow: a property that names a real source was asked for, and silently rewriting
+		// it would be worse than the incoherent state the DTO constraints reject up front.
+		it('leaves a property that still has a source alone', async () => {
+			await listener.claimDeviceInformationProperty(
+				propertyIn(ChannelCategory.DEVICE_INFORMATION, VirtualValueOrigin.SOURCE, 'source-prop'),
+			);
+
+			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+		});
+
+		// Every other channel on a virtual device is pure wiring — an orphan there is a legitimate
+		// lifecycle state (its source was deleted) and must degrade the device, not be claimed.
+		it('leaves an orphan in any other channel alone', async () => {
+			await listener.claimDeviceInformationProperty(propertyIn(ChannelCategory.LIGHT, VirtualValueOrigin.SOURCE));
+
+			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+		});
+
+		it('leaves a non-virtual property alone', async () => {
+			const property = Object.assign(new ChannelPropertyEntity(), {
+				id: 'plain-prop',
+				channel: Object.assign(new ChannelEntity(), {
+					id: 'info-channel',
+					category: ChannelCategory.DEVICE_INFORMATION,
+				}),
+			});
+
+			await listener.claimDeviceInformationProperty(property);
+
+			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+		});
+
+		it('returns the property it was given, as the mapping hook contract requires', async () => {
+			const property = propertyIn(ChannelCategory.DEVICE_INFORMATION, undefined);
+
+			await expect(listener.claimDeviceInformationProperty(property)).resolves.toBe(property);
+		});
 	});
 });

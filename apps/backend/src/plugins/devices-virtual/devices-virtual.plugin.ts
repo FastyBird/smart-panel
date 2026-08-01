@@ -95,6 +95,7 @@ export class DevicesVirtualPlugin {
 		private readonly propertyValueSourceRegistry: PropertyValueSourceRegistryService,
 		private readonly virtualDevicePlatform: VirtualDevicePlatform,
 		private readonly platformRegistryService: PlatformRegistryService,
+		private readonly deviceInformationListener: VirtualDeviceInformationListener,
 	) {}
 
 	onModuleInit() {
@@ -127,6 +128,20 @@ export class DevicesVirtualPlugin {
 			class: VirtualChannelPropertyEntity,
 			createDto: CreateVirtualChannelPropertyDto,
 			updateDto: UpdateVirtualChannelPropertyDto,
+			// Runs inside ChannelsPropertiesService.create(), before it re-reads the row and before it
+			// emits CHANNEL_PROPERTY_CREATED — which is the whole point. A property created in a virtual
+			// device's device_information channel with no `value_origin` takes the SOURCE column default
+			// with a null source, i.e. an orphan, and an orphan forces the device to DISCONNECTED and
+			// makes it reject every command. The generic DeviceConnectivityService creates exactly that,
+			// both when it wins the creation race against VirtualDeviceInformationListener and whenever
+			// it recreates a connection-state property someone deleted by hand. Claiming it here means
+			// neither case can be observed as an orphan by anything, rather than repaired after the fact
+			// by something racing the same service's next write.
+			afterCreate: async (property: VirtualChannelPropertyEntity): Promise<VirtualChannelPropertyEntity> => {
+				await this.deviceInformationListener.claimDeviceInformationProperty(property);
+
+				return property;
+			},
 		});
 
 		for (const model of DEVICES_VIRTUAL_PLUGIN_SWAGGER_EXTRA_MODELS) {
