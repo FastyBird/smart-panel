@@ -1427,7 +1427,9 @@ Expected: FAIL — module not found
 
 - [ ] **Step 3: Implement**
 
-Hydrate on `onApplicationBootstrap` (not `onModuleInit`) so every plugin's entities are registered first. Load `VirtualChannelPropertyEntity` rows with `relations: ['channel', 'sourceProperty', 'sourceProperty.channel']` so both indexes can be built in one query, keyed as:
+Hydrate on `onApplicationBootstrap` (not `onModuleInit`) so every plugin's entities are registered first. Load `VirtualChannelPropertyEntity` rows with `relations: ['channel', 'channel.device', 'sourceProperty', 'sourceProperty.channel', 'sourceProperty.channel.device']` so both indexes can be built in one query, keyed as:
+
+The two `.device` hops are load-bearing and were missing from an earlier draft of this plan. Without them TypeORM leaves `channel.device` and `sourceProperty.channel.device` undefined, so the device-level index is permanently empty in production — while a mocked-repository unit test stays green, because the mock returns whatever fixture shape the test author wrote. Pin this with a test that asserts the relations array actually requested, or with a real round-trip.
 
 - `bySourceProperty: Map<string, VirtualChannelPropertyEntity[]>`
 - `bySourceDevice: Map<string, Set<string>>` — source device id → virtual device ids
