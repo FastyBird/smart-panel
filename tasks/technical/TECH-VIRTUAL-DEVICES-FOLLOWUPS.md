@@ -14,17 +14,29 @@ Several are **pre-existing issues found in passing** — they are not caused by 
 
 ## 2. In virtual-devices code
 
-### 2.1 Orphan degradation has no trigger (medium)
+### 2.1 Orphan degradation has no trigger (medium) — DONE
 
 The orphan branch is now reachable, but nothing re-aggregates status when a property orphans. `rebuild()` runs on `CHANNEL_PROPERTY_DELETED`, then waits for the next source connection change. If the orphaned projection was the virtual device's only one, `bySourceDevice` holds no entry for it at all, so **no event will ever recompute it** and it stays at its last reported state.
 
 Fix: recompute affected virtual devices' status directly after a rebuild that orphaned something, rather than relying on a later connection event.
 
-### 2.2 `hidden` enforcement is unwired (medium)
+**Resolved.** `VirtualPropertyIndexService.rebuild()` now reports which virtual devices came out wired differently than they went in, and `VirtualIndexMaintenanceListener` recomputes those through `VirtualStatusListener.recompute()`.
+
+### 2.2 `hidden` enforcement is unwired (medium) — DONE for the four picker plugins
 
 `DeviceEntity.hidden` is settable, persisted, serialized and filterable via `?hidden=`. But `ValidateDeviceNotHidden` / `DeviceNotHiddenConstraintValidator` are applied to **zero** DTOs, so nothing rejects a hidden device from being selected.
 
 Wiring it is a per-DTO product decision across `tiles-device-preview`, `pages-device-detail`, `data-sources-device-channel`, `scenes-local` and the space assignment path. Decide which selection surfaces should refuse hidden devices, then apply the decorator.
+
+**Resolved for the create and update DTOs of `tiles-device-preview`, `pages-device-detail`, `data-sources-device-channel` and `scenes-local`** — the surfaces the design spec names. **Still open: the space assignment path**, which the spec's `spaces-home-control` section deliberately exempts ("The four `spaces-home-control` listeners get **no** guard"); confirm whether the *assignment* DTO should nonetheless refuse a hidden device, which is a separate decision from the listeners.
+
+### 2.7 A manually deleted connection-state property comes back as an orphan (low)
+
+`VirtualDeviceInformationListener` now creates the `device_information` channel and its connection-state property as `local`, before `DeviceConnectivityService` can create them itself — which is what stops the property from ever being classified as an orphan.
+
+That synthesis only runs on `DEVICE_CREATED`. If the connection-state property is deleted afterwards (it is reachable through `DELETE /channels/:id/properties/:id`), the next `setConnectionState` for that device recreates it through the generic path with no `value_origin`, i.e. as an orphan, and nothing re-runs the synthesis. The device then aggregates to `DISCONNECTED` permanently, exactly as before the fix.
+
+Options: refuse deletion of a synthesized `device_information` property on a virtual device; or re-run the synthesis on `CHANNEL_PROPERTY_DELETED` for a virtual device's `device_information` channel.
 
 ### 2.3 Projection listener mutates the index's own entity (low)
 
