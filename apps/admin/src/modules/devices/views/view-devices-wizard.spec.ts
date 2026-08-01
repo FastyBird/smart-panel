@@ -1,18 +1,17 @@
-/* eslint-disable vue/one-component-per-file */
-import { defineComponent } from 'vue';
-
 import { describe, expect, it, vi } from 'vitest';
 
 import { mount } from '@vue/test-utils';
 
 import ViewDevicesWizard from './view-devices-wizard.vue';
 
-const OtherWizard = defineComponent({
-	name: 'OtherWizard',
-	template: '<div data-test-id="other-wizard" />',
-});
-
 const adapterFactory = vi.fn(() => ({ title: 'Adapter wizard' }));
+// Declares the SAME `deviceWizardAdapter` key as the devices-scoped element below, differing
+// only in `modules`. This is what makes the module-eligibility test meaningful: if the
+// `modules` filter in view-devices-wizard.vue were ever disabled, `.find()` would pick this one
+// up first (it comes first in the elements array) and the shell would receive the wrong
+// factory. A fixture that instead used the dead `deviceWizard` key would be excluded solely
+// because nothing reads that key any more, proving nothing about module scoping.
+const otherAdapterFactory = vi.fn(() => ({ title: 'Other module wizard' }));
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({
@@ -60,7 +59,7 @@ vi.mock('../composables/composables', () => ({
 								type: 'other-module-wizard',
 								modules: ['other-module'],
 								components: {
-									deviceWizard: OtherWizard,
+									deviceWizardAdapter: otherAdapterFactory,
 								},
 							},
 							{
@@ -91,8 +90,23 @@ describe('ViewDevicesWizard', () => {
 			},
 		});
 
-		expect(wrapper.find('[data-test-id="device-wizard"]').exists()).toBe(true);
-		expect(wrapper.find('[data-test-id="other-wizard"]').exists()).toBe(false);
+		const deviceWizard = wrapper.findComponent({ name: 'DeviceWizard' });
+
+		expect(deviceWizard.exists()).toBe(true);
+		expect(deviceWizard.props('adapterFactory')).toBe(adapterFactory);
+	});
+
+	it('excludes an element scoped to a different module even though it declares its own adapter factory', () => {
+		const wrapper = mount(ViewDevicesWizard, {
+			props: {
+				type: 'multi-module-plugin',
+			},
+		});
+
+		const deviceWizard = wrapper.findComponent({ name: 'DeviceWizard' });
+
+		expect(deviceWizard.props('adapterFactory')).not.toBe(otherAdapterFactory);
+		expect(otherAdapterFactory).not.toHaveBeenCalled();
 	});
 
 	it('passes the adapter factory without invoking it', () => {
