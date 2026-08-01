@@ -283,16 +283,26 @@ const onAdopt = async (): Promise<void> => {
 	}
 };
 
-// Order matters: the new session must be fully in place before the discover step renders,
-// otherwise it mounts against a null session and flashes a misleading offline banner.
+// Two ordering constraints, and they pull in opposite directions.
+//
+// `reset()` must come BEFORE `restart()`. An adapter's `restart()` installs the replacement
+// session before it resolves, which queues the `rows` watcher above; that watcher flushes
+// before our `await` resumes, so the new session is already reconciled by the time we get
+// here. Resetting afterwards would erase that — leaving the user on a fresh session with
+// nothing selected and blank names until a later poll happened to reconcile it again. Same
+// rule as the session-key watch above: reset, then reconcile.
+//
+// `activeStep` must come AFTER `restart()`. The new session has to be fully in place before
+// the discover step renders, otherwise it mounts against a null session and flashes a
+// misleading offline banner.
 const onAddMore = async (): Promise<void> => {
+	reset();
+
 	try {
 		await adapter.restart?.();
 	} catch {
 		// Errors are surfaced by the adapter via flashMessage.
 	}
-
-	reset();
 
 	activeStep.value = 'discover';
 };

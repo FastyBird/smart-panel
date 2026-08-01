@@ -263,6 +263,40 @@ describe('DeviceWizard', () => {
 		expect(checkboxAfter.element.checked).toBe(false);
 	});
 
+	it('reconciles the replacement session when Add more installs new rows', async () => {
+		// Zigbee2MQTT's `restart()` tears the session down and starts a new one, assigning the
+		// replacement session *before* it resolves. That assignment queues the `rows` watcher,
+		// which Vue flushes before the shell's `await` resumes — so the new rows are already
+		// reconciled by the time `onAddMore` continues. Resetting after the await would wipe
+		// that, stranding the user on a fresh session with nothing selected and blank names
+		// until a later poll reconciled it again. Z2M declares no `sessionKey`, so nothing else
+		// would refill it either.
+		const replacement = row({ key: 'shelly-9.local', identifier: 'shelly-9.local', label: 'Hallway dimmer', suggestedName: 'Hallway dimmer' });
+		const rows = ref<IWizardRow[]>([row()]);
+		const restart = vi.fn(async (): Promise<void> => {
+			rows.value = [replacement];
+		});
+
+		const wrapper = mountWizard(buildAdapter({ capabilities: { addMore: true }, restart, rows: computed(() => rows.value) }));
+		await flushPromises();
+
+		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		await wrapper.find('[data-test-id="wizard-action-adopt"]').trigger('click');
+		await flushPromises();
+		await wrapper.find('[data-test-id="wizard-action-addMore"]').trigger('click');
+		await flushPromises();
+
+		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+
+		const nameInput = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]');
+		const checkbox = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="checkbox"]');
+
+		expect(nameInput.element.value).toBe('Hallway dimmer');
+		expect(checkbox.element.checked).toBe(true);
+	});
+
 	it('clears selection and name state when the adapter reports a new session', async () => {
 		// Plugins without `addMore` (Shelly NG) reopen a discovery session from a discover-step
 		// control the shell never sees, so `reset()` is never reached via Add more. Without the
