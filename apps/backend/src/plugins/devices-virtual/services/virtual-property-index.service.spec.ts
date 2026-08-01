@@ -580,4 +580,72 @@ describe('VirtualPropertyIndexService', () => {
 
 		await expect(service.rebuild()).resolves.toEqual(expect.objectContaining({ abandonedSourceDeviceIds: [] }));
 	});
+
+	// -- loadLinksByVirtualDevice: the read-after-write path ------------------------------------
+	// The three map lookups above are served from whatever the last rebuild() left behind, and a
+	// rebuild only ever starts *after* the write that triggered it has already responded. This
+	// loader exists so the one consumer that must not lag — GET /devices/:id/source-devices — reads
+	// the database instead.
+
+	describe('loadLinksByVirtualDevice', () => {
+		it('reads the links from the database rather than from the indexed maps', async () => {
+			repository.find.mockResolvedValue([linkedProperty]);
+
+			// Nothing has ever been indexed, so the in-memory answer for this device is empty. The
+			// loader must not agree with it.
+			expect(service.findLinksByVirtualDevice('virtual-device')).toEqual([]);
+
+			await expect(service.loadLinksByVirtualDevice('virtual-device')).resolves.toEqual([
+				{ propertyId: 'linked-prop', sourcePropertyId: 'source-prop', sourceDeviceId: 'source-device' },
+			]);
+		});
+
+		// Where the staleness actually bites: the maps still describe the previous wiring because the
+		// rebuild they depend on has not run yet. A loader that quietly fell back to them would return
+		// the pre-write answer here, which is exactly the read-after-write defect this closes.
+		it('returns the current wiring even while the maps still hold the previous one', async () => {
+			repository.find.mockResolvedValue([linkedProperty]);
+			await service.rebuild();
+
+			// The property has been remapped onto a second source device, and no rebuild has run since.
+			const remapped = virtualProperty({
+				id: 'linked-prop',
+				sourcePropertyId: 'other-source-prop',
+				sourceProperty: makeSourceProperty(
+					'other-source-prop',
+					makeChannel('other-channel', makeDevice('other-device')),
+				),
+			});
+
+			repository.find.mockResolvedValue([remapped]);
+
+			await expect(service.loadLinksByVirtualDevice('virtual-device')).resolves.toEqual([
+				{ propertyId: 'linked-prop', sourcePropertyId: 'other-source-prop', sourceDeviceId: 'other-device' },
+			]);
+
+			// ...and the maps are untouched by the read: this is a lookup, not a rebuild.
+			expect(service.findLinksByVirtualDevice('virtual-device')).toEqual([
+				{ propertyId: 'linked-prop', sourcePropertyId: 'source-prop', sourceDeviceId: 'source-device' },
+			]);
+		});
+
+		it('scopes the query to the one virtual device and loads the source-side relations', async () => {
+			repository.find.mockResolvedValue([]);
+
+			await service.loadLinksByVirtualDevice('virtual-device');
+
+			expect(repository.find).toHaveBeenCalledWith({
+				where: { channel: { device: { id: 'virtual-device' } } },
+				relations: ['sourceProperty', 'sourceProperty.channel', 'sourceProperty.channel.device'],
+			});
+		});
+
+		it('reports an orphaned projection with no source device, and skips an owned property', async () => {
+			repository.find.mockResolvedValue([orphanedProperty, ownedProperty]);
+
+			await expect(service.loadLinksByVirtualDevice('virtual-device')).resolves.toEqual([
+				{ propertyId: 'orphaned-prop', sourcePropertyId: null, sourceDeviceId: null },
+			]);
+		});
+	});
 });

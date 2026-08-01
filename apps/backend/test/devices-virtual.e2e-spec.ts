@@ -25,6 +25,7 @@ import { ChannelPropertyEntity } from '../src/modules/devices/entities/devices.e
 import { PropertyValueSourceRegistryService } from '../src/modules/devices/services/property-value-source.registry.service';
 import { DEVICES_VIRTUAL_TYPE } from '../src/plugins/devices-virtual/devices-virtual.constants';
 import { VirtualChannelPropertyEntity } from '../src/plugins/devices-virtual/entities/devices-virtual.entity';
+import { VirtualPropertyIndexService } from '../src/plugins/devices-virtual/services/virtual-property-index.service';
 import { SIMULATOR_TYPE } from '../src/plugins/simulator/simulator.constants';
 
 interface PropertyValueBody {
@@ -115,6 +116,37 @@ async function waitUntil<T>(
 }
 
 /**
+ * Waits for VirtualPropertyIndexService's in-memory maps to catch up with a link that has already
+ * been written.
+ *
+ * Read off the service in the test's own process rather than through an endpoint, because no
+ * endpoint reports the maps any more and none should: `GET /devices/:id/source-devices` deliberately
+ * resolves the wiring from the database on every call, so that a client which has just written sees
+ * its own write (read-after-write). That makes it useless as a synchronisation point for the tests
+ * below, which need the *index* to be current — the auto-unhide and the connection-state recompute
+ * are both driven by rebuild() diffing the previous index against the new one, so a structural change
+ * that lands before the index has caught up produces no transition and no recompute at all.
+ *
+ * Polled tightly and without HTTP: this touches no route, so it is outside the throttler budget
+ * `waitUntil` has to respect, and the rebuild it waits on is a single query.
+ */
+async function waitForIndexedLink(
+	index: VirtualPropertyIndexService,
+	virtualDeviceId: string,
+	timeoutMs = 5000,
+): Promise<void> {
+	const deadline = Date.now() + timeoutMs;
+
+	while (index.findLinksByVirtualDevice(virtualDeviceId).length === 0) {
+		if (Date.now() >= deadline) {
+			throw new Error(`waitForIndexedLink: virtual device ${virtualDeviceId} had no indexed link after ${timeoutMs}ms`);
+		}
+
+		await new Promise((resolve) => setTimeout(resolve, 25));
+	}
+}
+
+/**
  * Deletes a device, working around a known, external, timing-dependent 500.
  *
  * `DELETE /devices/:id` is the only call in this spec that opens `DataSource.transaction()`
@@ -181,6 +213,7 @@ describe('devices-virtual plugin (e2e)', () => {
 	let accessToken: string;
 	let dataSource: DataSource;
 	let valueSourceRegistry: PropertyValueSourceRegistryService;
+	let virtualPropertyIndex: VirtualPropertyIndexService;
 
 	beforeAll(async () => {
 		const dynamicAppModule = AppModule.register({
@@ -211,6 +244,7 @@ describe('devices-virtual plugin (e2e)', () => {
 
 		dataSource = moduleFixture.get<DataSource>(DataSource);
 		valueSourceRegistry = moduleFixture.get<PropertyValueSourceRegistryService>(PropertyValueSourceRegistryService);
+		virtualPropertyIndex = moduleFixture.get<VirtualPropertyIndexService>(VirtualPropertyIndexService);
 
 		// Register and login to obtain an access token
 		await request(app.getHttpServer())
@@ -481,18 +515,25 @@ describe('devices-virtual plugin (e2e)', () => {
 			expect(virtualBody.data.value?.value).toBe(true);
 		});
 
-		// ─── Additional coverage 3: the index is maintained at runtime, not just at boot ─
+		// ─── Additional coverage 3: the source-device read resolves the live wiring ──────
 
-		it('lists the source device through the runtime-maintained index (runtime index maintenance)', async () => {
-			// GET .../devices/:id/source-devices (VirtualDevicesService.findSourceDevices) reads
-			// VirtualPropertyIndexService.findByVirtualDevice() — one of the three maps
-			// VirtualIndexMaintenanceListener is responsible for keeping current after boot. The test
-			// database is empty when the app boots, so onApplicationBootstrap()'s one-time rebuild()
-			// indexed nothing; this virtual device and its linked property were both created after
-			// that, over HTTP, in the tests above. The only way this lookup can find the source device
-			// is if CHANNEL_PROPERTY_CREATED triggered a runtime rebuild() — before
-			// VirtualIndexMaintenanceListener existed, nothing did, and this would silently return an
-			// empty list instead of 404ing or erroring.
+		it('lists the source device behind a virtual device, resolved live from the wiring', async () => {
+			// GET .../devices/:id/source-devices (VirtualDevicesService.findSourceDevices) walks
+			// property -> sourceProperty -> channel -> device in the database on every call
+			// (VirtualPropertyIndexService.loadLinksByVirtualDevice), then loads each distinct source
+			// device by id so the caller gets a current connection status rather than a cached one.
+			//
+			// It deliberately does *not* read the in-memory index maps. Those only catch up once
+			// VirtualIndexMaintenanceListener's fire-and-forget rebuild has run, and no mutation
+			// response waits for it — so a client that had just linked, remapped or unlinked a property
+			// could be handed the wiring from before its own write. The maps stay for the two consumers
+			// that genuinely need an O(1), no-I/O answer on system-wide per-event traffic (the
+			// projection and connection-status listeners); this is a once-per-request read of a single
+			// device, where a query is the cheaper mistake to make.
+			//
+			// This whole chain was created over HTTP in the tests above, after a boot whose one-time
+			// hydration ran against an empty database — so the relations resolved here are the ones
+			// those requests wrote.
 			const response = await authGet(`/plugins/devices-virtual/devices/${virtualDeviceId}/source-devices`).expect(200);
 			const body = response.body as { data: DeviceBody[] };
 
@@ -954,19 +995,20 @@ describe('devices-virtual plugin (e2e)', () => {
 
 			const linkedPropertyId = (linkedResponse.body as { data: ChannelPropertyBody }).data.id;
 
-			// The link has to be in the index before the deletion below, or removing it is not a
-			// transition and no recompute follows.
-			await waitUntil(
-				async () => {
-					const response = await authGet(`/plugins/devices-virtual/devices/${resynthVirtualDeviceId}/source-devices`);
-					const body = response.body as { data?: DeviceBody[] };
+			// Read immediately, with no polling — findSourceDevices() resolves the wiring from the
+			// database on every call, so the link the POST above just created is visible to the very
+			// next request. This is a read-after-write assertion in its own right: answering it from the
+			// in-memory index instead, as it once did, would return an empty list here.
+			const linkedSources = await authGet(
+				`/plugins/devices-virtual/devices/${resynthVirtualDeviceId}/source-devices`,
+			).expect(200);
 
-					return { done: !!body.data?.length, value: body.data ?? null };
-				},
-				'the linked property reaching the virtual device index',
-				5000,
-				500,
-			);
+			expect((linkedSources.body as { data: DeviceBody[] }).data).not.toHaveLength(0);
+
+			// Separately, the *index* has to hold the link before the deletion below, or removing it is
+			// not a transition and no recompute follows. That is a different fact from the one just
+			// asserted, and since the endpoint above stopped reporting the index it needs its own wait.
+			await waitForIndexedLink(virtualPropertyIndex, resynthVirtualDeviceId);
 
 			// The deletion the finding is about. Reachable by any admin through the public API.
 			await authDelete(`${propertiesPath}/${synthesized.statusPropertyId}`).expect(204);
@@ -1098,14 +1140,17 @@ describe('devices-virtual plugin (e2e)', () => {
 				.send({ data: { type: SIMULATOR_TYPE, hidden: true, enabled: false } })
 				.expect(200);
 
-			// The link has to be in the index before the deletion, or there would be no record of which
-			// source the deleted device referenced — that capture is the whole mechanism.
-			await waitUntil(async () => {
-				const response = await authGet(`/plugins/devices-virtual/devices/${ownVirtualDeviceId}/source-devices`);
-				const body = response.body as { data?: DeviceBody[] };
+			// Read immediately, with no polling — the same read-after-write assertion as in the
+			// re-synthesis test above, here also confirming the endpoint names the right source device.
+			const ownSources = await authGet(`/plugins/devices-virtual/devices/${ownVirtualDeviceId}/source-devices`).expect(
+				200,
+			);
 
-				return { done: !!body.data?.some((device) => device.id === ownSourceDeviceId), value: body.data ?? null };
-			}, 'the source device appearing in the virtual device index');
+			expect((ownSources.body as { data: DeviceBody[] }).data.map((device) => device.id)).toContain(ownSourceDeviceId);
+
+			// And the index has to hold the link before the deletion, or there would be no record of
+			// which source the deleted device referenced — that capture is the whole mechanism.
+			await waitForIndexedLink(virtualPropertyIndex, ownVirtualDeviceId);
 
 			await ensureDeviceDeleted(authGet, authDelete, ownVirtualDeviceId);
 

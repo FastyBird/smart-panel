@@ -160,6 +160,38 @@ export class VirtualPropertyIndexService implements OnApplicationBootstrap {
 	}
 
 	/**
+	 * The same links findLinksByVirtualDevice() serves from memory, read from the database instead,
+	 * for one virtual device.
+	 *
+	 * Exists because the in-memory maps lag every write. A structural event only *schedules* a
+	 * rebuild (VirtualIndexMaintenanceListener defers it past the emitting transaction and runs it
+	 * fire-and-forget), and no mutation response waits for it — so the moment a linked property is
+	 * created, remapped or deleted, the maps still describe the previous wiring for as long as that
+	 * rebuild takes. That is the correct trade for the two consumers the index exists for, which run
+	 * on system-wide per-event traffic; it is the wrong trade for an HTTP read of a single device,
+	 * where a client that just wrote is entitled to read back what it wrote.
+	 *
+	 * Deliberately scoped to one virtual device rather than reusing rebuild()'s query: the link shape
+	 * and the projecting/orphan handling are shared with it (see toLink()), but the WHERE clause is
+	 * not — this loads one device's properties, not every virtual property in the system, so it costs
+	 * a fraction of a rebuild and stays proportionate to an HTTP read of a single device.
+	 *
+	 * `channel.device` is joined for the WHERE alone; `sourceProperty.channel.device` is what actually
+	 * gets read back out, since neither ChannelEntity#device nor ChannelPropertyEntity#channel is
+	 * populated unless its exact relation path is requested.
+	 */
+	async loadLinksByVirtualDevice(id: string): Promise<VirtualPropertyLink[]> {
+		const properties = await this.repository.find({
+			where: { channel: { device: { id } } },
+			relations: ['sourceProperty', 'sourceProperty.channel', 'sourceProperty.channel.device'],
+		});
+
+		return properties
+			.filter((property) => property.isProjecting)
+			.map((property) => this.toLink(property, this.resolveSourceDeviceId(property)));
+	}
+
+	/**
 	 * Indexes one projecting property after a CRUD create/update, without a full reload.
 	 * `sourceDeviceId` is supplied by the caller — by the time a property is linked, whoever
 	 * created/updated it has already resolved and validated its source, so re-deriving it here would
@@ -342,12 +374,12 @@ export class VirtualPropertyIndexService implements OnApplicationBootstrap {
 			return;
 		}
 
-		// An orphaned property has no source device by definition — not a failure, just nothing to
-		// resolve. A LINKED one that still cannot resolve is: its source channel and device are
-		// required (non-nullable) relations, so this means the query did not load what it expected to.
-		const resolvedSourceDeviceId = property.isOrphaned ? null : (sourceDeviceId ?? null);
+		const link = this.toLink(property, sourceDeviceId);
 
-		if (property.isLinked && !resolvedSourceDeviceId) {
+		// A LINKED property that cannot resolve a source device is a real problem: its source channel
+		// and device are required (non-nullable) relations, so this means the query did not load what
+		// it expected to. An orphan resolving to null is not — see toLink().
+		if (property.isLinked && !link.sourceDeviceId) {
 			this.logger.warn(
 				`Could not resolve the source device for property id=${property.id}, skipping its source-device index`,
 			);
@@ -356,15 +388,28 @@ export class VirtualPropertyIndexService implements OnApplicationBootstrap {
 		// Recorded against its virtual device either way, orphan included — bySourceProperty above
 		// already holds whatever it could, and this single record is what lets the connection-status
 		// listener see an orphan at all.
-		this.indexByVirtualDevice(byVirtualDevice, virtualDeviceId, {
+		this.indexByVirtualDevice(byVirtualDevice, virtualDeviceId, link);
+
+		if (link.sourceDeviceId) {
+			this.indexBySourceDevice(bySourceDevice, link.sourceDeviceId, virtualDeviceId);
+		}
+	}
+
+	/**
+	 * Reduces one projecting property to the plain-id link shape both the index maps and
+	 * loadLinksByVirtualDevice() hand out, so the two can never disagree about what a link is.
+	 *
+	 * `sourceDeviceId` is passed in rather than always resolved here because `add()` supplies one its
+	 * caller already validated, while rebuild() and loadLinksByVirtualDevice() resolve it from the
+	 * loaded relations. It is discarded for an orphaned property, which by definition has no source
+	 * device to name — not a failure, just nothing to resolve.
+	 */
+	private toLink(property: VirtualChannelPropertyEntity, sourceDeviceId: string | undefined): VirtualPropertyLink {
+		return {
 			propertyId: property.id,
 			sourcePropertyId: property.sourcePropertyId,
-			sourceDeviceId: resolvedSourceDeviceId,
-		});
-
-		if (resolvedSourceDeviceId) {
-			this.indexBySourceDevice(bySourceDevice, resolvedSourceDeviceId, virtualDeviceId);
-		}
+			sourceDeviceId: property.isOrphaned ? null : (sourceDeviceId ?? null),
+		};
 	}
 
 	private resolveSourceDeviceId(property: VirtualChannelPropertyEntity): string | undefined {

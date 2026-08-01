@@ -18,7 +18,7 @@ describe('VirtualDevicesService', () => {
 	let channelsPropertiesService: { findOne: jest.Mock };
 	let channelsService: { findOne: jest.Mock };
 	let devicesService: { findOne: jest.Mock };
-	let index: { findLinksByVirtualDevice: jest.Mock };
+	let index: { loadLinksByVirtualDevice: jest.Mock; findLinksByVirtualDevice: jest.Mock };
 
 	// -- fixtures --------------------------------------------------------------------------------
 
@@ -44,7 +44,10 @@ describe('VirtualDevicesService', () => {
 		channelsPropertiesService = { findOne: jest.fn() };
 		channelsService = { findOne: jest.fn() };
 		devicesService = { findOne: jest.fn() };
-		index = { findLinksByVirtualDevice: jest.fn().mockReturnValue([]) };
+		index = {
+			loadLinksByVirtualDevice: jest.fn().mockResolvedValue([]),
+			findLinksByVirtualDevice: jest.fn().mockReturnValue([]),
+		};
 
 		service = new VirtualDevicesService(
 			channelsPropertiesService as unknown as ChannelsPropertiesService,
@@ -107,7 +110,10 @@ describe('VirtualDevicesService', () => {
 			const deviceA = Object.assign(new DeviceEntity(), { id: 'device-a' });
 			const deviceB = Object.assign(new DeviceEntity(), { id: 'device-b' });
 
-			index.findLinksByVirtualDevice.mockReturnValue([linkedTo('prop-a', 'device-a'), linkedTo('prop-b', 'device-b')]);
+			index.loadLinksByVirtualDevice.mockResolvedValue([
+				linkedTo('prop-a', 'device-a'),
+				linkedTo('prop-b', 'device-b'),
+			]);
 
 			// Loaded by id rather than read off a relation the index cached, so the devices returned
 			// carry a current connection status.
@@ -204,7 +210,7 @@ describe('VirtualDevicesService', () => {
 		it('counts a source device once even when two properties project through it', async () => {
 			const sharedDevice = Object.assign(new DeviceEntity(), { id: 'shared-device' });
 
-			index.findLinksByVirtualDevice.mockReturnValue([
+			index.loadLinksByVirtualDevice.mockResolvedValue([
 				linkedTo('prop-a', 'shared-device'),
 				linkedTo('prop-b', 'shared-device'),
 			]);
@@ -215,18 +221,37 @@ describe('VirtualDevicesService', () => {
 		});
 
 		it('returns an empty list for a virtual device with only owned properties', async () => {
-			index.findLinksByVirtualDevice.mockReturnValue([]);
+			index.loadLinksByVirtualDevice.mockResolvedValue([]);
 
 			await expect(service.findSourceDevices('virtual-device')).resolves.toEqual([]);
 		});
 
 		it('skips an orphaned projection, which has no source device left to list', async () => {
-			index.findLinksByVirtualDevice.mockReturnValue([
+			index.loadLinksByVirtualDevice.mockResolvedValue([
 				{ propertyId: 'orphaned-prop', sourcePropertyId: null, sourceDeviceId: null },
 			]);
 
 			await expect(service.findSourceDevices('virtual-device')).resolves.toEqual([]);
 			expect(devicesService.findOne).not.toHaveBeenCalled();
+		});
+
+		// The synchronous map lookup is served from whatever the last rebuild() left behind, and a
+		// structural event only *schedules* that rebuild — fire-and-forget, awaited by no mutation
+		// response. Answering this HTTP read from the maps therefore hands a client that has just
+		// linked, remapped or unlinked a property the wiring from before its own write. Asserting the
+		// map accessor is never touched is what pins the read to the database.
+		it('never consults the in-memory index maps, which lag every write', async () => {
+			index.findLinksByVirtualDevice.mockReturnValue([linkedTo('stale-prop', 'stale-device')]);
+			index.loadLinksByVirtualDevice.mockResolvedValue([linkedTo('fresh-prop', 'fresh-device')]);
+
+			const freshDevice = Object.assign(new DeviceEntity(), { id: 'fresh-device' });
+
+			devicesService.findOne.mockResolvedValue(freshDevice);
+
+			await expect(service.findSourceDevices('virtual-device')).resolves.toEqual([freshDevice]);
+
+			expect(index.findLinksByVirtualDevice).not.toHaveBeenCalled();
+			expect(index.loadLinksByVirtualDevice).toHaveBeenCalledWith('virtual-device');
 		});
 	});
 });

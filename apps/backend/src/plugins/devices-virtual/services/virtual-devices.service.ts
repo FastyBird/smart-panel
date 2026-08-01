@@ -118,13 +118,20 @@ export class VirtualDevicesService {
 	 * device built solely from owned properties (or one that does not exist) resolves to an empty
 	 * list, as does one whose every projection has been orphaned.
 	 *
-	 * The index supplies source device *ids*; each is loaded here rather than served from a
-	 * relation cached at index-build time. This is an HTTP read path — a handful of lookups per
-	 * request, not per event — and loading gives the caller a device whose connection status is
-	 * current, which a cached relation could not (see VirtualPropertyIndexService's docstring).
+	 * Reads the links from the database (`loadLinksByVirtualDevice`) rather than from
+	 * VirtualPropertyIndexService's in-memory maps, so that a client which has just created,
+	 * remapped or deleted a linked property sees the result of that write. The maps lag every such
+	 * write by however long the fire-and-forget rebuild takes — no mutation response waits for it —
+	 * which is the right trade for the two consumers the index exists for (both on system-wide,
+	 * per-event traffic) and the wrong one here, where this endpoint is called once per request for
+	 * a single device.
+	 *
+	 * The link lookup supplies source device *ids*; each is loaded here rather than served from a
+	 * relation cached at index-build time. Loading gives the caller a device whose connection status
+	 * is current, which a cached relation could not (see VirtualPropertyIndexService's docstring).
 	 */
 	async findSourceDevices(virtualDeviceId: string): Promise<DeviceEntity[]> {
-		const links = this.index.findLinksByVirtualDevice(virtualDeviceId);
+		const links = await this.index.loadLinksByVirtualDevice(virtualDeviceId);
 
 		const sourceDeviceIds = new Set(
 			links.map((link) => link.sourceDeviceId).filter((sourceDeviceId): sourceDeviceId is string => !!sourceDeviceId),
