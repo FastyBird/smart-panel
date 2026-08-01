@@ -116,6 +116,13 @@ A returned Promise is truthy, so `class-validator` may never await it — meanin
 
 This is a live production risk for any two overlapping transaction-shaped operations, not just a test artefact. It predates virtual devices, but that feature adds transaction-shaped traffic (every device delete schedules an index rebuild), so exposure increases.
 
+**Two further consequences measured in round 4**, both of which constrain anything that reads `isTransactionActive`:
+
+- **A transaction can be abandoned, leaving the flag set indefinitely.** Instrumenting `VirtualIndexMaintenanceListener`'s wait against the `devices-virtual` e2e suite showed the flag set continuously for over 1.5s across seven consecutive passes, with the driver reporting `transactionDepth === 1` — i.e. a `BEGIN` that succeeded and was then never committed or rolled back, not merely a stale boolean. A healthy device deletion settles in 25–350ms by the same measurement, so the two are easy to tell apart by duration but not by inspection. Anything that *waits* on the flag therefore needs a bound plus a way to stop paying it once the connection has proven it is not settling.
+- **The flag can also be set with no transaction behind it at all, permanently.** `AbstractSqliteQueryRunner.startTransaction()` assigns `isTransactionActive = true` before awaiting `BEGIN TRANSACTION` and does not reset it if that query throws; `EntityManager.transaction()`'s catch then calls `rollbackTransaction()`, whose own `ROLLBACK` throws ("cannot rollback - no transaction is active") before the `isTransactionActive = false` line is reached. So "refuse to read while the flag is set" is not a safe policy — after one collision it would block forever.
+
+Fixing the root cause (a real mutex around transaction-shaped operations on the shared connection, or a driver-level serialization) would remove the need for the mitigations in `VirtualIndexMaintenanceListener` entirely.
+
 ### 3.4 Specs never `await module.close()` (low)
 
 Jest's "worker process has failed to exit gracefully" warning appears across the backend suite. A repo-wide house pattern rather than a specific bug, but it masks real leaks.

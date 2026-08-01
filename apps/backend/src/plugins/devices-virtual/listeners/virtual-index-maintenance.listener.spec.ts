@@ -494,18 +494,40 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 	// -- Task 12b: the rebuild must not read while the emitting transaction is still open -------
 
+	// Advances one event-loop turn per iteration, without touching the clock. Used to hold a
+	// transaction open for a *counted number of turns* rather than a number of milliseconds: the
+	// listener's first waiting phase polls once per `setImmediate`, so turns are the unit it actually
+	// measures in, and a turn-counted hold cannot invert under machine load the way a wall-clock one
+	// can. This is what makes the two real-sqlite cases below deterministic instead of timing-
+	// dependent — the property they pin ("the read never lands inside the open transaction") is
+	// decided by ordering, not by how fast the machine is.
+	const burnEventLoopTurns = async (turns: number): Promise<void> => {
+		for (let turn = 0; turn < turns; turn++) {
+			await new Promise<void>((resolve) => setImmediate(resolve));
+		}
+	};
+
+	// Four times the listener's own immediate-poll budget. Any implementation that gives up after a
+	// fixed number of turns and reads anyway is therefore guaranteed — not merely likely — to read
+	// while the transaction below is still open, and to see its uncommitted rows through the shared
+	// single connection.
+	const TURNS_TO_HOLD_A_TRANSACTION_OPEN = 200;
+
 	// Real DataSource + dataSource.transaction() — the same call this app's DevicesService.remove()
 	// and ChannelsPropertiesService.remove() make — so this exercises the actual TypeORM + sqlite3
 	// mechanics the class docstring's correctness argument rests on: SqliteDriver.createQueryRunner()
 	// handing out one shared, single-connection QueryRunner to every non-transactional-manager query
-	// in the app, and that connection only clearing `isTransactionActive` once COMMIT/ROLLBACK has
-	// actually completed. A mocked-only test cannot prove this property — there is no real
-	// transaction, and no real (threadpool-backed, not same-tick) COMMIT, to be "inside" of. This is
-	// also the test that falsified this class's first implementation: an earlier version deferred
-	// with a single bare `setImmediate` hop, reasoning (wrongly) that submitting the read after
-	// COMMIT was submitted would be enough — this test caught that COMMIT's *completion* is what
-	// matters, not its submission, before that version ever shipped.
-	describe('defers past an open transaction (real sqlite)', () => {
+	// in the app, that connection only clearing `isTransactionActive` once COMMIT/ROLLBACK has
+	// actually completed, and a read issued on it mid-transaction seeing that transaction's own
+	// uncommitted writes. A mocked-only test cannot prove any of this — there is no real transaction,
+	// and no real (threadpool-backed, not same-tick) COMMIT, to be inside of.
+	//
+	// The assertions are on rows read, not on a sampled `isTransactionActive`. A row that a rolled-back
+	// transaction wrote is visible on this connection for exactly as long as that transaction is open
+	// and never again afterwards, so "did the rebuild see it" answers "did the rebuild read inside the
+	// transaction" with no clock involved at all — which the previous version of this test, which
+	// raced the commit and sampled the flag, could not.
+	describe('reads only committed state (real sqlite)', () => {
 		let dataSource: DataSource;
 
 		beforeAll(async () => {
@@ -518,55 +540,338 @@ describe('VirtualIndexMaintenanceListener', () => {
 			await dataSource.destroy();
 		});
 
-		it('does not observe the emitting transaction as still open by the time it reads', async () => {
+		beforeEach(async () => {
+			await dataSource.query('DELETE FROM probe');
+		});
+
+		// A listener whose rebuild() does what VirtualPropertyIndexService.rebuild() does — read the
+		// table through the shared query runner — and records what it saw.
+		const createProbe = (): {
+			listener: VirtualIndexMaintenanceListener;
+			rebuild: jest.Mock;
+			rowsRead: () => { id: string }[];
+			observed: Promise<void>;
+		} => {
 			// The exact query runner obtainQueryRunner() falls back to for any unscoped query —
 			// including VirtualPropertyIndexService.rebuild()'s repository.find() — because sqlite is
 			// not pooled (see AbstractSqliteDriver): this one instance is shared by every
 			// non-transactional caller in the app, ours included.
 			const sharedQueryRunner = dataSource.createQueryRunner();
 
-			let observedTransactionActive: boolean | undefined;
+			let rows: { id: string }[] = [];
 			let resolveObserved!: () => void;
 			const observed = new Promise<void>((resolve) => {
 				resolveObserved = resolve;
 			});
 
-			const probeIndex = {
-				rebuild: jest.fn().mockImplementation(async () => {
-					// Sampled *before* issuing any query of our own: this is what deferPastOpenTransaction()
-					// actually promises — that the flag already reads false at the moment it hands control
-					// back to rebuild() — not merely that it reads false once some later query of ours
-					// happens to resolve. Sampling after a query resolves would still usually read false
-					// even for a caller that read the flag while it was still true and got lucky with
-					// queue timing, which would make this assertion pass for the wrong reason.
-					observedTransactionActive = sharedQueryRunner.isTransactionActive;
+			const rebuild = jest.fn().mockImplementation(async () => {
+				rows = (await sharedQueryRunner.query('SELECT id FROM probe')) as { id: string }[];
 
-					await sharedQueryRunner.query('SELECT 1');
-					resolveObserved();
+				resolveObserved();
 
-					return NO_CHANGES;
-				}),
-			};
+				return NO_CHANGES;
+			});
 
-			const probeListener = new VirtualIndexMaintenanceListener(
-				probeIndex as unknown as VirtualPropertyIndexService,
+			const listener = new VirtualIndexMaintenanceListener(
+				{ rebuild } as unknown as VirtualPropertyIndexService,
 				{ recompute: jest.fn().mockResolvedValue(undefined) } as unknown as VirtualStatusListener,
 				{ findOne: jest.fn(), update: jest.fn() } as unknown as DevicesService,
 				dataSource,
 			);
 
-			await dataSource.transaction(async (manager) => {
-				await manager.query('INSERT INTO probe (id) VALUES (?)', ['row-1']);
+			return { listener, rebuild, rowsRead: () => rows, observed };
+		};
 
-				// Mimics DevicesService.remove()/ChannelsPropertiesService.remove(): a synchronous
-				// emit() of a structural event as the last statement inside the open transaction.
-				probeListener.handleStructuralChange();
+		it('never sees rows the emitting transaction went on to roll back', async () => {
+			const probe = createProbe();
+
+			let releaseTransaction!: () => void;
+			const heldOpen = new Promise<void>((resolve) => {
+				releaseTransaction = resolve;
 			});
 
-			await observed;
+			const transaction = dataSource
+				.transaction(async (manager) => {
+					await manager.query('INSERT INTO probe (id) VALUES (?)', ['never-committed']);
 
-			expect(probeIndex.rebuild).toHaveBeenCalledTimes(1);
-			expect(observedTransactionActive).toBe(false);
+					// Mimics DevicesService.remove()/ChannelsPropertiesService.remove(): a synchronous
+					// emit() of a structural event from inside the still-open transaction.
+					probe.listener.handleStructuralChange();
+
+					// Stands in for the reviewer's "subsequent property removals await storage cleanup" —
+					// the transaction keeps doing awaited work after emitting, and stays open for it.
+					await heldOpen;
+
+					throw new Error('rolled back');
+				})
+				.catch((error: Error) => error.message);
+
+			await burnEventLoopTurns(TURNS_TO_HOLD_A_TRANSACTION_OPEN);
+
+			releaseTransaction();
+
+			await expect(transaction).resolves.toBe('rolled back');
+			await probe.observed;
+
+			expect(probe.rebuild).toHaveBeenCalledTimes(1);
+			// The row existed on this connection throughout the hold above and never afterwards. Seeing
+			// it would mean the index had been rebuilt from state that never durably happened, with no
+			// event left to correct it — a rollback emits none.
+			expect(probe.rowsRead()).toEqual([]);
+		});
+
+		// The control for the case above: without it, an implementation that simply never rebuilt, or
+		// whose read was broken, would satisfy "saw no uncommitted rows" vacuously. Same shape, same
+		// hold, opposite outcome — so between the two, only a rebuild that reads *after* the emitting
+		// transaction settles passes both.
+		it('does see rows the emitting transaction went on to commit', async () => {
+			const probe = createProbe();
+
+			let releaseTransaction!: () => void;
+			const heldOpen = new Promise<void>((resolve) => {
+				releaseTransaction = resolve;
+			});
+
+			const transaction = dataSource.transaction(async (manager) => {
+				await manager.query('INSERT INTO probe (id) VALUES (?)', ['committed']);
+
+				probe.listener.handleStructuralChange();
+
+				await heldOpen;
+			});
+
+			await burnEventLoopTurns(TURNS_TO_HOLD_A_TRANSACTION_OPEN);
+
+			releaseTransaction();
+
+			await transaction;
+			await probe.observed;
+
+			expect(probe.rebuild).toHaveBeenCalledTimes(1);
+			expect(probe.rowsRead()).toEqual([{ id: 'committed' }]);
+		});
+	});
+
+	// -- Round 4: what the bounded wait does when it expires ------------------------------------
+
+	// The real-sqlite pair above pins the ordinary case, where the transaction does settle. These pin
+	// the two cases it cannot reach: a connection that reports a transaction open for longer than the
+	// wait is willing to hold out, and one that reports it forever. Both are driven off a stub flag
+	// the test sets directly, so neither depends on a real transaction ever behaving that way — and
+	// with the clock faked, neither spends the wait's real duration either.
+	describe('when the shared connection keeps reporting an open transaction', () => {
+		// Stands in for the shared, single-connection QueryRunner deferPastOpenTransaction() polls,
+		// with `isTransactionActive` under the test's control and every read of it counted — the count
+		// is how a test waits for "the implementation has polled a good many times" without encoding
+		// how many times the implementation polls.
+		const createSharedConnectionStub = (): {
+			queryRunner: { isTransactionActive: boolean; readonly polls: number };
+			dataSource: DataSource;
+		} => {
+			const state = { active: true, polls: 0 };
+
+			const queryRunner = {
+				get isTransactionActive(): boolean {
+					state.polls++;
+
+					return state.active;
+				},
+				set isTransactionActive(value: boolean) {
+					state.active = value;
+				},
+				get polls(): number {
+					return state.polls;
+				},
+			};
+
+			return { queryRunner, dataSource: { createQueryRunner: () => queryRunner } as unknown as DataSource };
+		};
+
+		// Drives the listener's own waiting forward without spending wall-clock time: one real
+		// `setImmediate` turn per step (the wait's first phase, and the rebuild loop's own awaits) plus
+		// a slice of faked clock (its second phase, and the repair delay). Nothing here is a race —
+		// every step is a discrete, deterministic advance, and the loop stops the moment `predicate`
+		// holds, so a test only ever runs as far as the behaviour it asserts on.
+		const driveUntil = async (predicate: () => boolean, maxSteps = 600): Promise<void> => {
+			for (let step = 0; step < maxSteps && !predicate(); step++) {
+				await new Promise<void>((resolve) => setImmediate(resolve));
+				await jest.advanceTimersByTimeAsync(50);
+			}
+		};
+
+		// The messages a logger spy was called with, ignoring the context/tag arguments
+		// createExtensionLogger() appends — asserting on those would pin the logger's call shape rather
+		// than what this listener reported.
+		const loggedMessages = (spy: jest.SpyInstance): string[] =>
+			(spy.mock.calls as unknown[][]).map((call) => (typeof call[0] === 'string' ? call[0] : ''));
+
+		let queryRunner: { isTransactionActive: boolean; readonly polls: number };
+		let probeListener: VirtualIndexMaintenanceListener;
+		// What `isTransactionActive` read at the moment each rebuild() was entered — sampled before any
+		// query of the rebuild's own, which is what deferPastOpenTransaction() actually promises about.
+		let flagAtRebuild: boolean[];
+		let loggerWarnSpy: jest.SpyInstance;
+		let loggerErrorSpy: jest.SpyInstance;
+
+		beforeEach(() => {
+			// `setImmediate` stays real so the wait's first phase runs at its natural pace; only the
+			// timers its second phase and the repair delay use are faked, which is what collapses a
+			// multi-second wait into an instant, repeatable test.
+			jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] });
+
+			loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+			loggerErrorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+
+			const stub = createSharedConnectionStub();
+
+			queryRunner = stub.queryRunner;
+			flagAtRebuild = [];
+
+			index.rebuild.mockImplementation(() => {
+				flagAtRebuild.push(queryRunner.isTransactionActive);
+
+				return Promise.resolve(NO_CHANGES);
+			});
+
+			probeListener = new VirtualIndexMaintenanceListener(
+				index as unknown as VirtualPropertyIndexService,
+				status as unknown as VirtualStatusListener,
+				devicesService as unknown as DevicesService,
+				stub.dataSource,
+			);
+		});
+
+		afterEach(() => {
+			jest.useRealTimers();
+
+			loggerWarnSpy.mockRestore();
+			loggerErrorSpy.mockRestore();
+		});
+
+		it('holds the rebuild back until the connection reports the transaction settled', async () => {
+			probeListener.handleStructuralChange();
+
+			// Well past the point where a single hop, or a handful, would have given up. Clearing the
+			// flag only now means any rebuild recorded before this line recorded `true`.
+			await driveUntil(() => queryRunner.polls > 25);
+
+			expect(flagAtRebuild).toEqual([]);
+
+			queryRunner.isTransactionActive = false;
+
+			await driveUntil(() => flagAtRebuild.length > 0);
+
+			expect(flagAtRebuild).toEqual([false]);
+		});
+
+		// The finding this round: the old bound simply logged and rebuilt, so a transaction that
+		// outlasted it got its uncommitted state indexed — and if it then rolled back, nothing ever
+		// said so, because a rollback emits no event. Rebuilding anyway is still the right call (the
+		// flag can be stuck set with no transaction behind it at all — see the class docstring), but
+		// only because the expired pass now queues its own correction.
+		it('rebuilds anyway once the wait expires, then repairs the index when the transaction settles', async () => {
+			probeListener.handleStructuralChange();
+
+			await driveUntil(() => flagAtRebuild.length > 0);
+
+			// Read through a connection still reporting an open transaction: whatever it indexed may be
+			// uncommitted.
+			expect(flagAtRebuild).toEqual([true]);
+			expect(loggedMessages(loggerWarnSpy)).toContainEqual(expect.stringContaining('Gave up waiting'));
+
+			queryRunner.isTransactionActive = false;
+
+			// No further structural event is emitted here on purpose. The second rebuild has to come
+			// from the repair the expired pass scheduled for itself — which is the whole point, since a
+			// rollback produces no event to ride in on.
+			await driveUntil(() => flagAtRebuild.length > 1);
+
+			expect(flagAtRebuild).toEqual([true, false]);
+		});
+
+		// The flag can be left set permanently by a failed BEGIN (class docstring), and repairing
+		// forever would then poll and log forever having long since read the only state there is.
+		it('stops repairing once the repair budget is exhausted', async () => {
+			probeListener.handleStructuralChange();
+
+			await driveUntil(() => loggerErrorSpy.mock.calls.length > 0);
+
+			// One pass that expired, plus MAX_REPAIR_PASSES repairs that expired the same way.
+			expect(flagAtRebuild).toEqual([true, true, true, true]);
+			expect(loggedMessages(loggerErrorSpy)).toContainEqual(expect.stringContaining('repair pass'));
+
+			// And then it stays put rather than rebuilding on a timer for the life of the process.
+			await driveUntil(() => flagAtRebuild.length > 4, 200);
+
+			expect(flagAtRebuild).toHaveLength(4);
+		});
+
+		// A transaction on this shared connection can be abandoned outright — begun, then neither
+		// committed nor rolled back — which leaves the flag set indefinitely rather than for the few
+		// hundred milliseconds a real deletion takes. Observed directly against the e2e suite: seven
+		// consecutive passes each spent the entire budget, and index maintenance fell far enough behind
+		// that assertions waiting on it timed out. Paying the budget once is the cost of caution;
+		// paying it on every pass is a starved index.
+		it('stops spending the full wait budget once the connection has proven it is not settling', async () => {
+			probeListener.handleStructuralChange();
+
+			await driveUntil(() => flagAtRebuild.length > 0);
+
+			const pollsForFirstPass = queryRunner.polls;
+			const pollsBeforeSecondPass = queryRunner.polls;
+
+			// A second structural event, with the transaction still reported open.
+			probeListener.handleStructuralChange();
+
+			await driveUntil(() => flagAtRebuild.length > 1);
+
+			expect(queryRunner.polls - pollsBeforeSecondPass).toBeLessThan(pollsForFirstPass / 2);
+
+			// Reported once, not once per pass — the connection has not got any newer.
+			expect(loggedMessages(loggerWarnSpy).filter((message) => message.includes('Gave up waiting'))).toHaveLength(1);
+
+			// And the caution comes back the moment the connection does: a pass that settles releases
+			// the latch, so the next transaction to run long is waited out in full again.
+			queryRunner.isTransactionActive = false;
+			probeListener.handleStructuralChange();
+
+			await driveUntil(() => flagAtRebuild.at(-1) === false);
+
+			queryRunner.isTransactionActive = true;
+			const pollsBeforeThirdPass = queryRunner.polls;
+			const rebuildsBeforeThirdPass = flagAtRebuild.length;
+
+			probeListener.handleStructuralChange();
+
+			await driveUntil(() => flagAtRebuild.length > rebuildsBeforeThirdPass);
+
+			expect(queryRunner.polls - pollsBeforeThirdPass).toBeGreaterThan(pollsForFirstPass / 2);
+		});
+
+		// The budget is per unbroken run of expired passes, not per process: a connection that
+		// misbehaves once must not leave a later, genuinely slow transaction without a repair.
+		it('restores the repair budget once a pass does observe the transaction settled', async () => {
+			probeListener.handleStructuralChange();
+
+			await driveUntil(() => loggerErrorSpy.mock.calls.length > 0);
+
+			expect(flagAtRebuild).toHaveLength(4);
+
+			queryRunner.isTransactionActive = false;
+			probeListener.handleStructuralChange();
+
+			await driveUntil(() => flagAtRebuild.length > 4);
+
+			expect(flagAtRebuild).toEqual([true, true, true, true, false]);
+
+			// Budget restored: this pass expires again and gets its own full run of repairs.
+			queryRunner.isTransactionActive = true;
+			loggerErrorSpy.mockClear();
+			probeListener.handleStructuralChange();
+
+			await driveUntil(() => loggerErrorSpy.mock.calls.length > 0);
+
+			expect(flagAtRebuild).toHaveLength(9);
 		});
 	});
 });

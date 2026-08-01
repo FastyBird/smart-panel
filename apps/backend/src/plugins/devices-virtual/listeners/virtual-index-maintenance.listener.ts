@@ -47,36 +47,86 @@ import { VirtualStatusListener } from './virtual-status.listener';
  * driver's underlying npm package) executes queued commands via libuv's threadpool, so `COMMIT`
  * completing is a real async I/O round trip, not merely a same-tick submission. A single
  * `setImmediate` hop is not sufficient — confirmed empirically, not just argued: with the read
- * sampled at the moment rebuild() is actually invoked (see the "does not observe the emitting
- * transaction as still open" test below), an earlier version of this class that deferred with one
- * bare `setImmediate` hop observed `isTransactionActive === true` in 15 out of 15 repeated trials.
- * deferPastOpenTransaction() therefore does not guess a hop count at all — it polls the shared
- * QueryRunner's own `isTransactionActive` flag, which the driver itself only clears once
+ * sampled at the moment rebuild() is actually invoked, an earlier version of this class that
+ * deferred with one bare `setImmediate` hop observed `isTransactionActive === true` in 15 out of 15
+ * repeated trials. deferPastOpenTransaction() therefore does not guess a hop count at all — it polls
+ * the shared QueryRunner's own `isTransactionActive` flag, which the driver itself only clears once
  * `COMMIT`/`ROLLBACK` has actually completed (see AbstractSqliteQueryRunner). That makes "has the
  * transaction settled" an observed fact rather than a timing assumption, for both commit and
- * rollback alike — the same test passes 15/15 against this version.
+ * rollback alike.
  *
- * That guarantee is scoped to the transaction which was actually open when handleStructuralChange()
- * fired — it does not mean no transaction is open at all by the time rebuild() reads. A different,
- * unrelated transaction can start in the gap between the poll returning and rebuild()'s own read
- * executing, because `dataSource.createQueryRunner()` is a single connection shared by every
- * unscoped query in the app, not just this listener's. That is a separate, pre-existing hazard (two
- * unrelated transactions racing each other for that one connection) this task does not fix — see
- * rebuildWithRetry() / looksTransientSqliteError() for how a rebuild() that loses that particular
- * race still recovers rather than leaving the index stale.
+ * ## Why the wait is bounded, and why expiry still rebuilds
+ *
+ * The poll is bounded (see deferPastOpenTransaction()), and a bounded wait can expire while the flag
+ * is still set — a transaction that keeps doing awaited work after emitting its event stays open for
+ * as long as that work takes. runRebuildLoop() rebuilds anyway when that happens, and then schedules
+ * a *repair* pass. Both halves of that are deliberate:
+ *
+ * - **Waiting indefinitely instead is not safe**, because `isTransactionActive` can be left set with
+ *   no transaction behind it at all, permanently, for the life of the process.
+ *   `AbstractSqliteQueryRunner.startTransaction()` assigns `isTransactionActive = true` *before* it
+ *   awaits `BEGIN TRANSACTION`, and does not reset it if that query throws. When it does throw —
+ *   `SQLITE_ERROR: cannot start a transaction within a transaction`, the collision follow-up 3.3
+ *   documents and looksTransientSqliteError() below already matches on — `EntityManager.transaction()`
+ *   calls `rollbackTransaction()`, whose `await this.query("ROLLBACK")` then also throws ("cannot
+ *   rollback - no transaction is active") and so never reaches the `isTransactionActive = false` on
+ *   the following line. The flag is stuck true from then on. A listener that refused to rebuild while
+ *   it is set would freeze this index permanently on the first such collision, which is a strictly
+ *   worse failure than the one the wait exists to prevent — and one this repo has actually observed
+ *   (see `ensureDeviceDeleted` in test/devices-virtual.e2e-spec.ts).
+ * - **Rebuilding without a repair is not safe either**, which is what the bound used to do. A read
+ *   that lands inside a still-open transaction sees that transaction's uncommitted rows, so if it
+ *   later rolls back, the index holds structure that never durably happened — and no further event
+ *   arrives to correct it, because the rollback is not an event. scheduleRepairPass() is that
+ *   correction: after any pass whose wait expired, another pass is queued, and it keeps being queued
+ *   (up to MAX_REPAIR_PASSES) until one completes having actually observed the flag clear. Whatever
+ *   the expired pass read, the repair overwrites with committed state.
+ *
+ * Either way the wait is scoped to whatever transaction happened to be open — it does not mean no
+ * transaction is open at all by the time rebuild() reads. A different, unrelated transaction can
+ * start in the gap between the poll returning and rebuild()'s own read executing, because
+ * `dataSource.createQueryRunner()` is a single connection shared by every unscoped query in the app,
+ * not just this listener's; by the same token the flag this polls may be held by a transaction that
+ * has nothing to do with the event being handled. That is a pre-existing hazard (follow-up 3.3) this
+ * task does not fix — see rebuildWithRetry() / looksTransientSqliteError() for how a rebuild() that
+ * loses that particular race still recovers rather than leaving the index stale.
  */
 @Injectable()
 export class VirtualIndexMaintenanceListener {
 	private readonly logger = createExtensionLogger(DEVICES_VIRTUAL_PLUGIN_NAME, 'VirtualIndexMaintenanceListener');
 
 	/**
-	 * Bounds deferPastOpenTransaction()'s poll loop. A transaction on this app's local, single-file
-	 * SQLite database settles within, at most, a handful of event-loop turns — there is no network
-	 * hop or external dependency involved — so this bound exists purely so a wildly abnormal state
-	 * (the flag somehow never clearing) still lets the loop proceed and log, rather than hang
-	 * runRebuildLoop() forever. That would itself be a worse bug than the one this task fixes.
+	 * deferPastOpenTransaction()'s first, cheap phase: one `setImmediate` macrotask per poll. A
+	 * transaction that emitted its event as its last statement settles within a handful of these, so
+	 * the overwhelmingly common case never reaches a timer at all and costs well under a millisecond.
 	 */
-	private static readonly MAX_TRANSACTION_WAIT_POLLS = 50;
+	private static readonly TRANSACTION_SETTLE_IMMEDIATE_POLLS = 50;
+
+	/**
+	 * deferPastOpenTransaction()'s second phase, entered only when the first did not see the flag
+	 * clear. Spinning `setImmediate` is the wrong instrument here: a transaction still open after 50
+	 * turns is one that keeps doing awaited work (`DevicesService.remove()` deletes a device's
+	 * channels and properties one awaited statement at a time, each an sqlite3 threadpool round trip,
+	 * and its storage cleanup is another), and a `setImmediate` loop starves exactly that work while
+	 * waiting for it. Polling on a timer instead yields the loop between samples, and buys three
+	 * orders of magnitude more headroom than counting event-loop turns did — the difference between
+	 * an idle laptop and a loaded CI runner is a multiple of the turn cost, not of wall-clock
+	 * seconds, which is precisely why a turn-counted bound passed locally and expired under CI load.
+	 */
+	private static readonly TRANSACTION_SETTLE_TIMER_POLLS = 60;
+
+	private static readonly TRANSACTION_SETTLE_TIMER_INTERVAL_MS = 25;
+
+	/**
+	 * Bounds how many times scheduleRepairPass() re-queues a pass after one whose wait expired.
+	 * Bounded rather than open-ended because the flag can be stuck true permanently (see the class
+	 * docstring): an unbounded repair chain would then poll forever and log forever, having long
+	 * since read the only state there is to read. The counter resets the moment any pass does observe
+	 * the flag clear, so a genuinely long transaction gets a full budget again next time.
+	 */
+	private static readonly MAX_REPAIR_PASSES = 3;
+
+	private static readonly REPAIR_PASS_DELAY_MS = 250;
 
 	/**
 	 * Bounds rebuildWithRetry()'s retry loop. Kept small: a retry here only ever exists to ride out
@@ -90,6 +140,24 @@ export class VirtualIndexMaintenanceListener {
 
 	private running = false;
 	private pending = false;
+	private repairTimer: NodeJS.Timeout | null = null;
+	private repairPasses = 0;
+
+	/**
+	 * True once a wait has run the full budget out with the transaction flag still set, and back to
+	 * false the moment any poll sees it clear again.
+	 *
+	 * Exists because a transaction on this shared connection can be *abandoned* — begun, and then
+	 * neither committed nor rolled back — which leaves the flag set indefinitely rather than for a
+	 * few hundred milliseconds. That is not hypothetical: it is the collision documented on
+	 * `ensureDeviceDeleted` in test/devices-virtual.e2e-spec.ts, and it was observed directly while
+	 * building this, with the driver reporting a real open transaction (depth 1) that never settled.
+	 * Without this latch every pass after such an abandonment pays the whole timed budget again, so a
+	 * single leaked transaction turns into seconds of added latency on every structural change for as
+	 * long as it lasts — starving the index far worse than the dirty read the budget is there to
+	 * avoid. With it, the cost of an abandoned transaction is paid once.
+	 */
+	private connectionStoppedSettling = false;
 
 	constructor(
 		private readonly index: VirtualPropertyIndexService,
@@ -149,7 +217,7 @@ export class VirtualIndexMaintenanceListener {
 	private async runRebuildLoop(): Promise<void> {
 		try {
 			do {
-				await this.deferPastOpenTransaction();
+				const settled = await this.deferPastOpenTransaction();
 
 				this.pending = false;
 
@@ -162,10 +230,63 @@ export class VirtualIndexMaintenanceListener {
 					await this.recomputeStatuses(rebuilt.rewiredVirtualDeviceIds);
 					await this.unhideAbandonedSources(rebuilt.abandonedSourceDeviceIds);
 				}
+
+				if (settled) {
+					// The pass read with no transaction open, so whatever it read is committed state and
+					// no repair is owed. Clearing the counter here (rather than never) is what lets a
+					// later, genuinely slow transaction claim a full repair budget of its own.
+					this.repairPasses = 0;
+				} else {
+					this.scheduleRepairPass();
+				}
 			} while (this.pending);
 		} finally {
 			this.running = false;
 		}
+	}
+
+	/**
+	 * Queues another pass after one that had to read without ever seeing the transaction flag clear.
+	 *
+	 * That pass may have read a transaction's uncommitted rows; if the transaction then rolled back,
+	 * the index holds structure that never durably happened, and nothing else will ever say so — a
+	 * rollback emits no event. This is the "explicit post-rollback rebuild" that closes it: the next
+	 * pass waits again from scratch, and if it does observe the flag clear, its read is committed
+	 * state and overwrites whatever the expired pass left behind.
+	 *
+	 * A timer rather than an immediate re-entry, because the condition being waited out is measured in
+	 * the hundreds of milliseconds the expired wait already spent — re-reading in the same turn would
+	 * only reproduce the same expiry at the cost of a full table scan. `unref()` so a repair pending on
+	 * an otherwise idle process never holds it open; the index is rebuilt at bootstrap anyway, so a
+	 * repair skipped by shutdown costs nothing.
+	 *
+	 * Only ever one timer in flight: a pass that expires while a repair is already armed is the same
+	 * repair, not a second one. The budget is spent per unbroken run of expired passes (see
+	 * MAX_REPAIR_PASSES), and exhausting it logs at error level and stops — at that point the flag is
+	 * stuck rather than busy, and further passes would read exactly what the last one did.
+	 */
+	private scheduleRepairPass(): void {
+		if (this.repairTimer) {
+			return;
+		}
+
+		if (this.repairPasses >= VirtualIndexMaintenanceListener.MAX_REPAIR_PASSES) {
+			this.logger.error(
+				`[ERROR] The shared query runner still reports an open transaction after ${VirtualIndexMaintenanceListener.MAX_REPAIR_PASSES} repair pass(es); the virtual property index may reflect uncommitted state until the next structural change.`,
+			);
+
+			return;
+		}
+
+		this.repairPasses++;
+
+		this.repairTimer = setTimeout(() => {
+			this.repairTimer = null;
+
+			this.handleStructuralChange();
+		}, VirtualIndexMaintenanceListener.REPAIR_PASS_DELAY_MS);
+
+		this.repairTimer.unref();
 	}
 
 	/**
@@ -336,32 +457,69 @@ export class VirtualIndexMaintenanceListener {
 	}
 
 	/**
-	 * Waits until the shared QueryRunner reports no transaction active, polling one `setImmediate`
-	 * macrotask at a time (never a bare microtask, which would still resolve inside the emitting
-	 * transaction's own async flow — see the class docstring). `dataSource.createQueryRunner()` is
-	 * the exact call `VirtualPropertyIndexService.rebuild()`'s `repository.find()` resolves to
-	 * internally (obtainQueryRunner() falls back to it for any unscoped query), and sqlite is not
-	 * pooled, so this is always the one connection every such query — including the caller's, if it
-	 * is still mid-transaction — actually runs on. Polling the flag itself, rather than assuming a
-	 * fixed number of hops clears it, is what makes this an *observed* fact rather than a timing
-	 * guess: the driver only flips `isTransactionActive` back to false once `COMMIT`/`ROLLBACK` has
-	 * actually completed (see AbstractSqliteQueryRunner's commitTransaction()/rollbackTransaction()),
-	 * so by the time this resolves, any transaction that was open when it was called has genuinely
-	 * settled — one way or the other — regardless of how many turns that took.
+	 * Waits until the shared QueryRunner reports no transaction active, and reports whether it got
+	 * there — `true` means a poll actually observed the flag clear, `false` means the bound was
+	 * exhausted with it still set. The caller acts on that difference (see runRebuildLoop() and
+	 * scheduleRepairPass()); it is deliberately not swallowed here, because "we read anyway" and "we
+	 * read after it settled" are not the same guarantee.
+	 *
+	 * `dataSource.createQueryRunner()` is the exact call `VirtualPropertyIndexService.rebuild()`'s
+	 * `repository.find()` resolves to internally (obtainQueryRunner() falls back to it for any
+	 * unscoped query), and sqlite is not pooled, so this is always the one connection every such
+	 * query — including the caller's, if it is still mid-transaction — actually runs on. Polling the
+	 * flag itself, rather than assuming a fixed number of hops clears it, is what makes a settled
+	 * transaction an *observed* fact rather than a timing guess: the driver only flips
+	 * `isTransactionActive` back to false once `COMMIT`/`ROLLBACK` has actually completed (see
+	 * AbstractSqliteQueryRunner's commitTransaction()/rollbackTransaction()).
+	 *
+	 * Two phases, never a bare microtask in either (a microtask would still resolve inside the
+	 * emitting transaction's own async flow — see the class docstring): `setImmediate` first, which
+	 * settles the ordinary case in well under a millisecond, then a timer, which is what an
+	 * abnormally long transaction needs and what a `setImmediate` spin would actively obstruct. See
+	 * the two poll-count constants for why the split is drawn there. Measured against this app's own
+	 * e2e suite, a real device deletion settles between 25 and 350 ms after emitting its event —
+	 * comfortably past the first phase, comfortably inside the second.
+	 *
+	 * The second phase is skipped while `connectionStoppedSettling` is latched; see that field for
+	 * why an abandoned transaction must cost the budget once rather than once per pass.
 	 */
-	private async deferPastOpenTransaction(): Promise<void> {
+	private async deferPastOpenTransaction(): Promise<boolean> {
 		const queryRunner = this.dataSource.createQueryRunner();
 
-		for (let poll = 0; poll < VirtualIndexMaintenanceListener.MAX_TRANSACTION_WAIT_POLLS; poll++) {
+		for (let poll = 0; poll < VirtualIndexMaintenanceListener.TRANSACTION_SETTLE_IMMEDIATE_POLLS; poll++) {
 			await new Promise<void>((resolve) => setImmediate(resolve));
 
 			if (!queryRunner.isTransactionActive) {
-				return;
+				this.connectionStoppedSettling = false;
+
+				return true;
 			}
 		}
 
-		this.logger.warn(
-			`Gave up waiting for an open transaction to settle after ${VirtualIndexMaintenanceListener.MAX_TRANSACTION_WAIT_POLLS} polls; rebuilding anyway.`,
-		);
+		// Skipped entirely once this connection has already failed to settle within the full budget:
+		// paying it again on every subsequent pass is what turns one abandoned transaction into a
+		// permanently starved index (see the field's own comment). One poll of the fast phase above is
+		// enough to notice the moment it recovers, at which point the full budget is available again.
+		if (!this.connectionStoppedSettling) {
+			for (let poll = 0; poll < VirtualIndexMaintenanceListener.TRANSACTION_SETTLE_TIMER_POLLS; poll++) {
+				await new Promise<void>((resolve) =>
+					setTimeout(resolve, VirtualIndexMaintenanceListener.TRANSACTION_SETTLE_TIMER_INTERVAL_MS),
+				);
+
+				if (!queryRunner.isTransactionActive) {
+					this.connectionStoppedSettling = false;
+
+					return true;
+				}
+			}
+
+			this.connectionStoppedSettling = true;
+
+			this.logger.warn(
+				`Gave up waiting for an open transaction to settle after ${VirtualIndexMaintenanceListener.TRANSACTION_SETTLE_IMMEDIATE_POLLS} immediate and ${VirtualIndexMaintenanceListener.TRANSACTION_SETTLE_TIMER_POLLS} timed poll(s); rebuilding anyway and scheduling a repair pass.`,
+			);
+		}
+
+		return false;
 	}
 }
