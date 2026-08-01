@@ -42,6 +42,7 @@ import {
 	VirtualChannelPropertyEntity,
 	VirtualDeviceEntity,
 } from './entities/devices-virtual.entity';
+import { VirtualIndexMaintenanceListener } from './listeners/virtual-index-maintenance.listener';
 import { VirtualProjectionListener } from './listeners/virtual-projection.listener';
 import { VirtualStatusListener } from './listeners/virtual-status.listener';
 import { VirtualConfigModel } from './models/config.model';
@@ -68,6 +69,7 @@ import { VirtualValueSourceService } from './services/virtual-value-source.servi
 		VirtualPropertyIndexService,
 		VirtualProjectionListener,
 		VirtualStatusListener,
+		VirtualIndexMaintenanceListener,
 	],
 })
 export class DevicesVirtualPlugin {
