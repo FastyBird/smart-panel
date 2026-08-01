@@ -3,7 +3,7 @@ import { computed, defineComponent, ref } from 'vue';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 
 import ViewDevices from './view-devices.vue';
 
@@ -124,8 +124,9 @@ vi.mock('../devices.exceptions', () => ({
 	DevicesException: Error,
 }));
 
-const mountView = () =>
+const mountView = (props: Record<string, unknown> = {}) =>
 	mount(ViewDevices, {
+		props,
 		global: {
 			stubs: {
 				ElButton: defineComponent({
@@ -163,6 +164,26 @@ describe('ViewDevices', () => {
 			name: 'devices',
 			matched: [],
 		};
+	});
+
+	it('accepts the wizard route param without leaving it as an extraneous attribute', async () => {
+		// The parent `devices` route uses `props: true`, so whenever the `wizard/:type` child
+		// matches, `route.params.type` is handed to this view as well. It renders a fragment, so
+		// an undeclared `type` cannot be auto-inherited and Vue warns on every render. Sibling
+		// parents (`view-device`, `view-channel`) already declare the params their children
+		// contribute for exactly this reason, even where they never read them.
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+		try {
+			mountView({ type: 'devices-zigbee2mqtt-plugin' });
+			await flushPromises();
+
+			const extraneous = warn.mock.calls.filter(([message]) => String(message).includes('Extraneous non-props attributes'));
+
+			expect(extraneous).toEqual([]);
+		} finally {
+			warn.mockRestore();
+		}
 	});
 
 	it('opens the only installed wizard directly without showing the selection dialog', async () => {
