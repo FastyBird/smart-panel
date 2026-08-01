@@ -1,6 +1,8 @@
 <template>
 	<div
 		v-loading="!ready"
+		:element-loading-text="t('devicesModule.wizard.texts.loading')"
+		element-loading-background="var(--el-bg-color-overlay)"
 		class="flex flex-col gap-3 h-full overflow-hidden min-h-[200px]"
 	>
 		<el-alert

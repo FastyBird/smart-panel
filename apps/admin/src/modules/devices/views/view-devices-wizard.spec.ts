@@ -12,6 +12,10 @@ const adapterFactory = vi.fn(() => ({ title: 'Adapter wizard' }));
 // factory. A fixture that instead used the dead `deviceWizard` key would be excluded solely
 // because nothing reads that key any more, proving nothing about module scoping.
 const otherAdapterFactory = vi.fn(() => ({ title: 'Other module wizard' }));
+// A second, independently valid plugin type — used only by the :key remount test, so switching
+// `type` between it and `multi-module-plugin` keeps `device-wizard` mounted throughout (no
+// v-if toggle to entity-not-found), isolating the remount to the `:key="type"` binding itself.
+const secondAdapterFactory = vi.fn(() => ({ title: 'Second plugin wizard' }));
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({
@@ -50,28 +54,46 @@ vi.mock('../components/components', async () => {
 
 vi.mock('../composables/composables', () => ({
 	useDevicesPlugins: () => ({
-		getByPluginType: (type: string) =>
-			type === 'multi-module-plugin'
-				? {
-						type: 'multi-module-plugin',
-						elements: [
-							{
-								type: 'other-module-wizard',
-								modules: ['other-module'],
-								components: {
-									deviceWizardAdapter: otherAdapterFactory,
-								},
+		getByPluginType: (type: string) => {
+			if (type === 'multi-module-plugin') {
+				return {
+					type: 'multi-module-plugin',
+					elements: [
+						{
+							type: 'other-module-wizard',
+							modules: ['other-module'],
+							components: {
+								deviceWizardAdapter: otherAdapterFactory,
 							},
-							{
-								type: 'devices-module-wizard',
-								modules: ['devices-module'],
-								components: {
-									deviceWizardAdapter: adapterFactory,
-								},
+						},
+						{
+							type: 'devices-module-wizard',
+							modules: ['devices-module'],
+							components: {
+								deviceWizardAdapter: adapterFactory,
 							},
-						],
-					}
-				: undefined,
+						},
+					],
+				};
+			}
+
+			if (type === 'second-plugin') {
+				return {
+					type: 'second-plugin',
+					elements: [
+						{
+							type: 'second-plugin-wizard',
+							modules: ['devices-module'],
+							components: {
+								deviceWizardAdapter: secondAdapterFactory,
+							},
+						},
+					],
+				};
+			}
+
+			return undefined;
+		},
 	}),
 }));
 
@@ -117,6 +139,29 @@ describe('ViewDevicesWizard', () => {
 		});
 
 		expect(adapterFactory).not.toHaveBeenCalled();
+	});
+
+	it('remounts the shell — a brand new instance, not a patched one — when the type prop changes', async () => {
+		// `:key="type"` exists specifically so switching plugin type tears down the outgoing
+		// adapter (running its dispose()) instead of leaving stale state bleeding into the new
+		// one. Both `multi-module-plugin` and `second-plugin` resolve to a real adapter factory,
+		// so `device-wizard` stays mounted throughout — isolating the assertion to the key-driven
+		// remount rather than a v-if toggle to/from entity-not-found.
+		const wrapper = mount(ViewDevicesWizard, {
+			props: { type: 'multi-module-plugin' },
+		});
+
+		const elementBefore = wrapper.find('[data-test-id="device-wizard"]').element;
+
+		await wrapper.setProps({ type: 'second-plugin' });
+
+		const deviceWizardAfter = wrapper.findComponent({ name: 'DeviceWizard' });
+		const elementAfter = wrapper.find('[data-test-id="device-wizard"]').element;
+
+		expect(deviceWizardAfter.props('adapterFactory')).toBe(secondAdapterFactory);
+		// A patched (not remounted) component would keep rendering into the SAME DOM node;
+		// a `:key` change destroys the old vnode/instance and mounts a fresh one in its place.
+		expect(elementAfter).not.toBe(elementBefore);
 	});
 
 	it('renders the not-found state for an unknown plugin type', () => {

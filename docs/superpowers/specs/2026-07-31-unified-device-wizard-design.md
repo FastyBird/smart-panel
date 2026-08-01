@@ -397,10 +397,11 @@ Adapters keep surfacing their own errors via `flashMessage` — the existing pat
 
 ## Accepted Losses
 
-Two visible behaviours are removed rather than preserved:
+Visible behaviours removed rather than preserved:
 
-1. Z2M's sortable **Manufacturer** column folds into `subLabel` beneath the device name, which is how Shelly presents the same information. Same content, one less column, better on narrow screens.
+1. Z2M's sortable **Manufacturer** column folds into `subLabel` beneath the device name on the discover and confirm steps, which is how Shelly presents the same information. Same content, one less column, better on narrow screens. The **results step also loses the Manufacturer column outright** — `IWizardResult` has no `subLabel` (or any equivalent field), so nothing carries the manufacturer that far. This is a second, undocumented-until-now loss riding on the back of the first: folding into `subLabel` was sanctioned for the rows that have one, but the results step's rows never did.
 2. Z2M's **"Auto-pick all" / "Clear selection"** buttons are removed. Selection now lives on the confirm step, which carries Shelly's select-all header checkbox — an indeterminate-state tri-toggle that does both jobs.
+3. The **results table's columns are no longer sortable**. The deleted Z2M results table had four sortable columns; the shared `device-wizard-results-step.vue` renders a fixed order instead — failed rows first, then created, then updated, with name as the tiebreaker within each group. Surfacing failures first is arguably more useful than free sorting, but it is still a capability loss for a user trying to, say, sort by name to find one device in a long results list.
 
 ## i18n
 
@@ -412,6 +413,8 @@ Dead keys to remove across 6 locales × 3 plugins:
 - Zigbee2MQTT: `wizard.steps.*`, `wizard.actions.*`, `wizard.columns.*` (except `channels`), `wizard.status.*`
 
 All plugin wizard strings that survive are consolidated under a single `<pluginI18nRoot>.wizard.*` namespace — so Shelly's surviving control labels move from `buttons.wizard.addManual.title` to `wizard.controls.addManual`, matching the shape Z2M already uses.
+
+**Amendment (post-ship): this rename was not carried out.** Shelly v1 and NG's surviving control labels stayed at their original paths — `buttons.wizard.restart.title`, `buttons.wizard.addManual.title`, `texts.wizard.discovery`, `texts.wizard.scanStatus` — rather than moving to a `wizard.controls.*` / `wizard.*` shape matching Z2M. The keys were already scoped under `buttons.wizard.*` / `texts.wizard.*` with no stray top-level pollution, so the practical naming inconsistency is minor; renaming them now would only delete and recreate live, working keys across 12 locale files (6 locales × 2 plugins) for a cosmetic shape difference with no user-visible benefit. This spec is amended to describe what shipped rather than performing the rename retroactively.
 
 ## Migration Sequence
 

@@ -982,6 +982,7 @@
       "error": "Error"
     },
     "texts": {
+      "loading": "Loading discovery session...",
       "empty": "No devices found yet",
       "noSelection": "No devices were selected",
       "resultsSuccess": "All selected devices were added successfully",

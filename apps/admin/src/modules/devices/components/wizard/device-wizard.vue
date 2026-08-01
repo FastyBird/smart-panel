@@ -188,14 +188,6 @@ const {
 	buildSelection,
 } = useDeviceWizardState(adapter.rows);
 
-watch(
-	adapter.rows,
-	(rows: IWizardRow[]): void => {
-		reconcile(rows);
-	},
-	{ immediate: true }
-);
-
 // A rescan opens a brand new discovery session, and the previous session's selections must not
 // survive into it: a device that was `ready` last time may come back as `already_registered`,
 // and a carried-over tick would silently overwrite its stored name and category on adopt.
@@ -203,6 +195,12 @@ watch(
 // reopen a session from a discover-step control the shell never sees — hence the session key.
 // Both bounds must be non-null: the first session arriving (null → id) must NOT reset, or it
 // would wipe the reconciliation that already ran against those rows.
+//
+// This watch MUST be registered before the `adapter.rows` watch below: in the Shelly adapters,
+// both `rows` and `sessionKey` derive from the same `session` ref, so a rescan changes them in
+// the same reactive flush, and Vue runs same-flush watchers in registration order. Reset-then-
+// reconcile is the only correct order — reconcile-then-reset would wipe the reconciliation that
+// just ran against the new session's rows, leaving the confirm step blank for about a second.
 watch(
 	() => adapter.sessionKey?.value ?? null,
 	(next: string | null, previous: string | null): void => {
@@ -210,6 +208,14 @@ watch(
 			reset();
 		}
 	}
+);
+
+watch(
+	adapter.rows,
+	(rows: IWizardRow[]): void => {
+		reconcile(rows);
+	},
+	{ immediate: true }
 );
 
 onMounted(async (): Promise<void> => {

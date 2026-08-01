@@ -27,9 +27,9 @@ const row = (overrides: Partial<IWizardRow> = {}): IWizardRow => ({
 	...overrides,
 });
 
-const mountStep = (controls: IWizardControl[] = [], rows: IWizardRow[] = [row()]) =>
+const mountStep = (controls: IWizardControl[] = [], rows: IWizardRow[] = [row()], ready = true) =>
 	mount(DeviceWizardDiscoverStep, {
-		props: { rows, columns: [], controls, identifierLabel: 'Hostname', ready: true },
+		props: { rows, columns: [], controls, identifierLabel: 'Hostname', ready },
 		global: { stubs: { 'router-link': true } },
 	});
 
@@ -104,6 +104,18 @@ describe('DeviceWizardDiscoverStep', () => {
 		await flushPromises();
 
 		expect(input.element.value).toBe('shelly-9.local');
+	});
+
+	it('shows the shell-owned loading text and background over the table while not ready', async () => {
+		const wrapper = mountStep([], [], false);
+
+		await flushPromises();
+
+		const mask = wrapper.find('.el-loading-mask');
+
+		expect(mask.exists()).toBe(true);
+		expect(mask.find('.el-loading-text').text()).toBe('devicesModule.wizard.texts.loading');
+		expect(mask.attributes('style')).toContain('var(--el-bg-color-overlay)');
 	});
 
 	it('renders a row with its label, sub-label and identifier', async () => {

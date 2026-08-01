@@ -107,11 +107,9 @@ export interface IWizardResult {
 	cells?: Record<string, IWizardCell>;
 }
 
-export interface IDeviceWizardCapabilities {
-	addMore: boolean;
-}
+export type IDeviceWizardCapabilities = { addMore: true } | { addMore: false };
 
-export interface IDeviceWizardAdapter {
+interface IDeviceWizardAdapterBase {
 	// Identity and labels — all already translated by the adapter.
 	title: string;
 	subtitle: string;
@@ -138,17 +136,23 @@ export interface IDeviceWizardAdapter {
 	ready: ComputedRef<boolean>;
 	busy: ComputedRef<boolean>;
 
-	capabilities: IDeviceWizardCapabilities;
-
 	// The shell calls start() on mount and dispose() on unmount — adapters must not
 	// register their own tryOnMounted / tryOnUnmounted hooks.
 	start: () => Promise<void>;
 	adopt: (selection: IWizardAdoptSelection[]) => Promise<IWizardResult[]>;
 	beforeLeaveDiscover?: () => Promise<void>;
-	/** Required when capabilities.addMore is true. */
-	restart?: () => Promise<void>;
 	dispose?: () => Promise<void>;
 }
+
+/**
+ * A discriminated union on `capabilities.addMore`: an adapter declaring `addMore: true` is
+ * required by the compiler to also provide `restart` — `onAddMore`'s `await adapter.restart?.()`
+ * would otherwise silently no-op and strand the user on an empty discover step. Adapters that
+ * don't support a second round (`addMore: false`) may omit `restart` entirely.
+ */
+export type IDeviceWizardAdapter =
+	| (IDeviceWizardAdapterBase & { capabilities: { addMore: true }; restart: () => Promise<void> })
+	| (IDeviceWizardAdapterBase & { capabilities: { addMore: false }; restart?: () => Promise<void> });
 
 export interface IWizardAction {
 	id: string;

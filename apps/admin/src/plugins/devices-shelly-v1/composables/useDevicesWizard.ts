@@ -26,7 +26,7 @@ import {
 	type DevicesShellyV1PluginGetDiscoveryOperation,
 } from '../../../openapi.constants';
 import { DEVICES_SHELLY_V1_PLUGIN_NAME, DEVICES_SHELLY_V1_PLUGIN_PREFIX, DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
-import { DevicesShellyV1ApiException } from '../devices-shelly-v1.exceptions';
+import { DevicesShellyV1ApiException, DevicesShellyV1ValidationException } from '../devices-shelly-v1.exceptions';
 import type { IShellyV1DiscoveryDevice, IShellyV1DiscoverySession } from '../schemas/devices.types';
 import { transformDeviceInfoRequest, transformDiscoverySessionResponse } from '../utils/devices.transformers';
 
@@ -45,9 +45,11 @@ const toWizardStatus = (status: IShellyV1DiscoveryDevice['status']): IWizardRowS
 
 // Single source of truth for the name we show and the name we send: an already registered
 // device keeps its stored name, everything else falls back through the descriptor down to
-// the hostname so the field is never blank.
+// the hostname so the field is never blank. `||` (not `??`) is deliberate: the schema permits
+// `name: ''`, and an empty string must fall through to the next candidate the same way `null`
+// does, or a device reporting a blank name renders a blank Name column and blocks Adopt.
 const suggestedNameFor = (device: IShellyV1DiscoveryDevice): string =>
-	device.registeredDeviceName ?? device.name ?? device.displayName ?? device.hostname;
+	device.registeredDeviceName || device.name || device.displayName || device.hostname;
 
 export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const { t } = useI18n();
@@ -110,7 +112,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const rows = computed<IWizardRow[]>(() =>
 		devices.value.map((device) => ({
 			key: device.hostname,
-			label: device.registeredDeviceName ?? device.name ?? device.displayName ?? device.model ?? device.hostname,
+			label: device.registeredDeviceName || device.name || device.displayName || device.model || device.hostname,
 			subLabel: device.displayName ?? device.model,
 			identifier: device.hostname,
 			status: toWizardStatus(device.status),
@@ -248,7 +250,15 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		const hostname = (values.hostname ?? '').trim();
 
 		if (hostname.length === 0) {
-			return;
+			// The old component disabled the Add button on a blank hostname. `IWizardFormControl`'s
+			// `submitDisabled` is a static boolean the adapter can't recompute per keystroke, so the
+			// button stays enabled — this must REJECT, not resolve, or the shell's `onSubmitForm`
+			// would clear the whole form, including a password the user already typed alongside it.
+			const errorReason = t('devicesShellyV1Plugin.fields.devices.hostname.validation.required');
+
+			flashMessage.error(errorReason);
+
+			throw new DevicesShellyV1ValidationException(errorReason);
 		}
 
 		const password = (values.password ?? '').trim() || null;

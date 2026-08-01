@@ -154,6 +154,36 @@ describe('useDevicesWizard', () => {
 		expect(row!.suggestedCategory).toBe(DevicesModuleDeviceCategory.lighting);
 	});
 
+	it('falls through an empty reported name to the next candidate for the suggested name and label', async () => {
+		// The schema permits `name: ''` (no `.min(1)`) — a device that reports a blank name must
+		// not render a blank Name column or a blank name input, which would leave `canContinue`
+		// false with no visible reason. `||` must fall through the same way `??` falls through
+		// on `null`; a regression to `??` here would stop at the empty string instead.
+		const blankNameSession: IShellyV1DiscoverySession = {
+			...discoverySession,
+			devices: [
+				{
+					...discoverySession.devices[0]!,
+					name: '',
+				},
+			],
+		};
+
+		backendClient.POST.mockResolvedValue({
+			data: { data: blankNameSession },
+			response: { status: 200 },
+		});
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		const [row] = adapter.rows.value;
+
+		expect(row!.suggestedName).toBe('Shelly 1');
+		expect(row!.label).toBe('Shelly 1');
+	});
+
 	it('renames the needs_password status to needs_credentials', async () => {
 		const protectedSession: IShellyV1DiscoverySession = {
 			...discoverySession,
@@ -331,7 +361,11 @@ describe('useDevicesWizard', () => {
 		);
 	});
 
-	it('ignores a manual submit with a blank hostname', async () => {
+	it('rejects a manual submit with a blank hostname instead of silently ignoring it', async () => {
+		// The old component disabled the Add button on a blank hostname. The shared form control
+		// has no per-keystroke `submitDisabled`, so the button stays clickable — rejecting (not
+		// resolving) is what makes the shell retain the rest of the form, including any password
+		// the user already typed, instead of silently clearing it.
 		backendClient.POST.mockResolvedValue({
 			data: { data: emptySession },
 			response: { status: 200 },
@@ -342,9 +376,12 @@ describe('useDevicesWizard', () => {
 		await adapter.start();
 		backendClient.POST.mockClear();
 
-		await findControl<IWizardFormControl>(adapter.controls.value, 'manual').handler({ hostname: '   ', password: 'secret' });
+		await expect(
+			findControl<IWizardFormControl>(adapter.controls.value, 'manual').handler({ hostname: '   ', password: 'secret' })
+		).rejects.toThrow();
 
 		expect(backendClient.POST).not.toHaveBeenCalled();
+		expect(flashMessage.error).toHaveBeenCalled();
 	});
 
 	it('rejects a failed manual add so the shell keeps what the user typed', async () => {

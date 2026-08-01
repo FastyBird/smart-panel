@@ -981,6 +981,7 @@
 			"error": "Błąd"
 		},
 		"texts": {
+			"loading": "Ładowanie sesji wyszukiwania...",
 			"empty": "Nie znaleziono jeszcze żadnych urządzeń",
 			"noSelection": "Nie wybrano żadnych urządzeń",
 			"resultsSuccess": "Wszystkie wybrane urządzenia zostały pomyślnie dodane",

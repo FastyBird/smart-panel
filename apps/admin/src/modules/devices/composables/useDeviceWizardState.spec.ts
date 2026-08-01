@@ -188,6 +188,16 @@ describe('useDeviceWizardState — derived state', () => {
 		expect(state.canContinue.value).toBe(false);
 	});
 
+	it('canContinue is false when a selected row has an undefined category', () => {
+		const rows = ref<IWizardRow[]>([row()]);
+		const state = useDeviceWizardState(rows);
+
+		state.reconcile(rows.value);
+		delete state.categoryByKey['shelly-1.local'];
+
+		expect(state.canContinue.value).toBe(false);
+	});
+
 	it('canContinue is true when every selected row has a name and category', () => {
 		const rows = ref<IWizardRow[]>([row()]);
 		const state = useDeviceWizardState(rows);

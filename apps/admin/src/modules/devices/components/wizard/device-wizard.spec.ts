@@ -65,23 +65,29 @@ const row = (overrides: Partial<IWizardRow> = {}): IWizardRow => ({
 	...overrides,
 });
 
-const buildAdapter = (overrides: Partial<IDeviceWizardAdapter> = {}): IDeviceWizardAdapter => ({
-	title: 'Shelly NG',
-	subtitle: 'Add Shelly devices',
-	breadcrumbLabel: 'Wizard',
-	pluginType: 'devices-shelly-ng-plugin',
-	identifierLabel: 'Hostname',
-	rows: computed(() => [row()]),
-	results: computed<IWizardResult[]>(() => []),
-	columns: [],
-	controls: computed(() => []),
-	ready: computed(() => true),
-	busy: computed(() => false),
-	capabilities: { addMore: false },
-	start: vi.fn().mockResolvedValue(undefined),
-	adopt: vi.fn().mockResolvedValue([]),
-	...overrides,
-});
+// `Partial<IDeviceWizardAdapter>` flattens the discriminated union into independent optional
+// fields, so the merge below can't be checked against the union itself — the cast is a test-mock
+// convenience only. Every test in this file that overrides `capabilities: { addMore: true }`
+// already pairs it with a `restart` handler, so the real correlation the union enforces is not
+// bypassed in practice; production adapters still get the compiler check.
+const buildAdapter = (overrides: Partial<IDeviceWizardAdapter> = {}): IDeviceWizardAdapter =>
+	({
+		title: 'Shelly NG',
+		subtitle: 'Add Shelly devices',
+		breadcrumbLabel: 'Wizard',
+		pluginType: 'devices-shelly-ng-plugin',
+		identifierLabel: 'Hostname',
+		rows: computed(() => [row()]),
+		results: computed<IWizardResult[]>(() => []),
+		columns: [],
+		controls: computed(() => []),
+		ready: computed(() => true),
+		busy: computed(() => false),
+		capabilities: { addMore: false },
+		start: vi.fn().mockResolvedValue(undefined),
+		adopt: vi.fn().mockResolvedValue([]),
+		...overrides,
+	}) as IDeviceWizardAdapter;
 
 const mountWizard = (adapter: IDeviceWizardAdapter) =>
 	mount(DeviceWizard, {
@@ -304,6 +310,45 @@ describe('DeviceWizard', () => {
 		const checkbox = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="checkbox"]');
 		expect(nameInput.element.value).toBe('Living room switch');
 		expect(checkbox.element.checked).toBe(true);
+	});
+
+	it('reconciles the new session rows instead of leaving them blank when rows and sessionKey change in the same flush', async () => {
+		// Mirrors the real Shelly adapters: both `rows` and `sessionKey` are computed from the
+		// SAME underlying ref, so "Scan again" changes them via a single reactive trigger — the
+		// backend seeds the new session from already-known devices before responding, so the
+		// fresh rows arrive already populated rather than empty. Vue notifies same-flush watchers
+		// in subscription order, which for a shared dependency matches watch-registration order.
+		// If the `rows` watch reconciles before the `sessionKey` watch resets, the reset silently
+		// wipes what reconcile just filled in, leaving the confirm step blank for about a second.
+		const session = ref({ key: 'session-1', currentRow: row() });
+		const wrapper = mountWizard(
+			buildAdapter({
+				rows: computed(() => [session.value.currentRow]),
+				sessionKey: computed(() => session.value.key),
+			})
+		);
+		await flushPromises();
+
+		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+
+		const nameInputBefore = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]');
+		const checkboxBefore = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="checkbox"]');
+		expect(nameInputBefore.element.value).toBe('Living room switch');
+		expect(checkboxBefore.element.checked).toBe(true);
+
+		// "Scan again": a single assignment changes both `rows` and `sessionKey` together, in the
+		// same reactive flush — exactly how the real adapters behave.
+		session.value = { key: 'session-2', currentRow: row({ suggestedName: 'Kitchen relay' }) };
+		await flushPromises();
+
+		const nameInputAfter = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]');
+		const checkboxAfter = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="checkbox"]');
+
+		// The new session's row must be reconciled (selected, name filled from the fresh
+		// suggestion) — not blank, which is what reconcile-before-reset produces.
+		expect(nameInputAfter.element.value).toBe('Kitchen relay');
+		expect(checkboxAfter.element.checked).toBe(true);
 	});
 
 	it('keeps working for an adapter that declares no session key', async () => {

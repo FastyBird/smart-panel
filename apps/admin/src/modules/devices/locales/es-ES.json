@@ -981,6 +981,7 @@
       "error": "Error"
     },
     "texts": {
+      "loading": "Cargando sesión de búsqueda...",
       "empty": "Todavía no se han encontrado dispositivos",
       "noSelection": "No se seleccionó ningún dispositivo",
       "resultsSuccess": "Todos los dispositivos seleccionados se añadieron correctamente",

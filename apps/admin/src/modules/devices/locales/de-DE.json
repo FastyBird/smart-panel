@@ -981,6 +981,7 @@
       "error": "Fehler"
     },
     "texts": {
+      "loading": "Suchsitzung wird geladen...",
       "empty": "Noch keine Geräte gefunden",
       "noSelection": "Es wurden keine Geräte ausgewählt",
       "resultsSuccess": "Alle ausgewählten Geräte wurden erfolgreich hinzugefügt",

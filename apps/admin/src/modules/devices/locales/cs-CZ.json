@@ -981,6 +981,7 @@
       "error": "Chyba"
     },
     "texts": {
+      "loading": "Načítání vyhledávací relace...",
       "empty": "Zatím nebyla nalezena žádná zařízení",
       "noSelection": "Nebyla vybrána žádná zařízení",
       "resultsSuccess": "Všechna vybraná zařízení byla úspěšně přidána",
