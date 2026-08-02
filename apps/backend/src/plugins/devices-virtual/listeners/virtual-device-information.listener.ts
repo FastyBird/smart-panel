@@ -110,6 +110,13 @@ export class VirtualDeviceInformationListener {
 	 */
 	private static readonly MAX_CONNECTION_STATE_ATTEMPTS = 3;
 
+	/**
+	 * Bounds ensureDeviceInformationChannel()'s find-or-create loop, for the same reasons and with the
+	 * same shape as MAX_CONNECTION_STATE_ATTEMPTS above — see that method for the failure a single
+	 * attempt could not survive.
+	 */
+	private static readonly MAX_DEVICE_INFORMATION_CHANNEL_ATTEMPTS = 3;
+
 	constructor(
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
@@ -226,25 +233,60 @@ export class VirtualDeviceInformationListener {
 	 * failed create: `@Unique(['identifier', 'device'])` makes a concurrent creation surface as a
 	 * constraint violation rather than a duplicate row, and the right response is to use the row that
 	 * won, not to fail.
+	 *
+	 * ## Why one attempt is not enough
+	 *
+	 * A single create followed by a single re-find can come away with nothing, and on a device created
+	 * with its channels nested in the same request it demonstrably does — observed on roughly one e2e
+	 * run in four, leaving a virtual device with no device_information channel at all: no connection
+	 * state, no manufacturer, model or serial number, and no second event to try again on, since this
+	 * synthesis runs only on DEVICE_CREATED.
+	 *
+	 * That shape is what makes it reachable. On the nested path CHANNEL_PROPERTY_CREATED fires before
+	 * DEVICE_CREATED, so VirtualIndexMaintenanceListener's rebuild drives a recompute into
+	 * DeviceConnectivityService.setConnectionState(), whose own find-or-create for this very channel is
+	 * then genuinely in flight while this one runs. Two concurrent `repository.save()` calls on SQLite
+	 * share one process-wide QueryRunner (follow-up 3.3), and the loser does not always fail cleanly:
+	 * the observed failure was `getOneOrThrow` immediately after `save()` reporting "Channel does not
+	 * exist" — an INSERT that reported success and was then rolled back underneath, rather than a
+	 * unique-constraint violation the re-find would have resolved.
+	 *
+	 * Going back round the loop covers both outcomes with one mechanism: a lost race is resolved by the
+	 * next lookup finding the winner's row, and a rolled-back insert by simply inserting again. The
+	 * driver-level defect is pre-existing and not this plugin's to fix; honouring this method's own
+	 * postcondition against it is.
+	 *
+	 * Still returns null rather than throwing when every attempt fails — the caller logs and gives up,
+	 * which is the same contract as before.
 	 */
 	private async ensureDeviceInformationChannel(device: DeviceEntity): Promise<ChannelEntity | null> {
-		const existing = await this.channelsService.findOneBy('category', ChannelCategory.DEVICE_INFORMATION, device.id);
+		for (
+			let attempt = 1;
+			attempt <= VirtualDeviceInformationListener.MAX_DEVICE_INFORMATION_CHANNEL_ATTEMPTS;
+			attempt++
+		) {
+			const existing = await this.channelsService.findOneBy('category', ChannelCategory.DEVICE_INFORMATION, device.id);
 
-		if (existing) {
-			return existing;
+			if (existing) {
+				return existing;
+			}
+
+			try {
+				return await this.channelsService.create({
+					device: device.id,
+					type: device.type,
+					identifier: 'device_information',
+					category: ChannelCategory.DEVICE_INFORMATION,
+					name: 'Device Information',
+				});
+			} catch (error) {
+				this.logger.debug(
+					`Attempt ${attempt} to create the device information channel for device id=${device.id} failed, re-reading: ${error}`,
+				);
+			}
 		}
 
-		try {
-			return await this.channelsService.create({
-				device: device.id,
-				type: device.type,
-				identifier: 'device_information',
-				category: ChannelCategory.DEVICE_INFORMATION,
-				name: 'Device Information',
-			});
-		} catch {
-			return await this.channelsService.findOneBy('category', ChannelCategory.DEVICE_INFORMATION, device.id);
-		}
+		return null;
 	}
 
 	/**

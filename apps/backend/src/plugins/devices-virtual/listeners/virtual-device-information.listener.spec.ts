@@ -244,6 +244,48 @@ describe('VirtualDeviceInformationListener', () => {
 		expect(channelsPropertiesService.create).not.toHaveBeenCalled();
 	});
 
+	// -- the device_information channel survives a failed create -----------------------------------
+	//
+	// One create plus one re-find can come away with nothing, and on a device created with its channels
+	// nested in the same request it demonstrably did: DeviceConnectivityService's own find-or-create for
+	// this channel is genuinely in flight at the same time (CHANNEL_PROPERTY_CREATED fires before
+	// DEVICE_CREATED, so a rebuild-driven recompute is already running), and concurrent saves on
+	// SQLite's shared QueryRunner do not always fail cleanly — the observed failure was an INSERT that
+	// reported success and was then rolled back underneath. The device was left with no
+	// device_information channel at all and no later event to try again on.
+
+	it('retries the device information channel create when one attempt fails outright', async () => {
+		channelsService.findOneBy.mockResolvedValue(null);
+		channelsService.create.mockRejectedValueOnce(new Error('insert rolled back')).mockResolvedValue(infoChannel);
+
+		await listener.handleDeviceCreated(virtualDevice);
+
+		expect(channelsService.create).toHaveBeenCalledTimes(2);
+		// Synthesis carried on past the channel rather than abandoning the device.
+		expect(channelsPropertiesService.create).toHaveBeenCalled();
+	});
+
+	it('uses the row that won when a concurrent creator got there first', async () => {
+		// The other outcome of the same race: our insert loses the unique constraint, and the winner's
+		// row is committed and therefore visible to the very next lookup.
+		channelsService.findOneBy.mockResolvedValueOnce(null).mockResolvedValue(infoChannel);
+		channelsService.create.mockRejectedValue(new Error('UNIQUE constraint failed'));
+
+		await listener.handleDeviceCreated(virtualDevice);
+
+		expect(channelsPropertiesService.create).toHaveBeenCalled();
+	});
+
+	it('gives up after a bounded number of attempts rather than looping forever', async () => {
+		channelsService.findOneBy.mockResolvedValue(null);
+		channelsService.create.mockRejectedValue(new Error('persistently broken'));
+
+		await listener.handleDeviceCreated(virtualDevice);
+
+		expect(channelsService.create).toHaveBeenCalledTimes(3);
+		expect(channelsPropertiesService.create).not.toHaveBeenCalled();
+	});
+
 	it('logs and swallows unexpected errors rather than rejecting', async () => {
 		connectivity.setConnectionState.mockRejectedValue(new Error('boom'));
 

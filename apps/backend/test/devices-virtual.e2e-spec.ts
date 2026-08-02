@@ -29,6 +29,7 @@ import { DEVICES_VIRTUAL_TYPE } from '../src/plugins/devices-virtual/devices-vir
 import { VirtualChannelPropertyEntity } from '../src/plugins/devices-virtual/entities/devices-virtual.entity';
 import { VirtualStatusListener } from '../src/plugins/devices-virtual/listeners/virtual-status.listener';
 import { VirtualPropertyIndexService } from '../src/plugins/devices-virtual/services/virtual-property-index.service';
+import { SimulatorDevicePlatform } from '../src/plugins/simulator/platforms/simulator-device.platform';
 import { SIMULATOR_TYPE } from '../src/plugins/simulator/simulator.constants';
 
 interface PropertyValueBody {
@@ -553,73 +554,103 @@ describe('devices-virtual plugin (e2e)', () => {
 		// ─── Step 3: commanding the virtual property changes the source ──────────────────
 
 		/**
-		 * Reports the source device connected, exactly as its own integration would.
+		 * The state the whole command path below runs in, and a regression test for follow-up 2.12.
 		 *
-		 * Necessary because the step below asserts a command actually *reaches* the source, and
-		 * PropertyCommandService refuses to dispatch to a device that is neither online nor UNKNOWN.
-		 * `VirtualStatusListener.aggregateState()` reports DISCONNECTED for a virtual device backed by
-		 * a source whose connection state is UNKNOWN — which the simulator source here is, since the
-		 * simulator plugin is disabled by default and so never reports one. So without this the
-		 * *virtual* device is offline and the command is dropped before any platform sees it.
+		 * The simulator plugin is disabled by default and so never reports a connection state, which
+		 * makes this source exactly the common case: `DeviceConnectionStateService.readLatest()` answers
+		 * `{online: false, status: UNKNOWN}` for it — as it does for *every* source on a fresh install,
+		 * right after a restart, or whenever storage is unavailable.
 		 *
-		 * Driven through DeviceConnectivityService rather than an endpoint because there is none: a
-		 * device's connection state is written by its integration, not by the API. This models the
-		 * integration.
+		 * `aggregateState()` used to collapse that into DISCONNECTED, and PropertyCommandService refuses
+		 * every command against a device that is definitively offline — so the virtual device rendered
+		 * fine, showed plausible values read straight through from the source, and silently refused
+		 * every command, while VirtualDevicePlatform (which applies the same UNKNOWN-is-commandable rule
+		 * to the source) would have forwarded happily had it ever been asked. UNKNOWN now propagates
+		 * instead, which is both what is true and what keeps the device commandable.
 		 *
-		 * The aggregation is then awaited directly rather than polled over HTTP. `ThrottlerGuard` keys
-		 * its `30 req / 60s` budget per client *and route handler*, and every request in this file comes
-		 * from the same loopback address inside a single 60-second window — so a poll of
-		 * `GET /devices/:id` spends a budget that eight other tests here already share, and exhausting
-		 * it 429s everything downstream rather than failing anything locally. `recompute()` is the exact
-		 * call the fire-and-forget DEVICE_CONNECTION_CHANGED handler makes, so awaiting it is both
-		 * cheaper and more deterministic than waiting for that handler to land.
-		 *
-		 * That this step is needed at all is a real, pre-existing gap, recorded as follow-up 2.12 —
-		 * `aggregateState()` collapses UNKNOWN into DISCONNECTED, while both PropertyCommandService and
-		 * VirtualDevicePlatform itself deliberately treat UNKNOWN as commandable. It stayed invisible
-		 * for as long as `ChannelsPropertiesService.update()` wrote the commanded value into the
-		 * source's own series before dispatching anything, which made the assertion below pass whether
-		 * the command was dispatched or not.
+		 * The aggregation is awaited directly rather than polled over HTTP. `ThrottlerGuard` keys its
+		 * `30 req / 60s` budget per client *and route handler*, and every request in this file comes from
+		 * the same loopback address inside a single 60-second window — so a poll of `GET /devices/:id`
+		 * spends a budget eight other tests here already share, and exhausting it 429s everything
+		 * downstream rather than failing anything locally. `recompute()` is the exact call the
+		 * fire-and-forget handlers make, so awaiting it is both cheaper and more deterministic.
 		 */
-		it('reports the source device connected, as its own integration would', async () => {
-			const connectivity = moduleRef.get<DeviceConnectivityService>(DeviceConnectivityService);
+		it('reports unknown, not disconnected, while its source has never reported a connection state', async () => {
 			const statusListener = moduleRef.get<VirtualStatusListener>(VirtualStatusListener);
-
-			await connectivity.setConnectionState(sourceDeviceId, {
-				state: ConnectionState.CONNECTED,
-				reason: 'e2e: standing in for the source integration',
-			});
 
 			// aggregateState() reads the index, so the link has to be in it before the recompute can see
 			// the source at all. Polled off the service, without HTTP, exactly as elsewhere in this file.
 			await waitForIndexedLink(virtualPropertyIndex, virtualDeviceId);
 
-			await statusListener.recompute(virtualDeviceId, 'e2e: standing in for the source integration');
+			await statusListener.recompute(virtualDeviceId, 'e2e: aggregating over a source that never reported');
 
 			const response = await authGet(`/modules/devices/devices/${virtualDeviceId}`).expect(200);
+			const status = (response.body as { data: DeviceBody }).data.status;
 
-			expect((response.body as { data: DeviceBody }).data.status.online).toBe(true);
+			expect(status.status).toBe(ConnectionState.UNKNOWN);
+			// UNKNOWN is not online — the point is precisely that `online: false` alone must stop meaning
+			// "definitively offline", not that the device pretends to be up.
+			expect(status.online).toBe(false);
 		});
 
 		it("commanding the virtual property changes the source property's value", async () => {
-			// `type` is required on the update DTO too (UpdateVirtualChannelPropertyDto.type has no
-			// @IsOptional — the same pattern every plugin's update DTO uses), so it must be sent even
-			// though only `value` is actually changing.
-			await authPatch(`/modules/devices/channels/${lightChannelId}/properties/${lightOnPropertyId}`)
-				.send({ data: { type: DEVICES_VIRTUAL_TYPE, value: true } })
-				.expect(200);
+			// Proves the *forward* rather than only its outcome. The value assertion below is necessary
+			// but was not sufficient on its own: it passed for the wrong reason for as long as
+			// `ChannelsPropertiesService.update()` dereferenced a projected write into the source's own
+			// series, which moved the source's value whether or not any command was ever dispatched.
+			// Spying on the source device's own platform closes that gap directly — the simulator
+			// platform is the last hop, reached only via PropertyCommandService -> VirtualDevicePlatform
+			// -> PlatformRegistryService, so a call here cannot have come from anywhere else.
+			const simulatorPlatform = moduleRef.get<SimulatorDevicePlatform>(SimulatorDevicePlatform, { strict: false });
+			const forwarded = jest.spyOn(simulatorPlatform, 'processBatch');
 
-			// The PATCH handler's command forward to the source device's own platform is
-			// fire-and-forget, so poll rather than assume the write already landed the instant the
-			// HTTP response returned.
-			const sourceValue = await waitUntil(async () => {
-				const response = await authGet(`/modules/devices/channels/${sourceChannelId}/properties/${sourceOnPropertyId}`);
-				const body = response.body as { data: ChannelPropertyBody };
+			try {
+				// `type` is required on the update DTO too (UpdateVirtualChannelPropertyDto.type has no
+				// @IsOptional — the same pattern every plugin's update DTO uses), so it must be sent even
+				// though only `value` is actually changing.
+				await authPatch(`/modules/devices/channels/${lightChannelId}/properties/${lightOnPropertyId}`)
+					.send({ data: { type: DEVICES_VIRTUAL_TYPE, value: true } })
+					.expect(200);
 
-				return { done: body.data.value?.value === true, value: body.data.value?.value ?? null };
-			}, 'the command reaching the source property');
+				// The PATCH handler's command forward to the source device's own platform is
+				// fire-and-forget, so poll rather than assume the write already landed the instant the
+				// HTTP response returned.
+				const sourceValue = await waitUntil(async () => {
+					const response = await authGet(
+						`/modules/devices/channels/${sourceChannelId}/properties/${sourceOnPropertyId}`,
+					);
+					const body = response.body as { data: ChannelPropertyBody };
 
-			expect(sourceValue).toBe(true);
+					return { done: body.data.value?.value === true, value: body.data.value?.value ?? null };
+				}, 'the command reaching the source property');
+
+				expect(sourceValue).toBe(true);
+
+				// The source's platform was asked to move the source's own property to the commanded
+				// value — the device, channel and property in the forwarded batch are all the *source's*,
+				// which is what "the command reached the source" means. Read off `mock.calls` and reduced
+				// to plain ids rather than asserted with nested `expect.objectContaining`, which returns
+				// `any` and would need the unsafe-assignment rule silenced to nest at all.
+				const forwardedBatches = forwarded.mock.calls.map(([updates]) =>
+					updates.map((update) => ({
+						deviceId: update.device.id,
+						channelId: update.channel.id,
+						propertyId: update.property.id,
+						value: update.value,
+					})),
+				);
+
+				expect(forwardedBatches).toContainEqual([
+					{
+						deviceId: sourceDeviceId,
+						channelId: sourceChannelId,
+						propertyId: sourceOnPropertyId,
+						value: true,
+					},
+				]);
+			} finally {
+				forwarded.mockRestore();
+			}
 
 			// The virtual property reads the same, shared value back too.
 			const virtualResponse = await authGet(
@@ -628,6 +659,33 @@ describe('devices-virtual plugin (e2e)', () => {
 			const virtualBody = virtualResponse.body as { data: ChannelPropertyBody };
 
 			expect(virtualBody.data.value?.value).toBe(true);
+		});
+
+		/**
+		 * The other end of the aggregation, so the UNKNOWN case above cannot pass by the rule simply
+		 * never reporting CONNECTED: once the source's integration does report, the virtual device
+		 * follows it up.
+		 *
+		 * Driven through DeviceConnectivityService rather than an endpoint because there is none — a
+		 * device's connection state is written by its integration, not by the API. This models the
+		 * integration. Awaited directly rather than polled for the same throttler-budget reason as above.
+		 */
+		it('reports connected once its source integration reports connected', async () => {
+			const connectivity = moduleRef.get<DeviceConnectivityService>(DeviceConnectivityService);
+			const statusListener = moduleRef.get<VirtualStatusListener>(VirtualStatusListener);
+
+			await connectivity.setConnectionState(sourceDeviceId, {
+				state: ConnectionState.CONNECTED,
+				reason: 'e2e: standing in for the source integration',
+			});
+
+			await statusListener.recompute(virtualDeviceId, 'e2e: standing in for the source integration');
+
+			const response = await authGet(`/modules/devices/devices/${virtualDeviceId}`).expect(200);
+			const status = (response.body as { data: DeviceBody }).data.status;
+
+			expect(status.status).toBe(ConnectionState.CONNECTED);
+			expect(status.online).toBe(true);
 		});
 
 		// ─── The same guard on the PATCH path, where the value is a real command ─────────
@@ -1089,6 +1147,216 @@ describe('devices-virtual plugin (e2e)', () => {
 
 			expect(rejected.status).toBe(400);
 			expect(JSON.stringify(rejected.body)).toContain('belongs to another virtual device');
+		});
+	});
+
+	// ─── Atomic creation: device, channel and linked property in one POST ───────────────
+
+	// Regression test for the whole nested-creation shape being rejected outright. `@Type` metadata is
+	// inherited, so CreateVirtualDeviceDto.channels built its children as the generic
+	// CreateDeviceChannelDto / CreateDeviceChannelPropertyDto — neither of which declares
+	// `source_property` or `value_origin` — and both the controller and DevicesService validate with
+	// `whitelist: true` + `forbidNonWhitelisted: true`. So the request came back 400 "property
+	// source_property should not exist" before ChannelsPropertiesTypeMapperService could pick the
+	// virtual DTO for the insert, and the only way to build a virtual device was the three-request
+	// sequence the lifecycle block above uses.
+	//
+	// This is also the shape the plugin's ordering work exists to serve: nested properties emit
+	// CHANNEL_PROPERTY_CREATED *before* the device's own DEVICE_CREATED, which is what
+	// VirtualDeviceInformationListener's `afterCreate` ownership claim and its aggregated-and-serialized
+	// initial status were written for. Until this fix that path was unreachable for a linked property,
+	// so those guards had never actually been exercised end to end by anything.
+	describe('creating a virtual device with its wiring nested in one request', () => {
+		let atomicSourceDeviceId: string;
+		let atomicSourcePropertyId: string;
+		let atomicVirtualDeviceId: string;
+
+		it('creates the source device it will draw from', async () => {
+			const response = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: SIMULATOR_TYPE,
+						category: DeviceCategory.OUTLET,
+						name: 'E2E Atomic Source Outlet',
+						channels: [
+							{
+								type: SIMULATOR_TYPE,
+								category: ChannelCategory.OUTLET,
+								identifier: 'outlet',
+								name: 'Outlet',
+								properties: [
+									{
+										type: SIMULATOR_TYPE,
+										category: PropertyCategory.ON,
+										identifier: 'on',
+										name: 'On',
+										permissions: [PermissionType.READ_WRITE],
+										data_type: DataTypeType.BOOL,
+										value: true,
+									},
+								],
+							},
+						],
+					},
+				})
+				.expect(201);
+
+			const body = response.body as { data: DeviceBody };
+
+			atomicSourceDeviceId = body.data.id;
+			atomicSourcePropertyId = body.data.channels[0].properties[0].id;
+
+			expect(atomicSourcePropertyId).toBeTruthy();
+		});
+
+		it('accepts the device, its channel and its linked property in a single POST', async () => {
+			const response = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: DeviceCategory.LIGHTING,
+						name: 'E2E Atomic Virtual Light',
+						channels: [
+							{
+								type: DEVICES_VIRTUAL_TYPE,
+								category: ChannelCategory.LIGHT,
+								identifier: 'light',
+								name: 'Light',
+								properties: [
+									{
+										type: DEVICES_VIRTUAL_TYPE,
+										category: PropertyCategory.ON,
+										identifier: 'on',
+										name: 'On',
+										permissions: [PermissionType.READ_WRITE],
+										data_type: DataTypeType.BOOL,
+										source_property: atomicSourcePropertyId,
+									},
+								],
+							},
+						],
+					},
+				})
+				.expect(201);
+
+			const body = response.body as { data: DeviceBody };
+
+			atomicVirtualDeviceId = body.data.id;
+
+			const lightChannel = body.data.channels.find((channel) => channel.category === String(ChannelCategory.LIGHT));
+			const onProperty = lightChannel?.properties.find((property) => property.category === PropertyCategory.ON);
+
+			// The nested property was created as a *virtual* property, with the wiring the request asked
+			// for — not as a generic one with the two virtual fields quietly dropped.
+			expect(onProperty?.source_property).toBe(atomicSourcePropertyId);
+			expect(onProperty?.value_origin).toBe('source');
+			// And it projects: the source was created holding `true`, and this reads through to it rather
+			// than to the virtual property's own (never-written) series.
+			expect(onProperty?.value?.value).toBe(true);
+		});
+
+		// The device_information synthesis has to survive being raced by the nested property's own
+		// CHANNEL_PROPERTY_CREATED, which on this path is emitted *before* DEVICE_CREATED — so
+		// DeviceConnectivityService's find-or-create for that same channel, driven by the rebuild's
+		// recompute, is genuinely in flight while VirtualDeviceInformationListener runs its own. That
+		// collision used to leave roughly one run in four with no device_information channel at all; see
+		// ensureDeviceInformationChannel()'s docstring.
+		//
+		// Polled through `/devices/:id/channels` rather than `/devices/:id`: the throttler budgets 30
+		// requests per 60s per route across the whole run (see waitUntil), and `/devices/:id` is the
+		// busiest route in this file. On a timeout the poll reports what it *did* see rather than a bare
+		// `null`, because "the channel never appeared" and "the channel appeared without the property"
+		// are different failures with different causes.
+		it('still synthesizes the connection state property as owned', async () => {
+			const observed = await waitUntil<{ property: ChannelPropertyBody | null; seenChannels: string[] }>(async () => {
+				const response = await authGet(`/modules/devices/devices/${atomicVirtualDeviceId}/channels`);
+
+				if (response.status !== 200) {
+					return { done: false, value: { property: null, seenChannels: [`HTTP ${response.status}`] } };
+				}
+
+				const channels = (response.body as { data: ChannelBody[] }).data;
+
+				const informationChannel = channels.find(
+					(channel) => channel.category === String(ChannelCategory.DEVICE_INFORMATION),
+				);
+
+				const property =
+					informationChannel?.properties.find((candidate) => candidate.category === PropertyCategory.STATUS) ?? null;
+
+				return {
+					done: !!property,
+					value: { property, seenChannels: channels.map((channel) => channel.category) },
+				};
+			}, 'the synthesized connection state property on an atomically created device');
+
+			// Owned, not an orphaned projection — the `afterCreate` claim doing its job on the one path
+			// that can actually race it.
+			expect(observed.property?.value_origin).toBe('local');
+			expect(observed.property?.source_property).toBeNull();
+		});
+
+		// The initial status write is what the serialized recompute exists to protect: on this path a
+		// rebuild-driven recompute (which sees the link) and the DEVICE_CREATED synthesis (which may not
+		// yet) genuinely overlap, and whichever landed second used to win regardless of which had read
+		// the fresher index. Whatever the interleaving, the settled answer must be the one the wiring
+		// implies — UNKNOWN here, since this source has never reported a connection state.
+		it('settles on the state its wiring implies, not on whichever write landed last', async () => {
+			const statusListener = moduleRef.get<VirtualStatusListener>(VirtualStatusListener);
+
+			await waitForIndexedLink(virtualPropertyIndex, atomicVirtualDeviceId);
+
+			await statusListener.recompute(atomicVirtualDeviceId, 'e2e: settling the atomically created device');
+
+			const response = await authGet(`/modules/devices/devices/${atomicVirtualDeviceId}`).expect(200);
+			const status = (response.body as { data: DeviceBody }).data.status;
+
+			expect(status.status).toBe(ConnectionState.UNKNOWN);
+		});
+
+		// The wiring is real, not merely recorded on the row: the source-devices endpoint resolves it
+		// from the database and names the device the nested property was linked to.
+		it('resolves the source device behind the atomically created wiring', async () => {
+			const response = await authGet(`/plugins/devices-virtual/devices/${atomicVirtualDeviceId}/source-devices`).expect(
+				200,
+			);
+
+			expect((response.body as { data: DeviceBody[] }).data.map((device) => device.id)).toContain(atomicSourceDeviceId);
+		});
+
+		// The plugin's own constraints still reach three levels down — retyping the nested DTOs widened
+		// the schema to the virtual fields, it did not switch validation off for them.
+		it('rejects a nested owned property that also names a source', async () => {
+			const rejected = await authPost('/modules/devices/devices').send({
+				data: {
+					type: DEVICES_VIRTUAL_TYPE,
+					category: DeviceCategory.LIGHTING,
+					name: 'E2E Atomic Invalid Virtual Light',
+					channels: [
+						{
+							type: DEVICES_VIRTUAL_TYPE,
+							category: ChannelCategory.LIGHT,
+							identifier: 'light',
+							name: 'Light',
+							properties: [
+								{
+									type: DEVICES_VIRTUAL_TYPE,
+									category: PropertyCategory.ON,
+									identifier: 'on',
+									name: 'On',
+									permissions: [PermissionType.READ_WRITE],
+									data_type: DataTypeType.BOOL,
+									value_origin: 'local',
+									source_property: atomicSourcePropertyId,
+								},
+							],
+						},
+					],
+				},
+			});
+
+			expect(rejected.status).toBe(400);
+			expect(JSON.stringify(rejected.body)).toContain('an owned property stores its own value');
 		});
 	});
 
