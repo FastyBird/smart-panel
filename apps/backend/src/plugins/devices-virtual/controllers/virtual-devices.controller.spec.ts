@@ -1,8 +1,11 @@
 import { HttpException, HttpStatus, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 
-import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
+import { CompatibilityCandidateDto, ReqCompatibilityDto } from '../dto/compatibility-request.dto';
 import { VirtualDevicesService } from '../services/virtual-devices.service';
 
 import { VirtualDevicesController } from './virtual-devices.controller';
@@ -10,7 +13,8 @@ import { VirtualDevicesController } from './virtual-devices.controller';
 describe('VirtualDevicesController', () => {
 	let controller: VirtualDevicesController;
 	let devicesService: { findOne: jest.Mock };
-	let virtualDevicesService: { findSourceDevices: jest.Mock };
+	let virtualDevicesService: { findSourceDevices: jest.Mock; reportCompatibility: jest.Mock };
+	let channelsPropertiesService: { findOne: jest.Mock };
 
 	const virtualDevice = { id: 'virtual-device', type: DEVICES_VIRTUAL_TYPE } as DeviceEntity;
 	const deviceA = { id: 'device-a' } as DeviceEntity;
@@ -18,11 +22,16 @@ describe('VirtualDevicesController', () => {
 
 	beforeEach(() => {
 		devicesService = { findOne: jest.fn().mockResolvedValue(virtualDevice) };
-		virtualDevicesService = { findSourceDevices: jest.fn().mockResolvedValue([deviceA, deviceB]) };
+		virtualDevicesService = {
+			findSourceDevices: jest.fn().mockResolvedValue([deviceA, deviceB]),
+			reportCompatibility: jest.fn().mockReturnValue({ compatible: true }),
+		};
+		channelsPropertiesService = { findOne: jest.fn() };
 
 		controller = new VirtualDevicesController(
 			devicesService as unknown as DevicesService,
 			virtualDevicesService as unknown as VirtualDevicesService,
+			channelsPropertiesService as unknown as ChannelsPropertiesService,
 		);
 	});
 
@@ -82,5 +91,101 @@ describe('VirtualDevicesController', () => {
 		const response = await controller.findSourceDevices('virtual-device');
 
 		expect(response.data).toEqual([]);
+	});
+
+	describe('checkCompatibility', () => {
+		const candidate = (sourceProperty: string, spec_property = PropertyCategory.ON): CompatibilityCandidateDto =>
+			({
+				spec_channel: ChannelCategory.LIGHT,
+				spec_property,
+				source_property: sourceProperty,
+			}) as CompatibilityCandidateDto;
+
+		const request = (candidates: CompatibilityCandidateDto[]): ReqCompatibilityDto =>
+			({ data: { category: DeviceCategory.LIGHTING, candidates } }) as ReqCompatibilityDto;
+
+		it('reports compatibility per candidate, resolving each source property and preserving request order', async () => {
+			const sourceA = { id: 'source-a' } as ChannelPropertyEntity;
+			const sourceB = { id: 'source-b' } as ChannelPropertyEntity;
+
+			channelsPropertiesService.findOne.mockImplementation((id: string) =>
+				Promise.resolve(id === 'source-a' ? sourceA : sourceB),
+			);
+			virtualDevicesService.reportCompatibility
+				.mockReturnValueOnce({ compatible: true })
+				.mockReturnValueOnce({ compatible: false, reason: 'permission mismatch' });
+
+			const response = await controller.checkCompatibility(
+				request([candidate('source-a'), candidate('source-b', PropertyCategory.BRIGHTNESS)]),
+			);
+
+			expect(response.data).toEqual([
+				{
+					spec_channel: ChannelCategory.LIGHT,
+					spec_property: PropertyCategory.ON,
+					source_property: 'source-a',
+					compatible: true,
+					reason: undefined,
+				},
+				{
+					spec_channel: ChannelCategory.LIGHT,
+					spec_property: PropertyCategory.BRIGHTNESS,
+					source_property: 'source-b',
+					compatible: false,
+					reason: 'permission mismatch',
+				},
+			]);
+			expect(virtualDevicesService.reportCompatibility).toHaveBeenNthCalledWith(
+				1,
+				{ channel: ChannelCategory.LIGHT, property: PropertyCategory.ON },
+				sourceA,
+			);
+			expect(virtualDevicesService.reportCompatibility).toHaveBeenNthCalledWith(
+				2,
+				{ channel: ChannelCategory.LIGHT, property: PropertyCategory.BRIGHTNESS },
+				sourceB,
+			);
+		});
+
+		it('resolves a source property referenced by more than one candidate only once', async () => {
+			const source = { id: 'shared-source' } as ChannelPropertyEntity;
+
+			channelsPropertiesService.findOne.mockResolvedValue(source);
+
+			await controller.checkCompatibility(
+				request([candidate('shared-source'), candidate('shared-source', PropertyCategory.BRIGHTNESS)]),
+			);
+
+			expect(channelsPropertiesService.findOne).toHaveBeenCalledTimes(1);
+			expect(virtualDevicesService.reportCompatibility).toHaveBeenCalledTimes(2);
+		});
+
+		// Existence is refused outright rather than folded into the report — an id that resolves to
+		// nothing is not a legitimate compatibility outcome the wizard needs to grey out, unlike a
+		// permission or data-type mismatch. Matches the wrong-type split on findSourceDevices above.
+		it('rejects the whole request with 422 when a candidate source property does not exist', async () => {
+			channelsPropertiesService.findOne.mockResolvedValue(null);
+
+			await expect(controller.checkCompatibility(request([candidate('missing')]))).rejects.toThrow(
+				UnprocessableEntityException,
+			);
+			expect(virtualDevicesService.reportCompatibility).not.toHaveBeenCalled();
+		});
+
+		// Report-per-candidate only holds for compatibility outcomes: this proves a missing source in a
+		// *later* candidate still refuses the whole batch rather than reporting the earlier, resolvable
+		// candidates and silently dropping the bad one.
+		it('rejects the whole request even when only one of several candidates has a missing source', async () => {
+			const source = { id: 'source-a' } as ChannelPropertyEntity;
+
+			channelsPropertiesService.findOne.mockImplementation((id: string) =>
+				Promise.resolve(id === 'source-a' ? source : null),
+			);
+
+			await expect(
+				controller.checkCompatibility(request([candidate('source-a'), candidate('missing')])),
+			).rejects.toThrow(UnprocessableEntityException);
+			expect(virtualDevicesService.reportCompatibility).not.toHaveBeenCalled();
+		});
 	});
 });

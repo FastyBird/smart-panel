@@ -1,4 +1,10 @@
-import { DeviceCategory, PermissionType } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
@@ -36,6 +42,25 @@ describe('VirtualDevicesService', () => {
 
 	const readOnlySource = property({ id: 'ro-source', permissions: [PermissionType.READ_ONLY] });
 	const readWriteSource = property({ id: 'rw-source', permissions: [PermissionType.READ_WRITE] });
+
+	// reportCompatibility also judges data type, which the assertPermissionsCompatible fixtures above
+	// never set (that suite only exercises permissions) — so reportCompatibility gets its own fixtures,
+	// with a dataType meaningful against the spec slots the pinned tests target below.
+	const readOnlySourceProperty = property({
+		id: 'ro-source-property',
+		permissions: [PermissionType.READ_ONLY],
+		dataType: DataTypeType.BOOL,
+	});
+	const readWriteSourceProperty = property({
+		id: 'rw-source-property',
+		permissions: [PermissionType.READ_WRITE],
+		dataType: DataTypeType.FLOAT,
+	});
+	const floatSourceProperty = property({
+		id: 'float-source-property',
+		permissions: [PermissionType.READ_WRITE],
+		dataType: DataTypeType.FLOAT,
+	});
 
 	// A link exactly as VirtualPropertyIndexService records one: plain ids, never a hydrated entity.
 	const linkedTo = (id: string, deviceId: string): VirtualPropertyLink => ({
@@ -106,6 +131,37 @@ describe('VirtualDevicesService', () => {
 
 		it('accepts a read-write source for a read-only spec slot', () => {
 			expect(() => service.assertPermissionsCompatible([PermissionType.READ_ONLY], readWriteSource)).not.toThrow();
+		});
+	});
+
+	describe('reportCompatibility', () => {
+		it('reports a read-only source as incompatible with a writable slot', () => {
+			const report = service.reportCompatibility(
+				{ channel: ChannelCategory.LIGHT, property: PropertyCategory.ON },
+				readOnlySourceProperty,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('permission');
+		});
+
+		it('reports a read-write source as compatible with a read-only slot', () => {
+			const report = service.reportCompatibility(
+				{ channel: ChannelCategory.TEMPERATURE, property: PropertyCategory.TEMPERATURE },
+				readWriteSourceProperty,
+			);
+
+			expect(report.compatible).toBe(true);
+		});
+
+		it('reports a data-type mismatch as incompatible', () => {
+			const report = service.reportCompatibility(
+				{ channel: ChannelCategory.LIGHT, property: PropertyCategory.ON },
+				floatSourceProperty,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('data type');
 		});
 	});
 
@@ -383,6 +439,93 @@ describe('VirtualDevicesService', () => {
 			expect(() =>
 				service.assertPermissionsCompatible([PermissionType.READ_ONLY, PermissionType.WRITE_ONLY], readWriteSource),
 			).not.toThrow();
+		});
+	});
+
+	describe('reportCompatibility — supplementary', () => {
+		it('leaves reason unset when the source is fully compatible', () => {
+			const report = service.reportCompatibility(
+				{ channel: ChannelCategory.TEMPERATURE, property: PropertyCategory.TEMPERATURE },
+				readWriteSourceProperty,
+			);
+
+			expect(report).toEqual({ compatible: true });
+		});
+
+		// Pins that permission is checked before data type, and that the check stops at the first
+		// failure: a source wrong on both counts reports the permission reason, not both concatenated.
+		// The wizard renders one reason per option, not a list.
+		it('reports the permission reason, not the data-type reason, when a source fails both', () => {
+			// temperature.temperature requires read-only; write-only satisfies neither a direct match nor
+			// the read-write fallback, so this is wrong on permission. bool (vs. required float) makes it
+			// wrong on data type too.
+			const doublyWrongSource = property({
+				id: 'doubly-wrong',
+				permissions: [PermissionType.WRITE_ONLY],
+				dataType: DataTypeType.BOOL,
+			});
+
+			const report = service.reportCompatibility(
+				{ channel: ChannelCategory.TEMPERATURE, property: PropertyCategory.TEMPERATURE },
+				doublyWrongSource,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('permission');
+			expect(report.reason).not.toContain('data type');
+		});
+
+		// light.brightness accepts either a percentage (uchar) or a discrete level (enum) — exercises the
+		// hasMultipleDataTypes branch's accepting path, which the pinned tests never reach (they only use
+		// single-data-type slots).
+		it('accepts a source matching one variant of a multi-datatype slot', () => {
+			const percentageSource = property({
+				id: 'brightness-percentage',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.UCHAR,
+			});
+
+			const report = service.reportCompatibility(
+				{ channel: ChannelCategory.LIGHT, property: PropertyCategory.BRIGHTNESS },
+				percentageSource,
+			);
+
+			expect(report.compatible).toBe(true);
+		});
+
+		it('rejects a source matching none of the variants of a multi-datatype slot', () => {
+			const stringSource = property({
+				id: 'brightness-string',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.STRING,
+			});
+
+			const report = service.reportCompatibility(
+				{ channel: ChannelCategory.LIGHT, property: PropertyCategory.BRIGHTNESS },
+				stringSource,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('data type');
+		});
+
+		// Defensive: a spec slot the schema does not define (a client/schema mismatch, not a real
+		// incompatibility) reports rather than throws, so one bad slot in a batch cannot 500 the request.
+		it('reports a spec slot the schema does not define as incompatible rather than throwing', () => {
+			expect(() =>
+				service.reportCompatibility(
+					{ channel: ChannelCategory.LIGHT, property: PropertyCategory.TEMPERATURE },
+					readWriteSourceProperty,
+				),
+			).not.toThrow();
+
+			const report = service.reportCompatibility(
+				{ channel: ChannelCategory.LIGHT, property: PropertyCategory.TEMPERATURE },
+				readWriteSourceProperty,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toBeTruthy();
 		});
 	});
 

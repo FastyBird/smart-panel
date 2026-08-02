@@ -1,10 +1,16 @@
 import { Injectable } from '@nestjs/common';
 
-import { DeviceCategory, PermissionType } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { getAllProperties } from '../../../modules/devices/utils/schema.utils';
 import { DEVICES_VIRTUAL_TYPE, VIRTUAL_BLOCKED_CATEGORIES } from '../devices-virtual.constants';
 import {
 	VirtualCategoryNotSupportedException,
@@ -22,6 +28,29 @@ import {
 } from '../entities/devices-virtual.entity';
 
 import { VirtualPropertyIndexService } from './virtual-property-index.service';
+
+/**
+ * A spec slot the wizard is trying to fill: one property, on one channel category, from the target
+ * device category's specification. A channel *category* (not a real channel id) plus a property
+ * category is enough to resolve what the slot requires — see getAllProperties(channelCategory) in
+ * schema.utils.ts — which is what lets reportCompatibility below be asked about a slot before the
+ * virtual channel that will eventually hold it exists at all.
+ */
+export interface VirtualCompatibilitySpecSlot {
+	channel: ChannelCategory;
+	property: PropertyCategory;
+}
+
+/**
+ * Whether a candidate source property can fill a spec slot, and — when it cannot — why not. `reason`
+ * is set when and only when `compatible` is false. Reported as data rather than thrown so a batch of
+ * candidates (VirtualDevicesController.checkCompatibility) can be evaluated in full: one incompatible
+ * candidate must not stop the others from being judged.
+ */
+export interface VirtualCompatibilityReport {
+	compatible: boolean;
+	reason?: string;
+}
 
 /**
  * Validation guards for assembling a virtual device, plus a read of the physical devices behind one.
@@ -63,11 +92,12 @@ import { VirtualPropertyIndexService } from './virtual-property-index.service';
  * `beforeUpdate` mapping hook. Each has a DTO-constraint counterpart for the payload that carries
  * both halves; they are complementary, not alternatives (see the methods).
  *
- * `assertPermissionsCompatible` is deliberately not wired at all: it needs
- * the target spec slot's required permissions, which depend on the channel category and are not
- * available from a property DTO in isolation — the design spec assigns that filtering to the admin
- * wizard (a follow-up, not part of this backend+panel plan), so this method is called by the wizard,
- * not by a DTO constraint.
+ * `assertPermissionsCompatible` is deliberately not wired to a DTO constraint: it needs the target
+ * spec slot's required permissions, which depend on the channel category and are not available from a
+ * property DTO in isolation. It is wired instead through `reportCompatibility` below, reached by
+ * `POST /plugins/devices-virtual/devices/compatibility` (VirtualDevicesController.checkCompatibility)
+ * — the admin wizard's preview call, not a creation-time guard. Before that endpoint existed this
+ * method was reachable from nowhere at all; see the predecessor plan's follow-up list.
  */
 @Injectable()
 export class VirtualDevicesService {
@@ -258,6 +288,69 @@ export class VirtualDevicesService {
 				`Source property id=${sourceProperty.id} permissions [${(sourceProperty.permissions ?? []).join(', ')}] do not satisfy required permission(s) [${unsatisfied.join(', ')}]`,
 			);
 		}
+	}
+
+	/**
+	 * Reports whether `sourceProperty` can fill `specSlot` — the non-throwing counterpart of
+	 * `assertPermissionsCompatible`, plus the data-type half of the same question.
+	 *
+	 * Never throws for a slot/property pair that is merely incompatible: the wizard needs to grey out
+	 * every bad option in a batch at once (VirtualDevicesController.checkCompatibility), not discover
+	 * them one at a time, so a rejection is data (`{compatible: false, reason}`), not control flow.
+	 * `assertPermissionsCompatible` still throws — it is the assertion this wraps — its exception is
+	 * caught here and its message becomes the report's reason, which is what keeps the permission rule
+	 * itself living in exactly one place rather than being restated for the report shape.
+	 *
+	 * Permission is checked before data type, and checking stops at the first failure: a source wrong
+	 * on both counts reports the permission reason, not both concatenated. The wizard renders one reason
+	 * per option, not a list.
+	 *
+	 * `specSlot` names a channel *category* and a property *category* from the target device category's
+	 * specification, not a real channel or property id — see VirtualCompatibilitySpecSlot. A slot the
+	 * schema does not define (a client/schema mismatch, not a genuine incompatibility) is reported
+	 * incompatible rather than thrown, for the same batch-safety reason as above.
+	 */
+	reportCompatibility(
+		specSlot: VirtualCompatibilitySpecSlot,
+		sourceProperty: ChannelPropertyEntity,
+	): VirtualCompatibilityReport {
+		const metadata = getAllProperties(specSlot.channel).find((candidate) => candidate.category === specSlot.property);
+
+		if (!metadata) {
+			return {
+				compatible: false,
+				reason: `Channel category '${specSlot.channel}' has no '${specSlot.property}' property in its specification`,
+			};
+		}
+
+		try {
+			this.assertPermissionsCompatible(metadata.permissions, sourceProperty);
+		} catch (error) {
+			return { compatible: false, reason: error instanceof Error ? error.message : String(error) };
+		}
+
+		// Mirrors DeviceValidationService.validatePropertyAgainstSpec's data-type branch
+		// (device-validation.service.ts:707-725): a multi-datatype property is satisfied by any one of
+		// its variants; a single-datatype property with no data_type at all imposes no constraint.
+		let dataTypeValid: boolean;
+		let expectedDataTypes: string;
+
+		if (metadata.hasMultipleDataTypes && metadata.dataTypeVariants && metadata.dataTypeVariants.length > 0) {
+			dataTypeValid = metadata.dataTypeVariants.some((variant) => variant.data_type === sourceProperty.dataType);
+			expectedDataTypes = metadata.dataTypeVariants.map((variant) => variant.data_type).join(' | ');
+		} else {
+			dataTypeValid = !metadata.data_type || metadata.data_type === sourceProperty.dataType;
+			expectedDataTypes = metadata.data_type;
+		}
+
+		if (!dataTypeValid) {
+			return {
+				compatible: false,
+				reason: `Source property id=${sourceProperty.id} has data type '${sourceProperty.dataType}', which does not satisfy the required data type '${expectedDataTypes}' for '${specSlot.channel}.${specSlot.property}'`,
+			};
+		}
+
+		return { compatible: true };
 	}
 
 	/**

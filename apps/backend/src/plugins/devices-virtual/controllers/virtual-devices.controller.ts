@@ -1,7 +1,18 @@
-import { Controller, Get, NotFoundException, Param, ParseUUIDPipe, UnprocessableEntityException } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Get,
+	NotFoundException,
+	Param,
+	ParseUUIDPipe,
+	Post,
+	UnprocessableEntityException,
+} from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
 	ApiBadRequestResponse,
@@ -15,6 +26,8 @@ import {
 	DEVICES_VIRTUAL_PLUGIN_NAME,
 	DEVICES_VIRTUAL_TYPE,
 } from '../devices-virtual.constants';
+import { ReqCompatibilityDto } from '../dto/compatibility-request.dto';
+import { CompatibilityReportModel, CompatibilityResponseModel } from '../models/compatibility-response.model';
 import { VirtualSourceDevicesResponseModel } from '../models/virtual-response.model';
 import { VirtualDevicesService } from '../services/virtual-devices.service';
 
@@ -26,6 +39,7 @@ export class VirtualDevicesController {
 	constructor(
 		private readonly devicesService: DevicesService,
 		private readonly virtualDevicesService: VirtualDevicesService,
+		private readonly channelsPropertiesService: ChannelsPropertiesService,
 	) {}
 
 	@ApiOperation({
@@ -81,6 +95,82 @@ export class VirtualDevicesController {
 		const response = new VirtualSourceDevicesResponseModel();
 
 		response.data = sourceDevices;
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
+		summary: 'Preview source-property compatibility for a set of spec slots',
+		description:
+			'Reports, for each candidate spec-slot / source-property pairing, whether the source property could fill that slot and — when it cannot — why not. A read-only check with no side effects: nothing is created, linked or persisted. Every candidate is evaluated independently, so one incompatible pairing does not stop the others from being reported. Lets the construction wizard hard-block a source before the device is ever built, rather than accepting a mapping whose writes would die at the source platform.',
+		operationId: 'check-devices-virtual-plugin-devices-compatibility',
+	})
+	@ApiSuccessResponse(CompatibilityResponseModel, 'One compatibility report per candidate, in request order.')
+	@ApiBadRequestResponse('Invalid request body')
+	@ApiUnprocessableEntityResponse('One or more candidate source properties do not exist')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post('compatibility')
+	async checkCompatibility(@Body() body: ReqCompatibilityDto): Promise<CompatibilityResponseModel> {
+		const { category, candidates } = body.data;
+
+		this.logger.debug(`Checking compatibility of ${candidates.length} candidate(s) for category=${category}`);
+
+		// Resolved once per distinct id rather than once per candidate: the same source property is
+		// often checked against several spec slots at once (e.g. "could this switch's relay fill any of
+		// these light channels"), and resolution failure is whole-request, so there is nothing to gain
+		// from re-fetching a given id.
+		const sourceProperties = new Map<string, ChannelPropertyEntity>();
+
+		for (const candidate of candidates) {
+			if (sourceProperties.has(candidate.source_property)) {
+				continue;
+			}
+
+			const sourceProperty = await this.channelsPropertiesService.findOne(candidate.source_property);
+
+			// Refuses the whole request rather than reporting this one candidate as incompatible: unlike a
+			// permission or data-type mismatch, an id that resolves to nothing is not a legitimate
+			// comparison outcome the wizard needs to grey out — it is a reference to a property that does
+			// not exist, which is malformed input. Matches findSourceDevices' split above: existence
+			// problems are refused outright, not folded into the report.
+			if (!sourceProperty) {
+				this.logger.error(`[ERROR] Candidate source property id=${candidate.source_property} not found`);
+
+				throw new UnprocessableEntityException(
+					`Candidate source property id=${candidate.source_property} does not exist`,
+				);
+			}
+
+			sourceProperties.set(candidate.source_property, sourceProperty);
+		}
+
+		const reports = candidates.map((candidate) => {
+			const sourceProperty = sourceProperties.get(candidate.source_property);
+
+			const result = this.virtualDevicesService.reportCompatibility(
+				{ channel: candidate.spec_channel, property: candidate.spec_property },
+				sourceProperty,
+			);
+
+			const report = new CompatibilityReportModel();
+
+			report.spec_channel = candidate.spec_channel;
+			report.spec_property = candidate.spec_property;
+			report.source_property = candidate.source_property;
+			report.compatible = result.compatible;
+			report.reason = result.reason;
+
+			return report;
+		});
+
+		this.logger.debug(
+			`Compatibility check complete: ${reports.filter((report) => report.compatible).length}/${reports.length} compatible`,
+		);
+
+		const response = new CompatibilityResponseModel();
+
+		response.data = reports;
 
 		return response;
 	}
