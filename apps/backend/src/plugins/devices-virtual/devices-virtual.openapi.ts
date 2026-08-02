@@ -3,6 +3,7 @@
  */
 import { CreateVirtualChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateVirtualChannelDto } from './dto/create-channel.dto';
+import { CreateVirtualDeviceChannelDto } from './dto/create-device-channel.dto';
 import { CreateVirtualDeviceDto } from './dto/create-device.dto';
 import { UpdateVirtualChannelPropertyDto } from './dto/update-channel-property.dto';
 import { UpdateVirtualChannelDto } from './dto/update-channel.dto';
@@ -21,6 +22,7 @@ export const DEVICES_VIRTUAL_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	CreateVirtualDeviceDto,
 	UpdateVirtualDeviceDto,
 	CreateVirtualChannelDto,
+	CreateVirtualDeviceChannelDto,
 	UpdateVirtualChannelDto,
 	CreateVirtualChannelPropertyDto,
 	UpdateVirtualChannelPropertyDto,

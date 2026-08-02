@@ -3,13 +3,20 @@ import { IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import { CreateChannelDto } from '../../../modules/devices/dto/create-channel.dto';
+import { CreateDeviceChannelDto } from '../../../modules/devices/dto/create-device-channel.dto';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 
 import { CreateVirtualChannelPropertyDto } from './create-channel-property.dto';
 
-@ApiSchema({ name: 'DevicesVirtualPluginCreateChannel' })
-export class CreateVirtualChannelDto extends CreateChannelDto {
+/**
+ * A channel nested inside a virtual device's own creation request, as opposed to
+ * CreateVirtualChannelDto which is POSTed to `/channels` on its own and therefore names its `device`.
+ * It exists for the same reason DevicesModule keeps CreateDeviceChannelDto and CreateChannelDto
+ * apart: the nested form has no `device` to give, because the device it belongs to is the one being
+ * created around it.
+ */
+@ApiSchema({ name: 'DevicesVirtualPluginCreateDeviceChannel' })
+export class CreateVirtualDeviceChannelDto extends CreateDeviceChannelDto {
 	@ApiProperty({
 		description: 'Channel type',
 		type: 'string',
@@ -20,15 +27,10 @@ export class CreateVirtualChannelDto extends CreateChannelDto {
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid channel type string."}]' })
 	readonly type: typeof DEVICES_VIRTUAL_TYPE;
 
-	// Retyped for the same reason as CreateVirtualDeviceDto.channels — see that field's comment.
-	//
-	// This class is the *second* gate on a virtual device created with its wiring nested in one POST,
-	// not merely the DTO for `POST /channels`: DevicesService.create() hands each nested channel to
-	// ChannelsService.create(), which re-validates it against whatever the channel type mapping names —
-	// this class — with `properties` still attached. So retyping only the device DTO's `channels` would
-	// move the rejection one level down rather than remove it.
-	//
-	// Parent decorator stack repeated verbatim; class-validator replaces rather than merges.
+	// Redeclared solely to retype the array's element class — see CreateVirtualDeviceDto.channels for
+	// why inheriting `@Type(() => CreateDeviceChannelPropertyDto)` makes a nested linked property
+	// unrepresentable. Every validator CreateDeviceChannelDto.properties carries is repeated verbatim,
+	// because class-validator replaces a redeclared property's decorator stack rather than merging it.
 	@ApiPropertyOptional({
 		description: 'Channel properties',
 		type: 'array',
