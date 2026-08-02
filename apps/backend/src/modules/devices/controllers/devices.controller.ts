@@ -303,7 +303,9 @@ export class DevicesController {
 	)
 	@ApiBadRequestResponse('Invalid UUID format or unsupported device type')
 	@ApiNotFoundResponse('Device not found')
-	@ApiUnprocessableEntityResponse('Device could not be updated')
+	@ApiUnprocessableEntityResponse(
+		'Device could not be updated, or the device is hidden and its room or zones can not be changed',
+	)
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Patch(':id')
 	async update(

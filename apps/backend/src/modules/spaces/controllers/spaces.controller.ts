@@ -9,10 +9,12 @@ import {
 	ParseUUIDPipe,
 	Patch,
 	Post,
+	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { DevicesNotAllowedException } from '../../devices/devices.exceptions';
 import { DevicesResponseModel } from '../../devices/models/devices-response.model';
 import { DisplaysResponseModel } from '../../displays/models/displays-response.model';
 import {
@@ -249,14 +251,29 @@ export class SpacesController {
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
 	@ApiSuccessResponse(BulkAssignmentResponseModel, 'Returns the assignment result')
 	@ApiNotFoundResponse('Space not found')
-	@ApiUnprocessableEntityResponse('Invalid assignment data')
+	@ApiUnprocessableEntityResponse(
+		'Invalid assignment data, or one of the devices is hidden and its room can not be changed',
+	)
 	async bulkAssign(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() body: ReqBulkAssignDto,
 	): Promise<BulkAssignmentResponseModel> {
 		this.logger.debug(`Bulk assigning to space with id=${id}`);
 
-		const result = await this.spacesService.bulkAssign(id, body.data);
+		let result: Awaited<ReturnType<SpacesService['bulkAssign']>>;
+
+		try {
+			result = await this.spacesService.bulkAssign(id, body.data);
+		} catch (error) {
+			// The spaces exceptions carry their own HTTP status, but this one comes from the devices
+			// module and extends plain Error — unmapped it would leave a deliberate refusal looking like
+			// a 500. Same translation the devices endpoints do for the same exception.
+			if (error instanceof DevicesNotAllowedException) {
+				throw new UnprocessableEntityException(error.message);
+			}
+
+			throw error;
+		}
 
 		const resultData = new BulkAssignmentResultDataModel();
 		resultData.success = true;

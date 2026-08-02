@@ -9,7 +9,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { EventType as DevicesEventType } from '../../devices/devices.constants';
+import { DEVICE_PLACEMENT_LOCKED_MESSAGE, EventType as DevicesEventType } from '../../devices/devices.constants';
+import { DevicesNotAllowedException } from '../../devices/devices.exceptions';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DeviceZonesService } from '../../devices/services/device-zones.service';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
@@ -598,6 +599,8 @@ export class SpacesService {
 				throw new SpacesValidationException('Devices can only be assigned to rooms, not zones');
 			}
 
+			await this.assertNoHiddenDevices(dtoInstance.deviceIds);
+
 			const result = await this.deviceRepository
 				.createQueryBuilder()
 				.update()
@@ -647,6 +650,8 @@ export class SpacesService {
 			return 0;
 		}
 
+		await this.assertNoHiddenDevices(deviceIds);
+
 		const result = await this.deviceRepository
 			.createQueryBuilder()
 			.update()
@@ -689,6 +694,34 @@ export class SpacesService {
 		this.logger.debug(`Unassigned ${unassigned} displays`);
 
 		return unassigned;
+	}
+
+	/**
+	 * Refuses a bulk placement write that targets a hidden device.
+	 *
+	 * `bulkAssign()` and `unassignDevices()` write `roomId` with a raw query builder UPDATE, so they
+	 * never reach `DevicesService.update()` and the placement guard living there cannot see them. That
+	 * makes this route a way around the rule rather than an exception to it: a hidden device is one a
+	 * virtual device has replaced, and its placement belongs to that virtual device regardless of which
+	 * endpoint the write arrives on. `POST /spaces/:id/assign` is gated by owner/admin, but that is an
+	 * authorization check — it says who may move devices, not which devices may be moved.
+	 *
+	 * All-or-nothing by design. Skipping the hidden ids and reporting `devicesAssigned: N` for the rest
+	 * would be a silent partial write: the caller asked for one thing, got another, and the response
+	 * says `success: true`. A refusal naming the offending ids is something the caller can act on.
+	 */
+	private async assertNoHiddenDevices(deviceIds: string[]): Promise<void> {
+		const hidden = await this.deviceRepository.find({ where: { id: In(deviceIds), hidden: true } });
+
+		if (hidden.length === 0) {
+			return;
+		}
+
+		const hiddenIds = hidden.map((device) => device.id);
+
+		this.logger.error(`Refused bulk placement change targeting hidden device(s) id=${hiddenIds.join(', ')}`);
+
+		throw new DevicesNotAllowedException(`${DEVICE_PLACEMENT_LOCKED_MESSAGE} Hidden devices: ${hiddenIds.join(', ')}`);
 	}
 
 	/**

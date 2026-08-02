@@ -12,7 +12,12 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { SpaceType } from '../../spaces/spaces.constants';
-import { DEVICES_MODULE_NAME, DeviceHiddenFilter, EventType } from '../devices.constants';
+import {
+	DEVICES_MODULE_NAME,
+	DEVICE_PLACEMENT_LOCKED_MESSAGE,
+	DeviceHiddenFilter,
+	EventType,
+} from '../devices.constants';
 import {
 	DevicesException,
 	DevicesNotAllowedException,
@@ -459,9 +464,7 @@ export class DevicesService {
 
 		this.logger.error(`Refused placement change on hidden device id=${device.id}`);
 
-		throw new DevicesNotAllowedException(
-			'Device is hidden and its room or zones can not be changed. Change the placement of the virtual device that replaced it.',
-		);
+		throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
 	}
 
 	/**

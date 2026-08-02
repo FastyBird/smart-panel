@@ -10,6 +10,7 @@ import { CreateHomeControlSpaceDto } from '../../../plugins/spaces-home-control/
 import { UpdateHomeControlSpaceDto } from '../../../plugins/spaces-home-control/dto/update-home-control-space.dto';
 import { RoomSpaceEntity } from '../../../plugins/spaces-home-control/entities/room-space.entity';
 import { ZoneSpaceEntity } from '../../../plugins/spaces-home-control/entities/zone-space.entity';
+import { DevicesNotAllowedException } from '../../devices/devices.exceptions';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DeviceZonesService } from '../../devices/services/device-zones.service';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
@@ -325,6 +326,79 @@ describe('SpacesService', () => {
 					displayIds: [],
 				}),
 			).rejects.toThrow(SpacesValidationException);
+		});
+
+		// This route writes `roomId` with a raw query builder UPDATE, so it never passes through
+		// `DevicesService.update()` and the placement guard there does not see it. A hidden device is
+		// one a virtual device has replaced; its placement belongs to that virtual device, whichever
+		// route the write arrives on. Refusal is all-or-nothing on purpose — quietly skipping the
+		// hidden ids while reporting `devicesAssigned: N` would be a silent partial write.
+		describe('placement of a hidden device', () => {
+			const arrangeDeviceWrite = (): {
+				update: jest.Mock;
+				set: jest.Mock;
+				where: jest.Mock;
+				execute: jest.Mock;
+			} => {
+				const deviceQueryBuilder = {
+					update: jest.fn().mockReturnThis(),
+					set: jest.fn().mockReturnThis(),
+					where: jest.fn().mockReturnThis(),
+					execute: jest.fn().mockResolvedValue({ affected: 1 } as UpdateResult),
+				};
+
+				deviceRepository.createQueryBuilder.mockReturnValue(
+					deviceQueryBuilder as unknown as SelectQueryBuilder<DeviceEntity>,
+				);
+
+				return deviceQueryBuilder;
+			};
+
+			it('refuses the whole bulk assign when any targeted device is hidden', async () => {
+				const hiddenId = uuid();
+				const deviceQueryBuilder = arrangeDeviceWrite();
+
+				deviceRepository.find.mockResolvedValue([{ id: hiddenId, hidden: true } as DeviceEntity]);
+
+				await expect(service.bulkAssign(roomId, { deviceIds: [uuid(), hiddenId], displayIds: [] })).rejects.toThrow(
+					DevicesNotAllowedException,
+				);
+
+				expect(deviceQueryBuilder.execute).not.toHaveBeenCalled();
+			});
+
+			it('assigns when every targeted device is visible', async () => {
+				const deviceQueryBuilder = arrangeDeviceWrite();
+
+				deviceRepository.find.mockResolvedValue([]);
+
+				const result = await service.bulkAssign(roomId, { deviceIds: [uuid()], displayIds: [] });
+
+				expect(result.devicesAssigned).toBe(1);
+				expect(deviceQueryBuilder.set).toHaveBeenCalledWith({ roomId });
+			});
+
+			it('refuses the whole unassign when any targeted device is hidden', async () => {
+				const hiddenId = uuid();
+				const deviceQueryBuilder = arrangeDeviceWrite();
+
+				deviceRepository.find.mockResolvedValue([{ id: hiddenId, hidden: true } as DeviceEntity]);
+
+				await expect(service.unassignDevices([uuid(), hiddenId])).rejects.toThrow(DevicesNotAllowedException);
+
+				expect(deviceQueryBuilder.execute).not.toHaveBeenCalled();
+			});
+
+			it('unassigns when every targeted device is visible', async () => {
+				const deviceQueryBuilder = arrangeDeviceWrite();
+
+				deviceRepository.find.mockResolvedValue([]);
+
+				const unassigned = await service.unassignDevices([uuid()]);
+
+				expect(unassigned).toBe(1);
+				expect(deviceQueryBuilder.set).toHaveBeenCalledWith({ roomId: null });
+			});
 		});
 	});
 
