@@ -135,9 +135,12 @@ describe('VirtualDevicesService', () => {
 	});
 
 	describe('reportCompatibility', () => {
+		// category is real, not filler: lighting genuinely offers a light channel and sensor genuinely
+		// offers a temperature channel (spec/devices.ts), so these pin the permission/data-type outcomes
+		// without also tripping the category/channel guard below.
 		it('reports a read-only source as incompatible with a writable slot', () => {
 			const report = service.reportCompatibility(
-				{ channel: ChannelCategory.LIGHT, property: PropertyCategory.ON },
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.ON },
 				readOnlySourceProperty,
 			);
 
@@ -147,7 +150,11 @@ describe('VirtualDevicesService', () => {
 
 		it('reports a read-write source as compatible with a read-only slot', () => {
 			const report = service.reportCompatibility(
-				{ channel: ChannelCategory.TEMPERATURE, property: PropertyCategory.TEMPERATURE },
+				{
+					category: DeviceCategory.SENSOR,
+					channel: ChannelCategory.TEMPERATURE,
+					property: PropertyCategory.TEMPERATURE,
+				},
 				readWriteSourceProperty,
 			);
 
@@ -156,12 +163,35 @@ describe('VirtualDevicesService', () => {
 
 		it('reports a data-type mismatch as incompatible', () => {
 			const report = service.reportCompatibility(
-				{ channel: ChannelCategory.LIGHT, property: PropertyCategory.ON },
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.ON },
 				floatSourceProperty,
 			);
 
 			expect(report.compatible).toBe(false);
 			expect(report.reason).toContain('data type');
+		});
+
+		// The gap a coordinator review caught: category was accepted and never consulted, so a channel
+		// that is real but simply not part of *this* device category's spec looked identical to one that
+		// is. lock's spec (spec/devices.ts) has no light channel at all. The source is rw/bool —
+		// permission- and data-type-compatible with light.on in every other respect — precisely so that
+		// only the category/channel guard can be responsible for the rejection; a source that also failed
+		// on permission or data type would pass this test for the wrong reason.
+		it('reports a channel that does not belong to the device category as incompatible', () => {
+			const rwBoolSource = property({
+				id: 'rw-bool-source',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.BOOL,
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.LOCK, channel: ChannelCategory.LIGHT, property: PropertyCategory.ON },
+				rwBoolSource,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('lock');
+			expect(report.reason).toContain('light');
 		});
 	});
 
@@ -445,7 +475,11 @@ describe('VirtualDevicesService', () => {
 	describe('reportCompatibility — supplementary', () => {
 		it('leaves reason unset when the source is fully compatible', () => {
 			const report = service.reportCompatibility(
-				{ channel: ChannelCategory.TEMPERATURE, property: PropertyCategory.TEMPERATURE },
+				{
+					category: DeviceCategory.SENSOR,
+					channel: ChannelCategory.TEMPERATURE,
+					property: PropertyCategory.TEMPERATURE,
+				},
 				readWriteSourceProperty,
 			);
 
@@ -466,7 +500,11 @@ describe('VirtualDevicesService', () => {
 			});
 
 			const report = service.reportCompatibility(
-				{ channel: ChannelCategory.TEMPERATURE, property: PropertyCategory.TEMPERATURE },
+				{
+					category: DeviceCategory.SENSOR,
+					channel: ChannelCategory.TEMPERATURE,
+					property: PropertyCategory.TEMPERATURE,
+				},
 				doublyWrongSource,
 			);
 
@@ -486,7 +524,7 @@ describe('VirtualDevicesService', () => {
 			});
 
 			const report = service.reportCompatibility(
-				{ channel: ChannelCategory.LIGHT, property: PropertyCategory.BRIGHTNESS },
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.BRIGHTNESS },
 				percentageSource,
 			);
 
@@ -501,7 +539,7 @@ describe('VirtualDevicesService', () => {
 			});
 
 			const report = service.reportCompatibility(
-				{ channel: ChannelCategory.LIGHT, property: PropertyCategory.BRIGHTNESS },
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.BRIGHTNESS },
 				stringSource,
 			);
 
@@ -512,17 +550,17 @@ describe('VirtualDevicesService', () => {
 		// Defensive: a spec slot the schema does not define (a client/schema mismatch, not a real
 		// incompatibility) reports rather than throws, so one bad slot in a batch cannot 500 the request.
 		it('reports a spec slot the schema does not define as incompatible rather than throwing', () => {
-			expect(() =>
-				service.reportCompatibility(
-					{ channel: ChannelCategory.LIGHT, property: PropertyCategory.TEMPERATURE },
-					readWriteSourceProperty,
-				),
-			).not.toThrow();
+			// lighting genuinely offers a light channel (so this exercises the "channel has no such
+			// property" branch specifically, not the category/channel guard covered above).
+			const slot = {
+				category: DeviceCategory.LIGHTING,
+				channel: ChannelCategory.LIGHT,
+				property: PropertyCategory.TEMPERATURE,
+			};
 
-			const report = service.reportCompatibility(
-				{ channel: ChannelCategory.LIGHT, property: PropertyCategory.TEMPERATURE },
-				readWriteSourceProperty,
-			);
+			expect(() => service.reportCompatibility(slot, readWriteSourceProperty)).not.toThrow();
+
+			const report = service.reportCompatibility(slot, readWriteSourceProperty);
 
 			expect(report.compatible).toBe(false);
 			expect(report.reason).toBeTruthy();

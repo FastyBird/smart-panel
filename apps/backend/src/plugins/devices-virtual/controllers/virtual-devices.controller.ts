@@ -149,7 +149,7 @@ export class VirtualDevicesController {
 			const sourceProperty = sourceProperties.get(candidate.source_property);
 
 			const result = this.virtualDevicesService.reportCompatibility(
-				{ channel: candidate.spec_channel, property: candidate.spec_property },
+				{ category, channel: candidate.spec_channel, property: candidate.spec_property },
 				sourceProperty,
 			);
 

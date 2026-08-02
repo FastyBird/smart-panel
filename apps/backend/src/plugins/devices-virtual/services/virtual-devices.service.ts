@@ -10,7 +10,7 @@ import { ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/en
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { getAllProperties } from '../../../modules/devices/utils/schema.utils';
+import { getAllProperties, isChannelAllowed, isValidDataType } from '../../../modules/devices/utils/schema.utils';
 import { DEVICES_VIRTUAL_TYPE, VIRTUAL_BLOCKED_CATEGORIES } from '../devices-virtual.constants';
 import {
 	VirtualCategoryNotSupportedException,
@@ -31,12 +31,17 @@ import { VirtualPropertyIndexService } from './virtual-property-index.service';
 
 /**
  * A spec slot the wizard is trying to fill: one property, on one channel category, from the target
- * device category's specification. A channel *category* (not a real channel id) plus a property
- * category is enough to resolve what the slot requires — see getAllProperties(channelCategory) in
- * schema.utils.ts — which is what lets reportCompatibility below be asked about a slot before the
- * virtual channel that will eventually hold it exists at all.
+ * device `category`'s specification. `category` is load-bearing, not context: `channel` plus
+ * `property` alone resolve a property's own permissions/data-type requirements (see
+ * getAllProperties(channelCategory) in schema.utils.ts), but say nothing about whether `channel`
+ * belongs to `category`'s specification at all — a channel category (not a real channel id) is enough
+ * to resolve what the slot requires, which is what lets reportCompatibility below be asked about a
+ * slot before the virtual channel that will eventually hold it exists at all, but it is also what
+ * makes the category dimension necessary: without it, a channel that is real but simply not part of
+ * this device category's spec would look identical to one that is.
  */
 export interface VirtualCompatibilitySpecSlot {
+	category: DeviceCategory;
 	channel: ChannelCategory;
 	property: PropertyCategory;
 }
@@ -292,28 +297,47 @@ export class VirtualDevicesService {
 
 	/**
 	 * Reports whether `sourceProperty` can fill `specSlot` — the non-throwing counterpart of
-	 * `assertPermissionsCompatible`, plus the data-type half of the same question.
+	 * `assertPermissionsCompatible`, plus the channel-membership and data-type halves of the same
+	 * question.
 	 *
 	 * Never throws for a slot/property pair that is merely incompatible: the wizard needs to grey out
 	 * every bad option in a batch at once (VirtualDevicesController.checkCompatibility), not discover
 	 * them one at a time, so a rejection is data (`{compatible: false, reason}`), not control flow.
 	 * `assertPermissionsCompatible` still throws — it is the assertion this wraps — its exception is
 	 * caught here and its message becomes the report's reason, which is what keeps the permission rule
-	 * itself living in exactly one place rather than being restated for the report shape.
+	 * itself living in exactly one place rather than being restated for the report shape. The data-type
+	 * question is answered the same way, by calling schema.utils.ts's own `isValidDataType` rather than
+	 * re-deriving its multi-variant-or-exact-match logic here — that logic already exists in two places
+	 * (here, before this change, and privately inside DeviceValidationService.validatePropertyAgainstSpec)
+	 * and a third copy is exactly the drift risk the permission rule was already written to avoid.
 	 *
-	 * Permission is checked before data type, and checking stops at the first failure: a source wrong
-	 * on both counts reports the permission reason, not both concatenated. The wizard renders one reason
-	 * per option, not a list.
+	 * Checked in order — category/channel membership, then permission, then data type — and checking
+	 * stops at the first failure: a source wrong on more than one count reports only the first reason,
+	 * not all of them concatenated. The wizard renders one reason per option, not a list. Category is
+	 * checked first because it is the most fundamental mismatch: if `channel` is not even part of
+	 * `category`'s specification, asking whether a property on it has the right permissions or data type
+	 * is a question about the wrong channel.
 	 *
-	 * `specSlot` names a channel *category* and a property *category* from the target device category's
-	 * specification, not a real channel or property id — see VirtualCompatibilitySpecSlot. A slot the
-	 * schema does not define (a client/schema mismatch, not a genuine incompatibility) is reported
-	 * incompatible rather than thrown, for the same batch-safety reason as above.
+	 * `specSlot` names a device `category`, a channel *category* and a property *category* — not a real
+	 * channel or property id — see VirtualCompatibilitySpecSlot. `category` is what makes this endpoint
+	 * safe against a channel that is real (it exists somewhere in the schema, so getAllProperties resolves
+	 * it) but not actually offered by *this* device category: without checking `isChannelAllowed` first, a
+	 * `lock` device asked about a `light` channel would silently defer entirely to the property-level
+	 * checks below and could come back compatible. A slot the schema does not define at all (channel
+	 * allowed but no such property in it) is reported incompatible rather than thrown, for the same
+	 * batch-safety reason as above.
 	 */
 	reportCompatibility(
 		specSlot: VirtualCompatibilitySpecSlot,
 		sourceProperty: ChannelPropertyEntity,
 	): VirtualCompatibilityReport {
+		if (!isChannelAllowed(specSlot.category, specSlot.channel)) {
+			return {
+				compatible: false,
+				reason: `Device category '${specSlot.category}' does not include a '${specSlot.channel}' channel in its specification`,
+			};
+		}
+
 		const metadata = getAllProperties(specSlot.channel).find((candidate) => candidate.category === specSlot.property);
 
 		if (!metadata) {
@@ -329,21 +353,17 @@ export class VirtualDevicesService {
 			return { compatible: false, reason: error instanceof Error ? error.message : String(error) };
 		}
 
-		// Mirrors DeviceValidationService.validatePropertyAgainstSpec's data-type branch
-		// (device-validation.service.ts:707-725): a multi-datatype property is satisfied by any one of
-		// its variants; a single-datatype property with no data_type at all imposes no constraint.
-		let dataTypeValid: boolean;
-		let expectedDataTypes: string;
+		if (!isValidDataType(specSlot.channel, specSlot.property, sourceProperty.dataType)) {
+			// expectedDataTypes is display-only — built locally rather than by isValidDataType, which
+			// (correctly) only answers yes/no. Mirrors the same multi-variant-or-single join
+			// DeviceValidationService.validatePropertyAgainstSpec uses for its own "expected" field
+			// (device-validation.service.ts:707-724), so the reason text matches what that private
+			// method would have said, without calling it.
+			const expectedDataTypes =
+				metadata.hasMultipleDataTypes && metadata.dataTypeVariants && metadata.dataTypeVariants.length > 0
+					? metadata.dataTypeVariants.map((variant) => variant.data_type).join(' | ')
+					: metadata.data_type;
 
-		if (metadata.hasMultipleDataTypes && metadata.dataTypeVariants && metadata.dataTypeVariants.length > 0) {
-			dataTypeValid = metadata.dataTypeVariants.some((variant) => variant.data_type === sourceProperty.dataType);
-			expectedDataTypes = metadata.dataTypeVariants.map((variant) => variant.data_type).join(' | ');
-		} else {
-			dataTypeValid = !metadata.data_type || metadata.data_type === sourceProperty.dataType;
-			expectedDataTypes = metadata.data_type;
-		}
-
-		if (!dataTypeValid) {
 			return {
 				compatible: false,
 				reason: `Source property id=${sourceProperty.id} has data type '${sourceProperty.dataType}', which does not satisfy the required data type '${expectedDataTypes}' for '${specSlot.channel}.${specSlot.property}'`,

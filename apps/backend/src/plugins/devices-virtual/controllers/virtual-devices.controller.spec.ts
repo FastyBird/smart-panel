@@ -135,14 +135,20 @@ describe('VirtualDevicesController', () => {
 					reason: 'permission mismatch',
 				},
 			]);
+			// category (from the request, not the candidate) must reach the service too — it is what lets
+			// reportCompatibility catch a channel that is real but not part of this device category's spec.
 			expect(virtualDevicesService.reportCompatibility).toHaveBeenNthCalledWith(
 				1,
-				{ channel: ChannelCategory.LIGHT, property: PropertyCategory.ON },
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.ON },
 				sourceA,
 			);
 			expect(virtualDevicesService.reportCompatibility).toHaveBeenNthCalledWith(
 				2,
-				{ channel: ChannelCategory.LIGHT, property: PropertyCategory.BRIGHTNESS },
+				{
+					category: DeviceCategory.LIGHTING,
+					channel: ChannelCategory.LIGHT,
+					property: PropertyCategory.BRIGHTNESS,
+				},
 				sourceB,
 			);
 		});
