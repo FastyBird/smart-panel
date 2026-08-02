@@ -113,6 +113,32 @@ This is not new — it is inherent to a boolean column with no owner — but rou
 
 Fixing it means recording *who* hid the device — an enum or a nullable "hidden by virtual device id" column rather than a boolean — which is a schema and admin-UI decision, not a listener change. Worth doing if hiding ever gains a second automatic source.
 
+**The second half, raised in round 8: an abandonment that commits before shutdown is unrecoverable.** The unhide is queued in memory and drained by a fire-and-forget pass. If the deletion or unlinking of the final reference commits but the process stops before that pass runs, the source stays hidden — and nothing afterwards can notice. `onApplicationBootstrap` rebuilds from an *empty* index, so `abandonedSourceDeviceIds` is structurally `[]` (the hook documents this); every later rebuild then compares an already-hydrated, reference-free index against the same state and reports no transition. The edge is gone permanently, and the automatic unhide never happens unless another reference is created and removed first.
+
+**A durable queue cannot close it, and this is the reason the fix is provenance or nothing.** The abandonment is *derived* by a rebuild that must run strictly after the deleting transaction commits — that is the whole point of `deferPastOpenTransaction()`. So there is no point at which the intent could be recorded atomically with the deletion; any durable queue is written after the commit and has its own identical crash window, merely narrower. Only a reconciliation at startup can recover a lost edge, and a reconciliation needs to know which hidden devices were hidden *by* a virtual device.
+
+**Assessed in round 8 and deliberately left open.** The obvious reconciliation — "unhide every hidden device that no virtual property references" — is wrong, and worse than the bug: `hidden` is also a plain operator choice, so it would destroy a deliberate setting on every boot. Doing it correctly needs provenance, and provenance currently has nowhere to come from:
+
+- **Nothing in the backend ever sets `hidden = true`.** Grep the whole of `apps/backend/src`: the only writer is `unhideAbandonedSources()`, and it writes `false`. Hiding is exclusively a client `PATCH /devices/:id { hidden: true }`. The backend never performs the act whose provenance would be recorded.
+- **There is no admin virtual-devices plugin yet** (`apps/admin/src/plugins/devices-virtual` does not exist), so the "hide the source this virtual device replaces" flow — the one thing that would carry provenance — is not implemented anywhere. The e2e stands in for it with a bare PATCH.
+- Consequently a provenance column added today would have **no writer**. Every hidden row would migrate to "hidden by the operator", including exactly the rows the auto-unhide exists to serve, so the reconciliation would recover nothing while the schema, DTOs, OpenAPI, admin types and panel specs all churned. Giving it a writer means either designing a `hidden_by` API field for a client that does not exist yet, or having the plugin hide sources itself — which contradicts the spec's "*optionally* hide the source device".
+
+The exposure in the meantime is bounded and recoverable: a source stranded this way is excluded from the four selection DTOs and from `?hidden=false`, but `GET /devices` still defaults to `all` so it is not invisible, and `PATCH /devices/:id { hidden: false }` is a documented field that restores it.
+
+**Do this as part of the admin virtual-devices plugin**, which is where hiding will actually be driven from and which needs an unhide affordance regardless. At that point the column has a writer, the migration has a meaningful default, and a bootstrap reconciliation over rows marked "hidden by a virtual device" becomes both correct and cheap.
+
+### 2.12 `aggregateState()` treats an UNKNOWN source as offline, making the device uncommandable (medium)
+
+Found in round 8, while fixing the configuration-time write. `VirtualStatusListener.aggregateState()` returns DISCONNECTED as soon as any source device's status is `!online`. A device that has simply never reported a connection state has `status: 'unknown'`, `online: false` — so a virtual device backed by it aggregates to DISCONNECTED, and `PropertyCommandService.processDeviceCommands()` refuses every command against a device that is offline. The virtual device is uncommandable, permanently, with nothing wrong anywhere.
+
+This is a self-inconsistency, not a judgement call. Both the core command service and `VirtualDevicePlatform` itself (`!device.status.online && device.status.status !== ConnectionState.UNKNOWN`) deliberately treat UNKNOWN as commandable — "allow commands through if status is UNKNOWN (e.g. storage unavailable or no data)". Only the aggregation collapses it into DISCONNECTED, so the plugin's own platform would happily forward to a source it is never given the chance to see.
+
+Confirmed directly: with a simulator source (the simulator plugin is disabled by default and so never reports a connection state), `VirtualDevicePlatform.processBatch()` returns `true` and moves the source's value when called directly, while the same command issued through the API is dropped with "Device is offline".
+
+It stayed invisible because `ChannelsPropertiesService.update()` wrote the commanded value into the source's *own* series before dispatching anything — the round 8 P1 corruption — which made the e2e's "commanding the virtual property changes the source property's value" pass whether or not the command was ever dispatched. That test now reports the source connected through `DeviceConnectivityService` first, exactly as a real integration would, so it genuinely exercises the forward; the underlying gap is left for this follow-up rather than folded into a value-corruption fix.
+
+Fix: give `aggregateState()` the same "definitively offline" predicate the other two use, and decide what a virtual device backed only by UNKNOWN sources should report — propagating UNKNOWN is the truthful answer and keeps it commandable, but it is a visible status change and belongs in its own change with its own tests.
+
 ## 3. Pre-existing issues found in passing
 
 ### 3.1 `DeviceEntity.enabled` has the class-field-initializer defect (medium)
