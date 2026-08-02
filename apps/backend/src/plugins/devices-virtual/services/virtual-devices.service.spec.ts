@@ -7,6 +7,7 @@ import { DEVICES_VIRTUAL_TYPE, VIRTUAL_BLOCKED_CATEGORIES } from '../devices-vir
 import {
 	VirtualCategoryNotSupportedException,
 	VirtualNestingNotAllowedException,
+	VirtualOwnedPropertyNotWritableException,
 	VirtualOwnerNotVirtualException,
 	VirtualSourceNotFoundException,
 	VirtualValueOriginConflictException,
@@ -226,6 +227,61 @@ describe('VirtualDevicesService', () => {
 			devicesService.findOne.mockResolvedValue(null);
 
 			await expect(service.assertChannelOwnerIsVirtual('chan-1')).rejects.toThrow(VirtualOwnerNotVirtualException);
+		});
+	});
+
+	describe('assertOwnedPropertyNotWritable', () => {
+		// The merged row a partial PATCH produces, as in assertValueOriginPairSupported above.
+		const merged = (
+			valueOrigin: VirtualValueOrigin | undefined,
+			permissions: PermissionType[],
+		): VirtualChannelPropertyEntity =>
+			Object.assign(new VirtualChannelPropertyEntity(), { id: 'virtual-prop', valueOrigin, permissions });
+
+		it.each([[PermissionType.READ_WRITE], [PermissionType.WRITE_ONLY]])(
+			'rejects an owned property permitting %s',
+			(permission) => {
+				expect(() => service.assertOwnedPropertyNotWritable(merged(VirtualValueOrigin.LOCAL, [permission]))).toThrow(
+					VirtualOwnedPropertyNotWritableException,
+				);
+			},
+		);
+
+		it('rejects an owned property whose permissions merely include a writable one', () => {
+			expect(() =>
+				service.assertOwnedPropertyNotWritable(
+					merged(VirtualValueOrigin.LOCAL, [PermissionType.READ_ONLY, PermissionType.WRITE_ONLY]),
+				),
+			).toThrow(VirtualOwnedPropertyNotWritableException);
+		});
+
+		it('accepts a read-only owned property — the only kind v1 synthesizes', () => {
+			expect(() =>
+				service.assertOwnedPropertyNotWritable(merged(VirtualValueOrigin.LOCAL, [PermissionType.READ_ONLY])),
+			).not.toThrow();
+		});
+
+		// `ev` is a report channel, not a command one, so it is not writability.
+		it('accepts an owned property that is event-only', () => {
+			expect(() =>
+				service.assertOwnedPropertyNotWritable(merged(VirtualValueOrigin.LOCAL, [PermissionType.EVENT_ONLY])),
+			).not.toThrow();
+		});
+
+		// A writable projection is the plugin's core feature — the write is forwarded to the source.
+		it('accepts a writable linked property', () => {
+			expect(() =>
+				service.assertOwnedPropertyNotWritable(merged(VirtualValueOrigin.SOURCE, [PermissionType.READ_WRITE])),
+			).not.toThrow();
+		});
+
+		// Same reason as in assertValueOriginPairSupported: an entity that has not round-tripped through
+		// the database has `valueOrigin` undefined, which the column default makes SOURCE. Reading it as
+		// LOCAL here would reject every freshly created writable linked property.
+		it('accepts an undefined value origin with writable permissions, which the column default makes linked', () => {
+			expect(() =>
+				service.assertOwnedPropertyNotWritable(merged(undefined, [PermissionType.READ_WRITE])),
+			).not.toThrow();
 		});
 	});
 

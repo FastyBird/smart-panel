@@ -503,6 +503,7 @@ describe('VirtualDeviceInformationListener', () => {
 			channelCategory: ChannelCategory,
 			valueOrigin: VirtualValueOrigin | undefined,
 			sourcePropertyId: string | null = null,
+			permissions: PermissionType[] = [PermissionType.READ_ONLY],
 		): VirtualChannelPropertyEntity => {
 			const property = new VirtualChannelPropertyEntity();
 
@@ -511,6 +512,7 @@ describe('VirtualDeviceInformationListener', () => {
 				category: PropertyCategory.STATUS,
 				valueOrigin,
 				sourcePropertyId,
+				permissions,
 				channel: Object.assign(new ChannelEntity(), { id: 'info-channel', category: channelCategory }),
 			});
 
@@ -536,6 +538,35 @@ describe('VirtualDeviceInformationListener', () => {
 			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
 				'recreated-prop',
 				expect.objectContaining({ value_origin: VirtualValueOrigin.LOCAL, source_property: null }),
+			);
+		});
+
+		// The same hazard as the source above, one field over. A writable projection is legal — that is
+		// what forwarding a command means — but carrying those permissions across the claim would merge
+		// into a writable *owned* property, which VirtualDevicesService.assertOwnedPropertyNotWritable
+		// refuses. A refusal here is a throw out of the afterCreate hook, i.e. a self-inflicted outage
+		// rather than a guard, so the claim downgrades instead. Coherent besides: this only ever runs
+		// inside a device_information channel, whose contents are read-only by definition.
+		it('downgrades a writable property to read-only when it claims it', async () => {
+			await listener.claimDeviceInformationProperty(
+				propertyIn(ChannelCategory.DEVICE_INFORMATION, undefined, null, [PermissionType.READ_WRITE]),
+			);
+
+			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+				'recreated-prop',
+				expect.objectContaining({ value_origin: VirtualValueOrigin.LOCAL, permissions: [PermissionType.READ_ONLY] }),
+			);
+		});
+
+		// The counterpart: an already read-only property must not have `permissions` sent at all, so a
+		// claim still touches nothing but the two origin fields — `omitBy(..., isUndefined)` in
+		// ChannelsPropertiesService.update() is what drops it.
+		it('does not send permissions when claiming an already read-only property', async () => {
+			await listener.claimDeviceInformationProperty(propertyIn(ChannelCategory.DEVICE_INFORMATION, undefined));
+
+			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+				'recreated-prop',
+				expect.objectContaining({ permissions: undefined }),
 			);
 		});
 

@@ -1,6 +1,7 @@
 import { useContainer, validate } from 'class-validator';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { PermissionType } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
@@ -274,5 +275,123 @@ describe('source_property field validation on CreateVirtualChannelPropertyDto / 
 		const errors = await validate(dto);
 
 		expect(errors.some((error) => error.property === 'value_origin' && !!error.constraints?.isEnum)).toBe(true);
+	});
+
+	// -- value_origin / permissions must name a property something can actually act on -----------
+	//
+	// An owned property stores its own value and forwards nothing, and VirtualDevicePlatform refuses
+	// every LOCAL property outright — so a writable one is a control that can never move anything. It
+	// is not merely inert: ChannelsPropertiesService.update() persists the optimistic value into the
+	// property's own series before the controller's fire-and-forget dispatch is refused, so the switch
+	// appears to move and nothing happens. v1 is wiring only (design spec, "v1 category boundary"), so
+	// this restricts rather than implements; writable owned properties arrive with controller support.
+
+	const ownedWritableError = (errors: { property: string; constraints?: Record<string, string> }[]): boolean =>
+		errors.some((error) => error.property === 'permissions' && !!error.constraints?.OwnedPropertyNotWritable);
+
+	it.each([[PermissionType.READ_WRITE], [PermissionType.WRITE_ONLY]])(
+		'CreateVirtualChannelPropertyDto rejects an owned property permitting %s',
+		async (permission) => {
+			const dto = toInstance(CreateVirtualChannelPropertyDto, {
+				...basePropertyFields,
+				permissions: [permission],
+				value_origin: VirtualValueOrigin.LOCAL,
+			});
+
+			expect(ownedWritableError(await validate(dto))).toBe(true);
+		},
+	);
+
+	it('UpdateVirtualChannelPropertyDto rejects switching to local and writable in one payload', async () => {
+		const dto = toInstance(UpdateVirtualChannelPropertyDto, {
+			type: DEVICES_VIRTUAL_TYPE,
+			permissions: [PermissionType.READ_WRITE],
+			value_origin: VirtualValueOrigin.LOCAL,
+		});
+
+		expect(ownedWritableError(await validate(dto))).toBe(true);
+	});
+
+	// The states that must stay legal — the constraint may not narrow the schema past the one
+	// combination that cannot work.
+
+	it('CreateVirtualChannelPropertyDto accepts a read-only owned property — what the synthesis creates', async () => {
+		const dto = toInstance(CreateVirtualChannelPropertyDto, {
+			...basePropertyFields,
+			permissions: [PermissionType.READ_ONLY],
+			value_origin: VirtualValueOrigin.LOCAL,
+		});
+
+		expect(await validate(dto)).toHaveLength(0);
+	});
+
+	// A writable projection is the plugin's core feature: the write is forwarded to the source.
+	it('CreateVirtualChannelPropertyDto accepts a writable linked property', async () => {
+		withPhysicalSource();
+
+		const dto = toInstance(CreateVirtualChannelPropertyDto, {
+			...basePropertyFields,
+			permissions: [PermissionType.READ_WRITE],
+			source_property: '550e8400-e29b-41d4-a716-446655440020',
+		});
+
+		expect(await validate(dto)).toHaveLength(0);
+	});
+
+	// `value_origin` absent means the SOURCE column default, not LOCAL — reading it the other way
+	// would reject every writable linked property created without stating its origin.
+	it('CreateVirtualChannelPropertyDto accepts writable permissions when value_origin is omitted', async () => {
+		const dto = toInstance(CreateVirtualChannelPropertyDto, {
+			...basePropertyFields,
+			permissions: [PermissionType.READ_WRITE],
+		});
+
+		expect(await validate(dto)).toHaveLength(0);
+	});
+
+	// -- the class-validator override trap, on `permissions` this time ---------------------------
+	//
+	// `permissions` is redeclared on both DTOs to carry the new constraint, and class-validator
+	// replaces rather than merges a redeclared property's stack — so the inherited checks have to be
+	// asserted, not assumed. @IsOptional in particular is dropped from a redeclared property whatever
+	// the child declares.
+
+	it.each([
+		['CreateVirtualChannelPropertyDto', CreateVirtualChannelPropertyDto, basePropertyFields],
+		['UpdateVirtualChannelPropertyDto', UpdateVirtualChannelPropertyDto, { type: DEVICES_VIRTUAL_TYPE }],
+	])('%s still rejects an empty permissions array', async (_name, DtoClass, baseFields) => {
+		const dto = toInstance(DtoClass as new () => object, { ...baseFields, permissions: [] });
+
+		const errors = await validate(dto);
+
+		expect(errors.some((error) => error.property === 'permissions' && !!error.constraints?.arrayNotEmpty)).toBe(true);
+	});
+
+	it.each([
+		['CreateVirtualChannelPropertyDto', CreateVirtualChannelPropertyDto, basePropertyFields],
+		['UpdateVirtualChannelPropertyDto', UpdateVirtualChannelPropertyDto, { type: DEVICES_VIRTUAL_TYPE }],
+	])('%s still rejects an unknown permission', async (_name, DtoClass, baseFields) => {
+		const dto = toInstance(DtoClass as new () => object, { ...baseFields, permissions: ['sideways'] });
+
+		const errors = await validate(dto);
+
+		expect(errors.some((error) => error.property === 'permissions' && !!error.constraints?.isEnum)).toBe(true);
+	});
+
+	// The inherited @IsOptional the update DTO cannot lose: a PATCH that renames a property must not
+	// be forced to restate its permissions.
+	it('UpdateVirtualChannelPropertyDto still allows omitting permissions entirely', async () => {
+		const dto = toInstance(UpdateVirtualChannelPropertyDto, { type: DEVICES_VIRTUAL_TYPE, name: 'Renamed' });
+
+		expect((await validate(dto)).filter((error) => error.property === 'permissions')).toHaveLength(0);
+	});
+
+	// The create DTO's `permissions` is required, and redeclaring it must not have made it optional.
+	it('CreateVirtualChannelPropertyDto still requires permissions', async () => {
+		const withoutPermissions = { ...basePropertyFields, permissions: undefined };
+
+		const dto = toInstance(CreateVirtualChannelPropertyDto, withoutPermissions);
+
+		expect((await validate(dto)).some((error) => error.property === 'permissions')).toBe(true);
 	});
 });

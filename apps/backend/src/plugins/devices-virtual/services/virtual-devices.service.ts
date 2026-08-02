@@ -9,12 +9,17 @@ import { DEVICES_VIRTUAL_TYPE, VIRTUAL_BLOCKED_CATEGORIES } from '../devices-vir
 import {
 	VirtualCategoryNotSupportedException,
 	VirtualNestingNotAllowedException,
+	VirtualOwnedPropertyNotWritableException,
 	VirtualOwnerNotVirtualException,
 	VirtualPermissionsIncompatibleException,
 	VirtualSourceNotFoundException,
 	VirtualValueOriginConflictException,
 } from '../devices-virtual.exceptions';
-import { VirtualChannelPropertyEntity, isUnsupportedValueOriginPair } from '../entities/devices-virtual.entity';
+import {
+	VirtualChannelPropertyEntity,
+	isUnsupportedOwnedPermissionsPair,
+	isUnsupportedValueOriginPair,
+} from '../entities/devices-virtual.entity';
 
 import { VirtualPropertyIndexService } from './virtual-property-index.service';
 
@@ -29,6 +34,8 @@ import { VirtualPropertyIndexService } from './virtual-property-index.service';
  * - `assertDeviceIsVirtual` / `assertChannelOwnerIsVirtual` — containment: nothing virtual may hang
  *   off a device that is not. The second is the load-bearing one — see its docstring for how a stray
  *   virtual property makes a *physical* device's own commands start failing.
+ * - `assertOwnedPropertyNotWritable` — v1 has no write semantics for an owned property, so a writable
+ *   one is a control that can never move anything.
  * - `assertSourceNotVirtual` — is load-bearing, not optional: VirtualProjectionListener re-emits
  *   CHANNEL_PROPERTY_VALUE_SET and terminates only because no virtual property is ever another's
  *   `sourcePropertyId` (see that listener's docstring). VirtualDevicePlatform.processBatch checks the
@@ -51,10 +58,10 @@ import { VirtualPropertyIndexService } from './virtual-property-index.service';
  * property controllers and an argument on the two nested-creation paths, so it never reaches the DTO.
  * It hangs off a `beforeCreate` mapping hook instead, which is handed the channel id explicitly.
  *
- * `assertValueOriginPairSupported` judges the *merged row* rather than a payload — the half of the
- * rule a partial PATCH cannot show — so it hangs off a `beforeUpdate` mapping hook. It has a
- * DTO-constraint counterpart for the payload that carries both halves; they are complementary, not
- * alternatives (see the method).
+ * `assertValueOriginPairSupported` and `assertOwnedPropertyNotWritable` judge the *merged row* rather
+ * than a payload — the half of each rule a partial PATCH cannot show — so both hang off a
+ * `beforeUpdate` mapping hook. Each has a DTO-constraint counterpart for the payload that carries
+ * both halves; they are complementary, not alternatives (see the methods).
  *
  * `assertPermissionsCompatible` is deliberately not wired at all: it needs
  * the target spec slot's required permissions, which depend on the channel category and are not
@@ -204,6 +211,30 @@ export class VirtualDevicesService {
 		if (!device || device.type !== DEVICES_VIRTUAL_TYPE) {
 			throw new VirtualOwnerNotVirtualException(
 				`Channel id=${channelId} belongs to device id=${deviceId ?? 'unknown'}, which is not a virtual device; a virtual property can only belong to a virtual device`,
+			);
+		}
+	}
+
+	/**
+	 * Throws when the property's *merged* (`valueOrigin`, `permissions`) pair makes it an owned control
+	 * nothing can act on — see `isUnsupportedOwnedPermissionsPair` for why that state is worse than
+	 * merely useless.
+	 *
+	 * Takes an entity for the same reason `assertValueOriginPairSupported` does: this is the half of
+	 * the rule a request payload cannot see. `ValidateOwnedPropertyNotWritable` on the create/update
+	 * DTOs judges the pair when both halves arrive together — always true on create, where
+	 * `value_origin` has a known default and `permissions` is required — but a PATCH can send either
+	 * half alone. `{permissions: ['rw']}` against an owned property and `{value_origin: 'local'}`
+	 * against a writable orphan each validate perfectly and only become the refused state once
+	 * ChannelsPropertiesService.update() has merged them into the stored row.
+	 *
+	 * Called from the same `beforeUpdate` mapping hook as `assertValueOriginPairSupported`, on that
+	 * merged row, before it is saved — see the registration in ../devices-virtual.plugin.ts.
+	 */
+	assertOwnedPropertyNotWritable(property: VirtualChannelPropertyEntity): void {
+		if (isUnsupportedOwnedPermissionsPair(property.valueOrigin, property.permissions)) {
+			throw new VirtualOwnedPropertyNotWritableException(
+				`Property id=${property.id} would be stored as owned with permissions [${(property.permissions ?? []).join(', ')}]; an owned property stores its own value and forwards nothing, so it must be read-only`,
 			);
 		}
 	}

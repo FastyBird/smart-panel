@@ -4,6 +4,7 @@ import { ChildEntity, Column, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
+import { PermissionType } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 
@@ -46,6 +47,41 @@ export const isUnsupportedValueOriginPair = (
 	valueOrigin: VirtualValueOrigin | undefined,
 	sourcePropertyId: string | null | undefined,
 ): boolean => valueOrigin === VirtualValueOrigin.LOCAL && !!sourcePropertyId;
+
+/** Permissions through which a client can command a property. `ev` is a report channel, not one. */
+const WRITABLE_PERMISSIONS: readonly PermissionType[] = [PermissionType.READ_WRITE, PermissionType.WRITE_ONLY];
+
+/**
+ * True for an OWNED property that claims to be writable — a control that can never move anything.
+ *
+ * An owned property stores its own value and forwards nothing, so there is no hardware behind it to
+ * command. VirtualDevicePlatform.processBatch() says so outright and refuses every LOCAL property
+ * ("owned properties are read-only in this release"), which makes a writable one not merely useless
+ * but actively misleading: ChannelsPropertiesService.update() persists the optimistic value into the
+ * property's own series *before* the controller dispatches the command, and that dispatch is
+ * fire-and-forget — so the control appears to move, the refusal goes to a log, and nothing happens.
+ *
+ * v1 is wiring only: the only owned properties that exist are the synthesized, read-only
+ * `device_information` strings (design spec, "v1 category boundary"). Writable owned properties are
+ * what the follow-up controller-support work is for, when a setpoint someone can actually act on
+ * becomes meaningful — so this restricts rather than implements.
+ *
+ * A free function, and shaped like `isUnsupportedValueOriginPair` above, for the same reason: the
+ * two callers judge the pair at different points in its life. The DTO constraint
+ * (../validators/owned-property-not-writable-constraint.validator.ts) sees the fields of one request
+ * payload; VirtualDevicesService.assertOwnedPropertyNotWritable sees the merged row a PATCH is about
+ * to persist. Both must apply the same rule; this is it.
+ *
+ * `undefined` permissions are not writable — an absent field is @IsOptional's business, not this
+ * rule's. `undefined` valueOrigin is deliberately not LOCAL, matching the column default (see the
+ * entity's `valueOrigin` comment).
+ */
+export const isUnsupportedOwnedPermissionsPair = (
+	valueOrigin: VirtualValueOrigin | undefined,
+	permissions: PermissionType[] | undefined | null,
+): boolean =>
+	valueOrigin === VirtualValueOrigin.LOCAL &&
+	!!permissions?.some((permission) => WRITABLE_PERMISSIONS.includes(permission));
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataDevice' })
 @ChildEntity()

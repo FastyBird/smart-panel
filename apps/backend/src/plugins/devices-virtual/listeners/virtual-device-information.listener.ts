@@ -14,7 +14,11 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../mod
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
-import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
+import {
+	VirtualChannelPropertyEntity,
+	VirtualValueOrigin,
+	isUnsupportedOwnedPermissionsPair,
+} from '../entities/devices-virtual.entity';
 
 import { VirtualStatusListener } from './virtual-status.listener';
 
@@ -372,10 +376,10 @@ export class VirtualDeviceInformationListener {
 	/**
 	 * Converts a projecting property to owned, and does nothing to one that already is.
 	 *
-	 * Sends `value_origin` and `source_property` and nothing else besides the `type` discriminator
-	 * ChannelsPropertiesService.update() requires to resolve the mapping: every other column on the
-	 * entity is left `undefined` and dropped by that method's `omitBy(..., isUndefined)`, so this cannot
-	 * disturb a name, permissions or format someone has since edited.
+	 * Sends `value_origin` and `source_property` — and, only when it has to, `permissions` — plus the
+	 * `type` discriminator ChannelsPropertiesService.update() requires to resolve the mapping. Every
+	 * other column on the entity is left `undefined` and dropped by that method's
+	 * `omitBy(..., isUndefined)`, so this cannot disturb a name or format someone has since edited.
 	 *
 	 * The source is cleared rather than left alone because owned means owned outright. Both callers
 	 * reach here with a null source in every path either has been observed to take — one guards on
@@ -386,6 +390,18 @@ export class VirtualDeviceInformationListener {
 	 * the one pair the entity has no state for, which `VirtualDevicesService
 	 * .assertValueOriginPairSupported` now refuses to persist — turning a silently inert row into a
 	 * throw out of a listener. Clearing it makes the claim mean what it says instead, in every path.
+	 *
+	 * `permissions` is the exact same hazard one field over, and is handled the same way. A *writable*
+	 * projecting property is perfectly legal — that is what forwarding a command to a source means —
+	 * and both callers can reach one: a writable orphan POSTed into the device_information channel
+	 * arrives through `claimDeviceInformationProperty`, and a writable status property through
+	 * `ensureConnectionStateProperty`. Carrying those permissions across would merge into an owned
+	 * property that claims to be writable, which `VirtualDevicesService.assertOwnedPropertyNotWritable`
+	 * refuses — and a refusal here is a throw out of a listener, or out of the `afterCreate` hook,
+	 * which is a self-inflicted outage rather than a guard. Downgrading is not a silent rewrite of the
+	 * user's intent either: this only ever runs inside a `device_information` channel, whose contents
+	 * are read-only by definition, and the property is already being converted from projecting to
+	 * owned. Making it read-only is the rest of that same conversion.
 	 */
 	private async claimProperty(property: VirtualChannelPropertyEntity): Promise<void> {
 		if (!property.isProjecting) {
@@ -396,6 +412,12 @@ export class VirtualDeviceInformationListener {
 			type: property.type,
 			value_origin: VirtualValueOrigin.LOCAL,
 			source_property: null,
+			// Left undefined — and so dropped by `omitBy(..., isUndefined)` — unless the property is
+			// actually writable, so a claim of an already read-only property still touches nothing but
+			// the two origin fields.
+			permissions: isUnsupportedOwnedPermissionsPair(VirtualValueOrigin.LOCAL, property.permissions)
+				? [PermissionType.READ_ONLY]
+				: undefined,
 		});
 
 		this.logger.debug(`Marked property id=${property.id} as owned by its virtual device`);

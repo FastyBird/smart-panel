@@ -31,7 +31,11 @@ import {
 	DEVICES_VIRTUAL_PLUGIN_NAME,
 	DEVICES_VIRTUAL_TYPE,
 } from './devices-virtual.constants';
-import { VirtualOwnerNotVirtualException, VirtualValueOriginConflictException } from './devices-virtual.exceptions';
+import {
+	VirtualOwnedPropertyNotWritableException,
+	VirtualOwnerNotVirtualException,
+	VirtualValueOriginConflictException,
+} from './devices-virtual.exceptions';
 import { DEVICES_VIRTUAL_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-virtual.openapi';
 import { CreateVirtualChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateVirtualChannelDto } from './dto/create-channel.dto';
@@ -164,11 +168,18 @@ export class DevicesVirtualPlugin {
 			// left to escape, for the same reason as in `beforeUpdate` below: this hook's caller
 			// reports a DevicesException as an unprocessable entity and anything else as a 500, and a
 			// refused payload is not a server fault. Any other exception is re-thrown untouched.
-			beforeCreate: async (_property: VirtualChannelPropertyEntity, channelId: string): Promise<void> => {
+			beforeCreate: async (property: VirtualChannelPropertyEntity, channelId: string): Promise<void> => {
 				try {
 					await this.virtualDevicesService.assertChannelOwnerIsVirtual(channelId);
+					// Repeated here as well as on the create DTO so that *every* creation path is covered,
+					// including this plugin's own listeners and any future internal caller that bypasses
+					// the DTO. The DTO constraint still owns the user-facing error, which names the field.
+					this.virtualDevicesService.assertOwnedPropertyNotWritable(property);
 				} catch (error) {
-					if (error instanceof VirtualOwnerNotVirtualException) {
+					if (
+						error instanceof VirtualOwnerNotVirtualException ||
+						error instanceof VirtualOwnedPropertyNotWritableException
+					) {
 						throw new DevicesValidationException(error.message);
 					}
 
@@ -176,24 +187,34 @@ export class DevicesVirtualPlugin {
 				}
 			},
 			// Runs inside ChannelsPropertiesService.update() on the loaded row with the PATCH already
-			// merged into it, and before that row is saved. `ValidateOwnedPropertyHasNoSource` on the
-			// update DTO can only judge (`value_origin`, `source_property`) when both arrive together;
-			// `{value_origin: 'local'}` against a linked property and `{source_property: <id>}` against
-			// an owned one are each valid in isolation and only become the unsupported pair here. The
-			// two are complementary — the DTO still gives the better, field-named error for the
-			// combined payload.
+			// merged into it, and before that row is saved. Both checks here judge a pair of fields the
+			// update DTO can only see when both halves arrive together, and a PATCH may send either
+			// alone:
 			//
-			// The plugin's own exception is translated to DevicesValidationException rather than left to
-			// escape, mirroring SourceNotVirtualConstraintValidator's translation of the same service's
-			// exceptions into its caller's failure vocabulary: this hook's caller reports a
+			// - (`value_origin`, `source_property`) — `{value_origin: 'local'}` against a linked
+			//   property and `{source_property: <id>}` against an owned one are each valid in isolation
+			//   and only become the unsupported pair here.
+			// - (`value_origin`, `permissions`) — `{permissions: ['rw']}` against an owned property and
+			//   `{value_origin: 'local'}` against a writable orphan likewise.
+			//
+			// In both cases the DTO constraint is complementary, not redundant: it still gives the
+			// better, field-named 400 for the combined payload.
+			//
+			// The plugin's own exceptions are translated to DevicesValidationException rather than left
+			// to escape, mirroring SourceNotVirtualConstraintValidator's translation of the same
+			// service's exceptions into its caller's failure vocabulary: this hook's caller reports a
 			// DevicesException as an unprocessable entity and anything else as a 500, and a rejected
 			// payload is not a server fault. Any *other* exception is re-thrown untouched — a bug in
 			// here must not be reported to the client as invalid input.
 			beforeUpdate: (property: VirtualChannelPropertyEntity): Promise<void> => {
 				try {
 					this.virtualDevicesService.assertValueOriginPairSupported(property);
+					this.virtualDevicesService.assertOwnedPropertyNotWritable(property);
 				} catch (error) {
-					if (error instanceof VirtualValueOriginConflictException) {
+					if (
+						error instanceof VirtualValueOriginConflictException ||
+						error instanceof VirtualOwnedPropertyNotWritableException
+					) {
 						throw new DevicesValidationException(error.message);
 					}
 

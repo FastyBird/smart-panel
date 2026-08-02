@@ -93,6 +93,20 @@ The **update paths need no counterpart**, and for a structural reason rather tha
 
 Deliberately **not** closed: the mirror image, a *physical* property in a virtual channel. It is inert — the index only holds `VirtualChannelPropertyEntity` rows and `VirtualDevicePlatform` refuses anything that is not one — so it degrades nothing, and closing it means a guard in every other device plugin rather than in this one.
 
+### 2.14 A writable owned property was accepted but could never work (medium) — DONE
+
+`value_origin: 'local'` with writable permissions passed validation, even though `VirtualDevicePlatform.processBatch()` unconditionally rejects every LOCAL property as read-only ("owned properties are read-only in this release").
+
+Worse than inert: `ChannelsPropertiesService.update()` persists the optimistic value into the property's own series *before* the controller dispatches the command, and that dispatch is fire-and-forget — so the control visibly moves, the refusal lands in a log nobody reads, and nothing happens in the house.
+
+**Restricted rather than implemented**, because the scope decision is deliberate: v1 is wiring only, and the only owned properties that exist are the synthesized read-only `device_information` fields. Writable owned properties belong to the controller-support follow-up, when a setpoint someone can actually act on becomes meaningful.
+
+- `ValidateOwnedPropertyNotWritable()` on `permissions` in both the create and update property DTOs, attached to `permissions` rather than `value_origin` for the same reason `ValidateOwnedPropertyHasNoSource` attaches to `source_property`: the origin is a deliberate choice about what the property *is*, writability is the part that cannot come with it.
+- `VirtualDevicesService.assertOwnedPropertyNotWritable`, called from the same `beforeUpdate` hook as §2.9's check, for the two partial PATCHes the DTO cannot judge: `{permissions: ['rw']}` against an owned property, and `{value_origin: 'local'}` against a writable orphan.
+- Both share one predicate, `isUnsupportedOwnedPermissionsPair` in `entities/devices-virtual.entity.ts`, so they cannot drift. `ev` is not writability — it is a report channel, not a command one.
+
+One consequence handled deliberately, the exact shape of §2.9's `claimProperty` note: a *writable projecting* property is perfectly legal, and both of `claimProperty`'s callers can reach one inside the `device_information` channel. Carrying its permissions across the claim would merge into a writable owned property and throw out of a listener — or out of the `afterCreate` hook — which is a self-inflicted outage rather than a guard. `claimProperty` now sends `permissions: [READ_ONLY]` when, and only when, the property it is claiming is writable; an already read-only one still has nothing but the two origin fields touched. Coherent besides: that channel's contents are read-only by definition, and the property is already being converted from projecting to owned.
+
 ### 2.10 A disabled virtual device still reports CONNECTED (low)
 
 `VirtualDevicePlatform.processBatch()` now rejects every command against a device with `enabled: false`, matching `devices-shelly-v1`, `devices-wled` and `devices-zigbee2mqtt` — the platform is where every device plugin enforces `enabled`, since `PropertyCommandService` only ever checks connection state.

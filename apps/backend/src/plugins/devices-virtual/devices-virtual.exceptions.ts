@@ -52,3 +52,11 @@ export class VirtualOwnerNotVirtualException extends VirtualException {
 		this.name = 'VirtualOwnerNotVirtualException';
 	}
 }
+
+/** An owned (`local`) property would be writable, which v1 has no write semantics for. */
+export class VirtualOwnedPropertyNotWritableException extends VirtualException {
+	constructor(message: string) {
+		super(message);
+		this.name = 'VirtualOwnedPropertyNotWritableException';
+	}
+}

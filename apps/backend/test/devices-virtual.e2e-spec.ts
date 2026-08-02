@@ -1895,6 +1895,188 @@ describe('devices-virtual plugin (e2e)', () => {
 		});
 	});
 
+	// ─── v1 has no write semantics for an owned property ─────────────────────────────────
+
+	/**
+	 * An owned property (`value_origin: local`) stores its own value and forwards nothing.
+	 * VirtualDevicePlatform.processBatch() therefore refuses every one of them outright — "owned
+	 * properties are read-only in this release". The API used to accept writable permissions on one
+	 * anyway, producing a control that can never work.
+	 *
+	 * It is worse than inert. `ChannelsPropertiesService.update()` writes the optimistic value into the
+	 * property's own series *before* the controller dispatches the command, and the dispatch is
+	 * fire-and-forget — so the switch visibly moves, the refusal lands in a log nobody is reading, and
+	 * nothing at all happens in the house.
+	 *
+	 * The scope decision here is deliberate and recorded (TECH-VIRTUAL-DEVICES-FOLLOWUPS, controller
+	 * support): v1 is wiring only, and the only owned properties that exist are the synthesized,
+	 * read-only device_information strings. So this restricts rather than implements — writable owned
+	 * properties come back with the release that can actually act on them.
+	 */
+	describe('an owned property cannot be writable while v1 has no write semantics', () => {
+		let ownedDeviceId: string;
+		let ownedChannelId: string;
+		let ownedPropertyId: string;
+		let orphanPropertyId: string;
+
+		it('creates a virtual device with a channel to hold the owned properties', async () => {
+			const deviceResponse = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: DeviceCategory.LIGHTING,
+						name: 'E2E Owned Writable Guard Device',
+					},
+				})
+				.expect(201);
+
+			ownedDeviceId = (deviceResponse.body as { data: DeviceBody }).data.id;
+
+			const channelResponse = await authPost('/modules/devices/channels')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: ChannelCategory.LIGHT,
+						identifier: 'light',
+						name: 'Light',
+						device: ownedDeviceId,
+					},
+				})
+				.expect(201);
+
+			ownedChannelId = (channelResponse.body as { data: ChannelBody }).data.id;
+		});
+
+		// The exact payload the P2 report names: a switcher's `on` as an owned control.
+		it('refuses creating an owned property with writable permissions', async () => {
+			const response = await authPost(`/modules/devices/channels/${ownedChannelId}/properties`).send({
+				data: {
+					type: DEVICES_VIRTUAL_TYPE,
+					category: PropertyCategory.ON,
+					identifier: 'owned_on',
+					name: 'On',
+					permissions: [PermissionType.READ_WRITE],
+					data_type: DataTypeType.BOOL,
+					value_origin: 'local',
+				},
+			});
+
+			expect(response.status).toBe(400);
+			expect(JSON.stringify(response.body)).toContain('read-only');
+		});
+
+		it('accepts the same owned property when it is read-only', async () => {
+			const response = await authPost(`/modules/devices/channels/${ownedChannelId}/properties`)
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: PropertyCategory.ON,
+						identifier: 'owned_on',
+						name: 'On',
+						permissions: [PermissionType.READ_ONLY],
+						data_type: DataTypeType.BOOL,
+						value_origin: 'local',
+					},
+				})
+				.expect(201);
+
+			const body = (response.body as { data: ChannelPropertyBody }).data;
+
+			ownedPropertyId = body.id;
+
+			expect(body.value_origin).toBe('local');
+		});
+
+		// The PATCH that reaches the same state the create-time check refuses. Judged on the merged row,
+		// since the payload carries only one half of the pair.
+		it('refuses making an existing owned property writable by PATCH', async () => {
+			const response = await authPatch(
+				`/modules/devices/channels/${ownedChannelId}/properties/${ownedPropertyId}`,
+			).send({
+				data: {
+					type: DEVICES_VIRTUAL_TYPE,
+					permissions: [PermissionType.READ_WRITE],
+				},
+			});
+
+			expect(response.status).toBe(422);
+
+			const readBack = await authGet(
+				`/modules/devices/channels/${ownedChannelId}/properties/${ownedPropertyId}`,
+			).expect(200);
+
+			expect((readBack.body as { data: { permissions: string[] } }).data.permissions).toEqual([
+				PermissionType.READ_ONLY,
+			]);
+		});
+
+		// The other half of the same merged-row hole, approached from the opposite side: a *writable
+		// orphan* is legal (it is a projection waiting to be remapped), and switching its origin to local
+		// would land on exactly the state the create-time check refuses.
+		it('refuses switching a writable orphan to local', async () => {
+			const orphanResponse = await authPost(`/modules/devices/channels/${ownedChannelId}/properties`)
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: PropertyCategory.BRIGHTNESS,
+						identifier: 'orphan_brightness',
+						name: 'Brightness',
+						permissions: [PermissionType.READ_WRITE],
+						data_type: DataTypeType.UCHAR,
+					},
+				})
+				.expect(201);
+
+			orphanPropertyId = (orphanResponse.body as { data: ChannelPropertyBody }).data.id;
+
+			const response = await authPatch(
+				`/modules/devices/channels/${ownedChannelId}/properties/${orphanPropertyId}`,
+			).send({
+				data: {
+					type: DEVICES_VIRTUAL_TYPE,
+					value_origin: 'local',
+				},
+			});
+
+			expect(response.status).toBe(422);
+		});
+
+		// The guard must not block this plugin's own listeners. Every synthesized device_information
+		// field is owned *and* read-only, so all four have to survive validation that the plugin's own
+		// creation path performs on itself — a guard that rejected them would leave the device with no
+		// connection state at all, which is a permanently offline device.
+		it('still synthesizes all four owned device_information properties, owned and read-only', async () => {
+			const informationProperties = await waitUntil(async () => {
+				const response = await authGet(`/modules/devices/devices/${ownedDeviceId}`);
+
+				if (response.status !== 200) {
+					return { done: false, value: [] as ChannelPropertyBody[] };
+				}
+
+				const properties =
+					(response.body as { data: DeviceBody }).data.channels.find(
+						(channel) => channel.category === String(ChannelCategory.DEVICE_INFORMATION),
+					)?.properties ?? [];
+
+				return { done: properties.length >= 4, value: properties };
+			}, 'the four synthesized device_information properties appearing');
+
+			expect(informationProperties.map((property) => property.category).sort()).toEqual(
+				[
+					PropertyCategory.MANUFACTURER,
+					PropertyCategory.MODEL,
+					PropertyCategory.SERIAL_NUMBER,
+					PropertyCategory.STATUS,
+				].sort(),
+			);
+
+			for (const property of informationProperties) {
+				expect(property.value_origin).toBe('local');
+				expect((property as unknown as { permissions: string[] }).permissions).toEqual([PermissionType.READ_ONLY]);
+			}
+		});
+	});
+
 	// ─── Auth enforcement ────────────────────────────────────────────────────────────────
 
 	describe('authentication', () => {
