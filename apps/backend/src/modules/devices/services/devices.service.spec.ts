@@ -18,7 +18,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
-import { ConnectionState, DeviceCategory, DeviceHiddenFilter, EventType } from '../devices.constants';
+import { ConnectionState, DeviceCategory, DeviceHiddenBy, DeviceHiddenFilter, EventType } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
@@ -491,6 +491,86 @@ describe('DevicesService', () => {
 			await service.update(mockDevice.id, { type: 'mock', hidden: true } as UpdateMockDeviceDto);
 
 			expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({ hidden: true }));
+		});
+
+		// Confirms hidden_by round-trips through a PATCH that sets it alongside hidden, symmetric with
+		// the `hidden` coverage above.
+		it('persists hiddenBy alongside hidden', async () => {
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+
+			const updatedDevice = toInstance(MockDevice, { ...mockDevice, hidden: true, hiddenBy: DeviceHiddenBy.SYSTEM });
+
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest
+					.fn()
+					.mockResolvedValueOnce(toInstance(MockDevice, mockDevice))
+					.mockResolvedValueOnce(updatedDevice),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+			jest.spyOn(repository, 'save').mockResolvedValue(updatedDevice);
+
+			const device = await service.update(mockDevice.id, {
+				type: 'mock',
+				hidden: true,
+				hidden_by: DeviceHiddenBy.SYSTEM,
+			} as UpdateMockDeviceDto);
+
+			expect(device.hidden).toBe(true);
+			expect(device.hiddenBy).toBe(DeviceHiddenBy.SYSTEM);
+		});
+
+		// Regression test, pinning the class-field-initializer trap that shipped twice on the predecessor
+		// branch (see the note on `hidden` above for the mechanism). `getOne` is backed by a single shared
+		// `persisted` reference here, instead of the hand-written literals the other tests in this block
+		// use for the post-save fetch, specifically so the second update's *returned* value reflects
+		// whatever `Object.assign(device, updateFields)` actually produced on that same object. A
+		// hand-written literal for the post-save fetch would assert against a fiction and pass
+		// unconditionally regardless of what update() really did — the same blind spot the comment on the
+		// `does not reset hidden...` test above avoids by asserting on `save`'s argument instead; this test
+		// gets the same guarantee a different way, by making the "database" one mutable object so the
+		// return value cannot help but reflect a clobber.
+		it('leaves hiddenBy untouched by an unrelated patch', async () => {
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+
+			const persisted = toInstance(MockDevice, mockDevice);
+
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(persisted),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+			jest.spyOn(repository, 'save').mockResolvedValue(persisted);
+
+			await service.update(mockDevice.id, {
+				type: 'mock',
+				hidden: true,
+				hidden_by: DeviceHiddenBy.USER,
+			} as UpdateMockDeviceDto);
+
+			const device = await service.update(mockDevice.id, { type: 'mock', name: 'Renamed' } as UpdateMockDeviceDto);
+
+			expect(device.hiddenBy).toBe(DeviceHiddenBy.USER);
 		});
 	});
 

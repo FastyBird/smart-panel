@@ -79,6 +79,13 @@ export enum DeviceHiddenFilter {
 	ALL = 'all',
 }
 
+export enum DeviceHiddenBy {
+	/** Hidden automatically because a virtual device replaced this one. */
+	SYSTEM = 'system',
+	/** Hidden deliberately by an operator. */
+	USER = 'user',
+}
+
 export enum ChannelCategory {
 	GENERIC = 'generic',
 	ACCELEROMETER = 'accelerometer',

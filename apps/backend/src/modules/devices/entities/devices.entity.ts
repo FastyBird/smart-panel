@@ -25,6 +25,7 @@ import {
 	ConnectionState,
 	DataTypeType,
 	DeviceCategory,
+	DeviceHiddenBy,
 	PermissionType,
 	PropertyCategory,
 } from '../devices.constants';
@@ -133,6 +134,31 @@ export class DeviceEntity extends BaseEntity {
 	@Index()
 	@Column({ nullable: false, default: false })
 	hidden: boolean;
+
+	// Deliberately declared WITHOUT a class field initializer — same mechanism and same reason as
+	// `hidden` above. `new Target()` runs field initializers before any source value is copied, so a
+	// `= null` here would survive `omitBy(toInstance(...), isUndefined)` in DevicesService.update and
+	// get written back by `Object.assign`, clearing this on every PATCH that does not mention it.
+	@ApiPropertyOptional({
+		name: 'hidden_by',
+		description:
+			'Why the device is hidden. `system` when a virtual device replaced it, `user` when an operator hid it.',
+		enum: DeviceHiddenBy,
+		nullable: true,
+		example: DeviceHiddenBy.SYSTEM,
+	})
+	@Expose({ name: 'hidden_by' })
+	@IsOptional()
+	@IsEnum(DeviceHiddenBy)
+	@Transform(
+		({ obj }: { obj: { hidden_by?: DeviceHiddenBy; hiddenBy?: DeviceHiddenBy } }) => obj.hidden_by ?? obj.hiddenBy,
+		{
+			toClassOnly: true,
+		},
+	)
+	@Index()
+	@Column({ type: 'text', enum: DeviceHiddenBy, nullable: true, default: null })
+	hiddenBy: DeviceHiddenBy | null;
 
 	@ApiPropertyOptional({
 		name: 'room_id',
