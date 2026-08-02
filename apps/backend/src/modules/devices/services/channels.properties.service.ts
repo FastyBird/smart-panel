@@ -16,6 +16,7 @@ import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 
 import { ChannelsPropertiesTypeMapperService } from './channels.properties-type-mapper.service';
+import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
 
 @Injectable()
@@ -27,6 +28,7 @@ export class ChannelsPropertiesService {
 		private readonly repository: Repository<ChannelPropertyEntity>,
 		private readonly propertiesMapperService: ChannelsPropertiesTypeMapperService,
 		private readonly propertyValueService: PropertyValueService,
+		private readonly valueSourceRegistry: PropertyValueSourceRegistryService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
@@ -216,6 +218,29 @@ export class ChannelsPropertiesService {
 			}),
 		);
 
+		// A property whose value is stored under *another* property's key — a virtual device's linked
+		// property, say — has no series of its own to seed, and creation dispatches no command that the
+		// supplied value could have meant instead (unlike the update path below, whose callers forward
+		// the value to the source device's platform). The only thing it could become is a fabricated
+		// measurement of the source device: a value in the source's history that its hardware never
+		// reported, taking its latest value and trend with it. Refused rather than silently dropped,
+		// because a caller that sent a value has to be told it was not, and could not have been, stored.
+		//
+		// Checked on the built-but-unsaved entity, before `repository.save` below, so a refused create
+		// leaves no row behind — and before the `afterCreate` hook, whose implementations may rewrite the
+		// very fields this decides on. `null` is not refused: it means "no value", which is precisely
+		// what a projection has of its own, and PropertyValueService.write() already treats it as a no-op.
+		//
+		// The registry answers this in core's own terms — "does this property own its series?" — so core
+		// stays unaware of any particular plugin, exactly as it does in PropertyValueService.
+		if (createDto.value !== undefined && createDto.value !== null && this.valueSourceRegistry.isProjected(property)) {
+			this.logger.error('Validation failed: A value cannot be stored on a property that projects another one.');
+
+			throw new DevicesValidationException(
+				'Channel property value cannot be set on a property whose value is stored by its source property.',
+			);
+		}
+
 		// Save the property
 		const raw = await repository.save(property);
 
@@ -300,6 +325,14 @@ export class ChannelsPropertiesService {
 		const raw = await repository.save(property as TProperty);
 
 		// Track if value actually changed
+		//
+		// Deliberately not mirroring create()'s refusal above for a projected property. Here the value
+		// has a second, legitimate meaning: both property controllers dispatch it to the device's own
+		// platform right after this returns, and for a virtual device that platform forwards it to the
+		// source's — so the request is coherent and rejecting it would remove the only way to command a
+		// virtual device over REST. It is only the optimistic local echo into the source's series that is
+		// not coherent, and PropertyValueService.write() drops exactly that, leaving the source's own
+		// report to record what the hardware actually did.
 		let valueChanged = false;
 		if (typeof updateDto.value !== 'undefined') {
 			valueChanged = await this.propertyValueService.write(raw, updateDto.value);

@@ -74,7 +74,7 @@ Two caveats on transferring this. An HA entity is a runtime object in a state ma
 
 ## Approach
 
-**Map with dereferenced values.** The virtual device owns real `ChannelEntity`/`ChannelPropertyEntity` rows with genuine UUIDs and real FKs, so every existing consumer works untouched. Each linked property records its source, and `PropertyValueService` reads and writes under the *source* key, so a value and its history are stored exactly once.
+**Map with dereferenced values.** The virtual device owns real `ChannelEntity`/`ChannelPropertyEntity` rows with genuine UUIDs and real FKs, so every existing consumer works untouched. Each linked property records its source, and `PropertyValueService` *reads* under the source key, so a value and its history are stored exactly once — written by the source itself, and by nothing else (see "Delete must not dereference" / "Write must not dereference either" below).
 
 This takes the row-based identity the app assumes, and the single-series storage that aliasing would have given, without either downside.
 
@@ -135,7 +135,7 @@ export interface IPropertyValueSource {
 }
 ```
 
-`PropertyValueService.write` / `readLatest` and `PropertyTimeseriesService` key on `resolve(p) ?? p.id`. The `valuesMap` and `recentValuesMap` caches collapse onto the source key for free, so a linked property and its source share one cache entry and one computed trend.
+`PropertyValueService.readLatest` and `PropertyTimeseriesService` — the two read paths — key on `resolve(p) ?? p.id`. The `valuesMap` and `recentValuesMap` caches collapse onto the source key for free, so a linked property and its source share one cache entry and one computed trend. The two *write* paths, `PropertyValueService.write` and `.delete`, resolve the same key only to refuse when it is not the property's own; see the two rules below.
 
 **Delete must not dereference.** Without this rule, deleting a virtual device wipes the source device's entire history:
 
@@ -145,6 +145,15 @@ if (key !== null && key !== property.id) return; // never delete another propert
 ```
 
 Linked properties own no series, so deleting them is correctly a no-op; owned properties delete their own.
+
+**Write must not dereference either.** The same rule, and the same reason, on the other side. Only `readLatest` dereferences: a linked property *reads* the source's series, and the source's own reports are what write it. A write pushed *through* the projection would be persisted as a real measurement of a device that was never commanded and never reported it — corrupting the source's latest value, its trend and its history with a number no hardware produced.
+
+```ts
+const key = resolve(property);
+if (key !== property.id) return false; // never write into another property's series
+```
+
+Nothing legitimate is lost, because no write ever legitimately arrives through a projection. A source device reports on its own property, where the key already *is* its own id. A command issued against a projection is forwarded to the source device's platform (`VirtualDevicePlatform`), which makes the source report it back the same way; only the optimistic local echo is dropped. And a value supplied while *configuring* a projection has no reporter behind it at all — `ChannelsPropertiesService.create()` refuses that outright rather than letting it reach here, since on create there is no command it could have meant instead.
 
 ### 3. `VirtualDevicePlatform implements IDevicePlatform`
 

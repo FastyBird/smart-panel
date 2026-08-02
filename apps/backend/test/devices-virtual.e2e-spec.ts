@@ -11,20 +11,23 @@ import request from 'supertest';
 import { DataSource } from 'typeorm';
 
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 
 import { AppModule } from '../src/app.module';
 import {
 	ChannelCategory,
+	ConnectionState,
 	DataTypeType,
 	DeviceCategory,
 	PermissionType,
 	PropertyCategory,
 } from '../src/modules/devices/devices.constants';
 import { ChannelPropertyEntity } from '../src/modules/devices/entities/devices.entity';
+import { DeviceConnectivityService } from '../src/modules/devices/services/device-connectivity.service';
 import { PropertyValueSourceRegistryService } from '../src/modules/devices/services/property-value-source.registry.service';
 import { DEVICES_VIRTUAL_TYPE } from '../src/plugins/devices-virtual/devices-virtual.constants';
 import { VirtualChannelPropertyEntity } from '../src/plugins/devices-virtual/entities/devices-virtual.entity';
+import { VirtualStatusListener } from '../src/plugins/devices-virtual/listeners/virtual-status.listener';
 import { VirtualPropertyIndexService } from '../src/plugins/devices-virtual/services/virtual-property-index.service';
 import { SIMULATOR_TYPE } from '../src/plugins/simulator/simulator.constants';
 
@@ -83,11 +86,18 @@ interface DeviceValidationBody {
  * assertion isn't racing an in-flight promise the HTTP response didn't wait for.
  *
  * `intervalMs` is deliberately not tighter than this. DisplayAwareThrottlerGuard applies
- * `{ ttl: 60000, limit: 30 }` to a user access token, and @nestjs/throttler keys that counter per
- * *route*, not globally — so several polls of the same endpoint share one budget of 30 requests for
- * the whole run. At a 100ms interval a single three-second poll spends that entire budget by itself,
- * and the next poll of that route comes back 429 for the rest of the minute: a failure that reads as
- * "the thing under test never happened" but is really "the test asked too often".
+ * `{ ttl: 60000, limit: 30 }`, and @nestjs/throttler keys that counter per *client and route
+ * handler* — the client being the address, which is loopback for every request this file makes. So
+ * every poll of a given endpoint, in every test here, shares one budget of 30 requests, and the whole
+ * file runs well inside a single 60-second window. At a 100ms interval a single three-second poll
+ * spends that entire budget by itself, and every later request to that handler — from any test —
+ * comes back 429 for the rest of the minute: a failure that reads as "the thing under test never
+ * happened" but is really "the test asked too often", and which lands on whichever test happens to be
+ * running rather than on the one that overspent.
+ *
+ * Prefer awaiting the in-process call a fire-and-forget handler would have made (see "reports the
+ * source device connected") over polling for its effect, whenever the test can reach it. That costs
+ * nothing from this budget and is deterministic besides.
  */
 async function waitUntil<T>(
 	fetchAndCheck: () => Promise<{ done: boolean; value: T }>,
@@ -211,6 +221,7 @@ jest.setTimeout(20_000);
 describe('devices-virtual plugin (e2e)', () => {
 	let app: INestApplication;
 	let accessToken: string;
+	let moduleRef: TestingModule;
 	let dataSource: DataSource;
 	let valueSourceRegistry: PropertyValueSourceRegistryService;
 	let virtualPropertyIndex: VirtualPropertyIndexService;
@@ -242,6 +253,7 @@ describe('devices-virtual plugin (e2e)', () => {
 		// Wait for all modules to initialize
 		await new Promise((resolve) => setTimeout(resolve, 100));
 
+		moduleRef = moduleFixture;
 		dataSource = moduleFixture.get<DataSource>(DataSource);
 		valueSourceRegistry = moduleFixture.get<PropertyValueSourceRegistryService>(PropertyValueSourceRegistryService);
 		virtualPropertyIndex = moduleFixture.get<VirtualPropertyIndexService>(VirtualPropertyIndexService);
@@ -466,6 +478,60 @@ describe('devices-virtual plugin (e2e)', () => {
 			expect(body.data.value_origin).toBe('source');
 		});
 
+		// ─── The configuration-time write guard ─────────────────────────────────────────
+		//
+		// The mirror of the data-loss guard asserted at the end of this block. `value` is inherited from
+		// the generic create DTO, and `ChannelsPropertiesService.create()` writes it through
+		// `PropertyValueService`, which for a linked property resolves the storage key to the *source's*
+		// id — so the number would be persisted as a real measurement of a device that was never
+		// commanded and never reported it. Unlike the PATCH path there is no command dispatch behind a
+		// POST at all, so the value could only ever have been that fabrication.
+		//
+		// Linked against `in_use` rather than the relay, so this test cannot disturb the value the
+		// lifecycle steps around it assert on. A refused create persists nothing, so no property is
+		// added to the virtual device either.
+		it("refuses a value supplied when linking a property, leaving the source's series untouched", async () => {
+			const before = await authGet(
+				`/modules/devices/channels/${sourceChannelId}/properties/${sourceInUsePropertyId}`,
+			).expect(200);
+			const beforeBody = (before.body as { data: ChannelPropertyBody }).data;
+
+			expect(beforeBody.value?.value).toBe(false);
+
+			const response = await authPost(`/modules/devices/channels/${lightChannelId}/properties`).send({
+				data: {
+					type: DEVICES_VIRTUAL_TYPE,
+					category: PropertyCategory.IN_USE,
+					identifier: 'in_use',
+					name: 'In use',
+					permissions: [PermissionType.READ_ONLY],
+					data_type: DataTypeType.BOOL,
+					source_property: sourceInUsePropertyId,
+					value: true,
+				},
+			});
+
+			expect(response.status).toBe(422);
+
+			// The source's stored series — its latest value, and the timestamp that would have moved had
+			// a point been written — is exactly what it was. This is the assertion that matters: a
+			// rejection alone would not prove the write never reached the source.
+			const after = await authGet(
+				`/modules/devices/channels/${sourceChannelId}/properties/${sourceInUsePropertyId}`,
+			).expect(200);
+			const afterBody = (after.body as { data: ChannelPropertyBody }).data;
+
+			expect(afterBody.value?.value).toBe(false);
+			expect(afterBody.value?.last_updated).toBe(beforeBody.value?.last_updated);
+
+			// And nothing was half-created: the refused property is not on the channel.
+			const channelProperties = await authGet(`/modules/devices/channels/${lightChannelId}/properties`).expect(200);
+
+			expect(
+				(channelProperties.body as { data: ChannelPropertyBody[] }).data.map((property) => property.category),
+			).not.toContain(PropertyCategory.IN_USE);
+		});
+
 		// ─── Step 2: GET returns the value read from the source ──────────────────────────
 
 		it('GET /devices/:id returns the virtual device with the value read from the source', async () => {
@@ -485,6 +551,55 @@ describe('devices-virtual plugin (e2e)', () => {
 		});
 
 		// ─── Step 3: commanding the virtual property changes the source ──────────────────
+
+		/**
+		 * Reports the source device connected, exactly as its own integration would.
+		 *
+		 * Necessary because the step below asserts a command actually *reaches* the source, and
+		 * PropertyCommandService refuses to dispatch to a device that is neither online nor UNKNOWN.
+		 * `VirtualStatusListener.aggregateState()` reports DISCONNECTED for a virtual device backed by
+		 * a source whose connection state is UNKNOWN — which the simulator source here is, since the
+		 * simulator plugin is disabled by default and so never reports one. So without this the
+		 * *virtual* device is offline and the command is dropped before any platform sees it.
+		 *
+		 * Driven through DeviceConnectivityService rather than an endpoint because there is none: a
+		 * device's connection state is written by its integration, not by the API. This models the
+		 * integration.
+		 *
+		 * The aggregation is then awaited directly rather than polled over HTTP. `ThrottlerGuard` keys
+		 * its `30 req / 60s` budget per client *and route handler*, and every request in this file comes
+		 * from the same loopback address inside a single 60-second window — so a poll of
+		 * `GET /devices/:id` spends a budget that eight other tests here already share, and exhausting
+		 * it 429s everything downstream rather than failing anything locally. `recompute()` is the exact
+		 * call the fire-and-forget DEVICE_CONNECTION_CHANGED handler makes, so awaiting it is both
+		 * cheaper and more deterministic than waiting for that handler to land.
+		 *
+		 * That this step is needed at all is a real, pre-existing gap, recorded as follow-up 2.12 —
+		 * `aggregateState()` collapses UNKNOWN into DISCONNECTED, while both PropertyCommandService and
+		 * VirtualDevicePlatform itself deliberately treat UNKNOWN as commandable. It stayed invisible
+		 * for as long as `ChannelsPropertiesService.update()` wrote the commanded value into the
+		 * source's own series before dispatching anything, which made the assertion below pass whether
+		 * the command was dispatched or not.
+		 */
+		it('reports the source device connected, as its own integration would', async () => {
+			const connectivity = moduleRef.get<DeviceConnectivityService>(DeviceConnectivityService);
+			const statusListener = moduleRef.get<VirtualStatusListener>(VirtualStatusListener);
+
+			await connectivity.setConnectionState(sourceDeviceId, {
+				state: ConnectionState.CONNECTED,
+				reason: 'e2e: standing in for the source integration',
+			});
+
+			// aggregateState() reads the index, so the link has to be in it before the recompute can see
+			// the source at all. Polled off the service, without HTTP, exactly as elsewhere in this file.
+			await waitForIndexedLink(virtualPropertyIndex, virtualDeviceId);
+
+			await statusListener.recompute(virtualDeviceId, 'e2e: standing in for the source integration');
+
+			const response = await authGet(`/modules/devices/devices/${virtualDeviceId}`).expect(200);
+
+			expect((response.body as { data: DeviceBody }).data.status.online).toBe(true);
+		});
 
 		it("commanding the virtual property changes the source property's value", async () => {
 			// `type` is required on the update DTO too (UpdateVirtualChannelPropertyDto.type has no
@@ -513,6 +628,46 @@ describe('devices-virtual plugin (e2e)', () => {
 			const virtualBody = virtualResponse.body as { data: ChannelPropertyBody };
 
 			expect(virtualBody.data.value?.value).toBe(true);
+		});
+
+		// ─── The same guard on the PATCH path, where the value is a real command ─────────
+		//
+		// A PATCH carrying a value is not refused the way a POST is: both property controllers dispatch
+		// it to the device's platform straight afterwards, and for a virtual device that platform
+		// forwards it to the source's — so the request is coherent and rejecting it would remove the
+		// only way to command a virtual device over REST (the step above depends on it). What must not
+		// happen is the *optimistic echo* landing in the source's series before, or instead of, the
+		// hardware confirming anything.
+		//
+		// Disabling the virtual device is what makes that observable: VirtualDevicePlatform refuses to
+		// forward for a disabled device, so nothing downstream can write the value, and any change to
+		// the source's series could only have come from the echo.
+		it("does not write a commanded value into the source's series when the command is refused", async () => {
+			await authPatch(`/modules/devices/devices/${virtualDeviceId}`)
+				.send({ data: { type: DEVICES_VIRTUAL_TYPE, enabled: false } })
+				.expect(200);
+
+			try {
+				// The relay is `true` from the step above; command the opposite, so an echo is impossible
+				// to confuse with the value already there.
+				await authPatch(`/modules/devices/channels/${lightChannelId}/properties/${lightOnPropertyId}`)
+					.send({ data: { type: DEVICES_VIRTUAL_TYPE, value: false } })
+					.expect(200);
+
+				// The command forward is fire-and-forget, so give it comfortably longer than the refusal
+				// takes before concluding the source was left alone.
+				await new Promise((resolve) => setTimeout(resolve, 750));
+
+				const source = await authGet(
+					`/modules/devices/channels/${sourceChannelId}/properties/${sourceOnPropertyId}`,
+				).expect(200);
+
+				expect((source.body as { data: ChannelPropertyBody }).data.value?.value).toBe(true);
+			} finally {
+				await authPatch(`/modules/devices/devices/${virtualDeviceId}`)
+					.send({ data: { type: DEVICES_VIRTUAL_TYPE, enabled: true } })
+					.expect(200);
+			}
 		});
 
 		// ─── Additional coverage 3: the source-device read resolves the live wiring ──────

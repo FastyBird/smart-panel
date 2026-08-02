@@ -37,6 +37,34 @@ export class PropertyValueService {
 	async write(property: ChannelPropertyEntity, value: string | boolean | number | null): Promise<boolean> {
 		const key = this.valueSourceRegistry.resolve(property);
 
+		// A projected property owns no series — the value belongs to its source, and only the source's
+		// own reports may write it. This is the exact mirror of delete()'s guard below, and exists for
+		// the same reason: dereferencing here would persist the supplied value as a real measurement of
+		// a device that was never commanded and never reported it, corrupting the source's latest value,
+		// its trend cache and its stored history with a number no hardware produced.
+		//
+		// Nothing legitimate is lost, because no write ever legitimately arrives *through* a projection:
+		//
+		// - A source device reports on its own property, where the key already is that property's id.
+		// - A command issued against a projection is forwarded to the source device's own platform
+		//   (VirtualDevicePlatform), which makes the source report it back as above. The value the
+		//   caller asked for still reaches the hardware; what is dropped is only the optimistic local
+		//   echo, which for a projection would land in somebody else's series ahead of — or instead of —
+		//   the hardware ever confirming it.
+		// - A value supplied while *creating* a projection (POST with `value`) has no reporter behind it
+		//   at all, and no command either. ChannelsPropertiesService.create() refuses that outright
+		//   rather than letting it fall through to here, so the caller is told it was not stored.
+		//
+		// Past this point `key` is provably `property.id`; it stays named for the storage tag, so this
+		// method and readLatest() keep resolving the series the same way.
+		if (key !== property.id) {
+			this.logger.debug(
+				`Skipping write for projected property id=${property.id}: its value belongs to source property id=${key}`,
+			);
+
+			return false;
+		}
+
 		// Skip null values - device hasn't reported this property yet
 		if (value === null || value === undefined) {
 			return false;

@@ -325,6 +325,15 @@ describe('PropertyValueService', () => {
 				invalid: null,
 			}) as unknown as ChannelPropertyEntity;
 
+		const source = (): ChannelPropertyEntity =>
+			({
+				id: 'source-prop',
+				type: 'shelly-ng',
+				dataType: DataTypeType.FLOAT,
+				format: null,
+				invalid: null,
+			}) as unknown as ChannelPropertyEntity;
+
 		beforeEach(() => {
 			const registry = module.get<PropertyValueSourceRegistryService>(PropertyValueSourceRegistryService);
 
@@ -334,22 +343,52 @@ describe('PropertyValueService', () => {
 			});
 		});
 
-		it('writes under the source key', async () => {
-			await service.write(linked(), 21.5);
+		// The mirror of the delete() guard covered further down, and the reason it has to exist: the
+		// source's series is the *source device's* history, and a write pushed through a projection
+		// would be persisted into it as a real measurement the hardware never reported.
+		//
+		// Asserted against what the source's series actually holds afterwards, not merely against the
+		// return value: the failure mode is silent corruption of another device's data — its latest
+		// value, its trend and everything derived from them — which a boolean says nothing about.
+		it('refuses to write through a projected property, leaving the source series untouched', async () => {
+			// A genuine reading from the source device, which is what its series legitimately holds.
+			await service.write(source(), 21.5);
 
-			expect(storageService.writePoints).toHaveBeenCalledWith([
-				expect.objectContaining({ tags: { propertyId: 'source-prop' } }),
-			]);
+			storageService.writePoints.mockClear();
+
+			const written = await service.write(linked(), 40);
+
+			expect(written).toBe(false);
+			expect(storageService.writePoints).not.toHaveBeenCalled();
+
+			// Latest value and trend cache both still describe the source's own reading.
+			const state = await service.readLatest(linked());
+
+			expect(state?.value).toBe(21.5);
+			expect(service['recentValuesMap'].get('source-prop')).toEqual([21.5]);
+			expect(storageService.query).not.toHaveBeenCalled();
 		});
 
-		it('reads the value written by the source property', async () => {
-			const sourceProperty = {
-				id: 'source-prop',
-				type: 'shelly-ng',
+		it('still writes its own series for a non-projected property of the same type', async () => {
+			const owned = {
+				id: 'owned-virtual-prop',
+				type: 'virtual',
 				dataType: DataTypeType.FLOAT,
 				format: null,
 				invalid: null,
 			} as unknown as ChannelPropertyEntity;
+
+			// The registered source resolves only `virtual-prop`, so this one falls back to its own id —
+			// the owned / orphaned states, which do store a value of their own.
+			await expect(service.write(owned, 12.5)).resolves.toBe(true);
+
+			expect(storageService.writePoints).toHaveBeenCalledWith([
+				expect.objectContaining({ tags: { propertyId: 'owned-virtual-prop' } }),
+			]);
+		});
+
+		it('reads the value written by the source property', async () => {
+			const sourceProperty = source();
 
 			await service.write(sourceProperty, 21.5);
 
