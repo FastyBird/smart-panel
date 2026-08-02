@@ -19,6 +19,7 @@ import 'package:fastybird_smart_panel/plugins/devices-shelly-ng/plugin.dart';
 import 'package:fastybird_smart_panel/plugins/devices-shelly-v1/plugin.dart';
 import 'package:fastybird_smart_panel/plugins/simulator/plugin.dart';
 import 'package:fastybird_smart_panel/plugins/devices-third-party/plugin.dart';
+import 'package:fastybird_smart_panel/plugins/devices-virtual/plugin.dart';
 import 'package:fastybird_smart_panel/plugins/devices-wled/plugin.dart';
 import 'package:fastybird_smart_panel/plugins/devices-zigbee2mqtt/plugin.dart';
 import 'package:flutter/foundation.dart';
@@ -45,6 +46,7 @@ class DevicesModuleService {
   }) : _socketService = socketService {
     // Register all device plugins
     DevicesThirdPartyPlugin.register();
+    DevicesVirtualPlugin.register();
     DevicesHomeAssistantPlugin.register();
     DevicesShellyNgPlugin.register();
     DevicesShellyV1Plugin.register();

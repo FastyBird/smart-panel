@@ -16,6 +16,37 @@ export interface ChannelPropertyTypeMapping<
 	class: new (...args: any[]) => TProperty; // Constructor for the property class
 	createDto: new (...args: any[]) => TCreateDTO; // Constructor for the Create DTO
 	updateDto: new (...args: any[]) => TUpdateDTO; // Constructor for the Update DTO
+	/**
+	 * The type owner's last look at a row a POST is about to insert, before it is inserted.
+	 *
+	 * The counterpart to `beforeUpdate` below, and it exists for the same reason: an invariant that
+	 * spans the property and something outside the request payload is not decidable by a DTO
+	 * constraint. `channelId` in particular is a *route* parameter on both property controllers and an
+	 * argument on the two nested-creation paths, so it never reaches the create DTO at all — which is
+	 * why it is passed explicitly here rather than read back off `property.channel` (assigned as a bare
+	 * id string at this point, not a loaded relation).
+	 *
+	 * Throwing aborts the create before `repository.save`, so nothing is persisted, no
+	 * CHANNEL_PROPERTY_CREATED is emitted, and `afterCreate` does not run. Same failure vocabulary as
+	 * `beforeUpdate`: `DevicesValidationException` (or another `DevicesException`) is reported by the
+	 * HTTP layer as an unprocessable entity, anything else as a 500.
+	 */
+	beforeCreate?: (property: TProperty, channelId: string) => Promise<void>;
+	/**
+	 * Last look at the row a PATCH is about to write, before it is written.
+	 *
+	 * Receives the loaded entity with the update's fields already merged in, so it sees the state the
+	 * database will actually hold — which is the one thing a DTO constraint cannot: a PATCH carrying
+	 * one half of a two-field invariant validates perfectly on its own and only becomes illegal once
+	 * merged with the stored row. Throwing aborts the update before `repository.save`, leaving the row
+	 * untouched.
+	 *
+	 * Throw `DevicesValidationException` (or another `DevicesException`) to have the HTTP layer report
+	 * it as an unprocessable entity; anything else surfaces as a 500. Returns void rather than the
+	 * entity because the service goes on to save the very instance it passed in — mutate it in place if
+	 * a hook ever needs to normalise rather than reject.
+	 */
+	beforeUpdate?: (property: TProperty) => Promise<void>;
 	afterCreate?: (device: TProperty) => Promise<TProperty>;
 	afterUpdate?: (device: TProperty) => Promise<TProperty>;
 }

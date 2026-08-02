@@ -14,9 +14,11 @@ import { DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyValueState } from '../models/property-value-state.model';
 
+import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
 
 describe('PropertyValueService', () => {
+	let module: TestingModule;
 	let service: PropertyValueService;
 	let storageService: jest.Mocked<StorageService>;
 
@@ -27,13 +29,14 @@ describe('PropertyValueService', () => {
 			isConnected: jest.fn().mockReturnValue(true),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				PropertyValueService,
 				{
 					provide: StorageService,
 					useValue: mockStorageService,
 				},
+				PropertyValueSourceRegistryService,
 			],
 		}).compile();
 
@@ -309,6 +312,145 @@ describe('PropertyValueService', () => {
 			// Should accept above min (no max constraint)
 			const resultAbove = await service.write(property, 1000);
 			expect(resultAbove).toBe(true);
+		});
+	});
+
+	describe('value source dereferencing', () => {
+		const linked = (): ChannelPropertyEntity =>
+			({
+				id: 'virtual-prop',
+				type: 'virtual',
+				dataType: DataTypeType.FLOAT,
+				format: null,
+				invalid: null,
+			}) as unknown as ChannelPropertyEntity;
+
+		const source = (): ChannelPropertyEntity =>
+			({
+				id: 'source-prop',
+				type: 'shelly-ng',
+				dataType: DataTypeType.FLOAT,
+				format: null,
+				invalid: null,
+			}) as unknown as ChannelPropertyEntity;
+
+		beforeEach(() => {
+			const registry = module.get<PropertyValueSourceRegistryService>(PropertyValueSourceRegistryService);
+
+			registry.register({
+				getType: () => 'virtual',
+				resolve: (p) => (p.id === 'virtual-prop' ? 'source-prop' : null),
+			});
+		});
+
+		// The mirror of the delete() guard covered further down, and the reason it has to exist: the
+		// source's series is the *source device's* history, and a write pushed through a projection
+		// would be persisted into it as a real measurement the hardware never reported.
+		//
+		// Asserted against what the source's series actually holds afterwards, not merely against the
+		// return value: the failure mode is silent corruption of another device's data — its latest
+		// value, its trend and everything derived from them — which a boolean says nothing about.
+		it('refuses to write through a projected property, leaving the source series untouched', async () => {
+			// A genuine reading from the source device, which is what its series legitimately holds.
+			await service.write(source(), 21.5);
+
+			storageService.writePoints.mockClear();
+
+			const written = await service.write(linked(), 40);
+
+			expect(written).toBe(false);
+			expect(storageService.writePoints).not.toHaveBeenCalled();
+
+			// Latest value and trend cache both still describe the source's own reading.
+			const state = await service.readLatest(linked());
+
+			expect(state?.value).toBe(21.5);
+			expect(service['recentValuesMap'].get('source-prop')).toEqual([21.5]);
+			expect(storageService.query).not.toHaveBeenCalled();
+		});
+
+		it('still writes its own series for a non-projected property of the same type', async () => {
+			const owned = {
+				id: 'owned-virtual-prop',
+				type: 'virtual',
+				dataType: DataTypeType.FLOAT,
+				format: null,
+				invalid: null,
+			} as unknown as ChannelPropertyEntity;
+
+			// The registered source resolves only `virtual-prop`, so this one falls back to its own id —
+			// the owned / orphaned states, which do store a value of their own.
+			await expect(service.write(owned, 12.5)).resolves.toBe(true);
+
+			expect(storageService.writePoints).toHaveBeenCalledWith([
+				expect.objectContaining({ tags: { propertyId: 'owned-virtual-prop' } }),
+			]);
+		});
+
+		it('reads the value written by the source property', async () => {
+			const sourceProperty = source();
+
+			await service.write(sourceProperty, 21.5);
+
+			const state = await service.readLatest(linked());
+
+			expect(state?.value).toBe(21.5);
+			// served from the shared cache, so storage is never queried
+			expect(storageService.query).not.toHaveBeenCalled();
+		});
+
+		// The post-restart path, and the only one that actually proves readLatest() dereferences.
+		// Every other test in this block is served from the shared in-memory `valuesMap` before
+		// storage is ever reached, so reverting readLatest()'s storage query from the resolved key back
+		// to `property.id` would leave them all green while breaking the thing the design promises: a
+		// linked property must see the source's *persisted* history once the process has restarted and
+		// the cache is cold.
+		it('queries the source key, not its own id, when the cache is cold', async () => {
+			service['valuesMap'].clear();
+
+			storageService.query.mockResolvedValue([{ numberValue: 21.5, time: '2026-07-31T12:00:00.000Z' }]);
+
+			const state = await service.readLatest(linked());
+
+			expect(state?.value).toBe(21.5);
+			expect(storageService.query).toHaveBeenCalledTimes(1);
+			expect(storageService.query).toHaveBeenCalledWith(expect.stringContaining("propertyId = 'source-prop'"));
+			expect(storageService.query).not.toHaveBeenCalledWith(expect.stringContaining("propertyId = 'virtual-prop'"));
+		});
+
+		it('caches a cold storage read under the source key, so a sibling projection reuses it', async () => {
+			service['valuesMap'].clear();
+
+			storageService.query.mockResolvedValue([{ numberValue: 21.5, time: '2026-07-31T12:00:00.000Z' }]);
+
+			await service.readLatest(linked());
+
+			// A second projection of the same source — or the source itself — must hit the cache the
+			// first read populated, rather than re-querying under a different key.
+			const again = await service.readLatest(linked());
+
+			expect(again?.value).toBe(21.5);
+			expect(storageService.query).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not delete the source series when a projected property is deleted', async () => {
+			await service.delete(linked());
+
+			expect(storageService.query).not.toHaveBeenCalled();
+		});
+
+		it('deletes its own series for a non-projected property', async () => {
+			const own = {
+				id: 'own-prop',
+				type: 'shelly-ng',
+				dataType: DataTypeType.FLOAT,
+			} as unknown as ChannelPropertyEntity;
+
+			await service.delete(own);
+
+			expect(storageService.query).toHaveBeenCalledWith(
+				expect.stringContaining("DELETE FROM property_value WHERE propertyId = 'own-prop'"),
+			);
 		});
 	});
 });

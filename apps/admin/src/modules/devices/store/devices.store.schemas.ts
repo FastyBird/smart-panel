@@ -201,6 +201,7 @@ export const DeviceResSchema: ZodType<ApiDevice> = z.object({
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable(),
 	enabled: z.boolean(),
+	hidden: z.boolean(),
 	room_id: z.string().uuid().nullable(),
 	zone_ids: z.array(z.string().uuid()),
 	status: z.object({

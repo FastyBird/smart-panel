@@ -12,7 +12,7 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { SpaceType } from '../../spaces/spaces.constants';
-import { DEVICES_MODULE_NAME, EventType } from '../devices.constants';
+import { DEVICES_MODULE_NAME, DeviceHiddenFilter, EventType } from '../devices.constants';
 import { DevicesException, DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
@@ -68,14 +68,21 @@ export class DevicesService {
 	}
 
 	// Devices
-	async findAll<TDevice extends DeviceEntity>(type?: string): Promise<TDevice[]> {
+	async findAll<TDevice extends DeviceEntity>(
+		type?: string,
+		hidden: DeviceHiddenFilter = DeviceHiddenFilter.ALL,
+	): Promise<TDevice[]> {
 		const mapping = type ? this.devicesMapperService.getMapping<TDevice, any, any>(type) : null;
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
 		this.logger.debug('Fetching all devices');
 
-		const devices = (await repository.find({
+		// Cast to the base repository type: `hidden` is declared on DeviceEntity itself, but TypeScript
+		// cannot verify a `where` clause referencing it against the generic, union-typed `repository`
+		// (Repository<DeviceEntity> | Repository<TDevice>) without this annotation.
+		const devices = (await (repository as Repository<DeviceEntity>).find({
+			...(hidden === DeviceHiddenFilter.ALL ? {} : { where: { hidden: hidden === DeviceHiddenFilter.TRUE } }),
 			relations: [
 				'controls',
 				'controls.device',

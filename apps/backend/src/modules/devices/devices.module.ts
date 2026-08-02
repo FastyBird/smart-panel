@@ -68,6 +68,7 @@ import { ModuleResetService } from './services/module-reset.service';
 import { PlatformRegistryService } from './services/platform.registry.service';
 import { PropertyCommandService } from './services/property-command.service';
 import { PropertyTimeseriesService } from './services/property-timeseries.service';
+import { PropertyValueSourceRegistryService } from './services/property-value-source.registry.service';
 import { PropertyValueService } from './services/property-value.service';
 import { StatsService } from './services/stats.service';
 import { ChannelControlEntitySubscriber } from './subscribers/channel-control-entity.subscriber';
@@ -78,6 +79,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 import { ChannelExistsConstraintValidator } from './validators/channel-exists-constraint.validator';
 import { ChannelPropertyExistsConstraintValidator } from './validators/channel-property-exists-constraint.validator';
 import { DeviceExistsConstraintValidator } from './validators/device-exists-constraint.validator';
+import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidden-constraint.validator';
 
 @ApiTag({
 	tagName: DEVICES_MODULE_NAME,
@@ -117,6 +119,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		ChannelsPropertiesService,
 		DeviceValidationService,
 		DeviceExistsConstraintValidator,
+		DeviceNotHiddenConstraintValidator,
 		ChannelExistsConstraintValidator,
 		ChannelPropertyExistsConstraintValidator,
 		DeviceEntitySubscriber,
@@ -126,6 +129,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		ChannelPropertyEntitySubscriber,
 		DevicesSeederService,
 		PlatformRegistryService,
+		PropertyValueSourceRegistryService,
 		PropertyValueService,
 		PropertyTimeseriesService,
 		PropertyCommandService,
@@ -159,10 +163,13 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		ChannelsPropertiesTypeMapperService,
 		DevicesSeederService,
 		PlatformRegistryService,
+		PropertyValueSourceRegistryService,
 		DeviceExistsConstraintValidator,
+		DeviceNotHiddenConstraintValidator,
 		ChannelExistsConstraintValidator,
 		ChannelPropertyExistsConstraintValidator,
 		DeviceConnectivityService,
+		DeviceConnectionStateService,
 		DeviceProvisionQueueService,
 		DeviceValidationService,
 	],

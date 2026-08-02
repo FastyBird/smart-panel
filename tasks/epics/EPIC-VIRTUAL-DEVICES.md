@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: planned
+Status: in-progress
 
 ## 1. Business goal
 
@@ -22,7 +22,7 @@ Similarly, users often want to **combine** channels from separate physical devic
 
 ### Inspiration
 
-Home Assistant's **Helpers** concept allows users to create virtual entities from existing ones. This epic brings similar flexibility to Smart Panel through two dedicated plugins.
+Home Assistant's **Helpers** concept allows users to create virtual entities from existing ones. This epic brings similar flexibility to Smart Panel through a `devices-virtual` plugin.
 
 ### Existing Code References
 
@@ -39,21 +39,23 @@ Home Assistant's **Helpers** concept allows users to create virtual entities fro
 
 ### Key Architectural Decisions
 
-1. **Two separate plugins** — `devices-split` for splitting, `devices-combined` for composing. Different data models, different UX flows.
-2. **Channel mapping, not duplication** — Virtual devices reference parent channels via a mapping table. No channel/property copying. Commands target the same property IDs.
-3. **`hidden` flag on DeviceEntity** — Parent devices can be hidden from selection UIs. User-controlled, with auto-unhide when last child is deleted.
+> Decisions #1 and #2 below were rejected during design review, before implementation began. See [`docs/superpowers/specs/2026-07-31-virtual-devices-design.md`](../../docs/superpowers/specs/2026-07-31-virtual-devices-design.md) for the design that replaced them and was actually built.
+
+1. **Two separate plugins — rejected.** The original plan was `devices-split` for splitting and `devices-combined` for composing, as different data models with different UX flows. Splitting turned out to be composing with a single source device, so the two collapsed into one `devices-virtual` plugin with no parent-device column at all — every source is derived from the linked properties themselves.
+2. **Channel mapping, not duplication — rejected.** The original plan had virtual devices reference parent channels via a mapping table, with no channel/property copying and commands targeting the same property IDs. This does not survive the schema: seven entity types (`data-sources-device-channel`, `tiles-device-preview`, `pages-device-detail`, and the four space role tables) hold `ManyToOne` FK constraints with `CASCADE` to `DeviceEntity`/`ChannelEntity`/`ChannelPropertyEntity`. A derived/shared ID has no row of its own, so the database rejects the insert outright — a virtual device built this way could not have been placed on a tile, given a detail page, used as a data source, or assigned a space role. **What replaced it:** the virtual device owns real rows with genuine UUIDs, while `PropertyValueService` reads and writes under the *source* property's key via a `PropertyValueSourceRegistryService`, so a value and its history are stored exactly once.
+3. **`hidden` flag on DeviceEntity** — Source devices can be hidden from selection UIs. User-controlled, with auto-unhide when the last virtual device referencing a hidden source is deleted.
 4. **Full spec validation** — Virtual devices have their own category and must pass device spec validation against the chosen category.
-5. **Parent devices are unaware** — Physical device plugins don't know about virtual children. The virtual layer is entirely user-managed via admin/API.
+5. **Source devices are unaware** — Physical device plugins don't know about virtual devices built from their channels. The virtual layer is entirely user-managed via admin/API.
+6. **Cascade deletion on source loss — replaced by degradation.** The original plan cascade-deleted a virtual device when its source device, channel, or property was deleted. Rejected: virtual devices are themselves `FK CASCADE` targets from tiles, detail pages, data sources and the four space role tables, so cascading on source loss would have destroyed dashboard configuration instead of just the virtual device. Instead, losing a source `SET NULL`s the link, the property becomes orphaned, and the device degrades (connection status forced to `DISCONNECTED`) rather than disappearing.
 
 ## 3. Scope
 
 **In scope**
 - `hidden` flag on `DeviceEntity` with filtering across all selection UIs
-- `devices-split` plugin: split a multi-channel device into child devices
-- `devices-combined` plugin: compose a device from channels across multiple physical devices
-- Admin UI for both creation flows (wizard-based)
+- `devices-virtual` plugin: build a device from properties of other devices — splitting one physical device into several, or composing one logical device from several
+- Admin UI for the creation flow (wizard-based)
 - Panel UI support (virtual devices render as normal devices)
-- Spec validation support for both types
+- Spec validation support
 
 **Out of scope**
 - Auto-detection / auto-suggestion of splittable devices (future enhancement)
@@ -65,10 +67,9 @@ Home Assistant's **Helpers** concept allows users to create virtual entities fro
 
 | # | Task | Scope | Description |
 |---|------|-------|-------------|
-| 1 | [FEATURE-DEVICE-SPLITTER-PLUGIN](FEATURE-DEVICE-SPLITTER-PLUGIN.md) | backend, admin, panel | Split multi-channel devices into independent child devices |
-| 2 | [FEATURE-DEVICE-COMPOSITE-PLUGIN](FEATURE-DEVICE-COMPOSITE-PLUGIN.md) | backend, admin, panel | Combine channels from multiple devices into one logical device |
+| 1 | [FEATURE-DEVICE-VIRTUAL-PLUGIN](../../docs/superpowers/specs/2026-07-31-virtual-devices-design.md) | backend, admin, panel | Build a device from properties of other devices — splitting one physical device into several, or composing one logical device from several |
 
-Both tasks share the `hidden` flag foundation (implemented in the splitter task, reused by the composite task).
+`FEATURE-DEVICE-SPLITTER-PLUGIN` and `FEATURE-DEVICE-COMPOSITE-PLUGIN` are superseded (see their headers) and collapsed into this single row. The backend `devices-virtual` plugin, the `hidden` flag foundation, and panel registration are implemented; the admin creation wizard and `hidden`-flag filtering in the admin device pickers are not yet built.
 
 ## 5. Technical constraints
 

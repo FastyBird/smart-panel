@@ -130,8 +130,15 @@ export class DeviceConnectionStateService {
 		}
 	}
 
+	/**
+	 * Latest known connection state for a device, cache-first.
+	 *
+	 * Takes only the device's id (`Pick<DeviceEntity, 'id'>`) because that is all it reads — callers
+	 * holding a full entity pass it unchanged, while callers that only know an id (the virtual
+	 * devices plugin aggregating over its source device ids) do not have to load one just to ask.
+	 */
 	async readLatest(
-		device: DeviceEntity,
+		device: Pick<DeviceEntity, 'id'>,
 	): Promise<{ online: boolean; status: ConnectionState; lastChanged: Date | null }> {
 		// Check local cache first
 		if (this.statusMap.has(device.id)) {

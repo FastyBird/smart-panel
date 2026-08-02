@@ -8,13 +8,18 @@ import { DEVICES_MODULE_NAME, DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyTimeseriesModel, TimeseriesPointModel } from '../models/devices.model';
 
+import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
+
 export type BucketDuration = '1m' | '5m' | '15m' | '1h';
 
 @Injectable()
 export class PropertyTimeseriesService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'PropertyTimeseriesService');
 
-	constructor(private readonly storageService: StorageService) {}
+	constructor(
+		private readonly storageService: StorageService,
+		private readonly valueSourceRegistry: PropertyValueSourceRegistryService,
+	) {}
 
 	/**
 	 * Query timeseries data for a property within a time range
@@ -25,12 +30,14 @@ export class PropertyTimeseriesService {
 		to: Date,
 		bucket?: BucketDuration,
 	): Promise<PropertyTimeseriesModel> {
+		const key = this.valueSourceRegistry.resolve(property);
+
 		this.logger.debug(
 			`[TIMESERIES] Querying property id=${property.id} from=${from.toISOString()} to=${to.toISOString()} bucket=${bucket ?? 'none'}`,
 		);
 
 		try {
-			const points = await this.fetchPoints(property, from, to, bucket);
+			const points = await this.fetchPoints(property, key, from, to, bucket);
 
 			return plainToInstance(PropertyTimeseriesModel, {
 				property: property.id,
@@ -63,12 +70,13 @@ export class PropertyTimeseriesService {
 	 */
 	private async fetchPoints(
 		property: ChannelPropertyEntity,
+		key: string,
 		from: Date,
 		to: Date,
 		bucket?: BucketDuration,
 	): Promise<TimeseriesPointModel[]> {
 		const effectiveBucket = bucket ?? this.getDefaultBucket(from, to);
-		const query = this.buildQuery(property.id, from, to, effectiveBucket);
+		const query = this.buildQuery(key, from, to, effectiveBucket);
 
 		const result = await this.storageService.query<{
 			time: { _nanoISO: string };

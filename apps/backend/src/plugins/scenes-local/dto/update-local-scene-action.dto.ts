@@ -3,6 +3,7 @@ import { IsOptional, IsString, IsUUID } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
+import { ValidateDeviceNotHidden } from '../../../modules/devices/validators/device-not-hidden-constraint.validator';
 import { UpdateSceneActionDto } from '../../../modules/scenes/dto/update-scene-action.dto';
 import { SCENES_LOCAL_TYPE } from '../scenes-local.constants';
 
@@ -28,6 +29,7 @@ export class UpdateLocalSceneActionDto extends UpdateSceneActionDto {
 	@Expose({ name: 'device_id' })
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"device_id","reason":"Device ID must be a valid UUID (version 4)."}]' })
+	@ValidateDeviceNotHidden()
 	@Transform(
 		({ obj }: { obj: { device_id?: string | null; deviceId?: string | null } }) => {
 			const value = obj.device_id ?? obj.deviceId;

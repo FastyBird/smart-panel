@@ -6,6 +6,8 @@ import { DEVICES_MODULE_NAME, DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyValueState, type PropertyValueTrend } from '../models/property-value-state.model';
 
+import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
+
 /**
  * Number of recent data points used for trend computation.
  */
@@ -23,13 +25,46 @@ export class PropertyValueService {
 	 */
 	private recentValuesMap: Map<ChannelPropertyEntity['id'], number[]> = new Map();
 
-	constructor(private readonly storageService: StorageService) {}
+	constructor(
+		private readonly storageService: StorageService,
+		private readonly valueSourceRegistry: PropertyValueSourceRegistryService,
+	) {}
 
 	/**
 	 * Write property value to storage
 	 * @returns true if value changed, false if value was the same or invalid
 	 */
 	async write(property: ChannelPropertyEntity, value: string | boolean | number | null): Promise<boolean> {
+		const key = this.valueSourceRegistry.resolve(property);
+
+		// A projected property owns no series — the value belongs to its source, and only the source's
+		// own reports may write it. This is the exact mirror of delete()'s guard below, and exists for
+		// the same reason: dereferencing here would persist the supplied value as a real measurement of
+		// a device that was never commanded and never reported it, corrupting the source's latest value,
+		// its trend cache and its stored history with a number no hardware produced.
+		//
+		// Nothing legitimate is lost, because no write ever legitimately arrives *through* a projection:
+		//
+		// - A source device reports on its own property, where the key already is that property's id.
+		// - A command issued against a projection is forwarded to the source device's own platform
+		//   (VirtualDevicePlatform), which makes the source report it back as above. The value the
+		//   caller asked for still reaches the hardware; what is dropped is only the optimistic local
+		//   echo, which for a projection would land in somebody else's series ahead of — or instead of —
+		//   the hardware ever confirming it.
+		// - A value supplied while *creating* a projection (POST with `value`) has no reporter behind it
+		//   at all, and no command either. ChannelsPropertiesService.create() refuses that outright
+		//   rather than letting it fall through to here, so the caller is told it was not stored.
+		//
+		// Past this point `key` is provably `property.id`; it stays named for the storage tag, so this
+		// method and readLatest() keep resolving the series the same way.
+		if (key !== property.id) {
+			this.logger.debug(
+				`Skipping write for projected property id=${property.id}: its value belongs to source property id=${key}`,
+			);
+
+			return false;
+		}
+
 		// Skip null values - device hasn't reported this property yet
 		if (value === null || value === undefined) {
 			return false;
@@ -42,7 +77,7 @@ export class PropertyValueService {
 			return false;
 		}
 
-		const cached = this.valuesMap.get(property.id);
+		const cached = this.valuesMap.get(key);
 		if (cached && cached.value === value) {
 			// no change → skip storage write, but refresh lastUpdated so freshness stays accurate
 			cached.lastUpdated = new Date().toISOString();
@@ -94,19 +129,19 @@ export class PropertyValueService {
 			(typeof value === 'string' && !isNaN(Number(value)) && this.isNumericDataType(property.dataType))
 		) {
 			const numValue = Number(value);
-			const recent = this.recentValuesMap.get(property.id) ?? [];
+			const recent = this.recentValuesMap.get(key) ?? [];
 			recent.push(numValue);
 			if (recent.length > TREND_POINTS_COUNT) {
 				recent.shift();
 			}
-			this.recentValuesMap.set(property.id, recent);
+			this.recentValuesMap.set(key, recent);
 		}
 
-		const trend = this.computeTrend(property);
+		const trend = this.computeTrend(property, key);
 		const state = new PropertyValueState(value, now, trend);
 
 		// Update local cache regardless of storage availability
-		this.valuesMap.set(property.id, state);
+		this.valuesMap.set(key, state);
 
 		if (!this.storageService.isConnected()) {
 			return true; // Value changed in cache
@@ -116,7 +151,7 @@ export class PropertyValueService {
 			await this.storageService.writePoints([
 				{
 					measurement: 'property_value',
-					tags: { propertyId: property.id },
+					tags: { propertyId: key },
 					fields: formattedValue,
 					timestamp: new Date(),
 				},
@@ -136,8 +171,10 @@ export class PropertyValueService {
 	}
 
 	async readLatest(property: ChannelPropertyEntity): Promise<PropertyValueState | null> {
+		const key = this.valueSourceRegistry.resolve(property);
+
 		// Check local cache first
-		const cached = this.valuesMap.get(property.id);
+		const cached = this.valuesMap.get(key);
 		if (cached) {
 			this.logger.debug(`Loaded cached value for property id=${property.id}, value=${cached.value}`);
 
@@ -152,7 +189,7 @@ export class PropertyValueService {
 		try {
 			const query = `
         SELECT * FROM property_value
-        WHERE propertyId = '${property.id}'
+        WHERE propertyId = '${key}'
         ORDER BY time DESC
         LIMIT ${TREND_POINTS_COUNT}
       `;
@@ -221,15 +258,15 @@ export class PropertyValueService {
 						recentValues.push(val);
 					}
 				}
-				this.recentValuesMap.set(property.id, recentValues);
+				this.recentValuesMap.set(key, recentValues);
 			}
 
-			const trend = this.computeTrend(property);
+			const trend = this.computeTrend(property, key);
 			const state = new PropertyValueState(parsedValue, lastUpdated, trend);
 
 			this.logger.debug(`Read latest value id=${property.id} dataType=${property.dataType} value=${parsedValue}`);
 
-			this.valuesMap.set(property.id, state);
+			this.valuesMap.set(key, state);
 
 			return state;
 		} catch (error) {
@@ -242,6 +279,14 @@ export class PropertyValueService {
 	}
 
 	async delete(property: ChannelPropertyEntity): Promise<void> {
+		const key = this.valueSourceRegistry.resolve(property);
+
+		// A projected property owns no series — the value belongs to its source. Deleting here would
+		// destroy the source device's entire history, so bail out before clearing caches or storage.
+		if (key !== property.id) {
+			return;
+		}
+
 		// Always clear local cache
 		this.valuesMap.delete(property.id);
 		this.recentValuesMap.delete(property.id);
@@ -270,12 +315,12 @@ export class PropertyValueService {
 	 * Compute trend direction from recent cached values.
 	 * Returns null for non-numeric types or insufficient data.
 	 */
-	private computeTrend(property: ChannelPropertyEntity): PropertyValueTrend | null {
+	private computeTrend(property: ChannelPropertyEntity, key: string): PropertyValueTrend | null {
 		if (!this.isNumericDataType(property.dataType)) {
 			return null;
 		}
 
-		const recent = this.recentValuesMap.get(property.id);
+		const recent = this.recentValuesMap.get(key);
 		if (!recent || recent.length < 2) {
 			return null;
 		}

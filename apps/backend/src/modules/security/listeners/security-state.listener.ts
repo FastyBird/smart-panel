@@ -78,8 +78,48 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 		}
 	}
 
-	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_CREATED)
+	/**
+	 * Kept as its own handler rather than folded into the decorator list below, because
+	 * CHANNEL_PROPERTY_VALUE_SET is the one property event a *projection* is ever re-emitted for
+	 * (VirtualProjectionListener) — so it is the only place a projection-specific policy could live,
+	 * and this is the record that the policy is deliberately "none".
+	 *
+	 * ## Why a projected value-set is not skipped
+	 *
+	 * It used to be, on the reasoning that the source's own event already scheduled the
+	 * recalculation. That is wrong in one direction and unnecessary in the other.
+	 *
+	 * Wrong: the projection's classification need not match its source's. A virtual device links a
+	 * source property into a channel of the *user's* choosing, so a source sitting in, say, a
+	 * `generic` channel can be projected into a `motion` one. processPropertyChange() then filters
+	 * the source event out on channel category, and the guard discarded the projected event — the
+	 * only payload carrying the security-relevant classification — so nothing scheduled a
+	 * recalculation and the alarm stayed stale until some unrelated event happened to trigger one.
+	 * The projected value is genuinely visible to the aggregator, so this is a real miss and not a
+	 * theoretical one: ChannelPropertyEntitySubscriber.afterLoad populates every loaded property's
+	 * `value` through PropertyValueService.readLatest(), which resolves the storage key through the
+	 * same value-source registry — so SecuritySensorsProvider reads the source's live value off the
+	 * virtual device's channel.
+	 *
+	 * Unnecessary: unlike the energy ingestion listener — which writes one sample per event, where a
+	 * second event genuinely double-counts the same watts — nothing here is per-event.
+	 * scheduleStateRecalculation() resets a single global debounce timer, and the run behind it
+	 * (SecurityAggregatorService.aggregateWithErrors) recomputes from scratch off devicesService
+	 * .findAll(). Scheduling it twice within the debounce window produces exactly one run with
+	 * exactly the same result.
+	 *
+	 * The aggregator *does* double-count a projected sensor — SecuritySensorsProvider emits one alert
+	 * per matching channel, keyed `sensor:<deviceId>:<alertType>`, so the physical device and the
+	 * virtual device projecting it yield two distinct alert ids for one physical sensor. That is real,
+	 * but it happens inside the aggregation regardless of how many events scheduled it; no guard in
+	 * this listener has ever affected it. Recorded as a follow-up rather than papered over here.
+	 */
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET)
+	async handlePropertyValueSet(property: ChannelPropertyEntity | null): Promise<void> {
+		await this.handlePropertyChanged(property);
+	}
+
+	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_CREATED)
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_UPDATED)
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_DELETED)
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_RESET)

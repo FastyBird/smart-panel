@@ -5,6 +5,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { CreateSingleTileDto } from '../../../modules/dashboard/dto/create-tile.dto';
 import { ValidateDeviceExists } from '../../../modules/devices/validators/device-exists-constraint.validator';
+import { ValidateDeviceNotHidden } from '../../../modules/devices/validators/device-not-hidden-constraint.validator';
 import { TILES_DEVICE_PREVIEW_TYPE } from '../tiles-device-preview.constants';
 
 @ApiSchema({ name: 'TilesDevicePreviewPluginCreateDevicePreviewTile' })
@@ -26,6 +27,7 @@ export class CreateDevicePreviewTileDto extends CreateSingleTileDto {
 	@Expose()
 	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
 	@ValidateDeviceExists({ message: '[{"field":"device","reason":"The specified device does not exist."}]' })
+	@ValidateDeviceNotHidden()
 	device: string;
 
 	@ApiPropertyOptional({

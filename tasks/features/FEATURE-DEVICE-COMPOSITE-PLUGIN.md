@@ -4,7 +4,9 @@ Type: feature
 Scope: backend, admin, panel
 Size: large
 Parent: EPIC-VIRTUAL-DEVICES
-Status: planned
+Status: superseded
+
+> **Superseded.** This design was rejected before implementation began. Composing turned out to subsume splitting a single source device, so this plugin and `FEATURE-DEVICE-SPLITTER-PLUGIN` collapsed into one `devices-virtual` plugin. See [`docs/superpowers/specs/2026-07-31-virtual-devices-design.md`](../../docs/superpowers/specs/2026-07-31-virtual-devices-design.md) for the design that was actually built.
 
 ## 1. Business goal
 

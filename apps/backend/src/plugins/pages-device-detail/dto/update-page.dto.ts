@@ -5,6 +5,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdatePageDto } from '../../../modules/dashboard/dto/update-page.dto';
 import { ValidateDeviceExists } from '../../../modules/devices/validators/device-exists-constraint.validator';
+import { ValidateDeviceNotHidden } from '../../../modules/devices/validators/device-not-hidden-constraint.validator';
 import { PAGES_DEVICE_DETAIL_TYPE } from '../pages-device-detail.constants';
 
 @ApiSchema({ name: 'PagesDeviceDetailPluginUpdateDeviceDetailPage' })
@@ -28,5 +29,6 @@ export class UpdateDeviceDetailPageDto extends UpdatePageDto {
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
 	@ValidateDeviceExists({ message: '[{"field":"device","reason":"The specified device does not exist."}]' })
+	@ValidateDeviceNotHidden()
 	device?: string;
 }
