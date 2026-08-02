@@ -72,6 +72,19 @@ describe('VirtualIndexMaintenanceListener', () => {
 		}
 	};
 
+	// Drives the listener's own waiting forward without spending wall-clock time, for the two describes
+	// below that install fake timers: one real `setImmediate` turn per step (the wait's first phase, the
+	// rebuild loop's own awaits, and any real sqlite I/O in flight) plus a slice of faked clock (its
+	// second phase, and the repair delay). Nothing here is a race — every step is a discrete,
+	// deterministic advance, and the loop stops the moment `predicate` holds, so a test only ever runs as
+	// far as the behaviour it asserts on.
+	const driveUntil = async (predicate: () => boolean, maxSteps = 600): Promise<void> => {
+		for (let step = 0; step < maxSteps && !predicate(); step++) {
+			await new Promise<void>((resolve) => setImmediate(resolve));
+			await jest.advanceTimersByTimeAsync(50);
+		}
+	};
+
 	// A stand-in for the shared, single-connection QueryRunner deferPastOpenTransaction() polls.
 	// Never mid-transaction here — these tests exercise coalescing/retry, not commit ordering, which
 	// has its own real-sqlite coverage below — so every poll's `isTransactionActive` reads false, and
@@ -907,18 +920,6 @@ describe('VirtualIndexMaintenanceListener', () => {
 			return { queryRunner, dataSource: { createQueryRunner: () => queryRunner } as unknown as DataSource };
 		};
 
-		// Drives the listener's own waiting forward without spending wall-clock time: one real
-		// `setImmediate` turn per step (the wait's first phase, and the rebuild loop's own awaits) plus
-		// a slice of faked clock (its second phase, and the repair delay). Nothing here is a race —
-		// every step is a discrete, deterministic advance, and the loop stops the moment `predicate`
-		// holds, so a test only ever runs as far as the behaviour it asserts on.
-		const driveUntil = async (predicate: () => boolean, maxSteps = 600): Promise<void> => {
-			for (let step = 0; step < maxSteps && !predicate(); step++) {
-				await new Promise<void>((resolve) => setImmediate(resolve));
-				await jest.advanceTimersByTimeAsync(50);
-			}
-		};
-
 		// The messages a logger spy was called with, ignoring the context/tag arguments
 		// createExtensionLogger() appends — asserting on those would pin the logger's call shape rather
 		// than what this listener reported.
@@ -1092,6 +1093,287 @@ describe('VirtualIndexMaintenanceListener', () => {
 			await driveUntil(() => loggerErrorSpy.mock.calls.length > 0);
 
 			expect(flagAtRebuild).toHaveLength(9);
+		});
+	});
+
+	// -- Round 7: the one write no repair pass can take back ------------------------------------
+	//
+	// The finding: unhideAbandonedSources() ran before runRebuildLoop()'s `settled` check, so a pass
+	// whose wait expired patched `hidden` off rows it had read through a still-open transaction. When
+	// that transaction rolled back, the repair pass restored the *index* — three maps in memory — and
+	// nothing restored the flag: a rollback emits no event, and an abandonment is an edge with no
+	// opposite, so no later pass has anything to react to. The physical source stayed visible next to
+	// the virtual device that was still replacing it.
+	//
+	// Everything below runs against real sqlite and asserts on the `hidden` column, not on which
+	// methods were called with what. An earlier round's timing test on this same listener passed
+	// vacuously against call counts, and the question here is specifically what durably happened to a
+	// row — call counts appear only as conditions to drive the loop far enough to ask.
+	describe('unhiding a source abandoned by an uncommitted deletion (real sqlite)', () => {
+		let dataSource: DataSource;
+		let subject: VirtualIndexMaintenanceListener;
+		let indexStub: ReturnType<typeof createIndexStub>;
+		let devicesStub: { findOne: jest.Mock; update: jest.Mock };
+		// What `isTransactionActive` read at the moment each rebuild was entered, sampled before that
+		// rebuild's own query. Used as a precondition — "this pass really did read inside the open
+		// transaction" — never as the assertion.
+		let flagAtRebuild: boolean[];
+		let releaseTheUnhide: () => void;
+		let loggerWarnSpy: jest.SpyInstance;
+		let loggerErrorSpy: jest.SpyInstance;
+
+		// Stands in for VirtualPropertyIndexService with the two behaviours this case turns on kept
+		// intact: rebuild() reads through `dataSource.createQueryRunner()`, which for sqlite is the one
+		// connection every unscoped query in the app shares (see AbstractSqliteDriver) and therefore
+		// sees an open transaction's uncommitted rows; and it reports as abandoned exactly the source
+		// devices present in the outgoing map and absent from the incoming one, which is what
+		// VirtualPropertyIndexService.rebuild() computes. The real service is not used here because it
+		// needs the full STI entity metadata and schema to run at all — that path has its own coverage
+		// in test/devices-virtual.e2e-spec.ts.
+		function createIndexStub() {
+			let bySourceDevice = new Map<string, string[]>();
+			let readers: (() => void)[] = [];
+
+			return {
+				rebuild: jest.fn(async (): Promise<VirtualIndexRebuildResult> => {
+					flagAtRebuild.push(dataSource.createQueryRunner().isTransactionActive);
+
+					const rows = (await dataSource
+						.createQueryRunner()
+						.query('SELECT virtual_device_id, source_device_id FROM links')) as {
+						virtual_device_id: string;
+						source_device_id: string;
+					}[];
+
+					const incoming = new Map<string, string[]>();
+
+					for (const row of rows) {
+						incoming.set(row.source_device_id, [...(incoming.get(row.source_device_id) ?? []), row.virtual_device_id]);
+					}
+
+					const abandonedSourceDeviceIds = [...bySourceDevice.keys()].filter(
+						(sourceDeviceId) => !incoming.has(sourceDeviceId),
+					);
+
+					bySourceDevice = incoming;
+
+					for (const reader of readers) {
+						reader();
+					}
+
+					readers = [];
+
+					return { rewiredVirtualDeviceIds: [], abandonedSourceDeviceIds };
+				}),
+				findVirtualDeviceIdsBySourceDevice: jest.fn(
+					(sourceDeviceId: string): string[] => bySourceDevice.get(sourceDeviceId) ?? [],
+				),
+				/** Resolves the next time a rebuild has actually read the table. */
+				nextRead: (): Promise<void> => new Promise<void>((resolve) => readers.push(resolve)),
+			};
+		}
+
+		// Reads and writes the real `devices` row. findOne — the first thing the unhide does — waits on
+		// a gate the test opens once the emitting transaction has finished, which is the shape the
+		// finding describes rather than an artificial delay: the unhide runs several awaited round trips
+		// after the read it was derived from (the rebuild, then a recompute, then this findOne), so its
+		// patch lands on the far side of the commit or rollback. Without the gate the patch could land
+		// inside the open transaction and be rolled back along with it, which would hide the defect
+		// behind a coincidence of scheduling rather than prove anything about it.
+		const createDevicesStub = (unhideAllowed: Promise<void>): { findOne: jest.Mock; update: jest.Mock } => ({
+			findOne: jest.fn(async (id: string) => {
+				await unhideAllowed;
+
+				const rows = await dataSource.query<{ id: string; hidden: number }[]>(
+					'SELECT id, hidden FROM devices WHERE id = ?',
+					[id],
+				);
+
+				return rows.length > 0
+					? { id: rows[0].id, type: 'simulator', hidden: rows[0].hidden === 1, enabled: true }
+					: null;
+			}),
+			update: jest.fn(async (id: string, dto: { hidden?: boolean }) => {
+				await dataSource.query('UPDATE devices SET hidden = ? WHERE id = ?', [dto.hidden === false ? 0 : 1, id]);
+			}),
+		});
+
+		const readHidden = async (id: string): Promise<number | undefined> => {
+			const rows = await dataSource.query<{ hidden: number }[]>('SELECT hidden FROM devices WHERE id = ?', [id]);
+
+			return rows[0]?.hidden;
+		};
+
+		const countLinks = async (): Promise<number> => {
+			const rows = await dataSource.query<{ total: number }[]>('SELECT COUNT(*) AS total FROM links');
+
+			return rows[0].total;
+		};
+
+		beforeAll(async () => {
+			dataSource = new DataSource({ type: 'sqlite', database: ':memory:', entities: [], synchronize: false });
+
+			await dataSource.initialize();
+			await dataSource.query('CREATE TABLE devices (id TEXT PRIMARY KEY, hidden INTEGER NOT NULL)');
+			await dataSource.query('CREATE TABLE links (virtual_device_id TEXT NOT NULL, source_device_id TEXT NOT NULL)');
+		});
+
+		afterAll(async () => {
+			await dataSource.destroy();
+		});
+
+		beforeEach(async () => {
+			await dataSource.query('DELETE FROM devices');
+			await dataSource.query('DELETE FROM links');
+			// The state the auto-unhide rule is about: a physical device hidden because a virtual device
+			// replaced it, and the link that records the replacement.
+			await dataSource.query("INSERT INTO devices (id, hidden) VALUES ('source-device', 1)");
+			await dataSource.query(
+				"INSERT INTO links (virtual_device_id, source_device_id) VALUES ('virtual-device', 'source-device')",
+			);
+
+			flagAtRebuild = [];
+			indexStub = createIndexStub();
+
+			devicesStub = createDevicesStub(
+				new Promise<void>((resolve) => {
+					releaseTheUnhide = resolve;
+				}),
+			);
+
+			// Primes the index exactly as any earlier pass would have, so a later rebuild that stops
+			// seeing the link has an outgoing entry to report as abandoned.
+			await indexStub.rebuild();
+
+			flagAtRebuild = [];
+			indexStub.rebuild.mockClear();
+
+			subject = new VirtualIndexMaintenanceListener(
+				indexStub as unknown as VirtualPropertyIndexService,
+				status as unknown as VirtualStatusListener,
+				devicesStub as unknown as DevicesService,
+				dataSource,
+			);
+
+			loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+			loggerErrorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+
+			// `setImmediate` stays real so the wait's first phase — and every sqlite callback, which
+			// arrives through libuv's I/O phase rather than a timer — runs at its natural pace. Only the
+			// wait's second phase and the repair delay are faked, which is what collapses a multi-second
+			// wait into an instant, repeatable test.
+			jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] });
+		});
+
+		afterEach(() => {
+			jest.useRealTimers();
+
+			loggerWarnSpy.mockRestore();
+			loggerErrorSpy.mockRestore();
+		});
+
+		it('leaves the source hidden when the deletion it read was rolled back', async () => {
+			const transaction = dataSource
+				.transaction(async (manager) => {
+					await manager.query('DELETE FROM links WHERE virtual_device_id = ?', ['virtual-device']);
+
+					// What DevicesService.remove() does: EventEmitter2.emit() runs listeners
+					// synchronously, from inside the still-open transaction.
+					subject.handleStructuralChange();
+
+					// Holds the transaction open until the listener has given up waiting and read through
+					// it — the expiry this case is about, reproduced rather than assumed.
+					await indexStub.nextRead();
+
+					throw new Error('rolled back');
+				})
+				.catch((error: Error) => error.message);
+
+			await driveUntil(() => flagAtRebuild.length > 0);
+
+			// Preconditions, not the assertion: the pass really did read inside the open transaction,
+			// and really did give up waiting rather than settle.
+			expect(flagAtRebuild).toEqual([true]);
+			expect(
+				(loggerWarnSpy.mock.calls as unknown[][]).some(
+					(call) => typeof call[0] === 'string' && call[0].includes('Gave up waiting'),
+				),
+			).toBe(true);
+
+			await expect(transaction).resolves.toBe('rolled back');
+
+			// From here every read and write the unhide makes lands on committed state — the durable
+			// case, not one that a rollback could quietly undo for it.
+			releaseTheUnhide();
+
+			await driveUntil(() => flagAtRebuild.length > 1 && indexStub.rebuild.mock.calls.length > 1);
+
+			// The rollback put the link back, so the virtual device still replaces this source and the
+			// source must still be hidden. A visible physical device sitting next to its own virtual
+			// replacement is the duplicate the user sees, and nothing in this system would ever hide it
+			// again.
+			await expect(countLinks()).resolves.toBe(1);
+			await expect(readHidden('source-device')).resolves.toBe(1);
+		});
+
+		// The control for the case above, and the risk the fix itself carries: holding the unhide back
+		// until a pass reads committed state must not lose it. Same shape, same expired wait, opposite
+		// outcome — and the repair pass cannot re-derive the abandonment from its own rebuild here, since
+		// the index dropped the source on the expired pass and reports no transition on the next one. The
+		// only thing that can unhide this device is the queued id being re-checked and acted on.
+		it('unhides the source once the deletion it read has committed', async () => {
+			const transaction = dataSource.transaction(async (manager) => {
+				await manager.query('DELETE FROM links WHERE virtual_device_id = ?', ['virtual-device']);
+
+				subject.handleStructuralChange();
+
+				await indexStub.nextRead();
+			});
+
+			await driveUntil(() => flagAtRebuild.length > 0);
+
+			expect(flagAtRebuild).toEqual([true]);
+
+			await transaction;
+
+			releaseTheUnhide();
+
+			await driveUntil(() => devicesStub.update.mock.calls.length > 0);
+
+			await expect(countLinks()).resolves.toBe(0);
+			await expect(readHidden('source-device')).resolves.toBe(0);
+		});
+
+		// The other way the queue could strand a device: a connection whose flag never clears at all.
+		// That is the failed-BEGIN case in the class docstring — `isTransactionActive` set with no
+		// transaction behind it, permanently — where no pass can ever observe it settle and every read is
+		// of committed state regardless. The rows here are real and the deletion is committed before the
+		// listener hears about it; only the flag lies.
+		it('unhides the source once the repair budget is spent, when no pass can ever settle', async () => {
+			const stuckConnection = {
+				createQueryRunner: () => ({ isTransactionActive: true }),
+			} as unknown as DataSource;
+
+			const stuck = new VirtualIndexMaintenanceListener(
+				indexStub as unknown as VirtualPropertyIndexService,
+				status as unknown as VirtualStatusListener,
+				devicesStub as unknown as DevicesService,
+				stuckConnection,
+			);
+
+			await dataSource.query('DELETE FROM links WHERE virtual_device_id = ?', ['virtual-device']);
+
+			releaseTheUnhide();
+
+			stuck.handleStructuralChange();
+
+			await driveUntil(() => devicesStub.update.mock.calls.length > 0, 1000);
+
+			// One pass plus MAX_REPAIR_PASSES repairs, none of which could settle, and then the queue is
+			// released rather than held forever: a hidden device with no replacement and no route back
+			// through the UI is the failure the rule exists to prevent.
+			expect(flagAtRebuild).toHaveLength(4);
+			await expect(readHidden('source-device')).resolves.toBe(0);
 		});
 	});
 });

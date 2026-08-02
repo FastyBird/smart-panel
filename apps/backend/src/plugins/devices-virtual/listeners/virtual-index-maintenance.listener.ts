@@ -60,7 +60,8 @@ import { VirtualStatusListener } from './virtual-status.listener';
  * The poll is bounded (see deferPastOpenTransaction()), and a bounded wait can expire while the flag
  * is still set — a transaction that keeps doing awaited work after emitting its event stays open for
  * as long as that work takes. runRebuildLoop() rebuilds anyway when that happens, and then schedules
- * a *repair* pass. Both halves of that are deliberate:
+ * a *repair* pass. Both halves of that are deliberate — and so is the limit of what a repair can
+ * cover:
  *
  * - **Waiting indefinitely instead is not safe**, because `isTransactionActive` can be left set with
  *   no transaction behind it at all, permanently, for the life of the process.
@@ -81,6 +82,14 @@ import { VirtualStatusListener } from './virtual-status.listener';
  *   correction: after any pass whose wait expired, another pass is queued, and it keeps being queued
  *   (up to MAX_REPAIR_PASSES) until one completes having actually observed the flag clear. Whatever
  *   the expired pass read, the repair overwrites with committed state.
+ * - **The repair covers the index and nothing else.** Overwriting three in-memory maps costs one
+ *   query; a row this listener has already patched is not coming back. So a pass whose wait expired
+ *   may rebuild, and may recompute a connection state (which is level-triggered, and re-derived by
+ *   the repair pass along with everything else), but it may not unhide a source device — an unhide is
+ *   an edge with no opposite, and there is no pass, event or repair that would ever re-hide what one
+ *   wrote off a read that turned out to be uncommitted. runRebuildLoop() holds those back for a pass
+ *   that observed the flag clear, and unhideAbandonedSources() re-checks them against what that pass
+ *   read.
  *
  * Either way the wait is scoped to whatever transaction happened to be open — it does not mean no
  * transaction is open at all by the time rebuild() reads. A different, unrelated transaction can
@@ -144,6 +153,25 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	private repairPasses = 0;
 
 	/**
+	 * Source devices some pass reported abandoned, held until a pass that actually read committed
+	 * state can confirm them. Drained only by unhideAbandonedSources().
+	 *
+	 * Exists because unhiding is the one thing this listener does that a repair cannot take back. The
+	 * index is memory: a pass that read a still-open transaction's uncommitted rows can hold structure
+	 * that never durably happened, and the repair pass scheduleRepairPass() queues simply overwrites
+	 * all three maps with committed state. `hidden` is a column. Patching it off the same uncommitted
+	 * read leaves a physical device visible after the deletion it was inferred from rolled back, and
+	 * nothing in this class — or anywhere else — ever re-hides it: the rebuild reports an abandonment
+	 * as the *edge* `bySourceDevice` lost a key (see VirtualIndexRebuildResult), and there is no
+	 * opposite edge that means "this source is covered again, put it back".
+	 *
+	 * So the queue is not a buffer for tidiness; it is what makes the write wait for a read that can
+	 * be trusted. See unhideAbandonedSources() for how a queued id is re-checked before it is acted on,
+	 * and runRebuildLoop() for when the queue is drained.
+	 */
+	private readonly pendingUnhideSourceDeviceIds = new Set<string>();
+
+	/**
 	 * True once a wait has run the full budget out with the transaction flag still set, and back to
 	 * false the moment any poll sees it clear again.
 	 *
@@ -190,7 +218,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 * restart into the repair for that, instead of leaving a device that renders fine, reports
 	 * plausible values and is permanently, silently wrong.
 	 *
-	 * `abandonedSourceDeviceIds` is deliberately *not* fed to unhideAbandonedSources(): rebuild()
+	 * `abandonedSourceDeviceIds` is deliberately *not* queued for unhideAbandonedSources(): rebuild()
 	 * derives it from source devices present in the outgoing index and absent from the incoming one,
 	 * and the outgoing index is empty here, so it is structurally always `[]` on this pass. There is no
 	 * bootstrap equivalent of "the last virtual device referencing this source went away".
@@ -280,6 +308,34 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 * Failures from rebuild() itself are caught and logged inside rebuildWithRetry() rather than left
 	 * to reject here: this loop is started fire-and-forget from an event handler, detached from any
 	 * request that could otherwise observe or handle the rejection.
+	 *
+	 * ## Why only one of the two follow-up steps is gated on `settled`
+	 *
+	 * Both recomputeStatuses() and unhideAbandonedSources() write to the database, and both act on
+	 * what this pass read — which, on a pass whose wait expired, may be a still-open transaction's
+	 * uncommitted rows. They are treated differently because only one of them is *self-correcting*:
+	 *
+	 * - A recompute is level-triggered. It re-derives a virtual device's whole connection state from
+	 *   whatever wiring the index currently holds, and `rewiredVirtualDeviceIds` comes from a diff that
+	 *   is symmetric (see VirtualPropertyIndexService.diffVirtualDevices()) — if a rollback puts the
+	 *   wiring back, the repair pass's diff necessarily names the same device again, and recomputing it
+	 *   against restored wiring writes the state that was correct all along. Deferring it would only
+	 *   delay a repair that arrives on its own.
+	 * - An unhide is edge-triggered and one-directional. `abandonedSourceDeviceIds` is the moment a
+	 *   source device dropped out of `bySourceDevice` entirely, and no transition ever means the
+	 *   reverse, so a rollback produces nothing that would put `hidden` back. Whatever it writes off an
+	 *   uncommitted read stands. It therefore waits for a pass that observed the flag clear, and is
+	 *   re-checked against that pass's index before it writes at all.
+	 *
+	 * The drain is also skipped when this pass did not read (`rebuilt === null`): confirming a queued
+	 * id means asking the index whether anything still references that source, and a failed rebuild
+	 * swapped nothing in, so the index would answer from exactly the state that queued the id. The ids
+	 * stay queued for the next pass, which is the same "left for the next structural event" a failed
+	 * rebuild has always degraded to.
+	 *
+	 * The one case where the queue is drained without a settled read is a repair budget spent in full
+	 * — see scheduleRepairPass()'s return value, and unhideAbandonedSources() for why that is still the
+	 * right call rather than dropping the unhide on the floor.
 	 */
 	private async runRebuildLoop(): Promise<void> {
 		try {
@@ -295,8 +351,13 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				// event, which is exactly how a failed rebuild already behaved.
 				if (rebuilt) {
 					await this.recomputeStatuses(rebuilt.rewiredVirtualDeviceIds);
-					await this.unhideAbandonedSources(rebuilt.abandonedSourceDeviceIds);
+
+					for (const sourceDeviceId of rebuilt.abandonedSourceDeviceIds) {
+						this.pendingUnhideSourceDeviceIds.add(sourceDeviceId);
+					}
 				}
+
+				let repairPending = false;
 
 				if (settled) {
 					// The pass read with no transaction open, so whatever it read is committed state and
@@ -304,7 +365,11 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 					// later, genuinely slow transaction claim a full repair budget of its own.
 					this.repairPasses = 0;
 				} else {
-					this.scheduleRepairPass();
+					repairPending = this.scheduleRepairPass();
+				}
+
+				if (rebuilt && !repairPending) {
+					await this.unhideAbandonedSources();
 				}
 			} while (this.pending);
 		} finally {
@@ -331,10 +396,15 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 * repair, not a second one. The budget is spent per unbroken run of expired passes (see
 	 * MAX_REPAIR_PASSES), and exhausting it logs at error level and stops — at that point the flag is
 	 * stuck rather than busy, and further passes would read exactly what the last one did.
+	 *
+	 * Returns whether a correcting pass is actually still coming — true both when this call armed one
+	 * and when one was already armed, false only once the budget is spent. runRebuildLoop() holds the
+	 * pending unhide queue back on `true` and releases it on `false`, so "no further pass will read
+	 * this any better" is a fact the caller is told rather than one it has to infer from the counter.
 	 */
-	private scheduleRepairPass(): void {
+	private scheduleRepairPass(): boolean {
 		if (this.repairTimer) {
-			return;
+			return true;
 		}
 
 		if (this.repairPasses >= VirtualIndexMaintenanceListener.MAX_REPAIR_PASSES) {
@@ -342,7 +412,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				`[ERROR] The shared query runner still reports an open transaction after ${VirtualIndexMaintenanceListener.MAX_REPAIR_PASSES} repair pass(es); the virtual property index may reflect uncommitted state until the next structural change.`,
 			);
 
-			return;
+			return false;
 		}
 
 		this.repairPasses++;
@@ -354,6 +424,8 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 		}, VirtualIndexMaintenanceListener.REPAIR_PASS_DELAY_MS);
 
 		this.repairTimer.unref();
+
+		return true;
 	}
 
 	/**
@@ -438,13 +510,46 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	}
 
 	/**
-	 * Unhides every source device the rebuild just found is referenced by no virtual device at all —
-	 * the spec's "Deleting the last virtual device referencing a hidden source auto-unhides it".
+	 * Unhides every queued source device that is still referenced by no virtual device at all — the
+	 * spec's "Deleting the last virtual device referencing a hidden source auto-unhides it".
 	 *
 	 * Without this, a source hidden because a virtual device replaced it stays hidden once that
 	 * replacement is gone: excluded from every picker, absent from the default device list, and — since
 	 * `hidden` is only reachable through a PATCH the admin no longer offers for a device it does not
 	 * show — with no route back through the UI.
+	 *
+	 * ## Queued by one pass, confirmed by another
+	 *
+	 * The ids come from `pendingUnhideSourceDeviceIds`, not from the current pass's rebuild result, and
+	 * runRebuildLoop() only calls this on a pass that both read something and knows no better-informed
+	 * pass is coming. That indirection is the whole point: `hidden` is a column, and a rollback of the
+	 * deletion an abandonment was inferred from produces no event and no reverse transition, so a patch
+	 * written off an uncommitted read is never taken back by anything.
+	 *
+	 * Queueing alone would not be enough, because the id cannot simply be replayed later either: the
+	 * abandonment is an edge between two index versions, and by the time a confirming pass runs, the
+	 * index has already forgotten the source device that queued it — so that pass reports no transition
+	 * whichever way the transaction went. What distinguishes the two outcomes is the index itself,
+	 * which the confirming pass just rebuilt from committed state: a rollback puts the virtual device's
+	 * links back, so the source device is in `bySourceDevice` again and the check below drops the id
+	 * untouched; a commit leaves it absent, and the unhide proceeds exactly as it always did.
+	 *
+	 * A queued id is decided once and dropped either way — including when the source device is
+	 * genuinely gone, and when the patch itself throws, which is logged and left alone as before.
+	 * Re-queueing a failure would mean carrying it across every future pass with nothing new to learn
+	 * from, since the read it would be re-checked against is the same one that just failed.
+	 *
+	 * ## When the wait never settles
+	 *
+	 * A budget spent in full releases the queue anyway (see runRebuildLoop() and scheduleRepairPass()),
+	 * which is deliberate. A transaction that genuinely rolls back *clears* the flag doing it —
+	 * `AbstractSqliteQueryRunner.rollbackTransaction()` resets `isTransactionActive` once ROLLBACK
+	 * completes — so a real rollback is observed by a repair pass within the budget. Reaching the end
+	 * of the budget instead means the flag is set with nothing behind it (the failed-BEGIN case in the
+	 * class docstring), where reads are of committed state despite what the flag says. Holding the
+	 * queue back forever there would strand a hidden device with no replacement and no route back
+	 * through the UI — the exact failure this method exists to prevent — on a signal that has already
+	 * proven meaningless.
 	 *
 	 * ## Driven by the index transition, not by DEVICE_DELETED
 	 *
@@ -479,9 +584,32 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 * `devices-shelly-v1`'s afterInsert subscriber reading `event.entity.enabled` before the row is
 	 * re-read, so this call defends itself by sending the value it just read back unchanged.
 	 */
-	private async unhideAbandonedSources(sourceDeviceIds: string[]): Promise<void> {
+	private async unhideAbandonedSources(): Promise<void> {
+		if (this.pendingUnhideSourceDeviceIds.size === 0) {
+			return;
+		}
+
+		const sourceDeviceIds = [...this.pendingUnhideSourceDeviceIds];
+
+		this.pendingUnhideSourceDeviceIds.clear();
+
 		for (const sourceDeviceId of sourceDeviceIds) {
 			try {
+				// Answered from the index this pass just rebuilt, so on a settled pass this is committed
+				// state: anything at all referencing the source means it still has a stand-in and must
+				// stay hidden. Non-empty here is what a rolled-back deletion looks like from the outside
+				// — and equally what a virtual device created in the meantime looks like, which deserves
+				// the same answer.
+				const referencedBy = this.index.findVirtualDeviceIdsBySourceDevice(sourceDeviceId);
+
+				if (referencedBy.length > 0) {
+					this.logger.debug(
+						`Left source device id=${sourceDeviceId} hidden, ${referencedBy.length} virtual device(s) reference it again`,
+					);
+
+					continue;
+				}
+
 				const sourceDevice = await this.devicesService.findOne(sourceDeviceId);
 
 				// Already visible, or gone entirely — a source device can be deleted in the same sweep as
