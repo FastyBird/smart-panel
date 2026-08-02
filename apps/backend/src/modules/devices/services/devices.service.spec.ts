@@ -494,7 +494,10 @@ describe('DevicesService', () => {
 		});
 
 		// Confirms hidden_by round-trips through a PATCH that sets it alongside hidden, symmetric with
-		// the `hidden` coverage above.
+		// the `hidden` coverage above. Asserted against `save`'s argument, not the returned entity — the
+		// returned value comes from a second, independently-mocked `getOne()` and would equal whatever
+		// literal that mock is configured with regardless of what update() actually computed from the
+		// DTO, which is exactly the blind spot the `leaves hiddenBy untouched...` test below documents.
 		it('persists hiddenBy alongside hidden', async () => {
 			jest.spyOn(mapper, 'getMapping').mockReturnValue({
 				type: 'mock',
@@ -520,14 +523,15 @@ describe('DevicesService', () => {
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 			jest.spyOn(repository, 'save').mockResolvedValue(updatedDevice);
 
-			const device = await service.update(mockDevice.id, {
+			await service.update(mockDevice.id, {
 				type: 'mock',
 				hidden: true,
 				hidden_by: DeviceHiddenBy.SYSTEM,
 			} as UpdateMockDeviceDto);
 
-			expect(device.hidden).toBe(true);
-			expect(device.hiddenBy).toBe(DeviceHiddenBy.SYSTEM);
+			expect(repository.save).toHaveBeenCalledWith(
+				expect.objectContaining({ hidden: true, hiddenBy: DeviceHiddenBy.SYSTEM }),
+			);
 		});
 
 		// Regression test, pinning the class-field-initializer trap that shipped twice on the predecessor
