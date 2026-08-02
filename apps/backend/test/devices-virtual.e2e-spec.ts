@@ -1639,10 +1639,13 @@ describe('devices-virtual plugin (e2e)', () => {
 			// device the user had explicitly disabled (follow-up 3.1, whose root fix is blocked on
 			// devices-shelly-v1's afterInsert subscriber).
 			//
-			// `hidden_by: system` is the provenance the admin's own hide will carry — recorded here so the
-			// unhide below can be checked for clearing it, which is the one part of an unhide that
-			// UpdateDeviceDto cannot express (its `@Transform` reads an explicit `null` as "field not
-			// provided") and therefore the one part no mocked test can prove against the real schema.
+			// `hidden_by: system` is the provenance the admin's own hide carries, and it is load-bearing
+			// twice over. The auto-unhide only reverses a hide the *system* performed — an operator's own
+			// hide of a device a virtual device happened to reference is theirs to keep — so without it
+			// nothing below would fire at all. And it is what the unhide then has to clear, which is the
+			// one part of an unhide UpdateDeviceDto cannot express (its `@Transform` reads an explicit
+			// `null` as "field not provided") and therefore the one part no mocked test can prove against
+			// the real schema.
 			await authPatch(`/modules/devices/devices/${ownSourceDeviceId}`)
 				.send({ data: { type: SIMULATOR_TYPE, hidden: true, enabled: false, hidden_by: DeviceHiddenBy.SYSTEM } })
 				.expect(200);

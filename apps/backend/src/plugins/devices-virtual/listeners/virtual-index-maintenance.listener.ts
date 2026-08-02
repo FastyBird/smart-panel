@@ -527,13 +527,10 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 * stranded source it set out to recover — the stranded source is at least recoverable through a
 	 * PATCH, whereas a setting reversed at startup is reversed again the next time, forever.
 	 *
-	 * So the filter is `hiddenBy === SYSTEM` and nothing else counts as it. `USER` is never touched.
-	 * Neither is `null`, which is what a hide written by a caller that named no reason reads as, and
-	 * what every row hidden before the column existed was migrated *away* from deliberately (see
-	 * 1000000000008-AddDeviceHiddenBy, which backfills them to `user` precisely so this sweep cannot
-	 * claim them). Unknown provenance is not system provenance. The cost of that conservatism is that a
-	 * source stranded before provenance existed is not recovered here — correct, because nothing can
-	 * tell it apart from a device its owner meant to hide.
+	 * So the filter is isSystemHidden() — see there for why `USER` and `null` both fail it. The cost of
+	 * that conservatism is that a source stranded before provenance existed is not recovered here,
+	 * which is correct: nothing can tell it apart from a device its owner meant to hide, and the admin
+	 * unhides it in one action.
 	 *
 	 * ## Failure containment
 	 *
@@ -552,7 +549,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			const hiddenDevices = await this.devicesService.findAll(undefined, DeviceHiddenFilter.TRUE);
 
 			for (const device of hiddenDevices) {
-				if (device.hiddenBy !== DeviceHiddenBy.SYSTEM) {
+				if (!this.isSystemHidden(device)) {
 					continue;
 				}
 
@@ -676,17 +673,23 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 * than looping: the source device is already absent from `bySourceDevice` by then, so the next pass
 	 * reports no transition and unhides nothing.
 	 *
-	 * ## What this deliberately does not check
+	 * ## Provenance is checked here too
 	 *
-	 * Unlike reconcileSystemHiddenSources(), this path does not consult `hiddenBy`. It does not have
-	 * to: it acts on an abandonment *it observed*, which is evidence a virtual device was standing in
-	 * for this source, where the startup sweep has only a stored column to go on. Requiring SYSTEM
-	 * provenance here would also break every hide performed before the admin writes one — including
-	 * every row the provenance migration backfilled to `user` — leaving the auto-unhide rule dead on
-	 * existing installations. The narrow case it leaves open (an operator's own hide of a device a
-	 * virtual device also happened to reference, cleared when that reference goes) is the pre-existing
-	 * half of follow-up 2.11, and closing it belongs with the flow that will actually write provenance
-	 * on every hide.
+	 * Observing the abandonment is evidence that *a* virtual device was drawing from this source. It is
+	 * not evidence that the system is the one that hid it: an operator can hide a physical device by
+	 * hand for their own reasons, and that device being referenced by some unrelated virtual device
+	 * does not make the flag the system's to clear. So this path applies the same
+	 * `hiddenBy === SYSTEM` rule reconcileSystemHiddenSources() does (see isSystemHidden()), and for
+	 * more reason rather than less: this runs on every structural change that drops the last reference,
+	 * where the sweep runs once per process start, so an ungated version reverses a deliberate setting
+	 * far more often — silently, with no notification, and with nothing that would ever put it back.
+	 *
+	 * The cost is that a source hidden *before* provenance existed does not auto-unhide anymore: the
+	 * column's migration backfills every pre-existing hidden row to `user`, precisely because it cannot
+	 * tell those apart from a deliberate hide. That cost is bounded and visible — such a device is
+	 * still listed by `GET /devices` and unhidden from the admin's hidden-device list in one action —
+	 * whereas the setting an ungated unhide destroys is silent and unrecoverable. Newly hidden sources
+	 * carry `hidden_by: system` from the flow that hides them, so the mislabelling does not accumulate.
 	 */
 	private async unhideAbandonedSources(): Promise<void> {
 		if (this.pendingUnhideSourceDeviceIds.size === 0) {
@@ -716,9 +719,15 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 
 				const sourceDevice = await this.devicesService.findOne(sourceDeviceId);
 
-				// Already visible, or gone entirely — a source device can be deleted in the same sweep as
-				// the virtual device that replaced it.
-				if (!sourceDevice?.hidden) {
+				// Gone entirely — a source device can be deleted in the same sweep as the virtual device
+				// that replaced it.
+				if (!sourceDevice) {
+					continue;
+				}
+
+				// Already visible, or hidden by someone this listener is not entitled to overrule (see the
+				// docstring above and isSystemHidden()).
+				if (!this.isSystemHidden(sourceDevice)) {
 					continue;
 				}
 
@@ -732,11 +741,27 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	}
 
 	/**
+	 * Whether this device is hidden *and* the system is what hid it — the only state either unhide path
+	 * is entitled to reverse, and the single place that rule is expressed so the two cannot drift.
+	 *
+	 * `USER` is a deliberate operator setting and is never touched. Neither is `null`, which is what a
+	 * hide written by a caller that named no reason reads as, and what every row hidden before the
+	 * column existed was migrated to (see 1000000000008-AddDeviceHiddenBy, which backfills them to
+	 * `user`). Unknown provenance is not system provenance: leaving a source hidden is recoverable —
+	 * `GET /devices` still lists it and the admin's hidden-device list unhides it in one action —
+	 * whereas reversing a hide the operator chose is silent, unnotified and reversed again the next
+	 * time the condition recurs.
+	 */
+	private isSystemHidden(device: DeviceEntity): boolean {
+		return device.hidden && device.hiddenBy === DeviceHiddenBy.SYSTEM;
+	}
+
+	/**
 	 * Makes one source device visible again, and leaves its row in a clean state rather than one
 	 * claiming a provenance for a device that is no longer hidden. Shared by both unhide paths — the
 	 * abandonment this process observed (unhideAbandonedSources()) and the one it inherited from a
 	 * predecessor (reconcileSystemHiddenSources()) — so the two can never disagree about what unhiding
-	 * a device consists of.
+	 * a device consists of. Both decide *whether* to call it with isSystemHidden().
 	 *
 	 * ## Why the patch echoes `enabled` back
 	 *

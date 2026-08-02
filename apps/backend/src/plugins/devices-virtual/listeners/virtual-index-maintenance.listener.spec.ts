@@ -839,9 +839,22 @@ describe('VirtualIndexMaintenanceListener', () => {
 		abandonedSourceDeviceIds: sourceDeviceIds,
 	});
 
+	// The source device as findOne() returns it: hidden, and hidden *by the system*. The provenance is
+	// part of the fixture rather than an extra on the cases that assert on it, because this path checks
+	// it before patching anything — the same rule the bootstrap sweep applies, for the same reason (see
+	// the user-hidden case below).
+	const abandonedSystemHiddenSource = (overrides: Partial<DeviceEntity> = {}): Partial<DeviceEntity> => ({
+		id: 'source-device',
+		type: 'simulator',
+		hidden: true,
+		hiddenBy: DeviceHiddenBy.SYSTEM,
+		enabled: true,
+		...overrides,
+	});
+
 	it('unhides a source device the rebuild reports as abandoned', async () => {
 		index.rebuild.mockResolvedValue(rebuiltWithAbandoned('source-device'));
-		devicesService.findOne.mockResolvedValue({ id: 'source-device', type: 'simulator', hidden: true });
+		devicesService.findOne.mockResolvedValue(abandonedSystemHiddenSource());
 
 		listener.handleStructuralChange();
 		await flushMicrotasks();
@@ -861,12 +874,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 	// afterInsert subscriber — so this call defends itself by echoing back the value it just read.
 	it('keeps a disabled source device disabled when it unhides it', async () => {
 		index.rebuild.mockResolvedValue(rebuiltWithAbandoned('source-device'));
-		devicesService.findOne.mockResolvedValue({
-			id: 'source-device',
-			type: 'simulator',
-			hidden: true,
-			enabled: false,
-		});
+		devicesService.findOne.mockResolvedValue(abandonedSystemHiddenSource({ enabled: false }));
 
 		listener.handleStructuralChange();
 		await flushMicrotasks();
@@ -882,13 +890,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 	// they cannot drift on what unhiding a device consists of.
 	it('clears the provenance of an abandoned source device it unhides', async () => {
 		index.rebuild.mockResolvedValue(rebuiltWithAbandoned('source-device'));
-		devicesService.findOne.mockResolvedValue({
-			id: 'source-device',
-			type: 'simulator',
-			hidden: true,
-			hiddenBy: DeviceHiddenBy.SYSTEM,
-			enabled: true,
-		});
+		devicesService.findOne.mockResolvedValue(abandonedSystemHiddenSource());
 
 		listener.handleStructuralChange();
 		await flushMicrotasks();
@@ -898,7 +900,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 	it('leaves an enabled source device enabled when it unhides it', async () => {
 		index.rebuild.mockResolvedValue(rebuiltWithAbandoned('source-device'));
-		devicesService.findOne.mockResolvedValue({ id: 'source-device', type: 'simulator', hidden: true, enabled: true });
+		devicesService.findOne.mockResolvedValue(abandonedSystemHiddenSource({ enabled: true }));
 
 		listener.handleStructuralChange();
 		await flushMicrotasks();
@@ -912,7 +914,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 	// "Still referenced" is not this method's question to ask — rebuild() answers it by reporting only
 	// source devices that dropped out of bySourceDevice entirely.
 	it('touches no source device when the rebuild reports none abandoned', async () => {
-		devicesService.findOne.mockResolvedValue({ id: 'source-device', type: 'simulator', hidden: true });
+		devicesService.findOne.mockResolvedValue(abandonedSystemHiddenSource());
 
 		listener.handleStructuralChange();
 		await flushMicrotasks();
@@ -923,7 +925,37 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 	it('does not patch a source device that was never hidden', async () => {
 		index.rebuild.mockResolvedValue(rebuiltWithAbandoned('source-device'));
-		devicesService.findOne.mockResolvedValue({ id: 'source-device', type: 'simulator', hidden: false });
+		devicesService.findOne.mockResolvedValue(abandonedSystemHiddenSource({ hidden: false }));
+
+		listener.handleStructuralChange();
+		await flushMicrotasks();
+
+		expect(devicesService.update).not.toHaveBeenCalled();
+	});
+
+	// The runtime mirror of the bootstrap sweep's user-hidden case, and the more exposed of the two:
+	// this path runs on every structural change that drops the last reference, not once per process
+	// start. Observing the abandonment says a virtual device was drawing from this source; it does not
+	// say the system is what hid it. An operator who hid a physical device by hand must not lose that
+	// setting because some unrelated virtual device referencing it was deleted — silently, with nothing
+	// that would ever put it back.
+	it('leaves a user-hidden source device hidden when its last virtual device is deleted', async () => {
+		index.rebuild.mockResolvedValue(rebuiltWithAbandoned('source-device'));
+		devicesService.findOne.mockResolvedValue(abandonedSystemHiddenSource({ hiddenBy: DeviceHiddenBy.USER }));
+
+		listener.handleStructuralChange();
+		await flushMicrotasks();
+
+		expect(devicesService.update).not.toHaveBeenCalled();
+		expect(devicesRepository.update).not.toHaveBeenCalled();
+	});
+
+	// Unknown provenance is not system provenance here either — including every row hidden before the
+	// column existed, which the migration backfilled to `user` precisely because it cannot tell those
+	// apart from a deliberate hide.
+	it('leaves a source device whose hide names no provenance hidden', async () => {
+		index.rebuild.mockResolvedValue(rebuiltWithAbandoned('source-device'));
+		devicesService.findOne.mockResolvedValue(abandonedSystemHiddenSource({ hiddenBy: null }));
 
 		listener.handleStructuralChange();
 		await flushMicrotasks();
@@ -947,7 +979,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 		const loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
 
 		index.rebuild.mockRejectedValue(new Error('unexpected boom'));
-		devicesService.findOne.mockResolvedValue({ id: 'source-device', type: 'simulator', hidden: true });
+		devicesService.findOne.mockResolvedValue(abandonedSystemHiddenSource());
 
 		listener.handleStructuralChange();
 		await flushMicrotasks();
@@ -964,7 +996,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 		index.rebuild
 			.mockResolvedValueOnce(rebuiltWithAbandoned('source-device'))
 			.mockResolvedValue({ rewiredVirtualDeviceIds: [], abandonedSourceDeviceIds: [] });
-		devicesService.findOne.mockResolvedValue({ id: 'source-device', type: 'simulator', hidden: true });
+		devicesService.findOne.mockResolvedValue(abandonedSystemHiddenSource());
 
 		listener.handleStructuralChange();
 		await flushMicrotasks();
@@ -984,7 +1016,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 		index.rebuild.mockResolvedValue(rebuiltWithAbandoned('source-a', 'source-b'));
 		devicesService.findOne
 			.mockRejectedValueOnce(new Error('boom'))
-			.mockResolvedValue({ id: 'source-b', type: 'simulator', hidden: true });
+			.mockResolvedValue(abandonedSystemHiddenSource({ id: 'source-b' }));
 
 		listener.handleStructuralChange();
 		await flushMicrotasks();
@@ -1460,8 +1492,18 @@ describe('VirtualIndexMaintenanceListener', () => {
 					[id],
 				);
 
+				// `hiddenBy` is a fixed `system` rather than a column of its own: these cases turn on *when*
+				// the unhide's read and write land relative to the emitting transaction, and the provenance
+				// check (isSystemHidden(), covered above) would only be a constant gate in front of that.
+				// Stating it here keeps the unhide reachable, which is what these tests need to observe.
 				return rows.length > 0
-					? { id: rows[0].id, type: 'simulator', hidden: rows[0].hidden === 1, enabled: true }
+					? {
+							id: rows[0].id,
+							type: 'simulator',
+							hidden: rows[0].hidden === 1,
+							hiddenBy: DeviceHiddenBy.SYSTEM,
+							enabled: true,
+						}
 					: null;
 			}),
 			update: jest.fn(async (id: string, dto: { hidden?: boolean }) => {
