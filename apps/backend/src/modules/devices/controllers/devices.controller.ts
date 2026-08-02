@@ -445,7 +445,9 @@ export class DevicesController {
 	@ApiNoContentResponse({ description: 'Device successfully added to zone' })
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Device or zone not found')
-	@ApiUnprocessableEntityResponse('Cannot add device to floor zone or non-zone space')
+	@ApiUnprocessableEntityResponse(
+		'Cannot add device to floor zone or non-zone space, or the device is hidden and its zones can not be changed',
+	)
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post(':id/zones/:zoneId')
 	@HttpCode(204)
@@ -465,6 +467,11 @@ export class DevicesController {
 			if (error instanceof DevicesNotFoundException) {
 				throw new NotFoundException(error.message);
 			}
+			// A hidden device's placement is immutable, here as much as on PATCH — without this branch
+			// the refusal would escape as a 500 instead of a 422 the client can act on.
+			if (error instanceof DevicesNotAllowedException) {
+				throw new UnprocessableEntityException(error.message);
+			}
 			if (error instanceof DevicesValidationException) {
 				throw new UnprocessableEntityException(error.message);
 			}
@@ -483,6 +490,7 @@ export class DevicesController {
 	@ApiNoContentResponse({ description: 'Device successfully removed from zone' })
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Device not found')
+	@ApiUnprocessableEntityResponse('Device is hidden and its zones can not be changed')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Delete(':id/zones/:zoneId')
 	@HttpCode(204)
@@ -494,7 +502,16 @@ export class DevicesController {
 
 		await this.getOneOrThrow(id);
 
-		await this.deviceZonesService.removeDeviceFromZone(id, zoneId);
+		try {
+			await this.deviceZonesService.removeDeviceFromZone(id, zoneId);
+		} catch (error) {
+			// See addDeviceToZone(): removal is refused on a hidden device for the same reason, and
+			// needs the same 422 rather than an unhandled 500.
+			if (error instanceof DevicesNotAllowedException) {
+				throw new UnprocessableEntityException(error.message);
+			}
+			throw error;
+		}
 
 		this.logger.debug(`Successfully removed device id=${id} from zone id=${zoneId}`);
 	}

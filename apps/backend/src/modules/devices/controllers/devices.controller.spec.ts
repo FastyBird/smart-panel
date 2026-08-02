@@ -28,6 +28,7 @@ import { DevicesController } from './devices.controller';
 describe('DevicesController', () => {
 	let controller: DevicesController;
 	let service: DevicesService;
+	let deviceZonesService: DeviceZonesService;
 	let mapper: DevicesTypeMapperService;
 
 	const mockDevice = {
@@ -103,6 +104,7 @@ describe('DevicesController', () => {
 
 		controller = module.get<DevicesController>(DevicesController);
 		service = module.get<DevicesService>(DevicesService);
+		deviceZonesService = module.get<DeviceZonesService>(DeviceZonesService);
 		mapper = module.get<DevicesTypeMapperService>(DevicesTypeMapperService);
 	});
 
@@ -209,6 +211,32 @@ describe('DevicesController', () => {
 
 			await expect(result).rejects.toBeInstanceOf(UnprocessableEntityException);
 			await expect(result).rejects.toThrow('Device is hidden and its room can not be changed.');
+		});
+
+		// Same refusal, reached through the zone-membership endpoints instead of a PATCH. Pinned per
+		// endpoint because they map errors separately: `addDeviceToZone` has its own catch that knew
+		// nothing about this exception, and `removeDeviceFromZone` had no catch at all — in both cases
+		// the refusal would have escaped as a 500 rather than a 422 anyone could act on.
+		it('surfaces a refused zone addition with its reason', async () => {
+			jest
+				.spyOn(deviceZonesService, 'addDeviceToZone')
+				.mockRejectedValue(new DevicesNotAllowedException('Device is hidden and its zones can not be changed.'));
+
+			const result = controller.addDeviceToZone(mockDevice.id, uuid().toString());
+
+			await expect(result).rejects.toBeInstanceOf(UnprocessableEntityException);
+			await expect(result).rejects.toThrow('Device is hidden and its zones can not be changed.');
+		});
+
+		it('surfaces a refused zone removal with its reason', async () => {
+			jest
+				.spyOn(deviceZonesService, 'removeDeviceFromZone')
+				.mockRejectedValue(new DevicesNotAllowedException('Device is hidden and its zones can not be changed.'));
+
+			const result = controller.removeDeviceFromZone(mockDevice.id, uuid().toString());
+
+			await expect(result).rejects.toBeInstanceOf(UnprocessableEntityException);
+			await expect(result).rejects.toThrow('Device is hidden and its zones can not be changed.');
 		});
 
 		it('should delete a device', async () => {

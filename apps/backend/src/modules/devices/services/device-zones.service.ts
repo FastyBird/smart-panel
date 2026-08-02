@@ -8,7 +8,11 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { SpaceType, isFloorZoneCategory } from '../../spaces/spaces.constants';
 import { DEVICES_MODULE_NAME, EventType } from '../devices.constants';
-import { DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
+import {
+	DevicesNotAllowedException,
+	DevicesNotFoundException,
+	DevicesValidationException,
+} from '../devices.exceptions';
 import { DeviceZoneEntity } from '../entities/device-zone.entity';
 import { DeviceEntity } from '../entities/devices.entity';
 
@@ -76,6 +80,8 @@ export class DeviceZonesService {
 			throw new DevicesNotFoundException('Device not found');
 		}
 
+		this.assertPlacementChangeAllowed(device);
+
 		// Verify zone exists and is a zone type
 		const zone = await this.spaceRepository.findOne({ where: { id: zoneId } });
 		if (!zone) {
@@ -128,6 +134,14 @@ export class DeviceZonesService {
 	async removeDeviceFromZone(deviceId: string, zoneId: string): Promise<void> {
 		this.logger.debug(`Removing device ${deviceId} from zone ${zoneId}`);
 
+		// Read before the delete, not after it: the guard below has to run before anything is written.
+		// A missing device stays non-fatal here, exactly as before — the delete simply affects no rows.
+		// The same instance is reused for the event, which is equivalent to the post-delete re-read it
+		// replaces: neither loads the `deviceZones` relation, so neither reflects this delete anyway.
+		const device = await this.deviceRepository.findOne({ where: { id: deviceId } });
+
+		this.assertPlacementChangeAllowed(device);
+
 		const result = await this.repository.delete({ deviceId, zoneId });
 
 		if (result.affected === 0) {
@@ -135,7 +149,6 @@ export class DeviceZonesService {
 		} else {
 			this.logger.debug(`Successfully removed device ${deviceId} from zone ${zoneId}`);
 
-			const device = await this.deviceRepository.findOne({ where: { id: deviceId } });
 			if (device) {
 				this.eventEmitter.emit(EventType.DEVICE_UPDATED, device);
 			}
@@ -200,6 +213,33 @@ export class DeviceZonesService {
 		this.eventEmitter.emit(EventType.DEVICE_UPDATED, device);
 
 		return validatedZones;
+	}
+
+	/**
+	 * Refuses a single-membership zone change on a hidden device.
+	 *
+	 * `DevicesService.assertPlacementChangeAllowed()` covers placement changes made through
+	 * `DevicesService.update()`, but `POST|DELETE /devices/:id/zones/:zoneId` reach zone membership
+	 * directly and never pass through it. Without this the rule is bypassable: a client refused a
+	 * `zone_ids` PATCH could reach the same end state one membership at a time. Removal is refused for
+	 * the same reason a room change is — a hidden device is inert, and changing its placement means
+	 * unhiding it first.
+	 *
+	 * A missing device is not this guard's business; the callers decide whether that is fatal.
+	 *
+	 * `setDeviceZones()` deliberately carries no such check: its only callers are
+	 * `DevicesService.create()` / `update()`, and `update()` is already guarded before it gets there.
+	 */
+	private assertPlacementChangeAllowed(device: DeviceEntity | null): void {
+		if (!device?.hidden) {
+			return;
+		}
+
+		this.logger.error(`Refused zone membership change on hidden device id=${device.id}`);
+
+		throw new DevicesNotAllowedException(
+			'Device is hidden and its room or zones can not be changed. Change the placement of the virtual device that replaced it.',
+		);
 	}
 
 	/**
