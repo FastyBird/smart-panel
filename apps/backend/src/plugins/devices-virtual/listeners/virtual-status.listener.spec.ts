@@ -1,4 +1,4 @@
-import { ConnectionState } from '../../../modules/devices/devices.constants';
+import { ConnectionState, OnlineDeviceState } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
@@ -34,20 +34,31 @@ describe('VirtualStatusListener', () => {
 		sourceDeviceId: null,
 	});
 
+	// The exact shape DeviceConnectionStateService.readLatest() returns, derived from the state rather
+	// than stated alongside it. `online` is never independent of `status` in the real service — it is
+	// `OnlineDeviceState.includes(status)` — so a mock that lets a test pass `{online: true, status:
+	// UNKNOWN}` is describing a reading the system cannot produce, and any rule that reads `status`
+	// would then be tested against fiction. This is what makes the UNKNOWN cases below meaningful.
+	const readingOf = (status: ConnectionState): { online: boolean; status: ConnectionState; lastChanged: null } => ({
+		online: OnlineDeviceState.includes(status),
+		status,
+		lastChanged: null,
+	});
+
 	// Arranges the mocked index so `findLinksByVirtualDevice(virtualDeviceId)` returns one link per
 	// entry in `sources` (each pointing at its own distinct source device), plus one orphaned link
-	// when `orphaned` is set, and teaches the connection-state service each source's online-ness.
+	// when `orphaned` is set, and teaches the connection-state service each source's reported state.
 	const sourcesFor = (
 		virtualDeviceId: string,
-		sources: { online: boolean }[],
+		sources: { status: ConnectionState }[],
 		options: { orphaned?: boolean } = {},
 	): void => {
-		const online = new Map<string, boolean>();
+		const states = new Map<string, ConnectionState>();
 
 		const links = sources.map((source, i) => {
 			const sourceDeviceId = `${virtualDeviceId}-device-${i}`;
 
-			online.set(sourceDeviceId, source.online);
+			states.set(sourceDeviceId, source.status);
 
 			return link(`${virtualDeviceId}-prop-${i}`, sourceDeviceId);
 		});
@@ -58,7 +69,7 @@ describe('VirtualStatusListener', () => {
 
 		index.findLinksByVirtualDevice.mockReturnValue(links);
 		connectionState.readLatest.mockImplementation((device: { id: string }) =>
-			Promise.resolve({ online: online.get(device.id) ?? false, status: ConnectionState.UNKNOWN, lastChanged: null }),
+			Promise.resolve(readingOf(states.get(device.id) ?? ConnectionState.UNKNOWN)),
 		);
 	};
 
@@ -87,7 +98,7 @@ describe('VirtualStatusListener', () => {
 
 	it('marks the virtual device online when every source is online', async () => {
 		index.findVirtualDeviceIdsBySourceDevice.mockReturnValue(['virtual-device']);
-		sourcesFor('virtual-device', [{ online: true }, { online: true }]);
+		sourcesFor('virtual-device', [{ status: ConnectionState.CONNECTED }, { status: ConnectionState.READY }]);
 
 		await listener.handleConnectionChanged({ device: sourceDevice, state: ConnectionState.CONNECTED });
 
@@ -99,7 +110,7 @@ describe('VirtualStatusListener', () => {
 
 	it('marks the virtual device offline when any source is offline', async () => {
 		index.findVirtualDeviceIdsBySourceDevice.mockReturnValue(['virtual-device']);
-		sourcesFor('virtual-device', [{ online: true }, { online: false }]);
+		sourcesFor('virtual-device', [{ status: ConnectionState.CONNECTED }, { status: ConnectionState.DISCONNECTED }]);
 
 		await listener.handleConnectionChanged({ device: sourceDevice, state: ConnectionState.DISCONNECTED });
 
@@ -111,7 +122,7 @@ describe('VirtualStatusListener', () => {
 
 	it('marks the virtual device offline when any property is orphaned', async () => {
 		index.findVirtualDeviceIdsBySourceDevice.mockReturnValue(['virtual-device']);
-		sourcesFor('virtual-device', [{ online: true }], { orphaned: true });
+		sourcesFor('virtual-device', [{ status: ConnectionState.CONNECTED }], { orphaned: true });
 
 		await listener.handleConnectionChanged({ device: sourceDevice, state: ConnectionState.CONNECTED });
 
@@ -120,6 +131,94 @@ describe('VirtualStatusListener', () => {
 			expect.objectContaining({ state: ConnectionState.DISCONNECTED }),
 		);
 	});
+
+	// -- UNKNOWN propagates rather than collapsing into DISCONNECTED --------------------------------
+	//
+	// readLatest() answers `{online: false, status: UNKNOWN}` both for a device that has never reported
+	// a connection state and whenever storage is unavailable — so before this rule, a source whose
+	// integration simply does not publish connectivity, and *every* source on a fresh install or right
+	// after a restart, dragged its virtual device to DISCONNECTED. PropertyCommandService then refuses
+	// every command against it, while VirtualDevicePlatform (which applies the same
+	// UNKNOWN-is-commandable rule to the source) would have forwarded happily had it ever been asked.
+
+	it('reports unknown, not disconnected, when a source has never reported a connection state', async () => {
+		index.findVirtualDeviceIdsBySourceDevice.mockReturnValue(['virtual-device']);
+		sourcesFor('virtual-device', [{ status: ConnectionState.UNKNOWN }]);
+
+		await listener.handleConnectionChanged({ device: sourceDevice, state: ConnectionState.CONNECTED });
+
+		expect(connectivity.setConnectionState).toHaveBeenCalledWith(
+			'virtual-device',
+			expect.objectContaining({ state: ConnectionState.UNKNOWN }),
+		);
+	});
+
+	it('reports unknown when some sources are online and the rest have never reported', async () => {
+		index.findVirtualDeviceIdsBySourceDevice.mockReturnValue(['virtual-device']);
+		sourcesFor('virtual-device', [{ status: ConnectionState.CONNECTED }, { status: ConnectionState.UNKNOWN }]);
+
+		await listener.handleConnectionChanged({ device: sourceDevice, state: ConnectionState.CONNECTED });
+
+		expect(connectivity.setConnectionState).toHaveBeenCalledWith(
+			'virtual-device',
+			expect.objectContaining({ state: ConnectionState.UNKNOWN }),
+		);
+	});
+
+	// The precedence that keeps the loosening honest: a source known to be offline still wins over one
+	// that is merely unknown, in either encounter order, because "known broken" outranks "not known".
+	it.each([
+		['offline first', [ConnectionState.DISCONNECTED, ConnectionState.UNKNOWN]],
+		['unknown first', [ConnectionState.UNKNOWN, ConnectionState.DISCONNECTED]],
+	])(
+		'still reports disconnected when a definitively offline source is mixed with an unknown one (%s)',
+		async (_order, states) => {
+			index.findVirtualDeviceIdsBySourceDevice.mockReturnValue(['virtual-device']);
+			sourcesFor(
+				'virtual-device',
+				states.map((status) => ({ status })),
+			);
+
+			await listener.handleConnectionChanged({ device: sourceDevice, state: ConnectionState.DISCONNECTED });
+
+			expect(connectivity.setConnectionState).toHaveBeenCalledWith(
+				'virtual-device',
+				expect.objectContaining({ state: ConnectionState.DISCONNECTED }),
+			);
+		},
+	);
+
+	// An orphan is a *known* fact about the device — broken wiring — so it outranks an unknown source
+	// exactly as a definitively offline one does, and the device must not be reported commandable on
+	// the strength of the source it can still reach.
+	it('still reports disconnected when an orphaned property accompanies an unknown source', async () => {
+		index.findVirtualDeviceIdsBySourceDevice.mockReturnValue(['virtual-device']);
+		sourcesFor('virtual-device', [{ status: ConnectionState.UNKNOWN }], { orphaned: true });
+
+		await listener.handleConnectionChanged({ device: sourceDevice, state: ConnectionState.CONNECTED });
+
+		expect(connectivity.setConnectionState).toHaveBeenCalledWith(
+			'virtual-device',
+			expect.objectContaining({ state: ConnectionState.DISCONNECTED }),
+		);
+	});
+
+	// The other four states outside OnlineDeviceState are genuine reports, not absences of one, so they
+	// degrade the virtual device just as DISCONNECTED does — only UNKNOWN is treated as "no answer".
+	it.each([ConnectionState.STOPPED, ConnectionState.LOST, ConnectionState.ALERT])(
+		'treats a source reporting %s as definitively offline',
+		async (status) => {
+			index.findVirtualDeviceIdsBySourceDevice.mockReturnValue(['virtual-device']);
+			sourcesFor('virtual-device', [{ status }]);
+
+			await listener.handleConnectionChanged({ device: sourceDevice, state: status });
+
+			expect(connectivity.setConnectionState).toHaveBeenCalledWith(
+				'virtual-device',
+				expect.objectContaining({ state: ConnectionState.DISCONNECTED }),
+			);
+		},
+	);
 
 	it('ignores devices that no virtual device projects', async () => {
 		index.findVirtualDeviceIdsBySourceDevice.mockReturnValue([]);
@@ -185,11 +284,9 @@ describe('VirtualStatusListener', () => {
 		);
 
 		connectionState.readLatest.mockImplementation((device: { id: string }) =>
-			Promise.resolve({
-				online: device.id === 'online-device',
-				status: ConnectionState.UNKNOWN,
-				lastChanged: null,
-			}),
+			Promise.resolve(
+				readingOf(device.id === 'online-device' ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED),
+			),
 		);
 
 		await listener.handleConnectionChanged({ device: sourceDevice, state: ConnectionState.CONNECTED });
@@ -318,14 +415,15 @@ describe('VirtualStatusListener', () => {
 			return property;
 		};
 
-		const listenerOver = (realIndex: VirtualPropertyIndexService, live: { online: boolean }): VirtualStatusListener =>
+		const listenerOver = (
+			realIndex: VirtualPropertyIndexService,
+			live: { status: ConnectionState },
+		): VirtualStatusListener =>
 			new VirtualStatusListener(
 				realIndex,
 				connectivity as unknown as DeviceConnectivityService,
 				{
-					readLatest: jest
-						.fn()
-						.mockResolvedValue({ online: live.online, status: ConnectionState.UNKNOWN, lastChanged: null }),
+					readLatest: jest.fn().mockResolvedValue(readingOf(live.status)),
 				} as unknown as DeviceConnectionStateService,
 			);
 
@@ -340,7 +438,7 @@ describe('VirtualStatusListener', () => {
 				hydratedRow({ id: 'linked-prop', sourcePropertyId: 'source-prop', sourceOnlineAtIndexTime: false }),
 			]);
 
-			const realListener = listenerOver(realIndex, { online: true });
+			const realListener = listenerOver(realIndex, { status: ConnectionState.CONNECTED });
 
 			await realListener.handleConnectionChanged({ device: sourceDevice, state: ConnectionState.CONNECTED });
 
@@ -357,7 +455,7 @@ describe('VirtualStatusListener', () => {
 				hydratedRow({ id: 'linked-prop', sourcePropertyId: 'source-prop', sourceOnlineAtIndexTime: true }),
 			]);
 
-			const realListener = listenerOver(realIndex, { online: false });
+			const realListener = listenerOver(realIndex, { status: ConnectionState.DISCONNECTED });
 
 			await realListener.handleConnectionChanged({ device: sourceDevice, state: ConnectionState.DISCONNECTED });
 
@@ -379,7 +477,7 @@ describe('VirtualStatusListener', () => {
 			]);
 
 			// Every source that still exists is online — the orphan is the only reason to degrade.
-			const realListener = listenerOver(realIndex, { online: true });
+			const realListener = listenerOver(realIndex, { status: ConnectionState.CONNECTED });
 
 			await realListener.handleConnectionChanged({ device: sourceDevice, state: ConnectionState.CONNECTED });
 

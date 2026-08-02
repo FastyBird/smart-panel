@@ -10,10 +10,9 @@ import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-vi
 import { VirtualPropertyIndexService } from '../services/virtual-property-index.service';
 
 /**
- * A virtual device has no connection of its own: it is CONNECTED only while every distinct device
- * it draws a property from is online and none of its properties is orphaned, and DISCONNECTED
- * otherwise. Runs once per source device connection change, recomputing every virtual device that
- * change affects.
+ * A virtual device has no connection of its own: it reports the worst state among the devices it
+ * draws its properties from — see `aggregateState()` for the exact rule. Runs once per source device
+ * connection change, recomputing every virtual device that change affects.
  *
  * Both halves of that rule are answered from live state, not from anything cached at index time:
  * - orphan-ness comes from VirtualPropertyLink.sourcePropertyId being null, and the index records
@@ -131,9 +130,38 @@ export class VirtualStatusListener {
 	}
 
 	/**
-	 * CONNECTED when every distinct source device backing this virtual device is online and none of
-	 * its properties is orphaned; DISCONNECTED otherwise. A virtual device with only owned properties
-	 * has no links at all, which is vacuously CONNECTED.
+	 * Reports the worst state among this virtual device's sources, over a three-value ordering:
+	 *
+	 *     DISCONNECTED (known broken) > UNKNOWN (nothing known) > CONNECTED (known good)
+	 *
+	 * - **any orphaned property → DISCONNECTED.** A projection whose source was deleted is broken
+	 *   wiring, which is a *known* fact about the device, not an absence of one. It stays the strongest
+	 *   signal here even though every remaining source may be perfectly healthy.
+	 * - **any source definitively offline → DISCONNECTED.** "Definitively" means it reported a state
+	 *   outside `OnlineDeviceState` that is not UNKNOWN — DISCONNECTED, STOPPED, LOST, ALERT. At least
+	 *   one of the virtual device's properties provably cannot be served, so the composite provably
+	 *   cannot serve them all. DISCONNECTED rather than the source's own specific state: a set of
+	 *   sources has no single specific answer, and DISCONNECTED is what the rest of the module means by
+	 *   "offline".
+	 * - **otherwise, any source UNKNOWN → UNKNOWN.** Nothing is known to be broken and nothing is known
+	 *   to work. Reporting DISCONNECTED here is what this method used to do, and it was the one place
+	 *   in the codebase that treated "no data" as "definitely offline": `DeviceConnectionStateService
+	 *   .readLatest()` returns `{ online: false, status: UNKNOWN }` for a device that has never
+	 *   reported *or* when storage is simply unavailable, so a source whose integration does not
+	 *   publish connectivity — and every source at all, on a fresh install or right after a restart —
+	 *   dragged its virtual device to DISCONNECTED. `PropertyCommandService.processDeviceCommands()`
+	 *   then refuses every command against it ("only reject when definitively offline"), before
+	 *   `VirtualDevicePlatform` — which applies that same UNKNOWN-is-commandable rule to the *source* —
+	 *   ever gets to forward one. The virtual device rendered fine, showed plausible values, and
+	 *   silently refused every command. Propagating UNKNOWN says exactly what is true and restores the
+	 *   convention the other two already follow.
+	 * - **all sources online, no orphans → CONNECTED.** A virtual device with only owned properties has
+	 *   no links at all, which is vacuously CONNECTED.
+	 *
+	 * `online` is not simply `!offline` here, which is why the loop tests three cases rather than two:
+	 * `readLatest()` reports UNKNOWN with `online: false`, so the offline branch has to exclude it
+	 * explicitly — the same `!online && status !== UNKNOWN` predicate PropertyCommandService and
+	 * VirtualDevicePlatform both spell out.
 	 *
 	 * The index supplies only ids; the per-device answer is read from DeviceConnectionStateService,
 	 * which serves its in-memory status map first and only falls through to storage for a device that
@@ -153,14 +181,24 @@ export class VirtualStatusListener {
 			links.map((link) => link.sourceDeviceId).filter((sourceDeviceId): sourceDeviceId is string => !!sourceDeviceId),
 		);
 
+		let anyUnknown = false;
+
 		for (const sourceDeviceId of sourceDeviceIds) {
 			const status = await this.deviceConnectionStateService.readLatest({ id: sourceDeviceId });
 
-			if (!status.online) {
+			if (status.online) {
+				continue;
+			}
+
+			// Returning immediately rather than finishing the scan: DISCONNECTED is the top of the
+			// ordering, so nothing a later source could report would change the answer.
+			if (status.status !== ConnectionState.UNKNOWN) {
 				return ConnectionState.DISCONNECTED;
 			}
+
+			anyUnknown = true;
 		}
 
-		return ConnectionState.CONNECTED;
+		return anyUnknown ? ConnectionState.UNKNOWN : ConnectionState.CONNECTED;
 	}
 }
