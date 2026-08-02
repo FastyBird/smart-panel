@@ -1,0 +1,35 @@
+{
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Identificador interno",
+				"placeholder": "ID del dispositivo"
+			},
+			"identifier": {
+				"title": "Identificador del sistema",
+				"placeholder": "Identificador del sistema del dispositivo"
+			},
+			"category": {
+				"title": "Categoría",
+				"placeholder": "Categoría del dispositivo",
+				"validation": {
+					"required": "Por favor, seleccione la categoría del dispositivo"
+				}
+			},
+			"name": {
+				"title": "Nombre",
+				"placeholder": "Nombre del dispositivo",
+				"validation": {
+					"required": "Por favor, introduzca el nombre del dispositivo"
+				}
+			},
+			"description": {
+				"title": "Descripción",
+				"placeholder": "Descripción del dispositivo"
+			},
+			"enabled": {
+				"title": "Habilitado"
+			}
+		}
+	}
+}

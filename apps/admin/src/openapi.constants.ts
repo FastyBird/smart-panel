@@ -212,6 +212,18 @@ export type DevicesThirdPartyPluginCreateChannelPropertySchema = components['sch
 export type DevicesThirdPartyPluginUpdateChannelPropertySchema = components['schemas']['DevicesThirdPartyPluginUpdateChannelProperty'];
 export type DevicesThirdPartyPluginChannelPropertySchema = components['schemas']['DevicesThirdPartyPluginDataChannelProperty'];
 
+// Devices Virtual Plugin Schemas
+export type DevicesVirtualPluginCreateDeviceSchema = components['schemas']['DevicesVirtualPluginCreateDevice'];
+export type DevicesVirtualPluginUpdateDeviceSchema = components['schemas']['DevicesVirtualPluginUpdateDevice'];
+export type DevicesVirtualPluginDeviceSchema = components['schemas']['DevicesVirtualPluginDataDevice'];
+export type DevicesVirtualPluginCreateChannelSchema = components['schemas']['DevicesVirtualPluginCreateChannel'];
+export type DevicesVirtualPluginUpdateChannelSchema = components['schemas']['DevicesVirtualPluginUpdateChannel'];
+export type DevicesVirtualPluginChannelSchema = components['schemas']['DevicesVirtualPluginDataChannel'];
+export type DevicesVirtualPluginCreateChannelPropertySchema = components['schemas']['DevicesVirtualPluginCreateChannelProperty'];
+export type DevicesVirtualPluginUpdateChannelPropertySchema = components['schemas']['DevicesVirtualPluginUpdateChannelProperty'];
+export type DevicesVirtualPluginChannelPropertySchema = components['schemas']['DevicesVirtualPluginDataChannelProperty'];
+export { DevicesVirtualPluginCreateChannelPropertyValue_origin as DevicesVirtualPluginValueOrigin } from './openapi';
+
 // Simulator Plugin Schemas
 export type SimulatorPluginDeviceSchema = components['schemas']['SimulatorPluginDataDevice'];
 export type SimulatorPluginChannelSchema = components['schemas']['SimulatorPluginDataChannel'];
