@@ -9,6 +9,7 @@ import { DEVICES_VIRTUAL_TYPE, VIRTUAL_BLOCKED_CATEGORIES } from '../devices-vir
 import {
 	VirtualCategoryNotSupportedException,
 	VirtualNestingNotAllowedException,
+	VirtualOwnerNotVirtualException,
 	VirtualPermissionsIncompatibleException,
 	VirtualSourceNotFoundException,
 	VirtualValueOriginConflictException,
@@ -20,11 +21,14 @@ import { VirtualPropertyIndexService } from './virtual-property-index.service';
 /**
  * Validation guards for assembling a virtual device, plus a read of the physical devices behind one.
  *
- * The four `assert*` methods each police one rule from the design's creation flow
+ * The `assert*` methods each police one rule from the design's creation flow
  * (docs/superpowers/specs/2026-07-31-virtual-devices-design.md, "Creation flow" / "v1 category
  * boundary"):
  *
  * - `assertCategoryAllowed` — a blocked category needs closed-loop control this plugin does not have.
+ * - `assertDeviceIsVirtual` / `assertChannelOwnerIsVirtual` — containment: nothing virtual may hang
+ *   off a device that is not. The second is the load-bearing one — see its docstring for how a stray
+ *   virtual property makes a *physical* device's own commands start failing.
  * - `assertSourceNotVirtual` — is load-bearing, not optional: VirtualProjectionListener re-emits
  *   CHANNEL_PROPERTY_VALUE_SET and terminates only because no virtual property is ever another's
  *   `sourcePropertyId` (see that listener's docstring). VirtualDevicePlatform.processBatch checks the
@@ -33,15 +37,26 @@ import { VirtualPropertyIndexService } from './virtual-property-index.service';
  * - `assertPermissionsCompatible` — a writable spec slot fed by a read-only source could never
  *   actually be written.
  * - `assertValueOriginPairSupported` — the entity's state model has no state for `local` + a source.
- *   Wired differently from the other three: it judges the *merged* row rather than a payload, so it
- *   hangs off a `beforeUpdate` mapping hook rather than a class-validator constraint (see the method).
  *
- * `assertCategoryAllowed` and `assertSourceNotVirtual` are wired into the create/update HTTP path via
- * class-validator constraints (`../validators/category-allowed-constraint.validator.ts`,
- * `../validators/source-not-virtual-constraint.validator.ts`) on the `category` and `source_property`
- * fields of the virtual device/channel-property DTOs — see those files for how. This is what makes
- * `VirtualProjectionListener`'s "nesting is rejected at creation" doc comment actually true rather
- * than aspirational. `assertPermissionsCompatible` is deliberately NOT wired the same way: it needs
+ * ## How each is wired, and why they are not all wired the same way
+ *
+ * `assertCategoryAllowed`, `assertSourceNotVirtual` and `assertDeviceIsVirtual` hang off
+ * class-validator constraints on the `category`, `source_property` and `device` fields of the virtual
+ * device/channel/channel-property DTOs (`../validators/*.validator.ts`), because each judges a value
+ * the request payload actually carries — so the rejection is a 400 that names the offending field.
+ * This is what makes `VirtualProjectionListener`'s "nesting is rejected at creation" doc comment
+ * actually true rather than aspirational.
+ *
+ * `assertChannelOwnerIsVirtual` cannot be: a property's channel is a *route parameter* on both
+ * property controllers and an argument on the two nested-creation paths, so it never reaches the DTO.
+ * It hangs off a `beforeCreate` mapping hook instead, which is handed the channel id explicitly.
+ *
+ * `assertValueOriginPairSupported` judges the *merged row* rather than a payload — the half of the
+ * rule a partial PATCH cannot show — so it hangs off a `beforeUpdate` mapping hook. It has a
+ * DTO-constraint counterpart for the payload that carries both halves; they are complementary, not
+ * alternatives (see the method).
+ *
+ * `assertPermissionsCompatible` is deliberately not wired at all: it needs
  * the target spec slot's required permissions, which depend on the channel category and are not
  * available from a property DTO in isolation — the design spec assigns that filtering to the admin
  * wizard (a follow-up, not part of this backend+panel plan), so this method is called by the wizard,
@@ -118,6 +133,77 @@ export class VirtualDevicesService {
 		if (isUnsupportedValueOriginPair(property.valueOrigin, property.sourcePropertyId)) {
 			throw new VirtualValueOriginConflictException(
 				`Property id=${property.id} would be stored with value origin '${property.valueOrigin}' and source property id=${property.sourcePropertyId}; an owned property stores its own value and has no source`,
+			);
+		}
+	}
+
+	/**
+	 * Throws unless `deviceId` names an existing device of DEVICES_VIRTUAL_TYPE.
+	 *
+	 * The containment rule one level up from `assertChannelOwnerIsVirtual` below: a virtual *channel*
+	 * may only hang off a virtual device. `POST /channels` takes `device` from the request payload, and
+	 * the device-scoped route and the nested-in-device path both funnel the same field into
+	 * `ChannelsService.create()`, so a physical device could be given virtual channels — and those
+	 * channels could then be filled with virtual properties, which is where the real damage starts (see
+	 * the property-level assert).
+	 *
+	 * "Does not exist" is folded into the same failure rather than passed through, matching
+	 * `assertSourceNotVirtual`: this judges an id the caller has just supplied, so pointing at nothing
+	 * is exactly as invalid as pointing at the wrong kind of thing. `ValidateDeviceExists` on the same
+	 * field already reports the missing case with its own message, so nothing is lost by not
+	 * distinguishing it here.
+	 */
+	async assertDeviceIsVirtual(deviceId: string): Promise<void> {
+		const device = await this.devicesService.findOne(deviceId);
+
+		if (!device || device.type !== DEVICES_VIRTUAL_TYPE) {
+			throw new VirtualOwnerNotVirtualException(
+				`Device id=${deviceId} is not a virtual device; a virtual channel can only belong to a virtual device`,
+			);
+		}
+	}
+
+	/**
+	 * Throws unless `channelId` names an existing virtual channel whose own device is virtual too.
+	 *
+	 * This is the containment guard, and it is the one that matters most in this plugin. A channel
+	 * property's `type` is chosen from the request payload while its channel is a *route parameter*, so
+	 * before this existed `POST /channels/:physicalChannelId/properties` with `type: 'virtual'` built a
+	 * VirtualChannelPropertyEntity inside an ordinary physical channel and nothing downstream ever
+	 * re-checked the owner.
+	 *
+	 * What that costs is not confined to the plugin. VirtualPropertyIndexService resolves a virtual
+	 * property's owning device from its own channel relation and files it under `byVirtualDevice`, so
+	 * the physical device becomes, to the index, a virtual device; VirtualStatusListener then
+	 * overwrites that device's real connectivity with the projection aggregate — DISCONNECTED for a
+	 * source-less property, which is what a stray one is — and PropertyCommandService refuses every
+	 * command against an offline device. A real device's own commands start failing because of a plugin
+	 * it was never enrolled in. The virtual layer is meant to be strictly additive; this is what makes
+	 * that true.
+	 *
+	 * Both hops are required, not just the device. A virtual property in a *physical* channel of a
+	 * virtual device is contained, but it is still a row whose type disagrees with the channel that
+	 * holds it, and the device hop below is only reachable through the channel anyway — so checking the
+	 * channel costs nothing and closes the discrepancy at the same time.
+	 *
+	 * Resolved by id, one hop at a time, for the same reason as `assertSourceNotVirtual`: the caller
+	 * hands over a channel id, not an entity with guaranteed-loaded relations.
+	 */
+	async assertChannelOwnerIsVirtual(channelId: string): Promise<void> {
+		const channel = await this.channelsService.findOne(channelId);
+
+		if (!channel || channel.type !== DEVICES_VIRTUAL_TYPE) {
+			throw new VirtualOwnerNotVirtualException(
+				`Channel id=${channelId} is not a virtual channel; a virtual property can only belong to a virtual channel`,
+			);
+		}
+
+		const deviceId = typeof channel.device === 'string' ? channel.device : channel.device?.id;
+		const device = deviceId ? await this.devicesService.findOne(deviceId) : null;
+
+		if (!device || device.type !== DEVICES_VIRTUAL_TYPE) {
+			throw new VirtualOwnerNotVirtualException(
+				`Channel id=${channelId} belongs to device id=${deviceId ?? 'unknown'}, which is not a virtual device; a virtual property can only belong to a virtual device`,
 			);
 		}
 	}

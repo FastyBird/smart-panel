@@ -468,6 +468,101 @@ describe('ChannelsPropertiesService', () => {
 
 			expect(propertyValueService.write).toHaveBeenCalledWith(created, 21.5);
 		});
+
+		// The counterpart to `beforeUpdate`. It exists so a type owner can judge an invariant spanning
+		// the property and the channel it is being attached to — and `channelId` is a route parameter on
+		// both property controllers, so it never reaches the create DTO and has to be handed over here.
+
+		it('should call the mapping beforeCreate hook with the channel id, before saving', async () => {
+			const beforeCreate = jest.fn().mockResolvedValue(undefined);
+
+			const createDto: CreateMockChannelPropertyDto = {
+				type: 'mock',
+				category: PropertyCategory.GENERIC,
+				permissions: [PermissionType.READ_ONLY],
+				data_type: DataTypeType.UNKNOWN,
+				mock_value: 'Random text',
+			};
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+				beforeCreate,
+			});
+
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(toInstance(ChannelEntity, mockChannel));
+
+			const created = toInstance(MockChannelProperty, { ...createDto, id: uuid().toString() });
+
+			jest.spyOn(repository, 'create').mockReturnValue(created);
+
+			const saveSpy = jest.spyOn(repository, 'save').mockResolvedValue(created);
+
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(created),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+
+			await channelsPropertiesService.create(mockChannel.id, createDto);
+
+			expect(beforeCreate).toHaveBeenCalledTimes(1);
+			expect(beforeCreate.mock.calls[0][1]).toBe(mockChannel.id);
+			expect(beforeCreate.mock.invocationCallOrder[0]).toBeLessThan(saveSpy.mock.invocationCallOrder[0]);
+		});
+
+		it('should persist nothing when the beforeCreate hook rejects the attachment', async () => {
+			const createDto: CreateMockChannelPropertyDto = {
+				type: 'mock',
+				category: PropertyCategory.GENERIC,
+				permissions: [PermissionType.READ_ONLY],
+				data_type: DataTypeType.UNKNOWN,
+				mock_value: 'Random text',
+			};
+
+			const afterCreate = jest.fn();
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+				beforeCreate: jest.fn().mockRejectedValue(new DevicesValidationException('Wrong kind of channel.')),
+				afterCreate,
+			});
+
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(toInstance(ChannelEntity, mockChannel));
+
+			const created = toInstance(MockChannelProperty, { ...createDto, id: uuid().toString() });
+
+			jest.spyOn(repository, 'create').mockReturnValue(created);
+
+			const saveSpy = jest.spyOn(repository, 'save').mockResolvedValue(created);
+
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(created),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+
+			await expect(channelsPropertiesService.create(mockChannel.id, createDto)).rejects.toThrow(
+				DevicesValidationException,
+			);
+
+			// No row, no event, and no afterCreate hook — a refused attachment leaves nothing behind for
+			// anything downstream to observe.
+			expect(saveSpy).not.toHaveBeenCalled();
+			expect(afterCreate).not.toHaveBeenCalled();
+			expect(eventEmitter.emit).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('update', () => {

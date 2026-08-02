@@ -44,3 +44,11 @@ export class VirtualPermissionsIncompatibleException extends VirtualException {
 		this.name = 'VirtualPermissionsIncompatibleException';
 	}
 }
+
+/** A virtual channel or property would be attached to a channel or device that is not virtual. */
+export class VirtualOwnerNotVirtualException extends VirtualException {
+	constructor(message: string) {
+		super(message);
+		this.name = 'VirtualOwnerNotVirtualException';
+	}
+}

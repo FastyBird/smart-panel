@@ -241,6 +241,13 @@ export class ChannelsPropertiesService {
 			);
 		}
 
+		// The type owner's last look at the row before it exists — the only point at which an invariant
+		// spanning the property and the channel it is being attached to is decidable, since `channelId`
+		// is a route parameter and never reaches the create DTO. Throwing here persists nothing.
+		if (mapping.beforeCreate) {
+			await mapping.beforeCreate(property, channelId);
+		}
+
 		// Save the property
 		const raw = await repository.save(property);
 

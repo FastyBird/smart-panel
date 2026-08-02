@@ -22,11 +22,14 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../src/modules/devices/devices.constants';
-import { ChannelPropertyEntity } from '../src/modules/devices/entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity } from '../src/modules/devices/entities/devices.entity';
 import { DeviceConnectivityService } from '../src/modules/devices/services/device-connectivity.service';
 import { PropertyValueSourceRegistryService } from '../src/modules/devices/services/property-value-source.registry.service';
 import { DEVICES_VIRTUAL_TYPE } from '../src/plugins/devices-virtual/devices-virtual.constants';
-import { VirtualChannelPropertyEntity } from '../src/plugins/devices-virtual/entities/devices-virtual.entity';
+import {
+	VirtualChannelEntity,
+	VirtualChannelPropertyEntity,
+} from '../src/plugins/devices-virtual/entities/devices-virtual.entity';
 import { VirtualStatusListener } from '../src/plugins/devices-virtual/listeners/virtual-status.listener';
 import { VirtualPropertyIndexService } from '../src/plugins/devices-virtual/services/virtual-property-index.service';
 import { SimulatorDevicePlatform } from '../src/plugins/simulator/platforms/simulator-device.platform';
@@ -1689,6 +1692,206 @@ describe('devices-virtual plugin (e2e)', () => {
 			const visibleList = await authGet('/modules/devices/devices?hidden=false').expect(200);
 
 			expect((visibleList.body as { data: DeviceBody[] }).data.map((device) => device.id)).toContain(ownSourceDeviceId);
+		});
+	});
+
+	// ─── Containment: nothing virtual ever hangs off a device that is not virtual ────────
+
+	/**
+	 * The virtual layer is strictly additive: it may not degrade a device that is not part of it.
+	 *
+	 * `type` is chosen from the request payload, so the generic property route happily built a
+	 * VirtualChannelPropertyEntity inside an ordinary physical channel, and nothing downstream
+	 * re-checked the owner. VirtualPropertyIndexService resolves a virtual property's owning device
+	 * from its own channel relation and files it under `byVirtualDevice` — so the *physical* device
+	 * became, to the index, a virtual device. From there VirtualStatusListener would overwrite that
+	 * device's real connectivity with the projection aggregate (a source-less property indexes as an
+	 * orphan, which aggregates to DISCONNECTED), and PropertyCommandService refuses every command
+	 * against an offline device: a real device's own commands start failing, caused entirely by a
+	 * plugin it was never enrolled in.
+	 *
+	 * The same shape exists one level up — `POST /channels` takes `device` from the payload too, so a
+	 * virtual channel could be hung off a physical device and then filled with virtual properties.
+	 *
+	 * The assertion at the end of this block is the property itself, read straight from the database
+	 * rather than inferred from status codes: *no* virtual row, of either kind, is reachable from a
+	 * non-virtual device. Status codes alone would only say that the request shapes tried here are
+	 * refused; this says the state cannot exist.
+	 */
+	describe('containment: no virtual row attaches to a non-virtual device', () => {
+		let physicalDeviceId: string;
+		let physicalChannelId: string;
+
+		const strayProperty = {
+			type: DEVICES_VIRTUAL_TYPE,
+			category: PropertyCategory.ON,
+			name: 'Stray On',
+			permissions: [PermissionType.READ_ONLY],
+			data_type: DataTypeType.BOOL,
+		};
+
+		it('creates the physical device the attachments will be attempted against', async () => {
+			const response = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: SIMULATOR_TYPE,
+						category: DeviceCategory.OUTLET,
+						name: 'E2E Containment Physical Outlet',
+						channels: [
+							{
+								type: SIMULATOR_TYPE,
+								category: ChannelCategory.OUTLET,
+								identifier: 'outlet',
+								name: 'Outlet',
+							},
+						],
+					},
+				})
+				.expect(201);
+
+			const body = response.body as { data: DeviceBody };
+
+			physicalDeviceId = body.data.id;
+			physicalChannelId =
+				body.data.channels.find((channel) => channel.category === String(ChannelCategory.OUTLET))?.id ?? '';
+
+			expect(physicalChannelId).toBeTruthy();
+		});
+
+		it('refuses a virtual property posted into a physical channel (channel-scoped route)', async () => {
+			const response = await authPost(`/modules/devices/channels/${physicalChannelId}/properties`).send({
+				data: { ...strayProperty, identifier: 'stray_channel_scoped' },
+			});
+
+			expect(response.status).toBe(422);
+		});
+
+		it('refuses a virtual property posted into a physical channel (device-scoped route)', async () => {
+			const response = await authPost(
+				`/modules/devices/devices/${physicalDeviceId}/channels/${physicalChannelId}/properties`,
+			).send({
+				data: { ...strayProperty, identifier: 'stray_device_scoped' },
+			});
+
+			expect(response.status).toBe(422);
+		});
+
+		// One level up: the channel route takes `device` from the payload, so this is the same gap with
+		// one more hop in it. Rejected at the DTO layer, hence 400 rather than 422 — the offending value
+		// is a field of the request, so the error can name it.
+		it('refuses a virtual channel hung off a physical device', async () => {
+			const response = await authPost('/modules/devices/channels').send({
+				data: {
+					type: DEVICES_VIRTUAL_TYPE,
+					category: ChannelCategory.LIGHT,
+					identifier: 'stray_light',
+					name: 'Stray Light',
+					device: physicalDeviceId,
+				},
+			});
+
+			expect(response.status).toBe(400);
+			expect(JSON.stringify(response.body)).toContain('virtual device');
+		});
+
+		// The nested shape, which re-validates each channel through ChannelsService.create() rather than
+		// through the device DTO — so a guard placed only on the standalone route would miss it.
+		it('refuses a virtual channel nested into a physical device create', async () => {
+			const response = await authPost('/modules/devices/devices').send({
+				data: {
+					type: SIMULATOR_TYPE,
+					category: DeviceCategory.OUTLET,
+					name: 'E2E Containment Nested Stray',
+					channels: [
+						{
+							type: DEVICES_VIRTUAL_TYPE,
+							category: ChannelCategory.LIGHT,
+							identifier: 'stray_nested_light',
+							name: 'Stray Nested Light',
+						},
+					],
+				},
+			});
+
+			expect(response.status).toBe(422);
+		});
+
+		// The update path, which on this branch has repeatedly reached states a create-time check
+		// missed. Here it cannot, and for a structural reason rather than a guard: neither update DTO
+		// declares the parent link at all — UpdateChannelDto has no `device` and UpdateChannelPropertyDto
+		// has no `channel` — and both controllers validate with `forbidNonWhitelisted`, so an attempt to
+		// re-parent is rejected as an unknown field rather than silently ignored. These two assertions
+		// are what would notice if either field were ever added without a matching guard.
+		it('offers no way to re-parent a virtual channel or property onto a physical device', async () => {
+			const deviceResponse = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: DeviceCategory.LIGHTING,
+						name: 'E2E Containment Reparent Target',
+					},
+				})
+				.expect(201);
+			const reparentDeviceId = (deviceResponse.body as { data: DeviceBody }).data.id;
+
+			const channelResponse = await authPost('/modules/devices/channels')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: ChannelCategory.LIGHT,
+						identifier: 'light',
+						name: 'Light',
+						device: reparentDeviceId,
+					},
+				})
+				.expect(201);
+			const reparentChannelId = (channelResponse.body as { data: ChannelBody }).data.id;
+
+			const propertyResponse = await authPost(`/modules/devices/channels/${reparentChannelId}/properties`)
+				.send({
+					data: { ...strayProperty, identifier: 'reparent_on' },
+				})
+				.expect(201);
+			const reparentPropertyId = (propertyResponse.body as { data: ChannelPropertyBody }).data.id;
+
+			const movedChannel = await authPatch(`/modules/devices/channels/${reparentChannelId}`).send({
+				data: { type: DEVICES_VIRTUAL_TYPE, device: physicalDeviceId },
+			});
+
+			expect(movedChannel.status).toBe(400);
+
+			const movedProperty = await authPatch(
+				`/modules/devices/channels/${reparentChannelId}/properties/${reparentPropertyId}`,
+			).send({
+				data: { type: DEVICES_VIRTUAL_TYPE, channel: physicalChannelId },
+			});
+
+			expect(movedProperty.status).toBe(400);
+		});
+
+		// The property this block is actually about: not "those requests were refused" but "the state
+		// they were reaching for does not exist anywhere in the database".
+		//
+		// A relation that came back unloaded (a bare id string) counts as a stray rather than a pass:
+		// this assertion is only worth anything if it can actually see the owner, so "could not tell"
+		// has to fail loudly instead of quietly reporting containment.
+		it('leaves no virtual channel or property reachable from a non-virtual device', async () => {
+			const ownerIsVirtual = (channel: ChannelEntity | string): boolean =>
+				typeof channel !== 'string' &&
+				typeof channel.device !== 'string' &&
+				channel.device.type === DEVICES_VIRTUAL_TYPE;
+
+			const strayProperties = (
+				await dataSource.getRepository(VirtualChannelPropertyEntity).find({ relations: ['channel', 'channel.device'] })
+			).filter((property) => !ownerIsVirtual(property.channel));
+
+			expect(strayProperties.map((property) => property.id)).toEqual([]);
+
+			const strayChannels = (
+				await dataSource.getRepository(VirtualChannelEntity).find({ relations: ['device'] })
+			).filter((channel) => typeof channel.device === 'string' || channel.device.type !== DEVICES_VIRTUAL_TYPE);
+
+			expect(strayChannels.map((channel) => channel.id)).toEqual([]);
 		});
 	});
 

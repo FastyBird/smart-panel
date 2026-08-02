@@ -18,6 +18,7 @@ import { VirtualValueOrigin } from '../entities/devices-virtual.entity';
 import { VirtualDevicesService } from '../services/virtual-devices.service';
 import { VirtualPropertyIndexService } from '../services/virtual-property-index.service';
 import { CategoryAllowedConstraintValidator } from '../validators/category-allowed-constraint.validator';
+import { DeviceIsVirtualConstraintValidator } from '../validators/device-is-virtual-constraint.validator';
 import { SourceNotVirtualConstraintValidator } from '../validators/source-not-virtual-constraint.validator';
 
 import { CreateVirtualChannelPropertyDto } from './create-channel-property.dto';
@@ -50,11 +51,24 @@ describe('nested virtual device creation DTOs', () => {
 	const strict = { whitelist: true, forbidNonWhitelisted: true, stopAtFirstError: false } as const;
 
 	const SOURCE_PROPERTY_ID = '550e8400-e29b-41d4-a716-446655440000';
+	const VIRTUAL_DEVICE_ID = '550e8400-e29b-41d4-a716-446655440099';
+	const PHYSICAL_DEVICE_ID = '550e8400-e29b-41d4-a716-446655440098';
+
+	// Every source_property resolves to a property on a physical device, so @ValidateSourceNotVirtual
+	// passes and any error these tests see comes from the nesting under test.
+	const physicalDevice = { id: 'physical-device-1', type: 'simulator' } as DeviceEntity;
+	const virtualDeviceRow = { id: VIRTUAL_DEVICE_ID, type: DEVICES_VIRTUAL_TYPE } as DeviceEntity;
+
+	// Id-aware, because two different rules now read devices through it and they need opposite
+	// answers: @ValidateSourceNotVirtual must see the *source's* device as physical, while
+	// @ValidateDeviceIsVirtual must see the channel's own `device` as virtual. A single blanket mock
+	// cannot satisfy both.
+	const defaultDeviceLookup = (id: string): Promise<DeviceEntity> =>
+		Promise.resolve(id === VIRTUAL_DEVICE_ID ? virtualDeviceRow : physicalDevice);
+
+	const devicesService = { findOne: jest.fn().mockImplementation(defaultDeviceLookup) };
 
 	beforeAll(() => {
-		// Every source_property resolves to a property on a physical device, so @ValidateSourceNotVirtual
-		// passes and any error these tests see comes from the nesting under test.
-		const physicalDevice = { id: 'physical-device-1', type: 'simulator' } as DeviceEntity;
 		const channel = Object.assign(new ChannelEntity(), { id: 'source-channel', device: physicalDevice });
 
 		const channelsPropertiesService = {
@@ -63,7 +77,6 @@ describe('nested virtual device creation DTOs', () => {
 				.mockResolvedValue(Object.assign(new ChannelPropertyEntity(), { id: SOURCE_PROPERTY_ID, channel })),
 		};
 		const channelsService = { findOne: jest.fn().mockResolvedValue(channel) };
-		const devicesService = { findOne: jest.fn().mockResolvedValue(physicalDevice) };
 
 		const virtualDevicesService = new VirtualDevicesService(
 			channelsPropertiesService as unknown as ChannelsPropertiesService,
@@ -74,9 +87,10 @@ describe('nested virtual device creation DTOs', () => {
 
 		const categoryAllowedValidator = new CategoryAllowedConstraintValidator(virtualDevicesService);
 		const sourceNotVirtualValidator = new SourceNotVirtualConstraintValidator(virtualDevicesService);
-		// CreateVirtualChannelDto inherits @ValidateDeviceExists on `device`; the standalone-channel case
-		// below is the one that reaches it.
+		// CreateVirtualChannelDto redeclares `device` carrying both of these; the standalone-channel
+		// cases below are the ones that reach them.
 		const deviceExistsValidator = new DeviceExistsConstraintValidator(devicesService as unknown as DevicesService);
+		const deviceIsVirtualValidator = new DeviceIsVirtualConstraintValidator(virtualDevicesService);
 
 		// The same minimal stand-in for Nest's DI container the sibling DTO specs use.
 		useContainer(
@@ -92,6 +106,10 @@ describe('nested virtual device creation DTOs', () => {
 
 					if (someClass === DeviceExistsConstraintValidator) {
 						return deviceExistsValidator as T;
+					}
+
+					if (someClass === DeviceIsVirtualConstraintValidator) {
+						return deviceIsVirtualValidator as T;
 					}
 
 					return new someClass();
@@ -191,11 +209,57 @@ describe('nested virtual device creation DTOs', () => {
 	it('accepts a linked property nested under a standalone channel create', async () => {
 		const dto = toInstance(
 			CreateVirtualChannelDto,
-			{ ...nestedChannel([linkedProperty()]), device: '550e8400-e29b-41d4-a716-446655440099' },
+			{ ...nestedChannel([linkedProperty()]), device: VIRTUAL_DEVICE_ID },
 			{ excludeExtraneousValues: false },
 		);
 
 		expect(flatten(await validate(dto, strict))).toEqual([]);
+	});
+
+	// Containment at the channel level. This class is the gate every channel creation path funnels
+	// through — the standalone route, the device-scoped route (which merges the route parameter into
+	// this same DTO) and DevicesService.create() re-validating each nested channel — so a virtual
+	// channel can never be hung off a device that is not virtual.
+	it('rejects a virtual channel whose device is not virtual', async () => {
+		const dto = toInstance(
+			CreateVirtualChannelDto,
+			{ ...nestedChannel([]), device: PHYSICAL_DEVICE_ID },
+			{ excludeExtraneousValues: false },
+		);
+
+		expect(constraintsAt(await validate(dto, strict), 'device')).toContain('DeviceIsVirtual');
+	});
+
+	// The redeclaration trap: `device` now carries three decorators, and class-validator replaces
+	// rather than merges a subclass's stack. Both inherited checks have to survive.
+	it('still rejects a malformed device uuid on a virtual channel', async () => {
+		const dto = toInstance(
+			CreateVirtualChannelDto,
+			{ ...nestedChannel([]), device: 'not-a-uuid' },
+			{ excludeExtraneousValues: false },
+		);
+
+		expect(constraintsAt(await validate(dto, strict), 'device')).toContain('isUuid');
+	});
+
+	it('still rejects a device that does not exist on a virtual channel', async () => {
+		const missing = '550e8400-e29b-41d4-a716-446655440097';
+
+		devicesService.findOne.mockImplementation((id: string) =>
+			Promise.resolve(id === missing ? null : virtualDeviceRow),
+		);
+
+		try {
+			const dto = toInstance(
+				CreateVirtualChannelDto,
+				{ ...nestedChannel([]), device: missing },
+				{ excludeExtraneousValues: false },
+			);
+
+			expect(constraintsAt(await validate(dto, strict), 'device')).toContain('DeviceExistsValidation');
+		} finally {
+			devicesService.findOne.mockImplementation(defaultDeviceLookup);
+		}
 	});
 
 	// -- the plugin's own constraints still fire through the nesting --------------------------------

@@ -7,6 +7,7 @@ import { DEVICES_VIRTUAL_TYPE, VIRTUAL_BLOCKED_CATEGORIES } from '../devices-vir
 import {
 	VirtualCategoryNotSupportedException,
 	VirtualNestingNotAllowedException,
+	VirtualOwnerNotVirtualException,
 	VirtualSourceNotFoundException,
 	VirtualValueOriginConflictException,
 } from '../devices-virtual.exceptions';
@@ -141,6 +142,90 @@ describe('VirtualDevicesService', () => {
 		// Reading it as LOCAL here would reject every freshly created linked property.
 		it('accepts an undefined value origin with a source, which the column default makes linked', () => {
 			expect(() => service.assertValueOriginPairSupported(merged(undefined, 'source-prop'))).not.toThrow();
+		});
+	});
+
+	// -- containment: nothing virtual hangs off a device that is not ------------------------------
+
+	describe('assertDeviceIsVirtual', () => {
+		it('accepts a virtual device', async () => {
+			devicesService.findOne.mockResolvedValue({ id: 'dev-1', type: DEVICES_VIRTUAL_TYPE } as DeviceEntity);
+
+			await expect(service.assertDeviceIsVirtual('dev-1')).resolves.toBeUndefined();
+		});
+
+		it('rejects a physical device', async () => {
+			devicesService.findOne.mockResolvedValue({ id: 'dev-1', type: 'simulator' } as DeviceEntity);
+
+			await expect(service.assertDeviceIsVirtual('dev-1')).rejects.toThrow(VirtualOwnerNotVirtualException);
+		});
+
+		// Folded into the same failure rather than passed through: this judges an id the caller has just
+		// supplied, so "points at nothing" is exactly as invalid as "points at the wrong kind of thing".
+		it('rejects a device that does not exist', async () => {
+			devicesService.findOne.mockResolvedValue(null);
+
+			await expect(service.assertDeviceIsVirtual('missing')).rejects.toThrow(VirtualOwnerNotVirtualException);
+		});
+	});
+
+	describe('assertChannelOwnerIsVirtual', () => {
+		// `type` is a getter-only property on ChannelEntity (each @ChildEntity overrides it), so a
+		// fixture that needs a custom value casts a plain object rather than mutating `new ChannelEntity()`
+		// — the same reason assertSourceNotVirtual's device fixtures above do.
+		const channel = (type: string, device: ChannelEntity['device']): ChannelEntity =>
+			({ id: 'chan-1', type, device }) as ChannelEntity;
+
+		const virtualChannel = (device: ChannelEntity['device']): ChannelEntity => channel(DEVICES_VIRTUAL_TYPE, device);
+
+		it('accepts a virtual channel on a virtual device', async () => {
+			channelsService.findOne.mockResolvedValue(virtualChannel('dev-1'));
+			devicesService.findOne.mockResolvedValue({ id: 'dev-1', type: DEVICES_VIRTUAL_TYPE } as DeviceEntity);
+
+			await expect(service.assertChannelOwnerIsVirtual('chan-1')).resolves.toBeUndefined();
+		});
+
+		// The P1 failure itself: the channel is an ordinary physical one, so a virtual property in it
+		// would make VirtualPropertyIndexService file a *physical* device under `byVirtualDevice`.
+		it('rejects a physical channel', async () => {
+			channelsService.findOne.mockResolvedValue(channel('simulator', 'dev-1'));
+
+			await expect(service.assertChannelOwnerIsVirtual('chan-1')).rejects.toThrow(VirtualOwnerNotVirtualException);
+			// Rejected on the channel alone — the device hop is not even reached, so this cannot depend on
+			// what the owning device happens to be.
+			expect(devicesService.findOne).not.toHaveBeenCalled();
+		});
+
+		// The level-up shape: a virtual channel that was hung off a physical device before the channel
+		// DTO guard existed, or by any path that bypasses it. The device hop is what catches it.
+		it('rejects a virtual channel whose device is physical', async () => {
+			channelsService.findOne.mockResolvedValue(virtualChannel('dev-1'));
+			devicesService.findOne.mockResolvedValue({ id: 'dev-1', type: 'simulator' } as DeviceEntity);
+
+			await expect(service.assertChannelOwnerIsVirtual('chan-1')).rejects.toThrow(VirtualOwnerNotVirtualException);
+		});
+
+		it('resolves the device through a hydrated relation as well as a bare id', async () => {
+			channelsService.findOne.mockResolvedValue(
+				virtualChannel({ id: 'dev-1', type: DEVICES_VIRTUAL_TYPE } as DeviceEntity),
+			);
+			devicesService.findOne.mockResolvedValue({ id: 'dev-1', type: DEVICES_VIRTUAL_TYPE } as DeviceEntity);
+
+			await expect(service.assertChannelOwnerIsVirtual('chan-1')).resolves.toBeUndefined();
+			expect(devicesService.findOne).toHaveBeenCalledWith('dev-1');
+		});
+
+		it('rejects a channel that does not exist', async () => {
+			channelsService.findOne.mockResolvedValue(null);
+
+			await expect(service.assertChannelOwnerIsVirtual('missing')).rejects.toThrow(VirtualOwnerNotVirtualException);
+		});
+
+		it('rejects a channel whose device does not exist', async () => {
+			channelsService.findOne.mockResolvedValue(virtualChannel('dev-1'));
+			devicesService.findOne.mockResolvedValue(null);
+
+			await expect(service.assertChannelOwnerIsVirtual('chan-1')).rejects.toThrow(VirtualOwnerNotVirtualException);
 		});
 	});
 

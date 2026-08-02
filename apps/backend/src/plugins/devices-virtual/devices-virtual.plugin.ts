@@ -31,7 +31,7 @@ import {
 	DEVICES_VIRTUAL_PLUGIN_NAME,
 	DEVICES_VIRTUAL_TYPE,
 } from './devices-virtual.constants';
-import { VirtualValueOriginConflictException } from './devices-virtual.exceptions';
+import { VirtualOwnerNotVirtualException, VirtualValueOriginConflictException } from './devices-virtual.exceptions';
 import { DEVICES_VIRTUAL_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-virtual.openapi';
 import { CreateVirtualChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateVirtualChannelDto } from './dto/create-channel.dto';
@@ -55,6 +55,7 @@ import { VirtualDevicesService } from './services/virtual-devices.service';
 import { VirtualPropertyIndexService } from './services/virtual-property-index.service';
 import { VirtualValueSourceService } from './services/virtual-value-source.service';
 import { CategoryAllowedConstraintValidator } from './validators/category-allowed-constraint.validator';
+import { DeviceIsVirtualConstraintValidator } from './validators/device-is-virtual-constraint.validator';
 import { SourceNotVirtualConstraintValidator } from './validators/source-not-virtual-constraint.validator';
 
 @ApiTag({
@@ -80,6 +81,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		VirtualIndexMaintenanceListener,
 		VirtualDeviceInformationListener,
 		CategoryAllowedConstraintValidator,
+		DeviceIsVirtualConstraintValidator,
 		SourceNotVirtualConstraintValidator,
 	],
 	controllers: [VirtualDevicesController],
@@ -144,6 +146,34 @@ export class DevicesVirtualPlugin {
 				await this.deviceInformationListener.claimDeviceInformationProperty(property);
 
 				return property;
+			},
+			// Containment. A channel property's `type` is chosen from the request payload while its
+			// channel is a route parameter, so nothing before this stopped a virtual property being
+			// created inside an ordinary *physical* channel — after which
+			// VirtualPropertyIndexService files the physical device under `byVirtualDevice` and
+			// VirtualStatusListener overwrites its real connectivity with the projection aggregate,
+			// making that device's own commands fail as offline. See
+			// VirtualDevicesService.assertChannelOwnerIsVirtual.
+			//
+			// A `beforeCreate` hook rather than a class-validator constraint precisely because the
+			// channel id never reaches the DTO; it runs before `repository.save`, so a refused
+			// attachment leaves no row, emits no CHANNEL_PROPERTY_CREATED, and never reaches the
+			// `afterCreate` claim above.
+			//
+			// The plugin's own exceptions are translated to DevicesValidationException rather than
+			// left to escape, for the same reason as in `beforeUpdate` below: this hook's caller
+			// reports a DevicesException as an unprocessable entity and anything else as a 500, and a
+			// refused payload is not a server fault. Any other exception is re-thrown untouched.
+			beforeCreate: async (_property: VirtualChannelPropertyEntity, channelId: string): Promise<void> => {
+				try {
+					await this.virtualDevicesService.assertChannelOwnerIsVirtual(channelId);
+				} catch (error) {
+					if (error instanceof VirtualOwnerNotVirtualException) {
+						throw new DevicesValidationException(error.message);
+					}
+
+					throw error;
+				}
 			},
 			// Runs inside ChannelsPropertiesService.update() on the loaded row with the PATCH already
 			// merged into it, and before that row is saved. `ValidateOwnedPropertyHasNoSource` on the
