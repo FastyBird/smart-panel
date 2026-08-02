@@ -69,7 +69,12 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 })
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([VirtualDeviceEntity, VirtualChannelPropertyEntity]),
+		// DeviceEntity is registered here on top of the plugin's own entities because
+		// VirtualIndexMaintenanceListener writes one column no DTO can express — `hiddenBy`, cleared
+		// back to null when it unhides a source device (see its unhideSource()). Repeating a
+		// DevicesModule registration is fine: TypeORM scopes repositories per module and both owners
+		// get their own instance over the same table.
+		TypeOrmModule.forFeature([VirtualDeviceEntity, VirtualChannelPropertyEntity, DeviceEntity]),
 		DevicesModule,
 		ConfigModule,
 		ExtensionsModule,

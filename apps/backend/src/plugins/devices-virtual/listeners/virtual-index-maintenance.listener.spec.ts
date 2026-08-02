@@ -3,7 +3,12 @@ import { DataSource, Repository } from 'typeorm';
 
 import { Logger } from '@nestjs/common';
 
-import { ConnectionState, EventType } from '../../../modules/devices/devices.constants';
+import {
+	ConnectionState,
+	DeviceHiddenBy,
+	DeviceHiddenFilter,
+	EventType,
+} from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
@@ -37,7 +42,11 @@ describe('VirtualIndexMaintenanceListener', () => {
 		findVirtualDeviceIdsBySourceDevice: jest.Mock;
 	};
 	let status: { recompute: jest.Mock };
-	let devicesService: { findOne: jest.Mock; update: jest.Mock };
+	let devicesService: { findAll: jest.Mock; findOne: jest.Mock; update: jest.Mock };
+	// The devices table's own repository, which the listener uses for exactly one thing: clearing
+	// `hiddenBy`, the one field of an unhide UpdateDeviceDto cannot express (its `@Transform` reads an
+	// explicit null as "field not provided", so DevicesService.update() can never write one).
+	let devicesRepository: { update: jest.Mock };
 
 	// Drains Node's microtask queue completely — including microtasks newly queued while draining —
 	// before the callback runs. Unlike a fixed number of `await Promise.resolve()` hops, this needs
@@ -101,12 +110,20 @@ describe('VirtualIndexMaintenanceListener', () => {
 			findVirtualDeviceIdsBySourceDevice: jest.fn().mockReturnValue([]),
 		};
 		status = { recompute: jest.fn().mockResolvedValue(undefined) };
-		devicesService = { findOne: jest.fn().mockResolvedValue(null), update: jest.fn().mockResolvedValue(undefined) };
+		devicesService = {
+			// Nothing hidden at all — the ordinary installation, and the state every test that is not
+			// about the bootstrap reconciliation should see.
+			findAll: jest.fn().mockResolvedValue([]),
+			findOne: jest.fn().mockResolvedValue(null),
+			update: jest.fn().mockResolvedValue(undefined),
+		};
+		devicesRepository = { update: jest.fn().mockResolvedValue(undefined) };
 		listener = new VirtualIndexMaintenanceListener(
 			index as unknown as VirtualPropertyIndexService,
 			status as unknown as VirtualStatusListener,
 			devicesService as unknown as DevicesService,
 			dataSourceStub as unknown as DataSource,
+			devicesRepository as unknown as Repository<DeviceEntity>,
 		);
 	});
 
@@ -450,6 +467,208 @@ describe('VirtualIndexMaintenanceListener', () => {
 		expect(devicesService.update).not.toHaveBeenCalled();
 	});
 
+	// -- reconciling the sources the system hid, at bootstrap -----------------------------------
+	//
+	// The other half of the restart problem the hydration above repairs, and the half that is not
+	// self-healing. An abandonment is an *edge* — a source device present in one index version and
+	// absent from the next — drained by a fire-and-forget pass. If the deletion of the last virtual
+	// reference commits and the process stops before that pass runs, the edge is gone for good: the
+	// next start hydrates from an empty index, so `abandonedSourceDeviceIds` is structurally `[]` (see
+	// the test above), and every later rebuild compares one already-reference-free index against
+	// another and reports no transition. The source stays hidden forever, excluded from the pickers,
+	// with no route back through the UI.
+	//
+	// Only a sweep at startup can recover a lost edge — and the naive sweep ("unhide every hidden
+	// device nothing references") is worse than the bug it fixes, because `hidden` is also a plain
+	// operator choice and unhiding those on every boot destroys a deliberate setting. `hiddenBy` is
+	// what makes the sweep safe, which is why the user-hidden case below is the test that matters
+	// most: it is the entire justification for the column existing.
+
+	const systemHiddenSource = (overrides: Partial<DeviceEntity> = {}): Partial<DeviceEntity> => ({
+		id: 'src',
+		type: 'simulator',
+		hidden: true,
+		hiddenBy: DeviceHiddenBy.SYSTEM,
+		enabled: true,
+		...overrides,
+	});
+
+	it('unhides a system-hidden source that nothing references any more', async () => {
+		devicesService.findAll.mockResolvedValue([systemHiddenSource()]);
+
+		await listener.onApplicationBootstrap();
+
+		expect(devicesService.update).toHaveBeenCalledWith('src', expect.objectContaining({ hidden: false }));
+	});
+
+	// The one that matters most. A device an operator deliberately hid, which a virtual device also
+	// happens to have referenced at some point, must survive every boot untouched — silently reversing
+	// that setting on startup is a worse failure than the stranded source the sweep exists to recover.
+	it('never unhides a user-hidden source', async () => {
+		devicesService.findAll.mockResolvedValue([systemHiddenSource({ hiddenBy: DeviceHiddenBy.USER })]);
+
+		await listener.onApplicationBootstrap();
+
+		expect(devicesService.update).not.toHaveBeenCalled();
+	});
+
+	// Rows hidden before the provenance column existed migrate to `user` (see
+	// 1000000000008-AddDeviceHiddenBy), but a row can still read `null` here — a `hidden` written by a
+	// caller that never named a reason. Unknown provenance is not system provenance, and the
+	// conservative reading is the only safe one: leaving a source hidden is recoverable through the
+	// UI, un-hiding one the operator chose to hide is not.
+	it('never unhides a source whose hide names no provenance at all', async () => {
+		devicesService.findAll.mockResolvedValue([systemHiddenSource({ hiddenBy: null })]);
+
+		await listener.onApplicationBootstrap();
+
+		expect(devicesService.update).not.toHaveBeenCalled();
+	});
+
+	// System provenance alone is not enough: the source is only stranded if the virtual device that
+	// replaced it is genuinely gone. One that is still referenced is still replaced, and must stay
+	// hidden.
+	it('leaves a system-hidden source alone while a virtual device still references it', async () => {
+		index.findVirtualDeviceIdsBySourceDevice.mockReturnValue(['virtual-a']);
+		devicesService.findAll.mockResolvedValue([systemHiddenSource()]);
+
+		await listener.onApplicationBootstrap();
+
+		expect(devicesService.update).not.toHaveBeenCalled();
+	});
+
+	// Hidden devices are a handful; every device in the system is not. Filtering in SQL keeps the
+	// sweep proportionate to what it can possibly act on, on a hook that runs before the app serves
+	// its first request.
+	it('reads only the hidden devices, rather than sweeping the whole device table', async () => {
+		await listener.onApplicationBootstrap();
+
+		expect(devicesService.findAll).toHaveBeenCalledWith(undefined, DeviceHiddenFilter.TRUE);
+	});
+
+	// Same defect, same defence as the abandonment path below: DevicesService.update() transforms the
+	// DTO into the mapped entity class, and DeviceEntity.enabled carries a `= true` class field
+	// initializer class-transformer cannot drop, so any patch omitting `enabled` writes `true`. A
+	// reconciliation that silently re-enabled every disabled device it unhid would be a second bug
+	// shipped inside the fix for the first.
+	it('keeps a disabled source disabled when it unhides it', async () => {
+		devicesService.findAll.mockResolvedValue([systemHiddenSource({ enabled: false })]);
+
+		await listener.onApplicationBootstrap();
+
+		expect(devicesService.update).toHaveBeenCalledWith(
+			'src',
+			expect.objectContaining({ hidden: false, enabled: false }),
+		);
+	});
+
+	// A visible device claiming it was hidden by the system is a row in a state nothing produced on
+	// purpose, and the next thing to read that column has no way to tell it from a live claim. The
+	// clear cannot go through the patch above: `UpdateDeviceDto.hidden_by` maps an explicit `null` to
+	// `undefined` (the null-means-absent convention every optional field on that DTO follows), and
+	// DevicesService.update() drops undefined keys — so no DTO value means "clear this", and the write
+	// has to go through the entity's own repository.
+	it('clears the provenance of a source it unhides', async () => {
+		devicesService.findAll.mockResolvedValue([systemHiddenSource()]);
+
+		await listener.onApplicationBootstrap();
+
+		expect(devicesRepository.update).toHaveBeenCalledWith('src', { hiddenBy: null });
+	});
+
+	// Ordering, not just presence: the pair is not atomic, and only one of the two half-states a
+	// failure can leave is recoverable. `hidden = false` with a stale `hiddenBy` is cosmetic on a
+	// device the user can now see; `hidden = true` with `hiddenBy = null` is a hidden device this very
+	// reconciliation is then required to skip forever.
+	it('clears the provenance only after the device is actually visible', async () => {
+		const loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+		devicesService.findAll.mockResolvedValue([systemHiddenSource()]);
+		devicesService.update.mockRejectedValue(new Error('boom'));
+
+		await listener.onApplicationBootstrap();
+
+		expect(devicesRepository.update).not.toHaveBeenCalled();
+
+		loggerWarnSpy.mockRestore();
+	});
+
+	// DevicesService.update() refuses a `room_id`/`zone_ids` change on a device that is *currently*
+	// hidden — which this one is, right up until this very patch. The guard is on the fields the patch
+	// carries, so the unhide passes only for as long as it carries neither.
+	it('sends no placement field with the unhide, so the placement guard cannot refuse it', async () => {
+		devicesService.findAll.mockResolvedValue([systemHiddenSource()]);
+
+		await listener.onApplicationBootstrap();
+
+		const [, patch] = devicesService.update.mock.calls[0] as [string, Record<string, unknown>];
+
+		expect(patch).not.toHaveProperty('room_id');
+		expect(patch).not.toHaveProperty('zone_ids');
+	});
+
+	// The sweep's whole question is "does anything still reference this source", and the index is what
+	// answers it. A failed hydration leaves that index empty, which answers "nothing references
+	// anything" for every source in the system — so reconciling on it would unhide every
+	// system-hidden device at once, on no evidence at all.
+	it('reconciles nothing when the bootstrap hydration failed', async () => {
+		const loggerErrorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+
+		index.rebuild.mockRejectedValue(new Error('SQLITE_ERROR: no such table: devices_module_channels_properties'));
+		devicesService.findAll.mockResolvedValue([systemHiddenSource()]);
+
+		await expect(listener.onApplicationBootstrap()).resolves.toBeUndefined();
+
+		expect(devicesService.findAll).not.toHaveBeenCalled();
+		expect(devicesService.update).not.toHaveBeenCalled();
+
+		loggerErrorSpy.mockRestore();
+	});
+
+	// The same startup guarantee the hydration itself has to give. `generate:openapi` boots the whole
+	// Nest app against whatever database happens to be there purely to read Swagger metadata, and a
+	// fresh install has no schema until its migrations run — so this query can and does fail, and an
+	// `onApplicationBootstrap` that rejects aborts Nest's bootstrap and kills the process. A
+	// reconciliation that never runs costs a source device staying hidden one more restart; one that
+	// throws costs the entire application.
+	it('still starts when the reconciliation query fails', async () => {
+		const loggerErrorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+
+		devicesService.findAll.mockRejectedValue(new Error('SQLITE_ERROR: no such table: devices_module_devices'));
+
+		await expect(listener.onApplicationBootstrap()).resolves.toBeUndefined();
+
+		// Reported as its own failure rather than swallowed by the hydration's catch: the index
+		// hydrated perfectly well here, and an error blaming it sends an operator to the wrong place.
+		expect(loggerErrorSpy).toHaveBeenCalledWith(
+			expect.stringContaining('reconcile system-hidden source devices'),
+			undefined,
+			expect.anything(),
+		);
+		expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringContaining('no such table'), undefined, expect.anything());
+
+		loggerErrorSpy.mockRestore();
+	});
+
+	// One source that cannot be patched must not cost the others their recovery — the same per-device
+	// containment the abandonment path uses.
+	it('keeps reconciling the remaining sources after one patch throws', async () => {
+		const loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+		devicesService.findAll.mockResolvedValue([
+			systemHiddenSource({ id: 'src-a' }),
+			systemHiddenSource({ id: 'src-b' }),
+		]);
+		devicesService.update.mockRejectedValueOnce(new Error('boom')).mockResolvedValue(undefined);
+
+		await expect(listener.onApplicationBootstrap()).resolves.toBeUndefined();
+
+		expect(devicesService.update).toHaveBeenCalledTimes(2);
+		expect(devicesService.update).toHaveBeenCalledWith('src-b', expect.objectContaining({ hidden: false }));
+
+		loggerWarnSpy.mockRestore();
+	});
+
 	// The restart shape end-to-end within this plugin: a durably orphaned row is what the database
 	// actually holds at hydration, and the real index and the real status listener decide the rest.
 	// Everything between rebuild() and the connection-state write is genuine here, because the stale
@@ -527,6 +746,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				),
 				devicesService as unknown as DevicesService,
 				dataSourceStub as unknown as DataSource,
+				devicesRepository as unknown as Repository<DeviceEntity>,
 			);
 		});
 
@@ -573,6 +793,36 @@ describe('VirtualIndexMaintenanceListener', () => {
 			await bootstrapping.onApplicationBootstrap();
 
 			expect(connectivity.setConnectionState).not.toHaveBeenCalled();
+		});
+
+		// The "still referenced" case with the index genuinely answering the question rather than a
+		// stub agreeing to: a real property row linking `virtual-device` to `source-device` goes
+		// through a real rebuild(), and the reconciliation reads the reference back out of the map that
+		// rebuild produced.
+		it('leaves a system-hidden source alone while a virtual property still references it', async () => {
+			const sourceProperty = liveSourceProperty();
+
+			repository.find.mockResolvedValue([
+				propertyRow({ sourcePropertyId: sourceProperty.id, sourceProperty: sourceProperty }),
+			]);
+			devicesService.findAll.mockResolvedValue([systemHiddenSource({ id: 'source-device' })]);
+
+			await bootstrapping.onApplicationBootstrap();
+
+			expect(realIndex.findVirtualDeviceIdsBySourceDevice('source-device')).toEqual(['virtual-device']);
+			expect(devicesService.update).not.toHaveBeenCalled();
+		});
+
+		// The mirror image, and the state a restart that lost the abandonment edge actually leaves
+		// behind: the same hidden source, with no projecting property referencing it left in the
+		// database at all.
+		it('unhides a system-hidden source once no virtual property in the database references it', async () => {
+			repository.find.mockResolvedValue([]);
+			devicesService.findAll.mockResolvedValue([systemHiddenSource({ id: 'source-device' })]);
+
+			await bootstrapping.onApplicationBootstrap();
+
+			expect(devicesService.update).toHaveBeenCalledWith('source-device', expect.objectContaining({ hidden: false }));
 		});
 	});
 
@@ -625,6 +875,25 @@ describe('VirtualIndexMaintenanceListener', () => {
 			'source-device',
 			expect.objectContaining({ hidden: false, enabled: false }),
 		);
+	});
+
+	// The same clean-up the bootstrap reconciliation does, because it is the same unhide: a device that
+	// is no longer hidden must not keep claiming who hid it. Both paths share one helper precisely so
+	// they cannot drift on what unhiding a device consists of.
+	it('clears the provenance of an abandoned source device it unhides', async () => {
+		index.rebuild.mockResolvedValue(rebuiltWithAbandoned('source-device'));
+		devicesService.findOne.mockResolvedValue({
+			id: 'source-device',
+			type: 'simulator',
+			hidden: true,
+			hiddenBy: DeviceHiddenBy.SYSTEM,
+			enabled: true,
+		});
+
+		listener.handleStructuralChange();
+		await flushMicrotasks();
+
+		expect(devicesRepository.update).toHaveBeenCalledWith('source-device', { hiddenBy: null });
 	});
 
 	it('leaves an enabled source device enabled when it unhides it', async () => {
@@ -810,6 +1079,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				{ recompute: jest.fn().mockResolvedValue(undefined) } as unknown as VirtualStatusListener,
 				{ findOne: jest.fn(), update: jest.fn() } as unknown as DevicesService,
 				dataSource,
+				{ update: jest.fn() } as unknown as Repository<DeviceEntity>,
 			);
 
 			return { listener, rebuild, rowsRead: () => rows, observed };
@@ -959,6 +1229,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				status as unknown as VirtualStatusListener,
 				devicesService as unknown as DevicesService,
 				stub.dataSource,
+				devicesRepository as unknown as Repository<DeviceEntity>,
 			);
 		});
 
@@ -1253,6 +1524,11 @@ describe('VirtualIndexMaintenanceListener', () => {
 				status as unknown as VirtualStatusListener,
 				devicesStub as unknown as DevicesService,
 				dataSource,
+				// The provenance clear that follows every unhide. These cases are about *when* the
+				// unhide's read and write land relative to the emitting transaction, which the patch
+				// above already decides — the `devices` table here carries an `id` and a `hidden`
+				// column and nothing else, so there is no `hiddenBy` for a real repository to write.
+				{ update: jest.fn().mockResolvedValue(undefined) } as unknown as Repository<DeviceEntity>,
 			);
 
 			loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
@@ -1359,6 +1635,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				status as unknown as VirtualStatusListener,
 				devicesStub as unknown as DevicesService,
 				stuckConnection,
+				{ update: jest.fn().mockResolvedValue(undefined) } as unknown as Repository<DeviceEntity>,
 			);
 
 			await dataSource.query('DELETE FROM links WHERE virtual_device_id = ?', ['virtual-device']);

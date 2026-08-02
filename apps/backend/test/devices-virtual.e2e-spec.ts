@@ -19,6 +19,7 @@ import {
 	ConnectionState,
 	DataTypeType,
 	DeviceCategory,
+	DeviceHiddenBy,
 	PermissionType,
 	PropertyCategory,
 } from '../src/modules/devices/devices.constants';
@@ -67,6 +68,7 @@ interface DeviceBody {
 	category: string;
 	enabled: boolean;
 	hidden: boolean;
+	hidden_by: string | null;
 	status: DeviceStatusBody;
 	channels: ChannelBody[];
 }
@@ -1636,8 +1638,13 @@ describe('devices-virtual plugin (e2e)', () => {
 			// class-transformer cannot drop, so a patch of `{hidden: false}` alone silently re-enables a
 			// device the user had explicitly disabled (follow-up 3.1, whose root fix is blocked on
 			// devices-shelly-v1's afterInsert subscriber).
+			//
+			// `hidden_by: system` is the provenance the admin's own hide will carry — recorded here so the
+			// unhide below can be checked for clearing it, which is the one part of an unhide that
+			// UpdateDeviceDto cannot express (its `@Transform` reads an explicit `null` as "field not
+			// provided") and therefore the one part no mocked test can prove against the real schema.
 			await authPatch(`/modules/devices/devices/${ownSourceDeviceId}`)
-				.send({ data: { type: SIMULATOR_TYPE, hidden: true, enabled: false } })
+				.send({ data: { type: SIMULATOR_TYPE, hidden: true, enabled: false, hidden_by: DeviceHiddenBy.SYSTEM } })
 				.expect(200);
 
 			// Read immediately, with no polling — the same read-after-write assertion as in the
@@ -1672,13 +1679,16 @@ describe('devices-virtual plugin (e2e)', () => {
 
 					const body = response.body as { data: DeviceBody };
 
-					return { done: body.data.hidden === false, value: body.data };
+					// Both halves of the unhide, because they are two writes: DevicesService.update() clears
+					// `hidden`, and a targeted column update clears `hidden_by` immediately after it. Polling
+					// on `hidden` alone would sample the row in between and read a stale provenance.
+					return { done: body.data.hidden === false && body.data.hidden_by === null, value: body.data };
 					// Slower and longer than the default: this poll shares its route budget (see waitUntil)
 					// with two other polls in this file, and it waits on the longest chain of deferred work in
 					// the plugin — a deletion, a rebuild deferred past that deletion's commit, and only then
 					// the unhide.
 				},
-				'the abandoned source device being unhidden',
+				'the abandoned source device being unhidden and its provenance cleared',
 				6000,
 				500,
 			);
@@ -1687,6 +1697,10 @@ describe('devices-virtual plugin (e2e)', () => {
 			// The unhide gives back the flag it took and nothing else — a device the user disabled stays
 			// disabled.
 			expect(typeof unhidden === 'string' ? unhidden : unhidden.enabled).toBe(false);
+			// And the row is left clean: a device that is no longer hidden must not keep claiming who hid
+			// it. This write cannot go through the update DTO at all, so this is the only place it is
+			// exercised against the real STI schema.
+			expect(typeof unhidden === 'string' ? unhidden : unhidden.hidden_by).toBeNull();
 
 			// Unhidden means genuinely back in the pickers, not merely a flipped column.
 			const visibleList = await authGet('/modules/devices/devices?hidden=false').expect(200);

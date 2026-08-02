@@ -136,7 +136,7 @@ If it is ever wanted, the place is `VirtualStatusListener.aggregateState()` plus
 
 It has no caller — `rebuild()` handles every path. Two latent inconsistencies live in it: it writes into the live maps, so a call landing mid-`rebuild()` would be discarded by the swap; and a link built from an unsaved entity could carry `sourcePropertyId: undefined`, which neither `isOrphaned` nor the status listener's `=== null` check treats as orphaned. Either remove it or give it a caller.
 
-### 2.11 `hidden` carries no provenance, so the auto-unhide cannot tell who set it (low)
+### 2.11 `hidden` carries no provenance, so the auto-unhide cannot tell who set it (low) — DONE for the lost-abandonment half
 
 `VirtualIndexMaintenanceListener.unhideAbandonedSources()` decides to patch on two facts: no virtual device references the source anymore, and the source is currently hidden. Neither says *why* it is hidden. A device the operator hid for their own reasons, which also happens to have been abandoned by a virtual device, is unhidden along with the rest.
 
@@ -157,6 +157,18 @@ Fixing it means recording *who* hid the device — an enum or a nullable "hidden
 The exposure in the meantime is bounded and recoverable: a source stranded this way is excluded from the four selection DTOs and from `?hidden=false`, but `GET /devices` still defaults to `all` so it is not invisible, and `PATCH /devices/:id { hidden: false }` is a documented field that restores it.
 
 **Do this as part of the admin virtual-devices plugin**, which is where hiding will actually be driven from and which needs an unhide affordance regardless. At that point the column has a writer, the migration has a meaningful default, and a bootstrap reconciliation over rows marked "hidden by a virtual device" becomes both correct and cheap.
+
+**Resolved for the second half — and provenance is precisely what made it safe.** `DeviceEntity.hiddenBy` (`DeviceHiddenBy.SYSTEM | USER | null`, added with the admin plugin's first task, exposed as `hidden_by` on both device DTOs) gave hiding an owner, and `VirtualIndexMaintenanceListener.reconcileSystemHiddenSources()` now runs once after the bootstrap hydration and unhides exactly those devices where `hiddenBy === SYSTEM` **and** the freshly hydrated index shows no virtual property referencing them. A lost edge is recovered from durable state — the column and the index — instead of from an in-memory transition that a restart destroys.
+
+The provenance filter is not a refinement of the sweep; it is the only thing that makes a sweep permissible at all. Without it the reconciliation is the "unhide every hidden device nothing references" version assessed above, which reverses a deliberate operator setting on **every boot** — a worse and less recoverable failure than the stranded source it fixes. So `USER` is never touched, and neither is `null`: unknown provenance is not system provenance, which also means a source stranded *before* the column existed is deliberately not recovered (the migration backfills those rows to `user`, because nothing can tell them apart from a hide the operator meant). The unit suite pins this as its own case, and removing the filter fails it.
+
+Three implementation details worth carrying forward:
+
+- **The reconciliation reads the index, so it must not run when the hydration failed.** It sits inside the same `try` as `rebuild()`, so a rebuild that throws skips it — deliberately, because an empty index answers "nothing references anything" for every source in the system. The whole pass is separately contained and logged at error, and per device on top of that: `generate:openapi` boots the app against a schema-less database, and an `onApplicationBootstrap` that rejects kills the process.
+- **`hidden_by` cannot be cleared through `UpdateDeviceDto`.** Its `@Transform` maps an explicit `null` to `undefined` — the null-means-field-absent convention every optional field on that DTO follows — and `DevicesService.update()` drops undefined keys, so no DTO value means "clear this". The unhide therefore issues a targeted `Repository<DeviceEntity>.update(id, { hiddenBy: null })` immediately after the patch. Second rather than first on purpose: the pair is not atomic, and `hidden = false` with a stale `hiddenBy` is cosmetic on a device the user can now see, whereas `hidden = true` with `hiddenBy = null` would be a hidden device this very reconciliation is then required to ignore forever.
+- **Both unhide paths share one helper**, so the runtime abandonment path clears provenance too and the two cannot drift. The patch still echoes `enabled` back (§3.1) and still carries no placement field, so the hidden-device placement guard cannot refuse it.
+
+**Still open: the first half — the runtime `unhideAbandonedSources()` does not consult provenance.** That is deliberate, not an oversight. It acts on an abandonment *it observed*, which is itself evidence that a virtual device was standing in for the source, whereas the startup sweep has only a stored column to go on. Requiring `SYSTEM` there would also break every hide performed without provenance — including every row the migration backfilled to `user` — leaving the auto-unhide rule dead on existing installations. Close it once the admin flow writes `hidden_by: system` on every hide it performs; until then the narrow clobber described at the top of this section stands.
 
 ### 2.12 `aggregateState()` treats an UNKNOWN source as offline, making the device uncommandable (medium) — DONE
 

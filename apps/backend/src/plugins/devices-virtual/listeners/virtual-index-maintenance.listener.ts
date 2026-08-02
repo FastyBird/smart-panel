@@ -1,10 +1,12 @@
-import { DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
+import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { EventType } from '../../../modules/devices/devices.constants';
+import { DeviceHiddenBy, DeviceHiddenFilter, EventType } from '../../../modules/devices/devices.constants';
+import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
 import { VirtualIndexRebuildResult, VirtualPropertyIndexService } from '../services/virtual-property-index.service';
@@ -192,6 +194,10 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 		private readonly status: VirtualStatusListener,
 		private readonly devicesService: DevicesService,
 		private readonly dataSource: DataSource,
+		// Only ever used to clear `hiddenBy` — the one field of an unhide that UpdateDeviceDto cannot
+		// express. See unhideSource() for why that needs a write outside DevicesService.update().
+		@InjectRepository(DeviceEntity)
+		private readonly devicesRepository: Repository<DeviceEntity>,
 	) {}
 
 	/**
@@ -223,6 +229,14 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 * and the outgoing index is empty here, so it is structurally always `[]` on this pass. There is no
 	 * bootstrap equivalent of "the last virtual device referencing this source went away".
 	 *
+	 * The abandonment a restart *loses* — as opposed to the one it structurally cannot observe — is
+	 * recovered by reconcileSystemHiddenSources() instead, from two things that do survive a restart:
+	 * the hydrated index, and the `hiddenBy` column. It runs after the hydration for a reason that is
+	 * not merely ordering — the index is its entire evidence for "nothing references this source
+	 * anymore", so a pass that failed to fill it must not reach the reconciliation at all. A rebuild()
+	 * that throws leaves the `try` below before it, which is exactly the intended behaviour: an empty
+	 * index would otherwise answer "nothing references anything" for every source in the system.
+	 *
 	 * ## Why it is awaited, and why it still cannot abort startup
 	 *
 	 * Awaited rather than started fire-and-forget so the index is populated and the repair complete
@@ -240,8 +254,9 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 * starts empty and the next structural event rebuilds it regardless, so a failed first pass costs
 	 * staleness until then rather than a dead process. Logged at error level, not warn — outside those
 	 * two known-benign cases a failure here means the index is silently empty, and an operator should
-	 * see that. recomputeStatuses() additionally contains its own per-device failures, so one virtual
-	 * device that cannot be recomputed neither costs the others their repair nor reaches this catch.
+	 * see that. recomputeStatuses() and reconcileSystemHiddenSources() additionally contain their own
+	 * failures — per device, and as a whole — so neither one virtual device that cannot be recomputed
+	 * nor a reconciliation that cannot read at all costs the others their repair or reaches this catch.
 	 *
 	 * Deliberately not routed through handleStructuralChange()/runRebuildLoop(). That path is
 	 * fire-and-forget by construction and defers past whatever transaction is open on the shared
@@ -254,6 +269,8 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			const hydrated = await this.index.rebuild();
 
 			await this.recomputeStatuses(hydrated.rewiredVirtualDeviceIds, 'aggregated from source devices at startup');
+
+			await this.reconcileSystemHiddenSources();
 		} catch (error) {
 			this.logger.error(
 				`Failed to hydrate the virtual property index at bootstrap: ${error}. The index starts empty and will be rebuilt on the next structural change.`,
@@ -479,6 +496,93 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	}
 
 	/**
+	 * Unhides every source device that is hidden *by the system* and that the freshly hydrated index
+	 * shows nothing referencing anymore.
+	 *
+	 * ## The gap this closes
+	 *
+	 * unhideAbandonedSources() acts on an *edge* — a source device present in one index version and
+	 * absent from the next — which exists only in this process's memory and only until the pass that
+	 * drains it runs. If the deletion of the last virtual reference commits and the process stops
+	 * before that fire-and-forget pass, the edge is gone permanently: the next start hydrates from an
+	 * empty index, so the bootstrap rebuild reports nothing abandoned (see onApplicationBootstrap()),
+	 * and every rebuild after it compares one already-reference-free index against another and reports
+	 * no transition either. Nothing in the system can name that source device again, and it stays
+	 * hidden — excluded from every picker, absent from `?hidden=false`, and out of reach of an admin
+	 * that does not show it — for as long as the installation lives.
+	 *
+	 * A durable queue could not close it: the abandonment is *derived* by a rebuild that must run
+	 * strictly after the deleting transaction commits (that is what deferPastOpenTransaction() is for),
+	 * so there is no moment at which the intent could be recorded atomically with the deletion. Any
+	 * queue is written after the commit and has the same crash window, only narrower. Recovering a lost
+	 * edge needs a reconciliation from durable state, which is what this is.
+	 *
+	 * ## Why provenance is the whole design, not a detail of it
+	 *
+	 * The obvious sweep — unhide every hidden device nothing references — is not a smaller version of
+	 * this; it is a different and worse bug. `hidden` is also a plain operator choice: a physical
+	 * device can be hidden with no virtual device involved anywhere, and one that *was* referenced by a
+	 * virtual device at some point is not thereby the system's to unhide. A sweep with no provenance
+	 * silently reverses a deliberate setting on every single boot, which is a worse failure than the
+	 * stranded source it set out to recover — the stranded source is at least recoverable through a
+	 * PATCH, whereas a setting reversed at startup is reversed again the next time, forever.
+	 *
+	 * So the filter is `hiddenBy === SYSTEM` and nothing else counts as it. `USER` is never touched.
+	 * Neither is `null`, which is what a hide written by a caller that named no reason reads as, and
+	 * what every row hidden before the column existed was migrated *away* from deliberately (see
+	 * 1000000000008-AddDeviceHiddenBy, which backfills them to `user` precisely so this sweep cannot
+	 * claim them). Unknown provenance is not system provenance. The cost of that conservatism is that a
+	 * source stranded before provenance existed is not recovered here — correct, because nothing can
+	 * tell it apart from a device its owner meant to hide.
+	 *
+	 * ## Failure containment
+	 *
+	 * Contained as a whole rather than left to onApplicationBootstrap()'s catch, so that a
+	 * reconciliation that cannot read does not read as a hydration failure in the log, and — since it
+	 * runs last — so a future step added after it would still run. Contained per device as well: one
+	 * source that cannot be patched must not cost the others their recovery. Both matter more than
+	 * usual here because this is on the startup path, where an escaping rejection aborts Nest's
+	 * bootstrap and kills the process; `generate:openapi` boots the whole app against whatever database
+	 * happens to be there, and a fresh install has no schema at all until its migrations run.
+	 */
+	private async reconcileSystemHiddenSources(): Promise<void> {
+		try {
+			// Filtered in SQL: hidden devices are a handful, every device in the system is not, and this
+			// runs before the app serves its first request.
+			const hiddenDevices = await this.devicesService.findAll(undefined, DeviceHiddenFilter.TRUE);
+
+			for (const device of hiddenDevices) {
+				if (device.hiddenBy !== DeviceHiddenBy.SYSTEM) {
+					continue;
+				}
+
+				// Answered from the index this bootstrap just hydrated from committed state, so it is the
+				// same question unhideAbandonedSources() asks of a settled pass: anything at all
+				// referencing the source means it still has a stand-in and must stay hidden.
+				const referencedBy = this.index.findVirtualDeviceIdsBySourceDevice(device.id);
+
+				if (referencedBy.length > 0) {
+					continue;
+				}
+
+				try {
+					await this.unhideSource(device);
+
+					this.logger.log(`Unhid source device id=${device.id} at startup, no virtual device references it anymore`, {
+						resource: device.id,
+					});
+				} catch (error) {
+					this.logger.warn(`Failed to unhide system-hidden source device id=${device.id} at startup: ${error}`);
+				}
+			}
+		} catch (error) {
+			this.logger.error(
+				`Failed to reconcile system-hidden source devices at bootstrap: ${error}. A source device stranded by an abandonment this process never got to write stays hidden until the next start.`,
+			);
+		}
+	}
+
+	/**
 	 * Calls rebuild() once; on a transient-looking SQLite failure (see looksTransientSqliteError()),
 	 * retries up to MAX_REBUILD_ATTEMPTS times, deferring past any open transaction between attempts
 	 * the same way runRebuildLoop() defers before the first one. A non-transient failure — or a
@@ -572,17 +676,17 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 * than looping: the source device is already absent from `bySourceDevice` by then, so the next pass
 	 * reports no transition and unhides nothing.
 	 *
-	 * ## Why the patch echoes `enabled` back
+	 * ## What this deliberately does not check
 	 *
-	 * `hidden: false` alone would silently re-enable a device the user had explicitly disabled.
-	 * `DevicesService.update()` transforms the DTO into the mapped entity class and saves the result,
-	 * and `DeviceEntity.enabled` carries a `= true` class field initializer — class-transformer builds
-	 * its target with `new Target()`, so that initializer is already on the instance before anything is
-	 * copied across, and `omitBy(..., isUndefined)` therefore cannot drop it. Any PATCH that omits
-	 * `enabled` writes `true`. That is the pre-existing defect documented on the entity itself
-	 * (devices.entity.ts) and as follow-up 3.1; fixing it at the root is blocked on
-	 * `devices-shelly-v1`'s afterInsert subscriber reading `event.entity.enabled` before the row is
-	 * re-read, so this call defends itself by sending the value it just read back unchanged.
+	 * Unlike reconcileSystemHiddenSources(), this path does not consult `hiddenBy`. It does not have
+	 * to: it acts on an abandonment *it observed*, which is evidence a virtual device was standing in
+	 * for this source, where the startup sweep has only a stored column to go on. Requiring SYSTEM
+	 * provenance here would also break every hide performed before the admin writes one — including
+	 * every row the provenance migration backfilled to `user` — leaving the auto-unhide rule dead on
+	 * existing installations. The narrow case it leaves open (an operator's own hide of a device a
+	 * virtual device also happened to reference, cleared when that reference goes) is the pre-existing
+	 * half of follow-up 2.11, and closing it belongs with the flow that will actually write provenance
+	 * on every hide.
 	 */
 	private async unhideAbandonedSources(): Promise<void> {
 		if (this.pendingUnhideSourceDeviceIds.size === 0) {
@@ -618,17 +722,67 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 					continue;
 				}
 
-				await this.devicesService.update(sourceDevice.id, {
-					type: sourceDevice.type,
-					hidden: false,
-					enabled: sourceDevice.enabled,
-				});
+				await this.unhideSource(sourceDevice);
 
 				this.logger.debug(`Unhid source device id=${sourceDevice.id}, no virtual device references it anymore`);
 			} catch (error) {
 				this.logger.warn(`Failed to unhide abandoned source device id=${sourceDeviceId}: ${error}`);
 			}
 		}
+	}
+
+	/**
+	 * Makes one source device visible again, and leaves its row in a clean state rather than one
+	 * claiming a provenance for a device that is no longer hidden. Shared by both unhide paths — the
+	 * abandonment this process observed (unhideAbandonedSources()) and the one it inherited from a
+	 * predecessor (reconcileSystemHiddenSources()) — so the two can never disagree about what unhiding
+	 * a device consists of.
+	 *
+	 * ## Why the patch echoes `enabled` back
+	 *
+	 * `hidden: false` alone would silently re-enable a device the user had explicitly disabled.
+	 * `DevicesService.update()` transforms the DTO into the mapped entity class and saves the result,
+	 * and `DeviceEntity.enabled` carries a `= true` class field initializer — class-transformer builds
+	 * its target with `new Target()`, so that initializer is already on the instance before anything is
+	 * copied across, and `omitBy(..., isUndefined)` therefore cannot drop it. Any PATCH that omits
+	 * `enabled` writes `true`. That is the pre-existing defect documented on the entity itself
+	 * (devices.entity.ts) and as follow-up 3.1; fixing it at the root is blocked on
+	 * `devices-shelly-v1`'s afterInsert subscriber reading `event.entity.enabled` before the row is
+	 * re-read, so this call defends itself by sending the value it just read back unchanged.
+	 *
+	 * ## Why the patch carries no placement field
+	 *
+	 * `DevicesService.update()` refuses a `room_id`/`zone_ids` change on a device that is *currently*
+	 * hidden (assertPlacementChangeAllowed()), and this device is, right up until this very patch. The
+	 * guard is on the fields the patch carries rather than on the resulting state, so an unhide that
+	 * sends neither passes — and this one has no business moving a device between rooms anyway.
+	 *
+	 * ## Why clearing `hiddenBy` takes a second, non-DTO write
+	 *
+	 * `UpdateDeviceDto.hidden_by` cannot express `null`. Its `@Transform` maps an explicit `null` to
+	 * `undefined` — the null-means-field-absent convention every optional field on that DTO follows,
+	 * `hidden` and `enabled` included — and `DevicesService.update()` then drops undefined keys
+	 * (`omitBy(..., isUndefined)`) before assigning. There is therefore no DTO value that means "clear
+	 * this", by construction rather than by oversight, which is why this goes through the entity's own
+	 * repository instead. Written as a targeted column update rather than a `save()` of a loaded
+	 * entity: the row was just re-read and written by the call above, and re-saving a whole entity on
+	 * top of that would put every other column back in play for the sake of one.
+	 *
+	 * Second rather than first, deliberately. Whichever write fails, the pair is not atomic, so the
+	 * order decides which half-state a failure leaves behind: `hidden = false` with a stale
+	 * `hiddenBy = system` is a cosmetic inconsistency on a device the user can see and act on, whereas
+	 * `hidden = true` with `hiddenBy = null` is a hidden device that reconcileSystemHiddenSources() is
+	 * then required to ignore forever — the exact failure this whole path exists to prevent, recreated
+	 * by the fix for it.
+	 */
+	private async unhideSource(device: DeviceEntity): Promise<void> {
+		await this.devicesService.update(device.id, {
+			type: device.type,
+			hidden: false,
+			enabled: device.enabled,
+		});
+
+		await this.devicesRepository.update(device.id, { hiddenBy: null });
 	}
 
 	/**
