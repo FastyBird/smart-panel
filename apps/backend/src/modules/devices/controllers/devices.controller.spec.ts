@@ -8,11 +8,13 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import { v4 as uuid } from 'uuid';
 
+import { UnprocessableEntityException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { ConnectionState, DeviceCategory, DeviceHiddenFilter } from '../devices.constants';
+import { DevicesNotAllowedException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
@@ -185,6 +187,28 @@ describe('DevicesController', () => {
 
 			expect(result.data).toEqual(toInstance(DeviceEntity, mockDevice));
 			expect(service.update).toHaveBeenCalledWith(mockDevice.id, updateDto);
+		});
+
+		// The service refuses a room/zone change on a hidden device (see assertPlacementChangeAllowed in
+		// DevicesService). That refusal is a policy decision, not a transient failure — it has to reach
+		// the client with its reason rather than collapsing into this endpoint's generic
+		// "Please try again later" 422, which would invite a retry that can never succeed.
+		it('surfaces a refused placement change with its reason', async () => {
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: DeviceEntity,
+				createDto: CreateDeviceDto,
+				updateDto: UpdateDeviceDto,
+			});
+
+			jest
+				.spyOn(service, 'update')
+				.mockRejectedValue(new DevicesNotAllowedException('Device is hidden and its room can not be changed.'));
+
+			const result = controller.update(mockDevice.id, { data: { type: 'mock', room_id: uuid().toString() } });
+
+			await expect(result).rejects.toBeInstanceOf(UnprocessableEntityException);
+			await expect(result).rejects.toThrow('Device is hidden and its room can not be changed.');
 		});
 
 		it('should delete a device', async () => {

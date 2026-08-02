@@ -39,7 +39,12 @@ import {
 	DEVICES_MODULE_PREFIX,
 	DeviceHiddenFilter,
 } from '../devices.constants';
-import { DevicesException, DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
+import {
+	DevicesException,
+	DevicesNotAllowedException,
+	DevicesNotFoundException,
+	DevicesValidationException,
+} from '../devices.exceptions';
 import { CreateDeviceDto, ReqCreateDeviceDto } from '../dto/create-device.dto';
 import { ListDevicesQueryDto } from '../dto/list-devices-query.dto';
 import { ReqUpdateDeviceDto, UpdateDeviceDto } from '../dto/update-device.dto';
@@ -359,6 +364,14 @@ export class DevicesController {
 
 			return response;
 		} catch (error) {
+			// A hidden device's placement is deliberately immutable (see assertPlacementChangeAllowed in
+			// DevicesService) — a policy refusal, not a transient failure. The generic branch below would
+			// answer "please try again later", telling the client to retry something that can never
+			// succeed, so this one carries the reason through instead.
+			if (error instanceof DevicesNotAllowedException) {
+				throw new UnprocessableEntityException(error.message);
+			}
+
 			if (error instanceof DevicesException) {
 				throw new UnprocessableEntityException('Device could not be updated. Please try again later');
 			}

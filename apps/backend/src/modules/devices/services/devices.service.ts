@@ -13,7 +13,12 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { SpaceType } from '../../spaces/spaces.constants';
 import { DEVICES_MODULE_NAME, DeviceHiddenFilter, EventType } from '../devices.constants';
-import { DevicesException, DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
+import {
+	DevicesException,
+	DevicesNotAllowedException,
+	DevicesNotFoundException,
+	DevicesValidationException,
+} from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { ChannelEntity, DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
@@ -249,6 +254,8 @@ export class DevicesService {
 
 		const dtoInstance = await this.validateDto<TUpdateDTO>(mapping.updateDto, updateDto);
 
+		this.assertPlacementChangeAllowed(device, dtoInstance);
+
 		// Validate room assignment if provided (only validate if it's a non-null UUID)
 		if (dtoInstance.room_id !== undefined && dtoInstance.room_id !== null) {
 			await this.validateRoomAssignment(dtoInstance.room_id);
@@ -418,6 +425,43 @@ export class DevicesService {
 		}
 
 		return dtoInstance;
+	}
+
+	/**
+	 * Refuses a PATCH that moves a hidden device between rooms or zones.
+	 *
+	 * A hidden device is one a virtual device has replaced, and the virtual device is what the operator
+	 * places from then on. The physical device keeps the room it had — energy attribution follows it,
+	 * which is the accepted tradeoff of this rule.
+	 *
+	 * The guard is on *mutation*, not on state. Hiding deliberately preserves the stored room so
+	 * unhiding restores it, and the virtual-device split flow places the parent device *before* it hides
+	 * it — refusing a hide because the device already has a room would break that flow. So only a patch
+	 * that itself carries `room_id` / `zone_ids` is refused; a patch that leaves both absent passes,
+	 * including the `hidden: true` patch that does the hiding.
+	 *
+	 * `null` counts as carrying the field: clearing the room is a placement change too.
+	 *
+	 * Lives here rather than as a `class-validator` constraint on `UpdateDeviceDto` because the decision
+	 * needs the *stored* device, and a DTO constraint never sees the `:id` route parameter —
+	 * `ValidationArguments` exposes only `{ value, constraints, targetName, object, property }`, where
+	 * `object` is the DTO built from the request body alone. Enforcing it here also covers every caller
+	 * of `update()`, and cannot be dropped by a plugin update DTO that redeclares a placement field.
+	 */
+	private assertPlacementChangeAllowed(device: DeviceEntity, dtoInstance: UpdateDeviceDto): void {
+		if (!device.hidden) {
+			return;
+		}
+
+		if (dtoInstance.room_id === undefined && dtoInstance.zone_ids === undefined) {
+			return;
+		}
+
+		this.logger.error(`Refused placement change on hidden device id=${device.id}`);
+
+		throw new DevicesNotAllowedException(
+			'Device is hidden and its room or zones can not be changed. Change the placement of the virtual device that replaced it.',
+		);
 	}
 
 	/**

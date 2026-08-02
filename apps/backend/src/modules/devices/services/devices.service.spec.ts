@@ -18,8 +18,9 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
+import { SpaceType } from '../../spaces/spaces.constants';
 import { ConnectionState, DeviceCategory, DeviceHiddenBy, DeviceHiddenFilter, EventType } from '../devices.constants';
-import { DevicesException } from '../devices.exceptions';
+import { DevicesException, DevicesNotAllowedException, DevicesValidationException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
@@ -61,6 +62,8 @@ class UpdateMockDeviceDto extends UpdateDeviceDto {
 describe('DevicesService', () => {
 	let service: DevicesService;
 	let repository: Repository<DeviceEntity>;
+	let spaceRepository: Repository<SpaceEntity>;
+	let deviceZonesService: DeviceZonesService;
 	let mapper: DevicesTypeMapperService;
 	let eventEmitter: EventEmitter2;
 	let dataSource: DataSource;
@@ -173,6 +176,8 @@ describe('DevicesService', () => {
 
 		service = module.get<DevicesService>(DevicesService);
 		repository = module.get<Repository<DeviceEntity>>(getRepositoryToken(DeviceEntity));
+		spaceRepository = module.get<Repository<SpaceEntity>>(getRepositoryToken(SpaceEntity));
+		deviceZonesService = module.get<DeviceZonesService>(DeviceZonesService);
 		mapper = module.get<DevicesTypeMapperService>(DevicesTypeMapperService);
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 		dataSource = module.get<DataSource>(DataSource);
@@ -575,6 +580,147 @@ describe('DevicesService', () => {
 			const device = await service.update(mockDevice.id, { type: 'mock', name: 'Renamed' } as UpdateMockDeviceDto);
 
 			expect(device.hiddenBy).toBe(DeviceHiddenBy.USER);
+		});
+
+		// A hidden device is one a virtual device has replaced, so its placement is the virtual device's
+		// to own — the physical device keeps the room it had, and energy attribution keeps following it.
+		//
+		// The guard is on *mutation*, not on state. Hiding deliberately preserves the stored room so
+		// unhiding restores it, and the virtual-device split flow places the parent device *before* it
+		// hides it — a guard keyed on "is hidden and has a room" would break that flow. Only a patch
+		// that itself carries `room_id` / `zone_ids` is refused.
+		//
+		// Enforced in the service rather than as a `class-validator` constraint on `UpdateDeviceDto`,
+		// because the decision needs the *stored* device and a DTO constraint never sees the `:id` route
+		// parameter — `ValidationArguments` exposes only `{ value, constraints, targetName, object,
+		// property }`, where `object` is the DTO built from the request body alone.
+		describe('placement changes on a hidden device', () => {
+			const roomId = uuid().toString();
+			const zoneId = uuid().toString();
+
+			// Same arrangement the tests above spell out inline: one mapped device standing in for the row
+			// `getOneOrThrow()` loads, shared with the post-save fetch so `save`'s argument and the returned
+			// entity cannot disagree.
+			const arrangeDevice = (overrides: Record<string, unknown>): MockDevice => {
+				jest.spyOn(mapper, 'getMapping').mockReturnValue({
+					type: 'mock',
+					class: MockDevice,
+					createDto: CreateMockDeviceDto,
+					updateDto: UpdateMockDeviceDto,
+				});
+
+				jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+
+				const persisted = toInstance(MockDevice, { ...mockDevice, ...overrides });
+
+				const queryBuilderMock: any = {
+					innerJoinAndSelect: jest.fn().mockReturnThis(),
+					leftJoinAndSelect: jest.fn().mockReturnThis(),
+					where: jest.fn().mockReturnThis(),
+					getOne: jest.fn().mockResolvedValue(persisted),
+				};
+
+				jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+				jest.spyOn(repository, 'save').mockResolvedValue(persisted);
+
+				return persisted;
+			};
+
+			beforeEach(() => {
+				// `validateRoomAssignment()` resolves the target space; every room referenced here is a room.
+				jest.spyOn(spaceRepository, 'findOne').mockResolvedValue({ id: roomId, type: SpaceType.ROOM } as SpaceEntity);
+			});
+
+			it('allows a room change on a visible device', async () => {
+				arrangeDevice({ hidden: false });
+
+				await service.update(mockDevice.id, { type: 'mock', room_id: roomId } as UpdateMockDeviceDto);
+
+				expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({ roomId }));
+			});
+
+			it('refuses a room change on a hidden device', async () => {
+				arrangeDevice({ hidden: true });
+
+				await expect(
+					service.update(mockDevice.id, { type: 'mock', room_id: roomId } as UpdateMockDeviceDto),
+				).rejects.toThrow(DevicesNotAllowedException);
+
+				expect(repository.save).not.toHaveBeenCalled();
+			});
+
+			// Clearing the room is a placement change too — `null` is a value, not an absent field.
+			it('refuses clearing the room on a hidden device', async () => {
+				arrangeDevice({ hidden: true, roomId });
+
+				await expect(
+					service.update(mockDevice.id, { type: 'mock', room_id: null } as UpdateMockDeviceDto),
+				).rejects.toThrow(DevicesNotAllowedException);
+
+				expect(repository.save).not.toHaveBeenCalled();
+			});
+
+			it('refuses a zone change on a hidden device', async () => {
+				arrangeDevice({ hidden: true });
+
+				await expect(
+					service.update(mockDevice.id, { type: 'mock', zone_ids: [zoneId] } as UpdateMockDeviceDto),
+				).rejects.toThrow(DevicesNotAllowedException);
+
+				expect(repository.save).not.toHaveBeenCalled();
+				expect(deviceZonesService.setDeviceZones).not.toHaveBeenCalled();
+			});
+
+			it('allows a zone change on a visible device', async () => {
+				arrangeDevice({ hidden: false });
+
+				await service.update(mockDevice.id, { type: 'mock', zone_ids: [zoneId] } as UpdateMockDeviceDto);
+
+				expect(deviceZonesService.setDeviceZones).toHaveBeenCalledWith(mockDevice.id, [zoneId]);
+			});
+
+			// Load-bearing: hiding a device is itself a PATCH, and it must not be refused by its own guard.
+			it('allows a patch that does not touch placement on a hidden device', async () => {
+				arrangeDevice({ hidden: true });
+
+				await service.update(mockDevice.id, { type: 'mock', name: 'Renamed' } as UpdateMockDeviceDto);
+
+				expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({ name: 'Renamed' }));
+			});
+
+			// The split flow itself: the parent device is placed in a room first, then hidden. The stored
+			// room survives the hide untouched so unhiding restores it.
+			it('allows hiding a device that already has a room', async () => {
+				arrangeDevice({ hidden: false, roomId });
+
+				await service.update(mockDevice.id, { type: 'mock', hidden: true } as UpdateMockDeviceDto);
+
+				expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({ hidden: true, roomId }));
+			});
+
+			// The placement fields carry their own `@IsUUID` on `UpdateDeviceDto`, and every plugin update
+			// DTO inherits that stack. Pinned here because `class-validator` *replaces* rather than merges a
+			// redeclared property's decorators — anything that later restates `room_id` / `zone_ids` on the
+			// DTO (or on a subclass) silently drops the UUID check, and nothing else would notice.
+			it('still rejects an invalid room_id', async () => {
+				arrangeDevice({ hidden: false });
+
+				await expect(
+					service.update(mockDevice.id, { type: 'mock', room_id: 'not-a-uuid' } as UpdateMockDeviceDto),
+				).rejects.toThrow(DevicesValidationException);
+
+				expect(repository.save).not.toHaveBeenCalled();
+			});
+
+			it('still rejects an invalid zone id', async () => {
+				arrangeDevice({ hidden: false });
+
+				await expect(
+					service.update(mockDevice.id, { type: 'mock', zone_ids: ['not-a-uuid'] } as UpdateMockDeviceDto),
+				).rejects.toThrow(DevicesValidationException);
+
+				expect(repository.save).not.toHaveBeenCalled();
+			});
 		});
 	});
 
