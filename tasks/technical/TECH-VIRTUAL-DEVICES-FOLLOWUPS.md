@@ -105,6 +105,14 @@ If it is ever wanted, the place is `VirtualStatusListener.aggregateState()` plus
 
 It has no caller — `rebuild()` handles every path. Two latent inconsistencies live in it: it writes into the live maps, so a call landing mid-`rebuild()` would be discarded by the swap; and a link built from an unsaved entity could carry `sourcePropertyId: undefined`, which neither `isOrphaned` nor the status listener's `=== null` check treats as orphaned. Either remove it or give it a caller.
 
+### 2.11 `hidden` carries no provenance, so the auto-unhide cannot tell who set it (low)
+
+`VirtualIndexMaintenanceListener.unhideAbandonedSources()` decides to patch on two facts: no virtual device references the source anymore, and the source is currently hidden. Neither says *why* it is hidden. A device the operator hid for their own reasons, which also happens to have been abandoned by a virtual device, is unhidden along with the rest.
+
+This is not new — it is inherent to a boolean column with no owner — but round 7 widened the window it can happen in. The unhide is now queued by the pass that observes the abandonment and acted on by a later pass that has read committed state, so an operator PATCH landing in between (at most the repair delay plus one wait budget, and only after a wait that expired) is now clobberable where before only a millisecond-scale window was.
+
+Fixing it means recording *who* hid the device — an enum or a nullable "hidden by virtual device id" column rather than a boolean — which is a schema and admin-UI decision, not a listener change. Worth doing if hiding ever gains a second automatic source.
+
 ## 3. Pre-existing issues found in passing
 
 ### 3.1 `DeviceEntity.enabled` has the class-field-initializer defect (medium)
