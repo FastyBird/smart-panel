@@ -127,7 +127,7 @@ The exposure in the meantime is bounded and recoverable: a source stranded this 
 
 **Do this as part of the admin virtual-devices plugin**, which is where hiding will actually be driven from and which needs an unhide affordance regardless. At that point the column has a writer, the migration has a meaningful default, and a bootstrap reconciliation over rows marked "hidden by a virtual device" becomes both correct and cheap.
 
-### 2.12 `aggregateState()` treats an UNKNOWN source as offline, making the device uncommandable (medium)
+### 2.12 `aggregateState()` treats an UNKNOWN source as offline, making the device uncommandable (medium) — DONE
 
 Found in round 8, while fixing the configuration-time write. `VirtualStatusListener.aggregateState()` returns DISCONNECTED as soon as any source device's status is `!online`. A device that has simply never reported a connection state has `status: 'unknown'`, `online: false` — so a virtual device backed by it aggregates to DISCONNECTED, and `PropertyCommandService.processDeviceCommands()` refuses every command against a device that is offline. The virtual device is uncommandable, permanently, with nothing wrong anywhere.
 
@@ -138,6 +138,8 @@ Confirmed directly: with a simulator source (the simulator plugin is disabled by
 It stayed invisible because `ChannelsPropertiesService.update()` wrote the commanded value into the source's *own* series before dispatching anything — the round 8 P1 corruption — which made the e2e's "commanding the virtual property changes the source property's value" pass whether or not the command was ever dispatched. That test now reports the source connected through `DeviceConnectivityService` first, exactly as a real integration would, so it genuinely exercises the forward; the underlying gap is left for this follow-up rather than folded into a value-corruption fix.
 
 Fix: give `aggregateState()` the same "definitively offline" predicate the other two use, and decide what a virtual device backed only by UNKNOWN sources should report — propagating UNKNOWN is the truthful answer and keeps it commandable, but it is a visible status change and belongs in its own change with its own tests.
+
+**Resolved (round 9).** `aggregateState()` now reports the worst state over a three-value ordering — `DISCONNECTED (known broken) > UNKNOWN (nothing known) > CONNECTED (known good)`. An orphaned property and a definitively offline source both still force DISCONNECTED; only when nothing is known to be broken and at least one source is UNKNOWN does the device report UNKNOWN, which `PropertyCommandService` and `VirtualDevicePlatform` both accept as commandable. The e2e no longer has to report the source connected before commanding it: it asserts the device reads `unknown`, commands it in that state, and proves the forward by spying on the *source's* platform rather than only observing the source's value — the assertion that was previously passing on the round 8 corruption. Reverting the aggregation alone now fails four e2e cases, the command one among them.
 
 ## 3. Pre-existing issues found in passing
 
