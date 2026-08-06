@@ -6,7 +6,9 @@ import { PropertyTimeseriesService } from '../../devices/services/property-times
 import { EnergyDataService } from '../../energy/services/energy-data.service';
 import { ScenesService } from '../../scenes/services/scenes.service';
 import { SecurityService } from '../../security/services/security.service';
+import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { SpacesService } from '../../spaces/services/spaces.service';
+import { SpaceType } from '../../spaces/spaces.constants';
 import { WeatherService } from '../../weather/services/weather.service';
 import { MCP_MAX_CONTEXT_DEVICES, McpCapability } from '../mcp.constants';
 
@@ -79,6 +81,9 @@ describe('McpContextService', () => {
 	});
 
 	it('bounds compact home context and normalizes unavailable optional domains', async () => {
+		spaces.findAll.mockResolvedValue([
+			{ id: 'room-id', name: 'Living room', type: SpaceType.ROOM, parentId: null } as unknown as SpaceEntity,
+		]);
 		devices.findAll.mockResolvedValue(
 			Array.from({ length: MCP_MAX_CONTEXT_DEVICES + 2 }, (_, index) => ({
 				id: `device-${index}`,
@@ -86,7 +91,7 @@ describe('McpContextService', () => {
 				category: 'generic',
 				enabled: true,
 				hidden: false,
-				roomId: null,
+				roomId: 'room-id',
 				zoneIds: [],
 				status: { online: true, status: 'connected', lastChanged: null },
 			})),
@@ -98,7 +103,36 @@ describe('McpContextService', () => {
 		expect(result.weather).toBeNull();
 		expect(result.energy).toBeNull();
 		expect(result.security).toBeNull();
+		expect(result.spaces).toEqual([
+			expect.objectContaining({ id: 'room-id', device_count: MCP_MAX_CONTEXT_DEVICES + 2 }),
+		]);
 		expect(result.limits).toEqual(expect.objectContaining({ devices_truncated: true }));
+	});
+
+	it('preserves the selected zone membership in a scoped snapshot', async () => {
+		spaces.findOne.mockResolvedValue({
+			id: 'zone-id',
+			name: 'Downstairs',
+			type: SpaceType.ZONE,
+			parentId: null,
+		} as unknown as SpaceEntity);
+		spaces.findDevicesBySpace.mockResolvedValue([
+			{
+				id: 'device-id',
+				name: 'Lamp',
+				category: 'lighting',
+				enabled: true,
+				hidden: false,
+				roomId: null,
+				deviceZones: [],
+				status: { online: true, status: 'connected', lastChanged: null },
+			} as unknown as DeviceEntity,
+		]);
+
+		const result = await service.getHomeContext('zone-id');
+
+		expect(result.spaces).toEqual([expect.objectContaining({ id: 'zone-id', device_count: 1 })]);
+		expect(result.devices).toEqual([expect.objectContaining({ id: 'device-id', zone_ids: ['zone-id'] })]);
 	});
 
 	it('maps current values only for a requested visible device', async () => {

@@ -1,7 +1,7 @@
 import { AuthInfo, McpServer, ServerContext } from '@modelcontextprotocol/server';
 import { ForbiddenException } from '@nestjs/common';
 
-import { McpCapability } from '../mcp.constants';
+import { MCP_TOOL_CALL_TIMEOUT_MS, McpCapability } from '../mcp.constants';
 import { McpContextService } from '../services/mcp-context.service';
 import { McpPolicyService } from '../services/mcp-policy.service';
 
@@ -11,6 +11,7 @@ type ToolCallback = (
 	args: Record<string, unknown>,
 	ctx: ServerContext,
 ) => Promise<{ isError?: boolean; structuredContent: Record<string, unknown> }>;
+type ResourceCallback = (uri: URL, ctx: ServerContext) => Promise<unknown>;
 
 describe('McpReadToolService', () => {
 	let service: McpReadToolService;
@@ -22,6 +23,7 @@ describe('McpReadToolService', () => {
 	let registerTool: jest.Mock;
 	let registerResource: jest.Mock;
 	let callbacks: Map<string, ToolCallback>;
+	let resourceCallbacks: Map<string, ResourceCallback>;
 
 	beforeEach(() => {
 		contextService = {
@@ -39,10 +41,13 @@ describe('McpReadToolService', () => {
 			authorizeClient: jest.fn().mockResolvedValue({ effectiveCapabilities: [McpCapability.READ] }),
 		};
 		callbacks = new Map();
+		resourceCallbacks = new Map();
 		registerTool = jest.fn((name: string, _config: unknown, callback: ToolCallback) => {
 			callbacks.set(name, callback);
 		});
-		registerResource = jest.fn();
+		registerResource = jest.fn((name: string, _uri: unknown, _config: unknown, callback: ResourceCallback) => {
+			resourceCallbacks.set(name, callback);
+		});
 		service = new McpReadToolService(
 			contextService as unknown as McpContextService,
 			policyService as unknown as McpPolicyService,
@@ -102,6 +107,49 @@ describe('McpReadToolService', () => {
 			}),
 		);
 		expect(contextService.getSecurityStatus).not.toHaveBeenCalled();
+	});
+
+	it('returns a sanitized error when a domain call exceeds the MCP deadline', async () => {
+		jest.useFakeTimers();
+		contextService.getSecurityStatus.mockReturnValue(new Promise(() => undefined));
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		try {
+			const resultPromise = callbacks.get('get_security_status')?.({}, requestContext());
+
+			await jest.advanceTimersByTimeAsync(MCP_TOOL_CALL_TIMEOUT_MS);
+			const result = await resultPromise;
+
+			expect(result?.isError).toBe(true);
+			expect(result?.structuredContent.error).toEqual({
+				code: 'read_failed',
+				message: 'Smart Panel could not complete the requested read operation.',
+			});
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it('enforces the same deadline for resource reads', async () => {
+		jest.useFakeTimers();
+		contextService.getInstallation.mockReturnValue(new Promise(() => undefined));
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		try {
+			const resultPromise = resourceCallbacks.get('installation')?.(
+				new URL('smart-panel://installation'),
+				requestContext(),
+			);
+			if (resultPromise === undefined) {
+				throw new Error('Installation resource callback was not registered');
+			}
+			const rejection = expect(resultPromise).rejects.toThrow(`timeout after ${MCP_TOOL_CALL_TIMEOUT_MS}ms`);
+
+			await jest.advanceTimersByTimeAsync(MCP_TOOL_CALL_TIMEOUT_MS);
+			await rejection;
+		} finally {
+			jest.useRealTimers();
+		}
 	});
 
 	function server(): McpServer {

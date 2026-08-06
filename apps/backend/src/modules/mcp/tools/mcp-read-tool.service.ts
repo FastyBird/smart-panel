@@ -3,8 +3,9 @@ import { z } from 'zod';
 import { AuthInfo, McpServer, ResourceTemplate, ServerContext } from '@modelcontextprotocol/server';
 import { ForbiddenException, HttpException, Injectable, UnauthorizedException } from '@nestjs/common';
 
+import { withTimeout } from '../../../common/utils/http.utils';
 import { BucketDuration } from '../../devices/services/property-timeseries.service';
-import { McpCapability } from '../mcp.constants';
+import { MCP_TOOL_CALL_TIMEOUT_MS, McpCapability } from '../mcp.constants';
 import { McpContextService, McpInstallationContext } from '../services/mcp-context.service';
 import { McpPolicyService } from '../services/mcp-policy.service';
 
@@ -191,20 +192,21 @@ export class McpReadToolService {
 		server.registerResource(
 			'space-snapshot',
 			new ResourceTemplate('smart-panel://spaces/{spaceId}/snapshot', {
-				list: async (ctx) => {
-					await this.authorizeRead(ctx);
-					const spaces = await this.contextService.listSpaces();
+				list: async (ctx) =>
+					this.withDeadline('space resource listing', async () => {
+						await this.authorizeRead(ctx);
+						const spaces = await this.contextService.listSpaces();
 
-					return {
-						resources: spaces.map((space) => ({
-							uri: `smart-panel://spaces/${space.id}/snapshot`,
-							name: `${space.name} snapshot`,
-							title: `${space.name} snapshot`,
-							description: `Current bounded context for the ${space.name} ${space.type}.`,
-							mimeType: 'application/json',
-						})),
-					};
-				},
+						return {
+							resources: spaces.map((space) => ({
+								uri: `smart-panel://spaces/${space.id}/snapshot`,
+								name: `${space.name} snapshot`,
+								title: `${space.name} snapshot`,
+								description: `Current bounded context for the ${space.name} ${space.type}.`,
+								mimeType: 'application/json',
+							})),
+						};
+					}),
 			}),
 			{
 				title: 'Space snapshot',
@@ -233,25 +235,29 @@ export class McpReadToolService {
 		isError?: boolean;
 	}> {
 		const requestId = String(ctx.mcpReq.id);
-		let installation = await this.getInstallationFallback(ctx);
+		let installation = this.getInstallationFallback(ctx);
 
 		try {
-			const policy = await this.authorizeRead(ctx);
-			installation = await this.contextService.getInstallation(
-				policy.effectiveCapabilities,
-				this.getEndpoint(ctx.http?.authInfo),
-			);
-			const result = await callback();
+			const execution = await this.withDeadline(`tool ${tool}`, async () => {
+				const policy = await this.authorizeRead(ctx);
+				const liveInstallation = await this.contextService.getInstallation(
+					policy.effectiveCapabilities,
+					this.getEndpoint(ctx.http?.authInfo),
+				);
+
+				return { installation: liveInstallation, result: await callback() };
+			});
+			installation = execution.installation;
 			const structuredContent: ToolEnvelope = {
 				installation,
 				tool,
 				request_id: requestId,
 				observed_at: new Date().toISOString(),
-				data: result.data,
+				data: execution.result.data,
 			};
 
 			return {
-				content: [{ type: 'text', text: result.text }],
+				content: [{ type: 'text', text: execution.result.text }],
 				structuredContent,
 			};
 		} catch (error) {
@@ -278,12 +284,14 @@ export class McpReadToolService {
 		ctx: ServerContext,
 		callback: (policy: Awaited<ReturnType<McpPolicyService['authorizeClient']>>, endpoint?: string) => Promise<unknown>,
 	): Promise<{ contents: Array<{ uri: string; mimeType: string; text: string }> }> {
-		const policy = await this.authorizeRead(ctx);
-		const data = await callback(policy, this.getEndpoint(ctx.http?.authInfo));
+		return this.withDeadline(`resource ${uri.href}`, async () => {
+			const policy = await this.authorizeRead(ctx);
+			const data = await callback(policy, this.getEndpoint(ctx.http?.authInfo));
 
-		return {
-			contents: [{ uri: uri.href, mimeType: 'application/json', text: JSON.stringify(data) }],
-		};
+			return {
+				contents: [{ uri: uri.href, mimeType: 'application/json', text: JSON.stringify(data) }],
+			};
+		});
 	}
 
 	private async authorizeRead(ctx: ServerContext) {
@@ -297,24 +305,24 @@ export class McpReadToolService {
 		return this.policyService.authorizeClient(tokenId, authInfo.clientId, McpCapability.READ);
 	}
 
-	private async getInstallationFallback(ctx: ServerContext): Promise<McpInstallationContext> {
+	private getInstallationFallback(ctx: ServerContext): McpInstallationContext {
 		const authInfo = ctx.http?.authInfo;
 		const capabilities = (authInfo?.scopes ?? []).filter((scope): scope is McpCapability =>
 			Object.values(McpCapability).includes(scope as McpCapability),
 		);
 
-		try {
-			return await this.contextService.getInstallation(capabilities, this.getEndpoint(authInfo));
-		} catch {
-			return {
-				id: this.getExtraString(authInfo?.extra?.installationId) ?? 'unknown',
-				name: 'FastyBird Smart Panel',
-				version: 'unknown',
-				timezone: 'UTC',
-				endpoint: this.getEndpoint(authInfo) ?? null,
-				effective_capabilities: capabilities,
-			};
-		}
+		return {
+			id: this.getExtraString(authInfo?.extra?.installationId) ?? 'unknown',
+			name: 'FastyBird Smart Panel',
+			version: 'unknown',
+			timezone: 'UTC',
+			endpoint: this.getEndpoint(authInfo) ?? null,
+			effective_capabilities: capabilities,
+		};
+	}
+
+	private withDeadline<T>(label: string, callback: () => Promise<T>): Promise<T> {
+		return withTimeout(Promise.resolve().then(callback), MCP_TOOL_CALL_TIMEOUT_MS, `MCP ${label}`);
 	}
 
 	private sanitizeError(error: unknown): { code: string; message: string } {

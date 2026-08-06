@@ -13,6 +13,7 @@ import { EnergyDataService } from '../../energy/services/energy-data.service';
 import { ScenesService } from '../../scenes/services/scenes.service';
 import { SecurityService } from '../../security/services/security.service';
 import { SpacesService } from '../../spaces/services/spaces.service';
+import { SpaceType } from '../../spaces/spaces.constants';
 import { SystemConfigModel } from '../../system/models/config.model';
 import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
 import { WeatherService } from '../../weather/services/weather.service';
@@ -103,6 +104,7 @@ export class McpContextService {
 		const devices = visibleDevices.slice(0, MCP_MAX_CONTEXT_DEVICES);
 		const spaces = allSpaces.slice(0, MCP_MAX_CONTEXT_SPACES);
 		const scenes = allScenes.slice(0, MCP_MAX_CONTEXT_SCENES);
+		const scopedZoneId = selectedSpace?.type === SpaceType.ZONE ? selectedSpace.id : undefined;
 
 		return {
 			scope: selectedSpace ? { type: 'space', id: selectedSpace.id, name: selectedSpace.name } : { type: 'home' },
@@ -111,11 +113,11 @@ export class McpContextService {
 				name: space.name,
 				type: space.type,
 				parent_id: space.parentId,
-				device_count: devices.filter(
-					(device) => device.roomId === space.id || (device.zoneIds ?? []).includes(space.id),
+				device_count: visibleDevices.filter(
+					(device) => device.roomId === space.id || this.getZoneIds(device, scopedZoneId).includes(space.id),
 				).length,
 			})),
-			devices: devices.map((device) => this.mapDeviceSummary(device)),
+			devices: devices.map((device) => this.mapDeviceSummary(device, scopedZoneId)),
 			scenes: scenes.map((scene) => ({
 				id: scene.id,
 				name: scene.name,
@@ -242,14 +244,14 @@ export class McpContextService {
 		};
 	}
 
-	private mapDeviceSummary(device: DeviceEntity): Record<string, unknown> {
+	private mapDeviceSummary(device: DeviceEntity, scopedZoneId?: string): Record<string, unknown> {
 		return {
 			id: device.id,
 			name: device.name,
 			category: device.category,
 			enabled: device.enabled,
 			room_id: device.roomId,
-			zone_ids: device.zoneIds ?? [],
+			zone_ids: this.getZoneIds(device, scopedZoneId),
 			status: {
 				online: device.status?.online ?? false,
 				state: device.status?.status ?? 'unknown',
@@ -350,6 +352,10 @@ export class McpContextService {
 		const device = channel.device;
 
 		return typeof device === 'string' ? null : device;
+	}
+
+	private getZoneIds(device: DeviceEntity, scopedZoneId?: string): string[] {
+		return [...new Set([...(device.zoneIds ?? []), ...(scopedZoneId ? [scopedZoneId] : [])])];
 	}
 
 	private toIsoString(value: Date | string | null | undefined): string | null {
