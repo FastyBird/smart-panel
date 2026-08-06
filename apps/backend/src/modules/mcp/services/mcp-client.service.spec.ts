@@ -1,4 +1,4 @@
-import { Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestException } from '@nestjs/common';
@@ -24,6 +24,7 @@ describe('McpClientService', () => {
 		save: jest.Mock;
 	};
 	let tokensService: { createLongLiveToken: jest.Mock; revoke: jest.Mock };
+	let dataSource: { transaction: jest.Mock };
 	let jwtService: { signAsync: jest.Mock };
 	let configService: { getModuleConfig: jest.Mock };
 	let currentClient: McpClientEntity | null;
@@ -49,6 +50,15 @@ describe('McpClientService', () => {
 			}),
 			revoke: jest.fn().mockResolvedValue(undefined),
 		};
+		dataSource = {
+			transaction: jest.fn().mockImplementation((operation: (manager: EntityManager) => Promise<unknown>) => {
+				const manager = {
+					getRepository: jest.fn().mockReturnValue(repository),
+				} as unknown as EntityManager;
+
+				return operation(manager);
+			}),
+		};
 		jwtService = { signAsync: jest.fn().mockResolvedValue('raw-mcp-token') };
 		configService = {
 			getModuleConfig: jest.fn().mockReturnValue({
@@ -59,6 +69,7 @@ describe('McpClientService', () => {
 
 		service = new McpClientService(
 			repository as unknown as Repository<McpClientEntity>,
+			dataSource as unknown as DataSource,
 			tokensService as unknown as TokensService,
 			jwtService as unknown as JwtService,
 			configService as unknown as ConfigService,
@@ -79,7 +90,12 @@ describe('McpClientService', () => {
 
 		expect(result.token).toBe('raw-mcp-token');
 		expect(jwtService.signAsync).toHaveBeenCalledWith(
-			expect.objectContaining({ sub: result.client.id, type: TokenOwnerType.MCP }),
+			expect.objectContaining({
+				sub: result.client.id,
+				type: TokenOwnerType.MCP,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				jti: expect.any(String),
+			}),
 			{ audience: 'mcp-audience', expiresIn: 30 * 24 * 60 * 60 },
 		);
 		expect(tokensService.createLongLiveToken).toHaveBeenCalledWith(
@@ -90,6 +106,7 @@ describe('McpClientService', () => {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				expiresAt: expect.any(Date),
 			}),
+			expect.anything(),
 		);
 		expect(result.client).not.toHaveProperty('rawToken');
 	});
@@ -117,7 +134,7 @@ describe('McpClientService', () => {
 		expect(service.getEffectiveCapabilities(client)).toEqual([McpCapability.READ]);
 	});
 
-	it('creates a replacement before revoking the previous credential', async () => {
+	it('atomically creates a replacement before revoking the previous credential', async () => {
 		const previousToken = { id: uuid(), revoked: false } as LongLiveTokenEntity;
 		currentClient = {
 			id: uuid(),
@@ -143,8 +160,47 @@ describe('McpClientService', () => {
 		const result = await service.rotate(currentClient.id, { expiresInDays: 60 });
 
 		expect(events).toEqual(['create', 'revoke']);
-		expect(tokensService.revoke).toHaveBeenCalledWith(previousToken.id);
+		expect(tokensService.revoke).toHaveBeenCalledWith(previousToken.id, expect.anything());
 		expect(result.token).toBe('raw-mcp-token');
+	});
+
+	it('leaves the previous credential selected when revocation fails', async () => {
+		const previousToken = { id: uuid(), revoked: false } as LongLiveTokenEntity;
+		currentClient = {
+			id: uuid(),
+			name: 'Agent',
+			description: null,
+			enabled: true,
+			capabilities: [McpCapability.READ],
+			tokenId: previousToken.id,
+			token: previousToken,
+		} as McpClientEntity;
+		tokensService.revoke.mockRejectedValue(new Error('Database unavailable'));
+
+		await expect(service.rotate(currentClient.id, { expiresInDays: 60 })).rejects.toThrow('Database unavailable');
+
+		expect(currentClient.tokenId).toBe(previousToken.id);
+		expect(repository.save).not.toHaveBeenCalled();
+	});
+
+	it('adds unique entropy to credentials issued within the same second', async () => {
+		jwtService.signAsync.mockImplementation((payload: { jti: string }) => Promise.resolve(`token-${payload.jti}`));
+		const first = await service.create(
+			{
+				name: 'Agent',
+				capabilities: [McpCapability.READ],
+				expiresInDays: 30,
+			},
+			uuid(),
+		);
+		const second = await service.rotate(first.client.id, { expiresInDays: 30 });
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const firstPayload = jwtService.signAsync.mock.calls[0][0] as { jti: string };
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const secondPayload = jwtService.signAsync.mock.calls[1][0] as { jti: string };
+
+		expect(firstPayload.jti).not.toBe(secondPayload.jti);
+		expect(first.token).not.toBe(second.token);
 	});
 
 	it('disables a client and revokes its current credential', async () => {

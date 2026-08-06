@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -134,8 +134,8 @@ export class TokensService {
 		this.logger.debug(`Successfully revoked tokens for ownerId=${ownerId}`);
 	}
 
-	async revoke(id: string): Promise<void> {
-		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
+	async revoke(id: string, manager?: EntityManager): Promise<void> {
+		const repository = (manager ?? this.dataSource).getRepository(LongLiveTokenEntity);
 		const result = await repository.update(id, { revoked: true });
 
 		if (!result.affected) {
@@ -412,17 +412,20 @@ export class TokensService {
 		return this.createLongLiveToken(data);
 	}
 
-	async createLongLiveToken(data: {
-		token: string;
-		ownerType: TokenOwnerType;
-		ownerId: string;
-		name: string;
-		description: string | null;
-		expiresAt: Date | null;
-	}): Promise<LongLiveTokenEntity> {
+	async createLongLiveToken(
+		data: {
+			token: string;
+			ownerType: TokenOwnerType;
+			ownerId: string;
+			name: string;
+			description: string | null;
+			expiresAt: Date | null;
+		},
+		manager?: EntityManager,
+	): Promise<LongLiveTokenEntity> {
 		this.logger.debug(`Creating long-live token for ownerType=${data.ownerType}`);
 
-		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
+		const repository = (manager ?? this.dataSource).getRepository(LongLiveTokenEntity);
 
 		const entity = new LongLiveTokenEntity();
 		entity.hashedToken = data.token; // Will be hashed by @BeforeInsert

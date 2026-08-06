@@ -33,6 +33,9 @@ export class AddMcpClients1000000000008 implements MigrationInterface {
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
+		// A parent-version AuthGuard does not recognize the MCP owner type and would accept these
+		// credentials through its generic long-lived-token branch after a downgrade.
+		await queryRunner.query(`DELETE FROM "auth_module_tokens" WHERE "ownerType" = 'mcp'`);
 		await queryRunner.query(`DROP INDEX IF EXISTS "IDX_mcp_client_creator"`);
 		await queryRunner.query(`DROP INDEX IF EXISTS "IDX_mcp_client_enabled"`);
 		await queryRunner.query(`DROP TABLE "mcp_module_clients"`);

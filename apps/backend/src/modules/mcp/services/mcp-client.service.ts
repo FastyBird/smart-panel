@@ -1,4 +1,5 @@
-import { Repository } from 'typeorm';
+import { randomUUID } from 'crypto';
+import { DataSource, Repository } from 'typeorm';
 
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -23,6 +24,7 @@ export class McpClientService {
 	constructor(
 		@InjectRepository(McpClientEntity)
 		private readonly repository: Repository<McpClientEntity>,
+		private readonly dataSource: DataSource,
 		private readonly tokensService: TokensService,
 		private readonly jwtService: JwtService,
 		private readonly configService: ConfigService,
@@ -100,14 +102,8 @@ export class McpClientService {
 
 	async rotate(id: string, dto: RotateMcpClientTokenDto): Promise<McpClientCredentialModel> {
 		const client = await this.getOneOrThrow(id);
-		const previousToken = client.token;
-		const credential = await this.issueCredential(client, dto.expiresInDays);
 
-		if (previousToken) {
-			await this.tokensService.revoke(previousToken.id);
-		}
-
-		return credential;
+		return this.issueCredential(client, dto.expiresInDays, client.token ?? undefined);
 	}
 
 	async revoke(id: string): Promise<McpClientEntity> {
@@ -133,7 +129,11 @@ export class McpClientService {
 		await this.repository.remove(client);
 	}
 
-	private async issueCredential(client: McpClientEntity, expiresInDays: number): Promise<McpClientCredentialModel> {
+	private async issueCredential(
+		client: McpClientEntity,
+		expiresInDays: number,
+		previousToken?: LongLiveTokenEntity,
+	): Promise<McpClientCredentialModel> {
 		const issuedAt = Math.floor(Date.now() / 1000);
 		const expiresIn = expiresInDays * SECONDS_PER_DAY;
 		const rawToken = await this.jwtService.signAsync(
@@ -141,33 +141,35 @@ export class McpClientService {
 				sub: client.id,
 				type: TokenOwnerType.MCP,
 				iat: issuedAt,
+				jti: randomUUID(),
 			},
 			{
 				audience: await this.installationService.getAudience(),
 				expiresIn,
 			},
 		);
-		let token: LongLiveTokenEntity | undefined;
 
-		try {
-			token = await this.tokensService.createLongLiveToken({
-				token: rawToken,
-				ownerType: TokenOwnerType.MCP,
-				ownerId: client.id,
-				name: client.name,
-				description: client.description,
-				expiresAt: new Date((issuedAt + expiresIn) * 1000),
-			});
+		await this.dataSource.transaction(async (manager) => {
+			const token = await this.tokensService.createLongLiveToken(
+				{
+					token: rawToken,
+					ownerType: TokenOwnerType.MCP,
+					ownerId: client.id,
+					name: client.name,
+					description: client.description,
+					expiresAt: new Date((issuedAt + expiresIn) * 1000),
+				},
+				manager,
+			);
+
+			if (previousToken) {
+				await this.tokensService.revoke(previousToken.id, manager);
+			}
 
 			client.tokenId = token.id;
 			client.enabled = true;
-			await this.repository.save(client);
-		} catch (error) {
-			if (token) {
-				await this.tokensService.revoke(token.id);
-			}
-			throw error;
-		}
+			await manager.getRepository(McpClientEntity).save(client);
+		});
 
 		const credential = new McpClientCredentialModel();
 		credential.client = await this.getOneOrThrow(client.id);

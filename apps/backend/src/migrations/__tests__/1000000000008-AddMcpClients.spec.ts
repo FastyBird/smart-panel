@@ -12,7 +12,9 @@ describe('AddMcpClients1000000000008', () => {
 		await dataSource.initialize();
 		queryRunner = dataSource.createQueryRunner();
 		await queryRunner.query(`CREATE TABLE "users_module_users" ("id" varchar PRIMARY KEY NOT NULL)`);
-		await queryRunner.query(`CREATE TABLE "auth_module_tokens" ("id" varchar PRIMARY KEY NOT NULL)`);
+		await queryRunner.query(
+			`CREATE TABLE "auth_module_tokens" ("id" varchar PRIMARY KEY NOT NULL, "ownerType" varchar)`,
+		);
 	});
 
 	afterEach(async () => {
@@ -48,5 +50,19 @@ describe('AddMcpClients1000000000008', () => {
 		await migration.down(queryRunner);
 
 		await expect(migration.up(queryRunner)).resolves.toBeUndefined();
+	});
+
+	it('deletes MCP credentials while preserving other tokens when reverted', async () => {
+		await migration.up(queryRunner);
+		await queryRunner.query(
+			`INSERT INTO "auth_module_tokens" ("id", "ownerType") VALUES ('mcp-token', 'mcp'), ('user-token', 'user')`,
+		);
+
+		await migration.down(queryRunner);
+
+		const tokens = (await queryRunner.query(`SELECT "id" FROM "auth_module_tokens" ORDER BY "id"`)) as {
+			id: string;
+		}[];
+		expect(tokens).toEqual([{ id: 'user-token' }]);
 	});
 });
