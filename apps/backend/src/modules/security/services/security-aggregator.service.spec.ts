@@ -331,7 +331,7 @@ describe('SecurityAggregatorService', () => {
 		}).compile();
 		const aggregator = module.get<SecurityAggregatorService>(SecurityAggregatorService);
 
-		const result = await aggregator.aggregateBounded(100, 10, 20);
+		const result = await aggregator.aggregateBounded(100, 10, 20, { roomIds: ['room-1'] });
 
 		expect(deviceService.findAll).not.toHaveBeenCalled();
 		expect(deviceService.findVisibleBoundedStateByChannelCategories).toHaveBeenCalledWith(
@@ -339,6 +339,7 @@ describe('SecurityAggregatorService', () => {
 			100,
 			10,
 			20,
+			{ roomIds: ['room-1'] },
 		);
 		expect(providerSpy).toHaveBeenCalledWith({ armedState: null, devices });
 		expect(result.devicesTruncated).toBe(true);

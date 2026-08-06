@@ -88,7 +88,7 @@ describe('SecurityService', () => {
 
 			const result = await service.getBoundedStatus(100, 10, 20);
 
-			expect(aggregator.aggregateBounded).toHaveBeenCalledWith(100, 10, 20);
+			expect(aggregator.aggregateBounded).toHaveBeenCalledWith(100, 10, 20, {});
 			expect(result.status.activeAlerts[0].acknowledged).toBe(true);
 			expect(result.devicesTruncated).toBe(true);
 		});

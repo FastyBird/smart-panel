@@ -3,7 +3,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger';
 import { ChannelCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
-import { DevicesService } from '../../devices/services/devices.service';
+import { DevicesService, VisibleDeviceSummaryScope } from '../../devices/services/devices.service';
 import { SecurityAggregationContext } from '../contracts/security-aggregation-context.type';
 import { AggregationResult, SecurityAggregatorInterface } from '../contracts/security-aggregator.interface';
 import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
@@ -62,6 +62,7 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 		deviceLimit: number,
 		channelLimit: number,
 		propertyLimit: number,
+		scope: VisibleDeviceSummaryScope = {},
 	): Promise<BoundedSecurityAggregationResult> {
 		const categories = Array.from(
 			new Set([ChannelCategory.ALARM, ...this.detectionRulesLoader.getSensorRules().keys()]),
@@ -78,6 +79,7 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 				deviceLimit,
 				channelLimit,
 				propertyLimit,
+				scope,
 			);
 			devices = page.devices;
 			devicesTruncated = page.devicesTruncated;

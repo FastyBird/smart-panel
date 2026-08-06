@@ -169,8 +169,9 @@ export class DevicesService {
 		deviceLimit: number,
 		channelLimit: number,
 		propertyLimit: number,
+		scope: VisibleDeviceSummaryScope = {},
 	): Promise<VisibleBoundedDeviceState> {
-		if (channelCategories.length === 0) {
+		if (channelCategories.length === 0 || scope.roomIds?.length === 0) {
 			return {
 				devices: [],
 				devicesTruncated: false,
@@ -184,15 +185,31 @@ export class DevicesService {
 		}
 
 		const categoryPlaceholders = channelCategories.map(() => '?').join(', ');
+		const parameters: Array<string | number> = [...channelCategories];
+		let scopeJoin = '';
+		let scopePredicate = '';
+
+		if (scope.roomIds) {
+			const roomPlaceholders = scope.roomIds.map(() => '?').join(', ');
+			scopePredicate = ` AND device."roomId" IN (${roomPlaceholders})`;
+			parameters.push(...scope.roomIds);
+		} else if (scope.zoneId) {
+			scopeJoin = ' INNER JOIN devices_module_devices_zones deviceZone ON deviceZone."deviceId" = device."id"';
+			scopePredicate = ' AND deviceZone."zoneId" = ?';
+			parameters.push(scope.zoneId);
+		}
+		parameters.push(deviceLimit + 1);
 		const idRows = await this.dataSource.query<DeviceIdRow[]>(
 			`SELECT DISTINCT device."id" AS "id", device."name" AS "name"
 			 FROM devices_module_devices device
 			 INNER JOIN devices_module_channels channel ON channel."deviceId" = device."id"
+			 ${scopeJoin}
 			 WHERE device."hidden" = 0
 			 AND channel."category" IN (${categoryPlaceholders})
+			 ${scopePredicate}
 			 ORDER BY device."name", device."id"
 			 LIMIT ?`,
-			[...channelCategories, deviceLimit + 1],
+			parameters,
 		);
 		const deviceIds = idRows.slice(0, deviceLimit).map((row) => row.id);
 		const devicesTruncated = idRows.length > deviceLimit;

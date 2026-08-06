@@ -12,7 +12,11 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as DevicesEventType } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DeviceZonesService } from '../../devices/services/device-zones.service';
-import { DevicesService, VisibleDeviceSummaryPage } from '../../devices/services/devices.service';
+import {
+	DevicesService,
+	VisibleDeviceSummaryPage,
+	VisibleDeviceSummaryScope,
+} from '../../devices/services/devices.service';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { BulkAssignDto } from '../dto/bulk-assign.dto';
 import { CreateSpaceDto } from '../dto/create-space.dto';
@@ -29,6 +33,11 @@ import { SpacesNotFoundException, SpacesValidationException } from '../spaces.ex
 import { canonicalizeSpaceName } from '../spaces.utils';
 
 import { SpaceTypeMapping, SpacesTypeMapperService } from './spaces-type-mapper.service';
+
+export interface SpaceSnapshotScope {
+	deviceScope: VisibleDeviceSummaryScope;
+	sceneSpaceIds: string[];
+}
 
 /**
  * Narrow check for whether a subtype mapping owns a given shared-STI-table
@@ -530,29 +539,33 @@ export class SpacesService {
 
 	async findVisibleDeviceSummariesBySpace(spaceId: string, limit: number): Promise<VisibleDeviceSummaryPage> {
 		const space = await this.getOneOrThrow(spaceId);
+		const scope = await this.resolveSnapshotScope(space);
 
+		return this.devicesService.findVisibleSummaryPage(limit, scope.deviceScope);
+	}
+
+	async resolveSnapshotScope(space: SpaceEntity): Promise<SpaceSnapshotScope> {
 		if (space.type === SpaceType.ROOM) {
-			return this.devicesService.findVisibleSummaryPage(limit, { roomIds: [spaceId] });
+			return { deviceScope: { roomIds: [space.id] }, sceneSpaceIds: [space.id] };
 		}
 
 		if (space.type !== SpaceType.ZONE) {
-			return { devices: [], total: 0 };
+			return { deviceScope: { roomIds: [] }, sceneSpaceIds: [] };
 		}
 
 		const category = (space as { category?: string | null }).category ?? null;
 
 		if (!isFloorZoneCategory(category)) {
-			return this.devicesService.findVisibleSummaryPage(limit, { zoneId: spaceId });
+			return { deviceScope: { zoneId: space.id }, sceneSpaceIds: [space.id] };
 		}
 
 		const childRooms = await this.repository.find({
 			select: { id: true },
-			where: { parentId: spaceId },
+			where: { parentId: space.id },
 		});
+		const roomIds = childRooms.map((room) => room.id);
 
-		return this.devicesService.findVisibleSummaryPage(limit, {
-			roomIds: childRooms.map((room) => room.id),
-		});
+		return { deviceScope: { roomIds }, sceneSpaceIds: [space.id, ...roomIds] };
 	}
 
 	/**

@@ -93,6 +93,7 @@ export class McpContextService {
 		if (spaceId && !selectedSpace) {
 			throw new NotFoundException('Requested space does not exist');
 		}
+		const snapshotScope = selectedSpace ? await this.spacesService.resolveSnapshotScope(selectedSpace) : null;
 		const spaceCountsPromise: Promise<VisibleDeviceSpaceCounts | null> = selectedSpace
 			? Promise.resolve<VisibleDeviceSpaceCounts | null>(null)
 			: this.devicesService.getVisibleSpaceCounts();
@@ -103,7 +104,7 @@ export class McpContextService {
 				? this.spacesService.findVisibleDeviceSummariesBySpace(selectedSpace.id, MCP_MAX_CONTEXT_DEVICES)
 				: this.devicesService.findVisibleSummaryPage(MCP_MAX_CONTEXT_DEVICES),
 			spaceCountsPromise,
-			this.scenesService.findSummaryPage(MCP_MAX_CONTEXT_SCENES, selectedSpace?.id),
+			this.scenesService.findSummaryPage(MCP_MAX_CONTEXT_SCENES, snapshotScope?.sceneSpaceIds),
 			this.optional(() => this.weatherService.getPrimaryWeather()),
 			this.optional(() => this.getEnergySummaryData(undefined, undefined, selectedSpace ?? undefined)),
 			this.optional(() =>
@@ -111,6 +112,7 @@ export class McpContextService {
 					MCP_MAX_SECURITY_DEVICES,
 					MCP_MAX_SECURITY_CHANNELS_PER_DEVICE,
 					MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
+					snapshotScope?.deviceScope,
 				),
 			),
 		]);

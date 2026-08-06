@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { VisibleDeviceSummaryScope } from '../../devices/services/devices.service';
 import { SecurityAlertAckEntity } from '../entities/security-alert-ack.entity';
 import { SecurityStatusModel } from '../models/security-status.model';
 import { EventType, SECURITY_MODULE_NAME } from '../security.constants';
@@ -31,8 +32,9 @@ export class SecurityService {
 		deviceLimit: number,
 		channelLimit: number,
 		propertyLimit: number,
+		scope: VisibleDeviceSummaryScope = {},
 	): Promise<BoundedSecurityAggregationResult> {
-		const result = await this.aggregator.aggregateBounded(deviceLimit, channelLimit, propertyLimit);
+		const result = await this.aggregator.aggregateBounded(deviceLimit, channelLimit, propertyLimit, scope);
 
 		await this.annotateStatus(result.status);
 

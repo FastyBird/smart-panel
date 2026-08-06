@@ -339,14 +339,20 @@ describe('DevicesService', () => {
 			});
 
 			await expect(
-				service.findVisibleBoundedStateByChannelCategories([ChannelCategory.ALARM], 1, 10, 20),
+				service.findVisibleBoundedStateByChannelCategories([ChannelCategory.ALARM], 1, 10, 20, {
+					roomIds: ['room-1'],
+				}),
 			).resolves.toEqual({
 				devices: [expect.objectContaining({ id: 'device-1' })],
 				devicesTruncated: true,
 				channelsTruncated: true,
 				propertiesTruncated: true,
 			});
-			expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('LIMIT ?'), [ChannelCategory.ALARM, 2]);
+			expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('device."roomId" IN (?)'), [
+				ChannelCategory.ALARM,
+				'room-1',
+				2,
+			]);
 			expect(channelsService.findBoundedForDevices).toHaveBeenCalledWith(['device-1'], [ChannelCategory.ALARM], 10);
 		});
 	});

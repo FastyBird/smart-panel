@@ -36,4 +36,31 @@ describe('ScenesService', () => {
 		});
 		expect(query.take).toHaveBeenCalledWith(50);
 	});
+
+	it('includes floor and child-room scenes in a scoped summary', async () => {
+		const scene = { id: 'scene-id', name: 'Morning' } as SceneEntity;
+		const query = {
+			select: jest.fn().mockReturnThis(),
+			orderBy: jest.fn().mockReturnThis(),
+			take: jest.fn().mockReturnThis(),
+			where: jest.fn().mockReturnThis(),
+			getManyAndCount: jest.fn().mockResolvedValue([[scene], 1]),
+		};
+		const repository = {
+			createQueryBuilder: jest.fn().mockReturnValue(query),
+		} as unknown as Repository<SceneEntity>;
+		const service = new ScenesService(
+			repository,
+			{} as SceneActionsService,
+			{} as SpacesService,
+			{} as DataSource,
+			{} as EventEmitter2,
+		);
+
+		await service.findSummaryPage(50, ['floor-id', 'room-1', 'room-2']);
+
+		expect(query.where).toHaveBeenCalledWith('scene.primarySpaceId IN (:...primarySpaceIds)', {
+			primarySpaceIds: ['floor-id', 'room-1', 'room-2'],
+		});
+	});
 });

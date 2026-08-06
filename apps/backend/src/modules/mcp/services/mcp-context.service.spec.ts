@@ -27,7 +27,12 @@ import { McpInstallationService } from './mcp-installation.service';
 
 describe('McpContextService', () => {
 	let service: McpContextService;
-	let spaces: { findAll: jest.Mock; findOne: jest.Mock; findVisibleDeviceSummariesBySpace: jest.Mock };
+	let spaces: {
+		findAll: jest.Mock;
+		findOne: jest.Mock;
+		findVisibleDeviceSummariesBySpace: jest.Mock;
+		resolveSnapshotScope: jest.Mock;
+	};
 	let devices: {
 		findVisibleSummaryPage: jest.Mock;
 		getVisibleSpaceCounts: jest.Mock;
@@ -46,6 +51,12 @@ describe('McpContextService', () => {
 			findAll: jest.fn().mockResolvedValue([]),
 			findOne: jest.fn().mockResolvedValue(null),
 			findVisibleDeviceSummariesBySpace: jest.fn().mockResolvedValue({ devices: [], total: 0 }),
+			resolveSnapshotScope: jest.fn().mockImplementation((space: SpaceEntity) =>
+				Promise.resolve({
+					deviceScope: space.type === SpaceType.ROOM ? { roomIds: [space.id] } : { zoneId: space.id },
+					sceneSpaceIds: [space.id],
+				}),
+			),
 		};
 		devices = {
 			findVisibleSummaryPage: jest.fn().mockResolvedValue({ devices: [], total: 0 }),
@@ -135,6 +146,7 @@ describe('McpContextService', () => {
 			MCP_MAX_SECURITY_DEVICES,
 			MCP_MAX_SECURITY_CHANNELS_PER_DEVICE,
 			MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
+			undefined,
 		);
 	});
 
@@ -165,6 +177,13 @@ describe('McpContextService', () => {
 
 		expect(result.spaces).toEqual([expect.objectContaining({ id: 'zone-id', device_count: 1 })]);
 		expect(result.devices).toEqual([expect.objectContaining({ id: 'device-id', zone_ids: ['zone-id'] })]);
+		expect(scenes.findSummaryPage).toHaveBeenCalledWith(MCP_MAX_CONTEXT_SCENES, ['zone-id']);
+		expect(security.getBoundedStatus).toHaveBeenCalledWith(
+			MCP_MAX_SECURITY_DEVICES,
+			MCP_MAX_SECURITY_CHANNELS_PER_DEVICE,
+			MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
+			{ zoneId: 'zone-id' },
+		);
 	});
 
 	it('derives global floor-zone counts from child-room counts', async () => {
@@ -186,6 +205,32 @@ describe('McpContextService', () => {
 			expect.objectContaining({ id: 'floor-id', device_count: 3 }),
 			expect.objectContaining({ id: 'room-id', device_count: 3 }),
 		]);
+	});
+
+	it('includes child-room scenes and scopes security for a floor snapshot', async () => {
+		const floor = {
+			id: 'floor-id',
+			name: 'Ground floor',
+			type: SpaceType.ZONE,
+			category: SpaceZoneCategory.FLOOR_GROUND,
+			parentId: null,
+		} as unknown as SpaceEntity;
+		spaces.findOne.mockResolvedValue(floor);
+		spaces.resolveSnapshotScope.mockResolvedValue({
+			deviceScope: { roomIds: ['room-1', 'room-2'] },
+			sceneSpaceIds: ['floor-id', 'room-1', 'room-2'],
+		});
+		spaces.findVisibleDeviceSummariesBySpace.mockResolvedValue({ devices: [], total: 0 });
+
+		await service.getHomeContext('floor-id');
+
+		expect(scenes.findSummaryPage).toHaveBeenCalledWith(MCP_MAX_CONTEXT_SCENES, ['floor-id', 'room-1', 'room-2']);
+		expect(security.getBoundedStatus).toHaveBeenCalledWith(
+			MCP_MAX_SECURITY_DEVICES,
+			MCP_MAX_SECURITY_CHANNELS_PER_DEVICE,
+			MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
+			{ roomIds: ['room-1', 'room-2'] },
+		);
 	});
 
 	it('requests only the bounded scene summary page', async () => {

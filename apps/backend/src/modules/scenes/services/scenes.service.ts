@@ -99,7 +99,11 @@ export class ScenesService {
 		return scenes;
 	}
 
-	async findSummaryPage(limit: number, primarySpaceId?: string): Promise<SceneSummaryPage> {
+	async findSummaryPage(limit: number, primarySpaceId?: string | string[]): Promise<SceneSummaryPage> {
+		if (Array.isArray(primarySpaceId) && primarySpaceId.length === 0) {
+			return { scenes: [], total: 0 };
+		}
+
 		const query = this.repository
 			.createQueryBuilder('scene')
 			.select([
@@ -113,7 +117,9 @@ export class ScenesService {
 			.orderBy('scene.name', 'ASC')
 			.take(limit);
 
-		if (primarySpaceId) {
+		if (Array.isArray(primarySpaceId)) {
+			query.where('scene.primarySpaceId IN (:...primarySpaceIds)', { primarySpaceIds: primarySpaceId });
+		} else if (primarySpaceId) {
 			query.where('scene.primarySpaceId = :primarySpaceId', { primarySpaceId });
 		}
 
