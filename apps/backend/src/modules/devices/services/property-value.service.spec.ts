@@ -159,6 +159,39 @@ describe('PropertyValueService', () => {
 
 			await expect(service.readLatestStrict(property)).resolves.toEqual(expect.objectContaining({ value: 42 }));
 		});
+
+		it('should batch strict reads for every uncached property', async () => {
+			const properties = [
+				{ id: 'property-a', dataType: DataTypeType.INT },
+				{ id: 'property-b', dataType: DataTypeType.BOOL },
+			] as ChannelPropertyEntity[];
+			storageService.query.mockResolvedValue([
+				{ propertyId: 'property-a', numberValue: 12, time: '2026-08-06T12:00:00Z' },
+				{ propertyId: 'property-b', stringValue: 'true', time: '2026-08-06T12:01:00Z' },
+			]);
+
+			const result = await service.readLatestManyStrict(properties);
+
+			expect(result.get('property-a')).toEqual(expect.objectContaining({ value: 12 }));
+			expect(result.get('property-b')).toEqual(expect.objectContaining({ value: true }));
+			expect(storageService.query).toHaveBeenCalledTimes(1);
+			expect(storageService.query).toHaveBeenCalledWith(expect.stringContaining('GROUP BY "propertyId"'));
+		});
+
+		it('should only batch uncached source keys', async () => {
+			const properties = [
+				{ id: 'property-a', dataType: DataTypeType.INT },
+				{ id: 'property-b', dataType: DataTypeType.INT },
+			] as ChannelPropertyEntity[];
+			service['valuesMap'].set('property-a', new PropertyValueState(5));
+			storageService.query.mockResolvedValue([{ propertyId: 'property-b', numberValue: 7 }]);
+
+			const result = await service.readLatestManyStrict(properties);
+
+			expect(result.get('property-a')?.value).toBe(5);
+			expect(result.get('property-b')?.value).toBe(7);
+			expect(storageService.query).toHaveBeenCalledWith(expect.not.stringContaining("propertyId = 'property-a'"));
+		});
 	});
 
 	describe('delete', () => {

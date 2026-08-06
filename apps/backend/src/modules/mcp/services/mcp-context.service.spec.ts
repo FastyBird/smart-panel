@@ -2,6 +2,7 @@ import { ConfigService } from '../../config/services/config.service';
 import { ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
 import { ChannelsService } from '../../devices/services/channels.service';
+import { DeviceConnectionStateService } from '../../devices/services/device-connection-state.service';
 import { DevicesService } from '../../devices/services/devices.service';
 import { PropertyTimeseriesService } from '../../devices/services/property-timeseries.service';
 import { EnergyDataService } from '../../energy/services/energy-data.service';
@@ -40,6 +41,7 @@ describe('McpContextService', () => {
 		getVisibleSpaceCounts: jest.Mock;
 		findVisibleSummaryById: jest.Mock;
 	};
+	let connectionStates: { readLatestManyStrict: jest.Mock };
 	let channels: { findSummaryPage: jest.Mock };
 	let properties: { findOne: jest.Mock; findBoundedForChannels: jest.Mock };
 	let timeseries: { queryTimeseriesStrict: jest.Mock };
@@ -67,6 +69,20 @@ describe('McpContextService', () => {
 			getVisibleSpaceCounts: jest.fn().mockResolvedValue({ rooms: {}, zones: {} }),
 			findVisibleSummaryById: jest.fn().mockResolvedValue(null),
 		};
+		connectionStates = {
+			readLatestManyStrict: jest
+				.fn()
+				.mockImplementation((loadedDevices: DeviceEntity[]) =>
+					Promise.resolve(
+						new Map(
+							loadedDevices.map((device) => [
+								device.id,
+								device.status ?? { online: false, status: 'unknown', lastChanged: null },
+							]),
+						),
+					),
+				),
+		};
 		channels = { findSummaryPage: jest.fn().mockResolvedValue({ channels: [], total: 0 }) };
 		properties = {
 			findOne: jest.fn().mockResolvedValue(null),
@@ -90,6 +106,7 @@ describe('McpContextService', () => {
 			{ getInstallationId: jest.fn().mockResolvedValue('installation-id') } as unknown as McpInstallationService,
 			spaces as unknown as SpacesService,
 			devices as unknown as DevicesService,
+			connectionStates as unknown as DeviceConnectionStateService,
 			channels as unknown as ChannelsService,
 			properties as unknown as ChannelsPropertiesService,
 			timeseries as unknown as PropertyTimeseriesService,
@@ -152,6 +169,16 @@ describe('McpContextService', () => {
 			MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
 			undefined,
 		);
+	});
+
+	it('propagates strict connection status failures from home context', async () => {
+		devices.findVisibleSummaryPage.mockResolvedValue({
+			devices: [{ id: 'device-id', hidden: false } as DeviceEntity],
+			total: 1,
+		});
+		connectionStates.readLatestManyStrict.mockRejectedValue(new Error('status storage unavailable'));
+
+		await expect(service.getHomeContext()).rejects.toThrow('status storage unavailable');
 	});
 
 	it('preserves the selected zone membership in a scoped snapshot', async () => {
@@ -406,11 +433,24 @@ describe('McpContextService', () => {
 			}),
 		);
 		expect(channels.findSummaryPage).toHaveBeenCalledWith('device-id', MCP_MAX_CHANNELS_PER_DEVICE);
+		expect(connectionStates.readLatestManyStrict).toHaveBeenCalledWith([expect.objectContaining({ id: 'device-id' })]);
 		expect(properties.findBoundedForChannels).toHaveBeenCalledWith(
 			['channel-id'],
 			MCP_MAX_PROPERTIES_PER_CHANNEL,
 			true,
 		);
+	});
+
+	it('propagates strict device connection status failures', async () => {
+		devices.findVisibleSummaryById.mockResolvedValue({
+			id: 'device-id',
+			name: 'Lamp',
+			hidden: false,
+		} as unknown as DeviceEntity);
+		connectionStates.readLatestManyStrict.mockRejectedValue(new Error('status storage unavailable'));
+
+		await expect(service.getDeviceState('device-id')).rejects.toThrow('status storage unavailable');
+		expect(channels.findSummaryPage).not.toHaveBeenCalled();
 	});
 
 	it('paginates space resource summaries with a stable offset cursor', async () => {

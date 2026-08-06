@@ -162,6 +162,7 @@ describe('ChannelsPropertiesService', () => {
 					useValue: {
 						write: jest.fn(() => {}),
 						readLatestStrict: jest.fn(),
+						readLatestManyStrict: jest.fn(),
 					},
 				},
 				PropertyValueSourceRegistryService,
@@ -285,7 +286,7 @@ describe('ChannelsPropertiesService', () => {
 			};
 			jest.spyOn(dataSource, 'query').mockResolvedValue([{ id: mockChannelProperty.id }]);
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValueOnce(countQuery).mockReturnValueOnce(entityQuery);
-			propertyValueService.readLatestStrict.mockRejectedValue(new Error('storage unavailable'));
+			propertyValueService.readLatestManyStrict.mockRejectedValue(new Error('storage unavailable'));
 
 			await expect(
 				channelsPropertiesService.findBoundedForChannels([mockChannel.id], 40, true, [PropertyCategory.GENERIC]),
@@ -299,7 +300,7 @@ describe('ChannelsPropertiesService', () => {
 				propertyCategories: [PropertyCategory.GENERIC],
 			});
 			expect(entityQuery.callListeners).toHaveBeenCalledWith(false);
-			expect(propertyValueService.readLatestStrict).toHaveBeenCalledWith(mockChannelProperty);
+			expect(propertyValueService.readLatestManyStrict).toHaveBeenCalledWith([mockChannelProperty]);
 		});
 	});
 

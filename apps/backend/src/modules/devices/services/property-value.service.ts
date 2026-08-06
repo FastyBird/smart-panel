@@ -13,6 +13,13 @@ import { PropertyValueSourceRegistryService } from './property-value-source.regi
  */
 const TREND_POINTS_COUNT = 5;
 
+interface PropertyValueRow {
+	time?: Date | string;
+	stringValue?: string;
+	numberValue?: number;
+	propertyId: ChannelPropertyEntity['id'];
+}
+
 @Injectable()
 export class PropertyValueService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'PropertyValueService');
@@ -178,6 +185,72 @@ export class PropertyValueService {
 		return this.readLatestInternal(property, true);
 	}
 
+	async readLatestManyStrict(
+		properties: ChannelPropertyEntity[],
+	): Promise<Map<ChannelPropertyEntity['id'], PropertyValueState | null>> {
+		const states = new Map<ChannelPropertyEntity['id'], PropertyValueState | null>();
+		const missingByKey = new Map<ChannelPropertyEntity['id'], ChannelPropertyEntity>();
+		const keyByProperty = new Map<ChannelPropertyEntity['id'], ChannelPropertyEntity['id']>();
+
+		for (const property of properties) {
+			const key = this.valueSourceRegistry.resolve(property);
+			keyByProperty.set(property.id, key);
+			const cached = this.valuesMap.get(key);
+
+			if (cached) {
+				states.set(property.id, cached);
+			} else if (!missingByKey.has(key)) {
+				missingByKey.set(key, property);
+			}
+		}
+
+		if (missingByKey.size === 0) {
+			return states;
+		}
+		if (!this.storageService.isConnected()) {
+			throw new Error('Property value storage is unavailable');
+		}
+
+		const predicate = Array.from(missingByKey.keys())
+			.map((key) => `propertyId = '${this.escapeTagValue(key)}'`)
+			.join(' OR ');
+		const query = `
+        SELECT *
+        FROM property_value
+        WHERE (${predicate})
+        GROUP BY "propertyId"
+		ORDER BY time DESC
+		LIMIT 1
+      `;
+
+		try {
+			const rows = await this.storageService.query<PropertyValueRow>(query);
+			const rowByKey = new Map(rows.map((row) => [row.propertyId, row]));
+
+			for (const [key, property] of missingByKey) {
+				const row = rowByKey.get(key);
+				const state = row ? this.toState(property, key, row) : null;
+
+				if (state) {
+					this.valuesMap.set(key, state);
+				}
+			}
+
+			for (const property of properties) {
+				if (!states.has(property.id)) {
+					states.set(property.id, this.valuesMap.get(keyByProperty.get(property.id) ?? property.id) ?? null);
+				}
+			}
+
+			return states;
+		} catch (error) {
+			const err = error as Error;
+			this.logger.error(`Failed to batch read latest property values from storage error=${err.message}`, err.stack);
+
+			throw error;
+		}
+	}
+
 	private async readLatestInternal(
 		property: ChannelPropertyEntity,
 		strict: boolean,
@@ -211,12 +284,7 @@ export class PropertyValueService {
 
 			this.logger.debug(`Fetching latest value id=${property.id}`);
 
-			const result = await this.storageService.query<{
-				time: Date | string;
-				stringValue?: string;
-				numberValue?: number;
-				propertyId: ChannelPropertyEntity['id'];
-			}>(query);
+			const result = await this.storageService.query<PropertyValueRow>(query);
 
 			if (!result.length) {
 				this.logger.debug(`No stored value found for id=${property.id}`);
@@ -226,42 +294,6 @@ export class PropertyValueService {
 
 			// Results are ordered DESC, so first = latest
 			const latest = result[0];
-
-			let parsedValue: string | number | boolean | null = null;
-
-			switch (property.dataType) {
-				case DataTypeType.ENUM:
-				case DataTypeType.STRING:
-					parsedValue = latest.stringValue ?? null;
-					break;
-
-				case DataTypeType.BOOL:
-					parsedValue = latest.stringValue != null ? latest.stringValue === 'true' : null;
-					break;
-
-				case DataTypeType.CHAR:
-				case DataTypeType.UCHAR:
-				case DataTypeType.SHORT:
-				case DataTypeType.USHORT:
-				case DataTypeType.INT:
-				case DataTypeType.UINT:
-					parsedValue = latest.numberValue != null ? Math.round(latest.numberValue) : null;
-					break;
-
-				case DataTypeType.FLOAT:
-					parsedValue = latest.numberValue ?? null;
-					break;
-
-				default:
-					parsedValue = null;
-			}
-
-			// Extract timestamp from storage result
-			const lastUpdated = latest.time
-				? latest.time instanceof Date
-					? latest.time.toISOString()
-					: String(latest.time)
-				: null;
 
 			// Build recent values cache from query results (for trend computation)
 			if (this.isNumericDataType(property.dataType) && result.length >= 1) {
@@ -276,10 +308,9 @@ export class PropertyValueService {
 				this.recentValuesMap.set(key, recentValues);
 			}
 
-			const trend = this.computeTrend(property, key);
-			const state = new PropertyValueState(parsedValue, lastUpdated, trend);
+			const state = this.toState(property, key, latest);
 
-			this.logger.debug(`Read latest value id=${property.id} dataType=${property.dataType} value=${parsedValue}`);
+			this.logger.debug(`Read latest value id=${property.id} dataType=${property.dataType} value=${state.value}`);
 
 			this.valuesMap.set(key, state);
 
@@ -294,6 +325,45 @@ export class PropertyValueService {
 
 			return null;
 		}
+	}
+
+	private toState(property: ChannelPropertyEntity, key: string, latest: PropertyValueRow): PropertyValueState {
+		let parsedValue: string | number | boolean | null;
+
+		switch (property.dataType) {
+			case DataTypeType.ENUM:
+			case DataTypeType.STRING:
+				parsedValue = latest.stringValue ?? null;
+				break;
+			case DataTypeType.BOOL:
+				parsedValue = latest.stringValue != null ? latest.stringValue === 'true' : null;
+				break;
+			case DataTypeType.CHAR:
+			case DataTypeType.UCHAR:
+			case DataTypeType.SHORT:
+			case DataTypeType.USHORT:
+			case DataTypeType.INT:
+			case DataTypeType.UINT:
+				parsedValue = latest.numberValue != null ? Math.round(latest.numberValue) : null;
+				break;
+			case DataTypeType.FLOAT:
+				parsedValue = latest.numberValue ?? null;
+				break;
+			default:
+				parsedValue = null;
+		}
+
+		const lastUpdated = latest.time
+			? latest.time instanceof Date
+				? latest.time.toISOString()
+				: String(latest.time)
+			: null;
+
+		return new PropertyValueState(parsedValue, lastUpdated, this.computeTrend(property, key));
+	}
+
+	private escapeTagValue(value: string): string {
+		return value.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
 	}
 
 	async delete(property: ChannelPropertyEntity): Promise<void> {

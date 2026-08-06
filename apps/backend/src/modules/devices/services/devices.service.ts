@@ -138,6 +138,7 @@ export class DevicesService {
 			.leftJoinAndSelect('device.deviceZones', 'deviceZones')
 			.where('device.hidden = :hidden', { hidden: false })
 			.orderBy('device.name', 'ASC')
+			.callListeners(false)
 			.take(limit);
 
 		if (scope.roomIds) {
@@ -161,6 +162,7 @@ export class DevicesService {
 			.leftJoinAndSelect('device.deviceZones', 'deviceZones')
 			.where('device.id = :id', { id })
 			.andWhere('device.hidden = :hidden', { hidden: false })
+			.callListeners(false)
 			.getOne();
 	}
 
@@ -229,6 +231,7 @@ export class DevicesService {
 				.createQueryBuilder('device')
 				.leftJoinAndSelect('device.deviceZones', 'deviceZones')
 				.where('device.id IN (:...deviceIds)', { deviceIds })
+				.callListeners(false)
 				.getMany(),
 			this.channelsService.findBoundedForDevices(deviceIds, channelCategories, channelLimit),
 		]);

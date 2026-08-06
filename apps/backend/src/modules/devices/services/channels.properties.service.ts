@@ -151,11 +151,11 @@ export class ChannelsPropertiesService {
 						.getMany();
 
 		if (strictValues) {
-			await Promise.all(
-				properties.map(async (property) => {
-					property.value = await this.propertyValueService.readLatestStrict(property);
-				}),
-			);
+			const values = await this.propertyValueService.readLatestManyStrict(properties);
+
+			for (const property of properties) {
+				property.value = values.get(property.id) ?? null;
+			}
 		}
 
 		return {

@@ -4,9 +4,10 @@ import { resolve } from 'path';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { ConfigService } from '../../config/services/config.service';
-import { ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
+import { ChannelPropertyEntity, DeviceConnectionStatus, DeviceEntity } from '../../devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
 import { ChannelsService } from '../../devices/services/channels.service';
+import { DeviceConnectionStateService } from '../../devices/services/device-connection-state.service';
 import { DevicesService, VisibleDeviceSpaceCounts } from '../../devices/services/devices.service';
 import { BucketDuration, PropertyTimeseriesService } from '../../devices/services/property-timeseries.service';
 import { EnergyDataService } from '../../energy/services/energy-data.service';
@@ -64,6 +65,7 @@ export class McpContextService {
 		private readonly installationService: McpInstallationService,
 		private readonly spacesService: SpacesService,
 		private readonly devicesService: DevicesService,
+		private readonly deviceConnectionStateService: DeviceConnectionStateService,
 		private readonly channelsService: ChannelsService,
 		private readonly propertiesService: ChannelsPropertiesService,
 		private readonly timeseriesService: PropertyTimeseriesService,
@@ -127,6 +129,7 @@ export class McpContextService {
 				),
 			),
 		]);
+		await this.hydrateDeviceStatusesStrict(devicePage.devices);
 
 		const devices = devicePage.devices.filter((device) => !device.hidden);
 		const spaces = allSpaces.slice(0, MCP_MAX_CONTEXT_SPACES);
@@ -177,6 +180,7 @@ export class McpContextService {
 		if (!device) {
 			throw new NotFoundException('Requested device does not exist');
 		}
+		await this.hydrateDeviceStatusesStrict([device]);
 		const channelPage = await this.channelsService.findSummaryPage(device.id, MCP_MAX_CHANNELS_PER_DEVICE);
 		const properties = await this.propertiesService.findBoundedForChannels(
 			channelPage.channels.map((channel) => channel.id),
@@ -460,6 +464,18 @@ export class McpContextService {
 		const device = channel.device;
 
 		return typeof device === 'string' ? null : device;
+	}
+
+	private async hydrateDeviceStatusesStrict(devices: DeviceEntity[]): Promise<void> {
+		const statuses = await this.deviceConnectionStateService.readLatestManyStrict(devices);
+
+		for (const device of devices) {
+			const status = statuses.get(device.id);
+
+			if (status) {
+				device.status = Object.assign(device.status ?? new DeviceConnectionStatus(), status);
+			}
+		}
 	}
 
 	private getPropertyChannelId(property: ChannelPropertyEntity): string | null {
