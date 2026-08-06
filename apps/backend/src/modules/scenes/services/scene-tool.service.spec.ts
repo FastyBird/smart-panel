@@ -144,7 +144,9 @@ describe('SceneToolService', () => {
 
 			expect(result.success).toBe(false);
 			expect(result.status).toBe(ToolExecutionStatus.FAILED);
-			expect(result.message).toContain('failed');
+			expect(result.message).toBe('Scene "Lights" failed to execute');
+			expect(result.message).not.toContain('No platforms registered');
+			expect(result.errorCode).toBe('SCENE_EXECUTION_FAILED');
 		});
 	});
 

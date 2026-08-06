@@ -32,6 +32,17 @@ describe('validatePropertyCommandValue', () => {
 		});
 	});
 
+	it('rejects empty string and enum values', () => {
+		expect(validatePropertyCommandValue(property({ dataType: DataTypeType.STRING }), '')).toEqual({
+			valid: false,
+			reason: 'Value must not be empty',
+		});
+		expect(validatePropertyCommandValue(property({ dataType: DataTypeType.ENUM }), '')).toEqual({
+			valid: false,
+			reason: 'Value must not be empty',
+		});
+	});
+
 	it('enforces enum membership', () => {
 		const enumProperty = property({ dataType: DataTypeType.ENUM, format: ['on', 'off'] });
 

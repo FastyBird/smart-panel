@@ -136,10 +136,12 @@ export class SceneToolService extends BaseToolProviderService {
 			};
 		}
 
+		this.logger.warn(`[EXECUTE] Scene with id=${sceneId} failed: ${result.error ?? 'Unknown scene execution failure'}`);
+
 		return {
 			success: false,
 			status: ToolExecutionStatus.FAILED,
-			message: `Scene "${scene.name}" failed: ${result.error ?? 'unknown error'}`,
+			message: `Scene "${scene.name}" failed to execute`,
 			data,
 			errorCode: 'SCENE_EXECUTION_FAILED',
 		};

@@ -87,6 +87,10 @@ export const validatePropertyCommandValue = (
 				return { valid: false, reason: 'Value must be a string' };
 			}
 
+			if (rawValue.length === 0) {
+				return { valid: false, reason: 'Value must not be empty' };
+			}
+
 			value = rawValue;
 			break;
 
