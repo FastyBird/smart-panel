@@ -40,6 +40,11 @@ export interface SpaceSnapshotScope {
 	wholeHome: boolean;
 }
 
+export interface SpaceSummaryPage {
+	spaces: SpaceEntity[];
+	total: number;
+}
+
 /**
  * Narrow check for whether a subtype mapping owns a given shared-STI-table
  * column. Kept as a module-level helper so the `Readonly<Record<string, unknown>>`
@@ -82,6 +87,19 @@ export class SpacesService {
 		this.logger.debug(`Found ${spaces.length} spaces`);
 
 		return spaces;
+	}
+
+	async findSummaryPage(limit: number, offset: number): Promise<SpaceSummaryPage> {
+		const [spaces, total] = await this.repository
+			.createQueryBuilder('space')
+			.orderBy('space.displayOrder', 'ASC')
+			.addOrderBy('space.name', 'ASC')
+			.addOrderBy('space.id', 'ASC')
+			.skip(offset)
+			.take(limit)
+			.getManyAndCount();
+
+		return { spaces, total };
 	}
 
 	async findOne(id: string): Promise<SpaceEntity | null> {

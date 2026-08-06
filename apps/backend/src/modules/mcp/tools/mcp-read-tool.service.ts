@@ -193,21 +193,7 @@ export class McpReadToolService {
 		server.registerResource(
 			'space-snapshot',
 			new ResourceTemplate('smart-panel://spaces/{spaceId}/snapshot', {
-				list: async (ctx) =>
-					this.runResourceOperation('space resource listing', async () => {
-						await this.authorizeRead(ctx);
-						const spaces = await this.contextService.listSpaces();
-
-						return {
-							resources: spaces.map((space) => ({
-								uri: `smart-panel://spaces/${space.id}/snapshot`,
-								name: `${space.name} snapshot`,
-								title: `${space.name} snapshot`,
-								description: `Current bounded context for the ${space.name} ${space.type}.`,
-								mimeType: 'application/json',
-							})),
-						};
-					}),
+				list: undefined,
 			}),
 			{
 				title: 'Space snapshot',
@@ -223,6 +209,50 @@ export class McpReadToolService {
 					data: await this.contextService.getHomeContext(spaceId),
 				}));
 			},
+		);
+
+		// ResourceTemplate.list callbacks in the pinned SDK do not receive the resources/list request cursor and
+		// the built-in aggregator drops nextCursor. Replace only that low-level handler so the existing registered
+		// read and template handlers remain SDK-managed while resource discovery can be paginated correctly.
+		server.server.setRequestHandler('resources/list', async (request, ctx) =>
+			this.runResourceOperation('resource listing', async () => {
+				await this.authorizeRead(ctx);
+				const cursor = request.params?.cursor;
+				const page = await this.contextService.listSpaces(cursor);
+				const staticResources =
+					cursor === undefined
+						? [
+								{
+									uri: 'smart-panel://installation',
+									name: 'installation',
+									title: 'Smart Panel installation',
+									description: 'Installation identity, version, timezone, endpoint, and effective MCP capabilities.',
+									mimeType: 'application/json',
+								},
+								{
+									uri: 'smart-panel://home/context',
+									name: 'home-context',
+									title: 'Current home context',
+									description: 'Bounded current context for the Smart Panel installation.',
+									mimeType: 'application/json',
+								},
+							]
+						: [];
+
+				return {
+					resources: [
+						...staticResources,
+						...page.spaces.map((space) => ({
+							uri: `smart-panel://spaces/${space.id}/snapshot`,
+							name: `${space.name} snapshot`,
+							title: `${space.name} snapshot`,
+							description: `Current bounded context for the ${space.name} ${space.type}.`,
+							mimeType: 'application/json',
+						})),
+					],
+					...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
+				};
+			}),
 		);
 	}
 

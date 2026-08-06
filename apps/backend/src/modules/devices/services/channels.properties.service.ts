@@ -85,7 +85,11 @@ export class ChannelsPropertiesService {
 		return properties;
 	}
 
-	async findBoundedForChannels(channelIds: string[], perChannelLimit: number): Promise<BoundedChannelProperties> {
+	async findBoundedForChannels(
+		channelIds: string[],
+		perChannelLimit: number,
+		strictValues = false,
+	): Promise<BoundedChannelProperties> {
 		if (channelIds.length === 0) {
 			return { properties: [], totals: {} };
 		}
@@ -133,6 +137,14 @@ export class ChannelsPropertiesService {
 						.innerJoinAndSelect('property.channel', 'channel')
 						.where('property.id IN (:...propertyIds)', { propertyIds })
 						.getMany();
+
+		if (strictValues) {
+			await Promise.all(
+				properties.map(async (property) => {
+					property.value = await this.propertyValueService.readLatestStrict(property);
+				}),
+			);
+		}
 
 		return {
 			properties,

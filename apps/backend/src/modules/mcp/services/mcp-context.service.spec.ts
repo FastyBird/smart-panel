@@ -15,6 +15,7 @@ import {
 	MCP_MAX_CHANNELS_PER_DEVICE,
 	MCP_MAX_CONTEXT_DEVICES,
 	MCP_MAX_CONTEXT_SCENES,
+	MCP_MAX_CONTEXT_SPACES,
 	MCP_MAX_PROPERTIES_PER_CHANNEL,
 	MCP_MAX_SECURITY_CHANNELS_PER_DEVICE,
 	MCP_MAX_SECURITY_DEVICES,
@@ -29,6 +30,7 @@ describe('McpContextService', () => {
 	let service: McpContextService;
 	let spaces: {
 		findAll: jest.Mock;
+		findSummaryPage: jest.Mock;
 		findOne: jest.Mock;
 		findVisibleDeviceSummariesBySpace: jest.Mock;
 		resolveSnapshotScope: jest.Mock;
@@ -49,6 +51,7 @@ describe('McpContextService', () => {
 	beforeEach(() => {
 		spaces = {
 			findAll: jest.fn().mockResolvedValue([]),
+			findSummaryPage: jest.fn().mockResolvedValue({ spaces: [], total: 0 }),
 			findOne: jest.fn().mockResolvedValue(null),
 			findVisibleDeviceSummariesBySpace: jest.fn().mockResolvedValue({ devices: [], total: 0 }),
 			resolveSnapshotScope: jest.fn().mockImplementation((space: SpaceEntity) =>
@@ -360,7 +363,29 @@ describe('McpContextService', () => {
 			}),
 		);
 		expect(channels.findSummaryPage).toHaveBeenCalledWith('device-id', MCP_MAX_CHANNELS_PER_DEVICE);
-		expect(properties.findBoundedForChannels).toHaveBeenCalledWith(['channel-id'], MCP_MAX_PROPERTIES_PER_CHANNEL);
+		expect(properties.findBoundedForChannels).toHaveBeenCalledWith(
+			['channel-id'],
+			MCP_MAX_PROPERTIES_PER_CHANNEL,
+			true,
+		);
+	});
+
+	it('paginates space resource summaries with a stable offset cursor', async () => {
+		spaces.findSummaryPage.mockResolvedValue({
+			spaces: [{ id: 'space-51', name: 'Workshop', type: SpaceType.ROOM }],
+			total: 52,
+		});
+
+		await expect(service.listSpaces('50')).resolves.toEqual({
+			spaces: [{ id: 'space-51', name: 'Workshop', type: SpaceType.ROOM }],
+			nextCursor: '51',
+		});
+		expect(spaces.findSummaryPage).toHaveBeenCalledWith(MCP_MAX_CONTEXT_SPACES, 50);
+	});
+
+	it('rejects an invalid space resource cursor before querying', async () => {
+		await expect(service.listSpaces('not-a-cursor')).rejects.toThrow('cursor is invalid');
+		expect(spaces.findSummaryPage).not.toHaveBeenCalled();
 	});
 
 	it('uses explicit device-zone membership for a non-floor zone energy summary', async () => {

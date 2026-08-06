@@ -234,6 +234,7 @@ export class DevicesService {
 		const properties = await this.channelsPropertiesService.findBoundedForChannels(
 			channelPage.channels.map((channel) => channel.id),
 			propertyLimit,
+			true,
 		);
 		const propertiesByChannel = new Map<string, ChannelEntity['properties']>();
 

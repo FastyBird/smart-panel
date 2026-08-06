@@ -52,6 +52,11 @@ export interface McpInstallationContext {
 	effective_capabilities: McpCapability[];
 }
 
+export interface McpSpaceSummaryPage {
+	spaces: Array<{ id: string; name: string; type: string }>;
+	nextCursor?: string;
+}
+
 @Injectable()
 export class McpContextService {
 	constructor(
@@ -174,6 +179,7 @@ export class McpContextService {
 		const properties = await this.propertiesService.findBoundedForChannels(
 			channelPage.channels.map((channel) => channel.id),
 			MCP_MAX_PROPERTIES_PER_CHANNEL,
+			true,
 		);
 		const propertiesByChannel = new Map<string, ChannelPropertyEntity[]>();
 
@@ -266,14 +272,32 @@ export class McpContextService {
 		);
 	}
 
-	async listSpaces(): Promise<Array<{ id: string; name: string; type: string }>> {
-		const spaces = await this.spacesService.findAll();
+	async listSpaces(cursor?: string): Promise<McpSpaceSummaryPage> {
+		const offset = this.parseSpaceCursor(cursor);
+		const page = await this.spacesService.findSummaryPage(MCP_MAX_CONTEXT_SPACES, offset);
+		const spaces = page.spaces.map((space) => ({ id: space.id, name: space.name, type: space.type }));
+		const nextOffset = offset + spaces.length;
 
-		return spaces.slice(0, MCP_MAX_CONTEXT_SPACES).map((space) => ({
-			id: space.id,
-			name: space.name,
-			type: space.type,
-		}));
+		return {
+			spaces,
+			...(nextOffset < page.total ? { nextCursor: String(nextOffset) } : {}),
+		};
+	}
+
+	private parseSpaceCursor(cursor?: string): number {
+		if (cursor === undefined) {
+			return 0;
+		}
+		if (!/^(0|[1-9]\d*)$/.test(cursor)) {
+			throw new BadRequestException('The space resource cursor is invalid.');
+		}
+
+		const offset = Number(cursor);
+		if (!Number.isSafeInteger(offset)) {
+			throw new BadRequestException('The space resource cursor is invalid.');
+		}
+
+		return offset;
 	}
 
 	private async getEnergySummaryData(

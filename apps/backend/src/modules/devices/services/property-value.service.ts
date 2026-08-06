@@ -171,6 +171,17 @@ export class PropertyValueService {
 	}
 
 	async readLatest(property: ChannelPropertyEntity): Promise<PropertyValueState | null> {
+		return this.readLatestInternal(property, false);
+	}
+
+	async readLatestStrict(property: ChannelPropertyEntity): Promise<PropertyValueState | null> {
+		return this.readLatestInternal(property, true);
+	}
+
+	private async readLatestInternal(
+		property: ChannelPropertyEntity,
+		strict: boolean,
+	): Promise<PropertyValueState | null> {
 		const key = this.valueSourceRegistry.resolve(property);
 
 		// Check local cache first
@@ -183,6 +194,10 @@ export class PropertyValueService {
 
 		// Return null if storage not connected
 		if (!this.storageService.isConnected()) {
+			if (strict) {
+				throw new Error('Property value storage is unavailable');
+			}
+
 			return null;
 		}
 
@@ -273,6 +288,9 @@ export class PropertyValueService {
 			const err = error as Error;
 
 			this.logger.error(`Failed to read latest value from storage id=${property.id} error=${err.message}`, err.stack);
+			if (strict) {
+				throw error;
+			}
 
 			return null;
 		}

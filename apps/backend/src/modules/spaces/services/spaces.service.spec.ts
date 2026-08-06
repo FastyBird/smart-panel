@@ -351,6 +351,26 @@ describe('SpacesService', () => {
 		});
 	});
 
+	describe('findSummaryPage', () => {
+		it('returns a deterministic bounded page and total count', async () => {
+			const queryBuilder = {
+				orderBy: jest.fn().mockReturnThis(),
+				addOrderBy: jest.fn().mockReturnThis(),
+				skip: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				getManyAndCount: jest.fn().mockResolvedValue([[mockSpace], 75]),
+			};
+			spaceRepository.createQueryBuilder.mockReturnValue(queryBuilder as unknown as SelectQueryBuilder<SpaceEntity>);
+
+			await expect(service.findSummaryPage(50, 25)).resolves.toEqual({ spaces: [mockSpace], total: 75 });
+			expect(queryBuilder.orderBy).toHaveBeenCalledWith('space.displayOrder', 'ASC');
+			expect(queryBuilder.addOrderBy).toHaveBeenNthCalledWith(1, 'space.name', 'ASC');
+			expect(queryBuilder.addOrderBy).toHaveBeenNthCalledWith(2, 'space.id', 'ASC');
+			expect(queryBuilder.skip).toHaveBeenCalledWith(25);
+			expect(queryBuilder.take).toHaveBeenCalledWith(50);
+		});
+	});
+
 	describe('findVisibleDeviceSummariesBySpace', () => {
 		it('derives floor-zone devices from child rooms', async () => {
 			const floorId = uuid();

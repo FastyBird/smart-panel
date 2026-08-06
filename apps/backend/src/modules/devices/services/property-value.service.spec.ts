@@ -128,6 +128,37 @@ describe('PropertyValueService', () => {
 			expect(result).toBeNull();
 			expect(storageService.query).toHaveBeenCalled();
 		});
+
+		it('should reject a strict read when storage is disconnected', async () => {
+			const property = {
+				id: 'test-property-id',
+				dataType: DataTypeType.STRING,
+			} as ChannelPropertyEntity;
+			storageService.isConnected.mockReturnValue(false);
+
+			await expect(service.readLatestStrict(property)).rejects.toThrow('storage is unavailable');
+		});
+
+		it('should reject a strict read when the storage query fails', async () => {
+			const property = {
+				id: 'test-property-id',
+				dataType: DataTypeType.STRING,
+			} as ChannelPropertyEntity;
+			storageService.query.mockRejectedValue(new Error('database detail'));
+
+			await expect(service.readLatestStrict(property)).rejects.toThrow('database detail');
+		});
+
+		it('should use a cached value for a strict read while storage is disconnected', async () => {
+			const property = {
+				id: 'test-property-id',
+				dataType: DataTypeType.INT,
+			} as ChannelPropertyEntity;
+			service['valuesMap'].set(property.id, new PropertyValueState(42));
+			storageService.isConnected.mockReturnValue(false);
+
+			await expect(service.readLatestStrict(property)).resolves.toEqual(expect.objectContaining({ value: 42 }));
+		});
 	});
 
 	describe('delete', () => {

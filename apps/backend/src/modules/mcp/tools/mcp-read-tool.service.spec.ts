@@ -13,6 +13,10 @@ type ToolCallback = (
 	ctx: ServerContext,
 ) => Promise<{ isError?: boolean; structuredContent: Record<string, unknown> }>;
 type ResourceCallback = (uri: URL, ctx: ServerContext) => Promise<unknown>;
+type ResourceListCallback = (
+	request: { params?: { cursor?: string } },
+	ctx: ServerContext,
+) => Promise<{ resources: Array<{ uri: string }>; nextCursor?: string }>;
 
 describe('McpReadToolService', () => {
 	let service: McpReadToolService;
@@ -20,12 +24,14 @@ describe('McpReadToolService', () => {
 		getInstallation: jest.Mock;
 		getSecurityStatus: jest.Mock;
 		getWeather: jest.Mock;
+		listSpaces: jest.Mock;
 	};
 	let policyService: { authorizeClient: jest.Mock };
 	let registerTool: jest.Mock;
 	let registerResource: jest.Mock;
 	let callbacks: Map<string, ToolCallback>;
 	let resourceCallbacks: Map<string, ResourceCallback>;
+	let resourceListCallback: ResourceListCallback | undefined;
 
 	beforeEach(() => {
 		contextService = {
@@ -39,12 +45,14 @@ describe('McpReadToolService', () => {
 			}),
 			getSecurityStatus: jest.fn().mockResolvedValue({ active_alerts_count: 0 }),
 			getWeather: jest.fn().mockResolvedValue({ location: 'Prague' }),
+			listSpaces: jest.fn().mockResolvedValue({ spaces: [], nextCursor: undefined }),
 		};
 		policyService = {
 			authorizeClient: jest.fn().mockResolvedValue({ effectiveCapabilities: [McpCapability.READ] }),
 		};
 		callbacks = new Map();
 		resourceCallbacks = new Map();
+		resourceListCallback = undefined;
 		registerTool = jest.fn((name: string, _config: unknown, callback: ToolCallback) => {
 			callbacks.set(name, callback);
 		});
@@ -173,8 +181,39 @@ describe('McpReadToolService', () => {
 		}
 	});
 
+	it('paginates resource discovery without repeating static resources', async () => {
+		contextService.listSpaces.mockResolvedValue({
+			spaces: [{ id: 'space-51', name: 'Workshop', type: 'room' }],
+			nextCursor: '51',
+		});
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const firstPage = await resourceListCallback?.({ params: {} }, requestContext());
+		expect(firstPage?.resources.map((resource) => resource.uri)).toEqual([
+			'smart-panel://installation',
+			'smart-panel://home/context',
+			'smart-panel://spaces/space-51/snapshot',
+		]);
+		expect(firstPage?.nextCursor).toBe('51');
+		expect(contextService.listSpaces).toHaveBeenLastCalledWith(undefined);
+
+		const nextPage = await resourceListCallback?.({ params: { cursor: '50' } }, requestContext());
+		expect(nextPage?.resources.map((resource) => resource.uri)).toEqual(['smart-panel://spaces/space-51/snapshot']);
+		expect(contextService.listSpaces).toHaveBeenLastCalledWith('50');
+	});
+
 	function server(): McpServer {
-		return { registerTool, registerResource } as unknown as McpServer;
+		return {
+			registerTool,
+			registerResource,
+			server: {
+				setRequestHandler: jest.fn((method: string, callback: ResourceListCallback) => {
+					if (method === 'resources/list') {
+						resourceListCallback = callback;
+					}
+				}),
+			},
+		} as unknown as McpServer;
 	}
 
 	function authInfo(scopes: McpCapability[]): AuthInfo {

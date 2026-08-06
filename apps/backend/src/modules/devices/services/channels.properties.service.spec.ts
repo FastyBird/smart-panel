@@ -161,6 +161,7 @@ describe('ChannelsPropertiesService', () => {
 					provide: PropertyValueService,
 					useValue: {
 						write: jest.fn(() => {}),
+						readLatestStrict: jest.fn(),
 					},
 				},
 				PropertyValueSourceRegistryService,
@@ -262,6 +263,30 @@ describe('ChannelsPropertiesService', () => {
 			expect(entityQuery.where).toHaveBeenCalledWith('property.id IN (:...propertyIds)', {
 				propertyIds: [mockChannelProperty.id],
 			});
+		});
+
+		it('strictly reloads bounded values and propagates storage failures', async () => {
+			const countQuery: any = {
+				innerJoin: jest.fn().mockReturnThis(),
+				select: jest.fn().mockReturnThis(),
+				addSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				groupBy: jest.fn().mockReturnThis(),
+				getRawMany: jest.fn().mockResolvedValue([{ channelId: mockChannel.id, propertyCount: '1' }]),
+			};
+			const entityQuery: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockResolvedValue([mockChannelProperty]),
+			};
+			jest.spyOn(dataSource, 'query').mockResolvedValue([{ id: mockChannelProperty.id }]);
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValueOnce(countQuery).mockReturnValueOnce(entityQuery);
+			propertyValueService.readLatestStrict.mockRejectedValue(new Error('storage unavailable'));
+
+			await expect(channelsPropertiesService.findBoundedForChannels([mockChannel.id], 40, true)).rejects.toThrow(
+				'storage unavailable',
+			);
+			expect(propertyValueService.readLatestStrict).toHaveBeenCalledWith(mockChannelProperty);
 		});
 	});
 

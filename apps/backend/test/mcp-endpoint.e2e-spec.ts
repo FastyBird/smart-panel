@@ -78,7 +78,16 @@ describe('MCP endpoint', () => {
 			getEnergySummary: jest.fn(),
 			getWeather: jest.fn(),
 			getSecurityStatus: jest.fn(),
-			listSpaces: jest.fn().mockResolvedValue([{ id: 'space-id', name: 'Living room', type: 'room' }]),
+			listSpaces: jest.fn().mockImplementation((cursor?: string) =>
+				Promise.resolve(
+					cursor
+						? { spaces: [{ id: 'space-id-2', name: 'Workshop', type: 'room' }] }
+						: {
+								spaces: [{ id: 'space-id', name: 'Living room', type: 'room' }],
+								nextCursor: '50',
+							},
+				),
+			),
 		};
 		const policyService = {
 			authorizeClient: jest.fn().mockResolvedValue({ effectiveCapabilities: [McpCapability.READ] }),
@@ -131,6 +140,7 @@ describe('MCP endpoint', () => {
 			expect(client.getInstructions()).toContain('Effective capabilities: read');
 			const tools = await client.listTools();
 			const resources = await client.listResources();
+			const nextResources = await client.listResources({ cursor: '50' });
 			const templates = await client.listResourceTemplates();
 			const result = await client.callTool({ name: 'get_home_context', arguments: {} });
 			const installation = await client.readResource({ uri: 'smart-panel://installation' });
@@ -148,8 +158,10 @@ describe('MCP endpoint', () => {
 					'smart-panel://installation',
 					'smart-panel://home/context',
 					'smart-panel://spaces/space-id/snapshot',
+					'smart-panel://spaces/space-id-2/snapshot',
 				]),
 			);
+			expect(nextResources.resources.map(({ uri }) => uri)).toEqual(['smart-panel://spaces/space-id-2/snapshot']);
 			expect(templates.resourceTemplates.map(({ uriTemplate }) => uriTemplate)).toContain(
 				'smart-panel://spaces/{spaceId}/snapshot',
 			);
