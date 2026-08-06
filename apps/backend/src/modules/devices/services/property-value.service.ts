@@ -218,18 +218,33 @@ export class PropertyValueService {
         SELECT *
         FROM property_value
         WHERE (${predicate})
-        GROUP BY "propertyId"
+		GROUP BY "propertyId"
 		ORDER BY time DESC
-		LIMIT 1
+		LIMIT ${TREND_POINTS_COUNT}
       `;
 
 		try {
 			const rows = await this.storageService.query<PropertyValueRow>(query);
-			const rowByKey = new Map(rows.map((row) => [row.propertyId, row]));
+			const rowsByKey = new Map<ChannelPropertyEntity['id'], PropertyValueRow[]>();
+
+			for (const row of rows) {
+				rowsByKey.set(row.propertyId, [...(rowsByKey.get(row.propertyId) ?? []), row]);
+			}
 
 			for (const [key, property] of missingByKey) {
-				const row = rowByKey.get(key);
-				const state = row ? this.toState(property, key, row) : null;
+				const propertyRows = rowsByKey.get(key) ?? [];
+
+				if (this.isNumericDataType(property.dataType)) {
+					this.recentValuesMap.set(
+						key,
+						propertyRows
+							.map((row) => row.numberValue)
+							.filter((value): value is number => value !== undefined)
+							.reverse(),
+					);
+				}
+
+				const state = propertyRows[0] ? this.toState(property, key, propertyRows[0]) : null;
 
 				if (state) {
 					this.valuesMap.set(key, state);

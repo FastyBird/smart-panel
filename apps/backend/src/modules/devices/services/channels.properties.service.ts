@@ -14,6 +14,7 @@ import { DevicesException, DevicesNotFoundException, DevicesValidationException 
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
+import { resolvePropertyUnit } from '../utils/property-metadata.utils';
 
 import { ChannelsPropertiesTypeMapperService } from './channels.properties-type-mapper.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
@@ -147,13 +148,14 @@ export class ChannelsPropertiesService {
 						.createQueryBuilder('property')
 						.innerJoinAndSelect('property.channel', 'channel')
 						.where('property.id IN (:...propertyIds)', { propertyIds })
-						.callListeners(propertyCategories === undefined)
+						.callListeners(!strictValues)
 						.getMany();
 
 		if (strictValues) {
 			const values = await this.propertyValueService.readLatestManyStrict(properties);
 
 			for (const property of properties) {
+				property.unit = resolvePropertyUnit(property);
 				property.value = values.get(property.id) ?? null;
 			}
 		}

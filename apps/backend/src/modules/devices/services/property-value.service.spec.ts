@@ -167,12 +167,13 @@ describe('PropertyValueService', () => {
 			] as ChannelPropertyEntity[];
 			storageService.query.mockResolvedValue([
 				{ propertyId: 'property-a', numberValue: 12, time: '2026-08-06T12:00:00Z' },
+				{ propertyId: 'property-a', numberValue: 10, time: '2026-08-06T11:59:00Z' },
 				{ propertyId: 'property-b', stringValue: 'true', time: '2026-08-06T12:01:00Z' },
 			]);
 
 			const result = await service.readLatestManyStrict(properties);
 
-			expect(result.get('property-a')).toEqual(expect.objectContaining({ value: 12 }));
+			expect(result.get('property-a')).toEqual(expect.objectContaining({ value: 12, trend: 'rising' }));
 			expect(result.get('property-b')).toEqual(expect.objectContaining({ value: true }));
 			expect(storageService.query).toHaveBeenCalledTimes(1);
 			expect(storageService.query).toHaveBeenCalledWith(expect.stringContaining('GROUP BY "propertyId"'));
