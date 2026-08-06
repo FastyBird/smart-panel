@@ -265,6 +265,7 @@ export class McpServerService implements OnApplicationShutdown {
 						return;
 					}
 
+					subscription.touch();
 					controller.enqueue(result.value);
 				} catch (error) {
 					subscription.close();

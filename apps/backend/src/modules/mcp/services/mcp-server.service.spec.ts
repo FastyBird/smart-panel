@@ -4,7 +4,7 @@ import { UnauthorizedException } from '@nestjs/common';
 
 import { McpPolicyRequest } from './mcp-policy.service';
 import { McpServerService } from './mcp-server.service';
-import { McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
+import { McpSubscriptionHandle, McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
 
 describe('McpServerService policy revision', () => {
 	let service: McpServerService;
@@ -50,5 +50,31 @@ describe('McpServerService policy revision', () => {
 
 		expect(service.getPolicyRevision()).toBe(revision + 1);
 		expect(subscriptions.closeAll).toHaveBeenCalledTimes(1);
+	});
+
+	it('refreshes the idle deadline when subscription traffic is forwarded', async () => {
+		const touch = jest.fn();
+		const close = jest.fn();
+		const upstream = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(new Uint8Array([1]));
+				controller.close();
+			},
+		});
+		const response = new Response(upstream, { headers: { 'content-type': 'text/event-stream' } });
+		const subscription = { close, touch } as unknown as McpSubscriptionHandle;
+		const tracked = (
+			service as unknown as {
+				trackSubscriptionResponse(response: Response, subscription: McpSubscriptionHandle): Response;
+			}
+		).trackSubscriptionResponse(response, subscription);
+		const reader = tracked.body?.getReader();
+
+		await expect(reader?.read()).resolves.toEqual({ done: false, value: new Uint8Array([1]) });
+		expect(touch).toHaveBeenCalledTimes(1);
+		expect(close).not.toHaveBeenCalled();
+
+		await expect(reader?.read()).resolves.toEqual({ done: true, value: undefined });
+		expect(close).toHaveBeenCalledTimes(1);
 	});
 });
