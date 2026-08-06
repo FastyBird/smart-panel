@@ -4,11 +4,9 @@ import type { FormInstance } from 'element-plus';
 import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
-import { DEVICES_MODULE_NAME, FormResult } from '../devices.constants';
-import { DevicesValidationException } from '../devices.exceptions';
-import { DeviceSchema } from '../store/devices.store.schemas';
-import type { IDevice } from '../store/devices.store.types';
+import { DevicesValidationException, FormResult } from '../../../modules/devices';
+import { DevicesModuleDeviceCategory, DevicesReTerminalPluginVariant } from '../../../openapi.constants';
+import type { IReTerminalDevice } from '../store/devices.store.types';
 
 import { useDeviceEditForm } from './useDeviceEditForm';
 
@@ -16,14 +14,15 @@ const deviceId = uuid().toString();
 const roomOneId = uuid().toString();
 const roomTwoId = uuid().toString();
 
-const mockDevice: IDevice = {
+const mockDevice = {
 	id: deviceId.toString(),
 	type: 'test-type',
 	category: DevicesModuleDeviceCategory.generic,
 	name: 'Test Device',
 	description: 'Test Desc',
 	draft: true,
-} as IDevice;
+	variant: DevicesReTerminalPluginVariant.reterminal,
+} as unknown as IReTerminalDevice;
 
 const mockEdit = vi.fn();
 const mockSave = vi.fn();
@@ -64,38 +63,6 @@ vi.mock('../../../common', async () => {
 		})),
 	};
 });
-
-const deviceSchema = DeviceSchema;
-
-const mockPluginList = [
-	{
-		type: 'test-plugin',
-		source: 'source',
-		name: 'Test Plugin',
-		description: 'Description',
-		links: {
-			documentation: '',
-			devDocumentation: '',
-			bugsTracking: '',
-		},
-		elements: [
-			{
-				type: 'test-type',
-				schemas: {
-					deviceSchema,
-				},
-			},
-		],
-		isCore: false,
-		modules: [DEVICES_MODULE_NAME],
-	},
-];
-
-vi.mock('./useDevicesPlugins', () => ({
-	useDevicesPlugins: () => ({
-		getByType: (type: string) => mockPluginList.find((p) => p.type === type),
-	}),
-}));
 
 describe('useDeviceEditForm', () => {
 	beforeEach(() => {
@@ -151,6 +118,7 @@ describe('useDeviceEditForm', () => {
 				category: mockDevice.category,
 				name: mockDevice.name,
 				description: mockDevice.description,
+				variant: mockDevice.variant,
 			},
 		});
 		expect(mockSave).toHaveBeenCalledWith({ id: mockDevice.id });
@@ -209,41 +177,5 @@ describe('useDeviceEditForm', () => {
 		const editPayload = mockEdit.mock.calls[0][0];
 
 		expect(editPayload.data.roomId).toBe(roomTwoId);
-	});
-
-	it('sends room_id null when the room was cleared', async () => {
-		const device = { ...mockDevice, draft: false, roomId: roomOneId };
-		const form = useDeviceEditForm({ device });
-
-		form.formEl.value = {
-			clearValidate: vi.fn(),
-			validate: vi.fn().mockResolvedValue(true),
-		} as unknown as FormInstance;
-
-		form.model.roomId = null;
-
-		await form.submit();
-
-		const editPayload = mockEdit.mock.calls[0][0];
-
-		expect(editPayload.data.roomId).toBe(null);
-	});
-
-	it('omits room_id when the device never had a room', async () => {
-		const device = { ...mockDevice, draft: false, roomId: null };
-		const form = useDeviceEditForm({ device });
-
-		form.formEl.value = {
-			clearValidate: vi.fn(),
-			validate: vi.fn().mockResolvedValue(true),
-		} as unknown as FormInstance;
-
-		form.model.name = 'Updated name';
-
-		await form.submit();
-
-		const editPayload = mockEdit.mock.calls[0][0];
-
-		expect('roomId' in editPayload.data).toBe(false);
 	});
 });

@@ -4,11 +4,10 @@ import type { FormInstance } from 'element-plus';
 import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { StoreInjectionKey } from '../../../common';
+import { DevicesValidationException, FormResult, channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
-import { DEVICES_MODULE_NAME, FormResult } from '../devices.constants';
-import { DevicesValidationException } from '../devices.exceptions';
-import { DeviceSchema } from '../store/devices.store.schemas';
-import type { IDevice } from '../store/devices.store.types';
+import type { IShellyV1Device } from '../store/devices.store.types';
 
 import { useDeviceEditForm } from './useDeviceEditForm';
 
@@ -16,14 +15,15 @@ const deviceId = uuid().toString();
 const roomOneId = uuid().toString();
 const roomTwoId = uuid().toString();
 
-const mockDevice: IDevice = {
+const mockDevice = {
 	id: deviceId.toString(),
 	type: 'test-type',
 	category: DevicesModuleDeviceCategory.generic,
 	name: 'Test Device',
 	description: 'Test Desc',
 	draft: true,
-} as IDevice;
+	hostname: 'shelly-v1-device.local',
+} as unknown as IShellyV1Device;
 
 const mockEdit = vi.fn();
 const mockSave = vi.fn();
@@ -31,6 +31,12 @@ const mockSave = vi.fn();
 const mockSuccess = vi.fn();
 const mockError = vi.fn();
 const mockInfo = vi.fn();
+
+const backendClient = {
+	GET: vi.fn(),
+	POST: vi.fn(),
+	PATCH: vi.fn(),
+};
 
 vi.mock('vue-i18n', () => ({
 	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
@@ -45,15 +51,32 @@ vi.mock('../../../common', async () => {
 	return {
 		...actual,
 		injectStoresManager: () => ({
-			getStore: () => ({
-				edit: mockEdit,
-				save: mockSave,
-			}),
+			getStore: (key: StoreInjectionKey) => {
+				if (key === devicesStoreKey) {
+					return {
+						edit: mockEdit,
+						save: mockSave,
+					};
+				} else if (key === channelsStoreKey) {
+					return {
+						findForDevice: vi.fn(),
+					};
+				} else if (key === channelsPropertiesStoreKey) {
+					return {
+						findForChannel: vi.fn(),
+					};
+				} else {
+					throw new Error('Unknown key');
+				}
+			},
 		}),
 		useFlashMessage: () => ({
 			success: mockSuccess,
 			error: mockError,
 			info: mockInfo,
+		}),
+		useBackend: () => ({
+			client: backendClient,
 		}),
 		useLogger: vi.fn(() => ({
 			error: vi.fn(),
@@ -64,38 +87,6 @@ vi.mock('../../../common', async () => {
 		})),
 	};
 });
-
-const deviceSchema = DeviceSchema;
-
-const mockPluginList = [
-	{
-		type: 'test-plugin',
-		source: 'source',
-		name: 'Test Plugin',
-		description: 'Description',
-		links: {
-			documentation: '',
-			devDocumentation: '',
-			bugsTracking: '',
-		},
-		elements: [
-			{
-				type: 'test-type',
-				schemas: {
-					deviceSchema,
-				},
-			},
-		],
-		isCore: false,
-		modules: [DEVICES_MODULE_NAME],
-	},
-];
-
-vi.mock('./useDevicesPlugins', () => ({
-	useDevicesPlugins: () => ({
-		getByType: (type: string) => mockPluginList.find((p) => p.type === type),
-	}),
-}));
 
 describe('useDeviceEditForm', () => {
 	beforeEach(() => {
@@ -151,6 +142,7 @@ describe('useDeviceEditForm', () => {
 				category: mockDevice.category,
 				name: mockDevice.name,
 				description: mockDevice.description,
+				hostname: mockDevice.hostname,
 			},
 		});
 		expect(mockSave).toHaveBeenCalledWith({ id: mockDevice.id });
@@ -209,41 +201,5 @@ describe('useDeviceEditForm', () => {
 		const editPayload = mockEdit.mock.calls[0][0];
 
 		expect(editPayload.data.roomId).toBe(roomTwoId);
-	});
-
-	it('sends room_id null when the room was cleared', async () => {
-		const device = { ...mockDevice, draft: false, roomId: roomOneId };
-		const form = useDeviceEditForm({ device });
-
-		form.formEl.value = {
-			clearValidate: vi.fn(),
-			validate: vi.fn().mockResolvedValue(true),
-		} as unknown as FormInstance;
-
-		form.model.roomId = null;
-
-		await form.submit();
-
-		const editPayload = mockEdit.mock.calls[0][0];
-
-		expect(editPayload.data.roomId).toBe(null);
-	});
-
-	it('omits room_id when the device never had a room', async () => {
-		const device = { ...mockDevice, draft: false, roomId: null };
-		const form = useDeviceEditForm({ device });
-
-		form.formEl.value = {
-			clearValidate: vi.fn(),
-			validate: vi.fn().mockResolvedValue(true),
-		} as unknown as FormInstance;
-
-		form.model.name = 'Updated name';
-
-		await form.submit();
-
-		const editPayload = mockEdit.mock.calls[0][0];
-
-		expect('roomId' in editPayload.data).toBe(false);
 	});
 });

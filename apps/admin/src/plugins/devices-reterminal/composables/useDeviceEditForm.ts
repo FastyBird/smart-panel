@@ -80,13 +80,19 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 			throw new DevicesReTerminalValidationException('Failed to validate edit device model.');
 		}
 
+		const data = { ...parsedModel.data };
+
+		if (isEqual(data.roomId, initialModel.roomId)) {
+			delete data.roomId;
+		}
+
 		formResult.value = FormResult.WORKING;
 
 		try {
 			await devicesStore.edit({
 				id: device.id,
 				data: {
-					...parsedModel.data,
+					...data,
 					type: device.type,
 				},
 			});
