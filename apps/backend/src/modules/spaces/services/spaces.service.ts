@@ -36,7 +36,8 @@ import { SpaceTypeMapping, SpacesTypeMapperService } from './spaces-type-mapper.
 
 export interface SpaceSnapshotScope {
 	deviceScope: VisibleDeviceSummaryScope;
-	sceneSpaceIds: string[];
+	sceneSpaceIds?: string[];
+	wholeHome: boolean;
 }
 
 /**
@@ -545,18 +546,22 @@ export class SpacesService {
 	}
 
 	async resolveSnapshotScope(space: SpaceEntity): Promise<SpaceSnapshotScope> {
+		if (space.type === SpaceType.MASTER) {
+			return { deviceScope: {}, wholeHome: true };
+		}
+
 		if (space.type === SpaceType.ROOM) {
-			return { deviceScope: { roomIds: [space.id] }, sceneSpaceIds: [space.id] };
+			return { deviceScope: { roomIds: [space.id] }, sceneSpaceIds: [space.id], wholeHome: false };
 		}
 
 		if (space.type !== SpaceType.ZONE) {
-			return { deviceScope: { roomIds: [] }, sceneSpaceIds: [] };
+			return { deviceScope: { roomIds: [] }, sceneSpaceIds: [], wholeHome: false };
 		}
 
 		const category = (space as { category?: string | null }).category ?? null;
 
 		if (!isFloorZoneCategory(category)) {
-			return { deviceScope: { zoneId: space.id }, sceneSpaceIds: [space.id] };
+			return { deviceScope: { zoneId: space.id }, sceneSpaceIds: [space.id], wholeHome: false };
 		}
 
 		const childRooms = await this.repository.find({
@@ -565,7 +570,7 @@ export class SpacesService {
 		});
 		const roomIds = childRooms.map((room) => room.id);
 
-		return { deviceScope: { roomIds }, sceneSpaceIds: [space.id, ...roomIds] };
+		return { deviceScope: { roomIds }, sceneSpaceIds: [space.id, ...roomIds], wholeHome: false };
 	}
 
 	/**

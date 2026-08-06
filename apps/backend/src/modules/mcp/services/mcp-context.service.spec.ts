@@ -55,6 +55,7 @@ describe('McpContextService', () => {
 				Promise.resolve({
 					deviceScope: space.type === SpaceType.ROOM ? { roomIds: [space.id] } : { zoneId: space.id },
 					sceneSpaceIds: [space.id],
+					wholeHome: false,
 				}),
 			),
 		};
@@ -219,6 +220,7 @@ describe('McpContextService', () => {
 		spaces.resolveSnapshotScope.mockResolvedValue({
 			deviceScope: { roomIds: ['room-1', 'room-2'] },
 			sceneSpaceIds: ['floor-id', 'room-1', 'room-2'],
+			wholeHome: false,
 		});
 		spaces.findVisibleDeviceSummariesBySpace.mockResolvedValue({ devices: [], total: 0 });
 
@@ -230,6 +232,32 @@ describe('McpContextService', () => {
 			MCP_MAX_SECURITY_CHANNELS_PER_DEVICE,
 			MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
 			{ roomIds: ['room-1', 'room-2'] },
+		);
+	});
+
+	it('uses whole-home data for a master snapshot', async () => {
+		const master = {
+			id: 'master-id',
+			name: 'My home',
+			type: SpaceType.MASTER,
+			parentId: null,
+		} as unknown as SpaceEntity;
+		spaces.findOne.mockResolvedValue(master);
+		spaces.resolveSnapshotScope.mockResolvedValue({ deviceScope: {}, wholeHome: true });
+		spaces.findVisibleDeviceSummariesBySpace.mockResolvedValue({ devices: [], total: 3 });
+		energy.getSummary.mockResolvedValue({ totalConsumptionKwh: 5 });
+
+		const result = await service.getHomeContext('master-id');
+
+		expect(result.scope).toEqual({ type: 'space', id: 'master-id', name: 'My home' });
+		expect(scenes.findSummaryPage).toHaveBeenCalledWith(MCP_MAX_CONTEXT_SCENES, undefined);
+		expect(energy.getSummary).toHaveBeenCalled();
+		expect(energy.getSpaceSummary).not.toHaveBeenCalled();
+		expect(security.getBoundedStatus).toHaveBeenCalledWith(
+			MCP_MAX_SECURITY_DEVICES,
+			MCP_MAX_SECURITY_CHANNELS_PER_DEVICE,
+			MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
+			{},
 		);
 	});
 

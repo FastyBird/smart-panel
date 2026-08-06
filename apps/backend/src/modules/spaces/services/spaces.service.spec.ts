@@ -371,6 +371,15 @@ describe('SpacesService', () => {
 			});
 			expect(devicesService.findVisibleSummaryPage).toHaveBeenCalledWith(100, { roomIds });
 		});
+
+		it('resolves master spaces to whole-home scope', async () => {
+			await expect(
+				service.resolveSnapshotScope({ id: 'master-id', type: SpaceType.MASTER } as SpaceEntity),
+			).resolves.toEqual({
+				deviceScope: {},
+				wholeHome: true,
+			});
+		});
 	});
 
 	describe('getOneOrThrow', () => {

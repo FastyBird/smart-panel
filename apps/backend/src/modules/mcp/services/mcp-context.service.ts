@@ -106,7 +106,13 @@ export class McpContextService {
 			spaceCountsPromise,
 			this.scenesService.findSummaryPage(MCP_MAX_CONTEXT_SCENES, snapshotScope?.sceneSpaceIds),
 			this.optional(() => this.weatherService.getPrimaryWeather()),
-			this.optional(() => this.getEnergySummaryData(undefined, undefined, selectedSpace ?? undefined)),
+			this.optional(() =>
+				this.getEnergySummaryData(
+					undefined,
+					undefined,
+					snapshotScope?.wholeHome ? undefined : (selectedSpace ?? undefined),
+				),
+			),
 			this.optional(() =>
 				this.securityService.getBoundedStatus(
 					MCP_MAX_SECURITY_DEVICES,
