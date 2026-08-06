@@ -525,6 +525,9 @@ describe('VirtualWizardMappingStep', () => {
 			expect(isValid.value).toBe(true);
 			expect(progressBar().props('percentage')).toBe(100);
 			expect(progressBar().props('status')).toBe('success');
+
+			// The prompt to map something must not survive next to a completed bar.
+			expect(wrapper.get('[data-test-id="mapping-progress"]').text()).not.toContain('devicesVirtualPlugin.wizard.mapping.noRequired');
 		});
 	});
 

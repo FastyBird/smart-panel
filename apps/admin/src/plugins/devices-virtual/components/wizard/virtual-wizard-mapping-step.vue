@@ -36,9 +36,10 @@
 				</el-text>
 
 				<!-- "0 of 0 required properties mapped" is meaningless and reads as finished. These
-					categories still need at least one borrowed property, so say that instead. -->
+					categories still need at least one borrowed property, so say that instead — and only
+					until one is mapped, or the prompt would contradict the completed bar beside it. -->
 				<el-text
-					v-else
+					v-else-if="!hasMapping"
 					size="small"
 				>
 					{{ t('devicesVirtualPlugin.wizard.mapping.noRequired') }}
