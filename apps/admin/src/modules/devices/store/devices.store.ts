@@ -96,6 +96,16 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 	const pendingFetchPromises: Record<string, Promise<IDevice[]>> = {};
 
+	// Tracks how many `fetch()` calls are in flight right now (across all `hidden` values), so the
+	// semaphore is only cleared once every one of them has settled, not just whichever finishes first.
+	let inFlightFetchCount = 0;
+
+	// Bumped on every `fetch()` call and captured per-call. A response is only applied to `data.value`
+	// if its token still matches the latest one issued: otherwise a newer fetch (e.g. the device list's
+	// "show hidden" toggle flipping again before this call's response arrived) has already superseded
+	// it, and applying a stale, slower response would silently show the wrong device set.
+	let latestFetchToken = 0;
+
 	const onEvent = (payload: IDevicesOnEventActionPayload): IDevice => {
 		const element = getPluginElement(payload.type);
 
@@ -205,17 +215,23 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 	};
 
 	const fetch = async (payload?: IDevicesFetchActionPayload): Promise<IDevice[]> => {
-		if ('all' in pendingFetchPromises) {
-			return pendingFetchPromises['all'];
+		// Keyed by the requested `hidden` value (not a fixed key): two calls asking for the same thing
+		// share one in-flight request, but two calls asking for *different* things — e.g. the device
+		// list's mount fetch (hidden=false) still in flight when the "show hidden" toggle flips to
+		// hidden=all — must not silently collapse into whichever happened to start first.
+		const cacheKey = payload?.hidden ?? 'default';
+
+		const existingPromise = pendingFetchPromises[cacheKey];
+		if (existingPromise) {
+			return existingPromise;
 		}
 
+		const token = ++latestFetchToken;
+
+		inFlightFetchCount += 1;
+		semaphore.value.fetching.items = true;
+
 		const fetchPromise = (async (): Promise<IDevice[]> => {
-			if (semaphore.value.fetching.items) {
-				throw new DevicesApiException('Already fetching devices.');
-			}
-
-			semaphore.value.fetching.items = true;
-
 			try {
 				const {
 					data: responseData,
@@ -230,16 +246,23 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				});
 
 				if (typeof responseData !== 'undefined') {
+					// A newer fetch has already been issued for a different `hidden` value — this
+					// response is stale, so skip transforming it and leave the (still current, more
+					// recent) `data.value` and related stores exactly as the winning request left them.
+					if (token !== latestFetchToken) {
+						return Object.values(data.value);
+					}
+
 					data.value = Object.fromEntries(
 						responseData.data.map((device) => {
 							const element = getPluginElement(device.type);
 
-							const transformed = transformDeviceResponse(device, element?.schemas?.deviceSchema || DeviceSchema);
+							const transformedDevice = transformDeviceResponse(device, element?.schemas?.deviceSchema || DeviceSchema);
 
-							insertDeviceControlsRelations(transformed, device.controls);
-							insertChannelsRelations(transformed, device.channels);
+							insertDeviceControlsRelations(transformedDevice, device.controls);
+							insertChannelsRelations(transformedDevice, device.channels);
 
-							return [transformed.id, transformed];
+							return [transformedDevice.id, transformedDevice];
 						})
 					);
 
@@ -256,16 +279,20 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 				throw new DevicesApiException(errorReason, response.status);
 			} finally {
-				semaphore.value.fetching.items = false;
+				inFlightFetchCount -= 1;
+
+				if (inFlightFetchCount === 0) {
+					semaphore.value.fetching.items = false;
+				}
 			}
 		})();
 
-		pendingFetchPromises['all'] = fetchPromise;
+		pendingFetchPromises[cacheKey] = fetchPromise;
 
 		try {
 			return await fetchPromise;
 		} finally {
-			delete pendingFetchPromises['all'];
+			delete pendingFetchPromises[cacheKey];
 		}
 	};
 
