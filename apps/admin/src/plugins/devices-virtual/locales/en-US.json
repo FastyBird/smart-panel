@@ -53,8 +53,10 @@
 			"description": "Every property below comes from a real device. Fill at least the required ones — the rest are optional and can stay empty.",
 			"noCategory": "Choose a device category first.",
 			"progress": "{filled} of {total} required properties mapped",
-			"required": "Required",
-			"optional": "Optional",
+			"noRequired": "This category has no required properties — map at least one to continue",
+			"channelRequired": "Required",
+			"channelOptional": "Optional",
+			"propertyRequired": "Required",
 			"showOptional": "Show {count} more optional properties",
 			"source": {
 				"devicePlaceholder": "Source device",

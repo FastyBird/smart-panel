@@ -53,8 +53,10 @@
 			"description": "Jede Eigenschaft unten stammt von einem echten Gerät. Füllen Sie mindestens die erforderlichen aus — die übrigen sind optional und dürfen leer bleiben.",
 			"noCategory": "Wählen Sie zuerst eine Gerätekategorie.",
 			"progress": "{filled} von {total} erforderlichen Eigenschaften zugeordnet",
-			"required": "Erforderlich",
-			"optional": "Optional",
+			"noRequired": "Diese Kategorie hat keine erforderlichen Eigenschaften — ordnen Sie mindestens eine zu, um fortzufahren",
+			"channelRequired": "Erforderlich",
+			"channelOptional": "Optional",
+			"propertyRequired": "Erforderlich",
 			"showOptional": "{count} weitere optionale Eigenschaften anzeigen",
 			"source": {
 				"devicePlaceholder": "Quellgerät",

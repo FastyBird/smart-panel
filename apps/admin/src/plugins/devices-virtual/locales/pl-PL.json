@@ -53,8 +53,10 @@
 			"description": "Każda właściwość poniżej pochodzi z rzeczywistego urządzenia. Wypełnij co najmniej wymagane — pozostałe są opcjonalne i mogą zostać puste.",
 			"noCategory": "Najpierw wybierz kategorię urządzenia.",
 			"progress": "Zmapowano {filled} z {total} wymaganych właściwości",
-			"required": "Wymagana",
-			"optional": "Opcjonalna",
+			"noRequired": "Ta kategoria nie ma wymaganych właściwości — zmapuj co najmniej jedną, aby kontynuować",
+			"channelRequired": "Wymagany",
+			"channelOptional": "Opcjonalny",
+			"propertyRequired": "Wymagana",
 			"showOptional": "Pokaż jeszcze {count} właściwości opcjonalnych",
 			"source": {
 				"devicePlaceholder": "Urządzenie źródłowe",

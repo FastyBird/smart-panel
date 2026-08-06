@@ -23,15 +23,25 @@
 			>
 				<el-progress
 					:percentage="progressPercentage"
-					:status="progress.remaining.length === 0 ? 'success' : undefined"
+					:status="isComplete ? 'success' : undefined"
 					class="grow"
 				/>
 
 				<el-text
+					v-if="progress.requiredTotal > 0"
 					size="small"
 					class="whitespace-nowrap"
 				>
 					{{ t('devicesVirtualPlugin.wizard.mapping.progress', { filled: progress.requiredFilled, total: progress.requiredTotal }) }}
+				</el-text>
+
+				<!-- "0 of 0 required properties mapped" is meaningless and reads as finished. These
+					categories still need at least one borrowed property, so say that instead. -->
+				<el-text
+					v-else
+					size="small"
+				>
+					{{ t('devicesVirtualPlugin.wizard.mapping.noRequired') }}
 				</el-text>
 			</div>
 
@@ -44,11 +54,15 @@
 				<div class="flex items-center gap-2 flex-wrap">
 					<strong>{{ t(`devicesModule.categories.channels.${group.specChannel}`) }}</strong>
 
+					<!-- The channel tag and the property tag below read from separate keys even though English
+						renders both the same word: the adjective agrees with the noun it labels, and "channel"
+						and "property" do not share a gender in four of the six locales (es canal m. /
+						propiedad f., pl kanał m. / właściwość f., and the same split in cs and sk). -->
 					<el-tag
 						:type="group.required ? 'danger' : 'info'"
 						size="small"
 					>
-						{{ group.required ? t('devicesVirtualPlugin.wizard.mapping.required') : t('devicesVirtualPlugin.wizard.mapping.optional') }}
+						{{ group.required ? t('devicesVirtualPlugin.wizard.mapping.channelRequired') : t('devicesVirtualPlugin.wizard.mapping.channelOptional') }}
 					</el-tag>
 				</div>
 
@@ -118,7 +132,7 @@
 							type="danger"
 							size="small"
 						>
-							{{ t('devicesVirtualPlugin.wizard.mapping.required') }}
+							{{ t('devicesVirtualPlugin.wizard.mapping.propertyRequired') }}
 						</el-tag>
 
 						<el-text
@@ -372,9 +386,26 @@ const progress = computed<IVirtualMappingProgress>((): IVirtualMappingProgress =
 	};
 });
 
-const progressPercentage = computed<number>((): number =>
-	progress.value.requiredTotal === 0 ? 100 : Math.round((progress.value.requiredFilled / progress.value.requiredTotal) * 100)
-);
+// A virtual device that borrows nothing is not a virtual device, whatever its category's required set
+// happens to look like. That is not a hypothetical: `device_information` is filtered out of the
+// expansion above (rightly — the backend owns those properties), and it is the *only* required channel
+// of five of the 32 categories — `switcher`, `generic`, `sensor`, `terminal` and `game_console`. Their
+// required set is therefore empty, so without this the step would report itself complete on arrival,
+// before the user had mapped anything. `switcher` is exactly the flagship case: splitting a four-relay
+// device into per-room switches.
+const hasMapping = computed<boolean>((): boolean => Object.keys(selections).length > 0);
+
+const isComplete = computed<boolean>((): boolean => hasMapping.value && progress.value.remaining.length === 0);
+
+const progressPercentage = computed<number>((): number => {
+	// With nothing required to count, the bar tracks the "at least one mapping" rule instead — it must
+	// not render a full bar on a step where nothing has been done.
+	if (progress.value.requiredTotal === 0) {
+		return hasMapping.value ? 100 : 0;
+	}
+
+	return Math.round((progress.value.requiredFilled / progress.value.requiredTotal) * 100);
+});
 
 const isChecking = computed<boolean>((): boolean => Object.values(checking).some((value: boolean): boolean => value));
 
@@ -382,7 +413,7 @@ const isChecking = computed<boolean>((): boolean => Object.values(checking).some
 // platform, so the wizard must not be able to move past it. An unfinished check counts as not-yet-
 // proven and blocks too, so the user cannot outrun the verdict by clicking straight through.
 const isValid = computed<boolean>(
-	(): boolean => props.category !== null && progress.value.remaining.length === 0 && Object.keys(errors).length === 0 && !isChecking.value
+	(): boolean => props.category !== null && isComplete.value && Object.keys(errors).length === 0 && !isChecking.value
 );
 
 const sourceDevicesOptions = computed<{ value: IDevice['id']; label: string }[]>((): { value: IDevice['id']; label: string }[] =>
@@ -641,8 +672,9 @@ const applyChannel = async (specChannel: DevicesModuleChannelCategory, sourceCha
 			continue;
 		}
 
-		slotTokens.set(slot.key, ++requestCounter);
-
+		// No token bump here: this loop is synchronous and `runCompatibility` below re-stamps every
+		// candidate with one fresh token before it awaits anything, so nothing can interleave and there
+		// is no window for a stale verdict to land in.
 		delete errors[slot.key];
 
 		selections[slot.key] = match.id;
@@ -750,6 +782,33 @@ watch(
 			delete selections[slotKey];
 		}
 
+		// The errors and the in-flight flags describe the selections that were just discarded, so they go
+		// with them. Left behind, an error would keep `isValid` false against a mapping that no longer
+		// exists — and permanently: its slot is still rendered (an error keeps a slot visible) but its
+		// property select now holds nothing, and Element Plus only draws the clear affordance when there
+		// is a value, so there would be no on-screen action that clears the error.
+		for (const slotKey of Object.keys(errors)) {
+			delete errors[slotKey];
+		}
+
+		for (const slotKey of Object.keys(checking)) {
+			delete checking[slotKey];
+		}
+
+		// Presentational only, but re-derived from the adopted mappings rather than kept: a picker still
+		// pointing at the replaced source's channel would offer a property list not containing the
+		// mapping it is supposed to be showing.
+		for (const slotKey of Object.keys(pickers)) {
+			delete pickers[slotKey];
+		}
+
+		// Everything still in flight was checking a selection that has just been replaced.
+		slotTokens.clear();
+
+		// Mappings adopted here are taken as given — they are not re-checked against the compatibility
+		// endpoint. That is right for in-session back-navigation, where every one of them was verified on
+		// the way in, and it is why the wizard shell must never hand this step a mapping that did not
+		// come from it.
 		for (const mapping of value) {
 			if (mapping.sourceProperty === null) {
 				continue;
@@ -815,6 +874,9 @@ defineExpose({
 	groups,
 	errors,
 	checking,
+	// Presentational state, exposed for the same reason `errors` and `checking` are: the resets that
+	// keep it consistent with `selections` are the part worth pinning down in a test.
+	pickers,
 	progress,
 	isValid,
 	sourceDevicesOptions,

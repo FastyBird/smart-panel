@@ -53,8 +53,10 @@
 			"description": "Každá vlastnost níže pochází ze skutečného zařízení. Vyplňte alespoň povinné — ostatní jsou volitelné a mohou zůstat prázdné.",
 			"noCategory": "Nejprve vyberte kategorii zařízení.",
 			"progress": "Namapováno {filled} z {total} povinných vlastností",
-			"required": "Povinné",
-			"optional": "Volitelné",
+			"noRequired": "Tato kategorie nemá žádné povinné vlastnosti — pro pokračování namapujte alespoň jednu",
+			"channelRequired": "Povinný",
+			"channelOptional": "Volitelný",
+			"propertyRequired": "Povinná",
 			"showOptional": "Zobrazit dalších {count} volitelných vlastností",
 			"source": {
 				"devicePlaceholder": "Zdrojové zařízení",

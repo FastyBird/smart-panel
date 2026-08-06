@@ -1,5 +1,6 @@
 import { computed, nextTick } from 'vue';
 
+import { ElProgress } from 'element-plus';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { mount } from '@vue/test-utils';
@@ -241,6 +242,10 @@ const mountMappingStep = (props: Partial<IVirtualWizardMappingStepProps> = {}) =
 		await nextTick();
 	};
 
+	// The rendered bar, not just the numbers behind it: "reports itself complete" is something the user
+	// sees, and a green 100% bar says it just as loudly as `isValid` does.
+	const progressBar = () => wrapper.findComponent(ElProgress);
+
 	return {
 		wrapper,
 		slots: computed(() => wrapper.vm.slots),
@@ -249,11 +254,22 @@ const mountMappingStep = (props: Partial<IVirtualWizardMappingStepProps> = {}) =
 		progress: computed(() => wrapper.vm.progress),
 		isValid: computed(() => wrapper.vm.isValid),
 		sourceDevicesOptions: computed(() => wrapper.vm.sourceDevicesOptions),
+		progressBar,
 		slotFor,
 		selectSource,
 		applyChannel: wrapper.vm.applyChannel,
 	};
 };
+
+const mapping = (
+	specChannel: DevicesModuleChannelCategory,
+	specProperty: DevicesModuleChannelPropertyCategory,
+	sourceProperty: string | null
+): { specChannel: DevicesModuleChannelCategory; specProperty: DevicesModuleChannelPropertyCategory; sourceProperty: string | null } => ({
+	specChannel,
+	specProperty,
+	sourceProperty,
+});
 
 describe('VirtualWizardMappingStep', () => {
 	beforeEach(() => {
@@ -462,5 +478,217 @@ describe('VirtualWizardMappingStep', () => {
 
 		expect(errors.value.on).toBe('Source property does not exist');
 		expect(isValid.value).toBe(false);
+	});
+
+	// `device_information` is filtered out of the expansion, and for five of the 32 categories —
+	// `switcher`, `generic`, `sensor`, `terminal`, `game_console` — it is the *only* required channel.
+	// Their required set is therefore empty, so "nothing outstanding" is true from the first render and
+	// must not be read as "finished". `switcher` is the flagship case: splitting a four-relay device
+	// into per-room switches is what the whole feature exists for, and it is not a blocked category.
+	describe('a category whose required set is empty once device_information is filtered out', () => {
+		const SWITCHER_ON_SLOT = `${DevicesModuleChannelCategory.switcher}.${DevicesModuleChannelPropertyCategory.on}`;
+
+		it('has no required slot at all, and nothing outstanding', () => {
+			const { progress } = mountMappingStep({ category: DevicesModuleDeviceCategory.switcher });
+
+			expect(progress.value.requiredTotal).toBe(0);
+			expect(progress.value.remaining).toHaveLength(0);
+		});
+
+		it('is not valid before anything has been mapped', () => {
+			const { wrapper, isValid } = mountMappingStep({ category: DevicesModuleDeviceCategory.switcher });
+
+			// A virtual device that borrows no property is never valid, whatever its category's spec
+			// says — otherwise the wizard would go on to build a device that borrows nothing.
+			expect(isValid.value).toBe(false);
+			expect(wrapper.emitted('update:valid')?.[0]?.[0]).toBe(false);
+		});
+
+		it('does not render a completed progress bar before anything has been mapped', () => {
+			const { wrapper, progressBar } = mountMappingStep({ category: DevicesModuleDeviceCategory.switcher });
+
+			expect(progressBar().props('percentage')).toBe(0);
+			expect(progressBar().props('status')).not.toBe('success');
+
+			// "0 of 0 required properties mapped" reads as finished, so this category says what it needs
+			// instead.
+			expect(wrapper.get('[data-test-id="mapping-progress"]').text()).toContain('devicesVirtualPlugin.wizard.mapping.noRequired');
+		});
+
+		it('becomes valid and complete as soon as one property is mapped', async () => {
+			const { wrapper, isValid, progressBar } = mountMappingStep({ category: DevicesModuleDeviceCategory.switcher });
+
+			await wrapper.vm.selectSource(SWITCHER_ON_SLOT, PROPERTY_ON);
+
+			await nextTick();
+
+			expect(isValid.value).toBe(true);
+			expect(progressBar().props('percentage')).toBe(100);
+			expect(progressBar().props('status')).toBe('success');
+		});
+	});
+
+	describe('when the category changes', () => {
+		it('clears the mappings, the errors and the pickers left by the previous category', async () => {
+			backendClient.POST.mockResolvedValue(
+				respondWith([
+					report(DevicesModuleChannelCategory.light, DevicesModuleChannelPropertyCategory.on, READ_ONLY_PROPERTY_ID, false, PERMISSION_MISMATCH),
+				])
+			);
+
+			const { wrapper, selectSource, errors, progress, isValid } = mountMappingStep();
+
+			await selectSource(DevicesModuleChannelPropertyCategory.on, READ_ONLY_PROPERTY_ID);
+
+			expect(errors.value.on).toBe(PERMISSION_MISMATCH);
+
+			await wrapper.setProps({ category: DevicesModuleDeviceCategory.window_covering });
+
+			await nextTick();
+
+			// The old category's slots do not exist any more, so anything keyed by them would be
+			// unreachable state that blocks the step with nothing on screen to fix.
+			expect(wrapper.vm.errors).toEqual({});
+			expect(wrapper.vm.checking).toEqual({});
+			expect(wrapper.vm.pickers).toEqual({});
+			expect(progress.value.requiredTotal).toBeGreaterThan(0);
+			expect(progress.value.requiredFilled).toBe(0);
+			expect(isValid.value).toBe(false);
+		});
+
+		it('drops a verdict still in flight for the previous category', async () => {
+			let resolveStale: ((value: unknown) => void) | undefined;
+
+			backendClient.POST.mockImplementationOnce(
+				() =>
+					new Promise((resolve) => {
+						resolveStale = resolve;
+					})
+			);
+
+			const { wrapper, selectSource } = mountMappingStep();
+
+			const stale = selectSource(DevicesModuleChannelPropertyCategory.on, READ_ONLY_PROPERTY_ID);
+
+			await wrapper.setProps({ category: DevicesModuleDeviceCategory.window_covering });
+
+			await nextTick();
+
+			resolveStale?.(
+				respondWith([
+					report(DevicesModuleChannelCategory.light, DevicesModuleChannelPropertyCategory.on, READ_ONLY_PROPERTY_ID, false, PERMISSION_MISMATCH),
+				])
+			);
+
+			await stale;
+			await nextTick();
+
+			// `light.on` is not a slot of `window_covering`, so this verdict could only ever have pinned
+			// an error nothing could clear.
+			expect(wrapper.vm.errors).toEqual({});
+			expect(wrapper.vm.checking).toEqual({});
+		});
+	});
+
+	describe('when the wizard shell replaces the mapping list', () => {
+		it('adopts the supplied mappings and drops the ones it replaced', async () => {
+			const { wrapper, selectSource, progress } = mountMappingStep();
+
+			await selectSource(DevicesModuleChannelPropertyCategory.brightness, PROPERTY_ON);
+
+			await wrapper.setProps({ modelValue: [mapping(DevicesModuleChannelCategory.light, DevicesModuleChannelPropertyCategory.on, PROPERTY_ON)] });
+
+			await nextTick();
+
+			const emitted = wrapper.emitted('update:modelValue');
+			const emittedMappings = emitted?.[emitted.length - 1]?.[0] as { specChannel: string; specProperty: string; sourceProperty: string | null }[];
+
+			expect(emittedMappings.filter((entry) => entry.sourceProperty !== null)).toEqual([
+				mapping(DevicesModuleChannelCategory.light, DevicesModuleChannelPropertyCategory.on, PROPERTY_ON),
+			]);
+			expect(progress.value.requiredFilled).toBe(1);
+
+			// Presentational, but re-derived rather than kept: a picker still pointing at the replaced
+			// source's channel would offer a property list not containing the mapping it is showing.
+			expect(wrapper.vm.pickers[`${DevicesModuleChannelCategory.light}.${DevicesModuleChannelPropertyCategory.on}`]).toEqual({
+				device: DEVICE_RELAY,
+				channel: CHANNEL_SWITCHER,
+			});
+		});
+
+		it('ignores the echo of its own emit', async () => {
+			const { wrapper, selectSource, progress } = mountMappingStep();
+
+			await selectSource(DevicesModuleChannelPropertyCategory.on, PROPERTY_ON);
+
+			const emitted = wrapper.emitted('update:modelValue');
+			const emittedMappings = emitted?.[emitted.length - 1]?.[0] as { specChannel: string; specProperty: string; sourceProperty: string | null }[];
+			const emitCount = emitted?.length ?? 0;
+
+			await wrapper.setProps({ modelValue: emittedMappings });
+
+			await nextTick();
+
+			// Adopting its own emit would clear and re-add every selection, which would emit again — a
+			// loop between the step and the shell that owns the state.
+			expect(progress.value.requiredFilled).toBe(1);
+			expect(wrapper.emitted('update:modelValue')?.length).toBe(emitCount);
+		});
+
+		it('clears an error left against a mapping that is no longer in the list', async () => {
+			backendClient.POST.mockResolvedValue(
+				respondWith([
+					report(DevicesModuleChannelCategory.light, DevicesModuleChannelPropertyCategory.on, READ_ONLY_PROPERTY_ID, false, PERMISSION_MISMATCH),
+				])
+			);
+
+			const { wrapper, selectSource, errors, isValid } = mountMappingStep();
+
+			await selectSource(DevicesModuleChannelPropertyCategory.on, READ_ONLY_PROPERTY_ID);
+
+			expect(errors.value.on).toBe(PERMISSION_MISMATCH);
+			expect(isValid.value).toBe(false);
+
+			await wrapper.setProps({ modelValue: [mapping(DevicesModuleChannelCategory.light, DevicesModuleChannelPropertyCategory.on, PROPERTY_ON)] });
+
+			await nextTick();
+
+			// The refused source is gone, so its error has to go with it. Left behind it would block the
+			// step forever: the slot's property select now holds nothing, and Element Plus only draws the
+			// clear affordance when there is a value, so nothing on screen could clear it.
+			expect(errors.value.on).toBeUndefined();
+			expect(isValid.value).toBe(true);
+		});
+
+		it('drops a verdict still in flight for a selection it replaced', async () => {
+			let resolveStale: ((value: unknown) => void) | undefined;
+
+			backendClient.POST.mockImplementationOnce(
+				() =>
+					new Promise((resolve) => {
+						resolveStale = resolve;
+					})
+			);
+
+			const { wrapper, selectSource, errors, isValid } = mountMappingStep();
+
+			const stale = selectSource(DevicesModuleChannelPropertyCategory.on, READ_ONLY_PROPERTY_ID);
+
+			await wrapper.setProps({ modelValue: [mapping(DevicesModuleChannelCategory.light, DevicesModuleChannelPropertyCategory.on, PROPERTY_ON)] });
+
+			await nextTick();
+
+			resolveStale?.(
+				respondWith([
+					report(DevicesModuleChannelCategory.light, DevicesModuleChannelPropertyCategory.on, READ_ONLY_PROPERTY_ID, false, PERMISSION_MISMATCH),
+				])
+			);
+
+			await stale;
+			await nextTick();
+
+			expect(errors.value.on).toBeUndefined();
+			expect(isValid.value).toBe(true);
+		});
 	});
 });

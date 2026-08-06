@@ -53,8 +53,10 @@
 			"description": "Cada propiedad de abajo proviene de un dispositivo real. Complete al menos las obligatorias; las demás son opcionales y pueden quedar vacías.",
 			"noCategory": "Elija primero una categoría de dispositivo.",
 			"progress": "{filled} de {total} propiedades obligatorias asignadas",
-			"required": "Obligatoria",
-			"optional": "Opcional",
+			"noRequired": "Esta categoría no tiene propiedades obligatorias — asigne al menos una para continuar",
+			"channelRequired": "Obligatorio",
+			"channelOptional": "Opcional",
+			"propertyRequired": "Obligatoria",
 			"showOptional": "Mostrar {count} propiedades opcionales más",
 			"source": {
 				"devicePlaceholder": "Dispositivo de origen",
