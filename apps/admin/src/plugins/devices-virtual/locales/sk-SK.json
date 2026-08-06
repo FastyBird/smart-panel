@@ -31,5 +31,22 @@
 				"title": "Povolené"
 			}
 		}
+	},
+	"wizard": {
+		"title": "Vytvoriť virtuálne zariadenie",
+		"subtitle": "Zostavte zariadenie z kanálov iného zariadenia",
+		"breadcrumb": "Vytvoriť virtuálne zariadenie",
+		"steps": {
+			"category": "Kategória",
+			"mapping": "Mapovanie",
+			"details": "Detaily",
+			"review": "Zhrnutie"
+		},
+		"category": {
+			"heading": "Vyberte kategóriu",
+			"description": "Vyberte druh zariadenia, ktoré vytvárate. Určuje, ktoré kanály a vlastnosti bude potrebné namapovať v ďalšom kroku.",
+			"blockedHeading": "V tomto vydaní nie je k dispozícii",
+			"blockedReason": "vyžaduje regulátor — plánované pre neskoršie vydanie"
+		}
 	}
 }

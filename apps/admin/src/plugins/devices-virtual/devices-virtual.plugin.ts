@@ -1,4 +1,5 @@
 import type { App } from 'vue';
+import type { RouteRecordRaw } from 'vue-router';
 
 import { defaultsDeep } from 'lodash';
 
@@ -6,6 +7,7 @@ import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
 import {
 	DEVICES_MODULE_NAME,
+	RouteNames as DevicesRouteNames,
 	type IChannelPluginsComponents,
 	type IChannelPluginsSchemas,
 	type IChannelPropertyPluginsComponents,
@@ -17,6 +19,7 @@ import {
 import { VirtualDeviceAddForm, VirtualDeviceEditForm } from './components/components';
 import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from './devices-virtual.constants';
 import { locales } from './locales';
+import { PluginRoutes } from './router';
 import { VirtualDeviceAddFormSchema, VirtualDeviceEditFormSchema } from './schemas/devices.schemas';
 import { VirtualChannelPropertySchema } from './store/channels.properties.store.schemas';
 import { VirtualChannelSchema } from './store/channels.store.schemas';
@@ -38,6 +41,17 @@ export default {
 			const mergedMessages = defaultsDeep(currentMessages, { devicesVirtualPlugin: translations });
 
 			options.i18n.global.setLocaleMessage(locale, mergedMessages);
+		}
+
+		// Guarded on the devices list route existing (rather than added unconditionally like the
+		// core module's own children) so a router that has not finished registering the devices
+		// module yet cannot end up with an orphaned child route.
+		const devicesRoute = options.router.getRoutes().find((route) => route.name === DevicesRouteNames.DEVICES);
+
+		if (devicesRoute) {
+			PluginRoutes.forEach((route: RouteRecordRaw): void => {
+				options.router.addRoute(DevicesRouteNames.DEVICES, route);
+			});
 		}
 
 		pluginsManager.addPlugin(devicesVirtualPluginKey, {

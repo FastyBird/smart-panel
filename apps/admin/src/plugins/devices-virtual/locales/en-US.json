@@ -31,5 +31,22 @@
 				"title": "Enabled"
 			}
 		}
+	},
+	"wizard": {
+		"title": "Create virtual device",
+		"subtitle": "Build a device from another device's channels",
+		"breadcrumb": "Create virtual device",
+		"steps": {
+			"category": "Category",
+			"mapping": "Mapping",
+			"details": "Details",
+			"review": "Review"
+		},
+		"category": {
+			"heading": "Choose a category",
+			"description": "Pick the kind of device you are creating. It determines which channels and properties the next step will ask you to map.",
+			"blockedHeading": "Not available in this release",
+			"blockedReason": "needs a controller — planned for a later release"
+		}
 	}
 }

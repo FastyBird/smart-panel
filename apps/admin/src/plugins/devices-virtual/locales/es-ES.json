@@ -31,5 +31,22 @@
 				"title": "Habilitado"
 			}
 		}
+	},
+	"wizard": {
+		"title": "Crear dispositivo virtual",
+		"subtitle": "Cree un dispositivo a partir de los canales de otro dispositivo",
+		"breadcrumb": "Crear dispositivo virtual",
+		"steps": {
+			"category": "Categoría",
+			"mapping": "Asignación",
+			"details": "Detalles",
+			"review": "Revisión"
+		},
+		"category": {
+			"heading": "Elija una categoría",
+			"description": "Elija el tipo de dispositivo que está creando. Determina qué canales y propiedades deberá asignar en el siguiente paso.",
+			"blockedHeading": "No disponible en esta versión",
+			"blockedReason": "necesita un controlador — previsto para una versión posterior"
+		}
 	}
 }

@@ -31,5 +31,22 @@
 				"title": "Aktiviert"
 			}
 		}
+	},
+	"wizard": {
+		"title": "Virtuelles Gerät erstellen",
+		"subtitle": "Erstellen Sie ein Gerät aus den Kanälen eines anderen Geräts",
+		"breadcrumb": "Virtuelles Gerät erstellen",
+		"steps": {
+			"category": "Kategorie",
+			"mapping": "Zuordnung",
+			"details": "Details",
+			"review": "Überprüfung"
+		},
+		"category": {
+			"heading": "Kategorie wählen",
+			"description": "Wählen Sie die Art des Geräts, das Sie erstellen. Sie bestimmt, welche Kanäle und Eigenschaften im nächsten Schritt zugeordnet werden müssen.",
+			"blockedHeading": "In dieser Version nicht verfügbar",
+			"blockedReason": "benötigt einen Regler — für eine spätere Version geplant"
+		}
 	}
 }

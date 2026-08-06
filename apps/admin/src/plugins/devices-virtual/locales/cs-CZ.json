@@ -31,5 +31,22 @@
 				"title": "Povoleno"
 			}
 		}
+	},
+	"wizard": {
+		"title": "Vytvořit virtuální zařízení",
+		"subtitle": "Sestavte zařízení z kanálů jiného zařízení",
+		"breadcrumb": "Vytvořit virtuální zařízení",
+		"steps": {
+			"category": "Kategorie",
+			"mapping": "Mapování",
+			"details": "Podrobnosti",
+			"review": "Kontrola"
+		},
+		"category": {
+			"heading": "Vyberte kategorii",
+			"description": "Vyberte druh zařízení, které vytváříte. Určuje, které kanály a vlastnosti bude v dalším kroku potřeba namapovat.",
+			"blockedHeading": "V tomto vydání není k dispozici",
+			"blockedReason": "vyžaduje regulátor — plánováno pro pozdější vydání"
+		}
 	}
 }

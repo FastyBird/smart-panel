@@ -31,5 +31,22 @@
 				"title": "Włączone"
 			}
 		}
+	},
+	"wizard": {
+		"title": "Utwórz urządzenie wirtualne",
+		"subtitle": "Utwórz urządzenie z kanałów innego urządzenia",
+		"breadcrumb": "Utwórz urządzenie wirtualne",
+		"steps": {
+			"category": "Kategoria",
+			"mapping": "Mapowanie",
+			"details": "Szczegóły",
+			"review": "Podsumowanie"
+		},
+		"category": {
+			"heading": "Wybierz kategorię",
+			"description": "Wybierz rodzaj tworzonego urządzenia. Określa on, które kanały i właściwości będzie trzeba zmapować w następnym kroku.",
+			"blockedHeading": "Niedostępne w tym wydaniu",
+			"blockedReason": "wymaga sterownika — zaplanowano na kolejne wydanie"
+		}
 	}
 }
