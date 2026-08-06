@@ -232,4 +232,78 @@ describe('Devices Store', () => {
 
 		expect(store.fetching()).toBe(false);
 	});
+
+	// `edit()` merges the whole cached record into the object it validates, so schema defaults (e.g.
+	// `roomId`'s `.default(null)`) resolve correctly even for a caller that only wants to change one
+	// field. That merged-and-validated record must never leak into the outgoing PATCH body itself — a
+	// key the caller did not supply has to stay off the wire, or an unrelated edit (e.g. a rename)
+	// silently carries the device's current room along with it. These assert directly on the
+	// `backendClient.PATCH` mock's call arguments — the actual request body — rather than on a mocked
+	// store action, since asserting one layer up is exactly what let this regress unnoticed before.
+	describe('edit() request body', () => {
+		const seedDevice = async (roomId: string | null): Promise<IDeviceRes> => {
+			const device = deviceFixture('device-1');
+			device.room_id = roomId;
+
+			(mockBackendClient.GET as Mock).mockResolvedValueOnce({ data: { data: [device] } });
+			await store.fetch();
+
+			return device;
+		};
+
+		it('omits room_id from the outgoing PATCH body when the caller does not supply it', async () => {
+			const device = await seedDevice(uuid());
+
+			(mockBackendClient.PATCH as Mock).mockResolvedValueOnce({ data: { data: { ...device, name: 'Renamed' } } });
+
+			await store.edit({
+				id: device.id,
+				data: {
+					type: device.type,
+					name: 'Renamed',
+				},
+			});
+
+			const [, requestInit] = (mockBackendClient.PATCH as Mock).mock.calls[0];
+
+			expect('room_id' in requestInit.body.data).toBe(false);
+		});
+
+		it('sends a genuinely changed room_id on the outgoing PATCH body', async () => {
+			const device = await seedDevice(uuid());
+			const newRoomId = uuid();
+
+			(mockBackendClient.PATCH as Mock).mockResolvedValueOnce({ data: { data: { ...device, room_id: newRoomId } } });
+
+			await store.edit({
+				id: device.id,
+				data: {
+					type: device.type,
+					roomId: newRoomId,
+				},
+			});
+
+			const [, requestInit] = (mockBackendClient.PATCH as Mock).mock.calls[0];
+
+			expect(requestInit.body.data.room_id).toBe(newRoomId);
+		});
+
+		it('sends an explicit room_id: null on the outgoing PATCH body when the caller clears it', async () => {
+			const device = await seedDevice(uuid());
+
+			(mockBackendClient.PATCH as Mock).mockResolvedValueOnce({ data: { data: { ...device, room_id: null } } });
+
+			await store.edit({
+				id: device.id,
+				data: {
+					type: device.type,
+					roomId: null,
+				},
+			});
+
+			const [, requestInit] = (mockBackendClient.PATCH as Mock).mock.calls[0];
+
+			expect(requestInit.body.data.room_id).toBe(null);
+		});
+	});
 });

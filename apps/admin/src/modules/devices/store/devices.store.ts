@@ -2,16 +2,16 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { isUndefined, omitBy } from 'lodash';
+import { isUndefined, omitBy, pick } from 'lodash';
 
-import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
+import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
 import type {
+	DevicesModuleCreateDeviceOperation,
+	DevicesModuleDeleteDeviceOperation,
 	DevicesModuleGetDeviceOperation,
 	DevicesModuleGetDevicesOperation,
-	DevicesModuleCreateDeviceOperation,
 	DevicesModuleUpdateDeviceOperation,
-	DevicesModuleDeleteDeviceOperation,
 } from '../../../openapi.constants';
 import { useChannelsPlugins, useChannelsPropertiesPlugins, useDevicesPlugins } from '../composables/composables';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
@@ -408,9 +408,14 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 		const element = getPluginElement(payload.data.type);
 
+		// Keys the caller actually supplied (`undefined` means "leave untouched", the same convention
+		// the merge below already uses) — this set, not the merged-and-validated record it is checked
+		// against, is what is allowed to reach the outgoing PATCH body. See `requestData` below.
+		const providedData = omitBy(payload.data, isUndefined);
+
 		const parsedEditedItem = (element?.schemas?.deviceSchema || DeviceSchema).safeParse({
 			...data.value[payload.id],
-			...omitBy(payload.data, isUndefined),
+			...providedData,
 		});
 
 		if (!parsedEditedItem.success) {
@@ -429,6 +434,15 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			return parsedEditedItem.data;
 		} else {
 			try {
+				// The merge above exists so validation resolves schema defaults and required fields
+				// against a complete record — it must not become the request body itself, or every field
+				// the caller left untouched (starting with `roomId`, backfilled from the cached device by
+				// `DeviceSchema`'s `.default(null)`) gets silently reinstated and sent as though it had
+				// changed. The backend's hidden-device placement guard treats a present `room_id` — `null`
+				// included — as a placement change, so a reinstated key here can turn an unrelated rename
+				// into a refused request. Only a key the caller actually supplied is allowed onto the wire.
+				const requestData = pick(parsedEditedItem.data, Object.keys(providedData)) as typeof parsedEditedItem.data;
+
 				const {
 					data: responseData,
 					error,
@@ -440,10 +454,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 						},
 					},
 					body: {
-						data: transformDeviceUpdateRequest<IDeviceUpdateReq>(
-							parsedEditedItem.data,
-							element?.schemas?.deviceUpdateReqSchema || DeviceUpdateReqSchema
-						),
+						data: transformDeviceUpdateRequest<IDeviceUpdateReq>(requestData, element?.schemas?.deviceUpdateReqSchema || DeviceUpdateReqSchema),
 					},
 				});
 
