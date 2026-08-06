@@ -104,7 +104,7 @@ import { useI18n } from 'vue-i18n';
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, useDeviceAddForm } from '../../../modules/devices';
-import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
+import { DEVICES_VIRTUAL_TYPE, VIRTUAL_SELECTABLE_CATEGORIES } from '../devices-virtual.constants';
 import type { IVirtualDeviceAddForm } from '../schemas/devices.types';
 
 import type { IVirtualDeviceAddFormProps } from './virtual-device-add-form.types';
@@ -128,10 +128,24 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { categoriesOptions, model, formEl, formChanged, submit, formResult } = useDeviceAddForm<IVirtualDeviceAddForm>({
+const {
+	categoriesOptions: allCategoriesOptions,
+	model,
+	formEl,
+	formChanged,
+	submit,
+	formResult,
+} = useDeviceAddForm<IVirtualDeviceAddForm>({
 	id: props.id,
 	type: DEVICES_VIRTUAL_TYPE,
 });
+
+// `useDeviceAddForm` maps every `DevicesModuleDeviceCategory` — this plugin cannot drive the six that
+// need closed-loop control (see `VIRTUAL_SELECTABLE_CATEGORIES`), the same set the construction
+// wizard's category step already excludes. Without this filter, this generic form (reachable via
+// Devices → Add device → Virtual Devices, independent of the wizard) offers a category the backend's
+// `ValidateCategoryAllowed` then rejects with a raw exception message.
+const categoriesOptions = allCategoriesOptions.filter((item) => VIRTUAL_SELECTABLE_CATEGORIES.includes(item.value));
 
 const rules = reactive<FormRules<IVirtualDeviceAddForm>>({
 	category: [{ required: true, message: t('devicesVirtualPlugin.fields.devices.category.validation.required'), trigger: 'change' }],

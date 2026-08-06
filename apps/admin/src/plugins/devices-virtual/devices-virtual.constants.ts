@@ -32,6 +32,16 @@ export const VIRTUAL_BLOCKED_CATEGORIES: readonly DevicesModuleDeviceCategory[] 
 	DevicesModuleDeviceCategory.thermostat,
 ];
 
+// The single source of truth for "may a virtual device have this category": every entry point that
+// lets a user choose or change one — the wizard's category step, and the generic add/edit forms
+// reachable via Devices → Add device → Virtual Devices — filters against this list rather than each
+// keeping its own copy of `VIRTUAL_BLOCKED_CATEGORIES.includes(...)`. Without it, a picker that forgets
+// to filter offers a category the backend's `ValidateCategoryAllowed` then rejects with a raw
+// exception message instead of simply never offering it.
+export const VIRTUAL_SELECTABLE_CATEGORIES: readonly DevicesModuleDeviceCategory[] = Object.values(DevicesModuleDeviceCategory).filter(
+	(value) => !VIRTUAL_BLOCKED_CATEGORIES.includes(value)
+);
+
 export const RouteNames = {
 	WIZARD: 'devices_virtual-wizard',
 };

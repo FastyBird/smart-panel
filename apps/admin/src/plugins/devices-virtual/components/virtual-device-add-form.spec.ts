@@ -16,9 +16,14 @@ vi.mock('../../../modules/devices', async () => {
 	return {
 		...actual,
 		useDeviceAddForm: () => ({
+			// Includes a blocked category (`thermostat`) deliberately — `useDeviceAddForm` genuinely maps
+			// every `DevicesModuleDeviceCategory` with no notion of this plugin's restrictions, so the
+			// mock mirrors that rather than pre-filtering on the composable's behalf. The component itself
+			// is what must exclude it (see 'excludes categories the plugin cannot drive' below).
 			categoriesOptions: [
 				{ value: 'generic', label: 'Generic' },
 				{ value: 'lighting', label: 'Lighting' },
+				{ value: 'thermostat', label: 'Thermostat' },
 			],
 			model: {
 				id: 'abc123',
@@ -67,6 +72,16 @@ describe('VirtualDeviceAddForm.vue', () => {
 		const options = wrapper.findAllComponents({ name: 'ElOption' });
 		expect(options.length).toBe(2);
 		expect(options[0]?.props('label')).toBe('Generic');
+	});
+
+	it('excludes categories the plugin cannot drive, even though useDeviceAddForm maps every category', () => {
+		// Regression test for the add form disagreeing with the wizard's category step about which
+		// categories are legal — `thermostat` is present in the mocked `categoriesOptions` above (as
+		// `useDeviceAddForm` genuinely returns it) but must never reach the picker.
+		const values = wrapper.findAllComponents({ name: 'ElOption' }).map((option) => option.props('value'));
+
+		expect(values).not.toContain('thermostat');
+		expect(values).toEqual(['generic', 'lighting']);
 	});
 
 	it('emits update:remote-form-submit when remoteFormSubmit is true', async () => {

@@ -106,6 +106,7 @@ import { useI18n } from 'vue-i18n';
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, useDeviceEditForm } from '../../../modules/devices';
+import { VIRTUAL_SELECTABLE_CATEGORIES } from '../devices-virtual.constants';
 import type { IVirtualDeviceEditForm } from '../schemas/devices.types';
 import type { IVirtualDevice } from '../store/devices.store.types';
 
@@ -130,9 +131,23 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { categoriesOptions, model, formEl, formChanged, submit, formResult } = useDeviceEditForm<IVirtualDeviceEditForm>({
+const {
+	categoriesOptions: allCategoriesOptions,
+	model,
+	formEl,
+	formChanged,
+	submit,
+	formResult,
+} = useDeviceEditForm<IVirtualDeviceEditForm>({
 	device: props.device as IVirtualDevice,
 });
+
+// The category `<el-select>` below is `disabled` — an existing virtual device's category cannot be
+// changed through this form today — but `useDeviceEditForm` still maps every `DevicesModuleDeviceCategory`
+// unfiltered. Filtering to the same set the wizard's category step and the add form offer keeps this
+// list from silently drifting out of sync with them (see `VIRTUAL_SELECTABLE_CATEGORIES`), and is what
+// the disabled select uses to resolve the current category's label.
+const categoriesOptions = allCategoriesOptions.filter((item) => VIRTUAL_SELECTABLE_CATEGORIES.includes(item.value));
 
 const rules = reactive<FormRules<IVirtualDeviceEditForm>>({
 	name: [{ required: true, message: t('devicesVirtualPlugin.fields.devices.name.validation.required'), trigger: 'change' }],

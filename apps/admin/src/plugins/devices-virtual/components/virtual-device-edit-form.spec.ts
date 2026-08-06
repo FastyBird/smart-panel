@@ -17,9 +17,14 @@ vi.mock('../../../modules/devices', async () => {
 	return {
 		...actual,
 		useDeviceEditForm: () => ({
+			// Includes a blocked category (`thermostat`) deliberately — `useDeviceEditForm` genuinely maps
+			// every `DevicesModuleDeviceCategory` with no notion of this plugin's restrictions, so the mock
+			// mirrors that rather than pre-filtering on the composable's behalf. The component itself is
+			// what must exclude it (see 'excludes categories the plugin cannot drive' below).
 			categoriesOptions: [
 				{ value: 'generic', label: DevicesModuleDeviceCategory.generic },
 				{ value: 'lighting', label: DevicesModuleDeviceCategory.lighting },
+				{ value: 'thermostat', label: DevicesModuleDeviceCategory.thermostat },
 			],
 			model: {
 				id: '123',
@@ -67,6 +72,16 @@ describe('VirtualDeviceEditForm', () => {
 		expect(wrapper.find('input[name="id"]').exists()).toBe(true);
 		expect(wrapper.find('input[name="name"]').exists()).toBe(true);
 		expect(wrapper.find('textarea').exists()).toBe(true);
+	});
+
+	it('excludes categories the plugin cannot drive, even though useDeviceEditForm maps every category', () => {
+		// Regression test for the edit form disagreeing with the wizard's category step about which
+		// categories are legal — `thermostat` is present in the mocked `categoriesOptions` above (as
+		// `useDeviceEditForm` genuinely returns it) but must never reach the (disabled) picker.
+		const values = wrapper.findAllComponents({ name: 'ElOption' }).map((option) => option.props('value'));
+
+		expect(values).not.toContain('thermostat');
+		expect(values).toEqual(['generic', 'lighting']);
 	});
 
 	it('emits update:remote-form-changed on change', async () => {

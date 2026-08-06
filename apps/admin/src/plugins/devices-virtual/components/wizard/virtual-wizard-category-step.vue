@@ -58,7 +58,7 @@ import { useI18n } from 'vue-i18n';
 import { ElAlert, ElForm, ElFormItem, ElOption, ElSelect, ElTag } from 'element-plus';
 
 import { DevicesModuleDeviceCategory } from '../../../../openapi.constants';
-import { VIRTUAL_BLOCKED_CATEGORIES } from '../../devices-virtual.constants';
+import { VIRTUAL_BLOCKED_CATEGORIES, VIRTUAL_SELECTABLE_CATEGORIES } from '../../devices-virtual.constants';
 
 import type { IVirtualWizardCategoryStepProps } from './virtual-wizard-category-step.types';
 
@@ -75,16 +75,15 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 // The selectable list: every device category the generated spec knows about, minus the six that
-// need a controller the plugin cannot yet drive (see VIRTUAL_BLOCKED_CATEGORIES). Deliberately
-// excludes blocked values entirely rather than including-but-disabling them here — the disabled,
-// explained rendering lives in `blockedCategories` below, so the two lists never disagree.
+// need a controller the plugin cannot yet drive (see VIRTUAL_SELECTABLE_CATEGORIES/
+// VIRTUAL_BLOCKED_CATEGORIES). Deliberately excludes blocked values entirely rather than
+// including-but-disabling them here — the disabled, explained rendering lives in `blockedCategories`
+// below, so the two lists never disagree.
 const categories = computed<{ value: DevicesModuleDeviceCategory; label: string }[]>(() =>
-	Object.values(DevicesModuleDeviceCategory)
-		.filter((value) => !VIRTUAL_BLOCKED_CATEGORIES.includes(value))
-		.map((value) => ({
-			value,
-			label: t(`devicesModule.categories.devices.${value}`),
-		}))
+	VIRTUAL_SELECTABLE_CATEGORIES.map((value) => ({
+		value,
+		label: t(`devicesModule.categories.devices.${value}`),
+	}))
 );
 
 // Shown disabled with a reason so a user wondering where e.g. "Thermostat" went finds it here
