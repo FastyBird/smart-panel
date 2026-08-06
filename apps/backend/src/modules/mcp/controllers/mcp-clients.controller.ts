@@ -16,6 +16,7 @@ import {
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { MODULES_PREFIX } from '../../../app.constants';
 import { setLocationHeader } from '../../api/utils/location-header.utils';
 import { AuthenticatedRequest } from '../../auth/guards/auth.guard';
 import {
@@ -94,7 +95,7 @@ export class McpClientsController {
 	): Promise<McpClientCredentialResponseModel> {
 		const creatorId = this.getActorId(req);
 		const credential = await this.clientsService.create(body.data, creatorId);
-		setLocationHeader(req, res, MCP_MODULE_PREFIX, 'clients', credential.client.id);
+		setLocationHeader(req, res, `${MODULES_PREFIX}/${MCP_MODULE_PREFIX}`, 'clients', credential.client.id);
 
 		const response = new McpClientCredentialResponseModel();
 		response.data = credential;

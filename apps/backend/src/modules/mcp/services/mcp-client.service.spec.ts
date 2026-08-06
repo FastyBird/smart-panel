@@ -1,4 +1,4 @@
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, IsNull, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestException } from '@nestjs/common';
@@ -136,6 +136,24 @@ describe('McpClientService', () => {
 			),
 		).rejects.toBeInstanceOf(BadRequestException);
 		expect(repository.save).not.toHaveBeenCalled();
+	});
+
+	it('cleans up a failed initial issuance only while the client has no credential', async () => {
+		tokensService.createLongLiveToken.mockRejectedValueOnce(new Error('Database unavailable'));
+
+		await expect(
+			service.create(
+				{
+					name: 'Agent',
+					capabilities: [McpCapability.READ],
+					expiresInDays: 30,
+				},
+				uuid(),
+			),
+		).rejects.toThrow('Database unavailable');
+
+		expect(repository.delete).toHaveBeenCalledWith({ id: currentClient?.id, tokenId: IsNull() });
+		expect(repository.remove).not.toHaveBeenCalled();
 	});
 
 	it('intersects an existing grant with the current module ceiling', () => {

@@ -79,7 +79,7 @@ export class McpClientService {
 		try {
 			return await this.issueCredential(client, dto.expiresInDays);
 		} catch (error) {
-			await this.repository.remove(client);
+			await this.repository.delete({ id: client.id, tokenId: IsNull() });
 			throw error;
 		}
 	}
