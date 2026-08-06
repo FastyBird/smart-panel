@@ -66,6 +66,20 @@
 					<el-icon class="mr-1"><icon icon="mdi:wizard-hat" /></el-icon>
 					{{ t('devicesModule.buttons.wizard.title') }}
 				</el-button>
+				<!--
+					The virtual device construction wizard is bespoke (it composes a device from existing
+					channel properties rather than discovering new ones) and deliberately does not register
+					a `deviceWizardAdapter`, so it cannot appear in the discovery dialog above. It gets its
+					own entry point instead, placed and styled like the other two.
+				-->
+				<el-button
+					class="px-4! ml-2!"
+					data-test-id="virtual-device-wizard"
+					@click="onVirtualWizard"
+				>
+					<el-icon class="mr-1"><icon icon="mdi:call-split" /></el-icon>
+					{{ t('devicesVirtualPlugin.wizard.title') }}
+				</el-button>
 				<el-button
 					type="primary"
 					plain
@@ -225,6 +239,12 @@ import { ElButton, ElCard, ElDialog, ElDrawer, ElIcon, ElMessageBox } from 'elem
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
+// Devices-virtual is a core plugin (always installed), so its route name is imported directly rather
+// than looked up through the generic plugin registry — the same shortcut `modules/onboarding` already
+// takes for `plugins/weather-open-meteo`. `useDevicesPlugins()`'s `wizardOptions` is deliberately not
+// reused here: that list is scoped to plugins registering a `deviceWizardAdapter`, and this wizard is
+// bespoke precisely because it does not (see decision 5 in the admin implementation plan).
+import { RouteNames as DevicesVirtualRouteNames } from '../../../plugins/devices-virtual/devices-virtual.constants';
 import { ListDevices, ListDevicesAdjust } from '../components/components';
 import { useDevicesActions, useDevicesDataSource, useDevicesPlugins, useDevicesValidation } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
@@ -425,6 +445,14 @@ const onStartWizard = (type: string): void => {
 			type,
 		},
 	});
+};
+
+const onVirtualWizard = (): void => {
+	if (isLGDevice.value) {
+		router.replace({ name: DevicesVirtualRouteNames.WIZARD });
+	} else {
+		router.push({ name: DevicesVirtualRouteNames.WIZARD });
+	}
 };
 
 onBeforeMount((): void => {

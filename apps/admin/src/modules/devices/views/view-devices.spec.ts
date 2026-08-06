@@ -129,6 +129,12 @@ vi.mock('../devices.constants', () => ({
 	},
 }));
 
+vi.mock('../../../plugins/devices-virtual/devices-virtual.constants', () => ({
+	RouteNames: {
+		WIZARD: 'devices_virtual-wizard',
+	},
+}));
+
 vi.mock('../devices.exceptions', () => ({
 	DevicesException: Error,
 }));
@@ -234,6 +240,21 @@ describe('ViewDevices', () => {
 		const wrapper = mountView();
 
 		expect(wrapper.findAll('button').some((button) => button.text().includes('devicesModule.buttons.wizard.title'))).toBe(false);
+	});
+
+	it('navigates to the virtual device wizard from its own launcher, independent of the discovery wizard dialog', async () => {
+		// Deliberately left empty: the virtual wizard's launcher must not depend on any discovery
+		// plugin being installed — it is not a `wizardOptions` entry.
+		mocks.wizardOptions = [];
+
+		const wrapper = mountView();
+
+		await wrapper.find('[data-test-id="virtual-device-wizard"]').trigger('click');
+
+		// This suite's `common` mock fixes `isLGDevice` to `false` (see the `useBreakpoints` stub
+		// above), the same branch `onDeviceCreate` is already exercised under elsewhere in this file,
+		// so `push` — not `replace` — is the call that reflects it here.
+		expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'devices_virtual-wizard' });
 	});
 
 	it('refetches devices when the show-hidden toggle changes', async () => {
