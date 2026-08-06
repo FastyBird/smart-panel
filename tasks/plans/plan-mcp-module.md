@@ -262,6 +262,8 @@ Existing files expected to change include:
 - Create: `apps/backend/src/modules/mcp/mcp.openapi.ts`
 - Create: `apps/backend/src/modules/mcp/mcp.module.ts`
 - Modify: `apps/backend/src/app.module.ts`
+- Modify: `apps/backend/src/modules/config/controllers/config.controller.ts`
+- Modify: `apps/backend/src/modules/config/controllers/config.controller.spec.ts`
 
 - [ ] Define `MCP_MODULE_NAME`, `MCP_MODULE_PREFIX`, API tag metadata, capability values, defaults, session limits, and
       timeout constants.
@@ -271,10 +273,18 @@ Existing files expected to change include:
 - [ ] Register the config model through `ModulesTypeMapperService`.
 - [ ] Register module metadata through `ExtensionsService`.
 - [ ] Mount the module under `modules/mcp` and import it as a core module.
+- [ ] Enforce `@Roles(UserRole.OWNER, UserRole.ADMIN)` on the backend `PATCH config/module/:module` route used to save
+      MCP settings. Do not rely on Admin UI visibility for authorization.
+- [ ] Verify the role guard runs before module mapping or persistence: ordinary users, display tokens, and personal
+      access tokens whose owning user lacks the owner/admin role must receive HTTP 403 and leave configuration
+      unchanged. Owner/admin user credentials and owner/admin-owned PATs retain the repository's existing role
+      semantics.
 - [ ] Add Swagger models only for the management/config REST APIs, not for the MCP JSON-RPC endpoint.
 - [ ] Keep the module disabled by default with `read` preselected as the safe enablement default.
 
-**Tests:** config defaults, all eight capability combinations, invalid values, config serialization, module metadata.
+**Tests:** config defaults, all eight capability combinations, invalid values, config serialization, module metadata,
+controller role metadata, and HTTP authorization coverage for owner, admin, user, user-owned PAT, and display-token
+requests.
 
 ### Task 3: Extend the internal tool contract with access metadata and execution context
 
@@ -547,6 +557,8 @@ revocation confirmation, role restrictions, and responsive layout.
 
 - [ ] MCP is a core module visible in Admin and disabled by default.
 - [ ] An owner/admin can enable any combination of read, write, and trigger.
+- [ ] Backend authorization rejects module-configuration changes from ordinary users, user-owned PATs, and display
+      tokens; denied requests do not mutate persisted or in-memory MCP configuration.
 - [ ] Configuration persists across restart and applies without requiring a restart.
 - [ ] An owner/admin can create, restrict, rotate, and revoke MCP client credentials.
 - [ ] Raw client tokens are displayed only once and always have a finite expiry.
