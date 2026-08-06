@@ -214,7 +214,7 @@ export class McpContextService {
 			throw new NotFoundException('Requested property does not exist');
 		}
 
-		const result = await this.timeseriesService.queryTimeseries(property, range.from, range.to, bucket);
+		const result = await this.timeseriesService.queryTimeseriesStrict(property, range.from, range.to, bucket);
 		const points = result.points.slice(0, MCP_MAX_TIMESERIES_POINTS);
 
 		return {

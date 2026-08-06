@@ -30,6 +30,26 @@ export class PropertyTimeseriesService {
 		to: Date,
 		bucket?: BucketDuration,
 	): Promise<PropertyTimeseriesModel> {
+		try {
+			return await this.queryTimeseriesStrict(property, from, to, bucket);
+		} catch {
+			// Return empty result on error
+			return plainToInstance(PropertyTimeseriesModel, {
+				property: property.id,
+				from: from.toISOString(),
+				to: to.toISOString(),
+				bucket: bucket ?? this.getDefaultBucket(from, to),
+				points: [],
+			});
+		}
+	}
+
+	async queryTimeseriesStrict(
+		property: ChannelPropertyEntity,
+		from: Date,
+		to: Date,
+		bucket?: BucketDuration,
+	): Promise<PropertyTimeseriesModel> {
 		const key = this.valueSourceRegistry.resolve(property);
 
 		this.logger.debug(
@@ -54,14 +74,7 @@ export class PropertyTimeseriesService {
 				err.stack,
 			);
 
-			// Return empty result on error
-			return plainToInstance(PropertyTimeseriesModel, {
-				property: property.id,
-				from: from.toISOString(),
-				to: to.toISOString(),
-				bucket: bucket ?? this.getDefaultBucket(from, to),
-				points: [],
-			});
+			throw error;
 		}
 	}
 

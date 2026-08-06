@@ -40,7 +40,7 @@ describe('McpContextService', () => {
 	};
 	let channels: { findSummaryPage: jest.Mock };
 	let properties: { findOne: jest.Mock; findBoundedForChannels: jest.Mock };
-	let timeseries: { queryTimeseries: jest.Mock };
+	let timeseries: { queryTimeseriesStrict: jest.Mock };
 	let scenes: { findSummaryPage: jest.Mock };
 	let weather: { getPrimaryWeather: jest.Mock; getWeather: jest.Mock };
 	let energy: { getSummary: jest.Mock; getSpaceSummary: jest.Mock; getDeviceZoneSummary: jest.Mock };
@@ -68,7 +68,7 @@ describe('McpContextService', () => {
 			findOne: jest.fn().mockResolvedValue(null),
 			findBoundedForChannels: jest.fn().mockResolvedValue({ properties: [], totals: {} }),
 		};
-		timeseries = { queryTimeseries: jest.fn() };
+		timeseries = { queryTimeseriesStrict: jest.fn() };
 		scenes = { findSummaryPage: jest.fn().mockResolvedValue({ scenes: [], total: 0 }) };
 		weather = {
 			getPrimaryWeather: jest.fn().mockRejectedValue(new Error('weather unavailable')),
@@ -355,7 +355,7 @@ describe('McpContextService', () => {
 			service.getPropertyTimeseries('property-id', '2026-08-01T00:00:00.000Z', '2026-08-02T00:00:00.000Z', '1m'),
 		).rejects.toThrow('would exceed');
 		expect(properties.findOne).not.toHaveBeenCalled();
-		expect(timeseries.queryTimeseries).not.toHaveBeenCalled();
+		expect(timeseries.queryTimeseriesStrict).not.toHaveBeenCalled();
 	});
 
 	it('returns bounded property history for a visible device', async () => {
@@ -363,7 +363,7 @@ describe('McpContextService', () => {
 			id: 'property-id',
 			channel: { device: { hidden: false } },
 		} as unknown as ChannelPropertyEntity);
-		timeseries.queryTimeseries.mockResolvedValue({
+		timeseries.queryTimeseriesStrict.mockResolvedValue({
 			bucket: '5m',
 			points: [{ time: '2026-08-01T00:00:00.000Z', value: 1 }],
 		});
@@ -371,5 +371,18 @@ describe('McpContextService', () => {
 		await expect(
 			service.getPropertyTimeseries('property-id', '2026-08-01T00:00:00.000Z', '2026-08-01T01:00:00.000Z', '5m'),
 		).resolves.toEqual(expect.objectContaining({ property_id: 'property-id', bucket: '5m', truncated: false }));
+	});
+
+	it('propagates storage failures from strict property history reads', async () => {
+		properties.findOne.mockResolvedValue({
+			id: 'property-id',
+			channel: { device: { hidden: false } },
+		} as unknown as ChannelPropertyEntity);
+		const storageError = new Error('storage unavailable');
+		timeseries.queryTimeseriesStrict.mockRejectedValue(storageError);
+
+		await expect(
+			service.getPropertyTimeseries('property-id', '2026-08-01T00:00:00.000Z', '2026-08-01T01:00:00.000Z', '5m'),
+		).rejects.toBe(storageError);
 	});
 });

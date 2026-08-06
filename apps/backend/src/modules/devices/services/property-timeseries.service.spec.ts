@@ -196,6 +196,16 @@ describe('PropertyTimeseriesService', () => {
 			expect(result.property).toBe('prop-123');
 		});
 
+		it('should propagate query errors in strict mode', async () => {
+			const from = new Date('2025-01-01T10:00:00Z');
+			const to = new Date('2025-01-01T22:00:00Z');
+			const storageError = new Error('InfluxDB connection failed');
+
+			storageService.query.mockRejectedValue(storageError);
+
+			await expect(service.queryTimeseriesStrict(mockProperty, from, to)).rejects.toBe(storageError);
+		});
+
 		it('should use raw data for short time ranges (< 1 hour)', async () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T10:30:00Z'); // 30 minutes
