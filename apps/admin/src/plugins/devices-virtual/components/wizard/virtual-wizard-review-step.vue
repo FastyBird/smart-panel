@@ -459,6 +459,24 @@ const onCreate = async (): Promise<void> => {
 		channels,
 	};
 
+	// Posted directly through the backend client rather than `devicesStore.add()` — deliberate, not an
+	// oversight (see the shell's `onCreated` handler in view-virtual-device-wizard.vue, which points back
+	// here). `devicesStore.add()` validates its payload against `element.schemas.deviceCreateReqSchema`,
+	// which for this plugin is `VirtualDeviceCreateReqSchema` (store/devices.store.schemas.ts) —
+	// `DeviceCreateReqSchema.and(z.object({ type }))`. That `.and()` only adds a top-level `type` literal;
+	// it does not touch the base schema's `channels: z.array(ChannelCreateReqSchema)` field, which is a
+	// *static* reference resolved once at module load, not looked up per plugin the way
+	// `element.schemas.*` is elsewhere in these stores. The devices-virtual plugin's own
+	// `VirtualChannelCreateReqSchema` (store/channels.store.schemas.ts) has the identical shape one level
+	// down — `ChannelCreateReqSchema.and(z.object({ type }))` — and is never consulted here either, so
+	// even a channel-level override would not help. The base `ChannelCreateReqSchema.properties` field is,
+	// in turn, `z.array(ChannelPropertyCreateReqSchema)` — the base property schema, which has no
+	// `source_property` field at all. A nested create routed through `devicesStore.add()` would therefore
+	// have `source_property` silently stripped from every property in `channels` by Zod's default
+	// unknown-key stripping — the same silent-drop failure mode this branch has already fixed twice
+	// elsewhere (`DeviceUpdateReqSchema`'s `hidden`/`hidden_by`; registering `channelPropertyUpdateReqSchema`
+	// in devices-virtual.plugin.ts for the remap dialog, see virtual-device-remap-dialog.spec.ts). Posting
+	// the raw payload here is what avoids a third instance of the same bug.
 	try {
 		const { data: responseData, error } = await backend.client.POST(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices`, {
 			body: { data: payload },
