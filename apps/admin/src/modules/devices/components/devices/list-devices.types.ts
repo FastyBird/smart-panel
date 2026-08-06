@@ -12,4 +12,5 @@ export interface IListDevicesProps {
 	sortBy: 'name' | 'description' | 'type' | 'state' | 'category' | undefined;
 	sortDir: 'asc' | 'desc' | null;
 	loading: boolean;
+	showHidden: boolean;
 }

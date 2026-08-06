@@ -334,6 +334,9 @@
         "title": "Stav",
         "placeholder": "Vyberte stav"
       },
+      "showHidden": {
+        "title": "Zobrazit skryté"
+      },
       "id": {
         "title": "Interní identifikátor",
         "placeholder": "ID zařízení"
@@ -908,6 +911,17 @@
       "water_tank_full": "Zásobník vody plný",
       "water_tank_level": "Hladina zásobníku vody",
       "zoom": "Přiblížení"
+    }
+  },
+  "hidden": {
+    "badge": "Skryté",
+    "by": {
+      "system": "Systém",
+      "user": "Uživatel"
+    },
+    "hint": {
+      "system": "Skryto automaticky, protože jej nahradilo virtuální zařízení. Znovu se zobrazí, jakmile bude toto virtuální zařízení smazáno.",
+      "user": "Skryto operátorem. Zůstane skryté, dokud jej někdo znovu nezobrazí."
     }
   },
   "validation": {

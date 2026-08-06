@@ -334,6 +334,9 @@
         "title": "Estado",
         "placeholder": "Seleccionar estado"
       },
+      "showHidden": {
+        "title": "Mostrar ocultos"
+      },
       "id": {
         "title": "Identificador interno",
         "placeholder": "ID del dispositivo"
@@ -908,6 +911,17 @@
       "water_tank_full": "Depósito de agua lleno",
       "water_tank_level": "Nivel del depósito de agua",
       "zoom": "Zoom"
+    }
+  },
+  "hidden": {
+    "badge": "Oculto",
+    "by": {
+      "system": "Sistema",
+      "user": "Usuario"
+    },
+    "hint": {
+      "system": "Oculto automáticamente porque un dispositivo virtual lo reemplazó. Volverá a aparecer cuando se elimine ese dispositivo virtual.",
+      "user": "Oculto por un operador. Permanece oculto hasta que alguien lo vuelva a mostrar."
     }
   },
   "validation": {

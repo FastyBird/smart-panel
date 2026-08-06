@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { deepClone, injectStoresManager, useListQuery } from '../../../common';
-import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
+import { DevicesModuleDeviceCategory, DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import type { IDevice } from '../store/devices.store.types';
 
 import { defaultDevicesFilter, useDevicesDataSource } from './useDevicesDataSource';
@@ -105,6 +105,26 @@ describe('useDevicesDataSource', () => {
 		await fetchDevices();
 
 		expect(mockStore.fetch).toHaveBeenCalled();
+	});
+
+	it('requests only non-hidden devices while the show-hidden toggle is off', async () => {
+		const { fetchDevices, showHidden } = useDevicesDataSource();
+
+		expect(showHidden.value).toBe(false);
+
+		await fetchDevices();
+
+		expect(mockStore.fetch).toHaveBeenCalledWith({ hidden: DevicesModuleDevicesHiddenFilter.false });
+	});
+
+	it('requests every device once the show-hidden toggle is switched on', async () => {
+		const { fetchDevices, showHidden } = useDevicesDataSource();
+
+		showHidden.value = true;
+
+		await fetchDevices();
+
+		expect(mockStore.fetch).toHaveBeenCalledWith({ hidden: DevicesModuleDevicesHiddenFilter.all });
 	});
 
 	it('returns only non-draft devices', () => {

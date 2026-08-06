@@ -41,6 +41,7 @@ import type {
 	IDevicesAddActionPayload,
 	IDevicesAddZoneActionPayload,
 	IDevicesEditActionPayload,
+	IDevicesFetchActionPayload,
 	IDevicesGetActionPayload,
 	IDevicesOnEventActionPayload,
 	IDevicesRemoveActionPayload,
@@ -203,7 +204,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		}
 	};
 
-	const fetch = async (): Promise<IDevice[]> => {
+	const fetch = async (payload?: IDevicesFetchActionPayload): Promise<IDevice[]> => {
 		if ('all' in pendingFetchPromises) {
 			return pendingFetchPromises['all'];
 		}
@@ -216,7 +217,17 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			semaphore.value.fetching.items = true;
 
 			try {
-				const { data: responseData, error, response } = await backend.client.GET(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices`);
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.GET(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices`, {
+					params: {
+						query: {
+							hidden: payload?.hidden,
+						},
+					},
+				});
 
 				if (typeof responseData !== 'undefined') {
 					data.value = Object.fromEntries(

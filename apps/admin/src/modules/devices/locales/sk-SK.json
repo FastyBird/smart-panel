@@ -334,6 +334,9 @@
 				"title": "Stav",
 				"placeholder": "Vyberte stav"
 			},
+			"showHidden": {
+				"title": "Zobraziť skryté"
+			},
 			"id": {
 				"title": "Interný identifikátor",
 				"placeholder": "ID zariadenia"
@@ -908,6 +911,17 @@
 			"water_tank_full": "Water tank full",
 			"water_tank_level": "Water tank level",
 			"zoom": "Zoom"
+		}
+	},
+	"hidden": {
+		"badge": "Skryté",
+		"by": {
+			"system": "Systém",
+			"user": "Používateľ"
+		},
+		"hint": {
+			"system": "Skryté automaticky, pretože ho nahradilo virtuálne zariadenie. Znova sa zobrazí, keď bude toto virtuálne zariadenie odstránené.",
+			"user": "Skryté operátorom. Zostáva skryté, kým ho niekto znova nezobrazí."
 		}
 	},
 	"validation": {

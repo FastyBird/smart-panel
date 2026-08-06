@@ -14,6 +14,10 @@ const mocks = vi.hoisted(() => ({
 	fetchDevices: vi.fn(),
 	fetchValidation: vi.fn(),
 	wizardOptions: [] as { value: string; label: string; description: string; disabled: boolean }[],
+	// Populated by the `useDevicesDataSource` mock below (a real `ref()` cannot live in this
+	// hoisted object: `vi.hoisted` runs before the `vue` import binds, so `ref` is not callable
+	// here yet). Tests grab this after mounting to flip the toggle through real Vue reactivity.
+	showHiddenRef: undefined as unknown as { value: boolean },
 	route: {
 		path: '/devices',
 		name: 'devices',
@@ -89,20 +93,25 @@ vi.mock('../composables/composables', () => ({
 		bulkEnable: vi.fn(),
 		bulkDisable: vi.fn(),
 	}),
-	useDevicesDataSource: () => ({
-		fetchDevices: mocks.fetchDevices,
-		devices: ref([]),
-		devicesPaginated: ref([]),
-		totalRows: ref(0),
-		filters: ref({ types: [] }),
-		filtersActive: ref(false),
-		sortBy: ref(undefined),
-		sortDir: ref(null),
-		paginateSize: ref(10),
-		paginatePage: ref(1),
-		areLoading: ref(false),
-		resetFilter: vi.fn(),
-	}),
+	useDevicesDataSource: () => {
+		mocks.showHiddenRef = ref(false);
+
+		return {
+			fetchDevices: mocks.fetchDevices,
+			devices: ref([]),
+			devicesPaginated: ref([]),
+			totalRows: ref(0),
+			filters: ref({ types: [] }),
+			filtersActive: ref(false),
+			sortBy: ref(undefined),
+			sortDir: ref(null),
+			paginateSize: ref(10),
+			paginatePage: ref(1),
+			areLoading: ref(false),
+			resetFilter: vi.fn(),
+			showHidden: mocks.showHiddenRef,
+		};
+	},
 	useDevicesPlugins: () => ({
 		wizardOptions: computed(() => mocks.wizardOptions),
 	}),
@@ -225,5 +234,17 @@ describe('ViewDevices', () => {
 		const wrapper = mountView();
 
 		expect(wrapper.findAll('button').some((button) => button.text().includes('devicesModule.buttons.wizard.title'))).toBe(false);
+	});
+
+	it('refetches devices when the show-hidden toggle changes', async () => {
+		mountView();
+		await flushPromises();
+
+		mocks.fetchDevices.mockClear();
+
+		mocks.showHiddenRef.value = true;
+		await flushPromises();
+
+		expect(mocks.fetchDevices).toHaveBeenCalledTimes(1);
 	});
 });

@@ -335,6 +335,9 @@
         "title": "State",
         "placeholder": "Select state"
       },
+      "showHidden": {
+        "title": "Show hidden"
+      },
       "id": {
         "title": "Internal identifier",
         "placeholder": "Device id"
@@ -909,6 +912,17 @@
       "water_tank_full": "Water tank full",
       "water_tank_level": "Water tank level",
       "zoom": "Zoom"
+    }
+  },
+  "hidden": {
+    "badge": "Hidden",
+    "by": {
+      "system": "System",
+      "user": "User"
+    },
+    "hint": {
+      "system": "Hidden automatically because a virtual device replaced it. It reappears once that virtual device is deleted.",
+      "user": "Hidden by an operator. It stays hidden until someone unhides it."
     }
   },
   "validation": {

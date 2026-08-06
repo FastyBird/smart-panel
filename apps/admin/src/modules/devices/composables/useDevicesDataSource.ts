@@ -6,7 +6,7 @@ import { isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
 import { type ISortEntry, injectStoresManager, useListQuery } from '../../../common';
-import { DevicesModuleDeviceConnectionStatus } from '../../../openapi.constants';
+import { DevicesModuleDeviceConnectionStatus, DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEVICES_MODULE_NAME } from '../devices.constants';
 import type { IDevice } from '../store/devices.store.types';
 import { devicesStoreKey, devicesValidationStoreKey } from '../store/keys';
@@ -83,6 +83,11 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 
 	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0]?.dir ?? null : null);
 
+	// Kept out of `useListQuery`'s `filters`: unlike the other filters below, this does not narrow
+	// an already-fetched batch client-side — it decides what the backend sends in the first place, so
+	// it stays off by default on every visit rather than persisting/URL-syncing like a filter would.
+	const showHidden = ref<boolean>(false);
+
 	const isDeviceValid = (deviceId: string): boolean | null => {
 		const result = validationStore.findById(deviceId);
 		return result?.isValid ?? null;
@@ -143,7 +148,9 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 	});
 
 	const fetchDevices = async (): Promise<void> => {
-		await devicesStore.fetch();
+		await devicesStore.fetch({
+			hidden: showHidden.value ? DevicesModuleDevicesHiddenFilter.all : DevicesModuleDevicesHiddenFilter.false,
+		});
 	};
 
 	const areLoading = computed<boolean>((): boolean => {
@@ -225,5 +232,6 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 		sortBy,
 		sortDir,
 		resetFilter,
+		showHidden,
 	};
 };

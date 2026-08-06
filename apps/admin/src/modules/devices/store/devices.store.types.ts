@@ -12,6 +12,7 @@ import {
 	DevicesAddActionPayloadSchema,
 	DevicesAddZoneActionPayloadSchema,
 	DevicesEditActionPayloadSchema,
+	DevicesFetchActionPayloadSchema,
 	DevicesGetActionPayloadSchema,
 	DevicesOnEventActionPayloadSchema,
 	DevicesRemoveActionPayloadSchema,
@@ -39,6 +40,8 @@ export type IDevicesSetActionPayload = z.infer<typeof DevicesSetActionPayloadSch
 export type IDevicesUnsetActionPayload = z.infer<typeof DevicesUnsetActionPayloadSchema>;
 
 export type IDevicesGetActionPayload = z.infer<typeof DevicesGetActionPayloadSchema>;
+
+export type IDevicesFetchActionPayload = z.infer<typeof DevicesFetchActionPayloadSchema>;
 
 export type IDevicesAddActionPayload = z.infer<typeof DevicesAddActionPayloadSchema>;
 
@@ -73,7 +76,7 @@ export interface IDevicesStoreActions {
 	set: (payload: IDevicesSetActionPayload) => IDevice;
 	unset: (payload: IDevicesUnsetActionPayload) => void;
 	get: (payload: IDevicesGetActionPayload) => Promise<IDevice>;
-	fetch: () => Promise<IDevice[]>;
+	fetch: (payload?: IDevicesFetchActionPayload) => Promise<IDevice[]>;
 	add: (payload: IDevicesAddActionPayload) => Promise<IDevice>;
 	edit: (payload: IDevicesEditActionPayload) => Promise<IDevice>;
 	save: (payload: IDevicesSaveActionPayload) => Promise<IDevice>;

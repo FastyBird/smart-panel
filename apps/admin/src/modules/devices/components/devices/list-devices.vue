@@ -6,6 +6,7 @@
 	>
 		<devices-filter
 			v-model:filters="innerFilters"
+			v-model:show-hidden="innerShowHidden"
 			:filters-active="props.filtersActive"
 			:selected-count="selectedItems.length"
 			:bulk-actions="bulkActions"
@@ -90,6 +91,7 @@ const emit = defineEmits<{
 	(e: 'update:paginate-page', page: number): void;
 	(e: 'update:sort-by', dir: 'name' | 'description' | 'type' | 'state' | 'category' | undefined): void;
 	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
+	(e: 'update:show-hidden', showHidden: boolean): void;
 	(e: 'bulk-action', action: string, items: IDevice[]): void;
 }>();
 
@@ -102,6 +104,8 @@ const wrapper = ref<HTMLElement | null>(null);
 const paginator = ref<HTMLElement | null>(null);
 
 const innerFilters = useVModel(props, 'filters', emit);
+
+const innerShowHidden = useVModel(props, 'showHidden', emit);
 
 const sortBy = ref<'name' | 'description' | 'type' | 'state' | 'category' | undefined>(props.sortBy);
 

@@ -227,6 +227,7 @@ export interface IUseDevicesDataSource {
 	sortBy: Ref<'name' | 'description' | 'type' | 'state' | 'category' | undefined>;
 	sortDir: Ref<'asc' | 'desc' | null>;
 	resetFilter: () => void;
+	showHidden: Ref<boolean>;
 }
 
 export interface IUseDevicesActions {

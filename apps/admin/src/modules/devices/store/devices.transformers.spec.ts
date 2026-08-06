@@ -70,6 +70,8 @@ describe('Devices Transformers', (): void => {
 				name: 'Some device',
 				description: 'With description',
 				enabled: true,
+				hidden: false,
+				hiddenBy: null,
 				roomId: null,
 				zoneIds: [],
 				status: {
@@ -87,6 +89,13 @@ describe('Devices Transformers', (): void => {
 			expect(() => transformDeviceResponse({ ...validDeviceResponse, id: null } as unknown as IDeviceRes, DeviceSchema)).toThrow(
 				DevicesValidationException
 			);
+		});
+
+		it('carries hiddenBy through the transformer', (): void => {
+			const device = transformDeviceResponse({ ...validDeviceResponse, hidden: true, hidden_by: 'system' } as unknown as IDeviceRes, DeviceSchema);
+
+			expect(device.hidden).toBe(true);
+			expect(device.hiddenBy).toBe('system');
 		});
 	});
 

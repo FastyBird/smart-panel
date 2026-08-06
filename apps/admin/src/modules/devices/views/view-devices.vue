@@ -92,6 +92,7 @@
 			v-model:sort-dir="sortDir"
 			v-model:paginate-size="paginateSize"
 			v-model:paginate-page="paginatePage"
+			v-model:show-hidden="showHidden"
 			:items="devicesPaginated"
 			:all-items="devices"
 			:total-rows="totalRows"
@@ -261,6 +262,7 @@ const {
 	paginatePage,
 	areLoading,
 	resetFilter,
+	showHidden,
 } = useDevicesDataSource();
 const deviceActions = useDevicesActions();
 const { fetchValidation } = useDevicesValidation();
@@ -450,6 +452,17 @@ watch(
 	(): void => {
 		showDrawer.value =
 			route.matched.find((matched) => matched.name === RouteNames.DEVICES_ADD || matched.name === RouteNames.DEVICES_EDIT) !== undefined;
+	}
+);
+
+watch(
+	(): boolean => showHidden.value,
+	(): void => {
+		fetchDevices().catch((error: unknown): void => {
+			const err = error as Error;
+
+			throw new DevicesException('Something went wrong', err);
+		});
 	}
 );
 </script>

@@ -334,6 +334,9 @@
 				"title": "Stan",
 				"placeholder": "Wybierz stan"
 			},
+			"showHidden": {
+				"title": "Pokaż ukryte"
+			},
 			"id": {
 				"title": "Identyfikator wewnętrzny",
 				"placeholder": "ID urządzenia"
@@ -908,6 +911,17 @@
 			"water_tank_full": "Water tank full",
 			"water_tank_level": "Water tank level",
 			"zoom": "Zoom"
+		}
+	},
+	"hidden": {
+		"badge": "Ukryte",
+		"by": {
+			"system": "System",
+			"user": "Użytkownik"
+		},
+		"hint": {
+			"system": "Ukryte automatycznie, ponieważ zastąpiło je urządzenie wirtualne. Pojawi się ponownie po usunięciu tego urządzenia wirtualnego.",
+			"user": "Ukryte przez operatora. Pozostaje ukryte, dopóki ktoś go nie odkryje."
 		}
 	},
 	"validation": {

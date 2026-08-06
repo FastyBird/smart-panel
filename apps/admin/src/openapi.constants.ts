@@ -412,6 +412,10 @@ export { UsersModuleCreateUserLanguage as UsersModuleUserLanguage } from './open
 // =====================
 export { DevicesModuleCreateDeviceCategory as DevicesModuleDeviceCategory } from './openapi';
 
+export { DevicesModuleCreateDeviceHidden_by as DevicesModuleDeviceHiddenBy } from './openapi';
+
+export { PathsModulesDevicesDevicesGetParametersQueryHidden as DevicesModuleDevicesHiddenFilter } from './openapi';
+
 export { DevicesModuleCreateDeviceChannelCategory as DevicesModuleChannelCategory } from './openapi';
 
 export { DevicesModuleCreateDeviceChannelPropertyCategory as DevicesModuleChannelPropertyCategory } from './openapi';

@@ -9,6 +9,8 @@ import type {
 import {
 	DevicesModuleDeviceCategory,
 	DevicesModuleDeviceConnectionStatus,
+	DevicesModuleDeviceHiddenBy,
+	DevicesModuleDevicesHiddenFilter,
 } from '../../../openapi.constants';
 
 import { ChannelCreateReqSchema, ChannelResSchema } from './channels.store.schemas';
@@ -31,6 +33,8 @@ export const DeviceSchema = z.object({
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable().default(null),
 	enabled: z.boolean().default(true),
+	hidden: z.boolean().default(false),
+	hiddenBy: z.nativeEnum(DevicesModuleDeviceHiddenBy).nullable().default(null),
 	roomId: z.string().uuid().nullable().default(null),
 	zoneIds: z.array(z.string().uuid()).default([]),
 	status: z.object({
@@ -97,6 +101,10 @@ export const DevicesUnsetActionPayloadSchema = z.object({
 
 export const DevicesGetActionPayloadSchema = z.object({
 	id: ItemIdSchema,
+});
+
+export const DevicesFetchActionPayloadSchema = z.object({
+	hidden: z.nativeEnum(DevicesModuleDevicesHiddenFilter).optional(),
 });
 
 export const DevicesAddActionPayloadSchema = z.object({
@@ -202,6 +210,12 @@ export const DeviceResSchema: ZodType<ApiDevice> = z.object({
 	description: z.string().trim().nullable(),
 	enabled: z.boolean(),
 	hidden: z.boolean(),
+	// `.optional()`, not `.nullable()`: the generated `ApiDevice.hidden_by` type loses the `| null`
+	// that the OpenAPI spec declares (nullable enum) because openapi-typescript does not append it
+	// to enum-referencing properties (see the `variant` field on the reTerminal plugin's device
+	// schema for the same quirk). Matching that exact shape keeps this assignable to `ZodType<ApiDevice>`
+	// in both directions; the internal `DeviceSchema.hiddenBy` below is unconstrained and stays nullable.
+	hidden_by: z.nativeEnum(DevicesModuleDeviceHiddenBy).optional(),
 	room_id: z.string().uuid().nullable(),
 	zone_ids: z.array(z.string().uuid()),
 	status: z.object({

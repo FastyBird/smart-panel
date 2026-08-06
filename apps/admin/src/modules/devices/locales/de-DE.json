@@ -334,6 +334,9 @@
         "title": "Status",
         "placeholder": "Status auswählen"
       },
+      "showHidden": {
+        "title": "Ausgeblendete anzeigen"
+      },
       "id": {
         "title": "Interner Bezeichner",
         "placeholder": "Geräte-ID"
@@ -908,6 +911,17 @@
       "water_tank_full": "Water tank full",
       "water_tank_level": "Water tank level",
       "zoom": "Zoom"
+    }
+  },
+  "hidden": {
+    "badge": "Ausgeblendet",
+    "by": {
+      "system": "System",
+      "user": "Benutzer"
+    },
+    "hint": {
+      "system": "Automatisch ausgeblendet, weil ein virtuelles Gerät es ersetzt hat. Erscheint wieder, sobald dieses virtuelle Gerät gelöscht wird.",
+      "user": "Von einem Bediener ausgeblendet. Bleibt ausgeblendet, bis es jemand wieder einblendet."
     }
   },
   "validation": {
