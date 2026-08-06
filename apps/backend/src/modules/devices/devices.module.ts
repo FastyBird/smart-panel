@@ -164,6 +164,7 @@ import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidd
 		DevicesSeederService,
 		PlatformRegistryService,
 		PropertyValueSourceRegistryService,
+		PropertyCommandService,
 		DeviceExistsConstraintValidator,
 		DeviceNotHiddenConstraintValidator,
 		ChannelExistsConstraintValidator,

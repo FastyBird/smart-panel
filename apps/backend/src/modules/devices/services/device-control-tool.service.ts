@@ -1,32 +1,50 @@
+import { z } from 'zod';
+
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { IntentTargetStatus, IntentType } from '../../intents/intents.constants';
-import { IntentsService } from '../../intents/services/intents.service';
-import { LlmToolCall, ToolDefinition, ToolExecutionResult } from '../../tools/platforms/tool-provider.platform';
+import {
+	LlmToolCall,
+	ToolAccessKind,
+	ToolAudience,
+	ToolDefinition,
+	ToolExecutionContext,
+	ToolExecutionResult,
+	ToolExecutionStatus,
+	createToolDefinition,
+} from '../../tools/platforms/tool-provider.platform';
 import { BaseToolProviderService } from '../../tools/services/base-tool-provider.service';
 import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { DEVICES_MODULE_NAME } from '../devices.constants';
 
-import { ChannelsPropertiesService } from './channels.properties.service';
-import { DevicesService } from './devices.service';
-import { PlatformRegistryService } from './platform.registry.service';
+import { PropertyCommandService } from './property-command.service';
 
 const DEVICE_CONTROL_TOOLS_PROVIDER = 'device-control-tools';
 
+const CONTROL_DEVICE_INPUT_SCHEMA = z.object({
+	property_id: z.string().min(1).describe('Short property ID from the home context (the p=... value)'),
+	value: z
+		.union([z.string(), z.number(), z.boolean()])
+		.describe('Value matching the property data type and constraints'),
+});
+
+const CONTROL_DEVICE_OUTPUT_SCHEMA = z.object({
+	device_id: z.string(),
+	channel_id: z.string(),
+	property_id: z.string(),
+	value: z.union([z.string(), z.number(), z.boolean()]),
+});
+
 /**
  * Tool provider for device control.
- * Allows the AI assistant to control individual device properties.
+ * Allows agent surfaces to control individual device properties through the shared command service.
  */
 @Injectable()
 export class DeviceControlToolService extends BaseToolProviderService {
 	protected readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'DeviceControlToolService');
 
 	constructor(
-		private readonly intentsService: IntentsService,
-		private readonly devicesService: DevicesService,
-		private readonly channelsPropertiesService: ChannelsPropertiesService,
-		private readonly platformRegistry: PlatformRegistryService,
+		private readonly propertyCommandService: PropertyCommandService,
 		private readonly shortIdMapping: ShortIdMappingService,
 	) {
 		super();
@@ -38,157 +56,63 @@ export class DeviceControlToolService extends BaseToolProviderService {
 
 	getToolDefinitions(): ToolDefinition[] {
 		return [
-			{
+			createToolDefinition({
 				name: 'control_device',
 				description:
 					'Set a device property value. Use this to control individual devices like lights, switches, thermostats, etc. ' +
 					'Use the short property ID (p=...) from the home context. The device and channel are resolved automatically.',
-				parameters: {
-					type: 'object',
-					properties: {
-						property_id: {
-							type: 'string',
-							description: 'Short property ID from the home context (the p=... value)',
-						},
-						value: {
-							description: 'The value to set (string, number, or boolean depending on the property)',
-						},
-					},
-					required: ['property_id', 'value'],
-				},
-			},
+				audiences: [ToolAudience.BUDDY, ToolAudience.MCP],
+				access: ToolAccessKind.WRITE,
+				inputSchema: CONTROL_DEVICE_INPUT_SCHEMA,
+				outputSchema: CONTROL_DEVICE_OUTPUT_SCHEMA,
+			}),
 		];
 	}
 
-	protected async handleToolCall(toolCall: LlmToolCall): Promise<ToolExecutionResult> {
-		return this.executeControlDevice(toolCall.arguments);
-	}
+	protected async handleToolCall(toolCall: LlmToolCall, context: ToolExecutionContext): Promise<ToolExecutionResult> {
+		const parsed = CONTROL_DEVICE_INPUT_SCHEMA.safeParse(toolCall.arguments);
 
-	private async executeControlDevice(args: Record<string, unknown>): Promise<ToolExecutionResult> {
-		const rawPropertyId = typeof args.property_id === 'string' ? args.property_id : '';
-		const value = args.value;
-
-		if (!rawPropertyId || value === undefined || value === null) {
-			return { success: false, message: 'Missing required parameters: property_id, value' };
+		if (!parsed.success) {
+			return {
+				success: false,
+				status: ToolExecutionStatus.FAILED,
+				message: 'Missing or invalid required parameters: property_id, value',
+				errorCode: 'INVALID_TOOL_ARGUMENTS',
+			};
 		}
 
-		// Resolve short ID to full UUID (falls back to raw value if not found — may already be a UUID)
-		const propertyId = this.shortIdMapping.resolve(rawPropertyId) ?? rawPropertyId;
-
-		// Find the property (findOne joins channel and device relations)
-		const property = await this.channelsPropertiesService.findOne(propertyId);
-		const propertyChannel = property?.channel;
-		const channelEntity = propertyChannel && typeof propertyChannel !== 'string' ? propertyChannel : null;
-
-		if (!property || !channelEntity) {
-			return { success: false, message: `Property "${rawPropertyId}" not found` };
-		}
-
-		// Resolve device from channel
-		const channelDevice = channelEntity.device;
-		const device =
-			channelDevice && typeof channelDevice !== 'string'
-				? channelDevice
-				: await this.devicesService.findOne(typeof channelDevice === 'string' ? channelDevice : '');
-
-		if (!device) {
-			return { success: false, message: `Device for property "${rawPropertyId}" not found` };
-		}
-
-		const deviceId = device.id;
-		const channelId = channelEntity.id;
-
-		// Get the platform for this device
-		const platform = this.platformRegistry.get(device);
-
-		if (!platform) {
-			return { success: false, message: `No platform registered for device "${device.name}"` };
-		}
-
-		// Coerce value to a type the platform accepts.
-		const coercedValue = this.coerceValue(value);
-
-		// Create an intent for tracking
-		const intent = this.intentsService.createIntent({
-			type: IntentType.DEVICE_SET_PROPERTY,
+		const propertyId = this.shortIdMapping.resolve(parsed.data.property_id) ?? parsed.data.property_id;
+		const result = await this.propertyCommandService.executePropertyCommandById(propertyId, parsed.data.value, {
+			requestId: context.requestId,
 			context: {
 				origin: 'api',
-				extra: { source: 'buddy' },
+				extra: {
+					source: context.source,
+					audience: context.audience,
+					actorId: context.actorId,
+				},
 			},
-			targets: [{ deviceId, channelId, propertyId }],
-			value: coercedValue,
 		});
 
-		// Execute the property write through the platform
-		let success: boolean;
-
-		try {
-			success = await platform.process({
-				device,
-				channel: channelEntity,
-				property,
-				value: coercedValue,
-			});
-		} catch (error) {
-			const err = error as Error;
-
-			// Ensure the intent is always resolved, even on unexpected errors
-			this.intentsService.completeIntent(intent.id, [
-				{
-					deviceId,
-					channelId,
-					propertyId,
-					status: IntentTargetStatus.FAILED,
-					error: err.message,
-				},
-			]);
-
-			return { success: false, message: `Failed to set property on device "${device.name}": ${err.message}` };
+		if (!result.success || !result.channel || !result.property || result.value === undefined) {
+			return {
+				success: false,
+				status: ToolExecutionStatus.FAILED,
+				message: result.reason ?? 'Failed to set device property',
+				errorCode: 'DEVICE_PROPERTY_WRITE_FAILED',
+			};
 		}
 
-		// Complete the intent
-		this.intentsService.completeIntent(intent.id, [
-			{
-				deviceId,
-				channelId,
-				propertyId,
-				status: success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
-				error: success ? undefined : 'Platform rejected the property write',
+		return {
+			success: true,
+			status: ToolExecutionStatus.COMPLETED,
+			message: `Set ${result.deviceName ?? result.device} property to ${String(result.value)}`,
+			data: {
+				device_id: result.device,
+				channel_id: result.channel,
+				property_id: result.property,
+				value: result.value,
 			},
-		]);
-
-		if (success) {
-			return { success: true, message: `Set ${device.name} property to ${coercedValue}` };
-		}
-
-		return { success: false, message: `Failed to set property on device "${device.name}"` };
-	}
-
-	private coerceValue(value: unknown): string | number | boolean {
-		if (typeof value === 'boolean') {
-			return value;
-		}
-
-		if (typeof value === 'number') {
-			return value;
-		}
-
-		if (typeof value === 'string') {
-			// Parse string representations of booleans
-			if (value.toLowerCase() === 'true') return true;
-			if (value.toLowerCase() === 'false') return false;
-
-			// Parse string representations of numbers
-			const num = Number(value);
-
-			if (value.trim() !== '' && !Number.isNaN(num) && Number.isFinite(num)) {
-				return num;
-			}
-
-			return value;
-		}
-
-		// Fallback for objects or other types
-		return JSON.stringify(value);
+		};
 	}
 }

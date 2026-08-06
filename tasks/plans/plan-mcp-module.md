@@ -1,5 +1,10 @@
 # Smart Panel MCP Module — Implementation Plan
 
+**Status:** Phase 1 complete — Phase 2 pending
+
+**Architecture decision:** [ADR 0001: MCP Protocol and Security Foundation](../../docs/adr/0001-mcp-protocol-and-security-foundation.md)
+supersedes the original stateful-session transport assumptions in this plan.
+
 > **For agentic workers:** Read this plan completely before changing code. Implement tasks in order, keep the
 > checkboxes current, and run the stated verification after every phase. Do not edit generated OpenAPI clients by
 > hand.
@@ -8,10 +13,12 @@
 installation on which it runs. Owners and administrators control whether MCP is enabled and whether `read`, `write`,
 `trigger`, or any combination of those capabilities is available.
 
-**Architecture:** The backend hosts one authenticated Streamable HTTP MCP endpoint on its existing HTTP server. The
-MCP server calls domain services directly; it does not proxy arbitrary OpenAPI operations and has no environment
-selector. An agent connects to the URL of a particular Smart Panel installation, so testing and production remain
-separate by deployment rather than by MCP configuration.
+**Architecture:** The backend hosts one authenticated Streamable HTTP MCP endpoint on its existing HTTP server. Modern
+MCP requests are sessionless and use `subscriptions/listen` for change events; legacy 2025 requests use the SDK's
+stateless compatibility path unless the release compatibility gate proves that a bounded stateful legacy adapter is
+required. The MCP server calls domain services directly; it does not proxy arbitrary OpenAPI operations and has no
+environment selector. An agent connects to the URL of a particular Smart Panel installation, so testing and production
+remain separate by deployment rather than by MCP configuration.
 
 **Initial endpoint:** `https://<installation>/api/v1/modules/mcp`
 
@@ -78,10 +85,11 @@ inherit general REST access from the creating administrator.
 
 ### 1.5 Transport scope
 
-- Implement Streamable HTTP using the official MCP TypeScript SDK.
-- Use stateful sessions because configuration changes need `notifications/tools/list_changed` and explicit session
-  invalidation.
-- Do not add legacy HTTP+SSE unless a supported target client proves it is required.
+- Implement the modern 2026-07-28 protocol with the official MCP TypeScript SDK v2 per-request HTTP handler.
+- Publish configuration changes through `subscriptions/listen`; modern MCP has no protocol session ID.
+- Serve legacy 2025 requests through the SDK's stateless compatibility path.
+- Add a separately routed, bounded legacy stateful transport only if a supported target client proves it is required.
+- Do not add legacy HTTP+SSE.
 - Do not add stdio in this task; agents connect to the installed application over HTTP.
 - Standards-compliant third-party OAuth discovery/authorization is a follow-up. The first release targets clients that
   support a preconfigured `Authorization: Bearer <MCP token>` header.
@@ -184,7 +192,7 @@ apps/backend/src/modules/mcp/
 │   ├── mcp-context.service.ts
 │   ├── mcp-policy.service.ts
 │   ├── mcp-server.service.ts
-│   └── mcp-session.service.ts
+│   └── mcp-subscription-registry.service.ts
 ├── tools/
 │   ├── mcp-read-tool.service.ts
 │   └── mcp-target-discovery-tool.service.ts
@@ -237,20 +245,22 @@ Existing files expected to change include:
 
 - Modify: `apps/backend/package.json`
 - Modify: `pnpm-lock.yaml`
-- Create temporary test code only if it is either removed or converted into a committed integration test
+- Create: `docs/adr/0001-mcp-protocol-and-security-foundation.md`
+- Create: `apps/backend/test/mcp-sdk-compatibility.e2e-spec.ts`
 
-- [ ] Verify the current stable official MCP server and Fastify adapter packages against Node 24, TypeScript 5.9,
+- [x] Verify the current stable official MCP server and Node adapter packages against Node 24, TypeScript 5.9,
       Fastify 5, NestJS 11, and the repository's ESM/CommonJS build configuration.
-- [ ] Prefer the official `@modelcontextprotocol/server` and `@modelcontextprotocol/fastify` packages.
-- [ ] Pin exact compatible versions; do not use `latest` ranges.
-- [ ] Confirm the adapter can handle POST, GET/SSE, DELETE, protocol-version headers, and an externally supplied
-      authenticated client context without starting a second HTTP server.
-- [ ] Confirm MCP responses can bypass Smart Panel's response-envelope and class-transformer interceptors.
-- [ ] If the newly released SDK v2 is incompatible, use the latest supported v1 SDK and record the reason in this plan
-      and in a dependency comment. Do not upgrade TypeScript or Fastify as an incidental workaround.
-- [ ] Add a minimal in-process protocol initialization test before continuing.
+- [x] Use `@modelcontextprotocol/server` and `@modelcontextprotocol/node`; the Fastify package creates a separate app
+      and is not the route adapter needed by NestJS.
+- [x] Pin exact compatible SDK and Zod versions; do not use `latest` ranges.
+- [x] Confirm modern auto-negotiation and legacy stateless requests work without starting a second application server.
+- [x] Confirm the Node adapter receives externally validated `AuthInfo` and passes it to the per-request server factory.
+- [x] Confirm MCP responses bypass Smart Panel's response-envelope and class-transformer interceptors through
+      `RawRoute` and Fastify reply hijacking.
+- [x] Add an in-process test covering tool listing and structured tool calls for modern and legacy clients.
 
-**Verification:** backend build, type-check, and the initialization test pass.
+**Outcome:** SDK v2 is compatible. The focused E2E test passes. The two-host release compatibility gate remains in
+Task 14 because it requires external target clients.
 
 ### Task 2: Add the backend MCP module and configuration mapping
 
@@ -295,18 +305,24 @@ requests.
 - Modify: `apps/backend/src/modules/tools/services/tool-provider-registry.service.ts`
 - Modify existing tool-provider tests
 
-- [ ] Add a provider-neutral access-kind enum: `read`, `write`, `trigger`.
-- [ ] Add tool audiences so a definition explicitly opts into Buddy, MCP, or both.
-- [ ] Add optional execution context carrying audience, source, authenticated actor/client ID, and request ID.
-- [ ] Make registry listing filter by audience and access kinds.
-- [ ] Make registry execution resolve the registered definition first and reject audience mismatches.
-- [ ] Preserve Buddy behavior and signatures through a small compatibility adapter where necessary.
-- [ ] Reject duplicate tool names across providers at registration; logging and silently keeping one provider is not
+- [x] Add a provider-neutral access-kind enum: `read`, `write`, `trigger`.
+- [x] Add tool audiences so a definition explicitly opts into Buddy, MCP, or both.
+- [x] Add optional execution context carrying audience, source, authenticated actor/client ID, and request ID.
+- [x] Define provider-neutral Zod input/output schemas and derive the legacy JSON Schema representation from them.
+- [x] Return explicit completed, partial, failed, timed-out, or denied execution outcomes.
+- [x] Make registry listing filter by audience and access kinds.
+- [x] Make registry execution resolve the registered definition first and reject audience mismatches.
+- [x] Preserve Buddy behavior and signatures through default execution context values where necessary.
+- [x] Reject duplicate tool names across providers at registration; logging and silently keeping one provider is not
       safe for an externally exposed protocol.
-- [ ] Keep timeout handling in `BaseToolProviderService` and return a structured failure without leaking stack traces.
+- [x] Keep timeout handling in `BaseToolProviderService` and return a structured failure without leaking stack traces.
 
 **Tests:** audience filtering, capability filtering, duplicate names, unknown tools, execution context propagation,
 timeouts, and Buddy regression tests.
+
+**Outcome:** The registry now indexes unique tool names, applies definition-level audience/access policy before provider
+execution, and defaults existing callers to the Buddy context. Tool definitions use Zod as their schema source and all
+execution paths return structured, sanitized outcomes.
 
 ### Task 4: Classify and refactor the existing operational tools
 
@@ -317,17 +333,22 @@ timeouts, and Buddy regression tests.
 - Modify: `apps/backend/src/plugins/spaces-home-control/services/space-lighting-tool.service.ts`
 - Modify corresponding unit tests
 
-- [ ] Classify device property control as `write` and expose it to Buddy and MCP.
-- [ ] Classify scene execution and space lighting intents as `trigger` and expose them to Buddy and MCP.
-- [ ] Rename only at the MCP adapter boundary if public MCP names need clearer naming; do not break existing Buddy tool
+- [x] Classify device property control as `write` and expose it to Buddy and MCP.
+- [x] Classify scene execution and space lighting intents as `trigger` and expose them to Buddy and MCP.
+- [x] Rename only at the MCP adapter boundary if public MCP names need clearer naming; do not break existing Buddy tool
       names unnecessarily.
-- [ ] Replace hard-coded `buddy`/`api` origin metadata with values derived from the execution context.
-- [ ] Ensure MCP writes use the existing property validation and platform processing paths.
-- [ ] Ensure scene and lighting calls return completed, partial, failed, or timed-out states accurately.
-- [ ] Do not expose a plugin-contributed tool to MCP unless its definition explicitly lists the MCP audience.
+- [x] Keep the domain intent origin provider-neutral and record the exact Buddy/MCP source, audience, and actor from the
+      execution context.
+- [x] Route provider-triggered writes through the shared property validation, intent, and platform processing paths.
+- [x] Ensure scene and lighting calls return completed, partial, failed, or timed-out states accurately.
+- [x] Do not expose a plugin-contributed tool to MCP unless its definition explicitly lists the MCP audience.
 
-**Tests:** Buddy origin remains unchanged, MCP origin is recorded as MCP, capability classification, partial failures,
-disabled scenes, invalid properties, and unavailable optional plugin services.
+**Tests:** Buddy origin remains unchanged, MCP source is recorded in intent context, capability classification, partial
+failures, disabled scenes, invalid properties, and unavailable optional plugin services.
+
+**Outcome:** Device writes now share one constraint-aware property command path for REST and agent tools. Device,
+scene, and optional space-lighting providers explicitly opt into MCP, propagate execution context to intents, and
+report partial or failed operations honestly without exposing internal exceptions.
 
 ### Task 5: Add MCP client records, token issuance, and endpoint isolation
 
@@ -357,28 +378,29 @@ disabled scenes, invalid properties, and unavailable optional plugin services.
 **Tests:** one-time secret, hash storage, expiry, audience, revocation, rotation, capability subset validation, MCP token
 rejected on REST, PAT rejected on MCP, MCP token rejected on WebSocket, and existing display/PAT auth regressions.
 
-### Task 6: Implement policy and session services
+### Task 6: Implement policy and subscription services
 
 **Files:**
 
 - Create: `apps/backend/src/modules/mcp/services/mcp-policy.service.ts`
-- Create: `apps/backend/src/modules/mcp/services/mcp-session.service.ts`
+- Create: `apps/backend/src/modules/mcp/services/mcp-subscription-registry.service.ts`
 - Create corresponding specs
 
 - [ ] Resolve installation config and authenticated MCP client for every listing/read/call operation.
 - [ ] Compute effective capabilities using the intersection rule.
 - [ ] Recheck module enabled state, client enabled/revoked state, token expiry, and tool capability immediately before
       execution.
-- [ ] Maintain a bounded map of secure, random session IDs associated with exactly one MCP client.
-- [ ] Reject a session ID presented with a different bearer token/client.
+- [ ] Use the SDK event bus for modern `subscriptions/listen` change events.
+- [ ] Track subscription streams by authenticated MCP client so targeted policy changes can abort affected streams.
 - [ ] Add idle expiration and cleanup on disconnect/module shutdown.
-- [ ] Cap concurrent global and per-client sessions to prevent unbounded memory growth.
-- [ ] Provide methods to notify sessions of tool-list changes and to close sessions for a revoked client or disabled
-      module.
-- [ ] Never use a session ID as authentication on its own.
+- [ ] Cap concurrent global and per-client subscription streams to prevent unbounded memory growth.
+- [ ] Provide methods to notify subscribers of tool/resource-list changes and close streams for a revoked client or
+      disabled module.
+- [ ] If legacy stateful support is later approved, keep its session registry separate and bind every session to the
+      authenticated token/client.
 
-**Tests:** intersection matrix, stale sessions, cross-client session reuse, revocation during a session, module disable,
-session caps, and cleanup.
+**Tests:** intersection matrix, cross-client stream isolation, revocation during a subscription, module disable, stream
+caps, and cleanup.
 
 ### Task 7: Implement the raw Streamable HTTP endpoint
 
@@ -390,20 +412,22 @@ session caps, and cleanup.
 - Create: `apps/backend/src/modules/mcp/services/mcp-server.service.ts`
 - Create endpoint/integration specs
 
-- [ ] Expose GET, POST, and DELETE on the module root as required by Streamable HTTP.
+- [ ] Expose the module root to the SDK adapter. Modern traffic uses POST and streaming POST responses; legacy
+      stateless GET/DELETE requests receive the SDK-defined 405 response.
 - [ ] Mark the handler as a raw route so Smart Panel response interceptors do not wrap JSON-RPC or SSE responses.
 - [ ] Exclude the protocol endpoint from OpenAPI while keeping client-management endpoints documented.
 - [ ] Return 404 while the MCP module is disabled.
-- [ ] Authenticate before creating or looking up a session.
+- [ ] Authenticate before SDK dispatch or subscription registration.
 - [ ] Validate `Origin` using same-origin plus configured allowlist rules; return 403 for invalid origins.
-- [ ] Validate content type, accepted response types, protocol version, session header, and bounded request body.
+- [ ] Validate content type, accepted response types, protocol version, method/name headers, and bounded request body.
 - [ ] Attach installation identity and effective capability information to MCP server instructions/metadata.
 - [ ] Add a dedicated throttle keyed by MCP client, with a stricter unauthenticated/IP limit.
 - [ ] Ensure JSON-RPC errors and HTTP auth/transport errors retain protocol-correct shapes and status codes.
-- [ ] Close SDK transports and sessions during Nest application shutdown.
+- [ ] Close SDK handlers and active subscription streams during Nest application shutdown.
 
-**Tests:** initialize, tools/list, tools/call, GET/SSE, DELETE session, malformed JSON-RPC, unsupported protocol version,
-missing/invalid token, invalid origin, disabled module, throttling, and graceful shutdown.
+**Tests:** modern discovery, legacy initialization, tools/list, tools/call, `subscriptions/listen`, legacy GET/DELETE
+behavior, malformed JSON-RPC, unsupported protocol version, missing/invalid token, invalid origin/host, disabled module,
+throttling, and graceful shutdown.
 
 ### Task 8: Implement curated read tools and resources
 
@@ -451,15 +475,16 @@ and optional home-control plugin absence.
 **Files:**
 
 - Create: `apps/backend/src/modules/mcp/listeners/mcp-config.listener.ts`
-- Modify MCP client service/session service
+- Modify MCP client service/subscription registry
 - Add specs
 
 - [ ] Subscribe to the existing configuration-updated event for `mcp-module`.
-- [ ] On capability changes, notify every active session with `notifications/tools/list_changed`.
+- [ ] On capability changes, publish tool-list changes to active modern subscriptions and the negotiated legacy
+      notification equivalent when a legacy stateful adapter exists.
 - [ ] On removal of `read`, also notify resource-list changes where supported.
-- [ ] On module disable, close all active sessions after sending a best-effort shutdown/error indication.
-- [ ] On client capability reduction, notify only that client's sessions.
-- [ ] On client disable/revocation/deletion/rotation, close that client's existing sessions.
+- [ ] On module disable, close all active subscription streams after a best-effort notification.
+- [ ] On client capability reduction, notify only that client's streams.
+- [ ] On client disable/revocation/deletion/rotation, close that client's existing streams.
 - [ ] Execution policy remains authoritative even if a client misses a notification.
 
 **Tests:** every live transition, including a tool call racing with a permission reduction.
@@ -472,11 +497,12 @@ and optional home-control plugin absence.
 - Modify MCP server/policy/client services
 - Add stats provider only if it follows existing metrics patterns cleanly
 
-- [ ] Log initialization, authentication failure, session open/close, tool execution, policy denial, timeout, and result.
+- [ ] Log discovery/legacy initialization, authentication failure, subscription open/close, tool execution, policy
+      denial, timeout, and result.
 - [ ] Include request ID, MCP client ID, tool, capability, duration, and outcome.
 - [ ] Do not log bearer tokens, token hashes, authorization headers, secure values, or unrestricted raw arguments.
 - [ ] Redact or summarize values for device writes while retaining target IDs for investigation.
-- [ ] Add counters for active sessions, calls by capability/tool, failures, denials, and timeouts.
+- [ ] Add counters for active subscriptions, calls by capability/tool, failures, denials, and timeouts.
 - [ ] Make logs identify the source as `mcp-module` and preserve existing system logger conventions.
 
 **Tests:** redaction, success/failure records, metrics increments, and no token material in captured logs.
@@ -522,7 +548,8 @@ revocation confirmation, role restrictions, and responsive layout.
 - [ ] Add backend E2E coverage using an in-process MCP client or the SDK's supported test transport.
 - [ ] Test all eight module capability combinations.
 - [ ] Test module/client capability intersections.
-- [ ] Test two simultaneous clients with different permissions and ensure sessions cannot cross.
+- [ ] Test two simultaneous clients with different permissions and ensure authenticated contexts and subscriptions
+      cannot cross.
 - [ ] Test a permission change and token revocation while clients remain connected.
 - [ ] Test against a simulator installation so writes/triggers cannot affect real hardware.
 - [ ] Verify `set_device_property`, `run_scene`, and `set_space_lighting` produce the expected intent/event traces.
@@ -565,8 +592,9 @@ revocation confirmation, role restrictions, and responsive layout.
 
 ### Protocol and catalog
 
-- [ ] A compatible MCP client can initialize against `/api/v1/modules/mcp` using Streamable HTTP.
-- [ ] `tools/list`, `resources/list`, `tools/call`, resource reads, sessions, and shutdown behave according to the
+- [ ] A modern MCP client can discover `/api/v1/modules/mcp`, and a compatible legacy client can initialize through the
+      stateless fallback.
+- [ ] `tools/list`, `resources/list`, `tools/call`, resource reads, subscriptions, and shutdown behave according to the
       negotiated protocol version.
 - [ ] Only explicitly registered tools appear; no generic OpenAPI proxy exists.
 - [ ] Tool/resource discovery matches the effective capability intersection.
@@ -578,9 +606,9 @@ revocation confirmation, role restrictions, and responsive layout.
 - [ ] MCP tokens work only on the MCP endpoint.
 - [ ] Ordinary access/PAT/display tokens do not work on the MCP endpoint.
 - [ ] Revoked, expired, disabled-client, wrong-audience, and invalid-origin requests are rejected.
-- [ ] Session IDs cannot be used without the correct bearer token or by another client.
+- [ ] Subscription streams and any approved legacy sessions remain bound to the correct bearer token and MCP client.
 - [ ] Logs and results contain no credential material.
-- [ ] The MCP endpoint is rate-limited and bounded by session, body-size, context-size, and history limits.
+- [ ] The MCP endpoint is rate-limited and bounded by subscription, body-size, context-size, and history limits.
 
 ### Operations
 
@@ -609,7 +637,7 @@ revocation confirmation, role restrictions, and responsive layout.
 
 ## 7. Rollout Gates
 
-1. **Foundation gate:** SDK compatibility, disabled module, authentication isolation, and zero-tool initialization.
+1. **Foundation gate:** SDK compatibility, disabled module, authentication isolation, and zero-tool protocol discovery.
 2. **Read gate:** Read-only operation passes E2E tests on a simulator and a testing installation.
 3. **Write gate:** Direct property writes pass value validation, audit, timeout, and permission-revocation tests.
 4. **Trigger gate:** Scene and space intent execution pass partial-failure and repeat-invocation tests.

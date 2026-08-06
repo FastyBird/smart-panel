@@ -29,6 +29,7 @@ describe('LightingIntentService', () => {
 	let service: LightingIntentService;
 	let spacesService: jest.Mocked<SpacesService>;
 	let lightingRoleService: jest.Mocked<SpaceLightingRoleService>;
+	let intentsService: jest.Mocked<IntentsService>;
 
 	const mockSpaceId = uuid();
 	const mockIntentId = uuid();
@@ -148,10 +149,35 @@ describe('LightingIntentService', () => {
 		service = module.get<LightingIntentService>(LightingIntentService);
 		spacesService = module.get(SpacesService);
 		lightingRoleService = module.get(SpaceLightingRoleService);
+		intentsService = module.get(IntentsService);
 
 		// Reset mocks between tests
 		jest.clearAllMocks();
 		mockPlatform.processBatch.mockResolvedValue(true);
+	});
+
+	it('records a supplied agent execution context while keeping the authoritative space', async () => {
+		const onlineDevice = createMockDeviceWithLightChannel('online-device', true, ConnectionState.CONNECTED);
+
+		spacesService.findDevicesBySpace.mockResolvedValue([onlineDevice] as unknown as DeviceEntity[]);
+
+		await service.executeLightingIntent(
+			mockSpaceId,
+			{ type: LightingIntentType.ON },
+			{ origin: 'api', extra: { source: 'mcp', actorId: 'client-1' } },
+		);
+
+		// eslint-disable-next-line @typescript-eslint/unbound-method
+		expect(intentsService.createIntent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				context: {
+					origin: 'api',
+					spaceId: mockSpaceId,
+					roleKey: undefined,
+					extra: { source: 'mcp', actorId: 'client-1' },
+				},
+			}),
+		);
 	});
 
 	describe('offline device handling', () => {
