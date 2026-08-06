@@ -47,6 +47,30 @@
 			"description": "Vyberte druh zařízení, které vytváříte. Určuje, které kanály a vlastnosti bude v dalším kroku potřeba namapovat.",
 			"blockedHeading": "V tomto vydání není k dispozici",
 			"blockedReason": "vyžaduje regulátor — plánováno pro pozdější vydání"
+		},
+		"mapping": {
+			"heading": "Propojte vlastnosti",
+			"description": "Každá vlastnost níže pochází ze skutečného zařízení. Vyplňte alespoň povinné — ostatní jsou volitelné a mohou zůstat prázdné.",
+			"noCategory": "Nejprve vyberte kategorii zařízení.",
+			"progress": "Namapováno {filled} z {total} povinných vlastností",
+			"required": "Povinné",
+			"optional": "Volitelné",
+			"showOptional": "Zobrazit dalších {count} volitelných vlastností",
+			"source": {
+				"devicePlaceholder": "Zdrojové zařízení",
+				"channelPlaceholder": "Zdrojový kanál",
+				"propertyPlaceholder": "Zdrojová vlastnost"
+			},
+			"shortcut": {
+				"description": "Převzít celý kanál: vyberte kanál skutečného zařízení a vyplňte jím všechny vlastnosti, které dokáže pokrýt.",
+				"apply": "Vyplnit z kanálu",
+				"applied": "Z vybraného kanálu vyplněno {filled} z {total} vlastností.",
+				"nothingApplied": "Vybraný kanál nemá žádnou vlastnost, kterou by tento kanál mohl použít."
+			},
+			"errors": {
+				"checkFailed": "Tento zdroj se nepodařilo ověřit. Vyberte jiný nebo to zkuste znovu.",
+				"incompatible": "Tento zdroj nemůže tuto vlastnost naplnit."
+			}
 		}
 	}
 }

@@ -47,6 +47,30 @@
 			"description": "Wählen Sie die Art des Geräts, das Sie erstellen. Sie bestimmt, welche Kanäle und Eigenschaften im nächsten Schritt zugeordnet werden müssen.",
 			"blockedHeading": "In dieser Version nicht verfügbar",
 			"blockedReason": "benötigt einen Regler — für eine spätere Version geplant"
+		},
+		"mapping": {
+			"heading": "Eigenschaften verknüpfen",
+			"description": "Jede Eigenschaft unten stammt von einem echten Gerät. Füllen Sie mindestens die erforderlichen aus — die übrigen sind optional und dürfen leer bleiben.",
+			"noCategory": "Wählen Sie zuerst eine Gerätekategorie.",
+			"progress": "{filled} von {total} erforderlichen Eigenschaften zugeordnet",
+			"required": "Erforderlich",
+			"optional": "Optional",
+			"showOptional": "{count} weitere optionale Eigenschaften anzeigen",
+			"source": {
+				"devicePlaceholder": "Quellgerät",
+				"channelPlaceholder": "Quellkanal",
+				"propertyPlaceholder": "Quelleigenschaft"
+			},
+			"shortcut": {
+				"description": "Ganzen Kanal übernehmen: Wählen Sie einen Kanal eines echten Geräts, um damit alle Eigenschaften zu füllen, die er abdecken kann.",
+				"apply": "Aus Kanal füllen",
+				"applied": "{filled} von {total} Eigenschaften aus dem gewählten Kanal gefüllt.",
+				"nothingApplied": "Der gewählte Kanal hat keine Eigenschaft, die dieser Kanal verwenden kann."
+			},
+			"errors": {
+				"checkFailed": "Diese Quelle konnte nicht geprüft werden. Wählen Sie eine andere oder versuchen Sie es erneut.",
+				"incompatible": "Diese Quelle kann diese Eigenschaft nicht füllen."
+			}
 		}
 	}
 }

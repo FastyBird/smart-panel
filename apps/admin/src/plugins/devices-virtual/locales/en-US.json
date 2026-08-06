@@ -47,6 +47,30 @@
 			"description": "Pick the kind of device you are creating. It determines which channels and properties the next step will ask you to map.",
 			"blockedHeading": "Not available in this release",
 			"blockedReason": "needs a controller — planned for a later release"
+		},
+		"mapping": {
+			"heading": "Wire up the properties",
+			"description": "Every property below comes from a real device. Fill at least the required ones — the rest are optional and can stay empty.",
+			"noCategory": "Choose a device category first.",
+			"progress": "{filled} of {total} required properties mapped",
+			"required": "Required",
+			"optional": "Optional",
+			"showOptional": "Show {count} more optional properties",
+			"source": {
+				"devicePlaceholder": "Source device",
+				"channelPlaceholder": "Source channel",
+				"propertyPlaceholder": "Source property"
+			},
+			"shortcut": {
+				"description": "Take a whole channel: pick a channel on a real device and fill every property here that it can cover.",
+				"apply": "Fill from channel",
+				"applied": "Filled {filled} of {total} properties from the selected channel.",
+				"nothingApplied": "The selected channel has no property this channel can use."
+			},
+			"errors": {
+				"checkFailed": "This source could not be verified. Pick another one or try again.",
+				"incompatible": "This source cannot fill this property."
+			}
 		}
 	}
 }

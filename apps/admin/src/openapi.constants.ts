@@ -222,6 +222,8 @@ export type DevicesVirtualPluginChannelSchema = components['schemas']['DevicesVi
 export type DevicesVirtualPluginCreateChannelPropertySchema = components['schemas']['DevicesVirtualPluginCreateChannelProperty'];
 export type DevicesVirtualPluginUpdateChannelPropertySchema = components['schemas']['DevicesVirtualPluginUpdateChannelProperty'];
 export type DevicesVirtualPluginChannelPropertySchema = components['schemas']['DevicesVirtualPluginDataChannelProperty'];
+export type DevicesVirtualPluginCompatibilityCandidateSchema = components['schemas']['DevicesVirtualPluginCompatibilityCandidate'];
+export type DevicesVirtualPluginCompatibilityReportSchema = components['schemas']['DevicesVirtualPluginDataCompatibilityReport'];
 export { DevicesVirtualPluginCreateChannelPropertyValue_origin as DevicesVirtualPluginValueOrigin } from './openapi';
 
 // Simulator Plugin Schemas
@@ -401,6 +403,9 @@ export type DevicesHomeAssistantPluginGetHelpersOperation = operations['get-devi
 export type DevicesHomeAssistantPluginGetHelperOperation = operations['get-devices-home-assistant-plugin-helper'];
 export type DevicesHomeAssistantPluginPreviewHelperMappingOperation = operations['preview-devices-home-assistant-plugin-helper-mapping'];
 export type DevicesHomeAssistantPluginAdoptHelperOperation = operations['adopt-devices-home-assistant-plugin-helper'];
+
+// Devices Virtual Plugin Operations
+export type DevicesVirtualPluginCheckCompatibilityOperation = operations['check-devices-virtual-plugin-devices-compatibility'];
 
 // Auth & User Enums
 // =================

@@ -47,6 +47,30 @@
 			"description": "Vyberte druh zariadenia, ktoré vytvárate. Určuje, ktoré kanály a vlastnosti bude potrebné namapovať v ďalšom kroku.",
 			"blockedHeading": "V tomto vydaní nie je k dispozícii",
 			"blockedReason": "vyžaduje regulátor — plánované pre neskoršie vydanie"
+		},
+		"mapping": {
+			"heading": "Prepojte vlastnosti",
+			"description": "Každá vlastnosť nižšie pochádza zo skutočného zariadenia. Vyplňte aspoň povinné — ostatné sú voliteľné a môžu zostať prázdne.",
+			"noCategory": "Najprv vyberte kategóriu zariadenia.",
+			"progress": "Namapovaných {filled} z {total} povinných vlastností",
+			"required": "Povinné",
+			"optional": "Voliteľné",
+			"showOptional": "Zobraziť ďalších {count} voliteľných vlastností",
+			"source": {
+				"devicePlaceholder": "Zdrojové zariadenie",
+				"channelPlaceholder": "Zdrojový kanál",
+				"propertyPlaceholder": "Zdrojová vlastnosť"
+			},
+			"shortcut": {
+				"description": "Prevziať celý kanál: vyberte kanál skutočného zariadenia a vyplňte ním všetky vlastnosti, ktoré dokáže pokryť.",
+				"apply": "Vyplniť z kanála",
+				"applied": "Z vybraného kanála vyplnených {filled} z {total} vlastností.",
+				"nothingApplied": "Vybraný kanál nemá žiadnu vlastnosť, ktorú by tento kanál mohol použiť."
+			},
+			"errors": {
+				"checkFailed": "Tento zdroj sa nepodarilo overiť. Vyberte iný alebo to skúste znova.",
+				"incompatible": "Tento zdroj nemôže naplniť túto vlastnosť."
+			}
 		}
 	}
 }

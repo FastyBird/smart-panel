@@ -47,6 +47,30 @@
 			"description": "Wybierz rodzaj tworzonego urządzenia. Określa on, które kanały i właściwości będzie trzeba zmapować w następnym kroku.",
 			"blockedHeading": "Niedostępne w tym wydaniu",
 			"blockedReason": "wymaga sterownika — zaplanowano na kolejne wydanie"
+		},
+		"mapping": {
+			"heading": "Połącz właściwości",
+			"description": "Każda właściwość poniżej pochodzi z rzeczywistego urządzenia. Wypełnij co najmniej wymagane — pozostałe są opcjonalne i mogą zostać puste.",
+			"noCategory": "Najpierw wybierz kategorię urządzenia.",
+			"progress": "Zmapowano {filled} z {total} wymaganych właściwości",
+			"required": "Wymagana",
+			"optional": "Opcjonalna",
+			"showOptional": "Pokaż jeszcze {count} właściwości opcjonalnych",
+			"source": {
+				"devicePlaceholder": "Urządzenie źródłowe",
+				"channelPlaceholder": "Kanał źródłowy",
+				"propertyPlaceholder": "Właściwość źródłowa"
+			},
+			"shortcut": {
+				"description": "Przejmij cały kanał: wybierz kanał rzeczywistego urządzenia i wypełnij nim wszystkie właściwości, które może pokryć.",
+				"apply": "Wypełnij z kanału",
+				"applied": "Wypełniono {filled} z {total} właściwości z wybranego kanału.",
+				"nothingApplied": "Wybrany kanał nie ma żadnej właściwości, której ten kanał mógłby użyć."
+			},
+			"errors": {
+				"checkFailed": "Nie udało się zweryfikować tego źródła. Wybierz inne lub spróbuj ponownie.",
+				"incompatible": "To źródło nie może wypełnić tej właściwości."
+			}
 		}
 	}
 }

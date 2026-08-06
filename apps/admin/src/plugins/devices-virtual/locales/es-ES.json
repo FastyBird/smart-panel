@@ -47,6 +47,30 @@
 			"description": "Elija el tipo de dispositivo que está creando. Determina qué canales y propiedades deberá asignar en el siguiente paso.",
 			"blockedHeading": "No disponible en esta versión",
 			"blockedReason": "necesita un controlador — previsto para una versión posterior"
+		},
+		"mapping": {
+			"heading": "Conecte las propiedades",
+			"description": "Cada propiedad de abajo proviene de un dispositivo real. Complete al menos las obligatorias; las demás son opcionales y pueden quedar vacías.",
+			"noCategory": "Elija primero una categoría de dispositivo.",
+			"progress": "{filled} de {total} propiedades obligatorias asignadas",
+			"required": "Obligatoria",
+			"optional": "Opcional",
+			"showOptional": "Mostrar {count} propiedades opcionales más",
+			"source": {
+				"devicePlaceholder": "Dispositivo de origen",
+				"channelPlaceholder": "Canal de origen",
+				"propertyPlaceholder": "Propiedad de origen"
+			},
+			"shortcut": {
+				"description": "Tomar un canal entero: elija un canal de un dispositivo real y complete con él todas las propiedades que pueda cubrir.",
+				"apply": "Rellenar desde el canal",
+				"applied": "Se completaron {filled} de {total} propiedades desde el canal seleccionado.",
+				"nothingApplied": "El canal seleccionado no tiene ninguna propiedad que este canal pueda usar."
+			},
+			"errors": {
+				"checkFailed": "No se pudo verificar este origen. Elija otro o inténtelo de nuevo.",
+				"incompatible": "Este origen no puede rellenar esta propiedad."
+			}
 		}
 	}
 }
