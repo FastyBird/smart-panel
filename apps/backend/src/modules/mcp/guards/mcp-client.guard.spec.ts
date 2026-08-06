@@ -1,6 +1,7 @@
 import { ExecutionContext } from '@nestjs/common';
 
 import { McpPolicyContext, McpPolicyRequest, McpPolicyService } from '../services/mcp-policy.service';
+import { McpServerService } from '../services/mcp-server.service';
 
 import { McpClientGuard } from './mcp-client.guard';
 
@@ -12,7 +13,11 @@ describe('McpClientGuard', () => {
 			resolve: jest.fn().mockResolvedValue(policy),
 			validateRequestOrigin: jest.fn(),
 		};
-		const guard = new McpClientGuard(policyService as unknown as McpPolicyService);
+		const serverService = { getPolicyRevision: jest.fn().mockReturnValue(7) };
+		const guard = new McpClientGuard(
+			policyService as unknown as McpPolicyService,
+			serverService as unknown as McpServerService,
+		);
 		const context = {
 			switchToHttp: () => ({ getRequest: () => request }),
 		} as ExecutionContext;
@@ -20,6 +25,6 @@ describe('McpClientGuard', () => {
 		await expect(guard.canActivate(context)).resolves.toBe(true);
 		expect(policyService.resolve).toHaveBeenCalledWith(request.auth);
 		expect(policyService.validateRequestOrigin).toHaveBeenCalledWith(request, policy);
-		expect(request.mcpPolicy).toBe(policy);
+		expect(request.mcpPolicy).toEqual({ ...policy, policyRevision: 7 });
 	});
 });

@@ -33,6 +33,7 @@ describe('McpClientService', () => {
 	let configService: { getModuleConfig: jest.Mock };
 	let serverService: {
 		closeClient: jest.Mock;
+		invalidatePolicies: jest.Mock;
 		notifyResourcesChanged: jest.Mock;
 		notifyToolsChanged: jest.Mock;
 	};
@@ -86,6 +87,7 @@ describe('McpClientService', () => {
 		};
 		serverService = {
 			closeClient: jest.fn().mockResolvedValue(undefined),
+			invalidatePolicies: jest.fn(),
 			notifyResourcesChanged: jest.fn(),
 			notifyToolsChanged: jest.fn(),
 		};
@@ -216,6 +218,7 @@ describe('McpClientService', () => {
 
 		expect(serverService.notifyToolsChanged).toHaveBeenCalledWith(currentClient.id);
 		expect(serverService.notifyResourcesChanged).toHaveBeenCalledWith(currentClient.id);
+		expect(serverService.invalidatePolicies).toHaveBeenCalledTimes(1);
 		expect(serverService.closeClient).not.toHaveBeenCalled();
 	});
 

@@ -130,6 +130,7 @@ export class McpClientService {
 		if (dto.enabled === false) {
 			await this.serverService.closeClient(id);
 		} else if (dto.capabilities !== undefined) {
+			this.serverService.invalidatePolicies();
 			this.serverService.notifyToolsChanged(id);
 			this.serverService.notifyResourcesChanged(id);
 		}

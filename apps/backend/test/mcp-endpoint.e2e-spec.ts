@@ -19,6 +19,8 @@ const AUTH_TOKEN = 'phase-4-client';
 
 @Injectable()
 class TestMcpClientGuard implements CanActivate {
+	constructor(private readonly serverService: McpServerService) {}
+
 	canActivate(context: ExecutionContext): boolean {
 		const request = context.switchToHttp().getRequest<McpPolicyRequest>();
 		const clientId = request.headers.authorization?.replace(/^Bearer /, '') || AUTH_TOKEN;
@@ -43,6 +45,7 @@ class TestMcpClientGuard implements CanActivate {
 			}),
 			effectiveCapabilities: [McpCapability.READ],
 			installationId: 'phase-4-installation',
+			policyRevision: this.serverService.getPolicyRevision(),
 			tokenId: client.tokenId,
 		};
 

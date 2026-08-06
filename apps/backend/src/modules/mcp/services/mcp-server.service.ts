@@ -38,6 +38,7 @@ interface JsonRpcRequestBody {
 export class McpServerService implements OnApplicationShutdown {
 	private readonly logger = createExtensionLogger(MCP_MODULE_NAME, 'McpServerService');
 	private readonly handlers = new Map<string, ClientHandler>();
+	private policyRevision = 0;
 
 	constructor(private readonly subscriptions: McpSubscriptionRegistryService) {}
 
@@ -53,6 +54,11 @@ export class McpServerService implements OnApplicationShutdown {
 		}
 
 		const policy = request.mcpPolicy;
+
+		if (policy.policyRevision !== this.policyRevision) {
+			throw new UnauthorizedException('MCP request policy is no longer current');
+		}
+
 		const clientHandler = this.getOrCreateHandler(policy.client.id);
 		const rawRequest = request.raw as AuthenticatedIncomingMessage;
 		const endpoint = new URL(request.url, `${request.protocol}://${request.headers.host ?? 'localhost'}`);
@@ -84,7 +90,16 @@ export class McpServerService implements OnApplicationShutdown {
 		this.notify(clientId, (handler) => handler.notify.resourcesChanged());
 	}
 
+	getPolicyRevision(): number {
+		return this.policyRevision;
+	}
+
+	invalidatePolicies(): void {
+		this.policyRevision += 1;
+	}
+
 	async closeClient(clientId: string): Promise<void> {
+		this.invalidatePolicies();
 		this.subscriptions.closeClient(clientId);
 		const clientHandler = this.handlers.get(clientId);
 
@@ -106,6 +121,7 @@ export class McpServerService implements OnApplicationShutdown {
 	}
 
 	async closeAll(): Promise<void> {
+		this.invalidatePolicies();
 		this.subscriptions.closeAll();
 		const handlers = [...this.handlers.values()];
 		this.handlers.clear();

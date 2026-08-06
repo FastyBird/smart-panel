@@ -9,6 +9,7 @@ describe('McpConfigListener', () => {
 	let config: McpConfigModel;
 	let serverService: {
 		closeAll: jest.Mock;
+		invalidatePolicies: jest.Mock;
 		notifyResourcesChanged: jest.Mock;
 		notifyToolsChanged: jest.Mock;
 	};
@@ -18,6 +19,7 @@ describe('McpConfigListener', () => {
 		config = Object.assign(new McpConfigModel(), { enabled: true });
 		serverService = {
 			closeAll: jest.fn().mockResolvedValue(undefined),
+			invalidatePolicies: jest.fn(),
 			notifyResourcesChanged: jest.fn(),
 			notifyToolsChanged: jest.fn(),
 		};
@@ -49,6 +51,14 @@ describe('McpConfigListener', () => {
 
 		expect(serverService.notifyToolsChanged).toHaveBeenCalledTimes(1);
 		expect(serverService.notifyResourcesChanged).toHaveBeenCalledTimes(1);
+		expect(serverService.invalidatePolicies).toHaveBeenCalledTimes(1);
 		expect(serverService.closeAll).not.toHaveBeenCalled();
+	});
+
+	it('closes all active streams when configuration is reset', () => {
+		listener.onConfigReset();
+
+		expect(serverService.closeAll).toHaveBeenCalledTimes(1);
+		expect(serverService.notifyToolsChanged).not.toHaveBeenCalled();
 	});
 });

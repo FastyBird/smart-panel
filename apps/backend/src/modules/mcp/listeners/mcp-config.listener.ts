@@ -31,18 +31,28 @@ export class McpConfigListener {
 		const config = this.configService.getModuleConfig<McpConfigModel>(MCP_MODULE_NAME);
 
 		if (!config.enabled) {
-			void this.serverService.closeAll().catch((error: unknown) => {
-				const err = error instanceof Error ? error : new Error('Unknown MCP handler shutdown error');
-				this.logger.error('Failed to close MCP streams after module disable', {
-					message: err.message,
-					stack: err.stack,
-				});
-			});
+			this.closeAllStreams('module disable');
 
 			return;
 		}
 
+		this.serverService.invalidatePolicies();
 		this.serverService.notifyToolsChanged();
 		this.serverService.notifyResourcesChanged();
+	}
+
+	@OnEvent(EventType.CONFIG_RESET)
+	onConfigReset(): void {
+		this.closeAllStreams('configuration reset');
+	}
+
+	private closeAllStreams(reason: string): void {
+		void this.serverService.closeAll().catch((error: unknown) => {
+			const err = error instanceof Error ? error : new Error('Unknown MCP handler shutdown error');
+			this.logger.error(`Failed to close MCP streams after ${reason}`, {
+				message: err.message,
+				stack: err.stack,
+			});
+		});
 	}
 }

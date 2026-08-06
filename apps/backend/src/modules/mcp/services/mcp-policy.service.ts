@@ -19,6 +19,7 @@ export interface McpPolicyContext {
 	config: McpConfigModel;
 	effectiveCapabilities: McpCapability[];
 	installationId: string;
+	policyRevision?: number;
 	tokenId: string;
 }
 
