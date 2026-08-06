@@ -312,7 +312,12 @@ const isDevicesListRoute = computed<boolean>((): boolean => {
 });
 
 const isWizardRoute = computed<boolean>((): boolean => {
-	return route.name === RouteNames.DEVICES_WIZARD;
+	// The virtual device wizard (`devices-virtual/wizard`) is registered as a child of `RouteNames.DEVICES`
+	// (see `devices-virtual.plugin.ts`), the same way `RouteNames.DEVICES_WIZARD` is, and needs the same
+	// full-page treatment: neither is a `showDrawer` route (that's only DEVICES_ADD/DEVICES_EDIT), so
+	// without this it would fall through to `(!isDevicesListRoute && !isLGDevice)` below, which is `false`
+	// on any `lg`+ viewport — the device list would stay mounted and the wizard would never render.
+	return route.name === RouteNames.DEVICES_WIZARD || route.name === DevicesVirtualRouteNames.WIZARD;
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(

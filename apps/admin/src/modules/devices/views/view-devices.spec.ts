@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
 
+import { ListDevices } from '../components/components';
+
 import ViewDevices from './view-devices.vue';
 
 const mocks = vi.hoisted(() => ({
@@ -15,6 +17,9 @@ const mocks = vi.hoisted(() => ({
 	fetchValidation: vi.fn(),
 	wizardOptions: [] as { value: string; label: string; description: string; disabled: boolean }[],
 	virtualWizardEnabled: true,
+	// Read once per `useBreakpoints()` call (at mount time), same as `virtualWizardEnabled` above — not
+	// reactive within a test, so set it before `mountView()`, not after.
+	isLGDevice: false,
 	// Populated by the `useDevicesDataSource` mock below (a real `ref()` cannot live in this
 	// hoisted object: `vi.hoisted` runs before the `vue` import binds, so `ref` is not callable
 	// here yet). Tests grab this after mounting to flip the toggle through real Vue reactivity.
@@ -69,7 +74,7 @@ vi.mock('../../../common', async () => {
 		ViewHeader: StubComponent,
 		useBreakpoints: () => ({
 			isMDDevice: vueRef(true),
-			isLGDevice: vueRef(false),
+			isLGDevice: vueRef(mocks.isLGDevice),
 		}),
 	};
 });
@@ -183,6 +188,7 @@ describe('ViewDevices', () => {
 		mocks.fetchValidation.mockResolvedValue(undefined);
 		mocks.wizardOptions = [];
 		mocks.virtualWizardEnabled = true;
+		mocks.isLGDevice = false;
 		mocks.route = {
 			path: '/devices',
 			name: 'devices',
@@ -260,10 +266,31 @@ describe('ViewDevices', () => {
 
 		await wrapper.find('[data-test-id="virtual-device-wizard"]').trigger('click');
 
-		// This suite's `common` mock fixes `isLGDevice` to `false` (see the `useBreakpoints` stub
-		// above), the same branch `onDeviceCreate` is already exercised under elsewhere in this file,
-		// so `push` — not `replace` — is the call that reflects it here.
+		// `beforeEach` defaults `isLGDevice` to `false` (see the `useBreakpoints` stub above), the same
+		// branch `onDeviceCreate` is already exercised under elsewhere in this file, so `push` — not
+		// `replace` — is the call that reflects it here.
 		expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'devices_virtual-wizard' });
+	});
+
+	it('renders the virtual device wizard route on lg+ (desktop) viewports, not just mobile', async () => {
+		// Regression test: the virtual wizard route (`devices_virtual-wizard`, registered as a child of
+		// `RouteNames.DEVICES` by the plugin) used to be invisible to `isWizardRoute`, which checked only
+		// `RouteNames.DEVICES_WIZARD`. On an `lg`+ viewport, that made the outer `router-view`'s condition
+		// — `isWizardRoute || (!isDevicesListRoute && !isLGDevice)` — false: the device list stayed
+		// mounted and the wizard never rendered, even though the URL had already navigated there. Every
+		// other test in this file mounts with `isLGDevice: false` (mobile), which never exercised this.
+		mocks.isLGDevice = true;
+		mocks.route = {
+			path: '/devices/devices-virtual/wizard',
+			name: 'devices_virtual-wizard',
+			matched: [],
+		};
+
+		const wrapper = mountView();
+		await flushPromises();
+
+		expect(wrapper.find('router-view-stub').exists()).toBe(true);
+		expect(wrapper.findComponent(ListDevices).exists()).toBe(false);
 	});
 
 	it('hides the virtual device wizard launcher when the plugin is disabled', () => {
