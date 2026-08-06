@@ -73,6 +73,38 @@
 				"checkFailed": "No se pudo verificar este origen. Elija otro o inténtelo de nuevo.",
 				"incompatible": "Este origen no puede rellenar esta propiedad."
 			}
+		},
+		"details": {
+			"heading": "Nombre y ubique el dispositivo",
+			"description": "Asigne un nombre al dispositivo y, opcionalmente, una habitación y zonas. Se sugiere un nombre a partir de la categoría y la habitación; puede cambiarlo."
+		},
+		"review": {
+			"heading": "Revisar y crear",
+			"description": "Revise el resumen a continuación y luego cree el dispositivo. Cada propiedad indicada se toma del canal de un dispositivo real.",
+			"noMappings": "Todavía no hay nada asignado — vuelva atrás y asigne al menos una propiedad.",
+			"columns": {
+				"property": "Propiedad",
+				"sourceDevice": "Dispositivo de origen",
+				"sourceChannel": "Canal de origen",
+				"sourceProperty": "Propiedad de origen"
+			},
+			"hideSource": {
+				"label": "Ocultar {device} — todas las propiedades anteriores provienen de este dispositivo",
+				"hint": "Oculta el dispositivo de origen de las listas y selectores. Permanece intacto y puede volver a mostrarse en cualquier momento desde la lista de dispositivos.",
+				"retry": "Reintentar ocultar",
+				"success": "{device} está ahora oculto"
+			},
+			"created": "{name} se creó correctamente",
+			"create": "Crear dispositivo",
+			"noRoom": "Sin habitación asignada",
+			"noZones": "Sin zonas asignadas",
+			"unknownSource": "Desconocido",
+			"errors": {
+				"createFailed": "No se pudo crear el dispositivo. Inténtelo de nuevo.",
+				"hideFailed": "No se pudo ocultar el dispositivo de origen.",
+				"hideFailedFlash": "{device} no se ocultó: la solicitud falló. Puede ocultarlo más tarde desde la lista de dispositivos.",
+				"zonesFailed": "No se pudieron asignar {count} zona(s). Puede añadirlas más tarde desde la lista de dispositivos."
+			}
 		}
 	}
 }

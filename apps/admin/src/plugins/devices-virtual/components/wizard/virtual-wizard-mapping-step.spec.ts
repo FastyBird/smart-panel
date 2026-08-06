@@ -358,7 +358,11 @@ describe('VirtualWizardMappingStep', () => {
 
 		expect(emitted).toBeTruthy();
 
-		const mappings = emitted?.[emitted.length - 1]?.[0] as { specChannel: string; specProperty: string; sourceProperty: string | null }[];
+		const mappings = emitted?.[emitted.length - 1]?.[0] as {
+			specChannel: DevicesModuleChannelCategory;
+			specProperty: DevicesModuleChannelPropertyCategory;
+			sourceProperty: string | null;
+		}[];
 
 		expect(mappings).toContainEqual({
 			specChannel: DevicesModuleChannelCategory.light,
@@ -443,7 +447,11 @@ describe('VirtualWizardMappingStep', () => {
 		]);
 
 		const emitted = wrapper.emitted('update:modelValue');
-		const mappings = emitted?.[emitted.length - 1]?.[0] as { specChannel: string; specProperty: string; sourceProperty: string | null }[];
+		const mappings = emitted?.[emitted.length - 1]?.[0] as {
+			specChannel: DevicesModuleChannelCategory;
+			specProperty: DevicesModuleChannelPropertyCategory;
+			sourceProperty: string | null;
+		}[];
 
 		const filled = mappings.filter((mapping) => mapping.specChannel === DevicesModuleChannelCategory.electrical_power && mapping.sourceProperty);
 
@@ -604,7 +612,11 @@ describe('VirtualWizardMappingStep', () => {
 			await nextTick();
 
 			const emitted = wrapper.emitted('update:modelValue');
-			const emittedMappings = emitted?.[emitted.length - 1]?.[0] as { specChannel: string; specProperty: string; sourceProperty: string | null }[];
+			const emittedMappings = emitted?.[emitted.length - 1]?.[0] as {
+				specChannel: DevicesModuleChannelCategory;
+				specProperty: DevicesModuleChannelPropertyCategory;
+				sourceProperty: string | null;
+			}[];
 
 			expect(emittedMappings.filter((entry) => entry.sourceProperty !== null)).toEqual([
 				mapping(DevicesModuleChannelCategory.light, DevicesModuleChannelPropertyCategory.on, PROPERTY_ON),
@@ -625,7 +637,11 @@ describe('VirtualWizardMappingStep', () => {
 			await selectSource(DevicesModuleChannelPropertyCategory.on, PROPERTY_ON);
 
 			const emitted = wrapper.emitted('update:modelValue');
-			const emittedMappings = emitted?.[emitted.length - 1]?.[0] as { specChannel: string; specProperty: string; sourceProperty: string | null }[];
+			const emittedMappings = emitted?.[emitted.length - 1]?.[0] as {
+				specChannel: DevicesModuleChannelCategory;
+				specProperty: DevicesModuleChannelPropertyCategory;
+				sourceProperty: string | null;
+			}[];
 			const emitCount = emitted?.length ?? 0;
 
 			await wrapper.setProps({ modelValue: emittedMappings });

@@ -73,6 +73,38 @@
 				"checkFailed": "Diese Quelle konnte nicht geprüft werden. Wählen Sie eine andere oder versuchen Sie es erneut.",
 				"incompatible": "Diese Quelle kann diese Eigenschaft nicht füllen."
 			}
+		},
+		"details": {
+			"heading": "Gerät benennen und platzieren",
+			"description": "Geben Sie dem Gerät einen Namen und weisen Sie es optional einem Raum und Zonen zu. Ein Name wird anhand von Kategorie und Raum vorgeschlagen — Sie können ihn ändern."
+		},
+		"review": {
+			"heading": "Überprüfen und erstellen",
+			"description": "Prüfen Sie die Zusammenfassung unten und erstellen Sie dann das Gerät. Jede aufgeführte Eigenschaft stammt aus dem Kanal eines echten Geräts.",
+			"noMappings": "Es ist noch nichts zugeordnet — gehen Sie zurück und ordnen Sie mindestens eine Eigenschaft zu.",
+			"columns": {
+				"property": "Eigenschaft",
+				"sourceDevice": "Quellgerät",
+				"sourceChannel": "Quellkanal",
+				"sourceProperty": "Quelleigenschaft"
+			},
+			"hideSource": {
+				"label": "{device} ausblenden — jede Eigenschaft oben stammt von diesem Gerät",
+				"hint": "Blendet das Quellgerät aus Listen und Auswahlen aus. Es bleibt vollständig erhalten und kann jederzeit über die Geräteliste wieder eingeblendet werden.",
+				"retry": "Ausblenden erneut versuchen",
+				"success": "{device} ist jetzt ausgeblendet"
+			},
+			"created": "{name} wurde erstellt",
+			"create": "Gerät erstellen",
+			"noRoom": "Kein Raum zugewiesen",
+			"noZones": "Keine Zonen zugewiesen",
+			"unknownSource": "Unbekannt",
+			"errors": {
+				"createFailed": "Das Gerät konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
+				"hideFailed": "Das Quellgerät konnte nicht ausgeblendet werden.",
+				"hideFailedFlash": "{device} wurde nicht ausgeblendet: Die Anfrage ist fehlgeschlagen. Sie können es später über die Geräteliste ausblenden.",
+				"zonesFailed": "{count} Zone(n) konnten nicht zugewiesen werden. Sie können sie später über die Geräteliste hinzufügen."
+			}
 		}
 	}
 }

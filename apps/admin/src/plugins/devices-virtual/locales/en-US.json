@@ -73,6 +73,38 @@
 				"checkFailed": "This source could not be verified. Pick another one or try again.",
 				"incompatible": "This source cannot fill this property."
 			}
+		},
+		"details": {
+			"heading": "Name and place the device",
+			"description": "Give the device a name, and optionally assign it to a room and zones. A name is suggested from the category and room — you can change it."
+		},
+		"review": {
+			"heading": "Review and create",
+			"description": "Check the summary below, then create the device. Every property listed is borrowed from a real device's channel.",
+			"noMappings": "Nothing is mapped yet — go back and map at least one property.",
+			"columns": {
+				"property": "Property",
+				"sourceDevice": "Source device",
+				"sourceChannel": "Source channel",
+				"sourceProperty": "Source property"
+			},
+			"hideSource": {
+				"label": "Hide {device} — every property above comes from this device",
+				"hint": "Hides the source device from lists and pickers. It stays fully intact and can be unhidden again from the device list at any time.",
+				"retry": "Retry hiding",
+				"success": "{device} is now hidden"
+			},
+			"created": "{name} was created",
+			"create": "Create device",
+			"noRoom": "No room assigned",
+			"noZones": "No zones assigned",
+			"unknownSource": "Unknown",
+			"errors": {
+				"createFailed": "The device could not be created. Please try again.",
+				"hideFailed": "The source device could not be hidden.",
+				"hideFailedFlash": "{device} was not hidden: the request failed. You can hide it later from the device list.",
+				"zonesFailed": "{count} zone(s) could not be assigned. You can add them later from the device list."
+			}
 		}
 	}
 }

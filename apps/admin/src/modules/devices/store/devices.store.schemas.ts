@@ -1,11 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
-import type {
-	DevicesModuleCreateDeviceSchema,
-	DevicesModuleUpdateDeviceSchema,
-	DevicesModuleDeviceSchema,
-} from '../../../openapi.constants';
+import type { DevicesModuleCreateDeviceSchema, DevicesModuleDeviceSchema, DevicesModuleUpdateDeviceSchema } from '../../../openapi.constants';
 import {
 	DevicesModuleDeviceCategory,
 	DevicesModuleDeviceConnectionStatus,
@@ -37,11 +33,17 @@ export const DeviceSchema = z.object({
 	hiddenBy: z.nativeEnum(DevicesModuleDeviceHiddenBy).nullable().default(null),
 	roomId: z.string().uuid().nullable().default(null),
 	zoneIds: z.array(z.string().uuid()).default([]),
-	status: z.object({
-		online: z.boolean().default(false),
-		status: z.nativeEnum(DevicesModuleDeviceConnectionStatus).default(DevicesModuleDeviceConnectionStatus.unknown),
-		lastChanged: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))).nullable().default(null),
-	}).default({ online: false, status: DevicesModuleDeviceConnectionStatus.unknown, lastChanged: null }),
+	status: z
+		.object({
+			online: z.boolean().default(false),
+			status: z.nativeEnum(DevicesModuleDeviceConnectionStatus).default(DevicesModuleDeviceConnectionStatus.unknown),
+			lastChanged: z
+				.union([z.string().datetime({ offset: true }), z.date()])
+				.transform((date) => (date instanceof Date ? date : new Date(date)))
+				.nullable()
+				.default(null),
+		})
+		.default({ online: false, status: DevicesModuleDeviceConnectionStatus.unknown, lastChanged: null }),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
 	updatedAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
@@ -89,7 +91,11 @@ export const DevicesSetActionPayloadSchema = z.object({
 			status: z.object({
 				online: z.boolean(),
 				status: z.nativeEnum(DevicesModuleDeviceConnectionStatus),
-				lastChanged: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))).nullable().optional(),
+				lastChanged: z
+					.union([z.string().datetime({ offset: true }), z.date()])
+					.transform((date) => (date instanceof Date ? date : new Date(date)))
+					.nullable()
+					.optional(),
 			}),
 		})
 		.catchall(z.unknown()),
@@ -198,6 +204,12 @@ export const DeviceUpdateReqSchema: ZodType<ApiUpdateDevice> = z.object({
 		.nullable()
 		.optional(),
 	enabled: z.boolean().optional(),
+	// Without these two, `transformDeviceUpdateRequest` silently drops them: `.safeParse()` strips any
+	// key a Zod object schema does not declare, so a caller sending `{ hidden: true, hidden_by: 'system' }`
+	// (e.g. the virtual device wizard's review step hiding a source device) would see the request
+	// "succeed" while the outgoing PATCH body carried neither field, and the device would stay visible.
+	hidden: z.boolean().optional(),
+	hidden_by: z.nativeEnum(DevicesModuleDeviceHiddenBy).optional(),
 	room_id: z.string().uuid().nullable().optional(),
 });
 

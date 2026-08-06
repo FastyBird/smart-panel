@@ -73,6 +73,38 @@
 				"checkFailed": "Nie udało się zweryfikować tego źródła. Wybierz inne lub spróbuj ponownie.",
 				"incompatible": "To źródło nie może wypełnić tej właściwości."
 			}
+		},
+		"details": {
+			"heading": "Nazwij i umieść urządzenie",
+			"description": "Nadaj urządzeniu nazwę i opcjonalnie przypisz je do pokoju i stref. Nazwa jest sugerowana na podstawie kategorii i pokoju — możesz ją zmienić."
+		},
+		"review": {
+			"heading": "Sprawdź i utwórz",
+			"description": "Sprawdź poniższe podsumowanie, a następnie utwórz urządzenie. Każda wymieniona właściwość jest przejęta z kanału rzeczywistego urządzenia.",
+			"noMappings": "Nic jeszcze nie zostało zmapowane — wróć i zmapuj co najmniej jedną właściwość.",
+			"columns": {
+				"property": "Właściwość",
+				"sourceDevice": "Urządzenie źródłowe",
+				"sourceChannel": "Kanał źródłowy",
+				"sourceProperty": "Właściwość źródłowa"
+			},
+			"hideSource": {
+				"label": "Ukryj {device} — wszystkie powyższe właściwości pochodzą z tego urządzenia",
+				"hint": "Ukrywa urządzenie źródłowe z list i selektorów. Pozostaje ono w pełni nienaruszone i można je w dowolnym momencie ponownie odkryć z listy urządzeń.",
+				"retry": "Spróbuj ukryć ponownie",
+				"success": "{device} jest teraz ukryte"
+			},
+			"created": "Utworzono {name}",
+			"create": "Utwórz urządzenie",
+			"noRoom": "Nie przypisano pokoju",
+			"noZones": "Nie przypisano stref",
+			"unknownSource": "Nieznane",
+			"errors": {
+				"createFailed": "Nie udało się utworzyć urządzenia. Spróbuj ponownie.",
+				"hideFailed": "Nie udało się ukryć urządzenia źródłowego.",
+				"hideFailedFlash": "{device} nie zostało ukryte: żądanie się nie powiodło. Możesz je ukryć później z listy urządzeń.",
+				"zonesFailed": "Nie udało się przypisać {count} stref(y). Możesz je dodać później z listy urządzeń."
+			}
 		}
 	}
 }

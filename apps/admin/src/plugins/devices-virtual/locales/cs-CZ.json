@@ -73,6 +73,38 @@
 				"checkFailed": "Tento zdroj se nepodařilo ověřit. Vyberte jiný nebo to zkuste znovu.",
 				"incompatible": "Tento zdroj nemůže tuto vlastnost naplnit."
 			}
+		},
+		"details": {
+			"heading": "Pojmenujte a umístěte zařízení",
+			"description": "Zadejte název zařízení a volitelně jej přiřaďte k místnosti a zónám. Název je navržen podle kategorie a místnosti — můžete jej změnit."
+		},
+		"review": {
+			"heading": "Zkontrolovat a vytvořit",
+			"description": "Zkontrolujte souhrn níže a poté zařízení vytvořte. Každá uvedená vlastnost je převzata z kanálu skutečného zařízení.",
+			"noMappings": "Zatím nic není namapováno — vraťte se a namapujte alespoň jednu vlastnost.",
+			"columns": {
+				"property": "Vlastnost",
+				"sourceDevice": "Zdrojové zařízení",
+				"sourceChannel": "Zdrojový kanál",
+				"sourceProperty": "Zdrojová vlastnost"
+			},
+			"hideSource": {
+				"label": "Skrýt {device} — všechny vlastnosti výše pocházejí z tohoto zařízení",
+				"hint": "Skryje zdrojové zařízení ze seznamů a výběrů. Zůstává plně zachováno a lze jej kdykoli znovu odkrýt v seznamu zařízení.",
+				"retry": "Zkusit skrýt znovu",
+				"success": "{device} je nyní skryto"
+			},
+			"created": "Zařízení {name} bylo vytvořeno",
+			"create": "Vytvořit zařízení",
+			"noRoom": "Není přiřazena žádná místnost",
+			"noZones": "Nejsou přiřazeny žádné zóny",
+			"unknownSource": "Neznámé",
+			"errors": {
+				"createFailed": "Zařízení se nepodařilo vytvořit. Zkuste to prosím znovu.",
+				"hideFailed": "Zdrojové zařízení se nepodařilo skrýt.",
+				"hideFailedFlash": "{device} nebylo skryto: požadavek selhal. Můžete jej skrýt později v seznamu zařízení.",
+				"zonesFailed": "Nepodařilo se přiřadit {count} zón. Můžete je přidat později v seznamu zařízení."
+			}
 		}
 	}
 }
