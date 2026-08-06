@@ -195,7 +195,7 @@ export class McpClientService {
 			},
 		);
 
-		await this.dataSource.transaction(async (manager) => {
+		const issuedClient = await this.dataSource.transaction(async (manager) => {
 			const token = await this.tokensService.createLongLiveToken(
 				{
 					token: rawToken,
@@ -226,12 +226,20 @@ export class McpClientService {
 				throw new ConflictException('The MCP client credential was changed by another request');
 			}
 
-			client.tokenId = token.id;
-			client.enabled = true;
+			const updatedClient = await clientRepository.findOne({
+				where: { id: client.id },
+				relations: { token: true },
+			});
+
+			if (!updatedClient) {
+				throw new NotFoundException('Requested MCP client does not exist');
+			}
+
+			return updatedClient;
 		});
 
 		const credential = new McpClientCredentialModel();
-		credential.client = await this.getOneOrThrow(client.id);
+		credential.client = issuedClient;
 		credential.token = rawToken;
 
 		return credential;

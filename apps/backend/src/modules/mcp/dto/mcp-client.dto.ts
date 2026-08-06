@@ -3,6 +3,7 @@ import {
 	ArrayUnique,
 	IsArray,
 	IsBoolean,
+	IsDefined,
 	IsEnum,
 	IsInt,
 	IsNotEmpty,
@@ -128,6 +129,7 @@ export class RotateMcpClientTokenDto {
 export class ReqCreateMcpClientDto {
 	@ApiProperty({ type: () => CreateMcpClientDto })
 	@Expose()
+	@IsDefined()
 	@ValidateNested()
 	@Type(() => CreateMcpClientDto)
 	data: CreateMcpClientDto;
@@ -137,6 +139,7 @@ export class ReqCreateMcpClientDto {
 export class ReqUpdateMcpClientDto {
 	@ApiProperty({ type: () => UpdateMcpClientDto })
 	@Expose()
+	@IsDefined()
 	@ValidateNested()
 	@Type(() => UpdateMcpClientDto)
 	data: UpdateMcpClientDto;
@@ -146,6 +149,7 @@ export class ReqUpdateMcpClientDto {
 export class ReqRotateMcpClientTokenDto {
 	@ApiProperty({ type: () => RotateMcpClientTokenDto })
 	@Expose()
+	@IsDefined()
 	@ValidateNested()
 	@Type(() => RotateMcpClientTokenDto)
 	data: RotateMcpClientTokenDto;

@@ -224,6 +224,58 @@ describe('McpClientService', () => {
 		expect(result.token).toBe('raw-mcp-token');
 	});
 
+	it('loads the rotated client before the credential transaction commits', async () => {
+		const previousToken = { id: uuid(), revoked: false } as LongLiveTokenEntity;
+		currentClient = {
+			id: uuid(),
+			name: 'Agent',
+			description: null,
+			enabled: true,
+			capabilities: [McpCapability.READ],
+			tokenId: previousToken.id,
+			token: previousToken,
+		} as McpClientEntity;
+		const transactionEvents: string[] = [];
+		repository.findOne.mockImplementation(() => {
+			transactionEvents.push('load');
+			return Promise.resolve(currentClient);
+		});
+		dataSource.transaction.mockImplementation(async (operation: (manager: EntityManager) => Promise<unknown>) => {
+			const manager = {
+				getRepository: jest
+					.fn()
+					.mockImplementation((entity: unknown) => (entity === McpClientEntity ? repository : tokenRepository)),
+			} as unknown as EntityManager;
+
+			const result = await operation(manager);
+			transactionEvents.push('commit');
+			return result;
+		});
+
+		await service.rotate(currentClient.id, { expiresInDays: 60 });
+
+		expect(transactionEvents).toEqual(['load', 'load', 'commit']);
+	});
+
+	it('fails the credential transaction when the rotated client cannot be reloaded', async () => {
+		const previousToken = { id: uuid(), revoked: false } as LongLiveTokenEntity;
+		currentClient = {
+			id: uuid(),
+			name: 'Agent',
+			description: null,
+			enabled: true,
+			capabilities: [McpCapability.READ],
+			tokenId: previousToken.id,
+			token: previousToken,
+		} as McpClientEntity;
+		repository.findOne.mockResolvedValueOnce(currentClient).mockRejectedValueOnce(new Error('Database unavailable'));
+
+		await expect(service.rotate(currentClient.id, { expiresInDays: 60 })).rejects.toThrow('Database unavailable');
+
+		expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+		expect(repository.findOne).toHaveBeenCalledTimes(2);
+	});
+
 	it('leaves the previous credential selected when revocation fails', async () => {
 		const previousToken = { id: uuid(), revoked: false } as LongLiveTokenEntity;
 		currentClient = {
