@@ -21,7 +21,11 @@ import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from './devices-vir
 import { locales } from './locales';
 import { PluginRoutes } from './router';
 import { VirtualDeviceAddFormSchema, VirtualDeviceEditFormSchema } from './schemas/devices.schemas';
-import { VirtualChannelPropertySchema } from './store/channels.properties.store.schemas';
+import {
+	VirtualChannelPropertyCreateReqSchema,
+	VirtualChannelPropertySchema,
+	VirtualChannelPropertyUpdateReqSchema,
+} from './store/channels.properties.store.schemas';
 import { VirtualChannelSchema } from './store/channels.store.schemas';
 import { VirtualDeviceCreateReqSchema, VirtualDeviceSchema, VirtualDeviceUpdateReqSchema } from './store/devices.store.schemas';
 
@@ -79,6 +83,14 @@ export default {
 						deviceUpdateReqSchema: VirtualDeviceUpdateReqSchema,
 						channelSchema: VirtualChannelSchema,
 						channelPropertySchema: VirtualChannelPropertySchema,
+						// Without these two, `channels.properties.store.ts`'s `edit()`/`save()` actions fall
+						// back to the base module's `ChannelPropertyUpdateReqSchema`/`ChannelPropertyCreateReqSchema`
+						// — plain objects with no `source_property` field and no `.catchall()` — which
+						// silently strips it from the outgoing request. A remap (or any other write to a
+						// virtual property's `source_property`/`value_origin`) would then return 200 and
+						// change nothing.
+						channelPropertyCreateReqSchema: VirtualChannelPropertyCreateReqSchema,
+						channelPropertyUpdateReqSchema: VirtualChannelPropertyUpdateReqSchema,
 					},
 				},
 			],

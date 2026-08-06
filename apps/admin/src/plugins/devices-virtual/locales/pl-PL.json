@@ -107,5 +107,27 @@
 				"zonesFailed": "Nie udało się przypisać {count} stref(y). Możesz je dodać później z listy urządzeń."
 			}
 		}
+	},
+	"sources": {
+		"heading": "Urządzenia źródłowe",
+		"description": "Fizyczne urządzenia, z których zapożyczone są właściwości tego urządzenia.",
+		"empty": "To urządzenie nie zapożycza niczego z innego urządzenia.",
+		"loadFailed": "Nie udało się wczytać urządzeń źródłowych.",
+		"retry": "Spróbuj ponownie",
+		"warning": {
+			"title": "{channel} · {property}: utracono źródło",
+			"description": "Właściwość źródłowa została usunięta. To urządzenie pozostaje offline, dopóki nie zostanie ponownie przypisana.",
+			"remap": "Przypisz ponownie"
+		}
+	},
+	"remap": {
+		"title": "Przypisz ponownie {property}",
+		"description": "Wybierz nowe źródło dla tej właściwości. Potwierdzić można tylko zgodne źródło.",
+		"confirm": "Przypisz ponownie",
+		"success": "{property} teraz pobiera wartości z nowego źródła",
+		"errors": {
+			"propertyGone": "Ta właściwość już nie istnieje.",
+			"updateFailed": "Nie udało się ponownie przypisać właściwości. Spróbuj ponownie."
+		}
 	}
 }

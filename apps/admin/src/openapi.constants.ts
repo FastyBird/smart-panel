@@ -406,6 +406,7 @@ export type DevicesHomeAssistantPluginAdoptHelperOperation = operations['adopt-d
 
 // Devices Virtual Plugin Operations
 export type DevicesVirtualPluginCheckCompatibilityOperation = operations['check-devices-virtual-plugin-devices-compatibility'];
+export type DevicesVirtualPluginGetDeviceSourceDevicesOperation = operations['get-devices-virtual-plugin-device-source-devices'];
 
 // Auth & User Enums
 // =================

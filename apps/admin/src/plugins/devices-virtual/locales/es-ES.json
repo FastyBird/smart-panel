@@ -107,5 +107,27 @@
 				"zonesFailed": "No se pudieron asignar {count} zona(s). Puede añadirlas más tarde desde la lista de dispositivos."
 			}
 		}
+	},
+	"sources": {
+		"heading": "Dispositivos de origen",
+		"description": "Los dispositivos físicos de los que se toman las propiedades de este dispositivo.",
+		"empty": "Este dispositivo no toma nada de ningún otro dispositivo.",
+		"loadFailed": "No se pudieron cargar los dispositivos de origen.",
+		"retry": "Reintentar",
+		"warning": {
+			"title": "{channel} · {property}: origen perdido",
+			"description": "La propiedad de origen se eliminó. Este dispositivo permanece sin conexión hasta que se vuelva a asignar.",
+			"remap": "Reasignar"
+		}
+	},
+	"remap": {
+		"title": "Reasignar {property}",
+		"description": "Elija un nuevo origen para esta propiedad. Solo se puede confirmar un origen compatible.",
+		"confirm": "Reasignar",
+		"success": "{property} ahora toma valores de un nuevo origen",
+		"errors": {
+			"propertyGone": "Esta propiedad ya no existe.",
+			"updateFailed": "No se pudo reasignar la propiedad. Inténtelo de nuevo."
+		}
 	}
 }

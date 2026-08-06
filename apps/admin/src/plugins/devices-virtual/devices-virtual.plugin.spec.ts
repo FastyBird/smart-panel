@@ -8,6 +8,7 @@ import { RouteNames as DevicesRouteNames } from '../../modules/devices';
 
 import { RouteNames as VirtualRouteNames } from './devices-virtual.constants';
 import DevicesVirtualPlugin from './devices-virtual.plugin';
+import { VirtualChannelPropertyCreateReqSchema, VirtualChannelPropertyUpdateReqSchema } from './store/channels.properties.store.schemas';
 
 const mocks = vi.hoisted(() => ({
 	addPlugin: vi.fn(),
@@ -46,6 +47,8 @@ vi.mock('./schemas/devices.schemas', () => ({
 
 vi.mock('./store/channels.properties.store.schemas', () => ({
 	VirtualChannelPropertySchema: {},
+	VirtualChannelPropertyCreateReqSchema: {},
+	VirtualChannelPropertyUpdateReqSchema: {},
 }));
 
 vi.mock('./store/channels.store.schemas', () => ({
@@ -119,6 +122,32 @@ describe('devicesVirtualPlugin', () => {
 			expect.any(Symbol),
 			expect.objectContaining({
 				type: 'devices-virtual',
+			})
+		);
+	});
+
+	// Regression pin for task-12-brief.md's "trap that fails silently": these two were the only
+	// schemas missing from the element's `schemas` block. Without them, `getPluginElement('virtual')`
+	// falls back to the base module's `ChannelPropertyCreateReqSchema`/`ChannelPropertyUpdateReqSchema`
+	// — plain objects with no `source_property` field — and a remap PATCH returns 200 having silently
+	// dropped the one field it exists to send. See virtual-device-remap-dialog.spec.ts for the same
+	// bug pinned end-to-end, through the real transformer and wire schema.
+	it('registers the virtual channel property create and update request schemas', () => {
+		const options = createOptions([{ name: 'root' }]);
+
+		DevicesVirtualPlugin.install({} as App, options);
+
+		expect(mocks.addPlugin).toHaveBeenCalledWith(
+			expect.any(Symbol),
+			expect.objectContaining({
+				elements: [
+					expect.objectContaining({
+						schemas: expect.objectContaining({
+							channelPropertyCreateReqSchema: VirtualChannelPropertyCreateReqSchema,
+							channelPropertyUpdateReqSchema: VirtualChannelPropertyUpdateReqSchema,
+						}),
+					}),
+				],
 			})
 		);
 	});

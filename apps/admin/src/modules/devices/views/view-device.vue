@@ -137,6 +137,20 @@
 			:device="device"
 		/>
 
+		<!--
+			The devices module has no plugin extension slot for this view (nothing like a `deviceDetail`
+			element in devices.types.ts), so — same precedent as the "Create virtual device" launcher in
+			view-devices.vue — this is a virtual-specific affordance added directly into the module view
+			behind a gate, rather than a new shared-module extension point for a single caller. Gated only
+			on the device's own type: unlike the wizard launcher (which offers to *start* building a virtual
+			device and so hides behind the plugin's enabled toggle), this device already exists, and an
+			admin who has disabled the plugin still needs to see why it is offline.
+		-->
+		<virtual-device-sources
+			v-if="device && device.type === DEVICES_VIRTUAL_TYPE"
+			:device="device"
+		/>
+
 		<!-- Tabs -->
 		<el-tabs
 			v-model="activeTab"
@@ -426,6 +440,8 @@ import {
 	useUuid,
 } from '../../../common';
 import type { DevicesModuleChannelCategory } from '../../../openapi.constants';
+import VirtualDeviceSources from '../../../plugins/devices-virtual/components/virtual-device-sources.vue';
+import { DEVICES_VIRTUAL_TYPE } from '../../../plugins/devices-virtual/devices-virtual.constants';
 import { ChannelDetail, DeviceDetail, DeviceLogs } from '../components/components';
 import { useChannels, useChannelsActions, useChannelsPropertiesActions, useDevice, useDeviceControls, useDeviceLogs, useDeviceSpecification, useDeviceValidation } from '../composables/composables';
 import { DevicesApiException } from '../devices.exceptions';

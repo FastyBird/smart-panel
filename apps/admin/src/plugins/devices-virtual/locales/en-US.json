@@ -107,5 +107,27 @@
 				"zonesFailed": "{count} zone(s) could not be assigned. You can add them later from the device list."
 			}
 		}
+	},
+	"sources": {
+		"heading": "Source devices",
+		"description": "The physical devices this device's properties are borrowed from.",
+		"empty": "This device does not borrow from any other device.",
+		"loadFailed": "Source devices could not be loaded.",
+		"retry": "Retry",
+		"warning": {
+			"title": "{channel} · {property}: source lost",
+			"description": "The source property was deleted. This device stays offline until it is remapped.",
+			"remap": "Remap"
+		}
+	},
+	"remap": {
+		"title": "Remap {property}",
+		"description": "Choose a new source for this property. Only a compatible source can be confirmed.",
+		"confirm": "Remap",
+		"success": "{property} now draws from a new source",
+		"errors": {
+			"propertyGone": "This property no longer exists.",
+			"updateFailed": "The property could not be remapped. Please try again."
+		}
 	}
 }

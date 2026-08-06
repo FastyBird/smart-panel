@@ -107,5 +107,27 @@
 				"zonesFailed": "Nepodarilo sa priradiť {count} zón. Môžete ich pridať neskôr v zozname zariadení."
 			}
 		}
+	},
+	"sources": {
+		"heading": "Zdrojové zariadenia",
+		"description": "Fyzické zariadenia, z ktorých sú prevzaté vlastnosti tohto zariadenia.",
+		"empty": "Toto zariadenie nepreberá nič z iného zariadenia.",
+		"loadFailed": "Zdrojové zariadenia sa nepodarilo načítať.",
+		"retry": "Skúsiť znova",
+		"warning": {
+			"title": "{channel} · {property}: stratený zdroj",
+			"description": "Zdrojová vlastnosť bola odstránená. Toto zariadenie zostáva offline, kým nebude znova namapované.",
+			"remap": "Premapovať"
+		}
+	},
+	"remap": {
+		"title": "Premapovať {property}",
+		"description": "Vyberte nový zdroj pre túto vlastnosť. Potvrdiť možno iba kompatibilný zdroj.",
+		"confirm": "Premapovať",
+		"success": "{property} teraz čerpá z nového zdroja",
+		"errors": {
+			"propertyGone": "Táto vlastnosť už neexistuje.",
+			"updateFailed": "Vlastnosť sa nepodarilo premapovať. Skúste to prosím znova."
+		}
 	}
 }
