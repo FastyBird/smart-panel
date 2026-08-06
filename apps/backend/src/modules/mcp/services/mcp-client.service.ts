@@ -85,17 +85,25 @@ export class McpClientService {
 	}
 
 	async update(id: string, dto: UpdateMcpClientDto): Promise<McpClientEntity> {
-		const client = await this.getOneOrThrow(id);
+		await this.getOneOrThrow(id);
+		const updates: {
+			name?: string;
+			description?: string | null;
+			enabled?: boolean;
+			capabilities?: McpCapability[];
+		} = {};
 
 		if (dto.capabilities !== undefined) {
 			this.assertCapabilitiesAllowed(dto.capabilities);
-			client.capabilities = [...dto.capabilities];
+			updates.capabilities = [...dto.capabilities];
 		}
-		if (dto.name !== undefined) client.name = dto.name;
-		if (dto.description !== undefined) client.description = dto.description;
-		if (dto.enabled !== undefined) client.enabled = dto.enabled;
+		if (dto.name !== undefined) updates.name = dto.name;
+		if (dto.description !== undefined) updates.description = dto.description;
+		if (dto.enabled !== undefined) updates.enabled = dto.enabled;
 
-		await this.repository.save(client);
+		if (Object.keys(updates).length > 0) {
+			await this.repository.update(id, updates);
+		}
 
 		return this.getOneOrThrow(id);
 	}

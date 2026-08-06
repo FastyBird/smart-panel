@@ -139,6 +139,27 @@ describe('McpClientService', () => {
 		expect(service.getEffectiveCapabilities(client)).toEqual([McpCapability.READ]);
 	});
 
+	it('updates only requested metadata without persisting a stale token pointer', async () => {
+		const tokenId = uuid();
+		currentClient = {
+			id: uuid(),
+			name: 'Agent',
+			description: null,
+			enabled: true,
+			capabilities: [McpCapability.READ],
+			tokenId,
+		} as McpClientEntity;
+
+		await service.update(currentClient.id, { name: 'Renamed agent', enabled: false });
+
+		expect(repository.update).toHaveBeenCalledWith(currentClient.id, {
+			name: 'Renamed agent',
+			enabled: false,
+		});
+		expect(repository.save).not.toHaveBeenCalled();
+		expect(currentClient.tokenId).toBe(tokenId);
+	});
+
 	it('atomically creates a replacement before revoking the previous credential', async () => {
 		const previousToken = { id: uuid(), revoked: false } as LongLiveTokenEntity;
 		currentClient = {
