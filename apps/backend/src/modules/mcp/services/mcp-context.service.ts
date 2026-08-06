@@ -140,7 +140,7 @@ export class McpContextService {
 			})),
 			weather: weather ? this.mapWeather(weather) : null,
 			energy,
-			security: security ? this.mapSecurity(security) : null,
+			security: security ? this.mapSecurity(security.status, security.devicesTruncated) : null,
 			limits: {
 				spaces_truncated: allSpaces.length > spaces.length,
 				devices_truncated: devicePage.total > devices.length,
@@ -237,13 +237,13 @@ export class McpContextService {
 	}
 
 	async getSecurityStatus(): Promise<Record<string, unknown>> {
-		return this.mapSecurity(
-			await this.securityService.getBoundedStatus(
-				MCP_MAX_SECURITY_DEVICES,
-				MCP_MAX_SECURITY_CHANNELS_PER_DEVICE,
-				MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
-			),
+		const security = await this.securityService.getBoundedStatus(
+			MCP_MAX_SECURITY_DEVICES,
+			MCP_MAX_SECURITY_CHANNELS_PER_DEVICE,
+			MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
 		);
+
+		return this.mapSecurity(security.status, security.devicesTruncated);
 	}
 
 	async listSpaces(): Promise<Array<{ id: string; name: string; type: string }>> {
@@ -356,7 +356,10 @@ export class McpContextService {
 		};
 	}
 
-	private mapSecurity(status: Awaited<ReturnType<SecurityService['getStatus']>>): Record<string, unknown> {
+	private mapSecurity(
+		status: Awaited<ReturnType<SecurityService['getStatus']>>,
+		devicesTruncated = false,
+	): Record<string, unknown> {
 		const alerts = status.activeAlerts.slice(0, MCP_MAX_SECURITY_ALERTS);
 
 		return {
@@ -375,6 +378,7 @@ export class McpContextService {
 				message: alert.message,
 			})),
 			alerts_truncated: status.activeAlerts.length > alerts.length,
+			devices_truncated: devicesTruncated,
 			last_event: status.lastEvent ?? null,
 		};
 	}

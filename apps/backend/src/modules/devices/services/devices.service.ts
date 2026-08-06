@@ -39,6 +39,11 @@ export interface VisibleDeviceSpaceCounts {
 	zones: Record<string, number>;
 }
 
+export interface VisibleBoundedDeviceState {
+	devices: DeviceEntity[];
+	truncated: boolean;
+}
+
 @Injectable()
 export class DevicesService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'DevicesService');
@@ -138,7 +143,9 @@ export class DevicesService {
 		}
 
 		if (scope.zoneId) {
-			query.andWhere('deviceZones.zoneId = :zoneId', { zoneId: scope.zoneId });
+			query.innerJoin('device.deviceZones', 'scopeDeviceZone', 'scopeDeviceZone.zoneId = :zoneId', {
+				zoneId: scope.zoneId,
+			});
 		}
 
 		const [devices, total] = await query.getManyAndCount();
@@ -160,9 +167,9 @@ export class DevicesService {
 		deviceLimit: number,
 		channelLimit: number,
 		propertyLimit: number,
-	): Promise<DeviceEntity[]> {
+	): Promise<VisibleBoundedDeviceState> {
 		if (channelCategories.length === 0) {
-			return [];
+			return { devices: [], truncated: false };
 		}
 
 		interface DeviceIdRow {
@@ -178,12 +185,13 @@ export class DevicesService {
 			 AND channel."category" IN (${categoryPlaceholders})
 			 ORDER BY device."name", device."id"
 			 LIMIT ?`,
-			[...channelCategories, deviceLimit],
+			[...channelCategories, deviceLimit + 1],
 		);
-		const deviceIds = idRows.map((row) => row.id);
+		const deviceIds = idRows.slice(0, deviceLimit).map((row) => row.id);
+		const truncated = idRows.length > deviceLimit;
 
 		if (deviceIds.length === 0) {
-			return [];
+			return { devices: [], truncated };
 		}
 
 		const [devices, channelPage] = await Promise.all([
@@ -217,13 +225,16 @@ export class DevicesService {
 		}
 		const deviceOrder = new Map(deviceIds.map((id, index) => [id, index]));
 
-		return devices
-			.map((device) => {
-				device.channels = channelsByDevice.get(device.id) ?? [];
+		return {
+			devices: devices
+				.map((device) => {
+					device.channels = channelsByDevice.get(device.id) ?? [];
 
-				return device;
-			})
-			.sort((left, right) => (deviceOrder.get(left.id) ?? 0) - (deviceOrder.get(right.id) ?? 0));
+					return device;
+				})
+				.sort((left, right) => (deviceOrder.get(left.id) ?? 0) - (deviceOrder.get(right.id) ?? 0)),
+			truncated,
+		};
 	}
 
 	async getVisibleSpaceCounts(): Promise<VisibleDeviceSpaceCounts> {

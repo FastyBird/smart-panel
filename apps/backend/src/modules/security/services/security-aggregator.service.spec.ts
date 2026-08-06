@@ -47,7 +47,7 @@ describe('SecurityAggregatorService', () => {
 					provide: DevicesService,
 					useValue: {
 						findAll: jest.fn().mockResolvedValue([]),
-						findVisibleBoundedStateByChannelCategories: jest.fn().mockResolvedValue([]),
+						findVisibleBoundedStateByChannelCategories: jest.fn().mockResolvedValue({ devices: [], truncated: false }),
 					},
 				},
 				{
@@ -302,7 +302,10 @@ describe('SecurityAggregatorService', () => {
 		const devices = [{ id: 'alarm-device' }] as DeviceEntity[];
 		const deviceService = {
 			findAll: jest.fn(),
-			findVisibleBoundedStateByChannelCategories: jest.fn().mockResolvedValue(devices),
+			findVisibleBoundedStateByChannelCategories: jest.fn().mockResolvedValue({
+				devices,
+				truncated: true,
+			}),
 		};
 		const provider = new FakeProvider('default', {});
 		const providerSpy = jest.spyOn(provider, 'getSignals');
@@ -321,7 +324,7 @@ describe('SecurityAggregatorService', () => {
 		}).compile();
 		const aggregator = module.get<SecurityAggregatorService>(SecurityAggregatorService);
 
-		await aggregator.aggregateBounded(100, 10, 20);
+		const result = await aggregator.aggregateBounded(100, 10, 20);
 
 		expect(deviceService.findAll).not.toHaveBeenCalled();
 		expect(deviceService.findVisibleBoundedStateByChannelCategories).toHaveBeenCalledWith(
@@ -331,6 +334,7 @@ describe('SecurityAggregatorService', () => {
 			20,
 		);
 		expect(providerSpy).toHaveBeenCalledWith({ armedState: null, devices });
+		expect(result.devicesTruncated).toBe(true);
 	});
 
 	it('should handle provider that throws', async () => {

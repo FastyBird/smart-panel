@@ -18,7 +18,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
-import { ConnectionState, DeviceCategory, DeviceHiddenFilter, EventType } from '../devices.constants';
+import { ChannelCategory, ConnectionState, DeviceCategory, DeviceHiddenFilter, EventType } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
@@ -65,6 +65,8 @@ describe('DevicesService', () => {
 	let mapper: DevicesTypeMapperService;
 	let eventEmitter: EventEmitter2;
 	let dataSource: DataSource;
+	let channelsService: jest.Mocked<ChannelsService>;
+	let propertiesService: jest.Mocked<ChannelsPropertiesService>;
 
 	const mockDevice = {
 		id: uuid().toString(),
@@ -185,6 +187,8 @@ describe('DevicesService', () => {
 		mapper = module.get<DevicesTypeMapperService>(DevicesTypeMapperService);
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 		dataSource = module.get<DataSource>(DataSource);
+		channelsService = jest.mocked(module.get<ChannelsService>(ChannelsService));
+		propertiesService = jest.mocked(module.get<ChannelsPropertiesService>(ChannelsPropertiesService));
 	});
 	afterEach(() => {
 		jest.clearAllMocks();
@@ -267,6 +271,34 @@ describe('DevicesService', () => {
 			});
 		});
 
+		it('filters by one zone while hydrating all zone memberships', async () => {
+			const visibleDevice = toInstance(MockDevice, { ...mockDevice, hidden: false });
+			visibleDevice.deviceZones = [
+				{ zoneId: 'selected-zone' },
+				{ zoneId: 'other-zone' },
+			] as typeof visibleDevice.deviceZones;
+			const queryBuilderMock: any = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				innerJoin: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				getManyAndCount: jest.fn().mockResolvedValue([[visibleDevice], 1]),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+
+			const result = await service.findVisibleSummaryPage(10, { zoneId: 'selected-zone' });
+
+			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('device.deviceZones', 'deviceZones');
+			expect(queryBuilderMock.innerJoin).toHaveBeenCalledWith(
+				'device.deviceZones',
+				'scopeDeviceZone',
+				'scopeDeviceZone.zoneId = :zoneId',
+				{ zoneId: 'selected-zone' },
+			);
+			expect(result.devices[0].zoneIds).toEqual(['selected-zone', 'other-zone']);
+		});
+
 		it('loads one visible device without channel relations', async () => {
 			const visibleDevice = toInstance(MockDevice, { ...mockDevice, hidden: false });
 			const queryBuilderMock: any = {
@@ -280,6 +312,30 @@ describe('DevicesService', () => {
 			await expect(service.findVisibleSummaryById(mockDevice.id)).resolves.toEqual(visibleDevice);
 			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledTimes(1);
 			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('device.deviceZones', 'deviceZones');
+		});
+	});
+
+	describe('findVisibleBoundedStateByChannelCategories', () => {
+		it('uses one extra device ID to report truncation without hydrating it', async () => {
+			const visibleDevice = toInstance(MockDevice, { ...mockDevice, id: 'device-1', hidden: false });
+			jest.spyOn(dataSource, 'query').mockResolvedValue([
+				{ id: 'device-1', name: 'First' },
+				{ id: 'device-2', name: 'Second' },
+			]);
+			const queryBuilderMock: any = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockResolvedValue([visibleDevice]),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+			channelsService.findBoundedForDevices.mockResolvedValue({ channels: [], deviceIds: {} });
+			propertiesService.findBoundedForChannels.mockResolvedValue({ properties: [], totals: {} });
+
+			await expect(
+				service.findVisibleBoundedStateByChannelCategories([ChannelCategory.ALARM], 1, 10, 20),
+			).resolves.toEqual({ devices: [expect.objectContaining({ id: 'device-1' })], truncated: true });
+			expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('LIMIT ?'), [ChannelCategory.ALARM, 2]);
+			expect(channelsService.findBoundedForDevices).toHaveBeenCalledWith(['device-1'], [ChannelCategory.ALARM], 10);
 		});
 	});
 

@@ -209,6 +209,24 @@ describe('McpContextService', () => {
 		expect(result.limits).toEqual(expect.objectContaining({ scenes_truncated: true }));
 	});
 
+	it('marks bounded security output as incomplete when device selection is truncated', async () => {
+		security.getBoundedStatus.mockResolvedValue({
+			status: {
+				armedState: null,
+				alarmState: null,
+				highestSeverity: 'info',
+				activeAlertsCount: 0,
+				hasCriticalAlert: false,
+				activeAlerts: [],
+			},
+			devicesTruncated: true,
+		});
+
+		const result = await service.getSecurityStatus();
+
+		expect(result).toEqual(expect.objectContaining({ devices_truncated: true }));
+	});
+
 	it('maps current values only for a requested visible device', async () => {
 		devices.findVisibleSummaryById.mockResolvedValue({
 			id: 'device-id',

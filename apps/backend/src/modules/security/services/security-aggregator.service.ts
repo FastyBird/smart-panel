@@ -19,6 +19,11 @@ import {
 import { pickNewestEvent } from '../security.utils';
 import { DetectionRulesLoaderService } from '../spec/detection-rules-loader.service';
 
+export interface BoundedSecurityAggregationResult {
+	status: SecurityStatusModel;
+	devicesTruncated: boolean;
+}
+
 @Injectable()
 export class SecurityAggregatorService implements SecurityAggregatorInterface {
 	private readonly logger = createExtensionLogger(SECURITY_MODULE_NAME, 'SecurityAggregatorService');
@@ -55,27 +60,33 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 		deviceLimit: number,
 		channelLimit: number,
 		propertyLimit: number,
-	): Promise<SecurityStatusModel> {
+	): Promise<BoundedSecurityAggregationResult> {
 		const categories = Array.from(
 			new Set([ChannelCategory.ALARM, ...this.detectionRulesLoader.getSensorRules().keys()]),
 		);
 		let devices: DeviceEntity[];
+		let devicesTruncated = false;
 		let providerErrors = 0;
 
 		try {
-			devices = await this.devicesService.findVisibleBoundedStateByChannelCategories(
+			const page = await this.devicesService.findVisibleBoundedStateByChannelCategories(
 				categories,
 				deviceLimit,
 				channelLimit,
 				propertyLimit,
 			);
+			devices = page.devices;
+			devicesTruncated = page.truncated;
 		} catch (error) {
 			this.logger.warn(`Failed to fetch bounded security devices: ${error}`);
 			devices = [];
 			providerErrors++;
 		}
 
-		return (await this.aggregateDevicesWithErrors(devices, providerErrors)).status;
+		return {
+			status: (await this.aggregateDevicesWithErrors(devices, providerErrors)).status,
+			devicesTruncated,
+		};
 	}
 
 	private async aggregateDevicesWithErrors(
