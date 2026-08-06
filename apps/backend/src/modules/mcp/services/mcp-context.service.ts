@@ -27,6 +27,9 @@ import {
 	MCP_MAX_FORECAST_DAYS,
 	MCP_MAX_PROPERTIES_PER_CHANNEL,
 	MCP_MAX_SECURITY_ALERTS,
+	MCP_MAX_SECURITY_CHANNELS_PER_DEVICE,
+	MCP_MAX_SECURITY_DEVICES,
+	MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
 	MCP_MAX_TIMESERIES_POINTS,
 	MCP_MAX_TIMESERIES_RANGE_DAYS,
 	McpCapability,
@@ -103,7 +106,13 @@ export class McpContextService {
 			this.scenesService.findSummaryPage(MCP_MAX_CONTEXT_SCENES, selectedSpace?.id),
 			this.optional(() => this.weatherService.getPrimaryWeather()),
 			this.optional(() => this.getEnergySummaryData(undefined, undefined, selectedSpace ?? undefined)),
-			this.optional(() => this.securityService.getStatus()),
+			this.optional(() =>
+				this.securityService.getBoundedStatus(
+					MCP_MAX_SECURITY_DEVICES,
+					MCP_MAX_SECURITY_CHANNELS_PER_DEVICE,
+					MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
+				),
+			),
 		]);
 
 		const devices = devicePage.devices.filter((device) => !device.hidden);
@@ -228,7 +237,13 @@ export class McpContextService {
 	}
 
 	async getSecurityStatus(): Promise<Record<string, unknown>> {
-		return this.mapSecurity(await this.securityService.getStatus());
+		return this.mapSecurity(
+			await this.securityService.getBoundedStatus(
+				MCP_MAX_SECURITY_DEVICES,
+				MCP_MAX_SECURITY_CHANNELS_PER_DEVICE,
+				MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
+			),
+		);
 	}
 
 	async listSpaces(): Promise<Array<{ id: string; name: string; type: string }>> {

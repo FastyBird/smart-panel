@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { ChannelCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DevicesService } from '../../devices/services/devices.service';
 import { SecurityAggregationContext } from '../contracts/security-aggregation-context.type';
@@ -16,6 +17,7 @@ import {
 	Severity,
 } from '../security.constants';
 import { pickNewestEvent } from '../security.utils';
+import { DetectionRulesLoaderService } from '../spec/detection-rules-loader.service';
 
 @Injectable()
 export class SecurityAggregatorService implements SecurityAggregatorInterface {
@@ -25,6 +27,7 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 		@Inject(SECURITY_STATE_PROVIDERS)
 		private readonly providers: SecurityStateProviderInterface[],
 		private readonly devicesService: DevicesService,
+		private readonly detectionRulesLoader: DetectionRulesLoaderService,
 	) {}
 
 	async aggregate(): Promise<SecurityStatusModel> {
@@ -34,7 +37,6 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 	}
 
 	async aggregateWithErrors(): Promise<AggregationResult> {
-		// Fetch devices once for all providers
 		let devices: DeviceEntity[];
 		let providerErrors = 0;
 
@@ -46,6 +48,40 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 			providerErrors++;
 		}
 
+		return this.aggregateDevicesWithErrors(devices, providerErrors);
+	}
+
+	async aggregateBounded(
+		deviceLimit: number,
+		channelLimit: number,
+		propertyLimit: number,
+	): Promise<SecurityStatusModel> {
+		const categories = Array.from(
+			new Set([ChannelCategory.ALARM, ...this.detectionRulesLoader.getSensorRules().keys()]),
+		);
+		let devices: DeviceEntity[];
+		let providerErrors = 0;
+
+		try {
+			devices = await this.devicesService.findVisibleBoundedStateByChannelCategories(
+				categories,
+				deviceLimit,
+				channelLimit,
+				propertyLimit,
+			);
+		} catch (error) {
+			this.logger.warn(`Failed to fetch bounded security devices: ${error}`);
+			devices = [];
+			providerErrors++;
+		}
+
+		return (await this.aggregateDevicesWithErrors(devices, providerErrors)).status;
+	}
+
+	private async aggregateDevicesWithErrors(
+		devices: DeviceEntity[],
+		providerErrors: number,
+	): Promise<AggregationResult> {
 		// Phase 1: Resolve armed state from alarm provider first
 		let armedState: ArmedState | null = null;
 		const alarmProvider = this.providers.find((p) => {

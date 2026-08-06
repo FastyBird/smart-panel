@@ -18,6 +18,7 @@ import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { ChannelEntity, DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
 
+import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { DeviceZonesService } from './device-zones.service';
 import { DevicesTypeMapperService } from './devices-type-mapper.service';
@@ -49,6 +50,7 @@ export class DevicesService {
 		private readonly spaceRepository: Repository<SpaceEntity>,
 		private readonly devicesMapperService: DevicesTypeMapperService,
 		private readonly channelsService: ChannelsService,
+		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly devicesControlsService: DevicesControlsService,
 		private readonly deviceZonesService: DeviceZonesService,
 		private readonly dataSource: DataSource,
@@ -151,6 +153,77 @@ export class DevicesService {
 			.where('device.id = :id', { id })
 			.andWhere('device.hidden = :hidden', { hidden: false })
 			.getOne();
+	}
+
+	async findVisibleBoundedStateByChannelCategories(
+		channelCategories: string[],
+		deviceLimit: number,
+		channelLimit: number,
+		propertyLimit: number,
+	): Promise<DeviceEntity[]> {
+		if (channelCategories.length === 0) {
+			return [];
+		}
+
+		interface DeviceIdRow {
+			id: string;
+		}
+
+		const categoryPlaceholders = channelCategories.map(() => '?').join(', ');
+		const idRows = await this.dataSource.query<DeviceIdRow[]>(
+			`SELECT DISTINCT device."id" AS "id", device."name" AS "name"
+			 FROM devices_module_devices device
+			 INNER JOIN devices_module_channels channel ON channel."deviceId" = device."id"
+			 WHERE device."hidden" = 0
+			 AND channel."category" IN (${categoryPlaceholders})
+			 ORDER BY device."name", device."id"
+			 LIMIT ?`,
+			[...channelCategories, deviceLimit],
+		);
+		const deviceIds = idRows.map((row) => row.id);
+
+		if (deviceIds.length === 0) {
+			return [];
+		}
+
+		const [devices, channelPage] = await Promise.all([
+			this.repository
+				.createQueryBuilder('device')
+				.leftJoinAndSelect('device.deviceZones', 'deviceZones')
+				.where('device.id IN (:...deviceIds)', { deviceIds })
+				.getMany(),
+			this.channelsService.findBoundedForDevices(deviceIds, channelCategories, channelLimit),
+		]);
+		const properties = await this.channelsPropertiesService.findBoundedForChannels(
+			channelPage.channels.map((channel) => channel.id),
+			propertyLimit,
+		);
+		const propertiesByChannel = new Map<string, ChannelEntity['properties']>();
+
+		for (const property of properties.properties) {
+			const channelId = typeof property.channel === 'string' ? property.channel : property.channel.id;
+			propertiesByChannel.set(channelId, [...(propertiesByChannel.get(channelId) ?? []), property]);
+		}
+		const channelsByDevice = new Map<string, ChannelEntity[]>();
+
+		for (const channel of channelPage.channels) {
+			channel.properties = propertiesByChannel.get(channel.id) ?? [];
+			const deviceId = channelPage.deviceIds[channel.id];
+
+			if (!deviceId) {
+				continue;
+			}
+			channelsByDevice.set(deviceId, [...(channelsByDevice.get(deviceId) ?? []), channel]);
+		}
+		const deviceOrder = new Map(deviceIds.map((id, index) => [id, index]));
+
+		return devices
+			.map((device) => {
+				device.channels = channelsByDevice.get(device.id) ?? [];
+
+				return device;
+			})
+			.sort((left, right) => (deviceOrder.get(left.id) ?? 0) - (deviceOrder.get(right.id) ?? 0));
 	}
 
 	async getVisibleSpaceCounts(): Promise<VisibleDeviceSpaceCounts> {

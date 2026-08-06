@@ -24,6 +24,11 @@ export interface ChannelSummaryPage {
 	total: number;
 }
 
+export interface BoundedDeviceChannels {
+	channels: ChannelEntity[];
+	deviceIds: Record<string, string>;
+}
+
 @Injectable()
 export class ChannelsService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'ChannelsService');
@@ -119,6 +124,54 @@ export class ChannelsService {
 		const [channels, total] = await query.getManyAndCount();
 
 		return { channels, total };
+	}
+
+	async findBoundedForDevices(
+		deviceIds: string[],
+		categories: string[],
+		perDeviceLimit: number,
+	): Promise<BoundedDeviceChannels> {
+		if (deviceIds.length === 0 || categories.length === 0) {
+			return { channels: [], deviceIds: {} };
+		}
+
+		interface ChannelIdRow {
+			id: string;
+			deviceId: string;
+		}
+
+		const devicePlaceholders = deviceIds.map(() => '?').join(', ');
+		const categoryPlaceholders = categories.map(() => '?').join(', ');
+		const idRows = await this.dataSource.query<ChannelIdRow[]>(
+			`SELECT ranked."id" AS "id", ranked."deviceId" AS "deviceId"
+			 FROM (
+			   SELECT channel."id" AS "id", channel."deviceId" AS "deviceId",
+			          ROW_NUMBER() OVER (
+			            PARTITION BY channel."deviceId"
+			            ORDER BY channel."name", channel."id"
+			          ) AS "rowNumber"
+			   FROM devices_module_channels channel
+			   WHERE channel."deviceId" IN (${devicePlaceholders})
+			   AND channel."category" IN (${categoryPlaceholders})
+			 ) ranked
+			 WHERE ranked."rowNumber" <= ?`,
+			[...deviceIds, ...categories, perDeviceLimit],
+		);
+		const channelIds = idRows.map((row) => row.id);
+
+		if (channelIds.length === 0) {
+			return { channels: [], deviceIds: {} };
+		}
+
+		const channels = await this.repository
+			.createQueryBuilder('channel')
+			.where('channel.id IN (:...channelIds)', { channelIds })
+			.getMany();
+
+		return {
+			channels,
+			deviceIds: Object.fromEntries(idRows.map((row) => [row.id, row.deviceId])),
+		};
 	}
 
 	async findOne<TChannel extends ChannelEntity>(

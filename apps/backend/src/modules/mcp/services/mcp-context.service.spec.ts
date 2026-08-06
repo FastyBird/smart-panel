@@ -16,6 +16,9 @@ import {
 	MCP_MAX_CONTEXT_DEVICES,
 	MCP_MAX_CONTEXT_SCENES,
 	MCP_MAX_PROPERTIES_PER_CHANNEL,
+	MCP_MAX_SECURITY_CHANNELS_PER_DEVICE,
+	MCP_MAX_SECURITY_DEVICES,
+	MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
 	McpCapability,
 } from '../mcp.constants';
 
@@ -36,7 +39,7 @@ describe('McpContextService', () => {
 	let scenes: { findSummaryPage: jest.Mock };
 	let weather: { getPrimaryWeather: jest.Mock; getWeather: jest.Mock };
 	let energy: { getSummary: jest.Mock; getSpaceSummary: jest.Mock; getDeviceZoneSummary: jest.Mock };
-	let security: { getStatus: jest.Mock };
+	let security: { getBoundedStatus: jest.Mock };
 
 	beforeEach(() => {
 		spaces = {
@@ -65,7 +68,7 @@ describe('McpContextService', () => {
 			getSpaceSummary: jest.fn(),
 			getDeviceZoneSummary: jest.fn(),
 		};
-		security = { getStatus: jest.fn().mockRejectedValue(new Error('security unavailable')) };
+		security = { getBoundedStatus: jest.fn().mockRejectedValue(new Error('security unavailable')) };
 
 		service = new McpContextService(
 			{ getModuleConfig: jest.fn(() => ({ timezone: 'Europe/Prague' })) } as unknown as ConfigService,
@@ -128,6 +131,11 @@ describe('McpContextService', () => {
 			expect.objectContaining({ id: 'room-id', device_count: MCP_MAX_CONTEXT_DEVICES + 2 }),
 		]);
 		expect(result.limits).toEqual(expect.objectContaining({ devices_truncated: true }));
+		expect(security.getBoundedStatus).toHaveBeenCalledWith(
+			MCP_MAX_SECURITY_DEVICES,
+			MCP_MAX_SECURITY_CHANNELS_PER_DEVICE,
+			MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
+		);
 	});
 
 	it('preserves the selected zone membership in a scoped snapshot', async () => {

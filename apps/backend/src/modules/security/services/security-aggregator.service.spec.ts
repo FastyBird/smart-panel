@@ -1,9 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { ChannelCategory } from '../../devices/devices.constants';
+import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DevicesService } from '../../devices/services/devices.service';
 import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
 import { AlarmState, ArmedState, SECURITY_STATE_PROVIDERS, SecurityAlertType, Severity } from '../security.constants';
+import { DetectionRulesLoaderService } from '../spec/detection-rules-loader.service';
 
 import { SecurityAggregatorService } from './security-aggregator.service';
 
@@ -44,7 +47,12 @@ describe('SecurityAggregatorService', () => {
 					provide: DevicesService,
 					useValue: {
 						findAll: jest.fn().mockResolvedValue([]),
+						findVisibleBoundedStateByChannelCategories: jest.fn().mockResolvedValue([]),
 					},
+				},
+				{
+					provide: DetectionRulesLoaderService,
+					useValue: { getSensorRules: jest.fn().mockReturnValue(new Map()) },
 				},
 				SecurityAggregatorService,
 			],
@@ -275,6 +283,10 @@ describe('SecurityAggregatorService', () => {
 						findAll: jest.fn().mockRejectedValue(new Error('DB connection lost')),
 					},
 				},
+				{
+					provide: DetectionRulesLoaderService,
+					useValue: { getSensorRules: jest.fn().mockReturnValue(new Map()) },
+				},
 				SecurityAggregatorService,
 			],
 		}).compile();
@@ -284,6 +296,41 @@ describe('SecurityAggregatorService', () => {
 
 		expect(result.providerErrors).toBeGreaterThan(0);
 		expect(result.status.activeAlerts).toEqual([]);
+	});
+
+	it('loads only bounded security device state for MCP aggregation', async () => {
+		const devices = [{ id: 'alarm-device' }] as DeviceEntity[];
+		const deviceService = {
+			findAll: jest.fn(),
+			findVisibleBoundedStateByChannelCategories: jest.fn().mockResolvedValue(devices),
+		};
+		const provider = new FakeProvider('default', {});
+		const providerSpy = jest.spyOn(provider, 'getSignals');
+		const module: TestingModule = await Test.createTestingModule({
+			providers: [
+				{ provide: SECURITY_STATE_PROVIDERS, useValue: [provider] },
+				{ provide: DevicesService, useValue: deviceService },
+				{
+					provide: DetectionRulesLoaderService,
+					useValue: {
+						getSensorRules: jest.fn().mockReturnValue(new Map([[ChannelCategory.SMOKE, {}]])),
+					},
+				},
+				SecurityAggregatorService,
+			],
+		}).compile();
+		const aggregator = module.get<SecurityAggregatorService>(SecurityAggregatorService);
+
+		await aggregator.aggregateBounded(100, 10, 20);
+
+		expect(deviceService.findAll).not.toHaveBeenCalled();
+		expect(deviceService.findVisibleBoundedStateByChannelCategories).toHaveBeenCalledWith(
+			[ChannelCategory.ALARM, ChannelCategory.SMOKE],
+			100,
+			10,
+			20,
+		);
+		expect(providerSpy).toHaveBeenCalledWith({ armedState: null, devices });
 	});
 
 	it('should handle provider that throws', async () => {

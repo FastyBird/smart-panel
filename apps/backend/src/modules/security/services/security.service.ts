@@ -24,6 +24,20 @@ export class SecurityService {
 	async getStatus(): Promise<SecurityStatusModel> {
 		const status = await this.aggregator.aggregate();
 
+		return this.annotateStatus(status);
+	}
+
+	async getBoundedStatus(
+		deviceLimit: number,
+		channelLimit: number,
+		propertyLimit: number,
+	): Promise<SecurityStatusModel> {
+		const status = await this.aggregator.aggregateBounded(deviceLimit, channelLimit, propertyLimit);
+
+		return this.annotateStatus(status);
+	}
+
+	private async annotateStatus(status: SecurityStatusModel): Promise<SecurityStatusModel> {
 		if (status.activeAlerts.length > 0) {
 			await this.annotateAcknowledgements(status);
 		}

@@ -143,7 +143,9 @@ describe('McpReadToolService', () => {
 			if (resultPromise === undefined) {
 				throw new Error('Installation resource callback was not registered');
 			}
-			const rejection = expect(resultPromise).rejects.toThrow(`timeout after ${MCP_TOOL_CALL_TIMEOUT_MS}ms`);
+			const rejection = expect(resultPromise).rejects.toThrow(
+				'Smart Panel could not complete the requested read operation.',
+			);
 
 			await jest.advanceTimersByTimeAsync(MCP_TOOL_CALL_TIMEOUT_MS);
 			await rejection;

@@ -193,7 +193,7 @@ export class McpReadToolService {
 			'space-snapshot',
 			new ResourceTemplate('smart-panel://spaces/{spaceId}/snapshot', {
 				list: async (ctx) =>
-					this.withDeadline('space resource listing', async () => {
+					this.runResourceOperation('space resource listing', async () => {
 						await this.authorizeRead(ctx);
 						const spaces = await this.contextService.listSpaces();
 
@@ -284,7 +284,7 @@ export class McpReadToolService {
 		ctx: ServerContext,
 		callback: (policy: Awaited<ReturnType<McpPolicyService['authorizeClient']>>, endpoint?: string) => Promise<unknown>,
 	): Promise<{ contents: Array<{ uri: string; mimeType: string; text: string }> }> {
-		return this.withDeadline(`resource ${uri.href}`, async () => {
+		return this.runResourceOperation(`resource ${uri.href}`, async () => {
 			const policy = await this.authorizeRead(ctx);
 			const data = await callback(policy, this.getEndpoint(ctx.http?.authInfo));
 
@@ -323,6 +323,14 @@ export class McpReadToolService {
 
 	private withDeadline<T>(label: string, callback: () => Promise<T>): Promise<T> {
 		return withTimeout(Promise.resolve().then(callback), MCP_TOOL_CALL_TIMEOUT_MS, `MCP ${label}`);
+	}
+
+	private async runResourceOperation<T>(label: string, callback: () => Promise<T>): Promise<T> {
+		try {
+			return await this.withDeadline(label, callback);
+		} catch (error) {
+			throw new Error(this.sanitizeError(error).message, { cause: error });
+		}
 	}
 
 	private sanitizeError(error: unknown): { code: string; message: string } {

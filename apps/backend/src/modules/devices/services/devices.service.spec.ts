@@ -24,6 +24,7 @@ import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
 
+import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { DeviceConnectionStateService } from './device-connection-state.service';
 import { DeviceZonesService } from './device-zones.service';
@@ -140,6 +141,13 @@ describe('DevicesService', () => {
 					provide: ChannelsService,
 					useValue: {
 						create: jest.fn(() => {}),
+						findBoundedForDevices: jest.fn().mockResolvedValue({ channels: [], deviceIds: {} }),
+					},
+				},
+				{
+					provide: ChannelsPropertiesService,
+					useValue: {
+						findBoundedForChannels: jest.fn().mockResolvedValue({ properties: [], totals: {} }),
 					},
 				},
 				{
@@ -158,6 +166,7 @@ describe('DevicesService', () => {
 					provide: DataSource,
 					useValue: {
 						getRepository: jest.fn(() => {}),
+						query: jest.fn(),
 						manager: mockManager,
 						transaction: jest.fn(async (cb: (m: any) => any) => await cb(mockManager)),
 					},
@@ -177,7 +186,6 @@ describe('DevicesService', () => {
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 		dataSource = module.get<DataSource>(DataSource);
 	});
-
 	afterEach(() => {
 		jest.clearAllMocks();
 	});
