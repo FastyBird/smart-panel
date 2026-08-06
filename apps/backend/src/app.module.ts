@@ -33,6 +33,8 @@ import { EXTENSIONS_MODULE_PREFIX } from './modules/extensions/extensions.consta
 import { ExtensionsModule } from './modules/extensions/extensions.module';
 import { FactoryResetModule } from './modules/factory-reset/factory-reset.module';
 import { IntentsModule } from './modules/intents/intents.module';
+import { MCP_MODULE_PREFIX } from './modules/mcp/mcp.constants';
+import { McpModule } from './modules/mcp/mcp.module';
 import { MdnsModule } from './modules/mdns/mdns.module';
 import { ModuleRegistryModule } from './modules/module-registry/module-registry.module';
 import { PlatformModule } from './modules/platform/platform.module';
@@ -272,6 +274,10 @@ export class AppModule {
 								module: BuddyModule,
 							},
 							{
+								path: MCP_MODULE_PREFIX,
+								module: McpModule,
+							},
+							{
 								path: AUTH_MODULE_PREFIX,
 								module: ApiModule,
 							},
@@ -416,6 +422,7 @@ export class AppModule {
 				ScenesModule,
 				SecurityModule,
 				BuddyModule,
+				McpModule,
 				SpacesModule,
 				SeedModule,
 				StatsModule,

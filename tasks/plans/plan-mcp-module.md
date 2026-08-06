@@ -1,6 +1,6 @@
 # Smart Panel MCP Module — Implementation Plan
 
-**Status:** Phase 1 complete — Phase 2 pending
+**Status:** Phase 2 complete — Phase 3 pending
 
 **Architecture decision:** [ADR 0001: MCP Protocol and Security Foundation](../../docs/adr/0001-mcp-protocol-and-security-foundation.md)
 supersedes the original stateful-session transport assumptions in this plan.
@@ -271,30 +271,38 @@ Task 14 because it requires external target clients.
 - Create: `apps/backend/src/modules/mcp/dto/update-config.dto.ts`
 - Create: `apps/backend/src/modules/mcp/mcp.openapi.ts`
 - Create: `apps/backend/src/modules/mcp/mcp.module.ts`
+- Create: `apps/backend/test/config-authorization.e2e-spec.ts`
 - Modify: `apps/backend/src/app.module.ts`
 - Modify: `apps/backend/src/modules/config/controllers/config.controller.ts`
 - Modify: `apps/backend/src/modules/config/controllers/config.controller.spec.ts`
 
-- [ ] Define `MCP_MODULE_NAME`, `MCP_MODULE_PREFIX`, API tag metadata, capability values, defaults, session limits, and
+- [x] Define `MCP_MODULE_NAME`, `MCP_MODULE_PREFIX`, API tag metadata, capability values, defaults, subscription limits, and
       timeout constants.
-- [ ] Add `McpConfigModel extends ModuleConfigModel` with `enabled`, `capabilities`, and `allowedOrigins`.
-- [ ] Add DTO validation that accepts any unique combination of `read`, `write`, and `trigger`; reject unknown and
+- [x] Add `McpConfigModel extends ModuleConfigModel` with `enabled`, `capabilities`, and `allowedOrigins`.
+- [x] Add DTO validation that accepts any unique combination of `read`, `write`, and `trigger`; reject unknown and
       duplicate values.
-- [ ] Register the config model through `ModulesTypeMapperService`.
-- [ ] Register module metadata through `ExtensionsService`.
-- [ ] Mount the module under `modules/mcp` and import it as a core module.
-- [ ] Enforce `@Roles(UserRole.OWNER, UserRole.ADMIN)` on the backend `PATCH config/module/:module` route used to save
+- [x] Validate `allowed_origins` as unique, normalized absolute HTTP(S) origins without paths, queries, fragments,
+      credentials, wildcards, or non-HTTP schemes.
+- [x] Register the config model through `ModulesTypeMapperService`.
+- [x] Register module metadata through `ExtensionsService`.
+- [x] Mount the module under `modules/mcp` and import it as a core module.
+- [x] Enforce `@Roles(UserRole.OWNER, UserRole.ADMIN)` on the backend `PATCH config/module/:module` route used to save
       MCP settings. Do not rely on Admin UI visibility for authorization.
-- [ ] Verify the role guard runs before module mapping or persistence: ordinary users, display tokens, and personal
+- [x] Verify the role guard runs before module mapping or persistence: ordinary users, display tokens, and personal
       access tokens whose owning user lacks the owner/admin role must receive HTTP 403 and leave configuration
       unchanged. Owner/admin user credentials and owner/admin-owned PATs retain the repository's existing role
       semantics.
-- [ ] Add Swagger models only for the management/config REST APIs, not for the MCP JSON-RPC endpoint.
-- [ ] Keep the module disabled by default with `read` preselected as the safe enablement default.
+- [x] Add Swagger models only for the management/config REST APIs, not for the MCP JSON-RPC endpoint.
+- [x] Keep the module disabled by default with `read` preselected as the safe enablement default.
 
 **Tests:** config defaults, all eight capability combinations, invalid values, config serialization, module metadata,
 controller role metadata, and HTTP authorization coverage for owner, admin, user, user-owned PAT, and display-token
 requests.
+
+**Outcome:** The MCP core module is registered under `modules/mcp`, appears in extension/config discovery, and defaults
+to disabled with `read` selected. Its DTO accepts all eight capability combinations and strict normalized origins. The
+shared module-configuration write route now enforces owner/admin authorization before validation or persistence, with
+HTTP regression coverage for user credentials, user-owned PATs, and display tokens.
 
 ### Task 3: Extend the internal tool contract with access metadata and execution context
 

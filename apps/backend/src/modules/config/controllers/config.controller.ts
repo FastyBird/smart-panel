@@ -12,6 +12,8 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
+import { Roles } from '../../users/guards/roles.guard';
+import { UserRole } from '../../users/users.constants';
 import { CONFIG_MODULE_API_TAG_NAME, CONFIG_MODULE_NAME } from '../config.constants';
 import { ConfigException } from '../config.exceptions';
 import {
@@ -330,6 +332,7 @@ export class ConfigController {
 	@ApiBadRequestResponse('Invalid module configuration data or unsupported module type')
 	@ApiNotFoundResponse('Module configuration not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	async updateModuleConfig(
 		@Param('module') module: string,
 		@Body() moduleConfig: { data: object },
