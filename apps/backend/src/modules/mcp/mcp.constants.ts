@@ -19,6 +19,12 @@ export const MCP_DEFAULT_CAPABILITIES: readonly McpCapability[] = [McpCapability
 
 export const MCP_DEFAULT_ALLOWED_ORIGINS: readonly string[] = [];
 
+export const MCP_DEFAULT_TOKEN_EXPIRATION_DAYS = 90;
+
+export const MCP_MAX_TOKEN_EXPIRATION_DAYS = 3650;
+
+export const IS_MCP_ENDPOINT_KEY = 'isMcpEndpoint';
+
 export const MCP_REQUEST_BODY_LIMIT_BYTES = 1024 * 1024;
 
 export const MCP_TOOL_CALL_TIMEOUT_MS = 30_000;

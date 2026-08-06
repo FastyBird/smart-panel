@@ -74,6 +74,7 @@ export class TokensController {
 
 		if (auth && (auth.role === UserRole.OWNER || auth.role === UserRole.ADMIN)) {
 			tokens = await this.tokensService.findAll<LongLiveTokenEntity>(LongLiveTokenEntity);
+			tokens = tokens.filter((token) => token.ownerType !== TokenOwnerType.MCP);
 		} else if (auth) {
 			const callerId = auth.type === 'user' ? auth.id : auth.type === 'token' ? auth.ownerId : null;
 
@@ -177,6 +178,10 @@ export class TokensController {
 			this.logger.error(`Validation failed for token creation error=${JSON.stringify(errors)}`);
 
 			throw ValidationExceptionFactory.createException(errors);
+		}
+
+		if ((dtoInstance as { ownerType?: TokenOwnerType }).ownerType === TokenOwnerType.MCP) {
+			throw new BadRequestException('MCP credentials must be created through the MCP clients API');
 		}
 
 		const token = await this.tokensService.create(createDto.data);
@@ -402,6 +407,10 @@ export class TokensController {
 		if (!token) {
 			this.logger.error(`token with id=${id} not found`);
 
+			throw new NotFoundException('Requested token does not exist');
+		}
+
+		if (token instanceof LongLiveTokenEntity && token.ownerType === TokenOwnerType.MCP) {
 			throw new NotFoundException('Requested token does not exist');
 		}
 

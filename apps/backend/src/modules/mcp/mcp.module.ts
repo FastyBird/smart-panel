@@ -1,12 +1,17 @@
 import { Module, OnModuleInit } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { AuthModule } from '../auth/auth.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
 
+import { McpClientsController } from './controllers/mcp-clients.controller';
 import { UpdateMcpConfigDto } from './dto/update-config.dto';
+import { McpClientEntity } from './entities/mcp-client.entity';
+import { McpInstallationEntity } from './entities/mcp-installation.entity';
 import {
 	MCP_MODULE_API_TAG_DESCRIPTION,
 	MCP_MODULE_API_TAG_NAME,
@@ -15,6 +20,8 @@ import {
 } from './mcp.constants';
 import { MCP_SWAGGER_EXTRA_MODELS } from './mcp.openapi';
 import { McpConfigModel } from './models/config.model';
+import { McpClientService } from './services/mcp-client.service';
+import { McpInstallationService } from './services/mcp-installation.service';
 
 @ApiTag({
 	tagName: MCP_MODULE_NAME,
@@ -22,7 +29,10 @@ import { McpConfigModel } from './models/config.model';
 	description: MCP_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [SwaggerModule],
+	imports: [AuthModule, SwaggerModule, TypeOrmModule.forFeature([McpClientEntity, McpInstallationEntity])],
+	controllers: [McpClientsController],
+	providers: [McpClientService, McpInstallationService],
+	exports: [McpClientService, McpInstallationService],
 })
 export class McpModule implements OnModuleInit {
 	constructor(

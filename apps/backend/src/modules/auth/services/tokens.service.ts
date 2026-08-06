@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -132,6 +132,15 @@ export class TokensService {
 		await repository.update({ tokenOwnerId: ownerId, ownerType }, { revoked: true });
 
 		this.logger.debug(`Successfully revoked tokens for ownerId=${ownerId}`);
+	}
+
+	async revoke(id: string, manager?: EntityManager): Promise<void> {
+		const repository = (manager ?? this.dataSource).getRepository(LongLiveTokenEntity);
+		const result = await repository.update(id, { revoked: true });
+
+		if (!result.affected) {
+			throw new AuthNotFoundException('Requested token does not exist');
+		}
 	}
 
 	async findOneByHashedToken(hashedToken: string): Promise<LongLiveTokenEntity | null> {
@@ -396,11 +405,27 @@ export class TokensService {
 		ownerId: string;
 		name: string;
 		description: string | null;
-		expiresAt: Date;
+		expiresAt: Date | null;
 	}): Promise<LongLiveTokenEntity> {
 		this.logger.debug('Creating personal access token');
 
-		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
+		return this.createLongLiveToken(data);
+	}
+
+	async createLongLiveToken(
+		data: {
+			token: string;
+			ownerType: TokenOwnerType;
+			ownerId: string;
+			name: string;
+			description: string | null;
+			expiresAt: Date | null;
+		},
+		manager?: EntityManager,
+	): Promise<LongLiveTokenEntity> {
+		this.logger.debug(`Creating long-live token for ownerType=${data.ownerType}`);
+
+		const repository = (manager ?? this.dataSource).getRepository(LongLiveTokenEntity);
 
 		const entity = new LongLiveTokenEntity();
 		entity.hashedToken = data.token; // Will be hashed by @BeforeInsert
@@ -415,10 +440,10 @@ export class TokensService {
 		const result = await repository.findOne({ where: { id: saved.id } });
 
 		if (!result) {
-			throw new AuthException('Failed to create personal token');
+			throw new AuthException('Failed to create long-live token');
 		}
 
-		this.logger.debug(`Created personal access token id=${result.id}`);
+		this.logger.debug(`Created long-live token id=${result.id}`);
 
 		return result;
 	}

@@ -15,6 +15,9 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { IS_MCP_ENDPOINT_KEY, McpCapability } from '../../mcp/mcp.constants';
+import { McpClientService } from '../../mcp/services/mcp-client.service';
+import { McpInstallationService } from '../../mcp/services/mcp-installation.service';
 import { ApiPublic } from '../../swagger/decorators/api-documentation.decorator';
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
@@ -44,6 +47,7 @@ export interface AuthenticatedLongLiveToken {
 	ownerType: TokenOwnerType;
 	ownerId: string | null;
 	role: UserRole;
+	capabilities?: McpCapability[];
 }
 
 /**
@@ -73,6 +77,8 @@ export class AuthGuard implements CanActivate {
 		private readonly reflector: Reflector,
 		private readonly tokensService: TokensService,
 		private readonly usersService: UsersService,
+		private readonly mcpClientsService: McpClientService,
+		private readonly mcpInstallationService: McpInstallationService,
 		@Inject(CACHE_MANAGER)
 		private readonly cacheManager: Cache,
 	) {}
@@ -89,12 +95,17 @@ export class AuthGuard implements CanActivate {
 			return true;
 		}
 
+		const isMcpEndpoint = this.reflector.getAllAndOverride<boolean>(IS_MCP_ENDPOINT_KEY, [
+			context.getHandler(),
+			context.getClass(),
+		]);
+
 		const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
 		// Try authenticating with JWT (Bearer token)
 		const token = extractAccessTokenFromHeader(request);
 
-		if (token && (await this.validateToken(request, token))) {
+		if (token && (await this.validateToken(request, token, isMcpEndpoint))) {
 			return true;
 		}
 
@@ -104,13 +115,27 @@ export class AuthGuard implements CanActivate {
 		throw new UnauthorizedException('Authentication required');
 	}
 
-	private async validateToken(request: AuthenticatedRequest, token: string): Promise<boolean> {
+	private async validateToken(request: AuthenticatedRequest, token: string, isMcpEndpoint: boolean): Promise<boolean> {
 		let payload: { sub?: string; type?: string; role?: string };
 
 		try {
-			payload = await this.jwtService.verifyAsync(token);
+			payload = isMcpEndpoint
+				? await this.jwtService.verifyAsync(token, { audience: await this.mcpInstallationService.getAudience() })
+				: await this.jwtService.verifyAsync(token);
 		} catch {
 			throw new UnauthorizedException('Invalid or expired token');
+		}
+
+		if (isMcpEndpoint) {
+			if ((payload.type as TokenOwnerType) !== TokenOwnerType.MCP || !payload.sub) {
+				throw new UnauthorizedException('An MCP credential is required');
+			}
+
+			return this.validateLongLiveToken(request, token, TokenOwnerType.MCP, payload.sub);
+		}
+
+		if ((payload.type as TokenOwnerType) === TokenOwnerType.MCP) {
+			throw new UnauthorizedException('MCP credentials are only valid on the MCP endpoint');
 		}
 
 		// Check if this is a display token (type: TokenOwnerType.DISPLAY in payload)
@@ -193,6 +218,10 @@ export class AuthGuard implements CanActivate {
 			throw new UnauthorizedException('Token expired');
 		}
 
+		if (storedToken.ownerType !== TokenOwnerType.DISPLAY || storedToken.ownerId !== _displayId) {
+			throw new UnauthorizedException('Invalid display token owner');
+		}
+
 		// Update lastUsedAt asynchronously
 		void this.tokensService.updateLastUsedAt(storedToken.id);
 
@@ -209,9 +238,15 @@ export class AuthGuard implements CanActivate {
 		return true;
 	}
 
-	private async validateLongLiveToken(request: AuthenticatedRequest, token: string): Promise<boolean> {
+	private async validateLongLiveToken(
+		request: AuthenticatedRequest,
+		token: string,
+		expectedOwnerType?: TokenOwnerType,
+		expectedOwnerId?: string,
+	): Promise<boolean> {
 		const hashedValue = hashToken(token);
 		const storedLongLiveToken = await this.tokensService.findOneByHashedToken(hashedValue);
+		let effectiveMcpCapabilities: McpCapability[] | undefined;
 
 		if (!storedLongLiveToken) {
 			this.logger.warn('Long-live token not found');
@@ -226,6 +261,27 @@ export class AuthGuard implements CanActivate {
 		if (storedLongLiveToken.expiresAt && storedLongLiveToken.expiresAt < new Date()) {
 			this.logger.warn('Long-live token is expired');
 			throw new UnauthorizedException('Token expired');
+		}
+
+		if (expectedOwnerType) {
+			if (storedLongLiveToken.ownerType !== expectedOwnerType || storedLongLiveToken.ownerId !== expectedOwnerId) {
+				throw new UnauthorizedException('Token owner does not match the credential');
+			}
+		} else if (storedLongLiveToken.ownerType === TokenOwnerType.MCP) {
+			throw new UnauthorizedException('MCP credentials are only valid on the MCP endpoint');
+		}
+
+		if (storedLongLiveToken.ownerType === TokenOwnerType.MCP) {
+			const client = await this.mcpClientsService.findActiveByToken(
+				storedLongLiveToken.id,
+				storedLongLiveToken.ownerId ?? '',
+			);
+
+			if (!client) {
+				throw new UnauthorizedException('MCP client is disabled or the credential has been rotated');
+			}
+
+			effectiveMcpCapabilities = this.mcpClientsService.getEffectiveCapabilities(client);
 		}
 
 		// Update lastUsedAt asynchronously (fire-and-forget, don't block the request)
@@ -247,6 +303,7 @@ export class AuthGuard implements CanActivate {
 			ownerType: storedLongLiveToken.ownerType,
 			ownerId: storedLongLiveToken.ownerId,
 			role: role,
+			...(effectiveMcpCapabilities ? { capabilities: effectiveMcpCapabilities } : {}),
 		};
 
 		this.logger.debug(`Long-live token authentication successful (ownerType=${storedLongLiveToken.ownerType})`);
