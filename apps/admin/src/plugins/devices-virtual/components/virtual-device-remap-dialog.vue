@@ -269,6 +269,14 @@ const loadProperties = async (channelId: string): Promise<void> => {
  */
 const runCompatibility = async (sourcePropertyId: string): Promise<void> => {
 	if (!property.value || !channel.value || !device.value) {
+		// The target property, its channel or its device could not be resolved from the stores (e.g. a
+		// concurrent delete while this dialog is open, per the `property`/`channel`/`device` comment
+		// above). No verdict can be obtained for this pairing — the same principle the wizard's mapping
+		// step applies to a failed compatibility request ("an unverified pairing is not a verified-good
+		// one") — so this must block Confirm exactly as an incompatible verdict would, not leave `error`
+		// at the `null` `selectSource` just set before calling here.
+		error.value = t('devicesVirtualPlugin.wizard.mapping.errors.checkFailed');
+
 		return;
 	}
 

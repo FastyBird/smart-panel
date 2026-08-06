@@ -387,6 +387,36 @@ describe('VirtualDeviceRemapDialog', () => {
 		expect(backendClient.PATCH).not.toHaveBeenCalled();
 	});
 
+	// Regression test: `runCompatibility` used to return before setting `error`/`checking` when the
+	// target property resolved but its channel (or device) did not — e.g. a concurrent delete leaves the
+	// property cached with a `channel` id the channels store no longer has. `canConfirm` then read
+	// `error === null && !checking` as true, enabling Confirm on a pairing no verdict was ever obtained
+	// for. An unverified pairing must block exactly as an incompatible one does.
+	it('blocks confirm when the target property resolves but its channel does not', async () => {
+		const propertyWithMissingChannelId = uuid();
+
+		seedProperty(propertyWithMissingChannelId, {
+			type: DEVICES_VIRTUAL_TYPE,
+			channel: uuid(), // Deliberately not in `channels` — simulates the channel having been deleted.
+			valueOrigin: DevicesVirtualPluginValueOrigin.source,
+			sourceProperty: null,
+		});
+
+		const { selectSource, confirm, property, error, canConfirm } = mountRemapDialog({ propertyId: propertyWithMissingChannelId });
+
+		expect(property.value).toBeDefined();
+
+		await selectSource(NEW_SOURCE_PROPERTY_ID);
+
+		expect(backendClient.POST).not.toHaveBeenCalled();
+		expect(error.value).not.toBeNull();
+		expect(canConfirm.value).toBe(false);
+
+		await confirm();
+
+		expect(backendClient.PATCH).not.toHaveBeenCalled();
+	});
+
 	it('blocks confirm while a compatibility check is still in flight', async () => {
 		let resolveCheck: ((value: unknown) => void) | undefined;
 
