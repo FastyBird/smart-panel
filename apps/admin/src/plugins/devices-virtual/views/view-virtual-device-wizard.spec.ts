@@ -22,6 +22,12 @@ import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 
 import ViewVirtualDeviceWizard from './view-virtual-device-wizard.vue';
 
+// These drive the whole four-step wizard through a real flow — every step component mounts, and the
+// end-to-end cases await compatibility checks and the create call. Fast in isolation, but they crossed
+// vitest's 5s default under full-suite parallelism and reddened CI intermittently. See the same note in
+// virtual-wizard-mapping-step.spec.ts: the headroom absorbs machine load, not test growth.
+vi.setConfig({ testTimeout: 15000 });
+
 const mocks = vi.hoisted(() => ({
 	isMDDevice: true,
 	isLGDevice: true,

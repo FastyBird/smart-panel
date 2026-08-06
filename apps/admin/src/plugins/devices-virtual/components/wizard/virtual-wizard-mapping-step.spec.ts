@@ -19,6 +19,14 @@ import { DEVICES_VIRTUAL_TYPE } from '../../devices-virtual.constants';
 import type { IVirtualWizardMappingStepProps } from './virtual-wizard-mapping-step.types';
 import VirtualWizardMappingStep from './virtual-wizard-mapping-step.vue';
 
+// These mount the whole mapping step — Element Plus selects, the slot expansion for a full category,
+// and awaited compatibility round-trips — so a single case is an order of magnitude heavier than the
+// suite's typical unit test. Comfortably under a second each when run alone, but they crossed vitest's
+// 5s default under full-suite parallelism and reddened CI intermittently. The headroom is for machine
+// load, not for the tests getting slower: if one of these genuinely approaches 15s, that is a
+// regression worth investigating rather than raising again.
+vi.setConfig({ testTimeout: 15000 });
+
 const backendClient = {
 	GET: vi.fn(),
 	POST: vi.fn(),
