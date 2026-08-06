@@ -188,7 +188,7 @@ Fix: give `aggregateState()` the same "definitively offline" predicate the other
 
 ## 3. Pre-existing issues found in passing
 
-### 3.1 `DeviceEntity.enabled` has the class-field-initializer defect (medium)
+### 3.1 `DeviceEntity.enabled` has the class-field-initializer defect (medium) — DONE, by a different route
 
 Same mechanism as the `hidden` and `valueOrigin` bugs fixed on the virtual-devices branch: the initializer survives `class-transformer`, so `DevicesService.update`'s `omitBy(toInstance(...), isUndefined)` yields `enabled: true` for a PATCH that omits it — silently re-enabling a disabled device on any unrelated update.
 
@@ -197,6 +197,12 @@ The fix was applied, proven and then **reverted**, because dropping the initiali
 **Scope note:** the in-code comment at `devices.entity.ts:104-112` says "three device plugins" block this. That over-counts. Only **`devices-shelly-v1`** actually has the hazardous shape — `subscribers/device-entity.subscriber.ts:74` reads `event.entity.enabled` in `afterInsert` and passes it into `shellies-adapter.service.ts:232-238`, which assigns it straight into the in-memory registry. `devices-wled` and `devices-zigbee2mqtt` have no `afterInsert`; their `enabled` reads are on DB-loaded entities and would be unaffected. Fix shelly-v1's subscriber to re-read the row, then drop the initializer.
 
 **Bit new code once already.** `VirtualIndexMaintenanceListener.unhideAbandonedSources()` patched `{type, hidden: false}` and thereby silently re-enabled a source device the user had explicitly disabled. That call now echoes `enabled` back explicitly, which is a local defence, not a fix — every future `DevicesService.update()` caller that omits `enabled` has the same problem, and only the root fix removes the trap.
+
+**Resolved on the admin branch, without dropping any initializer.** The blocker recorded above applies only to the *drop the initializer* fix. `DevicesService.update()` now restricts `updateFields` to the properties the request actually carried, so a survivor can no longer reach `Object.assign` in the first place — initializers stay exactly where they are, and `devices-shelly-v1`'s `afterInsert` subscriber is untouched. Field initializers are now inert for updates across the board, so `password`/`hostname` (shelly-v1), `password` (shelly-ng), `hostname` (wled), `variant` (reterminal) and `canonicalMac`/`hasEthernet` (shelly-ng) stop leaking too — several of which were never listed here.
+
+The admin change that exposed it is worth recording: the admin used to resend the entire cached device on every PATCH, which masked this defect completely. Once `devicesStore.edit()` began sending genuinely partial bodies, the branch's own hide-the-source call (`{type, hidden, hiddenBy}`) would have wiped a Shelly 4PM's stored `password`. Two implementation notes for whoever touches `update()` next, both documented at the fix site: DTO key casing is **not** uniform (the base DTO spells `hidden_by` directly, while `UpdateShellyNgDeviceDto` uses `wifiAddress` with an `@Expose({ name })` override), so the provided-key set has to be normalised rather than compared raw; and the tempting one-liner — passing `exposeUnsetFields: true` so `omitBy(isUndefined)` does the work — throws on every plugin subclass, because `DeviceEntity.zoneIds` is a getter-only property declared once on the base and class-transformer's read-only guard does an own-property lookup that never walks the prototype chain.
+
+Still worth doing eventually: fix shelly-v1's subscriber to re-read the row and drop the initializers anyway, so creation stops depending on them.
 
 ### 3.6 Other migrations claim SQLite cannot DROP COLUMN (low)
 
@@ -250,6 +256,55 @@ The same shape almost certainly applies to any other provider or module that sca
 One residual case is knowingly left: if **two** virtual properties project the *same* non-qualifying source into two qualifying channels, both ingest. Each has its own `(deviceId, channelId)` delta key, so they are two meters as far as `DeltaComputationService` is concerned, and the household total counts the watts twice.
 
 It is out of reach of the rule as stated — the guard is a per-event question about the source, and "am I the only projection of this source that qualifies?" is a question about the *set* of projections, which only `VirtualPropertyIndexService` can answer and which the energy module has no business reaching into. Fixing it means either an election (lowest property id wins) or moving de-duplication into `DeltaComputationService`, keyed by storage key rather than by device+channel. Both are larger than the defect: it needs a user to deliberately wire one physical meter into two virtual devices, and unlike the dropped-meter case it is visible — an inflated total, not a silent omission.
+
+## 3a. Deferred from the admin branch
+
+Raised by reviews of the admin implementation, each verified against the code and triaged as non-blocking for that branch.
+
+### 3a.1 `hidden_by` cannot express `null` on either side (medium)
+
+Nothing can currently send an explicit `hidden_by: null`, so **an admin-side unhide action cannot be built until this is fixed**. Three layers disagree:
+
+- `DeviceUpdateReqSchema.hidden_by` (`apps/admin/src/modules/devices/store/devices.store.schemas.ts`) is `.optional()` but not `.nullable()`. Adding `.nullable()` breaks assignability to `ZodType<ApiUpdateDevice>`, because openapi-typescript drops `| null` from enum-referencing properties — the same generator quirk already documented on `DeviceResSchema.hidden_by`.
+- `UpdateDeviceDto.hidden_by` (`apps/backend/src/modules/devices/dto/update-device.dto.ts:112`) carries `@Transform(({ value }) => (value === null ? undefined : value))`, so the backend reads an explicit `null` as "not provided" regardless.
+- `spec/api/v1/openapi.json` nonetheless advertises `nullable: true` for the field, so the published contract is wrong.
+
+Unhiding works today only as a backend side effect of deleting the last referencing virtual device. A user who hides a device themselves has no way back from the UI.
+
+### 3a.2 The channel and property stores still merge-then-send (medium)
+
+`channels.store.ts` and `channels.properties.store.ts` have the same shape `devices.store.ts` was fixed for: `edit()` merges the whole cached record before validating and sends the result. Deliberately left alone to bound the blast radius of the device fix. Consequence: the remap dialog resends the property's cached `value` on every remap, so a value that changed underneath is written back stale. No `hidden_by`-class throw exists in either store, so nothing is broken today.
+
+### 3a.3 Five duplicated `useDeviceEditForm.submit()` implementations (medium)
+
+The shared composable plus `devices-wled`, `devices-shelly-v1`, `devices-shelly-ng` and `devices-reterminal` each reimplement `submit()`. A single fix had to be applied five times, and the four plugin copies were missed on the first pass. `devices-zigbee2mqtt` correctly has no `roomId` in its model. Consolidating is worthwhile — but note the room-omission fix belongs at the store layer regardless, so deduplicating alone would not have prevented that bug.
+
+### 3a.4 The `devices-virtual` route is registered unconditionally (low)
+
+The wizard launcher in the devices list is gated on `enabled('devices-virtual')`, matching the sibling discovery-wizard button, but the route itself is registered with no such check — `enabled()` is async config state not available at `install()` time. Typing the URL with the plugin disabled still reaches the wizard. A `beforeEnter` guard is the only real option. Sibling wizard routes are ungated too, so this is consistent rather than novel.
+
+### 3a.5 Onboarding treats `devices-virtual` as a discoverable integration (medium)
+
+`step-integrations.vue` selects device plugins with `ext.type.startsWith('devices-')`, which `devices-virtual` matches, so it is offered the discovery affordance ("scanning…") for a plugin that can never discover anything. Separately, toggling it **off** there now runs `removePluginDevices` against type `virtual` and deletes every virtual device the user has built — behaviourally consistent with the other plugins, but destructive enough to deserve a confirmation prompt.
+
+### 3a.6 Test-coverage gaps (low)
+
+- `view-device.vue`'s virtual-device mount gate has no behavioural test; `view-devices.spec.ts` has a usable template for one.
+- `devices-virtual.plugin.spec.ts`'s schema-registration test mocks all three schemas as deep-equal `{}`, so it proves the keys exist but not that the right schema is wired. The real pin is the remap dialog's wire-level test.
+- The remap dialog's `canConfirm` "property is gone" term is never isolated from its "no selection" term, so the reactive mid-dialog deletion path (via the `CHANNEL_PROPERTY_DELETED` websocket handler) is untested.
+- The mapping step's `pickers` reset on external `modelValue` replacement has no discriminating test.
+
+### 3a.7 Mapping-step UI polish (low)
+
+Optional slot groups expand but never re-collapse, which is awkward for categories with large spec surfaces (`sensor` expands to 102 slots). The property picker sorts by raw category but displays the translated label, so ordering is not alphabetical in non-English locales.
+
+### 3a.8 Two heavy specs carry a per-file `testTimeout` (low)
+
+`virtual-wizard-mapping-step.spec.ts` and `view-virtual-device-wizard.spec.ts` raise `testTimeout` to 15s because they crossed vitest's 5s default under full-suite parallelism — timeouts only, no assertion failures, and only those two files. The next comparably heavy spec will need the same patch; a config-level default would be more durable.
+
+### 3a.9 Core module views import from the plugin directory (low)
+
+`view-device.vue` and `view-devices.vue` both import from `plugins/devices-virtual/**`. This follows the existing `modules/onboarding` → `plugins/weather-open-meteo` precedent and is commented as deliberate, but the devices module still has no `deviceDetail` extension point, which is why the imports exist at all.
 
 ## 4. Not to be done
 
