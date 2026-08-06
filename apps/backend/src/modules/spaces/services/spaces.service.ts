@@ -12,12 +12,19 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as DevicesEventType } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DeviceZonesService } from '../../devices/services/device-zones.service';
+import { DevicesService, VisibleDeviceSummaryPage } from '../../devices/services/devices.service';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { BulkAssignDto } from '../dto/bulk-assign.dto';
 import { CreateSpaceDto } from '../dto/create-space.dto';
 import { UpdateSpaceDto } from '../dto/update-space.dto';
 import { SpaceEntity } from '../entities/space.entity';
-import { EventType, SPACES_MODULE_NAME, SpaceType, isValidCategoryForType } from '../spaces.constants';
+import {
+	EventType,
+	SPACES_MODULE_NAME,
+	SpaceType,
+	isFloorZoneCategory,
+	isValidCategoryForType,
+} from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
 import { canonicalizeSpaceName } from '../spaces.utils';
 
@@ -49,6 +56,7 @@ export class SpacesService {
 		@InjectRepository(DisplayEntity)
 		private readonly displayRepository: Repository<DisplayEntity>,
 		private readonly deviceZonesService: DeviceZonesService,
+		private readonly devicesService: DevicesService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly spacesTypeMapper: SpacesTypeMapperService,
@@ -518,6 +526,33 @@ export class SpacesService {
 
 			return devices;
 		}
+	}
+
+	async findVisibleDeviceSummariesBySpace(spaceId: string, limit: number): Promise<VisibleDeviceSummaryPage> {
+		const space = await this.getOneOrThrow(spaceId);
+
+		if (space.type === SpaceType.ROOM) {
+			return this.devicesService.findVisibleSummaryPage(limit, { roomIds: [spaceId] });
+		}
+
+		if (space.type !== SpaceType.ZONE) {
+			return { devices: [], total: 0 };
+		}
+
+		const category = (space as { category?: string | null }).category ?? null;
+
+		if (!isFloorZoneCategory(category)) {
+			return this.devicesService.findVisibleSummaryPage(limit, { zoneId: spaceId });
+		}
+
+		const childRooms = await this.repository.find({
+			select: { id: true },
+			where: { parentId: spaceId },
+		});
+
+		return this.devicesService.findVisibleSummaryPage(limit, {
+			roomIds: childRooms.map((room) => room.id),
+		});
 	}
 
 	/**

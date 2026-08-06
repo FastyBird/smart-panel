@@ -12,6 +12,7 @@ import { RoomSpaceEntity } from '../../../plugins/spaces-home-control/entities/r
 import { ZoneSpaceEntity } from '../../../plugins/spaces-home-control/entities/zone-space.entity';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DeviceZonesService } from '../../devices/services/device-zones.service';
+import { DevicesService } from '../../devices/services/devices.service';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { CreateSpaceDto } from '../dto/create-space.dto';
 import { UpdateSpaceDto } from '../dto/update-space.dto';
@@ -27,6 +28,7 @@ describe('SpacesService', () => {
 	let spaceRepository: jest.Mocked<Repository<SpaceEntity>>;
 	let deviceRepository: jest.Mocked<Repository<DeviceEntity>>;
 	let displayRepository: jest.Mocked<Repository<DisplayEntity>>;
+	let devicesService: { findVisibleSummaryPage: jest.Mock };
 	// DataSource mock is hoisted so individual tests can stub `query()` — used
 	// by `SpacesService.update()` to read the raw `category` column straight
 	// from the shared STI table (ignoring subtype hydration).
@@ -57,6 +59,9 @@ describe('SpacesService', () => {
 	} as unknown as SpaceEntity;
 
 	beforeEach(async () => {
+		devicesService = {
+			findVisibleSummaryPage: jest.fn().mockResolvedValue({ devices: [], total: 0 }),
+		};
 		mockQueryBuilder = {
 			update: jest.fn().mockReturnThis(),
 			set: jest.fn().mockReturnThis(),
@@ -164,6 +169,10 @@ describe('SpacesService', () => {
 						getDeviceZones: jest.fn().mockResolvedValue([]),
 						setDeviceZones: jest.fn().mockResolvedValue([]),
 					},
+				},
+				{
+					provide: DevicesService,
+					useValue: devicesService,
 				},
 				SpacesTypeMapperService,
 			],
@@ -339,6 +348,28 @@ describe('SpacesService', () => {
 			expect(spaceRepository.find).toHaveBeenCalledWith({
 				order: { displayOrder: 'ASC', name: 'ASC' },
 			});
+		});
+	});
+
+	describe('findVisibleDeviceSummariesBySpace', () => {
+		it('derives floor-zone devices from child rooms', async () => {
+			const floorId = uuid();
+			const roomIds = [uuid(), uuid()];
+			spaceRepository.findOne.mockResolvedValue({
+				...mockSpace,
+				id: floorId,
+				type: SpaceType.ZONE,
+				category: SpaceZoneCategory.FLOOR_GROUND,
+			} as unknown as SpaceEntity);
+			spaceRepository.find.mockResolvedValue(roomIds.map((id) => ({ id }) as SpaceEntity));
+
+			await service.findVisibleDeviceSummariesBySpace(floorId, 100);
+
+			expect(spaceRepository.find).toHaveBeenCalledWith({
+				select: { id: true },
+				where: { parentId: floorId },
+			});
+			expect(devicesService.findVisibleSummaryPage).toHaveBeenCalledWith(100, { roomIds });
 		});
 	});
 

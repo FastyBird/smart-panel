@@ -23,6 +23,21 @@ import { DeviceZonesService } from './device-zones.service';
 import { DevicesTypeMapperService } from './devices-type-mapper.service';
 import { DevicesControlsService } from './devices.controls.service';
 
+export interface VisibleDeviceSummaryScope {
+	roomIds?: string[];
+	zoneId?: string;
+}
+
+export interface VisibleDeviceSummaryPage {
+	devices: DeviceEntity[];
+	total: number;
+}
+
+export interface VisibleDeviceSpaceCounts {
+	rooms: Record<string, number>;
+	zones: Record<string, number>;
+}
+
 @Injectable()
 export class DevicesService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'DevicesService');
@@ -99,6 +114,65 @@ export class DevicesService {
 		this.logger.debug(`Found ${devices.length} devices`);
 
 		return devices;
+	}
+
+	async findVisibleSummaryPage(
+		limit: number,
+		scope: VisibleDeviceSummaryScope = {},
+	): Promise<VisibleDeviceSummaryPage> {
+		if (scope.roomIds?.length === 0) {
+			return { devices: [], total: 0 };
+		}
+
+		const query = this.repository
+			.createQueryBuilder('device')
+			.leftJoinAndSelect('device.deviceZones', 'deviceZones')
+			.where('device.hidden = :hidden', { hidden: false })
+			.orderBy('device.name', 'ASC')
+			.take(limit);
+
+		if (scope.roomIds) {
+			query.andWhere('device.roomId IN (:...roomIds)', { roomIds: scope.roomIds });
+		}
+
+		if (scope.zoneId) {
+			query.andWhere('deviceZones.zoneId = :zoneId', { zoneId: scope.zoneId });
+		}
+
+		const [devices, total] = await query.getManyAndCount();
+
+		return { devices, total };
+	}
+
+	async getVisibleSpaceCounts(): Promise<VisibleDeviceSpaceCounts> {
+		interface SpaceCountRow {
+			spaceId: string;
+			deviceCount: string | number;
+		}
+
+		const [roomRows, zoneRows] = await Promise.all([
+			this.repository
+				.createQueryBuilder('device')
+				.select('device.roomId', 'spaceId')
+				.addSelect('COUNT(device.id)', 'deviceCount')
+				.where('device.hidden = :hidden', { hidden: false })
+				.andWhere('device.roomId IS NOT NULL')
+				.groupBy('device.roomId')
+				.getRawMany<SpaceCountRow>(),
+			this.repository
+				.createQueryBuilder('device')
+				.innerJoin('device.deviceZones', 'deviceZone')
+				.select('deviceZone.zoneId', 'spaceId')
+				.addSelect('COUNT(DISTINCT device.id)', 'deviceCount')
+				.where('device.hidden = :hidden', { hidden: false })
+				.groupBy('deviceZone.zoneId')
+				.getRawMany<SpaceCountRow>(),
+		]);
+
+		return {
+			rooms: Object.fromEntries(roomRows.map((row) => [row.spaceId, Number(row.deviceCount)])),
+			zones: Object.fromEntries(zoneRows.map((row) => [row.spaceId, Number(row.deviceCount)])),
+		};
 	}
 
 	async findOne<TDevice extends DeviceEntity>(id: string, type?: string): Promise<TDevice | null> {

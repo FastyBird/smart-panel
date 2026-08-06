@@ -4,16 +4,16 @@ import { resolve } from 'path';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { ConfigService } from '../../config/services/config.service';
-import { DeviceHiddenFilter } from '../../devices/devices.constants';
 import { ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
-import { DevicesService } from '../../devices/services/devices.service';
+import { DevicesService, VisibleDeviceSpaceCounts } from '../../devices/services/devices.service';
 import { BucketDuration, PropertyTimeseriesService } from '../../devices/services/property-timeseries.service';
 import { EnergyDataService } from '../../energy/services/energy-data.service';
 import { ScenesService } from '../../scenes/services/scenes.service';
 import { SecurityService } from '../../security/services/security.service';
+import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { SpacesService } from '../../spaces/services/spaces.service';
-import { SpaceType } from '../../spaces/spaces.constants';
+import { SpaceType, isFloorZoneCategory } from '../../spaces/spaces.constants';
 import { SystemConfigModel } from '../../system/models/config.model';
 import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
 import { WeatherService } from '../../weather/services/weather.service';
@@ -88,20 +88,23 @@ export class McpContextService {
 		if (spaceId && !selectedSpace) {
 			throw new NotFoundException('Requested space does not exist');
 		}
+		const spaceCountsPromise: Promise<VisibleDeviceSpaceCounts | null> = selectedSpace
+			? Promise.resolve<VisibleDeviceSpaceCounts | null>(null)
+			: this.devicesService.getVisibleSpaceCounts();
 
-		const [allSpaces, allDevices, allScenes, weather, energy, security] = await Promise.all([
+		const [allSpaces, devicePage, spaceCounts, allScenes, weather, energy, security] = await Promise.all([
 			selectedSpace ? Promise.resolve([selectedSpace]) : this.spacesService.findAll(),
 			selectedSpace
-				? this.spacesService.findDevicesBySpace(selectedSpace.id)
-				: this.devicesService.findAll(undefined, DeviceHiddenFilter.FALSE),
+				? this.spacesService.findVisibleDeviceSummariesBySpace(selectedSpace.id, MCP_MAX_CONTEXT_DEVICES)
+				: this.devicesService.findVisibleSummaryPage(MCP_MAX_CONTEXT_DEVICES),
+			spaceCountsPromise,
 			selectedSpace ? this.scenesService.findBySpace(selectedSpace.id) : this.scenesService.findAll(),
 			this.optional(() => this.weatherService.getPrimaryWeather()),
 			this.optional(() => this.getEnergySummaryData(undefined, undefined, selectedSpace?.id)),
 			this.optional(() => this.securityService.getStatus()),
 		]);
 
-		const visibleDevices = allDevices.filter((device) => !device.hidden);
-		const devices = visibleDevices.slice(0, MCP_MAX_CONTEXT_DEVICES);
+		const devices = devicePage.devices.filter((device) => !device.hidden);
 		const spaces = allSpaces.slice(0, MCP_MAX_CONTEXT_SPACES);
 		const scenes = allScenes.slice(0, MCP_MAX_CONTEXT_SCENES);
 		const scopedZoneId = selectedSpace?.type === SpaceType.ZONE ? selectedSpace.id : undefined;
@@ -113,9 +116,7 @@ export class McpContextService {
 				name: space.name,
 				type: space.type,
 				parent_id: space.parentId,
-				device_count: visibleDevices.filter(
-					(device) => device.roomId === space.id || this.getZoneIds(device, scopedZoneId).includes(space.id),
-				).length,
+				device_count: selectedSpace ? devicePage.total : this.getSpaceDeviceCount(space, allSpaces, spaceCounts),
 			})),
 			devices: devices.map((device) => this.mapDeviceSummary(device, scopedZoneId)),
 			scenes: scenes.map((scene) => ({
@@ -131,7 +132,7 @@ export class McpContextService {
 			security: security ? this.mapSecurity(security) : null,
 			limits: {
 				spaces_truncated: allSpaces.length > spaces.length,
-				devices_truncated: visibleDevices.length > devices.length,
+				devices_truncated: devicePage.total > devices.length,
 				scenes_truncated: allScenes.length > scenes.length,
 			},
 		};
@@ -356,6 +357,34 @@ export class McpContextService {
 
 	private getZoneIds(device: DeviceEntity, scopedZoneId?: string): string[] {
 		return [...new Set([...(device.zoneIds ?? []), ...(scopedZoneId ? [scopedZoneId] : [])])];
+	}
+
+	private getSpaceDeviceCount(
+		space: SpaceEntity,
+		allSpaces: SpaceEntity[],
+		counts: VisibleDeviceSpaceCounts | null,
+	): number {
+		if (!counts) {
+			return 0;
+		}
+
+		if (space.type === SpaceType.ROOM) {
+			return counts.rooms[space.id] ?? 0;
+		}
+
+		if (space.type !== SpaceType.ZONE) {
+			return 0;
+		}
+
+		const category = (space as { category?: string | null }).category ?? null;
+
+		if (!isFloorZoneCategory(category)) {
+			return counts.zones[space.id] ?? 0;
+		}
+
+		return allSpaces
+			.filter((candidate) => candidate.parentId === space.id)
+			.reduce((total, room) => total + (counts.rooms[room.id] ?? 0), 0);
 	}
 
 	private toIsoString(value: Date | string | null | undefined): string | null {

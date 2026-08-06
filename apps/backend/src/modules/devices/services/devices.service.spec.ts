@@ -233,6 +233,63 @@ describe('DevicesService', () => {
 		});
 	});
 
+	describe('findVisibleSummaryPage', () => {
+		it('bounds the query before loading device summaries', async () => {
+			const visibleDevice = toInstance(MockDevice, { ...mockDevice, hidden: false });
+			const queryBuilderMock: any = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				getManyAndCount: jest.fn().mockResolvedValue([[visibleDevice], 12]),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+
+			await expect(service.findVisibleSummaryPage(10, { roomIds: ['room-id'] })).resolves.toEqual({
+				devices: [visibleDevice],
+				total: 12,
+			});
+			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledTimes(1);
+			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('device.deviceZones', 'deviceZones');
+			expect(queryBuilderMock.take).toHaveBeenCalledWith(10);
+			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('device.roomId IN (:...roomIds)', {
+				roomIds: ['room-id'],
+			});
+		});
+	});
+
+	describe('getVisibleSpaceCounts', () => {
+		it('uses grouped raw counts without hydrating device entities', async () => {
+			const roomQuery: any = {
+				select: jest.fn().mockReturnThis(),
+				addSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				groupBy: jest.fn().mockReturnThis(),
+				getRawMany: jest.fn().mockResolvedValue([{ spaceId: 'room-id', deviceCount: '12' }]),
+			};
+			const zoneQuery: any = {
+				innerJoin: jest.fn().mockReturnThis(),
+				select: jest.fn().mockReturnThis(),
+				addSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				groupBy: jest.fn().mockReturnThis(),
+				getRawMany: jest.fn().mockResolvedValue([{ spaceId: 'zone-id', deviceCount: 7 }]),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValueOnce(roomQuery).mockReturnValueOnce(zoneQuery);
+
+			await expect(service.getVisibleSpaceCounts()).resolves.toEqual({
+				rooms: { 'room-id': 12 },
+				zones: { 'zone-id': 7 },
+			});
+			expect(roomQuery.getRawMany).toHaveBeenCalledTimes(1);
+			expect(zoneQuery.getRawMany).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('findOne', () => {
 		it('should return a device if found', async () => {
 			const queryBuilderMock: any = {

@@ -8,7 +8,7 @@ import { ScenesService } from '../../scenes/services/scenes.service';
 import { SecurityService } from '../../security/services/security.service';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { SpacesService } from '../../spaces/services/spaces.service';
-import { SpaceType } from '../../spaces/spaces.constants';
+import { SpaceType, SpaceZoneCategory } from '../../spaces/spaces.constants';
 import { WeatherService } from '../../weather/services/weather.service';
 import { MCP_MAX_CONTEXT_DEVICES, McpCapability } from '../mcp.constants';
 
@@ -17,8 +17,8 @@ import { McpInstallationService } from './mcp-installation.service';
 
 describe('McpContextService', () => {
 	let service: McpContextService;
-	let spaces: { findAll: jest.Mock; findOne: jest.Mock; findDevicesBySpace: jest.Mock };
-	let devices: { findAll: jest.Mock; findOne: jest.Mock };
+	let spaces: { findAll: jest.Mock; findOne: jest.Mock; findVisibleDeviceSummariesBySpace: jest.Mock };
+	let devices: { findVisibleSummaryPage: jest.Mock; getVisibleSpaceCounts: jest.Mock; findOne: jest.Mock };
 	let properties: { findOne: jest.Mock };
 	let timeseries: { queryTimeseries: jest.Mock };
 	let scenes: { findAll: jest.Mock; findBySpace: jest.Mock };
@@ -30,10 +30,11 @@ describe('McpContextService', () => {
 		spaces = {
 			findAll: jest.fn().mockResolvedValue([]),
 			findOne: jest.fn().mockResolvedValue(null),
-			findDevicesBySpace: jest.fn().mockResolvedValue([]),
+			findVisibleDeviceSummariesBySpace: jest.fn().mockResolvedValue({ devices: [], total: 0 }),
 		};
 		devices = {
-			findAll: jest.fn().mockResolvedValue([]),
+			findVisibleSummaryPage: jest.fn().mockResolvedValue({ devices: [], total: 0 }),
+			getVisibleSpaceCounts: jest.fn().mockResolvedValue({ rooms: {}, zones: {} }),
 			findOne: jest.fn().mockResolvedValue(null),
 		};
 		properties = { findOne: jest.fn().mockResolvedValue(null) };
@@ -84,8 +85,8 @@ describe('McpContextService', () => {
 		spaces.findAll.mockResolvedValue([
 			{ id: 'room-id', name: 'Living room', type: SpaceType.ROOM, parentId: null } as unknown as SpaceEntity,
 		]);
-		devices.findAll.mockResolvedValue(
-			Array.from({ length: MCP_MAX_CONTEXT_DEVICES + 2 }, (_, index) => ({
+		devices.findVisibleSummaryPage.mockResolvedValue({
+			devices: Array.from({ length: MCP_MAX_CONTEXT_DEVICES }, (_, index) => ({
 				id: `device-${index}`,
 				name: `Device ${index}`,
 				category: 'generic',
@@ -95,7 +96,12 @@ describe('McpContextService', () => {
 				zoneIds: [],
 				status: { online: true, status: 'connected', lastChanged: null },
 			})),
-		);
+			total: MCP_MAX_CONTEXT_DEVICES + 2,
+		});
+		devices.getVisibleSpaceCounts.mockResolvedValue({
+			rooms: { 'room-id': MCP_MAX_CONTEXT_DEVICES + 2 },
+			zones: {},
+		});
 
 		const result = await service.getHomeContext();
 
@@ -116,23 +122,47 @@ describe('McpContextService', () => {
 			type: SpaceType.ZONE,
 			parentId: null,
 		} as unknown as SpaceEntity);
-		spaces.findDevicesBySpace.mockResolvedValue([
-			{
-				id: 'device-id',
-				name: 'Lamp',
-				category: 'lighting',
-				enabled: true,
-				hidden: false,
-				roomId: null,
-				deviceZones: [],
-				status: { online: true, status: 'connected', lastChanged: null },
-			} as unknown as DeviceEntity,
-		]);
+		spaces.findVisibleDeviceSummariesBySpace.mockResolvedValue({
+			devices: [
+				{
+					id: 'device-id',
+					name: 'Lamp',
+					category: 'lighting',
+					enabled: true,
+					hidden: false,
+					roomId: null,
+					deviceZones: [],
+					status: { online: true, status: 'connected', lastChanged: null },
+				} as unknown as DeviceEntity,
+			],
+			total: 1,
+		});
 
 		const result = await service.getHomeContext('zone-id');
 
 		expect(result.spaces).toEqual([expect.objectContaining({ id: 'zone-id', device_count: 1 })]);
 		expect(result.devices).toEqual([expect.objectContaining({ id: 'device-id', zone_ids: ['zone-id'] })]);
+	});
+
+	it('derives global floor-zone counts from child-room counts', async () => {
+		spaces.findAll.mockResolvedValue([
+			{
+				id: 'floor-id',
+				name: 'Ground floor',
+				type: SpaceType.ZONE,
+				category: SpaceZoneCategory.FLOOR_GROUND,
+				parentId: null,
+			} as unknown as SpaceEntity,
+			{ id: 'room-id', name: 'Kitchen', type: SpaceType.ROOM, parentId: 'floor-id' } as unknown as SpaceEntity,
+		]);
+		devices.getVisibleSpaceCounts.mockResolvedValue({ rooms: { 'room-id': 3 }, zones: {} });
+
+		const result = await service.getHomeContext();
+
+		expect(result.spaces).toEqual([
+			expect.objectContaining({ id: 'floor-id', device_count: 3 }),
+			expect.objectContaining({ id: 'room-id', device_count: 3 }),
+		]);
 	});
 
 	it('maps current values only for a requested visible device', async () => {
