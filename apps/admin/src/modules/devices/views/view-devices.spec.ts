@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
 	fetchDevices: vi.fn(),
 	fetchValidation: vi.fn(),
 	wizardOptions: [] as { value: string; label: string; description: string; disabled: boolean }[],
+	virtualWizardEnabled: true,
 	// Populated by the `useDevicesDataSource` mock below (a real `ref()` cannot live in this
 	// hoisted object: `vi.hoisted` runs before the `vue` import binds, so `ref` is not callable
 	// here yet). Tests grab this after mounting to flip the toggle through real Vue reactivity.
@@ -133,6 +134,13 @@ vi.mock('../../../plugins/devices-virtual/devices-virtual.constants', () => ({
 	RouteNames: {
 		WIZARD: 'devices_virtual-wizard',
 	},
+	DEVICES_VIRTUAL_PLUGIN_NAME: 'devices-virtual',
+}));
+
+vi.mock('../../config', () => ({
+	useConfigPlugins: () => ({
+		enabled: () => mocks.virtualWizardEnabled,
+	}),
 }));
 
 vi.mock('../devices.exceptions', () => ({
@@ -174,6 +182,7 @@ describe('ViewDevices', () => {
 		mocks.fetchDevices.mockResolvedValue(undefined);
 		mocks.fetchValidation.mockResolvedValue(undefined);
 		mocks.wizardOptions = [];
+		mocks.virtualWizardEnabled = true;
 		mocks.route = {
 			path: '/devices',
 			name: 'devices',
@@ -255,6 +264,17 @@ describe('ViewDevices', () => {
 		// above), the same branch `onDeviceCreate` is already exercised under elsewhere in this file,
 		// so `push` — not `replace` — is the call that reflects it here.
 		expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'devices_virtual-wizard' });
+	});
+
+	it('hides the virtual device wizard launcher when the plugin is disabled', () => {
+		// Mirrors 'hides the wizard button when all wizard-capable plugins are disabled' above: the
+		// launcher must not stay visible just because devices-virtual is a core plugin — its config DTO
+		// supports `enabled`, so an admin can genuinely turn it off from Extensions.
+		mocks.virtualWizardEnabled = false;
+
+		const wrapper = mountView();
+
+		expect(wrapper.find('[data-test-id="virtual-device-wizard"]').exists()).toBe(false);
 	});
 
 	it('refetches devices when the show-hidden toggle changes', async () => {

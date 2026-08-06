@@ -69,10 +69,16 @@
 				<!--
 					The virtual device construction wizard is bespoke (it composes a device from existing
 					channel properties rather than discovering new ones) and deliberately does not register
-					a `deviceWizardAdapter`, so it cannot appear in the discovery dialog above. It gets its
-					own entry point instead, placed and styled like the other two.
+					a `deviceWizardAdapter`, so it cannot appear in the discovery dialog above — it gets its
+					own entry point instead. Gated on `enabled('devices-virtual')` the same way the sibling
+					Wizard button above is gated on `enabledWizardOptions`: devices-virtual's config DTO
+					(`VirtualUpdatePluginConfigDto`) extends the base `UpdatePluginConfigDto`, which declares
+					`enabled`, so the backend's `canToggleEnabled` is true for it (it checks only whether the
+					DTO has that property — `isCore` plugins are not exempt) and an admin can genuinely
+					disable it from Extensions.
 				-->
 				<el-button
+					v-if="virtualWizardEnabled"
 					class="px-4! ml-2!"
 					data-test-id="virtual-device-wizard"
 					@click="onVirtualWizard"
@@ -239,12 +245,14 @@ import { ElButton, ElCard, ElDialog, ElDrawer, ElIcon, ElMessageBox } from 'elem
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
-// Devices-virtual is a core plugin (always installed), so its route name is imported directly rather
-// than looked up through the generic plugin registry — the same shortcut `modules/onboarding` already
-// takes for `plugins/weather-open-meteo`. `useDevicesPlugins()`'s `wizardOptions` is deliberately not
-// reused here: that list is scoped to plugins registering a `deviceWizardAdapter`, and this wizard is
-// bespoke precisely because it does not (see decision 5 in the admin implementation plan).
-import { RouteNames as DevicesVirtualRouteNames } from '../../../plugins/devices-virtual/devices-virtual.constants';
+// Imported directly from the plugin's own constants rather than looked up through the generic plugin
+// registry — the same shortcut `modules/onboarding` already takes for `plugins/weather-open-meteo`.
+// `useDevicesPlugins()`'s `wizardOptions` is deliberately not reused for this: that list is scoped to
+// plugins registering a `deviceWizardAdapter`, and this wizard is bespoke precisely because it does not
+// (see decision 5 in the admin implementation plan). Enablement is still checked below, the same way
+// `wizardOptions` checks it for its own entries — see the template comment by the button.
+import { DEVICES_VIRTUAL_PLUGIN_NAME, RouteNames as DevicesVirtualRouteNames } from '../../../plugins/devices-virtual/devices-virtual.constants';
+import { useConfigPlugins } from '../../config';
 import { ListDevices, ListDevicesAdjust } from '../components/components';
 import { useDevicesActions, useDevicesDataSource, useDevicesPlugins, useDevicesValidation } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
@@ -288,6 +296,8 @@ const deviceActions = useDevicesActions();
 const { fetchValidation } = useDevicesValidation();
 const { wizardOptions } = useDevicesPlugins();
 const enabledWizardOptions = computed(() => wizardOptions.value.filter((item) => !item.disabled));
+const { enabled } = useConfigPlugins();
+const virtualWizardEnabled = computed<boolean>((): boolean => enabled(DEVICES_VIRTUAL_PLUGIN_NAME));
 
 const mounted = ref<boolean>(false);
 
