@@ -347,6 +347,29 @@ describe('SecurityAggregatorService', () => {
 		expect(result.propertiesTruncated).toBe(true);
 	});
 
+	it('propagates bounded security device load failures', async () => {
+		const loadError = new Error('database unavailable');
+		const module: TestingModule = await Test.createTestingModule({
+			providers: [
+				{ provide: SECURITY_STATE_PROVIDERS, useValue: [] },
+				{
+					provide: DevicesService,
+					useValue: {
+						findVisibleBoundedStateByChannelCategories: jest.fn().mockRejectedValue(loadError),
+					},
+				},
+				{
+					provide: DetectionRulesLoaderService,
+					useValue: { getSensorRules: jest.fn().mockReturnValue(new Map()) },
+				},
+				SecurityAggregatorService,
+			],
+		}).compile();
+		const aggregator = module.get<SecurityAggregatorService>(SecurityAggregatorService);
+
+		await expect(aggregator.aggregateBounded(100, 10, 20)).rejects.toBe(loadError);
+	});
+
 	it('should handle provider that throws', async () => {
 		const badProvider: SecurityStateProviderInterface = {
 			getKey: () => 'bad',

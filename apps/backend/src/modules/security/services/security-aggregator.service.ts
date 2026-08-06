@@ -67,35 +67,19 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 		const categories = Array.from(
 			new Set([ChannelCategory.ALARM, ...this.detectionRulesLoader.getSensorRules().keys()]),
 		);
-		let devices: DeviceEntity[];
-		let devicesTruncated = false;
-		let channelsTruncated = false;
-		let propertiesTruncated = false;
-		let providerErrors = 0;
-
-		try {
-			const page = await this.devicesService.findVisibleBoundedStateByChannelCategories(
-				categories,
-				deviceLimit,
-				channelLimit,
-				propertyLimit,
-				scope,
-			);
-			devices = page.devices;
-			devicesTruncated = page.devicesTruncated;
-			channelsTruncated = page.channelsTruncated;
-			propertiesTruncated = page.propertiesTruncated;
-		} catch (error) {
-			this.logger.warn(`Failed to fetch bounded security devices: ${error}`);
-			devices = [];
-			providerErrors++;
-		}
+		const page = await this.devicesService.findVisibleBoundedStateByChannelCategories(
+			categories,
+			deviceLimit,
+			channelLimit,
+			propertyLimit,
+			scope,
+		);
 
 		return {
-			status: (await this.aggregateDevicesWithErrors(devices, providerErrors)).status,
-			devicesTruncated,
-			channelsTruncated,
-			propertiesTruncated,
+			status: (await this.aggregateDevicesWithErrors(page.devices, 0)).status,
+			devicesTruncated: page.devicesTruncated,
+			channelsTruncated: page.channelsTruncated,
+			propertiesTruncated: page.propertiesTruncated,
 		};
 	}
 
