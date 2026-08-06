@@ -458,6 +458,38 @@ describe('ViewVirtualDeviceWizard', () => {
 		expect(wizard.wrapper.findComponent({ name: 'VirtualWizardCategoryStep' }).props('modelValue')).toBe(DevicesModuleDeviceCategory.lighting);
 	});
 
+	it('keeps a mapped slot after navigating back to the category step and forward again, category unchanged', async () => {
+		const wizard = mountWizard();
+
+		await wizard.chooseCategory(DevicesModuleDeviceCategory.lighting);
+		await wizard.mapSlot(DevicesModuleChannelPropertyCategory.on, shellyRelayPropertyId);
+
+		expect(wizard.activeStep.value).toBe(2);
+
+		// Back to mapping, then back to category — the category itself is never touched here, unlike
+		// the "clears a mapping..." test below. The mapping step unmounts on the way back and has to be
+		// re-mounted from scratch on the way forward again.
+		await wizard.wrapper.find('[data-test-id="wizard-back"]').trigger('click');
+		await wizard.wrapper.find('[data-test-id="wizard-back"]').trigger('click');
+
+		expect(wizard.activeStep.value).toBe(0);
+
+		await wizard.wrapper.find('[data-test-id="wizard-next"]').trigger('click');
+		await flushAsync();
+
+		expect(wizard.activeStep.value).toBe(1);
+
+		// If the fresh mount had lost the mapping, `on` would read unmapped again and Next would stay
+		// blocked, exactly as in "refuses to advance while a required slot is unmapped" above — this is
+		// the negative space of that test, re-entering the same step without wiping it.
+		expect(wizard.canAdvance.value).toBe(true);
+
+		await wizard.wrapper.find('[data-test-id="wizard-next"]').trigger('click');
+		await flushAsync();
+
+		expect(wizard.activeStep.value).toBe(2);
+	});
+
 	it('clears a mapping made under the previous category once the category is changed', async () => {
 		const wizard = mountWizard();
 
