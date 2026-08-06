@@ -403,6 +403,21 @@ describe('McpContextService', () => {
 		expect(energy.getSpaceSummary).not.toHaveBeenCalled();
 	});
 
+	it('uses whole-home energy for a master space', async () => {
+		spaces.findOne.mockResolvedValue({
+			id: 'master-id',
+			name: 'Whole home',
+			type: SpaceType.MASTER,
+		} as unknown as SpaceEntity);
+		energy.getSummary.mockResolvedValue({ totalConsumptionKwh: 8 });
+
+		await expect(
+			service.getEnergySummary('2026-08-01T00:00:00.000Z', '2026-08-02T00:00:00.000Z', 'master-id'),
+		).resolves.toEqual(expect.objectContaining({ totalConsumptionKwh: 8 }));
+		expect(energy.getSummary).toHaveBeenCalledWith(expect.any(Date), expect.any(Date));
+		expect(energy.getSpaceSummary).not.toHaveBeenCalled();
+	});
+
 	it('rejects a timeseries bucket that could exceed the result cap before querying storage', async () => {
 		await expect(
 			service.getPropertyTimeseries('property-id', '2026-08-01T00:00:00.000Z', '2026-08-02T00:00:00.000Z', '1m'),

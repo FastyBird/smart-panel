@@ -321,11 +321,12 @@ export class McpContextService {
 					)
 				: { from: defaultFrom, to: defaultTo };
 		const category = (space as { category?: string | null } | undefined)?.category ?? null;
-		const summary = !space
-			? await this.energyService.getSummary(range.from, range.to)
-			: space.type === SpaceType.ZONE && !isFloorZoneCategory(category)
-				? await this.energyService.getDeviceZoneSummary(range.from, range.to, space.id)
-				: await this.energyService.getSpaceSummary(range.from, range.to, space.id);
+		const summary =
+			!space || space.type === SpaceType.MASTER
+				? await this.energyService.getSummary(range.from, range.to)
+				: space.type === SpaceType.ZONE && !isFloorZoneCategory(category)
+					? await this.energyService.getDeviceZoneSummary(range.from, range.to, space.id)
+					: await this.energyService.getSpaceSummary(range.from, range.to, space.id);
 
 		return {
 			scope: space ? { type: 'space', id: space.id } : { type: 'home' },
