@@ -5,11 +5,12 @@ import { resolve } from 'path';
 
 import { toNodeHandler } from '@modelcontextprotocol/node';
 import { AuthInfo, McpHttpHandler, McpServer, createMcpHandler } from '@modelcontextprotocol/server';
-import { Injectable, OnApplicationShutdown, UnauthorizedException } from '@nestjs/common';
+import { Injectable, OnApplicationShutdown, Optional, UnauthorizedException } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { extractAccessTokenFromHeader } from '../../auth/utils/token.utils';
-import { MCP_MAX_SUBSCRIPTIONS_PER_CLIENT, MCP_MODULE_NAME } from '../mcp.constants';
+import { MCP_CATALOG_REGISTRAR, MCP_MAX_SUBSCRIPTIONS_PER_CLIENT, MCP_MODULE_NAME } from '../mcp.constants';
 
 import { McpPolicyRequest } from './mcp-policy.service';
 import {
@@ -34,13 +35,20 @@ interface JsonRpcRequestBody {
 	method?: string;
 }
 
+interface McpCatalogRegistrar {
+	register(server: McpServer, authInfo?: AuthInfo): void;
+}
+
 @Injectable()
 export class McpServerService implements OnApplicationShutdown {
 	private readonly logger = createExtensionLogger(MCP_MODULE_NAME, 'McpServerService');
 	private readonly handlers = new Map<string, ClientHandler>();
 	private policyRevision = 0;
 
-	constructor(private readonly subscriptions: McpSubscriptionRegistryService) {}
+	constructor(
+		private readonly subscriptions: McpSubscriptionRegistryService,
+		@Optional() private readonly moduleRef?: ModuleRef,
+	) {}
 
 	async handle(request: McpPolicyRequest, reply: FastifyReply): Promise<void> {
 		if (!request.mcpPolicy) {
@@ -72,8 +80,10 @@ export class McpServerService implements OnApplicationShutdown {
 				: undefined,
 			resource: endpoint,
 			extra: {
+				endpoint: endpoint.href,
 				installationId: policy.installationId,
 				clientName: policy.client.name,
+				tokenId: policy.tokenId,
 			},
 		};
 
@@ -150,8 +160,8 @@ export class McpServerService implements OnApplicationShutdown {
 		}
 
 		const handler = createMcpHandler(
-			({ authInfo, requestInfo }) =>
-				new McpServer(
+			({ authInfo, requestInfo }) => {
+				const server = new McpServer(
 					{
 						name: 'fastybird-smart-panel',
 						version: packageJson.version,
@@ -163,7 +173,12 @@ export class McpServerService implements OnApplicationShutdown {
 						},
 						instructions: this.buildInstructions(authInfo, requestInfo),
 					},
-				),
+				);
+
+				this.moduleRef?.get<McpCatalogRegistrar>(MCP_CATALOG_REGISTRAR, { strict: false })?.register(server, authInfo);
+
+				return server;
+			},
 			{
 				legacy: 'stateless',
 				maxSubscriptions: MCP_MAX_SUBSCRIPTIONS_PER_CLIENT,

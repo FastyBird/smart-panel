@@ -9,11 +9,14 @@ import { TransformResponseInterceptor } from '../src/modules/api/interceptors/tr
 import { McpController } from '../src/modules/mcp/controllers/mcp.controller';
 import { McpClientEntity } from '../src/modules/mcp/entities/mcp-client.entity';
 import { McpClientGuard } from '../src/modules/mcp/guards/mcp-client.guard';
-import { McpCapability } from '../src/modules/mcp/mcp.constants';
+import { MCP_CATALOG_REGISTRAR, McpCapability } from '../src/modules/mcp/mcp.constants';
 import { McpConfigModel } from '../src/modules/mcp/models/config.model';
+import { McpContextService } from '../src/modules/mcp/services/mcp-context.service';
+import { McpPolicyService } from '../src/modules/mcp/services/mcp-policy.service';
 import { McpPolicyRequest } from '../src/modules/mcp/services/mcp-policy.service';
 import { McpServerService } from '../src/modules/mcp/services/mcp-server.service';
 import { McpSubscriptionRegistryService } from '../src/modules/mcp/services/mcp-subscription-registry.service';
+import { McpReadToolService } from '../src/modules/mcp/tools/mcp-read-tool.service';
 
 const AUTH_TOKEN = 'phase-4-client';
 
@@ -60,9 +63,37 @@ describe('MCP endpoint', () => {
 	let subscriptions: McpSubscriptionRegistryService;
 
 	beforeAll(async () => {
+		const contextService = {
+			getInstallation: jest.fn().mockResolvedValue({
+				id: 'phase-4-installation',
+				name: 'FastyBird Smart Panel',
+				version: '1.0.0',
+				timezone: 'UTC',
+				endpoint: 'http://localhost/api/v1/modules/mcp',
+				effective_capabilities: [McpCapability.READ],
+			}),
+			getHomeContext: jest.fn().mockResolvedValue({ devices: [], spaces: [], scenes: [] }),
+			getDeviceState: jest.fn(),
+			getPropertyTimeseries: jest.fn(),
+			getEnergySummary: jest.fn(),
+			getWeather: jest.fn(),
+			getSecurityStatus: jest.fn(),
+			listSpaces: jest.fn().mockResolvedValue([{ id: 'space-id', name: 'Living room', type: 'room' }]),
+		};
+		const policyService = {
+			authorizeClient: jest.fn().mockResolvedValue({ effectiveCapabilities: [McpCapability.READ] }),
+		};
+		const readTools = new McpReadToolService(
+			contextService as unknown as McpContextService,
+			policyService as unknown as McpPolicyService,
+		);
 		const moduleRef = await Test.createTestingModule({
 			controllers: [McpController],
-			providers: [McpServerService, McpSubscriptionRegistryService],
+			providers: [
+				McpServerService,
+				McpSubscriptionRegistryService,
+				{ provide: MCP_CATALOG_REGISTRAR, useValue: readTools },
+			],
 		})
 			.overrideGuard(McpClientGuard)
 			.useClass(TestMcpClientGuard)
@@ -87,7 +118,7 @@ describe('MCP endpoint', () => {
 		await app.close();
 	});
 
-	it('serves modern discovery and empty tools/resources without response wrapping', async () => {
+	it('serves modern discovery and the read catalog without response wrapping', async () => {
 		const { client, transport } = createClient('modern-client', 'auto');
 
 		try {
@@ -98,8 +129,36 @@ describe('MCP endpoint', () => {
 			expect(typeof serverVersion?.version).toBe('string');
 			expect(client.getInstructions()).toContain('phase-4-installation');
 			expect(client.getInstructions()).toContain('Effective capabilities: read');
-			await expect(client.listTools()).resolves.toEqual(expect.objectContaining({ tools: [] }));
-			await expect(client.listResources()).resolves.toEqual(expect.objectContaining({ resources: [] }));
+			const tools = await client.listTools();
+			const resources = await client.listResources();
+			const templates = await client.listResourceTemplates();
+			const result = await client.callTool({ name: 'get_home_context', arguments: {} });
+			const installation = await client.readResource({ uri: 'smart-panel://installation' });
+
+			expect(tools.tools.map(({ name }) => name)).toEqual([
+				'get_home_context',
+				'get_device_state',
+				'get_property_timeseries',
+				'get_energy_summary',
+				'get_weather',
+				'get_security_status',
+			]);
+			expect(resources.resources.map(({ uri }) => uri)).toEqual(
+				expect.arrayContaining([
+					'smart-panel://installation',
+					'smart-panel://home/context',
+					'smart-panel://spaces/space-id/snapshot',
+				]),
+			);
+			expect(templates.resourceTemplates.map(({ uriTemplate }) => uriTemplate)).toContain(
+				'smart-panel://spaces/{spaceId}/snapshot',
+			);
+			expect(result.structuredContent).toEqual(
+				expect.objectContaining({ tool: 'get_home_context', data: { devices: [], spaces: [], scenes: [] } }),
+			);
+			expect(installation.contents[0]).toEqual(
+				expect.objectContaining({ uri: 'smart-panel://installation', mimeType: 'application/json' }),
+			);
 		} finally {
 			await client.close();
 		}
@@ -111,7 +170,9 @@ describe('MCP endpoint', () => {
 		try {
 			await client.connect(transport);
 
-			await expect(client.listTools()).resolves.toEqual(expect.objectContaining({ tools: [] }));
+			const tools = await client.listTools();
+
+			expect(tools.tools.map(({ name }) => name)).toContain('get_home_context');
 		} finally {
 			await client.close();
 		}
