@@ -91,7 +91,7 @@ export class PropertyTimeseriesService {
 		const effectiveBucket = bucket ?? this.getDefaultBucket(from, to);
 		const query = this.buildQuery(key, from, to, effectiveBucket);
 
-		const result = await this.storageService.query<{
+		const result = await this.storageService.queryStrict<{
 			time: { _nanoISO: string };
 			stringValue?: string;
 			numberValue?: number;

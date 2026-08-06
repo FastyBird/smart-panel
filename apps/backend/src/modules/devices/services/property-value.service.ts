@@ -224,7 +224,7 @@ export class PropertyValueService {
       `;
 
 		try {
-			const rows = await this.storageService.query<PropertyValueRow>(query);
+			const rows = await this.storageService.queryStrict<PropertyValueRow>(query);
 			const rowsByKey = new Map<ChannelPropertyEntity['id'], PropertyValueRow[]>();
 
 			for (const row of rows) {
@@ -299,7 +299,9 @@ export class PropertyValueService {
 
 			this.logger.debug(`Fetching latest value id=${property.id}`);
 
-			const result = await this.storageService.query<PropertyValueRow>(query);
+			const result = await (strict
+				? this.storageService.queryStrict<PropertyValueRow>(query)
+				: this.storageService.query<PropertyValueRow>(query));
 
 			if (!result.length) {
 				this.logger.debug(`No stored value found for id=${property.id}`);

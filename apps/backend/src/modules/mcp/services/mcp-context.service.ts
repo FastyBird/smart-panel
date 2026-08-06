@@ -105,8 +105,10 @@ export class McpContextService {
 			? Promise.resolve<VisibleDeviceSpaceCounts | null>(null)
 			: this.devicesService.getVisibleSpaceCounts();
 
-		const [allSpaces, devicePage, spaceCounts, scenePage, weather, energy, security] = await Promise.all([
-			selectedSpace ? Promise.resolve([selectedSpace]) : this.spacesService.findAll(),
+		const [spacePage, devicePage, spaceCounts, scenePage, weather, energy, security] = await Promise.all([
+			selectedSpace
+				? Promise.resolve({ spaces: [selectedSpace], total: 1 })
+				: this.spacesService.findSummaryPage(MCP_MAX_CONTEXT_SPACES + 1, 0),
 			selectedSpace
 				? this.spacesService.findVisibleDeviceSummariesBySpace(selectedSpace.id, MCP_MAX_CONTEXT_DEVICES)
 				: this.devicesService.findVisibleSummaryPage(MCP_MAX_CONTEXT_DEVICES),
@@ -132,7 +134,7 @@ export class McpContextService {
 		await this.hydrateDeviceStatusesStrict(devicePage.devices);
 
 		const devices = devicePage.devices.filter((device) => !device.hidden);
-		const spaces = allSpaces.slice(0, MCP_MAX_CONTEXT_SPACES);
+		const spaces = spacePage.spaces.slice(0, MCP_MAX_CONTEXT_SPACES);
 		const scenes = scenePage.scenes;
 		const scopedZoneId = selectedSpace?.type === SpaceType.ZONE ? selectedSpace.id : undefined;
 
@@ -143,9 +145,7 @@ export class McpContextService {
 				name: space.name,
 				type: space.type,
 				parent_id: space.parentId,
-				device_count: selectedSpace
-					? devicePage.total
-					: this.getSpaceDeviceCount(space, allSpaces, spaceCounts, devicePage.total),
+				device_count: selectedSpace ? devicePage.total : this.getSpaceDeviceCount(space, spaceCounts, devicePage.total),
 			})),
 			devices: devices.map((device) => this.mapDeviceSummary(device, scopedZoneId)),
 			scenes: scenes.map((scene) => ({
@@ -167,7 +167,7 @@ export class McpContextService {
 					)
 				: null,
 			limits: {
-				spaces_truncated: allSpaces.length > spaces.length,
+				spaces_truncated: spacePage.total > spaces.length,
 				devices_truncated: devicePage.total > devices.length,
 				scenes_truncated: scenePage.total > scenes.length,
 			},
@@ -488,7 +488,6 @@ export class McpContextService {
 
 	private getSpaceDeviceCount(
 		space: SpaceEntity,
-		allSpaces: SpaceEntity[],
 		counts: VisibleDeviceSpaceCounts | null,
 		wholeHomeTotal: number,
 	): number {
@@ -513,9 +512,7 @@ export class McpContextService {
 			return counts.zones[space.id] ?? 0;
 		}
 
-		return allSpaces
-			.filter((candidate) => candidate.parentId === space.id)
-			.reduce((total, room) => total + (counts.rooms[room.id] ?? 0), 0);
+		return counts.floors[space.id] ?? 0;
 	}
 
 	private toIsoString(value: Date | string | null | undefined): string | null {

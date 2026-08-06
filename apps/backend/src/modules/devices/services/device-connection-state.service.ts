@@ -194,7 +194,7 @@ export class DeviceConnectionStateService {
       `;
 
 		try {
-			const rows = await this.storageService.query<DeviceStatusRow>(query);
+			const rows = await this.storageService.queryStrict<DeviceStatusRow>(query);
 			const rowByDevice = new Map(rows.map((row) => [row.deviceId, row]));
 
 			for (const id of missingIds) {
@@ -248,7 +248,9 @@ export class DeviceConnectionStateService {
 
 			this.logger.debug(`Fetching latest status id=${device.id}`, { resource: device.id });
 
-			const result = await this.storageService.query<DeviceStatusRow>(query);
+			const result = await (strict
+				? this.storageService.queryStrict<DeviceStatusRow>(query)
+				: this.storageService.query<DeviceStatusRow>(query));
 
 			if (!result.length) {
 				this.logger.debug(`No stored status found for id=${device.id}`, { resource: device.id });

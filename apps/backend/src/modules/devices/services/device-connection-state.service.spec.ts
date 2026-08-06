@@ -6,18 +6,19 @@ import { DeviceConnectionStateService } from './device-connection-state.service'
 
 describe('DeviceConnectionStateService', () => {
 	let service: DeviceConnectionStateService;
-	let storageService: { isConnected: jest.Mock; query: jest.Mock };
+	let storageService: { isConnected: jest.Mock; query: jest.Mock; queryStrict: jest.Mock };
 
 	beforeEach(() => {
 		storageService = {
 			isConnected: jest.fn().mockReturnValue(true),
 			query: jest.fn(),
+			queryStrict: jest.fn(),
 		};
 		service = new DeviceConnectionStateService(storageService as unknown as StorageService);
 	});
 
 	it('batches strict status reads for uncached devices', async () => {
-		storageService.query.mockResolvedValue([
+		storageService.queryStrict.mockResolvedValue([
 			{
 				deviceId: 'device-a',
 				online: true,
@@ -41,8 +42,8 @@ describe('DeviceConnectionStateService', () => {
 			expect.objectContaining({ online: true, status: ConnectionState.CONNECTED }),
 		);
 		expect(result.get('device-b')).toEqual(expect.objectContaining({ online: false, status: ConnectionState.LOST }));
-		expect(storageService.query).toHaveBeenCalledTimes(1);
-		expect(storageService.query).toHaveBeenCalledWith(expect.stringContaining('GROUP BY "deviceId"'));
+		expect(storageService.queryStrict).toHaveBeenCalledTimes(1);
+		expect(storageService.queryStrict).toHaveBeenCalledWith(expect.stringContaining('GROUP BY "deviceId"'));
 	});
 
 	it('rejects strict reads when storage is disconnected', async () => {
@@ -53,7 +54,7 @@ describe('DeviceConnectionStateService', () => {
 	});
 
 	it('propagates strict storage query failures', async () => {
-		storageService.query.mockRejectedValue(new Error('database detail'));
+		storageService.queryStrict.mockRejectedValue(new Error('database detail'));
 
 		await expect(service.readLatestStrict({ id: 'device-a' })).rejects.toThrow('database detail');
 		await expect(service.readLatestManyStrict([{ id: 'device-b' }])).rejects.toThrow('database detail');

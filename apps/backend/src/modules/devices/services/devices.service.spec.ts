@@ -382,15 +382,30 @@ describe('DevicesService', () => {
 				groupBy: jest.fn().mockReturnThis(),
 				getRawMany: jest.fn().mockResolvedValue([{ spaceId: 'zone-id', deviceCount: 7 }]),
 			};
+			const floorQuery: any = {
+				innerJoin: jest.fn().mockReturnThis(),
+				select: jest.fn().mockReturnThis(),
+				addSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				groupBy: jest.fn().mockReturnThis(),
+				getRawMany: jest.fn().mockResolvedValue([{ spaceId: 'floor-id', deviceCount: '5' }]),
+			};
 
-			jest.spyOn(repository, 'createQueryBuilder').mockReturnValueOnce(roomQuery).mockReturnValueOnce(zoneQuery);
+			jest
+				.spyOn(repository, 'createQueryBuilder')
+				.mockReturnValueOnce(roomQuery)
+				.mockReturnValueOnce(zoneQuery)
+				.mockReturnValueOnce(floorQuery);
 
 			await expect(service.getVisibleSpaceCounts()).resolves.toEqual({
 				rooms: { 'room-id': 12 },
 				zones: { 'zone-id': 7 },
+				floors: { 'floor-id': 5 },
 			});
 			expect(roomQuery.getRawMany).toHaveBeenCalledTimes(1);
 			expect(zoneQuery.getRawMany).toHaveBeenCalledTimes(1);
+			expect(floorQuery.getRawMany).toHaveBeenCalledTimes(1);
 		});
 	});
 

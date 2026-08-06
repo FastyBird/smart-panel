@@ -37,6 +37,7 @@ export interface VisibleDeviceSummaryPage {
 export interface VisibleDeviceSpaceCounts {
 	rooms: Record<string, number>;
 	zones: Record<string, number>;
+	floors: Record<string, number>;
 }
 
 export interface VisibleBoundedDeviceState {
@@ -280,7 +281,7 @@ export class DevicesService {
 			deviceCount: string | number;
 		}
 
-		const [roomRows, zoneRows] = await Promise.all([
+		const [roomRows, zoneRows, floorRows] = await Promise.all([
 			this.repository
 				.createQueryBuilder('device')
 				.select('device.roomId', 'spaceId')
@@ -297,11 +298,21 @@ export class DevicesService {
 				.where('device.hidden = :hidden', { hidden: false })
 				.groupBy('deviceZone.zoneId')
 				.getRawMany<SpaceCountRow>(),
+			this.repository
+				.createQueryBuilder('device')
+				.innerJoin('device.room', 'room')
+				.select('room.parentId', 'spaceId')
+				.addSelect('COUNT(device.id)', 'deviceCount')
+				.where('device.hidden = :hidden', { hidden: false })
+				.andWhere('room.parentId IS NOT NULL')
+				.groupBy('room.parentId')
+				.getRawMany<SpaceCountRow>(),
 		]);
 
 		return {
 			rooms: Object.fromEntries(roomRows.map((row) => [row.spaceId, Number(row.deviceCount)])),
 			zones: Object.fromEntries(zoneRows.map((row) => [row.spaceId, Number(row.deviceCount)])),
+			floors: Object.fromEntries(floorRows.map((row) => [row.spaceId, Number(row.deviceCount)])),
 		};
 	}
 

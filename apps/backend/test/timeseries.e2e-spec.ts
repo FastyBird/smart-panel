@@ -53,6 +53,7 @@ describe('Property Timeseries (e2e)', () => {
 
 		// Set specific return values for methods used in tests
 		storageMock.query.mockResolvedValue([]);
+		mockFns.set('queryStrict', storageMock.query);
 		storageMock.queryRaw.mockResolvedValue({ results: [] });
 		storageMock.isConnected.mockReturnValue(false);
 

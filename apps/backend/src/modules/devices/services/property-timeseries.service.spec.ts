@@ -27,8 +27,10 @@ describe('PropertyTimeseriesService', () => {
 	beforeEach(async () => {
 		jest.useFakeTimers().setSystemTime(new Date('2025-01-02T00:00:00Z'));
 
+		const query = jest.fn();
 		const mockStorageService = {
-			query: jest.fn(),
+			query,
+			queryStrict: query,
 		};
 
 		module = await Test.createTestingModule({
