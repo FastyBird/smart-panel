@@ -13,6 +13,8 @@ import type { IDevice } from '../store/devices.store.types';
 import { useDeviceEditForm } from './useDeviceEditForm';
 
 const deviceId = uuid().toString();
+const roomOneId = uuid().toString();
+const roomTwoId = uuid().toString();
 
 const mockDevice: IDevice = {
 	id: deviceId.toString(),
@@ -171,5 +173,59 @@ describe('useDeviceEditForm', () => {
 		expect(mockSave).not.toHaveBeenCalled();
 		expect(mockSuccess).toHaveBeenCalled();
 		expect(form.formResult.value).toBe(FormResult.OK);
+	});
+
+	it('omits room_id when the room was not changed', async () => {
+		const device = { ...mockDevice, draft: false, roomId: roomOneId };
+		const form = useDeviceEditForm({ device });
+
+		form.formEl.value = {
+			clearValidate: vi.fn(),
+			validate: vi.fn().mockResolvedValue(true),
+		} as unknown as FormInstance;
+
+		form.model.name = 'Updated name';
+
+		await form.submit();
+
+		const editPayload = mockEdit.mock.calls[0][0];
+
+		expect('roomId' in editPayload.data).toBe(false);
+	});
+
+	it('sends room_id when the room was changed', async () => {
+		const device = { ...mockDevice, draft: false, roomId: roomOneId };
+		const form = useDeviceEditForm({ device });
+
+		form.formEl.value = {
+			clearValidate: vi.fn(),
+			validate: vi.fn().mockResolvedValue(true),
+		} as unknown as FormInstance;
+
+		form.model.roomId = roomTwoId;
+
+		await form.submit();
+
+		const editPayload = mockEdit.mock.calls[0][0];
+
+		expect(editPayload.data.roomId).toBe(roomTwoId);
+	});
+
+	it('sends room_id null when the room was cleared', async () => {
+		const device = { ...mockDevice, draft: false, roomId: roomOneId };
+		const form = useDeviceEditForm({ device });
+
+		form.formEl.value = {
+			clearValidate: vi.fn(),
+			validate: vi.fn().mockResolvedValue(true),
+		} as unknown as FormInstance;
+
+		form.model.roomId = null;
+
+		await form.submit();
+
+		const editPayload = mockEdit.mock.calls[0][0];
+
+		expect(editPayload.data.roomId).toBe(null);
 	});
 });
