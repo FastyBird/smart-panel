@@ -157,6 +157,52 @@ describe('Devices Store', () => {
 		expect(store.findAll().map((device) => device.name)).toEqual(['device-1']);
 	});
 
+	it('lands the correct data when a value is re-requested while its own earlier call is still pending (off → on → off)', async () => {
+		let resolveFirstOffRequest!: (value: unknown) => void;
+		let resolveOnRequest!: (value: unknown) => void;
+
+		const firstOffRequest = new Promise((resolve) => {
+			resolveFirstOffRequest = resolve;
+		});
+		const onRequest = new Promise((resolve) => {
+			resolveOnRequest = resolve;
+		});
+
+		(mockBackendClient.GET as Mock).mockReturnValueOnce(firstOffRequest).mockReturnValueOnce(onRequest);
+
+		// Off: the mount fetch, hidden=false, still pending.
+		const off1 = store.fetch({ hidden: DevicesModuleDevicesHiddenFilter.false });
+		// On: the toggle flips — a distinct key, gets its own request.
+		const on = store.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
+		// Off again, before either of the above has returned: same key as `off1`, which is still
+		// pending, so this takes the cache hit and shares its promise — it must NOT be silently
+		// treated as satisfied by data that request eventually resolves with unless that request's
+		// token has been re-armed to reflect this, more recent, "off" intent.
+		const off2 = store.fetch({ hidden: DevicesModuleDevicesHiddenFilter.false });
+
+		// Only two network calls: the repeated "off" coalesces onto the still-pending first one
+		// rather than either being dropped or issuing a redundant third request.
+		expect(mockBackendClient.GET).toHaveBeenCalledTimes(2);
+
+		// The "on" request lands first — but by now the third call has already re-armed "off"'s
+		// token, making "off" (not "on") the most recently requested value, so "on"'s response is
+		// recognised as superseded the moment it arrives and is never written to the store at all
+		// (stronger than merely being overwritten later: the UI never flashes the wrong device set).
+		resolveOnRequest({ data: { data: [deviceFixture('all-device')] } });
+		await on;
+
+		expect(store.findAll()).toEqual([]);
+
+		// The shared "off" request — re-armed by the third call — lands after, and correctly wins:
+		// the user's final, most recent action was toggling back off, so the final store state must
+		// match that, and both the original and coalescing callers must see the same result.
+		resolveFirstOffRequest({ data: { data: [deviceFixture('false-device')] } });
+		const [off1Result, off2Result] = await Promise.all([off1, off2]);
+
+		expect(off1Result).toEqual(off2Result);
+		expect(store.findAll().map((device) => device.name)).toEqual(['false-device']);
+	});
+
 	it('clears the fetching semaphore only once every overlapping fetch has settled', async () => {
 		let resolveFalseRequest!: (value: unknown) => void;
 		let resolveAllRequest!: (value: unknown) => void;

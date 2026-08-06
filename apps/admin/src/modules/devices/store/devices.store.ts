@@ -100,11 +100,19 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 	// semaphore is only cleared once every one of them has settled, not just whichever finishes first.
 	let inFlightFetchCount = 0;
 
-	// Bumped on every `fetch()` call and captured per-call. A response is only applied to `data.value`
-	// if its token still matches the latest one issued: otherwise a newer fetch (e.g. the device list's
-	// "show hidden" toggle flipping again before this call's response arrived) has already superseded
-	// it, and applying a stale, slower response would silently show the wrong device set.
+	// `latestFetchToken` is bumped on *every* `fetch()` call, including one that coalesces onto an
+	// already-pending request for the same `hidden` value below — a repeat call still re-affirms that
+	// value is the one currently wanted. `latestFetchTokenByKey` remembers, per `hidden` value, the
+	// token of the most recent call for that value — so a value that gets re-requested while its first
+	// call is still in flight keeps its recorded token current even though no second network call goes
+	// out. A response is only applied to `data.value` if its key's recorded token still equals the
+	// global latest: true both for a request with no competition, and for one a later call coalesced
+	// onto (which re-armed the key's token), false once a *different* key becomes the most recent one.
+	// (A single flat token compared against itself is not enough: it would correctly catch a fetch for
+	// a different key superseding this one, but not a same-key repeat superseding a same-key original
+	// — the repeat takes the cache hit below and never gets a token of its own to be judged against.)
 	let latestFetchToken = 0;
+	const latestFetchTokenByKey: Record<string, number> = {};
 
 	const onEvent = (payload: IDevicesOnEventActionPayload): IDevice => {
 		const element = getPluginElement(payload.type);
@@ -221,12 +229,17 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		// hidden=all — must not silently collapse into whichever happened to start first.
 		const cacheKey = payload?.hidden ?? 'default';
 
+		// Re-arms this key's recency *before* the coalesce check below, so a repeat call for a key
+		// that is still in flight (e.g. the "show hidden" toggle flipping off, on, then off again
+		// before the first "off" request has returned) is not silently judged stale once the shared
+		// in-flight request it takes a cache hit on eventually resolves.
+		latestFetchToken += 1;
+		latestFetchTokenByKey[cacheKey] = latestFetchToken;
+
 		const existingPromise = pendingFetchPromises[cacheKey];
 		if (existingPromise) {
 			return existingPromise;
 		}
-
-		const token = ++latestFetchToken;
 
 		inFlightFetchCount += 1;
 		semaphore.value.fetching.items = true;
@@ -246,10 +259,14 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				});
 
 				if (typeof responseData !== 'undefined') {
-					// A newer fetch has already been issued for a different `hidden` value — this
-					// response is stale, so skip transforming it and leave the (still current, more
-					// recent) `data.value` and related stores exactly as the winning request left them.
-					if (token !== latestFetchToken) {
+					// Stale only if a call for a *different* key has become the most recently
+					// requested one since this request went out. A repeat call for THIS SAME key —
+					// even one that coalesced onto this very request instead of starting a new one —
+					// already re-armed `latestFetchTokenByKey[cacheKey]` above, so it survives this
+					// check; only a genuinely superseded key skips transforming its now-irrelevant
+					// response and leaves `data.value` and the related stores exactly as the winning
+					// request left them.
+					if (latestFetchTokenByKey[cacheKey] !== latestFetchToken) {
 						return Object.values(data.value);
 					}
 

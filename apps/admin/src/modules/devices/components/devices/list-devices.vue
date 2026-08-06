@@ -10,6 +10,7 @@
 			:filters-active="props.filtersActive"
 			:selected-count="selectedItems.length"
 			:bulk-actions="bulkActions"
+			:loading="props.loading"
 			@reset-filters="emit('reset-filters')"
 			@adjust-list="emit('adjust-list')"
 			@bulk-action="onBulkAction"

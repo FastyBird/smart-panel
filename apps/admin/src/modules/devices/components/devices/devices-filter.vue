@@ -48,8 +48,13 @@
 				:class="[ns.e('show-hidden')]"
 				class="p-1 m-0!"
 			>
+				<!-- Disabled while a fetch is in flight: flipping it re-fetches the list from the
+				     backend rather than filtering client-side, so a switch a user could flip mid-fetch
+				     would let a second request overlap the first. -->
 				<el-switch
 					v-model="innerShowHidden"
+					:disabled="props.loading"
+					:loading="props.loading"
 					data-test-id="show-hidden-devices"
 				/>
 			</el-form-item>
