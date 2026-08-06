@@ -400,6 +400,17 @@ describe('SpacesService', () => {
 				wholeHome: true,
 			});
 		});
+
+		it('keeps entry content empty while using whole-home security scope', async () => {
+			await expect(
+				service.resolveSnapshotScope({ id: 'entry-id', type: SpaceType.ENTRY } as SpaceEntity),
+			).resolves.toEqual({
+				deviceScope: { roomIds: [] },
+				securityDeviceScope: {},
+				sceneSpaceIds: [],
+				wholeHome: false,
+			});
+		});
 	});
 
 	describe('getOneOrThrow', () => {

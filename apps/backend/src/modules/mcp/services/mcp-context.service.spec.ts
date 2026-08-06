@@ -280,6 +280,33 @@ describe('McpContextService', () => {
 		);
 	});
 
+	it('uses whole-home security while keeping entry snapshot content empty', async () => {
+		const entry = {
+			id: 'entry-id',
+			name: 'Entrance',
+			type: SpaceType.ENTRY,
+			parentId: null,
+		} as unknown as SpaceEntity;
+		spaces.findOne.mockResolvedValue(entry);
+		spaces.resolveSnapshotScope.mockResolvedValue({
+			deviceScope: { roomIds: [] },
+			securityDeviceScope: {},
+			sceneSpaceIds: [],
+			wholeHome: false,
+		});
+		spaces.findVisibleDeviceSummariesBySpace.mockResolvedValue({ devices: [], total: 0 });
+
+		await service.getHomeContext('entry-id');
+
+		expect(scenes.findSummaryPage).toHaveBeenCalledWith(MCP_MAX_CONTEXT_SCENES, []);
+		expect(security.getBoundedStatus).toHaveBeenCalledWith(
+			MCP_MAX_SECURITY_DEVICES,
+			MCP_MAX_SECURITY_CHANNELS_PER_DEVICE,
+			MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
+			{},
+		);
+	});
+
 	it('requests only the bounded scene summary page', async () => {
 		scenes.findSummaryPage.mockResolvedValue({
 			scenes: [

@@ -36,6 +36,7 @@ import { SpaceTypeMapping, SpacesTypeMapperService } from './spaces-type-mapper.
 
 export interface SpaceSnapshotScope {
 	deviceScope: VisibleDeviceSummaryScope;
+	securityDeviceScope?: VisibleDeviceSummaryScope;
 	sceneSpaceIds?: string[];
 	wholeHome: boolean;
 }
@@ -570,6 +571,15 @@ export class SpacesService {
 
 		if (space.type === SpaceType.ROOM) {
 			return { deviceScope: { roomIds: [space.id] }, sceneSpaceIds: [space.id], wholeHome: false };
+		}
+
+		if (space.type === SpaceType.ENTRY) {
+			return {
+				deviceScope: { roomIds: [] },
+				securityDeviceScope: {},
+				sceneSpaceIds: [],
+				wholeHome: false,
+			};
 		}
 
 		if (space.type !== SpaceType.ZONE) {

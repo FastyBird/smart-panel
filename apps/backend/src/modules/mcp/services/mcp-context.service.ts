@@ -123,7 +123,7 @@ export class McpContextService {
 					MCP_MAX_SECURITY_DEVICES,
 					MCP_MAX_SECURITY_CHANNELS_PER_DEVICE,
 					MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
-					snapshotScope?.deviceScope,
+					snapshotScope?.securityDeviceScope ?? snapshotScope?.deviceScope,
 				),
 			),
 		]);
