@@ -1,3 +1,4 @@
+import { ToolAccessKind, ToolAudience, ToolExecutionStatus } from '../../tools/platforms/tool-provider.platform';
 import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 
 import { SceneExecutorService } from './scene-executor.service';
@@ -31,6 +32,9 @@ describe('SceneToolService', () => {
 
 			expect(tools).toHaveLength(1);
 			expect(tools[0].name).toBe('run_scene');
+			expect(tools[0].audiences).toEqual([ToolAudience.BUDDY, ToolAudience.MCP]);
+			expect(tools[0].access).toBe(ToolAccessKind.TRIGGER);
+			expect(tools[0].outputSchema).toBeDefined();
 		});
 
 		it('should define run_scene with required parameters', () => {
@@ -63,9 +67,20 @@ describe('SceneToolService', () => {
 			});
 
 			expect(result.success).toBe(true);
+			expect(result.status).toBe(ToolExecutionStatus.COMPLETED);
 			expect(result.message).toContain('Movie Night');
 			expect(result.message).toContain('executed successfully');
-			expect(sceneExecutor.triggerScene).toHaveBeenCalledWith('scene-1', 'buddy');
+			expect(sceneExecutor.triggerScene).toHaveBeenCalledWith('scene-1', 'buddy', expect.any(Object));
+			const firstCall = sceneExecutor.triggerScene.mock.calls[0] as unknown as [
+				string,
+				string,
+				{ origin?: string; extra?: Record<string, unknown> },
+			];
+
+			expect(firstCall[2]).toMatchObject({
+				origin: 'api',
+				extra: { source: 'buddy', audience: ToolAudience.BUDDY },
+			});
 		});
 
 		it('should return failure for non-existent scene', async () => {
@@ -89,7 +104,7 @@ describe('SceneToolService', () => {
 			});
 
 			expect(result.success).toBe(false);
-			expect(result.message).toContain('Missing required parameter');
+			expect(result.message).toContain('Missing or invalid required parameter');
 		});
 
 		it('should handle partially completed scene', async () => {
@@ -107,6 +122,7 @@ describe('SceneToolService', () => {
 			});
 
 			expect(result.success).toBe(true);
+			expect(result.status).toBe(ToolExecutionStatus.PARTIAL);
 			expect(result.message).toContain('partially completed');
 			expect(result.message).toContain('2/3');
 		});
@@ -127,7 +143,10 @@ describe('SceneToolService', () => {
 			});
 
 			expect(result.success).toBe(false);
-			expect(result.message).toContain('failed');
+			expect(result.status).toBe(ToolExecutionStatus.FAILED);
+			expect(result.message).toBe('Scene "Lights" failed to execute');
+			expect(result.message).not.toContain('No platforms registered');
+			expect(result.errorCode).toBe('SCENE_EXECUTION_FAILED');
 		});
 	});
 
@@ -142,6 +161,7 @@ describe('SceneToolService', () => {
 			});
 
 			expect(result.success).toBe(false);
+			expect(result.status).toBe(ToolExecutionStatus.DENIED);
 			expect(result.message).toContain('disabled');
 		});
 
@@ -156,7 +176,9 @@ describe('SceneToolService', () => {
 			});
 
 			expect(result.success).toBe(false);
-			expect(result.message).toContain('Connection timeout');
+			expect(result.status).toBe(ToolExecutionStatus.FAILED);
+			expect(result.message).toBe('Failed to execute tool "run_scene"');
+			expect(result.message).not.toContain('Connection timeout');
 		});
 	});
 

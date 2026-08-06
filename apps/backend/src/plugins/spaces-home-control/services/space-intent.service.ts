@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
+import { IntentContext } from '../../../modules/intents/models/intent.model';
 import { ClimateIntentDto } from '../dto/climate-intent.dto';
 import { CoversIntentDto } from '../dto/covers-intent.dto';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
@@ -44,8 +45,16 @@ export class SpaceIntentService {
 	 * @param intent - The lighting intent to execute (OFF, ON, SET_MODE, BRIGHTNESS_DELTA)
 	 * @returns The execution result with affected/failed device counts, or null if the space doesn't exist
 	 */
-	async executeLightingIntent(spaceId: string, intent: LightingIntentDto): Promise<IntentExecutionResult | null> {
-		return this.lightingIntentService.executeLightingIntent(spaceId, intent);
+	async executeLightingIntent(
+		spaceId: string,
+		intent: LightingIntentDto,
+		executionContext?: IntentContext,
+	): Promise<IntentExecutionResult | null> {
+		if (executionContext === undefined) {
+			return this.lightingIntentService.executeLightingIntent(spaceId, intent);
+		}
+
+		return this.lightingIntentService.executeLightingIntent(spaceId, intent, executionContext);
 	}
 
 	// =====================
