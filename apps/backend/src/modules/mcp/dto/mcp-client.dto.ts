@@ -56,8 +56,9 @@ export class CreateMcpClientDto {
 		default: MCP_DEFAULT_TOKEN_EXPIRATION_DAYS,
 	})
 	@Expose({ name: 'expires_in_days' })
-	@Transform(({ obj }: { obj: { expires_in_days?: number; expiresInDays?: number } }) =>
-		obj.expires_in_days !== undefined ? obj.expires_in_days : obj.expiresInDays,
+	@Transform(
+		({ obj }: { obj: { expires_in_days?: number; expiresInDays?: number } }) =>
+			obj.expires_in_days ?? obj.expiresInDays ?? MCP_DEFAULT_TOKEN_EXPIRATION_DAYS,
 	)
 	@IsOptional()
 	@IsInt()
@@ -112,8 +113,9 @@ export class RotateMcpClientTokenDto {
 		default: MCP_DEFAULT_TOKEN_EXPIRATION_DAYS,
 	})
 	@Expose({ name: 'expires_in_days' })
-	@Transform(({ obj }: { obj: { expires_in_days?: number; expiresInDays?: number } }) =>
-		obj.expires_in_days !== undefined ? obj.expires_in_days : obj.expiresInDays,
+	@Transform(
+		({ obj }: { obj: { expires_in_days?: number; expiresInDays?: number } }) =>
+			obj.expires_in_days ?? obj.expiresInDays ?? MCP_DEFAULT_TOKEN_EXPIRATION_DAYS,
 	)
 	@IsOptional()
 	@IsInt()

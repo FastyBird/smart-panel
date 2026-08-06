@@ -85,7 +85,7 @@ export class McpClientService {
 	}
 
 	async update(id: string, dto: UpdateMcpClientDto): Promise<McpClientEntity> {
-		await this.getOneOrThrow(id);
+		const client = await this.getOneOrThrow(id);
 		const updates: {
 			name?: string;
 			description?: string | null;
@@ -102,7 +102,25 @@ export class McpClientService {
 		if (dto.enabled !== undefined) updates.enabled = dto.enabled;
 
 		if (Object.keys(updates).length > 0) {
-			await this.repository.update(id, updates);
+			await this.dataSource.transaction(async (manager) => {
+				if (dto.enabled === true) {
+					const token = client.tokenId
+						? await manager.getRepository(LongLiveTokenEntity).findOne({ where: { id: client.tokenId } })
+						: null;
+
+					if (!token || token.revoked || (token.expiresAt && token.expiresAt < new Date())) {
+						throw new ConflictException('Rotate the MCP client credential before enabling this client');
+					}
+				}
+
+				const updateResult = await manager
+					.getRepository(McpClientEntity)
+					.update({ id, tokenId: client.tokenId ?? IsNull() }, updates);
+
+				if (!updateResult.affected) {
+					throw new ConflictException('The MCP client credential was changed by another request');
+				}
+			});
 		}
 
 		return this.getOneOrThrow(id);

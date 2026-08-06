@@ -24,6 +24,7 @@ describe('McpClientService', () => {
 		save: jest.Mock;
 		update: jest.Mock;
 	};
+	let tokenRepository: { findOne: jest.Mock };
 	let tokensService: { createLongLiveToken: jest.Mock; revoke: jest.Mock };
 	let dataSource: { transaction: jest.Mock };
 	let jwtService: { signAsync: jest.Mock };
@@ -55,10 +56,15 @@ describe('McpClientService', () => {
 			}),
 			revoke: jest.fn().mockResolvedValue(undefined),
 		};
+		tokenRepository = {
+			findOne: jest.fn().mockImplementation(() => Promise.resolve(currentClient?.token ?? null)),
+		};
 		dataSource = {
 			transaction: jest.fn().mockImplementation((operation: (manager: EntityManager) => Promise<unknown>) => {
 				const manager = {
-					getRepository: jest.fn().mockReturnValue(repository),
+					getRepository: jest
+						.fn()
+						.mockImplementation((entity: unknown) => (entity === McpClientEntity ? repository : tokenRepository)),
 				} as unknown as EntityManager;
 
 				return operation(manager);
@@ -152,12 +158,38 @@ describe('McpClientService', () => {
 
 		await service.update(currentClient.id, { name: 'Renamed agent', enabled: false });
 
-		expect(repository.update).toHaveBeenCalledWith(currentClient.id, {
-			name: 'Renamed agent',
-			enabled: false,
-		});
+		expect(repository.update).toHaveBeenCalledWith(
+			{ id: currentClient.id, tokenId },
+			{
+				name: 'Renamed agent',
+				enabled: false,
+			},
+		);
 		expect(repository.save).not.toHaveBeenCalled();
 		expect(currentClient.tokenId).toBe(tokenId);
+	});
+
+	it('rejects enabling a client whose current credential is revoked', async () => {
+		const token = {
+			id: uuid(),
+			revoked: true,
+			expiresAt: new Date(Date.now() + 60_000),
+		} as LongLiveTokenEntity;
+		currentClient = {
+			id: uuid(),
+			name: 'Agent',
+			description: null,
+			enabled: false,
+			capabilities: [McpCapability.READ],
+			tokenId: token.id,
+			token,
+		} as McpClientEntity;
+
+		await expect(service.update(currentClient.id, { enabled: true })).rejects.toThrow(
+			'Rotate the MCP client credential before enabling this client',
+		);
+
+		expect(repository.update).not.toHaveBeenCalled();
 	});
 
 	it('atomically creates a replacement before revoking the previous credential', async () => {
