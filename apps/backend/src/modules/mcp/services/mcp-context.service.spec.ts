@@ -211,6 +211,22 @@ describe('McpContextService', () => {
 		]);
 	});
 
+	it('uses the whole-home visible device total for a master space summary', async () => {
+		spaces.findAll.mockResolvedValue([
+			{
+				id: 'master-id',
+				name: 'My home',
+				type: SpaceType.MASTER,
+				parentId: null,
+			} as unknown as SpaceEntity,
+		]);
+		devices.findVisibleSummaryPage.mockResolvedValue({ devices: [], total: 17 });
+
+		const result = await service.getHomeContext();
+
+		expect(result.spaces).toEqual([expect.objectContaining({ id: 'master-id', device_count: 17 })]);
+	});
+
 	it('includes child-room scenes and scopes security for a floor snapshot', async () => {
 		const floor = {
 			id: 'floor-id',

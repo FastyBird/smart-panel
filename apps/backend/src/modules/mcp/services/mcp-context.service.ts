@@ -140,7 +140,9 @@ export class McpContextService {
 				name: space.name,
 				type: space.type,
 				parent_id: space.parentId,
-				device_count: selectedSpace ? devicePage.total : this.getSpaceDeviceCount(space, allSpaces, spaceCounts),
+				device_count: selectedSpace
+					? devicePage.total
+					: this.getSpaceDeviceCount(space, allSpaces, spaceCounts, devicePage.total),
 			})),
 			devices: devices.map((device) => this.mapDeviceSummary(device, scopedZoneId)),
 			scenes: scenes.map((scene) => ({
@@ -472,9 +474,13 @@ export class McpContextService {
 		space: SpaceEntity,
 		allSpaces: SpaceEntity[],
 		counts: VisibleDeviceSpaceCounts | null,
+		wholeHomeTotal: number,
 	): number {
 		if (!counts) {
 			return 0;
+		}
+		if (space.type === SpaceType.MASTER) {
+			return wholeHomeTotal;
 		}
 
 		if (space.type === SpaceType.ROOM) {
