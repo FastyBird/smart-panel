@@ -36,6 +36,7 @@
 		"title": "Create virtual device",
 		"subtitle": "Build a device from another device's channels",
 		"breadcrumb": "Create virtual device",
+		"viewDevice": "View device",
 		"steps": {
 			"category": "Category",
 			"mapping": "Mapping",

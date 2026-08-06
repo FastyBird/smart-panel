@@ -36,6 +36,7 @@
 		"title": "Vytvoriť virtuálne zariadenie",
 		"subtitle": "Zostavte zariadenie z kanálov iného zariadenia",
 		"breadcrumb": "Vytvoriť virtuálne zariadenie",
+		"viewDevice": "Zobraziť zariadenie",
 		"steps": {
 			"category": "Kategória",
 			"mapping": "Mapovanie",

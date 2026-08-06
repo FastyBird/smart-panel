@@ -36,6 +36,7 @@
 		"title": "Crear dispositivo virtual",
 		"subtitle": "Cree un dispositivo a partir de los canales de otro dispositivo",
 		"breadcrumb": "Crear dispositivo virtual",
+		"viewDevice": "Ver dispositivo",
 		"steps": {
 			"category": "Categoría",
 			"mapping": "Asignación",

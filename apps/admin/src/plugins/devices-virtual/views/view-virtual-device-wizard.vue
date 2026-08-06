@@ -44,9 +44,43 @@
 			v-if="isMDDevice"
 			#extra
 		>
-			<el-button @click="onCancel">
-				{{ t('devicesModule.buttons.cancel.title') }}
-			</el-button>
+			<div class="flex items-center">
+				<el-button
+					v-if="createdDevice === null"
+					data-test-id="wizard-cancel"
+					@click="onCancel"
+				>
+					{{ t('devicesModule.buttons.cancel.title') }}
+				</el-button>
+				<el-button
+					v-else
+					type="primary"
+					data-test-id="wizard-view-device"
+					@click="onViewDevice"
+				>
+					{{ t('devicesVirtualPlugin.wizard.viewDevice') }}
+				</el-button>
+
+				<el-button
+					v-if="createdDevice === null && activeStep > 0"
+					class="ml-2!"
+					data-test-id="wizard-back"
+					@click="onBack"
+				>
+					{{ t('devicesModule.wizard.actions.back') }}
+				</el-button>
+
+				<el-button
+					v-if="createdDevice === null && !isLastStep"
+					type="primary"
+					class="ml-2!"
+					:disabled="!canAdvance"
+					data-test-id="wizard-next"
+					@click="onNext"
+				>
+					{{ t('devicesModule.wizard.actions.next') }}
+				</el-button>
+			</div>
 		</template>
 	</view-header>
 
@@ -58,7 +92,7 @@
 		>
 			<template #header>
 				<el-steps
-					:active="0"
+					:active="activeStep"
 					finish-status="success"
 					align-center
 				>
@@ -71,13 +105,45 @@
 
 			<el-scrollbar class="flex-1 overflow-hidden h-full">
 				<!--
-					Step 1 of 4: category selection only. Steps 2-4 (mapping, details, review) and the
-					back/next navigation between them are wired up in later tasks — see Tasks 9-11 in
-					docs/superpowers/plans/2026-08-02-virtual-devices-admin.md. This view currently only
-					hosts step 1's content and a way back to the device list.
+					Only the active step is ever mounted (`v-if`, not `v-show`/`keep-alive`): the mapping
+					step's `modelValue` watcher is `immediate: true` and would emit `[]` the moment it saw a
+					null category, and the review step depends on the details step having already fetched
+					rooms/zones. Mounting every step at once — or independently of the others — risks both.
+					Forward navigation is strictly linear (Next is gated per step below), so by the time the
+					review step mounts, the details step has always mounted at least once first.
 				-->
 				<div class="p-4">
-					<virtual-wizard-category-step v-model="state.category" />
+					<virtual-wizard-category-step
+						v-if="activeStep === 0"
+						v-model="state.category"
+					/>
+
+					<virtual-wizard-mapping-step
+						v-else-if="activeStep === 1"
+						v-model="state.mappings"
+						:category="state.category"
+						@update:valid="onMappingValidChange"
+					/>
+
+					<virtual-wizard-details-step
+						v-else-if="activeStep === 2"
+						v-model:name="state.name"
+						v-model:room-id="state.roomId"
+						v-model:zone-ids="state.zoneIds"
+						:category="state.category"
+					/>
+
+					<!-- Step 4: review. It renders and drives its own "Create device" action — the shell
+						must not add a competing Finish/Create button, or a click could create two devices. -->
+					<virtual-wizard-review-step
+						v-else
+						:category="state.category"
+						:mappings="state.mappings"
+						:name="state.name"
+						:room-id="state.roomId"
+						:zone-ids="state.zoneIds"
+						@created="onCreated"
+					/>
 				</div>
 			</el-scrollbar>
 		</el-card>
@@ -87,14 +153,47 @@
 		v-if="!isMDDevice"
 		class="mt-2 flex justify-end lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2"
 	>
-		<el-button @click="onCancel">
+		<el-button
+			v-if="createdDevice === null && activeStep > 0"
+			data-test-id="wizard-back"
+			@click="onBack"
+		>
+			{{ t('devicesModule.wizard.actions.back') }}
+		</el-button>
+
+		<el-button
+			v-if="createdDevice === null"
+			class="ml-2!"
+			data-test-id="wizard-cancel"
+			@click="onCancel"
+		>
 			{{ t('devicesModule.buttons.cancel.title') }}
+		</el-button>
+		<el-button
+			v-else
+			type="primary"
+			class="ml-2!"
+			data-test-id="wizard-view-device"
+			@click="onViewDevice"
+		>
+			{{ t('devicesVirtualPlugin.wizard.viewDevice') }}
+		</el-button>
+
+		<el-button
+			v-if="createdDevice === null && !isLastStep"
+			type="primary"
+			class="ml-2!"
+			:disabled="!canAdvance"
+			data-test-id="wizard-next"
+			@click="onNext"
+		>
+			{{ t('devicesModule.wizard.actions.next') }}
 		</el-button>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
@@ -105,7 +204,12 @@ import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
 import { RouteNames as DevicesRouteNames } from '../../../modules/devices';
+import type { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import VirtualWizardCategoryStep from '../components/wizard/virtual-wizard-category-step.vue';
+import VirtualWizardDetailsStep from '../components/wizard/virtual-wizard-details-step.vue';
+import VirtualWizardMappingStep from '../components/wizard/virtual-wizard-mapping-step.vue';
+import type { IVirtualWizardReviewCreatedPayload } from '../components/wizard/virtual-wizard-review-step.types';
+import VirtualWizardReviewStep from '../components/wizard/virtual-wizard-review-step.vue';
 import type { IVirtualWizardState } from '../components/wizard/virtual-wizard.types';
 import { RouteNames } from '../devices-virtual.constants';
 
@@ -122,14 +226,53 @@ useMeta({
 	title: t('devicesVirtualPlugin.wizard.title'),
 });
 
-// Owned here and handed down to whichever step is active. Steps 2-4 (Tasks 9-10) read and write
-// the same object as they land; nothing about this location changes when they do.
+// Owned here and handed down to whichever step is active. Each of the four steps reads and writes
+// the same object as it mounts; nothing about this location changes when the active step does.
 const state = reactive<IVirtualWizardState>({
 	category: null,
 	mappings: [],
 	name: '',
 	roomId: null,
 	zoneIds: [],
+});
+
+const STEP_COUNT = 4;
+
+// 0 = category, 1 = mapping, 2 = details, 3 = review. Drives both `el-steps`' `active` prop and
+// which single step component is mounted below.
+const activeStep = ref<number>(0);
+
+// Mirrors the mapping step's own `update:valid`. That step already hard-blocks an incompatible
+// mapping internally, but until this was wired up nothing consumed the event, so the block was
+// decorative — it stopped the mapping from being usable, not the wizard from moving past it.
+const mappingValid = ref<boolean>(false);
+
+// Set once the review step's own create action succeeds. Its presence — not `activeStep` — is what
+// switches the chrome from "still building" (Cancel/Back/Next) to "done" (View device only): the
+// device already exists at that point, so stepping back into the wizard to "keep building" it no
+// longer makes sense.
+const createdDevice = ref<IVirtualWizardReviewCreatedPayload | null>(null);
+
+const isLastStep = computed<boolean>((): boolean => activeStep.value === STEP_COUNT - 1);
+
+// Per-step gating for the Next button. Only ever consulted for the step currently on screen: the
+// mapping step's validity while it is *not* mounted is irrelevant, and gets re-synced the instant it
+// remounts, since its own `isValid` watcher is `immediate: true`.
+const canAdvance = computed<boolean>((): boolean => {
+	if (activeStep.value === 0) {
+		return state.category !== null;
+	}
+
+	if (activeStep.value === 1) {
+		return mappingValid.value;
+	}
+
+	if (activeStep.value === 2) {
+		return state.name.trim().length > 0;
+	}
+
+	// Step 3 (review) has no Next of its own — the review step owns the final action.
+	return false;
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
@@ -154,4 +297,72 @@ const onCancel = (): void => {
 		router.push({ name: DevicesRouteNames.DEVICES });
 	}
 };
+
+const onBack = (): void => {
+	if (activeStep.value === 0) {
+		return;
+	}
+
+	activeStep.value -= 1;
+};
+
+const onNext = (): void => {
+	if (!canAdvance.value || isLastStep.value) {
+		return;
+	}
+
+	activeStep.value += 1;
+};
+
+const onMappingValidChange = (value: boolean): void => {
+	mappingValid.value = value;
+};
+
+// Driven by the review step's own `created` event, emitted only after its create POST has
+// succeeded and every best-effort follow-up (zone assignment, hiding the source) has settled. The
+// shell never issues a create call of its own — see the review step for why bypassing
+// `devicesStore.add()` and posting through the backend client directly is deliberate.
+const onCreated = (payload: IVirtualWizardReviewCreatedPayload): void => {
+	createdDevice.value = payload;
+};
+
+const onViewDevice = (): void => {
+	if (createdDevice.value === null) {
+		return;
+	}
+
+	const target = { name: DevicesRouteNames.DEVICE, params: { id: createdDevice.value.id } };
+
+	if (isLGDevice.value) {
+		router.replace(target);
+	} else {
+		router.push(target);
+	}
+};
+
+// A virtual device's mappings are keyed by the *category's* spec channels and properties, so they
+// stop meaning anything the moment the category itself changes. Left in place, the mapping step's
+// next mount would adopt them as its starting `selections` (its own `modelValue` watcher trusts
+// whatever it is handed), seeding it with entries keyed by slots that do not exist under the new
+// category — invisible to the UI, but still counted by `hasMapping`, which would let an empty
+// mapping report itself complete. `name`/`roomId`/`zoneIds` are not spec-shaped, so they are left
+// alone; the details step regenerates its suggested name by itself once it next mounts against the
+// new category.
+watch(
+	(): DevicesModuleDeviceCategory | null => state.category,
+	(value, previous): void => {
+		if (previous === null || previous === undefined || previous === value) {
+			return;
+		}
+
+		state.mappings = [];
+		mappingValid.value = false;
+	}
+);
+
+defineExpose({
+	activeStep,
+	canAdvance,
+	createdDevice,
+});
 </script>

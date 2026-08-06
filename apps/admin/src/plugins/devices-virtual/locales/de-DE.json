@@ -36,6 +36,7 @@
 		"title": "Virtuelles Gerät erstellen",
 		"subtitle": "Erstellen Sie ein Gerät aus den Kanälen eines anderen Geräts",
 		"breadcrumb": "Virtuelles Gerät erstellen",
+		"viewDevice": "Gerät anzeigen",
 		"steps": {
 			"category": "Kategorie",
 			"mapping": "Zuordnung",

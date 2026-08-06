@@ -36,6 +36,7 @@
 		"title": "Utwórz urządzenie wirtualne",
 		"subtitle": "Utwórz urządzenie z kanałów innego urządzenia",
 		"breadcrumb": "Utwórz urządzenie wirtualne",
+		"viewDevice": "Zobacz urządzenie",
 		"steps": {
 			"category": "Kategoria",
 			"mapping": "Mapowanie",
