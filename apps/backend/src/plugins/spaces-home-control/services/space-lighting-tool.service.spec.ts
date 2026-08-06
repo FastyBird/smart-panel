@@ -176,6 +176,60 @@ describe('SpaceLightingToolService', () => {
 				}),
 			);
 		});
+
+		it('reports skipped offline devices as partial execution', async () => {
+			spaceIntentService.executeLightingIntent.mockResolvedValue({
+				success: true,
+				affectedDevices: 2,
+				failedDevices: 0,
+				skippedOfflineDevices: 1,
+			});
+			spacesService.findOne.mockResolvedValue({ id: 'space-1', name: 'Office' });
+
+			const result = await service.executeTool({
+				id: 'call-1',
+				name: 'set_space_lighting',
+				arguments: { space_id: 'space-1', mode: 'work' },
+			});
+
+			expect(result).toEqual(
+				expect.objectContaining({
+					success: true,
+					status: ToolExecutionStatus.PARTIAL,
+					data: expect.objectContaining({
+						affected_devices: 2,
+						failed_devices: 0,
+						skipped_offline_devices: 1,
+					}),
+				}),
+			);
+			expect(result.message).toContain('1 offline');
+		});
+
+		it('reports failure when every targeted lighting device is offline', async () => {
+			spaceIntentService.executeLightingIntent.mockResolvedValue({
+				success: true,
+				affectedDevices: 0,
+				failedDevices: 0,
+				skippedOfflineDevices: 2,
+			});
+			spacesService.findOne.mockResolvedValue({ id: 'space-1', name: 'Office' });
+
+			const result = await service.executeTool({
+				id: 'call-1',
+				name: 'set_space_lighting',
+				arguments: { space_id: 'space-1', mode: 'work' },
+			});
+
+			expect(result).toEqual(
+				expect.objectContaining({
+					success: false,
+					status: ToolExecutionStatus.FAILED,
+					errorCode: 'NO_ONLINE_LIGHTING_DEVICES',
+					data: expect.objectContaining({ skipped_offline_devices: 2 }),
+				}),
+			);
+		});
 	});
 
 	it('returns a structured failure when the optional lighting service is unavailable', async () => {

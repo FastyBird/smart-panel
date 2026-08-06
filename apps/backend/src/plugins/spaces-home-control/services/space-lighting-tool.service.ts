@@ -34,6 +34,7 @@ const SET_SPACE_LIGHTING_OUTPUT_SCHEMA = z.object({
 	mode: z.enum(LIGHTING_MODES),
 	affected_devices: z.number().int().nonnegative(),
 	failed_devices: z.number().int().nonnegative(),
+	skipped_offline_devices: z.number().int().nonnegative(),
 });
 
 /** Tool provider for space-level lighting control. */
@@ -139,14 +140,16 @@ export class SpaceLightingToolService extends BaseToolProviderService implements
 
 		const space = await this.spacesService.findOne(spaceId);
 		const spaceName = space?.name ?? spaceId;
+		const skippedOfflineDevices = result.skippedOfflineDevices ?? 0;
 		const data = {
 			space_id: spaceId,
 			mode: parsed.data.mode,
 			affected_devices: result.affectedDevices,
 			failed_devices: result.failedDevices,
+			skipped_offline_devices: skippedOfflineDevices,
 		};
 
-		if (result.failedDevices === 0 && result.affectedDevices > 0) {
+		if (result.failedDevices === 0 && skippedOfflineDevices === 0 && result.affectedDevices > 0) {
 			return {
 				success: true,
 				status: ToolExecutionStatus.COMPLETED,
@@ -156,6 +159,16 @@ export class SpaceLightingToolService extends BaseToolProviderService implements
 		}
 
 		if (result.failedDevices === 0 && result.affectedDevices === 0) {
+			if (skippedOfflineDevices > 0) {
+				return {
+					success: false,
+					status: ToolExecutionStatus.FAILED,
+					message: `No online lighting devices available in ${spaceName} (${skippedOfflineDevices} offline)`,
+					data,
+					errorCode: 'NO_ONLINE_LIGHTING_DEVICES',
+				};
+			}
+
 			return {
 				success: false,
 				status: ToolExecutionStatus.FAILED,
@@ -169,7 +182,7 @@ export class SpaceLightingToolService extends BaseToolProviderService implements
 			return {
 				success: true,
 				status: ToolExecutionStatus.PARTIAL,
-				message: `Partially set ${spaceName} lighting to "${parsed.data.mode}" (${result.affectedDevices} succeeded, ${result.failedDevices} failed)`,
+				message: `Partially set ${spaceName} lighting to "${parsed.data.mode}" (${result.affectedDevices} succeeded, ${result.failedDevices} failed, ${skippedOfflineDevices} offline)`,
 				data,
 			};
 		}
