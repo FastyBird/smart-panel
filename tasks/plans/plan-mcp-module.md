@@ -1,6 +1,6 @@
 # Smart Panel MCP Module — Implementation Plan
 
-**Status:** Phase 3 complete — Phase 4 pending
+**Status:** Phase 4 complete — Phase 5 pending
 
 **Architecture decision:** [ADR 0001: MCP Protocol and Security Foundation](../../docs/adr/0001-mcp-protocol-and-security-foundation.md)
 supersedes the original stateful-session transport assumptions in this plan.
@@ -399,21 +399,26 @@ SQLite migration and focused regression coverage.
 - Create: `apps/backend/src/modules/mcp/services/mcp-subscription-registry.service.ts`
 - Create corresponding specs
 
-- [ ] Resolve installation config and authenticated MCP client for every listing/read/call operation.
-- [ ] Compute effective capabilities using the intersection rule.
-- [ ] Recheck module enabled state, client enabled/revoked state, token expiry, and tool capability immediately before
+- [x] Resolve installation config and authenticated MCP client for every listing/read/call operation.
+- [x] Compute effective capabilities using the intersection rule.
+- [x] Recheck module enabled state, client enabled/revoked state, token expiry, and tool capability immediately before
       execution.
-- [ ] Use the SDK event bus for modern `subscriptions/listen` change events.
-- [ ] Track subscription streams by authenticated MCP client so targeted policy changes can abort affected streams.
-- [ ] Add idle expiration and cleanup on disconnect/module shutdown.
-- [ ] Cap concurrent global and per-client subscription streams to prevent unbounded memory growth.
-- [ ] Provide methods to notify subscribers of tool/resource-list changes and close streams for a revoked client or
+- [x] Use the SDK event bus for modern `subscriptions/listen` change events.
+- [x] Track subscription streams by authenticated MCP client so targeted policy changes can abort affected streams.
+- [x] Add idle expiration and cleanup on disconnect/module shutdown.
+- [x] Cap concurrent global and per-client subscription streams to prevent unbounded memory growth.
+- [x] Provide methods to notify subscribers of tool/resource-list changes and close streams for a revoked client or
       disabled module.
-- [ ] If legacy stateful support is later approved, keep its session registry separate and bind every session to the
+- [x] If legacy stateful support is later approved, keep its session registry separate and bind every session to the
       authenticated token/client.
 
 **Tests:** intersection matrix, cross-client stream isolation, revocation during a subscription, module disable, stream
 caps, and cleanup.
+
+**Outcome:** Every MCP request now resolves a fresh installation/client policy context, intersects current grants, and
+can re-authorize individual capabilities immediately before execution. Modern subscriptions use isolated per-client
+SDK event buses plus a bounded registry with targeted aborts, idle expiry, disconnect cleanup, and shutdown cleanup;
+the legacy path remains deliberately stateless and has no session registry.
 
 ### Task 7: Implement the raw Streamable HTTP endpoint
 
@@ -425,22 +430,27 @@ caps, and cleanup.
 - Create: `apps/backend/src/modules/mcp/services/mcp-server.service.ts`
 - Create endpoint/integration specs
 
-- [ ] Expose the module root to the SDK adapter. Modern traffic uses POST and streaming POST responses; legacy
+- [x] Expose the module root to the SDK adapter. Modern traffic uses POST and streaming POST responses; legacy
       stateless GET/DELETE requests receive the SDK-defined 405 response.
-- [ ] Mark the handler as a raw route so Smart Panel response interceptors do not wrap JSON-RPC or SSE responses.
-- [ ] Exclude the protocol endpoint from OpenAPI while keeping client-management endpoints documented.
-- [ ] Return 404 while the MCP module is disabled.
-- [ ] Authenticate before SDK dispatch or subscription registration.
-- [ ] Validate `Origin` using same-origin plus configured allowlist rules; return 403 for invalid origins.
-- [ ] Validate content type, accepted response types, protocol version, method/name headers, and bounded request body.
-- [ ] Attach installation identity and effective capability information to MCP server instructions/metadata.
-- [ ] Add a dedicated throttle keyed by MCP client, with a stricter unauthenticated/IP limit.
-- [ ] Ensure JSON-RPC errors and HTTP auth/transport errors retain protocol-correct shapes and status codes.
-- [ ] Close SDK handlers and active subscription streams during Nest application shutdown.
+- [x] Mark the handler as a raw route so Smart Panel response interceptors do not wrap JSON-RPC or SSE responses.
+- [x] Exclude the protocol endpoint from OpenAPI while keeping client-management endpoints documented.
+- [x] Return 404 while the MCP module is disabled.
+- [x] Authenticate before SDK dispatch or subscription registration.
+- [x] Validate `Origin` using same-origin plus configured allowlist rules; return 403 for invalid origins.
+- [x] Validate content type, accepted response types, protocol version, method/name headers, and bounded request body.
+- [x] Attach installation identity and effective capability information to MCP server instructions/metadata.
+- [x] Add a dedicated throttle keyed by MCP client, with a stricter unauthenticated/IP limit.
+- [x] Ensure JSON-RPC errors and HTTP auth/transport errors retain protocol-correct shapes and status codes.
+- [x] Close SDK handlers and active subscription streams during Nest application shutdown.
 
 **Tests:** modern discovery, legacy initialization, tools/list, tools/call, `subscriptions/listen`, legacy GET/DELETE
 behavior, malformed JSON-RPC, unsupported protocol version, missing/invalid token, invalid origin/host, disabled module,
 throttling, and graceful shutdown.
+
+**Outcome:** The module root is now a raw, OpenAPI-excluded MCP transport backed by the official SDK's modern handler
+and stateless legacy fallback. DB-backed MCP authentication and fresh policy checks run before dispatch, transport
+origin/host validation and explicit body limits protect the boundary, dedicated throttling separates authenticated
+client and unauthenticated IP budgets, and the application closes all handlers and streams on shutdown.
 
 ### Task 8: Implement curated read tools and resources
 

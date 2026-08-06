@@ -13,6 +13,7 @@ import { McpCapability } from '../mcp.constants';
 
 import { McpClientService } from './mcp-client.service';
 import { McpInstallationService } from './mcp-installation.service';
+import { McpServerService } from './mcp-server.service';
 
 describe('McpClientService', () => {
 	let service: McpClientService;
@@ -30,6 +31,12 @@ describe('McpClientService', () => {
 	let dataSource: { transaction: jest.Mock };
 	let jwtService: { signAsync: jest.Mock };
 	let configService: { getModuleConfig: jest.Mock };
+	let serverService: {
+		closeClient: jest.Mock;
+		invalidatePolicies: jest.Mock;
+		notifyResourcesChanged: jest.Mock;
+		notifyToolsChanged: jest.Mock;
+	};
 	let currentClient: McpClientEntity | null;
 
 	beforeEach(() => {
@@ -78,6 +85,12 @@ describe('McpClientService', () => {
 				capabilities: [McpCapability.READ, McpCapability.WRITE],
 			}),
 		};
+		serverService = {
+			closeClient: jest.fn().mockResolvedValue(undefined),
+			invalidatePolicies: jest.fn(),
+			notifyResourcesChanged: jest.fn(),
+			notifyToolsChanged: jest.fn(),
+		};
 		const installationService = { getAudience: jest.fn().mockResolvedValue('mcp-audience') };
 
 		service = new McpClientService(
@@ -87,6 +100,7 @@ describe('McpClientService', () => {
 			jwtService as unknown as JwtService,
 			configService as unknown as ConfigService,
 			installationService as unknown as McpInstallationService,
+			serverService as unknown as McpServerService,
 		);
 	});
 
@@ -187,6 +201,25 @@ describe('McpClientService', () => {
 		);
 		expect(repository.save).not.toHaveBeenCalled();
 		expect(currentClient.tokenId).toBe(tokenId);
+		expect(serverService.closeClient).toHaveBeenCalledWith(currentClient.id);
+	});
+
+	it('notifies only the updated client after a capability change', async () => {
+		currentClient = {
+			id: uuid(),
+			name: 'Agent',
+			description: null,
+			enabled: true,
+			capabilities: [McpCapability.READ],
+			tokenId: uuid(),
+		} as McpClientEntity;
+
+		await service.update(currentClient.id, { capabilities: [McpCapability.WRITE] });
+
+		expect(serverService.notifyToolsChanged).toHaveBeenCalledWith(currentClient.id);
+		expect(serverService.notifyResourcesChanged).toHaveBeenCalledWith(currentClient.id);
+		expect(serverService.invalidatePolicies).toHaveBeenCalledTimes(1);
+		expect(serverService.closeClient).not.toHaveBeenCalled();
 	});
 
 	it('rejects enabling a client whose current credential is revoked', async () => {
@@ -240,6 +273,7 @@ describe('McpClientService', () => {
 		expect(events).toEqual(['create', 'revoke']);
 		expect(tokensService.revoke).toHaveBeenCalledWith(previousToken.id, expect.anything());
 		expect(result.token).toBe('raw-mcp-token');
+		expect(serverService.closeClient).toHaveBeenCalledWith(currentClient.id);
 	});
 
 	it('loads the rotated client before the credential transaction commits', async () => {
@@ -371,6 +405,7 @@ describe('McpClientService', () => {
 		expect(result.enabled).toBe(false);
 		expect(tokensService.revoke).toHaveBeenCalledWith(token.id, expect.anything());
 		expect(repository.save).not.toHaveBeenCalled();
+		expect(serverService.closeClient).toHaveBeenCalledWith(currentClient.id);
 	});
 
 	it('rejects a stale revocation when rotation already changed the token pointer', async () => {
@@ -408,6 +443,7 @@ describe('McpClientService', () => {
 		expect(tokensService.revoke).toHaveBeenCalledWith(token.id, expect.anything());
 		expect(repository.delete).toHaveBeenCalledWith({ id: currentClient.id, tokenId: token.id });
 		expect(repository.remove).not.toHaveBeenCalled();
+		expect(serverService.closeClient).toHaveBeenCalledWith(currentClient.id);
 	});
 
 	it('rolls back deletion when the token pointer changed concurrently', async () => {
