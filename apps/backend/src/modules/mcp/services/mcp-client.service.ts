@@ -116,13 +116,24 @@ export class McpClientService {
 
 	async revoke(id: string): Promise<McpClientEntity> {
 		const client = await this.getOneOrThrow(id);
-		client.enabled = false;
 
-		if (client.token) {
-			await this.tokensService.revoke(client.token.id);
-		}
+		await this.dataSource.transaction(async (manager) => {
+			if (client.token) {
+				await this.tokensService.revoke(client.token.id, manager);
+			}
 
-		await this.repository.save(client);
+			const updateResult = await manager.getRepository(McpClientEntity).update(
+				{
+					id: client.id,
+					tokenId: client.token ? client.token.id : IsNull(),
+				},
+				{ enabled: false },
+			);
+
+			if (!updateResult.affected) {
+				throw new ConflictException('The MCP client credential was changed by another request');
+			}
+		});
 
 		return this.getOneOrThrow(id);
 	}
@@ -179,6 +190,7 @@ export class McpClientService {
 				{
 					id: client.id,
 					tokenId: previousToken ? previousToken.id : IsNull(),
+					enabled: client.enabled,
 				},
 				{ tokenId: token.id, enabled: true },
 			);

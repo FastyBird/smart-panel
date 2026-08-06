@@ -228,7 +228,7 @@ describe('McpClientService', () => {
 
 		expect(currentClient.tokenId).toBe(previousToken.id);
 		expect(repository.update).toHaveBeenCalledWith(
-			expect.objectContaining({ id: currentClient.id, tokenId: previousToken.id }),
+			expect.objectContaining({ id: currentClient.id, tokenId: previousToken.id, enabled: true }),
 			expect.objectContaining({ enabled: true }),
 		);
 	});
@@ -265,6 +265,28 @@ describe('McpClientService', () => {
 		const result = await service.revoke(currentClient.id);
 
 		expect(result.enabled).toBe(false);
-		expect(tokensService.revoke).toHaveBeenCalledWith(token.id);
+		expect(tokensService.revoke).toHaveBeenCalledWith(token.id, expect.anything());
+		expect(repository.save).not.toHaveBeenCalled();
+	});
+
+	it('rejects a stale revocation when rotation already changed the token pointer', async () => {
+		const previousToken = { id: uuid(), revoked: false } as LongLiveTokenEntity;
+		currentClient = {
+			id: uuid(),
+			enabled: true,
+			token: previousToken,
+			tokenId: previousToken.id,
+		} as McpClientEntity;
+		repository.update.mockResolvedValueOnce({ affected: 0 });
+
+		await expect(service.revoke(currentClient.id)).rejects.toThrow(
+			'The MCP client credential was changed by another request',
+		);
+
+		expect(currentClient.tokenId).toBe(previousToken.id);
+		expect(repository.update).toHaveBeenCalledWith(
+			expect.objectContaining({ id: currentClient.id, tokenId: previousToken.id }),
+			{ enabled: false },
+		);
 	});
 });
