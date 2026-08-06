@@ -1,4 +1,5 @@
 import { Module, OnModuleInit } from '@nestjs/common';
+import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuthModule } from '../auth/auth.module';
@@ -9,9 +10,11 @@ import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models
 import { SwaggerModule } from '../swagger/swagger.module';
 
 import { McpClientsController } from './controllers/mcp-clients.controller';
+import { McpController } from './controllers/mcp.controller';
 import { UpdateMcpConfigDto } from './dto/update-config.dto';
 import { McpClientEntity } from './entities/mcp-client.entity';
 import { McpInstallationEntity } from './entities/mcp-installation.entity';
+import { McpClientGuard } from './guards/mcp-client.guard';
 import {
 	MCP_MODULE_API_TAG_DESCRIPTION,
 	MCP_MODULE_API_TAG_NAME,
@@ -22,6 +25,9 @@ import { MCP_SWAGGER_EXTRA_MODELS } from './mcp.openapi';
 import { McpConfigModel } from './models/config.model';
 import { McpClientService } from './services/mcp-client.service';
 import { McpInstallationService } from './services/mcp-installation.service';
+import { McpPolicyService } from './services/mcp-policy.service';
+import { McpServerService } from './services/mcp-server.service';
+import { McpSubscriptionRegistryService } from './services/mcp-subscription-registry.service';
 
 @ApiTag({
 	tagName: MCP_MODULE_NAME,
@@ -29,10 +35,22 @@ import { McpInstallationService } from './services/mcp-installation.service';
 	description: MCP_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [AuthModule, SwaggerModule, TypeOrmModule.forFeature([McpClientEntity, McpInstallationEntity])],
-	controllers: [McpClientsController],
-	providers: [McpClientService, McpInstallationService],
-	exports: [McpClientService, McpInstallationService],
+	imports: [
+		AuthModule,
+		NestConfigModule,
+		SwaggerModule,
+		TypeOrmModule.forFeature([McpClientEntity, McpInstallationEntity]),
+	],
+	controllers: [McpClientsController, McpController],
+	providers: [
+		McpClientGuard,
+		McpClientService,
+		McpInstallationService,
+		McpPolicyService,
+		McpServerService,
+		McpSubscriptionRegistryService,
+	],
+	exports: [McpClientService, McpInstallationService, McpPolicyService, McpServerService],
 })
 export class McpModule implements OnModuleInit {
 	constructor(

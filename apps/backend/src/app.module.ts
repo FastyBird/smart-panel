@@ -33,6 +33,7 @@ import { EXTENSIONS_MODULE_PREFIX } from './modules/extensions/extensions.consta
 import { ExtensionsModule } from './modules/extensions/extensions.module';
 import { FactoryResetModule } from './modules/factory-reset/factory-reset.module';
 import { IntentsModule } from './modules/intents/intents.module';
+import { McpThrottleGuard } from './modules/mcp/guards/mcp-throttle.guard';
 import { MCP_MODULE_PREFIX } from './modules/mcp/mcp.constants';
 import { McpModule } from './modules/mcp/mcp.module';
 import { MdnsModule } from './modules/mdns/mdns.module';
@@ -150,21 +151,23 @@ export class AppModule {
 
 		return {
 			module: AppModule,
-			// Both global guards are registered HERE (not in their owning
+			// Global guards are registered HERE (not in their owning
 			// modules) so the execution order is controlled at a single point.
 			// Within one module's `providers` array, NestJS executes
 			// `APP_GUARD` providers in declared order — splitting them across
 			// `AuthModule` and `AppModule` would make ordering depend on
 			// module-load order, which is fragile.
 			//
-			// Throttler runs FIRST so anonymous floods to protected endpoints
+			// The default throttler runs FIRST so anonymous floods to protected endpoints
 			// stay rate-limited (otherwise `AuthGuard` would 401 them and the
 			// throttler would never count the request). The throttler does
 			// its own lightweight JWT signature check (no DB lookup) to detect
 			// display tokens; `AuthGuard` runs after for the full DB-backed
-			// validation (revocation, expiry, owner exists).
+			// validation (revocation, expiry, owner exists). The MCP-specific
+			// throttler runs between them and owns the dedicated endpoint budget.
 			providers: [
 				{ provide: APP_GUARD, useClass: DisplayAwareThrottlerGuard },
+				{ provide: APP_GUARD, useClass: McpThrottleGuard },
 				{ provide: APP_GUARD, useClass: AuthGuard },
 			],
 			imports: [

@@ -24,6 +24,7 @@ import { getEnvValue } from './common/utils/config.utils';
 import { ValidationExceptionFactory } from './common/validation/validation-exception-factory';
 import { OAuthCallbackService } from './modules/buddy/services/oauth-callback.service';
 import { getDiscoveredExtensions } from './modules/extensions/services/extensions-discovery-cache';
+import { MCP_MODULE_PREFIX, MCP_REQUEST_BODY_LIMIT_BYTES } from './modules/mcp/mcp.constants';
 import { MdnsService } from './modules/mdns/services/mdns.service';
 import { SystemLoggerService } from './modules/system/services/system-logger.service';
 import { SYSTEM_MODULE_PREFIX } from './modules/system/system.constants';
@@ -55,6 +56,8 @@ async function bootstrap() {
 		bufferLogs: true,
 	});
 
+	app.enableShutdownHooks();
+
 	// Raise the body-size limit for multipart/form-data routes (audio uploads)
 	// while keeping Fastify's default 1 MiB for JSON endpoints.
 	const fastifyInstance = app.getHttpAdapter().getInstance();
@@ -63,6 +66,7 @@ async function bootstrap() {
 		`/api/v1/${MODULES_PREFIX}/buddy/conversations/:id/audio`,
 		`/api/v1/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/backups/upload`,
 	]);
+	const mcpRoute = `/${API_PREFIX}/v1/${MODULES_PREFIX}/${MCP_MODULE_PREFIX}`;
 
 	fastifyInstance.addHook(
 		'onRoute',
@@ -72,6 +76,8 @@ async function bootstrap() {
 
 			if (multipartRoutes.has(path)) {
 				routeOptions.bodyLimit = MULTIPART_MAX_FILE_SIZE_BYTES;
+			} else if (path === mcpRoute) {
+				routeOptions.bodyLimit = MCP_REQUEST_BODY_LIMIT_BYTES;
 			}
 		},
 	);
