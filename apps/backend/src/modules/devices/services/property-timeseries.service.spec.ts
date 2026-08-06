@@ -88,6 +88,18 @@ describe('PropertyTimeseriesService', () => {
 			expect(storageService.query).toHaveBeenCalledWith(expect.stringContaining("propertyId = 'prop-123'"));
 		});
 
+		it('should accept normalized string timestamps from storage adapters', async () => {
+			const from = new Date('2025-01-01T10:00:00Z');
+			const to = new Date('2025-01-01T22:00:00Z');
+			storageService.queryStrict.mockResolvedValue([
+				{ time: '2025-01-01T10:00:00Z', numberValue: 21.4, propertyId: 'prop-123' },
+			]);
+
+			const result = await service.queryTimeseriesStrict(mockProperty, from, to, '5m');
+
+			expect(result.points).toEqual([{ time: '2025-01-01T10:00:00Z', value: 21.4 }]);
+		});
+
 		it('should return empty points array when no data exists', async () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T22:00:00Z');

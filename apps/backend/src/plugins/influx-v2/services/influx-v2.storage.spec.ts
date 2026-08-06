@@ -169,6 +169,65 @@ describe('InfluxV2Storage', () => {
 
 			await expect(storage.queryStrict('from(bucket: "missing")')).rejects.toBe(error);
 		});
+
+		it('should translate grouped latest-value InfluxQL and normalize timestamps', async () => {
+			mockCollectRows.mockResolvedValue([{ _time: '2026-08-06T12:00:00Z', propertyId: 'property-a', numberValue: 12 }]);
+
+			const result = await storage.queryStrict<{ time: string; propertyId: string; numberValue: number }>(`
+				SELECT * FROM property_value
+				WHERE (propertyId = 'property-a' OR propertyId = 'property-b')
+				GROUP BY "propertyId"
+				ORDER BY time DESC
+				LIMIT 5
+			`);
+
+			const [translatedQuery] = mockCollectRows.mock.calls.at(-1) as [string];
+			expect(translatedQuery).toContain('from(bucket: "test-bucket")');
+			expect(translatedQuery).toContain('r._measurement == "property_value"');
+			expect(translatedQuery).toContain('set: ["property-a", "property-b"]');
+			expect(translatedQuery).toContain('group(columns: ["propertyId"])');
+			expect(translatedQuery).toContain('limit(n: 5)');
+			expect(result).toEqual([{ time: '2026-08-06T12:00:00Z', propertyId: 'property-a', numberValue: 12 }]);
+		});
+
+		it('should translate bucketed InfluxQL history into per-field Flux aggregates', async () => {
+			mockCollectRows.mockResolvedValue([]);
+
+			await storage.queryStrict(`
+				SELECT MEAN(numberValue) AS numberValue, LAST(stringValue) AS stringValue
+				FROM property_value
+				WHERE propertyId = 'property-a'
+				AND time >= 1786017600000ms
+				AND time <= 1786021200000ms
+				GROUP BY time(5m) fill(none)
+				ORDER BY time ASC
+			`);
+
+			const [translatedQuery] = mockCollectRows.mock.calls.at(-1) as [string];
+			expect(translatedQuery).toContain('aggregateWindow(every: 5m, fn: mean');
+			expect(translatedQuery).toContain('aggregateWindow(every: 5m, fn: last');
+			expect(translatedQuery).toContain('union(tables: [numberValues, stringValues])');
+			expect(translatedQuery).toContain('desc: false');
+		});
+
+		it('should translate raw InfluxQL history with bounded time and field filters', async () => {
+			mockCollectRows.mockResolvedValue([]);
+
+			await storage.queryStrict(`
+				SELECT stringValue, numberValue
+				FROM property_value
+				WHERE propertyId = 'property-a'
+				AND time >= 1786017600000ms
+				AND time <= 1786021200000ms
+				ORDER BY time ASC
+			`);
+
+			const [translatedQuery] = mockCollectRows.mock.calls.at(-1) as [string];
+			expect(translatedQuery).toContain('range(start: time(v:');
+			expect(translatedQuery).toContain('contains(value: r._field, set: ["stringValue", "numberValue"])');
+			expect(translatedQuery).toContain('pivot(rowKey: ["_time"]');
+			expect(translatedQuery).toContain('desc: false');
+		});
 	});
 
 	describe('queryRaw', () => {

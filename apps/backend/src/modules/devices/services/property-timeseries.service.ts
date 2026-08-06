@@ -92,7 +92,7 @@ export class PropertyTimeseriesService {
 		const query = this.buildQuery(key, from, to, effectiveBucket);
 
 		const result = await this.storageService.queryStrict<{
-			time: { _nanoISO: string };
+			time: { _nanoISO: string } | Date | string;
 			stringValue?: string;
 			numberValue?: number;
 			propertyId: string;
@@ -104,7 +104,8 @@ export class PropertyTimeseriesService {
 
 		// Parse results based on property data type
 		const points = result.map((row) => {
-			const time = row.time._nanoISO;
+			const time =
+				row.time instanceof Date ? row.time.toISOString() : typeof row.time === 'string' ? row.time : row.time._nanoISO;
 			const value = this.parseValue(row, property.dataType);
 
 			return { time, value };
