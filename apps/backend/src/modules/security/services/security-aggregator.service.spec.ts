@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { ChannelCategory } from '../../devices/devices.constants';
+import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DevicesService } from '../../devices/services/devices.service';
 import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
@@ -323,7 +323,11 @@ describe('SecurityAggregatorService', () => {
 				{
 					provide: DetectionRulesLoaderService,
 					useValue: {
-						getSensorRules: jest.fn().mockReturnValue(new Map([[ChannelCategory.SMOKE, {}]])),
+						getSensorRules: jest
+							.fn()
+							.mockReturnValue(
+								new Map([[ChannelCategory.SMOKE, { properties: [{ property: PropertyCategory.DETECTED }] }]]),
+							),
 					},
 				},
 				SecurityAggregatorService,
@@ -340,6 +344,16 @@ describe('SecurityAggregatorService', () => {
 			10,
 			20,
 			{ roomIds: ['room-1'] },
+			expect.arrayContaining([
+				PropertyCategory.STATE,
+				PropertyCategory.ALARM_STATE,
+				PropertyCategory.TRIGGERED,
+				PropertyCategory.TAMPERED,
+				PropertyCategory.ACTIVE,
+				PropertyCategory.FAULT,
+				PropertyCategory.LAST_EVENT,
+				PropertyCategory.DETECTED,
+			]),
 		);
 		expect(providerSpy).toHaveBeenCalledWith({ armedState: null, devices });
 		expect(result.devicesTruncated).toBe(true);

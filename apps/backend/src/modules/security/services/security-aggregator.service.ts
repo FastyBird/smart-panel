@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { ChannelCategory } from '../../devices/devices.constants';
+import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DevicesService, VisibleDeviceSummaryScope } from '../../devices/services/devices.service';
 import { SecurityAggregationContext } from '../contracts/security-aggregation-context.type';
@@ -25,6 +25,16 @@ export interface BoundedSecurityAggregationResult {
 	channelsTruncated: boolean;
 	propertiesTruncated: boolean;
 }
+
+const ALARM_PROPERTY_CATEGORIES = [
+	PropertyCategory.STATE,
+	PropertyCategory.ALARM_STATE,
+	PropertyCategory.TRIGGERED,
+	PropertyCategory.TAMPERED,
+	PropertyCategory.ACTIVE,
+	PropertyCategory.FAULT,
+	PropertyCategory.LAST_EVENT,
+];
 
 @Injectable()
 export class SecurityAggregatorService implements SecurityAggregatorInterface {
@@ -64,8 +74,13 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 		propertyLimit: number,
 		scope: VisibleDeviceSummaryScope = {},
 	): Promise<BoundedSecurityAggregationResult> {
-		const categories = Array.from(
-			new Set([ChannelCategory.ALARM, ...this.detectionRulesLoader.getSensorRules().keys()]),
+		const sensorRules = this.detectionRulesLoader.getSensorRules();
+		const categories = Array.from(new Set([ChannelCategory.ALARM, ...sensorRules.keys()]));
+		const propertyCategories = Array.from(
+			new Set([
+				...ALARM_PROPERTY_CATEGORIES,
+				...Array.from(sensorRules.values()).flatMap((rule) => rule.properties.map((check) => check.property)),
+			]),
 		);
 		const page = await this.devicesService.findVisibleBoundedStateByChannelCategories(
 			categories,
@@ -73,6 +88,7 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 			channelLimit,
 			propertyLimit,
 			scope,
+			propertyCategories,
 		);
 
 		return {

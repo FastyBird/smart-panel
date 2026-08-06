@@ -89,8 +89,9 @@ export class ChannelsPropertiesService {
 		channelIds: string[],
 		perChannelLimit: number,
 		strictValues = false,
+		propertyCategories?: string[],
 	): Promise<BoundedChannelProperties> {
-		if (channelIds.length === 0) {
+		if (channelIds.length === 0 || propertyCategories?.length === 0) {
 			return { properties: [], totals: {} };
 		}
 
@@ -104,6 +105,9 @@ export class ChannelsPropertiesService {
 		}
 
 		const placeholders = channelIds.map(() => '?').join(', ');
+		const categoryPredicate = propertyCategories
+			? `AND property."category" IN (${propertyCategories.map(() => '?').join(', ')})`
+			: '';
 		const [idRows, countRows] = await Promise.all([
 			this.dataSource.query<PropertyIdRow[]>(
 				`SELECT ranked."id" AS "id"
@@ -115,18 +119,25 @@ export class ChannelsPropertiesService {
 				          ) AS "rowNumber"
 				   FROM devices_module_channels_properties property
 				   WHERE property."channelId" IN (${placeholders})
+				   ${categoryPredicate}
 				 ) ranked
 				 WHERE ranked."rowNumber" <= ?`,
-				[...channelIds, perChannelLimit],
+				[...channelIds, ...(propertyCategories ?? []), perChannelLimit],
 			),
-			this.repository
-				.createQueryBuilder('property')
-				.innerJoin('property.channel', 'channel')
-				.select('channel.id', 'channelId')
-				.addSelect('COUNT(property.id)', 'propertyCount')
-				.where('channel.id IN (:...channelIds)', { channelIds })
-				.groupBy('channel.id')
-				.getRawMany<PropertyCountRow>(),
+			(() => {
+				const query = this.repository
+					.createQueryBuilder('property')
+					.innerJoin('property.channel', 'channel')
+					.select('channel.id', 'channelId')
+					.addSelect('COUNT(property.id)', 'propertyCount')
+					.where('channel.id IN (:...channelIds)', { channelIds });
+
+				if (propertyCategories) {
+					query.andWhere('property.category IN (:...propertyCategories)', { propertyCategories });
+				}
+
+				return query.groupBy('channel.id').getRawMany<PropertyCountRow>();
+			})(),
 		]);
 		const propertyIds = idRows.map((row) => row.id);
 		const properties =
@@ -136,6 +147,7 @@ export class ChannelsPropertiesService {
 						.createQueryBuilder('property')
 						.innerJoinAndSelect('property.channel', 'channel')
 						.where('property.id IN (:...propertyIds)', { propertyIds })
+						.callListeners(propertyCategories === undefined)
 						.getMany();
 
 		if (strictValues) {

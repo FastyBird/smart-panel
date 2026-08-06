@@ -354,7 +354,7 @@ describe('DevicesService', () => {
 				2,
 			]);
 			expect(channelsService.findBoundedForDevices).toHaveBeenCalledWith(['device-1'], [ChannelCategory.ALARM], 10);
-			expect(propertiesService.findBoundedForChannels).toHaveBeenCalledWith(['channel-1'], 20, true);
+			expect(propertiesService.findBoundedForChannels).toHaveBeenCalledWith(['channel-1'], 20, true, undefined);
 		});
 	});
 

@@ -250,6 +250,7 @@ describe('ChannelsPropertiesService', () => {
 			const entityQuery: any = {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
 				getMany: jest.fn().mockResolvedValue([mockChannelProperty]),
 			};
 			jest.spyOn(dataSource, 'query').mockResolvedValue([{ id: mockChannelProperty.id }]);
@@ -263,6 +264,7 @@ describe('ChannelsPropertiesService', () => {
 			expect(entityQuery.where).toHaveBeenCalledWith('property.id IN (:...propertyIds)', {
 				propertyIds: [mockChannelProperty.id],
 			});
+			expect(entityQuery.callListeners).toHaveBeenCalledWith(true);
 		});
 
 		it('strictly reloads bounded values and propagates storage failures', async () => {
@@ -271,21 +273,32 @@ describe('ChannelsPropertiesService', () => {
 				select: jest.fn().mockReturnThis(),
 				addSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
 				groupBy: jest.fn().mockReturnThis(),
 				getRawMany: jest.fn().mockResolvedValue([{ channelId: mockChannel.id, propertyCount: '1' }]),
 			};
 			const entityQuery: any = {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
 				getMany: jest.fn().mockResolvedValue([mockChannelProperty]),
 			};
 			jest.spyOn(dataSource, 'query').mockResolvedValue([{ id: mockChannelProperty.id }]);
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValueOnce(countQuery).mockReturnValueOnce(entityQuery);
 			propertyValueService.readLatestStrict.mockRejectedValue(new Error('storage unavailable'));
 
-			await expect(channelsPropertiesService.findBoundedForChannels([mockChannel.id], 40, true)).rejects.toThrow(
-				'storage unavailable',
-			);
+			await expect(
+				channelsPropertiesService.findBoundedForChannels([mockChannel.id], 40, true, [PropertyCategory.GENERIC]),
+			).rejects.toThrow('storage unavailable');
+			expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('property."category" IN (?)'), [
+				mockChannel.id,
+				PropertyCategory.GENERIC,
+				40,
+			]);
+			expect(countQuery.andWhere).toHaveBeenCalledWith('property.category IN (:...propertyCategories)', {
+				propertyCategories: [PropertyCategory.GENERIC],
+			});
+			expect(entityQuery.callListeners).toHaveBeenCalledWith(false);
 			expect(propertyValueService.readLatestStrict).toHaveBeenCalledWith(mockChannelProperty);
 		});
 	});

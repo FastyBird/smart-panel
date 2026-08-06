@@ -170,6 +170,7 @@ export class DevicesService {
 		channelLimit: number,
 		propertyLimit: number,
 		scope: VisibleDeviceSummaryScope = {},
+		propertyCategories?: string[],
 	): Promise<VisibleBoundedDeviceState> {
 		if (channelCategories.length === 0 || scope.roomIds?.length === 0) {
 			return {
@@ -235,6 +236,7 @@ export class DevicesService {
 			channelPage.channels.map((channel) => channel.id),
 			propertyLimit,
 			true,
+			propertyCategories,
 		);
 		const propertiesByChannel = new Map<string, ChannelEntity['properties']>();
 
