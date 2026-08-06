@@ -442,10 +442,12 @@ describe('DevicesService', () => {
 		// `save`, not the returned entity, because the return value is re-read from the database and
 		// would hide the clobber.
 		//
-		// `enabled` is affected by the identical mechanism but is deliberately NOT asserted here: its
-		// initializer is still in place, because three device plugins read `event.entity.enabled` in
-		// `afterInsert` before the row is re-read. See the note on DeviceEntity.enabled — pre-existing,
-		// tracked separately.
+		// `enabled` is affected by the identical mechanism and is covered separately below. Its
+		// initializer (unlike `hidden`'s) is intentionally still in place — three device plugins'
+		// `afterInsert` subscribers read `event.entity.enabled` before the row is re-read — so this could
+		// only be fixed on the update() side, by restricting `updateFields` to properties the PATCH
+		// actually carried, not by dropping the initializer. See the note on DeviceEntity.enabled and the
+		// comment at the `updateFields` computation in DevicesService.update().
 		it('does not reset hidden when the patch does not mention it', async () => {
 			const hiddenDevice = { ...mockDevice, hidden: true };
 
@@ -496,6 +498,66 @@ describe('DevicesService', () => {
 			await service.update(mockDevice.id, { type: 'mock', hidden: true } as UpdateMockDeviceDto);
 
 			expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({ hidden: true }));
+		});
+
+		// Regression test for the same class-field-initializer mechanism as `hidden` above, now proven
+		// for `enabled`. DeviceEntity.enabled's initializer is intentionally still in place (see the note
+		// on DeviceEntity.enabled), so unlike `hidden` this could not be fixed by dropping it — update()
+		// instead restricts `updateFields` to properties dtoInstance actually carried. Asserted against
+		// `save`, not the returned entity, for the same reason as the `hidden` test above.
+		it('does not reset enabled when the patch does not mention it', async () => {
+			const disabledDevice = { ...mockDevice, enabled: false };
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(toInstance(MockDevice, disabledDevice)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockDevice, disabledDevice));
+
+			await service.update(disabledDevice.id, { type: 'mock', name: 'Renamed' } as UpdateMockDeviceDto);
+
+			expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }));
+		});
+
+		// Symmetric with the `hidden` coverage: a patch that genuinely carries `enabled` must still apply
+		// it, including flipping it to the falsy `false` — the exact value `omitBy(..., isUndefined)`
+		// must not be tricked into treating as "absent".
+		it('applies enabled when the patch does set it, including a falsy false', async () => {
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(toInstance(MockDevice, mockDevice)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockDevice, { ...mockDevice, enabled: false }));
+
+			await service.update(mockDevice.id, { type: 'mock', enabled: false } as UpdateMockDeviceDto);
+
+			expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }));
 		});
 
 		// Confirms hidden_by round-trips through a PATCH that sets it alongside hidden, symmetric with

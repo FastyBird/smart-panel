@@ -9,7 +9,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { toInstance } from '../../../common/utils/transform.utils';
+import { toInstance, toSnakeCase, toSnakeCaseKeys } from '../../../common/utils/transform.utils';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { SpaceType } from '../../spaces/spaces.constants';
 import {
@@ -276,8 +276,58 @@ export class DevicesService {
 
 		const repository: Repository<TDevice> = this.dataSource.getRepository(mapping.class);
 
-		// Get the fields to update from DTO (excluding undefined values)
-		const updateFields = omitBy(toInstance(mapping.class, dtoInstance), isUndefined);
+		// Get the fields to update from DTO, restricted to properties this PATCH actually carried.
+		//
+		// toInstance() below builds `mapping.class` via `new mapping.class()`, so any class-field
+		// initializer on the entity (see the `enabled` comment above) survives for properties the DTO
+		// never mentioned. Those survivors are `true` / `null` / etc — not `undefined` — so
+		// omitBy(isUndefined) alone cannot remove them, and Object.assign() below would write them back
+		// over stored values on every unrelated PATCH (e.g. a `{type, hidden, hiddenBy}` body would reset
+		// a Shelly device's `password`/`hostname` to null and silently re-`enable` a disabled device).
+		//
+		// Trap 1 (name mapping): dtoInstance's own enumerable keys are not uniformly cased. The base
+		// UpdateDeviceDto spells multi-word fields in snake_case directly (`room_id`, `hidden_by`), but
+		// some plugin DTOs use a camelCase JS property name with an @Expose({name}) override instead
+		// (e.g. UpdateShellyNgDeviceDto.wifiAddress <- wire name `wifi_address`), so a set built from
+		// Object.keys(dtoInstance) cannot be compared against updateFields' camelCase entity keys
+		// directly — it has to be translated. We normalize dtoInstance's keys to wire form with the same
+		// toSnakeCaseKeys() helper toInstance() uses internally, then mechanically convert each
+		// updateFields key the same way for the comparison. This reproduces the @Expose({name: ...})
+		// wire name for every entity field currently reachable from an update DTO (verified against every
+		// @Expose on DeviceEntity and its 4 child entities): properties without a name override are
+		// single-word, so camelCase already equals their wire name, and every existing override in the
+		// codebase (hiddenBy -> hidden_by, roomId -> room_id, wifiAddress -> wifi_address,
+		// ethernetAddress -> ethernet_address, canonicalMac -> canonical_mac, hasEthernet -> has_ethernet)
+		// already IS the mechanical snake_case of the property name. If a future field pairs a
+		// class-field initializer with an @Expose({name}) that does NOT mechanically match its property
+		// name, this filter will silently stop recognizing it as "provided" — re-verify this claim when
+		// adding one.
+		//
+		// We cannot instead have class-transformer do this mapping for us by passing
+		// `exposeUnsetFields: true` (which would make it emit explicit `undefined`s for every unset field,
+		// letting omitBy(isUndefined) strip them with no extra code): DeviceEntity.zoneIds is a
+		// getter-only property declared once on the base class and never redeclared on any
+		// @ChildEntity() subclass. class-transformer's guard against assigning to read-only properties
+		// does an own-property lookup (Object.getOwnPropertyDescriptor(target.constructor.prototype,
+		// key)) that does not walk the prototype chain, so on a subclass like ShellyV1DeviceEntity it
+		// fails to find the inherited getter and then throws trying to assign to it. This only surfaces
+		// once something forces unset fields to be materialized — exposeUnsetFields: false (the default,
+		// used everywhere else, including below) never attempts the assignment, which is why the existing
+		// call is unaffected.
+		//
+		// Trap 2 (dtoInstance contamination): this filter is only sound if dtoInstance's own keys really
+		// are "what the request carried" and are not themselves polluted the same way updateFields is.
+		// Verified: UpdateDeviceDto and all 4 plugin update DTOs (Shelly V1, Shelly NG, WLED, reTerminal)
+		// declare every field as `foo?: T` with no `= default`, so a body of {type, name} produces
+		// Object.keys(dtoInstance) === ['type', 'name'] — nothing leaks in from dtoInstance's own
+		// construction. zone_ids was deleted from dtoInstance above, before this runs, so it is excluded
+		// from dtoWireKeys too and cannot reappear in updateFields.
+		const dtoWireKeys = new Set(Object.keys(toSnakeCaseKeys<TUpdateDTO, Record<string, unknown>>(dtoInstance)));
+
+		const updateFields = omitBy(
+			toInstance(mapping.class, dtoInstance),
+			(value, key) => isUndefined(value) || !dtoWireKeys.has(toSnakeCase(key)),
+		);
 
 		// Check if any entity fields are actually being changed by comparing with existing values
 		const entityFieldsChanged =
