@@ -7,8 +7,9 @@ import { toNodeHandler } from '@modelcontextprotocol/node';
 import { AuthInfo, McpHttpHandler, McpServer, createMcpHandler } from '@modelcontextprotocol/server';
 import { Injectable, OnApplicationShutdown, UnauthorizedException } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { extractAccessTokenFromHeader } from '../../auth/utils/token.utils';
-import { MCP_MAX_SUBSCRIPTIONS_PER_CLIENT } from '../mcp.constants';
+import { MCP_MAX_SUBSCRIPTIONS_PER_CLIENT, MCP_MODULE_NAME } from '../mcp.constants';
 
 import { McpPolicyRequest } from './mcp-policy.service';
 import {
@@ -35,6 +36,7 @@ interface JsonRpcRequestBody {
 
 @Injectable()
 export class McpServerService implements OnApplicationShutdown {
+	private readonly logger = createExtensionLogger(MCP_MODULE_NAME, 'McpServerService');
 	private readonly handlers = new Map<string, ClientHandler>();
 
 	constructor(private readonly subscriptions: McpSubscriptionRegistryService) {}
@@ -91,14 +93,33 @@ export class McpServerService implements OnApplicationShutdown {
 		}
 
 		this.handlers.delete(clientId);
-		await clientHandler.handler.close();
+
+		try {
+			await clientHandler.handler.close();
+		} catch (error) {
+			const err = error instanceof Error ? error : new Error(String(error));
+			this.logger.error(`Failed to close MCP handler client=${clientId}`, {
+				message: err.message,
+				stack: err.stack,
+			});
+		}
 	}
 
 	async closeAll(): Promise<void> {
 		this.subscriptions.closeAll();
 		const handlers = [...this.handlers.values()];
 		this.handlers.clear();
-		await Promise.all(handlers.map(({ handler }) => handler.close()));
+		const results = await Promise.allSettled(handlers.map(({ handler }) => handler.close()));
+
+		for (const result of results) {
+			if (result.status === 'rejected') {
+				const err = result.reason instanceof Error ? result.reason : new Error(String(result.reason));
+				this.logger.error('Failed to close an MCP handler during shutdown', {
+					message: err.message,
+					stack: err.stack,
+				});
+			}
+		}
 	}
 
 	async onApplicationShutdown(): Promise<void> {

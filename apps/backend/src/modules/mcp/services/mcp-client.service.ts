@@ -16,6 +16,7 @@ import { McpConfigModel } from '../models/config.model';
 import { McpClientCredentialModel } from '../models/mcp-client.model';
 
 import { McpInstallationService } from './mcp-installation.service';
+import { McpServerService } from './mcp-server.service';
 
 const SECONDS_PER_DAY = 24 * 60 * 60;
 
@@ -29,6 +30,7 @@ export class McpClientService {
 		private readonly jwtService: JwtService,
 		private readonly configService: ConfigService,
 		private readonly installationService: McpInstallationService,
+		private readonly serverService: McpServerService,
 	) {}
 
 	async findAll(): Promise<McpClientEntity[]> {
@@ -123,13 +125,25 @@ export class McpClientService {
 			});
 		}
 
-		return this.getOneOrThrow(id);
+		const updatedClient = await this.getOneOrThrow(id);
+
+		if (dto.enabled === false) {
+			await this.serverService.closeClient(id);
+		} else if (dto.capabilities !== undefined) {
+			this.serverService.notifyToolsChanged(id);
+			this.serverService.notifyResourcesChanged(id);
+		}
+
+		return updatedClient;
 	}
 
 	async rotate(id: string, dto: RotateMcpClientTokenDto): Promise<McpClientCredentialModel> {
 		const client = await this.getOneOrThrow(id);
 
-		return this.issueCredential(client, dto.expiresInDays, client.token ?? undefined);
+		const credential = await this.issueCredential(client, dto.expiresInDays, client.token ?? undefined);
+		await this.serverService.closeClient(id);
+
+		return credential;
 	}
 
 	async revoke(id: string): Promise<McpClientEntity> {
@@ -153,6 +167,8 @@ export class McpClientService {
 			}
 		});
 
+		await this.serverService.closeClient(id);
+
 		return this.getOneOrThrow(id);
 	}
 
@@ -173,6 +189,8 @@ export class McpClientService {
 				throw new ConflictException('The MCP client credential was changed by another request');
 			}
 		});
+
+		await this.serverService.closeClient(id);
 	}
 
 	private async issueCredential(

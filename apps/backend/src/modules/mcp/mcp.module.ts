@@ -15,6 +15,7 @@ import { UpdateMcpConfigDto } from './dto/update-config.dto';
 import { McpClientEntity } from './entities/mcp-client.entity';
 import { McpInstallationEntity } from './entities/mcp-installation.entity';
 import { McpClientGuard } from './guards/mcp-client.guard';
+import { McpConfigListener } from './listeners/mcp-config.listener';
 import {
 	MCP_MODULE_API_TAG_DESCRIPTION,
 	MCP_MODULE_API_TAG_NAME,
@@ -45,6 +46,7 @@ import { McpSubscriptionRegistryService } from './services/mcp-subscription-regi
 	providers: [
 		McpClientGuard,
 		McpClientService,
+		McpConfigListener,
 		McpInstallationService,
 		McpPolicyService,
 		McpServerService,
