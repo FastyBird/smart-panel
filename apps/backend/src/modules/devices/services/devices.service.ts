@@ -41,7 +41,9 @@ export interface VisibleDeviceSpaceCounts {
 
 export interface VisibleBoundedDeviceState {
 	devices: DeviceEntity[];
-	truncated: boolean;
+	devicesTruncated: boolean;
+	channelsTruncated: boolean;
+	propertiesTruncated: boolean;
 }
 
 @Injectable()
@@ -169,7 +171,12 @@ export class DevicesService {
 		propertyLimit: number,
 	): Promise<VisibleBoundedDeviceState> {
 		if (channelCategories.length === 0) {
-			return { devices: [], truncated: false };
+			return {
+				devices: [],
+				devicesTruncated: false,
+				channelsTruncated: false,
+				propertiesTruncated: false,
+			};
 		}
 
 		interface DeviceIdRow {
@@ -188,10 +195,15 @@ export class DevicesService {
 			[...channelCategories, deviceLimit + 1],
 		);
 		const deviceIds = idRows.slice(0, deviceLimit).map((row) => row.id);
-		const truncated = idRows.length > deviceLimit;
+		const devicesTruncated = idRows.length > deviceLimit;
 
 		if (deviceIds.length === 0) {
-			return { devices: [], truncated };
+			return {
+				devices: [],
+				devicesTruncated,
+				channelsTruncated: false,
+				propertiesTruncated: false,
+			};
 		}
 
 		const [devices, channelPage] = await Promise.all([
@@ -233,7 +245,9 @@ export class DevicesService {
 					return device;
 				})
 				.sort((left, right) => (deviceOrder.get(left.id) ?? 0) - (deviceOrder.get(right.id) ?? 0)),
-			truncated,
+			devicesTruncated,
+			channelsTruncated: channelPage.truncated,
+			propertiesTruncated: Object.values(properties.totals).some((total) => total > propertyLimit),
 		};
 	}
 

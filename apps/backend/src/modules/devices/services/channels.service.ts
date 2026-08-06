@@ -27,6 +27,7 @@ export interface ChannelSummaryPage {
 export interface BoundedDeviceChannels {
 	channels: ChannelEntity[];
 	deviceIds: Record<string, string>;
+	truncated: boolean;
 }
 
 @Injectable()
@@ -132,18 +133,19 @@ export class ChannelsService {
 		perDeviceLimit: number,
 	): Promise<BoundedDeviceChannels> {
 		if (deviceIds.length === 0 || categories.length === 0) {
-			return { channels: [], deviceIds: {} };
+			return { channels: [], deviceIds: {}, truncated: false };
 		}
 
 		interface ChannelIdRow {
 			id: string;
 			deviceId: string;
+			rowNumber: string | number;
 		}
 
 		const devicePlaceholders = deviceIds.map(() => '?').join(', ');
 		const categoryPlaceholders = categories.map(() => '?').join(', ');
 		const idRows = await this.dataSource.query<ChannelIdRow[]>(
-			`SELECT ranked."id" AS "id", ranked."deviceId" AS "deviceId"
+			`SELECT ranked."id" AS "id", ranked."deviceId" AS "deviceId", ranked."rowNumber" AS "rowNumber"
 			 FROM (
 			   SELECT channel."id" AS "id", channel."deviceId" AS "deviceId",
 			          ROW_NUMBER() OVER (
@@ -154,13 +156,16 @@ export class ChannelsService {
 			   WHERE channel."deviceId" IN (${devicePlaceholders})
 			   AND channel."category" IN (${categoryPlaceholders})
 			 ) ranked
-			 WHERE ranked."rowNumber" <= ?`,
-			[...deviceIds, ...categories, perDeviceLimit],
+			 WHERE ranked."rowNumber" <= ?
+			 ORDER BY ranked."deviceId", ranked."rowNumber"`,
+			[...deviceIds, ...categories, perDeviceLimit + 1],
 		);
-		const channelIds = idRows.map((row) => row.id);
+		const selectedRows = idRows.filter((row) => Number(row.rowNumber) <= perDeviceLimit);
+		const channelIds = selectedRows.map((row) => row.id);
+		const truncated = idRows.length > selectedRows.length;
 
 		if (channelIds.length === 0) {
-			return { channels: [], deviceIds: {} };
+			return { channels: [], deviceIds: {}, truncated };
 		}
 
 		const channels = await this.repository
@@ -170,7 +175,8 @@ export class ChannelsService {
 
 		return {
 			channels,
-			deviceIds: Object.fromEntries(idRows.map((row) => [row.id, row.deviceId])),
+			deviceIds: Object.fromEntries(selectedRows.map((row) => [row.id, row.deviceId])),
+			truncated,
 		};
 	}
 

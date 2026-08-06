@@ -22,6 +22,8 @@ import { DetectionRulesLoaderService } from '../spec/detection-rules-loader.serv
 export interface BoundedSecurityAggregationResult {
 	status: SecurityStatusModel;
 	devicesTruncated: boolean;
+	channelsTruncated: boolean;
+	propertiesTruncated: boolean;
 }
 
 @Injectable()
@@ -66,6 +68,8 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 		);
 		let devices: DeviceEntity[];
 		let devicesTruncated = false;
+		let channelsTruncated = false;
+		let propertiesTruncated = false;
 		let providerErrors = 0;
 
 		try {
@@ -76,7 +80,9 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 				propertyLimit,
 			);
 			devices = page.devices;
-			devicesTruncated = page.truncated;
+			devicesTruncated = page.devicesTruncated;
+			channelsTruncated = page.channelsTruncated;
+			propertiesTruncated = page.propertiesTruncated;
 		} catch (error) {
 			this.logger.warn(`Failed to fetch bounded security devices: ${error}`);
 			devices = [];
@@ -86,6 +92,8 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 		return {
 			status: (await this.aggregateDevicesWithErrors(devices, providerErrors)).status,
 			devicesTruncated,
+			channelsTruncated,
+			propertiesTruncated,
 		};
 	}
 

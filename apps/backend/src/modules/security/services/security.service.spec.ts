@@ -75,6 +75,8 @@ describe('SecurityService', () => {
 			aggregator.aggregateBounded.mockResolvedValue({
 				status: makeStatus([alert]),
 				devicesTruncated: true,
+				channelsTruncated: false,
+				propertiesTruncated: false,
 			});
 			ackService.findByIds.mockResolvedValue([
 				{

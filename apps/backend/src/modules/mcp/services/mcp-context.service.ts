@@ -140,7 +140,14 @@ export class McpContextService {
 			})),
 			weather: weather ? this.mapWeather(weather) : null,
 			energy,
-			security: security ? this.mapSecurity(security.status, security.devicesTruncated) : null,
+			security: security
+				? this.mapSecurity(
+						security.status,
+						security.devicesTruncated,
+						security.channelsTruncated,
+						security.propertiesTruncated,
+					)
+				: null,
 			limits: {
 				spaces_truncated: allSpaces.length > spaces.length,
 				devices_truncated: devicePage.total > devices.length,
@@ -243,7 +250,12 @@ export class McpContextService {
 			MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
 		);
 
-		return this.mapSecurity(security.status, security.devicesTruncated);
+		return this.mapSecurity(
+			security.status,
+			security.devicesTruncated,
+			security.channelsTruncated,
+			security.propertiesTruncated,
+		);
 	}
 
 	async listSpaces(): Promise<Array<{ id: string; name: string; type: string }>> {
@@ -359,6 +371,8 @@ export class McpContextService {
 	private mapSecurity(
 		status: Awaited<ReturnType<SecurityService['getStatus']>>,
 		devicesTruncated = false,
+		channelsTruncated = false,
+		propertiesTruncated = false,
 	): Record<string, unknown> {
 		const alerts = status.activeAlerts.slice(0, MCP_MAX_SECURITY_ALERTS);
 
@@ -379,6 +393,9 @@ export class McpContextService {
 			})),
 			alerts_truncated: status.activeAlerts.length > alerts.length,
 			devices_truncated: devicesTruncated,
+			channels_truncated: channelsTruncated,
+			properties_truncated: propertiesTruncated,
+			state_truncated: devicesTruncated || channelsTruncated || propertiesTruncated,
 			last_event: status.lastEvent ?? null,
 		};
 	}

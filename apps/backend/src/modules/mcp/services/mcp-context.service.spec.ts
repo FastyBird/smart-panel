@@ -219,12 +219,21 @@ describe('McpContextService', () => {
 				hasCriticalAlert: false,
 				activeAlerts: [],
 			},
-			devicesTruncated: true,
+			devicesTruncated: false,
+			channelsTruncated: true,
+			propertiesTruncated: true,
 		});
 
 		const result = await service.getSecurityStatus();
 
-		expect(result).toEqual(expect.objectContaining({ devices_truncated: true }));
+		expect(result).toEqual(
+			expect.objectContaining({
+				devices_truncated: false,
+				channels_truncated: true,
+				properties_truncated: true,
+				state_truncated: true,
+			}),
+		);
 	});
 
 	it('maps current values only for a requested visible device', async () => {

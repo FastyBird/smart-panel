@@ -245,21 +245,25 @@ describe('ChannelsService', () => {
 
 	describe('findBoundedForDevices', () => {
 		it('caps channel IDs per device before hydrating entities', async () => {
-			jest.spyOn(dataSource, 'query').mockResolvedValue([{ id: mockChannel.id, deviceId: mockDevice.id }]);
+			jest.spyOn(dataSource, 'query').mockResolvedValue([
+				{ id: mockChannel.id, deviceId: mockDevice.id, rowNumber: 1 },
+				{ id: 'truncated-channel', deviceId: mockDevice.id, rowNumber: 2 },
+			]);
 			const queryBuilderMock: any = {
 				where: jest.fn().mockReturnThis(),
 				getMany: jest.fn().mockResolvedValue([mockChannel]),
 			};
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
-			await expect(service.findBoundedForDevices([mockDevice.id], [ChannelCategory.ALARM], 10)).resolves.toEqual({
+			await expect(service.findBoundedForDevices([mockDevice.id], [ChannelCategory.ALARM], 1)).resolves.toEqual({
 				channels: [mockChannel],
 				deviceIds: { [mockChannel.id]: mockDevice.id },
+				truncated: true,
 			});
 			expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('ROW_NUMBER() OVER'), [
 				mockDevice.id,
 				ChannelCategory.ALARM,
-				10,
+				2,
 			]);
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('channel.id IN (:...channelIds)', {
 				channelIds: [mockChannel.id],

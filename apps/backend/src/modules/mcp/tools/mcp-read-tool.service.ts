@@ -5,6 +5,7 @@ import { ForbiddenException, HttpException, Injectable, UnauthorizedException } 
 
 import { withTimeout } from '../../../common/utils/http.utils';
 import { BucketDuration } from '../../devices/services/property-timeseries.service';
+import { WeatherNotFoundException } from '../../weather/weather.exceptions';
 import { MCP_TOOL_CALL_TIMEOUT_MS, McpCapability } from '../mcp.constants';
 import { McpContextService, McpInstallationContext } from '../services/mcp-context.service';
 import { McpPolicyService } from '../services/mcp-policy.service';
@@ -338,7 +339,7 @@ export class McpReadToolService {
 			return { code: 'permission_denied', message: 'The MCP client is not authorized for this read operation.' };
 		}
 
-		if (error instanceof HttpException && error.getStatus() === 404) {
+		if (error instanceof WeatherNotFoundException || (error instanceof HttpException && error.getStatus() === 404)) {
 			return { code: 'not_found', message: 'The requested Smart Panel item was not found.' };
 		}
 

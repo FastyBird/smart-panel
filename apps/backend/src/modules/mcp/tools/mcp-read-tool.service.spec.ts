@@ -1,6 +1,7 @@
 import { AuthInfo, McpServer, ServerContext } from '@modelcontextprotocol/server';
 import { ForbiddenException } from '@nestjs/common';
 
+import { WeatherNotFoundException } from '../../weather/weather.exceptions';
 import { MCP_TOOL_CALL_TIMEOUT_MS, McpCapability } from '../mcp.constants';
 import { McpContextService } from '../services/mcp-context.service';
 import { McpPolicyService } from '../services/mcp-policy.service';
@@ -18,6 +19,7 @@ describe('McpReadToolService', () => {
 	let contextService: {
 		getInstallation: jest.Mock;
 		getSecurityStatus: jest.Mock;
+		getWeather: jest.Mock;
 	};
 	let policyService: { authorizeClient: jest.Mock };
 	let registerTool: jest.Mock;
@@ -36,6 +38,7 @@ describe('McpReadToolService', () => {
 				effective_capabilities: [McpCapability.READ],
 			}),
 			getSecurityStatus: jest.fn().mockResolvedValue({ active_alerts_count: 0 }),
+			getWeather: jest.fn().mockResolvedValue({ location: 'Prague' }),
 		};
 		policyService = {
 			authorizeClient: jest.fn().mockResolvedValue({ effectiveCapabilities: [McpCapability.READ] }),
@@ -128,6 +131,22 @@ describe('McpReadToolService', () => {
 		} finally {
 			jest.useRealTimers();
 		}
+	});
+
+	it('preserves weather not-found classification without exposing domain details', async () => {
+		contextService.getWeather.mockRejectedValue(new WeatherNotFoundException('private location detail'));
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await callbacks.get('get_weather')?.(
+			{ location_id: '550e8400-e29b-41d4-a716-446655440000' },
+			requestContext(),
+		);
+
+		expect(result?.isError).toBe(true);
+		expect(result?.structuredContent.error).toEqual({
+			code: 'not_found',
+			message: 'The requested Smart Panel item was not found.',
+		});
 	});
 
 	it('enforces the same deadline for resource reads', async () => {

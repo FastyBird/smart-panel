@@ -143,7 +143,7 @@ describe('DevicesService', () => {
 					provide: ChannelsService,
 					useValue: {
 						create: jest.fn(() => {}),
-						findBoundedForDevices: jest.fn().mockResolvedValue({ channels: [], deviceIds: {} }),
+						findBoundedForDevices: jest.fn().mockResolvedValue({ channels: [], deviceIds: {}, truncated: false }),
 					},
 				},
 				{
@@ -328,12 +328,24 @@ describe('DevicesService', () => {
 				getMany: jest.fn().mockResolvedValue([visibleDevice]),
 			};
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
-			channelsService.findBoundedForDevices.mockResolvedValue({ channels: [], deviceIds: {} });
-			propertiesService.findBoundedForChannels.mockResolvedValue({ properties: [], totals: {} });
+			channelsService.findBoundedForDevices.mockResolvedValue({
+				channels: [{ id: 'channel-1', properties: [] } as any],
+				deviceIds: { 'channel-1': 'device-1' },
+				truncated: true,
+			});
+			propertiesService.findBoundedForChannels.mockResolvedValue({
+				properties: [],
+				totals: { 'channel-1': 21 },
+			});
 
 			await expect(
 				service.findVisibleBoundedStateByChannelCategories([ChannelCategory.ALARM], 1, 10, 20),
-			).resolves.toEqual({ devices: [expect.objectContaining({ id: 'device-1' })], truncated: true });
+			).resolves.toEqual({
+				devices: [expect.objectContaining({ id: 'device-1' })],
+				devicesTruncated: true,
+				channelsTruncated: true,
+				propertiesTruncated: true,
+			});
 			expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('LIMIT ?'), [ChannelCategory.ALARM, 2]);
 			expect(channelsService.findBoundedForDevices).toHaveBeenCalledWith(['device-1'], [ChannelCategory.ALARM], 10);
 		});
