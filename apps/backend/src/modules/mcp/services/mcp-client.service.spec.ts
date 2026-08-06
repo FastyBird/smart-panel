@@ -22,6 +22,7 @@ describe('McpClientService', () => {
 		findOne: jest.Mock;
 		remove: jest.Mock;
 		save: jest.Mock;
+		update: jest.Mock;
 	};
 	let tokensService: { createLongLiveToken: jest.Mock; revoke: jest.Mock };
 	let dataSource: { transaction: jest.Mock };
@@ -40,6 +41,10 @@ describe('McpClientService', () => {
 				if (!client.id) client.id = uuid();
 				currentClient = client;
 				return Promise.resolve(client);
+			}),
+			update: jest.fn().mockImplementation((_criteria: unknown, update: Partial<McpClientEntity>) => {
+				if (currentClient) Object.assign(currentClient, update);
+				return Promise.resolve({ affected: 1 });
 			}),
 		};
 		tokensService = {
@@ -180,7 +185,31 @@ describe('McpClientService', () => {
 		await expect(service.rotate(currentClient.id, { expiresInDays: 60 })).rejects.toThrow('Database unavailable');
 
 		expect(currentClient.tokenId).toBe(previousToken.id);
-		expect(repository.save).not.toHaveBeenCalled();
+		expect(repository.update).not.toHaveBeenCalled();
+	});
+
+	it('rejects a stale concurrent rotation instead of returning an unselected credential', async () => {
+		const previousToken = { id: uuid(), revoked: false } as LongLiveTokenEntity;
+		currentClient = {
+			id: uuid(),
+			name: 'Agent',
+			description: null,
+			enabled: true,
+			capabilities: [McpCapability.READ],
+			tokenId: previousToken.id,
+			token: previousToken,
+		} as McpClientEntity;
+		repository.update.mockResolvedValueOnce({ affected: 0 });
+
+		await expect(service.rotate(currentClient.id, { expiresInDays: 60 })).rejects.toThrow(
+			'The MCP client credential was changed by another request',
+		);
+
+		expect(currentClient.tokenId).toBe(previousToken.id);
+		expect(repository.update).toHaveBeenCalledWith(
+			expect.objectContaining({ id: currentClient.id, tokenId: previousToken.id }),
+			expect.objectContaining({ enabled: true }),
+		);
 	});
 
 	it('adds unique entropy to credentials issued within the same second', async () => {

@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, IsNull, Repository } from 'typeorm';
 
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -166,9 +166,21 @@ export class McpClientService {
 				await this.tokensService.revoke(previousToken.id, manager);
 			}
 
+			const clientRepository = manager.getRepository(McpClientEntity);
+			const updateResult = await clientRepository.update(
+				{
+					id: client.id,
+					tokenId: previousToken ? previousToken.id : IsNull(),
+				},
+				{ tokenId: token.id, enabled: true },
+			);
+
+			if (!updateResult.affected) {
+				throw new ConflictException('The MCP client credential was changed by another request');
+			}
+
 			client.tokenId = token.id;
 			client.enabled = true;
-			await manager.getRepository(McpClientEntity).save(client);
 		});
 
 		const credential = new McpClientCredentialModel();
