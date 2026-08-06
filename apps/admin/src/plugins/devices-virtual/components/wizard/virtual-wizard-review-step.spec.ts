@@ -90,6 +90,7 @@ const CHANNEL_SENSOR = 'channel-sensor';
 const PROPERTY_RELAY_0_ON = 'property-relay-0-on';
 const PROPERTY_RELAY_1_ON = 'property-relay-1-on';
 const PROPERTY_POWER = 'property-power';
+const PROPERTY_VOLTAGE = 'property-voltage';
 const PROPERTY_SENSOR_ACTIVE = 'property-sensor-active';
 
 const ROOM_LIVING = 'room-living';
@@ -110,6 +111,7 @@ const properties = [
 	{ id: PROPERTY_RELAY_0_ON, channel: CHANNEL_RELAY_0, name: 'Output', category: DevicesModuleChannelPropertyCategory.on },
 	{ id: PROPERTY_RELAY_1_ON, channel: CHANNEL_RELAY_1, name: 'Output', category: DevicesModuleChannelPropertyCategory.on },
 	{ id: PROPERTY_POWER, channel: CHANNEL_RELAY_1, name: null, category: DevicesModuleChannelPropertyCategory.power },
+	{ id: PROPERTY_VOLTAGE, channel: CHANNEL_RELAY_1, name: null, category: DevicesModuleChannelPropertyCategory.voltage },
 	{ id: PROPERTY_SENSOR_ACTIVE, channel: CHANNEL_SENSOR, name: null, category: DevicesModuleChannelPropertyCategory.active },
 ] as unknown as IChannelProperty[];
 
@@ -334,6 +336,37 @@ describe('VirtualWizardReviewStep', () => {
 		const categories = options.body.data.channels.map((channel) => channel.category).sort();
 
 		expect(categories).toEqual([DevicesModuleChannelCategory.electrical_power, DevicesModuleChannelCategory.light].sort());
+	});
+
+	// The previous test only proves two mappings under *different* spec channels land as two channel
+	// objects — that assertion (`channels.toHaveLength(2)`) passes identically under a naive
+	// one-channel-per-mapping implementation that never groups anything. This is the test that actually
+	// exercises grouping: two *filled* mappings sharing one spec channel — `electrical_power.power` and
+	// `electrical_power.voltage` together is the ordinary shape of that channel, not a contrived edge
+	// case — must land as one channel object carrying both properties, not two channel objects with the
+	// same category (which the backend would see as a duplicate-identifier channel in the same POST).
+	it('groups two mappings that share one spec channel into a single channel object with both properties', async () => {
+		const { wrapper } = mountReviewStep({
+			mappings: [
+				mapping(DevicesModuleChannelCategory.electrical_power, DevicesModuleChannelPropertyCategory.power, PROPERTY_POWER),
+				mapping(DevicesModuleChannelCategory.electrical_power, DevicesModuleChannelPropertyCategory.voltage, PROPERTY_VOLTAGE),
+			],
+		});
+
+		await wrapper.get('[data-test-id="create-device"]').trigger('click');
+		await flushAsync();
+
+		const [, options] = (backendClient.POST as Mock).mock.calls[0] as [
+			string,
+			{ body: { data: { channels: { category: string; properties: { category: string }[] }[] } } },
+		];
+
+		expect(options.body.data.channels).toHaveLength(1);
+		expect(options.body.data.channels[0].category).toBe(DevicesModuleChannelCategory.electrical_power);
+
+		const propertyCategories = options.body.data.channels[0].properties.map((property) => property.category).sort();
+
+		expect(propertyCategories).toEqual([DevicesModuleChannelPropertyCategory.power, DevicesModuleChannelPropertyCategory.voltage].sort());
 	});
 
 	it('marks a borrowed property with value_origin "source" and the mapped property id', async () => {
