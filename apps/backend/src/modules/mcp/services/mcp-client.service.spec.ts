@@ -18,6 +18,7 @@ describe('McpClientService', () => {
 	let service: McpClientService;
 	let repository: {
 		create: jest.Mock;
+		delete: jest.Mock;
 		find: jest.Mock;
 		findOne: jest.Mock;
 		remove: jest.Mock;
@@ -35,6 +36,7 @@ describe('McpClientService', () => {
 		currentClient = null;
 		repository = {
 			create: jest.fn((value) => value as McpClientEntity),
+			delete: jest.fn().mockResolvedValue({ affected: 1 }),
 			find: jest.fn().mockResolvedValue([]),
 			findOne: jest.fn().mockImplementation(() => Promise.resolve(currentClient)),
 			remove: jest.fn().mockResolvedValue(undefined),
@@ -319,6 +321,37 @@ describe('McpClientService', () => {
 		expect(repository.update).toHaveBeenCalledWith(
 			expect.objectContaining({ id: currentClient.id, tokenId: previousToken.id }),
 			{ enabled: false },
+		);
+	});
+
+	it('atomically revokes the credential and deletes the client', async () => {
+		const token = { id: uuid(), revoked: false } as LongLiveTokenEntity;
+		currentClient = {
+			id: uuid(),
+			enabled: true,
+			token,
+			tokenId: token.id,
+		} as McpClientEntity;
+
+		await service.remove(currentClient.id);
+
+		expect(tokensService.revoke).toHaveBeenCalledWith(token.id, expect.anything());
+		expect(repository.delete).toHaveBeenCalledWith({ id: currentClient.id, tokenId: token.id });
+		expect(repository.remove).not.toHaveBeenCalled();
+	});
+
+	it('rolls back deletion when the token pointer changed concurrently', async () => {
+		const token = { id: uuid(), revoked: false } as LongLiveTokenEntity;
+		currentClient = {
+			id: uuid(),
+			enabled: true,
+			token,
+			tokenId: token.id,
+		} as McpClientEntity;
+		repository.delete.mockResolvedValueOnce({ affected: 0 });
+
+		await expect(service.remove(currentClient.id)).rejects.toThrow(
+			'The MCP client credential was changed by another request',
 		);
 	});
 });

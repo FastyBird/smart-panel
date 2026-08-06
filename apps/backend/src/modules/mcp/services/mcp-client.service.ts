@@ -159,11 +159,20 @@ export class McpClientService {
 	async remove(id: string): Promise<void> {
 		const client = await this.getOneOrThrow(id);
 
-		if (client.token) {
-			await this.tokensService.revoke(client.token.id);
-		}
+		await this.dataSource.transaction(async (manager) => {
+			if (client.token) {
+				await this.tokensService.revoke(client.token.id, manager);
+			}
 
-		await this.repository.remove(client);
+			const deleteResult = await manager.getRepository(McpClientEntity).delete({
+				id: client.id,
+				tokenId: client.token ? client.token.id : IsNull(),
+			});
+
+			if (!deleteResult.affected) {
+				throw new ConflictException('The MCP client credential was changed by another request');
+			}
+		});
 	}
 
 	private async issueCredential(
