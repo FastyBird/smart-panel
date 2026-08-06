@@ -213,6 +213,8 @@ import { ExtensionKind } from '../../../modules/extensions/extensions.constants'
 import { CONFIG_MODULE_PLUGIN_TYPE } from '../../../modules/config/config.constants';
 import type { IPluginsComponents, IPluginsSchemas } from '../../../modules/config/config.types';
 import { configPluginsStoreKey } from '../../../modules/config/store/keys';
+import { useDevicesPlugins } from '../../../modules/devices/composables/useDevicesPlugins';
+import { DEVICES_MODULE_NAME } from '../../../modules/devices/devices.constants';
 import { devicesStoreKey } from '../../../modules/devices/store/keys';
 import { usePlugins } from '../../../modules/config/composables/usePlugins';
 
@@ -228,6 +230,7 @@ const extensionsStore = storesManager.getStore(extensionsStoreKey);
 const devicesStore = storesManager.getStore(devicesStoreKey);
 const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
 const { getByName } = usePlugins();
+const { getByPluginType } = useDevicesPlugins();
 
 const isFetching = ref(false);
 const togglingPlugins = reactive<Set<string>>(new Set());
@@ -275,6 +278,27 @@ const devicePlugins = computed(() => {
 const enabledCount = computed(() => devicePlugins.value.filter((p) => p.enabled).length);
 
 /**
+ * Resolves the device type string(s) a plugin's own devices are stored under, by reading the
+ * plugin registry — the same source devices.store.ts itself uses to resolve a device's schema.
+ *
+ * This cannot be derived by stripping '-plugin' off the plugin's own type string: for every
+ * plugin except devices-virtual, the device type happens to equal that derived prefix (e.g.
+ * 'devices-home-assistant-plugin' -> prefix 'devices-home-assistant' -> device type
+ * 'devices-home-assistant'), which is why that shortcut used to work everywhere it was tried.
+ * devices-virtual is the one plugin where the device type ('virtual') genuinely differs from the
+ * plugin's prefix ('devices-virtual') — the plugin name and device type are deliberately distinct
+ * (see devices-virtual.constants.ts), so no string transformation of the plugin type can recover
+ * the device type. Reading it from the registry is correct for every plugin uniformly.
+ */
+const devicesTypesForPlugin = (pluginType: string): string[] => {
+	const plugin = getByPluginType(pluginType);
+
+	return (plugin?.elements ?? [])
+		.filter((element) => element.modules === undefined || element.modules.includes(DEVICES_MODULE_NAME))
+		.map((element) => element.type);
+};
+
+/**
  * Live device counts per plugin type, computed directly from the store.
  * Updates automatically when devices are added/removed via WebSocket events.
  */
@@ -284,8 +308,8 @@ const deviceCountsByPlugin = computed(() => {
 
 	for (const plugin of devicePlugins.value) {
 		if (plugin.enabled) {
-			const pluginPrefix = plugin.type.replace('-plugin', '');
-			counts[plugin.type] = allDevices.filter((d) => d.type.startsWith(pluginPrefix)).length;
+			const deviceTypes = devicesTypesForPlugin(plugin.type);
+			counts[plugin.type] = allDevices.filter((d) => deviceTypes.includes(d.type)).length;
 		}
 	}
 
@@ -415,8 +439,8 @@ const startDiscovery = async (type: string): Promise<void> => {
 };
 
 const removePluginDevices = async (type: string): Promise<void> => {
-	const pluginPrefix = type.replace('-plugin', '');
-	const pluginDevices = devicesStore.findAll().filter((d) => d.type.startsWith(pluginPrefix));
+	const deviceTypes = devicesTypesForPlugin(type);
+	const pluginDevices = devicesStore.findAll().filter((d) => deviceTypes.includes(d.type));
 
 	for (const device of pluginDevices) {
 		try {

@@ -145,7 +145,11 @@ const rules = reactive<FormRules<IDeviceChannelDataSourceAddForm>>({
 });
 
 const devicesOptions = computed<{ value: IDevice['id']; label: string }[]>((): { value: IDevice['id']; label: string }[] => {
-	return orderBy<IDevice>(devices.value, [(device: IDevice) => device.name], ['asc']).map((device) => ({ value: device.id, label: device.name }));
+	return orderBy<IDevice>(
+		devices.value.filter((device) => !device.hidden),
+		[(device: IDevice) => device.name],
+		['asc']
+	).map((device) => ({ value: device.id, label: device.name }));
 });
 
 const channelsOptions = computed<{ value: IChannel['id']; label: string }[]>((): { value: IChannel['id']; label: string }[] => {

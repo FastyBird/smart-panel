@@ -142,7 +142,11 @@ const rules = reactive<FormRules<IDevicePreviewTileEditForm>>({
 });
 
 const devicesOptions = computed<{ value: IDevice['id']; label: string }[]>((): { value: IDevice['id']; label: string }[] => {
-	return orderBy<IDevice>(devices.value, [(device: IDevice) => device.name], ['asc']).map((device) => ({ value: device.id, label: device.name }));
+	return orderBy<IDevice>(
+		devices.value.filter((device) => !device.hidden),
+		[(device: IDevice) => device.name],
+		['asc']
+	).map((device) => ({ value: device.id, label: device.name }));
 });
 
 onBeforeMount((): void => {

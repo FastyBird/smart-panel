@@ -316,7 +316,11 @@ const stringValue = computed<string>({
 });
 
 const devicesOptions = computed<{ value: IDevice['id']; label: string }[]>(() => {
-	const sorted = orderBy<IDevice>(devices.value, [(device: IDevice) => device.name.toLowerCase()], ['asc']);
+	const sorted = orderBy<IDevice>(
+		devices.value.filter((device) => !device.hidden),
+		[(device: IDevice) => device.name.toLowerCase()],
+		['asc']
+	);
 	return sorted.map((device) => ({
 		value: device.id,
 		label: device.name,

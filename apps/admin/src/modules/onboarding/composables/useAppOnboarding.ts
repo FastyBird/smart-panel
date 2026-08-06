@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n';
 
 import { injectStoresManager, useBackend, useFlashMessage } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
+import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import { sessionStoreKey } from '../../auth/store/keys';
 import { CONFIG_MODULE_PREFIX } from '../../config/config.constants';
 import { DEVICES_MODULE_PREFIX } from '../../devices/devices.constants';
@@ -246,7 +247,13 @@ export const useAppOnboarding = () => {
 
 	const fetchDevices = async (): Promise<boolean> => {
 		try {
-			const { data, error } = await backend.client.GET(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices`);
+			// A hidden device can never receive a placement change — the backend refuses the entire
+			// assignment batch in saveDeviceAssignments() below if even one targeted device is hidden.
+			// Excluding hidden devices here, at the source, means one can never be suggested a room or
+			// swept into that batch in the first place.
+			const { data, error } = await backend.client.GET(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices`, {
+				params: { query: { hidden: DevicesModuleDevicesHiddenFilter.false } },
+			});
 
 			if (error || !data) return false;
 
