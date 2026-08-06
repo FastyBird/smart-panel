@@ -1,6 +1,6 @@
 # Smart Panel MCP Module — Implementation Plan
 
-**Status:** Phase 2 complete — Phase 3 pending
+**Status:** Phase 3 complete — Phase 4 pending
 
 **Architecture decision:** [ADR 0001: MCP Protocol and Security Foundation](../../docs/adr/0001-mcp-protocol-and-security-foundation.md)
 supersedes the original stateful-session transport assumptions in this plan.
@@ -368,23 +368,28 @@ report partial or failed operations honestly without exposing internal exception
 - Create: incremental migration `apps/backend/src/migrations/<next>-AddMcpClients.ts`
 - Modify auth constants, token service, HTTP auth guard, and WebSocket auth service
 
-- [ ] Add `TokenOwnerType.MCP`.
-- [ ] Store MCP client name, description, enabled state, capability subset, creator user ID, timestamps, and associated
+- [x] Add `TokenOwnerType.MCP`.
+- [x] Store MCP client name, description, enabled state, capability subset, creator user ID, timestamps, and associated
       long-lived token ID/owner relationship.
-- [ ] Generate an MCP JWT with `type: mcp`, MCP client ID as subject/owner, finite expiry, and canonical endpoint
+- [x] Generate an MCP JWT with `type: mcp`, MCP client ID as subject/owner, finite expiry, and canonical endpoint
       audience.
-- [ ] Store only the normal token hash; return the raw token exactly once.
-- [ ] Add owner/admin-only list, create, update, rotate, revoke/delete management endpoints.
-- [ ] Validate requested client capabilities against the module's configured ceiling at creation/update time.
-- [ ] Also intersect capabilities at request time so later module reductions apply immediately.
-- [ ] Extend `AuthGuard` with explicit MCP-endpoint metadata: MCP tokens are accepted only on that endpoint and all
+- [x] Store only the normal token hash; return the raw token exactly once.
+- [x] Add owner/admin-only list, create, update, rotate, revoke/delete management endpoints.
+- [x] Validate requested client capabilities against the module's configured ceiling at creation/update time.
+- [x] Also intersect capabilities at request time so later module reductions apply immediately.
+- [x] Extend `AuthGuard` with explicit MCP-endpoint metadata: MCP tokens are accepted only on that endpoint and all
       other token types are rejected there.
-- [ ] Reject MCP tokens in `WsAuthService` before they reach the generic long-lived-token branch.
-- [ ] Ensure profile PAT lists and display-token flows do not accidentally include or manage MCP credentials.
-- [ ] Use an incremental migration; never edit an existing migration.
+- [x] Reject MCP tokens in `WsAuthService` before they reach the generic long-lived-token branch.
+- [x] Ensure profile PAT lists and display-token flows do not accidentally include or manage MCP credentials.
+- [x] Use an incremental migration; never edit an existing migration.
 
 **Tests:** one-time secret, hash storage, expiry, audience, revocation, rotation, capability subset validation, MCP token
 rejected on REST, PAT rejected on MCP, MCP token rejected on WebSocket, and existing display/PAT auth regressions.
+
+**Outcome:** MCP clients now have installation-local records, finite audience-bound credentials, one-time secret
+delivery, capability ceilings with request-time intersection, and owner/admin lifecycle APIs. HTTP, WebSocket,
+personal-access-token, and display authentication paths explicitly isolate MCP credentials, backed by an incremental
+SQLite migration and focused regression coverage.
 
 ### Task 6: Implement policy and subscription services
 

@@ -1,0 +1,191 @@
+import { Repository } from 'typeorm';
+
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+
+import { TokenOwnerType } from '../../auth/auth.constants';
+import { LongLiveTokenEntity } from '../../auth/entities/auth.entity';
+import { TokensService } from '../../auth/services/tokens.service';
+import { ConfigService } from '../../config/services/config.service';
+import { CreateMcpClientDto, RotateMcpClientTokenDto, UpdateMcpClientDto } from '../dto/mcp-client.dto';
+import { McpClientEntity } from '../entities/mcp-client.entity';
+import { MCP_MODULE_NAME, McpCapability } from '../mcp.constants';
+import { McpConfigModel } from '../models/config.model';
+import { McpClientCredentialModel } from '../models/mcp-client.model';
+
+import { McpInstallationService } from './mcp-installation.service';
+
+const SECONDS_PER_DAY = 24 * 60 * 60;
+
+@Injectable()
+export class McpClientService {
+	constructor(
+		@InjectRepository(McpClientEntity)
+		private readonly repository: Repository<McpClientEntity>,
+		private readonly tokensService: TokensService,
+		private readonly jwtService: JwtService,
+		private readonly configService: ConfigService,
+		private readonly installationService: McpInstallationService,
+	) {}
+
+	async findAll(): Promise<McpClientEntity[]> {
+		return this.repository.find({ relations: { token: true }, order: { createdAt: 'DESC' } });
+	}
+
+	async findOne(id: string): Promise<McpClientEntity | null> {
+		return this.repository.findOne({ where: { id }, relations: { token: true } });
+	}
+
+	async getOneOrThrow(id: string): Promise<McpClientEntity> {
+		const client = await this.findOne(id);
+
+		if (!client) {
+			throw new NotFoundException('Requested MCP client does not exist');
+		}
+
+		return client;
+	}
+
+	async findActiveByToken(tokenId: string, clientId: string): Promise<McpClientEntity | null> {
+		return this.repository.findOne({
+			where: { id: clientId, tokenId, enabled: true },
+			relations: { token: true },
+		});
+	}
+
+	getEffectiveCapabilities(client: McpClientEntity): McpCapability[] {
+		const ceiling = this.getCapabilityCeiling();
+
+		return client.capabilities.filter((capability) => ceiling.includes(capability));
+	}
+
+	async create(dto: CreateMcpClientDto, createdById: string): Promise<McpClientCredentialModel> {
+		this.assertCapabilitiesAllowed(dto.capabilities);
+
+		const client = await this.repository.save(
+			this.repository.create({
+				name: dto.name,
+				description: dto.description ?? null,
+				enabled: true,
+				capabilities: [...dto.capabilities],
+				createdById,
+				tokenId: null,
+			}),
+		);
+
+		try {
+			return await this.issueCredential(client, dto.expiresInDays);
+		} catch (error) {
+			await this.repository.remove(client);
+			throw error;
+		}
+	}
+
+	async update(id: string, dto: UpdateMcpClientDto): Promise<McpClientEntity> {
+		const client = await this.getOneOrThrow(id);
+
+		if (dto.capabilities !== undefined) {
+			this.assertCapabilitiesAllowed(dto.capabilities);
+			client.capabilities = [...dto.capabilities];
+		}
+		if (dto.name !== undefined) client.name = dto.name;
+		if (dto.description !== undefined) client.description = dto.description;
+		if (dto.enabled !== undefined) client.enabled = dto.enabled;
+
+		await this.repository.save(client);
+
+		return this.getOneOrThrow(id);
+	}
+
+	async rotate(id: string, dto: RotateMcpClientTokenDto): Promise<McpClientCredentialModel> {
+		const client = await this.getOneOrThrow(id);
+		const previousToken = client.token;
+		const credential = await this.issueCredential(client, dto.expiresInDays);
+
+		if (previousToken) {
+			await this.tokensService.revoke(previousToken.id);
+		}
+
+		return credential;
+	}
+
+	async revoke(id: string): Promise<McpClientEntity> {
+		const client = await this.getOneOrThrow(id);
+		client.enabled = false;
+
+		if (client.token) {
+			await this.tokensService.revoke(client.token.id);
+		}
+
+		await this.repository.save(client);
+
+		return this.getOneOrThrow(id);
+	}
+
+	async remove(id: string): Promise<void> {
+		const client = await this.getOneOrThrow(id);
+
+		if (client.token) {
+			await this.tokensService.revoke(client.token.id);
+		}
+
+		await this.repository.remove(client);
+	}
+
+	private async issueCredential(client: McpClientEntity, expiresInDays: number): Promise<McpClientCredentialModel> {
+		const issuedAt = Math.floor(Date.now() / 1000);
+		const expiresIn = expiresInDays * SECONDS_PER_DAY;
+		const rawToken = await this.jwtService.signAsync(
+			{
+				sub: client.id,
+				type: TokenOwnerType.MCP,
+				iat: issuedAt,
+			},
+			{
+				audience: await this.installationService.getAudience(),
+				expiresIn,
+			},
+		);
+		let token: LongLiveTokenEntity | undefined;
+
+		try {
+			token = await this.tokensService.createLongLiveToken({
+				token: rawToken,
+				ownerType: TokenOwnerType.MCP,
+				ownerId: client.id,
+				name: client.name,
+				description: client.description,
+				expiresAt: new Date((issuedAt + expiresIn) * 1000),
+			});
+
+			client.tokenId = token.id;
+			client.enabled = true;
+			await this.repository.save(client);
+		} catch (error) {
+			if (token) {
+				await this.tokensService.revoke(token.id);
+			}
+			throw error;
+		}
+
+		const credential = new McpClientCredentialModel();
+		credential.client = await this.getOneOrThrow(client.id);
+		credential.token = rawToken;
+
+		return credential;
+	}
+
+	private assertCapabilitiesAllowed(capabilities: McpCapability[]): void {
+		const ceiling = this.getCapabilityCeiling();
+		const disallowed = capabilities.filter((capability) => !ceiling.includes(capability));
+
+		if (disallowed.length > 0) {
+			throw new BadRequestException(`Capabilities exceed the module ceiling: ${disallowed.join(', ')}`);
+		}
+	}
+
+	private getCapabilityCeiling(): McpCapability[] {
+		return this.configService.getModuleConfig<McpConfigModel>(MCP_MODULE_NAME).capabilities;
+	}
+}

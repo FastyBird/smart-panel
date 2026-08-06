@@ -53,6 +53,10 @@ export class WsAuthService {
 			throw new WebsocketNotAllowedException('Invalid or expired token');
 		}
 
+		if ((payload.type as TokenOwnerType) === TokenOwnerType.MCP) {
+			throw new WebsocketNotAllowedException('MCP credentials cannot authenticate WebSocket connections');
+		}
+
 		// Check if this is a display token (type: TokenOwnerType.DISPLAY in payload)
 		if ((payload.type as TokenOwnerType) === TokenOwnerType.DISPLAY && payload.sub) {
 			return this.validateDisplayToken(client, token, payload.sub);

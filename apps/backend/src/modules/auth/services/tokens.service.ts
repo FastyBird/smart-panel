@@ -134,6 +134,15 @@ export class TokensService {
 		this.logger.debug(`Successfully revoked tokens for ownerId=${ownerId}`);
 	}
 
+	async revoke(id: string): Promise<void> {
+		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
+		const result = await repository.update(id, { revoked: true });
+
+		if (!result.affected) {
+			throw new AuthNotFoundException('Requested token does not exist');
+		}
+	}
+
 	async findOneByHashedToken(hashedToken: string): Promise<LongLiveTokenEntity | null> {
 		this.logger.debug('Finding long-live token by hashed value');
 
@@ -396,9 +405,22 @@ export class TokensService {
 		ownerId: string;
 		name: string;
 		description: string | null;
-		expiresAt: Date;
+		expiresAt: Date | null;
 	}): Promise<LongLiveTokenEntity> {
 		this.logger.debug('Creating personal access token');
+
+		return this.createLongLiveToken(data);
+	}
+
+	async createLongLiveToken(data: {
+		token: string;
+		ownerType: TokenOwnerType;
+		ownerId: string;
+		name: string;
+		description: string | null;
+		expiresAt: Date | null;
+	}): Promise<LongLiveTokenEntity> {
+		this.logger.debug(`Creating long-live token for ownerType=${data.ownerType}`);
 
 		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
 
@@ -415,10 +437,10 @@ export class TokensService {
 		const result = await repository.findOne({ where: { id: saved.id } });
 
 		if (!result) {
-			throw new AuthException('Failed to create personal token');
+			throw new AuthException('Failed to create long-live token');
 		}
 
-		this.logger.debug(`Created personal access token id=${result.id}`);
+		this.logger.debug(`Created long-live token id=${result.id}`);
 
 		return result;
 	}

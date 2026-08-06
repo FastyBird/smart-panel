@@ -17,6 +17,7 @@ export enum TokenOwnerType {
 	USER = 'user',
 	DISPLAY = 'display',
 	THIRD_PARTY = 'third_party',
+	MCP = 'mcp',
 }
 
 export const ACCESS_TOKEN_TYPE = 'Bearer';
