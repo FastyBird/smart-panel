@@ -19,6 +19,11 @@ import { ChannelsTypeMapperService } from './channels-type-mapper.service';
 import { ChannelsControlsService } from './channels.controls.service';
 import { ChannelsPropertiesService } from './channels.properties.service';
 
+export interface ChannelSummaryPage {
+	channels: ChannelEntity[];
+	total: number;
+}
+
 @Injectable()
 export class ChannelsService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'ChannelsService');
@@ -102,6 +107,18 @@ export class ChannelsService {
 		this.logger.debug(`Found ${channels.length} channels`);
 
 		return channels;
+	}
+
+	async findSummaryPage(deviceId: string, limit: number): Promise<ChannelSummaryPage> {
+		const query = this.repository
+			.createQueryBuilder('channel')
+			.innerJoin('channel.device', 'device')
+			.where('device.id = :deviceId', { deviceId })
+			.orderBy('channel.name', 'ASC')
+			.take(limit);
+		const [channels, total] = await query.getManyAndCount();
+
+		return { channels, total };
 	}
 
 	async findOne<TChannel extends ChannelEntity>(

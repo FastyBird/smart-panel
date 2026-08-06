@@ -6,6 +6,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { ConfigService } from '../../config/services/config.service';
 import { ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
+import { ChannelsService } from '../../devices/services/channels.service';
 import { DevicesService, VisibleDeviceSpaceCounts } from '../../devices/services/devices.service';
 import { BucketDuration, PropertyTimeseriesService } from '../../devices/services/property-timeseries.service';
 import { EnergyDataService } from '../../energy/services/energy-data.service';
@@ -55,6 +56,7 @@ export class McpContextService {
 		private readonly installationService: McpInstallationService,
 		private readonly spacesService: SpacesService,
 		private readonly devicesService: DevicesService,
+		private readonly channelsService: ChannelsService,
 		private readonly propertiesService: ChannelsPropertiesService,
 		private readonly timeseriesService: PropertyTimeseriesService,
 		private readonly scenesService: ScenesService,
@@ -92,21 +94,21 @@ export class McpContextService {
 			? Promise.resolve<VisibleDeviceSpaceCounts | null>(null)
 			: this.devicesService.getVisibleSpaceCounts();
 
-		const [allSpaces, devicePage, spaceCounts, allScenes, weather, energy, security] = await Promise.all([
+		const [allSpaces, devicePage, spaceCounts, scenePage, weather, energy, security] = await Promise.all([
 			selectedSpace ? Promise.resolve([selectedSpace]) : this.spacesService.findAll(),
 			selectedSpace
 				? this.spacesService.findVisibleDeviceSummariesBySpace(selectedSpace.id, MCP_MAX_CONTEXT_DEVICES)
 				: this.devicesService.findVisibleSummaryPage(MCP_MAX_CONTEXT_DEVICES),
 			spaceCountsPromise,
-			selectedSpace ? this.scenesService.findBySpace(selectedSpace.id) : this.scenesService.findAll(),
+			this.scenesService.findSummaryPage(MCP_MAX_CONTEXT_SCENES, selectedSpace?.id),
 			this.optional(() => this.weatherService.getPrimaryWeather()),
-			this.optional(() => this.getEnergySummaryData(undefined, undefined, selectedSpace?.id)),
+			this.optional(() => this.getEnergySummaryData(undefined, undefined, selectedSpace ?? undefined)),
 			this.optional(() => this.securityService.getStatus()),
 		]);
 
 		const devices = devicePage.devices.filter((device) => !device.hidden);
 		const spaces = allSpaces.slice(0, MCP_MAX_CONTEXT_SPACES);
-		const scenes = allScenes.slice(0, MCP_MAX_CONTEXT_SCENES);
+		const scenes = scenePage.scenes;
 		const scopedZoneId = selectedSpace?.type === SpaceType.ZONE ? selectedSpace.id : undefined;
 
 		return {
@@ -133,19 +135,39 @@ export class McpContextService {
 			limits: {
 				spaces_truncated: allSpaces.length > spaces.length,
 				devices_truncated: devicePage.total > devices.length,
-				scenes_truncated: allScenes.length > scenes.length,
+				scenes_truncated: scenePage.total > scenes.length,
 			},
 		};
 	}
 
 	async getDeviceState(deviceId: string): Promise<Record<string, unknown>> {
-		const device = await this.devicesService.findOne(deviceId);
+		const device = await this.devicesService.findVisibleSummaryById(deviceId);
 
-		if (!device || device.hidden) {
+		if (!device) {
 			throw new NotFoundException('Requested device does not exist');
 		}
+		const channelPage = await this.channelsService.findSummaryPage(device.id, MCP_MAX_CHANNELS_PER_DEVICE);
+		const properties = await this.propertiesService.findBoundedForChannels(
+			channelPage.channels.map((channel) => channel.id),
+			MCP_MAX_PROPERTIES_PER_CHANNEL,
+		);
+		const propertiesByChannel = new Map<string, ChannelPropertyEntity[]>();
 
-		return this.mapDevice(device);
+		for (const property of properties.properties) {
+			const channelId = this.getPropertyChannelId(property);
+
+			if (channelId) {
+				propertiesByChannel.set(channelId, [...(propertiesByChannel.get(channelId) ?? []), property]);
+			}
+		}
+
+		device.channels = channelPage.channels.map((channel) => {
+			channel.properties = propertiesByChannel.get(channel.id) ?? [];
+
+			return channel;
+		});
+
+		return this.mapDevice(device, channelPage.total, properties.totals);
 	}
 
 	async getPropertyTimeseries(
@@ -188,11 +210,13 @@ export class McpContextService {
 	}
 
 	async getEnergySummary(from?: string, to?: string, spaceId?: string): Promise<Record<string, unknown>> {
-		if (spaceId && !(await this.spacesService.findOne(spaceId))) {
+		const space = spaceId ? await this.spacesService.findOne(spaceId) : null;
+
+		if (spaceId && !space) {
 			throw new NotFoundException('Requested space does not exist');
 		}
 
-		return this.getEnergySummaryData(from, to, spaceId);
+		return this.getEnergySummaryData(from, to, space ?? undefined);
 	}
 
 	async getWeather(locationId?: string): Promise<Record<string, unknown>> {
@@ -217,7 +241,11 @@ export class McpContextService {
 		}));
 	}
 
-	private async getEnergySummaryData(from?: string, to?: string, spaceId?: string): Promise<Record<string, unknown>> {
+	private async getEnergySummaryData(
+		from?: string,
+		to?: string,
+		space?: SpaceEntity,
+	): Promise<Record<string, unknown>> {
 		const defaultTo = to ? new Date(to) : new Date();
 		const defaultFrom = from
 			? new Date(from)
@@ -233,12 +261,15 @@ export class McpContextService {
 						'energy',
 					)
 				: { from: defaultFrom, to: defaultTo };
-		const summary = spaceId
-			? await this.energyService.getSpaceSummary(range.from, range.to, spaceId)
-			: await this.energyService.getSummary(range.from, range.to);
+		const category = (space as { category?: string | null } | undefined)?.category ?? null;
+		const summary = !space
+			? await this.energyService.getSummary(range.from, range.to)
+			: space.type === SpaceType.ZONE && !isFloorZoneCategory(category)
+				? await this.energyService.getDeviceZoneSummary(range.from, range.to, space.id)
+				: await this.energyService.getSpaceSummary(range.from, range.to, space.id);
 
 		return {
-			scope: spaceId ? { type: 'space', id: spaceId } : { type: 'home' },
+			scope: space ? { type: 'space', id: space.id } : { type: 'home' },
 			from: range.from.toISOString(),
 			to: range.to.toISOString(),
 			...summary,
@@ -261,7 +292,11 @@ export class McpContextService {
 		};
 	}
 
-	private mapDevice(device: DeviceEntity): Record<string, unknown> {
+	private mapDevice(
+		device: DeviceEntity,
+		channelTotal = device.channels?.length ?? 0,
+		propertyTotals: Record<string, number> = {},
+	): Record<string, unknown> {
 		const channels = (device.channels ?? []).slice(0, MCP_MAX_CHANNELS_PER_DEVICE);
 
 		return {
@@ -290,9 +325,10 @@ export class McpContextService {
 					last_updated: property.value?.lastUpdated ?? null,
 					trend: property.value?.trend ?? null,
 				})),
-				properties_truncated: (channel.properties?.length ?? 0) > MCP_MAX_PROPERTIES_PER_CHANNEL,
+				properties_truncated:
+					(propertyTotals[channel.id] ?? channel.properties?.length ?? 0) > MCP_MAX_PROPERTIES_PER_CHANNEL,
 			})),
-			channels_truncated: (device.channels?.length ?? 0) > MCP_MAX_CHANNELS_PER_DEVICE,
+			channels_truncated: channelTotal > MCP_MAX_CHANNELS_PER_DEVICE,
 		};
 	}
 
@@ -353,6 +389,10 @@ export class McpContextService {
 		const device = channel.device;
 
 		return typeof device === 'string' ? null : device;
+	}
+
+	private getPropertyChannelId(property: ChannelPropertyEntity): string | null {
+		return typeof property.channel === 'string' ? property.channel : property.channel.id;
 	}
 
 	private getZoneIds(device: DeviceEntity, scopedZoneId?: string): string[] {

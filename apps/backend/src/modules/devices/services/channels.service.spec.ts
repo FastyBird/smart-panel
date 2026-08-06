@@ -222,6 +222,26 @@ describe('ChannelsService', () => {
 		});
 	});
 
+	describe('findSummaryPage', () => {
+		it('applies the channel cap before hydration', async () => {
+			const queryBuilderMock: any = {
+				innerJoin: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				getManyAndCount: jest.fn().mockResolvedValue([[mockChannel], 25]),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+
+			await expect(service.findSummaryPage(mockDevice.id, 20)).resolves.toEqual({
+				channels: [mockChannel],
+				total: 25,
+			});
+			expect(queryBuilderMock.innerJoin).toHaveBeenCalledWith('channel.device', 'device');
+			expect(queryBuilderMock.take).toHaveBeenCalledWith(20);
+		});
+	});
+
 	describe('findOne', () => {
 		it('should return a channel if found', async () => {
 			const queryBuilderMock: any = {

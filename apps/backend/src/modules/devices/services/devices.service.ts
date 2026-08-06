@@ -144,6 +144,15 @@ export class DevicesService {
 		return { devices, total };
 	}
 
+	async findVisibleSummaryById(id: string): Promise<DeviceEntity | null> {
+		return this.repository
+			.createQueryBuilder('device')
+			.leftJoinAndSelect('device.deviceZones', 'deviceZones')
+			.where('device.id = :id', { id })
+			.andWhere('device.hidden = :hidden', { hidden: false })
+			.getOne();
+	}
+
 	async getVisibleSpaceCounts(): Promise<VisibleDeviceSpaceCounts> {
 		interface SpaceCountRow {
 			spaceId: string;

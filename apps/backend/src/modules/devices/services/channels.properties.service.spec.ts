@@ -170,6 +170,7 @@ describe('ChannelsPropertiesService', () => {
 						manager: mockManager,
 						transaction: jest.fn(async (cb: (m: any) => any) => await cb(mockManager)),
 						getRepository: jest.fn(() => {}),
+						query: jest.fn(),
 					},
 				},
 				{
@@ -232,6 +233,35 @@ describe('ChannelsPropertiesService', () => {
 			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('property.channel', 'channel');
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('channel.id = :channelId', { channelId: mockChannel.id });
 			expect(queryBuilderMock.getMany).toHaveBeenCalled();
+		});
+	});
+
+	describe('findBoundedForChannels', () => {
+		it('selects capped property IDs before hydrating values', async () => {
+			const countQuery: any = {
+				innerJoin: jest.fn().mockReturnThis(),
+				select: jest.fn().mockReturnThis(),
+				addSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				groupBy: jest.fn().mockReturnThis(),
+				getRawMany: jest.fn().mockResolvedValue([{ channelId: mockChannel.id, propertyCount: '45' }]),
+			};
+			const entityQuery: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockResolvedValue([mockChannelProperty]),
+			};
+			jest.spyOn(dataSource, 'query').mockResolvedValue([{ id: mockChannelProperty.id }]);
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValueOnce(countQuery).mockReturnValueOnce(entityQuery);
+
+			await expect(channelsPropertiesService.findBoundedForChannels([mockChannel.id], 40)).resolves.toEqual({
+				properties: [mockChannelProperty],
+				totals: { [mockChannel.id]: 45 },
+			});
+			expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('ROW_NUMBER() OVER'), [mockChannel.id, 40]);
+			expect(entityQuery.where).toHaveBeenCalledWith('property.id IN (:...propertyIds)', {
+				propertyIds: [mockChannelProperty.id],
+			});
 		});
 	});
 

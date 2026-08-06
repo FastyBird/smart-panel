@@ -258,6 +258,21 @@ describe('DevicesService', () => {
 				roomIds: ['room-id'],
 			});
 		});
+
+		it('loads one visible device without channel relations', async () => {
+			const visibleDevice = toInstance(MockDevice, { ...mockDevice, hidden: false });
+			const queryBuilderMock: any = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(visibleDevice),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+
+			await expect(service.findVisibleSummaryById(mockDevice.id)).resolves.toEqual(visibleDevice);
+			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledTimes(1);
+			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('device.deviceZones', 'deviceZones');
+		});
 	});
 
 	describe('getVisibleSpaceCounts', () => {

@@ -19,6 +19,11 @@ import { ChannelsPropertiesTypeMapperService } from './channels.properties-type-
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
 
+export interface BoundedChannelProperties {
+	properties: ChannelPropertyEntity[];
+	totals: Record<string, number>;
+}
+
 @Injectable()
 export class ChannelsPropertiesService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'ChannelsPropertiesService');
@@ -78,6 +83,61 @@ export class ChannelsPropertiesService {
 		this.logger.debug(`Found ${properties.length} properties`);
 
 		return properties;
+	}
+
+	async findBoundedForChannels(channelIds: string[], perChannelLimit: number): Promise<BoundedChannelProperties> {
+		if (channelIds.length === 0) {
+			return { properties: [], totals: {} };
+		}
+
+		interface PropertyIdRow {
+			id: string;
+		}
+
+		interface PropertyCountRow {
+			channelId: string;
+			propertyCount: string | number;
+		}
+
+		const placeholders = channelIds.map(() => '?').join(', ');
+		const [idRows, countRows] = await Promise.all([
+			this.dataSource.query<PropertyIdRow[]>(
+				`SELECT ranked."id" AS "id"
+				 FROM (
+				   SELECT property."id" AS "id",
+				          ROW_NUMBER() OVER (
+				            PARTITION BY property."channelId"
+				            ORDER BY COALESCE(property."name", ''), property."id"
+				          ) AS "rowNumber"
+				   FROM devices_module_channels_properties property
+				   WHERE property."channelId" IN (${placeholders})
+				 ) ranked
+				 WHERE ranked."rowNumber" <= ?`,
+				[...channelIds, perChannelLimit],
+			),
+			this.repository
+				.createQueryBuilder('property')
+				.innerJoin('property.channel', 'channel')
+				.select('channel.id', 'channelId')
+				.addSelect('COUNT(property.id)', 'propertyCount')
+				.where('channel.id IN (:...channelIds)', { channelIds })
+				.groupBy('channel.id')
+				.getRawMany<PropertyCountRow>(),
+		]);
+		const propertyIds = idRows.map((row) => row.id);
+		const properties =
+			propertyIds.length === 0
+				? []
+				: await this.repository
+						.createQueryBuilder('property')
+						.innerJoinAndSelect('property.channel', 'channel')
+						.where('property.id IN (:...propertyIds)', { propertyIds })
+						.getMany();
+
+		return {
+			properties,
+			totals: Object.fromEntries(countRows.map((row) => [row.channelId, Number(row.propertyCount)])),
+		};
 	}
 
 	async findOne<TProperty extends ChannelPropertyEntity>(

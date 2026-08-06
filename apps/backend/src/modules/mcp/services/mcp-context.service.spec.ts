@@ -1,6 +1,7 @@
 import { ConfigService } from '../../config/services/config.service';
 import { ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
+import { ChannelsService } from '../../devices/services/channels.service';
 import { DevicesService } from '../../devices/services/devices.service';
 import { PropertyTimeseriesService } from '../../devices/services/property-timeseries.service';
 import { EnergyDataService } from '../../energy/services/energy-data.service';
@@ -10,7 +11,13 @@ import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { SpacesService } from '../../spaces/services/spaces.service';
 import { SpaceType, SpaceZoneCategory } from '../../spaces/spaces.constants';
 import { WeatherService } from '../../weather/services/weather.service';
-import { MCP_MAX_CONTEXT_DEVICES, McpCapability } from '../mcp.constants';
+import {
+	MCP_MAX_CHANNELS_PER_DEVICE,
+	MCP_MAX_CONTEXT_DEVICES,
+	MCP_MAX_CONTEXT_SCENES,
+	MCP_MAX_PROPERTIES_PER_CHANNEL,
+	McpCapability,
+} from '../mcp.constants';
 
 import { McpContextService } from './mcp-context.service';
 import { McpInstallationService } from './mcp-installation.service';
@@ -18,12 +25,17 @@ import { McpInstallationService } from './mcp-installation.service';
 describe('McpContextService', () => {
 	let service: McpContextService;
 	let spaces: { findAll: jest.Mock; findOne: jest.Mock; findVisibleDeviceSummariesBySpace: jest.Mock };
-	let devices: { findVisibleSummaryPage: jest.Mock; getVisibleSpaceCounts: jest.Mock; findOne: jest.Mock };
-	let properties: { findOne: jest.Mock };
+	let devices: {
+		findVisibleSummaryPage: jest.Mock;
+		getVisibleSpaceCounts: jest.Mock;
+		findVisibleSummaryById: jest.Mock;
+	};
+	let channels: { findSummaryPage: jest.Mock };
+	let properties: { findOne: jest.Mock; findBoundedForChannels: jest.Mock };
 	let timeseries: { queryTimeseries: jest.Mock };
-	let scenes: { findAll: jest.Mock; findBySpace: jest.Mock };
+	let scenes: { findSummaryPage: jest.Mock };
 	let weather: { getPrimaryWeather: jest.Mock; getWeather: jest.Mock };
-	let energy: { getSummary: jest.Mock; getSpaceSummary: jest.Mock };
+	let energy: { getSummary: jest.Mock; getSpaceSummary: jest.Mock; getDeviceZoneSummary: jest.Mock };
 	let security: { getStatus: jest.Mock };
 
 	beforeEach(() => {
@@ -35,14 +47,15 @@ describe('McpContextService', () => {
 		devices = {
 			findVisibleSummaryPage: jest.fn().mockResolvedValue({ devices: [], total: 0 }),
 			getVisibleSpaceCounts: jest.fn().mockResolvedValue({ rooms: {}, zones: {} }),
+			findVisibleSummaryById: jest.fn().mockResolvedValue(null),
+		};
+		channels = { findSummaryPage: jest.fn().mockResolvedValue({ channels: [], total: 0 }) };
+		properties = {
 			findOne: jest.fn().mockResolvedValue(null),
+			findBoundedForChannels: jest.fn().mockResolvedValue({ properties: [], totals: {} }),
 		};
-		properties = { findOne: jest.fn().mockResolvedValue(null) };
 		timeseries = { queryTimeseries: jest.fn() };
-		scenes = {
-			findAll: jest.fn().mockResolvedValue([]),
-			findBySpace: jest.fn().mockResolvedValue([]),
-		};
+		scenes = { findSummaryPage: jest.fn().mockResolvedValue({ scenes: [], total: 0 }) };
 		weather = {
 			getPrimaryWeather: jest.fn().mockRejectedValue(new Error('weather unavailable')),
 			getWeather: jest.fn(),
@@ -50,6 +63,7 @@ describe('McpContextService', () => {
 		energy = {
 			getSummary: jest.fn().mockRejectedValue(new Error('energy unavailable')),
 			getSpaceSummary: jest.fn(),
+			getDeviceZoneSummary: jest.fn(),
 		};
 		security = { getStatus: jest.fn().mockRejectedValue(new Error('security unavailable')) };
 
@@ -58,6 +72,7 @@ describe('McpContextService', () => {
 			{ getInstallationId: jest.fn().mockResolvedValue('installation-id') } as unknown as McpInstallationService,
 			spaces as unknown as SpacesService,
 			devices as unknown as DevicesService,
+			channels as unknown as ChannelsService,
 			properties as unknown as ChannelsPropertiesService,
 			timeseries as unknown as PropertyTimeseriesService,
 			scenes as unknown as ScenesService,
@@ -165,8 +180,29 @@ describe('McpContextService', () => {
 		]);
 	});
 
+	it('requests only the bounded scene summary page', async () => {
+		scenes.findSummaryPage.mockResolvedValue({
+			scenes: [
+				{
+					id: 'scene-id',
+					name: 'Movie night',
+					category: 'generic',
+					enabled: true,
+					triggerable: true,
+					primarySpaceId: null,
+				},
+			],
+			total: MCP_MAX_CONTEXT_SCENES + 1,
+		});
+
+		const result = await service.getHomeContext();
+
+		expect(scenes.findSummaryPage).toHaveBeenCalledWith(MCP_MAX_CONTEXT_SCENES, undefined);
+		expect(result.limits).toEqual(expect.objectContaining({ scenes_truncated: true }));
+	});
+
 	it('maps current values only for a requested visible device', async () => {
-		devices.findOne.mockResolvedValue({
+		devices.findVisibleSummaryById.mockResolvedValue({
 			id: 'device-id',
 			name: 'Lamp',
 			category: 'lighting',
@@ -175,37 +211,63 @@ describe('McpContextService', () => {
 			roomId: 'room-id',
 			zoneIds: [],
 			status: { online: true, status: 'connected', lastChanged: new Date('2026-08-06T12:00:00Z') },
+		} as unknown as DeviceEntity);
+		channels.findSummaryPage.mockResolvedValue({
 			channels: [
 				{
 					id: 'channel-id',
 					name: 'Light',
 					category: 'light',
-					properties: [
-						{
-							id: 'property-id',
-							name: 'Brightness',
-							category: 'brightness',
-							dataType: 'uchar',
-							unit: '%',
-							value: { value: 50, lastUpdated: '2026-08-06T12:00:00Z', trend: 'stable' },
-						},
-					],
 				},
 			],
-		} as unknown as DeviceEntity);
+			total: MCP_MAX_CHANNELS_PER_DEVICE + 1,
+		});
+		properties.findBoundedForChannels.mockResolvedValue({
+			properties: [
+				{
+					id: 'property-id',
+					name: 'Brightness',
+					category: 'brightness',
+					dataType: 'uchar',
+					unit: '%',
+					value: { value: 50, lastUpdated: '2026-08-06T12:00:00Z', trend: 'stable' },
+					channel: { id: 'channel-id' },
+				},
+			],
+			totals: { 'channel-id': MCP_MAX_PROPERTIES_PER_CHANNEL + 1 },
+		});
 
 		const result = await service.getDeviceState('device-id');
 
 		expect(result).toEqual(
 			expect.objectContaining({
 				id: 'device-id',
+				channels_truncated: true,
 				channels: [
 					expect.objectContaining({
+						properties_truncated: true,
 						properties: [expect.objectContaining({ id: 'property-id', value: 50, trend: 'stable' })],
 					}),
 				],
 			}),
 		);
+		expect(channels.findSummaryPage).toHaveBeenCalledWith('device-id', MCP_MAX_CHANNELS_PER_DEVICE);
+		expect(properties.findBoundedForChannels).toHaveBeenCalledWith(['channel-id'], MCP_MAX_PROPERTIES_PER_CHANNEL);
+	});
+
+	it('uses explicit device-zone membership for a non-floor zone energy summary', async () => {
+		spaces.findOne.mockResolvedValue({
+			id: 'zone-id',
+			name: 'Garden',
+			type: SpaceType.ZONE,
+			category: SpaceZoneCategory.OUTDOOR_GARDEN,
+		} as unknown as SpaceEntity);
+		energy.getDeviceZoneSummary.mockResolvedValue({ totalConsumptionKwh: 2 });
+
+		await service.getEnergySummary('2026-08-01T00:00:00.000Z', '2026-08-02T00:00:00.000Z', 'zone-id');
+
+		expect(energy.getDeviceZoneSummary).toHaveBeenCalledWith(expect.any(Date), expect.any(Date), 'zone-id');
+		expect(energy.getSpaceSummary).not.toHaveBeenCalled();
 	});
 
 	it('rejects a timeseries bucket that could exceed the result cap before querying storage', async () => {
