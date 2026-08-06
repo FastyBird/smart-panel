@@ -40,6 +40,12 @@ export interface StoragePlugin {
 	query<T>(query: string, options?: StorageQueryOptions): Promise<T[]>;
 
 	/**
+	 * Execute a query without converting backend errors into empty results.
+	 * Plugins that normally fail open should implement this for strict callers.
+	 */
+	queryStrict?<T>(query: string, options?: StorageQueryOptions): Promise<T[]>;
+
+	/**
 	 * Execute a query and return raw (un-parsed) results.
 	 */
 	queryRaw<T>(query: string, options?: StorageQueryOptions): Promise<T>;

@@ -161,6 +161,14 @@ describe('InfluxV2Storage', () => {
 
 			await expect(storage.query('bad query')).rejects.toThrow('server error');
 		});
+
+		it('should propagate 404 errors from strict queries', async () => {
+			const error = new HttpError(404, 'Not Found', '', '{}');
+
+			mockCollectRows.mockRejectedValue(error);
+
+			await expect(storage.queryStrict('from(bucket: "missing")')).rejects.toBe(error);
+		});
 	});
 
 	describe('queryRaw', () => {

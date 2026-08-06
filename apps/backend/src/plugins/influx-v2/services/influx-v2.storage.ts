@@ -207,6 +207,10 @@ export class InfluxV2Storage implements StoragePlugin {
 		}
 	}
 
+	async queryStrict<T>(query: string, _options?: StorageQueryOptions): Promise<T[]> {
+		return this.getQueryApi().collectRows<T>(query);
+	}
+
 	async queryRaw<T>(query: string, _options?: StorageQueryOptions): Promise<T> {
 		try {
 			const result = await this.getQueryApi().collectRows(query);

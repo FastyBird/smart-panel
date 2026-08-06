@@ -170,7 +170,7 @@ export class StorageService {
 
 		if (this.primary?.isAvailable()) {
 			try {
-				return await this.primary.query<T>(query, options);
+				return await (this.primary.queryStrict?.<T>(query, options) ?? this.primary.query<T>(query, options));
 			} catch (error) {
 				primaryError = error;
 				const err = error as Error;
@@ -180,7 +180,7 @@ export class StorageService {
 		}
 
 		if (this.fallback?.isAvailable()) {
-			return this.fallback.query<T>(query, options);
+			return this.fallback.queryStrict?.<T>(query, options) ?? this.fallback.query<T>(query, options);
 		}
 
 		if (primaryError) {
