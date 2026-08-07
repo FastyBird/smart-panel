@@ -394,10 +394,14 @@ export class VirtualDevicesService {
 		const expectedUnit = (unitVariant ? unitVariant.unit : metadata.unit) ?? null;
 		const actualUnit = sourceProperty.unit ?? null;
 
-		if (expectedUnit !== null && actualUnit !== null && expectedUnit !== actualUnit) {
+		// Equality, not "equal when both declare one". A unit on one side and nothing on the other is a
+		// mismatch too: recategorising a `battery` channel to `door` leaves the same `percentage`
+		// property unitless while the projection still says `%`, and the readings keep being presented
+		// as percentages. Same rule as format and step — unknown is not compatible with declared.
+		if (expectedUnit !== actualUnit) {
 			return {
 				compatible: false,
-				reason: `Source property id=${sourceProperty.id} is measured in '${actualUnit}', which '${specSlot.channel}.${specSlot.property}' exposes as '${expectedUnit}'; a projection forwards the value unchanged rather than converting it`,
+				reason: `Source property id=${sourceProperty.id} is measured in ${actualUnit === null ? 'no unit' : `'${actualUnit}'`}, which '${specSlot.channel}.${specSlot.property}' exposes as ${expectedUnit === null ? 'no unit' : `'${expectedUnit}'`}; a projection forwards the value unchanged rather than converting it`,
 			};
 		}
 
@@ -521,6 +525,19 @@ export class VirtualDevicesService {
 			// Same reason as the format above: a matched variant's explicit null step is the answer.
 			const expectedStep = variant ? variant.step : metadata.step;
 			const actualStep = sourceProperty.step as unknown;
+
+			// A writable slot with no grid of its own accepts any value in range, so a source that *does*
+			// impose one is stricter than the projection standing in front of it: `light.saturation` has
+			// no step, and a source stepping by 5 rejects the 43 the projection happily accepted and
+			// forwarded. Only asked of writable slots — a read-only projection never sends anything.
+			if (
+				slotWritable &&
+				(typeof expectedStep !== 'number' || expectedStep <= 0) &&
+				typeof actualStep === 'number' &&
+				actualStep > 0
+			) {
+				return `Source property id=${sourceProperty.id} steps by ${actualStep}, a stricter grid than ${slotName} imposes, so it would refuse values the projection accepts`;
+			}
 
 			if (typeof expectedStep === 'number' && expectedStep > 0) {
 				// A slot that defines a grid is not satisfied by a candidate that defines none. Skipping the

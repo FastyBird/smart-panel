@@ -58,6 +58,9 @@ describe('VirtualDevicesService', () => {
 		permissions: [PermissionType.READ_WRITE],
 		dataType: DataTypeType.FLOAT,
 		format: [0, 100],
+		// `temperature.temperature` is °C, and a unit on one side with nothing on the other is a
+		// mismatch now — a persisted row carries the unit its spec defines.
+		unit: '°C',
 	});
 	const floatSourceProperty = property({
 		id: 'float-source-property',
@@ -218,7 +221,12 @@ describe('VirtualDevicesService', () => {
 		const projecting = (
 			sourcePropertyId: string | null,
 			category: PropertyCategory,
-			declared: { permissions?: PermissionType[]; dataType?: DataTypeType; format?: (string | number | null)[] } = {},
+			declared: {
+				permissions?: PermissionType[];
+				dataType?: DataTypeType;
+				format?: (string | number | null)[];
+				unit?: string | null;
+			} = {},
 		): VirtualChannelPropertyEntity => {
 			const entity = new VirtualChannelPropertyEntity();
 
@@ -228,6 +236,7 @@ describe('VirtualDevicesService', () => {
 				permissions: declared.permissions ?? [PermissionType.READ_WRITE],
 				dataType: declared.dataType ?? DataTypeType.BOOL,
 				format: declared.format ?? null,
+				unit: declared.unit ?? null,
 				valueOrigin: VirtualValueOrigin.SOURCE,
 				sourcePropertyId,
 			});
@@ -263,6 +272,7 @@ describe('VirtualDevicesService', () => {
 						dataType: DataTypeType.FLOAT,
 						permissions: [PermissionType.READ_ONLY],
 						format: [0, 100],
+						unit: '°C',
 					}),
 					CHANNEL_ID,
 				),
@@ -298,6 +308,7 @@ describe('VirtualDevicesService', () => {
 				dataType: DataTypeType.FLOAT,
 				permissions: [PermissionType.READ_WRITE],
 				format: [0, 100],
+				unit: '°C',
 			});
 
 			await expect(service.assertProjectionCompatible(overclaiming, CHANNEL_ID)).rejects.toThrow(/does not offer/);
@@ -321,6 +332,7 @@ describe('VirtualDevicesService', () => {
 				dataType: DataTypeType.UCHAR,
 				permissions: [PermissionType.READ_WRITE],
 				format: [0, 100],
+				unit: '%',
 			});
 
 			// The `uchar` variant of this slot defines a step, and a declaration without one is refused
@@ -418,6 +430,7 @@ describe('VirtualDevicesService', () => {
 				id: 'formatless',
 				permissions: [PermissionType.READ_WRITE],
 				dataType: DataTypeType.UCHAR,
+				unit: '%',
 				format: null,
 			});
 
@@ -475,6 +488,7 @@ describe('VirtualDevicesService', () => {
 				id: 'offset-grid',
 				permissions: [PermissionType.READ_WRITE],
 				dataType: DataTypeType.UCHAR,
+				unit: '%',
 				format: [0.5, 99.5],
 				step: 1,
 			});
@@ -544,6 +558,53 @@ describe('VirtualDevicesService', () => {
 		// `[min]` is a supported one-sided format meaning "no maximum", so nothing shows the source stays
 		// under the slot's ceiling. It used to reach the enum comparison, where `{0}` looked like a
 		// subset of `{0, 10000}` and passed.
+		// A unit on one side and nothing on the other is a mismatch too. Recategorising a `battery`
+		// channel to `door` leaves the same `percentage` property unitless while the projection still
+		// says `%`, and the readings keep being presented as percentages.
+		it('refuses a source that declares no unit for a slot that does', () => {
+			const unitlessSource = property({
+				id: 'unitless',
+				permissions: [PermissionType.READ_ONLY],
+				dataType: DataTypeType.FLOAT,
+				format: [0, 100],
+				unit: null,
+			});
+
+			const report = service.reportCompatibility(
+				{
+					category: DeviceCategory.SENSOR,
+					channel: ChannelCategory.TEMPERATURE,
+					property: PropertyCategory.TEMPERATURE,
+				},
+				unitlessSource,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('no unit');
+		});
+
+		// A writable slot with no grid accepts any value in range, so a source that imposes one is
+		// stricter than the projection in front of it: `light.saturation` has no step, and a source
+		// stepping by 5 refuses the 43 the projection accepted and forwarded.
+		it('refuses a stepped source for an unstepped writable slot', () => {
+			const steppedSource = property({
+				id: 'stepped-for-unstepped',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.UCHAR,
+				format: [0, 100],
+				step: 5,
+				unit: '%',
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.SATURATION },
+				steppedSource,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('stricter grid');
+		});
+
 		it('refuses a one-sided numeric source against a bounded slot', () => {
 			const unboundedSource = property({
 				id: 'unbounded',
@@ -571,6 +632,7 @@ describe('VirtualDevicesService', () => {
 				id: 'stepless',
 				permissions: [PermissionType.READ_WRITE],
 				dataType: DataTypeType.UCHAR,
+				unit: '%',
 				format: [0, 100],
 				step: null,
 			});
@@ -589,6 +651,7 @@ describe('VirtualDevicesService', () => {
 				id: 'aligned-grid',
 				permissions: [PermissionType.READ_WRITE],
 				dataType: DataTypeType.UCHAR,
+				unit: '%',
 				format: [0, 100],
 				step: 1,
 			});
@@ -606,6 +669,7 @@ describe('VirtualDevicesService', () => {
 				id: 'coarse-step',
 				permissions: [PermissionType.READ_WRITE],
 				dataType: DataTypeType.UCHAR,
+				unit: '%',
 				format: [0, 100],
 				step: 5,
 			});
@@ -624,6 +688,7 @@ describe('VirtualDevicesService', () => {
 				id: 'wide-range',
 				permissions: [PermissionType.READ_WRITE],
 				dataType: DataTypeType.UCHAR,
+				unit: '%',
 				format: [0, 255],
 			});
 
@@ -964,6 +1029,7 @@ describe('VirtualDevicesService', () => {
 				id: 'brightness-percentage',
 				permissions: [PermissionType.READ_WRITE],
 				dataType: DataTypeType.UCHAR,
+				unit: '%',
 				format: [0, 100],
 				step: 1,
 			});
