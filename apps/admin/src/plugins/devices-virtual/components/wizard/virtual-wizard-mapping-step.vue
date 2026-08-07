@@ -428,7 +428,20 @@ const mappings = computed<IVirtualSlotMapping[]>((): IVirtualSlotMapping[] =>
 );
 
 const progress = computed<IVirtualMappingProgress>((): IVirtualMappingProgress => {
-	const required = slots.value.filter((slot: IVirtualMappingSlot): boolean => slot.required);
+	// A channel the user has put something in is a channel that will be created, and a created channel
+	// owes its own required properties — `slot.required` alone is the conjunction of both levels, which
+	// is right for an untouched optional channel (it will not exist, so nothing in it is owed) and wrong
+	// for a populated one. Mapping `electrical_power.voltage` and nothing else would otherwise pass:
+	// `power` is required *within* that channel, and the backend rejects the channel without it.
+	const usedChannels = new Set(
+		slots.value
+			.filter((slot: IVirtualMappingSlot): boolean => typeof selections[slot.key] === 'string')
+			.map((slot: IVirtualMappingSlot): DevicesModuleChannelCategory => slot.specChannel)
+	);
+
+	const required = slots.value.filter(
+		(slot: IVirtualMappingSlot): boolean => slot.required || (slot.propertyRequired && usedChannels.has(slot.specChannel))
+	);
 
 	const remaining = required.filter((slot: IVirtualMappingSlot): boolean => typeof selections[slot.key] !== 'string');
 

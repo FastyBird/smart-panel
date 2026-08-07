@@ -580,6 +580,38 @@ describe('VirtualWizardMappingStep', () => {
 			expect(isValid.value).toBe(false);
 		});
 
+		// `slot.required` is the conjunction of both levels, which is right for an untouched optional
+		// channel — it will not be created, so nothing in it is owed — and wrong once the user puts
+		// something in it. `electrical_power.power` is required within its channel; mapping only
+		// `voltage` creates the channel without it and the backend calls the result invalid.
+		it('owes an optional channel its required property once something is mapped into it', async () => {
+			const { wrapper, isValid, progress } = mountMappingStep({ category: DevicesModuleDeviceCategory.switcher });
+
+			await wrapper.vm.selectSource(`${DevicesModuleChannelCategory.switcher}.${DevicesModuleChannelPropertyCategory.on}`, PROPERTY_ON);
+			await wrapper.vm.selectSource(
+				`${DevicesModuleChannelCategory.electrical_power}.${DevicesModuleChannelPropertyCategory.voltage}`,
+				PROPERTY_VOLTAGE
+			);
+			await nextTick();
+
+			expect(progress.value.remaining.map((slot) => slot.specProperty)).toContain(DevicesModuleChannelPropertyCategory.power);
+			expect(isValid.value).toBe(false);
+		});
+
+		it('is satisfied once that required property is mapped too', async () => {
+			const { wrapper, progress } = mountMappingStep({ category: DevicesModuleDeviceCategory.switcher });
+
+			await wrapper.vm.selectSource(`${DevicesModuleChannelCategory.switcher}.${DevicesModuleChannelPropertyCategory.on}`, PROPERTY_ON);
+			await wrapper.vm.selectSource(
+				`${DevicesModuleChannelCategory.electrical_power}.${DevicesModuleChannelPropertyCategory.voltage}`,
+				PROPERTY_VOLTAGE
+			);
+			await wrapper.vm.selectSource(`${DevicesModuleChannelCategory.electrical_power}.${DevicesModuleChannelPropertyCategory.power}`, PROPERTY_POWER);
+			await nextTick();
+
+			expect(progress.value.remaining.map((slot) => slot.specProperty)).not.toContain(DevicesModuleChannelPropertyCategory.power);
+		});
+
 		it('leaves an untouched optional channel alone', () => {
 			const { constraintViolations } = mountMappingStep({ category: DevicesModuleDeviceCategory.sensor });
 
