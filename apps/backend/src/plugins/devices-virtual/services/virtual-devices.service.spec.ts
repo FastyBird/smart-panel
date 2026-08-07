@@ -683,6 +683,27 @@ describe('VirtualDevicesService', () => {
 			await expect(service.assertProjectionCompatible(stricter, CHANNEL_ID)).resolves.toBeUndefined();
 		});
 
+		// `unit` is not a column: the create DTO cannot carry it and ChannelPropertyEntitySubscriber
+		// derives it on load, so a projection arriving at `beforeCreate` has none. Comparing that transient
+		// absence against a unit-bearing slot refuses every creation on `temperature.temperature`,
+		// `electrical_power.power` and every other slot the specification gives a unit — after the wizard
+		// preview said the pairing was fine.
+		it('accepts a projection whose unit has not been derived yet', async () => {
+			givenSlot(ChannelCategory.TEMPERATURE, DeviceCategory.SENSOR);
+			channelsPropertiesService.findOne.mockResolvedValue(readWriteSourceProperty);
+
+			const unsaved = projecting(readWriteSourceProperty.id, PropertyCategory.TEMPERATURE, {
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				format: [0, 100],
+			});
+
+			// Exactly what the create path hands over: the field is absent, not null.
+			Object.assign(unsaved, { unit: undefined });
+
+			await expect(service.assertProjectionCompatible(unsaved, CHANNEL_ID)).resolves.toBeUndefined();
+		});
+
 		it('ignores an owned property', async () => {
 			const owned = new VirtualChannelPropertyEntity();
 

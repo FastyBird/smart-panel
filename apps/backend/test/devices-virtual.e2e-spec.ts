@@ -1171,6 +1171,94 @@ describe('devices-virtual plugin (e2e)', () => {
 			expect((readBack.body as { data: DeviceBody }).data.category).toBe(DeviceCategory.LIGHTING);
 		});
 
+		// `unit` has no column: the create DTO cannot carry it and ChannelPropertyEntitySubscriber derives
+		// it on load, so a projection reaching the persistence guard has none at all. Comparing that
+		// absence against a slot that declares one refused every creation on a unit-bearing slot — every
+		// `electrical_power`, `temperature`, `humidity` and so on — after the wizard preview had said the
+		// pairing was fine. Nothing in this suite mapped such a slot until now, which is why it was
+		// invisible.
+		it('creates a projection on a unit-bearing slot', async () => {
+			const sourceResponse = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: SIMULATOR_TYPE,
+						category: DeviceCategory.OUTLET,
+						name: 'E2E Metered Source Outlet',
+						channels: [
+							{
+								type: SIMULATOR_TYPE,
+								category: ChannelCategory.ELECTRICAL_POWER,
+								identifier: 'power',
+								name: 'Power',
+								properties: [
+									{
+										type: SIMULATOR_TYPE,
+										category: PropertyCategory.POWER,
+										identifier: 'power',
+										name: 'Power',
+										permissions: [PermissionType.READ_ONLY],
+										data_type: DataTypeType.FLOAT,
+										format: [0, 10000],
+										value: 0,
+									},
+								],
+							},
+						],
+					},
+				})
+				.expect(201);
+
+			const sourceBody = sourceResponse.body as { data: DeviceBody };
+
+			const sourcePowerPropertyId = sourceBody.data.channels
+				.find((channel) => channel.category === String(ChannelCategory.ELECTRICAL_POWER))
+				?.properties.find((property) => String(property.category) === String(PropertyCategory.POWER))?.id;
+
+			expect(sourcePowerPropertyId).toBeDefined();
+
+			const response = await authPost('/modules/devices/devices').send({
+				data: {
+					type: DEVICES_VIRTUAL_TYPE,
+					category: DeviceCategory.SENSOR,
+					name: 'E2E Unit Bearing Virtual Sensor',
+					channels: [
+						{
+							type: DEVICES_VIRTUAL_TYPE,
+							category: ChannelCategory.ELECTRICAL_POWER,
+							identifier: 'power',
+							name: 'Power',
+							properties: [
+								{
+									type: DEVICES_VIRTUAL_TYPE,
+									category: PropertyCategory.POWER,
+									identifier: 'power',
+									name: 'Power',
+									permissions: [PermissionType.READ_ONLY],
+									data_type: DataTypeType.FLOAT,
+									format: [0, 10000],
+									value_origin: 'source',
+									source_property: sourcePowerPropertyId,
+								},
+							],
+						},
+					],
+				},
+			});
+
+			expect(response.status).toBe(201);
+
+			// And the unit really is the slot's, derived on the way back out rather than stored.
+			const created = response.body as { data: DeviceBody };
+
+			const power = created.data.channels
+				.find((channel) => channel.category === String(ChannelCategory.ELECTRICAL_POWER))
+				?.properties.find((property) => String(property.category) === String(PropertyCategory.POWER)) as
+				| (ChannelPropertyBody & { unit: string | null })
+				| undefined;
+
+			expect(power?.unit).toBe('W');
+		});
+
 		// The case an `isValid` check waves through: `generic` requires nothing the device lacks, so its
 		// only complaint about the stored `light` channel is a *warning* — and every projection under that
 		// channel would stay attached to a slot `generic` never defines.

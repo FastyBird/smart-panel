@@ -12,6 +12,7 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import { DeviceValidationService, ValidationIssue } from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { matchesInvalidValue, matchesStep } from '../../../modules/devices/utils/property-command-value.utils';
+import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import { getAllProperties, isChannelAllowed, isValidDataType } from '../../../modules/devices/utils/schema.utils';
 import { DEVICES_VIRTUAL_TYPE, VIRTUAL_BLOCKED_CATEGORIES } from '../devices-virtual.constants';
 import {
@@ -871,7 +872,31 @@ export class VirtualDevicesService {
 		// opposite situation: `temperature.temperature` is read-only, and a projection calling itself
 		// `rw` there advertises and forwards a write the specification does not have. So the declaration
 		// is checked the other way round — it may not claim a capability the slot does not offer.
-		const declaration = this.reportCompatibility(specSlot, property);
+		// Judged with the unit resolved rather than as stored, because `unit` is never stored: it has no
+		// column, the create DTO cannot carry it, and ChannelPropertyEntitySubscriber derives it on load.
+		// A projection arriving here from a create therefore has none at all, and comparing that absence
+		// against a slot that declares one refused every creation on `temperature.temperature`,
+		// `electrical_power.power` and every other unit-bearing slot — after the wizard preview had said
+		// the pairing was fine. An update is the subtler half of the same thing: the loaded row carries
+		// the unit derived from its *old* data type, so a PATCH that changes the representation would be
+		// judged against a unit that no longer applies.
+		//
+		// There is nothing lost by resolving it. The unit is a function of channel category, property
+		// category and data type — the same three the slot's own expected unit is read from — so for a
+		// projection the comparison can only ever be a tautology. It earns its place on the *source* side
+		// of this method, where the two really can disagree.
+		// Cloned through the prototype rather than spread: `type` is a getter on the entity, and a spread
+		// would drop it. The clone is what gets the resolved unit, so the row on its way to `save` is
+		// left exactly as the caller sent it.
+		const declared = Object.assign(
+			Object.create(Object.getPrototypeOf(property) as object) as VirtualChannelPropertyEntity,
+			property,
+			{ channel },
+		);
+
+		declared.unit = resolvePropertyUnit(declared);
+
+		const declaration = this.reportCompatibility(specSlot, declared);
 
 		if (!declaration.compatible) {
 			throw new VirtualProjectionIncompatibleException(
