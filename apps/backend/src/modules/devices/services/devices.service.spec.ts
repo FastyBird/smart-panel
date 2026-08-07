@@ -153,6 +153,7 @@ describe('DevicesService', () => {
 					provide: ChannelsService,
 					useValue: {
 						create: jest.fn(() => {}),
+						findAll: jest.fn().mockResolvedValue([]),
 						findBoundedForDevices: jest.fn().mockResolvedValue({ channels: [], deviceIds: {}, truncated: false }),
 					},
 				},
@@ -457,6 +458,48 @@ describe('DevicesService', () => {
 	});
 
 	describe('create', () => {
+		// A nested create saves the device first, then its channels. When a child fails — a virtual
+		// property whose source cannot fill its slot, say — the device must not survive as a half-built
+		// row, and the children that already announced themselves must have their deletions announced
+		// too, or websocket clients keep ghosts.
+		it('rolls the device back and announces the children when a nested channel fails', async () => {
+			const createDto: CreateMockDeviceDto = {
+				type: 'mock',
+				category: DeviceCategory.GENERIC,
+				name: 'Half-built device',
+				mock_value: 'Random text',
+			};
+
+			const createdDeviceId = uuid().toString();
+			const orphanedProperty = { id: uuid().toString() };
+			const orphanedChannel = { id: uuid().toString(), properties: [orphanedProperty] };
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'create').mockReturnValue({ id: createdDeviceId } as MockDevice);
+			jest.spyOn(repository, 'save').mockResolvedValue({ id: createdDeviceId } as MockDevice);
+
+			channelsService.create.mockRejectedValue(new DevicesValidationException('Source cannot fill this slot'));
+			channelsService.findAll.mockResolvedValue([orphanedChannel] as never);
+
+			await expect(
+				service.create({
+					...createDto,
+					channels: [{ type: 'mock', category: ChannelCategory.GENERIC, name: 'Generic' }],
+				} as never),
+			).rejects.toThrow('Source cannot fill this slot');
+
+			expect(repository.delete).toHaveBeenCalledWith(createdDeviceId);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_DELETED, orphanedProperty);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CHANNEL_DELETED, orphanedChannel);
+			expect(eventEmitter.emit).not.toHaveBeenCalledWith(EventType.DEVICE_CREATED, expect.anything());
+		});
+
 		it('should create and return a new device', async () => {
 			const createDto: CreateMockDeviceDto = {
 				type: 'mock',

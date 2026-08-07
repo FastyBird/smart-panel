@@ -461,7 +461,38 @@ export class DevicesService {
 		} catch (error) {
 			this.logger.error(`Nested creation failed for deviceId=${raw.id}, rolling the device back`);
 
+			// The rows go with the device (channels cascade from it), but the events do not: every channel
+			// and property created before the failure has *already* announced itself with
+			// CHANNEL_CREATED / CHANNEL_PROPERTY_CREATED. A silent delete would leave websocket clients
+			// holding children that no longer exist, and the virtual property index holding mappings for
+			// them until some later structural event forced a rebuild. So the children are read back
+			// before the delete and their deletions announced after it.
+			//
+			// Compensating events rather than unwinding through ChannelsService.remove(): that path
+			// expects a fully built channel and re-parents children as it goes, which is the wrong
+			// shape for tearing down a half-created device — and the device delete has to happen either
+			// way, since the channel whose own creation threw was already persisted and is not in this
+			// list.
+			const orphanedChannels = await this.channelsService
+				.findAll(raw.id)
+				.catch((readError: unknown): ChannelEntity[] => {
+					this.logger.error(
+						`Failed to read back channels for rolled-back deviceId=${raw.id}`,
+						readError instanceof Error ? readError : undefined,
+					);
+
+					return [];
+				});
+
 			await repository.delete(raw.id);
+
+			for (const channel of orphanedChannels) {
+				for (const property of channel.properties ?? []) {
+					this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_DELETED, property);
+				}
+
+				this.eventEmitter.emit(EventType.CHANNEL_DELETED, channel);
+			}
 
 			throw error;
 		}
