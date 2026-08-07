@@ -13,6 +13,7 @@ import { ZoneSpaceEntity } from '../../../plugins/spaces-home-control/entities/z
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DeviceZonesService } from '../../devices/services/device-zones.service';
 import { DevicesService } from '../../devices/services/devices.service';
+import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { CreateSpaceDto } from '../dto/create-space.dto';
 import { UpdateSpaceDto } from '../dto/update-space.dto';
@@ -29,6 +30,7 @@ describe('SpacesService', () => {
 	let deviceRepository: jest.Mocked<Repository<DeviceEntity>>;
 	let displayRepository: jest.Mocked<Repository<DisplayEntity>>;
 	let devicesService: { findVisibleSummaryPage: jest.Mock };
+	let platformRegistryService: { list: jest.Mock };
 	// DataSource mock is hoisted so individual tests can stub `query()` — used
 	// by `SpacesService.update()` to read the raw `category` column straight
 	// from the shared STI table (ignoring subtype hydration).
@@ -61,6 +63,9 @@ describe('SpacesService', () => {
 	beforeEach(async () => {
 		devicesService = {
 			findVisibleSummaryPage: jest.fn().mockResolvedValue({ devices: [], total: 0 }),
+		};
+		platformRegistryService = {
+			list: jest.fn().mockReturnValue(['test-light']),
 		};
 		mockQueryBuilder = {
 			update: jest.fn().mockReturnThis(),
@@ -173,6 +178,10 @@ describe('SpacesService', () => {
 				{
 					provide: DevicesService,
 					useValue: devicesService,
+				},
+				{
+					provide: PlatformRegistryService,
+					useValue: platformRegistryService,
 				},
 				SpacesTypeMapperService,
 			],
@@ -384,10 +393,11 @@ describe('SpacesService', () => {
 
 			await expect(service.findLightingTriggerSummaryPage(50)).resolves.toEqual({ spaces: [mockSpace], total: 1 });
 			expect(queryBuilder.where).toHaveBeenCalledWith(
-				expect.stringContaining('spaces_module_space_roles'),
+				expect.stringContaining('device.type IN (:...registeredDeviceTypes)'),
 				expect.objectContaining({
 					enabled: true,
 					hidden: false,
+					registeredDeviceTypes: ['test-light'],
 					deviceCategory: 'lighting',
 					channelCategory: 'light',
 					propertyCategory: 'on',
@@ -397,7 +407,18 @@ describe('SpacesService', () => {
 					hiddenLightingRole: 'hidden',
 				}),
 			);
+			expect(queryBuilder.where).toHaveBeenCalledWith(
+				expect.stringContaining('spaces_module_space_roles'),
+				expect.any(Object),
+			);
 			expect(queryBuilder.take).toHaveBeenCalledWith(50);
+		});
+
+		it('returns no spaces when no device platforms are registered', async () => {
+			platformRegistryService.list.mockReturnValue([]);
+
+			await expect(service.findLightingTriggerSummaryPage(50)).resolves.toEqual({ spaces: [], total: 0 });
+			expect(spaceRepository.createQueryBuilder).not.toHaveBeenCalled();
 		});
 	});
 

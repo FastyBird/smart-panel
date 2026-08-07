@@ -14,6 +14,7 @@ import { DevicesException, DevicesNotFoundException, DevicesValidationException 
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
+import { SUPPORTED_PROPERTY_COMMAND_DATA_TYPES } from '../utils/property-command-value.utils';
 import { resolvePropertyUnit } from '../utils/property-metadata.utils';
 
 import { ChannelsPropertiesTypeMapperService } from './channels.properties-type-mapper.service';
@@ -178,6 +179,9 @@ export class ChannelsPropertiesService {
 			.innerJoinAndSelect('channel.device', 'device')
 			.where('device.enabled = :enabled', { enabled: true })
 			.andWhere('device.hidden = :hidden', { hidden: false })
+			.andWhere('property.dataType IN (:...supportedDataTypes)', {
+				supportedDataTypes: SUPPORTED_PROPERTY_COMMAND_DATA_TYPES,
+			})
 			.andWhere(
 				'(property.permissions = :readWrite OR property.permissions = :writeOnly ' +
 					'OR property.permissions LIKE :readWriteFirst OR property.permissions LIKE :readWriteMiddle ' +

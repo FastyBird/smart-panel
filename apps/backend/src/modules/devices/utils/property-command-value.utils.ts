@@ -9,6 +9,22 @@ export interface PropertyCommandValueValidation {
 	reason?: string;
 }
 
+export const SUPPORTED_PROPERTY_COMMAND_DATA_TYPES: readonly DataTypeType[] = [
+	DataTypeType.BOOL,
+	DataTypeType.STRING,
+	DataTypeType.ENUM,
+	DataTypeType.CHAR,
+	DataTypeType.UCHAR,
+	DataTypeType.SHORT,
+	DataTypeType.USHORT,
+	DataTypeType.INT,
+	DataTypeType.UINT,
+	DataTypeType.FLOAT,
+];
+
+export const isSupportedPropertyCommandDataType = (dataType: DataTypeType): boolean =>
+	SUPPORTED_PROPERTY_COMMAND_DATA_TYPES.includes(dataType);
+
 const INTEGER_RANGES: Partial<Record<DataTypeType, readonly [number, number]>> = {
 	[DataTypeType.CHAR]: [-128, 127],
 	[DataTypeType.UCHAR]: [0, 255],
@@ -68,6 +84,10 @@ export const validatePropertyCommandValue = (
 	property: ChannelPropertyEntity,
 	rawValue: unknown,
 ): PropertyCommandValueValidation => {
+	if (!isSupportedPropertyCommandDataType(property.dataType)) {
+		return { valid: false, reason: `Unsupported property data type: ${property.dataType}` };
+	}
+
 	let value: PropertyCommandValue;
 
 	switch (property.dataType) {

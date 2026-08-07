@@ -23,6 +23,7 @@ import {
 	VisibleDeviceSummaryPage,
 	VisibleDeviceSummaryScope,
 } from '../../devices/services/devices.service';
+import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { BulkAssignDto } from '../dto/bulk-assign.dto';
 import { CreateSpaceDto } from '../dto/create-space.dto';
@@ -80,6 +81,7 @@ export class SpacesService {
 		private readonly displayRepository: Repository<DisplayEntity>,
 		private readonly deviceZonesService: DeviceZonesService,
 		private readonly devicesService: DevicesService,
+		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly spacesTypeMapper: SpacesTypeMapperService,
@@ -111,6 +113,12 @@ export class SpacesService {
 	}
 
 	async findLightingTriggerSummaryPage(limit: number): Promise<SpaceSummaryPage> {
+		const registeredDeviceTypes = this.platformRegistryService.list();
+
+		if (registeredDeviceTypes.length === 0) {
+			return { spaces: [], total: 0 };
+		}
+
 		const writablePermissionPredicate =
 			'(property.permissions = :readWrite OR property.permissions = :writeOnly ' +
 			'OR property.permissions LIKE :readWriteFirst OR property.permissions LIKE :readWriteMiddle ' +
@@ -127,6 +135,7 @@ export class SpacesService {
 					LEFT JOIN devices_module_devices_zones deviceZone ON deviceZone."deviceId" = device.id
 					WHERE device.enabled = :enabled
 						AND device.hidden = :hidden
+						AND device.type IN (:...registeredDeviceTypes)
 						AND device.category = :deviceCategory
 						AND channel.category = :channelCategory
 						AND property.category = :propertyCategory
@@ -146,6 +155,7 @@ export class SpacesService {
 				{
 					enabled: true,
 					hidden: false,
+					registeredDeviceTypes,
 					deviceCategory: DeviceCategory.LIGHTING,
 					channelCategory: ChannelCategory.LIGHT,
 					propertyCategory: PropertyCategory.ON,

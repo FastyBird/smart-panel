@@ -706,6 +706,11 @@ export class LightingIntentService extends SpaceIntentBaseService {
 				continue;
 			}
 
+			if (!this.platformRegistryService.get(device)) {
+				this.logger.debug(`Skipping light without a registered platform deviceId=${device.id}`);
+				continue;
+			}
+
 			// Find ALL light channels (multi-channel devices have multiple light outputs)
 			const lightChannels = device.channels?.filter((ch) => ch.category === ChannelCategory.LIGHT) ?? [];
 

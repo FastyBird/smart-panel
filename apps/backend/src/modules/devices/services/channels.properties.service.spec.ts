@@ -22,6 +22,7 @@ import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyValueState } from '../models/property-value-state.model';
+import { SUPPORTED_PROPERTY_COMMAND_DATA_TYPES } from '../utils/property-command-value.utils';
 
 import { ChannelsPropertiesTypeMapperService } from './channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from './channels.properties.service';
@@ -258,6 +259,9 @@ describe('ChannelsPropertiesService', () => {
 			});
 			expect(queryBuilder.where).toHaveBeenCalledWith('device.enabled = :enabled', { enabled: true });
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith('device.hidden = :hidden', { hidden: false });
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('property.dataType IN (:...supportedDataTypes)', {
+				supportedDataTypes: SUPPORTED_PROPERTY_COMMAND_DATA_TYPES,
+			});
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
 				expect.stringContaining('property.permissions'),
 				expect.objectContaining({ readWrite: PermissionType.READ_WRITE, writeOnly: PermissionType.WRITE_ONLY }),

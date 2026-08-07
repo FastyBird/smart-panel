@@ -30,6 +30,7 @@ import { SpaceUndoHistoryService } from './space-undo-history.service';
 describe('LightingIntentService', () => {
 	let service: LightingIntentService;
 	let spacesService: jest.Mocked<SpacesService>;
+	let platformRegistryService: { get: jest.Mock };
 	let lightingRoleService: jest.Mocked<SpaceLightingRoleService>;
 	let intentsService: jest.Mocked<IntentsService>;
 
@@ -160,6 +161,7 @@ describe('LightingIntentService', () => {
 
 		service = module.get<LightingIntentService>(LightingIntentService);
 		spacesService = module.get(SpacesService);
+		platformRegistryService = module.get(PlatformRegistryService);
 		lightingRoleService = module.get(SpaceLightingRoleService);
 		intentsService = module.get(IntentsService);
 
@@ -209,6 +211,17 @@ describe('LightingIntentService', () => {
 
 		expect(result?.affectedDevices).toBe(1);
 		expect(mockPlatform.processBatch).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not control lighting devices without a registered platform', async () => {
+		const unsupportedDevice = createMockDeviceWithLightChannel('unsupported-device', true, ConnectionState.CONNECTED);
+		spacesService.findDevicesBySpace.mockResolvedValue([unsupportedDevice] as unknown as DeviceEntity[]);
+		platformRegistryService.get.mockReturnValue(null);
+
+		const result = await service.executeLightingIntent(mockSpaceId, { type: LightingIntentType.ON });
+
+		expect(result?.affectedDevices).toBe(0);
+		expect(mockPlatform.processBatch).not.toHaveBeenCalled();
 	});
 
 	it('does not send commands for read-only lighting properties', async () => {
