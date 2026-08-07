@@ -384,6 +384,16 @@ export class DevicesController {
 				throw new UnprocessableEntityException(error.message);
 			}
 
+			// Same reasoning one branch up, for the other refusal that carries a reason worth reading: a
+			// type owner's `beforeUpdate` hook rejects a specific, explainable state (a virtual device
+			// being relabelled into a category its channels do not implement). `DevicesValidationException`
+			// extends `DevicesException`, so without this branch the generic one below answers "please try
+			// again later" — advising a retry that can never succeed and discarding the only text that
+			// says why. `addDeviceToZone` in this same controller already draws the distinction.
+			if (error instanceof DevicesValidationException) {
+				throw new UnprocessableEntityException(error.message);
+			}
+
 			if (error instanceof DevicesException) {
 				throw new UnprocessableEntityException('Device could not be updated. Please try again later');
 			}

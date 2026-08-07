@@ -32,6 +32,7 @@ import {
 	DEVICES_VIRTUAL_TYPE,
 } from './devices-virtual.constants';
 import {
+	VirtualCategoryChangeUnsafeException,
 	VirtualOwnedPropertyNotWritableException,
 	VirtualOwnerNotVirtualException,
 	VirtualProjectionIncompatibleException,
@@ -125,6 +126,24 @@ export class DevicesVirtualPlugin {
 			class: VirtualDeviceEntity,
 			createDto: CreateVirtualDeviceDto,
 			updateDto: UpdateVirtualDeviceDto,
+			// A virtual device's whole structure is derived from its category, and a device PATCH writes
+			// no property, so no property hook sees a recategorisation. This is the only point at which
+			// one can be judged against the channels the device already carries.
+			beforeUpdate: async (device: VirtualDeviceEntity, previous): Promise<void> => {
+				try {
+					await this.virtualDevicesService.assertCategoryChangeSafe(device, previous.category);
+				} catch (error) {
+					// Translated for the same reason the property hooks translate theirs: the plugin's own
+					// exception vocabulary means nothing to the devices controller, which reports a
+					// `DevicesException` as an unprocessable entity and everything else as a 500. A refused
+					// PATCH is the caller's mistake, not the server's.
+					if (error instanceof VirtualCategoryChangeUnsafeException) {
+						throw new DevicesValidationException(error.message);
+					}
+
+					throw error;
+				}
+			},
 		});
 
 		this.channelsMapper.registerMapping<VirtualChannelEntity, CreateVirtualChannelDto, UpdateVirtualChannelDto>({

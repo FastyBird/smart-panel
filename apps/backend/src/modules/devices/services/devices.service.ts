@@ -536,6 +536,10 @@ export class DevicesService {
 
 		const device = await this.getOneOrThrow(id);
 
+		// Taken before anything is merged in, so `beforeUpdate` below can tell an actual change from a
+		// PATCH that merely echoed a field back unchanged.
+		const previous = { ...device } as Readonly<Partial<TDevice>>;
+
 		const mapping = this.devicesMapperService.getMapping<TDevice, any, TUpdateDTO>(device.type);
 
 		const dtoInstance = await this.validateDto<TUpdateDTO>(mapping.updateDto, updateDto);
@@ -661,6 +665,12 @@ export class DevicesService {
 		// Explicitly handle room_id being set to null (toInstance with exposeUnsetFields:false drops null values)
 		if (dtoInstance.room_id === null) {
 			device.roomId = null;
+		}
+
+		// The type owner's last look at the merged row, before anything is written — the only point at
+		// which an invariant spanning a field the PATCH sent and one it did not is decidable.
+		if (mapping.beforeUpdate) {
+			await mapping.beforeUpdate(device as TDevice, previous);
 		}
 
 		await repository.save(device as TDevice);

@@ -9,11 +9,16 @@ import {
 import { ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import {
+	DeviceValidationService,
+	ValidationIssueSeverity,
+} from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { matchesInvalidValue, matchesStep } from '../../../modules/devices/utils/property-command-value.utils';
 import { getAllProperties, isChannelAllowed, isValidDataType } from '../../../modules/devices/utils/schema.utils';
 import { DEVICES_VIRTUAL_TYPE, VIRTUAL_BLOCKED_CATEGORIES } from '../devices-virtual.constants';
 import {
+	VirtualCategoryChangeUnsafeException,
 	VirtualCategoryNotSupportedException,
 	VirtualNestingNotAllowedException,
 	VirtualOwnedPropertyNotWritableException,
@@ -123,7 +128,72 @@ export class VirtualDevicesService {
 		private readonly channelsService: ChannelsService,
 		private readonly devicesService: DevicesService,
 		private readonly index: VirtualPropertyIndexService,
+		private readonly deviceValidationService: DeviceValidationService,
 	) {}
+
+	/**
+	 * Throws when moving `device` to its current category would leave it advertising a shape it does
+	 * not have.
+	 *
+	 * `assertCategoryAllowed` only asks whether a category is one virtual devices support at all, which
+	 * is a question about the category. This is the question about the *device*: its channels and
+	 * properties were built for whichever category the wizard was pointed at, and every slot in them —
+	 * which channels are required, which properties each must carry, what each may declare — comes from
+	 * that category's specification. A PATCH that swaps `lighting` for `switcher` keeps the `light`
+	 * channels and every projection under them, so the device goes on being read as a switcher whose
+	 * required slots are simply absent. The admin does not offer the field, but nothing stopped an API
+	 * client, and no other guard runs on this path: `assertProjectionCompatible` is a *property* hook
+	 * and no property is written by a device PATCH.
+	 *
+	 * Validated rather than refused outright. A recategorisation the stored structure genuinely
+	 * satisfies is not a problem to solve, and a device with no channels yet has nothing to contradict —
+	 * `validateDeviceStructure` (documented for exactly this pre-save use) answers both without a rule
+	 * of its own that could drift from the one the validation endpoint applies.
+	 *
+	 * Only asked when the category actually changes. Running it on every PATCH would mean a device that
+	 * is *already* structurally invalid — a hand-built one, or one whose spec moved under it — could no
+	 * longer even be renamed.
+	 */
+	async assertCategoryChangeSafe(device: DeviceEntity, previousCategory: DeviceCategory | undefined): Promise<void> {
+		if (previousCategory === undefined || device.category === previousCategory) {
+			return;
+		}
+
+		const channels = await this.channelsService.findAll(device.id);
+
+		if (channels.length === 0) {
+			return;
+		}
+
+		const result = this.deviceValidationService.validateDeviceStructure({
+			category: device.category,
+			channels: await Promise.all(
+				channels.map(async (channel) => ({
+					id: channel.id,
+					category: channel.category,
+					parent: typeof channel.parent === 'string' ? channel.parent : (channel.parent?.id ?? null),
+					properties: (await this.channelsPropertiesService.findAll(channel.id)).map((property) => ({
+						category: property.category,
+						dataType: property.dataType,
+						permissions: property.permissions,
+					})),
+				})),
+			),
+		});
+
+		if (result.isValid) {
+			return;
+		}
+
+		const reasons = result.issues
+			.filter((issue) => issue.severity === ValidationIssueSeverity.ERROR)
+			.map((issue) => issue.message)
+			.join('; ');
+
+		throw new VirtualCategoryChangeUnsafeException(
+			`Device id=${device.id} cannot change category from '${previousCategory}' to '${device.category}': the channels and properties it already has do not satisfy the new category (${reasons}). Its structure is built for the category it was created with — rebuild the device rather than relabelling it`,
+		);
+	}
 
 	/** Throws when `category` needs closed-loop control (VIRTUAL_BLOCKED_CATEGORIES). */
 	assertCategoryAllowed(category: DeviceCategory): void {

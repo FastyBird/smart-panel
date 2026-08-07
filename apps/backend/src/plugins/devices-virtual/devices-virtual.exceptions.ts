@@ -75,3 +75,17 @@ export class VirtualProjectionIncompatibleException extends VirtualException {
 		this.name = 'VirtualProjectionIncompatibleException';
 	}
 }
+
+/**
+ * A device's category would be changed to one the structure it already carries does not satisfy.
+ *
+ * Distinct from VirtualCategoryNotSupportedException, which refuses a category outright: this one is
+ * about a category that is perfectly legal for a virtual device and merely wrong for *this* device's
+ * channels and properties.
+ */
+export class VirtualCategoryChangeUnsafeException extends VirtualException {
+	constructor(message: string) {
+		super(message);
+		this.name = 'VirtualCategoryChangeUnsafeException';
+	}
+}

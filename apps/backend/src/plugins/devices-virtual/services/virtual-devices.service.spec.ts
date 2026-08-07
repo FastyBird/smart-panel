@@ -8,6 +8,10 @@ import {
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import {
+	DeviceValidationService,
+	ValidationIssueSeverity,
+} from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_VIRTUAL_TYPE, VIRTUAL_BLOCKED_CATEGORIES } from '../devices-virtual.constants';
 import {
@@ -25,10 +29,11 @@ import { VirtualPropertyIndexService, VirtualPropertyLink } from './virtual-prop
 
 describe('VirtualDevicesService', () => {
 	let service: VirtualDevicesService;
-	let channelsPropertiesService: { findOne: jest.Mock };
-	let channelsService: { findOne: jest.Mock };
+	let channelsPropertiesService: { findOne: jest.Mock; findAll: jest.Mock };
+	let channelsService: { findOne: jest.Mock; findAll: jest.Mock };
 	let devicesService: { findOne: jest.Mock };
 	let index: { loadLinksByVirtualDevice: jest.Mock; findLinksByVirtualDevice: jest.Mock };
+	let deviceValidationService: { validateDeviceStructure: jest.Mock };
 
 	// -- fixtures --------------------------------------------------------------------------------
 
@@ -76,8 +81,9 @@ describe('VirtualDevicesService', () => {
 	});
 
 	beforeEach(() => {
-		channelsPropertiesService = { findOne: jest.fn() };
-		channelsService = { findOne: jest.fn() };
+		channelsPropertiesService = { findOne: jest.fn(), findAll: jest.fn().mockResolvedValue([]) };
+		channelsService = { findOne: jest.fn(), findAll: jest.fn().mockResolvedValue([]) };
+		deviceValidationService = { validateDeviceStructure: jest.fn().mockReturnValue({ isValid: true, issues: [] }) };
 		devicesService = { findOne: jest.fn() };
 		index = {
 			loadLinksByVirtualDevice: jest.fn().mockResolvedValue([]),
@@ -89,6 +95,7 @@ describe('VirtualDevicesService', () => {
 			channelsService as unknown as ChannelsService,
 			devicesService as unknown as DevicesService,
 			index as unknown as VirtualPropertyIndexService,
+			deviceValidationService as unknown as DeviceValidationService,
 		);
 	});
 
@@ -205,6 +212,94 @@ describe('VirtualDevicesService', () => {
 	// but the preview is not atomic with the write, a source can change permissions or data type in
 	// between, and a direct API call or a remap skips it entirely — so the rule has to hold at
 	// persistence too, which is what these pin.
+	describe('assertCategoryChangeSafe', () => {
+		const DEVICE_ID = 'virtual-device';
+
+		const device = (category: DeviceCategory): DeviceEntity => {
+			const entity = new DeviceEntity();
+
+			Object.assign(entity, { id: DEVICE_ID, category });
+
+			return entity;
+		};
+
+		beforeEach(() => {
+			channelsService.findAll.mockResolvedValue([
+				{ id: 'channel-light', category: ChannelCategory.LIGHT, parent: null },
+			]);
+			channelsPropertiesService.findAll.mockResolvedValue([
+				{
+					category: PropertyCategory.ON,
+					dataType: DataTypeType.BOOL,
+					permissions: [PermissionType.READ_WRITE],
+				},
+			]);
+		});
+
+		// The device's channels and properties were built for the category the wizard was pointed at.
+		// Relabelling it keeps every one of them, so the device is then read against required slots it
+		// simply does not have — and a device PATCH writes no property, so no property hook sees it.
+		it("refuses a change the device's existing structure does not satisfy", async () => {
+			deviceValidationService.validateDeviceStructure.mockReturnValue({
+				isValid: false,
+				issues: [
+					{
+						severity: ValidationIssueSeverity.ERROR,
+						message: "Required channel 'switcher' is missing",
+					},
+				],
+			});
+
+			await expect(
+				service.assertCategoryChangeSafe(device(DeviceCategory.SWITCHER), DeviceCategory.LIGHTING),
+			).rejects.toThrow(/cannot change category/);
+		});
+
+		// The stored structure is what is judged, not the fact that a change happened — a device whose
+		// channels genuinely satisfy the new category has nothing wrong with it.
+		it('accepts a change the existing structure does satisfy', async () => {
+			await expect(
+				service.assertCategoryChangeSafe(device(DeviceCategory.SWITCHER), DeviceCategory.LIGHTING),
+			).resolves.toBeUndefined();
+		});
+
+		// Running on every PATCH would mean a device that is *already* structurally invalid — hand-built,
+		// or one whose specification moved under it — could no longer even be renamed.
+		it('asks nothing when the category did not change', async () => {
+			deviceValidationService.validateDeviceStructure.mockReturnValue({ isValid: false, issues: [] });
+
+			await expect(
+				service.assertCategoryChangeSafe(device(DeviceCategory.LIGHTING), DeviceCategory.LIGHTING),
+			).resolves.toBeUndefined();
+			expect(channelsService.findAll).not.toHaveBeenCalled();
+		});
+
+		// A device with no channels has nothing that could contradict the new category.
+		it('accepts any change to a device with no channels yet', async () => {
+			channelsService.findAll.mockResolvedValue([]);
+			deviceValidationService.validateDeviceStructure.mockReturnValue({ isValid: false, issues: [] });
+
+			await expect(
+				service.assertCategoryChangeSafe(device(DeviceCategory.SWITCHER), DeviceCategory.LIGHTING),
+			).resolves.toBeUndefined();
+			expect(deviceValidationService.validateDeviceStructure).not.toHaveBeenCalled();
+		});
+
+		// Structure comes off the stored rows, not off the payload — the payload carries no channels at
+		// all, which is precisely why a DTO constraint cannot answer this.
+		it('judges the stored channels against the new category', async () => {
+			await service.assertCategoryChangeSafe(device(DeviceCategory.SWITCHER), DeviceCategory.LIGHTING);
+
+			expect(channelsService.findAll).toHaveBeenCalledWith(DEVICE_ID);
+			expect(deviceValidationService.validateDeviceStructure).toHaveBeenCalledWith(
+				expect.objectContaining({
+					category: DeviceCategory.SWITCHER,
+					channels: [expect.objectContaining({ category: ChannelCategory.LIGHT })],
+				}),
+			);
+		});
+	});
+
 	describe('assertProjectionCompatible', () => {
 		const CHANNEL_ID = 'virtual-channel';
 		const DEVICE_ID = 'virtual-device';

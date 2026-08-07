@@ -1116,6 +1116,97 @@ describe('devices-virtual plugin (e2e)', () => {
 			expect(JSON.stringify(response.body)).toContain('closed-loop control');
 		});
 
+		// A virtual device's channels and properties are derived from its category, and a device PATCH
+		// writes no property, so no property-level guard ever sees a recategorisation. The admin does not
+		// offer the field; an API client can still send it.
+		it('rejects recategorising a populated device to a category its structure does not satisfy', async () => {
+			const deviceResponse = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: DeviceCategory.LIGHTING,
+						name: 'E2E Recategorisation Guard Device',
+					},
+				})
+				.expect(201);
+			const deviceId = (deviceResponse.body as { data: DeviceBody }).data.id;
+
+			const channelResponse = await authPost('/modules/devices/channels')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: ChannelCategory.LIGHT,
+						identifier: 'light',
+						name: 'Light',
+						device: deviceId,
+					},
+				})
+				.expect(201);
+			const channelId = (channelResponse.body as { data: ChannelBody }).data.id;
+
+			await authPost(`/modules/devices/channels/${channelId}/properties`)
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: PropertyCategory.ON,
+						identifier: 'on',
+						name: 'On',
+						permissions: [PermissionType.READ_ONLY],
+						data_type: DataTypeType.BOOL,
+						value_origin: 'local',
+					},
+				})
+				.expect(201);
+
+			const response = await authPatch(`/modules/devices/devices/${deviceId}`).send({
+				data: { type: DEVICES_VIRTUAL_TYPE, category: DeviceCategory.DOOR },
+			});
+
+			expect(response.status).toBe(422);
+			expect(JSON.stringify(response.body)).toContain('cannot change category');
+
+			// Refused before the write, so the stored category is untouched.
+			const readBack = await authGet(`/modules/devices/devices/${deviceId}`).expect(200);
+
+			expect((readBack.body as { data: DeviceBody }).data.category).toBe(DeviceCategory.LIGHTING);
+		});
+
+		// Every other PATCH keeps working: the guard only runs when the category actually moves, so a
+		// device whose structure would fail today's specification can still be renamed.
+		it('allows an unrelated PATCH on a populated device', async () => {
+			const deviceResponse = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: DeviceCategory.LIGHTING,
+						name: 'E2E Rename Device',
+					},
+				})
+				.expect(201);
+			const deviceId = (deviceResponse.body as { data: DeviceBody }).data.id;
+
+			await authPost('/modules/devices/channels')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: ChannelCategory.LIGHT,
+						identifier: 'light',
+						name: 'Light',
+						device: deviceId,
+					},
+				})
+				.expect(201);
+
+			await authPatch(`/modules/devices/devices/${deviceId}`)
+				.send({ data: { type: DEVICES_VIRTUAL_TYPE, name: 'E2E Renamed Device' } })
+				.expect(200);
+
+			// Read back rather than trusting the response envelope, so this pins what was stored.
+			const readBack = await authGet(`/modules/devices/devices/${deviceId}`).expect(200);
+
+			expect((readBack.body as { data: DeviceBody & { name: string } }).data.name).toBe('E2E Renamed Device');
+		});
+
 		it("rejects a source_property pointing at another virtual device's property", async () => {
 			// An independent virtual device/channel/property, unrelated to the lifecycle flow above, to
 			// serve as "another virtual device's property". An owned (local) property is enough — the
@@ -1444,9 +1535,6 @@ describe('devices-virtual plugin (e2e)', () => {
 		// persistence, a read-only source lands on a writable slot and only fails much later, when a
 		// command is forwarded to a source that cannot accept it.
 		it('rejects a nested property projecting a read-only source onto a writable slot', async () => {
-			const before = await authGet('/modules/devices/devices?hidden=all').expect(200);
-			const beforeCount = (before.body as { data: DeviceBody[] }).data.length;
-
 			const rejected = await authPost('/modules/devices/devices').send({
 				data: {
 					type: DEVICES_VIRTUAL_TYPE,
@@ -1483,12 +1571,18 @@ describe('devices-virtual plugin (e2e)', () => {
 
 			// Not just "the response carried no device": the parent device row is saved before its channels
 			// are built, so a rejection here has to roll it back or the client sees a failure while the
-			// database keeps a half-built device, and a retry adds a second one. Counted rather than searched
-			// by name so this stays two requests — the suite shares a throttler.
+			// database keeps a half-built device, and a retry adds a second one.
+			//
+			// Asked of the rejected device by name rather than by comparing totals before and after. The app
+			// under test is live — the simulator plugin discovers devices of its own on a timer — so a
+			// total is only stable if nothing else happens to create one inside this window, which is a
+			// race rather than an invariant, and it broke as soon as two tests were added ahead of this
+			// one. The name states exactly what the rollback is being held to, and costs one request
+			// instead of two.
 			const after = await authGet('/modules/devices/devices?hidden=all').expect(200);
-			const afterCount = (after.body as { data: DeviceBody[] }).data.length;
+			const afterDevices = (after.body as { data: (DeviceBody & { name: string })[] }).data;
 
-			expect(afterCount).toBe(beforeCount);
+			expect(afterDevices.filter((entry) => entry.name === 'E2E Atomic Incompatible Virtual Light')).toHaveLength(0);
 		});
 
 		// The remap path, which is the one the preview covers least well: the wizard checked this pairing
