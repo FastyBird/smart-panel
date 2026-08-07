@@ -155,7 +155,10 @@ describe('StepIntegrations.vue', () => {
 		expect(wrapper.text()).toContain('onboardingModule.integrations.totalDevices({"count":2})');
 	});
 
-	it('removes virtual devices when the integration is toggled off', async () => {
+	// Toggling an integration off deletes the devices it owns, which is a cache-clear for anything
+	// that finds its own hardware. A virtual device is authored in the wizard and no scan can bring
+	// it back, so the same toggle would be silent, unconfirmed, unrecoverable data loss.
+	it('keeps hand-built virtual devices when the integration is toggled off', async () => {
 		mockExtensionsStore.data = { [VIRTUAL_PLUGIN_TYPE]: buildExtension() };
 		mockDevicesStore.findAll.mockReturnValue([{ id: 'virtual-device-1', type: VIRTUAL_DEVICE_TYPE }]);
 
@@ -174,7 +177,8 @@ describe('StepIntegrations.vue', () => {
 		await toggle.vm.$emit('update:model-value', false);
 		await flushPromises();
 
-		expect(mockRemove).toHaveBeenCalledWith({ id: 'virtual-device-1' });
+		expect(mockExtensionsStore.update).toHaveBeenCalledWith({ type: VIRTUAL_PLUGIN_TYPE, data: { enabled: false } });
+		expect(mockRemove).not.toHaveBeenCalled();
 	});
 
 	it('still removes devices for a plugin whose device type equals its prefix, like the seven non-virtual plugins', async () => {

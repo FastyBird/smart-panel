@@ -15,6 +15,7 @@ import { ChannelsPropertiesService } from '../../../modules/devices/services/cha
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
 import { VirtualDevicesService } from '../services/virtual-devices.service';
 import { VirtualIndexRebuildResult, VirtualPropertyIndexService } from '../services/virtual-property-index.service';
@@ -1762,19 +1763,27 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 		// Declares the same representation as the source, as a real projection does — the guard now
 		// refuses a projection reading a source that no longer speaks its data type.
+		// `isProjecting` is a getter on the real entity; a plain fixture states it, since the handler
+		// filters on it to skip a row that stores its own value.
 		const dependent = {
 			id: 'virtual-property',
 			category: 'on',
 			dataType: 'bool',
+			isProjecting: true,
 			channel: { id: 'virtual-channel', category: 'light', device: { id: 'virtual-device', category: 'lighting' } },
 		};
 
 		// Built here rather than reusing the suite's shared stubs: this is the only group that reaches
-		// `findBySourceProperty` and `getRepository`, and widening those stubs would loosen every other
-		// case's expectations for no benefit.
+		// `getRepository`, and widening those stubs would loosen every other case's expectations for no
+		// benefit.
+		//
+		// `findBySourceProperty` answers empty throughout, which is the state the index is genuinely in
+		// for a projection created since the last rebuild. Every case below still expects the handler to
+		// act, which is what pins it to storage rather than to the index.
 		const build = (report: { compatible: boolean; reason?: string }, dependents: unknown[] = [dependent]) => {
 			const update = jest.fn().mockResolvedValue(undefined);
 			const findOne = jest.fn().mockResolvedValue({ ...dependent, sourcePropertyId: null });
+			const find = jest.fn().mockResolvedValue(dependents);
 			const emit = jest.fn();
 			const reportCompatibility = jest.fn().mockReturnValue(report);
 
@@ -1783,7 +1792,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 					rebuild: jest.fn().mockResolvedValue(NO_CHANGES),
 					findLinksByVirtualDevice: jest.fn().mockReturnValue([]),
 					findVirtualDeviceIdsBySourceDevice: jest.fn().mockReturnValue([]),
-					findBySourceProperty: jest.fn().mockReturnValue(dependents),
+					findBySourceProperty: jest.fn().mockReturnValue([]),
 				} as unknown as VirtualPropertyIndexService,
 				{ recompute: jest.fn().mockResolvedValue(undefined) } as unknown as VirtualStatusListener,
 				{ findOne: jest.fn(), update: jest.fn() } as unknown as DevicesService,
@@ -1791,13 +1800,13 @@ describe('VirtualIndexMaintenanceListener', () => {
 				channelsPropertiesStub as unknown as ChannelsPropertiesService,
 				{ emit } as unknown as EventEmitter2,
 				{
-					getRepository: jest.fn().mockReturnValue({ update, findOne }),
+					getRepository: jest.fn().mockReturnValue({ update, findOne, find }),
 					createQueryRunner: () => ({ isTransactionActive: false }),
 				} as unknown as DataSource,
 				{ update: jest.fn() } as unknown as Repository<DeviceEntity>,
 			);
 
-			return { subject, update, reportCompatibility, emit };
+			return { subject, update, reportCompatibility, emit, find };
 		};
 
 		it('orphans the projection it can no longer feed', async () => {
@@ -1859,6 +1868,54 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			expect(reportCompatibility).not.toHaveBeenCalled();
 			expect(update).not.toHaveBeenCalled();
+		});
+
+		// The index is rebuilt behind structural changes asynchronously. A projection saved a moment ago
+		// is committed but not yet indexed, so a source edited inside that window would look unreferenced
+		// — and the rebuild that follows would then index a link no one ever checked. Asking storage is
+		// what closes it: the row exists from the instant the projection does.
+		it('checks a projection the index has not caught up with yet', async () => {
+			const { subject, update, find } = build({ compatible: false, reason: 'permissions [ro] do not satisfy [rw]' });
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(find).toHaveBeenCalledWith(expect.objectContaining({ where: { sourcePropertyId: 'source-property' } }));
+			expect(update).toHaveBeenCalledWith('virtual-property', { sourcePropertyId: null });
+		});
+
+		// The device relation decides which slot the report is asked about, and neither hop is populated
+		// unless its exact path is requested.
+		it('loads the projection with the channel and device the report needs', async () => {
+			const { subject, find } = build({ compatible: true });
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(find).toHaveBeenCalledWith(expect.objectContaining({ relations: ['channel', 'channel.device'] }));
+		});
+
+		// A projection that stores its own value has no source to be made incompatible with.
+		it('ignores a row that is not projecting at all', async () => {
+			const { subject, update, reportCompatibility } = build({ compatible: false }, [
+				{ ...dependent, isProjecting: false },
+			]);
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(reportCompatibility).not.toHaveBeenCalled();
+			expect(update).not.toHaveBeenCalled();
+		});
+
+		// Nothing may project a virtual property, so the orphaning emit above — and a CHANNEL_UPDATED on
+		// a virtual channel — must not cost a query to establish that.
+		it('asks storage nothing about a virtual property', async () => {
+			const { subject, find } = build({ compatible: false });
+
+			await subject.handleSourceMetadataChange({
+				id: 'virtual-property',
+				type: DEVICES_VIRTUAL_TYPE,
+			} as unknown as ChannelPropertyEntity);
+
+			expect(find).not.toHaveBeenCalled();
 		});
 	});
 });

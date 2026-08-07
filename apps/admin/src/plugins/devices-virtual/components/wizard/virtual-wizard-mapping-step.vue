@@ -675,14 +675,19 @@ const loadChannels = async (deviceId: string): Promise<IChannel[]> => {
 	}
 };
 
+// Always narrowed by `findForChannel`, never by what `fetch` happens to return. A successful fetch
+// resolves to the whole shared property cache rather than just the requested channel's rows, so a
+// caller that matched on category alone could pick a property belonging to an entirely different
+// device — the channel shortcut would then quietly build a cross-channel mapping. The fetch is still
+// what guarantees the channel's own rows are present; the filter is what decides which ones count.
 const loadProperties = async (channelId: string): Promise<IChannelProperty[]> => {
 	try {
-		return await propertiesStore.fetch({ channelId });
+		await propertiesStore.fetch({ channelId });
 	} catch (error: unknown) {
 		logger.error('Failed to load source properties', error);
-
-		return propertiesStore.findForChannel(channelId);
 	}
+
+	return propertiesStore.findForChannel(channelId);
 };
 
 // The response is documented as one report per candidate in request order, and each report echoes the

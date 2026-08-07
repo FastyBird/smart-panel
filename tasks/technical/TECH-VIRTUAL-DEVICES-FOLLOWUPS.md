@@ -283,9 +283,11 @@ The shared composable plus `devices-wled`, `devices-shelly-v1`, `devices-shelly-
 
 The wizard launcher in the devices list is gated on `enabled('devices-virtual')`, matching the sibling discovery-wizard button, but the route itself is registered with no such check — `enabled()` is async config state not available at `install()` time. Typing the URL with the plugin disabled still reaches the wizard. A `beforeEnter` guard is the only real option. Sibling wizard routes are ungated too, so this is consistent rather than novel.
 
-### 3a.5 Onboarding treats `devices-virtual` as a discoverable integration (medium)
+### 3a.5 Onboarding treats `devices-virtual` as a discoverable integration (low — destructive half fixed)
 
-`step-integrations.vue` selects device plugins with `ext.type.startsWith('devices-')`, which `devices-virtual` matches, so it is offered the discovery affordance ("scanning…") for a plugin that can never discover anything. Separately, toggling it **off** there now runs `removePluginDevices` against type `virtual` and deletes every virtual device the user has built — behaviourally consistent with the other plugins, but destructive enough to deserve a confirmation prompt.
+`step-integrations.vue` selects device plugins with `ext.type.startsWith('devices-')`, which `devices-virtual` matches, so it is offered the discovery affordance ("scanning…") for a plugin that can never discover anything.
+
+The destructive half is **fixed**: toggling it off ran `removePluginDevices` against type `virtual` and deleted every virtual device the user had built. `removePluginDevices` now returns early for `NON_DISCOVERABLE_PLUGINS`, since that cleanup is a cache-clear for plugins that rediscover their own hardware and unrecoverable data loss for ones whose devices are hand-authored. What remains is only cosmetic: the 30-second "discovering…" countdown a virtual plugin will never satisfy.
 
 ### 3a.6 Test-coverage gaps (low)
 

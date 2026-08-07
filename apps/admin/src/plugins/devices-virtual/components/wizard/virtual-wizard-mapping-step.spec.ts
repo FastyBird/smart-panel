@@ -180,7 +180,10 @@ const propertiesStore = {
 	findAll: (): IChannelProperty[] => properties,
 	findForChannel: (channelId: string): IChannelProperty[] => properties.filter((property) => property.channel === channelId),
 	findById: (id: string): IChannelProperty | null => properties.find((property) => property.id === id) ?? null,
-	fetch: vi.fn(async (payload: { channelId: string }) => properties.filter((property) => property.channel === payload.channelId)),
+	// The real store resolves a successful fetch to the *whole* shared cache, not just the requested
+	// channel's rows — mirrored here so a caller that matched on category alone would visibly pick up a
+	// property from another channel.
+	fetch: vi.fn(async () => properties),
 };
 
 // The real report echoes the triple it was evaluated for; the wizard needs that echo to match a
@@ -625,12 +628,12 @@ describe('VirtualWizardMappingStep', () => {
 	it('discards a channel shortcut whose slots were taken while it was loading', async () => {
 		let releaseProperties: (() => void) | null = null;
 
-		propertiesStore.fetch.mockImplementationOnce(async (payload: { channelId: string }) => {
+		propertiesStore.fetch.mockImplementationOnce(async () => {
 			await new Promise<void>((resolve) => {
 				releaseProperties = resolve;
 			});
 
-			return properties.filter((property) => property.channel === payload.channelId);
+			return properties;
 		});
 
 		const { wrapper, errors } = mountMappingStep();
@@ -660,6 +663,29 @@ describe('VirtualWizardMappingStep', () => {
 		// The manual choice is the last word, not the shortcut that started first.
 		expect(power?.sourceProperty).toBe(PROPERTY_VOLTAGE);
 		expect(errors.value).toBeDefined();
+	});
+
+	// `fetch` resolves to the entire property cache, so matching on category alone could select a
+	// property belonging to a different device entirely and quietly build a cross-channel mapping.
+	it('never maps a shortcut to a property outside the chosen channel', async () => {
+		const { wrapper } = mountMappingStep();
+
+		await wrapper.vm.applyChannel(DevicesModuleChannelCategory.electrical_power, CHANNEL_POWER);
+		await nextTick();
+
+		const emitted = wrapper.emitted('update:modelValue');
+		const mappings = emitted?.[emitted.length - 1]?.[0] as {
+			specChannel: DevicesModuleChannelCategory;
+			sourceProperty: string | null;
+		}[];
+
+		const chosen = mappings.filter((entry) => entry.sourceProperty !== null).map((entry) => entry.sourceProperty);
+
+		const outsideChannel = properties.filter((property) => property.channel !== CHANNEL_POWER).map((property) => property.id);
+
+		for (const id of chosen) {
+			expect(outsideChannel).not.toContain(id);
+		}
 	});
 
 	it('blocks the step when the compatibility check itself fails', async () => {

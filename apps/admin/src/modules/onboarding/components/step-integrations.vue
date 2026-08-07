@@ -217,6 +217,7 @@ import { useDevicesPlugins } from '../../../modules/devices/composables/useDevic
 import { DEVICES_MODULE_NAME } from '../../../modules/devices/devices.constants';
 import { devicesStoreKey } from '../../../modules/devices/store/keys';
 import { usePlugins } from '../../../modules/config/composables/usePlugins';
+import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../../../plugins/devices-virtual/devices-virtual.constants';
 
 import IntegrationConfigDialog from './integration-config-dialog.vue';
 
@@ -438,7 +439,24 @@ const startDiscovery = async (type: string): Promise<void> => {
 	}, DISCOVERY_COUNTDOWN_INTERVAL);
 };
 
+/**
+ * Plugins whose devices a user built by hand rather than the plugin finding them.
+ *
+ * Disabling a plugin deletes the devices it owns, which is safe for everything that discovers its
+ * own hardware: the rows are a cache of what is out on the network, and re-enabling repopulates
+ * them. Virtual devices have no such source. Each one is a category, a set of channels, and a
+ * mapping from every one of its properties to a property on some other device — all of it authored
+ * in the wizard, none of it recoverable by any scan. Deleting them on a toggle is unrecoverable
+ * data loss from a control that reads as reversible, so this flow leaves them alone; removing a
+ * virtual device stays an explicit act on the devices list, where it is confirmed.
+ */
+const NON_DISCOVERABLE_PLUGINS: readonly string[] = [DEVICES_VIRTUAL_PLUGIN_NAME];
+
 const removePluginDevices = async (type: string): Promise<void> => {
+	if (NON_DISCOVERABLE_PLUGINS.includes(type)) {
+		return;
+	}
+
 	const deviceTypes = devicesTypesForPlugin(type);
 	const pluginDevices = devicesStore.findAll().filter((d) => deviceTypes.includes(d.type));
 

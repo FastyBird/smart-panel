@@ -9,7 +9,7 @@ import { DeviceHiddenBy, DeviceHiddenFilter, EventType } from '../../../modules/
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
+import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
 import { VirtualDevicesService } from '../services/virtual-devices.service';
 import { VirtualIndexRebuildResult, VirtualPropertyIndexService } from '../services/virtual-property-index.service';
@@ -821,15 +821,36 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			return;
 		}
 
-		// The index still holds the pre-change picture, which is exactly what is wanted: who *was*
-		// projecting this property.
-		const dependents = this.index.findBySourceProperty(payload.id);
-
-		if (dependents.length === 0) {
+		// Nothing may project a virtual property — `assertSourcePropertyUsable` refuses a source whose
+		// device is virtual — so a virtual payload can have no dependents by construction. Returning
+		// here is what keeps the orphaning emit below from paying for a query to learn that, and what
+		// bounds `handleSourceChannelChange` when the channel it read back is itself virtual.
+		if (payload.type === DEVICES_VIRTUAL_TYPE) {
 			return;
 		}
 
 		const repository = this.dataSource.getRepository(VirtualChannelPropertyEntity);
+
+		// Asked of storage rather than of `index.findBySourceProperty`. The index is rebuilt behind
+		// structural changes asynchronously, so a projection created moments ago is not in it yet — and
+		// a source edited inside that window would find no dependents, return, and then be picked up by
+		// the very next rebuild as a link that nothing ever checked. Exactly the case this handler
+		// exists for, missed on a race. The row is committed the instant the projection exists, so
+		// asking for it cannot be early; `sourcePropertyId` carries an index, and this runs on metadata
+		// updates rather than value changes, so the query is cheap and rare.
+		//
+		// `channel.device` is spelled out because neither hop is populated unless its exact relation
+		// path is requested, and the compatibility report below needs the device's category.
+		const dependents = (
+			await repository.find({
+				where: { sourcePropertyId: payload.id },
+				relations: ['channel', 'channel.device'],
+			})
+		).filter((dependent) => dependent.isProjecting);
+
+		if (dependents.length === 0) {
+			return;
+		}
 
 		let orphaned = false;
 
