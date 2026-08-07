@@ -8,6 +8,7 @@ import { ConnectionState, PermissionType } from '../../devices/devices.constants
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
 import { DeviceConnectionStateService } from '../../devices/services/device-connection-state.service';
+import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { resolvePropertyUnit } from '../../devices/utils/property-metadata.utils';
 import { SceneSummaryPage, ScenesService } from '../../scenes/services/scenes.service';
 import { SpaceSummaryPage, SpacesService } from '../../spaces/services/spaces.service';
@@ -88,6 +89,7 @@ export class McpTargetDiscoveryToolService {
 	constructor(
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectionStateService: DeviceConnectionStateService,
+		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly scenesService: ScenesService,
 		private readonly spacesService: SpacesService,
 		private readonly toolRegistry: ToolProviderRegistryService,
@@ -119,14 +121,17 @@ export class McpTargetDiscoveryToolService {
 						MCP_MAX_WRITABLE_PROPERTY_CANDIDATES,
 					);
 					const devices = this.uniqueDevices(candidates.properties);
-					const statuses = await this.deviceConnectionStateService.readLatestMany(devices);
+					const availableDevices = devices.filter(
+						(device) => device.enabled && !device.hidden && this.platformRegistryService.get(device) !== null,
+					);
+					const availableDeviceIds = new Set(availableDevices.map((device) => device.id));
+					const statuses = await this.deviceConnectionStateService.readLatestMany(availableDevices);
 					const actionable = candidates.properties.filter((property) => {
 						const device = this.getDevice(property);
 						const status = statuses.get(device.id);
 
 						return (
-							device.enabled &&
-							!device.hidden &&
+							availableDeviceIds.has(device.id) &&
 							property.permissions.some((permission) =>
 								[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
 							) &&
@@ -415,7 +420,7 @@ export class McpTargetDiscoveryToolService {
 
 		const device = this.getDevice(property);
 
-		return device.enabled && !device.hidden;
+		return device.enabled && !device.hidden && this.platformRegistryService.get(device) !== null;
 	}
 
 	private toProviderToolData(capability: McpCapability, result: ToolExecutionResult): ToolData {

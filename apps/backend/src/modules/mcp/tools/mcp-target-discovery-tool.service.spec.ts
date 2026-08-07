@@ -10,6 +10,7 @@ import {
 import { ChannelPropertyEntity } from '../../devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
 import { DeviceConnectionStateService } from '../../devices/services/device-connection-state.service';
+import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { SceneEntity } from '../../scenes/entities/scenes.entity';
 import { SceneCategory } from '../../scenes/scenes.constants';
 import { ScenesService } from '../../scenes/services/scenes.service';
@@ -33,6 +34,7 @@ describe('McpTargetDiscoveryToolService', () => {
 	let service: McpTargetDiscoveryToolService;
 	let channelsPropertiesService: { findOne: jest.Mock; findWritableCandidates: jest.Mock };
 	let deviceConnectionStateService: { readLatestMany: jest.Mock };
+	let platformRegistryService: { get: jest.Mock };
 	let scenesService: { findTriggerableSummaryPage: jest.Mock };
 	let spacesService: { findLightingTriggerSummaryPage: jest.Mock };
 	let toolRegistry: { getAllToolDefinitions: jest.Mock; executeTool: jest.Mock };
@@ -49,6 +51,9 @@ describe('McpTargetDiscoveryToolService', () => {
 		};
 		deviceConnectionStateService = {
 			readLatestMany: jest.fn().mockResolvedValue(new Map()),
+		};
+		platformRegistryService = {
+			get: jest.fn().mockReturnValue({}),
 		};
 		scenesService = {
 			findTriggerableSummaryPage: jest.fn().mockResolvedValue({ scenes: [], total: 0 }),
@@ -86,6 +91,7 @@ describe('McpTargetDiscoveryToolService', () => {
 		service = new McpTargetDiscoveryToolService(
 			channelsPropertiesService as unknown as ChannelsPropertiesService,
 			deviceConnectionStateService as unknown as DeviceConnectionStateService,
+			platformRegistryService as unknown as PlatformRegistryService,
 			scenesService as unknown as ScenesService,
 			spacesService as unknown as SpacesService,
 			toolRegistry as unknown as ToolProviderRegistryService,
@@ -163,6 +169,31 @@ describe('McpTargetDiscoveryToolService', () => {
 		expect(data.scenes).toHaveLength(1);
 		expect(data.spaces).toEqual([expect.objectContaining({ modes: ['off', 'on', 'work', 'relax', 'night'] })]);
 		expect(channelsPropertiesService.findWritableCandidates).not.toHaveBeenCalled();
+	});
+
+	it('does not advertise or control writable properties without a registered device platform', async () => {
+		providerTools = [providerTool('control_device', ToolAccessKind.WRITE)];
+		const target = property('10000000-0000-4000-8000-000000000001', PermissionType.READ_WRITE);
+		channelsPropertiesService.findWritableCandidates.mockResolvedValue({ properties: [target], total: 1 });
+		channelsPropertiesService.findOne.mockResolvedValue(target);
+		platformRegistryService.get.mockReturnValue(null);
+		service.register(server(), authInfo([McpCapability.WRITE]));
+
+		const discoveryResult = await callbacks.get('list_writable_properties')?.(
+			{},
+			requestContext([McpCapability.WRITE]),
+		);
+		const discoveryData = discoveryResult?.structuredContent.data as { properties: unknown[] };
+		const writeResult = await callbacks.get('set_device_property')?.(
+			{ property_id: target.id, value: true },
+			requestContext([McpCapability.WRITE]),
+		);
+
+		expect(discoveryData.properties).toEqual([]);
+		expect(deviceConnectionStateService.readLatestMany).toHaveBeenCalledWith([]);
+		expect(writeResult?.isError).toBe(true);
+		expect(writeResult?.structuredContent.error).toEqual(expect.objectContaining({ code: 'not_found' }));
+		expect(toolRegistry.executeTool).not.toHaveBeenCalled();
 	});
 
 	it('omits space targets and the lighting tool when the optional provider is absent', async () => {
