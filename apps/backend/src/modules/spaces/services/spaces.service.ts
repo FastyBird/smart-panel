@@ -9,14 +9,22 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { EventType as DevicesEventType } from '../../devices/devices.constants';
+import {
+	ChannelCategory,
+	DeviceCategory,
+	EventType as DevicesEventType,
+	PermissionType,
+	PropertyCategory,
+} from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
+import { DeviceConnectionStateService } from '../../devices/services/device-connection-state.service';
 import { DeviceZonesService } from '../../devices/services/device-zones.service';
 import {
 	DevicesService,
 	VisibleDeviceSummaryPage,
 	VisibleDeviceSummaryScope,
 } from '../../devices/services/devices.service';
+import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { BulkAssignDto } from '../dto/bulk-assign.dto';
 import { CreateSpaceDto } from '../dto/create-space.dto';
@@ -25,6 +33,7 @@ import { SpaceEntity } from '../entities/space.entity';
 import {
 	EventType,
 	SPACES_MODULE_NAME,
+	SpaceRoleType,
 	SpaceType,
 	isFloorZoneCategory,
 	isValidCategoryForType,
@@ -45,6 +54,24 @@ export interface SpaceSummaryPage {
 	spaces: SpaceEntity[];
 	total: number;
 }
+
+const LIGHTING_DISCOVERY_SPACE_BATCH_SIZE = 50;
+const LIGHTING_DISCOVERY_DEVICE_BATCH_SIZE = 100;
+const WRITABLE_PROPERTY_PERMISSION_PREDICATE =
+	'(property.permissions = :readWrite OR property.permissions = :writeOnly ' +
+	'OR property.permissions LIKE :readWriteFirst OR property.permissions LIKE :readWriteMiddle ' +
+	'OR property.permissions LIKE :readWriteLast OR property.permissions LIKE :writeOnlyFirst ' +
+	'OR property.permissions LIKE :writeOnlyMiddle OR property.permissions LIKE :writeOnlyLast)';
+const WRITABLE_PROPERTY_PERMISSION_PARAMETERS = {
+	readWrite: PermissionType.READ_WRITE,
+	writeOnly: PermissionType.WRITE_ONLY,
+	readWriteFirst: `${PermissionType.READ_WRITE},%`,
+	readWriteMiddle: `%,${PermissionType.READ_WRITE},%`,
+	readWriteLast: `%,${PermissionType.READ_WRITE}`,
+	writeOnlyFirst: `${PermissionType.WRITE_ONLY},%`,
+	writeOnlyMiddle: `%,${PermissionType.WRITE_ONLY},%`,
+	writeOnlyLast: `%,${PermissionType.WRITE_ONLY}`,
+};
 
 /**
  * Narrow check for whether a subtype mapping owns a given shared-STI-table
@@ -73,6 +100,8 @@ export class SpacesService {
 		private readonly displayRepository: Repository<DisplayEntity>,
 		private readonly deviceZonesService: DeviceZonesService,
 		private readonly devicesService: DevicesService,
+		private readonly platformRegistryService: PlatformRegistryService,
+		private readonly deviceConnectionStateService: DeviceConnectionStateService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly spacesTypeMapper: SpacesTypeMapperService,
@@ -101,6 +130,167 @@ export class SpacesService {
 			.getManyAndCount();
 
 		return { spaces, total };
+	}
+
+	async findLightingTriggerSummaryPage(limit: number): Promise<SpaceSummaryPage> {
+		if (limit <= 0) {
+			return { spaces: [], total: 0 };
+		}
+
+		const registeredDeviceTypes = this.platformRegistryService.list();
+
+		if (registeredDeviceTypes.length === 0) {
+			return { spaces: [], total: 0 };
+		}
+
+		const targetCount = limit + 1;
+		const spaces: SpaceEntity[] = [];
+		let offset = 0;
+		let exhausted = false;
+
+		while (spaces.length < targetCount && !exhausted) {
+			const candidateSpaces = await this.findLightingCandidateSpaceBatch(
+				registeredDeviceTypes,
+				offset,
+				LIGHTING_DISCOVERY_SPACE_BATCH_SIZE,
+			);
+
+			offset += candidateSpaces.length;
+			exhausted = candidateSpaces.length < LIGHTING_DISCOVERY_SPACE_BATCH_SIZE;
+
+			for (const space of candidateSpaces) {
+				if (await this.hasOnlineLightingTarget(space, registeredDeviceTypes)) {
+					spaces.push(space);
+
+					if (spaces.length === targetCount) {
+						break;
+					}
+				}
+			}
+		}
+
+		return {
+			spaces: spaces.slice(0, limit),
+			total: spaces.length >= targetCount ? targetCount : spaces.length,
+		};
+	}
+
+	private async findLightingCandidateSpaceBatch(
+		registeredDeviceTypes: string[],
+		offset: number,
+		limit: number,
+	): Promise<SpaceEntity[]> {
+		return this.repository
+			.createQueryBuilder('space')
+			.where(
+				`EXISTS (
+					SELECT 1
+					FROM devices_module_devices device
+					INNER JOIN devices_module_channels channel ON channel."deviceId" = device.id
+					INNER JOIN devices_module_channels_properties property ON property."channelId" = channel.id
+					LEFT JOIN devices_module_devices_zones deviceZone ON deviceZone."deviceId" = device.id
+					WHERE device.enabled = :enabled
+						AND device.hidden = :hidden
+						AND device.type IN (:...registeredDeviceTypes)
+						AND device.category = :deviceCategory
+						AND channel.category = :channelCategory
+						AND property.category = :propertyCategory
+						AND ${WRITABLE_PROPERTY_PERMISSION_PREDICATE}
+						AND NOT EXISTS (
+							SELECT 1
+							FROM spaces_module_space_roles lightingRole
+							WHERE lightingRole.type = :lightingRoleType
+								AND lightingRole."spaceId" = space.id
+								AND lightingRole."deviceId" = device.id
+								AND lightingRole."channelId" = channel.id
+								AND lightingRole.role = :hiddenLightingRole
+						)
+						AND ((space.type = :roomType AND device."roomId" = space.id)
+							OR (space.type = :zoneType AND deviceZone."zoneId" = space.id))
+				)`,
+				{
+					enabled: true,
+					hidden: false,
+					registeredDeviceTypes,
+					deviceCategory: DeviceCategory.LIGHTING,
+					channelCategory: ChannelCategory.LIGHT,
+					propertyCategory: PropertyCategory.ON,
+					...WRITABLE_PROPERTY_PERMISSION_PARAMETERS,
+					lightingRoleType: SpaceRoleType.LIGHTING,
+					hiddenLightingRole: 'hidden',
+					roomType: SpaceType.ROOM,
+					zoneType: SpaceType.ZONE,
+				},
+			)
+			.orderBy('space.displayOrder', 'ASC')
+			.addOrderBy('space.name', 'ASC')
+			.addOrderBy('space.id', 'ASC')
+			.skip(offset)
+			.take(limit)
+			.getMany();
+	}
+
+	private async hasOnlineLightingTarget(space: SpaceEntity, registeredDeviceTypes: string[]): Promise<boolean> {
+		let offset = 0;
+
+		while (true) {
+			const devices = await this.deviceRepository
+				.createQueryBuilder('device')
+				.innerJoin('device.channels', 'channel')
+				.innerJoin('channel.properties', 'property')
+				.leftJoin('device.deviceZones', 'deviceZone')
+				.select('device.id')
+				.distinct(true)
+				.where('device.enabled = :enabled', { enabled: true })
+				.andWhere('device.hidden = :hidden', { hidden: false })
+				.andWhere('device.type IN (:...registeredDeviceTypes)', { registeredDeviceTypes })
+				.andWhere('device.category = :deviceCategory', { deviceCategory: DeviceCategory.LIGHTING })
+				.andWhere('channel.category = :channelCategory', { channelCategory: ChannelCategory.LIGHT })
+				.andWhere('property.category = :propertyCategory', { propertyCategory: PropertyCategory.ON })
+				.andWhere(WRITABLE_PROPERTY_PERMISSION_PREDICATE, WRITABLE_PROPERTY_PERMISSION_PARAMETERS)
+				.andWhere(
+					`NOT EXISTS (
+						SELECT 1
+						FROM spaces_module_space_roles lightingRole
+						WHERE lightingRole.type = :lightingRoleType
+							AND lightingRole."spaceId" = :spaceId
+							AND lightingRole."deviceId" = device.id
+							AND lightingRole."channelId" = channel.id
+							AND lightingRole.role = :hiddenLightingRole
+					)`,
+					{
+						lightingRoleType: SpaceRoleType.LIGHTING,
+						spaceId: space.id,
+						hiddenLightingRole: 'hidden',
+					},
+				)
+				.andWhere(
+					'((:spaceType = :roomType AND device.roomId = :spaceId) ' +
+						'OR (:spaceType = :zoneType AND deviceZone.zoneId = :spaceId))',
+					{
+						spaceType: space.type,
+						roomType: SpaceType.ROOM,
+						zoneType: SpaceType.ZONE,
+						spaceId: space.id,
+					},
+				)
+				.orderBy('device.id', 'ASC')
+				.skip(offset)
+				.take(LIGHTING_DISCOVERY_DEVICE_BATCH_SIZE)
+				.callListeners(false)
+				.getMany();
+			const statuses = await this.deviceConnectionStateService.readLatestMany(devices);
+
+			if (devices.some((device) => statuses.get(device.id)?.online === true)) {
+				return true;
+			}
+
+			if (devices.length < LIGHTING_DISCOVERY_DEVICE_BATCH_SIZE) {
+				return false;
+			}
+
+			offset += devices.length;
+		}
 	}
 
 	async findOne(id: string): Promise<SpaceEntity | null> {

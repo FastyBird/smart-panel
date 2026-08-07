@@ -2,7 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
@@ -681,7 +686,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 	/**
 	 * Find all light devices in a space with their channels, properties, and roles.
 	 * Iterates ALL light channels per device (multi-channel devices have multiple outputs).
-	 * Excludes lights with HIDDEN role as they should not be controlled by intents.
+	 * Excludes disabled/hidden devices, lights with HIDDEN role, and non-writable properties.
 	 */
 	private async getLightsInSpace(spaceId: string): Promise<LightDevice[]> {
 		const devices = await this.spacesService.findDevicesBySpace(spaceId);
@@ -691,8 +696,18 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		const roleMap = await this.lightingRoleService.getRoleMap(spaceId);
 
 		for (const device of devices) {
+			if (device.enabled === false || device.hidden === true) {
+				this.logger.debug(`Skipping unavailable light deviceId=${device.id}`);
+				continue;
+			}
+
 			// Check if device is a lighting device
 			if (device.category !== DeviceCategory.LIGHTING) {
+				continue;
+			}
+
+			if (!this.platformRegistryService.get(device)) {
+				this.logger.debug(`Skipping light without a registered platform deviceId=${device.id}`);
 				continue;
 			}
 
@@ -701,7 +716,9 @@ export class LightingIntentService extends SpaceIntentBaseService {
 
 			for (const lightChannel of lightChannels) {
 				// Find the ON property (required for lights)
-				const onProperty = lightChannel.properties?.find((p) => p.category === PropertyCategory.ON);
+				const onProperty = lightChannel.properties?.find(
+					(p) => p.category === PropertyCategory.ON && this.isWritableProperty(p),
+				);
 
 				if (!onProperty) {
 					continue;
@@ -709,22 +726,39 @@ export class LightingIntentService extends SpaceIntentBaseService {
 
 				// Find optional properties
 				const brightnessProperty =
-					lightChannel.properties?.find((p) => p.category === PropertyCategory.BRIGHTNESS) ?? null;
+					lightChannel.properties?.find(
+						(p) => p.category === PropertyCategory.BRIGHTNESS && this.isWritableProperty(p),
+					) ?? null;
 				// RGB color properties
 				const colorRedProperty =
-					lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_RED) ?? null;
+					lightChannel.properties?.find(
+						(p) => p.category === PropertyCategory.COLOR_RED && this.isWritableProperty(p),
+					) ?? null;
 				const colorGreenProperty =
-					lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_GREEN) ?? null;
+					lightChannel.properties?.find(
+						(p) => p.category === PropertyCategory.COLOR_GREEN && this.isWritableProperty(p),
+					) ?? null;
 				const colorBlueProperty =
-					lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_BLUE) ?? null;
+					lightChannel.properties?.find(
+						(p) => p.category === PropertyCategory.COLOR_BLUE && this.isWritableProperty(p),
+					) ?? null;
 				// Hue-Saturation color properties
-				const hueProperty = lightChannel.properties?.find((p) => p.category === PropertyCategory.HUE) ?? null;
+				const hueProperty =
+					lightChannel.properties?.find((p) => p.category === PropertyCategory.HUE && this.isWritableProperty(p)) ??
+					null;
 				const saturationProperty =
-					lightChannel.properties?.find((p) => p.category === PropertyCategory.SATURATION) ?? null;
+					lightChannel.properties?.find(
+						(p) => p.category === PropertyCategory.SATURATION && this.isWritableProperty(p),
+					) ?? null;
 				// Other properties
 				const colorTempProperty =
-					lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_TEMPERATURE) ?? null;
-				const whiteProperty = lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_WHITE) ?? null;
+					lightChannel.properties?.find(
+						(p) => p.category === PropertyCategory.COLOR_TEMPERATURE && this.isWritableProperty(p),
+					) ?? null;
+				const whiteProperty =
+					lightChannel.properties?.find(
+						(p) => p.category === PropertyCategory.COLOR_WHITE && this.isWritableProperty(p),
+					) ?? null;
 
 				// Get role assignment for this light (keyed by deviceId:channelId)
 				const roleKey = `${device.id}:${lightChannel.id}`;
@@ -755,6 +789,12 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		}
 
 		return lights;
+	}
+
+	private isWritableProperty(property: ChannelPropertyEntity): boolean {
+		return property.permissions.some((permission) =>
+			[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
+		);
 	}
 
 	/**

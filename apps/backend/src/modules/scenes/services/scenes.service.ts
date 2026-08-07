@@ -128,6 +128,27 @@ export class ScenesService {
 		return { scenes, total };
 	}
 
+	async findTriggerableSummaryPage(limit: number): Promise<SceneSummaryPage> {
+		const [scenes, total] = await this.repository
+			.createQueryBuilder('scene')
+			.select([
+				'scene.id',
+				'scene.name',
+				'scene.category',
+				'scene.enabled',
+				'scene.triggerable',
+				'scene.primarySpaceId',
+			])
+			.where('scene.enabled = :enabled', { enabled: true })
+			.andWhere('scene.triggerable = :triggerable', { triggerable: true })
+			.orderBy('scene.name', 'ASC')
+			.addOrderBy('scene.id', 'ASC')
+			.take(limit)
+			.getManyAndCount();
+
+		return { scenes, total };
+	}
+
 	async findOne(id: string): Promise<SceneEntity | null> {
 		this.logger.debug(`[LOOKUP] Fetching scene with id=${id}`);
 

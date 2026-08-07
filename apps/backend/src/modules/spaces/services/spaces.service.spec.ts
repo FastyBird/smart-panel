@@ -11,8 +11,10 @@ import { UpdateHomeControlSpaceDto } from '../../../plugins/spaces-home-control/
 import { RoomSpaceEntity } from '../../../plugins/spaces-home-control/entities/room-space.entity';
 import { ZoneSpaceEntity } from '../../../plugins/spaces-home-control/entities/zone-space.entity';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
+import { DeviceConnectionStateService } from '../../devices/services/device-connection-state.service';
 import { DeviceZonesService } from '../../devices/services/device-zones.service';
 import { DevicesService } from '../../devices/services/devices.service';
+import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { CreateSpaceDto } from '../dto/create-space.dto';
 import { UpdateSpaceDto } from '../dto/update-space.dto';
@@ -29,6 +31,8 @@ describe('SpacesService', () => {
 	let deviceRepository: jest.Mocked<Repository<DeviceEntity>>;
 	let displayRepository: jest.Mocked<Repository<DisplayEntity>>;
 	let devicesService: { findVisibleSummaryPage: jest.Mock };
+	let platformRegistryService: { list: jest.Mock };
+	let deviceConnectionStateService: { readLatestMany: jest.Mock };
 	// DataSource mock is hoisted so individual tests can stub `query()` — used
 	// by `SpacesService.update()` to read the raw `category` column straight
 	// from the shared STI table (ignoring subtype hydration).
@@ -61,6 +65,12 @@ describe('SpacesService', () => {
 	beforeEach(async () => {
 		devicesService = {
 			findVisibleSummaryPage: jest.fn().mockResolvedValue({ devices: [], total: 0 }),
+		};
+		platformRegistryService = {
+			list: jest.fn().mockReturnValue(['test-light']),
+		};
+		deviceConnectionStateService = {
+			readLatestMany: jest.fn().mockResolvedValue(new Map()),
 		};
 		mockQueryBuilder = {
 			update: jest.fn().mockReturnThis(),
@@ -173,6 +183,14 @@ describe('SpacesService', () => {
 				{
 					provide: DevicesService,
 					useValue: devicesService,
+				},
+				{
+					provide: PlatformRegistryService,
+					useValue: platformRegistryService,
+				},
+				{
+					provide: DeviceConnectionStateService,
+					useValue: deviceConnectionStateService,
 				},
 				SpacesTypeMapperService,
 			],
@@ -368,6 +386,153 @@ describe('SpacesService', () => {
 			expect(queryBuilder.addOrderBy).toHaveBeenNthCalledWith(2, 'space.id', 'ASC');
 			expect(queryBuilder.skip).toHaveBeenCalledWith(25);
 			expect(queryBuilder.take).toHaveBeenCalledWith(50);
+		});
+	});
+
+	describe('findLightingTriggerSummaryPage', () => {
+		it('returns only bounded spaces with enabled visible writable lighting targets', async () => {
+			const onlineDevice = { id: 'device-1' } as DeviceEntity;
+			const deviceQueryBuilder = {
+				innerJoin: jest.fn().mockReturnThis(),
+				leftJoin: jest.fn().mockReturnThis(),
+				select: jest.fn().mockReturnThis(),
+				distinct: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				skip: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockResolvedValue([onlineDevice]),
+			};
+			const queryBuilder = {
+				where: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				addOrderBy: jest.fn().mockReturnThis(),
+				skip: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockResolvedValue([mockSpace]),
+			};
+			deviceRepository.createQueryBuilder.mockReturnValue(
+				deviceQueryBuilder as unknown as SelectQueryBuilder<DeviceEntity>,
+			);
+			deviceConnectionStateService.readLatestMany.mockResolvedValue(
+				new Map([[onlineDevice.id, { online: true, status: 'connected', lastChanged: new Date() }]]),
+			);
+			spaceRepository.createQueryBuilder.mockReturnValue(queryBuilder as unknown as SelectQueryBuilder<SpaceEntity>);
+
+			await expect(service.findLightingTriggerSummaryPage(50)).resolves.toEqual({ spaces: [mockSpace], total: 1 });
+			expect(queryBuilder.where).toHaveBeenCalledWith(
+				expect.stringContaining('device.type IN (:...registeredDeviceTypes)'),
+				expect.objectContaining({
+					enabled: true,
+					hidden: false,
+					registeredDeviceTypes: ['test-light'],
+					deviceCategory: 'lighting',
+					channelCategory: 'light',
+					propertyCategory: 'on',
+					readWrite: 'rw',
+					writeOnly: 'wo',
+					lightingRoleType: 'lighting',
+					hiddenLightingRole: 'hidden',
+				}),
+			);
+			expect(queryBuilder.where).toHaveBeenCalledWith(
+				expect.stringContaining('spaces_module_space_roles'),
+				expect.any(Object),
+			);
+			expect(queryBuilder.take).toHaveBeenCalledWith(50);
+			expect(deviceQueryBuilder.take).toHaveBeenCalledWith(100);
+			expect(deviceConnectionStateService.readLatestMany).toHaveBeenCalledWith([onlineDevice]);
+		});
+
+		it('returns no spaces when no device platforms are registered', async () => {
+			platformRegistryService.list.mockReturnValue([]);
+
+			await expect(service.findLightingTriggerSummaryPage(50)).resolves.toEqual({ spaces: [], total: 0 });
+			expect(spaceRepository.createQueryBuilder).not.toHaveBeenCalled();
+		});
+
+		it('returns no spaces when all candidate lighting devices are offline', async () => {
+			const offlineDevice = { id: 'device-1' } as DeviceEntity;
+			const deviceQueryBuilder = {
+				innerJoin: jest.fn().mockReturnThis(),
+				leftJoin: jest.fn().mockReturnThis(),
+				select: jest.fn().mockReturnThis(),
+				distinct: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				skip: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockResolvedValue([offlineDevice]),
+			};
+			const queryBuilder = {
+				where: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				addOrderBy: jest.fn().mockReturnThis(),
+				skip: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockResolvedValue([mockSpace]),
+			};
+			deviceRepository.createQueryBuilder.mockReturnValue(
+				deviceQueryBuilder as unknown as SelectQueryBuilder<DeviceEntity>,
+			);
+			spaceRepository.createQueryBuilder.mockReturnValue(queryBuilder as unknown as SelectQueryBuilder<SpaceEntity>);
+			deviceConnectionStateService.readLatestMany.mockResolvedValue(
+				new Map([[offlineDevice.id, { online: false, status: 'disconnected', lastChanged: new Date() }]]),
+			);
+
+			await expect(service.findLightingTriggerSummaryPage(50)).resolves.toEqual({ spaces: [], total: 0 });
+			expect(deviceQueryBuilder.take).toHaveBeenCalledWith(100);
+			expect(deviceConnectionStateService.readLatestMany).toHaveBeenCalledWith([offlineDevice]);
+		});
+
+		it('continues through bounded candidate batches until the requested page is filled', async () => {
+			const offlineSpace = { ...mockSpace, id: 'space-offline' } as SpaceEntity;
+			const onlineSpace = { ...mockSpace, id: 'space-online' } as SpaceEntity;
+			const offlineDevice = { id: 'device-offline' } as DeviceEntity;
+			const onlineDevice = { id: 'device-online' } as DeviceEntity;
+			const deviceQueryBuilder = {
+				innerJoin: jest.fn().mockReturnThis(),
+				leftJoin: jest.fn().mockReturnThis(),
+				select: jest.fn().mockReturnThis(),
+				distinct: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				skip: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockResolvedValueOnce([offlineDevice]).mockResolvedValueOnce([onlineDevice]),
+			};
+			const queryBuilder = {
+				where: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				addOrderBy: jest.fn().mockReturnThis(),
+				skip: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockResolvedValue([offlineSpace, onlineSpace]),
+			};
+			deviceRepository.createQueryBuilder.mockReturnValue(
+				deviceQueryBuilder as unknown as SelectQueryBuilder<DeviceEntity>,
+			);
+			spaceRepository.createQueryBuilder.mockReturnValue(queryBuilder as unknown as SelectQueryBuilder<SpaceEntity>);
+			deviceConnectionStateService.readLatestMany
+				.mockResolvedValueOnce(
+					new Map([[offlineDevice.id, { online: false, status: 'disconnected', lastChanged: new Date() }]]),
+				)
+				.mockResolvedValueOnce(
+					new Map([[onlineDevice.id, { online: true, status: 'connected', lastChanged: new Date() }]]),
+				);
+
+			await expect(service.findLightingTriggerSummaryPage(1)).resolves.toEqual({
+				spaces: [onlineSpace],
+				total: 1,
+			});
+			expect(deviceConnectionStateService.readLatestMany).toHaveBeenCalledTimes(2);
+			expect(deviceQueryBuilder.take).toHaveBeenCalledWith(100);
 		});
 	});
 
