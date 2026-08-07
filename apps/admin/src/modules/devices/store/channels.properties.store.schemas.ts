@@ -2,9 +2,9 @@ import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
 import type {
+	DevicesModuleChannelPropertySchema,
 	DevicesModuleCreateChannelPropertySchema,
 	DevicesModuleUpdateChannelPropertySchema,
-	DevicesModuleChannelPropertySchema,
 } from '../../../openapi.constants';
 import {
 	DevicesModuleChannelPropertyCategory,
@@ -49,7 +49,7 @@ export const ChannelPropertySchema = z.object({
 					lastUpdated: z.string().nullable().optional().default(null),
 					trend: z.nativeEnum(SpacesModuleDataSensorReadingTrend).nullable().optional().default(null),
 				})
-				.nullable(),
+				.nullable()
 		)
 		.default(null),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
@@ -187,6 +187,10 @@ export const ChannelPropertyCreateReqSchema: ZodType<ApiCreateChannelProperty> =
 
 export const ChannelPropertyUpdateReqSchema: ZodType<ApiUpdateChannelProperty> = z.object({
 	type: z.string().trim().nonempty(),
+	// Updatable, and it has to be: a virtual property remapped onto a source speaking another of its
+	// slot's allowed representations must adopt that representation in the same request, or the backend
+	// refuses the pair as mismatched. Absent from this schema it was silently stripped before the wire.
+	data_type: z.nativeEnum(DevicesModuleChannelPropertyDataType).optional(),
 	identifier: z.string().trim().nonempty().nullable().optional(),
 	name: z.string().trim().nullable().optional(),
 	format: z

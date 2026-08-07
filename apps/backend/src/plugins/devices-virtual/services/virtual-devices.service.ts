@@ -451,6 +451,17 @@ export class VirtualDevicesService {
 			metadata.permissions.includes(PermissionType.WRITE_ONLY);
 		const slotName = `'${specSlot.channel}.${specSlot.property}'`;
 
+		// Which shape the slot expects is decided by the slot, not by what the candidate happens to send.
+		// A numeric variant declaring `[0, 86400]` and a candidate declaring `['0', '86400']` would
+		// otherwise fall through to the enum comparison, where stringifying both sides makes the sets
+		// look equal — so a `fan.timer` projection could pass with neither numeric bounds nor a step as
+		// far as the command validator is concerned, and 61 would reach a step-60 source.
+		const slotIsNumeric = expected.length === 2 && expected.every((value) => typeof value === 'number');
+
+		if (slotIsNumeric && !actual.every((value) => typeof value === 'number')) {
+			return `Source property id=${sourceProperty.id} declares a non-numeric format, which cannot describe the numeric range ${slotName} defines`;
+		}
+
 		// A numeric range is a two-element [min, max]; anything else is an enum value set.
 		const numeric =
 			expected.length === 2 &&

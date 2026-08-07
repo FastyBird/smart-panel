@@ -318,6 +318,22 @@ describe('VirtualDeviceRemapDialog', () => {
 	// store: `mountRemapDialog` -> `confirm()` -> the component's own `propertiesStore.edit()` call ->
 	// the real transformer -> the real (plugin-resolved) wire schema -> `backendClient.PATCH`. Every
 	// layer between "user clicked confirm" and "bytes on the wire" is the genuine implementation.
+	// A source that switched to another allowed variant of its slot is exactly what orphans a
+	// projection, and the backend refuses a projection whose representation differs from its source. So
+	// a remap that only repointed the link would be refused — the repair flow has to adopt the new
+	// representation in the same request or it cannot repair.
+	it('adopts the new source representation alongside the link', async () => {
+		const { selectSource, confirm } = mountRemapDialog();
+
+		await selectSource(NEW_SOURCE_PROPERTY_ID);
+		await confirm();
+
+		const body = (backendClient.PATCH as Mock).mock.calls[0]?.[1] as { body: { data: Record<string, unknown> } } | undefined;
+
+		expect(body?.body.data).toMatchObject({ source_property: NEW_SOURCE_PROPERTY_ID });
+		expect(Object.keys(body?.body.data ?? {})).toContain('data_type');
+	});
+
 	it('remaps an orphaned property to a new source', async () => {
 		const { selectSource, confirm } = mountRemapDialog();
 

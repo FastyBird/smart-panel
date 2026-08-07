@@ -136,6 +136,7 @@ import { getErrorReason, injectStoresManager, useBackend, useFlashMessage, useLo
 import type { IChannel, IChannelProperty, IChannelsPropertiesEditActionPayload, IDevice } from '../../../modules/devices';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices/store/keys';
 import {
+	type DevicesModuleChannelPropertyDataType,
 	DevicesModuleDeviceHiddenBy,
 	DevicesModuleDevicesHiddenFilter,
 	type DevicesVirtualPluginCheckCompatibilityOperation,
@@ -258,7 +259,11 @@ const canConfirm = computed<boolean>(
 // `any`: TypeScript only excess-property-checks fresh object literals, not a value already carrying
 // this type, so building it here and passing the variable through satisfies both the compiler and the
 // store's declared signature.
-type VirtualPropertyEditPayload = IChannelsPropertiesEditActionPayload['data'] & { sourceProperty: string };
+type VirtualPropertyEditPayload = IChannelsPropertiesEditActionPayload['data'] & {
+	sourceProperty: string;
+	dataType?: DevicesModuleChannelPropertyDataType;
+	format?: (string | number | null)[] | null;
+};
 
 const loadChannels = async (deviceId: string): Promise<void> => {
 	try {
@@ -411,9 +416,19 @@ const confirm = async (): Promise<void> => {
 	// store.ts's `edit()`) is the field this whole dialog exists to send, and the reason
 	// `channelPropertyUpdateReqSchema` must be registered in devices-virtual.plugin.ts — see
 	// virtual-device-remap-dialog.spec.ts's wire-shape test.
+	// The chosen source's own representation travels with the link. A projection forwards its source's
+	// value unchanged, so the two must agree — and the case this dialog exists for is precisely one
+	// where they may not: a source that switched to another allowed variant of the same slot orphans
+	// the projection, and repointing it without adopting the new representation would be refused by the
+	// backend as a mismatch, leaving the repair flow unable to repair. Carrying the data type, format
+	// and step across makes the remap the whole fix rather than half of one.
+	const adopted = propertiesStore.findById(newSourceProperty);
+
 	const editData: VirtualPropertyEditPayload = {
 		type: target.type,
-		step: target.step,
+		step: adopted?.step ?? target.step,
+		dataType: adopted?.dataType ?? target.dataType,
+		format: adopted?.format ?? target.format,
 		sourceProperty: newSourceProperty,
 	};
 
