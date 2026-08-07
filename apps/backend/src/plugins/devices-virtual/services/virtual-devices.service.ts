@@ -416,7 +416,8 @@ export class VirtualDevicesService {
 		metadata: {
 			permissions: PermissionType[];
 			format?: unknown;
-			dataTypeVariants?: { data_type: string; format?: unknown }[] | null;
+			step?: unknown;
+			dataTypeVariants?: { data_type: string; format?: unknown; step?: unknown }[] | null;
 		},
 		specSlot: VirtualCompatibilitySpecSlot,
 		sourceProperty: ChannelPropertyEntity,
@@ -465,6 +466,26 @@ export class VirtualDevicesService {
 
 			if (slotWritable && (expectedMin < actualMin || expectedMax > actualMax)) {
 				return `Source property id=${sourceProperty.id} ranges [${actualMin}, ${actualMax}], which cannot accept every value ${slotName} may be commanded with ([${expectedMin}, ${expectedMax}])`;
+			}
+
+			// The range says which values are legal; the step says which of them actually exist. A slot
+			// stepping by 1 can be commanded with 43, and a source stepping by 5 cannot take it — the
+			// command passes validation against the virtual property and is then forwarded unchanged, so
+			// the source rejects or silently rounds something both the preview and the persistence guard
+			// accepted. Judged only when both sides declare a step; an undeclared one constrains nothing.
+			const expectedStep = variant?.step ?? metadata.step;
+			const actualStep = sourceProperty.step as unknown;
+
+			if (typeof expectedStep === 'number' && typeof actualStep === 'number' && expectedStep > 0 && actualStep > 0) {
+				// Every value the source can report has to land on the slot's grid.
+				if (actualStep % expectedStep !== 0) {
+					return `Source property id=${sourceProperty.id} steps by ${actualStep}, which does not land on the ${expectedStep} grid ${slotName} defines`;
+				}
+
+				// And every value the slot may be commanded with has to land on the source's.
+				if (slotWritable && expectedStep % actualStep !== 0) {
+					return `Source property id=${sourceProperty.id} steps by ${actualStep}, so it cannot accept every value ${slotName} may be commanded with (it steps by ${expectedStep})`;
+				}
 			}
 
 			return null;

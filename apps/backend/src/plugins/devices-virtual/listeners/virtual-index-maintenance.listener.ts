@@ -817,12 +817,23 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				payload,
 			);
 
-			if (report.compatible) {
+			// The slot report alone is not enough here. `light.brightness` accepts a `uchar` percentage and
+			// an `enum` level, so a source switching between two allowed variants stays compatible *with
+			// the slot* while no longer agreeing with the projection reading it — enum values would keep
+			// flowing through a property still declaring itself numeric. `assertProjectionCompatible`
+			// makes that comparison on the write paths; this update path has to make it too.
+			const representationDiverged = dependent.dataType !== payload.dataType;
+
+			if (report.compatible && !representationDiverged) {
 				continue;
 			}
 
+			const reason = report.compatible
+				? `its representation changed to '${payload.dataType}' while the projection declares '${dependent.dataType}'`
+				: (report.reason ?? 'incompatible');
+
 			this.logger.warn(
-				`Source property id=${payload.id} no longer fits the slot filled by virtual property id=${dependent.id}: ${report.reason ?? 'incompatible'}. Orphaning it.`,
+				`Source property id=${payload.id} no longer fits the slot filled by virtual property id=${dependent.id}: ${reason}. Orphaning it.`,
 			);
 
 			await repository.update(dependent.id, { sourcePropertyId: null });

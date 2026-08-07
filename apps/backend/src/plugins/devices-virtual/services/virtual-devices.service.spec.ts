@@ -444,6 +444,27 @@ describe('VirtualDevicesService', () => {
 			expect(report.compatible).toBe(true);
 		});
 
+		// The range says which values are legal; the step says which of them exist. A slot stepping by 1
+		// can be commanded with 43, and a source stepping by 5 cannot take it — the command passes
+		// validation against the virtual property and is forwarded unchanged.
+		it('refuses a numeric source whose step grid cannot take every command', () => {
+			const coarseSource = property({
+				id: 'coarse-step',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.UCHAR,
+				format: [0, 100],
+				step: 5,
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.BRIGHTNESS },
+				coarseSource,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('step');
+		});
+
 		it('refuses a numeric source ranging outside what the slot accepts', () => {
 			const wideRange = property({
 				id: 'wide-range',

@@ -1729,9 +1729,12 @@ describe('VirtualIndexMaintenanceListener', () => {
 			dataType: 'bool',
 		} as unknown as ChannelPropertyEntity;
 
+		// Declares the same representation as the source, as a real projection does — the guard now
+		// refuses a projection reading a source that no longer speaks its data type.
 		const dependent = {
 			id: 'virtual-property',
 			category: 'on',
+			dataType: 'bool',
 			channel: { id: 'virtual-channel', category: 'light', device: { id: 'virtual-device', category: 'lighting' } },
 		};
 
@@ -1784,6 +1787,23 @@ describe('VirtualIndexMaintenanceListener', () => {
 			await subject.handleSourceMetadataChange(sourceProperty);
 
 			expect(update).not.toHaveBeenCalled();
+		});
+
+		// `light.brightness` accepts both a `uchar` percentage and an `enum` level, so a source switching
+		// between them stays compatible with the *slot* while no longer agreeing with the projection
+		// reading it.
+		it('orphans a projection whose source changed to another allowed representation', async () => {
+			const enumSource = {
+				id: 'source-property',
+				permissions: ['rw'],
+				dataType: 'enum',
+			} as unknown as ChannelPropertyEntity;
+
+			const { subject, update } = build({ compatible: true });
+
+			await subject.handleSourceMetadataChange(enumSource);
+
+			expect(update).toHaveBeenCalledWith('virtual-property', { sourcePropertyId: null });
 		});
 
 		it('does nothing for a property nothing projects', async () => {
