@@ -7,9 +7,11 @@ import {
 	ChannelCategory,
 	ConnectionState,
 	DeviceCategory,
+	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { IntentsService } from '../../../modules/intents/services/intents.service';
@@ -51,8 +53,18 @@ describe('LightingIntentService', () => {
 				id: `channel-${id}`,
 				category: ChannelCategory.LIGHT,
 				properties: [
-					{ id: `on-prop-${id}`, category: PropertyCategory.ON, value: false },
-					{ id: `brightness-prop-${id}`, category: PropertyCategory.BRIGHTNESS, value: 100 },
+					{
+						id: `on-prop-${id}`,
+						category: PropertyCategory.ON,
+						value: false,
+						permissions: [PermissionType.READ_WRITE],
+					},
+					{
+						id: `brightness-prop-${id}`,
+						category: PropertyCategory.BRIGHTNESS,
+						value: 100,
+						permissions: [PermissionType.READ_WRITE],
+					},
 				],
 			},
 		],
@@ -197,6 +209,38 @@ describe('LightingIntentService', () => {
 
 		expect(result?.affectedDevices).toBe(1);
 		expect(mockPlatform.processBatch).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not send commands for read-only lighting properties', async () => {
+		const readOnlyBrightnessDevice = createMockDeviceWithLightChannel(
+			'read-only-brightness',
+			true,
+			ConnectionState.CONNECTED,
+		);
+		const readOnlyOnDevice = createMockDeviceWithLightChannel('read-only-on', true, ConnectionState.CONNECTED);
+		const readOnlyBrightnessProperties = readOnlyBrightnessDevice.channels[0].properties;
+		const readOnlyOnProperties = readOnlyOnDevice.channels[0].properties;
+
+		readOnlyBrightnessProperties[1].permissions = [PermissionType.READ_ONLY];
+		readOnlyOnProperties[0].permissions = [PermissionType.READ_ONLY];
+		spacesService.findDevicesBySpace.mockResolvedValue([
+			readOnlyBrightnessDevice,
+			readOnlyOnDevice,
+		] as unknown as DeviceEntity[]);
+
+		const result = await service.executeLightingIntent(mockSpaceId, {
+			type: LightingIntentType.ROLE_SET,
+			role: LightingRole.OTHER,
+			on: true,
+			brightness: 50,
+		});
+
+		expect(result?.affectedDevices).toBe(1);
+		expect(mockPlatform.processBatch).toHaveBeenCalledTimes(1);
+		const processBatchCall = mockPlatform.processBatch.mock.calls[0] as unknown as [IDevicePropertyData[]];
+		expect(processBatchCall[0]).toHaveLength(1);
+		expect(processBatchCall[0][0].property.id).toBe('on-prop-read-only-brightness');
+		expect(processBatchCall[0][0].value).toBe(true);
 	});
 
 	describe('offline device handling', () => {
@@ -352,16 +396,36 @@ describe('LightingIntentService', () => {
 						id: 'channel-1',
 						category: ChannelCategory.LIGHT,
 						properties: [
-							{ id: 'on-1', category: PropertyCategory.ON, value: false },
-							{ id: 'brightness-1', category: PropertyCategory.BRIGHTNESS, value: 100 },
+							{
+								id: 'on-1',
+								category: PropertyCategory.ON,
+								value: false,
+								permissions: [PermissionType.READ_WRITE],
+							},
+							{
+								id: 'brightness-1',
+								category: PropertyCategory.BRIGHTNESS,
+								value: 100,
+								permissions: [PermissionType.READ_WRITE],
+							},
 						],
 					},
 					{
 						id: 'channel-2',
 						category: ChannelCategory.LIGHT,
 						properties: [
-							{ id: 'on-2', category: PropertyCategory.ON, value: false },
-							{ id: 'brightness-2', category: PropertyCategory.BRIGHTNESS, value: 100 },
+							{
+								id: 'on-2',
+								category: PropertyCategory.ON,
+								value: false,
+								permissions: [PermissionType.READ_WRITE],
+							},
+							{
+								id: 'brightness-2',
+								category: PropertyCategory.BRIGHTNESS,
+								value: 100,
+								permissions: [PermissionType.READ_WRITE],
+							},
 						],
 					},
 				],
