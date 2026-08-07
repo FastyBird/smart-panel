@@ -306,6 +306,18 @@ Optional slot groups expand but never re-collapse, which is awkward for categori
 
 `view-device.vue` and `view-devices.vue` both import from `plugins/devices-virtual/**`. This follows the existing `modules/onboarding` → `plugins/weather-open-meteo` precedent and is commented as deliberate, but the devices module still has no `deviceDetail` extension point, which is why the imports exist at all.
 
+### 3a.10 Compatibility is now enforced at persistence, not only previewed — DONE
+
+Superseded §4's "`assertPermissionsCompatible` is intentionally unwired", which is why that entry is gone.
+
+The original reasoning held that the rule could not be a DTO constraint, because the target spec slot's required permissions depend on the channel category and a property DTO cannot resolve it. That part still stands. What it missed is that the *persistence hooks* are not DTOs: `beforeCreate` is handed the channel id and `beforeUpdate` sees the merged row, so both can resolve the slot the DTO could not.
+
+The gap was real. The wizard's preview is not atomic with the write it precedes, a source's permissions or data type can change in between, and a direct API call or a remap skips the preview entirely — so an incompatible projection could be stored and would fail only later, when a command was forwarded to a source that could not accept it.
+
+`VirtualDevicesService.assertProjectionCompatible` now resolves channel → device → source property and asks `reportCompatibility`, and both hooks call it. The rules still live in exactly one place; the assertion resolves the slot and asks, rather than restating permissions or data types. Only projections are judged: an owned (`local`) property has no source, and a projection whose source is null is an orphan the device degrades into — refusing that would make an orphaned property impossible to remap back into shape, which is precisely what the remap flow exists to do.
+
+Known shortfall, worth a follow-up: on the **nested** device-create path the guard's reason does not reach the client — that path reports its own generic "Device could not be created" envelope for every nested failure, not just this one. The single-property create and update paths are unaffected in kind (this suite asserts status rather than message throughout). The wizard previews compatibility, so an operator reaching this in practice is rare, but the message is the thing that would tell them why.
+
 ## 4. Not to be done
 
-`assertPermissionsCompatible` is intentionally unwired. It needs the target spec slot's required permissions, which depend on channel category and cannot be resolved from a property DTO in isolation. It belongs to the admin wizard (Plan B), not to a DTO constraint. Consequence to be aware of meanwhile: nothing server-side rejects a read-only source on a writable spec slot — the API accepts it and the write fails at the source platform.
+*(`assertPermissionsCompatible`'s entry moved to §3a.10 — it is now enforced at persistence. Its original point, that the rule cannot be a DTO constraint because the spec slot is not resolvable from a property DTO in isolation, still holds and is why the hooks own it instead.)*

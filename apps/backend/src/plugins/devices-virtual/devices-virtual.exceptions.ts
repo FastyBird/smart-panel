@@ -60,3 +60,18 @@ export class VirtualOwnedPropertyNotWritableException extends VirtualException {
 		this.name = 'VirtualOwnedPropertyNotWritableException';
 	}
 }
+
+/**
+ * A projection would be stored whose source cannot fill the spec slot it is being wired into.
+ *
+ * Broader than VirtualPermissionsIncompatibleException, which answers only the permission half:
+ * this one carries whichever reason `reportCompatibility` gave — channel membership, permissions,
+ * or data type — so the operator is told the actual reason rather than a permission message for a
+ * data-type mismatch.
+ */
+export class VirtualProjectionIncompatibleException extends VirtualException {
+	constructor(message: string) {
+		super(message);
+		this.name = 'VirtualProjectionIncompatibleException';
+	}
+}

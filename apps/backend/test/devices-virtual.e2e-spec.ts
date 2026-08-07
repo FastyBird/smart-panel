@@ -1174,6 +1174,7 @@ describe('devices-virtual plugin (e2e)', () => {
 	describe('creating a virtual device with its wiring nested in one request', () => {
 		let atomicSourceDeviceId: string;
 		let atomicSourcePropertyId: string;
+		let atomicReadOnlySourcePropertyId: string;
 		let atomicVirtualDeviceId: string;
 
 		it('creates the source device it will draw from', async () => {
@@ -1199,6 +1200,19 @@ describe('devices-virtual plugin (e2e)', () => {
 										data_type: DataTypeType.BOOL,
 										value: true,
 									},
+									// A read-only sibling on the same channel, so the compatibility test below can
+									// project something the spec slot genuinely refuses without needing a second
+									// device. `outlet.in_use` is `ro` in the spec and `light.on` requires a
+									// writable source, so the pair is incompatible on permissions alone.
+									{
+										type: SIMULATOR_TYPE,
+										category: PropertyCategory.IN_USE,
+										identifier: 'in_use',
+										name: 'In use',
+										permissions: [PermissionType.READ_ONLY],
+										data_type: DataTypeType.BOOL,
+										value: true,
+									},
 								],
 							},
 						],
@@ -1210,8 +1224,10 @@ describe('devices-virtual plugin (e2e)', () => {
 
 			atomicSourceDeviceId = body.data.id;
 			atomicSourcePropertyId = body.data.channels[0].properties[0].id;
+			atomicReadOnlySourcePropertyId = body.data.channels[0].properties[1].id;
 
 			expect(atomicSourcePropertyId).toBeTruthy();
+			expect(atomicReadOnlySourcePropertyId).toBeTruthy();
 		});
 
 		it('accepts the device, its channel and its linked property in a single POST', async () => {
@@ -1362,6 +1378,69 @@ describe('devices-virtual plugin (e2e)', () => {
 
 			expect(rejected.status).toBe(400);
 			expect(JSON.stringify(rejected.body)).toContain('an owned property stores its own value');
+		});
+
+		// The wizard previews compatibility before it writes, but the preview is not atomic with the
+		// write and a direct POST like this one never makes it at all. Without enforcement at
+		// persistence, a read-only source lands on a writable slot and only fails much later, when a
+		// command is forwarded to a source that cannot accept it.
+		it('rejects a nested property projecting a read-only source onto a writable slot', async () => {
+			const rejected = await authPost('/modules/devices/devices').send({
+				data: {
+					type: DEVICES_VIRTUAL_TYPE,
+					category: DeviceCategory.LIGHTING,
+					name: 'E2E Atomic Incompatible Virtual Light',
+					channels: [
+						{
+							type: DEVICES_VIRTUAL_TYPE,
+							category: ChannelCategory.LIGHT,
+							identifier: 'light',
+							name: 'Light',
+							properties: [
+								{
+									type: DEVICES_VIRTUAL_TYPE,
+									category: PropertyCategory.ON,
+									identifier: 'on',
+									name: 'On',
+									permissions: [PermissionType.READ_WRITE],
+									data_type: DataTypeType.BOOL,
+									value_origin: 'source',
+									source_property: atomicReadOnlySourcePropertyId,
+								},
+							],
+						},
+					],
+				},
+			});
+
+			// Refused at persistence, so nothing is written. The nested device-create path reports its own
+			// generic envelope rather than the guard's reason — the same shape every other nested failure
+			// gets here — so the status is what this pins; the reason itself is covered by the service's
+			// own unit tests.
+			expect(rejected.status).toBe(422);
+			expect((rejected.body as { data?: DeviceBody }).data).toBeUndefined();
+		});
+
+		// The remap path, which is the one the preview covers least well: the wizard checked this pairing
+		// before it wrote, and a source's permissions can change afterwards. The update hook has to judge
+		// the merged row, not the payload — the PATCH here carries only `source_property`.
+		it('rejects remapping a linked property onto a read-only source', async () => {
+			const deviceResponse = await authGet(`/modules/devices/devices/${atomicVirtualDeviceId}`).expect(200);
+			const deviceBody = deviceResponse.body as { data: DeviceBody };
+
+			const lightChannel = deviceBody.data.channels.find((channel) => channel.category === String(ChannelCategory.LIGHT));
+			const onProperty = lightChannel?.properties.find((property) => property.category === String(PropertyCategory.ON));
+
+			expect(onProperty?.id).toBeTruthy();
+
+			await authPatch(`/modules/devices/channels/${lightChannel!.id}/properties/${onProperty!.id}`)
+				.send({ data: { type: DEVICES_VIRTUAL_TYPE, source_property: atomicReadOnlySourcePropertyId } })
+				.expect(422);
+
+			// The stored link is untouched — a refused remap must not half-apply.
+			const after = await authGet(`/modules/devices/channels/${lightChannel!.id}/properties/${onProperty!.id}`).expect(200);
+
+			expect((after.body as { data: ChannelPropertyBody }).data.source_property).toBe(atomicSourcePropertyId);
 		});
 	});
 

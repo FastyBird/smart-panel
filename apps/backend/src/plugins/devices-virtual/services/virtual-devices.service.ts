@@ -18,11 +18,13 @@ import {
 	VirtualOwnedPropertyNotWritableException,
 	VirtualOwnerNotVirtualException,
 	VirtualPermissionsIncompatibleException,
+	VirtualProjectionIncompatibleException,
 	VirtualSourceNotFoundException,
 	VirtualValueOriginConflictException,
 } from '../devices-virtual.exceptions';
 import {
 	VirtualChannelPropertyEntity,
+	VirtualValueOrigin,
 	isUnsupportedOwnedPermissionsPair,
 	isUnsupportedValueOriginPair,
 } from '../entities/devices-virtual.entity';
@@ -99,10 +101,19 @@ export interface VirtualCompatibilityReport {
  *
  * `assertPermissionsCompatible` is deliberately not wired to a DTO constraint: it needs the target
  * spec slot's required permissions, which depend on the channel category and are not available from a
- * property DTO in isolation. It is wired instead through `reportCompatibility` below, reached by
- * `POST /plugins/devices-virtual/devices/compatibility` (VirtualDevicesController.checkCompatibility)
- * — the admin wizard's preview call, not a creation-time guard. Before that endpoint existed this
- * method was reachable from nowhere at all; see the predecessor plan's follow-up list.
+ * property DTO in isolation. That objection is about DTOs specifically, and it still stands.
+ *
+ * It does not extend to the persistence hooks, which is where the rule is now actually enforced:
+ * `assertProjectionCompatible` runs from `beforeCreate` and `beforeUpdate`, both of which have the
+ * owning channel in hand and can therefore resolve the slot the DTO could not. `reportCompatibility`
+ * remains the single place the rules live — the assertion resolves the slot and asks it, rather than
+ * restating permissions or data types.
+ *
+ * The wizard's preview call (`POST /plugins/devices-virtual/devices/compatibility`,
+ * VirtualDevicesController.checkCompatibility) is still just a preview, and deliberately so: it lets
+ * the admin grey out bad options in a batch. It is not a guard, and it cannot be — it is not atomic
+ * with the write that follows, so a source whose permissions or data type change in between would
+ * otherwise be stored anyway, and a direct API call skips it entirely.
  */
 @Injectable()
 export class VirtualDevicesService {
@@ -424,6 +435,70 @@ export class VirtualDevicesService {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Throws when `property` would be stored projecting a source that cannot fill the spec slot it sits
+	 * in — the enforcement half of `reportCompatibility`, run at persistence rather than at preview.
+	 *
+	 * The wizard previews compatibility before it writes, but a preview is not a guarantee: it is not
+	 * atomic with the write, a source's permissions or data type can change in between, and a direct
+	 * API call or a remap skips the preview entirely. Without this, an incompatible projection reaches
+	 * the database and only fails later — a read exposing the wrong representation, or a write
+	 * forwarded to a source that cannot accept it.
+	 *
+	 * Only projections are checked. An owned (`local`) property has no source, and a projection whose
+	 * `sourcePropertyId` is null is either mid-construction or orphaned by a deleted source — the
+	 * latter is a lifecycle state the device degrades into, not a write to refuse, and refusing it here
+	 * would make an orphaned property impossible to edit back into shape.
+	 *
+	 * The slot is resolved from stored rows (channel -> its category and its device -> that device's
+	 * category) rather than from the payload, because the payload does not carry them: this is exactly
+	 * the resolution a DTO constraint cannot do, and why the rule lives here instead. Resolution
+	 * failures are left to the guards that own them — `assertChannelOwnerIsVirtual` and
+	 * `assertSourceNotVirtual` both run on these same paths and give better messages for a channel or
+	 * source that does not resolve — so an unresolvable hop here simply declines to judge rather than
+	 * inventing a second, worse error for the same cause.
+	 */
+	async assertProjectionCompatible(property: VirtualChannelPropertyEntity, channelId: string): Promise<void> {
+		if (property.valueOrigin !== VirtualValueOrigin.SOURCE) {
+			return;
+		}
+
+		const sourcePropertyId =
+			property.sourcePropertyId ?? (typeof property.sourceProperty === 'string' ? property.sourceProperty : property.sourceProperty?.id);
+
+		if (!sourcePropertyId) {
+			return;
+		}
+
+		const channel = await this.channelsService.findOne(channelId);
+
+		if (!channel) {
+			return;
+		}
+
+		const deviceId = typeof channel.device === 'string' ? channel.device : channel.device?.id;
+		const device = deviceId ? await this.devicesService.findOne(deviceId) : null;
+
+		if (!device) {
+			return;
+		}
+
+		const sourceProperty = await this.channelsPropertiesService.findOne(sourcePropertyId);
+
+		if (!sourceProperty) {
+			return;
+		}
+
+		const report = this.reportCompatibility(
+			{ category: device.category, channel: channel.category, property: property.category },
+			sourceProperty,
+		);
+
+		if (!report.compatible) {
+			throw new VirtualProjectionIncompatibleException(report.reason ?? 'Source property cannot fill this specification slot');
+		}
 	}
 
 	private async resolveOwningDevice(propertyId: string): Promise<DeviceEntity | null> {

@@ -195,6 +195,77 @@ describe('VirtualDevicesService', () => {
 		});
 	});
 
+	// The enforcement half of reportCompatibility. The wizard previews compatibility before it writes,
+	// but the preview is not atomic with the write, a source can change permissions or data type in
+	// between, and a direct API call or a remap skips it entirely — so the rule has to hold at
+	// persistence too, which is what these pin.
+	describe('assertProjectionCompatible', () => {
+		const CHANNEL_ID = 'virtual-channel';
+		const DEVICE_ID = 'virtual-device';
+
+		// Resolves channel -> device the way the assertion walks them, so a test only has to say which
+		// source property is on the other end.
+		const givenSlot = (channelCategory: ChannelCategory, deviceCategory: DeviceCategory): void => {
+			channelsService.findOne.mockResolvedValue({ id: CHANNEL_ID, category: channelCategory, device: DEVICE_ID });
+			devicesService.findOne.mockResolvedValue({ id: DEVICE_ID, category: deviceCategory });
+		};
+
+		const projecting = (sourcePropertyId: string | null, category: PropertyCategory): VirtualChannelPropertyEntity => {
+			const entity = new VirtualChannelPropertyEntity();
+
+			Object.assign(entity, { id: 'virtual-property', category, valueOrigin: VirtualValueOrigin.SOURCE, sourcePropertyId });
+
+			return entity;
+		};
+
+		it('refuses a read-only source on a writable slot, carrying the reason', async () => {
+			givenSlot(ChannelCategory.LIGHT, DeviceCategory.LIGHTING);
+			channelsPropertiesService.findOne.mockResolvedValue(readOnlySourceProperty);
+
+			await expect(
+				service.assertProjectionCompatible(projecting(readOnlySourceProperty.id, PropertyCategory.ON), CHANNEL_ID),
+			).rejects.toThrow(/permission/);
+		});
+
+		it('refuses a data-type mismatch', async () => {
+			givenSlot(ChannelCategory.LIGHT, DeviceCategory.LIGHTING);
+			channelsPropertiesService.findOne.mockResolvedValue(floatSourceProperty);
+
+			await expect(
+				service.assertProjectionCompatible(projecting(floatSourceProperty.id, PropertyCategory.ON), CHANNEL_ID),
+			).rejects.toThrow(/data type/);
+		});
+
+		it('accepts a compatible source', async () => {
+			givenSlot(ChannelCategory.TEMPERATURE, DeviceCategory.SENSOR);
+			channelsPropertiesService.findOne.mockResolvedValue(readWriteSourceProperty);
+
+			await expect(
+				service.assertProjectionCompatible(projecting(readWriteSourceProperty.id, PropertyCategory.TEMPERATURE), CHANNEL_ID),
+			).resolves.toBeUndefined();
+		});
+
+		// An owned property has no source to judge, so nothing should even be resolved for it — asserting
+		// on the lookups rather than only on the absence of a throw, since a `local` property that
+		// happened to be compatible would pass the weaker check for the wrong reason.
+		it('ignores an owned property', async () => {
+			const owned = new VirtualChannelPropertyEntity();
+
+			Object.assign(owned, { id: 'owned', category: PropertyCategory.ON, valueOrigin: VirtualValueOrigin.LOCAL, sourcePropertyId: null });
+
+			await expect(service.assertProjectionCompatible(owned, CHANNEL_ID)).resolves.toBeUndefined();
+			expect(channelsService.findOne).not.toHaveBeenCalled();
+		});
+
+		// An orphan — a projection whose source was deleted — is a state the device degrades into, not a
+		// write to refuse. Refusing it here would make an orphaned property impossible to edit back into
+		// shape, which is exactly what the remap flow exists to do.
+		it('ignores a projection whose source is not set', async () => {
+			await expect(service.assertProjectionCompatible(projecting(null, PropertyCategory.ON), CHANNEL_ID)).resolves.toBeUndefined();
+			expect(channelsService.findOne).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('assertValueOriginPairSupported', () => {
 		// The merged row a partial PATCH produces. Built the way the entity actually is after
 		// ChannelsPropertiesService.update() has assigned the update's fields onto the loaded row.

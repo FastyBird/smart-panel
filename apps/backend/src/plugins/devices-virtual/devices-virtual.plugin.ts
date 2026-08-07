@@ -34,6 +34,7 @@ import {
 import {
 	VirtualOwnedPropertyNotWritableException,
 	VirtualOwnerNotVirtualException,
+	VirtualProjectionIncompatibleException,
 	VirtualValueOriginConflictException,
 } from './devices-virtual.exceptions';
 import { DEVICES_VIRTUAL_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-virtual.openapi';
@@ -180,10 +181,16 @@ export class DevicesVirtualPlugin {
 					// including this plugin's own listeners and any future internal caller that bypasses
 					// the DTO. The DTO constraint still owns the user-facing error, which names the field.
 					this.virtualDevicesService.assertOwnedPropertyNotWritable(property);
+					// The wizard previews compatibility, but a preview is not a guard: it is not atomic with
+					// this write, and a direct API call never makes it at all. Checked here rather than on
+					// the DTO because the spec slot is resolved from the owning channel and its device,
+					// which the payload does not carry.
+					await this.virtualDevicesService.assertProjectionCompatible(property, channelId);
 				} catch (error) {
 					if (
 						error instanceof VirtualOwnerNotVirtualException ||
-						error instanceof VirtualOwnedPropertyNotWritableException
+						error instanceof VirtualOwnedPropertyNotWritableException ||
+						error instanceof VirtualProjectionIncompatibleException
 					) {
 						throw new DevicesValidationException(error.message);
 					}
@@ -211,22 +218,33 @@ export class DevicesVirtualPlugin {
 			// DevicesException as an unprocessable entity and anything else as a 500, and a rejected
 			// payload is not a server fault. Any *other* exception is re-thrown untouched — a bug in
 			// here must not be reported to the client as invalid input.
-			beforeUpdate: (property: VirtualChannelPropertyEntity): Promise<void> => {
+			beforeUpdate: async (property: VirtualChannelPropertyEntity): Promise<void> => {
 				try {
 					this.virtualDevicesService.assertValueOriginPairSupported(property);
 					this.virtualDevicesService.assertOwnedPropertyNotWritable(property);
+
+					// A remap is the other way an incompatible projection gets stored, and the one the
+					// wizard's preview covers least well: the source can change permissions or data type
+					// between the preview and this write. Judged on the merged row like the two checks
+					// above, so it does not matter whether the PATCH carried `source_property`,
+					// `value_origin`, or both — what is being stored is what gets checked. The channel id
+					// comes off the row because this hook, unlike `beforeCreate`, is not handed one.
+					const channelId = typeof property.channel === 'string' ? property.channel : property.channel?.id;
+
+					if (channelId) {
+						await this.virtualDevicesService.assertProjectionCompatible(property, channelId);
+					}
 				} catch (error) {
 					if (
 						error instanceof VirtualValueOriginConflictException ||
-						error instanceof VirtualOwnedPropertyNotWritableException
+						error instanceof VirtualOwnedPropertyNotWritableException ||
+						error instanceof VirtualProjectionIncompatibleException
 					) {
 						throw new DevicesValidationException(error.message);
 					}
 
 					throw error;
 				}
-
-				return Promise.resolve();
 			},
 		});
 
