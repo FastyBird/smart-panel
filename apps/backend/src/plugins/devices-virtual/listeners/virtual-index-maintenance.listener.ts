@@ -879,13 +879,21 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			// makes that comparison on the write paths; this update path has to make it too.
 			const representationDiverged = dependent.dataType !== payload.dataType;
 
-			if (report.compatible && !representationDiverged) {
+			// The same gap on the other metadata a slot report cannot see. A sentinel is the device's, not
+			// the specification's, so `reportCompatibility` never asks about it — but a source that starts
+			// reserving a value its projection does not is exactly this handler's case: the projection
+			// would present that value as a real reading, and accept a command carrying it.
+			const sentinelMismatch = this.virtualDevicesService.describeSentinelMismatch(dependent, payload);
+
+			if (report.compatible && !representationDiverged && sentinelMismatch === null) {
 				continue;
 			}
 
-			const reason = report.compatible
-				? `its representation changed to '${payload.dataType}' while the projection declares '${dependent.dataType}'`
-				: (report.reason ?? 'incompatible');
+			const reason = !report.compatible
+				? (report.reason ?? 'incompatible')
+				: representationDiverged
+					? `its representation changed to '${payload.dataType}' while the projection declares '${dependent.dataType}'`
+					: (sentinelMismatch ?? 'incompatible');
 
 			this.logger.warn(
 				`Source property id=${payload.id} no longer fits the slot filled by virtual property id=${dependent.id}: ${reason}. Orphaning it.`,

@@ -371,7 +371,13 @@ const buildPropertyPayload = (mapping: IVirtualSlotMapping & { sourceProperty: s
 		permissions: specification.permissions,
 		data_type: variant.data_type,
 		format: variant.format ?? null,
-		invalid: specification.invalid ?? null,
+		// The source's sentinel, not the slot's — no channel specification declares one, because "999
+		// means no reading" is a fact about a particular device. A projection forwards its source's
+		// value unchanged and is the property a command is validated against, so one that does not
+		// reserve what its source reserves would present the sentinel as a real measurement and accept a
+		// command carrying it. The backend refuses that pairing; adopting it here is what makes a source
+		// with a sentinel usable at all.
+		invalid: propertiesStore.findById(mapping.sourceProperty)?.invalid ?? specification.invalid ?? null,
 		step: variant.step ?? null,
 		value: null,
 		value_origin: DevicesVirtualPluginValueOrigin.source,

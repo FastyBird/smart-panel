@@ -1780,12 +1780,17 @@ describe('VirtualIndexMaintenanceListener', () => {
 		// `findBySourceProperty` answers empty throughout, which is the state the index is genuinely in
 		// for a projection created since the last rebuild. Every case below still expects the handler to
 		// act, which is what pins it to storage rather than to the index.
-		const build = (report: { compatible: boolean; reason?: string }, dependents: unknown[] = [dependent]) => {
+		const build = (
+			report: { compatible: boolean; reason?: string },
+			dependents: unknown[] = [dependent],
+			sentinelMismatch: string | null = null,
+		) => {
 			const update = jest.fn().mockResolvedValue(undefined);
 			const findOne = jest.fn().mockResolvedValue({ ...dependent, sourcePropertyId: null });
 			const find = jest.fn().mockResolvedValue(dependents);
 			const emit = jest.fn();
 			const reportCompatibility = jest.fn().mockReturnValue(report);
+			const describeSentinelMismatch = jest.fn().mockReturnValue(sentinelMismatch);
 
 			const subject = new VirtualIndexMaintenanceListener(
 				{
@@ -1796,7 +1801,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				} as unknown as VirtualPropertyIndexService,
 				{ recompute: jest.fn().mockResolvedValue(undefined) } as unknown as VirtualStatusListener,
 				{ findOne: jest.fn(), update: jest.fn() } as unknown as DevicesService,
-				{ reportCompatibility } as unknown as VirtualDevicesService,
+				{ reportCompatibility, describeSentinelMismatch } as unknown as VirtualDevicesService,
 				channelsPropertiesStub as unknown as ChannelsPropertiesService,
 				{ emit } as unknown as EventEmitter2,
 				{
@@ -1806,7 +1811,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				{ update: jest.fn() } as unknown as Repository<DeviceEntity>,
 			);
 
-			return { subject, update, reportCompatibility, emit, find };
+			return { subject, update, reportCompatibility, emit, find, describeSentinelMismatch };
 		};
 
 		it('orphans the projection it can no longer feed', async () => {
@@ -1903,6 +1908,18 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			expect(reportCompatibility).not.toHaveBeenCalled();
 			expect(update).not.toHaveBeenCalled();
+		});
+
+		// A sentinel belongs to the device, not the specification, so the slot report cannot see it. A
+		// source that starts reserving a value its projection does not is this handler's case exactly:
+		// the projection would go on presenting that value as a real reading and accepting a command
+		// carrying it.
+		it('orphans a projection whose source started reserving a sentinel', async () => {
+			const { subject, update } = build({ compatible: true }, [dependent], 'reserves no invalid value');
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(update).toHaveBeenCalledWith('virtual-property', { sourcePropertyId: null });
 		});
 
 		// Nothing may project a virtual property, so the orphaning emit above — and a CHANNEL_UPDATED on

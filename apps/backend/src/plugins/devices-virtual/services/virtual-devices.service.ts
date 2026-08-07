@@ -10,7 +10,7 @@ import { ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/en
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { matchesStep } from '../../../modules/devices/utils/property-command-value.utils';
+import { matchesInvalidValue, matchesStep } from '../../../modules/devices/utils/property-command-value.utils';
 import { getAllProperties, isChannelAllowed, isValidDataType } from '../../../modules/devices/utils/schema.utils';
 import { DEVICES_VIRTUAL_TYPE, VIRTUAL_BLOCKED_CATEGORIES } from '../devices-virtual.constants';
 import {
@@ -672,6 +672,50 @@ export class VirtualDevicesService {
 	 * source that does not resolve — so an unresolvable hop here simply declines to judge rather than
 	 * inventing a second, worse error for the same cause.
 	 */
+	/**
+	 * Why `property` may not project `sourceProperty`'s values given their reserved sentinels, or `null`
+	 * when it may.
+	 *
+	 * A sentinel belongs to the device, not to the specification — no channel spec declares one, because
+	 * "999 means I have no reading" is a fact about a particular thermometer. `reportCompatibility` asks
+	 * what a *slot* requires and so cannot ask this at all; it is a question only the projection and its
+	 * source can answer about each other.
+	 *
+	 * One-sided on purpose. A source that reserves a value needs its projection to reserve the same one,
+	 * in both directions of travel:
+	 *
+	 * - Reading, the projection forwards the value unchanged, so a sentinel it does not know about is
+	 *   presented as a real measurement.
+	 * - Writing, `validatePropertyCommandValue` runs against the *projection* — that is the property the
+	 *   command names — and `VirtualDevicePlatform.processBatch()` forwards what it accepts without
+	 *   revalidating against the source. So a command equal to the source's sentinel passes a projection
+	 *   that declares none and reaches a device that would have refused it outright.
+	 *
+	 * The other way round is only over-strict: a projection reserving a value its source does not means
+	 * a command it would have accepted is refused early. Nothing unsafe happens, and refusing to persist
+	 * it would buy nothing, so it is left alone.
+	 *
+	 * Compared with `matchesInvalidValue` rather than `!==`, because `invalid` is a `text` column: a
+	 * numeric sentinel written as 50 reads back as '50', and the command validator already normalizes
+	 * across that. Asking the same helper is what keeps this from disagreeing with the check that
+	 * actually refuses a value.
+	 */
+	describeSentinelMismatch(property: ChannelPropertyEntity, sourceProperty: ChannelPropertyEntity): string | null {
+		const sourceSentinel = sourceProperty.invalid ?? null;
+
+		if (sourceSentinel === null) {
+			return null;
+		}
+
+		const declared = property.invalid ?? null;
+
+		if (declared !== null && matchesInvalidValue(sourceSentinel, declared)) {
+			return null;
+		}
+
+		return `Property id=${property.id} reserves ${declared === null ? 'no invalid value' : `'${String(declared)}'`} while its source id=${sourceProperty.id} reserves '${String(sourceSentinel)}'; a projection forwards its source's value unchanged and is what a command is validated against, so it has to reserve the same sentinel`;
+	}
+
 	async assertProjectionCompatible(property: VirtualChannelPropertyEntity, channelId: string): Promise<void> {
 		// Only an *explicit* `local` is skipped. `valueOrigin` deliberately carries no class-field
 		// initializer (see the entity), so a create that supplies `source_property` and omits the
@@ -747,6 +791,12 @@ export class VirtualDevicesService {
 			throw new VirtualProjectionIncompatibleException(
 				`Property id=${property.id} is declared '${property.dataType}' but its source id=${sourceProperty.id} is '${sourceProperty.dataType}'; a projection forwards its source's value unchanged, so the two must match`,
 			);
+		}
+
+		const sentinelMismatch = this.describeSentinelMismatch(property, sourceProperty);
+
+		if (sentinelMismatch !== null) {
+			throw new VirtualProjectionIncompatibleException(sentinelMismatch);
 		}
 
 		// A step is either absent or a usable grid — `validatePropertyCommandValue` refuses every numeric

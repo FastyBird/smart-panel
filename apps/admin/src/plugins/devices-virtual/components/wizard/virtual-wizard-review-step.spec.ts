@@ -429,6 +429,38 @@ describe('VirtualWizardReviewStep', () => {
 		expect(brightness?.data_type).toBe(DevicesModuleChannelPropertyDataType.enum);
 	});
 
+	// A sentinel is the device's, not the specification's — no channel spec declares one — so taking it
+	// from the spec always sent null. The backend refuses a projection that does not reserve what its
+	// source reserves, which would make any source declaring a sentinel unusable in the wizard.
+	it("carries the source's reserved sentinel into the created property", async () => {
+		const sentinelSourceId = 'property-sentinel-power';
+
+		properties.push({
+			id: sentinelSourceId,
+			channel: CHANNEL_RELAY_0,
+			name: 'Power',
+			category: DevicesModuleChannelPropertyCategory.power,
+			dataType: DevicesModuleChannelPropertyDataType.float,
+			invalid: 999,
+		} as unknown as IChannelProperty);
+
+		const { wrapper } = mountReviewStep({
+			mappings: [mapping(DevicesModuleChannelCategory.electrical_power, DevicesModuleChannelPropertyCategory.power, sentinelSourceId)],
+		});
+
+		await wrapper.get('[data-test-id="create-device"]').trigger('click');
+		await flushAsync();
+
+		const [, options] = (backendClient.POST as Mock).mock.calls[0] as [
+			string,
+			{ body: { data: { channels: { properties: { category: string; invalid: unknown }[] }[] } } },
+		];
+
+		const power = options.body.data.channels[0].properties.find((property) => property.category === DevicesModuleChannelPropertyCategory.power);
+
+		expect(power?.invalid).toBe(999);
+	});
+
 	it('marks a borrowed property with value_origin "source" and the mapped property id', async () => {
 		const { wrapper } = mountReviewStep({
 			mappings: [mapping(DevicesModuleChannelCategory.light, DevicesModuleChannelPropertyCategory.on, PROPERTY_RELAY_0_ON)],

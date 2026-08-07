@@ -263,6 +263,7 @@ type VirtualPropertyEditPayload = IChannelsPropertiesEditActionPayload['data'] &
 	sourceProperty: string;
 	dataType?: DevicesModuleChannelPropertyDataType;
 	format?: (string | number | null)[] | null;
+	invalid?: string | number | boolean | null;
 };
 
 const loadChannels = async (deviceId: string): Promise<void> => {
@@ -424,11 +425,26 @@ const confirm = async (): Promise<void> => {
 	// and step across makes the remap the whole fix rather than half of one.
 	const adopted = propertiesStore.findById(newSourceProperty);
 
+	// Adopted as one block rather than field by field, because a resolved source may declare a
+	// constraint as *explicitly* null and that null is the answer. `media_input.source`'s string
+	// variant declares no format and `light.brightness`'s enum variant no step; coalescing each field
+	// past its null would keep the outgoing projection's enum set or numeric step, so the property goes
+	// on advertising a constraint its new source does not have. The backend accepts it — those fields
+	// are irrelevant to the variant now in play — which is exactly why nothing downstream would catch
+	// it. Only a source that does not resolve at all falls back to what the projection already said.
 	const editData: VirtualPropertyEditPayload = {
 		type: target.type,
-		step: adopted?.step ?? target.step,
-		dataType: adopted?.dataType ?? target.dataType,
-		format: adopted?.format ?? target.format,
+		...(adopted
+			? {
+					dataType: adopted.dataType,
+					format: adopted.format ?? null,
+					step: adopted.step ?? null,
+					// The reserved sentinel travels with the link for the same reason the representation
+					// does: the backend refuses a projection that does not reserve what its source reserves,
+					// so a remap that left this behind could not repair a source that started declaring one.
+					invalid: adopted.invalid ?? null,
+				}
+			: { dataType: target.dataType, format: target.format, step: target.step }),
 		sourceProperty: newSourceProperty,
 	};
 

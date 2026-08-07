@@ -63,7 +63,16 @@ export const matchesStep = (value: number, step: number, base: number): boolean 
 	return Math.abs(quotient - nearest) <= tolerance;
 };
 
-const matchesInvalidValue = (invalidValue: string | number | boolean, value: PropertyCommandValue): boolean => {
+/**
+ * Whether `value` is the reserved sentinel `invalidValue` names.
+ *
+ * Exported for the same reason `matchesStep` is: `invalid` is stored in a `text` column, so a numeric
+ * sentinel comes back out as a string and the comparison cannot be `===`. The virtual-devices plugin
+ * has to ask whether a projection reserves the same sentinel as its source, and a second
+ * implementation of that normalization would be free to disagree with the one that actually validates
+ * commands — which is the only comparison that decides whether a value is refused.
+ */
+export const matchesInvalidValue = (invalidValue: string | number | boolean, value: PropertyCommandValue): boolean => {
 	if (invalidValue === value) {
 		return true;
 	}

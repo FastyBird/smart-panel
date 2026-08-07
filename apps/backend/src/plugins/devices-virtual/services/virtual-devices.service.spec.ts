@@ -358,6 +358,78 @@ describe('VirtualDevicesService', () => {
 			await expect(service.assertProjectionCompatible(zeroStep, CHANNEL_ID)).rejects.toThrow(/usable grid/);
 		});
 
+		// A sentinel belongs to the device, not the specification — no channel spec declares one — so the
+		// slot report never asks about it. A source that reserves 999 for "no reading" needs its
+		// projection to reserve it too: the projection is what a command is validated against, and it is
+		// what a read is presented through.
+		it("refuses a projection that does not reserve its source's sentinel", async () => {
+			givenSlot(ChannelCategory.TEMPERATURE, DeviceCategory.SENSOR);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({
+					id: 'sentinel-source',
+					permissions: [PermissionType.READ_WRITE],
+					dataType: DataTypeType.FLOAT,
+					format: [0, 100],
+					unit: '°C',
+					invalid: 99,
+				}),
+			);
+
+			const unguarded = projecting('sentinel-source', PropertyCategory.TEMPERATURE, {
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				format: [0, 100],
+				unit: '°C',
+			});
+
+			await expect(service.assertProjectionCompatible(unguarded, CHANNEL_ID)).rejects.toThrow(/sentinel/);
+		});
+
+		// `invalid` is a text column, so a numeric sentinel written as 99 reads back as '99'. Comparing
+		// with `===` would call these two rows a mismatch and orphan a perfectly sound projection.
+		it('accepts a sentinel that agrees across the type it was stored as', async () => {
+			givenSlot(ChannelCategory.TEMPERATURE, DeviceCategory.SENSOR);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({
+					id: 'sentinel-source',
+					permissions: [PermissionType.READ_WRITE],
+					dataType: DataTypeType.FLOAT,
+					format: [0, 100],
+					unit: '°C',
+					invalid: 99,
+				}),
+			);
+
+			const guarded = projecting('sentinel-source', PropertyCategory.TEMPERATURE, {
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				format: [0, 100],
+				unit: '°C',
+			});
+
+			Object.assign(guarded, { invalid: '99' });
+
+			await expect(service.assertProjectionCompatible(guarded, CHANNEL_ID)).resolves.toBeUndefined();
+		});
+
+		// The other direction is only over-strict: a command the source would have accepted is refused
+		// early at the projection. Nothing unsafe happens, so there is nothing to refuse.
+		it('accepts a projection reserving a sentinel its source does not', async () => {
+			givenSlot(ChannelCategory.TEMPERATURE, DeviceCategory.SENSOR);
+			channelsPropertiesService.findOne.mockResolvedValue(readWriteSourceProperty);
+
+			const stricter = projecting(readWriteSourceProperty.id, PropertyCategory.TEMPERATURE, {
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				format: [0, 100],
+				unit: '°C',
+			});
+
+			Object.assign(stricter, { invalid: 99 });
+
+			await expect(service.assertProjectionCompatible(stricter, CHANNEL_ID)).resolves.toBeUndefined();
+		});
+
 		it('ignores an owned property', async () => {
 			const owned = new VirtualChannelPropertyEntity();
 

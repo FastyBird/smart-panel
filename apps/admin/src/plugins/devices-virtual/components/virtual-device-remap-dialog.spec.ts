@@ -334,6 +334,48 @@ describe('VirtualDeviceRemapDialog', () => {
 		expect(Object.keys(body?.body.data ?? {})).toContain('data_type');
 	});
 
+	// The outgoing projection constrains; the incoming source deliberately does not. Coalescing each
+	// field past the source's explicit null keeps the old constraint, and the backend takes it, because
+	// those fields are irrelevant to the variant now in play — so the property goes on advertising a
+	// range and a grid its new source has never had.
+	it("adopts a new source's explicitly absent constraints rather than keeping the old ones", async () => {
+		propertiesStore.set({
+			id: ORPHANED_PROPERTY_ID,
+			data: {
+				format: [0, 100],
+				step: 1,
+			},
+		} as unknown as Parameters<typeof propertiesStore.set>[0]);
+
+		const { selectSource, confirm } = mountRemapDialog();
+
+		await selectSource(NEW_SOURCE_PROPERTY_ID);
+		await confirm();
+
+		const body = (backendClient.PATCH as Mock).mock.calls[0]?.[1] as { body: { data: Record<string, unknown> } } | undefined;
+
+		expect(body?.body.data).toMatchObject({ format: null, step: null });
+	});
+
+	// A sentinel travels with the link for the same reason the representation does: the backend refuses
+	// a projection that does not reserve what its source reserves, so a remap that left it behind could
+	// not repair a source that had started declaring one.
+	it("adopts the new source's reserved sentinel", async () => {
+		propertiesStore.set({
+			id: NEW_SOURCE_PROPERTY_ID,
+			data: { invalid: 99 },
+		} as unknown as Parameters<typeof propertiesStore.set>[0]);
+
+		const { selectSource, confirm } = mountRemapDialog();
+
+		await selectSource(NEW_SOURCE_PROPERTY_ID);
+		await confirm();
+
+		const body = (backendClient.PATCH as Mock).mock.calls[0]?.[1] as { body: { data: Record<string, unknown> } } | undefined;
+
+		expect(body?.body.data).toMatchObject({ invalid: 99 });
+	});
+
 	it('remaps an orphaned property to a new source', async () => {
 		const { selectSource, confirm } = mountRemapDialog();
 
