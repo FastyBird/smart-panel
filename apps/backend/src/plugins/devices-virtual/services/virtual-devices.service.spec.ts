@@ -303,6 +303,29 @@ describe('VirtualDevicesService', () => {
 			await expect(service.assertProjectionCompatible(overclaiming, CHANNEL_ID)).rejects.toThrow(/does not offer/);
 		});
 
+		// Both halves can satisfy a multi-variant slot independently and still disagree with each other.
+		// A projection forwards its source's value unchanged, so enum readings must not flow through a
+		// property calling itself numeric.
+		it('refuses a projection whose representation differs from its source', async () => {
+			givenSlot(ChannelCategory.LIGHT, DeviceCategory.LIGHTING);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({
+					id: 'enum-brightness',
+					permissions: [PermissionType.READ_WRITE],
+					dataType: DataTypeType.ENUM,
+					format: ['off', 'low', 'medium', 'high', 'full'],
+				}),
+			);
+
+			const numericProjection = projecting('enum-brightness', PropertyCategory.BRIGHTNESS, {
+				dataType: DataTypeType.UCHAR,
+				permissions: [PermissionType.READ_WRITE],
+				format: [0, 100],
+			});
+
+			await expect(service.assertProjectionCompatible(numericProjection, CHANNEL_ID)).rejects.toThrow(/must match/);
+		});
+
 		it('ignores an owned property', async () => {
 			const owned = new VirtualChannelPropertyEntity();
 
@@ -385,6 +408,24 @@ describe('VirtualDevicesService', () => {
 
 			expect(report.compatible).toBe(false);
 			expect(report.reason).toContain('declares no format');
+		});
+
+		// A write-only slot is commanded exactly like a read-write one, so the source still has to accept
+		// everything the slot may be told to do.
+		it('refuses a write-only slot a source cannot accept every command for', () => {
+			const partialSource = property({
+				id: 'play-only',
+				permissions: [PermissionType.WRITE_ONLY],
+				dataType: DataTypeType.ENUM,
+				format: ['play'],
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.MEDIA, channel: ChannelCategory.MEDIA_PLAYBACK, property: PropertyCategory.COMMAND },
+				partialSource,
+			);
+
+			expect(report.compatible).toBe(false);
 		});
 
 		it('accepts an enum source whose values match the slot', () => {

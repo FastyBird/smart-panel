@@ -1705,7 +1705,12 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			stuck.handleStructuralChange();
 
-			await driveUntil(() => devicesStub.update.mock.calls.length > 0, 1000);
+			// Driven until the passes this asserts have actually accrued, not merely until the unhide
+			// lands. The two are not the same moment, and waiting on the wrong one made this depend on
+			// how fast the real sqlite work happened to resolve — it passed locally and failed
+			// intermittently on CI. The step budget still bounds it, so a genuinely broken repair loop
+			// exhausts the budget and fails rather than hanging.
+			await driveUntil(() => flagAtRebuild.length >= 4 && devicesStub.update.mock.calls.length > 0, 1000);
 
 			// One pass plus MAX_REPAIR_PASSES repairs, none of which could settle, and then the queue is
 			// released rather than held forever: a hidden device with no replacement and no route back

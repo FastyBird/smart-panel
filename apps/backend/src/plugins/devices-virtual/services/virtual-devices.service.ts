@@ -440,7 +440,13 @@ export class VirtualDevicesService {
 			return `Source property id=${sourceProperty.id} declares no format, so it cannot be shown to stay within the one '${specSlot.channel}.${specSlot.property}' defines`;
 		}
 
-		const slotWritable = metadata.permissions.includes(PermissionType.READ_WRITE);
+		// WRITE_ONLY counts: the question the reverse check asks is "can the source accept everything this
+		// slot may be commanded with", and a write-only slot is commanded exactly like a read-write one.
+		// Missing it let a source accepting only `play` fill `media_playback.command`, which also exposes
+		// `pause`, `stop` and the navigation commands.
+		const slotWritable =
+			metadata.permissions.includes(PermissionType.READ_WRITE) ||
+			metadata.permissions.includes(PermissionType.WRITE_ONLY);
 		const slotName = `'${specSlot.channel}.${specSlot.property}'`;
 
 		// A numeric range is a two-element [min, max]; anything else is an enum value set.
@@ -623,6 +629,17 @@ export class VirtualDevicesService {
 			throw new VirtualProjectionIncompatibleException(
 				declaration.reason?.replace(`Source property id=${property.id}`, `Property id=${property.id}`) ??
 					'Property does not match this specification slot',
+			);
+		}
+
+		// Both halves can satisfy a multi-variant slot independently and still disagree with each other:
+		// `light.brightness` accepts a `uchar` percentage and an `enum` level, so remapping a `uchar`
+		// projection onto a compatible enum source passes both checks above while leaving enum readings
+		// flowing through a property that calls itself numeric. A projection forwards its source's value
+		// unchanged — there is no conversion anywhere — so the two have to speak the same representation.
+		if (property.dataType !== sourceProperty.dataType) {
+			throw new VirtualProjectionIncompatibleException(
+				`Property id=${property.id} is declared '${property.dataType}' but its source id=${sourceProperty.id} is '${sourceProperty.dataType}'; a projection forwards its source's value unchanged, so the two must match`,
 			);
 		}
 
