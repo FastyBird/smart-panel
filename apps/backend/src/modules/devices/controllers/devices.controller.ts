@@ -85,13 +85,23 @@ export class DevicesController {
 		name: 'hidden',
 		required: false,
 		enum: DeviceHiddenFilter,
-		description: 'Filter by hidden flag. Omit to return every device.',
+		description: 'Filter by hidden flag. Omitted means visible devices only; pass `all` to include hidden ones.',
 	})
 	@Get()
 	async findAll(@Query() query: ListDevicesQueryDto): Promise<DevicesResponseModel> {
 		this.logger.debug('Fetching all devices');
 
-		const devices = await this.devicesService.findAll(undefined, query.hidden ?? DeviceHiddenFilter.ALL);
+		// Omitting the filter means "the devices a user should see", not "everything". A hidden device is
+		// one a virtual device has replaced, so a client that never learned about the flag — the panel
+		// calls this with no query at all — would otherwise render the physical source alongside its
+		// virtual replacement and let the operator command both. Callers that genuinely want hidden rows
+		// ask for them: the admin's device list passes `all` behind its "show hidden" toggle.
+		//
+		// The default lives here rather than on `DevicesService.findAll`, whose own default stays `ALL`:
+		// its internal callers (security sensor and alarm providers, the security aggregator, Buddy's
+		// context builder, device validation) each need the full set, and moving the default down would
+		// change what they see as a side effect of an HTTP concern.
+		const devices = await this.devicesService.findAll(undefined, query.hidden ?? DeviceHiddenFilter.FALSE);
 
 		this.logger.debug(`Retrieved ${devices.length} devices`);
 

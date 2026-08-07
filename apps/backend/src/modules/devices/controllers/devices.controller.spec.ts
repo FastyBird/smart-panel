@@ -115,11 +115,14 @@ describe('DevicesController', () => {
 	});
 
 	describe('Devices', () => {
-		it('should return all devices', async () => {
+		// An omitted filter means "what a user should see". A client that predates the flag — the panel
+		// sends no query at all — would otherwise be handed the physical sources a virtual device has
+		// replaced, and render them next to their replacements.
+		it('should return only visible devices when no filter is given', async () => {
 			const result = await controller.findAll({});
 
 			expect(result.data).toEqual([toInstance(DeviceEntity, mockDevice)]);
-			expect(service.findAll).toHaveBeenCalledWith(undefined, DeviceHiddenFilter.ALL);
+			expect(service.findAll).toHaveBeenCalledWith(undefined, DeviceHiddenFilter.FALSE);
 		});
 
 		it('should forward the hidden filter to the service', async () => {
@@ -127,6 +130,13 @@ describe('DevicesController', () => {
 
 			expect(result.data).toEqual([toInstance(DeviceEntity, mockDevice)]);
 			expect(service.findAll).toHaveBeenCalledWith(undefined, DeviceHiddenFilter.FALSE);
+		});
+
+		it('should return every device only when `all` is asked for explicitly', async () => {
+			const result = await controller.findAll({ hidden: DeviceHiddenFilter.ALL });
+
+			expect(result.data).toEqual([toInstance(DeviceEntity, mockDevice)]);
+			expect(service.findAll).toHaveBeenCalledWith(undefined, DeviceHiddenFilter.ALL);
 		});
 
 		it('should return a single device', async () => {
