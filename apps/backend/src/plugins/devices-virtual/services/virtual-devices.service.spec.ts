@@ -326,6 +326,22 @@ describe('VirtualDevicesService', () => {
 			await expect(service.assertProjectionCompatible(numericProjection, CHANNEL_ID)).rejects.toThrow(/must match/);
 		});
 
+		// `validatePropertyCommandValue` refuses every numeric command on a property whose step is
+		// non-null but not positive and finite, so accepting one here persists a projection that looks
+		// compatible and can never be commanded.
+		it('refuses a projection declaring an unusable step', async () => {
+			givenSlot(ChannelCategory.LIGHT, DeviceCategory.LIGHTING);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({ id: 'rw-bool', permissions: [PermissionType.READ_WRITE], dataType: DataTypeType.BOOL }),
+			);
+
+			const zeroStep = projecting('rw-bool', PropertyCategory.ON, { dataType: DataTypeType.BOOL });
+
+			Object.assign(zeroStep, { step: 0 });
+
+			await expect(service.assertProjectionCompatible(zeroStep, CHANNEL_ID)).rejects.toThrow(/usable grid/);
+		});
+
 		it('ignores an owned property', async () => {
 			const owned = new VirtualChannelPropertyEntity();
 

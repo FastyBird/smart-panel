@@ -679,6 +679,20 @@ export class VirtualDevicesService {
 			);
 		}
 
+		// A step is either absent or a usable grid — `validatePropertyCommandValue` refuses every numeric
+		// command on a property whose step is non-null but not finite and positive. Treating `0` as "no
+		// constraint" here would persist a projection that is compatible on paper and can never actually
+		// be commanded, so the declaration is held to the same rule the validator applies.
+		if (
+			property.step !== null &&
+			property.step !== undefined &&
+			(!Number.isFinite(property.step) || property.step <= 0)
+		) {
+			throw new VirtualProjectionIncompatibleException(
+				`Property id=${property.id} declares step ${property.step}, which is not a usable grid; a step must be absent or a positive, finite number`,
+			);
+		}
+
 		const slotMetadata = getAllProperties(specSlot.channel).find(
 			(candidate) => candidate.category === specSlot.property,
 		);
