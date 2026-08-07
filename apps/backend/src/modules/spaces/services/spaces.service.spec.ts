@@ -384,7 +384,7 @@ describe('SpacesService', () => {
 
 			await expect(service.findLightingTriggerSummaryPage(50)).resolves.toEqual({ spaces: [mockSpace], total: 1 });
 			expect(queryBuilder.where).toHaveBeenCalledWith(
-				expect.stringContaining('EXISTS'),
+				expect.stringContaining('spaces_module_space_roles'),
 				expect.objectContaining({
 					enabled: true,
 					hidden: false,
@@ -393,6 +393,8 @@ describe('SpacesService', () => {
 					propertyCategory: 'on',
 					readWrite: 'rw',
 					writeOnly: 'wo',
+					lightingRoleType: 'lighting',
+					hiddenLightingRole: 'hidden',
 				}),
 			);
 			expect(queryBuilder.take).toHaveBeenCalledWith(50);

@@ -1,6 +1,12 @@
 import { AuthInfo, McpServer, ServerContext } from '@modelcontextprotocol/server';
 
-import { ConnectionState, DataTypeType, PermissionType, PropertyCategory } from '../../devices/devices.constants';
+import {
+	ChannelCategory,
+	ConnectionState,
+	DataTypeType,
+	PermissionType,
+	PropertyCategory,
+} from '../../devices/devices.constants';
 import { ChannelPropertyEntity } from '../../devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
 import { DeviceConnectionStateService } from '../../devices/services/device-connection-state.service';
@@ -25,8 +31,8 @@ type ToolCallback = (
 
 describe('McpTargetDiscoveryToolService', () => {
 	let service: McpTargetDiscoveryToolService;
-	let channelsPropertiesService: { findWritableCandidates: jest.Mock };
-	let deviceConnectionStateService: { readLatestManyStrict: jest.Mock };
+	let channelsPropertiesService: { findOne: jest.Mock; findWritableCandidates: jest.Mock };
+	let deviceConnectionStateService: { readLatestMany: jest.Mock };
 	let scenesService: { findTriggerableSummaryPage: jest.Mock };
 	let spacesService: { findLightingTriggerSummaryPage: jest.Mock };
 	let toolRegistry: { getAllToolDefinitions: jest.Mock; executeTool: jest.Mock };
@@ -38,10 +44,11 @@ describe('McpTargetDiscoveryToolService', () => {
 
 	beforeEach(() => {
 		channelsPropertiesService = {
+			findOne: jest.fn(),
 			findWritableCandidates: jest.fn().mockResolvedValue({ properties: [], total: 0 }),
 		};
 		deviceConnectionStateService = {
-			readLatestManyStrict: jest.fn().mockResolvedValue(new Map()),
+			readLatestMany: jest.fn().mockResolvedValue(new Map()),
 		};
 		scenesService = {
 			findTriggerableSummaryPage: jest.fn().mockResolvedValue({ scenes: [], total: 0 }),
@@ -96,13 +103,16 @@ describe('McpTargetDiscoveryToolService', () => {
 	it('lets a write-only client discover only actionable writable properties', async () => {
 		providerTools = [providerTool('control_device', ToolAccessKind.WRITE)];
 		const connected = property('10000000-0000-4000-8000-000000000001', PermissionType.READ_WRITE);
+		connected.category = PropertyCategory.TEMPERATURE;
+		connected.dataType = DataTypeType.FLOAT;
+		(connected.channel as { category: ChannelCategory }).category = ChannelCategory.TEMPERATURE;
 		const disconnected = property('10000000-0000-4000-8000-000000000002', PermissionType.WRITE_ONLY);
 		const readOnly = property('10000000-0000-4000-8000-000000000003', PermissionType.READ_ONLY);
 		channelsPropertiesService.findWritableCandidates.mockResolvedValue({
 			properties: [connected, disconnected, readOnly],
 			total: 3,
 		});
-		deviceConnectionStateService.readLatestManyStrict.mockResolvedValue(
+		deviceConnectionStateService.readLatestMany.mockResolvedValue(
 			new Map([
 				[deviceId(connected), { online: true, status: ConnectionState.CONNECTED, lastChanged: new Date() }],
 				[deviceId(disconnected), { online: false, status: ConnectionState.DISCONNECTED, lastChanged: new Date() }],
@@ -120,7 +130,8 @@ describe('McpTargetDiscoveryToolService', () => {
 			expect.objectContaining({
 				property_id: connected.id,
 				device_id: deviceId(connected),
-				data_type: DataTypeType.BOOL,
+				data_type: DataTypeType.FLOAT,
+				unit: '°C',
 			}),
 		]);
 		expect(data.properties[0]).not.toHaveProperty('value');
@@ -168,6 +179,9 @@ describe('McpTargetDiscoveryToolService', () => {
 
 	it('adapts the public set_device_property name to the shared write provider', async () => {
 		providerTools = [providerTool('control_device', ToolAccessKind.WRITE)];
+		channelsPropertiesService.findOne.mockResolvedValue(
+			property('10000000-0000-4000-8000-000000000001', PermissionType.READ_WRITE),
+		);
 		toolRegistry.executeTool.mockResolvedValue({
 			success: true,
 			status: ToolExecutionStatus.COMPLETED,
@@ -191,6 +205,28 @@ describe('McpTargetDiscoveryToolService', () => {
 		);
 		expect(result?.isError).toBeUndefined();
 		expect(result?.structuredContent.tool).toBe('set_device_property');
+	});
+
+	it.each([
+		{ enabled: false, hidden: false },
+		{ enabled: true, hidden: true },
+	])('rejects a write when its device is no longer available: %p', async ({ enabled, hidden }) => {
+		providerTools = [providerTool('control_device', ToolAccessKind.WRITE)];
+		const target = property('10000000-0000-4000-8000-000000000001', PermissionType.READ_WRITE);
+		const device = (target.channel as { device: { enabled: boolean; hidden: boolean } }).device;
+		device.enabled = enabled;
+		device.hidden = hidden;
+		channelsPropertiesService.findOne.mockResolvedValue(target);
+		service.register(server(), authInfo([McpCapability.WRITE]));
+
+		const result = await callbacks.get('set_device_property')?.(
+			{ property_id: target.id, value: true },
+			requestContext([McpCapability.WRITE]),
+		);
+
+		expect(result?.isError).toBe(true);
+		expect(result?.structuredContent.error).toEqual(expect.objectContaining({ code: 'not_found' }));
+		expect(toolRegistry.executeTool).not.toHaveBeenCalled();
 	});
 
 	function server(): McpServer {
@@ -237,7 +273,7 @@ describe('McpTargetDiscoveryToolService', () => {
 			channel: {
 				id: `20000000-0000-4000-8000-00000000000${suffix}`,
 				name: `Switch ${suffix}`,
-				category: 'switcher',
+				category: ChannelCategory.SWITCHER,
 				device: {
 					id: `30000000-0000-4000-8000-00000000000${suffix}`,
 					name: `Device ${suffix}`,

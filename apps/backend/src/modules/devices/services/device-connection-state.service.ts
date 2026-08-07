@@ -160,8 +160,21 @@ export class DeviceConnectionStateService {
 		return this.readLatestInternal(device, true);
 	}
 
+	async readLatestMany(
+		devices: Array<Pick<DeviceEntity, 'id'>>,
+	): Promise<Map<DeviceEntity['id'], DeviceConnectionStateValue>> {
+		return this.readLatestManyInternal(devices, false);
+	}
+
 	async readLatestManyStrict(
 		devices: Array<Pick<DeviceEntity, 'id'>>,
+	): Promise<Map<DeviceEntity['id'], DeviceConnectionStateValue>> {
+		return this.readLatestManyInternal(devices, true);
+	}
+
+	private async readLatestManyInternal(
+		devices: Array<Pick<DeviceEntity, 'id'>>,
+		strict: boolean,
 	): Promise<Map<DeviceEntity['id'], DeviceConnectionStateValue>> {
 		const statuses = new Map<DeviceEntity['id'], DeviceConnectionStateValue>();
 		const missingIds: DeviceEntity['id'][] = [];
@@ -180,7 +193,15 @@ export class DeviceConnectionStateService {
 			return statuses;
 		}
 		if (!this.storageService.isConnected()) {
-			throw new Error('Device connection status storage is unavailable');
+			if (strict) {
+				throw new Error('Device connection status storage is unavailable');
+			}
+
+			for (const id of missingIds) {
+				statuses.set(id, this.unknownStatus());
+			}
+
+			return statuses;
 		}
 
 		const predicate = missingIds.map((id) => `deviceId = '${this.escapeTagValue(id)}'`).join(' OR ');
@@ -211,7 +232,15 @@ export class DeviceConnectionStateService {
 				stack: err.stack,
 			});
 
-			throw error;
+			if (strict) {
+				throw error;
+			}
+
+			for (const id of missingIds) {
+				statuses.set(id, this.unknownStatus());
+			}
+
+			return statuses;
 		}
 	}
 

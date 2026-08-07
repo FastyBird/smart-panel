@@ -8,6 +8,7 @@ import { ConnectionState, PermissionType } from '../../devices/devices.constants
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
 import { DeviceConnectionStateService } from '../../devices/services/device-connection-state.service';
+import { resolvePropertyUnit } from '../../devices/utils/property-metadata.utils';
 import { SceneSummaryPage, ScenesService } from '../../scenes/services/scenes.service';
 import { SpaceSummaryPage, SpacesService } from '../../spaces/services/spaces.service';
 import {
@@ -118,7 +119,7 @@ export class McpTargetDiscoveryToolService {
 						MCP_MAX_WRITABLE_PROPERTY_CANDIDATES,
 					);
 					const devices = this.uniqueDevices(candidates.properties);
-					const statuses = await this.deviceConnectionStateService.readLatestManyStrict(devices);
+					const statuses = await this.deviceConnectionStateService.readLatestMany(devices);
 					const actionable = candidates.properties.filter((property) => {
 						const device = this.getDevice(property);
 						const status = statuses.get(device.id);
@@ -262,6 +263,15 @@ export class McpTargetDiscoveryToolService {
 		ctx: ServerContext,
 	) {
 		return this.runTool(publicName, capability, ctx, async (policy) => {
+			if (providerName === 'control_device' && !(await this.isAvailableDeviceProperty(args.property_id))) {
+				return this.toProviderToolData(capability, {
+					success: false,
+					status: ToolExecutionStatus.DENIED,
+					message: 'Device property is unavailable',
+					errorCode: 'DEVICE_PROPERTY_NOT_FOUND',
+				});
+			}
+
 			const result = await this.toolRegistry.executeTool(
 				{ id: String(ctx.mcpReq.id), name: providerName, arguments: args },
 				{
@@ -381,7 +391,7 @@ export class McpTargetDiscoveryToolService {
 			channel_name: channel.name,
 			channel_category: channel.category,
 			data_type: property.dataType,
-			unit: property.unit,
+			unit: resolvePropertyUnit(property),
 			format: property.format,
 			step: property.step,
 			invalid: property.invalid,
@@ -390,6 +400,22 @@ export class McpTargetDiscoveryToolService {
 
 	private getDevice(property: ChannelPropertyEntity): DeviceEntity {
 		return (property.channel as ChannelEntity).device as DeviceEntity;
+	}
+
+	private async isAvailableDeviceProperty(propertyId: unknown): Promise<boolean> {
+		if (typeof propertyId !== 'string') {
+			return false;
+		}
+
+		const property = await this.channelsPropertiesService.findOne(propertyId);
+
+		if (!property) {
+			return false;
+		}
+
+		const device = this.getDevice(property);
+
+		return device.enabled && !device.hidden;
 	}
 
 	private toProviderToolData(capability: McpCapability, result: ToolExecutionResult): ToolData {

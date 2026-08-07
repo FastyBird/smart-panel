@@ -31,6 +31,7 @@ import { SpaceEntity } from '../entities/space.entity';
 import {
 	EventType,
 	SPACES_MODULE_NAME,
+	SpaceRoleType,
 	SpaceType,
 	isFloorZoneCategory,
 	isValidCategoryForType,
@@ -130,6 +131,15 @@ export class SpacesService {
 						AND channel.category = :channelCategory
 						AND property.category = :propertyCategory
 						AND ${writablePermissionPredicate}
+						AND NOT EXISTS (
+							SELECT 1
+							FROM spaces_module_space_roles lightingRole
+							WHERE lightingRole.type = :lightingRoleType
+								AND lightingRole."spaceId" = space.id
+								AND lightingRole."deviceId" = device.id
+								AND lightingRole."channelId" = channel.id
+								AND lightingRole.role = :hiddenLightingRole
+						)
 						AND ((space.type = :roomType AND device."roomId" = space.id)
 							OR (space.type = :zoneType AND deviceZone."zoneId" = space.id))
 				)`,
@@ -147,6 +157,8 @@ export class SpacesService {
 					writeOnlyFirst: `${PermissionType.WRITE_ONLY},%`,
 					writeOnlyMiddle: `%,${PermissionType.WRITE_ONLY},%`,
 					writeOnlyLast: `%,${PermissionType.WRITE_ONLY}`,
+					lightingRoleType: SpaceRoleType.LIGHTING,
+					hiddenLightingRole: 'hidden',
 					roomType: SpaceType.ROOM,
 					zoneType: SpaceType.ZONE,
 				},
