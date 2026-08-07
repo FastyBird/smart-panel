@@ -1,5 +1,6 @@
 import { ExecutionContext } from '@nestjs/common';
 
+import { McpAuditService } from '../services/mcp-audit.service';
 import { McpPolicyContext, McpPolicyRequest, McpPolicyService } from '../services/mcp-policy.service';
 import { McpServerService } from '../services/mcp-server.service';
 
@@ -17,9 +18,14 @@ describe('McpClientGuard', () => {
 			getClientPolicyRevision: jest.fn().mockReturnValue(3),
 			getPolicyRevision: jest.fn().mockReturnValue(7),
 		};
+		const auditService = {
+			getRequestId: jest.fn().mockReturnValue('request-1'),
+			recordPolicyDenial: jest.fn(),
+		};
 		const guard = new McpClientGuard(
 			policyService as unknown as McpPolicyService,
 			serverService as unknown as McpServerService,
+			auditService as unknown as McpAuditService,
 		);
 		const context = {
 			switchToHttp: () => ({ getRequest: () => request }),

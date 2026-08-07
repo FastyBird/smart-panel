@@ -20,6 +20,7 @@ import { SpaceType } from '../../spaces/spaces.constants';
 import { ToolAccessKind, ToolAudience, ToolExecutionStatus } from '../../tools/platforms/tool-provider.platform';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
 import { MCP_MAX_WRITABLE_PROPERTY_CANDIDATES, MCP_TOOL_CALL_TIMEOUT_MS, McpCapability } from '../mcp.constants';
+import { McpAuditService } from '../services/mcp-audit.service';
 import { McpContextService } from '../services/mcp-context.service';
 import { McpPolicyService } from '../services/mcp-policy.service';
 
@@ -40,6 +41,7 @@ describe('McpTargetDiscoveryToolService', () => {
 	let toolRegistry: { getAllToolDefinitions: jest.Mock; executeTool: jest.Mock };
 	let contextService: { getInstallation: jest.Mock };
 	let policyService: { authorizeClient: jest.Mock };
+	let auditService: { recordPolicyDenial: jest.Mock; recordToolResult: jest.Mock };
 	let registerTool: jest.Mock;
 	let callbacks: Map<string, ToolCallback>;
 	let providerTools: Array<{ name: string; audiences: ToolAudience[]; access: ToolAccessKind }>;
@@ -84,6 +86,10 @@ describe('McpTargetDiscoveryToolService', () => {
 				}),
 			),
 		};
+		auditService = {
+			recordPolicyDenial: jest.fn(),
+			recordToolResult: jest.fn(),
+		};
 		callbacks = new Map();
 		registerTool = jest.fn((name: string, _config: unknown, callback: ToolCallback) => {
 			callbacks.set(name, callback);
@@ -97,6 +103,7 @@ describe('McpTargetDiscoveryToolService', () => {
 			toolRegistry as unknown as ToolProviderRegistryService,
 			contextService as unknown as McpContextService,
 			policyService as unknown as McpPolicyService,
+			auditService as unknown as McpAuditService,
 		);
 	});
 
@@ -283,6 +290,17 @@ describe('McpTargetDiscoveryToolService', () => {
 		);
 		expect(result?.isError).toBeUndefined();
 		expect(result?.structuredContent.tool).toBe('set_device_property');
+		expect(auditService.recordToolResult).toHaveBeenCalledWith(
+			expect.objectContaining({
+				tool: 'set_device_property',
+				capability: McpCapability.WRITE,
+				outcome: 'completed',
+				arguments: {
+					property_id: '10000000-0000-4000-8000-000000000001',
+					value: true,
+				},
+			}),
+		);
 	});
 
 	it('waits for an authoritative provider result after a side effect has started', async () => {

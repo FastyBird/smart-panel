@@ -14,6 +14,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { IS_MCP_ENDPOINT_KEY } from '../../mcp/mcp.constants';
+import { McpAuditService } from '../../mcp/services/mcp-audit.service';
 import { McpClientService } from '../../mcp/services/mcp-client.service';
 import { McpInstallationService } from '../../mcp/services/mcp-installation.service';
 import { UserEntity } from '../../users/entities/users.entity';
@@ -45,6 +46,7 @@ describe('AuthGuard', () => {
 	let tokensService: TokensService;
 	let usersService: UsersService;
 	let mcpClientsService: McpClientService;
+	let mcpAuditService: { getRequestId: jest.Mock; recordAuthenticationFailure: jest.Mock };
 
 	const mockUserId = uuid().toString();
 	const mockDisplayId = uuid().toString();
@@ -142,6 +144,10 @@ describe('AuthGuard', () => {
 	};
 
 	beforeEach(async () => {
+		mcpAuditService = {
+			getRequestId: jest.fn().mockReturnValue('request-1'),
+			recordAuthenticationFailure: jest.fn(),
+		};
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				AuthGuard,
@@ -186,6 +192,10 @@ describe('AuthGuard', () => {
 					useValue: {
 						getAudience: jest.fn().mockResolvedValue(mockMcpAudience),
 					},
+				},
+				{
+					provide: McpAuditService,
+					useValue: mcpAuditService,
 				},
 				{
 					provide: CACHE_MANAGER,
@@ -604,6 +614,10 @@ describe('AuthGuard', () => {
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: mockUserId, type: 'personal' });
 
 			await expect(guard.canActivate(context)).rejects.toThrow('An MCP credential is required');
+			expect(mcpAuditService.recordAuthenticationFailure).toHaveBeenCalledWith(
+				{ requestId: 'request-1' },
+				'invalid_credential',
+			);
 		});
 
 		it('should reject a rotated or disabled MCP client credential', async () => {

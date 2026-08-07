@@ -1,6 +1,6 @@
 # Smart Panel MCP Module — Implementation Plan
 
-**Status:** Phase 7 complete — Phase 8 pending
+**Status:** Phase 8 complete — Phase 9 pending
 
 **Architecture decision:** [ADR 0001: MCP Protocol and Security Foundation](../../docs/adr/0001-mcp-protocol-and-security-foundation.md)
 supersedes the original stateful-session transport assumptions in this plan.
@@ -536,15 +536,20 @@ source of truth during permission races.
 - Modify MCP server/policy/client services
 - Add stats provider only if it follows existing metrics patterns cleanly
 
-- [ ] Log discovery/legacy initialization, authentication failure, subscription open/close, tool execution, policy
+- [x] Log discovery/legacy initialization, authentication failure, subscription open/close, tool execution, policy
       denial, timeout, and result.
-- [ ] Include request ID, MCP client ID, tool, capability, duration, and outcome.
-- [ ] Do not log bearer tokens, token hashes, authorization headers, secure values, or unrestricted raw arguments.
-- [ ] Redact or summarize values for device writes while retaining target IDs for investigation.
-- [ ] Add counters for active subscriptions, calls by capability/tool, failures, denials, and timeouts.
-- [ ] Make logs identify the source as `mcp-module` and preserve existing system logger conventions.
+- [x] Include request ID, MCP client ID, tool, capability, duration, and outcome.
+- [x] Do not log bearer tokens, token hashes, authorization headers, secure values, or unrestricted raw arguments.
+- [x] Redact or summarize values for device writes while retaining target IDs for investigation.
+- [x] Add counters for active subscriptions, calls by capability/tool, failures, denials, and timeouts.
+- [x] Make logs identify the source as `mcp-module` and preserve existing system logger conventions.
 
 **Tests:** redaction, success/failure records, metrics increments, and no token material in captured logs.
+
+**Outcome:** MCP protocol, policy, subscription, and tool lifecycle events now emit structured allowlisted audit records
+through the module logger. Raw credentials and tool values are excluded while write/trigger target IDs remain available
+for investigation. In-memory counters are exposed through the shared stats registry for active subscriptions, calls by
+capability/tool, failures, denials, and timeouts.
 
 ### Task 12: Build the admin MCP module
 

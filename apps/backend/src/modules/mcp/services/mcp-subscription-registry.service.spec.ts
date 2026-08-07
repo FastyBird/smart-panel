@@ -4,13 +4,19 @@ import {
 	MCP_SUBSCRIPTION_IDLE_TIMEOUT_MS,
 } from '../mcp.constants';
 
+import { McpAuditService } from './mcp-audit.service';
 import { McpSubscriptionCapacityError, McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
 
 describe('McpSubscriptionRegistryService', () => {
 	let service: McpSubscriptionRegistryService;
+	let auditService: { recordSubscriptionClosed: jest.Mock; recordSubscriptionOpened: jest.Mock };
 
 	beforeEach(() => {
-		service = new McpSubscriptionRegistryService();
+		auditService = {
+			recordSubscriptionClosed: jest.fn(),
+			recordSubscriptionOpened: jest.fn(),
+		};
+		service = new McpSubscriptionRegistryService(auditService as unknown as McpAuditService);
 	});
 
 	afterEach(() => {
@@ -30,6 +36,8 @@ describe('McpSubscriptionRegistryService', () => {
 		expect(other.signal.aborted).toBe(false);
 		expect(service.activeCount).toBe(1);
 		expect(service.countForClient('client-b')).toBe(1);
+		expect(auditService.recordSubscriptionOpened).toHaveBeenCalledTimes(3);
+		expect(auditService.recordSubscriptionClosed).toHaveBeenCalledTimes(2);
 	});
 
 	it('enforces the per-client cap', () => {
@@ -64,6 +72,11 @@ describe('McpSubscriptionRegistryService', () => {
 
 		expect(subscription.signal.aborted).toBe(true);
 		expect(service.activeCount).toBe(0);
+		expect(auditService.recordSubscriptionClosed).toHaveBeenCalledWith(
+			{ requestId: 'unknown', clientId: 'client-a' },
+			subscription.id,
+			'idle',
+		);
 	});
 
 	it('cleans up every stream during application shutdown', () => {

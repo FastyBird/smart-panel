@@ -16,6 +16,7 @@ import { JwtService } from '@nestjs/jwt';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { IS_MCP_ENDPOINT_KEY, McpCapability } from '../../mcp/mcp.constants';
+import { McpAuditService } from '../../mcp/services/mcp-audit.service';
 import { McpClientService } from '../../mcp/services/mcp-client.service';
 import { McpInstallationService } from '../../mcp/services/mcp-installation.service';
 import { ApiPublic } from '../../swagger/decorators/api-documentation.decorator';
@@ -79,6 +80,7 @@ export class AuthGuard implements CanActivate {
 		private readonly usersService: UsersService,
 		private readonly mcpClientsService: McpClientService,
 		private readonly mcpInstallationService: McpInstallationService,
+		private readonly mcpAuditService: McpAuditService,
 		@Inject(CACHE_MANAGER)
 		private readonly cacheManager: Cache,
 	) {}
@@ -105,12 +107,30 @@ export class AuthGuard implements CanActivate {
 		// Try authenticating with JWT (Bearer token)
 		const token = extractAccessTokenFromHeader(request);
 
-		if (token && (await this.validateToken(request, token, isMcpEndpoint))) {
-			return true;
+		try {
+			if (token && (await this.validateToken(request, token, isMcpEndpoint))) {
+				return true;
+			}
+		} catch (error) {
+			if (isMcpEndpoint) {
+				this.mcpAuditService.recordAuthenticationFailure(
+					{ requestId: this.mcpAuditService.getRequestId(request.body) },
+					'invalid_credential',
+				);
+			}
+
+			throw error;
 		}
 
 		// If auth method didn't work, reject the request
 		this.logger.warn('Unauthorized request, missing valid credentials');
+
+		if (isMcpEndpoint) {
+			this.mcpAuditService.recordAuthenticationFailure(
+				{ requestId: this.mcpAuditService.getRequestId(request.body) },
+				'authentication_required',
+			);
+		}
 
 		throw new UnauthorizedException('Authentication required');
 	}
