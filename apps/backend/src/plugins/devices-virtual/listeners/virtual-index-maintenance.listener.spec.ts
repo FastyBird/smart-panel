@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { DataSource, Repository } from 'typeorm';
 
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import {
 	ConnectionState,
@@ -49,6 +50,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 	// explicit null as "field not provided", so DevicesService.update() can never write one).
 	let devicesRepository: { update: jest.Mock };
 	let virtualDevicesService: { reportCompatibility: jest.Mock };
+	let eventEmitterStub: { emit: jest.Mock };
 
 	// Drains Node's microtask queue completely — including microtasks newly queued while draining —
 	// before the callback runs. Unlike a fixed number of `await Promise.resolve()` hops, this needs
@@ -122,11 +124,13 @@ describe('VirtualIndexMaintenanceListener', () => {
 		devicesRepository = { update: jest.fn().mockResolvedValue(undefined) };
 		// Compatibility is asserted in the service's own spec; here it only has to answer.
 		virtualDevicesService = { reportCompatibility: jest.fn().mockReturnValue({ compatible: true }) };
+		eventEmitterStub = { emit: jest.fn() };
 		listener = new VirtualIndexMaintenanceListener(
 			index as unknown as VirtualPropertyIndexService,
 			status as unknown as VirtualStatusListener,
 			devicesService as unknown as DevicesService,
 			virtualDevicesService as unknown as VirtualDevicesService,
+			eventEmitterStub as unknown as EventEmitter2,
 			dataSourceStub as unknown as DataSource,
 			devicesRepository as unknown as Repository<DeviceEntity>,
 		);
@@ -751,6 +755,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				),
 				devicesService as unknown as DevicesService,
 				virtualDevicesService as unknown as VirtualDevicesService,
+				eventEmitterStub as unknown as EventEmitter2,
 				dataSourceStub as unknown as DataSource,
 				devicesRepository as unknown as Repository<DeviceEntity>,
 			);
@@ -1117,6 +1122,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				{ recompute: jest.fn().mockResolvedValue(undefined) } as unknown as VirtualStatusListener,
 				{ findOne: jest.fn(), update: jest.fn() } as unknown as DevicesService,
 				{ reportCompatibility: jest.fn().mockReturnValue({ compatible: true }) } as unknown as VirtualDevicesService,
+				eventEmitterStub as unknown as EventEmitter2,
 				dataSource,
 				{ update: jest.fn() } as unknown as Repository<DeviceEntity>,
 			);
@@ -1268,6 +1274,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				status as unknown as VirtualStatusListener,
 				devicesService as unknown as DevicesService,
 				virtualDevicesService as unknown as VirtualDevicesService,
+				eventEmitterStub as unknown as EventEmitter2,
 				stub.dataSource,
 				devicesRepository as unknown as Repository<DeviceEntity>,
 			);
@@ -1574,6 +1581,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				status as unknown as VirtualStatusListener,
 				devicesStub as unknown as DevicesService,
 				virtualDevicesService as unknown as VirtualDevicesService,
+				eventEmitterStub as unknown as EventEmitter2,
 				dataSource,
 				// The provenance clear that follows every unhide. These cases are about *when* the
 				// unhide's read and write land relative to the emitting transaction, which the patch
@@ -1686,6 +1694,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				status as unknown as VirtualStatusListener,
 				devicesStub as unknown as DevicesService,
 				virtualDevicesService as unknown as VirtualDevicesService,
+				eventEmitterStub as unknown as EventEmitter2,
 				stuckConnection,
 				{ update: jest.fn().mockResolvedValue(undefined) } as unknown as Repository<DeviceEntity>,
 			);
@@ -1726,6 +1735,8 @@ describe('VirtualIndexMaintenanceListener', () => {
 		// case's expectations for no benefit.
 		const build = (report: { compatible: boolean; reason?: string }, dependents: unknown[] = [dependent]) => {
 			const update = jest.fn().mockResolvedValue(undefined);
+			const findOne = jest.fn().mockResolvedValue({ ...dependent, sourcePropertyId: null });
+			const emit = jest.fn();
 			const reportCompatibility = jest.fn().mockReturnValue(report);
 
 			const subject = new VirtualIndexMaintenanceListener(
@@ -1738,22 +1749,28 @@ describe('VirtualIndexMaintenanceListener', () => {
 				{ recompute: jest.fn().mockResolvedValue(undefined) } as unknown as VirtualStatusListener,
 				{ findOne: jest.fn(), update: jest.fn() } as unknown as DevicesService,
 				{ reportCompatibility } as unknown as VirtualDevicesService,
+				{ emit } as unknown as EventEmitter2,
 				{
-					getRepository: jest.fn().mockReturnValue({ update }),
+					getRepository: jest.fn().mockReturnValue({ update, findOne }),
 					createQueryRunner: () => ({ isTransactionActive: false }),
 				} as unknown as DataSource,
 				{ update: jest.fn() } as unknown as Repository<DeviceEntity>,
 			);
 
-			return { subject, update, reportCompatibility };
+			return { subject, update, reportCompatibility, emit };
 		};
 
 		it('orphans the projection it can no longer feed', async () => {
-			const { subject, update } = build({ compatible: false, reason: 'permissions [ro] do not satisfy [rw]' });
+			const { subject, update, emit } = build({ compatible: false, reason: 'permissions [ro] do not satisfy [rw]' });
 
 			await subject.handleSourceMetadataChange(sourceProperty);
 
 			expect(update).toHaveBeenCalledWith('virtual-property', { sourcePropertyId: null });
+			// Announced, or an open admin keeps the stale link and never shows the remap action.
+			expect(emit).toHaveBeenCalledWith(
+				EventType.CHANNEL_PROPERTY_UPDATED,
+				expect.objectContaining({ sourcePropertyId: null }),
+			);
 		});
 
 		it('leaves a projection the source can still feed alone', async () => {

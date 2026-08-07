@@ -33,7 +33,10 @@ export const useSpaceDevices = (
 	const devices = computed<IDevice[]>(() => {
 		if (!spaceId.value || !spaceType.value) return [];
 
-		const allDevices = devicesStore.findAll().filter((device) => !device.draft);
+		// Hidden excluded: a physical source a virtual device has replaced must not show up in the room
+		// beside its replacement, and the backend refuses placement changes on it anyway — so offering
+		// one here would only offer actions that cannot succeed.
+		const allDevices = devicesStore.findAll().filter((device) => !device.draft && !device.hidden);
 
 		let filtered: IDevice[];
 		if (spaceType.value === SpaceType.ROOM) {

@@ -1,7 +1,7 @@
 import { DataSource, Repository } from 'typeorm';
 
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
@@ -196,6 +196,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 		private readonly status: VirtualStatusListener,
 		private readonly devicesService: DevicesService,
 		private readonly virtualDevicesService: VirtualDevicesService,
+		private readonly eventEmitter: EventEmitter2,
 		private readonly dataSource: DataSource,
 		// Only ever used to clear `hiddenBy` — the one field of an unhide that UpdateDeviceDto cannot
 		// express. See unhideSource() for why that needs a write outside DevicesService.update().
@@ -825,6 +826,19 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			);
 
 			await repository.update(dependent.id, { sourcePropertyId: null });
+
+			// Announced, or an already-open admin keeps the old link: the sources panel would not show
+			// the orphan warning or its remap action until the page was reloaded, and other websocket
+			// clients would hold the stale projection too. Re-read rather than patching the cached row,
+			// so what goes out is what was actually stored.
+			const refreshed = await repository.findOne({ where: { id: dependent.id }, relations: ['channel'] });
+
+			if (refreshed) {
+				// Safe to emit even though this handler listens for the same event: the payload is a
+				// *virtual* property, and nothing projects a virtual property, so the re-entrant pass
+				// finds no dependents and returns immediately.
+				this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_UPDATED, refreshed);
+			}
 
 			orphaned = true;
 		}
