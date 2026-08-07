@@ -1,0 +1,201 @@
+import { z } from 'zod';
+
+import { createExtensionLogger } from '../../../common/logger';
+import {
+	LlmToolCall,
+	ToolAccessKind,
+	ToolAudience,
+	ToolDefinition,
+	ToolExecutionContext,
+	ToolExecutionResult,
+	ToolExecutionStatus,
+	createToolDefinition,
+} from '../platforms/tool-provider.platform';
+
+import { BaseToolProviderService } from './base-tool-provider.service';
+import { ToolProviderRegistryService } from './tool-provider-registry.service';
+
+const inputSchema = z.object({ value: z.string() });
+const outputSchema = z.object({ value: z.string() });
+
+const definition = (name: string, audiences: ToolAudience[], access: ToolAccessKind): ToolDefinition =>
+	createToolDefinition({
+		name,
+		description: `${name} description`,
+		audiences,
+		access,
+		inputSchema,
+		outputSchema,
+	});
+
+class TestToolProvider extends BaseToolProviderService {
+	protected readonly logger = createExtensionLogger('tools-module', 'TestToolProvider');
+	protected readonly toolExecutionTimeoutMs: number;
+
+	readonly contexts: ToolExecutionContext[] = [];
+
+	constructor(
+		private readonly type: string,
+		private readonly definitions: ToolDefinition[],
+		private readonly handler: (
+			toolCall: LlmToolCall,
+			context: ToolExecutionContext,
+		) => Promise<ToolExecutionResult | null>,
+		timeoutMs = 5_000,
+	) {
+		super();
+		this.toolExecutionTimeoutMs = timeoutMs;
+	}
+
+	getType(): string {
+		return this.type;
+	}
+
+	getToolDefinitions(): ToolDefinition[] {
+		return this.definitions;
+	}
+
+	protected async handleToolCall(
+		toolCall: LlmToolCall,
+		context: ToolExecutionContext,
+	): Promise<ToolExecutionResult | null> {
+		this.contexts.push(context);
+
+		return this.handler(toolCall, context);
+	}
+}
+
+const completed = (value: string): ToolExecutionResult => ({
+	success: true,
+	status: ToolExecutionStatus.COMPLETED,
+	message: value,
+	data: { value },
+});
+
+describe('ToolProviderRegistryService', () => {
+	let registry: ToolProviderRegistryService;
+
+	beforeEach(() => {
+		registry = new ToolProviderRegistryService();
+	});
+
+	it('filters definitions by audience and access kind, defaulting to Buddy', () => {
+		registry.register(
+			new TestToolProvider(
+				'provider-a',
+				[
+					definition('buddy-read', [ToolAudience.BUDDY], ToolAccessKind.READ),
+					definition('shared-write', [ToolAudience.BUDDY, ToolAudience.MCP], ToolAccessKind.WRITE),
+					definition('mcp-trigger', [ToolAudience.MCP], ToolAccessKind.TRIGGER),
+				],
+				() => Promise.resolve(completed('ok')),
+			),
+		);
+
+		expect(registry.getAllToolDefinitions().map(({ name }) => name)).toEqual(['buddy-read', 'shared-write']);
+		expect(
+			registry
+				.getAllToolDefinitions({ audience: ToolAudience.MCP, accessKinds: [ToolAccessKind.TRIGGER] })
+				.map(({ name }) => name),
+		).toEqual(['mcp-trigger']);
+	});
+
+	it('rejects duplicate tool names atomically', () => {
+		registry.register(
+			new TestToolProvider('provider-a', [definition('shared-name', [ToolAudience.BUDDY], ToolAccessKind.READ)], () =>
+				Promise.resolve(completed('a')),
+			),
+		);
+
+		expect(() =>
+			registry.register(
+				new TestToolProvider('provider-b', [definition('shared-name', [ToolAudience.MCP], ToolAccessKind.WRITE)], () =>
+					Promise.resolve(completed('b')),
+				),
+			),
+		).toThrow("Tool name 'shared-name'");
+		expect(registry.list()).toEqual(['provider-a']);
+	});
+
+	it('enforces audience and access before invoking a provider', async () => {
+		const handler = jest.fn(() => Promise.resolve(completed('called')));
+
+		registry.register(
+			new TestToolProvider('provider-a', [definition('write-tool', [ToolAudience.MCP], ToolAccessKind.WRITE)], handler),
+		);
+
+		const audienceDenied = await registry.executeTool({ id: '1', name: 'write-tool', arguments: {} });
+		const accessDenied = await registry.executeTool(
+			{ id: '2', name: 'write-tool', arguments: {} },
+			{ audience: ToolAudience.MCP, source: 'mcp', allowedAccessKinds: [ToolAccessKind.READ] },
+		);
+
+		expect(audienceDenied.status).toBe(ToolExecutionStatus.DENIED);
+		expect(audienceDenied.errorCode).toBe('TOOL_AUDIENCE_DENIED');
+		expect(accessDenied.status).toBe(ToolExecutionStatus.DENIED);
+		expect(accessDenied.errorCode).toBe('TOOL_ACCESS_DENIED');
+		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it('propagates execution context to the indexed provider', async () => {
+		const provider = new TestToolProvider(
+			'provider-a',
+			[definition('read-tool', [ToolAudience.MCP], ToolAccessKind.READ)],
+			() => Promise.resolve(completed('ok')),
+		);
+
+		registry.register(provider);
+
+		const result = await registry.executeTool(
+			{ id: 'request-1', name: 'read-tool', arguments: { value: 'x' } },
+			{ audience: ToolAudience.MCP, source: 'mcp', actorId: 'client-1' },
+		);
+
+		expect(result.status).toBe(ToolExecutionStatus.COMPLETED);
+		expect(provider.contexts).toEqual([
+			expect.objectContaining({
+				audience: ToolAudience.MCP,
+				source: 'mcp',
+				actorId: 'client-1',
+				requestId: 'request-1',
+			}),
+		]);
+	});
+
+	it('returns structured unknown-tool, sanitized-error, and timeout results', async () => {
+		const throwingProvider = new TestToolProvider(
+			'throwing-provider',
+			[definition('throwing-tool', [ToolAudience.BUDDY], ToolAccessKind.READ)],
+			() => Promise.reject(new Error('secret internal detail')),
+		);
+		const timeoutProvider = new TestToolProvider(
+			'timeout-provider',
+			[definition('timeout-tool', [ToolAudience.BUDDY], ToolAccessKind.READ)],
+			() => new Promise(() => undefined),
+			1,
+		);
+
+		registry.register(throwingProvider);
+		registry.register(timeoutProvider);
+
+		const unknown = await registry.executeTool({ id: '1', name: 'missing', arguments: {} });
+		const failed = await registry.executeTool({ id: '2', name: 'throwing-tool', arguments: { value: 'x' } });
+		const timedOut = await registry.executeTool({ id: '3', name: 'timeout-tool', arguments: { value: 'x' } });
+
+		expect(unknown).toEqual(expect.objectContaining({ status: ToolExecutionStatus.FAILED, errorCode: 'UNKNOWN_TOOL' }));
+		expect(failed).toEqual(
+			expect.objectContaining({
+				status: ToolExecutionStatus.FAILED,
+				errorCode: 'TOOL_EXECUTION_FAILED',
+				message: 'Failed to execute tool "throwing-tool"',
+			}),
+		);
+		expect(failed.message).not.toContain('secret');
+		expect(timedOut).toEqual(
+			expect.objectContaining({
+				status: ToolExecutionStatus.TIMED_OUT,
+				errorCode: 'TOOL_EXECUTION_TIMEOUT',
+			}),
+		);
+	});
+});

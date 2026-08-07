@@ -97,11 +97,47 @@ describe('EnergyDataService', () => {
 				"updatedAt" datetime DEFAULT CURRENT_TIMESTAMP
 			)
 		`);
+
+		await dataSource.query(`
+			CREATE TABLE IF NOT EXISTS "devices_module_devices_zones" (
+				"deviceId" varchar NOT NULL,
+				"zoneId" varchar NOT NULL,
+				PRIMARY KEY ("deviceId", "zoneId")
+			)
+		`);
 	});
 
 	beforeEach(async () => {
+		await dataSource.query('DELETE FROM "devices_module_devices_zones"');
 		await dataSource.query('DELETE FROM "devices_module_devices"');
 		await dataSource.query('DELETE FROM "spaces_module_spaces"');
+	});
+
+	describe('getDeviceZoneSummary', () => {
+		it('aggregates devices assigned through the zone junction', async () => {
+			await insertDevice('dev-1', 'Garden pump', null);
+			await dataSource.query('INSERT INTO "devices_module_devices_zones" ("deviceId", "zoneId") VALUES (?, ?)', [
+				'dev-1',
+				'zone-1',
+			]);
+			await insertDelta({
+				deviceId: 'dev-1',
+				roomId: null,
+				sourceType: EnergySourceType.CONSUMPTION_IMPORT,
+				deltaKwh: 1.25,
+				intervalStart: '2026-02-09T10:00:00.000Z',
+				intervalEnd: '2026-02-09T10:05:00.000Z',
+			});
+
+			const result = await service.getDeviceZoneSummary(
+				new Date('2026-02-09T00:00:00.000Z'),
+				new Date('2026-02-09T23:59:59.999Z'),
+				'zone-1',
+			);
+
+			expect(result.totalConsumptionKwh).toBeCloseTo(1.25);
+			expect(result.netKwh).toBeCloseTo(1.25);
+		});
 	});
 
 	async function insertSpace(id: string, name: string, parentId: string | null = null): Promise<void> {

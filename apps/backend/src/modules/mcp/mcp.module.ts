@@ -1,0 +1,126 @@
+import { Module, OnModuleInit } from '@nestjs/common';
+import { ConfigModule as NestConfigModule } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
+import { AuthModule } from '../auth/auth.module';
+import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { DevicesModule } from '../devices/devices.module';
+import { EnergyModule } from '../energy/energy.module';
+import { ExtensionsService } from '../extensions/services/extensions.service';
+import { ScenesModule } from '../scenes/scenes.module';
+import { SecurityModule } from '../security/security.module';
+import { SpacesModule } from '../spaces/spaces.module';
+import { ApiTag } from '../swagger/decorators/api-tag.decorator';
+import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
+import { SwaggerModule } from '../swagger/swagger.module';
+import { WeatherModule } from '../weather/weather.module';
+
+import { McpClientsController } from './controllers/mcp-clients.controller';
+import { McpController } from './controllers/mcp.controller';
+import { UpdateMcpConfigDto } from './dto/update-config.dto';
+import { McpClientEntity } from './entities/mcp-client.entity';
+import { McpInstallationEntity } from './entities/mcp-installation.entity';
+import { McpClientGuard } from './guards/mcp-client.guard';
+import { McpConfigListener } from './listeners/mcp-config.listener';
+import {
+	MCP_CATALOG_REGISTRAR,
+	MCP_MODULE_API_TAG_DESCRIPTION,
+	MCP_MODULE_API_TAG_NAME,
+	MCP_MODULE_NAME,
+	McpCapability,
+} from './mcp.constants';
+import { MCP_SWAGGER_EXTRA_MODELS } from './mcp.openapi';
+import { McpConfigModel } from './models/config.model';
+import { McpClientService } from './services/mcp-client.service';
+import { McpContextService } from './services/mcp-context.service';
+import { McpInstallationService } from './services/mcp-installation.service';
+import { McpPolicyService } from './services/mcp-policy.service';
+import { McpServerService } from './services/mcp-server.service';
+import { McpSubscriptionRegistryService } from './services/mcp-subscription-registry.service';
+import { McpReadToolService } from './tools/mcp-read-tool.service';
+
+@ApiTag({
+	tagName: MCP_MODULE_NAME,
+	displayName: MCP_MODULE_API_TAG_NAME,
+	description: MCP_MODULE_API_TAG_DESCRIPTION,
+})
+@Module({
+	imports: [
+		AuthModule,
+		DevicesModule,
+		EnergyModule,
+		NestConfigModule,
+		ScenesModule,
+		SecurityModule,
+		SpacesModule,
+		SwaggerModule,
+		TypeOrmModule.forFeature([McpClientEntity, McpInstallationEntity]),
+		WeatherModule,
+	],
+	controllers: [McpClientsController, McpController],
+	providers: [
+		McpClientGuard,
+		McpClientService,
+		McpConfigListener,
+		McpContextService,
+		McpInstallationService,
+		McpPolicyService,
+		McpServerService,
+		McpSubscriptionRegistryService,
+		McpReadToolService,
+		{ provide: MCP_CATALOG_REGISTRAR, useExisting: McpReadToolService },
+	],
+	exports: [McpClientService, McpInstallationService, McpPolicyService, McpServerService],
+})
+export class McpModule implements OnModuleInit {
+	constructor(
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+		private readonly modulesMapperService: ModulesTypeMapperService,
+		private readonly extensionsService: ExtensionsService,
+	) {}
+
+	onModuleInit(): void {
+		this.modulesMapperService.registerMapping<McpConfigModel, UpdateMcpConfigDto>({
+			type: MCP_MODULE_NAME,
+			class: McpConfigModel,
+			configDto: UpdateMcpConfigDto,
+		});
+
+		for (const model of MCP_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
+
+		this.extensionsService.registerModuleMetadata({
+			type: MCP_MODULE_NAME,
+			name: 'Model Context Protocol',
+			description: 'Curated, capability-scoped agent access to this Smart Panel installation',
+			author: 'FastyBird',
+			defaultEnabled: false,
+			capabilities: Object.values(McpCapability),
+			readme: `# Model Context Protocol
+
+> Module · by FastyBird
+
+Connects trusted MCP-compatible agents to a curated set of Smart Panel tools and resources. The module is disabled by default and its read, direct-write, and higher-level trigger capabilities can be enabled independently.
+
+## Security posture
+
+- Uses installation-local MCP credentials rather than ordinary user, display, or REST tokens
+- Exposes only explicitly registered tools and resources; it is not an OpenAPI proxy
+- Rechecks the installation capability ceiling and client grant for every operation
+- Targets trusted LAN or VPN deployments for the initial static-bearer release
+
+## Configuration
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`enabled\` | Accept MCP protocol requests | \`false\` |
+| \`capabilities\` | Allowed combination of \`read\`, \`write\`, and \`trigger\` | \`read\` |
+| \`allowed_origins\` | Additional browser origins allowed to call the endpoint | empty |`,
+			links: {
+				documentation: 'https://smart-panel.fastybird.com/docs',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
+		});
+	}
+}

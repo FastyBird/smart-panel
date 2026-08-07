@@ -1,9 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
+import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DevicesService } from '../../devices/services/devices.service';
 import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
 import { AlarmState, ArmedState, SECURITY_STATE_PROVIDERS, SecurityAlertType, Severity } from '../security.constants';
+import { DetectionRulesLoaderService } from '../spec/detection-rules-loader.service';
 
 import { SecurityAggregatorService } from './security-aggregator.service';
 
@@ -44,7 +47,17 @@ describe('SecurityAggregatorService', () => {
 					provide: DevicesService,
 					useValue: {
 						findAll: jest.fn().mockResolvedValue([]),
+						findVisibleBoundedStateByChannelCategories: jest.fn().mockResolvedValue({
+							devices: [],
+							devicesTruncated: false,
+							channelsTruncated: false,
+							propertiesTruncated: false,
+						}),
 					},
+				},
+				{
+					provide: DetectionRulesLoaderService,
+					useValue: { getSensorRules: jest.fn().mockReturnValue(new Map()) },
 				},
 				SecurityAggregatorService,
 			],
@@ -275,6 +288,10 @@ describe('SecurityAggregatorService', () => {
 						findAll: jest.fn().mockRejectedValue(new Error('DB connection lost')),
 					},
 				},
+				{
+					provide: DetectionRulesLoaderService,
+					useValue: { getSensorRules: jest.fn().mockReturnValue(new Map()) },
+				},
 				SecurityAggregatorService,
 			],
 		}).compile();
@@ -284,6 +301,87 @@ describe('SecurityAggregatorService', () => {
 
 		expect(result.providerErrors).toBeGreaterThan(0);
 		expect(result.status.activeAlerts).toEqual([]);
+	});
+
+	it('loads only bounded security device state for MCP aggregation', async () => {
+		const devices = [{ id: 'alarm-device' }] as DeviceEntity[];
+		const deviceService = {
+			findAll: jest.fn(),
+			findVisibleBoundedStateByChannelCategories: jest.fn().mockResolvedValue({
+				devices,
+				devicesTruncated: true,
+				channelsTruncated: true,
+				propertiesTruncated: true,
+			}),
+		};
+		const provider = new FakeProvider('default', {});
+		const providerSpy = jest.spyOn(provider, 'getSignals');
+		const module: TestingModule = await Test.createTestingModule({
+			providers: [
+				{ provide: SECURITY_STATE_PROVIDERS, useValue: [provider] },
+				{ provide: DevicesService, useValue: deviceService },
+				{
+					provide: DetectionRulesLoaderService,
+					useValue: {
+						getSensorRules: jest
+							.fn()
+							.mockReturnValue(
+								new Map([[ChannelCategory.SMOKE, { properties: [{ property: PropertyCategory.DETECTED }] }]]),
+							),
+					},
+				},
+				SecurityAggregatorService,
+			],
+		}).compile();
+		const aggregator = module.get<SecurityAggregatorService>(SecurityAggregatorService);
+
+		const result = await aggregator.aggregateBounded(100, 10, 20, { roomIds: ['room-1'] });
+
+		expect(deviceService.findAll).not.toHaveBeenCalled();
+		expect(deviceService.findVisibleBoundedStateByChannelCategories).toHaveBeenCalledWith(
+			[ChannelCategory.ALARM, ChannelCategory.SMOKE],
+			100,
+			10,
+			20,
+			{ roomIds: ['room-1'] },
+			expect.arrayContaining([
+				PropertyCategory.STATE,
+				PropertyCategory.ALARM_STATE,
+				PropertyCategory.TRIGGERED,
+				PropertyCategory.TAMPERED,
+				PropertyCategory.ACTIVE,
+				PropertyCategory.FAULT,
+				PropertyCategory.LAST_EVENT,
+				PropertyCategory.DETECTED,
+			]),
+		);
+		expect(providerSpy).toHaveBeenCalledWith({ armedState: null, devices });
+		expect(result.devicesTruncated).toBe(true);
+		expect(result.channelsTruncated).toBe(true);
+		expect(result.propertiesTruncated).toBe(true);
+	});
+
+	it('propagates bounded security device load failures', async () => {
+		const loadError = new Error('database unavailable');
+		const module: TestingModule = await Test.createTestingModule({
+			providers: [
+				{ provide: SECURITY_STATE_PROVIDERS, useValue: [] },
+				{
+					provide: DevicesService,
+					useValue: {
+						findVisibleBoundedStateByChannelCategories: jest.fn().mockRejectedValue(loadError),
+					},
+				},
+				{
+					provide: DetectionRulesLoaderService,
+					useValue: { getSensorRules: jest.fn().mockReturnValue(new Map()) },
+				},
+				SecurityAggregatorService,
+			],
+		}).compile();
+		const aggregator = module.get<SecurityAggregatorService>(SecurityAggregatorService);
+
+		await expect(aggregator.aggregateBounded(100, 10, 20)).rejects.toBe(loadError);
 	});
 
 	it('should handle provider that throws', async () => {

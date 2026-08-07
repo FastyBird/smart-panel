@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddDeviceHiddenBy1000000000008 implements MigrationInterface {
-	name = 'AddDeviceHiddenBy1000000000008';
+export class AddDeviceHiddenBy1000000000009 implements MigrationInterface {
+	name = 'AddDeviceHiddenBy1000000000009';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(`ALTER TABLE "devices_module_devices" ADD COLUMN "hiddenBy" varchar`);

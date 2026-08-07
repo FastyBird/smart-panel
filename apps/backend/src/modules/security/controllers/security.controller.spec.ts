@@ -11,6 +11,7 @@ import { SecurityAggregatorService } from '../services/security-aggregator.servi
 import { SecurityAlertAckService } from '../services/security-alert-ack.service';
 import { SecurityEventsService } from '../services/security-events.service';
 import { SecurityService } from '../services/security.service';
+import { DetectionRulesLoaderService } from '../spec/detection-rules-loader.service';
 
 import { SecurityController } from './security.controller';
 
@@ -54,6 +55,10 @@ describe('SecurityController', () => {
 					useValue: {
 						findAll: jest.fn().mockResolvedValue([]),
 					},
+				},
+				{
+					provide: DetectionRulesLoaderService,
+					useValue: { getSensorRules: jest.fn().mockReturnValue(new Map()) },
 				},
 				SecurityEventsService,
 				SecurityAggregatorService,

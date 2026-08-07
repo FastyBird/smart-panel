@@ -13,6 +13,9 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { IS_MCP_ENDPOINT_KEY } from '../../mcp/mcp.constants';
+import { McpClientService } from '../../mcp/services/mcp-client.service';
+import { McpInstallationService } from '../../mcp/services/mcp-installation.service';
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
@@ -41,6 +44,7 @@ describe('AuthGuard', () => {
 	let reflector: Reflector;
 	let tokensService: TokensService;
 	let usersService: UsersService;
+	let mcpClientsService: McpClientService;
 
 	const mockUserId = uuid().toString();
 	const mockDisplayId = uuid().toString();
@@ -63,6 +67,9 @@ describe('AuthGuard', () => {
 	const mockAccessToken = 'valid-access-token';
 	const mockDisplayToken = 'valid-display-token';
 	const mockLongLiveToken = 'valid-long-live-token';
+	const mockMcpToken = 'valid-mcp-token';
+	const mockMcpClientId = uuid().toString();
+	const mockMcpAudience = 'urn:fastybird:smart-panel:installation-id:mcp';
 
 	// Create mock refresh token
 	const mockRefreshTokenEntity = {
@@ -110,6 +117,14 @@ describe('AuthGuard', () => {
 		createdAt: new Date(),
 		ownerType: TokenOwnerType.THIRD_PARTY,
 		ownerId: null,
+	} as unknown as LongLiveTokenEntity;
+
+	const mockMcpLongLiveToken = {
+		...mockThirdPartyLongLiveToken,
+		id: uuid().toString(),
+		hashedToken: `hashed-${mockMcpToken}`,
+		ownerType: TokenOwnerType.MCP,
+		ownerId: mockMcpClientId,
 	} as unknown as LongLiveTokenEntity;
 
 	const createMockExecutionContext = (headers: Record<string, string> = {}): ExecutionContext => {
@@ -160,6 +175,19 @@ describe('AuthGuard', () => {
 					},
 				},
 				{
+					provide: McpClientService,
+					useValue: {
+						findActiveByToken: jest.fn(),
+						getEffectiveCapabilities: jest.fn().mockReturnValue([]),
+					},
+				},
+				{
+					provide: McpInstallationService,
+					useValue: {
+						getAudience: jest.fn().mockResolvedValue(mockMcpAudience),
+					},
+				},
+				{
 					provide: CACHE_MANAGER,
 					useValue: {
 						get: jest.fn(),
@@ -174,6 +202,7 @@ describe('AuthGuard', () => {
 		reflector = module.get<Reflector>(Reflector);
 		tokensService = module.get<TokensService>(TokensService);
 		usersService = module.get<UsersService>(UsersService);
+		mcpClientsService = module.get<McpClientService>(McpClientService);
 	});
 
 	afterEach(() => {
@@ -528,6 +557,68 @@ describe('AuthGuard', () => {
 				ownerId: null,
 				role: UserRole.USER,
 			});
+		});
+	});
+
+	describe('MCP endpoint isolation', () => {
+		const markMcpEndpoint = () => {
+			jest.spyOn(reflector, 'getAllAndOverride').mockImplementation((key: string) => {
+				return key === IS_MCP_ENDPOINT_KEY;
+			});
+		};
+
+		it('should authenticate an active MCP client only on an MCP endpoint', async () => {
+			const context = createMockExecutionContext({ authorization: `Bearer ${mockMcpToken}` });
+			const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+			markMcpEndpoint();
+			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({
+				sub: mockMcpClientId,
+				type: TokenOwnerType.MCP,
+			});
+			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(mockMcpLongLiveToken);
+			jest.spyOn(mcpClientsService, 'findActiveByToken').mockResolvedValue({ id: mockMcpClientId } as never);
+
+			await expect(guard.canActivate(context)).resolves.toBe(true);
+			expect(jwtService.verifyAsync).toHaveBeenCalledWith(mockMcpToken, { audience: mockMcpAudience });
+			expect(request.auth).toMatchObject({
+				ownerType: TokenOwnerType.MCP,
+				ownerId: mockMcpClientId,
+				capabilities: [],
+			});
+		});
+
+		it('should reject an MCP credential on an ordinary REST endpoint', async () => {
+			const context = createMockExecutionContext({ authorization: `Bearer ${mockMcpToken}` });
+			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
+			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({
+				sub: mockMcpClientId,
+				type: TokenOwnerType.MCP,
+			});
+
+			await expect(guard.canActivate(context)).rejects.toThrow('MCP credentials are only valid on the MCP endpoint');
+		});
+
+		it('should reject a personal token on an MCP endpoint', async () => {
+			const context = createMockExecutionContext({ authorization: `Bearer ${mockLongLiveToken}` });
+			markMcpEndpoint();
+			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: mockUserId, type: 'personal' });
+
+			await expect(guard.canActivate(context)).rejects.toThrow('An MCP credential is required');
+		});
+
+		it('should reject a rotated or disabled MCP client credential', async () => {
+			const context = createMockExecutionContext({ authorization: `Bearer ${mockMcpToken}` });
+			markMcpEndpoint();
+			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({
+				sub: mockMcpClientId,
+				type: TokenOwnerType.MCP,
+			});
+			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(mockMcpLongLiveToken);
+			jest.spyOn(mcpClientsService, 'findActiveByToken').mockResolvedValue(null);
+
+			await expect(guard.canActivate(context)).rejects.toThrow(
+				'MCP client is disabled or the credential has been rotated',
+			);
 		});
 	});
 

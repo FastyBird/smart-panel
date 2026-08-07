@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 
@@ -6,8 +8,13 @@ import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import {
 	LlmToolCall,
+	ToolAccessKind,
+	ToolAudience,
 	ToolDefinition,
+	ToolExecutionContext,
 	ToolExecutionResult,
+	ToolExecutionStatus,
+	createToolDefinition,
 } from '../../../modules/tools/platforms/tool-provider.platform';
 import { BaseToolProviderService } from '../../../modules/tools/services/base-tool-provider.service';
 import { ShortIdMappingService } from '../../../modules/tools/services/short-id-mapping.service';
@@ -15,14 +22,22 @@ import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import { LightingIntentType, LightingMode } from '../spaces-home-control.constants';
 
 const SPACE_LIGHTING_TOOLS_PROVIDER = 'space-lighting-tools';
+const LIGHTING_MODES = ['off', 'on', 'work', 'relax', 'night'] as const;
 
-/**
- * Tool provider for space lighting control.
- * Allows the AI assistant to set lighting modes for entire spaces.
- *
- * Uses ModuleRef to lazily resolve SpaceIntentService, avoiding a file-level
- * circular import chain (space-intent → lighting-intent → space-context-snapshot → space-intent).
- */
+const SET_SPACE_LIGHTING_INPUT_SCHEMA = z.object({
+	space_id: z.string().min(1).describe('Short space ID from the home context (the id=... value)'),
+	mode: z.enum(LIGHTING_MODES).describe('Lighting mode to set'),
+});
+
+const SET_SPACE_LIGHTING_OUTPUT_SCHEMA = z.object({
+	space_id: z.string(),
+	mode: z.enum(LIGHTING_MODES),
+	affected_devices: z.number().int().nonnegative(),
+	failed_devices: z.number().int().nonnegative(),
+	skipped_offline_devices: z.number().int().nonnegative(),
+});
+
+/** Tool provider for space-level lighting control. */
 @Injectable()
 export class SpaceLightingToolService extends BaseToolProviderService implements OnModuleInit {
 	protected readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'SpaceLightingToolService');
@@ -49,109 +64,135 @@ export class SpaceLightingToolService extends BaseToolProviderService implements
 
 	getToolDefinitions(): ToolDefinition[] {
 		return [
-			{
+			createToolDefinition({
 				name: 'set_space_lighting',
 				description:
 					'Set the lighting mode for an entire space (room). ' +
 					'Available modes: "off" (all lights off), "on" (all lights on at full brightness), ' +
 					'"work" (bright, productive lighting), "relax" (dimmed, comfortable lighting), ' +
 					'"night" (very dim night lighting). ' +
-					'Use this instead of controlling individual light devices when you want to change the overall room lighting.',
-				parameters: {
-					type: 'object',
-					properties: {
-						space_id: {
-							type: 'string',
-							description: 'Short space ID from the home context (the id=... value)',
-						},
-						mode: {
-							type: 'string',
-							enum: ['off', 'on', 'work', 'relax', 'night'],
-							description: 'Lighting mode to set',
-						},
-					},
-					required: ['space_id', 'mode'],
-				},
-			},
+					'Use this instead of controlling individual light devices when changing the overall room lighting.',
+				audiences: [ToolAudience.BUDDY, ToolAudience.MCP],
+				access: ToolAccessKind.TRIGGER,
+				inputSchema: SET_SPACE_LIGHTING_INPUT_SCHEMA,
+				outputSchema: SET_SPACE_LIGHTING_OUTPUT_SCHEMA,
+			}),
 		];
 	}
 
-	protected async handleToolCall(toolCall: LlmToolCall): Promise<ToolExecutionResult> {
-		return this.executeSetSpaceLighting(toolCall.arguments);
-	}
+	protected async handleToolCall(toolCall: LlmToolCall, context: ToolExecutionContext): Promise<ToolExecutionResult> {
+		const parsed = SET_SPACE_LIGHTING_INPUT_SCHEMA.safeParse(toolCall.arguments);
 
-	private async executeSetSpaceLighting(args: Record<string, unknown>): Promise<ToolExecutionResult> {
-		const rawSpaceId = typeof args.space_id === 'string' ? args.space_id : '';
-		const mode = typeof args.mode === 'string' ? args.mode : '';
-
-		if (!rawSpaceId || !mode) {
-			return { success: false, message: 'Missing required parameters: space_id, mode' };
+		if (!parsed.success) {
+			return {
+				success: false,
+				status: ToolExecutionStatus.FAILED,
+				message: 'Missing or invalid required parameters: space_id, mode',
+				errorCode: 'INVALID_TOOL_ARGUMENTS',
+			};
 		}
 
-		const spaceId = this.shortIdMapping.resolve(rawSpaceId) ?? rawSpaceId;
+		const spaceId = this.shortIdMapping.resolve(parsed.data.space_id) ?? parsed.data.space_id;
 
 		if (!this.spaceIntentService) {
-			return { success: false, message: 'Space lighting service is not available' };
+			return {
+				success: false,
+				status: ToolExecutionStatus.FAILED,
+				message: 'Space lighting service is not available',
+				errorCode: 'SPACE_LIGHTING_UNAVAILABLE',
+			};
 		}
 
-		// Validate mode
-		const validModes = ['off', 'on', 'work', 'relax', 'night'];
-
-		if (!validModes.includes(mode)) {
-			return { success: false, message: `Invalid lighting mode "${mode}". Valid modes: ${validModes.join(', ')}` };
-		}
-
-		// Map mode to intent type and lighting mode
 		let intentType: LightingIntentType;
 		let lightingMode: LightingMode | undefined;
 
-		if (mode === 'off') {
+		if (parsed.data.mode === 'off') {
 			intentType = LightingIntentType.OFF;
-		} else if (mode === 'on') {
+		} else if (parsed.data.mode === 'on') {
 			intentType = LightingIntentType.ON;
 		} else {
 			intentType = LightingIntentType.SET_MODE;
-			lightingMode = mode as LightingMode;
+			lightingMode = parsed.data.mode as LightingMode;
 		}
 
 		const intent: LightingIntentDto = Object.assign(new LightingIntentDto(), {
 			type: intentType,
 			mode: lightingMode,
 		});
-
-		const result = await this.spaceIntentService.executeLightingIntent(spaceId, intent);
+		const result = await this.spaceIntentService.executeLightingIntent(spaceId, intent, {
+			origin: 'api',
+			extra: {
+				source: context.source,
+				audience: context.audience,
+				actorId: context.actorId,
+				requestId: context.requestId,
+			},
+		});
 
 		if (!result) {
-			return { success: false, message: `Space with ID "${spaceId}" not found` };
+			return {
+				success: false,
+				status: ToolExecutionStatus.FAILED,
+				message: `Space with ID "${spaceId}" not found`,
+				errorCode: 'SPACE_NOT_FOUND',
+			};
 		}
 
 		const space = await this.spacesService.findOne(spaceId);
 		const spaceName = space?.name ?? spaceId;
+		const skippedOfflineDevices = result.skippedOfflineDevices ?? 0;
+		const data = {
+			space_id: spaceId,
+			mode: parsed.data.mode,
+			affected_devices: result.affectedDevices,
+			failed_devices: result.failedDevices,
+			skipped_offline_devices: skippedOfflineDevices,
+		};
 
-		if (result.failedDevices === 0 && result.affectedDevices > 0) {
+		if (result.failedDevices === 0 && skippedOfflineDevices === 0 && result.affectedDevices > 0) {
 			return {
 				success: true,
-				message: `Set ${spaceName} lighting to "${mode}" (${result.affectedDevices} devices updated)`,
+				status: ToolExecutionStatus.COMPLETED,
+				message: `Set ${spaceName} lighting to "${parsed.data.mode}" (${result.affectedDevices} devices updated)`,
+				data,
 			};
 		}
 
 		if (result.failedDevices === 0 && result.affectedDevices === 0) {
+			if (skippedOfflineDevices > 0) {
+				return {
+					success: false,
+					status: ToolExecutionStatus.FAILED,
+					message: `No online lighting devices available in ${spaceName} (${skippedOfflineDevices} offline)`,
+					data,
+					errorCode: 'NO_ONLINE_LIGHTING_DEVICES',
+				};
+			}
+
 			return {
 				success: false,
+				status: ToolExecutionStatus.FAILED,
 				message: `No lighting devices found in ${spaceName}`,
+				data,
+				errorCode: 'NO_LIGHTING_DEVICES',
 			};
 		}
 
 		if (result.affectedDevices > 0) {
 			return {
 				success: true,
-				message: `Partially set ${spaceName} lighting to "${mode}" (${result.affectedDevices} succeeded, ${result.failedDevices} failed)`,
+				status: ToolExecutionStatus.PARTIAL,
+				message: `Partially set ${spaceName} lighting to "${parsed.data.mode}" (${result.affectedDevices} succeeded, ${result.failedDevices} failed, ${skippedOfflineDevices} offline)`,
+				data,
 			};
 		}
 
 		return {
 			success: false,
+			status: ToolExecutionStatus.FAILED,
 			message: `Failed to set lighting in ${spaceName}`,
+			data,
+			errorCode: 'SPACE_LIGHTING_FAILED',
 		};
 	}
 }

@@ -2,6 +2,11 @@
 import { ModuleRef } from '@nestjs/core';
 
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import {
+	ToolAccessKind,
+	ToolAudience,
+	ToolExecutionStatus,
+} from '../../../modules/tools/platforms/tool-provider.platform';
 import { ShortIdMappingService } from '../../../modules/tools/services/short-id-mapping.service';
 
 import { SpaceLightingToolService } from './space-lighting-tool.service';
@@ -40,6 +45,9 @@ describe('SpaceLightingToolService', () => {
 
 			expect(tools).toHaveLength(1);
 			expect(tools[0].name).toBe('set_space_lighting');
+			expect(tools[0].audiences).toEqual([ToolAudience.BUDDY, ToolAudience.MCP]);
+			expect(tools[0].access).toBe(ToolAccessKind.TRIGGER);
+			expect(tools[0].outputSchema).toBeDefined();
 		});
 
 		it('should define set_space_lighting with required parameters and mode enum', () => {
@@ -76,11 +84,16 @@ describe('SpaceLightingToolService', () => {
 			});
 
 			expect(result.success).toBe(true);
+			expect(result.status).toBe(ToolExecutionStatus.COMPLETED);
 			expect(result.message).toContain('Living Room');
 			expect(result.message).toContain('"off"');
 			expect(spaceIntentService.executeLightingIntent).toHaveBeenCalledWith(
 				'space-1',
 				expect.objectContaining({ type: 'off' }),
+				expect.objectContaining({
+					origin: 'api',
+					extra: expect.objectContaining({ source: 'buddy', audience: ToolAudience.BUDDY }),
+				}),
 			);
 		});
 
@@ -102,6 +115,7 @@ describe('SpaceLightingToolService', () => {
 			expect(spaceIntentService.executeLightingIntent).toHaveBeenCalledWith(
 				'space-1',
 				expect.objectContaining({ type: 'set_mode', mode: 'relax' }),
+				expect.any(Object),
 			);
 		});
 
@@ -126,7 +140,7 @@ describe('SpaceLightingToolService', () => {
 			});
 
 			expect(result.success).toBe(false);
-			expect(result.message).toContain('Invalid lighting mode');
+			expect(result.message).toContain('Missing or invalid required parameters');
 		});
 
 		it('should return failure when missing parameters', async () => {
@@ -137,8 +151,109 @@ describe('SpaceLightingToolService', () => {
 			});
 
 			expect(result.success).toBe(false);
-			expect(result.message).toContain('Missing required parameters');
+			expect(result.message).toContain('Missing or invalid required parameters');
 		});
+
+		it('reports partial device execution honestly', async () => {
+			spaceIntentService.executeLightingIntent.mockResolvedValue({
+				success: false,
+				affectedDevices: 2,
+				failedDevices: 1,
+			});
+			spacesService.findOne.mockResolvedValue({ id: 'space-1', name: 'Office' });
+
+			const result = await service.executeTool({
+				id: 'call-1',
+				name: 'set_space_lighting',
+				arguments: { space_id: 'space-1', mode: 'work' },
+			});
+
+			expect(result).toEqual(
+				expect.objectContaining({
+					success: true,
+					status: ToolExecutionStatus.PARTIAL,
+					data: expect.objectContaining({ affected_devices: 2, failed_devices: 1 }),
+				}),
+			);
+		});
+
+		it('reports skipped offline devices as partial execution', async () => {
+			spaceIntentService.executeLightingIntent.mockResolvedValue({
+				success: true,
+				affectedDevices: 2,
+				failedDevices: 0,
+				skippedOfflineDevices: 1,
+			});
+			spacesService.findOne.mockResolvedValue({ id: 'space-1', name: 'Office' });
+
+			const result = await service.executeTool({
+				id: 'call-1',
+				name: 'set_space_lighting',
+				arguments: { space_id: 'space-1', mode: 'work' },
+			});
+
+			expect(result).toEqual(
+				expect.objectContaining({
+					success: true,
+					status: ToolExecutionStatus.PARTIAL,
+					data: expect.objectContaining({
+						affected_devices: 2,
+						failed_devices: 0,
+						skipped_offline_devices: 1,
+					}),
+				}),
+			);
+			expect(result.message).toContain('1 offline');
+		});
+
+		it('reports failure when every targeted lighting device is offline', async () => {
+			spaceIntentService.executeLightingIntent.mockResolvedValue({
+				success: true,
+				affectedDevices: 0,
+				failedDevices: 0,
+				skippedOfflineDevices: 2,
+			});
+			spacesService.findOne.mockResolvedValue({ id: 'space-1', name: 'Office' });
+
+			const result = await service.executeTool({
+				id: 'call-1',
+				name: 'set_space_lighting',
+				arguments: { space_id: 'space-1', mode: 'work' },
+			});
+
+			expect(result).toEqual(
+				expect.objectContaining({
+					success: false,
+					status: ToolExecutionStatus.FAILED,
+					errorCode: 'NO_ONLINE_LIGHTING_DEVICES',
+					data: expect.objectContaining({ skipped_offline_devices: 2 }),
+				}),
+			);
+		});
+	});
+
+	it('returns a structured failure when the optional lighting service is unavailable', async () => {
+		const unavailableService = new SpaceLightingToolService(
+			spacesService as unknown as SpacesService,
+			{ get: jest.fn().mockReturnValue(undefined) } as unknown as ModuleRef,
+			new ShortIdMappingService(),
+		);
+
+		await unavailableService.onModuleInit();
+
+		const result = await unavailableService.executeTool({
+			id: 'call-1',
+			name: 'set_space_lighting',
+			arguments: { space_id: 'space-1', mode: 'off' },
+		});
+
+		expect(result).toEqual(
+			expect.objectContaining({
+				success: false,
+				status: ToolExecutionStatus.FAILED,
+				errorCode: 'SPACE_LIGHTING_UNAVAILABLE',
+			}),
+		);
 	});
 
 	describe('executeTool - unknown tool', () => {

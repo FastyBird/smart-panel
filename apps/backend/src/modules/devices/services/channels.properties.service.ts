@@ -14,10 +14,16 @@ import { DevicesException, DevicesNotFoundException, DevicesValidationException 
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
+import { resolvePropertyUnit } from '../utils/property-metadata.utils';
 
 import { ChannelsPropertiesTypeMapperService } from './channels.properties-type-mapper.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
+
+export interface BoundedChannelProperties {
+	properties: ChannelPropertyEntity[];
+	totals: Record<string, number>;
+}
 
 @Injectable()
 export class ChannelsPropertiesService {
@@ -78,6 +84,86 @@ export class ChannelsPropertiesService {
 		this.logger.debug(`Found ${properties.length} properties`);
 
 		return properties;
+	}
+
+	async findBoundedForChannels(
+		channelIds: string[],
+		perChannelLimit: number,
+		strictValues = false,
+		propertyCategories?: string[],
+	): Promise<BoundedChannelProperties> {
+		if (channelIds.length === 0 || propertyCategories?.length === 0) {
+			return { properties: [], totals: {} };
+		}
+
+		interface PropertyIdRow {
+			id: string;
+		}
+
+		interface PropertyCountRow {
+			channelId: string;
+			propertyCount: string | number;
+		}
+
+		const placeholders = channelIds.map(() => '?').join(', ');
+		const categoryPredicate = propertyCategories
+			? `AND property."category" IN (${propertyCategories.map(() => '?').join(', ')})`
+			: '';
+		const [idRows, countRows] = await Promise.all([
+			this.dataSource.query<PropertyIdRow[]>(
+				`SELECT ranked."id" AS "id"
+				 FROM (
+				   SELECT property."id" AS "id",
+				          ROW_NUMBER() OVER (
+				            PARTITION BY property."channelId"
+				            ORDER BY COALESCE(property."name", ''), property."id"
+				          ) AS "rowNumber"
+				   FROM devices_module_channels_properties property
+				   WHERE property."channelId" IN (${placeholders})
+				   ${categoryPredicate}
+				 ) ranked
+				 WHERE ranked."rowNumber" <= ?`,
+				[...channelIds, ...(propertyCategories ?? []), perChannelLimit],
+			),
+			(() => {
+				const query = this.repository
+					.createQueryBuilder('property')
+					.innerJoin('property.channel', 'channel')
+					.select('channel.id', 'channelId')
+					.addSelect('COUNT(property.id)', 'propertyCount')
+					.where('channel.id IN (:...channelIds)', { channelIds });
+
+				if (propertyCategories) {
+					query.andWhere('property.category IN (:...propertyCategories)', { propertyCategories });
+				}
+
+				return query.groupBy('channel.id').getRawMany<PropertyCountRow>();
+			})(),
+		]);
+		const propertyIds = idRows.map((row) => row.id);
+		const properties =
+			propertyIds.length === 0
+				? []
+				: await this.repository
+						.createQueryBuilder('property')
+						.innerJoinAndSelect('property.channel', 'channel')
+						.where('property.id IN (:...propertyIds)', { propertyIds })
+						.callListeners(!strictValues)
+						.getMany();
+
+		if (strictValues) {
+			const values = await this.propertyValueService.readLatestManyStrict(properties);
+
+			for (const property of properties) {
+				property.unit = resolvePropertyUnit(property);
+				property.value = values.get(property.id) ?? null;
+			}
+		}
+
+		return {
+			properties,
+			totals: Object.fromEntries(countRows.map((row) => [row.channelId, Number(row.propertyCount)])),
+		};
 	}
 
 	async findOne<TProperty extends ChannelPropertyEntity>(

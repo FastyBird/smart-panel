@@ -25,6 +25,11 @@ import {
 
 import { SceneActionsService } from './scene-actions.service';
 
+export interface SceneSummaryPage {
+	scenes: SceneEntity[];
+	total: number;
+}
+
 @Injectable()
 export class ScenesService {
 	private readonly logger = createExtensionLogger(SCENES_MODULE_NAME, 'ScenesService');
@@ -92,6 +97,35 @@ export class ScenesService {
 		this.logger.debug(`[LOOKUP ALL] Found ${scenes.length} scenes`);
 
 		return scenes;
+	}
+
+	async findSummaryPage(limit: number, primarySpaceId?: string | string[]): Promise<SceneSummaryPage> {
+		if (Array.isArray(primarySpaceId) && primarySpaceId.length === 0) {
+			return { scenes: [], total: 0 };
+		}
+
+		const query = this.repository
+			.createQueryBuilder('scene')
+			.select([
+				'scene.id',
+				'scene.name',
+				'scene.category',
+				'scene.enabled',
+				'scene.triggerable',
+				'scene.primarySpaceId',
+			])
+			.orderBy('scene.name', 'ASC')
+			.take(limit);
+
+		if (Array.isArray(primarySpaceId)) {
+			query.where('scene.primarySpaceId IN (:...primarySpaceIds)', { primarySpaceIds: primarySpaceId });
+		} else if (primarySpaceId) {
+			query.where('scene.primarySpaceId = :primarySpaceId', { primarySpaceId });
+		}
+
+		const [scenes, total] = await query.getManyAndCount();
+
+		return { scenes, total };
 	}
 
 	async findOne(id: string): Promise<SceneEntity | null> {

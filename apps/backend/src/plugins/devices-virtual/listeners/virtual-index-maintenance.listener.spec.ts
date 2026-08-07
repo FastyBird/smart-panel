@@ -513,7 +513,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 	});
 
 	// Rows hidden before the provenance column existed migrate to `user` (see
-	// 1000000000008-AddDeviceHiddenBy), but a row can still read `null` here — a `hidden` written by a
+	// 1000000000009-AddDeviceHiddenBy), but a row can still read `null` here — a `hidden` written by a
 	// caller that never named a reason. Unknown provenance is not system provenance, and the
 	// conservative reading is the only safe one: leaving a source hidden is recoverable through the
 	// UI, un-hiding one the operator chose to hide is not.

@@ -3,7 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { DEFAULT_TTL_SCENE, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
-import { IntentTarget, IntentTargetResult } from '../../intents/models/intent.model';
+import { IntentContext, IntentTarget, IntentTargetResult } from '../../intents/models/intent.model';
 import { IntentsService } from '../../intents/services/intents.service';
 import { SceneActionEntity, SceneEntity } from '../entities/scenes.entity';
 import { ActionExecutionResultModel, SceneExecutionResultModel } from '../models/scenes.model';
@@ -76,7 +76,11 @@ export class SceneExecutorService {
 	/**
 	 * Trigger a scene execution
 	 */
-	async triggerScene(sceneId: string, triggeredBy?: string): Promise<SceneExecutionResultModel> {
+	async triggerScene(
+		sceneId: string,
+		triggeredBy?: string,
+		executionContext?: IntentContext,
+	): Promise<SceneExecutionResultModel> {
 		const scene = await this.scenesService.getOneOrThrow(sceneId);
 
 		// Check if scene is triggerable
@@ -107,6 +111,7 @@ export class SceneExecutorService {
 		const intent = this.intentsService.createIntent({
 			type: IntentType.SCENE_RUN,
 			context: {
+				...executionContext,
 				spaceId: scene.primarySpaceId || undefined,
 			},
 			targets,

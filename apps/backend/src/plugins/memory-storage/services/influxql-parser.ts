@@ -394,6 +394,38 @@ export class InfluxQLParser {
 			return this.applyExcludeFilters(this.postProcessAggregations(rows, parsed.aggregations), excludeFilters) as T[];
 		}
 
+		if (parsed.groupByTag && parsed.aggregations.length === 0) {
+			const points = this.store.query(
+				measurement,
+				Object.keys(tagFilters).length > 0 ? tagFilters : undefined,
+				timeFrom,
+				timeTo,
+				parsed.orderDesc,
+			);
+			const groupCounts = new Map<string, number>();
+			const groupedPoints = points.filter((point) => {
+				const group = point.tags[parsed.groupByTag ?? ''];
+
+				if (group === undefined) {
+					return false;
+				}
+
+				const count = groupCounts.get(group) ?? 0;
+
+				if (parsed.limit !== null && count >= parsed.limit) {
+					return false;
+				}
+
+				groupCounts.set(group, count + 1);
+
+				return true;
+			});
+			const selectFields = parsed.fields.includes('*') ? undefined : parsed.fields;
+			const rows = groupedPoints.map((point) => this.store.pointToRow(point, selectFields));
+
+			return this.applyExcludeFilters(rows, excludeFilters) as T[];
+		}
+
 		if (parsed.groupByTime && parsed.aggregations.length > 0) {
 			const rows = this.store.aggregateByTime(
 				measurement,

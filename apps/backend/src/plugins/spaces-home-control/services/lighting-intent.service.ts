@@ -7,7 +7,7 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../mod
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../../modules/intents/intents.constants';
-import { IntentTarget, IntentTargetResult } from '../../../modules/intents/models/intent.model';
+import { IntentContext, IntentTarget, IntentTargetResult } from '../../../modules/intents/models/intent.model';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { IntentsService } from '../../../modules/intents/services/intents.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
@@ -161,7 +161,11 @@ export class LightingIntentService extends SpaceIntentBaseService {
 	 * Execute a lighting intent for all lights in a space.
 	 * Returns null if space doesn't exist (controller should throw 404).
 	 */
-	async executeLightingIntent(spaceId: string, intent: LightingIntentDto): Promise<IntentExecutionResult | null> {
+	async executeLightingIntent(
+		spaceId: string,
+		intent: LightingIntentDto,
+		executionContext?: IntentContext,
+	): Promise<IntentExecutionResult | null> {
 		// Verify space exists - return null for controller to throw 404
 		const space = await this.spacesService.findOne(spaceId);
 
@@ -223,7 +227,8 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		const intentRecord = this.intentsService.createIntent({
 			type: this.mapLightingIntentType(intent.type),
 			context: {
-				origin: 'panel.spaces',
+				...executionContext,
+				origin: executionContext?.origin ?? 'panel.spaces',
 				spaceId,
 				roleKey: intent.role ?? undefined,
 			},

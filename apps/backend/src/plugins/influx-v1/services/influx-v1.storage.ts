@@ -193,6 +193,23 @@ export class InfluxV1Storage implements StoragePlugin {
 		}
 	}
 
+	async queryStrict<T>(query: string, options?: StorageQueryOptions): Promise<T[]> {
+		try {
+			const results: IResults<T> = await this.getConnection().query(query, toInfluxQueryOptions(options));
+
+			return results as unknown as T[];
+		} catch (error) {
+			const err = error as Error;
+
+			if (err.message?.includes('database not found')) {
+				this.logger.warn('Database not found during strict query. Attempting to recreate...');
+				void this.setupDatabase();
+			}
+
+			throw error;
+		}
+	}
+
 	async queryRaw<T>(query: string, options?: StorageQueryOptions): Promise<T> {
 		try {
 			return (await this.getConnection().queryRaw(query, toInfluxQueryOptions(options))) as T;

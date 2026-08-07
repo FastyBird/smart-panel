@@ -27,8 +27,10 @@ describe('PropertyTimeseriesService', () => {
 	beforeEach(async () => {
 		jest.useFakeTimers().setSystemTime(new Date('2025-01-02T00:00:00Z'));
 
+		const query = jest.fn();
 		const mockStorageService = {
-			query: jest.fn(),
+			query,
+			queryStrict: query,
 		};
 
 		module = await Test.createTestingModule({
@@ -84,6 +86,18 @@ describe('PropertyTimeseriesService', () => {
 
 			expect(storageService.query).toHaveBeenCalledWith(expect.stringContaining('property_value'));
 			expect(storageService.query).toHaveBeenCalledWith(expect.stringContaining("propertyId = 'prop-123'"));
+		});
+
+		it('should accept normalized string timestamps from storage adapters', async () => {
+			const from = new Date('2025-01-01T10:00:00Z');
+			const to = new Date('2025-01-01T22:00:00Z');
+			storageService.queryStrict.mockResolvedValue([
+				{ time: '2025-01-01T10:00:00Z', numberValue: 21.4, propertyId: 'prop-123' },
+			]);
+
+			const result = await service.queryTimeseriesStrict(mockProperty, from, to, '5m');
+
+			expect(result.points).toEqual([{ time: '2025-01-01T10:00:00Z', value: 21.4 }]);
 		});
 
 		it('should return empty points array when no data exists', async () => {
@@ -194,6 +208,16 @@ describe('PropertyTimeseriesService', () => {
 
 			expect(result.points).toEqual([]);
 			expect(result.property).toBe('prop-123');
+		});
+
+		it('should propagate query errors in strict mode', async () => {
+			const from = new Date('2025-01-01T10:00:00Z');
+			const to = new Date('2025-01-01T22:00:00Z');
+			const storageError = new Error('InfluxDB connection failed');
+
+			storageService.query.mockRejectedValue(storageError);
+
+			await expect(service.queryTimeseriesStrict(mockProperty, from, to)).rejects.toBe(storageError);
 		});
 
 		it('should use raw data for short time ranges (< 1 hour)', async () => {

@@ -13,6 +13,7 @@ import { ZoneSpaceEntity } from '../../../plugins/spaces-home-control/entities/z
 import { DevicesNotAllowedException } from '../../devices/devices.exceptions';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DeviceZonesService } from '../../devices/services/device-zones.service';
+import { DevicesService } from '../../devices/services/devices.service';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { CreateSpaceDto } from '../dto/create-space.dto';
 import { UpdateSpaceDto } from '../dto/update-space.dto';
@@ -28,6 +29,7 @@ describe('SpacesService', () => {
 	let spaceRepository: jest.Mocked<Repository<SpaceEntity>>;
 	let deviceRepository: jest.Mocked<Repository<DeviceEntity>>;
 	let displayRepository: jest.Mocked<Repository<DisplayEntity>>;
+	let devicesService: { findVisibleSummaryPage: jest.Mock };
 	// DataSource mock is hoisted so individual tests can stub `query()` — used
 	// by `SpacesService.update()` to read the raw `category` column straight
 	// from the shared STI table (ignoring subtype hydration).
@@ -58,6 +60,9 @@ describe('SpacesService', () => {
 	} as unknown as SpaceEntity;
 
 	beforeEach(async () => {
+		devicesService = {
+			findVisibleSummaryPage: jest.fn().mockResolvedValue({ devices: [], total: 0 }),
+		};
 		mockQueryBuilder = {
 			update: jest.fn().mockReturnThis(),
 			set: jest.fn().mockReturnThis(),
@@ -165,6 +170,10 @@ describe('SpacesService', () => {
 						getDeviceZones: jest.fn().mockResolvedValue([]),
 						setDeviceZones: jest.fn().mockResolvedValue([]),
 					},
+				},
+				{
+					provide: DevicesService,
+					useValue: devicesService,
 				},
 				SpacesTypeMapperService,
 			],
@@ -412,6 +421,68 @@ describe('SpacesService', () => {
 			expect(result).toEqual(spaces);
 			expect(spaceRepository.find).toHaveBeenCalledWith({
 				order: { displayOrder: 'ASC', name: 'ASC' },
+			});
+		});
+	});
+
+	describe('findSummaryPage', () => {
+		it('returns a deterministic bounded page and total count', async () => {
+			const queryBuilder = {
+				orderBy: jest.fn().mockReturnThis(),
+				addOrderBy: jest.fn().mockReturnThis(),
+				skip: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				getManyAndCount: jest.fn().mockResolvedValue([[mockSpace], 75]),
+			};
+			spaceRepository.createQueryBuilder.mockReturnValue(queryBuilder as unknown as SelectQueryBuilder<SpaceEntity>);
+
+			await expect(service.findSummaryPage(50, 25)).resolves.toEqual({ spaces: [mockSpace], total: 75 });
+			expect(queryBuilder.orderBy).toHaveBeenCalledWith('space.displayOrder', 'ASC');
+			expect(queryBuilder.addOrderBy).toHaveBeenNthCalledWith(1, 'space.name', 'ASC');
+			expect(queryBuilder.addOrderBy).toHaveBeenNthCalledWith(2, 'space.id', 'ASC');
+			expect(queryBuilder.skip).toHaveBeenCalledWith(25);
+			expect(queryBuilder.take).toHaveBeenCalledWith(50);
+		});
+	});
+
+	describe('findVisibleDeviceSummariesBySpace', () => {
+		it('derives floor-zone devices from child rooms', async () => {
+			const floorId = uuid();
+			const roomIds = [uuid(), uuid()];
+			spaceRepository.findOne.mockResolvedValue({
+				...mockSpace,
+				id: floorId,
+				type: SpaceType.ZONE,
+				category: SpaceZoneCategory.FLOOR_GROUND,
+			} as unknown as SpaceEntity);
+			spaceRepository.find.mockResolvedValue(roomIds.map((id) => ({ id }) as SpaceEntity));
+
+			await service.findVisibleDeviceSummariesBySpace(floorId, 100);
+
+			expect(spaceRepository.find).toHaveBeenCalledWith({
+				select: { id: true },
+				where: { parentId: floorId },
+			});
+			expect(devicesService.findVisibleSummaryPage).toHaveBeenCalledWith(100, { roomIds });
+		});
+
+		it('resolves master spaces to whole-home scope', async () => {
+			await expect(
+				service.resolveSnapshotScope({ id: 'master-id', type: SpaceType.MASTER } as SpaceEntity),
+			).resolves.toEqual({
+				deviceScope: {},
+				wholeHome: true,
+			});
+		});
+
+		it('keeps entry content empty while using whole-home security scope', async () => {
+			await expect(
+				service.resolveSnapshotScope({ id: 'entry-id', type: SpaceType.ENTRY } as SpaceEntity),
+			).resolves.toEqual({
+				deviceScope: { roomIds: [] },
+				securityDeviceScope: {},
+				sceneSpaceIds: [],
+				wholeHome: false,
 			});
 		});
 	});

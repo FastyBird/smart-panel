@@ -11,14 +11,33 @@ import { IntentsService } from '../../intents/services/intents.service';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { WebsocketNotAllowedException } from '../../websocket/websocket.exceptions';
-import { ConnectionState, DEVICES_MODULE_NAME, DataTypeType } from '../devices.constants';
+import { ConnectionState, DEVICES_MODULE_NAME, PermissionType } from '../devices.constants';
 import { PropertyCommandDto, PropertyCommandValueDto } from '../dto/property-command.dto';
 import { IDevicePropertyData } from '../platforms/device.platform';
+import { PropertyCommandValue, validatePropertyCommandValue } from '../utils/property-command-value.utils';
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
+
+export interface PropertyCommandExecutionOptions {
+	requestId?: string;
+	context?: IntentContext;
+}
+
+export interface DevicePropertyCommandResult {
+	device: string;
+	success: boolean;
+	reason?: string;
+}
+
+export interface SinglePropertyCommandResult extends DevicePropertyCommandResult {
+	deviceName?: string;
+	channel?: string;
+	property?: string;
+	value?: PropertyCommandValue;
+}
 
 @Injectable()
 export class PropertyCommandService {
@@ -62,28 +81,6 @@ export class PropertyCommandService {
 			return { success: false, results: 'Invalid payload' };
 		}
 
-		// Extract request_id from payload for tracking (snake_case from client)
-		const requestId = (payload as { request_id?: string })?.request_id;
-
-		// Build intent targets with UUIDs (deviceId, channelId, propertyId)
-		const targets: IntentTarget[] = dtoInstance.properties.map((prop) => ({
-			deviceId: prop.device,
-			channelId: prop.channel,
-			propertyId: prop.property,
-		}));
-
-		// Determine intent type based on the first property (could be enhanced to detect property type)
-		const intentType = IntentType.DEVICE_SET_PROPERTY;
-
-		// Build a map of "device:deviceId:channelId:propertyId" -> value for multi-property support
-		// Using composite key with "device:" prefix for consistency with intent target key format
-		const valueMap: Record<string, unknown> = {};
-
-		for (const prop of dtoInstance.properties) {
-			const compositeKey = `device:${prop.device}:${prop.channel}:${prop.property}`;
-			valueMap[compositeKey] = prop.value;
-		}
-
 		// Transform context from DTO (snake_case) to IntentContext (camelCase)
 		let intentContext: IntentContext | undefined;
 
@@ -97,24 +94,129 @@ export class PropertyCommandService {
 			};
 		}
 
+		return this.executeCommands(dtoInstance.properties, {
+			requestId: dtoInstance.request_id,
+			context: intentContext,
+		});
+	}
+
+	async executePropertyCommandById(
+		propertyId: string,
+		rawValue: unknown,
+		options: PropertyCommandExecutionOptions = {},
+	): Promise<SinglePropertyCommandResult> {
+		const property = await this.channelsPropertiesService.findOne(propertyId);
+
+		if (!property) {
+			return { device: '', success: false, reason: 'Property not found' };
+		}
+
+		const propertyChannel = property.channel;
+		const channel =
+			typeof propertyChannel === 'string' ? await this.channelsService.findOne(propertyChannel) : propertyChannel;
+
+		if (!channel) {
+			return { device: '', success: false, property: property.id, reason: 'Channel not found' };
+		}
+
+		const channelDevice = channel.device;
+		const device = typeof channelDevice === 'string' ? await this.devicesService.findOne(channelDevice) : channelDevice;
+
+		if (!device) {
+			return {
+				device: '',
+				success: false,
+				channel: channel.id,
+				property: property.id,
+				reason: 'Device not found',
+			};
+		}
+
+		if (
+			!property.permissions.some((permission) =>
+				[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
+			)
+		) {
+			return {
+				device: device.id,
+				deviceName: device.name,
+				channel: channel.id,
+				property: property.id,
+				success: false,
+				reason: 'Property is not writable',
+			};
+		}
+
+		const validation = validatePropertyCommandValue(property, rawValue);
+
+		if (!validation.valid || validation.value === undefined) {
+			return {
+				device: device.id,
+				deviceName: device.name,
+				channel: channel.id,
+				property: property.id,
+				success: false,
+				reason: validation.reason ?? 'Invalid property value',
+			};
+		}
+
+		const execution = await this.executeCommands(
+			[
+				{
+					device: device.id,
+					channel: channel.id,
+					property: property.id,
+					value: validation.value,
+				},
+			],
+			options,
+		);
+		const result = Array.isArray(execution.results) ? execution.results[0] : undefined;
+
+		return {
+			device: device.id,
+			deviceName: device.name,
+			channel: channel.id,
+			property: property.id,
+			value: validation.value,
+			success: result?.success ?? false,
+			reason: result?.reason ?? (typeof execution.results === 'string' ? execution.results : undefined),
+		};
+	}
+
+	private async executeCommands(
+		commands: PropertyCommandValueDto[],
+		options: PropertyCommandExecutionOptions,
+	): Promise<{ success: boolean; results: DevicePropertyCommandResult[] | string }> {
+		const targets: IntentTarget[] = commands.map((command) => ({
+			deviceId: command.device,
+			channelId: command.channel,
+			propertyId: command.property,
+		}));
+		const valueMap: Record<string, unknown> = {};
+
+		for (const command of commands) {
+			valueMap[`device:${command.device}:${command.channel}:${command.property}`] = command.value;
+		}
+
 		// Create the intent with the value map and optional requestId for tracking
 		const intent = this.intentsService.createIntent({
-			requestId,
-			type: intentType,
-			context: intentContext,
+			requestId: options.requestId,
+			type: IntentType.DEVICE_SET_PROPERTY,
+			context: options.context,
 			targets,
 			value: valueMap,
 			ttlMs: DEFAULT_TTL_DEVICE_COMMAND,
 		});
 
 		this.logger.log(
-			`Created intent ${intent.id} for ${targets.length} target(s)${requestId ? ` requestId=${requestId}` : ''}`,
+			`Created intent ${intent.id} for ${targets.length} target(s)${options.requestId ? ` requestId=${options.requestId}` : ''}`,
 		);
 
 		// Group properties by device ID
 		const groupedProperties: Record<string, PropertyCommandValueDto[]> = {};
 
-		dtoInstance.properties.forEach((prop) => {
+		commands.forEach((prop) => {
 			if (!groupedProperties[prop.device]) {
 				groupedProperties[prop.device] = [];
 			}
@@ -122,7 +224,7 @@ export class PropertyCommandService {
 			groupedProperties[prop.device].push(prop);
 		});
 
-		const results: Array<{ device: string; success: boolean; reason?: string }> = [];
+		const results: DevicePropertyCommandResult[] = [];
 
 		try {
 			// Process commands per device
@@ -135,7 +237,7 @@ export class PropertyCommandService {
 			// Map results to IntentTargetResult format - create a result for each property
 			const intentResults: IntentTargetResult[] = [];
 
-			for (const prop of dtoInstance.properties) {
+			for (const prop of commands) {
 				const deviceResult = results.find((r) => r.device === prop.device);
 
 				intentResults.push({
@@ -163,7 +265,7 @@ export class PropertyCommandService {
 			);
 
 			// Build failure results for all targeted properties
-			const failedResults: IntentTargetResult[] = dtoInstance.properties.map((prop) => ({
+			const failedResults: IntentTargetResult[] = commands.map((prop) => ({
 				deviceId: prop.device,
 				channelId: prop.channel,
 				propertyId: prop.property,
@@ -228,15 +330,29 @@ export class PropertyCommandService {
 				return { device: deviceId, success: false, reason: 'Property not found' };
 			}
 
-			if (!this.validateValueType(property.dataType, command.value)) {
-				this.logger.warn(`Invalid value type for property id=${property.id} expected=${property.dataType}`);
+			if (
+				!property.permissions.some((permission) =>
+					[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
+				)
+			) {
+				this.logger.warn(`Property is not writable id=${property.id}`);
 
-				return { device: deviceId, success: false, reason: 'Invalid value type' };
+				return { device: deviceId, success: false, reason: 'Property is not writable' };
 			}
 
-			this.logger.log(`Adding command for propertyId=${property.id} value=${command.value}`);
+			const validation = validatePropertyCommandValue(property, command.value);
 
-			propertyUpdates.push({ device, channel, property, value: command.value });
+			if (!validation.valid || validation.value === undefined) {
+				this.logger.warn(
+					`Invalid value for property id=${property.id} dataType=${property.dataType} reason=${validation.reason}`,
+				);
+
+				return { device: deviceId, success: false, reason: validation.reason ?? 'Invalid property value' };
+			}
+
+			this.logger.log(`Adding command for propertyId=${property.id} value=${validation.value}`);
+
+			propertyUpdates.push({ device, channel, property, value: validation.value });
 		}
 
 		// Process the batch of commands in one request
@@ -257,7 +373,7 @@ export class PropertyCommandService {
 
 	/**
 	 * Process a device command triggered by an API PATCH request.
-	 * This sends the value to the physical device via its platform, without WebSocket auth or intent tracking.
+	 * This sends the value through the same validation, intent, and platform path as WebSocket and agent commands.
 	 */
 	async processApiPropertyCommand(
 		deviceId: string,
@@ -265,32 +381,16 @@ export class PropertyCommandService {
 		propertyId: string,
 		value: string | number | boolean,
 	): Promise<void> {
-		const result = await this.processDeviceCommands(deviceId, [
-			{ device: deviceId, channel: channelId, property: propertyId, value },
-		]);
+		const execution = await this.executeCommands(
+			[{ device: deviceId, channel: channelId, property: propertyId, value }],
+			{ context: { origin: 'api' } },
+		);
+		const result = Array.isArray(execution.results) ? execution.results[0] : undefined;
 
-		if (!result.success) {
-			this.logger.warn(`[API Command] Failed for deviceId=${deviceId}: ${result.reason}`);
-		}
-	}
+		if (!execution.success) {
+			const reason = result?.reason ?? (typeof execution.results === 'string' ? execution.results : 'Execution failed');
 
-	private validateValueType(dataType: DataTypeType, value: unknown): boolean {
-		switch (dataType) {
-			case DataTypeType.STRING:
-			case DataTypeType.ENUM:
-				return typeof value === 'string';
-			case DataTypeType.BOOL:
-				return typeof value === 'boolean';
-			case DataTypeType.CHAR:
-			case DataTypeType.UCHAR:
-			case DataTypeType.SHORT:
-			case DataTypeType.USHORT:
-			case DataTypeType.INT:
-			case DataTypeType.UINT:
-			case DataTypeType.FLOAT:
-				return typeof value === 'number';
-			default:
-				return false;
+			this.logger.warn(`[API Command] Failed for deviceId=${deviceId}: ${reason}`);
 		}
 	}
 }

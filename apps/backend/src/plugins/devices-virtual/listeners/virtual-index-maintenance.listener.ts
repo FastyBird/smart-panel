@@ -746,7 +746,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 *
 	 * `USER` is a deliberate operator setting and is never touched. Neither is `null`, which is what a
 	 * hide written by a caller that named no reason reads as, and what every row hidden before the
-	 * column existed was migrated to (see 1000000000008-AddDeviceHiddenBy, which backfills them to
+	 * column existed was migrated to (see 1000000000009-AddDeviceHiddenBy, which backfills them to
 	 * `user`). Unknown provenance is not system provenance: leaving a source hidden is recoverable —
 	 * `GET /devices` still lists it and the admin's hidden-device list unhides it in one action —
 	 * whereas reversing a hide the operator chose is silent, unnotified and reversed again the next

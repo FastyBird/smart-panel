@@ -16,6 +16,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConnectionState, DeviceCategory } from '../../../modules/devices/devices.constants';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceZonesService } from '../../../modules/devices/services/device-zones.service';
 import { DevicesTypeMapperService } from '../../../modules/devices/services/devices-type-mapper.service';
@@ -118,6 +119,12 @@ describe('ShellyV1DeviceEntity via DevicesService.update()', () => {
 					provide: ChannelsService,
 					useValue: {
 						create: jest.fn(() => {}),
+					},
+				},
+				{
+					provide: ChannelsPropertiesService,
+					useValue: {
+						findBoundedForChannels: jest.fn().mockResolvedValue({ properties: [], totals: {} }),
 					},
 				},
 				{

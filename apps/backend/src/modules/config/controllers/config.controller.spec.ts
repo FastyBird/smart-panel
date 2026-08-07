@@ -8,6 +8,8 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { ROLES_KEY } from '../../users/guards/roles.guard';
+import { UserRole } from '../../users/users.constants';
 import { ConfigException } from '../config.exceptions';
 import { UpdateModuleConfigDto } from '../dto/config.dto';
 import { AppConfigModel, ModuleConfigModel } from '../models/config.model';
@@ -131,6 +133,10 @@ describe('ConfigController', () => {
 	});
 
 	describe('updateModuleConfig', () => {
+		it('requires an owner or administrator role', () => {
+			expect(Reflect.getMetadata(ROLES_KEY, controller.updateModuleConfig)).toEqual([UserRole.OWNER, UserRole.ADMIN]);
+		});
+
 		it('should update and return the module configuration', async () => {
 			const updateDto: UpdateModuleConfigDto = { type: 'mock-module', enabled: false };
 			const updatedModule = { ...mockConfig.modules[0], enabled: false } as ModuleConfigModel;

@@ -80,6 +80,7 @@ describe('PropertyCommandService', () => {
 	let channelsService: ChannelsService;
 	let channelsPropertiesService: ChannelsPropertiesService;
 	let platformRegistryService: PlatformRegistryService;
+	let intentsService: IntentsService;
 	let mockPlatform: IDevicePlatform;
 	let loggerErrorSpy: jest.SpiedFunction<any>;
 	let loggerWarnSpy: jest.SpiedFunction<any>;
@@ -198,6 +199,7 @@ describe('PropertyCommandService', () => {
 		channelsService = module.get<ChannelsService>(ChannelsService);
 		channelsPropertiesService = module.get<ChannelsPropertiesService>(ChannelsPropertiesService);
 		platformRegistryService = module.get<PlatformRegistryService>(PlatformRegistryService);
+		intentsService = module.get<IntentsService>(IntentsService);
 
 		mockPlatform = {
 			getType: jest.fn().mockReturnValue('mock'),
@@ -327,6 +329,64 @@ describe('PropertyCommandService', () => {
 			undefined,
 			expect.objectContaining({ tag: 'devices-module' }),
 		);
+	});
+
+	it('executes a property-id command through validation, intent tracking, and batch dispatch', async () => {
+		const device = { ...mockDevice } as unknown as MockDevice;
+		const channel = { ...mockChannel, device } as unknown as MockChannel;
+		const property = { ...mockChannelProperty, channel } as unknown as MockChannelProperty;
+
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(device);
+		jest.spyOn(channelsService, 'findOne').mockResolvedValue(channel);
+		jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(property);
+		jest.spyOn(platformRegistryService, 'get').mockReturnValue(mockPlatform);
+		jest.spyOn(mockPlatform, 'processBatch').mockResolvedValue(true);
+
+		const result = await service.executePropertyCommandById(property.id, 'true', {
+			requestId: 'request-1',
+			context: { origin: 'api', extra: { source: 'mcp' } },
+		});
+
+		expect(result).toEqual(
+			expect.objectContaining({
+				device: device.id,
+				channel: channel.id,
+				property: property.id,
+				value: true,
+				success: true,
+			}),
+		);
+		// eslint-disable-next-line @typescript-eslint/unbound-method
+		expect(mockPlatform.processBatch).toHaveBeenCalledWith([
+			expect.objectContaining({ device, channel, property, value: true }),
+		]);
+		// eslint-disable-next-line @typescript-eslint/unbound-method
+		expect(intentsService.createIntent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				requestId: 'request-1',
+				context: { origin: 'api', extra: { source: 'mcp' } },
+			}),
+		);
+	});
+
+	it('should reject writes to read-only properties before platform dispatch', async () => {
+		const readOnlyProperty = { ...mockChannelProperty, permissions: [PermissionType.READ_ONLY] };
+
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+		jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
+		jest
+			.spyOn(channelsPropertiesService, 'findOne')
+			.mockResolvedValue(toInstance(MockChannelProperty, readOnlyProperty));
+		jest.spyOn(platformRegistryService, 'get').mockReturnValue(mockPlatform);
+
+		const result = await service.handleInternal(mockWsUser, validPayload);
+
+		expect(result).toEqual({
+			success: false,
+			results: [{ device: mockDevice.id, success: false, reason: 'Property is not writable' }],
+		});
+		// eslint-disable-next-line @typescript-eslint/unbound-method
+		expect(mockPlatform.processBatch).not.toHaveBeenCalled();
 	});
 
 	describe('ACL permissions', () => {
