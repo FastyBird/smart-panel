@@ -427,8 +427,17 @@ export class VirtualDevicesService {
 		const expected = variant?.format ?? metadata.format;
 		const actual = sourceProperty.format as unknown;
 
-		if (!Array.isArray(expected) || !Array.isArray(actual) || expected.length === 0 || actual.length === 0) {
+		if (!Array.isArray(expected) || expected.length === 0) {
+			// The slot constrains nothing, so nothing about the source can contradict it.
 			return null;
+		}
+
+		if (!Array.isArray(actual) || actual.length === 0) {
+			// The slot *is* constrained and the source declares no format, so nothing here can show the
+			// source stays inside it — an `rw` `uchar` with no format could report anything, including
+			// values outside a `[0, 100]` slot. Unverified is not the same as compatible, and treating it
+			// as compatible is how an out-of-range value gets stored and projected.
+			return `Source property id=${sourceProperty.id} declares no format, so it cannot be shown to stay within the one '${specSlot.channel}.${specSlot.property}' defines`;
 		}
 
 		const slotWritable = metadata.permissions.includes(PermissionType.READ_WRITE);
@@ -598,14 +607,16 @@ export class VirtualDevicesService {
 			);
 		}
 
-		// The projection's own declaration is checked against the same slot, not only its source. The
-		// wizard derives these fields from the spec, but a direct create or PATCH sets them freely, and
-		// nothing else looks: a `light.brightness` projection backed by a perfectly good `uchar` source
-		// but declaring itself `enum`, or a read-only slot declared `rw`, would otherwise persist and
-		// then expose the wrong representation or advertise a write it cannot honour.
+		// The projection's own declaration is checked against the slot too, not only its source: the
+		// wizard derives these fields from the spec, but a direct create or PATCH sets them freely.
 		//
-		// Asked through the same predicate deliberately — "can this property stand in this slot?" is the
-		// identical question, and answering it twice in two places is how the two answers drift apart.
+		// Data type and format are genuinely the same question a source is asked, so they go through the
+		// same predicate. Permissions are *not*. `reportCompatibility` asks whether a candidate can
+		// satisfy what the slot requires, and a source offering more than required is fine — an `rw`
+		// source happily feeds a `ro` slot. A projection declaring more than the slot exposes is the
+		// opposite situation: `temperature.temperature` is read-only, and a projection calling itself
+		// `rw` there advertises and forwards a write the specification does not have. So the declaration
+		// is checked the other way round — it may not claim a capability the slot does not offer.
 		const declaration = this.reportCompatibility(specSlot, property);
 
 		if (!declaration.compatible) {
@@ -613,6 +624,21 @@ export class VirtualDevicesService {
 				declaration.reason?.replace(`Source property id=${property.id}`, `Property id=${property.id}`) ??
 					'Property does not match this specification slot',
 			);
+		}
+
+		const slotMetadata = getAllProperties(specSlot.channel).find(
+			(candidate) => candidate.category === specSlot.property,
+		);
+
+		if (slotMetadata) {
+			const slotPermissions = new Set(slotMetadata.permissions);
+			const overclaimed = (property.permissions ?? []).filter((declared) => !slotPermissions.has(declared));
+
+			if (overclaimed.length > 0) {
+				throw new VirtualProjectionIncompatibleException(
+					`Property id=${property.id} declares permission(s) [${overclaimed.join(', ')}] that '${specSlot.channel}.${specSlot.property}' does not offer (it is [${slotMetadata.permissions.join(', ')}])`,
+				);
+			}
 		}
 	}
 

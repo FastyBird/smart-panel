@@ -51,10 +51,13 @@ describe('VirtualDevicesService', () => {
 		permissions: [PermissionType.READ_ONLY],
 		dataType: DataTypeType.BOOL,
 	});
+	// Carries a format, as a persisted row does: a constrained slot now refuses a source that cannot be
+	// shown to stay inside it, and `temperature.temperature` is constrained to [0, 100].
 	const readWriteSourceProperty = property({
 		id: 'rw-source-property',
 		permissions: [PermissionType.READ_WRITE],
 		dataType: DataTypeType.FLOAT,
+		format: [0, 100],
 	});
 	const floatSourceProperty = property({
 		id: 'float-source-property',
@@ -215,7 +218,7 @@ describe('VirtualDevicesService', () => {
 		const projecting = (
 			sourcePropertyId: string | null,
 			category: PropertyCategory,
-			declared: { permissions?: PermissionType[]; dataType?: DataTypeType } = {},
+			declared: { permissions?: PermissionType[]; dataType?: DataTypeType; format?: (string | number | null)[] } = {},
 		): VirtualChannelPropertyEntity => {
 			const entity = new VirtualChannelPropertyEntity();
 
@@ -224,6 +227,7 @@ describe('VirtualDevicesService', () => {
 				category,
 				permissions: declared.permissions ?? [PermissionType.READ_WRITE],
 				dataType: declared.dataType ?? DataTypeType.BOOL,
+				format: declared.format ?? null,
 				valueOrigin: VirtualValueOrigin.SOURCE,
 				sourcePropertyId,
 			});
@@ -258,6 +262,7 @@ describe('VirtualDevicesService', () => {
 					projecting(readWriteSourceProperty.id, PropertyCategory.TEMPERATURE, {
 						dataType: DataTypeType.FLOAT,
 						permissions: [PermissionType.READ_ONLY],
+						format: [0, 100],
 					}),
 					CHANNEL_ID,
 				),
@@ -279,6 +284,23 @@ describe('VirtualDevicesService', () => {
 			const misdeclared = projecting('rw-bool', PropertyCategory.ON, { dataType: DataTypeType.FLOAT });
 
 			await expect(service.assertProjectionCompatible(misdeclared, CHANNEL_ID)).rejects.toThrow(/data type/);
+		});
+
+		// `reportCompatibility` asks whether a candidate can *satisfy* the slot, so a source offering more
+		// than required passes — an `rw` source happily feeds a `ro` slot. A projection is the opposite
+		// situation: declaring `rw` on a read-only slot advertises a write the specification does not
+		// have, and forwards it.
+		it('refuses a projection claiming a capability the slot does not offer', async () => {
+			givenSlot(ChannelCategory.TEMPERATURE, DeviceCategory.SENSOR);
+			channelsPropertiesService.findOne.mockResolvedValue(readWriteSourceProperty);
+
+			const overclaiming = projecting(readWriteSourceProperty.id, PropertyCategory.TEMPERATURE, {
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_WRITE],
+				format: [0, 100],
+			});
+
+			await expect(service.assertProjectionCompatible(overclaiming, CHANNEL_ID)).rejects.toThrow(/does not offer/);
 		});
 
 		it('ignores an owned property', async () => {
@@ -344,6 +366,25 @@ describe('VirtualDevicesService', () => {
 
 			expect(report.compatible).toBe(false);
 			expect(report.reason).toContain('turbo');
+		});
+
+		// A slot that constrains its values cannot be satisfied by a source that declares none: nothing
+		// there shows the source stays inside the range, and "unknown" is not "compatible".
+		it('refuses a source with no format against a constrained slot', () => {
+			const formatless = property({
+				id: 'formatless',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.UCHAR,
+				format: null,
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.BRIGHTNESS },
+				formatless,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('declares no format');
 		});
 
 		it('accepts an enum source whose values match the slot', () => {
@@ -702,10 +743,12 @@ describe('VirtualDevicesService', () => {
 		// hasMultipleDataTypes branch's accepting path, which the pinned tests never reach (they only use
 		// single-data-type slots).
 		it('accepts a source matching one variant of a multi-datatype slot', () => {
+			// Formats are compared now, so the row carries the one its variant defines.
 			const percentageSource = property({
 				id: 'brightness-percentage',
 				permissions: [PermissionType.READ_WRITE],
 				dataType: DataTypeType.UCHAR,
+				format: [0, 100],
 			});
 
 			const report = service.reportCompatibility(

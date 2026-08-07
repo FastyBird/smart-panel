@@ -468,11 +468,10 @@ export class DevicesService {
 			// them until some later structural event forced a rebuild. So the children are read back
 			// before the delete and their deletions announced after it.
 			//
-			// Compensating events rather than unwinding through ChannelsService.remove(): that path
-			// expects a fully built channel and re-parents children as it goes, which is the wrong
-			// shape for tearing down a half-created device — and the device delete has to happen either
-			// way, since the channel whose own creation threw was already persisted and is not in this
-			// list.
+			// Channels are announced rather than unwound through ChannelsService.remove(): that path
+			// expects a fully built channel and re-parents children as it goes, which is the wrong shape
+			// for tearing down a half-created device — and the device delete has to happen either way,
+			// since the channel whose own creation threw was already persisted and is not in this list.
 			const orphanedChannels = await this.channelsService
 				.findAll(raw.id)
 				.catch((readError: unknown): ChannelEntity[] => {
@@ -484,13 +483,28 @@ export class DevicesService {
 					return [];
 				});
 
+			// Properties go through their own removal, not the cascade: a property's stored values and
+			// device-status records live outside its row, and only the entity-removal lifecycle
+			// (ChannelPropertyEntitySubscriber.afterRemove) clears them. A raw delete leaves that history
+			// behind, and a retry supplying the same explicit property ids would find the failed attempt's
+			// values already sitting there. That removal emits the property's deletion event too, so only
+			// the channels need announcing below.
+			for (const channel of orphanedChannels) {
+				for (const property of channel.properties ?? []) {
+					try {
+						await this.channelsPropertiesService.remove(property.id);
+					} catch (cleanupError) {
+						this.logger.error(
+							`Failed to roll back property id=${property.id} for deviceId=${raw.id}`,
+							cleanupError instanceof Error ? cleanupError : undefined,
+						);
+					}
+				}
+			}
+
 			await repository.delete(raw.id);
 
 			for (const channel of orphanedChannels) {
-				for (const property of channel.properties ?? []) {
-					this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_DELETED, property);
-				}
-
 				this.eventEmitter.emit(EventType.CHANNEL_DELETED, channel);
 			}
 

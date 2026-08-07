@@ -160,6 +160,7 @@ describe('DevicesService', () => {
 				{
 					provide: ChannelsPropertiesService,
 					useValue: {
+						remove: jest.fn().mockResolvedValue(undefined),
 						findBoundedForChannels: jest.fn().mockResolvedValue({ properties: [], totals: {} }),
 					},
 				},
@@ -511,6 +512,7 @@ describe('DevicesService', () => {
 
 			channelsService.create.mockRejectedValue(new DevicesValidationException('Source cannot fill this slot'));
 			channelsService.findAll.mockResolvedValue([orphanedChannel] as never);
+			propertiesService.remove.mockResolvedValue(undefined as never);
 
 			await expect(
 				service.create({
@@ -520,7 +522,9 @@ describe('DevicesService', () => {
 			).rejects.toThrow('Source cannot fill this slot');
 
 			expect(repository.delete).toHaveBeenCalledWith(createdDeviceId);
-			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_DELETED, orphanedProperty);
+			// Through its own removal, so the stored values and status records go with it — the raw
+			// cascade would have left that history behind for a retry to inherit.
+			expect(propertiesService.remove).toHaveBeenCalledWith(orphanedProperty.id);
 			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CHANNEL_DELETED, orphanedChannel);
 			expect(eventEmitter.emit).not.toHaveBeenCalledWith(EventType.DEVICE_CREATED, expect.anything());
 		});
