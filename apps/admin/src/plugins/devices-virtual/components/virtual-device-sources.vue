@@ -101,7 +101,7 @@
 		v-if="remapTarget"
 		:property-id="remapTarget.propertyId"
 		@close="remapTarget = null"
-		@remapped="remapTarget = null"
+		@remapped="onRemapped"
 	/>
 </template>
 
@@ -216,6 +216,15 @@ const fetchSourceDevices = async (): Promise<void> => {
 
 const onRetry = (): void => {
 	fetchSourceDevices().catch((err: unknown): void => logger.error('Failed to retry loading virtual device source devices', err));
+};
+
+// The property store update clears the orphan warning on its own, but the source-device list is a
+// separate snapshot from the source-devices endpoint: without refetching it, a device the remap has
+// just linked stays listed as absent until the whole detail page is reloaded.
+const onRemapped = (): void => {
+	remapTarget.value = null;
+
+	fetchSourceDevices().catch((err: unknown): void => logger.error('Failed to reload virtual device source devices after a remap', err));
 };
 
 const onViewSourceDevice = (deviceId: IDevice['id']): void => {

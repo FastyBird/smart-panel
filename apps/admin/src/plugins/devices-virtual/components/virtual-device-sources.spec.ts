@@ -303,4 +303,24 @@ describe('VirtualDeviceSources', () => {
 
 		expect(wrapper.findComponent({ name: 'VirtualDeviceRemapDialog' }).exists()).toBe(false);
 	});
+
+	// The property store update clears the orphan warning on its own, but this list is a separate
+	// snapshot from the source-devices endpoint: without refetching, a device the remap just linked
+	// stays listed as absent until the whole detail page is reloaded.
+	it('reloads the source devices after a successful remap', async () => {
+		const { wrapper, warnings } = mountSources({
+			properties: [{ id: 'p', valueOrigin: DevicesVirtualPluginValueOrigin.source, sourceProperty: null }],
+		});
+
+		await flushPromises();
+
+		const callsBeforeRemap = (backendClient.GET as Mock).mock.calls.length;
+
+		await wrapper.get(`[data-test-id="remap-${warnings.value[0].propertyId}"]`).trigger('click');
+		await wrapper.findComponent({ name: 'VirtualDeviceRemapDialog' }).vm.$emit('remapped');
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'VirtualDeviceRemapDialog' }).exists()).toBe(false);
+		expect((backendClient.GET as Mock).mock.calls.length).toBeGreaterThan(callsBeforeRemap);
+	});
 });

@@ -13,6 +13,7 @@ import {
 	DevicesModuleChannelPropertyDataType,
 	DevicesModuleChannelPropertyPermissions,
 	DevicesModuleDeviceCategory,
+	DevicesModuleDeviceHiddenBy,
 } from '../../../../openapi.constants';
 import { DEVICES_VIRTUAL_TYPE } from '../../devices-virtual.constants';
 
@@ -91,6 +92,7 @@ vi.mock('../../../../common', async () => {
 const DEVICE_RELAY = 'device-relay';
 const DEVICE_SENSOR = 'device-sensor';
 const DEVICE_HIDDEN = 'device-hidden';
+const DEVICE_SYSTEM_HIDDEN = 'device-system-hidden';
 const DEVICE_VIRTUAL = 'device-virtual';
 
 const CHANNEL_SWITCHER = 'channel-switcher';
@@ -106,7 +108,15 @@ const READ_ONLY_PROPERTY_ID = 'property-read-only';
 const devices = [
 	{ id: DEVICE_RELAY, name: 'Hall relay', type: 'shelly-ng', hidden: false, draft: false },
 	{ id: DEVICE_SENSOR, name: 'Read-only sensor', type: 'shelly-ng', hidden: false, draft: false },
-	{ id: DEVICE_HIDDEN, name: 'Hidden source', type: 'shelly-ng', hidden: true, draft: false },
+	{ id: DEVICE_HIDDEN, name: 'Hidden source', type: 'shelly-ng', hidden: true, hiddenBy: DevicesModuleDeviceHiddenBy.user, draft: false },
+	{
+		id: DEVICE_SYSTEM_HIDDEN,
+		name: 'Half-split relay board',
+		type: 'shelly-ng',
+		hidden: true,
+		hiddenBy: DevicesModuleDeviceHiddenBy.system,
+		draft: false,
+	},
 	{ id: DEVICE_VIRTUAL, name: 'Existing virtual', type: DEVICES_VIRTUAL_TYPE, hidden: false, draft: false },
 ] as unknown as IDevice[];
 
@@ -475,7 +485,7 @@ describe('VirtualWizardMappingStep', () => {
 		expect(backendClient.POST).not.toHaveBeenCalled();
 	});
 
-	it('does not offer a hidden or a virtual device as a source', () => {
+	it('does not offer a user-hidden or a virtual device as a source', () => {
 		const { sourceDevicesOptions } = mountMappingStep();
 
 		const values = sourceDevicesOptions.value.map((option) => option.value);
@@ -483,6 +493,18 @@ describe('VirtualWizardMappingStep', () => {
 		expect(values).toContain(DEVICE_RELAY);
 		expect(values).not.toContain(DEVICE_HIDDEN);
 		expect(values).not.toContain(DEVICE_VIRTUAL);
+	});
+
+	// Splitting a four-relay board is four passes through this wizard, and the first pass offers to hide
+	// the parent as soon as every mapping in that one device came from it. If a system hide removed the
+	// board from this picker, relays two, three and four would be unreachable and the flow would lock
+	// itself out halfway through the job it exists to do.
+	it('still offers a system-hidden device, so a part-finished split can be continued', () => {
+		const { sourceDevicesOptions } = mountMappingStep();
+
+		const values = sourceDevicesOptions.value.map((option) => option.value);
+
+		expect(values).toContain(DEVICE_SYSTEM_HIDDEN);
 	});
 
 	it('blocks the step when the compatibility check itself fails', async () => {

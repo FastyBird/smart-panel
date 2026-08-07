@@ -243,6 +243,7 @@ import {
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../../modules/devices/store/keys';
 import {
 	DevicesModuleChannelCategory,
+	DevicesModuleDeviceHiddenBy,
 	type DevicesVirtualPluginCheckCompatibilityOperation,
 	type DevicesVirtualPluginCompatibilityReportSchema,
 } from '../../../../openapi.constants';
@@ -425,10 +426,21 @@ const sourceDevicesOptions = computed<{ value: IDevice['id']; label: string }[]>
 			// already-loaded store collection that the device list's "Show hidden" toggle also reads —
 			// narrowing the fetch would break that toggle for everyone.
 			//
+			// System-hidden devices are the exception, and deliberately so. Splitting a four-relay device
+			// is four passes through this wizard, and the first pass offers to hide the parent as soon as
+			// every mapping in *that* device came from it. Excluding it then would make relays two, three
+			// and four unreachable — the flow would lock itself out halfway through the job it exists to
+			// do. A `system` hide means "a virtual device has taken this over", which is precisely the
+			// device a further split draws from. A `user` hide is a deliberate "stop showing me this" and
+			// stays excluded.
+			//
 			// Virtual devices are excluded because nesting one virtual device inside another is refused
 			// at creation (VirtualDevicesService.assertSourceNotVirtual) and the compatibility endpoint
 			// does *not* check for it, so such a source would preview clean and then fail on create.
-			.filter((device: IDevice): boolean => !device.draft && !device.hidden && device.type !== DEVICES_VIRTUAL_TYPE),
+			.filter(
+				(device: IDevice): boolean =>
+					!device.draft && (!device.hidden || device.hiddenBy === DevicesModuleDeviceHiddenBy.system) && device.type !== DEVICES_VIRTUAL_TYPE
+			),
 		[(device: IDevice): string => device.name],
 		['asc']
 	).map((device: IDevice): { value: IDevice['id']; label: string } => ({ value: device.id, label: device.name }))

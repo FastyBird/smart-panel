@@ -525,6 +525,34 @@ describe('VirtualWizardReviewStep', () => {
 		expect(flashMessage.warning).toHaveBeenCalled();
 	});
 
+	// `devicesStore.addZone()` rejects outright when the device is not yet in its local cache, so a
+	// fire-and-forget hydration made zone assignment race a websocket update and commonly reported every
+	// selected zone as failed on a creation that had actually succeeded.
+	it('hydrates the created device before assigning its zones', async () => {
+		const hydrationOrder: string[] = [];
+
+		devicesStore.get.mockImplementationOnce(async (payload: { id: string }) => {
+			hydrationOrder.push('get');
+
+			return devices.find((device) => device.id === payload.id) as IDevice;
+		});
+		devicesStore.addZone.mockImplementationOnce(async (payload: { id: string; zoneId: string }) => {
+			hydrationOrder.push('addZone');
+
+			return devices.find((device) => device.id === payload.id) as IDevice;
+		});
+
+		const { wrapper } = mountReviewStep({
+			mappings: [mapping(DevicesModuleChannelCategory.light, DevicesModuleChannelPropertyCategory.on, PROPERTY_RELAY_0_ON)],
+			zoneIds: [ZONE_SECURITY],
+		});
+
+		await wrapper.get('[data-test-id="create-device"]').trigger('click');
+		await flushAsync();
+
+		expect(hydrationOrder).toEqual(['get', 'addZone']);
+	});
+
 	it('disables Create when nothing is mapped', () => {
 		const { canCreate } = mountReviewStep({ mappings: [] });
 

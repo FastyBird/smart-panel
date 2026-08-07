@@ -497,10 +497,19 @@ const onCreate = async (): Promise<void> => {
 
 		submitState.value = 'created';
 
-		// Best-effort cache warm so the device list / detail views do not need a manual refresh to see
-		// the new device and its channels. Failure here does not affect the wizard's own success state
-		// — the device already exists on the server regardless of whether this local refresh works.
-		devicesStore.get({ id: created.id }).catch((hydrateError: unknown): void => logger.error('Failed to refresh the created device', hydrateError));
+		// Warms the cache so the device list / detail views do not need a manual refresh to see the new
+		// device and its channels. Failure does not affect the wizard's own success state — the device
+		// exists on the server regardless of whether this local refresh works.
+		//
+		// Awaited rather than fire-and-forget, and awaited *before* the zones: `devicesStore.addZone()`
+		// rejects outright when the device is not already in its local cache, so racing this against
+		// `assignZones` made zone assignment depend on a websocket update arriving first and commonly
+		// reported every selected zone as failed on a creation that had actually succeeded.
+		try {
+			await devicesStore.get({ id: created.id });
+		} catch (hydrateError: unknown) {
+			logger.error('Failed to refresh the created device', hydrateError);
+		}
 
 		if (zoneIds.length > 0) {
 			await assignZones(created.id);
