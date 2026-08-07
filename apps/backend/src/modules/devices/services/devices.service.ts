@@ -502,7 +502,19 @@ export class DevicesService {
 				}
 			}
 
-			await repository.delete(raw.id);
+			// Removed as an entity, not deleted as a row. `repository.delete()` issues a DELETE and runs no
+			// subscriber, and a device's removal lifecycle does real work outside its own table:
+			// DeviceEntitySubscriber.afterRemove drops the device's stored connection statuses, and plugin
+			// subscribers (Shelly v1's, for one) tear down the in-memory adapter entry the creation put
+			// there. A child creation that succeeded before a later one failed can already have produced
+			// exactly that state, so a raw delete leaves it behind — with a retry supplying the same
+			// explicit id or identifier walking straight into the failed attempt's leftovers. Same
+			// reasoning as the properties above, one level up.
+			//
+			// Still not routed through `remove()`: that emits DEVICE_DELETED, and this device never
+			// emitted DEVICE_CREATED — that happens only after a creation completes. The compensating
+			// events below exist because the *children* did announce themselves; the device did not.
+			await repository.remove(raw);
 
 			for (const channel of orphanedChannels) {
 				this.eventEmitter.emit(EventType.CHANNEL_DELETED, channel);

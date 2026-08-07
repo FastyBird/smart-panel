@@ -521,7 +521,11 @@ describe('DevicesService', () => {
 				} as never),
 			).rejects.toThrow('Source cannot fill this slot');
 
-			expect(repository.delete).toHaveBeenCalledWith(createdDeviceId);
+			// `remove`, not `delete`: only the entity-removal lifecycle drops the device's stored connection
+			// statuses and lets a plugin subscriber tear down the adapter entry the creation put there. A
+			// raw row delete runs no subscriber and leaves both behind for a retry to inherit.
+			expect(repository.remove).toHaveBeenCalledWith(expect.objectContaining({ id: createdDeviceId }));
+			expect(repository.delete).not.toHaveBeenCalled();
 			// Through its own removal, so the stored values and status records go with it — the raw
 			// cascade would have left that history behind for a retry to inherit.
 			expect(propertiesService.remove).toHaveBeenCalledWith(orphanedProperty.id);
