@@ -6,7 +6,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { DeviceHiddenBy, DeviceHiddenFilter, EventType } from '../../../modules/devices/devices.constants';
-import { ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
@@ -196,6 +197,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 		private readonly status: VirtualStatusListener,
 		private readonly devicesService: DevicesService,
 		private readonly virtualDevicesService: VirtualDevicesService,
+		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly dataSource: DataSource,
 		// Only ever used to clear `hiddenBy` — the one field of an unhide that UpdateDeviceDto cannot
@@ -781,6 +783,38 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 * CHANNEL_PROPERTY_UPDATED is emitted for the row it clears — and the rebuild it schedules is what
 	 * refreshes the index and recomputes the affected devices' status.
 	 */
+	/**
+	 * The same question asked of a whole channel.
+	 *
+	 * A property's own row is not the only thing that decides what it means: `resolvePropertyUnit`
+	 * derives the unit from the *channel's* category, and the Shelly v1/NG update DTOs allow that
+	 * category to change. `ChannelsService.update()` emits CHANNEL_UPDATED rather than
+	 * CHANNEL_PROPERTY_UPDATED, so recategorising a concentration channel from one gas to another moved
+	 * its properties from ppm to µg/m³ with every projection still attached, forwarding unchanged
+	 * numbers under a unit that no longer applied.
+	 */
+	@OnEvent(EventType.CHANNEL_UPDATED)
+	async handleSourceChannelChange(payload: ChannelEntity): Promise<void> {
+		if (!payload?.id) {
+			return;
+		}
+
+		const properties = await this.channelsPropertiesService
+			.findAll(payload.id)
+			.catch((error: unknown): ChannelPropertyEntity[] => {
+				this.logger.error(
+					`Failed to read back properties of updated channel id=${payload.id}`,
+					error instanceof Error ? error : undefined,
+				);
+
+				return [];
+			});
+
+		for (const property of properties) {
+			await this.handleSourceMetadataChange(property);
+		}
+	}
+
 	@OnEvent(EventType.CHANNEL_PROPERTY_UPDATED)
 	async handleSourceMetadataChange(payload: ChannelPropertyEntity): Promise<void> {
 		if (!payload?.id) {

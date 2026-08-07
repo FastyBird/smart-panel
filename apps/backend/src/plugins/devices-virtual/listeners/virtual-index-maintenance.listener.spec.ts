@@ -11,6 +11,7 @@ import {
 	EventType,
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
@@ -51,6 +52,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 	let devicesRepository: { update: jest.Mock };
 	let virtualDevicesService: { reportCompatibility: jest.Mock };
 	let eventEmitterStub: { emit: jest.Mock };
+	let channelsPropertiesStub: { findAll: jest.Mock };
 
 	// Drains Node's microtask queue completely — including microtasks newly queued while draining —
 	// before the callback runs. Unlike a fixed number of `await Promise.resolve()` hops, this needs
@@ -125,11 +127,13 @@ describe('VirtualIndexMaintenanceListener', () => {
 		// Compatibility is asserted in the service's own spec; here it only has to answer.
 		virtualDevicesService = { reportCompatibility: jest.fn().mockReturnValue({ compatible: true }) };
 		eventEmitterStub = { emit: jest.fn() };
+		channelsPropertiesStub = { findAll: jest.fn().mockResolvedValue([]) };
 		listener = new VirtualIndexMaintenanceListener(
 			index as unknown as VirtualPropertyIndexService,
 			status as unknown as VirtualStatusListener,
 			devicesService as unknown as DevicesService,
 			virtualDevicesService as unknown as VirtualDevicesService,
+			channelsPropertiesStub as unknown as ChannelsPropertiesService,
 			eventEmitterStub as unknown as EventEmitter2,
 			dataSourceStub as unknown as DataSource,
 			devicesRepository as unknown as Repository<DeviceEntity>,
@@ -755,6 +759,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				),
 				devicesService as unknown as DevicesService,
 				virtualDevicesService as unknown as VirtualDevicesService,
+				channelsPropertiesStub as unknown as ChannelsPropertiesService,
 				eventEmitterStub as unknown as EventEmitter2,
 				dataSourceStub as unknown as DataSource,
 				devicesRepository as unknown as Repository<DeviceEntity>,
@@ -1122,6 +1127,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				{ recompute: jest.fn().mockResolvedValue(undefined) } as unknown as VirtualStatusListener,
 				{ findOne: jest.fn(), update: jest.fn() } as unknown as DevicesService,
 				{ reportCompatibility: jest.fn().mockReturnValue({ compatible: true }) } as unknown as VirtualDevicesService,
+				channelsPropertiesStub as unknown as ChannelsPropertiesService,
 				eventEmitterStub as unknown as EventEmitter2,
 				dataSource,
 				{ update: jest.fn() } as unknown as Repository<DeviceEntity>,
@@ -1274,6 +1280,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				status as unknown as VirtualStatusListener,
 				devicesService as unknown as DevicesService,
 				virtualDevicesService as unknown as VirtualDevicesService,
+				channelsPropertiesStub as unknown as ChannelsPropertiesService,
 				eventEmitterStub as unknown as EventEmitter2,
 				stub.dataSource,
 				devicesRepository as unknown as Repository<DeviceEntity>,
@@ -1431,7 +1438,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 		let dataSource: DataSource;
 		let subject: VirtualIndexMaintenanceListener;
 		let indexStub: ReturnType<typeof createIndexStub>;
-		let devicesStub: { findOne: jest.Mock; update: jest.Mock };
+		let devicesStub: { findOne: jest.Mock; update: jest.Mock; settled: { count: number } };
 		// What `isTransactionActive` read at the moment each rebuild was entered, sampled before that
 		// rebuild's own query. Used as a precondition — "this pass really did read inside the open
 		// transaction" — never as the assertion.
@@ -1498,33 +1505,46 @@ describe('VirtualIndexMaintenanceListener', () => {
 		// patch lands on the far side of the commit or rollback. Without the gate the patch could land
 		// inside the open transaction and be rolled back along with it, which would hide the defect
 		// behind a coincidence of scheduling rather than prove anything about it.
-		const createDevicesStub = (unhideAllowed: Promise<void>): { findOne: jest.Mock; update: jest.Mock } => ({
-			findOne: jest.fn(async (id: string) => {
-				await unhideAllowed;
+		const createDevicesStub = (
+			unhideAllowed: Promise<void>,
+		): { findOne: jest.Mock; update: jest.Mock; settled: { count: number } } => {
+			const settled = { count: 0 };
 
-				const rows = await dataSource.query<{ id: string; hidden: number }[]>(
-					'SELECT id, hidden FROM devices WHERE id = ?',
-					[id],
-				);
+			return {
+				findOne: jest.fn(async (id: string) => {
+					await unhideAllowed;
 
-				// `hiddenBy` is a fixed `system` rather than a column of its own: these cases turn on *when*
-				// the unhide's read and write land relative to the emitting transaction, and the provenance
-				// check (isSystemHidden(), covered above) would only be a constant gate in front of that.
-				// Stating it here keeps the unhide reachable, which is what these tests need to observe.
-				return rows.length > 0
-					? {
-							id: rows[0].id,
-							type: 'simulator',
-							hidden: rows[0].hidden === 1,
-							hiddenBy: DeviceHiddenBy.SYSTEM,
-							enabled: true,
-						}
-					: null;
-			}),
-			update: jest.fn(async (id: string, dto: { hidden?: boolean }) => {
-				await dataSource.query('UPDATE devices SET hidden = ? WHERE id = ?', [dto.hidden === false ? 0 : 1, id]);
-			}),
-		});
+					const rows = await dataSource.query<{ id: string; hidden: number }[]>(
+						'SELECT id, hidden FROM devices WHERE id = ?',
+						[id],
+					);
+
+					// `hiddenBy` is a fixed `system` rather than a column of its own: these cases turn on *when*
+					// the unhide's read and write land relative to the emitting transaction, and the provenance
+					// check (isSystemHidden(), covered above) would only be a constant gate in front of that.
+					// Stating it here keeps the unhide reachable, which is what these tests need to observe.
+					return rows.length > 0
+						? {
+								id: rows[0].id,
+								type: 'simulator',
+								hidden: rows[0].hidden === 1,
+								hiddenBy: DeviceHiddenBy.SYSTEM,
+								enabled: true,
+							}
+						: null;
+				}),
+				// `settled` counts writes that have *landed*, not calls that have started. Every test in this
+				// group asserts on a row this stub writes, and `update` is async — waiting on the call being
+				// recorded let the assertions read the database before the UPDATE committed. Driving until
+				// this counter moves is the same moment the assertions describe.
+				settled,
+				update: jest.fn(async (id: string, dto: { hidden?: boolean }) => {
+					await dataSource.query('UPDATE devices SET hidden = ? WHERE id = ?', [dto.hidden === false ? 0 : 1, id]);
+
+					settled.count += 1;
+				}),
+			};
+		};
 
 		const readHidden = async (id: string): Promise<number | undefined> => {
 			const rows = await dataSource.query<{ hidden: number }[]>('SELECT hidden FROM devices WHERE id = ?', [id]);
@@ -1581,6 +1601,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				status as unknown as VirtualStatusListener,
 				devicesStub as unknown as DevicesService,
 				virtualDevicesService as unknown as VirtualDevicesService,
+				channelsPropertiesStub as unknown as ChannelsPropertiesService,
 				eventEmitterStub as unknown as EventEmitter2,
 				dataSource,
 				// The provenance clear that follows every unhide. These cases are about *when* the
@@ -1673,12 +1694,9 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			releaseTheUnhide();
 
-			await driveUntil(() => devicesStub.update.mock.calls.length > 0);
-
-			// Same reason as the case below: `update` writes to the real database asynchronously, so the
-			// call being recorded is not the write having landed, and the row read underneath was racing
-			// it.
-			await Promise.all(devicesStub.update.mock.results.map((result): unknown => result.value).filter(Boolean));
+			// Driven until the write has *landed*, not until its call was recorded — those are different
+			// moments, and the row read below was racing the second one.
+			await driveUntil(() => devicesStub.settled.count > 0, 2000);
 
 			await expect(countLinks()).resolves.toBe(0);
 			await expect(readHidden('source-device')).resolves.toBe(0);
@@ -1706,6 +1724,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				status as unknown as VirtualStatusListener,
 				stuckDevices as unknown as DevicesService,
 				virtualDevicesService as unknown as VirtualDevicesService,
+				channelsPropertiesStub as unknown as ChannelsPropertiesService,
 				eventEmitterStub as unknown as EventEmitter2,
 				stuckConnection,
 				{ update: jest.fn().mockResolvedValue(undefined) } as unknown as Repository<DeviceEntity>,
@@ -1722,12 +1741,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 			// how fast the real sqlite work happened to resolve — it passed locally and failed
 			// intermittently on CI. The step budget still bounds it, so a genuinely broken repair loop
 			// exhausts the budget and fails rather than hanging.
-			await driveUntil(() => flagAtRebuild.length >= 4 && stuckDevices.update.mock.calls.length > 0, 2000);
-
-			// `update` writes to the real database and is async, so the call being *recorded* is not the
-			// write having *landed* — asserting straight after the predicate read a device that was still
-			// hidden. Settling the recorded calls is what makes the row read below deterministic.
-			await Promise.all(stuckDevices.update.mock.results.map((result): unknown => result.value).filter(Boolean));
+			await driveUntil(() => flagAtRebuild.length >= 4 && stuckDevices.settled.count > 0, 2000);
 
 			// One pass plus MAX_REPAIR_PASSES repairs, none of which could settle, and then the queue is
 			// released rather than held forever: a hidden device with no replacement and no route back
@@ -1774,6 +1788,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				{ recompute: jest.fn().mockResolvedValue(undefined) } as unknown as VirtualStatusListener,
 				{ findOne: jest.fn(), update: jest.fn() } as unknown as DevicesService,
 				{ reportCompatibility } as unknown as VirtualDevicesService,
+				channelsPropertiesStub as unknown as ChannelsPropertiesService,
 				{ emit } as unknown as EventEmitter2,
 				{
 					getRepository: jest.fn().mockReturnValue({ update, findOne }),
@@ -1820,6 +1835,20 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			await subject.handleSourceMetadataChange(enumSource);
 
+			expect(update).toHaveBeenCalledWith('virtual-property', { sourcePropertyId: null });
+		});
+
+		// A property's own row is not the only thing that decides what it means: `resolvePropertyUnit`
+		// derives the unit from the *channel's* category, and that category is editable. Channel updates
+		// emit CHANNEL_UPDATED, not CHANNEL_PROPERTY_UPDATED, so this arrives by a different door.
+		it('rechecks every property of a channel that was updated', async () => {
+			const { subject, update } = build({ compatible: false, reason: 'unit changed' });
+
+			channelsPropertiesStub.findAll.mockResolvedValue([sourceProperty]);
+
+			await subject.handleSourceChannelChange({ id: 'source-channel' } as unknown as ChannelEntity);
+
+			expect(channelsPropertiesStub.findAll).toHaveBeenCalledWith('source-channel');
 			expect(update).toHaveBeenCalledWith('virtual-property', { sourcePropertyId: null });
 		});
 
