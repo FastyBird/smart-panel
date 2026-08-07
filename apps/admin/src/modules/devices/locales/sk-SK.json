@@ -138,7 +138,9 @@
 			"bulkDisabled": "{count} zariadení bolo úspešne zakázaných.",
 			"bulkDisableFailed": "Nepodarilo sa zakázať {count} zariadení.",
 			"bulkDisableCanceled": "Hromadné zakázanie zariadení bolo zrušené.",
-			"notLoaded": "Nepodarilo sa načítať zariadenie. Skúste to prosím neskôr."
+			"notLoaded": "Nepodarilo sa načítať zariadenie. Skúste to prosím neskôr.",
+			"unhidden": "Zariadenie {device} je opäť viditeľné",
+			"notUnhidden": "Zariadenie {device} sa nepodarilo zobraziť"
 		},
 		"channels": {
 			"notFound": "Kanál, ktorý hľadáte, neexistuje alebo bol odstránený.",
@@ -922,7 +924,8 @@
 		"hint": {
 			"system": "Skryté automaticky, pretože ho nahradilo virtuálne zariadenie. Znova sa zobrazí, keď bude toto virtuálne zariadenie odstránené.",
 			"user": "Skryté operátorom. Zostáva skryté, kým ho niekto znova nezobrazí."
-		}
+		},
+		"unhide": "Zobraziť"
 	},
 	"validation": {
 		"status": {

@@ -462,6 +462,31 @@ describe('DevicesService', () => {
 		// property whose source cannot fill its slot, say — the device must not survive as a half-built
 		// row, and the children that already announced themselves must have their deletions announced
 		// too, or websocket clients keep ghosts.
+		// Provenance is meaningless once a device is visible again, and no caller can send
+		// `hidden_by: null` — the generated admin type drops the null and the DTO's own transform reads
+		// an explicit null as "not provided" — so unhiding has to clear it here.
+		it('clears the hidden provenance when a device is unhidden', async () => {
+			const hiddenDevice = toInstance(MockDevice, { ...mockDevice, hidden: true, hiddenBy: DeviceHiddenBy.SYSTEM });
+
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(hiddenDevice);
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(hiddenDevice);
+
+			await service.update(hiddenDevice.id, { type: 'mock', hidden: false } as UpdateMockDeviceDto);
+
+			const saved = (repository.save as jest.Mock).mock.calls[0]?.[0] as DeviceEntity | undefined;
+
+			expect(saved?.hidden).toBe(false);
+			expect(saved?.hiddenBy ?? null).toBeNull();
+		});
+
 		it('rolls the device back and announces the children when a nested channel fails', async () => {
 			const createDto: CreateMockDeviceDto = {
 				type: 'mock',

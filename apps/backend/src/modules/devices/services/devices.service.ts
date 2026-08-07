@@ -596,6 +596,15 @@ export class DevicesService {
 			(value, key) => isUndefined(value) || !dtoWireKeys.has(toSnakeCase(key)),
 		);
 
+		// Provenance only means something while the device is hidden, so unhiding clears it. Forced onto
+		// the resolved fields rather than set on the DTO, because no caller can express it and the DTO
+		// cannot carry it: the admin's generated `UpdateDevice` type drops `| null` from enum-referencing
+		// properties, and this DTO's own `@Transform` reads an explicit null as "not provided". A stale
+		// `system` left behind would also mislead the reconciliation that keys on it.
+		if (dtoInstance.hidden === false) {
+			updateFields.hiddenBy = null;
+		}
+
 		// Check if any entity fields are actually being changed by comparing with existing values
 		const entityFieldsChanged =
 			Object.keys(updateFields).some((key) => {
