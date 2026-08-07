@@ -1,7 +1,7 @@
 import { computed } from 'vue';
 
 import { v4 as uuid } from 'uuid';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
 

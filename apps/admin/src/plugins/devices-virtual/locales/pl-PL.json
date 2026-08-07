@@ -77,7 +77,10 @@
 			"constraints": {
 				"oneOrMoreOf": "wymaga co najmniej jednej z: {properties}",
 				"oneOf": "przyjmuje tylko jedną z: {properties}",
-				"mutuallyExclusive": "nie można łączyć tych grup: {groups}"
+				"mutuallyExclusive": "nie można łączyć tych grup: {groups}",
+				"deviceOneOrMoreOf": "wymaga co najmniej jednego z tych kanałów: {channels}",
+				"deviceOneOf": "przyjmuje tylko jeden z tych kanałów: {channels}",
+				"deviceMutuallyExclusive": "nie można łączyć tych kanałów: {groups}"
 			}
 		},
 		"details": {

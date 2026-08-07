@@ -19,6 +19,8 @@ import {
 	DevicesModuleChannelPropertyDataType,
 	DevicesModuleChannelPropertyPermissions,
 	DevicesModuleDeviceCategory,
+	DevicesModuleDeviceHiddenBy,
+	DevicesModuleDevicesHiddenFilter,
 	DevicesVirtualPluginValueOrigin,
 } from '../../../openapi.constants';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
@@ -146,6 +148,7 @@ const NEW_SOURCE_DEVICE_ID = uuid();
 const NEW_SOURCE_CHANNEL_ID = uuid();
 const NEW_SOURCE_PROPERTY_ID = uuid();
 
+const SYSTEM_HIDDEN_DEVICE_ID = uuid();
 const HIDDEN_DEVICE_ID = uuid();
 const HIDDEN_CHANNEL_ID = uuid();
 
@@ -172,6 +175,16 @@ const devices: IDevice[] = [
 		type: 'shelly-ng',
 		category: DevicesModuleDeviceCategory.switcher,
 		hidden: true,
+		hiddenBy: DevicesModuleDeviceHiddenBy.user,
+		draft: false,
+	} as unknown as IDevice,
+	{
+		id: SYSTEM_HIDDEN_DEVICE_ID,
+		name: 'Half-split relay board',
+		type: 'shelly-ng',
+		category: DevicesModuleDeviceCategory.switcher,
+		hidden: true,
+		hiddenBy: DevicesModuleDeviceHiddenBy.system,
 		draft: false,
 	} as unknown as IDevice,
 ];
@@ -444,7 +457,7 @@ describe('VirtualDeviceRemapDialog', () => {
 	// Same two exclusions as the wizard mapping step, and for the same reasons: a hidden device is
 	// already replaced by a virtual one, and the compatibility endpoint does not run
 	// `assertSourceNotVirtual`, so a virtual source would preview clean here and then fail on save.
-	it('excludes hidden and virtual devices from the source picker', () => {
+	it('excludes user-hidden and virtual devices from the source picker', () => {
 		const { sourceDevicesOptions } = mountRemapDialog();
 
 		const values = sourceDevicesOptions.value.map((option) => option.value);
@@ -452,6 +465,21 @@ describe('VirtualDeviceRemapDialog', () => {
 		expect(values).toContain(NEW_SOURCE_DEVICE_ID);
 		expect(values).not.toContain(HIDDEN_DEVICE_ID);
 		expect(values).not.toContain(VIRTUAL_DEVICE_ID);
+	});
+
+	// A source property deleted and recreated on a part-split board orphans its projection, and the
+	// board itself is system-hidden by then. With no admin unhide path, excluding it here would leave
+	// the virtual device permanently offline with nothing able to repair it.
+	it('still offers a system-hidden device, so an orphan on a split board can be repaired', () => {
+		const { sourceDevicesOptions } = mountRemapDialog();
+
+		expect(sourceDevicesOptions.value.map((option) => option.value)).toContain(SYSTEM_HIDDEN_DEVICE_ID);
+	});
+
+	it('asks for hidden devices so a system-hidden source survives the fetch', () => {
+		mountRemapDialog();
+
+		expect(devicesStore.fetch).toHaveBeenCalledWith({ hidden: DevicesModuleDevicesHiddenFilter.all });
 	});
 
 	// The property can vanish between the sources panel rendering the warning and the dialog actually

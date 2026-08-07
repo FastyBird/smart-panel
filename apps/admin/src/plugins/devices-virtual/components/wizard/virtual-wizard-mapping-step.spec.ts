@@ -14,6 +14,7 @@ import {
 	DevicesModuleChannelPropertyPermissions,
 	DevicesModuleDeviceCategory,
 	DevicesModuleDeviceHiddenBy,
+	DevicesModuleDevicesHiddenFilter,
 } from '../../../../openapi.constants';
 import { DEVICES_VIRTUAL_TYPE } from '../../devices-virtual.constants';
 
@@ -500,6 +501,14 @@ describe('VirtualWizardMappingStep', () => {
 	// the parent as soon as every mapping in that one device came from it. If a system hide removed the
 	// board from this picker, relays two, three and four would be unreachable and the flow would lock
 	// itself out halfway through the job it exists to do.
+	// The endpoint treats an omitted filter as "visible only", so a bare fetch would replace the shared
+	// collection with visible devices and quietly undo the exception below.
+	it('asks for hidden devices so a system-hidden source survives the fetch', () => {
+		mountMappingStep();
+
+		expect(devicesStore.fetch).toHaveBeenCalledWith({ hidden: DevicesModuleDevicesHiddenFilter.all });
+	});
+
 	it('still offers a system-hidden device, so a part-finished split can be continued', () => {
 		const { sourceDevicesOptions } = mountMappingStep();
 
@@ -543,6 +552,31 @@ describe('VirtualWizardMappingStep', () => {
 			await nextTick();
 
 			expect(constraintViolations.value.map((violation) => violation.specChannel)).toContain(DevicesModuleChannelCategory.light);
+			expect(isValid.value).toBe(false);
+		});
+
+		// The device spec constrains which channels may appear together, separately from what each
+		// channel needs internally: `switcher` requires at least one of `outlet`/`switcher` and refuses
+		// both at once. Only mapping an optional `electrical_power` property satisfies every
+		// channel-level rule while leaving the device structurally invalid.
+		it('blocks a device whose required channel group is untouched', async () => {
+			const { wrapper, isValid, constraintViolations } = mountMappingStep({ category: DevicesModuleDeviceCategory.switcher });
+
+			await wrapper.vm.selectSource(`${DevicesModuleChannelCategory.electrical_power}.${DevicesModuleChannelPropertyCategory.power}`, PROPERTY_POWER);
+			await nextTick();
+
+			expect(constraintViolations.value.length).toBeGreaterThan(0);
+			expect(isValid.value).toBe(false);
+		});
+
+		it('blocks two mutually exclusive channels used together', async () => {
+			const { wrapper, isValid, constraintViolations } = mountMappingStep({ category: DevicesModuleDeviceCategory.switcher });
+
+			await wrapper.vm.selectSource(`${DevicesModuleChannelCategory.outlet}.${DevicesModuleChannelPropertyCategory.on}`, PROPERTY_ON);
+			await wrapper.vm.selectSource(`${DevicesModuleChannelCategory.switcher}.${DevicesModuleChannelPropertyCategory.on}`, PROPERTY_ON);
+			await nextTick();
+
+			expect(constraintViolations.value.length).toBeGreaterThan(0);
 			expect(isValid.value).toBe(false);
 		});
 

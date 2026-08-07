@@ -77,7 +77,10 @@
 			"constraints": {
 				"oneOrMoreOf": "vyžaduje aspoň jednu z: {properties}",
 				"oneOf": "prijíma iba jednu z: {properties}",
-				"mutuallyExclusive": "tieto skupiny nemožno kombinovať: {groups}"
+				"mutuallyExclusive": "tieto skupiny nemožno kombinovať: {groups}",
+				"deviceOneOrMoreOf": "vyžaduje aspoň jeden z týchto kanálov: {channels}",
+				"deviceOneOf": "prijíma iba jeden z týchto kanálov: {channels}",
+				"deviceMutuallyExclusive": "tieto kanály nemožno kombinovať: {groups}"
 			}
 		},
 		"details": {

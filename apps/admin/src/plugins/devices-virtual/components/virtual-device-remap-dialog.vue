@@ -135,7 +135,12 @@ import { PLUGINS_PREFIX } from '../../../app.constants';
 import { getErrorReason, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../common';
 import type { IChannel, IChannelProperty, IChannelsPropertiesEditActionPayload, IDevice } from '../../../modules/devices';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices/store/keys';
-import type { DevicesVirtualPluginCheckCompatibilityOperation, DevicesVirtualPluginCompatibilityReportSchema } from '../../../openapi.constants';
+import {
+	DevicesModuleDeviceHiddenBy,
+	DevicesModuleDevicesHiddenFilter,
+	type DevicesVirtualPluginCheckCompatibilityOperation,
+	type DevicesVirtualPluginCompatibilityReportSchema,
+} from '../../../openapi.constants';
 import { DEVICES_VIRTUAL_PLUGIN_PREFIX, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 
 import type { IVirtualDeviceRemapDialogProps } from './virtual-device-remap-dialog.types';
@@ -196,13 +201,23 @@ const sourceDevicesOptions = computed<{ value: string; label: string }[]>(() =>
 	orderBy<IDevice>(
 		devicesStore
 			.findAll()
-			// Same two exclusions as the wizard's mapping step, and for the same reasons: hidden devices
-			// are already replaced by a virtual device, so offering one back as a remap source would only
-			// reintroduce what hiding it was meant to retire. Virtual devices are excluded because nesting
-			// one inside another is refused at create time (VirtualDevicesService.assertSourceNotVirtual)
-			// but the compatibility endpoint does not check for it, so such a source would preview clean
-			// here and then fail when the remap is actually saved.
-			.filter((candidate: IDevice): boolean => !candidate.draft && !candidate.hidden && candidate.type !== DEVICES_VIRTUAL_TYPE),
+			// Same exclusions as the wizard's mapping step, and for the same reasons. A `user` hide is a
+			// deliberate "stop showing me this" and is excluded. A `system` hide is not: it means a
+			// virtual device has taken the device over, and that is exactly the device an orphaned
+			// projection needs to be repointed at — a source property deleted and recreated on a
+			// part-split board leaves its projection orphaned, and with no admin unhide path, excluding
+			// system-hidden devices here would leave the virtual device permanently offline with no way
+			// to repair it.
+			//
+			// Virtual devices are excluded because nesting one inside another is refused at create time
+			// (VirtualDevicesService.assertSourceNotVirtual) but the compatibility endpoint does not
+			// check for it, so such a source would preview clean here and then fail when saved.
+			.filter(
+				(candidate: IDevice): boolean =>
+					!candidate.draft &&
+					(!candidate.hidden || candidate.hiddenBy === DevicesModuleDeviceHiddenBy.system) &&
+					candidate.type !== DEVICES_VIRTUAL_TYPE
+			),
 		[(candidate: IDevice): string => candidate.name],
 		['asc']
 	).map((candidate: IDevice): { value: string; label: string } => ({ value: candidate.id, label: candidate.name }))
@@ -436,7 +451,11 @@ watch(visible, (value: boolean): void => {
 onBeforeMount((): void => {
 	// No `hidden` filter on the fetch: this store is shared with the device list, whose "Show hidden"
 	// toggle must keep working. Hidden devices are excluded from the picker in `sourceDevicesOptions`.
-	devicesStore.fetch().catch((err: unknown): void => logger.error('Failed to load remap source devices', err));
+	// `all`, for the same reason the wizard asks for it: the endpoint treats an omitted filter as
+	// "visible only", so a bare fetch would drop the system-hidden sources this dialog must offer.
+	devicesStore
+		.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all })
+		.catch((err: unknown): void => logger.error('Failed to load remap source devices', err));
 });
 
 defineExpose({

@@ -312,7 +312,7 @@ const canCreate = computed<boolean>(
 // check — copying its own attributes instead would risk building a property the spec does not expect.
 interface IDataTypeVariant {
 	data_type: DevicesModuleChannelPropertyDataType;
-	format?: unknown;
+	format?: (string | number | null)[] | null;
 	step?: number | null;
 }
 

@@ -259,11 +259,15 @@ import {
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../../modules/devices/store/keys';
 import {
 	DevicesModuleChannelCategory,
+	DevicesModuleChannelPropertyCategory,
+	type DevicesModuleDeviceCategory,
 	DevicesModuleDeviceHiddenBy,
+	DevicesModuleDevicesHiddenFilter,
 	type DevicesVirtualPluginCheckCompatibilityOperation,
 	type DevicesVirtualPluginCompatibilityReportSchema,
 } from '../../../../openapi.constants';
 import { channelsSchema } from '../../../../spec/channels';
+import { devicesSchema } from '../../../../spec/devices';
 import { DEVICES_VIRTUAL_PLUGIN_PREFIX, DEVICES_VIRTUAL_TYPE } from '../../devices-virtual.constants';
 
 import type {
@@ -328,6 +332,21 @@ interface IChannelConstraints {
 
 const channelConstraints = (specChannel: DevicesModuleChannelCategory): IChannelConstraints => {
 	const spec = (channelsSchema as unknown as Record<string, { constraints?: IChannelConstraints }>)[specChannel];
+
+	return spec?.constraints ?? {};
+};
+
+// The device spec constrains which *channels* may appear together, independently of what each channel
+// requires internally — `switcher` needs at least one of `outlet`/`switcher` and refuses both at once.
+// Same three kinds, one level up, and the backend enforces them the same way.
+interface IDeviceConstraints {
+	oneOf?: DevicesModuleChannelCategory[][];
+	oneOrMoreOf?: DevicesModuleChannelCategory[][];
+	mutuallyExclusiveGroups?: DevicesModuleChannelCategory[][][];
+}
+
+const deviceConstraints = (category: DevicesModuleDeviceCategory): IDeviceConstraints => {
+	const spec = (devicesSchema as unknown as Record<string, { constraints?: IDeviceConstraints }>)[category];
 
 	return spec?.constraints ?? {};
 };
@@ -453,6 +472,53 @@ const progressPercentage = computed<number>((): number => {
 const constraintViolations = computed<{ specChannel: DevicesModuleChannelCategory; message: string }[]>(
 	(): { specChannel: DevicesModuleChannelCategory; message: string }[] => {
 		const violations: { specChannel: DevicesModuleChannelCategory; message: string }[] = [];
+
+		// Which channels the user has actually put something in. A channel with no mapping is absent
+		// from the create payload entirely, so the device-level rules below judge exactly this set.
+		const usedChannels = groups.value
+			.filter((group): boolean => group.slots.some((slot): boolean => typeof selections[slot.key] === 'string'))
+			.map((group): DevicesModuleChannelCategory => group.specChannel);
+
+		if (props.category !== null && usedChannels.length > 0) {
+			const constraints = deviceConstraints(props.category);
+
+			for (const oneOrMore of constraints.oneOrMoreOf ?? []) {
+				if (!oneOrMore.some((channel): boolean => usedChannels.includes(channel))) {
+					violations.push({
+						specChannel: oneOrMore[0],
+						message: t('devicesVirtualPlugin.wizard.mapping.constraints.deviceOneOrMoreOf', {
+							channels: oneOrMore.map((channel): string => t(`devicesModule.categories.channels.${channel}`)).join(', '),
+						}),
+					});
+				}
+			}
+
+			for (const exclusive of constraints.oneOf ?? []) {
+				if (exclusive.filter((channel): boolean => usedChannels.includes(channel)).length > 1) {
+					violations.push({
+						specChannel: exclusive[0],
+						message: t('devicesVirtualPlugin.wizard.mapping.constraints.deviceOneOf', {
+							channels: exclusive.map((channel): string => t(`devicesModule.categories.channels.${channel}`)).join(', '),
+						}),
+					});
+				}
+			}
+
+			for (const exclusiveGroups of constraints.mutuallyExclusiveGroups ?? []) {
+				const used = exclusiveGroups.filter((members): boolean => members.some((channel): boolean => usedChannels.includes(channel)));
+
+				if (used.length > 1) {
+					violations.push({
+						specChannel: used[0][0],
+						message: t('devicesVirtualPlugin.wizard.mapping.constraints.deviceMutuallyExclusive', {
+							groups: used
+								.map((members): string => members.map((channel): string => t(`devicesModule.categories.channels.${channel}`)).join(' + '))
+								.join(' / '),
+						}),
+					});
+				}
+			}
+		}
 
 		for (const group of groups.value) {
 			const filled = group.slots
@@ -976,9 +1042,16 @@ watch(mappings, (value: IVirtualSlotMapping[]): void => emit('update:modelValue'
 watch(isValid, (value: boolean): void => emit('update:valid', value), { immediate: true });
 
 onBeforeMount((): void => {
-	// No `hidden` filter on the fetch: this store is shared with the device list, whose "Show hidden"
-	// toggle must keep working. Hidden devices are excluded from the picker in `sourceDevicesOptions`.
-	devicesStore.fetch().catch((error: unknown): void => logger.error('Failed to load source devices', error));
+	// Asks for `all`, and must: the endpoint treats an omitted filter as "visible only", so a bare
+	// fetch would replace the shared collection with visible devices and silently undo the
+	// system-hidden exception in `sourceDevicesOptions` below — the picker would keep a part-split
+	// source only when some other screen happened to have loaded hidden rows first.
+	//
+	// Widening the fetch is safe for the device list that shares this store: its own "Show hidden"
+	// toggle filters the collection it renders rather than relying on what was fetched.
+	devicesStore
+		.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all })
+		.catch((error: unknown): void => logger.error('Failed to load source devices', error));
 });
 
 defineExpose({
