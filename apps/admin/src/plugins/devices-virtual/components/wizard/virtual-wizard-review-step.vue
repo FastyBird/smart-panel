@@ -321,10 +321,7 @@ interface IDataTypeVariant {
 // one variant, or when the source's data type is not among them — the latter cannot normally happen,
 // since the compatibility check would have refused the pairing, but a stale preview is exactly the
 // case this whole guard family exists for.
-const matchingDataTypeVariant = (
-	mapping: IVirtualSlotMapping & { sourceProperty: string },
-	fallbackDataType: DevicesModuleChannelPropertyDataType
-): IDataTypeVariant => {
+const matchingDataTypeVariant = (mapping: IVirtualSlotMapping & { sourceProperty: string }, collapsed: IDataTypeVariant): IDataTypeVariant => {
 	const sourceDataType = propertiesStore.findById(mapping.sourceProperty)?.dataType ?? null;
 
 	const channelSpec = (
@@ -335,7 +332,11 @@ const matchingDataTypeVariant = (
 
 	const matched = sourceDataType === null ? undefined : rawProperty?.data_types?.find((candidate) => candidate.data_type === sourceDataType);
 
-	return matched ?? { data_type: fallbackDataType, format: undefined, step: undefined };
+	// Falls back to the *whole* collapsed specification, not just its data type. Most slots declare a
+	// single `data_type` and no `data_types` array at all, so this branch is the common one — dropping
+	// the format and step here sent them as null for every such property, and a constrained slot like
+	// `electrical_power.power` is then refused at creation for declaring no range.
+	return matched ?? collapsed;
 };
 
 const buildPropertyPayload = (mapping: IVirtualSlotMapping & { sourceProperty: string }): DevicesVirtualPluginCreateChannelPropertySchema | null => {
@@ -352,7 +353,11 @@ const buildPropertyPayload = (mapping: IVirtualSlotMapping & { sourceProperty: s
 	// compatibility check accepts *any* variant, so an enum-valued source passes and would then be
 	// stored as the numeric variant, format and step included. The projected strings would be exposed
 	// through a property declaring itself numeric. Pick the variant the source actually speaks.
-	const variant = matchingDataTypeVariant(mapping, specification.data_type);
+	const variant = matchingDataTypeVariant(mapping, {
+		data_type: specification.data_type,
+		format: specification.format ?? undefined,
+		step: specification.step ?? undefined,
+	});
 
 	return {
 		type: DEVICES_VIRTUAL_TYPE,

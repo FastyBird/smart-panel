@@ -378,6 +378,27 @@ describe('VirtualWizardReviewStep', () => {
 	// check accepts either, so an enum-valued source passes and, if the payload always took the first
 	// variant, would be stored as numeric with that variant's format and step. The projected strings
 	// would then be exposed through a property calling itself a number.
+	// Most slots declare a single `data_type` and no variant array, so the fallback is the common path.
+	// Dropping the collapsed format and step there sent both as null, and the backend refuses a
+	// constrained slot whose projection declares no range — `electrical_power.power` is `[0, 10000]`.
+	it('keeps the format and step of a single-data-type slot', async () => {
+		const { wrapper } = mountReviewStep({
+			mappings: [mapping(DevicesModuleChannelCategory.electrical_power, DevicesModuleChannelPropertyCategory.power, PROPERTY_POWER)],
+		});
+
+		await wrapper.get('[data-test-id="create-device"]').trigger('click');
+		await flushAsync();
+
+		const [, options] = (backendClient.POST as Mock).mock.calls[0] as [
+			string,
+			{ body: { data: { channels: { properties: { category: string; format: unknown }[] }[] } } },
+		];
+
+		const power = options.body.data.channels[0].properties.find((property) => property.category === DevicesModuleChannelPropertyCategory.power);
+
+		expect(power?.format).not.toBeNull();
+	});
+
 	it('stores the spec variant matching the source data type, not the first one', async () => {
 		const enumSourceId = 'property-enum-brightness';
 
