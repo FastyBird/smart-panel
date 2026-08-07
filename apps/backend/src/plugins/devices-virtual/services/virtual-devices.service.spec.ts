@@ -447,6 +447,44 @@ describe('VirtualDevicesService', () => {
 		// The range says which values are legal; the step says which of them exist. A slot stepping by 1
 		// can be commanded with 43, and a source stepping by 5 cannot take it — the command passes
 		// validation against the virtual property and is forwarded unchanged.
+		// A grid is a width and an origin. `fan.speed`'s percentage variant steps by 1 from 0, so a source
+		// stepping by the same 1 but from 0.5 sits inside the range and still never lands on a single one
+		// of the slot's values — the widths match exactly and the two accept disjoint sets.
+		it('refuses a numeric source whose grid is offset from the slot', () => {
+			const offsetSource = property({
+				id: 'offset-grid',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.UCHAR,
+				format: [0.5, 99.5],
+				step: 1,
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.FAN, channel: ChannelCategory.FAN, property: PropertyCategory.SPEED },
+				offsetSource,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('grid');
+		});
+
+		it('accepts a numeric source sharing the slot grid', () => {
+			const alignedSource = property({
+				id: 'aligned-grid',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.UCHAR,
+				format: [0, 100],
+				step: 1,
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.FAN, channel: ChannelCategory.FAN, property: PropertyCategory.SPEED },
+				alignedSource,
+			);
+
+			expect(report.compatible).toBe(true);
+		});
+
 		it('refuses a numeric source whose step grid cannot take every command', () => {
 			const coarseSource = property({
 				id: 'coarse-step',

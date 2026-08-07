@@ -48,7 +48,14 @@ const normalizeNumber = (value: unknown): number | null => {
 	return Number.isFinite(normalized) ? normalized : null;
 };
 
-const matchesStep = (value: number, step: number, base: number): boolean => {
+/**
+ * Whether `value` sits on the grid `step` describes starting from `base`.
+ *
+ * Exported because the virtual-devices compatibility check has to answer the same question about a
+ * *source's* grid against a slot's, and a second implementation of it would be free to disagree with
+ * the one that actually validates commands.
+ */
+export const matchesStep = (value: number, step: number, base: number): boolean => {
 	const quotient = (value - base) / step;
 	const nearest = Math.round(quotient);
 	const tolerance = Number.EPSILON * Math.max(1, Math.abs(quotient)) * 16;

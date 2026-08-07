@@ -10,6 +10,7 @@ import { ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/en
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { matchesStep } from '../../../modules/devices/utils/property-command-value.utils';
 import { getAllProperties, isChannelAllowed, isValidDataType } from '../../../modules/devices/utils/schema.utils';
 import { DEVICES_VIRTUAL_TYPE, VIRTUAL_BLOCKED_CATEGORIES } from '../devices-virtual.constants';
 import {
@@ -477,14 +478,28 @@ export class VirtualDevicesService {
 			const actualStep = sourceProperty.step as unknown;
 
 			if (typeof expectedStep === 'number' && typeof actualStep === 'number' && expectedStep > 0 && actualStep > 0) {
-				// Every value the source can report has to land on the slot's grid.
-				if (actualStep % expectedStep !== 0) {
-					return `Source property id=${sourceProperty.id} steps by ${actualStep}, which does not land on the ${expectedStep} grid ${slotName} defines`;
+				// A grid is a width *and* an origin. `matchesStep` — the same helper that validates an
+				// incoming command — measures from `format[0]`, so two grids of equal width sitting half a
+				// step apart accept entirely disjoint value sets: an accelerometer reporting
+				// [-15.9995, 15.9995] by 0.001 never lands on a [-16, 16] slot's grid, even though the
+				// widths match exactly. Asked through that helper rather than by remainder arithmetic,
+				// which would also be wrong for floats — it carries the tolerance the validator uses.
+				//
+				// Every value the source can report has to land on the slot's grid: that holds when the
+				// source's own origin does and its width is a whole number of the slot's steps.
+				const sourceOriginOnSlotGrid = matchesStep(actualMin, expectedStep, expectedMin);
+
+				if (!sourceOriginOnSlotGrid || !matchesStep(expectedMin + actualStep, expectedStep, expectedMin)) {
+					return `Source property id=${sourceProperty.id} steps by ${actualStep} from ${actualMin}, which does not land on the ${expectedStep} grid ${slotName} defines from ${expectedMin}`;
 				}
 
 				// And every value the slot may be commanded with has to land on the source's.
-				if (slotWritable && expectedStep % actualStep !== 0) {
-					return `Source property id=${sourceProperty.id} steps by ${actualStep}, so it cannot accept every value ${slotName} may be commanded with (it steps by ${expectedStep})`;
+				if (
+					slotWritable &&
+					(!matchesStep(expectedMin, actualStep, actualMin) ||
+						!matchesStep(actualMin + expectedStep, actualStep, actualMin))
+				) {
+					return `Source property id=${sourceProperty.id} steps by ${actualStep} from ${actualMin}, so it cannot accept every value ${slotName} may be commanded with (it steps by ${expectedStep} from ${expectedMin})`;
 				}
 			}
 

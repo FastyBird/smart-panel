@@ -1675,6 +1675,11 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			await driveUntil(() => devicesStub.update.mock.calls.length > 0);
 
+			// Same reason as the case below: `update` writes to the real database asynchronously, so the
+			// call being recorded is not the write having landed, and the row read underneath was racing
+			// it.
+			await Promise.all(devicesStub.update.mock.results.map((result): unknown => result.value).filter(Boolean));
+
 			await expect(countLinks()).resolves.toBe(0);
 			await expect(readHidden('source-device')).resolves.toBe(0);
 		});
@@ -1711,6 +1716,11 @@ describe('VirtualIndexMaintenanceListener', () => {
 			// intermittently on CI. The step budget still bounds it, so a genuinely broken repair loop
 			// exhausts the budget and fails rather than hanging.
 			await driveUntil(() => flagAtRebuild.length >= 4 && devicesStub.update.mock.calls.length > 0, 1000);
+
+			// `update` writes to the real database and is async, so the call being *recorded* is not the
+			// write having *landed* — asserting straight after the predicate read a device that was still
+			// hidden. Settling the recorded calls is what makes the row read below deterministic.
+			await Promise.all(devicesStub.update.mock.results.map((result): unknown => result.value).filter(Boolean));
 
 			// One pass plus MAX_REPAIR_PASSES repairs, none of which could settle, and then the queue is
 			// released rather than held forever: a hidden device with no replacement and no route back
