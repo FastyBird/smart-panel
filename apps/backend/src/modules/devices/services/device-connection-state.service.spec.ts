@@ -53,10 +53,28 @@ describe('DeviceConnectionStateService', () => {
 		await expect(service.readLatestManyStrict([{ id: 'device-a' }])).rejects.toThrow('storage is unavailable');
 	});
 
+	it('returns unknown statuses for best-effort batch reads when storage is disconnected', async () => {
+		storageService.isConnected.mockReturnValue(false);
+
+		const result = await service.readLatestMany([{ id: 'device-a' }, { id: 'device-b' }]);
+
+		expect(result.get('device-a')).toEqual(expect.objectContaining({ online: false, status: ConnectionState.UNKNOWN }));
+		expect(result.get('device-b')).toEqual(expect.objectContaining({ online: false, status: ConnectionState.UNKNOWN }));
+		expect(storageService.queryStrict).not.toHaveBeenCalled();
+	});
+
 	it('propagates strict storage query failures', async () => {
 		storageService.queryStrict.mockRejectedValue(new Error('database detail'));
 
 		await expect(service.readLatestStrict({ id: 'device-a' })).rejects.toThrow('database detail');
 		await expect(service.readLatestManyStrict([{ id: 'device-b' }])).rejects.toThrow('database detail');
+	});
+
+	it('returns unknown statuses for best-effort batch query failures', async () => {
+		storageService.queryStrict.mockRejectedValue(new Error('database detail'));
+
+		const result = await service.readLatestMany([{ id: 'device-a' }]);
+
+		expect(result.get('device-a')).toEqual(expect.objectContaining({ online: false, status: ConnectionState.UNKNOWN }));
 	});
 });

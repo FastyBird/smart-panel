@@ -2,6 +2,7 @@ import { ExtensionLoggerService } from '../../../common/logger';
 import {
 	IToolProvider,
 	LlmToolCall,
+	ToolAccessKind,
 	ToolDefinition,
 	ToolExecutionContext,
 	ToolExecutionResult,
@@ -15,7 +16,7 @@ class ToolExecutionTimeoutError extends Error {}
 
 /**
  * Abstract base class for tool providers that handles common boilerplate:
- * logging, error wrapping, and timeout enforcement via Promise.race.
+ * logging, error wrapping, and timeout enforcement for read-only calls.
  *
  * Subclasses implement `getType()`, `getToolDefinitions()`, and the
  * domain-specific `handleToolCall()` method.
@@ -74,7 +75,10 @@ export abstract class BaseToolProviderService implements IToolProvider {
 		);
 
 		try {
-			const result = await this.executeWithTimeout(toolCall, context);
+			const result =
+				definition.access === ToolAccessKind.READ
+					? await this.executeWithTimeout(toolCall, context)
+					: await this.handleToolCall(toolCall, context);
 
 			this.logger.debug(`Tool ${toolCall.name} completed: ${result?.status ?? ToolExecutionStatus.FAILED}`);
 

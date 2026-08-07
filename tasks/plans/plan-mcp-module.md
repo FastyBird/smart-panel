@@ -1,6 +1,6 @@
 # Smart Panel MCP Module — Implementation Plan
 
-**Status:** Phase 5 complete — Phase 6 pending
+**Status:** Phase 6 complete — Phase 7 pending
 
 **Architecture decision:** [ADR 0001: MCP Protocol and Security Foundation](../../docs/adr/0001-mcp-protocol-and-security-foundation.md)
 supersedes the original stateful-session transport assumptions in this plan.
@@ -487,13 +487,19 @@ limits, output schema validation, and read-disabled behavior.
 - Create: `apps/backend/src/modules/mcp/tools/mcp-target-discovery-tool.service.ts`
 - Add specs
 
-- [ ] Implement `list_writable_properties` and classify it as `write`.
-- [ ] Return only writable properties with the identifiers and validation metadata needed by
+- [x] Implement `list_writable_properties` and classify it as `write`.
+- [x] Return only writable properties with the identifiers and validation metadata needed by
       `set_device_property`.
-- [ ] Implement `list_trigger_targets` and classify it as `trigger`.
-- [ ] Return only enabled/supported scenes, spaces, and modes needed by the initial trigger tools.
-- [ ] Make both discovery tools usable when `read` is disabled.
-- [ ] Do not include unrelated state, history, credentials, configuration, or hidden/disabled targets.
+- [x] Implement `list_trigger_targets` and classify it as `trigger`.
+- [x] Return only enabled/supported scenes, spaces, and modes needed by the initial trigger tools.
+- [x] Make both discovery tools usable when `read` is disabled.
+- [x] Do not include unrelated state, history, credentials, configuration, or hidden/disabled targets.
+
+**Outcome:** Write-only clients now receive a bounded list of enabled, visible, writable properties without current
+state, and can invoke the public `set_device_property` adapter through the shared validated device-control provider.
+Trigger-only clients receive enabled triggerable scenes plus spaces backed by writable lighting targets, and can invoke
+the existing scene and optional space-lighting providers. Known disconnected devices, read-only properties, disabled
+scenes, unsupported spaces, and absent optional providers are excluded without requiring the `read` capability.
 
 **Tests:** write-only, trigger-only, disconnected devices, read-only properties, disabled scenes, spaces without lighting,
 and optional home-control plugin absence.

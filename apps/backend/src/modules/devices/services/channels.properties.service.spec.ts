@@ -22,6 +22,7 @@ import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyValueState } from '../models/property-value-state.model';
+import { SUPPORTED_PROPERTY_COMMAND_DATA_TYPES } from '../utils/property-command-value.utils';
 
 import { ChannelsPropertiesTypeMapperService } from './channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from './channels.properties.service';
@@ -235,6 +236,40 @@ describe('ChannelsPropertiesService', () => {
 			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('property.channel', 'channel');
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('channel.id = :channelId', { channelId: mockChannel.id });
 			expect(queryBuilderMock.getMany).toHaveBeenCalled();
+		});
+	});
+
+	describe('findWritableCandidates', () => {
+		it('bounds candidates and filters hidden, disabled, and non-writable targets in the query', async () => {
+			const queryBuilder = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				addOrderBy: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				skip: jest.fn().mockReturnThis(),
+				getManyAndCount: jest.fn().mockResolvedValue([[mockChannelProperty], 125]),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilder as never);
+
+			await expect(channelsPropertiesService.findWritableCandidates(100)).resolves.toEqual({
+				properties: [mockChannelProperty],
+				total: 125,
+			});
+			expect(queryBuilder.where).toHaveBeenCalledWith('device.enabled = :enabled', { enabled: true });
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('device.hidden = :hidden', { hidden: false });
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('property.dataType IN (:...supportedDataTypes)', {
+				supportedDataTypes: SUPPORTED_PROPERTY_COMMAND_DATA_TYPES,
+			});
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+				expect.stringContaining('property.permissions'),
+				expect.objectContaining({ readWrite: PermissionType.READ_WRITE, writeOnly: PermissionType.WRITE_ONLY }),
+			);
+			expect(queryBuilder.callListeners).toHaveBeenCalledWith(false);
+			expect(queryBuilder.take).toHaveBeenCalledWith(100);
+			expect(queryBuilder.skip).toHaveBeenCalledWith(0);
 		});
 	});
 
