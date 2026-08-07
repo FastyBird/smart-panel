@@ -299,6 +299,35 @@ describe('VirtualDevicesService', () => {
 			).resolves.toBeUndefined();
 		});
 
+		// The rendered message embeds the category being validated, so the *same* defect reads differently
+		// on each side — "…for device category 'lighting'" against "…for device category 'switcher'".
+		// Keying identity on the text would call that pair two different issues and refuse a move that
+		// added nothing, which is the blanket ban the diff exists to avoid, reintroduced by wording.
+		it('ignores a channel that was already unknown under the old category', async () => {
+			givenValidation(
+				[
+					{
+						type: ValidationIssueType.UNKNOWN_CHANNEL,
+						severity: ValidationIssueSeverity.WARNING,
+						channelCategory: ChannelCategory.LIGHT,
+						message: "Channel category 'light' is not defined in specification for device category 'switcher'",
+					},
+				],
+				[
+					{
+						type: ValidationIssueType.UNKNOWN_CHANNEL,
+						severity: ValidationIssueSeverity.WARNING,
+						channelCategory: ChannelCategory.LIGHT,
+						message: "Channel category 'light' is not defined in specification for device category 'lighting'",
+					},
+				],
+			);
+
+			await expect(
+				service.assertCategoryChangeSafe(device(DeviceCategory.SWITCHER), DeviceCategory.LIGHTING),
+			).resolves.toBeUndefined();
+		});
+
 		// The other half of the same rule: a pre-existing complaint travelling along must not mask a new
 		// one arriving beside it.
 		it('refuses when the move adds a complaint beside one the device already had', async () => {

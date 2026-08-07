@@ -94,8 +94,44 @@ describe('VirtualIndexMaintenanceListener', () => {
 	// second phase, and the repair delay). Nothing here is a race — every step is a discrete,
 	// deterministic advance, and the loop stops the moment `predicate` holds, so a test only ever runs as
 	// far as the behaviour it asserts on.
-	const driveUntil = async (predicate: () => boolean, maxSteps = 600): Promise<void> => {
-		for (let step = 0; step < maxSteps && !predicate(); step++) {
+	/**
+	 * Turns the event loop until `predicate` holds, advancing fake time as it goes.
+	 *
+	 * Bounded by *real elapsed time*, not by a turn count. A turn here is microseconds, and what these
+	 * tests actually wait on is real sqlite I/O on a threadpool — so a 600-turn budget was a few
+	 * milliseconds of wall-clock: ample on an idle laptop, and short enough on a loaded CI runner that
+	 * the emitting transaction had not even reached its first statement before the loop gave up, leaving
+	 * the listener never invoked and the assertion reading an empty array. That is the same lesson
+	 * `TRANSACTION_SETTLE_TIMER_POLLS` records on the listener's own wait, in the same failure mode.
+	 *
+	 * `process.hrtime` is left unfaked (see the `doNotFake` lists below) precisely so this clock is the
+	 * real one while `Date` and the timers around it are not. The budget is only ever spent in full when
+	 * the predicate never holds — a failing test — so the cost is paid on failures, not on passes, and it
+	 * sits below jest's own 5s limit so such a test reports its assertion rather than a bare timeout.
+	 *
+	 * Only for waits that expect the predicate to *become* true. A wait that expects nothing further to
+	 * happen would spend the whole budget every run; use `driveFor` for those.
+	 */
+	const driveUntil = async (predicate: () => boolean, budgetMs = 3000): Promise<void> => {
+		const startedAt = process.hrtime.bigint();
+		const elapsedMs = (): number => Number(process.hrtime.bigint() - startedAt) / 1e6;
+
+		while (!predicate() && elapsedMs() < budgetMs) {
+			await new Promise<void>((resolve) => setImmediate(resolve));
+			await jest.advanceTimersByTimeAsync(50);
+		}
+	};
+
+	/**
+	 * Advances a fixed span of fake time, turning the event loop as it goes.
+	 *
+	 * The instrument for the negative assertions — "and then it stays put" — which have no predicate to
+	 * wait for and would otherwise spend `driveUntil`'s entire real-time budget on every green run.
+	 * Bounding those in *virtual* time is also the more honest claim: what they assert is that no timer
+	 * scheduled within the next N milliseconds fires, and that is exactly what this advances past.
+	 */
+	const driveFor = async (virtualMs: number): Promise<void> => {
+		for (let advanced = 0; advanced < virtualMs; advanced += 50) {
 			await new Promise<void>((resolve) => setImmediate(resolve));
 			await jest.advanceTimersByTimeAsync(50);
 		}
@@ -1260,7 +1296,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 			// `setImmediate` stays real so the wait's first phase runs at its natural pace; only the
 			// timers its second phase and the repair delay use are faked, which is what collapses a
 			// multi-second wait into an instant, repeatable test.
-			jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] });
+			jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick', 'hrtime'] });
 
 			loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
 			loggerErrorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
@@ -1347,8 +1383,9 @@ describe('VirtualIndexMaintenanceListener', () => {
 			expect(flagAtRebuild).toEqual([true, true, true, true]);
 			expect(loggedMessages(loggerErrorSpy)).toContainEqual(expect.stringContaining('repair pass'));
 
-			// And then it stays put rather than rebuilding on a timer for the life of the process.
-			await driveUntil(() => flagAtRebuild.length > 4, 200);
+			// And then it stays put rather than rebuilding on a timer for the life of the process. Driven
+			// well past REPAIR_PASS_DELAY_MS so a fifth pass would have had every chance to fire.
+			await driveFor(2000);
 
 			expect(flagAtRebuild).toHaveLength(4);
 		});
@@ -1619,7 +1656,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 			// arrives through libuv's I/O phase rather than a timer — runs at its natural pace. Only the
 			// wait's second phase and the repair delay are faked, which is what collapses a multi-second
 			// wait into an instant, repeatable test.
-			jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] });
+			jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick', 'hrtime'] });
 		});
 
 		afterEach(() => {

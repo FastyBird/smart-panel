@@ -193,18 +193,24 @@ export class VirtualDevicesService {
 		// channel stays attached to a slot the new category never defines, which `reportCompatibility`
 		// would refuse on sight — and `UNKNOWN_CHANNEL` is warning-severity, as are `DUPLICATE_CHANNEL`,
 		// `INVALID_DATA_TYPE` and `INVALID_PERMISSIONS`.
-		const describe = (issue: ValidationIssue): string =>
-			`${issue.type}|${issue.channelCategory ?? ''}|${issue.propertyCategory ?? ''}|${issue.message}`;
+		// Identity is the structured fields only. `message` and `expected` are both *rendered against the
+		// category being validated* — "…is not defined in specification for device category 'generic'"
+		// against "…for device category 'switcher'" — so keying on either would make a defect the device
+		// already had look newly introduced purely because the sentence changed, and the diff would
+		// collapse back into the blanket ban it exists to avoid. Type, channel and property say which
+		// defect it is; the rendered text is kept for the operator, not for the comparison.
+		const identify = (issue: ValidationIssue): string =>
+			`${issue.type}|${issue.channelCategory ?? ''}|${issue.propertyCategory ?? ''}`;
 
 		const before = new Set(
 			this.deviceValidationService
 				.validateDeviceStructure({ category: previousCategory, channels: structure })
-				.issues.map(describe),
+				.issues.map(identify),
 		);
 
 		const introduced = this.deviceValidationService
 			.validateDeviceStructure({ category: device.category, channels: structure })
-			.issues.filter((issue) => !before.has(describe(issue)));
+			.issues.filter((issue) => !before.has(identify(issue)));
 
 		if (introduced.length === 0) {
 			return;
