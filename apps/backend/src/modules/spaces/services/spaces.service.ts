@@ -17,6 +17,7 @@ import {
 	PropertyCategory,
 } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
+import { DeviceConnectionStateService } from '../../devices/services/device-connection-state.service';
 import { DeviceZonesService } from '../../devices/services/device-zones.service';
 import {
 	DevicesService,
@@ -82,6 +83,7 @@ export class SpacesService {
 		private readonly deviceZonesService: DeviceZonesService,
 		private readonly devicesService: DevicesService,
 		private readonly platformRegistryService: PlatformRegistryService,
+		private readonly deviceConnectionStateService: DeviceConnectionStateService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly spacesTypeMapper: SpacesTypeMapperService,
@@ -119,6 +121,24 @@ export class SpacesService {
 			return { spaces: [], total: 0 };
 		}
 
+		const candidateDevices = await this.deviceRepository
+			.createQueryBuilder('device')
+			.select('device.id')
+			.where('device.enabled = :enabled', { enabled: true })
+			.andWhere('device.hidden = :hidden', { hidden: false })
+			.andWhere('device.category = :deviceCategory', { deviceCategory: DeviceCategory.LIGHTING })
+			.andWhere('device.type IN (:...registeredDeviceTypes)', { registeredDeviceTypes })
+			.callListeners(false)
+			.getMany();
+		const statuses = await this.deviceConnectionStateService.readLatestMany(candidateDevices);
+		const onlineDeviceIds = candidateDevices
+			.filter((device) => statuses.get(device.id)?.online === true)
+			.map((device) => device.id);
+
+		if (onlineDeviceIds.length === 0) {
+			return { spaces: [], total: 0 };
+		}
+
 		const writablePermissionPredicate =
 			'(property.permissions = :readWrite OR property.permissions = :writeOnly ' +
 			'OR property.permissions LIKE :readWriteFirst OR property.permissions LIKE :readWriteMiddle ' +
@@ -136,6 +156,7 @@ export class SpacesService {
 					WHERE device.enabled = :enabled
 						AND device.hidden = :hidden
 						AND device.type IN (:...registeredDeviceTypes)
+						AND device.id IN (:...onlineDeviceIds)
 						AND device.category = :deviceCategory
 						AND channel.category = :channelCategory
 						AND property.category = :propertyCategory
@@ -156,6 +177,7 @@ export class SpacesService {
 					enabled: true,
 					hidden: false,
 					registeredDeviceTypes,
+					onlineDeviceIds,
 					deviceCategory: DeviceCategory.LIGHTING,
 					channelCategory: ChannelCategory.LIGHT,
 					propertyCategory: PropertyCategory.ON,

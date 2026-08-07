@@ -267,29 +267,35 @@ export class McpTargetDiscoveryToolService {
 		args: Record<string, unknown>,
 		ctx: ServerContext,
 	) {
-		return this.runTool(publicName, capability, ctx, async (policy) => {
-			if (providerName === 'control_device' && !(await this.isAvailableDeviceProperty(args.property_id))) {
-				return this.toProviderToolData(capability, {
-					success: false,
-					status: ToolExecutionStatus.DENIED,
-					message: 'Device property is unavailable',
-					errorCode: 'DEVICE_PROPERTY_NOT_FOUND',
-				});
-			}
+		return this.runTool(
+			publicName,
+			capability,
+			ctx,
+			async (policy) => {
+				if (providerName === 'control_device' && !(await this.isAvailableDeviceProperty(args.property_id))) {
+					return this.toProviderToolData(capability, {
+						success: false,
+						status: ToolExecutionStatus.DENIED,
+						message: 'Device property is unavailable',
+						errorCode: 'DEVICE_PROPERTY_NOT_FOUND',
+					});
+				}
 
-			const result = await this.toolRegistry.executeTool(
-				{ id: String(ctx.mcpReq.id), name: providerName, arguments: args },
-				{
-					audience: ToolAudience.MCP,
-					source: 'mcp',
-					actorId: policy.client.id,
-					requestId: String(ctx.mcpReq.id),
-					allowedAccessKinds: [access],
-				},
-			);
+				const result = await this.toolRegistry.executeTool(
+					{ id: String(ctx.mcpReq.id), name: providerName, arguments: args },
+					{
+						audience: ToolAudience.MCP,
+						source: 'mcp',
+						actorId: policy.client.id,
+						requestId: String(ctx.mcpReq.id),
+						allowedAccessKinds: [access],
+					},
+				);
 
-			return this.toProviderToolData(capability, result);
-		});
+				return this.toProviderToolData(capability, result);
+			},
+			null,
+		);
 	}
 
 	private async runTool(
@@ -297,6 +303,7 @@ export class McpTargetDiscoveryToolService {
 		capability: McpCapability,
 		ctx: ServerContext,
 		callback: (policy: Awaited<ReturnType<McpPolicyService['authorizeClient']>>) => Promise<ToolData>,
+		timeoutMs: number | null = MCP_TOOL_CALL_TIMEOUT_MS,
 	): Promise<{
 		content: Array<{ type: 'text'; text: string }>;
 		structuredContent: ToolEnvelope;
@@ -306,19 +313,19 @@ export class McpTargetDiscoveryToolService {
 		let installation = this.getInstallationFallback(ctx);
 
 		try {
-			const execution = await withTimeout(
-				Promise.resolve().then(async () => {
-					const policy = await this.authorize(ctx, capability);
-					const liveInstallation = await this.contextService.getInstallation(
-						policy.effectiveCapabilities,
-						this.getEndpoint(ctx.http?.authInfo),
-					);
+			const executionPromise = Promise.resolve().then(async () => {
+				const policy = await this.authorize(ctx, capability);
+				const liveInstallation = await this.contextService.getInstallation(
+					policy.effectiveCapabilities,
+					this.getEndpoint(ctx.http?.authInfo),
+				);
 
-					return { installation: liveInstallation, result: await callback(policy) };
-				}),
-				MCP_TOOL_CALL_TIMEOUT_MS,
-				`MCP tool ${tool}`,
-			);
+				return { installation: liveInstallation, result: await callback(policy) };
+			});
+			const execution =
+				timeoutMs === null
+					? await executionPromise
+					: await withTimeout(executionPromise, timeoutMs, `MCP tool ${tool}`);
 			installation = execution.installation;
 			const structuredContent: ToolEnvelope = {
 				installation,

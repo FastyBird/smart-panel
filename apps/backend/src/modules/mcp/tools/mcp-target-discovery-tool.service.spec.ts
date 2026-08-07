@@ -19,7 +19,7 @@ import { SpacesService } from '../../spaces/services/spaces.service';
 import { SpaceType } from '../../spaces/spaces.constants';
 import { ToolAccessKind, ToolAudience, ToolExecutionStatus } from '../../tools/platforms/tool-provider.platform';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
-import { McpCapability } from '../mcp.constants';
+import { MCP_TOOL_CALL_TIMEOUT_MS, McpCapability } from '../mcp.constants';
 import { McpContextService } from '../services/mcp-context.service';
 import { McpPolicyService } from '../services/mcp-policy.service';
 
@@ -236,6 +236,50 @@ describe('McpTargetDiscoveryToolService', () => {
 		);
 		expect(result?.isError).toBeUndefined();
 		expect(result?.structuredContent.tool).toBe('set_device_property');
+	});
+
+	it('waits for an authoritative provider result after a side effect has started', async () => {
+		jest.useFakeTimers();
+
+		try {
+			providerTools = [providerTool('control_device', ToolAccessKind.WRITE)];
+			const target = property('10000000-0000-4000-8000-000000000001', PermissionType.READ_WRITE);
+			channelsPropertiesService.findOne.mockResolvedValue(target);
+			let resolveExecution: (result: {
+				success: boolean;
+				status: ToolExecutionStatus;
+				message: string;
+				data: Record<string, unknown>;
+			}) => void = () => undefined;
+			const execution = new Promise<{
+				success: boolean;
+				status: ToolExecutionStatus;
+				message: string;
+				data: Record<string, unknown>;
+			}>((resolve) => {
+				resolveExecution = resolve;
+			});
+			toolRegistry.executeTool.mockReturnValue(execution);
+			service.register(server(), authInfo([McpCapability.WRITE]));
+
+			const resultPromise = callbacks.get('set_device_property')?.(
+				{ property_id: target.id, value: true },
+				requestContext([McpCapability.WRITE]),
+			);
+			await jest.advanceTimersByTimeAsync(MCP_TOOL_CALL_TIMEOUT_MS + 1);
+			resolveExecution({
+				success: true,
+				status: ToolExecutionStatus.COMPLETED,
+				message: 'Property updated',
+				data: { property_id: target.id, value: true },
+			});
+
+			const result = await resultPromise;
+			expect(result?.isError).toBeUndefined();
+			expect(result?.structuredContent.data).toEqual(expect.objectContaining({ property_id: target.id, value: true }));
+		} finally {
+			jest.useRealTimers();
+		}
 	});
 
 	it.each([
