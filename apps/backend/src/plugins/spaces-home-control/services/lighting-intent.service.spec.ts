@@ -180,6 +180,25 @@ describe('LightingIntentService', () => {
 		);
 	});
 
+	it('does not control hidden or disabled lighting devices', async () => {
+		const visibleDevice = createMockDeviceWithLightChannel('visible-device', true, ConnectionState.CONNECTED);
+		const hiddenDevice = createMockDeviceWithLightChannel('hidden-device', true, ConnectionState.CONNECTED);
+		const disabledDevice = createMockDeviceWithLightChannel('disabled-device', true, ConnectionState.CONNECTED);
+		Object.assign(visibleDevice, { enabled: true, hidden: false });
+		Object.assign(hiddenDevice, { enabled: true, hidden: true });
+		Object.assign(disabledDevice, { enabled: false, hidden: false });
+		spacesService.findDevicesBySpace.mockResolvedValue([
+			visibleDevice,
+			hiddenDevice,
+			disabledDevice,
+		] as unknown as DeviceEntity[]);
+
+		const result = await service.executeLightingIntent(mockSpaceId, { type: LightingIntentType.ON });
+
+		expect(result?.affectedDevices).toBe(1);
+		expect(mockPlatform.processBatch).toHaveBeenCalledTimes(1);
+	});
+
 	describe('offline device handling', () => {
 		it('skips offline devices and reports them in result', async () => {
 			const onlineDevice = createMockDeviceWithLightChannel('online-device', true, ConnectionState.CONNECTED);

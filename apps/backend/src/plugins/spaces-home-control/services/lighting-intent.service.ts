@@ -681,7 +681,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 	/**
 	 * Find all light devices in a space with their channels, properties, and roles.
 	 * Iterates ALL light channels per device (multi-channel devices have multiple outputs).
-	 * Excludes lights with HIDDEN role as they should not be controlled by intents.
+	 * Excludes disabled/hidden devices and lights with HIDDEN role as they should not be controlled by intents.
 	 */
 	private async getLightsInSpace(spaceId: string): Promise<LightDevice[]> {
 		const devices = await this.spacesService.findDevicesBySpace(spaceId);
@@ -691,6 +691,11 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		const roleMap = await this.lightingRoleService.getRoleMap(spaceId);
 
 		for (const device of devices) {
+			if (device.enabled === false || device.hidden === true) {
+				this.logger.debug(`Skipping unavailable light deviceId=${device.id}`);
+				continue;
+			}
+
 			// Check if device is a lighting device
 			if (device.category !== DeviceCategory.LIGHTING) {
 				continue;
