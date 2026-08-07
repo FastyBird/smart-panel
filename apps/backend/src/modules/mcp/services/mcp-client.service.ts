@@ -88,6 +88,12 @@ export class McpClientService {
 
 	async update(id: string, dto: UpdateMcpClientDto): Promise<McpClientEntity> {
 		const client = await this.getOneOrThrow(id);
+		const capabilitiesChanged =
+			dto.capabilities !== undefined && !this.sameCapabilities(client.capabilities, dto.capabilities);
+		const resourcesChanged =
+			dto.capabilities !== undefined &&
+			capabilitiesChanged &&
+			client.capabilities.includes(McpCapability.READ) !== dto.capabilities.includes(McpCapability.READ);
 		const updates: {
 			name?: string;
 			description?: string | null;
@@ -125,17 +131,18 @@ export class McpClientService {
 			});
 		}
 
-		const updatedClient = await this.getOneOrThrow(id);
-
 		if (dto.enabled === false) {
 			await this.serverService.closeClient(id);
-		} else if (dto.capabilities !== undefined) {
-			this.serverService.invalidatePolicies();
+		} else if (capabilitiesChanged) {
+			this.serverService.invalidateClientPolicy(id);
 			this.serverService.notifyToolsChanged(id);
-			this.serverService.notifyResourcesChanged(id);
+
+			if (resourcesChanged) {
+				this.serverService.notifyResourcesChanged(id);
+			}
 		}
 
-		return updatedClient;
+		return this.getOneOrThrow(id);
 	}
 
 	async rotate(id: string, dto: RotateMcpClientTokenDto): Promise<McpClientCredentialModel> {
@@ -271,6 +278,10 @@ export class McpClientService {
 		if (disallowed.length > 0) {
 			throw new BadRequestException(`Capabilities exceed the module ceiling: ${disallowed.join(', ')}`);
 		}
+	}
+
+	private sameCapabilities(first: McpCapability[], second: McpCapability[]): boolean {
+		return first.length === second.length && first.every((capability) => second.includes(capability));
 	}
 
 	private getCapabilityCeiling(): McpCapability[] {

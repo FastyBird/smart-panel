@@ -1,6 +1,6 @@
 # Smart Panel MCP Module — Implementation Plan
 
-**Status:** Phase 6 complete — Phase 7 pending
+**Status:** Phase 7 complete — Phase 8 pending
 
 **Architecture decision:** [ADR 0001: MCP Protocol and Security Foundation](../../docs/adr/0001-mcp-protocol-and-security-foundation.md)
 supersedes the original stateful-session transport assumptions in this plan.
@@ -512,16 +512,21 @@ and optional home-control plugin absence.
 - Modify MCP client service/subscription registry
 - Add specs
 
-- [ ] Subscribe to the existing configuration-updated event for `mcp-module`.
-- [ ] On capability changes, publish tool-list changes to active modern subscriptions and the negotiated legacy
+- [x] Subscribe to the existing configuration-updated event for `mcp-module`.
+- [x] On capability changes, publish tool-list changes to active modern subscriptions and the negotiated legacy
       notification equivalent when a legacy stateful adapter exists.
-- [ ] On removal of `read`, also notify resource-list changes where supported.
-- [ ] On module disable, close all active subscription streams after a best-effort notification.
-- [ ] On client capability reduction, notify only that client's streams.
-- [ ] On client disable/revocation/deletion/rotation, close that client's existing streams.
-- [ ] Execution policy remains authoritative even if a client misses a notification.
+- [x] On removal of `read`, also notify resource-list changes where supported.
+- [x] On module disable, close all active subscription streams after a best-effort notification.
+- [x] On client capability reduction, notify only that client's streams.
+- [x] On client disable/revocation/deletion/rotation, close that client's existing streams.
+- [x] Execution policy remains authoritative even if a client misses a notification.
 
 **Tests:** every live transition, including a tool call racing with a permission reduction.
+
+**Outcome:** Module-wide changes now invalidate global policy, publish only the affected tool/resource list changes,
+and close streams after best-effort disable/reset notifications. Client capability and credential changes use isolated
+per-client policy revisions and targeted notifications/stream closure, while execution-time authorization remains the
+source of truth during permission races.
 
 ### Task 11: Add security-safe auditing and observability
 

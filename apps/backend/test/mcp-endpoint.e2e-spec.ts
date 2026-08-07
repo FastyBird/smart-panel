@@ -42,6 +42,7 @@ class TestMcpClientGuard implements CanActivate {
 
 		request.mcpPolicy = {
 			client,
+			clientPolicyRevision: this.serverService.getClientPolicyRevision(client.id),
 			config: Object.assign(new McpConfigModel(), {
 				enabled: true,
 				capabilities: [McpCapability.READ],

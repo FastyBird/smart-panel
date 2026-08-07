@@ -125,6 +125,31 @@ describe('McpPolicyService', () => {
 		expect(clientService.findActiveByToken).toHaveBeenCalledTimes(2);
 	});
 
+	it('denies a tool authorization when permission is reduced during the fresh client lookup', async () => {
+		client.capabilities = [McpCapability.READ, McpCapability.WRITE];
+		let releaseLookup: () => void = () => undefined;
+		let markLookupStarted: () => void = () => undefined;
+		const lookupStarted = new Promise<void>((resolve) => {
+			markLookupStarted = resolve;
+		});
+		const lookupReleased = new Promise<void>((resolve) => {
+			releaseLookup = resolve;
+		});
+		clientService.findActiveByToken.mockImplementationOnce(async () => {
+			markLookupStarted();
+			await lookupReleased;
+
+			return client;
+		});
+
+		const authorization = service.authorizeClient(TOKEN_ID, CLIENT_ID, McpCapability.WRITE);
+		await lookupStarted;
+		client.capabilities = [McpCapability.READ];
+		releaseLookup();
+
+		await expect(authorization).rejects.toThrow(ForbiddenException);
+	});
+
 	it.each([
 		['same origin', 'https://panel.example.com', 'panel.example.com'],
 		['configured app origin', 'https://panel.example.com', '127.0.0.1:3000'],
