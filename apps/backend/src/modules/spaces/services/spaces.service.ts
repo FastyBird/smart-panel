@@ -728,10 +728,17 @@ export class SpacesService {
 		// Verify space exists
 		const space = await this.getOneOrThrow(spaceId);
 
+		// Hidden devices are left out of both branches. Every caller of this is a user-facing projection
+		// of "what is in this space" — the lighting, covers, climate and sensor role and state services,
+		// media capability, Buddy's context, the space device listing — and a hidden device is a physical
+		// source a virtual device has replaced. Including it shows and counts the source beside its
+		// replacement, and lets a command reach the source directly, bypassing the abstraction that
+		// replaced it. Callers that want the full set ask the devices service, which still defaults to
+		// returning everything.
 		if (space.type === SpaceType.ROOM) {
 			// Rooms have directly assigned devices via roomId
 			const devices = await this.deviceRepository.find({
-				where: { roomId: spaceId },
+				where: { roomId: spaceId, hidden: false },
 				relations: ['channels', 'channels.properties'],
 				order: { name: 'ASC' },
 			});
@@ -741,7 +748,7 @@ export class SpacesService {
 			return devices;
 		} else {
 			// Zones have devices via junction table
-			const devices = await this.deviceZonesService.getZoneDevices(spaceId);
+			const devices = (await this.deviceZonesService.getZoneDevices(spaceId)).filter((device) => !device.hidden);
 
 			this.logger.debug(`Found ${devices.length} devices in zone`);
 

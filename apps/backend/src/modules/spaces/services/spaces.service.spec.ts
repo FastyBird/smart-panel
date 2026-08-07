@@ -30,6 +30,7 @@ describe('SpacesService', () => {
 	let service: SpacesService;
 	let spaceRepository: jest.Mocked<Repository<SpaceEntity>>;
 	let deviceRepository: jest.Mocked<Repository<DeviceEntity>>;
+	let deviceZonesService: DeviceZonesService;
 	let displayRepository: jest.Mocked<Repository<DisplayEntity>>;
 	let devicesService: { findVisibleSummaryPage: jest.Mock };
 	let platformRegistryService: { list: jest.Mock };
@@ -178,6 +179,7 @@ describe('SpacesService', () => {
 					provide: DeviceZonesService,
 					useValue: {
 						getDeviceZones: jest.fn().mockResolvedValue([]),
+						getZoneDevices: jest.fn().mockResolvedValue([]),
 						setDeviceZones: jest.fn().mockResolvedValue([]),
 					},
 				},
@@ -200,6 +202,7 @@ describe('SpacesService', () => {
 		service = module.get<SpacesService>(SpacesService);
 		spaceRepository = module.get(getRepositoryToken(SpaceEntity));
 		deviceRepository = module.get(getRepositoryToken(DeviceEntity));
+		deviceZonesService = module.get<DeviceZonesService>(DeviceZonesService);
 		displayRepository = module.get(getRepositoryToken(DisplayEntity));
 
 		// Pre-register built-in space types (normally done by SpacesModule.onModuleInit).
@@ -1234,6 +1237,35 @@ describe('SpacesService', () => {
 			const [setArg] = mockQueryBuilder.set.mock.calls[0] as [Record<string, unknown>];
 			expect(setArg.suggestionsEnabled).toBe(true);
 			expect(setArg.suggestionsEnabled).not.toBeNull();
+		});
+	});
+	// Every caller of this is a user-facing projection of "what is in this space" — the lighting,
+	// covers, climate and sensor role and state services, media capability, Buddy's context, the space
+	// device listing. A hidden device is a physical source a virtual device replaced, so including it
+	// would show and count the source beside its replacement and let a command reach it directly.
+	describe('findDevicesBySpace', () => {
+		it('asks the repository for visible devices only in a room', async () => {
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue({ id: 'room-1', type: SpaceType.ROOM } as SpaceEntity);
+			deviceRepository.find.mockResolvedValue([]);
+
+			await service.findDevicesBySpace('room-1');
+
+			expect(deviceRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({ where: { roomId: 'room-1', hidden: false } }),
+			);
+		});
+
+		it('drops hidden devices from a zone', async () => {
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue({ id: 'zone-1', type: SpaceType.ZONE } as SpaceEntity);
+
+			(deviceZonesService.getZoneDevices as jest.Mock).mockResolvedValue([
+				{ id: 'visible', hidden: false },
+				{ id: 'replaced', hidden: true },
+			]);
+
+			const devices = await service.findDevicesBySpace('zone-1');
+
+			expect(devices.map((device) => device.id)).toEqual(['visible']);
 		});
 	});
 });
