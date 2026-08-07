@@ -13,6 +13,7 @@ import type {
 	DevicesModuleGetDevicesOperation,
 	DevicesModuleUpdateDeviceOperation,
 } from '../../../openapi.constants';
+import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import { useChannelsPlugins, useChannelsPropertiesPlugins, useDevicesPlugins } from '../composables/composables';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesApiException, DevicesException, DevicesValidationException } from '../devices.exceptions';
@@ -722,7 +723,12 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 	// re-reading, so the caller never has to guess from a flag it does not maintain.
 	const isLoaded = (): boolean => firstLoadFinished() || findAll().length > 0;
 
-	const refresh = (): Promise<unknown> => fetch();
+	// Refreshes with `all`, not with the endpoint's default. A bare `fetch()` sends no filter, which
+	// the endpoint reads as "visible only", so a reconnect refresh would replace the shared collection
+	// with visible devices — silently emptying the device list's own "Show hidden" view and dropping
+	// the system-hidden source out of a mapping flow the operator has open. Every consumer that cares
+	// filters the collection it renders, so the widest fetch is the safe one to restore from.
+	const refresh = (): Promise<unknown> => fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
 
 	return {
 		isLoaded,

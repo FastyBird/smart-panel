@@ -98,6 +98,22 @@ describe('Devices Store', () => {
 		vi.clearAllMocks();
 	});
 
+	// A reconnect refresh must not narrow what the store holds. The endpoint reads an omitted filter as
+	// "visible only", so a bare `fetch()` here would empty the device list's own "Show hidden" view and
+	// drop a system-hidden source out of a mapping flow the operator has open.
+	it('refreshes with every device, not just the visible ones', async () => {
+		mockBackendClient.GET.mockResolvedValue({ data: { data: [] }, error: undefined, response: { status: 200 } });
+
+		const store = useDevices();
+
+		await store.refresh();
+
+		expect(mockBackendClient.GET).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ params: { query: { hidden: DevicesModuleDevicesHiddenFilter.all } } })
+		);
+	});
+
 	it('applies only the most recently requested hidden value when two fetches overlap and resolve out of order', async () => {
 		// Two independently-resolvable responses, standing in for the device list's mount fetch
 		// (hidden=false) racing the "show hidden" toggle flipping to hidden=all before the mount

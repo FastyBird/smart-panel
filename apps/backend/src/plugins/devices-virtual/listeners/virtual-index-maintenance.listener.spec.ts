@@ -14,6 +14,7 @@ import { DeviceConnectionStateService } from '../../../modules/devices/services/
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
+import { VirtualDevicesService } from '../services/virtual-devices.service';
 import { VirtualIndexRebuildResult, VirtualPropertyIndexService } from '../services/virtual-property-index.service';
 
 import { VirtualIndexMaintenanceListener } from './virtual-index-maintenance.listener';
@@ -47,6 +48,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 	// `hiddenBy`, the one field of an unhide UpdateDeviceDto cannot express (its `@Transform` reads an
 	// explicit null as "field not provided", so DevicesService.update() can never write one).
 	let devicesRepository: { update: jest.Mock };
+	let virtualDevicesService: { reportCompatibility: jest.Mock };
 
 	// Drains Node's microtask queue completely — including microtasks newly queued while draining —
 	// before the callback runs. Unlike a fixed number of `await Promise.resolve()` hops, this needs
@@ -118,10 +120,13 @@ describe('VirtualIndexMaintenanceListener', () => {
 			update: jest.fn().mockResolvedValue(undefined),
 		};
 		devicesRepository = { update: jest.fn().mockResolvedValue(undefined) };
+		// Compatibility is asserted in the service's own spec; here it only has to answer.
+		virtualDevicesService = { reportCompatibility: jest.fn().mockReturnValue({ compatible: true }) };
 		listener = new VirtualIndexMaintenanceListener(
 			index as unknown as VirtualPropertyIndexService,
 			status as unknown as VirtualStatusListener,
 			devicesService as unknown as DevicesService,
+			virtualDevicesService as unknown as VirtualDevicesService,
 			dataSourceStub as unknown as DataSource,
 			devicesRepository as unknown as Repository<DeviceEntity>,
 		);
@@ -745,6 +750,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 					connectionState as unknown as DeviceConnectionStateService,
 				),
 				devicesService as unknown as DevicesService,
+				virtualDevicesService as unknown as VirtualDevicesService,
 				dataSourceStub as unknown as DataSource,
 				devicesRepository as unknown as Repository<DeviceEntity>,
 			);
@@ -1110,6 +1116,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				{ rebuild } as unknown as VirtualPropertyIndexService,
 				{ recompute: jest.fn().mockResolvedValue(undefined) } as unknown as VirtualStatusListener,
 				{ findOne: jest.fn(), update: jest.fn() } as unknown as DevicesService,
+				{ reportCompatibility: jest.fn().mockReturnValue({ compatible: true }) } as unknown as VirtualDevicesService,
 				dataSource,
 				{ update: jest.fn() } as unknown as Repository<DeviceEntity>,
 			);
@@ -1260,6 +1267,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				index as unknown as VirtualPropertyIndexService,
 				status as unknown as VirtualStatusListener,
 				devicesService as unknown as DevicesService,
+				virtualDevicesService as unknown as VirtualDevicesService,
 				stub.dataSource,
 				devicesRepository as unknown as Repository<DeviceEntity>,
 			);
@@ -1565,6 +1573,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				indexStub as unknown as VirtualPropertyIndexService,
 				status as unknown as VirtualStatusListener,
 				devicesStub as unknown as DevicesService,
+				virtualDevicesService as unknown as VirtualDevicesService,
 				dataSource,
 				// The provenance clear that follows every unhide. These cases are about *when* the
 				// unhide's read and write land relative to the emitting transaction, which the patch
@@ -1676,6 +1685,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				indexStub as unknown as VirtualPropertyIndexService,
 				status as unknown as VirtualStatusListener,
 				devicesStub as unknown as DevicesService,
+				virtualDevicesService as unknown as VirtualDevicesService,
 				stuckConnection,
 				{ update: jest.fn().mockResolvedValue(undefined) } as unknown as Repository<DeviceEntity>,
 			);
@@ -1693,6 +1703,74 @@ describe('VirtualIndexMaintenanceListener', () => {
 			// through the UI is the failure the rule exists to prevent.
 			expect(flagAtRebuild).toHaveLength(4);
 			await expect(readHidden('source-device')).resolves.toBe(0);
+		});
+	});
+	// Compatibility is checked when a projection is created or remapped, but nothing re-checked it when
+	// the source moved underneath: a physical property's permissions or data type can be PATCHed, and the
+	// projection stayed attached, exposing values under a representation the source no longer speaks.
+	describe('when a source property changes into something incompatible', () => {
+		const sourceProperty = {
+			id: 'source-property',
+			permissions: ['ro'],
+			dataType: 'bool',
+		} as unknown as ChannelPropertyEntity;
+
+		const dependent = {
+			id: 'virtual-property',
+			category: 'on',
+			channel: { id: 'virtual-channel', category: 'light', device: { id: 'virtual-device', category: 'lighting' } },
+		};
+
+		// Built here rather than reusing the suite's shared stubs: this is the only group that reaches
+		// `findBySourceProperty` and `getRepository`, and widening those stubs would loosen every other
+		// case's expectations for no benefit.
+		const build = (report: { compatible: boolean; reason?: string }, dependents: unknown[] = [dependent]) => {
+			const update = jest.fn().mockResolvedValue(undefined);
+			const reportCompatibility = jest.fn().mockReturnValue(report);
+
+			const subject = new VirtualIndexMaintenanceListener(
+				{
+					rebuild: jest.fn().mockResolvedValue(NO_CHANGES),
+					findLinksByVirtualDevice: jest.fn().mockReturnValue([]),
+					findVirtualDeviceIdsBySourceDevice: jest.fn().mockReturnValue([]),
+					findBySourceProperty: jest.fn().mockReturnValue(dependents),
+				} as unknown as VirtualPropertyIndexService,
+				{ recompute: jest.fn().mockResolvedValue(undefined) } as unknown as VirtualStatusListener,
+				{ findOne: jest.fn(), update: jest.fn() } as unknown as DevicesService,
+				{ reportCompatibility } as unknown as VirtualDevicesService,
+				{
+					getRepository: jest.fn().mockReturnValue({ update }),
+					createQueryRunner: () => ({ isTransactionActive: false }),
+				} as unknown as DataSource,
+				{ update: jest.fn() } as unknown as Repository<DeviceEntity>,
+			);
+
+			return { subject, update, reportCompatibility };
+		};
+
+		it('orphans the projection it can no longer feed', async () => {
+			const { subject, update } = build({ compatible: false, reason: 'permissions [ro] do not satisfy [rw]' });
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(update).toHaveBeenCalledWith('virtual-property', { sourcePropertyId: null });
+		});
+
+		it('leaves a projection the source can still feed alone', async () => {
+			const { subject, update } = build({ compatible: true });
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(update).not.toHaveBeenCalled();
+		});
+
+		it('does nothing for a property nothing projects', async () => {
+			const { subject, update, reportCompatibility } = build({ compatible: false }, []);
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(reportCompatibility).not.toHaveBeenCalled();
+			expect(update).not.toHaveBeenCalled();
 		});
 	});
 });

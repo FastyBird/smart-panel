@@ -6,9 +6,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { DeviceHiddenBy, DeviceHiddenFilter, EventType } from '../../../modules/devices/devices.constants';
-import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
+import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
+import { VirtualDevicesService } from '../services/virtual-devices.service';
 import { VirtualIndexRebuildResult, VirtualPropertyIndexService } from '../services/virtual-property-index.service';
 
 import { VirtualStatusListener } from './virtual-status.listener';
@@ -193,6 +195,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 		private readonly index: VirtualPropertyIndexService,
 		private readonly status: VirtualStatusListener,
 		private readonly devicesService: DevicesService,
+		private readonly virtualDevicesService: VirtualDevicesService,
 		private readonly dataSource: DataSource,
 		// Only ever used to clear `hiddenBy` — the one field of an unhide that UpdateDeviceDto cannot
 		// express. See unhideSource() for why that needs a write outside DevicesService.update().
@@ -754,6 +757,81 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 */
 	private isSystemHidden(device: DeviceEntity): boolean {
 		return device.hidden && device.hiddenBy === DeviceHiddenBy.SYSTEM;
+	}
+
+	/**
+	 * Orphans a projection whose source property has just been changed into something that can no
+	 * longer fill the slot it feeds.
+	 *
+	 * Compatibility is checked when a projection is created or remapped, but nothing re-checked it when
+	 * the *source* moved underneath: `ChannelsPropertiesService.update()` happily changes a physical
+	 * property's `permissions` or `dataType`, and the projection stayed attached — exposing values under
+	 * a representation the source no longer speaks, or forwarding commands it can no longer accept.
+	 *
+	 * Degrading rather than refusing the source update. Refusing would need a guard inside the *source*
+	 * property's own update path, which belongs to whichever plugin owns that device, and it would let a
+	 * virtual device veto an edit to a physical one — the wrong way round. Orphaning is the behaviour
+	 * this feature already has for a source that disappears: the device goes offline, the admin shows
+	 * the property as orphaned, and the remap dialog is the way back. A source that changes into
+	 * something incompatible is the same loss, arriving by a different route.
+	 *
+	 * Written straight to the repository, as `unhideSource` does and for the same reason: `source_property`
+	 * cannot be cleared through the update DTO. That also keeps this from re-entering — no
+	 * CHANNEL_PROPERTY_UPDATED is emitted for the row it clears — and the rebuild it schedules is what
+	 * refreshes the index and recomputes the affected devices' status.
+	 */
+	@OnEvent(EventType.CHANNEL_PROPERTY_UPDATED)
+	async handleSourceMetadataChange(payload: ChannelPropertyEntity): Promise<void> {
+		if (!payload?.id) {
+			return;
+		}
+
+		// The index still holds the pre-change picture, which is exactly what is wanted: who *was*
+		// projecting this property.
+		const dependents = this.index.findBySourceProperty(payload.id);
+
+		if (dependents.length === 0) {
+			return;
+		}
+
+		const repository = this.dataSource.getRepository(VirtualChannelPropertyEntity);
+
+		let orphaned = false;
+
+		for (const dependent of dependents) {
+			const channel = dependent.channel;
+
+			if (!channel || typeof channel === 'string') {
+				continue;
+			}
+
+			const device = channel.device;
+
+			if (!device || typeof device === 'string') {
+				continue;
+			}
+
+			const report = this.virtualDevicesService.reportCompatibility(
+				{ category: device.category, channel: channel.category, property: dependent.category },
+				payload,
+			);
+
+			if (report.compatible) {
+				continue;
+			}
+
+			this.logger.warn(
+				`Source property id=${payload.id} no longer fits the slot filled by virtual property id=${dependent.id}: ${report.reason ?? 'incompatible'}. Orphaning it.`,
+			);
+
+			await repository.update(dependent.id, { sourcePropertyId: null });
+
+			orphaned = true;
+		}
+
+		if (orphaned) {
+			this.handleStructuralChange();
+		}
 	}
 
 	/**
