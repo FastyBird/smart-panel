@@ -381,7 +381,98 @@ export class VirtualDevicesService {
 			};
 		}
 
+		const formatMismatch = this.describeFormatMismatch(metadata, specSlot, sourceProperty);
+
+		if (formatMismatch !== null) {
+			return { compatible: false, reason: formatMismatch };
+		}
+
 		return { compatible: true };
+	}
+
+	/**
+	 * Why `sourceProperty`'s format cannot serve the slot, or `null` when it can.
+	 *
+	 * Matching data types are not enough. `fan.speed` and `light.brightness` are both `rw` enums, so
+	 * every check above passes — but their value sets differ (`…high, turbo, auto` against
+	 * `…high, full`), so a fan speed projected into a brightness slot would report `turbo` as a
+	 * brightness and could never produce `full`. The same holds for numeric ranges.
+	 *
+	 * Direction matters, and the two directions are different questions:
+	 *
+	 * - Every value the *source* can produce has to be legal in the slot, or a read exposes something
+	 *   the slot's own specification says cannot occur.
+	 * - Every value the *slot* can be commanded with has to be acceptable to the source, or a write
+	 *   is forwarded to a device that will refuse it. Only asked of a writable slot.
+	 *
+	 * For a read-write slot that comes to equality, which is the honest answer: a projection is meant
+	 * to be the source seen from somewhere else, not a lossy adapter. Conversion between value spaces
+	 * is a different feature, and pretending compatibility here would be the wrong place to start it.
+	 *
+	 * A slot or source without a declared format is not judged: nothing constrains it, so there is
+	 * nothing to contradict.
+	 */
+	private describeFormatMismatch(
+		metadata: {
+			permissions: PermissionType[];
+			format?: unknown;
+			dataTypeVariants?: { data_type: string; format?: unknown }[] | null;
+		},
+		specSlot: VirtualCompatibilitySpecSlot,
+		sourceProperty: ChannelPropertyEntity,
+	): string | null {
+		const variant = metadata.dataTypeVariants?.find(
+			(candidate) => String(candidate.data_type) === String(sourceProperty.dataType),
+		);
+		const expected = variant?.format ?? metadata.format;
+		const actual = sourceProperty.format as unknown;
+
+		if (!Array.isArray(expected) || !Array.isArray(actual) || expected.length === 0 || actual.length === 0) {
+			return null;
+		}
+
+		const slotWritable = metadata.permissions.includes(PermissionType.READ_WRITE);
+		const slotName = `'${specSlot.channel}.${specSlot.property}'`;
+
+		// A numeric range is a two-element [min, max]; anything else is an enum value set.
+		const numeric =
+			expected.length === 2 &&
+			expected.every((value) => typeof value === 'number') &&
+			actual.every((value) => typeof value === 'number');
+
+		if (numeric && actual.length === 2) {
+			const [expectedMin, expectedMax] = expected as [number, number];
+			const [actualMin, actualMax] = actual as [number, number];
+
+			if (actualMin < expectedMin || actualMax > expectedMax) {
+				return `Source property id=${sourceProperty.id} ranges [${actualMin}, ${actualMax}], outside the range [${expectedMin}, ${expectedMax}] that ${slotName} accepts`;
+			}
+
+			if (slotWritable && (expectedMin < actualMin || expectedMax > actualMax)) {
+				return `Source property id=${sourceProperty.id} ranges [${actualMin}, ${actualMax}], which cannot accept every value ${slotName} may be commanded with ([${expectedMin}, ${expectedMax}])`;
+			}
+
+			return null;
+		}
+
+		const expectedValues = new Set(expected.map((value) => String(value)));
+		const actualValues = new Set(actual.map((value) => String(value)));
+
+		const unreadable = [...actualValues].filter((value) => !expectedValues.has(value));
+
+		if (unreadable.length > 0) {
+			return `Source property id=${sourceProperty.id} can report ${unreadable.map((value) => `'${value}'`).join(', ')}, which ${slotName} does not define`;
+		}
+
+		if (slotWritable) {
+			const uncommandable = [...expectedValues].filter((value) => !actualValues.has(value));
+
+			if (uncommandable.length > 0) {
+				return `Source property id=${sourceProperty.id} does not accept ${uncommandable.map((value) => `'${value}'`).join(', ')}, which ${slotName} may be commanded with`;
+			}
+		}
+
+		return null;
 	}
 
 	/**
@@ -497,14 +588,30 @@ export class VirtualDevicesService {
 			return;
 		}
 
-		const report = this.reportCompatibility(
-			{ category: device.category, channel: channel.category, property: property.category },
-			sourceProperty,
-		);
+		const specSlot = { category: device.category, channel: channel.category, property: property.category };
+
+		const report = this.reportCompatibility(specSlot, sourceProperty);
 
 		if (!report.compatible) {
 			throw new VirtualProjectionIncompatibleException(
 				report.reason ?? 'Source property cannot fill this specification slot',
+			);
+		}
+
+		// The projection's own declaration is checked against the same slot, not only its source. The
+		// wizard derives these fields from the spec, but a direct create or PATCH sets them freely, and
+		// nothing else looks: a `light.brightness` projection backed by a perfectly good `uchar` source
+		// but declaring itself `enum`, or a read-only slot declared `rw`, would otherwise persist and
+		// then expose the wrong representation or advertise a write it cannot honour.
+		//
+		// Asked through the same predicate deliberately — "can this property stand in this slot?" is the
+		// identical question, and answering it twice in two places is how the two answers drift apart.
+		const declaration = this.reportCompatibility(specSlot, property);
+
+		if (!declaration.compatible) {
+			throw new VirtualProjectionIncompatibleException(
+				declaration.reason?.replace(`Source property id=${property.id}`, `Property id=${property.id}`) ??
+					'Property does not match this specification slot',
 			);
 		}
 	}

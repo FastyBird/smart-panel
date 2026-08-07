@@ -210,12 +210,20 @@ describe('VirtualDevicesService', () => {
 			devicesService.findOne.mockResolvedValue({ id: DEVICE_ID, category: deviceCategory });
 		};
 
-		const projecting = (sourcePropertyId: string | null, category: PropertyCategory): VirtualChannelPropertyEntity => {
+		// Declares its own permissions and data type, as a real row always does — they are non-null
+		// columns, and the guard now checks the projection against the slot as well as its source.
+		const projecting = (
+			sourcePropertyId: string | null,
+			category: PropertyCategory,
+			declared: { permissions?: PermissionType[]; dataType?: DataTypeType } = {},
+		): VirtualChannelPropertyEntity => {
 			const entity = new VirtualChannelPropertyEntity();
 
 			Object.assign(entity, {
 				id: 'virtual-property',
 				category,
+				permissions: declared.permissions ?? [PermissionType.READ_WRITE],
+				dataType: declared.dataType ?? DataTypeType.BOOL,
 				valueOrigin: VirtualValueOrigin.SOURCE,
 				sourcePropertyId,
 			});
@@ -247,7 +255,10 @@ describe('VirtualDevicesService', () => {
 
 			await expect(
 				service.assertProjectionCompatible(
-					projecting(readWriteSourceProperty.id, PropertyCategory.TEMPERATURE),
+					projecting(readWriteSourceProperty.id, PropertyCategory.TEMPERATURE, {
+						dataType: DataTypeType.FLOAT,
+						permissions: [PermissionType.READ_ONLY],
+					}),
 					CHANNEL_ID,
 				),
 			).resolves.toBeUndefined();
@@ -256,6 +267,20 @@ describe('VirtualDevicesService', () => {
 		// An owned property has no source to judge, so nothing should even be resolved for it — asserting
 		// on the lookups rather than only on the absence of a throw, since a `local` property that
 		// happened to be compatible would pass the weaker check for the wrong reason.
+		// The wizard derives these from the spec, but a direct create or PATCH sets them freely, and
+		// nothing else looked: a projection declaring itself `enum` over a perfectly good `uchar` source
+		// would persist and then expose the wrong representation.
+		it('refuses a projection whose own declaration does not fit the slot', async () => {
+			givenSlot(ChannelCategory.LIGHT, DeviceCategory.LIGHTING);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({ id: 'rw-bool', permissions: [PermissionType.READ_WRITE], dataType: DataTypeType.BOOL }),
+			);
+
+			const misdeclared = projecting('rw-bool', PropertyCategory.ON, { dataType: DataTypeType.FLOAT });
+
+			await expect(service.assertProjectionCompatible(misdeclared, CHANNEL_ID)).rejects.toThrow(/data type/);
+		});
+
 		it('ignores an owned property', async () => {
 			const owned = new VirtualChannelPropertyEntity();
 
@@ -297,6 +322,61 @@ describe('VirtualDevicesService', () => {
 				service.assertProjectionCompatible(projecting(null, PropertyCategory.ON), CHANNEL_ID),
 			).resolves.toBeUndefined();
 			expect(channelsService.findOne).not.toHaveBeenCalled();
+		});
+	});
+
+	// Matching data types are not enough. `fan.speed` and `light.brightness` are both `rw` enums, so
+	// every other check passes — but their value sets differ, so a fan speed projected into a brightness
+	// slot would report `turbo` as a brightness and could never produce `full`.
+	describe('reportCompatibility — formats', () => {
+		it('refuses an enum source carrying values the slot does not define', () => {
+			const fanSpeed = property({
+				id: 'fan-speed',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.ENUM,
+				format: ['off', 'low', 'medium', 'high', 'turbo', 'auto'],
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.BRIGHTNESS },
+				fanSpeed,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('turbo');
+		});
+
+		it('accepts an enum source whose values match the slot', () => {
+			const brightnessLevel = property({
+				id: 'brightness-level',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.ENUM,
+				format: ['off', 'low', 'medium', 'high', 'full'],
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.BRIGHTNESS },
+				brightnessLevel,
+			);
+
+			expect(report.compatible).toBe(true);
+		});
+
+		it('refuses a numeric source ranging outside what the slot accepts', () => {
+			const wideRange = property({
+				id: 'wide-range',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.UCHAR,
+				format: [0, 255],
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.BRIGHTNESS },
+				wideRange,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('255');
 		});
 	});
 
