@@ -11,7 +11,12 @@ import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '.
 import { SpaceType } from '../../../../modules/spaces/spaces.constants';
 import { spacesStoreKey } from '../../../../modules/spaces/store/keys';
 import type { ISpace } from '../../../../modules/spaces/store/spaces.store.types';
-import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory, DevicesModuleDeviceCategory } from '../../../../openapi.constants';
+import {
+	DevicesModuleChannelCategory,
+	DevicesModuleChannelPropertyCategory,
+	DevicesModuleChannelPropertyDataType,
+	DevicesModuleDeviceCategory,
+} from '../../../../openapi.constants';
 import { DEVICES_VIRTUAL_TYPE } from '../../devices-virtual.constants';
 
 import type { IVirtualWizardReviewStepProps } from './virtual-wizard-review-step.types';
@@ -367,6 +372,40 @@ describe('VirtualWizardReviewStep', () => {
 		const propertyCategories = options.body.data.channels[0].properties.map((property) => property.category).sort();
 
 		expect(propertyCategories).toEqual([DevicesModuleChannelPropertyCategory.power, DevicesModuleChannelPropertyCategory.voltage].sort());
+	});
+
+	// `light.brightness` declares two variants — a `uchar` percentage and an `enum`. The compatibility
+	// check accepts either, so an enum-valued source passes and, if the payload always took the first
+	// variant, would be stored as numeric with that variant's format and step. The projected strings
+	// would then be exposed through a property calling itself a number.
+	it('stores the spec variant matching the source data type, not the first one', async () => {
+		const enumSourceId = 'property-enum-brightness';
+
+		properties.push({
+			id: enumSourceId,
+			channel: CHANNEL_RELAY_0,
+			name: 'Mode',
+			category: DevicesModuleChannelPropertyCategory.brightness,
+			dataType: DevicesModuleChannelPropertyDataType.enum,
+		} as unknown as IChannelProperty);
+
+		const { wrapper } = mountReviewStep({
+			mappings: [mapping(DevicesModuleChannelCategory.light, DevicesModuleChannelPropertyCategory.brightness, enumSourceId)],
+		});
+
+		await wrapper.get('[data-test-id="create-device"]').trigger('click');
+		await flushAsync();
+
+		const [, options] = (backendClient.POST as Mock).mock.calls[0] as [
+			string,
+			{ body: { data: { channels: { properties: { category: string; data_type: string }[] }[] } } },
+		];
+
+		const brightness = options.body.data.channels[0].properties.find(
+			(property) => property.category === DevicesModuleChannelPropertyCategory.brightness
+		);
+
+		expect(brightness?.data_type).toBe(DevicesModuleChannelPropertyDataType.enum);
 	});
 
 	it('marks a borrowed property with value_origin "source" and the mapped property id', async () => {

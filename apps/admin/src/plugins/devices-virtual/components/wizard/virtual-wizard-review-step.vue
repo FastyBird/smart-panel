@@ -149,12 +149,14 @@ import { spacesStoreKey } from '../../../../modules/spaces/store/keys';
 import type { ISpace } from '../../../../modules/spaces/store/spaces.store.types';
 import {
 	type DevicesModuleChannelCategory,
+	type DevicesModuleChannelPropertyDataType,
 	type DevicesModuleCreateDeviceOperation,
 	DevicesModuleDeviceHiddenBy,
 	type DevicesVirtualPluginCreateChannelPropertySchema,
 	type DevicesVirtualPluginCreateDeviceSchema,
 	DevicesVirtualPluginValueOrigin,
 } from '../../../../openapi.constants';
+import { channelsSchema } from '../../../../spec/channels';
 import { DEVICES_VIRTUAL_TYPE } from '../../devices-virtual.constants';
 
 import type { IVirtualReviewRow, IVirtualWizardReviewCreatedPayload, IVirtualWizardReviewStepProps } from './virtual-wizard-review-step.types';
@@ -308,6 +310,34 @@ const canCreate = computed<boolean>(
 // declares (permissions, data type, format), which is what the backend's structural validation
 // checks. The source is already proven compatible with that shape by the mapping step's compatibility
 // check — copying its own attributes instead would risk building a property the spec does not expect.
+interface IDataTypeVariant {
+	data_type: DevicesModuleChannelPropertyDataType;
+	format?: unknown;
+	step?: number | null;
+}
+
+// Reads the raw spec rather than `getChannelPropertySpecification`, which deliberately collapses a
+// multi-variant property to its first entry. Falls back to that collapsed shape when the property has
+// one variant, or when the source's data type is not among them — the latter cannot normally happen,
+// since the compatibility check would have refused the pairing, but a stale preview is exactly the
+// case this whole guard family exists for.
+const matchingDataTypeVariant = (
+	mapping: IVirtualSlotMapping & { sourceProperty: string },
+	fallbackDataType: DevicesModuleChannelPropertyDataType
+): IDataTypeVariant => {
+	const sourceDataType = propertiesStore.findById(mapping.sourceProperty)?.dataType ?? null;
+
+	const channelSpec = (
+		channelsSchema as unknown as Record<string, { properties?: Record<string, { category: string; data_types?: IDataTypeVariant[] }> }>
+	)[mapping.specChannel];
+
+	const rawProperty = Object.values(channelSpec?.properties ?? {}).find((candidate) => candidate.category === mapping.specProperty);
+
+	const matched = sourceDataType === null ? undefined : rawProperty?.data_types?.find((candidate) => candidate.data_type === sourceDataType);
+
+	return matched ?? { data_type: fallbackDataType, format: undefined, step: undefined };
+};
+
 const buildPropertyPayload = (mapping: IVirtualSlotMapping & { sourceProperty: string }): DevicesVirtualPluginCreateChannelPropertySchema | null => {
 	const specification = getChannelPropertySpecification(mapping.specChannel, mapping.specProperty);
 
@@ -316,6 +346,13 @@ const buildPropertyPayload = (mapping: IVirtualSlotMapping & { sourceProperty: s
 
 		return null;
 	}
+
+	// When a spec property declares several data-type variants (`brightness` is both a `uchar`
+	// percentage and an `enum`), the helper above collapses them to the first one — but the
+	// compatibility check accepts *any* variant, so an enum-valued source passes and would then be
+	// stored as the numeric variant, format and step included. The projected strings would be exposed
+	// through a property declaring itself numeric. Pick the variant the source actually speaks.
+	const variant = matchingDataTypeVariant(mapping, specification.data_type);
 
 	return {
 		type: DEVICES_VIRTUAL_TYPE,
@@ -327,10 +364,10 @@ const buildPropertyPayload = (mapping: IVirtualSlotMapping & { sourceProperty: s
 		// into stored data that will not follow the user if they switch languages later.
 		name: null,
 		permissions: specification.permissions,
-		data_type: specification.data_type,
-		format: specification.format ?? null,
+		data_type: variant.data_type,
+		format: variant.format ?? null,
 		invalid: specification.invalid ?? null,
-		step: specification.step ?? null,
+		step: variant.step ?? null,
 		value: null,
 		value_origin: DevicesVirtualPluginValueOrigin.source,
 		source_property: mapping.sourceProperty,
