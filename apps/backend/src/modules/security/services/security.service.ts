@@ -2,11 +2,12 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { VisibleDeviceSummaryScope } from '../../devices/services/devices.service';
 import { SecurityAlertAckEntity } from '../entities/security-alert-ack.entity';
 import { SecurityStatusModel } from '../models/security-status.model';
 import { EventType, SECURITY_MODULE_NAME } from '../security.constants';
 
-import { SecurityAggregatorService } from './security-aggregator.service';
+import { BoundedSecurityAggregationResult, SecurityAggregatorService } from './security-aggregator.service';
 import { SecurityAlertAckService } from './security-alert-ack.service';
 import { SecurityEventsService } from './security-events.service';
 
@@ -24,6 +25,23 @@ export class SecurityService {
 	async getStatus(): Promise<SecurityStatusModel> {
 		const status = await this.aggregator.aggregate();
 
+		return this.annotateStatus(status);
+	}
+
+	async getBoundedStatus(
+		deviceLimit: number,
+		channelLimit: number,
+		propertyLimit: number,
+		scope: VisibleDeviceSummaryScope = {},
+	): Promise<BoundedSecurityAggregationResult> {
+		const result = await this.aggregator.aggregateBounded(deviceLimit, channelLimit, propertyLimit, scope);
+
+		await this.annotateStatus(result.status);
+
+		return result;
+	}
+
+	private async annotateStatus(status: SecurityStatusModel): Promise<SecurityStatusModel> {
 		if (status.activeAlerts.length > 0) {
 			await this.annotateAcknowledgements(status);
 		}

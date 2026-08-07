@@ -86,6 +86,139 @@ function toInfluxPoint(point: StoragePoint, schemas: Map<string, StorageMeasurem
 	return p;
 }
 
+function unescapeInfluxString(value: string): string {
+	return value.replace(/\\'/g, "'").replace(/\\\\/g, '\\');
+}
+
+function fluxString(value: string): string {
+	return JSON.stringify(value);
+}
+
+function translateStrictInfluxQl(query: string, bucket: string): string {
+	const compact = query.trim().replace(/\s+/g, ' ');
+
+	if (!/^SELECT\b/i.test(compact)) {
+		return query;
+	}
+
+	const statement = compact.match(
+		/^SELECT (.+?) FROM ([A-Za-z_][\w]*) WHERE (.+?)(?: GROUP BY (.+?))? ORDER BY time (ASC|DESC)(?: LIMIT (\d+))?$/i,
+	);
+
+	if (!statement) {
+		throw new Error('InfluxDB v2 cannot translate the strict storage query');
+	}
+
+	const [, selectClause, measurement, whereClause, groupByClause, orderDirection, limitValue] = statement;
+	const startMatch = whereClause.match(/time\s*>=\s*(\d+)ms/i);
+	const stopMatch = whereClause.match(/time\s*<=\s*(\d+)ms/i);
+	const start = startMatch ? `time(v: ${fluxString(new Date(Number(startMatch[1])).toISOString())})` : '0';
+	const stop = stopMatch ? `, stop: time(v: ${fluxString(new Date(Number(stopMatch[1]) + 1).toISOString())})` : '';
+	const tagValues = new Map<string, string[]>();
+	const equalityPattern = /([A-Za-z_][\w]*)\s*=\s*'((?:\\.|[^'])*)'/g;
+
+	for (const match of whereClause.matchAll(equalityPattern)) {
+		const [, key, rawValue] = match;
+
+		if (key.toLowerCase() !== 'time') {
+			tagValues.set(key, [...(tagValues.get(key) ?? []), unescapeInfluxString(rawValue)]);
+		}
+	}
+
+	const tagFilters = [...tagValues.entries()].map(
+		([key, values]) => `  |> filter(fn: (r) => contains(value: r.${key}, set: [${values.map(fluxString).join(', ')}]))`,
+	);
+	const selectedFields = [...selectClause.matchAll(/(?:^|,\s*)(?:MEAN|LAST)?\(?"?([A-Za-z_][\w]*)"?\)?/gi)]
+		.map((match) => match[1])
+		.filter((field) => field !== '*');
+	const fieldFilter =
+		selectedFields.length > 0
+			? `  |> filter(fn: (r) => contains(value: r._field, set: [${selectedFields.map(fluxString).join(', ')}]))`
+			: null;
+	const base = [
+		`from(bucket: ${fluxString(bucket)})`,
+		`  |> range(start: ${start}${stop})`,
+		`  |> filter(fn: (r) => r._measurement == ${fluxString(measurement)})`,
+		...tagFilters,
+	];
+	const windowMatch = groupByClause?.match(/time\(([^)]+)\)/i);
+
+	if (windowMatch) {
+		const every = windowMatch[1];
+		const aggregatePipelines: string[] = [];
+
+		if (/MEAN\s*\(\s*"?numberValue"?\s*\)/i.test(selectClause)) {
+			aggregatePipelines.push(
+				`numberValues = ${[...base, '  |> filter(fn: (r) => r._field == "numberValue")', `  |> aggregateWindow(every: ${every}, fn: mean, createEmpty: false)`].join('\n')}`,
+			);
+		}
+		if (/LAST\s*\(\s*"?stringValue"?\s*\)/i.test(selectClause)) {
+			aggregatePipelines.push(
+				`stringValues = ${[...base, '  |> filter(fn: (r) => r._field == "stringValue")', `  |> aggregateWindow(every: ${every}, fn: last, createEmpty: false)`].join('\n')}`,
+			);
+		}
+
+		if (aggregatePipelines.length === 0) {
+			throw new Error('InfluxDB v2 cannot translate the strict aggregate query');
+		}
+
+		const names = aggregatePipelines.map((pipeline) => pipeline.slice(0, pipeline.indexOf(' =')));
+
+		return [
+			...aggregatePipelines,
+			`union(tables: [${names.join(', ')}])`,
+			'  |> group()',
+			'  |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")',
+			`  |> sort(columns: ["_time"], desc: ${orderDirection.toUpperCase() === 'DESC'})`,
+		].join('\n');
+	}
+
+	const tagGroupMatch = groupByClause?.match(/^"?([A-Za-z_][\w]*)"?$/);
+	const pipeline = [...base];
+
+	if (fieldFilter) {
+		pipeline.push(fieldFilter);
+	}
+	if (tagGroupMatch) {
+		pipeline.push(`  |> group(columns: [${fluxString(tagGroupMatch[1])}])`);
+	} else {
+		pipeline.push('  |> group()');
+	}
+
+	pipeline.push(
+		'  |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")',
+		`  |> sort(columns: ["_time"], desc: ${orderDirection.toUpperCase() === 'DESC'})`,
+	);
+
+	if (limitValue) {
+		pipeline.push(`  |> limit(n: ${Number(limitValue)})`);
+	}
+
+	return pipeline.join('\n');
+}
+
+function normalizeFluxRows<T>(rows: Array<Record<string, unknown>>): T[] {
+	return rows.map((row) => {
+		const { _time, ...values } = row;
+		let time: string | undefined;
+
+		if (typeof _time === 'string') {
+			time = _time;
+		} else if (_time instanceof Date) {
+			time = _time.toISOString();
+		} else if (typeof _time === 'number') {
+			time = new Date(_time).toISOString();
+		} else if (_time !== undefined) {
+			throw new Error('InfluxDB v2 returned an unsupported timestamp');
+		}
+
+		return {
+			...values,
+			...(time === undefined ? {} : { time }),
+		} as T;
+	});
+}
+
 /**
  * InfluxDB v2.x storage plugin.
  *
@@ -205,6 +338,13 @@ export class InfluxV2Storage implements StoragePlugin {
 
 			throw error;
 		}
+	}
+
+	async queryStrict<T>(query: string, _options?: StorageQueryOptions): Promise<T[]> {
+		const fluxQuery = translateStrictInfluxQl(query, this.config.bucket);
+		const rows = await this.getQueryApi().collectRows<Record<string, unknown>>(fluxQuery);
+
+		return normalizeFluxRows<T>(rows);
 	}
 
 	async queryRaw<T>(query: string, _options?: StorageQueryOptions): Promise<T> {

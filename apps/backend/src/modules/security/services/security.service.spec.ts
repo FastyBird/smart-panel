@@ -45,6 +45,7 @@ describe('SecurityService', () => {
 	beforeEach(() => {
 		aggregator = {
 			aggregate: jest.fn(),
+			aggregateBounded: jest.fn(),
 		} as any;
 
 		ackService = {
@@ -66,6 +67,31 @@ describe('SecurityService', () => {
 		} as any;
 
 		service = new SecurityService(aggregator, ackService, eventsService, eventEmitter);
+	});
+
+	describe('getBoundedStatus', () => {
+		it('uses bounded aggregation and annotates acknowledgements', async () => {
+			const alert = makeAlert('sensor:dev1:smoke', '2025-01-01T00:00:00Z');
+			aggregator.aggregateBounded.mockResolvedValue({
+				status: makeStatus([alert]),
+				devicesTruncated: true,
+				channelsTruncated: false,
+				propertiesTruncated: false,
+			});
+			ackService.findByIds.mockResolvedValue([
+				{
+					id: alert.id,
+					acknowledged: true,
+					lastEventAt: new Date(alert.timestamp),
+				} as SecurityAlertAckEntity,
+			]);
+
+			const result = await service.getBoundedStatus(100, 10, 20);
+
+			expect(aggregator.aggregateBounded).toHaveBeenCalledWith(100, 10, 20, {});
+			expect(result.status.activeAlerts[0].acknowledged).toBe(true);
+			expect(result.devicesTruncated).toBe(true);
+		});
 	});
 
 	describe('getStatus', () => {

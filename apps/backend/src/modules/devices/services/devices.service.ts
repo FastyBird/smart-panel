@@ -18,10 +18,34 @@ import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { ChannelEntity, DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
 
+import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { DeviceZonesService } from './device-zones.service';
 import { DevicesTypeMapperService } from './devices-type-mapper.service';
 import { DevicesControlsService } from './devices.controls.service';
+
+export interface VisibleDeviceSummaryScope {
+	roomIds?: string[];
+	zoneId?: string;
+}
+
+export interface VisibleDeviceSummaryPage {
+	devices: DeviceEntity[];
+	total: number;
+}
+
+export interface VisibleDeviceSpaceCounts {
+	rooms: Record<string, number>;
+	zones: Record<string, number>;
+	floors: Record<string, number>;
+}
+
+export interface VisibleBoundedDeviceState {
+	devices: DeviceEntity[];
+	devicesTruncated: boolean;
+	channelsTruncated: boolean;
+	propertiesTruncated: boolean;
+}
 
 @Injectable()
 export class DevicesService {
@@ -34,6 +58,7 @@ export class DevicesService {
 		private readonly spaceRepository: Repository<SpaceEntity>,
 		private readonly devicesMapperService: DevicesTypeMapperService,
 		private readonly channelsService: ChannelsService,
+		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly devicesControlsService: DevicesControlsService,
 		private readonly deviceZonesService: DeviceZonesService,
 		private readonly dataSource: DataSource,
@@ -99,6 +124,196 @@ export class DevicesService {
 		this.logger.debug(`Found ${devices.length} devices`);
 
 		return devices;
+	}
+
+	async findVisibleSummaryPage(
+		limit: number,
+		scope: VisibleDeviceSummaryScope = {},
+	): Promise<VisibleDeviceSummaryPage> {
+		if (scope.roomIds?.length === 0) {
+			return { devices: [], total: 0 };
+		}
+
+		const query = this.repository
+			.createQueryBuilder('device')
+			.leftJoinAndSelect('device.deviceZones', 'deviceZones')
+			.where('device.hidden = :hidden', { hidden: false })
+			.orderBy('device.name', 'ASC')
+			.callListeners(false)
+			.take(limit);
+
+		if (scope.roomIds) {
+			query.andWhere('device.roomId IN (:...roomIds)', { roomIds: scope.roomIds });
+		}
+
+		if (scope.zoneId) {
+			query.innerJoin('device.deviceZones', 'scopeDeviceZone', 'scopeDeviceZone.zoneId = :zoneId', {
+				zoneId: scope.zoneId,
+			});
+		}
+
+		const [devices, total] = await query.getManyAndCount();
+
+		return { devices, total };
+	}
+
+	async findVisibleSummaryById(id: string): Promise<DeviceEntity | null> {
+		return this.repository
+			.createQueryBuilder('device')
+			.leftJoinAndSelect('device.deviceZones', 'deviceZones')
+			.where('device.id = :id', { id })
+			.andWhere('device.hidden = :hidden', { hidden: false })
+			.callListeners(false)
+			.getOne();
+	}
+
+	async findVisibleBoundedStateByChannelCategories(
+		channelCategories: string[],
+		deviceLimit: number,
+		channelLimit: number,
+		propertyLimit: number,
+		scope: VisibleDeviceSummaryScope = {},
+		propertyCategories?: string[],
+	): Promise<VisibleBoundedDeviceState> {
+		if (channelCategories.length === 0 || scope.roomIds?.length === 0) {
+			return {
+				devices: [],
+				devicesTruncated: false,
+				channelsTruncated: false,
+				propertiesTruncated: false,
+			};
+		}
+
+		interface DeviceIdRow {
+			id: string;
+		}
+
+		const categoryPlaceholders = channelCategories.map(() => '?').join(', ');
+		const parameters: Array<string | number> = [...channelCategories];
+		let scopeJoin = '';
+		let scopePredicate = '';
+
+		if (scope.roomIds) {
+			const roomPlaceholders = scope.roomIds.map(() => '?').join(', ');
+			scopePredicate = ` AND device."roomId" IN (${roomPlaceholders})`;
+			parameters.push(...scope.roomIds);
+		} else if (scope.zoneId) {
+			scopeJoin = ' INNER JOIN devices_module_devices_zones deviceZone ON deviceZone."deviceId" = device."id"';
+			scopePredicate = ' AND deviceZone."zoneId" = ?';
+			parameters.push(scope.zoneId);
+		}
+		parameters.push(deviceLimit + 1);
+		const idRows = await this.dataSource.query<DeviceIdRow[]>(
+			`SELECT DISTINCT device."id" AS "id", device."name" AS "name"
+			 FROM devices_module_devices device
+			 INNER JOIN devices_module_channels channel ON channel."deviceId" = device."id"
+			 ${scopeJoin}
+			 WHERE device."hidden" = 0
+			 AND channel."category" IN (${categoryPlaceholders})
+			 ${scopePredicate}
+			 ORDER BY device."name", device."id"
+			 LIMIT ?`,
+			parameters,
+		);
+		const deviceIds = idRows.slice(0, deviceLimit).map((row) => row.id);
+		const devicesTruncated = idRows.length > deviceLimit;
+
+		if (deviceIds.length === 0) {
+			return {
+				devices: [],
+				devicesTruncated,
+				channelsTruncated: false,
+				propertiesTruncated: false,
+			};
+		}
+
+		const [devices, channelPage] = await Promise.all([
+			this.repository
+				.createQueryBuilder('device')
+				.leftJoinAndSelect('device.deviceZones', 'deviceZones')
+				.where('device.id IN (:...deviceIds)', { deviceIds })
+				.callListeners(false)
+				.getMany(),
+			this.channelsService.findBoundedForDevices(deviceIds, channelCategories, channelLimit),
+		]);
+		const properties = await this.channelsPropertiesService.findBoundedForChannels(
+			channelPage.channels.map((channel) => channel.id),
+			propertyLimit,
+			true,
+			propertyCategories,
+		);
+		const propertiesByChannel = new Map<string, ChannelEntity['properties']>();
+
+		for (const property of properties.properties) {
+			const channelId = typeof property.channel === 'string' ? property.channel : property.channel.id;
+			propertiesByChannel.set(channelId, [...(propertiesByChannel.get(channelId) ?? []), property]);
+		}
+		const channelsByDevice = new Map<string, ChannelEntity[]>();
+
+		for (const channel of channelPage.channels) {
+			channel.properties = propertiesByChannel.get(channel.id) ?? [];
+			const deviceId = channelPage.deviceIds[channel.id];
+
+			if (!deviceId) {
+				continue;
+			}
+			channelsByDevice.set(deviceId, [...(channelsByDevice.get(deviceId) ?? []), channel]);
+		}
+		const deviceOrder = new Map(deviceIds.map((id, index) => [id, index]));
+
+		return {
+			devices: devices
+				.map((device) => {
+					device.channels = channelsByDevice.get(device.id) ?? [];
+
+					return device;
+				})
+				.sort((left, right) => (deviceOrder.get(left.id) ?? 0) - (deviceOrder.get(right.id) ?? 0)),
+			devicesTruncated,
+			channelsTruncated: channelPage.truncated,
+			propertiesTruncated: Object.values(properties.totals).some((total) => total > propertyLimit),
+		};
+	}
+
+	async getVisibleSpaceCounts(): Promise<VisibleDeviceSpaceCounts> {
+		interface SpaceCountRow {
+			spaceId: string;
+			deviceCount: string | number;
+		}
+
+		const [roomRows, zoneRows, floorRows] = await Promise.all([
+			this.repository
+				.createQueryBuilder('device')
+				.select('device.roomId', 'spaceId')
+				.addSelect('COUNT(device.id)', 'deviceCount')
+				.where('device.hidden = :hidden', { hidden: false })
+				.andWhere('device.roomId IS NOT NULL')
+				.groupBy('device.roomId')
+				.getRawMany<SpaceCountRow>(),
+			this.repository
+				.createQueryBuilder('device')
+				.innerJoin('device.deviceZones', 'deviceZone')
+				.select('deviceZone.zoneId', 'spaceId')
+				.addSelect('COUNT(DISTINCT device.id)', 'deviceCount')
+				.where('device.hidden = :hidden', { hidden: false })
+				.groupBy('deviceZone.zoneId')
+				.getRawMany<SpaceCountRow>(),
+			this.repository
+				.createQueryBuilder('device')
+				.innerJoin('device.room', 'room')
+				.select('room.parentId', 'spaceId')
+				.addSelect('COUNT(device.id)', 'deviceCount')
+				.where('device.hidden = :hidden', { hidden: false })
+				.andWhere('room.parentId IS NOT NULL')
+				.groupBy('room.parentId')
+				.getRawMany<SpaceCountRow>(),
+		]);
+
+		return {
+			rooms: Object.fromEntries(roomRows.map((row) => [row.spaceId, Number(row.deviceCount)])),
+			zones: Object.fromEntries(zoneRows.map((row) => [row.spaceId, Number(row.deviceCount)])),
+			floors: Object.fromEntries(floorRows.map((row) => [row.spaceId, Number(row.deviceCount)])),
+		};
 	}
 
 	async findOne<TDevice extends DeviceEntity>(id: string, type?: string): Promise<TDevice | null> {

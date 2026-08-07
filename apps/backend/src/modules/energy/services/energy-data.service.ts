@@ -270,6 +270,27 @@ export class EnergyDataService {
 
 		const rows: SummaryRawRow[] = await this.deltaRepository.query(query, params);
 
+		return this.mapSpaceSummary(rows);
+	}
+
+	async getDeviceZoneSummary(rangeStart: Date, rangeEnd: Date, zoneId: string): Promise<SpaceEnergySummary> {
+		const rows: SummaryRawRow[] = await this.deltaRepository.query(
+			`SELECT delta."sourceType" AS "sourceType",
+			        SUM(delta."deltaKwh") AS "totalKwh",
+			        MAX(delta."createdAt") AS "lastUpdated"
+			 FROM energy_module_deltas delta
+			 INNER JOIN devices_module_devices_zones deviceZone ON delta."deviceId" = deviceZone."deviceId"
+			 WHERE deviceZone."zoneId" = ?
+			 AND delta."intervalStart" >= ?
+			 AND delta."intervalStart" < ?
+			 GROUP BY delta."sourceType"`,
+			[zoneId, rangeStart.toISOString(), rangeEnd.toISOString()],
+		);
+
+		return this.mapSpaceSummary(rows);
+	}
+
+	private mapSpaceSummary(rows: SummaryRawRow[]): SpaceEnergySummary {
 		let totalConsumptionKwh = 0;
 		let totalProductionKwh = 0;
 		let totalGridImportKwh = 0;

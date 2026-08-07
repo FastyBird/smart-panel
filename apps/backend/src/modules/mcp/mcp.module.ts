@@ -4,10 +4,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuthModule } from '../auth/auth.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { DevicesModule } from '../devices/devices.module';
+import { EnergyModule } from '../energy/energy.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
+import { ScenesModule } from '../scenes/scenes.module';
+import { SecurityModule } from '../security/security.module';
+import { SpacesModule } from '../spaces/spaces.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
+import { WeatherModule } from '../weather/weather.module';
 
 import { McpClientsController } from './controllers/mcp-clients.controller';
 import { McpController } from './controllers/mcp.controller';
@@ -17,6 +23,7 @@ import { McpInstallationEntity } from './entities/mcp-installation.entity';
 import { McpClientGuard } from './guards/mcp-client.guard';
 import { McpConfigListener } from './listeners/mcp-config.listener';
 import {
+	MCP_CATALOG_REGISTRAR,
 	MCP_MODULE_API_TAG_DESCRIPTION,
 	MCP_MODULE_API_TAG_NAME,
 	MCP_MODULE_NAME,
@@ -25,10 +32,12 @@ import {
 import { MCP_SWAGGER_EXTRA_MODELS } from './mcp.openapi';
 import { McpConfigModel } from './models/config.model';
 import { McpClientService } from './services/mcp-client.service';
+import { McpContextService } from './services/mcp-context.service';
 import { McpInstallationService } from './services/mcp-installation.service';
 import { McpPolicyService } from './services/mcp-policy.service';
 import { McpServerService } from './services/mcp-server.service';
 import { McpSubscriptionRegistryService } from './services/mcp-subscription-registry.service';
+import { McpReadToolService } from './tools/mcp-read-tool.service';
 
 @ApiTag({
 	tagName: MCP_MODULE_NAME,
@@ -38,19 +47,28 @@ import { McpSubscriptionRegistryService } from './services/mcp-subscription-regi
 @Module({
 	imports: [
 		AuthModule,
+		DevicesModule,
+		EnergyModule,
 		NestConfigModule,
+		ScenesModule,
+		SecurityModule,
+		SpacesModule,
 		SwaggerModule,
 		TypeOrmModule.forFeature([McpClientEntity, McpInstallationEntity]),
+		WeatherModule,
 	],
 	controllers: [McpClientsController, McpController],
 	providers: [
 		McpClientGuard,
 		McpClientService,
 		McpConfigListener,
+		McpContextService,
 		McpInstallationService,
 		McpPolicyService,
 		McpServerService,
 		McpSubscriptionRegistryService,
+		McpReadToolService,
+		{ provide: MCP_CATALOG_REGISTRAR, useExisting: McpReadToolService },
 	],
 	exports: [McpClientService, McpInstallationService, McpPolicyService, McpServerService],
 })

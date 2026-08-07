@@ -41,13 +41,17 @@ export class McpPolicyService {
 			throw new UnauthorizedException('An MCP credential is required');
 		}
 
+		return this.resolveClient(auth.tokenId, auth.ownerId);
+	}
+
+	async resolveClient(tokenId: string, clientId: string): Promise<McpPolicyContext> {
 		const config = this.configService.getModuleConfig<McpConfigModel>(MCP_MODULE_NAME);
 
 		if (!config.enabled) {
 			throw new NotFoundException('MCP endpoint is disabled');
 		}
 
-		const client = await this.clientService.findActiveByToken(auth.tokenId, auth.ownerId);
+		const client = await this.clientService.findActiveByToken(tokenId, clientId);
 
 		if (!client || !client.enabled || !client.token || client.token.revoked) {
 			throw new UnauthorizedException('MCP client is disabled or its credential is no longer active');
@@ -62,12 +66,22 @@ export class McpPolicyService {
 			config,
 			effectiveCapabilities: client.capabilities.filter((capability) => config.capabilities.includes(capability)),
 			installationId: await this.installationService.getInstallationId(),
-			tokenId: auth.tokenId,
+			tokenId,
 		};
 	}
 
 	async authorize(auth: AuthenticatedRequest['auth'], capability: McpCapability): Promise<McpPolicyContext> {
 		const policy = await this.resolve(auth);
+
+		if (!policy.effectiveCapabilities.includes(capability)) {
+			throw new ForbiddenException(`MCP capability '${capability}' is not granted`);
+		}
+
+		return policy;
+	}
+
+	async authorizeClient(tokenId: string, clientId: string, capability: McpCapability): Promise<McpPolicyContext> {
+		const policy = await this.resolveClient(tokenId, clientId);
 
 		if (!policy.effectiveCapabilities.includes(capability)) {
 			throw new ForbiddenException(`MCP capability '${capability}' is not granted`);

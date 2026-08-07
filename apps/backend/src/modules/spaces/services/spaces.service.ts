@@ -12,16 +12,39 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as DevicesEventType } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DeviceZonesService } from '../../devices/services/device-zones.service';
+import {
+	DevicesService,
+	VisibleDeviceSummaryPage,
+	VisibleDeviceSummaryScope,
+} from '../../devices/services/devices.service';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { BulkAssignDto } from '../dto/bulk-assign.dto';
 import { CreateSpaceDto } from '../dto/create-space.dto';
 import { UpdateSpaceDto } from '../dto/update-space.dto';
 import { SpaceEntity } from '../entities/space.entity';
-import { EventType, SPACES_MODULE_NAME, SpaceType, isValidCategoryForType } from '../spaces.constants';
+import {
+	EventType,
+	SPACES_MODULE_NAME,
+	SpaceType,
+	isFloorZoneCategory,
+	isValidCategoryForType,
+} from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
 import { canonicalizeSpaceName } from '../spaces.utils';
 
 import { SpaceTypeMapping, SpacesTypeMapperService } from './spaces-type-mapper.service';
+
+export interface SpaceSnapshotScope {
+	deviceScope: VisibleDeviceSummaryScope;
+	securityDeviceScope?: VisibleDeviceSummaryScope;
+	sceneSpaceIds?: string[];
+	wholeHome: boolean;
+}
+
+export interface SpaceSummaryPage {
+	spaces: SpaceEntity[];
+	total: number;
+}
 
 /**
  * Narrow check for whether a subtype mapping owns a given shared-STI-table
@@ -49,6 +72,7 @@ export class SpacesService {
 		@InjectRepository(DisplayEntity)
 		private readonly displayRepository: Repository<DisplayEntity>,
 		private readonly deviceZonesService: DeviceZonesService,
+		private readonly devicesService: DevicesService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly spacesTypeMapper: SpacesTypeMapperService,
@@ -64,6 +88,19 @@ export class SpacesService {
 		this.logger.debug(`Found ${spaces.length} spaces`);
 
 		return spaces;
+	}
+
+	async findSummaryPage(limit: number, offset: number): Promise<SpaceSummaryPage> {
+		const [spaces, total] = await this.repository
+			.createQueryBuilder('space')
+			.orderBy('space.displayOrder', 'ASC')
+			.addOrderBy('space.name', 'ASC')
+			.addOrderBy('space.id', 'ASC')
+			.skip(offset)
+			.take(limit)
+			.getManyAndCount();
+
+		return { spaces, total };
 	}
 
 	async findOne(id: string): Promise<SpaceEntity | null> {
@@ -518,6 +555,50 @@ export class SpacesService {
 
 			return devices;
 		}
+	}
+
+	async findVisibleDeviceSummariesBySpace(spaceId: string, limit: number): Promise<VisibleDeviceSummaryPage> {
+		const space = await this.getOneOrThrow(spaceId);
+		const scope = await this.resolveSnapshotScope(space);
+
+		return this.devicesService.findVisibleSummaryPage(limit, scope.deviceScope);
+	}
+
+	async resolveSnapshotScope(space: SpaceEntity): Promise<SpaceSnapshotScope> {
+		if (space.type === SpaceType.MASTER) {
+			return { deviceScope: {}, wholeHome: true };
+		}
+
+		if (space.type === SpaceType.ROOM) {
+			return { deviceScope: { roomIds: [space.id] }, sceneSpaceIds: [space.id], wholeHome: false };
+		}
+
+		if (space.type === SpaceType.ENTRY) {
+			return {
+				deviceScope: { roomIds: [] },
+				securityDeviceScope: {},
+				sceneSpaceIds: [],
+				wholeHome: false,
+			};
+		}
+
+		if (space.type !== SpaceType.ZONE) {
+			return { deviceScope: { roomIds: [] }, sceneSpaceIds: [], wholeHome: false };
+		}
+
+		const category = (space as { category?: string | null }).category ?? null;
+
+		if (!isFloorZoneCategory(category)) {
+			return { deviceScope: { zoneId: space.id }, sceneSpaceIds: [space.id], wholeHome: false };
+		}
+
+		const childRooms = await this.repository.find({
+			select: { id: true },
+			where: { parentId: space.id },
+		});
+		const roomIds = childRooms.map((room) => room.id);
+
+		return { deviceScope: { roomIds }, sceneSpaceIds: [space.id, ...roomIds], wholeHome: false };
 	}
 
 	/**

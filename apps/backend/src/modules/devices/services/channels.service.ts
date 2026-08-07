@@ -19,6 +19,17 @@ import { ChannelsTypeMapperService } from './channels-type-mapper.service';
 import { ChannelsControlsService } from './channels.controls.service';
 import { ChannelsPropertiesService } from './channels.properties.service';
 
+export interface ChannelSummaryPage {
+	channels: ChannelEntity[];
+	total: number;
+}
+
+export interface BoundedDeviceChannels {
+	channels: ChannelEntity[];
+	deviceIds: Record<string, string>;
+	truncated: boolean;
+}
+
 @Injectable()
 export class ChannelsService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'ChannelsService');
@@ -102,6 +113,71 @@ export class ChannelsService {
 		this.logger.debug(`Found ${channels.length} channels`);
 
 		return channels;
+	}
+
+	async findSummaryPage(deviceId: string, limit: number): Promise<ChannelSummaryPage> {
+		const query = this.repository
+			.createQueryBuilder('channel')
+			.innerJoin('channel.device', 'device')
+			.where('device.id = :deviceId', { deviceId })
+			.orderBy('channel.name', 'ASC')
+			.take(limit);
+		const [channels, total] = await query.getManyAndCount();
+
+		return { channels, total };
+	}
+
+	async findBoundedForDevices(
+		deviceIds: string[],
+		categories: string[],
+		perDeviceLimit: number,
+	): Promise<BoundedDeviceChannels> {
+		if (deviceIds.length === 0 || categories.length === 0) {
+			return { channels: [], deviceIds: {}, truncated: false };
+		}
+
+		interface ChannelIdRow {
+			id: string;
+			deviceId: string;
+			rowNumber: string | number;
+		}
+
+		const devicePlaceholders = deviceIds.map(() => '?').join(', ');
+		const categoryPlaceholders = categories.map(() => '?').join(', ');
+		const idRows = await this.dataSource.query<ChannelIdRow[]>(
+			`SELECT ranked."id" AS "id", ranked."deviceId" AS "deviceId", ranked."rowNumber" AS "rowNumber"
+			 FROM (
+			   SELECT channel."id" AS "id", channel."deviceId" AS "deviceId",
+			          ROW_NUMBER() OVER (
+			            PARTITION BY channel."deviceId"
+			            ORDER BY channel."name", channel."id"
+			          ) AS "rowNumber"
+			   FROM devices_module_channels channel
+			   WHERE channel."deviceId" IN (${devicePlaceholders})
+			   AND channel."category" IN (${categoryPlaceholders})
+			 ) ranked
+			 WHERE ranked."rowNumber" <= ?
+			 ORDER BY ranked."deviceId", ranked."rowNumber"`,
+			[...deviceIds, ...categories, perDeviceLimit + 1],
+		);
+		const selectedRows = idRows.filter((row) => Number(row.rowNumber) <= perDeviceLimit);
+		const channelIds = selectedRows.map((row) => row.id);
+		const truncated = idRows.length > selectedRows.length;
+
+		if (channelIds.length === 0) {
+			return { channels: [], deviceIds: {}, truncated };
+		}
+
+		const channels = await this.repository
+			.createQueryBuilder('channel')
+			.where('channel.id IN (:...channelIds)', { channelIds })
+			.getMany();
+
+		return {
+			channels,
+			deviceIds: Object.fromEntries(selectedRows.map((row) => [row.id, row.deviceId])),
+			truncated,
+		};
 	}
 
 	async findOne<TChannel extends ChannelEntity>(

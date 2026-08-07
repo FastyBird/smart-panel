@@ -1,6 +1,6 @@
 # Smart Panel MCP Module — Implementation Plan
 
-**Status:** Phase 4 complete — Phase 5 pending
+**Status:** Phase 5 complete — Phase 6 pending
 
 **Architecture decision:** [ADR 0001: MCP Protocol and Security Foundation](../../docs/adr/0001-mcp-protocol-and-security-foundation.md)
 supersedes the original stateful-session transport assumptions in this plan.
@@ -460,17 +460,22 @@ client and unauthenticated IP budgets, and the application closes all handlers a
 - Create: `apps/backend/src/modules/mcp/tools/mcp-read-tool.service.ts`
 - Add tests and Swagger-independent result schemas
 
-- [ ] Build MCP context from public domain services, not repositories and not calls back into the installation's REST
+- [x] Build MCP context from public domain services, not repositories and not calls back into the installation's REST
       API.
-- [ ] Keep MCP independent of Buddy configuration. Reuse small provider-neutral mapping helpers where practical, but do
+- [x] Keep MCP independent of Buddy configuration. Reuse small provider-neutral mapping helpers where practical, but do
       not make MCP availability depend on an LLM provider.
-- [ ] Implement the read catalog defined above with bounded results.
-- [ ] Limit timeseries ranges and point counts; reject unbounded history queries.
-- [ ] Avoid N+1 device/property loading and cap context size for large installations.
-- [ ] Implement the three initial resources and resource templates.
-- [ ] Expose no read tools or resources when `read` is absent from effective capabilities.
-- [ ] Normalize optional/missing weather, energy, security, plugin, or device data instead of failing the whole context.
-- [ ] Return installation identity with every result.
+- [x] Implement the read catalog defined above with bounded results.
+- [x] Limit timeseries ranges and point counts; reject unbounded history queries.
+- [x] Avoid N+1 device/property loading and cap context size for large installations.
+- [x] Implement the three initial resources and resource templates.
+- [x] Expose no read tools or resources when `read` is absent from effective capabilities.
+- [x] Normalize optional/missing weather, energy, security, plugin, or device data instead of failing the whole context.
+- [x] Return installation identity with every result.
+
+**Outcome:** The authenticated MCP server now exposes six bounded read tools, installation/home resources, and a
+parameterized space snapshot template only when `read` is effective. Tool execution reauthorizes the live client and
+module policy, returns structured installation metadata, caps context/history/forecast/alert sizes, and isolates
+optional weather, energy, and security failures from the broader home context.
 
 **Tests:** global and space context, large-installation bounds, missing optional modules/data, invalid IDs, timeseries
 limits, output schema validation, and read-disabled behavior.

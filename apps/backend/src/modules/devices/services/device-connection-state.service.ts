@@ -5,6 +5,21 @@ import { StorageService } from '../../storage/services/storage.service';
 import { ConnectionState, DEVICES_MODULE_NAME, OnlineDeviceState, PropertyCategory } from '../devices.constants';
 import { ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 
+export interface DeviceConnectionStateValue {
+	online: boolean;
+	status: ConnectionState;
+	lastChanged: Date | null;
+}
+
+interface DeviceStatusRow {
+	time?: Date | string;
+	online?: boolean;
+	onlineI?: number;
+	status?: ConnectionState;
+	deviceId: DeviceEntity['id'];
+	propertyId?: ChannelPropertyEntity['id'];
+}
+
 @Injectable()
 export class DeviceConnectionStateService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'DeviceConnectionStateService');
@@ -137,9 +152,73 @@ export class DeviceConnectionStateService {
 	 * holding a full entity pass it unchanged, while callers that only know an id (the virtual
 	 * devices plugin aggregating over its source device ids) do not have to load one just to ask.
 	 */
-	async readLatest(
+	async readLatest(device: Pick<DeviceEntity, 'id'>): Promise<DeviceConnectionStateValue> {
+		return this.readLatestInternal(device, false);
+	}
+
+	async readLatestStrict(device: Pick<DeviceEntity, 'id'>): Promise<DeviceConnectionStateValue> {
+		return this.readLatestInternal(device, true);
+	}
+
+	async readLatestManyStrict(
+		devices: Array<Pick<DeviceEntity, 'id'>>,
+	): Promise<Map<DeviceEntity['id'], DeviceConnectionStateValue>> {
+		const statuses = new Map<DeviceEntity['id'], DeviceConnectionStateValue>();
+		const missingIds: DeviceEntity['id'][] = [];
+
+		for (const device of devices) {
+			const cached = this.statusMap.get(device.id);
+
+			if (cached) {
+				statuses.set(device.id, cached);
+			} else {
+				missingIds.push(device.id);
+			}
+		}
+
+		if (missingIds.length === 0) {
+			return statuses;
+		}
+		if (!this.storageService.isConnected()) {
+			throw new Error('Device connection status storage is unavailable');
+		}
+
+		const predicate = missingIds.map((id) => `deviceId = '${this.escapeTagValue(id)}'`).join(' OR ');
+		const query = `
+        SELECT *
+        FROM device_status
+        WHERE (${predicate})
+        GROUP BY "deviceId"
+		ORDER BY time DESC
+		LIMIT 1
+      `;
+
+		try {
+			const rows = await this.storageService.queryStrict<DeviceStatusRow>(query);
+			const rowByDevice = new Map(rows.map((row) => [row.deviceId, row]));
+
+			for (const id of missingIds) {
+				const row = rowByDevice.get(id);
+				const status = row ? this.toStatus(row) : this.unknownStatus();
+				this.statusMap.set(id, status);
+				statuses.set(id, status);
+			}
+
+			return statuses;
+		} catch (error) {
+			const err = error as Error;
+			this.logger.error(`Failed to batch read device statuses from storage error=${err.message}`, {
+				stack: err.stack,
+			});
+
+			throw error;
+		}
+	}
+
+	private async readLatestInternal(
 		device: Pick<DeviceEntity, 'id'>,
-	): Promise<{ online: boolean; status: ConnectionState; lastChanged: Date | null }> {
+		strict: boolean,
+	): Promise<DeviceConnectionStateValue> {
 		// Check local cache first
 		if (this.statusMap.has(device.id)) {
 			this.logger.debug(
@@ -152,11 +231,11 @@ export class DeviceConnectionStateService {
 
 		// Return default if storage not connected
 		if (!this.storageService.isConnected()) {
-			return {
-				online: false,
-				status: ConnectionState.UNKNOWN,
-				lastChanged: null,
-			};
+			if (strict) {
+				throw new Error('Device connection status storage is unavailable');
+			}
+
+			return this.unknownStatus();
 		}
 
 		try {
@@ -169,34 +248,27 @@ export class DeviceConnectionStateService {
 
 			this.logger.debug(`Fetching latest status id=${device.id}`, { resource: device.id });
 
-			const result = await this.storageService.query<{
-				time: string;
-				online: boolean;
-				onlineI: number;
-				status: ConnectionState;
-				deviceId: DeviceEntity['id'];
-				propertyId: ChannelPropertyEntity['id'];
-			}>(query);
+			const result = await (strict
+				? this.storageService.queryStrict<DeviceStatusRow>(query)
+				: this.storageService.query<DeviceStatusRow>(query));
 
 			if (!result.length) {
 				this.logger.debug(`No stored status found for id=${device.id}`, { resource: device.id });
 
-				return {
-					online: false,
-					status: ConnectionState.UNKNOWN,
-					lastChanged: null,
-				};
+				return this.unknownStatus();
 			}
 
 			const latest = result[0];
-			const lastChanged = latest.time ? new Date(latest.time) : new Date();
+			const connectionState = this.toStatus(latest);
 
 			this.logger.debug(`Read latest value id=${device.id} status=${latest.status}`, { resource: device.id });
 
-			this.statusMap.set(device.id, { online: latest.online, status: latest.status, lastChanged });
-			this.statusPropertyMap.set(device.id, latest.propertyId);
+			this.statusMap.set(device.id, connectionState);
+			if (latest.propertyId) {
+				this.statusPropertyMap.set(device.id, latest.propertyId);
+			}
 
-			return { online: latest.online, status: latest.status, lastChanged };
+			return connectionState;
 		} catch (error) {
 			const err = error as Error;
 
@@ -205,12 +277,28 @@ export class DeviceConnectionStateService {
 				stack: err.stack,
 			});
 
-			return {
-				online: false,
-				status: ConnectionState.UNKNOWN,
-				lastChanged: null,
-			};
+			if (strict) {
+				throw error;
+			}
+
+			return this.unknownStatus();
 		}
+	}
+
+	private toStatus(row: DeviceStatusRow): DeviceConnectionStateValue {
+		return {
+			online: row.online ?? Number(row.onlineI ?? 0) > 0,
+			status: row.status ?? ConnectionState.UNKNOWN,
+			lastChanged: row.time ? new Date(row.time) : null,
+		};
+	}
+
+	private unknownStatus(): DeviceConnectionStateValue {
+		return { online: false, status: ConnectionState.UNKNOWN, lastChanged: null };
+	}
+
+	private escapeTagValue(value: string): string {
+		return value.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
 	}
 
 	async delete(device: DeviceEntity): Promise<void> {

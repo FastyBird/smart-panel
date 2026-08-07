@@ -161,6 +161,35 @@ export class StorageService {
 		return [];
 	}
 
+	/**
+	 * Query storage while preserving the normal primary-to-fallback behavior,
+	 * but propagate the final failure instead of returning an empty result.
+	 */
+	async queryStrict<T>(query: string, options?: StorageQueryOptions): Promise<T[]> {
+		let primaryError: unknown;
+
+		if (this.primary?.isAvailable()) {
+			try {
+				return await (this.primary.queryStrict?.<T>(query, options) ?? this.primary.query<T>(query, options));
+			} catch (error) {
+				primaryError = error;
+				const err = error as Error;
+
+				this.logger.error(`Primary strict query failed, trying fallback: ${err.message}`);
+			}
+		}
+
+		if (this.fallback?.isAvailable()) {
+			return this.fallback.queryStrict?.<T>(query, options) ?? this.fallback.query<T>(query, options);
+		}
+
+		if (primaryError) {
+			throw primaryError;
+		}
+
+		throw new Error('No storage backend is available');
+	}
+
 	async queryRaw<T>(query: string, options?: StorageQueryOptions): Promise<T> {
 		if (this.primary?.isAvailable()) {
 			try {

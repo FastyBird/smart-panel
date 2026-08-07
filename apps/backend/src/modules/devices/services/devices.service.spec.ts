@@ -18,12 +18,13 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
-import { ConnectionState, DeviceCategory, DeviceHiddenFilter, EventType } from '../devices.constants';
+import { ChannelCategory, ConnectionState, DeviceCategory, DeviceHiddenFilter, EventType } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
 
+import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { DeviceConnectionStateService } from './device-connection-state.service';
 import { DeviceZonesService } from './device-zones.service';
@@ -64,6 +65,8 @@ describe('DevicesService', () => {
 	let mapper: DevicesTypeMapperService;
 	let eventEmitter: EventEmitter2;
 	let dataSource: DataSource;
+	let channelsService: jest.Mocked<ChannelsService>;
+	let propertiesService: jest.Mocked<ChannelsPropertiesService>;
 
 	const mockDevice = {
 		id: uuid().toString(),
@@ -140,6 +143,13 @@ describe('DevicesService', () => {
 					provide: ChannelsService,
 					useValue: {
 						create: jest.fn(() => {}),
+						findBoundedForDevices: jest.fn().mockResolvedValue({ channels: [], deviceIds: {}, truncated: false }),
+					},
+				},
+				{
+					provide: ChannelsPropertiesService,
+					useValue: {
+						findBoundedForChannels: jest.fn().mockResolvedValue({ properties: [], totals: {} }),
 					},
 				},
 				{
@@ -158,6 +168,7 @@ describe('DevicesService', () => {
 					provide: DataSource,
 					useValue: {
 						getRepository: jest.fn(() => {}),
+						query: jest.fn(),
 						manager: mockManager,
 						transaction: jest.fn(async (cb: (m: any) => any) => await cb(mockManager)),
 					},
@@ -176,8 +187,9 @@ describe('DevicesService', () => {
 		mapper = module.get<DevicesTypeMapperService>(DevicesTypeMapperService);
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 		dataSource = module.get<DataSource>(DataSource);
+		channelsService = jest.mocked(module.get<ChannelsService>(ChannelsService));
+		propertiesService = jest.mocked(module.get<ChannelsPropertiesService>(ChannelsPropertiesService));
 	});
-
 	afterEach(() => {
 		jest.clearAllMocks();
 	});
@@ -230,6 +242,170 @@ describe('DevicesService', () => {
 			await service.findAll();
 
 			expect(spy).toHaveBeenCalledWith(expect.not.objectContaining({ where: expect.anything() }));
+		});
+	});
+
+	describe('findVisibleSummaryPage', () => {
+		it('bounds the query before loading device summaries', async () => {
+			const visibleDevice = toInstance(MockDevice, { ...mockDevice, hidden: false });
+			const queryBuilderMock: any = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				getManyAndCount: jest.fn().mockResolvedValue([[visibleDevice], 12]),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+
+			await expect(service.findVisibleSummaryPage(10, { roomIds: ['room-id'] })).resolves.toEqual({
+				devices: [visibleDevice],
+				total: 12,
+			});
+			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledTimes(1);
+			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('device.deviceZones', 'deviceZones');
+			expect(queryBuilderMock.take).toHaveBeenCalledWith(10);
+			expect(queryBuilderMock.callListeners).toHaveBeenCalledWith(false);
+			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('device.roomId IN (:...roomIds)', {
+				roomIds: ['room-id'],
+			});
+		});
+
+		it('filters by one zone while hydrating all zone memberships', async () => {
+			const visibleDevice = toInstance(MockDevice, { ...mockDevice, hidden: false });
+			visibleDevice.deviceZones = [
+				{ zoneId: 'selected-zone' },
+				{ zoneId: 'other-zone' },
+			] as typeof visibleDevice.deviceZones;
+			const queryBuilderMock: any = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				innerJoin: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				getManyAndCount: jest.fn().mockResolvedValue([[visibleDevice], 1]),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+
+			const result = await service.findVisibleSummaryPage(10, { zoneId: 'selected-zone' });
+
+			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('device.deviceZones', 'deviceZones');
+			expect(queryBuilderMock.innerJoin).toHaveBeenCalledWith(
+				'device.deviceZones',
+				'scopeDeviceZone',
+				'scopeDeviceZone.zoneId = :zoneId',
+				{ zoneId: 'selected-zone' },
+			);
+			expect(result.devices[0].zoneIds).toEqual(['selected-zone', 'other-zone']);
+		});
+
+		it('loads one visible device without channel relations', async () => {
+			const visibleDevice = toInstance(MockDevice, { ...mockDevice, hidden: false });
+			const queryBuilderMock: any = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(visibleDevice),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+
+			await expect(service.findVisibleSummaryById(mockDevice.id)).resolves.toEqual(visibleDevice);
+			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledTimes(1);
+			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('device.deviceZones', 'deviceZones');
+			expect(queryBuilderMock.callListeners).toHaveBeenCalledWith(false);
+		});
+	});
+
+	describe('findVisibleBoundedStateByChannelCategories', () => {
+		it('uses one extra device ID to report truncation without hydrating it', async () => {
+			const visibleDevice = toInstance(MockDevice, { ...mockDevice, id: 'device-1', hidden: false });
+			jest.spyOn(dataSource, 'query').mockResolvedValue([
+				{ id: 'device-1', name: 'First' },
+				{ id: 'device-2', name: 'Second' },
+			]);
+			const queryBuilderMock: any = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockResolvedValue([visibleDevice]),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+			channelsService.findBoundedForDevices.mockResolvedValue({
+				channels: [{ id: 'channel-1', properties: [] } as any],
+				deviceIds: { 'channel-1': 'device-1' },
+				truncated: true,
+			});
+			propertiesService.findBoundedForChannels.mockResolvedValue({
+				properties: [],
+				totals: { 'channel-1': 21 },
+			});
+
+			await expect(
+				service.findVisibleBoundedStateByChannelCategories([ChannelCategory.ALARM], 1, 10, 20, {
+					roomIds: ['room-1'],
+				}),
+			).resolves.toEqual({
+				devices: [expect.objectContaining({ id: 'device-1' })],
+				devicesTruncated: true,
+				channelsTruncated: true,
+				propertiesTruncated: true,
+			});
+			expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('device."roomId" IN (?)'), [
+				ChannelCategory.ALARM,
+				'room-1',
+				2,
+			]);
+			expect(channelsService.findBoundedForDevices).toHaveBeenCalledWith(['device-1'], [ChannelCategory.ALARM], 10);
+			expect(propertiesService.findBoundedForChannels).toHaveBeenCalledWith(['channel-1'], 20, true, undefined);
+		});
+	});
+
+	describe('getVisibleSpaceCounts', () => {
+		it('uses grouped raw counts without hydrating device entities', async () => {
+			const roomQuery: any = {
+				select: jest.fn().mockReturnThis(),
+				addSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				groupBy: jest.fn().mockReturnThis(),
+				getRawMany: jest.fn().mockResolvedValue([{ spaceId: 'room-id', deviceCount: '12' }]),
+			};
+			const zoneQuery: any = {
+				innerJoin: jest.fn().mockReturnThis(),
+				select: jest.fn().mockReturnThis(),
+				addSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				groupBy: jest.fn().mockReturnThis(),
+				getRawMany: jest.fn().mockResolvedValue([{ spaceId: 'zone-id', deviceCount: 7 }]),
+			};
+			const floorQuery: any = {
+				innerJoin: jest.fn().mockReturnThis(),
+				select: jest.fn().mockReturnThis(),
+				addSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				groupBy: jest.fn().mockReturnThis(),
+				getRawMany: jest.fn().mockResolvedValue([{ spaceId: 'floor-id', deviceCount: '5' }]),
+			};
+
+			jest
+				.spyOn(repository, 'createQueryBuilder')
+				.mockReturnValueOnce(roomQuery)
+				.mockReturnValueOnce(zoneQuery)
+				.mockReturnValueOnce(floorQuery);
+
+			await expect(service.getVisibleSpaceCounts()).resolves.toEqual({
+				rooms: { 'room-id': 12 },
+				zones: { 'zone-id': 7 },
+				floors: { 'floor-id': 5 },
+			});
+			expect(roomQuery.getRawMany).toHaveBeenCalledTimes(1);
+			expect(zoneQuery.getRawMany).toHaveBeenCalledTimes(1);
+			expect(floorQuery.getRawMany).toHaveBeenCalledTimes(1);
 		});
 	});
 

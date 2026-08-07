@@ -30,6 +30,26 @@ export class PropertyTimeseriesService {
 		to: Date,
 		bucket?: BucketDuration,
 	): Promise<PropertyTimeseriesModel> {
+		try {
+			return await this.queryTimeseriesStrict(property, from, to, bucket);
+		} catch {
+			// Return empty result on error
+			return plainToInstance(PropertyTimeseriesModel, {
+				property: property.id,
+				from: from.toISOString(),
+				to: to.toISOString(),
+				bucket: bucket ?? this.getDefaultBucket(from, to),
+				points: [],
+			});
+		}
+	}
+
+	async queryTimeseriesStrict(
+		property: ChannelPropertyEntity,
+		from: Date,
+		to: Date,
+		bucket?: BucketDuration,
+	): Promise<PropertyTimeseriesModel> {
 		const key = this.valueSourceRegistry.resolve(property);
 
 		this.logger.debug(
@@ -54,14 +74,7 @@ export class PropertyTimeseriesService {
 				err.stack,
 			);
 
-			// Return empty result on error
-			return plainToInstance(PropertyTimeseriesModel, {
-				property: property.id,
-				from: from.toISOString(),
-				to: to.toISOString(),
-				bucket: bucket ?? this.getDefaultBucket(from, to),
-				points: [],
-			});
+			throw error;
 		}
 	}
 
@@ -78,8 +91,8 @@ export class PropertyTimeseriesService {
 		const effectiveBucket = bucket ?? this.getDefaultBucket(from, to);
 		const query = this.buildQuery(key, from, to, effectiveBucket);
 
-		const result = await this.storageService.query<{
-			time: { _nanoISO: string };
+		const result = await this.storageService.queryStrict<{
+			time: { _nanoISO: string } | Date | string;
 			stringValue?: string;
 			numberValue?: number;
 			propertyId: string;
@@ -91,7 +104,8 @@ export class PropertyTimeseriesService {
 
 		// Parse results based on property data type
 		const points = result.map((row) => {
-			const time = row.time._nanoISO;
+			const time =
+				row.time instanceof Date ? row.time.toISOString() : typeof row.time === 'string' ? row.time : row.time._nanoISO;
 			const value = this.parseValue(row, property.dataType);
 
 			return { time, value };

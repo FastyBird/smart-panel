@@ -161,6 +161,7 @@ describe('ChannelsService', () => {
 					provide: DataSource,
 					useValue: {
 						getRepository: jest.fn(() => {}),
+						query: jest.fn(),
 						manager: mockManager,
 						transaction: jest.fn(async (cb: (m: any) => any) => await cb(mockManager)),
 					},
@@ -219,6 +220,54 @@ describe('ChannelsService', () => {
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('channel');
 			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('channel.device', 'device');
 			expect(queryBuilderMock.getMany).toHaveBeenCalled();
+		});
+	});
+
+	describe('findSummaryPage', () => {
+		it('applies the channel cap before hydration', async () => {
+			const queryBuilderMock: any = {
+				innerJoin: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				getManyAndCount: jest.fn().mockResolvedValue([[mockChannel], 25]),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+
+			await expect(service.findSummaryPage(mockDevice.id, 20)).resolves.toEqual({
+				channels: [mockChannel],
+				total: 25,
+			});
+			expect(queryBuilderMock.innerJoin).toHaveBeenCalledWith('channel.device', 'device');
+			expect(queryBuilderMock.take).toHaveBeenCalledWith(20);
+		});
+	});
+
+	describe('findBoundedForDevices', () => {
+		it('caps channel IDs per device before hydrating entities', async () => {
+			jest.spyOn(dataSource, 'query').mockResolvedValue([
+				{ id: mockChannel.id, deviceId: mockDevice.id, rowNumber: 1 },
+				{ id: 'truncated-channel', deviceId: mockDevice.id, rowNumber: 2 },
+			]);
+			const queryBuilderMock: any = {
+				where: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockResolvedValue([mockChannel]),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+
+			await expect(service.findBoundedForDevices([mockDevice.id], [ChannelCategory.ALARM], 1)).resolves.toEqual({
+				channels: [mockChannel],
+				deviceIds: { [mockChannel.id]: mockDevice.id },
+				truncated: true,
+			});
+			expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('ROW_NUMBER() OVER'), [
+				mockDevice.id,
+				ChannelCategory.ALARM,
+				2,
+			]);
+			expect(queryBuilderMock.where).toHaveBeenCalledWith('channel.id IN (:...channelIds)', {
+				channelIds: [mockChannel.id],
+			});
 		});
 	});
 

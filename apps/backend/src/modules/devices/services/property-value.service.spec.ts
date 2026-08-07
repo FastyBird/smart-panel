@@ -26,6 +26,7 @@ describe('PropertyValueService', () => {
 		const mockStorageService = {
 			writePoints: jest.fn(),
 			query: jest.fn(),
+			queryStrict: jest.fn(),
 			isConnected: jest.fn().mockReturnValue(true),
 		};
 
@@ -127,6 +128,71 @@ describe('PropertyValueService', () => {
 
 			expect(result).toBeNull();
 			expect(storageService.query).toHaveBeenCalled();
+		});
+
+		it('should reject a strict read when storage is disconnected', async () => {
+			const property = {
+				id: 'test-property-id',
+				dataType: DataTypeType.STRING,
+			} as ChannelPropertyEntity;
+			storageService.isConnected.mockReturnValue(false);
+
+			await expect(service.readLatestStrict(property)).rejects.toThrow('storage is unavailable');
+		});
+
+		it('should reject a strict read when the storage query fails', async () => {
+			const property = {
+				id: 'test-property-id',
+				dataType: DataTypeType.STRING,
+			} as ChannelPropertyEntity;
+			storageService.queryStrict.mockRejectedValue(new Error('database detail'));
+
+			await expect(service.readLatestStrict(property)).rejects.toThrow('database detail');
+		});
+
+		it('should use a cached value for a strict read while storage is disconnected', async () => {
+			const property = {
+				id: 'test-property-id',
+				dataType: DataTypeType.INT,
+			} as ChannelPropertyEntity;
+			service['valuesMap'].set(property.id, new PropertyValueState(42));
+			storageService.isConnected.mockReturnValue(false);
+
+			await expect(service.readLatestStrict(property)).resolves.toEqual(expect.objectContaining({ value: 42 }));
+		});
+
+		it('should batch strict reads for every uncached property', async () => {
+			const properties = [
+				{ id: 'property-a', dataType: DataTypeType.INT },
+				{ id: 'property-b', dataType: DataTypeType.BOOL },
+			] as ChannelPropertyEntity[];
+			storageService.queryStrict.mockResolvedValue([
+				{ propertyId: 'property-a', numberValue: 12, time: '2026-08-06T12:00:00Z' },
+				{ propertyId: 'property-a', numberValue: 10, time: '2026-08-06T11:59:00Z' },
+				{ propertyId: 'property-b', stringValue: 'true', time: '2026-08-06T12:01:00Z' },
+			]);
+
+			const result = await service.readLatestManyStrict(properties);
+
+			expect(result.get('property-a')).toEqual(expect.objectContaining({ value: 12, trend: 'rising' }));
+			expect(result.get('property-b')).toEqual(expect.objectContaining({ value: true }));
+			expect(storageService.queryStrict).toHaveBeenCalledTimes(1);
+			expect(storageService.queryStrict).toHaveBeenCalledWith(expect.stringContaining('GROUP BY "propertyId"'));
+		});
+
+		it('should only batch uncached source keys', async () => {
+			const properties = [
+				{ id: 'property-a', dataType: DataTypeType.INT },
+				{ id: 'property-b', dataType: DataTypeType.INT },
+			] as ChannelPropertyEntity[];
+			service['valuesMap'].set('property-a', new PropertyValueState(5));
+			storageService.queryStrict.mockResolvedValue([{ propertyId: 'property-b', numberValue: 7 }]);
+
+			const result = await service.readLatestManyStrict(properties);
+
+			expect(result.get('property-a')?.value).toBe(5);
+			expect(result.get('property-b')?.value).toBe(7);
+			expect(storageService.queryStrict).toHaveBeenCalledWith(expect.not.stringContaining("propertyId = 'property-a'"));
 		});
 	});
 

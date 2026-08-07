@@ -7,6 +7,8 @@ export const MCP_MODULE_API_TAG_NAME = 'MCP module';
 export const MCP_MODULE_API_TAG_DESCRIPTION =
 	'Model Context Protocol integration for exposing a curated, capability-scoped smart home agent surface.';
 
+export const MCP_CATALOG_REGISTRAR = Symbol('MCP_CATALOG_REGISTRAR');
+
 export enum McpCapability {
 	READ = 'read',
 	WRITE = 'write',
@@ -40,3 +42,29 @@ export const MCP_AUTHENTICATED_RATE_LIMIT = 120;
 export const MCP_UNAUTHENTICATED_RATE_LIMIT = 10;
 
 export const MCP_RATE_LIMIT_TTL_MS = 60 * 1000;
+
+export const MCP_MAX_CONTEXT_SPACES = 50;
+
+export const MCP_MAX_CONTEXT_DEVICES = 100;
+
+export const MCP_MAX_CHANNELS_PER_DEVICE = 20;
+
+export const MCP_MAX_PROPERTIES_PER_CHANNEL = 40;
+
+export const MCP_MAX_CONTEXT_SCENES = 50;
+
+export const MCP_MAX_SECURITY_ALERTS = 20;
+
+export const MCP_MAX_SECURITY_DEVICES = 100;
+
+export const MCP_MAX_SECURITY_CHANNELS_PER_DEVICE = 10;
+
+export const MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL = 20;
+
+export const MCP_MAX_FORECAST_DAYS = 5;
+
+export const MCP_MAX_TIMESERIES_RANGE_DAYS = 14;
+
+export const MCP_MAX_TIMESERIES_POINTS = 500;
+
+export const MCP_MAX_ENERGY_RANGE_DAYS = 31;

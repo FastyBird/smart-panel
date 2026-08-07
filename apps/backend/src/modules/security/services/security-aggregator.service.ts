@@ -1,8 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
-import { DevicesService } from '../../devices/services/devices.service';
+import { DevicesService, VisibleDeviceSummaryScope } from '../../devices/services/devices.service';
 import { SecurityAggregationContext } from '../contracts/security-aggregation-context.type';
 import { AggregationResult, SecurityAggregatorInterface } from '../contracts/security-aggregator.interface';
 import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
@@ -16,6 +17,24 @@ import {
 	Severity,
 } from '../security.constants';
 import { pickNewestEvent } from '../security.utils';
+import { DetectionRulesLoaderService } from '../spec/detection-rules-loader.service';
+
+export interface BoundedSecurityAggregationResult {
+	status: SecurityStatusModel;
+	devicesTruncated: boolean;
+	channelsTruncated: boolean;
+	propertiesTruncated: boolean;
+}
+
+const ALARM_PROPERTY_CATEGORIES = [
+	PropertyCategory.STATE,
+	PropertyCategory.ALARM_STATE,
+	PropertyCategory.TRIGGERED,
+	PropertyCategory.TAMPERED,
+	PropertyCategory.ACTIVE,
+	PropertyCategory.FAULT,
+	PropertyCategory.LAST_EVENT,
+];
 
 @Injectable()
 export class SecurityAggregatorService implements SecurityAggregatorInterface {
@@ -25,6 +44,7 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 		@Inject(SECURITY_STATE_PROVIDERS)
 		private readonly providers: SecurityStateProviderInterface[],
 		private readonly devicesService: DevicesService,
+		private readonly detectionRulesLoader: DetectionRulesLoaderService,
 	) {}
 
 	async aggregate(): Promise<SecurityStatusModel> {
@@ -34,7 +54,6 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 	}
 
 	async aggregateWithErrors(): Promise<AggregationResult> {
-		// Fetch devices once for all providers
 		let devices: DeviceEntity[];
 		let providerErrors = 0;
 
@@ -46,6 +65,44 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 			providerErrors++;
 		}
 
+		return this.aggregateDevicesWithErrors(devices, providerErrors);
+	}
+
+	async aggregateBounded(
+		deviceLimit: number,
+		channelLimit: number,
+		propertyLimit: number,
+		scope: VisibleDeviceSummaryScope = {},
+	): Promise<BoundedSecurityAggregationResult> {
+		const sensorRules = this.detectionRulesLoader.getSensorRules();
+		const categories = Array.from(new Set([ChannelCategory.ALARM, ...sensorRules.keys()]));
+		const propertyCategories = Array.from(
+			new Set([
+				...ALARM_PROPERTY_CATEGORIES,
+				...Array.from(sensorRules.values()).flatMap((rule) => rule.properties.map((check) => check.property)),
+			]),
+		);
+		const page = await this.devicesService.findVisibleBoundedStateByChannelCategories(
+			categories,
+			deviceLimit,
+			channelLimit,
+			propertyLimit,
+			scope,
+			propertyCategories,
+		);
+
+		return {
+			status: (await this.aggregateDevicesWithErrors(page.devices, 0)).status,
+			devicesTruncated: page.devicesTruncated,
+			channelsTruncated: page.channelsTruncated,
+			propertiesTruncated: page.propertiesTruncated,
+		};
+	}
+
+	private async aggregateDevicesWithErrors(
+		devices: DeviceEntity[],
+		providerErrors: number,
+	): Promise<AggregationResult> {
 		// Phase 1: Resolve armed state from alarm provider first
 		let armedState: ArmedState | null = null;
 		const alarmProvider = this.providers.find((p) => {
