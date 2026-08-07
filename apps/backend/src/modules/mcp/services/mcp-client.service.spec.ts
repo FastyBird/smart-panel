@@ -33,7 +33,7 @@ describe('McpClientService', () => {
 	let configService: { getModuleConfig: jest.Mock };
 	let serverService: {
 		closeClient: jest.Mock;
-		invalidatePolicies: jest.Mock;
+		invalidateClientPolicy: jest.Mock;
 		notifyResourcesChanged: jest.Mock;
 		notifyToolsChanged: jest.Mock;
 	};
@@ -87,7 +87,7 @@ describe('McpClientService', () => {
 		};
 		serverService = {
 			closeClient: jest.fn().mockResolvedValue(undefined),
-			invalidatePolicies: jest.fn(),
+			invalidateClientPolicy: jest.fn(),
 			notifyResourcesChanged: jest.fn(),
 			notifyToolsChanged: jest.fn(),
 		};
@@ -218,8 +218,64 @@ describe('McpClientService', () => {
 
 		expect(serverService.notifyToolsChanged).toHaveBeenCalledWith(currentClient.id);
 		expect(serverService.notifyResourcesChanged).toHaveBeenCalledWith(currentClient.id);
-		expect(serverService.invalidatePolicies).toHaveBeenCalledTimes(1);
+		expect(serverService.invalidateClientPolicy).toHaveBeenCalledWith(currentClient.id);
 		expect(serverService.closeClient).not.toHaveBeenCalled();
+	});
+
+	it('does not notify resources when read access is unchanged', async () => {
+		configService.getModuleConfig.mockReturnValue({
+			capabilities: [McpCapability.READ, McpCapability.WRITE, McpCapability.TRIGGER],
+		});
+		currentClient = {
+			id: uuid(),
+			name: 'Agent',
+			description: null,
+			enabled: true,
+			capabilities: [McpCapability.WRITE],
+			tokenId: uuid(),
+		} as McpClientEntity;
+
+		await service.update(currentClient.id, { capabilities: [McpCapability.TRIGGER] });
+
+		expect(serverService.notifyToolsChanged).toHaveBeenCalledWith(currentClient.id);
+		expect(serverService.notifyResourcesChanged).not.toHaveBeenCalled();
+		expect(serverService.invalidateClientPolicy).toHaveBeenCalledWith(currentClient.id);
+	});
+
+	it('does not invalidate or notify when the capability set is unchanged', async () => {
+		currentClient = {
+			id: uuid(),
+			name: 'Agent',
+			description: null,
+			enabled: true,
+			capabilities: [McpCapability.READ, McpCapability.WRITE],
+			tokenId: uuid(),
+		} as McpClientEntity;
+
+		await service.update(currentClient.id, { capabilities: [McpCapability.WRITE, McpCapability.READ] });
+
+		expect(serverService.invalidateClientPolicy).not.toHaveBeenCalled();
+		expect(serverService.notifyToolsChanged).not.toHaveBeenCalled();
+		expect(serverService.notifyResourcesChanged).not.toHaveBeenCalled();
+	});
+
+	it('invalidates live policy even when reloading the persisted update fails', async () => {
+		currentClient = {
+			id: uuid(),
+			name: 'Agent',
+			description: null,
+			enabled: true,
+			capabilities: [McpCapability.READ, McpCapability.WRITE],
+			tokenId: uuid(),
+		} as McpClientEntity;
+		repository.findOne.mockResolvedValueOnce(currentClient).mockRejectedValueOnce(new Error('Database unavailable'));
+
+		await expect(service.update(currentClient.id, { capabilities: [McpCapability.READ] })).rejects.toThrow(
+			'Database unavailable',
+		);
+
+		expect(serverService.invalidateClientPolicy).toHaveBeenCalledWith(currentClient.id);
+		expect(serverService.notifyToolsChanged).toHaveBeenCalledWith(currentClient.id);
 	});
 
 	it('rejects enabling a client whose current credential is revoked', async () => {

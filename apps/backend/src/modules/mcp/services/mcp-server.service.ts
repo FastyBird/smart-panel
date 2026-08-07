@@ -43,6 +43,7 @@ interface McpCatalogRegistrar {
 export class McpServerService implements OnApplicationShutdown {
 	private readonly logger = createExtensionLogger(MCP_MODULE_NAME, 'McpServerService');
 	private readonly handlers = new Map<string, ClientHandler>();
+	private readonly clientPolicyRevisions = new Map<string, number>();
 	private policyRevision = 0;
 
 	constructor(
@@ -63,7 +64,10 @@ export class McpServerService implements OnApplicationShutdown {
 
 		const policy = request.mcpPolicy;
 
-		if (policy.policyRevision !== this.policyRevision) {
+		if (
+			policy.policyRevision !== this.policyRevision ||
+			policy.clientPolicyRevision !== this.getClientPolicyRevision(policy.client.id)
+		) {
 			throw new UnauthorizedException('MCP request policy is no longer current');
 		}
 
@@ -104,12 +108,20 @@ export class McpServerService implements OnApplicationShutdown {
 		return this.policyRevision;
 	}
 
+	getClientPolicyRevision(clientId: string): number {
+		return this.clientPolicyRevisions.get(clientId) ?? 0;
+	}
+
 	invalidatePolicies(): void {
 		this.policyRevision += 1;
 	}
 
+	invalidateClientPolicy(clientId: string): void {
+		this.clientPolicyRevisions.set(clientId, this.getClientPolicyRevision(clientId) + 1);
+	}
+
 	async closeClient(clientId: string): Promise<void> {
-		this.invalidatePolicies();
+		this.invalidateClientPolicy(clientId);
 		this.subscriptions.closeClient(clientId);
 		const clientHandler = this.handlers.get(clientId);
 

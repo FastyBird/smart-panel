@@ -7,13 +7,16 @@ import { McpClientGuard } from './mcp-client.guard';
 
 describe('McpClientGuard', () => {
 	it('resolves policy, validates transport origin, and attaches the context', async () => {
-		const request = { auth: { type: 'token' } } as McpPolicyRequest;
+		const request = { auth: { type: 'token', ownerId: 'client-id' } } as McpPolicyRequest;
 		const policy = { installationId: 'installation-id' } as McpPolicyContext;
 		const policyService = {
 			resolve: jest.fn().mockResolvedValue(policy),
 			validateRequestOrigin: jest.fn(),
 		};
-		const serverService = { getPolicyRevision: jest.fn().mockReturnValue(7) };
+		const serverService = {
+			getClientPolicyRevision: jest.fn().mockReturnValue(3),
+			getPolicyRevision: jest.fn().mockReturnValue(7),
+		};
 		const guard = new McpClientGuard(
 			policyService as unknown as McpPolicyService,
 			serverService as unknown as McpServerService,
@@ -25,6 +28,7 @@ describe('McpClientGuard', () => {
 		await expect(guard.canActivate(context)).resolves.toBe(true);
 		expect(policyService.resolve).toHaveBeenCalledWith(request.auth);
 		expect(policyService.validateRequestOrigin).toHaveBeenCalledWith(request, policy);
-		expect(request.mcpPolicy).toEqual({ ...policy, policyRevision: 7 });
+		expect(serverService.getClientPolicyRevision).toHaveBeenCalledWith('client-id');
+		expect(request.mcpPolicy).toEqual({ ...policy, clientPolicyRevision: 3, policyRevision: 7 });
 	});
 });
