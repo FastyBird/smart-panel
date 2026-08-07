@@ -1171,6 +1171,64 @@ describe('devices-virtual plugin (e2e)', () => {
 			expect((readBack.body as { data: DeviceBody }).data.category).toBe(DeviceCategory.LIGHTING);
 		});
 
+		// The case an `isValid` check waves through: `generic` requires nothing the device lacks, so its
+		// only complaint about the stored `light` channel is a *warning* — and every projection under that
+		// channel would stay attached to a slot `generic` never defines.
+		it('rejects recategorising to a category that merely does not define the stored channels', async () => {
+			const deviceResponse = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: DeviceCategory.LIGHTING,
+						name: 'E2E Unknown Channel Guard Device',
+					},
+				})
+				.expect(201);
+			const deviceId = (deviceResponse.body as { data: DeviceBody }).data.id;
+
+			await authPost('/modules/devices/channels')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: ChannelCategory.LIGHT,
+						identifier: 'light',
+						name: 'Light',
+						device: deviceId,
+					},
+				})
+				.expect(201);
+
+			// `generic` *requires* device_information, which DeviceConnectivityService synthesizes
+			// fire-and-forget off DEVICE_CREATED. Patching before it lands would be refused for a missing
+			// required channel — an ordinary error — and would prove nothing about the warning-only case
+			// this test exists for. Waiting makes the stored `light` channel the sole complaint.
+			await waitUntil(async () => {
+				const current = await authGet(`/modules/devices/devices/${deviceId}`);
+
+				if (current.status !== 200) {
+					return { done: false, value: null };
+				}
+
+				const channels = (current.body as { data: DeviceBody }).data.channels;
+
+				return {
+					done: channels.some((channel) => channel.category === String(ChannelCategory.DEVICE_INFORMATION)),
+					value: channels.map((channel) => channel.category),
+				};
+			}, 'the synthesized device_information channel appearing');
+
+			const response = await authPatch(`/modules/devices/devices/${deviceId}`).send({
+				data: { type: DEVICES_VIRTUAL_TYPE, category: DeviceCategory.GENERIC },
+			});
+
+			expect(response.status).toBe(422);
+			expect(JSON.stringify(response.body)).toContain('is not defined in specification');
+
+			const readBack = await authGet(`/modules/devices/devices/${deviceId}`).expect(200);
+
+			expect((readBack.body as { data: DeviceBody }).data.category).toBe(DeviceCategory.LIGHTING);
+		});
+
 		// Every other PATCH keeps working: the guard only runs when the category actually moves, so a
 		// device whose structure would fail today's specification can still be renamed.
 		it('allows an unrelated PATCH on a populated device', async () => {

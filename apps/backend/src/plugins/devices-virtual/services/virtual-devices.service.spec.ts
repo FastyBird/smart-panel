@@ -11,6 +11,7 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import {
 	DeviceValidationService,
 	ValidationIssueSeverity,
+	ValidationIssueType,
 } from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_VIRTUAL_TYPE, VIRTUAL_BLOCKED_CATEGORIES } from '../devices-virtual.constants';
@@ -239,25 +240,127 @@ describe('VirtualDevicesService', () => {
 		// The device's channels and properties were built for the category the wizard was pointed at.
 		// Relabelling it keeps every one of them, so the device is then read against required slots it
 		// simply does not have — and a device PATCH writes no property, so no property hook sees it.
+		// `validateDeviceStructure` is asked about the *new* category first, then the old one — see
+		// `givenValidation` for why both, and the diff test below for what the pairing buys.
+		const givenValidation = (underNew: unknown[], underPrevious: unknown[] = []): void => {
+			deviceValidationService.validateDeviceStructure
+				.mockReturnValueOnce({ isValid: underPrevious.length === 0, issues: underPrevious })
+				.mockReturnValueOnce({ isValid: underNew.length === 0, issues: underNew });
+		};
+
 		it("refuses a change the device's existing structure does not satisfy", async () => {
-			deviceValidationService.validateDeviceStructure.mockReturnValue({
-				isValid: false,
-				issues: [
-					{
-						severity: ValidationIssueSeverity.ERROR,
-						message: "Required channel 'switcher' is missing",
-					},
-				],
-			});
+			givenValidation([
+				{
+					type: ValidationIssueType.MISSING_CHANNEL,
+					severity: ValidationIssueSeverity.ERROR,
+					message: "Required channel 'switcher' is missing",
+				},
+			]);
 
 			await expect(
 				service.assertCategoryChangeSafe(device(DeviceCategory.SWITCHER), DeviceCategory.LIGHTING),
 			).rejects.toThrow(/cannot change category/);
 		});
 
+		// `isValid` counts only errors, and a stored channel the new category does not define is reported
+		// as a *warning* — advisory for the reporting endpoint, where the device is at least still what it
+		// claims. Here it is the damage itself: every projection under that channel stays attached to a
+		// slot the category never defines.
+		it('refuses a change whose only complaint is a channel the new category does not define', async () => {
+			givenValidation([
+				{
+					type: ValidationIssueType.UNKNOWN_CHANNEL,
+					severity: ValidationIssueSeverity.WARNING,
+					message: "Channel category 'light' is not defined in specification for device category 'generic'",
+				},
+			]);
+
+			await expect(
+				service.assertCategoryChangeSafe(device(DeviceCategory.GENERIC), DeviceCategory.LIGHTING),
+			).rejects.toThrow(/not defined in specification/);
+		});
+
+		// A virtual device clears no category outright, including its own: `device_information` is
+		// synthesized carrying only `status`, so `manufacturer`, `model` and `serial_number` are always
+		// reported missing. Holding the move to absolute validity would refuse every recategorisation
+		// while claiming to have judged the structure.
+		it('ignores a complaint the device already had under its old category', async () => {
+			const preExisting = {
+				type: ValidationIssueType.MISSING_PROPERTY,
+				severity: ValidationIssueSeverity.ERROR,
+				channelCategory: ChannelCategory.DEVICE_INFORMATION,
+				message: 'Missing required property: manufacturer in channel: device_information',
+			};
+
+			givenValidation([preExisting], [preExisting]);
+
+			await expect(
+				service.assertCategoryChangeSafe(device(DeviceCategory.SWITCHER), DeviceCategory.LIGHTING),
+			).resolves.toBeUndefined();
+		});
+
+		// The other half of the same rule: a pre-existing complaint travelling along must not mask a new
+		// one arriving beside it.
+		it('refuses when the move adds a complaint beside one the device already had', async () => {
+			const preExisting = {
+				type: ValidationIssueType.MISSING_PROPERTY,
+				severity: ValidationIssueSeverity.ERROR,
+				channelCategory: ChannelCategory.DEVICE_INFORMATION,
+				message: 'Missing required property: manufacturer in channel: device_information',
+			};
+
+			givenValidation(
+				[
+					preExisting,
+					{
+						type: ValidationIssueType.UNKNOWN_CHANNEL,
+						severity: ValidationIssueSeverity.WARNING,
+						channelCategory: ChannelCategory.LIGHT,
+						message: "Channel category 'light' is not defined in specification for device category 'switcher'",
+					},
+				],
+				[preExisting],
+			);
+
+			await expect(
+				service.assertCategoryChangeSafe(device(DeviceCategory.SWITCHER), DeviceCategory.LIGHTING),
+			).rejects.toThrow(/not defined in specification/);
+		});
+
+		// The message names what the move broke, not everything that was ever wrong with the device.
+		it('reports only the complaints the move introduced', async () => {
+			givenValidation(
+				[
+					{
+						type: ValidationIssueType.MISSING_PROPERTY,
+						severity: ValidationIssueSeverity.ERROR,
+						message: 'Missing required property: manufacturer in channel: device_information',
+					},
+					{
+						type: ValidationIssueType.UNKNOWN_CHANNEL,
+						severity: ValidationIssueSeverity.WARNING,
+						message: "Channel category 'light' is not defined in specification for device category 'switcher'",
+					},
+				],
+				[
+					{
+						type: ValidationIssueType.MISSING_PROPERTY,
+						severity: ValidationIssueSeverity.ERROR,
+						message: 'Missing required property: manufacturer in channel: device_information',
+					},
+				],
+			);
+
+			await expect(
+				service.assertCategoryChangeSafe(device(DeviceCategory.SWITCHER), DeviceCategory.LIGHTING),
+			).rejects.toThrow(/^(?!.*manufacturer).*not defined in specification/s);
+		});
+
 		// The stored structure is what is judged, not the fact that a change happened — a device whose
 		// channels genuinely satisfy the new category has nothing wrong with it.
 		it('accepts a change the existing structure does satisfy', async () => {
+			givenValidation([], []);
+
 			await expect(
 				service.assertCategoryChangeSafe(device(DeviceCategory.SWITCHER), DeviceCategory.LIGHTING),
 			).resolves.toBeUndefined();
@@ -266,7 +369,16 @@ describe('VirtualDevicesService', () => {
 		// Running on every PATCH would mean a device that is *already* structurally invalid — hand-built,
 		// or one whose specification moved under it — could no longer even be renamed.
 		it('asks nothing when the category did not change', async () => {
-			deviceValidationService.validateDeviceStructure.mockReturnValue({ isValid: false, issues: [] });
+			deviceValidationService.validateDeviceStructure.mockReturnValue({
+				isValid: false,
+				issues: [
+					{
+						type: ValidationIssueType.MISSING_CHANNEL,
+						severity: ValidationIssueSeverity.ERROR,
+						message: 'unreachable',
+					},
+				],
+			});
 
 			await expect(
 				service.assertCategoryChangeSafe(device(DeviceCategory.LIGHTING), DeviceCategory.LIGHTING),
@@ -277,7 +389,16 @@ describe('VirtualDevicesService', () => {
 		// A device with no channels has nothing that could contradict the new category.
 		it('accepts any change to a device with no channels yet', async () => {
 			channelsService.findAll.mockResolvedValue([]);
-			deviceValidationService.validateDeviceStructure.mockReturnValue({ isValid: false, issues: [] });
+			deviceValidationService.validateDeviceStructure.mockReturnValue({
+				isValid: false,
+				issues: [
+					{
+						type: ValidationIssueType.MISSING_CHANNEL,
+						severity: ValidationIssueSeverity.ERROR,
+						message: 'unreachable',
+					},
+				],
+			});
 
 			await expect(
 				service.assertCategoryChangeSafe(device(DeviceCategory.SWITCHER), DeviceCategory.LIGHTING),
@@ -287,10 +408,18 @@ describe('VirtualDevicesService', () => {
 
 		// Structure comes off the stored rows, not off the payload — the payload carries no channels at
 		// all, which is precisely why a DTO constraint cannot answer this.
-		it('judges the stored channels against the new category', async () => {
+		it('judges the stored channels under both categories', async () => {
+			givenValidation([], []);
+
 			await service.assertCategoryChangeSafe(device(DeviceCategory.SWITCHER), DeviceCategory.LIGHTING);
 
 			expect(channelsService.findAll).toHaveBeenCalledWith(DEVICE_ID);
+			expect(deviceValidationService.validateDeviceStructure).toHaveBeenCalledWith(
+				expect.objectContaining({
+					category: DeviceCategory.LIGHTING,
+					channels: [expect.objectContaining({ category: ChannelCategory.LIGHT })],
+				}),
+			);
 			expect(deviceValidationService.validateDeviceStructure).toHaveBeenCalledWith(
 				expect.objectContaining({
 					category: DeviceCategory.SWITCHER,

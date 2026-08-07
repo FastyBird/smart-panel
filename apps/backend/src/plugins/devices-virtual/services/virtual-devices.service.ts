@@ -9,10 +9,7 @@ import {
 import { ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
-import {
-	DeviceValidationService,
-	ValidationIssueSeverity,
-} from '../../../modules/devices/services/device-validation.service';
+import { DeviceValidationService, ValidationIssue } from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { matchesInvalidValue, matchesStep } from '../../../modules/devices/utils/property-command-value.utils';
 import { getAllProperties, isChannelAllowed, isValidDataType } from '../../../modules/devices/utils/schema.utils';
@@ -146,9 +143,11 @@ export class VirtualDevicesService {
 	 * and no property is written by a device PATCH.
 	 *
 	 * Validated rather than refused outright. A recategorisation the stored structure genuinely
-	 * satisfies is not a problem to solve, and a device with no channels yet has nothing to contradict —
+	 * survives is not a problem to solve, and a device with no channels yet has nothing to contradict —
 	 * `validateDeviceStructure` (documented for exactly this pre-save use) answers both without a rule
-	 * of its own that could drift from the one the validation endpoint applies.
+	 * of its own that could drift from the one the validation endpoint applies. What it is asked is a
+	 * comparison rather than a verdict; see the diff below for why an absolute one would be a blanket
+	 * ban in disguise.
 	 *
 	 * Only asked when the category actually changes. Running it on every PATCH would mean a device that
 	 * is *already* structurally invalid — a hand-built one, or one whose spec moved under it — could no
@@ -165,30 +164,53 @@ export class VirtualDevicesService {
 			return;
 		}
 
-		const result = this.deviceValidationService.validateDeviceStructure({
-			category: device.category,
-			channels: await Promise.all(
-				channels.map(async (channel) => ({
-					id: channel.id,
-					category: channel.category,
-					parent: typeof channel.parent === 'string' ? channel.parent : (channel.parent?.id ?? null),
-					properties: (await this.channelsPropertiesService.findAll(channel.id)).map((property) => ({
-						category: property.category,
-						dataType: property.dataType,
-						permissions: property.permissions,
-					})),
+		const structure = await Promise.all(
+			channels.map(async (channel) => ({
+				id: channel.id,
+				category: channel.category,
+				parent: typeof channel.parent === 'string' ? channel.parent : (channel.parent?.id ?? null),
+				properties: (await this.channelsPropertiesService.findAll(channel.id)).map((property) => ({
+					category: property.category,
+					dataType: property.dataType,
+					permissions: property.permissions,
 				})),
-			),
-		});
+			})),
+		);
 
-		if (result.isValid) {
+		// The same structure judged twice, and only what the *move* introduces is held against it.
+		//
+		// Absolute validity is the wrong bar here, because a virtual device does not clear it against any
+		// category, including its own: `device_information` is synthesized carrying only `status`, so
+		// `manufacturer`, `model` and `serial_number` are always missing. Refusing on that would make
+		// every recategorisation impossible while claiming to have judged the structure, which is a
+		// blanket ban wearing a validation costume. Diffing answers the question actually being asked —
+		// does moving to this category break something that was not already broken — so a pre-existing
+		// gap travels along untouched and a channel that only *this* category fails to define is caught.
+		//
+		// Every issue counts, not the errors `isValid` is computed from. That flag serves the reporting
+		// endpoint, where a stored channel outside the specification is advisory because the device is at
+		// least still what it claims to be. Here it is the damage itself — every projection under such a
+		// channel stays attached to a slot the new category never defines, which `reportCompatibility`
+		// would refuse on sight — and `UNKNOWN_CHANNEL` is warning-severity, as are `DUPLICATE_CHANNEL`,
+		// `INVALID_DATA_TYPE` and `INVALID_PERMISSIONS`.
+		const describe = (issue: ValidationIssue): string =>
+			`${issue.type}|${issue.channelCategory ?? ''}|${issue.propertyCategory ?? ''}|${issue.message}`;
+
+		const before = new Set(
+			this.deviceValidationService
+				.validateDeviceStructure({ category: previousCategory, channels: structure })
+				.issues.map(describe),
+		);
+
+		const introduced = this.deviceValidationService
+			.validateDeviceStructure({ category: device.category, channels: structure })
+			.issues.filter((issue) => !before.has(describe(issue)));
+
+		if (introduced.length === 0) {
 			return;
 		}
 
-		const reasons = result.issues
-			.filter((issue) => issue.severity === ValidationIssueSeverity.ERROR)
-			.map((issue) => issue.message)
-			.join('; ');
+		const reasons = introduced.map((issue) => issue.message).join('; ');
 
 		throw new VirtualCategoryChangeUnsafeException(
 			`Device id=${device.id} cannot change category from '${previousCategory}' to '${device.category}': the channels and properties it already has do not satisfy the new category (${reasons}). Its structure is built for the category it was created with — rebuild the device rather than relabelling it`,
