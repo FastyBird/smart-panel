@@ -19,7 +19,14 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { SpaceType } from '../../spaces/spaces.constants';
-import { ChannelCategory, ConnectionState, DeviceCategory, DeviceHiddenBy, DeviceHiddenFilter, EventType } from '../devices.constants';
+import {
+	ChannelCategory,
+	ConnectionState,
+	DeviceCategory,
+	DeviceHiddenBy,
+	DeviceHiddenFilter,
+	EventType,
+} from '../devices.constants';
 import { DevicesException, DevicesNotAllowedException, DevicesValidationException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';

@@ -461,12 +461,18 @@ export class VirtualDevicesService {
 	 * inventing a second, worse error for the same cause.
 	 */
 	async assertProjectionCompatible(property: VirtualChannelPropertyEntity, channelId: string): Promise<void> {
-		if (property.valueOrigin !== VirtualValueOrigin.SOURCE) {
+		// Only an *explicit* `local` is skipped. `valueOrigin` deliberately carries no class-field
+		// initializer (see the entity), so a create that supplies `source_property` and omits the
+		// optional `value_origin` arrives here as `undefined` and only becomes `source` when the column
+		// default is applied on save — after this hook. Testing for `!== SOURCE` would let exactly that
+		// request through unchecked, which is the shape a direct API caller is most likely to send.
+		if (property.valueOrigin === VirtualValueOrigin.LOCAL) {
 			return;
 		}
 
 		const sourcePropertyId =
-			property.sourcePropertyId ?? (typeof property.sourceProperty === 'string' ? property.sourceProperty : property.sourceProperty?.id);
+			property.sourcePropertyId ??
+			(typeof property.sourceProperty === 'string' ? property.sourceProperty : property.sourceProperty?.id);
 
 		if (!sourcePropertyId) {
 			return;
@@ -497,7 +503,9 @@ export class VirtualDevicesService {
 		);
 
 		if (!report.compatible) {
-			throw new VirtualProjectionIncompatibleException(report.reason ?? 'Source property cannot fill this specification slot');
+			throw new VirtualProjectionIncompatibleException(
+				report.reason ?? 'Source property cannot fill this specification slot',
+			);
 		}
 	}
 

@@ -431,18 +431,39 @@ export class DevicesService {
 		// Save the device
 		const raw = await repository.save(device);
 
-		for (const channelDtoInstance of channels) {
-			this.logger.debug(`Creating new channel for deviceId=${raw.id}`);
+		// A nested create is one request and has to succeed or fail as one thing. The device row is
+		// already saved by the time its channels and properties are built, and a type owner's
+		// `beforeCreate` hook can legitimately reject one of them — a virtual property whose source
+		// cannot fill the slot it is being wired into, say. Without this, that rejection returns its 422
+		// and leaves the parent device (and any channel already created) behind, so the client sees a
+		// failure while the database keeps a half-built device, and a retry adds a second one.
+		//
+		// Rolled back by deleting the device row rather than by a transaction: the sqlite driver shares
+		// one QueryRunner process-wide, so opening a transaction here would interact with the known
+		// TOCTOU hazard tracked in the virtual-devices follow-ups. `ChannelEntity.device` is
+		// `onDelete: 'CASCADE'`, so the channels and their properties go with it. No event is emitted
+		// because none was: DEVICE_CREATED fires at the end of this method, so nothing ever observed
+		// this device existing.
+		try {
+			for (const channelDtoInstance of channels) {
+				this.logger.debug(`Creating new channel for deviceId=${raw.id}`);
 
-			await this.channelsService.create({
-				...channelDtoInstance,
-				device: raw.id,
-			});
-		}
+				await this.channelsService.create({
+					...channelDtoInstance,
+					device: raw.id,
+				});
+			}
 
-		// Set zone memberships if provided
-		if (zoneIds.length > 0) {
-			await this.deviceZonesService.setDeviceZones(raw.id, zoneIds);
+			// Set zone memberships if provided
+			if (zoneIds.length > 0) {
+				await this.deviceZonesService.setDeviceZones(raw.id, zoneIds);
+			}
+		} catch (error) {
+			this.logger.error(`Nested creation failed for deviceId=${raw.id}, rolling the device back`);
+
+			await repository.delete(raw.id);
+
+			throw error;
 		}
 
 		// Retrieve the saved device with its full relations

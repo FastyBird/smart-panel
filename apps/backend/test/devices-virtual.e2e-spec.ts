@@ -323,6 +323,8 @@ describe('devices-virtual plugin (e2e)', () => {
 		let sourceChannelId: string;
 		let sourceOnPropertyId: string;
 		let sourceInUsePropertyId: string;
+		let sourceSecondaryOnPropertyId: string;
+		let sourceSecondaryChannelId: string;
 
 		let virtualDeviceId: string;
 		let lightChannelId: string;
@@ -362,6 +364,28 @@ describe('devices-virtual plugin (e2e)', () => {
 									},
 								],
 							},
+							// A second relay on the same physical device — `outlet` is `multiple` for this
+							// category. The orphaning test needs a source it can delete without disturbing
+							// `sourceOnPropertyId`, and it has to be writable: the slot it feeds is `light.on`,
+							// which requires a writable source, so the read-only `in_use` it used to borrow is
+							// refused now that compatibility is enforced at persistence.
+							{
+								type: SIMULATOR_TYPE,
+								category: ChannelCategory.OUTLET,
+								identifier: 'outlet-secondary',
+								name: 'Outlet 2',
+								properties: [
+									{
+										type: SIMULATOR_TYPE,
+										category: PropertyCategory.ON,
+										identifier: 'on',
+										name: 'On',
+										permissions: [PermissionType.READ_WRITE],
+										data_type: DataTypeType.BOOL,
+										value: false,
+									},
+								],
+							},
 						],
 					},
 				})
@@ -370,13 +394,34 @@ describe('devices-virtual plugin (e2e)', () => {
 			const body = response.body as { data: DeviceBody };
 
 			sourceDeviceId = body.data.id;
-			sourceChannelId = body.data.channels[0].id;
 
-			const sourceProperties = body.data.channels[0].properties;
+			// ChannelBody carries no identifier, and both relays share the `outlet` category, so they are
+			// told apart by content: only the first was given an `in_use` property.
+			const outletChannels = body.data.channels.filter(
+				(channel) => channel.category === String(ChannelCategory.OUTLET),
+			);
+			const primaryChannel = outletChannels.find((channel) =>
+				channel.properties.some((property) => property.category === PropertyCategory.IN_USE),
+			);
+			const secondaryChannel = outletChannels.find(
+				(channel) => !channel.properties.some((property) => property.category === PropertyCategory.IN_USE),
+			);
+
+			expect(primaryChannel).toBeDefined();
+			expect(secondaryChannel).toBeDefined();
+
+			sourceChannelId = primaryChannel.id;
+			sourceSecondaryChannelId = secondaryChannel.id;
+
+			const sourceProperties = primaryChannel.properties;
 
 			sourceOnPropertyId = sourceProperties.find((property) => property.category === PropertyCategory.ON)?.id ?? '';
 			sourceInUsePropertyId =
 				sourceProperties.find((property) => property.category === PropertyCategory.IN_USE)?.id ?? '';
+			sourceSecondaryOnPropertyId =
+				secondaryChannel.properties.find((property) => property.category === PropertyCategory.ON)?.id ?? '';
+
+			expect(sourceSecondaryOnPropertyId).toBeTruthy();
 
 			expect(sourceDeviceId).toBeTruthy();
 			expect(sourceOnPropertyId).toBeTruthy();
@@ -956,7 +1001,7 @@ describe('devices-virtual plugin (e2e)', () => {
 						name: 'On',
 						permissions: [PermissionType.READ_WRITE],
 						data_type: DataTypeType.BOOL,
-						source_property: sourceInUsePropertyId,
+						source_property: sourceSecondaryOnPropertyId,
 					},
 				})
 				.expect(201);
@@ -964,10 +1009,12 @@ describe('devices-virtual plugin (e2e)', () => {
 			const secondaryPropertyBody = propertyResponse.body as { data: ChannelPropertyBody };
 			const secondaryPropertyId = secondaryPropertyBody.data.id;
 
-			expect(secondaryPropertyBody.data.source_property).toBe(sourceInUsePropertyId);
+			expect(secondaryPropertyBody.data.source_property).toBe(sourceSecondaryOnPropertyId);
 
 			// Delete the source property directly (not through the virtual device).
-			await authDelete(`/modules/devices/channels/${sourceChannelId}/properties/${sourceInUsePropertyId}`).expect(204);
+			await authDelete(
+				`/modules/devices/channels/${sourceSecondaryChannelId}/properties/${sourceSecondaryOnPropertyId}`,
+			).expect(204);
 
 			// The virtual device — and its property — survive. Graceful degradation, not breakage.
 			const deviceResponse = await authGet(`/modules/devices/devices/${virtualDeviceId}`).expect(200);
@@ -1223,11 +1270,23 @@ describe('devices-virtual plugin (e2e)', () => {
 			const body = response.body as { data: DeviceBody };
 
 			atomicSourceDeviceId = body.data.id;
-			atomicSourcePropertyId = body.data.channels[0].properties[0].id;
-			atomicReadOnlySourcePropertyId = body.data.channels[0].properties[1].id;
+
+			// Selected by category, not by index: the response's property order is not the request's, and
+			// picking positionally here silently swapped the writable source for the read-only one.
+			const sourceProperties = body.data.channels[0].properties;
+
+			const writableSource = sourceProperties.find((property) => property.category === PropertyCategory.ON);
+			const readOnlySource = sourceProperties.find((property) => property.category === PropertyCategory.IN_USE);
+
+			expect(writableSource).toBeDefined();
+			expect(readOnlySource).toBeDefined();
+
+			atomicSourcePropertyId = writableSource.id;
+			atomicReadOnlySourcePropertyId = readOnlySource.id;
 
 			expect(atomicSourcePropertyId).toBeTruthy();
 			expect(atomicReadOnlySourcePropertyId).toBeTruthy();
+			expect(atomicSourcePropertyId).not.toBe(atomicReadOnlySourcePropertyId);
 		});
 
 		it('accepts the device, its channel and its linked property in a single POST', async () => {
@@ -1385,6 +1444,9 @@ describe('devices-virtual plugin (e2e)', () => {
 		// persistence, a read-only source lands on a writable slot and only fails much later, when a
 		// command is forwarded to a source that cannot accept it.
 		it('rejects a nested property projecting a read-only source onto a writable slot', async () => {
+			const before = await authGet('/modules/devices/devices?hidden=all').expect(200);
+			const beforeCount = (before.body as { data: DeviceBody[] }).data.length;
+
 			const rejected = await authPost('/modules/devices/devices').send({
 				data: {
 					type: DEVICES_VIRTUAL_TYPE,
@@ -1418,7 +1480,15 @@ describe('devices-virtual plugin (e2e)', () => {
 			// gets here — so the status is what this pins; the reason itself is covered by the service's
 			// own unit tests.
 			expect(rejected.status).toBe(422);
-			expect((rejected.body as { data?: DeviceBody }).data).toBeUndefined();
+
+			// Not just "the response carried no device": the parent device row is saved before its channels
+			// are built, so a rejection here has to roll it back or the client sees a failure while the
+			// database keeps a half-built device, and a retry adds a second one. Counted rather than searched
+			// by name so this stays two requests — the suite shares a throttler.
+			const after = await authGet('/modules/devices/devices?hidden=all').expect(200);
+			const afterCount = (after.body as { data: DeviceBody[] }).data.length;
+
+			expect(afterCount).toBe(beforeCount);
 		});
 
 		// The remap path, which is the one the preview covers least well: the wizard checked this pairing
@@ -1428,17 +1498,22 @@ describe('devices-virtual plugin (e2e)', () => {
 			const deviceResponse = await authGet(`/modules/devices/devices/${atomicVirtualDeviceId}`).expect(200);
 			const deviceBody = deviceResponse.body as { data: DeviceBody };
 
-			const lightChannel = deviceBody.data.channels.find((channel) => channel.category === String(ChannelCategory.LIGHT));
-			const onProperty = lightChannel?.properties.find((property) => property.category === String(PropertyCategory.ON));
+			const lightChannel = deviceBody.data.channels.find(
+				(channel) => channel.category === String(ChannelCategory.LIGHT),
+			);
+			const onProperty = lightChannel?.properties.find((property) => property.category === PropertyCategory.ON);
 
+			expect(lightChannel).toBeDefined();
 			expect(onProperty?.id).toBeTruthy();
 
-			await authPatch(`/modules/devices/channels/${lightChannel!.id}/properties/${onProperty!.id}`)
+			await authPatch(`/modules/devices/channels/${lightChannel.id}/properties/${onProperty.id}`)
 				.send({ data: { type: DEVICES_VIRTUAL_TYPE, source_property: atomicReadOnlySourcePropertyId } })
 				.expect(422);
 
 			// The stored link is untouched — a refused remap must not half-apply.
-			const after = await authGet(`/modules/devices/channels/${lightChannel!.id}/properties/${onProperty!.id}`).expect(200);
+			const after = await authGet(`/modules/devices/channels/${lightChannel.id}/properties/${onProperty.id}`).expect(
+				200,
+			);
 
 			expect((after.body as { data: ChannelPropertyBody }).data.source_property).toBe(atomicSourcePropertyId);
 		});

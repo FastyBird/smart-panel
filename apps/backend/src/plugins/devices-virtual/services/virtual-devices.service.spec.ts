@@ -213,7 +213,12 @@ describe('VirtualDevicesService', () => {
 		const projecting = (sourcePropertyId: string | null, category: PropertyCategory): VirtualChannelPropertyEntity => {
 			const entity = new VirtualChannelPropertyEntity();
 
-			Object.assign(entity, { id: 'virtual-property', category, valueOrigin: VirtualValueOrigin.SOURCE, sourcePropertyId });
+			Object.assign(entity, {
+				id: 'virtual-property',
+				category,
+				valueOrigin: VirtualValueOrigin.SOURCE,
+				sourcePropertyId,
+			});
 
 			return entity;
 		};
@@ -241,7 +246,10 @@ describe('VirtualDevicesService', () => {
 			channelsPropertiesService.findOne.mockResolvedValue(readWriteSourceProperty);
 
 			await expect(
-				service.assertProjectionCompatible(projecting(readWriteSourceProperty.id, PropertyCategory.TEMPERATURE), CHANNEL_ID),
+				service.assertProjectionCompatible(
+					projecting(readWriteSourceProperty.id, PropertyCategory.TEMPERATURE),
+					CHANNEL_ID,
+				),
 			).resolves.toBeUndefined();
 		});
 
@@ -251,7 +259,12 @@ describe('VirtualDevicesService', () => {
 		it('ignores an owned property', async () => {
 			const owned = new VirtualChannelPropertyEntity();
 
-			Object.assign(owned, { id: 'owned', category: PropertyCategory.ON, valueOrigin: VirtualValueOrigin.LOCAL, sourcePropertyId: null });
+			Object.assign(owned, {
+				id: 'owned',
+				category: PropertyCategory.ON,
+				valueOrigin: VirtualValueOrigin.LOCAL,
+				sourcePropertyId: null,
+			});
 
 			await expect(service.assertProjectionCompatible(owned, CHANNEL_ID)).resolves.toBeUndefined();
 			expect(channelsService.findOne).not.toHaveBeenCalled();
@@ -260,8 +273,29 @@ describe('VirtualDevicesService', () => {
 		// An orphan — a projection whose source was deleted — is a state the device degrades into, not a
 		// write to refuse. Refusing it here would make an orphaned property impossible to edit back into
 		// shape, which is exactly what the remap flow exists to do.
+		// `value_origin` is optional on the create DTO and the column default supplies `source` only on
+		// save, so a request that names a source but omits the origin reaches this hook with
+		// `valueOrigin === undefined`. That is the shape a direct API caller sends most readily, and it
+		// must not slip past unchecked.
+		it('checks a projection whose origin has not been defaulted yet', async () => {
+			givenSlot(ChannelCategory.LIGHT, DeviceCategory.LIGHTING);
+			channelsPropertiesService.findOne.mockResolvedValue(readOnlySourceProperty);
+
+			const undefaulted = new VirtualChannelPropertyEntity();
+
+			Object.assign(undefaulted, {
+				id: 'undefaulted',
+				category: PropertyCategory.ON,
+				sourcePropertyId: readOnlySourceProperty.id,
+			});
+
+			await expect(service.assertProjectionCompatible(undefaulted, CHANNEL_ID)).rejects.toThrow(/permission/);
+		});
+
 		it('ignores a projection whose source is not set', async () => {
-			await expect(service.assertProjectionCompatible(projecting(null, PropertyCategory.ON), CHANNEL_ID)).resolves.toBeUndefined();
+			await expect(
+				service.assertProjectionCompatible(projecting(null, PropertyCategory.ON), CHANNEL_ID),
+			).resolves.toBeUndefined();
 			expect(channelsService.findOne).not.toHaveBeenCalled();
 		});
 	});
