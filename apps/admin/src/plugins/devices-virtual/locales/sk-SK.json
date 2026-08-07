@@ -73,6 +73,11 @@
 			"errors": {
 				"checkFailed": "Tento zdroj sa nepodarilo overiť. Vyberte iný alebo to skúste znova.",
 				"incompatible": "Tento zdroj nemôže naplniť túto vlastnosť."
+			},
+			"constraints": {
+				"oneOrMoreOf": "vyžaduje aspoň jednu z: {properties}",
+				"oneOf": "prijíma iba jednu z: {properties}",
+				"mutuallyExclusive": "tieto skupiny nemožno kombinovať: {groups}"
 			}
 		},
 		"details": {

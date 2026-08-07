@@ -73,6 +73,11 @@
 			"errors": {
 				"checkFailed": "This source could not be verified. Pick another one or try again.",
 				"incompatible": "This source cannot fill this property."
+			},
+			"constraints": {
+				"oneOrMoreOf": "needs at least one of: {properties}",
+				"oneOf": "accepts only one of: {properties}",
+				"mutuallyExclusive": "cannot combine these groups: {groups}"
 			}
 		},
 		"details": {

@@ -73,6 +73,11 @@
 			"errors": {
 				"checkFailed": "No se pudo verificar este origen. Elija otro o inténtelo de nuevo.",
 				"incompatible": "Este origen no puede rellenar esta propiedad."
+			},
+			"constraints": {
+				"oneOrMoreOf": "necesita al menos una de: {properties}",
+				"oneOf": "solo admite una de: {properties}",
+				"mutuallyExclusive": "no se pueden combinar estos grupos: {groups}"
 			}
 		},
 		"details": {

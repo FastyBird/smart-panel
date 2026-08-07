@@ -46,6 +46,22 @@
 				</el-text>
 			</div>
 
+			<!-- Spec constraints the required-slot count cannot express. Shown as alerts rather than
+				per-slot errors because each one is about a combination of properties, not about any single
+				mapping being wrong. -->
+			<el-alert
+				v-for="violation in constraintViolations"
+				:key="`${violation.specChannel}-${violation.message}`"
+				type="error"
+				:closable="false"
+				show-icon
+				class="mt-2"
+				data-test-id="constraint-violation"
+			>
+				<strong>{{ t(`devicesModule.categories.channels.${violation.specChannel}`) }}</strong>
+				{{ violation.message }}
+			</el-alert>
+
 			<div
 				v-for="group in groups"
 				:key="group.specChannel"
@@ -247,6 +263,7 @@ import {
 	type DevicesVirtualPluginCheckCompatibilityOperation,
 	type DevicesVirtualPluginCompatibilityReportSchema,
 } from '../../../../openapi.constants';
+import { channelsSchema } from '../../../../spec/channels';
 import { DEVICES_VIRTUAL_PLUGIN_PREFIX, DEVICES_VIRTUAL_TYPE } from '../../devices-virtual.constants';
 
 import type {
@@ -299,6 +316,21 @@ const expanded = reactive<Record<string, boolean>>({});
 // response that arrives after the user has moved on can be recognised as stale and dropped.
 let requestCounter = 0;
 const slotTokens = new Map<string, number>();
+
+// The generated channel spec carries these alongside `properties`, but the admin's mapping layer only
+// projects the property lists, so they are read from the schema directly. Narrowed locally rather than
+// widening the shared spec types: this is the only consumer.
+interface IChannelConstraints {
+	oneOf?: DevicesModuleChannelPropertyCategory[][];
+	oneOrMoreOf?: DevicesModuleChannelPropertyCategory[][];
+	mutuallyExclusiveGroups?: DevicesModuleChannelPropertyCategory[][][];
+}
+
+const channelConstraints = (specChannel: DevicesModuleChannelCategory): IChannelConstraints => {
+	const spec = (channelsSchema as unknown as Record<string, { constraints?: IChannelConstraints }>)[specChannel];
+
+	return spec?.constraints ?? {};
+};
 
 const groups = computed<IVirtualMappingSlotGroup[]>((): IVirtualMappingSlotGroup[] => {
 	if (props.category === null) {
@@ -409,13 +441,80 @@ const progressPercentage = computed<number>((): number => {
 	return Math.round((progress.value.requiredFilled / progress.value.requiredTotal) * 100);
 });
 
+// The spec constrains a channel beyond each property's own `required` flag, and DeviceValidationService
+// enforces those constraints server-side. Without repeating them here the wizard happily builds devices
+// the backend then reports as structurally invalid: a `sensor` whose only mapping is
+// `air_quality.active` passes the required-slot check (every non-information channel of a sensor is
+// optional) while `air_quality` demands at least one of `aqi` or `level`; a `light` can be given both
+// the RGB and the HSV group, which are mutually exclusive.
+//
+// A constraint only applies to a channel the user has actually put something in — an untouched optional
+// channel is not half-built, it is absent, and the backend will not receive it at all.
+const constraintViolations = computed<{ specChannel: DevicesModuleChannelCategory; message: string }[]>(
+	(): { specChannel: DevicesModuleChannelCategory; message: string }[] => {
+		const violations: { specChannel: DevicesModuleChannelCategory; message: string }[] = [];
+
+		for (const group of groups.value) {
+			const filled = group.slots
+				.filter((slot): boolean => typeof selections[slot.key] === 'string')
+				.map((slot): DevicesModuleChannelPropertyCategory => slot.specProperty);
+
+			if (filled.length === 0) {
+				continue;
+			}
+
+			const constraints = channelConstraints(group.specChannel);
+
+			for (const oneOrMore of constraints.oneOrMoreOf ?? []) {
+				if (!oneOrMore.some((property): boolean => filled.includes(property))) {
+					violations.push({
+						specChannel: group.specChannel,
+						message: t('devicesVirtualPlugin.wizard.mapping.constraints.oneOrMoreOf', {
+							properties: oneOrMore.map((property): string => t(`devicesModule.categories.channelsProperties.${property}`)).join(', '),
+						}),
+					});
+				}
+			}
+
+			for (const exclusive of constraints.oneOf ?? []) {
+				if (exclusive.filter((property): boolean => filled.includes(property)).length > 1) {
+					violations.push({
+						specChannel: group.specChannel,
+						message: t('devicesVirtualPlugin.wizard.mapping.constraints.oneOf', {
+							properties: exclusive.map((property): string => t(`devicesModule.categories.channelsProperties.${property}`)).join(', '),
+						}),
+					});
+				}
+			}
+
+			for (const exclusiveGroups of constraints.mutuallyExclusiveGroups ?? []) {
+				const used = exclusiveGroups.filter((members): boolean => members.some((property): boolean => filled.includes(property)));
+
+				if (used.length > 1) {
+					violations.push({
+						specChannel: group.specChannel,
+						message: t('devicesVirtualPlugin.wizard.mapping.constraints.mutuallyExclusive', {
+							groups: used
+								.map((members): string => members.map((property): string => t(`devicesModule.categories.channelsProperties.${property}`)).join(' + '))
+								.join(' / '),
+						}),
+					});
+				}
+			}
+		}
+
+		return violations;
+	}
+);
+
 const isChecking = computed<boolean>((): boolean => Object.values(checking).some((value: boolean): boolean => value));
 
 // Hard block, not a warning: an incompatible mapping is one whose writes would die at the source
 // platform, so the wizard must not be able to move past it. An unfinished check counts as not-yet-
 // proven and blocks too, so the user cannot outrun the verdict by clicking straight through.
 const isValid = computed<boolean>(
-	(): boolean => props.category !== null && isComplete.value && Object.keys(errors).length === 0 && !isChecking.value
+	(): boolean =>
+		props.category !== null && isComplete.value && Object.keys(errors).length === 0 && constraintViolations.value.length === 0 && !isChecking.value
 );
 
 const sourceDevicesOptions = computed<{ value: IDevice['id']; label: string }[]>((): { value: IDevice['id']; label: string }[] =>
@@ -891,6 +990,7 @@ defineExpose({
 	// keep it consistent with `selections` are the part worth pinning down in a test.
 	pickers,
 	progress,
+	constraintViolations,
 	isValid,
 	sourceDevicesOptions,
 	selectSource,

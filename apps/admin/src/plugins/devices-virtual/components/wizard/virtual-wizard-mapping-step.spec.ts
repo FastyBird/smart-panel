@@ -271,6 +271,7 @@ const mountMappingStep = (props: Partial<IVirtualWizardMappingStepProps> = {}) =
 		errors: computed(bySpecProperty),
 		progress: computed(() => wrapper.vm.progress),
 		isValid: computed(() => wrapper.vm.isValid),
+		constraintViolations: computed(() => wrapper.vm.constraintViolations),
 		sourceDevicesOptions: computed(() => wrapper.vm.sourceDevicesOptions),
 		progressBar,
 		slotFor,
@@ -505,6 +506,51 @@ describe('VirtualWizardMappingStep', () => {
 		const values = sourceDevicesOptions.value.map((option) => option.value);
 
 		expect(values).toContain(DEVICE_SYSTEM_HIDDEN);
+	});
+
+	// The spec constrains a channel beyond each property's own `required` flag, and the backend enforces
+	// those constraints. Without them here the wizard builds devices the backend then reports as
+	// structurally invalid — and for a `sensor` every non-information channel is optional, so the
+	// required-slot count alone says the step is complete.
+	describe('channel constraints', () => {
+		it('blocks a channel that satisfies no member of a oneOrMoreOf group', async () => {
+			const { wrapper, isValid, constraintViolations } = mountMappingStep({ category: DevicesModuleDeviceCategory.sensor });
+
+			await wrapper.vm.selectSource(`${DevicesModuleChannelCategory.air_particulate}.${DevicesModuleChannelPropertyCategory.active}`, PROPERTY_ON);
+			await nextTick();
+
+			expect(constraintViolations.value.map((violation) => violation.specChannel)).toContain(DevicesModuleChannelCategory.air_particulate);
+			expect(isValid.value).toBe(false);
+		});
+
+		it('accepts the same channel once a member of the group is mapped', async () => {
+			const { wrapper, constraintViolations } = mountMappingStep({ category: DevicesModuleDeviceCategory.sensor });
+
+			await wrapper.vm.selectSource(`${DevicesModuleChannelCategory.air_particulate}.${DevicesModuleChannelPropertyCategory.active}`, PROPERTY_ON);
+			await wrapper.vm.selectSource(`${DevicesModuleChannelCategory.air_particulate}.${DevicesModuleChannelPropertyCategory.detected}`, PROPERTY_ON);
+			await nextTick();
+
+			expect(constraintViolations.value.map((violation) => violation.specChannel)).not.toContain(DevicesModuleChannelCategory.air_particulate);
+		});
+
+		// light groups [color_red, color_green, color_blue] against [hue, saturation]; a device given both
+		// is refused by the backend.
+		it('blocks two mutually exclusive groups used together', async () => {
+			const { wrapper, isValid, constraintViolations } = mountMappingStep({ category: DevicesModuleDeviceCategory.lighting });
+
+			await wrapper.vm.selectSource(`${DevicesModuleChannelCategory.light}.${DevicesModuleChannelPropertyCategory.color_red}`, PROPERTY_ON);
+			await wrapper.vm.selectSource(`${DevicesModuleChannelCategory.light}.${DevicesModuleChannelPropertyCategory.hue}`, PROPERTY_ON);
+			await nextTick();
+
+			expect(constraintViolations.value.map((violation) => violation.specChannel)).toContain(DevicesModuleChannelCategory.light);
+			expect(isValid.value).toBe(false);
+		});
+
+		it('leaves an untouched optional channel alone', () => {
+			const { constraintViolations } = mountMappingStep({ category: DevicesModuleDeviceCategory.sensor });
+
+			expect(constraintViolations.value).toHaveLength(0);
+		});
 	});
 
 	it('blocks the step when the compatibility check itself fails', async () => {

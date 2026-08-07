@@ -73,6 +73,11 @@
 			"errors": {
 				"checkFailed": "Nie udało się zweryfikować tego źródła. Wybierz inne lub spróbuj ponownie.",
 				"incompatible": "To źródło nie może wypełnić tej właściwości."
+			},
+			"constraints": {
+				"oneOrMoreOf": "wymaga co najmniej jednej z: {properties}",
+				"oneOf": "przyjmuje tylko jedną z: {properties}",
+				"mutuallyExclusive": "nie można łączyć tych grup: {groups}"
 			}
 		},
 		"details": {

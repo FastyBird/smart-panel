@@ -73,6 +73,11 @@
 			"errors": {
 				"checkFailed": "Diese Quelle konnte nicht geprüft werden. Wählen Sie eine andere oder versuchen Sie es erneut.",
 				"incompatible": "Diese Quelle kann diese Eigenschaft nicht füllen."
+			},
+			"constraints": {
+				"oneOrMoreOf": "benötigt mindestens eine von: {properties}",
+				"oneOf": "akzeptiert nur eine von: {properties}",
+				"mutuallyExclusive": "diese Gruppen lassen sich nicht kombinieren: {groups}"
 			}
 		},
 		"details": {
