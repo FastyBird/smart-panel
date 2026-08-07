@@ -1694,10 +1694,17 @@ describe('VirtualIndexMaintenanceListener', () => {
 				createQueryRunner: () => ({ isTransactionActive: true }),
 			} as unknown as DataSource;
 
+			// Its own devices stub, not the suite's. Sharing one meant this test's predicate could be
+			// satisfied by an unhide the *other* listener performed — the two run concurrently here — so
+			// it stopped driving before this listener had spent its repair budget, and then read a device
+			// the other listener had not touched either. Watching only what this listener does is what
+			// makes the two assertions below describe the same subject.
+			const stuckDevices = createDevicesStub(Promise.resolve());
+
 			const stuck = new VirtualIndexMaintenanceListener(
 				indexStub as unknown as VirtualPropertyIndexService,
 				status as unknown as VirtualStatusListener,
-				devicesStub as unknown as DevicesService,
+				stuckDevices as unknown as DevicesService,
 				virtualDevicesService as unknown as VirtualDevicesService,
 				eventEmitterStub as unknown as EventEmitter2,
 				stuckConnection,
@@ -1715,12 +1722,12 @@ describe('VirtualIndexMaintenanceListener', () => {
 			// how fast the real sqlite work happened to resolve — it passed locally and failed
 			// intermittently on CI. The step budget still bounds it, so a genuinely broken repair loop
 			// exhausts the budget and fails rather than hanging.
-			await driveUntil(() => flagAtRebuild.length >= 4 && devicesStub.update.mock.calls.length > 0, 1000);
+			await driveUntil(() => flagAtRebuild.length >= 4 && stuckDevices.update.mock.calls.length > 0, 2000);
 
 			// `update` writes to the real database and is async, so the call being *recorded* is not the
 			// write having *landed* — asserting straight after the predicate read a device that was still
 			// hidden. Settling the recorded calls is what makes the row read below deterministic.
-			await Promise.all(devicesStub.update.mock.results.map((result): unknown => result.value).filter(Boolean));
+			await Promise.all(stuckDevices.update.mock.results.map((result): unknown => result.value).filter(Boolean));
 
 			// One pass plus MAX_REPAIR_PASSES repairs, none of which could settle, and then the queue is
 			// released rather than held forever: a hidden device with no replacement and no route back

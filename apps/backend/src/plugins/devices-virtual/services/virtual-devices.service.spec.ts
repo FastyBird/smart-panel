@@ -515,6 +515,57 @@ describe('VirtualDevicesService', () => {
 			expect(report.compatible).toBe(true);
 		});
 
+		// Two slots can agree on permissions, data type and range and still mean different things.
+		// `carbon_dioxide.concentration` is ppm and `nitrogen_dioxide.concentration` is µg/m³, both
+		// read-only floats over the same span — a projection forwards the number unchanged, so pairing
+		// them relabels every reading rather than converting it.
+		it('refuses a source measured in a different unit', () => {
+			const ppmSource = property({
+				id: 'ppm-source',
+				permissions: [PermissionType.READ_ONLY],
+				dataType: DataTypeType.FLOAT,
+				format: [0, 100000],
+				unit: 'ppm',
+			});
+
+			const report = service.reportCompatibility(
+				{
+					category: DeviceCategory.SENSOR,
+					channel: ChannelCategory.NITROGEN_DIOXIDE,
+					property: PropertyCategory.CONCENTRATION,
+				},
+				ppmSource,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('ppm');
+		});
+
+		// `[min]` is a supported one-sided format meaning "no maximum", so nothing shows the source stays
+		// under the slot's ceiling. It used to reach the enum comparison, where `{0}` looked like a
+		// subset of `{0, 10000}` and passed.
+		it('refuses a one-sided numeric source against a bounded slot', () => {
+			const unboundedSource = property({
+				id: 'unbounded',
+				permissions: [PermissionType.READ_ONLY],
+				dataType: DataTypeType.FLOAT,
+				format: [0],
+				unit: 'W',
+			});
+
+			const report = service.reportCompatibility(
+				{
+					category: DeviceCategory.SWITCHER,
+					channel: ChannelCategory.ELECTRICAL_POWER,
+					property: PropertyCategory.POWER,
+				},
+				unboundedSource,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('unbounded');
+		});
+
 		it('refuses a numeric source with no step against a stepped slot', () => {
 			const steplessSource = property({
 				id: 'stepless',

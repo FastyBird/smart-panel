@@ -382,6 +382,25 @@ export class VirtualDevicesService {
 			};
 		}
 
+		// Unit, before format. Two slots can agree on permissions, data type and range and still mean
+		// different things: `carbon_dioxide.concentration` is ppm and `nitrogen_dioxide.concentration` is
+		// µg/m³, both read-only floats over [0, 100000]. A projection forwards the number unchanged, so
+		// pairing those relabels every reading rather than converting it — the same reasoning that makes
+		// a representation mismatch a refusal rather than a conversion.
+		const unitVariant = metadata.hasMultipleDataTypes
+			? metadata.dataTypeVariants?.find((candidate) => String(candidate.data_type) === String(sourceProperty.dataType))
+			: undefined;
+
+		const expectedUnit = (unitVariant ? unitVariant.unit : metadata.unit) ?? null;
+		const actualUnit = sourceProperty.unit ?? null;
+
+		if (expectedUnit !== null && actualUnit !== null && expectedUnit !== actualUnit) {
+			return {
+				compatible: false,
+				reason: `Source property id=${sourceProperty.id} is measured in '${actualUnit}', which '${specSlot.channel}.${specSlot.property}' exposes as '${expectedUnit}'; a projection forwards the value unchanged rather than converting it`,
+			};
+		}
+
 		const formatMismatch = this.describeFormatMismatch(metadata, specSlot, sourceProperty);
 
 		if (formatMismatch !== null) {
@@ -460,19 +479,29 @@ export class VirtualDevicesService {
 		// otherwise fall through to the enum comparison, where stringifying both sides makes the sets
 		// look equal — so a `fan.timer` projection could pass with neither numeric bounds nor a step as
 		// far as the command validator is concerned, and 61 would reach a step-60 source.
-		const slotIsNumeric = expected.length === 2 && expected.every((value) => typeof value === 'number');
+		// Numeric by its *values*, not by its length: `[min]` is a supported one-sided format meaning "no
+		// maximum", and PropertyValueService reads it that way. Deciding by length sent a `[0]` source
+		// down the enum path, where `{0}` looked like a subset of `{0, 10000}` and passed while the
+		// source could report anything above the slot's ceiling.
+		const slotIsNumeric = expected.every((value) => typeof value === 'number');
 
 		if (slotIsNumeric && !actual.every((value) => typeof value === 'number')) {
 			return `Source property id=${sourceProperty.id} declares a non-numeric format, which cannot describe the numeric range ${slotName} defines`;
 		}
 
-		// A numeric range is a two-element [min, max]; anything else is an enum value set.
-		const numeric =
-			expected.length === 2 &&
-			expected.every((value) => typeof value === 'number') &&
-			actual.every((value) => typeof value === 'number');
+		// A numeric format is a range; anything else is an enum value set.
+		const numeric = slotIsNumeric && actual.every((value) => typeof value === 'number');
 
-		if (numeric && actual.length === 2) {
+		if (numeric) {
+			// A one-sided bound cannot be shown to sit inside a two-sided one — `[0]` has no maximum, so
+			// nothing here proves the source stays under the slot's ceiling. Unbounded is not contained.
+			if (expected.length !== 2 || actual.length !== 2) {
+				const describe = (bounds: number[]): string =>
+					bounds.length === 2 ? `[${bounds[0]}, ${bounds[1]}]` : `[${bounds[0]}, unbounded)`;
+
+				return `Source property id=${sourceProperty.id} ranges ${describe(actual)}, which cannot be shown to stay within ${describe(expected)} that ${slotName} defines`;
+			}
+
 			const [expectedMin, expectedMax] = expected as [number, number];
 			const [actualMin, actualMax] = actual as [number, number];
 
