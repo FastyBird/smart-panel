@@ -117,32 +117,11 @@ export class McpTargetDiscoveryToolService {
 			},
 			async (_args, ctx) =>
 				this.runTool('list_writable_properties', McpCapability.WRITE, ctx, async () => {
-					const candidates = await this.channelsPropertiesService.findWritableCandidates(
-						MCP_MAX_WRITABLE_PROPERTY_CANDIDATES,
-					);
-					const devices = this.uniqueDevices(candidates.properties);
-					const availableDevices = devices.filter(
-						(device) => device.enabled && !device.hidden && this.platformRegistryService.get(device) !== null,
-					);
-					const availableDeviceIds = new Set(availableDevices.map((device) => device.id));
-					const statuses = await this.deviceConnectionStateService.readLatestMany(availableDevices);
-					const actionable = candidates.properties.filter((property) => {
-						const device = this.getDevice(property);
-						const status = statuses.get(device.id);
-
-						return (
-							availableDeviceIds.has(device.id) &&
-							property.permissions.some((permission) =>
-								[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
-							) &&
-							(status === undefined || status.online || status.status === ConnectionState.UNKNOWN)
-						);
-					});
+					const actionable = await this.findActionableWritableProperties();
 					const properties = actionable
 						.slice(0, MCP_MAX_WRITABLE_PROPERTIES)
 						.map((property) => this.toWritableProperty(property));
-					const truncated =
-						candidates.total > MCP_MAX_WRITABLE_PROPERTY_CANDIDATES || actionable.length > MCP_MAX_WRITABLE_PROPERTIES;
+					const truncated = actionable.length > MCP_MAX_WRITABLE_PROPERTIES;
 
 					return {
 						data: { properties, truncated },
@@ -387,6 +366,54 @@ export class McpTargetDiscoveryToolService {
 				}),
 			).values(),
 		];
+	}
+
+	private async findActionableWritableProperties(): Promise<ChannelPropertyEntity[]> {
+		const actionable: ChannelPropertyEntity[] = [];
+		let offset = 0;
+
+		while (true) {
+			const candidates = await this.channelsPropertiesService.findWritableCandidates(
+				MCP_MAX_WRITABLE_PROPERTY_CANDIDATES,
+				offset,
+			);
+
+			if (candidates.properties.length === 0) {
+				return actionable;
+			}
+
+			offset += candidates.properties.length;
+
+			const devices = this.uniqueDevices(candidates.properties);
+			const availableDevices = devices.filter(
+				(device) => device.enabled && !device.hidden && this.platformRegistryService.get(device) !== null,
+			);
+			const availableDeviceIds = new Set(availableDevices.map((device) => device.id));
+			const statuses = await this.deviceConnectionStateService.readLatestMany(availableDevices);
+
+			for (const property of candidates.properties) {
+				const device = this.getDevice(property);
+				const status = statuses.get(device.id);
+
+				if (
+					availableDeviceIds.has(device.id) &&
+					property.permissions.some((permission) =>
+						[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
+					) &&
+					(status === undefined || status.online || status.status === ConnectionState.UNKNOWN)
+				) {
+					actionable.push(property);
+
+					if (actionable.length > MCP_MAX_WRITABLE_PROPERTIES) {
+						return actionable;
+					}
+				}
+			}
+
+			if (offset >= candidates.total) {
+				return actionable;
+			}
+		}
 	}
 
 	private toWritableProperty(property: ChannelPropertyEntity): Record<string, unknown> {

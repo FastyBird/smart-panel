@@ -172,7 +172,7 @@ export class ChannelsPropertiesService {
 		};
 	}
 
-	async findWritableCandidates(limit: number): Promise<WritablePropertyCandidates> {
+	async findWritableCandidates(limit: number, offset = 0): Promise<WritablePropertyCandidates> {
 		const query = this.repository
 			.createQueryBuilder('property')
 			.innerJoinAndSelect('property.channel', 'channel')
@@ -203,7 +203,8 @@ export class ChannelsPropertiesService {
 			.addOrderBy('property.name', 'ASC')
 			.addOrderBy('property.id', 'ASC')
 			.callListeners(false)
-			.take(limit);
+			.take(limit)
+			.skip(offset);
 		const [properties, total] = await query.getManyAndCount();
 
 		return { properties, total };

@@ -249,6 +249,7 @@ describe('ChannelsPropertiesService', () => {
 				addOrderBy: jest.fn().mockReturnThis(),
 				callListeners: jest.fn().mockReturnThis(),
 				take: jest.fn().mockReturnThis(),
+				skip: jest.fn().mockReturnThis(),
 				getManyAndCount: jest.fn().mockResolvedValue([[mockChannelProperty], 125]),
 			};
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilder as never);
@@ -268,6 +269,7 @@ describe('ChannelsPropertiesService', () => {
 			);
 			expect(queryBuilder.callListeners).toHaveBeenCalledWith(false);
 			expect(queryBuilder.take).toHaveBeenCalledWith(100);
+			expect(queryBuilder.skip).toHaveBeenCalledWith(0);
 		});
 	});
 

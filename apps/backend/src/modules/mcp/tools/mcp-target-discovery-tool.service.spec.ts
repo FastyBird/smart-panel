@@ -19,7 +19,7 @@ import { SpacesService } from '../../spaces/services/spaces.service';
 import { SpaceType } from '../../spaces/spaces.constants';
 import { ToolAccessKind, ToolAudience, ToolExecutionStatus } from '../../tools/platforms/tool-provider.platform';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
-import { MCP_TOOL_CALL_TIMEOUT_MS, McpCapability } from '../mcp.constants';
+import { MCP_MAX_WRITABLE_PROPERTY_CANDIDATES, MCP_TOOL_CALL_TIMEOUT_MS, McpCapability } from '../mcp.constants';
 import { McpContextService } from '../services/mcp-context.service';
 import { McpPolicyService } from '../services/mcp-policy.service';
 
@@ -194,6 +194,53 @@ describe('McpTargetDiscoveryToolService', () => {
 		expect(writeResult?.isError).toBe(true);
 		expect(writeResult?.structuredContent.error).toEqual(expect.objectContaining({ code: 'not_found' }));
 		expect(toolRegistry.executeTool).not.toHaveBeenCalled();
+	});
+
+	it('pages past filtered writable candidates to find later actionable properties', async () => {
+		providerTools = [providerTool('control_device', ToolAccessKind.WRITE)];
+		const offline = Array.from({ length: MCP_MAX_WRITABLE_PROPERTY_CANDIDATES }, (_, index) => {
+			const target = property(
+				`10000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+				PermissionType.READ_WRITE,
+			);
+			(target.channel as { device: { id: string } }).device.id =
+				`30000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`;
+
+			return target;
+		});
+		const connected = property('10000000-0000-4000-8000-999999999999', PermissionType.READ_WRITE);
+		channelsPropertiesService.findWritableCandidates
+			.mockResolvedValueOnce({ properties: offline, total: offline.length + 1 })
+			.mockResolvedValueOnce({ properties: [connected], total: offline.length + 1 });
+		deviceConnectionStateService.readLatestMany
+			.mockResolvedValueOnce(
+				new Map(
+					offline.map((target) => [
+						deviceId(target),
+						{ online: false, status: ConnectionState.DISCONNECTED, lastChanged: new Date() },
+					]),
+				),
+			)
+			.mockResolvedValueOnce(
+				new Map([[deviceId(connected), { online: true, status: ConnectionState.CONNECTED, lastChanged: new Date() }]]),
+			);
+		service.register(server(), authInfo([McpCapability.WRITE]));
+
+		const result = await callbacks.get('list_writable_properties')?.({}, requestContext([McpCapability.WRITE]));
+		const data = result?.structuredContent.data as { properties: Array<{ property_id: string }>; truncated: boolean };
+
+		expect(channelsPropertiesService.findWritableCandidates).toHaveBeenNthCalledWith(
+			1,
+			MCP_MAX_WRITABLE_PROPERTY_CANDIDATES,
+			0,
+		);
+		expect(channelsPropertiesService.findWritableCandidates).toHaveBeenNthCalledWith(
+			2,
+			MCP_MAX_WRITABLE_PROPERTY_CANDIDATES,
+			MCP_MAX_WRITABLE_PROPERTY_CANDIDATES,
+		);
+		expect(data.properties).toEqual([expect.objectContaining({ property_id: connected.id })]);
+		expect(data.truncated).toBe(false);
 	});
 
 	it('omits space targets and the lighting tool when the optional provider is absent', async () => {
