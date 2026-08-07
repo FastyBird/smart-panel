@@ -238,6 +238,35 @@ describe('ChannelsPropertiesService', () => {
 		});
 	});
 
+	describe('findWritableCandidates', () => {
+		it('bounds candidates and filters hidden, disabled, and non-writable targets in the query', async () => {
+			const queryBuilder = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				addOrderBy: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				getManyAndCount: jest.fn().mockResolvedValue([[mockChannelProperty], 125]),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilder as never);
+
+			await expect(channelsPropertiesService.findWritableCandidates(100)).resolves.toEqual({
+				properties: [mockChannelProperty],
+				total: 125,
+			});
+			expect(queryBuilder.where).toHaveBeenCalledWith('device.enabled = :enabled', { enabled: true });
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('device.hidden = :hidden', { hidden: false });
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+				expect.stringContaining('property.permissions'),
+				expect.objectContaining({ readWrite: PermissionType.READ_WRITE, writeOnly: PermissionType.WRITE_ONLY }),
+			);
+			expect(queryBuilder.callListeners).toHaveBeenCalledWith(false);
+			expect(queryBuilder.take).toHaveBeenCalledWith(100);
+		});
+	});
+
 	describe('findBoundedForChannels', () => {
 		it('selects capped property IDs before hydrating values', async () => {
 			const countQuery: any = {

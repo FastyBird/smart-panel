@@ -1,3 +1,4 @@
+import { AuthInfo, McpServer } from '@modelcontextprotocol/server';
 import { Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -13,6 +14,7 @@ import { SpacesModule } from '../spaces/spaces.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
+import { ToolsModule } from '../tools/tools.module';
 import { WeatherModule } from '../weather/weather.module';
 
 import { McpClientsController } from './controllers/mcp-clients.controller';
@@ -38,6 +40,7 @@ import { McpPolicyService } from './services/mcp-policy.service';
 import { McpServerService } from './services/mcp-server.service';
 import { McpSubscriptionRegistryService } from './services/mcp-subscription-registry.service';
 import { McpReadToolService } from './tools/mcp-read-tool.service';
+import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool.service';
 
 @ApiTag({
 	tagName: MCP_MODULE_NAME,
@@ -55,6 +58,7 @@ import { McpReadToolService } from './tools/mcp-read-tool.service';
 		SpacesModule,
 		SwaggerModule,
 		TypeOrmModule.forFeature([McpClientEntity, McpInstallationEntity]),
+		ToolsModule,
 		WeatherModule,
 	],
 	controllers: [McpClientsController, McpController],
@@ -68,7 +72,17 @@ import { McpReadToolService } from './tools/mcp-read-tool.service';
 		McpServerService,
 		McpSubscriptionRegistryService,
 		McpReadToolService,
-		{ provide: MCP_CATALOG_REGISTRAR, useExisting: McpReadToolService },
+		McpTargetDiscoveryToolService,
+		{
+			provide: MCP_CATALOG_REGISTRAR,
+			useFactory: (readTools: McpReadToolService, targetDiscoveryTools: McpTargetDiscoveryToolService) => ({
+				register(server: McpServer, authInfo?: AuthInfo): void {
+					readTools.register(server, authInfo);
+					targetDiscoveryTools.register(server, authInfo);
+				},
+			}),
+			inject: [McpReadToolService, McpTargetDiscoveryToolService],
+		},
 	],
 	exports: [McpClientService, McpInstallationService, McpPolicyService, McpServerService],
 })

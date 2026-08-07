@@ -9,7 +9,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { EventType as DevicesEventType } from '../../devices/devices.constants';
+import {
+	ChannelCategory,
+	DeviceCategory,
+	EventType as DevicesEventType,
+	PermissionType,
+	PropertyCategory,
+} from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DeviceZonesService } from '../../devices/services/device-zones.service';
 import {
@@ -99,6 +105,57 @@ export class SpacesService {
 			.skip(offset)
 			.take(limit)
 			.getManyAndCount();
+
+		return { spaces, total };
+	}
+
+	async findLightingTriggerSummaryPage(limit: number): Promise<SpaceSummaryPage> {
+		const writablePermissionPredicate =
+			'(property.permissions = :readWrite OR property.permissions = :writeOnly ' +
+			'OR property.permissions LIKE :readWriteFirst OR property.permissions LIKE :readWriteMiddle ' +
+			'OR property.permissions LIKE :readWriteLast OR property.permissions LIKE :writeOnlyFirst ' +
+			'OR property.permissions LIKE :writeOnlyMiddle OR property.permissions LIKE :writeOnlyLast)';
+		const query = this.repository
+			.createQueryBuilder('space')
+			.where(
+				`EXISTS (
+					SELECT 1
+					FROM devices_module_devices device
+					INNER JOIN devices_module_channels channel ON channel."deviceId" = device.id
+					INNER JOIN devices_module_channels_properties property ON property."channelId" = channel.id
+					LEFT JOIN devices_module_devices_zones deviceZone ON deviceZone."deviceId" = device.id
+					WHERE device.enabled = :enabled
+						AND device.hidden = :hidden
+						AND device.category = :deviceCategory
+						AND channel.category = :channelCategory
+						AND property.category = :propertyCategory
+						AND ${writablePermissionPredicate}
+						AND ((space.type = :roomType AND device."roomId" = space.id)
+							OR (space.type = :zoneType AND deviceZone."zoneId" = space.id))
+				)`,
+				{
+					enabled: true,
+					hidden: false,
+					deviceCategory: DeviceCategory.LIGHTING,
+					channelCategory: ChannelCategory.LIGHT,
+					propertyCategory: PropertyCategory.ON,
+					readWrite: PermissionType.READ_WRITE,
+					writeOnly: PermissionType.WRITE_ONLY,
+					readWriteFirst: `${PermissionType.READ_WRITE},%`,
+					readWriteMiddle: `%,${PermissionType.READ_WRITE},%`,
+					readWriteLast: `%,${PermissionType.READ_WRITE}`,
+					writeOnlyFirst: `${PermissionType.WRITE_ONLY},%`,
+					writeOnlyMiddle: `%,${PermissionType.WRITE_ONLY},%`,
+					writeOnlyLast: `%,${PermissionType.WRITE_ONLY}`,
+					roomType: SpaceType.ROOM,
+					zoneType: SpaceType.ZONE,
+				},
+			)
+			.orderBy('space.displayOrder', 'ASC')
+			.addOrderBy('space.name', 'ASC')
+			.addOrderBy('space.id', 'ASC')
+			.take(limit);
+		const [spaces, total] = await query.getManyAndCount();
 
 		return { spaces, total };
 	}

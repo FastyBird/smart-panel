@@ -371,6 +371,34 @@ describe('SpacesService', () => {
 		});
 	});
 
+	describe('findLightingTriggerSummaryPage', () => {
+		it('returns only bounded spaces with enabled visible writable lighting targets', async () => {
+			const queryBuilder = {
+				where: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				addOrderBy: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				getManyAndCount: jest.fn().mockResolvedValue([[mockSpace], 1]),
+			};
+			spaceRepository.createQueryBuilder.mockReturnValue(queryBuilder as unknown as SelectQueryBuilder<SpaceEntity>);
+
+			await expect(service.findLightingTriggerSummaryPage(50)).resolves.toEqual({ spaces: [mockSpace], total: 1 });
+			expect(queryBuilder.where).toHaveBeenCalledWith(
+				expect.stringContaining('EXISTS'),
+				expect.objectContaining({
+					enabled: true,
+					hidden: false,
+					deviceCategory: 'lighting',
+					channelCategory: 'light',
+					propertyCategory: 'on',
+					readWrite: 'rw',
+					writeOnly: 'wo',
+				}),
+			);
+			expect(queryBuilder.take).toHaveBeenCalledWith(50);
+		});
+	});
+
 	describe('findVisibleDeviceSummariesBySpace', () => {
 		it('derives floor-zone devices from child rooms', async () => {
 			const floorId = uuid();

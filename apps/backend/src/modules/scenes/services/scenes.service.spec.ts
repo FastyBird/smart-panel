@@ -63,4 +63,32 @@ describe('ScenesService', () => {
 			primarySpaceIds: ['floor-id', 'room-1', 'room-2'],
 		});
 	});
+
+	it('returns only bounded enabled and triggerable scene summaries', async () => {
+		const scene = { id: 'scene-id', name: 'Morning' } as SceneEntity;
+		const query = {
+			select: jest.fn().mockReturnThis(),
+			where: jest.fn().mockReturnThis(),
+			andWhere: jest.fn().mockReturnThis(),
+			orderBy: jest.fn().mockReturnThis(),
+			addOrderBy: jest.fn().mockReturnThis(),
+			take: jest.fn().mockReturnThis(),
+			getManyAndCount: jest.fn().mockResolvedValue([[scene], 1]),
+		};
+		const repository = {
+			createQueryBuilder: jest.fn().mockReturnValue(query),
+		} as unknown as Repository<SceneEntity>;
+		const service = new ScenesService(
+			repository,
+			{} as SceneActionsService,
+			{} as SpacesService,
+			{} as DataSource,
+			{} as EventEmitter2,
+		);
+
+		await expect(service.findTriggerableSummaryPage(50)).resolves.toEqual({ scenes: [scene], total: 1 });
+		expect(query.where).toHaveBeenCalledWith('scene.enabled = :enabled', { enabled: true });
+		expect(query.andWhere).toHaveBeenCalledWith('scene.triggerable = :triggerable', { triggerable: true });
+		expect(query.take).toHaveBeenCalledWith(50);
+	});
 });

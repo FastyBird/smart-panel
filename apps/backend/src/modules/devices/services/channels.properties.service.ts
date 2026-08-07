@@ -9,7 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { DEVICES_MODULE_NAME, EventType } from '../devices.constants';
+import { DEVICES_MODULE_NAME, EventType, PermissionType } from '../devices.constants';
 import { DevicesException, DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
@@ -23,6 +23,11 @@ import { PropertyValueService } from './property-value.service';
 export interface BoundedChannelProperties {
 	properties: ChannelPropertyEntity[];
 	totals: Record<string, number>;
+}
+
+export interface WritablePropertyCandidates {
+	properties: ChannelPropertyEntity[];
+	total: number;
 }
 
 @Injectable()
@@ -164,6 +169,40 @@ export class ChannelsPropertiesService {
 			properties,
 			totals: Object.fromEntries(countRows.map((row) => [row.channelId, Number(row.propertyCount)])),
 		};
+	}
+
+	async findWritableCandidates(limit: number): Promise<WritablePropertyCandidates> {
+		const query = this.repository
+			.createQueryBuilder('property')
+			.innerJoinAndSelect('property.channel', 'channel')
+			.innerJoinAndSelect('channel.device', 'device')
+			.where('device.enabled = :enabled', { enabled: true })
+			.andWhere('device.hidden = :hidden', { hidden: false })
+			.andWhere(
+				'(property.permissions = :readWrite OR property.permissions = :writeOnly ' +
+					'OR property.permissions LIKE :readWriteFirst OR property.permissions LIKE :readWriteMiddle ' +
+					'OR property.permissions LIKE :readWriteLast OR property.permissions LIKE :writeOnlyFirst ' +
+					'OR property.permissions LIKE :writeOnlyMiddle OR property.permissions LIKE :writeOnlyLast)',
+				{
+					readWrite: PermissionType.READ_WRITE,
+					writeOnly: PermissionType.WRITE_ONLY,
+					readWriteFirst: `${PermissionType.READ_WRITE},%`,
+					readWriteMiddle: `%,${PermissionType.READ_WRITE},%`,
+					readWriteLast: `%,${PermissionType.READ_WRITE}`,
+					writeOnlyFirst: `${PermissionType.WRITE_ONLY},%`,
+					writeOnlyMiddle: `%,${PermissionType.WRITE_ONLY},%`,
+					writeOnlyLast: `%,${PermissionType.WRITE_ONLY}`,
+				},
+			)
+			.orderBy('device.name', 'ASC')
+			.addOrderBy('channel.name', 'ASC')
+			.addOrderBy('property.name', 'ASC')
+			.addOrderBy('property.id', 'ASC')
+			.callListeners(false)
+			.take(limit);
+		const [properties, total] = await query.getManyAndCount();
+
+		return { properties, total };
 	}
 
 	async findOne<TProperty extends ChannelPropertyEntity>(

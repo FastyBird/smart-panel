@@ -1,0 +1,273 @@
+import { AuthInfo, McpServer, ServerContext } from '@modelcontextprotocol/server';
+
+import { ConnectionState, DataTypeType, PermissionType, PropertyCategory } from '../../devices/devices.constants';
+import { ChannelPropertyEntity } from '../../devices/entities/devices.entity';
+import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
+import { DeviceConnectionStateService } from '../../devices/services/device-connection-state.service';
+import { SceneEntity } from '../../scenes/entities/scenes.entity';
+import { SceneCategory } from '../../scenes/scenes.constants';
+import { ScenesService } from '../../scenes/services/scenes.service';
+import { SpaceEntity } from '../../spaces/entities/space.entity';
+import { SpacesService } from '../../spaces/services/spaces.service';
+import { SpaceType } from '../../spaces/spaces.constants';
+import { ToolAccessKind, ToolAudience, ToolExecutionStatus } from '../../tools/platforms/tool-provider.platform';
+import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
+import { McpCapability } from '../mcp.constants';
+import { McpContextService } from '../services/mcp-context.service';
+import { McpPolicyService } from '../services/mcp-policy.service';
+
+import { McpTargetDiscoveryToolService } from './mcp-target-discovery-tool.service';
+
+type ToolCallback = (
+	args: Record<string, unknown>,
+	ctx: ServerContext,
+) => Promise<{ isError?: boolean; structuredContent: Record<string, unknown> }>;
+
+describe('McpTargetDiscoveryToolService', () => {
+	let service: McpTargetDiscoveryToolService;
+	let channelsPropertiesService: { findWritableCandidates: jest.Mock };
+	let deviceConnectionStateService: { readLatestManyStrict: jest.Mock };
+	let scenesService: { findTriggerableSummaryPage: jest.Mock };
+	let spacesService: { findLightingTriggerSummaryPage: jest.Mock };
+	let toolRegistry: { getAllToolDefinitions: jest.Mock; executeTool: jest.Mock };
+	let contextService: { getInstallation: jest.Mock };
+	let policyService: { authorizeClient: jest.Mock };
+	let registerTool: jest.Mock;
+	let callbacks: Map<string, ToolCallback>;
+	let providerTools: Array<{ name: string; audiences: ToolAudience[]; access: ToolAccessKind }>;
+
+	beforeEach(() => {
+		channelsPropertiesService = {
+			findWritableCandidates: jest.fn().mockResolvedValue({ properties: [], total: 0 }),
+		};
+		deviceConnectionStateService = {
+			readLatestManyStrict: jest.fn().mockResolvedValue(new Map()),
+		};
+		scenesService = {
+			findTriggerableSummaryPage: jest.fn().mockResolvedValue({ scenes: [], total: 0 }),
+		};
+		spacesService = {
+			findLightingTriggerSummaryPage: jest.fn().mockResolvedValue({ spaces: [], total: 0 }),
+		};
+		providerTools = [];
+		toolRegistry = {
+			getAllToolDefinitions: jest.fn().mockImplementation(() => providerTools),
+			executeTool: jest.fn(),
+		};
+		contextService = {
+			getInstallation: jest.fn().mockResolvedValue({
+				id: 'installation-id',
+				name: 'FastyBird Smart Panel',
+				version: '1.0.0',
+				timezone: 'UTC',
+				endpoint: 'https://panel.test/api/v1/modules/mcp',
+				effective_capabilities: [],
+			}),
+		};
+		policyService = {
+			authorizeClient: jest.fn().mockImplementation((_tokenId, _clientId, capability: McpCapability) =>
+				Promise.resolve({
+					client: { id: 'client-id' },
+					effectiveCapabilities: [capability],
+				}),
+			),
+		};
+		callbacks = new Map();
+		registerTool = jest.fn((name: string, _config: unknown, callback: ToolCallback) => {
+			callbacks.set(name, callback);
+		});
+		service = new McpTargetDiscoveryToolService(
+			channelsPropertiesService as unknown as ChannelsPropertiesService,
+			deviceConnectionStateService as unknown as DeviceConnectionStateService,
+			scenesService as unknown as ScenesService,
+			spacesService as unknown as SpacesService,
+			toolRegistry as unknown as ToolProviderRegistryService,
+			contextService as unknown as McpContextService,
+			policyService as unknown as McpPolicyService,
+		);
+	});
+
+	it('registers no tools without write or trigger capability', () => {
+		service.register(server(), authInfo([]));
+
+		expect(registerTool).not.toHaveBeenCalled();
+	});
+
+	it('lets a write-only client discover only actionable writable properties', async () => {
+		providerTools = [providerTool('control_device', ToolAccessKind.WRITE)];
+		const connected = property('10000000-0000-4000-8000-000000000001', PermissionType.READ_WRITE);
+		const disconnected = property('10000000-0000-4000-8000-000000000002', PermissionType.WRITE_ONLY);
+		const readOnly = property('10000000-0000-4000-8000-000000000003', PermissionType.READ_ONLY);
+		channelsPropertiesService.findWritableCandidates.mockResolvedValue({
+			properties: [connected, disconnected, readOnly],
+			total: 3,
+		});
+		deviceConnectionStateService.readLatestManyStrict.mockResolvedValue(
+			new Map([
+				[deviceId(connected), { online: true, status: ConnectionState.CONNECTED, lastChanged: new Date() }],
+				[deviceId(disconnected), { online: false, status: ConnectionState.DISCONNECTED, lastChanged: new Date() }],
+				[deviceId(readOnly), { online: true, status: ConnectionState.CONNECTED, lastChanged: new Date() }],
+			]),
+		);
+		service.register(server(), authInfo([McpCapability.WRITE]));
+
+		expect([...callbacks.keys()]).toEqual(['list_writable_properties', 'set_device_property']);
+		const result = await callbacks.get('list_writable_properties')?.({}, requestContext([McpCapability.WRITE]));
+		const data = result?.structuredContent.data as { properties: Array<Record<string, unknown>> };
+
+		expect(policyService.authorizeClient).toHaveBeenCalledWith('token-id', 'client-id', McpCapability.WRITE);
+		expect(data.properties).toEqual([
+			expect.objectContaining({
+				property_id: connected.id,
+				device_id: deviceId(connected),
+				data_type: DataTypeType.BOOL,
+			}),
+		]);
+		expect(data.properties[0]).not.toHaveProperty('value');
+		expect(scenesService.findTriggerableSummaryPage).not.toHaveBeenCalled();
+	});
+
+	it('lets a trigger-only client discover enabled scenes and lighting-capable spaces', async () => {
+		providerTools = [
+			providerTool('run_scene', ToolAccessKind.TRIGGER),
+			providerTool('set_space_lighting', ToolAccessKind.TRIGGER),
+		];
+		scenesService.findTriggerableSummaryPage.mockResolvedValue({
+			scenes: [scene(true), scene(false)],
+			total: 2,
+		});
+		spacesService.findLightingTriggerSummaryPage.mockResolvedValue({
+			spaces: [space()],
+			total: 1,
+		});
+		service.register(server(), authInfo([McpCapability.TRIGGER]));
+
+		expect([...callbacks.keys()]).toEqual(['list_trigger_targets', 'run_scene', 'set_space_lighting']);
+		const result = await callbacks.get('list_trigger_targets')?.({}, requestContext([McpCapability.TRIGGER]));
+		const data = result?.structuredContent.data as {
+			scenes: Array<Record<string, unknown>>;
+			spaces: Array<Record<string, unknown>>;
+		};
+
+		expect(data.scenes).toHaveLength(1);
+		expect(data.spaces).toEqual([expect.objectContaining({ modes: ['off', 'on', 'work', 'relax', 'night'] })]);
+		expect(channelsPropertiesService.findWritableCandidates).not.toHaveBeenCalled();
+	});
+
+	it('omits space targets and the lighting tool when the optional provider is absent', async () => {
+		providerTools = [providerTool('run_scene', ToolAccessKind.TRIGGER)];
+		service.register(server(), authInfo([McpCapability.TRIGGER]));
+
+		expect([...callbacks.keys()]).toEqual(['list_trigger_targets', 'run_scene']);
+		const result = await callbacks.get('list_trigger_targets')?.({}, requestContext([McpCapability.TRIGGER]));
+		const data = result?.structuredContent.data as { spaces: unknown[] };
+
+		expect(data.spaces).toEqual([]);
+		expect(spacesService.findLightingTriggerSummaryPage).not.toHaveBeenCalled();
+	});
+
+	it('adapts the public set_device_property name to the shared write provider', async () => {
+		providerTools = [providerTool('control_device', ToolAccessKind.WRITE)];
+		toolRegistry.executeTool.mockResolvedValue({
+			success: true,
+			status: ToolExecutionStatus.COMPLETED,
+			message: 'Property updated',
+			data: { property_id: '10000000-0000-4000-8000-000000000001', value: true },
+		});
+		service.register(server(), authInfo([McpCapability.WRITE]));
+
+		const result = await callbacks.get('set_device_property')?.(
+			{ property_id: '10000000-0000-4000-8000-000000000001', value: true },
+			requestContext([McpCapability.WRITE]),
+		);
+
+		expect(toolRegistry.executeTool).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'control_device' }),
+			expect.objectContaining({
+				audience: ToolAudience.MCP,
+				actorId: 'client-id',
+				allowedAccessKinds: [ToolAccessKind.WRITE],
+			}),
+		);
+		expect(result?.isError).toBeUndefined();
+		expect(result?.structuredContent.tool).toBe('set_device_property');
+	});
+
+	function server(): McpServer {
+		return { registerTool } as unknown as McpServer;
+	}
+
+	function authInfo(scopes: McpCapability[]): AuthInfo {
+		return {
+			token: 'raw-token',
+			clientId: 'client-id',
+			scopes,
+			extra: {
+				endpoint: 'https://panel.test/api/v1/modules/mcp',
+				installationId: 'installation-id',
+				tokenId: 'token-id',
+			},
+		};
+	}
+
+	function requestContext(scopes: McpCapability[]): ServerContext {
+		return {
+			http: { authInfo: authInfo(scopes) },
+			mcpReq: { id: 17 },
+		} as unknown as ServerContext;
+	}
+
+	function providerTool(name: string, access: ToolAccessKind) {
+		return { name, audiences: [ToolAudience.MCP], access };
+	}
+
+	function property(id: string, permission: PermissionType): ChannelPropertyEntity {
+		const suffix = id.slice(-1);
+
+		return {
+			id,
+			name: `Power ${suffix}`,
+			category: PropertyCategory.ON,
+			permissions: [permission],
+			dataType: DataTypeType.BOOL,
+			unit: null,
+			format: null,
+			step: null,
+			invalid: null,
+			channel: {
+				id: `20000000-0000-4000-8000-00000000000${suffix}`,
+				name: `Switch ${suffix}`,
+				category: 'switcher',
+				device: {
+					id: `30000000-0000-4000-8000-00000000000${suffix}`,
+					name: `Device ${suffix}`,
+					enabled: true,
+					hidden: false,
+				},
+			},
+		} as unknown as ChannelPropertyEntity;
+	}
+
+	function deviceId(target: ChannelPropertyEntity): string {
+		return (target.channel as { device: { id: string } }).device.id;
+	}
+
+	function scene(enabled: boolean): SceneEntity {
+		return {
+			id: enabled ? '40000000-0000-4000-8000-000000000001' : '40000000-0000-4000-8000-000000000002',
+			name: enabled ? 'Movie night' : 'Disabled scene',
+			category: SceneCategory.GENERIC,
+			enabled,
+			triggerable: true,
+			primarySpaceId: null,
+		} as SceneEntity;
+	}
+
+	function space(): SpaceEntity {
+		return {
+			id: '50000000-0000-4000-8000-000000000001',
+			name: 'Living room',
+			type: SpaceType.ROOM,
+		} as SpaceEntity;
+	}
+});
