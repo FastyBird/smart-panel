@@ -55,6 +55,24 @@ export interface SpaceSummaryPage {
 	total: number;
 }
 
+const LIGHTING_DISCOVERY_SPACE_BATCH_SIZE = 50;
+const LIGHTING_DISCOVERY_DEVICE_BATCH_SIZE = 100;
+const WRITABLE_PROPERTY_PERMISSION_PREDICATE =
+	'(property.permissions = :readWrite OR property.permissions = :writeOnly ' +
+	'OR property.permissions LIKE :readWriteFirst OR property.permissions LIKE :readWriteMiddle ' +
+	'OR property.permissions LIKE :readWriteLast OR property.permissions LIKE :writeOnlyFirst ' +
+	'OR property.permissions LIKE :writeOnlyMiddle OR property.permissions LIKE :writeOnlyLast)';
+const WRITABLE_PROPERTY_PERMISSION_PARAMETERS = {
+	readWrite: PermissionType.READ_WRITE,
+	writeOnly: PermissionType.WRITE_ONLY,
+	readWriteFirst: `${PermissionType.READ_WRITE},%`,
+	readWriteMiddle: `%,${PermissionType.READ_WRITE},%`,
+	readWriteLast: `%,${PermissionType.READ_WRITE}`,
+	writeOnlyFirst: `${PermissionType.WRITE_ONLY},%`,
+	writeOnlyMiddle: `%,${PermissionType.WRITE_ONLY},%`,
+	writeOnlyLast: `%,${PermissionType.WRITE_ONLY}`,
+};
+
 /**
  * Narrow check for whether a subtype mapping owns a given shared-STI-table
  * column. Kept as a module-level helper so the `Readonly<Record<string, unknown>>`
@@ -115,36 +133,54 @@ export class SpacesService {
 	}
 
 	async findLightingTriggerSummaryPage(limit: number): Promise<SpaceSummaryPage> {
+		if (limit <= 0) {
+			return { spaces: [], total: 0 };
+		}
+
 		const registeredDeviceTypes = this.platformRegistryService.list();
 
 		if (registeredDeviceTypes.length === 0) {
 			return { spaces: [], total: 0 };
 		}
 
-		const candidateDevices = await this.deviceRepository
-			.createQueryBuilder('device')
-			.select('device.id')
-			.where('device.enabled = :enabled', { enabled: true })
-			.andWhere('device.hidden = :hidden', { hidden: false })
-			.andWhere('device.category = :deviceCategory', { deviceCategory: DeviceCategory.LIGHTING })
-			.andWhere('device.type IN (:...registeredDeviceTypes)', { registeredDeviceTypes })
-			.callListeners(false)
-			.getMany();
-		const statuses = await this.deviceConnectionStateService.readLatestMany(candidateDevices);
-		const onlineDeviceIds = candidateDevices
-			.filter((device) => statuses.get(device.id)?.online === true)
-			.map((device) => device.id);
+		const targetCount = limit + 1;
+		const spaces: SpaceEntity[] = [];
+		let offset = 0;
+		let exhausted = false;
 
-		if (onlineDeviceIds.length === 0) {
-			return { spaces: [], total: 0 };
+		while (spaces.length < targetCount && !exhausted) {
+			const candidateSpaces = await this.findLightingCandidateSpaceBatch(
+				registeredDeviceTypes,
+				offset,
+				LIGHTING_DISCOVERY_SPACE_BATCH_SIZE,
+			);
+
+			offset += candidateSpaces.length;
+			exhausted = candidateSpaces.length < LIGHTING_DISCOVERY_SPACE_BATCH_SIZE;
+
+			for (const space of candidateSpaces) {
+				if (await this.hasOnlineLightingTarget(space, registeredDeviceTypes)) {
+					spaces.push(space);
+
+					if (spaces.length === targetCount) {
+						break;
+					}
+				}
+			}
 		}
 
-		const writablePermissionPredicate =
-			'(property.permissions = :readWrite OR property.permissions = :writeOnly ' +
-			'OR property.permissions LIKE :readWriteFirst OR property.permissions LIKE :readWriteMiddle ' +
-			'OR property.permissions LIKE :readWriteLast OR property.permissions LIKE :writeOnlyFirst ' +
-			'OR property.permissions LIKE :writeOnlyMiddle OR property.permissions LIKE :writeOnlyLast)';
-		const query = this.repository
+		return {
+			spaces: spaces.slice(0, limit),
+			total: spaces.length >= targetCount ? targetCount : spaces.length,
+		};
+	}
+
+	private async findLightingCandidateSpaceBatch(
+		registeredDeviceTypes: string[],
+		offset: number,
+		limit: number,
+	): Promise<SpaceEntity[]> {
+		return this.repository
 			.createQueryBuilder('space')
 			.where(
 				`EXISTS (
@@ -156,11 +192,10 @@ export class SpacesService {
 					WHERE device.enabled = :enabled
 						AND device.hidden = :hidden
 						AND device.type IN (:...registeredDeviceTypes)
-						AND device.id IN (:...onlineDeviceIds)
 						AND device.category = :deviceCategory
 						AND channel.category = :channelCategory
 						AND property.category = :propertyCategory
-						AND ${writablePermissionPredicate}
+						AND ${WRITABLE_PROPERTY_PERMISSION_PREDICATE}
 						AND NOT EXISTS (
 							SELECT 1
 							FROM spaces_module_space_roles lightingRole
@@ -177,18 +212,10 @@ export class SpacesService {
 					enabled: true,
 					hidden: false,
 					registeredDeviceTypes,
-					onlineDeviceIds,
 					deviceCategory: DeviceCategory.LIGHTING,
 					channelCategory: ChannelCategory.LIGHT,
 					propertyCategory: PropertyCategory.ON,
-					readWrite: PermissionType.READ_WRITE,
-					writeOnly: PermissionType.WRITE_ONLY,
-					readWriteFirst: `${PermissionType.READ_WRITE},%`,
-					readWriteMiddle: `%,${PermissionType.READ_WRITE},%`,
-					readWriteLast: `%,${PermissionType.READ_WRITE}`,
-					writeOnlyFirst: `${PermissionType.WRITE_ONLY},%`,
-					writeOnlyMiddle: `%,${PermissionType.WRITE_ONLY},%`,
-					writeOnlyLast: `%,${PermissionType.WRITE_ONLY}`,
+					...WRITABLE_PROPERTY_PERMISSION_PARAMETERS,
 					lightingRoleType: SpaceRoleType.LIGHTING,
 					hiddenLightingRole: 'hidden',
 					roomType: SpaceType.ROOM,
@@ -198,10 +225,72 @@ export class SpacesService {
 			.orderBy('space.displayOrder', 'ASC')
 			.addOrderBy('space.name', 'ASC')
 			.addOrderBy('space.id', 'ASC')
-			.take(limit);
-		const [spaces, total] = await query.getManyAndCount();
+			.skip(offset)
+			.take(limit)
+			.getMany();
+	}
 
-		return { spaces, total };
+	private async hasOnlineLightingTarget(space: SpaceEntity, registeredDeviceTypes: string[]): Promise<boolean> {
+		let offset = 0;
+
+		while (true) {
+			const devices = await this.deviceRepository
+				.createQueryBuilder('device')
+				.innerJoin('device.channels', 'channel')
+				.innerJoin('channel.properties', 'property')
+				.leftJoin('device.deviceZones', 'deviceZone')
+				.select('device.id')
+				.distinct(true)
+				.where('device.enabled = :enabled', { enabled: true })
+				.andWhere('device.hidden = :hidden', { hidden: false })
+				.andWhere('device.type IN (:...registeredDeviceTypes)', { registeredDeviceTypes })
+				.andWhere('device.category = :deviceCategory', { deviceCategory: DeviceCategory.LIGHTING })
+				.andWhere('channel.category = :channelCategory', { channelCategory: ChannelCategory.LIGHT })
+				.andWhere('property.category = :propertyCategory', { propertyCategory: PropertyCategory.ON })
+				.andWhere(WRITABLE_PROPERTY_PERMISSION_PREDICATE, WRITABLE_PROPERTY_PERMISSION_PARAMETERS)
+				.andWhere(
+					`NOT EXISTS (
+						SELECT 1
+						FROM spaces_module_space_roles lightingRole
+						WHERE lightingRole.type = :lightingRoleType
+							AND lightingRole."spaceId" = :spaceId
+							AND lightingRole."deviceId" = device.id
+							AND lightingRole."channelId" = channel.id
+							AND lightingRole.role = :hiddenLightingRole
+					)`,
+					{
+						lightingRoleType: SpaceRoleType.LIGHTING,
+						spaceId: space.id,
+						hiddenLightingRole: 'hidden',
+					},
+				)
+				.andWhere(
+					'((:spaceType = :roomType AND device.roomId = :spaceId) ' +
+						'OR (:spaceType = :zoneType AND deviceZone.zoneId = :spaceId))',
+					{
+						spaceType: space.type,
+						roomType: SpaceType.ROOM,
+						zoneType: SpaceType.ZONE,
+						spaceId: space.id,
+					},
+				)
+				.orderBy('device.id', 'ASC')
+				.skip(offset)
+				.take(LIGHTING_DISCOVERY_DEVICE_BATCH_SIZE)
+				.callListeners(false)
+				.getMany();
+			const statuses = await this.deviceConnectionStateService.readLatestMany(devices);
+
+			if (devices.some((device) => statuses.get(device.id)?.online === true)) {
+				return true;
+			}
+
+			if (devices.length < LIGHTING_DISCOVERY_DEVICE_BATCH_SIZE) {
+				return false;
+			}
+
+			offset += devices.length;
+		}
 	}
 
 	async findOne(id: string): Promise<SpaceEntity | null> {
