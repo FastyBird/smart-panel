@@ -850,7 +850,24 @@ const applyChannel = async (specChannel: DevicesModuleChannelCategory, sourceCha
 		return;
 	}
 
+	// Claim the slots this shortcut is about to fill *before* awaiting anything. Loading the source
+	// channel's properties is a network round-trip, and until now nothing was staked during it: a user
+	// who changed one of these slots by hand in that window, or applied a second source channel, would
+	// see the older shortcut resume afterwards, overwrite `selections` and `pickers`, and re-stamp
+	// itself with fresh compatibility tokens — leaving the superseded action as the final mapping.
+	const intent = ++requestCounter;
+
+	for (const slot of group.slots) {
+		slotTokens.set(slot.key, intent);
+	}
+
 	const sourceProperties = await loadProperties(sourceChannelId);
+
+	// Anything that touched one of these slots while the properties were loading has taken the claim,
+	// and this shortcut is now the stale one.
+	if (group.slots.some((slot: IVirtualMappingSlot): boolean => slotTokens.get(slot.key) !== intent)) {
+		return;
+	}
 
 	const sourceChannel = channelsStore.findById(sourceChannelId);
 

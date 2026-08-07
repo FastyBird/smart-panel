@@ -491,6 +491,30 @@ describe('VirtualDevicesService', () => {
 		// A slot that defines a grid is not satisfied by a candidate that defines none: without a step,
 		// `validatePropertyCommandValue` accepts 61 on a `[0, 86400]` projection and it is forwarded
 		// unchanged to a step-60 source.
+		// A matched variant's format may be *explicitly* null, and that null is the answer.
+		// `media_input.source` has an enum variant and a `custom` string variant declaring no format on
+		// purpose — coalescing past that null borrows the enum set and rejects every legitimate free-text
+		// source the specification plainly allows.
+		it('accepts a source matching a variant that declares no format', () => {
+			const freeTextSource = property({
+				id: 'custom-input',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.STRING,
+				format: null,
+			});
+
+			const report = service.reportCompatibility(
+				{
+					category: DeviceCategory.TELEVISION,
+					channel: ChannelCategory.MEDIA_INPUT,
+					property: PropertyCategory.SOURCE,
+				},
+				freeTextSource,
+			);
+
+			expect(report.compatible).toBe(true);
+		});
+
 		it('refuses a numeric source with no step against a stepped slot', () => {
 			const steplessSource = property({
 				id: 'stepless',

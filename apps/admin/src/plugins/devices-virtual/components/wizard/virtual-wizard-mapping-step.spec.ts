@@ -619,6 +619,49 @@ describe('VirtualWizardMappingStep', () => {
 		});
 	});
 
+	// Loading a source channel's properties is a network round-trip. Until the shortcut claims the slots
+	// it is about to fill, a manual choice made during that window is silently overwritten when the
+	// older shortcut resumes.
+	it('discards a channel shortcut whose slots were taken while it was loading', async () => {
+		let releaseProperties: (() => void) | null = null;
+
+		propertiesStore.fetch.mockImplementationOnce(async (payload: { channelId: string }) => {
+			await new Promise<void>((resolve) => {
+				releaseProperties = resolve;
+			});
+
+			return properties.filter((property) => property.channel === payload.channelId);
+		});
+
+		const { wrapper, errors } = mountMappingStep();
+
+		const shortcut = wrapper.vm.applyChannel(DevicesModuleChannelCategory.electrical_power, CHANNEL_POWER);
+
+		// The user picks a source for one of those slots by hand while the shortcut is still loading.
+		await wrapper.vm.selectSource(`${DevicesModuleChannelCategory.electrical_power}.${DevicesModuleChannelPropertyCategory.power}`, PROPERTY_VOLTAGE);
+		await nextTick();
+
+		releaseProperties!();
+		await shortcut;
+		await nextTick();
+
+		const emitted = wrapper.emitted('update:modelValue');
+		const mappings = emitted?.[emitted.length - 1]?.[0] as {
+			specChannel: DevicesModuleChannelCategory;
+			specProperty: DevicesModuleChannelPropertyCategory;
+			sourceProperty: string | null;
+		}[];
+
+		const power = mappings.find(
+			(entry) =>
+				entry.specChannel === DevicesModuleChannelCategory.electrical_power && entry.specProperty === DevicesModuleChannelPropertyCategory.power
+		);
+
+		// The manual choice is the last word, not the shortcut that started first.
+		expect(power?.sourceProperty).toBe(PROPERTY_VOLTAGE);
+		expect(errors.value).toBeDefined();
+	});
+
 	it('blocks the step when the compatibility check itself fails', async () => {
 		backendClient.POST.mockResolvedValue({ data: undefined, error: { error: { details: [{ reason: 'Source property does not exist' }] } } });
 

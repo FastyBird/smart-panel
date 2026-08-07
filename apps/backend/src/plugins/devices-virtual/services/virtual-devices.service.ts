@@ -426,7 +426,11 @@ export class VirtualDevicesService {
 		const variant = metadata.dataTypeVariants?.find(
 			(candidate) => String(candidate.data_type) === String(sourceProperty.dataType),
 		);
-		const expected = variant?.format ?? metadata.format;
+		// `variant ? variant.format : …`, not `??`: a matched variant's format may be *explicitly* null,
+		// and that null is the answer. `media_input.input`'s string variant declares no format on
+		// purpose — coalescing past it borrows the first variant's enum set and rejects every legitimate
+		// free-text source, which the specification plainly allows.
+		const expected = variant ? variant.format : metadata.format;
 		const actual = sourceProperty.format as unknown;
 
 		if (!Array.isArray(expected) || expected.length === 0) {
@@ -485,7 +489,8 @@ export class VirtualDevicesService {
 			// command passes validation against the virtual property and is then forwarded unchanged, so
 			// the source rejects or silently rounds something both the preview and the persistence guard
 			// accepted. Judged only when both sides declare a step; an undeclared one constrains nothing.
-			const expectedStep = variant?.step ?? metadata.step;
+			// Same reason as the format above: a matched variant's explicit null step is the answer.
+			const expectedStep = variant ? variant.step : metadata.step;
 			const actualStep = sourceProperty.step as unknown;
 
 			if (typeof expectedStep === 'number' && expectedStep > 0) {
