@@ -323,6 +323,10 @@ describe('VirtualDevicesService', () => {
 				format: [0, 100],
 			});
 
+			// The `uchar` variant of this slot defines a step, and a declaration without one is refused
+			// before the representation comparison is reached — this test is about the latter.
+			Object.assign(numericProjection, { step: 1 });
+
 			await expect(service.assertProjectionCompatible(numericProjection, CHANNEL_ID)).rejects.toThrow(/must match/);
 		});
 
@@ -482,6 +486,27 @@ describe('VirtualDevicesService', () => {
 
 			expect(report.compatible).toBe(false);
 			expect(report.reason).toContain('grid');
+		});
+
+		// A slot that defines a grid is not satisfied by a candidate that defines none: without a step,
+		// `validatePropertyCommandValue` accepts 61 on a `[0, 86400]` projection and it is forwarded
+		// unchanged to a step-60 source.
+		it('refuses a numeric source with no step against a stepped slot', () => {
+			const steplessSource = property({
+				id: 'stepless',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.UCHAR,
+				format: [0, 100],
+				step: null,
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.FAN, channel: ChannelCategory.FAN, property: PropertyCategory.SPEED },
+				steplessSource,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('declares no step');
 		});
 
 		it('accepts a numeric source sharing the slot grid', () => {
@@ -865,6 +890,7 @@ describe('VirtualDevicesService', () => {
 				permissions: [PermissionType.READ_WRITE],
 				dataType: DataTypeType.UCHAR,
 				format: [0, 100],
+				step: 1,
 			});
 
 			const report = service.reportCompatibility(

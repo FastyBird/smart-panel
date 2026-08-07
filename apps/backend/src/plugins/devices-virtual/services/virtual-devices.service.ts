@@ -477,7 +477,15 @@ export class VirtualDevicesService {
 			const expectedStep = variant?.step ?? metadata.step;
 			const actualStep = sourceProperty.step as unknown;
 
-			if (typeof expectedStep === 'number' && typeof actualStep === 'number' && expectedStep > 0 && actualStep > 0) {
+			if (typeof expectedStep === 'number' && expectedStep > 0) {
+				// A slot that defines a grid is not satisfied by a candidate that defines none. Skipping the
+				// comparison in that case let a `fan.timer` projection declare `[0, 86400]` with no step,
+				// so `validatePropertyCommandValue` accepted 61 and forwarded it unchanged to a step-60
+				// source. Same rule as formats: unconstrained is not compatible with constrained.
+				if (typeof actualStep !== 'number' || actualStep <= 0) {
+					return `Source property id=${sourceProperty.id} declares no step, so it cannot be shown to land on the ${expectedStep} grid ${slotName} defines`;
+				}
+
 				// A grid is a width *and* an origin. `matchesStep` — the same helper that validates an
 				// incoming command — measures from `format[0]`, so two grids of equal width sitting half a
 				// step apart accept entirely disjoint value sets: an accelerometer reporting
