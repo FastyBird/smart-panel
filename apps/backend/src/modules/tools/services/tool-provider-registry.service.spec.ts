@@ -198,4 +198,43 @@ describe('ToolProviderRegistryService', () => {
 			}),
 		);
 	});
+
+	it('does not time out write or trigger execution without cancellation', async () => {
+		jest.useFakeTimers();
+
+		try {
+			const resolvers = new Map<string, (result: ToolExecutionResult) => void>();
+			const provider = new TestToolProvider(
+				'side-effect-provider',
+				[
+					definition('write-tool', [ToolAudience.MCP], ToolAccessKind.WRITE),
+					definition('trigger-tool', [ToolAudience.MCP], ToolAccessKind.TRIGGER),
+				],
+				(toolCall) =>
+					new Promise((resolve) => {
+						resolvers.set(toolCall.name, resolve);
+					}),
+				1,
+			);
+
+			registry.register(provider);
+
+			const context = {
+				audience: ToolAudience.MCP,
+				source: 'mcp',
+				allowedAccessKinds: [ToolAccessKind.WRITE, ToolAccessKind.TRIGGER],
+			};
+			const writeResult = registry.executeTool({ id: '1', name: 'write-tool', arguments: {} }, context);
+			const triggerResult = registry.executeTool({ id: '2', name: 'trigger-tool', arguments: {} }, context);
+
+			await jest.advanceTimersByTimeAsync(1);
+			resolvers.get('write-tool')?.(completed('write completed'));
+			resolvers.get('trigger-tool')?.(completed('trigger completed'));
+
+			await expect(writeResult).resolves.toEqual(completed('write completed'));
+			await expect(triggerResult).resolves.toEqual(completed('trigger completed'));
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 });
