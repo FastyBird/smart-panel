@@ -1821,8 +1821,9 @@ describe('VirtualIndexMaintenanceListener', () => {
 			report: { compatible: boolean; reason?: string },
 			dependents: unknown[] = [dependent],
 			sentinelMismatch: string | null = null,
+			affected = 1,
 		) => {
-			const update = jest.fn().mockResolvedValue(undefined);
+			const update = jest.fn().mockResolvedValue({ affected });
 			const findOne = jest.fn().mockResolvedValue({ ...dependent, sourcePropertyId: null });
 			const find = jest.fn().mockResolvedValue(dependents);
 			const emit = jest.fn();
@@ -1856,7 +1857,11 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			await subject.handleSourceMetadataChange(sourceProperty);
 
-			expect(update).toHaveBeenCalledWith('virtual-property', { sourcePropertyId: null });
+			// Keyed on the link, not on the id alone — see the concurrent-remap case below.
+			expect(update).toHaveBeenCalledWith(
+				{ id: 'virtual-property', sourcePropertyId: 'source-property' },
+				{ sourcePropertyId: null },
+			);
 			// Announced, or an open admin keeps the stale link and never shows the remap action.
 			expect(emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_PROPERTY_UPDATED,
@@ -1886,7 +1891,9 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			await subject.handleSourceMetadataChange(enumSource);
 
-			expect(update).toHaveBeenCalledWith('virtual-property', { sourcePropertyId: null });
+			expect(update).toHaveBeenCalledWith(expect.objectContaining({ id: 'virtual-property' }), {
+				sourcePropertyId: null,
+			});
 		});
 
 		// A property's own row is not the only thing that decides what it means: `resolvePropertyUnit`
@@ -1900,7 +1907,9 @@ describe('VirtualIndexMaintenanceListener', () => {
 			await subject.handleSourceChannelChange({ id: 'source-channel' } as unknown as ChannelEntity);
 
 			expect(channelsPropertiesStub.findAll).toHaveBeenCalledWith('source-channel');
-			expect(update).toHaveBeenCalledWith('virtual-property', { sourcePropertyId: null });
+			expect(update).toHaveBeenCalledWith(expect.objectContaining({ id: 'virtual-property' }), {
+				sourcePropertyId: null,
+			});
 		});
 
 		it('does nothing for a property nothing projects', async () => {
@@ -1922,7 +1931,9 @@ describe('VirtualIndexMaintenanceListener', () => {
 			await subject.handleSourceMetadataChange(sourceProperty);
 
 			expect(find).toHaveBeenCalledWith(expect.objectContaining({ where: { sourcePropertyId: 'source-property' } }));
-			expect(update).toHaveBeenCalledWith('virtual-property', { sourcePropertyId: null });
+			expect(update).toHaveBeenCalledWith(expect.objectContaining({ id: 'virtual-property' }), {
+				sourcePropertyId: null,
+			});
 		});
 
 		// The device relation decides which slot the report is asked about, and neither hop is populated
@@ -1956,7 +1967,29 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			await subject.handleSourceMetadataChange(sourceProperty);
 
-			expect(update).toHaveBeenCalledWith('virtual-property', { sourcePropertyId: null });
+			expect(update).toHaveBeenCalledWith(expect.objectContaining({ id: 'virtual-property' }), {
+				sourcePropertyId: null,
+			});
+		});
+
+		// A remap can repoint the projection between the read and the write — the admin's repair flow does
+		// exactly that. The conditional write then matches nothing, and this handler must not announce a
+		// link it never judged or schedule a rebuild for a change it did not make.
+		it('leaves a projection alone when something repointed it first', async () => {
+			const { subject, update, emit } = build(
+				{ compatible: false, reason: 'permissions [ro] do not satisfy [rw]' },
+				[dependent],
+				null,
+				0,
+			);
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(update).toHaveBeenCalledWith(
+				{ id: 'virtual-property', sourcePropertyId: 'source-property' },
+				{ sourcePropertyId: null },
+			);
+			expect(emit).not.toHaveBeenCalled();
 		});
 
 		// Nothing may project a virtual property, so the orphaning emit above — and a CHANNEL_UPDATED on

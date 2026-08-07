@@ -864,6 +864,14 @@ const applyChannel = async (specChannel: DevicesModuleChannelCategory, sourceCha
 
 	for (const slot of group.slots) {
 		slotTokens.set(slot.key, intent);
+
+		// The claim orphans any request already in flight for this slot: `settle` checks the token
+		// before it writes, so that request will return without ever clearing the flag it set. Whether
+		// anything takes the slot over from here is not decided yet — the source channel may carry no
+		// matching property, or this whole shortcut may turn out to be the stale one — and in both of
+		// those cases nobody would clear it, leaving the picker spinning for good. Clearing it as part
+		// of taking the claim is what makes the flag belong to whoever holds the token.
+		delete checking[slot.key];
 	}
 
 	const sourceProperties = await loadProperties(sourceChannelId);

@@ -688,6 +688,40 @@ describe('VirtualWizardMappingStep', () => {
 		}
 	});
 
+	// Claiming a slot orphans any compatibility request already in flight for it: `settle` checks the
+	// token before writing, so that request returns without clearing the loading flag it set. If the
+	// source channel then carries no property for that slot, nothing takes the slot over, and the picker
+	// would spin for the rest of the session with no way to finish the wizard.
+	it('clears a slot left loading when a shortcut claims it and finds nothing to fill it with', async () => {
+		let releaseCheck: ((value: unknown) => void) | undefined;
+
+		backendClient.POST.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					releaseCheck = resolve;
+				})
+		);
+
+		const { wrapper, slotFor } = mountMappingStep();
+
+		// A manual pick whose compatibility check never comes back, on a slot the shortcut below claims
+		// but cannot fill: `electrical_power` has no `voltage` property on the switcher channel.
+		const pending = wrapper.vm.selectSource(slotFor(DevicesModuleChannelPropertyCategory.voltage), PROPERTY_VOLTAGE);
+
+		await nextTick();
+
+		expect(wrapper.vm.checking[slotFor(DevicesModuleChannelPropertyCategory.voltage)]).toBe(true);
+
+		// The switcher channel carries only `on`, so the `voltage` slot is claimed and then left unfilled.
+		await wrapper.vm.applyChannel(DevicesModuleChannelCategory.electrical_power, CHANNEL_SWITCHER);
+
+		expect(wrapper.vm.checking[slotFor(DevicesModuleChannelPropertyCategory.voltage)]).toBeUndefined();
+
+		releaseCheck?.(respondWith([]));
+
+		await pending;
+	});
+
 	it('blocks the step when the compatibility check itself fails', async () => {
 		backendClient.POST.mockResolvedValue({ data: undefined, error: { error: { details: [{ reason: 'Source property does not exist' }] } } });
 

@@ -899,7 +899,28 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				`Source property id=${payload.id} no longer fits the slot filled by virtual property id=${dependent.id}: ${reason}. Orphaning it.`,
 			);
 
-			await repository.update(dependent.id, { sourcePropertyId: null });
+			// Conditional on the link still being the one just judged, not on the id alone. Between the
+			// read above and this write a remap can repoint the projection at a different source — the
+			// admin's repair flow does exactly that, and it is the flow most likely to be running while a
+			// source's metadata is being edited — and an id-only update would then clear the *new* link.
+			// The remap would report success and the projection would orphan itself a moment later, for a
+			// source it no longer had anything to do with. Naming `sourcePropertyId` in the criteria means
+			// the write only lands if it is still undoing what it was asked to undo.
+			const orphaning = await repository.update(
+				{ id: dependent.id, sourcePropertyId: payload.id },
+				{ sourcePropertyId: null },
+			);
+
+			if (!orphaning.affected) {
+				// Someone repointed it first. Whatever it reads now is that writer's link, and it passed
+				// `assertProjectionCompatible` on its own way in — nothing here has judged it, so nothing
+				// here should announce it or count it as a structural change.
+				this.logger.debug(
+					`Virtual property id=${dependent.id} was repointed away from source id=${payload.id} before it could be orphaned; leaving it to whatever wrote it`,
+				);
+
+				continue;
+			}
 
 			// Announced, or an already-open admin keeps the old link: the sources panel would not show
 			// the orphan warning or its remap action until the page was reloaded, and other websocket
