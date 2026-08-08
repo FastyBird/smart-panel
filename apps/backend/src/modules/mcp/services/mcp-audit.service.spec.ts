@@ -111,9 +111,15 @@ describe('McpAuditService', () => {
 	});
 
 	it('normalizes client-controlled string request identifiers before logging', () => {
+		const bearerLikeId = 'Bearer raw-secret';
+		const normalizedId = service.getRequestId({ id: bearerLikeId });
+
 		expect(service.getRequestId({ id: 17, token: 'secret' })).toBe('17');
-		expect(service.getRequestId({ id: 'Bearer raw-secret' })).toBe('string');
-		expect(service.getRequestId({ id: 'x'.repeat(10_000) })).toBe('string');
+		expect(normalizedId).toMatch(/^string:[A-Za-z0-9_-]{16}$/);
+		expect(service.getRequestId({ id: bearerLikeId })).toBe(normalizedId);
+		expect(service.getRequestId({ id: 'another-id' })).not.toBe(normalizedId);
+		expect(service.getRequestId({ id: 'x'.repeat(10_000) })).toMatch(/^string:[A-Za-z0-9_-]{16}$/);
+		expect(normalizedId).not.toContain('raw-secret');
 		expect(service.getRequestId({ id: Number.POSITIVE_INFINITY })).toBe('unknown');
 		expect(service.getRequestId({ id: { nested: true } })).toBe('unknown');
 		expect(service.getRequestId(null)).toBe('unknown');

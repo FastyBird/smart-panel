@@ -1,3 +1,5 @@
+import { createHmac, randomBytes } from 'crypto';
+
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
@@ -50,6 +52,7 @@ interface ToolResult extends RequestIdentity {
 @Injectable()
 export class McpAuditService {
 	private readonly logger = createExtensionLogger(MCP_MODULE_NAME, 'McpAuditService');
+	private readonly requestIdHmacKey = randomBytes(32);
 	private activeSubscriptions = 0;
 	private readonly callsByCapability: Record<McpCapability, number> = {
 		[McpCapability.READ]: 0,
@@ -152,7 +155,13 @@ export class McpAuditService {
 			return String(id);
 		}
 
-		return typeof id === 'string' ? 'string' : 'unknown';
+		if (typeof id === 'string') {
+			const digest = createHmac('sha256', this.requestIdHmacKey).update(id).digest('base64url').slice(0, 16);
+
+			return `string:${digest}`;
+		}
+
+		return 'unknown';
 	}
 
 	private getTargetIds(tool: string, args?: Record<string, unknown>): Record<string, string> {

@@ -115,6 +115,11 @@ describe('McpServerService policy revision', () => {
 			'2',
 			'client-a',
 		);
+		internalService.auditProtocolRequest(
+			{ id: 3, method: 'initialize', params: { protocolVersion: 'Bearer private-version' } },
+			'3',
+			'client-a',
+		);
 
 		expect(auditService.recordProtocolRequest).toHaveBeenNthCalledWith(
 			1,
@@ -126,8 +131,14 @@ describe('McpServerService policy revision', () => {
 			{ requestId: '2', clientId: 'client-a' },
 			{ kind: 'discovery', method: 'tools/list' },
 		);
+		expect(auditService.recordProtocolRequest).toHaveBeenNthCalledWith(
+			3,
+			{ requestId: '3', clientId: 'client-a' },
+			{ kind: 'initialization', method: 'initialize' },
+		);
 		expect(JSON.stringify(auditService.recordProtocolRequest.mock.calls)).not.toContain('secret');
 		expect(JSON.stringify(auditService.recordProtocolRequest.mock.calls)).not.toContain('private-cursor');
+		expect(JSON.stringify(auditService.recordProtocolRequest.mock.calls)).not.toContain('private-version');
 	});
 
 	it('refreshes the idle deadline when subscription traffic is forwarded', async () => {

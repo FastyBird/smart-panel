@@ -329,14 +329,14 @@ export class McpServerService implements OnApplicationShutdown {
 		const request = this.getRequestBody(body);
 
 		if (request.method === 'initialize') {
-			const protocolVersion = request.params?.protocolVersion;
+			const protocolVersion = this.getProtocolVersion(request.params?.protocolVersion);
 
 			this.auditService.recordProtocolRequest(
 				{ requestId, clientId },
 				{
 					kind: 'initialization',
 					method: request.method,
-					...(typeof protocolVersion === 'string' ? { protocolVersion } : {}),
+					...(protocolVersion ? { protocolVersion } : {}),
 				},
 			);
 
@@ -349,6 +349,10 @@ export class McpServerService implements OnApplicationShutdown {
 				{ kind: 'discovery', method: request.method ?? 'unknown' },
 			);
 		}
+	}
+
+	private getProtocolVersion(value: unknown): string | undefined {
+		return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : undefined;
 	}
 
 	private notify(clientId: string | undefined, callback: (handler: McpHttpHandler) => void): void {
