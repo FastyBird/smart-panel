@@ -303,6 +303,14 @@ For boolean roll-ups (is anything triggered) the duplicate is harmless. For anyt
 
 Deciding this needs a policy — does an aggregate prefer the physical device, the virtual one, or neither — and that policy belongs with whoever owns the security and energy semantics, not with the mapping feature that surfaced it.
 
+### 3a.14 Stored references to a device that vanishes are never reconciled (medium, pre-existing)
+
+A dashboard tile, a data source and a local scene action each store a device id, and nothing reconciles those references when the device behind one goes away. Deleting a device has always left them: no listener in the dashboard or scenes modules subscribes to `DEVICE_DELETED`. Hiding a source gives the same gap a second, far more frequent trigger, since every virtual device hides the device it replaces.
+
+`@ValidateDeviceNotHidden` covers the choice — a *new* tile, data source or scene action cannot name a hidden device — and this branch fixes the one place where the residue was actively misleading: a device-preview tile whose device is gone now says so instead of sitting on its loader for the life of the process (`DevicesRepository.hasFetched` is what separates "not read yet" from "gone").
+
+What is left is a policy question, and it is not the mapping feature's to answer: should a stored reference to a vanished device be migrated to whatever replaced it, refused at execution, or left alone? A local scene commanding a physical property still works after that property's device is hidden — the hardware is unchanged, and the virtual device forwards to the same property — so refusing at execution would break working automations for a selection-UI flag. Migration is the interesting option and needs the owners of the dashboard and scenes modules: only they can say what "the same tile, pointed at the replacement" should mean when the replacement's structure is not the original's.
+
 ### 3a.13 The channels stores apply a fetch snapshot over newer socket rows (low, pre-existing)
 
 `devices.store.ts` now applies a fetch response row by row, keeping any row written since the request went out — a websocket event, an optimistic edit — so a device hidden mid-flight is not restored visible by the older snapshot it raced.
