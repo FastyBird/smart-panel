@@ -109,6 +109,9 @@ jobs:
           FB_ADMIN_PORT: "3003"
           FB_ADMIN_UI_PATH: ""
 
+      - name: "Run OAuth Provider Spike"
+        run: "pnpm --filter @fastybird/smart-panel-backend test:oauth-spike"
+
       - name: "Generate Coverage Report"
         run: "pnpm --filter @fastybird/smart-panel-backend test:cov"
 

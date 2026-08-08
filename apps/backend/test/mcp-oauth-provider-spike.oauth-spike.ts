@@ -512,6 +512,10 @@ describe('MCP OAuth authorization-component spike', () => {
 		expect(tokens.expires_in).toBe(600);
 		expect(tokens.access_token.split('.')).toHaveLength(1);
 		expect(tokens.refresh_token).toBeDefined();
+		expect(await new adapter('AccessToken').find(tokens.access_token)).toMatchObject({
+			aud: resource,
+			scope: 'mcp:read',
+		});
 	});
 
 	it('rejects authorization-code replay', async () => {
