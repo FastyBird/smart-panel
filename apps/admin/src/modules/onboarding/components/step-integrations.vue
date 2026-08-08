@@ -210,6 +210,7 @@ import { Icon } from '@iconify/vue';
 import { injectStoresManager } from '../../../common';
 import { extensionsStoreKey } from '../../../modules/extensions/store/keys';
 import { ExtensionKind } from '../../../modules/extensions/extensions.constants';
+import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import { CONFIG_MODULE_PLUGIN_TYPE } from '../../../modules/config/config.constants';
 import type { IPluginsComponents, IPluginsSchemas } from '../../../modules/config/config.types';
 import { configPluginsStoreKey } from '../../../modules/config/store/keys';
@@ -455,6 +456,18 @@ const NON_DISCOVERABLE_PLUGINS: readonly string[] = [DEVICES_VIRTUAL_PLUGIN_NAME
 const removePluginDevices = async (type: string): Promise<void> => {
 	if (NON_DISCOVERABLE_PLUGINS.includes(type)) {
 		return;
+	}
+
+	// Asked for explicitly, because the shared cache is not a complete answer: the devices endpoint
+	// returns visible devices unless told otherwise, so a store filled by onboarding's own
+	// `devicesStore.fetch()` holds no hidden ones. A discovered device is hidden when a virtual device
+	// has taken its place, and cleaning up only the visible half would leave those behind in the
+	// database owned by a plugin that is no longer running — invisible in the UI and impossible to
+	// remove from it.
+	try {
+		await devicesStore.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
+	} catch {
+		// Best-effort: what the store already holds is still worth cleaning up.
 	}
 
 	const deviceTypes = devicesTypesForPlugin(type);

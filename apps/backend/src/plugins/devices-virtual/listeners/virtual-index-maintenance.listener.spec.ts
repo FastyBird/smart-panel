@@ -53,7 +53,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 	let devicesRepository: { update: jest.Mock };
 	let virtualDevicesService: { reportCompatibility: jest.Mock };
 	let eventEmitterStub: { emit: jest.Mock };
-	let channelsPropertiesStub: { findAll: jest.Mock };
+	let channelsPropertiesStub: { findAll: jest.Mock; findOne: jest.Mock };
 
 	// Drains Node's microtask queue completely — including microtasks newly queued while draining —
 	// before the callback runs. Unlike a fixed number of `await Promise.resolve()` hops, this needs
@@ -142,9 +142,19 @@ describe('VirtualIndexMaintenanceListener', () => {
 	// has its own real-sqlite coverage below — so every poll's `isTransactionActive` reads false, and
 	// each deferPastOpenTransaction() call still costs exactly the one `setImmediate` hop the rest of
 	// this file's flushMicrotasks()-based timing already assumes.
-	const dataSourceStub = { createQueryRunner: () => ({ isTransactionActive: false }) };
+	// `find` answers empty by default: most cases here are about coalescing and status recomputation,
+	// and a device with no orphaned projection is the ordinary shape. The cases that care override it.
+	const orphanQueryStub = { find: jest.fn().mockResolvedValue([]) };
+
+	const dataSourceStub = {
+		createQueryRunner: () => ({ isTransactionActive: false }),
+		getRepository: () => orphanQueryStub,
+	};
 
 	beforeEach(() => {
+		orphanQueryStub.find.mockReset();
+		orphanQueryStub.find.mockResolvedValue([]);
+
 		// rebuild() resolves to the transitions it observed; both lists empty is "nothing changed", the
 		// ordinary case for a structural event that did not touch any virtual device's wiring.
 		index = {
@@ -164,7 +174,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 		// Compatibility is asserted in the service's own spec; here it only has to answer.
 		virtualDevicesService = { reportCompatibility: jest.fn().mockReturnValue({ compatible: true }) };
 		eventEmitterStub = { emit: jest.fn() };
-		channelsPropertiesStub = { findAll: jest.fn().mockResolvedValue([]) };
+		channelsPropertiesStub = { findAll: jest.fn().mockResolvedValue([]), findOne: jest.fn().mockResolvedValue(null) };
 		listener = new VirtualIndexMaintenanceListener(
 			index as unknown as VirtualPropertyIndexService,
 			status as unknown as VirtualStatusListener,
@@ -367,6 +377,53 @@ describe('VirtualIndexMaintenanceListener', () => {
 		expect(status.recompute).toHaveBeenCalledTimes(2);
 		expect(status.recompute).toHaveBeenCalledWith('virtual-a', expect.any(String));
 		expect(status.recompute).toHaveBeenCalledWith('virtual-b', expect.any(String));
+	});
+
+	// A foreign key emits nothing. Deleting a source property clears `sourcePropertyId` through
+	// `ON DELETE SET NULL`, the websocket carries the *source's* deletion, and every client keeps its
+	// cached projection still naming an id that no longer exists — so the admin's sources panel shows
+	// neither the orphan warning nor its remap action until the page is reloaded.
+	it('announces a projection that lost its source to the clients holding it', async () => {
+		const orphan = { id: 'virtual-property', isProjecting: true, sourcePropertyId: null };
+
+		orphanQueryStub.find.mockResolvedValue([orphan]);
+		index.rebuild.mockResolvedValue({ rewiredVirtualDeviceIds: ['virtual-device'], abandonedSourceDeviceIds: [] });
+
+		listener.handleStructuralChange();
+
+		await flushMicrotasks();
+
+		const query = (orphanQueryStub.find.mock.calls as unknown[][])[0]?.[0] as {
+			where?: { channel?: { device?: { id?: string } } };
+		};
+
+		// Scoped to the device the rebuild reported re-wired, not swept across the whole table.
+		expect(query.where?.channel?.device?.id).toBe('virtual-device');
+		expect(eventEmitterStub.emit).toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_UPDATED, orphan);
+	});
+
+	// An owned property has no source and never had one. Null there is its normal state, not a loss, and
+	// announcing it as one would put an orphan warning on a property that is perfectly fine.
+	it('says nothing about an owned property that simply has no source', async () => {
+		orphanQueryStub.find.mockResolvedValue([{ id: 'owned-property', isProjecting: false, sourcePropertyId: null }]);
+		index.rebuild.mockResolvedValue({ rewiredVirtualDeviceIds: ['virtual-device'], abandonedSourceDeviceIds: [] });
+
+		listener.handleStructuralChange();
+
+		await flushMicrotasks();
+
+		expect(eventEmitterStub.emit).not.toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_UPDATED, expect.anything());
+	});
+
+	// Scoped to the diff, so a device orphaned long ago is not re-announced by every later rebuild.
+	it('asks about nothing when the rebuild re-wired no device', async () => {
+		index.rebuild.mockResolvedValue(NO_CHANGES);
+
+		listener.handleStructuralChange();
+
+		await flushMicrotasks();
+
+		expect(orphanQueryStub.find).not.toHaveBeenCalled();
 	});
 
 	it('recomputes nothing when the rebuild changed no virtual device wiring', async () => {
@@ -1822,7 +1879,11 @@ describe('VirtualIndexMaintenanceListener', () => {
 			dependents: unknown[] = [dependent],
 			sentinelMismatch: string | null = null,
 			affected = 1,
+			// What a re-read of the source returns. Defaults to the payload, i.e. nothing changed since
+			// the event was emitted.
+			current: unknown = sourceProperty,
 		) => {
+			channelsPropertiesStub.findOne.mockResolvedValue(current);
 			const update = jest.fn().mockResolvedValue({ affected });
 			const findOne = jest.fn().mockResolvedValue({ ...dependent, sourcePropertyId: null });
 			const find = jest.fn().mockResolvedValue(dependents);
@@ -1887,7 +1948,8 @@ describe('VirtualIndexMaintenanceListener', () => {
 				dataType: 'enum',
 			} as unknown as ChannelPropertyEntity;
 
-			const { subject, update } = build({ compatible: true });
+			// The re-read answers with the same enum row the event carried: nothing changed in between.
+			const { subject, update } = build({ compatible: true }, [dependent], null, 1, enumSource);
 
 			await subject.handleSourceMetadataChange(enumSource);
 
@@ -1970,6 +2032,38 @@ describe('VirtualIndexMaintenanceListener', () => {
 			expect(update).toHaveBeenCalledWith(expect.objectContaining({ id: 'virtual-property' }), {
 				sourcePropertyId: null,
 			});
+		});
+
+		// The payload is a snapshot from when the event was emitted, and this handler is asynchronous. Two
+		// overlapping PATCHes on the same source — one breaking compatibility, then the obvious repair
+		// restoring it — would otherwise have the older event orphan a link that is valid again. The
+		// conditional write cannot tell: its predicate proves the projection still points at this source,
+		// not that this source still looks the way the event said.
+		it('judges the source as it stands now, not as the event described it', async () => {
+			const repaired = {
+				id: 'source-property',
+				permissions: ['rw'],
+				dataType: 'bool',
+			} as unknown as ChannelPropertyEntity;
+
+			const { subject, update, reportCompatibility } = build({ compatible: true }, [dependent], null, 1, repaired);
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(reportCompatibility).toHaveBeenCalledWith(expect.anything(), repaired);
+			expect(update).not.toHaveBeenCalled();
+		});
+
+		// A source that has since been deleted has its own path — the foreign key clears the link and the
+		// rebuild reports the abandonment — so there is nothing here to orphan, and a failed read is not
+		// grounds for writing anything either.
+		it('writes nothing when the source can no longer be read', async () => {
+			const { subject, update, reportCompatibility } = build({ compatible: false }, [dependent], null, 1, null);
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(reportCompatibility).not.toHaveBeenCalled();
+			expect(update).not.toHaveBeenCalled();
 		});
 
 		// A remap can repoint the projection between the read and the write — the admin's repair flow does

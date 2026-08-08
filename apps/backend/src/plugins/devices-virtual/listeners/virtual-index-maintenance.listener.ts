@@ -1,4 +1,4 @@
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, IsNull, Repository } from 'typeorm';
 
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
@@ -375,6 +375,8 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				if (rebuilt) {
 					await this.recomputeStatuses(rebuilt.rewiredVirtualDeviceIds);
 
+					await this.announceOrphanedProjections(rebuilt.rewiredVirtualDeviceIds);
+
 					for (const sourceDeviceId of rebuilt.abandonedSourceDeviceIds) {
 						this.pendingUnhideSourceDeviceIds.add(sourceDeviceId);
 					}
@@ -484,6 +486,63 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 * Failures are logged per device and do not abort the rest: this runs inside the fire-and-forget
 	 * rebuild loop, and one virtual device that cannot be recomputed must not cost the others theirs.
 	 */
+	/**
+	 * Tells everyone holding a projection that it has lost its source.
+	 *
+	 * A source property's deletion clears `sourcePropertyId` through the foreign key
+	 * (`ON DELETE SET NULL`), and a foreign key emits nothing. The websocket carries
+	 * CHANNEL_PROPERTY_DELETED for the *source*, which every client duly drops — and then keeps its
+	 * cached projection, still naming an id that no longer exists. The admin's sources panel decides
+	 * whether to show the orphan warning and its remap action by reading `sourceProperty === null`, so
+	 * it showed neither until the page was reloaded; the panel had the same stale copy. The database is
+	 * right and every client is wrong, with nothing to tell them.
+	 *
+	 * Announced from here rather than from a CHANNEL_PROPERTY_DELETED handler because that event is
+	 * emitted from *inside* the deleting transaction (see the class docstring), so a handler reading
+	 * there would read state that can still roll back. This runs after `rebuild()`, which the whole
+	 * `deferPastOpenTransaction` machinery exists to keep on the far side of that commit — the reads
+	 * below are the same reads the index just made, and they are safe for the same reason.
+	 *
+	 * Scoped to the devices the rebuild reports as *re-wired*, which is a diff: a device orphaned long
+	 * ago is not re-wired by later passes and so is not re-announced on every rebuild. At bootstrap the
+	 * outgoing index is empty and every virtual device counts as re-wired, so a restart re-announces
+	 * whatever orphans it finds — which is the same repair the bootstrap hydration already performs for
+	 * connection state, arriving for the same reason.
+	 */
+	private async announceOrphanedProjections(virtualDeviceIds: string[]): Promise<void> {
+		if (virtualDeviceIds.length === 0) {
+			return;
+		}
+
+		const repository = this.dataSource.getRepository(VirtualChannelPropertyEntity);
+
+		for (const virtualDeviceId of virtualDeviceIds) {
+			const orphans = await repository
+				.find({
+					where: { channel: { device: { id: virtualDeviceId } }, sourcePropertyId: IsNull() },
+					relations: ['channel'],
+				})
+				.catch((error: unknown): VirtualChannelPropertyEntity[] => {
+					this.logger.error(
+						`Failed to read back orphaned projections of virtual device id=${virtualDeviceId}`,
+						error instanceof Error ? error : undefined,
+					);
+
+					return [];
+				});
+
+			for (const orphan of orphans) {
+				// An owned property has no source and never had one — null there is its normal state, not a
+				// loss, and announcing it as one would put an orphan warning on a property that is fine.
+				if (!orphan.isProjecting) {
+					continue;
+				}
+
+				this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_UPDATED, orphan);
+			}
+		}
+	}
+
 	private async recomputeStatuses(
 		virtualDeviceIds: string[],
 		reason = 'aggregated after a source wiring change',
@@ -852,6 +911,34 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			return;
 		}
 
+		// The event's payload is a snapshot of a row at the moment it was emitted, and this handler is
+		// asynchronous — so by the time it runs, the source may have been edited again. Two PATCHes that
+		// overlap is the ordinary case: one that breaks compatibility followed by one that restores it
+		// (the obvious repair, and the one an operator makes as soon as the admin shows the problem).
+		// Judging the first payload after the second has landed would orphan a link that is valid again,
+		// and the conditional write beside it cannot tell — its predicate proves the projection still
+		// points at this source, not that this source still looks the way the event said.
+		//
+		// So the judgement is made against the row as it stands now. That leaves a much smaller window,
+		// between this read and the write, which is the same one every read-then-write here has; what it
+		// removes is the arbitrarily large one that queueing behind an async handler opens up.
+		const source = await this.channelsPropertiesService
+			.findOne<ChannelPropertyEntity>(payload.id)
+			.catch((error: unknown): ChannelPropertyEntity | null => {
+				this.logger.error(
+					`Failed to re-read source property id=${payload.id} before judging its dependents`,
+					error instanceof Error ? error : undefined,
+				);
+
+				return null;
+			});
+
+		if (!source) {
+			// Gone, or unreadable. A deletion has its own path — the FK clears `sourcePropertyId` and the
+			// rebuild reports the abandonment — and orphaning off a failed read would be acting on nothing.
+			return;
+		}
+
 		let orphaned = false;
 
 		for (const dependent of dependents) {
@@ -869,7 +956,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 
 			const report = this.virtualDevicesService.reportCompatibility(
 				{ category: device.category, channel: channel.category, property: dependent.category },
-				payload,
+				source,
 			);
 
 			// The slot report alone is not enough here. `light.brightness` accepts a `uchar` percentage and
@@ -877,13 +964,13 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			// the slot* while no longer agreeing with the projection reading it — enum values would keep
 			// flowing through a property still declaring itself numeric. `assertProjectionCompatible`
 			// makes that comparison on the write paths; this update path has to make it too.
-			const representationDiverged = dependent.dataType !== payload.dataType;
+			const representationDiverged = dependent.dataType !== source.dataType;
 
 			// The same gap on the other metadata a slot report cannot see. A sentinel is the device's, not
 			// the specification's, so `reportCompatibility` never asks about it — but a source that starts
 			// reserving a value its projection does not is exactly this handler's case: the projection
 			// would present that value as a real reading, and accept a command carrying it.
-			const sentinelMismatch = this.virtualDevicesService.describeSentinelMismatch(dependent, payload);
+			const sentinelMismatch = this.virtualDevicesService.describeSentinelMismatch(dependent, source);
 
 			if (report.compatible && !representationDiverged && sentinelMismatch === null) {
 				continue;
@@ -892,7 +979,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			const reason = !report.compatible
 				? (report.reason ?? 'incompatible')
 				: representationDiverged
-					? `its representation changed to '${payload.dataType}' while the projection declares '${dependent.dataType}'`
+					? `its representation changed to '${source.dataType}' while the projection declares '${dependent.dataType}'`
 					: (sentinelMismatch ?? 'incompatible');
 
 			this.logger.warn(

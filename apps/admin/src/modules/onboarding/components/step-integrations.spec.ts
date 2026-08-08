@@ -5,6 +5,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { configPluginsStoreKey } from '../../config/store/keys';
 import { devicesStoreKey } from '../../devices/store/keys';
 import { ExtensionKind } from '../../extensions/extensions.constants';
+import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import type { IExtension } from '../../extensions/store/extensions.store.types';
 import { extensionsStoreKey } from '../../extensions/store/keys';
 
@@ -179,6 +180,60 @@ describe('StepIntegrations.vue', () => {
 
 		expect(mockExtensionsStore.update).toHaveBeenCalledWith({ type: VIRTUAL_PLUGIN_TYPE, data: { enabled: false } });
 		expect(mockRemove).not.toHaveBeenCalled();
+	});
+
+	// The devices endpoint returns visible devices unless told otherwise, so the shared cache holds none
+	// of the hidden ones — and a discovered device is hidden precisely when a virtual device has taken
+	// its place. Cleaning up only what happened to be cached leaves those behind, owned by a plugin that
+	// is no longer running.
+	it('asks for hidden devices before cleaning a plugin up', async () => {
+		mockExtensionsStore.data = { [OTHER_PLUGIN_TYPE]: buildExtension({ type: OTHER_PLUGIN_TYPE, name: 'Other Devices' }) };
+		mockDevicesStore.findAll.mockReturnValue([{ id: 'other-device-1', type: OTHER_DEVICE_TYPE }]);
+
+		const wrapper = mount(StepIntegrations, {
+			global: {
+				stubs: {
+					IntegrationConfigDialog: true,
+				},
+			},
+		});
+
+		await flushPromises();
+
+		mockDevicesStore.fetch.mockClear();
+
+		const toggle = wrapper.findComponent({ name: 'ElSwitch' });
+
+		await toggle.vm.$emit('update:model-value', false);
+		await flushPromises();
+
+		expect(mockDevicesStore.fetch).toHaveBeenCalledWith({ hidden: DevicesModuleDevicesHiddenFilter.all });
+	});
+
+	// A fetch that fails must not abandon the cleanup: whatever the store already holds is still worth
+	// removing.
+	it('cleans up what it already knows about when that fetch fails', async () => {
+		mockExtensionsStore.data = { [OTHER_PLUGIN_TYPE]: buildExtension({ type: OTHER_PLUGIN_TYPE, name: 'Other Devices' }) };
+		mockDevicesStore.findAll.mockReturnValue([{ id: 'other-device-1', type: OTHER_DEVICE_TYPE }]);
+
+		const wrapper = mount(StepIntegrations, {
+			global: {
+				stubs: {
+					IntegrationConfigDialog: true,
+				},
+			},
+		});
+
+		await flushPromises();
+
+		mockDevicesStore.fetch.mockRejectedValue(new Error('offline'));
+
+		const toggle = wrapper.findComponent({ name: 'ElSwitch' });
+
+		await toggle.vm.$emit('update:model-value', false);
+		await flushPromises();
+
+		expect(mockRemove).toHaveBeenCalledWith({ id: 'other-device-1' });
 	});
 
 	it('still removes devices for a plugin whose device type equals its prefix, like the seven non-virtual plugins', async () => {
