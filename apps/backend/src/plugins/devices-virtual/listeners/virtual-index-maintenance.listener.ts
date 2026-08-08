@@ -966,6 +966,21 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			return;
 		}
 
+		// Part of what is judged below comes off the channel rather than the property — `resolvePropertyUnit`
+		// derives the unit from the channel's category — so the channel is one of the rows this pass read,
+		// and the write has to name its version too. Every query in ChannelsPropertiesService joins
+		// `channel`, so a bare id here would mean something changed underneath; declining to judge is the
+		// safe answer, since the alternative is orphaning against a channel this pass never actually saw.
+		const sourceChannel = typeof source.channel === 'string' ? null : source.channel;
+
+		if (!sourceChannel) {
+			this.logger.warn(
+				`Source property id=${payload.id} came back without its channel; leaving its dependents alone rather than judging them against a channel this pass never read`,
+			);
+
+			return;
+		}
+
 		let orphaned = false;
 
 		for (const dependent of dependents) {
@@ -1031,6 +1046,48 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			// which is the residue — far smaller than an await boundary, and self-correcting, since the
 			// second write emits its own event.
 			const sourceTable = this.dataSource.getMetadata(ChannelPropertyEntity).tableName;
+			const channelTable = this.dataSource.getMetadata(ChannelEntity).tableName;
+
+			// One clause per row the judgement read, each naming the version it read. `= NULL` matches
+			// nothing in SQL, so a row that has never been updated is matched with IS NULL instead — without
+			// that, a source nobody had edited yet could never be orphaned at all.
+			const unchanged = (
+				table: string,
+				alias: string,
+				idParam: string,
+				versionParam: string,
+				version: Date | string | null | undefined,
+			): [string, Record<string, unknown>] =>
+				version === null || version === undefined
+					? [
+							`EXISTS (SELECT 1 FROM ${table} ${alias} WHERE ${alias}.id = :${idParam} AND ${alias}.updatedAt IS NULL)`,
+							{},
+						]
+					: [
+							`EXISTS (SELECT 1 FROM ${table} ${alias} WHERE ${alias}.id = :${idParam} AND ${alias}.updatedAt = :${versionParam})`,
+							{ [versionParam]: version },
+						];
+
+			const [sourceUnchanged, sourceVersionParams] = unchanged(
+				sourceTable,
+				'src',
+				'sourceId',
+				'sourceUpdatedAt',
+				source.updatedAt,
+			);
+
+			// The channel is versioned too, because part of what was judged comes off it rather than off
+			// the property: `resolvePropertyUnit` derives the unit from the channel's *category*, which is
+			// why `handleSourceChannelChange` funnels a recategorisation through here at all. A channel
+			// moved to something incompatible and then moved back leaves the property row untouched, so a
+			// property-only version would still match and orphan a projection that is fine again.
+			const [channelUnchanged, channelVersionParams] = unchanged(
+				channelTable,
+				'ch',
+				'sourceChannelId',
+				'sourceChannelUpdatedAt',
+				sourceChannel?.updatedAt,
+			);
 
 			const orphaning = await repository
 				.createQueryBuilder()
@@ -1038,12 +1095,8 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				.set({ sourcePropertyId: null })
 				.where('id = :dependentId', { dependentId: dependent.id })
 				.andWhere('sourcePropertyId = :sourceId', { sourceId: payload.id })
-				.andWhere(
-					source.updatedAt === null || source.updatedAt === undefined
-						? `EXISTS (SELECT 1 FROM ${sourceTable} src WHERE src.id = :sourceId AND src.updatedAt IS NULL)`
-						: `EXISTS (SELECT 1 FROM ${sourceTable} src WHERE src.id = :sourceId AND src.updatedAt = :sourceUpdatedAt)`,
-					source.updatedAt === null || source.updatedAt === undefined ? {} : { sourceUpdatedAt: source.updatedAt },
-				)
+				.andWhere(sourceUnchanged, sourceVersionParams)
+				.andWhere(channelUnchanged, { sourceChannelId: sourceChannel?.id, ...channelVersionParams })
 				.execute();
 
 			if (!orphaning.affected) {

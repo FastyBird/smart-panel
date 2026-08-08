@@ -83,6 +83,23 @@ class DevicesRepository extends Repository<DeviceModel> {
     }
   }
 
+  /// Removes the devices this panel already knew about that the latest full response left out.
+  ///
+  /// `known` is deliberately a snapshot taken *before* the request went out rather than the repository's
+  /// current keys: a device created while the request was in flight arrives by socket and is absent from
+  /// a response produced before it existed, so evicting on absence alone would delete something newer
+  /// than the answer being applied — and no further event would bring it back.
+  ///
+  /// Separated from `fetchAll` so the rule can be tested without standing up an HTTP client.
+  @visibleForTesting
+  void evictMissing(Set<String> known, Set<String> present) {
+    for (final id in known) {
+      if (!present.contains(id)) {
+        delete(id);
+      }
+    }
+  }
+
   void delete(String id) {
     if (data.containsKey(id) && data.remove(id) != null) {
       if (kDebugMode) {
@@ -113,6 +130,12 @@ class DevicesRepository extends Repository<DeviceModel> {
   Future<void> fetchAll() async {
     return handleApiCall(
       () async {
+        // Captured before the request goes out. What this eviction may remove is what this panel knew
+        // about *when it asked* — a device created while the request was in flight arrives by socket and
+        // is absent from a snapshot taken before it existed, so evicting on absence alone would delete a
+        // device newer than the answer being applied, with no further event to bring it back.
+        final knownBefore = data.keys.toSet();
+
         final response = await apiClient.getDevicesModuleDevices();
 
         final raw = response.response.data['data'] as List;
@@ -127,11 +150,7 @@ class DevicesRepository extends Repository<DeviceModel> {
         // every space it belongs to — for the life of the process.
         final visibleIds = rows.map((row) => row['id']).whereType<String>().toSet();
 
-        for (final id in data.keys.toList()) {
-          if (!visibleIds.contains(id)) {
-            delete(id);
-          }
-        }
+        evictMissing(knownBefore, visibleIds);
       },
       'fetch devices',
     );

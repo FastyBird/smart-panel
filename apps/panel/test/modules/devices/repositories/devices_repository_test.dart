@@ -40,8 +40,38 @@ Map<String, dynamic> _device(
 
 // The model builder parses ids as UUIDs, so the fixtures carry a real one.
 const deviceId = '9f8c1d2e-3a4b-4c5d-8e6f-0a1b2c3d4e5f';
+const arrivedMidFlightId = '1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e';
 
 void main() {
+  group('DevicesRepository.fetchAll', () {
+    // A device created while the request is in flight arrives by socket and is absent from a snapshot
+    // taken before it existed. Evicting on absence alone would delete it moments after it appeared,
+    // and no further event would bring it back.
+    test('keeps a device that arrived while the snapshot was being fetched', () async {
+      final repository = _buildRepository();
+
+      // Stands in for the socket insert landing mid-flight: present in the repository, absent from the
+      // snapshot the eviction is applied from.
+      repository.insert([_device(arrivedMidFlightId)]);
+
+      repository.evictMissing(const <String>{}, const <String>{});
+
+      expect(repository.data.containsKey(arrivedMidFlightId), isTrue);
+    });
+
+    // The eviction still has to do its job for everything the panel already knew about — a source
+    // device hidden while it was offline has no event to carry its removal.
+    test('drops a device it already knew about that the snapshot omits', () async {
+      final repository = _buildRepository();
+
+      repository.insert([_device(deviceId)]);
+
+      repository.evictMissing({deviceId}, const <String>{});
+
+      expect(repository.data.containsKey(deviceId), isFalse);
+    });
+  });
+
   group('DevicesRepository.insert', () {
     // A source device is hidden the moment a virtual device replaces it. The panel model carries no
     // `hidden` field, so nothing downstream could tell the difference — a running panel would keep

@@ -1905,10 +1905,16 @@ describe('VirtualIndexMaintenanceListener', () => {
 	// the source moved underneath: a physical property's permissions or data type can be PATCHed, and the
 	// projection stayed attached, exposing values under a representation the source no longer speaks.
 	describe('when a source property changes into something incompatible', () => {
+		// Carries its channel, as every read through ChannelsPropertiesService does: the orphaning write
+		// names the channel's version too, because the unit it judges is derived from the channel's
+		// category rather than stored on the property.
+		const sourceChannel = { id: 'source-channel', updatedAt: null };
+
 		const sourceProperty = {
 			id: 'source-property',
 			permissions: ['ro'],
 			dataType: 'bool',
+			channel: sourceChannel,
 		} as unknown as ChannelPropertyEntity;
 
 		// Declares the same representation as the source, as a real projection does — the guard now
@@ -2034,6 +2040,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				id: 'source-property',
 				permissions: ['rw'],
 				dataType: 'enum',
+				channel: sourceChannel,
 			} as unknown as ChannelPropertyEntity;
 
 			// The re-read answers with the same enum row the event carried: nothing changed in between.
@@ -2124,6 +2131,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				id: 'source-property',
 				permissions: ['rw'],
 				dataType: 'bool',
+				channel: sourceChannel,
 			} as unknown as ChannelPropertyEntity;
 
 			const { subject, update, reportCompatibility } = build({ compatible: true }, [dependent], null, 1, repaired);
@@ -2180,6 +2188,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 					permissions: ['ro'],
 					dataType: 'bool',
 					updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+					channel: sourceChannel,
 				},
 			);
 
@@ -2207,6 +2216,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 					permissions: ['ro'],
 					dataType: 'bool',
 					updatedAt: null,
+					channel: sourceChannel,
 				},
 			);
 
@@ -2215,6 +2225,52 @@ describe('VirtualIndexMaintenanceListener', () => {
 			expect(
 				wheres.some((entry) => typeof entry.clause === 'string' && entry.clause.includes('src.updatedAt IS NULL')),
 			).toBe(true);
+			// The channel is versioned the same way, and this fixture's channel has never been updated
+			// either — so both clauses have to take the IS NULL form, not only the property's.
+			expect(
+				wheres.some((entry) => typeof entry.clause === 'string' && entry.clause.includes('ch.updatedAt IS NULL')),
+			).toBe(true);
+		});
+
+		// Part of what is judged comes off the channel, not the property: `resolvePropertyUnit` derives the
+		// unit from the channel's *category*, which is why a recategorisation reaches this handler at all.
+		// A channel moved to something incompatible and then moved back leaves the property row untouched,
+		// so versioning the property alone would still match and orphan a projection that is fine again.
+		it('names the channel version as well as the property version', async () => {
+			const { subject, wheres } = build({ compatible: false, reason: 'unit changed' }, [dependent], null, 1, {
+				id: 'source-property',
+				permissions: ['ro'],
+				dataType: 'bool',
+				updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+				channel: { id: 'source-channel', updatedAt: new Date('2026-02-02T00:00:00.000Z') },
+			});
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			const channelClause = wheres.find(
+				(entry) => typeof entry.clause === 'string' && entry.clause.includes('ch.updatedAt'),
+			);
+
+			expect(channelClause?.params).toEqual({
+				sourceChannelId: 'source-channel',
+				sourceChannelUpdatedAt: new Date('2026-02-02T00:00:00.000Z'),
+			});
+		});
+
+		// Every read through ChannelsPropertiesService joins the channel, so a bare id means something
+		// changed underneath. Judging anyway would orphan against a channel this pass never saw.
+		it('declines to judge a source that came back without its channel', async () => {
+			const { subject, executed, reportCompatibility } = build({ compatible: false }, [dependent], null, 1, {
+				id: 'source-property',
+				permissions: ['ro'],
+				dataType: 'bool',
+				channel: 'source-channel',
+			});
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(reportCompatibility).not.toHaveBeenCalled();
+			expect(executed).not.toHaveBeenCalled();
 		});
 
 		// Nothing may project a virtual property, so the orphaning emit above — and a CHANNEL_UPDATED on
