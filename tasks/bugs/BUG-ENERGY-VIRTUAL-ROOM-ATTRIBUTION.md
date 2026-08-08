@@ -206,7 +206,15 @@ projection, readings after — not two readings taken once it already exists.
 were recorded with, so splitting changes the future only, and that should be said where an operator
 can read it rather than leaving anyone expecting a backfill.
 
-The space queries do not honour that today, which the fix has to settle rather than inherit:
+Persistence has to cooperate as well. `saveDelta()` accumulates into an existing bucket keyed by
+`(deviceId, sourceType, intervalStart)` and only adds to `deltaKwh` (`energy-data.service.ts:123`), so
+a device that changes room mid-interval keeps recording into the bucket the old room owns — the
+future-only promise breaks inside the current bucket even once the readers use `delta.roomId`. Either
+the room joins the conflict key, so a move opens a new bucket, or the bucket is split at the move.
+Both are defensible; the task's requirement is that one is chosen and tested with a move followed by
+another reading in the same interval.
+
+The space queries do not honour it either, which the fix has to settle rather than inherit:
 `getSpaceSummary()` and `getSpaceTimeseries()` reach the room by joining the device's *current*
 `roomId` (`energy-data.service.ts:260`, `:383`), and `getSpaceBreakdown()` inner-joins the device row
 itself (`:515`). So moving a device rewrites its history between spaces, and deleting one erases that
@@ -281,6 +289,8 @@ fix must not introduce a lookup that assumes otherwise.
       gone
 - [ ] Moving a projecting virtual device to another room leaves its recorded consumption in the room
       it was recorded in, and deleting it does not erase that history from the space views
+- [ ] A reading that arrives after a move, inside the same interval bucket, is recorded against the
+      new room rather than accumulating into the old one
 - [ ] Regression tests for the split case above and for the refusal — **not** for reproduction (a) as
       it stands: it projects one meter into two rooms, which the single-claim rule makes impossible to
       construct, and a test that bypassed persistence to build it would be asserting a split this task
