@@ -216,6 +216,17 @@ that promises stable history while the read path contradicts it would be promisi
 readers should use the recorded `delta.roomId`, with the join kept only where a *current* fact is
 genuinely wanted.
 
+**Orphaning by reconciliation clears the claim too.** A source can stop being usable without being
+deleted: `VirtualIndexMaintenanceListener` orphans a projection whose source no longer fits the slot
+with a direct `.set({ sourcePropertyId: null })`
+(`virtual-index-maintenance.listener.ts:1232`), which is a plain UPDATE — no foreign key fires, and
+no hook runs. A claim column would survive that, leaving an orphan holding the meter against every
+other projection, and the invariant that it equals `sourcePropertyId` would be violated outright — or,
+if the database enforces it, the orphaning update would start failing and the reconciliation would
+silently stop working. So the claim is cleared in the *same* conditional statement that orphans the
+projection, and a successor is promoted exactly as on deletion. The regression test is a metadata
+edit that invalidates a claimed projection, not only a deletion.
+
 **An orphan has no source to fall back to.** When the source property is deleted the FK nulls,
 `VirtualValueSourceService.resolve()` returns `null`, and the registry resolves the projection to its
 own — empty — series. There is no source device left to attribute to, and the virtual index records
@@ -256,6 +267,8 @@ fix must not introduce a lookup that assumes otherwise.
       tested by driving the delete and the create concurrently, not in sequence
 - [ ] A refused claim leaves nothing behind: no projection without its claim, no claim without its
       projection, asserted after the rejected request rather than only on the winner
+- [ ] A metadata edit that orphans a claimed projection clears its claim in the same statement and
+      promotes a successor, leaving no orphan holding a meter
 - [ ] Deleting a claimed source property clears the claim with the link — the orphan holds nothing,
       another projection of a recreated property can claim it, and the migration covers rows that
       were already orphaned
