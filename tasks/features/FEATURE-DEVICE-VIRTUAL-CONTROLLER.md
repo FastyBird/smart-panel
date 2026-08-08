@@ -45,8 +45,9 @@ technically validate, but a thermostat with neither is a thermometer wearing a b
 
 **In scope**
 
-- A control loop owned by the virtual device: reads the sensed quantity from a projected source,
-  writes the actuator's `on` through the existing platform contract
+- A control loop owned by the virtual device: reads the sensed quantity from a projected source, and
+  drives the actuator through the existing platform contract — but **not** through the slot the user
+  sees (see §3a)
 - Hysteresis and minimum cycle protection, so a relay is not chattered
 - Re-evaluation on **both** inputs: a sensed-value report *and* a write to the owned setpoint. A loop
   driven only by the sensor does nothing when the user moves the target, and a sensor that reports on
@@ -70,14 +71,30 @@ technically validate, but a thermostat with neither is a thermometer wearing a b
 
 ## 3a. Two things the spec forces, which the loop has to answer
 
-**`heater.status` is required, and nothing supplies it.** The `heater` channel requires `on(bool,rw)`,
-`temperature(float,rw)` *and* `status(bool,ro)` — all three `required: true` in
-`spec/devices/channels.yaml`. `temperature` is the setpoint the controller owns; `status` is what the
-device reports back about whether it is actually heating. No source device supplies it, so this task
-has to decide between two answers, and say which in the design before anyone builds:
+**The exposed `on` is the user's switch, not the controller's output.** Every closed-loop channel
+carries both, and the rest of the system already reads them that way:
+`SpaceClimateStateService.detectClimateModeAndActivity()` treats `on` as *enabled* — "even if not
+actively working", as its own comment puts it — and `status` as whether the unit is currently working
+(`space-climate-state.service.ts:405-432`). A loop that drove the exposed `on` would therefore make
+an enabled heater read OFF the moment it reached its setpoint, and would overwrite a user's explicit
+OFF on the next sensor report or setpoint change. So the design needs three distinct things, not two:
+the **enable** the user owns (`on`), the **activity** the loop reports (`status`), and the
+**actuator write** the loop performs, which goes to the projected relay and is not a slot of the
+virtual device at all. Which projection carries the actuator has to be part of the wizard's mapping —
+"this relay is what I switch" — rather than inferred from the `on` slot.
+
+**`status` is required on every closed-loop channel, and nothing supplies it.** `heater` requires
+`on(bool,rw)`, `temperature(float,rw)` *and* `status(bool,ro)`, all three `required: true` in
+`spec/devices/channels.yaml` — and so do `cooler`, `humidifier` and `dehumidifier`, which is what
+`air_conditioner`, `air_humidifier` and `air_dehumidifier` are built from. The decision below is
+therefore about all four channels, not `heater` alone, and the acceptance cases have to cover at
+least one heating and one cooling device. `temperature` (or `humidity`) is the setpoint the
+controller owns; `status` is what the device reports back. No source supplies it, so this task has to
+decide between two answers, and say which in the design before anyone builds:
 
 - the controller **synthesizes** it as an owned read-only property it drives from its own decision —
-  the loop knows whether it has called for heat, and that is exactly what `status` means; or
+  the loop knows whether it is currently calling for heat (or cooling, or humidifying), and that is
+  exactly what `status` means; or
 - it is **another mapping**, for hardware that reports a genuine flame/compressor state, with the
   synthesized value as the fallback when nothing is mapped.
 
@@ -106,11 +123,17 @@ category itself is judged.
 
 ## 5. Acceptance criteria
 
-- [ ] A virtual `heating_unit` can be built from a relay's `on`, a thermometer's `temperature` as
-      the *reading*, its own writable setpoint, and a `heater.status` — all three of `on`,
-      `temperature` and `status` are `required: true` on the `heater` channel
+- [ ] A virtual `heating_unit` can be built from a relay as the actuator, a thermometer's
+      `temperature` as the *reading*, its own writable setpoint, and a `heater.status` — all three of
+      `on`, `temperature` and `status` are `required: true` on the `heater` channel
       (`spec/devices/channels.yaml`), so a device assembled from the first two alone still fails
       structural validation with `MISSING_PROPERTY`
+- [ ] The same for a cooling device — `air_conditioner`'s `cooler` channel requires its own
+      `status(bool,ro)`, so a heater-only implementation would pass the criterion above and still
+      leave air conditioners failing validation
+- [ ] Switching the virtual device OFF keeps it off: the loop does not re-enable it on the next sensor
+      report or setpoint change, and an enabled device that has reached its setpoint still reads `on`
+      with `status` false, rather than reading OFF
 - [ ] `thermostat` is unblocked only once at least one actuator channel — `heater` or `cooler` — is
       required of it, in the wizard and at persistence
 - [ ] The loop honours hysteresis and a minimum cycle time, both configurable

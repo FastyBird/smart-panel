@@ -106,10 +106,11 @@ the task should pick deliberately:
   `beforeUpdate` on channel properties run inside it — so the check and the insert cannot interleave.
   Complete for this deployment, and process-local by nature.
 - A **database-enforced claim**, which is the durable answer. Note that a partial unique index on
-  `sourcePropertyId` cannot express it: "energy-bearing" depends on the *source's* channel category,
-  which is not a column on the projection row. A small claims table keyed by source property id,
-  written when a projection of an energy property is created and deleted with it, can carry a real
-  unique constraint.
+  `sourcePropertyId` cannot express it: whether a projection is energy-bearing depends on its *own*
+  channel's category, and the projection row carries only a channel id — the category is a join away,
+  which a partial index cannot reach. A small claims table keyed by source property id, written when a
+  projection whose destination slot is energy-bearing is created and deleted with it, can carry a real
+  unique constraint. The same rule decides what the migration below writes.
 
 Taking both is defensible — the lock removes the window, the constraint makes it impossible — and a
 concurrent-claim regression test is required either way.
