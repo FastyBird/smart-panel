@@ -596,34 +596,48 @@ export class VirtualDevicesService {
 		// maximum", and PropertyValueService reads it that way. Deciding by length sent a `[0]` source
 		// down the enum path, where `{0}` looked like a subset of `{0, 10000}` and passed while the
 		// source could report anything above the slot's ceiling.
-		const slotIsNumeric = expected.every((value) => typeof value === 'number');
+		// Numeric by its values, and a `null` endpoint counts as one. `[0, null]` is how the specification
+		// writes "no maximum" — `electrical_energy.consumption`, `grid_import`, `grid_export` and
+		// `electrical_generation.production` all use it — and reading that `null` as "not a number" sent
+		// the whole slot down the enum path, where a perfectly good `[0, 100]` source failed for the
+		// reason that `100` is not one of `{0, null}`. Every energy slot in the specification was
+		// unmappable.
+		const isBound = (value: unknown): boolean => typeof value === 'number' || value === null;
+		const rangeLike = (values: unknown[]): boolean =>
+			values.every(isBound) && values.some((value) => typeof value === 'number');
 
-		if (slotIsNumeric && !actual.every((value) => typeof value === 'number')) {
+		const slotIsNumeric = rangeLike(expected);
+
+		if (slotIsNumeric && !rangeLike(actual)) {
 			return `Source property id=${sourceProperty.id} declares a non-numeric format, which cannot describe the numeric range ${slotName} defines`;
 		}
 
 		// A numeric format is a range; anything else is an enum value set.
-		const numeric = slotIsNumeric && actual.every((value) => typeof value === 'number');
+		const numeric = slotIsNumeric && rangeLike(actual);
 
 		if (numeric) {
-			// A one-sided bound cannot be shown to sit inside a two-sided one — `[0]` has no maximum, so
-			// nothing here proves the source stays under the slot's ceiling. Unbounded is not contained.
-			if (expected.length !== 2 || actual.length !== 2) {
-				const describe = (bounds: number[]): string =>
-					bounds.length === 2 ? `[${bounds[0]}, ${bounds[1]}]` : `[${bounds[0]}, unbounded)`;
+			// An absent or null endpoint is an open side, so a range reads as `[min, +∞)` — which makes
+			// containment ordinary arithmetic again: `[0, 100]` sits inside `[0, ∞)`, and `[0, ∞)` does not
+			// sit inside `[0, 100]`, both of which fall out of comparing the bounds directly. This replaces
+			// a blanket refusal of one-sided formats that was right about the second case and wrong about
+			// the first.
+			const bounds = (values: unknown[]): [number, number] => [
+				typeof values[0] === 'number' ? values[0] : Number.NEGATIVE_INFINITY,
+				typeof values[1] === 'number' ? values[1] : Number.POSITIVE_INFINITY,
+			];
 
-				return `Source property id=${sourceProperty.id} ranges ${describe(actual)}, which cannot be shown to stay within ${describe(expected)} that ${slotName} defines`;
-			}
+			const describe = ([min, max]: [number, number]): string =>
+				`[${min === Number.NEGATIVE_INFINITY ? 'unbounded' : min}, ${max === Number.POSITIVE_INFINITY ? 'unbounded' : max}]`;
 
-			const [expectedMin, expectedMax] = expected as [number, number];
-			const [actualMin, actualMax] = actual as [number, number];
+			const [expectedMin, expectedMax] = bounds(expected);
+			const [actualMin, actualMax] = bounds(actual);
 
 			if (actualMin < expectedMin || actualMax > expectedMax) {
-				return `Source property id=${sourceProperty.id} ranges [${actualMin}, ${actualMax}], outside the range [${expectedMin}, ${expectedMax}] that ${slotName} accepts`;
+				return `Source property id=${sourceProperty.id} ranges ${describe([actualMin, actualMax])}, outside the range ${describe([expectedMin, expectedMax])} that ${slotName} accepts`;
 			}
 
 			if (slotWritable && (expectedMin < actualMin || expectedMax > actualMax)) {
-				return `Source property id=${sourceProperty.id} ranges [${actualMin}, ${actualMax}], which cannot accept every value ${slotName} may be commanded with ([${expectedMin}, ${expectedMax}])`;
+				return `Source property id=${sourceProperty.id} ranges ${describe([actualMin, actualMax])}, which cannot accept every value ${slotName} may be commanded with (${describe([expectedMin, expectedMax])})`;
 			}
 
 			// The range says which values are legal; the step says which of them actually exist. A slot
@@ -664,6 +678,15 @@ export class VirtualDevicesService {
 				// widths match exactly. Asked through that helper rather than by remainder arithmetic,
 				// which would also be wrong for floats — it carries the tolerance the validator uses.
 				//
+				// A grid needs a finite origin to be measured from. Both origins are finite for every slot
+				// the specification defines — the open side of a `[0, null]` range is its *maximum* — but a
+				// lower bound left open would make `matchesStep` measure from -∞ and answer NaN, which
+				// compares false and would refuse a pairing for a reason nobody could act on. Nothing is
+				// lost by declining to judge: a range with no floor has no grid to be on.
+				if (!Number.isFinite(expectedMin) || !Number.isFinite(actualMin)) {
+					return null;
+				}
+
 				// Every value the source can report has to land on the slot's grid: that holds when the
 				// source's own origin does and its width is a whole number of the slot's steps.
 				const sourceOriginOnSlotGrid = matchesStep(actualMin, expectedStep, expectedMin);

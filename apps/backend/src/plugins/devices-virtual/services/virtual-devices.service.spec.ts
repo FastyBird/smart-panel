@@ -780,6 +780,56 @@ describe('VirtualDevicesService', () => {
 			await expect(service.assertProjectionCompatible(covering, CHANNEL_ID)).resolves.toBeUndefined();
 		});
 
+		// `[0, null]` is how the specification writes "no maximum" — every energy slot uses it. Reading
+		// that null as "not a number" sent the slot down the enum path, where a perfectly good [0, 100]
+		// source failed because 100 is not one of {0, null}: `electrical_energy.consumption`,
+		// `grid_import`, `grid_export` and `electrical_generation.production` were all unmappable.
+		it('accepts a bounded source on a slot with no maximum', async () => {
+			givenSlot(ChannelCategory.ELECTRICAL_ENERGY, DeviceCategory.SENSOR);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({
+					id: 'metered-source',
+					permissions: [PermissionType.READ_ONLY],
+					dataType: DataTypeType.FLOAT,
+					format: [0, 100],
+					unit: 'kWh',
+				}),
+			);
+
+			const consumption = projecting('metered-source', PropertyCategory.CONSUMPTION, {
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				format: [0, 100],
+				unit: 'kWh',
+			});
+
+			await expect(service.assertProjectionCompatible(consumption, CHANNEL_ID)).resolves.toBeUndefined();
+		});
+
+		// The other direction still holds: an open-ended source cannot be shown to stay inside a slot that
+		// has a ceiling, because nothing bounds it from above.
+		it('refuses an unbounded source on a slot with a maximum', async () => {
+			givenSlot(ChannelCategory.TEMPERATURE, DeviceCategory.SENSOR);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({
+					id: 'unbounded-source',
+					permissions: [PermissionType.READ_ONLY],
+					dataType: DataTypeType.FLOAT,
+					format: [0, null],
+					unit: '°C',
+				}),
+			);
+
+			const bounded = projecting('unbounded-source', PropertyCategory.TEMPERATURE, {
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				format: [0, 100],
+				unit: '°C',
+			});
+
+			await expect(service.assertProjectionCompatible(bounded, CHANNEL_ID)).rejects.toThrow(/outside the range/);
+		});
+
 		it('ignores an owned property', async () => {
 			const owned = new VirtualChannelPropertyEntity();
 
