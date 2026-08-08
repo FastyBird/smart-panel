@@ -30,12 +30,17 @@ describe('DeviceZonesService', () => {
 	const zoneId = uuid().toString();
 
 	beforeEach(async () => {
+		// `metadata.tableName` and `manager.query` are here because the membership insert is a single
+		// conditional statement rather than a `save()`: it inserts only while the device is still visible,
+		// so the check cannot be overtaken by a hide committing between the guard and the write.
 		const mockRepository = () => ({
 			find: jest.fn().mockResolvedValue([]),
 			findOne: jest.fn().mockResolvedValue(null),
 			create: jest.fn((value: unknown) => value),
 			save: jest.fn((value: unknown) => Promise.resolve(value)),
 			delete: jest.fn().mockResolvedValue({ affected: 1 }),
+			metadata: { tableName: 'table' },
+			manager: { query: jest.fn().mockResolvedValue(undefined) },
 		});
 
 		const module: TestingModule = await Test.createTestingModule({
@@ -79,9 +84,33 @@ describe('DeviceZonesService', () => {
 		it('adds a visible device to a zone', async () => {
 			arrangeDevice(false);
 
-			await service.addDeviceToZone(deviceId, zoneId);
+			// The membership read back after the conditional insert — the statement matched, so the row is
+			// there. `findOne` answers null first for the already-a-member check.
+			jest
+				.spyOn(repository, 'findOne')
+				.mockResolvedValueOnce(null)
+				.mockResolvedValue({ deviceId, zoneId } as DeviceZoneEntity);
 
-			expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({ deviceId, zoneId }));
+			const created = await service.addDeviceToZone(deviceId, zoneId);
+
+			expect(created).toEqual(expect.objectContaining({ deviceId, zoneId }));
+			expect(repository.manager.query).toHaveBeenCalledWith(expect.stringContaining('COALESCE(d.hidden, 0) = 0'), [
+				deviceId,
+				zoneId,
+				deviceId,
+			]);
+		});
+
+		// The guard reads the device and several awaited lookups follow before anything is written. A hide
+		// committing in that window would otherwise let this request change the placement of a device that
+		// is now inert — so the insert itself carries the condition, and matching nothing is refused the
+		// same way the guard refuses it.
+		it('refuses when the device is hidden between the guard and the insert', async () => {
+			arrangeDevice(false);
+
+			jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+
+			await expect(service.addDeviceToZone(deviceId, zoneId)).rejects.toThrow(DevicesNotAllowedException);
 		});
 
 		it('refuses removing a hidden device from a zone', async () => {

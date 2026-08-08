@@ -113,19 +113,38 @@ export class DeviceZonesService {
 			return existing;
 		}
 
-		// Create the relation
-		const deviceZone = this.repository.create({
-			deviceId,
-			zoneId,
-		});
+		// Inserted only while the device is still visible, in the statement that does the inserting. The
+		// `assertPlacementChangeAllowed` above reads the device and then several awaited lookups follow
+		// before anything is written — the zone, its type, its category, the existing-membership check —
+		// and a hide committing anywhere in that window would leave this request changing the placement of
+		// a device that is now inert. The guard stays: it is what turns the ordinary case into a clear
+		// 422 naming the reason, rather than a silent no-op.
+		//
+		// `COALESCE` because the column is only guaranteed non-null going forward; a row written before it
+		// existed reads as visible, which is what it was.
+		const zoneTable = this.repository.metadata.tableName;
+		const deviceTable = this.deviceRepository.metadata.tableName;
 
-		await this.repository.save(deviceZone);
+		await this.repository.manager.query(
+			`INSERT INTO "${zoneTable}" ("deviceId", "zoneId") SELECT ?, ? WHERE EXISTS (SELECT 1 FROM "${deviceTable}" d WHERE d.id = ? AND COALESCE(d.hidden, 0) = 0)`,
+			[deviceId, zoneId, deviceId],
+		);
+
+		const inserted = await this.repository.findOne({ where: { deviceId, zoneId } });
+
+		if (!inserted) {
+			// Nothing matched, so the device was hidden between the guard and here. Reported exactly as the
+			// guard reports it — from the caller's side this is the same refusal, arriving a moment later.
+			this.logger.error(`Refused zone membership change on device id=${deviceId} hidden while it was being added`);
+
+			throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
+		}
 
 		this.logger.debug(`Successfully added device ${deviceId} to zone ${zoneId}`);
 
 		this.eventEmitter.emit(EventType.DEVICE_UPDATED, device);
 
-		return deviceZone;
+		return inserted;
 	}
 
 	/**
