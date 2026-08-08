@@ -47,6 +47,14 @@ const SPACE_ID = '50000000-0000-4000-8000-000000000001';
 const ALL_CAPABILITIES = [McpCapability.WRITE, McpCapability.TRIGGER];
 let runtimeCapabilities = [...ALL_CAPABILITIES];
 
+interface Deferred {
+	promise: Promise<void>;
+	resolve: () => void;
+}
+
+let authorizationStartedSignal: Deferred | null = null;
+let policyChangeGate: Deferred | null = null;
+
 @Injectable()
 class TestOperationsGuard implements CanActivate {
 	constructor(private readonly serverService: McpServerService) {}
@@ -215,7 +223,13 @@ describe('MCP simulator operations', () => {
 			})),
 		};
 		const policyService = {
-			authorizeClient: jest.fn().mockImplementation((_tokenId, clientId: string, capability: McpCapability) => {
+			authorizeClient: jest.fn().mockImplementation(async (_tokenId, clientId: string, capability: McpCapability) => {
+				authorizationStartedSignal?.resolve();
+
+				if (policyChangeGate !== null) {
+					await policyChangeGate.promise;
+				}
+
 				if (!runtimeCapabilities.includes(capability)) {
 					throw new ForbiddenException(`MCP capability '${capability}' is not granted`);
 				}
@@ -339,7 +353,7 @@ describe('MCP simulator operations', () => {
 		}
 	});
 
-	it('rechecks a stale advertised capability immediately before execution', async () => {
+	it('rejects an in-flight tool call when its advertised capability is reduced before authorization', async () => {
 		const client = new Client(
 			{ name: 'simulator-policy-client', version: '1.0.0' },
 			{ versionNegotiation: { mode: 'auto' } },
@@ -347,6 +361,8 @@ describe('MCP simulator operations', () => {
 		const transport = new StreamableHTTPClientTransport(endpoint, {
 			requestInit: { headers: { Authorization: `Bearer ${CLIENT_ID}` } },
 		});
+		const authorizationStarted = createDeferred();
+		const authorizationGate = createDeferred();
 
 		try {
 			runtimeCapabilities = [...ALL_CAPABILITIES];
@@ -354,11 +370,19 @@ describe('MCP simulator operations', () => {
 			expect((await client.listTools()).tools.map(({ name }) => name)).toContain('set_device_property');
 
 			propertyCommandService.executePropertyCommandById.mockClear();
-			runtimeCapabilities = [McpCapability.TRIGGER];
-			const result = await client.callTool({
+			authorizationStartedSignal = authorizationStarted;
+			policyChangeGate = authorizationGate;
+			const resultPromise = client.callTool({
 				name: 'set_device_property',
 				arguments: { property_id: PROPERTY_ID, value: false },
 			});
+
+			await expect(
+				Promise.race([authorizationStarted.promise, rejectAfter(2_000, 'Timed out waiting for tool authorization')]),
+			).resolves.toBeUndefined();
+			runtimeCapabilities = [McpCapability.TRIGGER];
+			authorizationGate.resolve();
+			const result = await resultPromise;
 
 			expect(result.isError).toBe(true);
 			const structuredContent = result.structuredContent as {
@@ -370,8 +394,27 @@ describe('MCP simulator operations', () => {
 			expect(structuredContent.error?.code).toBe('permission_denied');
 			expect(propertyCommandService.executePropertyCommandById).not.toHaveBeenCalled();
 		} finally {
+			authorizationGate.resolve();
+			authorizationStartedSignal = null;
+			policyChangeGate = null;
 			runtimeCapabilities = [...ALL_CAPABILITIES];
 			await client.close();
 		}
 	});
+
+	function rejectAfter(milliseconds: number, message: string): Promise<never> {
+		return new Promise((_, reject) => {
+			const timer = setTimeout(() => reject(new Error(message)), milliseconds);
+			timer.unref();
+		});
+	}
+
+	function createDeferred(): Deferred {
+		let resolve!: () => void;
+		const promise = new Promise<void>((deferredResolve) => {
+			resolve = deferredResolve;
+		});
+
+		return { promise, resolve };
+	}
 });
