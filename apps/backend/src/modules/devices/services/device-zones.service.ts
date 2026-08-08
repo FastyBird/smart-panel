@@ -212,19 +212,40 @@ export class DeviceZonesService {
 			validatedZones.push(zone);
 		}
 
-		// Remove existing zone memberships
-		await this.repository.delete({ deviceId });
+		// Every write below carries the same condition the caller's guard checked: the device is still
+		// visible. `DevicesService.update()` reads that device and then makes several awaited round trips
+		// — the room validation, the zone read-back, the re-read it saves through — before reaching here,
+		// and a wizard hiding the source in that window would otherwise have this replace the placement of
+		// a device that is now inert.
+		//
+		// Conditioning the *delete* as well as the inserts is what makes it safe rather than merely
+		// bounded: a hide that lands first turns the whole replacement into a no-op instead of clearing
+		// the memberships and then refusing to write the new ones.
+		const zoneTable = this.repository.metadata.tableName;
+		const deviceTable = this.deviceRepository.metadata.tableName;
+		const visible = `EXISTS (SELECT 1 FROM "${deviceTable}" d WHERE d.id = ? AND COALESCE(d.hidden, 0) = 0)`;
 
-		// Add new zone memberships
-		if (zoneIds.length > 0) {
-			const deviceZones = zoneIds.map((zoneId) =>
-				this.repository.create({
-					deviceId,
-					zoneId,
-				}),
+		await this.repository.manager.query(`DELETE FROM "${zoneTable}" WHERE "deviceId" = ? AND ${visible}`, [
+			deviceId,
+			deviceId,
+		]);
+
+		for (const zoneId of zoneIds) {
+			await this.repository.manager.query(
+				`INSERT INTO "${zoneTable}" ("deviceId", "zoneId") SELECT ?, ? WHERE ${visible}`,
+				[deviceId, zoneId, deviceId],
 			);
+		}
 
-			await this.repository.save(deviceZones);
+		// Read back rather than assumed: if the device was hidden anywhere in the stretch above, none of
+		// those statements matched and the caller has to be told its placement change did not happen —
+		// silently reporting the zones it asked for would be worse than the refusal.
+		const stored = await this.repository.find({ where: { deviceId } });
+
+		if (stored.length !== zoneIds.length) {
+			this.logger.error(`Refused zone replacement on device id=${deviceId} hidden while it was being applied`);
+
+			throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
 		}
 
 		this.logger.debug(`Successfully set ${zoneIds.length} zones for device ${deviceId}`);

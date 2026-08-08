@@ -721,6 +721,13 @@ export class DevicesService {
 		});
 
 		if (persisted) {
+			// The placement guard again, on the row as it stands now rather than as it stood when this
+			// call began. Between the two there are several awaited round trips — the room validation, the
+			// zone read-back, this re-read — and a wizard hiding the device in that window would otherwise
+			// have this write the placement of a device that is now inert. The zone half carries the same
+			// condition in the statements that write it (see DeviceZonesService.setDeviceZones).
+			this.assertPlacementChangeAllowed(persisted, dtoInstance);
+
 			Object.assign(persisted, updateFields);
 
 			if (dtoInstance.room_id === null) {

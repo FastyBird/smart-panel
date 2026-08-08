@@ -678,7 +678,10 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 		await listener.onApplicationBootstrap();
 
-		expect(devicesRepository.update).toHaveBeenCalledWith('src', { hiddenBy: null });
+		// Matched on the device *and* on it still being visible: a new wizard can re-hide the same source
+		// between the unhide and this clear, and wiping that fresh provenance would strand it hidden with
+		// nothing left to say why.
+		expect(devicesRepository.update).toHaveBeenCalledWith({ id: 'src', hidden: false }, { hiddenBy: null });
 	});
 
 	// Ordering, not just presence: the pair is not atomic, and only one of the two half-states a
@@ -1003,7 +1006,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 		listener.handleStructuralChange();
 		await flushMicrotasks();
 
-		expect(devicesRepository.update).toHaveBeenCalledWith('source-device', { hiddenBy: null });
+		expect(devicesRepository.update).toHaveBeenCalledWith({ id: 'source-device', hidden: false }, { hiddenBy: null });
 	});
 
 	it('leaves an enabled source device enabled when it unhides it', async () => {

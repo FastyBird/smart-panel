@@ -1081,6 +1081,23 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			// its stored form depends on what was written rather than on the column — the one field here
 			// that cannot be bound unambiguously. A source that changes *only* its sentinel inside the race
 			// window is therefore not covered; every other judged field is.
+			// The projection's own declaration is judged too — `describeProjectionConstraintMismatch` and the
+			// representation check both read it — so it belongs in the predicate for the same reason the
+			// source's does. A client can repair the *projection* instead of the source, widening its format
+			// to match, and that repair keeps the same source id: without this the older handler would clear
+			// a link that has just been made valid, and nothing would put it back, because a virtual
+			// property's own update is ignored here by design.
+			//
+			// Plain conditions rather than an EXISTS: this is the row being updated, so its columns are
+			// already in scope.
+			const dependentState = {
+				dependentPermissions: (dependent.permissions ?? []).join(','),
+				dependentDataType: dependent.dataType,
+				dependentFormat:
+					dependent.format === null || dependent.format === undefined ? null : JSON.stringify(dependent.format),
+				dependentStep: dependent.step ?? null,
+			};
+
 			const sourceState = {
 				sourcePermissions: (source.permissions ?? []).join(','),
 				sourceDataType: source.dataType,
@@ -1111,6 +1128,10 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				.set({ sourcePropertyId: null })
 				.where('id = :dependentId', { dependentId: dependent.id })
 				.andWhere('sourcePropertyId = :sourceId', { sourceId: payload.id })
+				.andWhere('permissions IS :dependentPermissions', dependentState)
+				.andWhere('dataType IS :dependentDataType', dependentState)
+				.andWhere('format IS :dependentFormat', dependentState)
+				.andWhere('step IS :dependentStep', dependentState)
 				.andWhere(sourceUnchanged, sourceState)
 				.andWhere(channelUnchanged, sourceState)
 				.execute();
@@ -1200,7 +1221,17 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			enabled: device.enabled,
 		});
 
-		await this.devicesRepository.update(device.id, { hiddenBy: null });
+		// Conditional on the device still being the one just unhidden. Between the patch above and this
+		// write a new wizard can hide the same source again, stamping a fresh `hiddenBy: system` — and an
+		// unconditional clear would then wipe *that* provenance, leaving a hidden device with no record of
+		// why. Both `unhideAbandonedSources` and `reconcileSystemHiddenSources` deliberately ignore such a
+		// device, so it would stay hidden until someone restored it by hand: the exact failure this whole
+		// path exists to prevent, recreated by its own cleanup.
+		//
+		// Matching on `hidden: false` is enough, and is what makes the pair safe in either order. If the
+		// re-hide won, the row is hidden and this matches nothing; if it has not happened yet, the row is
+		// the one this call just made visible.
+		await this.devicesRepository.update({ id: device.id, hidden: false }, { hiddenBy: null });
 	}
 
 	/**
