@@ -58,6 +58,7 @@ import { DeviceConnectionStateService } from './services/device-connection-state
 import { DeviceConnectivityService } from './services/device-connectivity.service';
 import { DeviceControlToolService } from './services/device-control-tool.service';
 import { DeviceProvisionQueueService } from './services/device-provision-queue.service';
+import { DeviceStructureLockService } from './services/device-structure-lock.service';
 import { DeviceValidationService } from './services/device-validation.service';
 import { DeviceZonesService } from './services/device-zones.service';
 import { DevicesSeederService } from './services/devices-seeder.service';
@@ -118,6 +119,7 @@ import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidd
 		ChannelsControlsService,
 		ChannelsPropertiesService,
 		DeviceValidationService,
+		DeviceStructureLockService,
 		DeviceExistsConstraintValidator,
 		DeviceNotHiddenConstraintValidator,
 		ChannelExistsConstraintValidator,
@@ -174,6 +176,7 @@ import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidd
 		DeviceConnectionStateService,
 		DeviceProvisionQueueService,
 		DeviceValidationService,
+		DeviceStructureLockService,
 	],
 })
 export class DevicesModule implements OnModuleInit {

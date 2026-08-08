@@ -137,14 +137,25 @@ class DevicesModuleService {
   Future<void> initialize() async {
     _isLoading = true;
 
-    await _devicesService.initialize();
-
-    _isLoading = false;
-
+    // Subscribed before the first read, not after it. A device hidden while the
+    // panel is starting — the wizard replacing it a moment earlier — announces
+    // itself once, and a handler registered after the initial fetch is not
+    // there to hear it: the list snapshot then carries the physical source and
+    // the panel renders it, commandable, beside a replacement it never learned
+    // about, until something refreshes it.
+    //
+    // Safe in the other direction too: an event arriving mid-fetch is what
+    // `DevicesRepository` already handles, remembering what was hidden
+    // underneath the request and keeping what arrived during it, so the
+    // snapshot is applied without the part of it that is already out of date.
     _socketService.registerEventHandler(
       DevicesModuleConstants.moduleWildcardEvent,
       _socketEventHandler,
     );
+
+    await _devicesService.initialize();
+
+    _isLoading = false;
 
     if (kDebugMode) {
       debugPrint(

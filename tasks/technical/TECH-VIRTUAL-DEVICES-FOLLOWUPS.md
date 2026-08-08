@@ -136,7 +136,7 @@ If it is ever wanted, the place is `VirtualStatusListener.aggregateState()` plus
 
 It has no caller — `rebuild()` handles every path. Two latent inconsistencies live in it: it writes into the live maps, so a call landing mid-`rebuild()` would be discarded by the swap; and a link built from an unsaved entity could carry `sourcePropertyId: undefined`, which neither `isOrphaned` nor the status listener's `=== null` check treats as orphaned. Either remove it or give it a caller.
 
-### 2.11 `hidden` carries no provenance, so the auto-unhide cannot tell who set it (low)
+### 2.11 `hidden` carries no provenance, so the auto-unhide cannot tell who set it (low) — DONE
 
 `VirtualIndexMaintenanceListener.unhideAbandonedSources()` decides to patch on two facts: no virtual device references the source anymore, and the source is currently hidden. Neither says *why* it is hidden. A device the operator hid for their own reasons, which also happens to have been abandoned by a virtual device, is unhidden along with the rest.
 
@@ -158,6 +158,20 @@ The exposure in the meantime is bounded and recoverable: a source stranded this 
 
 **Do this as part of the admin virtual-devices plugin**, which is where hiding will actually be driven from and which needs an unhide affordance regardless. At that point the column has a writer, the migration has a meaningful default, and a bootstrap reconciliation over rows marked "hidden by a virtual device" becomes both correct and cheap.
 
+**Resolved — both halves — and provenance is precisely what made it safe.** `DeviceEntity.hiddenBy` (`DeviceHiddenBy.SYSTEM | USER | null`, added with the admin plugin's first task, exposed as `hidden_by` on both device DTOs) gave hiding an owner, and `VirtualIndexMaintenanceListener.reconcileSystemHiddenSources()` now runs once after the bootstrap hydration and unhides exactly those devices where `hiddenBy === SYSTEM` **and** the freshly hydrated index shows no virtual property referencing them. A lost edge is recovered from durable state — the column and the index — instead of from an in-memory transition that a restart destroys.
+
+The provenance filter is not a refinement of the sweep; it is the only thing that makes a sweep permissible at all. Without it the reconciliation is the "unhide every hidden device nothing references" version assessed above, which reverses a deliberate operator setting on **every boot** — a worse and less recoverable failure than the stranded source it fixes. So `USER` is never touched, and neither is `null`: unknown provenance is not system provenance, which also means a source stranded *before* the column existed is deliberately not recovered (the migration backfills those rows to `user`, because nothing can tell them apart from a hide the operator meant). The unit suite pins this as its own case, and removing the filter fails it.
+
+Three implementation details worth carrying forward:
+
+- **The reconciliation reads the index, so it must not run when the hydration failed.** It sits inside the same `try` as `rebuild()`, so a rebuild that throws skips it — deliberately, because an empty index answers "nothing references anything" for every source in the system. The whole pass is separately contained and logged at error, and per device on top of that: `generate:openapi` boots the app against a schema-less database, and an `onApplicationBootstrap` that rejects kills the process.
+- **`hidden_by` cannot be cleared through `UpdateDeviceDto`.** Its `@Transform` maps an explicit `null` to `undefined` — the null-means-field-absent convention every optional field on that DTO follows — and `DevicesService.update()` drops undefined keys, so no DTO value means "clear this". The unhide therefore issues a targeted `Repository<DeviceEntity>.update(id, { hiddenBy: null })` immediately after the patch. Second rather than first on purpose: the pair is not atomic, and `hidden = false` with a stale `hiddenBy` is cosmetic on a device the user can now see, whereas `hidden = true` with `hiddenBy = null` would be a hidden device this very reconciliation is then required to ignore forever.
+- **Both unhide paths share one helper**, so the runtime abandonment path clears provenance too and the two cannot drift. The patch still echoes `enabled` back (§3.1) and still carries no placement field, so the hidden-device placement guard cannot refuse it.
+
+**The first half is closed by the same rule.** `unhideAbandonedSources()` — the runtime path — now gates on `isSystemHidden()` as well, the single predicate both paths share. Observing an abandonment shows that *a* virtual device was drawing from the source; it does not show that the system is what hid it, and an operator who hid a physical device by hand must not lose that setting because an unrelated virtual device referencing it was deleted. The principle applies **more** strongly here than at startup, not less: this path runs on every structural change that drops a last reference, where the sweep runs once per process start, so an ungated version reverses a deliberate setting far more often — silently, unnotified, with nothing that would ever put it back. Pinned by `leaves a user-hidden source device hidden when its last virtual device is deleted`; removing the gate fails it.
+
+**Residual, stated precisely: sources hidden *before* the provenance column existed will not auto-unhide.** The migration backfills every pre-existing hidden row to `user`, because nothing can distinguish those from a deliberate operator hide — so neither path will touch them. That is a bounded, visible and recoverable cost: such a device is still returned by `GET /devices` (which defaults to `hidden=all`) and is unhidden in one action from the admin's hidden-device list, versus the silent and irreversible cost of clobbering an operator's setting. It does not accumulate either: the admin's hide-the-source flow sends `hidden_by: system`, so every hide performed from here on is labelled correctly at the point of creation and auto-unhides normally.
+
 ### 2.12 `aggregateState()` treats an UNKNOWN source as offline, making the device uncommandable (medium) — DONE
 
 Found in round 8, while fixing the configuration-time write. `VirtualStatusListener.aggregateState()` returns DISCONNECTED as soon as any source device's status is `!online`. A device that has simply never reported a connection state has `status: 'unknown'`, `online: false` — so a virtual device backed by it aggregates to DISCONNECTED, and `PropertyCommandService.processDeviceCommands()` refuses every command against a device that is offline. The virtual device is uncommandable, permanently, with nothing wrong anywhere.
@@ -174,7 +188,7 @@ Fix: give `aggregateState()` the same "definitively offline" predicate the other
 
 ## 3. Pre-existing issues found in passing
 
-### 3.1 `DeviceEntity.enabled` has the class-field-initializer defect (medium)
+### 3.1 `DeviceEntity.enabled` has the class-field-initializer defect (medium) — DONE, by a different route
 
 Same mechanism as the `hidden` and `valueOrigin` bugs fixed on the virtual-devices branch: the initializer survives `class-transformer`, so `DevicesService.update`'s `omitBy(toInstance(...), isUndefined)` yields `enabled: true` for a PATCH that omits it — silently re-enabling a disabled device on any unrelated update.
 
@@ -183,6 +197,12 @@ The fix was applied, proven and then **reverted**, because dropping the initiali
 **Scope note:** the in-code comment at `devices.entity.ts:104-112` says "three device plugins" block this. That over-counts. Only **`devices-shelly-v1`** actually has the hazardous shape — `subscribers/device-entity.subscriber.ts:74` reads `event.entity.enabled` in `afterInsert` and passes it into `shellies-adapter.service.ts:232-238`, which assigns it straight into the in-memory registry. `devices-wled` and `devices-zigbee2mqtt` have no `afterInsert`; their `enabled` reads are on DB-loaded entities and would be unaffected. Fix shelly-v1's subscriber to re-read the row, then drop the initializer.
 
 **Bit new code once already.** `VirtualIndexMaintenanceListener.unhideAbandonedSources()` patched `{type, hidden: false}` and thereby silently re-enabled a source device the user had explicitly disabled. That call now echoes `enabled` back explicitly, which is a local defence, not a fix — every future `DevicesService.update()` caller that omits `enabled` has the same problem, and only the root fix removes the trap.
+
+**Resolved on the admin branch, without dropping any initializer.** The blocker recorded above applies only to the *drop the initializer* fix. `DevicesService.update()` now restricts `updateFields` to the properties the request actually carried, so a survivor can no longer reach `Object.assign` in the first place — initializers stay exactly where they are, and `devices-shelly-v1`'s `afterInsert` subscriber is untouched. Field initializers are now inert for updates across the board, so `password`/`hostname` (shelly-v1), `password` (shelly-ng), `hostname` (wled), `variant` (reterminal) and `canonicalMac`/`hasEthernet` (shelly-ng) stop leaking too — several of which were never listed here.
+
+The admin change that exposed it is worth recording: the admin used to resend the entire cached device on every PATCH, which masked this defect completely. Once `devicesStore.edit()` began sending genuinely partial bodies, the branch's own hide-the-source call (`{type, hidden, hiddenBy}`) would have wiped a Shelly 4PM's stored `password`. Two implementation notes for whoever touches `update()` next, both documented at the fix site: DTO key casing is **not** uniform (the base DTO spells `hidden_by` directly, while `UpdateShellyNgDeviceDto` uses `wifiAddress` with an `@Expose({ name })` override), so the provided-key set has to be normalised rather than compared raw; and the tempting one-liner — passing `exposeUnsetFields: true` so `omitBy(isUndefined)` does the work — throws on every plugin subclass, because `DeviceEntity.zoneIds` is a getter-only property declared once on the base and class-transformer's read-only guard does an own-property lookup that never walks the prototype chain.
+
+Still worth doing eventually: fix shelly-v1's subscriber to re-read the row and drop the initializers anyway, so creation stops depending on them.
 
 ### 3.6 Other migrations claim SQLite cannot DROP COLUMN (low)
 
@@ -237,6 +257,97 @@ One residual case is knowingly left: if **two** virtual properties project the *
 
 It is out of reach of the rule as stated — the guard is a per-event question about the source, and "am I the only projection of this source that qualifies?" is a question about the *set* of projections, which only `VirtualPropertyIndexService` can answer and which the energy module has no business reaching into. Fixing it means either an election (lowest property id wins) or moving de-duplication into `DeltaComputationService`, keyed by storage key rather than by device+channel. Both are larger than the defect: it needs a user to deliberately wire one physical meter into two virtual devices, and unlike the dropped-meter case it is visible — an inflated total, not a silent omission.
 
+## 3a. Deferred from the admin branch
+
+Raised by reviews of the admin implementation, each verified against the code and triaged as non-blocking for that branch.
+
+### 3a.1 `hidden_by` cannot express `null` on either side (medium)
+
+Nothing can currently send an explicit `hidden_by: null`, so **an admin-side unhide action cannot be built until this is fixed**. Three layers disagree:
+
+- `DeviceUpdateReqSchema.hidden_by` (`apps/admin/src/modules/devices/store/devices.store.schemas.ts`) is `.optional()` but not `.nullable()`. Adding `.nullable()` breaks assignability to `ZodType<ApiUpdateDevice>`, because openapi-typescript drops `| null` from enum-referencing properties — the same generator quirk already documented on `DeviceResSchema.hidden_by`.
+- `UpdateDeviceDto.hidden_by` (`apps/backend/src/modules/devices/dto/update-device.dto.ts:112`) carries `@Transform(({ value }) => (value === null ? undefined : value))`, so the backend reads an explicit `null` as "not provided" regardless.
+- `spec/api/v1/openapi.json` nonetheless advertises `nullable: true` for the field, so the published contract is wrong.
+
+Unhiding works today only as a backend side effect of deleting the last referencing virtual device. A user who hides a device themselves has no way back from the UI.
+
+### 3a.2 The channel and property stores still merge-then-send (medium)
+
+`channels.store.ts` and `channels.properties.store.ts` have the same shape `devices.store.ts` was fixed for: `edit()` merges the whole cached record before validating and sends the result. Deliberately left alone to bound the blast radius of the device fix. Consequence: the remap dialog resends the property's cached `value` on every remap, so a value that changed underneath is written back stale. No `hidden_by`-class throw exists in either store, so nothing is broken today.
+
+### 3a.3 Five duplicated `useDeviceEditForm.submit()` implementations (medium)
+
+The shared composable plus `devices-wled`, `devices-shelly-v1`, `devices-shelly-ng` and `devices-reterminal` each reimplement `submit()`. A single fix had to be applied five times, and the four plugin copies were missed on the first pass. `devices-zigbee2mqtt` correctly has no `roomId` in its model. Consolidating is worthwhile — but note the room-omission fix belongs at the store layer regardless, so deduplicating alone would not have prevented that bug.
+
+### 3a.4 The `devices-virtual` route is registered unconditionally (low)
+
+The wizard launcher in the devices list is gated on `enabled('devices-virtual')`, matching the sibling discovery-wizard button, but the route itself is registered with no such check — `enabled()` is async config state not available at `install()` time. Typing the URL with the plugin disabled still reaches the wizard. A `beforeEnter` guard is the only real option. Sibling wizard routes are ungated too, so this is consistent rather than novel.
+
+### 3a.5 Onboarding treats `devices-virtual` as a discoverable integration (low — destructive half fixed)
+
+`step-integrations.vue` selects device plugins with `ext.type.startsWith('devices-')`, which `devices-virtual` matches, so it is offered the discovery affordance ("scanning…") for a plugin that can never discover anything.
+
+The destructive half is **fixed**: toggling it off ran `removePluginDevices` against type `virtual` and deleted every virtual device the user had built. `removePluginDevices` now returns early for `NON_DISCOVERABLE_PLUGINS`, since that cleanup is a cache-clear for plugins that rediscover their own hardware and unrecoverable data loss for ones whose devices are hand-authored. What remains is only cosmetic: the 30-second "discovering…" countdown a virtual plugin will never satisfy.
+
+### 3a.11 A hidden or deleted device leaves its channels in the panel (low, pre-existing)
+
+`DevicesRepository.delete()` removes the device row and nothing else, so `ChannelsRepository` keeps that device's channels — and, transitively, `ChannelPropertiesRepository` keeps their properties. This predates virtual devices (it is what `DEVICE_DELETED` has always done), but hiding gives it a second, more frequent trigger: every source device a virtual device replaces now leaves its channels behind in a running panel.
+
+Nothing renders them today, because every consumer starts from a device. Fixing it means cascading the removal through two more repositories, which is a change to shared panel state that ought to be made deliberately rather than as a side effect of this feature.
+
+### 3a.12 Aggregations count a source and its virtual replacement twice (medium)
+
+`SecurityAggregatorService` and the two security providers read `devicesService.findAll()`, which deliberately still returns hidden devices — internal logic should see the whole installation. A virtual device projecting a contact sensor therefore appears alongside the physical sensor it mirrors, and both contribute to the same aggregate.
+
+For boolean roll-ups (is anything triggered) the duplicate is harmless. For anything that counts, it is not. The same question applies to `BuddyContextService`, which describes the installation to an assistant that will now see two devices where the operator sees one.
+
+Deciding this needs a policy — does an aggregate prefer the physical device, the virtual one, or neither — and that policy belongs with whoever owns the security and energy semantics, not with the mapping feature that surfaced it.
+
+### 3a.14 Stored references to a device that vanishes are never reconciled (medium, pre-existing)
+
+A dashboard tile, a data source and a local scene action each store a device id, and nothing reconciles those references when the device behind one goes away. Deleting a device has always left them: no listener in the dashboard or scenes modules subscribes to `DEVICE_DELETED`. Hiding a source gives the same gap a second, far more frequent trigger, since every virtual device hides the device it replaces.
+
+`@ValidateDeviceNotHidden` covers the choice — a *new* tile, data source or scene action cannot name a hidden device — and this branch fixes the one place where the residue was actively misleading: a device-preview tile whose device is gone now says so instead of sitting on its loader for the life of the process (`DevicesRepository.hasFetched` is what separates "not read yet" from "gone").
+
+What is left is a policy question, and it is not the mapping feature's to answer: should a stored reference to a vanished device be migrated to whatever replaced it, refused at execution, or left alone? A local scene commanding a physical property still works after that property's device is hidden — the hardware is unchanged, and the virtual device forwards to the same property — so refusing at execution would break working automations for a selection-UI flag. Migration is the interesting option and needs the owners of the dashboard and scenes modules: only they can say what "the same tile, pointed at the replacement" should mean when the replacement's structure is not the original's.
+
+### 3a.13 The channels stores apply a fetch snapshot over newer socket rows (low, pre-existing)
+
+`devices.store.ts` now applies a fetch response row by row, keeping any row written since the request went out — a websocket event, an optimistic edit — so a device hidden mid-flight is not restored visible by the older snapshot it raced.
+
+`channels.store.ts` and `channels.properties.store.ts` have the same exposure in a milder form: they merge (`data.value = { ...data.value, ...channels }`) rather than replace, so nothing is evicted, but a snapshot assembled before a socket update still overwrites that update's row. Nothing in the virtual-device flows depends on it today, and the fix is the same stamp-and-compare shape, worth doing once across the three stores rather than twice.
+
+### 3a.6 Test-coverage gaps (low)
+
+- `view-device.vue`'s virtual-device mount gate has no behavioural test; `view-devices.spec.ts` has a usable template for one.
+- `devices-virtual.plugin.spec.ts`'s schema-registration test mocks all three schemas as deep-equal `{}`, so it proves the keys exist but not that the right schema is wired. The real pin is the remap dialog's wire-level test.
+- The remap dialog's `canConfirm` "property is gone" term is never isolated from its "no selection" term, so the reactive mid-dialog deletion path (via the `CHANNEL_PROPERTY_DELETED` websocket handler) is untested.
+- The mapping step's `pickers` reset on external `modelValue` replacement has no discriminating test.
+
+### 3a.7 Mapping-step UI polish (low)
+
+Optional slot groups expand but never re-collapse, which is awkward for categories with large spec surfaces (`sensor` expands to 102 slots). The property picker sorts by raw category but displays the translated label, so ordering is not alphabetical in non-English locales.
+
+### 3a.8 Two heavy specs carry a per-file `testTimeout` (low)
+
+`virtual-wizard-mapping-step.spec.ts` and `view-virtual-device-wizard.spec.ts` raise `testTimeout` to 15s because they crossed vitest's 5s default under full-suite parallelism — timeouts only, no assertion failures, and only those two files. The next comparably heavy spec will need the same patch; a config-level default would be more durable.
+
+### 3a.9 Core module views import from the plugin directory (low)
+
+`view-device.vue` and `view-devices.vue` both import from `plugins/devices-virtual/**`. This follows the existing `modules/onboarding` → `plugins/weather-open-meteo` precedent and is commented as deliberate, but the devices module still has no `deviceDetail` extension point, which is why the imports exist at all.
+
+### 3a.10 Compatibility is now enforced at persistence, not only previewed — DONE
+
+Superseded §4's "`assertPermissionsCompatible` is intentionally unwired", which is why that entry is gone.
+
+The original reasoning held that the rule could not be a DTO constraint, because the target spec slot's required permissions depend on the channel category and a property DTO cannot resolve it. That part still stands. What it missed is that the *persistence hooks* are not DTOs: `beforeCreate` is handed the channel id and `beforeUpdate` sees the merged row, so both can resolve the slot the DTO could not.
+
+The gap was real. The wizard's preview is not atomic with the write it precedes, a source's permissions or data type can change in between, and a direct API call or a remap skips the preview entirely — so an incompatible projection could be stored and would fail only later, when a command was forwarded to a source that could not accept it.
+
+`VirtualDevicesService.assertProjectionCompatible` now resolves channel → device → source property and asks `reportCompatibility`, and both hooks call it. The rules still live in exactly one place; the assertion resolves the slot and asks, rather than restating permissions or data types. Only projections are judged: an owned (`local`) property has no source, and a projection whose source is null is an orphan the device degrades into — refusing that would make an orphaned property impossible to remap back into shape, which is precisely what the remap flow exists to do.
+
+Known shortfall, worth a follow-up: on the **nested** device-create path the guard's reason does not reach the client — that path reports its own generic "Device could not be created" envelope for every nested failure, not just this one. The single-property create and update paths are unaffected in kind (this suite asserts status rather than message throughout). The wizard previews compatibility, so an operator reaching this in practice is rare, but the message is the thing that would tell them why.
+
 ## 4. Not to be done
 
-`assertPermissionsCompatible` is intentionally unwired. It needs the target spec slot's required permissions, which depend on channel category and cannot be resolved from a property DTO in isolation. It belongs to the admin wizard (Plan B), not to a DTO constraint. Consequence to be aware of meanwhile: nothing server-side rejects a read-only source on a writable spec slot — the API accepts it and the write fails at the source platform.
+*(`assertPermissionsCompatible`'s entry moved to §3a.10 — it is now enforced at persistence. Its original point, that the rule cannot be a DTO constraint because the spec slot is not resolvable from a property DTO in isolation, still holds and is why the hooks own it instead.)*

@@ -138,7 +138,10 @@
 			"bulkDisabled": "Pomyślnie wyłączono {count} urządzeń.",
 			"bulkDisableFailed": "Nie udało się wyłączyć {count} urządzeń.",
 			"bulkDisableCanceled": "Masowe wyłączanie urządzeń zostało anulowane.",
-			"notLoaded": "Nie udało się wczytać urządzenia. Spróbuj ponownie później."
+			"notLoaded": "Nie udało się wczytać urządzenia. Spróbuj ponownie później.",
+			"unhidden": "Urządzenie {device} jest znowu widoczne",
+			"notUnhidden": "Nie udało się pokazać urządzenia {device}",
+			"hiddenNotLoaded": "Nie udało się wczytać ukrytych urządzeń. Spróbuj ponownie później."
 		},
 		"channels": {
 			"notFound": "Kanał, którego szukasz, nie istnieje lub mógł zostać usunięty.",
@@ -333,6 +336,9 @@
 			"state": {
 				"title": "Stan",
 				"placeholder": "Wybierz stan"
+			},
+			"showHidden": {
+				"title": "Pokaż ukryte"
 			},
 			"id": {
 				"title": "Identyfikator wewnętrzny",
@@ -909,6 +915,18 @@
 			"water_tank_level": "Water tank level",
 			"zoom": "Zoom"
 		}
+	},
+	"hidden": {
+		"badge": "Ukryte",
+		"by": {
+			"system": "System",
+			"user": "Użytkownik"
+		},
+		"hint": {
+			"system": "Ukryte automatycznie, ponieważ zastąpiło je urządzenie wirtualne. Pojawi się ponownie po usunięciu tego urządzenia wirtualnego.",
+			"user": "Ukryte przez operatora. Pozostaje ukryte, dopóki ktoś go nie odkryje."
+		},
+		"unhide": "Pokaż"
 	},
 	"validation": {
 		"status": {

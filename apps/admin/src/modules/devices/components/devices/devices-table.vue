@@ -134,6 +134,8 @@
 				<template v-else>
 					{{ scope.row.name }}
 				</template>
+
+				<devices-table-column-hidden :device="scope.row" />
 			</template>
 		</el-table-column>
 
@@ -317,6 +319,7 @@ import { type DevicesModuleDeviceCategory, DevicesModuleDeviceConnectionStatus }
 import type { IDevicesFilter } from '../../composables/types';
 import type { IDevice } from '../../store/devices.store.types';
 
+import DevicesTableColumnHidden from './devices-table-column-hidden.vue';
 import DevicesTableColumnIcon from './devices-table-column-icon.vue';
 import DevicesTableColumnPlugin from './devices-table-column-plugin.vue';
 import DevicesTableColumnState from './devices-table-column-state.vue';

@@ -1,7 +1,7 @@
 import { computed, reactive } from 'vue';
 
 import { injectBackendClient, useUuid } from '../../../common';
-import { SpacesModuleCreateSpaceCategory } from '../../../openapi.constants';
+import { DevicesModuleDevicesHiddenFilter, SpacesModuleCreateSpaceCategory } from '../../../openapi.constants';
 import {
 	ASSIGNABLE_ZONE_CATEGORIES,
 	SPACE_ALL_CATEGORY_TEMPLATES,
@@ -893,7 +893,12 @@ export const useSpacesWizard = () => {
 		state.error = null;
 
 		try {
-			const response = await backendClient.GET('/modules/devices/devices');
+			// A hidden device can never receive a placement change — the backend now refuses the
+			// *entire* batch of applyAssignments() if even one targeted device is hidden. Excluding
+			// hidden devices here, at the source, means one can never be selected in the first place.
+			const response = await backendClient.GET('/modules/devices/devices', {
+				params: { query: { hidden: DevicesModuleDevicesHiddenFilter.false } },
+			});
 
 			if (response.error || !response.data?.data) {
 				throw new SpacesApiException('Failed to fetch devices');

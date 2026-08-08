@@ -95,7 +95,11 @@
 									<icon icon="mdi:information-outline" />
 								</el-icon>
 								<span class="text-gray-500">
-									{{ hasConfigForm(integration.type) ? t('onboardingModule.integrations.noDevicesYet') : t('onboardingModule.integrations.noDevicesFound') }}
+									{{
+										hasConfigForm(integration.type)
+											? t('onboardingModule.integrations.noDevicesYet')
+											: t('onboardingModule.integrations.noDevicesFound')
+									}}
 								</span>
 							</template>
 							<template v-else>
@@ -205,16 +209,22 @@ import { computed, onBeforeMount, onBeforeUnmount, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElButton, ElIcon, ElScrollbar, ElSwitch, vLoading } from 'element-plus';
+
 import { Icon } from '@iconify/vue';
 
 import { injectStoresManager } from '../../../common';
-import { extensionsStoreKey } from '../../../modules/extensions/store/keys';
-import { ExtensionKind } from '../../../modules/extensions/extensions.constants';
+import { usePlugins } from '../../../modules/config/composables/usePlugins';
 import { CONFIG_MODULE_PLUGIN_TYPE } from '../../../modules/config/config.constants';
 import type { IPluginsComponents, IPluginsSchemas } from '../../../modules/config/config.types';
 import { configPluginsStoreKey } from '../../../modules/config/store/keys';
+import { useDevicesPlugins } from '../../../modules/devices/composables/useDevicesPlugins';
+import { DEVICES_MODULE_NAME } from '../../../modules/devices/devices.constants';
+import type { IDevice } from '../../../modules/devices/store/devices.store.types';
 import { devicesStoreKey } from '../../../modules/devices/store/keys';
-import { usePlugins } from '../../../modules/config/composables/usePlugins';
+import { ExtensionKind } from '../../../modules/extensions/extensions.constants';
+import { extensionsStoreKey } from '../../../modules/extensions/store/keys';
+import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
+import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../../../plugins/devices-virtual/devices-virtual.constants';
 
 import IntegrationConfigDialog from './integration-config-dialog.vue';
 
@@ -228,6 +238,7 @@ const extensionsStore = storesManager.getStore(extensionsStoreKey);
 const devicesStore = storesManager.getStore(devicesStoreKey);
 const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
 const { getByName } = usePlugins();
+const { getByPluginType } = useDevicesPlugins();
 
 const isFetching = ref(false);
 const togglingPlugins = reactive<Set<string>>(new Set());
@@ -275,6 +286,27 @@ const devicePlugins = computed(() => {
 const enabledCount = computed(() => devicePlugins.value.filter((p) => p.enabled).length);
 
 /**
+ * Resolves the device type string(s) a plugin's own devices are stored under, by reading the
+ * plugin registry — the same source devices.store.ts itself uses to resolve a device's schema.
+ *
+ * This cannot be derived by stripping '-plugin' off the plugin's own type string: for every
+ * plugin except devices-virtual, the device type happens to equal that derived prefix (e.g.
+ * 'devices-home-assistant-plugin' -> prefix 'devices-home-assistant' -> device type
+ * 'devices-home-assistant'), which is why that shortcut used to work everywhere it was tried.
+ * devices-virtual is the one plugin where the device type ('virtual') genuinely differs from the
+ * plugin's prefix ('devices-virtual') — the plugin name and device type are deliberately distinct
+ * (see devices-virtual.constants.ts), so no string transformation of the plugin type can recover
+ * the device type. Reading it from the registry is correct for every plugin uniformly.
+ */
+const devicesTypesForPlugin = (pluginType: string): string[] => {
+	const plugin = getByPluginType(pluginType);
+
+	return (plugin?.elements ?? [])
+		.filter((element) => element.modules === undefined || element.modules.includes(DEVICES_MODULE_NAME))
+		.map((element) => element.type);
+};
+
+/**
  * Live device counts per plugin type, computed directly from the store.
  * Updates automatically when devices are added/removed via WebSocket events.
  */
@@ -284,8 +316,8 @@ const deviceCountsByPlugin = computed(() => {
 
 	for (const plugin of devicePlugins.value) {
 		if (plugin.enabled) {
-			const pluginPrefix = plugin.type.replace('-plugin', '');
-			counts[plugin.type] = allDevices.filter((d) => d.type.startsWith(pluginPrefix)).length;
+			const deviceTypes = devicesTypesForPlugin(plugin.type);
+			counts[plugin.type] = allDevices.filter((d) => deviceTypes.includes(d.type)).length;
 		}
 	}
 
@@ -414,12 +446,54 @@ const startDiscovery = async (type: string): Promise<void> => {
 	}, DISCOVERY_COUNTDOWN_INTERVAL);
 };
 
+/**
+ * Plugins whose devices a user built by hand rather than the plugin finding them.
+ *
+ * Disabling a plugin deletes the devices it owns, which is safe for everything that discovers its
+ * own hardware: the rows are a cache of what is out on the network, and re-enabling repopulates
+ * them. Virtual devices have no such source. Each one is a category, a set of channels, and a
+ * mapping from every one of its properties to a property on some other device — all of it authored
+ * in the wizard, none of it recoverable by any scan. Deleting them on a toggle is unrecoverable
+ * data loss from a control that reads as reversible, so this flow leaves them alone; removing a
+ * virtual device stays an explicit act on the devices list, where it is confirmed.
+ */
+const NON_DISCOVERABLE_PLUGINS: readonly string[] = [DEVICES_VIRTUAL_PLUGIN_NAME];
+
 const removePluginDevices = async (type: string): Promise<void> => {
-	const pluginPrefix = type.replace('-plugin', '');
-	const pluginDevices = devicesStore.findAll().filter((d) => d.type.startsWith(pluginPrefix));
+	if (NON_DISCOVERABLE_PLUGINS.includes(type)) {
+		return;
+	}
+
+	// Asked for explicitly, because the shared cache is not a complete answer: the devices endpoint
+	// returns visible devices unless told otherwise, so a store filled by onboarding's own
+	// `devicesStore.fetch()` holds no hidden ones. A discovered device is hidden when a virtual device
+	// has taken its place, and cleaning up only the visible half would leave those behind in the
+	// database owned by a plugin that is no longer running — invisible in the UI and impossible to
+	// remove from it.
+	// Read from what this request answered rather than from the shared cache. The cache belongs to
+	// whichever `hidden` scope was requested last, so a visible-only fetch starting after this one —
+	// any `useDevices()` consumer — makes this response superseded, and the store then holds no hidden
+	// rows however complete the answer was. Acting on the cache in that case leaves exactly the devices
+	// this exists to clean up.
+	let known: IDevice[] = [];
+
+	try {
+		known = await devicesStore.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
+	} catch {
+		// Best-effort: what the store already holds is still worth cleaning up.
+		known = devicesStore.findAll();
+	}
+
+	const deviceTypes = devicesTypesForPlugin(type);
+	const pluginDevices = known.filter((d) => deviceTypes.includes(d.type));
 
 	for (const device of pluginDevices) {
 		try {
+			// Seeded first, because a superseded response is not in the store and `remove()` treats a row
+			// it does not hold as already gone. The row is real — the server had just reported it — and
+			// this is the same value the cache would have been given had this request won it.
+			devicesStore.set({ id: device.id, data: device });
+
 			await devicesStore.remove({ id: device.id });
 		} catch {
 			// Best-effort removal — continue with remaining devices
@@ -473,9 +547,7 @@ const checkPluginConfig = async (type: string): Promise<void> => {
 
 		if (config) {
 			// Check if meaningful config values are set (beyond just 'type' and 'enabled')
-			const configEntries = Object.entries(config).filter(
-				([key, val]) => key !== 'type' && key !== 'enabled' && val !== null && val !== ''
-			);
+			const configEntries = Object.entries(config).filter(([key, val]) => key !== 'type' && key !== 'enabled' && val !== null && val !== '');
 
 			if (configEntries.length > 0) {
 				configuredPlugins.add(type);

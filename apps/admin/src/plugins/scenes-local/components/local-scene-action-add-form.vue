@@ -418,8 +418,13 @@ const stringValue = computed<string>({
 	},
 });
 
+// Hidden devices are never offered by this picker — the backend refuses a scene action targeting
+// one, so filtering here keeps every derived option list (all/recommended/other) consistent without
+// repeating the predicate in each of them.
+const visibleDevices = computed<IDevice[]>(() => devices.value.filter((device) => !device.hidden));
+
 const devicesOptions = computed<{ value: IDevice['id']; label: string }[]>(() => {
-	const sorted = orderBy<IDevice>(devices.value, [(device: IDevice) => device.name.toLowerCase()], ['asc']);
+	const sorted = orderBy<IDevice>(visibleDevices.value, [(device: IDevice) => device.name.toLowerCase()], ['asc']);
 	return sorted.map((device) => ({
 		value: device.id,
 		label: device.name,
@@ -430,7 +435,7 @@ const recommendedDevicesOptions = computed<{ value: IDevice['id']; label: string
 	if (!hasRecommendedCategories.value || !recommendedCategories.value) {
 		return devicesOptions.value;
 	}
-	const recommended = devices.value.filter((device) => recommendedCategories.value!.includes(device.category));
+	const recommended = visibleDevices.value.filter((device) => recommendedCategories.value!.includes(device.category));
 	const sorted = orderBy<IDevice>(recommended, [(device: IDevice) => device.name.toLowerCase()], ['asc']);
 	return sorted.map((device) => ({
 		value: device.id,
@@ -442,7 +447,7 @@ const otherDevicesOptions = computed<{ value: IDevice['id']; label: string }[]>(
 	if (!hasRecommendedCategories.value || !recommendedCategories.value) {
 		return [];
 	}
-	const other = devices.value.filter((device) => !recommendedCategories.value!.includes(device.category));
+	const other = visibleDevices.value.filter((device) => !recommendedCategories.value!.includes(device.category));
 	const sorted = orderBy<IDevice>(other, [(device: IDevice) => device.name.toLowerCase()], ['asc']);
 	return sorted.map((device) => ({
 		value: device.id,

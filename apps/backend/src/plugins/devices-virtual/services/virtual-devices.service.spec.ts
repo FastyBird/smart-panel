@@ -1,7 +1,18 @@
-import { DeviceCategory, PermissionType } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import {
+	DeviceValidationService,
+	ValidationIssueSeverity,
+	ValidationIssueType,
+} from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_VIRTUAL_TYPE, VIRTUAL_BLOCKED_CATEGORIES } from '../devices-virtual.constants';
 import {
@@ -12,17 +23,22 @@ import {
 	VirtualSourceNotFoundException,
 	VirtualValueOriginConflictException,
 } from '../devices-virtual.exceptions';
-import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
+import {
+	VirtualChannelEntity,
+	VirtualChannelPropertyEntity,
+	VirtualValueOrigin,
+} from '../entities/devices-virtual.entity';
 
 import { VirtualDevicesService } from './virtual-devices.service';
 import { VirtualPropertyIndexService, VirtualPropertyLink } from './virtual-property-index.service';
 
 describe('VirtualDevicesService', () => {
 	let service: VirtualDevicesService;
-	let channelsPropertiesService: { findOne: jest.Mock };
-	let channelsService: { findOne: jest.Mock };
+	let channelsPropertiesService: { findOne: jest.Mock; findAll: jest.Mock };
+	let channelsService: { findOne: jest.Mock; findAll: jest.Mock };
 	let devicesService: { findOne: jest.Mock };
 	let index: { loadLinksByVirtualDevice: jest.Mock; findLinksByVirtualDevice: jest.Mock };
+	let deviceValidationService: { validateDeviceStructure: jest.Mock };
 
 	// -- fixtures --------------------------------------------------------------------------------
 
@@ -37,6 +53,31 @@ describe('VirtualDevicesService', () => {
 	const readOnlySource = property({ id: 'ro-source', permissions: [PermissionType.READ_ONLY] });
 	const readWriteSource = property({ id: 'rw-source', permissions: [PermissionType.READ_WRITE] });
 
+	// reportCompatibility also judges data type, which the assertPermissionsCompatible fixtures above
+	// never set (that suite only exercises permissions) — so reportCompatibility gets its own fixtures,
+	// with a dataType meaningful against the spec slots the pinned tests target below.
+	const readOnlySourceProperty = property({
+		id: 'ro-source-property',
+		permissions: [PermissionType.READ_ONLY],
+		dataType: DataTypeType.BOOL,
+	});
+	// Carries a format, as a persisted row does: a constrained slot now refuses a source that cannot be
+	// shown to stay inside it, and `temperature.temperature` is constrained to [0, 100].
+	const readWriteSourceProperty = property({
+		id: 'rw-source-property',
+		permissions: [PermissionType.READ_WRITE],
+		dataType: DataTypeType.FLOAT,
+		format: [0, 100],
+		// `temperature.temperature` is °C, and a unit on one side with nothing on the other is a
+		// mismatch now — a persisted row carries the unit its spec defines.
+		unit: '°C',
+	});
+	const floatSourceProperty = property({
+		id: 'float-source-property',
+		permissions: [PermissionType.READ_WRITE],
+		dataType: DataTypeType.FLOAT,
+	});
+
 	// A link exactly as VirtualPropertyIndexService records one: plain ids, never a hydrated entity.
 	const linkedTo = (id: string, deviceId: string): VirtualPropertyLink => ({
 		propertyId: id,
@@ -45,8 +86,9 @@ describe('VirtualDevicesService', () => {
 	});
 
 	beforeEach(() => {
-		channelsPropertiesService = { findOne: jest.fn() };
-		channelsService = { findOne: jest.fn() };
+		channelsPropertiesService = { findOne: jest.fn(), findAll: jest.fn().mockResolvedValue([]) };
+		channelsService = { findOne: jest.fn(), findAll: jest.fn().mockResolvedValue([]) };
+		deviceValidationService = { validateDeviceStructure: jest.fn().mockReturnValue({ isValid: true, issues: [] }) };
 		devicesService = { findOne: jest.fn() };
 		index = {
 			loadLinksByVirtualDevice: jest.fn().mockResolvedValue([]),
@@ -58,6 +100,7 @@ describe('VirtualDevicesService', () => {
 			channelsService as unknown as ChannelsService,
 			devicesService as unknown as DevicesService,
 			index as unknown as VirtualPropertyIndexService,
+			deviceValidationService as unknown as DeviceValidationService,
 		);
 	});
 
@@ -106,6 +149,1113 @@ describe('VirtualDevicesService', () => {
 
 		it('accepts a read-write source for a read-only spec slot', () => {
 			expect(() => service.assertPermissionsCompatible([PermissionType.READ_ONLY], readWriteSource)).not.toThrow();
+		});
+	});
+
+	describe('reportCompatibility', () => {
+		// category is real, not filler: lighting genuinely offers a light channel and sensor genuinely
+		// offers a temperature channel (spec/devices.ts), so these pin the permission/data-type outcomes
+		// without also tripping the category/channel guard below.
+		it('reports a read-only source as incompatible with a writable slot', () => {
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.ON },
+				readOnlySourceProperty,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('permission');
+		});
+
+		it('reports a read-write source as compatible with a read-only slot', () => {
+			const report = service.reportCompatibility(
+				{
+					category: DeviceCategory.SENSOR,
+					channel: ChannelCategory.TEMPERATURE,
+					property: PropertyCategory.TEMPERATURE,
+				},
+				readWriteSourceProperty,
+			);
+
+			expect(report.compatible).toBe(true);
+		});
+
+		it('reports a data-type mismatch as incompatible', () => {
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.ON },
+				floatSourceProperty,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('data type');
+		});
+
+		// The gap a coordinator review caught: category was accepted and never consulted, so a channel
+		// that is real but simply not part of *this* device category's spec looked identical to one that
+		// is. lock's spec (spec/devices.ts) has no light channel at all. The source is rw/bool —
+		// permission- and data-type-compatible with light.on in every other respect — precisely so that
+		// only the category/channel guard can be responsible for the rejection; a source that also failed
+		// on permission or data type would pass this test for the wrong reason.
+		it('reports a channel that does not belong to the device category as incompatible', () => {
+			const rwBoolSource = property({
+				id: 'rw-bool-source',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.BOOL,
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.LOCK, channel: ChannelCategory.LIGHT, property: PropertyCategory.ON },
+				rwBoolSource,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('lock');
+			expect(report.reason).toContain('light');
+		});
+	});
+
+	// The enforcement half of reportCompatibility. The wizard previews compatibility before it writes,
+	// but the preview is not atomic with the write, a source can change permissions or data type in
+	// between, and a direct API call or a remap skips it entirely — so the rule has to hold at
+	// persistence too, which is what these pin.
+	describe('assertChannelCategoryChangeSafe', () => {
+		const channel = (category: ChannelCategory): VirtualChannelEntity => {
+			const entity = new VirtualChannelEntity();
+
+			Object.assign(entity, { id: 'virtual-channel', category });
+
+			return entity;
+		};
+
+		const projecting = (): VirtualChannelPropertyEntity => {
+			const property = new VirtualChannelPropertyEntity();
+
+			Object.assign(property, {
+				id: 'virtual-property',
+				category: PropertyCategory.ON,
+				valueOrigin: 'source',
+				sourcePropertyId: 'source-property',
+			});
+
+			return property;
+		};
+
+		const owned = (category: PropertyCategory): VirtualChannelPropertyEntity => {
+			const property = new VirtualChannelPropertyEntity();
+
+			Object.assign(property, { id: `owned-${category}`, category, valueOrigin: VirtualValueOrigin.LOCAL });
+
+			return property;
+		};
+
+		// A channel's category is half of the address of every slot its properties fill. Moving it leaves
+		// each projection reading a source that was judged against a slot the new category never defines,
+		// and no property row is written by a channel PATCH, so no property hook would ever see it.
+		it('refuses a category change that leaves a projection without a slot', async () => {
+			channelsPropertiesService.findAll.mockResolvedValue([projecting()]);
+
+			await expect(
+				service.assertChannelCategoryChangeSafe(channel(ChannelCategory.SWITCHER), ChannelCategory.LIGHT),
+			).rejects.toThrow(/cannot change category/);
+		});
+
+		// An owned property fills a slot just as surely as a projection does: `outlet` owns a read-only
+		// `in_use`, and `switcher` has no such slot, so relabelling leaves a property the specification
+		// does not know about on a device that claims to be a switcher.
+		it('refuses a category change that leaves an owned property without a slot', async () => {
+			channelsPropertiesService.findAll.mockResolvedValue([owned(PropertyCategory.IN_USE)]);
+
+			await expect(
+				service.assertChannelCategoryChangeSafe(channel(ChannelCategory.SWITCHER), ChannelCategory.OUTLET),
+			).rejects.toThrow(/cannot change category/);
+		});
+
+		// Nothing is left behind: every property the channel carries has a slot under the new category
+		// too, so the structure the device advertises still matches what it holds.
+		it('allows a category change every property still fits', async () => {
+			channelsPropertiesService.findAll.mockResolvedValue([owned(PropertyCategory.ON)]);
+
+			await expect(
+				service.assertChannelCategoryChangeSafe(channel(ChannelCategory.SWITCHER), ChannelCategory.OUTLET),
+			).resolves.toBeUndefined();
+		});
+
+		it('allows a category change on a channel that carries nothing', async () => {
+			channelsPropertiesService.findAll.mockResolvedValue([]);
+
+			await expect(
+				service.assertChannelCategoryChangeSafe(channel(ChannelCategory.SWITCHER), ChannelCategory.LIGHT),
+			).resolves.toBeUndefined();
+		});
+
+		// Only asked when the category actually moves: a PATCH that renames a channel must not be refused
+		// by a guard about something it is not doing.
+		it('allows a patch that leaves the category alone', async () => {
+			channelsPropertiesService.findAll.mockResolvedValue([projecting()]);
+
+			await expect(
+				service.assertChannelCategoryChangeSafe(channel(ChannelCategory.LIGHT), ChannelCategory.LIGHT),
+			).resolves.toBeUndefined();
+		});
+	});
+
+	describe('assertCategoryChangeSafe', () => {
+		const DEVICE_ID = 'virtual-device';
+
+		const device = (category: DeviceCategory): DeviceEntity => {
+			const entity = new DeviceEntity();
+
+			Object.assign(entity, { id: DEVICE_ID, category });
+
+			return entity;
+		};
+
+		beforeEach(() => {
+			channelsService.findAll.mockResolvedValue([
+				{ id: 'channel-light', category: ChannelCategory.LIGHT, parent: null },
+			]);
+			channelsPropertiesService.findAll.mockResolvedValue([
+				{
+					category: PropertyCategory.ON,
+					dataType: DataTypeType.BOOL,
+					permissions: [PermissionType.READ_WRITE],
+				},
+			]);
+		});
+
+		// The device's channels and properties were built for the category the wizard was pointed at.
+		// Relabelling it keeps every one of them, so the device is then read against required slots it
+		// simply does not have — and a device PATCH writes no property, so no property hook sees it.
+		// `validateDeviceStructure` is asked about the *new* category first, then the old one — see
+		// `givenValidation` for why both, and the diff test below for what the pairing buys.
+		const givenValidation = (underNew: unknown[], underPrevious: unknown[] = []): void => {
+			deviceValidationService.validateDeviceStructure
+				.mockReturnValueOnce({ isValid: underPrevious.length === 0, issues: underPrevious })
+				.mockReturnValueOnce({ isValid: underNew.length === 0, issues: underNew });
+		};
+
+		it("refuses a change the device's existing structure does not satisfy", async () => {
+			givenValidation([
+				{
+					type: ValidationIssueType.MISSING_CHANNEL,
+					severity: ValidationIssueSeverity.ERROR,
+					message: "Required channel 'switcher' is missing",
+				},
+			]);
+
+			await expect(
+				service.assertCategoryChangeSafe(device(DeviceCategory.SWITCHER), DeviceCategory.LIGHTING),
+			).rejects.toThrow(/cannot change category/);
+		});
+
+		// `isValid` counts only errors, and a stored channel the new category does not define is reported
+		// as a *warning* — advisory for the reporting endpoint, where the device is at least still what it
+		// claims. Here it is the damage itself: every projection under that channel stays attached to a
+		// slot the category never defines.
+		it('refuses a change whose only complaint is a channel the new category does not define', async () => {
+			givenValidation([
+				{
+					type: ValidationIssueType.UNKNOWN_CHANNEL,
+					severity: ValidationIssueSeverity.WARNING,
+					message: "Channel category 'light' is not defined in specification for device category 'generic'",
+				},
+			]);
+
+			await expect(
+				service.assertCategoryChangeSafe(device(DeviceCategory.GENERIC), DeviceCategory.LIGHTING),
+			).rejects.toThrow(/not defined in specification/);
+		});
+
+		// A virtual device clears no category outright, including its own: `device_information` is
+		// synthesized carrying only `status`, so `manufacturer`, `model` and `serial_number` are always
+		// reported missing. Holding the move to absolute validity would refuse every recategorisation
+		// while claiming to have judged the structure.
+		it('ignores a complaint the device already had under its old category', async () => {
+			const preExisting = {
+				type: ValidationIssueType.MISSING_PROPERTY,
+				severity: ValidationIssueSeverity.ERROR,
+				channelCategory: ChannelCategory.DEVICE_INFORMATION,
+				message: 'Missing required property: manufacturer in channel: device_information',
+			};
+
+			givenValidation([preExisting], [preExisting]);
+
+			await expect(
+				service.assertCategoryChangeSafe(device(DeviceCategory.SWITCHER), DeviceCategory.LIGHTING),
+			).resolves.toBeUndefined();
+		});
+
+		// The rendered message embeds the category being validated, so the *same* defect reads differently
+		// on each side — "…for device category 'lighting'" against "…for device category 'switcher'".
+		// Keying identity on the text would call that pair two different issues and refuse a move that
+		// added nothing, which is the blanket ban the diff exists to avoid, reintroduced by wording.
+		it('ignores a channel that was already unknown under the old category', async () => {
+			givenValidation(
+				[
+					{
+						type: ValidationIssueType.UNKNOWN_CHANNEL,
+						severity: ValidationIssueSeverity.WARNING,
+						channelCategory: ChannelCategory.LIGHT,
+						message: "Channel category 'light' is not defined in specification for device category 'switcher'",
+					},
+				],
+				[
+					{
+						type: ValidationIssueType.UNKNOWN_CHANNEL,
+						severity: ValidationIssueSeverity.WARNING,
+						channelCategory: ChannelCategory.LIGHT,
+						message: "Channel category 'light' is not defined in specification for device category 'lighting'",
+					},
+				],
+			);
+
+			await expect(
+				service.assertCategoryChangeSafe(device(DeviceCategory.SWITCHER), DeviceCategory.LIGHTING),
+			).resolves.toBeUndefined();
+		});
+
+		// The other half of the same rule: a pre-existing complaint travelling along must not mask a new
+		// one arriving beside it.
+		it('refuses when the move adds a complaint beside one the device already had', async () => {
+			const preExisting = {
+				type: ValidationIssueType.MISSING_PROPERTY,
+				severity: ValidationIssueSeverity.ERROR,
+				channelCategory: ChannelCategory.DEVICE_INFORMATION,
+				message: 'Missing required property: manufacturer in channel: device_information',
+			};
+
+			givenValidation(
+				[
+					preExisting,
+					{
+						type: ValidationIssueType.UNKNOWN_CHANNEL,
+						severity: ValidationIssueSeverity.WARNING,
+						channelCategory: ChannelCategory.LIGHT,
+						message: "Channel category 'light' is not defined in specification for device category 'switcher'",
+					},
+				],
+				[preExisting],
+			);
+
+			await expect(
+				service.assertCategoryChangeSafe(device(DeviceCategory.SWITCHER), DeviceCategory.LIGHTING),
+			).rejects.toThrow(/not defined in specification/);
+		});
+
+		// The message names what the move broke, not everything that was ever wrong with the device.
+		it('reports only the complaints the move introduced', async () => {
+			givenValidation(
+				[
+					{
+						type: ValidationIssueType.MISSING_PROPERTY,
+						severity: ValidationIssueSeverity.ERROR,
+						message: 'Missing required property: manufacturer in channel: device_information',
+					},
+					{
+						type: ValidationIssueType.UNKNOWN_CHANNEL,
+						severity: ValidationIssueSeverity.WARNING,
+						message: "Channel category 'light' is not defined in specification for device category 'switcher'",
+					},
+				],
+				[
+					{
+						type: ValidationIssueType.MISSING_PROPERTY,
+						severity: ValidationIssueSeverity.ERROR,
+						message: 'Missing required property: manufacturer in channel: device_information',
+					},
+				],
+			);
+
+			await expect(
+				service.assertCategoryChangeSafe(device(DeviceCategory.SWITCHER), DeviceCategory.LIGHTING),
+			).rejects.toThrow(/^(?!.*manufacturer).*not defined in specification/s);
+		});
+
+		// The stored structure is what is judged, not the fact that a change happened — a device whose
+		// channels genuinely satisfy the new category has nothing wrong with it.
+		it('accepts a change the existing structure does satisfy', async () => {
+			givenValidation([], []);
+
+			await expect(
+				service.assertCategoryChangeSafe(device(DeviceCategory.SWITCHER), DeviceCategory.LIGHTING),
+			).resolves.toBeUndefined();
+		});
+
+		// Running on every PATCH would mean a device that is *already* structurally invalid — hand-built,
+		// or one whose specification moved under it — could no longer even be renamed.
+		it('asks nothing when the category did not change', async () => {
+			deviceValidationService.validateDeviceStructure.mockReturnValue({
+				isValid: false,
+				issues: [
+					{
+						type: ValidationIssueType.MISSING_CHANNEL,
+						severity: ValidationIssueSeverity.ERROR,
+						message: 'unreachable',
+					},
+				],
+			});
+
+			await expect(
+				service.assertCategoryChangeSafe(device(DeviceCategory.LIGHTING), DeviceCategory.LIGHTING),
+			).resolves.toBeUndefined();
+			expect(channelsService.findAll).not.toHaveBeenCalled();
+		});
+
+		// A device with no channels has nothing that could contradict the new category.
+		it('accepts any change to a device with no channels yet', async () => {
+			channelsService.findAll.mockResolvedValue([]);
+			deviceValidationService.validateDeviceStructure.mockReturnValue({
+				isValid: false,
+				issues: [
+					{
+						type: ValidationIssueType.MISSING_CHANNEL,
+						severity: ValidationIssueSeverity.ERROR,
+						message: 'unreachable',
+					},
+				],
+			});
+
+			await expect(
+				service.assertCategoryChangeSafe(device(DeviceCategory.SWITCHER), DeviceCategory.LIGHTING),
+			).resolves.toBeUndefined();
+			expect(deviceValidationService.validateDeviceStructure).not.toHaveBeenCalled();
+		});
+
+		// Structure comes off the stored rows, not off the payload — the payload carries no channels at
+		// all, which is precisely why a DTO constraint cannot answer this.
+		it('judges the stored channels under both categories', async () => {
+			givenValidation([], []);
+
+			await service.assertCategoryChangeSafe(device(DeviceCategory.SWITCHER), DeviceCategory.LIGHTING);
+
+			expect(channelsService.findAll).toHaveBeenCalledWith(DEVICE_ID);
+			expect(deviceValidationService.validateDeviceStructure).toHaveBeenCalledWith(
+				expect.objectContaining({
+					category: DeviceCategory.LIGHTING,
+					channels: [expect.objectContaining({ category: ChannelCategory.LIGHT })],
+				}),
+			);
+			expect(deviceValidationService.validateDeviceStructure).toHaveBeenCalledWith(
+				expect.objectContaining({
+					category: DeviceCategory.SWITCHER,
+					channels: [expect.objectContaining({ category: ChannelCategory.LIGHT })],
+				}),
+			);
+		});
+	});
+
+	describe('assertProjectionCompatible', () => {
+		const CHANNEL_ID = 'virtual-channel';
+		const DEVICE_ID = 'virtual-device';
+
+		// Resolves channel -> device the way the assertion walks them, so a test only has to say which
+		// source property is on the other end.
+		const givenSlot = (channelCategory: ChannelCategory, deviceCategory: DeviceCategory): void => {
+			channelsService.findOne.mockResolvedValue({ id: CHANNEL_ID, category: channelCategory, device: DEVICE_ID });
+			devicesService.findOne.mockResolvedValue({ id: DEVICE_ID, category: deviceCategory });
+		};
+
+		// Declares its own permissions and data type, as a real row always does — they are non-null
+		// columns, and the guard now checks the projection against the slot as well as its source.
+		const projecting = (
+			sourcePropertyId: string | null,
+			category: PropertyCategory,
+			declared: {
+				permissions?: PermissionType[];
+				dataType?: DataTypeType;
+				format?: (string | number | null)[];
+				unit?: string | null;
+			} = {},
+		): VirtualChannelPropertyEntity => {
+			const entity = new VirtualChannelPropertyEntity();
+
+			Object.assign(entity, {
+				id: 'virtual-property',
+				category,
+				permissions: declared.permissions ?? [PermissionType.READ_WRITE],
+				dataType: declared.dataType ?? DataTypeType.BOOL,
+				format: declared.format ?? null,
+				unit: declared.unit ?? null,
+				valueOrigin: VirtualValueOrigin.SOURCE,
+				sourcePropertyId,
+			});
+
+			return entity;
+		};
+
+		it('refuses a read-only source on a writable slot, carrying the reason', async () => {
+			givenSlot(ChannelCategory.LIGHT, DeviceCategory.LIGHTING);
+			channelsPropertiesService.findOne.mockResolvedValue(readOnlySourceProperty);
+
+			await expect(
+				service.assertProjectionCompatible(projecting(readOnlySourceProperty.id, PropertyCategory.ON), CHANNEL_ID),
+			).rejects.toThrow(/permission/);
+		});
+
+		it('refuses a data-type mismatch', async () => {
+			givenSlot(ChannelCategory.LIGHT, DeviceCategory.LIGHTING);
+			channelsPropertiesService.findOne.mockResolvedValue(floatSourceProperty);
+
+			await expect(
+				service.assertProjectionCompatible(projecting(floatSourceProperty.id, PropertyCategory.ON), CHANNEL_ID),
+			).rejects.toThrow(/data type/);
+		});
+
+		it('accepts a compatible source', async () => {
+			givenSlot(ChannelCategory.TEMPERATURE, DeviceCategory.SENSOR);
+			channelsPropertiesService.findOne.mockResolvedValue(readWriteSourceProperty);
+
+			await expect(
+				service.assertProjectionCompatible(
+					projecting(readWriteSourceProperty.id, PropertyCategory.TEMPERATURE, {
+						dataType: DataTypeType.FLOAT,
+						permissions: [PermissionType.READ_ONLY],
+						format: [0, 100],
+						unit: '°C',
+					}),
+					CHANNEL_ID,
+				),
+			).resolves.toBeUndefined();
+		});
+
+		// An owned property has no source to judge, so nothing should even be resolved for it — asserting
+		// on the lookups rather than only on the absence of a throw, since a `local` property that
+		// happened to be compatible would pass the weaker check for the wrong reason.
+		// The wizard derives these from the spec, but a direct create or PATCH sets them freely, and
+		// nothing else looked: a projection declaring itself `enum` over a perfectly good `uchar` source
+		// would persist and then expose the wrong representation.
+		it('refuses a projection whose own declaration does not fit the slot', async () => {
+			givenSlot(ChannelCategory.LIGHT, DeviceCategory.LIGHTING);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({ id: 'rw-bool', permissions: [PermissionType.READ_WRITE], dataType: DataTypeType.BOOL }),
+			);
+
+			const misdeclared = projecting('rw-bool', PropertyCategory.ON, { dataType: DataTypeType.FLOAT });
+
+			await expect(service.assertProjectionCompatible(misdeclared, CHANNEL_ID)).rejects.toThrow(/data type/);
+		});
+
+		// `reportCompatibility` asks whether a candidate can *satisfy* the slot, so a source offering more
+		// than required passes — an `rw` source happily feeds a `ro` slot. A projection is the opposite
+		// situation: declaring `rw` on a read-only slot advertises a write the specification does not
+		// have, and forwards it.
+		it('refuses a projection claiming a capability the slot does not offer', async () => {
+			givenSlot(ChannelCategory.TEMPERATURE, DeviceCategory.SENSOR);
+			channelsPropertiesService.findOne.mockResolvedValue(readWriteSourceProperty);
+
+			const overclaiming = projecting(readWriteSourceProperty.id, PropertyCategory.TEMPERATURE, {
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_WRITE],
+				format: [0, 100],
+				unit: '°C',
+			});
+
+			await expect(service.assertProjectionCompatible(overclaiming, CHANNEL_ID)).rejects.toThrow(/does not offer/);
+		});
+
+		// Both halves can satisfy a multi-variant slot independently and still disagree with each other.
+		// A projection forwards its source's value unchanged, so enum readings must not flow through a
+		// property calling itself numeric.
+		it('refuses a projection whose representation differs from its source', async () => {
+			givenSlot(ChannelCategory.LIGHT, DeviceCategory.LIGHTING);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({
+					id: 'enum-brightness',
+					permissions: [PermissionType.READ_WRITE],
+					dataType: DataTypeType.ENUM,
+					format: ['off', 'low', 'medium', 'high', 'full'],
+				}),
+			);
+
+			const numericProjection = projecting('enum-brightness', PropertyCategory.BRIGHTNESS, {
+				dataType: DataTypeType.UCHAR,
+				permissions: [PermissionType.READ_WRITE],
+				format: [0, 100],
+				unit: '%',
+			});
+
+			// The `uchar` variant of this slot defines a step, and a declaration without one is refused
+			// before the representation comparison is reached — this test is about the latter.
+			Object.assign(numericProjection, { step: 1 });
+
+			await expect(service.assertProjectionCompatible(numericProjection, CHANNEL_ID)).rejects.toThrow(/must match/);
+		});
+
+		// `validatePropertyCommandValue` refuses every numeric command on a property whose step is
+		// non-null but not positive and finite, so accepting one here persists a projection that looks
+		// compatible and can never be commanded.
+		it('refuses a projection declaring an unusable step', async () => {
+			givenSlot(ChannelCategory.LIGHT, DeviceCategory.LIGHTING);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({ id: 'rw-bool', permissions: [PermissionType.READ_WRITE], dataType: DataTypeType.BOOL }),
+			);
+
+			const zeroStep = projecting('rw-bool', PropertyCategory.ON, { dataType: DataTypeType.BOOL });
+
+			Object.assign(zeroStep, { step: 0 });
+
+			await expect(service.assertProjectionCompatible(zeroStep, CHANNEL_ID)).rejects.toThrow(/usable grid/);
+		});
+
+		// A sentinel belongs to the device, not the specification — no channel spec declares one — so the
+		// slot report never asks about it. A source that reserves 999 for "no reading" needs its
+		// projection to reserve it too: the projection is what a command is validated against, and it is
+		// what a read is presented through.
+		it("refuses a projection that does not reserve its source's sentinel", async () => {
+			givenSlot(ChannelCategory.TEMPERATURE, DeviceCategory.SENSOR);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({
+					id: 'sentinel-source',
+					permissions: [PermissionType.READ_WRITE],
+					dataType: DataTypeType.FLOAT,
+					format: [0, 100],
+					unit: '°C',
+					invalid: 99,
+				}),
+			);
+
+			const unguarded = projecting('sentinel-source', PropertyCategory.TEMPERATURE, {
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				format: [0, 100],
+				unit: '°C',
+			});
+
+			await expect(service.assertProjectionCompatible(unguarded, CHANNEL_ID)).rejects.toThrow(/sentinel/);
+		});
+
+		// `invalid` is a text column, so a numeric sentinel written as 99 reads back as '99'. Comparing
+		// with `===` would call these two rows a mismatch and orphan a perfectly sound projection.
+		it('accepts a sentinel that agrees across the type it was stored as', async () => {
+			givenSlot(ChannelCategory.TEMPERATURE, DeviceCategory.SENSOR);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({
+					id: 'sentinel-source',
+					permissions: [PermissionType.READ_WRITE],
+					dataType: DataTypeType.FLOAT,
+					format: [0, 100],
+					unit: '°C',
+					invalid: 99,
+				}),
+			);
+
+			const guarded = projecting('sentinel-source', PropertyCategory.TEMPERATURE, {
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				format: [0, 100],
+				unit: '°C',
+			});
+
+			Object.assign(guarded, { invalid: '99' });
+
+			await expect(service.assertProjectionCompatible(guarded, CHANNEL_ID)).resolves.toBeUndefined();
+		});
+
+		// The other direction breaks something different but no less real: nothing unsafe reaches the
+		// device, and the projection refuses commands its slot and its source both accept — a value that
+		// works sent to the real device and fails through its stand-in.
+		it('refuses a projection reserving a sentinel its source does not', async () => {
+			givenSlot(ChannelCategory.TEMPERATURE, DeviceCategory.SENSOR);
+			channelsPropertiesService.findOne.mockResolvedValue(readWriteSourceProperty);
+
+			const stricter = projecting(readWriteSourceProperty.id, PropertyCategory.TEMPERATURE, {
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				format: [0, 100],
+				unit: '°C',
+			});
+
+			Object.assign(stricter, { invalid: 99 });
+
+			await expect(service.assertProjectionCompatible(stricter, CHANNEL_ID)).rejects.toThrow(/sentinel/);
+		});
+
+		// `unit` is not a column: the create DTO cannot carry it and ChannelPropertyEntitySubscriber
+		// derives it on load, so a projection arriving at `beforeCreate` has none. Comparing that transient
+		// absence against a unit-bearing slot refuses every creation on `temperature.temperature`,
+		// `electrical_power.power` and every other slot the specification gives a unit — after the wizard
+		// preview said the pairing was fine.
+		it('accepts a projection whose unit has not been derived yet', async () => {
+			givenSlot(ChannelCategory.TEMPERATURE, DeviceCategory.SENSOR);
+			channelsPropertiesService.findOne.mockResolvedValue(readWriteSourceProperty);
+
+			const unsaved = projecting(readWriteSourceProperty.id, PropertyCategory.TEMPERATURE, {
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				format: [0, 100],
+			});
+
+			// Exactly what the create path hands over: the field is absent, not null.
+			Object.assign(unsaved, { unit: undefined });
+
+			await expect(service.assertProjectionCompatible(unsaved, CHANNEL_ID)).resolves.toBeUndefined();
+		});
+
+		// An unconstrained *writable* slot promises any value of its type may be commanded. A source that
+		// accepts only some of them narrows exactly that promise: the projection takes `TV`, forwards it,
+		// and the device refuses it. The read-only direction is fine — whatever the source reports is a
+		// value a slot permitting everything permits — which is why this only bites on writes.
+		it('refuses a constrained source on a writable slot that constrains nothing', async () => {
+			givenSlot(ChannelCategory.MEDIA_INPUT, DeviceCategory.TELEVISION);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({
+					id: 'restricted-source',
+					permissions: [PermissionType.READ_WRITE],
+					dataType: DataTypeType.STRING,
+					format: ['HDMI 1'],
+				}),
+			);
+
+			const unconstrained = projecting('restricted-source', PropertyCategory.SOURCE, {
+				dataType: DataTypeType.STRING,
+				permissions: [PermissionType.READ_WRITE],
+				format: ['HDMI 1'],
+			});
+
+			await expect(service.assertProjectionCompatible(unconstrained, CHANNEL_ID)).rejects.toThrow(
+				/may be commanded with any value of its type/,
+			);
+		});
+
+		// Both halves are judged against the slot, and both can pass that independently while disagreeing
+		// with each other. `temperature.temperature` accepts [0, 100], so a source of [0, 40] and a
+		// projection of [60, 100] each fit — and every reading the source produces then falls outside the
+		// range its own projection advertises.
+		it('refuses a projection whose range its source can never produce a value inside', async () => {
+			givenSlot(ChannelCategory.TEMPERATURE, DeviceCategory.SENSOR);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({
+					id: 'narrow-source',
+					permissions: [PermissionType.READ_ONLY],
+					dataType: DataTypeType.FLOAT,
+					format: [0, 40],
+					unit: '°C',
+				}),
+			);
+
+			const disjoint = projecting('narrow-source', PropertyCategory.TEMPERATURE, {
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				format: [60, 100],
+				unit: '°C',
+			});
+
+			await expect(service.assertProjectionCompatible(disjoint, CHANNEL_ID)).rejects.toThrow(/outside the range/);
+		});
+
+		// The agreeing case, so the rule above cannot be satisfied by refusing every constrained pair.
+		it('accepts a projection whose range covers everything its source can report', async () => {
+			givenSlot(ChannelCategory.TEMPERATURE, DeviceCategory.SENSOR);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({
+					id: 'narrow-source',
+					permissions: [PermissionType.READ_ONLY],
+					dataType: DataTypeType.FLOAT,
+					format: [0, 40],
+					unit: '°C',
+				}),
+			);
+
+			const covering = projecting('narrow-source', PropertyCategory.TEMPERATURE, {
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				format: [0, 100],
+				unit: '°C',
+			});
+
+			await expect(service.assertProjectionCompatible(covering, CHANNEL_ID)).resolves.toBeUndefined();
+		});
+
+		// `[0, null]` is how the specification writes "no maximum" — every energy slot uses it. Reading
+		// that null as "not a number" sent the slot down the enum path, where a perfectly good [0, 100]
+		// source failed because 100 is not one of {0, null}: `electrical_energy.consumption`,
+		// `grid_import`, `grid_export` and `electrical_generation.production` were all unmappable.
+		it('accepts a bounded source on a slot with no maximum', async () => {
+			givenSlot(ChannelCategory.ELECTRICAL_ENERGY, DeviceCategory.SENSOR);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({
+					id: 'metered-source',
+					permissions: [PermissionType.READ_ONLY],
+					dataType: DataTypeType.FLOAT,
+					format: [0, 100],
+					unit: 'kWh',
+				}),
+			);
+
+			const consumption = projecting('metered-source', PropertyCategory.CONSUMPTION, {
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				format: [0, 100],
+				unit: 'kWh',
+			});
+
+			await expect(service.assertProjectionCompatible(consumption, CHANNEL_ID)).resolves.toBeUndefined();
+		});
+
+		// The other direction still holds: an open-ended source cannot be shown to stay inside a slot that
+		// has a ceiling, because nothing bounds it from above.
+		it('refuses an unbounded source on a slot with a maximum', async () => {
+			givenSlot(ChannelCategory.TEMPERATURE, DeviceCategory.SENSOR);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({
+					id: 'unbounded-source',
+					permissions: [PermissionType.READ_ONLY],
+					dataType: DataTypeType.FLOAT,
+					format: [0, null],
+					unit: '°C',
+				}),
+			);
+
+			const bounded = projecting('unbounded-source', PropertyCategory.TEMPERATURE, {
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				format: [0, 100],
+				unit: '°C',
+			});
+
+			await expect(service.assertProjectionCompatible(bounded, CHANNEL_ID)).rejects.toThrow(/outside the range/);
+		});
+
+		it('ignores an owned property', async () => {
+			const owned = new VirtualChannelPropertyEntity();
+
+			Object.assign(owned, {
+				id: 'owned',
+				category: PropertyCategory.ON,
+				valueOrigin: VirtualValueOrigin.LOCAL,
+				sourcePropertyId: null,
+			});
+
+			await expect(service.assertProjectionCompatible(owned, CHANNEL_ID)).resolves.toBeUndefined();
+			expect(channelsService.findOne).not.toHaveBeenCalled();
+		});
+
+		// An orphan — a projection whose source was deleted — is a state the device degrades into, not a
+		// write to refuse. Refusing it here would make an orphaned property impossible to edit back into
+		// shape, which is exactly what the remap flow exists to do.
+		// `value_origin` is optional on the create DTO and the column default supplies `source` only on
+		// save, so a request that names a source but omits the origin reaches this hook with
+		// `valueOrigin === undefined`. That is the shape a direct API caller sends most readily, and it
+		// must not slip past unchecked.
+		it('checks a projection whose origin has not been defaulted yet', async () => {
+			givenSlot(ChannelCategory.LIGHT, DeviceCategory.LIGHTING);
+			channelsPropertiesService.findOne.mockResolvedValue(readOnlySourceProperty);
+
+			const undefaulted = new VirtualChannelPropertyEntity();
+
+			Object.assign(undefaulted, {
+				id: 'undefaulted',
+				category: PropertyCategory.ON,
+				sourcePropertyId: readOnlySourceProperty.id,
+			});
+
+			await expect(service.assertProjectionCompatible(undefaulted, CHANNEL_ID)).rejects.toThrow(/permission/);
+		});
+
+		it('ignores a projection whose source is not set', async () => {
+			await expect(
+				service.assertProjectionCompatible(projecting(null, PropertyCategory.ON), CHANNEL_ID),
+			).resolves.toBeUndefined();
+			expect(channelsService.findOne).not.toHaveBeenCalled();
+		});
+	});
+
+	// Matching data types are not enough. `fan.speed` and `light.brightness` are both `rw` enums, so
+	// every other check passes — but their value sets differ, so a fan speed projected into a brightness
+	// slot would report `turbo` as a brightness and could never produce `full`.
+	describe('reportCompatibility — formats', () => {
+		it('refuses an enum source carrying values the slot does not define', () => {
+			const fanSpeed = property({
+				id: 'fan-speed',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.ENUM,
+				format: ['off', 'low', 'medium', 'high', 'turbo', 'auto'],
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.BRIGHTNESS },
+				fanSpeed,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('turbo');
+		});
+
+		// A slot that constrains its values cannot be satisfied by a source that declares none: nothing
+		// there shows the source stays inside the range, and "unknown" is not "compatible".
+		it('refuses a source with no format against a constrained slot', () => {
+			const formatless = property({
+				id: 'formatless',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.UCHAR,
+				unit: '%',
+				format: null,
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.BRIGHTNESS },
+				formatless,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('declares no format');
+		});
+
+		// A write-only slot is commanded exactly like a read-write one, so the source still has to accept
+		// everything the slot may be told to do.
+		it('refuses a write-only slot a source cannot accept every command for', () => {
+			const partialSource = property({
+				id: 'play-only',
+				permissions: [PermissionType.WRITE_ONLY],
+				dataType: DataTypeType.ENUM,
+				format: ['play'],
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.MEDIA, channel: ChannelCategory.MEDIA_PLAYBACK, property: PropertyCategory.COMMAND },
+				partialSource,
+			);
+
+			expect(report.compatible).toBe(false);
+		});
+
+		it('accepts an enum source whose values match the slot', () => {
+			const brightnessLevel = property({
+				id: 'brightness-level',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.ENUM,
+				format: ['off', 'low', 'medium', 'high', 'full'],
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.BRIGHTNESS },
+				brightnessLevel,
+			);
+
+			expect(report.compatible).toBe(true);
+		});
+
+		// The range says which values are legal; the step says which of them exist. A slot stepping by 1
+		// can be commanded with 43, and a source stepping by 5 cannot take it — the command passes
+		// validation against the virtual property and is forwarded unchanged.
+		// A grid is a width and an origin. `fan.speed`'s percentage variant steps by 1 from 0, so a source
+		// stepping by the same 1 but from 0.5 sits inside the range and still never lands on a single one
+		// of the slot's values — the widths match exactly and the two accept disjoint sets.
+		it('refuses a numeric source whose grid is offset from the slot', () => {
+			const offsetSource = property({
+				id: 'offset-grid',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.UCHAR,
+				unit: '%',
+				format: [0.5, 99.5],
+				step: 1,
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.FAN, channel: ChannelCategory.FAN, property: PropertyCategory.SPEED },
+				offsetSource,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('grid');
+		});
+
+		// A slot that defines a grid is not satisfied by a candidate that defines none: without a step,
+		// `validatePropertyCommandValue` accepts 61 on a `[0, 86400]` projection and it is forwarded
+		// unchanged to a step-60 source.
+		// A matched variant's format may be *explicitly* null, and that null is the answer.
+		// `media_input.source` has an enum variant and a `custom` string variant declaring no format on
+		// purpose — coalescing past that null borrows the enum set and rejects every legitimate free-text
+		// source the specification plainly allows.
+		it('accepts a source matching a variant that declares no format', () => {
+			const freeTextSource = property({
+				id: 'custom-input',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.STRING,
+				format: null,
+			});
+
+			const report = service.reportCompatibility(
+				{
+					category: DeviceCategory.TELEVISION,
+					channel: ChannelCategory.MEDIA_INPUT,
+					property: PropertyCategory.SOURCE,
+				},
+				freeTextSource,
+			);
+
+			expect(report.compatible).toBe(true);
+		});
+
+		// Two slots can agree on permissions, data type and range and still mean different things.
+		// `carbon_dioxide.concentration` is ppm and `nitrogen_dioxide.concentration` is µg/m³, both
+		// read-only floats over the same span — a projection forwards the number unchanged, so pairing
+		// them relabels every reading rather than converting it.
+		it('refuses a source measured in a different unit', () => {
+			const ppmSource = property({
+				id: 'ppm-source',
+				permissions: [PermissionType.READ_ONLY],
+				dataType: DataTypeType.FLOAT,
+				format: [0, 100000],
+				unit: 'ppm',
+			});
+
+			const report = service.reportCompatibility(
+				{
+					category: DeviceCategory.SENSOR,
+					channel: ChannelCategory.NITROGEN_DIOXIDE,
+					property: PropertyCategory.CONCENTRATION,
+				},
+				ppmSource,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('ppm');
+		});
+
+		// `[min]` is a supported one-sided format meaning "no maximum", so nothing shows the source stays
+		// under the slot's ceiling. It used to reach the enum comparison, where `{0}` looked like a
+		// subset of `{0, 10000}` and passed.
+		// A unit on one side and nothing on the other is a mismatch too. Recategorising a `battery`
+		// channel to `door` leaves the same `percentage` property unitless while the projection still
+		// says `%`, and the readings keep being presented as percentages.
+		it('refuses a source that declares no unit for a slot that does', () => {
+			const unitlessSource = property({
+				id: 'unitless',
+				permissions: [PermissionType.READ_ONLY],
+				dataType: DataTypeType.FLOAT,
+				format: [0, 100],
+				unit: null,
+			});
+
+			const report = service.reportCompatibility(
+				{
+					category: DeviceCategory.SENSOR,
+					channel: ChannelCategory.TEMPERATURE,
+					property: PropertyCategory.TEMPERATURE,
+				},
+				unitlessSource,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('no unit');
+		});
+
+		// A writable slot with no grid accepts any value in range, so a source that imposes one is
+		// stricter than the projection in front of it: `light.saturation` has no step, and a source
+		// stepping by 5 refuses the 43 the projection accepted and forwarded.
+		it('refuses a stepped source for an unstepped writable slot', () => {
+			const steppedSource = property({
+				id: 'stepped-for-unstepped',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.UCHAR,
+				format: [0, 100],
+				step: 5,
+				unit: '%',
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.SATURATION },
+				steppedSource,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('stricter grid');
+		});
+
+		it('refuses a one-sided numeric source against a bounded slot', () => {
+			const unboundedSource = property({
+				id: 'unbounded',
+				permissions: [PermissionType.READ_ONLY],
+				dataType: DataTypeType.FLOAT,
+				format: [0],
+				unit: 'W',
+			});
+
+			const report = service.reportCompatibility(
+				{
+					category: DeviceCategory.SWITCHER,
+					channel: ChannelCategory.ELECTRICAL_POWER,
+					property: PropertyCategory.POWER,
+				},
+				unboundedSource,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('unbounded');
+		});
+
+		it('refuses a numeric source with no step against a stepped slot', () => {
+			const steplessSource = property({
+				id: 'stepless',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.UCHAR,
+				unit: '%',
+				format: [0, 100],
+				step: null,
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.FAN, channel: ChannelCategory.FAN, property: PropertyCategory.SPEED },
+				steplessSource,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('declares no step');
+		});
+
+		it('accepts a numeric source sharing the slot grid', () => {
+			const alignedSource = property({
+				id: 'aligned-grid',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.UCHAR,
+				unit: '%',
+				format: [0, 100],
+				step: 1,
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.FAN, channel: ChannelCategory.FAN, property: PropertyCategory.SPEED },
+				alignedSource,
+			);
+
+			expect(report.compatible).toBe(true);
+		});
+
+		it('refuses a numeric source whose step grid cannot take every command', () => {
+			const coarseSource = property({
+				id: 'coarse-step',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.UCHAR,
+				unit: '%',
+				format: [0, 100],
+				step: 5,
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.BRIGHTNESS },
+				coarseSource,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('step');
+		});
+
+		it('refuses a numeric source ranging outside what the slot accepts', () => {
+			const wideRange = property({
+				id: 'wide-range',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.UCHAR,
+				unit: '%',
+				format: [0, 255],
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.BRIGHTNESS },
+				wideRange,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('255');
 		});
 	});
 
@@ -383,6 +1533,105 @@ describe('VirtualDevicesService', () => {
 			expect(() =>
 				service.assertPermissionsCompatible([PermissionType.READ_ONLY, PermissionType.WRITE_ONLY], readWriteSource),
 			).not.toThrow();
+		});
+	});
+
+	describe('reportCompatibility — supplementary', () => {
+		it('leaves reason unset when the source is fully compatible', () => {
+			const report = service.reportCompatibility(
+				{
+					category: DeviceCategory.SENSOR,
+					channel: ChannelCategory.TEMPERATURE,
+					property: PropertyCategory.TEMPERATURE,
+				},
+				readWriteSourceProperty,
+			);
+
+			expect(report).toEqual({ compatible: true });
+		});
+
+		// Pins that permission is checked before data type, and that the check stops at the first
+		// failure: a source wrong on both counts reports the permission reason, not both concatenated.
+		// The wizard renders one reason per option, not a list.
+		it('reports the permission reason, not the data-type reason, when a source fails both', () => {
+			// temperature.temperature requires read-only; write-only satisfies neither a direct match nor
+			// the read-write fallback, so this is wrong on permission. bool (vs. required float) makes it
+			// wrong on data type too.
+			const doublyWrongSource = property({
+				id: 'doubly-wrong',
+				permissions: [PermissionType.WRITE_ONLY],
+				dataType: DataTypeType.BOOL,
+			});
+
+			const report = service.reportCompatibility(
+				{
+					category: DeviceCategory.SENSOR,
+					channel: ChannelCategory.TEMPERATURE,
+					property: PropertyCategory.TEMPERATURE,
+				},
+				doublyWrongSource,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('permission');
+			expect(report.reason).not.toContain('data type');
+		});
+
+		// light.brightness accepts either a percentage (uchar) or a discrete level (enum) — exercises the
+		// hasMultipleDataTypes branch's accepting path, which the pinned tests never reach (they only use
+		// single-data-type slots).
+		it('accepts a source matching one variant of a multi-datatype slot', () => {
+			// Formats are compared now, so the row carries the one its variant defines.
+			const percentageSource = property({
+				id: 'brightness-percentage',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.UCHAR,
+				unit: '%',
+				format: [0, 100],
+				step: 1,
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.BRIGHTNESS },
+				percentageSource,
+			);
+
+			expect(report.compatible).toBe(true);
+		});
+
+		it('rejects a source matching none of the variants of a multi-datatype slot', () => {
+			const stringSource = property({
+				id: 'brightness-string',
+				permissions: [PermissionType.READ_WRITE],
+				dataType: DataTypeType.STRING,
+			});
+
+			const report = service.reportCompatibility(
+				{ category: DeviceCategory.LIGHTING, channel: ChannelCategory.LIGHT, property: PropertyCategory.BRIGHTNESS },
+				stringSource,
+			);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('data type');
+		});
+
+		// Defensive: a spec slot the schema does not define (a client/schema mismatch, not a real
+		// incompatibility) reports rather than throws, so one bad slot in a batch cannot 500 the request.
+		it('reports a spec slot the schema does not define as incompatible rather than throwing', () => {
+			// lighting genuinely offers a light channel (so this exercises the "channel has no such
+			// property" branch specifically, not the category/channel guard covered above).
+			const slot = {
+				category: DeviceCategory.LIGHTING,
+				channel: ChannelCategory.LIGHT,
+				property: PropertyCategory.TEMPERATURE,
+			};
+
+			expect(() => service.reportCompatibility(slot, readWriteSourceProperty)).not.toThrow();
+
+			const report = service.reportCompatibility(slot, readWriteSourceProperty);
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toBeTruthy();
 		});
 	});
 

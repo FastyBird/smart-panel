@@ -39,7 +39,12 @@ import {
 	DEVICES_MODULE_PREFIX,
 	DeviceHiddenFilter,
 } from '../devices.constants';
-import { DevicesException, DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
+import {
+	DevicesException,
+	DevicesNotAllowedException,
+	DevicesNotFoundException,
+	DevicesValidationException,
+} from '../devices.exceptions';
 import { CreateDeviceDto, ReqCreateDeviceDto } from '../dto/create-device.dto';
 import { ListDevicesQueryDto } from '../dto/list-devices-query.dto';
 import { ReqUpdateDeviceDto, UpdateDeviceDto } from '../dto/update-device.dto';
@@ -80,13 +85,23 @@ export class DevicesController {
 		name: 'hidden',
 		required: false,
 		enum: DeviceHiddenFilter,
-		description: 'Filter by hidden flag. Omit to return every device.',
+		description: 'Filter by hidden flag. Omitted means visible devices only; pass `all` to include hidden ones.',
 	})
 	@Get()
 	async findAll(@Query() query: ListDevicesQueryDto): Promise<DevicesResponseModel> {
 		this.logger.debug('Fetching all devices');
 
-		const devices = await this.devicesService.findAll(undefined, query.hidden ?? DeviceHiddenFilter.ALL);
+		// Omitting the filter means "the devices a user should see", not "everything". A hidden device is
+		// one a virtual device has replaced, so a client that never learned about the flag — the panel
+		// calls this with no query at all — would otherwise render the physical source alongside its
+		// virtual replacement and let the operator command both. Callers that genuinely want hidden rows
+		// ask for them: the admin's device list passes `all` behind its "show hidden" toggle.
+		//
+		// The default lives here rather than on `DevicesService.findAll`, whose own default stays `ALL`:
+		// its internal callers (security sensor and alarm providers, the security aggregator, Buddy's
+		// context builder, device validation) each need the full set, and moving the default down would
+		// change what they see as a side effect of an HTTP concern.
+		const devices = await this.devicesService.findAll(undefined, query.hidden ?? DeviceHiddenFilter.FALSE);
 
 		this.logger.debug(`Retrieved ${devices.length} devices`);
 
@@ -298,7 +313,9 @@ export class DevicesController {
 	)
 	@ApiBadRequestResponse('Invalid UUID format or unsupported device type')
 	@ApiNotFoundResponse('Device not found')
-	@ApiUnprocessableEntityResponse('Device could not be updated')
+	@ApiUnprocessableEntityResponse(
+		'Device could not be updated, or the device is hidden and its room or zones can not be changed',
+	)
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Patch(':id')
 	async update(
@@ -359,6 +376,24 @@ export class DevicesController {
 
 			return response;
 		} catch (error) {
+			// A hidden device's placement is deliberately immutable (see assertPlacementChangeAllowed in
+			// DevicesService) — a policy refusal, not a transient failure. The generic branch below would
+			// answer "please try again later", telling the client to retry something that can never
+			// succeed, so this one carries the reason through instead.
+			if (error instanceof DevicesNotAllowedException) {
+				throw new UnprocessableEntityException(error.message);
+			}
+
+			// Same reasoning one branch up, for the other refusal that carries a reason worth reading: a
+			// type owner's `beforeUpdate` hook rejects a specific, explainable state (a virtual device
+			// being relabelled into a category its channels do not implement). `DevicesValidationException`
+			// extends `DevicesException`, so without this branch the generic one below answers "please try
+			// again later" — advising a retry that can never succeed and discarding the only text that
+			// says why. `addDeviceToZone` in this same controller already draws the distinction.
+			if (error instanceof DevicesValidationException) {
+				throw new UnprocessableEntityException(error.message);
+			}
+
 			if (error instanceof DevicesException) {
 				throw new UnprocessableEntityException('Device could not be updated. Please try again later');
 			}
@@ -432,7 +467,9 @@ export class DevicesController {
 	@ApiNoContentResponse({ description: 'Device successfully added to zone' })
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Device or zone not found')
-	@ApiUnprocessableEntityResponse('Cannot add device to floor zone or non-zone space')
+	@ApiUnprocessableEntityResponse(
+		'Cannot add device to floor zone or non-zone space, or the device is hidden and its zones can not be changed',
+	)
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post(':id/zones/:zoneId')
 	@HttpCode(204)
@@ -452,6 +489,11 @@ export class DevicesController {
 			if (error instanceof DevicesNotFoundException) {
 				throw new NotFoundException(error.message);
 			}
+			// A hidden device's placement is immutable, here as much as on PATCH — without this branch
+			// the refusal would escape as a 500 instead of a 422 the client can act on.
+			if (error instanceof DevicesNotAllowedException) {
+				throw new UnprocessableEntityException(error.message);
+			}
 			if (error instanceof DevicesValidationException) {
 				throw new UnprocessableEntityException(error.message);
 			}
@@ -470,6 +512,7 @@ export class DevicesController {
 	@ApiNoContentResponse({ description: 'Device successfully removed from zone' })
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Device not found')
+	@ApiUnprocessableEntityResponse('Device is hidden and its zones can not be changed')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Delete(':id/zones/:zoneId')
 	@HttpCode(204)
@@ -481,7 +524,16 @@ export class DevicesController {
 
 		await this.getOneOrThrow(id);
 
-		await this.deviceZonesService.removeDeviceFromZone(id, zoneId);
+		try {
+			await this.deviceZonesService.removeDeviceFromZone(id, zoneId);
+		} catch (error) {
+			// See addDeviceToZone(): removal is refused on a hidden device for the same reason, and
+			// needs the same 422 rather than an unhandled 500.
+			if (error instanceof DevicesNotAllowedException) {
+				throw new UnprocessableEntityException(error.message);
+			}
+			throw error;
+		}
 
 		this.logger.debug(`Successfully removed device id=${id} from zone id=${zoneId}`);
 	}

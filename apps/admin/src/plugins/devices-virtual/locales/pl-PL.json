@@ -1,0 +1,141 @@
+{
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Identyfikator wewnętrzny",
+				"placeholder": "ID urządzenia"
+			},
+			"identifier": {
+				"title": "Identyfikator systemowy",
+				"placeholder": "Identyfikator systemowy urządzenia"
+			},
+			"category": {
+				"title": "Kategoria",
+				"placeholder": "Kategoria urządzenia",
+				"validation": {
+					"required": "Wybierz kategorię urządzenia"
+				}
+			},
+			"name": {
+				"title": "Nazwa",
+				"placeholder": "Nazwa urządzenia",
+				"validation": {
+					"required": "Wprowadź nazwę urządzenia"
+				}
+			},
+			"description": {
+				"title": "Opis",
+				"placeholder": "Opis urządzenia"
+			},
+			"enabled": {
+				"title": "Włączone"
+			}
+		}
+	},
+	"wizard": {
+		"title": "Utwórz urządzenie wirtualne",
+		"subtitle": "Utwórz urządzenie z kanałów innego urządzenia",
+		"breadcrumb": "Utwórz urządzenie wirtualne",
+		"viewDevice": "Zobacz urządzenie",
+		"steps": {
+			"category": "Kategoria",
+			"mapping": "Mapowanie",
+			"details": "Szczegóły",
+			"review": "Podsumowanie"
+		},
+		"category": {
+			"heading": "Wybierz kategorię",
+			"description": "Wybierz rodzaj tworzonego urządzenia. Określa on, które kanały i właściwości będzie trzeba zmapować w następnym kroku.",
+			"blockedHeading": "Niedostępne w tym wydaniu",
+			"blockedReason": "wymaga sterownika — zaplanowano na kolejne wydanie"
+		},
+		"mapping": {
+			"heading": "Połącz właściwości",
+			"description": "Każda właściwość poniżej pochodzi z rzeczywistego urządzenia. Wypełnij co najmniej wymagane — pozostałe są opcjonalne i mogą zostać puste.",
+			"noCategory": "Najpierw wybierz kategorię urządzenia.",
+			"progress": "Zmapowano {filled} z {total} wymaganych właściwości",
+			"noRequired": "Ta kategoria nie ma wymaganych właściwości — zmapuj co najmniej jedną, aby kontynuować",
+			"channelRequired": "Wymagany",
+			"channelOptional": "Opcjonalny",
+			"propertyRequired": "Wymagana",
+			"showOptional": "Pokaż jeszcze {count} właściwości opcjonalnych",
+			"source": {
+				"devicePlaceholder": "Urządzenie źródłowe",
+				"channelPlaceholder": "Kanał źródłowy",
+				"propertyPlaceholder": "Właściwość źródłowa"
+			},
+			"shortcut": {
+				"description": "Przejmij cały kanał: wybierz kanał rzeczywistego urządzenia i wypełnij nim wszystkie właściwości, które może pokryć.",
+				"apply": "Wypełnij z kanału",
+				"applied": "Wypełniono {filled} z {total} właściwości z wybranego kanału.",
+				"nothingApplied": "Wybrany kanał nie ma żadnej właściwości, której ten kanał mógłby użyć."
+			},
+			"errors": {
+				"checkFailed": "Nie udało się zweryfikować tego źródła. Wybierz inne lub spróbuj ponownie.",
+				"incompatible": "To źródło nie może wypełnić tej właściwości."
+			},
+			"constraints": {
+				"oneOrMoreOf": "wymaga co najmniej jednej z: {properties}",
+				"oneOf": "przyjmuje tylko jedną z: {properties}",
+				"mutuallyExclusive": "nie można łączyć tych grup: {groups}",
+				"deviceOneOrMoreOf": "wymaga co najmniej jednego z tych kanałów: {channels}",
+				"deviceOneOf": "przyjmuje tylko jeden z tych kanałów: {channels}",
+				"deviceMutuallyExclusive": "nie można łączyć tych kanałów: {groups}"
+			}
+		},
+		"details": {
+			"heading": "Nazwij i umieść urządzenie",
+			"description": "Nadaj urządzeniu nazwę i opcjonalnie przypisz je do pokoju i stref. Nazwa jest sugerowana na podstawie kategorii i pokoju — możesz ją zmienić."
+		},
+		"review": {
+			"heading": "Sprawdź i utwórz",
+			"description": "Sprawdź poniższe podsumowanie, a następnie utwórz urządzenie. Każda wymieniona właściwość jest przejęta z kanału rzeczywistego urządzenia.",
+			"noMappings": "Nic jeszcze nie zostało zmapowane — wróć i zmapuj co najmniej jedną właściwość.",
+			"columns": {
+				"property": "Właściwość",
+				"sourceDevice": "Urządzenie źródłowe",
+				"sourceChannel": "Kanał źródłowy",
+				"sourceProperty": "Właściwość źródłowa"
+			},
+			"hideSource": {
+				"label": "Ukryj {device} — wszystkie powyższe właściwości pochodzą z tego urządzenia",
+				"hint": "Ukrywa urządzenie źródłowe z list i selektorów. Pozostaje ono w pełni nienaruszone i można je w dowolnym momencie ponownie odkryć z listy urządzeń.",
+				"retry": "Spróbuj ukryć ponownie",
+				"success": "{device} jest teraz ukryte"
+			},
+			"created": "Utworzono {name}",
+			"create": "Utwórz urządzenie",
+			"noRoom": "Nie przypisano pokoju",
+			"noZones": "Nie przypisano stref",
+			"unknownSource": "Nieznane",
+			"errors": {
+				"createFailed": "Nie udało się utworzyć urządzenia. Spróbuj ponownie.",
+				"hideFailed": "Nie udało się ukryć urządzenia źródłowego.",
+				"hideFailedFlash": "{device} nie zostało ukryte: żądanie się nie powiodło. Możesz je ukryć później z listy urządzeń.",
+				"zonesFailed": "Nie udało się przypisać {count} stref(y). Możesz je dodać później z listy urządzeń."
+			}
+		}
+	},
+	"sources": {
+		"heading": "Urządzenia źródłowe",
+		"description": "Fizyczne urządzenia, z których zapożyczone są właściwości tego urządzenia.",
+		"empty": "To urządzenie nie zapożycza niczego z innego urządzenia.",
+		"loadFailed": "Nie udało się wczytać urządzeń źródłowych.",
+		"retry": "Spróbuj ponownie",
+		"warning": {
+			"title": "{channel} · {property}: utracono źródło",
+			"description": "Właściwość źródłowa została usunięta. To urządzenie pozostaje offline, dopóki nie zostanie ponownie przypisana.",
+			"remap": "Przypisz ponownie"
+		}
+	},
+	"remap": {
+		"title": "Przypisz ponownie {property}",
+		"description": "Wybierz nowe źródło dla tej właściwości. Potwierdzić można tylko zgodne źródło.",
+		"confirm": "Przypisz ponownie",
+		"success": "{property} teraz pobiera wartości z nowego źródła",
+		"errors": {
+			"propertyGone": "Ta właściwość już nie istnieje.",
+			"updateFailed": "Nie udało się ponownie przypisać właściwości. Spróbuj ponownie."
+		}
+	}
+}

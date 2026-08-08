@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { describe, expect, it, vi } from 'vitest';
 
-import { DevicesModuleDeviceCategory, DevicesModuleDeviceConnectionStatus } from '../../../openapi.constants';
+import { DevicesModuleDeviceCategory, DevicesModuleDeviceConnectionStatus, DevicesModuleDeviceHiddenBy } from '../../../openapi.constants';
 import { DevicesValidationException } from '../devices.exceptions';
 
 import { DeviceCreateReqSchema, DeviceSchema, DeviceUpdateReqSchema } from './devices.store.schemas';
@@ -70,6 +70,8 @@ describe('Devices Transformers', (): void => {
 				name: 'Some device',
 				description: 'With description',
 				enabled: true,
+				hidden: false,
+				hiddenBy: null,
 				roomId: null,
 				zoneIds: [],
 				status: {
@@ -87,6 +89,13 @@ describe('Devices Transformers', (): void => {
 			expect(() => transformDeviceResponse({ ...validDeviceResponse, id: null } as unknown as IDeviceRes, DeviceSchema)).toThrow(
 				DevicesValidationException
 			);
+		});
+
+		it('carries hiddenBy through the transformer', (): void => {
+			const device = transformDeviceResponse({ ...validDeviceResponse, hidden: true, hidden_by: 'system' } as unknown as IDeviceRes, DeviceSchema);
+
+			expect(device.hidden).toBe(true);
+			expect(device.hiddenBy).toBe('system');
 		});
 	});
 
@@ -131,6 +140,28 @@ describe('Devices Transformers', (): void => {
 					DeviceUpdateReqSchema
 				)
 			).toThrow(DevicesValidationException);
+		});
+
+		// The trap this pins: `hidden`/`hidden_by` are real fields a caller (the virtual device wizard's
+		// review step, hiding the source device it just split) can legitimately send, but a Zod object
+		// schema silently strips any key it does not declare. Asserting only that a store action was
+		// *called* with the right local payload would not catch this — the drop happens one layer further
+		// in, inside this exact transform. If `DeviceUpdateReqSchema` ever loses these two fields again,
+		// this is the test that fails.
+		it('carries hidden and hidden_by through the transformer rather than dropping them', (): void => {
+			const result = transformDeviceUpdateRequest(
+				{
+					...validDeviceUpdatePayload,
+					hidden: true,
+					hiddenBy: DevicesModuleDeviceHiddenBy.system,
+				} as unknown as IDevicesEditActionPayload['data'],
+				DeviceUpdateReqSchema
+			);
+
+			expect(result).toMatchObject({
+				hidden: true,
+				hidden_by: DevicesModuleDeviceHiddenBy.system,
+			});
 		});
 	});
 });

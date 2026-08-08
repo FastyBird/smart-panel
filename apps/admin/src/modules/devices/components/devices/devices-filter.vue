@@ -40,6 +40,24 @@
 					/>
 				</el-radio-group>
 			</el-form-item>
+
+			<el-divider direction="vertical" />
+
+			<el-form-item
+				:label="t('devicesModule.fields.devices.showHidden.title')"
+				:class="[ns.e('show-hidden')]"
+				class="p-1 m-0!"
+			>
+				<!-- Disabled while a fetch is in flight: flipping it re-fetches the list from the
+				     backend rather than filtering client-side, so a switch a user could flip mid-fetch
+				     would let a second request overlap the first. -->
+				<el-switch
+					v-model="innerShowHidden"
+					:disabled="props.loading"
+					:loading="props.loading"
+					data-test-id="show-hidden-devices"
+				/>
+			</el-form-item>
 		</el-form>
 
 		<bulk-actions-toolbar
@@ -71,7 +89,19 @@
 import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElRadioButton, ElRadioGroup, type FormInstance, useNamespace } from 'element-plus';
+import {
+	ElButton,
+	ElDivider,
+	ElForm,
+	ElFormItem,
+	ElIcon,
+	ElInput,
+	ElRadioButton,
+	ElRadioGroup,
+	ElSwitch,
+	type FormInstance,
+	useNamespace,
+} from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
@@ -89,6 +119,7 @@ const props = defineProps<IDevicesFilterProps>();
 
 const emit = defineEmits<{
 	(e: 'update:filters', filters: IDevicesFilter): void;
+	(e: 'update:show-hidden', showHidden: boolean): void;
 	(e: 'reset-filters'): void;
 	(e: 'adjust-list'): void;
 	(e: 'bulk-action', key: string): void;
@@ -98,6 +129,8 @@ const ns = useNamespace('devices-filter');
 const { t } = useI18n();
 
 const innerFilters = useVModel(props, 'filters', emit);
+
+const innerShowHidden = useVModel(props, 'showHidden', emit);
 
 const filterFormEl = ref<FormInstance | undefined>(undefined);
 

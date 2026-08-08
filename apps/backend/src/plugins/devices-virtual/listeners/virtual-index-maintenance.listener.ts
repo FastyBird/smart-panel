@@ -1,12 +1,18 @@
-import { DataSource } from 'typeorm';
+import { DataSource, In, IsNull, Repository } from 'typeorm';
 
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
+import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { EventType } from '../../../modules/devices/devices.constants';
+import { DeviceHiddenBy, DeviceHiddenFilter, EventType } from '../../../modules/devices/devices.constants';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
+import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
+import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
+import { VirtualDevicesService } from '../services/virtual-devices.service';
 import { VirtualIndexRebuildResult, VirtualPropertyIndexService } from '../services/virtual-property-index.service';
 
 import { VirtualStatusListener } from './virtual-status.listener';
@@ -172,6 +178,35 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	private readonly pendingUnhideSourceDeviceIds = new Set<string>();
 
 	/**
+	 * Virtual devices some pass reported re-wired, held until a pass that actually read committed state
+	 * can announce what became of them. Drained only by announceOrphanedProjections().
+	 *
+	 * Same reasoning as `pendingUnhideSourceDeviceIds` above, and for the same structural reason: an
+	 * orphan announcement is an *edge*, and this one has no opposite. A pass whose wait expired can read
+	 * a still-open deletion's uncommitted rows, and announcing off that read tells every client a
+	 * projection lost its source — then the transaction rolls back, the repair pass quietly restores the
+	 * link in the index, and nothing ever tells them otherwise, because this only ever looks for rows
+	 * with no source. The false orphan would sit in the admin and the panel until a reload.
+	 *
+	 * Queueing is what makes the *read* wait rather than the write: announceOrphanedProjections() asks
+	 * the database at the moment it drains, so a rollback that restored the link simply produces no
+	 * orphan to announce.
+	 */
+	private readonly pendingAnnounceVirtualDeviceIds = new Set<string>();
+
+	/**
+	 * Channels whose properties could not be read when their CHANNEL_UPDATED arrived.
+	 *
+	 * That event is the only notice a source channel's recategorisation gives — it schedules no rebuild
+	 * of its own — so a read that fails takes the whole check with it, and a projection left reading a
+	 * property whose meaning has changed stays linked until some unrelated metadata update happens to
+	 * revisit it. Queued here and re-checked on the next settled pass, which is the same treatment the
+	 * two sets above get for the same reason: the retry belongs where the state is known to be
+	 * committed, not inline against the failure that just happened.
+	 */
+	private readonly pendingRecheckChannelIds = new Set<string>();
+
+	/**
 	 * True once a wait has run the full budget out with the transaction flag still set, and back to
 	 * false the moment any poll sees it clear again.
 	 *
@@ -191,7 +226,17 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 		private readonly index: VirtualPropertyIndexService,
 		private readonly status: VirtualStatusListener,
 		private readonly devicesService: DevicesService,
+		private readonly virtualDevicesService: VirtualDevicesService,
+		private readonly channelsPropertiesService: ChannelsPropertiesService,
+		// Taken around the decision to unhide a source: the writes that could invalidate that decision —
+		// a projection created against the source — hold the same lock. See unhideAbandonedSources().
+		private readonly structureLock: DeviceStructureLockService,
+		private readonly eventEmitter: EventEmitter2,
 		private readonly dataSource: DataSource,
+		// Only ever used to clear `hiddenBy` — the one field of an unhide that UpdateDeviceDto cannot
+		// express. See unhideSource() for why that needs a write outside DevicesService.update().
+		@InjectRepository(DeviceEntity)
+		private readonly devicesRepository: Repository<DeviceEntity>,
 	) {}
 
 	/**
@@ -223,6 +268,14 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 * and the outgoing index is empty here, so it is structurally always `[]` on this pass. There is no
 	 * bootstrap equivalent of "the last virtual device referencing this source went away".
 	 *
+	 * The abandonment a restart *loses* — as opposed to the one it structurally cannot observe — is
+	 * recovered by reconcileSystemHiddenSources() instead, from two things that do survive a restart:
+	 * the hydrated index, and the `hiddenBy` column. It runs after the hydration for a reason that is
+	 * not merely ordering — the index is its entire evidence for "nothing references this source
+	 * anymore", so a pass that failed to fill it must not reach the reconciliation at all. A rebuild()
+	 * that throws leaves the `try` below before it, which is exactly the intended behaviour: an empty
+	 * index would otherwise answer "nothing references anything" for every source in the system.
+	 *
 	 * ## Why it is awaited, and why it still cannot abort startup
 	 *
 	 * Awaited rather than started fire-and-forget so the index is populated and the repair complete
@@ -240,8 +293,9 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 * starts empty and the next structural event rebuilds it regardless, so a failed first pass costs
 	 * staleness until then rather than a dead process. Logged at error level, not warn — outside those
 	 * two known-benign cases a failure here means the index is silently empty, and an operator should
-	 * see that. recomputeStatuses() additionally contains its own per-device failures, so one virtual
-	 * device that cannot be recomputed neither costs the others their repair nor reaches this catch.
+	 * see that. recomputeStatuses() and reconcileSystemHiddenSources() additionally contain their own
+	 * failures — per device, and as a whole — so neither one virtual device that cannot be recomputed
+	 * nor a reconciliation that cannot read at all costs the others their repair or reaches this catch.
 	 *
 	 * Deliberately not routed through handleStructuralChange()/runRebuildLoop(). That path is
 	 * fire-and-forget by construction and defers past whatever transaction is open on the shared
@@ -254,6 +308,8 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			const hydrated = await this.index.rebuild();
 
 			await this.recomputeStatuses(hydrated.rewiredVirtualDeviceIds, 'aggregated from source devices at startup');
+
+			await this.reconcileSystemHiddenSources();
 		} catch (error) {
 			this.logger.error(
 				`Failed to hydrate the virtual property index at bootstrap: ${error}. The index starts empty and will be rebuilt on the next structural change.`,
@@ -352,6 +408,10 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				if (rebuilt) {
 					await this.recomputeStatuses(rebuilt.rewiredVirtualDeviceIds);
 
+					for (const virtualDeviceId of rebuilt.rewiredVirtualDeviceIds) {
+						this.pendingAnnounceVirtualDeviceIds.add(virtualDeviceId);
+					}
+
 					for (const sourceDeviceId of rebuilt.abandonedSourceDeviceIds) {
 						this.pendingUnhideSourceDeviceIds.add(sourceDeviceId);
 					}
@@ -369,7 +429,32 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				}
 
 				if (rebuilt && !repairPending) {
+					await this.recheckPendingChannels();
+
+					await this.announceOrphanedProjections();
+
 					await this.unhideAbandonedSources();
+
+					// And the sweep, which catches what the diff structurally cannot.
+					//
+					// `unhideAbandonedSources` acts on an *edge*: a source device the rebuild watched leave
+					// the index. A virtual device created and deleted before any rebuild observed its links
+					// never produces that edge — both the outgoing and incoming maps are empty, so there is
+					// nothing to diff — while the hide the wizard performed in between is durable. The source
+					// is then hidden, referenced by nothing, and invisible to the one mechanism that would
+					// have freed it. Fast API-driven create/hide/delete does this, and so does a rebuild held
+					// back by an unrelated open transaction.
+					//
+					// This asks the state instead of the transition: every system-hidden device that nothing
+					// references. Bootstrap already ran it for exactly this reason — a hide that outlived the
+					// process — and the same reasoning applies to a hide that outlived a rebuild. Running it
+					// here makes the guarantee unconditional rather than restart-dependent.
+					//
+					// Cheap enough to run on every settled pass: one SQL-filtered read of the hidden devices,
+					// which are a handful, against a pass that has just read every virtual property anyway.
+					// Gated on the same settled condition as the unhide above, and for the same reason — it
+					// writes `hidden`, which no repair pass can take back.
+					await this.reconcileSystemHiddenSources();
 				}
 			} while (this.pending);
 		} finally {
@@ -461,6 +546,80 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 * Failures are logged per device and do not abort the rest: this runs inside the fire-and-forget
 	 * rebuild loop, and one virtual device that cannot be recomputed must not cost the others theirs.
 	 */
+	/**
+	 * Tells everyone holding a projection that it has lost its source.
+	 *
+	 * A source property's deletion clears `sourcePropertyId` through the foreign key
+	 * (`ON DELETE SET NULL`), and a foreign key emits nothing. The websocket carries
+	 * CHANNEL_PROPERTY_DELETED for the *source*, which every client duly drops — and then keeps its
+	 * cached projection, still naming an id that no longer exists. The admin's sources panel decides
+	 * whether to show the orphan warning and its remap action by reading `sourceProperty === null`, so
+	 * it showed neither until the page was reloaded; the panel had the same stale copy. The database is
+	 * right and every client is wrong, with nothing to tell them.
+	 *
+	 * Announced from here rather than from a CHANNEL_PROPERTY_DELETED handler because that event is
+	 * emitted from *inside* the deleting transaction (see the class docstring), so a handler reading
+	 * there would read state that can still roll back. Held back further, to a pass that observed the
+	 * transaction settle, for the reason on `pendingAnnounceVirtualDeviceIds`: a bounded wait can expire
+	 * with the transaction still open, and an orphan announced off that read has no opposite edge to
+	 * correct it if the deletion rolls back.
+	 *
+	 * Scoped to the devices some rebuild reported *re-wired*, which is a diff: a device orphaned long
+	 * ago is not re-wired by later passes and so is not re-announced on every rebuild. The bootstrap
+	 * hydration deliberately does not feed this — no client is connected yet to hear it, and the rows
+	 * are already correct by the time one is.
+	 */
+	private async announceOrphanedProjections(): Promise<void> {
+		if (this.pendingAnnounceVirtualDeviceIds.size === 0) {
+			return;
+		}
+
+		const virtualDeviceIds = [...this.pendingAnnounceVirtualDeviceIds];
+
+		this.pendingAnnounceVirtualDeviceIds.clear();
+
+		const repository = this.dataSource.getRepository(VirtualChannelPropertyEntity);
+
+		// One query for the whole set rather than one per device. Every query here runs on the connection
+		// the whole app shares, and this runs after every rebuild — which is after every structural event
+		// — so a per-device loop would put a burst of round trips right where the index maintenance is
+		// already contending with the writes that triggered it.
+		const orphans = await repository
+			.find({
+				where: { channel: { device: { id: In(virtualDeviceIds) } }, sourcePropertyId: IsNull() },
+				relations: ['channel'],
+			})
+			.catch((error: unknown): VirtualChannelPropertyEntity[] => {
+				this.logger.error(
+					`Failed to read back orphaned projections of virtual devices [${virtualDeviceIds.join(', ')}]`,
+					error instanceof Error ? error : undefined,
+				);
+
+				// Put back, because this is the only announcement these devices get. The queue is a diff —
+				// a device joins it when a rebuild reports it *re-wired* — so a later pass, working from an
+				// index that has already taken the change in, reports nothing to re-announce. Dropping the
+				// set here therefore leaves an open admin view holding the projection's old source id,
+				// with no remap warning, until someone reloads it. Re-queued rather than retried inline:
+				// the next settled pass is already the retry, and it is the one that knows the transaction
+				// is closed.
+				for (const virtualDeviceId of virtualDeviceIds) {
+					this.pendingAnnounceVirtualDeviceIds.add(virtualDeviceId);
+				}
+
+				return [];
+			});
+
+		for (const orphan of orphans) {
+			// An owned property has no source and never had one — null there is its normal state, not a
+			// loss, and announcing it as one would put an orphan warning on a property that is fine.
+			if (!orphan.isProjecting) {
+				continue;
+			}
+
+			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_UPDATED, orphan);
+		}
+	}
+
 	private async recomputeStatuses(
 		virtualDeviceIds: string[],
 		reason = 'aggregated after a source wiring change',
@@ -475,6 +634,90 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 
 		if (virtualDeviceIds.length > 0) {
 			this.logger.debug(`Recomputed connection state for ${virtualDeviceIds.length} virtual device(s): ${reason}`);
+		}
+	}
+
+	/**
+	 * Unhides every source device that is hidden *by the system* and that the freshly hydrated index
+	 * shows nothing referencing anymore.
+	 *
+	 * ## The gap this closes
+	 *
+	 * unhideAbandonedSources() acts on an *edge* — a source device present in one index version and
+	 * absent from the next — which exists only in this process's memory and only until the pass that
+	 * drains it runs. If the deletion of the last virtual reference commits and the process stops
+	 * before that fire-and-forget pass, the edge is gone permanently: the next start hydrates from an
+	 * empty index, so the bootstrap rebuild reports nothing abandoned (see onApplicationBootstrap()),
+	 * and every rebuild after it compares one already-reference-free index against another and reports
+	 * no transition either. Nothing in the system can name that source device again, and it stays
+	 * hidden — excluded from every picker, absent from `?hidden=false`, and out of reach of an admin
+	 * that does not show it — for as long as the installation lives.
+	 *
+	 * A durable queue could not close it: the abandonment is *derived* by a rebuild that must run
+	 * strictly after the deleting transaction commits (that is what deferPastOpenTransaction() is for),
+	 * so there is no moment at which the intent could be recorded atomically with the deletion. Any
+	 * queue is written after the commit and has the same crash window, only narrower. Recovering a lost
+	 * edge needs a reconciliation from durable state, which is what this is.
+	 *
+	 * ## Why provenance is the whole design, not a detail of it
+	 *
+	 * The obvious sweep — unhide every hidden device nothing references — is not a smaller version of
+	 * this; it is a different and worse bug. `hidden` is also a plain operator choice: a physical
+	 * device can be hidden with no virtual device involved anywhere, and one that *was* referenced by a
+	 * virtual device at some point is not thereby the system's to unhide. A sweep with no provenance
+	 * silently reverses a deliberate setting on every single boot, which is a worse failure than the
+	 * stranded source it set out to recover — the stranded source is at least recoverable through a
+	 * PATCH, whereas a setting reversed at startup is reversed again the next time, forever.
+	 *
+	 * So the filter is isSystemHidden() — see there for why `USER` and `null` both fail it. The cost of
+	 * that conservatism is that a source stranded before provenance existed is not recovered here,
+	 * which is correct: nothing can tell it apart from a device its owner meant to hide, and the admin
+	 * unhides it in one action.
+	 *
+	 * ## Failure containment
+	 *
+	 * Contained as a whole rather than left to onApplicationBootstrap()'s catch, so that a
+	 * reconciliation that cannot read does not read as a hydration failure in the log, and — since it
+	 * runs last — so a future step added after it would still run. Contained per device as well: one
+	 * source that cannot be patched must not cost the others their recovery. Both matter more than
+	 * usual here because this is on the startup path, where an escaping rejection aborts Nest's
+	 * bootstrap and kills the process; `generate:openapi` boots the whole app against whatever database
+	 * happens to be there, and a fresh install has no schema at all until its migrations run.
+	 */
+	private async reconcileSystemHiddenSources(): Promise<void> {
+		try {
+			// Filtered in SQL: hidden devices are a handful, every device in the system is not, and this
+			// runs before the app serves its first request.
+			const hiddenDevices = await this.devicesService.findAll(undefined, DeviceHiddenFilter.TRUE);
+
+			for (const device of hiddenDevices) {
+				if (!this.isSystemHidden(device)) {
+					continue;
+				}
+
+				// Answered from the index this bootstrap just hydrated from committed state, so it is the
+				// same question unhideAbandonedSources() asks of a settled pass: anything at all
+				// referencing the source means it still has a stand-in and must stay hidden.
+				const referencedBy = this.index.findVirtualDeviceIdsBySourceDevice(device.id);
+
+				if (referencedBy.length > 0) {
+					continue;
+				}
+
+				try {
+					await this.unhideSource(device);
+
+					this.logger.log(`Unhid source device id=${device.id} at startup, no virtual device references it anymore`, {
+						resource: device.id,
+					});
+				} catch (error) {
+					this.logger.warn(`Failed to unhide system-hidden source device id=${device.id} at startup: ${error}`);
+				}
+			}
+		} catch (error) {
+			this.logger.error(
+				`Failed to reconcile system-hidden source devices at bootstrap: ${error}. A source device stranded by an abandonment this process never got to write stays hidden until the next start.`,
+			);
 		}
 	}
 
@@ -572,17 +815,23 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 * than looping: the source device is already absent from `bySourceDevice` by then, so the next pass
 	 * reports no transition and unhides nothing.
 	 *
-	 * ## Why the patch echoes `enabled` back
+	 * ## Provenance is checked here too
 	 *
-	 * `hidden: false` alone would silently re-enable a device the user had explicitly disabled.
-	 * `DevicesService.update()` transforms the DTO into the mapped entity class and saves the result,
-	 * and `DeviceEntity.enabled` carries a `= true` class field initializer — class-transformer builds
-	 * its target with `new Target()`, so that initializer is already on the instance before anything is
-	 * copied across, and `omitBy(..., isUndefined)` therefore cannot drop it. Any PATCH that omits
-	 * `enabled` writes `true`. That is the pre-existing defect documented on the entity itself
-	 * (devices.entity.ts) and as follow-up 3.1; fixing it at the root is blocked on
-	 * `devices-shelly-v1`'s afterInsert subscriber reading `event.entity.enabled` before the row is
-	 * re-read, so this call defends itself by sending the value it just read back unchanged.
+	 * Observing the abandonment is evidence that *a* virtual device was drawing from this source. It is
+	 * not evidence that the system is the one that hid it: an operator can hide a physical device by
+	 * hand for their own reasons, and that device being referenced by some unrelated virtual device
+	 * does not make the flag the system's to clear. So this path applies the same
+	 * `hiddenBy === SYSTEM` rule reconcileSystemHiddenSources() does (see isSystemHidden()), and for
+	 * more reason rather than less: this runs on every structural change that drops the last reference,
+	 * where the sweep runs once per process start, so an ungated version reverses a deliberate setting
+	 * far more often — silently, with no notification, and with nothing that would ever put it back.
+	 *
+	 * The cost is that a source hidden *before* provenance existed does not auto-unhide anymore: the
+	 * column's migration backfills every pre-existing hidden row to `user`, precisely because it cannot
+	 * tell those apart from a deliberate hide. That cost is bounded and visible — such a device is
+	 * still listed by `GET /devices` and unhidden from the admin's hidden-device list in one action —
+	 * whereas the setting an ungated unhide destroys is silent and unrecoverable. Newly hidden sources
+	 * carry `hidden_by: system` from the flow that hides them, so the mislabelling does not accumulate.
 	 */
 	private async unhideAbandonedSources(): Promise<void> {
 		if (this.pendingUnhideSourceDeviceIds.size === 0) {
@@ -595,40 +844,503 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 
 		for (const sourceDeviceId of sourceDeviceIds) {
 			try {
-				// Answered from the index this pass just rebuilt, so on a settled pass this is committed
-				// state: anything at all referencing the source means it still has a stand-in and must
-				// stay hidden. Non-empty here is what a rolled-back deletion looks like from the outside
-				// — and equally what a virtual device created in the meantime looks like, which deserves
-				// the same answer.
-				const referencedBy = this.index.findVirtualDeviceIdsBySourceDevice(sourceDeviceId);
+				// Decided and applied under the structure lock, because the decision is about rows another
+				// request can write: a projection created against this source between the check and the
+				// PATCH would leave the device visible beside the virtual device that had just claimed it,
+				// and nothing re-hides a source after the fact. `ChannelsPropertiesService.create()` holds
+				// the same lock, so such a create cannot land inside this window — it either got there
+				// first, and the check below sees it, or it waits, and by then the source is visible,
+				// which is the wizard's own starting state.
+				await this.structureLock.runExclusive(async (): Promise<void> => {
+					// Asked of storage rather than of the index: the index is only as fresh as the rebuild
+					// this pass ran, and the create this guards against is one that committed after it.
+					// Anything at all referencing the source means it still has a stand-in and must stay
+					// hidden — what a rolled-back deletion looks like from the outside, and equally what a
+					// virtual device created in the meantime looks like, which deserves the same answer.
+					if (await this.index.isSourceDeviceReferenced(sourceDeviceId)) {
+						this.logger.debug(`Left source device id=${sourceDeviceId} hidden, a virtual device references it again`);
 
-				if (referencedBy.length > 0) {
-					this.logger.debug(
-						`Left source device id=${sourceDeviceId} hidden, ${referencedBy.length} virtual device(s) reference it again`,
-					);
+						return;
+					}
 
-					continue;
-				}
+					const sourceDevice = await this.devicesService.findOne(sourceDeviceId);
 
-				const sourceDevice = await this.devicesService.findOne(sourceDeviceId);
+					// Gone entirely — a source device can be deleted in the same sweep as the virtual device
+					// that replaced it.
+					if (!sourceDevice) {
+						return;
+					}
 
-				// Already visible, or gone entirely — a source device can be deleted in the same sweep as
-				// the virtual device that replaced it.
-				if (!sourceDevice?.hidden) {
-					continue;
-				}
+					// Already visible, or hidden by someone this listener is not entitled to overrule (see the
+					// docstring above and isSystemHidden()).
+					if (!this.isSystemHidden(sourceDevice)) {
+						return;
+					}
 
-				await this.devicesService.update(sourceDevice.id, {
-					type: sourceDevice.type,
-					hidden: false,
-					enabled: sourceDevice.enabled,
+					await this.unhideSource(sourceDevice);
+
+					this.logger.debug(`Unhid source device id=${sourceDevice.id}, no virtual device references it anymore`);
 				});
-
-				this.logger.debug(`Unhid source device id=${sourceDevice.id}, no virtual device references it anymore`);
 			} catch (error) {
 				this.logger.warn(`Failed to unhide abandoned source device id=${sourceDeviceId}: ${error}`);
 			}
 		}
+	}
+
+	/**
+	 * Whether this device is hidden *and* the system is what hid it — the only state either unhide path
+	 * is entitled to reverse, and the single place that rule is expressed so the two cannot drift.
+	 *
+	 * `USER` is a deliberate operator setting and is never touched. Neither is `null`, which is what a
+	 * hide written by a caller that named no reason reads as, and what every row hidden before the
+	 * column existed was migrated to (see 1000000000009-AddDeviceHiddenBy, which backfills them to
+	 * `user`). Unknown provenance is not system provenance: leaving a source hidden is recoverable —
+	 * `GET /devices` still lists it and the admin's hidden-device list unhides it in one action —
+	 * whereas reversing a hide the operator chose is silent, unnotified and reversed again the next
+	 * time the condition recurs.
+	 */
+	private isSystemHidden(device: DeviceEntity): boolean {
+		return device.hidden && device.hiddenBy === DeviceHiddenBy.SYSTEM;
+	}
+
+	/**
+	 * Orphans a projection whose source property has just been changed into something that can no
+	 * longer fill the slot it feeds.
+	 *
+	 * Compatibility is checked when a projection is created or remapped, but nothing re-checked it when
+	 * the *source* moved underneath: `ChannelsPropertiesService.update()` happily changes a physical
+	 * property's `permissions` or `dataType`, and the projection stayed attached — exposing values under
+	 * a representation the source no longer speaks, or forwarding commands it can no longer accept.
+	 *
+	 * Degrading rather than refusing the source update. Refusing would need a guard inside the *source*
+	 * property's own update path, which belongs to whichever plugin owns that device, and it would let a
+	 * virtual device veto an edit to a physical one — the wrong way round. Orphaning is the behaviour
+	 * this feature already has for a source that disappears: the device goes offline, the admin shows
+	 * the property as orphaned, and the remap dialog is the way back. A source that changes into
+	 * something incompatible is the same loss, arriving by a different route.
+	 *
+	 * Written straight to the repository, as `unhideSource` does and for the same reason: `source_property`
+	 * cannot be cleared through the update DTO. That also keeps this from re-entering — no
+	 * CHANNEL_PROPERTY_UPDATED is emitted for the row it clears — and the rebuild it schedules is what
+	 * refreshes the index and recomputes the affected devices' status.
+	 */
+	/**
+	 * The same question asked of a whole channel.
+	 *
+	 * A property's own row is not the only thing that decides what it means: `resolvePropertyUnit`
+	 * derives the unit from the *channel's* category, and the Shelly v1/NG update DTOs allow that
+	 * category to change. `ChannelsService.update()` emits CHANNEL_UPDATED rather than
+	 * CHANNEL_PROPERTY_UPDATED, so recategorising a concentration channel from one gas to another moved
+	 * its properties from ppm to µg/m³ with every projection still attached, forwarding unchanged
+	 * numbers under a unit that no longer applied.
+	 */
+	@OnEvent(EventType.CHANNEL_UPDATED)
+	async handleSourceChannelChange(payload: ChannelEntity): Promise<void> {
+		if (!payload?.id) {
+			return;
+		}
+
+		let properties: ChannelPropertyEntity[];
+
+		try {
+			properties = await this.channelsPropertiesService.findAll(payload.id);
+		} catch (error: unknown) {
+			this.logger.error(
+				`Failed to read back properties of updated channel id=${payload.id}`,
+				error instanceof Error ? error : undefined,
+			);
+
+			// Queued instead of dropped. This event is the only notice the recategorisation gives, and it
+			// schedules no rebuild of its own, so treating a failed read as a channel with no properties
+			// leaves every projection under it linked to a source whose meaning has changed — until some
+			// unrelated metadata update happens to revisit it. The pass scheduled below drains the queue
+			// once it can read committed state.
+			this.pendingRecheckChannelIds.add(payload.id);
+
+			this.handleStructuralChange();
+
+			return;
+		}
+
+		for (const property of properties) {
+			await this.handleSourceMetadataChange(property);
+		}
+	}
+
+	/**
+	 * Re-runs the channel checks whose property read failed earlier.
+	 *
+	 * Drained on a settled pass, like the other two queues: a read that failed against an open
+	 * transaction has no business being retried against the same one. A retry that fails again simply
+	 * re-queues itself, which is what makes this converge rather than give up.
+	 */
+	private async recheckPendingChannels(): Promise<void> {
+		if (this.pendingRecheckChannelIds.size === 0) {
+			return;
+		}
+
+		const channelIds = [...this.pendingRecheckChannelIds];
+
+		this.pendingRecheckChannelIds.clear();
+
+		for (const channelId of channelIds) {
+			await this.handleSourceChannelChange({ id: channelId } as ChannelEntity);
+		}
+	}
+
+	@OnEvent(EventType.CHANNEL_PROPERTY_UPDATED)
+	async handleSourceMetadataChange(payload: ChannelPropertyEntity): Promise<void> {
+		if (!payload?.id) {
+			return;
+		}
+
+		// Nothing may project a virtual property — `assertSourcePropertyUsable` refuses a source whose
+		// device is virtual — so a virtual payload can have no dependents by construction. Returning
+		// here is what keeps the orphaning emit below from paying for a query to learn that, and what
+		// bounds `handleSourceChannelChange` when the channel it read back is itself virtual.
+		if (payload.type === DEVICES_VIRTUAL_TYPE) {
+			return;
+		}
+
+		const repository = this.dataSource.getRepository(VirtualChannelPropertyEntity);
+
+		// Asked of storage rather than of `index.findBySourceProperty`. The index is rebuilt behind
+		// structural changes asynchronously, so a projection created moments ago is not in it yet — and
+		// a source edited inside that window would find no dependents, return, and then be picked up by
+		// the very next rebuild as a link that nothing ever checked. Exactly the case this handler
+		// exists for, missed on a race. The row is committed the instant the projection exists, so
+		// asking for it cannot be early; `sourcePropertyId` carries an index, and this runs on metadata
+		// updates rather than value changes, so the query is cheap and rare.
+		//
+		// `channel.device` is spelled out because neither hop is populated unless its exact relation
+		// path is requested, and the compatibility report below needs the device's category.
+		const dependents = (
+			await repository.find({
+				where: { sourcePropertyId: payload.id },
+				relations: ['channel', 'channel.device'],
+			})
+		).filter((dependent) => dependent.isProjecting);
+
+		if (dependents.length === 0) {
+			return;
+		}
+
+		// The event's payload is a snapshot of a row at the moment it was emitted, and this handler is
+		// asynchronous — so by the time it runs, the source may have been edited again. Two PATCHes that
+		// overlap is the ordinary case: one that breaks compatibility followed by one that restores it
+		// (the obvious repair, and the one an operator makes as soon as the admin shows the problem).
+		// Judging the first payload after the second has landed would orphan a link that is valid again,
+		// and the conditional write beside it cannot tell — its predicate proves the projection still
+		// points at this source, not that this source still looks the way the event said.
+		//
+		// So the judgement is made against the row as it stands now. That leaves a much smaller window,
+		// between this read and the write, which is the same one every read-then-write here has; what it
+		// removes is the arbitrarily large one that queueing behind an async handler opens up.
+		const source = await this.channelsPropertiesService
+			.findOne<ChannelPropertyEntity>(payload.id)
+			.catch((error: unknown): ChannelPropertyEntity | null => {
+				this.logger.error(
+					`Failed to re-read source property id=${payload.id} before judging its dependents`,
+					error instanceof Error ? error : undefined,
+				);
+
+				return null;
+			});
+
+		if (!source) {
+			// Gone, or unreadable. A deletion has its own path — the FK clears `sourcePropertyId` and the
+			// rebuild reports the abandonment — and orphaning off a failed read would be acting on nothing.
+			return;
+		}
+
+		// Part of what is judged below comes off the channel rather than the property — `resolvePropertyUnit`
+		// derives the unit from the channel's category — so the channel is one of the rows this pass read,
+		// and the write has to name its version too. Every query in ChannelsPropertiesService joins
+		// `channel`, so a bare id here would mean something changed underneath; declining to judge is the
+		// safe answer, since the alternative is orphaning against a channel this pass never actually saw.
+		const sourceChannel = typeof source.channel === 'string' ? null : source.channel;
+
+		if (!sourceChannel) {
+			this.logger.warn(
+				`Source property id=${payload.id} came back without its channel; leaving its dependents alone rather than judging them against a channel this pass never read`,
+			);
+
+			return;
+		}
+
+		let orphaned = false;
+
+		for (const dependent of dependents) {
+			const channel = dependent.channel;
+
+			if (!channel || typeof channel === 'string') {
+				continue;
+			}
+
+			const device = channel.device;
+
+			if (!device || typeof device === 'string') {
+				continue;
+			}
+
+			const report = this.virtualDevicesService.reportCompatibility(
+				{ category: device.category, channel: channel.category, property: dependent.category },
+				source,
+			);
+
+			// The slot report alone is not enough here. `light.brightness` accepts a `uchar` percentage and
+			// an `enum` level, so a source switching between two allowed variants stays compatible *with
+			// the slot* while no longer agreeing with the projection reading it — enum values would keep
+			// flowing through a property still declaring itself numeric. `assertProjectionCompatible`
+			// makes that comparison on the write paths; this update path has to make it too.
+			const representationDiverged = dependent.dataType !== source.dataType;
+
+			// The same gap on the other metadata a slot report cannot see. A sentinel is the device's, not
+			// the specification's, so `reportCompatibility` never asks about it — but a source that starts
+			// reserving a value its projection does not is exactly this handler's case: the projection
+			// would present that value as a real reading, and accept a command carrying it.
+			const sentinelMismatch = this.virtualDevicesService.describeSentinelMismatch(dependent, source);
+
+			// And the same question about their value domains. The slot report cannot answer it either:
+			// both halves fit the slot separately, and the slot is routinely wide enough to admit two
+			// declarations that contradict each other. A source formatted [0, 40] inside a [0, 100]
+			// temperature slot can be widened to [0, 80] and still satisfy the slot, while every reading
+			// above 40 now falls outside the range its projection advertises. Asked of the same method the
+			// write paths use, so an edit cannot leave a link the writes would have refused.
+			const constraintMismatch = this.virtualDevicesService.describeProjectionConstraintMismatch(dependent, source, {
+				category: device.category,
+				channel: channel.category,
+				property: dependent.category,
+			});
+
+			if (report.compatible && !representationDiverged && sentinelMismatch === null && constraintMismatch === null) {
+				continue;
+			}
+
+			const reason = !report.compatible
+				? (report.reason ?? 'incompatible')
+				: representationDiverged
+					? `its representation changed to '${source.dataType}' while the projection declares '${dependent.dataType}'`
+					: (sentinelMismatch ?? constraintMismatch ?? 'incompatible');
+
+			this.logger.warn(
+				`Source property id=${payload.id} no longer fits the slot filled by virtual property id=${dependent.id}: ${reason}. Orphaning it.`,
+			);
+
+			// Conditional on two things, both of which can stop being true between the reads above and this
+			// write, and neither of which the other predicate covers.
+			//
+			// `sourcePropertyId` — a remap can repoint the projection at a different source in that window.
+			// The admin's repair flow does exactly that, and it is the flow most likely to be running while
+			// a source's metadata is being edited, so an id-only update would clear the *new* link: the
+			// remap reports success and the projection orphans itself a moment later against a source it no
+			// longer has anything to do with.
+			//
+			// The source's own `updatedAt` — a second PATCH can restore compatibility after the read that
+			// judged it. That is the ordinary repair sequence (break it, see the problem, fix it), and this
+			// handler queued behind the first event would otherwise orphan a link that is valid again.
+			// Re-reading before judging narrowed that window to this one statement; naming the version in
+			// the statement closes it, because the row cannot change while it is being matched. A
+			// millisecond-resolution timestamp cannot distinguish two writes inside the same millisecond,
+			// which is the residue — far smaller than an await boundary, and self-correcting, since the
+			// second write emits its own event.
+			const sourceTable = this.dataSource.getMetadata(ChannelPropertyEntity).tableName;
+			const channelTable = this.dataSource.getMetadata(ChannelEntity).tableName;
+			const deviceTable = this.dataSource.getMetadata(DeviceEntity).tableName;
+
+			// The write is conditioned on the rows still *saying* what they said when they were judged,
+			// rather than on a version stamp.
+			//
+			// `updatedAt` was the obvious instrument and it does not survive contact with the schema: the
+			// column is written by the entity path, which applies TypeORM's own datetime formatting, and
+			// read back here through a raw predicate, which binds a `Date` for the driver to convert as it
+			// sees fit. The two forms agreed on my machine and did not on CI, where the schema is built by
+			// `synchronize` instead of the migrations — so the predicate matched nothing and orphaning
+			// silently stopped happening. The e2e added for exactly this caught it; without that test the
+			// guard would have looked like it worked and done nothing.
+			//
+			// Comparing the judged values has no such ambiguity: every column below is bound in the same
+			// form the ORM stores it in — `simple-array` joins on commas, `json` is stringified, and the
+			// rest are plain text or real. It is also the more direct statement of the rule. What matters
+			// is not "has this row been touched" but "does it still say what I judged", and two PATCHes
+			// that leave the judged fields identical genuinely have nothing to disagree about.
+			//
+			// `invalid` is compared through `CAST(... AS TEXT)` on both sides. It is a `text` column holding a
+			// string, a number or a boolean, so what a row holds depends on what was written — and casting
+			// makes the comparison independent of that, which is what I had wrongly assumed was impossible
+			// when this first excluded the field. `describeSentinelMismatch` judges it, so leaving it out
+			// meant a second PATCH restoring only the sentinel could not stop this write.
+			// The projection's own declaration is judged too — `describeProjectionConstraintMismatch` and the
+			// representation check both read it — so it belongs in the predicate for the same reason the
+			// source's does. A client can repair the *projection* instead of the source, widening its format
+			// to match, and that repair keeps the same source id: without this the older handler would clear
+			// a link that has just been made valid, and nothing would put it back, because a virtual
+			// property's own update is ignored here by design.
+			//
+			// Plain conditions rather than an EXISTS: this is the row being updated, so its columns are
+			// already in scope.
+			// `invalid` holds a string, a number or a boolean, so both sides are compared as text and this is
+			// what puts the bound value in the same shape the `CAST` puts the column in.
+			const asText = (value: string | number | boolean | null | undefined): string | null =>
+				value === null || value === undefined ? null : String(value);
+
+			const dependentState = {
+				dependentPermissions: (dependent.permissions ?? []).join(','),
+				dependentDataType: dependent.dataType,
+				dependentFormat:
+					dependent.format === null || dependent.format === undefined ? null : JSON.stringify(dependent.format),
+				dependentStep: dependent.step ?? null,
+				dependentInvalid: asText(dependent.invalid),
+			};
+
+			const sourceState = {
+				sourcePermissions: (source.permissions ?? []).join(','),
+				sourceDataType: source.dataType,
+				sourceFormat: source.format === null || source.format === undefined ? null : JSON.stringify(source.format),
+				sourceStep: source.step ?? null,
+				sourceInvalid: asText(source.invalid),
+				sourceChannelId: sourceChannel.id,
+				sourceChannelCategory: sourceChannel.category,
+				virtualDeviceId: device.id,
+				virtualDeviceCategory: device.category,
+			};
+
+			// `IS`, not `=`: SQLite's null-safe comparison, so an unconstrained source (a null format, no
+			// step) is matched rather than silently failing every predicate the way `= NULL` would.
+			const sourceUnchanged =
+				`EXISTS (SELECT 1 FROM ${sourceTable} src WHERE src.id = :sourceId` +
+				' AND src.permissions IS :sourcePermissions' +
+				' AND src.dataType IS :sourceDataType' +
+				' AND src.format IS :sourceFormat' +
+				' AND src.step IS :sourceStep' +
+				' AND CAST(src.invalid AS TEXT) IS :sourceInvalid)';
+
+			// The channel is judged too, because part of what was compared comes off it rather than off the
+			// property: `resolvePropertyUnit` derives the unit from the channel's *category*, which is why
+			// `handleSourceChannelChange` funnels a recategorisation through here at all. A channel moved to
+			// something incompatible and back leaves the property row untouched.
+			const channelUnchanged = `EXISTS (SELECT 1 FROM ${channelTable} ch WHERE ch.id = :sourceChannelId AND ch.category IS :sourceChannelCategory)`;
+
+			// The virtual device's own category is judged too, and it is the most consequential of the
+			// three: `reportCompatibility` resolves the spec slot from it, so the same source and the same
+			// projection can be compatible under one category and not under another. A category PATCH can
+			// commit between the judgement above and this write — that is a repair, and the rebuild it
+			// triggers cannot put back a link this pass had already cleared. Named here, such a write
+			// simply loses the race it should lose.
+			const targetCategoryUnchanged = `EXISTS (SELECT 1 FROM ${deviceTable} dev WHERE dev.id = :virtualDeviceId AND dev.category IS :virtualDeviceCategory)`;
+
+			const orphaning = await repository
+				.createQueryBuilder()
+				.update(VirtualChannelPropertyEntity)
+				.set({ sourcePropertyId: null })
+				.where('id = :dependentId', { dependentId: dependent.id })
+				.andWhere('sourcePropertyId = :sourceId', { sourceId: payload.id })
+				.andWhere('permissions IS :dependentPermissions', dependentState)
+				.andWhere('dataType IS :dependentDataType', dependentState)
+				.andWhere('format IS :dependentFormat', dependentState)
+				.andWhere('step IS :dependentStep', dependentState)
+				.andWhere('CAST(invalid AS TEXT) IS :dependentInvalid', dependentState)
+				.andWhere(sourceUnchanged, sourceState)
+				.andWhere(channelUnchanged, sourceState)
+				.andWhere(targetCategoryUnchanged, sourceState)
+				.execute();
+
+			if (!orphaning.affected) {
+				// Either the projection was repointed first, or the source was edited again after this pass
+				// read it. In both cases the state this judgement was about is gone, and the write that
+				// replaced it brought its own event and its own guard — the remap passed
+				// `assertProjectionCompatible`, the PATCH will arrive here in turn. Nothing here has judged
+				// what is stored now, so nothing here announces it or counts it as a structural change.
+				this.logger.debug(
+					`Virtual property id=${dependent.id} no longer matches the state it was judged in (source id=${payload.id}); leaving it to whatever wrote it`,
+				);
+
+				continue;
+			}
+
+			// Announced, or an already-open admin keeps the old link: the sources panel would not show
+			// the orphan warning or its remap action until the page was reloaded, and other websocket
+			// clients would hold the stale projection too. Re-read rather than patching the cached row,
+			// so what goes out is what was actually stored.
+			const refreshed = await repository.findOne({ where: { id: dependent.id }, relations: ['channel'] });
+
+			if (refreshed) {
+				// Safe to emit even though this handler listens for the same event: the payload is a
+				// *virtual* property, and nothing projects a virtual property, so the re-entrant pass
+				// finds no dependents and returns immediately.
+				this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_UPDATED, refreshed);
+			}
+
+			orphaned = true;
+		}
+
+		if (orphaned) {
+			this.handleStructuralChange();
+		}
+	}
+
+	/**
+	 * Makes one source device visible again, and leaves its row in a clean state rather than one
+	 * claiming a provenance for a device that is no longer hidden. Shared by both unhide paths — the
+	 * abandonment this process observed (unhideAbandonedSources()) and the one it inherited from a
+	 * predecessor (reconcileSystemHiddenSources()) — so the two can never disagree about what unhiding
+	 * a device consists of. Both decide *whether* to call it with isSystemHidden().
+	 *
+	 * ## Why the patch echoes `enabled` back
+	 *
+	 * `hidden: false` alone would silently re-enable a device the user had explicitly disabled.
+	 * `DevicesService.update()` transforms the DTO into the mapped entity class and saves the result,
+	 * and `DeviceEntity.enabled` carries a `= true` class field initializer — class-transformer builds
+	 * its target with `new Target()`, so that initializer is already on the instance before anything is
+	 * copied across, and `omitBy(..., isUndefined)` therefore cannot drop it. Any PATCH that omits
+	 * `enabled` writes `true`. That is the pre-existing defect documented on the entity itself
+	 * (devices.entity.ts) and as follow-up 3.1; fixing it at the root is blocked on
+	 * `devices-shelly-v1`'s afterInsert subscriber reading `event.entity.enabled` before the row is
+	 * re-read, so this call defends itself by sending the value it just read back unchanged.
+	 *
+	 * ## Why the patch carries no placement field
+	 *
+	 * `DevicesService.update()` refuses a `room_id`/`zone_ids` change on a device that is *currently*
+	 * hidden (assertPlacementChangeAllowed()), and this device is, right up until this very patch. The
+	 * guard is on the fields the patch carries rather than on the resulting state, so an unhide that
+	 * sends neither passes — and this one has no business moving a device between rooms anyway.
+	 *
+	 * ## Why clearing `hiddenBy` takes a second, non-DTO write
+	 *
+	 * `UpdateDeviceDto.hidden_by` cannot express `null`. Its `@Transform` maps an explicit `null` to
+	 * `undefined` — the null-means-field-absent convention every optional field on that DTO follows,
+	 * `hidden` and `enabled` included — and `DevicesService.update()` then drops undefined keys
+	 * (`omitBy(..., isUndefined)`) before assigning. There is therefore no DTO value that means "clear
+	 * this", by construction rather than by oversight, which is why this goes through the entity's own
+	 * repository instead. Written as a targeted column update rather than a `save()` of a loaded
+	 * entity: the row was just re-read and written by the call above, and re-saving a whole entity on
+	 * top of that would put every other column back in play for the sake of one.
+	 *
+	 * Second rather than first, deliberately. Whichever write fails, the pair is not atomic, so the
+	 * order decides which half-state a failure leaves behind: `hidden = false` with a stale
+	 * `hiddenBy = system` is a cosmetic inconsistency on a device the user can see and act on, whereas
+	 * `hidden = true` with `hiddenBy = null` is a hidden device that reconcileSystemHiddenSources() is
+	 * then required to ignore forever — the exact failure this whole path exists to prevent, recreated
+	 * by the fix for it.
+	 */
+	private async unhideSource(device: DeviceEntity): Promise<void> {
+		await this.devicesService.update(device.id, {
+			type: device.type,
+			hidden: false,
+			enabled: device.enabled,
+		});
+
+		// Conditional on the device still being the one just unhidden. Between the patch above and this
+		// write a new wizard can hide the same source again, stamping a fresh `hiddenBy: system` — and an
+		// unconditional clear would then wipe *that* provenance, leaving a hidden device with no record of
+		// why. Both `unhideAbandonedSources` and `reconcileSystemHiddenSources` deliberately ignore such a
+		// device, so it would stay hidden until someone restored it by hand: the exact failure this whole
+		// path exists to prevent, recreated by its own cleanup.
+		//
+		// Matching on `hidden: false` is enough, and is what makes the pair safe in either order. If the
+		// re-hide won, the row is hidden and this matches nothing; if it has not happened yet, the row is
+		// the one this call just made visible.
+		await this.devicesRepository.update({ id: device.id, hidden: false }, { hiddenBy: null });
 	}
 
 	/**

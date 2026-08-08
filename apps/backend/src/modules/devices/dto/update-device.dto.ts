@@ -13,7 +13,7 @@ import {
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { DeviceCategory } from '../devices.constants';
+import { DeviceCategory, DeviceHiddenBy } from '../devices.constants';
 
 @ApiSchema({ name: 'DevicesModuleUpdateDevice' })
 export class UpdateDeviceDto {
@@ -100,6 +100,19 @@ export class UpdateDeviceDto {
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"hidden","reason":"Hidden attribute must be a valid true or false."}]' })
 	hidden?: boolean;
+
+	@ApiPropertyOptional({
+		description:
+			'Why the device is hidden. `system` when a virtual device replaced it, `user` when an operator hid it.',
+		enum: DeviceHiddenBy,
+		nullable: true,
+		example: DeviceHiddenBy.SYSTEM,
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsEnum(DeviceHiddenBy, { message: '[{"field":"hidden_by","reason":"Hidden by attribute must be a valid value."}]' })
+	hidden_by?: DeviceHiddenBy;
 
 	@ApiPropertyOptional({
 		name: 'room_id',

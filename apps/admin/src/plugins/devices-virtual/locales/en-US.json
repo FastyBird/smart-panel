@@ -1,0 +1,141 @@
+{
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Internal identifier",
+				"placeholder": "Device id"
+			},
+			"identifier": {
+				"title": "System identifier",
+				"placeholder": "Device system identifier"
+			},
+			"category": {
+				"title": "Category",
+				"placeholder": "Device category",
+				"validation": {
+					"required": "Please select device category"
+				}
+			},
+			"name": {
+				"title": "Name",
+				"placeholder": "Device name",
+				"validation": {
+					"required": "Please fill in device name"
+				}
+			},
+			"description": {
+				"title": "Description",
+				"placeholder": "Device description"
+			},
+			"enabled": {
+				"title": "Enabled"
+			}
+		}
+	},
+	"wizard": {
+		"title": "Create virtual device",
+		"subtitle": "Build a device from another device's channels",
+		"breadcrumb": "Create virtual device",
+		"viewDevice": "View device",
+		"steps": {
+			"category": "Category",
+			"mapping": "Mapping",
+			"details": "Details",
+			"review": "Review"
+		},
+		"category": {
+			"heading": "Choose a category",
+			"description": "Pick the kind of device you are creating. It determines which channels and properties the next step will ask you to map.",
+			"blockedHeading": "Not available in this release",
+			"blockedReason": "needs a controller — planned for a later release"
+		},
+		"mapping": {
+			"heading": "Wire up the properties",
+			"description": "Every property below comes from a real device. Fill at least the required ones — the rest are optional and can stay empty.",
+			"noCategory": "Choose a device category first.",
+			"progress": "{filled} of {total} required properties mapped",
+			"noRequired": "This category has no required properties — map at least one to continue",
+			"channelRequired": "Required",
+			"channelOptional": "Optional",
+			"propertyRequired": "Required",
+			"showOptional": "Show {count} more optional properties",
+			"source": {
+				"devicePlaceholder": "Source device",
+				"channelPlaceholder": "Source channel",
+				"propertyPlaceholder": "Source property"
+			},
+			"shortcut": {
+				"description": "Take a whole channel: pick a channel on a real device and fill every property here that it can cover.",
+				"apply": "Fill from channel",
+				"applied": "Filled {filled} of {total} properties from the selected channel.",
+				"nothingApplied": "The selected channel has no property this channel can use."
+			},
+			"errors": {
+				"checkFailed": "This source could not be verified. Pick another one or try again.",
+				"incompatible": "This source cannot fill this property."
+			},
+			"constraints": {
+				"oneOrMoreOf": "needs at least one of: {properties}",
+				"oneOf": "accepts only one of: {properties}",
+				"mutuallyExclusive": "cannot combine these groups: {groups}",
+				"deviceOneOrMoreOf": "needs at least one of these channels: {channels}",
+				"deviceOneOf": "accepts only one of these channels: {channels}",
+				"deviceMutuallyExclusive": "cannot combine these channels: {groups}"
+			}
+		},
+		"details": {
+			"heading": "Name and place the device",
+			"description": "Give the device a name, and optionally assign it to a room and zones. A name is suggested from the category and room — you can change it."
+		},
+		"review": {
+			"heading": "Review and create",
+			"description": "Check the summary below, then create the device. Every property listed is borrowed from a real device's channel.",
+			"noMappings": "Nothing is mapped yet — go back and map at least one property.",
+			"columns": {
+				"property": "Property",
+				"sourceDevice": "Source device",
+				"sourceChannel": "Source channel",
+				"sourceProperty": "Source property"
+			},
+			"hideSource": {
+				"label": "Hide {device} — every property above comes from this device",
+				"hint": "Hides the source device from lists and pickers. It stays fully intact and can be unhidden again from the device list at any time.",
+				"retry": "Retry hiding",
+				"success": "{device} is now hidden"
+			},
+			"created": "{name} was created",
+			"create": "Create device",
+			"noRoom": "No room assigned",
+			"noZones": "No zones assigned",
+			"unknownSource": "Unknown",
+			"errors": {
+				"createFailed": "The device could not be created. Please try again.",
+				"hideFailed": "The source device could not be hidden.",
+				"hideFailedFlash": "{device} was not hidden: the request failed. You can hide it later from the device list.",
+				"zonesFailed": "{count} zone(s) could not be assigned. You can add them later from the device list."
+			}
+		}
+	},
+	"sources": {
+		"heading": "Source devices",
+		"description": "The physical devices this device's properties are borrowed from.",
+		"empty": "This device does not borrow from any other device.",
+		"loadFailed": "Source devices could not be loaded.",
+		"retry": "Retry",
+		"warning": {
+			"title": "{channel} · {property}: source lost",
+			"description": "The source property was deleted. This device stays offline until it is remapped.",
+			"remap": "Remap"
+		}
+	},
+	"remap": {
+		"title": "Remap {property}",
+		"description": "Choose a new source for this property. Only a compatible source can be confirmed.",
+		"confirm": "Remap",
+		"success": "{property} now draws from a new source",
+		"errors": {
+			"propertyGone": "This property no longer exists.",
+			"updateFailed": "The property could not be remapped. Please try again."
+		}
+	}
+}

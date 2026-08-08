@@ -1,0 +1,141 @@
+{
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Interner Bezeichner",
+				"placeholder": "Geräte-ID"
+			},
+			"identifier": {
+				"title": "Systembezeichner",
+				"placeholder": "Geräte-Systembezeichner"
+			},
+			"category": {
+				"title": "Kategorie",
+				"placeholder": "Gerätekategorie",
+				"validation": {
+					"required": "Bitte wählen Sie eine Gerätekategorie"
+				}
+			},
+			"name": {
+				"title": "Name",
+				"placeholder": "Gerätename",
+				"validation": {
+					"required": "Bitte geben Sie den Gerätenamen ein"
+				}
+			},
+			"description": {
+				"title": "Beschreibung",
+				"placeholder": "Gerätebeschreibung"
+			},
+			"enabled": {
+				"title": "Aktiviert"
+			}
+		}
+	},
+	"wizard": {
+		"title": "Virtuelles Gerät erstellen",
+		"subtitle": "Erstellen Sie ein Gerät aus den Kanälen eines anderen Geräts",
+		"breadcrumb": "Virtuelles Gerät erstellen",
+		"viewDevice": "Gerät anzeigen",
+		"steps": {
+			"category": "Kategorie",
+			"mapping": "Zuordnung",
+			"details": "Details",
+			"review": "Überprüfung"
+		},
+		"category": {
+			"heading": "Kategorie wählen",
+			"description": "Wählen Sie die Art des Geräts, das Sie erstellen. Sie bestimmt, welche Kanäle und Eigenschaften im nächsten Schritt zugeordnet werden müssen.",
+			"blockedHeading": "In dieser Version nicht verfügbar",
+			"blockedReason": "benötigt einen Regler — für eine spätere Version geplant"
+		},
+		"mapping": {
+			"heading": "Eigenschaften verknüpfen",
+			"description": "Jede Eigenschaft unten stammt von einem echten Gerät. Füllen Sie mindestens die erforderlichen aus — die übrigen sind optional und dürfen leer bleiben.",
+			"noCategory": "Wählen Sie zuerst eine Gerätekategorie.",
+			"progress": "{filled} von {total} erforderlichen Eigenschaften zugeordnet",
+			"noRequired": "Diese Kategorie hat keine erforderlichen Eigenschaften — ordnen Sie mindestens eine zu, um fortzufahren",
+			"channelRequired": "Erforderlich",
+			"channelOptional": "Optional",
+			"propertyRequired": "Erforderlich",
+			"showOptional": "{count} weitere optionale Eigenschaften anzeigen",
+			"source": {
+				"devicePlaceholder": "Quellgerät",
+				"channelPlaceholder": "Quellkanal",
+				"propertyPlaceholder": "Quelleigenschaft"
+			},
+			"shortcut": {
+				"description": "Ganzen Kanal übernehmen: Wählen Sie einen Kanal eines echten Geräts, um damit alle Eigenschaften zu füllen, die er abdecken kann.",
+				"apply": "Aus Kanal füllen",
+				"applied": "{filled} von {total} Eigenschaften aus dem gewählten Kanal gefüllt.",
+				"nothingApplied": "Der gewählte Kanal hat keine Eigenschaft, die dieser Kanal verwenden kann."
+			},
+			"errors": {
+				"checkFailed": "Diese Quelle konnte nicht geprüft werden. Wählen Sie eine andere oder versuchen Sie es erneut.",
+				"incompatible": "Diese Quelle kann diese Eigenschaft nicht füllen."
+			},
+			"constraints": {
+				"oneOrMoreOf": "benötigt mindestens eine von: {properties}",
+				"oneOf": "akzeptiert nur eine von: {properties}",
+				"mutuallyExclusive": "diese Gruppen lassen sich nicht kombinieren: {groups}",
+				"deviceOneOrMoreOf": "benötigt mindestens einen dieser Kanäle: {channels}",
+				"deviceOneOf": "akzeptiert nur einen dieser Kanäle: {channels}",
+				"deviceMutuallyExclusive": "diese Kanäle lassen sich nicht kombinieren: {groups}"
+			}
+		},
+		"details": {
+			"heading": "Gerät benennen und platzieren",
+			"description": "Geben Sie dem Gerät einen Namen und weisen Sie es optional einem Raum und Zonen zu. Ein Name wird anhand von Kategorie und Raum vorgeschlagen — Sie können ihn ändern."
+		},
+		"review": {
+			"heading": "Überprüfen und erstellen",
+			"description": "Prüfen Sie die Zusammenfassung unten und erstellen Sie dann das Gerät. Jede aufgeführte Eigenschaft stammt aus dem Kanal eines echten Geräts.",
+			"noMappings": "Es ist noch nichts zugeordnet — gehen Sie zurück und ordnen Sie mindestens eine Eigenschaft zu.",
+			"columns": {
+				"property": "Eigenschaft",
+				"sourceDevice": "Quellgerät",
+				"sourceChannel": "Quellkanal",
+				"sourceProperty": "Quelleigenschaft"
+			},
+			"hideSource": {
+				"label": "{device} ausblenden — jede Eigenschaft oben stammt von diesem Gerät",
+				"hint": "Blendet das Quellgerät aus Listen und Auswahlen aus. Es bleibt vollständig erhalten und kann jederzeit über die Geräteliste wieder eingeblendet werden.",
+				"retry": "Ausblenden erneut versuchen",
+				"success": "{device} ist jetzt ausgeblendet"
+			},
+			"created": "{name} wurde erstellt",
+			"create": "Gerät erstellen",
+			"noRoom": "Kein Raum zugewiesen",
+			"noZones": "Keine Zonen zugewiesen",
+			"unknownSource": "Unbekannt",
+			"errors": {
+				"createFailed": "Das Gerät konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
+				"hideFailed": "Das Quellgerät konnte nicht ausgeblendet werden.",
+				"hideFailedFlash": "{device} wurde nicht ausgeblendet: Die Anfrage ist fehlgeschlagen. Sie können es später über die Geräteliste ausblenden.",
+				"zonesFailed": "{count} Zone(n) konnten nicht zugewiesen werden. Sie können sie später über die Geräteliste hinzufügen."
+			}
+		}
+	},
+	"sources": {
+		"heading": "Quellgeräte",
+		"description": "Die physischen Geräte, aus denen die Eigenschaften dieses Geräts übernommen werden.",
+		"empty": "Dieses Gerät übernimmt nichts von einem anderen Gerät.",
+		"loadFailed": "Quellgeräte konnten nicht geladen werden.",
+		"retry": "Erneut versuchen",
+		"warning": {
+			"title": "{channel} · {property}: Quelle verloren",
+			"description": "Die Quelleigenschaft wurde gelöscht. Dieses Gerät bleibt offline, bis sie neu zugeordnet wird.",
+			"remap": "Neu zuordnen"
+		}
+	},
+	"remap": {
+		"title": "{property} neu zuordnen",
+		"description": "Wählen Sie eine neue Quelle für diese Eigenschaft. Bestätigt werden kann nur eine kompatible Quelle.",
+		"confirm": "Neu zuordnen",
+		"success": "{property} bezieht jetzt Werte aus einer neuen Quelle",
+		"errors": {
+			"propertyGone": "Diese Eigenschaft existiert nicht mehr.",
+			"updateFailed": "Die Eigenschaft konnte nicht neu zugeordnet werden. Bitte versuchen Sie es erneut."
+		}
+	}
+}

@@ -4,6 +4,7 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { VirtualDevicesService } from '../services/virtual-devices.service';
 import { VirtualPropertyIndexService } from '../services/virtual-property-index.service';
@@ -31,6 +32,7 @@ describe('category field validation on CreateVirtualDeviceDto / UpdateVirtualDev
 			undefined as unknown as ChannelsService,
 			undefined as unknown as DevicesService,
 			undefined as unknown as VirtualPropertyIndexService,
+			undefined as unknown as DeviceValidationService,
 		);
 		const categoryAllowedValidator = new CategoryAllowedConstraintValidator(virtualDevicesService);
 

@@ -6,4 +6,6 @@ export interface IDevicesFilterProps {
 	filtersActive: boolean;
 	selectedCount: number;
 	bulkActions: IBulkAction[];
+	showHidden: boolean;
+	loading: boolean;
 }

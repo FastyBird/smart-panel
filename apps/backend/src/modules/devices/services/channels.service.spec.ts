@@ -16,17 +16,26 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ChannelCategory, ConnectionState, DeviceCategory, EventType } from '../devices.constants';
-import { DevicesException } from '../devices.exceptions';
+import {
+	ChannelCategory,
+	ConnectionState,
+	DataTypeType,
+	DeviceCategory,
+	EventType,
+	PermissionType,
+	PropertyCategory,
+} from '../devices.constants';
+import { DevicesException, DevicesValidationException } from '../devices.exceptions';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { UpdateChannelDto } from '../dto/update-channel.dto';
-import { ChannelEntity } from '../entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
 import { DeviceExistsConstraintValidator } from '../validators/device-exists-constraint.validator';
 
 import { ChannelsTypeMapperService } from './channels-type-mapper.service';
 import { ChannelsControlsService } from './channels.controls.service';
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
+import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DevicesService } from './devices.service';
 
 class MockChannel extends ChannelEntity {
@@ -62,6 +71,7 @@ describe('ChannelsService', () => {
 	let mapper: ChannelsTypeMapperService;
 	let eventEmitter: EventEmitter2;
 	let dataSource: DataSource;
+	let channelsPropertiesService: ChannelsPropertiesService;
 
 	const mockDevice = {
 		id: uuid().toString(),
@@ -116,6 +126,9 @@ describe('ChannelsService', () => {
 			findOne: jest.fn(),
 			create: jest.fn(),
 			save: jest.fn(),
+			// Rows are inserted rather than saved, so a client-supplied id that already exists collides on
+			// the primary key instead of quietly turning the create into an update.
+			insert: jest.fn().mockResolvedValue({ identifiers: [{}], generatedMaps: [], raw: [] }),
 			remove: jest.fn(),
 			delete: jest.fn(),
 			createQueryBuilder: jest.fn(() => ({
@@ -131,6 +144,7 @@ describe('ChannelsService', () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				ChannelsService,
+				DeviceStructureLockService,
 				DeviceExistsConstraintValidator,
 				{ provide: getRepositoryToken(ChannelEntity), useFactory: mockRepository },
 				{
@@ -149,6 +163,11 @@ describe('ChannelsService', () => {
 					provide: ChannelsPropertiesService,
 					useValue: {
 						create: jest.fn(() => {}),
+						// Reached by the rollback below: the properties created before a nested failure are
+						// read back and removed one by one, which is what answers the creations they already
+						// announced.
+						findAll: jest.fn().mockResolvedValue([]),
+						remove: jest.fn().mockResolvedValue(undefined),
 					},
 				},
 				{
@@ -188,6 +207,7 @@ describe('ChannelsService', () => {
 		mapper = module.get<ChannelsTypeMapperService>(ChannelsTypeMapperService);
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 		dataSource = module.get<DataSource>(DataSource);
+		channelsPropertiesService = module.get<ChannelsPropertiesService>(ChannelsPropertiesService);
 	});
 
 	afterEach(() => {
@@ -308,6 +328,130 @@ describe('ChannelsService', () => {
 	});
 
 	describe('create', () => {
+		// `id` is client-suppliable, and `save()` treats a row whose primary key exists as an *update*: a
+		// create carrying an existing id moved that channel under this device, and `DevicesService`'s
+		// rollback then removed it as one of its own — a malformed request destroying a channel it had
+		// nothing to do with.
+		it('refuses a create naming a channel id that already exists, before anything is written', async () => {
+			const takenId = uuid().toString();
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannel,
+				createDto: CreateMockChannelDto,
+				updateDto: UpdateMockChannelDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'create').mockReturnValue({ id: takenId } as MockChannel);
+			jest.spyOn(repository, 'findOne').mockResolvedValue({ id: takenId } as ChannelEntity);
+
+			await expect(
+				service.create({
+					id: takenId,
+					type: 'mock',
+					category: ChannelCategory.GENERIC,
+					name: 'Colliding channel',
+					device: uuid().toString(),
+					mock_value: 'Some value',
+				} as CreateMockChannelDto),
+			).rejects.toThrow(DevicesValidationException);
+
+			expect(repository.insert).not.toHaveBeenCalled();
+			expect(repository.save).not.toHaveBeenCalled();
+		});
+
+		// The check above closes the collision only for a caller who is alone: two requests carrying the
+		// same client-generated uuid can both pass it before either writes. `insert()` always issues an
+		// INSERT, so the primary key decides, and the refusal reads the same from the caller's side.
+		it('reports a concurrent duplicate channel id as the same refusal the check gives', async () => {
+			const takenId = uuid().toString();
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannel,
+				createDto: CreateMockChannelDto,
+				updateDto: UpdateMockChannelDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'create').mockReturnValue({ id: takenId } as MockChannel);
+			jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+			jest
+				.spyOn(repository, 'insert')
+				.mockRejectedValue(Object.assign(new Error('SQLITE_CONSTRAINT: UNIQUE constraint failed: channels.id')));
+
+			await expect(
+				service.create({
+					id: takenId,
+					type: 'mock',
+					category: ChannelCategory.GENERIC,
+					name: 'Colliding channel',
+					device: uuid().toString(),
+					mock_value: 'Some value',
+				} as CreateMockChannelDto),
+			).rejects.toThrow(DevicesValidationException);
+		});
+
+		// One request, one outcome. A property rejected halfway used to leave the channel and the
+		// properties before it behind, with the caller told the whole thing failed — a retry then walked
+		// into its own leftovers, and a client that had heard the earlier properties announce themselves
+		// held children of a channel it was never told about, since CHANNEL_CREATED is emitted only after
+		// a creation completes.
+		it('rolls the channel back when a nested property fails', async () => {
+			const channelId = uuid().toString();
+			const deviceId = uuid().toString();
+			const built = { id: channelId, type: 'mock' } as MockChannel;
+			const alreadyCreated = { id: 'created-property' } as ChannelPropertyEntity;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannel,
+				createDto: CreateMockChannelDto,
+				updateDto: UpdateMockChannelDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'create').mockReturnValue(built);
+			// Null first: that read is the client-supplied-id collision check, which must find nothing.
+			// The next one is the rollback re-reading the row it is about to remove.
+			jest.spyOn(repository, 'findOne').mockResolvedValueOnce(null).mockResolvedValue(built);
+
+			(channelsPropertiesService.create as jest.Mock)
+				.mockResolvedValueOnce(alreadyCreated)
+				.mockRejectedValueOnce(new DevicesValidationException('incompatible projection'));
+			(channelsPropertiesService.findAll as jest.Mock).mockResolvedValue([alreadyCreated]);
+
+			await expect(
+				service.create({
+					type: 'mock',
+					category: ChannelCategory.GENERIC,
+					name: 'Half-built channel',
+					device: deviceId,
+					mock_value: 'Random text',
+					properties: [
+						{
+							type: 'mock',
+							category: PropertyCategory.GENERIC,
+							permissions: [PermissionType.READ_ONLY],
+							data_type: DataTypeType.UNKNOWN,
+						},
+						{
+							type: 'mock',
+							category: PropertyCategory.GENERIC,
+							permissions: [PermissionType.READ_ONLY],
+							data_type: DataTypeType.UNKNOWN,
+						},
+					],
+				} as unknown as CreateMockChannelDto),
+			).rejects.toThrow('incompatible projection');
+
+			// The property created before the failure is removed through its own service — its stored
+			// values live outside its row, and that removal announces its deletion.
+			expect(channelsPropertiesService.remove).toHaveBeenCalledWith('created-property');
+			// And the channel itself goes, as an entity rather than a raw row.
+			expect(repository.remove).toHaveBeenCalledWith(built);
+			// Never announced: it had not announced its creation either.
+			expect(eventEmitter.emit).not.toHaveBeenCalledWith(EventType.CHANNEL_DELETED, expect.anything());
+		});
+
 		it('should create and return a new channel', async () => {
 			const createDto: CreateMockChannelDto = {
 				type: 'mock',
@@ -366,7 +510,8 @@ describe('ChannelsService', () => {
 
 			expect(result).toEqual(toInstance(MockChannel, mockCreatedChannel));
 			expect(repository.create).toHaveBeenCalledWith(toInstance(MockChannel, mockCreateChannel));
-			expect(repository.save).toHaveBeenCalledWith(toInstance(ChannelEntity, mockCreatedChannel));
+			// Inserted, not saved: `save()` would treat a client-supplied id that already exists as an update.
+			expect(repository.insert).toHaveBeenCalledWith(toInstance(ChannelEntity, mockCreatedChannel));
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('channel.id = :id', { id: mockCreatedChannel.id });
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_CREATED,

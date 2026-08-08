@@ -98,10 +98,30 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 		formResult.value = FormResult.WORKING;
 
 		try {
+			const { roomId, ...deviceData } = parsedModel.data;
+
+			// `roomId` only when this form actually carried one *and* it differs from where the device
+			// already is. The backend reads any `room_id` in a PATCH as a placement change and refuses one
+			// outright for a hidden device — which is what a source device becomes when a virtual device
+			// replaces it — so echoing the stored room back would make renaming such a device fail with a
+			// 422 about a placement nobody touched.
+			//
+			// Compared against the device rather than against `initialModel`, which is how the Shelly
+			// composables do it: their model seeds `roomId` from the device, this one has no room field at
+			// all, so its `initialModel.roomId` is always `undefined`. Comparing against that would read a
+			// room set to its current value as a change — and the presence check is what stops the absent
+			// key being read as "clear the room".
+			const fieldUpdates: Record<string, string | null> = {};
+
+			if ('roomId' in parsedModel.data && (roomId ?? null) !== (device.roomId ?? null)) {
+				fieldUpdates.roomId = roomId ?? null;
+			}
+
 			await devicesStore.edit({
 				id: device.id,
 				data: {
-					...parsedModel.data,
+					...deviceData,
+					...fieldUpdates,
 					type: device.type,
 				},
 			});

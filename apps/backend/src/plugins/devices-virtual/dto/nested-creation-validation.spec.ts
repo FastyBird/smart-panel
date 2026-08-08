@@ -11,6 +11,7 @@ import {
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DeviceExistsConstraintValidator } from '../../../modules/devices/validators/device-exists-constraint.validator';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
@@ -83,6 +84,7 @@ describe('nested virtual device creation DTOs', () => {
 			channelsService as unknown as ChannelsService,
 			devicesService as unknown as DevicesService,
 			undefined as unknown as VirtualPropertyIndexService,
+			undefined as unknown as DeviceValidationService,
 		);
 
 		const categoryAllowedValidator = new CategoryAllowedConstraintValidator(virtualDevicesService);

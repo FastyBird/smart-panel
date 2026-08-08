@@ -442,13 +442,26 @@ export class VirtualDeviceInformationListener {
 	}
 
 	private async ensureOwnedProperty(channel: ChannelEntity, definition: OwnedPropertyDefinition): Promise<void> {
+		// A channel without an id cannot own anything: `ChannelsPropertiesService.create` writes whatever
+		// it is handed straight into the row's foreign key, and SQLite exempts a NULL foreign key from
+		// the constraint that would otherwise have refused it — so the property lands unreachable, past
+		// the cascade that would have taken it with its channel. Refused rather than logged and attempted,
+		// because there is no useful row to create here.
+		if (!channel.id) {
+			this.logger.error(
+				`Refusing to synthesize '${definition.identifier}' into a channel with no id; the device information channel was not resolved`,
+			);
+
+			return;
+		}
+
 		const existing = await this.channelsPropertiesService.findOneBy('category', definition.category, channel.id);
 
 		if (existing) {
 			return;
 		}
 
-		await this.channelsPropertiesService.create(channel.id, {
+		const created = await this.channelsPropertiesService.create(channel.id, {
 			type: channel.type,
 			identifier: definition.identifier,
 			name: definition.name,
@@ -457,6 +470,33 @@ export class VirtualDeviceInformationListener {
 			data_type: DataTypeType.STRING,
 			value: definition.value,
 			value_origin: VirtualValueOrigin.LOCAL,
+		});
+
+		// This whole synthesis is fire-and-forget off DEVICE_CREATED, and nothing waits for it — so the
+		// device can be deleted while it runs. The channel goes with the device, and a create that lands
+		// on the far side of that cascade leaves a property row pointing at a channel that no longer
+		// exists: unreachable through any endpoint, and past the cascade that would have taken it. Seen in
+		// CI as a stray `serial_number` with a null channel.
+		//
+		// Undone rather than prevented, because there is no window small enough to prevent it in: the
+		// check and the insert cannot be one statement, so the honest move is to confirm afterwards and
+		// clean up what should not have landed. Removed through the service, so its own removal lifecycle
+		// runs — the row is being unmade, not hidden.
+		const stillOwned = await this.channelsService.findOne(channel.id);
+
+		if (stillOwned) {
+			return;
+		}
+
+		this.logger.warn(
+			`Channel id=${channel.id} was deleted while property id=${created.id} was being synthesized for it; removing the property rather than leaving it with no channel`,
+		);
+
+		await this.channelsPropertiesService.remove(created.id).catch((error: unknown): void => {
+			this.logger.error(
+				`Failed to remove property id=${created.id} left behind by a deleted channel`,
+				error instanceof Error ? error : undefined,
+			);
 		});
 	}
 }

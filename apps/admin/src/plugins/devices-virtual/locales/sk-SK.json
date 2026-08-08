@@ -1,0 +1,141 @@
+{
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Interný identifikátor",
+				"placeholder": "ID zariadenia"
+			},
+			"identifier": {
+				"title": "Systémový identifikátor",
+				"placeholder": "Systémový identifikátor zariadenia"
+			},
+			"category": {
+				"title": "Kategória",
+				"placeholder": "Kategória zariadenia",
+				"validation": {
+					"required": "Prosím vyberte kategóriu zariadenia"
+				}
+			},
+			"name": {
+				"title": "Názov",
+				"placeholder": "Názov zariadenia",
+				"validation": {
+					"required": "Prosím vyplňte názov zariadenia"
+				}
+			},
+			"description": {
+				"title": "Popis",
+				"placeholder": "Popis zariadenia"
+			},
+			"enabled": {
+				"title": "Povolené"
+			}
+		}
+	},
+	"wizard": {
+		"title": "Vytvoriť virtuálne zariadenie",
+		"subtitle": "Zostavte zariadenie z kanálov iného zariadenia",
+		"breadcrumb": "Vytvoriť virtuálne zariadenie",
+		"viewDevice": "Zobraziť zariadenie",
+		"steps": {
+			"category": "Kategória",
+			"mapping": "Mapovanie",
+			"details": "Detaily",
+			"review": "Zhrnutie"
+		},
+		"category": {
+			"heading": "Vyberte kategóriu",
+			"description": "Vyberte druh zariadenia, ktoré vytvárate. Určuje, ktoré kanály a vlastnosti bude potrebné namapovať v ďalšom kroku.",
+			"blockedHeading": "V tomto vydaní nie je k dispozícii",
+			"blockedReason": "vyžaduje regulátor — plánované pre neskoršie vydanie"
+		},
+		"mapping": {
+			"heading": "Prepojte vlastnosti",
+			"description": "Každá vlastnosť nižšie pochádza zo skutočného zariadenia. Vyplňte aspoň povinné — ostatné sú voliteľné a môžu zostať prázdne.",
+			"noCategory": "Najprv vyberte kategóriu zariadenia.",
+			"progress": "Namapovaných {filled} z {total} povinných vlastností",
+			"noRequired": "Táto kategória nemá žiadne povinné vlastnosti — na pokračovanie namapujte aspoň jednu",
+			"channelRequired": "Povinný",
+			"channelOptional": "Voliteľný",
+			"propertyRequired": "Povinná",
+			"showOptional": "Zobraziť ďalších {count} voliteľných vlastností",
+			"source": {
+				"devicePlaceholder": "Zdrojové zariadenie",
+				"channelPlaceholder": "Zdrojový kanál",
+				"propertyPlaceholder": "Zdrojová vlastnosť"
+			},
+			"shortcut": {
+				"description": "Prevziať celý kanál: vyberte kanál skutočného zariadenia a vyplňte ním všetky vlastnosti, ktoré dokáže pokryť.",
+				"apply": "Vyplniť z kanála",
+				"applied": "Z vybraného kanála vyplnených {filled} z {total} vlastností.",
+				"nothingApplied": "Vybraný kanál nemá žiadnu vlastnosť, ktorú by tento kanál mohol použiť."
+			},
+			"errors": {
+				"checkFailed": "Tento zdroj sa nepodarilo overiť. Vyberte iný alebo to skúste znova.",
+				"incompatible": "Tento zdroj nemôže naplniť túto vlastnosť."
+			},
+			"constraints": {
+				"oneOrMoreOf": "vyžaduje aspoň jednu z: {properties}",
+				"oneOf": "prijíma iba jednu z: {properties}",
+				"mutuallyExclusive": "tieto skupiny nemožno kombinovať: {groups}",
+				"deviceOneOrMoreOf": "vyžaduje aspoň jeden z týchto kanálov: {channels}",
+				"deviceOneOf": "prijíma iba jeden z týchto kanálov: {channels}",
+				"deviceMutuallyExclusive": "tieto kanály nemožno kombinovať: {groups}"
+			}
+		},
+		"details": {
+			"heading": "Pomenujte a umiestnite zariadenie",
+			"description": "Zadajte názov zariadenia a voliteľne ho priraďte k miestnosti a zónam. Názov je navrhnutý podľa kategórie a miestnosti — môžete ho zmeniť."
+		},
+		"review": {
+			"heading": "Skontrolovať a vytvoriť",
+			"description": "Skontrolujte súhrn nižšie a potom zariadenie vytvorte. Každá uvedená vlastnosť je prevzatá z kanála skutočného zariadenia.",
+			"noMappings": "Zatiaľ nič nie je namapované — vráťte sa a namapujte aspoň jednu vlastnosť.",
+			"columns": {
+				"property": "Vlastnosť",
+				"sourceDevice": "Zdrojové zariadenie",
+				"sourceChannel": "Zdrojový kanál",
+				"sourceProperty": "Zdrojová vlastnosť"
+			},
+			"hideSource": {
+				"label": "Skryť {device} — všetky vlastnosti vyššie pochádzajú z tohto zariadenia",
+				"hint": "Skryje zdrojové zariadenie zo zoznamov a výberov. Zostáva plne zachované a možno ho kedykoľvek znova odkryť v zozname zariadení.",
+				"retry": "Skúsiť skryť znova",
+				"success": "{device} je teraz skryté"
+			},
+			"created": "Zariadenie {name} bolo vytvorené",
+			"create": "Vytvoriť zariadenie",
+			"noRoom": "Nie je priradená žiadna miestnosť",
+			"noZones": "Nie sú priradené žiadne zóny",
+			"unknownSource": "Neznáme",
+			"errors": {
+				"createFailed": "Zariadenie sa nepodarilo vytvoriť. Skúste to prosím znova.",
+				"hideFailed": "Zdrojové zariadenie sa nepodarilo skryť.",
+				"hideFailedFlash": "{device} nebolo skryté: požiadavka zlyhala. Môžete ho skryť neskôr v zozname zariadení.",
+				"zonesFailed": "Nepodarilo sa priradiť {count} zón. Môžete ich pridať neskôr v zozname zariadení."
+			}
+		}
+	},
+	"sources": {
+		"heading": "Zdrojové zariadenia",
+		"description": "Fyzické zariadenia, z ktorých sú prevzaté vlastnosti tohto zariadenia.",
+		"empty": "Toto zariadenie nepreberá nič z iného zariadenia.",
+		"loadFailed": "Zdrojové zariadenia sa nepodarilo načítať.",
+		"retry": "Skúsiť znova",
+		"warning": {
+			"title": "{channel} · {property}: stratený zdroj",
+			"description": "Zdrojová vlastnosť bola odstránená. Toto zariadenie zostáva offline, kým nebude znova namapované.",
+			"remap": "Premapovať"
+		}
+	},
+	"remap": {
+		"title": "Premapovať {property}",
+		"description": "Vyberte nový zdroj pre túto vlastnosť. Potvrdiť možno iba kompatibilný zdroj.",
+		"confirm": "Premapovať",
+		"success": "{property} teraz čerpá z nového zdroja",
+		"errors": {
+			"propertyGone": "Táto vlastnosť už neexistuje.",
+			"updateFailed": "Vlastnosť sa nepodarilo premapovať. Skúste to prosím znova."
+		}
+	}
+}

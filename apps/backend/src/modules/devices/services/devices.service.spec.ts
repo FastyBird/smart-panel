@@ -18,8 +18,21 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
-import { ChannelCategory, ConnectionState, DeviceCategory, DeviceHiddenFilter, EventType } from '../devices.constants';
-import { DevicesException } from '../devices.exceptions';
+import { SpaceType } from '../../spaces/spaces.constants';
+import {
+	ChannelCategory,
+	ConnectionState,
+	DeviceCategory,
+	DeviceHiddenBy,
+	DeviceHiddenFilter,
+	EventType,
+} from '../devices.constants';
+import {
+	DevicesException,
+	DevicesNotAllowedException,
+	DevicesNotFoundException,
+	DevicesValidationException,
+} from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
@@ -27,6 +40,7 @@ import { DeviceEntity } from '../entities/devices.entity';
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { DeviceConnectionStateService } from './device-connection-state.service';
+import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DeviceZonesService } from './device-zones.service';
 import { DevicesTypeMapperService } from './devices-type-mapper.service';
 import { DevicesControlsService } from './devices.controls.service';
@@ -62,6 +76,8 @@ class UpdateMockDeviceDto extends UpdateDeviceDto {
 describe('DevicesService', () => {
 	let service: DevicesService;
 	let repository: Repository<DeviceEntity>;
+	let spaceRepository: Repository<SpaceEntity>;
+	let deviceZonesService: DeviceZonesService;
 	let mapper: DevicesTypeMapperService;
 	let eventEmitter: EventEmitter2;
 	let dataSource: DataSource;
@@ -103,6 +119,9 @@ describe('DevicesService', () => {
 			findOne: jest.fn(),
 			create: jest.fn(),
 			save: jest.fn(),
+			// The device row is inserted rather than saved, so the primary key constraint decides a
+			// concurrent duplicate instead of `save()` quietly turning the create into an update.
+			insert: jest.fn().mockResolvedValue({ identifiers: [{}], generatedMaps: [], raw: [] }),
 			remove: jest.fn(),
 			delete: jest.fn(),
 			createQueryBuilder: jest.fn(() => ({
@@ -118,6 +137,9 @@ describe('DevicesService', () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				DevicesService,
+				// Dependency-free and re-entrant, so the real one is used: what it serializes is exactly what
+				// these tests exercise.
+				DeviceStructureLockService,
 				{ provide: getRepositoryToken(DeviceEntity), useFactory: mockRepository },
 				{ provide: getRepositoryToken(SpaceEntity), useFactory: mockRepository },
 				{
@@ -143,12 +165,14 @@ describe('DevicesService', () => {
 					provide: ChannelsService,
 					useValue: {
 						create: jest.fn(() => {}),
+						findAll: jest.fn().mockResolvedValue([]),
 						findBoundedForDevices: jest.fn().mockResolvedValue({ channels: [], deviceIds: {}, truncated: false }),
 					},
 				},
 				{
 					provide: ChannelsPropertiesService,
 					useValue: {
+						remove: jest.fn().mockResolvedValue(undefined),
 						findBoundedForChannels: jest.fn().mockResolvedValue({ properties: [], totals: {} }),
 					},
 				},
@@ -184,6 +208,8 @@ describe('DevicesService', () => {
 
 		service = module.get<DevicesService>(DevicesService);
 		repository = module.get<Repository<DeviceEntity>>(getRepositoryToken(DeviceEntity));
+		spaceRepository = module.get<Repository<SpaceEntity>>(getRepositoryToken(SpaceEntity));
+		deviceZonesService = module.get<DeviceZonesService>(DeviceZonesService);
 		mapper = module.get<DevicesTypeMapperService>(DevicesTypeMapperService);
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 		dataSource = module.get<DataSource>(DataSource);
@@ -445,6 +471,235 @@ describe('DevicesService', () => {
 	});
 
 	describe('create', () => {
+		// A nested create saves the device first, then its channels. When a child fails — a virtual
+		// property whose source cannot fill its slot, say — the device must not survive as a half-built
+		// row, and the children that already announced themselves must have their deletions announced
+		// too, or websocket clients keep ghosts.
+		// Provenance is meaningless once a device is visible again, and no caller can send
+		// `hidden_by: null` — the generated admin type drops the null and the DTO's own transform reads
+		// an explicit null as "not provided" — so unhiding has to clear it here.
+		it('clears the hidden provenance when a device is unhidden', async () => {
+			const hiddenDevice = toInstance(MockDevice, { ...mockDevice, hidden: true, hiddenBy: DeviceHiddenBy.SYSTEM });
+
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(hiddenDevice);
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(hiddenDevice);
+			// `update()` writes through a relation-free re-read of the row and refuses when that read comes
+			// back empty — the row was deleted mid-call. This test is not about that race, so the re-read
+			// answers the same row the load did.
+			jest.spyOn(repository, 'findOne').mockResolvedValue(hiddenDevice);
+
+			await service.update(hiddenDevice.id, { type: 'mock', hidden: false } as UpdateMockDeviceDto);
+
+			const saved = (repository.save as jest.Mock).mock.calls[0]?.[0] as DeviceEntity | undefined;
+
+			expect(saved?.hidden).toBe(false);
+			expect(saved?.hiddenBy ?? null).toBeNull();
+		});
+
+		// `id` is client-suppliable and `repository.save()` treats an existing primary key as an *update*,
+		// so a create naming an id already in use silently overwrote that device — and the rollback then
+		// removed it. A malformed request destroying a device it had nothing to do with.
+		// Same invariant on the way in: a create that names a reason without hiding anything would leave a
+		// `system` claim sitting on a visible row for the first hide to inherit.
+		it('stores no hide provenance for a create that leaves the device visible', async () => {
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+
+			const built = {
+				id: uuid().toString(),
+				type: 'mock',
+				hidden: false,
+				hiddenBy: DeviceHiddenBy.SYSTEM,
+			} as MockDevice;
+
+			jest.spyOn(repository, 'create').mockReturnValue(built);
+
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(built),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+
+			await service.create({
+				type: 'mock',
+				category: DeviceCategory.GENERIC,
+				name: 'Visible device',
+				hidden_by: DeviceHiddenBy.SYSTEM,
+				mock_value: 'Random text',
+			} as never);
+
+			const inserted = (repository.insert as jest.Mock).mock.calls[0]?.[0] as DeviceEntity | undefined;
+
+			expect(inserted?.hiddenBy).toBeNull();
+		});
+
+		it('refuses a create naming an id that already exists, before anything is written', async () => {
+			const takenId = uuid().toString();
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'create').mockReturnValue({ id: takenId } as MockDevice);
+			jest.spyOn(repository, 'findOne').mockResolvedValue({ id: takenId } as MockDevice);
+
+			await expect(
+				service.create({
+					id: takenId,
+					type: 'mock',
+					category: DeviceCategory.GENERIC,
+					name: 'Colliding device',
+					mock_value: 'Random text',
+				} as never),
+			).rejects.toThrow(DevicesValidationException);
+
+			expect(repository.save).not.toHaveBeenCalled();
+			expect(repository.remove).not.toHaveBeenCalled();
+		});
+
+		// The pre-check is one caller's answer: two requests carrying the same client-generated uuid can
+		// both pass it before either writes. `insert()` lets the primary key constraint decide instead, and
+		// the refusal it raises has to read as the same domain error rather than a raw database failure.
+		it('reports a concurrent duplicate id as the same refusal the check gives', async () => {
+			const takenId = uuid().toString();
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'create').mockReturnValue({ id: takenId } as MockDevice);
+			// Nothing found by the check — the other request had not committed yet — and the constraint
+			// rejecting the insert a moment later.
+			jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+			jest
+				.spyOn(repository, 'insert')
+				.mockRejectedValue(new Error('SQLITE_CONSTRAINT: UNIQUE constraint failed: devices_module_devices.id'));
+
+			await expect(
+				service.create({
+					id: takenId,
+					type: 'mock',
+					category: DeviceCategory.GENERIC,
+					name: 'Racing device',
+					mock_value: 'Random text',
+				} as never),
+			).rejects.toThrow(DevicesValidationException);
+		});
+
+		// These tables carry other unique indexes — a device's `(identifier, type)` among them — and
+		// reporting one of those as a reused id tells the caller to change a field that did not collide
+		// while saying nothing about the one that did. Anything but the primary key travels on as itself,
+		// to the filter that reported it before this catch existed.
+		it('leaves a uniqueness failure on another column as itself, rather than calling it a reused id', async () => {
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'create').mockReturnValue({ id: uuid().toString() } as MockDevice);
+			jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+			jest
+				.spyOn(repository, 'insert')
+				.mockRejectedValue(
+					new Error(
+						'SQLITE_CONSTRAINT: UNIQUE constraint failed: devices_module_devices.identifier, devices_module_devices.type',
+					),
+				);
+
+			await expect(
+				service.create({
+					type: 'mock',
+					category: DeviceCategory.GENERIC,
+					identifier: 'already-taken',
+					name: 'Duplicate identifier',
+					mock_value: 'Random text',
+				} as never),
+			).rejects.toThrow('UNIQUE constraint failed');
+		});
+
+		it('rolls the device back and announces the children when a nested channel fails', async () => {
+			const createDto: CreateMockDeviceDto = {
+				type: 'mock',
+				category: DeviceCategory.GENERIC,
+				name: 'Half-built device',
+				mock_value: 'Random text',
+			};
+
+			const createdDeviceId = uuid().toString();
+			// Deliberately a different instance from the one `save` returns, so the assertion below can tell
+			// which of the two was handed to `remove`.
+			const reloadedForRollback = { id: createdDeviceId } as MockDevice;
+			const orphanedProperty = { id: uuid().toString() };
+			const orphanedChannel = { id: uuid().toString(), properties: [orphanedProperty] };
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'create').mockReturnValue({ id: createdDeviceId } as MockDevice);
+			jest.spyOn(repository, 'save').mockResolvedValue({ id: createdDeviceId } as MockDevice);
+			// First call answers the "is this id already taken" check — nothing is taken here — and the
+			// second is the rollback re-reading the row it is about to remove. Both go through the same
+			// repository in this harness.
+			jest.spyOn(repository, 'findOne').mockResolvedValueOnce(null).mockResolvedValue(reloadedForRollback);
+
+			channelsService.create.mockRejectedValue(new DevicesValidationException('Source cannot fill this slot'));
+			channelsService.findAll.mockResolvedValue([orphanedChannel] as never);
+			propertiesService.remove.mockResolvedValue(undefined as never);
+
+			await expect(
+				service.create({
+					...createDto,
+					channels: [{ type: 'mock', category: ChannelCategory.GENERIC, name: 'Generic' }],
+				} as never),
+			).rejects.toThrow('Source cannot fill this slot');
+
+			// `remove`, not `delete`: only the entity-removal lifecycle drops the device's stored connection
+			// statuses and lets a plugin subscriber tear down the adapter entry the creation put there. A
+			// raw row delete runs no subscriber and leaves both behind for a retry to inherit.
+			//
+			// And a *freshly read* row, not the instance the create built: that one still carries whatever
+			// the request nested onto it, and `DeviceEntity.channels` is `cascade: true`, so removing it
+			// cascades across the in-memory graph and detaches children instead of letting the schema's own
+			// `ON DELETE CASCADE` take them.
+			expect(repository.findOne).toHaveBeenCalledWith({ where: { id: createdDeviceId } });
+			expect(repository.remove).toHaveBeenCalledWith(reloadedForRollback);
+			expect(repository.delete).not.toHaveBeenCalled();
+			// Through its own removal, so the stored values and status records go with it — the raw
+			// cascade would have left that history behind for a retry to inherit.
+			expect(propertiesService.remove).toHaveBeenCalledWith(orphanedProperty.id);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CHANNEL_DELETED, orphanedChannel);
+			expect(eventEmitter.emit).not.toHaveBeenCalledWith(EventType.DEVICE_CREATED, expect.anything());
+		});
+
 		it('should create and return a new device', async () => {
 			const createDto: CreateMockDeviceDto = {
 				type: 'mock',
@@ -502,7 +757,19 @@ describe('DevicesService', () => {
 
 			expect(result).toEqual(toInstance(MockDevice, mockCratedDevice));
 			expect(repository.create).toHaveBeenCalledWith(toInstance(MockDevice, mockCrateDevice));
-			expect(repository.save).toHaveBeenCalledWith(toInstance(MockDevice, mockCratedDevice));
+			// Inserted rather than saved: `save()` looks the row up first and turns a create naming an
+			// existing id into an update, which is what let a create overwrite a device. The primary key
+			// constraint decides now, and the database does not interleave two requests the way a
+			// check-then-save does.
+			// Set on the expectation rather than in the literal above, because `toInstance` drops a null it
+			// was not given a value for. A device that hides nothing stores no provenance, which is what
+			// keeps a later hide from inheriting a claim it never made.
+			const expectedInsert = toInstance(MockDevice, mockCratedDevice);
+
+			expectedInsert.hiddenBy = null;
+
+			expect(repository.insert).toHaveBeenCalledWith(expectedInsert);
+			expect(repository.save).not.toHaveBeenCalled();
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('device.id = :id', { id: mockCratedDevice.id });
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.DEVICE_CREATED,
@@ -521,6 +788,341 @@ describe('DevicesService', () => {
 	});
 
 	describe('update', () => {
+		// `DeviceEntity.channels` is `cascade: true`, so saving the loaded entity re-saves whatever channels
+		// it holds — and TypeORM reads a child missing from a cascaded collection as detached, nulling its
+		// properties' channel. The list is routinely stale: a virtual device's device_information channel
+		// is synthesized fire-and-forget, so a PATCH arriving while that is in flight loaded its channels
+		// before the channel existed. Renaming such a device stripped the channel from its own properties.
+		it('writes through a row carrying no relations, not the entity it merged into', async () => {
+			const createdDeviceId = uuid().toString();
+			const loadedWithRelations = {
+				id: createdDeviceId,
+				type: 'mock',
+				channels: [{ id: 'stale-channel' }],
+			} as unknown as MockDevice;
+			const bareRow = { id: createdDeviceId, type: 'mock' } as MockDevice;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(loadedWithRelations);
+			jest.spyOn(repository, 'findOne').mockResolvedValue(bareRow);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+
+			await service.update(createdDeviceId, { type: 'mock', name: 'Renamed' } as UpdateMockDeviceDto);
+
+			expect(repository.findOne).toHaveBeenCalledWith(
+				expect.objectContaining({ where: { id: createdDeviceId }, loadEagerRelations: false }),
+			);
+
+			const saved = (repository.save as jest.Mock).mock.calls[0]?.[0] as { channels?: unknown[]; name?: string };
+
+			expect(saved.channels).toBeUndefined();
+			expect(saved.name).toBe('Renamed');
+		});
+
+		// The guard runs on the row as it stands when the write happens, not only as it stood when the call
+		// began: several awaited round trips separate the two, and a wizard hiding the device in that
+		// window would otherwise have this move a device that is now inert.
+		it('refuses a placement change when the device was hidden while it was being validated', async () => {
+			const deviceId = uuid().toString();
+			const visibleWhenRead = { id: deviceId, type: 'mock', hidden: false } as unknown as MockDevice;
+			const hiddenByTheTimeItWrites = { id: deviceId, type: 'mock', hidden: true } as unknown as MockDevice;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(visibleWhenRead);
+			jest.spyOn(repository, 'findOne').mockResolvedValue(hiddenByTheTimeItWrites);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+
+			await expect(
+				service.update(deviceId, { type: 'mock', room_id: null } as unknown as UpdateMockDeviceDto),
+			).rejects.toThrow(DevicesNotAllowedException);
+
+			expect(repository.save).not.toHaveBeenCalled();
+		});
+
+		// A concurrent `remove()` can delete the row between the read at the top of `update()` and this
+		// re-read. TypeORM's `save` looks the primary key up, finds nothing and INSERTs, so falling back to
+		// the entity loaded at the top let a PATCH resurrect a device whose DEVICE_DELETED had already been
+		// emitted — carrying whatever relation graph the stale entity happened to hold.
+		it('refuses to write when the device was removed while it was being updated', async () => {
+			const deviceId = uuid().toString();
+			const loadedBeforeTheDelete = { id: deviceId, type: 'mock' } as unknown as MockDevice;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(loadedBeforeTheDelete);
+			jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+
+			await expect(service.update(deviceId, { type: 'mock', name: 'Renamed' } as UpdateMockDeviceDto)).rejects.toThrow(
+				DevicesNotFoundException,
+			);
+
+			expect(repository.save).not.toHaveBeenCalled();
+		});
+
+		// Hiding and re-placing in one PATCH used to depend on write order: the entity save committed the
+		// hide, and `setDeviceZones` then refused the zone half because the device it re-read was hidden —
+		// a 422 with the hide already applied and no DEVICE_UPDATED emitted for it.
+		it('refuses a patch that hides the device and changes its placement, before writing anything', async () => {
+			const deviceId = uuid().toString();
+			const visible = { id: deviceId, type: 'mock', hidden: false } as unknown as MockDevice;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(visible);
+			jest.spyOn(repository, 'findOne').mockResolvedValue(visible);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+
+			await expect(
+				service.update(deviceId, { type: 'mock', hidden: true, zone_ids: [] } as unknown as UpdateMockDeviceDto),
+			).rejects.toThrow(DevicesNotAllowedException);
+
+			expect(repository.save).not.toHaveBeenCalled();
+			expect(deviceZonesService.setDeviceZones).not.toHaveBeenCalled();
+		});
+
+		// `hidden_by: user` is a deliberate operator setting that both unhide paths refuse to reverse. The
+		// virtual wizard stamps `system` on the sources it takes over, and if that lands on a row an
+		// operator has just hidden, `unhideAbandonedSources` would undo their hide the moment the last
+		// virtual reference goes away.
+		it('does not let a system hide overwrite the provenance of an operator hide', async () => {
+			const deviceId = uuid().toString();
+			const userHidden = {
+				id: deviceId,
+				type: 'mock',
+				hidden: true,
+				hiddenBy: DeviceHiddenBy.USER,
+			} as unknown as MockDevice;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(userHidden);
+			// A distinct instance, as the two reads are in production: `update()` merges the patch into the
+			// loaded entity and then judges the provenance on the row it re-read, not on the merged one.
+			jest.spyOn(repository, 'findOne').mockResolvedValue({ ...userHidden } as MockDevice);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+
+			await service.update(deviceId, {
+				type: 'mock',
+				hidden: true,
+				hidden_by: DeviceHiddenBy.SYSTEM,
+			} as unknown as UpdateMockDeviceDto);
+
+			const saved = (repository.save as jest.Mock).mock.calls[0]?.[0] as DeviceEntity | undefined;
+
+			expect(saved?.hiddenBy).toBe(DeviceHiddenBy.USER);
+			expect(saved?.hidden).toBe(true);
+		});
+
+		// The other half of the same rule: a system claim on a row nobody else has hidden is exactly what
+		// the wizard is for, and must still be recorded.
+		it('still records a system hide on a device the operator has not hidden', async () => {
+			const deviceId = uuid().toString();
+			const visible = { id: deviceId, type: 'mock', hidden: false, hiddenBy: null } as unknown as MockDevice;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(visible);
+			jest.spyOn(repository, 'findOne').mockResolvedValue({ ...visible } as MockDevice);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+
+			await service.update(deviceId, {
+				type: 'mock',
+				hidden: true,
+				hidden_by: DeviceHiddenBy.SYSTEM,
+			} as unknown as UpdateMockDeviceDto);
+
+			const saved = (repository.save as jest.Mock).mock.calls[0]?.[0] as DeviceEntity | undefined;
+
+			expect(saved?.hidden).toBe(true);
+			expect(saved?.hiddenBy).toBe(DeviceHiddenBy.SYSTEM);
+		});
+
+		// Two PATCHes moving the same device capture the same entity before either reaches the lock, and
+		// `assertCategoryChangeSafe` deliberately forgives whatever its baseline already suffers from — so
+		// a second request judging against a category the first has since replaced could reintroduce the
+		// very defect the first one fixed. The baseline has to be read where the write happens.
+		it('judges the type owner hook against the row it re-read, not the entity it loaded', async () => {
+			const deviceId = uuid().toString();
+			const loadedBeforeTheOtherPatch = {
+				id: deviceId,
+				type: 'mock',
+				category: DeviceCategory.GENERIC,
+			} as unknown as MockDevice;
+			// The other request committed while this one was queued behind the lock.
+			const rowAsItStandsNow = {
+				id: deviceId,
+				type: 'mock',
+				category: DeviceCategory.LIGHTING,
+			} as unknown as MockDevice;
+
+			const beforeUpdate = jest.fn().mockResolvedValue(undefined);
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+				beforeUpdate,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(loadedBeforeTheOtherPatch);
+			jest.spyOn(repository, 'findOne').mockResolvedValue(rowAsItStandsNow);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+
+			await service.update(deviceId, { type: 'mock', name: 'Renamed' } as UpdateMockDeviceDto);
+
+			const [judged, baseline] = beforeUpdate.mock.calls[0] as [MockDevice, { category?: DeviceCategory }];
+
+			// The baseline is the category the device actually has …
+			expect(baseline.category).toBe(DeviceCategory.LIGHTING);
+			// … and what is judged is the row this write is about to store.
+			expect(judged).toBe(rowAsItStandsNow);
+		});
+
+		// Provenance on a row that ends up visible is a claim about nothing, and left standing it is
+		// inherited by the next hide — including an operator's, which the reconciliation would then undo
+		// as if it had been the system's own.
+		it('stores no hide provenance for a patch that leaves the device visible', async () => {
+			const deviceId = uuid().toString();
+			const visible = { id: deviceId, type: 'mock', hidden: false, hiddenBy: null } as unknown as MockDevice;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(visible);
+			jest.spyOn(repository, 'findOne').mockResolvedValue({ ...visible } as MockDevice);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+
+			await service.update(deviceId, {
+				type: 'mock',
+				hidden_by: DeviceHiddenBy.SYSTEM,
+			} as unknown as UpdateMockDeviceDto);
+
+			const saved = (repository.save as jest.Mock).mock.calls[0]?.[0] as DeviceEntity | undefined;
+
+			expect(saved?.hidden).not.toBe(true);
+			expect(saved?.hiddenBy).toBeNull();
+		});
+
+		// A PATCH that is a no-op against the row it read can be a real change against the row it writes:
+		// another request commits B while this one waits for the lock, and this one then puts A back.
+		// Judged against the stale read it announced nothing, leaving every client on B while the database
+		// said A, with no later event to correct them.
+		it('announces a change that only the freshly locked row reveals', async () => {
+			const deviceId = uuid().toString();
+			const asRead = { id: deviceId, type: 'mock', name: 'Original' } as unknown as MockDevice;
+			// Someone else renamed it while this request was queued behind the lock.
+			const asItStandsNow = { id: deviceId, type: 'mock', name: 'Renamed by someone else' } as unknown as MockDevice;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(asRead);
+			jest.spyOn(repository, 'findOne').mockResolvedValue(asItStandsNow);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+
+			// The same name it read: a no-op against that row, a rename against the one it writes.
+			await service.update(deviceId, { type: 'mock', name: 'Original' } as UpdateMockDeviceDto);
+
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.DEVICE_UPDATED, expect.anything());
+		});
+
+		// The other half: a PATCH that changes nothing at all still announces nothing, so an unrelated
+		// echo of stored values does not wake every client up.
+		it('announces nothing when the patch matches the row it writes', async () => {
+			const deviceId = uuid().toString();
+			const unchanged = { id: deviceId, type: 'mock', name: 'Original' } as unknown as MockDevice;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(unchanged);
+			jest.spyOn(repository, 'findOne').mockResolvedValue({ ...unchanged } as MockDevice);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+
+			await service.update(deviceId, { type: 'mock', name: 'Original' } as UpdateMockDeviceDto);
+
+			expect(eventEmitter.emit).not.toHaveBeenCalledWith(EventType.DEVICE_UPDATED, expect.anything());
+		});
+
+		// A PATCH is one thing to the caller. With the zone half written after the fields, a refusal there
+		// — a zone that is really a floor, or another request hiding the device in the gap — left the
+		// ordinary fields committed while the caller was told the whole PATCH had failed, and skipped the
+		// event at the end, so nothing downstream learned of what had been written.
+		it('writes no fields when the zone half of the patch is refused', async () => {
+			const deviceId = uuid().toString();
+			const visible = { id: deviceId, type: 'mock', hidden: false, name: 'Original' } as unknown as MockDevice;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(visible);
+			jest.spyOn(repository, 'findOne').mockResolvedValue({ ...visible } as MockDevice);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+			(deviceZonesService.setDeviceZones as jest.Mock).mockRejectedValue(
+				new DevicesNotAllowedException('placement is locked'),
+			);
+
+			await expect(
+				service.update(deviceId, {
+					type: 'mock',
+					name: 'Renamed',
+					zone_ids: [uuid().toString()],
+				} as unknown as UpdateMockDeviceDto),
+			).rejects.toThrow(DevicesNotAllowedException);
+
+			expect(repository.save).not.toHaveBeenCalled();
+		});
+
 		it('should update and return the device', async () => {
 			const updateDto: UpdateMockDeviceDto = {
 				type: 'mock',
@@ -592,11 +1194,19 @@ describe('DevicesService', () => {
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockDevice, mockUpdatedDevice));
+			// `update()` writes through a relation-free re-read of the row and refuses when that read comes
+			// back empty — the row was deleted mid-call. This test is not about that race, so the re-read
+			// answers the same row the load did.
+			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
 
 			const result = await service.update(mockDevice.id, updateDto);
 
 			expect(result).toEqual(toInstance(MockDevice, mockUpdatedDevice));
-			expect(repository.save).toHaveBeenCalledWith(toInstance(MockDevice, mockUpdateDevice));
+			const expectedSave = toInstance(MockDevice, mockUpdateDevice);
+
+			expectedSave.hiddenBy = null;
+
+			expect(repository.save).toHaveBeenCalledWith(expectedSave);
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('device.id = :id', { id: mockDevice.id });
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.DEVICE_UPDATED,
@@ -613,10 +1223,12 @@ describe('DevicesService', () => {
 		// `save`, not the returned entity, because the return value is re-read from the database and
 		// would hide the clobber.
 		//
-		// `enabled` is affected by the identical mechanism but is deliberately NOT asserted here: its
-		// initializer is still in place, because three device plugins read `event.entity.enabled` in
-		// `afterInsert` before the row is re-read. See the note on DeviceEntity.enabled — pre-existing,
-		// tracked separately.
+		// `enabled` is affected by the identical mechanism and is covered separately below. Its
+		// initializer (unlike `hidden`'s) is intentionally still in place — three device plugins'
+		// `afterInsert` subscribers read `event.entity.enabled` before the row is re-read — so this could
+		// only be fixed on the update() side, by restricting `updateFields` to properties the PATCH
+		// actually carried, not by dropping the initializer. See the note on DeviceEntity.enabled and the
+		// comment at the `updateFields` computation in DevicesService.update().
 		it('does not reset hidden when the patch does not mention it', async () => {
 			const hiddenDevice = { ...mockDevice, hidden: true };
 
@@ -638,6 +1250,10 @@ describe('DevicesService', () => {
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockDevice, hiddenDevice));
+			// `update()` writes through a relation-free re-read of the row and refuses when that read comes
+			// back empty — the row was deleted mid-call. This test is not about that race, so the re-read
+			// answers the same row the load did.
+			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(MockDevice, hiddenDevice));
 
 			await service.update(hiddenDevice.id, { type: 'mock', name: 'Renamed' } as UpdateMockDeviceDto);
 
@@ -663,10 +1279,317 @@ describe('DevicesService', () => {
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockDevice, { ...mockDevice, hidden: true }));
+			// `update()` writes through a relation-free re-read of the row and refuses when that read comes
+			// back empty — the row was deleted mid-call. This test is not about that race, so the re-read
+			// answers the same row the load did.
+			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
 
 			await service.update(mockDevice.id, { type: 'mock', hidden: true } as UpdateMockDeviceDto);
 
 			expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({ hidden: true }));
+		});
+
+		// Regression test for the same class-field-initializer mechanism as `hidden` above, now proven
+		// for `enabled`. DeviceEntity.enabled's initializer is intentionally still in place (see the note
+		// on DeviceEntity.enabled), so unlike `hidden` this could not be fixed by dropping it — update()
+		// instead restricts `updateFields` to properties dtoInstance actually carried. Asserted against
+		// `save`, not the returned entity, for the same reason as the `hidden` test above.
+		it('does not reset enabled when the patch does not mention it', async () => {
+			const disabledDevice = { ...mockDevice, enabled: false };
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(toInstance(MockDevice, disabledDevice)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockDevice, disabledDevice));
+			// `update()` writes through a relation-free re-read of the row and refuses when that read comes
+			// back empty — the row was deleted mid-call. This test is not about that race, so the re-read
+			// answers the same row the load did.
+			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(MockDevice, disabledDevice));
+
+			await service.update(disabledDevice.id, { type: 'mock', name: 'Renamed' } as UpdateMockDeviceDto);
+
+			expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }));
+		});
+
+		// Symmetric with the `hidden` coverage: a patch that genuinely carries `enabled` must still apply
+		// it, including flipping it to the falsy `false` — the exact value `omitBy(..., isUndefined)`
+		// must not be tricked into treating as "absent".
+		it('applies enabled when the patch does set it, including a falsy false', async () => {
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(toInstance(MockDevice, mockDevice)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockDevice, { ...mockDevice, enabled: false }));
+			// `update()` writes through a relation-free re-read of the row and refuses when that read comes
+			// back empty — the row was deleted mid-call. This test is not about that race, so the re-read
+			// answers the same row the load did.
+			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+
+			await service.update(mockDevice.id, { type: 'mock', enabled: false } as UpdateMockDeviceDto);
+
+			expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }));
+		});
+
+		// Confirms hidden_by round-trips through a PATCH that sets it alongside hidden, symmetric with
+		// the `hidden` coverage above. Asserted against `save`'s argument, not the returned entity — the
+		// returned value comes from a second, independently-mocked `getOne()` and would equal whatever
+		// literal that mock is configured with regardless of what update() actually computed from the
+		// DTO, which is exactly the blind spot the `leaves hiddenBy untouched...` test below documents.
+		it('persists hiddenBy alongside hidden', async () => {
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+
+			const updatedDevice = toInstance(MockDevice, { ...mockDevice, hidden: true, hiddenBy: DeviceHiddenBy.SYSTEM });
+
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest
+					.fn()
+					.mockResolvedValueOnce(toInstance(MockDevice, mockDevice))
+					.mockResolvedValueOnce(updatedDevice),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+			jest.spyOn(repository, 'save').mockResolvedValue(updatedDevice);
+			// `update()` writes through a relation-free re-read of the row and refuses when that read comes
+			// back empty — the row was deleted mid-call. This test is not about that race, so the re-read
+			// answers the same row the load did.
+			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+
+			await service.update(mockDevice.id, {
+				type: 'mock',
+				hidden: true,
+				hidden_by: DeviceHiddenBy.SYSTEM,
+			} as UpdateMockDeviceDto);
+
+			expect(repository.save).toHaveBeenCalledWith(
+				expect.objectContaining({ hidden: true, hiddenBy: DeviceHiddenBy.SYSTEM }),
+			);
+		});
+
+		// Regression test, pinning the class-field-initializer trap that shipped twice on the predecessor
+		// branch (see the note on `hidden` above for the mechanism). `getOne` is backed by a single shared
+		// `persisted` reference here, instead of the hand-written literals the other tests in this block
+		// use for the post-save fetch, specifically so the second update's *returned* value reflects
+		// whatever `Object.assign(device, updateFields)` actually produced on that same object. A
+		// hand-written literal for the post-save fetch would assert against a fiction and pass
+		// unconditionally regardless of what update() really did — the same blind spot the comment on the
+		// `does not reset hidden...` test above avoids by asserting on `save`'s argument instead; this test
+		// gets the same guarantee a different way, by making the "database" one mutable object so the
+		// return value cannot help but reflect a clobber.
+		it('leaves hiddenBy untouched by an unrelated patch', async () => {
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+
+			const persisted = toInstance(MockDevice, mockDevice);
+
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(persisted),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+			jest.spyOn(repository, 'save').mockResolvedValue(persisted);
+			// The same object the query builder answers with, so the second patch below reads what the
+			// first one wrote — the whole point of backing this test with one mutable row.
+			jest.spyOn(repository, 'findOne').mockResolvedValue(persisted);
+
+			await service.update(mockDevice.id, {
+				type: 'mock',
+				hidden: true,
+				hidden_by: DeviceHiddenBy.USER,
+			} as UpdateMockDeviceDto);
+
+			const device = await service.update(mockDevice.id, { type: 'mock', name: 'Renamed' } as UpdateMockDeviceDto);
+
+			expect(device.hiddenBy).toBe(DeviceHiddenBy.USER);
+		});
+
+		// A hidden device is one a virtual device has replaced, so its placement is the virtual device's
+		// to own — the physical device keeps the room it had, and energy attribution keeps following it.
+		//
+		// The guard is on *mutation*, not on state. Hiding deliberately preserves the stored room so
+		// unhiding restores it, and the virtual-device split flow places the parent device *before* it
+		// hides it — a guard keyed on "is hidden and has a room" would break that flow. Only a patch
+		// that itself carries `room_id` / `zone_ids` is refused.
+		//
+		// Enforced in the service rather than as a `class-validator` constraint on `UpdateDeviceDto`,
+		// because the decision needs the *stored* device and a DTO constraint never sees the `:id` route
+		// parameter — `ValidationArguments` exposes only `{ value, constraints, targetName, object,
+		// property }`, where `object` is the DTO built from the request body alone.
+		describe('placement changes on a hidden device', () => {
+			const roomId = uuid().toString();
+			const zoneId = uuid().toString();
+
+			// Same arrangement the tests above spell out inline: one mapped device standing in for the row
+			// `getOneOrThrow()` loads, shared with the post-save fetch so `save`'s argument and the returned
+			// entity cannot disagree.
+			const arrangeDevice = (overrides: Record<string, unknown>): MockDevice => {
+				jest.spyOn(mapper, 'getMapping').mockReturnValue({
+					type: 'mock',
+					class: MockDevice,
+					createDto: CreateMockDeviceDto,
+					updateDto: UpdateMockDeviceDto,
+				});
+
+				jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+
+				const persisted = toInstance(MockDevice, { ...mockDevice, ...overrides });
+
+				const queryBuilderMock: any = {
+					innerJoinAndSelect: jest.fn().mockReturnThis(),
+					leftJoinAndSelect: jest.fn().mockReturnThis(),
+					where: jest.fn().mockReturnThis(),
+					getOne: jest.fn().mockResolvedValue(persisted),
+				};
+
+				jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+				jest.spyOn(repository, 'save').mockResolvedValue(persisted);
+				// `update()` writes through a relation-free re-read, and judges placement on that row: the
+				// same one the load answered with, unless a test is about it changing underneath.
+				jest.spyOn(repository, 'findOne').mockResolvedValue(persisted);
+
+				return persisted;
+			};
+
+			beforeEach(() => {
+				// `validateRoomAssignment()` resolves the target space; every room referenced here is a room.
+				jest.spyOn(spaceRepository, 'findOne').mockResolvedValue({ id: roomId, type: SpaceType.ROOM } as SpaceEntity);
+			});
+
+			it('allows a room change on a visible device', async () => {
+				arrangeDevice({ hidden: false });
+
+				await service.update(mockDevice.id, { type: 'mock', room_id: roomId } as UpdateMockDeviceDto);
+
+				expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({ roomId }));
+			});
+
+			it('refuses a room change on a hidden device', async () => {
+				arrangeDevice({ hidden: true });
+
+				await expect(
+					service.update(mockDevice.id, { type: 'mock', room_id: roomId } as UpdateMockDeviceDto),
+				).rejects.toThrow(DevicesNotAllowedException);
+
+				expect(repository.save).not.toHaveBeenCalled();
+			});
+
+			// Clearing the room is a placement change too — `null` is a value, not an absent field.
+			it('refuses clearing the room on a hidden device', async () => {
+				arrangeDevice({ hidden: true, roomId });
+
+				await expect(
+					service.update(mockDevice.id, { type: 'mock', room_id: null } as UpdateMockDeviceDto),
+				).rejects.toThrow(DevicesNotAllowedException);
+
+				expect(repository.save).not.toHaveBeenCalled();
+			});
+
+			it('refuses a zone change on a hidden device', async () => {
+				arrangeDevice({ hidden: true });
+
+				await expect(
+					service.update(mockDevice.id, { type: 'mock', zone_ids: [zoneId] } as UpdateMockDeviceDto),
+				).rejects.toThrow(DevicesNotAllowedException);
+
+				expect(repository.save).not.toHaveBeenCalled();
+				expect(deviceZonesService.setDeviceZones).not.toHaveBeenCalled();
+			});
+
+			it('allows a zone change on a visible device', async () => {
+				arrangeDevice({ hidden: false });
+
+				await service.update(mockDevice.id, { type: 'mock', zone_ids: [zoneId] } as UpdateMockDeviceDto);
+
+				expect(deviceZonesService.setDeviceZones).toHaveBeenCalledWith(mockDevice.id, [zoneId]);
+			});
+
+			// Load-bearing: hiding a device is itself a PATCH, and it must not be refused by its own guard.
+			it('allows a patch that does not touch placement on a hidden device', async () => {
+				arrangeDevice({ hidden: true });
+
+				await service.update(mockDevice.id, { type: 'mock', name: 'Renamed' } as UpdateMockDeviceDto);
+
+				expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({ name: 'Renamed' }));
+			});
+
+			// The split flow itself: the parent device is placed in a room first, then hidden. The stored
+			// room survives the hide untouched so unhiding restores it.
+			it('allows hiding a device that already has a room', async () => {
+				arrangeDevice({ hidden: false, roomId });
+
+				await service.update(mockDevice.id, { type: 'mock', hidden: true } as UpdateMockDeviceDto);
+
+				expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({ hidden: true, roomId }));
+			});
+
+			// The placement fields carry their own `@IsUUID` on `UpdateDeviceDto`, and every plugin update
+			// DTO inherits that stack. Pinned here because `class-validator` *replaces* rather than merges a
+			// redeclared property's decorators — anything that later restates `room_id` / `zone_ids` on the
+			// DTO (or on a subclass) silently drops the UUID check, and nothing else would notice.
+			it('still rejects an invalid room_id', async () => {
+				arrangeDevice({ hidden: false });
+
+				await expect(
+					service.update(mockDevice.id, { type: 'mock', room_id: 'not-a-uuid' } as UpdateMockDeviceDto),
+				).rejects.toThrow(DevicesValidationException);
+
+				expect(repository.save).not.toHaveBeenCalled();
+			});
+
+			it('still rejects an invalid zone id', async () => {
+				arrangeDevice({ hidden: false });
+
+				await expect(
+					service.update(mockDevice.id, { type: 'mock', zone_ids: ['not-a-uuid'] } as UpdateMockDeviceDto),
+				).rejects.toThrow(DevicesValidationException);
+
+				expect(repository.save).not.toHaveBeenCalled();
+			});
 		});
 	});
 

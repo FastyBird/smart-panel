@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, FindOptionsWhere, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable } from '@nestjs/common';
@@ -9,17 +9,30 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { toInstance } from '../../../common/utils/transform.utils';
+import { toInstance, toSnakeCase, toSnakeCaseKeys } from '../../../common/utils/transform.utils';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { SpaceType } from '../../spaces/spaces.constants';
-import { DEVICES_MODULE_NAME, DeviceHiddenFilter, EventType } from '../devices.constants';
-import { DevicesException, DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
+import {
+	DEVICES_MODULE_NAME,
+	DEVICE_PLACEMENT_LOCKED_MESSAGE,
+	DeviceHiddenBy,
+	DeviceHiddenFilter,
+	EventType,
+} from '../devices.constants';
+import {
+	DevicesException,
+	DevicesNotAllowedException,
+	DevicesNotFoundException,
+	DevicesValidationException,
+} from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { ChannelEntity, DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
+import { isPrimaryKeyCollision } from '../utils/unique-constraint.utils';
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
+import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DeviceZonesService } from './device-zones.service';
 import { DevicesTypeMapperService } from './devices-type-mapper.service';
 import { DevicesControlsService } from './devices.controls.service';
@@ -61,6 +74,7 @@ export class DevicesService {
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly devicesControlsService: DevicesControlsService,
 		private readonly deviceZonesService: DeviceZonesService,
+		private readonly structureLock: DeviceStructureLockService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
@@ -418,21 +432,172 @@ export class DevicesService {
 
 		const device = repository.create(toInstance(mapping.class, dtoInstance));
 
-		// Save the device
-		const raw = await repository.save(device);
-
-		for (const channelDtoInstance of channels) {
-			this.logger.debug(`Creating new channel for deviceId=${raw.id}`);
-
-			await this.channelsService.create({
-				...channelDtoInstance,
-				device: raw.id,
-			});
+		// Provenance only means something while the device is hidden. A create that names a reason
+		// without hiding anything would leave a `system` claim sitting on a visible row, and the first
+		// hide that follows — an operator's, carrying no reason of its own — would inherit it: the
+		// reconciliation reads such a row as a virtual device's abandoned source and makes it visible
+		// again, undoing a hide nothing in the system asked it to touch.
+		if (device.hidden !== true) {
+			device.hiddenBy = null;
 		}
 
-		// Set zone memberships if provided
-		if (zoneIds.length > 0) {
-			await this.deviceZonesService.setDeviceZones(raw.id, zoneIds);
+		// A create that names an id already in use is refused before anything is written.
+		//
+		// `id` is client-suppliable — the wizard generates its uuids up front — and `repository.save()`
+		// treats a row whose primary key exists as an *update*. So a create carrying an existing id
+		// silently overwrote that device instead of inserting, and the rollback below then removed it:
+		// a malformed request destroying a device it had nothing to do with. The rollback is what makes
+		// it destructive, but the overwrite was wrong on its own — a create that quietly becomes an
+		// update is not something any caller asked for.
+		//
+		// Asked of the base repository rather than the mapped one, because a collision with a device of
+		// *another* type is the same collision: ids are unique across the table, not per subclass, and
+		// the mapped repository's own discriminator would hide exactly the case that is hardest to
+		// explain afterwards.
+		if (device.id) {
+			const existing = await this.repository.findOne({ where: { id: device.id } });
+
+			if (existing) {
+				this.logger.error(`[VALIDATION FAILED] Device id=${device.id} already exists, refusing to create over it`);
+
+				throw new DevicesValidationException(
+					`Device with id=${device.id} already exists. Creating a device with an id already in use is not allowed.`,
+				);
+			}
+		}
+
+		// Inserted, not saved. `save()` decides between INSERT and UPDATE by looking for the row first,
+		// which is the behaviour that let a create overwrite an existing device — and the check above
+		// closes that only for a caller who is alone. Two requests carrying the same client-generated uuid
+		// can both pass it before either writes, and the second `save()` would then update the first's row
+		// with the rollback still armed behind it. `insert()` always issues an INSERT, so the primary key
+		// constraint decides, and the database does not interleave. The check above stays for the message:
+		// a caller reusing an id deliberately gets a sentence rather than a constraint violation.
+		const inserted = await repository
+			.insert(device as unknown as Parameters<Repository<TDevice>['insert']>[0])
+			.catch((error: unknown) => {
+				if (isPrimaryKeyCollision(error)) {
+					this.logger.error(`[VALIDATION FAILED] Device id=${device.id} was created concurrently by another request`);
+
+					throw new DevicesValidationException(
+						`Device with id=${device.id} already exists. Creating a device with an id already in use is not allowed.`,
+					);
+				}
+
+				throw error;
+			});
+
+		// `@PrimaryGeneratedColumn('uuid')` generates in JS, so a request that supplied no id already has
+		// one on the entity by now; the returned identifier is read anyway rather than assumed, since it is
+		// what the row was actually written under.
+		const raw = Object.assign(device, inserted.identifiers[0] ?? {}) as TDevice;
+
+		// A nested create is one request and has to succeed or fail as one thing. The device row is
+		// already saved by the time its channels and properties are built, and a type owner's
+		// `beforeCreate` hook can legitimately reject one of them — a virtual property whose source
+		// cannot fill the slot it is being wired into, say. Without this, that rejection returns its 422
+		// and leaves the parent device (and any channel already created) behind, so the client sees a
+		// failure while the database keeps a half-built device, and a retry adds a second one.
+		//
+		// Rolled back by deleting the device row rather than by a transaction: the sqlite driver shares
+		// one QueryRunner process-wide, so opening a transaction here would interact with the known
+		// TOCTOU hazard tracked in the virtual-devices follow-ups. `ChannelEntity.device` is
+		// `onDelete: 'CASCADE'`, so the channels and their properties go with it. No event is emitted
+		// because none was: DEVICE_CREATED fires at the end of this method, so nothing ever observed
+		// this device existing.
+		try {
+			for (const channelDtoInstance of channels) {
+				this.logger.debug(`Creating new channel for deviceId=${raw.id}`);
+
+				await this.channelsService.create({
+					...channelDtoInstance,
+					device: raw.id,
+				});
+			}
+
+			// Set zone memberships if provided
+			if (zoneIds.length > 0) {
+				// Initial placement, not a change to an existing one: a create may legitimately carry both
+				// `hidden: true` and `zone_ids` — the wizard hides a source device it is replacing — and the
+				// placement lock is about mutating where an already-hidden device sits, which this is not.
+				await this.deviceZonesService.setDeviceZones(raw.id, zoneIds, { initialPlacement: true });
+			}
+		} catch (error) {
+			this.logger.error(`Nested creation failed for deviceId=${raw.id}, rolling the device back`);
+
+			// The rows go with the device (channels cascade from it), but the events do not: every channel
+			// and property created before the failure has *already* announced itself with
+			// CHANNEL_CREATED / CHANNEL_PROPERTY_CREATED. A silent delete would leave websocket clients
+			// holding children that no longer exist, and the virtual property index holding mappings for
+			// them until some later structural event forced a rebuild. So the children are read back
+			// before the delete and their deletions announced after it.
+			//
+			// Channels are announced rather than unwound through ChannelsService.remove(): that path
+			// expects a fully built channel and re-parents children as it goes, which is the wrong shape
+			// for tearing down a half-created device — and the device delete has to happen either way,
+			// since the channel whose own creation threw was already persisted and is not in this list.
+			const orphanedChannels = await this.channelsService
+				.findAll(raw.id)
+				.catch((readError: unknown): ChannelEntity[] => {
+					this.logger.error(
+						`Failed to read back channels for rolled-back deviceId=${raw.id}`,
+						readError instanceof Error ? readError : undefined,
+					);
+
+					return [];
+				});
+
+			// Properties go through their own removal, not the cascade: a property's stored values and
+			// device-status records live outside its row, and only the entity-removal lifecycle
+			// (ChannelPropertyEntitySubscriber.afterRemove) clears them. A raw delete leaves that history
+			// behind, and a retry supplying the same explicit property ids would find the failed attempt's
+			// values already sitting there. That removal emits the property's deletion event too, so only
+			// the channels need announcing below.
+			for (const channel of orphanedChannels) {
+				for (const property of channel.properties ?? []) {
+					try {
+						await this.channelsPropertiesService.remove(property.id);
+					} catch (cleanupError) {
+						this.logger.error(
+							`Failed to roll back property id=${property.id} for deviceId=${raw.id}`,
+							cleanupError instanceof Error ? cleanupError : undefined,
+						);
+					}
+				}
+			}
+
+			// Removed as an entity, not deleted as a row. `repository.delete()` issues a DELETE and runs no
+			// subscriber, and a device's removal lifecycle does real work outside its own table:
+			// DeviceEntitySubscriber.afterRemove drops the device's stored connection statuses, and plugin
+			// subscribers (Shelly v1's, for one) tear down the in-memory adapter entry the creation put
+			// there. A child creation that succeeded before a later one failed can already have produced
+			// exactly that state, so a raw delete leaves it behind — with a retry supplying the same
+			// explicit id or identifier walking straight into the failed attempt's leftovers. Same
+			// reasoning as the properties above, one level up.
+			//
+			// Still not routed through `remove()`: that emits DEVICE_DELETED, and this device never
+			// emitted DEVICE_CREATED — that happens only after a creation completes. The compensating
+			// events below exist because the *children* did announce themselves; the device did not.
+			// Re-read first, and removed as *that* row rather than as `raw`. `raw` is the instance the
+			// create built, and it still carries whatever the request nested onto it — `DeviceEntity.channels`
+			// is `cascade: true`, so `remove()` handed that instance cascades across the in-memory graph and
+			// detaches children instead of letting the database's own `ON DELETE CASCADE` take them. That
+			// left channel properties behind with no channel at all, which the containment e2e caught. A
+			// freshly loaded row has no relations loaded, so the removal is exactly one DELETE on the device
+			// — subscribers and all — and the cascade below it is the schema's.
+			const rollbackTarget = await repository.findOne({
+				where: { id: raw.id } as FindOptionsWhere<TDevice>,
+			});
+
+			if (rollbackTarget) {
+				await repository.remove(rollbackTarget);
+			}
+
+			for (const channel of orphanedChannels) {
+				this.eventEmitter.emit(EventType.CHANNEL_DELETED, channel);
+			}
+
+			throw error;
 		}
 
 		// Retrieve the saved device with its full relations
@@ -464,6 +629,8 @@ export class DevicesService {
 
 		const dtoInstance = await this.validateDto<TUpdateDTO>(mapping.updateDto, updateDto);
 
+		this.assertPlacementChangeAllowed(device, dtoInstance);
+
 		// Validate room assignment if provided (only validate if it's a non-null UUID)
 		if (dtoInstance.room_id !== undefined && dtoInstance.room_id !== null) {
 			await this.validateRoomAssignment(dtoInstance.room_id);
@@ -479,14 +646,79 @@ export class DevicesService {
 
 		const repository: Repository<TDevice> = this.dataSource.getRepository(mapping.class);
 
-		// Get the fields to update from DTO (excluding undefined values)
-		const updateFields = omitBy(toInstance(mapping.class, dtoInstance), isUndefined);
+		// Get the fields to update from DTO, restricted to properties this PATCH actually carried.
+		//
+		// toInstance() below builds `mapping.class` via `new mapping.class()`, so any class-field
+		// initializer on the entity (see the `enabled` comment above) survives for properties the DTO
+		// never mentioned. Those survivors are `true` / `null` / etc — not `undefined` — so
+		// omitBy(isUndefined) alone cannot remove them, and Object.assign() below would write them back
+		// over stored values on every unrelated PATCH (e.g. a `{type, hidden, hiddenBy}` body would reset
+		// a Shelly device's `password`/`hostname` to null and silently re-`enable` a disabled device).
+		//
+		// Trap 1 (name mapping): dtoInstance's own enumerable keys are not uniformly cased. The base
+		// UpdateDeviceDto spells multi-word fields in snake_case directly (`room_id`, `hidden_by`), but
+		// some plugin DTOs use a camelCase JS property name with an @Expose({name}) override instead
+		// (e.g. UpdateShellyNgDeviceDto.wifiAddress <- wire name `wifi_address`), so a set built from
+		// Object.keys(dtoInstance) cannot be compared against updateFields' camelCase entity keys
+		// directly — it has to be translated. We normalize dtoInstance's keys to wire form with the same
+		// toSnakeCaseKeys() helper toInstance() uses internally, then mechanically convert each
+		// updateFields key the same way for the comparison. This reproduces the @Expose({name: ...})
+		// wire name for every entity field currently reachable from an update DTO (verified against every
+		// @Expose on DeviceEntity and its 4 child entities): properties without a name override are
+		// single-word, so camelCase already equals their wire name, and every existing override in the
+		// codebase (hiddenBy -> hidden_by, roomId -> room_id, wifiAddress -> wifi_address,
+		// ethernetAddress -> ethernet_address, canonicalMac -> canonical_mac, hasEthernet -> has_ethernet)
+		// already IS the mechanical snake_case of the property name. If a future field pairs a
+		// class-field initializer with an @Expose({name}) that does NOT mechanically match its property
+		// name, this filter will silently stop recognizing it as "provided" — re-verify this claim when
+		// adding one.
+		//
+		// We cannot instead have class-transformer do this mapping for us by passing
+		// `exposeUnsetFields: true` (which would make it emit explicit `undefined`s for every unset field,
+		// letting omitBy(isUndefined) strip them with no extra code): DeviceEntity.zoneIds is a
+		// getter-only property declared once on the base class and never redeclared on any
+		// @ChildEntity() subclass. class-transformer's guard against assigning to read-only properties
+		// does an own-property lookup (Object.getOwnPropertyDescriptor(target.constructor.prototype,
+		// key)) that does not walk the prototype chain, so on a subclass like ShellyV1DeviceEntity it
+		// fails to find the inherited getter and then throws trying to assign to it. This only surfaces
+		// once something forces unset fields to be materialized — exposeUnsetFields: false (the default,
+		// used everywhere else, including below) never attempts the assignment, which is why the existing
+		// call is unaffected.
+		//
+		// Trap 2 (dtoInstance contamination): this filter is only sound if dtoInstance's own keys really
+		// are "what the request carried" and are not themselves polluted the same way updateFields is.
+		// Verified: UpdateDeviceDto and all 4 plugin update DTOs (Shelly V1, Shelly NG, WLED, reTerminal)
+		// declare every field as `foo?: T` with no `= default`, so a body of {type, name} produces
+		// Object.keys(dtoInstance) === ['type', 'name'] — nothing leaks in from dtoInstance's own
+		// construction. zone_ids was deleted from dtoInstance above, before this runs, so it is excluded
+		// from dtoWireKeys too and cannot reappear in updateFields.
+		const dtoWireKeys = new Set(Object.keys(toSnakeCaseKeys<TUpdateDTO, Record<string, unknown>>(dtoInstance)));
+
+		const updateFields = omitBy(
+			toInstance(mapping.class, dtoInstance),
+			(value, key) => isUndefined(value) || !dtoWireKeys.has(toSnakeCase(key)),
+		);
+
+		// Provenance only means something while the device is hidden, so unhiding clears it. Forced onto
+		// the resolved fields rather than set on the DTO, because no caller can express it and the DTO
+		// cannot carry it: the admin's generated `UpdateDevice` type drops `| null` from enum-referencing
+		// properties, and this DTO's own `@Transform` reads an explicit null as "not provided". A stale
+		// `system` left behind would also mislead the reconciliation that keys on it.
+		if (dtoInstance.hidden === false) {
+			updateFields.hiddenBy = null;
+		}
 
 		// Check if any entity fields are actually being changed by comparing with existing values
-		const entityFieldsChanged =
+		// Asked of a row rather than computed once, because the answer depends on *which* row: the write
+		// below happens under the structure lock, several awaited round trips after the read at the top of
+		// this call, and another PATCH can commit in between. A request that looks like a no-op against
+		// the row it read can be a real change against the row it writes — set back to A after someone
+		// else stored B — and announcing nothing there leaves every client on B while the database says
+		// A, with no later event to correct them.
+		const differsFrom = (stored: TDevice): boolean =>
 			Object.keys(updateFields).some((key) => {
 				const newValue = (updateFields as Record<string, unknown>)[key];
-				const existingValue = (device as unknown as Record<string, unknown>)[key];
+				const existingValue = (stored as unknown as Record<string, unknown>)[key];
 
 				// Deep comparison for arrays
 				if (Array.isArray(newValue) && Array.isArray(existingValue)) {
@@ -515,9 +747,14 @@ export class DevicesService {
 				return newValue !== existingValue;
 			}) ||
 			// Explicit check for room_id being set to null (toInstance drops null values)
-			(dtoInstance.room_id !== undefined && device.roomId !== (dtoInstance.room_id ?? null)) ||
-			// Explicit check for zone_ids changes (zone_ids is deleted from dtoInstance before updateFields is computed)
-			(zoneIds !== undefined && JSON.stringify(currentZoneIds) !== JSON.stringify([...(zoneIds ?? [])].sort()));
+			(dtoInstance.room_id !== undefined && stored.roomId !== (dtoInstance.room_id ?? null));
+
+		// Zone membership is written after the lock by its own service, against the list read before it,
+		// so this term is about the request rather than about the row and is decided here.
+		const zonesChanged =
+			zoneIds !== undefined && JSON.stringify(currentZoneIds) !== JSON.stringify([...(zoneIds ?? [])].sort());
+
+		let entityFieldsChanged = zonesChanged;
 
 		Object.assign(device, updateFields);
 
@@ -526,12 +763,122 @@ export class DevicesService {
 			device.roomId = null;
 		}
 
-		await repository.save(device as TDevice);
+		// From here to the save runs under the structure lock. What the type owner judges below can span
+		// rows this write never touches — a category change is judged against the device's channels and
+		// their properties — and a channel or property created in the window between that judgement and
+		// this save would never be judged at all, leaving the device advertising a category its own
+		// structure does not satisfy. The structural writes take the same lock (see
+		// DeviceStructureLockService).
+		await this.structureLock.runExclusive(async (): Promise<void> => {
+			// Written through a row carrying no relations, not through the entity the decisions above were
+			// made on. `DeviceEntity.channels` is `cascade: true`, so saving the loaded entity re-saves
+			// whatever channels it happens to hold — and TypeORM reads a child that is *missing* from a
+			// cascaded collection as one detached from its parent, issuing `SET channelId = NULL` on that
+			// channel's properties.
+			//
+			// The list is routinely stale. A virtual device's device_information channel is synthesized
+			// fire-and-forget off DEVICE_CREATED, so a PATCH arriving while that is still in flight loaded its
+			// channels before the channel existed. Renaming a device moments after creating it therefore
+			// stripped the channel from its own properties — `manufacturer`, `model` and `serial_number` left
+			// pointing at nothing, past the cascade that would have cleaned them up. Found as an intermittent
+			// stray in the containment e2e, one run in five or so.
+			//
+			// A re-read is enough: without the collection loaded there is no cascade to run, and the write
+			// is the one UPDATE this method was always meant to make.
+			const row = await repository.findOne({
+				where: { id: device.id } as FindOptionsWhere<TDevice>,
+				loadEagerRelations: false,
+			});
 
-		// Update zone memberships if zone_ids was explicitly provided
-		if (zoneIds !== undefined) {
-			await this.deviceZonesService.setDeviceZones(device.id, zoneIds);
-		}
+			// The row is gone, so a concurrent `remove()` deleted it after this call read it. There is
+			// nothing left to update, and saving the entity loaded at the top is not a way to say so:
+			// TypeORM's `save` looks the primary key up, finds nothing and INSERTs — the PATCH would
+			// resurrect a device whose DEVICE_DELETED has already been emitted, cascading whatever
+			// relation graph the stale entity happens to carry. The honest answer is the same one this
+			// method gives for an id that never existed.
+			if (!row) {
+				this.logger.error(`Device with id=${device.id} was removed while it was being updated`);
+
+				throw new DevicesNotFoundException('Device does not exist');
+			}
+
+			// The placement guard again, on the row as it stands now rather than as it stood when this
+			// call began. Between the two there are several awaited round trips — the room validation, the
+			// zone read-back, this re-read — and a wizard hiding the device in that window would otherwise
+			// have this write the placement of a device that is now inert. The zone half carries the same
+			// condition in the statements that write it (see DeviceZonesService.setDeviceZones).
+			this.assertPlacementChangeAllowed(row, dtoInstance);
+
+			// Judged here, against the row this write is about to change, for the reason `differsFrom`
+			// spells out.
+			entityFieldsChanged = zonesChanged || differsFrom(row);
+
+			// A system hide never overwrites an operator's, whatever order the two requests arrive in.
+			// `hidden_by: user` is a deliberate setting that both unhide paths refuse to reverse, and
+			// stamping `system` over it would hand the row to `unhideAbandonedSources`, which would then
+			// undo the operator's hide the moment the last virtual reference goes away — an explicit
+			// choice reversed by a caller that only meant to record why *it* wanted the row hidden. The
+			// device is hidden either way, which is all the claim was for, so the rest of the patch still
+			// applies and only the provenance is left alone.
+			if (
+				updateFields.hiddenBy === DeviceHiddenBy.SYSTEM &&
+				row.hidden === true &&
+				row.hiddenBy === DeviceHiddenBy.USER
+			) {
+				this.logger.debug(
+					`Kept the operator's hide provenance on device id=${device.id}; a system claim does not overwrite it`,
+				);
+
+				delete updateFields.hidden;
+				delete updateFields.hiddenBy;
+			}
+
+			// The baseline the type owner judges against is taken from this row, not from the entity this
+			// call loaded. Two PATCHes moving the same device capture the same `previous` before either
+			// reaches the lock, and `assertCategoryChangeSafe` deliberately forgives whatever the baseline
+			// already suffers from — so the second request, judging against a category the first has since
+			// replaced, could reintroduce exactly the defect the first one fixed and still be allowed. Read
+			// under the lock, the baseline is the category the device actually has.
+			const persistedPrevious = { ...row } as Readonly<Partial<TDevice>>;
+
+			Object.assign(row, updateFields);
+
+			if (dtoInstance.room_id === null) {
+				row.roomId = null;
+			}
+
+			// The same rule as on create, applied to what this PATCH is about to store rather than to what
+			// it carried: a `hidden_by` on a row that ends up visible is a claim about nothing, and left
+			// standing it would be inherited by the next hide — including an operator's, which the
+			// reconciliation would then undo as if it had been the system's own. This subsumes the
+			// `hidden: false` clearing above, which stays because it is what tells the change detection a
+			// PATCH that only unhides has changed something.
+			if (row.hidden !== true) {
+				row.hiddenBy = null;
+			}
+
+			// The type owner's last look at the merged row, before anything is written — the only point at
+			// which an invariant spanning a field the PATCH sent and one it did not is decidable. Judged on
+			// the row this write is about to store rather than on the one loaded at the top, so what is
+			// judged and what is written cannot disagree.
+			if (mapping.beforeUpdate) {
+				await mapping.beforeUpdate(row, persistedPrevious);
+			}
+
+			// Zones before the fields, and both inside the lock, because a PATCH is one thing to the
+			// caller. Written after the fields and outside the lock, a refusal here — a zone that is
+			// really a floor, or another request hiding the device in the meantime — left the ordinary
+			// fields committed while the caller was told the whole PATCH had failed, and skipped the
+			// DEVICE_UPDATED at the end, so nothing downstream ever learned of what *had* been written.
+			// A hide is itself an update, so it takes this same lock and can no longer land in the gap;
+			// putting the zone half first means a refusal it raises for any other reason leaves nothing
+			// behind either.
+			if (zoneIds !== undefined) {
+				await this.deviceZonesService.setDeviceZones(device.id, zoneIds);
+			}
+
+			await repository.save(row);
+		});
 
 		let updatedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
 
@@ -633,6 +980,48 @@ export class DevicesService {
 		}
 
 		return dtoInstance;
+	}
+
+	/**
+	 * Refuses a PATCH that moves a hidden device between rooms or zones.
+	 *
+	 * A hidden device is one a virtual device has replaced, and the virtual device is what the operator
+	 * places from then on. The physical device keeps the room it had — energy attribution follows it,
+	 * which is the accepted tradeoff of this rule.
+	 *
+	 * The guard is on *mutation*, not on state. Hiding deliberately preserves the stored room so
+	 * unhiding restores it, and the virtual-device split flow places the parent device *before* it hides
+	 * it — refusing a hide because the device already has a room would break that flow. So only a patch
+	 * that itself carries `room_id` / `zone_ids` is refused; a patch that leaves both absent passes,
+	 * including the `hidden: true` patch that does the hiding.
+	 *
+	 * `null` counts as carrying the field: clearing the room is a placement change too.
+	 *
+	 * Lives here rather than as a `class-validator` constraint on `UpdateDeviceDto` because the decision
+	 * needs the *stored* device, and a DTO constraint never sees the `:id` route parameter —
+	 * `ValidationArguments` exposes only `{ value, constraints, targetName, object, property }`, where
+	 * `object` is the DTO built from the request body alone. Enforcing it here also covers every caller
+	 * of `update()`, and cannot be dropped by a plugin update DTO that redeclares a placement field.
+	 */
+	private assertPlacementChangeAllowed(device: DeviceEntity, dtoInstance: UpdateDeviceDto): void {
+		// The PATCH's own `hidden: true` counts, not just the row's current value. The rule is about the
+		// device this placement lands on, and after such a request that device is hidden — so judging the
+		// stored value alone made the outcome depend on write order: the entity save committed the hide,
+		// and `setDeviceZones` then refused the zone half because the device it re-read was now hidden.
+		// The caller got a 422 with the hide already applied, the other fields already written and no
+		// DEVICE_UPDATED to tell anything about it. Refused before the first write, nothing is left half
+		// done, and a request cannot end both hidden and re-placed.
+		if (!device.hidden && dtoInstance.hidden !== true) {
+			return;
+		}
+
+		if (dtoInstance.room_id === undefined && dtoInstance.zone_ids === undefined) {
+			return;
+		}
+
+		this.logger.error(`Refused placement change on hidden device id=${device.id}`);
+
+		throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
 	}
 
 	/**

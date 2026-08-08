@@ -32,8 +32,11 @@ import {
 	DEVICES_VIRTUAL_TYPE,
 } from './devices-virtual.constants';
 import {
+	VirtualCategoryChangeUnsafeException,
+	VirtualChannelCategoryChangeUnsafeException,
 	VirtualOwnedPropertyNotWritableException,
 	VirtualOwnerNotVirtualException,
+	VirtualProjectionIncompatibleException,
 	VirtualValueOriginConflictException,
 } from './devices-virtual.exceptions';
 import { DEVICES_VIRTUAL_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-virtual.openapi';
@@ -69,7 +72,12 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 })
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([VirtualDeviceEntity, VirtualChannelPropertyEntity]),
+		// DeviceEntity is registered here on top of the plugin's own entities because
+		// VirtualIndexMaintenanceListener writes one column no DTO can express — `hiddenBy`, cleared
+		// back to null when it unhides a source device (see its unhideSource()). Repeating a
+		// DevicesModule registration is fine: TypeORM scopes repositories per module and both owners
+		// get their own instance over the same table.
+		TypeOrmModule.forFeature([VirtualDeviceEntity, VirtualChannelPropertyEntity, DeviceEntity]),
 		DevicesModule,
 		ConfigModule,
 		ExtensionsModule,
@@ -119,6 +127,24 @@ export class DevicesVirtualPlugin {
 			class: VirtualDeviceEntity,
 			createDto: CreateVirtualDeviceDto,
 			updateDto: UpdateVirtualDeviceDto,
+			// A virtual device's whole structure is derived from its category, and a device PATCH writes
+			// no property, so no property hook sees a recategorisation. This is the only point at which
+			// one can be judged against the channels the device already carries.
+			beforeUpdate: async (device: VirtualDeviceEntity, previous): Promise<void> => {
+				try {
+					await this.virtualDevicesService.assertCategoryChangeSafe(device, previous.category);
+				} catch (error) {
+					// Translated for the same reason the property hooks translate theirs: the plugin's own
+					// exception vocabulary means nothing to the devices controller, which reports a
+					// `DevicesException` as an unprocessable entity and everything else as a 500. A refused
+					// PATCH is the caller's mistake, not the server's.
+					if (error instanceof VirtualCategoryChangeUnsafeException) {
+						throw new DevicesValidationException(error.message);
+					}
+
+					throw error;
+				}
+			},
 		});
 
 		this.channelsMapper.registerMapping<VirtualChannelEntity, CreateVirtualChannelDto, UpdateVirtualChannelDto>({
@@ -126,6 +152,24 @@ export class DevicesVirtualPlugin {
 			class: VirtualChannelEntity,
 			createDto: CreateVirtualChannelDto,
 			updateDto: UpdateVirtualChannelDto,
+			// A virtual channel's category decides which spec slots its properties fill: every projection
+			// under it was judged against `device.category` *and* this one. Moving it leaves those
+			// projections attached to slots the new category never defines — an invalid device that reads
+			// and commands go on using — and no property hook sees a channel PATCH, so this is the only
+			// point at which it can be judged. Refused rather than repaired, for the same reason a device
+			// recategorisation is: the structure is built for the category it was created with, and
+			// rebuilding it is the operation that was actually meant.
+			beforeUpdate: async (channel: VirtualChannelEntity, previous): Promise<void> => {
+				try {
+					await this.virtualDevicesService.assertChannelCategoryChangeSafe(channel, previous.category);
+				} catch (error) {
+					if (error instanceof VirtualChannelCategoryChangeUnsafeException) {
+						throw new DevicesValidationException(error.message);
+					}
+
+					throw error;
+				}
+			},
 		});
 
 		this.channelsPropertiesMapper.registerMapping<
@@ -175,10 +219,16 @@ export class DevicesVirtualPlugin {
 					// including this plugin's own listeners and any future internal caller that bypasses
 					// the DTO. The DTO constraint still owns the user-facing error, which names the field.
 					this.virtualDevicesService.assertOwnedPropertyNotWritable(property);
+					// The wizard previews compatibility, but a preview is not a guard: it is not atomic with
+					// this write, and a direct API call never makes it at all. Checked here rather than on
+					// the DTO because the spec slot is resolved from the owning channel and its device,
+					// which the payload does not carry.
+					await this.virtualDevicesService.assertProjectionCompatible(property, channelId);
 				} catch (error) {
 					if (
 						error instanceof VirtualOwnerNotVirtualException ||
-						error instanceof VirtualOwnedPropertyNotWritableException
+						error instanceof VirtualOwnedPropertyNotWritableException ||
+						error instanceof VirtualProjectionIncompatibleException
 					) {
 						throw new DevicesValidationException(error.message);
 					}
@@ -206,22 +256,33 @@ export class DevicesVirtualPlugin {
 			// DevicesException as an unprocessable entity and anything else as a 500, and a rejected
 			// payload is not a server fault. Any *other* exception is re-thrown untouched — a bug in
 			// here must not be reported to the client as invalid input.
-			beforeUpdate: (property: VirtualChannelPropertyEntity): Promise<void> => {
+			beforeUpdate: async (property: VirtualChannelPropertyEntity): Promise<void> => {
 				try {
 					this.virtualDevicesService.assertValueOriginPairSupported(property);
 					this.virtualDevicesService.assertOwnedPropertyNotWritable(property);
+
+					// A remap is the other way an incompatible projection gets stored, and the one the
+					// wizard's preview covers least well: the source can change permissions or data type
+					// between the preview and this write. Judged on the merged row like the two checks
+					// above, so it does not matter whether the PATCH carried `source_property`,
+					// `value_origin`, or both — what is being stored is what gets checked. The channel id
+					// comes off the row because this hook, unlike `beforeCreate`, is not handed one.
+					const channelId = typeof property.channel === 'string' ? property.channel : property.channel?.id;
+
+					if (channelId) {
+						await this.virtualDevicesService.assertProjectionCompatible(property, channelId);
+					}
 				} catch (error) {
 					if (
 						error instanceof VirtualValueOriginConflictException ||
-						error instanceof VirtualOwnedPropertyNotWritableException
+						error instanceof VirtualOwnedPropertyNotWritableException ||
+						error instanceof VirtualProjectionIncompatibleException
 					) {
 						throw new DevicesValidationException(error.message);
 					}
 
 					throw error;
 				}
-
-				return Promise.resolve();
 			},
 		});
 

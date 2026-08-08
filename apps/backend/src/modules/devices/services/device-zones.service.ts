@@ -7,8 +7,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { SpaceType, isFloorZoneCategory } from '../../spaces/spaces.constants';
-import { DEVICES_MODULE_NAME, EventType } from '../devices.constants';
-import { DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
+import { DEVICES_MODULE_NAME, DEVICE_PLACEMENT_LOCKED_MESSAGE, EventType } from '../devices.constants';
+import {
+	DevicesNotAllowedException,
+	DevicesNotFoundException,
+	DevicesValidationException,
+} from '../devices.exceptions';
 import { DeviceZoneEntity } from '../entities/device-zone.entity';
 import { DeviceEntity } from '../entities/devices.entity';
 
@@ -76,6 +80,8 @@ export class DeviceZonesService {
 			throw new DevicesNotFoundException('Device not found');
 		}
 
+		this.assertPlacementChangeAllowed(device);
+
 		// Verify zone exists and is a zone type
 		const zone = await this.spaceRepository.findOne({ where: { id: zoneId } });
 		if (!zone) {
@@ -107,19 +113,51 @@ export class DeviceZonesService {
 			return existing;
 		}
 
-		// Create the relation
-		const deviceZone = this.repository.create({
-			deviceId,
-			zoneId,
-		});
+		// Inserted only while the device is still visible, in the statement that does the inserting. The
+		// `assertPlacementChangeAllowed` above reads the device and then several awaited lookups follow
+		// before anything is written — the zone, its type, its category, the existing-membership check —
+		// and a hide committing anywhere in that window would leave this request changing the placement of
+		// a device that is now inert. The guard stays: it is what turns the ordinary case into a clear
+		// 422 naming the reason, rather than a silent no-op.
+		//
+		// `COALESCE` because the column is only guaranteed non-null going forward; a row written before it
+		// existed reads as visible, which is what it was.
+		const zoneTable = this.repository.metadata.tableName;
+		const deviceTable = this.deviceRepository.metadata.tableName;
 
-		await this.repository.save(deviceZone);
+		await this.repository.manager.query(
+			`INSERT INTO "${zoneTable}" ("deviceId", "zoneId") SELECT ?, ? WHERE EXISTS (SELECT 1 FROM "${deviceTable}" d WHERE d.id = ? AND COALESCE(d.hidden, 0) = 0)`,
+			[deviceId, zoneId, deviceId],
+		);
+
+		const inserted = await this.repository.findOne({ where: { deviceId, zoneId } });
+
+		if (!inserted) {
+			// Nothing matched, so the device was hidden between the guard and here. Reported exactly as the
+			// guard reports it — from the caller's side this is the same refusal, arriving a moment later.
+			this.logger.error(`Refused zone membership change on device id=${deviceId} hidden while it was being added`);
+
+			throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
+		}
 
 		this.logger.debug(`Successfully added device ${deviceId} to zone ${zoneId}`);
 
-		this.eventEmitter.emit(EventType.DEVICE_UPDATED, device);
+		// Announced from a fresh read, for the same reason the removal path below re-reads: the entity
+		// this call started with is several awaited round trips old. A device hidden or deleted in that
+		// window has already had its own event go out, and following it with this stale one would tell
+		// every client that a device they have just hidden is visible again — or that a deleted one
+		// exists — with nothing scheduled to correct them.
+		const current = await this.deviceRepository.findOne({ where: { id: deviceId } });
 
-		return deviceZone;
+		if (!current) {
+			this.logger.debug(`Device ${deviceId} was deleted while it was being added to a zone; announcing nothing`);
+
+			return inserted;
+		}
+
+		this.eventEmitter.emit(EventType.DEVICE_UPDATED, current);
+
+		return inserted;
 	}
 
 	/**
@@ -128,24 +166,86 @@ export class DeviceZonesService {
 	async removeDeviceFromZone(deviceId: string, zoneId: string): Promise<void> {
 		this.logger.debug(`Removing device ${deviceId} from zone ${zoneId}`);
 
-		const result = await this.repository.delete({ deviceId, zoneId });
+		// Read before the delete, not after it: the guard below has to run before anything is written.
+		// A missing device stays non-fatal here, exactly as before — the delete simply affects no rows.
+		// The same instance is reused for the event, which is equivalent to the post-delete re-read it
+		// replaces: neither loads the `deviceZones` relation, so neither reflects this delete anyway.
+		const device = await this.deviceRepository.findOne({ where: { id: deviceId } });
 
-		if (result.affected === 0) {
-			this.logger.warn(`Device ${deviceId} was not in zone ${zoneId}`);
-		} else {
-			this.logger.debug(`Successfully removed device ${deviceId} from zone ${zoneId}`);
+		this.assertPlacementChangeAllowed(device);
 
-			const device = await this.deviceRepository.findOne({ where: { id: deviceId } });
-			if (device) {
-				this.eventEmitter.emit(EventType.DEVICE_UPDATED, device);
-			}
+		// The visibility condition travels into the delete, as it does for the insert above and the
+		// replacement below. The guard is a separate read, so a hide committing in the gap would otherwise
+		// have this remove the placement of a device that is now inert — one await wide rather than
+		// several, which makes the window narrower, not absent.
+		//
+		// Membership is read on both sides of the statement so the two ways of affecting no rows stay
+		// distinguishable: a device that was never in the zone is a no-op worth a warning, and one whose
+		// row survives because the condition refused is a placement violation worth an error.
+		const zoneTable = this.repository.metadata.tableName;
+		const deviceTable = this.deviceRepository.metadata.tableName;
+
+		const wasAMember = await this.repository.findOne({ where: { deviceId, zoneId } });
+
+		await this.repository.manager.query(
+			`DELETE FROM "${zoneTable}" WHERE "deviceId" = ? AND "zoneId" = ? AND EXISTS (SELECT 1 FROM "${deviceTable}" d WHERE d.id = ? AND COALESCE(d.hidden, 0) = 0)`,
+			[deviceId, zoneId, deviceId],
+		);
+
+		if (wasAMember && (await this.repository.findOne({ where: { deviceId, zoneId } }))) {
+			this.logger.error(`Refused zone removal on device id=${deviceId} hidden while it was being applied`);
+
+			throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
 		}
+
+		if (!wasAMember) {
+			this.logger.warn(`Device ${deviceId} was not in zone ${zoneId}`);
+
+			return;
+		}
+
+		this.logger.debug(`Successfully removed device ${deviceId} from zone ${zoneId}`);
+
+		// Announced from a fresh read, never from the row this call started with.
+		//
+		// A membership can disappear for two reasons, and from here they look identical: this statement
+		// removed it, or the whole device was deleted and took it along by cascade. In the second case the
+		// device's own deletion has already gone out, and emitting the entity read before it would tell
+		// every client that a device they have just removed exists again — with nothing scheduled to
+		// remove it a second time. Re-reading is what separates "the membership went" from "the device
+		// went", and a device that is gone gets no update.
+		const stillThere = await this.deviceRepository.findOne({ where: { id: deviceId } });
+
+		if (!stillThere) {
+			this.logger.debug(
+				`Device ${deviceId} was deleted while its zone membership was being removed; announcing nothing`,
+			);
+
+			return;
+		}
+
+		this.eventEmitter.emit(EventType.DEVICE_UPDATED, stillThere);
 	}
 
 	/**
 	 * Set zones for a device (replaces existing zone memberships)
 	 */
-	async setDeviceZones(deviceId: string, zoneIds: string[]): Promise<SpaceEntity[]> {
+	/**
+	 * Replaces a device's zone memberships.
+	 *
+	 * `initialPlacement` marks the one caller for which the placement lock does not apply: a device being
+	 * *created*. The lock exists because changing where an already-hidden device sits is meaningless — it
+	 * is inert, and its placement belongs to the virtual device that replaced it. A create carrying both
+	 * `hidden: true` and `zone_ids` is not that: there is no previous placement to protect, the zones are
+	 * part of the device being described, and refusing them rolls the whole create back. `room_id` on the
+	 * same request has always been accepted, so refusing zones would also have made the two halves of one
+	 * placement disagree.
+	 */
+	async setDeviceZones(
+		deviceId: string,
+		zoneIds: string[],
+		{ initialPlacement = false }: { initialPlacement?: boolean } = {},
+	): Promise<SpaceEntity[]> {
 		this.logger.debug(`Setting zones for device ${deviceId}: ${zoneIds.join(', ')}`);
 
 		// Verify device exists
@@ -180,26 +280,83 @@ export class DeviceZonesService {
 			validatedZones.push(zone);
 		}
 
-		// Remove existing zone memberships
-		await this.repository.delete({ deviceId });
+		// One transaction, because a replacement is one thing. The previous shape — a conditional delete
+		// followed by conditional inserts — was safe against a hide arriving *before* it, and not against
+		// one arriving *inside* it: the delete and the first few inserts were already committed when the
+		// rest turned into no-ops, leaving a device with some of its new placement and none of its old.
+		// Refusing after that is not a refusal, it is a partial write with an exception on top.
+		//
+		// The visibility check moves inside for the same reason. Read there, it is stable for the life of
+		// the statements that depend on it, which is what "the caller's guard still holds when the write
+		// happens" actually requires. `DevicesService.remove()` already replaces device state this way, so
+		// this is the shape this module reaches for rather than a new mechanism.
+		const zoneTable = this.repository.metadata.tableName;
+		const deviceTable = this.deviceRepository.metadata.tableName;
 
-		// Add new zone memberships
-		if (zoneIds.length > 0) {
-			const deviceZones = zoneIds.map((zoneId) =>
-				this.repository.create({
-					deviceId,
-					zoneId,
-				}),
-			);
+		await this.repository.manager.transaction(async (manager): Promise<void> => {
+			const visible = initialPlacement
+				? [{ id: deviceId }]
+				: await manager.query<{ id: string }[]>(
+						`SELECT id FROM "${deviceTable}" WHERE id = ? AND COALESCE(hidden, 0) = 0`,
+						[deviceId],
+					);
 
-			await this.repository.save(deviceZones);
-		}
+			if (visible.length === 0) {
+				this.logger.error(`Refused zone replacement on device id=${deviceId} hidden while it was being applied`);
+
+				// Thrown from inside, so the transaction rolls back and the device keeps the placement it
+				// had. A caller told its change was refused must find nothing changed.
+				throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
+			}
+
+			await manager.query(`DELETE FROM "${zoneTable}" WHERE "deviceId" = ?`, [deviceId]);
+
+			for (const zoneId of zoneIds) {
+				await manager.query(`INSERT INTO "${zoneTable}" ("deviceId", "zoneId") VALUES (?, ?)`, [deviceId, zoneId]);
+			}
+		});
 
 		this.logger.debug(`Successfully set ${zoneIds.length} zones for device ${deviceId}`);
 
-		this.eventEmitter.emit(EventType.DEVICE_UPDATED, device);
+		// Fresh read, for the same reason as the two paths above: the entity this call started with was
+		// read before the zones were validated and before the transaction ran, and a device deleted in
+		// that window has already announced itself.
+		const current = await this.deviceRepository.findOne({ where: { id: deviceId } });
+
+		if (!current) {
+			this.logger.debug(`Device ${deviceId} was deleted while its zones were being set; announcing nothing`);
+
+			return validatedZones;
+		}
+
+		this.eventEmitter.emit(EventType.DEVICE_UPDATED, current);
 
 		return validatedZones;
+	}
+
+	/**
+	 * Refuses a single-membership zone change on a hidden device.
+	 *
+	 * `DevicesService.assertPlacementChangeAllowed()` covers placement changes made through
+	 * `DevicesService.update()`, but `POST|DELETE /devices/:id/zones/:zoneId` reach zone membership
+	 * directly and never pass through it. Without this the rule is bypassable: a client refused a
+	 * `zone_ids` PATCH could reach the same end state one membership at a time. Removal is refused for
+	 * the same reason a room change is — a hidden device is inert, and changing its placement means
+	 * unhiding it first.
+	 *
+	 * A missing device is not this guard's business; the callers decide whether that is fatal.
+	 *
+	 * `setDeviceZones()` deliberately carries no such check: its only callers are
+	 * `DevicesService.create()` / `update()`, and `update()` is already guarded before it gets there.
+	 */
+	private assertPlacementChangeAllowed(device: DeviceEntity | null): void {
+		if (!device?.hidden) {
+			return;
+		}
+
+		this.logger.error(`Refused zone membership change on hidden device id=${device.id}`);
+
+		throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
 	}
 
 	/**

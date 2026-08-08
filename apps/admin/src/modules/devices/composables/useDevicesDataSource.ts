@@ -6,7 +6,7 @@ import { isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
 import { type ISortEntry, injectStoresManager, useListQuery } from '../../../common';
-import { DevicesModuleDeviceConnectionStatus } from '../../../openapi.constants';
+import { DevicesModuleDeviceConnectionStatus, DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEVICES_MODULE_NAME } from '../devices.constants';
 import type { IDevice } from '../store/devices.store.types';
 import { devicesStoreKey, devicesValidationStoreKey } from '../store/keys';
@@ -81,7 +81,12 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 		sort.value.length > 0 ? (sort.value[0]?.by as 'name' | 'description' | 'type' | 'state' | 'category') : undefined
 	);
 
-	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0]?.dir ?? null : null);
+	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? (sort.value[0]?.dir ?? null) : null);
+
+	// Kept out of `useListQuery`'s `filters`: unlike the other filters below, this does not narrow
+	// an already-fetched batch client-side — it decides what the backend sends in the first place, so
+	// it stays off by default on every visit rather than persisting/URL-syncing like a filter would.
+	const showHidden = ref<boolean>(false);
 
 	const isDeviceValid = (deviceId: string): boolean | null => {
 		const result = validationStore.findById(deviceId);
@@ -90,41 +95,45 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 
 	const devices = computed<IDevice[]>((): IDevice[] => {
 		return orderBy<IDevice>(
-			devicesStore
-				.findAll()
-				.filter(
-					(device) =>
-						!device.draft &&
-						(!filters.value.search ||
-							device.id.toLowerCase().includes(filters.value.search.toLowerCase()) ||
-							device.name.toLowerCase().includes(filters.value.search.toLowerCase()) ||
-							device.description?.toLowerCase().includes(filters.value.search.toLowerCase()) ||
-							device.identifier?.toLowerCase().includes(filters.value.search.toLowerCase())) &&
-						(filters.value.types.length === 0 || filters.value.types.includes(device.type)) &&
-						(filters.value.categories.length === 0 || filters.value.categories.includes(device.category)) &&
-						(filters.value.enabled === 'all' ||
-							(filters.value.enabled === 'enabled' && device.enabled) ||
-							(filters.value.enabled === 'disabled' && !device.enabled)) &&
-						(filters.value.states.length === 0 ||
-							filters.value.states.includes(device.status?.status ?? DevicesModuleDeviceConnectionStatus.unknown)) &&
-						(filters.value.state === 'all' ||
-							(filters.value.state === 'online' &&
-								[
-									DevicesModuleDeviceConnectionStatus.ready,
-									DevicesModuleDeviceConnectionStatus.connected,
-									DevicesModuleDeviceConnectionStatus.running,
-								].includes(device.status.status)) ||
-							(filters.value.state === 'offline' &&
-								[
-									DevicesModuleDeviceConnectionStatus.disconnected,
-									DevicesModuleDeviceConnectionStatus.stopped,
-									DevicesModuleDeviceConnectionStatus.lost,
-									DevicesModuleDeviceConnectionStatus.unknown,
-								].includes(device.status.status))) &&
-						(filters.value.validation === 'all' ||
-							(filters.value.validation === 'valid' && isDeviceValid(device.id) === true) ||
-							(filters.value.validation === 'invalid' && isDeviceValid(device.id) === false))
-				),
+			devicesStore.findAll().filter(
+				(device) =>
+					!device.draft &&
+					// The toggle decides what the backend sends, but it cannot decide what is already in
+					// the shared store: a DEVICE_UPDATED for a device another client just hid inserts it
+					// straight into the collection, and any other consumer's unfiltered fetch repopulates
+					// it wholesale. Without repeating the rule here, a hidden device appears in a list
+					// that is explicitly not showing hidden devices.
+					(showHidden.value || !device.hidden) &&
+					(!filters.value.search ||
+						device.id.toLowerCase().includes(filters.value.search.toLowerCase()) ||
+						device.name.toLowerCase().includes(filters.value.search.toLowerCase()) ||
+						device.description?.toLowerCase().includes(filters.value.search.toLowerCase()) ||
+						device.identifier?.toLowerCase().includes(filters.value.search.toLowerCase())) &&
+					(filters.value.types.length === 0 || filters.value.types.includes(device.type)) &&
+					(filters.value.categories.length === 0 || filters.value.categories.includes(device.category)) &&
+					(filters.value.enabled === 'all' ||
+						(filters.value.enabled === 'enabled' && device.enabled) ||
+						(filters.value.enabled === 'disabled' && !device.enabled)) &&
+					(filters.value.states.length === 0 ||
+						filters.value.states.includes(device.status?.status ?? DevicesModuleDeviceConnectionStatus.unknown)) &&
+					(filters.value.state === 'all' ||
+						(filters.value.state === 'online' &&
+							[
+								DevicesModuleDeviceConnectionStatus.ready,
+								DevicesModuleDeviceConnectionStatus.connected,
+								DevicesModuleDeviceConnectionStatus.running,
+							].includes(device.status.status)) ||
+						(filters.value.state === 'offline' &&
+							[
+								DevicesModuleDeviceConnectionStatus.disconnected,
+								DevicesModuleDeviceConnectionStatus.stopped,
+								DevicesModuleDeviceConnectionStatus.lost,
+								DevicesModuleDeviceConnectionStatus.unknown,
+							].includes(device.status.status))) &&
+					(filters.value.validation === 'all' ||
+						(filters.value.validation === 'valid' && isDeviceValid(device.id) === true) ||
+						(filters.value.validation === 'invalid' && isDeviceValid(device.id) === false))
+			),
 			[
 				(device: IDevice) =>
 					sortBy.value === 'state'
@@ -143,7 +152,9 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 	});
 
 	const fetchDevices = async (): Promise<void> => {
-		await devicesStore.fetch();
+		await devicesStore.fetch({
+			hidden: showHidden.value ? DevicesModuleDevicesHiddenFilter.all : DevicesModuleDevicesHiddenFilter.false,
+		});
 	};
 
 	const areLoading = computed<boolean>((): boolean => {
@@ -154,7 +165,9 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 		return firstLoad.value;
 	});
 
-	const totalRows = computed<number>(() => devicesStore.findAll().filter((device) => !device.draft).length);
+	// Same rule as `devices` above — a count that includes rows the list is not showing would put the
+	// pager out of step with what is on screen.
+	const totalRows = computed<number>(() => devicesStore.findAll().filter((device) => !device.draft && (showHidden.value || !device.hidden)).length);
 
 	watch(
 		(): { page?: number; size?: number } => pagination.value,
@@ -225,5 +238,6 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 		sortBy,
 		sortDir,
 		resetFilter,
+		showHidden,
 	};
 };

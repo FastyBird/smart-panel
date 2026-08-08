@@ -9,6 +9,7 @@ effective testing and mirror the pattern already used by the other e2e specs in 
 import { useContainer } from 'class-validator';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
+import { v4 as uuid } from 'uuid';
 
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -19,6 +20,7 @@ import {
 	ConnectionState,
 	DataTypeType,
 	DeviceCategory,
+	DeviceHiddenBy,
 	PermissionType,
 	PropertyCategory,
 } from '../src/modules/devices/devices.constants';
@@ -67,6 +69,7 @@ interface DeviceBody {
 	category: string;
 	enabled: boolean;
 	hidden: boolean;
+	hidden_by: string | null;
 	status: DeviceStatusBody;
 	channels: ChannelBody[];
 }
@@ -321,6 +324,8 @@ describe('devices-virtual plugin (e2e)', () => {
 		let sourceChannelId: string;
 		let sourceOnPropertyId: string;
 		let sourceInUsePropertyId: string;
+		let sourceSecondaryOnPropertyId: string;
+		let sourceSecondaryChannelId: string;
 
 		let virtualDeviceId: string;
 		let lightChannelId: string;
@@ -360,6 +365,28 @@ describe('devices-virtual plugin (e2e)', () => {
 									},
 								],
 							},
+							// A second relay on the same physical device — `outlet` is `multiple` for this
+							// category. The orphaning test needs a source it can delete without disturbing
+							// `sourceOnPropertyId`, and it has to be writable: the slot it feeds is `light.on`,
+							// which requires a writable source, so the read-only `in_use` it used to borrow is
+							// refused now that compatibility is enforced at persistence.
+							{
+								type: SIMULATOR_TYPE,
+								category: ChannelCategory.OUTLET,
+								identifier: 'outlet-secondary',
+								name: 'Outlet 2',
+								properties: [
+									{
+										type: SIMULATOR_TYPE,
+										category: PropertyCategory.ON,
+										identifier: 'on',
+										name: 'On',
+										permissions: [PermissionType.READ_WRITE],
+										data_type: DataTypeType.BOOL,
+										value: false,
+									},
+								],
+							},
 						],
 					},
 				})
@@ -368,13 +395,34 @@ describe('devices-virtual plugin (e2e)', () => {
 			const body = response.body as { data: DeviceBody };
 
 			sourceDeviceId = body.data.id;
-			sourceChannelId = body.data.channels[0].id;
 
-			const sourceProperties = body.data.channels[0].properties;
+			// ChannelBody carries no identifier, and both relays share the `outlet` category, so they are
+			// told apart by content: only the first was given an `in_use` property.
+			const outletChannels = body.data.channels.filter(
+				(channel) => channel.category === String(ChannelCategory.OUTLET),
+			);
+			const primaryChannel = outletChannels.find((channel) =>
+				channel.properties.some((property) => property.category === PropertyCategory.IN_USE),
+			);
+			const secondaryChannel = outletChannels.find(
+				(channel) => !channel.properties.some((property) => property.category === PropertyCategory.IN_USE),
+			);
+
+			expect(primaryChannel).toBeDefined();
+			expect(secondaryChannel).toBeDefined();
+
+			sourceChannelId = primaryChannel.id;
+			sourceSecondaryChannelId = secondaryChannel.id;
+
+			const sourceProperties = primaryChannel.properties;
 
 			sourceOnPropertyId = sourceProperties.find((property) => property.category === PropertyCategory.ON)?.id ?? '';
 			sourceInUsePropertyId =
 				sourceProperties.find((property) => property.category === PropertyCategory.IN_USE)?.id ?? '';
+			sourceSecondaryOnPropertyId =
+				secondaryChannel.properties.find((property) => property.category === PropertyCategory.ON)?.id ?? '';
+
+			expect(sourceSecondaryOnPropertyId).toBeTruthy();
 
 			expect(sourceDeviceId).toBeTruthy();
 			expect(sourceOnPropertyId).toBeTruthy();
@@ -954,7 +1002,7 @@ describe('devices-virtual plugin (e2e)', () => {
 						name: 'On',
 						permissions: [PermissionType.READ_WRITE],
 						data_type: DataTypeType.BOOL,
-						source_property: sourceInUsePropertyId,
+						source_property: sourceSecondaryOnPropertyId,
 					},
 				})
 				.expect(201);
@@ -962,10 +1010,12 @@ describe('devices-virtual plugin (e2e)', () => {
 			const secondaryPropertyBody = propertyResponse.body as { data: ChannelPropertyBody };
 			const secondaryPropertyId = secondaryPropertyBody.data.id;
 
-			expect(secondaryPropertyBody.data.source_property).toBe(sourceInUsePropertyId);
+			expect(secondaryPropertyBody.data.source_property).toBe(sourceSecondaryOnPropertyId);
 
 			// Delete the source property directly (not through the virtual device).
-			await authDelete(`/modules/devices/channels/${sourceChannelId}/properties/${sourceInUsePropertyId}`).expect(204);
+			await authDelete(
+				`/modules/devices/channels/${sourceSecondaryChannelId}/properties/${sourceSecondaryOnPropertyId}`,
+			).expect(204);
 
 			// The virtual device — and its property — survive. Graceful degradation, not breakage.
 			const deviceResponse = await authGet(`/modules/devices/devices/${virtualDeviceId}`).expect(200);
@@ -1065,6 +1115,147 @@ describe('devices-virtual plugin (e2e)', () => {
 
 			expect(response.status).toBe(400);
 			expect(JSON.stringify(response.body)).toContain('closed-loop control');
+		});
+
+		// `id` is client-suppliable and `save()` treats an existing primary key as an update, so a create
+		// naming an id already in use overwrote that device — and the nested-creation rollback then removed
+		// it. A malformed request destroying a device it had nothing to do with, which is why this is
+		// checked end to end rather than only at the unit level.
+		it('refuses a create naming an id that already exists, leaving that device alone', async () => {
+			const firstResponse = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: DeviceCategory.LIGHTING,
+						name: 'E2E Id Collision Original',
+					},
+				})
+				.expect(201);
+			const takenId = (firstResponse.body as { data: DeviceBody }).data.id;
+
+			// The failure has to happen *after* the device row is saved, or the rollback never runs and the
+			// test proves nothing about it. A zone that does not exist does that with one request: the
+			// device is written, `setDeviceZones` then refuses, and the rollback removes what it believes
+			// this request created — which, without the guard, is the original device.
+			const collision = await authPost('/modules/devices/devices').send({
+				data: {
+					id: takenId,
+					type: DEVICES_VIRTUAL_TYPE,
+					category: DeviceCategory.LIGHTING,
+					name: 'E2E Id Collision Impostor',
+					zone_ids: [uuid()],
+				},
+			});
+
+			expect(collision.status).not.toBe(201);
+
+			// The original is untouched: still there, still its own name.
+			const readBack = await authGet(`/modules/devices/devices/${takenId}`).expect(200);
+
+			expect((readBack.body as { data: DeviceBody & { name: string } }).data.name).toBe('E2E Id Collision Original');
+		});
+
+		// A virtual device's channels and properties are derived from its category, and a device PATCH
+		// writes no property, so no property-level guard ever sees a recategorisation. The admin does not
+		// offer the field; an API client can still send it.
+		//
+		// One device, three PATCHes. Split across three tests this cost roughly a dozen requests, and
+		// every request in this file draws on one shared throttler budget — the file was intermittently
+		// red for it. The three assertions are independent of each other, so sharing the fixture costs
+		// nothing but the setup.
+		it('judges a recategorisation by what it breaks, and lets every other edit through', async () => {
+			const deviceResponse = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: DeviceCategory.LIGHTING,
+						name: 'E2E Recategorisation Guard Device',
+					},
+				})
+				.expect(201);
+			const deviceId = (deviceResponse.body as { data: DeviceBody }).data.id;
+
+			const channelResponse = await authPost('/modules/devices/channels')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: ChannelCategory.LIGHT,
+						identifier: 'light',
+						name: 'Light',
+						device: deviceId,
+					},
+				})
+				.expect(201);
+			const channelId = (channelResponse.body as { data: ChannelBody }).data.id;
+
+			await authPost(`/modules/devices/channels/${channelId}/properties`)
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: PropertyCategory.ON,
+						identifier: 'on',
+						name: 'On',
+						permissions: [PermissionType.READ_ONLY],
+						data_type: DataTypeType.BOOL,
+						value_origin: 'local',
+					},
+				})
+				.expect(201);
+
+			// A category whose required channels this device plainly lacks.
+			const refused = await authPatch(`/modules/devices/devices/${deviceId}`).send({
+				data: { type: DEVICES_VIRTUAL_TYPE, category: DeviceCategory.DOOR },
+			});
+
+			expect(refused.status).toBe(422);
+			expect(JSON.stringify(refused.body)).toContain('cannot change category');
+
+			// And the case an `isValid` check waves through: `generic` requires nothing this device lacks
+			// once `device_information` has been synthesized, so its only complaint about the stored
+			// `light` channel is a *warning* — while every projection under that channel would stay
+			// attached to a slot `generic` never defines.
+			await waitUntil(
+				async () => {
+					const current = await authGet(`/modules/devices/devices/${deviceId}`);
+
+					if (current.status !== 200) {
+						return { done: false, value: null };
+					}
+
+					const channels = (current.body as { data: DeviceBody }).data.channels;
+
+					return {
+						done: channels.some((channel) => channel.category === String(ChannelCategory.DEVICE_INFORMATION)),
+						value: channels.map((channel) => channel.category),
+					};
+					// Polled at half the usual rate: every request here draws on the same shared throttler
+					// budget, and the channel is synthesized off DEVICE_CREATED in well under a second.
+				},
+				'the synthesized device_information channel appearing',
+				3000,
+				500,
+			);
+
+			const warningOnly = await authPatch(`/modules/devices/devices/${deviceId}`).send({
+				data: { type: DEVICES_VIRTUAL_TYPE, category: DeviceCategory.GENERIC },
+			});
+
+			expect(warningOnly.status).toBe(422);
+			expect(JSON.stringify(warningOnly.body)).toContain('is not defined in specification');
+
+			// Every other PATCH keeps working: the guard only runs when the category actually moves, so a
+			// device whose structure would fail today's specification can still be renamed.
+			await authPatch(`/modules/devices/devices/${deviceId}`)
+				.send({ data: { type: DEVICES_VIRTUAL_TYPE, name: 'E2E Renamed Device' } })
+				.expect(200);
+
+			// Read back rather than trusting the response envelope, so this pins what was stored — and the
+			// category is still what the refusals above left it.
+			const readBack = await authGet(`/modules/devices/devices/${deviceId}`).expect(200);
+			const stored = (readBack.body as { data: DeviceBody & { name: string } }).data;
+
+			expect(stored.name).toBe('E2E Renamed Device');
+			expect(stored.category).toBe(DeviceCategory.LIGHTING);
 		});
 
 		it("rejects a source_property pointing at another virtual device's property", async () => {
@@ -1172,6 +1363,7 @@ describe('devices-virtual plugin (e2e)', () => {
 	describe('creating a virtual device with its wiring nested in one request', () => {
 		let atomicSourceDeviceId: string;
 		let atomicSourcePropertyId: string;
+		let atomicReadOnlySourcePropertyId: string;
 		let atomicVirtualDeviceId: string;
 
 		it('creates the source device it will draw from', async () => {
@@ -1197,6 +1389,19 @@ describe('devices-virtual plugin (e2e)', () => {
 										data_type: DataTypeType.BOOL,
 										value: true,
 									},
+									// A read-only sibling on the same channel, so the compatibility test below can
+									// project something the spec slot genuinely refuses without needing a second
+									// device. `outlet.in_use` is `ro` in the spec and `light.on` requires a
+									// writable source, so the pair is incompatible on permissions alone.
+									{
+										type: SIMULATOR_TYPE,
+										category: PropertyCategory.IN_USE,
+										identifier: 'in_use',
+										name: 'In use',
+										permissions: [PermissionType.READ_ONLY],
+										data_type: DataTypeType.BOOL,
+										value: true,
+									},
 								],
 							},
 						],
@@ -1207,9 +1412,23 @@ describe('devices-virtual plugin (e2e)', () => {
 			const body = response.body as { data: DeviceBody };
 
 			atomicSourceDeviceId = body.data.id;
-			atomicSourcePropertyId = body.data.channels[0].properties[0].id;
+
+			// Selected by category, not by index: the response's property order is not the request's, and
+			// picking positionally here silently swapped the writable source for the read-only one.
+			const sourceProperties = body.data.channels[0].properties;
+
+			const writableSource = sourceProperties.find((property) => property.category === PropertyCategory.ON);
+			const readOnlySource = sourceProperties.find((property) => property.category === PropertyCategory.IN_USE);
+
+			expect(writableSource).toBeDefined();
+			expect(readOnlySource).toBeDefined();
+
+			atomicSourcePropertyId = writableSource.id;
+			atomicReadOnlySourcePropertyId = readOnlySource.id;
 
 			expect(atomicSourcePropertyId).toBeTruthy();
+			expect(atomicReadOnlySourcePropertyId).toBeTruthy();
+			expect(atomicSourcePropertyId).not.toBe(atomicReadOnlySourcePropertyId);
 		});
 
 		it('accepts the device, its channel and its linked property in a single POST', async () => {
@@ -1287,11 +1506,16 @@ describe('devices-virtual plugin (e2e)', () => {
 				const property =
 					informationChannel?.properties.find((candidate) => candidate.category === PropertyCategory.STATUS) ?? null;
 
+				// Waits for the state it is about to assert, not merely for the row to exist. The claim that
+				// makes this property owned is an `afterCreate` hook — it runs after the row is written, so
+				// a poll that stops at "the property is there" can catch it in its pre-claim `source` state
+				// and then assert against a value that had not arrived yet. On a timeout `waitUntil` reports
+				// the last thing it saw, so a property that genuinely never becomes owned still says so.
 				return {
-					done: !!property,
+					done: property?.value_origin === 'local',
 					value: { property, seenChannels: channels.map((channel) => channel.category) },
 				};
-			}, 'the synthesized connection state property on an atomically created device');
+			}, 'the synthesized connection state property on an atomically created device becoming owned');
 
 			// Owned, not an orphaned projection — the `afterCreate` claim doing its job on the one path
 			// that can actually race it.
@@ -1360,6 +1584,88 @@ describe('devices-virtual plugin (e2e)', () => {
 
 			expect(rejected.status).toBe(400);
 			expect(JSON.stringify(rejected.body)).toContain('an owned property stores its own value');
+		});
+
+		// The wizard previews compatibility before it writes, but the preview is not atomic with the
+		// write and a direct POST like this one never makes it at all. Without enforcement at
+		// persistence, a read-only source lands on a writable slot and only fails much later, when a
+		// command is forwarded to a source that cannot accept it.
+		it('rejects a nested property projecting a read-only source onto a writable slot', async () => {
+			const rejected = await authPost('/modules/devices/devices').send({
+				data: {
+					type: DEVICES_VIRTUAL_TYPE,
+					category: DeviceCategory.LIGHTING,
+					name: 'E2E Atomic Incompatible Virtual Light',
+					channels: [
+						{
+							type: DEVICES_VIRTUAL_TYPE,
+							category: ChannelCategory.LIGHT,
+							identifier: 'light',
+							name: 'Light',
+							properties: [
+								{
+									type: DEVICES_VIRTUAL_TYPE,
+									category: PropertyCategory.ON,
+									identifier: 'on',
+									name: 'On',
+									permissions: [PermissionType.READ_WRITE],
+									data_type: DataTypeType.BOOL,
+									value_origin: 'source',
+									source_property: atomicReadOnlySourcePropertyId,
+								},
+							],
+						},
+					],
+				},
+			});
+
+			// Refused at persistence, so nothing is written. The nested device-create path reports its own
+			// generic envelope rather than the guard's reason — the same shape every other nested failure
+			// gets here — so the status is what this pins; the reason itself is covered by the service's
+			// own unit tests.
+			expect(rejected.status).toBe(422);
+
+			// Not just "the response carried no device": the parent device row is saved before its channels
+			// are built, so a rejection here has to roll it back or the client sees a failure while the
+			// database keeps a half-built device, and a retry adds a second one.
+			//
+			// Asked of the rejected device by name rather than by comparing totals before and after. The app
+			// under test is live — the simulator plugin discovers devices of its own on a timer — so a
+			// total is only stable if nothing else happens to create one inside this window, which is a
+			// race rather than an invariant, and it broke as soon as two tests were added ahead of this
+			// one. The name states exactly what the rollback is being held to, and costs one request
+			// instead of two.
+			const after = await authGet('/modules/devices/devices?hidden=all').expect(200);
+			const afterDevices = (after.body as { data: (DeviceBody & { name: string })[] }).data;
+
+			expect(afterDevices.filter((entry) => entry.name === 'E2E Atomic Incompatible Virtual Light')).toHaveLength(0);
+		});
+
+		// The remap path, which is the one the preview covers least well: the wizard checked this pairing
+		// before it wrote, and a source's permissions can change afterwards. The update hook has to judge
+		// the merged row, not the payload — the PATCH here carries only `source_property`.
+		it('rejects remapping a linked property onto a read-only source', async () => {
+			const deviceResponse = await authGet(`/modules/devices/devices/${atomicVirtualDeviceId}`).expect(200);
+			const deviceBody = deviceResponse.body as { data: DeviceBody };
+
+			const lightChannel = deviceBody.data.channels.find(
+				(channel) => channel.category === String(ChannelCategory.LIGHT),
+			);
+			const onProperty = lightChannel?.properties.find((property) => property.category === PropertyCategory.ON);
+
+			expect(lightChannel).toBeDefined();
+			expect(onProperty?.id).toBeTruthy();
+
+			await authPatch(`/modules/devices/channels/${lightChannel.id}/properties/${onProperty.id}`)
+				.send({ data: { type: DEVICES_VIRTUAL_TYPE, source_property: atomicReadOnlySourcePropertyId } })
+				.expect(422);
+
+			// The stored link is untouched — a refused remap must not half-apply.
+			const after = await authGet(`/modules/devices/channels/${lightChannel.id}/properties/${onProperty.id}`).expect(
+				200,
+			);
+
+			expect((after.body as { data: ChannelPropertyBody }).data.source_property).toBe(atomicSourcePropertyId);
 		});
 	});
 
@@ -1636,8 +1942,16 @@ describe('devices-virtual plugin (e2e)', () => {
 			// class-transformer cannot drop, so a patch of `{hidden: false}` alone silently re-enables a
 			// device the user had explicitly disabled (follow-up 3.1, whose root fix is blocked on
 			// devices-shelly-v1's afterInsert subscriber).
+			//
+			// `hidden_by: system` is the provenance the admin's own hide carries, and it is load-bearing
+			// twice over. The auto-unhide only reverses a hide the *system* performed — an operator's own
+			// hide of a device a virtual device happened to reference is theirs to keep — so without it
+			// nothing below would fire at all. And it is what the unhide then has to clear, which is the
+			// one part of an unhide UpdateDeviceDto cannot express (its `@Transform` reads an explicit
+			// `null` as "field not provided") and therefore the one part no mocked test can prove against
+			// the real schema.
 			await authPatch(`/modules/devices/devices/${ownSourceDeviceId}`)
-				.send({ data: { type: SIMULATOR_TYPE, hidden: true, enabled: false } })
+				.send({ data: { type: SIMULATOR_TYPE, hidden: true, enabled: false, hidden_by: DeviceHiddenBy.SYSTEM } })
 				.expect(200);
 
 			// Read immediately, with no polling — the same read-after-write assertion as in the
@@ -1672,13 +1986,16 @@ describe('devices-virtual plugin (e2e)', () => {
 
 					const body = response.body as { data: DeviceBody };
 
-					return { done: body.data.hidden === false, value: body.data };
+					// Both halves of the unhide, because they are two writes: DevicesService.update() clears
+					// `hidden`, and a targeted column update clears `hidden_by` immediately after it. Polling
+					// on `hidden` alone would sample the row in between and read a stale provenance.
+					return { done: body.data.hidden === false && body.data.hidden_by === null, value: body.data };
 					// Slower and longer than the default: this poll shares its route budget (see waitUntil)
 					// with two other polls in this file, and it waits on the longest chain of deferred work in
 					// the plugin — a deletion, a rebuild deferred past that deletion's commit, and only then
 					// the unhide.
 				},
-				'the abandoned source device being unhidden',
+				'the abandoned source device being unhidden and its provenance cleared',
 				6000,
 				500,
 			);
@@ -1687,6 +2004,10 @@ describe('devices-virtual plugin (e2e)', () => {
 			// The unhide gives back the flag it took and nothing else — a device the user disabled stays
 			// disabled.
 			expect(typeof unhidden === 'string' ? unhidden : unhidden.enabled).toBe(false);
+			// And the row is left clean: a device that is no longer hidden must not keep claiming who hid
+			// it. This write cannot go through the update DTO at all, so this is the only place it is
+			// exercised against the real STI schema.
+			expect(typeof unhidden === 'string' ? unhidden : unhidden.hidden_by).toBeNull();
 
 			// Unhidden means genuinely back in the pickers, not merely a flipped column.
 			const visibleList = await authGet('/modules/devices/devices?hidden=false').expect(200);
@@ -1718,6 +2039,114 @@ describe('devices-virtual plugin (e2e)', () => {
 	 * non-virtual device. Status codes alone would only say that the request shapes tried here are
 	 * refused; this says the state cannot exist.
 	 */
+	// The metadata-change orphaning had unit coverage only, and its unit tests stub the query builder —
+	// so nothing proved the write's own predicates (the link, and each judged row's version) actually
+	// match in SQL. A binding that did not compare equal would disable orphaning outright and every test
+	// would still pass. This exercises the real statement end to end.
+	describe('a source whose metadata stops fitting the slot it fills', () => {
+		it('orphans the projection reading it', async () => {
+			const sourceResponse = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: SIMULATOR_TYPE,
+						category: DeviceCategory.OUTLET,
+						name: 'E2E Demoted Source Outlet',
+						channels: [
+							{
+								type: SIMULATOR_TYPE,
+								category: ChannelCategory.OUTLET,
+								identifier: 'outlet',
+								name: 'Outlet',
+								properties: [
+									{
+										type: SIMULATOR_TYPE,
+										category: PropertyCategory.ON,
+										identifier: 'on',
+										name: 'On',
+										permissions: [PermissionType.READ_WRITE],
+										data_type: DataTypeType.BOOL,
+										value: false,
+									},
+								],
+							},
+						],
+					},
+				})
+				.expect(201);
+
+			const sourceBody = sourceResponse.body as { data: DeviceBody };
+			const demotedPropertyId = sourceBody.data.channels
+				.find((channel) => channel.category === String(ChannelCategory.OUTLET))
+				?.properties.find((property) => String(property.category) === String(PropertyCategory.ON))?.id;
+
+			expect(demotedPropertyId).toBeDefined();
+
+			const virtualResponse = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: DeviceCategory.LIGHTING,
+						name: 'E2E Demoted Source Virtual Light',
+						channels: [
+							{
+								type: DEVICES_VIRTUAL_TYPE,
+								category: ChannelCategory.LIGHT,
+								identifier: 'light',
+								name: 'Light',
+								properties: [
+									{
+										type: DEVICES_VIRTUAL_TYPE,
+										category: PropertyCategory.ON,
+										identifier: 'on',
+										name: 'On',
+										permissions: [PermissionType.READ_WRITE],
+										data_type: DataTypeType.BOOL,
+										value_origin: 'source',
+										source_property: demotedPropertyId,
+									},
+								],
+							},
+						],
+					},
+				})
+				.expect(201);
+
+			const virtualDeviceId = (virtualResponse.body as { data: DeviceBody }).data.id;
+
+			// Demoting the source to read-only makes it unable to fill a writable `light.on`, which is the
+			// judgement the listener makes and the write it then has to land.
+			await authPatch(`/modules/devices/channels/${sourceBody.data.channels[0].id}/properties/${demotedPropertyId}`)
+				.send({ data: { type: SIMULATOR_TYPE, permissions: [PermissionType.READ_ONLY] } })
+				.expect(200);
+
+			const orphaned = await waitUntil(
+				async () => {
+					const current = await authGet(`/modules/devices/devices/${virtualDeviceId}`);
+
+					if (current.status !== 200) {
+						return { done: false, value: null };
+					}
+
+					const property = (current.body as { data: DeviceBody }).data.channels
+						.find((channel) => channel.category === String(ChannelCategory.LIGHT))
+						?.properties.find((candidate) => String(candidate.category) === String(PropertyCategory.ON));
+
+					// `?? 'absent'` would be wrong here: `null` is the answer this is waiting for, and coalescing
+					// past it reports success as if the property were missing.
+					return {
+						done: property?.source_property === null,
+						value: property === undefined ? 'absent' : property.source_property,
+					};
+				},
+				'the projection losing the source that stopped fitting its slot',
+				5000,
+				500,
+			);
+
+			expect(orphaned).toBeNull();
+		});
+	});
+
 	describe('containment: no virtual row attaches to a non-virtual device', () => {
 		let physicalDeviceId: string;
 		let physicalChannelId: string;
@@ -1876,8 +2305,13 @@ describe('devices-virtual plugin (e2e)', () => {
 		// this assertion is only worth anything if it can actually see the owner, so "could not tell"
 		// has to fail loudly instead of quietly reporting containment.
 		it('leaves no virtual channel or property reachable from a non-virtual device', async () => {
-			const ownerIsVirtual = (channel: ChannelEntity | string): boolean =>
+			// `null` is a stray too, and reported rather than thrown on: a property whose channel relation
+			// resolves to nothing is exactly the state this assertion exists to catch, and crashing on it
+			// hides which row it was behind a TypeError.
+			const ownerIsVirtual = (channel: ChannelEntity | string | null): boolean =>
+				channel !== null &&
 				typeof channel !== 'string' &&
+				channel.device !== null &&
 				typeof channel.device !== 'string' &&
 				channel.device.type === DEVICES_VIRTUAL_TYPE;
 
@@ -1885,7 +2319,25 @@ describe('devices-virtual plugin (e2e)', () => {
 				await dataSource.getRepository(VirtualChannelPropertyEntity).find({ relations: ['channel', 'channel.device'] })
 			).filter((property) => !ownerIsVirtual(property.channel));
 
-			expect(strayProperties.map((property) => property.id)).toEqual([]);
+			// Identified by what is wrong with them, not by id alone — a bare uuid says nothing about
+			// whether the channel was missing, unloaded, or owned by the wrong kind of device.
+			expect(
+				strayProperties.map((property) => ({
+					id: property.id,
+					category: property.category,
+					identifier: property.identifier,
+					// The synthesized device_information properties carry their own device's id as their
+					// value, so this says *whose* row was left behind; `createdAt` says when in the run.
+					value: property.value,
+					createdAt: property.createdAt,
+					channel:
+						property.channel === null
+							? null
+							: typeof property.channel === 'string'
+								? property.channel
+								: property.channel.id,
+				})),
+			).toEqual([]);
 
 			const strayChannels = (
 				await dataSource.getRepository(VirtualChannelEntity).find({ relations: ['device'] })

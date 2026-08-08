@@ -43,6 +43,9 @@ class SpacesHomeControlPluginService {
 
   bool _isLoading = true;
 
+  /// Tail of the target-refresh queue. See [_refreshSpaceTargets].
+  Future<void> _targetsRefresh = Future<void>.value();
+
   SpacesHomeControlPluginService({
     required ApiClient apiClient,
     required SocketService socketService,
@@ -399,8 +402,78 @@ class SpacesHomeControlPluginService {
     }
   }
 
+  /// Whether a device event could change what this display's space renders.
+  ///
+  /// A display is bound to a room *or* to a zone, and a device event carries
+  /// both: `room_id` names the room, `zone_ids` the zones it belongs to. The
+  /// room comparison alone therefore never fires for a zone-bound display, and
+  /// its target lists would keep a hidden source and miss the virtual device
+  /// that replaced it.
+  ///
+  /// A hide and a create are treated as affecting every space, because they are
+  /// the events that change what a space *contains* and the payload cannot rule
+  /// this display out: a device leaving the space in the same write no longer
+  /// names it, and a `null` room means it may have just left.
+  bool _couldAffectSpace(
+    String displaySpaceId,
+    String event,
+    Map<String, dynamic> payload,
+  ) {
+    if (event == DevicesModuleConstants.deviceCreatedEvent ||
+        payload['hidden'] == true) {
+      return true;
+    }
+
+    final roomId = payload['room_id'] as String?;
+
+    if (roomId == null || roomId == displaySpaceId) {
+      return true;
+    }
+
+    final zoneIds = payload['zone_ids'];
+
+    return zoneIds is List && zoneIds.contains(displaySpaceId);
+  }
+
+  /// Re-read this space's light, climate and cover targets.
+  ///
+  /// The target lists are derived from the space's devices, and they live in
+  /// repositories of their own — dropping a row from [DevicesRepository]
+  /// leaves them holding it. A source device is hidden the moment a virtual
+  /// device replaces it, so without this a running panel keeps rendering and
+  /// commanding the physical source, and never picks up the replacement,
+  /// until it restarts. Deleting a device leaves the same residue.
+  ///
+  /// Re-read rather than pruned locally, because the backend already answers
+  /// these endpoints from the *visible* devices in the space: one request
+  /// settles both halves — what left the list and what took its place.
+  void _refreshSpaceTargets(String spaceId) {
+    // Queued behind whatever refresh is already running, so the last one asked
+    // for is the last one applied. The wizard fires two in a row — the virtual
+    // device's own create, then the source's hide — and `fetchForSpace()` ends
+    // in an unconditional `replace()`. Left to race, a slower first response
+    // carrying the pre-hide list can land after the correct post-hide one and
+    // make the physical source commandable again until something else
+    // refreshes.
+    _targetsRefresh = _targetsRefresh.then((_) async {
+      await _lightTargetsRepository.fetchForSpace(spaceId);
+      await _climateTargetsRepository.fetchForSpace(spaceId);
+      await _coversTargetsRepository.fetchForSpace(spaceId);
+    }).catchError((Object _) {
+      // A failed refresh is already logged by the repository it came from, and
+      // must not close the queue behind it.
+    });
+  }
+
   /// Handle devices module events to sync names to targets and refresh
   /// media endpoints when device assignments change.
+  ///
+  /// Exposed for tests: the handler is registered with the socket service,
+  /// which a test would otherwise have to drive through a live connection.
+  @visibleForTesting
+  void handleDeviceSocketEvent(String event, Map<String, dynamic> payload) =>
+      _deviceSocketEventHandler(event, payload);
+
   void _deviceSocketEventHandler(String event, Map<String, dynamic> payload) {
     if (!payload.containsKey('id')) return;
 
@@ -438,6 +511,10 @@ class SpacesHomeControlPluginService {
           if (roomId == null || roomId == displaySpaceId) {
             _mediaActivityRepository.refreshEndpoints(displaySpaceId);
           }
+
+          if (_couldAffectSpace(displaySpaceId, event, payload)) {
+            _refreshSpaceTargets(displaySpaceId);
+          }
         }
       } catch (_) {
         // DisplayRepository not available
@@ -449,6 +526,7 @@ class SpacesHomeControlPluginService {
         final displaySpaceId = locator<DisplayRepository>().display?.spaceId;
         if (displaySpaceId != null) {
           _mediaActivityRepository.refreshEndpoints(displaySpaceId);
+          _refreshSpaceTargets(displaySpaceId);
         }
       } catch (_) {
         // DisplayRepository not available

@@ -16,8 +16,10 @@ import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { SUPPORTED_PROPERTY_COMMAND_DATA_TYPES } from '../utils/property-command-value.utils';
 import { resolvePropertyUnit } from '../utils/property-metadata.utils';
+import { isPrimaryKeyCollision } from '../utils/unique-constraint.utils';
 
 import { ChannelsPropertiesTypeMapperService } from './channels.properties-type-mapper.service';
+import { DeviceStructureLockService } from './device-structure-lock.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
 
@@ -41,6 +43,7 @@ export class ChannelsPropertiesService {
 		private readonly propertiesMapperService: ChannelsPropertiesTypeMapperService,
 		private readonly propertyValueService: PropertyValueService,
 		private readonly valueSourceRegistry: PropertyValueSourceRegistryService,
+		private readonly structureLock: DeviceStructureLockService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
@@ -371,15 +374,62 @@ export class ChannelsPropertiesService {
 			);
 		}
 
-		// The type owner's last look at the row before it exists — the only point at which an invariant
-		// spanning the property and the channel it is being attached to is decidable, since `channelId`
-		// is a route parameter and never reaches the create DTO. Throwing here persists nothing.
-		if (mapping.beforeCreate) {
-			await mapping.beforeCreate(property, channelId);
+		// `id` is client-suppliable here as it is on the device and channel creates, and the same two
+		// hazards follow. `save()` treats a row whose primary key exists as an *update*, so a create
+		// carrying an existing id moved that property under this channel instead of inserting — and
+		// `DevicesService.create()`'s rollback then removed it as one of its own, destroying a property
+		// the request had nothing to do with. Asked of the base repository, because a collision with a
+		// property of *another* type is the same collision: ids are unique across the table.
+		if (property.id) {
+			const existing = await this.repository.findOne({ where: { id: property.id } });
+
+			if (existing) {
+				this.logger.error(
+					`[VALIDATION FAILED] Channel property id=${property.id} already exists, refusing to create over it`,
+				);
+
+				throw new DevicesValidationException(
+					`Channel property with id=${property.id} already exists. Creating a channel property with an id already in use is not allowed.`,
+				);
+			}
 		}
 
-		// Save the property
-		const raw = await repository.save(property);
+		// Hook and insert together under the structure lock. What the type owner judges below is decided
+		// against the device's *category* — a projection is compared to the spec slot that category
+		// defines — and a device PATCH judges the reverse: the channels and properties the device already
+		// has, against the category it is about to store. Each reads what the other is about to change,
+		// so a property validated against the old category could commit inside the window a
+		// recategorisation had already judged (see DeviceStructureLockService).
+		const raw = await this.structureLock.runExclusive(async (): Promise<TProperty> => {
+			// The type owner's last look at the row before it exists — the only point at which an
+			// invariant spanning the property and the channel it is being attached to is decidable, since
+			// `channelId` is a route parameter and never reaches the create DTO. Throwing here persists
+			// nothing.
+			if (mapping.beforeCreate) {
+				await mapping.beforeCreate(property, channelId);
+			}
+
+			// Inserted, not saved: the check above closes the collision only for a caller who is alone,
+			// and two requests carrying the same client-generated uuid can both pass it before either
+			// writes. `insert()` always issues an INSERT, so the primary key constraint decides.
+			await repository
+				.insert(property as unknown as Parameters<Repository<TProperty>['insert']>[0])
+				.catch((error: unknown) => {
+					if (isPrimaryKeyCollision(error)) {
+						this.logger.error(
+							`[VALIDATION FAILED] Channel property id=${property.id} was created concurrently by another request`,
+						);
+
+						throw new DevicesValidationException(
+							`Channel property with id=${property.id} already exists. Creating a channel property with an id already in use is not allowed.`,
+						);
+					}
+
+					throw error;
+				});
+
+			return property;
+		});
 
 		if (typeof createDto.value !== 'undefined') {
 			await this.propertyValueService.write(raw, createDto.value);
@@ -455,11 +505,15 @@ export class ChannelsPropertiesService {
 
 		// The type owner's last look at the merged row, before anything is written — the only point at
 		// which an invariant spanning a field the PATCH sent and a field it did not is decidable.
-		if (mapping.beforeUpdate) {
-			await mapping.beforeUpdate(property as TProperty);
-		}
+		// Same lock as the create path above, for the same reason: a PATCH can move a property's data
+		// type or permissions, which is exactly what a device recategorisation judges its structure by.
+		const raw = await this.structureLock.runExclusive(async (): Promise<TProperty> => {
+			if (mapping.beforeUpdate) {
+				await mapping.beforeUpdate(property as TProperty);
+			}
 
-		const raw = await repository.save(property as TProperty);
+			return repository.save(property as TProperty);
+		});
 
 		// Track if value actually changed
 		//

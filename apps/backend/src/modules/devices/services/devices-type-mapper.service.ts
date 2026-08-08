@@ -16,6 +16,24 @@ export interface DeviceTypeMapping<
 	class: new (...args: any[]) => TDevice; // Constructor for the device class
 	createDto: new (...args: any[]) => TCreateDTO; // Constructor for the Create DTO
 	updateDto: new (...args: any[]) => TUpdateDTO; // Constructor for the Update DTO
+	/**
+	 * Last look at the row a PATCH is about to write, before it is written.
+	 *
+	 * Receives the loaded entity with the update's fields already merged in — the state the database
+	 * will actually hold — plus `previous`, a shallow snapshot of the row as it was loaded. The merged
+	 * view is what makes an invariant spanning a sent field and an unsent one decidable at all; the
+	 * snapshot is what tells a hook whether the field it cares about actually *changed*, so a device
+	 * that was already in a state this hook would refuse can still be renamed. (`previous` is a spread
+	 * of own enumerable properties: columns and loaded relations, not prototype getters such as
+	 * `zoneIds`.)
+	 *
+	 * Throwing aborts the update before `repository.save`, leaving the row untouched and DEVICE_UPDATED
+	 * unemitted. Throw `DevicesValidationException` (or another `DevicesException`) to have the HTTP
+	 * layer report it as an unprocessable entity; anything else surfaces as a 500. Returns void because
+	 * the service saves the very instance it passed in — mutate it in place to normalise rather than
+	 * reject.
+	 */
+	beforeUpdate?: (device: TDevice, previous: Readonly<Partial<TDevice>>) => Promise<void>;
 	afterCreate?: (device: TDevice, createDto?: TCreateDTO) => Promise<TDevice>;
 	afterUpdate?: (device: TDevice) => Promise<TDevice>;
 }

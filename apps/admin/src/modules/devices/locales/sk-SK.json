@@ -138,7 +138,10 @@
 			"bulkDisabled": "{count} zariadení bolo úspešne zakázaných.",
 			"bulkDisableFailed": "Nepodarilo sa zakázať {count} zariadení.",
 			"bulkDisableCanceled": "Hromadné zakázanie zariadení bolo zrušené.",
-			"notLoaded": "Nepodarilo sa načítať zariadenie. Skúste to prosím neskôr."
+			"notLoaded": "Nepodarilo sa načítať zariadenie. Skúste to prosím neskôr.",
+			"unhidden": "Zariadenie {device} je opäť viditeľné",
+			"notUnhidden": "Zariadenie {device} sa nepodarilo zobraziť",
+			"hiddenNotLoaded": "Skryté zariadenia sa nepodarilo načítať. Skúste to prosím neskôr."
 		},
 		"channels": {
 			"notFound": "Kanál, ktorý hľadáte, neexistuje alebo bol odstránený.",
@@ -333,6 +336,9 @@
 			"state": {
 				"title": "Stav",
 				"placeholder": "Vyberte stav"
+			},
+			"showHidden": {
+				"title": "Zobraziť skryté"
 			},
 			"id": {
 				"title": "Interný identifikátor",
@@ -909,6 +915,18 @@
 			"water_tank_level": "Water tank level",
 			"zoom": "Zoom"
 		}
+	},
+	"hidden": {
+		"badge": "Skryté",
+		"by": {
+			"system": "Systém",
+			"user": "Používateľ"
+		},
+		"hint": {
+			"system": "Skryté automaticky, pretože ho nahradilo virtuálne zariadenie. Znova sa zobrazí, keď bude toto virtuálne zariadenie odstránené.",
+			"user": "Skryté operátorom. Zostáva skryté, kým ho niekto znova nezobrazí."
+		},
+		"unhide": "Zobraziť"
 	},
 	"validation": {
 		"status": {

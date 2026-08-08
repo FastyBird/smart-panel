@@ -8,11 +8,13 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import { v4 as uuid } from 'uuid';
 
+import { UnprocessableEntityException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { ConnectionState, DeviceCategory, DeviceHiddenFilter } from '../devices.constants';
+import { DevicesNotAllowedException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
@@ -26,6 +28,7 @@ import { DevicesController } from './devices.controller';
 describe('DevicesController', () => {
 	let controller: DevicesController;
 	let service: DevicesService;
+	let deviceZonesService: DeviceZonesService;
 	let mapper: DevicesTypeMapperService;
 
 	const mockDevice = {
@@ -101,6 +104,7 @@ describe('DevicesController', () => {
 
 		controller = module.get<DevicesController>(DevicesController);
 		service = module.get<DevicesService>(DevicesService);
+		deviceZonesService = module.get<DeviceZonesService>(DeviceZonesService);
 		mapper = module.get<DevicesTypeMapperService>(DevicesTypeMapperService);
 	});
 
@@ -111,11 +115,14 @@ describe('DevicesController', () => {
 	});
 
 	describe('Devices', () => {
-		it('should return all devices', async () => {
+		// An omitted filter means "what a user should see". A client that predates the flag — the panel
+		// sends no query at all — would otherwise be handed the physical sources a virtual device has
+		// replaced, and render them next to their replacements.
+		it('should return only visible devices when no filter is given', async () => {
 			const result = await controller.findAll({});
 
 			expect(result.data).toEqual([toInstance(DeviceEntity, mockDevice)]);
-			expect(service.findAll).toHaveBeenCalledWith(undefined, DeviceHiddenFilter.ALL);
+			expect(service.findAll).toHaveBeenCalledWith(undefined, DeviceHiddenFilter.FALSE);
 		});
 
 		it('should forward the hidden filter to the service', async () => {
@@ -123,6 +130,13 @@ describe('DevicesController', () => {
 
 			expect(result.data).toEqual([toInstance(DeviceEntity, mockDevice)]);
 			expect(service.findAll).toHaveBeenCalledWith(undefined, DeviceHiddenFilter.FALSE);
+		});
+
+		it('should return every device only when `all` is asked for explicitly', async () => {
+			const result = await controller.findAll({ hidden: DeviceHiddenFilter.ALL });
+
+			expect(result.data).toEqual([toInstance(DeviceEntity, mockDevice)]);
+			expect(service.findAll).toHaveBeenCalledWith(undefined, DeviceHiddenFilter.ALL);
 		});
 
 		it('should return a single device', async () => {
@@ -185,6 +199,54 @@ describe('DevicesController', () => {
 
 			expect(result.data).toEqual(toInstance(DeviceEntity, mockDevice));
 			expect(service.update).toHaveBeenCalledWith(mockDevice.id, updateDto);
+		});
+
+		// The service refuses a room/zone change on a hidden device (see assertPlacementChangeAllowed in
+		// DevicesService). That refusal is a policy decision, not a transient failure — it has to reach
+		// the client with its reason rather than collapsing into this endpoint's generic
+		// "Please try again later" 422, which would invite a retry that can never succeed.
+		it('surfaces a refused placement change with its reason', async () => {
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: DeviceEntity,
+				createDto: CreateDeviceDto,
+				updateDto: UpdateDeviceDto,
+			});
+
+			jest
+				.spyOn(service, 'update')
+				.mockRejectedValue(new DevicesNotAllowedException('Device is hidden and its room can not be changed.'));
+
+			const result = controller.update(mockDevice.id, { data: { type: 'mock', room_id: uuid().toString() } });
+
+			await expect(result).rejects.toBeInstanceOf(UnprocessableEntityException);
+			await expect(result).rejects.toThrow('Device is hidden and its room can not be changed.');
+		});
+
+		// Same refusal, reached through the zone-membership endpoints instead of a PATCH. Pinned per
+		// endpoint because they map errors separately: `addDeviceToZone` has its own catch that knew
+		// nothing about this exception, and `removeDeviceFromZone` had no catch at all — in both cases
+		// the refusal would have escaped as a 500 rather than a 422 anyone could act on.
+		it('surfaces a refused zone addition with its reason', async () => {
+			jest
+				.spyOn(deviceZonesService, 'addDeviceToZone')
+				.mockRejectedValue(new DevicesNotAllowedException('Device is hidden and its zones can not be changed.'));
+
+			const result = controller.addDeviceToZone(mockDevice.id, uuid().toString());
+
+			await expect(result).rejects.toBeInstanceOf(UnprocessableEntityException);
+			await expect(result).rejects.toThrow('Device is hidden and its zones can not be changed.');
+		});
+
+		it('surfaces a refused zone removal with its reason', async () => {
+			jest
+				.spyOn(deviceZonesService, 'removeDeviceFromZone')
+				.mockRejectedValue(new DevicesNotAllowedException('Device is hidden and its zones can not be changed.'));
+
+			const result = controller.removeDeviceFromZone(mockDevice.id, uuid().toString());
+
+			await expect(result).rejects.toBeInstanceOf(UnprocessableEntityException);
+			await expect(result).rejects.toThrow('Device is hidden and its zones can not be changed.');
 		});
 
 		it('should delete a device', async () => {

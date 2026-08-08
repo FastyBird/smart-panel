@@ -7,11 +7,12 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { v4 as uuid } from 'uuid';
 
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, UnprocessableEntityException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { RoomSpaceEntity } from '../../../plugins/spaces-home-control/entities/room-space.entity';
+import { DevicesNotAllowedException } from '../../devices/devices.exceptions';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { ReqBulkAssignDto } from '../dto/bulk-assign.dto';
@@ -300,6 +301,22 @@ describe('SpacesController', () => {
 			await expect(controller.bulkAssign('non-existent-id', assignDto as ReqBulkAssignDto)).rejects.toThrow(
 				SpacesNotFoundException,
 			);
+		});
+
+		// `DevicesNotAllowedException` is a plain Error, unlike the spaces exceptions, which carry their
+		// own HTTP status. Unmapped it would leave this route as a 500 — the same trap the device zone
+		// endpoints fell into — so the refusal has to be translated here to be actionable.
+		it('surfaces a refused assignment of a hidden device with its reason', async () => {
+			jest
+				.spyOn(spacesService, 'bulkAssign')
+				.mockRejectedValue(new DevicesNotAllowedException('Device is hidden and its room can not be changed.'));
+
+			const assignDto = { data: { deviceIds: [uuid()] } };
+
+			const result = controller.bulkAssign(mockSpace.id, assignDto as ReqBulkAssignDto);
+
+			await expect(result).rejects.toBeInstanceOf(UnprocessableEntityException);
+			await expect(result).rejects.toThrow('Device is hidden and its room can not be changed.');
 		});
 	});
 });

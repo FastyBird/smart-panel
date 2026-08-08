@@ -15,8 +15,13 @@ export const useDevices = (): IUseDevices => {
 
 	const { firstLoad, semaphore } = storeToRefs(devicesStore);
 
+	// Hidden devices are excluded here, not only at the fetch. The shared collection is deliberately
+	// filled with everything — a reconnect refresh restores it wholesale so the device list's own
+	// "show hidden" view and an open mapping flow survive — so the general-purpose selector is where
+	// "hidden means hidden" has to hold. A surface that genuinely wants them (the device list behind
+	// its toggle, the virtual wizard's source picker) reads the store directly and says so.
 	const devices = computed<IDevice[]>((): IDevice[] => {
-		return devicesStore.findAll().filter((device) => !device.draft);
+		return devicesStore.findAll().filter((device) => !device.draft && !device.hidden);
 	});
 
 	const fetchDevices = async (): Promise<void> => {

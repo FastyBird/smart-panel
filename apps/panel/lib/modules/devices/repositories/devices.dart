@@ -12,6 +12,25 @@ class DevicesRepository extends Repository<DeviceModel> {
     required ChannelsRepository channelsRepository,
   }) : _channelsRepository = channelsRepository;
 
+  /// How many `fetchAll` requests are currently in flight, and which devices were hidden while they
+  /// were. A response is a snapshot of the moment it was produced: a device hidden after that moment
+  /// is still in it, so applying it verbatim puts the device back — and its own eviction cannot undo
+  /// that, because the stale response lists it as visible. Remembering what was hidden underneath the
+  /// request is what lets the answer be applied without the part of it that is already out of date.
+  int _fetchesInFlight = 0;
+
+  /// Whether a device list has ever been read.
+  ///
+  /// Before that, an id this repository does not know is a device it has not
+  /// been told about yet. After it, the same id is a device that is gone —
+  /// deleted, or hidden because a virtual device replaced it. Anything holding
+  /// a device id from configuration (a dashboard tile, say) needs the two to
+  /// look different, or it waits forever for a row that is never coming.
+  bool _hasFetched = false;
+
+  bool get hasFetched => _hasFetched;
+  final Set<String> _hiddenWhileFetching = {};
+
   void insert(List<Map<String, dynamic>> json) {
     late Map<String, DeviceModel> insertData = {...data};
 
@@ -19,6 +38,36 @@ class DevicesRepository extends Repository<DeviceModel> {
     List<Map<String, dynamic>> embeddedChannels = [];
 
     for (var row in json) {
+      // A hidden device is one this panel does not show, and the model carries no `hidden` field to
+      // filter on downstream — hidden devices simply never arrive from the API, so nothing after this
+      // point knows the difference. Handled here rather than at the socket handler because every route
+      // in leads through this method: the create/update event, the device embedded in a connection
+      // change, and the fetches below. A source device is hidden the moment a virtual device replaces
+      // it, and a running panel would otherwise keep rendering the original alongside its replacement —
+      // commandable, and duplicated in every space it belongs to — until the process restarted.
+      final rowId = row['id'];
+
+      if (row['hidden'] == true) {
+        if (rowId is String) {
+          insertData.remove(rowId);
+
+          if (_fetchesInFlight > 0) {
+            _hiddenWhileFetching.add(rowId);
+          }
+        }
+
+        continue;
+      }
+
+      // A device can be hidden and unhidden again while one request is out — the wizard being abandoned
+      // does exactly that. The mark says "the response predates this device being hidden", and once the
+      // device is visible again that is no longer a reason to drop its row: leaving the mark would make
+      // the response skip a device that is currently visible, and the eviction would then remove it, with
+      // no later event guaranteed to bring it back.
+      if (rowId is String) {
+        _hiddenWhileFetching.remove(rowId);
+      }
+
       if (!row.containsKey('type')) {
         if (kDebugMode) {
           debugPrint(
@@ -66,6 +115,36 @@ class DevicesRepository extends Repository<DeviceModel> {
     }
   }
 
+  /// Removes the devices this panel already knew about that the latest full response left out.
+  ///
+  /// `known` is deliberately a snapshot taken *before* the request went out rather than the repository's
+  /// current keys: a device created while the request was in flight arrives by socket and is absent from
+  /// a response produced before it existed, so evicting on absence alone would delete something newer
+  /// than the answer being applied — and no further event would bring it back.
+  ///
+  /// Separated from `fetchAll` so the rule can be tested without standing up an HTTP client.
+  /// Whether a row from a full response should still be applied.
+  ///
+  /// False for a device hidden since the request went out: the response predates the hide, so applying
+  /// it verbatim puts the device back — and the eviction cannot undo that, because the same stale
+  /// response lists the device as visible.
+  ///
+  /// Separated from `fetchAll` so the rule can be tested without standing up an HTTP client.
+  @visibleForTesting
+  bool shouldApply(Map<String, dynamic> row) => !_hiddenWhileFetching.contains(row['id']);
+
+  @visibleForTesting
+  void markHiddenWhileFetching(String id) => _hiddenWhileFetching.add(id);
+
+  @visibleForTesting
+  void evictMissing(Set<String> known, Set<String> present) {
+    for (final id in known) {
+      if (!present.contains(id)) {
+        delete(id);
+      }
+    }
+  }
+
   void delete(String id) {
     if (data.containsKey(id) && data.remove(id) != null) {
       if (kDebugMode) {
@@ -96,11 +175,49 @@ class DevicesRepository extends Repository<DeviceModel> {
   Future<void> fetchAll() async {
     return handleApiCall(
       () async {
-        final response = await apiClient.getDevicesModuleDevices();
+        // Captured before the request goes out. What this eviction may remove is what this panel knew
+        // about *when it asked* — a device created while the request was in flight arrives by socket and
+        // is absent from a snapshot taken before it existed, so evicting on absence alone would delete a
+        // device newer than the answer being applied, with no further event to bring it back.
+        final knownBefore = data.keys.toSet();
 
-        final raw = response.response.data['data'] as List;
+        _fetchesInFlight++;
 
-        insert(raw.cast<Map<String, dynamic>>());
+        final List<Map<String, dynamic>> rows;
+
+        try {
+          final response = await apiClient.getDevicesModuleDevices();
+
+          final raw = response.response.data['data'] as List;
+
+          // Without the devices hidden since the request went out. They are in the response because it
+          // was produced before they were hidden, and re-inserting one puts a source device back on
+          // screen next to the virtual device that replaced it — commandable, and past the eviction
+          // below, which reads the same stale response as saying the device is visible.
+          rows = raw
+              .cast<Map<String, dynamic>>()
+              .where(shouldApply)
+              .toList();
+        } finally {
+          _fetchesInFlight--;
+
+          if (_fetchesInFlight == 0) {
+            _hiddenWhileFetching.clear();
+          }
+        }
+
+        insert(rows);
+
+        // A device the response omits has to go, and `insert` merges rather than replaces, so nothing
+        // else would ever take it out. This endpoint answers with the visible devices only: a source
+        // device is hidden the moment a virtual device replaces it, and without this eviction the panel
+        // would keep rendering the original alongside its replacement — commandable, and duplicated in
+        // every space it belongs to — for the life of the process.
+        final visibleIds = rows.map((row) => row['id']).whereType<String>().toSet();
+
+        evictMissing(knownBefore, visibleIds);
+
+        _hasFetched = true;
       },
       'fetch devices',
     );

@@ -182,6 +182,11 @@ const spaceDeviceIds = computed(() => new Set(spaceDevices.value.map((d) => d.id
 const availableDevices = computed(() => {
 	return allDevices.value
 		.filter((device) => {
+			// The backend refuses a placement change on a hidden device, so offering one here would
+			// only produce a validation error after the fact — leave it out of the picker entirely.
+			if (device.hidden) {
+				return false;
+			}
 			// For zones, filter out devices already in this zone
 			if (props.spaceType === SpaceType.ZONE) {
 				return !spaceDeviceIds.value.has(device.id);

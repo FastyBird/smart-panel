@@ -11,11 +11,13 @@ import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ChannelCategory,
+	DEVICE_PLACEMENT_LOCKED_MESSAGE,
 	DeviceCategory,
 	EventType as DevicesEventType,
 	PermissionType,
 	PropertyCategory,
 } from '../../devices/devices.constants';
+import { DevicesNotAllowedException } from '../../devices/devices.exceptions';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DeviceConnectionStateService } from '../../devices/services/device-connection-state.service';
 import { DeviceZonesService } from '../../devices/services/device-zones.service';
@@ -726,10 +728,17 @@ export class SpacesService {
 		// Verify space exists
 		const space = await this.getOneOrThrow(spaceId);
 
+		// Hidden devices are left out of both branches. Every caller of this is a user-facing projection
+		// of "what is in this space" — the lighting, covers, climate and sensor role and state services,
+		// media capability, Buddy's context, the space device listing — and a hidden device is a physical
+		// source a virtual device has replaced. Including it shows and counts the source beside its
+		// replacement, and lets a command reach the source directly, bypassing the abstraction that
+		// replaced it. Callers that want the full set ask the devices service, which still defaults to
+		// returning everything.
 		if (space.type === SpaceType.ROOM) {
 			// Rooms have directly assigned devices via roomId
 			const devices = await this.deviceRepository.find({
-				where: { roomId: spaceId },
+				where: { roomId: spaceId, hidden: false },
 				relations: ['channels', 'channels.properties'],
 				order: { name: 'ASC' },
 			});
@@ -739,7 +748,7 @@ export class SpacesService {
 			return devices;
 		} else {
 			// Zones have devices via junction table
-			const devices = await this.deviceZonesService.getZoneDevices(spaceId);
+			const devices = (await this.deviceZonesService.getZoneDevices(spaceId)).filter((device) => !device.hidden);
 
 			this.logger.debug(`Found ${devices.length} devices in zone`);
 
@@ -869,14 +878,56 @@ export class SpacesService {
 				throw new SpacesValidationException('Devices can only be assigned to rooms, not zones');
 			}
 
-			const result = await this.deviceRepository
-				.createQueryBuilder()
-				.update()
-				.set({ roomId: spaceId })
-				.where('id IN (:...ids)', { ids: dtoInstance.deviceIds })
-				.execute();
+			await this.assertNoHiddenDevices(dtoInstance.deviceIds);
 
-			devicesAssigned = result.affected || 0;
+			// The visibility condition travels into the statement, not only into the preflight above — a
+			// device hidden between the two, which is what the virtual-device wizard does to its source the
+			// moment it takes over, would otherwise have its placement moved by a check that was true when
+			// it was made and false when it was applied.
+			//
+			// Inside a transaction, because the refusal below has to undo the statement above it. Without
+			// one, a single device hidden mid-call left every *other* device moved and the caller told the
+			// whole thing was refused — a partial placement change reported as a failure, with no
+			// DEVICE_UPDATED events for the rows that did move, so nothing downstream would ever learn.
+			// De-duplicated because the DTO permits duplicates and the returned count is a number of
+			// devices: `IN` touches a repeated id once, so a payload naming the same device twice would
+			// otherwise report one fewer device assigned than it named.
+			const requested = [...new Set(dtoInstance.deviceIds)];
+
+			devicesAssigned = await this.deviceRepository.manager.transaction(async (manager): Promise<number> => {
+				const result = await manager
+					.createQueryBuilder()
+					.update(DeviceEntity)
+					.set({ roomId: spaceId })
+					.where('id IN (:...ids)', { ids: requested })
+					.andWhere('COALESCE(hidden, 0) = 0')
+					.execute();
+
+				const affected = result.affected || 0;
+
+				// Asked about the hidden rows directly rather than inferred from the count. A row the
+				// statement skipped is not necessarily a hidden one: an id naming a device deleted since
+				// the client built its selection is skipped too, and reading the shortfall as a hidden
+				// device turned that into a placement-lock refusal that rolled back every valid device in
+				// the batch. A missing id is simply not assigned, which is what the returned count has
+				// always said. Same transaction as the statement, so a device hidden underneath this call
+				// is still caught — that is the race this condition exists for.
+				const blocked = await manager
+					.createQueryBuilder(DeviceEntity, 'device')
+					.where('device.id IN (:...ids)', { ids: requested })
+					.andWhere('COALESCE(device.hidden, 0) = 1')
+					.getCount();
+
+				// Thrown from inside so the transaction rolls back: a caller told its change was refused has
+				// to find nothing changed.
+				if (blocked > 0) {
+					this.logger.error(`Refused bulk assignment: ${blocked} device(s) were hidden while it was being applied`);
+
+					throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
+				}
+
+				return affected;
+			});
 			this.logger.debug(`Assigned ${devicesAssigned} devices to space`);
 
 			// Emit DEVICE_UPDATED events so connected clients (panel) learn
@@ -884,7 +935,7 @@ export class SpacesService {
 			// (e.g. media endpoints).
 			if (devicesAssigned > 0) {
 				const updatedDevices = await this.deviceRepository.find({
-					where: { id: In(dtoInstance.deviceIds) },
+					where: { id: In(requested) },
 				});
 
 				for (const device of updatedDevices) {
@@ -918,20 +969,49 @@ export class SpacesService {
 			return 0;
 		}
 
-		const result = await this.deviceRepository
-			.createQueryBuilder()
-			.update()
-			.set({ roomId: null })
-			.where('id IN (:...ids)', { ids: deviceIds })
-			.execute();
+		await this.assertNoHiddenDevices(deviceIds);
 
-		const unassigned = result.affected || 0;
+		// Same condition and the same transaction on the way out as on the way in: unassigning is a
+		// placement change too, a device hidden between the preflight and the statement is as inert for one
+		// as for the other, and a refusal has to leave the other devices where they were.
+		// De-duplicated for the same reason as the assignment above: `IN` updates a repeated id once, so
+		// the count returned would otherwise be short of what the caller named.
+		const requested = [...new Set(deviceIds)];
+
+		const unassigned = await this.deviceRepository.manager.transaction(async (manager): Promise<number> => {
+			const result = await manager
+				.createQueryBuilder()
+				.update(DeviceEntity)
+				.set({ roomId: null })
+				.where('id IN (:...ids)', { ids: requested })
+				.andWhere('COALESCE(hidden, 0) = 0')
+				.execute();
+
+			const affected = result.affected || 0;
+
+			// Hidden rows counted directly, for the same reason as the assignment above: an id that names
+			// nothing is skipped by the statement too, and reading that shortfall as a hidden device
+			// refused the whole batch over a device that had simply been deleted.
+			const blocked = await manager
+				.createQueryBuilder(DeviceEntity, 'device')
+				.where('device.id IN (:...ids)', { ids: requested })
+				.andWhere('COALESCE(device.hidden, 0) = 1')
+				.getCount();
+
+			if (blocked > 0) {
+				this.logger.error(`Refused bulk unassignment: ${blocked} device(s) were hidden while it was being applied`);
+
+				throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
+			}
+
+			return affected;
+		});
 		this.logger.debug(`Unassigned ${unassigned} devices`);
 
 		// Emit DEVICE_UPDATED events so connected clients refresh derived data
 		if (unassigned > 0) {
 			const updatedDevices = await this.deviceRepository.find({
-				where: { id: In(deviceIds) },
+				where: { id: In(requested) },
 			});
 
 			for (const device of updatedDevices) {
@@ -960,6 +1040,34 @@ export class SpacesService {
 		this.logger.debug(`Unassigned ${unassigned} displays`);
 
 		return unassigned;
+	}
+
+	/**
+	 * Refuses a bulk placement write that targets a hidden device.
+	 *
+	 * `bulkAssign()` and `unassignDevices()` write `roomId` with a raw query builder UPDATE, so they
+	 * never reach `DevicesService.update()` and the placement guard living there cannot see them. That
+	 * makes this route a way around the rule rather than an exception to it: a hidden device is one a
+	 * virtual device has replaced, and its placement belongs to that virtual device regardless of which
+	 * endpoint the write arrives on. `POST /spaces/:id/assign` is gated by owner/admin, but that is an
+	 * authorization check — it says who may move devices, not which devices may be moved.
+	 *
+	 * All-or-nothing by design. Skipping the hidden ids and reporting `devicesAssigned: N` for the rest
+	 * would be a silent partial write: the caller asked for one thing, got another, and the response
+	 * says `success: true`. A refusal naming the offending ids is something the caller can act on.
+	 */
+	private async assertNoHiddenDevices(deviceIds: string[]): Promise<void> {
+		const hidden = await this.deviceRepository.find({ where: { id: In(deviceIds), hidden: true } });
+
+		if (hidden.length === 0) {
+			return;
+		}
+
+		const hiddenIds = hidden.map((device) => device.id);
+
+		this.logger.error(`Refused bulk placement change targeting hidden device(s) id=${hiddenIds.join(', ')}`);
+
+		throw new DevicesNotAllowedException(`${DEVICE_PLACEMENT_LOCKED_MESSAGE} Hidden devices: ${hiddenIds.join(', ')}`);
 	}
 
 	/**

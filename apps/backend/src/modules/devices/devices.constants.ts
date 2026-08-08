@@ -9,6 +9,18 @@ export const DEVICES_MODULE_API_TAG_NAME = 'Devices module';
 export const DEVICES_MODULE_API_TAG_DESCRIPTION =
 	'A collection of endpoints that provide device-related functionalities, acting as a central module for handling device interactions.';
 
+/**
+ * The single refusal message for every route that could change a hidden device's placement.
+ *
+ * A hidden device is one a virtual device has replaced, so its room and zones belong to that virtual
+ * device. Four separate paths can reach that state — `DevicesService.update()`, the two
+ * `/devices/:id/zones/:zoneId` routes, and the bulk writes in `SpacesService` — and a client that hits
+ * two of them deserves the same answer both times, so the wording lives here rather than being
+ * repeated at each throw site.
+ */
+export const DEVICE_PLACEMENT_LOCKED_MESSAGE =
+	'Device is hidden and its room or zones can not be changed. Change the placement of the virtual device that replaced it.';
+
 export enum EventType {
 	DEVICE_CREATED = 'DevicesModule.Device.Created',
 	DEVICE_UPDATED = 'DevicesModule.Device.Updated',
@@ -77,6 +89,13 @@ export enum DeviceHiddenFilter {
 	TRUE = 'true',
 	FALSE = 'false',
 	ALL = 'all',
+}
+
+export enum DeviceHiddenBy {
+	/** Hidden automatically because a virtual device replaced this one. */
+	SYSTEM = 'system',
+	/** Hidden deliberately by an operator. */
+	USER = 'user',
 }
 
 export enum ChannelCategory {

@@ -81,13 +81,20 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 			throw new DevicesWledValidationException('Failed to validate edit device model.');
 		}
 
+		const data = { ...parsedModel.data };
+
+		// Room is only sent when it actually changed.
+		if (isEqual(data.roomId, initialModel.roomId)) {
+			delete data.roomId;
+		}
+
 		formResult.value = FormResult.WORKING;
 
 		try {
 			await devicesStore.edit({
 				id: device.id,
 				data: {
-					...parsedModel.data,
+					...data,
 					type: device.type,
 				},
 			});

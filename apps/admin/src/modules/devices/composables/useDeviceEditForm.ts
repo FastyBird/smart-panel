@@ -77,13 +77,27 @@ export const useDeviceEditForm = <TForm extends IDeviceEditForm = IDeviceEditFor
 			throw new DevicesValidationException('Failed to validate edit device model.');
 		}
 
+		const data = { ...parsedModel.data };
+
+		// `model` is the same underlying object as `device` (bound via `reactive()`, not cloned), so
+		// `device.roomId` already reflects any edit made to `model.roomId` and cannot serve as the
+		// pre-edit value here. `initialModel` is the untouched snapshot taken when this edit session
+		// began, so it is the only correct baseline for "did the room change". Room IDs are compared
+		// by value, not identity, since both sides are a UUID string or `null`, never a shared object
+		// reference. A patch that leaves the room untouched must not carry `roomId` at all — including
+		// when it is already `null` — because the backend's hidden-device guard treats a present
+		// `roomId` key as a placement change regardless of its value.
+		if (isEqual(data.roomId, initialModel.roomId)) {
+			delete data.roomId;
+		}
+
 		formResult.value = FormResult.WORKING;
 
 		try {
 			await devicesStore.edit({
 				id: device.id,
 				data: {
-					...parsedModel.data,
+					...data,
 					type: device.type,
 				},
 			});

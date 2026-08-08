@@ -138,24 +138,28 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 		formResult.value = FormResult.WORKING;
 
 		try {
-			const { wifiAddress, ethernetAddress, ...deviceData } = parsedModel.data;
+			const { wifiAddress, ethernetAddress, roomId, ...deviceData } = parsedModel.data;
 
-			// Only send address fields when they've actually changed
-			const addressUpdates: Record<string, string | null> = {};
+			// Only send fields when they've actually changed
+			const fieldUpdates: Record<string, string | null> = {};
 
 			if (wifiAddress !== initialModel.wifiAddress) {
-				addressUpdates.wifiAddress = wifiAddress ?? null;
+				fieldUpdates.wifiAddress = wifiAddress ?? null;
 			}
 
 			if (ethernetAddress !== initialModel.ethernetAddress) {
-				addressUpdates.ethernetAddress = ethernetAddress ?? null;
+				fieldUpdates.ethernetAddress = ethernetAddress ?? null;
+			}
+
+			if (roomId !== initialModel.roomId) {
+				fieldUpdates.roomId = roomId ?? null;
 			}
 
 			await devicesStore.edit({
 				id: device.id,
 				data: {
 					...deviceData,
-					...addressUpdates,
+					...fieldUpdates,
 					type: device.type,
 				},
 			});

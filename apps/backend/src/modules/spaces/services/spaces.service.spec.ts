@@ -10,6 +10,7 @@ import { CreateHomeControlSpaceDto } from '../../../plugins/spaces-home-control/
 import { UpdateHomeControlSpaceDto } from '../../../plugins/spaces-home-control/dto/update-home-control-space.dto';
 import { RoomSpaceEntity } from '../../../plugins/spaces-home-control/entities/room-space.entity';
 import { ZoneSpaceEntity } from '../../../plugins/spaces-home-control/entities/zone-space.entity';
+import { DevicesNotAllowedException } from '../../devices/devices.exceptions';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DeviceConnectionStateService } from '../../devices/services/device-connection-state.service';
 import { DeviceZonesService } from '../../devices/services/device-zones.service';
@@ -29,6 +30,7 @@ describe('SpacesService', () => {
 	let service: SpacesService;
 	let spaceRepository: jest.Mocked<Repository<SpaceEntity>>;
 	let deviceRepository: jest.Mocked<Repository<DeviceEntity>>;
+	let deviceZonesService: DeviceZonesService;
 	let displayRepository: jest.Mocked<Repository<DisplayEntity>>;
 	let devicesService: { findVisibleSummaryPage: jest.Mock };
 	let platformRegistryService: { list: jest.Mock };
@@ -37,11 +39,20 @@ describe('SpacesService', () => {
 	// by `SpacesService.update()` to read the raw `category` column straight
 	// from the shared STI table (ignoring subtype hydration).
 	let dataSourceQueryMock: jest.Mock;
+	let deviceRepositoryStub: {
+		find: jest.Mock;
+		createQueryBuilder: jest.Mock;
+		manager: { transaction: jest.Mock };
+	};
 	let mockQueryBuilder: {
 		update: jest.Mock;
 		set: jest.Mock;
 		where: jest.Mock;
+		// The bulk placement writes carry the visibility condition in the statement itself, so the builder
+		// chain has one more link than it used to.
+		andWhere: jest.Mock;
 		execute: jest.Mock;
+		getCount: jest.Mock;
 	};
 
 	const mockSpace = {
@@ -72,11 +83,29 @@ describe('SpacesService', () => {
 		deviceConnectionStateService = {
 			readLatestMany: jest.fn().mockResolvedValue(new Map()),
 		};
+		// The bulk placement writes run inside a transaction so a refusal rolls the statement back. The
+		// callback's manager delegates to this same stub's `createQueryBuilder` *at call time*, so a test
+		// that swaps in its own builder (see `arrangeDeviceWrite`) still sees its own `affected` count.
+		deviceRepositoryStub = {
+			find: jest.fn().mockResolvedValue([]),
+			createQueryBuilder: jest.fn(() => mockQueryBuilder),
+			manager: {
+				transaction: jest.fn(async (run: (m: { createQueryBuilder: () => unknown }) => Promise<number>) =>
+					run({ createQueryBuilder: () => deviceRepositoryStub.createQueryBuilder() as unknown }),
+				),
+			},
+		};
+
 		mockQueryBuilder = {
 			update: jest.fn().mockReturnThis(),
 			set: jest.fn().mockReturnThis(),
 			where: jest.fn().mockReturnThis(),
+			andWhere: jest.fn().mockReturnThis(),
 			execute: jest.fn().mockResolvedValue({ affected: 0 } as UpdateResult),
+			// The bulk placement writes ask about the hidden rows directly rather than inferring them from
+			// the count the statement affected, so the builder answers a count too. Nothing hidden by
+			// default.
+			getCount: jest.fn().mockResolvedValue(0),
 		};
 		dataSourceQueryMock = jest.fn().mockResolvedValue([{ category: null }]);
 
@@ -116,10 +145,7 @@ describe('SpacesService', () => {
 				},
 				{
 					provide: getRepositoryToken(DeviceEntity),
-					useValue: {
-						find: jest.fn().mockResolvedValue([]),
-						createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
-					},
+					useValue: deviceRepositoryStub,
 				},
 				{
 					provide: getRepositoryToken(DisplayEntity),
@@ -177,6 +203,7 @@ describe('SpacesService', () => {
 					provide: DeviceZonesService,
 					useValue: {
 						getDeviceZones: jest.fn().mockResolvedValue([]),
+						getZoneDevices: jest.fn().mockResolvedValue([]),
 						setDeviceZones: jest.fn().mockResolvedValue([]),
 					},
 				},
@@ -199,6 +226,7 @@ describe('SpacesService', () => {
 		service = module.get<SpacesService>(SpacesService);
 		spaceRepository = module.get(getRepositoryToken(SpaceEntity));
 		deviceRepository = module.get(getRepositoryToken(DeviceEntity));
+		deviceZonesService = module.get<DeviceZonesService>(DeviceZonesService);
 		displayRepository = module.get(getRepositoryToken(DisplayEntity));
 
 		// Pre-register built-in space types (normally done by SpacesModule.onModuleInit).
@@ -273,13 +301,18 @@ describe('SpacesService', () => {
 				update: jest.fn().mockReturnThis(),
 				set: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
 				execute: jest.fn().mockResolvedValue({ affected: 2 } as UpdateResult),
+				// Nothing hidden: the write asks about the hidden rows directly rather than reading the
+				// count it affected as a verdict.
+				getCount: jest.fn().mockResolvedValue(0),
 			};
 
 			const displayQueryBuilder = {
 				update: jest.fn().mockReturnThis(),
 				set: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
 				execute: jest.fn().mockResolvedValue({ affected: 1 } as UpdateResult),
 			};
 
@@ -318,7 +351,11 @@ describe('SpacesService', () => {
 				update: jest.fn().mockReturnThis(),
 				set: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
 				execute: jest.fn().mockResolvedValue({ affected: 3 } as UpdateResult),
+				// Nothing hidden: the write asks about the hidden rows directly rather than reading the
+				// count it affected as a verdict.
+				getCount: jest.fn().mockResolvedValue(0),
 			};
 
 			deviceRepository.createQueryBuilder.mockReturnValue(
@@ -352,6 +389,163 @@ describe('SpacesService', () => {
 					displayIds: [],
 				}),
 			).rejects.toThrow(SpacesValidationException);
+		});
+
+		// This route writes `roomId` with a raw query builder UPDATE, so it never passes through
+		// `DevicesService.update()` and the placement guard there does not see it. A hidden device is
+		// one a virtual device has replaced; its placement belongs to that virtual device, whichever
+		// route the write arrives on. Refusal is all-or-nothing on purpose — quietly skipping the
+		// hidden ids while reporting `devicesAssigned: N` would be a silent partial write.
+		describe('placement of a hidden device', () => {
+			const arrangeDeviceWrite = (): {
+				update: jest.Mock;
+				set: jest.Mock;
+				where: jest.Mock;
+				andWhere: jest.Mock;
+				execute: jest.Mock;
+				getCount: jest.Mock;
+			} => {
+				const deviceQueryBuilder = {
+					update: jest.fn().mockReturnThis(),
+					set: jest.fn().mockReturnThis(),
+					where: jest.fn().mockReturnThis(),
+					andWhere: jest.fn().mockReturnThis(),
+					execute: jest.fn().mockResolvedValue({ affected: 1 } as UpdateResult),
+					// Nothing hidden unless a test says so: the refusal is keyed on this count, not on the
+					// shortfall between rows asked for and rows touched.
+					getCount: jest.fn().mockResolvedValue(0),
+				};
+
+				deviceRepository.createQueryBuilder.mockReturnValue(
+					deviceQueryBuilder as unknown as SelectQueryBuilder<DeviceEntity>,
+				);
+
+				return deviceQueryBuilder;
+			};
+
+			it('refuses the whole bulk assign when any targeted device is hidden', async () => {
+				const hiddenId = uuid();
+				const deviceQueryBuilder = arrangeDeviceWrite();
+
+				deviceRepository.find.mockResolvedValue([{ id: hiddenId, hidden: true } as DeviceEntity]);
+
+				await expect(service.bulkAssign(roomId, { deviceIds: [uuid(), hiddenId], displayIds: [] })).rejects.toThrow(
+					DevicesNotAllowedException,
+				);
+
+				expect(deviceQueryBuilder.execute).not.toHaveBeenCalled();
+			});
+
+			// The preflight is a check made a query earlier than the write. A device hidden in between — the
+			// virtual-device wizard hides its source the moment it takes over — would otherwise have its
+			// placement moved by a check that was true when it was made and false when it was applied. The
+			// statement carries the condition now, so it touches fewer rows than asked for and says so.
+			it('refuses when a targeted device is hidden between the check and the write', async () => {
+				const deviceQueryBuilder = arrangeDeviceWrite();
+
+				deviceRepository.find.mockResolvedValue([]);
+				deviceQueryBuilder.execute.mockResolvedValue({ affected: 1 } as UpdateResult);
+				// One of the two is hidden by the time the statement runs — read inside the same
+				// transaction, so it is the state the write actually met.
+				deviceQueryBuilder.getCount.mockResolvedValue(1);
+
+				await expect(service.bulkAssign(roomId, { deviceIds: [uuid(), uuid()], displayIds: [] })).rejects.toThrow(
+					DevicesNotAllowedException,
+				);
+			});
+
+			// `IN` updates a repeated id once, so counting the raw list would read a perfectly valid
+			// assignment as a hidden-device refusal and roll it back. The DTO permits duplicates today.
+			it('assigns a device named twice in one payload', async () => {
+				const deviceQueryBuilder = arrangeDeviceWrite();
+				const repeated = uuid();
+
+				deviceRepository.find.mockResolvedValue([]);
+				deviceQueryBuilder.execute.mockResolvedValue({ affected: 1 } as UpdateResult);
+
+				const result = await service.bulkAssign(roomId, { deviceIds: [repeated, repeated], displayIds: [] });
+
+				expect(result.devicesAssigned).toBe(1);
+			});
+
+			// The refusal has to undo the statement that provoked it. Without a transaction, one device
+			// hidden mid-call left every *other* device moved and the caller told the whole thing was
+			// refused — a partial placement reported as a failure, with no DEVICE_UPDATED events for the
+			// rows that did move, so nothing downstream would ever learn of them.
+			it('runs the refused assignment inside a transaction so nothing is left moved', async () => {
+				const deviceQueryBuilder = arrangeDeviceWrite();
+
+				deviceRepository.find.mockResolvedValue([]);
+				deviceQueryBuilder.execute.mockResolvedValue({ affected: 1 } as UpdateResult);
+				deviceQueryBuilder.getCount.mockResolvedValue(1);
+
+				await expect(service.bulkAssign(roomId, { deviceIds: [uuid(), uuid()], displayIds: [] })).rejects.toThrow(
+					DevicesNotAllowedException,
+				);
+
+				// The throw came from inside the transaction callback, which is what rolls the update back.
+				expect(deviceRepositoryStub.manager.transaction).toHaveBeenCalled();
+			});
+
+			// A device deleted after the client built its selection is skipped by the statement exactly as a
+			// hidden one is, so reading the shortfall as "something was hidden" refused the whole batch and
+			// rolled back every device that was perfectly assignable. Missing means not assigned, which is
+			// what the returned count has always said.
+			it('assigns the devices that exist when the payload names one that no longer does', async () => {
+				const deviceQueryBuilder = arrangeDeviceWrite();
+
+				deviceRepository.find.mockResolvedValue([]);
+				// Two ids asked for, one row touched, and nothing hidden — the other id names nothing.
+				deviceQueryBuilder.execute.mockResolvedValue({ affected: 1 } as UpdateResult);
+
+				const result = await service.bulkAssign(roomId, { deviceIds: [uuid(), uuid()], displayIds: [] });
+
+				expect(result.devicesAssigned).toBe(1);
+			});
+
+			it('unassigns the devices that exist when the list names one that no longer does', async () => {
+				const deviceQueryBuilder = arrangeDeviceWrite();
+
+				deviceRepository.find.mockResolvedValue([]);
+				deviceQueryBuilder.execute.mockResolvedValue({ affected: 1 } as UpdateResult);
+
+				const unassigned = await service.unassignDevices([uuid(), uuid()]);
+
+				expect(unassigned).toBe(1);
+			});
+
+			it('assigns when every targeted device is visible', async () => {
+				const deviceQueryBuilder = arrangeDeviceWrite();
+
+				deviceRepository.find.mockResolvedValue([]);
+
+				const result = await service.bulkAssign(roomId, { deviceIds: [uuid()], displayIds: [] });
+
+				expect(result.devicesAssigned).toBe(1);
+				expect(deviceQueryBuilder.set).toHaveBeenCalledWith({ roomId });
+			});
+
+			it('refuses the whole unassign when any targeted device is hidden', async () => {
+				const hiddenId = uuid();
+				const deviceQueryBuilder = arrangeDeviceWrite();
+
+				deviceRepository.find.mockResolvedValue([{ id: hiddenId, hidden: true } as DeviceEntity]);
+
+				await expect(service.unassignDevices([uuid(), hiddenId])).rejects.toThrow(DevicesNotAllowedException);
+
+				expect(deviceQueryBuilder.execute).not.toHaveBeenCalled();
+			});
+
+			it('unassigns when every targeted device is visible', async () => {
+				const deviceQueryBuilder = arrangeDeviceWrite();
+
+				deviceRepository.find.mockResolvedValue([]);
+
+				const unassigned = await service.unassignDevices([uuid()]);
+
+				expect(unassigned).toBe(1);
+				expect(deviceQueryBuilder.set).toHaveBeenCalledWith({ roomId: null });
+			});
 		});
 	});
 
@@ -1160,6 +1354,35 @@ describe('SpacesService', () => {
 			const [setArg] = mockQueryBuilder.set.mock.calls[0] as [Record<string, unknown>];
 			expect(setArg.suggestionsEnabled).toBe(true);
 			expect(setArg.suggestionsEnabled).not.toBeNull();
+		});
+	});
+	// Every caller of this is a user-facing projection of "what is in this space" — the lighting,
+	// covers, climate and sensor role and state services, media capability, Buddy's context, the space
+	// device listing. A hidden device is a physical source a virtual device replaced, so including it
+	// would show and count the source beside its replacement and let a command reach it directly.
+	describe('findDevicesBySpace', () => {
+		it('asks the repository for visible devices only in a room', async () => {
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue({ id: 'room-1', type: SpaceType.ROOM } as SpaceEntity);
+			deviceRepository.find.mockResolvedValue([]);
+
+			await service.findDevicesBySpace('room-1');
+
+			expect(deviceRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({ where: { roomId: 'room-1', hidden: false } }),
+			);
+		});
+
+		it('drops hidden devices from a zone', async () => {
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue({ id: 'zone-1', type: SpaceType.ZONE } as SpaceEntity);
+
+			(deviceZonesService.getZoneDevices as jest.Mock).mockResolvedValue([
+				{ id: 'visible', hidden: false },
+				{ id: 'replaced', hidden: true },
+			]);
+
+			const devices = await service.findDevicesBySpace('zone-1');
+
+			expect(devices.map((device) => device.id)).toEqual(['visible']);
 		});
 	});
 });

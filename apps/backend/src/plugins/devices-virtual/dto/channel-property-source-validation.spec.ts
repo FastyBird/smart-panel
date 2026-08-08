@@ -5,6 +5,7 @@ import { PermissionType } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { VirtualValueOrigin } from '../entities/devices-virtual.entity';
@@ -37,6 +38,7 @@ describe('source_property field validation on CreateVirtualChannelPropertyDto / 
 			channelsService as unknown as ChannelsService,
 			devicesService as unknown as DevicesService,
 			undefined as unknown as VirtualPropertyIndexService,
+			undefined as unknown as DeviceValidationService,
 		);
 		const sourceNotVirtualValidator = new SourceNotVirtualConstraintValidator(virtualDevicesService);
 

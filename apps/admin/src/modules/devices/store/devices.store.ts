@@ -2,17 +2,18 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { isUndefined, omitBy } from 'lodash';
+import { isUndefined, omitBy, pick } from 'lodash';
 
-import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
+import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
 import type {
+	DevicesModuleCreateDeviceOperation,
+	DevicesModuleDeleteDeviceOperation,
 	DevicesModuleGetDeviceOperation,
 	DevicesModuleGetDevicesOperation,
-	DevicesModuleCreateDeviceOperation,
 	DevicesModuleUpdateDeviceOperation,
-	DevicesModuleDeleteDeviceOperation,
 } from '../../../openapi.constants';
+import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import { useChannelsPlugins, useChannelsPropertiesPlugins, useDevicesPlugins } from '../composables/composables';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesApiException, DevicesException, DevicesValidationException } from '../devices.exceptions';
@@ -41,6 +42,7 @@ import type {
 	IDevicesAddActionPayload,
 	IDevicesAddZoneActionPayload,
 	IDevicesEditActionPayload,
+	IDevicesFetchActionPayload,
 	IDevicesGetActionPayload,
 	IDevicesOnEventActionPayload,
 	IDevicesRemoveActionPayload,
@@ -95,6 +97,49 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 	const pendingFetchPromises: Record<string, Promise<IDevice[]>> = {};
 
+	// Tracks how many `fetch()` calls are in flight right now (across all `hidden` values), so the
+	// semaphore is only cleared once every one of them has settled, not just whichever finishes first.
+	let inFlightFetchCount = 0;
+
+	// `latestFetchToken` is bumped on *every* `fetch()` call, including one that coalesces onto an
+	// already-pending request for the same `hidden` value below — a repeat call still re-affirms that
+	// value is the one currently wanted. `latestFetchTokenByKey` remembers, per `hidden` value, the
+	// token of the most recent call for that value — so a value that gets re-requested while its first
+	// call is still in flight keeps its recorded token current even though no second network call goes
+	// out. A response is only applied to `data.value` if its key's recorded token still equals the
+	// global latest: true both for a request with no competition, and for one a later call coalesced
+	// onto (which re-armed the key's token), false once a *different* key becomes the most recent one.
+	// (A single flat token compared against itself is not enough: it would correctly catch a fetch for
+	// a different key superseding this one, but not a same-key repeat superseding a same-key original
+	// — the repeat takes the cache hit below and never gets a token of its own to be judged against.)
+	let latestFetchToken = 0;
+	const latestFetchTokenByKey: Record<string, number> = {};
+
+	// Stamped on every write that is not a fetch applying its own response — a websocket event, an
+	// optimistic edit, a create, a delete. A fetch remembers the stamp it went out under, so when its
+	// response lands it can tell which rows have been written since: for those the snapshot is the
+	// older story and must not be applied. The case that made this necessary is the wizard hiding a
+	// source device: the list fetch reads the row before the hide, DEVICE_UPDATED applies `hidden:
+	// true` while that request is still in flight, and the wholesale replacement then put the visible
+	// row back — the physical source rendered beside the virtual device that replaced it until
+	// something else happened to refresh it.
+	let mutationToken = 0;
+	const mutationTokenById: Record<IDevice['id'], number> = {};
+
+	// The two ways a row is written outside a fetch. Everything else in this store goes through them,
+	// which is what keeps the stamp complete.
+	const commit = (device: IDevice): IDevice => {
+		mutationTokenById[device.id] = ++mutationToken;
+
+		return (data.value[device.id] = device);
+	};
+
+	const forget = (id: IDevice['id']): void => {
+		mutationTokenById[id] = ++mutationToken;
+
+		delete data.value[id];
+	};
+
 	const onEvent = (payload: IDevicesOnEventActionPayload): IDevice => {
 		const element = getPluginElement(payload.type);
 
@@ -119,7 +164,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				throw new DevicesValidationException('Failed to insert device.');
 			}
 
-			return (data.value[parsed.data.id] = parsed.data);
+			return commit(parsed.data);
 		}
 
 		const parsed = (element?.schemas?.deviceSchema || DeviceSchema).safeParse({ ...payload.data, id: payload.id });
@@ -132,7 +177,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 		data.value = data.value ?? {};
 
-		return (data.value[parsed.data.id] = parsed.data);
+		return commit(parsed.data);
 	};
 
 	const unset = (payload: IDevicesUnsetActionPayload): void => {
@@ -140,7 +185,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			return;
 		}
 
-		delete data.value[payload.id];
+		forget(payload.id);
 
 		return;
 	};
@@ -174,7 +219,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 					const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
 
-					data.value[transformed.id] = transformed;
+					commit(transformed);
 
 					insertDeviceControlsRelations(transformed, responseData.data.controls);
 					insertChannelsRelations(transformed, responseData.data.channels);
@@ -203,34 +248,117 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		}
 	};
 
-	const fetch = async (): Promise<IDevice[]> => {
-		if ('all' in pendingFetchPromises) {
-			return pendingFetchPromises['all'];
+	const fetch = async (payload?: IDevicesFetchActionPayload): Promise<IDevice[]> => {
+		// Keyed by the requested `hidden` value (not a fixed key): two calls asking for the same thing
+		// share one in-flight request, but two calls asking for *different* things — e.g. the device
+		// list's mount fetch (hidden=false) still in flight when the "show hidden" toggle flips to
+		// hidden=all — must not silently collapse into whichever happened to start first.
+		const cacheKey = payload?.hidden ?? 'default';
+
+		// Re-arms this key's recency *before* the coalesce check below, so a repeat call for a key
+		// that is still in flight (e.g. the "show hidden" toggle flipping off, on, then off again
+		// before the first "off" request has returned) is not silently judged stale once the shared
+		// in-flight request it takes a cache hit on eventually resolves.
+		latestFetchToken += 1;
+		latestFetchTokenByKey[cacheKey] = latestFetchToken;
+
+		const existingPromise = pendingFetchPromises[cacheKey];
+		if (existingPromise) {
+			return existingPromise;
 		}
 
+		inFlightFetchCount += 1;
+		semaphore.value.fetching.items = true;
+
+		// Read before the request goes out: every row stamped later than this was written while the
+		// server was assembling its answer, so for those rows this response is out of date.
+		const requestedAt = mutationToken;
+
 		const fetchPromise = (async (): Promise<IDevice[]> => {
-			if (semaphore.value.fetching.items) {
-				throw new DevicesApiException('Already fetching devices.');
-			}
-
-			semaphore.value.fetching.items = true;
-
 			try {
-				const { data: responseData, error, response } = await backend.client.GET(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices`);
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.GET(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices`, {
+					params: {
+						query: {
+							// `all` when the caller did not say, because the answer lands in a cache everything
+							// shares and this action *replaces* what is there. The endpoint answers with the
+							// visible devices unless told otherwise, so an unscoped refresh — socket-reconnect
+							// recovery, or any `useDevices()` consumer — would quietly drop every system-hidden
+							// source out from under an open mapping or remap flow, and out of the "show hidden"
+							// list. Callers that want only the visible ones filter what they read, which is what
+							// `useDevices()` and `useSpaceDevices()` already do; a shared cache that is missing
+							// rows cannot be filtered back into completeness.
+							hidden: payload?.hidden ?? DevicesModuleDevicesHiddenFilter.all,
+						},
+					},
+				});
 
 				if (typeof responseData !== 'undefined') {
-					data.value = Object.fromEntries(
-						responseData.data.map((device) => {
+					// Stale only if a call for a *different* key has become the most recently
+					// requested one since this request went out. A repeat call for THIS SAME key —
+					// even one that coalesced onto this very request instead of starting a new one —
+					// already re-armed `latestFetchTokenByKey[cacheKey]` above, so it survives this
+					// check; only a genuinely superseded key skips transforming its now-irrelevant
+					// response and leaves `data.value` and the related stores exactly as the winning
+					// request left them.
+					if (latestFetchTokenByKey[cacheKey] !== latestFetchToken) {
+						// Answered from this response, not from the cache it is not allowed to write to. The
+						// two are different questions — this caller asked for a particular `hidden` scope, the
+						// cache now belongs to whichever scope was requested last — and handing back the
+						// winning request's contents would be a full-hydration answer to a question it never
+						// asked. Onboarding's plugin cleanup acts on exactly that difference: told it holds
+						// every device when it holds only the visible ones, it leaves the plugin's hidden
+						// devices behind in the database, owned by a plugin that is no longer running.
+						//
+						// Related stores are left alone for the same reason as `data`: they are the winning
+						// request's to fill.
+						return responseData.data.map((device) => {
 							const element = getPluginElement(device.type);
 
-							const transformed = transformDeviceResponse(device, element?.schemas?.deviceSchema || DeviceSchema);
+							return transformDeviceResponse(device, element?.schemas?.deviceSchema || DeviceSchema);
+						});
+					}
 
-							insertDeviceControlsRelations(transformed, device.controls);
-							insertChannelsRelations(transformed, device.channels);
+					// Applied row by row rather than assigned wholesale: a row written since `requestedAt`
+					// is newer than this snapshot and keeps what it holds — including having been deleted,
+					// which is why a stamped id with nothing behind it is dropped rather than restored.
+					// Rows the response does not carry are still evicted, which is what makes this a
+					// replacement rather than a merge that can only ever grow.
+					const applied: { [key: IDevice['id']]: IDevice } = {};
 
-							return [transformed.id, transformed];
-						})
-					);
+					for (const device of responseData.data) {
+						const element = getPluginElement(device.type);
+
+						const transformedDevice = transformDeviceResponse(device, element?.schemas?.deviceSchema || DeviceSchema);
+
+						if ((mutationTokenById[transformedDevice.id] ?? 0) > requestedAt) {
+							const local = data.value[transformedDevice.id];
+
+							if (local) {
+								applied[transformedDevice.id] = local;
+							}
+
+							continue;
+						}
+
+						insertDeviceControlsRelations(transformedDevice, device.controls);
+						insertChannelsRelations(transformedDevice, device.channels);
+
+						applied[transformedDevice.id] = transformedDevice;
+					}
+
+					// Written while the request was in flight and absent from its answer: a device created
+					// locally, or one that came into existence after the server read the list.
+					for (const [id, token] of Object.entries(mutationTokenById)) {
+						if (token > requestedAt && !(id in applied) && data.value[id]) {
+							applied[id] = data.value[id];
+						}
+					}
+
+					data.value = applied;
 
 					firstLoad.value = true;
 
@@ -245,16 +373,20 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 				throw new DevicesApiException(errorReason, response.status);
 			} finally {
-				semaphore.value.fetching.items = false;
+				inFlightFetchCount -= 1;
+
+				if (inFlightFetchCount === 0) {
+					semaphore.value.fetching.items = false;
+				}
 			}
 		})();
 
-		pendingFetchPromises['all'] = fetchPromise;
+		pendingFetchPromises[cacheKey] = fetchPromise;
 
 		try {
 			return await fetchPromise;
 		} finally {
-			delete pendingFetchPromises['all'];
+			delete pendingFetchPromises[cacheKey];
 		}
 	};
 
@@ -284,7 +416,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 		semaphore.value.creating.push(parsedNewItem.data.id);
 
-		data.value[parsedNewItem.data.id] = parsedNewItem.data;
+		commit(parsedNewItem.data);
 
 		if (parsedNewItem.data.draft) {
 			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
@@ -310,7 +442,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 					const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
 
-					data.value[transformed.id] = transformed;
+					commit(transformed);
 
 					insertDeviceControlsRelations(transformed, responseData.data.controls);
 					insertChannelsRelations(transformed, responseData.data.channels);
@@ -319,7 +451,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				}
 
 				// Record could not be created on api, we have to remove it from a database
-				delete data.value[parsedNewItem.data.id];
+				forget(parsedNewItem.data.id);
 
 				let errorReason: string | null = 'Failed to create device.';
 
@@ -353,9 +485,14 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 		const element = getPluginElement(payload.data.type);
 
+		// Keys the caller actually supplied (`undefined` means "leave untouched", the same convention
+		// the merge below already uses) — this set, not the merged-and-validated record it is checked
+		// against, is what is allowed to reach the outgoing PATCH body. See `requestData` below.
+		const providedData = omitBy(payload.data, isUndefined);
+
 		const parsedEditedItem = (element?.schemas?.deviceSchema || DeviceSchema).safeParse({
 			...data.value[payload.id],
-			...omitBy(payload.data, isUndefined),
+			...providedData,
 		});
 
 		if (!parsedEditedItem.success) {
@@ -366,7 +503,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 		semaphore.value.updating.push(payload.id);
 
-		data.value[parsedEditedItem.data.id] = parsedEditedItem.data;
+		commit(parsedEditedItem.data);
 
 		if (parsedEditedItem.data.draft) {
 			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== parsedEditedItem.data.id);
@@ -374,6 +511,15 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			return parsedEditedItem.data;
 		} else {
 			try {
+				// The merge above exists so validation resolves schema defaults and required fields
+				// against a complete record — it must not become the request body itself, or every field
+				// the caller left untouched (starting with `roomId`, backfilled from the cached device by
+				// `DeviceSchema`'s `.default(null)`) gets silently reinstated and sent as though it had
+				// changed. The backend's hidden-device placement guard treats a present `room_id` — `null`
+				// included — as a placement change, so a reinstated key here can turn an unrelated rename
+				// into a refused request. Only a key the caller actually supplied is allowed onto the wire.
+				const requestData = pick(parsedEditedItem.data, Object.keys(providedData)) as typeof parsedEditedItem.data;
+
 				const {
 					data: responseData,
 					error,
@@ -385,10 +531,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 						},
 					},
 					body: {
-						data: transformDeviceUpdateRequest<IDeviceUpdateReq>(
-							parsedEditedItem.data,
-							element?.schemas?.deviceUpdateReqSchema || DeviceUpdateReqSchema
-						),
+						data: transformDeviceUpdateRequest<IDeviceUpdateReq>(requestData, element?.schemas?.deviceUpdateReqSchema || DeviceUpdateReqSchema),
 					},
 				});
 
@@ -397,7 +540,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 					const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
 
-					data.value[transformed.id] = transformed;
+					commit(transformed);
 
 					return transformed;
 				}
@@ -456,7 +599,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 				const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
 
-				data.value[transformed.id] = transformed;
+				commit(transformed);
 
 				insertDeviceControlsRelations(transformed, responseData.data.controls);
 				insertChannelsRelations(transformed, responseData.data.channels);
@@ -489,7 +632,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 		const recordToRemove = data.value[payload.id];
 
-		delete data.value[payload.id];
+		forget(payload.id);
 
 		if (recordToRemove?.draft) {
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
@@ -656,7 +799,12 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 	// re-reading, so the caller never has to guess from a flag it does not maintain.
 	const isLoaded = (): boolean => firstLoadFinished() || findAll().length > 0;
 
-	const refresh = (): Promise<unknown> => fetch();
+	// Refreshes with `all`, not with the endpoint's default. A bare `fetch()` sends no filter, which
+	// the endpoint reads as "visible only", so a reconnect refresh would replace the shared collection
+	// with visible devices — silently emptying the device list's own "Show hidden" view and dropping
+	// the system-hidden source out of a mapping flow the operator has open. Every consumer that cares
+	// filters the collection it renders, so the widest fetch is the safe one to restore from.
+	const refresh = (): Promise<unknown> => fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
 
 	return {
 		isLoaded,
