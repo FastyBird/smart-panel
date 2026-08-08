@@ -1,0 +1,110 @@
+{
+	"menu": { "clients": "MCP-Clients" },
+	"actions": {
+		"create": "Client erstellen",
+		"edit": "Bearbeiten",
+		"save": "Speichern",
+		"rotate": "Erneuern",
+		"revoke": "Widerrufen",
+		"delete": "Löschen",
+		"cancel": "Abbrechen",
+		"done": "Fertig",
+		"addOrigin": "Origin hinzufügen",
+		"removeOrigin": "Origin entfernen",
+		"copyEndpoint": "Endpunkt kopieren"
+	},
+	"capabilities": {
+		"read": { "title": "Lesen", "description": "Begrenzte Informationen zu Zuhause, Geräten, Wetter, Energie und Sicherheit lesen." },
+		"write": { "title": "Schreiben", "description": "Unterstützte Geräteeigenschaften direkt setzen. Dies kann physische Geräte beeinflussen." },
+		"trigger": {
+			"title": "Auslösen",
+			"description": "Szenen und übergeordnete Beleuchtungsaktionen ausführen. Dies kann physische Geräte beeinflussen."
+		}
+	},
+	"config": {
+		"about": {
+			"title": "Sicherer Agentenzugriff",
+			"description": "MCP stellt lokalen Clients nur einen kuratierten Katalog bereit. Es ist kein allgemeiner OpenAPI-Proxy."
+		},
+		"enabled": { "title": "MCP-Endpunkt aktivieren" },
+		"endpoint": {
+			"title": "MCP-Endpunkt der Installation",
+			"description": "Verwenden Sie diese URL mit einem vertrauenswürdigen MCP-Client und den einmalig angezeigten Zugangsdaten."
+		},
+		"capabilities": {
+			"title": "Berechtigungsgrenze der Installation",
+			"warningTitle": "Zugriff auf physische Geräte",
+			"warningDescription": "Schreib- und Auslöseberechtigungen können den Zustand physischer Geräte ändern. Gewähren Sie jedem Client nur die erforderlichen Berechtigungen."
+		},
+		"allowedOrigins": {
+			"title": "Zusätzlich erlaubte Browser-Origins",
+			"description": "Optionale normalisierte Origins für browserbasierte MCP-Clients. Clients im lokalen Netzwerk benötigen sie normalerweise nicht.",
+			"placeholder": "https://agent.example.com",
+			"invalid": "Verwenden Sie eine absolute HTTP(S)-Origin ohne Pfad, Abfrage, Fragment oder Zugangsdaten."
+		}
+	},
+	"clients": {
+		"title": "MCP-Clients",
+		"subtitle": "Lokale Agentenzugangsdaten dieser Installation erstellen und verwalten.",
+		"securityTitle": "Vertrauenswürdige Netzwerke verwenden",
+		"securityDescription": "Bevorzugen Sie LAN- oder VPN-Zugriff und HTTPS. Zugangsdaten werden nur einmal angezeigt und können später nicht erneut abgerufen werden.",
+		"columns": {
+			"name": "Client",
+			"status": "Status",
+			"capabilities": "Berechtigungen",
+			"expires": "Gültig bis",
+			"lastUsed": "Zuletzt verwendet",
+			"actions": "Aktionen"
+		},
+		"empty": "Es wurden noch keine MCP-Clients erstellt.",
+		"none": "Keine",
+		"never": "Nie",
+		"noDescription": "Keine Beschreibung"
+	},
+	"clientForm": {
+		"createTitle": "MCP-Client erstellen",
+		"editTitle": "MCP-Client bearbeiten",
+		"name": "Name",
+		"nameRequired": "Geben Sie einen Client-Namen ein.",
+		"description": "Beschreibung",
+		"enabled": "Aktiviert",
+		"capabilities": "Client-Berechtigungen",
+		"ceilingHint": "Es können nur in der Modulkonfiguration aktivierte Berechtigungen gewährt werden.",
+		"expiresInDays": "Gültigkeitsdauer der Zugangsdaten (Tage)",
+		"expiryRequired": "Wählen Sie eine begrenzte Gültigkeitsdauer."
+	},
+	"rotate": {
+		"title": "Zugangsdaten erneuern",
+		"warning": "Die aktuellen Zugangsdaten werden sofort widerrufen. Verbundene Clients müssen mit dem neuen Token aktualisiert werden."
+	},
+	"token": {
+		"title": "MCP-Zugangsdaten jetzt kopieren",
+		"warningTitle": "Wird nur einmal angezeigt",
+		"warningDescription": "Speichern Sie die Zugangsdaten für {name} in einem sicheren Passwortmanager. Nach dem Schließen dieses Dialogs können sie nicht erneut abgerufen werden.",
+		"copy": "Zugangsdaten kopieren",
+		"copied": "Kopiert"
+	},
+	"status": { "active": "Aktiv", "disabled": "Deaktiviert", "revoked": "Widerrufen", "expired": "Abgelaufen" },
+	"confirm": {
+		"revoke": "Aktuelle Zugangsdaten für {name} widerrufen? Verbundene Clients verlieren sofort den Zugriff.",
+		"delete": "{name} löschen? Die Zugangsdaten werden widerrufen und der Client-Datensatz kann nicht wiederhergestellt werden."
+	},
+	"messages": {
+		"configSaved": "MCP-Konfiguration wurde gespeichert.",
+		"configSaveFailed": "MCP-Konfiguration konnte nicht gespeichert werden.",
+		"endpointCopied": "MCP-Endpunkt wurde kopiert.",
+		"copyFailed": "Der Wert konnte nicht kopiert werden.",
+		"capabilitiesOutsideCeiling": "Client-Berechtigungen müssen innerhalb der Berechtigungsgrenze des Moduls liegen.",
+		"loadFailed": "MCP-Clients konnten nicht geladen werden.",
+		"created": "MCP-Client wurde erstellt.",
+		"createFailed": "MCP-Client konnte nicht erstellt werden.",
+		"updated": "MCP-Client wurde aktualisiert.",
+		"updateFailed": "MCP-Client konnte nicht aktualisiert werden.",
+		"rotated": "MCP-Zugangsdaten wurden erneuert.",
+		"rotateFailed": "MCP-Zugangsdaten konnten nicht erneuert werden.",
+		"revoked": "MCP-Client wurde widerrufen.",
+		"revokeFailed": "MCP-Client konnte nicht widerrufen werden.",
+		"deleted": "MCP-Client wurde gelöscht.",
+		"deleteFailed": "MCP-Client konnte nicht gelöscht werden."
+	}
+}

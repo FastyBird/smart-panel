@@ -89,4 +89,38 @@ export class McpClientEntity extends BaseEntity {
 	@JoinColumn({ name: 'tokenId' })
 	@Exclude()
 	token?: LongLiveTokenEntity | null;
+
+	@ApiPropertyOptional({
+		name: 'credential_expires_at',
+		description: 'Expiration timestamp of the current credential',
+		type: 'string',
+		format: 'date-time',
+		nullable: true,
+	})
+	@Expose({ name: 'credential_expires_at' })
+	get credentialExpiresAt(): Date | null {
+		return this.token?.expiresAt ?? null;
+	}
+
+	@ApiProperty({
+		name: 'credential_revoked',
+		description: 'Whether the current credential has been revoked or is unavailable',
+		type: 'boolean',
+	})
+	@Expose({ name: 'credential_revoked' })
+	get credentialRevoked(): boolean {
+		return this.token?.revoked ?? true;
+	}
+
+	@ApiPropertyOptional({
+		name: 'last_used_at',
+		description: 'Timestamp when the current credential was last used',
+		type: 'string',
+		format: 'date-time',
+		nullable: true,
+	})
+	@Expose({ name: 'last_used_at' })
+	get lastUsedAt(): Date | null {
+		return this.token?.lastUsedAt ?? null;
+	}
 }

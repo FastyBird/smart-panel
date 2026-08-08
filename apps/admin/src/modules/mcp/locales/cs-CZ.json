@@ -1,0 +1,107 @@
+{
+	"menu": { "clients": "Klienti MCP" },
+	"actions": {
+		"create": "Vytvořit klienta",
+		"edit": "Upravit",
+		"save": "Uložit",
+		"rotate": "Obnovit",
+		"revoke": "Odvolat",
+		"delete": "Smazat",
+		"cancel": "Zrušit",
+		"done": "Hotovo",
+		"addOrigin": "Přidat zdroj",
+		"removeOrigin": "Odebrat zdroj",
+		"copyEndpoint": "Kopírovat koncový bod"
+	},
+	"capabilities": {
+		"read": { "title": "Čtení", "description": "Čtení omezeného kontextu domácnosti, zařízení, počasí, energie a zabezpečení." },
+		"write": { "title": "Zápis", "description": "Přímé nastavování podporovaných vlastností zařízení. Může ovlivnit fyzická zařízení." },
+		"trigger": { "title": "Spouštění", "description": "Spouštění scén a akcí osvětlení v prostoru. Může ovlivnit fyzická zařízení." }
+	},
+	"config": {
+		"about": {
+			"title": "Bezpečný přístup pro agenty",
+			"description": "MCP zpřístupňuje místním klientům pouze vybraný katalog. Nejde o obecný proxy přístup k OpenAPI."
+		},
+		"enabled": { "title": "Povolit koncový bod MCP" },
+		"endpoint": {
+			"title": "Koncový bod MCP této instalace",
+			"description": "Použijte tuto adresu URL s důvěryhodným klientem MCP a jednorázově zobrazenými přihlašovacími údaji."
+		},
+		"capabilities": {
+			"title": "Limit oprávnění instalace",
+			"warningTitle": "Přístup k fyzickým zařízením",
+			"warningDescription": "Oprávnění k zápisu a spouštění mohou měnit stav fyzických zařízení. Každému klientovi udělte jen nezbytná oprávnění."
+		},
+		"allowedOrigins": {
+			"title": "Další povolené zdroje prohlížeče",
+			"description": "Volitelné normalizované zdroje pro klienty MCP v prohlížeči. Klienti v místní síti je obvykle nepotřebují.",
+			"placeholder": "https://agent.example.com",
+			"invalid": "Použijte absolutní zdroj HTTP(S) bez cesty, parametrů, fragmentu a přihlašovacích údajů."
+		}
+	},
+	"clients": {
+		"title": "Klienti MCP",
+		"subtitle": "Vytvářejte a spravujte přihlašovací údaje agentů pro tuto instalaci.",
+		"securityTitle": "Používejte důvěryhodné sítě",
+		"securityDescription": "Upřednostněte přístup přes LAN nebo VPN a HTTPS. Přihlašovací údaje se zobrazí pouze jednou a později je nelze načíst.",
+		"columns": {
+			"name": "Klient",
+			"status": "Stav",
+			"capabilities": "Oprávnění",
+			"expires": "Platnost do",
+			"lastUsed": "Naposledy použito",
+			"actions": "Akce"
+		},
+		"empty": "Dosud nebyli vytvořeni žádní klienti MCP.",
+		"none": "Žádné",
+		"never": "Nikdy",
+		"noDescription": "Bez popisu"
+	},
+	"clientForm": {
+		"createTitle": "Vytvořit klienta MCP",
+		"editTitle": "Upravit klienta MCP",
+		"name": "Název",
+		"nameRequired": "Zadejte název klienta.",
+		"description": "Popis",
+		"enabled": "Povoleno",
+		"capabilities": "Oprávnění klienta",
+		"ceilingHint": "Udělit lze pouze oprávnění povolená v konfiguraci modulu.",
+		"expiresInDays": "Platnost přihlašovacích údajů (dny)",
+		"expiryRequired": "Zvolte konečnou dobu platnosti přihlašovacích údajů."
+	},
+	"rotate": {
+		"title": "Obnovit přihlašovací údaje",
+		"warning": "Aktuální přihlašovací údaje budou okamžitě odvolány. Připojené klienty je nutné aktualizovat novým tokenem."
+	},
+	"token": {
+		"title": "Nyní zkopírujte přihlašovací údaje MCP",
+		"warningTitle": "Zobrazí se pouze jednou",
+		"warningDescription": "Uložte přihlašovací údaje klienta {name} do bezpečného správce hesel. Po zavření tohoto dialogu je již nelze načíst.",
+		"copy": "Kopírovat přihlašovací údaje",
+		"copied": "Zkopírováno"
+	},
+	"status": { "active": "Aktivní", "disabled": "Zakázáno", "revoked": "Odvoláno", "expired": "Platnost vypršela" },
+	"confirm": {
+		"revoke": "Odvolat aktuální přihlašovací údaje klienta {name}? Připojení klienti okamžitě ztratí přístup.",
+		"delete": "Smazat klienta {name}? Jeho přihlašovací údaje budou odvolány a záznam klienta nebude možné obnovit."
+	},
+	"messages": {
+		"configSaved": "Konfigurace MCP byla uložena.",
+		"configSaveFailed": "Konfiguraci MCP se nepodařilo uložit.",
+		"endpointCopied": "Koncový bod MCP byl zkopírován.",
+		"copyFailed": "Hodnotu se nepodařilo zkopírovat.",
+		"capabilitiesOutsideCeiling": "Oprávnění klienta musí zůstat v rámci limitu oprávnění modulu.",
+		"loadFailed": "Klienty MCP se nepodařilo načíst.",
+		"created": "Klient MCP byl vytvořen.",
+		"createFailed": "Klienta MCP se nepodařilo vytvořit.",
+		"updated": "Klient MCP byl aktualizován.",
+		"updateFailed": "Klienta MCP se nepodařilo aktualizovat.",
+		"rotated": "Přihlašovací údaje MCP byly obnoveny.",
+		"rotateFailed": "Přihlašovací údaje MCP se nepodařilo obnovit.",
+		"revoked": "Klient MCP byl odvolán.",
+		"revokeFailed": "Klienta MCP se nepodařilo odvolat.",
+		"deleted": "Klient MCP byl smazán.",
+		"deleteFailed": "Klienta MCP se nepodařilo smazat."
+	}
+}

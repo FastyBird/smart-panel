@@ -61,6 +61,14 @@ export type ConfigModuleUpdatePluginSchema = components['schemas']['ConfigModule
 export type ConfigModuleModuleSchema = components['schemas']['ConfigModuleDataModule'];
 export type ConfigModuleUpdateModuleSchema = components['schemas']['ConfigModuleUpdateModule'];
 
+// MCP Module Schemas
+export type McpModuleClientSchema = components['schemas']['McpModuleDataClient'];
+export type McpModuleClientCredentialSchema = components['schemas']['McpModuleDataClientCredential'];
+export type McpModuleCreateClientSchema = components['schemas']['CreateMcpClientDto'];
+export type McpModuleUpdateClientSchema = components['schemas']['UpdateMcpClientDto'];
+export type McpModuleRotateClientTokenSchema = components['schemas']['RotateMcpClientTokenDto'];
+export { CreateMcpClientDtoCapabilities as McpModuleCapability } from './openapi';
+
 // Displays Module Schemas
 export type DisplaysModuleDisplaySchema = components['schemas']['DisplaysModuleDataDisplay'];
 export type DisplaysModuleUpdateDisplaySchema = components['schemas']['DisplaysModuleUpdateDisplay'];
@@ -304,6 +312,14 @@ export type ConfigModuleUpdateConfigPluginOperation = operations['update-config-
 export type ConfigModuleGetConfigModuleOperation = operations['get-config-module-config-module'];
 export type ConfigModuleUpdateConfigModuleOperation = operations['update-config-module-config-module'];
 export type ConfigModuleGetConfigOperation = operations['get-config-module-config'];
+
+// MCP Module Operations
+export type McpModuleGetClientsOperation = operations['get-mcp-module-clients'];
+export type McpModuleCreateClientOperation = operations['create-mcp-module-client'];
+export type McpModuleUpdateClientOperation = operations['update-mcp-module-client'];
+export type McpModuleRotateClientTokenOperation = operations['rotate-mcp-module-client-token'];
+export type McpModuleRevokeClientOperation = operations['revoke-mcp-module-client'];
+export type McpModuleDeleteClientOperation = operations['delete-mcp-module-client'];
 
 // System Module Operations
 export type SystemModuleGetLogsOperation = operations['get-system-module-logs'];

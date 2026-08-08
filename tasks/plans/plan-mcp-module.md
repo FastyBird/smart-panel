@@ -1,6 +1,6 @@
 # Smart Panel MCP Module — Implementation Plan
 
-**Status:** Phase 8 complete — Phase 9 pending
+**Status:** Phase 9 complete — Phase 10 pending
 
 **Architecture decision:** [ADR 0001: MCP Protocol and Security Foundation](../../docs/adr/0001-mcp-protocol-and-security-foundation.md)
 supersedes the original stateful-session transport assumptions in this plan.
@@ -559,22 +559,26 @@ capability/tool, failures, denials, and timeouts.
 - Modify: `apps/admin/src/app.main.ts`
 - Modify manually maintained OpenAPI exports only after regeneration
 
-- [ ] Register MCP as a core admin module with a module configuration form.
-- [ ] Add enable/disable control and an Element Plus checkbox group for read/write/trigger.
-- [ ] Explain each capability with concrete examples and state clearly that write/trigger can affect physical devices.
-- [ ] Allow any capability combination, including none.
-- [ ] Add `allowed_origins` editing with URL validation.
-- [ ] Show the installation-specific MCP endpoint URL and a copy button.
-- [ ] Add MCP client list, create, edit capability subset, rotate, and revoke/delete flows.
-- [ ] Require a finite expiry during client creation.
-- [ ] Display the raw token exactly once with a copy warning.
-- [ ] Prevent selecting a client capability that is outside the current module ceiling.
-- [ ] Show enabled/revoked/expired status and last-used timestamp.
-- [ ] Restrict configuration and client management UI to owner/admin users.
-- [ ] Add all currently supported locale files, following other core modules.
+- [x] Register MCP as a core admin module with a module configuration form.
+- [x] Add enable/disable control and an Element Plus checkbox group for read/write/trigger.
+- [x] Explain each capability with concrete examples and state clearly that write/trigger can affect physical devices.
+- [x] Allow any capability combination, including none.
+- [x] Add `allowed_origins` editing with URL validation.
+- [x] Show the installation-specific MCP endpoint URL and a copy button.
+- [x] Add MCP client list, create, edit capability subset, rotate, and revoke/delete flows.
+- [x] Require a finite expiry during client creation.
+- [x] Display the raw token exactly once with a copy warning.
+- [x] Prevent selecting a client capability that is outside the current module ceiling.
+- [x] Show enabled/revoked/expired status and last-used timestamp.
+- [x] Restrict configuration and client management UI to owner/admin users.
+- [x] Add all currently supported locale files, following other core modules.
 
 **Tests:** form schemas, all capability combinations, subset validation, token one-time dialog, failed API requests,
 revocation confirmation, role restrictions, and responsive layout.
+
+**Outcome:** The core admin module now provides installation configuration, endpoint discovery, capability-ceiling and
+origin controls, and owner/admin MCP client lifecycle management. Finite one-time credentials, responsive client
+status views, localized copy, and focused schema/API/security interaction tests are included.
 
 ### Task 13: OpenAPI regeneration and generated clients
 
