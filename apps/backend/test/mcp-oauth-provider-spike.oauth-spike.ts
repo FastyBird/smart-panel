@@ -647,7 +647,7 @@ describe('MCP OAuth authorization-component spike', () => {
 		expect(tokens.refresh_token).toBeUndefined();
 	});
 
-	it('rotates refresh tokens and revokes access tokens', async () => {
+	it('rotates refresh tokens and revokes access tokens and refresh-token families', async () => {
 		const { callback, verifier } = await authorize();
 		const tokenResponse = await exchangeCode(callback.searchParams.get('code'), verifier);
 		const firstTokens = (await tokenResponse.json()) as TokenResponse;
@@ -674,6 +674,27 @@ describe('MCP OAuth authorization-component spike', () => {
 
 		expect(revokeResponse.status).toBe(200);
 		expect(await new adapter('AccessToken').find(rotatedTokens.access_token)).toBeUndefined();
+
+		const refreshFamilyAuthorization = await authorize();
+		const refreshFamilyResponse = await exchangeCode(
+			refreshFamilyAuthorization.callback.searchParams.get('code'),
+			refreshFamilyAuthorization.verifier,
+		);
+		const refreshFamilyTokens = (await refreshFamilyResponse.json()) as TokenResponse;
+		const refreshRevokeResponse = await fetch(`${issuer}/token/revocation`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/x-www-form-urlencoded' },
+			body: new URLSearchParams({
+				client_id: CLIENT_ID,
+				token: refreshFamilyTokens.refresh_token,
+				token_type_hint: 'refresh_token',
+			}),
+		});
+
+		expect(refreshRevokeResponse.status).toBe(200);
+		expect(await new adapter('RefreshToken').find(refreshFamilyTokens.refresh_token)).toBeUndefined();
+		expect(await new adapter('AccessToken').find(refreshFamilyTokens.access_token)).toBeUndefined();
+		expect((await refresh(refreshFamilyTokens.refresh_token)).status).toBe(400);
 	});
 
 	it('atomically rejects concurrent refresh reuse and revokes the complete token family', async () => {
