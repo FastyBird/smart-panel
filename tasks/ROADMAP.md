@@ -219,7 +219,7 @@ Build a device from properties of other devices — splitting one physical devic
 
 **Next up:** [BUG-ENERGY-VIRTUAL-ROOM-ATTRIBUTION](bugs/BUG-ENERGY-VIRTUAL-ROOM-ATTRIBUTION.md) — it breaks the epic's own headline example, a 4PM split across four rooms, and the fix is blocked only on the single-claim decision the task recommends.
 
-**After that,** controller support, which unblocks the six closed-loop categories the v1 boundary excludes. It starts with a design document rather than a task: a control loop touches safety (a relay left energised), concurrency (two loops on one device) and the platform's command path, and the constraints review has already surfaced — device-wide serialisation of evaluations, a heat/cool interlock by device shape, state committed on the actuator's confirmed result, cycle state that survives a restart, an actuator that must be visible wherever `sourcePropertyId` is, the actuator's own value reports as a further input for platforms that acknowledge asynchronously, and a readable actuator rather than merely a writable one — are recorded in the discussion on PR #645 as its input.
+**After that,** [controller support](../docs/superpowers/specs/2026-07-31-virtual-devices-design.md#controller-support), which unblocks the six closed-loop categories the v1 boundary excludes. It starts with a design rather than a task — a control loop touches safety, concurrency and the platform's command path — and the design spec now carries what that design has to answer.
 
 ---
 
