@@ -177,7 +177,22 @@ export class DeviceZonesService {
 	/**
 	 * Set zones for a device (replaces existing zone memberships)
 	 */
-	async setDeviceZones(deviceId: string, zoneIds: string[]): Promise<SpaceEntity[]> {
+	/**
+	 * Replaces a device's zone memberships.
+	 *
+	 * `initialPlacement` marks the one caller for which the placement lock does not apply: a device being
+	 * *created*. The lock exists because changing where an already-hidden device sits is meaningless — it
+	 * is inert, and its placement belongs to the virtual device that replaced it. A create carrying both
+	 * `hidden: true` and `zone_ids` is not that: there is no previous placement to protect, the zones are
+	 * part of the device being described, and refusing them rolls the whole create back. `room_id` on the
+	 * same request has always been accepted, so refusing zones would also have made the two halves of one
+	 * placement disagree.
+	 */
+	async setDeviceZones(
+		deviceId: string,
+		zoneIds: string[],
+		{ initialPlacement = false }: { initialPlacement?: boolean } = {},
+	): Promise<SpaceEntity[]> {
 		this.logger.debug(`Setting zones for device ${deviceId}: ${zoneIds.join(', ')}`);
 
 		// Verify device exists
@@ -226,10 +241,12 @@ export class DeviceZonesService {
 		const deviceTable = this.deviceRepository.metadata.tableName;
 
 		await this.repository.manager.transaction(async (manager): Promise<void> => {
-			const visible = await manager.query<{ id: string }[]>(
-				`SELECT id FROM "${deviceTable}" WHERE id = ? AND COALESCE(hidden, 0) = 0`,
-				[deviceId],
-			);
+			const visible = initialPlacement
+				? [{ id: deviceId }]
+				: await manager.query<{ id: string }[]>(
+						`SELECT id FROM "${deviceTable}" WHERE id = ? AND COALESCE(hidden, 0) = 0`,
+						[deviceId],
+					);
 
 			if (visible.length === 0) {
 				this.logger.error(`Refused zone replacement on device id=${deviceId} hidden while it was being applied`);

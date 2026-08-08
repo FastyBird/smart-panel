@@ -1,5 +1,5 @@
 /* eslint-disable vue/one-component-per-file */
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -449,6 +449,24 @@ describe('ViewVirtualDeviceWizard', () => {
 
 		expect(createCalls).toHaveLength(1);
 		expect(wizard.createdDevice.value).toEqual({ id: 'created-device-id', name: 'Living Room Light' });
+	});
+
+	// The wizard renders its steps with `v-if`, so going Back unmounts the step that is mid-request — the
+	// request carries on, and the freshly mounted Review the user reaches next has a submit state of its
+	// own and will happily send a second one. Two virtual devices from one intent. Cancel has the same
+	// shape: leaving does not stop the device appearing.
+	it('holds still while a create is in flight', async () => {
+		const wizard = mountWizard();
+
+		await wizard.chooseCategory(DevicesModuleDeviceCategory.lighting);
+		await wizard.mapSlot(DevicesModuleChannelPropertyCategory.on, shellyRelayPropertyId);
+		await wizard.setName('Living Room Light');
+
+		await wizard.wrapper.findComponent({ name: 'VirtualWizardReviewStep' }).vm.$emit('submitting', true);
+		await nextTick();
+
+		expect(wizard.wrapper.find('[data-test-id="wizard-back"]').attributes('disabled')).toBeDefined();
+		expect(wizard.wrapper.find('[data-test-id="wizard-cancel"]').attributes('disabled')).toBeDefined();
 	});
 
 	it('moves back to the previous step without losing what was already chosen', async () => {

@@ -137,6 +137,29 @@ describe('DeviceZonesService', () => {
 			await expect(service.setDeviceZones(deviceId, [zoneId])).rejects.toThrow(DevicesNotAllowedException);
 		});
 
+		// A create may legitimately carry both `hidden: true` and `zone_ids` — the wizard hides the source
+		// device it is replacing — and the placement lock is about *changing* where an already-hidden
+		// device sits, which an initial placement is not. Refusing it rolled the whole create back, and
+		// `room_id` on the same request was accepted, so the two halves of one placement disagreed.
+		it('places a hidden device in its zones when the device is being created', async () => {
+			arrangeDevice(true);
+
+			await expect(service.setDeviceZones(deviceId, [zoneId], { initialPlacement: true })).resolves.toBeDefined();
+		});
+
+		// And the lock still holds for every other caller.
+		it('refuses replacing the zones of an already-hidden device', async () => {
+			arrangeDevice(true);
+
+			(repository.manager.transaction as jest.Mock).mockImplementation(
+				async (run: (m: { query: jest.Mock }) => Promise<void>) => {
+					await run({ query: jest.fn().mockResolvedValue([]) });
+				},
+			);
+
+			await expect(service.setDeviceZones(deviceId, [zoneId])).rejects.toThrow(DevicesNotAllowedException);
+		});
+
 		it('refuses removing a hidden device from a zone', async () => {
 			arrangeDevice(true);
 

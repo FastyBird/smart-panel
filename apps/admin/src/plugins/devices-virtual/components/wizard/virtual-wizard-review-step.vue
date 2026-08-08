@@ -170,6 +170,10 @@ const props = defineProps<IVirtualWizardReviewStepProps>();
 
 const emit = defineEmits<{
 	(e: 'created', payload: IVirtualWizardReviewCreatedPayload): void;
+	// Announced so the shell can hold the wizard still while a create is in flight. This component is
+	// unmounted the moment the user goes Back — the shell renders steps with `v-if` — and its request
+	// carries on regardless, so nothing it knows about its own state survives to stop a second one.
+	(e: 'submitting', value: boolean): void;
 }>();
 
 const { t } = useI18n();
@@ -497,6 +501,8 @@ const onCreate = async (): Promise<void> => {
 	}
 
 	submitState.value = 'submitting';
+
+	emit('submitting', true);
 	createError.value = null;
 
 	const payload: DevicesVirtualPluginCreateDeviceSchema = {
@@ -536,6 +542,8 @@ const onCreate = async (): Promise<void> => {
 				: t('devicesVirtualPlugin.wizard.review.errors.createFailed');
 			submitState.value = 'error';
 
+			emit('submitting', false);
+
 			flashMessage.error(createError.value);
 
 			return;
@@ -544,6 +552,8 @@ const onCreate = async (): Promise<void> => {
 		const created = responseData.data;
 
 		submitState.value = 'created';
+
+		emit('submitting', false);
 
 		// Warms the cache so the device list / detail views do not need a manual refresh to see the new
 		// device and its channels. Failure does not affect the wizard's own success state — the device
@@ -576,6 +586,8 @@ const onCreate = async (): Promise<void> => {
 
 		createError.value = t('devicesVirtualPlugin.wizard.review.errors.createFailed');
 		submitState.value = 'error';
+
+		emit('submitting', false);
 
 		flashMessage.error(createError.value);
 	}

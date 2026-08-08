@@ -47,6 +47,7 @@
 			<div class="flex items-center">
 				<el-button
 					v-if="createdDevice === null"
+					:disabled="submitting"
 					data-test-id="wizard-cancel"
 					@click="onCancel"
 				>
@@ -64,6 +65,7 @@
 				<el-button
 					v-if="createdDevice === null && activeStep > 0"
 					class="ml-2!"
+					:disabled="submitting"
 					data-test-id="wizard-back"
 					@click="onBack"
 				>
@@ -143,6 +145,7 @@
 						:room-id="state.roomId"
 						:zone-ids="state.zoneIds"
 						@created="onCreated"
+						@submitting="submitting = $event"
 					/>
 				</div>
 			</el-scrollbar>
@@ -155,6 +158,7 @@
 	>
 		<el-button
 			v-if="createdDevice === null && activeStep > 0"
+			:disabled="submitting"
 			data-test-id="wizard-back"
 			@click="onBack"
 		>
@@ -164,6 +168,7 @@
 		<el-button
 			v-if="createdDevice === null"
 			class="ml-2!"
+			:disabled="submitting"
 			data-test-id="wizard-cancel"
 			@click="onCancel"
 		>
@@ -253,6 +258,13 @@ const mappingValid = ref<boolean>(false);
 // longer makes sense.
 const createdDevice = ref<IVirtualWizardReviewCreatedPayload | null>(null);
 
+// True while the review step's create is in flight. The wizard renders its steps with `v-if`, so going
+// Back unmounts the step that is mid-request — the request carries on, and the freshly mounted Review
+// the user reaches next has a submit state of its own and will happily send a second one. Two virtual
+// devices from one intent, and Cancel has the same shape: leaving does not stop the device appearing.
+// Holding the wizard still until the request settles is what makes the step's own guard mean anything.
+const submitting = ref<boolean>(false);
+
 const isLastStep = computed<boolean>((): boolean => activeStep.value === STEP_COUNT - 1);
 
 // Per-step gating for the Next button. Only ever consulted for the step currently on screen: the
@@ -291,6 +303,13 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 );
 
 const onCancel = (): void => {
+	// Guarded here as well as on the buttons, because the controls are duplicated for small screens and
+	// one of them is an app-bar button with no disabled state of its own. The handler is the single place
+	// every route out of the wizard passes through.
+	if (submitting.value) {
+		return;
+	}
+
 	if (isLGDevice.value) {
 		router.replace({ name: DevicesRouteNames.DEVICES });
 	} else {
@@ -299,6 +318,10 @@ const onCancel = (): void => {
 };
 
 const onBack = (): void => {
+	if (submitting.value) {
+		return;
+	}
+
 	if (activeStep.value === 0) {
 		return;
 	}

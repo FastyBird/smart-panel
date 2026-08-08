@@ -481,7 +481,10 @@ export class DevicesService {
 
 			// Set zone memberships if provided
 			if (zoneIds.length > 0) {
-				await this.deviceZonesService.setDeviceZones(raw.id, zoneIds);
+				// Initial placement, not a change to an existing one: a create may legitimately carry both
+				// `hidden: true` and `zone_ids` — the wizard hides a source device it is replacing — and the
+				// placement lock is about mutating where an already-hidden device sits, which this is not.
+				await this.deviceZonesService.setDeviceZones(raw.id, zoneIds, { initialPlacement: true });
 			}
 		} catch (error) {
 			this.logger.error(`Nested creation failed for deviceId=${raw.id}, rolling the device back`);
