@@ -17,7 +17,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelCategory, ConnectionState, DeviceCategory, EventType } from '../devices.constants';
-import { DevicesException } from '../devices.exceptions';
+import { DevicesException, DevicesValidationException } from '../devices.exceptions';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { UpdateChannelDto } from '../dto/update-channel.dto';
 import { ChannelEntity } from '../entities/devices.entity';
@@ -117,6 +117,9 @@ describe('ChannelsService', () => {
 			findOne: jest.fn(),
 			create: jest.fn(),
 			save: jest.fn(),
+			// Rows are inserted rather than saved, so a client-supplied id that already exists collides on
+			// the primary key instead of quietly turning the create into an update.
+			insert: jest.fn().mockResolvedValue({ identifiers: [{}], generatedMaps: [], raw: [] }),
 			remove: jest.fn(),
 			delete: jest.fn(),
 			createQueryBuilder: jest.fn(() => ({
@@ -310,6 +313,69 @@ describe('ChannelsService', () => {
 	});
 
 	describe('create', () => {
+		// `id` is client-suppliable, and `save()` treats a row whose primary key exists as an *update*: a
+		// create carrying an existing id moved that channel under this device, and `DevicesService`'s
+		// rollback then removed it as one of its own — a malformed request destroying a channel it had
+		// nothing to do with.
+		it('refuses a create naming a channel id that already exists, before anything is written', async () => {
+			const takenId = uuid().toString();
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannel,
+				createDto: CreateMockChannelDto,
+				updateDto: UpdateMockChannelDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'create').mockReturnValue({ id: takenId } as MockChannel);
+			jest.spyOn(repository, 'findOne').mockResolvedValue({ id: takenId } as ChannelEntity);
+
+			await expect(
+				service.create({
+					id: takenId,
+					type: 'mock',
+					category: ChannelCategory.GENERIC,
+					name: 'Colliding channel',
+					device: uuid().toString(),
+					mock_value: 'Some value',
+				} as CreateMockChannelDto),
+			).rejects.toThrow(DevicesValidationException);
+
+			expect(repository.insert).not.toHaveBeenCalled();
+			expect(repository.save).not.toHaveBeenCalled();
+		});
+
+		// The check above closes the collision only for a caller who is alone: two requests carrying the
+		// same client-generated uuid can both pass it before either writes. `insert()` always issues an
+		// INSERT, so the primary key decides, and the refusal reads the same from the caller's side.
+		it('reports a concurrent duplicate channel id as the same refusal the check gives', async () => {
+			const takenId = uuid().toString();
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannel,
+				createDto: CreateMockChannelDto,
+				updateDto: UpdateMockChannelDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'create').mockReturnValue({ id: takenId } as MockChannel);
+			jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+			jest
+				.spyOn(repository, 'insert')
+				.mockRejectedValue(Object.assign(new Error('SQLITE_CONSTRAINT: UNIQUE constraint failed: channels.id')));
+
+			await expect(
+				service.create({
+					id: takenId,
+					type: 'mock',
+					category: ChannelCategory.GENERIC,
+					name: 'Colliding channel',
+					device: uuid().toString(),
+					mock_value: 'Some value',
+				} as CreateMockChannelDto),
+			).rejects.toThrow(DevicesValidationException);
+		});
+
 		it('should create and return a new channel', async () => {
 			const createDto: CreateMockChannelDto = {
 				type: 'mock',
@@ -368,7 +434,8 @@ describe('ChannelsService', () => {
 
 			expect(result).toEqual(toInstance(MockChannel, mockCreatedChannel));
 			expect(repository.create).toHaveBeenCalledWith(toInstance(MockChannel, mockCreateChannel));
-			expect(repository.save).toHaveBeenCalledWith(toInstance(ChannelEntity, mockCreatedChannel));
+			// Inserted, not saved: `save()` would treat a client-supplied id that already exists as an update.
+			expect(repository.insert).toHaveBeenCalledWith(toInstance(ChannelEntity, mockCreatedChannel));
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('channel.id = :id', { id: mockCreatedChannel.id });
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_CREATED,

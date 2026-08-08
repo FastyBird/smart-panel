@@ -14,6 +14,7 @@ import { DevicesException, DevicesNotFoundException, DevicesValidationException 
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { UpdateChannelDto } from '../dto/update-channel.dto';
 import { ChannelControlEntity, ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
+import { isUniqueConstraintViolation } from '../utils/unique-constraint.utils';
 
 import { ChannelsTypeMapperService } from './channels-type-mapper.service';
 import { ChannelsControlsService } from './channels.controls.service';
@@ -352,19 +353,54 @@ export class ChannelsService {
 
 		const channel = repository.create(toInstance(mapping.class, dtoInstance));
 
+		// `id` is client-suppliable here as it is on the device create, and the same two hazards follow.
+		// `save()` treats a row whose primary key exists as an *update*, so a create carrying an existing
+		// id moved that channel under this device instead of inserting — and `DevicesService.create()`'s
+		// rollback then removed it as one of its own, destroying a channel the request had nothing to do
+		// with. Asked of the base repository, because a collision with a channel of *another* type is the
+		// same collision: ids are unique across the table, not per subclass.
+		if (channel.id) {
+			const existing = await this.repository.findOne({ where: { id: channel.id } });
+
+			if (existing) {
+				this.logger.error(`[VALIDATION FAILED] Channel id=${channel.id} already exists, refusing to create over it`);
+
+				throw new DevicesValidationException(
+					`Channel with id=${channel.id} already exists. Creating a channel with an id already in use is not allowed.`,
+				);
+			}
+		}
+
 		// The channel and the properties created with it go in under the structure lock, so a device
 		// recategorisation cannot judge this device's structure in the window between them: half a
 		// channel is not a structure anything should be validated against. The nested property creates
 		// take the same lock and pass straight through it — it is re-entrant per call chain (see
 		// DeviceStructureLockService).
 		await this.structureLock.runExclusive(async (): Promise<void> => {
-			// Save the channel
-			const saved = await repository.save(channel);
+			// Inserted, not saved: the check above closes the collision only for a caller who is alone,
+			// and two requests carrying the same client-generated uuid can both pass it before either
+			// writes. `insert()` always issues an INSERT, so the primary key constraint decides. The check
+			// stays for the message — a caller reusing an id gets a sentence, not a constraint violation.
+			await repository
+				.insert(channel as unknown as Parameters<Repository<TChannel>['insert']>[0])
+				.catch((error: unknown) => {
+					if (isUniqueConstraintViolation(error)) {
+						this.logger.error(
+							`[VALIDATION FAILED] Channel id=${channel.id} was created concurrently by another request`,
+						);
+
+						throw new DevicesValidationException(
+							`Channel with id=${channel.id} already exists. Creating a channel with an id already in use is not allowed.`,
+						);
+					}
+
+					throw error;
+				});
 
 			for (const propertyDtoInstance of createDto.properties ?? []) {
-				this.logger.debug(`Creating new property for channelId=${saved.id}`);
+				this.logger.debug(`Creating new property for channelId=${channel.id}`);
 
-				await this.channelsPropertiesService.create(saved.id, propertyDtoInstance);
+				await this.channelsPropertiesService.create(channel.id, propertyDtoInstance);
 			}
 		});
 

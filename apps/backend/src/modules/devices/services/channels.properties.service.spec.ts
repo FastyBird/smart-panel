@@ -8,7 +8,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Expose, Transform } from 'class-transformer';
 import { IsOptional, IsString } from 'class-validator';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, InsertResult, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -132,6 +132,9 @@ describe('ChannelsPropertiesService', () => {
 			findOne: jest.fn(),
 			create: jest.fn(),
 			save: jest.fn(),
+			// Rows are inserted rather than saved, so a client-supplied id that already exists collides on
+			// the primary key instead of quietly turning the create into an update.
+			insert: jest.fn().mockResolvedValue({ identifiers: [{}], generatedMaps: [], raw: [] }),
 			remove: jest.fn(),
 			delete: jest.fn(),
 			createQueryBuilder: jest.fn(() => ({
@@ -398,6 +401,68 @@ describe('ChannelsPropertiesService', () => {
 	describe('create', () => {
 		const projectedPropertyId = uuid().toString();
 
+		// `id` is client-suppliable, and `save()` treats a row whose primary key exists as an *update*: a
+		// create carrying an existing id moved that property under this channel, and `DevicesService`'s
+		// rollback then removed it as one of its own — a malformed request destroying a property it had
+		// nothing to do with.
+		it('refuses a create naming a property id that already exists, before anything is written', async () => {
+			const takenId = uuid().toString();
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'create').mockReturnValue({ id: takenId } as MockChannelProperty);
+			jest.spyOn(repository, 'findOne').mockResolvedValue({ id: takenId } as ChannelPropertyEntity);
+
+			await expect(
+				channelsPropertiesService.create(mockChannel.id, {
+					id: takenId,
+					type: 'mock',
+					category: PropertyCategory.GENERIC,
+					permissions: [PermissionType.READ_ONLY],
+					data_type: DataTypeType.UNKNOWN,
+					mock_value: 'Random text',
+				} as CreateMockChannelPropertyDto),
+			).rejects.toThrow(DevicesValidationException);
+
+			expect(repository.insert).not.toHaveBeenCalled();
+			expect(repository.save).not.toHaveBeenCalled();
+		});
+
+		// The check above closes the collision only for a caller who is alone: two requests carrying the
+		// same client-generated uuid can both pass it before either writes.
+		it('reports a concurrent duplicate property id as the same refusal the check gives', async () => {
+			const takenId = uuid().toString();
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'create').mockReturnValue({ id: takenId } as MockChannelProperty);
+			jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+			jest
+				.spyOn(repository, 'insert')
+				.mockRejectedValue(new Error('SQLITE_CONSTRAINT: UNIQUE constraint failed: properties.id'));
+
+			await expect(
+				channelsPropertiesService.create(mockChannel.id, {
+					id: takenId,
+					type: 'mock',
+					category: PropertyCategory.GENERIC,
+					permissions: [PermissionType.READ_ONLY],
+					data_type: DataTypeType.UNKNOWN,
+					mock_value: 'Random text',
+				} as CreateMockChannelPropertyDto),
+			).rejects.toThrow(DevicesValidationException);
+		});
+
 		it('should create and return a new channel property', async () => {
 			const createDto: CreateMockChannelPropertyDto = {
 				type: 'mock',
@@ -461,7 +526,8 @@ describe('ChannelsPropertiesService', () => {
 
 			expect(result).toEqual(toInstance(MockChannelProperty, mockCreatedProperty));
 			expect(repository.create).toHaveBeenCalledWith(toInstance(MockChannelProperty, mockCreateProperty));
-			expect(repository.save).toHaveBeenCalledWith(toInstance(ChannelPropertyEntity, mockCreatedProperty));
+			// Inserted, not saved: `save()` would treat a client-supplied id that already exists as an update.
+			expect(repository.insert).toHaveBeenCalledWith(toInstance(ChannelPropertyEntity, mockCreatedProperty));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_PROPERTY_CREATED,
 				toInstance(MockChannelProperty, mockCreatedProperty),
@@ -532,6 +598,7 @@ describe('ChannelsPropertiesService', () => {
 			// The source's series is never reached, and no half-created row survives the refusal.
 			expect(propertyValueService.write).not.toHaveBeenCalled();
 			expect(saveSpy).not.toHaveBeenCalled();
+			expect(repository.insert).not.toHaveBeenCalled();
 		});
 
 		it('should still store a value for a property that owns its series', async () => {
@@ -609,7 +676,9 @@ describe('ChannelsPropertiesService', () => {
 
 			jest.spyOn(repository, 'create').mockReturnValue(created);
 
-			const saveSpy = jest.spyOn(repository, 'save').mockResolvedValue(created);
+			const insertSpy = jest
+				.spyOn(repository, 'insert')
+				.mockResolvedValue({ identifiers: [{}], generatedMaps: [], raw: [] } as InsertResult);
 
 			const queryBuilderMock: any = {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
@@ -623,7 +692,7 @@ describe('ChannelsPropertiesService', () => {
 
 			expect(beforeCreate).toHaveBeenCalledTimes(1);
 			expect(beforeCreate.mock.calls[0][1]).toBe(mockChannel.id);
-			expect(beforeCreate.mock.invocationCallOrder[0]).toBeLessThan(saveSpy.mock.invocationCallOrder[0]);
+			expect(beforeCreate.mock.invocationCallOrder[0]).toBeLessThan(insertSpy.mock.invocationCallOrder[0]);
 		});
 
 		// The hook judges the row against the device's *category* — a projection is compared to the spec
@@ -661,10 +730,10 @@ describe('ChannelsPropertiesService', () => {
 			const created = toInstance(MockChannelProperty, { ...createDto, id: uuid().toString() });
 
 			jest.spyOn(repository, 'create').mockReturnValue(created);
-			jest.spyOn(repository, 'save').mockImplementation((): Promise<MockChannelProperty> => {
-				order.push('save');
+			jest.spyOn(repository, 'insert').mockImplementation((): Promise<InsertResult> => {
+				order.push('insert');
 
-				return Promise.resolve(created);
+				return Promise.resolve({ identifiers: [{}], generatedMaps: [], raw: [] } as InsertResult);
 			});
 
 			const queryBuilderMock: any = {
@@ -687,7 +756,7 @@ describe('ChannelsPropertiesService', () => {
 
 			await channelsPropertiesService.create(mockChannel.id, createDto);
 
-			expect(order).toEqual(['lock:enter', 'hook', 'save', 'lock:exit']);
+			expect(order).toEqual(['lock:enter', 'hook', 'insert', 'lock:exit']);
 		});
 
 		it('should persist nothing when the beforeCreate hook rejects the attachment', async () => {
@@ -734,6 +803,7 @@ describe('ChannelsPropertiesService', () => {
 			// No row, no event, and no afterCreate hook — a refused attachment leaves nothing behind for
 			// anything downstream to observe.
 			expect(saveSpy).not.toHaveBeenCalled();
+			expect(repository.insert).not.toHaveBeenCalled();
 			expect(afterCreate).not.toHaveBeenCalled();
 			expect(eventEmitter.emit).not.toHaveBeenCalled();
 		});
