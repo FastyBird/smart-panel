@@ -1,125 +1,107 @@
 {
-	"menu": {
-		"clients": "MCP clients"
-	},
+	"menu": { "clients": "Klienti MCP" },
 	"actions": {
-		"create": "Create client",
-		"edit": "Edit",
-		"save": "Save",
-		"rotate": "Rotate",
-		"revoke": "Revoke",
-		"delete": "Delete",
-		"cancel": "Cancel",
-		"done": "Done",
-		"addOrigin": "Add origin",
-		"removeOrigin": "Remove origin",
-		"copyEndpoint": "Copy endpoint"
+		"create": "Vytvoriť klienta",
+		"edit": "Upraviť",
+		"save": "Uložiť",
+		"rotate": "Obnoviť",
+		"revoke": "Odvolať",
+		"delete": "Odstrániť",
+		"cancel": "Zrušiť",
+		"done": "Hotovo",
+		"addOrigin": "Pridať zdroj",
+		"removeOrigin": "Odobrať zdroj",
+		"copyEndpoint": "Kopírovať koncový bod"
 	},
 	"capabilities": {
-		"read": {
-			"title": "Read",
-			"description": "Read bounded home, device, weather, energy, and security context."
-		},
-		"write": {
-			"title": "Write",
-			"description": "Set supported device properties directly. This can affect physical devices."
-		},
-		"trigger": {
-			"title": "Trigger",
-			"description": "Run scenes and higher-level space lighting actions. This can affect physical devices."
-		}
+		"read": { "title": "Čítanie", "description": "Čítanie obmedzeného kontextu domácnosti, zariadení, počasia, energie a zabezpečenia." },
+		"write": { "title": "Zápis", "description": "Priame nastavovanie podporovaných vlastností zariadení. Môže ovplyvniť fyzické zariadenia." },
+		"trigger": { "title": "Spúšťanie", "description": "Spúšťanie scén a nadradených akcií osvetlenia. Môže ovplyvniť fyzické zariadenia." }
 	},
 	"config": {
 		"about": {
-			"title": "Secure agent access",
-			"description": "MCP exposes only a curated catalog to installation-local clients. It is not a generic OpenAPI proxy."
+			"title": "Bezpečný prístup pre agentov",
+			"description": "MCP sprístupňuje lokálnym klientom iba vybraný katalóg. Nie je všeobecným proxy rozhraním OpenAPI."
 		},
-		"enabled": {
-			"title": "Enable MCP endpoint"
-		},
+		"enabled": { "title": "Povoliť koncový bod MCP" },
 		"endpoint": {
-			"title": "Installation MCP endpoint",
-			"description": "Use this URL with a trusted MCP client and the one-time bearer credential."
+			"title": "Koncový bod MCP tejto inštalácie",
+			"description": "Použite túto adresu URL s dôveryhodným klientom MCP a jednorazovo zobrazenými prihlasovacími údajmi."
 		},
 		"capabilities": {
-			"title": "Installation capability ceiling",
-			"warningTitle": "Physical device access",
-			"warningDescription": "Write and trigger capabilities can change physical device state. Grant only what each client needs."
+			"title": "Limit oprávnení inštalácie",
+			"warningTitle": "Prístup k fyzickým zariadeniam",
+			"warningDescription": "Oprávnenia na zápis a spúšťanie môžu meniť stav fyzických zariadení. Každému klientovi udeľte iba potrebné oprávnenia."
 		},
 		"allowedOrigins": {
-			"title": "Additional allowed browser origins",
-			"description": "Optional normalized origins for browser-based MCP clients. LAN server clients usually do not need this.",
+			"title": "Ďalšie povolené zdroje prehliadača",
+			"description": "Voliteľné normalizované zdroje pre klientov MCP v prehliadači. Klienti v lokálnej sieti ich zvyčajne nepotrebujú.",
 			"placeholder": "https://agent.example.com",
-			"invalid": "Use an absolute HTTP(S) origin without a path, query, fragment, or credentials."
+			"invalid": "Použite absolútny zdroj HTTP(S) bez cesty, parametrov, fragmentu a prihlasovacích údajov."
 		}
 	},
 	"clients": {
-		"title": "MCP clients",
-		"subtitle": "Create and manage installation-local agent credentials.",
-		"securityTitle": "Use trusted networks",
-		"securityDescription": "Prefer LAN or VPN access and HTTPS. Credentials are shown once and cannot be retrieved later.",
+		"title": "Klienti MCP",
+		"subtitle": "Vytvárajte a spravujte lokálne prihlasovacie údaje agentov pre túto inštaláciu.",
+		"securityTitle": "Používajte dôveryhodné siete",
+		"securityDescription": "Uprednostnite prístup cez LAN alebo VPN a HTTPS. Prihlasovacie údaje sa zobrazia iba raz a neskôr ich nemožno získať.",
 		"columns": {
-			"name": "Client",
-			"status": "Status",
-			"capabilities": "Capabilities",
-			"expires": "Expires",
-			"lastUsed": "Last used",
-			"actions": "Actions"
+			"name": "Klient",
+			"status": "Stav",
+			"capabilities": "Oprávnenia",
+			"expires": "Platnosť do",
+			"lastUsed": "Naposledy použité",
+			"actions": "Akcie"
 		},
-		"empty": "No MCP clients have been created.",
-		"none": "None",
-		"never": "Never",
-		"noDescription": "No description"
+		"empty": "Zatiaľ neboli vytvorení žiadni klienti MCP.",
+		"none": "Žiadne",
+		"never": "Nikdy",
+		"noDescription": "Bez popisu"
 	},
 	"clientForm": {
-		"createTitle": "Create MCP client",
-		"editTitle": "Edit MCP client",
-		"name": "Name",
-		"nameRequired": "Enter a client name.",
-		"description": "Description",
-		"enabled": "Enabled",
-		"capabilities": "Client capabilities",
-		"ceilingHint": "Only capabilities enabled in the module configuration can be granted.",
-		"expiresInDays": "Credential lifetime (days)",
-		"expiryRequired": "Choose a finite credential lifetime."
+		"createTitle": "Vytvoriť klienta MCP",
+		"editTitle": "Upraviť klienta MCP",
+		"name": "Názov",
+		"nameRequired": "Zadajte názov klienta.",
+		"description": "Popis",
+		"enabled": "Povolené",
+		"capabilities": "Oprávnenia klienta",
+		"ceilingHint": "Udeliť možno iba oprávnenia povolené v konfigurácii modulu.",
+		"expiresInDays": "Platnosť prihlasovacích údajov (dni)",
+		"expiryRequired": "Vyberte konečnú dobu platnosti prihlasovacích údajov."
 	},
 	"rotate": {
-		"title": "Rotate credential",
-		"warning": "The current credential is revoked immediately. Connected clients must be updated with the new token."
+		"title": "Obnoviť prihlasovacie údaje",
+		"warning": "Aktuálne prihlasovacie údaje budú okamžite odvolané. Pripojených klientov treba aktualizovať novým tokenom."
 	},
 	"token": {
-		"title": "Copy the MCP credential now",
-		"warningTitle": "Shown only once",
-		"warningDescription": "Save the credential for {name} in a secure password manager. It cannot be retrieved after this dialog closes.",
-		"copy": "Copy credential",
-		"copied": "Copied"
+		"title": "Teraz skopírujte prihlasovacie údaje MCP",
+		"warningTitle": "Zobrazia sa iba raz",
+		"warningDescription": "Uložte prihlasovacie údaje klienta {name} do bezpečného správcu hesiel. Po zatvorení tohto dialógu ich už nemožno získať.",
+		"copy": "Kopírovať prihlasovacie údaje",
+		"copied": "Skopírované"
 	},
-	"status": {
-		"active": "Active",
-		"disabled": "Disabled",
-		"revoked": "Revoked",
-		"expired": "Expired"
-	},
+	"status": { "active": "Aktívny", "disabled": "Zakázaný", "revoked": "Odvolaný", "expired": "Platnosť vypršala" },
 	"confirm": {
-		"revoke": "Revoke the current credential for {name}? Connected clients will lose access immediately.",
-		"delete": "Delete {name}? Its credential will be revoked and the client record cannot be recovered."
+		"revoke": "Odvolať aktuálne prihlasovacie údaje klienta {name}? Pripojení klienti okamžite stratia prístup.",
+		"delete": "Odstrániť klienta {name}? Jeho prihlasovacie údaje budú odvolané a záznam klienta nebude možné obnoviť."
 	},
 	"messages": {
-		"configSaved": "MCP configuration saved.",
-		"configSaveFailed": "MCP configuration could not be saved.",
-		"endpointCopied": "MCP endpoint copied.",
-		"copyFailed": "The value could not be copied.",
-		"capabilitiesOutsideCeiling": "Client capabilities must stay within the module capability ceiling.",
-		"loadFailed": "MCP clients could not be loaded.",
-		"created": "MCP client created.",
-		"createFailed": "MCP client could not be created.",
-		"updated": "MCP client updated.",
-		"updateFailed": "MCP client could not be updated.",
-		"rotated": "MCP credential rotated.",
-		"rotateFailed": "MCP credential could not be rotated.",
-		"revoked": "MCP client revoked.",
-		"revokeFailed": "MCP client could not be revoked.",
-		"deleted": "MCP client deleted.",
-		"deleteFailed": "MCP client could not be deleted."
+		"configSaved": "Konfigurácia MCP bola uložená.",
+		"configSaveFailed": "Konfiguráciu MCP sa nepodarilo uložiť.",
+		"endpointCopied": "Koncový bod MCP bol skopírovaný.",
+		"copyFailed": "Hodnotu sa nepodarilo skopírovať.",
+		"capabilitiesOutsideCeiling": "Oprávnenia klienta musia zostať v rámci limitu oprávnení modulu.",
+		"loadFailed": "Klientov MCP sa nepodarilo načítať.",
+		"created": "Klient MCP bol vytvorený.",
+		"createFailed": "Klienta MCP sa nepodarilo vytvoriť.",
+		"updated": "Klient MCP bol aktualizovaný.",
+		"updateFailed": "Klienta MCP sa nepodarilo aktualizovať.",
+		"rotated": "Prihlasovacie údaje MCP boli obnovené.",
+		"rotateFailed": "Prihlasovacie údaje MCP sa nepodarilo obnoviť.",
+		"revoked": "Klient MCP bol odvolaný.",
+		"revokeFailed": "Klienta MCP sa nepodarilo odvolať.",
+		"deleted": "Klient MCP bol odstránený.",
+		"deleteFailed": "Klienta MCP sa nepodarilo odstrániť."
 	}
 }

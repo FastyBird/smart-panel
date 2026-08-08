@@ -1,125 +1,113 @@
 {
-	"menu": {
-		"clients": "MCP clients"
-	},
+	"menu": { "clients": "Klienci MCP" },
 	"actions": {
-		"create": "Create client",
-		"edit": "Edit",
-		"save": "Save",
-		"rotate": "Rotate",
-		"revoke": "Revoke",
-		"delete": "Delete",
-		"cancel": "Cancel",
-		"done": "Done",
-		"addOrigin": "Add origin",
-		"removeOrigin": "Remove origin",
-		"copyEndpoint": "Copy endpoint"
+		"create": "Utwórz klienta",
+		"edit": "Edytuj",
+		"save": "Zapisz",
+		"rotate": "Odnów",
+		"revoke": "Unieważnij",
+		"delete": "Usuń",
+		"cancel": "Anuluj",
+		"done": "Gotowe",
+		"addOrigin": "Dodaj źródło",
+		"removeOrigin": "Usuń źródło",
+		"copyEndpoint": "Kopiuj endpoint"
 	},
 	"capabilities": {
-		"read": {
-			"title": "Read",
-			"description": "Read bounded home, device, weather, energy, and security context."
-		},
+		"read": { "title": "Odczyt", "description": "Odczyt ograniczonych informacji o domu, urządzeniach, pogodzie, energii i bezpieczeństwie." },
 		"write": {
-			"title": "Write",
-			"description": "Set supported device properties directly. This can affect physical devices."
+			"title": "Zapis",
+			"description": "Bezpośrednie ustawianie obsługiwanych właściwości urządzeń. Może to wpływać na urządzenia fizyczne."
 		},
 		"trigger": {
-			"title": "Trigger",
-			"description": "Run scenes and higher-level space lighting actions. This can affect physical devices."
+			"title": "Uruchamianie",
+			"description": "Uruchamianie scen i nadrzędnych akcji oświetlenia. Może to wpływać na urządzenia fizyczne."
 		}
 	},
 	"config": {
 		"about": {
-			"title": "Secure agent access",
-			"description": "MCP exposes only a curated catalog to installation-local clients. It is not a generic OpenAPI proxy."
+			"title": "Bezpieczny dostęp agentów",
+			"description": "MCP udostępnia lokalnym klientom tylko wybrany katalog. Nie jest ogólnym proxy OpenAPI."
 		},
-		"enabled": {
-			"title": "Enable MCP endpoint"
-		},
+		"enabled": { "title": "Włącz endpoint MCP" },
 		"endpoint": {
-			"title": "Installation MCP endpoint",
-			"description": "Use this URL with a trusted MCP client and the one-time bearer credential."
+			"title": "Endpoint MCP instalacji",
+			"description": "Użyj tego adresu URL z zaufanym klientem MCP i poświadczeniem wyświetlanym tylko raz."
 		},
 		"capabilities": {
-			"title": "Installation capability ceiling",
-			"warningTitle": "Physical device access",
-			"warningDescription": "Write and trigger capabilities can change physical device state. Grant only what each client needs."
+			"title": "Limit uprawnień instalacji",
+			"warningTitle": "Dostęp do urządzeń fizycznych",
+			"warningDescription": "Uprawnienia zapisu i uruchamiania mogą zmieniać stan urządzeń fizycznych. Przyznawaj klientom tylko niezbędne uprawnienia."
 		},
 		"allowedOrigins": {
-			"title": "Additional allowed browser origins",
-			"description": "Optional normalized origins for browser-based MCP clients. LAN server clients usually do not need this.",
+			"title": "Dodatkowe dozwolone źródła przeglądarki",
+			"description": "Opcjonalne znormalizowane źródła dla klientów MCP w przeglądarce. Klienci w sieci lokalnej zwykle ich nie potrzebują.",
 			"placeholder": "https://agent.example.com",
-			"invalid": "Use an absolute HTTP(S) origin without a path, query, fragment, or credentials."
+			"invalid": "Użyj bezwzględnego źródła HTTP(S) bez ścieżki, zapytania, fragmentu ani poświadczeń."
 		}
 	},
 	"clients": {
-		"title": "MCP clients",
-		"subtitle": "Create and manage installation-local agent credentials.",
-		"securityTitle": "Use trusted networks",
-		"securityDescription": "Prefer LAN or VPN access and HTTPS. Credentials are shown once and cannot be retrieved later.",
+		"title": "Klienci MCP",
+		"subtitle": "Twórz i zarządzaj lokalnymi poświadczeniami agentów dla tej instalacji.",
+		"securityTitle": "Korzystaj z zaufanych sieci",
+		"securityDescription": "Preferuj dostęp przez LAN lub VPN oraz HTTPS. Poświadczenia są wyświetlane tylko raz i nie można ich później odzyskać.",
 		"columns": {
-			"name": "Client",
-			"status": "Status",
-			"capabilities": "Capabilities",
-			"expires": "Expires",
-			"lastUsed": "Last used",
-			"actions": "Actions"
+			"name": "Klient",
+			"status": "Stan",
+			"capabilities": "Uprawnienia",
+			"expires": "Wygasa",
+			"lastUsed": "Ostatnio użyto",
+			"actions": "Akcje"
 		},
-		"empty": "No MCP clients have been created.",
-		"none": "None",
-		"never": "Never",
-		"noDescription": "No description"
+		"empty": "Nie utworzono jeszcze żadnych klientów MCP.",
+		"none": "Brak",
+		"never": "Nigdy",
+		"noDescription": "Bez opisu"
 	},
 	"clientForm": {
-		"createTitle": "Create MCP client",
-		"editTitle": "Edit MCP client",
-		"name": "Name",
-		"nameRequired": "Enter a client name.",
-		"description": "Description",
-		"enabled": "Enabled",
-		"capabilities": "Client capabilities",
-		"ceilingHint": "Only capabilities enabled in the module configuration can be granted.",
-		"expiresInDays": "Credential lifetime (days)",
-		"expiryRequired": "Choose a finite credential lifetime."
+		"createTitle": "Utwórz klienta MCP",
+		"editTitle": "Edytuj klienta MCP",
+		"name": "Nazwa",
+		"nameRequired": "Wprowadź nazwę klienta.",
+		"description": "Opis",
+		"enabled": "Włączony",
+		"capabilities": "Uprawnienia klienta",
+		"ceilingHint": "Można przyznać tylko uprawnienia włączone w konfiguracji modułu.",
+		"expiresInDays": "Okres ważności poświadczenia (dni)",
+		"expiryRequired": "Wybierz ograniczony okres ważności poświadczenia."
 	},
 	"rotate": {
-		"title": "Rotate credential",
-		"warning": "The current credential is revoked immediately. Connected clients must be updated with the new token."
+		"title": "Odnów poświadczenie",
+		"warning": "Bieżące poświadczenie zostanie natychmiast unieważnione. Połączone klienty trzeba zaktualizować przy użyciu nowego tokenu."
 	},
 	"token": {
-		"title": "Copy the MCP credential now",
-		"warningTitle": "Shown only once",
-		"warningDescription": "Save the credential for {name} in a secure password manager. It cannot be retrieved after this dialog closes.",
-		"copy": "Copy credential",
-		"copied": "Copied"
+		"title": "Skopiuj teraz poświadczenie MCP",
+		"warningTitle": "Wyświetlane tylko raz",
+		"warningDescription": "Zapisz poświadczenie klienta {name} w bezpiecznym menedżerze haseł. Po zamknięciu tego okna nie będzie można go odzyskać.",
+		"copy": "Kopiuj poświadczenie",
+		"copied": "Skopiowano"
 	},
-	"status": {
-		"active": "Active",
-		"disabled": "Disabled",
-		"revoked": "Revoked",
-		"expired": "Expired"
-	},
+	"status": { "active": "Aktywny", "disabled": "Wyłączony", "revoked": "Unieważniony", "expired": "Wygasły" },
 	"confirm": {
-		"revoke": "Revoke the current credential for {name}? Connected clients will lose access immediately.",
-		"delete": "Delete {name}? Its credential will be revoked and the client record cannot be recovered."
+		"revoke": "Unieważnić bieżące poświadczenie klienta {name}? Połączeni klienci natychmiast utracą dostęp.",
+		"delete": "Usunąć klienta {name}? Jego poświadczenie zostanie unieważnione, a rekordu klienta nie będzie można odzyskać."
 	},
 	"messages": {
-		"configSaved": "MCP configuration saved.",
-		"configSaveFailed": "MCP configuration could not be saved.",
-		"endpointCopied": "MCP endpoint copied.",
-		"copyFailed": "The value could not be copied.",
-		"capabilitiesOutsideCeiling": "Client capabilities must stay within the module capability ceiling.",
-		"loadFailed": "MCP clients could not be loaded.",
-		"created": "MCP client created.",
-		"createFailed": "MCP client could not be created.",
-		"updated": "MCP client updated.",
-		"updateFailed": "MCP client could not be updated.",
-		"rotated": "MCP credential rotated.",
-		"rotateFailed": "MCP credential could not be rotated.",
-		"revoked": "MCP client revoked.",
-		"revokeFailed": "MCP client could not be revoked.",
-		"deleted": "MCP client deleted.",
-		"deleteFailed": "MCP client could not be deleted."
+		"configSaved": "Konfiguracja MCP została zapisana.",
+		"configSaveFailed": "Nie udało się zapisać konfiguracji MCP.",
+		"endpointCopied": "Endpoint MCP został skopiowany.",
+		"copyFailed": "Nie udało się skopiować wartości.",
+		"capabilitiesOutsideCeiling": "Uprawnienia klienta muszą mieścić się w limicie uprawnień modułu.",
+		"loadFailed": "Nie udało się wczytać klientów MCP.",
+		"created": "Klient MCP został utworzony.",
+		"createFailed": "Nie udało się utworzyć klienta MCP.",
+		"updated": "Klient MCP został zaktualizowany.",
+		"updateFailed": "Nie udało się zaktualizować klienta MCP.",
+		"rotated": "Poświadczenie MCP zostało odnowione.",
+		"rotateFailed": "Nie udało się odnowić poświadczenia MCP.",
+		"revoked": "Klient MCP został unieważniony.",
+		"revokeFailed": "Nie udało się unieważnić klienta MCP.",
+		"deleted": "Klient MCP został usunięty.",
+		"deleteFailed": "Nie udało się usunąć klienta MCP."
 	}
 }
