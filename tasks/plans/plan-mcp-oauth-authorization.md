@@ -110,6 +110,9 @@ amend ADR 0002.
 - [ ] Bind OAuth subscriptions to client, grant, access-token, optional refresh-family IDs, and access-token expiry.
 - [ ] Close only the matching subscriptions before client, grant, access-token, or refresh-family revocation reports
       success, and automatically close each stream when its access token expires.
+- [ ] Handle `UsersModule.User.Updated` and `UsersModule.User.Deleted`: when a grant approver is deleted or no longer
+      has owner/admin role, revoke every grant and token artifact they approved and close matching subscriptions;
+      preserve grants for profile-only updates by an authorized approver.
 - [ ] Close all MCP subscriptions when the module is disabled or its public OAuth identity rotates.
 - [ ] Add revoke-all recovery action and document password-reset versus OAuth-revocation semantics.
 - [ ] Add audit events and unit/e2e coverage for targeted and global invalidation.
@@ -122,7 +125,7 @@ amend ADR 0002.
 - [ ] E2E: discovery, consent approval/denial, PKCE success/failure, RFC 8252 loopback port variation, strict redirect
       rejection otherwise, code replay, scope reduction, expiry, refresh rotation/reuse, revocation, wrong
       issuer/resource/audience, cross-client isolation, and redaction; cover open-stream abort on token expiry and
-      client/grant/access-token/refresh-family revocation.
+      client/grant/access-token/refresh-family revocation, plus approver demotion/deletion invalidation.
 - [ ] Reverse-proxy E2E: explicit external prefix, hostile forwarded headers, untrusted proxy, trusted proxy, public URL
       change, and rollback.
 - [ ] Codex smoke: discovery, authorization, list/call, refresh, scope failure, and revocation; record exact version and

@@ -112,6 +112,7 @@ authorization server and therefore do not remove the need for the component spik
 - Refresh-token rotation and reuse-family revocation.
 - Immediate denial and subscription closure after client, grant, access-token, or refresh-family revocation and at
   access-token expiry.
+- Grant, token, and subscription invalidation when the approving owner/admin is demoted or deleted.
 - Reverse-proxy path prefixes without trusting forwarded headers.
 - Coexistence of static URN-audience credentials and OAuth HTTPS-resource credentials.
 

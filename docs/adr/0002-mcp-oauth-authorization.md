@@ -157,8 +157,9 @@ broader scope set, or expired/revoked grant requires a fresh consent decision.
 
 Account recovery remains the existing owner recovery procedure, including `auth:reset`. Resetting a password or user
 session does not silently revoke OAuth grants. The recovery UI and runbook must offer an explicit “revoke all MCP OAuth
-grants” action for suspected compromise. Disabling/deleting the approving user, disabling MCP, or rotating the OAuth
-server secret revokes affected grants and subscriptions according to documented policy.
+grants” action for suspected compromise. Deleting an approving user or changing that user to any role other than owner
+or administrator revokes every grant they approved and its matching subscriptions. Disabling MCP or rotating the OAuth
+server secret applies the corresponding global revocation policy.
 
 ### 7. Revocation and administrative control
 
@@ -169,6 +170,11 @@ Revoking any of those artifacts aborts exactly the matching active subscriptions
 reports success. The subscription registry also schedules an abort at access-token expiry, because a long-lived stream
 does not re-run per-request authentication while it is open. Disabling the MCP module closes all MCP subscriptions and
 denies both authorization and resource requests.
+
+An MCP OAuth lifecycle listener handles `UsersModule.User.Updated` and `UsersModule.User.Deleted`. When the emitted user
+no longer exists or no longer has the owner/admin role required to approve MCP grants, the listener revokes all grants
+approved by that user and their access and refresh artifacts, then closes their matching subscriptions before the
+listener reports completion. A profile-only update by an owner/admin does not revoke grants.
 
 Client and grant mutations are audited. Logs may contain IDs, scope names, denial codes, and timestamps, but never raw
 codes, access tokens, refresh tokens, PKCE verifiers, cookies, passwords, or token hashes.
@@ -205,6 +211,7 @@ reissue or downgrade an OAuth token into a static credential.
 | Proxy/header spoofing and DNS rebinding | Explicit public URL, trusted Host/Origin policy, ignore forwarded headers unless proxy trust is configured |
 | Client, grant, token, or refresh-family revocation with an open stream | Bind subscriptions to every authorization artifact and abort targeted streams before the mutation reports success |
 | Access token expires while a stream is open | Register the token expiry with the subscription and abort the stream at that deadline |
+| A grant approver is demoted or deleted | Listen for user update/delete events and revoke every grant, token artifact, and subscription approved by a user who is no longer owner/admin |
 | Brute force and artifact enumeration | Separate limits for login, authorize, token, and revocation endpoints; uniform OAuth errors where required |
 | Backup cloning | Preserve installation UUID for identity but rotate/revoke OAuth and static credentials for a new physical installation |
 | Compromised owner/admin account | Existing login hardening, complete OAuth audit, revoke-all control, documented recovery workflow |
