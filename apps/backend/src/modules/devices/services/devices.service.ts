@@ -616,10 +616,6 @@ export class DevicesService {
 
 		const device = await this.getOneOrThrow(id);
 
-		// Taken before anything is merged in, so `beforeUpdate` below can tell an actual change from a
-		// PATCH that merely echoed a field back unchanged.
-		const previous = { ...device } as Readonly<Partial<TDevice>>;
-
 		const mapping = this.devicesMapperService.getMapping<TDevice, any, TUpdateDTO>(device.type);
 
 		const dtoInstance = await this.validateDto<TUpdateDTO>(mapping.updateDto, updateDto);
@@ -754,12 +750,6 @@ export class DevicesService {
 		// structure does not satisfy. The structural writes take the same lock (see
 		// DeviceStructureLockService).
 		await this.structureLock.runExclusive(async (): Promise<void> => {
-			// The type owner's last look at the merged row, before anything is written — the only point at
-			// which an invariant spanning a field the PATCH sent and one it did not is decidable.
-			if (mapping.beforeUpdate) {
-				await mapping.beforeUpdate(device as TDevice, previous);
-			}
-
 			// Written through a row carrying no relations, not through the entity the decisions above were
 			// made on. `DeviceEntity.channels` is `cascade: true`, so saving the loaded entity re-saves
 			// whatever channels it happens to hold — and TypeORM reads a child that is *missing* from a
@@ -780,27 +770,6 @@ export class DevicesService {
 				loadEagerRelations: false,
 			});
 
-			// A system hide never overwrites an operator's, whatever order the two requests arrive in.
-			// `hidden_by: user` is a deliberate setting that both unhide paths refuse to reverse, and
-			// stamping `system` over it would hand the row to `unhideAbandonedSources`, which would then
-			// undo the operator's hide the moment the last virtual reference goes away — an explicit
-			// choice reversed by a caller that only meant to record why *it* wanted the row hidden. The
-			// device is hidden either way, which is all the claim was for, so the rest of the patch still
-			// applies and only the provenance is left alone.
-			if (
-				row &&
-				updateFields.hiddenBy === DeviceHiddenBy.SYSTEM &&
-				row.hidden === true &&
-				row.hiddenBy === DeviceHiddenBy.USER
-			) {
-				this.logger.debug(
-					`Kept the operator's hide provenance on device id=${device.id}; a system claim does not overwrite it`,
-				);
-
-				delete updateFields.hidden;
-				delete updateFields.hiddenBy;
-			}
-
 			// The row is gone, so a concurrent `remove()` deleted it after this call read it. There is
 			// nothing left to update, and saving the entity loaded at the top is not a way to say so:
 			// TypeORM's `save` looks the primary key up, finds nothing and INSERTs — the PATCH would
@@ -820,10 +789,46 @@ export class DevicesService {
 			// condition in the statements that write it (see DeviceZonesService.setDeviceZones).
 			this.assertPlacementChangeAllowed(row, dtoInstance);
 
+			// A system hide never overwrites an operator's, whatever order the two requests arrive in.
+			// `hidden_by: user` is a deliberate setting that both unhide paths refuse to reverse, and
+			// stamping `system` over it would hand the row to `unhideAbandonedSources`, which would then
+			// undo the operator's hide the moment the last virtual reference goes away — an explicit
+			// choice reversed by a caller that only meant to record why *it* wanted the row hidden. The
+			// device is hidden either way, which is all the claim was for, so the rest of the patch still
+			// applies and only the provenance is left alone.
+			if (
+				updateFields.hiddenBy === DeviceHiddenBy.SYSTEM &&
+				row.hidden === true &&
+				row.hiddenBy === DeviceHiddenBy.USER
+			) {
+				this.logger.debug(
+					`Kept the operator's hide provenance on device id=${device.id}; a system claim does not overwrite it`,
+				);
+
+				delete updateFields.hidden;
+				delete updateFields.hiddenBy;
+			}
+
+			// The baseline the type owner judges against is taken from this row, not from the entity this
+			// call loaded. Two PATCHes moving the same device capture the same `previous` before either
+			// reaches the lock, and `assertCategoryChangeSafe` deliberately forgives whatever the baseline
+			// already suffers from — so the second request, judging against a category the first has since
+			// replaced, could reintroduce exactly the defect the first one fixed and still be allowed. Read
+			// under the lock, the baseline is the category the device actually has.
+			const persistedPrevious = { ...row } as Readonly<Partial<TDevice>>;
+
 			Object.assign(row, updateFields);
 
 			if (dtoInstance.room_id === null) {
 				row.roomId = null;
+			}
+
+			// The type owner's last look at the merged row, before anything is written — the only point at
+			// which an invariant spanning a field the PATCH sent and one it did not is decidable. Judged on
+			// the row this write is about to store rather than on the one loaded at the top, so what is
+			// judged and what is written cannot disagree.
+			if (mapping.beforeUpdate) {
+				await mapping.beforeUpdate(row, persistedPrevious);
 			}
 
 			await repository.save(row);

@@ -201,7 +201,7 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
+import { type RouteLocationResolvedGeneric, onBeforeRouteLeave, useRouter } from 'vue-router';
 
 import { ElButton, ElCard, ElIcon, ElScrollbar, ElStep, ElSteps } from 'element-plus';
 
@@ -301,6 +301,14 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 		];
 	}
 );
+
+// The handlers below are every way *out of the wizard* the wizard itself offers. They are not every
+// way out of the view: the breadcrumb is a router link, and the browser's back button and the sidebar
+// answer to nobody here. Leaving while the create is in flight unmounts the wizard with the request
+// still running, so it goes on to create the device and hide its sources after the user has left —
+// with the step that would have reported either outcome gone. The request cannot be cancelled, so the
+// navigation is what waits.
+onBeforeRouteLeave((): boolean => !submitting.value);
 
 const onCancel = (): void => {
 	// Guarded here as well as on the buttons, because the controls are duplicated for small screens and

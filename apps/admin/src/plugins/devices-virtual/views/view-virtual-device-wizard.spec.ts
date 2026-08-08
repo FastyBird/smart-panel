@@ -29,6 +29,7 @@ import ViewVirtualDeviceWizard from './view-virtual-device-wizard.vue';
 vi.setConfig({ testTimeout: 15000 });
 
 const mocks = vi.hoisted(() => ({
+	routeLeaveGuard: undefined as unknown as () => boolean,
 	isMDDevice: true,
 	isLGDevice: true,
 	routerPush: vi.fn(),
@@ -160,6 +161,11 @@ vi.mock('vue-router', () => ({
 		replace: mocks.routerReplace,
 		resolve: mocks.routerResolve,
 	}),
+	// Captured rather than ignored: the guard it registers is what stops a route out of the view — the
+	// breadcrumb, the browser's back button, the sidebar — while the create is still in flight.
+	onBeforeRouteLeave: (guard: () => boolean) => {
+		mocks.routeLeaveGuard = guard;
+	},
 }));
 
 vi.mock('../../../modules/devices', () => ({
@@ -467,6 +473,30 @@ describe('ViewVirtualDeviceWizard', () => {
 
 		expect(wizard.wrapper.find('[data-test-id="wizard-back"]').attributes('disabled')).toBeDefined();
 		expect(wizard.wrapper.find('[data-test-id="wizard-cancel"]').attributes('disabled')).toBeDefined();
+	});
+
+	// Disabling the buttons only covers the ways out the wizard itself offers. The breadcrumb is a
+	// router link, and the browser's back button and the sidebar answer to nobody here — leaving that way
+	// unmounts the wizard with the request still running, so it goes on to create the device and hide its
+	// sources after the user has left, with the step that would have reported either outcome gone.
+	it('refuses to leave the route while a create is in flight, and allows it again afterwards', async () => {
+		const wizard = mountWizard();
+
+		await wizard.chooseCategory(DevicesModuleDeviceCategory.lighting);
+		await wizard.mapSlot(DevicesModuleChannelPropertyCategory.on, shellyRelayPropertyId);
+		await wizard.setName('Living Room Light');
+
+		expect(mocks.routeLeaveGuard()).toBe(true);
+
+		await wizard.wrapper.findComponent({ name: 'VirtualWizardReviewStep' }).vm.$emit('submitting', true);
+		await nextTick();
+
+		expect(mocks.routeLeaveGuard()).toBe(false);
+
+		await wizard.wrapper.findComponent({ name: 'VirtualWizardReviewStep' }).vm.$emit('submitting', false);
+		await nextTick();
+
+		expect(mocks.routeLeaveGuard()).toBe(true);
 	});
 
 	it('moves back to the previous step without losing what was already chosen', async () => {

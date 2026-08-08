@@ -920,6 +920,48 @@ describe('DevicesService', () => {
 			expect(saved?.hiddenBy).toBe(DeviceHiddenBy.SYSTEM);
 		});
 
+		// Two PATCHes moving the same device capture the same entity before either reaches the lock, and
+		// `assertCategoryChangeSafe` deliberately forgives whatever its baseline already suffers from — so
+		// a second request judging against a category the first has since replaced could reintroduce the
+		// very defect the first one fixed. The baseline has to be read where the write happens.
+		it('judges the type owner hook against the row it re-read, not the entity it loaded', async () => {
+			const deviceId = uuid().toString();
+			const loadedBeforeTheOtherPatch = {
+				id: deviceId,
+				type: 'mock',
+				category: DeviceCategory.GENERIC,
+			} as unknown as MockDevice;
+			// The other request committed while this one was queued behind the lock.
+			const rowAsItStandsNow = {
+				id: deviceId,
+				type: 'mock',
+				category: DeviceCategory.LIGHTING,
+			} as unknown as MockDevice;
+
+			const beforeUpdate = jest.fn().mockResolvedValue(undefined);
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+				beforeUpdate,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(loadedBeforeTheOtherPatch);
+			jest.spyOn(repository, 'findOne').mockResolvedValue(rowAsItStandsNow);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+
+			await service.update(deviceId, { type: 'mock', name: 'Renamed' } as UpdateMockDeviceDto);
+
+			const [judged, baseline] = beforeUpdate.mock.calls[0] as [MockDevice, { category?: DeviceCategory }];
+
+			// The baseline is the category the device actually has …
+			expect(baseline.category).toBe(DeviceCategory.LIGHTING);
+			// … and what is judged is the row this write is about to store.
+			expect(judged).toBe(rowAsItStandsNow);
+		});
+
 		it('should update and return the device', async () => {
 			const updateDto: UpdateMockDeviceDto = {
 				type: 'mock',
