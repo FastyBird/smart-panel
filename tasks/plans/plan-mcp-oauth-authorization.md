@@ -45,14 +45,14 @@ phase; it does not authorize an improvised OAuth implementation.
 - [ ] Mount it in a test-only NestJS/Fastify application without a second listener and without a catch-all route.
 - [ ] Resolve the backend CommonJS versus dependency ESM boundary in production build and Jest.
 - [ ] Provide a minimal TypeORM-backed adapter; reject in-memory persistence outside tests.
-- [ ] Prove authorization code plus PKCE `S256`, exact redirects, `resource`, response `iss`, opaque tokens, rotation,
-      reuse detection, and revocation.
+- [ ] Prove authorization code plus PKCE `S256`, RFC 8252 redirect matching, `resource`, response `iss`, opaque tokens,
+      rotation, reuse detection, and revocation.
 - [ ] Snapshot metadata, explicitly advertise only public-client authentication method `none`, and verify disabled
       dependency features are not advertised.
 - [ ] Prove Smart Panel can own the authenticated login/consent interaction without exposing passwords to the OAuth
       component.
-- [ ] Add focused negative tests for code replay, PKCE downgrade, redirect mismatch, issuer mismatch, and resource
-      mismatch.
+- [ ] Add focused tests for code replay, PKCE downgrade, issuer/resource mismatch, exact non-loopback redirects,
+      accepted ephemeral ports on loopback IP literals, and rejected address/path changes on loopback redirects.
 
 **Gate:** If any required behavior needs handwritten protocol replacement or unsupported dependency internals, stop and
 amend ADR 0002.
@@ -75,7 +75,8 @@ amend ADR 0002.
 
 **Goal:** Complete the browser flow behind the disabled OAuth configuration flag.
 
-- [ ] Add owner/admin client pre-registration APIs with exact redirect validation and no public client secret.
+- [ ] Add owner/admin client pre-registration APIs with exact redirect validation except the RFC 8252 runtime-port rule
+      for native loopback IP literals, and no public client secret.
 - [ ] Implement authorization code plus mandatory PKCE `S256`, required `resource`, response `iss`, single-use codes,
       and protocol-correct OAuth errors through the selected component.
 - [ ] Implement token exchange and optional `offline_access` refresh with rotation/reuse detection; advertise
@@ -118,9 +119,10 @@ amend ADR 0002.
 
 **Goal:** Prove the complete security profile before documenting it as supported.
 
-- [ ] E2E: discovery, consent approval/denial, PKCE success/failure, exact redirects, code replay, scope reduction,
-      expiry, refresh rotation/reuse, revocation, wrong issuer/resource/audience, cross-client isolation, and redaction;
-      cover open-stream abort on token expiry and client/grant/access-token/refresh-family revocation.
+- [ ] E2E: discovery, consent approval/denial, PKCE success/failure, RFC 8252 loopback port variation, strict redirect
+      rejection otherwise, code replay, scope reduction, expiry, refresh rotation/reuse, revocation, wrong
+      issuer/resource/audience, cross-client isolation, and redaction; cover open-stream abort on token expiry and
+      client/grant/access-token/refresh-family revocation.
 - [ ] Reverse-proxy E2E: explicit external prefix, hostile forwarded headers, untrusted proxy, trusted proxy, public URL
       change, and rollback.
 - [ ] Codex smoke: discovery, authorization, list/call, refresh, scope failure, and revocation; record exact version and

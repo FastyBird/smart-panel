@@ -53,8 +53,9 @@ RFC 9700. It implements RFC 6750, RFC 7009, RFC 7636, RFC 8252, RFC 8414, RFC 87
 applicable.
 
 The only initial interactive flow is authorization code with PKCE `S256`. Codes are single-use and expire after at
-most 60 seconds. Redirect URIs use exact string matching. Authorization responses include `iss`, including error
-responses, and metadata advertises `authorization_response_iss_parameter_supported: true`.
+most 60 seconds. Redirect URIs use exact string matching except for the runtime port of native loopback IP literals, as
+required by RFC 8252. Authorization responses include `iss`, including error responses, and metadata advertises
+`authorization_response_iss_parameter_supported: true`.
 
 Metadata advertises only features that are actually enabled. It explicitly advertises `none` as the sole initial
 token-endpoint authentication method and lists `offline_access` in `scopes_supported` because the refresh policy below
@@ -89,7 +90,10 @@ resource and issuer no longer match; it does not change the installation UUID or
 ### 4. Client registration
 
 The first release uses owner/admin pre-registration. A public client receives a generated client ID, no client secret,
-and exact redirect URI allowlist. Codex and Claude Code both document this configuration path.
+and a redirect URI allowlist. HTTPS redirects and `localhost` hostname redirects match exactly. Native `http` redirects
+using the loopback IP literals `127.0.0.1` or `[::1]` match scheme, literal address, path, query, and trailing slash
+exactly but accept any runtime port, as required by RFC 8252 section 7.3. Codex and Claude Code both document the
+predefined-client configuration path.
 
 CIMD is the preferred direction in MCP `2026-07-28`, but is deferred until its draft revision and outbound metadata
 fetch controls are proven compatible. DCR is deprecated by the current MCP revision and is not required by the two
@@ -189,8 +193,8 @@ reissue or downgrade an OAuth token into a static credential.
 
 | Threat | Required control |
 | --- | --- |
-| Authorization-code interception or replay | PKCE `S256`, 60-second single-use codes, exact client/redirect/resource binding |
-| Redirect exfiltration | Owner-created exact allowlist; HTTPS except exact native loopback URIs; no wildcards, fragments, or prefix matching |
+| Authorization-code interception or replay | PKCE `S256`, 60-second single-use codes, and exact client/resource/redirect binding except the RFC 8252 loopback-IP port |
+| Redirect exfiltration | Owner-created allowlist; HTTPS except native loopback redirects; only loopback IP literals may vary the port; no wildcards, fragments, or general prefix matching |
 | CSRF and login/consent confusion | OAuth `state` handled by clients, same-site interaction cookies, authenticated interaction binding, explicit approve/deny |
 | Authorization-server mix-up | RFC 9207 `iss` in success and error responses; exact issuer in discovery and stored artifacts |
 | Token replay at another service or installation | Exact RFC 8707 resource/audience plus issuer, installation, client, and token-type validation |
@@ -231,7 +235,8 @@ Rejected. It breaks credential isolation, audience semantics, revocation behavio
 
 - Smart Panel remains usable as a standalone installation and owns the complete consent/revocation experience.
 - The backend gains persistent OAuth state and a carefully bounded authorization-server dependency.
-- Owners must pre-register the first Codex/Claude clients and configure fixed exact callback URIs.
+- Owners must pre-register the first Codex/Claude clients and configure callback URIs; native loopback IP callbacks may
+  select an ephemeral runtime port under RFC 8252.
 - DCR's attack surface is avoided, but one-click setup for clients that cannot accept a predefined client ID is
   deferred.
 - Public URL changes intentionally force OAuth reauthorization while static LAN/VPN credentials remain stable.

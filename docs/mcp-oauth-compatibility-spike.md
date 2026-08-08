@@ -55,29 +55,31 @@ the endpoints exist.
 
 | Host | Documented registration paths | Relevant behavior | Release use |
 | --- | --- | --- | --- |
-| Codex CLI/app | Predefined client ID; OAuth discovery used by `codex mcp login`; ChatGPT connectors additionally support CIMD and DCR | Streamable HTTP OAuth, scopes, RFC 8707 resource override, fixed callback port/URL, PKCE | Target 1 |
+| Codex CLI/app | Predefined client ID; OAuth discovery used by `codex mcp login`; ChatGPT connectors additionally support CIMD and DCR | Streamable HTTP OAuth, scopes, RFC 8707 resource override, fixed or ephemeral loopback callback, PKCE | Target 1 |
 | Claude Code | CIMD, DCR, or predefined public/confidential client | RFC 9728 discovery, HTTP OAuth, fixed loopback callback, automatic refresh, scope pinning | Target 2 |
 | MCP TypeScript client / Inspector | Programmatic provider or interactive inspector | Fine-grained discovery, PKCE, token and negative-path tests | Automated harness, not one of the two user hosts |
 | ChatGPT connector | CIMD preferred, DCR fallback, or predefined client | Cloud callback, authorization code plus PKCE, resource binding | Follow-up compatibility target |
 
-Both initial target hosts can use an owner-created public client ID and a fixed, exactly registered loopback redirect.
-That means DCR is not required for the first supported profile. The live smoke test must record exact host versions,
-callback URIs, requested metadata, requested scopes, refresh behavior, and revocation behavior.
+Both initial target hosts can use an owner-created public client ID and a registered loopback redirect. That means DCR
+is not required for the first supported profile. The live smoke test must record exact host versions, callback URIs,
+requested metadata, requested scopes, refresh behavior, and revocation behavior.
 
 ## Registration decision from the spike
 
 The first release supports owner/admin pre-registration of public clients with:
 
 - a generated, non-secret client ID;
-- one or more exact redirect URIs;
+- one or more registered redirect URIs;
 - `authorization_code` and optional `refresh_token` grants only;
 - `none` token-endpoint authentication only;
 - an approved maximum capability set; and
 - an enabled/revoked state.
 
-Loopback HTTP redirect URIs are permitted only for native clients and are stored and compared exactly, including host,
-port, path, and trailing slash. Other redirect URIs require HTTPS. Wildcards, fragments, credentials, and redirect URI
-prefix matching are forbidden.
+Loopback HTTP redirect URIs are permitted only for native clients. For the loopback IP literals `127.0.0.1` and `[::1]`,
+RFC 8252 requires the authorization server to accept any runtime port while matching the scheme, literal address, path,
+query, and trailing slash exactly. A registered `localhost` hostname redirect must keep an exact port because the RFC
+8252 variable-port exception applies only to loopback IP literals. Other redirect URIs require HTTPS and exact string
+matching. Wildcards, fragments, credentials, and general redirect URI prefix matching are forbidden.
 
 CIMD is deferred until the chosen authorization component supports the same draft revision as the current MCP
 specification and Smart Panel has a reviewed SSRF-safe metadata fetch policy. DCR is not implemented unless a supported
@@ -103,7 +105,7 @@ authorization server and therefore do not remove the need for the component spik
 
 ## Risks to prove with live tests
 
-- Exact callback URI formats for current Codex and Claude Code releases.
+- Callback URI formats for current Codex and Claude Code releases, including an ephemeral loopback IP port.
 - RFC 8414 discovery for an issuer containing a path component.
 - `resource` propagation at authorization, code exchange, and refresh.
 - `iss` presence in both successful and error authorization responses.
