@@ -69,7 +69,8 @@ amend ADR 0002.
 - [ ] Reject forwarded headers unless a separately explicit trusted-proxy policy validates the immediate proxy.
 - [ ] Add a distinct OAuth MCP principal/token type and prove rejection by REST, WebSocket, display, user, personal, and
       static-MCP validation paths.
-- [ ] Add unit tests for expiry, family rotation/reuse, installation binding, public URL changes, and log redaction.
+- [ ] Add unit tests for access-token expiry capped at grant expiry, family rotation/reuse, installation binding,
+      public URL changes, and log redaction.
 
 ## Phase 3 — Authorization, consent, and token endpoints
 
@@ -94,7 +95,8 @@ amend ADR 0002.
 - [ ] Publish path-aware RFC 9728 protected-resource metadata for the canonical MCP resource.
 - [ ] Publish path-aware RFC 8414 authorization-server metadata containing only implemented capabilities.
 - [ ] Add RFC 6750 `WWW-Authenticate` challenges with `resource_metadata` and minimum scopes.
-- [ ] Require exact issuer/resource/audience/client/installation/expiry/grant/token validation for OAuth bearer tokens.
+- [ ] Require exact issuer/resource/audience/client/installation/expiry/grant/token validation for OAuth bearer tokens,
+      including the grant approver's current owner/admin role.
 - [ ] Keep static URN-audience validation working through its existing isolated path.
 - [ ] Map `mcp:read`, `mcp:write`, and `mcp:trigger` to the four-way live capability intersection.
 - [ ] Return protocol-correct 401 versus 403 scope challenges and recheck scopes before every tool execution.
@@ -109,19 +111,25 @@ amend ADR 0002.
 
 - [ ] Add list/inspect/disable/revoke APIs for OAuth clients, grants, access tokens, and refresh families.
 - [ ] Add Admin client/grant/token management views and revoke confirmations.
-- [ ] Bind OAuth subscriptions to client, grant, access-token, optional refresh-family IDs, and access-token expiry.
+- [ ] Bind OAuth subscriptions to client, grant, access-token, optional refresh-family IDs, and an authorization
+      deadline equal to the earlier of access-token or grant expiry.
 - [ ] Close only the matching subscriptions before client, grant, access-token, or refresh-family revocation reports
-      success, and automatically close each stream when its access token expires.
-- [ ] Handle `UsersModule.User.Updated` and `UsersModule.User.Deleted`: when a grant approver is deleted or no longer
-      has owner/admin role, revoke every grant and token artifact they approved and close matching subscriptions;
-      preserve grants for profile-only updates by an authorized approver.
-- [ ] Close all MCP subscriptions when the module is disabled or its public OAuth identity rotates.
+      success, and automatically close each stream at its authorization deadline.
+- [ ] Replace fire-and-forget approver invalidation with an awaited lifecycle path for `UsersModule.User.Updated` and
+      `UsersModule.User.Deleted`: when a grant approver is deleted or no longer has owner/admin role, revoke every grant
+      and token artifact they approved and close matching subscriptions before the user mutation returns success;
+      propagate invalidation failures and preserve grants for profile-only updates by an authorized approver.
+- [ ] Close all MCP subscriptions when the module is disabled or its public OAuth identity rotates; on OAuth
+      server-secret rotation, revoke every OAuth artifact and close every OAuth subscription.
 - [ ] Add revoke-all recovery action and document password-reset versus OAuth-revocation semantics.
 - [ ] Add audit events and unit/e2e coverage for targeted and global invalidation.
+- [ ] Prove user update/delete promises remain pending until approver invalidation and stream closure finish, propagate
+      invalidation failure, and never leave a demoted/deleted approver's grant usable.
 - [ ] Regenerate OpenAPI/admin types through the normal generators.
-- [ ] Add the user-facing OAuth enable switch only after startup verifies that expiry timers, targeted subscription
-      aborts, approver lifecycle listeners, public-identity rotation, revoke controls, audit hooks, and rate limits are
-      registered; fail closed and leave every OAuth route unmounted if any readiness check fails.
+- [ ] Add the user-facing OAuth enable switch only after startup verifies authorization-deadline timers, targeted
+      subscription aborts, awaited approver lifecycle invalidation, public-identity/server-secret rotation, revoke
+      controls, audit hooks, and rate limits are registered; fail closed and leave every OAuth route unmounted if any
+      readiness check fails.
 - [ ] On enable, mount protected-resource metadata, authorization-server metadata, authorization/token/revocation
       endpoints, OAuth challenges, and OAuth MCP bearer validation as one surface; never expose a partial subset.
 
@@ -132,7 +140,8 @@ amend ADR 0002.
 - [ ] E2E: discovery, consent approval/denial, PKCE success/failure, RFC 8252 loopback port variation, strict redirect
       rejection otherwise, code replay, scope reduction, expiry, refresh rotation/reuse, revocation, wrong
       issuer/resource/audience, cross-client isolation, and redaction; cover open-stream abort on token expiry and
-      client/grant/access-token/refresh-family revocation, plus approver demotion/deletion invalidation.
+      grant expiry, client/grant/access-token/refresh-family revocation, awaited approver demotion/deletion
+      invalidation, and global server-secret rotation.
 - [ ] Reverse-proxy E2E: explicit external prefix, hostile forwarded headers, untrusted proxy, trusted proxy, public URL
       change, and rollback.
 - [ ] Codex smoke: discovery, authorization, list/call, refresh, scope failure, and revocation; record exact version and

@@ -110,7 +110,8 @@ personal tokens, display tokens, or static MCP tokens.
 
 The initial token policy is:
 
-- opaque, high-entropy access tokens stored only as hashes, with a maximum lifetime of 10 minutes;
+- opaque, high-entropy access tokens stored only as hashes, with a maximum lifetime of 10 minutes and an expiry no
+  later than their grant expiry;
 - opaque refresh tokens stored only as hashes, issued only when `offline_access` is explicitly requested and consented;
 - refresh rotation on every use with reuse detection that revokes the entire token family;
 - a maximum refresh-family lifetime of 30 days;
@@ -133,8 +134,9 @@ module capability ceiling
   ∩ access-token scopes
 ```
 
-The intersection is recomputed for every request and immediately before tool execution. Scope reduction never waits
-for access-token expiry.
+The intersection is recomputed for every request and immediately before tool execution. The grant check also confirms
+that its approving user still exists with owner/admin role. Scope reduction or approver demotion never waits for
+access-token expiry.
 
 ### 6. Login, consent, and recovery
 
@@ -158,23 +160,28 @@ broader scope set, or expired/revoked grant requires a fresh consent decision.
 Account recovery remains the existing owner recovery procedure, including `auth:reset`. Resetting a password or user
 session does not silently revoke OAuth grants. The recovery UI and runbook must offer an explicit “revoke all MCP OAuth
 grants” action for suspected compromise. Deleting an approving user or changing that user to any role other than owner
-or administrator revokes every grant they approved and its matching subscriptions. Disabling MCP or rotating the OAuth
-server secret applies the corresponding global revocation policy.
+or administrator uses an awaited lifecycle path that revokes every grant they approved and its matching subscriptions
+before the user mutation returns success. Disabling MCP or rotating the OAuth server secret applies the corresponding
+global revocation policy; server-secret rotation revokes every OAuth artifact and closes every OAuth subscription.
 
 ### 7. Revocation and administrative control
 
 Owners and administrators can list clients, grants, active access tokens, and refresh-token families without seeing raw
 secrets. They can disable a client, revoke a grant, revoke a token family, or revoke one access token. Every OAuth
-subscription is bound to its client, grant, access-token ID, refresh-family ID when present, and access-token expiry.
+subscription is bound to its client, grant, access-token ID, refresh-family ID when present, and an authorization
+deadline equal to the earlier of its access-token expiry or grant expiry.
 Revoking any of those artifacts aborts exactly the matching active subscriptions before the administrative mutation
-reports success. The subscription registry also schedules an abort at access-token expiry, because a long-lived stream
-does not re-run per-request authentication while it is open. Disabling the MCP module closes all MCP subscriptions and
-denies both authorization and resource requests.
+reports success. The subscription registry schedules an abort at the authorization deadline, because a long-lived
+stream does not re-run per-request authentication while it is open. Disabling the MCP module closes all MCP
+subscriptions and denies both authorization and resource requests.
 
-An MCP OAuth lifecycle listener handles `UsersModule.User.Updated` and `UsersModule.User.Deleted`. When the emitted user
-no longer exists or no longer has the owner/admin role required to approve MCP grants, the listener revokes all grants
-approved by that user and their access and refresh artifacts, then closes their matching subscriptions before the
-listener reports completion. A profile-only update by an owner/admin does not revoke grants.
+Approver invalidation must use an awaited lifecycle path, such as a directly orchestrated service or propagated
+`emitAsync`; the existing fire-and-forget `eventEmitter.emit` calls are not sufficient. For
+`UsersModule.User.Updated` and `UsersModule.User.Deleted`, when the user no longer exists or no longer has the
+owner/admin role required to approve MCP grants, the awaited handler revokes all grants approved by that user and their
+access and refresh artifacts, then closes their matching subscriptions before resolving. Its failure prevents the user
+mutation from returning success, while live grant validation still fails closed against the user's persisted role. A
+profile-only update by an owner/admin does not revoke grants.
 
 Client and grant mutations are audited. Logs may contain IDs, scope names, denial codes, and timestamps, but never raw
 codes, access tokens, refresh tokens, PKCE verifiers, cookies, passwords, or token hashes.
@@ -183,9 +190,10 @@ codes, access tokens, refresh tokens, PKCE verifiers, cookies, passwords, or tok
 
 OAuth remains disabled by default. Adding persistence, consent, token, discovery, or validation code does not make any
 OAuth route reachable: implementation phases keep the surface behind an internal test-only gate. The user-facing enable
-switch is added only after the application can verify that access-token expiry timers, targeted client/grant/token/family
-subscription aborts, approver update/delete invalidation, public-identity rotation, owner/admin revoke controls, audit
-hooks, and endpoint rate limits are all registered. A failed readiness check leaves protected-resource metadata,
+switch is added only after the application can verify that access-token/grant authorization-deadline timers, targeted
+client/grant/token/family subscription aborts, awaited approver update/delete invalidation, public-identity and
+server-secret rotation invalidation, owner/admin revoke controls, audit hooks, and endpoint rate limits are all
+registered. A failed readiness check leaves protected-resource metadata,
 authorization-server metadata, authorization/token/revocation endpoints, OAuth challenges, and OAuth MCP bearer
 validation unmounted together. The initial static bearer behavior remains unchanged during that failure.
 
@@ -218,8 +226,9 @@ reissue or downgrade an OAuth token into a static credential.
 | Malicious dynamic/CIMD registration | No DCR/CIMD in the initial profile; later enablement requires SSRF, quota, and redirect-policy review |
 | Proxy/header spoofing and DNS rebinding | Explicit public URL, trusted Host/Origin policy, ignore forwarded headers unless proxy trust is configured |
 | Client, grant, token, or refresh-family revocation with an open stream | Bind subscriptions to every authorization artifact and abort targeted streams before the mutation reports success |
-| Access token expires while a stream is open | Register the token expiry with the subscription and abort the stream at that deadline |
-| A grant approver is demoted or deleted | Listen for user update/delete events and revoke every grant, token artifact, and subscription approved by a user who is no longer owner/admin |
+| An access token or its grant expires while a stream is open | Cap token expiry at grant expiry and abort the subscription at the earlier authorization deadline |
+| A grant approver is demoted or deleted | Use an awaited user-lifecycle path and do not report the user mutation successful until every affected grant, token artifact, and subscription is revoked |
+| OAuth server secret is rotated after compromise | Revoke all OAuth artifacts and close all OAuth subscriptions as one global invalidation operation |
 | A phased rollout exposes OAuth before revocation controls | Do not add the enable switch or mount any OAuth route until a startup readiness gate verifies every invalidation and admin control |
 | Brute force and artifact enumeration | Separate limits for login, authorize, token, and revocation endpoints; uniform OAuth errors where required |
 | Backup cloning | Preserve installation UUID for identity but rotate/revoke OAuth and static credentials for a new physical installation |

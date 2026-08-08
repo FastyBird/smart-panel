@@ -111,10 +111,11 @@ authorization server and therefore do not remove the need for the component spik
 - `iss` presence in both successful and error authorization responses.
 - Refresh-token rotation and reuse-family revocation.
 - Immediate denial and subscription closure after client, grant, access-token, or refresh-family revocation and at
-  access-token expiry.
-- Grant, token, and subscription invalidation when the approving owner/admin is demoted or deleted.
-- Atomic production activation only after expiry, revocation, approver-lifecycle, identity-rotation, admin, audit, and
-  rate-limit controls pass the readiness gate.
+  the earlier of access-token or grant expiry.
+- Awaited grant, token, and subscription invalidation when the approving owner/admin is demoted or deleted.
+- Global artifact revocation and stream closure on OAuth server-secret rotation.
+- Atomic production activation only after expiry, revocation, approver-lifecycle, public-identity/server-secret
+  rotation, admin, audit, and rate-limit controls pass the readiness gate.
 - Reverse-proxy path prefixes without trusting forwarded headers.
 - Coexistence of static URN-audience credentials and OAuth HTTPS-resource credentials.
 
