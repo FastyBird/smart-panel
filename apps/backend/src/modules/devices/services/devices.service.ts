@@ -709,10 +709,16 @@ export class DevicesService {
 		}
 
 		// Check if any entity fields are actually being changed by comparing with existing values
-		const entityFieldsChanged =
+		// Asked of a row rather than computed once, because the answer depends on *which* row: the write
+		// below happens under the structure lock, several awaited round trips after the read at the top of
+		// this call, and another PATCH can commit in between. A request that looks like a no-op against
+		// the row it read can be a real change against the row it writes — set back to A after someone
+		// else stored B — and announcing nothing there leaves every client on B while the database says
+		// A, with no later event to correct them.
+		const differsFrom = (stored: TDevice): boolean =>
 			Object.keys(updateFields).some((key) => {
 				const newValue = (updateFields as Record<string, unknown>)[key];
-				const existingValue = (device as unknown as Record<string, unknown>)[key];
+				const existingValue = (stored as unknown as Record<string, unknown>)[key];
 
 				// Deep comparison for arrays
 				if (Array.isArray(newValue) && Array.isArray(existingValue)) {
@@ -741,9 +747,14 @@ export class DevicesService {
 				return newValue !== existingValue;
 			}) ||
 			// Explicit check for room_id being set to null (toInstance drops null values)
-			(dtoInstance.room_id !== undefined && device.roomId !== (dtoInstance.room_id ?? null)) ||
-			// Explicit check for zone_ids changes (zone_ids is deleted from dtoInstance before updateFields is computed)
-			(zoneIds !== undefined && JSON.stringify(currentZoneIds) !== JSON.stringify([...(zoneIds ?? [])].sort()));
+			(dtoInstance.room_id !== undefined && stored.roomId !== (dtoInstance.room_id ?? null));
+
+		// Zone membership is written after the lock by its own service, against the list read before it,
+		// so this term is about the request rather than about the row and is decided here.
+		const zonesChanged =
+			zoneIds !== undefined && JSON.stringify(currentZoneIds) !== JSON.stringify([...(zoneIds ?? [])].sort());
+
+		let entityFieldsChanged = zonesChanged;
 
 		Object.assign(device, updateFields);
 
@@ -797,6 +808,10 @@ export class DevicesService {
 			// have this write the placement of a device that is now inert. The zone half carries the same
 			// condition in the statements that write it (see DeviceZonesService.setDeviceZones).
 			this.assertPlacementChangeAllowed(row, dtoInstance);
+
+			// Judged here, against the row this write is about to change, for the reason `differsFrom`
+			// spells out.
+			entityFieldsChanged = zonesChanged || differsFrom(row);
 
 			// A system hide never overwrites an operator's, whatever order the two requests arrive in.
 			// `hidden_by: user` is a deliberate setting that both unhide paths refuse to reverse, and

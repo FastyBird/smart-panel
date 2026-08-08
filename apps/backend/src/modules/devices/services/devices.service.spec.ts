@@ -1041,6 +1041,55 @@ describe('DevicesService', () => {
 			expect(saved?.hiddenBy).toBeNull();
 		});
 
+		// A PATCH that is a no-op against the row it read can be a real change against the row it writes:
+		// another request commits B while this one waits for the lock, and this one then puts A back.
+		// Judged against the stale read it announced nothing, leaving every client on B while the database
+		// said A, with no later event to correct them.
+		it('announces a change that only the freshly locked row reveals', async () => {
+			const deviceId = uuid().toString();
+			const asRead = { id: deviceId, type: 'mock', name: 'Original' } as unknown as MockDevice;
+			// Someone else renamed it while this request was queued behind the lock.
+			const asItStandsNow = { id: deviceId, type: 'mock', name: 'Renamed by someone else' } as unknown as MockDevice;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(asRead);
+			jest.spyOn(repository, 'findOne').mockResolvedValue(asItStandsNow);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+
+			// The same name it read: a no-op against that row, a rename against the one it writes.
+			await service.update(deviceId, { type: 'mock', name: 'Original' } as UpdateMockDeviceDto);
+
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.DEVICE_UPDATED, expect.anything());
+		});
+
+		// The other half: a PATCH that changes nothing at all still announces nothing, so an unrelated
+		// echo of stored values does not wake every client up.
+		it('announces nothing when the patch matches the row it writes', async () => {
+			const deviceId = uuid().toString();
+			const unchanged = { id: deviceId, type: 'mock', name: 'Original' } as unknown as MockDevice;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(unchanged);
+			jest.spyOn(repository, 'findOne').mockResolvedValue({ ...unchanged } as MockDevice);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+
+			await service.update(deviceId, { type: 'mock', name: 'Original' } as UpdateMockDeviceDto);
+
+			expect(eventEmitter.emit).not.toHaveBeenCalledWith(EventType.DEVICE_UPDATED, expect.anything());
+		});
+
 		it('should update and return the device', async () => {
 			const updateDto: UpdateMockDeviceDto = {
 				type: 'mock',
