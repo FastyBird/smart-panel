@@ -122,6 +122,27 @@ export class VirtualPropertyIndexService {
 		private readonly repository: Repository<VirtualChannelPropertyEntity>,
 	) {}
 
+	/**
+	 * Whether any *stored* projection still reads a property of this source device.
+	 *
+	 * The in-memory answers below are as fresh as the last rebuild, which is enough for the reads that
+	 * happen on every value change. It is not enough for a decision that unhides a source device: a
+	 * projection created after that rebuild is committed and invisible here, and nothing re-hides a
+	 * source once it has been made visible, so the physical device would sit beside the virtual one
+	 * that had just claimed it. This asks the database instead, and is only worth its round trip where
+	 * that distinction matters.
+	 */
+	async isSourceDeviceReferenced(sourceDeviceId: string): Promise<boolean> {
+		const referencing = await this.repository
+			.createQueryBuilder('projection')
+			.innerJoin('projection.sourceProperty', 'source')
+			.innerJoin('source.channel', 'sourceChannel')
+			.where('sourceChannel.deviceId = :sourceDeviceId', { sourceDeviceId })
+			.getCount();
+
+		return referencing > 0;
+	}
+
 	/** Which virtual properties project the given source property. O(1), synchronous, no I/O. */
 	findBySourceProperty(id: string): VirtualChannelPropertyEntity[] {
 		return this.bySourceProperty.get(id) ?? [];

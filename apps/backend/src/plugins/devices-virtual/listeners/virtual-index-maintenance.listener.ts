@@ -8,6 +8,7 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { DeviceHiddenBy, DeviceHiddenFilter, EventType } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
@@ -215,6 +216,9 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 		private readonly devicesService: DevicesService,
 		private readonly virtualDevicesService: VirtualDevicesService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
+		// Taken around the decision to unhide a source: the writes that could invalidate that decision —
+		// a projection created against the source — hold the same lock. See unhideAbandonedSources().
+		private readonly structureLock: DeviceStructureLockService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly dataSource: DataSource,
 		// Only ever used to clear `hiddenBy` — the one field of an unhide that UpdateDeviceDto cannot
@@ -577,6 +581,17 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 					error instanceof Error ? error : undefined,
 				);
 
+				// Put back, because this is the only announcement these devices get. The queue is a diff —
+				// a device joins it when a rebuild reports it *re-wired* — so a later pass, working from an
+				// index that has already taken the change in, reports nothing to re-announce. Dropping the
+				// set here therefore leaves an open admin view holding the projection's old source id,
+				// with no remap warning, until someone reloads it. Re-queued rather than retried inline:
+				// the next settled pass is already the retry, and it is the one that knows the transaction
+				// is closed.
+				for (const virtualDeviceId of virtualDeviceIds) {
+					this.pendingAnnounceVirtualDeviceIds.add(virtualDeviceId);
+				}
+
 				return [];
 			});
 
@@ -815,38 +830,43 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 
 		for (const sourceDeviceId of sourceDeviceIds) {
 			try {
-				// Answered from the index this pass just rebuilt, so on a settled pass this is committed
-				// state: anything at all referencing the source means it still has a stand-in and must
-				// stay hidden. Non-empty here is what a rolled-back deletion looks like from the outside
-				// — and equally what a virtual device created in the meantime looks like, which deserves
-				// the same answer.
-				const referencedBy = this.index.findVirtualDeviceIdsBySourceDevice(sourceDeviceId);
+				// Decided and applied under the structure lock, because the decision is about rows another
+				// request can write: a projection created against this source between the check and the
+				// PATCH would leave the device visible beside the virtual device that had just claimed it,
+				// and nothing re-hides a source after the fact. `ChannelsPropertiesService.create()` holds
+				// the same lock, so such a create cannot land inside this window — it either got there
+				// first, and the check below sees it, or it waits, and by then the source is visible,
+				// which is the wizard's own starting state.
+				await this.structureLock.runExclusive(async (): Promise<void> => {
+					// Asked of storage rather than of the index: the index is only as fresh as the rebuild
+					// this pass ran, and the create this guards against is one that committed after it.
+					// Anything at all referencing the source means it still has a stand-in and must stay
+					// hidden — what a rolled-back deletion looks like from the outside, and equally what a
+					// virtual device created in the meantime looks like, which deserves the same answer.
+					if (await this.index.isSourceDeviceReferenced(sourceDeviceId)) {
+						this.logger.debug(`Left source device id=${sourceDeviceId} hidden, a virtual device references it again`);
 
-				if (referencedBy.length > 0) {
-					this.logger.debug(
-						`Left source device id=${sourceDeviceId} hidden, ${referencedBy.length} virtual device(s) reference it again`,
-					);
+						return;
+					}
 
-					continue;
-				}
+					const sourceDevice = await this.devicesService.findOne(sourceDeviceId);
 
-				const sourceDevice = await this.devicesService.findOne(sourceDeviceId);
+					// Gone entirely — a source device can be deleted in the same sweep as the virtual device
+					// that replaced it.
+					if (!sourceDevice) {
+						return;
+					}
 
-				// Gone entirely — a source device can be deleted in the same sweep as the virtual device
-				// that replaced it.
-				if (!sourceDevice) {
-					continue;
-				}
+					// Already visible, or hidden by someone this listener is not entitled to overrule (see the
+					// docstring above and isSystemHidden()).
+					if (!this.isSystemHidden(sourceDevice)) {
+						return;
+					}
 
-				// Already visible, or hidden by someone this listener is not entitled to overrule (see the
-				// docstring above and isSystemHidden()).
-				if (!this.isSystemHidden(sourceDevice)) {
-					continue;
-				}
+					await this.unhideSource(sourceDevice);
 
-				await this.unhideSource(sourceDevice);
-
-				this.logger.debug(`Unhid source device id=${sourceDevice.id}, no virtual device references it anymore`);
+					this.logger.debug(`Unhid source device id=${sourceDevice.id}, no virtual device references it anymore`);
+				});
 			} catch (error) {
 				this.logger.warn(`Failed to unhide abandoned source device id=${sourceDeviceId}: ${error}`);
 			}

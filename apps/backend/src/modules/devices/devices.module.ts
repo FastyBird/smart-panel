@@ -176,6 +176,7 @@ import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidd
 		DeviceConnectionStateService,
 		DeviceProvisionQueueService,
 		DeviceValidationService,
+		DeviceStructureLockService,
 	],
 })
 export class DevicesModule implements OnModuleInit {

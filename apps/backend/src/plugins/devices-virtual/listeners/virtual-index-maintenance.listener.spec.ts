@@ -14,6 +14,7 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../mod
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
+import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
@@ -44,6 +45,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 		rebuild: jest.Mock;
 		findLinksByVirtualDevice: jest.Mock;
 		findVirtualDeviceIdsBySourceDevice: jest.Mock;
+		isSourceDeviceReferenced: jest.Mock;
 	};
 	let status: { recompute: jest.Mock };
 	let devicesService: { findAll: jest.Mock; findOne: jest.Mock; update: jest.Mock };
@@ -144,7 +146,17 @@ describe('VirtualIndexMaintenanceListener', () => {
 	// this file's flushMicrotasks()-based timing already assumes.
 	// `find` answers empty by default: most cases here are about coalescing and status recomputation,
 	// and a device with no orphaned projection is the ordinary shape. The cases that care override it.
-	const orphanQueryStub = { find: jest.fn().mockResolvedValue([]) };
+	// `find` answers the orphan read-back; the builder answers the reference count the unhide decision
+	// makes against storage. Nothing referencing anything, unless a test says otherwise.
+	const referenceCountStub = jest.fn().mockResolvedValue(0);
+	const orphanQueryStub = {
+		find: jest.fn().mockResolvedValue([]),
+		createQueryBuilder: jest.fn(() => ({
+			innerJoin: jest.fn().mockReturnThis(),
+			where: jest.fn().mockReturnThis(),
+			getCount: referenceCountStub,
+		})),
+	};
 
 	const dataSourceStub = {
 		createQueryRunner: () => ({ isTransactionActive: false }),
@@ -154,6 +166,8 @@ describe('VirtualIndexMaintenanceListener', () => {
 	beforeEach(() => {
 		orphanQueryStub.find.mockReset();
 		orphanQueryStub.find.mockResolvedValue([]);
+		referenceCountStub.mockReset();
+		referenceCountStub.mockResolvedValue(0);
 
 		// rebuild() resolves to the transitions it observed; both lists empty is "nothing changed", the
 		// ordinary case for a structural event that did not touch any virtual device's wiring.
@@ -161,6 +175,9 @@ describe('VirtualIndexMaintenanceListener', () => {
 			rebuild: jest.fn().mockResolvedValue(NO_CHANGES),
 			findLinksByVirtualDevice: jest.fn().mockReturnValue([]),
 			findVirtualDeviceIdsBySourceDevice: jest.fn().mockReturnValue([]),
+			// Asked of storage rather than of the in-memory index, because the unhide decision has to see a
+			// projection committed since the last rebuild. Nothing references anything by default.
+			isSourceDeviceReferenced: jest.fn().mockResolvedValue(false),
 		};
 		status = { recompute: jest.fn().mockResolvedValue(undefined) };
 		devicesService = {
@@ -181,6 +198,9 @@ describe('VirtualIndexMaintenanceListener', () => {
 			devicesService as unknown as DevicesService,
 			virtualDevicesService as unknown as VirtualDevicesService,
 			channelsPropertiesStub as unknown as ChannelsPropertiesService,
+			// The real lock: it is dependency-free, re-entrant, and what it serializes — the unhide
+			// decision against a projection create — is exactly what these tests are about.
+			new DeviceStructureLockService(),
 			eventEmitterStub as unknown as EventEmitter2,
 			dataSourceStub as unknown as DataSource,
 			devicesRepository as unknown as Repository<DeviceEntity>,
@@ -397,6 +417,34 @@ describe('VirtualIndexMaintenanceListener', () => {
 		// once for the set rather than once per device.
 		expect(orphanQueryStub.find).toHaveBeenCalledTimes(1);
 		expect(JSON.stringify(orphanQueryStub.find.mock.calls)).toContain('virtual-device');
+		expect(eventEmitterStub.emit).toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_UPDATED, orphan);
+	});
+
+	// The queue is a diff — a device joins it when a rebuild reports it *re-wired* — so a later pass,
+	// working from an index that has already taken the change in, reports nothing to re-announce.
+	// Dropping the set on a failed read-back therefore leaves an open admin view holding the
+	// projection's old source id, with no remap warning, until someone reloads it.
+	it('keeps the pending announcements when the read-back fails, and makes them on the next pass', async () => {
+		const orphan = { id: 'virtual-property', isProjecting: true, sourcePropertyId: null };
+
+		orphanQueryStub.find.mockRejectedValueOnce(new Error('database is locked'));
+		index.rebuild.mockResolvedValue({ rewiredVirtualDeviceIds: ['virtual-device'], abandonedSourceDeviceIds: [] });
+
+		listener.handleStructuralChange();
+
+		await flushMicrotasks();
+
+		expect(eventEmitterStub.emit).not.toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_UPDATED, expect.anything());
+
+		// The next pass reports nothing re-wired — the index has already taken the change in — and the
+		// announcement has to come from the queue that survived.
+		orphanQueryStub.find.mockResolvedValue([orphan]);
+		index.rebuild.mockResolvedValue(NO_CHANGES);
+
+		listener.handleStructuralChange();
+
+		await flushMicrotasks();
+
 		expect(eventEmitterStub.emit).toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_UPDATED, orphan);
 	});
 
@@ -855,6 +903,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				devicesService as unknown as DevicesService,
 				virtualDevicesService as unknown as VirtualDevicesService,
 				channelsPropertiesStub as unknown as ChannelsPropertiesService,
+				new DeviceStructureLockService(),
 				eventEmitterStub as unknown as EventEmitter2,
 				dataSourceStub as unknown as DataSource,
 				devicesRepository as unknown as Repository<DeviceEntity>,
@@ -1033,6 +1082,29 @@ describe('VirtualIndexMaintenanceListener', () => {
 	// The same clean-up the bootstrap reconciliation does, because it is the same unhide: a device that
 	// is no longer hidden must not keep claiming who hid it. Both paths share one helper precisely so
 	// they cannot drift on what unhiding a device consists of.
+	// The decision and the write are one thing: a projection created against the source between them
+	// leaves the physical device visible beside the virtual one that just claimed it, and nothing
+	// re-hides a source afterwards. Asked of storage rather than of the index, because the create this
+	// is about committed *after* the rebuild this pass ran.
+	it('leaves a source hidden when a projection has claimed it since the rebuild', async () => {
+		index.isSourceDeviceReferenced.mockResolvedValue(true);
+		devicesService.findOne.mockResolvedValue({
+			id: 'source-device',
+			type: 'mock',
+			hidden: true,
+			hiddenBy: DeviceHiddenBy.SYSTEM,
+			enabled: true,
+		});
+		index.rebuild.mockResolvedValue({ rewiredVirtualDeviceIds: [], abandonedSourceDeviceIds: ['source-device'] });
+
+		listener.handleStructuralChange();
+
+		await flushMicrotasks();
+
+		expect(index.isSourceDeviceReferenced).toHaveBeenCalledWith('source-device');
+		expect(devicesService.update).not.toHaveBeenCalled();
+	});
+
 	it('clears the provenance of an abandoned source device it unhides', async () => {
 		index.rebuild.mockResolvedValue(rebuiltWithAbandoned('source-device'));
 		devicesService.findOne.mockResolvedValue(abandonedSystemHiddenSource());
@@ -1257,6 +1329,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				{ findOne: jest.fn(), update: jest.fn() } as unknown as DevicesService,
 				{ reportCompatibility: jest.fn().mockReturnValue({ compatible: true }) } as unknown as VirtualDevicesService,
 				channelsPropertiesStub as unknown as ChannelsPropertiesService,
+				new DeviceStructureLockService(),
 				eventEmitterStub as unknown as EventEmitter2,
 				dataSource,
 				{ update: jest.fn() } as unknown as Repository<DeviceEntity>,
@@ -1416,6 +1489,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				devicesService as unknown as DevicesService,
 				virtualDevicesService as unknown as VirtualDevicesService,
 				channelsPropertiesStub as unknown as ChannelsPropertiesService,
+				new DeviceStructureLockService(),
 				eventEmitterStub as unknown as EventEmitter2,
 				stub.dataSource,
 				devicesRepository as unknown as Repository<DeviceEntity>,
@@ -1681,6 +1755,18 @@ describe('VirtualIndexMaintenanceListener', () => {
 				findVirtualDeviceIdsBySourceDevice: jest.fn(
 					(sourceDeviceId: string): string[] => bySourceDevice.get(sourceDeviceId) ?? [],
 				),
+				// Storage, not the map above: this is the read the unhide decision makes under the lock,
+				// and its whole point is to see a link committed since the last rebuild. Here that is the
+				// `links` table, which is what this harness uses for the real one.
+				isSourceDeviceReferenced: jest.fn(async (sourceDeviceId: string): Promise<boolean> => {
+					const rows = (await dataSource
+						.createQueryRunner()
+						.query('SELECT COUNT(*) AS total FROM links WHERE source_device_id = ?', [sourceDeviceId])) as {
+						total: number;
+					}[];
+
+					return (rows[0]?.total ?? 0) > 0;
+				}),
 				/** Resolves the next time a rebuild has actually read the table. */
 				nextRead: (): Promise<void> => new Promise<void>((resolve) => readers.push(resolve)),
 			};
@@ -1790,6 +1876,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				devicesStub as unknown as DevicesService,
 				virtualDevicesService as unknown as VirtualDevicesService,
 				channelsPropertiesStub as unknown as ChannelsPropertiesService,
+				new DeviceStructureLockService(),
 				eventEmitterStub as unknown as EventEmitter2,
 				dataSource,
 				// The provenance clear that follows every unhide. These cases are about *when* the
@@ -1913,6 +2000,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				stuckDevices as unknown as DevicesService,
 				virtualDevicesService as unknown as VirtualDevicesService,
 				channelsPropertiesStub as unknown as ChannelsPropertiesService,
+				new DeviceStructureLockService(),
 				eventEmitterStub as unknown as EventEmitter2,
 				stuckConnection,
 				{ update: jest.fn().mockResolvedValue(undefined) } as unknown as Repository<DeviceEntity>,
@@ -2021,6 +2109,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 					rebuild: jest.fn().mockResolvedValue(NO_CHANGES),
 					findLinksByVirtualDevice: jest.fn().mockReturnValue([]),
 					findVirtualDeviceIdsBySourceDevice: jest.fn().mockReturnValue([]),
+					isSourceDeviceReferenced: jest.fn().mockResolvedValue(false),
 					findBySourceProperty: jest.fn().mockReturnValue([]),
 				} as unknown as VirtualPropertyIndexService,
 				{ recompute: jest.fn().mockResolvedValue(undefined) } as unknown as VirtualStatusListener,
@@ -2031,6 +2120,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 					describeProjectionConstraintMismatch,
 				} as unknown as VirtualDevicesService,
 				channelsPropertiesStub as unknown as ChannelsPropertiesService,
+				new DeviceStructureLockService(),
 				{ emit } as unknown as EventEmitter2,
 				{
 					getRepository: jest.fn().mockReturnValue({
