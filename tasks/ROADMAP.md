@@ -207,15 +207,15 @@ All onboarding device setup tasks complete.
 
 ## 8. Virtual Devices (Epic)
 
-> [EPIC-VIRTUAL-DEVICES](epics/EPIC-VIRTUAL-DEVICES.md) — Status: :construction: In Progress
+> [EPIC-VIRTUAL-DEVICES](archive/EPIC-VIRTUAL-DEVICES.md) — Status: :white_check_mark: Done
 
 Build a device from properties of other devices — splitting one physical device into several, or composing one logical device from several — so the result is indistinguishable from a native device. The two originally-planned plugins (`devices-split`, `devices-combined`) were superseded before implementation by a single `devices-virtual` plugin; see [`docs/superpowers/specs/2026-07-31-virtual-devices-design.md`](../docs/superpowers/specs/2026-07-31-virtual-devices-design.md).
 
 | # | Task | Scope | Status | Notes |
 |---|------|-------|--------|-------|
-| 1 | [FEATURE-DEVICE-VIRTUAL-PLUGIN](../docs/superpowers/specs/2026-07-31-virtual-devices-design.md) | backend, admin, panel | :construction: In Progress | Backend `devices-virtual` plugin + panel registration done; admin creation wizard and `hidden`-flag filtering in admin pickers not started |
+| 1 | [FEATURE-DEVICE-VIRTUAL-PLUGIN](../docs/superpowers/specs/2026-07-31-virtual-devices-design.md) | backend, admin, panel | :white_check_mark: Done | Backend plugin, admin wizard and detail page with remap, `hidden` filtering across every picker, panel rendering. The six closed-loop categories stay blocked by the design's v1 boundary |
 
-**Next up:** Admin creation wizard (spec-driven channel/property mapping) and `hidden`-flag filtering in the admin device pickers — the backend API and panel rendering are already in place.
+**Next up:** controller support, which unblocks the six closed-loop categories the v1 boundary excludes — it needs a control loop with hysteresis and minimum cycle protection, plus user-settable setpoints as owned properties. The engineering backlog is tracked in [TECH-VIRTUAL-DEVICES-FOLLOWUPS](technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md).
 
 ---
 
