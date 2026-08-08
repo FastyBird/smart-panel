@@ -1943,6 +1943,30 @@ describe('VirtualIndexMaintenanceListener', () => {
 		) => {
 			channelsPropertiesStub.findOne.mockResolvedValue(current);
 			const update = jest.fn().mockResolvedValue({ affected });
+			// The orphaning write is a query builder now: it conditions on the source's own `updatedAt` as
+			// well as the link, which a `Repository.update()` criteria object cannot express. The chain is
+			// stubbed so the assertions below can still read what was matched and what was set.
+			const executed = jest.fn().mockResolvedValue({ affected });
+			const wheres: { clause: unknown; params: unknown }[] = [];
+			const builder: Record<string, jest.Mock> = {
+				update: jest.fn(() => builder),
+				set: jest.fn((values: unknown) => {
+					update(values);
+
+					return builder;
+				}),
+				where: jest.fn((clause: unknown, params: unknown) => {
+					wheres.push({ clause, params });
+
+					return builder;
+				}),
+				andWhere: jest.fn((clause: unknown, params: unknown) => {
+					wheres.push({ clause, params });
+
+					return builder;
+				}),
+				execute: executed,
+			};
 			const findOne = jest.fn().mockResolvedValue({ ...dependent, sourcePropertyId: null });
 			const find = jest.fn().mockResolvedValue(dependents);
 			const emit = jest.fn();
@@ -1962,25 +1986,33 @@ describe('VirtualIndexMaintenanceListener', () => {
 				channelsPropertiesStub as unknown as ChannelsPropertiesService,
 				{ emit } as unknown as EventEmitter2,
 				{
-					getRepository: jest.fn().mockReturnValue({ update, findOne, find }),
+					getRepository: jest.fn().mockReturnValue({
+						update,
+						findOne,
+						find,
+						createQueryBuilder: () => builder,
+					}),
+					getMetadata: () => ({ tableName: 'channels_properties' }),
 					createQueryRunner: () => ({ isTransactionActive: false }),
 				} as unknown as DataSource,
 				{ update: jest.fn() } as unknown as Repository<DeviceEntity>,
 			);
 
-			return { subject, update, reportCompatibility, emit, find, describeSentinelMismatch };
+			return { subject, update, reportCompatibility, emit, find, describeSentinelMismatch, wheres, executed };
 		};
 
 		it('orphans the projection it can no longer feed', async () => {
-			const { subject, update, emit } = build({ compatible: false, reason: 'permissions [ro] do not satisfy [rw]' });
+			const { subject, update, emit, wheres } = build({
+				compatible: false,
+				reason: 'permissions [ro] do not satisfy [rw]',
+			});
 
 			await subject.handleSourceMetadataChange(sourceProperty);
 
-			// Keyed on the link, not on the id alone — see the concurrent-remap case below.
-			expect(update).toHaveBeenCalledWith(
-				{ id: 'virtual-property', sourcePropertyId: 'source-property' },
-				{ sourcePropertyId: null },
-			);
+			// Keyed on the link *and* the source's version — see the two cases below for what each guards.
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
+			expect(JSON.stringify(wheres)).toContain('sourcePropertyId = :sourceId');
+			expect(JSON.stringify(wheres)).toContain('src.updatedAt');
 			// Announced, or an open admin keeps the stale link and never shows the remap action.
 			expect(emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_PROPERTY_UPDATED,
@@ -2011,9 +2043,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			await subject.handleSourceMetadataChange(enumSource);
 
-			expect(update).toHaveBeenCalledWith(expect.objectContaining({ id: 'virtual-property' }), {
-				sourcePropertyId: null,
-			});
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
 		});
 
 		// A property's own row is not the only thing that decides what it means: `resolvePropertyUnit`
@@ -2027,9 +2057,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 			await subject.handleSourceChannelChange({ id: 'source-channel' } as unknown as ChannelEntity);
 
 			expect(channelsPropertiesStub.findAll).toHaveBeenCalledWith('source-channel');
-			expect(update).toHaveBeenCalledWith(expect.objectContaining({ id: 'virtual-property' }), {
-				sourcePropertyId: null,
-			});
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
 		});
 
 		it('does nothing for a property nothing projects', async () => {
@@ -2051,9 +2079,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 			await subject.handleSourceMetadataChange(sourceProperty);
 
 			expect(find).toHaveBeenCalledWith(expect.objectContaining({ where: { sourcePropertyId: 'source-property' } }));
-			expect(update).toHaveBeenCalledWith(expect.objectContaining({ id: 'virtual-property' }), {
-				sourcePropertyId: null,
-			});
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
 		});
 
 		// The device relation decides which slot the report is asked about, and neither hop is populated
@@ -2087,9 +2113,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			await subject.handleSourceMetadataChange(sourceProperty);
 
-			expect(update).toHaveBeenCalledWith(expect.objectContaining({ id: 'virtual-property' }), {
-				sourcePropertyId: null,
-			});
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
 		});
 
 		// The payload is a snapshot from when the event was emitted, and this handler is asynchronous. Two
@@ -2137,11 +2161,62 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			await subject.handleSourceMetadataChange(sourceProperty);
 
-			expect(update).toHaveBeenCalledWith(
-				{ id: 'virtual-property', sourcePropertyId: 'source-property' },
-				{ sourcePropertyId: null },
-			);
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
 			expect(emit).not.toHaveBeenCalled();
+		});
+
+		// Re-reading before judging narrowed the window between "this source is incompatible" and "clear
+		// the link"; it did not close it. A second PATCH restoring compatibility can still land in the
+		// await that follows, which is the ordinary repair sequence — break it, see the problem, fix it.
+		// The write names the version it judged, so the row cannot change while it is being matched.
+		it('will not orphan against a source that moved after it was judged', async () => {
+			// The version named is the one the *re-read* carried, not the payload's: the payload is the
+			// snapshot this handler has already decided it cannot trust.
+			const { subject, wheres, executed } = build(
+				{ compatible: false, reason: 'permissions [ro] do not satisfy [rw]' },
+				[dependent],
+				null,
+				1,
+				{
+					id: 'source-property',
+					permissions: ['ro'],
+					dataType: 'bool',
+					updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+				},
+			);
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			const versionClause = wheres.find(
+				(entry) => typeof entry.clause === 'string' && entry.clause.includes('src.updatedAt'),
+			);
+
+			expect(versionClause).toBeDefined();
+			expect(versionClause?.params).toEqual({ sourceUpdatedAt: new Date('2026-01-01T00:00:00.000Z') });
+			expect(executed).toHaveBeenCalled();
+		});
+
+		// A source that has never been updated has a null version, and `= NULL` matches nothing in SQL —
+		// naming it that way would refuse every orphaning of a never-edited source.
+		it('matches a null version with IS NULL rather than equality', async () => {
+			const { subject, wheres } = build(
+				{ compatible: false, reason: 'permissions [ro] do not satisfy [rw]' },
+				[dependent],
+				null,
+				1,
+				{
+					id: 'source-property',
+					permissions: ['ro'],
+					dataType: 'bool',
+					updatedAt: null,
+				},
+			);
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(
+				wheres.some((entry) => typeof entry.clause === 'string' && entry.clause.includes('src.updatedAt IS NULL')),
+			).toBe(true);
 		});
 
 		// Nothing may project a virtual property, so the orphaning emit above — and a CHANNEL_UPDATED on
