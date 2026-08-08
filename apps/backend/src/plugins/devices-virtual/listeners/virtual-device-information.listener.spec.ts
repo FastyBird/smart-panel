@@ -21,8 +21,8 @@ import { VirtualStatusListener } from './virtual-status.listener';
 
 describe('VirtualDeviceInformationListener', () => {
 	let listener: VirtualDeviceInformationListener;
-	let channelsService: { findOneBy: jest.Mock; create: jest.Mock };
-	let channelsPropertiesService: { findOneBy: jest.Mock; create: jest.Mock; update: jest.Mock };
+	let channelsService: { findOneBy: jest.Mock; findOne: jest.Mock; create: jest.Mock };
+	let channelsPropertiesService: { findOneBy: jest.Mock; create: jest.Mock; update: jest.Mock; remove: jest.Mock };
 	let connectivity: { setConnectionState: jest.Mock };
 	let index: { findVirtualDeviceIdsBySourceDevice: jest.Mock; findLinksByVirtualDevice: jest.Mock };
 	let connectionState: { readLatest: jest.Mock };
@@ -71,11 +71,22 @@ describe('VirtualDeviceInformationListener', () => {
 	};
 
 	beforeEach(() => {
-		channelsService = { findOneBy: jest.fn().mockResolvedValue(infoChannel), create: jest.fn() };
+		// `findOne` answers with the channel by default: the synthesis re-reads it after each create to
+		// confirm the channel is still there, and the ordinary case is that it is.
+		channelsService = {
+			findOneBy: jest.fn().mockResolvedValue(infoChannel),
+			findOne: jest.fn().mockResolvedValue(infoChannel),
+			create: jest.fn(),
+		};
 		channelsPropertiesService = {
 			findOneBy: jest.fn().mockResolvedValue(null),
-			create: jest.fn().mockResolvedValue(undefined),
+			// Answers with a row carrying an id, as the real service does — the confirmation below needs
+			// something to remove if the channel turns out to have gone.
+			create: jest.fn((channelId: string, dto: { identifier?: string }) =>
+				Promise.resolve({ id: `${dto.identifier ?? 'property'}-id`, channel: channelId }),
+			),
 			update: jest.fn().mockResolvedValue(undefined),
+			remove: jest.fn().mockResolvedValue(undefined),
 		};
 		connectivity = { setConnectionState: jest.fn().mockResolvedValue(undefined) };
 		index = {
@@ -204,6 +215,26 @@ describe('VirtualDeviceInformationListener', () => {
 				data_type: DataTypeType.STRING,
 			}),
 		);
+	});
+
+	// The synthesis is fire-and-forget off DEVICE_CREATED and nothing waits for it, so the device — and
+	// with it the channel — can be deleted while it runs. A create landing on the far side of that
+	// cascade leaves a property pointing at a channel that no longer exists: unreachable through any
+	// endpoint, and past the cascade that would have taken it. CI caught exactly that as a stray
+	// `serial_number` with a null channel.
+	it('removes a property it created into a channel that has since been deleted', async () => {
+		channelsService.findOne.mockResolvedValue(null);
+
+		await listener.handleDeviceCreated(virtualDevice);
+
+		expect(channelsPropertiesService.remove).toHaveBeenCalled();
+	});
+
+	// The ordinary case, so the cleanup above cannot be satisfied by removing everything it creates.
+	it('keeps the properties it created while their channel is still there', async () => {
+		await listener.handleDeviceCreated(virtualDevice);
+
+		expect(channelsPropertiesService.remove).not.toHaveBeenCalled();
 	});
 
 	it("creates serial_number as an owned, read-only string property set to the device's own id", async () => {
