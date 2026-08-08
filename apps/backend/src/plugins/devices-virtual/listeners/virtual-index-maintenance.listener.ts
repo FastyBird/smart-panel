@@ -1014,7 +1014,19 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			// would present that value as a real reading, and accept a command carrying it.
 			const sentinelMismatch = this.virtualDevicesService.describeSentinelMismatch(dependent, source);
 
-			if (report.compatible && !representationDiverged && sentinelMismatch === null) {
+			// And the same question about their value domains. The slot report cannot answer it either:
+			// both halves fit the slot separately, and the slot is routinely wide enough to admit two
+			// declarations that contradict each other. A source formatted [0, 40] inside a [0, 100]
+			// temperature slot can be widened to [0, 80] and still satisfy the slot, while every reading
+			// above 40 now falls outside the range its projection advertises. Asked of the same method the
+			// write paths use, so an edit cannot leave a link the writes would have refused.
+			const constraintMismatch = this.virtualDevicesService.describeProjectionConstraintMismatch(dependent, source, {
+				category: device.category,
+				channel: channel.category,
+				property: dependent.category,
+			});
+
+			if (report.compatible && !representationDiverged && sentinelMismatch === null && constraintMismatch === null) {
 				continue;
 			}
 
@@ -1022,7 +1034,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				? (report.reason ?? 'incompatible')
 				: representationDiverged
 					? `its representation changed to '${source.dataType}' while the projection declares '${dependent.dataType}'`
-					: (sentinelMismatch ?? 'incompatible');
+					: (sentinelMismatch ?? constraintMismatch ?? 'incompatible');
 
 			this.logger.warn(
 				`Source property id=${payload.id} no longer fits the slot filled by virtual property id=${dependent.id}: ${reason}. Orphaning it.`,

@@ -1944,6 +1944,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 			// What a re-read of the source returns. Defaults to the payload, i.e. nothing changed since
 			// the event was emitted.
 			current: unknown = sourceProperty,
+			constraintMismatch: string | null = null,
 		) => {
 			channelsPropertiesStub.findOne.mockResolvedValue(current);
 			const update = jest.fn().mockResolvedValue({ affected });
@@ -1976,6 +1977,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 			const emit = jest.fn();
 			const reportCompatibility = jest.fn().mockReturnValue(report);
 			const describeSentinelMismatch = jest.fn().mockReturnValue(sentinelMismatch);
+			const describeProjectionConstraintMismatch = jest.fn().mockReturnValue(constraintMismatch);
 
 			const subject = new VirtualIndexMaintenanceListener(
 				{
@@ -1986,7 +1988,11 @@ describe('VirtualIndexMaintenanceListener', () => {
 				} as unknown as VirtualPropertyIndexService,
 				{ recompute: jest.fn().mockResolvedValue(undefined) } as unknown as VirtualStatusListener,
 				{ findOne: jest.fn(), update: jest.fn() } as unknown as DevicesService,
-				{ reportCompatibility, describeSentinelMismatch } as unknown as VirtualDevicesService,
+				{
+					reportCompatibility,
+					describeSentinelMismatch,
+					describeProjectionConstraintMismatch,
+				} as unknown as VirtualDevicesService,
 				channelsPropertiesStub as unknown as ChannelsPropertiesService,
 				{ emit } as unknown as EventEmitter2,
 				{
@@ -2002,7 +2008,17 @@ describe('VirtualIndexMaintenanceListener', () => {
 				{ update: jest.fn() } as unknown as Repository<DeviceEntity>,
 			);
 
-			return { subject, update, reportCompatibility, emit, find, describeSentinelMismatch, wheres, executed };
+			return {
+				subject,
+				update,
+				reportCompatibility,
+				emit,
+				find,
+				describeSentinelMismatch,
+				describeProjectionConstraintMismatch,
+				wheres,
+				executed,
+			};
 		};
 
 		it('orphans the projection it can no longer feed', async () => {
@@ -2230,6 +2246,25 @@ describe('VirtualIndexMaintenanceListener', () => {
 			expect(
 				wheres.some((entry) => typeof entry.clause === 'string' && entry.clause.includes('ch.updatedAt IS NULL')),
 			).toBe(true);
+		});
+
+		// The slot report cannot see this: both halves fit the slot separately, and the slot is routinely
+		// wide enough to admit two declarations that contradict each other. A source formatted [0, 40]
+		// inside a [0, 100] temperature slot can widen to [0, 80] and still satisfy the slot, while every
+		// reading above 40 now falls outside the range its projection advertises.
+		it('orphans a projection whose source widened past the range it advertises', async () => {
+			const { subject, update } = build(
+				{ compatible: true },
+				[dependent],
+				null,
+				1,
+				sourceProperty,
+				'Source property id=source-property ranges [0, 80], outside the range [0, 40] that property id=virtual-property accepts',
+			);
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
 		});
 
 		// Part of what is judged comes off the channel, not the property: `resolvePropertyUnit` derives the

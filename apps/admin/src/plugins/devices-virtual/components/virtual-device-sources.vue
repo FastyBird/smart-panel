@@ -180,7 +180,17 @@ const warningTitle = (warning: IVirtualSourceWarning): string =>
 		property: t(`devicesModule.categories.channelsProperties.${warning.specProperty}`),
 	});
 
+// Which request is allowed to speak for this panel. Two can be in flight at once — the mount fetch and
+// the one the link watcher fires — and they can finish in either order: a source deleted while the
+// panel is opening makes the *newer* request the correct one, and without this the older pre-deletion
+// snapshot would land on top of it and go on listing a device that is gone, beside the orphan warning
+// that says so. Nothing else brings the two back into agreement, because no further link change is
+// coming.
+let sourceRequestCounter = 0;
+
 const fetchSourceDevices = async (): Promise<void> => {
+	const request = ++sourceRequestCounter;
+
 	loading.value = true;
 	loadError.value = null;
 
@@ -191,6 +201,12 @@ const fetchSourceDevices = async (): Promise<void> => {
 				params: { path: { id: props.device.id } },
 			}
 		);
+
+		// Superseded while this was in flight: a newer request owns every field below, including the
+		// error and the spinner, so this one returns without touching any of them.
+		if (request !== sourceRequestCounter) {
+			return;
+		}
 
 		if (!responseData) {
 			// An empty *result* is a legitimate answer this endpoint documents (a virtual device built only
@@ -208,9 +224,15 @@ const fetchSourceDevices = async (): Promise<void> => {
 	} catch (err: unknown) {
 		logger.error('Failed to load virtual device source devices', err);
 
-		loadError.value = t('devicesVirtualPlugin.sources.loadFailed');
+		if (request === sourceRequestCounter) {
+			loadError.value = t('devicesVirtualPlugin.sources.loadFailed');
+		}
 	} finally {
-		loading.value = false;
+		// The spinner belongs to the newest request too: an older one finishing must not clear it while
+		// the one that will actually answer is still running.
+		if (request === sourceRequestCounter) {
+			loading.value = false;
+		}
 	}
 };
 

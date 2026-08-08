@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { computed, nextTick } from 'vue';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -169,6 +169,35 @@ describe('VirtualWizardDetailsStep', () => {
 		await wrapper.setProps({ roomId: ROOM_KITCHEN, name: name.value });
 
 		expect(name.value).toBe('devicesModule.categories.devices.lighting — Kitchen');
+	});
+
+	// The shell renders steps with `v-if`, so going to Review and back remounts this one with the name
+	// already in the model. Seeding the "this was my own suggestion" marker from that name unconditionally
+	// made a name the user typed look like this step's work, and the immediate watcher then replaced it.
+	// Going back to check something and losing what you typed is noticed only after it has happened.
+	it('keeps a custom name when the step is remounted with it already set', async () => {
+		const { wrapper } = mountDetailsStep({
+			category: DevicesModuleDeviceCategory.lighting,
+			roomId: ROOM_LIVING,
+			name: 'Reading lamp',
+		});
+
+		await nextTick();
+
+		expect(wrapper.emitted('update:name')).toBeUndefined();
+	});
+
+	// And the ordinary case still generates: the wizard opens with no name at all.
+	it('still generates when it is remounted with no name yet', async () => {
+		const { wrapper } = mountDetailsStep({
+			category: DevicesModuleDeviceCategory.lighting,
+			roomId: ROOM_LIVING,
+			name: '',
+		});
+
+		await nextTick();
+
+		expect(wrapper.emitted('update:name')).toBeTruthy();
 	});
 
 	it('stops auto-generating once the user edits the name, even if category or room change afterwards', async () => {

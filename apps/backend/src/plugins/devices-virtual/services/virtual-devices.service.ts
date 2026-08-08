@@ -782,6 +782,45 @@ export class VirtualDevicesService {
 	 * inventing a second, worse error for the same cause.
 	 */
 	/**
+	 * Why `sourceProperty`'s value domain does not fit inside `property`'s, or `null` when it does.
+	 *
+	 * Matching data types are not the whole of "speaks the same language", and neither is fitting the
+	 * slot. Both halves are judged against the slot separately, and the slot is routinely wide enough to
+	 * admit two declarations that contradict each other: `temperature.temperature` accepts [0, 100], so a
+	 * source formatted [0, 40] and a projection formatted [60, 100] each pass on their own while every
+	 * reading the source produces falls outside the range its projection advertises.
+	 *
+	 * Asked with `describeFormatMismatch` rather than a second comparison of its own, by handing it the
+	 * *projection* where it normally takes the slot. Both of its directions are then the ones that matter
+	 * here — every value the source can produce has to be legal in the projection, and, when the
+	 * projection is writable, every value the projection may be commanded with has to be acceptable to
+	 * the source — and its step-grid and one-sided-range handling comes along unchanged. One rule, one
+	 * implementation, applied to the other pair.
+	 *
+	 * Public because the write paths are not the only place this has to hold: a source whose format is
+	 * *edited* can walk out of its projection's range while still fitting the slot, which
+	 * `reportCompatibility` cannot see, so the metadata listener asks the same question of the same
+	 * method rather than approximating it.
+	 */
+	describeProjectionConstraintMismatch(
+		property: ChannelPropertyEntity,
+		sourceProperty: ChannelPropertyEntity,
+		specSlot: VirtualCompatibilitySpecSlot,
+	): string | null {
+		const mismatch = this.describeFormatMismatch(
+			{ permissions: property.permissions ?? [], format: property.format, step: property.step },
+			specSlot,
+			sourceProperty,
+		);
+
+		// The slot's name is what `describeFormatMismatch` reaches for when it describes the side it was
+		// handed; here that side is the projection, so the reason has to say so.
+		return mismatch === null
+			? null
+			: mismatch.replace(`'${specSlot.channel}.${specSlot.property}'`, `property id=${property.id}`);
+	}
+
+	/**
 	 * Why `property` may not project `sourceProperty`'s values given their reserved sentinels, or `null`
 	 * when it may.
 	 *
@@ -934,21 +973,10 @@ export class VirtualDevicesService {
 		// projection formatted [60, 100] each fit, and every reading the source produces then falls
 		// outside the range its projection advertises. The same holds for a step grid.
 		//
-		// Asked with `describeFormatMismatch` rather than a second comparison of its own, by handing it
-		// the *projection* where it normally takes the slot. Both of its directions are then the ones that
-		// matter here: every value the source can produce has to be legal in the projection, and — when
-		// the projection is writable — every value the projection may be commanded with has to be
-		// acceptable to the source. One rule, one implementation, applied to the other pair.
-		const projectionMismatch = this.describeFormatMismatch(
-			{ permissions: property.permissions ?? [], format: property.format, step: property.step },
-			specSlot,
-			sourceProperty,
-		);
+		const projectionMismatch = this.describeProjectionConstraintMismatch(property, sourceProperty, specSlot);
 
 		if (projectionMismatch !== null) {
-			throw new VirtualProjectionIncompatibleException(
-				projectionMismatch.replace(`'${specSlot.channel}.${specSlot.property}'`, `property id=${property.id}`),
-			);
+			throw new VirtualProjectionIncompatibleException(projectionMismatch);
 		}
 
 		const sentinelMismatch = this.describeSentinelMismatch(property, sourceProperty);

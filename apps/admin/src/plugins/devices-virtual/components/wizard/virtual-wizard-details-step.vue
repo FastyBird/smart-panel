@@ -126,15 +126,6 @@ const zoneOptions = computed<{ value: string; label: string }[]>(() =>
 	).map((space: ISpace): { value: string; label: string } => ({ value: space.id, label: space.name }))
 );
 
-// The name this step last generated on the user's behalf. As long as the incoming `name` prop still
-// equals it, the name is considered "untouched" and stays auto-generated from category + room; the
-// instant the user (or anything else) sets `name` to something else, generation stops for good. This
-// mount-scoped tracking is deliberately simple rather than perfect: a component remount (leaving this
-// step and coming back) resets it, so a name that happens to already match what generation would
-// produce is — best effort, same tradeoff the mapping step's picker re-hydration makes — treated as
-// untouched only when this ref's initial value already agrees with it.
-const lastAutoName = ref<string>(props.name);
-
 const generatedName = computed<string>((): string => {
 	if (props.category === null) {
 		return '';
@@ -150,6 +141,27 @@ const generatedName = computed<string>((): string => {
 
 	return room ? `${categoryLabel} — ${room.name}` : categoryLabel;
 });
+
+// The name this step last generated on the user's behalf. As long as the incoming `name` prop still
+// equals it, the name is considered "untouched" and stays auto-generated from category + room; the
+// instant the user (or anything else) sets `name` to something else, generation stops for good.
+//
+// Seeded from the incoming name *only when that name is one generation would have produced*. The step
+// is remounted every time the wizard returns to it (the shell renders steps with `v-if`), so seeding
+// unconditionally made a name the user typed look like this step's own work — and the immediate watcher
+// below then replaced it the moment anything recomputed. Going back a step to check something and
+// losing what you had typed is the kind of thing you notice only after it has happened.
+//
+// An empty name counts as untouched too, and is the ordinary case: the wizard opens with no name at
+// all, and generation is what fills it.
+//
+// `null` when the name is the user's, which no generated string can equal, so generation stays off for
+// the life of the mount. A custom name that coincidentally matches the suggestion is still read as
+// untouched — that is inherent to inferring intent from a value rather than tracking it, and lifting
+// the flag into the wizard shell is the only way around it.
+const lastAutoName = ref<string | null>(
+	props.name === '' || props.name === generatedName.value ? props.name : null
+);
 
 watch(
 	generatedName,

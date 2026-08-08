@@ -379,6 +379,42 @@ describe('VirtualDeviceSources', () => {
 		expect((backendClient.GET as Mock).mock.calls.length).toBe(1);
 	});
 
+	// Two requests can be in flight — the mount fetch and the one the link watcher fires — and they can
+	// finish in either order. A source deleted while the panel is opening makes the newer one correct;
+	// the older pre-deletion snapshot landing on top of it would go on listing a device that is gone,
+	// beside the orphan warning that says so, with no further link change coming to repair it.
+	it('ignores a response that a newer request has already superseded', async () => {
+		let releaseMount: ((value: unknown) => void) | undefined;
+
+		(backendClient.GET as Mock)
+			.mockImplementationOnce(
+				() =>
+					new Promise((resolve) => {
+						releaseMount = resolve;
+					})
+			)
+			.mockResolvedValue(respondWith([]));
+
+		const { sourceDevices } = mountSources({
+			properties: [{ id: 'p', valueOrigin: DevicesVirtualPluginValueOrigin.source, sourceProperty: 'source-1' }],
+		});
+
+		// The link changes while the mount request is still out, firing the newer fetch — which resolves
+		// to the empty list, the state after the source was deleted.
+		properties[0] = { ...properties[0], sourceProperty: null } as IVirtualChannelProperty;
+
+		await flushPromises();
+
+		expect(sourceDevices.value).toHaveLength(0);
+
+		// And now the older request answers with the pre-deletion snapshot.
+		releaseMount?.(respondWith([sourceDeviceResponse(uuid(), 'Deleted source')]));
+
+		await flushPromises();
+
+		expect(sourceDevices.value).toHaveLength(0);
+	});
+
 	it('reloads the source devices after a successful remap', async () => {
 		const { wrapper, warnings } = mountSources({
 			properties: [{ id: 'p', valueOrigin: DevicesVirtualPluginValueOrigin.source, sourceProperty: null }],
