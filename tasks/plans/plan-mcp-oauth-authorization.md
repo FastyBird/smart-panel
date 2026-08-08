@@ -78,7 +78,8 @@ amend ADR 0002.
 - [ ] Add owner/admin client pre-registration APIs with exact redirect validation and no public client secret.
 - [ ] Implement authorization code plus mandatory PKCE `S256`, required `resource`, response `iss`, single-use codes,
       and protocol-correct OAuth errors through the selected component.
-- [ ] Implement token exchange and optional `offline_access` refresh with rotation/reuse detection.
+- [ ] Implement token exchange and optional `offline_access` refresh with rotation/reuse detection; advertise
+      `offline_access` in `scopes_supported` without enabling OIDC identity scopes or ID tokens.
 - [ ] Implement RFC 7009 revocation for supported token types.
 - [ ] Add Admin login/consent UI showing installation, client, redirect, requested scopes, expiry, and physical-device
       warnings.
@@ -105,7 +106,9 @@ amend ADR 0002.
 
 - [ ] Add list/inspect/disable/revoke APIs for OAuth clients, grants, access tokens, and refresh families.
 - [ ] Add Admin client/grant/token management views and revoke confirmations.
-- [ ] Close only the affected client's subscriptions before grant/client revocation reports success.
+- [ ] Bind OAuth subscriptions to client, grant, access-token, optional refresh-family IDs, and access-token expiry.
+- [ ] Close only the matching subscriptions before client, grant, access-token, or refresh-family revocation reports
+      success, and automatically close each stream when its access token expires.
 - [ ] Close all MCP subscriptions when the module is disabled or its public OAuth identity rotates.
 - [ ] Add revoke-all recovery action and document password-reset versus OAuth-revocation semantics.
 - [ ] Add audit events and unit/e2e coverage for targeted and global invalidation.
@@ -116,7 +119,8 @@ amend ADR 0002.
 **Goal:** Prove the complete security profile before documenting it as supported.
 
 - [ ] E2E: discovery, consent approval/denial, PKCE success/failure, exact redirects, code replay, scope reduction,
-      expiry, refresh rotation/reuse, revocation, wrong issuer/resource/audience, cross-client isolation, and redaction.
+      expiry, refresh rotation/reuse, revocation, wrong issuer/resource/audience, cross-client isolation, and redaction;
+      cover open-stream abort on token expiry and client/grant/access-token/refresh-family revocation.
 - [ ] Reverse-proxy E2E: explicit external prefix, hostile forwarded headers, untrusted proxy, trusted proxy, public URL
       change, and rollback.
 - [ ] Codex smoke: discovery, authorization, list/call, refresh, scope failure, and revocation; record exact version and

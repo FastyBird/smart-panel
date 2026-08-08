@@ -108,7 +108,8 @@ authorization server and therefore do not remove the need for the component spik
 - `resource` propagation at authorization, code exchange, and refresh.
 - `iss` presence in both successful and error authorization responses.
 - Refresh-token rotation and reuse-family revocation.
-- Immediate denial and subscription closure after grant/client revocation.
+- Immediate denial and subscription closure after client, grant, access-token, or refresh-family revocation and at
+  access-token expiry.
 - Reverse-proxy path prefixes without trusting forwarded headers.
 - Coexistence of static URN-audience credentials and OAuth HTTPS-resource credentials.
 

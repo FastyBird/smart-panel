@@ -57,9 +57,10 @@ most 60 seconds. Redirect URIs use exact string matching. Authorization response
 responses, and metadata advertises `authorization_response_iss_parameter_supported: true`.
 
 Metadata advertises only features that are actually enabled. It explicitly advertises `none` as the sole initial
-token-endpoint authentication method. No OIDC scopes, ID tokens, user-info endpoint, introspection endpoint, JWKS URI,
-signing algorithm, confidential-client authentication method, or registration endpoint is advertised merely because
-the selected dependency can implement it.
+token-endpoint authentication method and lists `offline_access` in `scopes_supported` because the refresh policy below
+implements its explicit-consent semantics. No OIDC identity scopes (`openid`, `profile`, `email`, or similar), ID
+tokens, user-info endpoint, introspection endpoint, JWKS URI, signing algorithm, confidential-client authentication
+method, or registration endpoint is advertised merely because the selected dependency can implement it.
 
 ### 3. Canonical URLs and resource binding
 
@@ -117,8 +118,9 @@ signing-key distribution problem. Issuer, resource/audience, client, installatio
 bindings are stored server-side. Authorization-server metadata therefore advertises no signing algorithms unless a
 later accepted change actually introduces a signed artifact.
 
-OAuth scopes are `mcp:read`, `mcp:write`, and `mcp:trigger`. `offline_access` controls refresh eligibility but is not an
-MCP capability. Effective authorization remains:
+OAuth scopes are `mcp:read`, `mcp:write`, `mcp:trigger`, and `offline_access`. `offline_access` is advertised and
+consented only to control refresh eligibility; it is not an OIDC login request or an MCP capability. Omitting it means
+the token endpoint returns no refresh token. Effective authorization remains:
 
 ```text
 module capability ceiling
@@ -157,9 +159,12 @@ server secret revokes affected grants and subscriptions according to documented 
 ### 7. Revocation and administrative control
 
 Owners and administrators can list clients, grants, active access tokens, and refresh-token families without seeing raw
-secrets. They can disable a client, revoke a grant, revoke a token family, or revoke one access token. Grant/client
-revocation closes only that client's active MCP subscriptions immediately. Disabling the MCP module closes all MCP
-subscriptions and denies both authorization and resource requests.
+secrets. They can disable a client, revoke a grant, revoke a token family, or revoke one access token. Every OAuth
+subscription is bound to its client, grant, access-token ID, refresh-family ID when present, and access-token expiry.
+Revoking any of those artifacts aborts exactly the matching active subscriptions before the administrative mutation
+reports success. The subscription registry also schedules an abort at access-token expiry, because a long-lived stream
+does not re-run per-request authentication while it is open. Disabling the MCP module closes all MCP subscriptions and
+denies both authorization and resource requests.
 
 Client and grant mutations are audited. Logs may contain IDs, scope names, denial codes, and timestamps, but never raw
 codes, access tokens, refresh tokens, PKCE verifiers, cookies, passwords, or token hashes.
@@ -194,7 +199,8 @@ reissue or downgrade an OAuth token into a static credential.
 | Scope escalation or stale permission | Four-way live intersection and recheck immediately before tool execution |
 | Malicious dynamic/CIMD registration | No DCR/CIMD in the initial profile; later enablement requires SSRF, quota, and redirect-policy review |
 | Proxy/header spoofing and DNS rebinding | Explicit public URL, trusted Host/Origin policy, ignore forwarded headers unless proxy trust is configured |
-| Client or grant revocation with an open stream | Targeted subscription abort before the administrative mutation reports success |
+| Client, grant, token, or refresh-family revocation with an open stream | Bind subscriptions to every authorization artifact and abort targeted streams before the mutation reports success |
+| Access token expires while a stream is open | Register the token expiry with the subscription and abort the stream at that deadline |
 | Brute force and artifact enumeration | Separate limits for login, authorize, token, and revocation endpoints; uniform OAuth errors where required |
 | Backup cloning | Preserve installation UUID for identity but rotate/revoke OAuth and static credentials for a new physical installation |
 | Compromised owner/admin account | Existing login hardening, complete OAuth audit, revoke-all control, documented recovery workflow |
