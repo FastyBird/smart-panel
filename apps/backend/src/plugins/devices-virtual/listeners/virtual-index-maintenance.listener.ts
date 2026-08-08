@@ -195,6 +195,18 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	private readonly pendingAnnounceVirtualDeviceIds = new Set<string>();
 
 	/**
+	 * Channels whose properties could not be read when their CHANNEL_UPDATED arrived.
+	 *
+	 * That event is the only notice a source channel's recategorisation gives — it schedules no rebuild
+	 * of its own — so a read that fails takes the whole check with it, and a projection left reading a
+	 * property whose meaning has changed stays linked until some unrelated metadata update happens to
+	 * revisit it. Queued here and re-checked on the next settled pass, which is the same treatment the
+	 * two sets above get for the same reason: the retry belongs where the state is known to be
+	 * committed, not inline against the failure that just happened.
+	 */
+	private readonly pendingRecheckChannelIds = new Set<string>();
+
+	/**
 	 * True once a wait has run the full budget out with the transaction flag still set, and back to
 	 * false the moment any poll sees it clear again.
 	 *
@@ -417,6 +429,8 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				}
 
 				if (rebuilt && !repairPending) {
+					await this.recheckPendingChannels();
+
 					await this.announceOrphanedProjections();
 
 					await this.unhideAbandonedSources();
@@ -926,19 +940,51 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			return;
 		}
 
-		const properties = await this.channelsPropertiesService
-			.findAll(payload.id)
-			.catch((error: unknown): ChannelPropertyEntity[] => {
-				this.logger.error(
-					`Failed to read back properties of updated channel id=${payload.id}`,
-					error instanceof Error ? error : undefined,
-				);
+		let properties: ChannelPropertyEntity[];
 
-				return [];
-			});
+		try {
+			properties = await this.channelsPropertiesService.findAll(payload.id);
+		} catch (error: unknown) {
+			this.logger.error(
+				`Failed to read back properties of updated channel id=${payload.id}`,
+				error instanceof Error ? error : undefined,
+			);
+
+			// Queued instead of dropped. This event is the only notice the recategorisation gives, and it
+			// schedules no rebuild of its own, so treating a failed read as a channel with no properties
+			// leaves every projection under it linked to a source whose meaning has changed — until some
+			// unrelated metadata update happens to revisit it. The pass scheduled below drains the queue
+			// once it can read committed state.
+			this.pendingRecheckChannelIds.add(payload.id);
+
+			this.handleStructuralChange();
+
+			return;
+		}
 
 		for (const property of properties) {
 			await this.handleSourceMetadataChange(property);
+		}
+	}
+
+	/**
+	 * Re-runs the channel checks whose property read failed earlier.
+	 *
+	 * Drained on a settled pass, like the other two queues: a read that failed against an open
+	 * transaction has no business being retried against the same one. A retry that fails again simply
+	 * re-queues itself, which is what makes this converge rather than give up.
+	 */
+	private async recheckPendingChannels(): Promise<void> {
+		if (this.pendingRecheckChannelIds.size === 0) {
+			return;
+		}
+
+		const channelIds = [...this.pendingRecheckChannelIds];
+
+		this.pendingRecheckChannelIds.clear();
+
+		for (const channelId of channelIds) {
+			await this.handleSourceChannelChange({ id: channelId } as ChannelEntity);
 		}
 	}
 

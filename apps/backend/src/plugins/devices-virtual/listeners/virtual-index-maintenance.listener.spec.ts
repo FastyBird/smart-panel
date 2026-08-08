@@ -448,6 +448,27 @@ describe('VirtualIndexMaintenanceListener', () => {
 		expect(eventEmitterStub.emit).toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_UPDATED, orphan);
 	});
 
+	// CHANNEL_UPDATED is the only notice a source channel's recategorisation gives, and it schedules no
+	// rebuild of its own. Treating a failed property read as a channel with no properties therefore
+	// consumed that notice: every projection under the channel stayed linked to a source whose meaning
+	// had changed, until some unrelated metadata update happened to revisit it.
+	it('re-checks a channel whose property read failed, on the next settled pass', async () => {
+		channelsPropertiesStub.findAll.mockRejectedValueOnce(new Error('database is locked'));
+
+		await listener.handleSourceChannelChange({ id: 'source-channel' } as ChannelEntity);
+
+		// Nothing judged yet — the read failed before any property was seen.
+		expect(channelsPropertiesStub.findAll).toHaveBeenCalledTimes(1);
+
+		channelsPropertiesStub.findAll.mockResolvedValue([]);
+
+		await flushMicrotasks();
+
+		// The failure scheduled a pass, and that pass asked again.
+		expect(channelsPropertiesStub.findAll).toHaveBeenCalledWith('source-channel');
+		expect(channelsPropertiesStub.findAll.mock.calls.length).toBeGreaterThan(1);
+	});
+
 	// An owned property has no source and never had one. Null there is its normal state, not a loss, and
 	// announcing it as one would put an orphan warning on a property that is perfectly fine.
 	it('says nothing about an owned property that simply has no source', async () => {

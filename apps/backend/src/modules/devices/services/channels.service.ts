@@ -515,9 +515,20 @@ export class ChannelsService {
 			return newValue !== existingValue;
 		});
 
-		Object.assign(channel, updateFields);
+		// Under the structure lock, and with the hook inside it, for the reason the create above spells
+		// out: a channel's category is part of the structure a device recategorisation judges itself
+		// against, and the hook that judges *this* change reads the device's category in turn.
+		await this.structureLock.runExclusive(async (): Promise<void> => {
+			const previous = { ...channel } as Readonly<Partial<TChannel>>;
 
-		await repository.save(channel as TChannel);
+			Object.assign(channel, updateFields);
+
+			if (mapping.beforeUpdate) {
+				await mapping.beforeUpdate(channel as TChannel, previous);
+			}
+
+			await repository.save(channel as TChannel);
+		});
 
 		let updatedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;
 

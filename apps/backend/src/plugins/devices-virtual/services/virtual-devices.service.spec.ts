@@ -23,7 +23,11 @@ import {
 	VirtualSourceNotFoundException,
 	VirtualValueOriginConflictException,
 } from '../devices-virtual.exceptions';
-import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
+import {
+	VirtualChannelEntity,
+	VirtualChannelPropertyEntity,
+	VirtualValueOrigin,
+} from '../entities/devices-virtual.entity';
 
 import { VirtualDevicesService } from './virtual-devices.service';
 import { VirtualPropertyIndexService, VirtualPropertyLink } from './virtual-property-index.service';
@@ -213,6 +217,64 @@ describe('VirtualDevicesService', () => {
 	// but the preview is not atomic with the write, a source can change permissions or data type in
 	// between, and a direct API call or a remap skips it entirely — so the rule has to hold at
 	// persistence too, which is what these pin.
+	describe('assertChannelCategoryChangeSafe', () => {
+		const channel = (category: ChannelCategory): VirtualChannelEntity => {
+			const entity = new VirtualChannelEntity();
+
+			Object.assign(entity, { id: 'virtual-channel', category });
+
+			return entity;
+		};
+
+		const projecting = (): VirtualChannelPropertyEntity => {
+			const property = new VirtualChannelPropertyEntity();
+
+			Object.assign(property, {
+				id: 'virtual-property',
+				category: PropertyCategory.ON,
+				valueOrigin: 'source',
+				sourcePropertyId: 'source-property',
+			});
+
+			return property;
+		};
+
+		// A channel's category is half of the address of every slot its properties fill. Moving it leaves
+		// each projection reading a source that was judged against a slot the new category never defines,
+		// and no property row is written by a channel PATCH, so no property hook would ever see it.
+		it('refuses a category change on a channel whose properties project a source', async () => {
+			channelsPropertiesService.findAll.mockResolvedValue([projecting()]);
+
+			await expect(
+				service.assertChannelCategoryChangeSafe(channel(ChannelCategory.SWITCHER), ChannelCategory.LIGHT),
+			).rejects.toThrow(/cannot change category/);
+		});
+
+		// Nothing to invalidate: an owned property fills its slot on its own terms, and a channel that
+		// projects nothing has no judgement to preserve.
+		it('allows a category change on a channel that projects nothing', async () => {
+			const owned = new VirtualChannelPropertyEntity();
+
+			Object.assign(owned, { id: 'owned-property', category: PropertyCategory.STATUS, valueOrigin: 'local' });
+
+			channelsPropertiesService.findAll.mockResolvedValue([owned]);
+
+			await expect(
+				service.assertChannelCategoryChangeSafe(channel(ChannelCategory.SWITCHER), ChannelCategory.LIGHT),
+			).resolves.toBeUndefined();
+		});
+
+		// Only asked when the category actually moves: a PATCH that renames a channel must not be refused
+		// by a guard about something it is not doing.
+		it('allows a patch that leaves the category alone', async () => {
+			channelsPropertiesService.findAll.mockResolvedValue([projecting()]);
+
+			await expect(
+				service.assertChannelCategoryChangeSafe(channel(ChannelCategory.LIGHT), ChannelCategory.LIGHT),
+			).resolves.toBeUndefined();
+		});
+	});
+
 	describe('assertCategoryChangeSafe', () => {
 		const DEVICE_ID = 'virtual-device';
 

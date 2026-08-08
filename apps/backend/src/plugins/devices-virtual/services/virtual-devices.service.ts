@@ -18,6 +18,7 @@ import { DEVICES_VIRTUAL_TYPE, VIRTUAL_BLOCKED_CATEGORIES } from '../devices-vir
 import {
 	VirtualCategoryChangeUnsafeException,
 	VirtualCategoryNotSupportedException,
+	VirtualChannelCategoryChangeUnsafeException,
 	VirtualNestingNotAllowedException,
 	VirtualOwnedPropertyNotWritableException,
 	VirtualOwnerNotVirtualException,
@@ -27,6 +28,7 @@ import {
 	VirtualValueOriginConflictException,
 } from '../devices-virtual.exceptions';
 import {
+	VirtualChannelEntity,
 	VirtualChannelPropertyEntity,
 	VirtualValueOrigin,
 	isUnsupportedOwnedPermissionsPair,
@@ -221,6 +223,43 @@ export class VirtualDevicesService {
 
 		throw new VirtualCategoryChangeUnsafeException(
 			`Device id=${device.id} cannot change category from '${previousCategory}' to '${device.category}': the channels and properties it already has do not satisfy the new category (${reasons}). Its structure is built for the category it was created with — rebuild the device rather than relabelling it`,
+		);
+	}
+
+	/**
+	 * Refuses a virtual channel's category change while projections still hang off it.
+	 *
+	 * A channel's category is half of the address of every slot its properties fill — the other half is
+	 * the device's — so moving it leaves each projection reading a source that was judged against a slot
+	 * the new category never defines. Nothing else would notice: no property row is written by a channel
+	 * PATCH, so no property hook runs, and the maintenance listener skips virtual properties by design.
+	 *
+	 * Refused rather than repaired, for the same reason `assertCategoryChangeSafe` refuses: a virtual
+	 * device's structure is generated from the category it was created with, and rebuilding it is the
+	 * operation an operator relabelling a channel actually meant. A channel carrying nothing that
+	 * projects has nothing to invalidate and is left alone.
+	 */
+	async assertChannelCategoryChangeSafe(
+		channel: VirtualChannelEntity,
+		previousCategory: ChannelCategory | undefined,
+	): Promise<void> {
+		if (previousCategory === undefined || channel.category === previousCategory) {
+			return;
+		}
+
+		const properties = await this.channelsPropertiesService.findAll(channel.id);
+		const projecting = properties.filter(
+			(property) => property instanceof VirtualChannelPropertyEntity && property.isProjecting,
+		);
+
+		if (projecting.length === 0) {
+			return;
+		}
+
+		throw new VirtualChannelCategoryChangeUnsafeException(
+			`Channel id=${channel.id} cannot change category from '${previousCategory}' to '${channel.category}': ` +
+				`${projecting.length} of its properties read a source chosen for the slots '${previousCategory}' defines, ` +
+				'and the new category defines different ones. Rebuild the device rather than relabelling its channel',
 		);
 	}
 

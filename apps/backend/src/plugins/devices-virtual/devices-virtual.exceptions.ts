@@ -89,3 +89,18 @@ export class VirtualCategoryChangeUnsafeException extends VirtualException {
 		this.name = 'VirtualCategoryChangeUnsafeException';
 	}
 }
+
+/**
+ * A virtual channel's category would be changed out from under the projections it carries.
+ *
+ * The device-level sibling above asks whether the *whole* structure still satisfies a new device
+ * category. This one is narrower and cheaper: a channel's category decides which spec slots its own
+ * properties fill, so moving it detaches every projection under it from the slot it was judged
+ * against, whatever the device category says.
+ */
+export class VirtualChannelCategoryChangeUnsafeException extends VirtualException {
+	constructor(message: string) {
+		super(message);
+		this.name = 'VirtualChannelCategoryChangeUnsafeException';
+	}
+}

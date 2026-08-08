@@ -16,6 +16,13 @@ export interface ChannelTypeMapping<
 	class: new (...args: any[]) => TChannel; // Constructor for the channel class
 	createDto: new (...args: any[]) => TCreateDTO; // Constructor for the Create DTO
 	updateDto: new (...args: any[]) => TUpdateDTO; // Constructor for the Update DTO
+	/**
+	 * The type owner's last look at the merged row, before it is written — the only point at which an
+	 * invariant spanning a field the PATCH sent and one it did not is decidable. Throwing here persists
+	 * nothing. Mirrors the device and channel-property mappings, which have carried one for the same
+	 * reason.
+	 */
+	beforeUpdate?: (channel: TChannel, previous: Readonly<Partial<TChannel>>) => Promise<void>;
 	afterCreate?: (device: TChannel) => Promise<TChannel>;
 	afterUpdate?: (device: TChannel) => Promise<TChannel>;
 }
