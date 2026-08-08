@@ -731,6 +731,55 @@ describe('VirtualDevicesService', () => {
 			);
 		});
 
+		// Both halves are judged against the slot, and both can pass that independently while disagreeing
+		// with each other. `temperature.temperature` accepts [0, 100], so a source of [0, 40] and a
+		// projection of [60, 100] each fit — and every reading the source produces then falls outside the
+		// range its own projection advertises.
+		it('refuses a projection whose range its source can never produce a value inside', async () => {
+			givenSlot(ChannelCategory.TEMPERATURE, DeviceCategory.SENSOR);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({
+					id: 'narrow-source',
+					permissions: [PermissionType.READ_ONLY],
+					dataType: DataTypeType.FLOAT,
+					format: [0, 40],
+					unit: '°C',
+				}),
+			);
+
+			const disjoint = projecting('narrow-source', PropertyCategory.TEMPERATURE, {
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				format: [60, 100],
+				unit: '°C',
+			});
+
+			await expect(service.assertProjectionCompatible(disjoint, CHANNEL_ID)).rejects.toThrow(/outside the range/);
+		});
+
+		// The agreeing case, so the rule above cannot be satisfied by refusing every constrained pair.
+		it('accepts a projection whose range covers everything its source can report', async () => {
+			givenSlot(ChannelCategory.TEMPERATURE, DeviceCategory.SENSOR);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({
+					id: 'narrow-source',
+					permissions: [PermissionType.READ_ONLY],
+					dataType: DataTypeType.FLOAT,
+					format: [0, 40],
+					unit: '°C',
+				}),
+			);
+
+			const covering = projecting('narrow-source', PropertyCategory.TEMPERATURE, {
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				format: [0, 100],
+				unit: '°C',
+			});
+
+			await expect(service.assertProjectionCompatible(covering, CHANNEL_ID)).resolves.toBeUndefined();
+		});
+
 		it('ignores an owned property', async () => {
 			const owned = new VirtualChannelPropertyEntity();
 

@@ -2000,6 +2000,114 @@ describe('devices-virtual plugin (e2e)', () => {
 	 * non-virtual device. Status codes alone would only say that the request shapes tried here are
 	 * refused; this says the state cannot exist.
 	 */
+	// The metadata-change orphaning had unit coverage only, and its unit tests stub the query builder —
+	// so nothing proved the write's own predicates (the link, and each judged row's version) actually
+	// match in SQL. A binding that did not compare equal would disable orphaning outright and every test
+	// would still pass. This exercises the real statement end to end.
+	describe('a source whose metadata stops fitting the slot it fills', () => {
+		it('orphans the projection reading it', async () => {
+			const sourceResponse = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: SIMULATOR_TYPE,
+						category: DeviceCategory.OUTLET,
+						name: 'E2E Demoted Source Outlet',
+						channels: [
+							{
+								type: SIMULATOR_TYPE,
+								category: ChannelCategory.OUTLET,
+								identifier: 'outlet',
+								name: 'Outlet',
+								properties: [
+									{
+										type: SIMULATOR_TYPE,
+										category: PropertyCategory.ON,
+										identifier: 'on',
+										name: 'On',
+										permissions: [PermissionType.READ_WRITE],
+										data_type: DataTypeType.BOOL,
+										value: false,
+									},
+								],
+							},
+						],
+					},
+				})
+				.expect(201);
+
+			const sourceBody = sourceResponse.body as { data: DeviceBody };
+			const demotedPropertyId = sourceBody.data.channels
+				.find((channel) => channel.category === String(ChannelCategory.OUTLET))
+				?.properties.find((property) => String(property.category) === String(PropertyCategory.ON))?.id;
+
+			expect(demotedPropertyId).toBeDefined();
+
+			const virtualResponse = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: DeviceCategory.LIGHTING,
+						name: 'E2E Demoted Source Virtual Light',
+						channels: [
+							{
+								type: DEVICES_VIRTUAL_TYPE,
+								category: ChannelCategory.LIGHT,
+								identifier: 'light',
+								name: 'Light',
+								properties: [
+									{
+										type: DEVICES_VIRTUAL_TYPE,
+										category: PropertyCategory.ON,
+										identifier: 'on',
+										name: 'On',
+										permissions: [PermissionType.READ_WRITE],
+										data_type: DataTypeType.BOOL,
+										value_origin: 'source',
+										source_property: demotedPropertyId,
+									},
+								],
+							},
+						],
+					},
+				})
+				.expect(201);
+
+			const virtualDeviceId = (virtualResponse.body as { data: DeviceBody }).data.id;
+
+			// Demoting the source to read-only makes it unable to fill a writable `light.on`, which is the
+			// judgement the listener makes and the write it then has to land.
+			await authPatch(`/modules/devices/channels/${sourceBody.data.channels[0].id}/properties/${demotedPropertyId}`)
+				.send({ data: { type: SIMULATOR_TYPE, permissions: [PermissionType.READ_ONLY] } })
+				.expect(200);
+
+			const orphaned = await waitUntil(
+				async () => {
+					const current = await authGet(`/modules/devices/devices/${virtualDeviceId}`);
+
+					if (current.status !== 200) {
+						return { done: false, value: null };
+					}
+
+					const property = (current.body as { data: DeviceBody }).data.channels
+						.find((channel) => channel.category === String(ChannelCategory.LIGHT))
+						?.properties.find((candidate) => String(candidate.category) === String(PropertyCategory.ON));
+
+					// `?? 'absent'` would be wrong here: `null` is the answer this is waiting for, and coalescing
+					// past it reports success as if the property were missing.
+					return {
+						done: property?.source_property === null,
+						value: property === undefined ? 'absent' : property.source_property,
+					};
+				},
+				'the projection losing the source that stopped fitting its slot',
+				5000,
+				500,
+			);
+
+			expect(orphaned).toBeNull();
+		});
+	});
+
 	describe('containment: no virtual row attaches to a non-virtual device', () => {
 		let physicalDeviceId: string;
 		let physicalChannelId: string;

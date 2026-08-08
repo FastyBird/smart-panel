@@ -59,6 +59,19 @@ void main() {
       expect(repository.data.containsKey(arrivedMidFlightId), isTrue);
     });
 
+    // A response is a snapshot of when it was produced. A device hidden after that moment is still in
+    // it, so applying it verbatim puts a source device back on screen next to the virtual device that
+    // replaced it — and the eviction cannot undo that, because the same stale response lists it as
+    // visible.
+    test('does not re-apply a device hidden while the snapshot was in flight', () {
+      final repository = _buildRepository();
+
+      repository.markHiddenWhileFetching(deviceId);
+
+      expect(repository.shouldApply(_device(deviceId)), isFalse);
+      expect(repository.shouldApply(_device(arrivedMidFlightId)), isTrue);
+    });
+
     // The eviction still has to do its job for everything the panel already knew about — a source
     // device hidden while it was offline has no event to carry its removal.
     test('drops a device it already knew about that the snapshot omits', () async {

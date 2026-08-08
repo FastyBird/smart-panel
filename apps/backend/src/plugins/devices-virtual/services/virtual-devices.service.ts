@@ -928,6 +928,29 @@ export class VirtualDevicesService {
 			);
 		}
 
+		// Matching data types are not the whole of "speaks the same language". Both halves have been
+		// judged against the *slot* by now, and both can pass that independently while disagreeing with
+		// each other: `temperature.temperature` accepts [0, 100], so a source formatted [0, 40] and a
+		// projection formatted [60, 100] each fit, and every reading the source produces then falls
+		// outside the range its projection advertises. The same holds for a step grid.
+		//
+		// Asked with `describeFormatMismatch` rather than a second comparison of its own, by handing it
+		// the *projection* where it normally takes the slot. Both of its directions are then the ones that
+		// matter here: every value the source can produce has to be legal in the projection, and — when
+		// the projection is writable — every value the projection may be commanded with has to be
+		// acceptable to the source. One rule, one implementation, applied to the other pair.
+		const projectionMismatch = this.describeFormatMismatch(
+			{ permissions: property.permissions ?? [], format: property.format, step: property.step },
+			specSlot,
+			sourceProperty,
+		);
+
+		if (projectionMismatch !== null) {
+			throw new VirtualProjectionIncompatibleException(
+				projectionMismatch.replace(`'${specSlot.channel}.${specSlot.property}'`, `property id=${property.id}`),
+			);
+		}
+
 		const sentinelMismatch = this.describeSentinelMismatch(property, sourceProperty);
 
 		if (sentinelMismatch !== null) {
