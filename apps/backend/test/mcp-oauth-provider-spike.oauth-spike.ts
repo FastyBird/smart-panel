@@ -657,6 +657,10 @@ describe('MCP OAuth authorization-component spike', () => {
 		expect(refreshResponse.status).toBe(200);
 		expect(rotatedTokens.refresh_token).toBeDefined();
 		expect(rotatedTokens.refresh_token).not.toBe(firstTokens.refresh_token);
+		expect(await new adapter('AccessToken').find(rotatedTokens.access_token)).toMatchObject({
+			aud: resource,
+			scope: 'mcp:read',
+		});
 
 		const revokeResponse = await fetch(`${issuer}/token/revocation`, {
 			method: 'POST',
