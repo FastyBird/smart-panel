@@ -1090,6 +1090,39 @@ describe('DevicesService', () => {
 			expect(eventEmitter.emit).not.toHaveBeenCalledWith(EventType.DEVICE_UPDATED, expect.anything());
 		});
 
+		// A PATCH is one thing to the caller. With the zone half written after the fields, a refusal there
+		// — a zone that is really a floor, or another request hiding the device in the gap — left the
+		// ordinary fields committed while the caller was told the whole PATCH had failed, and skipped the
+		// event at the end, so nothing downstream learned of what had been written.
+		it('writes no fields when the zone half of the patch is refused', async () => {
+			const deviceId = uuid().toString();
+			const visible = { id: deviceId, type: 'mock', hidden: false, name: 'Original' } as unknown as MockDevice;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(visible);
+			jest.spyOn(repository, 'findOne').mockResolvedValue({ ...visible } as MockDevice);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+			(deviceZonesService.setDeviceZones as jest.Mock).mockRejectedValue(
+				new DevicesNotAllowedException('placement is locked'),
+			);
+
+			await expect(
+				service.update(deviceId, {
+					type: 'mock',
+					name: 'Renamed',
+					zone_ids: [uuid().toString()],
+				} as unknown as UpdateMockDeviceDto),
+			).rejects.toThrow(DevicesNotAllowedException);
+
+			expect(repository.save).not.toHaveBeenCalled();
+		});
+
 		it('should update and return the device', async () => {
 			const updateDto: UpdateMockDeviceDto = {
 				type: 'mock',

@@ -865,13 +865,20 @@ export class DevicesService {
 				await mapping.beforeUpdate(row, persistedPrevious);
 			}
 
+			// Zones before the fields, and both inside the lock, because a PATCH is one thing to the
+			// caller. Written after the fields and outside the lock, a refusal here — a zone that is
+			// really a floor, or another request hiding the device in the meantime — left the ordinary
+			// fields committed while the caller was told the whole PATCH had failed, and skipped the
+			// DEVICE_UPDATED at the end, so nothing downstream ever learned of what *had* been written.
+			// A hide is itself an update, so it takes this same lock and can no longer land in the gap;
+			// putting the zone half first means a refusal it raises for any other reason leaves nothing
+			// behind either.
+			if (zoneIds !== undefined) {
+				await this.deviceZonesService.setDeviceZones(device.id, zoneIds);
+			}
+
 			await repository.save(row);
 		});
-
-		// Update zone memberships if zone_ids was explicitly provided
-		if (zoneIds !== undefined) {
-			await this.deviceZonesService.setDeviceZones(device.id, zoneIds);
-		}
 
 		let updatedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
 
