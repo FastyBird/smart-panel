@@ -67,6 +67,7 @@ export class McpAuditService {
 		reason: McpAuditDenialReason,
 		options?: { capability?: McpCapability; tool?: string },
 	): void {
+		this.denials += 1;
 		this.log('policy_denial', identity, {
 			reason,
 			...(options?.capability ? { capability: options.capability } : {}),
@@ -102,9 +103,7 @@ export class McpAuditService {
 		this.callsByCapability[result.capability] += 1;
 		this.callsByTool.set(result.tool, (this.callsByTool.get(result.tool) ?? 0) + 1);
 
-		if (result.outcome === McpAuditOutcome.DENIED) {
-			this.denials += 1;
-		} else if (result.outcome === McpAuditOutcome.TIMED_OUT) {
+		if (result.outcome === McpAuditOutcome.TIMED_OUT) {
 			this.timeouts += 1;
 		} else if (result.outcome === McpAuditOutcome.FAILED) {
 			this.failures += 1;

@@ -62,6 +62,10 @@ describe('McpAuditService', () => {
 			durationMs: 2,
 			outcome: McpAuditOutcome.DENIED,
 		});
+		service.recordPolicyDenial({ requestId: '2', clientId: 'client-1' }, 'capability_denied', {
+			capability: McpCapability.WRITE,
+			tool: 'set_device_property',
+		});
 		service.recordToolResult({
 			requestId: '3',
 			tool: 'run_scene',
@@ -78,6 +82,24 @@ describe('McpAuditService', () => {
 			denials: 1,
 			timeouts: 1,
 		});
+	});
+
+	it('counts a policy denial without tool execution and avoids double-counting tool denials', () => {
+		service.recordPolicyDenial({ requestId: '1', clientId: 'client-1' }, 'origin_denied');
+		service.recordPolicyDenial({ requestId: '2', clientId: 'client-1' }, 'capability_denied', {
+			capability: McpCapability.READ,
+			tool: 'get_home_context',
+		});
+		service.recordToolResult({
+			requestId: '2',
+			clientId: 'client-1',
+			tool: 'get_home_context',
+			capability: McpCapability.READ,
+			durationMs: 2,
+			outcome: McpAuditOutcome.DENIED,
+		});
+
+		expect(service.getMetricsSnapshot().denials).toBe(2);
 	});
 
 	it('tracks the active subscription gauge without allowing it to become negative', () => {
