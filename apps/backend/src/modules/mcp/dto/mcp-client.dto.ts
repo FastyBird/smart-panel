@@ -20,6 +20,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { MCP_DEFAULT_TOKEN_EXPIRATION_DAYS, MCP_MAX_TOKEN_EXPIRATION_DAYS, McpCapability } from '../mcp.constants';
 
+@ApiSchema({ name: 'McpModuleCreateClient' })
 export class CreateMcpClientDto {
 	@ApiProperty({ description: 'Human-readable client name', type: 'string', example: 'Home assistant agent' })
 	@Expose()
@@ -68,6 +69,7 @@ export class CreateMcpClientDto {
 	expiresInDays: number = MCP_DEFAULT_TOKEN_EXPIRATION_DAYS;
 }
 
+@ApiSchema({ name: 'McpModuleUpdateClient' })
 export class UpdateMcpClientDto {
 	@ApiPropertyOptional({ description: 'Human-readable client name', type: 'string' })
 	@Expose()
@@ -104,6 +106,7 @@ export class UpdateMcpClientDto {
 	capabilities?: McpCapability[];
 }
 
+@ApiSchema({ name: 'McpModuleRotateClientToken' })
 export class RotateMcpClientTokenDto {
 	@ApiPropertyOptional({
 		name: 'expires_in_days',

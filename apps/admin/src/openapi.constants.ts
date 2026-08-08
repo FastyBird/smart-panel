@@ -64,10 +64,10 @@ export type ConfigModuleUpdateModuleSchema = components['schemas']['ConfigModule
 // MCP Module Schemas
 export type McpModuleClientSchema = components['schemas']['McpModuleDataClient'];
 export type McpModuleClientCredentialSchema = components['schemas']['McpModuleDataClientCredential'];
-export type McpModuleCreateClientSchema = components['schemas']['CreateMcpClientDto'];
-export type McpModuleUpdateClientSchema = components['schemas']['UpdateMcpClientDto'];
-export type McpModuleRotateClientTokenSchema = components['schemas']['RotateMcpClientTokenDto'];
-export { CreateMcpClientDtoCapabilities as McpModuleCapability } from './openapi';
+export type McpModuleCreateClientSchema = components['schemas']['McpModuleCreateClient'];
+export type McpModuleUpdateClientSchema = components['schemas']['McpModuleUpdateClient'];
+export type McpModuleRotateClientTokenSchema = components['schemas']['McpModuleRotateClientToken'];
+export { McpModuleCreateClientCapabilities as McpModuleCapability } from './openapi';
 
 // Displays Module Schemas
 export type DisplaysModuleDisplaySchema = components['schemas']['DisplaysModuleDataDisplay'];
@@ -315,6 +315,7 @@ export type ConfigModuleGetConfigOperation = operations['get-config-module-confi
 
 // MCP Module Operations
 export type McpModuleGetClientsOperation = operations['get-mcp-module-clients'];
+export type McpModuleGetClientOperation = operations['get-mcp-module-client'];
 export type McpModuleCreateClientOperation = operations['create-mcp-module-client'];
 export type McpModuleUpdateClientOperation = operations['update-mcp-module-client'];
 export type McpModuleRotateClientTokenOperation = operations['rotate-mcp-module-client-token'];

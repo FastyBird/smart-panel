@@ -1,6 +1,6 @@
 # Smart Panel MCP Module — Implementation Plan
 
-**Status:** Phase 9 complete — Phase 10 pending
+**Status:** Phase 10 complete — Phase 11 pending
 
 **Architecture decision:** [ADR 0001: MCP Protocol and Security Foundation](../../docs/adr/0001-mcp-protocol-and-security-foundation.md)
 supersedes the original stateful-session transport assumptions in this plan.
@@ -582,14 +582,19 @@ status views, localized copy, and focused schema/API/security interaction tests 
 
 ### Task 13: OpenAPI regeneration and generated clients
 
-- [ ] Add Swagger decorators and response models for MCP client-management endpoints.
-- [ ] Register all MCP management models in `mcp.openapi.ts`.
-- [ ] Run `pnpm run generate:openapi`.
-- [ ] Update only manually maintained exports in `apps/admin/src/openapi.constants.ts`.
-- [ ] Run the API convention and OpenAPI linters.
-- [ ] Confirm the raw MCP endpoint is not incorrectly represented as a normal JSON REST operation.
-- [ ] Run `melos rebuild-all` only if generated panel API changes are intentionally part of the repository's normal
+- [x] Add Swagger decorators and response models for MCP client-management endpoints.
+- [x] Register all MCP management models in `mcp.openapi.ts`.
+- [x] Run `pnpm run generate:openapi`.
+- [x] Update only manually maintained exports in `apps/admin/src/openapi.constants.ts`.
+- [x] Run the API convention and OpenAPI linters.
+- [x] Confirm the raw MCP endpoint is not incorrectly represented as a normal JSON REST operation.
+- [x] Run `melos rebuild-all` only if generated panel API changes are intentionally part of the repository's normal
       OpenAPI regeneration workflow; do not manually edit generated Dart files.
+
+**Outcome:** MCP management DTOs, request wrappers, response envelopes, client data, and configuration models are
+registered under module-scoped OpenAPI schema names. All seven management operations generate typed admin contracts,
+while the raw Streamable HTTP MCP transport remains excluded from the JSON REST specification. Panel regeneration was
+not run because generated panel API changes are not part of this admin management-contract phase.
 
 ### Task 14: End-to-end and compatibility verification
 
