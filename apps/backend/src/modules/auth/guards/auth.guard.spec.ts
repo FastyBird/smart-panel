@@ -46,6 +46,7 @@ describe('AuthGuard', () => {
 	let tokensService: TokensService;
 	let usersService: UsersService;
 	let mcpClientsService: McpClientService;
+	let mcpInstallationService: McpInstallationService;
 	let mcpAuditService: { getRequestId: jest.Mock; recordAuthenticationFailure: jest.Mock };
 
 	const mockUserId = uuid().toString();
@@ -213,6 +214,7 @@ describe('AuthGuard', () => {
 		tokensService = module.get<TokensService>(TokensService);
 		usersService = module.get<UsersService>(UsersService);
 		mcpClientsService = module.get<McpClientService>(McpClientService);
+		mcpInstallationService = module.get<McpInstallationService>(McpInstallationService);
 	});
 
 	afterEach(() => {
@@ -649,6 +651,19 @@ describe('AuthGuard', () => {
 			jest.spyOn(tokensService, 'findOneByHashedToken').mockRejectedValue(new Error('database unavailable'));
 
 			await expect(guard.canActivate(context)).rejects.toThrow('database unavailable');
+			expect(mcpAuditService.recordAuthenticationFailure).toHaveBeenCalledWith(
+				{ requestId: 'request-1' },
+				'authentication_error',
+			);
+		});
+
+		it('should preserve an MCP audience lookup failure as an authentication backend error', async () => {
+			const context = createMockExecutionContext({ authorization: `Bearer ${mockMcpToken}` });
+			markMcpEndpoint();
+			jest.spyOn(mcpInstallationService, 'getAudience').mockRejectedValue(new Error('database unavailable'));
+
+			await expect(guard.canActivate(context)).rejects.toThrow('database unavailable');
+			expect(jwtService.verifyAsync).not.toHaveBeenCalled();
 			expect(mcpAuditService.recordAuthenticationFailure).toHaveBeenCalledWith(
 				{ requestId: 'request-1' },
 				'authentication_error',

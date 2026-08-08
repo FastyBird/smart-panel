@@ -1,5 +1,6 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 
+import { McpEndpointDisabledException } from '../mcp.exceptions';
 import { McpAuditDenialReason, McpAuditService } from '../services/mcp-audit.service';
 import { McpPolicyRequest, McpPolicyService } from '../services/mcp-policy.service';
 import { McpServerService } from '../services/mcp-server.service';
@@ -25,13 +26,17 @@ export class McpClientGuard implements CanActivate {
 			this.policyService.validateRequestOrigin(request, policy);
 			request.mcpPolicy = { ...policy, clientPolicyRevision, policyRevision };
 		} catch (error) {
-			this.auditService.recordPolicyDenial(
-				{
-					requestId: this.auditService.getRequestId(request.body),
-					...(request.auth?.type === 'token' && request.auth.ownerId ? { clientId: request.auth.ownerId } : {}),
-				},
-				this.getDenialReason(error),
-			);
+			const identity = {
+				requestId: this.auditService.getRequestId(request.body),
+				...(request.auth?.type === 'token' && request.auth.ownerId ? { clientId: request.auth.ownerId } : {}),
+			};
+			const denialReason = this.getDenialReason(error);
+
+			if (denialReason) {
+				this.auditService.recordPolicyDenial(identity, denialReason);
+			} else {
+				this.auditService.recordRequestFailure(identity, 'policy_resolution_error');
+			}
 
 			throw error;
 		}
@@ -39,8 +44,8 @@ export class McpClientGuard implements CanActivate {
 		return true;
 	}
 
-	private getDenialReason(error: unknown): McpAuditDenialReason {
-		if (error instanceof NotFoundException) {
+	private getDenialReason(error: unknown): McpAuditDenialReason | null {
+		if (error instanceof McpEndpointDisabledException) {
 			return 'endpoint_disabled';
 		}
 
@@ -48,6 +53,6 @@ export class McpClientGuard implements CanActivate {
 			return 'origin_denied';
 		}
 
-		return 'request_denied';
+		return error instanceof UnauthorizedException ? 'request_denied' : null;
 	}
 }

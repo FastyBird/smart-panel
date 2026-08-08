@@ -21,6 +21,8 @@ export type McpAuditDenialReason =
 	| 'capability_denied'
 	| 'request_denied';
 
+export type McpAuditRequestFailureReason = 'policy_resolution_error';
+
 export type McpSubscriptionCloseReason = 'cancelled' | 'client_closed' | 'completed' | 'error' | 'idle' | 'shutdown';
 
 export interface McpAuditMetricsSnapshot {
@@ -74,6 +76,11 @@ export class McpAuditService {
 			...(options?.capability ? { capability: options.capability } : {}),
 			...(options?.tool ? { tool: options.tool } : {}),
 		});
+	}
+
+	recordRequestFailure(identity: RequestIdentity, reason: McpAuditRequestFailureReason): void {
+		this.failures += 1;
+		this.log('request_failure', identity, { reason });
 	}
 
 	recordProtocolRequest(

@@ -137,10 +137,11 @@ export class AuthGuard implements CanActivate {
 
 	private async validateToken(request: AuthenticatedRequest, token: string, isMcpEndpoint: boolean): Promise<boolean> {
 		let payload: { sub?: string; type?: string; role?: string };
+		const audience = isMcpEndpoint ? await this.mcpInstallationService.getAudience() : undefined;
 
 		try {
 			payload = isMcpEndpoint
-				? await this.jwtService.verifyAsync(token, { audience: await this.mcpInstallationService.getAudience() })
+				? await this.jwtService.verifyAsync(token, { audience })
 				: await this.jwtService.verifyAsync(token);
 		} catch {
 			throw new UnauthorizedException('Invalid or expired token');

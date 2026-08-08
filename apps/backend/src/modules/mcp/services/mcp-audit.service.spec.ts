@@ -122,4 +122,10 @@ describe('McpAuditService', () => {
 
 		expect(logger.extensionType).toBe(MCP_MODULE_NAME);
 	});
+
+	it('counts policy-resolution outages as failures without incrementing denials', () => {
+		service.recordRequestFailure({ requestId: '1', clientId: 'client-1' }, 'policy_resolution_error');
+
+		expect(service.getMetricsSnapshot()).toMatchObject({ failures: 1, denials: 0 });
+	});
 });

@@ -1,5 +1,6 @@
-import { ExecutionContext } from '@nestjs/common';
+import { ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 
+import { McpEndpointDisabledException } from '../mcp.exceptions';
 import { McpAuditService } from '../services/mcp-audit.service';
 import { McpPolicyContext, McpPolicyRequest, McpPolicyService } from '../services/mcp-policy.service';
 import { McpServerService } from '../services/mcp-server.service';
@@ -36,5 +37,72 @@ describe('McpClientGuard', () => {
 		expect(policyService.validateRequestOrigin).toHaveBeenCalledWith(request, policy);
 		expect(serverService.getClientPolicyRevision).toHaveBeenCalledWith('client-id');
 		expect(request.mcpPolicy).toEqual({ ...policy, clientPolicyRevision: 3, policyRevision: 7 });
+	});
+
+	it.each([
+		[new McpEndpointDisabledException(), 'endpoint_disabled'],
+		[new ForbiddenException('Origin is not allowed'), 'origin_denied'],
+		[new UnauthorizedException('MCP client is disabled'), 'request_denied'],
+	])('records known policy rejections as denials', async (error, reason) => {
+		const request = {
+			auth: { type: 'token', ownerId: 'client-id' },
+			body: { id: 'request-1' },
+		} as McpPolicyRequest;
+		const policyService = {
+			resolve: jest.fn().mockRejectedValue(error),
+			validateRequestOrigin: jest.fn(),
+		};
+		const auditService = {
+			getRequestId: jest.fn().mockReturnValue('request-1'),
+			recordPolicyDenial: jest.fn(),
+			recordRequestFailure: jest.fn(),
+		};
+		const guard = new McpClientGuard(
+			policyService as unknown as McpPolicyService,
+			{ getClientPolicyRevision: jest.fn(), getPolicyRevision: jest.fn() } as unknown as McpServerService,
+			auditService as unknown as McpAuditService,
+		);
+		const context = {
+			switchToHttp: () => ({ getRequest: () => request }),
+		} as ExecutionContext;
+
+		await expect(guard.canActivate(context)).rejects.toBe(error);
+		expect(auditService.recordPolicyDenial).toHaveBeenCalledWith(
+			{ requestId: 'request-1', clientId: 'client-id' },
+			reason,
+		);
+		expect(auditService.recordRequestFailure).not.toHaveBeenCalled();
+	});
+
+	it('records policy-resolution outages as request failures instead of denials', async () => {
+		const error = new Error('database unavailable');
+		const request = {
+			auth: { type: 'token', ownerId: 'client-id' },
+			body: { id: 'request-1' },
+		} as McpPolicyRequest;
+		const policyService = {
+			resolve: jest.fn().mockRejectedValue(error),
+			validateRequestOrigin: jest.fn(),
+		};
+		const auditService = {
+			getRequestId: jest.fn().mockReturnValue('request-1'),
+			recordPolicyDenial: jest.fn(),
+			recordRequestFailure: jest.fn(),
+		};
+		const guard = new McpClientGuard(
+			policyService as unknown as McpPolicyService,
+			{ getClientPolicyRevision: jest.fn(), getPolicyRevision: jest.fn() } as unknown as McpServerService,
+			auditService as unknown as McpAuditService,
+		);
+		const context = {
+			switchToHttp: () => ({ getRequest: () => request }),
+		} as ExecutionContext;
+
+		await expect(guard.canActivate(context)).rejects.toBe(error);
+		expect(auditService.recordPolicyDenial).not.toHaveBeenCalled();
+		expect(auditService.recordRequestFailure).toHaveBeenCalledWith(
+			{ requestId: 'request-1', clientId: 'client-id' },
+			'policy_resolution_error',
+		);
 	});
 });
