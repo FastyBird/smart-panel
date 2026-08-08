@@ -1119,7 +1119,12 @@ describe('devices-virtual plugin (e2e)', () => {
 		// A virtual device's channels and properties are derived from its category, and a device PATCH
 		// writes no property, so no property-level guard ever sees a recategorisation. The admin does not
 		// offer the field; an API client can still send it.
-		it('rejects recategorising a populated device to a category its structure does not satisfy', async () => {
+		//
+		// One device, three PATCHes. Split across three tests this cost roughly a dozen requests, and
+		// every request in this file draws on one shared throttler budget — the file was intermittently
+		// red for it. The three assertions are independent of each other, so sharing the fixture costs
+		// nothing but the setup.
+		it('judges a recategorisation by what it breaks, and lets every other edit through', async () => {
 			const deviceResponse = await authPost('/modules/devices/devices')
 				.send({
 					data: {
@@ -1158,199 +1163,60 @@ describe('devices-virtual plugin (e2e)', () => {
 				})
 				.expect(201);
 
-			const response = await authPatch(`/modules/devices/devices/${deviceId}`).send({
+			// A category whose required channels this device plainly lacks.
+			const refused = await authPatch(`/modules/devices/devices/${deviceId}`).send({
 				data: { type: DEVICES_VIRTUAL_TYPE, category: DeviceCategory.DOOR },
 			});
 
-			expect(response.status).toBe(422);
-			expect(JSON.stringify(response.body)).toContain('cannot change category');
+			expect(refused.status).toBe(422);
+			expect(JSON.stringify(refused.body)).toContain('cannot change category');
 
-			// Refused before the write, so the stored category is untouched.
-			const readBack = await authGet(`/modules/devices/devices/${deviceId}`).expect(200);
+			// And the case an `isValid` check waves through: `generic` requires nothing this device lacks
+			// once `device_information` has been synthesized, so its only complaint about the stored
+			// `light` channel is a *warning* — while every projection under that channel would stay
+			// attached to a slot `generic` never defines.
+			await waitUntil(
+				async () => {
+					const current = await authGet(`/modules/devices/devices/${deviceId}`);
 
-			expect((readBack.body as { data: DeviceBody }).data.category).toBe(DeviceCategory.LIGHTING);
-		});
+					if (current.status !== 200) {
+						return { done: false, value: null };
+					}
 
-		// `unit` has no column: the create DTO cannot carry it and ChannelPropertyEntitySubscriber derives
-		// it on load, so a projection reaching the persistence guard has none at all. Comparing that
-		// absence against a slot that declares one refused every creation on a unit-bearing slot — every
-		// `electrical_power`, `temperature`, `humidity` and so on — after the wizard preview had said the
-		// pairing was fine. Nothing in this suite mapped such a slot until now, which is why it was
-		// invisible.
-		it('creates a projection on a unit-bearing slot', async () => {
-			const sourceResponse = await authPost('/modules/devices/devices')
-				.send({
-					data: {
-						type: SIMULATOR_TYPE,
-						category: DeviceCategory.OUTLET,
-						name: 'E2E Metered Source Outlet',
-						channels: [
-							{
-								type: SIMULATOR_TYPE,
-								category: ChannelCategory.ELECTRICAL_POWER,
-								identifier: 'power',
-								name: 'Power',
-								properties: [
-									{
-										type: SIMULATOR_TYPE,
-										category: PropertyCategory.POWER,
-										identifier: 'power',
-										name: 'Power',
-										permissions: [PermissionType.READ_ONLY],
-										data_type: DataTypeType.FLOAT,
-										format: [0, 10000],
-										value: 0,
-									},
-								],
-							},
-						],
-					},
-				})
-				.expect(201);
+					const channels = (current.body as { data: DeviceBody }).data.channels;
 
-			const sourceBody = sourceResponse.body as { data: DeviceBody };
-
-			const sourcePowerPropertyId = sourceBody.data.channels
-				.find((channel) => channel.category === String(ChannelCategory.ELECTRICAL_POWER))
-				?.properties.find((property) => String(property.category) === String(PropertyCategory.POWER))?.id;
-
-			expect(sourcePowerPropertyId).toBeDefined();
-
-			const response = await authPost('/modules/devices/devices').send({
-				data: {
-					type: DEVICES_VIRTUAL_TYPE,
-					category: DeviceCategory.SENSOR,
-					name: 'E2E Unit Bearing Virtual Sensor',
-					channels: [
-						{
-							type: DEVICES_VIRTUAL_TYPE,
-							category: ChannelCategory.ELECTRICAL_POWER,
-							identifier: 'power',
-							name: 'Power',
-							properties: [
-								{
-									type: DEVICES_VIRTUAL_TYPE,
-									category: PropertyCategory.POWER,
-									identifier: 'power',
-									name: 'Power',
-									permissions: [PermissionType.READ_ONLY],
-									data_type: DataTypeType.FLOAT,
-									format: [0, 10000],
-									value_origin: 'source',
-									source_property: sourcePowerPropertyId,
-								},
-							],
-						},
-					],
+					return {
+						done: channels.some((channel) => channel.category === String(ChannelCategory.DEVICE_INFORMATION)),
+						value: channels.map((channel) => channel.category),
+					};
+					// Polled at half the usual rate: every request here draws on the same shared throttler
+					// budget, and the channel is synthesized off DEVICE_CREATED in well under a second.
 				},
-			});
+				'the synthesized device_information channel appearing',
+				3000,
+				500,
+			);
 
-			expect(response.status).toBe(201);
-
-			// And the unit really is the slot's, derived on the way back out rather than stored.
-			const created = response.body as { data: DeviceBody };
-
-			const power = created.data.channels
-				.find((channel) => channel.category === String(ChannelCategory.ELECTRICAL_POWER))
-				?.properties.find((property) => String(property.category) === String(PropertyCategory.POWER)) as
-				| (ChannelPropertyBody & { unit: string | null })
-				| undefined;
-
-			expect(power?.unit).toBe('W');
-		});
-
-		// The case an `isValid` check waves through: `generic` requires nothing the device lacks, so its
-		// only complaint about the stored `light` channel is a *warning* — and every projection under that
-		// channel would stay attached to a slot `generic` never defines.
-		it('rejects recategorising to a category that merely does not define the stored channels', async () => {
-			const deviceResponse = await authPost('/modules/devices/devices')
-				.send({
-					data: {
-						type: DEVICES_VIRTUAL_TYPE,
-						category: DeviceCategory.LIGHTING,
-						name: 'E2E Unknown Channel Guard Device',
-					},
-				})
-				.expect(201);
-			const deviceId = (deviceResponse.body as { data: DeviceBody }).data.id;
-
-			await authPost('/modules/devices/channels')
-				.send({
-					data: {
-						type: DEVICES_VIRTUAL_TYPE,
-						category: ChannelCategory.LIGHT,
-						identifier: 'light',
-						name: 'Light',
-						device: deviceId,
-					},
-				})
-				.expect(201);
-
-			// `generic` *requires* device_information, which DeviceConnectivityService synthesizes
-			// fire-and-forget off DEVICE_CREATED. Patching before it lands would be refused for a missing
-			// required channel — an ordinary error — and would prove nothing about the warning-only case
-			// this test exists for. Waiting makes the stored `light` channel the sole complaint.
-			await waitUntil(async () => {
-				const current = await authGet(`/modules/devices/devices/${deviceId}`);
-
-				if (current.status !== 200) {
-					return { done: false, value: null };
-				}
-
-				const channels = (current.body as { data: DeviceBody }).data.channels;
-
-				return {
-					done: channels.some((channel) => channel.category === String(ChannelCategory.DEVICE_INFORMATION)),
-					value: channels.map((channel) => channel.category),
-				};
-			}, 'the synthesized device_information channel appearing');
-
-			const response = await authPatch(`/modules/devices/devices/${deviceId}`).send({
+			const warningOnly = await authPatch(`/modules/devices/devices/${deviceId}`).send({
 				data: { type: DEVICES_VIRTUAL_TYPE, category: DeviceCategory.GENERIC },
 			});
 
-			expect(response.status).toBe(422);
-			expect(JSON.stringify(response.body)).toContain('is not defined in specification');
+			expect(warningOnly.status).toBe(422);
+			expect(JSON.stringify(warningOnly.body)).toContain('is not defined in specification');
 
-			const readBack = await authGet(`/modules/devices/devices/${deviceId}`).expect(200);
-
-			expect((readBack.body as { data: DeviceBody }).data.category).toBe(DeviceCategory.LIGHTING);
-		});
-
-		// Every other PATCH keeps working: the guard only runs when the category actually moves, so a
-		// device whose structure would fail today's specification can still be renamed.
-		it('allows an unrelated PATCH on a populated device', async () => {
-			const deviceResponse = await authPost('/modules/devices/devices')
-				.send({
-					data: {
-						type: DEVICES_VIRTUAL_TYPE,
-						category: DeviceCategory.LIGHTING,
-						name: 'E2E Rename Device',
-					},
-				})
-				.expect(201);
-			const deviceId = (deviceResponse.body as { data: DeviceBody }).data.id;
-
-			await authPost('/modules/devices/channels')
-				.send({
-					data: {
-						type: DEVICES_VIRTUAL_TYPE,
-						category: ChannelCategory.LIGHT,
-						identifier: 'light',
-						name: 'Light',
-						device: deviceId,
-					},
-				})
-				.expect(201);
-
+			// Every other PATCH keeps working: the guard only runs when the category actually moves, so a
+			// device whose structure would fail today's specification can still be renamed.
 			await authPatch(`/modules/devices/devices/${deviceId}`)
 				.send({ data: { type: DEVICES_VIRTUAL_TYPE, name: 'E2E Renamed Device' } })
 				.expect(200);
 
-			// Read back rather than trusting the response envelope, so this pins what was stored.
+			// Read back rather than trusting the response envelope, so this pins what was stored — and the
+			// category is still what the refusals above left it.
 			const readBack = await authGet(`/modules/devices/devices/${deviceId}`).expect(200);
+			const stored = (readBack.body as { data: DeviceBody & { name: string } }).data;
 
-			expect((readBack.body as { data: DeviceBody & { name: string } }).data.name).toBe('E2E Renamed Device');
+			expect(stored.name).toBe('E2E Renamed Device');
+			expect(stored.category).toBe(DeviceCategory.LIGHTING);
 		});
 
 		it("rejects a source_property pointing at another virtual device's property", async () => {

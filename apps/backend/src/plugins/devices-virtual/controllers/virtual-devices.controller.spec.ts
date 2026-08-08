@@ -5,6 +5,7 @@ import { ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/en
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
+import { VirtualNestingNotAllowedException, VirtualSourceNotFoundException } from '../devices-virtual.exceptions';
 import { CompatibilityCandidateDto, ReqCompatibilityDto } from '../dto/compatibility-request.dto';
 import { VirtualDevicesService } from '../services/virtual-devices.service';
 
@@ -13,7 +14,11 @@ import { VirtualDevicesController } from './virtual-devices.controller';
 describe('VirtualDevicesController', () => {
 	let controller: VirtualDevicesController;
 	let devicesService: { findOne: jest.Mock };
-	let virtualDevicesService: { findSourceDevices: jest.Mock; reportCompatibility: jest.Mock };
+	let virtualDevicesService: {
+		findSourceDevices: jest.Mock;
+		reportCompatibility: jest.Mock;
+		assertSourceNotVirtual: jest.Mock;
+	};
 	let channelsPropertiesService: { findOne: jest.Mock };
 
 	const virtualDevice = { id: 'virtual-device', type: DEVICES_VIRTUAL_TYPE } as DeviceEntity;
@@ -25,6 +30,7 @@ describe('VirtualDevicesController', () => {
 		virtualDevicesService = {
 			findSourceDevices: jest.fn().mockResolvedValue([deviceA, deviceB]),
 			reportCompatibility: jest.fn().mockReturnValue({ compatible: true }),
+			assertSourceNotVirtual: jest.fn().mockResolvedValue(undefined),
 		};
 		channelsPropertiesService = { findOne: jest.fn() };
 
@@ -103,6 +109,40 @@ describe('VirtualDevicesController', () => {
 
 		const request = (candidates: CompatibilityCandidateDto[]): ReqCompatibilityDto =>
 			({ data: { category: DeviceCategory.LIGHTING, candidates } }) as ReqCompatibilityDto;
+
+		// Nesting is refused at persistence by `@ValidateSourceNotVirtual`, and `reportCompatibility`
+		// cannot see it: that predicate compares a candidate against a *slot*, and a virtual device's
+		// `light.on` fills a `light.on` slot perfectly. A preview that says yes here is the one answer a
+		// user acts on — the wizard greys out whatever it is told is incompatible.
+		it('reports a source owned by another virtual device as incompatible', async () => {
+			channelsPropertiesService.findOne.mockResolvedValue({ id: 'nested-source' } as ChannelPropertyEntity);
+			virtualDevicesService.assertSourceNotVirtual.mockRejectedValue(
+				new VirtualNestingNotAllowedException(
+					'Source property id=nested-source belongs to virtual device id=other; nesting virtual devices is not allowed',
+				),
+			);
+
+			const response = await controller.checkCompatibility(request([candidate('nested-source')]));
+
+			expect(response.data[0].compatible).toBe(false);
+			expect(response.data[0].reason).toContain('nesting virtual devices is not allowed');
+			// The slot predicate is not even consulted: this candidate cannot be persisted whatever it says.
+			expect(virtualDevicesService.reportCompatibility).not.toHaveBeenCalled();
+		});
+
+		// The property was just read, so a chain that does not resolve means its channel or device does
+		// not — malformed input of the same kind as an id naming nothing, and refused the same way rather
+		// than folded into a report that would read as a legitimate comparison outcome.
+		it('refuses the request when a candidate has no owning device', async () => {
+			channelsPropertiesService.findOne.mockResolvedValue({ id: 'orphan-source' } as ChannelPropertyEntity);
+			virtualDevicesService.assertSourceNotVirtual.mockRejectedValue(
+				new VirtualSourceNotFoundException('Source property id=orphan-source does not resolve to an existing chain'),
+			);
+
+			await expect(controller.checkCompatibility(request([candidate('orphan-source')]))).rejects.toThrow(
+				UnprocessableEntityException,
+			);
+		});
 
 		it('reports compatibility per candidate, resolving each source property and preserving request order', async () => {
 			const sourceA = { id: 'source-a' } as ChannelPropertyEntity;

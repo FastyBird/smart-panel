@@ -1,7 +1,7 @@
-import { computed } from 'vue';
+import { computed, reactive } from 'vue';
 
 import { v4 as uuid } from 'uuid';
-import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
+import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
 
@@ -59,7 +59,10 @@ const CHANNEL_ID = 'channel-switcher';
 // Reassigned per test by `mountSources`; the fake stores below close over these bindings rather than
 // fixed fixtures so each test can shape its own channel/property graph without redefining the stores.
 let channels: IChannel[] = [];
-let properties: IVirtualChannelProperty[] = [];
+// Reactive, because the panel now *watches* the links these carry: a websocket update repointing or
+// orphaning a projection has to reach the component the way the real store's reactive data would,
+// rather than only being observed the next time something else re-renders.
+const properties: IVirtualChannelProperty[] = reactive([]);
 
 const channelsStore = {
 	findForDevice: (deviceId: string): IChannel[] => channels.filter((channel) => channel.device === deviceId),
@@ -142,6 +145,8 @@ const sourceDeviceResponse = (id: string, name: string): Record<string, unknown>
 	channels: [],
 });
 
+const mounted: { unmount: () => void }[] = [];
+
 const mountSources = (fixtures: { channels?: IChannel[]; properties?: Partial<IVirtualChannelProperty>[] } = {}) => {
 	channels = fixtures.channels ?? [
 		{ id: CHANNEL_ID, device: VIRTUAL_DEVICE_ID, name: 'Switch', category: DevicesModuleChannelCategory.switcher } as unknown as IChannel,
@@ -150,7 +155,9 @@ const mountSources = (fixtures: { channels?: IChannel[]; properties?: Partial<IV
 	// Every field an orphan check does not care about gets a harmless default, so a test only has to
 	// state the fields its scenario is actually about — `id`, `valueOrigin` and `sourceProperty` in the
 	// brief's own example.
-	properties = (fixtures.properties ?? []).map(
+	properties.length = 0;
+	properties.push(
+		...(fixtures.properties ?? []).map(
 		(property, index) =>
 			({
 				id: `property-${index}`,
@@ -161,11 +168,17 @@ const mountSources = (fixtures: { channels?: IChannel[]; properties?: Partial<IV
 				sourceProperty: null,
 				...property,
 			}) as unknown as IVirtualChannelProperty
+		)
 	);
 
 	const wrapper = mount(VirtualDeviceSources, {
 		props: { device },
 	});
+
+	// Tracked so `afterEach` can tear it down. The panel watches the shared `properties` fixture now, so
+	// a wrapper left mounted from an earlier test keeps reacting to the next test's fixtures and fires
+	// its own fetches into the shared mock.
+	mounted.push(wrapper);
 
 	return {
 		wrapper,
@@ -180,6 +193,12 @@ describe('VirtualDeviceSources', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		backendClient.GET.mockResolvedValue(respondWith([]));
+	});
+
+	afterEach(() => {
+		while (mounted.length > 0) {
+			mounted.pop()?.unmount();
+		}
 	});
 
 	it('flags an orphaned property and offers to remap it', () => {
@@ -307,6 +326,59 @@ describe('VirtualDeviceSources', () => {
 	// The property store update clears the orphan warning on its own, but this list is a separate
 	// snapshot from the source-devices endpoint: without refetching, a device the remap just linked
 	// stays listed as absent until the whole detail page is reloaded.
+	// `sourceDevices` is a snapshot from the source-devices endpoint; `warnings` is live from the store.
+	// The backend announces a projection that lost its source, so the two drift apart on their own: the
+	// warning appears while the list beside it still presents the deleted source as backing this device.
+	it('reloads the source devices when a projection loses its source', async () => {
+		const { warnings } = mountSources({
+			properties: [{ id: 'p', valueOrigin: DevicesVirtualPluginValueOrigin.source, sourceProperty: 'source-1' }],
+		});
+
+		await flushPromises();
+
+		expect(warnings.value).toHaveLength(0);
+
+		const callsBefore = (backendClient.GET as Mock).mock.calls.length;
+
+		// What the websocket delivers once the backend announces the orphaning.
+		properties[0] = { ...properties[0], sourceProperty: null } as IVirtualChannelProperty;
+
+		await flushPromises();
+
+		expect(warnings.value).toHaveLength(1);
+		expect((backendClient.GET as Mock).mock.calls.length).toBeGreaterThan(callsBefore);
+	});
+
+	// The other direction, where there is no warning to notice: a remap performed elsewhere repoints a
+	// projection at a different device, which belongs in this list and would otherwise never appear.
+	it('reloads the source devices when a projection is repointed elsewhere', async () => {
+		mountSources({
+			properties: [{ id: 'p', valueOrigin: DevicesVirtualPluginValueOrigin.source, sourceProperty: 'source-1' }],
+		});
+
+		await flushPromises();
+
+		const callsBefore = (backendClient.GET as Mock).mock.calls.length;
+
+		properties[0] = { ...properties[0], sourceProperty: 'source-2' } as IVirtualChannelProperty;
+
+		await flushPromises();
+
+		expect((backendClient.GET as Mock).mock.calls.length).toBeGreaterThan(callsBefore);
+	});
+
+	// The mount fetch already answers this question; the channels and properties arriving afterwards
+	// must not spend a second request asking it again.
+	it('does not refetch while the links it is watching are only settling into place', async () => {
+		mountSources({
+			properties: [{ id: 'p', valueOrigin: DevicesVirtualPluginValueOrigin.source, sourceProperty: 'source-1' }],
+		});
+
+		await flushPromises();
+
+		expect((backendClient.GET as Mock).mock.calls.length).toBe(1);
+	});
+
 	it('reloads the source devices after a successful remap', async () => {
 		const { wrapper, warnings } = mountSources({
 			properties: [{ id: 'p', valueOrigin: DevicesVirtualPluginValueOrigin.source, sourceProperty: null }],

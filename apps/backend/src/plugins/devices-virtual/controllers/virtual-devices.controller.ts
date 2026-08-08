@@ -26,6 +26,7 @@ import {
 	DEVICES_VIRTUAL_PLUGIN_NAME,
 	DEVICES_VIRTUAL_TYPE,
 } from '../devices-virtual.constants';
+import { VirtualNestingNotAllowedException, VirtualSourceNotFoundException } from '../devices-virtual.exceptions';
 import { ReqCompatibilityDto } from '../dto/compatibility-request.dto';
 import { CompatibilityReportModel, CompatibilityResponseModel } from '../models/compatibility-response.model';
 import { VirtualSourceDevicesResponseModel } from '../models/virtual-response.model';
@@ -122,6 +123,19 @@ export class VirtualDevicesController {
 		// from re-fetching a given id.
 		const sourceProperties = new Map<string, ChannelPropertyEntity>();
 
+		// Candidates whose own device is virtual, and the reason to report for them. Nesting is refused
+		// at persistence by `@ValidateSourceNotVirtual`, and `reportCompatibility` cannot see it — that
+		// predicate compares a candidate against a *slot*, and a virtual device's `light.on` matches a
+		// `light.on` slot perfectly. Without this the preview would advertise a mapping the very next
+		// request rejects, which is worse than refusing it here: the wizard greys out what it is told is
+		// incompatible, so a false green is the one answer a user acts on.
+		//
+		// Resolved in this pass rather than the report loop below because the owning device is two hops
+		// away and the loop is synchronous. The rule itself is not restated: `assertSourceNotVirtual` is
+		// called and its message becomes the reason, the same way `reportCompatibility` borrows
+		// `assertPermissionsCompatible`'s.
+		const nestingRefusals = new Map<string, string>();
+
 		for (const candidate of candidates) {
 			if (sourceProperties.has(candidate.source_property)) {
 				continue;
@@ -143,15 +157,37 @@ export class VirtualDevicesController {
 			}
 
 			sourceProperties.set(candidate.source_property, sourceProperty);
+
+			try {
+				await this.virtualDevicesService.assertSourceNotVirtual(candidate.source_property);
+			} catch (error) {
+				if (error instanceof VirtualNestingNotAllowedException) {
+					nestingRefusals.set(candidate.source_property, error.message);
+				} else if (error instanceof VirtualSourceNotFoundException) {
+					// The property exists — it was just read — so a chain that does not resolve means its
+					// channel or device does not. Malformed input of the same kind as an id naming nothing,
+					// and refused the same way rather than folded into a report.
+					this.logger.error(`[ERROR] Candidate source property id=${candidate.source_property} has no owner`);
+
+					throw new UnprocessableEntityException(error.message);
+				} else {
+					throw error;
+				}
+			}
 		}
 
 		const reports = candidates.map((candidate) => {
 			const sourceProperty = sourceProperties.get(candidate.source_property);
 
-			const result = this.virtualDevicesService.reportCompatibility(
-				{ category, channel: candidate.spec_channel, property: candidate.spec_property },
-				sourceProperty,
-			);
+			const nesting = nestingRefusals.get(candidate.source_property);
+
+			const result =
+				nesting === undefined
+					? this.virtualDevicesService.reportCompatibility(
+							{ category, channel: candidate.spec_channel, property: candidate.spec_property },
+							sourceProperty,
+						)
+					: { compatible: false, reason: nesting };
 
 			const report = new CompatibilityReportModel();
 

@@ -106,7 +106,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, ref } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
@@ -226,6 +226,40 @@ const onRemapped = (): void => {
 
 	fetchSourceDevices().catch((err: unknown): void => logger.error('Failed to reload virtual device source devices after a remap', err));
 };
+
+// Which source each of this device's projections currently names, as one comparable string.
+//
+// `sourceDevices` is a snapshot from the source-devices endpoint, taken at mount and refetched after a
+// local remap. `warnings` is live, read straight from the property store — and since the backend now
+// announces a projection that lost its source, the two drift apart on their own: the warning appears
+// while the list below it goes on presenting the deleted source as currently backing this device. Two
+// panels on one screen contradicting each other, until a reload.
+//
+// Watching the links rather than the warnings covers the other direction too, where there is no warning
+// to notice: a remap performed elsewhere (another admin session, or the API) repoints a projection at a
+// different device, which belongs in this list and would otherwise never appear in it.
+const sourceLinks = computed<string>((): string =>
+	channels.value
+		.flatMap((channel: IChannel): string[] =>
+			(propertiesStore.findForChannel(channel.id) as IVirtualChannelProperty[]).map(
+				(property: IVirtualChannelProperty): string => `${property.id}:${property.sourceProperty ?? ''}`
+			)
+		)
+		.sort()
+		.join('|')
+);
+
+watch(sourceLinks, (current: string, previous: string): void => {
+	// Not on the first resolution: `onBeforeMount` already fetches, and the channels and properties
+	// arriving afterwards would otherwise spend a second request answering a question just asked.
+	if (previous === undefined || current === previous) {
+		return;
+	}
+
+	fetchSourceDevices().catch((err: unknown): void =>
+		logger.error('Failed to reload virtual device source devices after its links changed', err)
+	);
+});
 
 const onViewSourceDevice = (deviceId: IDevice['id']): void => {
 	router
