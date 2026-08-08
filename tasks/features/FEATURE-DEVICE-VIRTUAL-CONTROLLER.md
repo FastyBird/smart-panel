@@ -165,15 +165,27 @@ Stated as constraints rather than mechanisms: how each is met belongs in the des
 when this is picked up, not in a task file. Each was found by review of this task and is recorded so
 none of them is discovered late.
 
-- **One evaluation at a time per controller.** Four triggers can arrive together — a sensor report
-  while a setpoint write is being persisted — and Nest's handlers run concurrently, so two
-  evaluations can both read the pre-write state and dispatch contradictory commands whose order of
-  completion decides the relay. Minimum-cycle protection is bypassed the same way.
-- **Never both actuators at once.** A virtual thermostat carries heater *and* cooler channels, each
-  with its own loop and setpoint. `ClimateIntentDto`'s ordering validator only compares setpoints
-  that arrive in one request, so separate intents — or a direct write to an owned setpoint — can
-  cross them, after which both loops call for their own actuator. The interlock has to live with the
-  device, not with the request that happened to set a value.
+- **One evaluation at a time per *device*, not per loop.** Four triggers can arrive together — a
+  sensor report while a setpoint write is being persisted — and Nest's handlers run concurrently, so
+  two evaluations can both read the pre-write state and dispatch contradictory commands whose order
+  of completion decides the relay. Minimum-cycle protection is bypassed the same way. Per-loop
+  serialisation is not enough: a heater and a cooler evaluating at once would each see the other
+  inactive and each energise its own output, which is precisely the interlock below being bypassed.
+  The read, the decision and the command belong in one critical section spanning every loop the
+  device has.
+- **Never both actuators at once**, on any device that has two opposed ones. A virtual thermostat
+  carries heater *and* cooler channels, each with its own loop and setpoint — and so does an
+  `air_conditioner` whose optional `heater` channel is mapped (`spec/devices/devices.yaml`: `cooler`
+  required, `heater` optional), so the rule is about the shape, not about the category name.
+  `ClimateIntentDto`'s ordering validator only compares setpoints that arrive in one request, so
+  separate intents — or a direct write to an owned setpoint — can cross them, after which both loops
+  call for their own actuator. The interlock has to live with the device, not with the request that
+  happened to set a value.
+- **State follows the actuator, not the decision.** `status` and the cycle timestamps must be
+  committed on the actuator's *confirmed* result, not on what the loop decided to do. The platform
+  can reject or throw — a failed release with the relay still energised is the dangerous one — and a
+  controller that recorded its intention would report the unit idle while it is heating, and would
+  suppress the retry that should follow, since by its own account there is nothing left to do.
 - **Cycle state survives a restart.** Minimum on/off protection kept only in memory is no protection:
   the process restarts mid-interval, the last transition time is gone, and the next event may toggle
   the relay immediately. Either the state is durable, or it is reconstructed from the actuator's
@@ -228,9 +240,12 @@ none of them is discovered late.
       boolean — `locked`, `swing`, `mute` — is rejected
 - [ ] A second channel cannot take an actuator another already holds, including when both requests
       arrive concurrently
-- [ ] Two triggers arriving together produce one evaluation, not two contradictory ones
-- [ ] A thermostat never energises heater and cooler at once, including when their setpoints are
-      crossed by separate writes
+- [ ] Two triggers arriving together produce one evaluation, not two contradictory ones, including
+      when they belong to different loops of the same device
+- [ ] A rejected or failed actuator command leaves `status` and the cycle state unchanged, and the
+      next evaluation retries rather than believing the transition happened
+- [ ] No device energises two opposed actuators at once — a thermostat, and an `air_conditioner`
+      with its optional heater mapped — including when their setpoints are crossed by separate writes
 - [ ] Minimum-cycle protection holds across a restart, with a test that restarts mid-interval
 - [ ] A relay held only as an actuator is not auto-unhidden on restart, and a connection change on it
       reaches the virtual device's status
