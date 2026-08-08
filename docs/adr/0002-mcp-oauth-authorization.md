@@ -135,8 +135,11 @@ module capability ceiling
 ```
 
 The intersection is recomputed for every request and immediately before tool execution. The grant check also confirms
-that its approving user still exists with owner/admin role. Scope reduction or approver demotion never waits for
-access-token expiry.
+that its approving user still exists with owner/admin role. An OAuth subscription records the effective scope set and
+the identities or versions of every input that produced it. An awaited invalidation path closes an affected stream
+before a module capability ceiling, registered-client maximum, or approved-grant scope reduction reports success; a
+configuration notification alone is not sufficient. Scope reduction or approver demotion never waits for access-token
+expiry.
 
 ### 6. Login, consent, and recovery
 
@@ -168,12 +171,17 @@ global revocation policy; server-secret rotation revokes every OAuth artifact an
 
 Owners and administrators can list clients, grants, active access tokens, and refresh-token families without seeing raw
 secrets. They can disable a client, revoke a grant, revoke a token family, or revoke one access token. Every OAuth
-subscription is bound to its client, grant, access-token ID, refresh-family ID when present, and an authorization
-deadline equal to the earlier of its access-token expiry or grant expiry.
-Revoking any of those artifacts aborts exactly the matching active subscriptions before the administrative mutation
-reports success. The subscription registry schedules an abort at the authorization deadline, because a long-lived
-stream does not re-run per-request authentication while it is open. Disabling the MCP module closes all MCP
-subscriptions and denies both authorization and resource requests.
+subscription is bound to its client, grant, access-token ID, refresh-family ID when present, effective scopes, the
+module/client/grant authorization inputs that produced those scopes, and an authorization deadline equal to the earlier
+of its access-token expiry or grant expiry.
+
+Revoking an artifact aborts exactly the matching active subscriptions before the administrative mutation reports
+success. Reducing the module ceiling, registered-client maximum, or approved-grant scopes uses the same awaited path to
+abort every OAuth subscription whose required `mcp:read` capability is no longer effective. This path is invoked by the
+authoritative mutation, not only by the existing asynchronous MCP configuration listener. The subscription registry
+also schedules an abort at the authorization deadline, because a long-lived stream does not re-run per-request
+authentication while it is open. Disabling the MCP module closes all MCP subscriptions and denies both authorization
+and resource requests.
 
 Approver invalidation must use an awaited lifecycle path, such as a directly orchestrated service or propagated
 `emitAsync`; the existing fire-and-forget `eventEmitter.emit` calls are not sufficient. For
@@ -191,11 +199,18 @@ codes, access tokens, refresh tokens, PKCE verifiers, cookies, passwords, or tok
 OAuth remains disabled by default. Adding persistence, consent, token, discovery, or validation code does not make any
 OAuth route reachable: implementation phases keep the surface behind an internal test-only gate. The user-facing enable
 switch is added only after the application can verify that access-token/grant authorization-deadline timers, targeted
-client/grant/token/family subscription aborts, awaited approver update/delete invalidation, public-identity and
-server-secret rotation invalidation, owner/admin revoke controls, audit hooks, and endpoint rate limits are all
-registered. A failed readiness check leaves protected-resource metadata,
+client/grant/token/family and live-scope-reduction subscription aborts, awaited approver update/delete invalidation,
+public-identity/server-secret rotation invalidation, OAuth switch-off invalidation, owner/admin revoke controls, audit
+hooks, and endpoint rate limits are all registered. A failed readiness check leaves protected-resource metadata,
 authorization-server metadata, authorization/token/revocation endpoints, OAuth challenges, and OAuth MCP bearer
 validation unmounted together. The initial static bearer behavior remains unchanged during that failure.
+
+Switching OAuth off first closes the shared fail-closed runtime gate, so every OAuth discovery, authorization, token,
+revocation, challenge, and OAuth-bearing MCP request is rejected before reaching its handler. The same awaited mutation
+then revokes all outstanding OAuth artifacts and aborts all OAuth subscriptions before reporting success; static MCP
+credentials and streams remain active. An invalidation failure keeps OAuth fail-closed and makes the mutation return an
+error. Re-enabling reruns the complete readiness gate and does not reactivate the revoked artifacts: clients must begin
+a new authorization flow.
 
 Public deployment requires HTTPS, an explicit public base URL, trusted reverse-proxy configuration, endpoint and login
 rate limits, current backups, and an incident-response procedure. Forwarded headers remain ignored until a separately
@@ -223,12 +238,14 @@ reissue or downgrade an OAuth token into a static credential.
 | Stolen access token | Ten-minute maximum lifetime, hashed persistence, TLS, log redaction, immediate revocation check |
 | Stolen/replayed refresh token | Rotation, family reuse detection, 30-day absolute lifetime, hashed persistence |
 | Scope escalation or stale permission | Four-way live intersection and recheck immediately before tool execution |
+| A live scope input shrinks while an OAuth stream is open | Bind the stream to its module/client/grant inputs and abort it through the awaited authoritative mutation path before the reduction reports success |
 | Malicious dynamic/CIMD registration | No DCR/CIMD in the initial profile; later enablement requires SSRF, quota, and redirect-policy review |
 | Proxy/header spoofing and DNS rebinding | Explicit public URL, trusted Host/Origin policy, ignore forwarded headers unless proxy trust is configured |
 | Client, grant, token, or refresh-family revocation with an open stream | Bind subscriptions to every authorization artifact and abort targeted streams before the mutation reports success |
 | An access token or its grant expires while a stream is open | Cap token expiry at grant expiry and abort the subscription at the earlier authorization deadline |
 | A grant approver is demoted or deleted | Use an awaited user-lifecycle path and do not report the user mutation successful until every affected grant, token artifact, and subscription is revoked |
 | OAuth server secret is rotated after compromise | Revoke all OAuth artifacts and close all OAuth subscriptions as one global invalidation operation |
+| OAuth is switched off while subscriptions are open | Fail closed for all OAuth traffic, revoke OAuth artifacts, and close OAuth streams atomically while preserving static MCP streams |
 | A phased rollout exposes OAuth before revocation controls | Do not add the enable switch or mount any OAuth route until a startup readiness gate verifies every invalidation and admin control |
 | Brute force and artifact enumeration | Separate limits for login, authorize, token, and revocation endpoints; uniform OAuth errors where required |
 | Backup cloning | Preserve installation UUID for identity but rotate/revoke OAuth and static credentials for a new physical installation |

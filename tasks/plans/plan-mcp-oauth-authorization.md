@@ -112,9 +112,13 @@ amend ADR 0002.
 - [ ] Add list/inspect/disable/revoke APIs for OAuth clients, grants, access tokens, and refresh families.
 - [ ] Add Admin client/grant/token management views and revoke confirmations.
 - [ ] Bind OAuth subscriptions to client, grant, access-token, optional refresh-family IDs, and an authorization
-      deadline equal to the earlier of access-token or grant expiry.
+      deadline equal to the earlier of access-token or grant expiry; also record their effective scopes and the
+      module/client/grant authorization inputs that produced them.
 - [ ] Close only the matching subscriptions before client, grant, access-token, or refresh-family revocation reports
       success, and automatically close each stream at its authorization deadline.
+- [ ] Route module-ceiling, registered-client-maximum, and approved-grant scope reductions through an awaited
+      authoritative mutation path that closes every OAuth subscription that loses `mcp:read` before reporting success;
+      do not rely on the existing asynchronous MCP configuration notification listener.
 - [ ] Replace fire-and-forget approver invalidation with an awaited lifecycle path for `UsersModule.User.Updated` and
       `UsersModule.User.Deleted`: when a grant approver is deleted or no longer has owner/admin role, revoke every grant
       and token artifact they approved and close matching subscriptions before the user mutation returns success;
@@ -127,11 +131,15 @@ amend ADR 0002.
       invalidation failure, and never leave a demoted/deleted approver's grant usable.
 - [ ] Regenerate OpenAPI/admin types through the normal generators.
 - [ ] Add the user-facing OAuth enable switch only after startup verifies authorization-deadline timers, targeted
-      subscription aborts, awaited approver lifecycle invalidation, public-identity/server-secret rotation, revoke
-      controls, audit hooks, and rate limits are registered; fail closed and leave every OAuth route unmounted if any
-      readiness check fails.
+      artifact and live-scope-reduction subscription aborts, awaited approver lifecycle invalidation,
+      public-identity/server-secret rotation, OAuth switch-off invalidation, revoke controls, audit hooks, and rate
+      limits are registered; fail closed and leave every OAuth route unmounted if any readiness check fails.
 - [ ] On enable, mount protected-resource metadata, authorization-server metadata, authorization/token/revocation
       endpoints, OAuth challenges, and OAuth MCP bearer validation as one surface; never expose a partial subset.
+- [ ] On switch-off, atomically close the shared OAuth runtime gate before handlers accept more traffic, revoke all
+      OAuth artifacts, and abort all OAuth subscriptions before reporting success; preserve static MCP credentials and
+      streams, remain fail-closed if invalidation fails, and require a new authorization flow after readiness-gated
+      re-enable.
 
 ## Phase 6 — E2E, proxy, and compatibility gate
 
@@ -141,7 +149,11 @@ amend ADR 0002.
       rejection otherwise, code replay, scope reduction, expiry, refresh rotation/reuse, revocation, wrong
       issuer/resource/audience, cross-client isolation, and redaction; cover open-stream abort on token expiry and
       grant expiry, client/grant/access-token/refresh-family revocation, awaited approver demotion/deletion
-      invalidation, and global server-secret rotation.
+      invalidation, global server-secret rotation, and each module/client/grant scope reduction that removes a stream's
+      effective `mcp:read` capability.
+- [ ] E2E: switch OAuth off with active OAuth and static subscriptions; prove new OAuth traffic is rejected and OAuth
+      streams and artifacts are invalidated before success while static streams remain open, then prove re-enable
+      reruns readiness and old OAuth artifacts remain unusable.
 - [ ] Reverse-proxy E2E: explicit external prefix, hostile forwarded headers, untrusted proxy, trusted proxy, public URL
       change, and rollback.
 - [ ] Codex smoke: discovery, authorization, list/call, refresh, scope failure, and revocation; record exact version and

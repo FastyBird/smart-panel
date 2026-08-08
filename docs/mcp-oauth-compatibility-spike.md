@@ -112,10 +112,14 @@ authorization server and therefore do not remove the need for the component spik
 - Refresh-token rotation and reuse-family revocation.
 - Immediate denial and subscription closure after client, grant, access-token, or refresh-family revocation and at
   the earlier of access-token or grant expiry.
+- Awaited OAuth stream closure when the module ceiling, registered-client maximum, or approved-grant scopes remove its
+  effective `mcp:read` capability.
 - Awaited grant, token, and subscription invalidation when the approving owner/admin is demoted or deleted.
 - Global artifact revocation and stream closure on OAuth server-secret rotation.
+- Fail-closed OAuth switch-off that rejects new OAuth traffic, revokes OAuth artifacts, and closes OAuth streams while
+  preserving static MCP streams; readiness-gated re-enable must not reactivate old artifacts.
 - Atomic production activation only after expiry, revocation, approver-lifecycle, public-identity/server-secret
-  rotation, admin, audit, and rate-limit controls pass the readiness gate.
+  rotation, live-scope-reduction, switch-off, admin, audit, and rate-limit controls pass the readiness gate.
 - Reverse-proxy path prefixes without trusting forwarded headers.
 - Coexistence of static URN-audience credentials and OAuth HTTPS-resource credentials.
 
