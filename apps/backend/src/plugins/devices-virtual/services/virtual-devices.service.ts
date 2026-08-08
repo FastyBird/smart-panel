@@ -248,18 +248,41 @@ export class VirtualDevicesService {
 		}
 
 		const properties = await this.channelsPropertiesService.findAll(channel.id);
+
+		if (properties.length === 0) {
+			return;
+		}
+
+		// Every property is judged, owned ones included. An owned property fills a slot just as surely as
+		// a projection does — an `outlet` channel owns a read-only `in_use`, and `switcher` has no such
+		// slot, so relabelling would leave a property the specification does not know about on a device
+		// that claims to be a switcher.
+		const withoutSlot = properties.filter(
+			(property) => !getAllProperties(channel.category).some((slot) => slot.category === property.category),
+		);
+
+		// A projection is refused even when the new category happens to define a slot of the same name.
+		// `reportCompatibility` judged its source against the *old* slot — its data type, its permissions,
+		// its unit — and two categories can define the same property category with different shapes.
+		// Nothing re-derives that verdict on a channel PATCH, so the safe answer is the same one the
+		// device-level guard gives: rebuild rather than relabel.
 		const projecting = properties.filter(
 			(property) => property instanceof VirtualChannelPropertyEntity && property.isProjecting,
 		);
 
-		if (projecting.length === 0) {
+		if (withoutSlot.length === 0 && projecting.length === 0) {
 			return;
 		}
 
+		const reason =
+			withoutSlot.length > 0
+				? `it carries ${withoutSlot.length} propert${withoutSlot.length === 1 ? 'y' : 'ies'} ` +
+					`(${withoutSlot.map((property) => property.category).join(', ')}) that '${channel.category}' does not define`
+				: `${projecting.length} of its properties read a source judged against the slots '${previousCategory}' defines`;
+
 		throw new VirtualChannelCategoryChangeUnsafeException(
 			`Channel id=${channel.id} cannot change category from '${previousCategory}' to '${channel.category}': ` +
-				`${projecting.length} of its properties read a source chosen for the slots '${previousCategory}' defines, ` +
-				'and the new category defines different ones. Rebuild the device rather than relabelling its channel',
+				`${reason}. Rebuild the device rather than relabelling its channel`,
 		);
 	}
 

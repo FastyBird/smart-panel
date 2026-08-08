@@ -239,10 +239,18 @@ describe('VirtualDevicesService', () => {
 			return property;
 		};
 
+		const owned = (category: PropertyCategory): VirtualChannelPropertyEntity => {
+			const property = new VirtualChannelPropertyEntity();
+
+			Object.assign(property, { id: `owned-${category}`, category, valueOrigin: VirtualValueOrigin.LOCAL });
+
+			return property;
+		};
+
 		// A channel's category is half of the address of every slot its properties fill. Moving it leaves
 		// each projection reading a source that was judged against a slot the new category never defines,
 		// and no property row is written by a channel PATCH, so no property hook would ever see it.
-		it('refuses a category change on a channel whose properties project a source', async () => {
+		it('refuses a category change that leaves a projection without a slot', async () => {
 			channelsPropertiesService.findAll.mockResolvedValue([projecting()]);
 
 			await expect(
@@ -250,14 +258,29 @@ describe('VirtualDevicesService', () => {
 			).rejects.toThrow(/cannot change category/);
 		});
 
-		// Nothing to invalidate: an owned property fills its slot on its own terms, and a channel that
-		// projects nothing has no judgement to preserve.
-		it('allows a category change on a channel that projects nothing', async () => {
-			const owned = new VirtualChannelPropertyEntity();
+		// An owned property fills a slot just as surely as a projection does: `outlet` owns a read-only
+		// `in_use`, and `switcher` has no such slot, so relabelling leaves a property the specification
+		// does not know about on a device that claims to be a switcher.
+		it('refuses a category change that leaves an owned property without a slot', async () => {
+			channelsPropertiesService.findAll.mockResolvedValue([owned(PropertyCategory.IN_USE)]);
 
-			Object.assign(owned, { id: 'owned-property', category: PropertyCategory.STATUS, valueOrigin: 'local' });
+			await expect(
+				service.assertChannelCategoryChangeSafe(channel(ChannelCategory.SWITCHER), ChannelCategory.OUTLET),
+			).rejects.toThrow(/cannot change category/);
+		});
 
-			channelsPropertiesService.findAll.mockResolvedValue([owned]);
+		// Nothing is left behind: every property the channel carries has a slot under the new category
+		// too, so the structure the device advertises still matches what it holds.
+		it('allows a category change every property still fits', async () => {
+			channelsPropertiesService.findAll.mockResolvedValue([owned(PropertyCategory.ON)]);
+
+			await expect(
+				service.assertChannelCategoryChangeSafe(channel(ChannelCategory.SWITCHER), ChannelCategory.OUTLET),
+			).resolves.toBeUndefined();
+		});
+
+		it('allows a category change on a channel that carries nothing', async () => {
+			channelsPropertiesService.findAll.mockResolvedValue([]);
 
 			await expect(
 				service.assertChannelCategoryChangeSafe(channel(ChannelCategory.SWITCHER), ChannelCategory.LIGHT),
