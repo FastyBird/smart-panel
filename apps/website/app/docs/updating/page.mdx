@@ -90,6 +90,12 @@ docker run --rm -v smart-panel-data:/data -v $(pwd):/backup alpine \
 docker compose up -d
 ```
 
+<Callout type="warning">
+	If you restore a backup into a second or cloned installation, the database also copies the installation UUID, MCP
+	clients, and token hashes. Before allowing access to the clone, immediately rotate or revoke every copied MCP
+	credential; otherwise, existing bearer tokens remain valid against both installations under the same audience.
+</Callout>
+
 ---
 
 ## Updating
