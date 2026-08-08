@@ -27,7 +27,8 @@ import {
 	MCP_TOOL_CALL_TIMEOUT_MS,
 	McpCapability,
 } from '../mcp.constants';
-import { McpAuditOutcome, McpAuditService } from '../services/mcp-audit.service';
+import { McpEndpointDisabledException } from '../mcp.exceptions';
+import { McpAuditDenialReason, McpAuditOutcome, McpAuditService } from '../services/mcp-audit.service';
 import { McpContextService, McpInstallationContext } from '../services/mcp-context.service';
 import { McpPolicyService } from '../services/mcp-policy.service';
 
@@ -347,6 +348,7 @@ export class McpTargetDiscoveryToolService {
 		} catch (error) {
 			const sanitized = this.sanitizeError(error, capability);
 			const outcome = this.getAuditOutcome(error);
+			const denialReason = this.getPolicyDenialReason(error);
 			const structuredContent: ToolEnvelope = {
 				installation,
 				tool,
@@ -356,8 +358,8 @@ export class McpTargetDiscoveryToolService {
 				error: sanitized,
 			};
 
-			if (outcome === McpAuditOutcome.DENIED) {
-				this.auditService.recordPolicyDenial(identity, 'capability_denied', { capability, tool });
+			if (denialReason) {
+				this.auditService.recordPolicyDenial(identity, denialReason, { capability, tool });
 			}
 
 			this.auditService.recordToolResult({
@@ -497,24 +499,30 @@ export class McpTargetDiscoveryToolService {
 
 	private toProviderToolData(capability: McpCapability, result: ToolExecutionResult): ToolData {
 		const data = { status: result.status, ...(result.data ?? {}) };
+		const policyDenied =
+			result.status === ToolExecutionStatus.DENIED &&
+			(result.errorCode === 'TOOL_AUDIENCE_DENIED' || result.errorCode === 'TOOL_ACCESS_DENIED');
+		const outcome =
+			result.status === ToolExecutionStatus.DENIED && !policyDenied
+				? McpAuditOutcome.FAILED
+				: this.toAuditOutcome(result.status);
 
 		if (result.success) {
-			return { data, text: result.message, outcome: this.toAuditOutcome(result.status) };
+			return { data, text: result.message, outcome };
 		}
 
 		const invalid = result.errorCode === 'INVALID_TOOL_ARGUMENTS';
 		const notFound = result.errorCode?.endsWith('_NOT_FOUND') ?? false;
-		const denied = result.status === ToolExecutionStatus.DENIED;
 		const operation = capability === McpCapability.WRITE ? 'write' : 'trigger';
 
 		return {
 			data,
-			outcome: this.toAuditOutcome(result.status),
+			outcome,
 			text: invalid
 				? 'The tool arguments are invalid.'
 				: notFound
 					? 'The requested Smart Panel target was not found.'
-					: denied
+					: policyDenied
 						? `The MCP client is not authorized for this ${operation} operation.`
 						: `Smart Panel could not complete the requested ${operation} operation.`,
 			error: {
@@ -522,14 +530,14 @@ export class McpTargetDiscoveryToolService {
 					? 'invalid_request'
 					: notFound
 						? 'not_found'
-						: denied
+						: policyDenied
 							? 'permission_denied'
 							: `${operation}_failed`,
 				message: invalid
 					? 'The tool arguments are invalid.'
 					: notFound
 						? 'The requested Smart Panel target was not found.'
-						: denied
+						: policyDenied
 							? `The MCP client is not authorized for this ${operation} operation.`
 							: `Smart Panel could not complete the requested ${operation} operation.`,
 			},
@@ -553,7 +561,7 @@ export class McpTargetDiscoveryToolService {
 	}
 
 	private getAuditOutcome(error: unknown): McpAuditOutcome {
-		if (error instanceof ForbiddenException || error instanceof UnauthorizedException) {
+		if (this.getPolicyDenialReason(error)) {
 			return McpAuditOutcome.DENIED;
 		}
 
@@ -562,6 +570,18 @@ export class McpTargetDiscoveryToolService {
 		}
 
 		return McpAuditOutcome.FAILED;
+	}
+
+	private getPolicyDenialReason(error: unknown): McpAuditDenialReason | null {
+		if (error instanceof McpEndpointDisabledException) {
+			return 'endpoint_disabled';
+		}
+
+		if (error instanceof ForbiddenException || error instanceof UnauthorizedException) {
+			return 'capability_denied';
+		}
+
+		return null;
 	}
 
 	private toAuditOutcome(status: ToolExecutionStatus): McpAuditOutcome {

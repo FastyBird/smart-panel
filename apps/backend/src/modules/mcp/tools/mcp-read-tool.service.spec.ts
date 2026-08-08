@@ -3,6 +3,7 @@ import { ForbiddenException } from '@nestjs/common';
 
 import { WeatherNotFoundException } from '../../weather/weather.exceptions';
 import { MCP_TOOL_CALL_TIMEOUT_MS, McpCapability } from '../mcp.constants';
+import { McpEndpointDisabledException } from '../mcp.exceptions';
 import { McpAuditService } from '../services/mcp-audit.service';
 import { McpContextService } from '../services/mcp-context.service';
 import { McpPolicyService } from '../services/mcp-policy.service';
@@ -141,6 +142,25 @@ describe('McpReadToolService', () => {
 		);
 	});
 
+	it('audits a module-disable race as an endpoint denial without confusing domain not-found errors', async () => {
+		policyService.authorizeClient.mockRejectedValue(new McpEndpointDisabledException());
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await callbacks.get('get_security_status')?.({}, requestContext());
+
+		expect(result?.isError).toBe(true);
+		expect(result?.structuredContent.error).toEqual({
+			code: 'not_found',
+			message: 'The requested Smart Panel item was not found.',
+		});
+		expect(auditService.recordPolicyDenial).toHaveBeenCalledWith(
+			{ requestId: '17', clientId: 'client-id' },
+			'endpoint_disabled',
+			{ capability: McpCapability.READ, tool: 'get_security_status' },
+		);
+		expect(auditService.recordToolResult).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'denied' }));
+	});
+
 	it('returns a sanitized error when a domain call exceeds the MCP deadline', async () => {
 		jest.useFakeTimers();
 		contextService.getSecurityStatus.mockReturnValue(new Promise(() => undefined));
@@ -177,6 +197,8 @@ describe('McpReadToolService', () => {
 			code: 'not_found',
 			message: 'The requested Smart Panel item was not found.',
 		});
+		expect(auditService.recordPolicyDenial).not.toHaveBeenCalled();
+		expect(auditService.recordToolResult).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'failed' }));
 	});
 
 	it('enforces the same deadline for resource reads', async () => {

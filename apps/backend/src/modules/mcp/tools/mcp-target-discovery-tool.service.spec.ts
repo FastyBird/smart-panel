@@ -20,6 +20,7 @@ import { SpaceType } from '../../spaces/spaces.constants';
 import { ToolAccessKind, ToolAudience, ToolExecutionStatus } from '../../tools/platforms/tool-provider.platform';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
 import { MCP_MAX_WRITABLE_PROPERTY_CANDIDATES, MCP_TOOL_CALL_TIMEOUT_MS, McpCapability } from '../mcp.constants';
+import { McpEndpointDisabledException } from '../mcp.exceptions';
 import { McpAuditService } from '../services/mcp-audit.service';
 import { McpContextService } from '../services/mcp-context.service';
 import { McpPolicyService } from '../services/mcp-policy.service';
@@ -390,6 +391,77 @@ describe('McpTargetDiscoveryToolService', () => {
 			expect.objectContaining({ outcome: 'failed', tool: 'set_device_property' }),
 		);
 		expect(toolRegistry.executeTool).not.toHaveBeenCalled();
+	});
+
+	it('reports a disabled scene as a domain failure without recording a capability denial', async () => {
+		providerTools = [providerTool('run_scene', ToolAccessKind.TRIGGER)];
+		toolRegistry.executeTool.mockResolvedValue({
+			success: false,
+			status: ToolExecutionStatus.DENIED,
+			message: 'Scene is disabled',
+			errorCode: 'SCENE_DISABLED',
+		});
+		service.register(server(), authInfo([McpCapability.TRIGGER]));
+
+		const result = await callbacks.get('run_scene')?.(
+			{ scene_id: '10000000-0000-4000-8000-000000000001' },
+			requestContext([McpCapability.TRIGGER]),
+		);
+
+		expect(result?.isError).toBe(true);
+		expect(result?.structuredContent.error).toEqual(expect.objectContaining({ code: 'trigger_failed' }));
+		expect(auditService.recordPolicyDenial).not.toHaveBeenCalled();
+		expect(auditService.recordToolResult).toHaveBeenCalledWith(
+			expect.objectContaining({ outcome: 'failed', tool: 'run_scene' }),
+		);
+	});
+
+	it('continues to audit provider access rejections as capability denials', async () => {
+		providerTools = [providerTool('run_scene', ToolAccessKind.TRIGGER)];
+		toolRegistry.executeTool.mockResolvedValue({
+			success: false,
+			status: ToolExecutionStatus.DENIED,
+			message: 'Tool access denied',
+			errorCode: 'TOOL_ACCESS_DENIED',
+		});
+		service.register(server(), authInfo([McpCapability.TRIGGER]));
+
+		const result = await callbacks.get('run_scene')?.(
+			{ scene_id: '10000000-0000-4000-8000-000000000001' },
+			requestContext([McpCapability.TRIGGER]),
+		);
+
+		expect(result?.isError).toBe(true);
+		expect(result?.structuredContent.error).toEqual(expect.objectContaining({ code: 'permission_denied' }));
+		expect(auditService.recordPolicyDenial).toHaveBeenCalledWith(
+			{ requestId: '17', clientId: 'client-id' },
+			'capability_denied',
+			{ capability: McpCapability.TRIGGER, tool: 'run_scene' },
+		);
+		expect(auditService.recordToolResult).toHaveBeenCalledWith(
+			expect.objectContaining({ outcome: 'denied', tool: 'run_scene' }),
+		);
+	});
+
+	it('audits a module-disable race as an endpoint denial for write and trigger tools', async () => {
+		providerTools = [providerTool('run_scene', ToolAccessKind.TRIGGER)];
+		policyService.authorizeClient.mockRejectedValue(new McpEndpointDisabledException());
+		service.register(server(), authInfo([McpCapability.TRIGGER]));
+
+		const result = await callbacks.get('run_scene')?.(
+			{ scene_id: '10000000-0000-4000-8000-000000000001' },
+			requestContext([McpCapability.TRIGGER]),
+		);
+
+		expect(result?.isError).toBe(true);
+		expect(auditService.recordPolicyDenial).toHaveBeenCalledWith(
+			{ requestId: '17', clientId: 'client-id' },
+			'endpoint_disabled',
+			{ capability: McpCapability.TRIGGER, tool: 'run_scene' },
+		);
+		expect(auditService.recordToolResult).toHaveBeenCalledWith(
+			expect.objectContaining({ outcome: 'denied', tool: 'run_scene' }),
+		);
 	});
 
 	function server(): McpServer {

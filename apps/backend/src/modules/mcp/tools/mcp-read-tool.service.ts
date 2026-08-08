@@ -7,7 +7,8 @@ import { withTimeout } from '../../../common/utils/http.utils';
 import { BucketDuration } from '../../devices/services/property-timeseries.service';
 import { WeatherNotFoundException } from '../../weather/weather.exceptions';
 import { MCP_TOOL_CALL_TIMEOUT_MS, McpCapability } from '../mcp.constants';
-import { McpAuditOutcome, McpAuditService } from '../services/mcp-audit.service';
+import { McpEndpointDisabledException } from '../mcp.exceptions';
+import { McpAuditDenialReason, McpAuditOutcome, McpAuditService } from '../services/mcp-audit.service';
 import { McpContextService, McpInstallationContext } from '../services/mcp-context.service';
 import { McpPolicyService } from '../services/mcp-policy.service';
 
@@ -321,8 +322,10 @@ export class McpReadToolService {
 				error: sanitized,
 			};
 
-			if (outcome === McpAuditOutcome.DENIED) {
-				this.auditService.recordPolicyDenial(identity, 'capability_denied', {
+			const denialReason = this.getPolicyDenialReason(error);
+
+			if (denialReason) {
+				this.auditService.recordPolicyDenial(identity, denialReason, {
 					capability: McpCapability.READ,
 					tool,
 				});
@@ -398,7 +401,9 @@ export class McpReadToolService {
 		try {
 			return await this.withDeadline(label, callback);
 		} catch (error) {
-			if (error instanceof ForbiddenException || error instanceof UnauthorizedException) {
+			const denialReason = this.getPolicyDenialReason(error);
+
+			if (denialReason) {
 				const authInfo = ctx.http?.authInfo;
 
 				this.auditService.recordPolicyDenial(
@@ -406,7 +411,7 @@ export class McpReadToolService {
 						requestId: String(ctx.mcpReq.id),
 						...(authInfo?.clientId ? { clientId: authInfo.clientId } : {}),
 					},
-					'capability_denied',
+					denialReason,
 					{ capability: McpCapability.READ },
 				);
 			}
@@ -432,7 +437,7 @@ export class McpReadToolService {
 	}
 
 	private getAuditOutcome(error: unknown): McpAuditOutcome {
-		if (error instanceof ForbiddenException || error instanceof UnauthorizedException) {
+		if (this.getPolicyDenialReason(error)) {
 			return McpAuditOutcome.DENIED;
 		}
 
@@ -441,6 +446,18 @@ export class McpReadToolService {
 		}
 
 		return McpAuditOutcome.FAILED;
+	}
+
+	private getPolicyDenialReason(error: unknown): McpAuditDenialReason | null {
+		if (error instanceof McpEndpointDisabledException) {
+			return 'endpoint_disabled';
+		}
+
+		if (error instanceof ForbiddenException || error instanceof UnauthorizedException) {
+			return 'capability_denied';
+		}
+
+		return null;
 	}
 
 	private getEndpoint(authInfo?: AuthInfo): string | undefined {
