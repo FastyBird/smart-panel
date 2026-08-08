@@ -48,6 +48,10 @@ technically validate, but a thermostat with neither is a thermometer wearing a b
 - A control loop owned by the virtual device: reads the sensed quantity from a projected source,
   writes the actuator's `on` through the existing platform contract
 - Hysteresis and minimum cycle protection, so a relay is not chattered
+- Re-evaluation on **both** inputs: a sensed-value report *and* a write to the owned setpoint. A loop
+  driven only by the sensor does nothing when the user moves the target, and a sensor that reports on
+  change can be silent for a long time — lowering the target would leave the actuator on, raising it
+  would leave it off, until something unrelated happened to arrive
 - The target setpoint as a **writable owned property** — the schema already accommodates owned
   properties; v1 simply never creates a writable one (`assertOwnedPropertyNotWritable` refuses it
   today, and that guard is what this task revisits)
@@ -92,9 +96,9 @@ category itself is judged.
 
 ## 4. Open questions
 
-- Where does the loop run? A listener reacting to the sensed property's value changes is the cheapest
-  and matches how the rest of the plugin works, but it stops when the source stops reporting — a
-  ticking safety net may be needed to turn an actuator *off*.
+- Where does the loop run? A listener reacting to the sensed property's value changes *and* to
+  setpoint writes is the cheapest and matches how the rest of the plugin works, but neither fires when
+  the source simply goes quiet — a ticking safety net may still be needed to turn an actuator *off*.
 - What happens when the sensed source is orphaned or its device goes offline? The device already
   degrades to `DISCONNECTED`; the actuator should presumably be released rather than left latched.
 - Does the setpoint survive a remap of the sensed source? It is an owned property, so it does — worth
@@ -110,6 +114,8 @@ category itself is judged.
 - [ ] `thermostat` is unblocked only once at least one actuator channel — `heater` or `cooler` — is
       required of it, in the wizard and at persistence
 - [ ] The loop honours hysteresis and a minimum cycle time, both configurable
+- [ ] A write to the setpoint re-evaluates the loop immediately, with a backend test that moves the
+      target while the sensed value stays constant and asserts the actuator follows
 - [ ] An offline or orphaned sensed source releases the actuator rather than latching it
 - [ ] The six categories are removed from `VIRTUAL_BLOCKED_CATEGORIES` only as each is genuinely
       supported, and the wizard's blocked-category notice reflects what remains

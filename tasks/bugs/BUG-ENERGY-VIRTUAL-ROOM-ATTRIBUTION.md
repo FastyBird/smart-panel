@@ -81,9 +81,38 @@ remaining, unprojected channels keep attributing to it, so a partially split dev
 virtual devices — "one sensor legitimately serves two rooms' climate" — and that is right for a
 *reading*: a temperature is non-additive, so two rooms observing the same value is coherent. Energy
 is additive, and two rooms claiming the same kWh is not coherent in any framing. A second projection
-of an already-projected energy property should therefore be refused at persistence, with the same
-machinery as `assertProjectionCompatible`, and the wizard should report it as an incompatible
-pairing rather than a silent surprise.
+of an already-claimed energy property should therefore be refused, and the wizard should report it as
+an incompatible pairing rather than a silent surprise.
+
+The check has to be **atomic**, not a read-then-write. Two creates or remaps claiming the same
+previously unclaimed meter can both pass an `assertProjectionCompatible`-style read and both persist,
+which recreates precisely the ambiguity the rule exists to remove. Two mechanisms are available and
+the task should pick deliberately:
+
+- `DeviceStructureLockService`, which already serialises exactly these writes — `beforeCreate` and
+  `beforeUpdate` on channel properties run inside it — so the check and the insert cannot interleave.
+  Complete for this deployment, and process-local by nature.
+- A **database-enforced claim**, which is the durable answer. Note that a partial unique index on
+  `sourcePropertyId` cannot express it: "energy-bearing" depends on the *source's* channel category,
+  which is not a column on the projection row. A small claims table keyed by source property id,
+  written when a projection of an energy property is created and deleted with it, can carry a real
+  unique constraint.
+
+Taking both is defensible — the lock removes the window, the constraint makes it impossible — and a
+concurrent-claim regression test is required either way.
+
+**Claims that already exist.** The guard above only governs future writes. An installation upgrading
+from today's build can already hold two virtual devices claiming one meter (§2 is exactly that
+scenario), and validating new persistence leaves those rows untouched, so attribution would still
+have no unique claimant. That needs deciding before the fix ships, and deleting somebody's projection
+is data loss, so the recommended shape is:
+
+- an **incremental migration** (never a change to the initial one) that materialises the claim for
+  every existing energy projection, awarding it deterministically — oldest `createdAt`, ties broken by
+  id — so attribution is unambiguous from the first boot after upgrade;
+- the losers keep working as *readings*; only the energy claim moves, and a startup reconciliation
+  logs them once, loudly enough that an operator can rebuild the device if the automatic choice was
+  not what they meant.
 
 **History is not re-attributed.** Existing deltas keep the room they were recorded with. Splitting
 changes the future only, and the task should say so where an operator can read it, so nobody expects
@@ -104,6 +133,11 @@ fix must not introduce a lookup that assumes otherwise.
       own room, nothing in the other, and leave the house total unchanged
 - [ ] A second projection of an already-claimed energy property is refused at persistence, and the
       wizard reports the pairing as incompatible
+- [ ] Two concurrent claims on the same previously unclaimed meter cannot both persist — with a
+      regression test that drives them concurrently, not one after the other
+- [ ] An installation that already holds duplicate claims comes up with exactly one claimant per
+      meter after the migration, deterministically chosen, with the others left working as readings
+      and reported once at startup
 - [ ] An orphaned projection is attributed to the virtual device that holds it — there is no source
       left to fall back to. `VirtualValueSourceService.resolve()` answers `null` once
       `sourcePropertyId` is null, the registry then resolves the property to its own id, and
