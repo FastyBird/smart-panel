@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: planned
+Status: in progress — Phase 0 architecture proposed for review
 
 ## 1. Business goal
 
@@ -50,7 +50,7 @@ upgrade consequences.
 
 ## 4. Acceptance criteria
 
-- [ ] An ADR documents the authorization-server architecture and a threat model for internet-reachable MCP.
+- [x] An ADR documents the authorization-server architecture and a threat model for internet-reachable MCP.
 - [ ] The MCP endpoint publishes standards-compliant protected-resource metadata with its canonical resource identifier
       and authorization-server location.
 - [ ] Unauthenticated MCP responses include a protocol-correct bearer challenge pointing clients to protected-resource
