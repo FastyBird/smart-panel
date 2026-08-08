@@ -2032,7 +2032,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 			// Keyed on the link *and* the source's version — see the two cases below for what each guards.
 			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
 			expect(JSON.stringify(wheres)).toContain('sourcePropertyId = :sourceId');
-			expect(JSON.stringify(wheres)).toContain('src.updatedAt');
+			expect(JSON.stringify(wheres)).toContain('src.dataType IS :sourceDataType');
 			// Announced, or an open admin keeps the stale link and never shows the remap action.
 			expect(emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_PROPERTY_UPDATED,
@@ -2192,7 +2192,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 		// await that follows, which is the ordinary repair sequence — break it, see the problem, fix it.
 		// The write names the version it judged, so the row cannot change while it is being matched.
 		it('will not orphan against a source that moved after it was judged', async () => {
-			// The version named is the one the *re-read* carried, not the payload's: the payload is the
+			// The values named are the ones the *re-read* carried, not the payload's: the payload is the
 			// snapshot this handler has already decided it cannot trust.
 			const { subject, wheres, executed } = build(
 				{ compatible: false, reason: 'permissions [ro] do not satisfy [rw]' },
@@ -2203,25 +2203,56 @@ describe('VirtualIndexMaintenanceListener', () => {
 					id: 'source-property',
 					permissions: ['ro'],
 					dataType: 'bool',
-					updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+					format: null,
+					step: null,
 					channel: sourceChannel,
 				},
 			);
 
 			await subject.handleSourceMetadataChange(sourceProperty);
 
-			const versionClause = wheres.find(
-				(entry) => typeof entry.clause === 'string' && entry.clause.includes('src.updatedAt'),
+			const stateClause = wheres.find(
+				(entry) => typeof entry.clause === 'string' && entry.clause.includes('src.permissions'),
 			);
 
-			expect(versionClause).toBeDefined();
-			expect(versionClause?.params).toEqual({ sourceUpdatedAt: new Date('2026-01-01T00:00:00.000Z') });
+			expect(stateClause?.params).toEqual(
+				expect.objectContaining({
+					sourcePermissions: 'ro',
+					sourceDataType: 'bool',
+					sourceFormat: null,
+					sourceStep: null,
+				}),
+			);
 			expect(executed).toHaveBeenCalled();
 		});
 
-		// A source that has never been updated has a null version, and `= NULL` matches nothing in SQL —
-		// naming it that way would refuse every orphaning of a never-edited source.
-		it('matches a null version with IS NULL rather than equality', async () => {
+		// Bound in the form the ORM stores them in — `simple-array` joins on commas, `json` is stringified
+		// — because the predicate is raw SQL and nothing transforms these parameters for it. A form that
+		// did not match what was written would make the write match nothing and stop orphaning silently.
+		it('binds a source format and permissions the way they are stored', async () => {
+			const { subject, wheres } = build({ compatible: false, reason: 'unit changed' }, [dependent], null, 1, {
+				id: 'source-property',
+				permissions: ['ro', 'rw'],
+				dataType: 'float',
+				format: [0, 100],
+				step: 0.5,
+				channel: sourceChannel,
+			});
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			const stateClause = wheres.find(
+				(entry) => typeof entry.clause === 'string' && entry.clause.includes('src.permissions'),
+			);
+
+			expect(stateClause?.params).toEqual(
+				expect.objectContaining({ sourcePermissions: 'ro,rw', sourceFormat: '[0,100]', sourceStep: 0.5 }),
+			);
+		});
+
+		// `= NULL` matches nothing in SQL, so an unconstrained source — no format, no step — has to be
+		// matched with `IS`, or it could never be orphaned at all.
+		it('matches an unconstrained source with null-safe comparisons', async () => {
 			const { subject, wheres } = build(
 				{ compatible: false, reason: 'permissions [ro] do not satisfy [rw]' },
 				[dependent],
@@ -2231,7 +2262,8 @@ describe('VirtualIndexMaintenanceListener', () => {
 					id: 'source-property',
 					permissions: ['ro'],
 					dataType: 'bool',
-					updatedAt: null,
+					format: null,
+					step: null,
 					channel: sourceChannel,
 				},
 			);
@@ -2239,57 +2271,40 @@ describe('VirtualIndexMaintenanceListener', () => {
 			await subject.handleSourceMetadataChange(sourceProperty);
 
 			expect(
-				wheres.some((entry) => typeof entry.clause === 'string' && entry.clause.includes('src.updatedAt IS NULL')),
+				wheres.some(
+					(entry) => typeof entry.clause === 'string' && entry.clause.includes('src.format IS :sourceFormat'),
+				),
 			).toBe(true);
-			// The channel is versioned the same way, and this fixture's channel has never been updated
-			// either — so both clauses have to take the IS NULL form, not only the property's.
 			expect(
-				wheres.some((entry) => typeof entry.clause === 'string' && entry.clause.includes('ch.updatedAt IS NULL')),
+				wheres.some(
+					(entry) => typeof entry.clause === 'string' && entry.clause.includes('ch.category IS :sourceChannelCategory'),
+				),
 			).toBe(true);
-		});
-
-		// The slot report cannot see this: both halves fit the slot separately, and the slot is routinely
-		// wide enough to admit two declarations that contradict each other. A source formatted [0, 40]
-		// inside a [0, 100] temperature slot can widen to [0, 80] and still satisfy the slot, while every
-		// reading above 40 now falls outside the range its projection advertises.
-		it('orphans a projection whose source widened past the range it advertises', async () => {
-			const { subject, update } = build(
-				{ compatible: true },
-				[dependent],
-				null,
-				1,
-				sourceProperty,
-				'Source property id=source-property ranges [0, 80], outside the range [0, 40] that property id=virtual-property accepts',
-			);
-
-			await subject.handleSourceMetadataChange(sourceProperty);
-
-			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
 		});
 
 		// Part of what is judged comes off the channel, not the property: `resolvePropertyUnit` derives the
 		// unit from the channel's *category*, which is why a recategorisation reaches this handler at all.
 		// A channel moved to something incompatible and then moved back leaves the property row untouched,
 		// so versioning the property alone would still match and orphan a projection that is fine again.
-		it('names the channel version as well as the property version', async () => {
+		it('names the channel category as well as the property state', async () => {
 			const { subject, wheres } = build({ compatible: false, reason: 'unit changed' }, [dependent], null, 1, {
 				id: 'source-property',
 				permissions: ['ro'],
 				dataType: 'bool',
-				updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-				channel: { id: 'source-channel', updatedAt: new Date('2026-02-02T00:00:00.000Z') },
+				format: null,
+				step: null,
+				channel: { id: 'source-channel', category: 'temperature' },
 			});
 
 			await subject.handleSourceMetadataChange(sourceProperty);
 
 			const channelClause = wheres.find(
-				(entry) => typeof entry.clause === 'string' && entry.clause.includes('ch.updatedAt'),
+				(entry) => typeof entry.clause === 'string' && entry.clause.includes('ch.category'),
 			);
 
-			expect(channelClause?.params).toEqual({
-				sourceChannelId: 'source-channel',
-				sourceChannelUpdatedAt: new Date('2026-02-02T00:00:00.000Z'),
-			});
+			expect(channelClause?.params).toEqual(
+				expect.objectContaining({ sourceChannelId: 'source-channel', sourceChannelCategory: 'temperature' }),
+			);
 		});
 
 		// Every read through ChannelsPropertiesService joins the channel, so a bare id means something

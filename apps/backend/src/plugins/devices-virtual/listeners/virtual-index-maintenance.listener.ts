@@ -1060,46 +1060,50 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			const sourceTable = this.dataSource.getMetadata(ChannelPropertyEntity).tableName;
 			const channelTable = this.dataSource.getMetadata(ChannelEntity).tableName;
 
-			// One clause per row the judgement read, each naming the version it read. `= NULL` matches
-			// nothing in SQL, so a row that has never been updated is matched with IS NULL instead — without
-			// that, a source nobody had edited yet could never be orphaned at all.
-			const unchanged = (
-				table: string,
-				alias: string,
-				idParam: string,
-				versionParam: string,
-				version: Date | string | null | undefined,
-			): [string, Record<string, unknown>] =>
-				version === null || version === undefined
-					? [
-							`EXISTS (SELECT 1 FROM ${table} ${alias} WHERE ${alias}.id = :${idParam} AND ${alias}.updatedAt IS NULL)`,
-							{},
-						]
-					: [
-							`EXISTS (SELECT 1 FROM ${table} ${alias} WHERE ${alias}.id = :${idParam} AND ${alias}.updatedAt = :${versionParam})`,
-							{ [versionParam]: version },
-						];
+			// The write is conditioned on the rows still *saying* what they said when they were judged,
+			// rather than on a version stamp.
+			//
+			// `updatedAt` was the obvious instrument and it does not survive contact with the schema: the
+			// column is written by the entity path, which applies TypeORM's own datetime formatting, and
+			// read back here through a raw predicate, which binds a `Date` for the driver to convert as it
+			// sees fit. The two forms agreed on my machine and did not on CI, where the schema is built by
+			// `synchronize` instead of the migrations — so the predicate matched nothing and orphaning
+			// silently stopped happening. The e2e added for exactly this caught it; without that test the
+			// guard would have looked like it worked and done nothing.
+			//
+			// Comparing the judged values has no such ambiguity: every column below is bound in the same
+			// form the ORM stores it in — `simple-array` joins on commas, `json` is stringified, and the
+			// rest are plain text or real. It is also the more direct statement of the rule. What matters
+			// is not "has this row been touched" but "does it still say what I judged", and two PATCHes
+			// that leave the judged fields identical genuinely have nothing to disagree about.
+			//
+			// `invalid` is left out on purpose. It is a `text` column holding string, number or boolean, so
+			// its stored form depends on what was written rather than on the column — the one field here
+			// that cannot be bound unambiguously. A source that changes *only* its sentinel inside the race
+			// window is therefore not covered; every other judged field is.
+			const sourceState = {
+				sourcePermissions: (source.permissions ?? []).join(','),
+				sourceDataType: source.dataType,
+				sourceFormat: source.format === null || source.format === undefined ? null : JSON.stringify(source.format),
+				sourceStep: source.step ?? null,
+				sourceChannelId: sourceChannel.id,
+				sourceChannelCategory: sourceChannel.category,
+			};
 
-			const [sourceUnchanged, sourceVersionParams] = unchanged(
-				sourceTable,
-				'src',
-				'sourceId',
-				'sourceUpdatedAt',
-				source.updatedAt,
-			);
+			// `IS`, not `=`: SQLite's null-safe comparison, so an unconstrained source (a null format, no
+			// step) is matched rather than silently failing every predicate the way `= NULL` would.
+			const sourceUnchanged =
+				`EXISTS (SELECT 1 FROM ${sourceTable} src WHERE src.id = :sourceId` +
+				' AND src.permissions IS :sourcePermissions' +
+				' AND src.dataType IS :sourceDataType' +
+				' AND src.format IS :sourceFormat' +
+				' AND src.step IS :sourceStep)';
 
-			// The channel is versioned too, because part of what was judged comes off it rather than off
-			// the property: `resolvePropertyUnit` derives the unit from the channel's *category*, which is
-			// why `handleSourceChannelChange` funnels a recategorisation through here at all. A channel
-			// moved to something incompatible and then moved back leaves the property row untouched, so a
-			// property-only version would still match and orphan a projection that is fine again.
-			const [channelUnchanged, channelVersionParams] = unchanged(
-				channelTable,
-				'ch',
-				'sourceChannelId',
-				'sourceChannelUpdatedAt',
-				sourceChannel?.updatedAt,
-			);
+			// The channel is judged too, because part of what was compared comes off it rather than off the
+			// property: `resolvePropertyUnit` derives the unit from the channel's *category*, which is why
+			// `handleSourceChannelChange` funnels a recategorisation through here at all. A channel moved to
+			// something incompatible and back leaves the property row untouched.
+			const channelUnchanged = `EXISTS (SELECT 1 FROM ${channelTable} ch WHERE ch.id = :sourceChannelId AND ch.category IS :sourceChannelCategory)`;
 
 			const orphaning = await repository
 				.createQueryBuilder()
@@ -1107,8 +1111,8 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				.set({ sourcePropertyId: null })
 				.where('id = :dependentId', { dependentId: dependent.id })
 				.andWhere('sourcePropertyId = :sourceId', { sourceId: payload.id })
-				.andWhere(sourceUnchanged, sourceVersionParams)
-				.andWhere(channelUnchanged, { sourceChannelId: sourceChannel?.id, ...channelVersionParams })
+				.andWhere(sourceUnchanged, sourceState)
+				.andWhere(channelUnchanged, sourceState)
 				.execute();
 
 			if (!orphaning.affected) {
