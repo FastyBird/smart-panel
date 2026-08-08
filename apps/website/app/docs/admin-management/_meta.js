@@ -22,5 +22,6 @@ export default {
     title: "System Management",
   },
   configuration: "Configuration",
+  mcp: "Model Context Protocol",
   users: "Users & Roles",
 };

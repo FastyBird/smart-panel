@@ -90,6 +90,12 @@ docker run --rm -v smart-panel-data:/data -v $(pwd):/backup alpine \
 docker compose up -d
 ```
 
+<Callout type="warning">
+	If you restore a backup into a second or cloned installation, the database also copies the installation UUID, MCP
+	clients, and token hashes. Before allowing access to the clone, immediately rotate or revoke every copied MCP
+	credential; otherwise, existing bearer tokens remain valid against both installations under the same audience.
+</Callout>
+
 ---
 
 ## Updating
@@ -156,6 +162,12 @@ If any step fails, the symlink is reverted to the previous version automatically
 #### Manual Rollback (Image Install)
 
 If you need to manually revert to a previous version:
+
+<Callout type="warning">
+	If the target version predates the MCP migration, stop the backend and satisfy the
+	[MCP rollback precondition](#model-context-protocol-upgrade-notes) before switching the symlink or restarting the
+	service. Switching application versions does not run down migrations automatically.
+</Callout>
 
 ```bash copy
 # List available versions
@@ -229,6 +241,25 @@ Database migrations run automatically when the backend starts.
 
 ---
 
+## Model Context Protocol Upgrade Notes
+
+The MCP module is added through the incremental `1000000000008-AddMcpClients` migration. It creates installation
+identity and MCP client tables without converting existing users or credentials. Upgraded installations remain safe by
+default: MCP is disabled, `read` is preselected as the enablement default, and the additional browser-origin allowlist
+is empty.
+
+After updating, an owner or administrator must explicitly enable MCP and create finite-lived client credentials. Back
+up both the database and configuration first.
+
+Before starting any Smart Panel version that predates this migration, stop the backend and either restore a database
+backup created before the MCP upgrade or explicitly revert `1000000000008-AddMcpClients` with the current release's
+migration tooling. Do not only switch a symlink or container tag: application rollback does not run down migrations.
+The migration's down step deletes MCP-owned tokens before older authentication code can load them.
+
+See [Model Context Protocol](/docs/admin-management/mcp) for setup, security guidance, and the exact curated catalog.
+
+---
+
 ## Pinning a Version
 
 ### Docker
@@ -259,8 +290,9 @@ If an update causes problems:
 4. Start the services
 
 <Callout type="info">
-	For pre-built image installations, rollback is simpler — just switch the symlink to a previous version as described
-	in the [Manual Rollback](#manual-rollback-image-install) section above.
+	For pre-built image installations, switch the symlink as described in
+	[Manual Rollback](#manual-rollback-image-install) only after satisfying any schema rollback requirements. A target
+	version that predates MCP must follow the [MCP rollback precondition](#model-context-protocol-upgrade-notes).
 </Callout>
 
 <Callout type="warning">
