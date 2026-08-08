@@ -140,7 +140,8 @@
 			"bulkDisableCanceled": "Massendeaktivierung von Geräten wurde abgebrochen.",
 			"notLoaded": "Gerät konnte nicht geladen werden. Bitte versuchen Sie es später erneut.",
 			"unhidden": "Gerät {device} ist wieder sichtbar",
-			"notUnhidden": "Gerät {device} konnte nicht eingeblendet werden"
+			"notUnhidden": "Gerät {device} konnte nicht eingeblendet werden",
+			"hiddenNotLoaded": "Die ausgeblendeten Geräte konnten nicht geladen werden. Bitte versuchen Sie es später erneut."
 		},
 		"channels": {
 			"notFound": "Der gesuchte Kanal existiert nicht oder wurde entfernt.",

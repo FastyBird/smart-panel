@@ -140,7 +140,8 @@
 			"bulkDisableCanceled": "Masowe wyłączanie urządzeń zostało anulowane.",
 			"notLoaded": "Nie udało się wczytać urządzenia. Spróbuj ponownie później.",
 			"unhidden": "Urządzenie {device} jest znowu widoczne",
-			"notUnhidden": "Nie udało się pokazać urządzenia {device}"
+			"notUnhidden": "Nie udało się pokazać urządzenia {device}",
+			"hiddenNotLoaded": "Nie udało się wczytać ukrytych urządzeń. Spróbuj ponownie później."
 		},
 		"channels": {
 			"notFound": "Kanał, którego szukasz, nie istnieje lub mógł zostać usunięty.",

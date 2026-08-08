@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
 	routerResolve: vi.fn((route) => route),
 	fetchDevices: vi.fn(),
 	fetchValidation: vi.fn(),
+	flashError: vi.fn(),
 	wizardOptions: [] as { value: string; label: string; description: string; disabled: boolean }[],
 	virtualWizardEnabled: true,
 	// Read once per `useBreakpoints()` call (at mount time), same as `virtualWizardEnabled` above — not
@@ -75,6 +76,12 @@ vi.mock('../../../common', async () => {
 		useBreakpoints: () => ({
 			isMDDevice: vueRef(true),
 			isLGDevice: vueRef(mocks.isLGDevice),
+		}),
+		useFlashMessage: () => ({
+			success: vi.fn(),
+			info: vi.fn(),
+			warning: vi.fn(),
+			error: mocks.flashError,
 		}),
 	};
 });
@@ -313,6 +320,25 @@ describe('ViewDevices', () => {
 		mocks.showHiddenRef.value = true;
 		await flushPromises();
 
+		expect(mocks.fetchDevices).toHaveBeenCalledTimes(1);
+	});
+
+	// A failed refresh used to leave the toggle on over a list that still held the visible-only
+	// response: the UI claimed to be showing hidden devices while showing none of them, and the throw
+	// from the detached catch reported the failure to nobody.
+	it('puts the show-hidden toggle back and says so when its refresh fails', async () => {
+		mountView();
+		await flushPromises();
+
+		mocks.fetchDevices.mockClear();
+		mocks.fetchDevices.mockRejectedValueOnce(new Error('network is down'));
+
+		mocks.showHiddenRef.value = true;
+		await flushPromises();
+
+		expect(mocks.showHiddenRef.value).toBe(false);
+		expect(mocks.flashError).toHaveBeenCalledTimes(1);
+		// The restoration is not a fresh request: the store already holds what the previous filter read.
 		expect(mocks.fetchDevices).toHaveBeenCalledTimes(1);
 	});
 });

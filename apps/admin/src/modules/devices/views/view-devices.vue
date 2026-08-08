@@ -244,7 +244,17 @@ import { ElButton, ElCard, ElDialog, ElDrawer, ElIcon, ElMessageBox } from 'elem
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
+import {
+	AppBar,
+	AppBarButton,
+	AppBarButtonAlign,
+	AppBarHeading,
+	AppBreadcrumbs,
+	ViewError,
+	ViewHeader,
+	useBreakpoints,
+	useFlashMessage,
+} from '../../../common';
 // Imported directly from the plugin's own constants rather than looked up through the generic plugin
 // registry — the same shortcut `modules/onboarding` already takes for `plugins/weather-open-meteo`.
 // `useDevicesPlugins()`'s `wizardOptions` is deliberately not reused for this: that list is scoped to
@@ -276,6 +286,8 @@ useMeta({
 });
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
+
+const flashMessage = useFlashMessage();
 
 const {
 	fetchDevices,
@@ -498,13 +510,28 @@ watch(
 	}
 );
 
+// Set while the toggle is being put back after a failed refresh, so the restoration does not read as
+// a fresh request and send a second one.
+let restoringShowHidden = false;
+
 watch(
 	(): boolean => showHidden.value,
-	(): void => {
-		fetchDevices().catch((error: unknown): void => {
-			const err = error as Error;
+	(_value: boolean, previous: boolean): void => {
+		if (restoringShowHidden) {
+			restoringShowHidden = false;
 
-			throw new DevicesException('Something went wrong', err);
+			return;
+		}
+
+		fetchDevices().catch((): void => {
+			// The store still holds whatever the previous filter fetched, so leaving the toggle where the
+			// user put it would have the list claim to be showing hidden devices over a response that does
+			// not contain them. Put it back and say so — throwing here only produced a rejected promise
+			// nobody awaits, which reports the failure to no one.
+			restoringShowHidden = true;
+			showHidden.value = previous;
+
+			flashMessage.error(t('devicesModule.messages.devices.hiddenNotLoaded'));
 		});
 	}
 );

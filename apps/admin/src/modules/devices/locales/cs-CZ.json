@@ -140,7 +140,8 @@
 			"bulkDisableCanceled": "Hromadné zakázání zařízení bylo zrušeno.",
 			"notLoaded": "Nepodařilo se načíst zařízení. Zkuste to prosím později.",
 			"unhidden": "Zařízení {device} je opět viditelné",
-			"notUnhidden": "Zařízení {device} se nepodařilo zobrazit"
+			"notUnhidden": "Zařízení {device} se nepodařilo zobrazit",
+			"hiddenNotLoaded": "Skryté zařízení se nepodařilo načíst. Zkuste to prosím později."
 		},
 		"channels": {
 			"notFound": "Kanál, který hledáte, neexistuje nebo byl odebrán.",

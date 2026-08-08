@@ -140,7 +140,8 @@
 			"bulkDisableCanceled": "Bulk device disable has been canceled.",
 			"notLoaded": "Failed to load device. Please try again later.",
 			"unhidden": "Device {device} is visible again",
-			"notUnhidden": "Device {device} could not be made visible"
+			"notUnhidden": "Device {device} could not be made visible",
+			"hiddenNotLoaded": "Failed to load the hidden devices. Please try again later."
 		},
 		"channels": {
 			"notFound": "The channel you are looking for doesn’t exist or may have been removed.",

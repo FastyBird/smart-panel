@@ -140,7 +140,8 @@
 			"bulkDisableCanceled": "La desactivación masiva de dispositivos ha sido cancelada.",
 			"notLoaded": "Error al cargar el dispositivo. Por favor inténtelo de nuevo más tarde.",
 			"unhidden": "El dispositivo {device} vuelve a ser visible",
-			"notUnhidden": "No se pudo mostrar el dispositivo {device}"
+			"notUnhidden": "No se pudo mostrar el dispositivo {device}",
+			"hiddenNotLoaded": "No se han podido cargar los dispositivos ocultos. Inténtalo de nuevo más tarde."
 		},
 		"channels": {
 			"notFound": "El canal que busca no existe o pudo haber sido eliminado.",
