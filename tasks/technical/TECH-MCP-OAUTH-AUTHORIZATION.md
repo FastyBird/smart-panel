@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 0 architecture proposed for review
+Status: in progress — Phase 1 authorization-component spike complete
 
 ## 1. Business goal
 

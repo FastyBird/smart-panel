@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 0 complete — architecture proposed for review
+**Status:** Phase 1 complete — authorization-component executable spike passed
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -41,17 +41,17 @@ phase; it does not authorize an improvised OAuth implementation.
 
 **Goal:** Prove the selected established component can be safely embedded before schema or endpoint work expands.
 
-- [ ] Pin a candidate authorization-server dependency only after checking its current security support and license.
-- [ ] Mount it in a test-only NestJS/Fastify application without a second listener and without a catch-all route.
-- [ ] Resolve the backend CommonJS versus dependency ESM boundary in production build and Jest.
-- [ ] Provide a minimal TypeORM-backed adapter; reject in-memory persistence outside tests.
-- [ ] Prove authorization code plus PKCE `S256`, RFC 8252 redirect matching, `resource`, response `iss`, opaque tokens,
+- [x] Pin a candidate authorization-server dependency only after checking its current security support and license.
+- [x] Mount it in a test-only NestJS/Fastify application without a second listener and without a catch-all route.
+- [x] Resolve the backend CommonJS versus dependency ESM boundary in production build and Jest.
+- [x] Provide a minimal TypeORM-backed adapter; reject in-memory persistence outside tests.
+- [x] Prove authorization code plus PKCE `S256`, RFC 8252 redirect matching, `resource`, response `iss`, opaque tokens,
       atomic refresh rotation under concurrent reuse, family revocation, and token revocation.
-- [ ] Snapshot metadata, explicitly advertise only public-client authentication method `none`, and verify disabled
+- [x] Snapshot metadata, explicitly advertise only public-client authentication method `none`, and verify disabled
       dependency features are not advertised.
-- [ ] Prove Smart Panel can own the authenticated login/consent interaction without exposing passwords to the OAuth
+- [x] Prove Smart Panel can own the authenticated login/consent interaction without exposing passwords to the OAuth
       component.
-- [ ] Add focused tests for code replay, PKCE downgrade, issuer/resource mismatch, exact non-loopback redirects,
+- [x] Add focused tests for code replay, PKCE downgrade, issuer/resource mismatch, exact non-loopback redirects,
       accepted ephemeral ports on loopback IP literals, and rejected address/path changes on loopback redirects.
 
 **Gate:** If any required behavior needs handwritten protocol replacement or unsupported dependency internals, stop and

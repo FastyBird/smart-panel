@@ -1,0 +1,17 @@
+{
+	"moduleFileExtensions": ["js", "json", "ts"],
+	"rootDir": ".",
+	"testEnvironment": "node",
+	"testEnvironmentOptions": {
+		"globalsCleanup": "off"
+	},
+	"testRegex": "\\.oauth-spike\\.ts$",
+	"transform": {
+		"^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": { "allowJs": true } }]
+	},
+	"transformIgnorePatterns": ["node_modules/(?!(.pnpm|uuid)/)"],
+	"moduleNameMapper": {
+		"^inquirer$": "<rootDir>/__mocks__/inquirer.ts"
+	},
+	"setupFilesAfterEnv": ["<rootDir>/jest.setup.ts"]
+}

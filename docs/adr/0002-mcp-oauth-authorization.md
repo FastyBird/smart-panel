@@ -1,6 +1,6 @@
 # ADR 0002: Embedded OAuth Authorization for Remote MCP
 
-**Status:** Proposed
+**Status:** Accepted
 
 **Date:** 2026-08-08
 
@@ -41,6 +41,9 @@ An established authorization-server component must implement the protocol state 
 persistence adapter, interaction UI, policy hooks, audit hooks, and resource-server verifier. The executable dependency
 spike must pass before a dependency is pinned or endpoints are added. Failure returns this ADR to review; it does not
 authorize a handwritten OAuth server.
+
+The Phase 1 executable spike passed with exactly pinned `oidc-provider` `9.11.2`. Its integration constraints and
+evidence are recorded in [the compatibility spike](../mcp-oauth-compatibility-spike.md).
 
 An external authorization server remains a future deployment option, not a transparent runtime switch. Supporting one
 would require another ADR that defines issuer trust, user-to-installation mapping, grant administration, revocation,
