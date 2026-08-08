@@ -140,8 +140,12 @@ have no unique claimant. That needs deciding before the fix ships, and deleting 
 is data loss, so the recommended shape is:
 
 - an **incremental migration** (never a change to the initial one) that materialises the claim for
-  every existing energy projection, awarding it deterministically — oldest `createdAt`, ties broken by
-  id — so attribution is unambiguous from the first boot after upgrade;
+  every existing energy projection, awarding it to the oldest *admissible* candidate — `createdAt`,
+  ties broken by id, among those the persistence rules above would accept. A legacy mapping the new
+  rules refuse must not be handed a claim just for being oldest: a cross-type projection would keep
+  the source's own `EnergySourceType` while presenting another, leaving the room's summary wrong in
+  the same way after upgrade as before it. Where no candidate is admissible the meter stays unclaimed
+  and attributes to the physical device, which is today's behaviour and at least not misleading;
 - the losers keep working as *readings*; only the energy claim moves, and a startup reconciliation
   logs them once, loudly enough that an operator can rebuild the device if the automatic choice was
   not what they meant.
@@ -225,8 +229,9 @@ fix must not introduce a lookup that assumes otherwise.
       readings before and after the projection shows the delta spanning them, not a dropped first
       sample
 - [ ] An installation that already holds duplicate claims comes up with exactly one claimant per
-      meter after the migration, deterministically chosen, with the others left working as readings
-      and reported once at startup
+      meter after the migration, deterministically chosen among the mappings the new rules accept —
+      an older but cross-type projection does not take the claim from a younger admissible one, and a
+      meter with no admissible candidate is left unclaimed rather than misattributed
 - [ ] **And the household total is right afterwards:** the losing projections stop producing deltas,
       including where the source is non-qualifying and nothing else would have skipped them — a
       post-migration regression test on the total, not only on the per-room split
