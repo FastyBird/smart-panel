@@ -177,6 +177,23 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	private readonly pendingUnhideSourceDeviceIds = new Set<string>();
 
 	/**
+	 * Virtual devices some pass reported re-wired, held until a pass that actually read committed state
+	 * can announce what became of them. Drained only by announceOrphanedProjections().
+	 *
+	 * Same reasoning as `pendingUnhideSourceDeviceIds` above, and for the same structural reason: an
+	 * orphan announcement is an *edge*, and this one has no opposite. A pass whose wait expired can read
+	 * a still-open deletion's uncommitted rows, and announcing off that read tells every client a
+	 * projection lost its source — then the transaction rolls back, the repair pass quietly restores the
+	 * link in the index, and nothing ever tells them otherwise, because this only ever looks for rows
+	 * with no source. The false orphan would sit in the admin and the panel until a reload.
+	 *
+	 * Queueing is what makes the *read* wait rather than the write: announceOrphanedProjections() asks
+	 * the database at the moment it drains, so a rollback that restored the link simply produces no
+	 * orphan to announce.
+	 */
+	private readonly pendingAnnounceVirtualDeviceIds = new Set<string>();
+
+	/**
 	 * True once a wait has run the full budget out with the transaction flag still set, and back to
 	 * false the moment any poll sees it clear again.
 	 *
@@ -375,7 +392,9 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				if (rebuilt) {
 					await this.recomputeStatuses(rebuilt.rewiredVirtualDeviceIds);
 
-					await this.announceOrphanedProjections(rebuilt.rewiredVirtualDeviceIds);
+					for (const virtualDeviceId of rebuilt.rewiredVirtualDeviceIds) {
+						this.pendingAnnounceVirtualDeviceIds.add(virtualDeviceId);
+					}
 
 					for (const sourceDeviceId of rebuilt.abandonedSourceDeviceIds) {
 						this.pendingUnhideSourceDeviceIds.add(sourceDeviceId);
@@ -394,6 +413,8 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				}
 
 				if (rebuilt && !repairPending) {
+					await this.announceOrphanedProjections();
+
 					await this.unhideAbandonedSources();
 				}
 			} while (this.pending);
@@ -499,20 +520,24 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 *
 	 * Announced from here rather than from a CHANNEL_PROPERTY_DELETED handler because that event is
 	 * emitted from *inside* the deleting transaction (see the class docstring), so a handler reading
-	 * there would read state that can still roll back. This runs after `rebuild()`, which the whole
-	 * `deferPastOpenTransaction` machinery exists to keep on the far side of that commit — the reads
-	 * below are the same reads the index just made, and they are safe for the same reason.
+	 * there would read state that can still roll back. Held back further, to a pass that observed the
+	 * transaction settle, for the reason on `pendingAnnounceVirtualDeviceIds`: a bounded wait can expire
+	 * with the transaction still open, and an orphan announced off that read has no opposite edge to
+	 * correct it if the deletion rolls back.
 	 *
-	 * Scoped to the devices the rebuild reports as *re-wired*, which is a diff: a device orphaned long
-	 * ago is not re-wired by later passes and so is not re-announced on every rebuild. At bootstrap the
-	 * outgoing index is empty and every virtual device counts as re-wired, so a restart re-announces
-	 * whatever orphans it finds — which is the same repair the bootstrap hydration already performs for
-	 * connection state, arriving for the same reason.
+	 * Scoped to the devices some rebuild reported *re-wired*, which is a diff: a device orphaned long
+	 * ago is not re-wired by later passes and so is not re-announced on every rebuild. The bootstrap
+	 * hydration deliberately does not feed this — no client is connected yet to hear it, and the rows
+	 * are already correct by the time one is.
 	 */
-	private async announceOrphanedProjections(virtualDeviceIds: string[]): Promise<void> {
-		if (virtualDeviceIds.length === 0) {
+	private async announceOrphanedProjections(): Promise<void> {
+		if (this.pendingAnnounceVirtualDeviceIds.size === 0) {
 			return;
 		}
+
+		const virtualDeviceIds = [...this.pendingAnnounceVirtualDeviceIds];
+
+		this.pendingAnnounceVirtualDeviceIds.clear();
 
 		const repository = this.dataSource.getRepository(VirtualChannelPropertyEntity);
 

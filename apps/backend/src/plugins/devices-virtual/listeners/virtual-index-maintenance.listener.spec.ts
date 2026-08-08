@@ -1332,7 +1332,13 @@ describe('VirtualIndexMaintenanceListener', () => {
 				},
 			};
 
-			return { queryRunner, dataSource: { createQueryRunner: () => queryRunner } as unknown as DataSource };
+			return {
+				queryRunner,
+				dataSource: {
+					createQueryRunner: () => queryRunner,
+					getRepository: () => orphanQueryStub,
+				} as unknown as DataSource,
+			};
 		};
 
 		// The messages a logger spy was called with, ignoring the context/tag arguments
@@ -1487,6 +1493,58 @@ describe('VirtualIndexMaintenanceListener', () => {
 			await driveUntil(() => flagAtRebuild.length > rebuildsBeforeThirdPass);
 
 			expect(queryRunner.polls - pollsBeforeThirdPass).toBeGreaterThan(pollsForFirstPass / 2);
+		});
+
+		// An orphan announcement is an edge with no opposite. A pass whose wait expired can read a still
+		// open deletion's uncommitted rows, and telling every client a projection lost its source would
+		// stand even after the deletion rolled back — the repair pass restores the link in the index, and
+		// nothing announces that, because this only ever looks for rows with no source.
+		it('announces nothing from a pass whose wait expired', async () => {
+			orphanQueryStub.find.mockResolvedValue([{ id: 'virtual-property', isProjecting: true, sourcePropertyId: null }]);
+			index.rebuild.mockImplementation(() => {
+				flagAtRebuild.push(queryRunner.isTransactionActive);
+
+				return Promise.resolve({ rewiredVirtualDeviceIds: ['virtual-device'], abandonedSourceDeviceIds: [] });
+			});
+
+			probeListener.handleStructuralChange();
+
+			await driveUntil(() => flagAtRebuild.length > 0);
+
+			expect(flagAtRebuild[0]).toBe(true);
+			expect(orphanQueryStub.find).not.toHaveBeenCalled();
+		});
+
+		// And it is held, not dropped: the transaction it could not wait out commits, a later pass reads
+		// committed state, and the queued device is announced then. Without the queue the announcement
+		// would be lost outright — the repair pass overwrites the index with the same wiring the expired
+		// pass already applied, so it reports nothing re-wired and there is no second chance.
+		it('announces a held-back device once a pass reads committed state', async () => {
+			orphanQueryStub.find.mockResolvedValue([{ id: 'virtual-property', isProjecting: true, sourcePropertyId: null }]);
+			index.rebuild.mockImplementation(() => {
+				flagAtRebuild.push(queryRunner.isTransactionActive);
+
+				return Promise.resolve({
+					rewiredVirtualDeviceIds: flagAtRebuild.length === 1 ? ['virtual-device'] : [],
+					abandonedSourceDeviceIds: [],
+				});
+			});
+
+			probeListener.handleStructuralChange();
+
+			await driveUntil(() => flagAtRebuild.length > 0);
+
+			expect(orphanQueryStub.find).not.toHaveBeenCalled();
+
+			queryRunner.isTransactionActive = false;
+			probeListener.handleStructuralChange();
+
+			await driveUntil(() => orphanQueryStub.find.mock.calls.length > 0);
+
+			expect(eventEmitterStub.emit).toHaveBeenCalledWith(
+				EventType.CHANNEL_PROPERTY_UPDATED,
+				expect.objectContaining({ id: 'virtual-property' }),
+			);
 		});
 
 		// The budget is per unbroken run of expired passes, not per process: a connection that
