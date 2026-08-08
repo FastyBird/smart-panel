@@ -26,6 +26,7 @@ const ACCOUNT_ID = 'owner-1';
 const REGISTERED_REDIRECT_URI = 'http://127.0.0.1:49152/callback';
 const REGISTERED_HTTPS_REDIRECT_URI = 'https://client.example/callback';
 const COOKIE_KEY = '0123456789abcdef0123456789abcdef';
+const SMART_PANEL_SESSION_COOKIE = 'smart-panel-session-account';
 
 interface AuthorizationServerMetadata {
 	issuer: string;
@@ -65,6 +66,12 @@ class McpOAuthSpikeHostController {
 
 class CookieBrowser {
 	private readonly cookies = new Map<string, string>();
+
+	constructor(authenticatedAccountId?: string) {
+		if (authenticatedAccountId !== undefined) {
+			this.cookies.set(SMART_PANEL_SESSION_COOKIE, authenticatedAccountId);
+		}
+	}
 
 	async fetch(url: URL, init: RequestInit = {}): Promise<Response> {
 		const headers = new Headers(init.headers);
@@ -133,11 +140,24 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const isStringArray = (value: unknown): value is string[] =>
 	Array.isArray(value) && value.every((item) => typeof item === 'string');
 
+const authenticatedAccountId = (request: IncomingMessage): string | undefined => {
+	for (const cookie of request.headers.cookie?.split(';') ?? []) {
+		const [name, value] = cookie.trim().split('=', 2);
+
+		if (name === SMART_PANEL_SESSION_COOKIE && value !== undefined && value.length > 0) {
+			return value;
+		}
+	}
+
+	return undefined;
+};
+
 const finishInteraction = async (
 	provider: Provider,
 	request: IncomingMessage,
 	response: ServerResponse,
 	observations: InteractionObservation[],
+	authenticatedAccount: string,
 ): Promise<void> => {
 	const details = await provider.interactionDetails(request, response);
 	const clientId = details.params.client_id;
@@ -158,7 +178,7 @@ const finishInteraction = async (
 		await provider.interactionFinished(
 			request,
 			response,
-			{ login: { accountId: ACCOUNT_ID, acr: 'smart-panel-session', amr: ['pwd'] } },
+			{ login: { accountId: authenticatedAccount, acr: 'smart-panel-session', amr: ['pwd'] } },
 			{ mergeWithLastSubmission: false },
 		);
 
@@ -173,6 +193,10 @@ const finishInteraction = async (
 
 	if (accountId === undefined) {
 		throw new Error('Consent interaction is missing the authenticated Smart Panel account');
+	}
+
+	if (accountId !== authenticatedAccount) {
+		throw new Error('OAuth interaction account does not match the authenticated Smart Panel session');
 	}
 
 	let grant = details.grantId === undefined ? undefined : await provider.Grant.find(details.grantId);
@@ -332,7 +356,15 @@ describe('MCP OAuth authorization-component spike', () => {
 			}
 
 			if (requestUrl.pathname.startsWith(`${OAUTH_PATH}/interaction/`)) {
-				void finishInteraction(provider, request, response, interactions).catch(next);
+				const accountId = authenticatedAccountId(request);
+
+				if (accountId === undefined) {
+					response.statusCode = 401;
+					response.end('An authenticated Smart Panel session is required');
+					return;
+				}
+
+				void finishInteraction(provider, request, response, interactions, accountId).catch(next);
 				return;
 			}
 
@@ -395,7 +427,7 @@ describe('MCP OAuth authorization-component spike', () => {
 	): Promise<{ callback: URL; verifier: string }> => {
 		const { authorizationUrl, verifier } = createAuthorizationRequest(redirectUri, requestedResource, requestedScope);
 
-		const browser = new CookieBrowser();
+		const browser = new CookieBrowser(ACCOUNT_ID);
 		let currentUrl = authorizationUrl;
 
 		for (let redirectCount = 0; redirectCount < 10; redirectCount += 1) {
@@ -517,6 +549,17 @@ describe('MCP OAuth authorization-component spike', () => {
 			aud: resource,
 			scope: 'mcp:read',
 		});
+	});
+
+	it('rejects interaction delegation without an authenticated Smart Panel session', async () => {
+		const { authorizationUrl } = createAuthorizationRequest();
+		const browser = new CookieBrowser();
+		const authorizationResponse = await browser.fetch(authorizationUrl);
+		const interactionUrl = new URL(authorizationResponse.headers.get('location'), authorizationUrl);
+		const interactionResponse = await browser.fetch(interactionUrl);
+
+		expect(interactionResponse.status).toBe(401);
+		expect(interactions).toHaveLength(0);
 	});
 
 	it('rejects authorization-code replay', async () => {
@@ -649,6 +692,7 @@ describe('MCP OAuth authorization-component spike', () => {
 			expect(await new adapter('AccessToken').find(tokens.access_token)).toBeUndefined();
 		}
 
+		expect(await new adapter('AccessToken').find(initialTokens.access_token)).toBeUndefined();
 		expect((await refresh(initialTokens.refresh_token)).status).toBe(400);
 	});
 

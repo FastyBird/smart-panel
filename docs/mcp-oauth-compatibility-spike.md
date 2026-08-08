@@ -107,7 +107,8 @@ Phase 1 completed that executable gate with exactly pinned `oidc-provider` `9.11
   usable fork and removes late successors and the rest of the token family;
 - login and consent are completed through interaction callbacks using an already authenticated Smart Panel account;
   the provider never receives a password; and
-- fourteen focused E2E scenarios cover metadata, code plus PKCE `S256`, downgrade and verifier failures, replay,
+- fifteen focused E2E scenarios cover metadata, authenticated interaction delegation, code plus PKCE `S256`, downgrade
+  and verifier failures, replay,
   issuer-bearing success and error responses, resource mismatch, opaque access and refresh tokens, explicit offline
   consent, RFC 8252 redirects, rotation, concurrent reuse, revocation, persistence, and finite route mounting.
 
