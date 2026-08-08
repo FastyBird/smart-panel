@@ -49,10 +49,11 @@ technically validate, but a thermostat with neither is a thermometer wearing a b
   drives the actuator through the existing platform contract — but **not** through the slot the user
   sees (see §3a)
 - Hysteresis and minimum cycle protection, so a relay is not chattered
-- Re-evaluation on **both** inputs: a sensed-value report *and* a write to the owned setpoint. A loop
-  driven only by the sensor does nothing when the user moves the target, and a sensor that reports on
-  change can be silent for a long time — lowering the target would leave the actuator on, raising it
-  would leave it off, until something unrelated happened to arrive
+- Re-evaluation on **all three** inputs: a sensed-value report, a write to the owned setpoint, and a
+  write to the exposed `on`. A loop driven only by the sensor does nothing when the user moves the
+  target or switches the device off, and a sensor that reports on change can be silent for a long
+  time — lowering the target would leave the actuator on, raising it would leave it off, and an OFF
+  would leave a relay energised indefinitely, each until something unrelated happened to arrive
 - The target setpoint as a **writable owned property** — the schema already accommodates owned
   properties; v1 simply never creates a writable one (`assertOwnedPropertyNotWritable` refuses it
   today, and that guard is what this task revisits)
@@ -83,18 +84,42 @@ the **enable** the user owns (`on`), the **activity** the loop reports (`status`
 virtual device at all. Which projection carries the actuator has to be part of the wizard's mapping —
 "this relay is what I switch" — rather than inferred from the `on` slot.
 
-**`status` is required on every closed-loop channel, and nothing supplies it.** `heater` requires
+**The actuator mapping needs somewhere to live.** Today a mapping is only ever
+`VirtualChannelPropertyEntity.sourcePropertyId`: a property *of the virtual device* pointing at a
+source. An actuator that is deliberately not a slot therefore has no row, and nothing would survive a
+restart. The task has to name the owner and the behaviour, with an incremental migration for it
+(never a change to the initial one):
+
+- the natural home is the **virtual channel**: one closed-loop channel commands one actuator, so a
+  nullable `actuatorPropertyId` FK on `VirtualChannelEntity` says exactly that, and the wizard's
+  mapping step writes it beside the channel's projections;
+- **deletion** behaves like a lost source: `ON DELETE SET NULL`, the channel degrades, the device
+  reports `DISCONNECTED` through the same aggregation that already handles orphans, and the loop
+  stops commanding rather than commanding nothing;
+- **remap** is the existing remap dialog with one more row — the actuator is a mapping like any
+  other, and `assertProjectionCompatible`'s counterpart has to judge it: an actuator must be a
+  writable `bool`, and it must not be a property of a virtual device.
+
+**`status` is required on the temperature channels, and optional and enum-typed on the humidity
+ones.** `heater` requires
 `on(bool,rw)`, `temperature(float,rw)` *and* `status(bool,ro)`, all three `required: true` in
-`spec/devices/channels.yaml` — and so do `cooler`, `humidifier` and `dehumidifier`, which is what
-`air_conditioner`, `air_humidifier` and `air_dehumidifier` are built from. The decision below is
-therefore about all four channels, not `heater` alone, and the acceptance cases have to cover at
-least one heating and one cooling device. `temperature` (or `humidity`) is the setpoint the
-controller owns; `status` is what the device reports back. No source supplies it, so this task has to
-decide between two answers, and say which in the design before anyone builds:
+`spec/devices/channels.yaml`, and `cooler` requires the same three — so `heating_unit`,
+`water_heater` and `air_conditioner` all fail validation without a `status` nobody supplies.
+
+The humidity channels are **not** the same shape, and a rule generalised across all four would be
+wrong: `humidifier.status` and `dehumidifier.status` are `required: false` and typed `enum`, with
+formats `["idle","humidifying"]` and `["idle","dehumidifying","defrosting"]`. Synthesizing a boolean
+there would fail validation rather than satisfy it. For those two the task should either omit
+`status` — it is optional, so the device validates without it — or synthesize the enum with values
+drawn from the channel's own format, and say which.
+
+`temperature` (or `humidity`) is the setpoint the controller owns; `status` is what the device
+reports back. For `heater` and `cooler` it must exist, so this task has to decide between two
+answers, and say which in the design before anyone builds:
 
 - the controller **synthesizes** it as an owned read-only property it drives from its own decision —
-  the loop knows whether it is currently calling for heat (or cooling, or humidifying), and that is
-  exactly what `status` means; or
+  the loop knows whether it is currently calling for heat or cooling, and that is exactly what
+  `status` means; or
 - it is **another mapping**, for hardware that reports a genuine flame/compressor state, with the
   synthesized value as the fallback when nothing is mapped.
 
@@ -131,6 +156,8 @@ category itself is judged.
 - [ ] The same for a cooling device — `air_conditioner`'s `cooler` channel requires its own
       `status(bool,ro)`, so a heater-only implementation would pass the criterion above and still
       leave air conditioners failing validation
+- [ ] `air_humidifier` and `air_dehumidifier` validate too, with `status` either omitted (it is
+      optional there) or synthesized as the **enum** those channels declare — never as a boolean
 - [ ] Switching the virtual device OFF keeps it off: the loop does not re-enable it on the next sensor
       report or setpoint change, and an enabled device that has reached its setpoint still reads `on`
       with `status` false, rather than reading OFF
@@ -139,6 +166,10 @@ category itself is judged.
 - [ ] The loop honours hysteresis and a minimum cycle time, both configurable
 - [ ] A write to the setpoint re-evaluates the loop immediately, with a backend test that moves the
       target while the sensed value stays constant and asserts the actuator follows
+- [ ] A write to `on` does the same: switching an actively heating device off releases the relay
+      without waiting for another sensor report
+- [ ] The actuator mapping survives a restart, degrades to `DISCONNECTED` when its property is
+      deleted, and can be remapped — with the incremental migration that adds it
 - [ ] An offline or orphaned sensed source releases the actuator rather than latching it
 - [ ] The six categories are removed from `VIRTUAL_BLOCKED_CATEGORIES` only as each is genuinely
       supported, and the wizard's blocked-category notice reflects what remains
