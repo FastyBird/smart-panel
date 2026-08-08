@@ -303,6 +303,12 @@ For boolean roll-ups (is anything triggered) the duplicate is harmless. For anyt
 
 Deciding this needs a policy — does an aggregate prefer the physical device, the virtual one, or neither — and that policy belongs with whoever owns the security and energy semantics, not with the mapping feature that surfaced it.
 
+### 3a.13 The channels stores apply a fetch snapshot over newer socket rows (low, pre-existing)
+
+`devices.store.ts` now applies a fetch response row by row, keeping any row written since the request went out — a websocket event, an optimistic edit — so a device hidden mid-flight is not restored visible by the older snapshot it raced.
+
+`channels.store.ts` and `channels.properties.store.ts` have the same exposure in a milder form: they merge (`data.value = { ...data.value, ...channels }`) rather than replace, so nothing is evicted, but a snapshot assembled before a socket update still overwrites that update's row. Nothing in the virtual-device flows depends on it today, and the fix is the same stamp-and-compare shape, worth doing once across the three stores rather than twice.
+
 ### 3a.6 Test-coverage gaps (low)
 
 - `view-device.vue`'s virtual-device mount gate has no behavioural test; `view-devices.spec.ts` has a usable template for one.

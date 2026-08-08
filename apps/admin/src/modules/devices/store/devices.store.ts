@@ -115,6 +115,31 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 	let latestFetchToken = 0;
 	const latestFetchTokenByKey: Record<string, number> = {};
 
+	// Stamped on every write that is not a fetch applying its own response — a websocket event, an
+	// optimistic edit, a create, a delete. A fetch remembers the stamp it went out under, so when its
+	// response lands it can tell which rows have been written since: for those the snapshot is the
+	// older story and must not be applied. The case that made this necessary is the wizard hiding a
+	// source device: the list fetch reads the row before the hide, DEVICE_UPDATED applies `hidden:
+	// true` while that request is still in flight, and the wholesale replacement then put the visible
+	// row back — the physical source rendered beside the virtual device that replaced it until
+	// something else happened to refresh it.
+	let mutationToken = 0;
+	const mutationTokenById: Record<IDevice['id'], number> = {};
+
+	// The two ways a row is written outside a fetch. Everything else in this store goes through them,
+	// which is what keeps the stamp complete.
+	const commit = (device: IDevice): IDevice => {
+		mutationTokenById[device.id] = ++mutationToken;
+
+		return (data.value[device.id] = device);
+	};
+
+	const forget = (id: IDevice['id']): void => {
+		mutationTokenById[id] = ++mutationToken;
+
+		delete data.value[id];
+	};
+
 	const onEvent = (payload: IDevicesOnEventActionPayload): IDevice => {
 		const element = getPluginElement(payload.type);
 
@@ -139,7 +164,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				throw new DevicesValidationException('Failed to insert device.');
 			}
 
-			return (data.value[parsed.data.id] = parsed.data);
+			return commit(parsed.data);
 		}
 
 		const parsed = (element?.schemas?.deviceSchema || DeviceSchema).safeParse({ ...payload.data, id: payload.id });
@@ -152,7 +177,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 		data.value = data.value ?? {};
 
-		return (data.value[parsed.data.id] = parsed.data);
+		return commit(parsed.data);
 	};
 
 	const unset = (payload: IDevicesUnsetActionPayload): void => {
@@ -160,7 +185,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			return;
 		}
 
-		delete data.value[payload.id];
+		forget(payload.id);
 
 		return;
 	};
@@ -194,7 +219,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 					const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
 
-					data.value[transformed.id] = transformed;
+					commit(transformed);
 
 					insertDeviceControlsRelations(transformed, responseData.data.controls);
 					insertChannelsRelations(transformed, responseData.data.channels);
@@ -245,6 +270,10 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		inFlightFetchCount += 1;
 		semaphore.value.fetching.items = true;
 
+		// Read before the request goes out: every row stamped later than this was written while the
+		// server was assembling its answer, so for those rows this response is out of date.
+		const requestedAt = mutationToken;
+
 		const fetchPromise = (async (): Promise<IDevice[]> => {
 			try {
 				const {
@@ -279,18 +308,43 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 						return Object.values(data.value);
 					}
 
-					data.value = Object.fromEntries(
-						responseData.data.map((device) => {
-							const element = getPluginElement(device.type);
+					// Applied row by row rather than assigned wholesale: a row written since `requestedAt`
+					// is newer than this snapshot and keeps what it holds — including having been deleted,
+					// which is why a stamped id with nothing behind it is dropped rather than restored.
+					// Rows the response does not carry are still evicted, which is what makes this a
+					// replacement rather than a merge that can only ever grow.
+					const applied: { [key: IDevice['id']]: IDevice } = {};
 
-							const transformedDevice = transformDeviceResponse(device, element?.schemas?.deviceSchema || DeviceSchema);
+					for (const device of responseData.data) {
+						const element = getPluginElement(device.type);
 
-							insertDeviceControlsRelations(transformedDevice, device.controls);
-							insertChannelsRelations(transformedDevice, device.channels);
+						const transformedDevice = transformDeviceResponse(device, element?.schemas?.deviceSchema || DeviceSchema);
 
-							return [transformedDevice.id, transformedDevice];
-						})
-					);
+						if ((mutationTokenById[transformedDevice.id] ?? 0) > requestedAt) {
+							const local = data.value[transformedDevice.id];
+
+							if (local) {
+								applied[transformedDevice.id] = local;
+							}
+
+							continue;
+						}
+
+						insertDeviceControlsRelations(transformedDevice, device.controls);
+						insertChannelsRelations(transformedDevice, device.channels);
+
+						applied[transformedDevice.id] = transformedDevice;
+					}
+
+					// Written while the request was in flight and absent from its answer: a device created
+					// locally, or one that came into existence after the server read the list.
+					for (const [id, token] of Object.entries(mutationTokenById)) {
+						if (token > requestedAt && !(id in applied) && data.value[id]) {
+							applied[id] = data.value[id];
+						}
+					}
+
+					data.value = applied;
 
 					firstLoad.value = true;
 
@@ -348,7 +402,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 		semaphore.value.creating.push(parsedNewItem.data.id);
 
-		data.value[parsedNewItem.data.id] = parsedNewItem.data;
+		commit(parsedNewItem.data);
 
 		if (parsedNewItem.data.draft) {
 			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
@@ -374,7 +428,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 					const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
 
-					data.value[transformed.id] = transformed;
+					commit(transformed);
 
 					insertDeviceControlsRelations(transformed, responseData.data.controls);
 					insertChannelsRelations(transformed, responseData.data.channels);
@@ -383,7 +437,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				}
 
 				// Record could not be created on api, we have to remove it from a database
-				delete data.value[parsedNewItem.data.id];
+				forget(parsedNewItem.data.id);
 
 				let errorReason: string | null = 'Failed to create device.';
 
@@ -435,7 +489,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 		semaphore.value.updating.push(payload.id);
 
-		data.value[parsedEditedItem.data.id] = parsedEditedItem.data;
+		commit(parsedEditedItem.data);
 
 		if (parsedEditedItem.data.draft) {
 			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== parsedEditedItem.data.id);
@@ -472,7 +526,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 					const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
 
-					data.value[transformed.id] = transformed;
+					commit(transformed);
 
 					return transformed;
 				}
@@ -531,7 +585,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 				const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
 
-				data.value[transformed.id] = transformed;
+				commit(transformed);
 
 				insertDeviceControlsRelations(transformed, responseData.data.controls);
 				insertChannelsRelations(transformed, responseData.data.channels);
@@ -564,7 +618,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 		const recordToRemove = data.value[payload.id];
 
-		delete data.value[payload.id];
+		forget(payload.id);
 
 		if (recordToRemove?.draft) {
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);

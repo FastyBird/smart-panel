@@ -182,6 +182,92 @@ describe('Devices Store', () => {
 		expect(store.findAll().map((device) => device.name)).toEqual(['all-device']);
 	});
 
+	// The wizard hides a source device the moment a virtual device takes over. If the list fetch read
+	// that row before the hide and DEVICE_UPDATED lands while the request is still in flight, applying
+	// the response wholesale put the visible row back — the physical source rendered beside the virtual
+	// device that replaced it, until something else happened to refresh the list.
+	it('keeps a row written while a fetch was in flight, rather than restoring the snapshot it answers with', async () => {
+		let resolveRequest!: (value: unknown) => void;
+
+		const request = new Promise((resolve) => {
+			resolveRequest = resolve;
+		});
+
+		(mockBackendClient.GET as Mock).mockReturnValueOnce(request);
+
+		const source = deviceFixture('source-device');
+		const pending = store.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
+
+		// The websocket event arrives before the response the server assembled before it.
+		store.onEvent({ id: source.id, type: source.type, data: { ...source, hidden: true } });
+
+		resolveRequest({ data: { data: [source] } });
+		await pending;
+
+		expect(store.findById(source.id)?.hidden).toBe(true);
+	});
+
+	// The other half of the same rule: a row the response *does* carry and nothing has touched since
+	// the request went out is still applied, so this stays a replacement rather than a store that can
+	// only ever be written by events.
+	it('applies a row the response carries when nothing has written it since the request went out', async () => {
+		let resolveRequest!: (value: unknown) => void;
+
+		const request = new Promise((resolve) => {
+			resolveRequest = resolve;
+		});
+
+		(mockBackendClient.GET as Mock).mockReturnValueOnce(request);
+
+		const device = deviceFixture('untouched-device');
+		const pending = store.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
+
+		resolveRequest({ data: { data: [{ ...device, hidden: true }] } });
+		await pending;
+
+		expect(store.findById(device.id)?.hidden).toBe(true);
+	});
+
+	// A device deleted while the fetch was in flight must stay deleted: the snapshot still carries it,
+	// and restoring it would put a row the user has just removed back in the list.
+	it('does not restore a device removed while a fetch was in flight', async () => {
+		let resolveRequest!: (value: unknown) => void;
+
+		const request = new Promise((resolve) => {
+			resolveRequest = resolve;
+		});
+
+		(mockBackendClient.GET as Mock).mockReturnValueOnce(request);
+
+		const doomed = deviceFixture('doomed-device');
+
+		store.onEvent({ id: doomed.id, type: doomed.type, data: doomed });
+
+		const pending = store.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
+
+		store.unset({ id: doomed.id });
+
+		resolveRequest({ data: { data: [doomed] } });
+		await pending;
+
+		expect(store.findById(doomed.id)).toBeNull();
+	});
+
+	// Rows the response does not carry are still dropped — otherwise this would be a merge that can
+	// only grow, and a device deleted on the backend would never leave the list.
+	it('still evicts a row the response no longer carries', async () => {
+		(mockBackendClient.GET as Mock).mockResolvedValueOnce({ data: { data: [deviceFixture('kept-device')] } });
+
+		const gone = deviceFixture('gone-device');
+
+		store.onEvent({ id: gone.id, type: gone.type, data: gone });
+
+		await store.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
+
+		expect(store.findById(gone.id)).toBeNull();
+		expect(store.findAll().map((device) => device.name)).toEqual(['kept-device']);
+	});
+
 	it('shares one in-flight request for two calls with the same hidden value', async () => {
 		let resolveRequest!: (value: unknown) => void;
 
