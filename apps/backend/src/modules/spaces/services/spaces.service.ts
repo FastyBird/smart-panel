@@ -880,14 +880,30 @@ export class SpacesService {
 
 			await this.assertNoHiddenDevices(dtoInstance.deviceIds);
 
+			// The visibility condition travels into the statement, not only into the preflight above. A
+			// device hidden between the two — the virtual-device wizard hides its source the moment it
+			// takes over — would otherwise have its placement moved by a check that was true when it was
+			// made and is not when it is applied.
 			const result = await this.deviceRepository
 				.createQueryBuilder()
 				.update()
 				.set({ roomId: spaceId })
 				.where('id IN (:...ids)', { ids: dtoInstance.deviceIds })
+				.andWhere('COALESCE(hidden, 0) = 0')
 				.execute();
 
 			devicesAssigned = result.affected || 0;
+
+			// Fewer rows than asked for means at least one was hidden underneath this call. Reported the
+			// same way the preflight reports it, rather than returning a count that quietly says some of
+			// what you asked for happened.
+			if (devicesAssigned !== dtoInstance.deviceIds.length) {
+				this.logger.error(
+					`Refused bulk assignment: ${dtoInstance.deviceIds.length - devicesAssigned} device(s) were hidden while it was being applied`,
+				);
+
+				throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
+			}
 			this.logger.debug(`Assigned ${devicesAssigned} devices to space`);
 
 			// Emit DEVICE_UPDATED events so connected clients (panel) learn
@@ -931,14 +947,25 @@ export class SpacesService {
 
 		await this.assertNoHiddenDevices(deviceIds);
 
+		// Same condition on the way out as on the way in: unassigning is a placement change too, and a
+		// device hidden between the preflight and this statement is as inert for one as for the other.
 		const result = await this.deviceRepository
 			.createQueryBuilder()
 			.update()
 			.set({ roomId: null })
 			.where('id IN (:...ids)', { ids: deviceIds })
+			.andWhere('COALESCE(hidden, 0) = 0')
 			.execute();
 
 		const unassigned = result.affected || 0;
+
+		if (unassigned !== deviceIds.length) {
+			this.logger.error(
+				`Refused bulk unassignment: ${deviceIds.length - unassigned} device(s) were hidden while it was being applied`,
+			);
+
+			throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
+		}
 		this.logger.debug(`Unassigned ${unassigned} devices`);
 
 		// Emit DEVICE_UPDATED events so connected clients refresh derived data

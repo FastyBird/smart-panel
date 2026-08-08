@@ -43,6 +43,9 @@ describe('SpacesService', () => {
 		update: jest.Mock;
 		set: jest.Mock;
 		where: jest.Mock;
+		// The bulk placement writes carry the visibility condition in the statement itself, so the builder
+		// chain has one more link than it used to.
+		andWhere: jest.Mock;
 		execute: jest.Mock;
 	};
 
@@ -78,6 +81,7 @@ describe('SpacesService', () => {
 			update: jest.fn().mockReturnThis(),
 			set: jest.fn().mockReturnThis(),
 			where: jest.fn().mockReturnThis(),
+			andWhere: jest.fn().mockReturnThis(),
 			execute: jest.fn().mockResolvedValue({ affected: 0 } as UpdateResult),
 		};
 		dataSourceQueryMock = jest.fn().mockResolvedValue([{ category: null }]);
@@ -277,6 +281,7 @@ describe('SpacesService', () => {
 				update: jest.fn().mockReturnThis(),
 				set: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
 				execute: jest.fn().mockResolvedValue({ affected: 2 } as UpdateResult),
 			};
 
@@ -284,6 +289,7 @@ describe('SpacesService', () => {
 				update: jest.fn().mockReturnThis(),
 				set: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
 				execute: jest.fn().mockResolvedValue({ affected: 1 } as UpdateResult),
 			};
 
@@ -322,6 +328,7 @@ describe('SpacesService', () => {
 				update: jest.fn().mockReturnThis(),
 				set: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
 				execute: jest.fn().mockResolvedValue({ affected: 3 } as UpdateResult),
 			};
 
@@ -368,12 +375,14 @@ describe('SpacesService', () => {
 				update: jest.Mock;
 				set: jest.Mock;
 				where: jest.Mock;
+				andWhere: jest.Mock;
 				execute: jest.Mock;
 			} => {
 				const deviceQueryBuilder = {
 					update: jest.fn().mockReturnThis(),
 					set: jest.fn().mockReturnThis(),
 					where: jest.fn().mockReturnThis(),
+					andWhere: jest.fn().mockReturnThis(),
 					execute: jest.fn().mockResolvedValue({ affected: 1 } as UpdateResult),
 				};
 
@@ -395,6 +404,21 @@ describe('SpacesService', () => {
 				);
 
 				expect(deviceQueryBuilder.execute).not.toHaveBeenCalled();
+			});
+
+			// The preflight is a check made a query earlier than the write. A device hidden in between — the
+			// virtual-device wizard hides its source the moment it takes over — would otherwise have its
+			// placement moved by a check that was true when it was made and false when it was applied. The
+			// statement carries the condition now, so it touches fewer rows than asked for and says so.
+			it('refuses when a targeted device is hidden between the check and the write', async () => {
+				const deviceQueryBuilder = arrangeDeviceWrite();
+
+				deviceRepository.find.mockResolvedValue([]);
+				deviceQueryBuilder.execute.mockResolvedValue({ affected: 1 } as UpdateResult);
+
+				await expect(service.bulkAssign(roomId, { deviceIds: [uuid(), uuid()], displayIds: [] })).rejects.toThrow(
+					DevicesNotAllowedException,
+				);
 			});
 
 			it('assigns when every targeted device is visible', async () => {

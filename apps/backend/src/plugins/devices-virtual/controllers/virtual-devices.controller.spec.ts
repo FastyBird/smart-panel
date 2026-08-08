@@ -5,7 +5,11 @@ import { ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/en
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
-import { VirtualNestingNotAllowedException, VirtualSourceNotFoundException } from '../devices-virtual.exceptions';
+import {
+	VirtualCategoryNotSupportedException,
+	VirtualNestingNotAllowedException,
+	VirtualSourceNotFoundException,
+} from '../devices-virtual.exceptions';
 import { CompatibilityCandidateDto, ReqCompatibilityDto } from '../dto/compatibility-request.dto';
 import { VirtualDevicesService } from '../services/virtual-devices.service';
 
@@ -18,6 +22,7 @@ describe('VirtualDevicesController', () => {
 		findSourceDevices: jest.Mock;
 		reportCompatibility: jest.Mock;
 		assertSourceNotVirtual: jest.Mock;
+		assertCategoryAllowed: jest.Mock;
 	};
 	let channelsPropertiesService: { findOne: jest.Mock };
 
@@ -31,6 +36,9 @@ describe('VirtualDevicesController', () => {
 			findSourceDevices: jest.fn().mockResolvedValue([deviceA, deviceB]),
 			reportCompatibility: jest.fn().mockReturnValue({ compatible: true }),
 			assertSourceNotVirtual: jest.fn().mockResolvedValue(undefined),
+			// A blocked category is refused before any candidate is looked at; the default is a category
+			// virtual devices support.
+			assertCategoryAllowed: jest.fn(),
 		};
 		channelsPropertiesService = { findOne: jest.fn() };
 
@@ -109,6 +117,22 @@ describe('VirtualDevicesController', () => {
 
 		const request = (candidates: CompatibilityCandidateDto[]): ReqCompatibilityDto =>
 			({ data: { category: DeviceCategory.LIGHTING, candidates } }) as ReqCompatibilityDto;
+
+		// `@ValidateCategoryAllowed` rejects a blocked category on the create, so a preview that answers
+		// for one describes a device that cannot exist. Unlike an incompatible pairing that is not a
+		// comparison outcome the wizard renders — it is a request about the wrong thing.
+		it('refuses a category virtual devices do not support', async () => {
+			virtualDevicesService.assertCategoryAllowed.mockImplementation(() => {
+				throw new VirtualCategoryNotSupportedException(
+					"Device category 'air_conditioner' requires closed-loop control, which virtual devices do not support yet",
+				);
+			});
+
+			await expect(controller.checkCompatibility(request([candidate('source-a')]))).rejects.toThrow(
+				UnprocessableEntityException,
+			);
+			expect(channelsPropertiesService.findOne).not.toHaveBeenCalled();
+		});
 
 		// Nesting is refused at persistence by `@ValidateSourceNotVirtual`, and `reportCompatibility`
 		// cannot see it: that predicate compares a candidate against a *slot*, and a virtual device's

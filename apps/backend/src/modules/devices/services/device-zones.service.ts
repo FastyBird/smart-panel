@@ -212,41 +212,39 @@ export class DeviceZonesService {
 			validatedZones.push(zone);
 		}
 
-		// Every write below carries the same condition the caller's guard checked: the device is still
-		// visible. `DevicesService.update()` reads that device and then makes several awaited round trips
-		// — the room validation, the zone read-back, the re-read it saves through — before reaching here,
-		// and a wizard hiding the source in that window would otherwise have this replace the placement of
-		// a device that is now inert.
+		// One transaction, because a replacement is one thing. The previous shape — a conditional delete
+		// followed by conditional inserts — was safe against a hide arriving *before* it, and not against
+		// one arriving *inside* it: the delete and the first few inserts were already committed when the
+		// rest turned into no-ops, leaving a device with some of its new placement and none of its old.
+		// Refusing after that is not a refusal, it is a partial write with an exception on top.
 		//
-		// Conditioning the *delete* as well as the inserts is what makes it safe rather than merely
-		// bounded: a hide that lands first turns the whole replacement into a no-op instead of clearing
-		// the memberships and then refusing to write the new ones.
+		// The visibility check moves inside for the same reason. Read there, it is stable for the life of
+		// the statements that depend on it, which is what "the caller's guard still holds when the write
+		// happens" actually requires. `DevicesService.remove()` already replaces device state this way, so
+		// this is the shape this module reaches for rather than a new mechanism.
 		const zoneTable = this.repository.metadata.tableName;
 		const deviceTable = this.deviceRepository.metadata.tableName;
-		const visible = `EXISTS (SELECT 1 FROM "${deviceTable}" d WHERE d.id = ? AND COALESCE(d.hidden, 0) = 0)`;
 
-		await this.repository.manager.query(`DELETE FROM "${zoneTable}" WHERE "deviceId" = ? AND ${visible}`, [
-			deviceId,
-			deviceId,
-		]);
-
-		for (const zoneId of zoneIds) {
-			await this.repository.manager.query(
-				`INSERT INTO "${zoneTable}" ("deviceId", "zoneId") SELECT ?, ? WHERE ${visible}`,
-				[deviceId, zoneId, deviceId],
+		await this.repository.manager.transaction(async (manager): Promise<void> => {
+			const visible = await manager.query<{ id: string }[]>(
+				`SELECT id FROM "${deviceTable}" WHERE id = ? AND COALESCE(hidden, 0) = 0`,
+				[deviceId],
 			);
-		}
 
-		// Read back rather than assumed: if the device was hidden anywhere in the stretch above, none of
-		// those statements matched and the caller has to be told its placement change did not happen —
-		// silently reporting the zones it asked for would be worse than the refusal.
-		const stored = await this.repository.find({ where: { deviceId } });
+			if (visible.length === 0) {
+				this.logger.error(`Refused zone replacement on device id=${deviceId} hidden while it was being applied`);
 
-		if (stored.length !== zoneIds.length) {
-			this.logger.error(`Refused zone replacement on device id=${deviceId} hidden while it was being applied`);
+				// Thrown from inside, so the transaction rolls back and the device keeps the placement it
+				// had. A caller told its change was refused must find nothing changed.
+				throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
+			}
 
-			throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
-		}
+			await manager.query(`DELETE FROM "${zoneTable}" WHERE "deviceId" = ?`, [deviceId]);
+
+			for (const zoneId of zoneIds) {
+				await manager.query(`INSERT INTO "${zoneTable}" ("deviceId", "zoneId") VALUES (?, ?)`, [deviceId, zoneId]);
+			}
+		});
 
 		this.logger.debug(`Successfully set ${zoneIds.length} zones for device ${deviceId}`);
 

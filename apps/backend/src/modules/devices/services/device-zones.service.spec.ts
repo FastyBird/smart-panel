@@ -40,7 +40,14 @@ describe('DeviceZonesService', () => {
 			save: jest.fn((value: unknown) => Promise.resolve(value)),
 			delete: jest.fn().mockResolvedValue({ affected: 1 }),
 			metadata: { tableName: 'table' },
-			manager: { query: jest.fn().mockResolvedValue(undefined) },
+			manager: {
+				query: jest.fn().mockResolvedValue(undefined),
+				// The zone replacement runs as one transaction, so the callback is invoked with a manager of
+				// its own; the stub hands back one whose visibility probe answers "still visible".
+				transaction: jest.fn(async (run: (m: { query: jest.Mock }) => Promise<void>) => {
+					await run({ query: jest.fn().mockResolvedValue([{ id: 'device' }]) });
+				}),
+			},
 		});
 
 		const module: TestingModule = await Test.createTestingModule({
@@ -111,6 +118,23 @@ describe('DeviceZonesService', () => {
 			jest.spyOn(repository, 'findOne').mockResolvedValue(null);
 
 			await expect(service.addDeviceToZone(deviceId, zoneId)).rejects.toThrow(DevicesNotAllowedException);
+		});
+
+		// A replacement is one thing: a hide arriving *inside* it used to leave the delete and the first
+		// inserts committed while the rest turned into no-ops — a device with some of its new placement
+		// and none of its old, then an exception on top. A caller told its change was refused has to find
+		// nothing changed.
+		it('rolls the whole zone replacement back when the device is hidden partway through', async () => {
+			arrangeDevice(false);
+
+			(repository.manager.transaction as jest.Mock).mockImplementation(
+				async (run: (m: { query: jest.Mock }) => Promise<void>) => {
+					// The visibility probe inside the transaction finds the device hidden.
+					await run({ query: jest.fn().mockResolvedValue([]) });
+				},
+			);
+
+			await expect(service.setDeviceZones(deviceId, [zoneId])).rejects.toThrow(DevicesNotAllowedException);
 		});
 
 		it('refuses removing a hidden device from a zone', async () => {

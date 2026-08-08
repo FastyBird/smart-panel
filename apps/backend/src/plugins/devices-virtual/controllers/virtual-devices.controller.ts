@@ -26,7 +26,11 @@ import {
 	DEVICES_VIRTUAL_PLUGIN_NAME,
 	DEVICES_VIRTUAL_TYPE,
 } from '../devices-virtual.constants';
-import { VirtualNestingNotAllowedException, VirtualSourceNotFoundException } from '../devices-virtual.exceptions';
+import {
+	VirtualCategoryNotSupportedException,
+	VirtualNestingNotAllowedException,
+	VirtualSourceNotFoundException,
+} from '../devices-virtual.exceptions';
 import { ReqCompatibilityDto } from '../dto/compatibility-request.dto';
 import { CompatibilityReportModel, CompatibilityResponseModel } from '../models/compatibility-response.model';
 import { VirtualSourceDevicesResponseModel } from '../models/virtual-response.model';
@@ -116,6 +120,23 @@ export class VirtualDevicesController {
 		const { category, candidates } = body.data;
 
 		this.logger.debug(`Checking compatibility of ${candidates.length} candidate(s) for category=${category}`);
+
+		// Refused outright rather than reported per candidate. `@ValidateCategoryAllowed` rejects a
+		// blocked category on the create, so a preview that answers for one is describing a device that
+		// cannot exist — and unlike an incompatible pairing, that is not a comparison outcome the wizard
+		// needs to render. It is a request about the wrong thing, in the same family as an id naming no
+		// property, and refused the same way.
+		try {
+			this.virtualDevicesService.assertCategoryAllowed(category);
+		} catch (error) {
+			if (error instanceof VirtualCategoryNotSupportedException) {
+				this.logger.error(`[ERROR] Compatibility asked for unsupported category=${category}`);
+
+				throw new UnprocessableEntityException(error.message);
+			}
+
+			throw error;
+		}
 
 		// Resolved once per distinct id rather than once per candidate: the same source property is
 		// often checked against several spec slots at once (e.g. "could this switch's relay fill any of
