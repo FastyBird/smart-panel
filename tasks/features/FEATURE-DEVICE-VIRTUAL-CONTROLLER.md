@@ -49,11 +49,16 @@ technically validate, but a thermostat with neither is a thermometer wearing a b
   drives the actuator through the existing platform contract — but **not** through the slot the user
   sees (see §3a)
 - Hysteresis and minimum cycle protection, so a relay is not chattered
-- Re-evaluation on **all three** inputs: a sensed-value report, a write to the owned setpoint, and a
-  write to the exposed `on`. A loop driven only by the sensor does nothing when the user moves the
+- Re-evaluation on **four** inputs: a sensed-value report, a write to the owned setpoint, a write to
+  the exposed `on`, and a connection-state change on the actuator's or the sensor's device
+  (`DEVICE_CONNECTION_CHANGED`). A loop driven only by the sensor does nothing when the user moves the
   target or switches the device off, and a sensor that reports on change can be silent for a long
   time — lowering the target would leave the actuator on, raising it would leave it off, and an OFF
-  would leave a relay energised indefinitely, each until something unrelated happened to arrive
+  would leave a relay energised, each until something unrelated happened to arrive. The connection
+  case is the one that cannot be recovered by waiting: an actuator that drops offline while energised
+  never received the release, and on reconnect nothing else has changed, so no other trigger fires.
+  A periodic safety tick is the backstop for what even this misses — an actuator that never reports a
+  connection change at all
 - The target setpoint as a **writable owned property** — the schema already accommodates owned
   properties; v1 simply never creates a writable one (`assertOwnedPropertyNotWritable` refuses it
   today, and that guard is what this task revisits)
@@ -138,9 +143,9 @@ category itself is judged.
 
 ## 4. Open questions
 
-- Where does the loop run? A listener reacting to the sensed property's value changes *and* to
-  setpoint writes is the cheapest and matches how the rest of the plugin works, but neither fires when
-  the source simply goes quiet — a ticking safety net may still be needed to turn an actuator *off*.
+- How long may the safety tick be? Event-driven re-evaluation covers every transition the system
+  reports; the tick exists for the one it does not — hardware that goes quiet without saying so. Its
+  period is a trade between a relay left energised and waking the process for nothing.
 - What happens when the sensed source is orphaned or its device goes offline? The device already
   degrades to `DISCONNECTED`; the actuator should presumably be released rather than left latched.
 - Does the setpoint survive a remap of the sensed source? It is an owned property, so it does — worth
@@ -168,6 +173,8 @@ category itself is judged.
       target while the sensed value stays constant and asserts the actuator follows
 - [ ] A write to `on` does the same: switching an actively heating device off releases the relay
       without waiting for another sensor report
+- [ ] An actuator that reconnects is re-evaluated: a relay left energised while its device was
+      offline is released on reconnect, with the sensed value, setpoint and enable all unchanged
 - [ ] The actuator mapping survives a restart, degrades to `DISCONNECTED` when its property is
       deleted, and can be remapped — with the incremental migration that adds it
 - [ ] An offline or orphaned sensed source releases the actuator rather than latching it
