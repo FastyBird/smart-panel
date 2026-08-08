@@ -257,7 +257,7 @@ export class McpTargetDiscoveryToolService {
 				if (providerName === 'control_device' && !(await this.isAvailableDeviceProperty(args.property_id))) {
 					return this.toProviderToolData(capability, {
 						success: false,
-						status: ToolExecutionStatus.DENIED,
+						status: ToolExecutionStatus.FAILED,
 						message: 'Device property is unavailable',
 						errorCode: 'DEVICE_PROPERTY_NOT_FOUND',
 					});

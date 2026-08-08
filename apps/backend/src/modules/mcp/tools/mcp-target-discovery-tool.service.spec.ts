@@ -366,6 +366,29 @@ describe('McpTargetDiscoveryToolService', () => {
 
 		expect(result?.isError).toBe(true);
 		expect(result?.structuredContent.error).toEqual(expect.objectContaining({ code: 'not_found' }));
+		expect(auditService.recordPolicyDenial).not.toHaveBeenCalled();
+		expect(auditService.recordToolResult).toHaveBeenCalledWith(
+			expect.objectContaining({ outcome: 'failed', tool: 'set_device_property' }),
+		);
+		expect(toolRegistry.executeTool).not.toHaveBeenCalled();
+	});
+
+	it('reports an unknown write target without recording a policy denial', async () => {
+		providerTools = [providerTool('control_device', ToolAccessKind.WRITE)];
+		channelsPropertiesService.findOne.mockResolvedValue(null);
+		service.register(server(), authInfo([McpCapability.WRITE]));
+
+		const result = await callbacks.get('set_device_property')?.(
+			{ property_id: '10000000-0000-4000-8000-000000000001', value: true },
+			requestContext([McpCapability.WRITE]),
+		);
+
+		expect(result?.isError).toBe(true);
+		expect(result?.structuredContent.error).toEqual(expect.objectContaining({ code: 'not_found' }));
+		expect(auditService.recordPolicyDenial).not.toHaveBeenCalled();
+		expect(auditService.recordToolResult).toHaveBeenCalledWith(
+			expect.objectContaining({ outcome: 'failed', tool: 'set_device_property' }),
+		);
 		expect(toolRegistry.executeTool).not.toHaveBeenCalled();
 	});
 

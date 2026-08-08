@@ -9,9 +9,8 @@ interface StatValue {
 }
 
 export interface McpStatsSnapshot {
+	[metric: string]: StatValue;
 	activeSubscriptions: StatValue;
-	callsByCapability: Record<string, StatValue>;
-	callsByTool: Record<string, StatValue>;
 	failures: StatValue;
 	denials: StatValue;
 	timeouts: StatValue;
@@ -24,13 +23,15 @@ export class McpStatsProvider implements StatsProvider<McpStatsSnapshot> {
 	getStats(): Promise<McpStatsSnapshot> {
 		const snapshot = this.auditService.getMetricsSnapshot();
 		const lastUpdated = new Date();
-		const values = (entries: Record<string, number>): Record<string, StatValue> =>
-			Object.fromEntries(Object.entries(entries).map(([key, value]) => [key, { value, last_updated: lastUpdated }]));
+		const values = (prefix: string, entries: Record<string, number>): Record<string, StatValue> =>
+			Object.fromEntries(
+				Object.entries(entries).map(([key, value]) => [`${prefix}_${key}`, { value, last_updated: lastUpdated }]),
+			);
 
 		return Promise.resolve({
 			activeSubscriptions: { value: snapshot.activeSubscriptions, last_updated: lastUpdated },
-			callsByCapability: values(snapshot.callsByCapability),
-			callsByTool: values(snapshot.callsByTool),
+			...values('callsByCapability', snapshot.callsByCapability),
+			...values('callsByTool', snapshot.callsByTool),
 			failures: { value: snapshot.failures, last_updated: lastUpdated },
 			denials: { value: snapshot.denials, last_updated: lastUpdated },
 			timeouts: { value: snapshot.timeouts, last_updated: lastUpdated },

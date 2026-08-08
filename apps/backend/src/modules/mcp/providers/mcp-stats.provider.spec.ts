@@ -20,11 +20,14 @@ describe('McpStatsProvider', () => {
 		const stats = await provider.getStats();
 
 		expect(stats.activeSubscriptions.value).toBe(2);
-		expect(stats.callsByCapability[McpCapability.READ]?.value).toBe(3);
-		expect(stats.callsByTool.set_device_property?.value).toBe(1);
+		expect(stats[`callsByCapability_${McpCapability.READ}`]?.value).toBe(3);
+		expect(stats.callsByTool_set_device_property?.value).toBe(1);
 		expect(stats.failures.value).toBe(1);
 		expect(stats.denials.value).toBe(2);
 		expect(stats.timeouts.value).toBe(1);
 		expect(stats.activeSubscriptions.last_updated).toBeInstanceOf(Date);
+		expect(
+			Object.values(stats).every((stat) => typeof stat.value === 'number' && stat.last_updated instanceof Date),
+		).toBe(true);
 	});
 });
