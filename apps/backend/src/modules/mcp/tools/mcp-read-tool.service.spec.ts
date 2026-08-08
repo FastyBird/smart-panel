@@ -1,8 +1,10 @@
 import { AuthInfo, McpServer, ServerContext } from '@modelcontextprotocol/server';
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 
 import { WeatherNotFoundException } from '../../weather/weather.exceptions';
 import { MCP_TOOL_CALL_TIMEOUT_MS, McpCapability } from '../mcp.constants';
+import { McpEndpointDisabledException } from '../mcp.exceptions';
+import { McpAuditService } from '../services/mcp-audit.service';
 import { McpContextService } from '../services/mcp-context.service';
 import { McpPolicyService } from '../services/mcp-policy.service';
 
@@ -27,6 +29,7 @@ describe('McpReadToolService', () => {
 		listSpaces: jest.Mock;
 	};
 	let policyService: { authorizeClient: jest.Mock };
+	let auditService: { getRequestId: jest.Mock; recordPolicyDenial: jest.Mock; recordToolResult: jest.Mock };
 	let registerTool: jest.Mock;
 	let registerResource: jest.Mock;
 	let callbacks: Map<string, ToolCallback>;
@@ -50,6 +53,11 @@ describe('McpReadToolService', () => {
 		policyService = {
 			authorizeClient: jest.fn().mockResolvedValue({ effectiveCapabilities: [McpCapability.READ] }),
 		};
+		auditService = {
+			getRequestId: jest.fn().mockReturnValue('17'),
+			recordPolicyDenial: jest.fn(),
+			recordToolResult: jest.fn(),
+		};
 		callbacks = new Map();
 		resourceCallbacks = new Map();
 		resourceListCallback = undefined;
@@ -62,6 +70,7 @@ describe('McpReadToolService', () => {
 		service = new McpReadToolService(
 			contextService as unknown as McpContextService,
 			policyService as unknown as McpPolicyService,
+			auditService as unknown as McpAuditService,
 		);
 	});
 
@@ -100,6 +109,15 @@ describe('McpReadToolService', () => {
 		expect(result?.structuredContent.tool).toBe('get_security_status');
 		expect(result?.structuredContent.request_id).toBe('17');
 		expect(result?.structuredContent.data).toEqual({ active_alerts_count: 0 });
+		expect(auditService.recordToolResult).toHaveBeenCalledWith(
+			expect.objectContaining({
+				requestId: '17',
+				clientId: 'client-id',
+				tool: 'get_security_status',
+				capability: McpCapability.READ,
+				outcome: 'completed',
+			}),
+		);
 	});
 
 	it('returns a sanitized denial when live policy no longer grants read', async () => {
@@ -118,6 +136,44 @@ describe('McpReadToolService', () => {
 			}),
 		);
 		expect(contextService.getSecurityStatus).not.toHaveBeenCalled();
+		expect(auditService.recordPolicyDenial).toHaveBeenCalledWith(
+			{ requestId: '17', clientId: 'client-id' },
+			'capability_denied',
+			{ capability: McpCapability.READ, tool: 'get_security_status' },
+		);
+	});
+
+	it('distinguishes a live credential rejection from a capability denial', async () => {
+		policyService.authorizeClient.mockRejectedValue(new UnauthorizedException('private credential detail'));
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await callbacks.get('get_security_status')?.({}, requestContext());
+
+		expect(result?.isError).toBe(true);
+		expect(auditService.recordPolicyDenial).toHaveBeenCalledWith(
+			{ requestId: '17', clientId: 'client-id' },
+			'invalid_credential',
+			{ capability: McpCapability.READ, tool: 'get_security_status' },
+		);
+	});
+
+	it('audits a module-disable race as an endpoint denial without confusing domain not-found errors', async () => {
+		policyService.authorizeClient.mockRejectedValue(new McpEndpointDisabledException());
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await callbacks.get('get_security_status')?.({}, requestContext());
+
+		expect(result?.isError).toBe(true);
+		expect(result?.structuredContent.error).toEqual({
+			code: 'not_found',
+			message: 'The requested Smart Panel item was not found.',
+		});
+		expect(auditService.recordPolicyDenial).toHaveBeenCalledWith(
+			{ requestId: '17', clientId: 'client-id' },
+			'endpoint_disabled',
+			{ capability: McpCapability.READ, tool: 'get_security_status' },
+		);
+		expect(auditService.recordToolResult).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'denied' }));
 	});
 
 	it('returns a sanitized error when a domain call exceeds the MCP deadline', async () => {
@@ -136,6 +192,7 @@ describe('McpReadToolService', () => {
 				code: 'read_failed',
 				message: 'Smart Panel could not complete the requested read operation.',
 			});
+			expect(auditService.recordToolResult).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'timed_out' }));
 		} finally {
 			jest.useRealTimers();
 		}
@@ -155,6 +212,8 @@ describe('McpReadToolService', () => {
 			code: 'not_found',
 			message: 'The requested Smart Panel item was not found.',
 		});
+		expect(auditService.recordPolicyDenial).not.toHaveBeenCalled();
+		expect(auditService.recordToolResult).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'failed' }));
 	});
 
 	it('enforces the same deadline for resource reads', async () => {
@@ -176,9 +235,39 @@ describe('McpReadToolService', () => {
 
 			await jest.advanceTimersByTimeAsync(MCP_TOOL_CALL_TIMEOUT_MS);
 			await rejection;
+			expect(auditService.recordToolResult).toHaveBeenCalledWith(
+				expect.objectContaining({
+					tool: 'resources/read',
+					capability: McpCapability.READ,
+					outcome: 'timed_out',
+				}),
+			);
 		} finally {
 			jest.useRealTimers();
 		}
+	});
+
+	it('audits a resource policy denial without exposing the resource request', async () => {
+		policyService.authorizeClient.mockRejectedValue(new ForbiddenException('private resource policy'));
+		service.register(server(), authInfo([McpCapability.READ]));
+		const resultPromise = resourceCallbacks.get('installation')?.(
+			new URL('smart-panel://installation'),
+			requestContext(),
+		);
+
+		if (resultPromise === undefined) {
+			throw new Error('Installation resource callback was not registered');
+		}
+
+		await expect(resultPromise).rejects.toThrow('The MCP client is not authorized for this read operation.');
+		expect(auditService.recordPolicyDenial).toHaveBeenCalledWith(
+			{ requestId: '17', clientId: 'client-id' },
+			'capability_denied',
+			{ capability: McpCapability.READ, tool: 'resources/read' },
+		);
+		expect(auditService.recordToolResult).toHaveBeenCalledWith(
+			expect.objectContaining({ tool: 'resources/read', outcome: 'denied' }),
+		);
 	});
 
 	it('paginates resource discovery without repeating static resources', async () => {
@@ -196,6 +285,9 @@ describe('McpReadToolService', () => {
 		]);
 		expect(firstPage?.nextCursor).toBe('51');
 		expect(contextService.listSpaces).toHaveBeenLastCalledWith(undefined);
+		expect(auditService.recordToolResult).toHaveBeenCalledWith(
+			expect.objectContaining({ tool: 'resources/list', outcome: 'completed' }),
+		);
 
 		const nextPage = await resourceListCallback?.({ params: { cursor: '50' } }, requestContext());
 		expect(nextPage?.resources.map((resource) => resource.uri)).toEqual(['smart-panel://spaces/space-51/snapshot']);

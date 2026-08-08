@@ -11,6 +11,8 @@ import { ExtensionsService } from '../extensions/services/extensions.service';
 import { ScenesModule } from '../scenes/scenes.module';
 import { SecurityModule } from '../security/security.module';
 import { SpacesModule } from '../spaces/spaces.module';
+import { StatsRegistryService } from '../stats/services/stats-registry.service';
+import { StatsModule } from '../stats/stats.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
@@ -33,6 +35,8 @@ import {
 } from './mcp.constants';
 import { MCP_SWAGGER_EXTRA_MODELS } from './mcp.openapi';
 import { McpConfigModel } from './models/config.model';
+import { McpStatsProvider } from './providers/mcp-stats.provider';
+import { McpAuditService } from './services/mcp-audit.service';
 import { McpClientService } from './services/mcp-client.service';
 import { McpContextService } from './services/mcp-context.service';
 import { McpInstallationService } from './services/mcp-installation.service';
@@ -56,6 +60,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		ScenesModule,
 		SecurityModule,
 		SpacesModule,
+		StatsModule,
 		SwaggerModule,
 		TypeOrmModule.forFeature([McpClientEntity, McpInstallationEntity]),
 		ToolsModule,
@@ -70,6 +75,8 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpInstallationService,
 		McpPolicyService,
 		McpServerService,
+		McpAuditService,
+		McpStatsProvider,
 		McpSubscriptionRegistryService,
 		McpReadToolService,
 		McpTargetDiscoveryToolService,
@@ -84,13 +91,15 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 			inject: [McpReadToolService, McpTargetDiscoveryToolService],
 		},
 	],
-	exports: [McpClientService, McpInstallationService, McpPolicyService, McpServerService],
+	exports: [McpAuditService, McpClientService, McpInstallationService, McpPolicyService, McpServerService],
 })
 export class McpModule implements OnModuleInit {
 	constructor(
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly statsRegistryService: StatsRegistryService,
+		private readonly statsProvider: McpStatsProvider,
 	) {}
 
 	onModuleInit(): void {
@@ -103,6 +112,8 @@ export class McpModule implements OnModuleInit {
 		for (const model of MCP_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}
+
+		this.statsRegistryService.register(MCP_MODULE_NAME, this.statsProvider);
 
 		this.extensionsService.registerModuleMetadata({
 			type: MCP_MODULE_NAME,

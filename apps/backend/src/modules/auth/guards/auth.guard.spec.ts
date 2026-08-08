@@ -14,6 +14,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { IS_MCP_ENDPOINT_KEY } from '../../mcp/mcp.constants';
+import { McpAuditService } from '../../mcp/services/mcp-audit.service';
 import { McpClientService } from '../../mcp/services/mcp-client.service';
 import { McpInstallationService } from '../../mcp/services/mcp-installation.service';
 import { UserEntity } from '../../users/entities/users.entity';
@@ -45,6 +46,8 @@ describe('AuthGuard', () => {
 	let tokensService: TokensService;
 	let usersService: UsersService;
 	let mcpClientsService: McpClientService;
+	let mcpInstallationService: McpInstallationService;
+	let mcpAuditService: { getRequestId: jest.Mock; recordAuthenticationFailure: jest.Mock };
 
 	const mockUserId = uuid().toString();
 	const mockDisplayId = uuid().toString();
@@ -142,6 +145,10 @@ describe('AuthGuard', () => {
 	};
 
 	beforeEach(async () => {
+		mcpAuditService = {
+			getRequestId: jest.fn().mockReturnValue('request-1'),
+			recordAuthenticationFailure: jest.fn(),
+		};
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				AuthGuard,
@@ -188,6 +195,10 @@ describe('AuthGuard', () => {
 					},
 				},
 				{
+					provide: McpAuditService,
+					useValue: mcpAuditService,
+				},
+				{
 					provide: CACHE_MANAGER,
 					useValue: {
 						get: jest.fn(),
@@ -203,6 +214,7 @@ describe('AuthGuard', () => {
 		tokensService = module.get<TokensService>(TokensService);
 		usersService = module.get<UsersService>(UsersService);
 		mcpClientsService = module.get<McpClientService>(McpClientService);
+		mcpInstallationService = module.get<McpInstallationService>(McpInstallationService);
 	});
 
 	afterEach(() => {
@@ -604,6 +616,10 @@ describe('AuthGuard', () => {
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: mockUserId, type: 'personal' });
 
 			await expect(guard.canActivate(context)).rejects.toThrow('An MCP credential is required');
+			expect(mcpAuditService.recordAuthenticationFailure).toHaveBeenCalledWith(
+				{ requestId: 'request-1' },
+				'invalid_credential',
+			);
 		});
 
 		it('should reject a rotated or disabled MCP client credential', async () => {
@@ -618,6 +634,39 @@ describe('AuthGuard', () => {
 
 			await expect(guard.canActivate(context)).rejects.toThrow(
 				'MCP client is disabled or the credential has been rotated',
+			);
+			expect(mcpAuditService.recordAuthenticationFailure).toHaveBeenCalledWith(
+				{ requestId: 'request-1' },
+				'invalid_credential',
+			);
+		});
+
+		it('should distinguish an MCP authentication backend failure from an invalid credential', async () => {
+			const context = createMockExecutionContext({ authorization: `Bearer ${mockMcpToken}` });
+			markMcpEndpoint();
+			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({
+				sub: mockMcpClientId,
+				type: TokenOwnerType.MCP,
+			});
+			jest.spyOn(tokensService, 'findOneByHashedToken').mockRejectedValue(new Error('database unavailable'));
+
+			await expect(guard.canActivate(context)).rejects.toThrow('database unavailable');
+			expect(mcpAuditService.recordAuthenticationFailure).toHaveBeenCalledWith(
+				{ requestId: 'request-1' },
+				'authentication_error',
+			);
+		});
+
+		it('should preserve an MCP audience lookup failure as an authentication backend error', async () => {
+			const context = createMockExecutionContext({ authorization: `Bearer ${mockMcpToken}` });
+			markMcpEndpoint();
+			jest.spyOn(mcpInstallationService, 'getAudience').mockRejectedValue(new Error('database unavailable'));
+
+			await expect(guard.canActivate(context)).rejects.toThrow('database unavailable');
+			expect(jwtService.verifyAsync).not.toHaveBeenCalled();
+			expect(mcpAuditService.recordAuthenticationFailure).toHaveBeenCalledWith(
+				{ requestId: 'request-1' },
+				'authentication_error',
 			);
 		});
 	});

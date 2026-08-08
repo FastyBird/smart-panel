@@ -7,6 +7,8 @@ import { withTimeout } from '../../../common/utils/http.utils';
 import { BucketDuration } from '../../devices/services/property-timeseries.service';
 import { WeatherNotFoundException } from '../../weather/weather.exceptions';
 import { MCP_TOOL_CALL_TIMEOUT_MS, McpCapability } from '../mcp.constants';
+import { McpEndpointDisabledException } from '../mcp.exceptions';
+import { McpAuditDenialReason, McpAuditOutcome, McpAuditService } from '../services/mcp-audit.service';
 import { McpContextService, McpInstallationContext } from '../services/mcp-context.service';
 import { McpPolicyService } from '../services/mcp-policy.service';
 
@@ -52,6 +54,7 @@ export class McpReadToolService {
 	constructor(
 		private readonly contextService: McpContextService,
 		private readonly policyService: McpPolicyService,
+		private readonly auditService: McpAuditService,
 	) {}
 
 	register(server: McpServer, authInfo?: AuthInfo): void {
@@ -215,44 +218,48 @@ export class McpReadToolService {
 		// the built-in aggregator drops nextCursor. Replace only that low-level handler so the existing registered
 		// read and template handlers remain SDK-managed while resource discovery can be paginated correctly.
 		server.server.setRequestHandler('resources/list', async (request, ctx) =>
-			this.runResourceOperation('resource listing', async () => {
-				await this.authorizeRead(ctx);
-				const cursor = request.params?.cursor;
-				const page = await this.contextService.listSpaces(cursor);
-				const staticResources =
-					cursor === undefined
-						? [
-								{
-									uri: 'smart-panel://installation',
-									name: 'installation',
-									title: 'Smart Panel installation',
-									description: 'Installation identity, version, timezone, endpoint, and effective MCP capabilities.',
-									mimeType: 'application/json',
-								},
-								{
-									uri: 'smart-panel://home/context',
-									name: 'home-context',
-									title: 'Current home context',
-									description: 'Bounded current context for the Smart Panel installation.',
-									mimeType: 'application/json',
-								},
-							]
-						: [];
+			this.runResourceOperation(
+				'resources/list',
+				async () => {
+					await this.authorizeRead(ctx);
+					const cursor = request.params?.cursor;
+					const page = await this.contextService.listSpaces(cursor);
+					const staticResources =
+						cursor === undefined
+							? [
+									{
+										uri: 'smart-panel://installation',
+										name: 'installation',
+										title: 'Smart Panel installation',
+										description: 'Installation identity, version, timezone, endpoint, and effective MCP capabilities.',
+										mimeType: 'application/json',
+									},
+									{
+										uri: 'smart-panel://home/context',
+										name: 'home-context',
+										title: 'Current home context',
+										description: 'Bounded current context for the Smart Panel installation.',
+										mimeType: 'application/json',
+									},
+								]
+							: [];
 
-				return {
-					resources: [
-						...staticResources,
-						...page.spaces.map((space) => ({
-							uri: `smart-panel://spaces/${space.id}/snapshot`,
-							name: `${space.name} snapshot`,
-							title: `${space.name} snapshot`,
-							description: `Current bounded context for the ${space.name} ${space.type}.`,
-							mimeType: 'application/json',
-						})),
-					],
-					...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
-				};
-			}),
+					return {
+						resources: [
+							...staticResources,
+							...page.spaces.map((space) => ({
+								uri: `smart-panel://spaces/${space.id}/snapshot`,
+								name: `${space.name} snapshot`,
+								title: `${space.name} snapshot`,
+								description: `Current bounded context for the ${space.name} ${space.type}.`,
+								mimeType: 'application/json',
+							})),
+						],
+						...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
+					};
+				},
+				ctx,
+			),
 		);
 	}
 
@@ -265,7 +272,12 @@ export class McpReadToolService {
 		structuredContent: ToolEnvelope;
 		isError?: boolean;
 	}> {
-		const requestId = String(ctx.mcpReq.id);
+		const requestId = this.auditService.getRequestId({ id: ctx.mcpReq.id });
+		const startedAt = Date.now();
+		const identity = {
+			requestId,
+			...(ctx.http?.authInfo?.clientId ? { clientId: ctx.http.authInfo.clientId } : {}),
+		};
 		let installation = this.getInstallationFallback(ctx);
 
 		try {
@@ -286,6 +298,13 @@ export class McpReadToolService {
 				observed_at: new Date().toISOString(),
 				data: execution.result.data,
 			};
+			this.auditService.recordToolResult({
+				...identity,
+				tool,
+				capability: McpCapability.READ,
+				durationMs: Date.now() - startedAt,
+				outcome: McpAuditOutcome.COMPLETED,
+			});
 
 			return {
 				content: [{ type: 'text', text: execution.result.text }],
@@ -293,6 +312,7 @@ export class McpReadToolService {
 			};
 		} catch (error) {
 			const sanitized = this.sanitizeError(error);
+			const outcome = this.getAuditOutcome(error);
 			const structuredContent: ToolEnvelope = {
 				installation,
 				tool,
@@ -301,6 +321,23 @@ export class McpReadToolService {
 				data: null,
 				error: sanitized,
 			};
+
+			const denialReason = this.getPolicyDenialReason(error);
+
+			if (denialReason) {
+				this.auditService.recordPolicyDenial(identity, denialReason, {
+					capability: McpCapability.READ,
+					tool,
+				});
+			}
+
+			this.auditService.recordToolResult({
+				...identity,
+				tool,
+				capability: McpCapability.READ,
+				durationMs: Date.now() - startedAt,
+				outcome,
+			});
 
 			return {
 				content: [{ type: 'text', text: sanitized.message }],
@@ -315,14 +352,18 @@ export class McpReadToolService {
 		ctx: ServerContext,
 		callback: (policy: Awaited<ReturnType<McpPolicyService['authorizeClient']>>, endpoint?: string) => Promise<unknown>,
 	): Promise<{ contents: Array<{ uri: string; mimeType: string; text: string }> }> {
-		return this.runResourceOperation(`resource ${uri.href}`, async () => {
-			const policy = await this.authorizeRead(ctx);
-			const data = await callback(policy, this.getEndpoint(ctx.http?.authInfo));
+		return this.runResourceOperation(
+			'resources/read',
+			async () => {
+				const policy = await this.authorizeRead(ctx);
+				const data = await callback(policy, this.getEndpoint(ctx.http?.authInfo));
 
-			return {
-				contents: [{ uri: uri.href, mimeType: 'application/json', text: JSON.stringify(data) }],
-			};
-		});
+				return {
+					contents: [{ uri: uri.href, mimeType: 'application/json', text: JSON.stringify(data) }],
+				};
+			},
+			ctx,
+		);
 	}
 
 	private async authorizeRead(ctx: ServerContext) {
@@ -356,10 +397,44 @@ export class McpReadToolService {
 		return withTimeout(Promise.resolve().then(callback), MCP_TOOL_CALL_TIMEOUT_MS, `MCP ${label}`);
 	}
 
-	private async runResourceOperation<T>(label: string, callback: () => Promise<T>): Promise<T> {
+	private async runResourceOperation<T>(operation: string, callback: () => Promise<T>, ctx: ServerContext): Promise<T> {
+		const identity = {
+			requestId: this.auditService.getRequestId({ id: ctx.mcpReq.id }),
+			...(ctx.http?.authInfo?.clientId ? { clientId: ctx.http.authInfo.clientId } : {}),
+		};
+		const startedAt = Date.now();
+
 		try {
-			return await this.withDeadline(label, callback);
+			const result = await this.withDeadline(operation, callback);
+
+			this.auditService.recordToolResult({
+				...identity,
+				tool: operation,
+				capability: McpCapability.READ,
+				durationMs: Date.now() - startedAt,
+				outcome: McpAuditOutcome.COMPLETED,
+			});
+
+			return result;
 		} catch (error) {
+			const denialReason = this.getPolicyDenialReason(error);
+			const outcome = this.getAuditOutcome(error);
+
+			if (denialReason) {
+				this.auditService.recordPolicyDenial(identity, denialReason, {
+					capability: McpCapability.READ,
+					tool: operation,
+				});
+			}
+
+			this.auditService.recordToolResult({
+				...identity,
+				tool: operation,
+				capability: McpCapability.READ,
+				durationMs: Date.now() - startedAt,
+				outcome,
+			});
+
 			throw new Error(this.sanitizeError(error).message, { cause: error });
 		}
 	}
@@ -378,6 +453,34 @@ export class McpReadToolService {
 		}
 
 		return { code: 'read_failed', message: 'Smart Panel could not complete the requested read operation.' };
+	}
+
+	private getAuditOutcome(error: unknown): McpAuditOutcome {
+		if (this.getPolicyDenialReason(error)) {
+			return McpAuditOutcome.DENIED;
+		}
+
+		if (error instanceof Error && /timeout after \d+ms$/i.test(error.message)) {
+			return McpAuditOutcome.TIMED_OUT;
+		}
+
+		return McpAuditOutcome.FAILED;
+	}
+
+	private getPolicyDenialReason(error: unknown): McpAuditDenialReason | null {
+		if (error instanceof McpEndpointDisabledException) {
+			return 'endpoint_disabled';
+		}
+
+		if (error instanceof ForbiddenException) {
+			return 'capability_denied';
+		}
+
+		if (error instanceof UnauthorizedException) {
+			return 'invalid_credential';
+		}
+
+		return null;
 	}
 
 	private getEndpoint(authInfo?: AuthInfo): string | undefined {

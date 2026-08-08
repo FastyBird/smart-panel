@@ -16,6 +16,7 @@ import { JwtService } from '@nestjs/jwt';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { IS_MCP_ENDPOINT_KEY, McpCapability } from '../../mcp/mcp.constants';
+import { McpAuditService } from '../../mcp/services/mcp-audit.service';
 import { McpClientService } from '../../mcp/services/mcp-client.service';
 import { McpInstallationService } from '../../mcp/services/mcp-installation.service';
 import { ApiPublic } from '../../swagger/decorators/api-documentation.decorator';
@@ -79,6 +80,7 @@ export class AuthGuard implements CanActivate {
 		private readonly usersService: UsersService,
 		private readonly mcpClientsService: McpClientService,
 		private readonly mcpInstallationService: McpInstallationService,
+		private readonly mcpAuditService: McpAuditService,
 		@Inject(CACHE_MANAGER)
 		private readonly cacheManager: Cache,
 	) {}
@@ -105,22 +107,41 @@ export class AuthGuard implements CanActivate {
 		// Try authenticating with JWT (Bearer token)
 		const token = extractAccessTokenFromHeader(request);
 
-		if (token && (await this.validateToken(request, token, isMcpEndpoint))) {
-			return true;
+		try {
+			if (token && (await this.validateToken(request, token, isMcpEndpoint))) {
+				return true;
+			}
+		} catch (error) {
+			if (isMcpEndpoint) {
+				this.mcpAuditService.recordAuthenticationFailure(
+					{ requestId: this.mcpAuditService.getRequestId(request.body) },
+					error instanceof UnauthorizedException ? 'invalid_credential' : 'authentication_error',
+				);
+			}
+
+			throw error;
 		}
 
 		// If auth method didn't work, reject the request
 		this.logger.warn('Unauthorized request, missing valid credentials');
+
+		if (isMcpEndpoint) {
+			this.mcpAuditService.recordAuthenticationFailure(
+				{ requestId: this.mcpAuditService.getRequestId(request.body) },
+				'authentication_required',
+			);
+		}
 
 		throw new UnauthorizedException('Authentication required');
 	}
 
 	private async validateToken(request: AuthenticatedRequest, token: string, isMcpEndpoint: boolean): Promise<boolean> {
 		let payload: { sub?: string; type?: string; role?: string };
+		const audience = isMcpEndpoint ? await this.mcpInstallationService.getAudience() : undefined;
 
 		try {
 			payload = isMcpEndpoint
-				? await this.jwtService.verifyAsync(token, { audience: await this.mcpInstallationService.getAudience() })
+				? await this.jwtService.verifyAsync(token, { audience })
 				: await this.jwtService.verifyAsync(token);
 		} catch {
 			throw new UnauthorizedException('Invalid or expired token');

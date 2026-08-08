@@ -11,6 +11,7 @@ import { McpClientEntity } from '../src/modules/mcp/entities/mcp-client.entity';
 import { McpClientGuard } from '../src/modules/mcp/guards/mcp-client.guard';
 import { MCP_CATALOG_REGISTRAR, McpCapability } from '../src/modules/mcp/mcp.constants';
 import { McpConfigModel } from '../src/modules/mcp/models/config.model';
+import { McpAuditService } from '../src/modules/mcp/services/mcp-audit.service';
 import { McpContextService } from '../src/modules/mcp/services/mcp-context.service';
 import { McpPolicyService } from '../src/modules/mcp/services/mcp-policy.service';
 import { McpPolicyRequest } from '../src/modules/mcp/services/mcp-policy.service';
@@ -93,13 +94,16 @@ describe('MCP endpoint', () => {
 		const policyService = {
 			authorizeClient: jest.fn().mockResolvedValue({ effectiveCapabilities: [McpCapability.READ] }),
 		};
+		const auditService = new McpAuditService();
 		const readTools = new McpReadToolService(
 			contextService as unknown as McpContextService,
 			policyService as unknown as McpPolicyService,
+			auditService,
 		);
 		const moduleRef = await Test.createTestingModule({
 			controllers: [McpController],
 			providers: [
+				{ provide: McpAuditService, useValue: auditService },
 				McpServerService,
 				McpSubscriptionRegistryService,
 				{ provide: MCP_CATALOG_REGISTRAR, useValue: readTools },

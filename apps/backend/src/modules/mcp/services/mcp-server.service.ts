@@ -12,6 +12,7 @@ import { createExtensionLogger } from '../../../common/logger';
 import { extractAccessTokenFromHeader } from '../../auth/utils/token.utils';
 import { MCP_CATALOG_REGISTRAR, MCP_MAX_SUBSCRIPTIONS_PER_CLIENT, MCP_MODULE_NAME } from '../mcp.constants';
 
+import { McpAuditService } from './mcp-audit.service';
 import { McpPolicyRequest } from './mcp-policy.service';
 import {
 	McpSubscriptionCapacityError,
@@ -33,6 +34,7 @@ interface ClientHandler {
 interface JsonRpcRequestBody {
 	id?: number | string | null;
 	method?: string;
+	params?: { protocolVersion?: unknown };
 }
 
 interface McpCatalogRegistrar {
@@ -48,17 +50,25 @@ export class McpServerService implements OnApplicationShutdown {
 
 	constructor(
 		private readonly subscriptions: McpSubscriptionRegistryService,
+		private readonly auditService: McpAuditService,
 		@Optional() private readonly moduleRef?: ModuleRef,
 	) {}
 
 	async handle(request: McpPolicyRequest, reply: FastifyReply): Promise<void> {
+		const requestId = this.auditService.getRequestId(request.body);
+
 		if (!request.mcpPolicy) {
+			this.auditService.recordPolicyDenial({ requestId }, 'request_denied');
 			throw new UnauthorizedException('MCP request policy was not resolved');
 		}
 
 		const token = extractAccessTokenFromHeader(request);
 
 		if (!token) {
+			this.auditService.recordAuthenticationFailure(
+				{ requestId, clientId: request.mcpPolicy.client.id },
+				'authentication_required',
+			);
 			throw new UnauthorizedException('Authentication required');
 		}
 
@@ -68,8 +78,11 @@ export class McpServerService implements OnApplicationShutdown {
 			policy.policyRevision !== this.policyRevision ||
 			policy.clientPolicyRevision !== this.getClientPolicyRevision(policy.client.id)
 		) {
+			this.auditService.recordPolicyDenial({ requestId, clientId: policy.client.id }, 'policy_changed');
 			throw new UnauthorizedException('MCP request policy is no longer current');
 		}
+
+		this.auditProtocolRequest(request.body, requestId, policy.client.id);
 
 		const clientHandler = this.getOrCreateHandler(policy.client.id);
 		const rawRequest = request.raw as AuthenticatedIncomingMessage;
@@ -208,7 +221,7 @@ export class McpServerService implements OnApplicationShutdown {
 				let subscription: McpSubscriptionHandle;
 
 				try {
-					subscription = this.subscriptions.open(clientId);
+					subscription = this.subscriptions.open(clientId, this.auditService.getRequestId(options?.parsedBody));
 				} catch (error) {
 					if (error instanceof McpSubscriptionCapacityError) {
 						return this.subscriptionLimitResponse(options?.parsedBody);
@@ -223,7 +236,7 @@ export class McpServerService implements OnApplicationShutdown {
 				try {
 					response = await fetch(new Request(webRequest, { signal }), options);
 				} catch (error) {
-					subscription.close();
+					subscription.close('error');
 					throw error;
 				}
 
@@ -276,7 +289,7 @@ export class McpServerService implements OnApplicationShutdown {
 
 	private trackSubscriptionResponse(response: Response, subscription: McpSubscriptionHandle): Response {
 		if (!response.body || !response.headers.get('content-type')?.includes('text/event-stream')) {
-			subscription.close();
+			subscription.close('completed');
 			return response;
 		}
 
@@ -287,7 +300,7 @@ export class McpServerService implements OnApplicationShutdown {
 					const result = await reader.read();
 
 					if (result.done) {
-						subscription.close();
+						subscription.close('completed');
 						controller.close();
 						return;
 					}
@@ -295,12 +308,12 @@ export class McpServerService implements OnApplicationShutdown {
 					subscription.touch();
 					controller.enqueue(result.value);
 				} catch (error) {
-					subscription.close();
+					subscription.close('error');
 					controller.error(error);
 				}
 			},
 			cancel: async (reason) => {
-				subscription.close();
+				subscription.close('cancelled');
 				await reader.cancel(reason);
 			},
 		});
@@ -310,6 +323,36 @@ export class McpServerService implements OnApplicationShutdown {
 			statusText: response.statusText,
 			headers: response.headers,
 		});
+	}
+
+	private auditProtocolRequest(body: unknown, requestId: string, clientId: string): void {
+		const request = this.getRequestBody(body);
+
+		if (request.method === 'initialize') {
+			const protocolVersion = this.getProtocolVersion(request.params?.protocolVersion);
+
+			this.auditService.recordProtocolRequest(
+				{ requestId, clientId },
+				{
+					kind: 'initialization',
+					method: request.method,
+					...(protocolVersion ? { protocolVersion } : {}),
+				},
+			);
+
+			return;
+		}
+
+		if (['resources/list', 'resources/templates/list', 'tools/list'].includes(request.method ?? '')) {
+			this.auditService.recordProtocolRequest(
+				{ requestId, clientId },
+				{ kind: 'discovery', method: request.method ?? 'unknown' },
+			);
+		}
+	}
+
+	private getProtocolVersion(value: unknown): string | undefined {
+		return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : undefined;
 	}
 
 	private notify(clientId: string | undefined, callback: (handler: McpHttpHandler) => void): void {

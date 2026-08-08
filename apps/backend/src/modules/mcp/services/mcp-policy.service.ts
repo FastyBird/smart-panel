@@ -1,6 +1,6 @@
 import { FastifyRequest } from 'fastify';
 
-import { ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { getEnvValue } from '../../../common/utils/config.utils';
@@ -9,6 +9,7 @@ import { AuthenticatedRequest } from '../../auth/guards/auth.guard';
 import { ConfigService } from '../../config/services/config.service';
 import { McpClientEntity } from '../entities/mcp-client.entity';
 import { MCP_MODULE_NAME, McpCapability } from '../mcp.constants';
+import { McpEndpointDisabledException } from '../mcp.exceptions';
 import { McpConfigModel } from '../models/config.model';
 
 import { McpClientService } from './mcp-client.service';
@@ -49,7 +50,7 @@ export class McpPolicyService {
 		const config = this.configService.getModuleConfig<McpConfigModel>(MCP_MODULE_NAME);
 
 		if (!config.enabled) {
-			throw new NotFoundException('MCP endpoint is disabled');
+			throw new McpEndpointDisabledException();
 		}
 
 		const client = await this.clientService.findActiveByToken(tokenId, clientId);

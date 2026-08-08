@@ -2,6 +2,7 @@ import { FastifyReply } from 'fastify';
 
 import { UnauthorizedException } from '@nestjs/common';
 
+import { McpAuditService } from './mcp-audit.service';
 import { McpPolicyRequest } from './mcp-policy.service';
 import { McpServerService } from './mcp-server.service';
 import { McpSubscriptionHandle, McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
@@ -9,6 +10,12 @@ import { McpSubscriptionHandle, McpSubscriptionRegistryService } from './mcp-sub
 describe('McpServerService policy revision', () => {
 	let service: McpServerService;
 	let subscriptions: { closeAll: jest.Mock; closeClient: jest.Mock; touchClient: jest.Mock };
+	let auditService: {
+		getRequestId: jest.Mock;
+		recordAuthenticationFailure: jest.Mock;
+		recordPolicyDenial: jest.Mock;
+		recordProtocolRequest: jest.Mock;
+	};
 
 	beforeEach(() => {
 		subscriptions = {
@@ -16,7 +23,16 @@ describe('McpServerService policy revision', () => {
 			closeClient: jest.fn(),
 			touchClient: jest.fn(),
 		};
-		service = new McpServerService(subscriptions as unknown as McpSubscriptionRegistryService);
+		auditService = {
+			getRequestId: jest.fn().mockReturnValue('request-1'),
+			recordAuthenticationFailure: jest.fn(),
+			recordPolicyDenial: jest.fn(),
+			recordProtocolRequest: jest.fn(),
+		};
+		service = new McpServerService(
+			subscriptions as unknown as McpSubscriptionRegistryService,
+			auditService as unknown as McpAuditService,
+		);
 	});
 
 	it('invalidates only the targeted client policy before closing it', async () => {
@@ -47,6 +63,10 @@ describe('McpServerService policy revision', () => {
 		await expect(service.handle(request, {} as FastifyReply)).rejects.toThrow(
 			new UnauthorizedException('MCP request policy is no longer current'),
 		);
+		expect(auditService.recordPolicyDenial).toHaveBeenCalledWith(
+			{ requestId: 'request-1', clientId: 'client-id' },
+			'policy_changed',
+		);
 	});
 
 	it('invalidates in-flight policies before closing all clients', async () => {
@@ -74,6 +94,51 @@ describe('McpServerService policy revision', () => {
 		expect(firstToolsChanged).toHaveBeenCalledTimes(1);
 		expect(secondToolsChanged).not.toHaveBeenCalled();
 		expect(subscriptions.touchClient).toHaveBeenCalledWith('client-a');
+	});
+
+	it('audits initialization and discovery without passing request parameters', () => {
+		const internalService = service as unknown as {
+			auditProtocolRequest(body: unknown, requestId: string, clientId: string): void;
+		};
+
+		internalService.auditProtocolRequest(
+			{
+				id: 1,
+				method: 'initialize',
+				params: { protocolVersion: '2025-06-18', authorization: 'Bearer secret' },
+			},
+			'1',
+			'client-a',
+		);
+		internalService.auditProtocolRequest(
+			{ id: 2, method: 'tools/list', params: { cursor: 'private-cursor' } },
+			'2',
+			'client-a',
+		);
+		internalService.auditProtocolRequest(
+			{ id: 3, method: 'initialize', params: { protocolVersion: 'Bearer private-version' } },
+			'3',
+			'client-a',
+		);
+
+		expect(auditService.recordProtocolRequest).toHaveBeenNthCalledWith(
+			1,
+			{ requestId: '1', clientId: 'client-a' },
+			{ kind: 'initialization', method: 'initialize', protocolVersion: '2025-06-18' },
+		);
+		expect(auditService.recordProtocolRequest).toHaveBeenNthCalledWith(
+			2,
+			{ requestId: '2', clientId: 'client-a' },
+			{ kind: 'discovery', method: 'tools/list' },
+		);
+		expect(auditService.recordProtocolRequest).toHaveBeenNthCalledWith(
+			3,
+			{ requestId: '3', clientId: 'client-a' },
+			{ kind: 'initialization', method: 'initialize' },
+		);
+		expect(JSON.stringify(auditService.recordProtocolRequest.mock.calls)).not.toContain('secret');
+		expect(JSON.stringify(auditService.recordProtocolRequest.mock.calls)).not.toContain('private-cursor');
+		expect(JSON.stringify(auditService.recordProtocolRequest.mock.calls)).not.toContain('private-version');
 	});
 
 	it('refreshes the idle deadline when subscription traffic is forwarded', async () => {
