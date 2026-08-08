@@ -108,12 +108,21 @@ the task should pick deliberately:
   (`channels.properties.service.ts:556`), so releasing a claim and promoting a successor happens
   outside it entirely. Leaning on the lock alone therefore leaves the delete path racing the create
   path, and it is process-local besides.
-- A **database-enforced claim**, which is the durable answer. Note that a partial unique index on
-  `sourcePropertyId` cannot express it: whether a projection is energy-bearing depends on its *own*
-  channel's category, and the projection row carries only a channel id — the category is a join away,
-  which a partial index cannot reach. A small claims table keyed by source property id, written when a
-  projection whose destination slot is energy-bearing is created and deleted with it, can carry a real
-  unique constraint. The same rule decides what the migration below writes.
+- A **database-enforced claim**, which is the durable answer, and the shape matters. A separate claims
+  table means two writes — the projection and the claim — and whichever fails second leaves the other
+  behind: a rejected create that has already persisted its projection, or a claim with no projection
+  under it. Wrapping both in a transaction is the obvious repair and an awkward one here, since the
+  backend runs on a single shared SQLite connection and a transaction held across the validation hooks
+  collects whatever other requests issue in that window.
+
+  The way out is to stop having two rows. Put the claim **on the projection itself**: a nullable
+  column carrying the claimed source property id, set only when this projection's destination slot is
+  energy-bearing and the meter is unclaimed, with a unique index over it. Energy-bearing is decided at
+  write time, where the destination channel is in hand, so the index never has to reach through a join
+  — which is what made a partial index on `sourcePropertyId` unworkable. One insert carries both
+  facts, so there is nothing to keep in step, no transaction spanning the hooks, and the constraint
+  does the arbitration. Promotion on delete becomes a single conditional `UPDATE`, and the migration
+  populates the column.
 
 Taking both is defensible — the lock removes the window, the constraint makes it impossible — and a
 concurrent-claim regression test is required either way.
@@ -210,6 +219,8 @@ fix must not introduce a lookup that assumes otherwise.
       remains, so the meter neither vanishes from the totals nor quietly changes room
 - [ ] A deletion racing a new claim on the same meter leaves exactly one claimant, whichever wins —
       tested by driving the delete and the create concurrently, not in sequence
+- [ ] A refused claim leaves nothing behind: no projection without its claim, no claim without its
+      projection, asserted after the rejected request rather than only on the winner
 - [ ] An orphaned projection is attributed to the virtual device that holds it — there is no source
       left to fall back to. `VirtualValueSourceService.resolve()` answers `null` once
       `sourcePropertyId` is null, the registry then resolves the property to its own id, and
