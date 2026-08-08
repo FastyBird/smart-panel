@@ -102,9 +102,12 @@ previously unclaimed meter can both pass an `assertProjectionCompatible`-style r
 which recreates precisely the ambiguity the rule exists to remove. Two mechanisms are available and
 the task should pick deliberately:
 
-- `DeviceStructureLockService`, which already serialises exactly these writes — `beforeCreate` and
-  `beforeUpdate` on channel properties run inside it — so the check and the insert cannot interleave.
-  Complete for this deployment, and process-local by nature.
+- `DeviceStructureLockService`, which serialises the *create* and *update* paths — `beforeCreate` and
+  `beforeUpdate` on channel properties run inside it — so a check and an insert cannot interleave.
+  Note what it does **not** cover: `ChannelsPropertiesService.remove()` takes no lock
+  (`channels.properties.service.ts:556`), so releasing a claim and promoting a successor happens
+  outside it entirely. Leaning on the lock alone therefore leaves the delete path racing the create
+  path, and it is process-local besides.
 - A **database-enforced claim**, which is the durable answer. Note that a partial unique index on
   `sourcePropertyId` cannot express it: whether a projection is energy-bearing depends on its *own*
   channel's category, and the projection row carries only a channel id — the category is a join away,
@@ -147,9 +150,14 @@ Stated the other way round: a projection ingests only when it holds the claim *a
 not have ingested on its own. Anything looser double-counts the ordinary meter; anything stricter
 loses the projected one.
 
-**A claim that goes away is inherited, not dropped.** Deleting or remapping the holder must promote a
-remaining projection of the same meter by the same deterministic rule the migration uses — oldest,
-ties broken by id — and only leave the meter unclaimed when none is left. Otherwise a non-qualifying
+**A claim that goes away is inherited, not dropped, and the handover is atomic.** Deleting or
+remapping the holder must promote a remaining projection of the same meter by the same deterministic
+rule the migration uses — oldest, ties broken by id — and only leave the meter unclaimed when none is
+left. Release, promotion and any competing claim have to be one operation: a create that reads the
+claim after it is released but before a successor is promoted would take it, and the promotion would
+then award it to somebody else. Since the delete path is outside the lock today, this is the argument
+for the database-enforced claim rather than the lock — or for extending the lock to cover removal,
+which is a change to shared code and should be decided rather than assumed. Otherwise a non-qualifying
 source disappears from the totals entirely the moment its winner is removed, since nothing else
 ingests it, and a qualifying one silently reverts to the physical device's room without anything
 saying so.
@@ -200,6 +208,8 @@ fix must not introduce a lookup that assumes otherwise.
       carrying the claimant's room — not two
 - [ ] Removing or remapping the claim holder promotes another projection of the same meter, if one
       remains, so the meter neither vanishes from the totals nor quietly changes room
+- [ ] A deletion racing a new claim on the same meter leaves exactly one claimant, whichever wins —
+      tested by driving the delete and the create concurrently, not in sequence
 - [ ] An orphaned projection is attributed to the virtual device that holds it — there is no source
       left to fall back to. `VirtualValueSourceService.resolve()` answers `null` once
       `sourcePropertyId` is null, the registry then resolves the property to its own id, and
