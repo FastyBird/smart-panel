@@ -416,6 +416,27 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 					await this.announceOrphanedProjections();
 
 					await this.unhideAbandonedSources();
+
+					// And the sweep, which catches what the diff structurally cannot.
+					//
+					// `unhideAbandonedSources` acts on an *edge*: a source device the rebuild watched leave
+					// the index. A virtual device created and deleted before any rebuild observed its links
+					// never produces that edge — both the outgoing and incoming maps are empty, so there is
+					// nothing to diff — while the hide the wizard performed in between is durable. The source
+					// is then hidden, referenced by nothing, and invisible to the one mechanism that would
+					// have freed it. Fast API-driven create/hide/delete does this, and so does a rebuild held
+					// back by an unrelated open transaction.
+					//
+					// This asks the state instead of the transition: every system-hidden device that nothing
+					// references. Bootstrap already ran it for exactly this reason — a hide that outlived the
+					// process — and the same reasoning applies to a hide that outlived a rebuild. Running it
+					// here makes the guarantee unconditional rather than restart-dependent.
+					//
+					// Cheap enough to run on every settled pass: one SQL-filtered read of the hidden devices,
+					// which are a handful, against a pass that has just read every virtual property anyway.
+					// Gated on the same settled condition as the unhide above, and for the same reason — it
+					// writes `hidden`, which no repair pass can take back.
+					await this.reconcileSystemHiddenSources();
 				}
 			} while (this.pending);
 		} finally {

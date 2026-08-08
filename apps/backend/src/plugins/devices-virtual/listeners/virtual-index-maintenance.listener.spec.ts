@@ -963,6 +963,40 @@ describe('VirtualIndexMaintenanceListener', () => {
 		...overrides,
 	});
 
+	// `unhideAbandonedSources` acts on an edge: a source the rebuild watched leave the index. A virtual
+	// device created and deleted before any rebuild observed its links never produces that edge — both
+	// maps are empty, so there is nothing to diff — while the hide the wizard performed in between is
+	// durable. Without a sweep the source stays hidden, referenced by nothing, until a restart.
+	it('unhides a system-hidden source the rebuild never saw referenced', async () => {
+		devicesService.findAll.mockResolvedValue([
+			{ id: 'stranded-source', hidden: true, hiddenBy: DeviceHiddenBy.SYSTEM, enabled: true },
+		]);
+		index.findVirtualDeviceIdsBySourceDevice.mockReturnValue([]);
+		index.rebuild.mockResolvedValue(NO_CHANGES);
+
+		listener.handleStructuralChange();
+
+		await flushMicrotasks();
+
+		expect(devicesService.update).toHaveBeenCalledWith('stranded-source', expect.objectContaining({ hidden: false }));
+	});
+
+	// And the sweep asks the same question the edge does, so a source something still references stays
+	// hidden however it was reached.
+	it('leaves a system-hidden source alone when the sweep finds it still referenced', async () => {
+		devicesService.findAll.mockResolvedValue([
+			{ id: 'covered-source', hidden: true, hiddenBy: DeviceHiddenBy.SYSTEM, enabled: true },
+		]);
+		index.findVirtualDeviceIdsBySourceDevice.mockReturnValue(['virtual-device']);
+		index.rebuild.mockResolvedValue(NO_CHANGES);
+
+		listener.handleStructuralChange();
+
+		await flushMicrotasks();
+
+		expect(devicesService.update).not.toHaveBeenCalled();
+	});
+
 	it('unhides a source device the rebuild reports as abandoned', async () => {
 		index.rebuild.mockResolvedValue(rebuiltWithAbandoned('source-device'));
 		devicesService.findOne.mockResolvedValue(abandonedSystemHiddenSource());
