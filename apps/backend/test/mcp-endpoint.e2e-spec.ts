@@ -470,8 +470,13 @@ describe('MCP endpoint', () => {
 		const notification = new Promise<void>((resolve) => {
 			resolveNotification = resolve;
 		});
+		let resolveUnexpectedNotification!: () => void;
+		const unexpectedNotification = new Promise<void>((resolve) => {
+			resolveUnexpectedNotification = resolve;
+		});
 
 		first.client.setNotificationHandler('notifications/tools/list_changed', () => resolveNotification());
+		second.client.setNotificationHandler('notifications/tools/list_changed', () => resolveUnexpectedNotification());
 
 		try {
 			await first.client.connect(first.transport);
@@ -498,8 +503,13 @@ describe('MCP endpoint', () => {
 				secondSubscription.closed.then(() => true),
 				timeout(50).then(() => false),
 			]);
+			const secondNotified = await Promise.race([
+				unexpectedNotification.then(() => true),
+				timeout(50).then(() => false),
+			]);
 
 			expect(secondClosedBeforeTargetClose).toBe(false);
+			expect(secondNotified).toBe(false);
 
 			await serverService.closeClient('client-a');
 
