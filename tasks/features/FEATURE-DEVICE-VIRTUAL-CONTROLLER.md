@@ -52,7 +52,9 @@ technically validate, but a thermostat with neither is a thermometer wearing a b
   properties; v1 simply never creates a writable one (`assertOwnedPropertyNotWritable` refuses it
   today, and that guard is what this task revisits)
 - Wizard support: the six categories become selectable, with their target slots presented as
-  "you set this" rather than "map this to a source"
+  "you set this" rather than "map this to a source", and the `status` each closed-loop channel
+  requires accounted for (see §3a)
+- The actuator invariant `thermostat` needs, since the specification does not express it (see §3a)
 - Removing each unblocked category from `VIRTUAL_BLOCKED_CATEGORIES`
 
 **Out of scope**
@@ -61,6 +63,32 @@ technically validate, but a thermostat with neither is a thermometer wearing a b
   and scenes modules' ground
 - Multi-stage or PID control; hysteresis is the v1 of this feature too
 - Panel-side creation, which remains admin-only
+
+## 3a. Two things the spec forces, which the loop has to answer
+
+**`heater.status` is required, and nothing supplies it.** The `heater` channel requires `on(bool,rw)`,
+`temperature(float,rw)` *and* `status(bool,ro)` — all three `required: true` in
+`spec/devices/channels.yaml`. `temperature` is the setpoint the controller owns; `status` is what the
+device reports back about whether it is actually heating. No source device supplies it, so this task
+has to decide between two answers, and say which in the design before anyone builds:
+
+- the controller **synthesizes** it as an owned read-only property it drives from its own decision —
+  the loop knows whether it has called for heat, and that is exactly what `status` means; or
+- it is **another mapping**, for hardware that reports a genuine flame/compressor state, with the
+  synthesized value as the fallback when nothing is mapped.
+
+The first is the smaller change and the one that keeps the wizard to wiring plus a setpoint. Either
+way, v1's rule that owned properties are never writable and never anything but `device_information`
+strings has to give — which is the same guard (`assertOwnedPropertyNotWritable`) the setpoint needs
+revisited, so both land together.
+
+**`thermostat` needs an actuator invariant.** `heater` and `cooler` are `required: false` on the
+`thermostat` device (`spec/devices/devices.yaml`), so the specification alone would happily accept a
+thermostat with neither — the "thermometer wearing a badge" the design blocks it for. Structural
+validation cannot catch it, because nothing is missing. Removing `thermostat` from
+`VIRTUAL_BLOCKED_CATEGORIES` therefore has to come with a rule of its own: at least one controlled
+actuator channel, enforced in the wizard's advance gate *and* at persistence, in the same place the
+category itself is judged.
 
 ## 4. Open questions
 
@@ -74,8 +102,13 @@ technically validate, but a thermostat with neither is a thermometer wearing a b
 
 ## 5. Acceptance criteria
 
-- [ ] A virtual `heating_unit` can be built from a relay's `on` and a thermometer's `temperature`,
-      with its own writable setpoint, and passes structural validation
+- [ ] A virtual `heating_unit` can be built from a relay's `on`, a thermometer's `temperature` as
+      the *reading*, its own writable setpoint, and a `heater.status` — all three of `on`,
+      `temperature` and `status` are `required: true` on the `heater` channel
+      (`spec/devices/channels.yaml`), so a device assembled from the first two alone still fails
+      structural validation with `MISSING_PROPERTY`
+- [ ] `thermostat` is unblocked only once at least one actuator channel — `heater` or `cooler` — is
+      required of it, in the wizard and at persistence
 - [ ] The loop honours hysteresis and a minimum cycle time, both configurable
 - [ ] An offline or orphaned sensed source releases the actuator rather than latching it
 - [ ] The six categories are removed from `VIRTUAL_BLOCKED_CATEGORIES` only as each is genuinely

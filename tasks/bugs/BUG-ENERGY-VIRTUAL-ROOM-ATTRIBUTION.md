@@ -85,6 +85,12 @@ pairing rather than a silent surprise.
 changes the future only, and the task should say so where an operator can read it, so nobody expects
 a backfill.
 
+**An orphan has no source to fall back to.** When the source property is deleted the FK nulls,
+`VirtualValueSourceService.resolve()` returns `null`, and the registry resolves the projection to its
+own — empty — series. There is no source device left to attribute to, and the virtual index records
+none either. Nothing further arrives on that property, so in practice it simply stops accruing; the
+fix must not introduce a lookup that assumes otherwise.
+
 ## 5. Acceptance criteria
 
 - [ ] A delta for a projected energy property carries the projecting device's `deviceId` and `roomId`
@@ -93,7 +99,13 @@ a backfill.
       with the house total still 2 kWh
 - [ ] A second projection of an already-projected energy property is refused at persistence, and the
       wizard reports the pairing as incompatible
-- [ ] An orphaned projection falls back to the source device, as it does today
+- [ ] An orphaned projection is attributed to the virtual device that holds it — there is no source
+      left to fall back to. `VirtualValueSourceService.resolve()` answers `null` once
+      `sourcePropertyId` is null, the registry then resolves the property to its own id, and
+      `wasIngestedAsSource()` reads that as "not a projection" and ingests it. That is already the
+      behaviour; the criterion is that the fix does not change it, and that an orphan therefore stops
+      accruing rather than accruing in the wrong room, since no value reaches it once its meter is
+      gone
 - [ ] Regression tests carrying both reproductions above
 
 ## 6. Notes
