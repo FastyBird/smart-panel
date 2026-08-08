@@ -698,7 +698,39 @@ export class DevicesService {
 			await mapping.beforeUpdate(device as TDevice, previous);
 		}
 
-		await repository.save(device as TDevice);
+		// Written through a row carrying no relations, not through the entity the decisions above were
+		// made on. `DeviceEntity.channels` is `cascade: true`, so saving the loaded entity re-saves
+		// whatever channels it happens to hold — and TypeORM reads a child that is *missing* from a
+		// cascaded collection as one detached from its parent, issuing `SET channelId = NULL` on that
+		// channel's properties.
+		//
+		// The list is routinely stale. A virtual device's device_information channel is synthesized
+		// fire-and-forget off DEVICE_CREATED, so a PATCH arriving while that is still in flight loaded its
+		// channels before the channel existed. Renaming a device moments after creating it therefore
+		// stripped the channel from its own properties — `manufacturer`, `model` and `serial_number` left
+		// pointing at nothing, past the cascade that would have cleaned them up. Found as an intermittent
+		// stray in the containment e2e, one run in five or so.
+		//
+		// A re-read is enough: without the collection loaded there is no cascade to run, and the write is
+		// the one UPDATE this method was always meant to make. Falls back to the loaded entity when the
+		// row cannot be re-read, which means it was deleted underneath this call — `save` on the merged
+		// entity is then the pre-existing behaviour, and the error it raises is the honest one.
+		const persisted = await repository.findOne({
+			where: { id: device.id } as FindOptionsWhere<TDevice>,
+			loadEagerRelations: false,
+		});
+
+		if (persisted) {
+			Object.assign(persisted, updateFields);
+
+			if (dtoInstance.room_id === null) {
+				persisted.roomId = null;
+			}
+
+			await repository.save(persisted);
+		} else {
+			await repository.save(device as TDevice);
+		}
 
 		// Update zone memberships if zone_ids was explicitly provided
 		if (zoneIds !== undefined) {

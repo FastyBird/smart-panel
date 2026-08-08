@@ -442,6 +442,19 @@ export class VirtualDeviceInformationListener {
 	}
 
 	private async ensureOwnedProperty(channel: ChannelEntity, definition: OwnedPropertyDefinition): Promise<void> {
+		// A channel without an id cannot own anything: `ChannelsPropertiesService.create` writes whatever
+		// it is handed straight into the row's foreign key, and SQLite exempts a NULL foreign key from
+		// the constraint that would otherwise have refused it — so the property lands unreachable, past
+		// the cascade that would have taken it with its channel. Refused rather than logged and attempted,
+		// because there is no useful row to create here.
+		if (!channel.id) {
+			this.logger.error(
+				`Refusing to synthesize '${definition.identifier}' into a channel with no id; the device information channel was not resolved`,
+			);
+
+			return;
+		}
+
 		const existing = await this.channelsPropertiesService.findOneBy('category', definition.category, channel.id);
 
 		if (existing) {

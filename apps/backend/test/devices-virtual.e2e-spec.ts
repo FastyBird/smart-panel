@@ -2178,6 +2178,11 @@ describe('devices-virtual plugin (e2e)', () => {
 				strayProperties.map((property) => ({
 					id: property.id,
 					category: property.category,
+					identifier: property.identifier,
+					// The synthesized device_information properties carry their own device's id as their
+					// value, so this says *whose* row was left behind; `createdAt` says when in the run.
+					value: property.value,
+					createdAt: property.createdAt,
 					channel:
 						property.channel === null
 							? null

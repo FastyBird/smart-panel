@@ -488,6 +488,43 @@ describe('DevicesService', () => {
 			expect(saved?.hiddenBy ?? null).toBeNull();
 		});
 
+		// `DeviceEntity.channels` is `cascade: true`, so saving the loaded entity re-saves whatever channels
+		// it holds — and TypeORM reads a child missing from a cascaded collection as detached, nulling its
+		// properties' channel. The list is routinely stale: a virtual device's device_information channel
+		// is synthesized fire-and-forget, so a PATCH arriving while that is in flight loaded its channels
+		// before the channel existed. Renaming such a device stripped the channel from its own properties.
+		it('writes through a row carrying no relations, not the entity it merged into', async () => {
+			const createdDeviceId = uuid().toString();
+			const loadedWithRelations = {
+				id: createdDeviceId,
+				type: 'mock',
+				channels: [{ id: 'stale-channel' }],
+			} as unknown as MockDevice;
+			const bareRow = { id: createdDeviceId, type: 'mock' } as MockDevice;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(loadedWithRelations);
+			jest.spyOn(repository, 'findOne').mockResolvedValue(bareRow);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+
+			await service.update(createdDeviceId, { type: 'mock', name: 'Renamed' } as UpdateMockDeviceDto);
+
+			expect(repository.findOne).toHaveBeenCalledWith(
+				expect.objectContaining({ where: { id: createdDeviceId }, loadEagerRelations: false }),
+			);
+
+			const saved = (repository.save as jest.Mock).mock.calls[0]?.[0] as { channels?: unknown[]; name?: string };
+
+			expect(saved.channels).toBeUndefined();
+			expect(saved.name).toBe('Renamed');
+		});
+
 		it('rolls the device back and announces the children when a nested channel fails', async () => {
 			const createDto: CreateMockDeviceDto = {
 				type: 'mock',
