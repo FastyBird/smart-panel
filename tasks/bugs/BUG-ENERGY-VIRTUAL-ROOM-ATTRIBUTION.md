@@ -165,6 +165,17 @@ Stated the other way round: a projection ingests only when it holds the claim *a
 not have ingested on its own. Anything looser double-counts the ordinary meter; anything stricter
 loses the projected one.
 
+**A projection may not change what the reading means.** `reportCompatibility()` accepts
+`electrical_energy.grid_import` into an `electrical_energy.grid_export` slot — both are read-only
+floats in kWh over the same range, so nothing structural separates them. Under the rule above the
+source event is the one that ingests, carrying `GRID_IMPORT`, while the virtual device presents the
+meter as export: the room's summary then reports the wrong field. So a claim requires the destination
+slot and the qualifying source to map to the **same** `EnergySourceType`, and a cross-type pairing is
+refused at persistence and reported by the wizard like any other incompatibility. Deriving the stored
+type from the destination instead would be worse — it relabels a measurement rather than refusing a
+mapping that was never meaningful. Where the source does not qualify there is no second type to
+disagree with, and the destination's is simply used.
+
 **A claim that goes away is inherited, not dropped, and the handover is atomic.** Deleting or
 remapping the holder must promote a remaining projection of the same meter by the same deterministic
 rule the migration uses — oldest, ties broken by id — and only leave the meter unclaimed when none is
@@ -221,6 +232,9 @@ fix must not introduce a lookup that assumes otherwise.
       post-migration regression test on the total, not only on the per-room split
 - [ ] A qualifying source that *is* claimed still produces exactly one delta, from the source event,
       carrying the claimant's room — not two
+- [ ] A pairing whose destination slot means something else — `grid_import` projected into
+      `grid_export` — is refused, rather than being counted under the source's type in a room that
+      displays it as the other
 - [ ] Removing or remapping the claim holder promotes another projection of the same meter, if one
       remains, so the meter neither vanishes from the totals nor quietly changes room
 - [ ] A deletion racing a new claim on the same meter leaves exactly one claimant, whichever wins —
