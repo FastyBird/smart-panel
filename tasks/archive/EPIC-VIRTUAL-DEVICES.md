@@ -75,7 +75,7 @@ Home Assistant's **Helpers** concept allows users to create virtual entities fro
 
 Delivered against §3: the `hidden` flag with filtering in every selection UI, the `devices-virtual` plugin, the admin creation wizard, panel rendering through the existing category-based pages, and spec validation against the chosen category.
 
-One step of the design's [creation flow](../../docs/superpowers/specs/2026-07-31-virtual-devices-design.md#creation-flow) is built differently than written. Step 6 called for a live preview from `DeviceValidationService.validateDeviceStructure`; the wizard instead derives readiness from the specification directly — required slots filled, plus the constraint alerts a slot count cannot express — and verifies every individual pairing against the plugin's own compatibility endpoint, which judges the things structural validation does not (data type, permissions, format, sentinels). Structure is still validated server-side on create, and the device list surfaces the stored validation state afterwards.
+Step 6 of the design's [creation flow](../../docs/superpowers/specs/2026-07-31-virtual-devices-design.md#creation-flow) was superseded during implementation — the spec records what replaced it and why.
 
 Left out deliberately, and still open:
 

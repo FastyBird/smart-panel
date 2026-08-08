@@ -240,7 +240,7 @@ Blocked categories are filtered from the wizard with *"needs a controller — pl
 3. Map each slot to a source property, filtered by data type and permissions — an `rw` slot needs an `rw` source, `ro` accepts either. The `device_information` channel is exempt: it is synthesized automatically as owned properties and is never presented for mapping.
 4. Shortcut *"take this whole channel"*: pick a source channel and the wizard expands it into per-property links against a chosen slot. This is the split flow, with no second data model.
 5. Name, room, zones.
-6. Live validation preview via `DeviceValidationService.validateDeviceStructure` (`device-validation.service.ts:239`), which already exists for exactly this.
+6. ~~Live validation preview via `DeviceValidationService.validateDeviceStructure`.~~ **Superseded during implementation.** Readiness is derived from the specification directly — every required slot filled, plus the constraint alerts a slot count cannot express — and each individual pairing is verified against `POST /plugins/devices-virtual/devices/compatibility`, which judges what `validateDeviceStructure` never looks at: the source's data type, permissions, format and sentinel against the slot's. A structural preview would have answered a question the wizard's own gate already answers, while staying silent on the one that actually refuses a create. Structure is still validated server-side on create, and the device list surfaces the stored validation state afterwards.
 7. Create, then optionally hide the source device(s).
 
 A source property may feed more than one virtual device — one sensor legitimately serves two rooms' climate. The energy guard skips projections wholesale, so this cannot double-count.
