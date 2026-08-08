@@ -62,6 +62,10 @@ export class McpAuditService {
 	private timeouts = 0;
 
 	recordAuthenticationFailure(identity: RequestIdentity, reason: McpAuditDenialReason): void {
+		if (reason === 'authentication_error') {
+			this.failures += 1;
+		}
+
 		this.log('authentication_failure', identity, { reason });
 	}
 
@@ -144,7 +148,11 @@ export class McpAuditService {
 
 		const id = (body as { id?: unknown }).id;
 
-		return typeof id === 'string' || typeof id === 'number' ? String(id) : 'unknown';
+		if (typeof id === 'number' && Number.isFinite(id)) {
+			return String(id);
+		}
+
+		return typeof id === 'string' ? 'string' : 'unknown';
 	}
 
 	private getTargetIds(tool: string, args?: Record<string, unknown>): Record<string, string> {

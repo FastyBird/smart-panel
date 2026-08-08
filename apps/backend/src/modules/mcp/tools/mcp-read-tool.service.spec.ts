@@ -1,5 +1,5 @@
 import { AuthInfo, McpServer, ServerContext } from '@modelcontextprotocol/server';
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 
 import { WeatherNotFoundException } from '../../weather/weather.exceptions';
 import { MCP_TOOL_CALL_TIMEOUT_MS, McpCapability } from '../mcp.constants';
@@ -29,7 +29,7 @@ describe('McpReadToolService', () => {
 		listSpaces: jest.Mock;
 	};
 	let policyService: { authorizeClient: jest.Mock };
-	let auditService: { recordPolicyDenial: jest.Mock; recordToolResult: jest.Mock };
+	let auditService: { getRequestId: jest.Mock; recordPolicyDenial: jest.Mock; recordToolResult: jest.Mock };
 	let registerTool: jest.Mock;
 	let registerResource: jest.Mock;
 	let callbacks: Map<string, ToolCallback>;
@@ -54,6 +54,7 @@ describe('McpReadToolService', () => {
 			authorizeClient: jest.fn().mockResolvedValue({ effectiveCapabilities: [McpCapability.READ] }),
 		};
 		auditService = {
+			getRequestId: jest.fn().mockReturnValue('17'),
 			recordPolicyDenial: jest.fn(),
 			recordToolResult: jest.fn(),
 		};
@@ -138,6 +139,20 @@ describe('McpReadToolService', () => {
 		expect(auditService.recordPolicyDenial).toHaveBeenCalledWith(
 			{ requestId: '17', clientId: 'client-id' },
 			'capability_denied',
+			{ capability: McpCapability.READ, tool: 'get_security_status' },
+		);
+	});
+
+	it('distinguishes a live credential rejection from a capability denial', async () => {
+		policyService.authorizeClient.mockRejectedValue(new UnauthorizedException('private credential detail'));
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await callbacks.get('get_security_status')?.({}, requestContext());
+
+		expect(result?.isError).toBe(true);
+		expect(auditService.recordPolicyDenial).toHaveBeenCalledWith(
+			{ requestId: '17', clientId: 'client-id' },
+			'invalid_credential',
 			{ capability: McpCapability.READ, tool: 'get_security_status' },
 		);
 	});

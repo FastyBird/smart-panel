@@ -110,8 +110,11 @@ describe('McpAuditService', () => {
 		expect(service.getMetricsSnapshot().activeSubscriptions).toBe(0);
 	});
 
-	it('extracts only JSON-RPC string and numeric request identifiers', () => {
+	it('normalizes client-controlled string request identifiers before logging', () => {
 		expect(service.getRequestId({ id: 17, token: 'secret' })).toBe('17');
+		expect(service.getRequestId({ id: 'Bearer raw-secret' })).toBe('string');
+		expect(service.getRequestId({ id: 'x'.repeat(10_000) })).toBe('string');
+		expect(service.getRequestId({ id: Number.POSITIVE_INFINITY })).toBe('unknown');
 		expect(service.getRequestId({ id: { nested: true } })).toBe('unknown');
 		expect(service.getRequestId(null)).toBe('unknown');
 	});
@@ -125,6 +128,13 @@ describe('McpAuditService', () => {
 
 	it('counts policy-resolution outages as failures without incrementing denials', () => {
 		service.recordRequestFailure({ requestId: '1', clientId: 'client-1' }, 'policy_resolution_error');
+
+		expect(service.getMetricsSnapshot()).toMatchObject({ failures: 1, denials: 0 });
+	});
+
+	it('counts authentication backend errors as failures without counting credential rejections', () => {
+		service.recordAuthenticationFailure({ requestId: '1' }, 'invalid_credential');
+		service.recordAuthenticationFailure({ requestId: '2' }, 'authentication_error');
 
 		expect(service.getMetricsSnapshot()).toMatchObject({ failures: 1, denials: 0 });
 	});

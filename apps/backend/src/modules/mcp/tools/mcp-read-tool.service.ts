@@ -272,7 +272,7 @@ export class McpReadToolService {
 		structuredContent: ToolEnvelope;
 		isError?: boolean;
 	}> {
-		const requestId = String(ctx.mcpReq.id);
+		const requestId = this.auditService.getRequestId({ id: ctx.mcpReq.id });
 		const startedAt = Date.now();
 		const identity = {
 			requestId,
@@ -399,7 +399,7 @@ export class McpReadToolService {
 
 	private async runResourceOperation<T>(operation: string, callback: () => Promise<T>, ctx: ServerContext): Promise<T> {
 		const identity = {
-			requestId: String(ctx.mcpReq.id),
+			requestId: this.auditService.getRequestId({ id: ctx.mcpReq.id }),
 			...(ctx.http?.authInfo?.clientId ? { clientId: ctx.http.authInfo.clientId } : {}),
 		};
 		const startedAt = Date.now();
@@ -472,8 +472,12 @@ export class McpReadToolService {
 			return 'endpoint_disabled';
 		}
 
-		if (error instanceof ForbiddenException || error instanceof UnauthorizedException) {
+		if (error instanceof ForbiddenException) {
 			return 'capability_denied';
+		}
+
+		if (error instanceof UnauthorizedException) {
+			return 'invalid_credential';
 		}
 
 		return null;

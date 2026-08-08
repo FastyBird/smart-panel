@@ -250,6 +250,8 @@ export class McpTargetDiscoveryToolService {
 		args: Record<string, unknown>,
 		ctx: ServerContext,
 	) {
+		const requestId = this.auditService.getRequestId({ id: ctx.mcpReq.id });
+
 		return this.runTool(
 			publicName,
 			capability,
@@ -265,12 +267,12 @@ export class McpTargetDiscoveryToolService {
 				}
 
 				const result = await this.toolRegistry.executeTool(
-					{ id: String(ctx.mcpReq.id), name: providerName, arguments: args },
+					{ id: requestId, name: providerName, arguments: args },
 					{
 						audience: ToolAudience.MCP,
 						source: 'mcp',
 						actorId: policy.client.id,
-						requestId: String(ctx.mcpReq.id),
+						requestId,
 						allowedAccessKinds: [access],
 					},
 				);
@@ -294,7 +296,7 @@ export class McpTargetDiscoveryToolService {
 		structuredContent: ToolEnvelope;
 		isError?: boolean;
 	}> {
-		const requestId = String(ctx.mcpReq.id);
+		const requestId = this.auditService.getRequestId({ id: ctx.mcpReq.id });
 		const startedAt = Date.now();
 		const identity = {
 			requestId,
@@ -577,8 +579,12 @@ export class McpTargetDiscoveryToolService {
 			return 'endpoint_disabled';
 		}
 
-		if (error instanceof ForbiddenException || error instanceof UnauthorizedException) {
+		if (error instanceof ForbiddenException) {
 			return 'capability_denied';
+		}
+
+		if (error instanceof UnauthorizedException) {
+			return 'invalid_credential';
 		}
 
 		return null;

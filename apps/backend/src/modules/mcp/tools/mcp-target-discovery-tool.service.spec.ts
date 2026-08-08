@@ -1,4 +1,5 @@
 import { AuthInfo, McpServer, ServerContext } from '@modelcontextprotocol/server';
+import { UnauthorizedException } from '@nestjs/common';
 
 import {
 	ChannelCategory,
@@ -42,7 +43,7 @@ describe('McpTargetDiscoveryToolService', () => {
 	let toolRegistry: { getAllToolDefinitions: jest.Mock; executeTool: jest.Mock };
 	let contextService: { getInstallation: jest.Mock };
 	let policyService: { authorizeClient: jest.Mock };
-	let auditService: { recordPolicyDenial: jest.Mock; recordToolResult: jest.Mock };
+	let auditService: { getRequestId: jest.Mock; recordPolicyDenial: jest.Mock; recordToolResult: jest.Mock };
 	let registerTool: jest.Mock;
 	let callbacks: Map<string, ToolCallback>;
 	let providerTools: Array<{ name: string; audiences: ToolAudience[]; access: ToolAccessKind }>;
@@ -88,6 +89,7 @@ describe('McpTargetDiscoveryToolService', () => {
 			),
 		};
 		auditService = {
+			getRequestId: jest.fn().mockReturnValue('17'),
 			recordPolicyDenial: jest.fn(),
 			recordToolResult: jest.fn(),
 		};
@@ -461,6 +463,24 @@ describe('McpTargetDiscoveryToolService', () => {
 		);
 		expect(auditService.recordToolResult).toHaveBeenCalledWith(
 			expect.objectContaining({ outcome: 'denied', tool: 'run_scene' }),
+		);
+	});
+
+	it('distinguishes a live credential rejection from a capability denial for mutating tools', async () => {
+		providerTools = [providerTool('run_scene', ToolAccessKind.TRIGGER)];
+		policyService.authorizeClient.mockRejectedValue(new UnauthorizedException('private credential detail'));
+		service.register(server(), authInfo([McpCapability.TRIGGER]));
+
+		const result = await callbacks.get('run_scene')?.(
+			{ scene_id: '10000000-0000-4000-8000-000000000001' },
+			requestContext([McpCapability.TRIGGER]),
+		);
+
+		expect(result?.isError).toBe(true);
+		expect(auditService.recordPolicyDenial).toHaveBeenCalledWith(
+			{ requestId: '17', clientId: 'client-id' },
+			'invalid_credential',
+			{ capability: McpCapability.TRIGGER, tool: 'run_scene' },
 		);
 	});
 
