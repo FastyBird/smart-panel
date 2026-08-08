@@ -1,5 +1,8 @@
+import { z } from 'zod';
+
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { AuthInfo, McpServer } from '@modelcontextprotocol/server';
+import { CanActivate, ExecutionContext, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
@@ -20,6 +23,36 @@ import { McpSubscriptionRegistryService } from '../src/modules/mcp/services/mcp-
 import { McpReadToolService } from '../src/modules/mcp/tools/mcp-read-tool.service';
 
 const AUTH_TOKEN = 'phase-4-client';
+const ALL_CAPABILITIES = [McpCapability.READ, McpCapability.WRITE, McpCapability.TRIGGER];
+const CAPABILITY_SETS: McpCapability[][] = [
+	[],
+	[McpCapability.READ],
+	[McpCapability.WRITE],
+	[McpCapability.TRIGGER],
+	[McpCapability.READ, McpCapability.WRITE],
+	[McpCapability.READ, McpCapability.TRIGGER],
+	[McpCapability.WRITE, McpCapability.TRIGGER],
+	[...ALL_CAPABILITIES],
+];
+const READ_TOOLS = [
+	'get_home_context',
+	'get_device_state',
+	'get_property_timeseries',
+	'get_energy_summary',
+	'get_weather',
+	'get_security_status',
+];
+const WRITE_TOOLS = ['list_writable_properties', 'set_device_property'];
+const TRIGGER_TOOLS = ['list_trigger_targets', 'run_scene', 'set_space_lighting'];
+
+interface TestClientPolicy {
+	capabilities: McpCapability[];
+	revoked?: boolean;
+}
+
+let endpointEnabled = true;
+let moduleCapabilities = [...ALL_CAPABILITIES];
+const clientPolicies = new Map<string, TestClientPolicy>();
 
 @Injectable()
 class TestMcpClientGuard implements CanActivate {
@@ -28,11 +61,24 @@ class TestMcpClientGuard implements CanActivate {
 	canActivate(context: ExecutionContext): boolean {
 		const request = context.switchToHttp().getRequest<McpPolicyRequest>();
 		const clientId = request.headers.authorization?.replace(/^Bearer /, '') || AUTH_TOKEN;
+		const clientPolicy = clientPolicies.get(clientId) ?? { capabilities: [McpCapability.READ] };
+
+		if (!endpointEnabled) {
+			throw new NotFoundException('MCP endpoint is disabled');
+		}
+
+		if (clientPolicy.revoked) {
+			throw new UnauthorizedException('MCP credential is no longer active');
+		}
+
+		const effectiveCapabilities = clientPolicy.capabilities.filter((capability) =>
+			moduleCapabilities.includes(capability),
+		);
 		const client = {
 			id: clientId,
 			name: `Test ${clientId}`,
 			enabled: true,
-			capabilities: [McpCapability.READ],
+			capabilities: [...clientPolicy.capabilities],
 			tokenId: `token-${clientId}`,
 			token: {
 				id: `token-${clientId}`,
@@ -46,9 +92,9 @@ class TestMcpClientGuard implements CanActivate {
 			clientPolicyRevision: this.serverService.getClientPolicyRevision(client.id),
 			config: Object.assign(new McpConfigModel(), {
 				enabled: true,
-				capabilities: [McpCapability.READ],
+				capabilities: [...moduleCapabilities],
 			}),
-			effectiveCapabilities: [McpCapability.READ],
+			effectiveCapabilities,
 			installationId: 'phase-4-installation',
 			policyRevision: this.serverService.getPolicyRevision(),
 			tokenId: client.tokenId,
@@ -100,13 +146,33 @@ describe('MCP endpoint', () => {
 			policyService as unknown as McpPolicyService,
 			auditService,
 		);
+		const catalog = {
+			register(server: McpServer, authInfo?: AuthInfo): void {
+				readTools.register(server, authInfo);
+
+				for (const name of supplementalCatalogTools(authInfo?.scopes ?? [])) {
+					server.registerTool(
+						name,
+						{
+							description: `Test ${name} operation.`,
+							inputSchema: z.object({}),
+							outputSchema: z.object({ tool: z.string() }),
+						},
+						() => ({
+							content: [{ type: 'text', text: name }],
+							structuredContent: { tool: name },
+						}),
+					);
+				}
+			},
+		};
 		const moduleRef = await Test.createTestingModule({
 			controllers: [McpController],
 			providers: [
 				{ provide: McpAuditService, useValue: auditService },
 				McpServerService,
 				McpSubscriptionRegistryService,
-				{ provide: MCP_CATALOG_REGISTRAR, useValue: readTools },
+				{ provide: MCP_CATALOG_REGISTRAR, useValue: catalog },
 			],
 		})
 			.overrideGuard(McpClientGuard)
@@ -126,6 +192,9 @@ describe('MCP endpoint', () => {
 
 	afterEach(async () => {
 		await serverService.closeAll();
+		endpointEnabled = true;
+		moduleCapabilities = [...ALL_CAPABILITIES];
+		clientPolicies.clear();
 	});
 
 	afterAll(async () => {
@@ -195,6 +264,68 @@ describe('MCP endpoint', () => {
 		}
 	});
 
+	it.each(CAPABILITY_SETS.map((capabilities, index) => ({ capabilities, index })))(
+		'exposes the exact catalog for module capability set $capabilities',
+		async ({ capabilities, index }) => {
+			const clientId = `module-matrix-${index}`;
+
+			moduleCapabilities = [...capabilities];
+			clientPolicies.set(clientId, { capabilities: [...ALL_CAPABILITIES] });
+			const { client, transport } = createClient(clientId, 'auto');
+
+			try {
+				await client.connect(transport);
+
+				const tools = await client.listTools();
+				const resources = await client.listResources();
+
+				expect(tools.tools.map(({ name }) => name)).toEqual(catalogTools(capabilities));
+				expect(resources.resources.length > 0).toBe(capabilities.includes(McpCapability.READ));
+			} finally {
+				await client.close();
+			}
+		},
+	);
+
+	it.each([
+		{
+			module: [McpCapability.READ, McpCapability.WRITE],
+			client: [McpCapability.WRITE, McpCapability.TRIGGER],
+			expected: [McpCapability.WRITE],
+		},
+		{
+			module: [McpCapability.READ, McpCapability.TRIGGER],
+			client: [McpCapability.READ, McpCapability.WRITE],
+			expected: [McpCapability.READ],
+		},
+		{
+			module: [McpCapability.WRITE, McpCapability.TRIGGER],
+			client: [McpCapability.TRIGGER],
+			expected: [McpCapability.TRIGGER],
+		},
+		{ module: [...ALL_CAPABILITIES], client: [], expected: [] },
+	])(
+		'intersects module $module with client $client before discovery',
+		async ({ module, client: clientCapabilities, expected }) => {
+			const clientId = `intersection-${module.join('-')}-${clientCapabilities.join('-') || 'none'}`;
+
+			moduleCapabilities = [...module];
+			clientPolicies.set(clientId, { capabilities: [...clientCapabilities] });
+			const { client, transport } = createClient(clientId, 'auto');
+
+			try {
+				await client.connect(transport);
+				const tools = await client.listTools();
+				const resources = await client.listResources();
+
+				expect(tools.tools.map(({ name }) => name)).toEqual(catalogTools(expected));
+				expect(resources.resources.length > 0).toBe(expected.includes(McpCapability.READ));
+			} finally {
+				await client.close();
+			}
+		},
+	);
+
 	it.each(['GET', 'DELETE'])('returns the SDK-defined 405 for legacy %s operations', async (method) => {
 		const response = await fetch(endpoint, {
 			method,
@@ -235,6 +366,8 @@ describe('MCP endpoint', () => {
 	});
 
 	it('delivers targeted list changes and closes only the selected client stream', async () => {
+		clientPolicies.set('client-a', { capabilities: [McpCapability.READ] });
+		clientPolicies.set('client-b', { capabilities: [McpCapability.TRIGGER] });
 		const first = createClient('client-a', 'auto');
 		const second = createClient('client-b', 'auto');
 		let resolveNotification!: () => void;
@@ -247,8 +380,14 @@ describe('MCP endpoint', () => {
 		try {
 			await first.client.connect(first.transport);
 			await second.client.connect(second.transport);
+			const [firstTools, secondTools] = await Promise.all([first.client.listTools(), second.client.listTools()]);
 			const firstSubscription = await first.client.listen({ toolsListChanged: true });
 			const secondSubscription = await second.client.listen({ toolsListChanged: true });
+
+			expect(firstTools.tools.map(({ name }) => name)).toEqual(READ_TOOLS);
+			expect(secondTools.tools.map(({ name }) => name)).toEqual(TRIGGER_TOOLS);
+			expect(first.client.getInstructions()).toContain('Client Test client-a. Effective capabilities: read.');
+			expect(second.client.getInstructions()).toContain('Client Test client-b. Effective capabilities: trigger.');
 
 			expect(subscriptions.countForClient('client-a')).toBe(1);
 			expect(subscriptions.countForClient('client-b')).toBe(1);
@@ -277,6 +416,70 @@ describe('MCP endpoint', () => {
 		}
 	});
 
+	it('applies a permission reduction and notifies a client that remains connected', async () => {
+		const clientId = 'mutable-client';
+
+		clientPolicies.set(clientId, { capabilities: [...ALL_CAPABILITIES] });
+		const connection = createClient(clientId, 'auto');
+		let resolveNotification!: () => void;
+		const notification = new Promise<void>((resolve) => {
+			resolveNotification = resolve;
+		});
+
+		connection.client.setNotificationHandler('notifications/tools/list_changed', () => resolveNotification());
+
+		try {
+			await connection.client.connect(connection.transport);
+			const subscription = await connection.client.listen({ toolsListChanged: true });
+
+			expect((await connection.client.listTools()).tools.map(({ name }) => name)).toEqual(
+				catalogTools(ALL_CAPABILITIES),
+			);
+
+			clientPolicies.set(clientId, { capabilities: [McpCapability.READ] });
+			serverService.invalidateClientPolicy(clientId);
+			serverService.notifyToolsChanged(clientId);
+
+			await expect(Promise.race([notification, timeout(2_000)])).resolves.toBeUndefined();
+			expect((await connection.client.listTools()).tools.map(({ name }) => name)).toEqual(READ_TOOLS);
+			expect(subscriptions.countForClient(clientId)).toBe(1);
+
+			await subscription.close();
+		} finally {
+			await connection.client.close();
+		}
+	});
+
+	it('closes only the revoked client and rejects its next request', async () => {
+		const revokedId = 'revoked-client';
+		const activeId = 'active-client';
+
+		clientPolicies.set(revokedId, { capabilities: [McpCapability.READ] });
+		clientPolicies.set(activeId, { capabilities: [McpCapability.READ] });
+		const revoked = createClient(revokedId, 'auto');
+		const active = createClient(activeId, 'auto');
+
+		try {
+			await revoked.client.connect(revoked.transport);
+			await active.client.connect(active.transport);
+			const revokedSubscription = await revoked.client.listen({ toolsListChanged: true });
+			const activeSubscription = await active.client.listen({ toolsListChanged: true });
+
+			clientPolicies.set(revokedId, { capabilities: [McpCapability.READ], revoked: true });
+			await serverService.closeClient(revokedId);
+
+			await expect(revokedSubscription.closed).resolves.toBe('remote');
+			await expect(revoked.client.listTools()).rejects.toThrow();
+			expect((await active.client.listTools()).tools.map(({ name }) => name)).toEqual(READ_TOOLS);
+			expect(subscriptions.countForClient(activeId)).toBe(1);
+
+			await activeSubscription.close();
+		} finally {
+			await revoked.client.close();
+			await active.client.close();
+		}
+	});
+
 	function createClient(name: string, mode?: 'auto') {
 		const client = new Client({ name, version: '1.0.0' }, mode ? { versionNegotiation: { mode } } : undefined);
 		const transport = new StreamableHTTPClientTransport(endpoint, {
@@ -291,5 +494,19 @@ describe('MCP endpoint', () => {
 			const timer = setTimeout(resolve, milliseconds);
 			timer.unref();
 		});
+	}
+
+	function catalogTools(capabilities: readonly string[]): string[] {
+		return [
+			...(capabilities.includes(McpCapability.READ) ? READ_TOOLS : []),
+			...supplementalCatalogTools(capabilities),
+		];
+	}
+
+	function supplementalCatalogTools(capabilities: readonly string[]): string[] {
+		return [
+			...(capabilities.includes(McpCapability.WRITE) ? WRITE_TOOLS : []),
+			...(capabilities.includes(McpCapability.TRIGGER) ? TRIGGER_TOOLS : []),
+		];
 	}
 });

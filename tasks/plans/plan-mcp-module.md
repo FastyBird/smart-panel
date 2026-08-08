@@ -1,6 +1,6 @@
 # Smart Panel MCP Module — Implementation Plan
 
-**Status:** Phase 10 complete — Phase 11 pending
+**Status:** Phase 11 complete — Phase 12 pending
 
 **Architecture decision:** [ADR 0001: MCP Protocol and Security Foundation](../../docs/adr/0001-mcp-protocol-and-security-foundation.md)
 supersedes the original stateful-session transport assumptions in this plan.
@@ -598,18 +598,25 @@ not run because generated panel API changes are not part of this admin managemen
 
 ### Task 14: End-to-end and compatibility verification
 
-- [ ] Add backend E2E coverage using an in-process MCP client or the SDK's supported test transport.
-- [ ] Test all eight module capability combinations.
-- [ ] Test module/client capability intersections.
-- [ ] Test two simultaneous clients with different permissions and ensure authenticated contexts and subscriptions
+- [x] Add backend E2E coverage using an in-process MCP client or the SDK's supported test transport.
+- [x] Test all eight module capability combinations.
+- [x] Test module/client capability intersections.
+- [x] Test two simultaneous clients with different permissions and ensure authenticated contexts and subscriptions
       cannot cross.
-- [ ] Test a permission change and token revocation while clients remain connected.
-- [ ] Test against a simulator installation so writes/triggers cannot affect real hardware.
-- [ ] Verify `set_device_property`, `run_scene`, and `set_space_lighting` produce the expected intent/event traces.
-- [ ] Run targeted backend unit tests, backend E2E tests, admin unit tests, type checks, and JS lint.
-- [ ] Smoke-test at least two supported agent hosts/clients using a static bearer-header configuration.
-- [ ] Record unsupported clients and whether they require the follow-up OAuth flow.
-- [ ] Confirm MCP remains unreachable when disabled after a restart.
+- [x] Test a permission change and token revocation while clients remain connected.
+- [x] Test against a simulator installation so writes/triggers cannot affect real hardware.
+- [x] Verify `set_device_property`, `run_scene`, and `set_space_lighting` produce the expected intent/event traces.
+- [x] Run targeted backend unit tests, backend E2E tests, admin unit tests, type checks, and JS lint.
+- [x] Smoke-test at least two supported agent hosts/clients using a static bearer-header configuration.
+- [x] Record unsupported clients and whether they require the follow-up OAuth flow.
+- [x] Confirm MCP remains unreachable when disabled after a restart.
+
+**Outcome:** The release-gate suite now covers the full capability matrix, effective client intersections, concurrent
+client and subscription isolation, live permission reduction, revocation, and disabled restart behavior through the
+real MCP HTTP transport. Simulator-backed write and trigger calls preserve MCP execution traces. Codex CLI and Claude
+Code both passed static-bearer host smoke tests; unsupported client profiles and OAuth requirements are recorded in
+`docs/mcp-compatibility-verification.md`. Targeted backend tests, the full backend E2E suite, all admin unit tests, both
+type checks, and repository JS lint pass.
 
 ### Task 15: Documentation and rollout
 
