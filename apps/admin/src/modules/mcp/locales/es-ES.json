@@ -1,0 +1,125 @@
+{
+	"menu": {
+		"clients": "MCP clients"
+	},
+	"actions": {
+		"create": "Create client",
+		"edit": "Edit",
+		"save": "Save",
+		"rotate": "Rotate",
+		"revoke": "Revoke",
+		"delete": "Delete",
+		"cancel": "Cancel",
+		"done": "Done",
+		"addOrigin": "Add origin",
+		"removeOrigin": "Remove origin",
+		"copyEndpoint": "Copy endpoint"
+	},
+	"capabilities": {
+		"read": {
+			"title": "Read",
+			"description": "Read bounded home, device, weather, energy, and security context."
+		},
+		"write": {
+			"title": "Write",
+			"description": "Set supported device properties directly. This can affect physical devices."
+		},
+		"trigger": {
+			"title": "Trigger",
+			"description": "Run scenes and higher-level space lighting actions. This can affect physical devices."
+		}
+	},
+	"config": {
+		"about": {
+			"title": "Secure agent access",
+			"description": "MCP exposes only a curated catalog to installation-local clients. It is not a generic OpenAPI proxy."
+		},
+		"enabled": {
+			"title": "Enable MCP endpoint"
+		},
+		"endpoint": {
+			"title": "Installation MCP endpoint",
+			"description": "Use this URL with a trusted MCP client and the one-time bearer credential."
+		},
+		"capabilities": {
+			"title": "Installation capability ceiling",
+			"warningTitle": "Physical device access",
+			"warningDescription": "Write and trigger capabilities can change physical device state. Grant only what each client needs."
+		},
+		"allowedOrigins": {
+			"title": "Additional allowed browser origins",
+			"description": "Optional normalized origins for browser-based MCP clients. LAN server clients usually do not need this.",
+			"placeholder": "https://agent.example.com",
+			"invalid": "Use an absolute HTTP(S) origin without a path, query, fragment, or credentials."
+		}
+	},
+	"clients": {
+		"title": "MCP clients",
+		"subtitle": "Create and manage installation-local agent credentials.",
+		"securityTitle": "Use trusted networks",
+		"securityDescription": "Prefer LAN or VPN access and HTTPS. Credentials are shown once and cannot be retrieved later.",
+		"columns": {
+			"name": "Client",
+			"status": "Status",
+			"capabilities": "Capabilities",
+			"expires": "Expires",
+			"lastUsed": "Last used",
+			"actions": "Actions"
+		},
+		"empty": "No MCP clients have been created.",
+		"none": "None",
+		"never": "Never",
+		"noDescription": "No description"
+	},
+	"clientForm": {
+		"createTitle": "Create MCP client",
+		"editTitle": "Edit MCP client",
+		"name": "Name",
+		"nameRequired": "Enter a client name.",
+		"description": "Description",
+		"enabled": "Enabled",
+		"capabilities": "Client capabilities",
+		"ceilingHint": "Only capabilities enabled in the module configuration can be granted.",
+		"expiresInDays": "Credential lifetime (days)",
+		"expiryRequired": "Choose a finite credential lifetime."
+	},
+	"rotate": {
+		"title": "Rotate credential",
+		"warning": "The current credential is revoked immediately. Connected clients must be updated with the new token."
+	},
+	"token": {
+		"title": "Copy the MCP credential now",
+		"warningTitle": "Shown only once",
+		"warningDescription": "Save the credential for {name} in a secure password manager. It cannot be retrieved after this dialog closes.",
+		"copy": "Copy credential",
+		"copied": "Copied"
+	},
+	"status": {
+		"active": "Active",
+		"disabled": "Disabled",
+		"revoked": "Revoked",
+		"expired": "Expired"
+	},
+	"confirm": {
+		"revoke": "Revoke the current credential for {name}? Connected clients will lose access immediately.",
+		"delete": "Delete {name}? Its credential will be revoked and the client record cannot be recovered."
+	},
+	"messages": {
+		"configSaved": "MCP configuration saved.",
+		"configSaveFailed": "MCP configuration could not be saved.",
+		"endpointCopied": "MCP endpoint copied.",
+		"copyFailed": "The value could not be copied.",
+		"capabilitiesOutsideCeiling": "Client capabilities must stay within the module capability ceiling.",
+		"loadFailed": "MCP clients could not be loaded.",
+		"created": "MCP client created.",
+		"createFailed": "MCP client could not be created.",
+		"updated": "MCP client updated.",
+		"updateFailed": "MCP client could not be updated.",
+		"rotated": "MCP credential rotated.",
+		"rotateFailed": "MCP credential could not be rotated.",
+		"revoked": "MCP client revoked.",
+		"revokeFailed": "MCP client could not be revoked.",
+		"deleted": "MCP client deleted.",
+		"deleteFailed": "MCP client could not be deleted."
+	}
+}
