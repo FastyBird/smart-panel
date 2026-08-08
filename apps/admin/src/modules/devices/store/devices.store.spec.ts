@@ -268,6 +268,36 @@ describe('Devices Store', () => {
 		expect(store.findAll().map((device) => device.name)).toEqual(['kept-device']);
 	});
 
+	// A superseded response may not write to the shared cache — that belongs to whichever scope was
+	// requested last — but it is still a truthful answer to the question *this* caller asked. Handing
+	// back the winning request's contents told a caller that asked for every device it had them when it
+	// had only the visible ones; onboarding's plugin cleanup acts on exactly that difference.
+	it('answers a superseded fetch from its own response, without writing it to the shared cache', async () => {
+		let resolveAllRequest!: (value: unknown) => void;
+
+		const allRequest = new Promise((resolve) => {
+			resolveAllRequest = resolve;
+		});
+
+		(mockBackendClient.GET as Mock).mockReturnValueOnce(allRequest).mockResolvedValueOnce({ data: { data: [deviceFixture('visible-device')] } });
+
+		const olderFetch = store.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
+		const newerFetch = store.fetch({ hidden: DevicesModuleDevicesHiddenFilter.false });
+
+		await newerFetch;
+
+		const hidden = { ...deviceFixture('hidden-device'), hidden: true };
+
+		resolveAllRequest({ data: { data: [hidden] } });
+
+		const answered = await olderFetch;
+
+		// The caller gets what it asked for …
+		expect(answered.map((device) => device.name)).toEqual(['hidden-device']);
+		// … and the cache still belongs to the request that won it.
+		expect(store.findAll().map((device) => device.name)).toEqual(['visible-device']);
+	});
+
 	it('shares one in-flight request for two calls with the same hidden value', async () => {
 		let resolveRequest!: (value: unknown) => void;
 

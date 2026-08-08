@@ -305,7 +305,21 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 					// response and leaves `data.value` and the related stores exactly as the winning
 					// request left them.
 					if (latestFetchTokenByKey[cacheKey] !== latestFetchToken) {
-						return Object.values(data.value);
+						// Answered from this response, not from the cache it is not allowed to write to. The
+						// two are different questions — this caller asked for a particular `hidden` scope, the
+						// cache now belongs to whichever scope was requested last — and handing back the
+						// winning request's contents would be a full-hydration answer to a question it never
+						// asked. Onboarding's plugin cleanup acts on exactly that difference: told it holds
+						// every device when it holds only the visible ones, it leaves the plugin's hidden
+						// devices behind in the database, owned by a plugin that is no longer running.
+						//
+						// Related stores are left alone for the same reason as `data`: they are the winning
+						// request's to fill.
+						return responseData.data.map((device) => {
+							const element = getPluginElement(device.type);
+
+							return transformDeviceResponse(device, element?.schemas?.deviceSchema || DeviceSchema);
+						});
 					}
 
 					// Applied row by row rather than assigned wholesale: a row written since `requestedAt`

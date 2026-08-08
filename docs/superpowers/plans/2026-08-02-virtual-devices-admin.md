@@ -87,7 +87,7 @@ Four were settled explicitly; the fifth is an implementation-shape call I made a
 **Interfaces:**
 - Produces: `enum DeviceHiddenBy { SYSTEM = 'system', USER = 'user' }`; `DeviceEntity.hiddenBy: DeviceHiddenBy | null`; `hidden_by` on both device DTOs.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```typescript
 it('persists hiddenBy alongside hidden', async () => {
@@ -112,12 +112,12 @@ it('leaves hiddenBy untouched by an unrelated patch', async () => {
 
 The second test is the one that matters: it pins the class-field-initializer trap that shipped twice on the predecessor branch.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter ./apps/backend run test:unit -- devices.service.spec.ts`
 Expected: FAIL — `hidden_by` is not a known property
 
-- [ ] **Step 3: Add the enum**
+- [x] **Step 3: Add the enum**
 
 In `devices.constants.ts`, beside `DeviceHiddenFilter`:
 
@@ -130,7 +130,7 @@ export enum DeviceHiddenBy {
 }
 ```
 
-- [ ] **Step 4: Add the column**
+- [x] **Step 4: Add the column**
 
 In `devices.entity.ts`, immediately after `hidden`. **No field initializer** — the `hidden` column deliberately has none for the same reason:
 
@@ -153,7 +153,7 @@ In `devices.entity.ts`, immediately after `hidden`. **No field initializer** —
 hiddenBy: DeviceHiddenBy | null;
 ```
 
-- [ ] **Step 5: Write the migration**
+- [x] **Step 5: Write the migration**
 
 ```typescript
 import { MigrationInterface, QueryRunner } from 'typeorm';
@@ -178,18 +178,18 @@ export class AddDeviceHiddenBy1000000000008 implements MigrationInterface {
 }
 ```
 
-- [ ] **Step 6: Expose on both DTOs**
+- [x] **Step 6: Expose on both DTOs**
 
 Add `hidden` and `hidden_by` to `create-device.dto.ts` and `update-device.dto.ts`, following the shape of the existing `enabled` field in each. `hidden` is currently on neither — it was added to the entity in PR #628 but never made settable, which is why the admin has no way to hide anything.
 
-- [ ] **Step 7: Verify**
+- [x] **Step 7: Verify**
 
 Run: `pnpm --filter ./apps/backend run test:unit -- devices.service.spec.ts` → PASS
 Run: `cd apps/backend && FB_DB_PATH=$(mktemp -d) pnpm run typeorm:migration:run` → applies clean
 Run the revert/reapply cycle against that scratch database: `migration:revert` then `migration:run` again → both succeed
 Run: `pnpm run generate:openapi` → succeeds; `hidden_by` appears in the device schema
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add apps/backend/src/modules/devices apps/backend/src/migrations/1000000000008-AddDeviceHiddenBy.ts
@@ -212,7 +212,9 @@ git commit -m "feat(devices): record why a device was hidden"
 
 The guard is on **mutation**, not on state: hiding preserves the stored room so unhiding restores it, and the split flow places the parent before hiding it.
 
-- [ ] **Step 1: Write the failing test**
+> **Delivered differently, as this task's "known risk" anticipated.** A `class-validator` constraint never sees the `:id` route parameter — `ValidationArguments` exposes only `{ value, constraints, targetName, object, property }`, where `object` is the DTO built from the request body alone — so the decision cannot be made where this plan puts it. The guard lives in `DevicesService.update()` as `assertPlacementChangeAllowed()`, which is judged against the *stored* device and re-applied to the relation-free re-read just before the write. No validator file was created; the tests are in `devices.service.spec.ts` under "placement changes on a hidden device", and they cover the three cases below plus the ones the race added.
+
+- [x] **Step 1: Write the failing test**
 
 ```typescript
 it('allows a room change on a visible device', async () => {
@@ -236,29 +238,29 @@ it('allows a patch that does not touch placement', async () => {
 
 The third case is load-bearing: hiding a device is itself a PATCH, and it must not be refused by its own guard.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter ./apps/backend run test:unit -- device-placement-allowed.validator.spec.ts`
 Expected: FAIL — module not found
 
-- [ ] **Step 3: Implement, following `device-not-hidden-constraint.validator.ts`**
+- [x] **Step 3: Implement, following `device-not-hidden-constraint.validator.ts`**
 
 Declare `@ValidatorConstraint({ name: 'DevicePlacementAllowed', async: true })` — `async: true` is required because `validate()` awaits a lookup. A sibling in this directory declares `async: false` on an async `validate()`, which makes class-validator skip the await and silently pass; do not copy that.
 
 The validator resolves the device by the id on the DTO's route context, returns `true` when the incoming value is `undefined` (nothing being changed), and otherwise returns `!device.hidden`.
 
-- [ ] **Step 4: Apply to both placement fields**
+- [x] **Step 4: Apply to both placement fields**
 
 Add `@ValidateDevicePlacementAllowed()` to `room_id` and `zone_ids` on `UpdateDeviceDto`. **Repeat each field's existing decorator stack in full** — `class-validator` replaces rather than merges a redeclared property's decorators, so a partial redeclaration silently drops `@IsUUID`. Add a test asserting an invalid UUID is still rejected on both fields.
 
-- [ ] **Step 5: Register and verify**
+- [x] **Step 5: Register and verify**
 
 Add the validator to `devices.module.ts` `providers` and `exports`.
 
 Run: `pnpm --filter ./apps/backend run test:unit -- src/modules/devices` → PASS
 Run: `pnpm --filter ./apps/backend run lint:js` → clean
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/backend/src/modules/devices
@@ -282,7 +284,7 @@ git commit -m "feat(devices): refuse placement changes on a hidden device"
 
 This is what makes the wizard able to hard-block incompatible sources rather than letting the user build a control whose writes die at the source platform.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```typescript
 it('reports a read-only source as incompatible with a writable slot', () => {
@@ -317,26 +319,26 @@ it('reports a data-type mismatch as incompatible', () => {
 
 The second case pins the rule that `READ_WRITE` satisfies a `READ_ONLY` requirement — reuse `DeviceValidationService`'s existing `permissionSatisfied` rule rather than restating it.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter ./apps/backend run test:unit -- virtual-devices.service.spec.ts`
 Expected: FAIL — `reportCompatibility` is not a function
 
-- [ ] **Step 3: Implement `reportCompatibility`**
+- [x] **Step 3: Implement `reportCompatibility`**
 
 Wrap the existing `assertPermissionsCompatible` (catching its exception into a reason string) and add the data-type check the spec slot requires, resolving the slot's expectations through `getAllProperties(channelCategory)` from `schema.utils.ts`.
 
-- [ ] **Step 4: Add the endpoint**
+- [x] **Step 4: Add the endpoint**
 
 `POST` taking a target `category` plus a list of candidate `{ spec_channel, spec_property, source_property }` triples, returning a report per triple. Swagger decorators before the NestJS verb decorator; `operationId` following the module convention; document the 422 for an unknown source property.
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 Run: `pnpm --filter ./apps/backend run test:unit -- src/plugins/devices-virtual` → PASS
 Run: `pnpm run generate:openapi` → the new operation appears
 Run: `pnpm --filter ./apps/backend run lint:js` → clean
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/backend/src/plugins/devices-virtual
@@ -358,7 +360,7 @@ Closes follow-up §2.11. The gap: when the last virtual reference is deleted and
 
 Provenance is what makes reconciliation safe. Unhide a hidden device at bootstrap **only when `hiddenBy === SYSTEM`** and no virtual property references it. A `USER` hide is never touched.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```typescript
 it('unhides a system-hidden source that nothing references any more', async () => {
@@ -391,28 +393,28 @@ it('leaves a system-hidden source alone while it is still referenced', async () 
 
 The second test is the whole reason provenance exists — without it, reconciliation destroys a deliberate operator setting on every boot, which is worse than the bug being fixed.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm --filter ./apps/backend run test:unit -- virtual-index-maintenance.listener.spec.ts`
 Expected: FAIL — no reconciliation runs
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 After the bootstrap hydration completes, list hidden devices, keep those with `hiddenBy === SYSTEM` that no indexed link references, and unhide each — clearing `hiddenBy` to `null` at the same time so the row returns to a clean state.
 
 Preserve the device's `enabled` in the patch. `DevicesService.update` materialises omitted defaults, so a partial patch silently re-enables a disabled device — this exact defect was found and fixed in the auto-unhide path on the predecessor branch.
 
-- [ ] **Step 4: Keep bootstrap failure-tolerant**
+- [x] **Step 4: Keep bootstrap failure-tolerant**
 
 The reconciliation must not be able to prevent startup. Wrap it and log at error; an unmigrated database must still boot. This is the condition that turned every CI job red on the predecessor branch.
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 Run: `pnpm --filter ./apps/backend run test:unit` → PASS
 Run: `FB_DB_PATH=$(mktemp -d) pnpm run generate:openapi` → **exit 0**. This is the direct regression test for Step 4.
 Run the devices-virtual e2e several times.
 
-- [ ] **Step 6: Update the follow-ups doc and commit**
+- [x] **Step 6: Update the follow-ups doc and commit**
 
 Mark §2.11 resolved in `tasks/technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md`, noting that provenance is what made it safe.
 
@@ -437,28 +439,28 @@ git commit -m "fix(devices-virtual): reconcile system-hidden sources at bootstra
 
 Mirror `apps/admin/src/plugins/devices-third-party/` exactly — it is the reference plugin, and all admin `devices-*` plugins share this shape.
 
-- [ ] **Step 1: Regenerate types**
+- [x] **Step 1: Regenerate types**
 
 Run: `pnpm run generate:openapi`. The virtual schemas must be present in `apps/admin/src/openapi.ts` before the Zod schemas can reference them.
 
-- [ ] **Step 2: Copy and adapt the structure**
+- [x] **Step 2: Copy and adapt the structure**
 
 Rename `ThirdParty` → `Virtual` throughout. Drop third-party's `service_address`. The property schema gains `value_origin` (enum `source | local`) and `source_property` (nullable UUID), matching the backend.
 
-- [ ] **Step 3: Write the six locale files**
+- [x] **Step 3: Write the six locale files**
 
 Every key present in all six. `en-US` first, then translate — do not leave the other five as English copies.
 
-- [ ] **Step 4: Register**
+- [x] **Step 4: Register**
 
 Add the plugin beside the other `devices-*` entries in the admin registry, following how `devices-third-party` is wired.
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 Run: `pnpm --filter @fastybird/smart-panel-admin type-check` → clean
 Run: `pnpm --filter ./apps/admin run test:unit` → PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/admin/src
@@ -482,7 +484,7 @@ git commit -m "feat(admin): register the virtual devices plugin"
 
 `hidden` already exists in the response schema (added when the backend field landed); `hidden_by` is new and must be added or `vue-tsc` fails.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```typescript
 it('carries hiddenBy through the transformer', () => {
@@ -493,21 +495,21 @@ it('carries hiddenBy through the transformer', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter ./apps/admin run test:unit` (the filter flag is a no-op here)
 Expected: FAIL — `hiddenBy` is undefined
 
-- [ ] **Step 3: Add the field and the toggle**
+- [x] **Step 3: Add the field and the toggle**
 
 Zod schema, internal model and transformer gain `hidden_by` → `hiddenBy`. The list view gets a "Show hidden devices" toggle, defaulting **off**, which drives the `hidden` query parameter. Hidden rows show a "Hidden" badge, and a badge distinguishing a `system` hide from a `user` one, since only the former is auto-reversible.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `pnpm --filter @fastybird/smart-panel-admin type-check` → clean
 Run: `pnpm --filter ./apps/admin run test:unit` → PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/admin/src/modules/devices
@@ -528,7 +530,7 @@ git commit -m "feat(admin): show and filter hidden devices"
 
 The backend already refuses hidden devices in all four of these DTOs — the admin must stop offering them, so the user gets an empty option rather than a validation error.
 
-- [ ] **Step 1: Write a failing test per picker**
+- [x] **Step 1: Write a failing test per picker**
 
 ```typescript
 it('does not offer a hidden device', async () => {
@@ -540,16 +542,16 @@ it('does not offer a hidden device', async () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `pnpm --filter ./apps/admin run test:unit`
 Expected: FAIL — both devices offered
 
-- [ ] **Step 3: Filter each picker**
+- [x] **Step 3: Filter each picker**
 
 Request `hidden=false`, or filter the store selection where the picker reads from an already-loaded collection. Prefer the query parameter where the picker owns its fetch.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 Run: `pnpm --filter ./apps/admin run test:unit` → PASS
 
@@ -571,7 +573,7 @@ git commit -m "feat(admin): keep hidden devices out of the selection pickers"
 
 Step 1 of 4. Blocked categories must not be offered: six require a closed-loop channel the plugin cannot drive, and creating one would produce a device that accepts a setpoint and never acts on it.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```typescript
 it('does not offer a category that needs a controller', () => {
@@ -588,16 +590,16 @@ it('offers a wiring-only category', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `pnpm --filter ./apps/admin run test:unit`
 Expected: FAIL — component not found
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 List device categories from the generated spec, filtering the six blocked ones. Each blocked category may be shown disabled with the reason ("needs a controller — planned for a later release") rather than hidden entirely, so the omission is explicable rather than mysterious.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 Run: `pnpm --filter ./apps/admin run test:unit` → PASS
 
@@ -619,7 +621,7 @@ git commit -m "feat(admin): add the virtual device wizard category step"
 
 The heart of the wizard. For the chosen category, expand the spec into channel and property slots, required first, and let the user fill each from a device → channel → property selector.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```typescript
 it('lists every required slot for the chosen category', () => {
@@ -646,18 +648,18 @@ it('excludes the device_information slots from mapping', () => {
 
 The third case matters: `device_information` is synthesized by the backend as owned properties and must never be presented for mapping.
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `pnpm --filter ./apps/admin run test:unit`
 Expected: FAIL — component not found
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Expand slots from the spec; hard-block incompatible sources using the Task 3 endpoint; exclude hidden devices from the source picker; show live progress on which required slots are still unfilled.
 
 Offer a "take this whole channel" shortcut that expands a chosen source channel into per-property mappings — that is the split flow, and it is what makes a four-relay device tolerable to split.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 Run: `pnpm --filter ./apps/admin run test:unit` → PASS
 
@@ -679,7 +681,7 @@ git commit -m "feat(admin): add the virtual device wizard mapping step"
 
 Steps 3 and 4. Details takes name, room and zones; review summarises every mapping and creates the device.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```typescript
 it('pre-generates a name from the category and room', () => {
@@ -709,16 +711,16 @@ it('does not offer to hide when sources span devices', () => {
 
 The last two encode the split/compose distinction: hiding the parent makes sense when one device was split, and does not when several were composed.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `pnpm --filter ./apps/admin run test:unit`
 Expected: FAIL — components not found
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Details pre-generates an editable name and takes room and zones. Review lists every mapping, creates the device with its channels and properties in one POST, and — when every source resolves to a single device — offers to hide that device, sending `hidden: true` with `hidden_by: 'system'` so bootstrap reconciliation can later reverse it.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 Run: `pnpm --filter ./apps/admin run test:unit` → PASS
 
@@ -740,7 +742,7 @@ git commit -m "feat(admin): add the virtual device wizard details and review ste
 
 Wire the steps into one flow with back/next, state carried across steps, and a single creation call at the end.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```typescript
 it('creates a virtual device from a completed flow', async () => {
@@ -765,16 +767,16 @@ it('refuses to advance while a required slot is unmapped', async () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `pnpm --filter ./apps/admin run test:unit`
 Expected: FAIL
 
-- [ ] **Step 3: Implement and route**
+- [x] **Step 3: Implement and route**
 
 Register the route beside the existing device wizard route. Do **not** build on `IDeviceWizardAdapter` — see decision 5 in the header.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 Run: `pnpm --filter ./apps/admin run test:unit` → PASS
 Run: `pnpm --filter @fastybird/smart-panel-admin type-check` → clean
@@ -797,7 +799,7 @@ git commit -m "feat(admin): wire the virtual device construction wizard"
 
 Closes the last piece of the degradation story. The backend degrades an orphaned property and forces the device offline; the spec promises the admin shows a warning with a **remap** action, and nothing currently does.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```typescript
 it('flags an orphaned property and offers to remap it', () => {
@@ -817,16 +819,16 @@ it('remaps an orphaned property to a new source', async () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `pnpm --filter ./apps/admin run test:unit`
 Expected: FAIL — components not found
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 List source devices with links, flag orphaned properties, and offer a remap dialog whose source picker is filtered by the compatibility endpoint — the same hard block as the wizard, so a remap cannot create an incompatible pairing the wizard would have refused.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 Run: `pnpm --filter ./apps/admin run test:unit` → PASS
 Run: `pnpm --filter @fastybird/smart-panel-admin type-check` → clean

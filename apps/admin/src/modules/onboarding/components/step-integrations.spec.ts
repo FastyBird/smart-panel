@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
 
+import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import { configPluginsStoreKey } from '../../config/store/keys';
 import { devicesStoreKey } from '../../devices/store/keys';
 import { ExtensionKind } from '../../extensions/extensions.constants';
-import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import type { IExtension } from '../../extensions/store/extensions.store.types';
 import { extensionsStoreKey } from '../../extensions/store/keys';
 
@@ -33,7 +33,11 @@ const mockExtensionsStore = {
 const mockDevicesStore = {
 	findAll: vi.fn(() => [] as { id: string; type: string }[]),
 	remove: mockRemove,
+	// The cleanup acts on what its own request answered, not on the shared cache, so the fetch's return
+	// value is what these tests arrange. `set` seeds a row the store may not hold, which is what a
+	// superseded response leaves behind.
 	fetch: vi.fn().mockResolvedValue([]),
+	set: vi.fn(),
 };
 
 const mockConfigPluginsStore = {
@@ -111,6 +115,7 @@ describe('StepIntegrations.vue', () => {
 
 		mockExtensionsStore.data = {};
 		mockDevicesStore.findAll.mockReturnValue([]);
+		mockDevicesStore.fetch.mockResolvedValue([]);
 		mockExtensionsStore.fetch.mockResolvedValue(undefined);
 		mockExtensionsStore.update.mockResolvedValue(undefined);
 		mockConfigPluginsStore.get.mockResolvedValue(null);
@@ -212,6 +217,33 @@ describe('StepIntegrations.vue', () => {
 
 	// A fetch that fails must not abandon the cleanup: whatever the store already holds is still worth
 	// removing.
+	// The shared cache belongs to whichever `hidden` scope was requested last, so a visible-only fetch
+	// starting after this one leaves the store holding no hidden rows however complete this request's
+	// own answer was. Acting on the cache in that case leaves behind exactly the devices this exists to
+	// clean up: hidden ones, owned by a plugin that is no longer running.
+	it('removes the devices its own request answered with, even when the shared cache no longer holds them', async () => {
+		mockExtensionsStore.data = { [OTHER_PLUGIN_TYPE]: buildExtension({ type: OTHER_PLUGIN_TYPE, name: 'Other Devices' }) };
+		mockDevicesStore.findAll.mockReturnValue([]);
+		mockDevicesStore.fetch.mockResolvedValue([{ id: 'hidden-device-1', type: OTHER_DEVICE_TYPE }]);
+
+		const wrapper = mount(StepIntegrations, {
+			global: {
+				stubs: {
+					IntegrationConfigDialog: true,
+				},
+			},
+		});
+
+		await flushPromises();
+
+		const toggle = wrapper.findComponent({ name: 'ElSwitch' });
+
+		await toggle.vm.$emit('update:model-value', false);
+		await flushPromises();
+
+		expect(mockRemove).toHaveBeenCalledWith({ id: 'hidden-device-1' });
+	});
+
 	it('cleans up what it already knows about when that fetch fails', async () => {
 		mockExtensionsStore.data = { [OTHER_PLUGIN_TYPE]: buildExtension({ type: OTHER_PLUGIN_TYPE, name: 'Other Devices' }) };
 		mockDevicesStore.findAll.mockReturnValue([{ id: 'other-device-1', type: OTHER_DEVICE_TYPE }]);
@@ -239,6 +271,8 @@ describe('StepIntegrations.vue', () => {
 	it('still removes devices for a plugin whose device type equals its prefix, like the seven non-virtual plugins', async () => {
 		mockExtensionsStore.data = { [OTHER_PLUGIN_TYPE]: buildExtension({ type: OTHER_PLUGIN_TYPE, name: 'Other Devices' }) };
 		mockDevicesStore.findAll.mockReturnValue([{ id: 'other-device-1', type: OTHER_DEVICE_TYPE }]);
+		// What the cleanup acts on: the rows its own request answered with.
+		mockDevicesStore.fetch.mockResolvedValue([{ id: 'other-device-1', type: OTHER_DEVICE_TYPE }]);
 
 		const wrapper = mount(StepIntegrations, {
 			global: {

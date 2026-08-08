@@ -95,7 +95,11 @@
 									<icon icon="mdi:information-outline" />
 								</el-icon>
 								<span class="text-gray-500">
-									{{ hasConfigForm(integration.type) ? t('onboardingModule.integrations.noDevicesYet') : t('onboardingModule.integrations.noDevicesFound') }}
+									{{
+										hasConfigForm(integration.type)
+											? t('onboardingModule.integrations.noDevicesYet')
+											: t('onboardingModule.integrations.noDevicesFound')
+									}}
 								</span>
 							</template>
 							<template v-else>
@@ -205,19 +209,21 @@ import { computed, onBeforeMount, onBeforeUnmount, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElButton, ElIcon, ElScrollbar, ElSwitch, vLoading } from 'element-plus';
+
 import { Icon } from '@iconify/vue';
 
 import { injectStoresManager } from '../../../common';
-import { extensionsStoreKey } from '../../../modules/extensions/store/keys';
-import { ExtensionKind } from '../../../modules/extensions/extensions.constants';
-import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
+import { usePlugins } from '../../../modules/config/composables/usePlugins';
 import { CONFIG_MODULE_PLUGIN_TYPE } from '../../../modules/config/config.constants';
 import type { IPluginsComponents, IPluginsSchemas } from '../../../modules/config/config.types';
 import { configPluginsStoreKey } from '../../../modules/config/store/keys';
 import { useDevicesPlugins } from '../../../modules/devices/composables/useDevicesPlugins';
 import { DEVICES_MODULE_NAME } from '../../../modules/devices/devices.constants';
+import type { IDevice } from '../../../modules/devices/store/devices.store.types';
 import { devicesStoreKey } from '../../../modules/devices/store/keys';
-import { usePlugins } from '../../../modules/config/composables/usePlugins';
+import { ExtensionKind } from '../../../modules/extensions/extensions.constants';
+import { extensionsStoreKey } from '../../../modules/extensions/store/keys';
+import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../../../plugins/devices-virtual/devices-virtual.constants';
 
 import IntegrationConfigDialog from './integration-config-dialog.vue';
@@ -464,17 +470,30 @@ const removePluginDevices = async (type: string): Promise<void> => {
 	// has taken its place, and cleaning up only the visible half would leave those behind in the
 	// database owned by a plugin that is no longer running — invisible in the UI and impossible to
 	// remove from it.
+	// Read from what this request answered rather than from the shared cache. The cache belongs to
+	// whichever `hidden` scope was requested last, so a visible-only fetch starting after this one —
+	// any `useDevices()` consumer — makes this response superseded, and the store then holds no hidden
+	// rows however complete the answer was. Acting on the cache in that case leaves exactly the devices
+	// this exists to clean up.
+	let known: IDevice[] = [];
+
 	try {
-		await devicesStore.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
+		known = await devicesStore.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
 	} catch {
 		// Best-effort: what the store already holds is still worth cleaning up.
+		known = devicesStore.findAll();
 	}
 
 	const deviceTypes = devicesTypesForPlugin(type);
-	const pluginDevices = devicesStore.findAll().filter((d) => deviceTypes.includes(d.type));
+	const pluginDevices = known.filter((d) => deviceTypes.includes(d.type));
 
 	for (const device of pluginDevices) {
 		try {
+			// Seeded first, because a superseded response is not in the store and `remove()` treats a row
+			// it does not hold as already gone. The row is real — the server had just reported it — and
+			// this is the same value the cache would have been given had this request won it.
+			devicesStore.set({ id: device.id, data: device });
+
 			await devicesStore.remove({ id: device.id });
 		} catch {
 			// Best-effort removal — continue with remaining devices
@@ -528,9 +547,7 @@ const checkPluginConfig = async (type: string): Promise<void> => {
 
 		if (config) {
 			// Check if meaningful config values are set (beyond just 'type' and 'enabled')
-			const configEntries = Object.entries(config).filter(
-				([key, val]) => key !== 'type' && key !== 'enabled' && val !== null && val !== ''
-			);
+			const configEntries = Object.entries(config).filter(([key, val]) => key !== 'type' && key !== 'enabled' && val !== null && val !== '');
 
 			if (configEntries.length > 0) {
 				configuredPlugins.add(type);
