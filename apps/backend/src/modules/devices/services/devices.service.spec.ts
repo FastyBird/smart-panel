@@ -113,6 +113,9 @@ describe('DevicesService', () => {
 			findOne: jest.fn(),
 			create: jest.fn(),
 			save: jest.fn(),
+			// The device row is inserted rather than saved, so the primary key constraint decides a
+			// concurrent duplicate instead of `save()` quietly turning the create into an update.
+			insert: jest.fn().mockResolvedValue({ identifiers: [{}], generatedMaps: [], raw: [] }),
 			remove: jest.fn(),
 			delete: jest.fn(),
 			createQueryBuilder: jest.fn(() => ({
@@ -518,6 +521,38 @@ describe('DevicesService', () => {
 			expect(repository.remove).not.toHaveBeenCalled();
 		});
 
+		// The pre-check is one caller's answer: two requests carrying the same client-generated uuid can
+		// both pass it before either writes. `insert()` lets the primary key constraint decide instead, and
+		// the refusal it raises has to read as the same domain error rather than a raw database failure.
+		it('reports a concurrent duplicate id as the same refusal the check gives', async () => {
+			const takenId = uuid().toString();
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'create').mockReturnValue({ id: takenId } as MockDevice);
+			// Nothing found by the check — the other request had not committed yet — and the constraint
+			// rejecting the insert a moment later.
+			jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+			jest
+				.spyOn(repository, 'insert')
+				.mockRejectedValue(new Error('SQLITE_CONSTRAINT: UNIQUE constraint failed: devices_module_devices.id'));
+
+			await expect(
+				service.create({
+					id: takenId,
+					type: 'mock',
+					category: DeviceCategory.GENERIC,
+					name: 'Racing device',
+					mock_value: 'Random text',
+				} as never),
+			).rejects.toThrow(DevicesValidationException);
+		});
+
 		it('rolls the device back and announces the children when a nested channel fails', async () => {
 			const createDto: CreateMockDeviceDto = {
 				type: 'mock',
@@ -633,7 +668,12 @@ describe('DevicesService', () => {
 
 			expect(result).toEqual(toInstance(MockDevice, mockCratedDevice));
 			expect(repository.create).toHaveBeenCalledWith(toInstance(MockDevice, mockCrateDevice));
-			expect(repository.save).toHaveBeenCalledWith(toInstance(MockDevice, mockCratedDevice));
+			// Inserted rather than saved: `save()` looks the row up first and turns a create naming an
+			// existing id into an update, which is what let a create overwrite a device. The primary key
+			// constraint decides now, and the database does not interleave two requests the way a
+			// check-then-save does.
+			expect(repository.insert).toHaveBeenCalledWith(toInstance(MockDevice, mockCratedDevice));
+			expect(repository.save).not.toHaveBeenCalled();
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('device.id = :id', { id: mockCratedDevice.id });
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.DEVICE_CREATED,

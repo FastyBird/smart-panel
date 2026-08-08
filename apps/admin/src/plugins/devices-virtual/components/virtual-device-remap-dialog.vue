@@ -3,6 +3,9 @@
 		v-model="visible"
 		:title="dialogTitle"
 		class="max-w-[600px]"
+		:close-on-click-modal="!confirming"
+		:close-on-press-escape="!confirming"
+		:show-close="!confirming"
 		data-test-id="remap-dialog"
 	>
 		<template v-if="!property">
@@ -106,6 +109,7 @@
 
 		<template #footer>
 			<el-button
+				:disabled="confirming"
 				data-test-id="remap-cancel"
 				@click="onClose"
 			>
@@ -470,6 +474,14 @@ const confirm = async (): Promise<void> => {
 };
 
 const onClose = (): void => {
+	// Closing does not cancel `confirm()` — the PATCH carries on and would change the mapping, and emit
+	// its success, after the user had explicitly dismissed the dialog. The close paths are blocked in the
+	// template (the button, the X, Escape and the overlay), and this is the backstop for anything that
+	// reaches the handler another way: a request in flight owns the dialog until it settles.
+	if (confirming.value) {
+		return;
+	}
+
 	emit('close');
 };
 

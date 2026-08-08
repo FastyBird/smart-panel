@@ -376,6 +376,43 @@ describe('VirtualDeviceRemapDialog', () => {
 		expect(body?.body.data).toMatchObject({ invalid: 99 });
 	});
 
+	// Closing does not cancel the PATCH: it would change the mapping and emit its success after the user
+	// had explicitly dismissed the dialog. The request owns the dialog until it settles.
+	it('will not close while the remap it started is still running', async () => {
+		let releasePatch: ((value: unknown) => void) | undefined;
+
+		(backendClient.PATCH as Mock).mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					releasePatch = resolve;
+				})
+		);
+
+		const { wrapper, selectSource } = mountRemapDialog();
+
+		await selectSource(NEW_SOURCE_PROPERTY_ID);
+
+		const pending = wrapper.vm.confirm();
+
+		await nextTick();
+
+		await wrapper.get('[data-test-id="remap-cancel"]').trigger('click');
+
+		expect(wrapper.emitted('close')).toBeUndefined();
+
+		// And every other way out of a dialog — the X, Escape, clicking the overlay — which the cancel
+		// button says nothing about.
+		const dialog = wrapper.findComponent({ name: 'ElDialog' });
+
+		expect(dialog.props('showClose')).toBe(false);
+		expect(dialog.props('closeOnPressEscape')).toBe(false);
+		expect(dialog.props('closeOnClickModal')).toBe(false);
+
+		releasePatch?.(patchSuccessResponse(NEW_SOURCE_PROPERTY_ID));
+
+		await pending;
+	});
+
 	it('remaps an orphaned property to a new source', async () => {
 		const { selectSource, confirm } = mountRemapDialog();
 

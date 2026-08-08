@@ -57,6 +57,26 @@ export interface VisibleBoundedDeviceState {
 	propertiesTruncated: boolean;
 }
 
+/**
+ * Whether a driver error is the database refusing a duplicate key.
+ *
+ * Matched on the message because that is all the sqlite driver gives: TypeORM wraps it in a
+ * `QueryFailedError` whose `driverError` carries the text, and the two phrasings below are the ones
+ * SQLite uses for a primary-key collision across the versions this app runs on. The HTTP layer's
+ * `QueryFailedExceptionFilter` matches the same string for the same reason; this needs the answer
+ * *before* the exception leaves the service, to report it as the domain refusal it is.
+ */
+const isUniqueConstraintViolation = (error: unknown): boolean => {
+	if (!(error instanceof Error)) {
+		return false;
+	}
+
+	const driverMessage = (error as { driverError?: { message?: string } }).driverError?.message ?? '';
+	const message = `${error.message} ${driverMessage}`;
+
+	return message.includes('UNIQUE constraint failed') || message.includes('PRIMARY KEY must be unique');
+};
+
 @Injectable()
 export class DevicesService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'DevicesService');
@@ -453,8 +473,31 @@ export class DevicesService {
 			}
 		}
 
-		// Save the device
-		const raw = await repository.save(device);
+		// Inserted, not saved. `save()` decides between INSERT and UPDATE by looking for the row first,
+		// which is the behaviour that let a create overwrite an existing device — and the check above
+		// closes that only for a caller who is alone. Two requests carrying the same client-generated uuid
+		// can both pass it before either writes, and the second `save()` would then update the first's row
+		// with the rollback still armed behind it. `insert()` always issues an INSERT, so the primary key
+		// constraint decides, and the database does not interleave. The check above stays for the message:
+		// a caller reusing an id deliberately gets a sentence rather than a constraint violation.
+		const inserted = await repository
+			.insert(device as unknown as Parameters<Repository<TDevice>['insert']>[0])
+			.catch((error: unknown) => {
+				if (isUniqueConstraintViolation(error)) {
+					this.logger.error(`[VALIDATION FAILED] Device id=${device.id} was created concurrently by another request`);
+
+					throw new DevicesValidationException(
+						`Device with id=${device.id} already exists. Creating a device with an id already in use is not allowed.`,
+					);
+				}
+
+				throw error;
+			});
+
+		// `@PrimaryGeneratedColumn('uuid')` generates in JS, so a request that supplied no id already has
+		// one on the entity by now; the returned identifier is read anyway rather than assumed, since it is
+		// what the row was actually written under.
+		const raw = Object.assign(device, inserted.identifiers[0] ?? {}) as TDevice;
 
 		// A nested create is one request and has to succeed or fail as one thing. The device row is
 		// already saved by the time its channels and properties are built, and a type owner's

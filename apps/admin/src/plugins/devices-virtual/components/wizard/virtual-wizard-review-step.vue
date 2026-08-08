@@ -553,8 +553,12 @@ const onCreate = async (): Promise<void> => {
 
 		submitState.value = 'created';
 
-		emit('submitting', false);
-
+		// `submitting` is deliberately still set here. The device exists, but hydration, zone assignment
+		// and the source hide are all still to come, and `createdDevice` on the shell stays null until the
+		// `created` event below — so releasing the lock now makes Back and Cancel live during exactly the
+		// window where going Back and returning mounts a fresh review step, idle, ready to create a second
+		// device. The lock is released once, beside that event, when there is nothing left in flight.
+		//
 		// Warms the cache so the device list / detail views do not need a manual refresh to see the new
 		// device and its channels. Failure does not affect the wizard's own success state — the device
 		// exists on the server regardless of whether this local refresh works.
@@ -579,7 +583,10 @@ const onCreate = async (): Promise<void> => {
 
 		// Emitted last, once creation and every best-effort follow-up (zones, hide) have settled, so a
 		// shell that navigates away the instant it hears `created` does so only after any hide-failure
-		// warning is already on screen — and after the toast for it has already fired.
+		// warning is already on screen — and after the toast for it has already fired. The navigation lock
+		// is released in the same breath, for the same reason: nothing is in flight any more.
+		emit('submitting', false);
+
 		emit('created', { id: created.id, name: created.name });
 	} catch (err: unknown) {
 		logger.error('Failed to create the virtual device', err);
