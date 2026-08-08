@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -69,7 +69,19 @@ Home Assistant's **Helpers** concept allows users to create virtual entities fro
 |---|------|-------|-------------|
 | 1 | [FEATURE-DEVICE-VIRTUAL-PLUGIN](../../docs/superpowers/specs/2026-07-31-virtual-devices-design.md) | backend, admin, panel | Build a device from properties of other devices — splitting one physical device into several, or composing one logical device from several |
 
-`FEATURE-DEVICE-SPLITTER-PLUGIN` and `FEATURE-DEVICE-COMPOSITE-PLUGIN` are superseded (see their headers) and collapsed into this single row. The backend `devices-virtual` plugin, the `hidden` flag foundation, and panel registration are implemented; the admin creation wizard and `hidden`-flag filtering in the admin device pickers are not yet built.
+`FEATURE-DEVICE-SPLITTER-PLUGIN` and `FEATURE-DEVICE-COMPOSITE-PLUGIN` are superseded (see their headers) and collapsed into this single row. All of it is delivered: the `hidden` flag foundation and the backend `devices-virtual` plugin (PR #628), then the admin plugin trio, the creation wizard, the detail page with its remap flow, `hidden` filtering across the space, tile, data-source and scene pickers, and the panel's handling of a source that is hidden underneath it (PR #635).
+
+## 4a. Delivered, and what was left out
+
+Delivered against §3: the `hidden` flag with filtering in every selection UI, the `devices-virtual` plugin, the admin creation wizard, panel rendering through the existing category-based pages, and spec validation against the chosen category.
+
+Left out deliberately, and still open:
+
+- **The six closed-loop categories** stay blocked, as [the design's v1 boundary](../../docs/superpowers/specs/2026-07-31-virtual-devices-design.md#v1-category-boundary) sets out. Unblocking them needs a control loop with hysteresis and minimum cycle protection, plus user-settable setpoints as owned properties — the schema already accommodates the latter.
+- **Per-channel energy attribution**, so a split device's consumption lands in its own room. Pre-existing limitation, not introduced here.
+- Everything in §3's out-of-scope list: auto-detection of splittable devices, panel-side creation, new device specs, and extension-SDK support for third-party virtual devices.
+
+The engineering backlog this work accumulated lives in [`TECH-VIRTUAL-DEVICES-FOLLOWUPS`](../technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md), which stays open. Nothing there blocks the feature; the ones worth reading first are §3.3 (the TypeORM shared-`QueryRunner` TOCTOU, high but pre-existing), §3.7 and §3a.12 (the security and Buddy aggregates counting a source and its virtual replacement twice), and §3a.14 (tiles, data sources and scenes never reconciling a reference to a device that vanishes).
 
 ## 5. Technical constraints
 

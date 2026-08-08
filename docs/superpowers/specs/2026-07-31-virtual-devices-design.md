@@ -3,7 +3,7 @@
 **Status:** Approved
 **Date:** 2026-07-31
 **Author:** Adam Kadlec
-**Related:** `tasks/epics/EPIC-VIRTUAL-DEVICES.md` (supersedes its key architectural decisions), `tasks/features/FEATURE-DEVICE-SPLITTER-PLUGIN.md`, `tasks/features/FEATURE-DEVICE-COMPOSITE-PLUGIN.md`
+**Related:** `tasks/archive/EPIC-VIRTUAL-DEVICES.md` (supersedes its key architectural decisions), `tasks/features/FEATURE-DEVICE-SPLITTER-PLUGIN.md`, `tasks/features/FEATURE-DEVICE-COMPOSITE-PLUGIN.md`
 
 ## Problem
 
