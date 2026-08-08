@@ -117,7 +117,13 @@ the task should pick deliberately:
 
   The way out is to stop having two rows. Put the claim **on the projection itself**: a nullable
   column carrying the claimed source property id, set only when this projection's destination slot is
-  energy-bearing and the meter is unclaimed, with a unique index over it. Energy-bearing is decided at
+  energy-bearing and the meter is unclaimed, with a unique index over it. It must be a **foreign key
+  to the source property with `ON DELETE SET NULL`**, exactly as `sourcePropertyId` is, so the two
+  clear together in the one database operation that orphans the projection — no hook runs there. A
+  claim left dangling on an orphan would otherwise hold the unique slot against a legitimate
+  projection, and worse, a client-supplied id recreating that property would silently hand an
+  unrelated meter to the orphan. The invariant is simply that the column is either null or equal to
+  `sourcePropertyId`, which is also what makes it cheap to check. Energy-bearing is decided at
   write time, where the destination channel is in hand, so the index never has to reach through a join
   — which is what made a partial index on `sourcePropertyId` unworkable. One insert carries both
   facts, so there is nothing to keep in step, no transaction spanning the hooks, and the constraint
@@ -221,6 +227,9 @@ fix must not introduce a lookup that assumes otherwise.
       tested by driving the delete and the create concurrently, not in sequence
 - [ ] A refused claim leaves nothing behind: no projection without its claim, no claim without its
       projection, asserted after the rejected request rather than only on the winner
+- [ ] Deleting a claimed source property clears the claim with the link — the orphan holds nothing,
+      another projection of a recreated property can claim it, and the migration covers rows that
+      were already orphaned
 - [ ] An orphaned projection is attributed to the virtual device that holds it — there is no source
       left to fall back to. `VirtualValueSourceService.resolve()` answers `null` once
       `sourcePropertyId` is null, the registry then resolves the property to its own id, and
