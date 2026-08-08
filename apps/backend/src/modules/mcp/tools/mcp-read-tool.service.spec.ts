@@ -220,6 +220,13 @@ describe('McpReadToolService', () => {
 
 			await jest.advanceTimersByTimeAsync(MCP_TOOL_CALL_TIMEOUT_MS);
 			await rejection;
+			expect(auditService.recordToolResult).toHaveBeenCalledWith(
+				expect.objectContaining({
+					tool: 'resources/read',
+					capability: McpCapability.READ,
+					outcome: 'timed_out',
+				}),
+			);
 		} finally {
 			jest.useRealTimers();
 		}
@@ -241,7 +248,10 @@ describe('McpReadToolService', () => {
 		expect(auditService.recordPolicyDenial).toHaveBeenCalledWith(
 			{ requestId: '17', clientId: 'client-id' },
 			'capability_denied',
-			{ capability: McpCapability.READ },
+			{ capability: McpCapability.READ, tool: 'resources/read' },
+		);
+		expect(auditService.recordToolResult).toHaveBeenCalledWith(
+			expect.objectContaining({ tool: 'resources/read', outcome: 'denied' }),
 		);
 	});
 
@@ -260,6 +270,9 @@ describe('McpReadToolService', () => {
 		]);
 		expect(firstPage?.nextCursor).toBe('51');
 		expect(contextService.listSpaces).toHaveBeenLastCalledWith(undefined);
+		expect(auditService.recordToolResult).toHaveBeenCalledWith(
+			expect.objectContaining({ tool: 'resources/list', outcome: 'completed' }),
+		);
 
 		const nextPage = await resourceListCallback?.({ params: { cursor: '50' } }, requestContext());
 		expect(nextPage?.resources.map((resource) => resource.uri)).toEqual(['smart-panel://spaces/space-51/snapshot']);

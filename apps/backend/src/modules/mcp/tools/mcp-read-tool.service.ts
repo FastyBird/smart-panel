@@ -219,7 +219,7 @@ export class McpReadToolService {
 		// read and template handlers remain SDK-managed while resource discovery can be paginated correctly.
 		server.server.setRequestHandler('resources/list', async (request, ctx) =>
 			this.runResourceOperation(
-				'resource listing',
+				'resources/list',
 				async () => {
 					await this.authorizeRead(ctx);
 					const cursor = request.params?.cursor;
@@ -353,7 +353,7 @@ export class McpReadToolService {
 		callback: (policy: Awaited<ReturnType<McpPolicyService['authorizeClient']>>, endpoint?: string) => Promise<unknown>,
 	): Promise<{ contents: Array<{ uri: string; mimeType: string; text: string }> }> {
 		return this.runResourceOperation(
-			`resource ${uri.href}`,
+			'resources/read',
 			async () => {
 				const policy = await this.authorizeRead(ctx);
 				const data = await callback(policy, this.getEndpoint(ctx.http?.authInfo));
@@ -397,24 +397,43 @@ export class McpReadToolService {
 		return withTimeout(Promise.resolve().then(callback), MCP_TOOL_CALL_TIMEOUT_MS, `MCP ${label}`);
 	}
 
-	private async runResourceOperation<T>(label: string, callback: () => Promise<T>, ctx: ServerContext): Promise<T> {
+	private async runResourceOperation<T>(operation: string, callback: () => Promise<T>, ctx: ServerContext): Promise<T> {
+		const identity = {
+			requestId: String(ctx.mcpReq.id),
+			...(ctx.http?.authInfo?.clientId ? { clientId: ctx.http.authInfo.clientId } : {}),
+		};
+		const startedAt = Date.now();
+
 		try {
-			return await this.withDeadline(label, callback);
+			const result = await this.withDeadline(operation, callback);
+
+			this.auditService.recordToolResult({
+				...identity,
+				tool: operation,
+				capability: McpCapability.READ,
+				durationMs: Date.now() - startedAt,
+				outcome: McpAuditOutcome.COMPLETED,
+			});
+
+			return result;
 		} catch (error) {
 			const denialReason = this.getPolicyDenialReason(error);
+			const outcome = this.getAuditOutcome(error);
 
 			if (denialReason) {
-				const authInfo = ctx.http?.authInfo;
-
-				this.auditService.recordPolicyDenial(
-					{
-						requestId: String(ctx.mcpReq.id),
-						...(authInfo?.clientId ? { clientId: authInfo.clientId } : {}),
-					},
-					denialReason,
-					{ capability: McpCapability.READ },
-				);
+				this.auditService.recordPolicyDenial(identity, denialReason, {
+					capability: McpCapability.READ,
+					tool: operation,
+				});
 			}
+
+			this.auditService.recordToolResult({
+				...identity,
+				tool: operation,
+				capability: McpCapability.READ,
+				durationMs: Date.now() - startedAt,
+				outcome,
+			});
 
 			throw new Error(this.sanitizeError(error).message, { cause: error });
 		}

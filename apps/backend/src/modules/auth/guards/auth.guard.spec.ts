@@ -633,6 +633,26 @@ describe('AuthGuard', () => {
 			await expect(guard.canActivate(context)).rejects.toThrow(
 				'MCP client is disabled or the credential has been rotated',
 			);
+			expect(mcpAuditService.recordAuthenticationFailure).toHaveBeenCalledWith(
+				{ requestId: 'request-1' },
+				'invalid_credential',
+			);
+		});
+
+		it('should distinguish an MCP authentication backend failure from an invalid credential', async () => {
+			const context = createMockExecutionContext({ authorization: `Bearer ${mockMcpToken}` });
+			markMcpEndpoint();
+			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({
+				sub: mockMcpClientId,
+				type: TokenOwnerType.MCP,
+			});
+			jest.spyOn(tokensService, 'findOneByHashedToken').mockRejectedValue(new Error('database unavailable'));
+
+			await expect(guard.canActivate(context)).rejects.toThrow('database unavailable');
+			expect(mcpAuditService.recordAuthenticationFailure).toHaveBeenCalledWith(
+				{ requestId: 'request-1' },
+				'authentication_error',
+			);
 		});
 	});
 

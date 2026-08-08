@@ -115,7 +115,7 @@ export class AuthGuard implements CanActivate {
 			if (isMcpEndpoint) {
 				this.mcpAuditService.recordAuthenticationFailure(
 					{ requestId: this.mcpAuditService.getRequestId(request.body) },
-					'invalid_credential',
+					error instanceof UnauthorizedException ? 'invalid_credential' : 'authentication_error',
 				);
 			}
 

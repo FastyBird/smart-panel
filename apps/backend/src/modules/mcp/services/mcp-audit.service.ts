@@ -14,6 +14,7 @@ export enum McpAuditOutcome {
 export type McpAuditDenialReason =
 	| 'authentication_required'
 	| 'invalid_credential'
+	| 'authentication_error'
 	| 'endpoint_disabled'
 	| 'origin_denied'
 	| 'policy_changed'
