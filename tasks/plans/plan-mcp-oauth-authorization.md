@@ -46,7 +46,7 @@ phase; it does not authorize an improvised OAuth implementation.
 - [ ] Resolve the backend CommonJS versus dependency ESM boundary in production build and Jest.
 - [ ] Provide a minimal TypeORM-backed adapter; reject in-memory persistence outside tests.
 - [ ] Prove authorization code plus PKCE `S256`, RFC 8252 redirect matching, `resource`, response `iss`, opaque tokens,
-      rotation, reuse detection, and revocation.
+      atomic refresh rotation under concurrent reuse, family revocation, and token revocation.
 - [ ] Snapshot metadata, explicitly advertise only public-client authentication method `none`, and verify disabled
       dependency features are not advertised.
 - [ ] Prove Smart Panel can own the authenticated login/consent interaction without exposing passwords to the OAuth
@@ -69,8 +69,11 @@ amend ADR 0002.
 - [ ] Reject forwarded headers unless a separately explicit trusted-proxy policy validates the immediate proxy.
 - [ ] Add a distinct OAuth MCP principal/token type and prove rejection by REST, WebSocket, display, user, personal, and
       static-MCP validation paths.
-- [ ] Add unit tests for access-token expiry capped at grant expiry, family rotation/reuse, installation binding,
-      public URL changes, and log redaction.
+- [ ] Implement refresh rotation as a TypeORM compare-and-consume transaction with a conditional consumed-state update
+      and unique predecessor/successor constraint: at most one concurrent request creates a successor, and every loser
+      revokes the whole family including that successor.
+- [ ] Add unit tests for access-token expiry capped at grant expiry, sequential and barrier-synchronized concurrent
+      family rotation/reuse, installation binding, public URL changes, and log redaction.
 
 ## Phase 3 — Authorization, consent, and token endpoints
 
@@ -113,12 +116,17 @@ amend ADR 0002.
 - [ ] Add Admin client/grant/token management views and revoke confirmations.
 - [ ] Bind OAuth subscriptions to client, grant, access-token, optional refresh-family IDs, and an authorization
       deadline equal to the earlier of access-token or grant expiry; also record their effective scopes and the
-      module/client/grant authorization inputs that produced them.
+      generations of the module/client/grant authorization inputs that produced them.
+- [ ] Serialize subscription registration and invalidation through one authoritative generation gate: atomically
+      recheck the OAuth-enabled and artifact/authorization-input generations plus live scopes while registering, and
+      increment or close the applicable gate before an invalidating mutation enumerates streams. A racing open must
+      either register first and be closed or observe the new generation and fail/revalidate.
 - [ ] Close only the matching subscriptions before client, grant, access-token, or refresh-family revocation reports
       success, and automatically close each stream at its authorization deadline.
 - [ ] Route module-ceiling, registered-client-maximum, and approved-grant scope reductions through an awaited
-      authoritative mutation path that closes every OAuth subscription that loses `mcp:read` before reporting success;
-      do not rely on the existing asynchronous MCP configuration notification listener.
+      authoritative mutation path that closes every OAuth subscription whose effective scope set contracts before
+      reporting success, including removal of `mcp:write` or `mcp:trigger` while `mcp:read` remains; do not rely on the
+      existing asynchronous MCP configuration notification listener.
 - [ ] Replace fire-and-forget approver invalidation with an awaited lifecycle path for `UsersModule.User.Updated` and
       `UsersModule.User.Deleted`: when a grant approver is deleted or no longer has owner/admin role, revoke every grant
       and token artifact they approved and close matching subscriptions before the user mutation returns success;
@@ -132,8 +140,9 @@ amend ADR 0002.
 - [ ] Regenerate OpenAPI/admin types through the normal generators.
 - [ ] Add the user-facing OAuth enable switch only after startup verifies authorization-deadline timers, targeted
       artifact and live-scope-reduction subscription aborts, awaited approver lifecycle invalidation,
-      public-identity/server-secret rotation, OAuth switch-off invalidation, revoke controls, audit hooks, and rate
-      limits are registered; fail closed and leave every OAuth route unmounted if any readiness check fails.
+      serialized subscription-open/invalidation gates, public-identity/server-secret rotation, OAuth switch-off
+      invalidation, revoke controls, audit hooks, and rate limits are registered; fail closed and leave every OAuth
+      route unmounted if any readiness check fails.
 - [ ] On enable, mount protected-resource metadata, authorization-server metadata, authorization/token/revocation
       endpoints, OAuth challenges, and OAuth MCP bearer validation as one surface; never expose a partial subset.
 - [ ] On switch-off, atomically close the shared OAuth runtime gate before handlers accept more traffic, revoke all
@@ -150,7 +159,11 @@ amend ADR 0002.
       issuer/resource/audience, cross-client isolation, and redaction; cover open-stream abort on token expiry and
       grant expiry, client/grant/access-token/refresh-family revocation, awaited approver demotion/deletion
       invalidation, global server-secret rotation, and each module/client/grant scope reduction that removes a stream's
-      effective `mcp:read` capability.
+      effective read, write, or trigger scope.
+- [ ] E2E: pause a listen request after authentication, complete a matching artifact revocation or scope reduction,
+      then resume registration and prove the stale request cannot open after invalidation success.
+- [ ] E2E: submit the same refresh token concurrently behind a synchronization barrier; prove at most one successor is
+      stored, the reuse loser revokes the entire family including that successor, and no fork remains usable.
 - [ ] E2E: switch OAuth off with active OAuth and static subscriptions; prove new OAuth traffic is rejected and OAuth
       streams and artifacts are invalidated before success while static streams remain open, then prove re-enable
       reruns readiness and old OAuth artifacts remain unusable.

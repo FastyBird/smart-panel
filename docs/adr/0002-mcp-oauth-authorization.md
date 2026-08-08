@@ -113,7 +113,8 @@ The initial token policy is:
 - opaque, high-entropy access tokens stored only as hashes, with a maximum lifetime of 10 minutes and an expiry no
   later than their grant expiry;
 - opaque refresh tokens stored only as hashes, issued only when `offline_access` is explicitly requested and consented;
-- refresh rotation on every use with reuse detection that revokes the entire token family;
+- refresh rotation on every use through an atomic compare-and-consume transaction, with a unique predecessor/successor
+  constraint and reuse detection that revokes the entire token family;
 - a maximum refresh-family lifetime of 30 days;
 - a maximum grant lifetime of 90 days, with no “never expires” option; and
 - immediate database-backed revocation checks for every MCP request.
@@ -136,10 +137,10 @@ module capability ceiling
 
 The intersection is recomputed for every request and immediately before tool execution. The grant check also confirms
 that its approving user still exists with owner/admin role. An OAuth subscription records the effective scope set and
-the identities or versions of every input that produced it. An awaited invalidation path closes an affected stream
-before a module capability ceiling, registered-client maximum, or approved-grant scope reduction reports success; a
-configuration notification alone is not sufficient. Scope reduction or approver demotion never waits for access-token
-expiry.
+the generation of every input that produced it. An awaited invalidation path closes an affected stream on any effective
+scope contraction before a module capability ceiling, registered-client maximum, or approved-grant scope reduction
+reports success; a configuration notification alone is not sufficient. Scope reduction or approver demotion never
+waits for access-token expiry.
 
 ### 6. Login, consent, and recovery
 
@@ -172,16 +173,26 @@ global revocation policy; server-secret rotation revokes every OAuth artifact an
 Owners and administrators can list clients, grants, active access tokens, and refresh-token families without seeing raw
 secrets. They can disable a client, revoke a grant, revoke a token family, or revoke one access token. Every OAuth
 subscription is bound to its client, grant, access-token ID, refresh-family ID when present, effective scopes, the
-module/client/grant authorization inputs that produced those scopes, and an authorization deadline equal to the earlier
-of its access-token expiry or grant expiry.
+generation of the module/client/grant authorization inputs that produced those scopes, and an authorization deadline
+equal to the earlier of its access-token expiry or grant expiry.
 
 Revoking an artifact aborts exactly the matching active subscriptions before the administrative mutation reports
 success. Reducing the module ceiling, registered-client maximum, or approved-grant scopes uses the same awaited path to
-abort every OAuth subscription whose required `mcp:read` capability is no longer effective. This path is invoked by the
-authoritative mutation, not only by the existing asynchronous MCP configuration listener. The subscription registry
-also schedules an abort at the authorization deadline, because a long-lived stream does not re-run per-request
+abort every OAuth subscription whose effective scope set contracts, including removal of `mcp:write` or `mcp:trigger`
+while `mcp:read` remains. Closing is required because the MCP server and its advertised tools are shaped and cached at
+stream creation; clients may open a newly authorized stream if they still retain `mcp:read`. This path is invoked by
+the authoritative mutation, not only by the existing asynchronous MCP configuration listener. The subscription
+registry also schedules an abort at the authorization deadline, because a long-lived stream does not re-run per-request
 authentication while it is open. Disabling the MCP module closes all MCP subscriptions and denies both authorization
 and resource requests.
+
+Subscription opening and invalidation share one authoritative serialization boundary. Authentication captures the
+OAuth-enabled generation and the client, grant, token, refresh-family, and authorization-input generations.
+Registration atomically rechecks those generations and the live effective scopes while adding the stream. An
+invalidating mutation closes the applicable gate or increments the applicable generation within the same boundary
+before enumerating and closing streams. Therefore an open either registers first and is included in invalidation, or
+observes the new generation and fails/revalidates; an in-flight stale request cannot register after invalidation reports
+success.
 
 Approver invalidation must use an awaited lifecycle path, such as a directly orchestrated service or propagated
 `emitAsync`; the existing fire-and-forget `eventEmitter.emit` calls are not sufficient. For
@@ -200,8 +211,9 @@ OAuth remains disabled by default. Adding persistence, consent, token, discovery
 OAuth route reachable: implementation phases keep the surface behind an internal test-only gate. The user-facing enable
 switch is added only after the application can verify that access-token/grant authorization-deadline timers, targeted
 client/grant/token/family and live-scope-reduction subscription aborts, awaited approver update/delete invalidation,
-public-identity/server-secret rotation invalidation, OAuth switch-off invalidation, owner/admin revoke controls, audit
-hooks, and endpoint rate limits are all registered. A failed readiness check leaves protected-resource metadata,
+serialized subscription-open/invalidation gates, public-identity/server-secret rotation invalidation, OAuth switch-off
+invalidation, owner/admin revoke controls, audit hooks, and endpoint rate limits are all registered. A failed readiness
+check leaves protected-resource metadata,
 authorization-server metadata, authorization/token/revocation endpoints, OAuth challenges, and OAuth MCP bearer
 validation unmounted together. The initial static bearer behavior remains unchanged during that failure.
 
@@ -237,11 +249,13 @@ reissue or downgrade an OAuth token into a static credential.
 | Token replay at another service or installation | Exact RFC 8707 resource/audience plus issuer, installation, client, and token-type validation |
 | Stolen access token | Ten-minute maximum lifetime, hashed persistence, TLS, log redaction, immediate revocation check |
 | Stolen/replayed refresh token | Rotation, family reuse detection, 30-day absolute lifetime, hashed persistence |
+| Concurrent refresh-token replay forks a family | Atomically compare-and-consume the token, allow at most one successor row, and make every losing reuse attempt revoke the whole family including the successor |
 | Scope escalation or stale permission | Four-way live intersection and recheck immediately before tool execution |
 | A live scope input shrinks while an OAuth stream is open | Bind the stream to its module/client/grant inputs and abort it through the awaited authoritative mutation path before the reduction reports success |
 | Malicious dynamic/CIMD registration | No DCR/CIMD in the initial profile; later enablement requires SSRF, quota, and redirect-policy review |
 | Proxy/header spoofing and DNS rebinding | Explicit public URL, trusted Host/Origin policy, ignore forwarded headers unless proxy trust is configured |
 | Client, grant, token, or refresh-family revocation with an open stream | Bind subscriptions to every authorization artifact and abort targeted streams before the mutation reports success |
+| A validated listen request races artifact invalidation | Atomically recheck authorization generations while registering under the same serialization boundary used to gate and close streams |
 | An access token or its grant expires while a stream is open | Cap token expiry at grant expiry and abort the subscription at the earlier authorization deadline |
 | A grant approver is demoted or deleted | Use an awaited user-lifecycle path and do not report the user mutation successful until every affected grant, token artifact, and subscription is revoked |
 | OAuth server secret is rotated after compromise | Revoke all OAuth artifacts and close all OAuth subscriptions as one global invalidation operation |

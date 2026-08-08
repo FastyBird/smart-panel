@@ -67,8 +67,12 @@ upgrade consequences.
       impact of write/trigger scopes.
 - [ ] Owners/admins can list and revoke OAuth clients, grants, access tokens, and refresh tokens; revocation closes the
       affected MCP subscriptions immediately.
-- [ ] Reducing the live module ceiling, registered-client maximum, or approved-grant scopes closes OAuth subscriptions
-      that lose `mcp:read` before the mutation reports success.
+- [ ] Reducing the live module ceiling, registered-client maximum, or approved-grant scopes closes every OAuth
+      subscription whose effective read/write/trigger scope set contracts before the mutation reports success.
+- [ ] Subscription registration is serialized with artifact and policy invalidation so a stale in-flight listen
+      request cannot open after invalidation reports success.
+- [ ] Refresh tokens are atomically compare-and-consumed; concurrent replay creates at most one successor and revokes
+      the entire family without leaving a usable fork.
 - [ ] Switching OAuth off rejects all OAuth traffic, revokes OAuth artifacts, and closes OAuth subscriptions before
       success while leaving static MCP subscriptions active; re-enable does not reactivate old OAuth artifacts.
 - [ ] Dynamic client registration is implemented only if required by supported target hosts and protected by an
@@ -78,8 +82,8 @@ upgrade consequences.
 - [ ] Static bearer clients continue to work for trusted LAN/VPN deployments until a separately documented removal or
       migration policy is approved.
 - [ ] E2E tests cover discovery, consent, PKCE success/failure, redirect validation, scope reduction, expiry, refresh,
-      revocation, OAuth switch-off/re-enable, wrong issuer/resource/audience, cross-client isolation, stream closure,
-      and log redaction.
+      concurrent refresh replay, revocation/listen registration races, OAuth switch-off/re-enable, wrong
+      issuer/resource/audience, cross-client isolation, stream closure, and log redaction.
 - [ ] At least two supported OAuth-capable MCP hosts complete discovery, authorization, tool listing, tool execution,
       refresh, and revocation smoke tests.
 - [ ] Public deployment documentation requires HTTPS and provides reverse-proxy, key rotation, backup, incident

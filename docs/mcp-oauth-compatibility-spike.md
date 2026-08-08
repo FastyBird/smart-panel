@@ -109,11 +109,14 @@ authorization server and therefore do not remove the need for the component spik
 - RFC 8414 discovery for an issuer containing a path component.
 - `resource` propagation at authorization, code exchange, and refresh.
 - `iss` presence in both successful and error authorization responses.
-- Refresh-token rotation and reuse-family revocation.
+- Transactional refresh-token compare-and-consume under concurrent replay, with at most one successor and whole-family
+  revocation after a losing reuse attempt.
 - Immediate denial and subscription closure after client, grant, access-token, or refresh-family revocation and at
   the earlier of access-token or grant expiry.
-- Awaited OAuth stream closure when the module ceiling, registered-client maximum, or approved-grant scopes remove its
-  effective `mcp:read` capability.
+- Awaited OAuth stream closure on every effective-scope contraction from the module ceiling, registered-client maximum,
+  or approved grant, including write/trigger removal while read remains.
+- Atomic subscription registration versus revocation/scope reduction, so a stale in-flight listen request cannot open
+  after invalidation succeeds.
 - Awaited grant, token, and subscription invalidation when the approving owner/admin is demoted or deleted.
 - Global artifact revocation and stream closure on OAuth server-secret rotation.
 - Fail-closed OAuth switch-off that rejects new OAuth traffic, revokes OAuth artifacts, and closes OAuth streams while
