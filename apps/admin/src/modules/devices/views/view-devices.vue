@@ -102,6 +102,38 @@
 		</template>
 	</view-header>
 
+	<!--
+		The wizards, for viewports below `md`. `ViewHeader` — which carries them on larger screens — is
+		gated on `isMDDevice` and renders nothing here, and the app bar's single teleported right-hand
+		slot is already the Add button: mounting a second button into it hides the first. Without this
+		row there is no way to reach either wizard on a small screen short of typing its URL, and the
+		virtual one has no other entry point at all, since the plugin deliberately registers no
+		`deviceWizardAdapter` and so never appears in the discovery dialog.
+	-->
+	<div
+		v-if="!isMDDevice && isDevicesListRoute && !isWizardRoute && (enabledWizardOptions.length > 0 || virtualWizardEnabled)"
+		class="flex gap-2 lt-sm:mx-1 sm:mx-2 mt-2"
+	>
+		<el-button
+			v-if="enabledWizardOptions.length > 0"
+			class="flex-1"
+			data-test-id="wizard-small"
+			@click="onWizard"
+		>
+			<el-icon class="mr-1"><icon icon="mdi:wizard-hat" /></el-icon>
+			{{ t('devicesModule.buttons.wizard.title') }}
+		</el-button>
+		<el-button
+			v-if="virtualWizardEnabled"
+			class="flex-1"
+			data-test-id="virtual-device-wizard-small"
+			@click="onVirtualWizard"
+		>
+			<el-icon class="mr-1"><icon icon="mdi:call-split" /></el-icon>
+			{{ t('devicesVirtualPlugin.wizard.title') }}
+		</el-button>
+	</div>
+
 	<div
 		v-if="(isDevicesListRoute || isLGDevice) && !isWizardRoute"
 		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"

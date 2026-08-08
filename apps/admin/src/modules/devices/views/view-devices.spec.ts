@@ -21,6 +21,8 @@ const mocks = vi.hoisted(() => ({
 	// Read once per `useBreakpoints()` call (at mount time), same as `virtualWizardEnabled` above — not
 	// reactive within a test, so set it before `mountView()`, not after.
 	isLGDevice: false,
+	// Read once per `useBreakpoints()` call, like `isLGDevice` above: set it before `mountView()`.
+	isMDDevice: true,
 	// Populated by the `useDevicesDataSource` mock below (a real `ref()` cannot live in this
 	// hoisted object: `vi.hoisted` runs before the `vue` import binds, so `ref` is not callable
 	// here yet). Tests grab this after mounting to flip the toggle through real Vue reactivity.
@@ -74,7 +76,7 @@ vi.mock('../../../common', async () => {
 		ViewError: StubComponent,
 		ViewHeader: StubComponent,
 		useBreakpoints: () => ({
-			isMDDevice: vueRef(true),
+			isMDDevice: vueRef(mocks.isMDDevice),
 			isLGDevice: vueRef(mocks.isLGDevice),
 		}),
 		useFlashMessage: () => ({
@@ -196,6 +198,7 @@ describe('ViewDevices', () => {
 		mocks.wizardOptions = [];
 		mocks.virtualWizardEnabled = true;
 		mocks.isLGDevice = false;
+		mocks.isMDDevice = true;
 		mocks.route = {
 			path: '/devices',
 			name: 'devices',
@@ -298,6 +301,35 @@ describe('ViewDevices', () => {
 
 		expect(wrapper.find('router-view-stub').exists()).toBe(true);
 		expect(wrapper.findComponent(ListDevices).exists()).toBe(false);
+	});
+
+	// `ViewHeader` is gated on `isMDDevice`, so on a small screen it renders nothing — and the app bar's
+	// single teleported right-hand slot is already the Add button. Without a row of its own there is no
+	// way to reach the virtual wizard on a phone short of typing its URL, and unlike the discovery
+	// wizard it has no dialog to appear in: the plugin deliberately registers no `deviceWizardAdapter`.
+	it('offers the virtual device wizard on small screens, where the header is not rendered', async () => {
+		mocks.isMDDevice = false;
+
+		const wrapper = mountView();
+
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="virtual-device-wizard-small"]').exists()).toBe(true);
+
+		await wrapper.find('[data-test-id="virtual-device-wizard-small"]').trigger('click');
+
+		expect(mocks.routerPush).toHaveBeenCalledWith(expect.objectContaining({ name: 'devices_virtual-wizard' }));
+	});
+
+	it('hides the small-screen virtual wizard launcher when the plugin is disabled', async () => {
+		mocks.isMDDevice = false;
+		mocks.virtualWizardEnabled = false;
+
+		const wrapper = mountView();
+
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="virtual-device-wizard-small"]').exists()).toBe(false);
 	});
 
 	it('hides the virtual device wizard launcher when the plugin is disabled', () => {
