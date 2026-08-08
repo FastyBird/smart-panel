@@ -16,11 +16,19 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ChannelCategory, ConnectionState, DeviceCategory, EventType } from '../devices.constants';
+import {
+	ChannelCategory,
+	ConnectionState,
+	DataTypeType,
+	DeviceCategory,
+	EventType,
+	PermissionType,
+	PropertyCategory,
+} from '../devices.constants';
 import { DevicesException, DevicesValidationException } from '../devices.exceptions';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { UpdateChannelDto } from '../dto/update-channel.dto';
-import { ChannelEntity } from '../entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
 import { DeviceExistsConstraintValidator } from '../validators/device-exists-constraint.validator';
 
 import { ChannelsTypeMapperService } from './channels-type-mapper.service';
@@ -63,6 +71,7 @@ describe('ChannelsService', () => {
 	let mapper: ChannelsTypeMapperService;
 	let eventEmitter: EventEmitter2;
 	let dataSource: DataSource;
+	let channelsPropertiesService: ChannelsPropertiesService;
 
 	const mockDevice = {
 		id: uuid().toString(),
@@ -154,6 +163,11 @@ describe('ChannelsService', () => {
 					provide: ChannelsPropertiesService,
 					useValue: {
 						create: jest.fn(() => {}),
+						// Reached by the rollback below: the properties created before a nested failure are
+						// read back and removed one by one, which is what answers the creations they already
+						// announced.
+						findAll: jest.fn().mockResolvedValue([]),
+						remove: jest.fn().mockResolvedValue(undefined),
 					},
 				},
 				{
@@ -193,6 +207,7 @@ describe('ChannelsService', () => {
 		mapper = module.get<ChannelsTypeMapperService>(ChannelsTypeMapperService);
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 		dataSource = module.get<DataSource>(DataSource);
+		channelsPropertiesService = module.get<ChannelsPropertiesService>(ChannelsPropertiesService);
 	});
 
 	afterEach(() => {
@@ -374,6 +389,67 @@ describe('ChannelsService', () => {
 					mock_value: 'Some value',
 				} as CreateMockChannelDto),
 			).rejects.toThrow(DevicesValidationException);
+		});
+
+		// One request, one outcome. A property rejected halfway used to leave the channel and the
+		// properties before it behind, with the caller told the whole thing failed — a retry then walked
+		// into its own leftovers, and a client that had heard the earlier properties announce themselves
+		// held children of a channel it was never told about, since CHANNEL_CREATED is emitted only after
+		// a creation completes.
+		it('rolls the channel back when a nested property fails', async () => {
+			const channelId = uuid().toString();
+			const deviceId = uuid().toString();
+			const built = { id: channelId, type: 'mock' } as MockChannel;
+			const alreadyCreated = { id: 'created-property' } as ChannelPropertyEntity;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannel,
+				createDto: CreateMockChannelDto,
+				updateDto: UpdateMockChannelDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'create').mockReturnValue(built);
+			// Null first: that read is the client-supplied-id collision check, which must find nothing.
+			// The next one is the rollback re-reading the row it is about to remove.
+			jest.spyOn(repository, 'findOne').mockResolvedValueOnce(null).mockResolvedValue(built);
+
+			(channelsPropertiesService.create as jest.Mock)
+				.mockResolvedValueOnce(alreadyCreated)
+				.mockRejectedValueOnce(new DevicesValidationException('incompatible projection'));
+			(channelsPropertiesService.findAll as jest.Mock).mockResolvedValue([alreadyCreated]);
+
+			await expect(
+				service.create({
+					type: 'mock',
+					category: ChannelCategory.GENERIC,
+					name: 'Half-built channel',
+					device: deviceId,
+					mock_value: 'Random text',
+					properties: [
+						{
+							type: 'mock',
+							category: PropertyCategory.GENERIC,
+							permissions: [PermissionType.READ_ONLY],
+							data_type: DataTypeType.UNKNOWN,
+						},
+						{
+							type: 'mock',
+							category: PropertyCategory.GENERIC,
+							permissions: [PermissionType.READ_ONLY],
+							data_type: DataTypeType.UNKNOWN,
+						},
+					],
+				} as unknown as CreateMockChannelDto),
+			).rejects.toThrow('incompatible projection');
+
+			// The property created before the failure is removed through its own service — its stored
+			// values live outside its row, and that removal announces its deletion.
+			expect(channelsPropertiesService.remove).toHaveBeenCalledWith('created-property');
+			// And the channel itself goes, as an entity rather than a raw row.
+			expect(repository.remove).toHaveBeenCalledWith(built);
+			// Never announced: it had not announced its creation either.
+			expect(eventEmitter.emit).not.toHaveBeenCalledWith(EventType.CHANNEL_DELETED, expect.anything());
 		});
 
 		it('should create and return a new channel', async () => {

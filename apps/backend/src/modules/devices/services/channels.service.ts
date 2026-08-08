@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, FindOptionsWhere, Repository } from 'typeorm';
 
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -397,10 +397,62 @@ export class ChannelsService {
 					throw error;
 				});
 
-			for (const propertyDtoInstance of createDto.properties ?? []) {
-				this.logger.debug(`Creating new property for channelId=${channel.id}`);
+			try {
+				for (const propertyDtoInstance of createDto.properties ?? []) {
+					this.logger.debug(`Creating new property for channelId=${channel.id}`);
 
-				await this.channelsPropertiesService.create(channel.id, propertyDtoInstance);
+					await this.channelsPropertiesService.create(channel.id, propertyDtoInstance);
+				}
+			} catch (error) {
+				this.logger.error(`Nested creation failed for channelId=${channel.id}, rolling the channel back`);
+
+				// One request, one outcome. A property rejected halfway — the second projection of a
+				// virtual channel found incompatible, say — used to leave the channel and the properties
+				// before it behind, with the caller told the whole thing failed: a retry then walked into
+				// its own leftovers, and a client that had heard the earlier properties announce themselves
+				// held children of a channel it had never been told about, because CHANNEL_CREATED is
+				// emitted only after this returns.
+				//
+				// Properties go through their own removal rather than the row cascade, exactly as the
+				// device-level rollback does: a property's stored values live outside its row, and only the
+				// entity-removal lifecycle clears them. That removal emits each property's deletion too,
+				// which is what answers the creations the client already saw.
+				const orphaned = await this.channelsPropertiesService
+					.findAll(channel.id)
+					.catch((readError: unknown): ChannelPropertyEntity[] => {
+						this.logger.error(
+							`Failed to read back properties for rolled-back channelId=${channel.id}`,
+							readError instanceof Error ? readError : undefined,
+						);
+
+						return [];
+					});
+
+				for (const property of orphaned) {
+					try {
+						await this.channelsPropertiesService.remove(property.id);
+					} catch (cleanupError) {
+						this.logger.error(
+							`Failed to roll back property id=${property.id} for channelId=${channel.id}`,
+							cleanupError instanceof Error ? cleanupError : undefined,
+						);
+					}
+				}
+
+				// Removed as an entity rather than deleted as a row, and re-read first — the same reasoning
+				// as the device rollback one level up: `remove()` runs the subscribers a raw delete skips,
+				// and a freshly loaded row carries no relations for TypeORM to cascade across in memory.
+				// Not routed through this service's own `remove()`, which emits CHANNEL_DELETED and
+				// re-parents children: this channel never announced itself, so there is nothing to answer.
+				const rollbackTarget = await repository.findOne({
+					where: { id: channel.id } as FindOptionsWhere<TChannel>,
+				});
+
+				if (rollbackTarget) {
+					await repository.remove(rollbackTarget);
+				}
+
+				throw error;
 			}
 		});
 
