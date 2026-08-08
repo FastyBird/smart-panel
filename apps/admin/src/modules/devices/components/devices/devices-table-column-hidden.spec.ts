@@ -45,6 +45,24 @@ describe('DevicesTableColumnHidden', () => {
 		expect(wrapper.find('[data-test-id="unhide-device"]').exists()).toBe(true);
 	});
 
+	// The row this button sits in is clickable: `devices-table.vue` opens the device detail on
+	// `@row-click`. Without stopping the event, unhiding navigates away mid-request, and the operator
+	// lands on a detail page they never asked for. Every other interactive control in this table stops
+	// it for the same reason.
+	it('does not let the unhide click reach the row underneath', async () => {
+		const rowClick = vi.fn();
+
+		const wrapper = mount(DevicesTableColumnHidden, {
+			props: { device: device() },
+			attrs: { onClick: rowClick },
+		});
+
+		await wrapper.find('[data-test-id="unhide-device"]').trigger('click');
+
+		expect(edit).toHaveBeenCalled();
+		expect(rowClick).not.toHaveBeenCalled();
+	});
+
 	// A system hide belongs to the virtual device that caused it and ends when that device is deleted.
 	// Undoing it by hand undoes half the arrangement and nothing restores the other half: the listener
 	// only unhides sources nothing references and never re-hides one still in use, so the source and its

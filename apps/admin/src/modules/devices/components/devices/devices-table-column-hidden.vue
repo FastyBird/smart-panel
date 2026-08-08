@@ -39,7 +39,7 @@
 			type="primary"
 			:loading="unhiding"
 			data-test-id="unhide-device"
-			@click="onUnhide"
+			@click.stop="onUnhide"
 		>
 			{{ t('devicesModule.hidden.unhide') }}
 		</el-button>
