@@ -23,10 +23,17 @@
 			</el-tag>
 		</el-tooltip>
 
-		<!-- The only way back. A system hide reverses itself when the last virtual device referencing the
-			source is deleted, but a user hide has no such trigger, and the wizard's own hint tells the
-			operator the source can be made visible again from this list. -->
+		<!-- Offered for a *user* hide only. That kind has no other way back: nothing reverses it, and the
+			wizard's own hint tells the operator the source can be made visible again from this list.
+			A system hide is owned by the virtual device that caused it and reverses itself when the last
+			virtual device referencing the source is deleted. Unhiding it by hand undoes half of that
+			arrangement and nothing restores the other half — the listener only unhides sources nothing
+			references and never re-hides one that is still in use — so the physical source and its
+			replacement would both sit in the list, both commandable, with no way back but hiding it again
+			by hand. The provenance tag beside this says which kind it is, and its tooltip says how a
+			system hide ends. -->
 		<el-button
+			v-if="!isSystemHidden"
 			link
 			size="small"
 			type="primary"

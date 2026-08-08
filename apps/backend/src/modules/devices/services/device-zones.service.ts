@@ -161,9 +161,31 @@ export class DeviceZonesService {
 
 		this.assertPlacementChangeAllowed(device);
 
-		const result = await this.repository.delete({ deviceId, zoneId });
+		// The visibility condition travels into the delete, as it does for the insert above and the
+		// replacement below. The guard is a separate read, so a hide committing in the gap would otherwise
+		// have this remove the placement of a device that is now inert — one await wide rather than
+		// several, which makes the window narrower, not absent.
+		//
+		// Membership is read on both sides of the statement so the two ways of affecting no rows stay
+		// distinguishable: a device that was never in the zone is a no-op worth a warning, and one whose
+		// row survives because the condition refused is a placement violation worth an error.
+		const zoneTable = this.repository.metadata.tableName;
+		const deviceTable = this.deviceRepository.metadata.tableName;
 
-		if (result.affected === 0) {
+		const wasAMember = await this.repository.findOne({ where: { deviceId, zoneId } });
+
+		await this.repository.manager.query(
+			`DELETE FROM "${zoneTable}" WHERE "deviceId" = ? AND "zoneId" = ? AND EXISTS (SELECT 1 FROM "${deviceTable}" d WHERE d.id = ? AND COALESCE(d.hidden, 0) = 0)`,
+			[deviceId, zoneId, deviceId],
+		);
+
+		if (wasAMember && (await this.repository.findOne({ where: { deviceId, zoneId } }))) {
+			this.logger.error(`Refused zone removal on device id=${deviceId} hidden while it was being applied`);
+
+			throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
+		}
+
+		if (!wasAMember) {
 			this.logger.warn(`Device ${deviceId} was not in zone ${zoneId}`);
 		} else {
 			this.logger.debug(`Successfully removed device ${deviceId} from zone ${zoneId}`);

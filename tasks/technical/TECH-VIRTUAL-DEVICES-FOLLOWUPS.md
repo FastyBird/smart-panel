@@ -289,6 +289,20 @@ The wizard launcher in the devices list is gated on `enabled('devices-virtual')`
 
 The destructive half is **fixed**: toggling it off ran `removePluginDevices` against type `virtual` and deleted every virtual device the user had built. `removePluginDevices` now returns early for `NON_DISCOVERABLE_PLUGINS`, since that cleanup is a cache-clear for plugins that rediscover their own hardware and unrecoverable data loss for ones whose devices are hand-authored. What remains is only cosmetic: the 30-second "discovering…" countdown a virtual plugin will never satisfy.
 
+### 3a.11 A hidden or deleted device leaves its channels in the panel (low, pre-existing)
+
+`DevicesRepository.delete()` removes the device row and nothing else, so `ChannelsRepository` keeps that device's channels — and, transitively, `ChannelPropertiesRepository` keeps their properties. This predates virtual devices (it is what `DEVICE_DELETED` has always done), but hiding gives it a second, more frequent trigger: every source device a virtual device replaces now leaves its channels behind in a running panel.
+
+Nothing renders them today, because every consumer starts from a device. Fixing it means cascading the removal through two more repositories, which is a change to shared panel state that ought to be made deliberately rather than as a side effect of this feature.
+
+### 3a.12 Aggregations count a source and its virtual replacement twice (medium)
+
+`SecurityAggregatorService` and the two security providers read `devicesService.findAll()`, which deliberately still returns hidden devices — internal logic should see the whole installation. A virtual device projecting a contact sensor therefore appears alongside the physical sensor it mirrors, and both contribute to the same aggregate.
+
+For boolean roll-ups (is anything triggered) the duplicate is harmless. For anything that counts, it is not. The same question applies to `BuddyContextService`, which describes the installation to an assistant that will now see two devices where the operator sees one.
+
+Deciding this needs a policy — does an aggregate prefer the physical device, the virtual one, or neither — and that policy belongs with whoever owns the security and energy semantics, not with the mapping feature that surfaced it.
+
 ### 3a.6 Test-coverage gaps (low)
 
 - `view-device.vue`'s virtual-device mount gate has no behavioural test; `view-devices.spec.ts` has a usable template for one.

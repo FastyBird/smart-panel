@@ -160,6 +160,18 @@ describe('DeviceZonesService', () => {
 			await expect(service.setDeviceZones(deviceId, [zoneId])).rejects.toThrow(DevicesNotAllowedException);
 		});
 
+		// The guard is a separate read from the delete, so a hide committing in the gap would otherwise have
+		// this remove the placement of a device that is now inert. The row surviving the conditional
+		// statement is what says the condition refused rather than the membership being absent.
+		it('refuses when the device is hidden between the guard and the delete', async () => {
+			arrangeDevice(false);
+
+			// Still a member on both sides: the delete matched nothing because the device went hidden.
+			jest.spyOn(repository, 'findOne').mockResolvedValue({ deviceId, zoneId } as DeviceZoneEntity);
+
+			await expect(service.removeDeviceFromZone(deviceId, zoneId)).rejects.toThrow(DevicesNotAllowedException);
+		});
+
 		it('refuses removing a hidden device from a zone', async () => {
 			arrangeDevice(true);
 
@@ -171,9 +183,22 @@ describe('DeviceZonesService', () => {
 		it('removes a visible device from a zone', async () => {
 			arrangeDevice(false);
 
+			// A member before the delete and gone after it: the conditional statement matched.
+			jest
+				.spyOn(repository, 'findOne')
+				.mockResolvedValueOnce({ deviceId, zoneId } as DeviceZoneEntity)
+				.mockResolvedValue(null);
+
 			await service.removeDeviceFromZone(deviceId, zoneId);
 
-			expect(repository.delete).toHaveBeenCalledWith({ deviceId, zoneId });
+			// Deleted through a conditional statement rather than `repository.delete`, so the visibility the
+			// guard checked is decided by the database rather than across an await.
+			expect(repository.manager.query).toHaveBeenCalledWith(expect.stringContaining('COALESCE(d.hidden, 0) = 0'), [
+				deviceId,
+				zoneId,
+				deviceId,
+			]);
+			expect(repository.delete).not.toHaveBeenCalled();
 		});
 	});
 });

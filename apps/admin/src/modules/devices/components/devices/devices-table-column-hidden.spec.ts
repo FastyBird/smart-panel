@@ -37,12 +37,27 @@ describe('DevicesTableColumnHidden', () => {
 		expect(wrapper.find('[data-test-id="unhide-device"]').exists()).toBe(false);
 	});
 
-	// A system hide reverses itself when the last virtual device referencing the source goes, but a user
-	// hide has no such trigger — and the wizard's own hint tells the operator this list can undo it.
-	it('offers an unhide action on a hidden device', () => {
+	// A user hide has no other way back — nothing reverses it — and the wizard's own hint tells the
+	// operator this list can undo it.
+	it('offers an unhide action on a user-hidden device', () => {
 		const wrapper = mount(DevicesTableColumnHidden, { props: { device: device() } });
 
 		expect(wrapper.find('[data-test-id="unhide-device"]').exists()).toBe(true);
+	});
+
+	// A system hide belongs to the virtual device that caused it and ends when that device is deleted.
+	// Undoing it by hand undoes half the arrangement and nothing restores the other half: the listener
+	// only unhides sources nothing references and never re-hides one still in use, so the source and its
+	// replacement would both sit in the list, both commandable. The tag's tooltip already says how this
+	// kind of hide ends.
+	it('offers no unhide action on a system-hidden device', () => {
+		const wrapper = mount(DevicesTableColumnHidden, {
+			props: { device: device({ hiddenBy: DevicesModuleDeviceHiddenBy.system }) },
+		});
+
+		expect(wrapper.find('[data-test-id="unhide-device"]').exists()).toBe(false);
+		// Still shown as hidden, and still says who hid it — the action is what goes, not the explanation.
+		expect(wrapper.text()).toContain('devicesModule.hidden.badge');
 	});
 
 	// Only `hidden` goes on the wire: no client can send `hidden_by: null`, so the backend clears the
