@@ -18,6 +18,17 @@ class DevicesRepository extends Repository<DeviceModel> {
   /// that, because the stale response lists it as visible. Remembering what was hidden underneath the
   /// request is what lets the answer be applied without the part of it that is already out of date.
   int _fetchesInFlight = 0;
+
+  /// Whether a device list has ever been read.
+  ///
+  /// Before that, an id this repository does not know is a device it has not
+  /// been told about yet. After it, the same id is a device that is gone —
+  /// deleted, or hidden because a virtual device replaced it. Anything holding
+  /// a device id from configuration (a dashboard tile, say) needs the two to
+  /// look different, or it waits forever for a row that is never coming.
+  bool _hasFetched = false;
+
+  bool get hasFetched => _hasFetched;
   final Set<String> _hiddenWhileFetching = {};
 
   void insert(List<Map<String, dynamic>> json) {
@@ -205,6 +216,8 @@ class DevicesRepository extends Repository<DeviceModel> {
         final visibleIds = rows.map((row) => row['id']).whereType<String>().toSet();
 
         evictMissing(knownBefore, visibleIds);
+
+        _hasFetched = true;
       },
       'fetch devices',
     );

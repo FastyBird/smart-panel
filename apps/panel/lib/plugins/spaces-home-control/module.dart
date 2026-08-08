@@ -43,6 +43,9 @@ class SpacesHomeControlPluginService {
 
   bool _isLoading = true;
 
+  /// Tail of the target-refresh queue. See [_refreshSpaceTargets].
+  Future<void> _targetsRefresh = Future<void>.value();
+
   SpacesHomeControlPluginService({
     required ApiClient apiClient,
     required SocketService socketService,
@@ -445,9 +448,21 @@ class SpacesHomeControlPluginService {
   /// these endpoints from the *visible* devices in the space: one request
   /// settles both halves — what left the list and what took its place.
   void _refreshSpaceTargets(String spaceId) {
-    _lightTargetsRepository.fetchForSpace(spaceId);
-    _climateTargetsRepository.fetchForSpace(spaceId);
-    _coversTargetsRepository.fetchForSpace(spaceId);
+    // Queued behind whatever refresh is already running, so the last one asked
+    // for is the last one applied. The wizard fires two in a row — the virtual
+    // device's own create, then the source's hide — and `fetchForSpace()` ends
+    // in an unconditional `replace()`. Left to race, a slower first response
+    // carrying the pre-hide list can land after the correct post-hide one and
+    // make the physical source commandable again until something else
+    // refreshes.
+    _targetsRefresh = _targetsRefresh.then((_) async {
+      await _lightTargetsRepository.fetchForSpace(spaceId);
+      await _climateTargetsRepository.fetchForSpace(spaceId);
+      await _coversTargetsRepository.fetchForSpace(spaceId);
+    }).catchError((Object _) {
+      // A failed refresh is already logged by the repository it came from, and
+      // must not close the queue behind it.
+    });
   }
 
   /// Handle devices module events to sync names to targets and refresh

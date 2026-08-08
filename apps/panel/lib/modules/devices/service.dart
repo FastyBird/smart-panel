@@ -67,6 +67,12 @@ class DevicesService extends ChangeNotifier {
 
   Map<String, ChannelPropertyView> get properties => _properties;
 
+  /// Whether the device list has been read at least once.
+  ///
+  /// A caller holding a device id from configuration — a dashboard tile — has
+  /// to tell "not loaded yet" from "gone", and only this says which it is.
+  bool get devicesLoaded => _devicesRepository.hasFetched;
+
   DeviceView? getDevice(String id) {
     if (!_devices.containsKey(id)) {
       return null;

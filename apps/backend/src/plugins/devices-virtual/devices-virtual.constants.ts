@@ -22,6 +22,19 @@ export const DEVICES_VIRTUAL_PLUGIN_API_TAG_DESCRIPTION =
  *
  * Derived from spec/devices — revisit when controller support lands.
  */
+/**
+ * How many candidate pairings one compatibility preview may carry.
+ *
+ * The preview exists to answer for a device the wizard is about to build, and a device has as many
+ * candidates as the category it is being built for has slots — the widest, `sensor`, expands to
+ * around a hundred. The bound is generous against that so no genuine request meets it, and it is
+ * still a bound: each candidate costs a property lookup plus a multi-hop ownership resolution, run
+ * one after another on the connection the whole app shares, so an unbounded array turns a single
+ * accepted request into thousands of serialized queries that starve everything else. The route's
+ * request-count throttle does not see inside one request.
+ */
+export const VIRTUAL_MAX_COMPATIBILITY_CANDIDATES = 256;
+
 export const VIRTUAL_BLOCKED_CATEGORIES: readonly DeviceCategory[] = [
 	DeviceCategory.AIR_CONDITIONER,
 	DeviceCategory.AIR_DEHUMIDIFIER,

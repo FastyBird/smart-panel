@@ -22,21 +22,17 @@ DevicesRepository _buildRepository() {
   );
 }
 
-Map<String, dynamic> _device(
-  String id, {
-  bool? hidden,
-}) =>
-    {
-      'id': id,
-      'type': 'generic',
-      'category': 'generic',
-      'name': 'Device $id',
-      'description': null,
-      'enabled': true,
-      if (hidden != null) 'hidden': hidden,
-      'created_at': '2026-01-01T00:00:00.000Z',
-      'updated_at': null,
-    };
+Map<String, dynamic> _device(String id, {bool? hidden}) => {
+  'id': id,
+  'type': 'generic',
+  'category': 'generic',
+  'name': 'Device $id',
+  'description': null,
+  'enabled': true,
+  if (hidden != null) 'hidden': hidden,
+  'created_at': '2026-01-01T00:00:00.000Z',
+  'updated_at': null,
+};
 
 // The model builder parses ids as UUIDs, so the fixtures carry a real one.
 const deviceId = '9f8c1d2e-3a4b-4c5d-8e6f-0a1b2c3d4e5f';
@@ -47,58 +43,70 @@ void main() {
     // A device created while the request is in flight arrives by socket and is absent from a snapshot
     // taken before it existed. Evicting on absence alone would delete it moments after it appeared,
     // and no further event would bring it back.
-    test('keeps a device that arrived while the snapshot was being fetched', () async {
-      final repository = _buildRepository();
+    test(
+      'keeps a device that arrived while the snapshot was being fetched',
+      () async {
+        final repository = _buildRepository();
 
-      // Stands in for the socket insert landing mid-flight: present in the repository, absent from the
-      // snapshot the eviction is applied from.
-      repository.insert([_device(arrivedMidFlightId)]);
+        // Stands in for the socket insert landing mid-flight: present in the repository, absent from the
+        // snapshot the eviction is applied from.
+        repository.insert([_device(arrivedMidFlightId)]);
 
-      repository.evictMissing(const <String>{}, const <String>{});
+        repository.evictMissing(const <String>{}, const <String>{});
 
-      expect(repository.data.containsKey(arrivedMidFlightId), isTrue);
-    });
+        expect(repository.data.containsKey(arrivedMidFlightId), isTrue);
+      },
+    );
 
     // A response is a snapshot of when it was produced. A device hidden after that moment is still in
     // it, so applying it verbatim puts a source device back on screen next to the virtual device that
     // replaced it — and the eviction cannot undo that, because the same stale response lists it as
     // visible.
-    test('does not re-apply a device hidden while the snapshot was in flight', () {
-      final repository = _buildRepository();
+    test(
+      'does not re-apply a device hidden while the snapshot was in flight',
+      () {
+        final repository = _buildRepository();
 
-      repository.markHiddenWhileFetching(deviceId);
+        repository.markHiddenWhileFetching(deviceId);
 
-      expect(repository.shouldApply(_device(deviceId)), isFalse);
-      expect(repository.shouldApply(_device(arrivedMidFlightId)), isTrue);
-    });
+        expect(repository.shouldApply(_device(deviceId)), isFalse);
+        expect(repository.shouldApply(_device(arrivedMidFlightId)), isTrue);
+      },
+    );
 
     // A device can be hidden and unhidden again while one request is out — abandoning the wizard does
     // exactly that. Once it is visible again the mark is no longer a reason to drop its row, and leaving
     // it would make the response skip a device that is currently visible and the eviction then remove it.
-    test('stops skipping a device that was unhidden again before the snapshot landed', () {
-      final repository = _buildRepository();
+    test(
+      'stops skipping a device that was unhidden again before the snapshot landed',
+      () {
+        final repository = _buildRepository();
 
-      repository.markHiddenWhileFetching(deviceId);
+        repository.markHiddenWhileFetching(deviceId);
 
-      expect(repository.shouldApply(_device(deviceId)), isFalse);
+        expect(repository.shouldApply(_device(deviceId)), isFalse);
 
-      // The unhide arriving by socket, ahead of the response.
-      repository.insert([_device(deviceId, hidden: false)]);
+        // The unhide arriving by socket, ahead of the response.
+        repository.insert([_device(deviceId, hidden: false)]);
 
-      expect(repository.shouldApply(_device(deviceId)), isTrue);
-    });
+        expect(repository.shouldApply(_device(deviceId)), isTrue);
+      },
+    );
 
     // The eviction still has to do its job for everything the panel already knew about — a source
     // device hidden while it was offline has no event to carry its removal.
-    test('drops a device it already knew about that the snapshot omits', () async {
-      final repository = _buildRepository();
+    test(
+      'drops a device it already knew about that the snapshot omits',
+      () async {
+        final repository = _buildRepository();
 
-      repository.insert([_device(deviceId)]);
+        repository.insert([_device(deviceId)]);
 
-      repository.evictMissing({deviceId}, const <String>{});
+        repository.evictMissing({deviceId}, const <String>{});
 
-      expect(repository.data.containsKey(deviceId), isFalse);
-    });
+        expect(repository.data.containsKey(deviceId), isFalse);
+      },
+    );
   });
 
   group('DevicesRepository.insert', () {
@@ -132,6 +140,22 @@ void main() {
       repository.insert([_device(deviceId, hidden: false)]);
 
       expect(repository.data.containsKey(deviceId), isTrue);
+    });
+
+    // A dashboard tile holds a device id from configuration. Before the first read, an id this
+    // repository does not know is one it has not been told about yet; after it, the same id is a
+    // device that is gone — deleted, or hidden because a virtual device replaced it. Without the
+    // difference the tile waits forever for a row that is never coming.
+    test('says nothing has been fetched until a fetch has actually landed', () {
+      final repository = _buildRepository();
+
+      expect(repository.hasFetched, isFalse);
+
+      // A socket insert is not a fetch: it says nothing about the devices this panel has never heard
+      // of, which is exactly what the flag is asked about.
+      repository.insert([_device(deviceId)]);
+
+      expect(repository.hasFetched, isFalse);
     });
 
     // Every route in leads through `insert`: the create/update event, the device embedded in a

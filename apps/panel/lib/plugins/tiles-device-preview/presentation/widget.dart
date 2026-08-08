@@ -27,7 +27,14 @@ class DevicePreviewTileWidget extends TileWidget<DevicePreviewTileView> {
       final DeviceView? device = devicesService.getDevice(tile.device);
 
       if (device == null) {
-        return _renderLoader(context);
+        // A tile holds a device id from configuration, and the device behind it
+        // can be gone: deleted, or hidden because a virtual device replaced it,
+        // which drops it from this panel's repository. Before the first read the
+        // id is simply not known yet, and a loader is right; after it, a loader
+        // is a spinner that never stops.
+        return devicesService.devicesLoaded
+            ? _renderUnavailable(context, localizations)
+            : _renderLoader(context);
       }
 
       return ButtonTileWidget(
@@ -100,6 +107,46 @@ class DevicePreviewTileWidget extends TileWidget<DevicePreviewTileView> {
     }
 
     return buildDeviceIcon(device.category, device.icon);
+  }
+
+  /// Shown in place of a device that is no longer there. Same frame as the
+  /// loader it replaces, so the tile keeps its footprint in the grid.
+  Widget _renderUnavailable(
+    BuildContext context,
+    AppLocalizations localizations,
+  ) {
+    return Container(
+      constraints: const BoxConstraints.expand(),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.light
+            ? AppColorsLight.infoLight9
+            : AppColorsDark.infoLight9,
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.light
+              ? AppColorsLight.infoLight5
+              : AppColorsDark.infoLight5,
+          width: AppSpacings.scale(1),
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.help_outline,
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppColorsLight.info
+                : AppColorsDark.info,
+          ),
+          SizedBox(height: AppSpacings.pSm),
+          Text(
+            localizations.message_error_device_not_found_title,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _renderLoader(BuildContext context) {

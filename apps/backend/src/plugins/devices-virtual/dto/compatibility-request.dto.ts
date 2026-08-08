@@ -1,9 +1,10 @@
 import { Expose, Type } from 'class-transformer';
-import { ArrayNotEmpty, IsArray, IsEnum, IsUUID, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, ArrayNotEmpty, IsArray, IsEnum, IsUUID, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { VIRTUAL_MAX_COMPATIBILITY_CANDIDATES } from '../devices-virtual.constants';
 
 /**
  * One candidate pairing to check: a spec slot (a channel category + property category the target
@@ -79,6 +80,9 @@ export class CompatibilityDto {
 	@Expose()
 	@IsArray({ message: '[{"field":"candidates","reason":"Candidates must be an array."}]' })
 	@ArrayNotEmpty({ message: '[{"field":"candidates","reason":"Candidates array cannot be empty."}]' })
+	@ArrayMaxSize(VIRTUAL_MAX_COMPATIBILITY_CANDIDATES, {
+		message: `[{"field":"candidates","reason":"Candidates array can contain at most ${VIRTUAL_MAX_COMPATIBILITY_CANDIDATES} items."}]`,
+	})
 	@ValidateNested({ each: true })
 	@Type(() => CompatibilityCandidateDto)
 	candidates: CompatibilityCandidateDto[];
