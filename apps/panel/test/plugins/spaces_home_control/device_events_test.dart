@@ -124,28 +124,88 @@ void main() {
     ).called(1);
   });
 
-  // A device in another room cannot change what this display renders, and the panel should not go
-  // asking on every unrelated edit in the installation.
-  test('leaves the space targets alone for a device in another space', () {
-    service.handleDeviceSocketEvent(DevicesModuleConstants.deviceUpdatedEvent, {
-      'id': 'somewhere-else',
-      'name': 'Bedroom lamp',
-      'room_id': 'another-space-id',
-      'hidden': true,
-    });
+  // A display is bound to a room *or* to a zone, and a device event carries
+  // both. Comparing only `room_id` never fires for a zone-bound display, whose
+  // target lists would keep the hidden source and miss the virtual device that
+  // replaced it.
+  test(
+    're-reads the space targets for a device that belongs to the displayed zone',
+    () {
+      service.handleDeviceSocketEvent(
+        DevicesModuleConstants.deviceUpdatedEvent,
+        {
+          'id': 'source-device-id',
+          'name': 'Hallway relay',
+          'room_id': 'some-room-id',
+          'zone_ids': [spaceId],
+          'hidden': false,
+        },
+      );
 
-    verifyNever(
-      () => pluginClient.getSpacesModuleSpaceLightingTargets(
-        id: any(named: 'id'),
-      ),
-    );
-    verifyNever(
-      () =>
-          pluginClient.getSpacesModuleSpaceClimateTargets(id: any(named: 'id')),
-    );
-    verifyNever(
-      () =>
-          pluginClient.getSpacesModuleSpaceCoversTargets(id: any(named: 'id')),
-    );
-  });
+      verify(
+        () => pluginClient.getSpacesModuleSpaceLightingTargets(id: spaceId),
+      ).called(1);
+      verify(
+        () => pluginClient.getSpacesModuleSpaceClimateTargets(id: spaceId),
+      ).called(1);
+      verify(
+        () => pluginClient.getSpacesModuleSpaceCoversTargets(id: spaceId),
+      ).called(1);
+    },
+  );
+
+  // A hide is treated as affecting every space: it is one of the events that
+  // changes what a space contains, and a device leaving this one in the same
+  // write no longer names it in the payload.
+  test(
+    're-reads the space targets on a hide even when the device names another room',
+    () {
+      service
+          .handleDeviceSocketEvent(DevicesModuleConstants.deviceUpdatedEvent, {
+            'id': 'somewhere-else',
+            'name': 'Bedroom lamp',
+            'room_id': 'another-space-id',
+            'zone_ids': <String>[],
+            'hidden': true,
+          });
+
+      verify(
+        () => pluginClient.getSpacesModuleSpaceLightingTargets(id: spaceId),
+      ).called(1);
+    },
+  );
+
+  // An ordinary edit elsewhere cannot change what this display renders, and the
+  // panel should not go asking on every unrelated change in the installation.
+  test(
+    'leaves the space targets alone for an ordinary edit in another space',
+    () {
+      service.handleDeviceSocketEvent(
+        DevicesModuleConstants.deviceUpdatedEvent,
+        {
+          'id': 'somewhere-else',
+          'name': 'Bedroom lamp',
+          'room_id': 'another-space-id',
+          'zone_ids': ['another-zone-id'],
+          'hidden': false,
+        },
+      );
+
+      verifyNever(
+        () => pluginClient.getSpacesModuleSpaceLightingTargets(
+          id: any(named: 'id'),
+        ),
+      );
+      verifyNever(
+        () => pluginClient.getSpacesModuleSpaceClimateTargets(
+          id: any(named: 'id'),
+        ),
+      );
+      verifyNever(
+        () => pluginClient.getSpacesModuleSpaceCoversTargets(
+          id: any(named: 'id'),
+        ),
+      );
+    },
+  );
 }

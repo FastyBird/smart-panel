@@ -399,6 +399,39 @@ class SpacesHomeControlPluginService {
     }
   }
 
+  /// Whether a device event could change what this display's space renders.
+  ///
+  /// A display is bound to a room *or* to a zone, and a device event carries
+  /// both: `room_id` names the room, `zone_ids` the zones it belongs to. The
+  /// room comparison alone therefore never fires for a zone-bound display, and
+  /// its target lists would keep a hidden source and miss the virtual device
+  /// that replaced it.
+  ///
+  /// A hide and a create are treated as affecting every space, because they are
+  /// the events that change what a space *contains* and the payload cannot rule
+  /// this display out: a device leaving the space in the same write no longer
+  /// names it, and a `null` room means it may have just left.
+  bool _couldAffectSpace(
+    String displaySpaceId,
+    String event,
+    Map<String, dynamic> payload,
+  ) {
+    if (event == DevicesModuleConstants.deviceCreatedEvent ||
+        payload['hidden'] == true) {
+      return true;
+    }
+
+    final roomId = payload['room_id'] as String?;
+
+    if (roomId == null || roomId == displaySpaceId) {
+      return true;
+    }
+
+    final zoneIds = payload['zone_ids'];
+
+    return zoneIds is List && zoneIds.contains(displaySpaceId);
+  }
+
   /// Re-read this space's light, climate and cover targets.
   ///
   /// The target lists are derived from the space's devices, and they live in
@@ -462,6 +495,9 @@ class SpacesHomeControlPluginService {
           final roomId = payload['room_id'] as String?;
           if (roomId == null || roomId == displaySpaceId) {
             _mediaActivityRepository.refreshEndpoints(displaySpaceId);
+          }
+
+          if (_couldAffectSpace(displaySpaceId, event, payload)) {
             _refreshSpaceTargets(displaySpaceId);
           }
         }
