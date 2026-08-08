@@ -566,6 +566,39 @@ describe('DevicesService', () => {
 			).rejects.toThrow(DevicesValidationException);
 		});
 
+		// These tables carry other unique indexes — a device's `(identifier, type)` among them — and
+		// reporting one of those as a reused id tells the caller to change a field that did not collide
+		// while saying nothing about the one that did. Anything but the primary key travels on as itself,
+		// to the filter that reported it before this catch existed.
+		it('leaves a uniqueness failure on another column as itself, rather than calling it a reused id', async () => {
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'create').mockReturnValue({ id: uuid().toString() } as MockDevice);
+			jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+			jest
+				.spyOn(repository, 'insert')
+				.mockRejectedValue(
+					new Error(
+						'SQLITE_CONSTRAINT: UNIQUE constraint failed: devices_module_devices.identifier, devices_module_devices.type',
+					),
+				);
+
+			await expect(
+				service.create({
+					type: 'mock',
+					category: DeviceCategory.GENERIC,
+					identifier: 'already-taken',
+					name: 'Duplicate identifier',
+					mock_value: 'Random text',
+				} as never),
+			).rejects.toThrow('UNIQUE constraint failed');
+		});
+
 		it('rolls the device back and announces the children when a nested channel fails', async () => {
 			const createDto: CreateMockDeviceDto = {
 				type: 'mock',

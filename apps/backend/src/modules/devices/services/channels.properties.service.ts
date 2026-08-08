@@ -16,7 +16,7 @@ import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { SUPPORTED_PROPERTY_COMMAND_DATA_TYPES } from '../utils/property-command-value.utils';
 import { resolvePropertyUnit } from '../utils/property-metadata.utils';
-import { isUniqueConstraintViolation } from '../utils/unique-constraint.utils';
+import { isPrimaryKeyCollision } from '../utils/unique-constraint.utils';
 
 import { ChannelsPropertiesTypeMapperService } from './channels.properties-type-mapper.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
@@ -415,7 +415,7 @@ export class ChannelsPropertiesService {
 			await repository
 				.insert(property as unknown as Parameters<Repository<TProperty>['insert']>[0])
 				.catch((error: unknown) => {
-					if (isUniqueConstraintViolation(error)) {
+					if (isPrimaryKeyCollision(error)) {
 						this.logger.error(
 							`[VALIDATION FAILED] Channel property id=${property.id} was created concurrently by another request`,
 						);

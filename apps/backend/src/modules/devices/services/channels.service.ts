@@ -14,7 +14,7 @@ import { DevicesException, DevicesNotFoundException, DevicesValidationException 
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { UpdateChannelDto } from '../dto/update-channel.dto';
 import { ChannelControlEntity, ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
-import { isUniqueConstraintViolation } from '../utils/unique-constraint.utils';
+import { isPrimaryKeyCollision } from '../utils/unique-constraint.utils';
 
 import { ChannelsTypeMapperService } from './channels-type-mapper.service';
 import { ChannelsControlsService } from './channels.controls.service';
@@ -384,7 +384,7 @@ export class ChannelsService {
 			await repository
 				.insert(channel as unknown as Parameters<Repository<TChannel>['insert']>[0])
 				.catch((error: unknown) => {
-					if (isUniqueConstraintViolation(error)) {
+					if (isPrimaryKeyCollision(error)) {
 						this.logger.error(
 							`[VALIDATION FAILED] Channel id=${channel.id} was created concurrently by another request`,
 						);

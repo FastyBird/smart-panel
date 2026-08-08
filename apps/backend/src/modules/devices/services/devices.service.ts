@@ -28,7 +28,7 @@ import {
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { ChannelEntity, DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
-import { isUniqueConstraintViolation } from '../utils/unique-constraint.utils';
+import { isPrimaryKeyCollision } from '../utils/unique-constraint.utils';
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
@@ -467,7 +467,7 @@ export class DevicesService {
 		const inserted = await repository
 			.insert(device as unknown as Parameters<Repository<TDevice>['insert']>[0])
 			.catch((error: unknown) => {
-				if (isUniqueConstraintViolation(error)) {
+				if (isPrimaryKeyCollision(error)) {
 					this.logger.error(`[VALIDATION FAILED] Device id=${device.id} was created concurrently by another request`);
 
 					throw new DevicesValidationException(
