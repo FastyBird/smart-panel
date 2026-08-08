@@ -1,7 +1,7 @@
 import { nextTick, ref } from 'vue';
 
 import { ElMessageBox } from 'element-plus';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, shallowMount } from '@vue/test-utils';
 
@@ -79,7 +79,8 @@ const mountView = () =>
 describe('ViewMcpClients', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue('confirm');
+		vi.spyOn(ElMessageBox, 'confirm');
+		(ElMessageBox.confirm as Mock).mockResolvedValue('confirm');
 	});
 
 	it('renders dedicated desktop and mobile client layouts', () => {
