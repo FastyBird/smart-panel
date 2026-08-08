@@ -1,14 +1,18 @@
+import { DataSource, Repository } from 'typeorm';
 import { z } from 'zod';
 
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { AuthInfo, McpServer } from '@modelcontextprotocol/server';
 import { CanActivate, ExecutionContext, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { JwtService } from '@nestjs/jwt';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 
 import { OpenApiResponseInterceptor } from '../src/modules/api/interceptors/open-api-response.interceptor';
 import { TransformResponseInterceptor } from '../src/modules/api/interceptors/transform-response.interceptor';
+import { TokensService } from '../src/modules/auth/services/tokens.service';
+import { ConfigService } from '../src/modules/config/services/config.service';
 import { ChannelsPropertiesService } from '../src/modules/devices/services/channels.properties.service';
 import { DeviceConnectionStateService } from '../src/modules/devices/services/device-connection-state.service';
 import { PlatformRegistryService } from '../src/modules/devices/services/platform.registry.service';
@@ -18,7 +22,9 @@ import { McpClientGuard } from '../src/modules/mcp/guards/mcp-client.guard';
 import { MCP_CATALOG_REGISTRAR, McpCapability } from '../src/modules/mcp/mcp.constants';
 import { McpConfigModel } from '../src/modules/mcp/models/config.model';
 import { McpAuditService } from '../src/modules/mcp/services/mcp-audit.service';
+import { McpClientService } from '../src/modules/mcp/services/mcp-client.service';
 import { McpContextService } from '../src/modules/mcp/services/mcp-context.service';
+import { McpInstallationService } from '../src/modules/mcp/services/mcp-installation.service';
 import { McpPolicyService } from '../src/modules/mcp/services/mcp-policy.service';
 import { McpPolicyRequest } from '../src/modules/mcp/services/mcp-policy.service';
 import { McpServerService } from '../src/modules/mcp/services/mcp-server.service';
@@ -128,6 +134,7 @@ class TestMcpClientGuard implements CanActivate {
 describe('MCP endpoint', () => {
 	let app: NestFastifyApplication;
 	let endpoint: URL;
+	let clientsService: McpClientService;
 	let serverService: McpServerService;
 	let subscriptions: McpSubscriptionRegistryService;
 
@@ -237,6 +244,44 @@ describe('MCP endpoint', () => {
 		await app.listen(0, '127.0.0.1');
 
 		serverService = app.get(McpServerService);
+		const repository = {
+			findOne: jest.fn(({ where }: { where: { id: string } }) => Promise.resolve(toClientEntity(where.id))),
+		};
+		const managedRepository = {
+			update: jest.fn((criteria: { id: string }, update: Partial<McpClientEntity>) => {
+				const policy = clientPolicies.get(criteria.id);
+
+				if (!policy) {
+					return Promise.resolve({ affected: 0 });
+				}
+
+				if (update.capabilities) {
+					policy.capabilities = [...update.capabilities];
+				}
+
+				if (update.enabled === false) {
+					policy.revoked = true;
+				}
+
+				return Promise.resolve({ affected: 1 });
+			}),
+		};
+		const dataSource = {
+			transaction: jest.fn((callback: (manager: { getRepository: () => typeof managedRepository }) => unknown) =>
+				callback({ getRepository: () => managedRepository }),
+			),
+		};
+		clientsService = new McpClientService(
+			repository as unknown as Repository<McpClientEntity>,
+			dataSource as unknown as DataSource,
+			{ revoke: jest.fn().mockResolvedValue(undefined) } as unknown as TokensService,
+			{} as JwtService,
+			{
+				getModuleConfig: jest.fn(() => ({ capabilities: [...moduleCapabilities] })),
+			} as unknown as ConfigService,
+			{} as McpInstallationService,
+			serverService,
+		);
 		subscriptions = app.get(McpSubscriptionRegistryService);
 		endpoint = new URL('/', await app.getUrl());
 	});
@@ -489,9 +534,7 @@ describe('MCP endpoint', () => {
 				expectedCatalogTools(ALL_CAPABILITIES),
 			);
 
-			clientPolicies.set(clientId, { capabilities: [McpCapability.READ] });
-			serverService.invalidateClientPolicy(clientId);
-			serverService.notifyToolsChanged(clientId);
+			await clientsService.update(clientId, { capabilities: [McpCapability.READ] });
 
 			await expect(
 				Promise.race([notification, rejectAfter(2_000, 'Timed out waiting for tools/list_changed')]),
@@ -520,8 +563,7 @@ describe('MCP endpoint', () => {
 			const revokedSubscription = await revoked.client.listen({ toolsListChanged: true });
 			const activeSubscription = await active.client.listen({ toolsListChanged: true });
 
-			clientPolicies.set(revokedId, { capabilities: [McpCapability.READ], revoked: true });
-			await serverService.closeClient(revokedId);
+			await clientsService.revoke(revokedId);
 
 			await expect(revokedSubscription.closed).resolves.toBe('remote');
 			await expect(revoked.client.listTools()).rejects.toThrow();
@@ -542,6 +584,29 @@ describe('MCP endpoint', () => {
 		});
 
 		return { client, transport };
+	}
+
+	function toClientEntity(clientId: string): McpClientEntity | null {
+		const policy = clientPolicies.get(clientId);
+
+		if (!policy) {
+			return null;
+		}
+
+		return {
+			id: clientId,
+			name: `Test ${clientId}`,
+			description: null,
+			enabled: !policy.revoked,
+			capabilities: [...policy.capabilities],
+			createdById: null,
+			tokenId: `token-${clientId}`,
+			token: {
+				id: `token-${clientId}`,
+				revoked: Boolean(policy.revoked),
+				expiresAt: new Date(Date.now() + 60_000),
+			},
+		} as McpClientEntity;
 	}
 
 	function timeout(milliseconds: number): Promise<void> {
