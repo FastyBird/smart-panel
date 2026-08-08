@@ -1,4 +1,4 @@
-import { DataSource, IsNull, Repository } from 'typeorm';
+import { DataSource, In, IsNull, Repository } from 'typeorm';
 
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
@@ -541,30 +541,32 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 
 		const repository = this.dataSource.getRepository(VirtualChannelPropertyEntity);
 
-		for (const virtualDeviceId of virtualDeviceIds) {
-			const orphans = await repository
-				.find({
-					where: { channel: { device: { id: virtualDeviceId } }, sourcePropertyId: IsNull() },
-					relations: ['channel'],
-				})
-				.catch((error: unknown): VirtualChannelPropertyEntity[] => {
-					this.logger.error(
-						`Failed to read back orphaned projections of virtual device id=${virtualDeviceId}`,
-						error instanceof Error ? error : undefined,
-					);
+		// One query for the whole set rather than one per device. Every query here runs on the connection
+		// the whole app shares, and this runs after every rebuild — which is after every structural event
+		// — so a per-device loop would put a burst of round trips right where the index maintenance is
+		// already contending with the writes that triggered it.
+		const orphans = await repository
+			.find({
+				where: { channel: { device: { id: In(virtualDeviceIds) } }, sourcePropertyId: IsNull() },
+				relations: ['channel'],
+			})
+			.catch((error: unknown): VirtualChannelPropertyEntity[] => {
+				this.logger.error(
+					`Failed to read back orphaned projections of virtual devices [${virtualDeviceIds.join(', ')}]`,
+					error instanceof Error ? error : undefined,
+				);
 
-					return [];
-				});
+				return [];
+			});
 
-			for (const orphan of orphans) {
-				// An owned property has no source and never had one — null there is its normal state, not a
-				// loss, and announcing it as one would put an orphan warning on a property that is fine.
-				if (!orphan.isProjecting) {
-					continue;
-				}
-
-				this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_UPDATED, orphan);
+		for (const orphan of orphans) {
+			// An owned property has no source and never had one — null there is its normal state, not a
+			// loss, and announcing it as one would put an orphan warning on a property that is fine.
+			if (!orphan.isProjecting) {
+				continue;
 			}
+
+			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_UPDATED, orphan);
 		}
 	}
 

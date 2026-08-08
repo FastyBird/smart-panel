@@ -1467,11 +1467,16 @@ describe('devices-virtual plugin (e2e)', () => {
 				const property =
 					informationChannel?.properties.find((candidate) => candidate.category === PropertyCategory.STATUS) ?? null;
 
+				// Waits for the state it is about to assert, not merely for the row to exist. The claim that
+				// makes this property owned is an `afterCreate` hook — it runs after the row is written, so
+				// a poll that stops at "the property is there" can catch it in its pre-claim `source` state
+				// and then assert against a value that had not arrived yet. On a timeout `waitUntil` reports
+				// the last thing it saw, so a property that genuinely never becomes owned still says so.
 				return {
-					done: !!property,
+					done: property?.value_origin === 'local',
 					value: { property, seenChannels: channels.map((channel) => channel.category) },
 				};
-			}, 'the synthesized connection state property on an atomically created device');
+			}, 'the synthesized connection state property on an atomically created device becoming owned');
 
 			// Owned, not an orphaned projection — the `afterCreate` claim doing its job on the one path
 			// that can actually race it.

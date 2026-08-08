@@ -393,12 +393,10 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 		await flushMicrotasks();
 
-		const query = (orphanQueryStub.find.mock.calls as unknown[][])[0]?.[0] as {
-			where?: { channel?: { device?: { id?: string } } };
-		};
-
-		// Scoped to the device the rebuild reported re-wired, not swept across the whole table.
-		expect(query.where?.channel?.device?.id).toBe('virtual-device');
+		// Scoped to the devices the rebuild reported re-wired, not swept across the whole table — and asked
+		// once for the set rather than once per device.
+		expect(orphanQueryStub.find).toHaveBeenCalledTimes(1);
+		expect(JSON.stringify(orphanQueryStub.find.mock.calls)).toContain('virtual-device');
 		expect(eventEmitterStub.emit).toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_UPDATED, orphan);
 	});
 
