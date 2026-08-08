@@ -497,6 +497,9 @@ describe('DevicesService', () => {
 			};
 
 			const createdDeviceId = uuid().toString();
+			// Deliberately a different instance from the one `save` returns, so the assertion below can tell
+			// which of the two was handed to `remove`.
+			const reloadedForRollback = { id: createdDeviceId } as MockDevice;
 			const orphanedProperty = { id: uuid().toString() };
 			const orphanedChannel = { id: uuid().toString(), properties: [orphanedProperty] };
 
@@ -509,6 +512,7 @@ describe('DevicesService', () => {
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 			jest.spyOn(repository, 'create').mockReturnValue({ id: createdDeviceId } as MockDevice);
 			jest.spyOn(repository, 'save').mockResolvedValue({ id: createdDeviceId } as MockDevice);
+			jest.spyOn(repository, 'findOne').mockResolvedValue(reloadedForRollback);
 
 			channelsService.create.mockRejectedValue(new DevicesValidationException('Source cannot fill this slot'));
 			channelsService.findAll.mockResolvedValue([orphanedChannel] as never);
@@ -524,7 +528,13 @@ describe('DevicesService', () => {
 			// `remove`, not `delete`: only the entity-removal lifecycle drops the device's stored connection
 			// statuses and lets a plugin subscriber tear down the adapter entry the creation put there. A
 			// raw row delete runs no subscriber and leaves both behind for a retry to inherit.
-			expect(repository.remove).toHaveBeenCalledWith(expect.objectContaining({ id: createdDeviceId }));
+			//
+			// And a *freshly read* row, not the instance the create built: that one still carries whatever
+			// the request nested onto it, and `DeviceEntity.channels` is `cascade: true`, so removing it
+			// cascades across the in-memory graph and detaches children instead of letting the schema's own
+			// `ON DELETE CASCADE` take them.
+			expect(repository.findOne).toHaveBeenCalledWith({ where: { id: createdDeviceId } });
+			expect(repository.remove).toHaveBeenCalledWith(reloadedForRollback);
 			expect(repository.delete).not.toHaveBeenCalled();
 			// Through its own removal, so the stored values and status records go with it — the raw
 			// cascade would have left that history behind for a retry to inherit.

@@ -2153,8 +2153,13 @@ describe('devices-virtual plugin (e2e)', () => {
 		// this assertion is only worth anything if it can actually see the owner, so "could not tell"
 		// has to fail loudly instead of quietly reporting containment.
 		it('leaves no virtual channel or property reachable from a non-virtual device', async () => {
-			const ownerIsVirtual = (channel: ChannelEntity | string): boolean =>
+			// `null` is a stray too, and reported rather than thrown on: a property whose channel relation
+			// resolves to nothing is exactly the state this assertion exists to catch, and crashing on it
+			// hides which row it was behind a TypeError.
+			const ownerIsVirtual = (channel: ChannelEntity | string | null): boolean =>
+				channel !== null &&
 				typeof channel !== 'string' &&
+				channel.device !== null &&
 				typeof channel.device !== 'string' &&
 				channel.device.type === DEVICES_VIRTUAL_TYPE;
 
@@ -2162,7 +2167,20 @@ describe('devices-virtual plugin (e2e)', () => {
 				await dataSource.getRepository(VirtualChannelPropertyEntity).find({ relations: ['channel', 'channel.device'] })
 			).filter((property) => !ownerIsVirtual(property.channel));
 
-			expect(strayProperties.map((property) => property.id)).toEqual([]);
+			// Identified by what is wrong with them, not by id alone — a bare uuid says nothing about
+			// whether the channel was missing, unloaded, or owned by the wrong kind of device.
+			expect(
+				strayProperties.map((property) => ({
+					id: property.id,
+					category: property.category,
+					channel:
+						property.channel === null
+							? null
+							: typeof property.channel === 'string'
+								? property.channel
+								: property.channel.id,
+				})),
+			).toEqual([]);
 
 			const strayChannels = (
 				await dataSource.getRepository(VirtualChannelEntity).find({ relations: ['device'] })

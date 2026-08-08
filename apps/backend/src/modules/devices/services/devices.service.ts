@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, FindOptionsWhere, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable } from '@nestjs/common';
@@ -514,7 +514,20 @@ export class DevicesService {
 			// Still not routed through `remove()`: that emits DEVICE_DELETED, and this device never
 			// emitted DEVICE_CREATED — that happens only after a creation completes. The compensating
 			// events below exist because the *children* did announce themselves; the device did not.
-			await repository.remove(raw);
+			// Re-read first, and removed as *that* row rather than as `raw`. `raw` is the instance the
+			// create built, and it still carries whatever the request nested onto it — `DeviceEntity.channels`
+			// is `cascade: true`, so `remove()` handed that instance cascades across the in-memory graph and
+			// detaches children instead of letting the database's own `ON DELETE CASCADE` take them. That
+			// left channel properties behind with no channel at all, which the containment e2e caught. A
+			// freshly loaded row has no relations loaded, so the removal is exactly one DELETE on the device
+			// — subscribers and all — and the cascade below it is the schema's.
+			const rollbackTarget = await repository.findOne({
+				where: { id: raw.id } as FindOptionsWhere<TDevice>,
+			});
+
+			if (rollbackTarget) {
+				await repository.remove(rollbackTarget);
+			}
 
 			for (const channel of orphanedChannels) {
 				this.eventEmitter.emit(EventType.CHANNEL_DELETED, channel);
