@@ -27,7 +27,12 @@ import {
 	DeviceHiddenFilter,
 	EventType,
 } from '../devices.constants';
-import { DevicesException, DevicesNotAllowedException, DevicesValidationException } from '../devices.exceptions';
+import {
+	DevicesException,
+	DevicesNotAllowedException,
+	DevicesNotFoundException,
+	DevicesValidationException,
+} from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
@@ -482,6 +487,10 @@ describe('DevicesService', () => {
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
 			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(hiddenDevice);
+			// `update()` writes through a relation-free re-read of the row and refuses when that read comes
+			// back empty — the row was deleted mid-call. This test is not about that race, so the re-read
+			// answers the same row the load did.
+			jest.spyOn(repository, 'findOne').mockResolvedValue(hiddenDevice);
 
 			await service.update(hiddenDevice.id, { type: 'mock', hidden: false } as UpdateMockDeviceDto);
 
@@ -755,6 +764,58 @@ describe('DevicesService', () => {
 			expect(repository.save).not.toHaveBeenCalled();
 		});
 
+		// A concurrent `remove()` can delete the row between the read at the top of `update()` and this
+		// re-read. TypeORM's `save` looks the primary key up, finds nothing and INSERTs, so falling back to
+		// the entity loaded at the top let a PATCH resurrect a device whose DEVICE_DELETED had already been
+		// emitted — carrying whatever relation graph the stale entity happened to hold.
+		it('refuses to write when the device was removed while it was being updated', async () => {
+			const deviceId = uuid().toString();
+			const loadedBeforeTheDelete = { id: deviceId, type: 'mock' } as unknown as MockDevice;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(loadedBeforeTheDelete);
+			jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+
+			await expect(service.update(deviceId, { type: 'mock', name: 'Renamed' } as UpdateMockDeviceDto)).rejects.toThrow(
+				DevicesNotFoundException,
+			);
+
+			expect(repository.save).not.toHaveBeenCalled();
+		});
+
+		// Hiding and re-placing in one PATCH used to depend on write order: the entity save committed the
+		// hide, and `setDeviceZones` then refused the zone half because the device it re-read was hidden —
+		// a 422 with the hide already applied and no DEVICE_UPDATED emitted for it.
+		it('refuses a patch that hides the device and changes its placement, before writing anything', async () => {
+			const deviceId = uuid().toString();
+			const visible = { id: deviceId, type: 'mock', hidden: false } as unknown as MockDevice;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(visible);
+			jest.spyOn(repository, 'findOne').mockResolvedValue(visible);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+
+			await expect(
+				service.update(deviceId, { type: 'mock', hidden: true, zone_ids: [] } as unknown as UpdateMockDeviceDto),
+			).rejects.toThrow(DevicesNotAllowedException);
+
+			expect(repository.save).not.toHaveBeenCalled();
+			expect(deviceZonesService.setDeviceZones).not.toHaveBeenCalled();
+		});
+
 		it('should update and return the device', async () => {
 			const updateDto: UpdateMockDeviceDto = {
 				type: 'mock',
@@ -826,6 +887,10 @@ describe('DevicesService', () => {
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockDevice, mockUpdatedDevice));
+			// `update()` writes through a relation-free re-read of the row and refuses when that read comes
+			// back empty — the row was deleted mid-call. This test is not about that race, so the re-read
+			// answers the same row the load did.
+			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
 
 			const result = await service.update(mockDevice.id, updateDto);
 
@@ -874,6 +939,10 @@ describe('DevicesService', () => {
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockDevice, hiddenDevice));
+			// `update()` writes through a relation-free re-read of the row and refuses when that read comes
+			// back empty — the row was deleted mid-call. This test is not about that race, so the re-read
+			// answers the same row the load did.
+			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(MockDevice, hiddenDevice));
 
 			await service.update(hiddenDevice.id, { type: 'mock', name: 'Renamed' } as UpdateMockDeviceDto);
 
@@ -899,6 +968,10 @@ describe('DevicesService', () => {
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockDevice, { ...mockDevice, hidden: true }));
+			// `update()` writes through a relation-free re-read of the row and refuses when that read comes
+			// back empty — the row was deleted mid-call. This test is not about that race, so the re-read
+			// answers the same row the load did.
+			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
 
 			await service.update(mockDevice.id, { type: 'mock', hidden: true } as UpdateMockDeviceDto);
 
@@ -931,6 +1004,10 @@ describe('DevicesService', () => {
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockDevice, disabledDevice));
+			// `update()` writes through a relation-free re-read of the row and refuses when that read comes
+			// back empty — the row was deleted mid-call. This test is not about that race, so the re-read
+			// answers the same row the load did.
+			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(MockDevice, disabledDevice));
 
 			await service.update(disabledDevice.id, { type: 'mock', name: 'Renamed' } as UpdateMockDeviceDto);
 
@@ -959,6 +1036,10 @@ describe('DevicesService', () => {
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockDevice, { ...mockDevice, enabled: false }));
+			// `update()` writes through a relation-free re-read of the row and refuses when that read comes
+			// back empty — the row was deleted mid-call. This test is not about that race, so the re-read
+			// answers the same row the load did.
+			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
 
 			await service.update(mockDevice.id, { type: 'mock', enabled: false } as UpdateMockDeviceDto);
 
@@ -994,6 +1075,10 @@ describe('DevicesService', () => {
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 			jest.spyOn(repository, 'save').mockResolvedValue(updatedDevice);
+			// `update()` writes through a relation-free re-read of the row and refuses when that read comes
+			// back empty — the row was deleted mid-call. This test is not about that race, so the re-read
+			// answers the same row the load did.
+			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
 
 			await service.update(mockDevice.id, {
 				type: 'mock',
@@ -1037,6 +1122,9 @@ describe('DevicesService', () => {
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 			jest.spyOn(repository, 'save').mockResolvedValue(persisted);
+			// The same object the query builder answers with, so the second patch below reads what the
+			// first one wrote — the whole point of backing this test with one mutable row.
+			jest.spyOn(repository, 'findOne').mockResolvedValue(persisted);
 
 			await service.update(mockDevice.id, {
 				type: 'mock',
@@ -1089,6 +1177,9 @@ describe('DevicesService', () => {
 
 				jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 				jest.spyOn(repository, 'save').mockResolvedValue(persisted);
+				// `update()` writes through a relation-free re-read, and judges placement on that row: the
+				// same one the load answered with, unless a test is about it changing underneath.
+				jest.spyOn(repository, 'findOne').mockResolvedValue(persisted);
 
 				return persisted;
 			};

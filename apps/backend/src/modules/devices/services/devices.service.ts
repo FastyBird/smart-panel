@@ -783,32 +783,38 @@ export class DevicesService {
 		// stray in the containment e2e, one run in five or so.
 		//
 		// A re-read is enough: without the collection loaded there is no cascade to run, and the write is
-		// the one UPDATE this method was always meant to make. Falls back to the loaded entity when the
-		// row cannot be re-read, which means it was deleted underneath this call — `save` on the merged
-		// entity is then the pre-existing behaviour, and the error it raises is the honest one.
+		// the one UPDATE this method was always meant to make.
 		const persisted = await repository.findOne({
 			where: { id: device.id } as FindOptionsWhere<TDevice>,
 			loadEagerRelations: false,
 		});
 
-		if (persisted) {
-			// The placement guard again, on the row as it stands now rather than as it stood when this
-			// call began. Between the two there are several awaited round trips — the room validation, the
-			// zone read-back, this re-read — and a wizard hiding the device in that window would otherwise
-			// have this write the placement of a device that is now inert. The zone half carries the same
-			// condition in the statements that write it (see DeviceZonesService.setDeviceZones).
-			this.assertPlacementChangeAllowed(persisted, dtoInstance);
+		// The row is gone, so a concurrent `remove()` deleted it after this call read it. There is nothing
+		// left to update, and saving the entity loaded at the top is not a way to say so: TypeORM's `save`
+		// looks the primary key up, finds nothing and INSERTs — the PATCH would resurrect a device whose
+		// DEVICE_DELETED has already been emitted, cascading whatever relation graph the stale entity
+		// happens to carry. The honest answer is the same one this method gives for an id that never
+		// existed.
+		if (!persisted) {
+			this.logger.error(`Device with id=${device.id} was removed while it was being updated`);
 
-			Object.assign(persisted, updateFields);
-
-			if (dtoInstance.room_id === null) {
-				persisted.roomId = null;
-			}
-
-			await repository.save(persisted);
-		} else {
-			await repository.save(device as TDevice);
+			throw new DevicesNotFoundException('Device does not exist');
 		}
+
+		// The placement guard again, on the row as it stands now rather than as it stood when this
+		// call began. Between the two there are several awaited round trips — the room validation, the
+		// zone read-back, this re-read — and a wizard hiding the device in that window would otherwise
+		// have this write the placement of a device that is now inert. The zone half carries the same
+		// condition in the statements that write it (see DeviceZonesService.setDeviceZones).
+		this.assertPlacementChangeAllowed(persisted, dtoInstance);
+
+		Object.assign(persisted, updateFields);
+
+		if (dtoInstance.room_id === null) {
+			persisted.roomId = null;
+		}
+
+		await repository.save(persisted);
 
 		// Update zone memberships if zone_ids was explicitly provided
 		if (zoneIds !== undefined) {
@@ -939,7 +945,14 @@ export class DevicesService {
 	 * of `update()`, and cannot be dropped by a plugin update DTO that redeclares a placement field.
 	 */
 	private assertPlacementChangeAllowed(device: DeviceEntity, dtoInstance: UpdateDeviceDto): void {
-		if (!device.hidden) {
+		// The PATCH's own `hidden: true` counts, not just the row's current value. The rule is about the
+		// device this placement lands on, and after such a request that device is hidden — so judging the
+		// stored value alone made the outcome depend on write order: the entity save committed the hide,
+		// and `setDeviceZones` then refused the zone half because the device it re-read was now hidden.
+		// The caller got a 422 with the hide already applied, the other fields already written and no
+		// DEVICE_UPDATED to tell anything about it. Refused before the first write, nothing is left half
+		// done, and a request cannot end both hidden and re-placed.
+		if (!device.hidden && dtoInstance.hidden !== true) {
 			return;
 		}
 

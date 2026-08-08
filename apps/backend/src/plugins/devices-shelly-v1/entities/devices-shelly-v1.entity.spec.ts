@@ -176,6 +176,10 @@ describe('ShellyV1DeviceEntity via DevicesService.update()', () => {
 
 		jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 		jest.spyOn(repository, 'save').mockResolvedValue(persisted);
+		// `update()` writes through a relation-free re-read of the row rather than through the entity it
+		// merged into, and refuses outright when that read comes back empty — the row was deleted
+		// mid-call. Here it answers the same row the load did.
+		jest.spyOn(repository, 'findOne').mockResolvedValue(persisted);
 
 		return persisted;
 	};
