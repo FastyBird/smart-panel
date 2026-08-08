@@ -2323,6 +2323,56 @@ describe('VirtualIndexMaintenanceListener', () => {
 		// unit from the channel's *category*, which is why a recategorisation reaches this handler at all.
 		// A channel moved to something incompatible and then moved back leaves the property row untouched,
 		// so versioning the property alone would still match and orphan a projection that is fine again.
+		// `describeSentinelMismatch` judges the sentinel, so the write has to name it: a second PATCH that
+		// restores *only* `invalid` leaves every other judged field identical, and without this clause the
+		// older pass would still match and clear a link that is valid again.
+		it('names both sentinels, compared as text', async () => {
+			const { subject, wheres } = build(
+				{ compatible: true },
+				[{ ...dependent, invalid: 12 }],
+				'reserves no invalid value',
+				1,
+				{
+					id: 'source-property',
+					permissions: ['ro'],
+					dataType: 'bool',
+					format: null,
+					step: null,
+					invalid: 99,
+					channel: sourceChannel,
+				},
+			);
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(
+				wheres.some(
+					(entry) =>
+						typeof entry.clause === 'string' && entry.clause.includes('CAST(src.invalid AS TEXT) IS :sourceInvalid'),
+				),
+			).toBe(true);
+			expect(
+				wheres.some(
+					(entry) =>
+						typeof entry.clause === 'string' && entry.clause.includes('CAST(invalid AS TEXT) IS :dependentInvalid'),
+				),
+			).toBe(true);
+
+			const stateClause = wheres.find(
+				(entry) => typeof entry.clause === 'string' && entry.clause.includes('src.permissions'),
+			);
+			const dependentClause = wheres.find(
+				(entry) => typeof entry.clause === 'string' && entry.clause.includes(':dependentInvalid'),
+			);
+
+			// Bound as text on both sides, so a sentinel written as a number and read back as a string still
+			// compares equal — the reason this field can be in the predicate at all.
+			expect(stateClause?.params).toEqual(expect.objectContaining({ sourceInvalid: '99' }));
+			// Asserted on the bound value, not just on the clause: naming `:dependentInvalid` without binding
+			// it leaves the parameter unresolved, and the write then fails instead of orphaning anything.
+			expect(dependentClause?.params).toHaveProperty('dependentInvalid', '12');
+		});
+
 		it('names the channel category as well as the property state', async () => {
 			const { subject, wheres } = build({ compatible: false, reason: 'unit changed' }, [dependent], null, 1, {
 				id: 'source-property',

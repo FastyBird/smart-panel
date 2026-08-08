@@ -1098,10 +1098,11 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			// is not "has this row been touched" but "does it still say what I judged", and two PATCHes
 			// that leave the judged fields identical genuinely have nothing to disagree about.
 			//
-			// `invalid` is left out on purpose. It is a `text` column holding string, number or boolean, so
-			// its stored form depends on what was written rather than on the column — the one field here
-			// that cannot be bound unambiguously. A source that changes *only* its sentinel inside the race
-			// window is therefore not covered; every other judged field is.
+			// `invalid` is compared through `CAST(... AS TEXT)` on both sides. It is a `text` column holding a
+			// string, a number or a boolean, so what a row holds depends on what was written — and casting
+			// makes the comparison independent of that, which is what I had wrongly assumed was impossible
+			// when this first excluded the field. `describeSentinelMismatch` judges it, so leaving it out
+			// meant a second PATCH restoring only the sentinel could not stop this write.
 			// The projection's own declaration is judged too — `describeProjectionConstraintMismatch` and the
 			// representation check both read it — so it belongs in the predicate for the same reason the
 			// source's does. A client can repair the *projection* instead of the source, widening its format
@@ -1111,12 +1112,18 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			//
 			// Plain conditions rather than an EXISTS: this is the row being updated, so its columns are
 			// already in scope.
+			// `invalid` holds a string, a number or a boolean, so both sides are compared as text and this is
+			// what puts the bound value in the same shape the `CAST` puts the column in.
+			const asText = (value: string | number | boolean | null | undefined): string | null =>
+				value === null || value === undefined ? null : String(value);
+
 			const dependentState = {
 				dependentPermissions: (dependent.permissions ?? []).join(','),
 				dependentDataType: dependent.dataType,
 				dependentFormat:
 					dependent.format === null || dependent.format === undefined ? null : JSON.stringify(dependent.format),
 				dependentStep: dependent.step ?? null,
+				dependentInvalid: asText(dependent.invalid),
 			};
 
 			const sourceState = {
@@ -1124,6 +1131,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				sourceDataType: source.dataType,
 				sourceFormat: source.format === null || source.format === undefined ? null : JSON.stringify(source.format),
 				sourceStep: source.step ?? null,
+				sourceInvalid: asText(source.invalid),
 				sourceChannelId: sourceChannel.id,
 				sourceChannelCategory: sourceChannel.category,
 			};
@@ -1135,7 +1143,8 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				' AND src.permissions IS :sourcePermissions' +
 				' AND src.dataType IS :sourceDataType' +
 				' AND src.format IS :sourceFormat' +
-				' AND src.step IS :sourceStep)';
+				' AND src.step IS :sourceStep' +
+				' AND CAST(src.invalid AS TEXT) IS :sourceInvalid)';
 
 			// The channel is judged too, because part of what was compared comes off it rather than off the
 			// property: `resolvePropertyUnit` derives the unit from the channel's *category*, which is why
@@ -1153,6 +1162,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				.andWhere('dataType IS :dependentDataType', dependentState)
 				.andWhere('format IS :dependentFormat', dependentState)
 				.andWhere('step IS :dependentStep', dependentState)
+				.andWhere('CAST(invalid AS TEXT) IS :dependentInvalid', dependentState)
 				.andWhere(sourceUnchanged, sourceState)
 				.andWhere(channelUnchanged, sourceState)
 				.execute();

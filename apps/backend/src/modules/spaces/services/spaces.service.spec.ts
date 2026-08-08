@@ -436,6 +436,20 @@ describe('SpacesService', () => {
 				);
 			});
 
+			// `IN` updates a repeated id once, so counting the raw list would read a perfectly valid
+			// assignment as a hidden-device refusal and roll it back. The DTO permits duplicates today.
+			it('assigns a device named twice in one payload', async () => {
+				const deviceQueryBuilder = arrangeDeviceWrite();
+				const repeated = uuid();
+
+				deviceRepository.find.mockResolvedValue([]);
+				deviceQueryBuilder.execute.mockResolvedValue({ affected: 1 } as UpdateResult);
+
+				const result = await service.bulkAssign(roomId, { deviceIds: [repeated, repeated], displayIds: [] });
+
+				expect(result.devicesAssigned).toBe(1);
+			});
+
 			// The refusal has to undo the statement that provoked it. Without a transaction, one device
 			// hidden mid-call left every *other* device moved and the caller told the whole thing was
 			// refused — a partial placement reported as a failure, with no DEVICE_UPDATED events for the

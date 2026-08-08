@@ -889,7 +889,12 @@ export class SpacesService {
 			// one, a single device hidden mid-call left every *other* device moved and the caller told the
 			// whole thing was refused — a partial placement change reported as a failure, with no
 			// DEVICE_UPDATED events for the rows that did move, so nothing downstream would ever learn.
-			const requested = dtoInstance.deviceIds;
+			// De-duplicated, because the comparison below counts rows and `IN` does not count repeats: a
+			// payload naming the same device twice updates one row, and comparing that against the raw
+			// length would report a hidden-device refusal and roll back an assignment that was entirely
+			// valid. The DTO permits duplicates today, so this is the layer that has to be indifferent
+			// to them.
+			const requested = [...new Set(dtoInstance.deviceIds)];
 
 			devicesAssigned = await this.deviceRepository.manager.transaction(async (manager): Promise<number> => {
 				const result = await manager
@@ -922,7 +927,7 @@ export class SpacesService {
 			// (e.g. media endpoints).
 			if (devicesAssigned > 0) {
 				const updatedDevices = await this.deviceRepository.find({
-					where: { id: In(dtoInstance.deviceIds) },
+					where: { id: In(requested) },
 				});
 
 				for (const device of updatedDevices) {
@@ -961,20 +966,24 @@ export class SpacesService {
 		// Same condition and the same transaction on the way out as on the way in: unassigning is a
 		// placement change too, a device hidden between the preflight and the statement is as inert for one
 		// as for the other, and a refusal has to leave the other devices where they were.
+		// De-duplicated for the same reason as the assignment above: `IN` updates a repeated id once, and
+		// counting the raw list would call that a refusal.
+		const requested = [...new Set(deviceIds)];
+
 		const unassigned = await this.deviceRepository.manager.transaction(async (manager): Promise<number> => {
 			const result = await manager
 				.createQueryBuilder()
 				.update(DeviceEntity)
 				.set({ roomId: null })
-				.where('id IN (:...ids)', { ids: deviceIds })
+				.where('id IN (:...ids)', { ids: requested })
 				.andWhere('COALESCE(hidden, 0) = 0')
 				.execute();
 
 			const affected = result.affected || 0;
 
-			if (affected !== deviceIds.length) {
+			if (affected !== requested.length) {
 				this.logger.error(
-					`Refused bulk unassignment: ${deviceIds.length - affected} device(s) were hidden while it was being applied`,
+					`Refused bulk unassignment: ${requested.length - affected} device(s) were hidden while it was being applied`,
 				);
 
 				throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
@@ -987,7 +996,7 @@ export class SpacesService {
 		// Emit DEVICE_UPDATED events so connected clients refresh derived data
 		if (unassigned > 0) {
 			const updatedDevices = await this.deviceRepository.find({
-				where: { id: In(deviceIds) },
+				where: { id: In(requested) },
 			});
 
 			for (const device of updatedDevices) {
