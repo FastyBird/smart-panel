@@ -142,7 +142,20 @@ export class DeviceZonesService {
 
 		this.logger.debug(`Successfully added device ${deviceId} to zone ${zoneId}`);
 
-		this.eventEmitter.emit(EventType.DEVICE_UPDATED, device);
+		// Announced from a fresh read, for the same reason the removal path below re-reads: the entity
+		// this call started with is several awaited round trips old. A device hidden or deleted in that
+		// window has already had its own event go out, and following it with this stale one would tell
+		// every client that a device they have just hidden is visible again — or that a deleted one
+		// exists — with nothing scheduled to correct them.
+		const current = await this.deviceRepository.findOne({ where: { id: deviceId } });
+
+		if (!current) {
+			this.logger.debug(`Device ${deviceId} was deleted while it was being added to a zone; announcing nothing`);
+
+			return inserted;
+		}
+
+		this.eventEmitter.emit(EventType.DEVICE_UPDATED, current);
 
 		return inserted;
 	}
@@ -305,7 +318,18 @@ export class DeviceZonesService {
 
 		this.logger.debug(`Successfully set ${zoneIds.length} zones for device ${deviceId}`);
 
-		this.eventEmitter.emit(EventType.DEVICE_UPDATED, device);
+		// Fresh read, for the same reason as the two paths above: the entity this call started with was
+		// read before the zones were validated and before the transaction ran, and a device deleted in
+		// that window has already announced itself.
+		const current = await this.deviceRepository.findOne({ where: { id: deviceId } });
+
+		if (!current) {
+			this.logger.debug(`Device ${deviceId} was deleted while its zones were being set; announcing nothing`);
+
+			return validatedZones;
+		}
+
+		this.eventEmitter.emit(EventType.DEVICE_UPDATED, current);
 
 		return validatedZones;
 	}

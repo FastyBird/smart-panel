@@ -14,6 +14,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { SpaceType } from '../../spaces/spaces.constants';
+import { EventType } from '../devices.constants';
 import { DevicesNotAllowedException } from '../devices.exceptions';
 import { DeviceZoneEntity } from '../entities/device-zone.entity';
 import { DeviceEntity } from '../entities/devices.entity';
@@ -109,6 +110,50 @@ describe('DeviceZonesService', () => {
 				zoneId,
 				deviceId,
 			]);
+		});
+
+		// Announced from a fresh read, never from the entity the call started with. That one is several
+		// awaited round trips old, and a device hidden in the window has already had its own event go out
+		// — following it with the stale row tells every client the device is visible again, with nothing
+		// scheduled to correct them.
+		it('announces the device as it stands now, not as it stood when the call began', async () => {
+			arrangeDevice(false);
+
+			jest
+				.spyOn(repository, 'findOne')
+				.mockResolvedValueOnce(null)
+				.mockResolvedValue({ deviceId, zoneId } as DeviceZoneEntity);
+			// Visible when the guard read it, hidden by the time the membership exists.
+			jest
+				.spyOn(deviceRepository, 'findOne')
+				.mockResolvedValueOnce({ id: deviceId, hidden: false } as DeviceEntity)
+				.mockResolvedValue({ id: deviceId, hidden: true } as DeviceEntity);
+
+			await service.addDeviceToZone(deviceId, zoneId);
+
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
+				EventType.DEVICE_UPDATED,
+				expect.objectContaining({ hidden: true }),
+			);
+		});
+
+		// Same reasoning as the removal path: a deleted device has already announced itself, and a device
+		// that is gone gets no update.
+		it('announces nothing when the device was deleted while it was being added to a zone', async () => {
+			arrangeDevice(false);
+
+			jest
+				.spyOn(repository, 'findOne')
+				.mockResolvedValueOnce(null)
+				.mockResolvedValue({ deviceId, zoneId } as DeviceZoneEntity);
+			jest
+				.spyOn(deviceRepository, 'findOne')
+				.mockResolvedValueOnce({ id: deviceId, hidden: false } as DeviceEntity)
+				.mockResolvedValue(null);
+
+			await service.addDeviceToZone(deviceId, zoneId);
+
+			expect(eventEmitter.emit).not.toHaveBeenCalled();
 		});
 
 		// The guard reads the device and several awaited lookups follow before anything is written. A hide

@@ -15,6 +15,7 @@ import { SpaceType } from '../../spaces/spaces.constants';
 import {
 	DEVICES_MODULE_NAME,
 	DEVICE_PLACEMENT_LOCKED_MESSAGE,
+	DeviceHiddenBy,
 	DeviceHiddenFilter,
 	EventType,
 } from '../devices.constants';
@@ -797,6 +798,27 @@ export class DevicesService {
 				where: { id: device.id } as FindOptionsWhere<TDevice>,
 				loadEagerRelations: false,
 			});
+
+			// A system hide never overwrites an operator's, whatever order the two requests arrive in.
+			// `hidden_by: user` is a deliberate setting that both unhide paths refuse to reverse, and
+			// stamping `system` over it would hand the row to `unhideAbandonedSources`, which would then
+			// undo the operator's hide the moment the last virtual reference goes away — an explicit
+			// choice reversed by a caller that only meant to record why *it* wanted the row hidden. The
+			// device is hidden either way, which is all the claim was for, so the rest of the patch still
+			// applies and only the provenance is left alone.
+			if (
+				row &&
+				updateFields.hiddenBy === DeviceHiddenBy.SYSTEM &&
+				row.hidden === true &&
+				row.hiddenBy === DeviceHiddenBy.USER
+			) {
+				this.logger.debug(
+					`Kept the operator's hide provenance on device id=${device.id}; a system claim does not overwrite it`,
+				);
+
+				delete updateFields.hidden;
+				delete updateFields.hiddenBy;
+			}
 
 			// The row is gone, so a concurrent `remove()` deleted it after this call read it. There is
 			// nothing left to update, and saving the entity loaded at the top is not a way to say so:

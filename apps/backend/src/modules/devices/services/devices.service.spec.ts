@@ -820,6 +820,73 @@ describe('DevicesService', () => {
 			expect(deviceZonesService.setDeviceZones).not.toHaveBeenCalled();
 		});
 
+		// `hidden_by: user` is a deliberate operator setting that both unhide paths refuse to reverse. The
+		// virtual wizard stamps `system` on the sources it takes over, and if that lands on a row an
+		// operator has just hidden, `unhideAbandonedSources` would undo their hide the moment the last
+		// virtual reference goes away.
+		it('does not let a system hide overwrite the provenance of an operator hide', async () => {
+			const deviceId = uuid().toString();
+			const userHidden = {
+				id: deviceId,
+				type: 'mock',
+				hidden: true,
+				hiddenBy: DeviceHiddenBy.USER,
+			} as unknown as MockDevice;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(userHidden);
+			// A distinct instance, as the two reads are in production: `update()` merges the patch into the
+			// loaded entity and then judges the provenance on the row it re-read, not on the merged one.
+			jest.spyOn(repository, 'findOne').mockResolvedValue({ ...userHidden } as MockDevice);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+
+			await service.update(deviceId, {
+				type: 'mock',
+				hidden: true,
+				hidden_by: DeviceHiddenBy.SYSTEM,
+			} as unknown as UpdateMockDeviceDto);
+
+			const saved = (repository.save as jest.Mock).mock.calls[0]?.[0] as DeviceEntity | undefined;
+
+			expect(saved?.hiddenBy).toBe(DeviceHiddenBy.USER);
+			expect(saved?.hidden).toBe(true);
+		});
+
+		// The other half of the same rule: a system claim on a row nobody else has hidden is exactly what
+		// the wizard is for, and must still be recorded.
+		it('still records a system hide on a device the operator has not hidden', async () => {
+			const deviceId = uuid().toString();
+			const visible = { id: deviceId, type: 'mock', hidden: false, hiddenBy: null } as unknown as MockDevice;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(visible);
+			jest.spyOn(repository, 'findOne').mockResolvedValue({ ...visible } as MockDevice);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+
+			await service.update(deviceId, {
+				type: 'mock',
+				hidden: true,
+				hidden_by: DeviceHiddenBy.SYSTEM,
+			} as unknown as UpdateMockDeviceDto);
+
+			const saved = (repository.save as jest.Mock).mock.calls[0]?.[0] as DeviceEntity | undefined;
+
+			expect(saved?.hidden).toBe(true);
+			expect(saved?.hiddenBy).toBe(DeviceHiddenBy.SYSTEM);
+		});
+
 		it('should update and return the device', async () => {
 			const updateDto: UpdateMockDeviceDto = {
 				type: 'mock',
