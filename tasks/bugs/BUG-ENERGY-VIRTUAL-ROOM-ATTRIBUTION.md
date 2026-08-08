@@ -51,6 +51,10 @@ correct.
 
 The kWh lands where the hardware sits, not where the operator sees the device.
 
+Note that (a) is only constructible on today's build: nothing yet stops two virtual devices claiming
+the same meter. After the fix it is refused at persistence — see §4 — which is why the acceptance
+criteria below test the split with one claimant per channel, and the double claim as a rejection.
+
 ## 3. Cause
 
 Two pieces, both correct on their own:
@@ -95,9 +99,10 @@ fix must not introduce a lookup that assumes otherwise.
 
 - [ ] A delta for a projected energy property carries the projecting device's `deviceId` and `roomId`
 - [ ] A device's unprojected energy channels still attribute to the device itself
-- [ ] The same kWh is never counted twice: reproduction (a) yields 2 kWh in room A and 0 elsewhere,
-      with the house total still 2 kWh
-- [ ] A second projection of an already-projected energy property is refused at persistence, and the
+- [ ] **The split case, with one claimant per meter:** two energy-bearing channels of one physical
+      device — a 4PM has one per relay — projected into different rooms put each channel's kWh in its
+      own room, nothing in the other, and leave the house total unchanged
+- [ ] A second projection of an already-claimed energy property is refused at persistence, and the
       wizard reports the pairing as incompatible
 - [ ] An orphaned projection is attributed to the virtual device that holds it — there is no source
       left to fall back to. `VirtualValueSourceService.resolve()` answers `null` once
@@ -106,7 +111,11 @@ fix must not introduce a lookup that assumes otherwise.
       behaviour; the criterion is that the fix does not change it, and that an orphan therefore stops
       accruing rather than accruing in the wrong room, since no value reaches it once its meter is
       gone
-- [ ] Regression tests carrying both reproductions above
+- [ ] Regression tests for the split case above and for the refusal — **not** for reproduction (a) as
+      it stands: it projects one meter into two rooms, which the single-claim rule makes impossible to
+      construct, and a test that bypassed persistence to build it would be asserting a split this task
+      never defines the rule for (why room A rather than room B owns the delta). Reproduction (a) is
+      evidence of today's behaviour, and the fix's job is to make its *shape* unbuildable
 
 ## 6. Notes
 
