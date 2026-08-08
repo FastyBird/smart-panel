@@ -488,6 +488,36 @@ describe('DevicesService', () => {
 			expect(saved?.hiddenBy ?? null).toBeNull();
 		});
 
+		// `id` is client-suppliable and `repository.save()` treats an existing primary key as an *update*,
+		// so a create naming an id already in use silently overwrote that device — and the rollback then
+		// removed it. A malformed request destroying a device it had nothing to do with.
+		it('refuses a create naming an id that already exists, before anything is written', async () => {
+			const takenId = uuid().toString();
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'create').mockReturnValue({ id: takenId } as MockDevice);
+			jest.spyOn(repository, 'findOne').mockResolvedValue({ id: takenId } as MockDevice);
+
+			await expect(
+				service.create({
+					id: takenId,
+					type: 'mock',
+					category: DeviceCategory.GENERIC,
+					name: 'Colliding device',
+					mock_value: 'Random text',
+				} as never),
+			).rejects.toThrow(DevicesValidationException);
+
+			expect(repository.save).not.toHaveBeenCalled();
+			expect(repository.remove).not.toHaveBeenCalled();
+		});
+
 		it('rolls the device back and announces the children when a nested channel fails', async () => {
 			const createDto: CreateMockDeviceDto = {
 				type: 'mock',
@@ -512,7 +542,10 @@ describe('DevicesService', () => {
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 			jest.spyOn(repository, 'create').mockReturnValue({ id: createdDeviceId } as MockDevice);
 			jest.spyOn(repository, 'save').mockResolvedValue({ id: createdDeviceId } as MockDevice);
-			jest.spyOn(repository, 'findOne').mockResolvedValue(reloadedForRollback);
+			// First call answers the "is this id already taken" check — nothing is taken here — and the
+			// second is the rollback re-reading the row it is about to remove. Both go through the same
+			// repository in this harness.
+			jest.spyOn(repository, 'findOne').mockResolvedValueOnce(null).mockResolvedValue(reloadedForRollback);
 
 			channelsService.create.mockRejectedValue(new DevicesValidationException('Source cannot fill this slot'));
 			channelsService.findAll.mockResolvedValue([orphanedChannel] as never);

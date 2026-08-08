@@ -428,6 +428,31 @@ export class DevicesService {
 
 		const device = repository.create(toInstance(mapping.class, dtoInstance));
 
+		// A create that names an id already in use is refused before anything is written.
+		//
+		// `id` is client-suppliable — the wizard generates its uuids up front — and `repository.save()`
+		// treats a row whose primary key exists as an *update*. So a create carrying an existing id
+		// silently overwrote that device instead of inserting, and the rollback below then removed it:
+		// a malformed request destroying a device it had nothing to do with. The rollback is what makes
+		// it destructive, but the overwrite was wrong on its own — a create that quietly becomes an
+		// update is not something any caller asked for.
+		//
+		// Asked of the base repository rather than the mapped one, because a collision with a device of
+		// *another* type is the same collision: ids are unique across the table, not per subclass, and
+		// the mapped repository's own discriminator would hide exactly the case that is hardest to
+		// explain afterwards.
+		if (device.id) {
+			const existing = await this.repository.findOne({ where: { id: device.id } });
+
+			if (existing) {
+				this.logger.error(`[VALIDATION FAILED] Device id=${device.id} already exists, refusing to create over it`);
+
+				throw new DevicesValidationException(
+					`Device with id=${device.id} already exists. Creating a device with an id already in use is not allowed.`,
+				);
+			}
+		}
+
 		// Save the device
 		const raw = await repository.save(device);
 

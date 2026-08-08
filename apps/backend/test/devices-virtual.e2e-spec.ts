@@ -9,6 +9,7 @@ effective testing and mirror the pattern already used by the other e2e specs in 
 import { useContainer } from 'class-validator';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
+import { v4 as uuid } from 'uuid';
 
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -1114,6 +1115,44 @@ describe('devices-virtual plugin (e2e)', () => {
 
 			expect(response.status).toBe(400);
 			expect(JSON.stringify(response.body)).toContain('closed-loop control');
+		});
+
+		// `id` is client-suppliable and `save()` treats an existing primary key as an update, so a create
+		// naming an id already in use overwrote that device — and the nested-creation rollback then removed
+		// it. A malformed request destroying a device it had nothing to do with, which is why this is
+		// checked end to end rather than only at the unit level.
+		it('refuses a create naming an id that already exists, leaving that device alone', async () => {
+			const firstResponse = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: DEVICES_VIRTUAL_TYPE,
+						category: DeviceCategory.LIGHTING,
+						name: 'E2E Id Collision Original',
+					},
+				})
+				.expect(201);
+			const takenId = (firstResponse.body as { data: DeviceBody }).data.id;
+
+			// The failure has to happen *after* the device row is saved, or the rollback never runs and the
+			// test proves nothing about it. A zone that does not exist does that with one request: the
+			// device is written, `setDeviceZones` then refuses, and the rollback removes what it believes
+			// this request created — which, without the guard, is the original device.
+			const collision = await authPost('/modules/devices/devices').send({
+				data: {
+					id: takenId,
+					type: DEVICES_VIRTUAL_TYPE,
+					category: DeviceCategory.LIGHTING,
+					name: 'E2E Id Collision Impostor',
+					zone_ids: [uuid()],
+				},
+			});
+
+			expect(collision.status).not.toBe(201);
+
+			// The original is untouched: still there, still its own name.
+			const readBack = await authGet(`/modules/devices/devices/${takenId}`).expect(200);
+
+			expect((readBack.body as { data: DeviceBody & { name: string } }).data.name).toBe('E2E Id Collision Original');
 		});
 
 		// A virtual device's channels and properties are derived from its category, and a device PATCH
