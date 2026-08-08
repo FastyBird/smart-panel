@@ -202,9 +202,19 @@ on identifying the meter by its physical device and channel, with only the *pers
 taking the virtual identity. The test for this is a transition — readings before the projection, the
 projection, readings after — not two readings taken once it already exists.
 
-**History is not re-attributed.** Existing deltas keep the room they were recorded with. Splitting
-changes the future only, and the task should say so where an operator can read it, so nobody expects
-a backfill.
+**History is not re-attributed — and the readers have to agree.** Stored deltas keep the room they
+were recorded with, so splitting changes the future only, and that should be said where an operator
+can read it rather than leaving anyone expecting a backfill.
+
+The space queries do not honour that today, which the fix has to settle rather than inherit:
+`getSpaceSummary()` and `getSpaceTimeseries()` reach the room by joining the device's *current*
+`roomId` (`energy-data.service.ts:260`, `:383`), and `getSpaceBreakdown()` inner-joins the device row
+itself (`:515`). So moving a device rewrites its history between spaces, and deleting one erases that
+history from every space view, while `delta.roomId` sits there unchanged. It is pre-existing — every
+physical device that ever changed rooms has the same shape — but a split makes it routine, and a task
+that promises stable history while the read path contradicts it would be promising nothing. The
+readers should use the recorded `delta.roomId`, with the join kept only where a *current* fact is
+genuinely wanted.
 
 **An orphan has no source to fall back to.** When the source property is deleted the FK nulls,
 `VirtualValueSourceService.resolve()` returns `null`, and the registry resolves the projection to its
@@ -256,6 +266,8 @@ fix must not introduce a lookup that assumes otherwise.
       behaviour; the criterion is that the fix does not change it, and that an orphan therefore stops
       accruing rather than accruing in the wrong room, since no value reaches it once its meter is
       gone
+- [ ] Moving a projecting virtual device to another room leaves its recorded consumption in the room
+      it was recorded in, and deleting it does not erase that history from the space views
 - [ ] Regression tests for the split case above and for the refusal — **not** for reproduction (a) as
       it stands: it projects one meter into two rooms, which the single-claim rule makes impossible to
       construct, and a test that bypassed persistence to build it would be asserting a split this task
