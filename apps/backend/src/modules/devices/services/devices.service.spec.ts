@@ -507,6 +507,49 @@ describe('DevicesService', () => {
 		// `id` is client-suppliable and `repository.save()` treats an existing primary key as an *update*,
 		// so a create naming an id already in use silently overwrote that device — and the rollback then
 		// removed it. A malformed request destroying a device it had nothing to do with.
+		// Same invariant on the way in: a create that names a reason without hiding anything would leave a
+		// `system` claim sitting on a visible row for the first hide to inherit.
+		it('stores no hide provenance for a create that leaves the device visible', async () => {
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+
+			const built = {
+				id: uuid().toString(),
+				type: 'mock',
+				hidden: false,
+				hiddenBy: DeviceHiddenBy.SYSTEM,
+			} as MockDevice;
+
+			jest.spyOn(repository, 'create').mockReturnValue(built);
+
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(built),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+
+			await service.create({
+				type: 'mock',
+				category: DeviceCategory.GENERIC,
+				name: 'Visible device',
+				hidden_by: DeviceHiddenBy.SYSTEM,
+				mock_value: 'Random text',
+			} as never);
+
+			const inserted = (repository.insert as jest.Mock).mock.calls[0]?.[0] as DeviceEntity | undefined;
+
+			expect(inserted?.hiddenBy).toBeNull();
+		});
+
 		it('refuses a create naming an id that already exists, before anything is written', async () => {
 			const takenId = uuid().toString();
 
@@ -718,7 +761,14 @@ describe('DevicesService', () => {
 			// existing id into an update, which is what let a create overwrite a device. The primary key
 			// constraint decides now, and the database does not interleave two requests the way a
 			// check-then-save does.
-			expect(repository.insert).toHaveBeenCalledWith(toInstance(MockDevice, mockCratedDevice));
+			// Set on the expectation rather than in the literal above, because `toInstance` drops a null it
+			// was not given a value for. A device that hides nothing stores no provenance, which is what
+			// keeps a later hide from inheriting a claim it never made.
+			const expectedInsert = toInstance(MockDevice, mockCratedDevice);
+
+			expectedInsert.hiddenBy = null;
+
+			expect(repository.insert).toHaveBeenCalledWith(expectedInsert);
 			expect(repository.save).not.toHaveBeenCalled();
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('device.id = :id', { id: mockCratedDevice.id });
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
@@ -962,6 +1012,35 @@ describe('DevicesService', () => {
 			expect(judged).toBe(rowAsItStandsNow);
 		});
 
+		// Provenance on a row that ends up visible is a claim about nothing, and left standing it is
+		// inherited by the next hide — including an operator's, which the reconciliation would then undo
+		// as if it had been the system's own.
+		it('stores no hide provenance for a patch that leaves the device visible', async () => {
+			const deviceId = uuid().toString();
+			const visible = { id: deviceId, type: 'mock', hidden: false, hiddenBy: null } as unknown as MockDevice;
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(visible);
+			jest.spyOn(repository, 'findOne').mockResolvedValue({ ...visible } as MockDevice);
+			jest.spyOn(repository, 'save').mockImplementation((entity) => Promise.resolve(entity as MockDevice));
+
+			await service.update(deviceId, {
+				type: 'mock',
+				hidden_by: DeviceHiddenBy.SYSTEM,
+			} as unknown as UpdateMockDeviceDto);
+
+			const saved = (repository.save as jest.Mock).mock.calls[0]?.[0] as DeviceEntity | undefined;
+
+			expect(saved?.hidden).not.toBe(true);
+			expect(saved?.hiddenBy).toBeNull();
+		});
+
 		it('should update and return the device', async () => {
 			const updateDto: UpdateMockDeviceDto = {
 				type: 'mock',
@@ -1041,7 +1120,11 @@ describe('DevicesService', () => {
 			const result = await service.update(mockDevice.id, updateDto);
 
 			expect(result).toEqual(toInstance(MockDevice, mockUpdatedDevice));
-			expect(repository.save).toHaveBeenCalledWith(toInstance(MockDevice, mockUpdateDevice));
+			const expectedSave = toInstance(MockDevice, mockUpdateDevice);
+
+			expectedSave.hiddenBy = null;
+
+			expect(repository.save).toHaveBeenCalledWith(expectedSave);
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('device.id = :id', { id: mockDevice.id });
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.DEVICE_UPDATED,

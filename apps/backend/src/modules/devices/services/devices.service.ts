@@ -432,6 +432,15 @@ export class DevicesService {
 
 		const device = repository.create(toInstance(mapping.class, dtoInstance));
 
+		// Provenance only means something while the device is hidden. A create that names a reason
+		// without hiding anything would leave a `system` claim sitting on a visible row, and the first
+		// hide that follows — an operator's, carrying no reason of its own — would inherit it: the
+		// reconciliation reads such a row as a virtual device's abandoned source and makes it visible
+		// again, undoing a hide nothing in the system asked it to touch.
+		if (device.hidden !== true) {
+			device.hiddenBy = null;
+		}
+
 		// A create that names an id already in use is refused before anything is written.
 		//
 		// `id` is client-suppliable — the wizard generates its uuids up front — and `repository.save()`
@@ -821,6 +830,16 @@ export class DevicesService {
 
 			if (dtoInstance.room_id === null) {
 				row.roomId = null;
+			}
+
+			// The same rule as on create, applied to what this PATCH is about to store rather than to what
+			// it carried: a `hidden_by` on a row that ends up visible is a claim about nothing, and left
+			// standing it would be inherited by the next hide — including an operator's, which the
+			// reconciliation would then undo as if it had been the system's own. This subsumes the
+			// `hidden: false` clearing above, which stays because it is what tells the change detection a
+			// PATCH that only unhides has changed something.
+			if (row.hidden !== true) {
+				row.hiddenBy = null;
 			}
 
 			// The type owner's last look at the merged row, before anything is written — the only point at
