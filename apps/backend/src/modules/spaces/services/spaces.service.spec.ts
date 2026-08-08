@@ -39,6 +39,11 @@ describe('SpacesService', () => {
 	// by `SpacesService.update()` to read the raw `category` column straight
 	// from the shared STI table (ignoring subtype hydration).
 	let dataSourceQueryMock: jest.Mock;
+	let deviceRepositoryStub: {
+		find: jest.Mock;
+		createQueryBuilder: jest.Mock;
+		manager: { transaction: jest.Mock };
+	};
 	let mockQueryBuilder: {
 		update: jest.Mock;
 		set: jest.Mock;
@@ -77,6 +82,19 @@ describe('SpacesService', () => {
 		deviceConnectionStateService = {
 			readLatestMany: jest.fn().mockResolvedValue(new Map()),
 		};
+		// The bulk placement writes run inside a transaction so a refusal rolls the statement back. The
+		// callback's manager delegates to this same stub's `createQueryBuilder` *at call time*, so a test
+		// that swaps in its own builder (see `arrangeDeviceWrite`) still sees its own `affected` count.
+		deviceRepositoryStub = {
+			find: jest.fn().mockResolvedValue([]),
+			createQueryBuilder: jest.fn(() => mockQueryBuilder),
+			manager: {
+				transaction: jest.fn(async (run: (m: { createQueryBuilder: () => unknown }) => Promise<number>) =>
+					run({ createQueryBuilder: () => deviceRepositoryStub.createQueryBuilder() as unknown }),
+				),
+			},
+		};
+
 		mockQueryBuilder = {
 			update: jest.fn().mockReturnThis(),
 			set: jest.fn().mockReturnThis(),
@@ -122,10 +140,7 @@ describe('SpacesService', () => {
 				},
 				{
 					provide: getRepositoryToken(DeviceEntity),
-					useValue: {
-						find: jest.fn().mockResolvedValue([]),
-						createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
-					},
+					useValue: deviceRepositoryStub,
 				},
 				{
 					provide: getRepositoryToken(DisplayEntity),
@@ -419,6 +434,24 @@ describe('SpacesService', () => {
 				await expect(service.bulkAssign(roomId, { deviceIds: [uuid(), uuid()], displayIds: [] })).rejects.toThrow(
 					DevicesNotAllowedException,
 				);
+			});
+
+			// The refusal has to undo the statement that provoked it. Without a transaction, one device
+			// hidden mid-call left every *other* device moved and the caller told the whole thing was
+			// refused — a partial placement reported as a failure, with no DEVICE_UPDATED events for the
+			// rows that did move, so nothing downstream would ever learn of them.
+			it('runs the refused assignment inside a transaction so nothing is left moved', async () => {
+				const deviceQueryBuilder = arrangeDeviceWrite();
+
+				deviceRepository.find.mockResolvedValue([]);
+				deviceQueryBuilder.execute.mockResolvedValue({ affected: 1 } as UpdateResult);
+
+				await expect(service.bulkAssign(roomId, { deviceIds: [uuid(), uuid()], displayIds: [] })).rejects.toThrow(
+					DevicesNotAllowedException,
+				);
+
+				// The throw came from inside the transaction callback, which is what rolls the update back.
+				expect(deviceRepositoryStub.manager.transaction).toHaveBeenCalled();
 			});
 
 			it('assigns when every targeted device is visible', async () => {

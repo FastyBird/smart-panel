@@ -880,30 +880,41 @@ export class SpacesService {
 
 			await this.assertNoHiddenDevices(dtoInstance.deviceIds);
 
-			// The visibility condition travels into the statement, not only into the preflight above. A
-			// device hidden between the two — the virtual-device wizard hides its source the moment it
-			// takes over — would otherwise have its placement moved by a check that was true when it was
-			// made and is not when it is applied.
-			const result = await this.deviceRepository
-				.createQueryBuilder()
-				.update()
-				.set({ roomId: spaceId })
-				.where('id IN (:...ids)', { ids: dtoInstance.deviceIds })
-				.andWhere('COALESCE(hidden, 0) = 0')
-				.execute();
+			// The visibility condition travels into the statement, not only into the preflight above — a
+			// device hidden between the two, which is what the virtual-device wizard does to its source the
+			// moment it takes over, would otherwise have its placement moved by a check that was true when
+			// it was made and false when it was applied.
+			//
+			// Inside a transaction, because the refusal below has to undo the statement above it. Without
+			// one, a single device hidden mid-call left every *other* device moved and the caller told the
+			// whole thing was refused — a partial placement change reported as a failure, with no
+			// DEVICE_UPDATED events for the rows that did move, so nothing downstream would ever learn.
+			const requested = dtoInstance.deviceIds;
 
-			devicesAssigned = result.affected || 0;
+			devicesAssigned = await this.deviceRepository.manager.transaction(async (manager): Promise<number> => {
+				const result = await manager
+					.createQueryBuilder()
+					.update(DeviceEntity)
+					.set({ roomId: spaceId })
+					.where('id IN (:...ids)', { ids: requested })
+					.andWhere('COALESCE(hidden, 0) = 0')
+					.execute();
 
-			// Fewer rows than asked for means at least one was hidden underneath this call. Reported the
-			// same way the preflight reports it, rather than returning a count that quietly says some of
-			// what you asked for happened.
-			if (devicesAssigned !== dtoInstance.deviceIds.length) {
-				this.logger.error(
-					`Refused bulk assignment: ${dtoInstance.deviceIds.length - devicesAssigned} device(s) were hidden while it was being applied`,
-				);
+				const affected = result.affected || 0;
 
-				throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
-			}
+				// Fewer rows than asked for means at least one was hidden underneath this call. Thrown from
+				// inside so the transaction rolls back: a caller told its change was refused has to find
+				// nothing changed.
+				if (affected !== requested.length) {
+					this.logger.error(
+						`Refused bulk assignment: ${requested.length - affected} device(s) were hidden while it was being applied`,
+					);
+
+					throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
+				}
+
+				return affected;
+			});
 			this.logger.debug(`Assigned ${devicesAssigned} devices to space`);
 
 			// Emit DEVICE_UPDATED events so connected clients (panel) learn
@@ -947,25 +958,30 @@ export class SpacesService {
 
 		await this.assertNoHiddenDevices(deviceIds);
 
-		// Same condition on the way out as on the way in: unassigning is a placement change too, and a
-		// device hidden between the preflight and this statement is as inert for one as for the other.
-		const result = await this.deviceRepository
-			.createQueryBuilder()
-			.update()
-			.set({ roomId: null })
-			.where('id IN (:...ids)', { ids: deviceIds })
-			.andWhere('COALESCE(hidden, 0) = 0')
-			.execute();
+		// Same condition and the same transaction on the way out as on the way in: unassigning is a
+		// placement change too, a device hidden between the preflight and the statement is as inert for one
+		// as for the other, and a refusal has to leave the other devices where they were.
+		const unassigned = await this.deviceRepository.manager.transaction(async (manager): Promise<number> => {
+			const result = await manager
+				.createQueryBuilder()
+				.update(DeviceEntity)
+				.set({ roomId: null })
+				.where('id IN (:...ids)', { ids: deviceIds })
+				.andWhere('COALESCE(hidden, 0) = 0')
+				.execute();
 
-		const unassigned = result.affected || 0;
+			const affected = result.affected || 0;
 
-		if (unassigned !== deviceIds.length) {
-			this.logger.error(
-				`Refused bulk unassignment: ${deviceIds.length - unassigned} device(s) were hidden while it was being applied`,
-			);
+			if (affected !== deviceIds.length) {
+				this.logger.error(
+					`Refused bulk unassignment: ${deviceIds.length - affected} device(s) were hidden while it was being applied`,
+				);
 
-			throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
-		}
+				throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
+			}
+
+			return affected;
+		});
 		this.logger.debug(`Unassigned ${unassigned} devices`);
 
 		// Emit DEVICE_UPDATED events so connected clients refresh derived data

@@ -34,18 +34,27 @@ class DevicesRepository extends Repository<DeviceModel> {
       // change, and the fetches below. A source device is hidden the moment a virtual device replaces
       // it, and a running panel would otherwise keep rendering the original alongside its replacement —
       // commandable, and duplicated in every space it belongs to — until the process restarted.
-      if (row['hidden'] == true) {
-        final hiddenId = row['id'];
+      final rowId = row['id'];
 
-        if (hiddenId is String) {
-          insertData.remove(hiddenId);
+      if (row['hidden'] == true) {
+        if (rowId is String) {
+          insertData.remove(rowId);
 
           if (_fetchesInFlight > 0) {
-            _hiddenWhileFetching.add(hiddenId);
+            _hiddenWhileFetching.add(rowId);
           }
         }
 
         continue;
+      }
+
+      // A device can be hidden and unhidden again while one request is out — the wizard being abandoned
+      // does exactly that. The mark says "the response predates this device being hidden", and once the
+      // device is visible again that is no longer a reason to drop its row: leaving the mark would make
+      // the response skip a device that is currently visible, and the eviction would then remove it, with
+      // no later event guaranteed to bring it back.
+      if (rowId is String) {
+        _hiddenWhileFetching.remove(rowId);
       }
 
       if (!row.containsKey('type')) {

@@ -72,6 +72,22 @@ void main() {
       expect(repository.shouldApply(_device(arrivedMidFlightId)), isTrue);
     });
 
+    // A device can be hidden and unhidden again while one request is out — abandoning the wizard does
+    // exactly that. Once it is visible again the mark is no longer a reason to drop its row, and leaving
+    // it would make the response skip a device that is currently visible and the eviction then remove it.
+    test('stops skipping a device that was unhidden again before the snapshot landed', () {
+      final repository = _buildRepository();
+
+      repository.markHiddenWhileFetching(deviceId);
+
+      expect(repository.shouldApply(_device(deviceId)), isFalse);
+
+      // The unhide arriving by socket, ahead of the response.
+      repository.insert([_device(deviceId, hidden: false)]);
+
+      expect(repository.shouldApply(_device(deviceId)), isTrue);
+    });
+
     // The eviction still has to do its job for everything the panel already knew about — a source
     // device hidden while it was offline has no event to carry its removal.
     test('drops a device it already knew about that the snapshot omits', () async {
