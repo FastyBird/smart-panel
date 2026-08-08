@@ -181,9 +181,17 @@ codes, access tokens, refresh tokens, PKCE verifiers, cookies, passwords, or tok
 
 ### 8. Deployment and upgrades
 
-OAuth remains disabled by default. Public deployment requires HTTPS, an explicit public base URL, trusted reverse-proxy
-configuration, endpoint and login rate limits, current backups, and an incident-response procedure. Forwarded headers
-remain ignored until a separately configured trusted-proxy mechanism validates the immediate proxy.
+OAuth remains disabled by default. Adding persistence, consent, token, discovery, or validation code does not make any
+OAuth route reachable: implementation phases keep the surface behind an internal test-only gate. The user-facing enable
+switch is added only after the application can verify that access-token expiry timers, targeted client/grant/token/family
+subscription aborts, approver update/delete invalidation, public-identity rotation, owner/admin revoke controls, audit
+hooks, and endpoint rate limits are all registered. A failed readiness check leaves protected-resource metadata,
+authorization-server metadata, authorization/token/revocation endpoints, OAuth challenges, and OAuth MCP bearer
+validation unmounted together. The initial static bearer behavior remains unchanged during that failure.
+
+Public deployment requires HTTPS, an explicit public base URL, trusted reverse-proxy configuration, endpoint and login
+rate limits, current backups, and an incident-response procedure. Forwarded headers remain ignored until a separately
+configured trusted-proxy mechanism validates the immediate proxy.
 
 Database migrations are incremental. Authorization state uses persistent TypeORM storage; in-memory dependency adapters
 are test-only. Backups contain client/grant/token metadata and therefore remain sensitive even though raw bearer values
@@ -212,6 +220,7 @@ reissue or downgrade an OAuth token into a static credential.
 | Client, grant, token, or refresh-family revocation with an open stream | Bind subscriptions to every authorization artifact and abort targeted streams before the mutation reports success |
 | Access token expires while a stream is open | Register the token expiry with the subscription and abort the stream at that deadline |
 | A grant approver is demoted or deleted | Listen for user update/delete events and revoke every grant, token artifact, and subscription approved by a user who is no longer owner/admin |
+| A phased rollout exposes OAuth before revocation controls | Do not add the enable switch or mount any OAuth route until a startup readiness gate verifies every invalidation and admin control |
 | Brute force and artifact enumeration | Separate limits for login, authorize, token, and revocation endpoints; uniform OAuth errors where required |
 | Backup cloning | Preserve installation UUID for identity but rotate/revoke OAuth and static credentials for a new physical installation |
 | Compromised owner/admin account | Existing login hardening, complete OAuth audit, revoke-all control, documented recovery workflow |

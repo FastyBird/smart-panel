@@ -64,7 +64,7 @@ amend ADR 0002.
 - [ ] Add an incremental migration for OAuth clients, grants, authorization interactions/codes, access tokens, refresh
       token families, and server-secret/key version metadata.
 - [ ] Add MCP-owned entities and services with raw artifacts hashed at creation.
-- [ ] Add an explicit HTTPS public base URL and OAuth-enabled configuration, both disabled by default.
+- [ ] Add an explicit HTTPS public base URL configuration, but no user-settable OAuth enable switch yet.
 - [ ] Derive resource, issuer, well-known, authorization, token, and revocation URLs only from trusted configuration.
 - [ ] Reject forwarded headers unless a separately explicit trusted-proxy policy validates the immediate proxy.
 - [ ] Add a distinct OAuth MCP principal/token type and prove rejection by REST, WebSocket, display, user, personal, and
@@ -73,7 +73,7 @@ amend ADR 0002.
 
 ## Phase 3 — Authorization, consent, and token endpoints
 
-**Goal:** Complete the browser flow behind the disabled OAuth configuration flag.
+**Goal:** Complete the browser flow behind an internal test-only gate; production routes remain unmounted.
 
 - [ ] Add owner/admin client pre-registration APIs with exact redirect validation except the RFC 8252 runtime-port rule
       for native loopback IP literals, and no public client secret.
@@ -87,9 +87,9 @@ amend ADR 0002.
 - [ ] Require fresh consent for new client/redirect, expanded scopes, expired grants, and revoked grants.
 - [ ] Add CSRF/interaction binding, throttling, cache-control, and redaction tests.
 
-## Phase 4 — Discovery, challenges, and MCP resource validation
+## Phase 4 — Gated discovery, challenges, and MCP resource validation
 
-**Goal:** Enable a complete standards surface atomically; never advertise half-built endpoints.
+**Goal:** Complete and test the standards surface without making it reachable in production.
 
 - [ ] Publish path-aware RFC 9728 protected-resource metadata for the canonical MCP resource.
 - [ ] Publish path-aware RFC 8414 authorization-server metadata containing only implemented capabilities.
@@ -100,10 +100,12 @@ amend ADR 0002.
 - [ ] Return protocol-correct 401 versus 403 scope challenges and recheck scopes before every tool execution.
 - [ ] Add discovery/challenge snapshots and wrong-token-type, issuer, resource, audience, cross-client, and scope
       negative tests.
+- [ ] Keep OAuth well-known, authorization, token, revocation, and OAuth-bearing MCP paths unmounted in production;
+      the existing static bearer behavior remains unchanged and there is still no user-settable OAuth enable switch.
 
 ## Phase 5 — Administration and immediate invalidation
 
-**Goal:** Give owners/admins complete lifecycle control without secret exposure.
+**Goal:** Complete every invalidation/admin control, then expose the full OAuth surface atomically.
 
 - [ ] Add list/inspect/disable/revoke APIs for OAuth clients, grants, access tokens, and refresh families.
 - [ ] Add Admin client/grant/token management views and revoke confirmations.
@@ -117,6 +119,11 @@ amend ADR 0002.
 - [ ] Add revoke-all recovery action and document password-reset versus OAuth-revocation semantics.
 - [ ] Add audit events and unit/e2e coverage for targeted and global invalidation.
 - [ ] Regenerate OpenAPI/admin types through the normal generators.
+- [ ] Add the user-facing OAuth enable switch only after startup verifies that expiry timers, targeted subscription
+      aborts, approver lifecycle listeners, public-identity rotation, revoke controls, audit hooks, and rate limits are
+      registered; fail closed and leave every OAuth route unmounted if any readiness check fails.
+- [ ] On enable, mount protected-resource metadata, authorization-server metadata, authorization/token/revocation
+      endpoints, OAuth challenges, and OAuth MCP bearer validation as one surface; never expose a partial subset.
 
 ## Phase 6 — E2E, proxy, and compatibility gate
 
