@@ -399,8 +399,33 @@ class SpacesHomeControlPluginService {
     }
   }
 
+  /// Re-read this space's light, climate and cover targets.
+  ///
+  /// The target lists are derived from the space's devices, and they live in
+  /// repositories of their own — dropping a row from [DevicesRepository]
+  /// leaves them holding it. A source device is hidden the moment a virtual
+  /// device replaces it, so without this a running panel keeps rendering and
+  /// commanding the physical source, and never picks up the replacement,
+  /// until it restarts. Deleting a device leaves the same residue.
+  ///
+  /// Re-read rather than pruned locally, because the backend already answers
+  /// these endpoints from the *visible* devices in the space: one request
+  /// settles both halves — what left the list and what took its place.
+  void _refreshSpaceTargets(String spaceId) {
+    _lightTargetsRepository.fetchForSpace(spaceId);
+    _climateTargetsRepository.fetchForSpace(spaceId);
+    _coversTargetsRepository.fetchForSpace(spaceId);
+  }
+
   /// Handle devices module events to sync names to targets and refresh
   /// media endpoints when device assignments change.
+  ///
+  /// Exposed for tests: the handler is registered with the socket service,
+  /// which a test would otherwise have to drive through a live connection.
+  @visibleForTesting
+  void handleDeviceSocketEvent(String event, Map<String, dynamic> payload) =>
+      _deviceSocketEventHandler(event, payload);
+
   void _deviceSocketEventHandler(String event, Map<String, dynamic> payload) {
     if (!payload.containsKey('id')) return;
 
@@ -437,6 +462,7 @@ class SpacesHomeControlPluginService {
           final roomId = payload['room_id'] as String?;
           if (roomId == null || roomId == displaySpaceId) {
             _mediaActivityRepository.refreshEndpoints(displaySpaceId);
+            _refreshSpaceTargets(displaySpaceId);
           }
         }
       } catch (_) {
@@ -449,6 +475,7 @@ class SpacesHomeControlPluginService {
         final displaySpaceId = locator<DisplayRepository>().display?.spaceId;
         if (displaySpaceId != null) {
           _mediaActivityRepository.refreshEndpoints(displaySpaceId);
+          _refreshSpaceTargets(displaySpaceId);
         }
       } catch (_) {
         // DisplayRepository not available
