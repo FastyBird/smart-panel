@@ -9,6 +9,9 @@ import { Test } from '@nestjs/testing';
 
 import { OpenApiResponseInterceptor } from '../src/modules/api/interceptors/open-api-response.interceptor';
 import { TransformResponseInterceptor } from '../src/modules/api/interceptors/transform-response.interceptor';
+import { ChannelsPropertiesService } from '../src/modules/devices/services/channels.properties.service';
+import { DeviceConnectionStateService } from '../src/modules/devices/services/device-connection-state.service';
+import { PlatformRegistryService } from '../src/modules/devices/services/platform.registry.service';
 import { McpController } from '../src/modules/mcp/controllers/mcp.controller';
 import { McpClientEntity } from '../src/modules/mcp/entities/mcp-client.entity';
 import { McpClientGuard } from '../src/modules/mcp/guards/mcp-client.guard';
@@ -21,19 +24,18 @@ import { McpPolicyRequest } from '../src/modules/mcp/services/mcp-policy.service
 import { McpServerService } from '../src/modules/mcp/services/mcp-server.service';
 import { McpSubscriptionRegistryService } from '../src/modules/mcp/services/mcp-subscription-registry.service';
 import { McpReadToolService } from '../src/modules/mcp/tools/mcp-read-tool.service';
+import { McpTargetDiscoveryToolService } from '../src/modules/mcp/tools/mcp-target-discovery-tool.service';
+import { ScenesService } from '../src/modules/scenes/services/scenes.service';
+import { SpacesService } from '../src/modules/spaces/services/spaces.service';
+import {
+	ToolAccessKind,
+	ToolAudience,
+	createToolDefinition,
+} from '../src/modules/tools/platforms/tool-provider.platform';
+import { ToolProviderRegistryService } from '../src/modules/tools/services/tool-provider-registry.service';
 
 const AUTH_TOKEN = 'phase-4-client';
 const ALL_CAPABILITIES = [McpCapability.READ, McpCapability.WRITE, McpCapability.TRIGGER];
-const CAPABILITY_SETS: McpCapability[][] = [
-	[],
-	[McpCapability.READ],
-	[McpCapability.WRITE],
-	[McpCapability.TRIGGER],
-	[McpCapability.READ, McpCapability.WRITE],
-	[McpCapability.READ, McpCapability.TRIGGER],
-	[McpCapability.WRITE, McpCapability.TRIGGER],
-	[...ALL_CAPABILITIES],
-];
 const READ_TOOLS = [
 	'get_home_context',
 	'get_device_state',
@@ -44,6 +46,25 @@ const READ_TOOLS = [
 ];
 const WRITE_TOOLS = ['list_writable_properties', 'set_device_property'];
 const TRIGGER_TOOLS = ['list_trigger_targets', 'run_scene', 'set_space_lighting'];
+const CAPABILITY_CASES: { capabilities: McpCapability[]; expectedTools: string[] }[] = [
+	{ capabilities: [], expectedTools: [] },
+	{ capabilities: [McpCapability.READ], expectedTools: [...READ_TOOLS] },
+	{ capabilities: [McpCapability.WRITE], expectedTools: [...WRITE_TOOLS] },
+	{ capabilities: [McpCapability.TRIGGER], expectedTools: [...TRIGGER_TOOLS] },
+	{
+		capabilities: [McpCapability.READ, McpCapability.WRITE],
+		expectedTools: [...READ_TOOLS, ...WRITE_TOOLS],
+	},
+	{
+		capabilities: [McpCapability.READ, McpCapability.TRIGGER],
+		expectedTools: [...READ_TOOLS, ...TRIGGER_TOOLS],
+	},
+	{
+		capabilities: [McpCapability.WRITE, McpCapability.TRIGGER],
+		expectedTools: [...WRITE_TOOLS, ...TRIGGER_TOOLS],
+	},
+	{ capabilities: [...ALL_CAPABILITIES], expectedTools: [...READ_TOOLS, ...WRITE_TOOLS, ...TRIGGER_TOOLS] },
+];
 
 interface TestClientPolicy {
 	capabilities: McpCapability[];
@@ -146,24 +167,54 @@ describe('MCP endpoint', () => {
 			policyService as unknown as McpPolicyService,
 			auditService,
 		);
+		const toolRegistry = new ToolProviderRegistryService();
+
+		toolRegistry.register({
+			getType: () => 'mcp-endpoint-catalog',
+			getToolDefinitions: () => [
+				createToolDefinition({
+					name: 'control_device',
+					description: 'Test device control provider.',
+					audiences: [ToolAudience.MCP],
+					access: ToolAccessKind.WRITE,
+					inputSchema: z.object({}),
+					outputSchema: z.object({}),
+				}),
+				createToolDefinition({
+					name: 'run_scene',
+					description: 'Test scene provider.',
+					audiences: [ToolAudience.MCP],
+					access: ToolAccessKind.TRIGGER,
+					inputSchema: z.object({}),
+					outputSchema: z.object({}),
+				}),
+				createToolDefinition({
+					name: 'set_space_lighting',
+					description: 'Test space lighting provider.',
+					audiences: [ToolAudience.MCP],
+					access: ToolAccessKind.TRIGGER,
+					inputSchema: z.object({}),
+					outputSchema: z.object({}),
+				}),
+			],
+			executeTool: jest.fn().mockResolvedValue(null),
+		});
+
+		const targetTools = new McpTargetDiscoveryToolService(
+			{} as ChannelsPropertiesService,
+			{} as DeviceConnectionStateService,
+			{} as PlatformRegistryService,
+			{} as ScenesService,
+			{} as SpacesService,
+			toolRegistry,
+			contextService as unknown as McpContextService,
+			policyService as unknown as McpPolicyService,
+			auditService,
+		);
 		const catalog = {
 			register(server: McpServer, authInfo?: AuthInfo): void {
 				readTools.register(server, authInfo);
-
-				for (const name of supplementalCatalogTools(authInfo?.scopes ?? [])) {
-					server.registerTool(
-						name,
-						{
-							description: `Test ${name} operation.`,
-							inputSchema: z.object({}),
-							outputSchema: z.object({ tool: z.string() }),
-						},
-						() => ({
-							content: [{ type: 'text', text: name }],
-							structuredContent: { tool: name },
-						}),
-					);
-				}
+				targetTools.register(server, authInfo);
 			},
 		};
 		const moduleRef = await Test.createTestingModule({
@@ -264,9 +315,9 @@ describe('MCP endpoint', () => {
 		}
 	});
 
-	it.each(CAPABILITY_SETS.map((capabilities, index) => ({ capabilities, index })))(
+	it.each(CAPABILITY_CASES.map((testCase, index) => ({ ...testCase, index })))(
 		'exposes the exact catalog for module capability set $capabilities',
-		async ({ capabilities, index }) => {
+		async ({ capabilities, expectedTools, index }) => {
 			const clientId = `module-matrix-${index}`;
 
 			moduleCapabilities = [...capabilities];
@@ -279,7 +330,7 @@ describe('MCP endpoint', () => {
 				const tools = await client.listTools();
 				const resources = await client.listResources();
 
-				expect(tools.tools.map(({ name }) => name)).toEqual(catalogTools(capabilities));
+				expect(tools.tools.map(({ name }) => name)).toEqual(expectedTools);
 				expect(resources.resources.length > 0).toBe(capabilities.includes(McpCapability.READ));
 			} finally {
 				await client.close();
@@ -318,7 +369,7 @@ describe('MCP endpoint', () => {
 				const tools = await client.listTools();
 				const resources = await client.listResources();
 
-				expect(tools.tools.map(({ name }) => name)).toEqual(catalogTools(expected));
+				expect(tools.tools.map(({ name }) => name)).toEqual(expectedCatalogTools(expected));
 				expect(resources.resources.length > 0).toBe(expected.includes(McpCapability.READ));
 			} finally {
 				await client.close();
@@ -394,7 +445,9 @@ describe('MCP endpoint', () => {
 
 			serverService.notifyToolsChanged('client-a');
 
-			await expect(Promise.race([notification, timeout(2_000)])).resolves.toBeUndefined();
+			await expect(
+				Promise.race([notification, rejectAfter(2_000, 'Timed out waiting for tools/list_changed')]),
+			).resolves.toBeUndefined();
 
 			const secondClosedBeforeTargetClose = await Promise.race([
 				secondSubscription.closed.then(() => true),
@@ -433,14 +486,16 @@ describe('MCP endpoint', () => {
 			const subscription = await connection.client.listen({ toolsListChanged: true });
 
 			expect((await connection.client.listTools()).tools.map(({ name }) => name)).toEqual(
-				catalogTools(ALL_CAPABILITIES),
+				expectedCatalogTools(ALL_CAPABILITIES),
 			);
 
 			clientPolicies.set(clientId, { capabilities: [McpCapability.READ] });
 			serverService.invalidateClientPolicy(clientId);
 			serverService.notifyToolsChanged(clientId);
 
-			await expect(Promise.race([notification, timeout(2_000)])).resolves.toBeUndefined();
+			await expect(
+				Promise.race([notification, rejectAfter(2_000, 'Timed out waiting for tools/list_changed')]),
+			).resolves.toBeUndefined();
 			expect((await connection.client.listTools()).tools.map(({ name }) => name)).toEqual(READ_TOOLS);
 			expect(subscriptions.countForClient(clientId)).toBe(1);
 
@@ -496,15 +551,16 @@ describe('MCP endpoint', () => {
 		});
 	}
 
-	function catalogTools(capabilities: readonly string[]): string[] {
-		return [
-			...(capabilities.includes(McpCapability.READ) ? READ_TOOLS : []),
-			...supplementalCatalogTools(capabilities),
-		];
+	function rejectAfter(milliseconds: number, message: string): Promise<never> {
+		return new Promise((_, reject) => {
+			const timer = setTimeout(() => reject(new Error(message)), milliseconds);
+			timer.unref();
+		});
 	}
 
-	function supplementalCatalogTools(capabilities: readonly string[]): string[] {
+	function expectedCatalogTools(capabilities: readonly string[]): string[] {
 		return [
+			...(capabilities.includes(McpCapability.READ) ? READ_TOOLS : []),
 			...(capabilities.includes(McpCapability.WRITE) ? WRITE_TOOLS : []),
 			...(capabilities.includes(McpCapability.TRIGGER) ? TRIGGER_TOOLS : []),
 		];
