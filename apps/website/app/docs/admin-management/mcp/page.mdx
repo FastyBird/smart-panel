@@ -119,14 +119,17 @@ codex mcp add smart-panel \
   --bearer-token-env-var SMART_PANEL_MCP_TOKEN
 ```
 
-Confirm the entry and connection:
+Confirm that the configuration entry exists:
 
 ```bash copy
 codex mcp list
 ```
 
-The ChatGPT desktop app, Codex CLI, and Codex IDE extension share the same local MCP configuration. Restart the app or
-extension after adding the server, then inspect its MCP server list before approving tools.
+This command does not contact the endpoint. Start a Codex session and ask it to list the Smart Panel tools or call a
+read tool such as `get_home_context`; a successful tool list or call verifies endpoint reachability and authentication.
+
+The Codex app, Codex CLI, and Codex IDE extension share the same local MCP configuration. Restart the app or extension
+after adding the server, then complete the connectivity check before approving tools.
 
 The equivalent `~/.codex/config.toml` entry is:
 
