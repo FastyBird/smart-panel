@@ -62,6 +62,12 @@ technically validate, but a thermostat with neither is a thermometer wearing a b
   decision: a reading has `lastUpdated` on it, and a reading older than a **freshness window** is not
   evidence of anything, so the tick releases the actuator rather than holding it on the strength of a
   measurement nobody is making any more
+- A **command path for the controller's own inputs.** Relaxing `assertOwnedPropertyNotWritable` is
+  only half of it: the panel and the space climate intents do not PATCH a property, they call
+  `VirtualDevicePlatform.processBatch()` (`climate-intent.service.ts:464`, `:704`), and the platform
+  refuses every `LOCAL` property outright (`virtual-device.platform.ts:64`). Until that path accepts
+  controller-owned inputs — persisting the value *and* emitting the event that re-evaluates the loop —
+  the ordinary climate controls cannot move the setpoint or the enable at all, whatever the DTO allows
 - The target setpoint as a **writable owned property** — the schema already accommodates owned
   properties; v1 simply never creates a writable one (`assertOwnedPropertyNotWritable` refuses it
   today, and that guard is what this task revisits)
@@ -108,7 +114,14 @@ restart. The task has to name the owner and the behaviour, with an incremental m
   other, and `assertProjectionCompatible`'s counterpart has to judge it: an actuator must be a
   writable `bool` **of category `on`**, and it must not be a property of a virtual device. The
   category matters: `locked`, `swing` and `mute` are writable booleans too, and a loop wired to one
-  of those would quietly toggle something that has nothing to do with heating.
+  of those would quietly toggle something that has nothing to do with heating;
+- **one actuator, one controller.** The FK above constrains a channel to one actuator but not an
+  actuator to one channel, and two loops on the same relay contradict each other by construction —
+  one releasing it while the other calls for heat, each undoing the other's safety decision. The
+  invariant is uniqueness on `actuatorPropertyId`, and it has to be atomic for the same reason the
+  energy claim does: two creates can otherwise both pass a read-then-write check. `DeviceStructureLockService`
+  already serialises these writes; a unique index on the column is the durable half, and here — unlike
+  the energy claim — the column lives on the row itself, so an index can express it directly.
 
 **`status` is required on the temperature channels, and optional and enum-typed on the humidity
 ones.** `heater` requires
@@ -187,6 +200,10 @@ category itself is judged.
       sending anything
 - [ ] An actuator mapping is refused unless the target property's category is `on`; another writable
       boolean — `locked`, `swing`, `mute` — is rejected
+- [ ] A second channel cannot take an actuator another already holds, including when both requests
+      arrive concurrently
+- [ ] A setpoint and a mode change arriving through `ClimateIntentService` — the panel's own path —
+      reach the owned properties, persist, and re-evaluate the loop
 - [ ] The actuator mapping survives a restart, degrades to `DISCONNECTED` when its property is
       deleted, and can be remapped — with the incremental migration that adds it
 - [ ] An offline or orphaned sensed source releases the actuator rather than latching it

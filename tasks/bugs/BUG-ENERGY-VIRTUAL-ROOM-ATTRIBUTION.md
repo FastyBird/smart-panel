@@ -128,13 +128,24 @@ is data loss, so the recommended shape is:
   logs them once, loudly enough that an operator can rebuild the device if the automatic choice was
   not what they meant.
 
-**The claim gates ingestion, not just attribution.** Awarding a winner is not enough on its own: a
-losing projection of a *non-qualifying* source — `generic.consumption` into an `electrical_energy`
-slot — still passes `wasIngestedAsSource()`, because that asks about the source, and would go on
-producing its own deltas beside the winner's. So the rule the ingestion applies to a projection whose
-destination slot is energy-bearing is simply: **ingest if and only if it holds the claim.** That
-replaces `wasIngestedAsSource()` for projections rather than sitting beside it, and it is what makes
-the household total right on an upgraded installation rather than merely well-attributed.
+**Exactly one event per meter computes a delta, and the claim decides its attribution.** Every
+reading arrives twice — once on the source property, once on each projection of it — so the rule has
+to say which single event counts, and the answer differs by whether the *source's own* slot is
+recognised:
+
+- **Qualifying source** (`electrical_energy.consumption`, the ordinary meter): the **source event**
+  computes the delta, exactly as today, and the claim only changes the `deviceId`/`roomId` stamped on
+  it — the claimant's if there is one, its own if there is not. Every projection event is skipped,
+  which is what `wasIngestedAsSource()` already does and must keep doing.
+- **Non-qualifying source** (`generic.consumption` projected into an `electrical_energy` slot): the
+  source event is not energy at all — `findSourceType` answers null for its own channel — so nothing
+  ingests unless a projection does. There the **claim-holding projection** computes the delta, and
+  the losing projections are skipped, which is the case `wasIngestedAsSource()` cannot see and where
+  today's duplicates come from.
+
+Stated the other way round: a projection ingests only when it holds the claim *and* its source would
+not have ingested on its own. Anything looser double-counts the ordinary meter; anything stricter
+loses the projected one.
 
 **The delta baseline stays keyed to the physical meter.** `DeltaComputationService.computeDelta()`
 keys its baseline `${deviceId}:${channelId}:${sourceType}`
@@ -178,6 +189,8 @@ fix must not introduce a lookup that assumes otherwise.
 - [ ] **And the household total is right afterwards:** the losing projections stop producing deltas,
       including where the source is non-qualifying and nothing else would have skipped them — a
       post-migration regression test on the total, not only on the per-room split
+- [ ] A qualifying source that *is* claimed still produces exactly one delta, from the source event,
+      carrying the claimant's room — not two
 - [ ] An orphaned projection is attributed to the virtual device that holds it — there is no source
       left to fall back to. `VirtualValueSourceService.resolve()` answers `null` once
       `sourcePropertyId` is null, the registry then resolves the property to its own id, and
