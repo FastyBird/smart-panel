@@ -52,6 +52,7 @@ describe('SpacesService', () => {
 		// chain has one more link than it used to.
 		andWhere: jest.Mock;
 		execute: jest.Mock;
+		getCount: jest.Mock;
 	};
 
 	const mockSpace = {
@@ -101,6 +102,10 @@ describe('SpacesService', () => {
 			where: jest.fn().mockReturnThis(),
 			andWhere: jest.fn().mockReturnThis(),
 			execute: jest.fn().mockResolvedValue({ affected: 0 } as UpdateResult),
+			// The bulk placement writes ask about the hidden rows directly rather than inferring them from
+			// the count the statement affected, so the builder answers a count too. Nothing hidden by
+			// default.
+			getCount: jest.fn().mockResolvedValue(0),
 		};
 		dataSourceQueryMock = jest.fn().mockResolvedValue([{ category: null }]);
 
@@ -298,6 +303,9 @@ describe('SpacesService', () => {
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
 				execute: jest.fn().mockResolvedValue({ affected: 2 } as UpdateResult),
+				// Nothing hidden: the write asks about the hidden rows directly rather than reading the
+				// count it affected as a verdict.
+				getCount: jest.fn().mockResolvedValue(0),
 			};
 
 			const displayQueryBuilder = {
@@ -345,6 +353,9 @@ describe('SpacesService', () => {
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
 				execute: jest.fn().mockResolvedValue({ affected: 3 } as UpdateResult),
+				// Nothing hidden: the write asks about the hidden rows directly rather than reading the
+				// count it affected as a verdict.
+				getCount: jest.fn().mockResolvedValue(0),
 			};
 
 			deviceRepository.createQueryBuilder.mockReturnValue(
@@ -392,6 +403,7 @@ describe('SpacesService', () => {
 				where: jest.Mock;
 				andWhere: jest.Mock;
 				execute: jest.Mock;
+				getCount: jest.Mock;
 			} => {
 				const deviceQueryBuilder = {
 					update: jest.fn().mockReturnThis(),
@@ -399,6 +411,9 @@ describe('SpacesService', () => {
 					where: jest.fn().mockReturnThis(),
 					andWhere: jest.fn().mockReturnThis(),
 					execute: jest.fn().mockResolvedValue({ affected: 1 } as UpdateResult),
+					// Nothing hidden unless a test says so: the refusal is keyed on this count, not on the
+					// shortfall between rows asked for and rows touched.
+					getCount: jest.fn().mockResolvedValue(0),
 				};
 
 				deviceRepository.createQueryBuilder.mockReturnValue(
@@ -430,6 +445,9 @@ describe('SpacesService', () => {
 
 				deviceRepository.find.mockResolvedValue([]);
 				deviceQueryBuilder.execute.mockResolvedValue({ affected: 1 } as UpdateResult);
+				// One of the two is hidden by the time the statement runs — read inside the same
+				// transaction, so it is the state the write actually met.
+				deviceQueryBuilder.getCount.mockResolvedValue(1);
 
 				await expect(service.bulkAssign(roomId, { deviceIds: [uuid(), uuid()], displayIds: [] })).rejects.toThrow(
 					DevicesNotAllowedException,
@@ -459,6 +477,7 @@ describe('SpacesService', () => {
 
 				deviceRepository.find.mockResolvedValue([]);
 				deviceQueryBuilder.execute.mockResolvedValue({ affected: 1 } as UpdateResult);
+				deviceQueryBuilder.getCount.mockResolvedValue(1);
 
 				await expect(service.bulkAssign(roomId, { deviceIds: [uuid(), uuid()], displayIds: [] })).rejects.toThrow(
 					DevicesNotAllowedException,
@@ -466,6 +485,33 @@ describe('SpacesService', () => {
 
 				// The throw came from inside the transaction callback, which is what rolls the update back.
 				expect(deviceRepositoryStub.manager.transaction).toHaveBeenCalled();
+			});
+
+			// A device deleted after the client built its selection is skipped by the statement exactly as a
+			// hidden one is, so reading the shortfall as "something was hidden" refused the whole batch and
+			// rolled back every device that was perfectly assignable. Missing means not assigned, which is
+			// what the returned count has always said.
+			it('assigns the devices that exist when the payload names one that no longer does', async () => {
+				const deviceQueryBuilder = arrangeDeviceWrite();
+
+				deviceRepository.find.mockResolvedValue([]);
+				// Two ids asked for, one row touched, and nothing hidden — the other id names nothing.
+				deviceQueryBuilder.execute.mockResolvedValue({ affected: 1 } as UpdateResult);
+
+				const result = await service.bulkAssign(roomId, { deviceIds: [uuid(), uuid()], displayIds: [] });
+
+				expect(result.devicesAssigned).toBe(1);
+			});
+
+			it('unassigns the devices that exist when the list names one that no longer does', async () => {
+				const deviceQueryBuilder = arrangeDeviceWrite();
+
+				deviceRepository.find.mockResolvedValue([]);
+				deviceQueryBuilder.execute.mockResolvedValue({ affected: 1 } as UpdateResult);
+
+				const unassigned = await service.unassignDevices([uuid(), uuid()]);
+
+				expect(unassigned).toBe(1);
 			});
 
 			it('assigns when every targeted device is visible', async () => {

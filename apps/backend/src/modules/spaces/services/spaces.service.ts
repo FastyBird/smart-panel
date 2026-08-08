@@ -889,11 +889,9 @@ export class SpacesService {
 			// one, a single device hidden mid-call left every *other* device moved and the caller told the
 			// whole thing was refused — a partial placement change reported as a failure, with no
 			// DEVICE_UPDATED events for the rows that did move, so nothing downstream would ever learn.
-			// De-duplicated, because the comparison below counts rows and `IN` does not count repeats: a
-			// payload naming the same device twice updates one row, and comparing that against the raw
-			// length would report a hidden-device refusal and roll back an assignment that was entirely
-			// valid. The DTO permits duplicates today, so this is the layer that has to be indifferent
-			// to them.
+			// De-duplicated because the DTO permits duplicates and the returned count is a number of
+			// devices: `IN` touches a repeated id once, so a payload naming the same device twice would
+			// otherwise report one fewer device assigned than it named.
 			const requested = [...new Set(dtoInstance.deviceIds)];
 
 			devicesAssigned = await this.deviceRepository.manager.transaction(async (manager): Promise<number> => {
@@ -907,13 +905,23 @@ export class SpacesService {
 
 				const affected = result.affected || 0;
 
-				// Fewer rows than asked for means at least one was hidden underneath this call. Thrown from
-				// inside so the transaction rolls back: a caller told its change was refused has to find
-				// nothing changed.
-				if (affected !== requested.length) {
-					this.logger.error(
-						`Refused bulk assignment: ${requested.length - affected} device(s) were hidden while it was being applied`,
-					);
+				// Asked about the hidden rows directly rather than inferred from the count. A row the
+				// statement skipped is not necessarily a hidden one: an id naming a device deleted since
+				// the client built its selection is skipped too, and reading the shortfall as a hidden
+				// device turned that into a placement-lock refusal that rolled back every valid device in
+				// the batch. A missing id is simply not assigned, which is what the returned count has
+				// always said. Same transaction as the statement, so a device hidden underneath this call
+				// is still caught — that is the race this condition exists for.
+				const blocked = await manager
+					.createQueryBuilder(DeviceEntity, 'device')
+					.where('device.id IN (:...ids)', { ids: requested })
+					.andWhere('COALESCE(device.hidden, 0) = 1')
+					.getCount();
+
+				// Thrown from inside so the transaction rolls back: a caller told its change was refused has
+				// to find nothing changed.
+				if (blocked > 0) {
+					this.logger.error(`Refused bulk assignment: ${blocked} device(s) were hidden while it was being applied`);
 
 					throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
 				}
@@ -966,8 +974,8 @@ export class SpacesService {
 		// Same condition and the same transaction on the way out as on the way in: unassigning is a
 		// placement change too, a device hidden between the preflight and the statement is as inert for one
 		// as for the other, and a refusal has to leave the other devices where they were.
-		// De-duplicated for the same reason as the assignment above: `IN` updates a repeated id once, and
-		// counting the raw list would call that a refusal.
+		// De-duplicated for the same reason as the assignment above: `IN` updates a repeated id once, so
+		// the count returned would otherwise be short of what the caller named.
 		const requested = [...new Set(deviceIds)];
 
 		const unassigned = await this.deviceRepository.manager.transaction(async (manager): Promise<number> => {
@@ -981,10 +989,17 @@ export class SpacesService {
 
 			const affected = result.affected || 0;
 
-			if (affected !== requested.length) {
-				this.logger.error(
-					`Refused bulk unassignment: ${requested.length - affected} device(s) were hidden while it was being applied`,
-				);
+			// Hidden rows counted directly, for the same reason as the assignment above: an id that names
+			// nothing is skipped by the statement too, and reading that shortfall as a hidden device
+			// refused the whole batch over a device that had simply been deleted.
+			const blocked = await manager
+				.createQueryBuilder(DeviceEntity, 'device')
+				.where('device.id IN (:...ids)', { ids: requested })
+				.andWhere('COALESCE(device.hidden, 0) = 1')
+				.getCount();
+
+			if (blocked > 0) {
+				this.logger.error(`Refused bulk unassignment: ${blocked} device(s) were hidden while it was being applied`);
 
 				throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
 			}
