@@ -121,6 +121,10 @@ authorization server and therefore do not remove the need for the component spik
 - Global artifact revocation and stream closure on OAuth server-secret rotation.
 - Fail-closed OAuth switch-off that rejects new OAuth traffic, revokes OAuth artifacts, and closes OAuth streams while
   preserving static MCP streams; readiness-gated re-enable must not reactivate old artifacts.
+- Artifact issuance/rotation serialized against the persistent OAuth-enabled generation, so an in-flight handler cannot
+  commit after switch-off revoke-all or produce an artifact that becomes valid after re-enable.
+- Complete bootstrap-time NestJS/Fastify route registration behind one runtime gate; enable/disable must not depend on
+  unsupported post-listen route mounting or unmounting.
 - Atomic production activation only after expiry, revocation, approver-lifecycle, public-identity/server-secret
   rotation, live-scope-reduction, switch-off, admin, audit, and rate-limit controls pass the readiness gate.
 - Reverse-proxy path prefixes without trusting forwarded headers.

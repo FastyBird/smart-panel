@@ -105,8 +105,9 @@ amend ADR 0002.
 - [ ] Return protocol-correct 401 versus 403 scope challenges and recheck scopes before every tool execution.
 - [ ] Add discovery/challenge snapshots and wrong-token-type, issuer, resource, audience, cross-client, and scope
       negative tests.
-- [ ] Keep OAuth well-known, authorization, token, revocation, and OAuth-bearing MCP paths unmounted in production;
-      the existing static bearer behavior remains unchanged and there is still no user-settable OAuth enable switch.
+- [ ] Keep OAuth well-known, authorization, token, revocation, and OAuth-bearing MCP paths absent from production until
+      Phase 5 adds the complete bootstrap-time gated route set; do not attempt runtime route mounting, and leave the
+      existing static bearer behavior unchanged with no user-settable OAuth enable switch.
 
 ## Phase 5 — Administration and immediate invalidation
 
@@ -121,6 +122,10 @@ amend ADR 0002.
       recheck the OAuth-enabled and artifact/authorization-input generations plus live scopes while registering, and
       increment or close the applicable gate before an invalidating mutation enumerates streams. A racing open must
       either register first and be closed or observe the new generation and fail/revalidate.
+- [ ] Serialize every grant, authorization-code, access-token, and refresh-token creation/rotation with OAuth
+      switch-off: conditionally commit the artifact and its captured enabled generation only while the persistent gate
+      remains open at that generation. Switch-off must atomically close and increment the generation first, so a racing
+      handler either commits before revoke-all or its stale commit fails.
 - [ ] Close only the matching subscriptions before client, grant, access-token, or refresh-family revocation reports
       success, and automatically close each stream at its authorization deadline.
 - [ ] Route module-ceiling, registered-client-maximum, and approved-grant scope reductions through an awaited
@@ -140,15 +145,18 @@ amend ADR 0002.
 - [ ] Regenerate OpenAPI/admin types through the normal generators.
 - [ ] Add the user-facing OAuth enable switch only after startup verifies authorization-deadline timers, targeted
       artifact and live-scope-reduction subscription aborts, awaited approver lifecycle invalidation,
-      serialized subscription-open/invalidation gates, public-identity/server-secret rotation, OAuth switch-off
-      invalidation, revoke controls, audit hooks, and rate limits are registered; fail closed and leave every OAuth
-      route unmounted if any readiness check fails.
-- [ ] On enable, mount protected-resource metadata, authorization-server metadata, authorization/token/revocation
-      endpoints, OAuth challenges, and OAuth MCP bearer validation as one surface; never expose a partial subset.
-- [ ] On switch-off, atomically close the shared OAuth runtime gate before handlers accept more traffic, revoke all
-      OAuth artifacts, and abort all OAuth subscriptions before reporting success; preserve static MCP credentials and
-      streams, remain fail-closed if invalidation fails, and require a new authorization flow after readiness-gated
-      re-enable.
+      serialized subscription-open/invalidation and artifact-issuance gates, public-identity/server-secret rotation,
+      OAuth switch-off invalidation, revoke controls, audit hooks, and rate limits are registered; fail closed and keep
+      the shared OAuth route gate closed if any readiness check fails.
+- [ ] Register the complete protected-resource metadata, authorization-server metadata,
+      authorization/token/revocation, challenge, and OAuth MCP route set once during NestJS/Fastify bootstrap. Every
+      route must check the same fail-closed gate before its handler; never mount or unmount routes after startup.
+- [ ] On enable, rerun readiness and open the shared gate for the complete pre-registered OAuth surface atomically;
+      never expose a partial subset.
+- [ ] On switch-off, atomically close and increment the persistent OAuth generation before handlers can commit more
+      artifacts, revoke all OAuth artifacts, and abort all OAuth subscriptions before reporting success; preserve
+      static MCP credentials and streams, remain fail-closed if invalidation fails, and require a new authorization
+      flow after readiness-gated re-enable.
 
 ## Phase 6 — E2E, proxy, and compatibility gate
 
@@ -167,6 +175,11 @@ amend ADR 0002.
 - [ ] E2E: switch OAuth off with active OAuth and static subscriptions; prove new OAuth traffic is rejected and OAuth
       streams and artifacts are invalidated before success while static streams remain open, then prove re-enable
       reruns readiness and old OAuth artifacts remain unusable.
+- [ ] E2E: pause authorization, code-exchange, and refresh handlers immediately before artifact commit, switch OAuth
+      off, then resume them; prove each stale-generation commit fails, no late artifact escapes revoke-all, and none
+      becomes usable after re-enable.
+- [ ] E2E: start disabled, enable without restarting, disable without restarting, and re-enable; prove the
+      bootstrap-registered route set is uniformly unreachable/reachable behind one gate and never partially exposed.
 - [ ] Reverse-proxy E2E: explicit external prefix, hostile forwarded headers, untrusted proxy, trusted proxy, public URL
       change, and rollback.
 - [ ] Codex smoke: discovery, authorization, list/call, refresh, scope failure, and revocation; record exact version and

@@ -73,8 +73,12 @@ upgrade consequences.
       request cannot open after invalidation reports success.
 - [ ] Refresh tokens are atomically compare-and-consumed; concurrent replay creates at most one successor and revokes
       the entire family without leaving a usable fork.
+- [ ] Every OAuth artifact commit is serialized with the persistent enable generation so switch-off cannot miss a
+      racing authorization, exchange, or refresh result and re-enable cannot make it usable.
 - [ ] Switching OAuth off rejects all OAuth traffic, revokes OAuth artifacts, and closes OAuth subscriptions before
       success while leaving static MCP subscriptions active; re-enable does not reactivate old OAuth artifacts.
+- [ ] The complete OAuth route set is registered once at NestJS/Fastify bootstrap behind one shared fail-closed gate;
+      runtime enable/disable never mounts or unmounts routes and never exposes a partial surface.
 - [ ] Dynamic client registration is implemented only if required by supported target hosts and protected by an
       explicit registration policy; otherwise the supported registration path is documented.
 - [ ] Trusted reverse-proxy behavior is explicit and tested; forwarded headers are ignored unless the proxy is
@@ -82,8 +86,8 @@ upgrade consequences.
 - [ ] Static bearer clients continue to work for trusted LAN/VPN deployments until a separately documented removal or
       migration policy is approved.
 - [ ] E2E tests cover discovery, consent, PKCE success/failure, redirect validation, scope reduction, expiry, refresh,
-      concurrent refresh replay, revocation/listen registration races, OAuth switch-off/re-enable, wrong
-      issuer/resource/audience, cross-client isolation, stream closure, and log redaction.
+      concurrent refresh replay, revocation/listen and switch-off/artifact-commit races, runtime-gated OAuth
+      switch-off/re-enable, wrong issuer/resource/audience, cross-client isolation, stream closure, and log redaction.
 - [ ] At least two supported OAuth-capable MCP hosts complete discovery, authorization, tool listing, tool execution,
       refresh, and revocation smoke tests.
 - [ ] Public deployment documentation requires HTTPS and provides reverse-proxy, key rotation, backup, incident
