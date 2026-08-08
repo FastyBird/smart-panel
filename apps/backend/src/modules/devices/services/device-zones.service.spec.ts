@@ -21,6 +21,7 @@ import { DeviceEntity } from '../entities/devices.entity';
 import { DeviceZonesService } from './device-zones.service';
 
 describe('DeviceZonesService', () => {
+	let eventEmitter: { emit: jest.Mock };
 	let service: DeviceZonesService;
 	let repository: Repository<DeviceZoneEntity>;
 	let deviceRepository: Repository<DeviceEntity>;
@@ -30,6 +31,8 @@ describe('DeviceZonesService', () => {
 	const zoneId = uuid().toString();
 
 	beforeEach(async () => {
+		eventEmitter = { emit: jest.fn() };
+
 		// `metadata.tableName` and `manager.query` are here because the membership insert is a single
 		// conditional statement rather than a `save()`: it inserts only while the device is still visible,
 		// so the check cannot be overtaken by a hide committing between the guard and the write.
@@ -56,7 +59,7 @@ describe('DeviceZonesService', () => {
 				{ provide: getRepositoryToken(DeviceZoneEntity), useFactory: mockRepository },
 				{ provide: getRepositoryToken(DeviceEntity), useFactory: mockRepository },
 				{ provide: getRepositoryToken(SpaceEntity), useFactory: mockRepository },
-				{ provide: EventEmitter2, useValue: { emit: jest.fn() } },
+				{ provide: EventEmitter2, useValue: eventEmitter },
 			],
 		}).compile();
 
@@ -158,6 +161,28 @@ describe('DeviceZonesService', () => {
 			);
 
 			await expect(service.setDeviceZones(deviceId, [zoneId])).rejects.toThrow(DevicesNotAllowedException);
+		});
+
+		// A membership can disappear because this call removed it, or because the whole device was deleted
+		// and took it along by cascade. From here the two look identical — and in the second case the
+		// device's own deletion has already gone out, so announcing the row read before it tells every
+		// client that a device they just removed exists again, with nothing scheduled to remove it twice.
+		it('announces nothing when the device was deleted while its membership was being removed', async () => {
+			arrangeDevice(false);
+
+			// A member before the statement, gone after it — and the device gone too.
+			jest
+				.spyOn(repository, 'findOne')
+				.mockResolvedValueOnce({ deviceId, zoneId } as DeviceZoneEntity)
+				.mockResolvedValue(null);
+			jest
+				.spyOn(deviceRepository, 'findOne')
+				.mockResolvedValueOnce({ id: deviceId, hidden: false } as DeviceEntity)
+				.mockResolvedValue(null);
+
+			await service.removeDeviceFromZone(deviceId, zoneId);
+
+			expect(eventEmitter.emit).not.toHaveBeenCalled();
 		});
 
 		// The guard is a separate read from the delete, so a hide committing in the gap would otherwise have

@@ -187,13 +187,31 @@ export class DeviceZonesService {
 
 		if (!wasAMember) {
 			this.logger.warn(`Device ${deviceId} was not in zone ${zoneId}`);
-		} else {
-			this.logger.debug(`Successfully removed device ${deviceId} from zone ${zoneId}`);
 
-			if (device) {
-				this.eventEmitter.emit(EventType.DEVICE_UPDATED, device);
-			}
+			return;
 		}
+
+		this.logger.debug(`Successfully removed device ${deviceId} from zone ${zoneId}`);
+
+		// Announced from a fresh read, never from the row this call started with.
+		//
+		// A membership can disappear for two reasons, and from here they look identical: this statement
+		// removed it, or the whole device was deleted and took it along by cascade. In the second case the
+		// device's own deletion has already gone out, and emitting the entity read before it would tell
+		// every client that a device they have just removed exists again — with nothing scheduled to
+		// remove it a second time. Re-reading is what separates "the membership went" from "the device
+		// went", and a device that is gone gets no update.
+		const stillThere = await this.deviceRepository.findOne({ where: { id: deviceId } });
+
+		if (!stillThere) {
+			this.logger.debug(
+				`Device ${deviceId} was deleted while its zone membership was being removed; announcing nothing`,
+			);
+
+			return;
+		}
+
+		this.eventEmitter.emit(EventType.DEVICE_UPDATED, stillThere);
 	}
 
 	/**
