@@ -159,6 +159,32 @@ validation cannot catch it, because nothing is missing. Removing `thermostat` fr
 actuator channel, enforced in the wizard's advance gate *and* at persistence, in the same place the
 category itself is judged.
 
+## 3b. Invariants the design has to satisfy
+
+Stated as constraints rather than mechanisms: how each is met belongs in the design document written
+when this is picked up, not in a task file. Each was found by review of this task and is recorded so
+none of them is discovered late.
+
+- **One evaluation at a time per controller.** Four triggers can arrive together — a sensor report
+  while a setpoint write is being persisted — and Nest's handlers run concurrently, so two
+  evaluations can both read the pre-write state and dispatch contradictory commands whose order of
+  completion decides the relay. Minimum-cycle protection is bypassed the same way.
+- **Never both actuators at once.** A virtual thermostat carries heater *and* cooler channels, each
+  with its own loop and setpoint. `ClimateIntentDto`'s ordering validator only compares setpoints
+  that arrive in one request, so separate intents — or a direct write to an owned setpoint — can
+  cross them, after which both loops call for their own actuator. The interlock has to live with the
+  device, not with the request that happened to set a value.
+- **Cycle state survives a restart.** Minimum on/off protection kept only in memory is no protection:
+  the process restarts mid-interval, the last transition time is gone, and the next event may toggle
+  the relay immediately. Either the state is durable, or it is reconstructed from the actuator's
+  confirmed state and the timestamp on it.
+- **The actuator counts as a source reference.** `VirtualPropertyIndexService` and the startup
+  reconciliation both key on `sourcePropertyId`. A relay reachable only through `actuatorPropertyId`
+  is invisible to them, so a relay the wizard hid would be auto-unhidden on the next restart —
+  `unhideAbandonedSources` would see nothing referencing it — and a connection change on it would not
+  select the virtual device for status aggregation. Whatever holds the actuator has to be visible
+  wherever `sourcePropertyId` is today.
+
 ## 4. Open questions
 
 - How long may the safety tick be, and how old is a stale reading? Event-driven re-evaluation covers
@@ -202,6 +228,12 @@ category itself is judged.
       boolean — `locked`, `swing`, `mute` — is rejected
 - [ ] A second channel cannot take an actuator another already holds, including when both requests
       arrive concurrently
+- [ ] Two triggers arriving together produce one evaluation, not two contradictory ones
+- [ ] A thermostat never energises heater and cooler at once, including when their setpoints are
+      crossed by separate writes
+- [ ] Minimum-cycle protection holds across a restart, with a test that restarts mid-interval
+- [ ] A relay held only as an actuator is not auto-unhidden on restart, and a connection change on it
+      reaches the virtual device's status
 - [ ] A setpoint and a mode change arriving through `ClimateIntentService` — the panel's own path —
       reach the owned properties, persist, and re-evaluate the loop
 - [ ] The actuator mapping survives a restart, degrades to `DISCONNECTED` when its property is

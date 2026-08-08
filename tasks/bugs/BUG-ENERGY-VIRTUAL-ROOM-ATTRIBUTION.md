@@ -147,6 +147,13 @@ Stated the other way round: a projection ingests only when it holds the claim *a
 not have ingested on its own. Anything looser double-counts the ordinary meter; anything stricter
 loses the projected one.
 
+**A claim that goes away is inherited, not dropped.** Deleting or remapping the holder must promote a
+remaining projection of the same meter by the same deterministic rule the migration uses — oldest,
+ties broken by id — and only leave the meter unclaimed when none is left. Otherwise a non-qualifying
+source disappears from the totals entirely the moment its winner is removed, since nothing else
+ingests it, and a qualifying one silently reverts to the physical device's room without anything
+saying so.
+
 **The delta baseline stays keyed to the physical meter.** `DeltaComputationService.computeDelta()`
 keys its baseline `${deviceId}:${channelId}:${sourceType}`
 (`delta-computation.service.ts:65`) and answers `null` for a key it has not seen. If the `deviceId`
@@ -191,6 +198,8 @@ fix must not introduce a lookup that assumes otherwise.
       post-migration regression test on the total, not only on the per-room split
 - [ ] A qualifying source that *is* claimed still produces exactly one delta, from the source event,
       carrying the claimant's room — not two
+- [ ] Removing or remapping the claim holder promotes another projection of the same meter, if one
+      remains, so the meter neither vanishes from the totals nor quietly changes room
 - [ ] An orphaned projection is attributed to the virtual device that holds it — there is no source
       left to fall back to. `VirtualValueSourceService.resolve()` answers `null` once
       `sourcePropertyId` is null, the registry then resolves the property to its own id, and
