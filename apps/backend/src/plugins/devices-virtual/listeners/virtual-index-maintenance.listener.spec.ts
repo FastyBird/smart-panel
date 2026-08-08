@@ -1273,6 +1273,10 @@ describe('VirtualIndexMaintenanceListener', () => {
 		});
 
 		it('leaves the source hidden when the deletion it read was rolled back', async () => {
+			let notifyStructuralChangeHandled!: () => void;
+			const structuralChangeHandled = new Promise<void>((resolve) => {
+				notifyStructuralChangeHandled = resolve;
+			});
 			const transaction = dataSource
 				.transaction(async (manager) => {
 					await manager.query('DELETE FROM links WHERE virtual_device_id = ?', ['virtual-device']);
@@ -1280,6 +1284,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 					// What DevicesService.remove() does: EventEmitter2.emit() runs listeners
 					// synchronously, from inside the still-open transaction.
 					subject.handleStructuralChange();
+					notifyStructuralChangeHandled();
 
 					// Holds the transaction open until the listener has given up waiting and read through
 					// it — the expiry this case is about, reproduced rather than assumed.
@@ -1289,6 +1294,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				})
 				.catch((error: Error) => error.message);
 
+			await structuralChangeHandled;
 			await driveUntil(() => flagAtRebuild.length > 0);
 
 			// Preconditions, not the assertion: the pass really did read inside the open transaction,
@@ -1322,14 +1328,20 @@ describe('VirtualIndexMaintenanceListener', () => {
 		// the index dropped the source on the expired pass and reports no transition on the next one. The
 		// only thing that can unhide this device is the queued id being re-checked and acted on.
 		it('unhides the source once the deletion it read has committed', async () => {
+			let notifyStructuralChangeHandled!: () => void;
+			const structuralChangeHandled = new Promise<void>((resolve) => {
+				notifyStructuralChangeHandled = resolve;
+			});
 			const transaction = dataSource.transaction(async (manager) => {
 				await manager.query('DELETE FROM links WHERE virtual_device_id = ?', ['virtual-device']);
 
 				subject.handleStructuralChange();
+				notifyStructuralChangeHandled();
 
 				await indexStub.nextRead();
 			});
 
+			await structuralChangeHandled;
 			await driveUntil(() => flagAtRebuild.length > 0);
 
 			expect(flagAtRebuild).toEqual([true]);
