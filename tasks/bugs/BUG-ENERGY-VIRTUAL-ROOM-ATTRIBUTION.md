@@ -84,6 +84,19 @@ is additive, and two rooms claiming the same kWh is not coherent in any framing.
 of an already-claimed energy property should therefore be refused, and the wizard should report it as
 an incompatible pairing rather than a silent surprise.
 
+**What counts as an energy claim is decided by the destination slot, not by the source.** The
+ingestion classifies whatever property it is handed by *that property's own* channel:
+`findSourceType(channel.category, property.category)` at `energy-ingestion.listener.ts:123`, where
+`channel` is the channel the ingested property hangs on. `wasIngestedAsSource()` looks at the
+source's channel instead, and that asymmetry is deliberate — it is what lets a `consumption` property
+sitting in a `generic` channel be projected into an `electrical_energy` channel and finally be
+counted, the "missing meter" case. It also means a claim keyed on "is the *source* energy-bearing"
+misses exactly that shape: two virtual properties projecting one non-qualifying source both ingest
+today, and the household total doubles. So a projection is energy-bearing when its **own** channel
+and property categories map to a source type, and the claim's uniqueness key is the underlying source
+property id. The rejection tests must cover a non-qualifying source claimed twice, not only a
+qualifying one.
+
 The check has to be **atomic**, not a read-then-write. Two creates or remaps claiming the same
 previously unclaimed meter can both pass an `assertProjectionCompatible`-style read and both persist,
 which recreates precisely the ambiguity the rule exists to remove. Two mechanisms are available and
@@ -114,6 +127,16 @@ is data loss, so the recommended shape is:
   logs them once, loudly enough that an operator can rebuild the device if the automatic choice was
   not what they meant.
 
+**The delta baseline stays keyed to the physical meter.** `DeltaComputationService.computeDelta()`
+keys its baseline `${deviceId}:${channelId}:${sourceType}`
+(`delta-computation.service.ts:65`) and answers `null` for a key it has not seen. If the `deviceId`
+handed to it changes when attribution moves to the virtual device, then the first reading after a
+projection is created — and again after a claim is removed or remapped — has no baseline, and the
+consumption accumulated since the previous sample is silently dropped. Computation must therefore go
+on identifying the meter by its physical device and channel, with only the *persisted* attribution
+taking the virtual identity. The test for this is a transition — readings before the projection, the
+projection, readings after — not two readings taken once it already exists.
+
 **History is not re-attributed.** Existing deltas keep the room they were recorded with. Splitting
 changes the future only, and the task should say so where an operator can read it, so nobody expects
 a backfill.
@@ -135,6 +158,11 @@ fix must not introduce a lookup that assumes otherwise.
       wizard reports the pairing as incompatible
 - [ ] Two concurrent claims on the same previously unclaimed meter cannot both persist — with a
       regression test that drives them concurrently, not one after the other
+- [ ] A **non-qualifying** source (a `consumption` property in a `generic` channel) projected into two
+      `electrical_energy` slots is refused the same way, and the household total does not double
+- [ ] Creating a projection over an already-running meter loses no consumption: a transition test with
+      readings before and after the projection shows the delta spanning them, not a dropped first
+      sample
 - [ ] An installation that already holds duplicate claims comes up with exactly one claimant per
       meter after the migration, deterministically chosen, with the others left working as readings
       and reported once at startup
