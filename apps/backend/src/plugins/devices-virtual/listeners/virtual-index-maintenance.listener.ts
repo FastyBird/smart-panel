@@ -1080,6 +1080,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			// second write emits its own event.
 			const sourceTable = this.dataSource.getMetadata(ChannelPropertyEntity).tableName;
 			const channelTable = this.dataSource.getMetadata(ChannelEntity).tableName;
+			const deviceTable = this.dataSource.getMetadata(DeviceEntity).tableName;
 
 			// The write is conditioned on the rows still *saying* what they said when they were judged,
 			// rather than on a version stamp.
@@ -1134,6 +1135,8 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				sourceInvalid: asText(source.invalid),
 				sourceChannelId: sourceChannel.id,
 				sourceChannelCategory: sourceChannel.category,
+				virtualDeviceId: device.id,
+				virtualDeviceCategory: device.category,
 			};
 
 			// `IS`, not `=`: SQLite's null-safe comparison, so an unconstrained source (a null format, no
@@ -1152,6 +1155,14 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			// something incompatible and back leaves the property row untouched.
 			const channelUnchanged = `EXISTS (SELECT 1 FROM ${channelTable} ch WHERE ch.id = :sourceChannelId AND ch.category IS :sourceChannelCategory)`;
 
+			// The virtual device's own category is judged too, and it is the most consequential of the
+			// three: `reportCompatibility` resolves the spec slot from it, so the same source and the same
+			// projection can be compatible under one category and not under another. A category PATCH can
+			// commit between the judgement above and this write — that is a repair, and the rebuild it
+			// triggers cannot put back a link this pass had already cleared. Named here, such a write
+			// simply loses the race it should lose.
+			const targetCategoryUnchanged = `EXISTS (SELECT 1 FROM ${deviceTable} dev WHERE dev.id = :virtualDeviceId AND dev.category IS :virtualDeviceCategory)`;
+
 			const orphaning = await repository
 				.createQueryBuilder()
 				.update(VirtualChannelPropertyEntity)
@@ -1165,6 +1176,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				.andWhere('CAST(invalid AS TEXT) IS :dependentInvalid', dependentState)
 				.andWhere(sourceUnchanged, sourceState)
 				.andWhere(channelUnchanged, sourceState)
+				.andWhere(targetCategoryUnchanged, sourceState)
 				.execute();
 
 			if (!orphaning.affected) {

@@ -2373,6 +2373,33 @@ describe('VirtualIndexMaintenanceListener', () => {
 			expect(dependentClause?.params).toHaveProperty('dependentInvalid', '12');
 		});
 
+		// The most consequential of the judged values: `reportCompatibility` resolves the spec slot from
+		// the *virtual device's* category, so the same source and the same projection can be compatible
+		// under one category and not under another. A category PATCH committing between the judgement and
+		// this write is a repair, and the rebuild it triggers cannot put back a link this pass has already
+		// cleared.
+		it('names the virtual device category the slot was resolved from', async () => {
+			const { subject, wheres } = build({ compatible: false, reason: 'no such slot' }, [dependent], null, 1, {
+				id: 'source-property',
+				permissions: ['ro'],
+				dataType: 'bool',
+				format: null,
+				step: null,
+				channel: sourceChannel,
+			});
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			const categoryClause = wheres.find(
+				(entry) => typeof entry.clause === 'string' && entry.clause.includes(':virtualDeviceCategory'),
+			);
+
+			expect(categoryClause).toBeDefined();
+			expect(categoryClause?.params).toEqual(
+				expect.objectContaining({ virtualDeviceId: 'virtual-device', virtualDeviceCategory: 'lighting' }),
+			);
+		});
+
 		it('names the channel category as well as the property state', async () => {
 			const { subject, wheres } = build({ compatible: false, reason: 'unit changed' }, [dependent], null, 1, {
 				id: 'source-property',
