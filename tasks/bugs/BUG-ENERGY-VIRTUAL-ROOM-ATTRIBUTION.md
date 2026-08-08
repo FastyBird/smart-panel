@@ -128,6 +128,14 @@ is data loss, so the recommended shape is:
   logs them once, loudly enough that an operator can rebuild the device if the automatic choice was
   not what they meant.
 
+**The claim gates ingestion, not just attribution.** Awarding a winner is not enough on its own: a
+losing projection of a *non-qualifying* source — `generic.consumption` into an `electrical_energy`
+slot — still passes `wasIngestedAsSource()`, because that asks about the source, and would go on
+producing its own deltas beside the winner's. So the rule the ingestion applies to a projection whose
+destination slot is energy-bearing is simply: **ingest if and only if it holds the claim.** That
+replaces `wasIngestedAsSource()` for projections rather than sitting beside it, and it is what makes
+the household total right on an upgraded installation rather than merely well-attributed.
+
 **The delta baseline stays keyed to the physical meter.** `DeltaComputationService.computeDelta()`
 keys its baseline `${deviceId}:${channelId}:${sourceType}`
 (`delta-computation.service.ts:65`) and answers `null` for a key it has not seen. If the `deviceId`
@@ -167,6 +175,9 @@ fix must not introduce a lookup that assumes otherwise.
 - [ ] An installation that already holds duplicate claims comes up with exactly one claimant per
       meter after the migration, deterministically chosen, with the others left working as readings
       and reported once at startup
+- [ ] **And the household total is right afterwards:** the losing projections stop producing deltas,
+      including where the source is non-qualifying and nothing else would have skipped them — a
+      post-migration regression test on the total, not only on the per-room split
 - [ ] An orphaned projection is attributed to the virtual device that holds it — there is no source
       left to fall back to. `VirtualValueSourceService.resolve()` answers `null` once
       `sourcePropertyId` is null, the registry then resolves the property to its own id, and

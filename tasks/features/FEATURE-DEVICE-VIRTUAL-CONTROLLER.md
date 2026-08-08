@@ -57,8 +57,11 @@ technically validate, but a thermostat with neither is a thermometer wearing a b
   would leave a relay energised, each until something unrelated happened to arrive. The connection
   case is the one that cannot be recovered by waiting: an actuator that drops offline while energised
   never received the release, and on reconnect nothing else has changed, so no other trigger fires.
-  A periodic safety tick is the backstop for what even this misses — an actuator that never reports a
-  connection change at all
+  A periodic safety tick is the backstop for what even this misses — an actuator or sensor that
+  goes quiet without ever reporting a connection change. The tick is not a re-run of the same
+  decision: a reading has `lastUpdated` on it, and a reading older than a **freshness window** is not
+  evidence of anything, so the tick releases the actuator rather than holding it on the strength of a
+  measurement nobody is making any more
 - The target setpoint as a **writable owned property** — the schema already accommodates owned
   properties; v1 simply never creates a writable one (`assertOwnedPropertyNotWritable` refuses it
   today, and that guard is what this task revisits)
@@ -103,7 +106,9 @@ restart. The task has to name the owner and the behaviour, with an incremental m
   stops commanding rather than commanding nothing;
 - **remap** is the existing remap dialog with one more row — the actuator is a mapping like any
   other, and `assertProjectionCompatible`'s counterpart has to judge it: an actuator must be a
-  writable `bool`, and it must not be a property of a virtual device.
+  writable `bool` **of category `on`**, and it must not be a property of a virtual device. The
+  category matters: `locked`, `swing` and `mute` are writable booleans too, and a loop wired to one
+  of those would quietly toggle something that has nothing to do with heating.
 
 **`status` is required on the temperature channels, and optional and enum-typed on the humidity
 ones.** `heater` requires
@@ -143,9 +148,11 @@ category itself is judged.
 
 ## 4. Open questions
 
-- How long may the safety tick be? Event-driven re-evaluation covers every transition the system
-  reports; the tick exists for the one it does not — hardware that goes quiet without saying so. Its
-  period is a trade between a relay left energised and waking the process for nothing.
+- How long may the safety tick be, and how old is a stale reading? Event-driven re-evaluation covers
+  every transition the system reports; the tick exists for the one it does not — hardware that goes
+  quiet without saying so. Its period trades a relay left energised against waking the process for
+  nothing, and the freshness window has to be longer than the slowest legitimate reporting interval
+  among the sensors people actually map, or a working device would be released mid-cycle.
 - What happens when the sensed source is orphaned or its device goes offline? The device already
   degrades to `DISCONNECTED`; the actuator should presumably be released rather than left latched.
 - Does the setpoint survive a remap of the sensed source? It is an owned property, so it does — worth
@@ -175,6 +182,11 @@ category itself is judged.
       without waiting for another sensor report
 - [ ] An actuator that reconnects is re-evaluated: a relay left energised while its device was
       offline is released on reconnect, with the sensed value, setpoint and enable all unchanged
+- [ ] A sensor that simply stops reporting, without any connection change, releases the actuator once
+      its last reading falls outside the freshness window — tested by advancing time rather than by
+      sending anything
+- [ ] An actuator mapping is refused unless the target property's category is `on`; another writable
+      boolean — `locked`, `swing`, `mute` — is rejected
 - [ ] The actuator mapping survives a restart, degrades to `DISCONNECTED` when its property is
       deleted, and can be remapped — with the incremental migration that adds it
 - [ ] An offline or orphaned sensed source releases the actuator rather than latching it
