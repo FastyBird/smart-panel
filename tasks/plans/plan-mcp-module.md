@@ -1,6 +1,6 @@
 # Smart Panel MCP Module — Implementation Plan
 
-**Status:** Phase 11 complete — Phase 12 pending
+**Status:** Phase 12 complete — implementation finished
 
 **Architecture decision:** [ADR 0001: MCP Protocol and Security Foundation](../../docs/adr/0001-mcp-protocol-and-security-foundation.md)
 supersedes the original stateful-session transport assumptions in this plan.
@@ -626,15 +626,20 @@ type checks, and repository JS lint pass.
 - Update module metadata README
 - Update this plan's completed checkboxes and task status when implementation ships
 
-- [ ] Document enabling MCP, choosing capabilities, creating a client, copying the one-time token, connecting an agent,
+- [x] Document enabling MCP, choosing capabilities, creating a client, copying the one-time token, connecting an agent,
       rotating/revoking credentials, and troubleshooting.
-- [ ] Provide distinct examples for read-only, write-only, trigger-only, and read+write+trigger clients.
-- [ ] Warn users to verify the installation hostname/name before approving write or trigger operations.
-- [ ] Recommend LAN/VPN access and HTTPS through a reverse proxy; do not recommend direct public exposure for the
+- [x] Provide distinct examples for read-only, write-only, trigger-only, and read+write+trigger clients.
+- [x] Warn users to verify the installation hostname/name before approving write or trigger operations.
+- [x] Recommend LAN/VPN access and HTTPS through a reverse proxy; do not recommend direct public exposure for the
       static-token release.
-- [ ] Document the exact curated catalog and state explicitly that OpenAPI endpoints are not automatically exposed.
-- [ ] Add upgrade notes for configuration defaults and the new incremental migration.
-- [ ] Create a follow-up task for standards-compliant MCP OAuth/protected-resource discovery before public internet use.
+- [x] Document the exact curated catalog and state explicitly that OpenAPI endpoints are not automatically exposed.
+- [x] Add upgrade notes for configuration defaults and the new incremental migration.
+- [x] Create a follow-up task for standards-compliant MCP OAuth/protected-resource discovery before public internet use.
+
+**Outcome:** The website now documents secure enablement, least-privilege client profiles, one-time credential handling,
+verified agent connection patterns, the complete curated catalog, live credential management, troubleshooting, and
+upgrade behavior. In-product module metadata links directly to the guide. Public-internet authorization remains
+explicitly deferred to `TECH-MCP-OAUTH-AUTHORIZATION`, which scopes protected-resource discovery and OAuth 2.1 work.
 
 ---
 
@@ -642,42 +647,42 @@ type checks, and repository JS lint pass.
 
 ### Configuration and administration
 
-- [ ] MCP is a core module visible in Admin and disabled by default.
-- [ ] An owner/admin can enable any combination of read, write, and trigger.
-- [ ] Backend authorization rejects module-configuration changes from ordinary users, user-owned PATs, and display
+- [x] MCP is a core module visible in Admin and disabled by default.
+- [x] An owner/admin can enable any combination of read, write, and trigger.
+- [x] Backend authorization rejects module-configuration changes from ordinary users, user-owned PATs, and display
       tokens; denied requests do not mutate persisted or in-memory MCP configuration.
-- [ ] Configuration persists across restart and applies without requiring a restart.
-- [ ] An owner/admin can create, restrict, rotate, and revoke MCP client credentials.
-- [ ] Raw client tokens are displayed only once and always have a finite expiry.
+- [x] Configuration persists across restart and applies without requiring a restart.
+- [x] An owner/admin can create, restrict, rotate, and revoke MCP client credentials.
+- [x] Raw client tokens are displayed only once and always have a finite expiry.
 
 ### Protocol and catalog
 
-- [ ] A modern MCP client can discover `/api/v1/modules/mcp`, and a compatible legacy client can initialize through the
+- [x] A modern MCP client can discover `/api/v1/modules/mcp`, and a compatible legacy client can initialize through the
       stateless fallback.
-- [ ] `tools/list`, `resources/list`, `tools/call`, resource reads, subscriptions, and shutdown behave according to the
+- [x] `tools/list`, `resources/list`, `tools/call`, resource reads, subscriptions, and shutdown behave according to the
       negotiated protocol version.
-- [ ] Only explicitly registered tools appear; no generic OpenAPI proxy exists.
-- [ ] Tool/resource discovery matches the effective capability intersection.
-- [ ] Disabled capabilities are enforced again at execution time.
-- [ ] Configuration changes notify active clients and immediately prevent stale calls.
+- [x] Only explicitly registered tools appear; no generic OpenAPI proxy exists.
+- [x] Tool/resource discovery matches the effective capability intersection.
+- [x] Disabled capabilities are enforced again at execution time.
+- [x] Configuration changes notify active clients and immediately prevent stale calls.
 
 ### Security
 
-- [ ] MCP tokens work only on the MCP endpoint.
-- [ ] Ordinary access/PAT/display tokens do not work on the MCP endpoint.
-- [ ] Revoked, expired, disabled-client, wrong-audience, and invalid-origin requests are rejected.
-- [ ] Subscription streams and any approved legacy sessions remain bound to the correct bearer token and MCP client.
-- [ ] Logs and results contain no credential material.
-- [ ] The MCP endpoint is rate-limited and bounded by subscription, body-size, context-size, and history limits.
+- [x] MCP tokens work only on the MCP endpoint.
+- [x] Ordinary access/PAT/display tokens do not work on the MCP endpoint.
+- [x] Revoked, expired, disabled-client, wrong-audience, and invalid-origin requests are rejected.
+- [x] Subscription streams and any approved legacy sessions remain bound to the correct bearer token and MCP client.
+- [x] Logs and results contain no credential material.
+- [x] The MCP endpoint is rate-limited and bounded by subscription, body-size, context-size, and history limits.
 
 ### Operations
 
-- [ ] Read-only clients cannot write or trigger.
-- [ ] Write-only clients can discover writable properties and set them but cannot access general reads or triggers.
-- [ ] Trigger-only clients can discover trigger targets and invoke them but cannot access general reads or direct
+- [x] Read-only clients cannot write or trigger.
+- [x] Write-only clients can discover writable properties and set them but cannot access general reads or triggers.
+- [x] Trigger-only clients can discover trigger targets and invoke them but cannot access general reads or direct
       property writes.
-- [ ] Existing Buddy tool execution continues to work unchanged from the user's perspective.
-- [ ] Existing REST, PAT, display-token, WebSocket, and admin flows have no regressions.
+- [x] Existing Buddy tool execution continues to work unchanged from the user's perspective.
+- [x] Existing REST, PAT, display-token, WebSocket, and admin flows have no regressions.
 
 ---
 

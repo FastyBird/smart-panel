@@ -1,0 +1,257 @@
+import { Callout, Steps } from "nextra/components";
+
+# Model Context Protocol (MCP)
+
+Smart Panel's Model Context Protocol module lets trusted AI agents inspect and control one installation through a
+small, explicitly registered catalog. It is disabled by default, uses installation-local credentials, and never turns
+the REST or OpenAPI surface into agent tools automatically.
+
+<Callout type="warning">
+  The initial release uses static bearer credentials and is intended for a
+  trusted LAN or VPN. Put remote connections behind HTTPS on a reverse proxy. Do
+  not expose the MCP endpoint directly to the public internet.
+</Callout>
+
+The endpoint for an installation is:
+
+```text
+https://<installation-host>/api/v1/modules/mcp
+```
+
+## Before You Begin
+
+- Sign in as an **owner or administrator**. Other roles cannot configure MCP or manage its clients.
+- Decide which agent and device will hold the credential. A credential is shown only once.
+- Start with `read` unless the agent genuinely needs to change device state.
+- Confirm the hostname identifies the intended Smart Panel installation before creating a client.
+
+## Enable MCP
+
+<Steps>
+	### Open the module configuration
+
+    Go to **Config → Modules → Model Context Protocol** in the Admin UI.
+
+    ### Choose the installation capability ceiling
+
+    Turn on **Enable MCP endpoint**, then select any combination of:
+
+    - **Read** — inspect bounded home, device, history, energy, weather, and security context.
+    - **Write** — discover writable properties and set a concrete device property.
+    - **Trigger** — discover and run scenes or supported space-lighting actions.
+
+    An empty capability set is valid and exposes no tools or resources. The capability ceiling limits every client;
+    a client can receive fewer capabilities, but never more.
+
+    ### Configure browser origins only when needed
+
+    Server-side agents on the LAN normally send no `Origin` header and do not need an entry. For a browser-based client
+    on another origin, add the exact normalized HTTP(S) origin, such as `https://agent.example.com`. Do not include a
+    path, query, fragment, credentials, or wildcard.
+
+    ### Save and copy the endpoint
+
+    Save the configuration, then use **Copy endpoint**. Configuration changes apply immediately; a backend restart is
+    not required.
+
+</Steps>
+
+<Callout type="warning">
+  `write` and `trigger` can affect physical devices. Before approving one of
+  those tools, verify both the installation hostname and the installation name
+  reported by the MCP server.
+</Callout>
+
+## Create a Client Credential
+
+<Steps>
+	### Open MCP clients
+
+    Open **MCP clients** from the module's Admin navigation and select **Create client**.
+
+    ### Name and restrict the client
+
+    Use a name that identifies the agent and host, for example `Workshop Codex laptop`. Select only the capabilities the
+    client needs. The form prevents grants outside the current module ceiling.
+
+    ### Choose a finite lifetime
+
+    Set the credential lifetime in days. MCP credentials cannot be created without an expiry.
+
+    ### Copy the one-time token
+
+    After creation, copy the token immediately and place it in a password manager or the agent host's secret store. The
+    raw token cannot be retrieved after the dialog closes; Smart Panel stores only its normal token hash.
+
+</Steps>
+
+## Capability Examples
+
+Create separate clients when agents have different responsibilities.
+
+| Client profile             | Grant                      | What it can do                                                         | What it cannot do                                                     |
+| -------------------------- | -------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Monitoring agent           | `read`                     | Inspect context, device state, history, energy, weather, and security  | Change properties or run actions                                      |
+| Direct device controller   | `write`                    | Discover writable property metadata and set a property                 | Browse general state/history or run scenes                            |
+| Automation runner          | `trigger`                  | Discover trigger targets, run scenes, and set supported lighting modes | Browse general state or write a property directly                     |
+| Trusted full-control agent | `read`, `write`, `trigger` | Use the complete curated catalog                                       | Access arbitrary REST, configuration, users, files, or shell commands |
+
+For a new integration, begin with a read-only client. Add `write` or `trigger` only after reviewing the exact tools and
+the agent's approval behavior.
+
+## Connect an Agent
+
+The client must support **Streamable HTTP** and a preconfigured bearer token or `Authorization` header. Stdio-only,
+legacy HTTP+SSE-only, OAuth-only, and persistent-session-only clients are not supported by this initial profile.
+
+### Codex CLI, app, or IDE extension
+
+Keep the token in an environment variable available to the Codex process:
+
+```bash copy
+export SMART_PANEL_MCP_TOKEN='<copied-mcp-token>'
+codex mcp add smart-panel \
+  --url https://panel.example.lan/api/v1/modules/mcp \
+  --bearer-token-env-var SMART_PANEL_MCP_TOKEN
+```
+
+Confirm the entry and connection:
+
+```bash copy
+codex mcp list
+```
+
+The ChatGPT desktop app, Codex CLI, and Codex IDE extension share the same local MCP configuration. Restart the app or
+extension after adding the server, then inspect its MCP server list before approving tools.
+
+The equivalent `~/.codex/config.toml` entry is:
+
+```toml
+[mcp_servers.smart_panel]
+url = "https://panel.example.lan/api/v1/modules/mcp"
+bearer_token_env_var = "SMART_PANEL_MCP_TOKEN"
+```
+
+### Other compatible agents
+
+Configure a **Streamable HTTP** server with the copied endpoint and this request header:
+
+```text
+Authorization: Bearer <copied-mcp-token>
+```
+
+Use the client's secret or environment-variable support instead of committing the token to a repository. Claude Code
+and the official MCP TypeScript SDK have been verified with bearer-authenticated Streamable HTTP. Client profiles that
+require standards-based remote OAuth must wait for the planned OAuth authorization follow-up.
+
+## Curated Catalog
+
+Only the following tools and resources are registered. Smart Panel does **not** convert OpenAPI operations into MCP
+tools, and enabling MCP does not grant access to arbitrary REST requests, SQL, files, configuration, extensions, users,
+backups, updates, restarts, reboots, or power controls.
+
+### Read tools
+
+| Tool                      | Purpose                                                     |
+| ------------------------- | ----------------------------------------------------------- |
+| `get_home_context`        | Return a bounded installation or space overview             |
+| `get_device_state`        | Return one device with channels and current property values |
+| `get_property_timeseries` | Return bounded, downsampled history for one property        |
+| `get_energy_summary`      | Return a home or space energy summary                       |
+| `get_weather`             | Return current conditions and a short forecast              |
+| `get_security_status`     | Return security state and bounded active alerts             |
+
+Read resources are `smart-panel://installation`, `smart-panel://home/context`, and the
+`smart-panel://spaces/{spaceId}/snapshot` resource template. They are available only when `read` is effective.
+
+### Write tools
+
+| Tool                       | Purpose                                                                     |
+| -------------------------- | --------------------------------------------------------------------------- |
+| `list_writable_properties` | Return bounded identifiers and validation metadata needed for direct writes |
+| `set_device_property`      | Set one currently available, writable property                              |
+
+`list_writable_properties` belongs to the `write` capability even though discovery itself does not mutate state. This
+allows a write-only client to identify a safe target without gaining general read access.
+
+### Trigger tools
+
+| Tool                   | Purpose                                                   |
+| ---------------------- | --------------------------------------------------------- |
+| `list_trigger_targets` | Return bounded enabled scenes and lighting-capable spaces |
+| `run_scene`            | Run one enabled scene                                     |
+| `set_space_lighting`   | Apply a supported lighting mode to one space              |
+
+`set_space_lighting` is advertised only when its optional provider is installed and available.
+
+## Rotate, Restrict, Revoke, or Delete a Client
+
+- **Edit** a client to reduce its capabilities. Active clients are notified and new operations use the reduced grant
+  immediately.
+- **Rotate** when a token may have leaked or when moving an agent to a new host. The previous credential is revoked
+  immediately, active streams are closed, and the replacement token is shown once.
+- **Revoke** to disable the current credential immediately. Connected streams for that client are closed.
+- **Delete** to revoke the credential and permanently remove the client record.
+
+Changing the module capability ceiling applies to every client immediately. Disabling the module closes active MCP
+streams and makes the endpoint return `404` until it is enabled again.
+
+## Troubleshooting
+
+### The endpoint returns `404`
+
+The MCP module is disabled. Enable it under **Config → Modules → Model Context Protocol** and save.
+
+### The client receives `401 Unauthorized`
+
+Check that the client sends the MCP token as a bearer credential, the token has not expired or been rotated/revoked,
+and the credential belongs to this installation. User access tokens, personal access tokens, and display tokens do not
+work on the MCP endpoint.
+
+### The client receives `403 Forbidden`
+
+The requested tool may be outside the effective capability intersection, the request hostname may not identify this
+installation, or a browser `Origin` may be missing from the explicit allowlist. Add only an exact normalized origin;
+do not use a wildcard.
+
+### The client connects but shows no tools
+
+Both the module and the client need the relevant capability. An enabled module or client with no capabilities is valid
+and intentionally advertises an empty catalog. `set_space_lighting` also requires its optional provider.
+
+### The one-time token was not saved
+
+It cannot be recovered. Rotate the credential and copy the replacement token, or delete the client and create a new
+one.
+
+### A configuration change is not visible
+
+Reconnect clients that do not consume MCP list-change notifications. Authorization is still rechecked for every tool
+execution, so a stale client cannot keep using a removed capability.
+
+## Upgrade Notes
+
+Existing installations receive MCP through the incremental `1000000000008-AddMcpClients` migration. Migrations run
+automatically during a normal update and create the installation identity and MCP client tables; no existing user,
+personal-access-token, display-token, or device records are converted.
+
+The new configuration defaults are safe and do not expose an upgraded installation:
+
+```yaml
+modules:
+  mcp-module:
+    enabled: false
+    capabilities:
+      - read
+    allowed_origins: []
+```
+
+Back up the database and configuration before updating. After the update, an owner or administrator must explicitly
+enable MCP and create each finite-lived client credential. If an operator explicitly reverts this migration during a
+rollback, its down migration deletes MCP-owned credentials before older authentication code can load them.
+
+## What's Next?
+
+- [Configuration](/docs/admin-management/configuration) — manage core module settings
+- [Users & Roles](/docs/admin-management/users) — understand owner and administrator access
+- [Updating & Backup](/docs/updating) — back up the installation before an upgrade

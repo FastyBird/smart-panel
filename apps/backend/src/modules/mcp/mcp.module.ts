@@ -131,9 +131,11 @@ Connects trusted MCP-compatible agents to a curated set of Smart Panel tools and
 ## Security posture
 
 - Uses installation-local MCP credentials rather than ordinary user, display, or REST tokens
+- Returns each finite-lived credential once; rotate it if the secret was not saved or may have leaked
 - Exposes only explicitly registered tools and resources; it is not an OpenAPI proxy
 - Rechecks the installation capability ceiling and client grant for every operation
-- Targets trusted LAN or VPN deployments for the initial static-bearer release
+- Targets trusted LAN or VPN deployments behind HTTPS for the initial static-bearer release
+- Requires users to verify the installation hostname and reported name before approving write or trigger tools
 
 ## Configuration
 
@@ -143,7 +145,7 @@ Connects trusted MCP-compatible agents to a curated set of Smart Panel tools and
 | \`capabilities\` | Allowed combination of \`read\`, \`write\`, and \`trigger\` | \`read\` |
 | \`allowed_origins\` | Additional browser origins allowed to call the endpoint | empty |`,
 			links: {
-				documentation: 'https://smart-panel.fastybird.com/docs',
+				documentation: 'https://smart-panel.fastybird.com/docs/admin-management/mcp',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

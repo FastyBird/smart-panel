@@ -229,6 +229,21 @@ Database migrations run automatically when the backend starts.
 
 ---
 
+## Model Context Protocol Upgrade Notes
+
+The MCP module is added through the incremental `1000000000008-AddMcpClients` migration. It creates installation
+identity and MCP client tables without converting existing users or credentials. Upgraded installations remain safe by
+default: MCP is disabled, `read` is preselected as the enablement default, and the additional browser-origin allowlist
+is empty.
+
+After updating, an owner or administrator must explicitly enable MCP and create finite-lived client credentials. Back
+up both the database and configuration first. If your rollback procedure explicitly reverts the migration, its down
+migration removes MCP-owned credentials before older authentication code can load them.
+
+See [Model Context Protocol](/docs/admin-management/mcp) for setup, security guidance, and the exact curated catalog.
+
+---
+
 ## Pinning a Version
 
 ### Docker
