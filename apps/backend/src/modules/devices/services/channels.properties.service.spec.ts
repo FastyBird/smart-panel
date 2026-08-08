@@ -27,6 +27,7 @@ import { SUPPORTED_PROPERTY_COMMAND_DATA_TYPES } from '../utils/property-command
 import { ChannelsPropertiesTypeMapperService } from './channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
+import { DeviceStructureLockService } from './device-structure-lock.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
 
@@ -74,6 +75,7 @@ class UpdateMockChannelPropertyDto extends UpdateChannelPropertyDto {
 describe('ChannelsPropertiesService', () => {
 	let channelsService: ChannelsService;
 	let channelsPropertiesService: ChannelsPropertiesService;
+	let structureLock: DeviceStructureLockService;
 	let repository: Repository<ChannelPropertyEntity>;
 	let mapper: ChannelsPropertiesTypeMapperService;
 	let eventEmitter: EventEmitter2;
@@ -145,6 +147,9 @@ describe('ChannelsPropertiesService', () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				ChannelsPropertiesService,
+				// Dependency-free and re-entrant, so the real one is used: what it serializes is exactly
+				// what these tests exercise.
+				DeviceStructureLockService,
 				{ provide: getRepositoryToken(ChannelPropertyEntity), useFactory: mockRepository },
 				{
 					provide: ChannelsPropertiesTypeMapperService,
@@ -193,6 +198,7 @@ describe('ChannelsPropertiesService', () => {
 
 		channelsService = module.get<ChannelsService>(ChannelsService);
 		channelsPropertiesService = module.get<ChannelsPropertiesService>(ChannelsPropertiesService);
+		structureLock = module.get<DeviceStructureLockService>(DeviceStructureLockService);
 		repository = module.get<Repository<ChannelPropertyEntity>>(getRepositoryToken(ChannelPropertyEntity));
 		mapper = module.get<ChannelsPropertiesTypeMapperService>(ChannelsPropertiesTypeMapperService);
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
@@ -618,6 +624,70 @@ describe('ChannelsPropertiesService', () => {
 			expect(beforeCreate).toHaveBeenCalledTimes(1);
 			expect(beforeCreate.mock.calls[0][1]).toBe(mockChannel.id);
 			expect(beforeCreate.mock.invocationCallOrder[0]).toBeLessThan(saveSpy.mock.invocationCallOrder[0]);
+		});
+
+		// The hook judges the row against the device's *category* — a projection is compared to the spec
+		// slot that category defines — while a device PATCH judges the reverse, the structure the device
+		// already has against the category it is about to store. Each reads what the other is about to
+		// change, so both windows have to be inside the same lock or a property validated against the old
+		// category can commit inside the window a recategorisation had already judged.
+		it('takes the structure lock around the hook and the insert, not just around one of them', async () => {
+			const order: string[] = [];
+			const beforeCreate = jest.fn().mockImplementation((): Promise<void> => {
+				order.push('hook');
+
+				return Promise.resolve();
+			});
+
+			const createDto: CreateMockChannelPropertyDto = {
+				type: 'mock',
+				category: PropertyCategory.GENERIC,
+				permissions: [PermissionType.READ_ONLY],
+				data_type: DataTypeType.UNKNOWN,
+				mock_value: 'Random text',
+			};
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+				beforeCreate,
+			});
+
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(toInstance(ChannelEntity, mockChannel));
+
+			const created = toInstance(MockChannelProperty, { ...createDto, id: uuid().toString() });
+
+			jest.spyOn(repository, 'create').mockReturnValue(created);
+			jest.spyOn(repository, 'save').mockImplementation((): Promise<MockChannelProperty> => {
+				order.push('save');
+
+				return Promise.resolve(created);
+			});
+
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(created),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+
+			jest.spyOn(structureLock, 'runExclusive').mockImplementation(async <T>(work: () => Promise<T>): Promise<T> => {
+				order.push('lock:enter');
+
+				const result = await work();
+
+				order.push('lock:exit');
+
+				return result;
+			});
+
+			await channelsPropertiesService.create(mockChannel.id, createDto);
+
+			expect(order).toEqual(['lock:enter', 'hook', 'save', 'lock:exit']);
 		});
 
 		it('should persist nothing when the beforeCreate hook rejects the attachment', async () => {

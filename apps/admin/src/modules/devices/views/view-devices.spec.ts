@@ -323,6 +323,51 @@ describe('ViewDevices', () => {
 		expect(mocks.fetchDevices).toHaveBeenCalledTimes(1);
 	});
 
+	// A request the toggle has since left is not the one on screen. Restoring `previous` for it would
+	// assign the value the toggle already holds — an assignment Vue never notifies — so the guard that
+	// swallows the restoration stayed armed and ate the *next* genuine flip's fetch, leaving the list
+	// showing the visible-only cache under an enabled toggle.
+	it('leaves the toggle alone when a superseded request fails, and still fetches on the next flip', async () => {
+		mountView();
+		await flushPromises();
+
+		mocks.fetchDevices.mockClear();
+
+		let failSuperseded!: (reason: Error) => void;
+
+		mocks.fetchDevices.mockImplementationOnce(
+			(): Promise<void> =>
+				new Promise((_resolve, reject) => {
+					failSuperseded = reject;
+				})
+		);
+
+		// Enabled …
+		mocks.showHiddenRef.value = true;
+		await flushPromises();
+
+		// … then disabled again before the first request settles. That one succeeds.
+		mocks.showHiddenRef.value = false;
+		await flushPromises();
+
+		// Only now does the superseded request fail.
+		failSuperseded(new Error('network was down'));
+		await flushPromises();
+
+		// The newer request already answered for what is on screen, so nothing is restored and nothing is
+		// reported.
+		expect(mocks.showHiddenRef.value).toBe(false);
+		expect(mocks.flashError).not.toHaveBeenCalled();
+
+		mocks.fetchDevices.mockClear();
+
+		// The next genuine flip must still refresh.
+		mocks.showHiddenRef.value = true;
+		await flushPromises();
+
+		expect(mocks.fetchDevices).toHaveBeenCalledTimes(1);
+	});
+
 	// A failed refresh used to leave the toggle on over a list that still held the visible-only
 	// response: the UI claimed to be showing hidden devices while showing none of them, and the throw
 	// from the detached catch reported the failure to nobody.

@@ -18,6 +18,7 @@ import { SUPPORTED_PROPERTY_COMMAND_DATA_TYPES } from '../utils/property-command
 import { resolvePropertyUnit } from '../utils/property-metadata.utils';
 
 import { ChannelsPropertiesTypeMapperService } from './channels.properties-type-mapper.service';
+import { DeviceStructureLockService } from './device-structure-lock.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
 
@@ -41,6 +42,7 @@ export class ChannelsPropertiesService {
 		private readonly propertiesMapperService: ChannelsPropertiesTypeMapperService,
 		private readonly propertyValueService: PropertyValueService,
 		private readonly valueSourceRegistry: PropertyValueSourceRegistryService,
+		private readonly structureLock: DeviceStructureLockService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
@@ -371,15 +373,24 @@ export class ChannelsPropertiesService {
 			);
 		}
 
-		// The type owner's last look at the row before it exists — the only point at which an invariant
-		// spanning the property and the channel it is being attached to is decidable, since `channelId`
-		// is a route parameter and never reaches the create DTO. Throwing here persists nothing.
-		if (mapping.beforeCreate) {
-			await mapping.beforeCreate(property, channelId);
-		}
+		// Hook and insert together under the structure lock. What the type owner judges below is decided
+		// against the device's *category* — a projection is compared to the spec slot that category
+		// defines — and a device PATCH judges the reverse: the channels and properties the device already
+		// has, against the category it is about to store. Each reads what the other is about to change,
+		// so a property validated against the old category could commit inside the window a
+		// recategorisation had already judged (see DeviceStructureLockService).
+		const raw = await this.structureLock.runExclusive(async (): Promise<TProperty> => {
+			// The type owner's last look at the row before it exists — the only point at which an
+			// invariant spanning the property and the channel it is being attached to is decidable, since
+			// `channelId` is a route parameter and never reaches the create DTO. Throwing here persists
+			// nothing.
+			if (mapping.beforeCreate) {
+				await mapping.beforeCreate(property, channelId);
+			}
 
-		// Save the property
-		const raw = await repository.save(property);
+			// Save the property
+			return repository.save(property);
+		});
 
 		if (typeof createDto.value !== 'undefined') {
 			await this.propertyValueService.write(raw, createDto.value);
@@ -455,11 +466,15 @@ export class ChannelsPropertiesService {
 
 		// The type owner's last look at the merged row, before anything is written — the only point at
 		// which an invariant spanning a field the PATCH sent and a field it did not is decidable.
-		if (mapping.beforeUpdate) {
-			await mapping.beforeUpdate(property as TProperty);
-		}
+		// Same lock as the create path above, for the same reason: a PATCH can move a property's data
+		// type or permissions, which is exactly what a device recategorisation judges its structure by.
+		const raw = await this.structureLock.runExclusive(async (): Promise<TProperty> => {
+			if (mapping.beforeUpdate) {
+				await mapping.beforeUpdate(property as TProperty);
+			}
 
-		const raw = await repository.save(property as TProperty);
+			return repository.save(property as TProperty);
+		});
 
 		// Track if value actually changed
 		//

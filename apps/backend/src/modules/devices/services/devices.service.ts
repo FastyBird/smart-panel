@@ -30,6 +30,7 @@ import { ChannelEntity, DeviceControlEntity, DeviceEntity } from '../entities/de
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
+import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DeviceZonesService } from './device-zones.service';
 import { DevicesTypeMapperService } from './devices-type-mapper.service';
 import { DevicesControlsService } from './devices.controls.service';
@@ -91,6 +92,7 @@ export class DevicesService {
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly devicesControlsService: DevicesControlsService,
 		private readonly deviceZonesService: DeviceZonesService,
+		private readonly structureLock: DeviceStructureLockService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
@@ -763,58 +765,66 @@ export class DevicesService {
 			device.roomId = null;
 		}
 
-		// The type owner's last look at the merged row, before anything is written — the only point at
-		// which an invariant spanning a field the PATCH sent and one it did not is decidable.
-		if (mapping.beforeUpdate) {
-			await mapping.beforeUpdate(device as TDevice, previous);
-		}
+		// From here to the save runs under the structure lock. What the type owner judges below can span
+		// rows this write never touches — a category change is judged against the device's channels and
+		// their properties — and a channel or property created in the window between that judgement and
+		// this save would never be judged at all, leaving the device advertising a category its own
+		// structure does not satisfy. The structural writes take the same lock (see
+		// DeviceStructureLockService).
+		await this.structureLock.runExclusive(async (): Promise<void> => {
+			// The type owner's last look at the merged row, before anything is written — the only point at
+			// which an invariant spanning a field the PATCH sent and one it did not is decidable.
+			if (mapping.beforeUpdate) {
+				await mapping.beforeUpdate(device as TDevice, previous);
+			}
 
-		// Written through a row carrying no relations, not through the entity the decisions above were
-		// made on. `DeviceEntity.channels` is `cascade: true`, so saving the loaded entity re-saves
-		// whatever channels it happens to hold — and TypeORM reads a child that is *missing* from a
-		// cascaded collection as one detached from its parent, issuing `SET channelId = NULL` on that
-		// channel's properties.
-		//
-		// The list is routinely stale. A virtual device's device_information channel is synthesized
-		// fire-and-forget off DEVICE_CREATED, so a PATCH arriving while that is still in flight loaded its
-		// channels before the channel existed. Renaming a device moments after creating it therefore
-		// stripped the channel from its own properties — `manufacturer`, `model` and `serial_number` left
-		// pointing at nothing, past the cascade that would have cleaned them up. Found as an intermittent
-		// stray in the containment e2e, one run in five or so.
-		//
-		// A re-read is enough: without the collection loaded there is no cascade to run, and the write is
-		// the one UPDATE this method was always meant to make.
-		const persisted = await repository.findOne({
-			where: { id: device.id } as FindOptionsWhere<TDevice>,
-			loadEagerRelations: false,
+			// Written through a row carrying no relations, not through the entity the decisions above were
+			// made on. `DeviceEntity.channels` is `cascade: true`, so saving the loaded entity re-saves
+			// whatever channels it happens to hold — and TypeORM reads a child that is *missing* from a
+			// cascaded collection as one detached from its parent, issuing `SET channelId = NULL` on that
+			// channel's properties.
+			//
+			// The list is routinely stale. A virtual device's device_information channel is synthesized
+			// fire-and-forget off DEVICE_CREATED, so a PATCH arriving while that is still in flight loaded its
+			// channels before the channel existed. Renaming a device moments after creating it therefore
+			// stripped the channel from its own properties — `manufacturer`, `model` and `serial_number` left
+			// pointing at nothing, past the cascade that would have cleaned them up. Found as an intermittent
+			// stray in the containment e2e, one run in five or so.
+			//
+			// A re-read is enough: without the collection loaded there is no cascade to run, and the write
+			// is the one UPDATE this method was always meant to make.
+			const row = await repository.findOne({
+				where: { id: device.id } as FindOptionsWhere<TDevice>,
+				loadEagerRelations: false,
+			});
+
+			// The row is gone, so a concurrent `remove()` deleted it after this call read it. There is
+			// nothing left to update, and saving the entity loaded at the top is not a way to say so:
+			// TypeORM's `save` looks the primary key up, finds nothing and INSERTs — the PATCH would
+			// resurrect a device whose DEVICE_DELETED has already been emitted, cascading whatever
+			// relation graph the stale entity happens to carry. The honest answer is the same one this
+			// method gives for an id that never existed.
+			if (!row) {
+				this.logger.error(`Device with id=${device.id} was removed while it was being updated`);
+
+				throw new DevicesNotFoundException('Device does not exist');
+			}
+
+			// The placement guard again, on the row as it stands now rather than as it stood when this
+			// call began. Between the two there are several awaited round trips — the room validation, the
+			// zone read-back, this re-read — and a wizard hiding the device in that window would otherwise
+			// have this write the placement of a device that is now inert. The zone half carries the same
+			// condition in the statements that write it (see DeviceZonesService.setDeviceZones).
+			this.assertPlacementChangeAllowed(row, dtoInstance);
+
+			Object.assign(row, updateFields);
+
+			if (dtoInstance.room_id === null) {
+				row.roomId = null;
+			}
+
+			await repository.save(row);
 		});
-
-		// The row is gone, so a concurrent `remove()` deleted it after this call read it. There is nothing
-		// left to update, and saving the entity loaded at the top is not a way to say so: TypeORM's `save`
-		// looks the primary key up, finds nothing and INSERTs — the PATCH would resurrect a device whose
-		// DEVICE_DELETED has already been emitted, cascading whatever relation graph the stale entity
-		// happens to carry. The honest answer is the same one this method gives for an id that never
-		// existed.
-		if (!persisted) {
-			this.logger.error(`Device with id=${device.id} was removed while it was being updated`);
-
-			throw new DevicesNotFoundException('Device does not exist');
-		}
-
-		// The placement guard again, on the row as it stands now rather than as it stood when this
-		// call began. Between the two there are several awaited round trips — the room validation, the
-		// zone read-back, this re-read — and a wizard hiding the device in that window would otherwise
-		// have this write the placement of a device that is now inert. The zone half carries the same
-		// condition in the statements that write it (see DeviceZonesService.setDeviceZones).
-		this.assertPlacementChangeAllowed(persisted, dtoInstance);
-
-		Object.assign(persisted, updateFields);
-
-		if (dtoInstance.room_id === null) {
-			persisted.roomId = null;
-		}
-
-		await repository.save(persisted);
 
 		// Update zone memberships if zone_ids was explicitly provided
 		if (zoneIds !== undefined) {

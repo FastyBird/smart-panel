@@ -516,7 +516,7 @@ let restoringShowHidden = false;
 
 watch(
 	(): boolean => showHidden.value,
-	(_value: boolean, previous: boolean): void => {
+	(value: boolean, previous: boolean): void => {
 		if (restoringShowHidden) {
 			restoringShowHidden = false;
 
@@ -524,6 +524,15 @@ watch(
 		}
 
 		fetchDevices().catch((): void => {
+			// Only the request the toggle is still standing on gets to speak. A user who flips back before
+			// this one fails has already had a newer request answer for the state on screen: restoring
+			// `previous` here would be a no-op assignment Vue never notifies, leaving the guard below armed
+			// for the next genuine flip — which would then skip its own fetch and show the visible-only
+			// cache under an enabled toggle.
+			if (showHidden.value !== value) {
+				return;
+			}
+
 			// The store still holds whatever the previous filter fetched, so leaving the toggle where the
 			// user put it would have the list claim to be showing hidden devices over a response that does
 			// not contain them. Put it back and say so — throwing here only produced a rejected promise

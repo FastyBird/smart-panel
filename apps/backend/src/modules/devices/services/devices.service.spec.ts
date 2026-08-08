@@ -40,6 +40,7 @@ import { DeviceEntity } from '../entities/devices.entity';
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { DeviceConnectionStateService } from './device-connection-state.service';
+import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DeviceZonesService } from './device-zones.service';
 import { DevicesTypeMapperService } from './devices-type-mapper.service';
 import { DevicesControlsService } from './devices.controls.service';
@@ -136,6 +137,9 @@ describe('DevicesService', () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				DevicesService,
+				// Dependency-free and re-entrant, so the real one is used: what it serializes is exactly what
+				// these tests exercise.
+				DeviceStructureLockService,
 				{ provide: getRepositoryToken(DeviceEntity), useFactory: mockRepository },
 				{ provide: getRepositoryToken(SpaceEntity), useFactory: mockRepository },
 				{

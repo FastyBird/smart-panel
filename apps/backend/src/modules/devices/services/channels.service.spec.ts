@@ -27,6 +27,7 @@ import { ChannelsTypeMapperService } from './channels-type-mapper.service';
 import { ChannelsControlsService } from './channels.controls.service';
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
+import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DevicesService } from './devices.service';
 
 class MockChannel extends ChannelEntity {
@@ -131,6 +132,7 @@ describe('ChannelsService', () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				ChannelsService,
+				DeviceStructureLockService,
 				DeviceExistsConstraintValidator,
 				{ provide: getRepositoryToken(ChannelEntity), useFactory: mockRepository },
 				{

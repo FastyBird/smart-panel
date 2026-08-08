@@ -18,6 +18,7 @@ import { ConnectionState, DeviceCategory } from '../../../modules/devices/device
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DeviceZonesService } from '../../../modules/devices/services/device-zones.service';
 import { DevicesTypeMapperService } from '../../../modules/devices/services/devices-type-mapper.service';
 import { DevicesControlsService } from '../../../modules/devices/services/devices.controls.service';
@@ -94,6 +95,7 @@ describe('ShellyV1DeviceEntity via DevicesService.update()', () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				DevicesService,
+				DeviceStructureLockService,
 				{ provide: getRepositoryToken(DeviceEntity), useFactory: mockRepository },
 				{ provide: getRepositoryToken(SpaceEntity), useFactory: mockRepository },
 				{

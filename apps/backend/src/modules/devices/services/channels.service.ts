@@ -18,6 +18,7 @@ import { ChannelControlEntity, ChannelEntity, ChannelPropertyEntity } from '../e
 import { ChannelsTypeMapperService } from './channels-type-mapper.service';
 import { ChannelsControlsService } from './channels.controls.service';
 import { ChannelsPropertiesService } from './channels.properties.service';
+import { DeviceStructureLockService } from './device-structure-lock.service';
 
 export interface ChannelSummaryPage {
 	channels: ChannelEntity[];
@@ -40,6 +41,7 @@ export class ChannelsService {
 		private readonly channelsMapperService: ChannelsTypeMapperService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly channelsControlsService: ChannelsControlsService,
+		private readonly structureLock: DeviceStructureLockService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
@@ -350,14 +352,21 @@ export class ChannelsService {
 
 		const channel = repository.create(toInstance(mapping.class, dtoInstance));
 
-		// Save the channel
-		const raw = await repository.save(channel);
+		// The channel and the properties created with it go in under the structure lock, so a device
+		// recategorisation cannot judge this device's structure in the window between them: half a
+		// channel is not a structure anything should be validated against. The nested property creates
+		// take the same lock and pass straight through it — it is re-entrant per call chain (see
+		// DeviceStructureLockService).
+		await this.structureLock.runExclusive(async (): Promise<void> => {
+			// Save the channel
+			const saved = await repository.save(channel);
 
-		for (const propertyDtoInstance of createDto.properties ?? []) {
-			this.logger.debug(`Creating new property for channelId=${raw.id}`);
+			for (const propertyDtoInstance of createDto.properties ?? []) {
+				this.logger.debug(`Creating new property for channelId=${saved.id}`);
 
-			await this.channelsPropertiesService.create(raw.id, propertyDtoInstance);
-		}
+				await this.channelsPropertiesService.create(saved.id, propertyDtoInstance);
+			}
+		});
 
 		let savedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;
 
