@@ -254,7 +254,15 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				} = await backend.client.GET(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices`, {
 					params: {
 						query: {
-							hidden: payload?.hidden,
+							// `all` when the caller did not say, because the answer lands in a cache everything
+							// shares and this action *replaces* what is there. The endpoint answers with the
+							// visible devices unless told otherwise, so an unscoped refresh — socket-reconnect
+							// recovery, or any `useDevices()` consumer — would quietly drop every system-hidden
+							// source out from under an open mapping or remap flow, and out of the "show hidden"
+							// list. Callers that want only the visible ones filter what they read, which is what
+							// `useDevices()` and `useSpaceDevices()` already do; a shared cache that is missing
+							// rows cannot be filtered back into completeness.
+							hidden: payload?.hidden ?? DevicesModuleDevicesHiddenFilter.all,
 						},
 					},
 				});

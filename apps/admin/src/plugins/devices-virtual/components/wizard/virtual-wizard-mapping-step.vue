@@ -890,6 +890,17 @@ const applyChannel = async (specChannel: DevicesModuleChannelCategory, sourceCha
 		const match = sourceProperties.find((property: IChannelProperty): boolean => property.category === slot.specProperty);
 
 		if (!match) {
+			// The claim above invalidated whatever compatibility request was in flight for this slot, and
+			// this shortcut has nothing to put in it. A selection the user made by hand would then be left
+			// standing with neither an error nor a pending flag — which is all `isValid` looks at, so the
+			// step could advance carrying a mapping that never received a verdict. Re-checked rather than
+			// cleared: the choice is still theirs, it just has to be answered for again.
+			const retained = selections[slot.key];
+
+			if (retained) {
+				candidates.push({ slot, sourceProperty: retained });
+			}
+
 			continue;
 		}
 

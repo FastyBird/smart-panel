@@ -545,6 +545,15 @@ export class VirtualDevicesService {
 		specSlot: VirtualCompatibilitySpecSlot,
 		sourceProperty: ChannelPropertyEntity,
 	): string | null {
+		// WRITE_ONLY counts: the question the reverse check asks is "can the source accept everything this
+		// slot may be commanded with", and a write-only slot is commanded exactly like a read-write one.
+		// Missing it let a source accepting only `play` fill `media_playback.command`, which also exposes
+		// `pause`, `stop` and the navigation commands.
+		const slotWritable =
+			metadata.permissions.includes(PermissionType.READ_WRITE) ||
+			metadata.permissions.includes(PermissionType.WRITE_ONLY);
+		const slotName = `'${specSlot.channel}.${specSlot.property}'`;
+
 		const variant = metadata.dataTypeVariants?.find(
 			(candidate) => String(candidate.data_type) === String(sourceProperty.dataType),
 		);
@@ -556,8 +565,18 @@ export class VirtualDevicesService {
 		const actual = sourceProperty.format as unknown;
 
 		if (!Array.isArray(expected) || expected.length === 0) {
-			// The slot constrains nothing, so nothing about the source can contradict it.
-			return null;
+			// An unconstrained *read-only* slot cannot be contradicted: whatever the source reports is a
+			// value the slot permits, because the slot permits everything.
+			if (!slotWritable || !Array.isArray(actual) || actual.length === 0) {
+				return null;
+			}
+
+			// Writable is the other direction, and it does not follow. The slot says any value may be
+			// commanded and the source says only some may — so `media_input.source`'s free-text variant
+			// backed by a source restricted to `['HDMI 1']` accepts `TV` at the projection and forwards it
+			// to a device that refuses it. Unconstrained is the widest possible claim, so any source
+			// narrowing it is narrowing something the slot promises.
+			return `Source property id=${sourceProperty.id} accepts only [${actual.join(', ')}], while ${slotName} may be commanded with any value of its type`;
 		}
 
 		if (!Array.isArray(actual) || actual.length === 0) {
@@ -567,15 +586,6 @@ export class VirtualDevicesService {
 			// as compatible is how an out-of-range value gets stored and projected.
 			return `Source property id=${sourceProperty.id} declares no format, so it cannot be shown to stay within the one '${specSlot.channel}.${specSlot.property}' defines`;
 		}
-
-		// WRITE_ONLY counts: the question the reverse check asks is "can the source accept everything this
-		// slot may be commanded with", and a write-only slot is commanded exactly like a read-write one.
-		// Missing it let a source accepting only `play` fill `media_playback.command`, which also exposes
-		// `pause`, `stop` and the navigation commands.
-		const slotWritable =
-			metadata.permissions.includes(PermissionType.READ_WRITE) ||
-			metadata.permissions.includes(PermissionType.WRITE_ONLY);
-		const slotName = `'${specSlot.channel}.${specSlot.property}'`;
 
 		// Which shape the slot expects is decided by the slot, not by what the candidate happens to send.
 		// A numeric variant declaring `[0, 86400]` and a candidate declaring `['0', '86400']` would
@@ -801,18 +811,20 @@ export class VirtualDevicesService {
 	 */
 	describeSentinelMismatch(property: ChannelPropertyEntity, sourceProperty: ChannelPropertyEntity): string | null {
 		const sourceSentinel = sourceProperty.invalid ?? null;
-
-		if (sourceSentinel === null) {
-			return null;
-		}
-
 		const declared = property.invalid ?? null;
 
-		if (declared !== null && matchesInvalidValue(sourceSentinel, declared)) {
+		if (sourceSentinel === null && declared === null) {
 			return null;
 		}
 
-		return `Property id=${property.id} reserves ${declared === null ? 'no invalid value' : `'${String(declared)}'`} while its source id=${sourceProperty.id} reserves '${String(sourceSentinel)}'; a projection forwards its source's value unchanged and is what a command is validated against, so it has to reserve the same sentinel`;
+		if (sourceSentinel !== null && declared !== null && matchesInvalidValue(sourceSentinel, declared)) {
+			return null;
+		}
+
+		const describe = (sentinel: string | number | boolean | null): string =>
+			sentinel === null ? 'no invalid value' : `'${String(sentinel)}'`;
+
+		return `Property id=${property.id} reserves ${describe(declared)} while its source id=${sourceProperty.id} reserves ${describe(sourceSentinel)}; a projection forwards its source's value unchanged and is what a command is validated against, so the two have to reserve the same sentinel`;
 	}
 
 	async assertProjectionCompatible(property: VirtualChannelPropertyEntity, channelId: string): Promise<void> {

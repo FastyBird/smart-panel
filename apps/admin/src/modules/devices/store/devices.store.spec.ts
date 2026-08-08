@@ -114,6 +114,37 @@ describe('Devices Store', () => {
 		);
 	});
 
+	// The same reasoning one level down: `refresh()` asks explicitly, but every other unscoped caller —
+	// socket-reconnect recovery, any `useDevices()` consumer — goes through `fetch()` with no payload,
+	// and the answer *replaces* the shared cache. A consumer that wants only visible devices filters
+	// what it reads; a cache missing rows cannot be filtered back into completeness.
+	it('asks for every device when the caller names no filter', async () => {
+		mockBackendClient.GET.mockResolvedValue({ data: { data: [] }, error: undefined, response: { status: 200 } });
+
+		const store = useDevices();
+
+		await store.fetch();
+
+		expect(mockBackendClient.GET).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ params: { query: { hidden: DevicesModuleDevicesHiddenFilter.all } } })
+		);
+	});
+
+	// And a caller that does name one still gets it — the default must not become an override.
+	it('honours a caller that asks for the visible devices only', async () => {
+		mockBackendClient.GET.mockResolvedValue({ data: { data: [] }, error: undefined, response: { status: 200 } });
+
+		const store = useDevices();
+
+		await store.fetch({ hidden: DevicesModuleDevicesHiddenFilter.false });
+
+		expect(mockBackendClient.GET).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ params: { query: { hidden: DevicesModuleDevicesHiddenFilter.false } } })
+		);
+	});
+
 	it('applies only the most recently requested hidden value when two fetches overlap and resolve out of order', async () => {
 		// Two independently-resolvable responses, standing in for the device list's mount fetch
 		// (hidden=false) racing the "show hidden" toggle flipping to hidden=all before the mount

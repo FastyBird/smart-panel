@@ -722,6 +722,27 @@ describe('VirtualWizardMappingStep', () => {
 		await pending;
 	});
 
+	// Claiming a slot invalidates the request in flight for it. If the shortcut then has nothing to put
+	// in that slot, a selection the user made by hand is left with neither an error nor a pending flag —
+	// which is all `isValid` reads, so the step could advance carrying a mapping no one ever verified.
+	it('re-checks a hand-made selection the shortcut claimed but could not fill', async () => {
+		const { wrapper, slotFor } = mountMappingStep();
+
+		// A manual pick on a slot the `electrical_power` shortcut claims but cannot fill: the switcher
+		// channel carries only `on`, no `voltage`.
+		await wrapper.vm.selectSource(slotFor(DevicesModuleChannelPropertyCategory.voltage), PROPERTY_VOLTAGE);
+
+		(backendClient.POST as Mock).mockClear();
+
+		await wrapper.vm.applyChannel(DevicesModuleChannelCategory.electrical_power, CHANNEL_SWITCHER);
+
+		const checked = (backendClient.POST as Mock).mock.calls.flatMap(
+			(call) => (call[1] as { body: { data: { candidates: { source_property: string }[] } } }).body.data.candidates
+		);
+
+		expect(checked.map((candidate) => candidate.source_property)).toContain(PROPERTY_VOLTAGE);
+	});
+
 	it('blocks the step when the compatibility check itself fails', async () => {
 		backendClient.POST.mockResolvedValue({ data: undefined, error: { error: { details: [{ reason: 'Source property does not exist' }] } } });
 

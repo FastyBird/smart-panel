@@ -665,9 +665,10 @@ describe('VirtualDevicesService', () => {
 			await expect(service.assertProjectionCompatible(guarded, CHANNEL_ID)).resolves.toBeUndefined();
 		});
 
-		// The other direction is only over-strict: a command the source would have accepted is refused
-		// early at the projection. Nothing unsafe happens, so there is nothing to refuse.
-		it('accepts a projection reserving a sentinel its source does not', async () => {
+		// The other direction breaks something different but no less real: nothing unsafe reaches the
+		// device, and the projection refuses commands its slot and its source both accept — a value that
+		// works sent to the real device and fails through its stand-in.
+		it('refuses a projection reserving a sentinel its source does not', async () => {
 			givenSlot(ChannelCategory.TEMPERATURE, DeviceCategory.SENSOR);
 			channelsPropertiesService.findOne.mockResolvedValue(readWriteSourceProperty);
 
@@ -680,7 +681,7 @@ describe('VirtualDevicesService', () => {
 
 			Object.assign(stricter, { invalid: 99 });
 
-			await expect(service.assertProjectionCompatible(stricter, CHANNEL_ID)).resolves.toBeUndefined();
+			await expect(service.assertProjectionCompatible(stricter, CHANNEL_ID)).rejects.toThrow(/sentinel/);
 		});
 
 		// `unit` is not a column: the create DTO cannot carry it and ChannelPropertyEntitySubscriber
@@ -702,6 +703,32 @@ describe('VirtualDevicesService', () => {
 			Object.assign(unsaved, { unit: undefined });
 
 			await expect(service.assertProjectionCompatible(unsaved, CHANNEL_ID)).resolves.toBeUndefined();
+		});
+
+		// An unconstrained *writable* slot promises any value of its type may be commanded. A source that
+		// accepts only some of them narrows exactly that promise: the projection takes `TV`, forwards it,
+		// and the device refuses it. The read-only direction is fine — whatever the source reports is a
+		// value a slot permitting everything permits — which is why this only bites on writes.
+		it('refuses a constrained source on a writable slot that constrains nothing', async () => {
+			givenSlot(ChannelCategory.MEDIA_INPUT, DeviceCategory.TELEVISION);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({
+					id: 'restricted-source',
+					permissions: [PermissionType.READ_WRITE],
+					dataType: DataTypeType.STRING,
+					format: ['HDMI 1'],
+				}),
+			);
+
+			const unconstrained = projecting('restricted-source', PropertyCategory.SOURCE, {
+				dataType: DataTypeType.STRING,
+				permissions: [PermissionType.READ_WRITE],
+				format: ['HDMI 1'],
+			});
+
+			await expect(service.assertProjectionCompatible(unconstrained, CHANNEL_ID)).rejects.toThrow(
+				/may be commanded with any value of its type/,
+			);
 		});
 
 		it('ignores an owned property', async () => {
