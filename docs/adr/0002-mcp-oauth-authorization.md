@@ -85,7 +85,9 @@ and scopes all match the current request.
 The existing static MCP credential audience
 `urn:fastybird:smart-panel:<installation-uuid>:mcp` remains unchanged. Static and OAuth credentials have separate token
 types and validation paths. Changing the public base URL immediately invalidates outstanding OAuth tokens because their
-resource and issuer no longer match; it does not change the installation UUID or static credential audience.
+resource and issuer no longer match. The change also advances the public-identity generation, revokes OAuth artifacts,
+and closes OAuth subscriptions, but it does not change the installation UUID, static credential audience, or static
+subscriptions.
 
 ### 4. Client registration
 
@@ -194,21 +196,25 @@ before enumerating and closing streams. Therefore an open either registers first
 observes the new generation and fails/revalidates; an in-flight stale request cannot register after invalidation reports
 success.
 
-The global OAuth-enabled generation also serializes every grant, authorization-code, access-token, and refresh-token
-creation or rotation with switch-off. Each handler captures the generation, and its TypeORM transaction conditionally
-rechecks that the gate is open and the generation is unchanged while committing artifacts tagged with that generation.
-Switch-off closes the gate and increments the generation through the same persistent serialization boundary before
-revoke-all begins. A racing handler therefore commits first and its artifact is revoked, or its stale conditional
-commit fails. Artifact validation always requires the current enabled generation, providing a fail-closed backstop
-across disable and readiness-gated re-enable.
+Every grant, authorization-code, access-token, and refresh-token creation or rotation is serialized with every state
+change that can invalidate it. Each handler captures the OAuth-enabled, server-secret, public-identity, client, grant,
+module-policy, and approving-user authority generations that apply to its artifact. Its TypeORM transaction
+conditionally rechecks the current states and generations while committing the artifact with that snapshot. An
+invalidating mutation advances its persistent generation through the same serialization boundary before enumerating
+and revoking existing artifacts. A racing handler therefore commits first and is included in invalidation, or its stale
+conditional commit fails. Artifact validation also requires every stored generation to match the current generation,
+providing a fail-closed backstop if a client, role, or setting is later restored.
 
 Approver invalidation must use an awaited lifecycle path, such as a directly orchestrated service or propagated
 `emitAsync`; the existing fire-and-forget `eventEmitter.emit` calls are not sufficient. For
 `UsersModule.User.Updated` and `UsersModule.User.Deleted`, when the user no longer exists or no longer has the
-owner/admin role required to approve MCP grants, the awaited handler revokes all grants approved by that user and their
-access and refresh artifacts, then closes their matching subscriptions before resolving. Its failure prevents the user
-mutation from returning success, while live grant validation still fails closed against the user's persisted role. A
-profile-only update by an owner/admin does not revoke grants.
+owner/admin role required to approve MCP grants, the mutation first advances that user's authority generation through
+the shared artifact-commit boundary. It then revokes all grants approved by that user and their access and refresh
+artifacts and closes their matching subscriptions before resolving. A paused consent using the previous generation
+cannot commit afterward, and restoring the role creates a new generation rather than reviving old grants. Invalidation
+failure prevents the user mutation from returning success, while live grant validation still fails closed against the
+user's persisted role and generation. A profile-only update by an owner/admin does not advance the authority generation
+or revoke grants.
 
 Client and grant mutations are audited. Logs may contain IDs, scope names, denial codes, and timestamps, but never raw
 codes, access tokens, refresh tokens, PKCE verifiers, cookies, passwords, or token hashes.
@@ -223,19 +229,22 @@ is unavailable until both the stored enable setting and startup readiness pass.
 
 The user-facing enable switch is added only after the application can verify that access-token/grant
 authorization-deadline timers, targeted client/grant/token/family and live-scope-reduction subscription aborts,
-awaited approver update/delete invalidation, serialized subscription-open/invalidation and artifact-issuance gates,
-public-identity/server-secret rotation invalidation, OAuth switch-off invalidation, owner/admin revoke controls, audit
-hooks, and endpoint rate limits are all registered. A failed readiness check keeps the gate closed for
+awaited approver update/delete invalidation, serialized subscription-open/invalidation and all-generation
+artifact-issuance gates, public-identity/server-secret rotation invalidation, OAuth switch-off invalidation,
+owner/admin revoke controls, audit hooks, and endpoint rate limits are all registered. A failed readiness check keeps
+the gate closed for
 protected-resource metadata, authorization-server metadata, authorization/token/revocation endpoints, OAuth
 challenges, and OAuth MCP bearer validation together. The initial static bearer behavior remains unchanged during that
 failure.
 
 Switching OAuth off first closes the shared fail-closed runtime gate and atomically increments its persistent
-generation, so every later OAuth request is rejected before its handler and every in-flight artifact commit with the
-old generation fails. The same awaited mutation then revokes all outstanding OAuth artifacts and aborts all OAuth
-subscriptions before reporting success; static MCP credentials and streams remain active. An invalidation failure
-keeps OAuth fail-closed and makes the mutation return an error. Re-enabling reruns the complete readiness gate under a
-new generation and does not reactivate the revoked artifacts: clients must begin a new authorization flow.
+generation through the common artifact-commit boundary, so every later OAuth request is rejected before its handler and
+every in-flight artifact commit with the old generation fails. Server-secret or public-identity rotation likewise
+advances its own generation before revoke-all. Each awaited mutation then revokes all outstanding OAuth artifacts and
+aborts all OAuth subscriptions before reporting success; static MCP credentials and streams remain active. An
+invalidation failure keeps OAuth fail-closed and makes the mutation return an error. Re-enabling reruns the complete
+readiness gate under a new generation and does not reactivate the revoked artifacts: clients must begin a new
+authorization flow.
 
 Public deployment requires HTTPS, an explicit public base URL, trusted reverse-proxy configuration, endpoint and login
 rate limits, current backups, and an incident-response procedure. Forwarded headers remain ignored until a separately
@@ -269,10 +278,10 @@ reissue or downgrade an OAuth token into a static credential.
 | Proxy/header spoofing and DNS rebinding | Explicit public URL, trusted Host/Origin policy, ignore forwarded headers unless proxy trust is configured |
 | Client, grant, token, or refresh-family revocation with an open stream | Bind subscriptions to every authorization artifact and abort targeted streams before the mutation reports success |
 | A validated listen request races artifact invalidation | Atomically recheck authorization generations while registering under the same serialization boundary used to gate and close streams |
-| Artifact issuance races OAuth switch-off | Conditionally commit every artifact against the persistent enabled generation; switch-off closes and increments that generation before revoke-all |
+| Artifact issuance races an invalidating mutation | Conditionally commit against all persistent enabled/secret/identity/client/grant/policy/approver generations; advance the affected generation before revocation |
 | An access token or its grant expires while a stream is open | Cap token expiry at grant expiry and abort the subscription at the earlier authorization deadline |
-| A grant approver is demoted or deleted | Use an awaited user-lifecycle path and do not report the user mutation successful until every affected grant, token artifact, and subscription is revoked |
-| OAuth server secret is rotated after compromise | Revoke all OAuth artifacts and close all OAuth subscriptions as one global invalidation operation |
+| A grant approver is demoted or deleted | Advance the approver-authority generation, then await revocation and stream closure before success so a paused consent cannot escape or later revive |
+| OAuth server secret or public identity rotates | Advance its artifact generation before revoke-all, then revoke OAuth artifacts and close OAuth subscriptions while preserving static streams |
 | OAuth is switched off while subscriptions are open | Fail closed for all OAuth traffic, revoke OAuth artifacts, and close OAuth streams atomically while preserving static MCP streams |
 | A phased rollout exposes OAuth before revocation controls | Do not add the enable switch or open the shared route gate until startup readiness verifies every invalidation and admin control |
 | Brute force and artifact enumeration | Separate limits for login, authorize, token, and revocation endpoints; uniform OAuth errors where required |

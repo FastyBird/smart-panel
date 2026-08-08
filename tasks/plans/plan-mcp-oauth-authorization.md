@@ -122,10 +122,11 @@ amend ADR 0002.
       recheck the OAuth-enabled and artifact/authorization-input generations plus live scopes while registering, and
       increment or close the applicable gate before an invalidating mutation enumerates streams. A racing open must
       either register first and be closed or observe the new generation and fail/revalidate.
-- [ ] Serialize every grant, authorization-code, access-token, and refresh-token creation/rotation with OAuth
-      switch-off: conditionally commit the artifact and its captured enabled generation only while the persistent gate
-      remains open at that generation. Switch-off must atomically close and increment the generation first, so a racing
-      handler either commits before revoke-all or its stale commit fails.
+- [ ] Serialize every grant, authorization-code, access-token, and refresh-token creation/rotation with every
+      invalidating mutation. Conditionally commit against the captured OAuth-enabled, server-secret, public-identity,
+      client, grant, module-policy, and approver-authority generations and current states. Each invalidation must advance
+      its generation before enumeration, so a racing handler either commits first and is revoked or its stale commit
+      fails; validation must recheck all generations so later restoration cannot revive an escaped artifact.
 - [ ] Close only the matching subscriptions before client, grant, access-token, or refresh-family revocation reports
       success, and automatically close each stream at its authorization deadline.
 - [ ] Route module-ceiling, registered-client-maximum, and approved-grant scope reductions through an awaited
@@ -133,11 +134,13 @@ amend ADR 0002.
       reporting success, including removal of `mcp:write` or `mcp:trigger` while `mcp:read` remains; do not rely on the
       existing asynchronous MCP configuration notification listener.
 - [ ] Replace fire-and-forget approver invalidation with an awaited lifecycle path for `UsersModule.User.Updated` and
-      `UsersModule.User.Deleted`: when a grant approver is deleted or no longer has owner/admin role, revoke every grant
-      and token artifact they approved and close matching subscriptions before the user mutation returns success;
-      propagate invalidation failures and preserve grants for profile-only updates by an authorized approver.
-- [ ] Close all MCP subscriptions when the module is disabled or its public OAuth identity rotates; on OAuth
-      server-secret rotation, revoke every OAuth artifact and close every OAuth subscription.
+      `UsersModule.User.Deleted`: when a grant approver is deleted or no longer has owner/admin role, atomically advance
+      their authority generation before revoking every grant and token artifact they approved and closing matching
+      subscriptions. A paused consent using the old generation must fail, role restoration must not revive old grants,
+      invalidation failures propagate, and profile-only updates by an authorized approver preserve the generation.
+- [ ] Close all MCP subscriptions only when the MCP module is disabled. On public OAuth identity or server-secret
+      rotation, advance the applicable artifact generation before revoke-all, revoke every OAuth artifact, and close
+      every OAuth subscription while preserving static MCP credentials and streams.
 - [ ] Add revoke-all recovery action and document password-reset versus OAuth-revocation semantics.
 - [ ] Add audit events and unit/e2e coverage for targeted and global invalidation.
 - [ ] Prove user update/delete promises remain pending until approver invalidation and stream closure finish, propagate
@@ -145,9 +148,9 @@ amend ADR 0002.
 - [ ] Regenerate OpenAPI/admin types through the normal generators.
 - [ ] Add the user-facing OAuth enable switch only after startup verifies authorization-deadline timers, targeted
       artifact and live-scope-reduction subscription aborts, awaited approver lifecycle invalidation,
-      serialized subscription-open/invalidation and artifact-issuance gates, public-identity/server-secret rotation,
-      OAuth switch-off invalidation, revoke controls, audit hooks, and rate limits are registered; fail closed and keep
-      the shared OAuth route gate closed if any readiness check fails.
+      serialized subscription-open/invalidation and all-generation artifact-issuance gates,
+      public-identity/server-secret rotation, OAuth switch-off invalidation, revoke controls, audit hooks, and rate
+      limits are registered; fail closed and keep the shared OAuth route gate closed if any readiness check fails.
 - [ ] Register the complete protected-resource metadata, authorization-server metadata,
       authorization/token/revocation, challenge, and OAuth MCP route set once during NestJS/Fastify bootstrap. Every
       route must check the same fail-closed gate before its handler; never mount or unmount routes after startup.
@@ -178,6 +181,12 @@ amend ADR 0002.
 - [ ] E2E: pause authorization, code-exchange, and refresh handlers immediately before artifact commit, switch OAuth
       off, then resume them; prove each stale-generation commit fails, no late artifact escapes revoke-all, and none
       becomes usable after re-enable.
+- [ ] E2E: repeat the barrier-synchronized artifact-commit race for server-secret rotation, public-identity rotation,
+      client disable/re-enable, grant revocation, module/client/grant scope contraction/expansion, and approver
+      demotion/restoration; prove stale commits fail and later state restoration never revives an artifact.
+- [ ] E2E: rotate the public OAuth identity and server secret with simultaneous OAuth and static subscriptions; prove
+      only OAuth artifacts/streams are invalidated and static streams remain open. Separately prove MCP-module disable
+      closes both kinds.
 - [ ] E2E: start disabled, enable without restarting, disable without restarting, and re-enable; prove the
       bootstrap-registered route set is uniformly unreachable/reachable behind one gate and never partially exposed.
 - [ ] Reverse-proxy E2E: explicit external prefix, hostile forwarded headers, untrusted proxy, trusted proxy, public URL
