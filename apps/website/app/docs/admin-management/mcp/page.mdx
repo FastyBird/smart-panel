@@ -43,11 +43,15 @@ https://<installation-host>/api/v1/modules/mcp
     An empty capability set is valid and exposes no tools or resources. The capability ceiling limits every client;
     a client can receive fewer capabilities, but never more.
 
-    ### Configure browser origins only when needed
+    ### Allow the endpoint hostname and any browser origin
 
-    Server-side agents on the LAN normally send no `Origin` header and do not need an entry. For a browser-based client
-    on another origin, add the exact normalized HTTP(S) origin, such as `https://agent.example.com`. Do not include a
-    path, query, fragment, credentials, or wildcard.
+    Every request hostname must be loopback, the hostname configured by `FB_APP_HOST`, or the hostname of an entry in
+    **Allowed origins**. If the copied LAN or reverse-proxy endpoint uses another hostname, either set `FB_APP_HOST` to
+    that external HTTP(S) origin and restart the backend, or add the endpoint's complete origin to **Allowed origins**.
+    This hostname check also applies to server-side agents that send no `Origin` header.
+
+    For a browser-based client on another origin, also add the client's exact normalized HTTP(S) origin, such as
+    `https://agent.example.com`. Do not include a path, query, fragment, credentials, or wildcard.
 
     ### Save and copy the endpoint
 
@@ -210,9 +214,9 @@ work on the MCP endpoint.
 
 ### The client receives `403 Forbidden`
 
-The requested tool may be outside the effective capability intersection, the request hostname may not identify this
-installation, or a browser `Origin` may be missing from the explicit allowlist. Add only an exact normalized origin;
-do not use a wildcard.
+Smart Panel rejected the request's `Host` or browser `Origin`. Ensure the endpoint hostname is loopback, matches the
+hostname in `FB_APP_HOST`, or belongs to an origin in **Allowed origins**. For a cross-origin browser client, add its
+exact normalized origin too. Do not use a wildcard.
 
 ### The client connects but shows no tools
 
