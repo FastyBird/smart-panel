@@ -16,7 +16,12 @@ const authenticatedGuard = (storesManager: IStoresManager, to: RouteRecordRaw): 
 		toGuards &&
 		((Array.isArray(toGuards) && toGuards.includes(GUARD_NAME)) || (typeof toGuards === 'object' && GUARD_NAME in toGuards))
 	) {
-		return { name: RouteNames.SIGN_IN };
+		const fullPath = 'fullPath' in to && typeof to.fullPath === 'string' ? to.fullPath : undefined;
+
+		return {
+			name: RouteNames.SIGN_IN,
+			...(fullPath?.startsWith('/mcp-oauth-consent?') ? { query: { redirect: fullPath } } : {}),
+		};
 	}
 
 	return true;

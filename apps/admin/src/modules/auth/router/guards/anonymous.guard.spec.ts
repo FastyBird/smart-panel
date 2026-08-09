@@ -39,6 +39,18 @@ describe('anonymousGuard', (): void => {
 		expect(result).toEqual({ name: AppRouteNames.ROOT });
 	});
 
+	it('resumes only a local OAuth consent route for an already signed-in user', (): void => {
+		(mockSessionStore.isSignedIn as Mock).mockReturnValue(true);
+		const route = {
+			query: { redirect: '/mcp-oauth-consent?interaction=opaque-id' },
+			meta: { guards: ['anonymous'] },
+		};
+
+		expect(anonymousGuard(mockStoresManager, route as unknown as RouteRecordRaw)).toBe(
+			'/mcp-oauth-consent?interaction=opaque-id',
+		);
+	});
+
 	it('should allow navigation if user is signed in but route does not have an anonymous guard', (): void => {
 		(mockSessionStore.isSignedIn as Mock).mockReturnValue(true);
 

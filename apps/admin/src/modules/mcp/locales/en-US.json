@@ -104,6 +104,30 @@
 		"revoke": "Revoke the current credential for {name}? Connected clients will lose access immediately.",
 		"delete": "Delete {name}? Its credential will be revoked and the client record cannot be recovered."
 	},
+	"oauthConsent": {
+		"title": "Authorize MCP access",
+		"subtitle": "Review exactly what this remote client may do before approving access.",
+		"installation": "Installation",
+		"client": "Requesting client",
+		"redirect": "Redirect destination",
+		"scopes": "Requested access",
+		"grantExpiry": "Grant lifetime (days)",
+		"accessExpiry": "Access tokens expire after {minutes} minutes.",
+		"offlineAccess": "Refresh tokens allow continued access for at most 30 days, even when the grant lasts longer.",
+		"physicalWarningTitle": "This client can affect physical devices",
+		"physicalWarning": "Write or trigger access can change device state, run scenes, and affect people in the installation.",
+		"approve": "Approve access",
+		"deny": "Deny",
+		"loading": "Loading authorization request…",
+		"invalid": "This authorization request is invalid, expired, or no longer available.",
+		"scopeRequired": "Approve at least one MCP capability or deny the request.",
+		"scope": {
+			"mcp:read": "Read installation context and supported device state",
+			"mcp:write": "Change supported physical-device properties",
+			"mcp:trigger": "Run scenes and higher-level physical actions",
+			"offline_access": "Refresh access without asking again for up to 30 days"
+		}
+	},
 	"messages": {
 		"configSaved": "MCP configuration saved.",
 		"configSaveFailed": "MCP configuration could not be saved.",

@@ -20,6 +20,8 @@ import { ToolsModule } from '../tools/tools.module';
 import { WeatherModule } from '../weather/weather.module';
 
 import { McpClientsController } from './controllers/mcp-clients.controller';
+import { McpOAuthClientsController } from './controllers/mcp-oauth-clients.controller';
+import { McpOAuthInteractionsController } from './controllers/mcp-oauth-interactions.controller';
 import { McpController } from './controllers/mcp.controller';
 import { UpdateMcpConfigDto } from './dto/update-config.dto';
 import { McpClientEntity } from './entities/mcp-client.entity';
@@ -30,6 +32,8 @@ import {
 	McpOAuthClientEntity,
 	McpOAuthGrantEntity,
 	McpOAuthInteractionEntity,
+	McpOAuthProviderArtifactEntity,
+	McpOAuthProviderRevokedGrantEntity,
 	McpOAuthRefreshTokenEntity,
 	McpOAuthRefreshTokenFamilyEntity,
 	McpOAuthServerStateEntity,
@@ -45,15 +49,19 @@ import {
 } from './mcp.constants';
 import { MCP_SWAGGER_EXTRA_MODELS } from './mcp.openapi';
 import { McpConfigModel } from './models/config.model';
+import { McpOAuthProviderFactory } from './oauth/mcp-oauth-provider.factory';
 import { McpStatsProvider } from './providers/mcp-stats.provider';
 import { McpAuditService } from './services/mcp-audit.service';
 import { McpClientService } from './services/mcp-client.service';
 import { McpContextService } from './services/mcp-context.service';
 import { McpInstallationService } from './services/mcp-installation.service';
 import { McpOAuthArtifactService } from './services/mcp-oauth-artifact.service';
+import { McpOAuthClientService } from './services/mcp-oauth-client.service';
+import { McpOAuthInteractionService } from './services/mcp-oauth-interaction.service';
 import { McpOAuthProxyPolicyService } from './services/mcp-oauth-proxy-policy.service';
 import { McpOAuthPublicUrlService } from './services/mcp-oauth-public-url.service';
 import { McpOAuthRefreshTokenService } from './services/mcp-oauth-refresh-token.service';
+import { McpOAuthRuntimeService } from './services/mcp-oauth-runtime.service';
 import { McpPolicyService } from './services/mcp-policy.service';
 import { McpServerService } from './services/mcp-server.service';
 import { McpSubscriptionRegistryService } from './services/mcp-subscription-registry.service';
@@ -84,6 +92,8 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 			McpOAuthClientEntity,
 			McpOAuthGrantEntity,
 			McpOAuthInteractionEntity,
+			McpOAuthProviderArtifactEntity,
+			McpOAuthProviderRevokedGrantEntity,
 			McpOAuthRefreshTokenEntity,
 			McpOAuthRefreshTokenFamilyEntity,
 			McpOAuthServerStateEntity,
@@ -91,7 +101,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		ToolsModule,
 		WeatherModule,
 	],
-	controllers: [McpClientsController, McpController],
+	controllers: [McpClientsController, McpOAuthClientsController, McpOAuthInteractionsController, McpController],
 	providers: [
 		McpClientGuard,
 		McpClientService,
@@ -99,9 +109,13 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpContextService,
 		McpInstallationService,
 		McpOAuthArtifactService,
+		McpOAuthClientService,
+		McpOAuthInteractionService,
 		McpOAuthProxyPolicyService,
+		McpOAuthProviderFactory,
 		McpOAuthPublicUrlService,
 		McpOAuthRefreshTokenService,
+		McpOAuthRuntimeService,
 		McpPolicyService,
 		McpServerService,
 		McpAuditService,
@@ -125,9 +139,13 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpClientService,
 		McpInstallationService,
 		McpOAuthArtifactService,
+		McpOAuthClientService,
+		McpOAuthInteractionService,
 		McpOAuthProxyPolicyService,
+		McpOAuthProviderFactory,
 		McpOAuthPublicUrlService,
 		McpOAuthRefreshTokenService,
+		McpOAuthRuntimeService,
 		McpPolicyService,
 		McpServerService,
 	],

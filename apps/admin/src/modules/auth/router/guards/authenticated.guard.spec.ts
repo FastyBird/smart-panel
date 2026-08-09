@@ -39,6 +39,26 @@ describe('authenticatedGuard', (): void => {
 		expect(result).toEqual({ name: RouteNames.SIGN_IN });
 	});
 
+	it('preserves only the internal OAuth consent destination through sign-in', (): void => {
+		(mockSessionStore.isSignedIn as Mock).mockReturnValue(false);
+		const consent = {
+			fullPath: '/mcp-oauth-consent?interaction=opaque-id',
+			meta: { guards: ['authenticated'] },
+		};
+		const unrelated = {
+			fullPath: 'https://attacker.example/',
+			meta: { guards: ['authenticated'] },
+		};
+
+		expect(authenticatedGuard(mockStoresManager, consent as unknown as RouteRecordRaw)).toEqual({
+			name: RouteNames.SIGN_IN,
+			query: { redirect: '/mcp-oauth-consent?interaction=opaque-id' },
+		});
+		expect(authenticatedGuard(mockStoresManager, unrelated as unknown as RouteRecordRaw)).toEqual({
+			name: RouteNames.SIGN_IN,
+		});
+	});
+
 	it('should allow navigation if the user is not signed in but the route does not have an authenticated guard', (): void => {
 		(mockSessionStore.isSignedIn as Mock).mockReturnValue(false);
 

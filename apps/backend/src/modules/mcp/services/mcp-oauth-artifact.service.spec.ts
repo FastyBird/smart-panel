@@ -77,7 +77,9 @@ describe('McpOAuthArtifactService', () => {
 
 	it('stores only hashes for interactions, codes, access tokens, and refresh tokens', async () => {
 		const client = await createClient(service, approver.id);
+		const providerGrantId = 'provider-grant-id';
 		const grant = await service.createGrant({
+			providerGrantId,
 			clientId: client.id,
 			approvedById: approver.id,
 			approvedScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS],
@@ -106,18 +108,26 @@ describe('McpOAuthArtifactService', () => {
 		});
 
 		expect(interaction.artifact.uidHash).toBe(hashToken(interaction.rawValue));
+		expect(grant.providerGrantIdHash).toBe(hashToken(providerGrantId));
 		expect(code.artifact.codeHash).toBe(hashToken(code.rawValue));
 		expect(access.artifact.tokenHash).toBe(hashToken(access.rawValue));
 		expect(family.refreshToken.artifact.tokenHash).toBe(hashToken(family.refreshToken.rawValue));
 
 		const persisted = JSON.stringify({
+			grants: await dataSource.getRepository(McpOAuthGrantEntity).find(),
 			interaction: await dataSource.getRepository(McpOAuthInteractionEntity).find(),
 			codes: await dataSource.getRepository(McpOAuthAuthorizationCodeEntity).find(),
 			access: await dataSource.getRepository(McpOAuthAccessTokenEntity).find(),
 			refresh: await dataSource.getRepository(McpOAuthRefreshTokenEntity).find(),
 		});
 
-		for (const raw of [interaction.rawValue, code.rawValue, access.rawValue, family.refreshToken.rawValue]) {
+		for (const raw of [
+			providerGrantId,
+			interaction.rawValue,
+			code.rawValue,
+			access.rawValue,
+			family.refreshToken.rawValue,
+		]) {
 			expect(persisted).not.toContain(raw);
 		}
 	});
@@ -126,6 +136,7 @@ describe('McpOAuthArtifactService', () => {
 		const client = await createClient(service, approver.id);
 		const grantExpiry = new Date(Date.now() + 90_000);
 		const firstGrant = await service.createGrant({
+			providerGrantId: 'first-provider-grant-id',
 			clientId: client.id,
 			approvedById: approver.id,
 			approvedScopes: [McpOAuthScope.READ],
@@ -149,6 +160,7 @@ describe('McpOAuthArtifactService', () => {
 
 		urls = publicUrls('https://new-panel.example.com');
 		const secondGrant = await service.createGrant({
+			providerGrantId: 'second-provider-grant-id',
 			clientId: client.id,
 			approvedById: approver.id,
 			approvedScopes: [McpOAuthScope.READ],

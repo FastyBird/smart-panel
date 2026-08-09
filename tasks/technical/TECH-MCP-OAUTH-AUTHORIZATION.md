@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 2 persistent OAuth foundation complete
+Status: in progress — Phase 3 internal-gated authorization and consent flow complete
 
 ## 1. Business goal
 

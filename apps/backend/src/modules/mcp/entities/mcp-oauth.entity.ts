@@ -36,6 +36,10 @@ export class McpOAuthClientEntity extends BaseEntity {
 
 @Entity('mcp_module_oauth_grants')
 export class McpOAuthGrantEntity extends BaseEntity {
+	@Index({ unique: true })
+	@Column({ type: 'varchar', nullable: true })
+	providerGrantIdHash: string | null;
+
 	@Index()
 	@Column({ type: 'varchar' })
 	clientId: string;
@@ -318,4 +322,45 @@ export class McpOAuthServerStateEntity {
 
 	@Column({ type: 'datetime', onUpdate: 'CURRENT_TIMESTAMP', nullable: true })
 	updatedAt: Date | string | null;
+}
+
+@Entity('mcp_module_oauth_provider_artifacts')
+@Index(['model', 'idHash'], { unique: true })
+export class McpOAuthProviderArtifactEntity {
+	@PrimaryColumn({ type: 'varchar' })
+	model: string;
+
+	@PrimaryColumn({ type: 'varchar' })
+	idHash: string;
+
+	@Column({ type: 'text' })
+	payload: string;
+
+	@Index()
+	@Column({ type: 'varchar', nullable: true })
+	grantIdHash: string | null;
+
+	@Index()
+	@Column({ type: 'varchar', nullable: true })
+	userCodeHash: string | null;
+
+	@Index()
+	@Column({ type: 'varchar', nullable: true })
+	uidHash: string | null;
+
+	@Column({ type: 'integer', nullable: true })
+	consumedAt: number | null;
+
+	@Index()
+	@Column({ type: 'integer', nullable: true })
+	expiresAt: number | null;
+}
+
+@Entity('mcp_module_oauth_provider_revoked_grants')
+export class McpOAuthProviderRevokedGrantEntity {
+	@PrimaryColumn({ type: 'varchar' })
+	grantIdHash: string;
+
+	@Column({ type: 'integer' })
+	revokedAt: number;
 }
