@@ -124,16 +124,12 @@ export class McpOAuthManagementService {
 	}
 
 	async updateClient(id: string, dto: UpdateMcpOAuthClientDto, actorId: string): Promise<McpOAuthClientModel> {
-		const current = await this.clientsService.getOneOrThrow(id);
-
 		if (dto.enabled === false) return this.disableClient(id, actorId, dto);
 
-		const authorizationChanged =
-			(dto.redirectUris !== undefined && !this.sameValues(current.redirectUris, dto.redirectUris)) ||
-			(dto.maximumScopes !== undefined && !this.sameValues(current.maximumScopes, dto.maximumScopes)) ||
-			(dto.enabled !== undefined && current.enabled !== dto.enabled);
+		const updatesAuthorization =
+			dto.redirectUris !== undefined || dto.maximumScopes !== undefined || dto.enabled !== undefined;
 
-		if (!authorizationChanged) return this.clientsService.update(id, dto);
+		if (!updatesAuthorization) return this.clientsService.update(id, dto);
 
 		let updated: McpOAuthClientModel | undefined;
 
@@ -414,9 +410,5 @@ export class McpOAuthManagementService {
 		} catch {
 			return [];
 		}
-	}
-
-	private sameValues(left: string[], right: string[]): boolean {
-		return left.length === right.length && left.every((value) => right.includes(value));
 	}
 }

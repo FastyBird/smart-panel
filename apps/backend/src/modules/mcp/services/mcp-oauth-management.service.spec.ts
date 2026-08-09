@@ -424,6 +424,15 @@ describe('McpOAuthManagementService', () => {
 		expect(await service.findAccessTokens()).toEqual([expect.objectContaining({ clientId: otherClient.id })]);
 	});
 
+	it('gates authorization-field updates even when they match the initial client snapshot', async () => {
+		const matching = await openSubscription(client.id, grant.id, accessId, familyId);
+
+		const updated = await service.updateClient(client.id, { maximumScopes: [...client.maximumScopes] }, 'actor-id');
+
+		expect(updated.maximumScopes).toEqual(client.maximumScopes);
+		expect(matching.signal.aborted).toBe(true);
+	});
+
 	async function openSubscription(clientId: string, grantId: string, tokenId: string, refreshFamilyId?: string) {
 		return subscriptions.openOAuth(`request-${tokenId}`, () =>
 			Promise.resolve({
