@@ -310,6 +310,29 @@ It is deliberately not filed as a task: a control loop touches safety, concurren
 3. **How a command reaches the setpoint.** `VirtualDevicePlatform.processBatch()` refuses every `LOCAL` property outright, and the panel and climate intents go through it rather than PATCHing. Relaxing `assertOwnedPropertyNotWritable` alone leaves the ordinary climate controls unable to move either the setpoint or the enable.
 4. **What serialises, and around what.** Per *device*, not per loop — a heater and a cooler evaluating concurrently each see the other inactive and each energise. `DeviceStructureLockService` is the existing shape to borrow from, not necessarily the instance.
 
+**Machinery that already exists, and what it cost to get right.** Decision 1 — an exclusive, durable mapping that sweeps can see — is very nearly a problem this repo has now solved once, for energy. `BUG-ENERGY-VIRTUAL-ROOM-ATTRIBUTION` needed exactly one projection to be accountable for a meter, and the shape it arrived at is the obvious starting point for an actuator:
+
+- a nullable column on the projection row holding the claimed property's id, with a **partial unique index** over it, so "one claimant" is a database fact rather than something every write path remembers to check;
+- a **foreign key with `ON DELETE SET NULL`**, so a deleted source clears the claim in the same statement that orphans the link — no hook runs there;
+- the invariant that the column is either null or equal to `sourcePropertyId`, which is cheap to check and is what the promotion write conditions on.
+
+Four things that were not obvious until they broke, and would break the same way for an actuator:
+
+- **release on every exit path of the gate**, not just the failing one. An early return that leaves a stale claim on a row is invisible until the meter it names goes quiet;
+- **promote only to a successor that could have earned it.** Handing a released mapping to the oldest remaining candidate hands it to rows the rules deliberately refused;
+- **a sweep for the paths that cannot name what they released.** Deleting a holder takes its row and its mapping with it, and remapping settles the new one in a hook that never sees the old — neither can name the thing it freed, so `reconcileEnergyClaims()` asks the state instead, beside `reconcileSystemHiddenSources()` which exists for the same reason;
+- **a conditional write, not read-then-write.** `UPDATE … WHERE id = ? AND claim IS NULL AND sourcePropertyId = ? AND NOT EXISTS (…)` makes a lost race a no-op instead of a contradiction, and makes running it twice idempotent.
+
+`DeviceStructureLockService` is worth borrowing from and worth reading first: `ChannelsPropertiesService` takes it around `create` (`:403`) and `update` (`:510`) and **not** around `remove` (`:556`), so the delete path races the create path today. That gap is why the energy claim leans on the constraint rather than the lock, and an actuator that leaned on the lock alone would inherit it.
+
+**Two seams already carry a plugin's private knowledge into core**, and a controller will need the same kind: `PropertyValueSourceRegistryService` answers "where does this property's value live", and `EnergyClaimRegistryService` answers "which property is accountable for this meter" — core asks, the plugin registers, and neither module learns the other's schema. Anything outside the plugin that needs to know an actuator is spoken for should ask across a seam like these rather than read the column.
+
+**Keep the wizard and the write path reading one function.** `describeEnergyClaimConflict()` is called by both the persistence gate and `POST /compatibility`, so the preview cannot offer a pairing the create then refuses — a false green is the one answer a user acts on. An actuator mapping needs the same treatment the moment the wizard can choose one.
+
+**A schema trap worth knowing before you hit it:** CI and the e2e suite build the database from the entity decorators (`FB_DB_SYNC=true`), while installations upgrade through migrations. A constraint declared in only one of them is absent exactly where the tests that rely on it run — the energy claim's unique index is declared twice for that reason, with a spec pinning each.
+
+**Testing that worked for this kind of change:** drive the real components against an in-memory sqlite `DataSource` rather than mocking the seams — `energy-attribution.spec.ts` and `energy-space-history.spec.ts` are the pattern. Every claim in a control loop is about what several pieces do together, and a mock at any of those seams tests the mock.
+
 **Suggested scope order**, because the categories are not equally hard: `heating_unit` and `water_heater` first — one actuator, one sensor, boolean `status`; then `air_conditioner`, the same shape with the sense inverted; then the humidity pair, whose enum `status` needs a vocabulary; and `thermostat` last, which is the only one with two opposed actuators and therefore the only one needing the interlock. Nothing structural forces a thermostat to have either a heater or a cooler, so it also needs an invariant of its own.
 
 **Prior art worth reading before designing** — Home Assistant's `generic_thermostat` solves the same problem against the same kind of hardware. Its `min_cycle_duration`, `cold_tolerance`/`hot_tolerance`, `keep_alive` and `ac_mode` options are the shape of the protections described above, and its climate entity separates `hvac_mode` (what the user asked for) from `hvac_action` (what the unit is doing) — which is exactly the enable/activity split this section argues for, arrived at independently. Read it for what it does on restart and on an actuator that goes unreachable, which is where the design here has the most to decide.
