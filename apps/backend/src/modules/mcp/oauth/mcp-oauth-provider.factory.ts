@@ -84,6 +84,13 @@ export class McpOAuthProviderFactory {
 			clientAuthMethods: ['none'],
 			responseTypes: ['code'],
 			scopes: Object.values(McpOAuthScope),
+			extraParams: {
+				state: (context, state) => {
+					if (context.oidc.route === 'authorization' && !state) {
+						throw new oidcProvider.errors.InvalidRequest('The OAuth state parameter is required');
+					}
+				},
+			},
 			allowOmittingSingleRegisteredRedirectUri: false,
 			acceptQueryParamAccessTokens: false,
 			cookies: {
@@ -224,15 +231,6 @@ export class McpOAuthProviderFactory {
 		}
 	}
 
-	assertAuthorizationRequest(parameters: URLSearchParams): void {
-		if (!parameters.get('state')) {
-			throw new Error('invalid_request: The OAuth state parameter is required');
-		}
-		if (!parameters.get('resource')) {
-			throw new Error('invalid_target: The MCP resource parameter is required');
-		}
-	}
-
 	private projectMetadata(urls: McpOAuthPublicUrls): McpOAuthAuthorizationServerMetadata {
 		return {
 			issuer: urls.issuer,
@@ -256,21 +254,6 @@ export class McpOAuthProviderFactory {
 	): Promise<void> {
 		const pathname = new URL(request.url ?? '/', urls.issuer).pathname;
 		const tokenPathname = new URL(urls.tokenEndpoint).pathname;
-		const authorizationPathname = new URL(urls.authorizationEndpoint).pathname;
-
-		if (request.method === 'GET' && (pathname === authorizationPathname || pathname === '/auth')) {
-			try {
-				this.assertAuthorizationRequest(new URL(request.url ?? '/', urls.issuer).searchParams);
-			} catch (error) {
-				const invalidRequest = error instanceof Error && error.message.startsWith('invalid_request');
-				this.writeBoundaryError(
-					response,
-					invalidRequest ? 'invalid_request' : 'invalid_target',
-					invalidRequest ? 'The OAuth state parameter is required' : 'The MCP resource parameter is required',
-				);
-				return;
-			}
-		}
 
 		if (request.method === 'POST' && (pathname === tokenPathname || pathname === '/token')) {
 			const contentType = request.headers['content-type']?.split(';', 1)[0]?.trim().toLowerCase();

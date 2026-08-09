@@ -410,30 +410,30 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		expect((await refresh(refreshToken)).status).toBe(200);
 	});
 
-	it('requires state and resource in the provider authorization callback', async () => {
-		expect(() => factory.assertAuthorizationRequest(new URLSearchParams({ resource: urls.resource }))).toThrow(
-			/invalid_request/,
-		);
-		expect(() => factory.assertAuthorizationRequest(new URLSearchParams({ state: 'csrf-state' }))).toThrow(
-			/invalid_target/,
-		);
-		expect(() =>
-			factory.assertAuthorizationRequest(new URLSearchParams({ state: 'csrf-state', resource: urls.resource })),
-		).not.toThrow();
-
+	it('returns authorization boundary errors through a safely validated client redirect', async () => {
 		const withoutState = createAuthorizationRequest().authorizationUrl;
 		withoutState.searchParams.delete('state');
 		const missingStateResponse = await fetch(withoutState, { redirect: 'manual' });
-		const missingStateBody = (await missingStateResponse.json()) as { error: string };
+		const missingStateLocation = new URL(missingStateResponse.headers.get('location') ?? '', withoutState);
 		const withoutResource = createAuthorizationRequest().authorizationUrl;
 		withoutResource.searchParams.delete('resource');
 		const missingResourceResponse = await fetch(withoutResource, { redirect: 'manual' });
-		const missingResourceBody = (await missingResourceResponse.json()) as { error: string };
+		const missingResourceLocation = new URL(missingResourceResponse.headers.get('location') ?? '', withoutResource);
+		const unsafeRedirect = createAuthorizationRequest('http://attacker.example/callback').authorizationUrl;
+		unsafeRedirect.searchParams.delete('resource');
+		const unsafeRedirectResponse = await fetch(unsafeRedirect, { redirect: 'manual' });
 
-		expect(missingStateResponse.status).toBe(400);
-		expect(missingStateBody.error).toBe('invalid_request');
-		expect(missingResourceResponse.status).toBe(400);
-		expect(missingResourceBody.error).toBe('invalid_target');
+		expect(missingStateResponse.status).toBe(303);
+		expect(missingStateLocation.origin + missingStateLocation.pathname).toBe(REGISTERED_REDIRECT_URI);
+		expect(missingStateLocation.searchParams.get('error')).toBe('invalid_request');
+		expect(missingStateLocation.searchParams.get('iss')).toBe(urls.issuer);
+		expect(missingResourceResponse.status).toBe(303);
+		expect(missingResourceLocation.origin + missingResourceLocation.pathname).toBe(REGISTERED_REDIRECT_URI);
+		expect(missingResourceLocation.searchParams.get('error')).toBe('invalid_target');
+		expect(missingResourceLocation.searchParams.get('state')).toBe('phase3-state');
+		expect(missingResourceLocation.searchParams.get('iss')).toBe(urls.issuer);
+		expect(unsafeRedirectResponse.status).toBe(400);
+		expect(unsafeRedirectResponse.headers.get('location')).toBeNull();
 	});
 
 	it('preserves the refresh family absolute expiry across rotation', async () => {
