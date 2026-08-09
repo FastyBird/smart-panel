@@ -1,6 +1,9 @@
 import { FastifyReply } from 'fastify';
 
+import { AuthInfo } from '@modelcontextprotocol/server';
 import { UnauthorizedException } from '@nestjs/common';
+
+import { MCP_OAUTH_PRINCIPAL_TYPE, McpCapability, McpOAuthScope } from '../mcp.constants';
 
 import { McpAuditService } from './mcp-audit.service';
 import { McpPolicyRequest } from './mcp-policy.service';
@@ -94,6 +97,73 @@ describe('McpServerService policy revision', () => {
 		expect(firstToolsChanged).toHaveBeenCalledTimes(1);
 		expect(secondToolsChanged).not.toHaveBeenCalled();
 		expect(subscriptions.touchClient).toHaveBeenCalledWith('client-a');
+	});
+
+	it('binds OAuth subscription registration to validated artifact, scope, deadline, and generation identities', () => {
+		const authorizationDeadline = Date.now() + 60_000;
+		const authInfo: AuthInfo = {
+			token: 'opaque-token',
+			clientId: 'public-client-id',
+			scopes: [McpOAuthScope.READ],
+			extra: {
+				principal: {
+					type: MCP_OAUTH_PRINCIPAL_TYPE,
+					accessTokenId: 'access-token-id',
+					authorizationDeadline,
+					clientId: 'internal-client-id',
+					clientGeneration: 2,
+					effectiveScopes: [McpOAuthScope.READ],
+					grantId: 'grant-id',
+					grantGeneration: 3,
+					installationId: 'installation-id',
+					modulePolicyGeneration: 1,
+					refreshFamilyId: 'refresh-family-id',
+					scopes: [McpOAuthScope.READ],
+					effectiveCapabilities: [McpCapability.READ],
+				},
+			},
+		};
+		const internalService = service as unknown as {
+			getSubscriptionRegistration(
+				clientId: string,
+				authInfo?: AuthInfo,
+			): {
+				clientId: string;
+				oauth?: unknown;
+			};
+		};
+
+		expect(internalService.getSubscriptionRegistration('handler-client-id', authInfo)).toEqual({
+			clientId: 'internal-client-id',
+			oauth: {
+				accessTokenId: 'access-token-id',
+				grantId: 'grant-id',
+				refreshFamilyId: 'refresh-family-id',
+				authorizationDeadline: new Date(authorizationDeadline),
+				effectiveScopes: [McpOAuthScope.READ],
+				modulePolicyGeneration: 1,
+				clientGeneration: 2,
+				grantGeneration: 3,
+			},
+		});
+	});
+
+	it('preserves static subscription registration and rejects malformed OAuth identities', () => {
+		const internalService = service as unknown as {
+			getSubscriptionRegistration(clientId: string, authInfo?: AuthInfo): unknown;
+		};
+
+		expect(internalService.getSubscriptionRegistration('static-client-id')).toEqual({
+			clientId: 'static-client-id',
+		});
+		expect(() =>
+			internalService.getSubscriptionRegistration('handler-client-id', {
+				token: 'opaque-token',
+				clientId: 'public-client-id',
+				scopes: [McpOAuthScope.READ],
+				extra: { principal: { type: MCP_OAUTH_PRINCIPAL_TYPE } },
+			}),
+		).toThrow(new UnauthorizedException('MCP OAuth subscription identity is unavailable'));
 	});
 
 	it('audits initialization and discovery without passing request parameters', () => {

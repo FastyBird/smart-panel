@@ -20,8 +20,15 @@ import {
 	McpOAuthGrantEntity,
 	McpOAuthProviderArtifactEntity,
 	McpOAuthProviderRevokedGrantEntity,
+	McpOAuthServerStateEntity,
 } from '../entities/mcp-oauth.entity';
-import { MCP_MODULE_NAME, MCP_OAUTH_PRINCIPAL_TYPE, McpCapability, McpOAuthScope } from '../mcp.constants';
+import {
+	MCP_MODULE_NAME,
+	MCP_OAUTH_PRINCIPAL_TYPE,
+	MCP_OAUTH_SERVER_STATE_KEY,
+	McpCapability,
+	McpOAuthScope,
+} from '../mcp.constants';
 import { McpConfigModel } from '../models/config.model';
 import {
 	McpOAuthAuthorizationServerMetadata,
@@ -57,6 +64,8 @@ export class McpOAuthResourceServerService implements OAuthTokenVerifier {
 		private readonly revokedGrantRepository: Repository<McpOAuthProviderRevokedGrantEntity>,
 		@InjectRepository(McpOAuthGrantEntity)
 		private readonly grantRepository: Repository<McpOAuthGrantEntity>,
+		@InjectRepository(McpOAuthServerStateEntity)
+		private readonly serverStateRepository: Repository<McpOAuthServerStateEntity>,
 		private readonly configService: ConfigService,
 		private readonly installationService: McpInstallationService,
 		private readonly publicUrlService: McpOAuthPublicUrlService,
@@ -95,12 +104,13 @@ export class McpOAuthResourceServerService implements OAuthTokenVerifier {
 			this.invalidToken();
 		}
 
-		const [revokedGrant, grant] = await Promise.all([
+		const [revokedGrant, grant, serverState] = await Promise.all([
 			this.revokedGrantRepository.findOneBy({ grantIdHash: artifact.grantIdHash }),
 			this.grantRepository.findOne({
 				where: { providerGrantIdHash: artifact.grantIdHash },
 				relations: { approvedBy: true, client: true },
 			}),
+			this.serverStateRepository.findOneBy({ key: MCP_OAUTH_SERVER_STATE_KEY }),
 		]);
 		const urls = this.requireUrls();
 		const installationId = await this.installationService.getInstallationId();
@@ -110,6 +120,7 @@ export class McpOAuthResourceServerService implements OAuthTokenVerifier {
 			revokedGrant ||
 			!grant ||
 			!grant.client ||
+			!serverState ||
 			!grant.client.enabled ||
 			!grant.approvedBy ||
 			!grant.approvedById ||
@@ -134,12 +145,19 @@ export class McpOAuthResourceServerService implements OAuthTokenVerifier {
 			grant.approvedScopes,
 			tokenScopes,
 		);
+		const effectiveScopes = effectiveCapabilities.map(toMcpOAuthScope);
+		const authorizationDeadline = Math.min(artifact.expiresAt, grant.expiresAt.getTime());
 		const principal: McpOAuthPrincipal = {
 			type: MCP_OAUTH_PRINCIPAL_TYPE,
-			accessTokenId: tokenId,
+			accessTokenId: artifact.managementId,
+			authorizationDeadline,
 			clientId: grant.client.id,
+			clientGeneration: grant.client.generation,
+			effectiveScopes,
 			grantId: grant.id,
+			grantGeneration: grant.generation,
 			installationId,
+			modulePolicyGeneration: serverState.modulePolicyGeneration,
 			...(artifact.refreshFamilyId ? { refreshFamilyId: artifact.refreshFamilyId } : {}),
 			scopes: tokenScopes,
 			effectiveCapabilities,
@@ -148,8 +166,8 @@ export class McpOAuthResourceServerService implements OAuthTokenVerifier {
 		return {
 			token,
 			clientId: grant.client.clientIdentifier,
-			scopes: effectiveCapabilities.map(toMcpOAuthScope),
-			expiresAt: Math.floor(Math.min(artifact.expiresAt, grant.expiresAt.getTime()) / 1_000),
+			scopes: effectiveScopes,
+			expiresAt: Math.floor(authorizationDeadline / 1_000),
 			resource: new URL(urls.resource),
 			extra: { principal, installationId, tokenId },
 		};

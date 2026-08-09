@@ -2,10 +2,26 @@ import {
 	MCP_MAX_ACTIVE_SUBSCRIPTIONS,
 	MCP_MAX_SUBSCRIPTIONS_PER_CLIENT,
 	MCP_SUBSCRIPTION_IDLE_TIMEOUT_MS,
+	McpOAuthScope,
 } from '../mcp.constants';
 
 import { McpAuditService } from './mcp-audit.service';
-import { McpSubscriptionCapacityError, McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
+import {
+	McpOAuthSubscriptionBinding,
+	McpSubscriptionCapacityError,
+	McpSubscriptionRegistryService,
+} from './mcp-subscription-registry.service';
+
+const oauthBinding = (overrides: Partial<McpOAuthSubscriptionBinding> = {}): McpOAuthSubscriptionBinding => ({
+	accessTokenId: 'access-one',
+	grantId: 'grant-one',
+	authorizationDeadline: new Date(Date.now() + 60_000),
+	effectiveScopes: [McpOAuthScope.READ],
+	modulePolicyGeneration: 1,
+	clientGeneration: 2,
+	grantGeneration: 3,
+	...overrides,
+});
 
 describe('McpSubscriptionRegistryService', () => {
 	let service: McpSubscriptionRegistryService;
@@ -92,18 +108,24 @@ describe('McpSubscriptionRegistryService', () => {
 
 	it('closes only OAuth streams matching a revoked artifact identity', () => {
 		const staticStream = service.open('client-a');
-		const first = service.open('client-a', 'one', {
-			accessTokenId: 'access-one',
-			grantId: 'grant-one',
-			refreshFamilyId: 'family-one',
-			authorizationDeadline: new Date(Date.now() + 60_000),
-		});
-		const other = service.open('client-a', 'two', {
-			accessTokenId: 'access-two',
-			grantId: 'grant-two',
-			refreshFamilyId: 'family-two',
-			authorizationDeadline: new Date(Date.now() + 60_000),
-		});
+		const first = service.open(
+			'client-a',
+			'one',
+			oauthBinding({
+				accessTokenId: 'access-one',
+				grantId: 'grant-one',
+				refreshFamilyId: 'family-one',
+			}),
+		);
+		const other = service.open(
+			'client-a',
+			'two',
+			oauthBinding({
+				accessTokenId: 'access-two',
+				grantId: 'grant-two',
+				refreshFamilyId: 'family-two',
+			}),
+		);
 
 		service.closeOAuthAccessToken('access-one');
 
@@ -119,11 +141,13 @@ describe('McpSubscriptionRegistryService', () => {
 
 	it('closes OAuth streams at their authorization deadline', () => {
 		jest.useFakeTimers();
-		const subscription = service.open('client-a', 'deadline', {
-			accessTokenId: 'access-one',
-			grantId: 'grant-one',
-			authorizationDeadline: new Date(Date.now() + 1_000),
-		});
+		const subscription = service.open(
+			'client-a',
+			'deadline',
+			oauthBinding({
+				authorizationDeadline: new Date(Date.now() + 1_000),
+			}),
+		);
 
 		jest.advanceTimersByTime(500);
 		subscription.touch();
@@ -141,11 +165,13 @@ describe('McpSubscriptionRegistryService', () => {
 
 	it('cancels the authorization deadline timer when an OAuth stream closes early', () => {
 		jest.useFakeTimers();
-		const subscription = service.open('client-a', 'early-close', {
-			accessTokenId: 'access-one',
-			grantId: 'grant-one',
-			authorizationDeadline: new Date(Date.now() + 60_000),
-		});
+		const subscription = service.open(
+			'client-a',
+			'early-close',
+			oauthBinding({
+				authorizationDeadline: new Date(Date.now() + 60_000),
+			}),
+		);
 
 		expect(jest.getTimerCount()).toBe(2);
 

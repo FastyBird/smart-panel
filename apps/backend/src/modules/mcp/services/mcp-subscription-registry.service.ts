@@ -6,6 +6,7 @@ import {
 	MCP_MAX_ACTIVE_SUBSCRIPTIONS,
 	MCP_MAX_SUBSCRIPTIONS_PER_CLIENT,
 	MCP_SUBSCRIPTION_IDLE_TIMEOUT_MS,
+	McpOAuthScope,
 } from '../mcp.constants';
 
 import { McpAuditService, McpSubscriptionCloseReason } from './mcp-audit.service';
@@ -30,6 +31,10 @@ export interface McpOAuthSubscriptionBinding {
 	grantId: string;
 	refreshFamilyId?: string;
 	authorizationDeadline: Date;
+	effectiveScopes: McpOAuthScope[];
+	modulePolicyGeneration: number;
+	clientGeneration: number;
+	grantGeneration: number;
 }
 
 interface SubscriptionRecord {
@@ -64,7 +69,12 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 			requestId,
 			controller,
 			timer: this.createIdleTimer(id),
-			...(oauth ? { oauth: { ...oauth }, authorizationTimer: this.createAuthorizationTimer(id, oauth) } : {}),
+			...(oauth
+				? {
+						oauth: { ...oauth, effectiveScopes: [...oauth.effectiveScopes] },
+						authorizationTimer: this.createAuthorizationTimer(id, oauth),
+					}
+				: {}),
 		};
 
 		this.subscriptions.set(id, record);
