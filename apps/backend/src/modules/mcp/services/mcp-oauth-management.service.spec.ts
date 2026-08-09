@@ -230,6 +230,23 @@ describe('McpOAuthManagementService', () => {
 		expect(await service.findRefreshFamilies()).toEqual([]);
 	});
 
+	it('treats a provider-revoked grant as revoked across management views', async () => {
+		const providerRevokedAt = Date.now();
+		await dataSource.getRepository(McpOAuthProviderRevokedGrantEntity).save({
+			grantIdHash: grant.providerGrantIdHash,
+			revokedAt: providerRevokedAt,
+		});
+
+		expect(await service.getGrant(grant.id)).toMatchObject({
+			id: grant.id,
+			active: false,
+			revokedAt: new Date(providerRevokedAt),
+		});
+		expect((await service.findGrants()).find((item) => item.id === grant.id)).toMatchObject({ active: false });
+		expect(await service.findAccessTokens()).toEqual([expect.objectContaining({ clientId: otherClient.id })]);
+		expect(await service.findRefreshFamilies()).toEqual([]);
+	});
+
 	it('revokes one access token and closes only its matching subscription', async () => {
 		const matching = await openSubscription(client.id, grant.id, accessId, familyId);
 		const otherAccessId = (await service.findAccessTokens()).find((token) => token.clientId === otherClient.id)?.id;

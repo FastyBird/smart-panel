@@ -44,12 +44,24 @@ export class McpOAuthManagementService {
 			relations: { approvedBy: true, client: true },
 			order: { createdAt: 'DESC' },
 		});
+		const providerRevocations = await this.getProviderRevocations(grants);
 
-		return grants.map((grant) => McpOAuthGrantModel.fromEntity(grant));
+		return grants.map((grant) =>
+			McpOAuthGrantModel.fromEntity(
+				grant,
+				grant.providerGrantIdHash ? (providerRevocations.get(grant.providerGrantIdHash) ?? null) : null,
+			),
+		);
 	}
 
 	async getGrant(id: string): Promise<McpOAuthGrantModel> {
-		return McpOAuthGrantModel.fromEntity(await this.getGrantEntity(id));
+		const grant = await this.getGrantEntity(id);
+		const providerRevocations = await this.getProviderRevocations([grant]);
+
+		return McpOAuthGrantModel.fromEntity(
+			grant,
+			grant.providerGrantIdHash ? (providerRevocations.get(grant.providerGrantIdHash) ?? null) : null,
+		);
 	}
 
 	async findAccessTokens(): Promise<McpOAuthAccessTokenModel[]> {
@@ -314,14 +326,31 @@ export class McpOAuthManagementService {
 			},
 			relations: { approvedBy: true, client: true },
 		});
+		const providerRevocations = await this.getProviderRevocations(grants);
 
 		return new Map(
 			grants.flatMap((grant) =>
-				grant.providerGrantIdHash && McpOAuthGrantModel.isActive(grant)
+				grant.providerGrantIdHash &&
+				!providerRevocations.has(grant.providerGrantIdHash) &&
+				McpOAuthGrantModel.isActive(grant)
 					? [[grant.providerGrantIdHash, grant] as const]
 					: [],
 			),
 		);
+	}
+
+	private async getProviderRevocations(grants: McpOAuthGrantEntity[]): Promise<Map<string, number>> {
+		const hashes = [
+			...new Set(grants.map((grant) => grant.providerGrantIdHash).filter((hash): hash is string => hash !== null)),
+		];
+
+		if (hashes.length === 0) return new Map();
+
+		const revocations = await this.dataSource
+			.getRepository(McpOAuthProviderRevokedGrantEntity)
+			.findBy({ grantIdHash: In(hashes) });
+
+		return new Map(revocations.map((revocation) => [revocation.grantIdHash, revocation.revokedAt]));
 	}
 
 	private parseScopes(payload: string): McpOAuthScope[] {
