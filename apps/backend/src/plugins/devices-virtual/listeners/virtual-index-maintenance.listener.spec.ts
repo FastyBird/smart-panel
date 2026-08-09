@@ -149,7 +149,11 @@ describe('VirtualIndexMaintenanceListener', () => {
 	// `find` answers the orphan read-back; the builder answers the reference count the unhide decision
 	// makes against storage. Nothing referencing anything, unless a test says otherwise.
 	const referenceCountStub = jest.fn().mockResolvedValue(0);
+	const promotionQueryStub = jest.fn().mockResolvedValue(undefined);
 	const orphanQueryStub = {
+		metadata: { tableName: 'devices_module_channels_properties' },
+		// The conditional UPDATE that hands a released meter to the next projection of it.
+		query: promotionQueryStub,
 		find: jest.fn().mockResolvedValue([]),
 		createQueryBuilder: jest.fn(() => ({
 			innerJoin: jest.fn().mockReturnThis(),
@@ -166,6 +170,8 @@ describe('VirtualIndexMaintenanceListener', () => {
 	beforeEach(() => {
 		orphanQueryStub.find.mockReset();
 		orphanQueryStub.find.mockResolvedValue([]);
+		promotionQueryStub.mockReset();
+		promotionQueryStub.mockResolvedValue(undefined);
 		referenceCountStub.mockReset();
 		referenceCountStub.mockResolvedValue(0);
 
@@ -2130,6 +2136,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				}),
 				execute: executed,
 			};
+			const promotion = jest.fn().mockResolvedValue(undefined);
 			const findOne = jest.fn().mockResolvedValue({ ...dependent, sourcePropertyId: null });
 			const find = jest.fn().mockResolvedValue(dependents);
 			const emit = jest.fn();
@@ -2157,6 +2164,10 @@ describe('VirtualIndexMaintenanceListener', () => {
 				{ emit } as unknown as EventEmitter2,
 				{
 					getRepository: jest.fn().mockReturnValue({
+						// The promotion that follows a successful orphaning: one conditional UPDATE handing the
+						// released meter to the next projection of it.
+						metadata: { tableName: 'devices_module_channels_properties' },
+						query: promotion,
 						update,
 						findOne,
 						find,
@@ -2178,6 +2189,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				describeProjectionConstraintMismatch,
 				wheres,
 				executed,
+				promotion,
 			};
 		};
 
@@ -2190,7 +2202,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 			await subject.handleSourceMetadataChange(sourceProperty);
 
 			// Keyed on the link *and* the source's version — see the two cases below for what each guards.
-			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null, energyClaimPropertyId: null });
 			expect(JSON.stringify(wheres)).toContain('sourcePropertyId = :sourceId');
 			expect(JSON.stringify(wheres)).toContain('src.dataType IS :sourceDataType');
 			// Announced, or an open admin keeps the stale link and never shows the remap action.
@@ -2198,6 +2210,39 @@ describe('VirtualIndexMaintenanceListener', () => {
 				EventType.CHANNEL_PROPERTY_UPDATED,
 				expect.objectContaining({ sourcePropertyId: null }),
 			);
+		});
+
+		// Releasing a claim without offering it on is how a meter goes quiet. For a source the ingestion
+		// does not recognise on its own — a `consumption` property in a `generic` channel — nothing
+		// ingests once no projection holds the claim, so the consumption leaves the totals entirely
+		// rather than merely landing in the wrong room.
+		it('offers the released meter to another projection of it', async () => {
+			const { subject, promotion } = build({ compatible: false, reason: 'permissions [ro] do not satisfy [rw]' });
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(promotion).toHaveBeenCalledTimes(1);
+
+			const [sql, params] = promotion.mock.calls[0] as [string, unknown[]];
+
+			// A single conditional statement: `NOT EXISTS` is what lets it run beside a create claiming the
+			// same meter without the two both succeeding, and what makes running it twice promote once.
+			expect(sql).toContain('NOT EXISTS');
+			expect(sql).toContain('ORDER BY "createdAt" ASC, "id" ASC');
+			expect(params).toContain(sourceProperty.id);
+		});
+
+		it('offers nothing when the orphaning write matched no row', async () => {
+			const { subject, promotion } = build(
+				{ compatible: false, reason: 'permissions [ro] do not satisfy [rw]' },
+				[dependent],
+				null,
+				0,
+			);
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(promotion).not.toHaveBeenCalled();
 		});
 
 		it('leaves a projection the source can still feed alone', async () => {
@@ -2224,7 +2269,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			await subject.handleSourceMetadataChange(enumSource);
 
-			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null, energyClaimPropertyId: null });
 		});
 
 		// A property's own row is not the only thing that decides what it means: `resolvePropertyUnit`
@@ -2238,7 +2283,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 			await subject.handleSourceChannelChange({ id: 'source-channel' } as unknown as ChannelEntity);
 
 			expect(channelsPropertiesStub.findAll).toHaveBeenCalledWith('source-channel');
-			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null, energyClaimPropertyId: null });
 		});
 
 		it('does nothing for a property nothing projects', async () => {
@@ -2260,7 +2305,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 			await subject.handleSourceMetadataChange(sourceProperty);
 
 			expect(find).toHaveBeenCalledWith(expect.objectContaining({ where: { sourcePropertyId: 'source-property' } }));
-			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null, energyClaimPropertyId: null });
 		});
 
 		// The device relation decides which slot the report is asked about, and neither hop is populated
@@ -2294,7 +2339,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			await subject.handleSourceMetadataChange(sourceProperty);
 
-			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null, energyClaimPropertyId: null });
 		});
 
 		// The payload is a snapshot from when the event was emitted, and this handler is asynchronous. Two
@@ -2343,7 +2388,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			await subject.handleSourceMetadataChange(sourceProperty);
 
-			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null, energyClaimPropertyId: null });
 			expect(emit).not.toHaveBeenCalled();
 		});
 

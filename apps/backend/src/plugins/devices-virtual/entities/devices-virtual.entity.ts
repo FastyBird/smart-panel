@@ -114,6 +114,20 @@ export class VirtualChannelEntity extends ChannelEntity {
 }
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataChannelProperty' })
+/**
+ * Declared here as well as in the migration, because the two build the schema in different places:
+ * a migration creates it for an installation that upgrades, and `synchronize` — which CI and the e2e
+ * suite run with `FB_DB_SYNC=true` — creates it from these decorators. Without it here the column
+ * would exist in those environments while the constraint that gives it meaning would not, so a
+ * concurrent pair of claims would persist and the tests meant to prove they cannot would pass for the
+ * wrong reason.
+ *
+ * Partial, so the many projections that claim nothing are not all competing for one NULL slot.
+ */
+@Index('UQ_channels_properties_energyClaim', ['energyClaimPropertyId'], {
+	unique: true,
+	where: '"energyClaimPropertyId" IS NOT NULL',
+})
 @ChildEntity()
 export class VirtualChannelPropertyEntity extends ChannelPropertyEntity {
 	@ApiProperty({

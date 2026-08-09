@@ -968,6 +968,52 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	}
 
 	/**
+	 * Hands a meter's claim to another projection of it, when the holder has just let go.
+	 *
+	 * A claim is what makes one projection accountable for a meter's kWh. Releasing it without offering
+	 * it on is how a meter goes quiet: for a source the ingestion does not recognise on its own — a
+	 * `consumption` property in a `generic` channel — *nothing* ingests once no projection holds the
+	 * claim, so the consumption disappears from the totals rather than merely landing in the wrong room.
+	 *
+	 * A single conditional UPDATE rather than read-then-write. `NOT EXISTS` is what makes it safe to run
+	 * concurrently with a create claiming the same meter: whichever statement lands second sees the
+	 * other's row and does nothing, so the two cannot both succeed and the unique index is never asked
+	 * to arbitrate. Idempotent for the same reason — running it twice promotes once.
+	 *
+	 * Deterministic, and by the same rule the migration uses: oldest first, ties broken by id, so an
+	 * installation that reaches this state twice reaches the same answer.
+	 */
+	private async promoteEnergyClaim(sourcePropertyId: string): Promise<void> {
+		const repository = this.dataSource.getRepository(VirtualChannelPropertyEntity);
+		const table = repository.metadata.tableName;
+
+		try {
+			await repository.query(
+				`UPDATE "${table}"
+				    SET "energyClaimPropertyId" = ?
+				  WHERE "id" = (
+				        SELECT "id" FROM "${table}"
+				         WHERE "sourcePropertyId" = ?
+				           AND "energyClaimPropertyId" IS NULL
+				           AND "type" = ?
+				         ORDER BY "createdAt" ASC, "id" ASC
+				         LIMIT 1
+				  )
+				    AND NOT EXISTS (SELECT 1 FROM "${table}" WHERE "energyClaimPropertyId" = ?)`,
+				[sourcePropertyId, sourcePropertyId, DEVICES_VIRTUAL_TYPE, sourcePropertyId],
+			);
+		} catch (error) {
+			// Not fatal to the pass that called it: the meter is unclaimed, which attributes to the
+			// physical device — where it went before any of this existed. The next orphaning or create on
+			// the same meter tries again.
+			this.logger.error(
+				`Failed to promote a new energy claimant for source property id=${sourcePropertyId}`,
+				error instanceof Error ? error : undefined,
+			);
+		}
+	}
+
+	/**
 	 * Re-runs the channel checks whose property read failed earlier.
 	 *
 	 * Drained on a settled pass, like the other two queues: a read that failed against an open
@@ -1232,7 +1278,11 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			const orphaning = await repository
 				.createQueryBuilder()
 				.update(VirtualChannelPropertyEntity)
-				.set({ sourcePropertyId: null })
+				// The claim goes with the link, in the same statement. This write is a plain conditional
+				// UPDATE — no foreign key fires, no hook runs — so a claim left behind would sit on an
+				// orphan holding a meter nothing can bill, and the unique index would refuse every
+				// replacement until somebody deleted the row by hand.
+				.set({ sourcePropertyId: null, energyClaimPropertyId: null })
 				.where('id = :dependentId', { dependentId: dependent.id })
 				.andWhere('sourcePropertyId = :sourceId', { sourceId: payload.id })
 				.andWhere('permissions IS :dependentPermissions', dependentState)
@@ -1244,6 +1294,10 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				.andWhere(channelUnchanged, sourceState)
 				.andWhere(targetCategoryUnchanged, sourceState)
 				.execute();
+
+			if (orphaning.affected) {
+				await this.promoteEnergyClaim(payload.id);
+			}
 
 			if (!orphaning.affected) {
 				// Either the projection was repointed first, or the source was edited again after this pass
