@@ -37,7 +37,11 @@ describe('VirtualDevicesService', () => {
 	let channelsPropertiesService: { findOne: jest.Mock; findAll: jest.Mock };
 	let channelsService: { findOne: jest.Mock; findAll: jest.Mock };
 	let devicesService: { findOne: jest.Mock };
-	let index: { loadLinksByVirtualDevice: jest.Mock; findLinksByVirtualDevice: jest.Mock };
+	let index: {
+		loadLinksByVirtualDevice: jest.Mock;
+		findLinksByVirtualDevice: jest.Mock;
+		findEnergyClaimant: jest.Mock;
+	};
 	let deviceValidationService: { validateDeviceStructure: jest.Mock };
 
 	// -- fixtures --------------------------------------------------------------------------------
@@ -93,6 +97,9 @@ describe('VirtualDevicesService', () => {
 		index = {
 			loadLinksByVirtualDevice: jest.fn().mockResolvedValue([]),
 			findLinksByVirtualDevice: jest.fn().mockReturnValue([]),
+			// No meter is spoken for unless a test says so. Read from storage rather than from the index's
+			// maps, because a claim made since the last rebuild is committed and invisible to them.
+			findEnergyClaimant: jest.fn().mockResolvedValue(null),
 		};
 
 		service = new VirtualDevicesService(
@@ -549,7 +556,13 @@ describe('VirtualDevicesService', () => {
 
 		// Resolves channel -> device the way the assertion walks them, so a test only has to say which
 		// source property is on the other end.
+		// Remembered so the source-channel lookup below can answer for the destination too: the energy
+		// claim resolves *both* channels, and a mock that pinned one would silently retarget the slot.
+		let destinationChannel: ChannelCategory = ChannelCategory.GENERIC;
+
 		const givenSlot = (channelCategory: ChannelCategory, deviceCategory: DeviceCategory): void => {
+			destinationChannel = channelCategory;
+
 			channelsService.findOne.mockResolvedValue({ id: CHANNEL_ID, category: channelCategory, device: DEVICE_ID });
 			devicesService.findOne.mockResolvedValue({ id: DEVICE_ID, category: deviceCategory });
 		};
@@ -581,6 +594,120 @@ describe('VirtualDevicesService', () => {
 
 			return entity;
 		};
+
+		// -- the energy claim ----------------------------------------------------------------------
+		//
+		// Energy is the one quantity where two virtual devices reading one source is wrong rather than
+		// merely redundant: a temperature is non-additive, a kWh billed twice is arithmetic nobody asked
+		// for. The claim written here is what decides, later, which room a reading lands in.
+
+		const meter = (id: string, category: PropertyCategory, channelCategory: ChannelCategory): ChannelPropertyEntity => {
+			const entity = new ChannelPropertyEntity();
+
+			Object.assign(entity, {
+				id,
+				category,
+				permissions: [PermissionType.READ_ONLY],
+				dataType: DataTypeType.FLOAT,
+				// The slot is formatted [0, null] — an open-ended cumulative counter — and a source has to
+				// show it stays inside that, so a real meter declares the same.
+				format: [0, null],
+				unit: 'kWh',
+				channel: `${id}-channel`,
+			});
+
+			// The assertion resolves the source's own channel to classify it.
+			channelsService.findOne.mockImplementation((channelId: string) =>
+				Promise.resolve(
+					channelId === `${id}-channel`
+						? { id: channelId, category: channelCategory, device: 'physical-device' }
+						: { id: CHANNEL_ID, category: destinationChannel, device: DEVICE_ID },
+				),
+			);
+
+			return entity;
+		};
+
+		const energyProjection = (sourcePropertyId: string, category: PropertyCategory): VirtualChannelPropertyEntity =>
+			projecting(sourcePropertyId, category, {
+				permissions: [PermissionType.READ_ONLY],
+				dataType: DataTypeType.FLOAT,
+				format: [0, null],
+				unit: 'kWh',
+			});
+
+		it('makes a projection into an energy slot the claimant of its meter', async () => {
+			givenSlot(ChannelCategory.ELECTRICAL_ENERGY, DeviceCategory.OUTLET);
+
+			const source = meter('meter', PropertyCategory.CONSUMPTION, ChannelCategory.ELECTRICAL_ENERGY);
+
+			channelsPropertiesService.findOne.mockResolvedValue(source);
+
+			const projection = energyProjection('meter', PropertyCategory.CONSUMPTION);
+
+			await service.assertProjectionCompatible(projection, CHANNEL_ID);
+
+			// Written onto the row that is about to be saved, so the claim and the projection arrive in one
+			// statement and the unique index arbitrates whoever else is trying.
+			expect(projection.energyClaimPropertyId).toBe('meter');
+		});
+
+		// The case nothing skips today: the source is not a meter in its own channel, so
+		// `wasIngestedAsSource()` never suppresses these projections and each of them ingests.
+		it('claims a source that is only a meter once projected', async () => {
+			givenSlot(ChannelCategory.ELECTRICAL_ENERGY, DeviceCategory.OUTLET);
+
+			const source = meter('unrecognised', PropertyCategory.CONSUMPTION, ChannelCategory.GENERIC);
+
+			channelsPropertiesService.findOne.mockResolvedValue(source);
+
+			const projection = energyProjection('unrecognised', PropertyCategory.CONSUMPTION);
+
+			await service.assertProjectionCompatible(projection, CHANNEL_ID);
+
+			expect(projection.energyClaimPropertyId).toBe('unrecognised');
+		});
+
+		it('claims nothing for a projection into a slot that carries no energy', async () => {
+			givenSlot(ChannelCategory.LIGHT, DeviceCategory.LIGHTING);
+			channelsPropertiesService.findOne.mockResolvedValue(
+				property({ id: 'relay', permissions: [PermissionType.READ_WRITE], dataType: DataTypeType.BOOL }),
+			);
+
+			const projection = projecting('relay', PropertyCategory.ON);
+
+			await service.assertProjectionCompatible(projection, CHANNEL_ID);
+
+			expect(projection.energyClaimPropertyId).toBeNull();
+		});
+
+		it('refuses a second projection of a meter another already bills', async () => {
+			givenSlot(ChannelCategory.ELECTRICAL_ENERGY, DeviceCategory.OUTLET);
+
+			const source = meter('meter', PropertyCategory.CONSUMPTION, ChannelCategory.ELECTRICAL_ENERGY);
+
+			channelsPropertiesService.findOne.mockResolvedValue(source);
+			index.findEnergyClaimant.mockResolvedValue('another-virtual-property');
+
+			await expect(
+				service.assertProjectionCompatible(energyProjection('meter', PropertyCategory.CONSUMPTION), CHANNEL_ID),
+			).rejects.toThrow(/already the energy meter/);
+		});
+
+		// A remap that lands back on the meter this very property already bills is not a second claimant.
+		it('lets the current claimant keep its own meter', async () => {
+			givenSlot(ChannelCategory.ELECTRICAL_ENERGY, DeviceCategory.OUTLET);
+
+			const source = meter('meter', PropertyCategory.CONSUMPTION, ChannelCategory.ELECTRICAL_ENERGY);
+
+			channelsPropertiesService.findOne.mockResolvedValue(source);
+			index.findEnergyClaimant.mockResolvedValue('virtual-property');
+
+			const projection = energyProjection('meter', PropertyCategory.CONSUMPTION);
+
+			await expect(service.assertProjectionCompatible(projection, CHANNEL_ID)).resolves.toBeUndefined();
+			expect(projection.energyClaimPropertyId).toBe('meter');
+		});
 
 		it('refuses a read-only source on a writable slot, carrying the reason', async () => {
 			givenSlot(ChannelCategory.LIGHT, DeviceCategory.LIGHTING);

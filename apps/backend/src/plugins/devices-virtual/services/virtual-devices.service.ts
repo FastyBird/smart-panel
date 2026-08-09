@@ -6,7 +6,7 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
-import { ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceValidationService, ValidationIssue } from '../../../modules/devices/services/device-validation.service';
@@ -14,6 +14,7 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import { matchesInvalidValue, matchesStep } from '../../../modules/devices/utils/property-command-value.utils';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import { getAllProperties, isChannelAllowed, isValidDataType } from '../../../modules/devices/utils/schema.utils';
+import { findEnergySourceType } from '../../../modules/energy/utils/energy-source-type.utils';
 import { DEVICES_VIRTUAL_TYPE, VIRTUAL_BLOCKED_CATEGORIES } from '../devices-virtual.constants';
 import {
 	VirtualCategoryChangeUnsafeException,
@@ -1098,6 +1099,81 @@ export class VirtualDevicesService {
 				);
 			}
 		}
+
+		await this.settleEnergyClaim(property, channel.category, sourceProperty);
+	}
+
+	/**
+	 * Decides whether this projection is the one accountable for its source's kWh, and writes that onto
+	 * the row about to be saved.
+	 *
+	 * A gate that mutates, which is worth justifying: this is the one point holding everything the
+	 * decision needs — the destination channel, the property's own category, and the source it was just
+	 * judged against — and the value it derives is a function of exactly what it judged. Setting it here
+	 * also means the claim and the projection are written by the same statement, so no failure can leave
+	 * one without the other, and the unique index arbitrates concurrent claimants without a transaction
+	 * spanning these hooks.
+	 *
+	 * Energy is the one quantity where two virtual devices reading one source is not merely redundant
+	 * but wrong. A temperature is non-additive — two rooms observing the same thermometer is coherent,
+	 * and the design allows it deliberately — while a kWh billed to two rooms is arithmetic nobody
+	 * asked for.
+	 */
+	private async settleEnergyClaim(
+		property: VirtualChannelPropertyEntity,
+		destinationChannelCategory: ChannelCategory,
+		sourceProperty: ChannelPropertyEntity,
+	): Promise<void> {
+		// Judged on the *destination*: what makes a reading energy is the slot it is presented in, which
+		// is the pair the ingestion classifies when it handles this projection's own event. A
+		// `consumption` property sitting in a `generic` channel is not a meter anywhere else and becomes
+		// one here — which is exactly the case that double-counts today, since nothing skips those
+		// projections.
+		const destination = findEnergySourceType(destinationChannelCategory, property.category);
+
+		if (destination === null) {
+			property.energyClaimPropertyId = null;
+
+			return;
+		}
+
+		const sourceChannel = await this.resolveChannelOf(sourceProperty);
+		const source = findEnergySourceType(sourceChannel?.category, sourceProperty.category);
+
+		// A projection may not change what a reading means. Nothing structural separates `grid_import`
+		// from `grid_export` — both read-only floats in kWh over the same range — so the slot report
+		// accepts the pairing, and the room would then be shown an import under the heading of an
+		// export. Refused rather than relabelled: an import meter is not an export meter, and quietly
+		// filing it as one is worse than saying the mapping is wrong.
+		//
+		// Dormant today, and deliberately kept: `electrical_energy.consumption` is the only energy slot
+		// a virtual device can currently reach, so no two reachable slots disagree. The other three are
+		// unreachable for reasons that have nothing to do with energy — `mapPropertyCategory` in
+		// `schema.utils.ts` omits `grid_import` and `grid_export` (34 of the spec's 100 property keys are
+		// missing from it), and no device category declares an `electrical_generation` channel at all.
+		// Both are recorded as follow-ups; this guard is what stops the gap reopening when either is
+		// fixed, which is exactly when nobody would think to look for it.
+		if (source !== null && source.sourceType !== destination.sourceType) {
+			throw new VirtualProjectionIncompatibleException(
+				`Property id=${property.id} presents source id=${sourceProperty.id} as '${destination.sourceType}', but that source reads '${source.sourceType}'; a projection forwards its source's value unchanged, so it cannot change what the reading means`,
+			);
+		}
+
+		const claimant = await this.index.findEnergyClaimant(sourceProperty.id);
+
+		if (claimant !== null && claimant !== property.id) {
+			throw new VirtualProjectionIncompatibleException(
+				`Source property id=${sourceProperty.id} is already the energy meter of virtual property id=${claimant}; a meter's consumption is billed to one place, so it can only be projected into one energy slot`,
+			);
+		}
+
+		property.energyClaimPropertyId = sourceProperty.id;
+	}
+
+	private async resolveChannelOf(property: ChannelPropertyEntity): Promise<ChannelEntity | null> {
+		const channelId = typeof property.channel === 'string' ? property.channel : property.channel?.id;
+
+		return channelId ? await this.channelsService.findOne(channelId) : null;
 	}
 
 	private async resolveOwningDevice(propertyId: string): Promise<DeviceEntity | null> {

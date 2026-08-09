@@ -5,52 +5,14 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { ChannelCategory, EventType as DevicesEventType, PropertyCategory } from '../../devices/devices.constants';
+import { EventType as DevicesEventType, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { PropertyValueSourceRegistryService } from '../../devices/services/property-value-source.registry.service';
-import { ENERGY_MODULE_NAME, EnergySourceType } from '../energy.constants';
+import { ENERGY_MODULE_NAME } from '../energy.constants';
 import { DeltaComputationService } from '../services/delta-computation.service';
 import { EnergyDataService } from '../services/energy-data.service';
 import { EnergyMetricsService } from '../services/energy-metrics.service';
-
-/**
- * Maps channel category + property category to an EnergySourceType.
- */
-interface SourceTypeMapping {
-	channelCategory: ChannelCategory;
-	propertyCategory: PropertyCategory;
-	sourceType: EnergySourceType;
-}
-
-const SOURCE_TYPE_MAP: SourceTypeMapping[] = [
-	{
-		channelCategory: ChannelCategory.ELECTRICAL_ENERGY,
-		propertyCategory: PropertyCategory.CONSUMPTION,
-		sourceType: EnergySourceType.CONSUMPTION_IMPORT,
-	},
-	{
-		channelCategory: ChannelCategory.ELECTRICAL_GENERATION,
-		propertyCategory: PropertyCategory.PRODUCTION,
-		sourceType: EnergySourceType.GENERATION_PRODUCTION,
-	},
-	{
-		channelCategory: ChannelCategory.ELECTRICAL_ENERGY,
-		propertyCategory: PropertyCategory.GRID_IMPORT,
-		sourceType: EnergySourceType.GRID_IMPORT,
-	},
-	{
-		channelCategory: ChannelCategory.ELECTRICAL_ENERGY,
-		propertyCategory: PropertyCategory.GRID_EXPORT,
-		sourceType: EnergySourceType.GRID_EXPORT,
-	},
-];
-
-/** The energy classification of a (channel, property) pair, or null when it is not a meter at all. */
-const findSourceType = (
-	channelCategory: ChannelCategory | undefined,
-	propertyCategory: PropertyCategory | undefined,
-): SourceTypeMapping | null =>
-	SOURCE_TYPE_MAP.find((m) => m.channelCategory === channelCategory && m.propertyCategory === propertyCategory) ?? null;
+import { findEnergySourceType } from '../utils/energy-source-type.utils';
 
 @Injectable()
 export class EnergyIngestionListener implements OnModuleInit {
@@ -120,7 +82,7 @@ export class EnergyIngestionListener implements OnModuleInit {
 		}
 
 		// Find the matching source type
-		const mapping = findSourceType(channel.category, property.category);
+		const mapping = findEnergySourceType(channel.category, property.category);
 
 		if (!mapping) {
 			return;
@@ -235,7 +197,7 @@ export class EnergyIngestionListener implements OnModuleInit {
 
 		const sourceChannel = source.channel as ChannelEntity | undefined;
 
-		return findSourceType(sourceChannel?.category, source.category) !== null;
+		return findEnergySourceType(sourceChannel?.category, source.category) !== null;
 	}
 
 	private extractNumericValue(property: ChannelPropertyEntity): number | null {

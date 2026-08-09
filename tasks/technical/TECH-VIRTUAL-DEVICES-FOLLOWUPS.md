@@ -317,6 +317,18 @@ What is left is a policy question, and it is not the mapping feature's to answer
 
 `channels.store.ts` and `channels.properties.store.ts` have the same exposure in a milder form: they merge (`data.value = { ...data.value, ...channels }`) rather than replace, so nothing is evicted, but a snapshot assembled before a socket update still overwrites that update's row. Nothing in the virtual-device flows depends on it today, and the fix is the same stamp-and-compare shape, worth doing once across the three stores rather than twice.
 
+### 3.9 `mapPropertyCategory` omits a third of the specification (medium, pre-existing)
+
+`schema.utils.ts`'s `mapPropertyCategory` translates a spec property key into a `PropertyCategory`, and 34 of the specification's 100 keys are missing from it — `grid_import`, `grid_export`, `mute`, `repeat`, `shuffle`, `child_lock`, `alarm_state`, `aqi`, the three `acceleration_*`, the media metadata (`album`, `artist`, `artwork_url`, `media_type`), the water-tank family, and more.
+
+`getAllProperties()` drops every unmapped key, so those slots do not exist as far as anything built on it is concerned. For virtual devices that means the wizard never offers them and `reportCompatibility` refuses a projection into one with "channel category X has no Y property in its specification" — a sentence that reads like a spec error and is actually a translation gap. `DeviceValidationService` reads the same utils, so structural validation cannot see them either.
+
+Found while writing the energy-claim guard, which needs two energy slots to disagree and can only reach one.
+
+### 3.10 No device category declares an `electrical_generation` channel (low, pre-existing)
+
+`spec/devices/devices.yaml` lists `electrical_generation` on no device at all, so the channel — and its `production` property, which the energy module classifies as `generation_production` — cannot appear on any device, virtual or physical. Either a category should carry it (a solar inverter has no home today) or the energy module's mapping for it is dead code. Worth deciding rather than leaving as an asymmetry.
+
 ### 3a.6 Test-coverage gaps (low)
 
 - `view-device.vue`'s virtual-device mount gate has no behavioural test; `view-devices.spec.ts` has a usable template for one.
