@@ -315,7 +315,7 @@ It is deliberately not filed as a task: a control loop touches safety, concurren
 
 - a nullable column on the projection row holding the claimed property's id, with a **partial unique index** over it, so "one claimant" is a database fact rather than something every write path remembers to check;
 - a **foreign key with `ON DELETE SET NULL`**, so a deleted source clears the claim in the same statement that orphans the link — no hook runs there;
-- the invariant that the column is either null or equal to `sourcePropertyId`, which is cheap to check and is what the promotion write conditions on.
+- the invariant that the column is either null or equal to `sourcePropertyId`, which is cheap to check and is what the promotion write conditions on — **and this third one does not transfer.** The energy claim lives on a projection row and names the very property that row projects, so equality is meaningful there. An actuator is explicitly not a slot of the virtual device: there is no projection row for it and no `sourcePropertyId` to equal, and demanding one would either force some unrelated sensor or setpoint projection to become the relay's, or make the mapping unstorable. Take the uniqueness and the deletion behaviour; keep the actuator's property id independent, on the controlled channel or on a mapping entity of its own, and let the conditional write name that row's own mapping instead.
 
 Four things that were not obvious until they broke, and would break the same way for an actuator:
 
