@@ -68,6 +68,7 @@ export class McpOAuthArtifactService {
 	}
 
 	async createGrant(input: {
+		providerGrantId: string;
 		clientId: string;
 		approvedById: string;
 		approvedScopes: McpOAuthScope[];
@@ -84,6 +85,7 @@ export class McpOAuthArtifactService {
 
 		return this.grants.save(
 			this.grants.create({
+				providerGrantIdHash: hashToken(input.providerGrantId),
 				clientId: input.clientId,
 				approvedById: input.approvedById,
 				installationId: await this.installationService.getInstallationId(),

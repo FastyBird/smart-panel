@@ -178,6 +178,7 @@ describe('McpOAuthInteractionService', () => {
 		expect(providerGrant.save).toHaveBeenCalledWith();
 		expect(artifactService.createGrant).toHaveBeenCalled();
 		const grantInput = artifactService.createGrant.mock.calls[0]?.[0] as {
+			providerGrantId?: string;
 			clientId?: string;
 			approvedById?: string;
 			approvedScopes?: McpOAuthScope[];
@@ -185,6 +186,7 @@ describe('McpOAuthInteractionService', () => {
 		};
 
 		expect(grantInput).toMatchObject({
+			providerGrantId: 'provider-grant-id',
 			clientId: client.id,
 			approvedById: userId,
 			approvedScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS],

@@ -36,6 +36,10 @@ export class McpOAuthClientEntity extends BaseEntity {
 
 @Entity('mcp_module_oauth_grants')
 export class McpOAuthGrantEntity extends BaseEntity {
+	@Index({ unique: true })
+	@Column({ type: 'varchar', nullable: true })
+	providerGrantIdHash: string | null;
+
 	@Index()
 	@Column({ type: 'varchar' })
 	clientId: string;

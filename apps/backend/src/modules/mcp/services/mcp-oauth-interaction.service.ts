@@ -188,6 +188,7 @@ export class McpOAuthInteractionService {
 		(providerGrant as unknown as { expiresIn: number }).expiresIn = dto.expiresInDays * 24 * 60 * 60;
 		const grantId = await providerGrant.save();
 		await this.artifactService.createGrant({
+			providerGrantId: grantId,
 			clientId: context.client.id,
 			approvedById: userId,
 			approvedScopes: dto.scopes,
