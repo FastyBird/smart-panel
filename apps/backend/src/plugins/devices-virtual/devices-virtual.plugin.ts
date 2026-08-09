@@ -17,6 +17,8 @@ import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/servi
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 import { PropertyValueSourceRegistryService } from '../../modules/devices/services/property-value-source.registry.service';
+import { EnergyModule } from '../../modules/energy/energy.module';
+import { EnergyClaimRegistryService } from '../../modules/energy/services/energy-claim.registry.service';
 import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
@@ -59,6 +61,7 @@ import { VirtualStatusListener } from './listeners/virtual-status.listener';
 import { VirtualConfigModel } from './models/config.model';
 import { VirtualDevicePlatform } from './platforms/virtual-device.platform';
 import { VirtualDevicesService } from './services/virtual-devices.service';
+import { VirtualEnergyClaimService } from './services/virtual-energy-claim.service';
 import { VirtualPropertyIndexService } from './services/virtual-property-index.service';
 import { VirtualValueSourceService } from './services/virtual-value-source.service';
 import { CategoryAllowedConstraintValidator } from './validators/category-allowed-constraint.validator';
@@ -82,9 +85,13 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		ConfigModule,
 		ExtensionsModule,
 		SwaggerModule,
+		// For the energy claim registry alone: a projected meter is billed to the virtual device that
+		// presents it, and the energy module has no way to know that without being told.
+		EnergyModule,
 	],
 	providers: [
 		VirtualValueSourceService,
+		VirtualEnergyClaimService,
 		VirtualDevicePlatform,
 		VirtualPropertyIndexService,
 		VirtualDevicesService,
@@ -109,6 +116,8 @@ export class DevicesVirtualPlugin {
 		private readonly extensionsService: ExtensionsService,
 		private readonly virtualValueSourceService: VirtualValueSourceService,
 		private readonly propertyValueSourceRegistry: PropertyValueSourceRegistryService,
+		private readonly virtualEnergyClaimService: VirtualEnergyClaimService,
+		private readonly energyClaimRegistry: EnergyClaimRegistryService,
 		private readonly virtualDevicePlatform: VirtualDevicePlatform,
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly deviceInformationListener: VirtualDeviceInformationListener,
@@ -354,6 +363,8 @@ export class DevicesVirtualPlugin {
 		});
 
 		this.propertyValueSourceRegistry.register(this.virtualValueSourceService);
+
+		this.energyClaimRegistry.register(this.virtualEnergyClaimService);
 
 		this.platformRegistryService.register(this.virtualDevicePlatform);
 
