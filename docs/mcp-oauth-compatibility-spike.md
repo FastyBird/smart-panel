@@ -1,6 +1,6 @@
 # MCP OAuth Compatibility Spike
 
-**Status:** Complete for architecture selection; live interoperability remains a release gate
+**Status:** Architecture and authorization-component spikes complete; live interoperability remains a release gate
 
 **Date:** 2026-08-08
 
@@ -94,10 +94,36 @@ and pluggable persistence. It is not added in this phase because two integration
 1. Current releases are ESM-only while the NestJS backend compiles to CommonJS.
 2. Its CIMD support is experimental and currently tracks a newer draft than the MCP `2026-07-28` text.
 
-The next phase must prove that a pinned release mounts safely on the existing NestJS/Fastify server, uses the TypeORM
-adapter rather than in-memory state, emits only the enabled OAuth features in metadata, and can delegate login/consent
-to authenticated Smart Panel owner/admin UI. If it cannot, the phase stops for another architecture review; it must not
-fall back to handwritten OAuth endpoints.
+Phase 1 completed that executable gate with exactly pinned `oidc-provider` `9.11.2` and type definitions `9.11.1`:
+
+- the package is MIT licensed, ESM-only, and introduced no advisory beyond the repository's existing audit baseline;
+- a small native-import bridge loads it from the CommonJS backend build; the dedicated `test:oauth-spike` Jest command
+  enables Node VM modules only for this spike so the existing CommonJS unit and E2E runners remain unchanged;
+- a test-only NestJS/Fastify application mounts a finite authorization, token, revocation, interaction, and metadata
+  surface on the existing listener, with unrelated paths continuing through Nest;
+- a minimal TypeORM adapter persists artifacts across datasource restarts and refuses SQLite memory storage unless both
+  the test environment and an explicit opt-in are present;
+- conditional consume plus a persisted revoked-grant tombstone prevents concurrent refresh reuse from creating a
+  usable fork and removes late successors and the rest of the token family;
+- login and consent are completed through interaction callbacks using an already authenticated Smart Panel account;
+  the provider never receives a password; and
+- fifteen focused E2E scenarios cover metadata, authenticated interaction delegation, code plus PKCE `S256`, downgrade
+  and verifier failures, replay,
+  issuer-bearing success and error responses, resource mismatch, opaque access and refresh tokens, explicit offline
+  consent, RFC 8252 redirects, rotation, concurrent reuse, revocation, persistence, and finite route mounting.
+
+Two integration findings become explicit Phase 3 rules:
+
+1. The dependency's own discovery document is deliberately OIDC-shaped and includes fields outside this MCP-only
+   profile. Smart Panel must continue publishing a bounded RFC 8414 projection and must not mount the dependency's raw
+   discovery route.
+2. When a code has exactly one authorized resource, the dependency follows RFC 8707 by resolving that resource if the
+   token request omits `resource`. MCP places a stricter requirement on clients to send it in both requests. Smart Panel
+   must enforce token-request presence at the finite token-route boundary before provider dispatch, while the provider
+   policy hook continues to reject unknown or mismatched resources.
+
+These are supported integration boundaries, not replacements for the provider's protocol state machine. ADR 0002 is
+therefore accepted and implementation may proceed to the persistent domain foundation.
 
 The official MCP TypeScript SDK v2 already provides resource-server building blocks for bearer verification,
 standards-shaped challenges, protected-resource metadata, and `AuthInfo`. Those helpers do not implement an
