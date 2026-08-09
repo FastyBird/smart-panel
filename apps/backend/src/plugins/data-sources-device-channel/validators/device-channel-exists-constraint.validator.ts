@@ -12,7 +12,7 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 
 @Injectable()
-@ValidatorConstraint({ name: 'DeviceChannelExistsValidation', async: false })
+@ValidatorConstraint({ name: 'DeviceChannelExistsValidation', async: true })
 export class DeviceChannelExistsConstraintValidator implements ValidatorConstraintInterface {
 	constructor(
 		private readonly deviceService: DevicesService,

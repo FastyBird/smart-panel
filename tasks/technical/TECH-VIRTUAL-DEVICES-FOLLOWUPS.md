@@ -210,9 +210,15 @@ Still worth doing eventually: fix shelly-v1's subscriber to re-read the row and 
 
 The same comment appears on earlier migrations in `src/migrations/`, which are presumably in the same state. Not touched here: `1000000000000-InitialSetup` must not be modified (alpha installations have run it), and the others were out of scope. Worth auditing whether any of them also breaks revert-then-run. Note the restrictions that do still apply — a column may not be dropped while it is indexed, part of a primary key, or referenced by a partial index or `CHECK` constraint — so each one needs checking rather than a blanket rewrite.
 
-### 3.2 `device-exists-constraint.validator.ts:14` declares `async: false` on an async `validate()` (medium)
+### 3.2 `device-exists-constraint.validator.ts:14` declares `async: false` on an async `validate()` (medium → low) — DONE
 
-A returned Promise is truthy, so `class-validator` may never await it — meaning that validator can silently pass. The validators added on the virtual-devices branch declare `async: true` correctly and do not inherit this.
+The premise as filed does not hold on the version in use, and the risk is real anyway.
+
+class-validator 0.15.1 dispatches on whether `validate()` *returned* a promise rather than on the declared flag (`ValidationExecutor.customValidations`, the `isPromise(validatedValue)` branch), so these validators were being awaited and did reject. Verified by driving a DTO through `validate()` with a stubbed container rather than by reading the source alone.
+
+The flag is read in exactly one place, and it is the one that bites: `if (customConstraintMetadata.async && this.ignoreAsyncValidations) return;` — how `validateSync()` skips async constraints. A constraint that calls itself sync is *not* skipped there. It runs, its promise joins a queue `validateSync()` never awaits, and whatever it would have rejected passes. Nothing reached by `validateSync()` uses one today — it validates configuration, and these validate device, channel, user and scene references — so this was a trap rather than a defect, and one nobody would think to look for after wiring such a validator into a config DTO.
+
+Five carried it, not one: `DeviceExists`, `ChannelExists`, `UserExists`, `SceneExists`, `DeviceChannelExists`. All corrected, and a sweep now asks each constraint class whether its `validate` is an `AsyncFunction` and compares that with what it declares — so a validator added later cannot join them quietly.
 
 ### 3.3 TypeORM sqlite shared-`QueryRunner` TOCTOU (high, but pre-existing)
 
