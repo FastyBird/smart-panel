@@ -4,6 +4,7 @@ import { createExtensionLogger } from '../../../common/logger';
 import { PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { PropertyValueState } from '../../devices/models/property-value-state.model';
+import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
 import { DevicesService } from '../../devices/services/devices.service';
 import { PropertyValueSourceRegistryService } from '../../devices/services/property-value-source.registry.service';
 import { SecurityAggregationContext } from '../contracts/security-aggregation-context.type';
@@ -36,6 +37,9 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 	constructor(
 		private readonly devicesService: DevicesService,
 		private readonly detectionRulesLoader: DetectionRulesLoaderService,
+		// Reads back a source property this pass never saw — see identifySensor(), and
+		// `aggregateBounded()` for how a pass comes to be missing one.
+		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		// Answers which series a property reads, which is what tells one sensor reported by two devices
 		// apart from two sensors. See dedupeBySensor().
 		private readonly valueSourceRegistry: PropertyValueSourceRegistryService,
@@ -91,7 +95,7 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 					// Lower severity for intrusion/entry alerts when disarmed
 					const severity = this.adjustSeverityForArmedState(rule.alertType, rule.severity, armedState);
 
-					const sensor = this.identifySensor(channel, rule, channelOfProperty);
+					const sensor = await this.identifySensor(channel, rule, channelOfProperty);
 
 					candidates.push({
 						alert: {
@@ -191,11 +195,11 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 	 * own identity: it names them all, so it matches another channel assembled the same way and nothing
 	 * else. Rare enough to be worth stating rather than special-casing.
 	 */
-	private identifySensor(
+	private async identifySensor(
 		channel: ChannelEntity,
 		rule: ResolvedSensorRule,
 		channelOfProperty: Map<string, string>,
-	): { id: string; isProjection: boolean } {
+	): Promise<{ id: string; isProjection: boolean }> {
 		const sourceChannels = new Set<string>();
 
 		for (const check of rule.properties) {
@@ -211,9 +215,7 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 				continue;
 			}
 
-			// The channel that owns the series, or the series itself when its channel is outside this
-			// pass — still stable, and still shared by everything projecting it.
-			sourceChannels.add(channelOfProperty.get(storageKey) ?? storageKey);
+			sourceChannels.add((await this.resolveOwningChannel(storageKey, channelOfProperty)) ?? storageKey);
 		}
 
 		if (sourceChannels.size === 0) {
@@ -221,6 +223,46 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 		}
 
 		return { id: Array.from(sourceChannels).sort().join('+'), isProjection: true };
+	}
+
+	/**
+	 * The channel a source property belongs to, whether or not this pass happened to walk it.
+	 *
+	 * The in-pass map answers most of it for nothing. It cannot answer all of it: `aggregateBounded()`
+	 * hands the provider a scoped device set, and a hidden or out-of-scope source device is simply not
+	 * in it — so two virtual devices projecting *different properties of one hidden channel* would fall
+	 * back to two different property ids and be counted twice, while the same pair counts once in the
+	 * full-home pass. A sensor's identity cannot depend on which pass is asking.
+	 *
+	 * Read back one property at a time, cached for the pass, and only ever for a property that is
+	 * projected and whose channel is outside it — bounded by the projections in scope, which is a
+	 * handful. A read that fails leaves the caller with the series key, which is what it had before:
+	 * still stable, still shared by everything projecting that exact property.
+	 */
+	private async resolveOwningChannel(
+		propertyId: string,
+		channelOfProperty: Map<string, string>,
+	): Promise<string | null> {
+		const known = channelOfProperty.get(propertyId);
+
+		if (known !== undefined) {
+			return known;
+		}
+
+		try {
+			const property = await this.channelsPropertiesService.findOne(propertyId);
+			const channelId = typeof property?.channel === 'string' ? property.channel : property?.channel?.id;
+
+			// Cached either way: a source that does not resolve is not worth asking about twice in one
+			// pass, and `null` is a different answer from "not looked up yet".
+			channelOfProperty.set(propertyId, channelId ?? '');
+
+			return channelId ?? null;
+		} catch (error) {
+			this.logger.warn(`Failed to resolve the channel of source property ${propertyId}: ${error}`);
+
+			return null;
+		}
 	}
 
 	/**
@@ -267,18 +309,37 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 
 		// And by alert id after that, because the id is what survives downstream: two sensors of one
 		// category on one device share an id, so counting both here reports a number the merged list
-		// never shows. The louder of the two wins, and their ids are identical by construction.
+		// never shows.
+		//
+		// The louder wins, and at equal volume — which is the ordinary case, since both came from the
+		// same rule — the *newer* does, matching `SecurityAggregatorService.mergeAlerts()`. The
+		// timestamp is not decoration on a life-safety path: `SecurityStateListener.syncAckRecords()`
+		// reads it to decide whether an alert is a new occurrence, so keeping the older of two smoke
+		// alerts leaves the second one showing as acknowledged because the first was.
 		const byId = new Map<string, SecurityAlert>();
 
 		for (const { alert } of bySensor.values()) {
 			const held = byId.get(alert.id);
 
-			if (!held || SEVERITY_RANK[alert.severity] > SEVERITY_RANK[held.severity]) {
+			if (!held || this.speaksForTheAlertId(alert, held)) {
 				byId.set(alert.id, alert);
 			}
 		}
 
 		return Array.from(byId.values());
+	}
+
+	private speaksForTheAlertId(alert: SecurityAlert, held: SecurityAlert): boolean {
+		const severityDiff = SEVERITY_RANK[alert.severity] - SEVERITY_RANK[held.severity];
+
+		if (severityDiff !== 0) {
+			return severityDiff > 0;
+		}
+
+		const heldTime = new Date(held.timestamp).getTime();
+		const time = new Date(alert.timestamp).getTime();
+
+		return !Number.isNaN(time) && (Number.isNaN(heldTime) || time > heldTime);
 	}
 
 	private namesTheSensorBetter(candidate: SensorAlertCandidate, held: SensorAlertCandidate): boolean {

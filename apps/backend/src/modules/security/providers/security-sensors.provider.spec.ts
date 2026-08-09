@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { PropertyValueState } from '../../devices/models/property-value-state.model';
+import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
 import { DevicesService } from '../../devices/services/devices.service';
 import { PropertyValueSourceRegistryService } from '../../devices/services/property-value-source.registry.service';
 import { ArmedState, SecurityAlertType, Severity } from '../security.constants';
@@ -116,6 +117,7 @@ function buildDefaultRules(): Map<string, ResolvedSensorRule> {
 describe('SecuritySensorsProvider', () => {
 	let provider: SecuritySensorsProvider;
 	let testingModule: TestingModule;
+	let channelsPropertiesService: { findOne: jest.Mock };
 	let devicesService: { findAll: jest.Mock };
 	let rulesLoader: { getSensorRules: jest.Mock };
 
@@ -123,11 +125,16 @@ describe('SecuritySensorsProvider', () => {
 		devicesService = { findAll: jest.fn().mockResolvedValue([]) };
 		rulesLoader = { getSensorRules: jest.fn().mockReturnValue(buildDefaultRules()) };
 
+		channelsPropertiesService = { findOne: jest.fn().mockResolvedValue(null) };
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				SecuritySensorsProvider,
 				{ provide: DevicesService, useValue: devicesService },
 				{ provide: DetectionRulesLoaderService, useValue: rulesLoader },
+				// Only reached for a projected property whose channel is outside the pass — see the bounded
+				// case below. Answers nothing by default, which is the fallback every other case takes.
+				{ provide: ChannelsPropertiesService, useValue: channelsPropertiesService },
 				// The real registry: with no plugin registered it answers every property with its own id,
 				// which is what "this device owns its sensor" means and is the state of every case below
 				// that does not deliberately project one.
@@ -762,5 +769,60 @@ describe('SecuritySensorsProvider', () => {
 
 		expect(signal.activeAlertsCount).toBe(1);
 		expect(signal.activeAlerts).toEqual([expect.objectContaining({ sourceDeviceId: 'virtual' })]);
+	});
+	// Two sensors of one category on one device share an alert id by construction, and the id is what
+	// survives downstream. The timestamp is not decoration on a life-safety path:
+	// `SecurityStateListener.syncAckRecords()` reads it to decide whether an alert is a new occurrence,
+	// so keeping the older of two smoke alerts leaves the second showing as acknowledged because the
+	// first was.
+	it('keeps the newest of two alerts that share an id', async () => {
+		const older = createProperty(PropertyCategory.DETECTED, true);
+		const newer = createProperty(PropertyCategory.DETECTED, true);
+
+		older.value = new PropertyValueState(true, '2026-08-01T10:00:00.000Z');
+		newer.value = new PropertyValueState(true, '2026-08-01T11:00:00.000Z');
+
+		devicesService.findAll.mockResolvedValue([
+			createDevice('d1', [
+				createChannel(ChannelCategory.SMOKE, [older], 'smoke-a'),
+				createChannel(ChannelCategory.SMOKE, [newer], 'smoke-b'),
+			]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlertsCount).toBe(1);
+		expect(signal.activeAlerts[0].timestamp).toBe('2026-08-01T11:00:00.000Z');
+	});
+
+	// `aggregateBounded()` hands the provider a scoped device set, so a hidden or out-of-scope source
+	// device is simply not in it. Two virtual devices projecting different properties of one hidden
+	// channel would then fall back to two property ids and be counted twice — while the same pair
+	// counts once at home. A sensor's identity cannot depend on which pass is asking.
+	it('counts one sensor once even when its source device is outside the pass', async () => {
+		registerProjections(testingModule);
+
+		// The source channel is nowhere in the devices below; only the read-back can place it.
+		channelsPropertiesService.findOne.mockImplementation((id: string) =>
+			Promise.resolve(
+				id === 'co-detected' || id === 'co-concentration' ? { id, channel: { id: 'hidden-co-channel' } } : null,
+			),
+		);
+
+		const signal = await provider.getSignals({
+			devices: [
+				createDevice('virtual-a', [
+					createChannel(ChannelCategory.CARBON_MONOXIDE, [projecting(PropertyCategory.DETECTED, true, 'co-detected')]),
+				]),
+				createDevice('virtual-b', [
+					createChannel(ChannelCategory.CARBON_MONOXIDE, [
+						projecting(PropertyCategory.CONCENTRATION, 40, 'co-concentration'),
+					]),
+				]),
+			],
+			armedState: null,
+		});
+
+		expect(signal.activeAlertsCount).toBe(1);
 	});
 });
