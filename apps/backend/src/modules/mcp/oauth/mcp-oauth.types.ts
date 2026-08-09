@@ -1,4 +1,4 @@
-import { MCP_OAUTH_PRINCIPAL_TYPE, McpOAuthScope } from '../mcp.constants';
+import { MCP_OAUTH_PRINCIPAL_TYPE, McpCapability, McpOAuthScope } from '../mcp.constants';
 
 export interface McpOAuthPrincipal {
 	type: typeof MCP_OAUTH_PRINCIPAL_TYPE;
@@ -8,6 +8,7 @@ export interface McpOAuthPrincipal {
 	installationId: string;
 	refreshFamilyId?: string;
 	scopes: McpOAuthScope[];
+	effectiveCapabilities: McpCapability[];
 }
 
 export interface McpOAuthPublicUrls {

@@ -1,5 +1,6 @@
 import { FastifyRequest } from 'fastify';
 
+import { AuthInfo, OAuthError, OAuthErrorCode } from '@modelcontextprotocol/server';
 import { ForbiddenException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
@@ -7,11 +8,12 @@ import { TokenOwnerType } from '../../auth/auth.constants';
 import { ConfigService } from '../../config/services/config.service';
 import { UserRole } from '../../users/users.constants';
 import { McpClientEntity } from '../entities/mcp-client.entity';
-import { McpCapability } from '../mcp.constants';
+import { MCP_OAUTH_PRINCIPAL_TYPE, McpCapability } from '../mcp.constants';
 import { McpConfigModel } from '../models/config.model';
 
 import { McpClientService } from './mcp-client.service';
 import { McpInstallationService } from './mcp-installation.service';
+import { McpOAuthResourceServerService } from './mcp-oauth-resource-server.service';
 import { McpPolicyContext, McpPolicyService } from './mcp-policy.service';
 
 const CLIENT_ID = 'client-id';
@@ -33,6 +35,7 @@ describe('McpPolicyService', () => {
 	let config: McpConfigModel;
 	let client: McpClientEntity;
 	let clientService: jest.Mocked<Pick<McpClientService, 'findActiveByToken'>>;
+	let oauthResourceServerService: { authorizeAccessToken: jest.Mock };
 	let service: McpPolicyService;
 
 	const auth = {
@@ -60,6 +63,7 @@ describe('McpPolicyService', () => {
 		clientService = {
 			findActiveByToken: jest.fn().mockResolvedValue(client),
 		};
+		oauthResourceServerService = { authorizeAccessToken: jest.fn() };
 		service = new McpPolicyService(
 			{ getModuleConfig: jest.fn(() => config) } as unknown as ConfigService,
 			{
@@ -67,6 +71,7 @@ describe('McpPolicyService', () => {
 			} as unknown as NestConfigService,
 			clientService as unknown as McpClientService,
 			{ getInstallationId: jest.fn().mockResolvedValue(INSTALLATION_ID) } as unknown as McpInstallationService,
+			oauthResourceServerService as unknown as McpOAuthResourceServerService,
 		);
 	});
 
@@ -148,6 +153,65 @@ describe('McpPolicyService', () => {
 		releaseLookup();
 
 		await expect(authorization).rejects.toThrow(ForbiddenException);
+	});
+
+	it('preserves static-client authorization through an AuthInfo recheck', async () => {
+		const authInfo: AuthInfo = {
+			token: 'static-token',
+			clientId: CLIENT_ID,
+			scopes: [McpCapability.READ],
+			extra: { tokenId: TOKEN_ID },
+		};
+
+		await expect(service.authorizeAuthInfo(authInfo, McpCapability.READ)).resolves.toEqual(
+			expect.objectContaining({ client, tokenId: TOKEN_ID }),
+		);
+		expect(oauthResourceServerService.authorizeAccessToken).not.toHaveBeenCalled();
+	});
+
+	it('revalidates an OAuth token before every authorization decision', async () => {
+		const oauthContext = {
+			client: { id: 'oauth-client-id' },
+			config,
+			effectiveCapabilities: [McpCapability.READ],
+			installationId: INSTALLATION_ID,
+			tokenId: 'oauth-token-id',
+		};
+		oauthResourceServerService.authorizeAccessToken.mockResolvedValue(oauthContext);
+		const authInfo: AuthInfo = {
+			token: 'opaque-token',
+			clientId: 'public-client-id',
+			scopes: [McpCapability.READ],
+			extra: { principal: { type: MCP_OAUTH_PRINCIPAL_TYPE } },
+		};
+
+		await expect(service.authorizeAuthInfo(authInfo, McpCapability.READ)).resolves.toBe(oauthContext);
+		await expect(service.authorizeAuthInfo(authInfo, McpCapability.READ)).resolves.toBe(oauthContext);
+		expect(oauthResourceServerService.authorizeAccessToken).toHaveBeenNthCalledWith(
+			1,
+			'opaque-token',
+			McpCapability.READ,
+		);
+		expect(oauthResourceServerService.authorizeAccessToken).toHaveBeenNthCalledWith(
+			2,
+			'opaque-token',
+			McpCapability.READ,
+		);
+	});
+
+	it.each([
+		[OAuthErrorCode.InvalidToken, UnauthorizedException],
+		[OAuthErrorCode.InsufficientScope, ForbiddenException],
+	])('maps OAuth %s failures to the tool policy boundary', async (code, expectedError) => {
+		oauthResourceServerService.authorizeAccessToken.mockRejectedValue(new OAuthError(code, 'private OAuth detail'));
+		const authInfo: AuthInfo = {
+			token: 'opaque-token',
+			clientId: 'public-client-id',
+			scopes: [],
+			extra: { principal: { type: MCP_OAUTH_PRINCIPAL_TYPE } },
+		};
+
+		await expect(service.authorizeAuthInfo(authInfo, McpCapability.READ)).rejects.toThrow(expectedError);
 	});
 
 	it.each([

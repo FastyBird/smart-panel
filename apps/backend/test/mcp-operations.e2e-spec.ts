@@ -1,4 +1,5 @@
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+import { AuthInfo } from '@modelcontextprotocol/server';
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
@@ -223,7 +224,7 @@ describe('MCP simulator operations', () => {
 			})),
 		};
 		const policyService = {
-			authorizeClient: jest.fn().mockImplementation(async (_tokenId, clientId: string, capability: McpCapability) => {
+			authorizeAuthInfo: jest.fn().mockImplementation(async (authInfo: AuthInfo, capability: McpCapability) => {
 				authorizationStartedSignal?.resolve();
 
 				if (policyChangeGate !== null) {
@@ -234,7 +235,7 @@ describe('MCP simulator operations', () => {
 					throw new ForbiddenException(`MCP capability '${capability}' is not granted`);
 				}
 
-				return { client: { id: clientId }, effectiveCapabilities: [...runtimeCapabilities] };
+				return { client: { id: authInfo.clientId }, effectiveCapabilities: [...runtimeCapabilities] };
 			}),
 		};
 		const auditService = new McpAuditService();

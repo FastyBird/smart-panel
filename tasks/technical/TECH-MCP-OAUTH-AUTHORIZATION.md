@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 3 internal-gated authorization and consent flow complete
+Status: in progress — Phase 4 internal-gated discovery, challenges, and resource validation complete
 
 ## 1. Business goal
 

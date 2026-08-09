@@ -350,7 +350,10 @@ export class McpReadToolService {
 	private async readResource(
 		uri: URL,
 		ctx: ServerContext,
-		callback: (policy: Awaited<ReturnType<McpPolicyService['authorizeClient']>>, endpoint?: string) => Promise<unknown>,
+		callback: (
+			policy: Awaited<ReturnType<McpPolicyService['authorizeAuthInfo']>>,
+			endpoint?: string,
+		) => Promise<unknown>,
 	): Promise<{ contents: Array<{ uri: string; mimeType: string; text: string }> }> {
 		return this.runResourceOperation(
 			'resources/read',
@@ -368,13 +371,12 @@ export class McpReadToolService {
 
 	private async authorizeRead(ctx: ServerContext) {
 		const authInfo = ctx.http?.authInfo;
-		const tokenId = this.getExtraString(authInfo?.extra?.tokenId);
 
-		if (!authInfo?.clientId || !tokenId) {
+		if (!authInfo) {
 			throw new UnauthorizedException('MCP request identity is unavailable');
 		}
 
-		return this.policyService.authorizeClient(tokenId, authInfo.clientId, McpCapability.READ);
+		return this.policyService.authorizeAuthInfo(authInfo, McpCapability.READ);
 	}
 
 	private getInstallationFallback(ctx: ServerContext): McpInstallationContext {

@@ -7,16 +7,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '../../config/services/config.service';
 import { CreateMcpOAuthClientDto, UpdateMcpOAuthClientDto } from '../dto/mcp-oauth-client.dto';
 import { McpOAuthClientEntity } from '../entities/mcp-oauth.entity';
-import { MCP_MODULE_NAME, McpCapability, McpOAuthScope } from '../mcp.constants';
+import { MCP_MODULE_NAME, McpOAuthScope } from '../mcp.constants';
 import { McpConfigModel } from '../models/config.model';
 import { McpOAuthClientModel } from '../models/mcp-oauth-client.model';
+import { toMcpCapability } from '../oauth/mcp-oauth-scope.utils';
 import { matchesMcpOAuthRedirectUri } from '../validators/is-mcp-oauth-redirect-uri.validator';
-
-const scopeCapability = new Map<McpOAuthScope, McpCapability>([
-	[McpOAuthScope.READ, McpCapability.READ],
-	[McpOAuthScope.WRITE, McpCapability.WRITE],
-	[McpOAuthScope.TRIGGER, McpCapability.TRIGGER],
-]);
 
 @Injectable()
 export class McpOAuthClientService {
@@ -98,7 +93,7 @@ export class McpOAuthClientService {
 		const disallowed = scopes.filter((scope) => {
 			if (scope === McpOAuthScope.OFFLINE_ACCESS) return false;
 
-			const capability = scopeCapability.get(scope);
+			const capability = toMcpCapability(scope);
 
 			return capability === undefined || !ceiling.includes(capability);
 		});

@@ -15,24 +15,12 @@ import {
 import { McpOAuthClientService } from '../services/mcp-oauth-client.service';
 import { McpOAuthPublicUrlService } from '../services/mcp-oauth-public-url.service';
 
+import { McpOAuthAuthorizationServerMetadata, buildMcpOAuthAuthorizationServerMetadata } from './mcp-oauth-metadata';
 import { createMcpOAuthProviderAdapter } from './mcp-oauth-provider.adapter';
 import { loadMcpOAuthProvider } from './mcp-oauth-provider.loader';
 import { McpOAuthPublicUrls } from './mcp-oauth.types';
 
 const toSeconds = (milliseconds: number): number => Math.floor(milliseconds / 1_000);
-
-export interface McpOAuthAuthorizationServerMetadata {
-	issuer: string;
-	authorization_endpoint: string;
-	token_endpoint: string;
-	revocation_endpoint: string;
-	response_types_supported: string[];
-	grant_types_supported: string[];
-	code_challenge_methods_supported: string[];
-	scopes_supported: string[];
-	token_endpoint_auth_methods_supported: string[];
-	authorization_response_iss_parameter_supported: boolean;
-}
 
 export interface McpOAuthProviderRuntime {
 	provider: Provider;
@@ -220,7 +208,7 @@ export class McpOAuthProviderFactory {
 			});
 		};
 
-		return { provider, callback, urls, metadata: this.projectMetadata(urls) };
+		return { provider, callback, urls, metadata: buildMcpOAuthAuthorizationServerMetadata(urls) };
 	}
 
 	assertTokenRequestResource(parameters: URLSearchParams): void {
@@ -229,21 +217,6 @@ export class McpOAuthProviderFactory {
 		if ((grantType === 'authorization_code' || grantType === 'refresh_token') && !parameters.get('resource')) {
 			throw new Error('invalid_target: The MCP resource parameter is required at the token endpoint');
 		}
-	}
-
-	private projectMetadata(urls: McpOAuthPublicUrls): McpOAuthAuthorizationServerMetadata {
-		return {
-			issuer: urls.issuer,
-			authorization_endpoint: urls.authorizationEndpoint,
-			token_endpoint: urls.tokenEndpoint,
-			revocation_endpoint: urls.revocationEndpoint,
-			response_types_supported: ['code'],
-			grant_types_supported: ['authorization_code', 'refresh_token'],
-			code_challenge_methods_supported: ['S256'],
-			scopes_supported: Object.values(McpOAuthScope),
-			token_endpoint_auth_methods_supported: ['none'],
-			authorization_response_iss_parameter_supported: true,
-		};
 	}
 
 	private async dispatchProviderRequest(
