@@ -243,7 +243,7 @@ Jest's "worker process has failed to exit gracefully" warning appears across the
 - No test exercises `DeviceHiddenFilter.TRUE`; a mutation flipping only that branch would go undetected.
 - `permissionSatisfied` is restated in `VirtualDevicesService` rather than reused, because the canonical method is private on `DeviceValidationService`. Extracting it would remove the drift risk.
 
-### 3.7 The security aggregator double-counts a projected sensor (medium)
+### 3.7 The security aggregator double-counts a projected sensor (medium) — DONE
 
 `SecuritySensorsProvider.buildSignals()` walks every device's channels and emits one alert per channel matching a detection rule, keyed `sensor:<deviceId>:<alertType>`. A virtual device that projects a physical motion/smoke/contact sensor has its own channel of that category, and `ChannelPropertyEntitySubscriber.afterLoad` populates the projection's `value` through `PropertyValueService.readLatest()` — which resolves the storage key through the value-source registry — so the provider reads the source's live value off the virtual device too.
 
@@ -253,7 +253,11 @@ Not caused by this branch's listener work and not fixable there: `SecurityStateL
 
 Fixing it means deciding, in the provider, which of the two channels represents the sensor. The obvious rule — skip a channel whose properties are all projections — is wrong for the case virtual devices exist to serve, where the virtual device is the one the user thinks of as the sensor. It is a product decision about which device an alert should name, not a mechanical de-duplication.
 
-The same shape almost certainly applies to any other provider or module that scans `devices → channels → properties` and aggregates per match; only the security sensors provider was checked.
+Settled as: **the device the user can see, and between two visible ones the projection.** Splitting hides a source device once nothing of it is left unprojected, which is exactly when its projection should speak for it; a partially split device stays visible for the channels it kept, but the sensor in question is the one the operator deliberately moved into a room device. Ties go to the lower device id, so the same state always produces the same alert.
+
+The counting half needed no decision. "Two channels reading one series" is what `PropertyValueSourceRegistryService` answers, and it is the same seam the energy module bills a projected meter through. De-duplication drops nothing: every distinct sensor keeps its alert, including one on a hidden device that nothing projects — suppressing a smoke alarm because somebody hid its device is not a de-duplication. Alerts are also collapsed by id afterwards, since two sensors of one category on one device share an id and counting both reported a number the merged list never showed.
+
+The same shape almost certainly applies to any other provider or module that scans `devices → channels → properties` and aggregates per match; only the security sensors provider was checked, and it is the only one fixed.
 
 ### 3.8 Two virtual properties projecting one non-qualifying source both ingest (low) — DONE
 

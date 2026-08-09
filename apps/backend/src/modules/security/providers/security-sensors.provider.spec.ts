@@ -4,6 +4,7 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { PropertyValueState } from '../../devices/models/property-value-state.model';
 import { DevicesService } from '../../devices/services/devices.service';
+import { PropertyValueSourceRegistryService } from '../../devices/services/property-value-source.registry.service';
 import { ArmedState, SecurityAlertType, Severity } from '../security.constants';
 import { DetectionRulesLoaderService } from '../spec/detection-rules-loader.service';
 import { ResolvedSensorRule } from '../spec/detection-rules.types';
@@ -105,6 +106,7 @@ function buildDefaultRules(): Map<string, ResolvedSensorRule> {
 
 describe('SecuritySensorsProvider', () => {
 	let provider: SecuritySensorsProvider;
+	let testingModule: TestingModule;
 	let devicesService: { findAll: jest.Mock };
 	let rulesLoader: { getSensorRules: jest.Mock };
 
@@ -117,9 +119,14 @@ describe('SecuritySensorsProvider', () => {
 				SecuritySensorsProvider,
 				{ provide: DevicesService, useValue: devicesService },
 				{ provide: DetectionRulesLoaderService, useValue: rulesLoader },
+				// The real registry: with no plugin registered it answers every property with its own id,
+				// which is what "this device owns its sensor" means and is the state of every case below
+				// that does not deliberately project one.
+				PropertyValueSourceRegistryService,
 			],
 		}).compile();
 
+		testingModule = module;
 		provider = module.get<SecuritySensorsProvider>(SecuritySensorsProvider);
 	});
 
@@ -607,5 +614,112 @@ describe('SecuritySensorsProvider', () => {
 
 		expect(signal.activeAlertsCount).toBe(0);
 		expect(signal.activeAlerts).toEqual([]);
+	});
+	// -- one physical sensor, several devices presenting it ---------------------------------------
+	//
+	// A virtual device that projects a physical sensor has a channel of that category too, and the
+	// projection's value *is* the source's, so the walk reads one detector off two devices and files
+	// two alerts under different ids. `mergeAlerts` de-duplicates by id downstream and cannot help,
+	// because the ids differ precisely because the devices do.
+
+	/** A property that reads another property's series, the way a projection does. */
+	const projecting = (category: PropertyCategory, value: boolean, sourceId: string): ChannelPropertyEntity => {
+		const property = createProperty(category, value);
+
+		property.id = `${sourceId}-projection`;
+		// `type` is a getter on the entity, as it is on every plugin's subclass, so the discriminator the
+		// registry keys on is shadowed rather than assigned.
+		Object.defineProperty(property, 'type', { value: 'virtual-test' });
+		(property as unknown as { sourcePropertyId: string }).sourcePropertyId = sourceId;
+
+		return property;
+	};
+
+	const registerProjections = (module: TestingModule): void => {
+		module.get(PropertyValueSourceRegistryService).register({
+			getType: () => 'virtual-test',
+			resolve: (property) => (property as unknown as { sourcePropertyId?: string }).sourcePropertyId ?? null,
+		});
+	};
+
+	it('counts one sensor once, however many devices present it', async () => {
+		registerProjections(testingModule);
+
+		const source = createProperty(PropertyCategory.DETECTED, true);
+		source.id = 'smoke-detector';
+
+		devicesService.findAll.mockResolvedValue([
+			createDevice('physical', [createChannel(ChannelCategory.SMOKE, [source])]),
+			createDevice('virtual', [
+				createChannel(ChannelCategory.SMOKE, [projecting(PropertyCategory.DETECTED, true, 'smoke-detector')]),
+			]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlertsCount).toBe(1);
+	});
+
+	// Splitting hides a source device once nothing of it is left unprojected, which is exactly when its
+	// projection should speak for it: an alert naming a device that appears nowhere is one nobody can
+	// act on.
+	it('names the visible device rather than the hidden one', async () => {
+		registerProjections(testingModule);
+
+		const source = createProperty(PropertyCategory.DETECTED, true);
+		source.id = 'smoke-detector';
+
+		const physical = createDevice('physical', [createChannel(ChannelCategory.SMOKE, [source])]);
+
+		physical.hidden = true;
+
+		devicesService.findAll.mockResolvedValue([
+			physical,
+			createDevice('virtual', [
+				createChannel(ChannelCategory.SMOKE, [projecting(PropertyCategory.DETECTED, true, 'smoke-detector')]),
+			]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlerts).toEqual([expect.objectContaining({ sourceDeviceId: 'virtual' })]);
+	});
+
+	// A partially split device stays visible for the channels it kept, but the sensor in question is
+	// the one the operator deliberately moved into a room device.
+	it('names the projection when both devices are visible', async () => {
+		registerProjections(testingModule);
+
+		const source = createProperty(PropertyCategory.DETECTED, true);
+		source.id = 'smoke-detector';
+
+		devicesService.findAll.mockResolvedValue([
+			createDevice('physical', [createChannel(ChannelCategory.SMOKE, [source])]),
+			createDevice('virtual', [
+				createChannel(ChannelCategory.SMOKE, [projecting(PropertyCategory.DETECTED, true, 'smoke-detector')]),
+			]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlerts).toEqual([expect.objectContaining({ sourceDeviceId: 'virtual' })]);
+	});
+
+	// Nothing is dropped by de-duplication: suppressing a smoke alarm because somebody hid its device
+	// is not de-duplication, and two detectors are two alerts however they are arranged.
+	it('keeps a hidden device’s own sensor, and keeps two sensors two', async () => {
+		const hidden = createDevice('hidden', [createDetectedChannel(ChannelCategory.SMOKE, true)]);
+
+		hidden.hidden = true;
+
+		devicesService.findAll.mockResolvedValue([
+			hidden,
+			createDevice('other', [createDetectedChannel(ChannelCategory.LEAK, true)]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlertsCount).toBe(2);
+		expect(signal.activeAlerts.map((alert) => alert.sourceDeviceId).sort()).toEqual(['hidden', 'other']);
 	});
 });
