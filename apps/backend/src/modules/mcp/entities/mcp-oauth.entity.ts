@@ -372,3 +372,12 @@ export class McpOAuthProviderRevokedGrantEntity {
 	@Column({ type: 'integer' })
 	revokedAt: number;
 }
+
+@Entity('mcp_module_oauth_provider_revoked_refresh_families')
+export class McpOAuthProviderRevokedRefreshFamilyEntity {
+	@PrimaryColumn({ type: 'varchar' })
+	refreshFamilyId: string;
+
+	@Column({ type: 'integer' })
+	revokedAt: number;
+}

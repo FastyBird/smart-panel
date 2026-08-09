@@ -3,12 +3,17 @@ import type { Adapter, AdapterConstructor, AdapterPayload } from 'oidc-provider'
 import { DataSource, IsNull, LessThanOrEqual, Not, Repository } from 'typeorm';
 
 import { hashToken } from '../../auth/utils/token.utils';
-import { McpOAuthProviderArtifactEntity, McpOAuthProviderRevokedGrantEntity } from '../entities/mcp-oauth.entity';
+import {
+	McpOAuthProviderArtifactEntity,
+	McpOAuthProviderRevokedGrantEntity,
+	McpOAuthProviderRevokedRefreshFamilyEntity,
+} from '../entities/mcp-oauth.entity';
 import { McpOAuthClientService } from '../services/mcp-oauth-client.service';
 
 export interface McpOAuthProviderAdapterOptions {
 	allowTestInMemory?: boolean;
 	artifactReuseError?: () => Error;
+	beforeArtifactUpsert?: (context: { model: string; refreshFamilyId: string | null }) => Promise<void>;
 }
 
 const isInMemoryDataSource = (dataSource: DataSource): boolean =>
@@ -60,6 +65,12 @@ export const createMcpOAuthProviderAdapter = (
 			const idHash = hashToken(id);
 			const existing = await repository.findOneBy({ model: this.model, idHash });
 			const refreshFamilyId = await this.resolveRefreshFamilyId(repository, existing, grantIdHash);
+
+			if (refreshFamilyId !== null && (await this.isRefreshFamilyRevoked(refreshFamilyId))) {
+				throw this.artifactReuseError();
+			}
+
+			await options.beforeArtifactUpsert?.({ model: this.model, refreshFamilyId });
 			await repository.upsert(
 				{
 					model: this.model,
@@ -80,8 +91,17 @@ export const createMcpOAuthProviderAdapter = (
 				await repository.update({ model: 'AccessToken', grantIdHash, refreshFamilyId: IsNull() }, { refreshFamilyId });
 			}
 
-			if (grantIdHash !== null && (await this.isGrantRevoked(grantIdHash))) {
-				await repository.delete({ model: this.model, idHash: hashToken(id) });
+			const [grantRevoked, refreshFamilyRevoked] = await Promise.all([
+				grantIdHash === null ? false : this.isGrantRevoked(grantIdHash),
+				refreshFamilyId === null ? false : this.isRefreshFamilyRevoked(refreshFamilyId),
+			]);
+
+			if (grantRevoked || refreshFamilyRevoked) {
+				await repository.delete(
+					refreshFamilyRevoked && refreshFamilyId !== null
+						? { refreshFamilyId }
+						: { model: this.model, idHash: hashToken(id) },
+				);
 				throw this.artifactReuseError();
 			}
 		}
@@ -210,10 +230,19 @@ export const createMcpOAuthProviderAdapter = (
 		): Promise<AdapterPayload | undefined> {
 			if (!record) return undefined;
 
-			if (record.grantIdHash !== null && (await this.isGrantRevoked(record.grantIdHash))) {
+			const [grantRevoked, refreshFamilyRevoked] = await Promise.all([
+				record.grantIdHash === null ? false : this.isGrantRevoked(record.grantIdHash),
+				record.refreshFamilyId === null ? false : this.isRefreshFamilyRevoked(record.refreshFamilyId),
+			]);
+
+			if (grantRevoked || refreshFamilyRevoked) {
 				await dataSource
 					.getRepository(McpOAuthProviderArtifactEntity)
-					.delete({ model: record.model, idHash: record.idHash });
+					.delete(
+						refreshFamilyRevoked && record.refreshFamilyId !== null
+							? { refreshFamilyId: record.refreshFamilyId }
+							: { model: record.model, idHash: record.idHash },
+					);
 				return undefined;
 			}
 
@@ -222,6 +251,10 @@ export const createMcpOAuthProviderAdapter = (
 
 		private async isGrantRevoked(grantIdHash: string): Promise<boolean> {
 			return dataSource.getRepository(McpOAuthProviderRevokedGrantEntity).existsBy({ grantIdHash });
+		}
+
+		private async isRefreshFamilyRevoked(refreshFamilyId: string): Promise<boolean> {
+			return dataSource.getRepository(McpOAuthProviderRevokedRefreshFamilyEntity).existsBy({ refreshFamilyId });
 		}
 
 		private async revokeGrant(grantIdHash: string, manager = dataSource.manager): Promise<void> {

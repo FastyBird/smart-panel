@@ -3,14 +3,17 @@ import { DataSource, In, IsNull, MoreThan, Not, Repository } from 'typeorm';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { ConfigService } from '../../config/services/config.service';
 import { UpdateMcpOAuthClientDto } from '../dto/mcp-oauth-client.dto';
 import {
 	McpOAuthClientEntity,
 	McpOAuthGrantEntity,
 	McpOAuthProviderArtifactEntity,
 	McpOAuthProviderRevokedGrantEntity,
+	McpOAuthProviderRevokedRefreshFamilyEntity,
 } from '../entities/mcp-oauth.entity';
-import { McpOAuthScope } from '../mcp.constants';
+import { MCP_MODULE_NAME, McpOAuthScope } from '../mcp.constants';
+import { McpConfigModel } from '../models/config.model';
 import { McpOAuthClientModel } from '../models/mcp-oauth-client.model';
 import {
 	McpOAuthAccessTokenModel,
@@ -34,6 +37,7 @@ export class McpOAuthManagementService {
 		@InjectRepository(McpOAuthProviderArtifactEntity)
 		private readonly artifacts: Repository<McpOAuthProviderArtifactEntity>,
 		private readonly dataSource: DataSource,
+		private readonly configService: ConfigService,
 		private readonly clientsService: McpOAuthClientService,
 		private readonly subscriptions: McpSubscriptionRegistryService,
 		private readonly auditService: McpAuditService,
@@ -45,11 +49,13 @@ export class McpOAuthManagementService {
 			order: { createdAt: 'DESC' },
 		});
 		const providerRevocations = await this.getProviderRevocations(grants);
+		const moduleEnabled = this.isModuleEnabled();
 
 		return grants.map((grant) =>
 			McpOAuthGrantModel.fromEntity(
 				grant,
 				grant.providerGrantIdHash ? (providerRevocations.get(grant.providerGrantIdHash) ?? null) : null,
+				moduleEnabled,
 			),
 		);
 	}
@@ -61,6 +67,7 @@ export class McpOAuthManagementService {
 		return McpOAuthGrantModel.fromEntity(
 			grant,
 			grant.providerGrantIdHash ? (providerRevocations.get(grant.providerGrantIdHash) ?? null) : null,
+			this.isModuleEnabled(),
 		);
 	}
 
@@ -238,9 +245,14 @@ export class McpOAuthManagementService {
 	async revokeRefreshFamily(id: string, actorId: string): Promise<void> {
 		await this.getRefreshFamily(id);
 		await this.subscriptions.closeOAuthRefreshFamily(id, async () => {
-			const result = await this.artifacts.delete({ refreshFamilyId: id });
+			await this.dataSource.transaction(async (manager) => {
+				await manager
+					.getRepository(McpOAuthProviderRevokedRefreshFamilyEntity)
+					.upsert({ refreshFamilyId: id, revokedAt: Date.now() }, ['refreshFamilyId']);
+				const result = await manager.getRepository(McpOAuthProviderArtifactEntity).delete({ refreshFamilyId: id });
 
-			if (!result.affected) throw new ConflictException('The MCP OAuth refresh family changed during revocation');
+				if (!result.affected) throw new ConflictException('The MCP OAuth refresh family changed during revocation');
+			});
 		});
 		this.auditService.recordOAuthManagementAction(actorId, 'refresh_family', id, 'revoked');
 	}
@@ -257,12 +269,21 @@ export class McpOAuthManagementService {
 	}
 
 	private async mapAccessTokens(artifacts: McpOAuthProviderArtifactEntity[]): Promise<McpOAuthAccessTokenModel[]> {
-		const grants = await this.getGrantsByProviderHash(artifacts);
+		const [grants, revokedRefreshFamilies] = await Promise.all([
+			this.getGrantsByProviderHash(artifacts),
+			this.getRevokedRefreshFamilies(artifacts),
+		]);
 
 		return artifacts.flatMap((artifact) => {
 			const grant = artifact.grantIdHash ? grants.get(artifact.grantIdHash) : undefined;
 
-			if (!grant || artifact.expiresAt === null) return [];
+			if (
+				!grant ||
+				artifact.expiresAt === null ||
+				(artifact.refreshFamilyId !== null && revokedRefreshFamilies.has(artifact.refreshFamilyId))
+			) {
+				return [];
+			}
 
 			return [
 				Object.assign(new McpOAuthAccessTokenModel(), {
@@ -279,7 +300,10 @@ export class McpOAuthManagementService {
 	}
 
 	private async mapRefreshFamilies(artifacts: McpOAuthProviderArtifactEntity[]): Promise<McpOAuthRefreshFamilyModel[]> {
-		const grants = await this.getGrantsByProviderHash(artifacts);
+		const [grants, revokedRefreshFamilies] = await Promise.all([
+			this.getGrantsByProviderHash(artifacts),
+			this.getRevokedRefreshFamilies(artifacts),
+		]);
 		const families = new Map<string, McpOAuthProviderArtifactEntity[]>();
 
 		for (const artifact of artifacts) {
@@ -288,6 +312,8 @@ export class McpOAuthManagementService {
 		}
 
 		return [...families].flatMap(([id, familyArtifacts]) => {
+			if (revokedRefreshFamilies.has(id)) return [];
+
 			const linked = familyArtifacts.find((artifact) => artifact.grantIdHash && grants.has(artifact.grantIdHash));
 			const grant = linked?.grantIdHash ? grants.get(linked.grantIdHash) : undefined;
 			const expiresAt = Math.max(...familyArtifacts.map((artifact) => artifact.expiresAt ?? 0));
@@ -317,6 +343,7 @@ export class McpOAuthManagementService {
 		];
 
 		if (hashes.length === 0) return new Map();
+		if (!this.isModuleEnabled()) return new Map();
 
 		const grants = await this.grants.find({
 			where: {
@@ -351,6 +378,28 @@ export class McpOAuthManagementService {
 			.findBy({ grantIdHash: In(hashes) });
 
 		return new Map(revocations.map((revocation) => [revocation.grantIdHash, revocation.revokedAt]));
+	}
+
+	private async getRevokedRefreshFamilies(artifacts: McpOAuthProviderArtifactEntity[]): Promise<Set<string>> {
+		const ids = [
+			...new Set(
+				artifacts
+					.map((artifact) => artifact.refreshFamilyId)
+					.filter((refreshFamilyId): refreshFamilyId is string => refreshFamilyId !== null),
+			),
+		];
+
+		if (ids.length === 0) return new Set();
+
+		const revocations = await this.dataSource
+			.getRepository(McpOAuthProviderRevokedRefreshFamilyEntity)
+			.findBy({ refreshFamilyId: In(ids) });
+
+		return new Set(revocations.map((revocation) => revocation.refreshFamilyId));
+	}
+
+	private isModuleEnabled(): boolean {
+		return this.configService.getModuleConfig<McpConfigModel>(MCP_MODULE_NAME).enabled;
 	}
 
 	private parseScopes(payload: string): McpOAuthScope[] {

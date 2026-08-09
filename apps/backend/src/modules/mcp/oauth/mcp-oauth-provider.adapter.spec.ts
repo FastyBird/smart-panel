@@ -1,7 +1,11 @@
 import { DataSource } from 'typeorm';
 
 import { hashToken } from '../../auth/utils/token.utils';
-import { McpOAuthProviderArtifactEntity, McpOAuthProviderRevokedGrantEntity } from '../entities/mcp-oauth.entity';
+import {
+	McpOAuthProviderArtifactEntity,
+	McpOAuthProviderRevokedGrantEntity,
+	McpOAuthProviderRevokedRefreshFamilyEntity,
+} from '../entities/mcp-oauth.entity';
 import { McpOAuthClientService } from '../services/mcp-oauth-client.service';
 
 import { createMcpOAuthProviderAdapter } from './mcp-oauth-provider.adapter';
@@ -13,7 +17,11 @@ describe('MCP OAuth provider adapter management identity', () => {
 		dataSource = new DataSource({
 			type: 'sqlite',
 			database: ':memory:',
-			entities: [McpOAuthProviderArtifactEntity, McpOAuthProviderRevokedGrantEntity],
+			entities: [
+				McpOAuthProviderArtifactEntity,
+				McpOAuthProviderRevokedGrantEntity,
+				McpOAuthProviderRevokedRefreshFamilyEntity,
+			],
 			synchronize: true,
 		});
 		await dataSource.initialize();

@@ -2,6 +2,7 @@ import { DataSource } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { hashToken } from '../../auth/utils/token.utils';
+import { ConfigService } from '../../config/services/config.service';
 import { UserEntity } from '../../users/entities/users.entity';
 import { UserLanguage, UserRole } from '../../users/users.constants';
 import {
@@ -9,9 +10,11 @@ import {
 	McpOAuthGrantEntity,
 	McpOAuthProviderArtifactEntity,
 	McpOAuthProviderRevokedGrantEntity,
+	McpOAuthProviderRevokedRefreshFamilyEntity,
 } from '../entities/mcp-oauth.entity';
 import { McpOAuthScope } from '../mcp.constants';
 import { McpOAuthClientModel } from '../models/mcp-oauth-client.model';
+import { createMcpOAuthProviderAdapter } from '../oauth/mcp-oauth-provider.adapter';
 
 import { McpAuditService } from './mcp-audit.service';
 import { McpOAuthClientService } from './mcp-oauth-client.service';
@@ -28,6 +31,7 @@ describe('McpOAuthManagementService', () => {
 	let otherGrant: McpOAuthGrantEntity;
 	let accessId: string;
 	let familyId: string;
+	let moduleEnabled: boolean;
 	let auditService: {
 		recordOAuthManagementAction: jest.Mock;
 		recordSubscriptionClosed: jest.Mock;
@@ -44,6 +48,7 @@ describe('McpOAuthManagementService', () => {
 				McpOAuthGrantEntity,
 				McpOAuthProviderArtifactEntity,
 				McpOAuthProviderRevokedGrantEntity,
+				McpOAuthProviderRevokedRefreshFamilyEntity,
 			],
 			synchronize: true,
 		});
@@ -54,6 +59,7 @@ describe('McpOAuthManagementService', () => {
 			recordSubscriptionOpened: jest.fn(),
 		};
 		subscriptions = new McpSubscriptionRegistryService(auditService as unknown as McpAuditService);
+		moduleEnabled = true;
 		const user = await dataSource.getRepository(UserEntity).save(
 			dataSource.getRepository(UserEntity).create({
 				username: 'owner',
@@ -174,6 +180,7 @@ describe('McpOAuthManagementService', () => {
 			grants,
 			artifacts,
 			dataSource,
+			{ getModuleConfig: jest.fn(() => ({ enabled: moduleEnabled })) } as unknown as ConfigService,
 			clientsService as unknown as McpOAuthClientService,
 			subscriptions,
 			auditService as unknown as McpAuditService,
@@ -230,6 +237,14 @@ describe('McpOAuthManagementService', () => {
 		expect(await service.findRefreshFamilies()).toEqual([]);
 	});
 
+	it('marks grants inactive and hides their artifacts while the MCP module is disabled', async () => {
+		moduleEnabled = false;
+
+		expect(await service.getGrant(grant.id)).toMatchObject({ active: false });
+		expect(await service.findAccessTokens()).toEqual([]);
+		expect(await service.findRefreshFamilies()).toEqual([]);
+	});
+
 	it('treats a provider-revoked grant as revoked across management views', async () => {
 		const providerRevokedAt = Date.now();
 		await dataSource.getRepository(McpOAuthProviderRevokedGrantEntity).save({
@@ -274,6 +289,45 @@ describe('McpOAuthManagementService', () => {
 		expect(matching.signal.aborted).toBe(true);
 		await expect(service.getRefreshFamily(familyId)).rejects.toThrow('does not exist');
 		await expect(service.getAccessToken(accessId)).rejects.toThrow('does not exist');
+	});
+
+	it('prevents a paused refresh rotation from recreating a revoked family', async () => {
+		let releaseUpsert = (): void => undefined;
+		let signalUpsertReached = (): void => undefined;
+		const upsertReached = new Promise<void>((resolve) => {
+			signalUpsertReached = resolve;
+		});
+		const allowUpsert = new Promise<void>((resolve) => {
+			releaseUpsert = resolve;
+		});
+		const Adapter = createMcpOAuthProviderAdapter(dataSource, {} as McpOAuthClientService, {
+			allowTestInMemory: true,
+			beforeArtifactUpsert: async ({ model, refreshFamilyId }) => {
+				if (model !== 'RefreshToken' || refreshFamilyId !== familyId) return;
+				signalUpsertReached();
+				await allowUpsert;
+			},
+		});
+		const refreshAdapter = new Adapter('RefreshToken');
+		const rotation = refreshAdapter.upsert(
+			'rotating-refresh-token',
+			{ grantId: 'grant-one', clientId: client.clientIdentifier, scope: 'mcp:read offline_access' },
+			60,
+		);
+
+		await upsertReached;
+		await service.revokeRefreshFamily(familyId, 'actor-id');
+		releaseUpsert();
+
+		await expect(rotation).rejects.toThrow('already consumed');
+		expect(
+			await dataSource
+				.getRepository(McpOAuthProviderRevokedRefreshFamilyEntity)
+				.existsBy({ refreshFamilyId: familyId }),
+		).toBe(true);
+		expect(await dataSource.getRepository(McpOAuthProviderArtifactEntity).countBy({ refreshFamilyId: familyId })).toBe(
+			0,
+		);
 	});
 
 	it('revokes a grant and closes only subscriptions bound to that grant', async () => {

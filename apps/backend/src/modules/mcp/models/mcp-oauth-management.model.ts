@@ -54,7 +54,11 @@ export class McpOAuthGrantModel {
 	@Transform(toIsoString, { toPlainOnly: true })
 	createdAt: Date | string;
 
-	static fromEntity(entity: McpOAuthGrantEntity, providerRevokedAt: number | null = null): McpOAuthGrantModel {
+	static fromEntity(
+		entity: McpOAuthGrantEntity,
+		providerRevokedAt: number | null = null,
+		moduleEnabled = true,
+	): McpOAuthGrantModel {
 		const revokedAt = entity.revokedAt ?? (providerRevokedAt === null ? null : new Date(providerRevokedAt));
 
 		return Object.assign(new McpOAuthGrantModel(), {
@@ -65,13 +69,14 @@ export class McpOAuthGrantModel {
 			approvedScopes: [...entity.approvedScopes],
 			expiresAt: entity.expiresAt,
 			revokedAt,
-			active: McpOAuthGrantModel.isActive(entity, providerRevokedAt !== null),
+			active: McpOAuthGrantModel.isActive(entity, providerRevokedAt !== null, moduleEnabled),
 			createdAt: entity.createdAt,
 		});
 	}
 
-	static isActive(entity: McpOAuthGrantEntity, providerRevoked = false): boolean {
+	static isActive(entity: McpOAuthGrantEntity, providerRevoked = false, moduleEnabled = true): boolean {
 		return (
+			moduleEnabled &&
 			!providerRevoked &&
 			entity.revokedAt === null &&
 			entity.expiresAt > new Date() &&
