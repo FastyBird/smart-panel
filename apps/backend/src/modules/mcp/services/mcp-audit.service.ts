@@ -25,7 +25,15 @@ export type McpAuditDenialReason =
 
 export type McpAuditRequestFailureReason = 'policy_resolution_error';
 
-export type McpSubscriptionCloseReason = 'cancelled' | 'client_closed' | 'completed' | 'error' | 'idle' | 'shutdown';
+export type McpSubscriptionCloseReason =
+	| 'authorization_expired'
+	| 'authorization_revoked'
+	| 'cancelled'
+	| 'client_closed'
+	| 'completed'
+	| 'error'
+	| 'idle'
+	| 'shutdown';
 
 export interface McpAuditMetricsSnapshot {
 	activeSubscriptions: number;
