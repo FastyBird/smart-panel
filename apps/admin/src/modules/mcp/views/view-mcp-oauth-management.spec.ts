@@ -74,4 +74,13 @@ describe('ViewMcpOAuthManagement', () => {
 		expect(ElMessageBox.confirm).toHaveBeenCalledOnce();
 		expect(mocks.revokeGrant).toHaveBeenCalledWith(grant.id);
 	});
+
+	it('labels an unusable grant with the backend inactive state', () => {
+		const wrapper = shallowMount(ViewMcpOAuthManagement);
+		const vm = wrapper.vm as unknown as {
+			grantStatus: (value: IMcpOAuthGrant) => { key: string; type: string };
+		};
+
+		expect(vm.grantStatus({ ...grant, active: false })).toEqual({ key: 'inactive', type: 'warning' });
+	});
 });

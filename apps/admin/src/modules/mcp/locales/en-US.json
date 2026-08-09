@@ -169,6 +169,7 @@
 		"status": {
 			"active": "Active",
 			"disabled": "Disabled",
+			"inactive": "Inactive",
 			"revoked": "Revoked",
 			"expired": "Expired"
 		},

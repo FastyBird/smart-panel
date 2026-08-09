@@ -312,11 +312,15 @@ export class McpOAuthManagementService {
 				revokedAt: IsNull(),
 				expiresAt: MoreThan(new Date()),
 			},
-			relations: { client: true },
+			relations: { approvedBy: true, client: true },
 		});
 
 		return new Map(
-			grants.flatMap((grant) => (grant.providerGrantIdHash ? [[grant.providerGrantIdHash, grant] as const] : [])),
+			grants.flatMap((grant) =>
+				grant.providerGrantIdHash && McpOAuthGrantModel.isActive(grant)
+					? [[grant.providerGrantIdHash, grant] as const]
+					: [],
+			),
 		);
 	}
 

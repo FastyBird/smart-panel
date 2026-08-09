@@ -63,15 +63,20 @@ export class McpOAuthGrantModel {
 			approvedScopes: [...entity.approvedScopes],
 			expiresAt: entity.expiresAt,
 			revokedAt: entity.revokedAt,
-			active:
-				entity.revokedAt === null &&
-				entity.expiresAt > new Date() &&
-				entity.client?.enabled === true &&
-				entity.approvedBy !== undefined &&
-				entity.approvedBy !== null &&
-				[UserRole.OWNER, UserRole.ADMIN].includes(entity.approvedBy.role),
+			active: McpOAuthGrantModel.isActive(entity),
 			createdAt: entity.createdAt,
 		});
+	}
+
+	static isActive(entity: McpOAuthGrantEntity): boolean {
+		return (
+			entity.revokedAt === null &&
+			entity.expiresAt > new Date() &&
+			entity.client?.enabled === true &&
+			entity.approvedBy !== undefined &&
+			entity.approvedBy !== null &&
+			[UserRole.OWNER, UserRole.ADMIN].includes(entity.approvedBy.role)
+		);
 	}
 }
 

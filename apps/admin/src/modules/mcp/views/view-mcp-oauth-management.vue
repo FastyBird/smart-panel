@@ -518,9 +518,10 @@ const confirmRefreshFamilyRevoke = (family: IMcpOAuthRefreshFamily): Promise<voi
 		'mcpModule.oauthManagement.messages.refreshFamilyRevoked'
 	);
 
-const grantStatus = (grant: IMcpOAuthGrant): { key: 'active' | 'expired' | 'revoked'; type: 'success' | 'danger' } => {
+const grantStatus = (grant: IMcpOAuthGrant): { key: 'active' | 'expired' | 'inactive' | 'revoked'; type: 'success' | 'danger' | 'warning' } => {
 	if (grant.revokedAt) return { key: 'revoked', type: 'danger' };
 	if (new Date(grant.expiresAt).getTime() <= Date.now()) return { key: 'expired', type: 'danger' };
+	if (!grant.active) return { key: 'inactive', type: 'warning' };
 
 	return { key: 'active', type: 'success' };
 };

@@ -216,6 +216,20 @@ describe('McpOAuthManagementService', () => {
 		await expect(service.getRefreshFamily(familyId)).rejects.toThrow('does not exist');
 	});
 
+	it('excludes artifacts whose client or approver makes the grant inactive', async () => {
+		await dataSource.getRepository(McpOAuthClientEntity).update({ id: client.id }, { enabled: false });
+
+		expect(await service.findAccessTokens()).toEqual([expect.objectContaining({ clientId: otherClient.id })]);
+		expect(await service.findRefreshFamilies()).toEqual([]);
+		await expect(service.getAccessToken(accessId)).rejects.toThrow('not linked to an active grant');
+
+		await dataSource.getRepository(McpOAuthClientEntity).update({ id: client.id }, { enabled: true });
+		await dataSource.getRepository(UserEntity).update({ id: grant.approvedById }, { role: UserRole.USER });
+
+		expect(await service.findAccessTokens()).toEqual([]);
+		expect(await service.findRefreshFamilies()).toEqual([]);
+	});
+
 	it('revokes one access token and closes only its matching subscription', async () => {
 		const matching = await openSubscription(client.id, grant.id, accessId, familyId);
 		const otherAccessId = (await service.findAccessTokens()).find((token) => token.clientId === otherClient.id)?.id;
