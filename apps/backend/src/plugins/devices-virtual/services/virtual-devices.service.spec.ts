@@ -717,7 +717,7 @@ describe('VirtualDevicesService', () => {
 			const source = meter('meter', PropertyCategory.CONSUMPTION, ChannelCategory.ELECTRICAL_ENERGY);
 
 			channelsPropertiesService.findOne.mockResolvedValue(source);
-			index.findEnergyClaimant.mockResolvedValue('another-virtual-property');
+			index.findEnergyClaimant.mockResolvedValue({ id: 'another-virtual-property' });
 
 			await expect(
 				service.assertProjectionCompatible(energyProjection('meter', PropertyCategory.CONSUMPTION), CHANNEL_ID),
@@ -731,7 +731,7 @@ describe('VirtualDevicesService', () => {
 			const source = meter('meter', PropertyCategory.CONSUMPTION, ChannelCategory.ELECTRICAL_ENERGY);
 
 			channelsPropertiesService.findOne.mockResolvedValue(source);
-			index.findEnergyClaimant.mockResolvedValue('virtual-property');
+			index.findEnergyClaimant.mockResolvedValue({ id: 'virtual-property' });
 
 			const projection = energyProjection('meter', PropertyCategory.CONSUMPTION);
 

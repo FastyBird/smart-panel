@@ -56,18 +56,21 @@ describe('EnergyIngestionListener', () => {
 		});
 	};
 
-	/** Makes `claimant` the property accountable for the meter, presenting it from `room`. */
+	/**
+	 * Makes `claimant` the property accountable for the meter, presenting it from `room`. Answered
+	 * whole, the way the plugin holding the claim answers it: the ingestion never walks from a claimant
+	 * back to its device, because a second read would be racing a remap.
+	 */
 	const claimedBy = (
 		claimant: string,
 		room: string | null,
-		category = PropertyCategory.CONSUMPTION,
-		channelCategory = ChannelCategory.ELECTRICAL_ENERGY,
+		sourceType: EnergySourceType | null = EnergySourceType.CONSUMPTION_IMPORT,
 	): void => {
-		energyClaims.resolveClaimant.mockResolvedValue(claimant);
-		propertyQueryBuilder.getOne.mockResolvedValue({
-			id: claimant,
-			category,
-			channel: { id: 'virtual-channel-1', category: channelCategory, device: { id: 'virtual-device-1', roomId: room } },
+		energyClaims.resolveClaim.mockResolvedValue({
+			propertyId: claimant,
+			deviceId: 'virtual-device-1',
+			roomId: room,
+			sourceType,
 		});
 	};
 
@@ -130,7 +133,7 @@ describe('EnergyIngestionListener', () => {
 					provide: EnergyClaimRegistryService,
 					// Nothing claims anything unless a case says so, which is every installation running no
 					// plugin that takes a meter over.
-					useValue: { resolveClaimant: jest.fn().mockResolvedValue(null) },
+					useValue: { resolveClaim: jest.fn().mockResolvedValue(null) },
 				},
 				{
 					provide: PropertyValueSourceRegistryService,
@@ -233,7 +236,7 @@ describe('EnergyIngestionListener', () => {
 
 		await listener.handlePropertyValueSet(consumptionProperty);
 
-		expect(energyClaims.resolveClaimant).toHaveBeenCalledWith('property-1');
+		expect(energyClaims.resolveClaim).toHaveBeenCalledWith('property-1');
 		expect(energyData.saveDelta).toHaveBeenCalledWith(
 			expect.objectContaining({ deviceId: 'virtual-device-1', roomId: 'kitchen' }),
 		);
@@ -262,7 +265,7 @@ describe('EnergyIngestionListener', () => {
 	// to prevent, so the meter keeps its own attribution instead.
 	it('bills the meter itself when its claimant no longer presents the same reading', async () => {
 		propertyIsIn(ChannelCategory.ELECTRICAL_ENERGY);
-		claimedBy('virtual-property-1', 'kitchen', PropertyCategory.GRID_EXPORT);
+		claimedBy('virtual-property-1', 'kitchen', EnergySourceType.GRID_EXPORT);
 
 		await listener.handlePropertyValueSet(consumptionProperty);
 
@@ -284,11 +287,11 @@ describe('EnergyIngestionListener', () => {
 		propertyIsIn(ChannelCategory.ELECTRICAL_ENERGY);
 		projectedFromSource();
 		sourceIsIn(ChannelCategory.GENERIC);
-		energyClaims.resolveClaimant.mockResolvedValue(consumptionProperty.id);
+		claimedBy(consumptionProperty.id, null);
 
 		await listener.handlePropertyValueSet(consumptionProperty);
 
-		expect(energyClaims.resolveClaimant).toHaveBeenCalledWith('source-1');
+		expect(energyClaims.resolveClaim).toHaveBeenCalledWith('source-1');
 		expect(energyData.saveDelta).toHaveBeenCalledWith(expect.objectContaining({ deviceId: 'device-1' }));
 	});
 
@@ -296,7 +299,7 @@ describe('EnergyIngestionListener', () => {
 		propertyIsIn(ChannelCategory.ELECTRICAL_ENERGY);
 		projectedFromSource();
 		sourceIsIn(ChannelCategory.GENERIC);
-		energyClaims.resolveClaimant.mockResolvedValue('another-projection');
+		claimedBy('another-projection', 'office');
 
 		await listener.handlePropertyValueSet(consumptionProperty);
 

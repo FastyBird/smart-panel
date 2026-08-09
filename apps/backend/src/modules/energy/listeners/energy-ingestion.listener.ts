@@ -10,7 +10,7 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../device
 import { PropertyValueSourceRegistryService } from '../../devices/services/property-value-source.registry.service';
 import { ENERGY_MODULE_NAME, EnergySourceType } from '../energy.constants';
 import { DeltaComputationService } from '../services/delta-computation.service';
-import { EnergyClaimRegistryService } from '../services/energy-claim.registry.service';
+import { EnergyClaim, EnergyClaimRegistryService } from '../services/energy-claim.registry.service';
 import { EnergyDataService } from '../services/energy-data.service';
 import { EnergyMetricsService } from '../services/energy-metrics.service';
 import { findEnergySourceType } from '../utils/energy-source-type.utils';
@@ -203,12 +203,12 @@ export class EnergyIngestionListener implements OnModuleInit {
 		// Not a projection: it owns its series, and it is the meter. (An orphaned virtual property
 		// resolves to its own id too — its source is gone, so there is nothing it could be forwarding.)
 		if (sourcePropertyId === property.id) {
-			const claimant = await this.resolveClaimantDevice(property.id, sourceType);
+			const claim = await this.resolveClaim(property.id, sourceType);
 
 			return {
 				meter: { deviceId: device.id, channelId: channel.id },
-				deviceId: claimant?.id ?? device.id,
-				roomId: (claimant ?? device).roomId ?? null,
+				deviceId: claim?.deviceId ?? device.id,
+				roomId: claim ? claim.roomId : (device.roomId ?? null),
 			};
 		}
 
@@ -242,14 +242,14 @@ export class EnergyIngestionListener implements OnModuleInit {
 			return null;
 		}
 
-		const claimant = await this.energyClaims.resolveClaimant(source.id);
+		const claim = await this.energyClaims.resolveClaim(source.id);
 
 		// Skipped only when the meter is *somebody else's*. An unclaimed meter with an unrecognised
 		// source is ingested here rather than dropped: it is the state an installation is in before the
 		// claim mechanism has anything to say — no plugin registered, or a projection created before
 		// the column existed — and today's behaviour bills it to the physical device, which beats
 		// losing it.
-		if (claimant !== null && claimant !== property.id) {
+		if (claim !== null && claim.propertyId !== property.id) {
 			return null;
 		}
 
@@ -263,51 +263,35 @@ export class EnergyIngestionListener implements OnModuleInit {
 	}
 
 	/**
-	 * The device accountable for a meter that measures its own series, or null when nothing has taken
-	 * it over.
+	 * The claim on a meter that measures its own series, or null when nothing has taken it over and it
+	 * is therefore accountable for itself.
 	 *
-	 * A claim is only about attribution, so a claimant that cannot be read back — deleted between the
-	 * two queries, or claiming from a channel with no device — leaves the meter attributed to itself
-	 * rather than dropping the reading.
+	 * One read, answered whole by whichever plugin holds the claim — including the room, so nothing
+	 * here has to walk from a claimant back to its device. A second read would be racing a remap: the
+	 * claimant repointed at another meter in between would still have supplied the device this meter's
+	 * delta is billed to.
 	 */
-	private async resolveClaimantDevice(
-		meterPropertyId: string,
-		sourceType: EnergySourceType,
-	): Promise<DeviceEntity | null> {
-		const claimantId = await this.energyClaims.resolveClaimant(meterPropertyId);
+	private async resolveClaim(meterPropertyId: string, sourceType: EnergySourceType): Promise<EnergyClaim | null> {
+		const claim = await this.energyClaims.resolveClaim(meterPropertyId);
 
-		if (claimantId === null) {
+		if (claim === null) {
 			return null;
 		}
 
-		const claimant = await this.channelPropertyRepository
-			.createQueryBuilder('property')
-			.innerJoinAndSelect('property.channel', 'channel')
-			.innerJoinAndSelect('channel.device', 'device')
-			.where('property.id = :claimantId', { claimantId })
-			.getOne();
-
-		const claimantChannel = claimant?.channel as ChannelEntity | undefined;
-		const claimantDevice = claimantChannel?.device as DeviceEntity | undefined;
-
-		if (!claimantDevice) {
-			this.logger.debug(`Energy claimant ${claimantId} of property ${meterPropertyId} not found`);
-
-			return null;
-		}
-
-		// A claim is settled against the slot the projection presents, and the same rule is checked
-		// here rather than trusted: a claimant whose slot no longer reads what the meter reads would
-		// move the kWh under a heading its own device contradicts.
-		if (findEnergySourceType(claimantChannel?.category, claimant?.category)?.sourceType !== sourceType) {
+		// A claim is settled against the slot the projection presents, and the same rule is checked here
+		// rather than trusted: a claim can outlive the slot it was settled against — a source channel
+		// recategorised underneath it, say — and a claimant that no longer reads what the meter reads
+		// would move the kWh under a heading its own device contradicts. Reconciliation releases such a
+		// claim on the next structural pass; until then the meter is billed to itself.
+		if (claim.sourceType !== sourceType) {
 			this.logger.warn(
-				`Energy claimant ${claimantId} of property ${meterPropertyId} no longer presents ${sourceType}, attributing to the meter`,
+				`Energy claimant ${claim.propertyId} of property ${meterPropertyId} no longer presents ${sourceType}, attributing to the meter`,
 			);
 
 			return null;
 		}
 
-		return claimantDevice;
+		return claim;
 	}
 
 	private extractNumericValue(property: ChannelPropertyEntity): number | null {

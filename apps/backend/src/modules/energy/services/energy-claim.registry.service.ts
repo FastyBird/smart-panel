@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { ENERGY_MODULE_NAME } from '../energy.constants';
+import { ENERGY_MODULE_NAME, EnergySourceType } from '../energy.constants';
 
 /**
  * Answers "which property is accountable for this meter's kWh?".
@@ -16,14 +16,37 @@ import { ENERGY_MODULE_NAME } from '../energy.constants';
  * property per meter, whoever holds it, and the ingestion asks rather than deciding for itself —
  * core stays unaware of any particular plugin, as it does for
  * {@link IPropertyValueSource} next door.
+ *
+ * Everything the ingestion needs about a claim, read at one instant.
+ *
+ * Answered whole rather than as an id to look up afterwards, because the two reads that would take
+ * are racing a remap: a claimant repointed at another meter between them would still supply the
+ * device this meter's delta is billed to. One read cannot disagree with itself — whoever held the
+ * claim when it ran, and where that device is.
  */
+export interface EnergyClaim {
+	/** The property presenting the meter, so a claimant can be told apart from a claim it does not hold. */
+	propertyId: string;
+
+	deviceId: string;
+
+	roomId: string | null;
+
+	/**
+	 * What the claimant's own slot presents. The ingestion refuses to bill a claim that no longer reads
+	 * what the meter reads rather than trusting the claim outright — a claim settled against one slot
+	 * can outlive it, and moving kWh under a heading the claimant's own device contradicts is the
+	 * failure this whole mechanism exists to prevent.
+	 */
+	sourceType: EnergySourceType | null;
+}
+
 export interface IEnergyClaimSource {
 	/**
-	 * The id of the property accountable for this meter, or null when this source claims nothing for
-	 * it. Asked of storage rather than of a cache: a claim made moments ago decides where the very
-	 * next reading is billed.
+	 * The claim on this meter, or null when this source claims nothing for it. Asked of storage rather
+	 * than of a cache: a claim made moments ago decides where the very next reading is billed.
 	 */
-	resolveClaimant(meterPropertyId: string): Promise<string | null>;
+	resolveClaim(meterPropertyId: string): Promise<EnergyClaim | null>;
 }
 
 @Injectable()
@@ -55,13 +78,13 @@ export class EnergyClaimRegistryService {
 	 * existed; losing the sample instead would be a worse answer to a lookup that is only ever about
 	 * *whose* kWh it is.
 	 */
-	async resolveClaimant(meterPropertyId: string): Promise<string | null> {
+	async resolveClaim(meterPropertyId: string): Promise<EnergyClaim | null> {
 		for (const source of this.sources) {
 			try {
-				const claimant = await source.resolveClaimant(meterPropertyId);
+				const claim = await source.resolveClaim(meterPropertyId);
 
-				if (claimant !== null) {
-					return claimant;
+				if (claim !== null) {
+					return claim;
 				}
 			} catch (error) {
 				const err = error as Error;

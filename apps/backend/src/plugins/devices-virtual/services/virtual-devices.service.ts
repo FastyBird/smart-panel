@@ -1194,8 +1194,8 @@ export class VirtualDevicesService {
 
 		const claimant = await this.index.findEnergyClaimant(sourceProperty.id);
 
-		if (claimant !== null && claimant !== holder) {
-			return `Source property id=${sourceProperty.id} is already the energy meter of virtual property id=${claimant}; a meter's consumption is billed to one place, so it can only be projected into one energy slot`;
+		if (claimant !== null && claimant.id !== holder) {
+			return `Source property id=${sourceProperty.id} is already the energy meter of virtual property id=${claimant.id}; a meter's consumption is billed to one place, so it can only be projected into one energy slot`;
 		}
 
 		return null;

@@ -151,14 +151,15 @@ export class VirtualPropertyIndexService {
 	 * here, and a check that missed it would hand a second projection the same meter. The unique index
 	 * would then refuse the write, so the answer would be a 409 rather than the sentence naming what
 	 * already holds it.
+	 *
+	 * Returned whole, with the device it hangs on, because the ingestion needs the room as well and a
+	 * second read to find it would be racing a remap — see `VirtualEnergyClaimService`.
 	 */
-	async findEnergyClaimant(sourcePropertyId: string): Promise<string | null> {
-		const claimant = await this.repository.findOne({
+	async findEnergyClaimant(sourcePropertyId: string): Promise<VirtualChannelPropertyEntity | null> {
+		return await this.repository.findOne({
 			where: { energyClaimPropertyId: sourcePropertyId },
-			select: ['id'],
+			relations: ['channel', 'channel.device'],
 		});
-
-		return claimant?.id ?? null;
 	}
 
 	/** Which virtual properties project the given source property. O(1), synchronous, no I/O. */
