@@ -22,6 +22,7 @@ import { WeatherModule } from '../weather/weather.module';
 import { McpClientsController } from './controllers/mcp-clients.controller';
 import { McpOAuthClientsController } from './controllers/mcp-oauth-clients.controller';
 import { McpOAuthInteractionsController } from './controllers/mcp-oauth-interactions.controller';
+import { McpOAuthManagementController } from './controllers/mcp-oauth-management.controller';
 import { McpController } from './controllers/mcp.controller';
 import { UpdateMcpConfigDto } from './dto/update-config.dto';
 import { McpClientEntity } from './entities/mcp-client.entity';
@@ -58,6 +59,7 @@ import { McpInstallationService } from './services/mcp-installation.service';
 import { McpOAuthArtifactService } from './services/mcp-oauth-artifact.service';
 import { McpOAuthClientService } from './services/mcp-oauth-client.service';
 import { McpOAuthInteractionService } from './services/mcp-oauth-interaction.service';
+import { McpOAuthManagementService } from './services/mcp-oauth-management.service';
 import { McpOAuthProxyPolicyService } from './services/mcp-oauth-proxy-policy.service';
 import { McpOAuthPublicUrlService } from './services/mcp-oauth-public-url.service';
 import { McpOAuthRefreshTokenService } from './services/mcp-oauth-refresh-token.service';
@@ -102,7 +104,13 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		ToolsModule,
 		WeatherModule,
 	],
-	controllers: [McpClientsController, McpOAuthClientsController, McpOAuthInteractionsController, McpController],
+	controllers: [
+		McpClientsController,
+		McpOAuthClientsController,
+		McpOAuthInteractionsController,
+		McpOAuthManagementController,
+		McpController,
+	],
 	providers: [
 		McpClientGuard,
 		McpClientService,
@@ -112,6 +120,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpOAuthArtifactService,
 		McpOAuthClientService,
 		McpOAuthInteractionService,
+		McpOAuthManagementService,
 		McpOAuthProxyPolicyService,
 		McpOAuthProviderFactory,
 		McpOAuthPublicUrlService,
@@ -143,6 +152,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpOAuthArtifactService,
 		McpOAuthClientService,
 		McpOAuthInteractionService,
+		McpOAuthManagementService,
 		McpOAuthProxyPolicyService,
 		McpOAuthProviderFactory,
 		McpOAuthPublicUrlService,

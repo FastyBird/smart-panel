@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 5 authoritative OAuth subscription gate foundation complete
+Status: in progress — Phase 5 administrative artifact controls complete
 
 ## 1. Business goal
 
@@ -65,7 +65,7 @@ upgrade consequences.
       ceiling and approved grant.
 - [ ] Consent clearly names the installation, requesting client, redirect destination, expiry, and physical-device
       impact of write/trigger scopes.
-- [ ] Owners/admins can list and revoke OAuth clients, grants, access tokens, and refresh tokens; revocation closes the
+- [x] Owners/admins can list and revoke OAuth clients, grants, access tokens, and refresh tokens; revocation closes the
       affected MCP subscriptions immediately.
 - [ ] Reducing the live module ceiling, registered-client maximum, or approved-grant scopes closes every OAuth
       subscription whose effective read/write/trigger scope set contracts before the mutation reports success.

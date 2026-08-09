@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 5 in progress — authoritative OAuth subscription gate foundation implemented
+**Status:** Phase 5 in progress — administrative artifact controls implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -150,10 +150,16 @@ amend ADR 0002.
 - [x] Prove both race orderings with barriers: a registration that wins is subsequently closed, while a registration
       queued behind invalidation revalidates only after the generation advances.
 
+### Phase 5e — Administrative artifact controls
+
+- [x] Add list/inspect/disable/revoke APIs for OAuth clients, grants, access tokens, and refresh families.
+- [x] Add Admin client/grant/token management views and revoke confirmations.
+- [x] Close only the matching subscriptions before client, grant, access-token, or refresh-family revocation reports
+      success, and automatically close each stream at its authorization deadline.
+- [x] Regenerate OpenAPI/admin types through the normal generators.
+
 ### Remaining Phase 5 controls
 
-- [ ] Add list/inspect/disable/revoke APIs for OAuth clients, grants, access tokens, and refresh families.
-- [ ] Add Admin client/grant/token management views and revoke confirmations.
 - [x] Bind OAuth subscriptions to client, grant, access-token, optional refresh-family IDs, and an authorization
       deadline equal to the earlier of access-token or grant expiry; also record their effective scopes and the
       generations of the module/client/grant authorization inputs that produced them.
@@ -166,8 +172,6 @@ amend ADR 0002.
       client, grant, module-policy, and approver-authority generations and current states. Each invalidation must advance
       its generation before enumeration, so a racing handler either commits first and is revoked or its stale commit
       fails; validation must recheck all generations so later restoration cannot revive an escaped artifact.
-- [ ] Close only the matching subscriptions before client, grant, access-token, or refresh-family revocation reports
-      success, and automatically close each stream at its authorization deadline.
 - [ ] Route module-ceiling, registered-client-maximum, and approved-grant scope reductions through an awaited
       authoritative mutation path that closes every OAuth subscription whose effective scope set contracts before
       reporting success, including removal of `mcp:write` or `mcp:trigger` while `mcp:read` remains; do not rely on the
@@ -184,7 +188,6 @@ amend ADR 0002.
 - [ ] Add audit events and unit/e2e coverage for targeted and global invalidation.
 - [ ] Prove user update/delete promises remain pending until approver invalidation and stream closure finish, propagate
       invalidation failure, and never leave a demoted/deleted approver's grant usable.
-- [ ] Regenerate OpenAPI/admin types through the normal generators.
 - [ ] Add the user-facing OAuth enable switch only after startup verifies authorization-deadline timers, targeted
       artifact and live-scope-reduction subscription aborts, awaited approver lifecycle invalidation,
       serialized subscription-open/invalidation and all-generation artifact-issuance gates,

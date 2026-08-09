@@ -23,5 +23,6 @@ export type McpOAuthScope = McpModuleOAuthScope;
 
 export const RouteNames = {
 	CLIENTS: 'mcp_module-clients',
+	OAUTH_MANAGEMENT: 'mcp_module-oauth-management',
 	OAUTH_CONSENT: 'mcp_module-oauth-consent',
 };
