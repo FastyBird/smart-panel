@@ -175,8 +175,7 @@ export class McpOAuthInteractionService {
 		this.assertApprovedScopes(dto.scopes, context.requestedScopes, context.client.maximumScopes);
 		await this.consumeInteraction(context.interaction, userId);
 
-		let providerGrant = details.grantId === undefined ? undefined : await provider.Grant.find(details.grantId);
-		providerGrant ??= new provider.Grant({ accountId: userId, clientId: context.client.clientIdentifier });
+		const providerGrant = new provider.Grant({ accountId: userId, clientId: context.client.clientIdentifier });
 		const capabilityScopes = dto.scopes.filter((scope) => scope !== McpOAuthScope.OFFLINE_ACCESS);
 
 		if (capabilityScopes.length > 0) {
@@ -186,21 +185,15 @@ export class McpOAuthInteractionService {
 			providerGrant.addOIDCScope(McpOAuthScope.OFFLINE_ACCESS);
 		}
 
-		const grantId = await (providerGrant as unknown as { save: (timeToLiveSeconds?: number) => Promise<string> }).save(
-			dto.expiresInDays * 24 * 60 * 60,
-		);
+		(providerGrant as unknown as { expiresIn: number }).expiresIn = dto.expiresInDays * 24 * 60 * 60;
+		const grantId = await providerGrant.save();
 		await this.artifactService.createGrant({
 			clientId: context.client.id,
 			approvedById: userId,
 			approvedScopes: dto.scopes,
 			expiresAt: new Date(Date.now() + dto.expiresInDays * DAYS_TO_MILLISECONDS),
 		});
-		const completion = await this.finish(
-			provider,
-			request,
-			{ consent: details.grantId === undefined ? { grantId } : {} },
-			true,
-		);
+		const completion = await this.finish(provider, request, { consent: { grantId } }, true);
 
 		return completion;
 	}

@@ -112,6 +112,7 @@ describe('McpOAuthInteractionService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		stored.clear();
+		delete (providerGrant as { expiresIn?: number }).expiresIn;
 		interactionDetails.mockResolvedValue({ ...details, prompt: { ...details.prompt } });
 		service = new McpOAuthInteractionService(
 			interactions as never,
@@ -173,7 +174,8 @@ describe('McpOAuthInteractionService', () => {
 
 		expect(providerGrant.addResourceScope).toHaveBeenCalledWith(urls.resource, McpOAuthScope.READ);
 		expect(providerGrant.addOIDCScope).toHaveBeenCalledWith(McpOAuthScope.OFFLINE_ACCESS);
-		expect(providerGrant.save).toHaveBeenCalledWith(30 * 24 * 60 * 60);
+		expect(providerGrant).toHaveProperty('expiresIn', 30 * 24 * 60 * 60);
+		expect(providerGrant.save).toHaveBeenCalledWith();
 		expect(artifactService.createGrant).toHaveBeenCalled();
 		const grantInput = artifactService.createGrant.mock.calls[0]?.[0] as {
 			clientId?: string;
@@ -190,6 +192,23 @@ describe('McpOAuthInteractionService', () => {
 		expect(grantInput.expiresAt).toBeInstanceOf(Date);
 		expect(completion.redirectTo).toBe('/auth/resume');
 		expect(interactions.update).toHaveBeenCalled();
+	});
+
+	it('replaces an existing provider grant so omitted scopes cannot survive reauthorization', async () => {
+		interactionDetails.mockResolvedValue({ ...details, grantId: 'existing-provider-grant' });
+		await service.getInteraction(rawUid, userId, request);
+
+		await service.approve(rawUid, userId, { scopes: [McpOAuthScope.READ], expiresInDays: 7 }, request);
+
+		expect(Grant.find).not.toHaveBeenCalled();
+		expect(providerGrant.addResourceScope).toHaveBeenCalledWith(urls.resource, McpOAuthScope.READ);
+		expect(providerGrant.addOIDCScope).not.toHaveBeenCalled();
+		expect(interactionFinished).toHaveBeenLastCalledWith(
+			request,
+			expect.anything(),
+			{ consent: { grantId: 'provider-grant-id' } },
+			{ mergeWithLastSubmission: true },
+		);
 	});
 
 	it('rejects consent scope escalation', async () => {
