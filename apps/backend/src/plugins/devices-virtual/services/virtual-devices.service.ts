@@ -1140,15 +1140,50 @@ export class VirtualDevicesService {
 		destinationChannelCategory: ChannelCategory,
 		sourceProperty: ChannelPropertyEntity,
 	): Promise<void> {
+		const conflict = await this.describeEnergyClaimConflict(
+			{ channel: destinationChannelCategory, property: property.category },
+			sourceProperty,
+			property.id,
+		);
+
+		if (conflict !== null) {
+			throw new VirtualProjectionIncompatibleException(conflict);
+		}
+
 		// Judged on the *destination*: what makes a reading energy is the slot it is presented in, which
 		// is the pair the ingestion classifies when it handles this projection's own event. A
 		// `consumption` property sitting in a `generic` channel is not a meter anywhere else and becomes
 		// one here — which is exactly the case that double-counts today, since nothing skips those
 		// projections.
-		const destination = findEnergySourceType(destinationChannelCategory, property.category);
+		if (findEnergySourceType(destinationChannelCategory, property.category) === null) {
+			return;
+		}
+
+		property.energyClaimPropertyId = sourceProperty.id;
+	}
+
+	/**
+	 * Why this slot may not bill this source's kWh, or null when it may — and null, too, for the many
+	 * slots that carry no energy at all and so have nothing to bill.
+	 *
+	 * Separate from the settlement above because two callers need the same answer: the gate, which
+	 * refuses the write, and the wizard's compatibility preview, which greys the pairing out before
+	 * anyone tries. A preview that offered a meter the very next request rejects is the shape of false
+	 * green the nesting rule already avoids the same way — the user acts on green.
+	 *
+	 * `holder` is the property allowed to be holding the claim already: its own id at the gate, so a
+	 * PATCH that leaves the source alone is not read as a second claimant, and nothing in the preview,
+	 * where the property being described does not exist yet.
+	 */
+	async describeEnergyClaimConflict(
+		slot: { channel: ChannelCategory; property: PropertyCategory },
+		sourceProperty: ChannelPropertyEntity,
+		holder?: string,
+	): Promise<string | null> {
+		const destination = findEnergySourceType(slot.channel, slot.property);
 
 		if (destination === null) {
-			return;
+			return null;
 		}
 
 		const sourceChannel = await this.resolveChannelOf(sourceProperty);
@@ -1168,20 +1203,16 @@ export class VirtualDevicesService {
 		// Both are recorded as follow-ups; this guard is what stops the gap reopening when either is
 		// fixed, which is exactly when nobody would think to look for it.
 		if (source !== null && source.sourceType !== destination.sourceType) {
-			throw new VirtualProjectionIncompatibleException(
-				`Property id=${property.id} presents source id=${sourceProperty.id} as '${destination.sourceType}', but that source reads '${source.sourceType}'; a projection forwards its source's value unchanged, so it cannot change what the reading means`,
-			);
+			return `Source id=${sourceProperty.id} would be presented as '${destination.sourceType}', but it reads '${source.sourceType}'; a projection forwards its source's value unchanged, so it cannot change what the reading means`;
 		}
 
 		const claimant = await this.index.findEnergyClaimant(sourceProperty.id);
 
-		if (claimant !== null && claimant !== property.id) {
-			throw new VirtualProjectionIncompatibleException(
-				`Source property id=${sourceProperty.id} is already the energy meter of virtual property id=${claimant}; a meter's consumption is billed to one place, so it can only be projected into one energy slot`,
-			);
+		if (claimant !== null && claimant !== holder) {
+			return `Source property id=${sourceProperty.id} is already the energy meter of virtual property id=${claimant}; a meter's consumption is billed to one place, so it can only be projected into one energy slot`;
 		}
 
-		property.energyClaimPropertyId = sourceProperty.id;
+		return null;
 	}
 
 	private async resolveChannelOf(property: ChannelPropertyEntity): Promise<ChannelEntity | null> {

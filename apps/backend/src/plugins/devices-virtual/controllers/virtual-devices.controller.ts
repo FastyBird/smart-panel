@@ -157,6 +157,14 @@ export class VirtualDevicesController {
 		// `assertPermissionsCompatible`'s.
 		const nestingRefusals = new Map<string, string>();
 
+		// And the other rule a pairwise slot report cannot see: whether this meter is already billed
+		// somewhere. `reportCompatibility` compares a candidate against a slot, and a meter already
+		// presented by another virtual device matches an energy slot as well as any other — so without
+		// this the wizard would offer it, and the create would refuse it. Keyed per candidate rather
+		// than per source, because whether a claim is even at stake depends on the slot: only an
+		// energy-bearing destination bills anything.
+		const claimRefusals = new Map<string, string>();
+
 		for (const candidate of candidates) {
 			if (sourceProperties.has(candidate.source_property)) {
 				continue;
@@ -197,18 +205,42 @@ export class VirtualDevicesController {
 			}
 		}
 
+		// Asked once per distinct (slot, source) pair, after resolution: a claim only matters where the
+		// destination bills something, and the same meter is often checked against several slots at once.
+		for (const candidate of candidates) {
+			const sourceProperty = sourceProperties.get(candidate.source_property);
+			const key = `${candidate.spec_channel}:${candidate.spec_property}:${candidate.source_property}`;
+
+			if (!sourceProperty || claimRefusals.has(key)) {
+				continue;
+			}
+
+			const conflict = await this.virtualDevicesService.describeEnergyClaimConflict(
+				{ channel: candidate.spec_channel, property: candidate.spec_property },
+				sourceProperty,
+			);
+
+			if (conflict !== null) {
+				claimRefusals.set(key, conflict);
+			}
+		}
+
 		const reports = candidates.map((candidate) => {
 			const sourceProperty = sourceProperties.get(candidate.source_property);
 
-			const nesting = nestingRefusals.get(candidate.source_property);
+			// Nesting first: a candidate that may not be projected at all is not worth describing as an
+			// energy conflict too, and the slot report is the fallback both refusals stand in front of.
+			const refusal =
+				nestingRefusals.get(candidate.source_property) ??
+				claimRefusals.get(`${candidate.spec_channel}:${candidate.spec_property}:${candidate.source_property}`);
 
 			const result =
-				nesting === undefined
+				refusal === undefined
 					? this.virtualDevicesService.reportCompatibility(
 							{ category, channel: candidate.spec_channel, property: candidate.spec_property },
 							sourceProperty,
 						)
-					: { compatible: false, reason: nesting };
+					: { compatible: false, reason: refusal };
 
 			const report = new CompatibilityReportModel();
 

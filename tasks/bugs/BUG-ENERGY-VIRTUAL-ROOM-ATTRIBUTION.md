@@ -5,7 +5,7 @@ Type: bug
 Scope: backend
 Size: medium
 Parent: EPIC-VIRTUAL-DEVICES
-Status: planned
+Status: in-progress
 
 ## 1. Summary
 
@@ -243,44 +243,50 @@ fix must not introduce a lookup that assumes otherwise.
 
 ## 5. Acceptance criteria
 
-- [ ] A delta for a projected energy property carries the projecting device's `deviceId` and `roomId`
-- [ ] A device's unprojected energy channels still attribute to the device itself
-- [ ] **The split case, with one claimant per meter:** two energy-bearing channels of one physical
+Split across two PRs. [#649](https://github.com/FastyBird/smart-panel/pull/649) does the claim and
+the attribution — everything below that is ticked. What is left is the *readers*: the space queries
+reach a room by joining the device's current `roomId` instead of the recorded `delta.roomId`, and
+`saveDelta` accumulates into a bucket keyed without the room. Both are pre-existing, neither is about
+attribution, and a split merely makes them routine.
+
+- [x] A delta for a projected energy property carries the projecting device's `deviceId` and `roomId`
+- [x] A device's unprojected energy channels still attribute to the device itself
+- [x] **The split case, with one claimant per meter:** two energy-bearing channels of one physical
       device — a 4PM has one per relay — projected into different rooms put each channel's kWh in its
       own room, nothing in the other, and leave the house total unchanged
-- [ ] A second projection of an already-claimed energy property is refused at persistence, and the
+- [x] A second projection of an already-claimed energy property is refused at persistence, and the
       wizard reports the pairing as incompatible
-- [ ] Two concurrent claims on the same previously unclaimed meter cannot both persist — with a
+- [x] Two concurrent claims on the same previously unclaimed meter cannot both persist — with a
       regression test that drives them concurrently, not one after the other
-- [ ] A **non-qualifying** source (a `consumption` property in a `generic` channel) projected into two
+- [x] A **non-qualifying** source (a `consumption` property in a `generic` channel) projected into two
       `electrical_energy` slots is refused the same way, and the household total does not double
-- [ ] Creating a projection over an already-running meter loses no consumption: a transition test with
+- [x] Creating a projection over an already-running meter loses no consumption: a transition test with
       readings before and after the projection shows the delta spanning them, not a dropped first
       sample
-- [ ] An installation that already holds duplicate claims comes up with exactly one claimant per
+- [x] An installation that already holds duplicate claims comes up with exactly one claimant per
       meter after the migration, deterministically chosen among the mappings the new rules accept —
       an older but cross-type projection does not take the claim from a younger admissible one, and a
       meter with no admissible candidate is left unclaimed rather than misattributed
-- [ ] **And the household total is right afterwards:** the losing projections stop producing deltas,
+- [x] **And the household total is right afterwards:** the losing projections stop producing deltas,
       including where the source is non-qualifying and nothing else would have skipped them — a
       post-migration regression test on the total, not only on the per-room split
-- [ ] A qualifying source that *is* claimed still produces exactly one delta, from the source event,
+- [x] A qualifying source that *is* claimed still produces exactly one delta, from the source event,
       carrying the claimant's room — not two
-- [ ] A pairing whose destination slot means something else — `grid_import` projected into
+- [x] A pairing whose destination slot means something else — `grid_import` projected into
       `grid_export` — is refused, rather than being counted under the source's type in a room that
       displays it as the other
-- [ ] Removing or remapping the claim holder promotes another projection of the same meter, if one
+- [x] Removing or remapping the claim holder promotes another projection of the same meter, if one
       remains, so the meter neither vanishes from the totals nor quietly changes room
-- [ ] A deletion racing a new claim on the same meter leaves exactly one claimant, whichever wins —
+- [x] A deletion racing a new claim on the same meter leaves exactly one claimant, whichever wins —
       tested by driving the delete and the create concurrently, not in sequence
-- [ ] A refused claim leaves nothing behind: no projection without its claim, no claim without its
+- [x] A refused claim leaves nothing behind: no projection without its claim, no claim without its
       projection, asserted after the rejected request rather than only on the winner
-- [ ] A metadata edit that orphans a claimed projection clears its claim in the same statement and
+- [x] A metadata edit that orphans a claimed projection clears its claim in the same statement and
       promotes a successor, leaving no orphan holding a meter
-- [ ] Deleting a claimed source property clears the claim with the link — the orphan holds nothing,
+- [x] Deleting a claimed source property clears the claim with the link — the orphan holds nothing,
       another projection of a recreated property can claim it, and the migration covers rows that
       were already orphaned
-- [ ] An orphaned projection is attributed to the virtual device that holds it — there is no source
+- [x] An orphaned projection is attributed to the virtual device that holds it — there is no source
       left to fall back to. `VirtualValueSourceService.resolve()` answers `null` once
       `sourcePropertyId` is null, the registry then resolves the property to its own id, and
       `wasIngestedAsSource()` reads that as "not a projection" and ingests it. That is already the
@@ -291,7 +297,7 @@ fix must not introduce a lookup that assumes otherwise.
       it was recorded in, and deleting it does not erase that history from the space views
 - [ ] A reading that arrives after a move, inside the same interval bucket, is recorded against the
       new room rather than accumulating into the old one
-- [ ] Regression tests for the split case above and for the refusal — **not** for reproduction (a) as
+- [x] Regression tests for the split case above and for the refusal — **not** for reproduction (a) as
       it stands: it projects one meter into two rooms, which the single-claim rule makes impossible to
       construct, and a test that bypassed persistence to build it would be asserting a split this task
       never defines the rule for (why room A rather than room B owns the delta). Reproduction (a) is

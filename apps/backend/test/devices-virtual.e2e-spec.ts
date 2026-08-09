@@ -2529,6 +2529,161 @@ describe('devices-virtual plugin (e2e)', () => {
 		});
 	});
 
+	// ─── One meter, one claimant ─────────────────────────────────────────────────────────
+	//
+	// A source property may legitimately feed several virtual devices — one sensor serves two rooms'
+	// climate — and for a reading that is coherent. Energy is not: a kWh billed to two rooms is
+	// arithmetic nobody asked for, and attribution needs one accountable device. The rule is enforced
+	// where it cannot be raced, on the row itself, and this is the API's view of it.
+
+	describe('a meter already presented by another virtual device', () => {
+		let meterDeviceId: string;
+		let meterPropertyId: string;
+		let firstClaimantId: string;
+
+		const virtualOutlet = (name: string, meter: string) => ({
+			data: {
+				type: DEVICES_VIRTUAL_TYPE,
+				category: DeviceCategory.OUTLET,
+				name,
+				channels: [
+					{
+						type: DEVICES_VIRTUAL_TYPE,
+						category: ChannelCategory.ELECTRICAL_ENERGY,
+						identifier: 'electrical_energy',
+						name: 'Energy',
+						properties: [
+							{
+								type: DEVICES_VIRTUAL_TYPE,
+								category: PropertyCategory.CONSUMPTION,
+								identifier: 'consumption',
+								name: 'Consumption',
+								permissions: [PermissionType.READ_ONLY],
+								data_type: DataTypeType.FLOAT,
+								format: [0, null],
+								source_property: meter,
+							},
+						],
+					},
+				],
+			},
+		});
+
+		it('creates a physical device carrying a cumulative meter', async () => {
+			const response = await authPost('/modules/devices/devices')
+				.send({
+					data: {
+						type: SIMULATOR_TYPE,
+						category: DeviceCategory.OUTLET,
+						name: 'E2E Metered Outlet',
+						channels: [
+							{
+								type: SIMULATOR_TYPE,
+								category: ChannelCategory.ELECTRICAL_ENERGY,
+								identifier: 'electrical_energy',
+								name: 'Energy',
+								properties: [
+									{
+										type: SIMULATOR_TYPE,
+										category: PropertyCategory.CONSUMPTION,
+										identifier: 'consumption',
+										name: 'Consumption',
+										permissions: [PermissionType.READ_ONLY],
+										data_type: DataTypeType.FLOAT,
+										format: [0, null],
+									},
+								],
+							},
+						],
+					},
+				})
+				.expect(201);
+
+			const body = response.body as { data: DeviceBody };
+
+			meterDeviceId = body.data.id;
+			meterPropertyId =
+				body.data.channels
+					.find((channel) => channel.category === String(ChannelCategory.ELECTRICAL_ENERGY))
+					?.properties.find((property) => property.category === PropertyCategory.CONSUMPTION)?.id ?? '';
+
+			expect(meterPropertyId).toBeTruthy();
+		});
+
+		it('lets the first virtual device present it', async () => {
+			const response = await authPost('/modules/devices/devices')
+				.send(virtualOutlet('E2E Kitchen Meter', meterPropertyId))
+				.expect(201);
+
+			firstClaimantId = (response.body as { data: DeviceBody }).data.id;
+
+			expect(firstClaimantId).toBeTruthy();
+		});
+
+		// The nested device-create path reports its own generic envelope rather than the guard's reason —
+		// the same shape every other nested failure gets here — so the status is what this pins. The
+		// reason has to reach the user somewhere, and the case below is where: the wizard asks before it
+		// writes.
+		it('refuses a second one', async () => {
+			const rejected = await authPost('/modules/devices/devices').send(
+				virtualOutlet('E2E Office Meter', meterPropertyId),
+			);
+
+			expect(rejected.status).toBe(422);
+		});
+
+		// A false green is the one answer a user acts on. `reportCompatibility` compares a candidate
+		// against a slot and a claimed meter fits an energy slot as well as any other, so without the
+		// claim folded in the wizard would offer this pairing and the create would then refuse it.
+		it('tells the wizard the pairing is incompatible, and why', async () => {
+			const preview = await authPost('/plugins/devices-virtual/devices/compatibility')
+				.send({
+					data: {
+						category: DeviceCategory.OUTLET,
+						candidates: [
+							{
+								spec_channel: ChannelCategory.ELECTRICAL_ENERGY,
+								spec_property: PropertyCategory.CONSUMPTION,
+								source_property: meterPropertyId,
+							},
+						],
+					},
+				})
+				.expect(201);
+
+			const [report] = (preview.body as { data: { compatible: boolean; reason: string }[] }).data;
+
+			expect(report.compatible).toBe(false);
+			expect(report.reason).toContain('is already the energy meter of virtual property');
+		});
+
+		// The claim and the projection are one row written by one statement, so a refusal cannot leave
+		// half of either behind — but that is the kind of thing worth asserting rather than reasoning
+		// about, since the failure mode is a device that exists and bills nothing.
+		it('leaves nothing of the refused device behind', async () => {
+			const devices = await authGet('/modules/devices/devices').expect(200);
+
+			const names = (devices.body as { data: { id: string; name: string }[] }).data.map((device) => device.name);
+
+			expect(names).toContain('E2E Kitchen Meter');
+			expect(names).not.toContain('E2E Office Meter');
+		});
+
+		// Deleting the holder takes its claim with the row, and the meter is free again — which is also
+		// the path `reconcileEnergyClaims` sweeps behind, since a delete cannot name what it released.
+		it('lets the meter be presented again once the holder is gone', async () => {
+			await ensureDeviceDeleted(authGet, authDelete, firstClaimantId);
+
+			const successor = await authPost('/modules/devices/devices')
+				.send(virtualOutlet('E2E Office Meter', meterPropertyId))
+				.expect(201);
+
+			// Tidied up in reverse, so nothing is deleted out from under a projection that still reads it.
+			await ensureDeviceDeleted(authGet, authDelete, (successor.body as { data: DeviceBody }).data.id);
+			await ensureDeviceDeleted(authGet, authDelete, meterDeviceId);
+		});
+	});
+
 	// ─── Auth enforcement ────────────────────────────────────────────────────────────────
 
 	describe('authentication', () => {
