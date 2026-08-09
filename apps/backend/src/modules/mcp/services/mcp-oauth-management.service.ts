@@ -107,7 +107,7 @@ export class McpOAuthManagementService {
 	async updateClient(id: string, dto: UpdateMcpOAuthClientDto, actorId: string): Promise<McpOAuthClientModel> {
 		const current = await this.clientsService.getOneOrThrow(id);
 
-		if (dto.enabled === false) return this.disableClient(id, actorId);
+		if (dto.enabled === false) return this.disableClient(id, actorId, dto);
 
 		const authorizationChanged =
 			(dto.redirectUris !== undefined && !this.sameValues(current.redirectUris, dto.redirectUris)) ||
@@ -127,17 +127,25 @@ export class McpOAuthManagementService {
 		return updated;
 	}
 
-	async disableClient(id: string, actorId: string): Promise<McpOAuthClientModel> {
+	async disableClient(id: string, actorId: string, dto: UpdateMcpOAuthClientDto = {}): Promise<McpOAuthClientModel> {
 		const client = await this.clientsService.getOneOrThrow(id);
+
+		if (dto.maximumScopes !== undefined) {
+			this.clientsService.assertScopesAllowed(dto.maximumScopes);
+		}
 
 		await this.subscriptions.closeOAuthClient(id, async () => {
 			await this.dataSource.transaction(async (manager) => {
-				const clientResult = await manager
-					.getRepository(McpOAuthClientEntity)
-					.update(
-						{ id: client.id, generation: client.generation },
-						{ enabled: false, generation: () => 'generation + 1' },
-					);
+				const clientResult = await manager.getRepository(McpOAuthClientEntity).update(
+					{ id: client.id, generation: client.generation },
+					{
+						...(dto.name !== undefined ? { name: dto.name } : {}),
+						...(dto.redirectUris !== undefined ? { redirectUris: [...dto.redirectUris] } : {}),
+						...(dto.maximumScopes !== undefined ? { maximumScopes: [...dto.maximumScopes] } : {}),
+						enabled: false,
+						generation: () => 'generation + 1',
+					},
+				);
 
 				if (!clientResult.affected) {
 					throw new ConflictException('The MCP OAuth client changed during disable');

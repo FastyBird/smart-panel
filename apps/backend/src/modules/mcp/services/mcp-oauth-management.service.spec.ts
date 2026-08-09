@@ -163,6 +163,7 @@ describe('McpOAuthManagementService', () => {
 		]);
 		const clientsService = {
 			getOneOrThrow: jest.fn(async (id: string) => clients.findOneByOrFail({ id })),
+			assertScopesAllowed: jest.fn(),
 			update: jest.fn(async (id: string, dto: Partial<McpOAuthClientEntity>) => {
 				await clients.update({ id }, dto);
 
@@ -260,6 +261,31 @@ describe('McpOAuthManagementService', () => {
 		expect(disabled.enabled).toBe(false);
 		expect(matching.signal.aborted).toBe(true);
 		expect(other.signal.aborted).toBe(false);
+		expect((await service.getGrant(grant.id)).active).toBe(false);
+		expect(await service.findAccessTokens()).toEqual([expect.objectContaining({ clientId: otherClient.id })]);
+	});
+
+	it('preserves metadata updates when a client is disabled through PATCH', async () => {
+		const disabled = await service.updateClient(
+			client.id,
+			{
+				name: 'Codex CLI',
+				redirectUris: ['http://127.0.0.1:6789/oauth/callback'],
+				maximumScopes: [McpOAuthScope.READ],
+				enabled: false,
+			},
+			'actor-id',
+		);
+
+		expect(disabled).toMatchObject({
+			name: 'Codex CLI',
+			redirectUris: ['http://127.0.0.1:6789/oauth/callback'],
+			maximumScopes: [McpOAuthScope.READ],
+			enabled: false,
+		});
+		expect((await dataSource.getRepository(McpOAuthClientEntity).findOneByOrFail({ id: client.id })).generation).toBe(
+			1,
+		);
 		expect((await service.getGrant(grant.id)).active).toBe(false);
 		expect(await service.findAccessTokens()).toEqual([expect.objectContaining({ clientId: otherClient.id })]);
 	});

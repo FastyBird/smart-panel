@@ -88,7 +88,7 @@ export class McpOAuthClientService {
 		return client.redirectUris.some((registered) => matchesMcpOAuthRedirectUri(registered, requested));
 	}
 
-	private assertScopesAllowed(scopes: McpOAuthScope[]): void {
+	assertScopesAllowed(scopes: McpOAuthScope[]): void {
 		const ceiling = this.configService.getModuleConfig<McpConfigModel>(MCP_MODULE_NAME).capabilities;
 		const disallowed = scopes.filter((scope) => {
 			if (scope === McpOAuthScope.OFFLINE_ACCESS) return false;
