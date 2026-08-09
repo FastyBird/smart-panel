@@ -13,7 +13,7 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { IS_MCP_ENDPOINT_KEY } from '../../mcp/mcp.constants';
+import { IS_MCP_ENDPOINT_KEY, MCP_OAUTH_PRINCIPAL_TYPE } from '../../mcp/mcp.constants';
 import { McpAuditService } from '../../mcp/services/mcp-audit.service';
 import { McpClientService } from '../../mcp/services/mcp-client.service';
 import { McpInstallationService } from '../../mcp/services/mcp-installation.service';
@@ -609,6 +609,25 @@ describe('AuthGuard', () => {
 
 			await expect(guard.canActivate(context)).rejects.toThrow('MCP credentials are only valid on the MCP endpoint');
 		});
+
+		it.each([false, true])(
+			'should reject an OAuth MCP discriminator on static/ordinary auth paths (%s)',
+			async (mcp) => {
+				const context = createMockExecutionContext({ authorization: 'Bearer oauth-token' });
+				jest
+					.spyOn(reflector, 'getAllAndOverride')
+					.mockImplementation((key: string) => (key === IS_MCP_ENDPOINT_KEY ? mcp : false));
+				jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({
+					sub: 'oauth-access-token',
+					type: MCP_OAUTH_PRINCIPAL_TYPE,
+				});
+
+				await expect(guard.canActivate(context)).rejects.toThrow(
+					'OAuth MCP credentials require the isolated OAuth verifier',
+				);
+				expect(tokensService.findOneByHashedToken).not.toHaveBeenCalled();
+			},
+		);
 
 		it('should reject a personal token on an MCP endpoint', async () => {
 			const context = createMockExecutionContext({ authorization: `Bearer ${mockLongLiveToken}` });

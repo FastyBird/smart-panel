@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 1 complete — authorization-component executable spike passed
+**Status:** Phase 2 complete — inactive persistent OAuth domain foundation and public URL policy implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -61,18 +61,18 @@ amend ADR 0002.
 
 **Goal:** Add inactive OAuth data/configuration foundations without publishing incomplete discovery.
 
-- [ ] Add an incremental migration for OAuth clients, grants, authorization interactions/codes, access tokens, refresh
+- [x] Add an incremental migration for OAuth clients, grants, authorization interactions/codes, access tokens, refresh
       token families, and server-secret/key version metadata.
-- [ ] Add MCP-owned entities and services with raw artifacts hashed at creation.
-- [ ] Add an explicit HTTPS public base URL configuration, but no user-settable OAuth enable switch yet.
-- [ ] Derive resource, issuer, well-known, authorization, token, and revocation URLs only from trusted configuration.
-- [ ] Reject forwarded headers unless a separately explicit trusted-proxy policy validates the immediate proxy.
-- [ ] Add a distinct OAuth MCP principal/token type and prove rejection by REST, WebSocket, display, user, personal, and
+- [x] Add MCP-owned entities and services with raw artifacts hashed at creation.
+- [x] Add an explicit HTTPS public base URL configuration, but no user-settable OAuth enable switch yet.
+- [x] Derive resource, issuer, well-known, authorization, token, and revocation URLs only from trusted configuration.
+- [x] Reject forwarded headers unless a separately explicit trusted-proxy policy validates the immediate proxy.
+- [x] Add a distinct OAuth MCP principal/token type and prove rejection by REST, WebSocket, display, user, personal, and
       static-MCP validation paths.
-- [ ] Implement refresh rotation as a TypeORM compare-and-consume transaction with a conditional consumed-state update
+- [x] Implement refresh rotation as a TypeORM compare-and-consume transaction with a conditional consumed-state update
       and unique predecessor/successor constraint: at most one concurrent request creates a successor, and every loser
       revokes the whole family including that successor.
-- [ ] Add unit tests for access-token expiry capped at grant expiry, sequential and barrier-synchronized concurrent
+- [x] Add unit tests for access-token expiry capped at grant expiry, sequential and barrier-synchronized concurrent
       family rotation/reuse, installation binding, public URL changes, and log redaction.
 
 ## Phase 3 — Authorization, consent, and token endpoints

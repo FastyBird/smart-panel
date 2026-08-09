@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { ArrayUnique, IsArray, IsBoolean, IsEnum, IsString, Validate } from 'class-validator';
+import { ArrayUnique, IsArray, IsBoolean, IsEnum, IsOptional, IsString, Validate } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
@@ -8,9 +8,11 @@ import {
 	MCP_DEFAULT_ALLOWED_ORIGINS,
 	MCP_DEFAULT_CAPABILITIES,
 	MCP_DEFAULT_ENABLED,
+	MCP_DEFAULT_OAUTH_PUBLIC_BASE_URL,
 	MCP_MODULE_NAME,
 	McpCapability,
 } from '../mcp.constants';
+import { IsMcpOAuthPublicBaseUrlConstraint } from '../validators/is-mcp-oauth-public-base-url.validator';
 import { IsMcpOriginConstraint } from '../validators/is-mcp-origin.validator';
 
 @ApiSchema({ name: 'ConfigModuleDataMcp' })
@@ -57,4 +59,16 @@ export class McpConfigModel extends ModuleConfigModel {
 	@ArrayUnique()
 	@Validate(IsMcpOriginConstraint, { each: true })
 	allowedOrigins: string[] = [...MCP_DEFAULT_ALLOWED_ORIGINS];
+
+	@ApiProperty({
+		name: 'oauth_public_base_url',
+		description: 'Explicit canonical HTTPS base URL used to derive the inactive MCP OAuth identity',
+		type: 'string',
+		nullable: true,
+		example: 'https://panel.example.com',
+	})
+	@Expose({ name: 'oauth_public_base_url' })
+	@IsOptional()
+	@Validate(IsMcpOAuthPublicBaseUrlConstraint)
+	oauthPublicBaseUrl: string | null = MCP_DEFAULT_OAUTH_PUBLIC_BASE_URL;
 }

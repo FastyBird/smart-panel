@@ -15,11 +15,28 @@ export enum McpCapability {
 	TRIGGER = 'trigger',
 }
 
+export enum McpOAuthScope {
+	READ = 'mcp:read',
+	WRITE = 'mcp:write',
+	TRIGGER = 'mcp:trigger',
+	OFFLINE_ACCESS = 'offline_access',
+}
+
 export const MCP_DEFAULT_ENABLED = false;
 
 export const MCP_DEFAULT_CAPABILITIES: readonly McpCapability[] = [McpCapability.READ];
 
 export const MCP_DEFAULT_ALLOWED_ORIGINS: readonly string[] = [];
+
+export const MCP_DEFAULT_OAUTH_PUBLIC_BASE_URL: string | null = null;
+
+export const MCP_OAUTH_PRINCIPAL_TYPE = 'mcp_oauth';
+
+export const MCP_OAUTH_ACCESS_TOKEN_LIFETIME_MS = 10 * 60 * 1000;
+
+export const MCP_OAUTH_REFRESH_FAMILY_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
+
+export const MCP_OAUTH_GRANT_LIFETIME_MS = 90 * 24 * 60 * 60 * 1000;
 
 export const MCP_DEFAULT_TOKEN_EXPIRATION_DAYS = 90;
 

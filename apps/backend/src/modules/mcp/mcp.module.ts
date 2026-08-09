@@ -24,6 +24,16 @@ import { McpController } from './controllers/mcp.controller';
 import { UpdateMcpConfigDto } from './dto/update-config.dto';
 import { McpClientEntity } from './entities/mcp-client.entity';
 import { McpInstallationEntity } from './entities/mcp-installation.entity';
+import {
+	McpOAuthAccessTokenEntity,
+	McpOAuthAuthorizationCodeEntity,
+	McpOAuthClientEntity,
+	McpOAuthGrantEntity,
+	McpOAuthInteractionEntity,
+	McpOAuthRefreshTokenEntity,
+	McpOAuthRefreshTokenFamilyEntity,
+	McpOAuthServerStateEntity,
+} from './entities/mcp-oauth.entity';
 import { McpClientGuard } from './guards/mcp-client.guard';
 import { McpConfigListener } from './listeners/mcp-config.listener';
 import {
@@ -40,6 +50,10 @@ import { McpAuditService } from './services/mcp-audit.service';
 import { McpClientService } from './services/mcp-client.service';
 import { McpContextService } from './services/mcp-context.service';
 import { McpInstallationService } from './services/mcp-installation.service';
+import { McpOAuthArtifactService } from './services/mcp-oauth-artifact.service';
+import { McpOAuthProxyPolicyService } from './services/mcp-oauth-proxy-policy.service';
+import { McpOAuthPublicUrlService } from './services/mcp-oauth-public-url.service';
+import { McpOAuthRefreshTokenService } from './services/mcp-oauth-refresh-token.service';
 import { McpPolicyService } from './services/mcp-policy.service';
 import { McpServerService } from './services/mcp-server.service';
 import { McpSubscriptionRegistryService } from './services/mcp-subscription-registry.service';
@@ -62,7 +76,18 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		SpacesModule,
 		StatsModule,
 		SwaggerModule,
-		TypeOrmModule.forFeature([McpClientEntity, McpInstallationEntity]),
+		TypeOrmModule.forFeature([
+			McpClientEntity,
+			McpInstallationEntity,
+			McpOAuthAccessTokenEntity,
+			McpOAuthAuthorizationCodeEntity,
+			McpOAuthClientEntity,
+			McpOAuthGrantEntity,
+			McpOAuthInteractionEntity,
+			McpOAuthRefreshTokenEntity,
+			McpOAuthRefreshTokenFamilyEntity,
+			McpOAuthServerStateEntity,
+		]),
 		ToolsModule,
 		WeatherModule,
 	],
@@ -73,6 +98,10 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpConfigListener,
 		McpContextService,
 		McpInstallationService,
+		McpOAuthArtifactService,
+		McpOAuthProxyPolicyService,
+		McpOAuthPublicUrlService,
+		McpOAuthRefreshTokenService,
 		McpPolicyService,
 		McpServerService,
 		McpAuditService,
@@ -91,7 +120,17 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 			inject: [McpReadToolService, McpTargetDiscoveryToolService],
 		},
 	],
-	exports: [McpAuditService, McpClientService, McpInstallationService, McpPolicyService, McpServerService],
+	exports: [
+		McpAuditService,
+		McpClientService,
+		McpInstallationService,
+		McpOAuthArtifactService,
+		McpOAuthProxyPolicyService,
+		McpOAuthPublicUrlService,
+		McpOAuthRefreshTokenService,
+		McpPolicyService,
+		McpServerService,
+	],
 })
 export class McpModule implements OnModuleInit {
 	constructor(
@@ -143,7 +182,8 @@ Connects trusted MCP-compatible agents to a curated set of Smart Panel tools and
 |--------|-------------|---------|
 | \`enabled\` | Accept MCP protocol requests | \`false\` |
 | \`capabilities\` | Allowed combination of \`read\`, \`write\`, and \`trigger\` | \`read\` |
-| \`allowed_origins\` | Additional browser origins allowed to call the endpoint | empty |`,
+| \`allowed_origins\` | Additional browser origins allowed to call the endpoint | empty |
+| \`oauth_public_base_url\` | Canonical HTTPS base used by the inactive OAuth foundation | empty |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs/admin-management/mcp',
 				repository: 'https://github.com/FastyBird/smart-panel',
