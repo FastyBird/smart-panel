@@ -3,23 +3,34 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { PropertyValueState } from '../../devices/models/property-value-state.model';
+import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
 import { DevicesService } from '../../devices/services/devices.service';
+import { PropertyValueSourceRegistryService } from '../../devices/services/property-value-source.registry.service';
 import { ArmedState, SecurityAlertType, Severity } from '../security.constants';
 import { DetectionRulesLoaderService } from '../spec/detection-rules-loader.service';
 import { ResolvedSensorRule } from '../spec/detection-rules.types';
 
 import { SecuritySensorsProvider } from './security-sensors.provider';
 
+let propertySequence = 0;
+
 function createProperty(category: PropertyCategory, value: string | number | boolean | null): ChannelPropertyEntity {
 	const prop = new ChannelPropertyEntity();
+	prop.id = `property-${++propertySequence}`;
 	prop.category = category;
 	prop.value = value != null ? new PropertyValueState(value) : null;
 
 	return prop;
 }
 
-function createChannel(category: ChannelCategory, properties: ChannelPropertyEntity[]): ChannelEntity {
+let channelSequence = 0;
+
+function createChannel(category: ChannelCategory, properties: ChannelPropertyEntity[], id?: string): ChannelEntity {
 	const channel = new ChannelEntity();
+	// Identified, because a sensor is identified by the channel it is reported from — see
+	// SecuritySensorsProvider.identifySensor(). A fixture without one is not a channel any pass would
+	// meet.
+	channel.id = id ?? `channel-${++channelSequence}`;
 	channel.category = category;
 	channel.properties = properties;
 
@@ -105,6 +116,8 @@ function buildDefaultRules(): Map<string, ResolvedSensorRule> {
 
 describe('SecuritySensorsProvider', () => {
 	let provider: SecuritySensorsProvider;
+	let testingModule: TestingModule;
+	let channelsPropertiesService: { findOne: jest.Mock };
 	let devicesService: { findAll: jest.Mock };
 	let rulesLoader: { getSensorRules: jest.Mock };
 
@@ -112,14 +125,24 @@ describe('SecuritySensorsProvider', () => {
 		devicesService = { findAll: jest.fn().mockResolvedValue([]) };
 		rulesLoader = { getSensorRules: jest.fn().mockReturnValue(buildDefaultRules()) };
 
+		channelsPropertiesService = { findOne: jest.fn().mockResolvedValue(null) };
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				SecuritySensorsProvider,
 				{ provide: DevicesService, useValue: devicesService },
 				{ provide: DetectionRulesLoaderService, useValue: rulesLoader },
+				// Only reached for a projected property whose channel is outside the pass — see the bounded
+				// case below. Answers nothing by default, which is the fallback every other case takes.
+				{ provide: ChannelsPropertiesService, useValue: channelsPropertiesService },
+				// The real registry: with no plugin registered it answers every property with its own id,
+				// which is what "this device owns its sensor" means and is the state of every case below
+				// that does not deliberately project one.
+				PropertyValueSourceRegistryService,
 			],
 		}).compile();
 
+		testingModule = module;
 		provider = module.get<SecuritySensorsProvider>(SecuritySensorsProvider);
 	});
 
@@ -607,5 +630,230 @@ describe('SecuritySensorsProvider', () => {
 
 		expect(signal.activeAlertsCount).toBe(0);
 		expect(signal.activeAlerts).toEqual([]);
+	});
+	// -- one physical sensor, several devices presenting it ---------------------------------------
+	//
+	// A virtual device that projects a physical sensor has a channel of that category too, and the
+	// projection's value *is* the source's, so the walk reads one detector off two devices and files
+	// two alerts under different ids. `mergeAlerts` de-duplicates by id downstream and cannot help,
+	// because the ids differ precisely because the devices do.
+
+	/** A property that reads another property's series, the way a projection does. */
+	const projecting = (
+		category: PropertyCategory,
+		value: string | number | boolean,
+		sourceId: string,
+	): ChannelPropertyEntity => {
+		const property = createProperty(category, value);
+
+		property.id = `${sourceId}-projection`;
+		// `type` is a getter on the entity, as it is on every plugin's subclass, so the discriminator the
+		// registry keys on is shadowed rather than assigned.
+		Object.defineProperty(property, 'type', { value: 'virtual-test' });
+		(property as unknown as { sourcePropertyId: string }).sourcePropertyId = sourceId;
+
+		return property;
+	};
+
+	const registerProjections = (module: TestingModule): void => {
+		module.get(PropertyValueSourceRegistryService).register({
+			getType: () => 'virtual-test',
+			resolve: (property) => (property as unknown as { sourcePropertyId?: string }).sourcePropertyId ?? null,
+		});
+	};
+
+	it('counts one sensor once, however many devices present it', async () => {
+		registerProjections(testingModule);
+
+		const source = createProperty(PropertyCategory.DETECTED, true);
+		source.id = 'smoke-detector';
+
+		devicesService.findAll.mockResolvedValue([
+			createDevice('physical', [createChannel(ChannelCategory.SMOKE, [source], 'physical-smoke')]),
+			createDevice('virtual', [
+				createChannel(ChannelCategory.SMOKE, [projecting(PropertyCategory.DETECTED, true, 'smoke-detector')]),
+			]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlertsCount).toBe(1);
+	});
+
+	// Splitting hides a source device once nothing of it is left unprojected, which is exactly when its
+	// projection should speak for it: an alert naming a device that appears nowhere is one nobody can
+	// act on.
+	it('names the visible device rather than the hidden one', async () => {
+		registerProjections(testingModule);
+
+		const source = createProperty(PropertyCategory.DETECTED, true);
+		source.id = 'smoke-detector';
+
+		const physical = createDevice('physical', [createChannel(ChannelCategory.SMOKE, [source], 'physical-smoke')]);
+
+		physical.hidden = true;
+
+		devicesService.findAll.mockResolvedValue([
+			physical,
+			createDevice('virtual', [
+				createChannel(ChannelCategory.SMOKE, [projecting(PropertyCategory.DETECTED, true, 'smoke-detector')]),
+			]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlerts).toEqual([expect.objectContaining({ sourceDeviceId: 'virtual' })]);
+	});
+
+	// A partially split device stays visible for the channels it kept, but the sensor in question is
+	// the one the operator deliberately moved into a room device.
+	it('names the projection when both devices are visible', async () => {
+		registerProjections(testingModule);
+
+		const source = createProperty(PropertyCategory.DETECTED, true);
+		source.id = 'smoke-detector';
+
+		devicesService.findAll.mockResolvedValue([
+			createDevice('physical', [createChannel(ChannelCategory.SMOKE, [source], 'physical-smoke')]),
+			createDevice('virtual', [
+				createChannel(ChannelCategory.SMOKE, [projecting(PropertyCategory.DETECTED, true, 'smoke-detector')]),
+			]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlerts).toEqual([expect.objectContaining({ sourceDeviceId: 'virtual' })]);
+	});
+
+	// Nothing is dropped by de-duplication: suppressing a smoke alarm because somebody hid its device
+	// is not de-duplication, and two detectors are two alerts however they are arranged.
+	it('keeps a hidden device’s own sensor, and keeps two sensors two', async () => {
+		const hidden = createDevice('hidden', [createDetectedChannel(ChannelCategory.SMOKE, true)]);
+
+		hidden.hidden = true;
+
+		devicesService.findAll.mockResolvedValue([
+			hidden,
+			createDevice('other', [createDetectedChannel(ChannelCategory.LEAK, true)]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlertsCount).toBe(2);
+		expect(signal.activeAlerts.map((alert) => alert.sourceDeviceId).sort()).toEqual(['hidden', 'other']);
+	});
+	// The reviewer's case, and the reason identity cannot be the property that matched: the built-in CO
+	// rule checks `detected` before `concentration`, so the physical channel matches on one and a
+	// projection that took only the concentration matches on the other. Keyed by whichever matched,
+	// they would be two sensors — and would collapse into one again the moment the readings changed.
+	it('counts one sensor once when each device matches on a different property', async () => {
+		registerProjections(testingModule);
+
+		const detected = createProperty(PropertyCategory.DETECTED, true);
+		const concentration = createProperty(PropertyCategory.CONCENTRATION, 40);
+
+		devicesService.findAll.mockResolvedValue([
+			createDevice('physical', [
+				createChannel(ChannelCategory.CARBON_MONOXIDE, [detected, concentration], 'physical-co'),
+			]),
+			// Took the concentration and kept a local `detected` of its own, which reads false.
+			createDevice('virtual', [
+				createChannel(ChannelCategory.CARBON_MONOXIDE, [
+					createProperty(PropertyCategory.DETECTED, false),
+					projecting(PropertyCategory.CONCENTRATION, 40, concentration.id),
+				]),
+			]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlertsCount).toBe(1);
+		expect(signal.activeAlerts).toEqual([expect.objectContaining({ sourceDeviceId: 'virtual' })]);
+	});
+	// Two sensors of one category on one device share an alert id by construction, and the id is what
+	// survives downstream. The timestamp is not decoration on a life-safety path:
+	// `SecurityStateListener.syncAckRecords()` reads it to decide whether an alert is a new occurrence,
+	// so keeping the older of two smoke alerts leaves the second showing as acknowledged because the
+	// first was.
+	it('keeps the newest of two alerts that share an id', async () => {
+		const older = createProperty(PropertyCategory.DETECTED, true);
+		const newer = createProperty(PropertyCategory.DETECTED, true);
+
+		older.value = new PropertyValueState(true, '2026-08-01T10:00:00.000Z');
+		newer.value = new PropertyValueState(true, '2026-08-01T11:00:00.000Z');
+
+		devicesService.findAll.mockResolvedValue([
+			createDevice('d1', [
+				createChannel(ChannelCategory.SMOKE, [older], 'smoke-a'),
+				createChannel(ChannelCategory.SMOKE, [newer], 'smoke-b'),
+			]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlertsCount).toBe(1);
+		expect(signal.activeAlerts[0].timestamp).toBe('2026-08-01T11:00:00.000Z');
+	});
+
+	// `aggregateBounded()` hands the provider a scoped device set, so a hidden or out-of-scope source
+	// device is simply not in it. Two virtual devices projecting different properties of one hidden
+	// channel would then fall back to two property ids and be counted twice — while the same pair
+	// counts once at home. A sensor's identity cannot depend on which pass is asking.
+	it('counts one sensor once even when its source device is outside the pass', async () => {
+		registerProjections(testingModule);
+
+		// The source channel is nowhere in the devices below; only the read-back can place it.
+		channelsPropertiesService.findOne.mockImplementation((id: string) =>
+			Promise.resolve(
+				id === 'co-detected' || id === 'co-concentration' ? { id, channel: { id: 'hidden-co-channel' } } : null,
+			),
+		);
+
+		const signal = await provider.getSignals({
+			devices: [
+				createDevice('virtual-a', [
+					createChannel(ChannelCategory.CARBON_MONOXIDE, [projecting(PropertyCategory.DETECTED, true, 'co-detected')]),
+				]),
+				createDevice('virtual-b', [
+					createChannel(ChannelCategory.CARBON_MONOXIDE, [
+						projecting(PropertyCategory.CONCENTRATION, 40, 'co-concentration'),
+					]),
+				]),
+			],
+			armedState: null,
+		});
+
+		expect(signal.activeAlertsCount).toBe(1);
+	});
+	// Who names the sensor and when it happened are separate questions, and answering them together got
+	// the second one wrong. A rule with alternatives lets one device trigger on a fresh reading while
+	// another still matches a stale one — so the projection can win the naming while the physical
+	// channel holds the newer occurrence, and carrying the winner's stale timestamp would leave a new
+	// life-safety event looking like the acknowledged one.
+	it('carries the newest occurrence even when another device names the sensor', async () => {
+		registerProjections(testingModule);
+
+		const detected = createProperty(PropertyCategory.DETECTED, true);
+		const concentration = createProperty(PropertyCategory.CONCENTRATION, 40);
+
+		detected.value = new PropertyValueState(true, '2026-08-01T11:00:00.000Z');
+		concentration.value = new PropertyValueState(40, '2026-08-01T10:00:00.000Z');
+
+		const projectedConcentration = projecting(PropertyCategory.CONCENTRATION, 40, concentration.id);
+
+		projectedConcentration.value = new PropertyValueState(40, '2026-08-01T10:00:00.000Z');
+
+		devicesService.findAll.mockResolvedValue([
+			createDevice('physical', [
+				createChannel(ChannelCategory.CARBON_MONOXIDE, [detected, concentration], 'physical-co'),
+			]),
+			createDevice('virtual', [createChannel(ChannelCategory.CARBON_MONOXIDE, [projectedConcentration])]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlerts).toEqual([
+			expect.objectContaining({ sourceDeviceId: 'virtual', timestamp: '2026-08-01T11:00:00.000Z' }),
+		]);
 	});
 });
