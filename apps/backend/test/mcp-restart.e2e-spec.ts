@@ -158,7 +158,7 @@ describe('MCP disabled restart', () => {
 				},
 				{
 					provide: McpOAuthResourceServerService,
-					useValue: { authorizeAccessToken: jest.fn(), verifyAccessToken: jest.fn() },
+					useValue: { authorizeAccessToken: jest.fn(), verifyMcpBearerToken: jest.fn() },
 				},
 				McpAuditService,
 				McpClientGuard,

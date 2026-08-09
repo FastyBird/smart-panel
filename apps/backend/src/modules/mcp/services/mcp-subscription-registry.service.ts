@@ -173,14 +173,18 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 		await this.closeOAuthMatching(advanceGeneration, (subscription) => subscription.oauth !== undefined);
 	}
 
-	closeAll(): void {
-		for (const id of [...this.subscriptions.keys()]) {
-			this.close(id, 'shutdown');
-		}
+	async closeAll(): Promise<void> {
+		await this.withOAuthGate(() => {
+			for (const id of [...this.subscriptions.keys()]) {
+				this.close(id, 'shutdown');
+			}
+
+			return Promise.resolve();
+		});
 	}
 
-	onApplicationShutdown(): void {
-		this.closeAll();
+	async onApplicationShutdown(): Promise<void> {
+		await this.closeAll();
 	}
 
 	private touch(id: string): void {

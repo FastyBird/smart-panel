@@ -4,7 +4,7 @@ import { IncomingMessage } from 'http';
 import { resolve } from 'path';
 
 import { toNodeHandler } from '@modelcontextprotocol/node';
-import { AuthInfo, McpHttpHandler, McpServer, createMcpHandler } from '@modelcontextprotocol/server';
+import { AuthInfo, McpHttpHandler, McpServer, OAuthError, createMcpHandler } from '@modelcontextprotocol/server';
 import { Injectable, OnApplicationShutdown, Optional, UnauthorizedException } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 
@@ -177,7 +177,7 @@ export class McpServerService implements OnApplicationShutdown {
 
 	async closeAll(): Promise<void> {
 		this.invalidatePolicies();
-		this.subscriptions.closeAll();
+		await this.subscriptions.closeAll();
 		const handlers = [...this.handlers.values()];
 		this.handlers.clear();
 		const results = await Promise.allSettled(handlers.map(({ handler }) => handler.close()));
@@ -254,8 +254,9 @@ export class McpServerService implements OnApplicationShutdown {
 					}
 				} catch (error) {
 					if (error instanceof McpSubscriptionCapacityError) {
-						return this.subscriptionLimitResponse(requestOptions?.parsedBody);
+						return this.getSubscriptionErrorResponse(error, requestOptions?.parsedBody);
 					}
+					if (OAuthError.isInstance(error)) return this.getSubscriptionErrorResponse(error);
 
 					throw error;
 				}
@@ -313,6 +314,12 @@ export class McpServerService implements OnApplicationShutdown {
 		);
 	}
 
+	private getSubscriptionErrorResponse(error: McpSubscriptionCapacityError | OAuthError, body?: unknown): Response {
+		return error instanceof McpSubscriptionCapacityError
+			? this.subscriptionLimitResponse(body)
+			: this.oauthResourceServerService.getBearerChallenge(error);
+	}
+
 	private getRequestBody(body: unknown): JsonRpcRequestBody {
 		return body && typeof body === 'object' && !Array.isArray(body) ? (body as JsonRpcRequestBody) : {};
 	}
@@ -356,7 +363,7 @@ export class McpServerService implements OnApplicationShutdown {
 
 		let currentAuthInfo: AuthInfo | undefined;
 		const handle = await this.subscriptions.openOAuth(requestId, async () => {
-			currentAuthInfo = await this.oauthResourceServerService.verifyAccessToken(authInfo.token);
+			currentAuthInfo = await this.oauthResourceServerService.verifyMcpBearerToken(`Bearer ${authInfo.token}`);
 			const current = this.getSubscriptionRegistration(clientId, currentAuthInfo);
 
 			if (!current.oauth) {

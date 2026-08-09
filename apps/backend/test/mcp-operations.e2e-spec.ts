@@ -255,7 +255,7 @@ describe('MCP simulator operations', () => {
 			controllers: [McpController],
 			providers: [
 				{ provide: McpAuditService, useValue: auditService },
-				{ provide: McpOAuthResourceServerService, useValue: { verifyAccessToken: jest.fn() } },
+				{ provide: McpOAuthResourceServerService, useValue: { verifyMcpBearerToken: jest.fn() } },
 				McpServerService,
 				McpSubscriptionRegistryService,
 				{ provide: MCP_CATALOG_REGISTRAR, useValue: targetTools },

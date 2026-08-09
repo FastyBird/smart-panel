@@ -1,6 +1,6 @@
 import { FastifyReply } from 'fastify';
 
-import { AuthInfo } from '@modelcontextprotocol/server';
+import { AuthInfo, OAuthError, OAuthErrorCode } from '@modelcontextprotocol/server';
 import { UnauthorizedException } from '@nestjs/common';
 
 import { MCP_OAUTH_PRINCIPAL_TYPE, McpCapability, McpOAuthScope } from '../mcp.constants';
@@ -49,7 +49,7 @@ describe('McpServerService policy revision', () => {
 		recordPolicyDenial: jest.Mock;
 		recordProtocolRequest: jest.Mock;
 	};
-	let oauthResourceServerService: { verifyAccessToken: jest.Mock };
+	let oauthResourceServerService: { getBearerChallenge: jest.Mock; verifyMcpBearerToken: jest.Mock };
 
 	beforeEach(() => {
 		subscriptions = {
@@ -65,7 +65,10 @@ describe('McpServerService policy revision', () => {
 			recordPolicyDenial: jest.fn(),
 			recordProtocolRequest: jest.fn(),
 		};
-		oauthResourceServerService = { verifyAccessToken: jest.fn() };
+		oauthResourceServerService = {
+			getBearerChallenge: jest.fn(),
+			verifyMcpBearerToken: jest.fn(),
+		};
 		service = new McpServerService(
 			subscriptions as unknown as McpSubscriptionRegistryService,
 			auditService as unknown as McpAuditService,
@@ -165,10 +168,10 @@ describe('McpServerService policy revision', () => {
 
 	it('revalidates OAuth authorization inside the registration gate and serves with the refreshed AuthInfo', async () => {
 		const initialAuthInfo = oauthAuthInfo(2);
-		const currentAuthInfo = oauthAuthInfo(4);
+		const currentAuthInfo = { ...oauthAuthInfo(4), scopes: [McpCapability.READ] };
 		const handle = { id: 'subscription-id' } as unknown as McpSubscriptionHandle;
 
-		oauthResourceServerService.verifyAccessToken.mockResolvedValue(currentAuthInfo);
+		oauthResourceServerService.verifyMcpBearerToken.mockResolvedValue(currentAuthInfo);
 		subscriptions.openOAuth.mockImplementation(
 			async (requestId: string, revalidate: () => Promise<{ clientId: string; binding: unknown }>) => {
 				expect(requestId).toBe('request-1');
@@ -195,8 +198,27 @@ describe('McpServerService policy revision', () => {
 			authInfo: currentAuthInfo,
 			handle,
 		});
-		expect(oauthResourceServerService.verifyAccessToken).toHaveBeenCalledWith('opaque-token');
+		expect(oauthResourceServerService.verifyMcpBearerToken).toHaveBeenCalledWith('Bearer opaque-token');
 		expect(subscriptions.open).not.toHaveBeenCalled();
+	});
+
+	it('maps gated OAuth revalidation failures to the resource-server bearer challenge', () => {
+		const error = new OAuthError(OAuthErrorCode.InvalidToken, 'The access token expired');
+		const challenge = new Response(null, {
+			status: 401,
+			headers: { 'www-authenticate': 'Bearer error="invalid_token"' },
+		});
+
+		oauthResourceServerService.getBearerChallenge.mockReturnValue(challenge);
+		const internalService = service as unknown as {
+			getSubscriptionErrorResponse(error: OAuthError, body?: unknown): Response;
+		};
+		const response = internalService.getSubscriptionErrorResponse(error);
+
+		expect(response).toBe(challenge);
+		expect(response.status).toBe(401);
+		expect(response.headers.get('www-authenticate')).toContain('invalid_token');
+		expect(oauthResourceServerService.getBearerChallenge).toHaveBeenCalledWith(error);
 	});
 
 	it('opens static subscriptions without entering OAuth revalidation', async () => {
@@ -220,7 +242,7 @@ describe('McpServerService policy revision', () => {
 		});
 		expect(subscriptions.open).toHaveBeenCalledWith('static-client-id', 'request-1');
 		expect(subscriptions.openOAuth).not.toHaveBeenCalled();
-		expect(oauthResourceServerService.verifyAccessToken).not.toHaveBeenCalled();
+		expect(oauthResourceServerService.verifyMcpBearerToken).not.toHaveBeenCalled();
 	});
 
 	it('preserves static subscription registration and rejects malformed OAuth identities', () => {

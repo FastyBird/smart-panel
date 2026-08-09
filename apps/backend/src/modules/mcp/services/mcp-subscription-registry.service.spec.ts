@@ -50,8 +50,8 @@ describe('McpSubscriptionRegistryService', () => {
 		service = new McpSubscriptionRegistryService(auditService as unknown as McpAuditService);
 	});
 
-	afterEach(() => {
-		service.closeAll();
+	afterEach(async () => {
+		await service.closeAll();
 		jest.useRealTimers();
 	});
 
@@ -110,11 +110,11 @@ describe('McpSubscriptionRegistryService', () => {
 		);
 	});
 
-	it('cleans up every stream during application shutdown', () => {
+	it('cleans up every stream during application shutdown', async () => {
 		const first = service.open('client-a');
 		const second = service.open('client-b');
 
-		service.onApplicationShutdown();
+		await service.onApplicationShutdown();
 
 		expect(first.signal.aborted).toBe(true);
 		expect(second.signal.aborted).toBe(true);
@@ -183,6 +183,35 @@ describe('McpSubscriptionRegistryService', () => {
 			{ requestId: 'racing-open', clientId: 'client-a' },
 			subscription.id,
 			'authorization_revoked',
+		);
+	});
+
+	it('serializes close-all behind a pending OAuth registration and closes the resulting stream', async () => {
+		const revalidationStarted = deferred();
+		const releaseRevalidation = deferred();
+		const registrationPromise = service.openOAuth('shutdown-race', async () => {
+			revalidationStarted.resolve();
+			await releaseRevalidation.promise;
+
+			return oauthRegistration();
+		});
+
+		await revalidationStarted.promise;
+
+		const closePromise = service.closeAll();
+
+		expect(service.activeCount).toBe(0);
+		releaseRevalidation.resolve();
+		const subscription = await registrationPromise;
+
+		await closePromise;
+
+		expect(subscription.signal.aborted).toBe(true);
+		expect(service.activeCount).toBe(0);
+		expect(auditService.recordSubscriptionClosed).toHaveBeenCalledWith(
+			{ requestId: 'shutdown-race', clientId: 'client-a' },
+			subscription.id,
+			'shutdown',
 		);
 	});
 
