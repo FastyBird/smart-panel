@@ -249,13 +249,15 @@ Fixing it means deciding, in the provider, which of the two channels represents 
 
 The same shape almost certainly applies to any other provider or module that scans `devices → channels → properties` and aggregates per match; only the security sensors provider was checked.
 
-### 3.8 Two virtual properties projecting one non-qualifying source both ingest (low)
+### 3.8 Two virtual properties projecting one non-qualifying source both ingest (low) — DONE
 
 `EnergyIngestionListener`'s projection guard was narrowed in round 5 to "skip only when the *source* event was itself eligible" — the same asymmetry as §3.7's, found in energy after the security one: a `consumption` property in a `generic` channel projected into an `electrical_energy` one was ingested by nobody, because the source event failed the `SOURCE_TYPE_MAP` lookup and the guard discarded the only event carrying the qualifying classification. Unlike the security case the guard could not simply be removed — `processPropertyValue()` writes one delta per event, so a source and a projection that both qualify would genuinely bill the same kWh twice.
 
 One residual case is knowingly left: if **two** virtual properties project the *same* non-qualifying source into two qualifying channels, both ingest. Each has its own `(deviceId, channelId)` delta key, so they are two meters as far as `DeltaComputationService` is concerned, and the household total counts the watts twice.
 
-It is out of reach of the rule as stated — the guard is a per-event question about the source, and "am I the only projection of this source that qualifies?" is a question about the *set* of projections, which only `VirtualPropertyIndexService` can answer and which the energy module has no business reaching into. Fixing it means either an election (lowest property id wins) or moving de-duplication into `DeltaComputationService`, keyed by storage key rather than by device+channel. Both are larger than the defect: it needs a user to deliberately wire one physical meter into two virtual devices, and unlike the dropped-meter case it is visible — an inflated total, not a silent omission.
+It is out of reach of the rule as stated — the guard is a per-event question about the source, and "am I the only projection of this source that qualifies?" is a question about the *set* of projections, which only `VirtualPropertyIndexService` can answer and which the energy module has no business reaching into.
+
+Closed by `BUG-ENERGY-VIRTUAL-ROOM-ATTRIBUTION` (#649), which had to answer the same question for attribution and answered it once for both. The election this predicted is the energy claim: one projection per meter holds it, the losing projections are skipped, and the energy module asks across a registry rather than reaching into the plugin's index.
 
 ## 3a. Deferred from the admin branch
 
@@ -317,17 +319,21 @@ What is left is a policy question, and it is not the mapping feature's to answer
 
 `channels.store.ts` and `channels.properties.store.ts` have the same exposure in a milder form: they merge (`data.value = { ...data.value, ...channels }`) rather than replace, so nothing is evicted, but a snapshot assembled before a socket update still overwrites that update's row. Nothing in the virtual-device flows depends on it today, and the fix is the same stamp-and-compare shape, worth doing once across the three stores rather than twice.
 
-### 3.9 `mapPropertyCategory` omits a third of the specification (medium, pre-existing)
+### 3.9 `mapPropertyCategory` omits a third of the specification (medium, pre-existing) — DONE
 
-`schema.utils.ts`'s `mapPropertyCategory` translates a spec property key into a `PropertyCategory`, and 34 of the specification's 100 keys are missing from it — `grid_import`, `grid_export`, `mute`, `repeat`, `shuffle`, `child_lock`, `alarm_state`, `aqi`, the three `acceleration_*`, the media metadata (`album`, `artist`, `artwork_url`, `media_type`), the water-tank family, and more.
+`schema.utils.ts` carried two hand-maintained tables translating between a spec property key and a `PropertyCategory`, one per direction, and 33 of the specification's 100 keys were in neither — `grid_import`, `grid_export`, `mute`, `repeat`, `shuffle`, `child_lock`, `alarm_state`, `aqi`, the three `acceleration_*`, the media metadata (`album`, `artist`, `artwork_url`, `media_type`), the water-tank family, and more.
 
-`getAllProperties()` drops every unmapped key, so those slots do not exist as far as anything built on it is concerned. For virtual devices that means the wizard never offers them and `reportCompatibility` refuses a projection into one with "channel category X has no Y property in its specification" — a sentence that reads like a spec error and is actually a translation gap. `DeviceValidationService` reads the same utils, so structural validation cannot see them either.
+`getAllProperties()` dropped every unmapped key, so those slots did not exist as far as anything built on it was concerned. The admin has always read `prop.category` straight from the spec, so the wizard *offered* them and the backend then refused the projection with "channel category X has no Y property in its specification" — a sentence that reads like a spec error and was a translation gap. `DeviceValidationService` reads the same utils, so structural validation could not see them either, and a constraint group naming an unmapped key silently lost that member: `air_quality`'s "aqi or level" was enforced as "level".
 
-Found while writing the energy-claim guard, which needs two energy slots to disagree and can only reach one.
+Found while writing the energy-claim guard, which needs two energy slots to disagree and could only reach one.
+
+Fixed by deleting both tables. Each spec entry already declares its own `category`, so the translation is a read rather than a lookup, and it cannot drift as the specification grows — the reverse direction became channel-scoped, which is the only scope in which it is well defined. It also fixed a case neither table could express: `indicator.color` declares `color_red`, and translating the key got it wrong in both directions.
 
 ### 3.10 No device category declares an `electrical_generation` channel (low, pre-existing)
 
 `spec/devices/devices.yaml` lists `electrical_generation` on no device at all, so the channel — and its `production` property, which the energy module classifies as `generation_production` — cannot appear on any device, virtual or physical. Either a category should carry it (a solar inverter has no home today) or the energy module's mapping for it is dead code. Worth deciding rather than leaving as an asymmetry.
+
+Narrower since §3.9: `grid_import` and `grid_export` are reachable now, so the energy cross-type guard is live for the grid pair rather than dormant. What remains unreachable is generation.
 
 ### 3a.6 Test-coverage gaps (low)
 

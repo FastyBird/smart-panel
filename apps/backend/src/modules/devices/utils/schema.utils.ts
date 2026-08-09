@@ -20,6 +20,8 @@ interface DataTypeVariantSpec {
  * Type for property spec from schema
  */
 interface PropertySpec {
+	/** The property category this entry declares, which is not always its key — see resolvePropertyCategory(). */
+	category?: string;
 	required?: boolean;
 	permissions?: string[];
 	data_type?: string;
@@ -89,33 +91,37 @@ interface ChannelConstraintsSpec {
  * @returns Channel constraints or null if none defined
  */
 export function getChannelConstraints(channelCategory: ChannelCategoryType): ChannelConstraints | null {
-	const channelSpec = channelsSchema[channelCategory] as { constraints?: ChannelConstraintsSpec } | undefined;
+	const channelSpec = channelsSchema[channelCategory] as
+		| { constraints?: ChannelConstraintsSpec; properties?: Record<string, PropertySpec> }
+		| undefined;
 
 	if (!channelSpec || typeof channelSpec !== 'object' || !channelSpec.constraints) {
 		return null;
 	}
 
 	const constraints = channelSpec.constraints;
+	// Constraint groups name properties by key, so they are resolved against the channel that declares
+	// them — the same scope `findPropertyKey` works in, and for the same reason.
+	const properties = channelSpec.properties ?? {};
+	const resolve = (key: string): PropertyCategory | null => resolvePropertyCategory(properties[key]);
 
 	const result: ChannelConstraints = {};
 
 	if (constraints.oneOf) {
 		result.oneOf = constraints.oneOf.map((group) =>
-			group.map((p) => mapPropertyCategory(p)).filter((p): p is PropertyCategory => p !== null),
+			group.map((p) => resolve(p)).filter((p): p is PropertyCategory => p !== null),
 		);
 	}
 
 	if (constraints.oneOrMoreOf) {
 		result.oneOrMoreOf = constraints.oneOrMoreOf.map((group) =>
-			group.map((p) => mapPropertyCategory(p)).filter((p): p is PropertyCategory => p !== null),
+			group.map((p) => resolve(p)).filter((p): p is PropertyCategory => p !== null),
 		);
 	}
 
 	if (constraints.mutuallyExclusiveGroups) {
 		result.mutuallyExclusiveGroups = constraints.mutuallyExclusiveGroups.map((groupPair) =>
-			groupPair.map((group) =>
-				group.map((p) => mapPropertyCategory(p)).filter((p): p is PropertyCategory => p !== null),
-			),
+			groupPair.map((group) => group.map((p) => resolve(p)).filter((p): p is PropertyCategory => p !== null)),
 		);
 	}
 
@@ -143,10 +149,9 @@ export function getRequiredProperties(channelCategory: ChannelCategoryType): Pro
 
 	const properties = channelSpec.properties;
 
-	for (const [propKey, propSpec] of Object.entries(properties)) {
+	for (const propSpec of Object.values(properties)) {
 		if (typeof propSpec === 'object' && propSpec.required === true) {
-			// Map property category string to PropertyCategory enum
-			const propertyCategory = mapPropertyCategory(propKey);
+			const propertyCategory = resolvePropertyCategory(propSpec);
 
 			if (propertyCategory) {
 				requiredProperties.push(propertyCategory);
@@ -173,8 +178,7 @@ export function getPropertyMetadata(
 		return null;
 	}
 
-	// Map PropertyCategory enum to schema property key
-	const propertyKey = mapPropertyCategoryToSchemaKey(propertyCategory);
+	const propertyKey = findPropertyKey(channelSpec.properties, propertyCategory);
 
 	if (!propertyKey) {
 		return null;
@@ -286,160 +290,58 @@ export function getPropertyDefaultValue(
 }
 
 /**
- * Map property category string from schema to PropertyCategory enum
- * Note: 'generic' is intentionally not mapped as it's not a valid property category
+ * Every category the devices module recognises, for checking what the specification declares.
+ *
+ * The specification is generated from the same YAML the enum is written against, so the two agree
+ * today; a key that arrives in the spec without a matching enum member is a translation gap, and
+ * answering null for it keeps the old behaviour — invisible — rather than inventing a category.
  */
-function mapPropertyCategory(key: string): PropertyCategory | null {
-	const mapping: Partial<Record<string, PropertyCategory>> = {
-		active: PropertyCategory.ACTIVE,
-		angle: PropertyCategory.ANGLE,
-		average_power: PropertyCategory.AVERAGE_POWER,
-		brightness: PropertyCategory.BRIGHTNESS,
-		color_blue: PropertyCategory.COLOR_BLUE,
-		color_green: PropertyCategory.COLOR_GREEN,
-		color_red: PropertyCategory.COLOR_RED,
-		color_temperature: PropertyCategory.COLOR_TEMPERATURE,
-		color_white: PropertyCategory.COLOR_WHITE,
-		command: PropertyCategory.COMMAND,
-		connection_type: PropertyCategory.CONNECTION_TYPE,
-		consumption: PropertyCategory.CONSUMPTION,
-		current: PropertyCategory.CURRENT,
-		concentration: PropertyCategory.CONCENTRATION,
-		detected: PropertyCategory.DETECTED,
-		direction: PropertyCategory.DIRECTION,
-		distance: PropertyCategory.DISTANCE,
-		duration: PropertyCategory.DURATION,
-		event: PropertyCategory.EVENT,
-		fault: PropertyCategory.FAULT,
-		firmware_revision: PropertyCategory.FIRMWARE_REVISION,
-		frequency: PropertyCategory.FREQUENCY,
-		hardware_revision: PropertyCategory.HARDWARE_REVISION,
-		hue: PropertyCategory.HUE,
-		humidity: PropertyCategory.HUMIDITY,
-		illuminance: PropertyCategory.ILLUMINANCE,
-		in_use: PropertyCategory.IN_USE,
-		infrared: PropertyCategory.INFRARED,
-		level: PropertyCategory.LEVEL,
-		link_quality: PropertyCategory.LINK_QUALITY,
-		locked: PropertyCategory.LOCKED,
-		manufacturer: PropertyCategory.MANUFACTURER,
-		model: PropertyCategory.MODEL,
-		mode: PropertyCategory.MODE,
-		obstruction: PropertyCategory.OBSTRUCTION,
-		on: PropertyCategory.ON,
-		over_current: PropertyCategory.OVER_CURRENT,
-		over_voltage: PropertyCategory.OVER_VOLTAGE,
-		over_power: PropertyCategory.OVER_POWER,
-		pan: PropertyCategory.PAN,
-		peak_level: PropertyCategory.PEAK_LEVEL,
-		percentage: PropertyCategory.PERCENTAGE,
-		position: PropertyCategory.POSITION,
-		power: PropertyCategory.POWER,
-		pressure: PropertyCategory.PRESSURE,
-		production: PropertyCategory.PRODUCTION,
-		rate: PropertyCategory.RATE,
-		remaining: PropertyCategory.REMAINING,
-		remote_key: PropertyCategory.REMOTE_KEY,
-		saturation: PropertyCategory.SATURATION,
-		siren: PropertyCategory.SIREN,
-		serial_number: PropertyCategory.SERIAL_NUMBER,
-		source: PropertyCategory.SOURCE,
-		source_label: PropertyCategory.SOURCE_LABEL,
-		state: PropertyCategory.STATE,
-		speed: PropertyCategory.SPEED,
-		status: PropertyCategory.STATUS,
-		swing: PropertyCategory.SWING,
-		tampered: PropertyCategory.TAMPERED,
-		temperature: PropertyCategory.TEMPERATURE,
-		tilt: PropertyCategory.TILT,
-		triggered: PropertyCategory.TRIGGERED,
-		track: PropertyCategory.TRACK,
-		type: PropertyCategory.TYPE,
-		voltage: PropertyCategory.VOLTAGE,
-		volume: PropertyCategory.VOLUME,
-		zoom: PropertyCategory.ZOOM,
-	};
+const PROPERTY_CATEGORIES = new Set<string>(Object.values(PropertyCategory));
 
-	return mapping[key] ?? null;
+/**
+ * The category a specification entry declares, or null when it declares none this module knows.
+ *
+ * Read from the entry rather than translated from its key, which is what the two hand-maintained
+ * tables here used to do — one per direction, 67 of the specification's 100 keys between them. Every
+ * key they omitted was simply invisible: `getAllProperties()` dropped it, so the virtual-device
+ * wizard never offered `grid_import`, `grid_export`, `mute`, the media metadata or 29 others, and
+ * `reportCompatibility` refused a projection into one with "channel category X has no Y property in
+ * its specification" — a sentence that reads like a specification error and was a translation gap.
+ * `DeviceValidationService` could not see them either.
+ *
+ * A table that has to be extended by hand every time the specification grows is a table that will
+ * drift again, and the spec already states the answer: each entry carries its own `category`, which
+ * is usually its key and deliberately is not always — `indicator.color` declares `color_red`, and
+ * translating the key gets that one wrong in both directions.
+ *
+ * `generic` stays unmapped on purpose: it is a channel's untyped escape hatch rather than a category
+ * anything can be matched against.
+ */
+function resolvePropertyCategory(spec: PropertySpec | undefined): PropertyCategory | null {
+	const category = spec?.category;
+
+	if (!category || !PROPERTY_CATEGORIES.has(category)) {
+		return null;
+	}
+
+	const resolved = category as PropertyCategory;
+
+	return resolved === PropertyCategory.GENERIC ? null : resolved;
 }
 
 /**
- * Map PropertyCategory enum to schema property key
- * Note: GENERIC is intentionally not mapped as it's not a valid property category
+ * The key a channel files a category under — the reverse of the above, and channel-scoped because
+ * that is the only scope in which it is well defined: the same category is reached through different
+ * keys in different channels.
  */
-function mapPropertyCategoryToSchemaKey(category: PropertyCategory): string | null {
-	const mapping: Partial<Record<PropertyCategory, string>> = {
-		[PropertyCategory.ACTIVE]: 'active',
-		[PropertyCategory.ANGLE]: 'angle',
-		[PropertyCategory.AVERAGE_POWER]: 'average_power',
-		[PropertyCategory.BRIGHTNESS]: 'brightness',
-		[PropertyCategory.COLOR_BLUE]: 'color_blue',
-		[PropertyCategory.COLOR_GREEN]: 'color_green',
-		[PropertyCategory.COLOR_RED]: 'color_red',
-		[PropertyCategory.COLOR_TEMPERATURE]: 'color_temperature',
-		[PropertyCategory.COLOR_WHITE]: 'color_white',
-		[PropertyCategory.COMMAND]: 'command',
-		[PropertyCategory.CONNECTION_TYPE]: 'connection_type',
-		[PropertyCategory.CONSUMPTION]: 'consumption',
-		[PropertyCategory.CURRENT]: 'current',
-		[PropertyCategory.CONCENTRATION]: 'concentration',
-		[PropertyCategory.DETECTED]: 'detected',
-		[PropertyCategory.DIRECTION]: 'direction',
-		[PropertyCategory.DISTANCE]: 'distance',
-		[PropertyCategory.DURATION]: 'duration',
-		[PropertyCategory.EVENT]: 'event',
-		[PropertyCategory.FAULT]: 'fault',
-		[PropertyCategory.FIRMWARE_REVISION]: 'firmware_revision',
-		[PropertyCategory.FREQUENCY]: 'frequency',
-		[PropertyCategory.HARDWARE_REVISION]: 'hardware_revision',
-		[PropertyCategory.HUE]: 'hue',
-		[PropertyCategory.HUMIDITY]: 'humidity',
-		[PropertyCategory.ILLUMINANCE]: 'illuminance',
-		[PropertyCategory.IN_USE]: 'in_use',
-		[PropertyCategory.INFRARED]: 'infrared',
-		[PropertyCategory.LEVEL]: 'level',
-		[PropertyCategory.LINK_QUALITY]: 'link_quality',
-		[PropertyCategory.LOCKED]: 'locked',
-		[PropertyCategory.MANUFACTURER]: 'manufacturer',
-		[PropertyCategory.MODEL]: 'model',
-		[PropertyCategory.MODE]: 'mode',
-		[PropertyCategory.MUTE]: 'mute',
-		[PropertyCategory.OBSTRUCTION]: 'obstruction',
-		[PropertyCategory.ON]: 'on',
-		[PropertyCategory.OVER_CURRENT]: 'over_current',
-		[PropertyCategory.OVER_VOLTAGE]: 'over_voltage',
-		[PropertyCategory.OVER_POWER]: 'over_power',
-		[PropertyCategory.PAN]: 'pan',
-		[PropertyCategory.PEAK_LEVEL]: 'peak_level',
-		[PropertyCategory.PERCENTAGE]: 'percentage',
-		[PropertyCategory.POSITION]: 'position',
-		[PropertyCategory.POWER]: 'power',
-		[PropertyCategory.PRESSURE]: 'pressure',
-		[PropertyCategory.PRODUCTION]: 'production',
-		[PropertyCategory.RATE]: 'rate',
-		[PropertyCategory.REMAINING]: 'remaining',
-		[PropertyCategory.REMOTE_KEY]: 'remote_key',
-		[PropertyCategory.SATURATION]: 'saturation',
-		[PropertyCategory.SIREN]: 'siren',
-		[PropertyCategory.SERIAL_NUMBER]: 'serial_number',
-		[PropertyCategory.SOURCE]: 'source',
-		[PropertyCategory.SOURCE_LABEL]: 'source_label',
-		[PropertyCategory.STATE]: 'state',
-		[PropertyCategory.SPEED]: 'speed',
-		[PropertyCategory.STATUS]: 'status',
-		[PropertyCategory.SWING]: 'swing',
-		[PropertyCategory.TAMPERED]: 'tampered',
-		[PropertyCategory.TEMPERATURE]: 'temperature',
-		[PropertyCategory.TILT]: 'tilt',
-		[PropertyCategory.TRIGGERED]: 'triggered',
-		[PropertyCategory.TRACK]: 'track',
-		[PropertyCategory.TYPE]: 'type',
-		[PropertyCategory.VOLTAGE]: 'voltage',
-		[PropertyCategory.VOLUME]: 'volume',
-		[PropertyCategory.ZOOM]: 'zoom',
-	};
+function findPropertyKey(properties: Record<string, PropertySpec>, propertyCategory: PropertyCategory): string | null {
+	for (const [key, spec] of Object.entries(properties)) {
+		if (resolvePropertyCategory(spec) === propertyCategory) {
+			return key;
+		}
+	}
 
-	return mapping[category] ?? null;
+	return null;
 }
 
 /**
@@ -728,8 +630,8 @@ export function getAllProperties(channelCategory: ChannelCategoryType): Property
 
 	const properties: PropertyMetadata[] = [];
 
-	for (const [propKey, propSpec] of Object.entries(channelSpec.properties)) {
-		const propertyCategory = mapPropertyCategory(propKey);
+	for (const propSpec of Object.values(channelSpec.properties)) {
+		const propertyCategory = resolvePropertyCategory(propSpec);
 
 		if (propertyCategory) {
 			// Check if this is a multi-datatype property
