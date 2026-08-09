@@ -953,6 +953,22 @@ export class VirtualDevicesService {
 	}
 
 	async assertProjectionCompatible(property: VirtualChannelPropertyEntity, channelId: string): Promise<void> {
+		// Cleared before anything is judged, and re-earned below by a row that still qualifies.
+		//
+		// The claim is a statement about what this property projects *now*, so every path that leaves
+		// this method has to leave it consistent — including the ones that leave early. A PATCH turning a
+		// claimed projection into an owned property or into an orphan returns before the settlement at
+		// the end, and a claim surviving that would hold its meter forever: the unique index would then
+		// refuse a legitimate replacement, and nothing but deleting the stale row would release it.
+		//
+		// Clearing is also the conservative direction where the source or channel cannot be resolved at
+		// all. An unclaimed meter attributes to the physical device, which is where it went before any of
+		// this existed — wrong for a split, but not misleading.
+		//
+		// The meter this releases may be left with no claimant, which is what the promotion path picks
+		// up; see `settleEnergyClaim`.
+		property.energyClaimPropertyId = null;
+
 		// Only an *explicit* `local` is skipped. `valueOrigin` deliberately carries no class-field
 		// initializer (see the entity), so a create that supplies `source_property` and omits the
 		// optional `value_origin` arrives here as `undefined` and only becomes `source` when the column
@@ -1132,8 +1148,6 @@ export class VirtualDevicesService {
 		const destination = findEnergySourceType(destinationChannelCategory, property.category);
 
 		if (destination === null) {
-			property.energyClaimPropertyId = null;
-
 			return;
 		}
 

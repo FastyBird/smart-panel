@@ -668,6 +668,36 @@ describe('VirtualDevicesService', () => {
 			expect(projection.energyClaimPropertyId).toBe('unrecognised');
 		});
 
+		// A claim is a statement about what the property projects *now*. A PATCH that turns a claimed
+		// projection into an owned property returns before the settlement at the end, and a claim
+		// surviving that would hold its meter forever — the unique index refusing every replacement, with
+		// nothing but deleting the stale row to release it.
+		it('releases the meter when a claimed projection becomes owned', async () => {
+			givenSlot(ChannelCategory.ELECTRICAL_ENERGY, DeviceCategory.OUTLET);
+
+			const projection = energyProjection('meter', PropertyCategory.CONSUMPTION);
+
+			projection.energyClaimPropertyId = 'meter';
+			projection.valueOrigin = VirtualValueOrigin.LOCAL;
+
+			await service.assertProjectionCompatible(projection, CHANNEL_ID);
+
+			expect(projection.energyClaimPropertyId).toBeNull();
+		});
+
+		it('releases the meter when a claimed projection loses its source', async () => {
+			givenSlot(ChannelCategory.ELECTRICAL_ENERGY, DeviceCategory.OUTLET);
+
+			const projection = energyProjection('meter', PropertyCategory.CONSUMPTION);
+
+			projection.energyClaimPropertyId = 'meter';
+			projection.sourcePropertyId = null;
+
+			await service.assertProjectionCompatible(projection, CHANNEL_ID);
+
+			expect(projection.energyClaimPropertyId).toBeNull();
+		});
+
 		it('claims nothing for a projection into a slot that carries no energy', async () => {
 			givenSlot(ChannelCategory.LIGHT, DeviceCategory.LIGHTING);
 			channelsPropertiesService.findOne.mockResolvedValue(
