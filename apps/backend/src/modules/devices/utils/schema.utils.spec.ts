@@ -21,14 +21,14 @@ describe('schema utils against the specification', () => {
 		const untranslated: string[] = [];
 
 		for (const channel of channels) {
-			const spec = channelsSchema[channel] as { properties?: Record<string, { category?: string }> };
+			const spec = channelsSchema[channel] as { properties?: Record<string, { category?: PropertyCategory }> };
 			const declared = Object.entries(spec.properties ?? {})
 				// `generic` is a channel's untyped escape hatch, not a category anything is matched against.
 				.filter(([, property]) => property.category !== PropertyCategory.GENERIC);
 			const reported = getAllProperties(channel).map((property) => property.category);
 
 			for (const [key, property] of declared) {
-				if (!reported.includes(property.category as PropertyCategory)) {
+				if (property.category && !reported.includes(property.category)) {
 					untranslated.push(`${channel}.${key}`);
 				}
 			}
