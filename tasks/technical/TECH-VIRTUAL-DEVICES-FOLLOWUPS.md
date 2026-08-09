@@ -345,15 +345,21 @@ Fixed by deleting both tables. Each spec entry already declares its own `categor
 
 Narrower since §3.9: `grid_import` and `grid_export` are reachable now, so the energy cross-type guard is live for the grid pair rather than dormant. What remains unreachable is generation.
 
-**What is dead because of it.** `EnergySourceType.GENERATION_PRODUCTION` (`energy.constants.ts:49`) and its row in `SOURCE_TYPE_MAP` (`energy-source-type.utils.ts:27`); the four `GENERATION_PRODUCTION` branches in `energy-data.service.ts` (`:180`, `:252`, `:332`, `:461`); `totalProductionKwh` and the `netKwh` that subtracts it, in every summary the API returns; the `production_delta_kwh` series in the timeseries. Nothing *looks* broken — the panel guards its solar pill behind `hasProduction`, which is `production != null && production > 0` (`energy_summary.dart:58`) — so this is a promise the API makes and cannot keep, not a visible defect.
+**What the category table does and does not govern.** It governs what can be *offered*: the virtual-device wizard builds its slots from it, and `DeviceValidationService.isChannelAllowedForDevice()` is the only reader of it. It does not govern what can be *persisted* — `ChannelsService.create()` validates the DTO and never consults that check, and only some plugins call `validateDeviceStructure` themselves (the virtual plugin, and the Home Assistant and Zigbee2MQTT adoption flows). So an integration is free to create an `electrical_generation` channel on any device, and `EnergyIngestionListener` classifies from the persisted (channel, property) pair rather than from the table — which means generation ingestion, `totalProductionKwh`, the `netKwh` that subtracts it and the `production_delta_kwh` series are all **reachable today** for such a device.
+
+What is unreachable is generation through anything the *specification* drives: no wizard offers it, structural validation cannot see it, and a virtual device therefore cannot present a generation meter. That is the asymmetry — not dead code.
+
+Nothing looks broken either way: the panel guards its solar pill behind `hasProduction`, which is `production != null && production > 0` (`energy_summary.dart:58`).
 
 **The options.**
 
 1. **Leave it.** Costs nothing at runtime and is a placeholder an inverter integration would land on. The asymmetry stays.
 2. **Give the channel a home.** The channel itself is already specified — `electrical_generation` declares `production`, `power`, `active` and `fault` — so the missing piece is only a device category to hang it on. No existing one is honest, though: a solar inverter is not an outlet. That means a new category, which is a `spec/devices/devices.yaml` change plus regenerated specs, admin and panel clients, translations and an icon. That is a feature, and if solar is on the roadmap this belongs to it rather than to a follow-up.
-3. **Delete the mapping.** Remove the source type, its branches and the production fields, so the API stops promising a figure that is always zero. Touches the OpenAPI schema and both generated clients, so it is a breaking change to the energy response for the sake of tidiness.
+3. ~~**Delete the mapping.**~~ **Ruled out.** It reads as tidying a figure that is always zero, and it is not: an integration that creates the channel directly is ingested today, so deleting the source type would remove working support from any such device and take a breaking API change to do it.
 
-**Recommendation: (1), unless solar is near-term, in which case (2) as part of that work.** (3) buys accuracy at the price of a breaking API change and would have to be undone the moment an inverter integration lands. What must *not* happen is grafting `electrical_generation` onto an unrelated category to make the asymmetry disappear: it would let a device declare a channel nothing on it can produce, and the energy module would start classifying readings that mean something else.
+**Recommendation: (1), unless solar is near-term, in which case (2) as part of that work.** The asymmetry is real but harmless — the specification cannot offer what the persistence layer accepts — and it resolves by itself the moment a category carries the channel. What must *not* happen is grafting `electrical_generation` onto an unrelated category to make it disappear: that would let a device declare a channel nothing on it can produce, and the energy module would start classifying readings that mean something else.
+
+**Worth noticing while you are here:** that `ChannelsService.create()` does not consult `isChannelAllowedForDevice()` is a broader gap than this item — the category table is advisory at persistence for *every* channel, not only this one. Whether that is intended is worth its own question rather than being settled inside a decision about solar.
 
 ### 3a.6 Test-coverage gaps (low)
 
