@@ -83,6 +83,12 @@
 						<div class="text-sm text-gray-500 mt-1">
 							{{ t('mcpModule.oauthConsent.accessExpiry', { minutes: accessExpiryMinutes }) }}
 						</div>
+						<div
+							v-if="interaction.requestedScopes?.includes(McpOAuthScope.OFFLINE_ACCESS)"
+							class="text-sm text-gray-500 mt-1"
+						>
+							{{ t('mcpModule.oauthConsent.offlineAccess') }}
+						</div>
 					</el-form-item>
 				</el-form>
 

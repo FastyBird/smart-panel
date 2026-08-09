@@ -101,7 +101,7 @@
 		"scopes": "Acceso solicitado",
 		"grantExpiry": "Duración de la autorización (días)",
 		"accessExpiry": "Los tokens de acceso caducan después de {minutes} minutos.",
-		"offlineAccess": "Permitir tokens de actualización para mantener el acceso hasta que caduque la autorización.",
+		"offlineAccess": "Los tokens de actualización permiten mantener el acceso durante un máximo de 30 días, aunque la autorización dure más.",
 		"physicalWarningTitle": "Este cliente puede afectar a dispositivos físicos",
 		"physicalWarning": "El acceso de escritura o ejecución puede cambiar el estado de dispositivos, ejecutar escenas y afectar a personas en la instalación.",
 		"approve": "Aprobar acceso",
@@ -113,7 +113,7 @@
 			"mcp:read": "Leer el contexto de la instalación y el estado compatible de dispositivos",
 			"mcp:write": "Cambiar propiedades compatibles de dispositivos físicos",
 			"mcp:trigger": "Ejecutar escenas y acciones físicas de nivel superior",
-			"offline_access": "Actualizar el acceso sin volver a preguntar hasta que caduque la autorización"
+			"offline_access": "Actualizar el acceso sin volver a preguntar durante un máximo de 30 días"
 		}
 	},
 	"messages": {

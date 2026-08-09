@@ -13,8 +13,20 @@ export interface McpOAuthProviderAdapterOptions {
 const isInMemoryDataSource = (dataSource: DataSource): boolean =>
 	'database' in dataSource.options && dataSource.options.database === ':memory:';
 
-const readPayload = (record: McpOAuthProviderArtifactEntity): AdapterPayload => ({
+const HASH_ONLY_BEARER_MODELS = new Set(['AuthorizationCode', 'AccessToken', 'RefreshToken']);
+
+const serializePayload = (model: string, payload: AdapterPayload): string => {
+	if (!HASH_ONLY_BEARER_MODELS.has(model)) return JSON.stringify(payload);
+
+	const safePayload = { ...payload };
+	delete safePayload.jti;
+
+	return JSON.stringify(safePayload);
+};
+
+const readPayload = (record: McpOAuthProviderArtifactEntity, presentedId?: string): AdapterPayload => ({
 	...(JSON.parse(record.payload) as AdapterPayload),
+	...(presentedId === undefined ? {} : { jti: presentedId }),
 	...(record.consumedAt === null ? {} : { consumed: record.consumedAt }),
 });
 
@@ -48,7 +60,7 @@ export const createMcpOAuthProviderAdapter = (
 				{
 					model: this.model,
 					idHash: hashToken(id),
-					payload: JSON.stringify(payload),
+					payload: serializePayload(this.model, payload),
 					grantIdHash,
 					userCodeHash: typeof payload.userCode === 'string' ? hashToken(payload.userCode) : null,
 					uidHash: typeof payload.uid === 'string' ? hashToken(payload.uid) : null,
@@ -74,7 +86,7 @@ export const createMcpOAuthProviderAdapter = (
 				.getRepository(McpOAuthProviderArtifactEntity)
 				.findOneBy({ model: this.model, idHash: hashToken(id) });
 
-			return this.readActiveRecord(record);
+			return this.readActiveRecord(record, id);
 		}
 
 		async findByUserCode(userCode: string): Promise<AdapterPayload | undefined> {
@@ -99,6 +111,8 @@ export const createMcpOAuthProviderAdapter = (
 			const release = await this.acquireConsumeQueue();
 
 			try {
+				let reuseDetected = false;
+
 				await dataSource.transaction(async (manager) => {
 					const repository = manager.getRepository(McpOAuthProviderArtifactEntity);
 					const idHash = hashToken(id);
@@ -116,9 +130,10 @@ export const createMcpOAuthProviderAdapter = (
 					if (this.model === 'RefreshToken' && reused?.grantIdHash) {
 						await this.revokeGrant(reused.grantIdHash, manager);
 					}
-
-					throw this.artifactReuseError();
+					reuseDetected = true;
 				});
+
+				if (reuseDetected) throw this.artifactReuseError();
 			} finally {
 				release();
 			}
@@ -164,7 +179,10 @@ export const createMcpOAuthProviderAdapter = (
 			return options.artifactReuseError?.() ?? new Error(`OAuth artifact ${this.model} was already consumed`);
 		}
 
-		private async readActiveRecord(record: McpOAuthProviderArtifactEntity | null): Promise<AdapterPayload | undefined> {
+		private async readActiveRecord(
+			record: McpOAuthProviderArtifactEntity | null,
+			presentedId?: string,
+		): Promise<AdapterPayload | undefined> {
 			if (!record) return undefined;
 
 			if (record.grantIdHash !== null && (await this.isGrantRevoked(record.grantIdHash))) {
@@ -174,7 +192,7 @@ export const createMcpOAuthProviderAdapter = (
 				return undefined;
 			}
 
-			return readPayload(record);
+			return readPayload(record, presentedId);
 		}
 
 		private async isGrantRevoked(grantIdHash: string): Promise<boolean> {

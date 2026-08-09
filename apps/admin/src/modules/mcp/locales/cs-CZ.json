@@ -95,7 +95,7 @@
 		"scopes": "Požadovaný přístup",
 		"grantExpiry": "Platnost oprávnění (dny)",
 		"accessExpiry": "Přístupové tokeny vyprší za {minutes} minut.",
-		"offlineAccess": "Povolit obnovovací tokeny pro trvalý přístup do vypršení oprávnění.",
+		"offlineAccess": "Obnovovací tokeny umožňují pokračovat v přístupu nejvýše 30 dní, i když oprávnění platí déle.",
 		"physicalWarningTitle": "Tento klient může ovlivnit fyzická zařízení",
 		"physicalWarning": "Přístup pro zápis nebo spouštění může změnit stav zařízení, spouštět scény a ovlivnit osoby v instalaci.",
 		"approve": "Povolit přístup",
@@ -107,7 +107,7 @@
 			"mcp:read": "Číst kontext instalace a podporovaný stav zařízení",
 			"mcp:write": "Měnit podporované vlastnosti fyzických zařízení",
 			"mcp:trigger": "Spouštět scény a vyšší fyzické akce",
-			"offline_access": "Obnovovat přístup bez dalšího dotazu do vypršení oprávnění"
+			"offline_access": "Obnovovat přístup bez dalšího dotazu nejvýše 30 dní"
 		}
 	},
 	"messages": {

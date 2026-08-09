@@ -101,7 +101,7 @@
 		"scopes": "Żądany dostęp",
 		"grantExpiry": "Okres ważności zgody (dni)",
 		"accessExpiry": "Tokeny dostępu wygasają po {minutes} minutach.",
-		"offlineAccess": "Zezwól na tokeny odświeżania do czasu wygaśnięcia zgody.",
+		"offlineAccess": "Tokeny odświeżania umożliwiają ciągły dostęp przez maksymalnie 30 dni, nawet jeśli zgoda jest ważna dłużej.",
 		"physicalWarningTitle": "Ten klient może wpływać na urządzenia fizyczne",
 		"physicalWarning": "Dostęp do zapisu lub uruchamiania może zmieniać stan urządzeń, uruchamiać sceny i wpływać na osoby w instalacji.",
 		"approve": "Zatwierdź dostęp",
@@ -113,7 +113,7 @@
 			"mcp:read": "Odczytuj kontekst instalacji i obsługiwany stan urządzeń",
 			"mcp:write": "Zmieniaj obsługiwane właściwości urządzeń fizycznych",
 			"mcp:trigger": "Uruchamiaj sceny i nadrzędne akcje fizyczne",
-			"offline_access": "Odświeżaj dostęp bez ponownego pytania do wygaśnięcia zgody"
+			"offline_access": "Odświeżaj dostęp bez ponownego pytania przez maksymalnie 30 dni"
 		}
 	},
 	"messages": {

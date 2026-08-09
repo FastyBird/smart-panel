@@ -113,7 +113,7 @@
 		"scopes": "Requested access",
 		"grantExpiry": "Grant lifetime (days)",
 		"accessExpiry": "Access tokens expire after {minutes} minutes.",
-		"offlineAccess": "Allow refresh tokens for continued access until the grant expires.",
+		"offlineAccess": "Refresh tokens allow continued access for at most 30 days, even when the grant lasts longer.",
 		"physicalWarningTitle": "This client can affect physical devices",
 		"physicalWarning": "Write or trigger access can change device state, run scenes, and affect people in the installation.",
 		"approve": "Approve access",
@@ -125,7 +125,7 @@
 			"mcp:read": "Read installation context and supported device state",
 			"mcp:write": "Change supported physical-device properties",
 			"mcp:trigger": "Run scenes and higher-level physical actions",
-			"offline_access": "Refresh access without asking again until grant expiry"
+			"offline_access": "Refresh access without asking again for up to 30 days"
 		}
 	},
 	"messages": {

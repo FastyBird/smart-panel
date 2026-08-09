@@ -11,6 +11,7 @@ import {
 	McpOAuthProviderRevokedGrantEntity,
 } from '../src/modules/mcp/entities/mcp-oauth.entity';
 import { McpOAuthScope } from '../src/modules/mcp/mcp.constants';
+import { createMcpOAuthProviderAdapter } from '../src/modules/mcp/oauth/mcp-oauth-provider.adapter';
 import { McpOAuthProviderFactory } from '../src/modules/mcp/oauth/mcp-oauth-provider.factory';
 import { McpOAuthPublicUrls } from '../src/modules/mcp/oauth/mcp-oauth.types';
 import { McpOAuthClientService } from '../src/modules/mcp/services/mcp-oauth-client.service';
@@ -304,6 +305,22 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		expect(tokens.token_type).toBe('Bearer');
 		expect(tokens.access_token.split('.')).toHaveLength(1);
 		expect(tokens.refresh_token?.split('.')).toHaveLength(1);
+
+		if (!code || !tokens.refresh_token) throw new Error('Expected opaque authorization artifacts');
+
+		for (const [model, rawValue] of [
+			['AuthorizationCode', code],
+			['AccessToken', tokens.access_token],
+			['RefreshToken', tokens.refresh_token],
+		] as const) {
+			const artifact = await dataSource.getRepository(McpOAuthProviderArtifactEntity).findOneByOrFail({
+				model,
+				idHash: createHash('sha256').update(rawValue).digest('hex'),
+			});
+
+			expect(JSON.parse(artifact.payload)).not.toHaveProperty('jti');
+			expect(artifact.payload).not.toContain(rawValue);
+		}
 	});
 
 	it('requires fresh consent even when the browser has an existing client grant', async () => {
@@ -400,6 +417,35 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		expect(refreshResponse.status).toBe(200);
 		expect(successorArtifact.expiresAt).toBeLessThanOrEqual(familyExpiry);
 		expect(successorArtifact.expiresAt).toBeGreaterThan(familyExpiry - 2_000);
+	});
+
+	it('commits refresh-family revocation before reporting token reuse', async () => {
+		const Adapter = createMcpOAuthProviderAdapter(dataSource, {} as McpOAuthClientService, {
+			allowTestInMemory: true,
+			artifactReuseError: () => new Error('refresh token reused'),
+		});
+		const adapter = new Adapter('RefreshToken');
+		const rawRefreshToken = `refresh-${randomBytes(24).toString('base64url')}`;
+		const rawGrantId = `grant-${randomBytes(24).toString('base64url')}`;
+
+		await adapter.upsert(
+			rawRefreshToken,
+			{
+				jti: rawRefreshToken,
+				kind: 'RefreshToken',
+				grantId: rawGrantId,
+				iat: Math.floor(Date.now() / 1_000),
+				exp: Math.floor(Date.now() / 1_000) + 60,
+			},
+			60,
+		);
+		await adapter.consume(rawRefreshToken);
+		await expect(adapter.consume(rawRefreshToken)).rejects.toThrow('refresh token reused');
+
+		const grantIdHash = createHash('sha256').update(rawGrantId).digest('hex');
+
+		expect(await dataSource.getRepository(McpOAuthProviderRevokedGrantEntity).existsBy({ grantIdHash })).toBe(true);
+		expect(await dataSource.getRepository(McpOAuthProviderArtifactEntity).existsBy({ grantIdHash })).toBe(false);
 	});
 
 	it('rotates refresh tokens and revokes the complete family after concurrent reuse', async () => {

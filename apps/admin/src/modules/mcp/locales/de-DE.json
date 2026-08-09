@@ -98,7 +98,7 @@
 		"scopes": "Angeforderter Zugriff",
 		"grantExpiry": "Gültigkeit der Freigabe (Tage)",
 		"accessExpiry": "Zugriffstoken laufen nach {minutes} Minuten ab.",
-		"offlineAccess": "Refresh-Token für fortlaufenden Zugriff bis zum Ablauf der Freigabe erlauben.",
+		"offlineAccess": "Refresh-Token ermöglichen höchstens 30 Tage lang fortlaufenden Zugriff, auch wenn die Freigabe länger gilt.",
 		"physicalWarningTitle": "Dieser Client kann physische Geräte beeinflussen",
 		"physicalWarning": "Schreib- oder Ausführungszugriff kann Gerätezustände ändern, Szenen starten und Personen in der Installation betreffen.",
 		"approve": "Zugriff genehmigen",
@@ -110,7 +110,7 @@
 			"mcp:read": "Installationskontext und unterstützte Gerätezustände lesen",
 			"mcp:write": "Unterstützte Eigenschaften physischer Geräte ändern",
 			"mcp:trigger": "Szenen und übergeordnete physische Aktionen ausführen",
-			"offline_access": "Zugriff bis zum Ablauf der Freigabe ohne erneute Nachfrage aktualisieren"
+			"offline_access": "Zugriff bis zu 30 Tage ohne erneute Nachfrage aktualisieren"
 		}
 	},
 	"messages": {

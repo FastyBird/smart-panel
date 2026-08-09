@@ -21,7 +21,7 @@ const interaction = {
 	clientIdentifier: 'codex-client',
 	clientName: 'Codex',
 	redirectUri: 'http://127.0.0.1:1455/callback',
-	requestedScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE],
+	requestedScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE, McpOAuthScope.OFFLINE_ACCESS],
 	accessExpiresInSeconds: 600,
 	maximumGrantExpiresInDays: 90,
 	physicalDeviceWarning: true,
@@ -83,7 +83,8 @@ describe('ViewMcpOAuthConsent', () => {
 		expect(wrapper.text()).toContain('http://127.0.0.1:1455/callback');
 		expect(wrapper.findComponent({ name: 'ElAlert' }).exists()).toBe(true);
 		expect(wrapper.text()).toContain('mcpModule.oauthConsent.physicalWarning');
+		expect(wrapper.text()).toContain('mcpModule.oauthConsent.offlineAccess');
 		expect(mocks.load).toHaveBeenCalledWith('interaction-id');
-		expect(wrapper.findComponent({ name: 'ElCheckboxGroup' }).props('modelValue')).toEqual([McpOAuthScope.READ]);
+		expect(wrapper.findComponent({ name: 'ElCheckboxGroup' }).props('modelValue')).toEqual([McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS]);
 	});
 });
