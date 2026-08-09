@@ -11,16 +11,25 @@ import { ResolvedSensorRule } from '../spec/detection-rules.types';
 
 import { SecuritySensorsProvider } from './security-sensors.provider';
 
+let propertySequence = 0;
+
 function createProperty(category: PropertyCategory, value: string | number | boolean | null): ChannelPropertyEntity {
 	const prop = new ChannelPropertyEntity();
+	prop.id = `property-${++propertySequence}`;
 	prop.category = category;
 	prop.value = value != null ? new PropertyValueState(value) : null;
 
 	return prop;
 }
 
-function createChannel(category: ChannelCategory, properties: ChannelPropertyEntity[]): ChannelEntity {
+let channelSequence = 0;
+
+function createChannel(category: ChannelCategory, properties: ChannelPropertyEntity[], id?: string): ChannelEntity {
 	const channel = new ChannelEntity();
+	// Identified, because a sensor is identified by the channel it is reported from — see
+	// SecuritySensorsProvider.identifySensor(). A fixture without one is not a channel any pass would
+	// meet.
+	channel.id = id ?? `channel-${++channelSequence}`;
 	channel.category = category;
 	channel.properties = properties;
 
@@ -623,7 +632,11 @@ describe('SecuritySensorsProvider', () => {
 	// because the ids differ precisely because the devices do.
 
 	/** A property that reads another property's series, the way a projection does. */
-	const projecting = (category: PropertyCategory, value: boolean, sourceId: string): ChannelPropertyEntity => {
+	const projecting = (
+		category: PropertyCategory,
+		value: string | number | boolean,
+		sourceId: string,
+	): ChannelPropertyEntity => {
 		const property = createProperty(category, value);
 
 		property.id = `${sourceId}-projection`;
@@ -649,7 +662,7 @@ describe('SecuritySensorsProvider', () => {
 		source.id = 'smoke-detector';
 
 		devicesService.findAll.mockResolvedValue([
-			createDevice('physical', [createChannel(ChannelCategory.SMOKE, [source])]),
+			createDevice('physical', [createChannel(ChannelCategory.SMOKE, [source], 'physical-smoke')]),
 			createDevice('virtual', [
 				createChannel(ChannelCategory.SMOKE, [projecting(PropertyCategory.DETECTED, true, 'smoke-detector')]),
 			]),
@@ -669,7 +682,7 @@ describe('SecuritySensorsProvider', () => {
 		const source = createProperty(PropertyCategory.DETECTED, true);
 		source.id = 'smoke-detector';
 
-		const physical = createDevice('physical', [createChannel(ChannelCategory.SMOKE, [source])]);
+		const physical = createDevice('physical', [createChannel(ChannelCategory.SMOKE, [source], 'physical-smoke')]);
 
 		physical.hidden = true;
 
@@ -694,7 +707,7 @@ describe('SecuritySensorsProvider', () => {
 		source.id = 'smoke-detector';
 
 		devicesService.findAll.mockResolvedValue([
-			createDevice('physical', [createChannel(ChannelCategory.SMOKE, [source])]),
+			createDevice('physical', [createChannel(ChannelCategory.SMOKE, [source], 'physical-smoke')]),
 			createDevice('virtual', [
 				createChannel(ChannelCategory.SMOKE, [projecting(PropertyCategory.DETECTED, true, 'smoke-detector')]),
 			]),
@@ -721,5 +734,33 @@ describe('SecuritySensorsProvider', () => {
 
 		expect(signal.activeAlertsCount).toBe(2);
 		expect(signal.activeAlerts.map((alert) => alert.sourceDeviceId).sort()).toEqual(['hidden', 'other']);
+	});
+	// The reviewer's case, and the reason identity cannot be the property that matched: the built-in CO
+	// rule checks `detected` before `concentration`, so the physical channel matches on one and a
+	// projection that took only the concentration matches on the other. Keyed by whichever matched,
+	// they would be two sensors — and would collapse into one again the moment the readings changed.
+	it('counts one sensor once when each device matches on a different property', async () => {
+		registerProjections(testingModule);
+
+		const detected = createProperty(PropertyCategory.DETECTED, true);
+		const concentration = createProperty(PropertyCategory.CONCENTRATION, 40);
+
+		devicesService.findAll.mockResolvedValue([
+			createDevice('physical', [
+				createChannel(ChannelCategory.CARBON_MONOXIDE, [detected, concentration], 'physical-co'),
+			]),
+			// Took the concentration and kept a local `detected` of its own, which reads false.
+			createDevice('virtual', [
+				createChannel(ChannelCategory.CARBON_MONOXIDE, [
+					createProperty(PropertyCategory.DETECTED, false),
+					projecting(PropertyCategory.CONCENTRATION, 40, concentration.id),
+				]),
+			]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlertsCount).toBe(1);
+		expect(signal.activeAlerts).toEqual([expect.objectContaining({ sourceDeviceId: 'virtual' })]);
 	});
 });

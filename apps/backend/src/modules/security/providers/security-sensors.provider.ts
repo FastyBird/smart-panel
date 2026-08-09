@@ -65,6 +65,10 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 		const rules = this.detectionRulesLoader.getSensorRules();
 		const armedState = context?.armedState ?? null;
 
+		// Where every property in this pass lives, so a projected one can be traced back to the channel
+		// it reads rather than to the property that happened to carry it.
+		const channelOfProperty = this.mapPropertiesToChannels(devices);
+
 		const candidates: SensorAlertCandidate[] = [];
 
 		for (const device of devices) {
@@ -83,9 +87,11 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 
 				const result = this.evaluateRule(channel, rule);
 
-				if (result.triggered && result.property) {
+				if (result.triggered) {
 					// Lower severity for intrusion/entry alerts when disarmed
 					const severity = this.adjustSeverityForArmedState(rule.alertType, rule.severity, armedState);
+
+					const sensor = this.identifySensor(channel, rule, channelOfProperty);
 
 					candidates.push({
 						alert: {
@@ -97,9 +103,8 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 							acknowledged: false,
 						},
 						device,
-						// The series behind the reading, not the property that carried it here.
-						sensorId: this.valueSourceRegistry.resolve(result.property),
-						isProjection: this.valueSourceRegistry.isProjected(result.property),
+						sensorId: sensor.id,
+						isProjection: sensor.isProjection,
 					});
 				}
 			}
@@ -145,6 +150,79 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 		};
 	}
 
+	/** Every property in this pass, by the channel it belongs to. */
+	private mapPropertiesToChannels(devices: DeviceEntity[]): Map<string, string> {
+		const channelOfProperty = new Map<string, string>();
+
+		for (const device of devices) {
+			for (const channel of device.channels ?? []) {
+				if (!(channel instanceof ChannelEntity)) {
+					continue;
+				}
+
+				for (const property of channel.properties ?? []) {
+					if (property instanceof ChannelPropertyEntity) {
+						channelOfProperty.set(property.id, channel.id);
+					}
+				}
+			}
+		}
+
+		return channelOfProperty;
+	}
+
+	/**
+	 * Which sensor this channel is reporting, as an identity two devices can agree on.
+	 *
+	 * Asked of the channel rather than of the property that happened to satisfy the rule first, because
+	 * that property is not a stable answer: a rule may list alternatives — the built-in carbon monoxide
+	 * rule checks `detected` before `concentration` — so which one matches depends on the readings at
+	 * that instant. A physical channel matching on `detected` and a projection of it matching on
+	 * `concentration` would then be keyed differently and both survive, and the same pair would
+	 * de-duplicate correctly a moment later. An identity that moves with the values is not an identity.
+	 *
+	 * So the sensor is the *channel* the readings come from: every rule-relevant property that reads
+	 * somebody else's series is traced back to the channel that owns that series, and the channel's own
+	 * id stands in when it projects nothing. A projection sharing one source channel therefore agrees
+	 * with the source however either of them triggered, and however much of the channel was projected —
+	 * the case that matters, since a partly-projected channel keeps local properties of its own.
+	 *
+	 * A channel assembled from *several* sources is a distinct thing the operator built, and keeps its
+	 * own identity: it names them all, so it matches another channel assembled the same way and nothing
+	 * else. Rare enough to be worth stating rather than special-casing.
+	 */
+	private identifySensor(
+		channel: ChannelEntity,
+		rule: ResolvedSensorRule,
+		channelOfProperty: Map<string, string>,
+	): { id: string; isProjection: boolean } {
+		const sourceChannels = new Set<string>();
+
+		for (const check of rule.properties) {
+			const property = this.findProperty(channel, check.property);
+
+			if (!property) {
+				continue;
+			}
+
+			const storageKey = this.valueSourceRegistry.resolve(property);
+
+			if (storageKey === property.id) {
+				continue;
+			}
+
+			// The channel that owns the series, or the series itself when its channel is outside this
+			// pass — still stable, and still shared by everything projecting it.
+			sourceChannels.add(channelOfProperty.get(storageKey) ?? storageKey);
+		}
+
+		if (sourceChannels.size === 0) {
+			return { id: channel.id, isProjection: false };
+		}
+
+		return { id: Array.from(sourceChannels).sort().join('+'), isProjection: true };
+	}
+
 	/**
 	 * One alert per sensor, whatever number of devices are presenting it.
 	 *
@@ -155,11 +233,11 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 	 * and `SecurityAggregatorService.mergeAlerts()` cannot help: it de-duplicates by alert id, and the
 	 * ids differ precisely because the devices do.
 	 *
-	 * Asked of the registry rather than guessed from the device type. "Two channels reading one series"
-	 * is exactly what it answers, and it is the same seam the energy module bills a projected meter
-	 * through — the alternative, skipping any channel whose properties are all projections, is wrong
-	 * for the case virtual devices exist to serve, where the virtual device is the one the user thinks
-	 * of as the sensor.
+	 * Asked of the registry rather than guessed from the device type — see identifySensor() for what
+	 * "the same sensor" resolves to. It is the same seam the energy module bills a projected meter
+	 * through; the alternative, skipping any channel whose properties are all projections, is wrong for
+	 * the case virtual devices exist to serve, where the virtual device is the one the user thinks of
+	 * as the sensor.
 	 *
 	 * Which device the survivor names is the part that is a judgement rather than a mechanism:
 	 *
