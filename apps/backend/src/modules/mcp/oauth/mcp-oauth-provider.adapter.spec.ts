@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 import { hashToken } from '../../auth/utils/token.utils';
 import {
 	McpOAuthProviderArtifactEntity,
+	McpOAuthProviderRefreshFamilyLineageEntity,
 	McpOAuthProviderRevokedGrantEntity,
 	McpOAuthProviderRevokedRefreshFamilyEntity,
 } from '../entities/mcp-oauth.entity';
@@ -19,6 +20,7 @@ describe('MCP OAuth provider adapter management identity', () => {
 			database: ':memory:',
 			entities: [
 				McpOAuthProviderArtifactEntity,
+				McpOAuthProviderRefreshFamilyLineageEntity,
 				McpOAuthProviderRevokedGrantEntity,
 				McpOAuthProviderRevokedRefreshFamilyEntity,
 			],
@@ -38,16 +40,20 @@ describe('MCP OAuth provider adapter management identity', () => {
 		const accessAdapter = new Adapter('AccessToken');
 		const refreshAdapter = new Adapter('RefreshToken');
 		const grantId = 'provider-grant-id';
-		const payload = { grantId, clientId: 'public-client', scope: 'mcp:read' };
+		const payload = { grantId, clientId: 'public-client', scope: 'mcp:read', gty: 'authorization_code' };
 
 		await accessAdapter.upsert('access-token', payload, 60);
 		const initialAccess = await find('AccessToken', 'access-token');
 		await accessAdapter.upsert('access-token', { ...payload, scope: 'mcp:read mcp:write' }, 60);
 		const updatedAccess = await find('AccessToken', 'access-token');
-		await refreshAdapter.upsert('refresh-token-one', payload, 120);
+		await refreshAdapter.upsert('refresh-token-one', { ...payload, rotations: 0 }, 120);
 		const firstRefresh = await find('RefreshToken', 'refresh-token-one');
 		const linkedAccess = await find('AccessToken', 'access-token');
-		await refreshAdapter.upsert('refresh-token-two', payload, 120);
+		await refreshAdapter.upsert(
+			'refresh-token-two',
+			{ ...payload, gty: 'authorization_code refresh_token', rotations: 1 },
+			120,
+		);
 		const secondRefresh = await find('RefreshToken', 'refresh-token-two');
 
 		expect(initialAccess.managementId).toMatch(/^[0-9a-f-]{36}$/);
@@ -56,6 +62,11 @@ describe('MCP OAuth provider adapter management identity', () => {
 		expect(firstRefresh.refreshFamilyId).toMatch(/^[0-9a-f-]{36}$/);
 		expect(secondRefresh.refreshFamilyId).toBe(firstRefresh.refreshFamilyId);
 		expect(linkedAccess.refreshFamilyId).toBe(firstRefresh.refreshFamilyId);
+		expect(
+			await dataSource.getRepository(McpOAuthProviderRefreshFamilyLineageEntity).findOneByOrFail({
+				grantIdHash: hashToken(grantId),
+			}),
+		).toMatchObject({ refreshFamilyId: firstRefresh.refreshFamilyId });
 		expect(JSON.stringify([linkedAccess, firstRefresh, secondRefresh])).not.toContain('access-token');
 		expect(JSON.stringify([linkedAccess, firstRefresh, secondRefresh])).not.toContain('refresh-token-one');
 	});

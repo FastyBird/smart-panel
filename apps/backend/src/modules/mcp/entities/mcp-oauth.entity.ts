@@ -381,3 +381,13 @@ export class McpOAuthProviderRevokedRefreshFamilyEntity {
 	@Column({ type: 'integer' })
 	revokedAt: number;
 }
+
+@Entity('mcp_module_oauth_provider_refresh_family_lineage')
+export class McpOAuthProviderRefreshFamilyLineageEntity {
+	@PrimaryColumn({ type: 'varchar' })
+	grantIdHash: string;
+
+	@Index({ unique: true })
+	@Column({ type: 'varchar' })
+	refreshFamilyId: string;
+}

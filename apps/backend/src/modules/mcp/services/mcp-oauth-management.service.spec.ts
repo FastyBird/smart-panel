@@ -9,6 +9,7 @@ import {
 	McpOAuthClientEntity,
 	McpOAuthGrantEntity,
 	McpOAuthProviderArtifactEntity,
+	McpOAuthProviderRefreshFamilyLineageEntity,
 	McpOAuthProviderRevokedGrantEntity,
 	McpOAuthProviderRevokedRefreshFamilyEntity,
 } from '../entities/mcp-oauth.entity';
@@ -47,6 +48,7 @@ describe('McpOAuthManagementService', () => {
 				McpOAuthClientEntity,
 				McpOAuthGrantEntity,
 				McpOAuthProviderArtifactEntity,
+				McpOAuthProviderRefreshFamilyLineageEntity,
 				McpOAuthProviderRevokedGrantEntity,
 				McpOAuthProviderRevokedRefreshFamilyEntity,
 			],
@@ -167,6 +169,10 @@ describe('McpOAuthManagementService', () => {
 				expiresAt: Date.now() + 30_000,
 			}),
 		]);
+		await dataSource.getRepository(McpOAuthProviderRefreshFamilyLineageEntity).save({
+			grantIdHash: grant.providerGrantIdHash,
+			refreshFamilyId: familyId,
+		});
 		const clientsService = {
 			getOneOrThrow: jest.fn(async (id: string) => clients.findOneByOrFail({ id })),
 			assertScopesAllowed: jest.fn(),
@@ -311,7 +317,13 @@ describe('McpOAuthManagementService', () => {
 		const refreshAdapter = new Adapter('RefreshToken');
 		const rotation = refreshAdapter.upsert(
 			'rotating-refresh-token',
-			{ grantId: 'grant-one', clientId: client.clientIdentifier, scope: 'mcp:read offline_access' },
+			{
+				grantId: 'grant-one',
+				clientId: client.clientIdentifier,
+				scope: 'mcp:read offline_access',
+				gty: 'authorization_code refresh_token',
+				rotations: 1,
+			},
 			60,
 		);
 
@@ -325,6 +337,32 @@ describe('McpOAuthManagementService', () => {
 				.getRepository(McpOAuthProviderRevokedRefreshFamilyEntity)
 				.existsBy({ refreshFamilyId: familyId }),
 		).toBe(true);
+		expect(await dataSource.getRepository(McpOAuthProviderArtifactEntity).countBy({ refreshFamilyId: familyId })).toBe(
+			0,
+		);
+	});
+
+	it('rejects a refresh successor after its revoked family artifacts have already been deleted', async () => {
+		const Adapter = createMcpOAuthProviderAdapter(dataSource, {} as McpOAuthClientService, {
+			allowTestInMemory: true,
+		});
+		const refreshAdapter = new Adapter('RefreshToken');
+
+		await service.revokeRefreshFamily(familyId, 'actor-id');
+
+		await expect(
+			refreshAdapter.upsert(
+				'late-refresh-successor',
+				{
+					grantId: 'grant-one',
+					clientId: client.clientIdentifier,
+					scope: 'mcp:read offline_access',
+					gty: 'authorization_code refresh_token',
+					rotations: 1,
+				},
+				60,
+			),
+		).rejects.toThrow('already consumed');
 		expect(await dataSource.getRepository(McpOAuthProviderArtifactEntity).countBy({ refreshFamilyId: familyId })).toBe(
 			0,
 		);

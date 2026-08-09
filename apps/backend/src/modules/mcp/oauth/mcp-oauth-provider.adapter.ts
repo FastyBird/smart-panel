@@ -5,6 +5,7 @@ import { DataSource, IsNull, LessThanOrEqual, Not, Repository } from 'typeorm';
 import { hashToken } from '../../auth/utils/token.utils';
 import {
 	McpOAuthProviderArtifactEntity,
+	McpOAuthProviderRefreshFamilyLineageEntity,
 	McpOAuthProviderRevokedGrantEntity,
 	McpOAuthProviderRevokedRefreshFamilyEntity,
 } from '../entities/mcp-oauth.entity';
@@ -64,7 +65,7 @@ export const createMcpOAuthProviderAdapter = (
 			const repository = dataSource.getRepository(McpOAuthProviderArtifactEntity);
 			const idHash = hashToken(id);
 			const existing = await repository.findOneBy({ model: this.model, idHash });
-			const refreshFamilyId = await this.resolveRefreshFamilyId(repository, existing, grantIdHash);
+			const refreshFamilyId = await this.resolveRefreshFamilyId(repository, existing, grantIdHash, payload);
 
 			if (refreshFamilyId !== null && (await this.isRefreshFamilyRevoked(refreshFamilyId))) {
 				throw this.artifactReuseError();
@@ -213,15 +214,52 @@ export const createMcpOAuthProviderAdapter = (
 			repository: Repository<McpOAuthProviderArtifactEntity>,
 			existing: McpOAuthProviderArtifactEntity | null,
 			grantIdHash: string | null,
+			payload: AdapterPayload,
 		): Promise<string | null> {
 			if (existing?.refreshFamilyId) return existing.refreshFamilyId;
 			if (!grantIdHash || (this.model !== 'AccessToken' && this.model !== 'RefreshToken')) return null;
 
+			const lineageRepository = repository.manager.getRepository(McpOAuthProviderRefreshFamilyLineageEntity);
+			const lineage = await lineageRepository.findOneBy({ grantIdHash });
+
+			if (this.model === 'AccessToken' && !this.isRefreshTokenGrant(payload)) return null;
+
+			if (this.model === 'RefreshToken' && !this.isRefreshTokenRotation(payload)) {
+				const refreshFamilyId = randomUUID();
+				await lineageRepository.upsert({ grantIdHash, refreshFamilyId }, ['grantIdHash']);
+
+				return refreshFamilyId;
+			}
+
+			const refreshFamilyId =
+				lineage?.refreshFamilyId ?? (await this.findPersistedRefreshFamilyId(repository, grantIdHash));
+
+			if (!refreshFamilyId) throw this.artifactReuseError();
+
+			if (!lineage) {
+				await lineageRepository.upsert({ grantIdHash, refreshFamilyId }, ['grantIdHash']);
+			}
+
+			return refreshFamilyId;
+		}
+
+		private async findPersistedRefreshFamilyId(
+			repository: Repository<McpOAuthProviderArtifactEntity>,
+			grantIdHash: string,
+		): Promise<string | null> {
 			const familyArtifact = await repository.findOne({
 				where: { model: 'RefreshToken', grantIdHash, refreshFamilyId: Not(IsNull()) },
 			});
 
-			return familyArtifact?.refreshFamilyId ?? (this.model === 'RefreshToken' ? randomUUID() : null);
+			return familyArtifact?.refreshFamilyId ?? null;
+		}
+
+		private isRefreshTokenGrant(payload: AdapterPayload): boolean {
+			return typeof payload.gty === 'string' && payload.gty.split(' ').includes('refresh_token');
+		}
+
+		private isRefreshTokenRotation(payload: AdapterPayload): boolean {
+			return typeof payload.rotations === 'number' && payload.rotations > 0;
 		}
 
 		private async readActiveRecord(
