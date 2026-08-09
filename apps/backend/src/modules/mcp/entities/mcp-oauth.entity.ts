@@ -333,12 +333,20 @@ export class McpOAuthProviderArtifactEntity {
 	@PrimaryColumn({ type: 'varchar' })
 	idHash: string;
 
+	@Index({ unique: true })
+	@Column({ type: 'varchar' })
+	managementId: string;
+
 	@Column({ type: 'text' })
 	payload: string;
 
 	@Index()
 	@Column({ type: 'varchar', nullable: true })
 	grantIdHash: string | null;
+
+	@Index()
+	@Column({ type: 'varchar', nullable: true })
+	refreshFamilyId: string | null;
 
 	@Index()
 	@Column({ type: 'varchar', nullable: true })

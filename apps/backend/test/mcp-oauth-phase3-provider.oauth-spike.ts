@@ -321,7 +321,21 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 
 			expect(JSON.parse(artifact.payload)).not.toHaveProperty('jti');
 			expect(artifact.payload).not.toContain(rawValue);
+			expect(artifact.managementId).toMatch(/^[0-9a-f-]{36}$/);
+			expect(artifact.managementId).not.toBe(artifact.idHash);
 		}
+
+		const accessArtifact = await dataSource.getRepository(McpOAuthProviderArtifactEntity).findOneByOrFail({
+			model: 'AccessToken',
+			idHash: createHash('sha256').update(tokens.access_token).digest('hex'),
+		});
+		const refreshArtifact = await dataSource.getRepository(McpOAuthProviderArtifactEntity).findOneByOrFail({
+			model: 'RefreshToken',
+			idHash: createHash('sha256').update(tokens.refresh_token).digest('hex'),
+		});
+
+		expect(accessArtifact.refreshFamilyId).toBe(refreshArtifact.refreshFamilyId);
+		expect(refreshArtifact.refreshFamilyId).toMatch(/^[0-9a-f-]{36}$/);
 	});
 
 	it('requires fresh consent even when the browser has an existing client grant', async () => {
@@ -468,6 +482,8 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		const familyExpiry = (initialPayload.iiat + 30 * 24 * 60 * 60) * 1_000;
 
 		expect(refreshResponse.status).toBe(200);
+		expect(successorArtifact.managementId).not.toBe(initialArtifact.managementId);
+		expect(successorArtifact.refreshFamilyId).toBe(initialArtifact.refreshFamilyId);
 		expect(successorArtifact.expiresAt).toBeLessThanOrEqual(familyExpiry);
 		expect(successorArtifact.expiresAt).toBeGreaterThan(familyExpiry - 2_000);
 	});
