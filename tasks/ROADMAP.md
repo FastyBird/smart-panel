@@ -215,9 +215,9 @@ Build a device from properties of other devices — splitting one physical devic
 |---|------|-------|--------|-------|
 | 1 | [FEATURE-DEVICE-VIRTUAL-PLUGIN](../docs/superpowers/specs/2026-07-31-virtual-devices-design.md) | backend, admin, panel | :white_check_mark: Done | Backend plugin, admin wizard and detail page with remap, `hidden` filtering across every picker, panel rendering. The six closed-loop categories stay blocked by the design's v1 boundary |
 | 2 | [BUG-ENERGY-VIRTUAL-ROOM-ATTRIBUTION](bugs/BUG-ENERGY-VIRTUAL-ROOM-ATTRIBUTION.md) | backend | :white_check_mark: Done | A projected meter now has one accountable claimant and is billed to the device presenting it; the space readers scope by the recorded room, so moving or deleting a device no longer rewrites its history |
-| 3 | [TECH-VIRTUAL-DEVICES-FOLLOWUPS](technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md) | backend | :clipboard: Planned | 25 of 38 items open, none blocking; several are pre-existing issues found in passing |
+| 3 | [TECH-VIRTUAL-DEVICES-FOLLOWUPS](technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md) | backend | :clipboard: Planned | 23 of 38 items open, none blocking; several are pre-existing issues found in passing |
 
-**Next up:** [controller support](../docs/superpowers/specs/2026-07-31-virtual-devices-design.md#controller-support), which unblocks the six closed-loop categories the v1 boundary excludes. It starts with a design rather than a task — a control loop touches safety, concurrency and the platform's command path — and the design spec now carries what that design has to answer. [TECH-VIRTUAL-DEVICES-FOLLOWUPS](technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md) is the other open thread, none of it blocking.
+**Next up:** [controller support](../docs/superpowers/specs/2026-07-31-virtual-devices-design.md#controller-support), which unblocks the six closed-loop categories the v1 boundary excludes. It starts with a design rather than a task — a control loop touches safety, concurrency and the platform's command path — and the design spec now carries what that design has to answer, in what order the decisions unblock each other, which categories to take first, and what the deliverable is. [TECH-VIRTUAL-DEVICES-FOLLOWUPS](technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md) is the other open thread, none of it blocking.
 
 ---
 
