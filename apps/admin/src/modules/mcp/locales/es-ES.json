@@ -92,6 +92,30 @@
 		"revoke": "¿Revocar la credencial actual de {name}? Los clientes conectados perderán el acceso inmediatamente.",
 		"delete": "¿Eliminar {name}? Su credencial se revocará y el registro del cliente no podrá recuperarse."
 	},
+	"oauthConsent": {
+		"title": "Autorizar acceso MCP",
+		"subtitle": "Revisa exactamente lo que este cliente remoto podrá hacer antes de aprobar el acceso.",
+		"installation": "Instalación",
+		"client": "Cliente solicitante",
+		"redirect": "Destino de redirección",
+		"scopes": "Acceso solicitado",
+		"grantExpiry": "Duración de la autorización (días)",
+		"accessExpiry": "Los tokens de acceso caducan después de {minutes} minutos.",
+		"offlineAccess": "Permitir tokens de actualización para mantener el acceso hasta que caduque la autorización.",
+		"physicalWarningTitle": "Este cliente puede afectar a dispositivos físicos",
+		"physicalWarning": "El acceso de escritura o ejecución puede cambiar el estado de dispositivos, ejecutar escenas y afectar a personas en la instalación.",
+		"approve": "Aprobar acceso",
+		"deny": "Denegar",
+		"loading": "Cargando solicitud de autorización…",
+		"invalid": "Esta solicitud de autorización no es válida, ha caducado o ya no está disponible.",
+		"scopeRequired": "Aprueba al menos una capacidad MCP o deniega la solicitud.",
+		"scope": {
+			"mcp:read": "Leer el contexto de la instalación y el estado compatible de dispositivos",
+			"mcp:write": "Cambiar propiedades compatibles de dispositivos físicos",
+			"mcp:trigger": "Ejecutar escenas y acciones físicas de nivel superior",
+			"offline_access": "Actualizar el acceso sin volver a preguntar hasta que caduque la autorización"
+		}
+	},
 	"messages": {
 		"configSaved": "La configuración de MCP se ha guardado.",
 		"configSaveFailed": "No se pudo guardar la configuración de MCP.",

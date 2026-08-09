@@ -6,7 +6,7 @@
 import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import { RouteNames as AppRouteNames } from '../../../app.constants';
 import { useEventBus } from '../../../common';
@@ -18,6 +18,7 @@ defineOptions({
 });
 
 const { t } = useI18n();
+const route = useRoute();
 const router = useRouter();
 
 const eventBus = useEventBus();
@@ -33,7 +34,9 @@ watch(
 			eventBus.emit('loadingOverlay', false);
 
 			if (state === FormResult.OK) {
-				router.push({ name: AppRouteNames.ROOT });
+				const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null;
+
+				router.push(redirect?.startsWith('/mcp-oauth-consent?') ? redirect : { name: AppRouteNames.ROOT });
 			}
 		}
 	}

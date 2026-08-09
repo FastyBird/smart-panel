@@ -6,6 +6,13 @@ import {
 	RotateMcpClientTokenDto,
 	UpdateMcpClientDto,
 } from './dto/mcp-client.dto';
+import {
+	CreateMcpOAuthClientDto,
+	ReqCreateMcpOAuthClientDto,
+	ReqUpdateMcpOAuthClientDto,
+	UpdateMcpOAuthClientDto,
+} from './dto/mcp-oauth-client.dto';
+import { ApproveMcpOAuthInteractionDto, ReqApproveMcpOAuthInteractionDto } from './dto/mcp-oauth-interaction.dto';
 import { UpdateMcpConfigDto } from './dto/update-config.dto';
 import { McpClientEntity } from './entities/mcp-client.entity';
 import { McpConfigModel } from './models/config.model';
@@ -15,6 +22,13 @@ import {
 	McpClientsResponseModel,
 } from './models/mcp-client-response.model';
 import { McpClientCredentialModel } from './models/mcp-client.model';
+import { McpOAuthClientResponseModel, McpOAuthClientsResponseModel } from './models/mcp-oauth-client-response.model';
+import { McpOAuthClientModel } from './models/mcp-oauth-client.model';
+import {
+	McpOAuthInteractionCompletionResponseModel,
+	McpOAuthInteractionResponseModel,
+} from './models/mcp-oauth-interaction-response.model';
+import { McpOAuthInteractionCompletionModel, McpOAuthInteractionModel } from './models/mcp-oauth-interaction.model';
 
 export const MCP_SWAGGER_EXTRA_MODELS = [
 	McpConfigModel,
@@ -30,4 +44,17 @@ export const MCP_SWAGGER_EXTRA_MODELS = [
 	McpClientResponseModel,
 	McpClientsResponseModel,
 	McpClientCredentialResponseModel,
+	CreateMcpOAuthClientDto,
+	UpdateMcpOAuthClientDto,
+	ReqCreateMcpOAuthClientDto,
+	ReqUpdateMcpOAuthClientDto,
+	McpOAuthClientModel,
+	McpOAuthClientResponseModel,
+	McpOAuthClientsResponseModel,
+	ApproveMcpOAuthInteractionDto,
+	ReqApproveMcpOAuthInteractionDto,
+	McpOAuthInteractionModel,
+	McpOAuthInteractionCompletionModel,
+	McpOAuthInteractionResponseModel,
+	McpOAuthInteractionCompletionResponseModel,
 ];

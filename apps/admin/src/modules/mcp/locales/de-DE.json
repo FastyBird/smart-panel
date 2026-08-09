@@ -89,6 +89,30 @@
 		"revoke": "Aktuelle Zugangsdaten für {name} widerrufen? Verbundene Clients verlieren sofort den Zugriff.",
 		"delete": "{name} löschen? Die Zugangsdaten werden widerrufen und der Client-Datensatz kann nicht wiederhergestellt werden."
 	},
+	"oauthConsent": {
+		"title": "MCP-Zugriff autorisieren",
+		"subtitle": "Prüfen Sie genau, was dieser Remote-Client tun darf, bevor Sie den Zugriff genehmigen.",
+		"installation": "Installation",
+		"client": "Anfragender Client",
+		"redirect": "Weiterleitungsziel",
+		"scopes": "Angeforderter Zugriff",
+		"grantExpiry": "Gültigkeit der Freigabe (Tage)",
+		"accessExpiry": "Zugriffstoken laufen nach {minutes} Minuten ab.",
+		"offlineAccess": "Refresh-Token für fortlaufenden Zugriff bis zum Ablauf der Freigabe erlauben.",
+		"physicalWarningTitle": "Dieser Client kann physische Geräte beeinflussen",
+		"physicalWarning": "Schreib- oder Ausführungszugriff kann Gerätezustände ändern, Szenen starten und Personen in der Installation betreffen.",
+		"approve": "Zugriff genehmigen",
+		"deny": "Ablehnen",
+		"loading": "Autorisierungsanfrage wird geladen…",
+		"invalid": "Diese Autorisierungsanfrage ist ungültig, abgelaufen oder nicht mehr verfügbar.",
+		"scopeRequired": "Genehmigen Sie mindestens eine MCP-Berechtigung oder lehnen Sie die Anfrage ab.",
+		"scope": {
+			"mcp:read": "Installationskontext und unterstützte Gerätezustände lesen",
+			"mcp:write": "Unterstützte Eigenschaften physischer Geräte ändern",
+			"mcp:trigger": "Szenen und übergeordnete physische Aktionen ausführen",
+			"offline_access": "Zugriff bis zum Ablauf der Freigabe ohne erneute Nachfrage aktualisieren"
+		}
+	},
 	"messages": {
 		"configSaved": "MCP-Konfiguration wurde gespeichert.",
 		"configSaveFailed": "MCP-Konfiguration konnte nicht gespeichert werden.",

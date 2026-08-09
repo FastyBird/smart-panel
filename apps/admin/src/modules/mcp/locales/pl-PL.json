@@ -92,6 +92,30 @@
 		"revoke": "Unieważnić bieżące poświadczenie klienta {name}? Połączeni klienci natychmiast utracą dostęp.",
 		"delete": "Usunąć klienta {name}? Jego poświadczenie zostanie unieważnione, a rekordu klienta nie będzie można odzyskać."
 	},
+	"oauthConsent": {
+		"title": "Autoryzuj dostęp MCP",
+		"subtitle": "Przed zatwierdzeniem sprawdź dokładnie, co będzie mógł robić ten zdalny klient.",
+		"installation": "Instalacja",
+		"client": "Klient żądający dostępu",
+		"redirect": "Cel przekierowania",
+		"scopes": "Żądany dostęp",
+		"grantExpiry": "Okres ważności zgody (dni)",
+		"accessExpiry": "Tokeny dostępu wygasają po {minutes} minutach.",
+		"offlineAccess": "Zezwól na tokeny odświeżania do czasu wygaśnięcia zgody.",
+		"physicalWarningTitle": "Ten klient może wpływać na urządzenia fizyczne",
+		"physicalWarning": "Dostęp do zapisu lub uruchamiania może zmieniać stan urządzeń, uruchamiać sceny i wpływać na osoby w instalacji.",
+		"approve": "Zatwierdź dostęp",
+		"deny": "Odrzuć",
+		"loading": "Wczytywanie żądania autoryzacji…",
+		"invalid": "To żądanie autoryzacji jest nieprawidłowe, wygasło lub nie jest już dostępne.",
+		"scopeRequired": "Zatwierdź co najmniej jedno uprawnienie MCP albo odrzuć żądanie.",
+		"scope": {
+			"mcp:read": "Odczytuj kontekst instalacji i obsługiwany stan urządzeń",
+			"mcp:write": "Zmieniaj obsługiwane właściwości urządzeń fizycznych",
+			"mcp:trigger": "Uruchamiaj sceny i nadrzędne akcje fizyczne",
+			"offline_access": "Odświeżaj dostęp bez ponownego pytania do wygaśnięcia zgody"
+		}
+	},
 	"messages": {
 		"configSaved": "Konfiguracja MCP została zapisana.",
 		"configSaveFailed": "Nie udało się zapisać konfiguracji MCP.",

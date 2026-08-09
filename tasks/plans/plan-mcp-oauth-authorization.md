@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 2 complete — inactive persistent OAuth domain foundation and public URL policy implemented
+**Status:** Phase 3 complete — browser authorization and consent flow implemented behind the internal test-only gate
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -79,17 +79,17 @@ amend ADR 0002.
 
 **Goal:** Complete the browser flow behind an internal test-only gate; production routes remain unmounted.
 
-- [ ] Add owner/admin client pre-registration APIs with exact redirect validation except the RFC 8252 runtime-port rule
+- [x] Add owner/admin client pre-registration APIs with exact redirect validation except the RFC 8252 runtime-port rule
       for native loopback IP literals, and no public client secret.
-- [ ] Implement authorization code plus mandatory PKCE `S256`, required `resource`, response `iss`, single-use codes,
+- [x] Implement authorization code plus mandatory PKCE `S256`, required `resource`, response `iss`, single-use codes,
       and protocol-correct OAuth errors through the selected component.
-- [ ] Implement token exchange and optional `offline_access` refresh with rotation/reuse detection; advertise
+- [x] Implement token exchange and optional `offline_access` refresh with rotation/reuse detection; advertise
       `offline_access` in `scopes_supported` without enabling OIDC identity scopes or ID tokens.
-- [ ] Implement RFC 7009 revocation for supported token types.
-- [ ] Add Admin login/consent UI showing installation, client, redirect, requested scopes, expiry, and physical-device
+- [x] Implement RFC 7009 revocation for supported token types.
+- [x] Add Admin login/consent UI showing installation, client, redirect, requested scopes, expiry, and physical-device
       warnings.
-- [ ] Require fresh consent for new client/redirect, expanded scopes, expired grants, and revoked grants.
-- [ ] Add CSRF/interaction binding, throttling, cache-control, and redaction tests.
+- [x] Require fresh consent for new client/redirect, expanded scopes, expired grants, and revoked grants.
+- [x] Add CSRF/interaction binding, throttling, cache-control, and redaction tests.
 
 ## Phase 4 — Gated discovery, challenges, and MCP resource validation
 

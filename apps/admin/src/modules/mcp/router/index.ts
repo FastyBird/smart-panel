@@ -19,4 +19,16 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			menu: 6500,
 		},
 	},
+	{
+		path: 'mcp-oauth-consent',
+		name: RouteNames.OAUTH_CONSENT,
+		component: () => import('../views/view-mcp-oauth-consent.vue'),
+		meta: {
+			guards: {
+				authenticated: true,
+				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
+			},
+			title: () => i18n.global.t('mcpModule.oauthConsent.title'),
+		},
+	},
 ];

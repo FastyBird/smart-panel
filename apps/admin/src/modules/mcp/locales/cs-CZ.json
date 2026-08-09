@@ -86,6 +86,30 @@
 		"revoke": "Odvolat aktuální přihlašovací údaje klienta {name}? Připojení klienti okamžitě ztratí přístup.",
 		"delete": "Smazat klienta {name}? Jeho přihlašovací údaje budou odvolány a záznam klienta nebude možné obnovit."
 	},
+	"oauthConsent": {
+		"title": "Povolit přístup MCP",
+		"subtitle": "Před schválením zkontrolujte, co přesně může vzdálený klient dělat.",
+		"installation": "Instalace",
+		"client": "Žádající klient",
+		"redirect": "Cíl přesměrování",
+		"scopes": "Požadovaný přístup",
+		"grantExpiry": "Platnost oprávnění (dny)",
+		"accessExpiry": "Přístupové tokeny vyprší za {minutes} minut.",
+		"offlineAccess": "Povolit obnovovací tokeny pro trvalý přístup do vypršení oprávnění.",
+		"physicalWarningTitle": "Tento klient může ovlivnit fyzická zařízení",
+		"physicalWarning": "Přístup pro zápis nebo spouštění může změnit stav zařízení, spouštět scény a ovlivnit osoby v instalaci.",
+		"approve": "Povolit přístup",
+		"deny": "Zamítnout",
+		"loading": "Načítání žádosti o autorizaci…",
+		"invalid": "Tato žádost o autorizaci je neplatná, vypršela nebo již není dostupná.",
+		"scopeRequired": "Povolte alespoň jedno oprávnění MCP, nebo žádost zamítněte.",
+		"scope": {
+			"mcp:read": "Číst kontext instalace a podporovaný stav zařízení",
+			"mcp:write": "Měnit podporované vlastnosti fyzických zařízení",
+			"mcp:trigger": "Spouštět scény a vyšší fyzické akce",
+			"offline_access": "Obnovovat přístup bez dalšího dotazu do vypršení oprávnění"
+		}
+	},
 	"messages": {
 		"configSaved": "Konfigurace MCP byla uložena.",
 		"configSaveFailed": "Konfiguraci MCP se nepodařilo uložit.",

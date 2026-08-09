@@ -473,6 +473,9 @@ importers:
       nestjs-cls:
         specifier: ^6.2.0
         version: 6.2.1(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      oidc-provider:
+        specifier: 9.11.2
+        version: 9.11.2
       openai:
         specifier: ^6.28.0
         version: 6.49.0(ws@8.21.1)(zod@4.4.3)
@@ -606,9 +609,6 @@ importers:
       jest:
         specifier: ^30.3.0
         version: 30.4.2(@types/node@24.12.0)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@swc/core@1.15.47(@swc/helpers@0.5.17))(@types/node@24.12.0)(typescript@5.9.3))
-      oidc-provider:
-        specifier: 9.11.2
-        version: 9.11.2
       openapi-typescript:
         specifier: ^7.13.0
         version: 7.13.0(typescript@5.9.3)

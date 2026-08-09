@@ -16,6 +16,17 @@ const anonymousGuard = (storesManager: IStoresManager, to: RouteRecordRaw): Erro
 		toGuards &&
 		((Array.isArray(toGuards) && toGuards.includes(GUARD_NAME)) || (typeof toGuards === 'object' && GUARD_NAME in toGuards))
 	) {
+		const redirect =
+			'query' in to &&
+			typeof to.query === 'object' &&
+			to.query !== null &&
+			'redirect' in to.query &&
+			typeof to.query.redirect === 'string' &&
+			to.query.redirect.startsWith('/mcp-oauth-consent?')
+				? to.query.redirect
+				: null;
+
+		if (redirect) return redirect;
 		return { name: AppRouteNames.ROOT };
 	}
 
