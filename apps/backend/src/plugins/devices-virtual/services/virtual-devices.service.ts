@@ -1180,14 +1180,53 @@ export class VirtualDevicesService {
 		sourceProperty: ChannelPropertyEntity,
 		holder?: string,
 	): Promise<string | null> {
+		const sourceChannel = await this.resolveChannelOf(sourceProperty);
+
+		const meaning = this.describeEnergyMeaningConflict(slot, sourceChannel?.category, sourceProperty);
+
+		if (meaning !== null) {
+			return meaning;
+		}
+
+		if (findEnergySourceType(slot.channel, slot.property) === null) {
+			return null;
+		}
+
+		const claimant = await this.index.findEnergyClaimant(sourceProperty.id);
+
+		if (claimant !== null && claimant !== holder) {
+			return `Source property id=${sourceProperty.id} is already the energy meter of virtual property id=${claimant}; a meter's consumption is billed to one place, so it can only be projected into one energy slot`;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Why this slot may not present this source's reading as its own, or null when it may.
+	 *
+	 * The half of the rule above that asks nothing of storage, split out because the reconciliation
+	 * needs exactly this one: a source can move underneath a projection that was judged when it was
+	 * written, and a projection that no longer *means* what its source reads is wrong whether or not it
+	 * happens to hold the claim. Which projection is accountable is a separate question, and asking it
+	 * there would orphan an innocent second projection for the crime of not holding a claim.
+	 */
+	describeEnergyMeaningConflict(
+		slot: { channel: ChannelCategory; property: PropertyCategory },
+		sourceChannelCategory: ChannelCategory | undefined,
+		sourceProperty: ChannelPropertyEntity,
+	): string | null {
+		// Judged on the *destination*: what makes a reading energy is the slot it is presented in, which
+		// is the pair the ingestion classifies when it handles this projection's own event. A
+		// `consumption` property sitting in a `generic` channel is not a meter anywhere else and becomes
+		// one here — which is exactly the case that double-counts today, since nothing skips those
+		// projections.
 		const destination = findEnergySourceType(slot.channel, slot.property);
 
 		if (destination === null) {
 			return null;
 		}
 
-		const sourceChannel = await this.resolveChannelOf(sourceProperty);
-		const source = findEnergySourceType(sourceChannel?.category, sourceProperty.category);
+		const source = findEnergySourceType(sourceChannelCategory, sourceProperty.category);
 
 		// A projection may not change what a reading means. Nothing structural separates `grid_import`
 		// from `grid_export` — both read-only floats in kWh over the same range — so the slot report
@@ -1195,21 +1234,17 @@ export class VirtualDevicesService {
 		// export. Refused rather than relabelled: an import meter is not an export meter, and quietly
 		// filing it as one is worse than saying the mapping is wrong.
 		//
-		// Dormant today, and deliberately kept: `electrical_energy.consumption` is the only energy slot
-		// a virtual device can currently reach, so no two reachable slots disagree. The other three are
+		// Nearly dormant, and deliberately kept: `electrical_energy.consumption` is the only energy slot
+		// a virtual device can currently reach, so no two reachable *destinations* disagree — but a
+		// source can still arrive at a second type sideways, by having its channel recategorised
+		// underneath it, which is what the reconciliation asks about. The other three destinations are
 		// unreachable for reasons that have nothing to do with energy — `mapPropertyCategory` in
 		// `schema.utils.ts` omits `grid_import` and `grid_export` (34 of the spec's 100 property keys are
 		// missing from it), and no device category declares an `electrical_generation` channel at all.
 		// Both are recorded as follow-ups; this guard is what stops the gap reopening when either is
 		// fixed, which is exactly when nobody would think to look for it.
 		if (source !== null && source.sourceType !== destination.sourceType) {
-			return `Source id=${sourceProperty.id} would be presented as '${destination.sourceType}', but it reads '${source.sourceType}'; a projection forwards its source's value unchanged, so it cannot change what the reading means`;
-		}
-
-		const claimant = await this.index.findEnergyClaimant(sourceProperty.id);
-
-		if (claimant !== null && claimant !== holder) {
-			return `Source property id=${sourceProperty.id} is already the energy meter of virtual property id=${claimant}; a meter's consumption is billed to one place, so it can only be projected into one energy slot`;
+			return `source id=${sourceProperty.id} reads '${source.sourceType}' while this slot presents '${destination.sourceType}'; a projection forwards its source's value unchanged, so it cannot change what the reading means`;
 		}
 
 		return null;

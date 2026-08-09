@@ -534,7 +534,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 		const [, params] = promotionQueryStub.mock.calls[0] as [string, unknown[]];
 
-		expect(params).toEqual(['meter', 'heir', 'meter']);
+		expect(params).toEqual(['meter', 'heir', 'meter', 'meter']);
 	});
 
 	it('leaves a meter alone while a projection of it still holds the claim', async () => {
@@ -2214,6 +2214,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 			// the event was emitted.
 			current: unknown = sourceProperty,
 			constraintMismatch: string | null = null,
+			meaningConflict: string | null = null,
 		) => {
 			channelsPropertiesStub.findOne.mockResolvedValue(current);
 			const update = jest.fn().mockResolvedValue({ affected });
@@ -2248,6 +2249,9 @@ describe('VirtualIndexMaintenanceListener', () => {
 			const reportCompatibility = jest.fn().mockReturnValue(report);
 			const describeSentinelMismatch = jest.fn().mockReturnValue(sentinelMismatch);
 			const describeProjectionConstraintMismatch = jest.fn().mockReturnValue(constraintMismatch);
+			// The energy question, which the structural checks cannot answer: null unless a case says the
+			// source and the slot now read different things.
+			const describeEnergyMeaningConflict = jest.fn().mockReturnValue(meaningConflict);
 
 			const subject = new VirtualIndexMaintenanceListener(
 				{
@@ -2263,6 +2267,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 					reportCompatibility,
 					describeSentinelMismatch,
 					describeProjectionConstraintMismatch,
+					describeEnergyMeaningConflict,
 				} as unknown as VirtualDevicesService,
 				channelsPropertiesStub as unknown as ChannelsPropertiesService,
 				new DeviceStructureLockService(),
@@ -2293,6 +2298,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				findOne,
 				describeSentinelMismatch,
 				describeProjectionConstraintMismatch,
+				describeEnergyMeaningConflict,
 				wheres,
 				executed,
 				promotion,
@@ -2338,7 +2344,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 			// A single conditional statement: `NOT EXISTS` is what lets it run beside a create claiming the
 			// same meter without the two both succeeding, and what makes running it twice promote once.
 			expect(sql).toContain('NOT EXISTS');
-			expect(params).toEqual([sourceProperty.id, energyHeir.id, sourceProperty.id]);
+			expect(params).toEqual([sourceProperty.id, energyHeir.id, sourceProperty.id, sourceProperty.id]);
 			// Deterministic, by the rule the migration's backfill uses, so an installation that reaches
 			// this state twice reaches the same answer.
 			expect(find).toHaveBeenLastCalledWith(expect.objectContaining({ order: { createdAt: 'ASC', id: 'ASC' } }));
@@ -2379,7 +2385,48 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			const [, params] = promotion.mock.calls[0] as [string, unknown[]];
 
-			expect(params).toEqual([sourceProperty.id, faithful.id, sourceProperty.id]);
+			expect(params).toEqual([sourceProperty.id, faithful.id, sourceProperty.id, sourceProperty.id]);
+		});
+
+		// The structural checks all pass here — both sides are read-only kWh floats over the same range —
+		// and only the energy question separates them. A source cannot have its property category
+		// PATCHed, but its channel can be recategorised underneath it, and a projection that then
+		// presents generation as consumption is one the write path would have refused. Left attached, it
+		// would also hold the meter's unique claim under semantics its own slot contradicts.
+		it('orphans a projection whose source no longer reads what the slot presents', async () => {
+			const { subject, update, emit } = build(
+				{ compatible: true },
+				[dependent],
+				null,
+				1,
+				sourceProperty,
+				null,
+				"source id=source-property reads 'generation_production' while this slot presents 'consumption_import'",
+			);
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null, energyClaimPropertyId: null });
+			expect(emit).toHaveBeenCalledWith(
+				EventType.CHANNEL_PROPERTY_UPDATED,
+				expect.objectContaining({ sourcePropertyId: null }),
+			);
+		});
+
+		// The heir was chosen from a read, and a PATCH landing in the window after it can point that row
+		// at another source or drop the link entirely. The claim is either null or equal to the link, so
+		// the write names the link too: a stale heir makes it a no-op rather than a projection billing a
+		// meter it no longer reads while holding the slot against one that does.
+		it('writes the claim only onto a row that still reads the meter', async () => {
+			const { subject, promotion, find } = build({ compatible: false, reason: 'permissions [ro] do not satisfy [rw]' });
+
+			find.mockResolvedValueOnce([dependent]).mockResolvedValueOnce([energyHeir]);
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			const [sql] = promotion.mock.calls[0] as [string, unknown[]];
+
+			expect(sql).toContain('"sourcePropertyId" = ?');
 		});
 
 		it('offers nothing when the orphaning write matched no row', async () => {

@@ -1050,13 +1050,21 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 
 			// `NOT EXISTS` is what lets this run beside a create claiming the same meter without both
 			// succeeding, and what makes running it twice promote once.
+			//
+			// `sourcePropertyId` is named as well, because it is the invariant: the claim is either null
+			// or equal to the link. The heir was chosen from a read, and a PATCH landing in the window
+			// after it can point that row at another source or drop the link entirely — writing the claim
+			// anyway would leave a projection billing a meter it no longer reads, holding the unique slot
+			// against one that does. Matching on the link makes the write a no-op instead, and the next
+			// pass sweeps the meter up.
 			await repository.query(
 				`UPDATE "${table}"
 				    SET "energyClaimPropertyId" = ?
 				  WHERE "id" = ?
 				    AND "energyClaimPropertyId" IS NULL
+				    AND "sourcePropertyId" = ?
 				    AND NOT EXISTS (SELECT 1 FROM "${table}" WHERE "energyClaimPropertyId" = ?)`,
-				[sourcePropertyId, heir.id, sourcePropertyId],
+				[sourcePropertyId, heir.id, sourcePropertyId, sourcePropertyId],
 			);
 		} catch (error) {
 			// Not fatal to the pass that called it: the meter is unclaimed, which attributes to the
@@ -1271,7 +1279,27 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				property: dependent.category,
 			});
 
-			if (report.compatible && !representationDiverged && sentinelMismatch === null && constraintMismatch === null) {
+			// And what the reading now *means*, which is a question about energy rather than about shape
+			// and which nothing above can answer. A source cannot have its property category PATCHed, but
+			// its channel can be recategorised — `handleSourceChannelChange` exists for exactly that — and
+			// a `production` property whose channel becomes `electrical_generation` starts reading
+			// generation while a projection goes on presenting it as consumption. Every structural check
+			// passes: both are read-only kWh floats over the same range. Refused at the write, so refused
+			// here too, or an installation reaches by edit a state it could not have reached by create —
+			// and a claim held under the wrong semantics keeps the meter's unique slot besides.
+			const meaningConflict = this.virtualDevicesService.describeEnergyMeaningConflict(
+				{ channel: channel.category, property: dependent.category },
+				sourceChannel.category,
+				source,
+			);
+
+			if (
+				report.compatible &&
+				!representationDiverged &&
+				sentinelMismatch === null &&
+				constraintMismatch === null &&
+				meaningConflict === null
+			) {
 				continue;
 			}
 
@@ -1279,7 +1307,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				? (report.reason ?? 'incompatible')
 				: representationDiverged
 					? `its representation changed to '${source.dataType}' while the projection declares '${dependent.dataType}'`
-					: (sentinelMismatch ?? constraintMismatch ?? 'incompatible');
+					: (sentinelMismatch ?? constraintMismatch ?? meaningConflict ?? 'incompatible');
 
 			this.logger.warn(
 				`Source property id=${payload.id} no longer fits the slot filled by virtual property id=${dependent.id}: ${reason}. Orphaning it.`,
