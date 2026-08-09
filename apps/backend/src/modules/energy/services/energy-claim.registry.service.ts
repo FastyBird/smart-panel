@@ -4,25 +4,12 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { ENERGY_MODULE_NAME, EnergySourceType } from '../energy.constants';
 
 /**
- * Answers "which property is accountable for this meter's kWh?".
- *
- * A meter is normally accountable for itself: the device holding it is where its consumption is
- * billed. A plugin may declare that some other property has taken that over — a virtual device
- * assembled from another device's channels presents the meter as its own, and the operator who split
- * a four-relay switch into four rooms expects each room to be billed for what it shows.
- *
- * Energy is the one reading where this cannot be left to each side to decide. A temperature read by
- * two devices is coherent; a kWh billed to two rooms is not. So there is exactly one accountable
- * property per meter, whoever holds it, and the ingestion asks rather than deciding for itself —
- * core stays unaware of any particular plugin, as it does for
- * {@link IPropertyValueSource} next door.
- *
- * Everything the ingestion needs about a claim, read at one instant.
+ * Everything the ingestion needs to bill a claimed meter, read at one instant.
  *
  * Answered whole rather than as an id to look up afterwards, because the two reads that would take
  * are racing a remap: a claimant repointed at another meter between them would still supply the
- * device this meter's delta is billed to. One read cannot disagree with itself — whoever held the
- * claim when it ran, and where that device is.
+ * device this meter's delta is billed to. One read cannot disagree with itself — it is whoever held
+ * the claim when it ran, and where that device was.
  */
 export interface EnergyClaim {
 	/** The property presenting the meter, so a claimant can be told apart from a claim it does not hold. */
@@ -41,6 +28,19 @@ export interface EnergyClaim {
 	sourceType: EnergySourceType | null;
 }
 
+/**
+ * Answers "which property is accountable for this meter's kWh?".
+ *
+ * A meter is normally accountable for itself: the device holding it is where its consumption is
+ * billed. A plugin may declare that some other property has taken that over — a virtual device
+ * assembled from another device's channels presents the meter as its own, and the operator who split
+ * a four-relay switch into four rooms expects each room to be billed for what it shows.
+ *
+ * Energy is the one reading where this cannot be left to each side to decide. A temperature read by
+ * two devices is coherent; a kWh billed to two rooms is not. So there is exactly one accountable
+ * property per meter, whoever holds it, and the ingestion asks rather than deciding for itself —
+ * core stays unaware of any particular plugin, as it does for {@link IPropertyValueSource} next door.
+ */
 export interface IEnergyClaimSource {
 	/**
 	 * The claim on this meter, or null when this source claims nothing for it. Asked of storage rather
