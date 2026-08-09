@@ -62,6 +62,64 @@ describe('the energy claim constraint under synchronize', () => {
 		await expect(projection('contender', 'meter')).rejects.toThrow(/UNIQUE constraint failed/);
 	});
 
+	// The case a read-then-write check cannot answer, and the reason the claim is a constraint rather
+	// than a validation: two creates that both find the meter unclaimed. Whichever order they end up
+	// in, one of them has to lose — and it has to lose at the write, since neither's read saw the
+	// other.
+	it('lets only one of two claims made at once persist', async () => {
+		await dataSource.getRepository(ChannelPropertyEntity).insert({
+			id: 'contested-meter',
+			category: PropertyCategory.CONSUMPTION,
+			permissions: [PermissionType.READ_ONLY],
+			dataType: DataTypeType.FLOAT,
+		} as never);
+
+		const outcomes = await Promise.allSettled([
+			projection('claimant-a', 'contested-meter'),
+			projection('claimant-b', 'contested-meter'),
+		]);
+
+		expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
+		expect(outcomes.filter((outcome) => outcome.status === 'rejected')).toHaveLength(1);
+
+		const claimants = await dataSource
+			.getRepository(VirtualChannelPropertyEntity)
+			.count({ where: { energyClaimPropertyId: 'contested-meter' } });
+
+		expect(claimants).toBe(1);
+	});
+
+	// The other race the task names: the holder going away while somebody claims the meter it is
+	// letting go of. The constraint's promise here is narrower and worth stating exactly — never two,
+	// whichever order they land in. Never *none* is not something a constraint can promise: if the
+	// claim is refused first and the holder then leaves, the meter is simply unclaimed, which is what
+	// `VirtualIndexMaintenanceListener.reconcileEnergyClaims()` sweeps up on the pass the deletion
+	// schedules.
+	it('never lets a claim racing the holder going away leave two claimants', async () => {
+		await dataSource.getRepository(ChannelPropertyEntity).insert({
+			id: 'released-meter',
+			category: PropertyCategory.CONSUMPTION,
+			permissions: [PermissionType.READ_ONLY],
+			dataType: DataTypeType.FLOAT,
+		} as never);
+
+		await projection('leaving', 'released-meter');
+
+		const [, arriving] = await Promise.allSettled([
+			dataSource.getRepository(VirtualChannelPropertyEntity).delete({ id: 'leaving' }),
+			projection('arriving', 'released-meter'),
+		]);
+
+		const claimants = await dataSource
+			.getRepository(VirtualChannelPropertyEntity)
+			.find({ where: { energyClaimPropertyId: 'released-meter' } });
+
+		expect(claimants.length).toBeLessThanOrEqual(1);
+		// And the one that holds it, if any, is the one whose write succeeded — not whichever row
+		// happens to still be there.
+		expect(claimants.map((claimant) => claimant.id)).toEqual(arriving.status === 'fulfilled' ? ['arriving'] : []);
+	});
+
 	// Partial, or every projection that claims nothing would be competing for one NULL slot — which is
 	// most of them, since only an energy-bearing destination ever earns a claim.
 	it('lets any number of projections claim nothing', async () => {

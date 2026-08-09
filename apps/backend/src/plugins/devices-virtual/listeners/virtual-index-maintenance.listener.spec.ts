@@ -155,12 +155,22 @@ describe('VirtualIndexMaintenanceListener', () => {
 		// The conditional UPDATE that hands a released meter to the next projection of it.
 		query: promotionQueryStub,
 		find: jest.fn().mockResolvedValue([]),
+		// The meter the promotion reads to see what the candidate would be presenting. Absent by
+		// default, which is the unrecognised source the claim mechanism exists for.
+		findOne: jest.fn().mockResolvedValue(null),
 		createQueryBuilder: jest.fn(() => ({
 			innerJoin: jest.fn().mockReturnThis(),
 			where: jest.fn().mockReturnThis(),
 			getCount: referenceCountStub,
 		})),
 	};
+
+	/**
+	 * The announcement read, told apart from the claim sweep that shares this repository stub: only
+	 * the announcement scopes itself to the devices a rebuild reported re-wired.
+	 */
+	const announcementReads = (): unknown[] =>
+		orphanQueryStub.find.mock.calls.filter((call) => JSON.stringify(call).includes('"device"'));
 
 	const dataSourceStub = {
 		createQueryRunner: () => ({ isTransactionActive: false }),
@@ -170,6 +180,8 @@ describe('VirtualIndexMaintenanceListener', () => {
 	beforeEach(() => {
 		orphanQueryStub.find.mockReset();
 		orphanQueryStub.find.mockResolvedValue([]);
+		orphanQueryStub.findOne.mockReset();
+		orphanQueryStub.findOne.mockResolvedValue(null);
 		promotionQueryStub.mockReset();
 		promotionQueryStub.mockResolvedValue(undefined);
 		referenceCountStub.mockReset();
@@ -421,7 +433,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 		// Scoped to the devices the rebuild reported re-wired, not swept across the whole table — and asked
 		// once for the set rather than once per device.
-		expect(orphanQueryStub.find).toHaveBeenCalledTimes(1);
+		expect(announcementReads()).toHaveLength(1);
 		expect(JSON.stringify(orphanQueryStub.find.mock.calls)).toContain('virtual-device');
 		expect(eventEmitterStub.emit).toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_UPDATED, orphan);
 	});
@@ -488,6 +500,70 @@ describe('VirtualIndexMaintenanceListener', () => {
 		expect(eventEmitterStub.emit).not.toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_UPDATED, expect.anything());
 	});
 
+	// -- claims released by a path that cannot offer them on --------------------------------------
+	//
+	// Deleting the holder takes its row and its claim with it; remapping the holder settles a claim on
+	// the new meter in a hook that never sees the old one. Neither can name the meter it released, so
+	// the sweep asks the state instead — and for a source the ingestion does not recognise on its own,
+	// an unclaimed meter is not merely misattributed, it stops being counted at all.
+
+	const projectionOf = (
+		id: string,
+		meter: string | null,
+		claim: string | null,
+		category = 'consumption',
+		channelCategory = 'electrical_energy',
+	) => ({
+		id,
+		category,
+		isProjecting: true,
+		sourcePropertyId: meter,
+		energyClaimPropertyId: claim,
+		channel: { id: `${id}-channel`, category: channelCategory },
+	});
+
+	it('gives a meter nobody claims back to a projection of it', async () => {
+		orphanQueryStub.find.mockResolvedValue([projectionOf('heir', 'meter', null)]);
+		index.rebuild.mockResolvedValue(NO_CHANGES);
+
+		listener.handleStructuralChange();
+
+		await flushMicrotasks();
+
+		expect(promotionQueryStub).toHaveBeenCalledTimes(1);
+
+		const [, params] = promotionQueryStub.mock.calls[0] as [string, unknown[]];
+
+		expect(params).toEqual(['meter', 'heir', 'meter']);
+	});
+
+	it('leaves a meter alone while a projection of it still holds the claim', async () => {
+		orphanQueryStub.find.mockResolvedValue([
+			projectionOf('holder', 'meter', 'meter'),
+			projectionOf('other', 'meter', null),
+		]);
+		index.rebuild.mockResolvedValue(NO_CHANGES);
+
+		listener.handleStructuralChange();
+
+		await flushMicrotasks();
+
+		expect(promotionQueryStub).not.toHaveBeenCalled();
+	});
+
+	// The many `light.on` links an ordinary installation is full of: not claimants, and not worth a
+	// query each on every structural change either.
+	it('does not offer a meter to projections that could never claim it', async () => {
+		orphanQueryStub.find.mockResolvedValue([projectionOf('switch', 'meter', null, 'on', 'light')]);
+		index.rebuild.mockResolvedValue(NO_CHANGES);
+
+		listener.handleStructuralChange();
+
+		await flushMicrotasks();
+
+		expect(promotionQueryStub).not.toHaveBeenCalled();
+	});
+
 	// Scoped to the diff, so a device orphaned long ago is not re-announced by every later rebuild.
 	it('asks about nothing when the rebuild re-wired no device', async () => {
 		index.rebuild.mockResolvedValue(NO_CHANGES);
@@ -496,7 +572,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 		await flushMicrotasks();
 
-		expect(orphanQueryStub.find).not.toHaveBeenCalled();
+		expect(announcementReads()).toHaveLength(0);
 	});
 
 	it('recomputes nothing when the rebuild changed no virtual device wiring', async () => {

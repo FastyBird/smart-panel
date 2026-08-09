@@ -1,4 +1,4 @@
-import { DataSource, In, IsNull, Repository } from 'typeorm';
+import { DataSource, In, IsNull, Not, Repository } from 'typeorm';
 
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
@@ -318,6 +318,8 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			await this.recomputeStatuses(hydrated.rewiredVirtualDeviceIds, 'aggregated from source devices at startup');
 
 			await this.reconcileSystemHiddenSources();
+
+			await this.reconcileEnergyClaims();
 		} catch (error) {
 			this.logger.error(
 				`Failed to hydrate the virtual property index at bootstrap: ${error}. The index starts empty and will be rebuilt on the next structural change.`,
@@ -463,6 +465,10 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 					// Gated on the same settled condition as the unhide above, and for the same reason — it
 					// writes `hidden`, which no repair pass can take back.
 					await this.reconcileSystemHiddenSources();
+
+					// The same shape of sweep, for the same kind of gap: a claim released by a path that
+					// offers it to nobody. See reconcileEnergyClaims().
+					await this.reconcileEnergyClaims();
 				}
 			} while (this.pending);
 		} finally {
@@ -1060,6 +1066,62 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				`Failed to promote a new energy claimant for source property id=${sourcePropertyId}`,
 				error instanceof Error ? error : undefined,
 			);
+		}
+	}
+
+	/**
+	 * Gives back a claim that was released without being offered on.
+	 *
+	 * `promoteEnergyClaim` covers the one path that can name the meter it is releasing — reconciliation
+	 * orphaning a projection. The others cannot: deleting the holder takes its row and its claim with
+	 * it, and remapping the holder onto a different meter settles the new claim in a hook that never
+	 * sees the old one. Both leave a meter with projections and no claimant, and for a source the
+	 * ingestion does not recognise on its own that means it stops being counted at all.
+	 *
+	 * So this asks the state rather than the transition, exactly as `reconcileSystemHiddenSources`
+	 * above does and for the same reason: a sweep needs no path to have remembered to call it, which
+	 * is what makes it right for the paths that structurally cannot.
+	 *
+	 * One query on a settled pass. Meters whose only projections could never claim them — the many
+	 * `light.on` links an ordinary installation is full of — are filtered out here rather than by
+	 * asking `promoteEnergyClaim` about each in turn, so the common case costs nothing beyond that
+	 * read. A meter whose only energy projection is inadmissible is re-examined on every structural
+	 * pass; that is two queries, rarely, against a state somebody has to repair by hand anyway.
+	 */
+	private async reconcileEnergyClaims(): Promise<void> {
+		try {
+			const projections = await this.dataSource.getRepository(VirtualChannelPropertyEntity).find({
+				where: { sourcePropertyId: Not(IsNull()) },
+				relations: ['channel'],
+			});
+
+			const claimed = new Set(
+				projections
+					.map((projection) => projection.energyClaimPropertyId)
+					.filter((meterId): meterId is string => meterId !== null),
+			);
+
+			const unclaimed = new Set(
+				projections
+					.filter(
+						(projection) =>
+							projection.isProjecting &&
+							projection.sourcePropertyId !== null &&
+							!claimed.has(projection.sourcePropertyId) &&
+							// Judged by `findEnergySourceType`, like every other decision about what a claim is
+							// for, so this filter cannot quietly exclude a meter the promotion would have taken.
+							findEnergySourceType(channelOf(projection)?.category, projection.category) !== null,
+					)
+					.map((projection) => projection.sourcePropertyId),
+			);
+
+			for (const meterId of unclaimed) {
+				await this.promoteEnergyClaim(meterId);
+			}
+		} catch (error) {
+			// Not fatal to the pass: an unclaimed meter attributes to the physical device, and the next
+			// structural change sweeps again.
+			this.logger.error('Failed to reconcile energy claims', error instanceof Error ? error : undefined);
 		}
 	}
 
