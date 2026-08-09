@@ -78,6 +78,8 @@ interface BreakdownRawRow {
 	deviceName: string;
 	roomId: string | null;
 	roomName: string | null;
+	/** Selected only to resolve `roomId` and `roomName` against the device's last recorded delta. */
+	lastIntervalStart: string | null;
 	totalKwh: number | null;
 }
 
@@ -114,6 +116,20 @@ export class EnergyDataService {
 		// Uses SQLite's INSERT ... ON CONFLICT ... DO UPDATE to avoid race conditions
 		// when concurrent events target the same (deviceId, sourceType, intervalStart) bucket.
 		// The unique constraint UQ_energy_deltas_device_source_interval enforces this at the DB level.
+		//
+		// The room comes along on conflict, so a device that changes room mid-interval stops filling the
+		// row the old room owns. Without it the readers above would go on adding this device's new
+		// consumption to its former room until the bucket closed, which is the same defect they were
+		// just fixed for, arriving from the write side.
+		//
+		// The bucket *moves* rather than splitting, and that is a deliberate trade. Splitting means the
+		// room joins the unique key, and a nullable column in a SQLite unique index does not conflict
+		// with itself — every reading from a device in no room would open its own row instead of
+		// accumulating. Working around that takes an expression index the entity decorators cannot
+		// declare, which CI and the e2e suite build the schema from. So the residue is that up to one
+		// interval of energy recorded just before a move is attributed to the room the device ended it
+		// in: bounded by DELTA_INTERVAL_MINUTES, and on the side of where the operator has just put the
+		// device rather than where it used to be.
 		await this.deltaRepository.query(
 			`INSERT INTO energy_module_deltas ("id", "deviceId", "roomId", "sourceType", "deltaKwh", "intervalStart", "intervalEnd", "createdAt")
 			 VALUES (
@@ -121,7 +137,7 @@ export class EnergyDataService {
 			   ?, ?, ?, ?, ?, ?, datetime('now')
 			 )
 			 ON CONFLICT ("deviceId", "sourceType", "intervalStart")
-			 DO UPDATE SET "deltaKwh" = "deltaKwh" + excluded."deltaKwh"`,
+			 DO UPDATE SET "deltaKwh" = "deltaKwh" + excluded."deltaKwh", "roomId" = excluded."roomId"`,
 			[deviceId, roomId, sourceType, deltaKwh, intervalStartStr, intervalEndStr],
 		);
 
@@ -248,6 +264,16 @@ export class EnergyDataService {
 	/**
 	 * Get energy summary for a space (aggregated from all rooms belonging to the space).
 	 * If spaceId is 'home' or undefined, aggregates across all rooms/spaces.
+	 *
+	 * Reached through the room the delta was *recorded* with, not the room its device is in now. The
+	 * two differ the moment anything moves, and reaching through the device made a move rewrite
+	 * history: yesterday's consumption left the room that actually consumed it and appeared in the new
+	 * one, while `delta.roomId` sat there unchanged. Deleting the device erased its history from every
+	 * space view outright, since the join dropped the rows.
+	 *
+	 * The room's own membership stays a *current* fact — `parentId` is read from the room row — because
+	 * a room moved to another zone is still the same room, and its history moves with it. What is
+	 * pinned is which room consumed the energy.
 	 */
 	async getSpaceSummary(rangeStart: Date, rangeEnd: Date, spaceId?: string): Promise<SpaceEnergySummary> {
 		const isHome = !spaceId || spaceId === 'home';
@@ -257,7 +283,7 @@ export class EnergyDataService {
 			       SUM(delta."deltaKwh") AS "totalKwh",
 			       MAX(delta."createdAt") AS "lastUpdated"
 			FROM energy_module_deltas delta
-			${isHome ? '' : `INNER JOIN devices_module_devices device ON delta."deviceId" = device."id" INNER JOIN spaces_module_spaces room ON device."roomId" = room."id" WHERE (room."id" = ? OR room."parentId" = ?) AND`}
+			${isHome ? '' : `INNER JOIN spaces_module_spaces room ON delta."roomId" = room."id" WHERE (room."id" = ? OR room."parentId" = ?) AND`}
 			${isHome ? 'WHERE' : ''}
 			delta."intervalStart" >= ?
 			AND delta."intervalStart" < ?
@@ -337,6 +363,10 @@ export class EnergyDataService {
 	 *
 	 * For 1d intervals, buckets are aligned to rangeStart (which is Prague-midnight-aligned)
 	 * rather than UTC midnight, so that "today" in Europe/Prague groups data correctly.
+	 *
+	 * Scoped by the recorded room, for the reasons `getSpaceSummary` gives — and it matters more here:
+	 * a chart is a claim about the past, and one that redraws itself when a device changes room is
+	 * claiming something that never happened.
 	 */
 	async getSpaceTimeseries(
 		rangeStart: Date,
@@ -380,7 +410,7 @@ export class EnergyDataService {
 			       delta."sourceType" AS "sourceType",
 			       SUM(delta."deltaKwh") AS "totalKwh"
 			FROM energy_module_deltas delta
-			${isHome ? '' : `INNER JOIN devices_module_devices device ON delta."deviceId" = device."id" INNER JOIN spaces_module_spaces room ON device."roomId" = room."id" WHERE (room."id" = ? OR room."parentId" = ?) AND`}
+			${isHome ? '' : `INNER JOIN spaces_module_spaces room ON delta."roomId" = room."id" WHERE (room."id" = ? OR room."parentId" = ?) AND`}
 			${isHome ? 'WHERE' : ''}
 			delta."intervalStart" >= ?
 			AND delta."intervalStart" < ?
@@ -496,6 +526,18 @@ export class EnergyDataService {
 	/**
 	 * Get a breakdown of top consuming devices for a space.
 	 * Only considers consumption_import source type.
+	 *
+	 * Scoped and reported by the recorded room, like the two readers above. The device join is a LEFT
+	 * join for the same reason: it supplies a name, and a name that has gone away is no reason to drop
+	 * the consumption from the total — an inner join here erased a deleted device's history from every
+	 * space view, which is not what "history is not re-attributed" is supposed to mean.
+	 *
+	 * One row per device. Where a device consumed in more than one room inside the range, the room
+	 * reported is the one it was last recorded in: SQLite resolves the bare `roomId` and `room.name`
+	 * against the row that supplied `MAX(intervalStart)` (documented bare-column behaviour alongside a
+	 * single min/max aggregate), which is why that aggregate is selected even though nothing reads it.
+	 * The kWh is still the device's whole total for the scope asked about — splitting the row would
+	 * report the same device twice in a list the panel renders as one tile per device.
 	 */
 	async getSpaceBreakdown(
 		rangeStart: Date,
@@ -508,12 +550,13 @@ export class EnergyDataService {
 		const query = `
 			SELECT delta."deviceId" AS "deviceId",
 			       device."name" AS "deviceName",
-			       device."roomId" AS "roomId",
+			       delta."roomId" AS "roomId",
 			       room."name" AS "roomName",
+			       MAX(delta."intervalStart") AS "lastIntervalStart",
 			       SUM(delta."deltaKwh") AS "totalKwh"
 			FROM energy_module_deltas delta
-			INNER JOIN devices_module_devices device ON delta."deviceId" = device."id"
-			LEFT JOIN spaces_module_spaces room ON device."roomId" = room."id"
+			LEFT JOIN devices_module_devices device ON delta."deviceId" = device."id"
+			LEFT JOIN spaces_module_spaces room ON delta."roomId" = room."id"
 			WHERE delta."sourceType" = ?
 			AND delta."intervalStart" >= ?
 			AND delta."intervalStart" < ?

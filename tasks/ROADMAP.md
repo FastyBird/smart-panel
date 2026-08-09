@@ -214,12 +214,10 @@ Build a device from properties of other devices — splitting one physical devic
 | # | Task | Scope | Status | Notes |
 |---|------|-------|--------|-------|
 | 1 | [FEATURE-DEVICE-VIRTUAL-PLUGIN](../docs/superpowers/specs/2026-07-31-virtual-devices-design.md) | backend, admin, panel | :white_check_mark: Done | Backend plugin, admin wizard and detail page with remap, `hidden` filtering across every picker, panel rendering. The six closed-loop categories stay blocked by the design's v1 boundary |
-| 2 | [BUG-ENERGY-VIRTUAL-ROOM-ATTRIBUTION](bugs/BUG-ENERGY-VIRTUAL-ROOM-ATTRIBUTION.md) | backend | :clipboard: Planned | A split device's energy stays with the physical device, so the rooms it was split into report zero. Reproduced both ways in the task |
+| 2 | [BUG-ENERGY-VIRTUAL-ROOM-ATTRIBUTION](bugs/BUG-ENERGY-VIRTUAL-ROOM-ATTRIBUTION.md) | backend | :white_check_mark: Done | A projected meter now has one accountable claimant and is billed to the device presenting it; the space readers scope by the recorded room, so moving or deleting a device no longer rewrites its history |
 | 3 | [TECH-VIRTUAL-DEVICES-FOLLOWUPS](technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md) | backend | :clipboard: Planned | 25 of 36 items open, none blocking; several are pre-existing issues found in passing |
 
-**Next up:** [BUG-ENERGY-VIRTUAL-ROOM-ATTRIBUTION](bugs/BUG-ENERGY-VIRTUAL-ROOM-ATTRIBUTION.md) — it breaks the epic's own headline example, a 4PM split across four rooms, and the fix is blocked only on the single-claim decision the task recommends.
-
-**After that,** [controller support](../docs/superpowers/specs/2026-07-31-virtual-devices-design.md#controller-support), which unblocks the six closed-loop categories the v1 boundary excludes. It starts with a design rather than a task — a control loop touches safety, concurrency and the platform's command path — and the design spec now carries what that design has to answer.
+**Next up:** [controller support](../docs/superpowers/specs/2026-07-31-virtual-devices-design.md#controller-support), which unblocks the six closed-loop categories the v1 boundary excludes. It starts with a design rather than a task — a control loop touches safety, concurrency and the platform's command path — and the design spec now carries what that design has to answer. [TECH-VIRTUAL-DEVICES-FOLLOWUPS](technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md) is the other open thread, none of it blocking.
 
 ---
 
