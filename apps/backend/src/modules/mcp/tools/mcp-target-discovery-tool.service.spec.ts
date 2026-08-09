@@ -42,7 +42,7 @@ describe('McpTargetDiscoveryToolService', () => {
 	let spacesService: { findLightingTriggerSummaryPage: jest.Mock };
 	let toolRegistry: { getAllToolDefinitions: jest.Mock; executeTool: jest.Mock };
 	let contextService: { getInstallation: jest.Mock };
-	let policyService: { authorizeClient: jest.Mock };
+	let policyService: { authorizeAuthInfo: jest.Mock };
 	let auditService: { getRequestId: jest.Mock; recordPolicyDenial: jest.Mock; recordToolResult: jest.Mock };
 	let registerTool: jest.Mock;
 	let callbacks: Map<string, ToolCallback>;
@@ -81,7 +81,7 @@ describe('McpTargetDiscoveryToolService', () => {
 			}),
 		};
 		policyService = {
-			authorizeClient: jest.fn().mockImplementation((_tokenId, _clientId, capability: McpCapability) =>
+			authorizeAuthInfo: jest.fn().mockImplementation((_authInfo, capability: McpCapability) =>
 				Promise.resolve({
 					client: { id: 'client-id' },
 					effectiveCapabilities: [capability],
@@ -141,7 +141,10 @@ describe('McpTargetDiscoveryToolService', () => {
 		const result = await callbacks.get('list_writable_properties')?.({}, requestContext([McpCapability.WRITE]));
 		const data = result?.structuredContent.data as { properties: Array<Record<string, unknown>> };
 
-		expect(policyService.authorizeClient).toHaveBeenCalledWith('token-id', 'client-id', McpCapability.WRITE);
+		expect(policyService.authorizeAuthInfo).toHaveBeenCalledWith(
+			expect.objectContaining({ clientId: 'client-id', token: 'raw-token' }),
+			McpCapability.WRITE,
+		);
 		expect(data.properties).toEqual([
 			expect.objectContaining({
 				property_id: connected.id,
@@ -447,7 +450,7 @@ describe('McpTargetDiscoveryToolService', () => {
 
 	it('audits a module-disable race as an endpoint denial for write and trigger tools', async () => {
 		providerTools = [providerTool('run_scene', ToolAccessKind.TRIGGER)];
-		policyService.authorizeClient.mockRejectedValue(new McpEndpointDisabledException());
+		policyService.authorizeAuthInfo.mockRejectedValue(new McpEndpointDisabledException());
 		service.register(server(), authInfo([McpCapability.TRIGGER]));
 
 		const result = await callbacks.get('run_scene')?.(
@@ -468,7 +471,7 @@ describe('McpTargetDiscoveryToolService', () => {
 
 	it('distinguishes a live credential rejection from a capability denial for mutating tools', async () => {
 		providerTools = [providerTool('run_scene', ToolAccessKind.TRIGGER)];
-		policyService.authorizeClient.mockRejectedValue(new UnauthorizedException('private credential detail'));
+		policyService.authorizeAuthInfo.mockRejectedValue(new UnauthorizedException('private credential detail'));
 		service.register(server(), authInfo([McpCapability.TRIGGER]));
 
 		const result = await callbacks.get('run_scene')?.(

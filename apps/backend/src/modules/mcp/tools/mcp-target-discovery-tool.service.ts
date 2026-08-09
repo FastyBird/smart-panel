@@ -288,7 +288,7 @@ export class McpTargetDiscoveryToolService {
 		tool: string,
 		capability: McpCapability,
 		ctx: ServerContext,
-		callback: (policy: Awaited<ReturnType<McpPolicyService['authorizeClient']>>) => Promise<ToolData>,
+		callback: (policy: Awaited<ReturnType<McpPolicyService['authorizeAuthInfo']>>) => Promise<ToolData>,
 		timeoutMs: number | null = MCP_TOOL_CALL_TIMEOUT_MS,
 		auditArguments?: Record<string, unknown>,
 	): Promise<{
@@ -383,13 +383,12 @@ export class McpTargetDiscoveryToolService {
 
 	private async authorize(ctx: ServerContext, capability: McpCapability) {
 		const authInfo = ctx.http?.authInfo;
-		const tokenId = this.getExtraString(authInfo?.extra?.tokenId);
 
-		if (!authInfo?.clientId || !tokenId) {
+		if (!authInfo) {
 			throw new UnauthorizedException('MCP request identity is unavailable');
 		}
 
-		return this.policyService.authorizeClient(tokenId, authInfo.clientId, capability);
+		return this.policyService.authorizeAuthInfo(authInfo, capability);
 	}
 
 	private hasProviderTool(name: string, access: ToolAccessKind): boolean {

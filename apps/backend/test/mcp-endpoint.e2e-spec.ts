@@ -166,7 +166,7 @@ describe('MCP endpoint', () => {
 			),
 		};
 		const policyService = {
-			authorizeClient: jest.fn().mockResolvedValue({ effectiveCapabilities: [McpCapability.READ] }),
+			authorizeAuthInfo: jest.fn().mockResolvedValue({ effectiveCapabilities: [McpCapability.READ] }),
 		};
 		const auditService = new McpAuditService();
 		const readTools = new McpReadToolService(

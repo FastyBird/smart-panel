@@ -61,6 +61,7 @@ import { McpOAuthInteractionService } from './services/mcp-oauth-interaction.ser
 import { McpOAuthProxyPolicyService } from './services/mcp-oauth-proxy-policy.service';
 import { McpOAuthPublicUrlService } from './services/mcp-oauth-public-url.service';
 import { McpOAuthRefreshTokenService } from './services/mcp-oauth-refresh-token.service';
+import { McpOAuthResourceServerService } from './services/mcp-oauth-resource-server.service';
 import { McpOAuthRuntimeService } from './services/mcp-oauth-runtime.service';
 import { McpPolicyService } from './services/mcp-policy.service';
 import { McpServerService } from './services/mcp-server.service';
@@ -115,6 +116,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpOAuthProviderFactory,
 		McpOAuthPublicUrlService,
 		McpOAuthRefreshTokenService,
+		McpOAuthResourceServerService,
 		McpOAuthRuntimeService,
 		McpPolicyService,
 		McpServerService,
@@ -145,6 +147,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpOAuthProviderFactory,
 		McpOAuthPublicUrlService,
 		McpOAuthRefreshTokenService,
+		McpOAuthResourceServerService,
 		McpOAuthRuntimeService,
 		McpPolicyService,
 		McpServerService,

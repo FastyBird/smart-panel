@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 3 complete — browser authorization and consent flow implemented behind the internal test-only gate
+**Status:** Phase 4 complete — discovery, challenges, and OAuth resource validation implemented behind the internal gate
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -95,17 +95,17 @@ amend ADR 0002.
 
 **Goal:** Complete and test the standards surface without making it reachable in production.
 
-- [ ] Publish path-aware RFC 9728 protected-resource metadata for the canonical MCP resource.
-- [ ] Publish path-aware RFC 8414 authorization-server metadata containing only implemented capabilities.
-- [ ] Add RFC 6750 `WWW-Authenticate` challenges with `resource_metadata` and minimum scopes.
-- [ ] Require exact issuer/resource/audience/client/installation/expiry/grant/token validation for OAuth bearer tokens,
+- [x] Publish path-aware RFC 9728 protected-resource metadata for the canonical MCP resource.
+- [x] Publish path-aware RFC 8414 authorization-server metadata containing only implemented capabilities.
+- [x] Add RFC 6750 `WWW-Authenticate` challenges with `resource_metadata` and minimum scopes.
+- [x] Require exact issuer/resource/audience/client/installation/expiry/grant/token validation for OAuth bearer tokens,
       including the grant approver's current owner/admin role.
-- [ ] Keep static URN-audience validation working through its existing isolated path.
-- [ ] Map `mcp:read`, `mcp:write`, and `mcp:trigger` to the four-way live capability intersection.
-- [ ] Return protocol-correct 401 versus 403 scope challenges and recheck scopes before every tool execution.
-- [ ] Add discovery/challenge snapshots and wrong-token-type, issuer, resource, audience, cross-client, and scope
+- [x] Keep static URN-audience validation working through its existing isolated path.
+- [x] Map `mcp:read`, `mcp:write`, and `mcp:trigger` to the four-way live capability intersection.
+- [x] Return protocol-correct 401 versus 403 scope challenges and recheck scopes before every tool execution.
+- [x] Add discovery/challenge snapshots and wrong-token-type, issuer, resource, audience, cross-client, and scope
       negative tests.
-- [ ] Keep OAuth well-known, authorization, token, revocation, and OAuth-bearing MCP paths absent from production until
+- [x] Keep OAuth well-known, authorization, token, revocation, and OAuth-bearing MCP paths absent from production until
       Phase 5 adds the complete bootstrap-time gated route set; do not attempt runtime route mounting, and leave the
       existing static bearer behavior unchanged with no user-settable OAuth enable switch.
 

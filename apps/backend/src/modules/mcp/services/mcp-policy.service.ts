@@ -1,5 +1,6 @@
 import { FastifyRequest } from 'fastify';
 
+import { AuthInfo, OAuthError } from '@modelcontextprotocol/server';
 import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
@@ -8,12 +9,13 @@ import { TokenOwnerType } from '../../auth/auth.constants';
 import { AuthenticatedRequest } from '../../auth/guards/auth.guard';
 import { ConfigService } from '../../config/services/config.service';
 import { McpClientEntity } from '../entities/mcp-client.entity';
-import { MCP_MODULE_NAME, McpCapability } from '../mcp.constants';
+import { MCP_MODULE_NAME, MCP_OAUTH_PRINCIPAL_TYPE, McpCapability } from '../mcp.constants';
 import { McpEndpointDisabledException } from '../mcp.exceptions';
 import { McpConfigModel } from '../models/config.model';
 
 import { McpClientService } from './mcp-client.service';
 import { McpInstallationService } from './mcp-installation.service';
+import { McpOAuthResourceServerService } from './mcp-oauth-resource-server.service';
 
 export interface McpPolicyContext {
 	client: McpClientEntity;
@@ -22,6 +24,13 @@ export interface McpPolicyContext {
 	installationId: string;
 	clientPolicyRevision?: number;
 	policyRevision?: number;
+	tokenId: string;
+}
+
+export interface McpAuthorizationContext {
+	client: { id: string };
+	effectiveCapabilities: McpCapability[];
+	installationId: string;
 	tokenId: string;
 }
 
@@ -36,6 +45,7 @@ export class McpPolicyService {
 		private readonly nestConfigService: NestConfigService,
 		private readonly clientService: McpClientService,
 		private readonly installationService: McpInstallationService,
+		private readonly oauthResourceServerService: McpOAuthResourceServerService,
 	) {}
 
 	async resolve(auth: AuthenticatedRequest['auth']): Promise<McpPolicyContext> {
@@ -92,6 +102,31 @@ export class McpPolicyService {
 		return policy;
 	}
 
+	async authorizeAuthInfo(authInfo: AuthInfo, capability: McpCapability): Promise<McpAuthorizationContext> {
+		if (authInfo.extra?.principal && this.isOAuthPrincipal(authInfo.extra.principal)) {
+			try {
+				return await this.oauthResourceServerService.authorizeAccessToken(authInfo.token, capability);
+			} catch (error) {
+				if (OAuthError.isInstance(error) && String(error.code) === 'insufficient_scope') {
+					throw new ForbiddenException(`MCP capability '${capability}' is not granted`);
+				}
+				if (OAuthError.isInstance(error)) {
+					throw new UnauthorizedException('MCP OAuth credential is no longer active');
+				}
+
+				throw error;
+			}
+		}
+
+		const tokenId = this.getExtraString(authInfo.extra?.tokenId);
+
+		if (!authInfo.clientId || !tokenId) {
+			throw new UnauthorizedException('MCP request identity is unavailable');
+		}
+
+		return this.authorizeClient(tokenId, authInfo.clientId, capability);
+	}
+
 	validateRequestOrigin(request: FastifyRequest, policy: McpPolicyContext): void {
 		const host = this.getHeader(request.headers.host);
 		const allowedOrigins = new Set(policy.config.allowedOrigins);
@@ -139,5 +174,13 @@ export class McpPolicyService {
 
 	private getHeader(value: string | string[] | undefined): string {
 		return Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
+	}
+
+	private getExtraString(value: unknown): string | undefined {
+		return typeof value === 'string' ? value : undefined;
+	}
+
+	private isOAuthPrincipal(value: unknown): value is { type: typeof MCP_OAUTH_PRINCIPAL_TYPE } {
+		return typeof value === 'object' && value !== null && 'type' in value && value.type === MCP_OAUTH_PRINCIPAL_TYPE;
 	}
 }

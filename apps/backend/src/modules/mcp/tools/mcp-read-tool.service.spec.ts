@@ -28,7 +28,7 @@ describe('McpReadToolService', () => {
 		getWeather: jest.Mock;
 		listSpaces: jest.Mock;
 	};
-	let policyService: { authorizeClient: jest.Mock };
+	let policyService: { authorizeAuthInfo: jest.Mock };
 	let auditService: { getRequestId: jest.Mock; recordPolicyDenial: jest.Mock; recordToolResult: jest.Mock };
 	let registerTool: jest.Mock;
 	let registerResource: jest.Mock;
@@ -51,7 +51,7 @@ describe('McpReadToolService', () => {
 			listSpaces: jest.fn().mockResolvedValue({ spaces: [], nextCursor: undefined }),
 		};
 		policyService = {
-			authorizeClient: jest.fn().mockResolvedValue({ effectiveCapabilities: [McpCapability.READ] }),
+			authorizeAuthInfo: jest.fn().mockResolvedValue({ effectiveCapabilities: [McpCapability.READ] }),
 		};
 		auditService = {
 			getRequestId: jest.fn().mockReturnValue('17'),
@@ -102,7 +102,10 @@ describe('McpReadToolService', () => {
 		expect(callback).toBeDefined();
 		const result = await callback?.({}, requestContext());
 
-		expect(policyService.authorizeClient).toHaveBeenCalledWith('token-id', 'client-id', McpCapability.READ);
+		expect(policyService.authorizeAuthInfo).toHaveBeenCalledWith(
+			expect.objectContaining({ clientId: 'client-id', token: 'raw-token' }),
+			McpCapability.READ,
+		);
 		expect(contextService.getSecurityStatus).toHaveBeenCalledTimes(1);
 		expect(result?.isError).toBeUndefined();
 		expect(result?.structuredContent.installation).toEqual(expect.objectContaining({ id: 'installation-id' }));
@@ -121,7 +124,7 @@ describe('McpReadToolService', () => {
 	});
 
 	it('returns a sanitized denial when live policy no longer grants read', async () => {
-		policyService.authorizeClient.mockRejectedValue(new ForbiddenException('private policy detail'));
+		policyService.authorizeAuthInfo.mockRejectedValue(new ForbiddenException('private policy detail'));
 		service.register(server(), authInfo([McpCapability.READ]));
 		const result = await callbacks.get('get_security_status')?.({}, requestContext());
 
@@ -144,7 +147,7 @@ describe('McpReadToolService', () => {
 	});
 
 	it('distinguishes a live credential rejection from a capability denial', async () => {
-		policyService.authorizeClient.mockRejectedValue(new UnauthorizedException('private credential detail'));
+		policyService.authorizeAuthInfo.mockRejectedValue(new UnauthorizedException('private credential detail'));
 		service.register(server(), authInfo([McpCapability.READ]));
 
 		const result = await callbacks.get('get_security_status')?.({}, requestContext());
@@ -158,7 +161,7 @@ describe('McpReadToolService', () => {
 	});
 
 	it('audits a module-disable race as an endpoint denial without confusing domain not-found errors', async () => {
-		policyService.authorizeClient.mockRejectedValue(new McpEndpointDisabledException());
+		policyService.authorizeAuthInfo.mockRejectedValue(new McpEndpointDisabledException());
 		service.register(server(), authInfo([McpCapability.READ]));
 
 		const result = await callbacks.get('get_security_status')?.({}, requestContext());
@@ -248,7 +251,7 @@ describe('McpReadToolService', () => {
 	});
 
 	it('audits a resource policy denial without exposing the resource request', async () => {
-		policyService.authorizeClient.mockRejectedValue(new ForbiddenException('private resource policy'));
+		policyService.authorizeAuthInfo.mockRejectedValue(new ForbiddenException('private resource policy'));
 		service.register(server(), authInfo([McpCapability.READ]));
 		const resultPromise = resourceCallbacks.get('installation')?.(
 			new URL('smart-panel://installation'),
