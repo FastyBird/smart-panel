@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 5 in progress — targeted OAuth subscription identity and deadline foundation implemented
+**Status:** Phase 5 in progress — validated OAuth subscription binding implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -129,11 +129,21 @@ amend ADR 0002.
 - [x] Add targeted client/grant/access-token/refresh-family and OAuth-only closure primitives.
 - [x] Automatically abort OAuth streams at their authorization deadline and audit expiry versus revocation distinctly.
 
+### Phase 5c — Validated OAuth subscription binding
+
+- [x] Carry the stable access-token management ID, exact authorization deadline, effective OAuth scopes, and current
+      module/client/grant authorization generations through the validated OAuth principal.
+- [x] Fail closed when the persistent module-policy generation state is unavailable.
+- [x] Register OAuth listen streams under the validated internal client and artifact identities while preserving the
+      existing static subscription registration path.
+- [x] Record effective scopes and module/client/grant generations on the internal OAuth subscription binding for the
+      authoritative registration/invalidation gate.
+
 ### Remaining Phase 5 controls
 
 - [ ] Add list/inspect/disable/revoke APIs for OAuth clients, grants, access tokens, and refresh families.
 - [ ] Add Admin client/grant/token management views and revoke confirmations.
-- [ ] Bind OAuth subscriptions to client, grant, access-token, optional refresh-family IDs, and an authorization
+- [x] Bind OAuth subscriptions to client, grant, access-token, optional refresh-family IDs, and an authorization
       deadline equal to the earlier of access-token or grant expiry; also record their effective scopes and the
       generations of the module/client/grant authorization inputs that produced them.
 - [ ] Serialize subscription registration and invalidation through one authoritative generation gate: atomically

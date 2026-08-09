@@ -9,6 +9,7 @@ import {
 	McpOAuthGrantEntity,
 	McpOAuthProviderArtifactEntity,
 	McpOAuthProviderRevokedGrantEntity,
+	McpOAuthServerStateEntity,
 } from '../entities/mcp-oauth.entity';
 import { McpCapability, McpOAuthScope } from '../mcp.constants';
 import { McpConfigModel } from '../models/config.model';
@@ -47,6 +48,7 @@ describe('McpOAuthResourceServerService', () => {
 	let artifactRepository: { findOneBy: jest.Mock };
 	let revokedGrantRepository: { findOneBy: jest.Mock };
 	let grantRepository: { findOne: jest.Mock };
+	let serverStateRepository: { findOneBy: jest.Mock };
 	let service: McpOAuthResourceServerService;
 
 	beforeEach(() => {
@@ -64,6 +66,7 @@ describe('McpOAuthResourceServerService', () => {
 		artifact = Object.assign(new McpOAuthProviderArtifactEntity(), {
 			model: 'AccessToken',
 			idHash: TOKEN_ID,
+			managementId: 'access-token-management-id',
 			payload: JSON.stringify(payload),
 			grantIdHash: PROVIDER_GRANT_ID_HASH,
 			refreshFamilyId: 'refresh-family-id',
@@ -77,6 +80,7 @@ describe('McpOAuthResourceServerService', () => {
 				id: 'client-id',
 				clientIdentifier: CLIENT_IDENTIFIER,
 				enabled: true,
+				generation: 2,
 				maximumScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE, McpOAuthScope.TRIGGER],
 			},
 			approvedById: APPROVER_ID,
@@ -86,15 +90,20 @@ describe('McpOAuthResourceServerService', () => {
 			resource: urls.resource,
 			approvedScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE, McpOAuthScope.TRIGGER],
 			expiresAt: new Date(Date.now() + 60_000),
+			generation: 3,
 			revokedAt: null,
 		});
 		artifactRepository = { findOneBy: jest.fn().mockImplementation(() => Promise.resolve(artifact)) };
 		revokedGrantRepository = { findOneBy: jest.fn().mockResolvedValue(null) };
 		grantRepository = { findOne: jest.fn().mockImplementation(() => Promise.resolve(grant)) };
+		serverStateRepository = {
+			findOneBy: jest.fn().mockResolvedValue({ key: 'primary', modulePolicyGeneration: 1 }),
+		};
 		service = new McpOAuthResourceServerService(
 			artifactRepository as unknown as Repository<McpOAuthProviderArtifactEntity>,
 			revokedGrantRepository as unknown as Repository<McpOAuthProviderRevokedGrantEntity>,
 			grantRepository as unknown as Repository<McpOAuthGrantEntity>,
+			serverStateRepository as unknown as Repository<McpOAuthServerStateEntity>,
 			{ getModuleConfig: jest.fn(() => config) } as unknown as ConfigService,
 			{ getInstallationId: jest.fn().mockResolvedValue(INSTALLATION_ID) } as unknown as McpInstallationService,
 			{ getUrls: jest.fn(() => urls) } as unknown as McpOAuthPublicUrlService,
@@ -168,8 +177,13 @@ describe('McpOAuthResourceServerService', () => {
 		);
 		expect(authInfo.extra?.principal).toEqual(
 			expect.objectContaining({
+				accessTokenId: 'access-token-management-id',
+				clientGeneration: 2,
 				effectiveCapabilities: [McpCapability.READ],
+				effectiveScopes: [McpOAuthScope.READ],
+				grantGeneration: 3,
 				installationId: INSTALLATION_ID,
+				modulePolicyGeneration: 1,
 				refreshFamilyId: 'refresh-family-id',
 			}),
 		);
@@ -188,6 +202,15 @@ describe('McpOAuthResourceServerService', () => {
 		const authInfo = await service.verifyAccessToken(RAW_TOKEN);
 
 		expect(authInfo.expiresAt).toBe(Math.floor(grant.expiresAt.getTime() / 1_000));
+		expect(authInfo.extra?.principal).toEqual(
+			expect.objectContaining({ authorizationDeadline: grant.expiresAt.getTime() }),
+		);
+	});
+
+	it('fails closed when the persistent authorization generation state is unavailable', async () => {
+		serverStateRepository.findOneBy.mockResolvedValue(null);
+
+		await expect(service.verifyAccessToken(RAW_TOKEN)).rejects.toMatchObject({ code: OAuthErrorCode.InvalidToken });
 	});
 
 	it('builds RFC 6750 invalid-token and insufficient-scope challenges with discovery', async () => {

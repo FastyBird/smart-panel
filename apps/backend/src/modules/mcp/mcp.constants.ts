@@ -32,6 +32,8 @@ export const MCP_DEFAULT_OAUTH_PUBLIC_BASE_URL: string | null = null;
 
 export const MCP_OAUTH_PRINCIPAL_TYPE = 'mcp_oauth';
 
+export const MCP_OAUTH_SERVER_STATE_KEY = 'primary';
+
 export const MCP_OAUTH_ACCESS_TOKEN_LIFETIME_MS = 10 * 60 * 1000;
 
 export const MCP_OAUTH_REFRESH_FAMILY_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;

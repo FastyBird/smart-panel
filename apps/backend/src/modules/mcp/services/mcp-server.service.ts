@@ -10,11 +10,19 @@ import { ModuleRef } from '@nestjs/core';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { extractAccessTokenFromHeader } from '../../auth/utils/token.utils';
-import { MCP_CATALOG_REGISTRAR, MCP_MAX_SUBSCRIPTIONS_PER_CLIENT, MCP_MODULE_NAME } from '../mcp.constants';
+import {
+	MCP_CATALOG_REGISTRAR,
+	MCP_MAX_SUBSCRIPTIONS_PER_CLIENT,
+	MCP_MODULE_NAME,
+	MCP_OAUTH_PRINCIPAL_TYPE,
+	McpOAuthScope,
+} from '../mcp.constants';
+import { McpOAuthPrincipal } from '../oauth/mcp-oauth.types';
 
 import { McpAuditService } from './mcp-audit.service';
 import { McpPolicyRequest } from './mcp-policy.service';
 import {
+	McpOAuthSubscriptionBinding,
 	McpSubscriptionCapacityError,
 	McpSubscriptionHandle,
 	McpSubscriptionRegistryService,
@@ -39,6 +47,11 @@ interface JsonRpcRequestBody {
 
 interface McpCatalogRegistrar {
 	register(server: McpServer, authInfo?: AuthInfo): void;
+}
+
+interface McpSubscriptionRegistration {
+	clientId: string;
+	oauth?: McpOAuthSubscriptionBinding;
 }
 
 @Injectable()
@@ -221,7 +234,13 @@ export class McpServerService implements OnApplicationShutdown {
 				let subscription: McpSubscriptionHandle;
 
 				try {
-					subscription = this.subscriptions.open(clientId, this.auditService.getRequestId(options?.parsedBody));
+					const registration = this.getSubscriptionRegistration(clientId, options?.authInfo);
+
+					subscription = this.subscriptions.open(
+						registration.clientId,
+						this.auditService.getRequestId(options?.parsedBody),
+						registration.oauth,
+					);
 				} catch (error) {
 					if (error instanceof McpSubscriptionCapacityError) {
 						return this.subscriptionLimitResponse(options?.parsedBody);
@@ -285,6 +304,54 @@ export class McpServerService implements OnApplicationShutdown {
 
 	private getRequestBody(body: unknown): JsonRpcRequestBody {
 		return body && typeof body === 'object' && !Array.isArray(body) ? (body as JsonRpcRequestBody) : {};
+	}
+
+	private getSubscriptionRegistration(clientId: string, authInfo?: AuthInfo): McpSubscriptionRegistration {
+		const value = authInfo?.extra?.principal;
+
+		if (value === undefined) return { clientId };
+		if (!this.isOAuthPrincipal(value)) {
+			throw new UnauthorizedException('MCP OAuth subscription identity is unavailable');
+		}
+
+		return {
+			clientId: value.clientId,
+			oauth: {
+				accessTokenId: value.accessTokenId,
+				grantId: value.grantId,
+				...(value.refreshFamilyId ? { refreshFamilyId: value.refreshFamilyId } : {}),
+				authorizationDeadline: new Date(value.authorizationDeadline),
+				effectiveScopes: [...value.effectiveScopes],
+				modulePolicyGeneration: value.modulePolicyGeneration,
+				clientGeneration: value.clientGeneration,
+				grantGeneration: value.grantGeneration,
+			},
+		};
+	}
+
+	private isOAuthPrincipal(value: unknown): value is McpOAuthPrincipal {
+		if (typeof value !== 'object' || value === null) return false;
+
+		const principal = value as Partial<McpOAuthPrincipal>;
+		const generations = [principal.modulePolicyGeneration, principal.clientGeneration, principal.grantGeneration];
+
+		return (
+			principal.type === MCP_OAUTH_PRINCIPAL_TYPE &&
+			this.isNonEmptyString(principal.accessTokenId) &&
+			this.isNonEmptyString(principal.clientId) &&
+			this.isNonEmptyString(principal.grantId) &&
+			(principal.refreshFamilyId === undefined || this.isNonEmptyString(principal.refreshFamilyId)) &&
+			typeof principal.authorizationDeadline === 'number' &&
+			Number.isFinite(principal.authorizationDeadline) &&
+			principal.authorizationDeadline > 0 &&
+			Array.isArray(principal.effectiveScopes) &&
+			principal.effectiveScopes.every((scope) => Object.values(McpOAuthScope).includes(scope)) &&
+			generations.every((generation) => Number.isInteger(generation) && (generation ?? -1) >= 0)
+		);
+	}
+
+	private isNonEmptyString(value: unknown): value is string {
+		return typeof value === 'string' && value.length > 0;
 	}
 
 	private trackSubscriptionResponse(response: Response, subscription: McpSubscriptionHandle): Response {
