@@ -341,9 +341,9 @@ Fixed by deleting both tables. Each spec entry already declares its own `categor
 
 ### 3.10 No device category declares an `electrical_generation` channel (low, pre-existing)
 
-`spec/devices/devices.yaml` lists `electrical_generation` on no device at all — 0 of 32 device categories, against 19 that carry `electrical_energy` — so the channel and its `production` property cannot appear on any device, virtual or physical.
+`spec/devices/devices.yaml` lists `electrical_generation` on no device at all — 0 of 32 device categories, against 19 that carry `electrical_energy` — so nothing the specification drives can offer the channel or its `production` property: not the virtual-device wizard, not structural validation. An integration can still persist one, which is the distinction the next paragraph turns on.
 
-Narrower since §3.9: `grid_import` and `grid_export` are reachable now, so the energy cross-type guard is live for the grid pair rather than dormant. What remains unreachable is generation.
+Narrower since §3.9: `grid_import` and `grid_export` are reachable through the specification now, so the energy cross-type guard is live for the grid pair rather than dormant. Generation is the one destination a virtual device still cannot present.
 
 **What the category table does and does not govern.** It governs what can be *offered*: the virtual-device wizard builds its slots from it, and `DeviceValidationService.isChannelAllowedForDevice()` is the only reader of it. It does not govern what can be *persisted* — `ChannelsService.create()` validates the DTO and never consults that check, and only some plugins call `validateDeviceStructure` themselves (the virtual plugin, and the Home Assistant and Zigbee2MQTT adoption flows). So an integration is free to create an `electrical_generation` channel on any device, and `EnergyIngestionListener` classifies from the persisted (channel, property) pair rather than from the table — which means generation ingestion, `totalProductionKwh`, the `netKwh` that subtracts it and the `production_delta_kwh` series are all **reachable today** for such a device.
 
