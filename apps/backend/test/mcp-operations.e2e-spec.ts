@@ -21,6 +21,7 @@ import { MCP_CATALOG_REGISTRAR, McpCapability } from '../src/modules/mcp/mcp.con
 import { McpConfigModel } from '../src/modules/mcp/models/config.model';
 import { McpAuditService } from '../src/modules/mcp/services/mcp-audit.service';
 import { McpContextService } from '../src/modules/mcp/services/mcp-context.service';
+import { McpOAuthResourceServerService } from '../src/modules/mcp/services/mcp-oauth-resource-server.service';
 import { McpPolicyService } from '../src/modules/mcp/services/mcp-policy.service';
 import { McpPolicyRequest } from '../src/modules/mcp/services/mcp-policy.service';
 import { McpServerService } from '../src/modules/mcp/services/mcp-server.service';
@@ -254,6 +255,7 @@ describe('MCP simulator operations', () => {
 			controllers: [McpController],
 			providers: [
 				{ provide: McpAuditService, useValue: auditService },
+				{ provide: McpOAuthResourceServerService, useValue: { verifyAccessToken: jest.fn() } },
 				McpServerService,
 				McpSubscriptionRegistryService,
 				{ provide: MCP_CATALOG_REGISTRAR, useValue: targetTools },

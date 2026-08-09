@@ -8,9 +8,19 @@ import {
 import { McpAuditService } from './mcp-audit.service';
 import {
 	McpOAuthSubscriptionBinding,
+	McpOAuthSubscriptionRegistration,
 	McpSubscriptionCapacityError,
 	McpSubscriptionRegistryService,
 } from './mcp-subscription-registry.service';
+
+const deferred = <T = void>(): { promise: Promise<T>; resolve: (value: T) => void } => {
+	let resolve = (_value: T): void => undefined;
+	const promise = new Promise<T>((resolver) => {
+		resolve = resolver;
+	});
+
+	return { promise, resolve };
+};
 
 const oauthBinding = (overrides: Partial<McpOAuthSubscriptionBinding> = {}): McpOAuthSubscriptionBinding => ({
 	accessTokenId: 'access-one',
@@ -21,6 +31,11 @@ const oauthBinding = (overrides: Partial<McpOAuthSubscriptionBinding> = {}): Mcp
 	clientGeneration: 2,
 	grantGeneration: 3,
 	...overrides,
+});
+
+const oauthRegistration = (overrides: Partial<McpOAuthSubscriptionBinding> = {}): McpOAuthSubscriptionRegistration => ({
+	clientId: 'client-a',
+	binding: oauthBinding(overrides),
 });
 
 describe('McpSubscriptionRegistryService', () => {
@@ -106,47 +121,113 @@ describe('McpSubscriptionRegistryService', () => {
 		expect(service.activeCount).toBe(0);
 	});
 
-	it('closes only OAuth streams matching a revoked artifact identity', () => {
+	it('closes only OAuth streams matching a revoked artifact identity', async () => {
 		const staticStream = service.open('client-a');
-		const first = service.open(
-			'client-a',
-			'one',
-			oauthBinding({
-				accessTokenId: 'access-one',
-				grantId: 'grant-one',
-				refreshFamilyId: 'family-one',
-			}),
+		const first = await service.openOAuth('one', () =>
+			Promise.resolve(
+				oauthRegistration({
+					accessTokenId: 'access-one',
+					grantId: 'grant-one',
+					refreshFamilyId: 'family-one',
+				}),
+			),
 		);
-		const other = service.open(
-			'client-a',
-			'two',
-			oauthBinding({
-				accessTokenId: 'access-two',
-				grantId: 'grant-two',
-				refreshFamilyId: 'family-two',
-			}),
+		const other = await service.openOAuth('two', () =>
+			Promise.resolve(
+				oauthRegistration({
+					accessTokenId: 'access-two',
+					grantId: 'grant-two',
+					refreshFamilyId: 'family-two',
+				}),
+			),
 		);
 
-		service.closeOAuthAccessToken('access-one');
+		await service.closeOAuthAccessToken('access-one', () => Promise.resolve());
 
 		expect(first.signal.aborted).toBe(true);
 		expect(other.signal.aborted).toBe(false);
 		expect(staticStream.signal.aborted).toBe(false);
 
-		service.closeOAuthRefreshFamily('family-two');
+		await service.closeOAuthRefreshFamily('family-two', () => Promise.resolve());
 
 		expect(other.signal.aborted).toBe(true);
 		expect(staticStream.signal.aborted).toBe(false);
 	});
 
-	it('closes OAuth streams at their authorization deadline', () => {
+	it('closes a registration that wins the gate before matching invalidation', async () => {
+		const revalidationStarted = deferred();
+		const releaseRevalidation = deferred();
+		const advanceGeneration = jest.fn().mockResolvedValue(undefined);
+		const registrationPromise = service.openOAuth('racing-open', async () => {
+			revalidationStarted.resolve();
+			await releaseRevalidation.promise;
+
+			return oauthRegistration();
+		});
+
+		await revalidationStarted.promise;
+
+		const invalidationPromise = service.closeOAuthAccessToken('access-one', advanceGeneration);
+
+		await Promise.resolve();
+		expect(advanceGeneration).not.toHaveBeenCalled();
+
+		releaseRevalidation.resolve();
+		const subscription = await registrationPromise;
+
+		await invalidationPromise;
+
+		expect(advanceGeneration).toHaveBeenCalledTimes(1);
+		expect(subscription.signal.aborted).toBe(true);
+		expect(auditService.recordSubscriptionClosed).toHaveBeenCalledWith(
+			{ requestId: 'racing-open', clientId: 'client-a' },
+			subscription.id,
+			'authorization_revoked',
+		);
+	});
+
+	it('makes a registration queued behind invalidation revalidate after its generation advances', async () => {
+		const advanceStarted = deferred();
+		const releaseAdvance = deferred();
+		const invalidationPromise = service.closeOAuthGrant('grant-one', async () => {
+			advanceStarted.resolve();
+			await releaseAdvance.promise;
+		});
+
+		await advanceStarted.promise;
+
+		const revalidate = jest.fn().mockRejectedValue(new Error('stale authorization generation'));
+		const registrationPromise = service.openOAuth('stale-open', revalidate);
+		const rejectedRegistration = expect(registrationPromise).rejects.toThrow('stale authorization generation');
+
+		await Promise.resolve();
+		expect(revalidate).not.toHaveBeenCalled();
+
+		releaseAdvance.resolve();
+		await invalidationPromise;
+		await rejectedRegistration;
+		expect(revalidate).toHaveBeenCalledTimes(1);
+		expect(service.activeCount).toBe(0);
+	});
+
+	it('propagates generation-advance failure without closing matching OAuth streams', async () => {
+		const subscription = await service.openOAuth('failed-invalidation', () => Promise.resolve(oauthRegistration()));
+
+		await expect(
+			service.closeOAuthAccessToken('access-one', () => Promise.reject(new Error('generation update failed'))),
+		).rejects.toThrow('generation update failed');
+
+		expect(subscription.signal.aborted).toBe(false);
+	});
+
+	it('closes OAuth streams at their authorization deadline', async () => {
 		jest.useFakeTimers();
-		const subscription = service.open(
-			'client-a',
-			'deadline',
-			oauthBinding({
-				authorizationDeadline: new Date(Date.now() + 1_000),
-			}),
+		const subscription = await service.openOAuth('deadline', () =>
+			Promise.resolve(
+				oauthRegistration({
+					authorizationDeadline: new Date(Date.now() + 1_000),
+				}),
+			),
 		);
 
 		jest.advanceTimersByTime(500);
@@ -163,14 +244,14 @@ describe('McpSubscriptionRegistryService', () => {
 		);
 	});
 
-	it('cancels the authorization deadline timer when an OAuth stream closes early', () => {
+	it('cancels the authorization deadline timer when an OAuth stream closes early', async () => {
 		jest.useFakeTimers();
-		const subscription = service.open(
-			'client-a',
-			'early-close',
-			oauthBinding({
-				authorizationDeadline: new Date(Date.now() + 60_000),
-			}),
+		const subscription = await service.openOAuth('early-close', () =>
+			Promise.resolve(
+				oauthRegistration({
+					authorizationDeadline: new Date(Date.now() + 60_000),
+				}),
+			),
 		);
 
 		expect(jest.getTimerCount()).toBe(2);

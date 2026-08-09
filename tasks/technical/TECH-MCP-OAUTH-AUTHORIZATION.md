@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 5 validated OAuth subscription binding complete
+Status: in progress — Phase 5 authoritative OAuth subscription gate foundation complete
 
 ## 1. Business goal
 

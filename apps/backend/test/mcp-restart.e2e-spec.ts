@@ -156,7 +156,10 @@ describe('MCP disabled restart', () => {
 					provide: McpInstallationService,
 					useValue: { getInstallationId: jest.fn().mockResolvedValue('restart-installation') },
 				},
-				{ provide: McpOAuthResourceServerService, useValue: { authorizeAccessToken: jest.fn() } },
+				{
+					provide: McpOAuthResourceServerService,
+					useValue: { authorizeAccessToken: jest.fn(), verifyAccessToken: jest.fn() },
+				},
 				McpAuditService,
 				McpClientGuard,
 				McpPolicyService,

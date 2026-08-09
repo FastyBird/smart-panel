@@ -20,6 +20,7 @@ import {
 import { McpOAuthPrincipal } from '../oauth/mcp-oauth.types';
 
 import { McpAuditService } from './mcp-audit.service';
+import { McpOAuthResourceServerService } from './mcp-oauth-resource-server.service';
 import { McpPolicyRequest } from './mcp-policy.service';
 import {
 	McpOAuthSubscriptionBinding,
@@ -54,6 +55,11 @@ interface McpSubscriptionRegistration {
 	oauth?: McpOAuthSubscriptionBinding;
 }
 
+interface McpOpenedSubscription {
+	authInfo?: AuthInfo;
+	handle: McpSubscriptionHandle;
+}
+
 @Injectable()
 export class McpServerService implements OnApplicationShutdown {
 	private readonly logger = createExtensionLogger(MCP_MODULE_NAME, 'McpServerService');
@@ -64,6 +70,7 @@ export class McpServerService implements OnApplicationShutdown {
 	constructor(
 		private readonly subscriptions: McpSubscriptionRegistryService,
 		private readonly auditService: McpAuditService,
+		private readonly oauthResourceServerService: McpOAuthResourceServerService,
 		@Optional() private readonly moduleRef?: ModuleRef,
 	) {}
 
@@ -225,25 +232,29 @@ export class McpServerService implements OnApplicationShutdown {
 		const fetch = handler.fetch;
 		const wrappedHandler = {
 			fetch: async (...args: Parameters<McpHttpHandler['fetch']>): Promise<Response> => {
-				const [webRequest, options] = args;
+				const [webRequest, requestOptions] = args;
 
-				if (!this.isSubscriptionListen(options?.parsedBody)) {
-					return fetch(webRequest, options);
+				if (!this.isSubscriptionListen(requestOptions?.parsedBody)) {
+					return fetch(webRequest, requestOptions);
 				}
 
 				let subscription: McpSubscriptionHandle;
+				let options = requestOptions;
 
 				try {
-					const registration = this.getSubscriptionRegistration(clientId, options?.authInfo);
-
-					subscription = this.subscriptions.open(
-						registration.clientId,
-						this.auditService.getRequestId(options?.parsedBody),
-						registration.oauth,
+					const opened = await this.openSubscription(
+						clientId,
+						this.auditService.getRequestId(requestOptions?.parsedBody),
+						requestOptions?.authInfo,
 					);
+
+					subscription = opened.handle;
+					if (opened.authInfo !== requestOptions?.authInfo) {
+						options = { ...requestOptions, authInfo: opened.authInfo };
+					}
 				} catch (error) {
 					if (error instanceof McpSubscriptionCapacityError) {
-						return this.subscriptionLimitResponse(options?.parsedBody);
+						return this.subscriptionLimitResponse(requestOptions?.parsedBody);
 					}
 
 					throw error;
@@ -327,6 +338,39 @@ export class McpServerService implements OnApplicationShutdown {
 				grantGeneration: value.grantGeneration,
 			},
 		};
+	}
+
+	private async openSubscription(
+		clientId: string,
+		requestId: string,
+		authInfo?: AuthInfo,
+	): Promise<McpOpenedSubscription> {
+		const registration = this.getSubscriptionRegistration(clientId, authInfo);
+
+		if (!registration.oauth) {
+			return { authInfo, handle: this.subscriptions.open(registration.clientId, requestId) };
+		}
+		if (!authInfo) {
+			throw new UnauthorizedException('MCP OAuth subscription identity is unavailable');
+		}
+
+		let currentAuthInfo: AuthInfo | undefined;
+		const handle = await this.subscriptions.openOAuth(requestId, async () => {
+			currentAuthInfo = await this.oauthResourceServerService.verifyAccessToken(authInfo.token);
+			const current = this.getSubscriptionRegistration(clientId, currentAuthInfo);
+
+			if (!current.oauth) {
+				throw new UnauthorizedException('MCP OAuth subscription identity is unavailable');
+			}
+
+			return { clientId: current.clientId, binding: current.oauth };
+		});
+
+		if (!currentAuthInfo) {
+			throw new UnauthorizedException('MCP OAuth subscription revalidation did not complete');
+		}
+
+		return { authInfo: currentAuthInfo, handle };
 	}
 
 	private isOAuthPrincipal(value: unknown): value is McpOAuthPrincipal {
