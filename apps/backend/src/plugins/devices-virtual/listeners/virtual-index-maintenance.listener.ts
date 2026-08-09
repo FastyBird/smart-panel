@@ -10,12 +10,20 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../mod
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { findEnergySourceType } from '../../../modules/energy/utils/energy-source-type.utils';
 import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
 import { VirtualDevicesService } from '../services/virtual-devices.service';
 import { VirtualIndexRebuildResult, VirtualPropertyIndexService } from '../services/virtual-property-index.service';
 
 import { VirtualStatusListener } from './virtual-status.listener';
+
+/**
+ * The channel a property was loaded with, or undefined when it was loaded without one — `channel`
+ * holds an id string unless the read asked for the relation.
+ */
+const channelOf = (property: ChannelPropertyEntity): ChannelEntity | undefined =>
+	typeof property.channel === 'string' ? undefined : property.channel;
 
 /**
  * Owns VirtualPropertyIndexService's contents — the first hydration at bootstrap and every rebuild
@@ -975,32 +983,74 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 * `consumption` property in a `generic` channel — *nothing* ingests once no projection holds the
 	 * claim, so the consumption disappears from the totals rather than merely landing in the wrong room.
 	 *
+	 * Offered only to a projection that could have earned the claim in the first place — the same two
+	 * rules the migration's backfill and `settleEnergyClaim` apply. An installation that upgrades keeps
+	 * whatever it already had, including a projection into a slot carrying no energy, or one that
+	 * presents an import as an export; the migration passed those over deliberately, and age alone must
+	 * not hand one the claim now. It would attribute the meter under semantics its own slot
+	 * contradicts, and hold the unique slot against a projection that fits.
+	 *
+	 * Admissibility is `findEnergySourceType` — the same function the projection gate and the ingestion
+	 * ask — so candidate selection here cannot drift from either. That is why the choice is made in
+	 * TypeScript and only the winning write is SQL: expressing the rules as a predicate would be a
+	 * fourth copy of a table that already exists once, and the part that has to be atomic is the write.
+	 *
 	 * A single conditional UPDATE rather than read-then-write. `NOT EXISTS` is what makes it safe to run
 	 * concurrently with a create claiming the same meter: whichever statement lands second sees the
 	 * other's row and does nothing, so the two cannot both succeed and the unique index is never asked
-	 * to arbitrate. Idempotent for the same reason — running it twice promotes once.
+	 * to arbitrate. Idempotent for the same reason — running it twice promotes once. The read that
+	 * chose the heir may be stale by then, which costs a no-op rather than a wrong claim.
 	 *
 	 * Deterministic, and by the same rule the migration uses: oldest first, ties broken by id, so an
 	 * installation that reaches this state twice reaches the same answer.
 	 */
 	private async promoteEnergyClaim(sourcePropertyId: string): Promise<void> {
 		const repository = this.dataSource.getRepository(VirtualChannelPropertyEntity);
-		const table = repository.metadata.tableName;
 
 		try {
+			const candidates = await repository.find({
+				where: { sourcePropertyId, energyClaimPropertyId: IsNull() },
+				relations: ['channel'],
+				order: { createdAt: 'ASC', id: 'ASC' },
+			});
+
+			if (candidates.length === 0) {
+				return;
+			}
+
+			const source = await this.dataSource
+				.getRepository(ChannelPropertyEntity)
+				.findOne({ where: { id: sourcePropertyId }, relations: ['channel'] });
+			const sourceType = source ? findEnergySourceType(channelOf(source)?.category, source.category) : null;
+
+			const heir = candidates.find((candidate) => {
+				if (!candidate.isProjecting) {
+					return false;
+				}
+
+				// Judged on the destination, as everywhere else: what makes a reading energy is the slot it
+				// is presented in, not where it came from. A source the ingestion does not recognise on its
+				// own is still claimable — that is the case this whole mechanism exists for.
+				const destination = findEnergySourceType(channelOf(candidate)?.category, candidate.category);
+
+				return destination !== null && (sourceType === null || sourceType.sourceType === destination.sourceType);
+			});
+
+			if (!heir) {
+				return;
+			}
+
+			const table = repository.metadata.tableName;
+
+			// `NOT EXISTS` is what lets this run beside a create claiming the same meter without both
+			// succeeding, and what makes running it twice promote once.
 			await repository.query(
 				`UPDATE "${table}"
 				    SET "energyClaimPropertyId" = ?
-				  WHERE "id" = (
-				        SELECT "id" FROM "${table}"
-				         WHERE "sourcePropertyId" = ?
-				           AND "energyClaimPropertyId" IS NULL
-				           AND "type" = ?
-				         ORDER BY "createdAt" ASC, "id" ASC
-				         LIMIT 1
-				  )
+				  WHERE "id" = ?
+				    AND "energyClaimPropertyId" IS NULL
 				    AND NOT EXISTS (SELECT 1 FROM "${table}" WHERE "energyClaimPropertyId" = ?)`,
-				[sourcePropertyId, sourcePropertyId, DEVICES_VIRTUAL_TYPE, sourcePropertyId],
+				[sourcePropertyId, heir.id, sourcePropertyId],
 			);
 		} catch (error) {
 			// Not fatal to the pass that called it: the meter is unclaimed, which attributes to the

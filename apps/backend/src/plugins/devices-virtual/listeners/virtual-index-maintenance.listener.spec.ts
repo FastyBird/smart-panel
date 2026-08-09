@@ -2093,6 +2093,35 @@ describe('VirtualIndexMaintenanceListener', () => {
 			channel: { id: 'virtual-channel', category: 'light', device: { id: 'virtual-device', category: 'lighting' } },
 		};
 
+		// The rest of the projections a released meter could be offered to. Only the first two are
+		// claimants at all: an upgraded installation can be holding a projection into a slot that carries
+		// no energy, or one that presents an import as an export, and the migration passed over both
+		// deliberately — so age alone must not hand either the claim now.
+		const energyHeir = {
+			id: 'energy-heir',
+			category: 'consumption',
+			isProjecting: true,
+			channel: { id: 'heir-channel', category: 'electrical_energy' },
+		};
+		const faithful = {
+			id: 'faithful',
+			category: 'grid_import',
+			isProjecting: true,
+			channel: { id: 'faithful-channel', category: 'electrical_energy' },
+		};
+		const legacySwitch = {
+			id: 'legacy-switch',
+			category: 'on',
+			isProjecting: true,
+			channel: { id: 'legacy-channel', category: 'light' },
+		};
+		const crossType = {
+			id: 'cross-type',
+			category: 'grid_export',
+			isProjecting: true,
+			channel: { id: 'cross-channel', category: 'electrical_energy' },
+		};
+
 		// Built here rather than reusing the suite's shared stubs: this is the only group that reaches
 		// `getRepository`, and widening those stubs would loosen every other case's expectations for no
 		// benefit.
@@ -2185,6 +2214,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 				reportCompatibility,
 				emit,
 				find,
+				findOne,
 				describeSentinelMismatch,
 				describeProjectionConstraintMismatch,
 				wheres,
@@ -2217,7 +2247,11 @@ describe('VirtualIndexMaintenanceListener', () => {
 		// ingests once no projection holds the claim, so the consumption leaves the totals entirely
 		// rather than merely landing in the wrong room.
 		it('offers the released meter to another projection of it', async () => {
-			const { subject, promotion } = build({ compatible: false, reason: 'permissions [ro] do not satisfy [rw]' });
+			const { subject, promotion, find } = build({ compatible: false, reason: 'permissions [ro] do not satisfy [rw]' });
+
+			// The dependents query answers first, the candidate query second: a second projection of the
+			// same meter, into a slot that does carry energy.
+			find.mockResolvedValueOnce([dependent]).mockResolvedValueOnce([energyHeir]);
 
 			await subject.handleSourceMetadataChange(sourceProperty);
 
@@ -2228,8 +2262,48 @@ describe('VirtualIndexMaintenanceListener', () => {
 			// A single conditional statement: `NOT EXISTS` is what lets it run beside a create claiming the
 			// same meter without the two both succeeding, and what makes running it twice promote once.
 			expect(sql).toContain('NOT EXISTS');
-			expect(sql).toContain('ORDER BY "createdAt" ASC, "id" ASC');
-			expect(params).toContain(sourceProperty.id);
+			expect(params).toEqual([sourceProperty.id, energyHeir.id, sourceProperty.id]);
+			// Deterministic, by the rule the migration's backfill uses, so an installation that reaches
+			// this state twice reaches the same answer.
+			expect(find).toHaveBeenLastCalledWith(expect.objectContaining({ order: { createdAt: 'ASC', id: 'ASC' } }));
+		});
+
+		// Age alone is the wrong rule, and it is the one an upgraded installation exposes: the migration
+		// left a legacy projection unclaimed on purpose, and letting it inherit the meter now would
+		// attribute the kWh under semantics its own slot contradicts — while holding the unique slot
+		// against a projection that fits.
+		it('passes over a projection into a slot that carries no energy', async () => {
+			const { subject, promotion, find } = build({ compatible: false, reason: 'permissions [ro] do not satisfy [rw]' });
+
+			find.mockResolvedValueOnce([dependent]).mockResolvedValueOnce([legacySwitch]);
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(promotion).not.toHaveBeenCalled();
+		});
+
+		it('passes over an older projection that changes the meaning of the reading', async () => {
+			const meter = {
+				id: sourceProperty.id,
+				category: 'grid_import',
+				channel: { id: 'source-channel', category: 'electrical_energy' },
+			};
+			const { subject, promotion, find, findOne } = build({
+				compatible: false,
+				reason: 'permissions [ro] do not satisfy [rw]',
+			});
+
+			// The source read the promotion makes: what the meter itself reads is what decides whether a
+			// candidate renames it. The re-read that follows, for the orphaning announcement, falls through
+			// to the default.
+			findOne.mockResolvedValueOnce(meter);
+			find.mockResolvedValueOnce([dependent]).mockResolvedValueOnce([crossType, faithful]);
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			const [, params] = promotion.mock.calls[0] as [string, unknown[]];
+
+			expect(params).toEqual([sourceProperty.id, faithful.id, sourceProperty.id]);
 		});
 
 		it('offers nothing when the orphaning write matched no row', async () => {
