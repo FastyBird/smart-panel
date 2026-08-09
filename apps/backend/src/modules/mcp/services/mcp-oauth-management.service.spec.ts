@@ -205,6 +205,17 @@ describe('McpOAuthManagementService', () => {
 		expect(serialized).not.toContain('access-one');
 	});
 
+	it('excludes artifacts whose linked grant has expired', async () => {
+		await dataSource
+			.getRepository(McpOAuthGrantEntity)
+			.update({ id: grant.id }, { expiresAt: new Date(Date.now() - 1_000) });
+
+		expect(await service.findAccessTokens()).toEqual([expect.objectContaining({ clientId: otherClient.id })]);
+		expect(await service.findRefreshFamilies()).toEqual([]);
+		await expect(service.getAccessToken(accessId)).rejects.toThrow('not linked to an active grant');
+		await expect(service.getRefreshFamily(familyId)).rejects.toThrow('does not exist');
+	});
+
 	it('revokes one access token and closes only its matching subscription', async () => {
 		const matching = await openSubscription(client.id, grant.id, accessId, familyId);
 		const otherAccessId = (await service.findAccessTokens()).find((token) => token.clientId === otherClient.id)?.id;

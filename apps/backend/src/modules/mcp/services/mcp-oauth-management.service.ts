@@ -307,7 +307,11 @@ export class McpOAuthManagementService {
 		if (hashes.length === 0) return new Map();
 
 		const grants = await this.grants.find({
-			where: { providerGrantIdHash: In(hashes) },
+			where: {
+				providerGrantIdHash: In(hashes),
+				revokedAt: IsNull(),
+				expiresAt: MoreThan(new Date()),
+			},
 			relations: { client: true },
 		});
 
