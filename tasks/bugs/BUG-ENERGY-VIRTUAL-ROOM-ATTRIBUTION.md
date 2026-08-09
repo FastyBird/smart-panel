@@ -5,7 +5,7 @@ Type: bug
 Scope: backend
 Size: medium
 Parent: EPIC-VIRTUAL-DEVICES
-Status: in-progress
+Status: done
 
 ## 1. Summary
 
@@ -243,11 +243,18 @@ fix must not introduce a lookup that assumes otherwise.
 
 ## 5. Acceptance criteria
 
-Split across two PRs. [#649](https://github.com/FastyBird/smart-panel/pull/649) does the claim and
-the attribution — everything below that is ticked. What is left is the *readers*: the space queries
-reach a room by joining the device's current `roomId` instead of the recorded `delta.roomId`, and
-`saveDelta` accumulates into a bucket keyed without the room. Both are pre-existing, neither is about
-attribution, and a split merely makes them routine.
+Delivered in two PRs. [#649](https://github.com/FastyBird/smart-panel/pull/649) did the claim and the
+attribution; the readers followed in the PR that closes this task — the space queries now scope by
+the recorded `delta.roomId` rather than by the device's current room, and a device that changes room
+mid-interval stops filling the bucket the old room owns.
+
+One trade taken deliberately, recorded here because the task left the choice open: the bucket
+*moves* with the device rather than splitting at the move. Splitting means the room joins the unique
+key, and a nullable column in a SQLite unique index does not conflict with itself — every reading
+from a device in no room would open its own row instead of accumulating — and the expression index
+that works around it is one the entity decorators cannot declare, which is how CI and the e2e suite
+build the schema. The residue is bounded by `DELTA_INTERVAL_MINUTES`: up to one interval recorded
+just before a move is attributed to the room the device ended it in.
 
 - [x] A delta for a projected energy property carries the projecting device's `deviceId` and `roomId`
 - [x] A device's unprojected energy channels still attribute to the device itself
@@ -293,9 +300,9 @@ attribution, and a split merely makes them routine.
       behaviour; the criterion is that the fix does not change it, and that an orphan therefore stops
       accruing rather than accruing in the wrong room, since no value reaches it once its meter is
       gone
-- [ ] Moving a projecting virtual device to another room leaves its recorded consumption in the room
+- [x] Moving a projecting virtual device to another room leaves its recorded consumption in the room
       it was recorded in, and deleting it does not erase that history from the space views
-- [ ] A reading that arrives after a move, inside the same interval bucket, is recorded against the
+- [x] A reading that arrives after a move, inside the same interval bucket, is recorded against the
       new room rather than accumulating into the old one
 - [x] Regression tests for the split case above and for the refusal — **not** for reproduction (a) as
       it stands: it projects one meter into two rooms, which the single-claim rule makes impossible to
