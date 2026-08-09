@@ -83,4 +83,15 @@ describe('ViewMcpOAuthManagement', () => {
 
 		expect(vm.grantStatus({ ...grant, active: false })).toEqual({ key: 'inactive', type: 'warning' });
 	});
+
+	it('allows inactive grants to be revoked until they expire or are revoked', () => {
+		const wrapper = shallowMount(ViewMcpOAuthManagement);
+		const vm = wrapper.vm as unknown as {
+			canRevokeGrant: (value: IMcpOAuthGrant) => boolean;
+		};
+
+		expect(vm.canRevokeGrant({ ...grant, active: false })).toBe(true);
+		expect(vm.canRevokeGrant({ ...grant, active: false, revokedAt: '2026-01-02T00:00:00.000Z' })).toBe(false);
+		expect(vm.canRevokeGrant({ ...grant, active: false, expiresAt: '2020-01-01T00:00:00.000Z' })).toBe(false);
+	});
 });

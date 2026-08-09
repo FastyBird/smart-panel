@@ -157,7 +157,7 @@
 									size="small"
 									type="danger"
 									plain
-									:disabled="!scope.row.active"
+									:disabled="!canRevokeGrant(scope.row)"
 									@click="confirmGrantRevoke(scope.row)"
 								>
 									{{ t('mcpModule.actions.revoke') }}
@@ -525,6 +525,8 @@ const grantStatus = (grant: IMcpOAuthGrant): { key: 'active' | 'expired' | 'inac
 
 	return { key: 'active', type: 'success' };
 };
+
+const canRevokeGrant = (grant: IMcpOAuthGrant): boolean => grant.revokedAt === null && new Date(grant.expiresAt).getTime() > Date.now();
 
 const formatDate = (value: string): string => new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 
