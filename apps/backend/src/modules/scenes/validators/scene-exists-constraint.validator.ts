@@ -11,7 +11,7 @@ import { Injectable } from '@nestjs/common';
 import { ScenesService } from '../services/scenes.service';
 
 @Injectable()
-@ValidatorConstraint({ name: 'SceneExistsValidation', async: false })
+@ValidatorConstraint({ name: 'SceneExistsValidation', async: true })
 export class SceneExistsConstraintValidator implements ValidatorConstraintInterface {
 	constructor(private readonly scenesService: ScenesService) {}
 

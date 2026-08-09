@@ -11,7 +11,7 @@ import { Injectable } from '@nestjs/common';
 import { DevicesService } from '../services/devices.service';
 
 @Injectable()
-@ValidatorConstraint({ name: 'DeviceExistsValidation', async: false })
+@ValidatorConstraint({ name: 'DeviceExistsValidation', async: true })
 export class DeviceExistsConstraintValidator implements ValidatorConstraintInterface {
 	constructor(private readonly devicesService: DevicesService) {}
 

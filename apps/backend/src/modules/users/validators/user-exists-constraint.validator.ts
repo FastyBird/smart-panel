@@ -11,7 +11,7 @@ import { Injectable } from '@nestjs/common';
 import { UsersService } from '../services/users.service';
 
 @Injectable()
-@ValidatorConstraint({ name: 'UserExistsValidation', async: false })
+@ValidatorConstraint({ name: 'UserExistsValidation', async: true })
 export class UserExistsConstraintValidator implements ValidatorConstraintInterface {
 	constructor(private readonly usersService: UsersService) {}
 
