@@ -15,7 +15,7 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { IS_MCP_ENDPOINT_KEY, McpCapability } from '../../mcp/mcp.constants';
+import { IS_MCP_ENDPOINT_KEY, MCP_OAUTH_PRINCIPAL_TYPE, McpCapability } from '../../mcp/mcp.constants';
 import { McpAuditService } from '../../mcp/services/mcp-audit.service';
 import { McpClientService } from '../../mcp/services/mcp-client.service';
 import { McpInstallationService } from '../../mcp/services/mcp-installation.service';
@@ -145,6 +145,10 @@ export class AuthGuard implements CanActivate {
 				: await this.jwtService.verifyAsync(token);
 		} catch {
 			throw new UnauthorizedException('Invalid or expired token');
+		}
+
+		if (payload.type === MCP_OAUTH_PRINCIPAL_TYPE) {
+			throw new UnauthorizedException('OAuth MCP credentials require the isolated OAuth verifier');
 		}
 
 		if (isMcpEndpoint) {

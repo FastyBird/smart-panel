@@ -5,6 +5,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdateModuleConfigDto } from '../../config/dto/config.dto';
 import { MCP_MODULE_NAME, McpCapability } from '../mcp.constants';
+import { IsMcpOAuthPublicBaseUrlConstraint } from '../validators/is-mcp-oauth-public-base-url.validator';
 import { IsMcpOriginConstraint } from '../validators/is-mcp-origin.validator';
 
 @ApiSchema({ name: 'ConfigModuleUpdateMcp' })
@@ -51,4 +52,19 @@ export class UpdateMcpConfigDto extends UpdateModuleConfigDto {
 			'[{"field":"allowed_origins","reason":"Each origin must be a normalized absolute HTTP(S) origin without a path, query, fragment, or credentials."}]',
 	})
 	allowed_origins?: string[];
+
+	@ApiPropertyOptional({
+		name: 'oauth_public_base_url',
+		description: 'Explicit canonical HTTPS base URL used to derive the inactive MCP OAuth identity',
+		type: 'string',
+		nullable: true,
+		example: 'https://panel.example.com',
+	})
+	@Expose({ name: 'oauth_public_base_url' })
+	@IsOptional()
+	@Validate(IsMcpOAuthPublicBaseUrlConstraint, {
+		message:
+			'[{"field":"oauth_public_base_url","reason":"OAuth public base URL must be a normalized absolute HTTPS URL without credentials, query, fragment, or trailing slash."}]',
+	})
+	oauth_public_base_url?: string | null;
 }

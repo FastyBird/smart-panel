@@ -9,6 +9,7 @@ import { TokenOwnerType } from '../../auth/auth.constants';
 import { AccessTokenEntity, LongLiveTokenEntity } from '../../auth/entities/auth.entity';
 import { TokensService } from '../../auth/services/tokens.service';
 import { hashToken } from '../../auth/utils/token.utils';
+import { MCP_OAUTH_PRINCIPAL_TYPE } from '../../mcp/mcp.constants';
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
@@ -55,6 +56,10 @@ export class WsAuthService {
 
 		if ((payload.type as TokenOwnerType) === TokenOwnerType.MCP) {
 			throw new WebsocketNotAllowedException('MCP credentials cannot authenticate WebSocket connections');
+		}
+
+		if (payload.type === MCP_OAUTH_PRINCIPAL_TYPE) {
+			throw new WebsocketNotAllowedException('OAuth MCP credentials cannot authenticate WebSocket connections');
 		}
 
 		// Check if this is a display token (type: TokenOwnerType.DISPLAY in payload)
