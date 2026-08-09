@@ -1,5 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import type { Adapter, AdapterConstructor, AdapterPayload } from 'oidc-provider';
-import { DataSource, IsNull, LessThanOrEqual } from 'typeorm';
+import { DataSource, IsNull, LessThanOrEqual, Not, Repository } from 'typeorm';
 
 import { hashToken } from '../../auth/utils/token.utils';
 import { McpOAuthProviderArtifactEntity, McpOAuthProviderRevokedGrantEntity } from '../entities/mcp-oauth.entity';
@@ -56,12 +57,17 @@ export const createMcpOAuthProviderAdapter = (
 			}
 
 			const repository = dataSource.getRepository(McpOAuthProviderArtifactEntity);
+			const idHash = hashToken(id);
+			const existing = await repository.findOneBy({ model: this.model, idHash });
+			const refreshFamilyId = await this.resolveRefreshFamilyId(repository, existing, grantIdHash);
 			await repository.upsert(
 				{
 					model: this.model,
-					idHash: hashToken(id),
+					idHash,
+					managementId: existing?.managementId ?? randomUUID(),
 					payload: serializePayload(this.model, payload),
 					grantIdHash,
+					refreshFamilyId,
 					userCodeHash: typeof payload.userCode === 'string' ? hashToken(payload.userCode) : null,
 					uidHash: typeof payload.uid === 'string' ? hashToken(payload.uid) : null,
 					consumedAt: null,
@@ -69,6 +75,10 @@ export const createMcpOAuthProviderAdapter = (
 				},
 				['model', 'idHash'],
 			);
+
+			if (this.model === 'RefreshToken' && grantIdHash && refreshFamilyId) {
+				await repository.update({ model: 'AccessToken', grantIdHash, refreshFamilyId: IsNull() }, { refreshFamilyId });
+			}
 
 			if (grantIdHash !== null && (await this.isGrantRevoked(grantIdHash))) {
 				await repository.delete({ model: this.model, idHash: hashToken(id) });
@@ -177,6 +187,21 @@ export const createMcpOAuthProviderAdapter = (
 
 		private artifactReuseError(): Error {
 			return options.artifactReuseError?.() ?? new Error(`OAuth artifact ${this.model} was already consumed`);
+		}
+
+		private async resolveRefreshFamilyId(
+			repository: Repository<McpOAuthProviderArtifactEntity>,
+			existing: McpOAuthProviderArtifactEntity | null,
+			grantIdHash: string | null,
+		): Promise<string | null> {
+			if (existing?.refreshFamilyId) return existing.refreshFamilyId;
+			if (!grantIdHash || (this.model !== 'AccessToken' && this.model !== 'RefreshToken')) return null;
+
+			const familyArtifact = await repository.findOne({
+				where: { model: 'RefreshToken', grantIdHash, refreshFamilyId: Not(IsNull()) },
+			});
+
+			return familyArtifact?.refreshFamilyId ?? (this.model === 'RefreshToken' ? randomUUID() : null);
 		}
 
 		private async readActiveRecord(

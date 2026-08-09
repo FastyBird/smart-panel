@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 4 complete — discovery, challenges, and OAuth resource validation implemented behind the internal gate
+**Status:** Phase 5 in progress — non-secret provider-artifact management identity foundation implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -112,6 +112,16 @@ amend ADR 0002.
 ## Phase 5 — Administration and immediate invalidation
 
 **Goal:** Complete every invalidation/admin control, then expose the full OAuth surface atomically.
+
+### Phase 5a — Administrative artifact identity foundation
+
+- [x] Add stable, non-secret management IDs for provider artifacts without exposing raw tokens or token hashes.
+- [x] Add stable refresh-family IDs shared by rotated refresh tokens and their associated access tokens.
+- [x] Backfill deployed provider artifacts through an incremental migration and preserve the original schema on rollback.
+- [x] Prove management IDs survive provider upserts, family IDs survive refresh rotation, and raw artifacts remain absent
+      from persistence and management identifiers.
+
+### Remaining Phase 5 controls
 
 - [ ] Add list/inspect/disable/revoke APIs for OAuth clients, grants, access tokens, and refresh families.
 - [ ] Add Admin client/grant/token management views and revoke confirmations.
