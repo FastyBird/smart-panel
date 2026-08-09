@@ -825,4 +825,35 @@ describe('SecuritySensorsProvider', () => {
 
 		expect(signal.activeAlertsCount).toBe(1);
 	});
+	// Who names the sensor and when it happened are separate questions, and answering them together got
+	// the second one wrong. A rule with alternatives lets one device trigger on a fresh reading while
+	// another still matches a stale one — so the projection can win the naming while the physical
+	// channel holds the newer occurrence, and carrying the winner's stale timestamp would leave a new
+	// life-safety event looking like the acknowledged one.
+	it('carries the newest occurrence even when another device names the sensor', async () => {
+		registerProjections(testingModule);
+
+		const detected = createProperty(PropertyCategory.DETECTED, true);
+		const concentration = createProperty(PropertyCategory.CONCENTRATION, 40);
+
+		detected.value = new PropertyValueState(true, '2026-08-01T11:00:00.000Z');
+		concentration.value = new PropertyValueState(40, '2026-08-01T10:00:00.000Z');
+
+		const projectedConcentration = projecting(PropertyCategory.CONCENTRATION, 40, concentration.id);
+
+		projectedConcentration.value = new PropertyValueState(40, '2026-08-01T10:00:00.000Z');
+
+		devicesService.findAll.mockResolvedValue([
+			createDevice('physical', [
+				createChannel(ChannelCategory.CARBON_MONOXIDE, [detected, concentration], 'physical-co'),
+			]),
+			createDevice('virtual', [createChannel(ChannelCategory.CARBON_MONOXIDE, [projectedConcentration])]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlerts).toEqual([
+			expect.objectContaining({ sourceDeviceId: 'virtual', timestamp: '2026-08-01T11:00:00.000Z' }),
+		]);
+	});
 });

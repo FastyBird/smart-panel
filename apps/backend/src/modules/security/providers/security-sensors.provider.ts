@@ -296,15 +296,41 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 	 * de-duplication.
 	 */
 	private dedupeBySensor(candidates: SensorAlertCandidate[]): SecurityAlert[] {
-		const bySensor = new Map<string, SensorAlertCandidate>();
+		const bySensor = new Map<string, { representative: SensorAlertCandidate; alert: SecurityAlert }>();
 
 		for (const candidate of candidates) {
 			const key = `${candidate.sensorId}:${candidate.alert.type}`;
 			const held = bySensor.get(key);
 
-			if (!held || this.namesTheSensorBetter(candidate, held)) {
-				bySensor.set(key, candidate);
+			if (!held) {
+				bySensor.set(key, { representative: candidate, alert: candidate.alert });
+
+				continue;
 			}
+
+			// Two separate questions, and answering them together got the second one wrong. *Who* names
+			// the sensor is the judgement below; *when it happened* is the newest of what the devices
+			// reported, whichever of them won the naming. A rule with alternatives lets one device
+			// trigger on a fresh reading while another still matches on a stale one — the physical
+			// channel's `detected` going true now, beside a projection matching an old above-threshold
+			// concentration — and carrying the winner's stale timestamp leaves
+			// `SecurityStateListener.syncAckRecords()` treating a new life-safety event as the
+			// acknowledged one.
+			const representative = this.namesTheSensorBetter(candidate, held.representative)
+				? candidate
+				: held.representative;
+
+			bySensor.set(key, {
+				representative,
+				alert: {
+					...representative.alert,
+					timestamp: this.newerTimestamp(held.alert.timestamp, candidate.alert.timestamp),
+					severity:
+						SEVERITY_RANK[candidate.alert.severity] > SEVERITY_RANK[held.alert.severity]
+							? candidate.alert.severity
+							: held.alert.severity,
+				},
+			});
 		}
 
 		// And by alert id after that, because the id is what survives downstream: two sensors of one
@@ -336,10 +362,19 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 			return severityDiff > 0;
 		}
 
-		const heldTime = new Date(held.timestamp).getTime();
-		const time = new Date(alert.timestamp).getTime();
+		return this.newerTimestamp(held.timestamp, alert.timestamp) === alert.timestamp;
+	}
 
-		return !Number.isNaN(time) && (Number.isNaN(heldTime) || time > heldTime);
+	/** The later of two reported times, preferring one that parses over one that does not. */
+	private newerTimestamp(held: string, candidate: string): string {
+		const heldTime = new Date(held).getTime();
+		const candidateTime = new Date(candidate).getTime();
+
+		if (Number.isNaN(candidateTime)) {
+			return held;
+		}
+
+		return Number.isNaN(heldTime) || candidateTime > heldTime ? candidate : held;
 	}
 
 	private namesTheSensorBetter(candidate: SensorAlertCandidate, held: SensorAlertCandidate): boolean {
