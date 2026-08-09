@@ -174,6 +174,10 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 	}
 
 	async closeAll(): Promise<void> {
+		for (const id of [...this.subscriptions.keys()]) {
+			this.close(id, 'shutdown');
+		}
+
 		await this.withOAuthGate(() => {
 			for (const id of [...this.subscriptions.keys()]) {
 				this.close(id, 'shutdown');

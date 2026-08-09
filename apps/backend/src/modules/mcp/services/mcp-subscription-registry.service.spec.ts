@@ -187,6 +187,7 @@ describe('McpSubscriptionRegistryService', () => {
 	});
 
 	it('serializes close-all behind a pending OAuth registration and closes the resulting stream', async () => {
+		const staticStream = service.open('static-client');
 		const revalidationStarted = deferred();
 		const releaseRevalidation = deferred();
 		const registrationPromise = service.openOAuth('shutdown-race', async () => {
@@ -201,6 +202,7 @@ describe('McpSubscriptionRegistryService', () => {
 		const closePromise = service.closeAll();
 
 		expect(service.activeCount).toBe(0);
+		expect(staticStream.signal.aborted).toBe(true);
 		releaseRevalidation.resolve();
 		const subscription = await registrationPromise;
 
