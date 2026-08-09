@@ -24,6 +24,7 @@ import { EnergyIngestionListener } from './listeners/energy-ingestion.listener';
 import { EnergyConfigModel } from './models/config.model';
 import { DeltaComputationService } from './services/delta-computation.service';
 import { EnergyCacheService } from './services/energy-cache.service';
+import { EnergyClaimRegistryService } from './services/energy-claim.registry.service';
 import { EnergyCleanupService } from './services/energy-cleanup.service';
 import { EnergyDataService } from './services/energy-data.service';
 import { EnergyMetricsService } from './services/energy-metrics.service';
@@ -45,6 +46,7 @@ import { EnergyModuleResetService } from './services/module-reset.service';
 	providers: [
 		EnergyMetricsService,
 		DeltaComputationService,
+		EnergyClaimRegistryService,
 		EnergyDataService,
 		EnergyCacheService,
 		EnergyIngestionListener,
@@ -52,7 +54,9 @@ import { EnergyModuleResetService } from './services/module-reset.service';
 		EnergyModuleResetService,
 	],
 	controllers: [EnergyController, EnergySpacesController, EnergyHomeController],
-	exports: [EnergyDataService],
+	// The claim registry is exported for the same reason DevicesModule exports its value-source
+	// registry: the plugin that owns a claim is the one that has to declare it.
+	exports: [EnergyDataService, EnergyClaimRegistryService],
 })
 export class EnergyModule implements OnModuleInit {
 	private readonly logger = createExtensionLogger(ENERGY_MODULE_NAME, 'EnergyModule');

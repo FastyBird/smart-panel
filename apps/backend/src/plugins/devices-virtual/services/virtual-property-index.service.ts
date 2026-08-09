@@ -143,6 +143,25 @@ export class VirtualPropertyIndexService {
 		return referencing > 0;
 	}
 
+	/**
+	 * Which projection, if any, is accountable for this meter's kWh — read from storage.
+	 *
+	 * Asked of the database rather than of the maps below for the same reason
+	 * `isSourceDeviceReferenced` is: a claim made since the last rebuild is committed and invisible
+	 * here, and a check that missed it would hand a second projection the same meter. The unique index
+	 * would then refuse the write, so the answer would be a 409 rather than the sentence naming what
+	 * already holds it.
+	 *
+	 * Returned whole, with the device it hangs on, because the ingestion needs the room as well and a
+	 * second read to find it would be racing a remap — see `VirtualEnergyClaimService`.
+	 */
+	async findEnergyClaimant(sourcePropertyId: string): Promise<VirtualChannelPropertyEntity | null> {
+		return await this.repository.findOne({
+			where: { energyClaimPropertyId: sourcePropertyId },
+			relations: ['channel', 'channel.device'],
+		});
+	}
+
 	/** Which virtual properties project the given source property. O(1), synchronous, no I/O. */
 	findBySourceProperty(id: string): VirtualChannelPropertyEntity[] {
 		return this.bySourceProperty.get(id) ?? [];

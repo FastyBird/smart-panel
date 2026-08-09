@@ -114,6 +114,20 @@ export class VirtualChannelEntity extends ChannelEntity {
 }
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataChannelProperty' })
+/**
+ * Declared here as well as in the migration, because the two build the schema in different places:
+ * a migration creates it for an installation that upgrades, and `synchronize` — which CI and the e2e
+ * suite run with `FB_DB_SYNC=true` — creates it from these decorators. Without it here the column
+ * would exist in those environments while the constraint that gives it meaning would not, so a
+ * concurrent pair of claims would persist and the tests meant to prove they cannot would pass for the
+ * wrong reason.
+ *
+ * Partial, so the many projections that claim nothing are not all competing for one NULL slot.
+ */
+@Index('UQ_channels_properties_energyClaim', ['energyClaimPropertyId'], {
+	unique: true,
+	where: '"energyClaimPropertyId" IS NOT NULL',
+})
 @ChildEntity()
 export class VirtualChannelPropertyEntity extends ChannelPropertyEntity {
 	@ApiProperty({
@@ -166,6 +180,33 @@ export class VirtualChannelPropertyEntity extends ChannelPropertyEntity {
 	@ManyToOne(() => ChannelPropertyEntity, { nullable: true, onDelete: 'SET NULL' })
 	@JoinColumn({ name: 'sourcePropertyId' })
 	sourceProperty: ChannelPropertyEntity | null;
+
+	/**
+	 * The meter this projection is the one accountable for, or null.
+	 *
+	 * Energy is additive, so a reading may be counted once and attributed to one place. A source
+	 * property can legitimately feed several virtual devices — one sensor serves two rooms' climate —
+	 * but only one of them may bill its kWh, and it is the room of *that* device the consumption
+	 * lands in. This column is that claim: it holds the claimed source property's id, and a partial
+	 * unique index over it makes "one claimant per meter" something the database enforces rather than
+	 * something the application remembers to check.
+	 *
+	 * Set only where the *destination* slot is energy-bearing — the pair `findSourceType` recognises,
+	 * judged on this property's own channel — because that is what decides whether the ingestion will
+	 * treat it as a meter at all. A `generic.consumption` source projected into an `electrical_energy`
+	 * slot is a meter here even though its source is not one anywhere else.
+	 *
+	 * Its value is always either null or exactly `sourcePropertyId`; it carries the id rather than a
+	 * flag so the unique index has something per-meter to be unique *on*. Same `ON DELETE SET NULL` as
+	 * the link beside it, so a deleted meter takes the claim with it in the one statement that orphans
+	 * the projection — nothing application-side runs there.
+	 */
+	@Column({ nullable: true, default: null })
+	energyClaimPropertyId: string | null;
+
+	@ManyToOne(() => ChannelPropertyEntity, { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'energyClaimPropertyId' })
+	energyClaim: ChannelPropertyEntity | null;
 
 	@ApiProperty({
 		description: 'Channel property type',

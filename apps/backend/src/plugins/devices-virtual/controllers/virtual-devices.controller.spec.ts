@@ -23,6 +23,7 @@ describe('VirtualDevicesController', () => {
 		reportCompatibility: jest.Mock;
 		assertSourceNotVirtual: jest.Mock;
 		assertCategoryAllowed: jest.Mock;
+		describeEnergyClaimConflict: jest.Mock;
 	};
 	let channelsPropertiesService: { findOne: jest.Mock };
 
@@ -39,6 +40,8 @@ describe('VirtualDevicesController', () => {
 			// A blocked category is refused before any candidate is looked at; the default is a category
 			// virtual devices support.
 			assertCategoryAllowed: jest.fn(),
+			// Nothing bills anything by default, which is the answer for every slot that carries no energy.
+			describeEnergyClaimConflict: jest.fn().mockResolvedValue(null),
 		};
 		channelsPropertiesService = { findOne: jest.fn() };
 
@@ -152,6 +155,35 @@ describe('VirtualDevicesController', () => {
 			expect(response.data[0].reason).toContain('nesting virtual devices is not allowed');
 			// The slot predicate is not even consulted: this candidate cannot be persisted whatever it says.
 			expect(virtualDevicesService.reportCompatibility).not.toHaveBeenCalled();
+		});
+
+		// The wizard greys out what it is told is incompatible, so a false green is the one answer a user
+		// acts on — and a meter already presented by another virtual device matches an energy slot as
+		// well as any other, which is precisely what the pairwise slot report cannot see.
+		it('reports a meter another virtual device already bills as incompatible', async () => {
+			channelsPropertiesService.findOne.mockResolvedValue({ id: 'claimed-meter' } as ChannelPropertyEntity);
+			virtualDevicesService.describeEnergyClaimConflict.mockResolvedValue(
+				'Source property id=claimed-meter is already the energy meter of virtual property id=holder',
+			);
+
+			const response = await controller.checkCompatibility(request([candidate('claimed-meter')]));
+
+			expect(response.data[0].compatible).toBe(false);
+			expect(response.data[0].reason).toContain('already the energy meter');
+		});
+
+		// Nesting stands in front: a candidate that may not be projected at all is not worth describing
+		// as an energy conflict as well.
+		it('reports the nesting refusal rather than the claim when both apply', async () => {
+			channelsPropertiesService.findOne.mockResolvedValue({ id: 'nested-meter' } as ChannelPropertyEntity);
+			virtualDevicesService.assertSourceNotVirtual.mockRejectedValue(
+				new VirtualNestingNotAllowedException('nesting virtual devices is not allowed'),
+			);
+			virtualDevicesService.describeEnergyClaimConflict.mockResolvedValue('already the energy meter');
+
+			const response = await controller.checkCompatibility(request([candidate('nested-meter')]));
+
+			expect(response.data[0].reason).toContain('nesting virtual devices is not allowed');
 		});
 
 		// The property was just read, so a chain that does not resolve means its channel or device does

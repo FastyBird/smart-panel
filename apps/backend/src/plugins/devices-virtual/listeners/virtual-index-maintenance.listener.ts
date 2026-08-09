@@ -1,4 +1,4 @@
-import { DataSource, In, IsNull, Repository } from 'typeorm';
+import { DataSource, In, IsNull, Not, Repository } from 'typeorm';
 
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
@@ -10,12 +10,20 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../mod
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { findEnergySourceType } from '../../../modules/energy/utils/energy-source-type.utils';
 import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
 import { VirtualDevicesService } from '../services/virtual-devices.service';
 import { VirtualIndexRebuildResult, VirtualPropertyIndexService } from '../services/virtual-property-index.service';
 
 import { VirtualStatusListener } from './virtual-status.listener';
+
+/**
+ * The channel a property was loaded with, or undefined when it was loaded without one — `channel`
+ * holds an id string unless the read asked for the relation.
+ */
+const channelOf = (property: ChannelPropertyEntity): ChannelEntity | undefined =>
+	typeof property.channel === 'string' ? undefined : property.channel;
 
 /**
  * Owns VirtualPropertyIndexService's contents — the first hydration at bootstrap and every rebuild
@@ -310,6 +318,10 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			await this.recomputeStatuses(hydrated.rewiredVirtualDeviceIds, 'aggregated from source devices at startup');
 
 			await this.reconcileSystemHiddenSources();
+
+			// Announced here and nowhere else: a claim the migration had to choose between candidates for
+			// is worth saying once per start, not on every structural change for the life of the process.
+			await this.reconcileEnergyClaims({ announce: true });
 		} catch (error) {
 			this.logger.error(
 				`Failed to hydrate the virtual property index at bootstrap: ${error}. The index starts empty and will be rebuilt on the next structural change.`,
@@ -399,6 +411,16 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				const settled = await this.deferPastOpenTransaction();
 
 				this.pending = false;
+
+				// First, and before the rebuild: a released meter is unattributed until somebody takes it,
+				// and every reading that arrives in the meantime is billed to the physical device for good.
+				// This sweep reads storage rather than the index, so it owes the rebuild nothing — putting
+				// it after would add the rebuild, the status recomputation and the announcements to a
+				// window measured in samples. Gated on `settled` like every other write here: it acts on
+				// committed state or not at all, and the pass that follows a repair runs it again.
+				if (settled) {
+					await this.reconcileEnergyClaims();
+				}
 
 				const rebuilt = await this.rebuildWithRetry();
 
@@ -968,6 +990,181 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	}
 
 	/**
+	 * Hands a meter's claim to another projection of it, when the holder has just let go.
+	 *
+	 * A claim is what makes one projection accountable for a meter's kWh. Releasing it without offering
+	 * it on is how a meter goes quiet: for a source the ingestion does not recognise on its own — a
+	 * `consumption` property in a `generic` channel — *nothing* ingests once no projection holds the
+	 * claim, so the consumption disappears from the totals rather than merely landing in the wrong room.
+	 *
+	 * Offered only to a projection that could have earned the claim in the first place — the same two
+	 * rules the migration's backfill and `settleEnergyClaim` apply. An installation that upgrades keeps
+	 * whatever it already had, including a projection into a slot carrying no energy, or one that
+	 * presents an import as an export; the migration passed those over deliberately, and age alone must
+	 * not hand one the claim now. It would attribute the meter under semantics its own slot
+	 * contradicts, and hold the unique slot against a projection that fits.
+	 *
+	 * Admissibility is `findEnergySourceType` — the same function the projection gate and the ingestion
+	 * ask — so candidate selection here cannot drift from either. That is why the choice is made in
+	 * TypeScript and only the winning write is SQL: expressing the rules as a predicate would be a
+	 * fourth copy of a table that already exists once, and the part that has to be atomic is the write.
+	 *
+	 * A single conditional UPDATE rather than read-then-write. `NOT EXISTS` is what makes it safe to run
+	 * concurrently with a create claiming the same meter: whichever statement lands second sees the
+	 * other's row and does nothing, so the two cannot both succeed and the unique index is never asked
+	 * to arbitrate. Idempotent for the same reason — running it twice promotes once. The read that
+	 * chose the heir may be stale by then, which costs a no-op rather than a wrong claim.
+	 *
+	 * Deterministic, and by the same rule the migration uses: oldest first, ties broken by id, so an
+	 * installation that reaches this state twice reaches the same answer.
+	 */
+	private async promoteEnergyClaim(sourcePropertyId: string): Promise<void> {
+		const repository = this.dataSource.getRepository(VirtualChannelPropertyEntity);
+
+		try {
+			const candidates = await repository.find({
+				where: { sourcePropertyId, energyClaimPropertyId: IsNull() },
+				relations: ['channel'],
+				order: { createdAt: 'ASC', id: 'ASC' },
+			});
+
+			if (candidates.length === 0) {
+				return;
+			}
+
+			const source = await this.dataSource
+				.getRepository(ChannelPropertyEntity)
+				.findOne({ where: { id: sourcePropertyId }, relations: ['channel'] });
+			const sourceType = source ? findEnergySourceType(channelOf(source)?.category, source.category) : null;
+
+			const heir = candidates.find((candidate) => {
+				if (!candidate.isProjecting) {
+					return false;
+				}
+
+				// Judged on the destination, as everywhere else: what makes a reading energy is the slot it
+				// is presented in, not where it came from. A source the ingestion does not recognise on its
+				// own is still claimable — that is the case this whole mechanism exists for.
+				const destination = findEnergySourceType(channelOf(candidate)?.category, candidate.category);
+
+				return destination !== null && (sourceType === null || sourceType.sourceType === destination.sourceType);
+			});
+
+			if (!heir) {
+				return;
+			}
+
+			const table = repository.metadata.tableName;
+
+			// `NOT EXISTS` is what lets this run beside a create claiming the same meter without both
+			// succeeding, and what makes running it twice promote once.
+			//
+			// `sourcePropertyId` is named as well, because it is the invariant: the claim is either null
+			// or equal to the link. The heir was chosen from a read, and a PATCH landing in the window
+			// after it can point that row at another source or drop the link entirely — writing the claim
+			// anyway would leave a projection billing a meter it no longer reads, holding the unique slot
+			// against one that does. Matching on the link makes the write a no-op instead, and the next
+			// pass sweeps the meter up.
+			await repository.query(
+				`UPDATE "${table}"
+				    SET "energyClaimPropertyId" = ?
+				  WHERE "id" = ?
+				    AND "energyClaimPropertyId" IS NULL
+				    AND "sourcePropertyId" = ?
+				    AND NOT EXISTS (SELECT 1 FROM "${table}" WHERE "energyClaimPropertyId" = ?)`,
+				[sourcePropertyId, heir.id, sourcePropertyId, sourcePropertyId],
+			);
+		} catch (error) {
+			// Not fatal to the pass that called it: the meter is unclaimed, which attributes to the
+			// physical device — where it went before any of this existed. The next orphaning or create on
+			// the same meter tries again.
+			this.logger.error(
+				`Failed to promote a new energy claimant for source property id=${sourcePropertyId}`,
+				error instanceof Error ? error : undefined,
+			);
+		}
+	}
+
+	/**
+	 * Gives back a claim that was released without being offered on.
+	 *
+	 * `promoteEnergyClaim` covers the one path that can name the meter it is releasing — reconciliation
+	 * orphaning a projection. The others cannot: deleting the holder takes its row and its claim with
+	 * it, and remapping the holder onto a different meter settles the new claim in a hook that never
+	 * sees the old one. Both leave a meter with projections and no claimant, and for a source the
+	 * ingestion does not recognise on its own that means it stops being counted at all.
+	 *
+	 * So this asks the state rather than the transition, exactly as `reconcileSystemHiddenSources`
+	 * above does and for the same reason: a sweep needs no path to have remembered to call it, which
+	 * is what makes it right for the paths that structurally cannot.
+	 *
+	 * One query on a settled pass. Meters whose only projections could never claim them — the many
+	 * `light.on` links an ordinary installation is full of — are filtered out here rather than by
+	 * asking `promoteEnergyClaim` about each in turn, so the common case costs nothing beyond that
+	 * read. A meter whose only energy projection is inadmissible is re-examined on every structural
+	 * pass; that is two queries, rarely, against a state somebody has to repair by hand anyway.
+	 *
+	 * `announce` is for the startup pass only, and reports the other half: meters that *are* claimed but
+	 * had a choice. The migration awards those deterministically — oldest admissible, ties by id — which
+	 * is defensible and arbitrary, and the operator is the only one who knows whether the room it landed
+	 * in is the one they meant. Said once, at startup, rather than on every structural change.
+	 */
+	private async reconcileEnergyClaims(options: { announce?: boolean } = {}): Promise<void> {
+		try {
+			const projections = await this.dataSource.getRepository(VirtualChannelPropertyEntity).find({
+				where: { sourcePropertyId: Not(IsNull()) },
+				relations: ['channel'],
+			});
+
+			// Judged by `findEnergySourceType`, like every other decision about what a claim is for, so
+			// this filter cannot quietly exclude a meter the promotion would have taken.
+			const claimants = projections.filter(
+				(projection) =>
+					projection.isProjecting &&
+					projection.sourcePropertyId !== null &&
+					findEnergySourceType(channelOf(projection)?.category, projection.category) !== null,
+			);
+
+			const claimed = new Set(
+				projections
+					.map((projection) => projection.energyClaimPropertyId)
+					.filter((meterId): meterId is string => meterId !== null),
+			);
+
+			const byMeter = new Map<string, VirtualChannelPropertyEntity[]>();
+
+			for (const claimant of claimants) {
+				const meterId = claimant.sourcePropertyId;
+
+				byMeter.set(meterId, [...(byMeter.get(meterId) ?? []), claimant]);
+			}
+
+			for (const [meterId, candidates] of byMeter) {
+				if (!claimed.has(meterId)) {
+					await this.promoteEnergyClaim(meterId);
+
+					continue;
+				}
+
+				if (options.announce && candidates.length > 1) {
+					const holder = candidates.find((candidate) => candidate.energyClaimPropertyId === meterId);
+					const losers = candidates.filter((candidate) => candidate.id !== holder?.id).map((candidate) => candidate.id);
+
+					// Warn rather than debug: nothing else will ever mention it, the consequence is a room
+					// quietly billed for somebody else's consumption, and rebuilding the device is the repair.
+					this.logger.warn(
+						`Source property id=${meterId} is projected into ${candidates.length} energy slots; its consumption is billed to virtual property id=${holder?.id ?? 'unknown'} and not to ${losers.join(', ')}. The others go on reporting the reading but not its energy — rebuild the device if that is the wrong way round.`,
+					);
+				}
+			}
+		} catch (error) {
+			// Not fatal to the pass: an unclaimed meter attributes to the physical device, and the next
+			// structural change sweeps again.
+			this.logger.error('Failed to reconcile energy claims', error instanceof Error ? error : undefined);
+		}
+	}
+
+	/**
 	 * Re-runs the channel checks whose property read failed earlier.
 	 *
 	 * Drained on a settled pass, like the other two queues: a read that failed against an open
@@ -1113,7 +1310,27 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				property: dependent.category,
 			});
 
-			if (report.compatible && !representationDiverged && sentinelMismatch === null && constraintMismatch === null) {
+			// And what the reading now *means*, which is a question about energy rather than about shape
+			// and which nothing above can answer. A source cannot have its property category PATCHed, but
+			// its channel can be recategorised — `handleSourceChannelChange` exists for exactly that — and
+			// a `production` property whose channel becomes `electrical_generation` starts reading
+			// generation while a projection goes on presenting it as consumption. Every structural check
+			// passes: both are read-only kWh floats over the same range. Refused at the write, so refused
+			// here too, or an installation reaches by edit a state it could not have reached by create —
+			// and a claim held under the wrong semantics keeps the meter's unique slot besides.
+			const meaningConflict = this.virtualDevicesService.describeEnergyMeaningConflict(
+				{ channel: channel.category, property: dependent.category },
+				sourceChannel.category,
+				source,
+			);
+
+			if (
+				report.compatible &&
+				!representationDiverged &&
+				sentinelMismatch === null &&
+				constraintMismatch === null &&
+				meaningConflict === null
+			) {
 				continue;
 			}
 
@@ -1121,7 +1338,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				? (report.reason ?? 'incompatible')
 				: representationDiverged
 					? `its representation changed to '${source.dataType}' while the projection declares '${dependent.dataType}'`
-					: (sentinelMismatch ?? constraintMismatch ?? 'incompatible');
+					: (sentinelMismatch ?? constraintMismatch ?? meaningConflict ?? 'incompatible');
 
 			this.logger.warn(
 				`Source property id=${payload.id} no longer fits the slot filled by virtual property id=${dependent.id}: ${reason}. Orphaning it.`,
@@ -1232,7 +1449,11 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			const orphaning = await repository
 				.createQueryBuilder()
 				.update(VirtualChannelPropertyEntity)
-				.set({ sourcePropertyId: null })
+				// The claim goes with the link, in the same statement. This write is a plain conditional
+				// UPDATE — no foreign key fires, no hook runs — so a claim left behind would sit on an
+				// orphan holding a meter nothing can bill, and the unique index would refuse every
+				// replacement until somebody deleted the row by hand.
+				.set({ sourcePropertyId: null, energyClaimPropertyId: null })
 				.where('id = :dependentId', { dependentId: dependent.id })
 				.andWhere('sourcePropertyId = :sourceId', { sourceId: payload.id })
 				.andWhere('permissions IS :dependentPermissions', dependentState)
@@ -1244,6 +1465,10 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				.andWhere(channelUnchanged, sourceState)
 				.andWhere(targetCategoryUnchanged, sourceState)
 				.execute();
+
+			if (orphaning.affected) {
+				await this.promoteEnergyClaim(payload.id);
+			}
 
 			if (!orphaning.affected) {
 				// Either the projection was repointed first, or the source was edited again after this pass

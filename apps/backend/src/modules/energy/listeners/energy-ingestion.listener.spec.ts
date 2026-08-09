@@ -9,6 +9,7 @@ import { ChannelEntity, ChannelPropertyEntity } from '../../devices/entities/dev
 import { PropertyValueSourceRegistryService } from '../../devices/services/property-value-source.registry.service';
 import { EnergySourceType } from '../energy.constants';
 import { DeltaComputationService } from '../services/delta-computation.service';
+import { EnergyClaimRegistryService } from '../services/energy-claim.registry.service';
 import { EnergyDataService } from '../services/energy-data.service';
 import { EnergyMetricsService } from '../services/energy-metrics.service';
 
@@ -20,6 +21,7 @@ describe('EnergyIngestionListener', () => {
 	let valueSourceRegistry: jest.Mocked<PropertyValueSourceRegistryService>;
 	let deltaComputation: jest.Mocked<DeltaComputationService>;
 	let energyData: jest.Mocked<EnergyDataService>;
+	let energyClaims: jest.Mocked<EnergyClaimRegistryService>;
 	let channelQueryBuilder: { innerJoinAndSelect: jest.Mock; where: jest.Mock; getOne: jest.Mock };
 	let propertyQueryBuilder: { innerJoinAndSelect: jest.Mock; where: jest.Mock; getOne: jest.Mock };
 
@@ -41,12 +43,34 @@ describe('EnergyIngestionListener', () => {
 		});
 	};
 
-	/** Answers the source-eligibility lookup with a source property in a channel of `category`. */
+	/**
+	 * Answers the source-eligibility lookup with a source property in a channel of `category`. The
+	 * source carries its device, because the delta is computed against the *physical* meter whichever
+	 * property presents it.
+	 */
 	const sourceIsIn = (category: ChannelCategory, propertyCategory = PropertyCategory.CONSUMPTION): void => {
 		propertyQueryBuilder.getOne.mockResolvedValue({
 			id: 'source-1',
 			category: propertyCategory,
-			channel: { id: 'source-channel-1', category },
+			channel: { id: 'source-channel-1', category, device: { id: 'source-device-1', roomId: 'utility' } },
+		});
+	};
+
+	/**
+	 * Makes `claimant` the property accountable for the meter, presenting it from `room`. Answered
+	 * whole, the way the plugin holding the claim answers it: the ingestion never walks from a claimant
+	 * back to its device, because a second read would be racing a remap.
+	 */
+	const claimedBy = (
+		claimant: string,
+		room: string | null,
+		sourceType: EnergySourceType | null = EnergySourceType.CONSUMPTION_IMPORT,
+	): void => {
+		energyClaims.resolveClaim.mockResolvedValue({
+			propertyId: claimant,
+			deviceId: 'virtual-device-1',
+			roomId: room,
+			sourceType,
 		});
 	};
 
@@ -106,6 +130,12 @@ describe('EnergyIngestionListener', () => {
 					useValue: { recordSampleProcessed: jest.fn(), recordDeltaCreated: jest.fn() },
 				},
 				{
+					provide: EnergyClaimRegistryService,
+					// Nothing claims anything unless a case says so, which is every installation running no
+					// plugin that takes a meter over.
+					useValue: { resolveClaim: jest.fn().mockResolvedValue(null) },
+				},
+				{
 					provide: PropertyValueSourceRegistryService,
 					// The registry's fallback for a property no plugin claims is the property's own id,
 					// which is what "not projected" means to the listener.
@@ -119,6 +149,7 @@ describe('EnergyIngestionListener', () => {
 		valueSourceRegistry = module.get(PropertyValueSourceRegistryService);
 		deltaComputation = module.get(DeltaComputationService);
 		energyData = module.get(EnergyDataService);
+		energyClaims = module.get(EnergyClaimRegistryService);
 	});
 
 	afterEach(() => {
@@ -152,9 +183,12 @@ describe('EnergyIngestionListener', () => {
 
 		await listener.handlePropertyValueSet(consumptionProperty);
 
+		// Computed against the physical meter, so a projection appearing or the claim moving does not
+		// present the baseline with a key it has never seen — which answers null and drops everything
+		// accumulated since the previous sample.
 		expect(deltaComputation.computeDelta).toHaveBeenCalledWith(
-			'device-1',
-			'channel-1',
+			'source-device-1',
+			'source-channel-1',
 			EnergySourceType.CONSUMPTION_IMPORT,
 			1200,
 			new Date('2026-08-01T00:00:00.000Z'),
@@ -189,6 +223,114 @@ describe('EnergyIngestionListener', () => {
 		await listener.handlePropertyValueSet(consumptionProperty);
 
 		expect(energyData.saveDelta).toHaveBeenCalled();
+	});
+
+	// -- attribution follows the claim -------------------------------------------------------------
+	// Splitting a device moves the devices into rooms but not, until now, their energy: the delta was
+	// stamped with the device that owned the property the ingestion read — the physical one — so a
+	// room holding only virtual devices reported zero.
+
+	it('bills a claimed meter to the device presenting it', async () => {
+		propertyIsIn(ChannelCategory.ELECTRICAL_ENERGY);
+		claimedBy('virtual-property-1', 'kitchen');
+
+		await listener.handlePropertyValueSet(consumptionProperty);
+
+		expect(energyClaims.resolveClaim).toHaveBeenCalledWith('property-1');
+		expect(energyData.saveDelta).toHaveBeenCalledWith(
+			expect.objectContaining({ deviceId: 'virtual-device-1', roomId: 'kitchen' }),
+		);
+	});
+
+	// Attribution moves; the series does not. Keying the baseline to the claimant would restart it the
+	// moment a projection appeared or its claim moved, and `computeDelta` answers null for a key it
+	// has not seen — silently dropping everything the meter accumulated since the previous sample.
+	it('keeps computing a claimed meter against the device that measures it', async () => {
+		propertyIsIn(ChannelCategory.ELECTRICAL_ENERGY);
+		claimedBy('virtual-property-1', 'kitchen');
+
+		await listener.handlePropertyValueSet(consumptionProperty);
+
+		expect(deltaComputation.computeDelta).toHaveBeenCalledWith(
+			'device-1',
+			'channel-1',
+			EnergySourceType.CONSUMPTION_IMPORT,
+			1200,
+			new Date('2026-08-01T00:00:00.000Z'),
+		);
+	});
+
+	// Defence in depth against a claim that outlived the slot it was settled against: moving the kWh
+	// under a heading the claimant's own device contradicts is the failure this whole mechanism exists
+	// to prevent, so the meter keeps its own attribution instead.
+	it('bills the meter itself when its claimant no longer presents the same reading', async () => {
+		propertyIsIn(ChannelCategory.ELECTRICAL_ENERGY);
+		claimedBy('virtual-property-1', 'kitchen', EnergySourceType.GRID_EXPORT);
+
+		await listener.handlePropertyValueSet(consumptionProperty);
+
+		expect(energyData.saveDelta).toHaveBeenCalledWith(expect.objectContaining({ deviceId: 'device-1', roomId: null }));
+	});
+
+	it('bills a meter nobody claims to the device holding it', async () => {
+		propertyIsIn(ChannelCategory.ELECTRICAL_ENERGY);
+
+		await listener.handlePropertyValueSet(consumptionProperty);
+
+		expect(energyData.saveDelta).toHaveBeenCalledWith(expect.objectContaining({ deviceId: 'device-1', roomId: null }));
+	});
+
+	// A source the ingestion does not recognise on its own is counted by whichever projection holds the
+	// claim, and by that one only — every projection of it carries the qualifying classification, so
+	// without an arbiter each one bills the same kWh again.
+	it('ingests an unrecognised meter through the projection that claims it', async () => {
+		propertyIsIn(ChannelCategory.ELECTRICAL_ENERGY);
+		projectedFromSource();
+		sourceIsIn(ChannelCategory.GENERIC);
+		claimedBy(consumptionProperty.id, null);
+
+		await listener.handlePropertyValueSet(consumptionProperty);
+
+		expect(energyClaims.resolveClaim).toHaveBeenCalledWith('source-1');
+		expect(energyData.saveDelta).toHaveBeenCalledWith(expect.objectContaining({ deviceId: 'device-1' }));
+	});
+
+	it('skips a projection of an unrecognised meter another projection claims', async () => {
+		propertyIsIn(ChannelCategory.ELECTRICAL_ENERGY);
+		projectedFromSource();
+		sourceIsIn(ChannelCategory.GENERIC);
+		claimedBy('another-projection', 'office');
+
+		await listener.handlePropertyValueSet(consumptionProperty);
+
+		expect(deltaComputation.computeDelta).not.toHaveBeenCalled();
+		expect(energyData.saveDelta).not.toHaveBeenCalled();
+	});
+
+	// The two branches fail in opposite directions, and the asymmetry is the point.
+
+	it('bills a meter to itself when its claim cannot be looked up', async () => {
+		propertyIsIn(ChannelCategory.ELECTRICAL_ENERGY);
+		energyClaims.resolveClaim.mockRejectedValue(new Error('database is locked'));
+
+		await listener.handlePropertyValueSet(consumptionProperty);
+
+		// The reading is counted either way; only the room was ever in question.
+		expect(energyData.saveDelta).toHaveBeenCalledWith(expect.objectContaining({ deviceId: 'device-1' }));
+	});
+
+	// Every projection of an unrecognised meter is holding the same reading, and nothing else ingests
+	// it — so a lookup error read as "unclaimed" would let all of them through at once and bill one
+	// reading several times over, permanently. One skipped sample is the cheaper mistake.
+	it('skips a projection of an unrecognised meter when the claim cannot be looked up', async () => {
+		propertyIsIn(ChannelCategory.ELECTRICAL_ENERGY);
+		projectedFromSource();
+		sourceIsIn(ChannelCategory.GENERIC);
+		energyClaims.resolveClaim.mockRejectedValue(new Error('database is locked'));
+
+		await listener.handlePropertyValueSet(consumptionProperty);
+
+		expect(energyData.saveDelta).not.toHaveBeenCalled();
 	});
 
 	// -- supplementary cases ----------------------------------------------------------------------

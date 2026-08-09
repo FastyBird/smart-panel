@@ -149,14 +149,28 @@ describe('VirtualIndexMaintenanceListener', () => {
 	// `find` answers the orphan read-back; the builder answers the reference count the unhide decision
 	// makes against storage. Nothing referencing anything, unless a test says otherwise.
 	const referenceCountStub = jest.fn().mockResolvedValue(0);
+	const promotionQueryStub = jest.fn().mockResolvedValue(undefined);
 	const orphanQueryStub = {
+		metadata: { tableName: 'devices_module_channels_properties' },
+		// The conditional UPDATE that hands a released meter to the next projection of it.
+		query: promotionQueryStub,
 		find: jest.fn().mockResolvedValue([]),
+		// The meter the promotion reads to see what the candidate would be presenting. Absent by
+		// default, which is the unrecognised source the claim mechanism exists for.
+		findOne: jest.fn().mockResolvedValue(null),
 		createQueryBuilder: jest.fn(() => ({
 			innerJoin: jest.fn().mockReturnThis(),
 			where: jest.fn().mockReturnThis(),
 			getCount: referenceCountStub,
 		})),
 	};
+
+	/**
+	 * The announcement read, told apart from the claim sweep that shares this repository stub: only
+	 * the announcement scopes itself to the devices a rebuild reported re-wired.
+	 */
+	const announcementReads = (): unknown[] =>
+		orphanQueryStub.find.mock.calls.filter((call) => JSON.stringify(call).includes('"device"'));
 
 	const dataSourceStub = {
 		createQueryRunner: () => ({ isTransactionActive: false }),
@@ -166,6 +180,10 @@ describe('VirtualIndexMaintenanceListener', () => {
 	beforeEach(() => {
 		orphanQueryStub.find.mockReset();
 		orphanQueryStub.find.mockResolvedValue([]);
+		orphanQueryStub.findOne.mockReset();
+		orphanQueryStub.findOne.mockResolvedValue(null);
+		promotionQueryStub.mockReset();
+		promotionQueryStub.mockResolvedValue(undefined);
 		referenceCountStub.mockReset();
 		referenceCountStub.mockResolvedValue(0);
 
@@ -415,7 +433,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 		// Scoped to the devices the rebuild reported re-wired, not swept across the whole table — and asked
 		// once for the set rather than once per device.
-		expect(orphanQueryStub.find).toHaveBeenCalledTimes(1);
+		expect(announcementReads()).toHaveLength(1);
 		expect(JSON.stringify(orphanQueryStub.find.mock.calls)).toContain('virtual-device');
 		expect(eventEmitterStub.emit).toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_UPDATED, orphan);
 	});
@@ -427,7 +445,19 @@ describe('VirtualIndexMaintenanceListener', () => {
 	it('keeps the pending announcements when the read-back fails, and makes them on the next pass', async () => {
 		const orphan = { id: 'virtual-property', isProjecting: true, sourcePropertyId: null };
 
-		orphanQueryStub.find.mockRejectedValueOnce(new Error('database is locked'));
+		// Failed for the announcement read specifically, which shares this stub with the claim sweep —
+		// so a bare `mockRejectedValueOnce` would land on whichever read the pass happens to make first.
+		let failed = false;
+
+		orphanQueryStub.find.mockImplementation((options: unknown) => {
+			if (!failed && JSON.stringify(options).includes('"device"')) {
+				failed = true;
+
+				return Promise.reject(new Error('database is locked'));
+			}
+
+			return Promise.resolve([]);
+		});
 		index.rebuild.mockResolvedValue({ rewiredVirtualDeviceIds: ['virtual-device'], abandonedSourceDeviceIds: [] });
 
 		listener.handleStructuralChange();
@@ -438,6 +468,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 		// The next pass reports nothing re-wired — the index has already taken the change in — and the
 		// announcement has to come from the queue that survived.
+		orphanQueryStub.find.mockReset();
 		orphanQueryStub.find.mockResolvedValue([orphan]);
 		index.rebuild.mockResolvedValue(NO_CHANGES);
 
@@ -482,6 +513,109 @@ describe('VirtualIndexMaintenanceListener', () => {
 		expect(eventEmitterStub.emit).not.toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_UPDATED, expect.anything());
 	});
 
+	// -- claims released by a path that cannot offer them on --------------------------------------
+	//
+	// Deleting the holder takes its row and its claim with it; remapping the holder settles a claim on
+	// the new meter in a hook that never sees the old one. Neither can name the meter it released, so
+	// the sweep asks the state instead — and for a source the ingestion does not recognise on its own,
+	// an unclaimed meter is not merely misattributed, it stops being counted at all.
+
+	const projectionOf = (
+		id: string,
+		meter: string | null,
+		claim: string | null,
+		category = 'consumption',
+		channelCategory = 'electrical_energy',
+	) => ({
+		id,
+		category,
+		isProjecting: true,
+		sourcePropertyId: meter,
+		energyClaimPropertyId: claim,
+		channel: { id: `${id}-channel`, category: channelCategory },
+	});
+
+	it('gives a meter nobody claims back to a projection of it', async () => {
+		orphanQueryStub.find.mockResolvedValue([projectionOf('heir', 'meter', null)]);
+		index.rebuild.mockResolvedValue(NO_CHANGES);
+
+		listener.handleStructuralChange();
+
+		await flushMicrotasks();
+
+		expect(promotionQueryStub).toHaveBeenCalledTimes(1);
+
+		const [, params] = promotionQueryStub.mock.calls[0] as [string, unknown[]];
+
+		expect(params).toEqual(['meter', 'heir', 'meter', 'meter']);
+	});
+
+	it('leaves a meter alone while a projection of it still holds the claim', async () => {
+		orphanQueryStub.find.mockResolvedValue([
+			projectionOf('holder', 'meter', 'meter'),
+			projectionOf('other', 'meter', null),
+		]);
+		index.rebuild.mockResolvedValue(NO_CHANGES);
+
+		listener.handleStructuralChange();
+
+		await flushMicrotasks();
+
+		expect(promotionQueryStub).not.toHaveBeenCalled();
+	});
+
+	// The many `light.on` links an ordinary installation is full of: not claimants, and not worth a
+	// query each on every structural change either.
+	it('does not offer a meter to projections that could never claim it', async () => {
+		orphanQueryStub.find.mockResolvedValue([projectionOf('switch', 'meter', null, 'on', 'light')]);
+		index.rebuild.mockResolvedValue(NO_CHANGES);
+
+		listener.handleStructuralChange();
+
+		await flushMicrotasks();
+
+		expect(promotionQueryStub).not.toHaveBeenCalled();
+	});
+
+	// The migration awards a contested meter deterministically — oldest admissible, ties by id — which
+	// is defensible and arbitrary. The operator is the only one who knows whether the room it landed in
+	// is the one they meant, and nothing else will ever mention it.
+	it('reports a meter that was projected into more than one energy slot, once at startup', async () => {
+		const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+		orphanQueryStub.find.mockResolvedValue([
+			projectionOf('holder', 'meter', 'meter'),
+			projectionOf('loser', 'meter', null),
+		]);
+
+		await listener.onApplicationBootstrap();
+
+		expect(warn.mock.calls.map((call) => String(call[0])).join('\n')).toContain(
+			'billed to virtual property id=holder and not to loser',
+		);
+
+		warn.mockRestore();
+	});
+
+	// Said once per start, not on every structural change for the life of the process.
+	it('says nothing about it on an ordinary structural pass', async () => {
+		const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+		orphanQueryStub.find.mockResolvedValue([
+			projectionOf('holder', 'meter', 'meter'),
+			projectionOf('loser', 'meter', null),
+		]);
+		index.rebuild.mockResolvedValue(NO_CHANGES);
+
+		listener.handleStructuralChange();
+
+		await flushMicrotasks();
+
+		expect(warn.mock.calls.map((call) => String(call[0])).join('\n')).not.toContain('billed to virtual property');
+
+		warn.mockRestore();
+	});
+
 	// Scoped to the diff, so a device orphaned long ago is not re-announced by every later rebuild.
 	it('asks about nothing when the rebuild re-wired no device', async () => {
 		index.rebuild.mockResolvedValue(NO_CHANGES);
@@ -490,7 +624,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 		await flushMicrotasks();
 
-		expect(orphanQueryStub.find).not.toHaveBeenCalled();
+		expect(announcementReads()).toHaveLength(0);
 	});
 
 	it('recomputes nothing when the rebuild changed no virtual device wiring', async () => {
@@ -2087,6 +2221,35 @@ describe('VirtualIndexMaintenanceListener', () => {
 			channel: { id: 'virtual-channel', category: 'light', device: { id: 'virtual-device', category: 'lighting' } },
 		};
 
+		// The rest of the projections a released meter could be offered to. Only the first two are
+		// claimants at all: an upgraded installation can be holding a projection into a slot that carries
+		// no energy, or one that presents an import as an export, and the migration passed over both
+		// deliberately — so age alone must not hand either the claim now.
+		const energyHeir = {
+			id: 'energy-heir',
+			category: 'consumption',
+			isProjecting: true,
+			channel: { id: 'heir-channel', category: 'electrical_energy' },
+		};
+		const faithful = {
+			id: 'faithful',
+			category: 'grid_import',
+			isProjecting: true,
+			channel: { id: 'faithful-channel', category: 'electrical_energy' },
+		};
+		const legacySwitch = {
+			id: 'legacy-switch',
+			category: 'on',
+			isProjecting: true,
+			channel: { id: 'legacy-channel', category: 'light' },
+		};
+		const crossType = {
+			id: 'cross-type',
+			category: 'grid_export',
+			isProjecting: true,
+			channel: { id: 'cross-channel', category: 'electrical_energy' },
+		};
+
 		// Built here rather than reusing the suite's shared stubs: this is the only group that reaches
 		// `getRepository`, and widening those stubs would loosen every other case's expectations for no
 		// benefit.
@@ -2103,6 +2266,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 			// the event was emitted.
 			current: unknown = sourceProperty,
 			constraintMismatch: string | null = null,
+			meaningConflict: string | null = null,
 		) => {
 			channelsPropertiesStub.findOne.mockResolvedValue(current);
 			const update = jest.fn().mockResolvedValue({ affected });
@@ -2130,12 +2294,16 @@ describe('VirtualIndexMaintenanceListener', () => {
 				}),
 				execute: executed,
 			};
+			const promotion = jest.fn().mockResolvedValue(undefined);
 			const findOne = jest.fn().mockResolvedValue({ ...dependent, sourcePropertyId: null });
 			const find = jest.fn().mockResolvedValue(dependents);
 			const emit = jest.fn();
 			const reportCompatibility = jest.fn().mockReturnValue(report);
 			const describeSentinelMismatch = jest.fn().mockReturnValue(sentinelMismatch);
 			const describeProjectionConstraintMismatch = jest.fn().mockReturnValue(constraintMismatch);
+			// The energy question, which the structural checks cannot answer: null unless a case says the
+			// source and the slot now read different things.
+			const describeEnergyMeaningConflict = jest.fn().mockReturnValue(meaningConflict);
 
 			const subject = new VirtualIndexMaintenanceListener(
 				{
@@ -2151,12 +2319,17 @@ describe('VirtualIndexMaintenanceListener', () => {
 					reportCompatibility,
 					describeSentinelMismatch,
 					describeProjectionConstraintMismatch,
+					describeEnergyMeaningConflict,
 				} as unknown as VirtualDevicesService,
 				channelsPropertiesStub as unknown as ChannelsPropertiesService,
 				new DeviceStructureLockService(),
 				{ emit } as unknown as EventEmitter2,
 				{
 					getRepository: jest.fn().mockReturnValue({
+						// The promotion that follows a successful orphaning: one conditional UPDATE handing the
+						// released meter to the next projection of it.
+						metadata: { tableName: 'devices_module_channels_properties' },
+						query: promotion,
 						update,
 						findOne,
 						find,
@@ -2174,10 +2347,13 @@ describe('VirtualIndexMaintenanceListener', () => {
 				reportCompatibility,
 				emit,
 				find,
+				findOne,
 				describeSentinelMismatch,
 				describeProjectionConstraintMismatch,
+				describeEnergyMeaningConflict,
 				wheres,
 				executed,
+				promotion,
 			};
 		};
 
@@ -2190,7 +2366,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 			await subject.handleSourceMetadataChange(sourceProperty);
 
 			// Keyed on the link *and* the source's version — see the two cases below for what each guards.
-			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null, energyClaimPropertyId: null });
 			expect(JSON.stringify(wheres)).toContain('sourcePropertyId = :sourceId');
 			expect(JSON.stringify(wheres)).toContain('src.dataType IS :sourceDataType');
 			// Announced, or an open admin keeps the stale link and never shows the remap action.
@@ -2198,6 +2374,124 @@ describe('VirtualIndexMaintenanceListener', () => {
 				EventType.CHANNEL_PROPERTY_UPDATED,
 				expect.objectContaining({ sourcePropertyId: null }),
 			);
+		});
+
+		// Releasing a claim without offering it on is how a meter goes quiet. For a source the ingestion
+		// does not recognise on its own — a `consumption` property in a `generic` channel — nothing
+		// ingests once no projection holds the claim, so the consumption leaves the totals entirely
+		// rather than merely landing in the wrong room.
+		it('offers the released meter to another projection of it', async () => {
+			const { subject, promotion, find } = build({ compatible: false, reason: 'permissions [ro] do not satisfy [rw]' });
+
+			// The dependents query answers first, the candidate query second: a second projection of the
+			// same meter, into a slot that does carry energy.
+			find.mockResolvedValueOnce([dependent]).mockResolvedValueOnce([energyHeir]);
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(promotion).toHaveBeenCalledTimes(1);
+
+			const [sql, params] = promotion.mock.calls[0] as [string, unknown[]];
+
+			// A single conditional statement: `NOT EXISTS` is what lets it run beside a create claiming the
+			// same meter without the two both succeeding, and what makes running it twice promote once.
+			expect(sql).toContain('NOT EXISTS');
+			expect(params).toEqual([sourceProperty.id, energyHeir.id, sourceProperty.id, sourceProperty.id]);
+			// Deterministic, by the rule the migration's backfill uses, so an installation that reaches
+			// this state twice reaches the same answer.
+			expect(find).toHaveBeenLastCalledWith(expect.objectContaining({ order: { createdAt: 'ASC', id: 'ASC' } }));
+		});
+
+		// Age alone is the wrong rule, and it is the one an upgraded installation exposes: the migration
+		// left a legacy projection unclaimed on purpose, and letting it inherit the meter now would
+		// attribute the kWh under semantics its own slot contradicts — while holding the unique slot
+		// against a projection that fits.
+		it('passes over a projection into a slot that carries no energy', async () => {
+			const { subject, promotion, find } = build({ compatible: false, reason: 'permissions [ro] do not satisfy [rw]' });
+
+			find.mockResolvedValueOnce([dependent]).mockResolvedValueOnce([legacySwitch]);
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(promotion).not.toHaveBeenCalled();
+		});
+
+		it('passes over an older projection that changes the meaning of the reading', async () => {
+			const meter = {
+				id: sourceProperty.id,
+				category: 'grid_import',
+				channel: { id: 'source-channel', category: 'electrical_energy' },
+			};
+			const { subject, promotion, find, findOne } = build({
+				compatible: false,
+				reason: 'permissions [ro] do not satisfy [rw]',
+			});
+
+			// The source read the promotion makes: what the meter itself reads is what decides whether a
+			// candidate renames it. The re-read that follows, for the orphaning announcement, falls through
+			// to the default.
+			findOne.mockResolvedValueOnce(meter);
+			find.mockResolvedValueOnce([dependent]).mockResolvedValueOnce([crossType, faithful]);
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			const [, params] = promotion.mock.calls[0] as [string, unknown[]];
+
+			expect(params).toEqual([sourceProperty.id, faithful.id, sourceProperty.id, sourceProperty.id]);
+		});
+
+		// The structural checks all pass here — both sides are read-only kWh floats over the same range —
+		// and only the energy question separates them. A source cannot have its property category
+		// PATCHed, but its channel can be recategorised underneath it, and a projection that then
+		// presents generation as consumption is one the write path would have refused. Left attached, it
+		// would also hold the meter's unique claim under semantics its own slot contradicts.
+		it('orphans a projection whose source no longer reads what the slot presents', async () => {
+			const { subject, update, emit } = build(
+				{ compatible: true },
+				[dependent],
+				null,
+				1,
+				sourceProperty,
+				null,
+				"source id=source-property reads 'generation_production' while this slot presents 'consumption_import'",
+			);
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null, energyClaimPropertyId: null });
+			expect(emit).toHaveBeenCalledWith(
+				EventType.CHANNEL_PROPERTY_UPDATED,
+				expect.objectContaining({ sourcePropertyId: null }),
+			);
+		});
+
+		// The heir was chosen from a read, and a PATCH landing in the window after it can point that row
+		// at another source or drop the link entirely. The claim is either null or equal to the link, so
+		// the write names the link too: a stale heir makes it a no-op rather than a projection billing a
+		// meter it no longer reads while holding the slot against one that does.
+		it('writes the claim only onto a row that still reads the meter', async () => {
+			const { subject, promotion, find } = build({ compatible: false, reason: 'permissions [ro] do not satisfy [rw]' });
+
+			find.mockResolvedValueOnce([dependent]).mockResolvedValueOnce([energyHeir]);
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			const [sql] = promotion.mock.calls[0] as [string, unknown[]];
+
+			expect(sql).toContain('"sourcePropertyId" = ?');
+		});
+
+		it('offers nothing when the orphaning write matched no row', async () => {
+			const { subject, promotion } = build(
+				{ compatible: false, reason: 'permissions [ro] do not satisfy [rw]' },
+				[dependent],
+				null,
+				0,
+			);
+
+			await subject.handleSourceMetadataChange(sourceProperty);
+
+			expect(promotion).not.toHaveBeenCalled();
 		});
 
 		it('leaves a projection the source can still feed alone', async () => {
@@ -2224,7 +2518,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			await subject.handleSourceMetadataChange(enumSource);
 
-			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null, energyClaimPropertyId: null });
 		});
 
 		// A property's own row is not the only thing that decides what it means: `resolvePropertyUnit`
@@ -2238,7 +2532,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 			await subject.handleSourceChannelChange({ id: 'source-channel' } as unknown as ChannelEntity);
 
 			expect(channelsPropertiesStub.findAll).toHaveBeenCalledWith('source-channel');
-			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null, energyClaimPropertyId: null });
 		});
 
 		it('does nothing for a property nothing projects', async () => {
@@ -2260,7 +2554,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 			await subject.handleSourceMetadataChange(sourceProperty);
 
 			expect(find).toHaveBeenCalledWith(expect.objectContaining({ where: { sourcePropertyId: 'source-property' } }));
-			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null, energyClaimPropertyId: null });
 		});
 
 		// The device relation decides which slot the report is asked about, and neither hop is populated
@@ -2294,7 +2588,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			await subject.handleSourceMetadataChange(sourceProperty);
 
-			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null, energyClaimPropertyId: null });
 		});
 
 		// The payload is a snapshot from when the event was emitted, and this handler is asynchronous. Two
@@ -2343,7 +2637,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			await subject.handleSourceMetadataChange(sourceProperty);
 
-			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null });
+			expect(update).toHaveBeenCalledWith({ sourcePropertyId: null, energyClaimPropertyId: null });
 			expect(emit).not.toHaveBeenCalled();
 		});
 
