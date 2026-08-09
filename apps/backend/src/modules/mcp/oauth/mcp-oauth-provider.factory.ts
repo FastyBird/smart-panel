@@ -1,4 +1,5 @@
 import { generateKeyPairSync, randomBytes } from 'node:crypto';
+import { IncomingMessage, RequestListener, ServerResponse } from 'node:http';
 import type Provider from 'oidc-provider';
 import type { JWK } from 'oidc-provider';
 import { DataSource } from 'typeorm';
@@ -35,12 +36,14 @@ export interface McpOAuthAuthorizationServerMetadata {
 
 export interface McpOAuthProviderRuntime {
 	provider: Provider;
+	callback: RequestListener;
 	urls: McpOAuthPublicUrls;
 	metadata: McpOAuthAuthorizationServerMetadata;
 }
 
 export interface McpOAuthProviderFactoryOptions {
 	allowTestInMemory?: boolean;
+	allowInsecureTestCookies?: boolean;
 	cookieKeys?: string[];
 	interactionUrl?: (uid: string) => string;
 	jwks?: { keys: JWK[] };
@@ -64,6 +67,9 @@ export class McpOAuthProviderFactory {
 		if (process.env.NODE_ENV !== 'test' && (!options.cookieKeys?.length || !options.jwks?.keys.length)) {
 			throw new ServiceUnavailableException('Persistent MCP OAuth cookie and signing keys are not available');
 		}
+		if (process.env.NODE_ENV !== 'test' && options.allowInsecureTestCookies === true) {
+			throw new ServiceUnavailableException('Insecure MCP OAuth cookies are permitted only by explicit test setups');
+		}
 
 		const oidcProvider = await loadMcpOAuthProvider();
 		const testPrivateKey = options.jwks
@@ -82,8 +88,18 @@ export class McpOAuthProviderFactory {
 			acceptQueryParamAccessTokens: false,
 			cookies: {
 				keys: options.cookieKeys ?? [randomBytes(32).toString('base64url')],
-				long: { httpOnly: true, sameSite: 'lax', path: '/' },
-				short: { httpOnly: true, sameSite: 'lax', path: '/' },
+				long: {
+					httpOnly: true,
+					sameSite: 'lax',
+					path: '/',
+					secure: options.allowInsecureTestCookies !== true,
+				},
+				short: {
+					httpOnly: true,
+					sameSite: 'lax',
+					path: '/',
+					secure: options.allowInsecureTestCookies !== true,
+				},
 			},
 			features: {
 				devInteractions: { enabled: false },
@@ -182,13 +198,28 @@ export class McpOAuthProviderFactory {
 				}),
 		});
 
-		return { provider, urls, metadata: this.projectMetadata(urls) };
+		const providerCallback = provider.callback();
+		const callback: RequestListener = (request, response) => {
+			void this.dispatchProviderRequest(request, response, providerCallback, urls).catch(() => {
+				if (response.headersSent) {
+					response.destroy();
+					return;
+				}
+
+				response.statusCode = 500;
+				response.setHeader('content-type', 'application/json');
+				response.setHeader('cache-control', 'no-store');
+				response.end(JSON.stringify({ error: 'server_error' }));
+			});
+		};
+
+		return { provider, callback, urls, metadata: this.projectMetadata(urls) };
 	}
 
 	assertTokenRequestResource(parameters: URLSearchParams): void {
 		const grantType = parameters.get('grant_type');
 
-		if ((grantType === 'authorization_code' || grantType === 'refresh_token') && !parameters.has('resource')) {
+		if ((grantType === 'authorization_code' || grantType === 'refresh_token') && !parameters.get('resource')) {
 			throw new Error('invalid_target: The MCP resource parameter is required at the token endpoint');
 		}
 	}
@@ -215,5 +246,77 @@ export class McpOAuthProviderFactory {
 			token_endpoint_auth_methods_supported: ['none'],
 			authorization_response_iss_parameter_supported: true,
 		};
+	}
+
+	private async dispatchProviderRequest(
+		request: IncomingMessage,
+		response: ServerResponse,
+		providerCallback: (request: IncomingMessage, response: ServerResponse) => Promise<void>,
+		urls: McpOAuthPublicUrls,
+	): Promise<void> {
+		const pathname = new URL(request.url ?? '/', urls.issuer).pathname;
+		const tokenPathname = new URL(urls.tokenEndpoint).pathname;
+		const authorizationPathname = new URL(urls.authorizationEndpoint).pathname;
+
+		if (request.method === 'GET' && (pathname === authorizationPathname || pathname === '/auth')) {
+			try {
+				this.assertAuthorizationRequest(new URL(request.url ?? '/', urls.issuer).searchParams);
+			} catch (error) {
+				const invalidRequest = error instanceof Error && error.message.startsWith('invalid_request');
+				this.writeBoundaryError(
+					response,
+					invalidRequest ? 'invalid_request' : 'invalid_target',
+					invalidRequest ? 'The OAuth state parameter is required' : 'The MCP resource parameter is required',
+				);
+				return;
+			}
+		}
+
+		if (request.method === 'POST' && (pathname === tokenPathname || pathname === '/token')) {
+			const contentType = request.headers['content-type']?.split(';', 1)[0]?.trim().toLowerCase();
+
+			if (contentType === 'application/x-www-form-urlencoded') {
+				const rawBody = await this.readRequestBody(request);
+				(request as IncomingMessage & { body?: string }).body = rawBody;
+
+				try {
+					this.assertTokenRequestResource(new URLSearchParams(rawBody));
+				} catch {
+					this.writeBoundaryError(
+						response,
+						'invalid_target',
+						'The MCP resource parameter is required at the token endpoint',
+					);
+					return;
+				}
+			}
+		}
+
+		await providerCallback(request, response);
+	}
+
+	private async readRequestBody(request: IncomingMessage): Promise<string> {
+		const chunks: Buffer[] = [];
+		let length = 0;
+
+		for await (const chunk of request) {
+			const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array);
+			length += buffer.length;
+
+			if (length > 56 * 1_024) {
+				throw new Error('OAuth token request body exceeds the supported limit');
+			}
+			chunks.push(buffer);
+		}
+
+		return Buffer.concat(chunks).toString('utf8');
+	}
+
+	private writeBoundaryError(response: ServerResponse, error: string, description: string): void {
+		response.statusCode = 400;
+		response.setHeader('content-type', 'application/json');
+		response.setHeader('cache-control', 'no-store');
+		response.setHeader('pragma', 'no-cache');
+		response.end(JSON.stringify({ error, error_description: description }));
 	}
 }

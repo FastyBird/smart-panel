@@ -153,10 +153,11 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		factory = new McpOAuthProviderFactory(dataSource, clientsService, publicUrlService);
 		const runtime = await factory.create({
 			allowTestInMemory: true,
+			allowInsecureTestCookies: true,
 			interactionUrl: (uid) => `${origin}/api/v1/modules/mcp/oauth/interaction/${uid}`,
 		});
 		provider = runtime.provider;
-		const providerCallback = provider.callback();
+		const providerCallback = runtime.callback;
 
 		server.removeAllListeners('request');
 		server.on('request', (request, response) => {
@@ -357,7 +358,7 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		expect(wrongPath.headers.get('location')).toBeNull();
 	});
 
-	it('requires resource at both supported token grants before provider dispatch', () => {
+	it('requires resource at both supported token grants in the provider callback', async () => {
 		expect(() => factory.assertTokenRequestResource(new URLSearchParams({ grant_type: 'authorization_code' }))).toThrow(
 			/invalid_target/,
 		);
@@ -369,9 +370,47 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 				new URLSearchParams({ grant_type: 'authorization_code', resource: urls.resource }),
 			),
 		).not.toThrow();
+
+		const authorization = await authorize();
+		const code = authorization.callback.searchParams.get('code');
+		const missingCodeResource = await fetch(urls.tokenEndpoint, {
+			method: 'POST',
+			headers: { 'content-type': 'application/x-www-form-urlencoded' },
+			body: new URLSearchParams({
+				grant_type: 'authorization_code',
+				client_id: CLIENT_ID,
+				code,
+				code_verifier: authorization.verifier,
+				redirect_uri: REGISTERED_REDIRECT_URI,
+			}),
+		});
+		const missingCodeBody = (await missingCodeResource.json()) as { error: string };
+
+		expect(missingCodeResource.status).toBe(400);
+		expect(missingCodeBody.error).toBe('invalid_target');
+
+		const tokenResponse = await exchangeCode(code, authorization.verifier);
+		const tokens = (await tokenResponse.json()) as TokenResponse;
+		const refreshToken = tokens.refresh_token;
+
+		if (!refreshToken) throw new Error('Expected refresh token for callback boundary test');
+
+		const missingRefreshResource = await fetch(urls.tokenEndpoint, {
+			method: 'POST',
+			headers: { 'content-type': 'application/x-www-form-urlencoded' },
+			body: new URLSearchParams({
+				grant_type: 'refresh_token',
+				client_id: CLIENT_ID,
+				refresh_token: refreshToken,
+			}),
+		});
+
+		expect(missingRefreshResource.status).toBe(400);
+		expect(await missingRefreshResource.json()).toEqual(expect.objectContaining({ error: 'invalid_target' }));
+		expect((await refresh(refreshToken)).status).toBe(200);
 	});
 
-	it('requires state and resource at the finite authorization boundary', () => {
+	it('requires state and resource in the provider authorization callback', async () => {
 		expect(() => factory.assertAuthorizationRequest(new URLSearchParams({ resource: urls.resource }))).toThrow(
 			/invalid_request/,
 		);
@@ -381,6 +420,20 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		expect(() =>
 			factory.assertAuthorizationRequest(new URLSearchParams({ state: 'csrf-state', resource: urls.resource })),
 		).not.toThrow();
+
+		const withoutState = createAuthorizationRequest().authorizationUrl;
+		withoutState.searchParams.delete('state');
+		const missingStateResponse = await fetch(withoutState, { redirect: 'manual' });
+		const missingStateBody = (await missingStateResponse.json()) as { error: string };
+		const withoutResource = createAuthorizationRequest().authorizationUrl;
+		withoutResource.searchParams.delete('resource');
+		const missingResourceResponse = await fetch(withoutResource, { redirect: 'manual' });
+		const missingResourceBody = (await missingResourceResponse.json()) as { error: string };
+
+		expect(missingStateResponse.status).toBe(400);
+		expect(missingStateBody.error).toBe('invalid_request');
+		expect(missingResourceResponse.status).toBe(400);
+		expect(missingResourceBody.error).toBe('invalid_target');
 	});
 
 	it('preserves the refresh family absolute expiry across rotation', async () => {
