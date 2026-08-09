@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 5 in progress — validated OAuth subscription binding implemented
+**Status:** Phase 5 in progress — authoritative OAuth subscription gate foundation implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -138,6 +138,17 @@ amend ADR 0002.
       existing static subscription registration path.
 - [x] Record effective scopes and module/client/grant generations on the internal OAuth subscription binding for the
       authoritative registration/invalidation gate.
+
+### Phase 5d — Authoritative subscription gate foundation
+
+- [x] Serialize OAuth subscription revalidation/registration and generation-advancing invalidation through one
+      exclusive registry boundary while leaving static registration independent.
+- [x] Revalidate the raw OAuth access token inside that boundary immediately before registration and pass the refreshed
+      scopes, generations, and authorization deadline into MCP server creation.
+- [x] Require targeted and OAuth-global invalidation callers to finish their generation advance before matching
+      subscriptions are enumerated and closed; propagate advance failures without partially closing streams.
+- [x] Prove both race orderings with barriers: a registration that wins is subsequently closed, while a registration
+      queued behind invalidation revalidates only after the generation advances.
 
 ### Remaining Phase 5 controls
 

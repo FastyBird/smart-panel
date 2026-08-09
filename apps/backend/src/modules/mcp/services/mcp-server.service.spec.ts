@@ -1,29 +1,66 @@
 import { FastifyReply } from 'fastify';
 
-import { AuthInfo } from '@modelcontextprotocol/server';
+import { AuthInfo, OAuthError, OAuthErrorCode } from '@modelcontextprotocol/server';
 import { UnauthorizedException } from '@nestjs/common';
 
 import { MCP_OAUTH_PRINCIPAL_TYPE, McpCapability, McpOAuthScope } from '../mcp.constants';
 
 import { McpAuditService } from './mcp-audit.service';
+import { McpOAuthResourceServerService } from './mcp-oauth-resource-server.service';
 import { McpPolicyRequest } from './mcp-policy.service';
 import { McpServerService } from './mcp-server.service';
-import { McpSubscriptionHandle, McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
+import {
+	McpSubscriptionClosingError,
+	McpSubscriptionHandle,
+	McpSubscriptionRegistryService,
+} from './mcp-subscription-registry.service';
+
+const oauthAuthInfo = (clientGeneration = 2): AuthInfo => ({
+	token: 'opaque-token',
+	clientId: 'public-client-id',
+	scopes: [McpOAuthScope.READ],
+	extra: {
+		principal: {
+			type: MCP_OAUTH_PRINCIPAL_TYPE,
+			accessTokenId: 'access-token-id',
+			authorizationDeadline: Date.now() + 60_000,
+			clientId: 'internal-client-id',
+			clientGeneration,
+			effectiveScopes: [McpOAuthScope.READ],
+			grantId: 'grant-id',
+			grantGeneration: 3,
+			installationId: 'installation-id',
+			modulePolicyGeneration: 1,
+			refreshFamilyId: 'refresh-family-id',
+			scopes: [McpOAuthScope.READ],
+			effectiveCapabilities: [McpCapability.READ],
+		},
+	},
+});
 
 describe('McpServerService policy revision', () => {
 	let service: McpServerService;
-	let subscriptions: { closeAll: jest.Mock; closeClient: jest.Mock; touchClient: jest.Mock };
+	let subscriptions: {
+		closeAll: jest.Mock;
+		closeClient: jest.Mock;
+		open: jest.Mock;
+		openOAuth: jest.Mock;
+		touchClient: jest.Mock;
+	};
 	let auditService: {
 		getRequestId: jest.Mock;
 		recordAuthenticationFailure: jest.Mock;
 		recordPolicyDenial: jest.Mock;
 		recordProtocolRequest: jest.Mock;
 	};
+	let oauthResourceServerService: { getBearerChallenge: jest.Mock; verifyMcpBearerToken: jest.Mock };
 
 	beforeEach(() => {
 		subscriptions = {
 			closeAll: jest.fn(),
 			closeClient: jest.fn(),
+			open: jest.fn(),
+			openOAuth: jest.fn(),
 			touchClient: jest.fn(),
 		};
 		auditService = {
@@ -32,9 +69,14 @@ describe('McpServerService policy revision', () => {
 			recordPolicyDenial: jest.fn(),
 			recordProtocolRequest: jest.fn(),
 		};
+		oauthResourceServerService = {
+			getBearerChallenge: jest.fn(),
+			verifyMcpBearerToken: jest.fn(),
+		};
 		service = new McpServerService(
 			subscriptions as unknown as McpSubscriptionRegistryService,
 			auditService as unknown as McpAuditService,
+			oauthResourceServerService as unknown as McpOAuthResourceServerService,
 		);
 	});
 
@@ -101,28 +143,8 @@ describe('McpServerService policy revision', () => {
 
 	it('binds OAuth subscription registration to validated artifact, scope, deadline, and generation identities', () => {
 		const authorizationDeadline = Date.now() + 60_000;
-		const authInfo: AuthInfo = {
-			token: 'opaque-token',
-			clientId: 'public-client-id',
-			scopes: [McpOAuthScope.READ],
-			extra: {
-				principal: {
-					type: MCP_OAUTH_PRINCIPAL_TYPE,
-					accessTokenId: 'access-token-id',
-					authorizationDeadline,
-					clientId: 'internal-client-id',
-					clientGeneration: 2,
-					effectiveScopes: [McpOAuthScope.READ],
-					grantId: 'grant-id',
-					grantGeneration: 3,
-					installationId: 'installation-id',
-					modulePolicyGeneration: 1,
-					refreshFamilyId: 'refresh-family-id',
-					scopes: [McpOAuthScope.READ],
-					effectiveCapabilities: [McpCapability.READ],
-				},
-			},
-		};
+		const authInfo = oauthAuthInfo();
+		(authInfo.extra?.principal as { authorizationDeadline: number }).authorizationDeadline = authorizationDeadline;
 		const internalService = service as unknown as {
 			getSubscriptionRegistration(
 				clientId: string,
@@ -146,6 +168,100 @@ describe('McpServerService policy revision', () => {
 				grantGeneration: 3,
 			},
 		});
+	});
+
+	it('revalidates OAuth authorization inside the registration gate and serves with the refreshed AuthInfo', async () => {
+		const initialAuthInfo = oauthAuthInfo(2);
+		const currentAuthInfo = { ...oauthAuthInfo(4), scopes: [McpCapability.READ] };
+		const handle = { id: 'subscription-id' } as unknown as McpSubscriptionHandle;
+
+		oauthResourceServerService.verifyMcpBearerToken.mockResolvedValue(currentAuthInfo);
+		subscriptions.openOAuth.mockImplementation(
+			async (requestId: string, revalidate: () => Promise<{ clientId: string; binding: unknown }>) => {
+				expect(requestId).toBe('request-1');
+				const registration = await revalidate();
+
+				expect(registration.clientId).toBe('internal-client-id');
+				expect(registration.binding).toEqual(expect.objectContaining({ clientGeneration: 4 }));
+
+				return handle;
+			},
+		);
+		const internalService = service as unknown as {
+			openSubscription(
+				clientId: string,
+				requestId: string,
+				authInfo?: AuthInfo,
+			): Promise<{
+				authInfo?: AuthInfo;
+				handle: McpSubscriptionHandle;
+			}>;
+		};
+
+		await expect(internalService.openSubscription('handler-client-id', 'request-1', initialAuthInfo)).resolves.toEqual({
+			authInfo: currentAuthInfo,
+			handle,
+		});
+		expect(oauthResourceServerService.verifyMcpBearerToken).toHaveBeenCalledWith('Bearer opaque-token');
+		expect(subscriptions.open).not.toHaveBeenCalled();
+	});
+
+	it('maps gated OAuth revalidation failures to the resource-server bearer challenge', () => {
+		const error = new OAuthError(OAuthErrorCode.InvalidToken, 'The access token expired');
+		const challenge = new Response(null, {
+			status: 401,
+			headers: { 'www-authenticate': 'Bearer error="invalid_token"' },
+		});
+
+		oauthResourceServerService.getBearerChallenge.mockReturnValue(challenge);
+		const internalService = service as unknown as {
+			getSubscriptionErrorResponse(error: OAuthError, body?: unknown): Response;
+		};
+		const response = internalService.getSubscriptionErrorResponse(error);
+
+		expect(response).toBe(challenge);
+		expect(response.status).toBe(401);
+		expect(response.headers.get('www-authenticate')).toContain('invalid_token');
+		expect(oauthResourceServerService.getBearerChallenge).toHaveBeenCalledWith(error);
+	});
+
+	it('returns a controlled protocol error when subscription cleanup is in progress', async () => {
+		const error = new McpSubscriptionClosingError();
+		const internalService = service as unknown as {
+			getSubscriptionErrorResponse(error: McpSubscriptionClosingError, body?: unknown): Response;
+		};
+		const response = internalService.getSubscriptionErrorResponse(error, { id: 7 });
+
+		expect(response.status).toBe(200);
+		await expect(response.json()).resolves.toEqual({
+			jsonrpc: '2.0',
+			id: 7,
+			error: { code: -32603, message: 'Subscription service is closing' },
+		});
+	});
+
+	it('opens static subscriptions without entering OAuth revalidation', async () => {
+		const handle = { id: 'static-subscription-id' } as unknown as McpSubscriptionHandle;
+
+		subscriptions.open.mockReturnValue(handle);
+		const internalService = service as unknown as {
+			openSubscription(
+				clientId: string,
+				requestId: string,
+				authInfo?: AuthInfo,
+			): Promise<{
+				authInfo?: AuthInfo;
+				handle: McpSubscriptionHandle;
+			}>;
+		};
+
+		await expect(internalService.openSubscription('static-client-id', 'request-1')).resolves.toEqual({
+			authInfo: undefined,
+			handle,
+		});
+		expect(subscriptions.open).toHaveBeenCalledWith('static-client-id', 'request-1');
+		expect(subscriptions.openOAuth).not.toHaveBeenCalled();
+		expect(oauthResourceServerService.verifyMcpBearerToken).not.toHaveBeenCalled();
 	});
 
 	it('preserves static subscription registration and rejects malformed OAuth identities', () => {

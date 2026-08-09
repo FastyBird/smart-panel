@@ -11,10 +11,19 @@ import {
 
 import { McpAuditService, McpSubscriptionCloseReason } from './mcp-audit.service';
 
-export class McpSubscriptionCapacityError extends Error {
+export class McpSubscriptionUnavailableError extends Error {}
+
+export class McpSubscriptionCapacityError extends McpSubscriptionUnavailableError {
 	constructor() {
 		super('Subscription limit reached');
 		this.name = McpSubscriptionCapacityError.name;
+	}
+}
+
+export class McpSubscriptionClosingError extends McpSubscriptionUnavailableError {
+	constructor() {
+		super('Subscription service is closing');
+		this.name = McpSubscriptionClosingError.name;
 	}
 }
 
@@ -37,6 +46,13 @@ export interface McpOAuthSubscriptionBinding {
 	grantGeneration: number;
 }
 
+export interface McpOAuthSubscriptionRegistration {
+	clientId: string;
+	binding: McpOAuthSubscriptionBinding;
+}
+
+export type McpOAuthGenerationAdvance = () => Promise<void>;
+
 interface SubscriptionRecord {
 	id: string;
 	clientId: string;
@@ -50,10 +66,31 @@ interface SubscriptionRecord {
 @Injectable()
 export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 	private readonly subscriptions = new Map<string, SubscriptionRecord>();
+	private oauthGateTail: Promise<void> = Promise.resolve();
+	private closeAllOperations = 0;
 
 	constructor(private readonly auditService: McpAuditService) {}
 
-	open(clientId: string, requestId = 'unknown', oauth?: McpOAuthSubscriptionBinding): McpSubscriptionHandle {
+	open(clientId: string, requestId = 'unknown'): McpSubscriptionHandle {
+		return this.openRecord(clientId, requestId);
+	}
+
+	async openOAuth(
+		requestId: string,
+		revalidate: () => Promise<McpOAuthSubscriptionRegistration>,
+	): Promise<McpSubscriptionHandle> {
+		if (this.closeAllOperations > 0) {
+			throw new McpSubscriptionClosingError();
+		}
+
+		return this.withOAuthGate(async () => {
+			const registration = await revalidate();
+
+			return this.openRecord(registration.clientId, requestId, registration.binding);
+		});
+	}
+
+	private openRecord(clientId: string, requestId: string, oauth?: McpOAuthSubscriptionBinding): McpSubscriptionHandle {
 		if (
 			this.subscriptions.size >= MCP_MAX_ACTIVE_SUBSCRIPTIONS ||
 			this.countForClient(clientId) >= MCP_MAX_SUBSCRIPTIONS_PER_CLIENT
@@ -121,34 +158,57 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 		}
 	}
 
-	closeOAuthClient(clientId: string): void {
-		this.closeMatching((subscription) => subscription.clientId === clientId && subscription.oauth !== undefined);
+	async closeOAuthClient(clientId: string, advanceGeneration: McpOAuthGenerationAdvance): Promise<void> {
+		await this.closeOAuthMatching(
+			advanceGeneration,
+			(subscription) => subscription.clientId === clientId && subscription.oauth !== undefined,
+		);
 	}
 
-	closeOAuthGrant(grantId: string): void {
-		this.closeMatching((subscription) => subscription.oauth?.grantId === grantId);
+	async closeOAuthGrant(grantId: string, advanceGeneration: McpOAuthGenerationAdvance): Promise<void> {
+		await this.closeOAuthMatching(advanceGeneration, (subscription) => subscription.oauth?.grantId === grantId);
 	}
 
-	closeOAuthAccessToken(accessTokenId: string): void {
-		this.closeMatching((subscription) => subscription.oauth?.accessTokenId === accessTokenId);
+	async closeOAuthAccessToken(accessTokenId: string, advanceGeneration: McpOAuthGenerationAdvance): Promise<void> {
+		await this.closeOAuthMatching(
+			advanceGeneration,
+			(subscription) => subscription.oauth?.accessTokenId === accessTokenId,
+		);
 	}
 
-	closeOAuthRefreshFamily(refreshFamilyId: string): void {
-		this.closeMatching((subscription) => subscription.oauth?.refreshFamilyId === refreshFamilyId);
+	async closeOAuthRefreshFamily(refreshFamilyId: string, advanceGeneration: McpOAuthGenerationAdvance): Promise<void> {
+		await this.closeOAuthMatching(
+			advanceGeneration,
+			(subscription) => subscription.oauth?.refreshFamilyId === refreshFamilyId,
+		);
 	}
 
-	closeAllOAuth(): void {
-		this.closeMatching((subscription) => subscription.oauth !== undefined);
+	async closeAllOAuth(advanceGeneration: McpOAuthGenerationAdvance): Promise<void> {
+		await this.closeOAuthMatching(advanceGeneration, (subscription) => subscription.oauth !== undefined);
 	}
 
-	closeAll(): void {
-		for (const id of [...this.subscriptions.keys()]) {
-			this.close(id, 'shutdown');
+	async closeAll(): Promise<void> {
+		this.closeAllOperations += 1;
+
+		try {
+			for (const id of [...this.subscriptions.keys()]) {
+				this.close(id, 'shutdown');
+			}
+
+			await this.withOAuthGate(() => {
+				for (const id of [...this.subscriptions.keys()]) {
+					this.close(id, 'shutdown');
+				}
+
+				return Promise.resolve();
+			});
+		} finally {
+			this.closeAllOperations -= 1;
 		}
 	}
 
-	onApplicationShutdown(): void {
-		this.closeAll();
+	async onApplicationShutdown(): Promise<void> {
+		await this.closeAll();
 	}
 
 	private touch(id: string): void {
@@ -198,6 +258,33 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 	private closeMatching(predicate: (subscription: SubscriptionRecord) => boolean): void {
 		for (const subscription of [...this.subscriptions.values()]) {
 			if (predicate(subscription)) this.close(subscription.id, 'authorization_revoked');
+		}
+	}
+
+	private async closeOAuthMatching(
+		advanceGeneration: McpOAuthGenerationAdvance,
+		predicate: (subscription: SubscriptionRecord) => boolean,
+	): Promise<void> {
+		await this.withOAuthGate(async () => {
+			await advanceGeneration();
+			this.closeMatching(predicate);
+		});
+	}
+
+	private async withOAuthGate<T>(operation: () => Promise<T>): Promise<T> {
+		const previous = this.oauthGateTail;
+		let release = (): void => undefined;
+
+		this.oauthGateTail = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+
+		await previous;
+
+		try {
+			return await operation();
+		} finally {
+			release();
 		}
 	}
 }

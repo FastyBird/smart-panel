@@ -25,6 +25,7 @@ import { McpAuditService } from '../src/modules/mcp/services/mcp-audit.service';
 import { McpClientService } from '../src/modules/mcp/services/mcp-client.service';
 import { McpContextService } from '../src/modules/mcp/services/mcp-context.service';
 import { McpInstallationService } from '../src/modules/mcp/services/mcp-installation.service';
+import { McpOAuthResourceServerService } from '../src/modules/mcp/services/mcp-oauth-resource-server.service';
 import { McpPolicyService } from '../src/modules/mcp/services/mcp-policy.service';
 import { McpPolicyRequest } from '../src/modules/mcp/services/mcp-policy.service';
 import { McpServerService } from '../src/modules/mcp/services/mcp-server.service';
@@ -228,6 +229,7 @@ describe('MCP endpoint', () => {
 			controllers: [McpController],
 			providers: [
 				{ provide: McpAuditService, useValue: auditService },
+				{ provide: McpOAuthResourceServerService, useValue: { verifyMcpBearerToken: jest.fn() } },
 				McpServerService,
 				McpSubscriptionRegistryService,
 				{ provide: MCP_CATALOG_REGISTRAR, useValue: catalog },
