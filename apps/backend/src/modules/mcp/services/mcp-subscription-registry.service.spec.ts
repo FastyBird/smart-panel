@@ -125,7 +125,9 @@ describe('McpSubscriptionRegistryService', () => {
 			authorizationDeadline: new Date(Date.now() + 1_000),
 		});
 
-		jest.advanceTimersByTime(999);
+		jest.advanceTimersByTime(500);
+		subscription.touch();
+		jest.advanceTimersByTime(499);
 		expect(subscription.signal.aborted).toBe(false);
 		jest.advanceTimersByTime(1);
 
@@ -135,5 +137,21 @@ describe('McpSubscriptionRegistryService', () => {
 			subscription.id,
 			'authorization_expired',
 		);
+	});
+
+	it('cancels the authorization deadline timer when an OAuth stream closes early', () => {
+		jest.useFakeTimers();
+		const subscription = service.open('client-a', 'early-close', {
+			accessTokenId: 'access-one',
+			grantId: 'grant-one',
+			authorizationDeadline: new Date(Date.now() + 60_000),
+		});
+
+		expect(jest.getTimerCount()).toBe(2);
+
+		subscription.close();
+
+		expect(subscription.signal.aborted).toBe(true);
+		expect(jest.getTimerCount()).toBe(0);
 	});
 });

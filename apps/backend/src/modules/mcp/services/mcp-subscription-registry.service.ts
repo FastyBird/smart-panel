@@ -149,7 +149,6 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 		}
 
 		clearTimeout(subscription.timer);
-		if (subscription.authorizationTimer) clearTimeout(subscription.authorizationTimer);
 		subscription.timer = this.createIdleTimer(id);
 	}
 
@@ -162,6 +161,7 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 
 		this.subscriptions.delete(id);
 		clearTimeout(subscription.timer);
+		if (subscription.authorizationTimer) clearTimeout(subscription.authorizationTimer);
 		subscription.controller.abort();
 		this.auditService.recordSubscriptionClosed(
 			{ requestId: subscription.requestId, clientId: subscription.clientId },
