@@ -156,14 +156,20 @@ export class McpOAuthProviderFactory {
 			ttl: {
 				AccessToken: toSeconds(MCP_OAUTH_ACCESS_TOKEN_LIFETIME_MS),
 				AuthorizationCode: 60,
-				RefreshToken: (context) => {
+				RefreshToken: (context, refreshToken) => {
 					const grantExpiresAt = context.oidc.entities.Grant?.exp;
 					const remainingGrantLifetime =
 						typeof grantExpiresAt === 'number'
 							? Math.max(1, grantExpiresAt - Math.floor(Date.now() / 1_000))
 							: Number.POSITIVE_INFINITY;
+					// The provider stores the original family issue time at whole-second precision. Subtract one
+					// second so millisecond rounding in the adapter can never extend a successor past that boundary.
+					const remainingFamilyLifetime = Math.max(
+						1,
+						toSeconds(MCP_OAUTH_REFRESH_FAMILY_LIFETIME_MS) - refreshToken.totalLifetime() - 1,
+					);
 
-					return Math.min(toSeconds(MCP_OAUTH_REFRESH_FAMILY_LIFETIME_MS), remainingGrantLifetime);
+					return Math.min(remainingFamilyLifetime, remainingGrantLifetime);
 				},
 				Grant: toSeconds(MCP_OAUTH_GRANT_LIFETIME_MS),
 				Interaction: 10 * 60,

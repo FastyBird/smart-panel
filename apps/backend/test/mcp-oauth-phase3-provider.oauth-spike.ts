@@ -366,6 +366,42 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		).not.toThrow();
 	});
 
+	it('preserves the refresh family absolute expiry across rotation', async () => {
+		const authorization = await authorize();
+		const response = await exchangeCode(authorization.callback.searchParams.get('code'), authorization.verifier);
+		const initial = (await response.json()) as TokenResponse;
+		const initialRefreshToken = initial.refresh_token;
+
+		if (!initialRefreshToken) throw new Error('Expected an initial refresh token');
+
+		const repository = dataSource.getRepository(McpOAuthProviderArtifactEntity);
+		const initialArtifact = await repository.findOneByOrFail({
+			model: 'RefreshToken',
+			idHash: createHash('sha256').update(initialRefreshToken).digest('hex'),
+		});
+		const initialPayload = JSON.parse(initialArtifact.payload) as { iiat: number };
+		const elapsedSeconds = 10 * 24 * 60 * 60;
+		initialPayload.iiat -= elapsedSeconds;
+		initialArtifact.payload = JSON.stringify(initialPayload);
+		await repository.save(initialArtifact);
+
+		const refreshResponse = await refresh(initialRefreshToken);
+		const successor = (await refreshResponse.json()) as TokenResponse;
+		const successorRefreshToken = successor.refresh_token;
+
+		if (!successorRefreshToken) throw new Error('Expected a rotated refresh token');
+
+		const successorArtifact = await repository.findOneByOrFail({
+			model: 'RefreshToken',
+			idHash: createHash('sha256').update(successorRefreshToken).digest('hex'),
+		});
+		const familyExpiry = (initialPayload.iiat + 30 * 24 * 60 * 60) * 1_000;
+
+		expect(refreshResponse.status).toBe(200);
+		expect(successorArtifact.expiresAt).toBeLessThanOrEqual(familyExpiry);
+		expect(successorArtifact.expiresAt).toBeGreaterThan(familyExpiry - 2_000);
+	});
+
 	it('rotates refresh tokens and revokes the complete family after concurrent reuse', async () => {
 		const authorization = await authorize();
 		const initialResponse = await exchangeCode(authorization.callback.searchParams.get('code'), authorization.verifier);

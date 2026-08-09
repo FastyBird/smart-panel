@@ -181,7 +181,7 @@ onMounted(async () => {
 		return;
 	}
 
-	selectedScopes.value = [...(loaded.requestedScopes ?? [])];
+	selectedScopes.value = (loaded.requestedScopes ?? []).filter((scope) => scope === McpOAuthScope.READ || scope === McpOAuthScope.OFFLINE_ACCESS);
 	expiresInDays.value = loaded.maximumGrantExpiresInDays ?? 90;
 });
 

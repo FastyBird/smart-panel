@@ -63,7 +63,11 @@ describe('ViewMcpOAuthConsent', () => {
 					ElCard: { template: '<section><slot /></section>' },
 					ElForm: { template: '<form><slot /></form>' },
 					ElFormItem: { template: '<div><slot /></div>' },
-					ElCheckboxGroup: { template: '<div><slot /></div>' },
+					ElCheckboxGroup: {
+						name: 'ElCheckboxGroup',
+						props: ['modelValue'],
+						template: '<div><slot /></div>',
+					},
 					ElCheckbox: { template: '<label><slot /></label>' },
 					ElInputNumber: true,
 					ElButton: { template: '<button><slot /></button>' },
@@ -80,5 +84,6 @@ describe('ViewMcpOAuthConsent', () => {
 		expect(wrapper.findComponent({ name: 'ElAlert' }).exists()).toBe(true);
 		expect(wrapper.text()).toContain('mcpModule.oauthConsent.physicalWarning');
 		expect(mocks.load).toHaveBeenCalledWith('interaction-id');
+		expect(wrapper.findComponent({ name: 'ElCheckboxGroup' }).props('modelValue')).toEqual([McpOAuthScope.READ]);
 	});
 });
