@@ -319,7 +319,9 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 
 			await this.reconcileSystemHiddenSources();
 
-			await this.reconcileEnergyClaims();
+			// Announced here and nowhere else: a claim the migration had to choose between candidates for
+			// is worth saying once per start, not on every structural change for the life of the process.
+			await this.reconcileEnergyClaims({ announce: true });
 		} catch (error) {
 			this.logger.error(
 				`Failed to hydrate the virtual property index at bootstrap: ${error}. The index starts empty and will be rebuilt on the next structural change.`,
@@ -410,6 +412,16 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 
 				this.pending = false;
 
+				// First, and before the rebuild: a released meter is unattributed until somebody takes it,
+				// and every reading that arrives in the meantime is billed to the physical device for good.
+				// This sweep reads storage rather than the index, so it owes the rebuild nothing — putting
+				// it after would add the rebuild, the status recomputation and the announcements to a
+				// window measured in samples. Gated on `settled` like every other write here: it acts on
+				// committed state or not at all, and the pass that follows a repair runs it again.
+				if (settled) {
+					await this.reconcileEnergyClaims();
+				}
+
 				const rebuilt = await this.rebuildWithRetry();
 
 				// null means the index was never refreshed, so it reported no transitions — not because
@@ -465,10 +477,6 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 					// Gated on the same settled condition as the unhide above, and for the same reason — it
 					// writes `hidden`, which no repair pass can take back.
 					await this.reconcileSystemHiddenSources();
-
-					// The same shape of sweep, for the same kind of gap: a claim released by a path that
-					// offers it to nobody. See reconcileEnergyClaims().
-					await this.reconcileEnergyClaims();
 				}
 			} while (this.pending);
 		} finally {
@@ -1095,13 +1103,27 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 * asking `promoteEnergyClaim` about each in turn, so the common case costs nothing beyond that
 	 * read. A meter whose only energy projection is inadmissible is re-examined on every structural
 	 * pass; that is two queries, rarely, against a state somebody has to repair by hand anyway.
+	 *
+	 * `announce` is for the startup pass only, and reports the other half: meters that *are* claimed but
+	 * had a choice. The migration awards those deterministically — oldest admissible, ties by id — which
+	 * is defensible and arbitrary, and the operator is the only one who knows whether the room it landed
+	 * in is the one they meant. Said once, at startup, rather than on every structural change.
 	 */
-	private async reconcileEnergyClaims(): Promise<void> {
+	private async reconcileEnergyClaims(options: { announce?: boolean } = {}): Promise<void> {
 		try {
 			const projections = await this.dataSource.getRepository(VirtualChannelPropertyEntity).find({
 				where: { sourcePropertyId: Not(IsNull()) },
 				relations: ['channel'],
 			});
+
+			// Judged by `findEnergySourceType`, like every other decision about what a claim is for, so
+			// this filter cannot quietly exclude a meter the promotion would have taken.
+			const claimants = projections.filter(
+				(projection) =>
+					projection.isProjecting &&
+					projection.sourcePropertyId !== null &&
+					findEnergySourceType(channelOf(projection)?.category, projection.category) !== null,
+			);
 
 			const claimed = new Set(
 				projections
@@ -1109,22 +1131,31 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 					.filter((meterId): meterId is string => meterId !== null),
 			);
 
-			const unclaimed = new Set(
-				projections
-					.filter(
-						(projection) =>
-							projection.isProjecting &&
-							projection.sourcePropertyId !== null &&
-							!claimed.has(projection.sourcePropertyId) &&
-							// Judged by `findEnergySourceType`, like every other decision about what a claim is
-							// for, so this filter cannot quietly exclude a meter the promotion would have taken.
-							findEnergySourceType(channelOf(projection)?.category, projection.category) !== null,
-					)
-					.map((projection) => projection.sourcePropertyId),
-			);
+			const byMeter = new Map<string, VirtualChannelPropertyEntity[]>();
 
-			for (const meterId of unclaimed) {
-				await this.promoteEnergyClaim(meterId);
+			for (const claimant of claimants) {
+				const meterId = claimant.sourcePropertyId;
+
+				byMeter.set(meterId, [...(byMeter.get(meterId) ?? []), claimant]);
+			}
+
+			for (const [meterId, candidates] of byMeter) {
+				if (!claimed.has(meterId)) {
+					await this.promoteEnergyClaim(meterId);
+
+					continue;
+				}
+
+				if (options.announce && candidates.length > 1) {
+					const holder = candidates.find((candidate) => candidate.energyClaimPropertyId === meterId);
+					const losers = candidates.filter((candidate) => candidate.id !== holder?.id).map((candidate) => candidate.id);
+
+					// Warn rather than debug: nothing else will ever mention it, the consequence is a room
+					// quietly billed for somebody else's consumption, and rebuilding the device is the repair.
+					this.logger.warn(
+						`Source property id=${meterId} is projected into ${candidates.length} energy slots; its consumption is billed to virtual property id=${holder?.id ?? 'unknown'} and not to ${losers.join(', ')}. The others go on reporting the reading but not its energy — rebuild the device if that is the wrong way round.`,
+					);
+				}
 			}
 		} catch (error) {
 			// Not fatal to the pass: an unclaimed meter attributes to the physical device, and the next

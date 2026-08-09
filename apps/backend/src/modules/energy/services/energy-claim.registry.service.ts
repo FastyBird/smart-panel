@@ -73,23 +73,19 @@ export class EnergyClaimRegistryService {
 	 * The first claim any registered source reports, or null when the meter is unclaimed — which is
 	 * every meter on an installation running no plugin that claims one.
 	 *
-	 * A source that throws is read as claiming nothing rather than failing the reading. Attribution
-	 * then falls back to the device holding the meter, which is where it went before any of this
-	 * existed; losing the sample instead would be a worse answer to a lookup that is only ever about
-	 * *whose* kWh it is.
+	 * Throws when a source cannot answer, rather than reporting the meter as unclaimed. The two are
+	 * not the same fact and the caller does not treat them the same: "nobody claims this" is a settled
+	 * answer that decides where a reading is billed, while "I could not find out" leaves the decision
+	 * open — and reading a failure as `null` is how a transient database error turns several
+	 * projections of one meter into several deltas for one reading, permanently. See
+	 * `EnergyIngestionListener.resolveAccounting()` for which way each branch fails.
 	 */
 	async resolveClaim(meterPropertyId: string): Promise<EnergyClaim | null> {
 		for (const source of this.sources) {
-			try {
-				const claim = await source.resolveClaim(meterPropertyId);
+			const claim = await source.resolveClaim(meterPropertyId);
 
-				if (claim !== null) {
-					return claim;
-				}
-			} catch (error) {
-				const err = error as Error;
-
-				this.logger.error(`Failed to resolve energy claimant for property ${meterPropertyId}: ${err.message}`);
+			if (claim !== null) {
+				return claim;
 			}
 		}
 

@@ -445,7 +445,19 @@ describe('VirtualIndexMaintenanceListener', () => {
 	it('keeps the pending announcements when the read-back fails, and makes them on the next pass', async () => {
 		const orphan = { id: 'virtual-property', isProjecting: true, sourcePropertyId: null };
 
-		orphanQueryStub.find.mockRejectedValueOnce(new Error('database is locked'));
+		// Failed for the announcement read specifically, which shares this stub with the claim sweep —
+		// so a bare `mockRejectedValueOnce` would land on whichever read the pass happens to make first.
+		let failed = false;
+
+		orphanQueryStub.find.mockImplementation((options: unknown) => {
+			if (!failed && JSON.stringify(options).includes('"device"')) {
+				failed = true;
+
+				return Promise.reject(new Error('database is locked'));
+			}
+
+			return Promise.resolve([]);
+		});
 		index.rebuild.mockResolvedValue({ rewiredVirtualDeviceIds: ['virtual-device'], abandonedSourceDeviceIds: [] });
 
 		listener.handleStructuralChange();
@@ -456,6 +468,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 		// The next pass reports nothing re-wired — the index has already taken the change in — and the
 		// announcement has to come from the queue that survived.
+		orphanQueryStub.find.mockReset();
 		orphanQueryStub.find.mockResolvedValue([orphan]);
 		index.rebuild.mockResolvedValue(NO_CHANGES);
 
@@ -562,6 +575,45 @@ describe('VirtualIndexMaintenanceListener', () => {
 		await flushMicrotasks();
 
 		expect(promotionQueryStub).not.toHaveBeenCalled();
+	});
+
+	// The migration awards a contested meter deterministically — oldest admissible, ties by id — which
+	// is defensible and arbitrary. The operator is the only one who knows whether the room it landed in
+	// is the one they meant, and nothing else will ever mention it.
+	it('reports a meter that was projected into more than one energy slot, once at startup', async () => {
+		const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+		orphanQueryStub.find.mockResolvedValue([
+			projectionOf('holder', 'meter', 'meter'),
+			projectionOf('loser', 'meter', null),
+		]);
+
+		await listener.onApplicationBootstrap();
+
+		expect(warn.mock.calls.map((call) => String(call[0])).join('\n')).toContain(
+			'billed to virtual property id=holder and not to loser',
+		);
+
+		warn.mockRestore();
+	});
+
+	// Said once per start, not on every structural change for the life of the process.
+	it('says nothing about it on an ordinary structural pass', async () => {
+		const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+		orphanQueryStub.find.mockResolvedValue([
+			projectionOf('holder', 'meter', 'meter'),
+			projectionOf('loser', 'meter', null),
+		]);
+		index.rebuild.mockResolvedValue(NO_CHANGES);
+
+		listener.handleStructuralChange();
+
+		await flushMicrotasks();
+
+		expect(warn.mock.calls.map((call) => String(call[0])).join('\n')).not.toContain('billed to virtual property');
+
+		warn.mockRestore();
 	});
 
 	// Scoped to the diff, so a device orphaned long ago is not re-announced by every later rebuild.

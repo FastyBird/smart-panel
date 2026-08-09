@@ -242,13 +242,17 @@ export class EnergyIngestionListener implements OnModuleInit {
 			return null;
 		}
 
+		// Fails closed, unlike the branch above, and the asymmetry is the point. Nothing else ingests an
+		// unrecognised meter, so *this* event decides whether the reading is counted at all — and every
+		// projection of that meter is holding the same reading. A lookup error read as "unclaimed"
+		// would let all of them through at once, billing one reading several times over, permanently.
+		// One skipped sample is the cheaper mistake, and it is the one the next reading corrects.
 		const claim = await this.energyClaims.resolveClaim(source.id);
 
-		// Skipped only when the meter is *somebody else's*. An unclaimed meter with an unrecognised
-		// source is ingested here rather than dropped: it is the state an installation is in before the
-		// claim mechanism has anything to say — no plugin registered, or a projection created before
-		// the column existed — and today's behaviour bills it to the physical device, which beats
-		// losing it.
+		// Skipped only when the meter is *somebody else's*. A meter nothing claims is ingested here
+		// rather than dropped: that is the state an installation is in before the claim mechanism has
+		// anything to say — no plugin registered, or a projection created before the column existed —
+		// and counting it beats losing it.
 		if (claim !== null && claim.propertyId !== property.id) {
 			return null;
 		}
@@ -272,7 +276,16 @@ export class EnergyIngestionListener implements OnModuleInit {
 	 * delta is billed to.
 	 */
 	private async resolveClaim(meterPropertyId: string, sourceType: EnergySourceType): Promise<EnergyClaim | null> {
-		const claim = await this.energyClaims.resolveClaim(meterPropertyId);
+		// Fails open, unlike the projection branch: this meter's reading is counted either way, and the
+		// only thing a failed lookup can cost is the room it is billed to — which is where it went
+		// before any of this existed. Dropping the sample instead would lose energy that was measured.
+		const claim = await this.energyClaims.resolveClaim(meterPropertyId).catch((error: unknown): EnergyClaim | null => {
+			this.logger.error(
+				`Failed to resolve the energy claim on property ${meterPropertyId}, attributing to the meter: ${(error as Error).message}`,
+			);
+
+			return null;
+		});
 
 		if (claim === null) {
 			return null;

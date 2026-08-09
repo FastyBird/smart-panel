@@ -307,6 +307,32 @@ describe('EnergyIngestionListener', () => {
 		expect(energyData.saveDelta).not.toHaveBeenCalled();
 	});
 
+	// The two branches fail in opposite directions, and the asymmetry is the point.
+
+	it('bills a meter to itself when its claim cannot be looked up', async () => {
+		propertyIsIn(ChannelCategory.ELECTRICAL_ENERGY);
+		energyClaims.resolveClaim.mockRejectedValue(new Error('database is locked'));
+
+		await listener.handlePropertyValueSet(consumptionProperty);
+
+		// The reading is counted either way; only the room was ever in question.
+		expect(energyData.saveDelta).toHaveBeenCalledWith(expect.objectContaining({ deviceId: 'device-1' }));
+	});
+
+	// Every projection of an unrecognised meter is holding the same reading, and nothing else ingests
+	// it — so a lookup error read as "unclaimed" would let all of them through at once and bill one
+	// reading several times over, permanently. One skipped sample is the cheaper mistake.
+	it('skips a projection of an unrecognised meter when the claim cannot be looked up', async () => {
+		propertyIsIn(ChannelCategory.ELECTRICAL_ENERGY);
+		projectedFromSource();
+		sourceIsIn(ChannelCategory.GENERIC);
+		energyClaims.resolveClaim.mockRejectedValue(new Error('database is locked'));
+
+		await listener.handlePropertyValueSet(consumptionProperty);
+
+		expect(energyData.saveDelta).not.toHaveBeenCalled();
+	});
+
 	// -- supplementary cases ----------------------------------------------------------------------
 	// Not in the brief, but pinned by the task's own self-review checklist ("do not change what the
 	// aggregator does with non-projected properties").
