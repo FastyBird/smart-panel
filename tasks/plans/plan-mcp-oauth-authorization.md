@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 5 in progress — non-secret provider-artifact management identity foundation implemented
+**Status:** Phase 5 in progress — targeted OAuth subscription identity and deadline foundation implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -120,6 +120,14 @@ amend ADR 0002.
 - [x] Backfill deployed provider artifacts through an incremental migration and preserve the original schema on rollback.
 - [x] Prove management IDs survive provider upserts, family IDs survive refresh rotation, and raw artifacts remain absent
       from persistence and management identifiers.
+
+### Phase 5b — Targeted subscription invalidation foundation
+
+- [x] Carry the non-secret refresh-family management ID into the validated OAuth principal.
+- [x] Bind internal OAuth subscription records to client, grant, access-token, optional refresh-family, and
+      authorization-deadline identities while preserving the static subscription path.
+- [x] Add targeted client/grant/access-token/refresh-family and OAuth-only closure primitives.
+- [x] Automatically abort OAuth streams at their authorization deadline and audit expiry versus revocation distinctly.
 
 ### Remaining Phase 5 controls
 

@@ -66,6 +66,7 @@ describe('McpOAuthResourceServerService', () => {
 			idHash: TOKEN_ID,
 			payload: JSON.stringify(payload),
 			grantIdHash: PROVIDER_GRANT_ID_HASH,
+			refreshFamilyId: 'refresh-family-id',
 			expiresAt: Date.now() + 60_000,
 		});
 		grant = Object.assign(new McpOAuthGrantEntity(), {
@@ -166,7 +167,11 @@ describe('McpOAuthResourceServerService', () => {
 			}),
 		);
 		expect(authInfo.extra?.principal).toEqual(
-			expect.objectContaining({ effectiveCapabilities: [McpCapability.READ], installationId: INSTALLATION_ID }),
+			expect.objectContaining({
+				effectiveCapabilities: [McpCapability.READ],
+				installationId: INSTALLATION_ID,
+				refreshFamilyId: 'refresh-family-id',
+			}),
 		);
 	});
 

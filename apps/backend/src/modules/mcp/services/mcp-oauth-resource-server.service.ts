@@ -140,6 +140,7 @@ export class McpOAuthResourceServerService implements OAuthTokenVerifier {
 			clientId: grant.client.id,
 			grantId: grant.id,
 			installationId,
+			...(artifact.refreshFamilyId ? { refreshFamilyId: artifact.refreshFamilyId } : {}),
 			scopes: tokenScopes,
 			effectiveCapabilities,
 		};

@@ -25,12 +25,21 @@ export interface McpSubscriptionHandle {
 	touch: () => void;
 }
 
+export interface McpOAuthSubscriptionBinding {
+	accessTokenId: string;
+	grantId: string;
+	refreshFamilyId?: string;
+	authorizationDeadline: Date;
+}
+
 interface SubscriptionRecord {
 	id: string;
 	clientId: string;
 	requestId: string;
 	controller: AbortController;
 	timer: NodeJS.Timeout;
+	authorizationTimer?: NodeJS.Timeout;
+	oauth?: McpOAuthSubscriptionBinding;
 }
 
 @Injectable()
@@ -39,7 +48,7 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 
 	constructor(private readonly auditService: McpAuditService) {}
 
-	open(clientId: string, requestId = 'unknown'): McpSubscriptionHandle {
+	open(clientId: string, requestId = 'unknown', oauth?: McpOAuthSubscriptionBinding): McpSubscriptionHandle {
 		if (
 			this.subscriptions.size >= MCP_MAX_ACTIVE_SUBSCRIPTIONS ||
 			this.countForClient(clientId) >= MCP_MAX_SUBSCRIPTIONS_PER_CLIENT
@@ -55,6 +64,7 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 			requestId,
 			controller,
 			timer: this.createIdleTimer(id),
+			...(oauth ? { oauth: { ...oauth }, authorizationTimer: this.createAuthorizationTimer(id, oauth) } : {}),
 		};
 
 		this.subscriptions.set(id, record);
@@ -101,6 +111,26 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 		}
 	}
 
+	closeOAuthClient(clientId: string): void {
+		this.closeMatching((subscription) => subscription.clientId === clientId && subscription.oauth !== undefined);
+	}
+
+	closeOAuthGrant(grantId: string): void {
+		this.closeMatching((subscription) => subscription.oauth?.grantId === grantId);
+	}
+
+	closeOAuthAccessToken(accessTokenId: string): void {
+		this.closeMatching((subscription) => subscription.oauth?.accessTokenId === accessTokenId);
+	}
+
+	closeOAuthRefreshFamily(refreshFamilyId: string): void {
+		this.closeMatching((subscription) => subscription.oauth?.refreshFamilyId === refreshFamilyId);
+	}
+
+	closeAllOAuth(): void {
+		this.closeMatching((subscription) => subscription.oauth !== undefined);
+	}
+
 	closeAll(): void {
 		for (const id of [...this.subscriptions.keys()]) {
 			this.close(id, 'shutdown');
@@ -131,6 +161,7 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 
 		this.subscriptions.delete(id);
 		clearTimeout(subscription.timer);
+		if (subscription.authorizationTimer) clearTimeout(subscription.authorizationTimer);
 		subscription.controller.abort();
 		this.auditService.recordSubscriptionClosed(
 			{ requestId: subscription.requestId, clientId: subscription.clientId },
@@ -144,5 +175,19 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 		timer.unref();
 
 		return timer;
+	}
+
+	private createAuthorizationTimer(id: string, oauth: McpOAuthSubscriptionBinding): NodeJS.Timeout {
+		const delay = Math.max(0, oauth.authorizationDeadline.getTime() - Date.now());
+		const timer = setTimeout(() => this.close(id, 'authorization_expired'), delay);
+		timer.unref();
+
+		return timer;
+	}
+
+	private closeMatching(predicate: (subscription: SubscriptionRecord) => boolean): void {
+		for (const subscription of [...this.subscriptions.values()]) {
+			if (predicate(subscription)) this.close(subscription.id, 'authorization_revoked');
+		}
 	}
 }

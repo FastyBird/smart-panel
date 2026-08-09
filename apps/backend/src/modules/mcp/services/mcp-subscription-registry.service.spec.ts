@@ -89,4 +89,69 @@ describe('McpSubscriptionRegistryService', () => {
 		expect(second.signal.aborted).toBe(true);
 		expect(service.activeCount).toBe(0);
 	});
+
+	it('closes only OAuth streams matching a revoked artifact identity', () => {
+		const staticStream = service.open('client-a');
+		const first = service.open('client-a', 'one', {
+			accessTokenId: 'access-one',
+			grantId: 'grant-one',
+			refreshFamilyId: 'family-one',
+			authorizationDeadline: new Date(Date.now() + 60_000),
+		});
+		const other = service.open('client-a', 'two', {
+			accessTokenId: 'access-two',
+			grantId: 'grant-two',
+			refreshFamilyId: 'family-two',
+			authorizationDeadline: new Date(Date.now() + 60_000),
+		});
+
+		service.closeOAuthAccessToken('access-one');
+
+		expect(first.signal.aborted).toBe(true);
+		expect(other.signal.aborted).toBe(false);
+		expect(staticStream.signal.aborted).toBe(false);
+
+		service.closeOAuthRefreshFamily('family-two');
+
+		expect(other.signal.aborted).toBe(true);
+		expect(staticStream.signal.aborted).toBe(false);
+	});
+
+	it('closes OAuth streams at their authorization deadline', () => {
+		jest.useFakeTimers();
+		const subscription = service.open('client-a', 'deadline', {
+			accessTokenId: 'access-one',
+			grantId: 'grant-one',
+			authorizationDeadline: new Date(Date.now() + 1_000),
+		});
+
+		jest.advanceTimersByTime(500);
+		subscription.touch();
+		jest.advanceTimersByTime(499);
+		expect(subscription.signal.aborted).toBe(false);
+		jest.advanceTimersByTime(1);
+
+		expect(subscription.signal.aborted).toBe(true);
+		expect(auditService.recordSubscriptionClosed).toHaveBeenCalledWith(
+			{ requestId: 'deadline', clientId: 'client-a' },
+			subscription.id,
+			'authorization_expired',
+		);
+	});
+
+	it('cancels the authorization deadline timer when an OAuth stream closes early', () => {
+		jest.useFakeTimers();
+		const subscription = service.open('client-a', 'early-close', {
+			accessTokenId: 'access-one',
+			grantId: 'grant-one',
+			authorizationDeadline: new Date(Date.now() + 60_000),
+		});
+
+		expect(jest.getTimerCount()).toBe(2);
+
+		subscription.close();
+
+		expect(subscription.signal.aborted).toBe(true);
+		expect(jest.getTimerCount()).toBe(0);
+	});
 });
