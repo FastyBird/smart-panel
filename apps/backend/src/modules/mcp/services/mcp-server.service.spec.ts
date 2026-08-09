@@ -9,7 +9,11 @@ import { McpAuditService } from './mcp-audit.service';
 import { McpOAuthResourceServerService } from './mcp-oauth-resource-server.service';
 import { McpPolicyRequest } from './mcp-policy.service';
 import { McpServerService } from './mcp-server.service';
-import { McpSubscriptionHandle, McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
+import {
+	McpSubscriptionClosingError,
+	McpSubscriptionHandle,
+	McpSubscriptionRegistryService,
+} from './mcp-subscription-registry.service';
 
 const oauthAuthInfo = (clientGeneration = 2): AuthInfo => ({
 	token: 'opaque-token',
@@ -219,6 +223,21 @@ describe('McpServerService policy revision', () => {
 		expect(response.status).toBe(401);
 		expect(response.headers.get('www-authenticate')).toContain('invalid_token');
 		expect(oauthResourceServerService.getBearerChallenge).toHaveBeenCalledWith(error);
+	});
+
+	it('returns a controlled protocol error when subscription cleanup is in progress', async () => {
+		const error = new McpSubscriptionClosingError();
+		const internalService = service as unknown as {
+			getSubscriptionErrorResponse(error: McpSubscriptionClosingError, body?: unknown): Response;
+		};
+		const response = internalService.getSubscriptionErrorResponse(error, { id: 7 });
+
+		expect(response.status).toBe(200);
+		await expect(response.json()).resolves.toEqual({
+			jsonrpc: '2.0',
+			id: 7,
+			error: { code: -32603, message: 'Subscription service is closing' },
+		});
 	});
 
 	it('opens static subscriptions without entering OAuth revalidation', async () => {

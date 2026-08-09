@@ -10,6 +10,7 @@ import {
 	McpOAuthSubscriptionBinding,
 	McpOAuthSubscriptionRegistration,
 	McpSubscriptionCapacityError,
+	McpSubscriptionClosingError,
 	McpSubscriptionRegistryService,
 } from './mcp-subscription-registry.service';
 
@@ -215,6 +216,30 @@ describe('McpSubscriptionRegistryService', () => {
 			subscription.id,
 			'shutdown',
 		);
+	});
+
+	it('rejects OAuth registrations that arrive after close-all joins the gate', async () => {
+		const advanceStarted = deferred();
+		const releaseAdvance = deferred();
+		const invalidationPromise = service.closeAllOAuth(async () => {
+			advanceStarted.resolve();
+			await releaseAdvance.promise;
+		});
+
+		await advanceStarted.promise;
+
+		const closePromise = service.closeAll();
+		const revalidate = jest.fn().mockResolvedValue(oauthRegistration());
+
+		await expect(service.openOAuth('late-open', revalidate)).rejects.toThrow(McpSubscriptionClosingError);
+		expect(revalidate).not.toHaveBeenCalled();
+
+		releaseAdvance.resolve();
+		await invalidationPromise;
+		await closePromise;
+
+		expect(service.activeCount).toBe(0);
+		await expect(service.openOAuth('post-close-open', revalidate)).resolves.toEqual(expect.any(Object));
 	});
 
 	it('makes a registration queued behind invalidation revalidate after its generation advances', async () => {

@@ -24,9 +24,9 @@ import { McpOAuthResourceServerService } from './mcp-oauth-resource-server.servi
 import { McpPolicyRequest } from './mcp-policy.service';
 import {
 	McpOAuthSubscriptionBinding,
-	McpSubscriptionCapacityError,
 	McpSubscriptionHandle,
 	McpSubscriptionRegistryService,
+	McpSubscriptionUnavailableError,
 } from './mcp-subscription-registry.service';
 
 const packageJson = JSON.parse(readFileSync(resolve(__dirname, '../../../../package.json'), 'utf-8')) as {
@@ -253,7 +253,7 @@ export class McpServerService implements OnApplicationShutdown {
 						options = { ...requestOptions, authInfo: opened.authInfo };
 					}
 				} catch (error) {
-					if (error instanceof McpSubscriptionCapacityError) {
+					if (error instanceof McpSubscriptionUnavailableError) {
 						return this.getSubscriptionErrorResponse(error, requestOptions?.parsedBody);
 					}
 					if (OAuthError.isInstance(error)) return this.getSubscriptionErrorResponse(error);
@@ -301,22 +301,22 @@ export class McpServerService implements OnApplicationShutdown {
 		return this.getRequestBody(body).method === 'subscriptions/listen';
 	}
 
-	private subscriptionLimitResponse(body: unknown): Response {
+	private subscriptionUnavailableResponse(error: McpSubscriptionUnavailableError, body: unknown): Response {
 		const request = this.getRequestBody(body);
 
 		return Response.json(
 			{
 				jsonrpc: '2.0',
 				id: request.id ?? null,
-				error: { code: -32603, message: 'Subscription limit reached' },
+				error: { code: -32603, message: error.message },
 			},
 			{ status: 200 },
 		);
 	}
 
-	private getSubscriptionErrorResponse(error: McpSubscriptionCapacityError | OAuthError, body?: unknown): Response {
-		return error instanceof McpSubscriptionCapacityError
-			? this.subscriptionLimitResponse(body)
+	private getSubscriptionErrorResponse(error: McpSubscriptionUnavailableError | OAuthError, body?: unknown): Response {
+		return error instanceof McpSubscriptionUnavailableError
+			? this.subscriptionUnavailableResponse(error, body)
 			: this.oauthResourceServerService.getBearerChallenge(error);
 	}
 

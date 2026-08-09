@@ -11,10 +11,19 @@ import {
 
 import { McpAuditService, McpSubscriptionCloseReason } from './mcp-audit.service';
 
-export class McpSubscriptionCapacityError extends Error {
+export class McpSubscriptionUnavailableError extends Error {}
+
+export class McpSubscriptionCapacityError extends McpSubscriptionUnavailableError {
 	constructor() {
 		super('Subscription limit reached');
 		this.name = McpSubscriptionCapacityError.name;
+	}
+}
+
+export class McpSubscriptionClosingError extends McpSubscriptionUnavailableError {
+	constructor() {
+		super('Subscription service is closing');
+		this.name = McpSubscriptionClosingError.name;
 	}
 }
 
@@ -58,6 +67,7 @@ interface SubscriptionRecord {
 export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 	private readonly subscriptions = new Map<string, SubscriptionRecord>();
 	private oauthGateTail: Promise<void> = Promise.resolve();
+	private closeAllOperations = 0;
 
 	constructor(private readonly auditService: McpAuditService) {}
 
@@ -69,6 +79,10 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 		requestId: string,
 		revalidate: () => Promise<McpOAuthSubscriptionRegistration>,
 	): Promise<McpSubscriptionHandle> {
+		if (this.closeAllOperations > 0) {
+			throw new McpSubscriptionClosingError();
+		}
+
 		return this.withOAuthGate(async () => {
 			const registration = await revalidate();
 
@@ -174,17 +188,23 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 	}
 
 	async closeAll(): Promise<void> {
-		for (const id of [...this.subscriptions.keys()]) {
-			this.close(id, 'shutdown');
-		}
+		this.closeAllOperations += 1;
 
-		await this.withOAuthGate(() => {
+		try {
 			for (const id of [...this.subscriptions.keys()]) {
 				this.close(id, 'shutdown');
 			}
 
-			return Promise.resolve();
-		});
+			await this.withOAuthGate(() => {
+				for (const id of [...this.subscriptions.keys()]) {
+					this.close(id, 'shutdown');
+				}
+
+				return Promise.resolve();
+			});
+		} finally {
+			this.closeAllOperations -= 1;
+		}
 	}
 
 	async onApplicationShutdown(): Promise<void> {
