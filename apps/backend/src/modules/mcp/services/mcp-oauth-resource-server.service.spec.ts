@@ -73,6 +73,13 @@ describe('McpOAuthResourceServerService', () => {
 			grantIdHash: PROVIDER_GRANT_ID_HASH,
 			refreshFamilyId: 'refresh-family-id',
 			expiresAt: Date.now() + 60_000,
+			oauthEnabledGeneration: 5,
+			serverSecretVersion: 6,
+			publicIdentityGeneration: 7,
+			clientGeneration: 2,
+			grantGeneration: 3,
+			modulePolicyGeneration: 1,
+			approverAuthorityGeneration: 4,
 		});
 		grant = Object.assign(new McpOAuthGrantEntity(), {
 			id: 'grant-id',
@@ -94,6 +101,11 @@ describe('McpOAuthResourceServerService', () => {
 			expiresAt: new Date(Date.now() + 60_000),
 			generation: 3,
 			approverAuthorityGeneration: 4,
+			oauthEnabledGeneration: 5,
+			serverSecretVersion: 6,
+			publicIdentityGeneration: 7,
+			clientGeneration: 2,
+			modulePolicyGeneration: 1,
 			revokedAt: null,
 		});
 		artifactRepository = { findOneBy: jest.fn().mockImplementation(() => Promise.resolve(artifact)) };
@@ -101,7 +113,13 @@ describe('McpOAuthResourceServerService', () => {
 		grantRepository = { findOne: jest.fn().mockImplementation(() => Promise.resolve(grant)) };
 		approverAuthorityRepository = { findOneBy: jest.fn().mockResolvedValue({ generation: 4 }) };
 		serverStateRepository = {
-			findOneBy: jest.fn().mockResolvedValue({ key: 'primary', modulePolicyGeneration: 1 }),
+			findOneBy: jest.fn().mockResolvedValue({
+				key: 'primary',
+				oauthEnabledGeneration: 5,
+				serverSecretVersion: 6,
+				publicIdentityGeneration: 7,
+				modulePolicyGeneration: 1,
+			}),
 		};
 		service = new McpOAuthResourceServerService(
 			artifactRepository as unknown as Repository<McpOAuthProviderArtifactEntity>,
@@ -204,6 +222,20 @@ describe('McpOAuthResourceServerService', () => {
 
 	it('rejects a grant from an earlier approver authority generation', async () => {
 		approverAuthorityRepository.findOneBy.mockResolvedValue({ generation: 5 });
+
+		await expect(service.verifyAccessToken(RAW_TOKEN)).rejects.toMatchObject({ code: OAuthErrorCode.InvalidToken });
+	});
+
+	it.each([
+		['OAuth enablement', 'oauthEnabledGeneration'],
+		['server secret', 'serverSecretVersion'],
+		['public identity', 'publicIdentityGeneration'],
+		['client', 'clientGeneration'],
+		['grant', 'grantGeneration'],
+		['module policy', 'modulePolicyGeneration'],
+		['approver authority', 'approverAuthorityGeneration'],
+	] as const)('rejects an access token from an earlier %s generation', async (_label, key) => {
+		artifact[key] = (artifact[key] ?? 0) - 1;
 
 		await expect(service.verifyAccessToken(RAW_TOKEN)).rejects.toMatchObject({ code: OAuthErrorCode.InvalidToken });
 	});

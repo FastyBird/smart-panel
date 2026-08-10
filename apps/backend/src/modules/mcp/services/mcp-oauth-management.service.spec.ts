@@ -6,14 +6,16 @@ import { ConfigService } from '../../config/services/config.service';
 import { UserEntity } from '../../users/entities/users.entity';
 import { UserLanguage, UserRole } from '../../users/users.constants';
 import {
+	McpOAuthApproverAuthorityEntity,
 	McpOAuthClientEntity,
 	McpOAuthGrantEntity,
 	McpOAuthProviderArtifactEntity,
 	McpOAuthProviderRefreshFamilyLineageEntity,
 	McpOAuthProviderRevokedGrantEntity,
 	McpOAuthProviderRevokedRefreshFamilyEntity,
+	McpOAuthServerStateEntity,
 } from '../entities/mcp-oauth.entity';
-import { McpOAuthScope } from '../mcp.constants';
+import { MCP_OAUTH_SERVER_STATE_KEY, McpOAuthScope } from '../mcp.constants';
 import { McpOAuthClientModel } from '../models/mcp-oauth-client.model';
 import { createMcpOAuthProviderAdapter } from '../oauth/mcp-oauth-provider.adapter';
 
@@ -55,12 +57,14 @@ describe('McpOAuthManagementService', () => {
 			database: ':memory:',
 			entities: [
 				UserEntity,
+				McpOAuthApproverAuthorityEntity,
 				McpOAuthClientEntity,
 				McpOAuthGrantEntity,
 				McpOAuthProviderArtifactEntity,
 				McpOAuthProviderRefreshFamilyLineageEntity,
 				McpOAuthProviderRevokedGrantEntity,
 				McpOAuthProviderRevokedRefreshFamilyEntity,
+				McpOAuthServerStateEntity,
 			],
 			synchronize: true,
 		});
@@ -85,6 +89,17 @@ describe('McpOAuthManagementService', () => {
 			}),
 		);
 		const clients = dataSource.getRepository(McpOAuthClientEntity);
+		await dataSource.getRepository(McpOAuthApproverAuthorityEntity).save({ approverId: user.id, generation: 0 });
+		await dataSource.getRepository(McpOAuthServerStateEntity).save({
+			key: MCP_OAUTH_SERVER_STATE_KEY,
+			serverSecretVersion: 1,
+			keyVersion: 1,
+			publicIdentityGeneration: 0,
+			oauthEnabledGeneration: 0,
+			modulePolicyGeneration: 0,
+			createdAt: new Date(),
+			updatedAt: null,
+		});
 		client = await clients.save(
 			clients.create({
 				clientIdentifier: uuid(),

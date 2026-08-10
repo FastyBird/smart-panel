@@ -81,6 +81,21 @@ export class McpOAuthGrantEntity extends BaseEntity {
 
 	@Column({ type: 'integer', default: 0 })
 	approverAuthorityGeneration: number;
+
+	@Column({ type: 'integer', default: 0 })
+	oauthEnabledGeneration: number;
+
+	@Column({ type: 'integer', default: 1 })
+	serverSecretVersion: number;
+
+	@Column({ type: 'integer', default: 0 })
+	publicIdentityGeneration: number;
+
+	@Column({ type: 'integer', default: 0 })
+	clientGeneration: number;
+
+	@Column({ type: 'integer', default: 0 })
+	modulePolicyGeneration: number;
 }
 
 @Entity('mcp_module_oauth_interactions')
@@ -371,6 +386,27 @@ export class McpOAuthProviderArtifactEntity {
 	@Index()
 	@Column({ type: 'integer', nullable: true })
 	expiresAt: number | null;
+
+	@Column({ type: 'integer', nullable: true })
+	oauthEnabledGeneration: number | null;
+
+	@Column({ type: 'integer', nullable: true })
+	serverSecretVersion: number | null;
+
+	@Column({ type: 'integer', nullable: true })
+	publicIdentityGeneration: number | null;
+
+	@Column({ type: 'integer', nullable: true })
+	clientGeneration: number | null;
+
+	@Column({ type: 'integer', nullable: true })
+	grantGeneration: number | null;
+
+	@Column({ type: 'integer', nullable: true })
+	modulePolicyGeneration: number | null;
+
+	@Column({ type: 'integer', nullable: true })
+	approverAuthorityGeneration: number | null;
 }
 
 @Entity('mcp_module_oauth_provider_revoked_grants')

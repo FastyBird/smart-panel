@@ -12,8 +12,9 @@ import {
 	McpOAuthInteractionEntity,
 	McpOAuthRefreshTokenEntity,
 	McpOAuthRefreshTokenFamilyEntity,
+	McpOAuthServerStateEntity,
 } from '../entities/mcp-oauth.entity';
-import { McpOAuthScope } from '../mcp.constants';
+import { MCP_OAUTH_SERVER_STATE_KEY, McpOAuthScope } from '../mcp.constants';
 import { McpOAuthPublicUrls } from '../oauth/mcp-oauth.types';
 
 import { McpInstallationService } from './mcp-installation.service';
@@ -40,10 +41,21 @@ describe('McpOAuthArtifactService', () => {
 				McpOAuthInteractionEntity,
 				McpOAuthRefreshTokenEntity,
 				McpOAuthRefreshTokenFamilyEntity,
+				McpOAuthServerStateEntity,
 			],
 			synchronize: true,
 		});
 		await dataSource.initialize();
+		await dataSource.getRepository(McpOAuthServerStateEntity).save({
+			key: MCP_OAUTH_SERVER_STATE_KEY,
+			serverSecretVersion: 2,
+			keyVersion: 1,
+			publicIdentityGeneration: 3,
+			oauthEnabledGeneration: 4,
+			modulePolicyGeneration: 5,
+			createdAt: new Date(),
+			updatedAt: null,
+		});
 		approver = await dataSource.getRepository(UserEntity).save(
 			dataSource.getRepository(UserEntity).create({
 				username: 'owner',
@@ -66,6 +78,7 @@ describe('McpOAuthArtifactService', () => {
 			dataSource.getRepository(McpOAuthAuthorizationCodeEntity),
 			dataSource.getRepository(McpOAuthAccessTokenEntity),
 			dataSource.getRepository(McpOAuthRefreshTokenFamilyEntity),
+			dataSource.getRepository(McpOAuthServerStateEntity),
 			installationService,
 			publicUrlService,
 		);
@@ -150,7 +163,15 @@ describe('McpOAuthArtifactService', () => {
 		});
 
 		expect(firstGrant.installationId).toMatch(/^[0-9a-f-]{36}$/);
-		expect(firstGrant).toMatchObject({ issuer: urls.issuer, resource: urls.resource });
+		expect(firstGrant).toMatchObject({
+			issuer: urls.issuer,
+			resource: urls.resource,
+			oauthEnabledGeneration: 4,
+			serverSecretVersion: 2,
+			publicIdentityGeneration: 3,
+			clientGeneration: 0,
+			modulePolicyGeneration: 5,
+		});
 		expect(access.artifact).toMatchObject({
 			installationId: firstGrant.installationId,
 			issuer: urls.issuer,

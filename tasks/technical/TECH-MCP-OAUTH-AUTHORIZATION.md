@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 5 authoritative artifact request gate foundation complete
+Status: in progress — Phase 5 durable authorization-generation snapshot foundation complete
 
 ## 1. Business goal
 
