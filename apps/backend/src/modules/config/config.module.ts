@@ -20,6 +20,7 @@ import { ConfigController } from './controllers/config.controller';
 import { UpdateConfigModuleConfigDto } from './dto/update-module-config.dto';
 import { ConfigModuleConfigModel } from './models/module-config.model';
 import { ConfigService } from './services/config.service';
+import { ModuleConfigMutationRegistryService } from './services/module-config-mutation-registry.service';
 import { ModulesTypeMapperService } from './services/modules-type-mapper.service';
 import { PluginConfigValidatorService } from './services/plugin-config-validator.service';
 
@@ -31,9 +32,14 @@ import { PluginConfigValidatorService } from './services/plugin-config-validator
 @Global()
 @Module({
 	imports: [NestConfigModule, PlatformModule, SwaggerModule],
-	providers: [ConfigService, PluginConfigValidatorService, GenerateAdminExtensionsCommand],
+	providers: [
+		ConfigService,
+		ModuleConfigMutationRegistryService,
+		PluginConfigValidatorService,
+		GenerateAdminExtensionsCommand,
+	],
 	controllers: [ConfigController],
-	exports: [ConfigService, PluginConfigValidatorService],
+	exports: [ConfigService, ModuleConfigMutationRegistryService, PluginConfigValidatorService],
 })
 export class ConfigModule implements OnModuleInit {
 	constructor(

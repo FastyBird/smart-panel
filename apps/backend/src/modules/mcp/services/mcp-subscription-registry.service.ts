@@ -187,6 +187,18 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 		await this.closeOAuthMatching(advanceGeneration, (subscription) => subscription.oauth !== undefined);
 	}
 
+	async closeOAuthScopeContractions(
+		allowedScopes: McpOAuthScope[],
+		advanceGeneration: McpOAuthGenerationAdvance,
+	): Promise<void> {
+		const allowed = new Set(allowedScopes);
+
+		await this.closeOAuthMatching(
+			advanceGeneration,
+			(subscription) => subscription.oauth?.effectiveScopes.some((scope) => !allowed.has(scope)) === true,
+		);
+	}
+
 	async closeAll(): Promise<void> {
 		this.closeAllOperations += 1;
 

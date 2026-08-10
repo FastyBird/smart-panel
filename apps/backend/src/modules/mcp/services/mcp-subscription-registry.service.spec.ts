@@ -276,6 +276,26 @@ describe('McpSubscriptionRegistryService', () => {
 		expect(subscription.signal.aborted).toBe(false);
 	});
 
+	it('closes only OAuth streams whose effective scopes exceed the new module ceiling', async () => {
+		const staticStream = service.open('static-client');
+		const readStream = await service.openOAuth('read-stream', () => Promise.resolve(oauthRegistration()));
+		const writeStream = await service.openOAuth('write-stream', () =>
+			Promise.resolve(
+				oauthRegistration({
+					effectiveScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE],
+				}),
+			),
+		);
+		const advanceGeneration = jest.fn().mockResolvedValue(undefined);
+
+		await service.closeOAuthScopeContractions([McpOAuthScope.READ], advanceGeneration);
+
+		expect(advanceGeneration).toHaveBeenCalledTimes(1);
+		expect(readStream.signal.aborted).toBe(false);
+		expect(writeStream.signal.aborted).toBe(true);
+		expect(staticStream.signal.aborted).toBe(false);
+	});
+
 	it('closes OAuth streams at their authorization deadline', async () => {
 		jest.useFakeTimers();
 		const subscription = await service.openOAuth('deadline', () =>

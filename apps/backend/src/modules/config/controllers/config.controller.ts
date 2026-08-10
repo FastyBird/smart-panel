@@ -378,7 +378,7 @@ export class ConfigController {
 			throw ValidationExceptionFactory.createException(errors);
 		}
 
-		this.service.setModuleConfig(module, dtoInstance);
+		await this.service.updateModuleConfig(module, dtoInstance);
 
 		const config = this.service.getModuleConfig(module);
 

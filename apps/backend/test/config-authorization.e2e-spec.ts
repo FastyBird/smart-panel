@@ -72,12 +72,12 @@ class TestCredentialGuard implements CanActivate {
 
 describe('Module configuration authorization (e2e)', () => {
 	let app: INestApplication;
-	let configService: { getModuleConfig: jest.Mock; setModuleConfig: jest.Mock };
+	let configService: { getModuleConfig: jest.Mock; updateModuleConfig: jest.Mock };
 
 	beforeAll(async () => {
 		configService = {
 			getModuleConfig: jest.fn().mockReturnValue({ type: 'mock-module', enabled: false } as ModuleConfigModel),
-			setModuleConfig: jest.fn(),
+			updateModuleConfig: jest.fn().mockResolvedValue(undefined),
 		};
 
 		const moduleFixture = await Test.createTestingModule({
@@ -113,7 +113,7 @@ describe('Module configuration authorization (e2e)', () => {
 	});
 
 	beforeEach(() => {
-		configService.setModuleConfig.mockClear();
+		configService.updateModuleConfig.mockClear();
 	});
 
 	it.each(['owner-user', 'admin-user', 'owner-pat', 'admin-pat'])(
@@ -125,7 +125,7 @@ describe('Module configuration authorization (e2e)', () => {
 				.send({ data: { type: 'mock-module', enabled: false } })
 				.expect(200);
 
-			expect(configService.setModuleConfig).toHaveBeenCalledTimes(1);
+			expect(configService.updateModuleConfig).toHaveBeenCalledTimes(1);
 		},
 	);
 
@@ -138,7 +138,7 @@ describe('Module configuration authorization (e2e)', () => {
 				.send({ data: { type: 'mock-module', enabled: false } })
 				.expect(403);
 
-			expect(configService.setModuleConfig).not.toHaveBeenCalled();
+			expect(configService.updateModuleConfig).not.toHaveBeenCalled();
 		},
 	);
 });

@@ -1,0 +1,58 @@
+import { Repository } from 'typeorm';
+
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+
+import { ConfigService } from '../../config/services/config.service';
+import { ModuleConfigCommit } from '../../config/services/module-config-mutation-registry.service';
+import { UpdateMcpConfigDto } from '../dto/update-config.dto';
+import { McpOAuthServerStateEntity } from '../entities/mcp-oauth.entity';
+import { MCP_MODULE_NAME, MCP_OAUTH_SERVER_STATE_KEY, McpCapability } from '../mcp.constants';
+import { McpConfigModel } from '../models/config.model';
+import { toMcpOAuthScope } from '../oauth/mcp-oauth-scope.utils';
+
+import { McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
+
+@Injectable()
+export class McpOAuthModuleConfigMutationService {
+	constructor(
+		private readonly configService: ConfigService,
+		@InjectRepository(McpOAuthServerStateEntity)
+		private readonly serverState: Repository<McpOAuthServerStateEntity>,
+		private readonly subscriptions: McpSubscriptionRegistryService,
+	) {}
+
+	async update(update: UpdateMcpConfigDto, commit: ModuleConfigCommit): Promise<void> {
+		const current = this.configService.getModuleConfig<McpConfigModel>(MCP_MODULE_NAME);
+		const nextCapabilities = update.capabilities ?? current.capabilities;
+
+		if (this.sameCapabilities(current.capabilities, nextCapabilities)) {
+			await commit();
+			return;
+		}
+
+		let commitError: unknown;
+		let commitFailed = false;
+
+		await this.subscriptions.closeOAuthScopeContractions(nextCapabilities.map(toMcpOAuthScope), async () => {
+			const result = await this.serverState.increment({ key: MCP_OAUTH_SERVER_STATE_KEY }, 'modulePolicyGeneration', 1);
+
+			if (result.affected !== 1) {
+				throw new ServiceUnavailableException('MCP OAuth module policy state is unavailable');
+			}
+
+			try {
+				await commit();
+			} catch (error) {
+				commitFailed = true;
+				commitError = error;
+			}
+		});
+
+		if (commitFailed) throw commitError;
+	}
+
+	private sameCapabilities(first: McpCapability[], second: McpCapability[]): boolean {
+		return first.length === second.length && first.every((capability) => second.includes(capability));
+	}
+}

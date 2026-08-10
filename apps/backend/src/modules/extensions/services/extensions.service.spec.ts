@@ -55,7 +55,7 @@ describe('ExtensionsService', () => {
 					useValue: {
 						getModuleConfig: jest.fn().mockReturnValue({ enabled: true }),
 						getPluginConfig: jest.fn().mockReturnValue({ enabled: true }),
-						setModuleConfig: jest.fn(),
+						updateModuleConfig: jest.fn(),
 						setPluginConfig: jest.fn(),
 					},
 				},
@@ -212,17 +212,17 @@ describe('ExtensionsService', () => {
 	});
 
 	describe('updateEnabled', () => {
-		it('should update module enabled status', () => {
-			service.updateEnabled('external-module', false);
+		it('should update module enabled status', async () => {
+			await service.updateEnabled('external-module', false);
 
-			expect(configService.setModuleConfig).toHaveBeenCalledWith('external-module', {
+			expect(configService.updateModuleConfig).toHaveBeenCalledWith('external-module', {
 				type: 'external-module',
 				enabled: false,
 			});
 		});
 
-		it('should update plugin enabled status', () => {
-			service.updateEnabled('pages-tiles-plugin', false);
+		it('should update plugin enabled status', async () => {
+			await service.updateEnabled('pages-tiles-plugin', false);
 
 			expect(configService.setPluginConfig).toHaveBeenCalledWith('pages-tiles-plugin', {
 				type: 'pages-tiles-plugin',
@@ -230,14 +230,16 @@ describe('ExtensionsService', () => {
 			});
 		});
 
-		it('should throw ExtensionNotConfigurableException when plugin DTO has no enabled property', () => {
+		it('should throw ExtensionNotConfigurableException when plugin DTO has no enabled property', async () => {
 			// Mock mapping with no enabled property
 			jest.spyOn(pluginsMapperService, 'getMapping').mockReturnValue({
 				type: 'pages-tiles-plugin',
 				configDto: MockConfigDtoNoEnabled,
 			} as never);
 
-			expect(() => service.updateEnabled('pages-tiles-plugin', false)).toThrow(ExtensionNotConfigurableException);
+			await expect(service.updateEnabled('pages-tiles-plugin', false)).rejects.toThrow(
+				ExtensionNotConfigurableException,
+			);
 		});
 	});
 
