@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 5 in progress — awaited public-identity invalidation implemented
+**Status:** Phase 5 in progress — revoke-all recovery control implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -236,6 +236,17 @@ amend ADR 0002.
 - [x] Prove queued provider work cannot enter the authoritative gate until identity advancement and revocation finish,
       and prove missing persistent generation state prevents commit, revocation, and stream closure.
 
+### Phase 5m — Revoke-all recovery control
+
+- [x] Add an explicit owner/admin revoke-all action that advances the authorization-server security epoch before
+      revoking every OAuth grant and artifact and closing every OAuth subscription.
+- [x] Preserve registered OAuth clients plus every static MCP credential and stream so recovery invalidates only the
+      browser-mediated OAuth authorization profile.
+- [x] Add the Admin recovery confirmation and explain that resetting a Smart Panel password does not revoke existing
+      OAuth access.
+- [x] Audit successful global recovery without recording bearer, provider, cookie, or signing-key material, and
+      propagate invalidation failures without reporting or auditing success.
+
 ### Remaining Phase 5 controls
 
 - [x] Bind OAuth subscriptions to client, grant, access-token, optional refresh-family IDs, and an authorization
@@ -261,7 +272,7 @@ amend ADR 0002.
 - [ ] Close all MCP subscriptions only when the MCP module is disabled. On public OAuth identity or server-secret
       rotation, advance the applicable artifact generation before revoke-all, revoke every OAuth artifact, and close
       every OAuth subscription while preserving static MCP credentials and streams.
-- [ ] Add revoke-all recovery action and document password-reset versus OAuth-revocation semantics.
+- [x] Add revoke-all recovery action and document password-reset versus OAuth-revocation semantics.
 - [ ] Add audit events and unit/e2e coverage for targeted and global invalidation.
 - [x] Prove user update/delete promises remain pending until approver invalidation and stream closure finish, propagate
       invalidation failure, and never leave a demoted/deleted approver's grant usable.

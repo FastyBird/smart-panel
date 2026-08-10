@@ -112,6 +112,26 @@ describe('useMcpOAuthManagement', () => {
 		expect(management.accessTokens.value).toEqual([]);
 	});
 
+	it('revokes all OAuth authorization and preserves registered clients', async () => {
+		backendClient.GET.mockResolvedValueOnce({ data: { data: [client] }, response: { status: 200 } })
+			.mockResolvedValueOnce({ data: { data: [grant] }, response: { status: 200 } })
+			.mockResolvedValueOnce({ data: { data: [accessToken] }, response: { status: 200 } })
+			.mockResolvedValueOnce({ data: { data: [family] }, response: { status: 200 } });
+		backendClient.POST.mockResolvedValue({ data: { data: { revoked: true } }, response: { status: 200, ok: true } });
+		const management = useMcpOAuthManagement();
+		await management.fetchAll();
+
+		await management.revokeAll();
+
+		expect(backendClient.POST).toHaveBeenCalledWith('/modules/mcp/oauth/revoke-all', {});
+		expect(management.clients.value).toEqual([client]);
+		expect(management.grants.value).toEqual([
+			expect.objectContaining({ id: grant.id, active: false, revokedAt: expect.any(String) }),
+		]);
+		expect(management.accessTokens.value).toEqual([]);
+		expect(management.refreshFamilies.value).toEqual([]);
+	});
+
 	it('updates a grant through the reduction-only generated API contract', async () => {
 		const reduced = { ...grant, approvedScopes: [McpOAuthScope.READ] };
 		backendClient.GET.mockResolvedValueOnce({ data: { data: [client] }, response: { status: 200 } })

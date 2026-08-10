@@ -25,4 +25,18 @@ describe('McpOAuthManagementController', () => {
 		expect(response.data).toBe(grant);
 		expect(updateGrant).toHaveBeenCalledWith(grantId, dto, actorId);
 	});
+
+	it('forwards a global OAuth revocation for the authenticated administrator', async () => {
+		const actorId = uuid();
+		const revokeAll = jest.fn().mockResolvedValue(undefined);
+		const controller = new McpOAuthManagementController({ revokeAll } as unknown as McpOAuthManagementService);
+		const request = {
+			auth: { type: 'user', id: actorId, role: UserRole.ADMIN },
+		} as unknown as AuthenticatedRequest;
+
+		const response = await controller.revokeAll(request);
+
+		expect(revokeAll).toHaveBeenCalledWith(actorId);
+		expect(response.data).toEqual({ revoked: true });
+	});
 });

@@ -145,3 +145,10 @@ export class McpOAuthRefreshFamilyModel {
 	@Expose({ name: 'active_token_count' })
 	activeTokenCount: number;
 }
+
+@ApiSchema({ name: 'McpModuleDataOAuthGlobalRevocation' })
+export class McpOAuthGlobalRevocationModel {
+	@ApiProperty({ description: 'Whether all MCP OAuth authorization was revoked', type: 'boolean', example: true })
+	@Expose()
+	revoked: boolean;
+}

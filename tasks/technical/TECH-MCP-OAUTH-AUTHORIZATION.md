@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 5 awaited public-identity invalidation implemented
+Status: in progress — Phase 5 revoke-all recovery control implemented
 
 ## 1. Business goal
 

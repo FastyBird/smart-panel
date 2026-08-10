@@ -25,11 +25,13 @@ import { MCP_MODULE_API_TAG_NAME } from '../mcp.constants';
 import {
 	McpOAuthAccessTokenResponseModel,
 	McpOAuthAccessTokensResponseModel,
+	McpOAuthGlobalRevocationResponseModel,
 	McpOAuthGrantResponseModel,
 	McpOAuthGrantsResponseModel,
 	McpOAuthRefreshFamiliesResponseModel,
 	McpOAuthRefreshFamilyResponseModel,
 } from '../models/mcp-oauth-management-response.model';
+import { McpOAuthGlobalRevocationModel } from '../models/mcp-oauth-management.model';
 import { McpOAuthManagementService } from '../services/mcp-oauth-management.service';
 
 @ApiTags(MCP_MODULE_API_TAG_NAME)
@@ -216,6 +218,24 @@ export class McpOAuthManagementController {
 		@Req() req: AuthenticatedRequest,
 	): Promise<void> {
 		await this.managementService.revokeRefreshFamily(id, this.getActorId(req));
+	}
+
+	@ApiOperation({
+		tags: [MCP_MODULE_API_TAG_NAME],
+		summary: 'Revoke all MCP OAuth authorization',
+		description:
+			'Advance the authorization-server security epoch, revoke every OAuth grant and artifact, and close every OAuth subscription while preserving static MCP access',
+		operationId: 'revoke-all-mcp-module-oauth-authorization',
+	})
+	@ApiSuccessResponse(McpOAuthGlobalRevocationResponseModel, 'All MCP OAuth authorization revoked successfully')
+	@Post('revoke-all')
+	async revokeAll(@Req() req: AuthenticatedRequest): Promise<McpOAuthGlobalRevocationResponseModel> {
+		await this.managementService.revokeAll(this.getActorId(req));
+
+		const response = new McpOAuthGlobalRevocationResponseModel();
+		response.data = Object.assign(new McpOAuthGlobalRevocationModel(), { revoked: true });
+
+		return response;
 	}
 
 	private getActorId(req: AuthenticatedRequest): string {

@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
 	revokeGrant: vi.fn().mockResolvedValue(undefined),
 	revokeAccessToken: vi.fn(),
 	revokeRefreshFamily: vi.fn(),
+	revokeAll: vi.fn().mockResolvedValue(undefined),
 	flashSuccess: vi.fn(),
 	flashError: vi.fn(),
 }));
@@ -56,6 +57,7 @@ vi.mock('../composables/useMcpOAuthManagement', () => ({
 		revokeGrant: mocks.revokeGrant,
 		revokeAccessToken: mocks.revokeAccessToken,
 		revokeRefreshFamily: mocks.revokeRefreshFamily,
+		revokeAll: mocks.revokeAll,
 	}),
 }));
 
@@ -75,6 +77,18 @@ describe('ViewMcpOAuthManagement', () => {
 
 		expect(ElMessageBox.confirm).toHaveBeenCalledOnce();
 		expect(mocks.revokeGrant).toHaveBeenCalledWith(grant.id);
+	});
+
+	it('requires confirmation before revoking all OAuth authorization', async () => {
+		const wrapper = shallowMount(ViewMcpOAuthManagement);
+		const vm = wrapper.vm as unknown as { confirmGlobalRevoke: () => Promise<void> };
+
+		await vm.confirmGlobalRevoke();
+		await flushPromises();
+
+		expect(ElMessageBox.confirm).toHaveBeenCalledOnce();
+		expect(mocks.revokeAll).toHaveBeenCalledOnce();
+		expect(mocks.flashSuccess).toHaveBeenCalledWith('mcpModule.oauthManagement.messages.allRevoked');
 	});
 
 	it('labels an unusable grant with the backend inactive state', () => {

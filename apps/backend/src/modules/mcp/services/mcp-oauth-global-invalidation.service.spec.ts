@@ -168,6 +168,20 @@ describe('McpOAuthGlobalInvalidationService', () => {
 		expect(await dataSource.getRepository(McpOAuthProviderRefreshFamilyLineageEntity).count()).toBe(0);
 	});
 
+	it('advances the server-security epoch while preserving static streams', async () => {
+		const staticStream = subscriptions.open('static-client');
+		const oauthStream = await openOAuthSubscription();
+
+		await service.invalidate(['serverSecretVersion'], () => Promise.resolve());
+
+		expect(staticStream.signal.aborted).toBe(false);
+		expect(oauthStream.signal.aborted).toBe(true);
+		expect(
+			await dataSource.getRepository(McpOAuthServerStateEntity).findOneByOrFail({ key: MCP_OAUTH_SERVER_STATE_KEY }),
+		).toMatchObject({ serverSecretVersion: 2 });
+		expect(await dataSource.getRepository(McpOAuthProviderArtifactEntity).count()).toBe(0);
+	});
+
 	it('remains fail-closed and closes OAuth streams when the external commit fails', async () => {
 		const staticStream = subscriptions.open('static-client');
 		const oauthStream = await openOAuthSubscription();

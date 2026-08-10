@@ -133,7 +133,7 @@
 		"title": "MCP OAuth access",
 		"subtitle": "Pre-register remote clients and revoke their grants and tokens.",
 		"securityTitle": "OAuth secrets are never displayed",
-		"securityDescription": "This page exposes only non-secret management identifiers. Revocation immediately closes matching MCP subscriptions.",
+		"securityDescription": "This page exposes only non-secret management identifiers. Revocation immediately closes matching MCP subscriptions. Resetting a Smart Panel password does not revoke OAuth access.",
 		"tabs": {
 			"clients": "Clients",
 			"grants": "Grants",
@@ -159,6 +159,7 @@
 		"familyId": "Family ID",
 		"redirectUris": "Redirect URIs",
 		"createClient": "Pre-register OAuth client",
+		"revokeAll": "Revoke all OAuth access",
 		"editClient": "Edit OAuth client",
 		"editGrant": "Reduce OAuth grant scopes",
 		"name": "Name",
@@ -183,6 +184,7 @@
 			"offline_access": "Offline access"
 		},
 		"confirm": {
+			"all": "Revoke every MCP OAuth grant and token and close every OAuth subscription? Static MCP credentials and streams remain active. Use this explicit recovery action because resetting a Smart Panel password does not revoke OAuth access.",
 			"client": "Disable {name}, revoke all of its grants and tokens, and close its OAuth subscriptions?",
 			"grant": "Revoke this grant for {name}, its tokens, and matching subscriptions?",
 			"accessToken": "Revoke this access token for {name} and close its matching subscription?",
@@ -200,6 +202,7 @@
 			"grantUpdateFailed": "OAuth grant scopes could not be updated.",
 			"accessTokenRevoked": "OAuth access token revoked.",
 			"refreshFamilyRevoked": "OAuth refresh family revoked.",
+			"allRevoked": "All MCP OAuth access revoked.",
 			"revokeFailed": "OAuth authorization could not be revoked."
 		}
 	},

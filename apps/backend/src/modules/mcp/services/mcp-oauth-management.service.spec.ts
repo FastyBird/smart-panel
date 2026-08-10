@@ -21,6 +21,7 @@ import { createMcpOAuthProviderAdapter } from '../oauth/mcp-oauth-provider.adapt
 
 import { McpAuditService } from './mcp-audit.service';
 import { McpOAuthClientService } from './mcp-oauth-client.service';
+import { McpOAuthGlobalInvalidationService } from './mcp-oauth-global-invalidation.service';
 import { McpOAuthManagementService } from './mcp-oauth-management.service';
 import { McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
 
@@ -46,10 +47,12 @@ describe('McpOAuthManagementService', () => {
 	let familyId: string;
 	let moduleEnabled: boolean;
 	let auditService: {
+		recordOAuthGlobalRevocation: jest.Mock;
 		recordOAuthManagementAction: jest.Mock;
 		recordSubscriptionClosed: jest.Mock;
 		recordSubscriptionOpened: jest.Mock;
 	};
+	let globalInvalidation: { invalidate: jest.Mock };
 
 	beforeEach(async () => {
 		dataSource = new DataSource({
@@ -70,9 +73,13 @@ describe('McpOAuthManagementService', () => {
 		});
 		await dataSource.initialize();
 		auditService = {
+			recordOAuthGlobalRevocation: jest.fn(),
 			recordOAuthManagementAction: jest.fn(),
 			recordSubscriptionClosed: jest.fn(),
 			recordSubscriptionOpened: jest.fn(),
+		};
+		globalInvalidation = {
+			invalidate: jest.fn(async (_generations: string[], commit: () => Promise<void>) => commit()),
 		};
 		subscriptions = new McpSubscriptionRegistryService(auditService as unknown as McpAuditService);
 		moduleEnabled = true;
@@ -215,6 +222,7 @@ describe('McpOAuthManagementService', () => {
 			{ getModuleConfig: jest.fn(() => ({ enabled: moduleEnabled })) } as unknown as ConfigService,
 			clientsService as unknown as McpOAuthClientService,
 			subscriptions,
+			globalInvalidation as unknown as McpOAuthGlobalInvalidationService,
 			auditService as unknown as McpAuditService,
 		);
 	});
@@ -242,6 +250,22 @@ describe('McpOAuthManagementService', () => {
 		expect(serialized).not.toContain(hashToken('access-one'));
 		expect(serialized).not.toContain(hashToken('grant-one'));
 		expect(serialized).not.toContain('access-one');
+	});
+
+	it('revokes all OAuth authorization through the global server-security epoch and audits success', async () => {
+		await service.revokeAll('actor-id');
+
+		expect(globalInvalidation.invalidate).toHaveBeenCalledWith(['serverSecretVersion'], expect.any(Function));
+		expect(auditService.recordOAuthGlobalRevocation).toHaveBeenCalledWith('actor-id');
+	});
+
+	it('does not audit a failed global OAuth revocation', async () => {
+		const failure = new Error('global invalidation failed');
+		globalInvalidation.invalidate.mockRejectedValueOnce(failure);
+
+		await expect(service.revokeAll('actor-id')).rejects.toBe(failure);
+
+		expect(auditService.recordOAuthGlobalRevocation).not.toHaveBeenCalled();
 	});
 
 	it('excludes artifacts whose linked grant has expired', async () => {

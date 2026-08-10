@@ -24,6 +24,7 @@ import {
 
 import { McpAuditService } from './mcp-audit.service';
 import { McpOAuthClientService } from './mcp-oauth-client.service';
+import { McpOAuthGlobalInvalidationService } from './mcp-oauth-global-invalidation.service';
 import { McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
 
 interface ProviderArtifactPayload {
@@ -41,6 +42,7 @@ export class McpOAuthManagementService {
 		private readonly configService: ConfigService,
 		private readonly clientsService: McpOAuthClientService,
 		private readonly subscriptions: McpSubscriptionRegistryService,
+		private readonly globalInvalidation: McpOAuthGlobalInvalidationService,
 		private readonly auditService: McpAuditService,
 	) {}
 
@@ -290,6 +292,11 @@ export class McpOAuthManagementService {
 			});
 		});
 		this.auditService.recordOAuthManagementAction(actorId, 'refresh_family', id, 'revoked');
+	}
+
+	async revokeAll(actorId: string): Promise<void> {
+		await this.globalInvalidation.invalidate(['serverSecretVersion'], () => Promise.resolve());
+		this.auditService.recordOAuthGlobalRevocation(actorId);
 	}
 
 	private async getGrantEntity(id: string): Promise<McpOAuthGrantEntity> {
