@@ -117,7 +117,7 @@ describe('useMcpOAuthManagement', () => {
 			.mockResolvedValueOnce({ data: { data: [grant] }, response: { status: 200 } })
 			.mockResolvedValueOnce({ data: { data: [accessToken] }, response: { status: 200 } })
 			.mockResolvedValueOnce({ data: { data: [family] }, response: { status: 200 } });
-		backendClient.POST.mockResolvedValue({ data: undefined, response: { status: 204, ok: true } });
+		backendClient.POST.mockResolvedValue({ data: { data: { revoked: true } }, response: { status: 200, ok: true } });
 		const management = useMcpOAuthManagement();
 		await management.fetchAll();
 

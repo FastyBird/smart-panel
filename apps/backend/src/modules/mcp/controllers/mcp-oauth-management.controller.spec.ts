@@ -34,8 +34,9 @@ describe('McpOAuthManagementController', () => {
 			auth: { type: 'user', id: actorId, role: UserRole.ADMIN },
 		} as unknown as AuthenticatedRequest;
 
-		await controller.revokeAll(request);
+		const response = await controller.revokeAll(request);
 
 		expect(revokeAll).toHaveBeenCalledWith(actorId);
+		expect(response.data).toEqual({ revoked: true });
 	});
 });

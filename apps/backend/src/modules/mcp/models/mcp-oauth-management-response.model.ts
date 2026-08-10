@@ -4,7 +4,12 @@ import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 
-import { McpOAuthAccessTokenModel, McpOAuthGrantModel, McpOAuthRefreshFamilyModel } from './mcp-oauth-management.model';
+import {
+	McpOAuthAccessTokenModel,
+	McpOAuthGlobalRevocationModel,
+	McpOAuthGrantModel,
+	McpOAuthRefreshFamilyModel,
+} from './mcp-oauth-management.model';
 
 @ApiSchema({ name: 'McpModuleResOAuthGrant' })
 export class McpOAuthGrantResponseModel extends BaseSuccessResponseModel<McpOAuthGrantModel> {
@@ -46,4 +51,11 @@ export class McpOAuthRefreshFamiliesResponseModel extends BaseSuccessResponseMod
 	@ApiProperty({ type: 'array', items: { $ref: getSchemaPath(McpOAuthRefreshFamilyModel) } })
 	@Expose()
 	declare data: McpOAuthRefreshFamilyModel[];
+}
+
+@ApiSchema({ name: 'McpModuleResOAuthGlobalRevocation' })
+export class McpOAuthGlobalRevocationResponseModel extends BaseSuccessResponseModel<McpOAuthGlobalRevocationModel> {
+	@ApiProperty({ type: () => McpOAuthGlobalRevocationModel })
+	@Expose()
+	declare data: McpOAuthGlobalRevocationModel;
 }

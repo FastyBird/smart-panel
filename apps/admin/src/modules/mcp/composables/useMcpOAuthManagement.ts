@@ -195,9 +195,11 @@ export const useMcpOAuthManagement = (): IUseMcpOAuthManagement => {
 	};
 
 	const revokeAll = async (): Promise<void> => {
-		const { response } = await backend.client.POST(revokeAllPath, {});
+		const { data, response } = await backend.client.POST(revokeAllPath, {});
 
-		if (!response.ok) throw new McpApiException('Failed to revoke all MCP OAuth authorization.', response.status);
+		if (!data?.data.revoked) {
+			throw new McpApiException('Failed to revoke all MCP OAuth authorization.', response.status);
+		}
 
 		const revokedAt = new Date().toISOString();
 		grants.value = grants.value.map((grant) => ({
