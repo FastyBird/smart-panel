@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 5 in progress — awaited approver lifecycle invalidation implemented
+**Status:** Phase 5 in progress — authoritative artifact request gate foundation implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -194,6 +194,15 @@ amend ADR 0002.
       subscriptions approved by that user; preserve unrelated OAuth and static streams even when failures propagate.
 - [x] Keep the OAuth gate held through the user-row commit so failed demotions roll back with invalidation and consent
       queued behind deletion observes the removed user before it can create a grant.
+
+### Phase 5i — Authoritative artifact request gate foundation
+
+- [x] Serialize bounded provider authorization, token, refresh, and revocation request processing through the same
+      authoritative OAuth mutation gate used by artifact and policy invalidation.
+- [x] Keep provider-grant persistence, the matching Smart Panel grant, and authorization-code completion inside the
+      approver-authority gate so demotion cannot interleave between consent and code issuance.
+- [x] Prove both gate orderings deterministically: provider work that commits first is visible to the following
+      invalidation, while provider work queued behind invalidation observes the advanced authorization state and fails.
 
 ### Remaining Phase 5 controls
 

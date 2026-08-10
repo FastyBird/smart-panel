@@ -168,6 +168,15 @@ describe('McpOAuthInteractionService', () => {
 	});
 
 	it('creates a finite bounded grant and resumes provider consent', async () => {
+		let finishedInsideAuthorityBoundary = false;
+		approverAuthority.runAuthorized.mockImplementationOnce(
+			async (_userId: string, operation: (generation: number) => Promise<unknown>) => {
+				const result = await operation(4);
+				finishedInsideAuthorityBoundary = interactionFinished.mock.calls.length === 1;
+
+				return result;
+			},
+		);
 		await service.getInteraction(rawUid, userId, request);
 
 		const completion = await service.approve(
@@ -201,6 +210,7 @@ describe('McpOAuthInteractionService', () => {
 		expect(grantInput.expiresAt).toBeInstanceOf(Date);
 		expect(completion.redirectTo).toBe('/auth/resume');
 		expect(interactions.update).toHaveBeenCalled();
+		expect(finishedInsideAuthorityBoundary).toBe(true);
 	});
 
 	it('replaces an existing provider grant so omitted scopes cannot survive reauthorization', async () => {
