@@ -296,6 +296,35 @@ describe('McpSubscriptionRegistryService', () => {
 		expect(staticStream.signal.aborted).toBe(false);
 	});
 
+	it('closes only matching grant streams whose effective scopes exceed the updated approval', async () => {
+		const staticStream = service.open('static-client');
+		const matchingRead = await service.openOAuth('matching-read', () => Promise.resolve(oauthRegistration()));
+		const matchingWrite = await service.openOAuth('matching-write', () =>
+			Promise.resolve(
+				oauthRegistration({
+					effectiveScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE],
+				}),
+			),
+		);
+		const otherGrant = await service.openOAuth('other-grant', () =>
+			Promise.resolve(
+				oauthRegistration({
+					grantId: 'grant-two',
+					effectiveScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE],
+				}),
+			),
+		);
+		const advanceGeneration = jest.fn().mockResolvedValue(undefined);
+
+		await service.closeOAuthGrantScopeContractions('grant-one', [McpOAuthScope.READ], advanceGeneration);
+
+		expect(advanceGeneration).toHaveBeenCalledTimes(1);
+		expect(matchingRead.signal.aborted).toBe(false);
+		expect(matchingWrite.signal.aborted).toBe(true);
+		expect(otherGrant.signal.aborted).toBe(false);
+		expect(staticStream.signal.aborted).toBe(false);
+	});
+
 	it('closes OAuth streams at their authorization deadline', async () => {
 		jest.useFakeTimers();
 		const subscription = await service.openOAuth('deadline', () =>

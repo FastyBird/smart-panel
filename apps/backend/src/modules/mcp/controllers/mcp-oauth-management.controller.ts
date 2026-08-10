@@ -1,10 +1,26 @@
-import { Controller, ForbiddenException, Get, HttpCode, Param, ParseUUIDPipe, Post, Req } from '@nestjs/common';
-import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+	Body,
+	Controller,
+	ForbiddenException,
+	Get,
+	HttpCode,
+	Param,
+	ParseUUIDPipe,
+	Patch,
+	Post,
+	Req,
+} from '@nestjs/common';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { AuthenticatedRequest } from '../../auth/guards/auth.guard';
-import { ApiNotFoundResponse, ApiSuccessResponse } from '../../swagger/decorators/api-documentation.decorator';
+import {
+	ApiBadRequestResponse,
+	ApiNotFoundResponse,
+	ApiSuccessResponse,
+} from '../../swagger/decorators/api-documentation.decorator';
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
+import { ReqUpdateMcpOAuthGrantDto } from '../dto/mcp-oauth-grant.dto';
 import { MCP_MODULE_API_TAG_NAME } from '../mcp.constants';
 import {
 	McpOAuthAccessTokenResponseModel,
@@ -50,6 +66,30 @@ export class McpOAuthManagementController {
 	async findGrant(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<McpOAuthGrantResponseModel> {
 		const response = new McpOAuthGrantResponseModel();
 		response.data = await this.managementService.getGrant(id);
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [MCP_MODULE_API_TAG_NAME],
+		summary: 'Reduce MCP OAuth grant scopes',
+		description:
+			'Replace the approved scopes with a subset and close only subscriptions whose effective scopes contract',
+		operationId: 'update-mcp-module-oauth-grant',
+	})
+	@ApiParam({ name: 'id', description: 'OAuth grant management identifier', type: 'string', format: 'uuid' })
+	@ApiBody({ type: ReqUpdateMcpOAuthGrantDto })
+	@ApiSuccessResponse(McpOAuthGrantResponseModel, 'MCP OAuth grant scopes updated successfully')
+	@ApiBadRequestResponse('Approved scopes must be a non-empty subset of the existing grant')
+	@ApiNotFoundResponse('MCP OAuth grant not found')
+	@Patch('grants/:id')
+	async updateGrant(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqUpdateMcpOAuthGrantDto,
+		@Req() req: AuthenticatedRequest,
+	): Promise<McpOAuthGrantResponseModel> {
+		const response = new McpOAuthGrantResponseModel();
+		response.data = await this.managementService.updateGrant(id, body.data, this.getActorId(req));
 
 		return response;
 	}

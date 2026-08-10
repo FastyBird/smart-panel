@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
 	fetchAll: vi.fn().mockResolvedValue(undefined),
 	createClient: vi.fn(),
 	updateClient: vi.fn(),
+	updateGrant: vi.fn(),
 	revokeClient: vi.fn(),
 	revokeGrant: vi.fn().mockResolvedValue(undefined),
 	revokeAccessToken: vi.fn(),
@@ -50,6 +51,7 @@ vi.mock('../composables/useMcpOAuthManagement', () => ({
 		fetchAll: mocks.fetchAll,
 		createClient: mocks.createClient,
 		updateClient: mocks.updateClient,
+		updateGrant: mocks.updateGrant,
 		revokeClient: mocks.revokeClient,
 		revokeGrant: mocks.revokeGrant,
 		revokeAccessToken: mocks.revokeAccessToken,
@@ -93,5 +95,15 @@ describe('ViewMcpOAuthManagement', () => {
 		expect(vm.canRevokeGrant({ ...grant, active: false })).toBe(true);
 		expect(vm.canRevokeGrant({ ...grant, active: false, revokedAt: '2026-01-02T00:00:00.000Z' })).toBe(false);
 		expect(vm.canRevokeGrant({ ...grant, active: false, expiresAt: '2020-01-01T00:00:00.000Z' })).toBe(false);
+	});
+
+	it('allows scope editing only while the grant is active', () => {
+		const wrapper = shallowMount(ViewMcpOAuthManagement);
+		const vm = wrapper.vm as unknown as {
+			canEditGrant: (value: IMcpOAuthGrant) => boolean;
+		};
+
+		expect(vm.canEditGrant(grant)).toBe(true);
+		expect(vm.canEditGrant({ ...grant, active: false })).toBe(false);
 	});
 });

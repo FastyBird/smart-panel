@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 5 module capability-ceiling invalidation complete
+Status: in progress — Phase 5 approved-grant scope invalidation complete
 
 ## 1. Business goal
 
@@ -67,7 +67,7 @@ upgrade consequences.
       impact of write/trigger scopes.
 - [x] Owners/admins can list and revoke OAuth clients, grants, access tokens, and refresh tokens; revocation closes the
       affected MCP subscriptions immediately.
-- [ ] Reducing the live module ceiling, registered-client maximum, or approved-grant scopes closes every OAuth
+- [x] Reducing the live module ceiling, registered-client maximum, or approved-grant scopes closes every OAuth
       subscription whose effective read/write/trigger scope set contracts before the mutation reports success.
 - [ ] Subscription registration is serialized with artifact and policy invalidation so a stale in-flight listen
       request cannot open after invalidation reports success.

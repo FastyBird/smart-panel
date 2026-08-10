@@ -111,4 +111,23 @@ describe('useMcpOAuthManagement', () => {
 		expect(management.refreshFamilies.value).toEqual([]);
 		expect(management.accessTokens.value).toEqual([]);
 	});
+
+	it('updates a grant through the reduction-only generated API contract', async () => {
+		const reduced = { ...grant, approvedScopes: [McpOAuthScope.READ] };
+		backendClient.GET.mockResolvedValueOnce({ data: { data: [client] }, response: { status: 200 } })
+			.mockResolvedValueOnce({ data: { data: [grant] }, response: { status: 200 } })
+			.mockResolvedValueOnce({ data: { data: [accessToken] }, response: { status: 200 } })
+			.mockResolvedValueOnce({ data: { data: [family] }, response: { status: 200 } });
+		backendClient.PATCH.mockResolvedValue({ data: { data: reduced }, response: { status: 200 } });
+		const management = useMcpOAuthManagement();
+		await management.fetchAll();
+
+		await management.updateGrant(grant.id, { approvedScopes: [McpOAuthScope.READ] });
+
+		expect(backendClient.PATCH).toHaveBeenCalledWith('/modules/mcp/oauth/grants/{id}', {
+			params: { path: { id: grant.id } },
+			body: { data: { approved_scopes: [McpOAuthScope.READ] } },
+		});
+		expect(management.grants.value).toEqual([reduced]);
+	});
 });

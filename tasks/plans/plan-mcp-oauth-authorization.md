@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 5 in progress — module capability-ceiling invalidation implemented
+**Status:** Phase 5 in progress — approved-grant scope invalidation implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -171,6 +171,17 @@ amend ADR 0002.
 - [x] Prove a racing OAuth registration queued behind the mutation revalidates only after the new configuration is
       committed, and prove unchanged capability updates bypass the generation barrier.
 
+### Phase 5g — Awaited approved-grant scope invalidation
+
+- [x] Add an owner/admin reduction-only grant-scope API and Admin editor that cannot add scopes without a new consent;
+      preserve `offline_access` because removing refresh authority requires grant revocation and artifact invalidation.
+- [x] Advance the grant generation with a conditional update inside the authoritative OAuth subscription gate and
+      propagate conflicts without closing streams.
+- [x] Close only subscriptions bound to the updated grant whose recorded effective scopes exceed the new approval,
+      preserving unaffected OAuth and static streams.
+- [x] Prove a racing registration queued behind grant reduction observes the updated scopes and generation, while a
+      registration that wins the gate is closed when its effective scope contracts.
+
 ### Remaining Phase 5 controls
 
 - [x] Bind OAuth subscriptions to client, grant, access-token, optional refresh-family IDs, and an authorization
@@ -185,10 +196,9 @@ amend ADR 0002.
       client, grant, module-policy, and approver-authority generations and current states. Each invalidation must advance
       its generation before enumeration, so a racing handler either commits first and is revoked or its stale commit
       fails; validation must recheck all generations so later restoration cannot revive an escaped artifact.
-- [ ] Complete approved-grant scope reductions through the awaited authoritative mutation path. Module-ceiling
-      reductions are covered by Phase 5f and registered-client-maximum reductions by Phase 5e; the remaining grant
-      path must close every OAuth subscription whose effective scope set contracts before reporting success,
-      including removal of `mcp:write` or `mcp:trigger` while `mcp:read` remains.
+- [x] Route module-ceiling, registered-client-maximum, and approved-grant scope reductions through awaited
+      authoritative mutation paths that close every OAuth subscription whose effective scope set contracts before
+      reporting success, including removal of `mcp:write` or `mcp:trigger` while `mcp:read` remains.
 - [ ] Replace fire-and-forget approver invalidation with an awaited lifecycle path for `UsersModule.User.Updated` and
       `UsersModule.User.Deleted`: when a grant approver is deleted or no longer has owner/admin role, atomically advance
       their authority generation before revoking every grant and token artifact they approved and closing matching
