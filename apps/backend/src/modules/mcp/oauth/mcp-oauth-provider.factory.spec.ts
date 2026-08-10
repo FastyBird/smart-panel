@@ -28,14 +28,21 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 		tokenEndpoint: 'https://panel.example/api/v1/modules/mcp/oauth/token',
 		revocationEndpoint: 'https://panel.example/api/v1/modules/mcp/oauth/token/revocation',
 	} satisfies McpOAuthPublicUrls;
-	const request = {
-		method: 'GET',
-		url: '/api/v1/modules/mcp/oauth/authorize',
-		headers: {},
-	} as IncomingMessage;
-	const response = {} as ServerResponse;
 	let subscriptions: McpSubscriptionRegistryService;
 	let dispatch: ProviderDispatcher;
+	const createRequest = (): IncomingMessage =>
+		({
+			method: 'GET',
+			url: '/api/v1/modules/mcp/oauth/authorize',
+			headers: {},
+			aborted: false,
+		}) as IncomingMessage;
+	const createResponse = (): ServerResponse =>
+		({
+			closed: false,
+			destroyed: false,
+			writableEnded: false,
+		}) as ServerResponse;
 
 	beforeEach(() => {
 		const audit = { recordSubscriptionClosed: jest.fn(), recordSubscriptionOpened: jest.fn() };
@@ -66,7 +73,7 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 			await release;
 			artifactCommitted = true;
 		});
-		const providerRequest = dispatch(request, response, providerCallback, urls);
+		const providerRequest = dispatch(createRequest(), createResponse(), providerCallback, urls);
 
 		await started;
 		const invalidation = subscriptions.closeAllOAuth(() => {
@@ -105,13 +112,49 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 		const providerCallback = jest.fn(() =>
 			generation === 0 ? Promise.resolve() : Promise.reject(new Error('stale OAuth authorization generation')),
 		);
-		const providerRequest = dispatch(request, response, providerCallback, urls);
+		const providerRequest = dispatch(createRequest(), createResponse(), providerCallback, urls);
 		await Promise.resolve();
 		expect(providerCallback).not.toHaveBeenCalled();
 
 		releaseInvalidation();
 		await invalidation;
 		await expect(providerRequest).rejects.toThrow('stale OAuth authorization generation');
+		expect(providerCallback).toHaveBeenCalledTimes(1);
+	});
+
+	it('skips provider processing when a queued request disconnects before the gate opens', async () => {
+		let invalidationStarted = (): void => undefined;
+		const started = new Promise<void>((resolve) => {
+			invalidationStarted = resolve;
+		});
+		let releaseInvalidation = (): void => undefined;
+		const release = new Promise<void>((resolve) => {
+			releaseInvalidation = resolve;
+		});
+		const invalidation = subscriptions.closeAllOAuth(async () => {
+			invalidationStarted();
+			await release;
+		});
+
+		await started;
+		const request = createRequest();
+		const providerCallback = jest.fn(() => Promise.resolve());
+		const providerRequest = dispatch(request, createResponse(), providerCallback, urls);
+		request.aborted = true;
+		releaseInvalidation();
+
+		await invalidation;
+		await providerRequest;
+		expect(providerCallback).not.toHaveBeenCalled();
+	});
+
+	it('processes a completed request stream while its response connection remains open', async () => {
+		const request = createRequest();
+		request.destroyed = true;
+		const providerCallback = jest.fn(() => Promise.resolve());
+
+		await dispatch(request, createResponse(), providerCallback, urls);
+
 		expect(providerCallback).toHaveBeenCalledTimes(1);
 	});
 });

@@ -250,7 +250,15 @@ export class McpOAuthProviderFactory {
 			}
 		}
 
-		await this.subscriptions.runOAuthMutation(() => providerCallback(request, response));
+		await this.subscriptions.runOAuthMutation(async () => {
+			if (this.isDisconnected(request, response)) return;
+
+			await providerCallback(request, response);
+		});
+	}
+
+	private isDisconnected(request: IncomingMessage, response: ServerResponse): boolean {
+		return request.aborted || response.destroyed || response.closed || response.writableEnded;
 	}
 
 	private async readRequestBody(request: IncomingMessage): Promise<string> {
