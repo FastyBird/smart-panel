@@ -218,6 +218,20 @@ export class McpOAuthManagementController {
 		await this.managementService.revokeRefreshFamily(id, this.getActorId(req));
 	}
 
+	@ApiOperation({
+		tags: [MCP_MODULE_API_TAG_NAME],
+		summary: 'Revoke all MCP OAuth authorization',
+		description:
+			'Advance the authorization-server security epoch, revoke every OAuth grant and artifact, and close every OAuth subscription while preserving static MCP access',
+		operationId: 'revoke-all-mcp-module-oauth-authorization',
+	})
+	@ApiNoContentResponse({ description: 'All MCP OAuth authorization revoked successfully' })
+	@HttpCode(204)
+	@Post('revoke-all')
+	async revokeAll(@Req() req: AuthenticatedRequest): Promise<void> {
+		await this.managementService.revokeAll(this.getActorId(req));
+	}
+
 	private getActorId(req: AuthenticatedRequest): string {
 		if (req.auth?.type === 'user') return req.auth.id;
 		if (req.auth?.type === 'token' && req.auth.ownerId) return req.auth.ownerId;

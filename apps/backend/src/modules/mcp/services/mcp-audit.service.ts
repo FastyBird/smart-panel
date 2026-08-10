@@ -143,6 +143,17 @@ export class McpAuditService {
 		);
 	}
 
+	recordOAuthGlobalRevocation(actorId: string): void {
+		this.log(
+			'oauth_global_revocation',
+			{ requestId: 'administrative' },
+			{
+				actor_id: actorId,
+				action: 'revoked_all',
+			},
+		);
+	}
+
 	recordToolResult(result: ToolResult): void {
 		this.callsByCapability[result.capability] += 1;
 		this.callsByTool.set(result.tool, (this.callsByTool.get(result.tool) ?? 0) + 1);

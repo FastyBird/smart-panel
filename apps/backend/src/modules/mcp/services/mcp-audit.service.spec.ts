@@ -132,6 +132,17 @@ describe('McpAuditService', () => {
 		expect(logger.extensionType).toBe(MCP_MODULE_NAME);
 	});
 
+	it('audits global OAuth revocation without credential material', () => {
+		service.recordOAuthGlobalRevocation('owner-id');
+
+		expect(log).toHaveBeenCalledWith('MCP audit event', {
+			event: 'oauth_global_revocation',
+			request_id: 'administrative',
+			actor_id: 'owner-id',
+			action: 'revoked_all',
+		});
+	});
+
 	it('counts policy-resolution outages as failures without incrementing denials', () => {
 		service.recordRequestFailure({ requestId: '1', clientId: 'client-1' }, 'policy_resolution_error');
 

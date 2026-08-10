@@ -6,6 +6,14 @@
 	>
 		<template #extra>
 			<el-button
+				type="danger"
+				plain
+				@click="confirmGlobalRevoke"
+			>
+				<icon icon="mdi:shield-remove-outline" />
+				{{ t('mcpModule.oauthManagement.revokeAll') }}
+			</el-button>
+			<el-button
 				type="primary"
 				@click="openCreate"
 			>
@@ -452,6 +460,7 @@ const {
 	revokeGrant,
 	revokeAccessToken,
 	revokeRefreshFamily,
+	revokeAll,
 } = useMcpOAuthManagement();
 
 const activeTab = ref('clients');
@@ -617,6 +626,12 @@ const confirmRefreshFamilyRevoke = (family: IMcpOAuthRefreshFamily): Promise<voi
 		t('mcpModule.oauthManagement.confirm.refreshFamily', { name: family.clientName }),
 		() => revokeRefreshFamily(family.id),
 		'mcpModule.oauthManagement.messages.refreshFamilyRevoked'
+	);
+const confirmGlobalRevoke = (): Promise<void> =>
+	confirmRevoke(
+		t('mcpModule.oauthManagement.confirm.all'),
+		() => revokeAll(),
+		'mcpModule.oauthManagement.messages.allRevoked'
 	);
 
 const grantStatus = (grant: IMcpOAuthGrant): { key: 'active' | 'expired' | 'inactive' | 'revoked'; type: 'success' | 'danger' | 'warning' } => {

@@ -37,6 +37,7 @@ interface IUseMcpOAuthManagement {
 	updateGrant: (id: string, payload: IMcpOAuthUpdateGrant) => Promise<IMcpOAuthGrant>;
 	revokeAccessToken: (id: string) => Promise<void>;
 	revokeRefreshFamily: (id: string) => Promise<void>;
+	revokeAll: () => Promise<void>;
 }
 
 const oauthPath = `/modules/${MCP_MODULE_PREFIX}/oauth` as const;
@@ -50,6 +51,7 @@ const accessTokensPath = `${oauthPath}/access-tokens` as const;
 const revokeAccessTokenPath = `${oauthPath}/access-tokens/{id}/revoke` as const;
 const refreshFamiliesPath = `${oauthPath}/refresh-families` as const;
 const revokeRefreshFamilyPath = `${oauthPath}/refresh-families/{id}/revoke` as const;
+const revokeAllPath = `${oauthPath}/revoke-all` as const;
 
 export const useMcpOAuthManagement = (): IUseMcpOAuthManagement => {
 	const backend = useBackend();
@@ -192,6 +194,21 @@ export const useMcpOAuthManagement = (): IUseMcpOAuthManagement => {
 		accessTokens.value = accessTokens.value.filter((token) => token.refreshFamilyId !== id);
 	};
 
+	const revokeAll = async (): Promise<void> => {
+		const { response } = await backend.client.POST(revokeAllPath, {});
+
+		if (!response.ok) throw new McpApiException('Failed to revoke all MCP OAuth authorization.', response.status);
+
+		const revokedAt = new Date().toISOString();
+		grants.value = grants.value.map((grant) => ({
+			...grant,
+			active: false,
+			revokedAt: grant.revokedAt ?? revokedAt,
+		}));
+		accessTokens.value = [];
+		refreshFamilies.value = [];
+	};
+
 	return {
 		clients,
 		grants,
@@ -207,5 +224,6 @@ export const useMcpOAuthManagement = (): IUseMcpOAuthManagement => {
 		updateGrant,
 		revokeAccessToken,
 		revokeRefreshFamily,
+		revokeAll,
 	};
 };
