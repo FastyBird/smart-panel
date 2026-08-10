@@ -29,6 +29,9 @@ const oauthBinding = (effectiveScopes: McpOAuthScope[]): McpOAuthSubscriptionBin
 	authorizationDeadline: new Date(Date.now() + 60_000),
 	effectiveScopes,
 	modulePolicyGeneration: 1,
+	oauthEnabledGeneration: 4,
+	publicIdentityGeneration: 5,
+	serverSecretVersion: 6,
 	clientGeneration: 2,
 	grantGeneration: 3,
 });

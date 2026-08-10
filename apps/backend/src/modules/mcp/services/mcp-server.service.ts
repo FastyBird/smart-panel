@@ -343,6 +343,9 @@ export class McpServerService implements OnApplicationShutdown {
 				authorizationDeadline: new Date(value.authorizationDeadline),
 				effectiveScopes: [...value.effectiveScopes],
 				modulePolicyGeneration: value.modulePolicyGeneration,
+				oauthEnabledGeneration: value.oauthEnabledGeneration,
+				publicIdentityGeneration: value.publicIdentityGeneration,
+				serverSecretVersion: value.serverSecretVersion,
 				clientGeneration: value.clientGeneration,
 				grantGeneration: value.grantGeneration,
 			},
@@ -388,6 +391,9 @@ export class McpServerService implements OnApplicationShutdown {
 		const principal = value as Partial<McpOAuthPrincipal>;
 		const generations = [
 			principal.modulePolicyGeneration,
+			principal.oauthEnabledGeneration,
+			principal.publicIdentityGeneration,
+			principal.serverSecretVersion,
 			principal.clientGeneration,
 			principal.grantGeneration,
 			principal.approverAuthorityGeneration,

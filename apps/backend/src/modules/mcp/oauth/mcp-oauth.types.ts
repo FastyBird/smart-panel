@@ -13,7 +13,10 @@ export interface McpOAuthPrincipal {
 	grantGeneration: number;
 	installationId: string;
 	modulePolicyGeneration: number;
+	oauthEnabledGeneration: number;
+	publicIdentityGeneration: number;
 	refreshFamilyId?: string;
+	serverSecretVersion: number;
 	scopes: McpOAuthScope[];
 	effectiveCapabilities: McpCapability[];
 }

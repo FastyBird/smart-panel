@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 5 in progress — durable authorization-generation snapshot foundation implemented
+**Status:** Phase 5 in progress — complete subscription authorization binding implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -214,12 +214,23 @@ amend ADR 0002.
       unavailable or differs from live state, so advancing a generation permanently prevents stale artifact reuse.
 - [x] Backfill existing linked bearer artifacts and prove all seven generation dimensions fail closed after advancement.
 
+### Phase 5k — Complete subscription authorization binding
+
+- [x] Carry the validated OAuth-enabled, server-secret, and public-identity generations from the access-token snapshot
+      into the internal OAuth principal and stored subscription binding.
+- [x] Require every global and targeted authorization generation in the internal OAuth subscription identity, failing
+      closed before registration when any generation is missing or malformed.
+- [x] Reverify the bearer artifact, live scopes, authorization deadline, and complete generation snapshot inside the
+      same authoritative gate used by artifact and policy invalidation before registering the stream.
+- [x] Prove a racing registration either opens before invalidation and is closed or runs after generation advancement
+      and fails revalidation, while static MCP subscriptions remain outside the OAuth gate.
+
 ### Remaining Phase 5 controls
 
 - [x] Bind OAuth subscriptions to client, grant, access-token, optional refresh-family IDs, and an authorization
       deadline equal to the earlier of access-token or grant expiry; also record their effective scopes and the
       generations of the module/client/grant authorization inputs that produced them.
-- [ ] Serialize subscription registration and invalidation through one authoritative generation gate: atomically
+- [x] Serialize subscription registration and invalidation through one authoritative generation gate: atomically
       recheck the OAuth-enabled and artifact/authorization-input generations plus live scopes while registering, and
       increment or close the applicable gate before an invalidating mutation enumerates streams. A racing open must
       either register first and be closed or observe the new generation and fail/revalidate.
