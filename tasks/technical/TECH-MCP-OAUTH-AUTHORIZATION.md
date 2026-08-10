@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 5 complete subscription authorization binding implemented
+Status: in progress — Phase 5 awaited public-identity invalidation implemented
 
 ## 1. Business goal
 

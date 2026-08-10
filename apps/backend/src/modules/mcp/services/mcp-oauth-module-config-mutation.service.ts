@@ -11,6 +11,7 @@ import { MCP_MODULE_NAME, MCP_OAUTH_SERVER_STATE_KEY, McpCapability } from '../m
 import { McpConfigModel } from '../models/config.model';
 import { toMcpOAuthScope } from '../oauth/mcp-oauth-scope.utils';
 
+import { McpOAuthGlobalGeneration, McpOAuthGlobalInvalidationService } from './mcp-oauth-global-invalidation.service';
 import { McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
 
 @Injectable()
@@ -20,13 +21,35 @@ export class McpOAuthModuleConfigMutationService {
 		@InjectRepository(McpOAuthServerStateEntity)
 		private readonly serverState: Repository<McpOAuthServerStateEntity>,
 		private readonly subscriptions: McpSubscriptionRegistryService,
+		private readonly globalInvalidation: McpOAuthGlobalInvalidationService,
 	) {}
 
 	async update(update: UpdateMcpConfigDto, commit: ModuleConfigCommit): Promise<void> {
 		const current = this.configService.getModuleConfig<McpConfigModel>(MCP_MODULE_NAME);
 		const nextCapabilities = update.capabilities ?? current.capabilities;
+		const capabilitiesChanged = !this.sameCapabilities(current.capabilities, nextCapabilities);
+		const nextPublicBaseUrl =
+			update.oauth_public_base_url === undefined ? current.oauthPublicBaseUrl : update.oauth_public_base_url;
+		const publicIdentityChanged = current.oauthPublicBaseUrl !== nextPublicBaseUrl;
 
-		if (this.sameCapabilities(current.capabilities, nextCapabilities)) {
+		if (publicIdentityChanged) {
+			const generations: McpOAuthGlobalGeneration[] = [
+				'publicIdentityGeneration',
+				...(capabilitiesChanged ? (['modulePolicyGeneration'] as const) : []),
+			];
+
+			await this.globalInvalidation.invalidate(generations, async () => {
+				try {
+					await commit();
+				} catch (error) {
+					this.configService.reload();
+					throw error;
+				}
+			});
+			return;
+		}
+
+		if (!capabilitiesChanged) {
 			await commit();
 			return;
 		}

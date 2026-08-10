@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 5 in progress — complete subscription authorization binding implemented
+**Status:** Phase 5 in progress — awaited public-identity invalidation implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -224,6 +224,17 @@ amend ADR 0002.
       same authoritative gate used by artifact and policy invalidation before registering the stream.
 - [x] Prove a racing registration either opens before invalidation and is closed or runs after generation advancement
       and fails revalidation, while static MCP subscriptions remain outside the OAuth gate.
+
+### Phase 5l — Awaited public-identity invalidation
+
+- [x] Add one reusable global OAuth invalidation transaction that advances selected persistent generations, revokes all
+      active grants, tombstones their provider identities, and deletes every provider and legacy OAuth artifact.
+- [x] Route changes to the canonical OAuth public base URL through that transaction before the configuration mutation
+      reports success, advancing module-policy generation in the same transaction when both inputs change.
+- [x] Close every OAuth subscription after revocation while preserving static MCP subscriptions; if configuration
+      persistence fails, reload configuration but keep the advanced generation, revoked artifacts, and closed streams.
+- [x] Prove queued provider work cannot enter the authoritative gate until identity advancement and revocation finish,
+      and prove missing persistent generation state prevents commit, revocation, and stream closure.
 
 ### Remaining Phase 5 controls
 
