@@ -188,7 +188,7 @@ export class McpOAuthInteractionService {
 		}
 
 		(providerGrant as unknown as { expiresIn: number }).expiresIn = dto.expiresInDays * 24 * 60 * 60;
-		const grantId = await this.approverAuthority.runAuthorized(userId, async (approverAuthorityGeneration) => {
+		return this.approverAuthority.runAuthorized(userId, async (approverAuthorityGeneration) => {
 			const savedGrantId = await providerGrant.save();
 			await this.artifactService.createGrant({
 				providerGrantId: savedGrantId,
@@ -199,11 +199,8 @@ export class McpOAuthInteractionService {
 				approverAuthorityGeneration,
 			});
 
-			return savedGrantId;
+			return this.finish(provider, request, { consent: { grantId: savedGrantId } }, true);
 		});
-		const completion = await this.finish(provider, request, { consent: { grantId } }, true);
-
-		return completion;
 	}
 
 	async deny(rawUid: string, userId: string, request: IncomingMessage): Promise<McpOAuthInteractionCompletionModel> {

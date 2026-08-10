@@ -18,6 +18,7 @@ import { McpOAuthProviderFactory } from '../src/modules/mcp/oauth/mcp-oauth-prov
 import { McpOAuthPublicUrls } from '../src/modules/mcp/oauth/mcp-oauth.types';
 import { McpOAuthClientService } from '../src/modules/mcp/services/mcp-oauth-client.service';
 import { McpOAuthPublicUrlService } from '../src/modules/mcp/services/mcp-oauth-public-url.service';
+import { McpSubscriptionRegistryService } from '../src/modules/mcp/services/mcp-subscription-registry.service';
 
 const CLIENT_ID = 'phase3-public-client';
 const ACCOUNT_ID = 'owner-1';
@@ -157,7 +158,11 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		} as unknown as McpOAuthClientService;
 		const publicUrlService = { getUrls: jest.fn(() => urls) } as unknown as McpOAuthPublicUrlService;
 
-		factory = new McpOAuthProviderFactory(dataSource, clientsService, publicUrlService);
+		const subscriptions = {
+			runOAuthMutation: (operation: () => Promise<unknown>) => operation(),
+		} as unknown as McpSubscriptionRegistryService;
+
+		factory = new McpOAuthProviderFactory(dataSource, clientsService, publicUrlService, subscriptions);
 		const runtime = await factory.create({
 			allowTestInMemory: true,
 			allowInsecureTestCookies: true,

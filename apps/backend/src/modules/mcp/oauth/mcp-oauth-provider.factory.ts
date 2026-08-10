@@ -14,6 +14,7 @@ import {
 } from '../mcp.constants';
 import { McpOAuthClientService } from '../services/mcp-oauth-client.service';
 import { McpOAuthPublicUrlService } from '../services/mcp-oauth-public-url.service';
+import { McpSubscriptionRegistryService } from '../services/mcp-subscription-registry.service';
 
 import { McpOAuthAuthorizationServerMetadata, buildMcpOAuthAuthorizationServerMetadata } from './mcp-oauth-metadata';
 import { createMcpOAuthProviderAdapter } from './mcp-oauth-provider.adapter';
@@ -43,6 +44,7 @@ export class McpOAuthProviderFactory {
 		private readonly dataSource: DataSource,
 		private readonly clientsService: McpOAuthClientService,
 		private readonly publicUrlService: McpOAuthPublicUrlService,
+		private readonly subscriptions: McpSubscriptionRegistryService,
 	) {}
 
 	async create(options: McpOAuthProviderFactoryOptions = {}): Promise<McpOAuthProviderRuntime> {
@@ -248,7 +250,7 @@ export class McpOAuthProviderFactory {
 			}
 		}
 
-		await providerCallback(request, response);
+		await this.subscriptions.runOAuthMutation(() => providerCallback(request, response));
 	}
 
 	private async readRequestBody(request: IncomingMessage): Promise<string> {
