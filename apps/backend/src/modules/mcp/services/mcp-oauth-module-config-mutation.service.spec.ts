@@ -9,6 +9,7 @@ import { MCP_MODULE_NAME, MCP_OAUTH_SERVER_STATE_KEY, McpCapability, McpOAuthSco
 import { McpConfigModel } from '../models/config.model';
 
 import { McpAuditService } from './mcp-audit.service';
+import { McpOAuthGlobalInvalidationService } from './mcp-oauth-global-invalidation.service';
 import { McpOAuthModuleConfigMutationService } from './mcp-oauth-module-config-mutation.service';
 import { McpOAuthSubscriptionBinding, McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
 
@@ -40,6 +41,7 @@ describe('McpOAuthModuleConfigMutationService', () => {
 	let config: McpConfigModel;
 	let configService: { getModuleConfig: jest.Mock; reload: jest.Mock };
 	let serverState: { increment: jest.Mock };
+	let globalInvalidation: { invalidate: jest.Mock };
 	let subscriptions: McpSubscriptionRegistryService;
 	let service: McpOAuthModuleConfigMutationService;
 
@@ -53,6 +55,9 @@ describe('McpOAuthModuleConfigMutationService', () => {
 		serverState = {
 			increment: jest.fn().mockResolvedValue({ affected: 1 }),
 		};
+		globalInvalidation = {
+			invalidate: jest.fn(async (_generations: string[], commit: () => Promise<void> | void) => commit()),
+		};
 		const auditService = {
 			recordSubscriptionClosed: jest.fn(),
 			recordSubscriptionOpened: jest.fn(),
@@ -62,6 +67,7 @@ describe('McpOAuthModuleConfigMutationService', () => {
 			configService as unknown as ConfigService,
 			serverState as unknown as Repository<McpOAuthServerStateEntity>,
 			subscriptions,
+			globalInvalidation as unknown as McpOAuthGlobalInvalidationService,
 		);
 	});
 
@@ -176,6 +182,56 @@ describe('McpOAuthModuleConfigMutationService', () => {
 
 		expect(serverState.increment).not.toHaveBeenCalled();
 		expect(commit).toHaveBeenCalledTimes(1);
+	});
+
+	it('routes public OAuth identity changes through global invalidation', async () => {
+		config.oauthPublicBaseUrl = 'https://panel.example.com';
+		const commit = jest.fn().mockImplementation(() => {
+			config.oauthPublicBaseUrl = 'https://new-panel.example.com';
+		});
+
+		await service.update(
+			{ type: MCP_MODULE_NAME, oauth_public_base_url: 'https://new-panel.example.com' } as UpdateMcpConfigDto,
+			commit,
+		);
+
+		expect(globalInvalidation.invalidate).toHaveBeenCalledWith(['publicIdentityGeneration'], expect.any(Function));
+		expect(serverState.increment).not.toHaveBeenCalled();
+		expect(commit).toHaveBeenCalledTimes(1);
+	});
+
+	it('advances public identity and module policy together when both inputs change', async () => {
+		config.oauthPublicBaseUrl = 'https://panel.example.com';
+		const commit = jest.fn();
+
+		await service.update(
+			{
+				type: MCP_MODULE_NAME,
+				oauth_public_base_url: 'https://new-panel.example.com',
+				capabilities: [McpCapability.READ],
+			} as UpdateMcpConfigDto,
+			commit,
+		);
+
+		expect(globalInvalidation.invalidate).toHaveBeenCalledWith(
+			['publicIdentityGeneration', 'modulePolicyGeneration'],
+			expect.any(Function),
+		);
+		expect(commit).toHaveBeenCalledTimes(1);
+	});
+
+	it('reloads configuration and propagates a failed public identity commit after invalidation', async () => {
+		config.oauthPublicBaseUrl = 'https://panel.example.com';
+		const commitError = new Error('configuration persistence failed');
+
+		await expect(
+			service.update(
+				{ type: MCP_MODULE_NAME, oauth_public_base_url: 'https://new-panel.example.com' } as UpdateMcpConfigDto,
+				() => Promise.reject(commitError),
+			),
+		).rejects.toBe(commitError);
+
+		expect(configService.reload).toHaveBeenCalledTimes(1);
 	});
 
 	it('does not commit or close streams when policy generation cannot advance', async () => {
