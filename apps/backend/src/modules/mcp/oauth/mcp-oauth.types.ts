@@ -3,6 +3,8 @@ import { MCP_OAUTH_PRINCIPAL_TYPE, McpCapability, McpOAuthScope } from '../mcp.c
 export interface McpOAuthPrincipal {
 	type: typeof MCP_OAUTH_PRINCIPAL_TYPE;
 	accessTokenId: string;
+	approverAuthorityGeneration: number;
+	approverId: string;
 	authorizationDeadline: number;
 	clientId: string;
 	clientGeneration: number;

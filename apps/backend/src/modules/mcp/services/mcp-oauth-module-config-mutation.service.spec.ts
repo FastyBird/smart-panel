@@ -23,6 +23,8 @@ const deferred = <T = void>(): { promise: Promise<T>; resolve: (value: T) => voi
 
 const oauthBinding = (effectiveScopes: McpOAuthScope[]): McpOAuthSubscriptionBinding => ({
 	accessTokenId: 'access-one',
+	approverAuthorityGeneration: 0,
+	approverId: 'approver-one',
 	grantId: 'grant-one',
 	authorizationDeadline: new Date(Date.now() + 60_000),
 	effectiveScopes,

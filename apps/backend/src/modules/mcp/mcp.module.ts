@@ -18,6 +18,8 @@ import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
 import { ToolsModule } from '../tools/tools.module';
+import { UserLifecycleMutationRegistryService } from '../users/services/user-lifecycle-mutation-registry.service';
+import { UsersModule } from '../users/users.module';
 import { WeatherModule } from '../weather/weather.module';
 
 import { McpClientsController } from './controllers/mcp-clients.controller';
@@ -30,6 +32,7 @@ import { McpClientEntity } from './entities/mcp-client.entity';
 import { McpInstallationEntity } from './entities/mcp-installation.entity';
 import {
 	McpOAuthAccessTokenEntity,
+	McpOAuthApproverAuthorityEntity,
 	McpOAuthAuthorizationCodeEntity,
 	McpOAuthClientEntity,
 	McpOAuthGrantEntity,
@@ -59,6 +62,7 @@ import { McpAuditService } from './services/mcp-audit.service';
 import { McpClientService } from './services/mcp-client.service';
 import { McpContextService } from './services/mcp-context.service';
 import { McpInstallationService } from './services/mcp-installation.service';
+import { McpOAuthApproverAuthorityService } from './services/mcp-oauth-approver-authority.service';
 import { McpOAuthArtifactService } from './services/mcp-oauth-artifact.service';
 import { McpOAuthClientService } from './services/mcp-oauth-client.service';
 import { McpOAuthInteractionService } from './services/mcp-oauth-interaction.service';
@@ -95,6 +99,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 			McpClientEntity,
 			McpInstallationEntity,
 			McpOAuthAccessTokenEntity,
+			McpOAuthApproverAuthorityEntity,
 			McpOAuthAuthorizationCodeEntity,
 			McpOAuthClientEntity,
 			McpOAuthGrantEntity,
@@ -108,6 +113,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 			McpOAuthServerStateEntity,
 		]),
 		ToolsModule,
+		UsersModule,
 		WeatherModule,
 	],
 	controllers: [
@@ -124,6 +130,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpContextService,
 		McpInstallationService,
 		McpOAuthArtifactService,
+		McpOAuthApproverAuthorityService,
 		McpOAuthClientService,
 		McpOAuthInteractionService,
 		McpOAuthManagementService,
@@ -157,6 +164,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpClientService,
 		McpInstallationService,
 		McpOAuthArtifactService,
+		McpOAuthApproverAuthorityService,
 		McpOAuthClientService,
 		McpOAuthInteractionService,
 		McpOAuthManagementService,
@@ -176,6 +184,8 @@ export class McpModule implements OnModuleInit {
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly moduleConfigMutations: ModuleConfigMutationRegistryService,
 		private readonly moduleConfigMutation: McpOAuthModuleConfigMutationService,
+		private readonly userLifecycleMutations: UserLifecycleMutationRegistryService,
+		private readonly approverAuthority: McpOAuthApproverAuthorityService,
 		private readonly extensionsService: ExtensionsService,
 		private readonly statsRegistryService: StatsRegistryService,
 		private readonly statsProvider: McpStatsProvider,
@@ -190,6 +200,7 @@ export class McpModule implements OnModuleInit {
 		this.moduleConfigMutations.register<UpdateMcpConfigDto>(MCP_MODULE_NAME, (update, commit) =>
 			this.moduleConfigMutation.update(update, commit),
 		);
+		this.userLifecycleMutations.register(this.approverAuthority);
 
 		for (const model of MCP_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);

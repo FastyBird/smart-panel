@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 5 in progress — approved-grant scope invalidation implemented
+**Status:** Phase 5 in progress — awaited approver lifecycle invalidation implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -182,6 +182,19 @@ amend ADR 0002.
 - [x] Prove a racing registration queued behind grant reduction observes the updated scopes and generation, while a
       registration that wins the gate is closed when its effective scope contracts.
 
+### Phase 5h — Awaited approver lifecycle invalidation
+
+- [x] Add durable per-approver authority generations, backfill existing grant generations, and require live access-token
+      validation to match the grant's captured approver generation.
+- [x] Add a generic awaited user-lifecycle mutation registry; wrap owner/admin demotion or deletion and OAuth
+      invalidation in one transaction while preserving authorized profile updates.
+- [x] Serialize consent grant commit and approver invalidation through the authoritative OAuth gate so consent either
+      commits first and is revoked or observes the new role/generation and fails.
+- [x] Atomically advance approver authority, revoke every matching grant and provider artifact, then close only OAuth
+      subscriptions approved by that user; preserve unrelated OAuth and static streams even when failures propagate.
+- [x] Keep the OAuth gate held through the user-row commit so failed demotions roll back with invalidation and consent
+      queued behind deletion observes the removed user before it can create a grant.
+
 ### Remaining Phase 5 controls
 
 - [x] Bind OAuth subscriptions to client, grant, access-token, optional refresh-family IDs, and an authorization
@@ -199,7 +212,7 @@ amend ADR 0002.
 - [x] Route module-ceiling, registered-client-maximum, and approved-grant scope reductions through awaited
       authoritative mutation paths that close every OAuth subscription whose effective scope set contracts before
       reporting success, including removal of `mcp:write` or `mcp:trigger` while `mcp:read` remains.
-- [ ] Replace fire-and-forget approver invalidation with an awaited lifecycle path for `UsersModule.User.Updated` and
+- [x] Replace fire-and-forget approver invalidation with an awaited lifecycle path for `UsersModule.User.Updated` and
       `UsersModule.User.Deleted`: when a grant approver is deleted or no longer has owner/admin role, atomically advance
       their authority generation before revoking every grant and token artifact they approved and closing matching
       subscriptions. A paused consent using the old generation must fail, role restoration must not revive old grants,
@@ -209,7 +222,7 @@ amend ADR 0002.
       every OAuth subscription while preserving static MCP credentials and streams.
 - [ ] Add revoke-all recovery action and document password-reset versus OAuth-revocation semantics.
 - [ ] Add audit events and unit/e2e coverage for targeted and global invalidation.
-- [ ] Prove user update/delete promises remain pending until approver invalidation and stream closure finish, propagate
+- [x] Prove user update/delete promises remain pending until approver invalidation and stream closure finish, propagate
       invalidation failure, and never leave a demoted/deleted approver's grant usable.
 - [ ] Add the user-facing OAuth enable switch only after startup verifies authorization-deadline timers, targeted
       artifact and live-scope-reduction subscription aborts, awaited approver lifecycle invalidation,

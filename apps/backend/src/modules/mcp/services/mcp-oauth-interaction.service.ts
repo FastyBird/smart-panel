@@ -21,6 +21,7 @@ import {
 } from '../models/mcp-oauth-interaction.model';
 
 import { McpInstallationService } from './mcp-installation.service';
+import { McpOAuthApproverAuthorityService } from './mcp-oauth-approver-authority.service';
 import { McpOAuthArtifactService } from './mcp-oauth-artifact.service';
 import { McpOAuthClientService } from './mcp-oauth-client.service';
 import { McpOAuthRuntimeService } from './mcp-oauth-runtime.service';
@@ -109,6 +110,7 @@ export class McpOAuthInteractionService {
 		private readonly runtimeService: McpOAuthRuntimeService,
 		private readonly clientsService: McpOAuthClientService,
 		private readonly artifactService: McpOAuthArtifactService,
+		private readonly approverAuthority: McpOAuthApproverAuthorityService,
 		private readonly installationService: McpInstallationService,
 		private readonly configService: ConfigService,
 	) {}
@@ -186,13 +188,18 @@ export class McpOAuthInteractionService {
 		}
 
 		(providerGrant as unknown as { expiresIn: number }).expiresIn = dto.expiresInDays * 24 * 60 * 60;
-		const grantId = await providerGrant.save();
-		await this.artifactService.createGrant({
-			providerGrantId: grantId,
-			clientId: context.client.id,
-			approvedById: userId,
-			approvedScopes: dto.scopes,
-			expiresAt: new Date(Date.now() + dto.expiresInDays * DAYS_TO_MILLISECONDS),
+		const grantId = await this.approverAuthority.runAuthorized(userId, async (approverAuthorityGeneration) => {
+			const savedGrantId = await providerGrant.save();
+			await this.artifactService.createGrant({
+				providerGrantId: savedGrantId,
+				clientId: context.client.id,
+				approvedById: userId,
+				approvedScopes: dto.scopes,
+				expiresAt: new Date(Date.now() + dto.expiresInDays * DAYS_TO_MILLISECONDS),
+				approverAuthorityGeneration,
+			});
+
+			return savedGrantId;
 		});
 		const completion = await this.finish(provider, request, { consent: { grantId } }, true);
 

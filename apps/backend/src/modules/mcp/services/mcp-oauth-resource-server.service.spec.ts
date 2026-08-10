@@ -6,6 +6,7 @@ import { hashToken } from '../../auth/utils/token.utils';
 import { ConfigService } from '../../config/services/config.service';
 import { UserRole } from '../../users/users.constants';
 import {
+	McpOAuthApproverAuthorityEntity,
 	McpOAuthGrantEntity,
 	McpOAuthProviderArtifactEntity,
 	McpOAuthProviderRevokedGrantEntity,
@@ -48,6 +49,7 @@ describe('McpOAuthResourceServerService', () => {
 	let artifactRepository: { findOneBy: jest.Mock };
 	let revokedGrantRepository: { findOneBy: jest.Mock };
 	let grantRepository: { findOne: jest.Mock };
+	let approverAuthorityRepository: { findOneBy: jest.Mock };
 	let serverStateRepository: { findOneBy: jest.Mock };
 	let service: McpOAuthResourceServerService;
 
@@ -91,11 +93,13 @@ describe('McpOAuthResourceServerService', () => {
 			approvedScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE, McpOAuthScope.TRIGGER],
 			expiresAt: new Date(Date.now() + 60_000),
 			generation: 3,
+			approverAuthorityGeneration: 4,
 			revokedAt: null,
 		});
 		artifactRepository = { findOneBy: jest.fn().mockImplementation(() => Promise.resolve(artifact)) };
 		revokedGrantRepository = { findOneBy: jest.fn().mockResolvedValue(null) };
 		grantRepository = { findOne: jest.fn().mockImplementation(() => Promise.resolve(grant)) };
+		approverAuthorityRepository = { findOneBy: jest.fn().mockResolvedValue({ generation: 4 }) };
 		serverStateRepository = {
 			findOneBy: jest.fn().mockResolvedValue({ key: 'primary', modulePolicyGeneration: 1 }),
 		};
@@ -103,6 +107,7 @@ describe('McpOAuthResourceServerService', () => {
 			artifactRepository as unknown as Repository<McpOAuthProviderArtifactEntity>,
 			revokedGrantRepository as unknown as Repository<McpOAuthProviderRevokedGrantEntity>,
 			grantRepository as unknown as Repository<McpOAuthGrantEntity>,
+			approverAuthorityRepository as unknown as Repository<McpOAuthApproverAuthorityEntity>,
 			serverStateRepository as unknown as Repository<McpOAuthServerStateEntity>,
 			{ getModuleConfig: jest.fn(() => config) } as unknown as ConfigService,
 			{ getInstallationId: jest.fn().mockResolvedValue(INSTALLATION_ID) } as unknown as McpInstallationService,
@@ -178,6 +183,8 @@ describe('McpOAuthResourceServerService', () => {
 		expect(authInfo.extra?.principal).toEqual(
 			expect.objectContaining({
 				accessTokenId: 'access-token-management-id',
+				approverAuthorityGeneration: 4,
+				approverId: APPROVER_ID,
 				clientGeneration: 2,
 				effectiveCapabilities: [McpCapability.READ],
 				effectiveScopes: [McpOAuthScope.READ],
@@ -193,6 +200,12 @@ describe('McpOAuthResourceServerService', () => {
 		const authInfo = await service.verifyMcpBearerToken(`Bearer ${RAW_TOKEN}`, [McpCapability.READ]);
 
 		expect(authInfo.scopes).toEqual([McpCapability.READ, McpCapability.WRITE, McpCapability.TRIGGER]);
+	});
+
+	it('rejects a grant from an earlier approver authority generation', async () => {
+		approverAuthorityRepository.findOneBy.mockResolvedValue({ generation: 5 });
+
+		await expect(service.verifyAccessToken(RAW_TOKEN)).rejects.toMatchObject({ code: OAuthErrorCode.InvalidToken });
 	});
 
 	it('caps the resource-server authorization deadline at the grant expiry', async () => {
