@@ -32,6 +32,7 @@ export class McpOAuthGlobalInvalidationService {
 
 	async invalidate(generations: McpOAuthGlobalGeneration[], commit: () => Promise<void> | void): Promise<void> {
 		let commitError: unknown;
+		let commitFailed = false;
 
 		await this.subscriptions.closeAllOAuth(async () => {
 			await this.dataSource.transaction((manager) => this.advanceAndRevoke(manager, generations));
@@ -39,11 +40,12 @@ export class McpOAuthGlobalInvalidationService {
 			try {
 				await commit();
 			} catch (error) {
+				commitFailed = true;
 				commitError = error;
 			}
 		});
 
-		if (commitError) throw commitError;
+		if (commitFailed) throw commitError;
 	}
 
 	private async advanceAndRevoke(manager: EntityManager, generations: McpOAuthGlobalGeneration[]): Promise<void> {

@@ -185,6 +185,21 @@ describe('McpOAuthGlobalInvalidationService', () => {
 		).toMatchObject({ publicIdentityGeneration: 1 });
 	});
 
+	it.each([undefined, null])('propagates a falsy external commit failure (%s)', async (commitError) => {
+		let rejected = false;
+
+		try {
+			// eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- Regression coverage requires falsy rejection reasons.
+			await service.invalidate(['publicIdentityGeneration'], () => Promise.reject(commitError));
+		} catch (error) {
+			rejected = true;
+			expect(error).toBe(commitError);
+		}
+
+		expect(rejected).toBe(true);
+		expect(await dataSource.getRepository(McpOAuthProviderArtifactEntity).count()).toBe(0);
+	});
+
 	it('holds queued OAuth work until identity advancement and revocation complete', async () => {
 		const commitStarted = deferred();
 		const releaseCommit = deferred();
