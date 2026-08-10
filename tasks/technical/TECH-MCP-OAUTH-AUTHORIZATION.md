@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 5 approved-grant scope invalidation complete
+Status: in progress — Phase 5 awaited approver lifecycle invalidation complete
 
 ## 1. Business goal
 

@@ -507,6 +507,8 @@ describe('McpOAuthManagementService', () => {
 				clientId: client.id,
 				binding: {
 					accessTokenId: accessId,
+					approverAuthorityGeneration: 0,
+					approverId: grant.approvedById,
 					grantId: grant.id,
 					authorizationDeadline: new Date(Date.now() + 60_000),
 					effectiveScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE],
@@ -560,6 +562,8 @@ describe('McpOAuthManagementService', () => {
 				clientId: client.id,
 				binding: {
 					accessTokenId: uuid(),
+					approverAuthorityGeneration: 0,
+					approverId: grant.approvedById,
 					grantId: grant.id,
 					authorizationDeadline: new Date(Date.now() + 60_000),
 					effectiveScopes: [McpOAuthScope.READ],
@@ -641,6 +645,8 @@ describe('McpOAuthManagementService', () => {
 				clientId,
 				binding: {
 					accessTokenId: tokenId,
+					approverAuthorityGeneration: 0,
+					approverId: grant.approvedById,
 					grantId,
 					...(refreshFamilyId ? { refreshFamilyId } : {}),
 					authorizationDeadline: new Date(Date.now() + 60_000),

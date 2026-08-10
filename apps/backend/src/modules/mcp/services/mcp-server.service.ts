@@ -336,6 +336,8 @@ export class McpServerService implements OnApplicationShutdown {
 			clientId: value.clientId,
 			oauth: {
 				accessTokenId: value.accessTokenId,
+				approverAuthorityGeneration: value.approverAuthorityGeneration,
+				approverId: value.approverId,
 				grantId: value.grantId,
 				...(value.refreshFamilyId ? { refreshFamilyId: value.refreshFamilyId } : {}),
 				authorizationDeadline: new Date(value.authorizationDeadline),
@@ -384,11 +386,17 @@ export class McpServerService implements OnApplicationShutdown {
 		if (typeof value !== 'object' || value === null) return false;
 
 		const principal = value as Partial<McpOAuthPrincipal>;
-		const generations = [principal.modulePolicyGeneration, principal.clientGeneration, principal.grantGeneration];
+		const generations = [
+			principal.modulePolicyGeneration,
+			principal.clientGeneration,
+			principal.grantGeneration,
+			principal.approverAuthorityGeneration,
+		];
 
 		return (
 			principal.type === MCP_OAUTH_PRINCIPAL_TYPE &&
 			this.isNonEmptyString(principal.accessTokenId) &&
+			this.isNonEmptyString(principal.approverId) &&
 			this.isNonEmptyString(principal.clientId) &&
 			this.isNonEmptyString(principal.grantId) &&
 			(principal.refreshFamilyId === undefined || this.isNonEmptyString(principal.refreshFamilyId)) &&

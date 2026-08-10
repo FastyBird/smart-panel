@@ -107,6 +107,7 @@ export class UsersService {
 
 	async update(id: string, updateDto: UpdateUserDto): Promise<UserEntity> {
 		const user = await this.getOneOrThrow(id);
+		const previousRole = user.role;
 
 		const dtoInstance = await this.validateDto<UpdateUserDto>(UpdateUserDto, updateDto);
 
@@ -166,7 +167,7 @@ export class UsersService {
 		this.logger.debug(`Successfully updated user with id=${updatedUser.id}`);
 
 		if (entityFieldsChanged) {
-			this.eventEmitter.emit(EventType.USER_UPDATED, updatedUser);
+			await this.eventEmitter.emitAsync(EventType.USER_UPDATED, updatedUser, previousRole);
 		}
 
 		return updatedUser;
@@ -175,11 +176,10 @@ export class UsersService {
 	async remove(id: string): Promise<void> {
 		const user = await this.getOneOrThrow(id);
 
+		await this.eventEmitter.emitAsync(EventType.USER_DELETED, user);
 		await this.repository.delete(user.id);
 
 		this.logger.log(`Successfully removed user with id=${id}`);
-
-		this.eventEmitter.emit(EventType.USER_DELETED, user);
 	}
 
 	async getOneOrThrow(id: string): Promise<UserEntity> {

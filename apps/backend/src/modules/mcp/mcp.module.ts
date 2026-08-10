@@ -30,6 +30,7 @@ import { McpClientEntity } from './entities/mcp-client.entity';
 import { McpInstallationEntity } from './entities/mcp-installation.entity';
 import {
 	McpOAuthAccessTokenEntity,
+	McpOAuthApproverAuthorityEntity,
 	McpOAuthAuthorizationCodeEntity,
 	McpOAuthClientEntity,
 	McpOAuthGrantEntity,
@@ -44,6 +45,7 @@ import {
 } from './entities/mcp-oauth.entity';
 import { McpClientGuard } from './guards/mcp-client.guard';
 import { McpConfigListener } from './listeners/mcp-config.listener';
+import { McpUsersListener } from './listeners/mcp-users.listener';
 import {
 	MCP_CATALOG_REGISTRAR,
 	MCP_MODULE_API_TAG_DESCRIPTION,
@@ -59,6 +61,7 @@ import { McpAuditService } from './services/mcp-audit.service';
 import { McpClientService } from './services/mcp-client.service';
 import { McpContextService } from './services/mcp-context.service';
 import { McpInstallationService } from './services/mcp-installation.service';
+import { McpOAuthApproverAuthorityService } from './services/mcp-oauth-approver-authority.service';
 import { McpOAuthArtifactService } from './services/mcp-oauth-artifact.service';
 import { McpOAuthClientService } from './services/mcp-oauth-client.service';
 import { McpOAuthInteractionService } from './services/mcp-oauth-interaction.service';
@@ -95,6 +98,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 			McpClientEntity,
 			McpInstallationEntity,
 			McpOAuthAccessTokenEntity,
+			McpOAuthApproverAuthorityEntity,
 			McpOAuthAuthorizationCodeEntity,
 			McpOAuthClientEntity,
 			McpOAuthGrantEntity,
@@ -121,9 +125,11 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpClientGuard,
 		McpClientService,
 		McpConfigListener,
+		McpUsersListener,
 		McpContextService,
 		McpInstallationService,
 		McpOAuthArtifactService,
+		McpOAuthApproverAuthorityService,
 		McpOAuthClientService,
 		McpOAuthInteractionService,
 		McpOAuthManagementService,
@@ -157,6 +163,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpClientService,
 		McpInstallationService,
 		McpOAuthArtifactService,
+		McpOAuthApproverAuthorityService,
 		McpOAuthClientService,
 		McpOAuthInteractionService,
 		McpOAuthManagementService,

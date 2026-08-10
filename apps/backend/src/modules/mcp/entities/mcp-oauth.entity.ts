@@ -324,6 +324,15 @@ export class McpOAuthServerStateEntity {
 	updatedAt: Date | string | null;
 }
 
+@Entity('mcp_module_oauth_approver_authorities')
+export class McpOAuthApproverAuthorityEntity {
+	@PrimaryColumn({ type: 'varchar' })
+	approverId: string;
+
+	@Column({ type: 'integer', default: 0 })
+	generation: number;
+}
+
 @Entity('mcp_module_oauth_provider_artifacts')
 @Index(['model', 'idHash'], { unique: true })
 export class McpOAuthProviderArtifactEntity {

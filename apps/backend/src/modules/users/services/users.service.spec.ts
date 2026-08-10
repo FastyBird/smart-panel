@@ -64,6 +64,7 @@ describe('UsersService', () => {
 					provide: EventEmitter2,
 					useValue: {
 						emit: jest.fn(() => {}),
+						emitAsync: jest.fn(() => Promise.resolve([])),
 					},
 				},
 			],
@@ -213,7 +214,23 @@ describe('UsersService', () => {
 			expect(repository.findOne).toHaveBeenCalledWith({
 				where: { id: mockUser.id },
 			});
-			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.USER_UPDATED, toInstance(UserEntity, mockUpdatedUser));
+			expect(eventEmitter.emitAsync).toHaveBeenCalledWith(
+				EventType.USER_UPDATED,
+				toInstance(UserEntity, mockUpdatedUser),
+				mockUser.role,
+			);
+		});
+
+		it('propagates awaited update lifecycle failures', async () => {
+			const updatedUser = toInstance(UserEntity, { ...mockUser, firstName: 'UpdatedName' });
+			jest
+				.spyOn(repository, 'findOne')
+				.mockResolvedValueOnce(toInstance(UserEntity, mockUser))
+				.mockResolvedValueOnce(updatedUser);
+			jest.spyOn(repository, 'save').mockResolvedValue(updatedUser);
+			jest.spyOn(eventEmitter, 'emitAsync').mockRejectedValueOnce(new Error('invalidation failed'));
+
+			await expect(service.update(mockUser.id, { first_name: 'UpdatedName' })).rejects.toThrow('invalidation failed');
 		});
 
 		it('should throw UsersNotFoundException if user not found', async () => {
@@ -235,7 +252,19 @@ describe('UsersService', () => {
 			await service.remove(mockUser.id);
 
 			expect(repository.delete).toHaveBeenCalledWith(mockUser.id);
-			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.USER_DELETED, toInstance(UserEntity, mockUser));
+			expect(eventEmitter.emitAsync).toHaveBeenCalledWith(EventType.USER_DELETED, toInstance(UserEntity, mockUser));
+			expect((eventEmitter.emitAsync as jest.Mock).mock.invocationCallOrder[0]).toBeLessThan(
+				(repository.delete as jest.Mock).mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not delete the user when awaited lifecycle invalidation fails', async () => {
+			jest.spyOn(service, 'findOne').mockResolvedValue(toInstance(UserEntity, mockUser));
+			jest.spyOn(eventEmitter, 'emitAsync').mockRejectedValueOnce(new Error('invalidation failed'));
+
+			await expect(service.remove(mockUser.id)).rejects.toThrow('invalidation failed');
+
+			expect(repository.delete).not.toHaveBeenCalled();
 		});
 
 		it('should throw UsersNotFoundException if user not found', async () => {

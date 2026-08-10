@@ -10,6 +10,7 @@ import { McpOAuthScope } from '../mcp.constants';
 import { McpOAuthInteractionAction } from '../models/mcp-oauth-interaction.model';
 
 import { McpInstallationService } from './mcp-installation.service';
+import { McpOAuthApproverAuthorityService } from './mcp-oauth-approver-authority.service';
 import { McpOAuthArtifactService } from './mcp-oauth-artifact.service';
 import { McpOAuthClientService } from './mcp-oauth-client.service';
 import { McpOAuthInteractionService } from './mcp-oauth-interaction.service';
@@ -103,6 +104,9 @@ describe('McpOAuthInteractionService', () => {
 				Promise.resolve({ id: uuid() }),
 		),
 	};
+	const approverAuthority = {
+		runAuthorized: jest.fn((_userId: string, operation: (generation: number) => Promise<unknown>) => operation(4)),
+	};
 	const installationService = { getInstallationId: jest.fn(() => Promise.resolve(uuid())) };
 	const configService = { getModuleConfig: jest.fn(() => ({ serviceName: 'Kitchen panel' })) };
 	const runtimeService = { getActive: jest.fn(() => ({ provider, urls })) };
@@ -119,6 +123,7 @@ describe('McpOAuthInteractionService', () => {
 			runtimeService as unknown as McpOAuthRuntimeService,
 			clientsService as unknown as McpOAuthClientService,
 			artifactService as unknown as McpOAuthArtifactService,
+			approverAuthority as unknown as McpOAuthApproverAuthorityService,
 			installationService as unknown as McpInstallationService,
 			configService as unknown as ConfigService,
 		);
@@ -183,6 +188,7 @@ describe('McpOAuthInteractionService', () => {
 			approvedById?: string;
 			approvedScopes?: McpOAuthScope[];
 			expiresAt?: unknown;
+			approverAuthorityGeneration?: number;
 		};
 
 		expect(grantInput).toMatchObject({
@@ -190,6 +196,7 @@ describe('McpOAuthInteractionService', () => {
 			clientId: client.id,
 			approvedById: userId,
 			approvedScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS],
+			approverAuthorityGeneration: 4,
 		});
 		expect(grantInput.expiresAt).toBeInstanceOf(Date);
 		expect(completion.redirectTo).toBe('/auth/resume');

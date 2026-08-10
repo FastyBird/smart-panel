@@ -25,6 +25,8 @@ const deferred = <T = void>(): { promise: Promise<T>; resolve: (value: T) => voi
 
 const oauthBinding = (overrides: Partial<McpOAuthSubscriptionBinding> = {}): McpOAuthSubscriptionBinding => ({
 	accessTokenId: 'access-one',
+	approverAuthorityGeneration: 0,
+	approverId: 'approver-one',
 	grantId: 'grant-one',
 	authorizationDeadline: new Date(Date.now() + 60_000),
 	effectiveScopes: [McpOAuthScope.READ],
@@ -322,6 +324,22 @@ describe('McpSubscriptionRegistryService', () => {
 		expect(matchingRead.signal.aborted).toBe(false);
 		expect(matchingWrite.signal.aborted).toBe(true);
 		expect(otherGrant.signal.aborted).toBe(false);
+		expect(staticStream.signal.aborted).toBe(false);
+	});
+
+	it('closes only OAuth streams approved by the invalidated user', async () => {
+		const matching = await service.openOAuth('matching-approver', () => Promise.resolve(oauthRegistration()));
+		const other = await service.openOAuth('other-approver', () =>
+			Promise.resolve(oauthRegistration({ approverId: 'approver-two' })),
+		);
+		const staticStream = service.open('static-client');
+		const advanceGeneration = jest.fn().mockResolvedValue(undefined);
+
+		await service.closeOAuthApprover('approver-one', advanceGeneration);
+
+		expect(advanceGeneration).toHaveBeenCalledTimes(1);
+		expect(matching.signal.aborted).toBe(true);
+		expect(other.signal.aborted).toBe(false);
 		expect(staticStream.signal.aborted).toBe(false);
 	});
 

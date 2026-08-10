@@ -23,6 +23,8 @@ const oauthAuthInfo = (clientGeneration = 2): AuthInfo => ({
 		principal: {
 			type: MCP_OAUTH_PRINCIPAL_TYPE,
 			accessTokenId: 'access-token-id',
+			approverAuthorityGeneration: 4,
+			approverId: 'approver-id',
 			authorizationDeadline: Date.now() + 60_000,
 			clientId: 'internal-client-id',
 			clientGeneration,
@@ -159,6 +161,8 @@ describe('McpServerService policy revision', () => {
 			clientId: 'internal-client-id',
 			oauth: {
 				accessTokenId: 'access-token-id',
+				approverAuthorityGeneration: 4,
+				approverId: 'approver-id',
 				grantId: 'grant-id',
 				refreshFamilyId: 'refresh-family-id',
 				authorizationDeadline: new Date(authorizationDeadline),

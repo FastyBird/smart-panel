@@ -17,6 +17,7 @@ import { hashToken } from '../../auth/utils/token.utils';
 import { ConfigService } from '../../config/services/config.service';
 import { UserRole } from '../../users/users.constants';
 import {
+	McpOAuthApproverAuthorityEntity,
 	McpOAuthGrantEntity,
 	McpOAuthProviderArtifactEntity,
 	McpOAuthProviderRevokedGrantEntity,
@@ -64,6 +65,8 @@ export class McpOAuthResourceServerService implements OAuthTokenVerifier {
 		private readonly revokedGrantRepository: Repository<McpOAuthProviderRevokedGrantEntity>,
 		@InjectRepository(McpOAuthGrantEntity)
 		private readonly grantRepository: Repository<McpOAuthGrantEntity>,
+		@InjectRepository(McpOAuthApproverAuthorityEntity)
+		private readonly approverAuthorities: Repository<McpOAuthApproverAuthorityEntity>,
 		@InjectRepository(McpOAuthServerStateEntity)
 		private readonly serverStateRepository: Repository<McpOAuthServerStateEntity>,
 		private readonly configService: ConfigService,
@@ -112,6 +115,9 @@ export class McpOAuthResourceServerService implements OAuthTokenVerifier {
 			}),
 			this.serverStateRepository.findOneBy({ key: MCP_OAUTH_SERVER_STATE_KEY }),
 		]);
+		const approverAuthority = grant?.approvedById
+			? await this.approverAuthorities.findOneBy({ approverId: grant.approvedById })
+			: null;
 		const urls = this.requireUrls();
 		const installationId = await this.installationService.getInstallationId();
 		const config = this.configService.getModuleConfig<McpConfigModel>(MCP_MODULE_NAME);
@@ -124,6 +130,7 @@ export class McpOAuthResourceServerService implements OAuthTokenVerifier {
 			!grant.client.enabled ||
 			!grant.approvedBy ||
 			!grant.approvedById ||
+			grant.approverAuthorityGeneration !== (approverAuthority?.generation ?? 0) ||
 			![UserRole.OWNER, UserRole.ADMIN].includes(grant.approvedBy.role) ||
 			grant.revokedAt !== null ||
 			grant.expiresAt <= new Date() ||
@@ -150,6 +157,8 @@ export class McpOAuthResourceServerService implements OAuthTokenVerifier {
 		const principal: McpOAuthPrincipal = {
 			type: MCP_OAUTH_PRINCIPAL_TYPE,
 			accessTokenId: artifact.managementId,
+			approverAuthorityGeneration: grant.approverAuthorityGeneration,
+			approverId: grant.approvedById,
 			authorizationDeadline,
 			clientId: grant.client.id,
 			clientGeneration: grant.client.generation,

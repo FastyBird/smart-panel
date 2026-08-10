@@ -37,6 +37,8 @@ export interface McpSubscriptionHandle {
 
 export interface McpOAuthSubscriptionBinding {
 	accessTokenId: string;
+	approverAuthorityGeneration: number;
+	approverId: string;
 	grantId: string;
 	refreshFamilyId?: string;
 	authorizationDeadline: Date;
@@ -167,6 +169,14 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 
 	async closeOAuthGrant(grantId: string, advanceGeneration: McpOAuthGenerationAdvance): Promise<void> {
 		await this.closeOAuthMatching(advanceGeneration, (subscription) => subscription.oauth?.grantId === grantId);
+	}
+
+	async closeOAuthApprover(approverId: string, advanceGeneration: McpOAuthGenerationAdvance): Promise<void> {
+		await this.closeOAuthMatching(advanceGeneration, (subscription) => subscription.oauth?.approverId === approverId);
+	}
+
+	async runOAuthMutation<T>(operation: () => Promise<T>): Promise<T> {
+		return this.withOAuthGate(operation);
 	}
 
 	async closeOAuthGrantScopeContractions(
