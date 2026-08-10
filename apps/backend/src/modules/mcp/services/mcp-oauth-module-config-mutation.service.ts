@@ -44,6 +44,7 @@ export class McpOAuthModuleConfigMutationService {
 			try {
 				await commit();
 			} catch (error) {
+				this.configService.reload();
 				commitFailed = true;
 				commitError = error;
 			}

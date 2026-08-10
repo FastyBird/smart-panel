@@ -33,7 +33,7 @@ const oauthBinding = (effectiveScopes: McpOAuthScope[]): McpOAuthSubscriptionBin
 
 describe('McpOAuthModuleConfigMutationService', () => {
 	let config: McpConfigModel;
-	let configService: { getModuleConfig: jest.Mock };
+	let configService: { getModuleConfig: jest.Mock; reload: jest.Mock };
 	let serverState: { increment: jest.Mock };
 	let subscriptions: McpSubscriptionRegistryService;
 	let service: McpOAuthModuleConfigMutationService;
@@ -43,6 +43,7 @@ describe('McpOAuthModuleConfigMutationService', () => {
 		config.capabilities = [McpCapability.READ, McpCapability.WRITE, McpCapability.TRIGGER];
 		configService = {
 			getModuleConfig: jest.fn().mockImplementation(() => config),
+			reload: jest.fn(),
 		};
 		serverState = {
 			increment: jest.fn().mockResolvedValue({ affected: 1 }),
@@ -209,7 +210,31 @@ describe('McpOAuthModuleConfigMutationService', () => {
 		).rejects.toBe(commitError);
 
 		expect(serverState.increment).toHaveBeenCalledTimes(1);
+		expect(configService.reload).toHaveBeenCalledTimes(1);
 		expect(readStream.signal.aborted).toBe(false);
 		expect(writeStream.signal.aborted).toBe(true);
+	});
+
+	it('discards an unpersisted capability expansion before propagating a commit failure', async () => {
+		config.capabilities = [McpCapability.READ];
+		configService.reload.mockImplementation(() => {
+			config.capabilities = [McpCapability.READ];
+		});
+		const commitError = new Error('configuration persistence failed');
+		const commit = jest.fn().mockImplementation(() => {
+			config.capabilities = [McpCapability.READ, McpCapability.WRITE];
+			throw commitError;
+		});
+
+		await expect(
+			service.update(
+				{ type: MCP_MODULE_NAME, capabilities: [McpCapability.READ, McpCapability.WRITE] } as UpdateMcpConfigDto,
+				commit,
+			),
+		).rejects.toBe(commitError);
+
+		expect(serverState.increment).toHaveBeenCalledTimes(1);
+		expect(configService.reload).toHaveBeenCalledTimes(1);
+		expect(config.capabilities).toEqual([McpCapability.READ]);
 	});
 });
