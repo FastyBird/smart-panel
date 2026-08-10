@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 5 in progress — authoritative artifact request gate foundation implemented
+**Status:** Phase 5 in progress — durable authorization-generation snapshot foundation implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -203,6 +203,16 @@ amend ADR 0002.
       approver-authority gate so demotion cannot interleave between consent and code issuance.
 - [x] Prove both gate orderings deterministically: provider work that commits first is visible to the following
       invalidation, while provider work queued behind invalidation observes the advanced authorization state and fails.
+
+### Phase 5j — Durable authorization-generation snapshot foundation
+
+- [x] Persist the OAuth-enabled, server-secret, public-identity, client, and module-policy generations captured by each
+      approved grant, with an incremental migration that safely backfills existing grants.
+- [x] Persist the complete applicable grant and authorization-input generation snapshot on authorization-code,
+      access-token, and refresh-token provider artifacts without storing raw bearer values.
+- [x] Fail provider artifact lookup/issuance and resource-server access-token validation when any captured generation is
+      unavailable or differs from live state, so advancing a generation permanently prevents stale artifact reuse.
+- [x] Backfill existing linked bearer artifacts and prove all seven generation dimensions fail closed after advancement.
 
 ### Remaining Phase 5 controls
 

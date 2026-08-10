@@ -4,11 +4,15 @@ import { DataSource, IsNull, LessThanOrEqual, Not, Repository } from 'typeorm';
 
 import { hashToken } from '../../auth/utils/token.utils';
 import {
+	McpOAuthApproverAuthorityEntity,
+	McpOAuthGrantEntity,
 	McpOAuthProviderArtifactEntity,
 	McpOAuthProviderRefreshFamilyLineageEntity,
 	McpOAuthProviderRevokedGrantEntity,
 	McpOAuthProviderRevokedRefreshFamilyEntity,
+	McpOAuthServerStateEntity,
 } from '../entities/mcp-oauth.entity';
+import { MCP_OAUTH_SERVER_STATE_KEY } from '../mcp.constants';
 import { McpOAuthClientService } from '../services/mcp-oauth-client.service';
 
 export interface McpOAuthProviderAdapterOptions {
@@ -21,6 +25,27 @@ const isInMemoryDataSource = (dataSource: DataSource): boolean =>
 	'database' in dataSource.options && dataSource.options.database === ':memory:';
 
 const HASH_ONLY_BEARER_MODELS = new Set(['AuthorizationCode', 'AccessToken', 'RefreshToken']);
+
+type McpOAuthAuthorizationSnapshot = Pick<
+	McpOAuthProviderArtifactEntity,
+	| 'oauthEnabledGeneration'
+	| 'serverSecretVersion'
+	| 'publicIdentityGeneration'
+	| 'clientGeneration'
+	| 'grantGeneration'
+	| 'modulePolicyGeneration'
+	| 'approverAuthorityGeneration'
+>;
+
+const EMPTY_AUTHORIZATION_SNAPSHOT: McpOAuthAuthorizationSnapshot = {
+	oauthEnabledGeneration: null,
+	serverSecretVersion: null,
+	publicIdentityGeneration: null,
+	clientGeneration: null,
+	grantGeneration: null,
+	modulePolicyGeneration: null,
+	approverAuthorityGeneration: null,
+};
 
 const serializePayload = (model: string, payload: AdapterPayload): string => {
 	if (!HASH_ONLY_BEARER_MODELS.has(model)) return JSON.stringify(payload);
@@ -66,8 +91,14 @@ export const createMcpOAuthProviderAdapter = (
 			const idHash = hashToken(id);
 			const existing = await repository.findOneBy({ model: this.model, idHash });
 			const refreshFamilyId = await this.resolveRefreshFamilyId(repository, existing, grantIdHash, payload);
+			const authorizationSnapshot = HASH_ONLY_BEARER_MODELS.has(this.model)
+				? await this.resolveAuthorizationSnapshot(grantIdHash)
+				: EMPTY_AUTHORIZATION_SNAPSHOT;
 
-			if (refreshFamilyId !== null && (await this.isRefreshFamilyRevoked(refreshFamilyId))) {
+			if (
+				(HASH_ONLY_BEARER_MODELS.has(this.model) && authorizationSnapshot === null) ||
+				(refreshFamilyId !== null && (await this.isRefreshFamilyRevoked(refreshFamilyId)))
+			) {
 				throw this.artifactReuseError();
 			}
 
@@ -84,6 +115,7 @@ export const createMcpOAuthProviderAdapter = (
 					uidHash: typeof payload.uid === 'string' ? hashToken(payload.uid) : null,
 					consumedAt: null,
 					expiresAt: expiresIn === undefined ? null : Date.now() + expiresIn * 1_000,
+					...(authorizationSnapshot ?? EMPTY_AUTHORIZATION_SNAPSHOT),
 				},
 				['model', 'idHash'],
 			);
@@ -267,6 +299,11 @@ export const createMcpOAuthProviderAdapter = (
 			presentedId?: string,
 		): Promise<AdapterPayload | undefined> {
 			if (!record) return undefined;
+			if (HASH_ONLY_BEARER_MODELS.has(record.model)) {
+				const snapshot = await this.resolveAuthorizationSnapshot(record.grantIdHash);
+
+				if (!snapshot || !this.sameAuthorizationSnapshot(record, snapshot)) return undefined;
+			}
 
 			const [grantRevoked, refreshFamilyRevoked] = await Promise.all([
 				record.grantIdHash === null ? false : this.isGrantRevoked(record.grantIdHash),
@@ -285,6 +322,60 @@ export const createMcpOAuthProviderAdapter = (
 			}
 
 			return readPayload(record, presentedId);
+		}
+
+		private async resolveAuthorizationSnapshot(
+			grantIdHash: string | null,
+		): Promise<McpOAuthAuthorizationSnapshot | null> {
+			if (!grantIdHash) return null;
+
+			const [grant, serverState] = await Promise.all([
+				dataSource.getRepository(McpOAuthGrantEntity).findOne({
+					where: { providerGrantIdHash: grantIdHash },
+					relations: { client: true },
+				}),
+				dataSource.getRepository(McpOAuthServerStateEntity).findOneBy({ key: MCP_OAUTH_SERVER_STATE_KEY }),
+			]);
+
+			if (!grant?.client || !grant.approvedById || !serverState) return null;
+
+			const approverAuthority = await dataSource
+				.getRepository(McpOAuthApproverAuthorityEntity)
+				.findOneBy({ approverId: grant.approvedById });
+			const approverAuthorityGeneration = approverAuthority?.generation ?? 0;
+
+			if (
+				!grant.client.enabled ||
+				grant.revokedAt !== null ||
+				grant.expiresAt <= new Date() ||
+				grant.oauthEnabledGeneration !== serverState.oauthEnabledGeneration ||
+				grant.serverSecretVersion !== serverState.serverSecretVersion ||
+				grant.publicIdentityGeneration !== serverState.publicIdentityGeneration ||
+				grant.clientGeneration !== grant.client.generation ||
+				grant.modulePolicyGeneration !== serverState.modulePolicyGeneration ||
+				grant.approverAuthorityGeneration !== approverAuthorityGeneration
+			) {
+				return null;
+			}
+
+			return {
+				oauthEnabledGeneration: serverState.oauthEnabledGeneration,
+				serverSecretVersion: serverState.serverSecretVersion,
+				publicIdentityGeneration: serverState.publicIdentityGeneration,
+				clientGeneration: grant.client.generation,
+				grantGeneration: grant.generation,
+				modulePolicyGeneration: serverState.modulePolicyGeneration,
+				approverAuthorityGeneration,
+			};
+		}
+
+		private sameAuthorizationSnapshot(
+			record: McpOAuthProviderArtifactEntity,
+			snapshot: McpOAuthAuthorizationSnapshot,
+		): boolean {
+			return (Object.keys(snapshot) as Array<keyof McpOAuthAuthorizationSnapshot>).every(
+				(key) => record[key] === snapshot[key],
+			);
 		}
 
 		private async isGrantRevoked(grantIdHash: string): Promise<boolean> {

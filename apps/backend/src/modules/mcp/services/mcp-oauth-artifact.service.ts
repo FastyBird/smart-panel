@@ -13,11 +13,13 @@ import {
 	McpOAuthInteractionEntity,
 	McpOAuthRefreshTokenEntity,
 	McpOAuthRefreshTokenFamilyEntity,
+	McpOAuthServerStateEntity,
 } from '../entities/mcp-oauth.entity';
 import {
 	MCP_OAUTH_ACCESS_TOKEN_LIFETIME_MS,
 	MCP_OAUTH_GRANT_LIFETIME_MS,
 	MCP_OAUTH_REFRESH_FAMILY_LIFETIME_MS,
+	MCP_OAUTH_SERVER_STATE_KEY,
 	McpOAuthScope,
 } from '../mcp.constants';
 
@@ -44,6 +46,8 @@ export class McpOAuthArtifactService {
 		private readonly accessTokens: Repository<McpOAuthAccessTokenEntity>,
 		@InjectRepository(McpOAuthRefreshTokenFamilyEntity)
 		private readonly refreshFamilies: Repository<McpOAuthRefreshTokenFamilyEntity>,
+		@InjectRepository(McpOAuthServerStateEntity)
+		private readonly serverState: Repository<McpOAuthServerStateEntity>,
 		private readonly installationService: McpInstallationService,
 		private readonly publicUrlService: McpOAuthPublicUrlService,
 	) {}
@@ -78,9 +82,19 @@ export class McpOAuthArtifactService {
 		const urls = this.requirePublicUrls();
 		const maximumExpiry = new Date(Date.now() + MCP_OAUTH_GRANT_LIFETIME_MS);
 		const expiresAt = this.earliest(input.expiresAt, maximumExpiry);
+		const [client, serverState] = await Promise.all([
+			this.clients.findOneBy({ id: input.clientId, enabled: true }),
+			this.serverState.findOneBy({ key: MCP_OAUTH_SERVER_STATE_KEY }),
+		]);
 
 		if (expiresAt <= new Date()) {
 			throw new BadRequestException('OAuth grant expiry must be in the future');
+		}
+		if (!client) {
+			throw new BadRequestException('OAuth grant client is no longer active');
+		}
+		if (!serverState) {
+			throw new ServiceUnavailableException('MCP OAuth authorization generation state is unavailable');
 		}
 
 		return this.grants.save(
@@ -96,6 +110,11 @@ export class McpOAuthArtifactService {
 				revokedAt: null,
 				generation: 0,
 				approverAuthorityGeneration: input.approverAuthorityGeneration ?? 0,
+				oauthEnabledGeneration: serverState.oauthEnabledGeneration,
+				serverSecretVersion: serverState.serverSecretVersion,
+				publicIdentityGeneration: serverState.publicIdentityGeneration,
+				clientGeneration: client.generation,
+				modulePolicyGeneration: serverState.modulePolicyGeneration,
 			}),
 		);
 	}

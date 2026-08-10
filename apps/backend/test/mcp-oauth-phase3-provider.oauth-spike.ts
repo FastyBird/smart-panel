@@ -5,25 +5,31 @@ import { AddressInfo } from 'node:net';
 import type Provider from 'oidc-provider';
 import { DataSource } from 'typeorm';
 
-import { McpOAuthClientEntity } from '../src/modules/mcp/entities/mcp-oauth.entity';
 import {
+	McpOAuthApproverAuthorityEntity,
+	McpOAuthClientEntity,
+	McpOAuthGrantEntity,
 	McpOAuthProviderArtifactEntity,
 	McpOAuthProviderRefreshFamilyLineageEntity,
 	McpOAuthProviderRevokedGrantEntity,
 	McpOAuthProviderRevokedRefreshFamilyEntity,
+	McpOAuthServerStateEntity,
 } from '../src/modules/mcp/entities/mcp-oauth.entity';
-import { McpOAuthScope } from '../src/modules/mcp/mcp.constants';
+import { MCP_OAUTH_SERVER_STATE_KEY, McpOAuthScope } from '../src/modules/mcp/mcp.constants';
 import { createMcpOAuthProviderAdapter } from '../src/modules/mcp/oauth/mcp-oauth-provider.adapter';
 import { McpOAuthProviderFactory } from '../src/modules/mcp/oauth/mcp-oauth-provider.factory';
 import { McpOAuthPublicUrls } from '../src/modules/mcp/oauth/mcp-oauth.types';
 import { McpOAuthClientService } from '../src/modules/mcp/services/mcp-oauth-client.service';
 import { McpOAuthPublicUrlService } from '../src/modules/mcp/services/mcp-oauth-public-url.service';
 import { McpSubscriptionRegistryService } from '../src/modules/mcp/services/mcp-subscription-registry.service';
+import { UserEntity } from '../src/modules/users/entities/users.entity';
+import { UserLanguage, UserRole } from '../src/modules/users/users.constants';
 
 const CLIENT_ID = 'phase3-public-client';
 const ACCOUNT_ID = 'owner-1';
 const REGISTERED_REDIRECT_URI = 'http://127.0.0.1:1455/callback';
 let consentPromptCount = 0;
+let persistSmartPanelGrant = (_providerGrantId: string): Promise<void> => Promise.resolve();
 
 interface TokenResponse {
 	access_token: string;
@@ -61,6 +67,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const isStringArray = (value: unknown): value is string[] =>
 	Array.isArray(value) && value.every((item) => typeof item === 'string');
+
+const hash = (value: string): string => createHash('sha256').update(value).digest('hex');
 
 const finishInteraction = async (
 	provider: Provider,
@@ -100,6 +108,7 @@ const finishInteraction = async (
 	if (isStringArray(missingOidcScope)) grant.addOIDCScope(missingOidcScope.join(' '));
 
 	const grantId = await grant.save();
+	await persistSmartPanelGrant(grantId);
 	await provider.interactionFinished(
 		request,
 		response,
@@ -121,10 +130,15 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 			type: 'sqlite',
 			database: ':memory:',
 			entities: [
+				UserEntity,
+				McpOAuthApproverAuthorityEntity,
+				McpOAuthClientEntity,
+				McpOAuthGrantEntity,
 				McpOAuthProviderArtifactEntity,
 				McpOAuthProviderRefreshFamilyLineageEntity,
 				McpOAuthProviderRevokedGrantEntity,
 				McpOAuthProviderRevokedRefreshFamilyEntity,
+				McpOAuthServerStateEntity,
 			],
 			synchronize: true,
 		});
@@ -144,13 +158,61 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 			tokenEndpoint: `${origin}/api/v1/modules/mcp/oauth/token`,
 			revocationEndpoint: `${origin}/api/v1/modules/mcp/oauth/token/revocation`,
 		};
-		const client = Object.assign(new McpOAuthClientEntity(), {
+		const user = await dataSource.getRepository(UserEntity).save({
+			id: ACCOUNT_ID,
+			username: 'owner',
+			password: null,
+			email: null,
+			firstName: null,
+			lastName: null,
+			role: UserRole.OWNER,
+			language: UserLanguage.EN,
+			isHidden: false,
+		});
+		const client = await dataSource.getRepository(McpOAuthClientEntity).save({
 			clientIdentifier: CLIENT_ID,
 			name: 'Phase 3 public client',
 			redirectUris: [REGISTERED_REDIRECT_URI],
 			maximumScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS],
 			enabled: true,
+			generation: 0,
+			createdById: user.id,
 		});
+		await dataSource.getRepository(McpOAuthApproverAuthorityEntity).save({ approverId: user.id, generation: 0 });
+		await dataSource.getRepository(McpOAuthServerStateEntity).save({
+			key: MCP_OAUTH_SERVER_STATE_KEY,
+			serverSecretVersion: 1,
+			keyVersion: 1,
+			publicIdentityGeneration: 0,
+			oauthEnabledGeneration: 0,
+			modulePolicyGeneration: 0,
+			createdAt: new Date(),
+			updatedAt: null,
+		});
+		persistSmartPanelGrant = async (providerGrantId: string): Promise<void> => {
+			const grants = dataSource.getRepository(McpOAuthGrantEntity);
+
+			if (await grants.existsBy({ providerGrantIdHash: hash(providerGrantId) })) return;
+
+			await grants.save({
+				providerGrantIdHash: hash(providerGrantId),
+				clientId: client.id,
+				approvedById: user.id,
+				installationId: 'phase3-installation',
+				issuer: urls.issuer,
+				resource: urls.resource,
+				approvedScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS],
+				expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1_000),
+				revokedAt: null,
+				generation: 0,
+				approverAuthorityGeneration: 0,
+				oauthEnabledGeneration: 0,
+				serverSecretVersion: 1,
+				publicIdentityGeneration: 0,
+				clientGeneration: 0,
+				modulePolicyGeneration: 0,
+			});
+		};
 		const clientsService = {
 			findActiveByIdentifier: jest.fn((clientIdentifier: string) =>
 				Promise.resolve(clientIdentifier === CLIENT_ID ? client : null),
@@ -508,6 +570,7 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		const adapter = new Adapter('RefreshToken');
 		const rawRefreshToken = `refresh-${randomBytes(24).toString('base64url')}`;
 		const rawGrantId = `grant-${randomBytes(24).toString('base64url')}`;
+		await persistSmartPanelGrant(rawGrantId);
 
 		await adapter.upsert(
 			rawRefreshToken,

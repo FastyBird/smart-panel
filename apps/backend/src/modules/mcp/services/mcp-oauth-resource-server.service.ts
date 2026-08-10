@@ -127,6 +127,18 @@ export class McpOAuthResourceServerService implements OAuthTokenVerifier {
 			!grant ||
 			!grant.client ||
 			!serverState ||
+			artifact.oauthEnabledGeneration !== serverState?.oauthEnabledGeneration ||
+			artifact.serverSecretVersion !== serverState?.serverSecretVersion ||
+			artifact.publicIdentityGeneration !== serverState?.publicIdentityGeneration ||
+			artifact.modulePolicyGeneration !== serverState?.modulePolicyGeneration ||
+			artifact.clientGeneration !== grant?.client?.generation ||
+			artifact.grantGeneration !== grant?.generation ||
+			artifact.approverAuthorityGeneration !== (approverAuthority?.generation ?? 0) ||
+			grant.oauthEnabledGeneration !== serverState?.oauthEnabledGeneration ||
+			grant.serverSecretVersion !== serverState?.serverSecretVersion ||
+			grant.publicIdentityGeneration !== serverState?.publicIdentityGeneration ||
+			grant.clientGeneration !== grant.client.generation ||
+			grant.modulePolicyGeneration !== serverState?.modulePolicyGeneration ||
 			!grant.client.enabled ||
 			!grant.approvedBy ||
 			!grant.approvedById ||
