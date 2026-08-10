@@ -186,12 +186,14 @@ amend ADR 0002.
 
 - [x] Add durable per-approver authority generations, backfill existing grant generations, and require live access-token
       validation to match the grant's captured approver generation.
-- [x] Propagate awaited user update/delete lifecycle events; invalidate only owner/admin demotions while preserving
-      authorized profile updates, and complete deletion invalidation before the user row is removed.
+- [x] Add a generic awaited user-lifecycle mutation registry; wrap owner/admin demotion or deletion and OAuth
+      invalidation in one transaction while preserving authorized profile updates.
 - [x] Serialize consent grant commit and approver invalidation through the authoritative OAuth gate so consent either
       commits first and is revoked or observes the new role/generation and fails.
 - [x] Atomically advance approver authority, revoke every matching grant and provider artifact, then close only OAuth
       subscriptions approved by that user; preserve unrelated OAuth and static streams even when failures propagate.
+- [x] Keep the OAuth gate held through the user-row commit so failed demotions roll back with invalidation and consent
+      queued behind deletion observes the removed user before it can create a grant.
 
 ### Remaining Phase 5 controls
 

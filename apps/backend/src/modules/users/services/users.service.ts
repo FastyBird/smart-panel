@@ -16,6 +16,8 @@ import { UserEntity } from '../entities/users.entity';
 import { EventType, USERS_MODULE_NAME, UserRole } from '../users.constants';
 import { UsersNotFoundException, UsersValidationException } from '../users.exceptions';
 
+import { UserLifecycleMutationRegistryService } from './user-lifecycle-mutation-registry.service';
+
 @Injectable()
 export class UsersService {
 	private readonly logger = createExtensionLogger(USERS_MODULE_NAME, 'UsersService');
@@ -24,6 +26,7 @@ export class UsersService {
 		@InjectRepository(UserEntity)
 		private readonly repository: Repository<UserEntity>,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly lifecycleMutations: UserLifecycleMutationRegistryService,
 	) {}
 
 	async findOwner(): Promise<UserEntity | null> {
@@ -107,7 +110,7 @@ export class UsersService {
 
 	async update(id: string, updateDto: UpdateUserDto): Promise<UserEntity> {
 		const user = await this.getOneOrThrow(id);
-		const previousRole = user.role;
+		const previousUser = Object.assign(new UserEntity(), user);
 
 		const dtoInstance = await this.validateDto<UpdateUserDto>(UpdateUserDto, updateDto);
 
@@ -160,14 +163,14 @@ export class UsersService {
 
 		Object.assign(user, updateFields);
 
-		await this.repository.save(user);
-
-		const updatedUser = await this.getOneOrThrow(user.id);
+		const updatedUser = await this.lifecycleMutations.update(previousUser, user, async (manager) => {
+			return (manager?.getRepository(UserEntity) ?? this.repository).save(user);
+		});
 
 		this.logger.debug(`Successfully updated user with id=${updatedUser.id}`);
 
 		if (entityFieldsChanged) {
-			await this.eventEmitter.emitAsync(EventType.USER_UPDATED, updatedUser, previousRole);
+			this.eventEmitter.emit(EventType.USER_UPDATED, updatedUser);
 		}
 
 		return updatedUser;
@@ -176,10 +179,12 @@ export class UsersService {
 	async remove(id: string): Promise<void> {
 		const user = await this.getOneOrThrow(id);
 
-		await this.eventEmitter.emitAsync(EventType.USER_DELETED, user);
-		await this.repository.delete(user.id);
+		await this.lifecycleMutations.remove(user, async (manager) => {
+			await (manager?.getRepository(UserEntity) ?? this.repository).delete(user.id);
+		});
 
 		this.logger.log(`Successfully removed user with id=${id}`);
+		this.eventEmitter.emit(EventType.USER_DELETED, user);
 	}
 
 	async getOneOrThrow(id: string): Promise<UserEntity> {

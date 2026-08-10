@@ -20,6 +20,7 @@ import { UserEntity } from '../entities/users.entity';
 import { EventType, UserRole } from '../users.constants';
 import { UsersNotFoundException, UsersValidationException } from '../users.exceptions';
 
+import { UserLifecycleMutationRegistryService } from './user-lifecycle-mutation-registry.service';
 import { UsersService } from './users.service';
 
 jest.mock('bcrypt', () => ({
@@ -31,6 +32,7 @@ describe('UsersService', () => {
 	let service: UsersService;
 	let repository: Repository<UserEntity>;
 	let eventEmitter: EventEmitter2;
+	let lifecycleMutations: { update: jest.Mock; remove: jest.Mock };
 
 	const mockUser: UserEntity = {
 		id: uuid().toString(),
@@ -47,6 +49,10 @@ describe('UsersService', () => {
 	};
 
 	beforeEach(async () => {
+		lifecycleMutations = {
+			update: jest.fn((_previous, _next, commit: () => Promise<unknown>) => commit()),
+			remove: jest.fn((_user, commit: () => Promise<unknown>) => commit()),
+		};
 		const mockRepository = () => ({
 			find: jest.fn(),
 			findOne: jest.fn(),
@@ -67,6 +73,7 @@ describe('UsersService', () => {
 						emitAsync: jest.fn(() => Promise.resolve([])),
 					},
 				},
+				{ provide: UserLifecycleMutationRegistryService, useValue: lifecycleMutations },
 			],
 		}).compile();
 
@@ -214,23 +221,17 @@ describe('UsersService', () => {
 			expect(repository.findOne).toHaveBeenCalledWith({
 				where: { id: mockUser.id },
 			});
-			expect(eventEmitter.emitAsync).toHaveBeenCalledWith(
-				EventType.USER_UPDATED,
-				toInstance(UserEntity, mockUpdatedUser),
-				mockUser.role,
-			);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.USER_UPDATED, toInstance(UserEntity, mockUpdatedUser));
 		});
 
-		it('propagates awaited update lifecycle failures', async () => {
+		it('does not persist the update when the lifecycle mutation fails', async () => {
 			const updatedUser = toInstance(UserEntity, { ...mockUser, firstName: 'UpdatedName' });
-			jest
-				.spyOn(repository, 'findOne')
-				.mockResolvedValueOnce(toInstance(UserEntity, mockUser))
-				.mockResolvedValueOnce(updatedUser);
+			jest.spyOn(repository, 'findOne').mockResolvedValueOnce(toInstance(UserEntity, mockUser));
 			jest.spyOn(repository, 'save').mockResolvedValue(updatedUser);
-			jest.spyOn(eventEmitter, 'emitAsync').mockRejectedValueOnce(new Error('invalidation failed'));
+			lifecycleMutations.update.mockRejectedValueOnce(new Error('invalidation failed'));
 
 			await expect(service.update(mockUser.id, { first_name: 'UpdatedName' })).rejects.toThrow('invalidation failed');
+			expect(repository.save).not.toHaveBeenCalled();
 		});
 
 		it('should throw UsersNotFoundException if user not found', async () => {
@@ -252,15 +253,15 @@ describe('UsersService', () => {
 			await service.remove(mockUser.id);
 
 			expect(repository.delete).toHaveBeenCalledWith(mockUser.id);
-			expect(eventEmitter.emitAsync).toHaveBeenCalledWith(EventType.USER_DELETED, toInstance(UserEntity, mockUser));
-			expect((eventEmitter.emitAsync as jest.Mock).mock.invocationCallOrder[0]).toBeLessThan(
-				(repository.delete as jest.Mock).mock.invocationCallOrder[0],
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.USER_DELETED, toInstance(UserEntity, mockUser));
+			expect((repository.delete as jest.Mock).mock.invocationCallOrder[0]).toBeLessThan(
+				(eventEmitter.emit as unknown as jest.Mock).mock.invocationCallOrder[0],
 			);
 		});
 
-		it('does not delete the user when awaited lifecycle invalidation fails', async () => {
+		it('does not delete the user when the lifecycle mutation fails', async () => {
 			jest.spyOn(service, 'findOne').mockResolvedValue(toInstance(UserEntity, mockUser));
-			jest.spyOn(eventEmitter, 'emitAsync').mockRejectedValueOnce(new Error('invalidation failed'));
+			lifecycleMutations.remove.mockRejectedValueOnce(new Error('invalidation failed'));
 
 			await expect(service.remove(mockUser.id)).rejects.toThrow('invalidation failed');
 

@@ -18,6 +18,8 @@ import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
 import { ToolsModule } from '../tools/tools.module';
+import { UserLifecycleMutationRegistryService } from '../users/services/user-lifecycle-mutation-registry.service';
+import { UsersModule } from '../users/users.module';
 import { WeatherModule } from '../weather/weather.module';
 
 import { McpClientsController } from './controllers/mcp-clients.controller';
@@ -45,7 +47,6 @@ import {
 } from './entities/mcp-oauth.entity';
 import { McpClientGuard } from './guards/mcp-client.guard';
 import { McpConfigListener } from './listeners/mcp-config.listener';
-import { McpUsersListener } from './listeners/mcp-users.listener';
 import {
 	MCP_CATALOG_REGISTRAR,
 	MCP_MODULE_API_TAG_DESCRIPTION,
@@ -112,6 +113,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 			McpOAuthServerStateEntity,
 		]),
 		ToolsModule,
+		UsersModule,
 		WeatherModule,
 	],
 	controllers: [
@@ -125,7 +127,6 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpClientGuard,
 		McpClientService,
 		McpConfigListener,
-		McpUsersListener,
 		McpContextService,
 		McpInstallationService,
 		McpOAuthArtifactService,
@@ -183,6 +184,8 @@ export class McpModule implements OnModuleInit {
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly moduleConfigMutations: ModuleConfigMutationRegistryService,
 		private readonly moduleConfigMutation: McpOAuthModuleConfigMutationService,
+		private readonly userLifecycleMutations: UserLifecycleMutationRegistryService,
+		private readonly approverAuthority: McpOAuthApproverAuthorityService,
 		private readonly extensionsService: ExtensionsService,
 		private readonly statsRegistryService: StatsRegistryService,
 		private readonly statsProvider: McpStatsProvider,
@@ -197,6 +200,7 @@ export class McpModule implements OnModuleInit {
 		this.moduleConfigMutations.register<UpdateMcpConfigDto>(MCP_MODULE_NAME, (update, commit) =>
 			this.moduleConfigMutation.update(update, commit),
 		);
+		this.userLifecycleMutations.register(this.approverAuthority);
 
 		for (const model of MCP_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);

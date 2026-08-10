@@ -130,6 +130,64 @@ describe('McpOAuthApproverAuthorityService', () => {
 		expect(await service.getGeneration(approver.id)).toBe(0);
 	});
 
+	it('rolls back both demotion and invalidation when the atomic user commit fails', async () => {
+		const next = Object.assign(new UserEntity(), approver, { role: UserRole.USER });
+		const matching = await openSubscription(approver.id, grant.id);
+
+		await expect(
+			service.update(approver, next, async (manager) => {
+				await manager?.getRepository(UserEntity).update({ id: approver.id }, { role: UserRole.USER });
+				throw new Error('user update failed');
+			}),
+		).rejects.toThrow('user update failed');
+
+		expect((await dataSource.getRepository(UserEntity).findOneByOrFail({ id: approver.id })).role).toBe(UserRole.ADMIN);
+		expect(await service.getGeneration(approver.id)).toBe(0);
+		expect(
+			(await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: grant.id })).revokedAt,
+		).toBeNull();
+		expect(matching.signal.aborted).toBe(true);
+	});
+
+	it('keeps deletion inside the gate so queued consent observes the removed user', async () => {
+		let commitStarted = (): void => undefined;
+		const started = new Promise<void>((resolve) => {
+			commitStarted = resolve;
+		});
+		let releaseCommit = (): void => undefined;
+		const release = new Promise<void>((resolve) => {
+			releaseCommit = resolve;
+		});
+		const removal = service.remove(approver, async (manager) => {
+			await manager?.getRepository(UserEntity).delete(approver.id);
+			commitStarted();
+			await release;
+		});
+
+		await started;
+		const queuedConsent = expect(service.runAuthorized(approver.id, () => Promise.resolve('grant'))).rejects.toThrow(
+			'no longer authorized',
+		);
+		releaseCommit();
+
+		await removal;
+		await queuedConsent;
+		expect(await dataSource.getRepository(UserEntity).findOneBy({ id: approver.id })).toBeNull();
+	});
+
+	it('preserves authority generations for authorized profile updates', async () => {
+		const next = Object.assign(new UserEntity(), approver, { firstName: 'Updated' });
+		const commit = jest.fn().mockResolvedValue(next);
+
+		await expect(service.update(approver, next, commit)).resolves.toBe(next);
+
+		expect(commit).toHaveBeenCalledWith();
+		expect(await service.getGeneration(approver.id)).toBe(0);
+		expect(
+			(await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: grant.id })).revokedAt,
+		).toBeNull();
+	});
+
 	it('rejects a consent queued behind approver invalidation and keeps restored roles on the new generation', async () => {
 		await dataSource.getRepository(UserEntity).update({ id: approver.id }, { role: UserRole.USER });
 		const invalidation = service.invalidateApprover(approver.id);
