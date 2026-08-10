@@ -41,12 +41,13 @@ describe('McpOAuthModuleConfigMutationService', () => {
 	let config: McpConfigModel;
 	let configService: { getModuleConfig: jest.Mock; reload: jest.Mock };
 	let serverState: { increment: jest.Mock };
-	let globalInvalidation: { invalidate: jest.Mock };
+	let globalInvalidation: { invalidate: jest.Mock; invalidateAll: jest.Mock };
 	let subscriptions: McpSubscriptionRegistryService;
 	let service: McpOAuthModuleConfigMutationService;
 
 	beforeEach(() => {
 		config = new McpConfigModel();
+		config.enabled = true;
 		config.capabilities = [McpCapability.READ, McpCapability.WRITE, McpCapability.TRIGGER];
 		configService = {
 			getModuleConfig: jest.fn().mockImplementation(() => config),
@@ -57,6 +58,7 @@ describe('McpOAuthModuleConfigMutationService', () => {
 		};
 		globalInvalidation = {
 			invalidate: jest.fn(async (_generations: string[], commit: () => Promise<void> | void) => commit()),
+			invalidateAll: jest.fn(async (_generations: string[], commit: () => Promise<void> | void) => commit()),
 		};
 		const auditService = {
 			recordSubscriptionClosed: jest.fn(),
@@ -198,6 +200,52 @@ describe('McpOAuthModuleConfigMutationService', () => {
 		expect(globalInvalidation.invalidate).toHaveBeenCalledWith(['publicIdentityGeneration'], expect.any(Function));
 		expect(serverState.increment).not.toHaveBeenCalled();
 		expect(commit).toHaveBeenCalledTimes(1);
+	});
+
+	it('routes module disable through global invalidation and all-stream closure', async () => {
+		const commit = jest.fn().mockImplementation(() => {
+			config.enabled = false;
+		});
+
+		await service.update({ type: MCP_MODULE_NAME, enabled: false } as UpdateMcpConfigDto, commit);
+
+		expect(globalInvalidation.invalidateAll).toHaveBeenCalledWith(['oauthEnabledGeneration'], expect.any(Function));
+		expect(globalInvalidation.invalidate).not.toHaveBeenCalled();
+		expect(commit).toHaveBeenCalledTimes(1);
+	});
+
+	it('advances every changed global generation together when disabling the module', async () => {
+		config.oauthPublicBaseUrl = 'https://panel.example.com';
+		const commit = jest.fn();
+
+		await service.update(
+			{
+				type: MCP_MODULE_NAME,
+				enabled: false,
+				oauth_public_base_url: 'https://new-panel.example.com',
+				capabilities: [McpCapability.READ],
+			} as UpdateMcpConfigDto,
+			commit,
+		);
+
+		expect(globalInvalidation.invalidateAll).toHaveBeenCalledWith(
+			['oauthEnabledGeneration', 'publicIdentityGeneration', 'modulePolicyGeneration'],
+			expect.any(Function),
+		);
+		expect(globalInvalidation.invalidate).not.toHaveBeenCalled();
+		expect(serverState.increment).not.toHaveBeenCalled();
+	});
+
+	it('reloads configuration and propagates a failed module-disable commit after invalidation', async () => {
+		const commitError = new Error('configuration persistence failed');
+
+		await expect(
+			service.update({ type: MCP_MODULE_NAME, enabled: false } as UpdateMcpConfigDto, () =>
+				Promise.reject(commitError),
+			),
+		).rejects.toBe(commitError);
+
+		expect(configService.reload).toHaveBeenCalledTimes(1);
 	});
 
 	it('advances public identity and module policy together when both inputs change', async () => {

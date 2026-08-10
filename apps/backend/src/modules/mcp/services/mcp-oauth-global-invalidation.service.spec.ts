@@ -20,7 +20,7 @@ import { MCP_OAUTH_SERVER_STATE_KEY, McpOAuthScope } from '../mcp.constants';
 
 import { McpAuditService } from './mcp-audit.service';
 import { McpOAuthGlobalInvalidationService } from './mcp-oauth-global-invalidation.service';
-import { McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
+import { McpSubscriptionClosingError, McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
 
 const deferred = (): { promise: Promise<void>; resolve: () => void } => {
 	let resolve = (): void => undefined;
@@ -180,6 +180,50 @@ describe('McpOAuthGlobalInvalidationService', () => {
 			await dataSource.getRepository(McpOAuthServerStateEntity).findOneByOrFail({ key: MCP_OAUTH_SERVER_STATE_KEY }),
 		).toMatchObject({ serverSecretVersion: 2 });
 		expect(await dataSource.getRepository(McpOAuthProviderArtifactEntity).count()).toBe(0);
+	});
+
+	it('advances OAuth enablement, revokes artifacts, and closes static and OAuth streams before disable completes', async () => {
+		const staticStream = subscriptions.open('static-client');
+		const oauthStream = await openOAuthSubscription();
+		const commitStarted = deferred();
+		const releaseCommit = deferred();
+		const invalidation = service.invalidateAll(['oauthEnabledGeneration'], async () => {
+			commitStarted.resolve();
+			await releaseCommit.promise;
+		});
+
+		await commitStarted.promise;
+
+		expect(() => subscriptions.open('late-static-client')).toThrow(McpSubscriptionClosingError);
+		await expect(openOAuthSubscription()).rejects.toBeInstanceOf(McpSubscriptionClosingError);
+		expect(staticStream.signal.aborted).toBe(false);
+		expect(oauthStream.signal.aborted).toBe(false);
+
+		releaseCommit.resolve();
+		await invalidation;
+
+		expect(staticStream.signal.aborted).toBe(true);
+		expect(oauthStream.signal.aborted).toBe(true);
+		expect(
+			await dataSource.getRepository(McpOAuthServerStateEntity).findOneByOrFail({ key: MCP_OAUTH_SERVER_STATE_KEY }),
+		).toMatchObject({ oauthEnabledGeneration: 1 });
+		expect(await dataSource.getRepository(McpOAuthProviderArtifactEntity).count()).toBe(0);
+	});
+
+	it('does not commit, revoke, or close either stream profile when disable generation state is unavailable', async () => {
+		const staticStream = subscriptions.open('static-client');
+		const oauthStream = await openOAuthSubscription();
+		const commit = jest.fn();
+		await dataSource.getRepository(McpOAuthServerStateEntity).delete({ key: MCP_OAUTH_SERVER_STATE_KEY });
+
+		await expect(service.invalidateAll(['oauthEnabledGeneration'], commit)).rejects.toThrow(
+			'MCP OAuth oauthEnabledGeneration state is unavailable',
+		);
+
+		expect(commit).not.toHaveBeenCalled();
+		expect(staticStream.signal.aborted).toBe(false);
+		expect(oauthStream.signal.aborted).toBe(false);
+		expect(await dataSource.getRepository(McpOAuthProviderArtifactEntity).count()).toBe(1);
 	});
 
 	it('remains fail-closed and closes OAuth streams when the external commit fails', async () => {

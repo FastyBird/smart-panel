@@ -77,6 +77,10 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 	constructor(private readonly auditService: McpAuditService) {}
 
 	open(clientId: string, requestId = 'unknown'): McpSubscriptionHandle {
+		if (this.closeAllOperations > 0) {
+			throw new McpSubscriptionClosingError();
+		}
+
 		return this.openRecord(clientId, requestId);
 	}
 
@@ -227,20 +231,22 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 		);
 	}
 
-	async closeAll(): Promise<void> {
+	async closeAll(advanceGeneration?: McpOAuthGenerationAdvance): Promise<void> {
 		this.closeAllOperations += 1;
 
 		try {
-			for (const id of [...this.subscriptions.keys()]) {
-				this.close(id, 'shutdown');
-			}
-
-			await this.withOAuthGate(() => {
+			if (!advanceGeneration) {
 				for (const id of [...this.subscriptions.keys()]) {
 					this.close(id, 'shutdown');
 				}
+			}
 
-				return Promise.resolve();
+			await this.withOAuthGate(async () => {
+				if (advanceGeneration) await advanceGeneration();
+
+				for (const id of [...this.subscriptions.keys()]) {
+					this.close(id, 'shutdown');
+				}
 			});
 		} finally {
 			this.closeAllOperations -= 1;

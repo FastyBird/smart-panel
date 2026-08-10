@@ -247,6 +247,17 @@ amend ADR 0002.
 - [x] Audit successful global recovery without recording bearer, provider, cookie, or signing-key material, and
       propagate invalidation failures without reporting or auditing success.
 
+### Phase 5n — Awaited MCP module disable invalidation
+
+- [x] Route MCP module disable through the authoritative global OAuth invalidation transaction, advancing the
+      OAuth-enabled generation before revoking every OAuth grant and artifact.
+- [x] Hold one close-all gate across invalidation and configuration persistence, reject new static and OAuth stream
+      registrations after disable begins, and close both profiles before reporting success.
+- [x] Combine simultaneous public-identity and module-policy changes into the same invalidation transaction, and keep
+      the advanced generations, revoked artifacts, and closed streams when configuration persistence fails.
+- [x] Preserve OAuth-only stream closure for public identity changes while proving only MCP module disable closes
+      static MCP streams.
+
 ### Remaining Phase 5 controls
 
 - [x] Bind OAuth subscriptions to client, grant, access-token, optional refresh-family IDs, and an authorization
