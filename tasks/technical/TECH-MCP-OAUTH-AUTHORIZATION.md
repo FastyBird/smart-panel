@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 5 durable authorization-generation snapshot foundation complete
+Status: in progress — Phase 5 complete subscription authorization binding implemented
 
 ## 1. Business goal
 
@@ -69,7 +69,7 @@ upgrade consequences.
       affected MCP subscriptions immediately.
 - [x] Reducing the live module ceiling, registered-client maximum, or approved-grant scopes closes every OAuth
       subscription whose effective read/write/trigger scope set contracts before the mutation reports success.
-- [ ] Subscription registration is serialized with artifact and policy invalidation so a stale in-flight listen
+- [x] Subscription registration is serialized with artifact and policy invalidation so a stale in-flight listen
       request cannot open after invalidation reports success.
 - [ ] Refresh tokens are atomically compare-and-consumed; concurrent replay creates at most one successor and revokes
       the entire family without leaving a usable fork.

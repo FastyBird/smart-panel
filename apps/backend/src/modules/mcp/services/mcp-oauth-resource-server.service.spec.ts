@@ -209,7 +209,10 @@ describe('McpOAuthResourceServerService', () => {
 				grantGeneration: 3,
 				installationId: INSTALLATION_ID,
 				modulePolicyGeneration: 1,
+				oauthEnabledGeneration: 5,
+				publicIdentityGeneration: 7,
 				refreshFamilyId: 'refresh-family-id',
+				serverSecretVersion: 6,
 			}),
 		);
 	});

@@ -44,6 +44,9 @@ export interface McpOAuthSubscriptionBinding {
 	authorizationDeadline: Date;
 	effectiveScopes: McpOAuthScope[];
 	modulePolicyGeneration: number;
+	oauthEnabledGeneration: number;
+	publicIdentityGeneration: number;
+	serverSecretVersion: number;
 	clientGeneration: number;
 	grantGeneration: number;
 }

@@ -179,7 +179,10 @@ export class McpOAuthResourceServerService implements OAuthTokenVerifier {
 			grantGeneration: grant.generation,
 			installationId,
 			modulePolicyGeneration: serverState.modulePolicyGeneration,
+			oauthEnabledGeneration: serverState.oauthEnabledGeneration,
+			publicIdentityGeneration: serverState.publicIdentityGeneration,
 			...(artifact.refreshFamilyId ? { refreshFamilyId: artifact.refreshFamilyId } : {}),
+			serverSecretVersion: serverState.serverSecretVersion,
 			scopes: tokenScopes,
 			effectiveCapabilities,
 		};

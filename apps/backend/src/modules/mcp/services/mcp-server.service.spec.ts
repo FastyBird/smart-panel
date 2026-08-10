@@ -33,7 +33,10 @@ const oauthAuthInfo = (clientGeneration = 2): AuthInfo => ({
 			grantGeneration: 3,
 			installationId: 'installation-id',
 			modulePolicyGeneration: 1,
+			oauthEnabledGeneration: 5,
+			publicIdentityGeneration: 6,
 			refreshFamilyId: 'refresh-family-id',
+			serverSecretVersion: 7,
 			scopes: [McpOAuthScope.READ],
 			effectiveCapabilities: [McpCapability.READ],
 		},
@@ -168,6 +171,9 @@ describe('McpServerService policy revision', () => {
 				authorizationDeadline: new Date(authorizationDeadline),
 				effectiveScopes: [McpOAuthScope.READ],
 				modulePolicyGeneration: 1,
+				oauthEnabledGeneration: 5,
+				publicIdentityGeneration: 6,
+				serverSecretVersion: 7,
 				clientGeneration: 2,
 				grantGeneration: 3,
 			},
@@ -186,7 +192,14 @@ describe('McpServerService policy revision', () => {
 				const registration = await revalidate();
 
 				expect(registration.clientId).toBe('internal-client-id');
-				expect(registration.binding).toEqual(expect.objectContaining({ clientGeneration: 4 }));
+				expect(registration.binding).toEqual(
+					expect.objectContaining({
+						clientGeneration: 4,
+						oauthEnabledGeneration: 5,
+						publicIdentityGeneration: 6,
+						serverSecretVersion: 7,
+					}),
+				);
 
 				return handle;
 			},
@@ -285,6 +298,22 @@ describe('McpServerService policy revision', () => {
 			}),
 		).toThrow(new UnauthorizedException('MCP OAuth subscription identity is unavailable'));
 	});
+
+	it.each(['oauthEnabledGeneration', 'publicIdentityGeneration', 'serverSecretVersion'] as const)(
+		'rejects an OAuth subscription identity without %s',
+		(generation) => {
+			const authInfo = oauthAuthInfo();
+			const principal = authInfo.extra?.principal as Record<string, unknown>;
+			delete principal[generation];
+			const internalService = service as unknown as {
+				getSubscriptionRegistration(clientId: string, authInfo?: AuthInfo): unknown;
+			};
+
+			expect(() => internalService.getSubscriptionRegistration('handler-client-id', authInfo)).toThrow(
+				new UnauthorizedException('MCP OAuth subscription identity is unavailable'),
+			);
+		},
+	);
 
 	it('audits initialization and discovery without passing request parameters', () => {
 		const internalService = service as unknown as {
