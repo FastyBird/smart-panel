@@ -103,8 +103,8 @@ export class ExtensionsController {
 	@ApiSuccessResponse(ExtensionResponseModel, 'Returns the updated extension')
 	@ApiNotFoundResponse('Extension not found')
 	@ApiBadRequestResponse('Cannot modify core extension')
-	update(@Param('type') type: string, @Body() body: ReqUpdateExtensionDto): ExtensionResponseModel {
-		const extension = this.extensionsService.updateEnabled(type, body.data.enabled);
+	async update(@Param('type') type: string, @Body() body: ReqUpdateExtensionDto): Promise<ExtensionResponseModel> {
+		const extension = await this.extensionsService.updateEnabled(type, body.data.enabled);
 
 		const response = new ExtensionResponseModel();
 		response.data = extension;

@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 5 in progress — administrative artifact controls implemented
+**Status:** Phase 5 in progress — module capability-ceiling invalidation implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -158,6 +158,19 @@ amend ADR 0002.
       success, and automatically close each stream at its authorization deadline.
 - [x] Regenerate OpenAPI/admin types through the normal generators.
 
+### Phase 5f — Awaited module capability-ceiling invalidation
+
+- [x] Add a generic awaited module-configuration mutation registry so module-owned security barriers can wrap the
+      existing validated configuration commit without coupling the Config module to MCP.
+- [x] Route MCP capability changes through the authoritative OAuth subscription gate, advance the persistent
+      module-policy generation before commit, and propagate generation failures without changing configuration or
+      closing streams.
+- [x] Close only OAuth streams whose recorded effective scope set exceeds the new module ceiling while preserving
+      unaffected OAuth streams and every static MCP stream; if configuration persistence fails after the generation
+      advances, close the contracted streams before propagating the error so the failure remains fail-closed.
+- [x] Prove a racing OAuth registration queued behind the mutation revalidates only after the new configuration is
+      committed, and prove unchanged capability updates bypass the generation barrier.
+
 ### Remaining Phase 5 controls
 
 - [x] Bind OAuth subscriptions to client, grant, access-token, optional refresh-family IDs, and an authorization
@@ -172,10 +185,10 @@ amend ADR 0002.
       client, grant, module-policy, and approver-authority generations and current states. Each invalidation must advance
       its generation before enumeration, so a racing handler either commits first and is revoked or its stale commit
       fails; validation must recheck all generations so later restoration cannot revive an escaped artifact.
-- [ ] Route module-ceiling, registered-client-maximum, and approved-grant scope reductions through an awaited
-      authoritative mutation path that closes every OAuth subscription whose effective scope set contracts before
-      reporting success, including removal of `mcp:write` or `mcp:trigger` while `mcp:read` remains; do not rely on the
-      existing asynchronous MCP configuration notification listener.
+- [ ] Complete approved-grant scope reductions through the awaited authoritative mutation path. Module-ceiling
+      reductions are covered by Phase 5f and registered-client-maximum reductions by Phase 5e; the remaining grant
+      path must close every OAuth subscription whose effective scope set contracts before reporting success,
+      including removal of `mcp:write` or `mcp:trigger` while `mcp:read` remains.
 - [ ] Replace fire-and-forget approver invalidation with an awaited lifecycle path for `UsersModule.User.Updated` and
       `UsersModule.User.Deleted`: when a grant approver is deleted or no longer has owner/admin role, atomically advance
       their authority generation before revoking every grant and token artifact they approved and closing matching

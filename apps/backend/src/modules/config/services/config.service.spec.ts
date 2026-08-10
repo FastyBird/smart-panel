@@ -23,6 +23,7 @@ import { UpdateModuleConfigDto, UpdatePluginConfigDto } from '../dto/config.dto'
 import { AppConfigModel, ModuleConfigModel, PluginConfigModel } from '../models/config.model';
 
 import { ConfigService } from './config.service';
+import { ModuleConfigMutationRegistryService } from './module-config-mutation-registry.service';
 import { ModulesTypeMapperService } from './modules-type-mapper.service';
 import { PluginsTypeMapperService } from './plugins-type-mapper.service';
 
@@ -72,6 +73,7 @@ class ModuleConfigDto extends UpdateModuleConfigDto {
 describe('ConfigService', () => {
 	let service: ConfigService;
 	let eventEmitter: EventEmitter2;
+	let moduleConfigMutations: ModuleConfigMutationRegistryService;
 	let platform: PlatformService;
 
 	const mockRawConfig = {
@@ -114,6 +116,7 @@ describe('ConfigService', () => {
 			imports: [NestConfigModule],
 			providers: [
 				ConfigService,
+				ModuleConfigMutationRegistryService,
 				{
 					provide: PlatformService,
 					useValue: {
@@ -172,6 +175,7 @@ describe('ConfigService', () => {
 
 		service = module.get<ConfigService>(ConfigService);
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
+		moduleConfigMutations = module.get<ModuleConfigMutationRegistryService>(ModuleConfigMutationRegistryService);
 		platform = module.get<PlatformService>(PlatformService);
 	});
 
@@ -446,6 +450,20 @@ describe('ConfigService', () => {
 			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']));
 			expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']), 'utf8');
 			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(mockRawConfig));
+		});
+	});
+
+	describe('updateModuleConfig', () => {
+		it('runs registered module mutations around persistence', async () => {
+			const commit = jest.spyOn(service, 'setModuleConfig').mockImplementation(() => {});
+			moduleConfigMutations.register('mock-module', async (update, persist) => {
+				expect(update).toMatchObject({ type: 'mock-module', enabled: false });
+				await persist();
+			});
+
+			await service.updateModuleConfig('mock-module', { type: 'mock-module', enabled: false });
+
+			expect(commit).toHaveBeenCalledWith('mock-module', { type: 'mock-module', enabled: false });
 		});
 	});
 });

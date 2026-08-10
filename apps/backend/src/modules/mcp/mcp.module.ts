@@ -4,6 +4,7 @@ import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuthModule } from '../auth/auth.module';
+import { ModuleConfigMutationRegistryService } from '../config/services/module-config-mutation-registry.service';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DevicesModule } from '../devices/devices.module';
 import { EnergyModule } from '../energy/energy.module';
@@ -62,6 +63,7 @@ import { McpOAuthArtifactService } from './services/mcp-oauth-artifact.service';
 import { McpOAuthClientService } from './services/mcp-oauth-client.service';
 import { McpOAuthInteractionService } from './services/mcp-oauth-interaction.service';
 import { McpOAuthManagementService } from './services/mcp-oauth-management.service';
+import { McpOAuthModuleConfigMutationService } from './services/mcp-oauth-module-config-mutation.service';
 import { McpOAuthProxyPolicyService } from './services/mcp-oauth-proxy-policy.service';
 import { McpOAuthPublicUrlService } from './services/mcp-oauth-public-url.service';
 import { McpOAuthRefreshTokenService } from './services/mcp-oauth-refresh-token.service';
@@ -125,6 +127,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpOAuthClientService,
 		McpOAuthInteractionService,
 		McpOAuthManagementService,
+		McpOAuthModuleConfigMutationService,
 		McpOAuthProxyPolicyService,
 		McpOAuthProviderFactory,
 		McpOAuthPublicUrlService,
@@ -171,6 +174,8 @@ export class McpModule implements OnModuleInit {
 	constructor(
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
+		private readonly moduleConfigMutations: ModuleConfigMutationRegistryService,
+		private readonly moduleConfigMutation: McpOAuthModuleConfigMutationService,
 		private readonly extensionsService: ExtensionsService,
 		private readonly statsRegistryService: StatsRegistryService,
 		private readonly statsProvider: McpStatsProvider,
@@ -182,6 +187,9 @@ export class McpModule implements OnModuleInit {
 			class: McpConfigModel,
 			configDto: UpdateMcpConfigDto,
 		});
+		this.moduleConfigMutations.register<UpdateMcpConfigDto>(MCP_MODULE_NAME, (update, commit) =>
+			this.moduleConfigMutation.update(update, commit),
+		);
 
 		for (const model of MCP_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);

@@ -13,6 +13,7 @@ import { Test } from '@nestjs/testing';
 import { TokenOwnerType } from '../src/modules/auth/auth.constants';
 import { AuthenticatedRequest } from '../src/modules/auth/guards/auth.guard';
 import { ConfigService } from '../src/modules/config/services/config.service';
+import { ModuleConfigMutationRegistryService } from '../src/modules/config/services/module-config-mutation-registry.service';
 import { ModulesTypeMapperService } from '../src/modules/config/services/modules-type-mapper.service';
 import { PluginsTypeMapperService } from '../src/modules/config/services/plugins-type-mapper.service';
 import { McpController } from '../src/modules/mcp/controllers/mcp.controller';
@@ -127,6 +128,7 @@ describe('MCP disabled restart', () => {
 			nestConfigService,
 			pluginsMapper,
 			modulesMapper,
+			new ModuleConfigMutationRegistryService(),
 			{} as PlatformService,
 			{ emit: jest.fn() } as unknown as EventEmitter2,
 		);

@@ -139,7 +139,7 @@ export class ExtensionsService {
 	/**
 	 * Update extension enabled status
 	 */
-	updateEnabled(type: string, enabled: boolean): ExtensionModel {
+	async updateEnabled(type: string, enabled: boolean): Promise<ExtensionModel> {
 		this.logger.debug(`Updating extension type=${type} enabled=${enabled}`);
 
 		const extension = this.findOne(type);
@@ -152,7 +152,7 @@ export class ExtensionsService {
 		// Update the config based on extension kind
 		// Note: type is required in the DTO validation
 		if (extension.kind === ExtensionKind.MODULE) {
-			this.configService.setModuleConfig(type, { type, enabled } as UpdateModuleConfigDto);
+			await this.configService.updateModuleConfig(type, { type, enabled } as UpdateModuleConfigDto);
 		} else {
 			this.configService.setPluginConfig(type, { type, enabled } as UpdatePluginConfigDto);
 		}

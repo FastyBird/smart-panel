@@ -46,7 +46,7 @@ describe('ConfigController', () => {
 						getConfig: jest.fn().mockReturnValue(mockConfig),
 						getModulesConfig: jest.fn().mockReturnValue(mockConfig.modules),
 						getModuleConfig: jest.fn((_module: string) => mockConfig.modules[0]),
-						setModuleConfig: jest.fn(),
+						updateModuleConfig: jest.fn(),
 					},
 				},
 				{
@@ -142,7 +142,7 @@ describe('ConfigController', () => {
 			const updatedModule = { ...mockConfig.modules[0], enabled: false } as ModuleConfigModel;
 
 			jest.spyOn(configService, 'getModuleConfig').mockReturnValue(updatedModule);
-			jest.spyOn(configService, 'setModuleConfig').mockImplementation(() => {});
+			jest.spyOn(configService, 'updateModuleConfig').mockResolvedValue();
 
 			const result = await controller.updateModuleConfig('mock-module', { data: updateDto });
 
@@ -151,7 +151,7 @@ describe('ConfigController', () => {
 				type: 'mock-module',
 				enabled: false,
 			});
-			expect(configService.setModuleConfig).toHaveBeenCalledWith('mock-module', updateDto);
+			expect(configService.updateModuleConfig).toHaveBeenCalledWith('mock-module', updateDto);
 			expect(configService.getModuleConfig).toHaveBeenCalledWith('mock-module');
 		});
 

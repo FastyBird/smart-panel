@@ -120,21 +120,21 @@ describe('ExtensionsController', () => {
 	});
 
 	describe('update', () => {
-		it('should update extension enabled status', () => {
+		it('should update extension enabled status', async () => {
 			const mockExtension = createMockExtension({ type: 'devices-module', enabled: false });
-			jest.spyOn(extensionsService, 'updateEnabled').mockReturnValue(mockExtension);
+			jest.spyOn(extensionsService, 'updateEnabled').mockResolvedValue(mockExtension);
 
-			const result = controller.update('devices-module', { data: { enabled: false } });
+			const result = await controller.update('devices-module', { data: { enabled: false } });
 
 			expect(result.data.enabled).toBe(false);
 			expect(extensionsService.updateEnabled).toHaveBeenCalledWith('devices-module', false);
 		});
 
-		it('should enable extension', () => {
+		it('should enable extension', async () => {
 			const mockExtension = createMockExtension({ type: 'devices-module', enabled: true });
-			jest.spyOn(extensionsService, 'updateEnabled').mockReturnValue(mockExtension);
+			jest.spyOn(extensionsService, 'updateEnabled').mockResolvedValue(mockExtension);
 
-			const result = controller.update('devices-module', { data: { enabled: true } });
+			const result = await controller.update('devices-module', { data: { enabled: true } });
 
 			expect(result.data.enabled).toBe(true);
 			expect(extensionsService.updateEnabled).toHaveBeenCalledWith('devices-module', true);

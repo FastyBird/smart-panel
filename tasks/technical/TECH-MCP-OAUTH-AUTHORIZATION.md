@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 5 administrative artifact controls complete
+Status: in progress — Phase 5 module capability-ceiling invalidation complete
 
 ## 1. Business goal
 

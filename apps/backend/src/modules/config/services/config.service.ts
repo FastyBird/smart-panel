@@ -17,6 +17,7 @@ import { ConfigCorruptedException, ConfigNotFoundException, ConfigValidationExce
 import { UpdateModuleConfigDto, UpdatePluginConfigDto } from '../dto/config.dto';
 import { AppConfigModel, ModuleConfigModel, PluginConfigModel } from '../models/config.model';
 
+import { ModuleConfigMutationRegistryService } from './module-config-mutation-registry.service';
 import { ModulesTypeMapperService } from './modules-type-mapper.service';
 import { PluginsTypeMapperService } from './plugins-type-mapper.service';
 
@@ -31,6 +32,7 @@ export class ConfigService {
 		private readonly configService: NestConfigService,
 		private readonly pluginsMapperService: PluginsTypeMapperService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
+		private readonly moduleConfigMutations: ModuleConfigMutationRegistryService,
 		private readonly platform: PlatformService,
 		private readonly eventEmitter: EventEmitter2,
 	) {
@@ -534,6 +536,10 @@ export class ConfigService {
 		this.eventEmitter.emit(EventType.CONFIG_UPDATED, { source: module, type: 'module' as const });
 
 		this.logger.log(`Configuration update for module=${module} completed successfully`);
+	}
+
+	async updateModuleConfig<TUpdateDto extends UpdateModuleConfigDto>(module: string, value: TUpdateDto): Promise<void> {
+		await this.moduleConfigMutations.execute(module, value, () => this.setModuleConfig(module, value));
 	}
 
 	async resetConfig(): Promise<void> {
