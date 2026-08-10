@@ -18,13 +18,18 @@ import { UserRole } from '../../users/users.constants';
 import { ReqCreateMcpOAuthClientDto, ReqUpdateMcpOAuthClientDto } from '../dto/mcp-oauth-client.dto';
 import { MCP_MODULE_API_TAG_NAME, MCP_MODULE_PREFIX } from '../mcp.constants';
 import { McpOAuthClientResponseModel, McpOAuthClientsResponseModel } from '../models/mcp-oauth-client-response.model';
+import { McpOAuthClientModel } from '../models/mcp-oauth-client.model';
 import { McpOAuthClientService } from '../services/mcp-oauth-client.service';
+import { McpOAuthManagementService } from '../services/mcp-oauth-management.service';
 
 @ApiTags(MCP_MODULE_API_TAG_NAME)
 @Controller('oauth/clients')
 @Roles(UserRole.OWNER, UserRole.ADMIN)
 export class McpOAuthClientsController {
-	constructor(private readonly clientsService: McpOAuthClientService) {}
+	constructor(
+		private readonly clientsService: McpOAuthClientService,
+		private readonly managementService: McpOAuthManagementService,
+	) {}
 
 	@ApiOperation({
 		tags: [MCP_MODULE_API_TAG_NAME],
@@ -37,6 +42,23 @@ export class McpOAuthClientsController {
 	async findAll(): Promise<McpOAuthClientsResponseModel> {
 		const response = new McpOAuthClientsResponseModel();
 		response.data = await this.clientsService.findAll();
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [MCP_MODULE_API_TAG_NAME],
+		summary: 'Get an MCP OAuth client',
+		description: 'Inspect one pre-registered public OAuth client without exposing authorization artifacts',
+		operationId: 'get-mcp-module-oauth-client',
+	})
+	@ApiParam({ name: 'id', description: 'MCP OAuth client record ID', type: 'string', format: 'uuid' })
+	@ApiSuccessResponse(McpOAuthClientResponseModel, 'MCP OAuth client retrieved successfully')
+	@ApiNotFoundResponse('MCP OAuth client not found')
+	@Get(':id')
+	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<McpOAuthClientResponseModel> {
+		const response = new McpOAuthClientResponseModel();
+		response.data = McpOAuthClientModel.fromEntity(await this.clientsService.getOneOrThrow(id));
 
 		return response;
 	}
@@ -81,9 +103,30 @@ export class McpOAuthClientsController {
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() body: ReqUpdateMcpOAuthClientDto,
+		@Req() req: AuthenticatedRequest,
 	): Promise<McpOAuthClientResponseModel> {
 		const response = new McpOAuthClientResponseModel();
-		response.data = await this.clientsService.update(id, body.data);
+		response.data = await this.managementService.updateClient(id, body.data, this.getActorId(req));
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [MCP_MODULE_API_TAG_NAME],
+		summary: 'Disable an MCP OAuth client',
+		description: 'Disable the client, revoke its grants and artifacts, and close its OAuth subscriptions',
+		operationId: 'revoke-mcp-module-oauth-client',
+	})
+	@ApiParam({ name: 'id', description: 'MCP OAuth client record ID', type: 'string', format: 'uuid' })
+	@ApiSuccessResponse(McpOAuthClientResponseModel, 'MCP OAuth client disabled successfully')
+	@ApiNotFoundResponse('MCP OAuth client not found')
+	@Post(':id/revoke')
+	async revoke(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Req() req: AuthenticatedRequest,
+	): Promise<McpOAuthClientResponseModel> {
+		const response = new McpOAuthClientResponseModel();
+		response.data = await this.managementService.disableClient(id, this.getActorId(req));
 
 		return response;
 	}

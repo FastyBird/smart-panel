@@ -29,6 +29,19 @@ import {
 	McpOAuthInteractionResponseModel,
 } from './models/mcp-oauth-interaction-response.model';
 import { McpOAuthInteractionCompletionModel, McpOAuthInteractionModel } from './models/mcp-oauth-interaction.model';
+import {
+	McpOAuthAccessTokenResponseModel,
+	McpOAuthAccessTokensResponseModel,
+	McpOAuthGrantResponseModel,
+	McpOAuthGrantsResponseModel,
+	McpOAuthRefreshFamiliesResponseModel,
+	McpOAuthRefreshFamilyResponseModel,
+} from './models/mcp-oauth-management-response.model';
+import {
+	McpOAuthAccessTokenModel,
+	McpOAuthGrantModel,
+	McpOAuthRefreshFamilyModel,
+} from './models/mcp-oauth-management.model';
 
 export const MCP_SWAGGER_EXTRA_MODELS = [
 	McpConfigModel,
@@ -57,4 +70,13 @@ export const MCP_SWAGGER_EXTRA_MODELS = [
 	McpOAuthInteractionCompletionModel,
 	McpOAuthInteractionResponseModel,
 	McpOAuthInteractionCompletionResponseModel,
+	McpOAuthGrantModel,
+	McpOAuthAccessTokenModel,
+	McpOAuthRefreshFamilyModel,
+	McpOAuthGrantResponseModel,
+	McpOAuthGrantsResponseModel,
+	McpOAuthAccessTokenResponseModel,
+	McpOAuthAccessTokensResponseModel,
+	McpOAuthRefreshFamilyResponseModel,
+	McpOAuthRefreshFamiliesResponseModel,
 ];

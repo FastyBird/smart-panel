@@ -1,6 +1,7 @@
 {
 	"menu": {
-		"clients": "MCP clients"
+		"clients": "MCP clients",
+		"oauth": "MCP OAuth access"
 	},
 	"actions": {
 		"create": "Create client",
@@ -126,6 +127,75 @@
 			"mcp:write": "Change supported physical-device properties",
 			"mcp:trigger": "Run scenes and higher-level physical actions",
 			"offline_access": "Refresh access without asking again for up to 30 days"
+		}
+	},
+	"oauthManagement": {
+		"title": "MCP OAuth access",
+		"subtitle": "Pre-register remote clients and revoke their grants and tokens.",
+		"securityTitle": "OAuth secrets are never displayed",
+		"securityDescription": "This page exposes only non-secret management identifiers. Revocation immediately closes matching MCP subscriptions.",
+		"tabs": {
+			"clients": "Clients",
+			"grants": "Grants",
+			"accessTokens": "Access tokens",
+			"refreshFamilies": "Refresh families"
+		},
+		"columns": {
+			"client": "Client",
+			"status": "Status",
+			"scopes": "Scopes",
+			"expires": "Expires",
+			"activeTokens": "Active tokens",
+			"actions": "Actions"
+		},
+		"empty": {
+			"clients": "No OAuth clients have been pre-registered.",
+			"grants": "No OAuth grants have been approved.",
+			"accessTokens": "No active OAuth access tokens.",
+			"refreshFamilies": "No active OAuth refresh families."
+		},
+		"clientId": "Client ID",
+		"grantId": "Grant ID",
+		"familyId": "Family ID",
+		"redirectUris": "Redirect URIs",
+		"createClient": "Pre-register OAuth client",
+		"editClient": "Edit OAuth client",
+		"name": "Name",
+		"nameRequired": "Enter a client name.",
+		"redirectRequired": "Add at least one exact redirect URI.",
+		"scopesRequired": "Select at least one maximum scope.",
+		"addRedirect": "Add redirect URI",
+		"physicalWarning": "Write or trigger scopes can affect physical devices.",
+		"status": {
+			"active": "Active",
+			"disabled": "Disabled",
+			"inactive": "Inactive",
+			"revoked": "Revoked",
+			"expired": "Expired"
+		},
+		"scope": {
+			"mcp:read": "Read",
+			"mcp:write": "Write",
+			"mcp:trigger": "Trigger",
+			"offline_access": "Offline access"
+		},
+		"confirm": {
+			"client": "Disable {name}, revoke all of its grants and tokens, and close its OAuth subscriptions?",
+			"grant": "Revoke this grant for {name}, its tokens, and matching subscriptions?",
+			"accessToken": "Revoke this access token for {name} and close its matching subscription?",
+			"refreshFamily": "Revoke this refresh family for {name}, all access tokens issued from it, and matching subscriptions?"
+		},
+		"messages": {
+			"loadFailed": "OAuth authorization data could not be loaded.",
+			"created": "OAuth client pre-registered.",
+			"createFailed": "OAuth client could not be created.",
+			"updated": "OAuth client updated.",
+			"updateFailed": "OAuth client could not be updated.",
+			"clientRevoked": "OAuth client disabled and revoked.",
+			"grantRevoked": "OAuth grant revoked.",
+			"accessTokenRevoked": "OAuth access token revoked.",
+			"refreshFamilyRevoked": "OAuth refresh family revoked.",
+			"revokeFailed": "OAuth authorization could not be revoked."
 		}
 	},
 	"messages": {

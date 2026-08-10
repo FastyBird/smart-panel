@@ -25,6 +25,9 @@ export type McpAuditDenialReason =
 
 export type McpAuditRequestFailureReason = 'policy_resolution_error';
 
+export type McpOAuthManagementArtifact = 'access_token' | 'client' | 'grant' | 'refresh_family';
+export type McpOAuthManagementAction = 'disabled' | 'revoked';
+
 export type McpSubscriptionCloseReason =
 	| 'authorization_expired'
 	| 'authorization_revoked'
@@ -120,6 +123,24 @@ export class McpAuditService {
 	): void {
 		this.activeSubscriptions = Math.max(0, this.activeSubscriptions - 1);
 		this.log('subscription_close', identity, { subscription_id: subscriptionId, reason });
+	}
+
+	recordOAuthManagementAction(
+		actorId: string,
+		artifact: McpOAuthManagementArtifact,
+		artifactId: string,
+		action: McpOAuthManagementAction,
+	): void {
+		this.log(
+			'oauth_management',
+			{ requestId: 'administrative' },
+			{
+				actor_id: actorId,
+				artifact,
+				artifact_id: artifactId,
+				action,
+			},
+		);
 	}
 
 	recordToolResult(result: ToolResult): void {

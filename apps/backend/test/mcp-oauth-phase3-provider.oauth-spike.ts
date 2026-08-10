@@ -8,7 +8,9 @@ import { DataSource } from 'typeorm';
 import { McpOAuthClientEntity } from '../src/modules/mcp/entities/mcp-oauth.entity';
 import {
 	McpOAuthProviderArtifactEntity,
+	McpOAuthProviderRefreshFamilyLineageEntity,
 	McpOAuthProviderRevokedGrantEntity,
+	McpOAuthProviderRevokedRefreshFamilyEntity,
 } from '../src/modules/mcp/entities/mcp-oauth.entity';
 import { McpOAuthScope } from '../src/modules/mcp/mcp.constants';
 import { createMcpOAuthProviderAdapter } from '../src/modules/mcp/oauth/mcp-oauth-provider.adapter';
@@ -117,7 +119,12 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		dataSource = new DataSource({
 			type: 'sqlite',
 			database: ':memory:',
-			entities: [McpOAuthProviderArtifactEntity, McpOAuthProviderRevokedGrantEntity],
+			entities: [
+				McpOAuthProviderArtifactEntity,
+				McpOAuthProviderRefreshFamilyLineageEntity,
+				McpOAuthProviderRevokedGrantEntity,
+				McpOAuthProviderRevokedRefreshFamilyEntity,
+			],
 			synchronize: true,
 		});
 		await dataSource.initialize();
