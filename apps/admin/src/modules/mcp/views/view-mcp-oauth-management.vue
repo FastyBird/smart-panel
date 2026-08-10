@@ -150,9 +150,16 @@
 						<el-table-column
 							fixed="right"
 							:label="t('mcpModule.oauthManagement.columns.actions')"
-							width="120"
+							width="190"
 						>
 							<template #default="scope">
+								<el-button
+									size="small"
+									:disabled="!canEditGrant(scope.row)"
+									@click="openGrantEdit(scope.row)"
+								>
+									{{ t('mcpModule.actions.edit') }}
+								</el-button>
 								<el-button
 									size="small"
 									type="danger"
@@ -321,7 +328,7 @@
 				</el-checkbox-group>
 			</el-form-item>
 			<el-alert
-				v-if="hasPhysicalScope"
+				v-if="clientHasPhysicalScope"
 				type="warning"
 				:description="t('mcpModule.oauthManagement.physicalWarning')"
 				:closable="false"
@@ -336,6 +343,59 @@
 				@click="saveClient"
 			>
 				{{ editingClient ? t('mcpModule.actions.save') : t('mcpModule.actions.create') }}
+			</el-button>
+		</template>
+	</el-dialog>
+
+	<el-dialog
+		v-model="showGrantDialog"
+		:title="t('mcpModule.oauthManagement.editGrant')"
+		width="min(560px, 94vw)"
+		@closed="resetGrantForm"
+	>
+		<el-form
+			ref="grantFormEl"
+			:model="grantForm"
+			:rules="grantRules"
+			label-position="top"
+		>
+			<el-form-item
+				:label="t('mcpModule.oauthManagement.columns.scopes')"
+				prop="approvedScopes"
+			>
+				<el-checkbox-group v-model="grantForm.approvedScopes">
+					<el-checkbox
+						v-for="scope in grantScopeOptions"
+						:key="scope"
+						:value="scope"
+						:disabled="scope === McpOAuthScope.OFFLINE_ACCESS"
+					>
+						{{ t(`mcpModule.oauthManagement.scope.${scope}`) }}
+					</el-checkbox>
+				</el-checkbox-group>
+			</el-form-item>
+			<el-alert
+				v-if="grantHasPhysicalScope"
+				type="warning"
+				:description="t('mcpModule.oauthManagement.physicalWarning')"
+				:closable="false"
+				show-icon
+			/>
+			<el-alert
+				type="info"
+				:description="t('mcpModule.oauthManagement.grantReductionNotice')"
+				:closable="false"
+				show-icon
+			/>
+		</el-form>
+		<template #footer>
+			<el-button @click="showGrantDialog = false">{{ t('mcpModule.actions.cancel') }}</el-button>
+			<el-button
+				type="primary"
+				:loading="saving"
+				@click="saveGrant"
+			>
+				{{ t('mcpModule.actions.save') }}
 			</el-button>
 		</template>
 	</el-dialog>
@@ -387,6 +447,7 @@ const {
 	fetchAll,
 	createClient,
 	updateClient,
+	updateGrant,
 	revokeClient,
 	revokeGrant,
 	revokeAccessToken,
@@ -395,13 +456,21 @@ const {
 
 const activeTab = ref('clients');
 const showClientDialog = ref(false);
+const showGrantDialog = ref(false);
 const saving = ref(false);
 const editingClient = ref<IMcpOAuthClient | null>(null);
+const editingGrant = ref<IMcpOAuthGrant | null>(null);
 const clientFormEl = ref<FormInstance>();
+const grantFormEl = ref<FormInstance>();
 const scopeOptions = Object.values(McpOAuthScope);
+const grantScopeOptions = ref<McpOAuthScope[]>([]);
 const clientForm = reactive({ name: '', redirectUris: [''], maximumScopes: [McpOAuthScope.READ] as McpOAuthScope[] });
-const hasPhysicalScope = computed(
+const grantForm = reactive({ approvedScopes: [McpOAuthScope.READ] as McpOAuthScope[] });
+const clientHasPhysicalScope = computed(
 	() => clientForm.maximumScopes.includes(McpOAuthScope.WRITE) || clientForm.maximumScopes.includes(McpOAuthScope.TRIGGER)
+);
+const grantHasPhysicalScope = computed(
+	() => grantForm.approvedScopes.includes(McpOAuthScope.WRITE) || grantForm.approvedScopes.includes(McpOAuthScope.TRIGGER)
 );
 const clientRules = reactive<FormRules>({
 	name: [{ required: true, message: t('mcpModule.oauthManagement.nameRequired'), trigger: 'change' }],
@@ -415,6 +484,9 @@ const clientRules = reactive<FormRules>({
 		},
 	],
 	maximumScopes: [{ type: 'array', min: 1, required: true, message: t('mcpModule.oauthManagement.scopesRequired'), trigger: 'change' }],
+});
+const grantRules = reactive<FormRules>({
+	approvedScopes: [{ type: 'array', min: 1, required: true, message: t('mcpModule.oauthManagement.grantScopesRequired'), trigger: 'change' }],
 });
 
 const ScopeTags = defineComponent({
@@ -449,6 +521,20 @@ const openEdit = (client: IMcpOAuthClient): void => {
 	showClientDialog.value = true;
 };
 
+const resetGrantForm = (): void => {
+	editingGrant.value = null;
+	grantScopeOptions.value = [];
+	grantForm.approvedScopes = [McpOAuthScope.READ];
+	grantFormEl.value?.clearValidate();
+};
+
+const openGrantEdit = (grant: IMcpOAuthGrant): void => {
+	editingGrant.value = grant;
+	grantScopeOptions.value = [...grant.approvedScopes];
+	grantForm.approvedScopes = [...grant.approvedScopes];
+	showGrantDialog.value = true;
+};
+
 const saveClient = async (): Promise<void> => {
 	if (!(await clientFormEl.value?.validate())) return;
 	saving.value = true;
@@ -472,6 +558,21 @@ const saveClient = async (): Promise<void> => {
 		flashMessage.error(
 			t(editingClient.value ? 'mcpModule.oauthManagement.messages.updateFailed' : 'mcpModule.oauthManagement.messages.createFailed')
 		);
+	} finally {
+		saving.value = false;
+	}
+};
+
+const saveGrant = async (): Promise<void> => {
+	if (!editingGrant.value || !(await grantFormEl.value?.validate())) return;
+	saving.value = true;
+
+	try {
+		await updateGrant(editingGrant.value.id, { approvedScopes: [...grantForm.approvedScopes] });
+		flashMessage.success(t('mcpModule.oauthManagement.messages.grantUpdated'));
+		showGrantDialog.value = false;
+	} catch {
+		flashMessage.error(t('mcpModule.oauthManagement.messages.grantUpdateFailed'));
 	} finally {
 		saving.value = false;
 	}
@@ -527,6 +628,7 @@ const grantStatus = (grant: IMcpOAuthGrant): { key: 'active' | 'expired' | 'inac
 };
 
 const canRevokeGrant = (grant: IMcpOAuthGrant): boolean => grant.revokedAt === null && new Date(grant.expiresAt).getTime() > Date.now();
+const canEditGrant = (grant: IMcpOAuthGrant): boolean => grant.active;
 
 const formatDate = (value: string): string => new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 

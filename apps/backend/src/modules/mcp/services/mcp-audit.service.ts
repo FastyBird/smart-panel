@@ -26,7 +26,7 @@ export type McpAuditDenialReason =
 export type McpAuditRequestFailureReason = 'policy_resolution_error';
 
 export type McpOAuthManagementArtifact = 'access_token' | 'client' | 'grant' | 'refresh_family';
-export type McpOAuthManagementAction = 'disabled' | 'revoked';
+export type McpOAuthManagementAction = 'disabled' | 'revoked' | 'scopes_updated';
 
 export type McpSubscriptionCloseReason =
 	| 'authorization_expired'

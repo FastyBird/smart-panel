@@ -12,6 +12,7 @@ import {
 	ReqUpdateMcpOAuthClientDto,
 	UpdateMcpOAuthClientDto,
 } from './dto/mcp-oauth-client.dto';
+import { ReqUpdateMcpOAuthGrantDto, UpdateMcpOAuthGrantDto } from './dto/mcp-oauth-grant.dto';
 import { ApproveMcpOAuthInteractionDto, ReqApproveMcpOAuthInteractionDto } from './dto/mcp-oauth-interaction.dto';
 import { UpdateMcpConfigDto } from './dto/update-config.dto';
 import { McpClientEntity } from './entities/mcp-client.entity';
@@ -66,6 +67,8 @@ export const MCP_SWAGGER_EXTRA_MODELS = [
 	McpOAuthClientsResponseModel,
 	ApproveMcpOAuthInteractionDto,
 	ReqApproveMcpOAuthInteractionDto,
+	UpdateMcpOAuthGrantDto,
+	ReqUpdateMcpOAuthGrantDto,
 	McpOAuthInteractionModel,
 	McpOAuthInteractionCompletionModel,
 	McpOAuthInteractionResponseModel,

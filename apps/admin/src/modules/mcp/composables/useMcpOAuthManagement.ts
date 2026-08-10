@@ -10,6 +10,7 @@ import {
 	McpOAuthGrantSchema,
 	McpOAuthRefreshFamilySchema,
 	McpOAuthUpdateClientSchema,
+	McpOAuthUpdateGrantSchema,
 } from '../schemas/oauth-management.schemas';
 import type {
 	IMcpOAuthAccessToken,
@@ -18,6 +19,7 @@ import type {
 	IMcpOAuthGrant,
 	IMcpOAuthRefreshFamily,
 	IMcpOAuthUpdateClient,
+	IMcpOAuthUpdateGrant,
 } from '../schemas/oauth-management.types';
 
 interface IUseMcpOAuthManagement {
@@ -32,6 +34,7 @@ interface IUseMcpOAuthManagement {
 	updateClient: (id: string, payload: IMcpOAuthUpdateClient) => Promise<IMcpOAuthClient>;
 	revokeClient: (id: string) => Promise<IMcpOAuthClient>;
 	revokeGrant: (id: string) => Promise<IMcpOAuthGrant>;
+	updateGrant: (id: string, payload: IMcpOAuthUpdateGrant) => Promise<IMcpOAuthGrant>;
 	revokeAccessToken: (id: string) => Promise<void>;
 	revokeRefreshFamily: (id: string) => Promise<void>;
 }
@@ -41,6 +44,7 @@ const clientsPath = `${oauthPath}/clients` as const;
 const clientPath = `${oauthPath}/clients/{id}` as const;
 const revokeClientPath = `${oauthPath}/clients/{id}/revoke` as const;
 const grantsPath = `${oauthPath}/grants` as const;
+const grantPath = `${oauthPath}/grants/{id}` as const;
 const revokeGrantPath = `${oauthPath}/grants/{id}/revoke` as const;
 const accessTokensPath = `${oauthPath}/access-tokens` as const;
 const revokeAccessTokenPath = `${oauthPath}/access-tokens/{id}/revoke` as const;
@@ -156,6 +160,21 @@ export const useMcpOAuthManagement = (): IUseMcpOAuthManagement => {
 		return grant;
 	};
 
+	const updateGrant = async (id: string, payload: IMcpOAuthUpdateGrant): Promise<IMcpOAuthGrant> => {
+		const parsed = McpOAuthUpdateGrantSchema.parse(payload);
+		const { data, response } = await backend.client.PATCH(grantPath, {
+			params: { path: { id } },
+			body: { data: { approved_scopes: parsed.approvedScopes } },
+		});
+
+		if (!data) throw new McpApiException('Failed to update MCP OAuth grant.', response.status);
+
+		const grant = McpOAuthGrantSchema.parse(snakeToCamel(data.data));
+		grants.value = grants.value.map((item) => (item.id === id ? grant : item));
+
+		return grant;
+	};
+
 	const revokeAccessToken = async (id: string): Promise<void> => {
 		const { response } = await backend.client.POST(revokeAccessTokenPath, { params: { path: { id } } });
 
@@ -185,6 +204,7 @@ export const useMcpOAuthManagement = (): IUseMcpOAuthManagement => {
 		updateClient,
 		revokeClient,
 		revokeGrant,
+		updateGrant,
 		revokeAccessToken,
 		revokeRefreshFamily,
 	};

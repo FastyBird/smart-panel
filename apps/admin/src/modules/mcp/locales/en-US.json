@@ -160,10 +160,13 @@
 		"redirectUris": "Redirect URIs",
 		"createClient": "Pre-register OAuth client",
 		"editClient": "Edit OAuth client",
+		"editGrant": "Reduce OAuth grant scopes",
 		"name": "Name",
 		"nameRequired": "Enter a client name.",
 		"redirectRequired": "Add at least one exact redirect URI.",
 		"scopesRequired": "Select at least one maximum scope.",
+		"grantScopesRequired": "Keep at least one approved scope.",
+		"grantReductionNotice": "Capability scopes can only be removed. Adding access requires a new approval; revoke the grant to remove offline access.",
 		"addRedirect": "Add redirect URI",
 		"physicalWarning": "Write or trigger scopes can affect physical devices.",
 		"status": {
@@ -193,6 +196,8 @@
 			"updateFailed": "OAuth client could not be updated.",
 			"clientRevoked": "OAuth client disabled and revoked.",
 			"grantRevoked": "OAuth grant revoked.",
+			"grantUpdated": "OAuth grant scopes reduced.",
+			"grantUpdateFailed": "OAuth grant scopes could not be updated.",
 			"accessTokenRevoked": "OAuth access token revoked.",
 			"refreshFamilyRevoked": "OAuth refresh family revoked.",
 			"revokeFailed": "OAuth authorization could not be revoked."

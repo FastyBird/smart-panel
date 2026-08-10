@@ -1,4 +1,4 @@
-import { DataSource } from 'typeorm';
+import { DataSource, FindOptionsWhere, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { hashToken } from '../../auth/utils/token.utils';
@@ -22,8 +22,18 @@ import { McpOAuthClientService } from './mcp-oauth-client.service';
 import { McpOAuthManagementService } from './mcp-oauth-management.service';
 import { McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
 
+const deferred = <T = void>(): { promise: Promise<T>; resolve: (value: T) => void } => {
+	let resolve = (_value: T): void => undefined;
+	const promise = new Promise<T>((resolver) => {
+		resolve = resolver;
+	});
+
+	return { promise, resolve };
+};
+
 describe('McpOAuthManagementService', () => {
 	let dataSource: DataSource;
+	let grantRepository: Repository<McpOAuthGrantEntity>;
 	let service: McpOAuthManagementService;
 	let subscriptions: McpSubscriptionRegistryService;
 	let client: McpOAuthClientEntity;
@@ -98,6 +108,7 @@ describe('McpOAuthManagementService', () => {
 			}),
 		);
 		const grants = dataSource.getRepository(McpOAuthGrantEntity);
+		grantRepository = grants;
 		grant = await grants.save(
 			grants.create({
 				providerGrantIdHash: hashToken('grant-one'),
@@ -385,6 +396,191 @@ describe('McpOAuthManagementService', () => {
 		).toBe(true);
 	});
 
+	it('reduces approved grant scopes and closes only matching contracted subscriptions', async () => {
+		await grantRepository.update(
+			{ id: grant.id },
+			{ approvedScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE, McpOAuthScope.OFFLINE_ACCESS] },
+		);
+		const matchingRead = await openSubscription(client.id, grant.id, accessId, familyId, [McpOAuthScope.READ]);
+		const matchingWrite = await openSubscription(client.id, grant.id, uuid(), undefined, [
+			McpOAuthScope.READ,
+			McpOAuthScope.WRITE,
+		]);
+		const other = await openSubscription(otherClient.id, otherGrant.id, uuid(), undefined, [
+			McpOAuthScope.READ,
+			McpOAuthScope.WRITE,
+		]);
+
+		const updated = await service.updateGrant(
+			grant.id,
+			{ approvedScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS] },
+			'actor-id',
+		);
+
+		expect(updated.approvedScopes).toEqual([McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS]);
+		expect((await grantRepository.findOneByOrFail({ id: grant.id })).generation).toBe(1);
+		expect(matchingRead.signal.aborted).toBe(false);
+		expect(matchingWrite.signal.aborted).toBe(true);
+		expect(other.signal.aborted).toBe(false);
+		expect(auditService.recordOAuthManagementAction).toHaveBeenCalledWith(
+			'actor-id',
+			'grant',
+			grant.id,
+			'scopes_updated',
+		);
+	});
+
+	it('rejects grant scope expansion without changing its generation', async () => {
+		await expect(
+			service.updateGrant(
+				grant.id,
+				{ approvedScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE, McpOAuthScope.OFFLINE_ACCESS] },
+				'actor-id',
+			),
+		).rejects.toThrow('can only be reduced');
+
+		expect((await grantRepository.findOneByOrFail({ id: grant.id })).generation).toBe(0);
+	});
+
+	it('requires revocation to remove offline access', async () => {
+		await expect(service.updateGrant(grant.id, { approvedScopes: [McpOAuthScope.READ] }, 'actor-id')).rejects.toThrow(
+			'offline_access can only be removed by revoking',
+		);
+
+		expect((await grantRepository.findOneByOrFail({ id: grant.id })).generation).toBe(0);
+	});
+
+	it('validates a queued grant reduction against the latest authorized scopes', async () => {
+		await grantRepository.update(
+			{ id: grant.id },
+			{ approvedScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE], generation: 0 },
+		);
+		const mutationStarted = deferred();
+		const releaseMutation = deferred();
+		const precedingMutation = subscriptions.closeOAuthGrant(grant.id, async () => {
+			mutationStarted.resolve();
+			await releaseMutation.promise;
+			await grantRepository.update(
+				{ id: grant.id, generation: 0 },
+				{ approvedScopes: [McpOAuthScope.READ], generation: () => 'generation + 1' },
+			);
+		});
+
+		await mutationStarted.promise;
+		const queuedUpdate = expect(
+			service.updateGrant(grant.id, { approvedScopes: [McpOAuthScope.WRITE] }, 'actor-id'),
+		).rejects.toThrow('can only be reduced');
+		releaseMutation.resolve();
+		await precedingMutation;
+		await queuedUpdate;
+
+		expect(await grantRepository.findOneByOrFail({ id: grant.id })).toMatchObject({
+			approvedScopes: [McpOAuthScope.READ],
+			generation: 1,
+		});
+	});
+
+	it('does not close grant streams when the conditional scope update fails', async () => {
+		await grantRepository.update({ id: grant.id }, { approvedScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE] });
+		const matching = await openSubscription(client.id, grant.id, accessId, familyId, [
+			McpOAuthScope.READ,
+			McpOAuthScope.WRITE,
+		]);
+		jest.spyOn(grantRepository, 'update').mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+
+		await expect(service.updateGrant(grant.id, { approvedScopes: [McpOAuthScope.READ] }, 'actor-id')).rejects.toThrow(
+			'changed during scope update',
+		);
+
+		expect(matching.signal.aborted).toBe(false);
+	});
+
+	it('closes a contracted grant registration that wins the gate before the scope update', async () => {
+		await grantRepository.update({ id: grant.id }, { approvedScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE] });
+		const revalidationStarted = deferred();
+		const releaseRevalidation = deferred();
+		const registration = subscriptions.openOAuth('winning-grant-registration', async () => {
+			revalidationStarted.resolve();
+			await releaseRevalidation.promise;
+
+			return {
+				clientId: client.id,
+				binding: {
+					accessTokenId: accessId,
+					grantId: grant.id,
+					authorizationDeadline: new Date(Date.now() + 60_000),
+					effectiveScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE],
+					modulePolicyGeneration: 0,
+					clientGeneration: 0,
+					grantGeneration: 0,
+				},
+			};
+		});
+
+		await revalidationStarted.promise;
+
+		const mutation = service.updateGrant(grant.id, { approvedScopes: [McpOAuthScope.READ] }, 'actor-id');
+		await Promise.resolve();
+		expect((await grantRepository.findOneByOrFail({ id: grant.id })).generation).toBe(0);
+
+		releaseRevalidation.resolve();
+		const winning = await registration;
+		await mutation;
+
+		expect(winning.signal.aborted).toBe(true);
+		expect((await grantRepository.findOneByOrFail({ id: grant.id })).generation).toBe(1);
+	});
+
+	it('makes a registration queued behind grant reduction observe the updated generation and scopes', async () => {
+		await grantRepository.update({ id: grant.id }, { approvedScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE] });
+		const matching = await openSubscription(client.id, grant.id, accessId, familyId, [
+			McpOAuthScope.READ,
+			McpOAuthScope.WRITE,
+		]);
+		const updateStarted = deferred();
+		const releaseUpdate = deferred();
+		const updateSpy = jest.spyOn(grantRepository, 'update');
+		updateSpy.mockImplementationOnce(async (criteria, partialEntity) => {
+			updateStarted.resolve();
+			await releaseUpdate.promise;
+			updateSpy.mockRestore();
+
+			return grantRepository.update(criteria as FindOptionsWhere<McpOAuthGrantEntity>, partialEntity);
+		});
+		const mutation = service.updateGrant(grant.id, { approvedScopes: [McpOAuthScope.READ] }, 'actor-id');
+
+		await updateStarted.promise;
+
+		const observed: Array<{ generation: number; scopes: McpOAuthScope[] }> = [];
+		const registration = subscriptions.openOAuth('queued-grant-registration', async () => {
+			const liveGrant = await grantRepository.findOneByOrFail({ id: grant.id });
+			observed.push({ generation: liveGrant.generation, scopes: [...liveGrant.approvedScopes] });
+
+			return {
+				clientId: client.id,
+				binding: {
+					accessTokenId: uuid(),
+					grantId: grant.id,
+					authorizationDeadline: new Date(Date.now() + 60_000),
+					effectiveScopes: [McpOAuthScope.READ],
+					modulePolicyGeneration: 0,
+					clientGeneration: 0,
+					grantGeneration: liveGrant.generation,
+				},
+			};
+		});
+		await Promise.resolve();
+		expect(observed).toEqual([]);
+
+		releaseUpdate.resolve();
+		await mutation;
+		const queued = await registration;
+
+		expect(observed).toEqual([{ generation: 1, scopes: [McpOAuthScope.READ] }]);
+		expect(matching.signal.aborted).toBe(true);
+		expect(queued.signal.aborted).toBe(false);
+	});
+
 	it('disables a client, revokes its artifacts, and preserves other clients', async () => {
 		const matching = await openSubscription(client.id, grant.id, accessId, familyId);
 		const otherAccessId = (await service.findAccessTokens()).find((token) => token.clientId === otherClient.id)?.id;
@@ -433,7 +629,13 @@ describe('McpOAuthManagementService', () => {
 		expect(matching.signal.aborted).toBe(true);
 	});
 
-	async function openSubscription(clientId: string, grantId: string, tokenId: string, refreshFamilyId?: string) {
+	async function openSubscription(
+		clientId: string,
+		grantId: string,
+		tokenId: string,
+		refreshFamilyId?: string,
+		effectiveScopes: McpOAuthScope[] = [McpOAuthScope.READ],
+	) {
 		return subscriptions.openOAuth(`request-${tokenId}`, () =>
 			Promise.resolve({
 				clientId,
@@ -442,7 +644,7 @@ describe('McpOAuthManagementService', () => {
 					grantId,
 					...(refreshFamilyId ? { refreshFamilyId } : {}),
 					authorizationDeadline: new Date(Date.now() + 60_000),
-					effectiveScopes: [McpOAuthScope.READ],
+					effectiveScopes,
 					modulePolicyGeneration: 0,
 					clientGeneration: 0,
 					grantGeneration: 0,

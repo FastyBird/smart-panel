@@ -1,10 +1,11 @@
 import { DataSource, In, IsNull, MoreThan, Not, Repository } from 'typeorm';
 
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { ConfigService } from '../../config/services/config.service';
 import { UpdateMcpOAuthClientDto } from '../dto/mcp-oauth-client.dto';
+import { UpdateMcpOAuthGrantDto } from '../dto/mcp-oauth-grant.dto';
 import {
 	McpOAuthClientEntity,
 	McpOAuthGrantEntity,
@@ -62,13 +63,8 @@ export class McpOAuthManagementService {
 
 	async getGrant(id: string): Promise<McpOAuthGrantModel> {
 		const grant = await this.getGrantEntity(id);
-		const providerRevocations = await this.getProviderRevocations([grant]);
 
-		return McpOAuthGrantModel.fromEntity(
-			grant,
-			grant.providerGrantIdHash ? (providerRevocations.get(grant.providerGrantIdHash) ?? null) : null,
-			this.isModuleEnabled(),
-		);
+		return this.mapGrant(grant);
 	}
 
 	async findAccessTokens(): Promise<McpOAuthAccessTokenModel[]> {
@@ -195,6 +191,49 @@ export class McpOAuthManagementService {
 		return McpOAuthClientModel.fromEntity(await this.clientsService.getOneOrThrow(id));
 	}
 
+	async updateGrant(id: string, dto: UpdateMcpOAuthGrantDto, actorId: string): Promise<McpOAuthGrantModel> {
+		let current: McpOAuthGrantModel | null = null;
+		let changed = false;
+
+		await this.subscriptions.closeOAuthGrantScopeContractions(id, dto.approvedScopes, async () => {
+			const grant = await this.getGrantEntity(id);
+			const liveGrant = await this.mapGrant(grant);
+			current = liveGrant;
+
+			if (!liveGrant.active) throw new ConflictException('Only an active MCP OAuth grant can be updated');
+
+			const addedScopes = dto.approvedScopes.filter((scope) => !liveGrant.approvedScopes.includes(scope));
+
+			if (addedScopes.length > 0) {
+				throw new BadRequestException(`Approved grant scopes can only be reduced: ${addedScopes.join(', ')}`);
+			}
+
+			if (
+				liveGrant.approvedScopes.includes(McpOAuthScope.OFFLINE_ACCESS) !==
+				dto.approvedScopes.includes(McpOAuthScope.OFFLINE_ACCESS)
+			) {
+				throw new BadRequestException('offline_access can only be removed by revoking the MCP OAuth grant');
+			}
+
+			if (this.sameScopes(liveGrant.approvedScopes, dto.approvedScopes)) return;
+
+			const result = await this.grants.update(
+				{ id, generation: grant.generation, revokedAt: IsNull(), expiresAt: MoreThan(new Date()) },
+				{ approvedScopes: [...dto.approvedScopes], generation: () => 'generation + 1' },
+			);
+
+			if (!result.affected) throw new ConflictException('The MCP OAuth grant changed during scope update');
+			changed = true;
+		});
+
+		if (!current) throw new ConflictException('The MCP OAuth grant could not be updated');
+		if (!changed) return current;
+
+		this.auditService.recordOAuthManagementAction(actorId, 'grant', id, 'scopes_updated');
+
+		return this.getGrant(id);
+	}
+
 	async revokeGrant(id: string, actorId: string): Promise<McpOAuthGrantModel> {
 		const grant = await this.getGrantEntity(id);
 
@@ -262,6 +301,20 @@ export class McpOAuthManagementService {
 		if (!grant) throw new NotFoundException('Requested MCP OAuth grant does not exist');
 
 		return grant;
+	}
+
+	private async mapGrant(grant: McpOAuthGrantEntity): Promise<McpOAuthGrantModel> {
+		const providerRevocations = await this.getProviderRevocations([grant]);
+
+		return McpOAuthGrantModel.fromEntity(
+			grant,
+			grant.providerGrantIdHash ? (providerRevocations.get(grant.providerGrantIdHash) ?? null) : null,
+			this.isModuleEnabled(),
+		);
+	}
+
+	private sameScopes(first: McpOAuthScope[], second: McpOAuthScope[]): boolean {
+		return first.length === second.length && first.every((scope) => second.includes(scope));
 	}
 
 	private async mapAccessTokens(artifacts: McpOAuthProviderArtifactEntity[]): Promise<McpOAuthAccessTokenModel[]> {

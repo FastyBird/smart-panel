@@ -55,3 +55,7 @@ export const McpOAuthCreateClientSchema = z.object({
 });
 
 export const McpOAuthUpdateClientSchema = McpOAuthCreateClientSchema.partial();
+
+export const McpOAuthUpdateGrantSchema = z.object({
+	approvedScopes: z.array(scopeSchema).min(1),
+});
