@@ -31,10 +31,26 @@ export class McpOAuthGlobalInvalidationService {
 	) {}
 
 	async invalidate(generations: McpOAuthGlobalGeneration[], commit: () => Promise<void> | void): Promise<void> {
+		await this.runInvalidation(generations, commit, (advanceGeneration) =>
+			this.subscriptions.closeAllOAuth(advanceGeneration),
+		);
+	}
+
+	async invalidateAll(generations: McpOAuthGlobalGeneration[], commit: () => Promise<void> | void): Promise<void> {
+		await this.runInvalidation(generations, commit, (advanceGeneration) =>
+			this.subscriptions.closeAll(advanceGeneration),
+		);
+	}
+
+	private async runInvalidation(
+		generations: McpOAuthGlobalGeneration[],
+		commit: () => Promise<void> | void,
+		closeSubscriptions: (advanceGeneration: () => Promise<void>) => Promise<void>,
+	): Promise<void> {
 		let commitError: unknown;
 		let commitFailed = false;
 
-		await this.subscriptions.closeAllOAuth(async () => {
+		await closeSubscriptions(async () => {
 			await this.dataSource.transaction((manager) => this.advanceAndRevoke(manager, generations));
 
 			try {

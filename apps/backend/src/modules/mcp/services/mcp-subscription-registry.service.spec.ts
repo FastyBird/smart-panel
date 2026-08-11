@@ -236,6 +236,7 @@ describe('McpSubscriptionRegistryService', () => {
 		const closePromise = service.closeAll();
 		const revalidate = jest.fn().mockResolvedValue(oauthRegistration());
 
+		expect(() => service.open('late-static-open')).toThrow(McpSubscriptionClosingError);
 		await expect(service.openOAuth('late-open', revalidate)).rejects.toThrow(McpSubscriptionClosingError);
 		expect(revalidate).not.toHaveBeenCalled();
 
