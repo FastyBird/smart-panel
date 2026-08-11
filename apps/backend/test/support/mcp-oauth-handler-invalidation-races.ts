@@ -180,11 +180,10 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 		const urls = publicUrlService.getUrls();
 
 		if (!urls) throw new Error('Expected initial MCP OAuth public URLs');
-		const clientsService = {
-			findActiveByIdentifier: jest.fn((clientIdentifier: string) =>
-				Promise.resolve(clientIdentifier === CLIENT_ID ? client : null),
-			),
-		} as unknown as McpOAuthClientService;
+		const clientsService = new McpOAuthClientService(
+			dataSource.getRepository(McpOAuthClientEntity),
+			configService as unknown as ConfigService,
+		);
 		const auditService = new McpAuditService();
 		const subscriptions = new McpSubscriptionRegistryService(auditService);
 		const readiness = new McpOAuthReadinessService();
@@ -274,12 +273,15 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 				.getRepository(McpOAuthServerStateEntity)
 				.findOneByOrFail({ key: MCP_OAUTH_SERVER_STATE_KEY });
 			const activeUrls = publicUrlService.getUrls();
+			const activeClient = await dataSource
+				.getRepository(McpOAuthClientEntity)
+				.findOneByOrFail({ clientIdentifier: CLIENT_ID });
 
 			if (!activeUrls) throw new Error('Expected active MCP OAuth public URLs');
 
 			await dataSource.getRepository(McpOAuthGrantEntity).save({
 				providerGrantIdHash: hashToken(providerGrantId),
-				clientId: client.id,
+				clientId: activeClient.id,
 				approvedById: user.id,
 				installationId: INSTALLATION_ID,
 				issuer: activeUrls.issuer,
@@ -292,7 +294,7 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 				oauthEnabledGeneration: state.oauthEnabledGeneration,
 				serverSecretVersion: state.serverSecretVersion,
 				publicIdentityGeneration: state.publicIdentityGeneration,
-				clientGeneration: client.generation,
+				clientGeneration: activeClient.generation,
 				modulePolicyGeneration: state.modulePolicyGeneration,
 			});
 		};
@@ -361,6 +363,7 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 			startHandler: () => Promise<T>,
 			startInvalidation: () => Promise<void>,
 			closesRouteGate: boolean,
+			clearsAllArtifacts = true,
 		): Promise<T> => {
 			const pause = armPause(model);
 			const handler = startHandler();
@@ -378,7 +381,7 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 			const result = await handler;
 			await invalidation;
 			beforeArtifactUpsert = () => Promise.resolve();
-			expect(await dataSource.getRepository(McpOAuthProviderArtifactEntity).count()).toBe(0);
+			if (clearsAllArtifacts) expect(await dataSource.getRepository(McpOAuthProviderArtifactEntity).count()).toBe(0);
 
 			return result;
 		};
@@ -480,6 +483,42 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 			runtime.getActive().provider.AccessToken.find(publicIdentityTokens.access_token),
 		).resolves.toBeUndefined();
 		expect((await refresh(urls, requireRefreshToken(publicIdentityTokens))).status).toBe(400);
+
+		const clientAuthorization = await authorize(urls);
+		const clientDisableResponse = await raceGlobalInvalidation(
+			'AccessToken',
+			() => exchangeCode(urls, requireAuthorizationCode(clientAuthorization.callback), clientAuthorization.verifier),
+			async () => {
+				await management.disableClient(client.id, ACCOUNT_ID);
+			},
+			false,
+			false,
+		);
+		const disabledClientTokens = (await clientDisableResponse.json()) as TokenResponse;
+		const disabledClient = await dataSource.getRepository(McpOAuthClientEntity).findOneByOrFail({ id: client.id });
+		expect(clientDisableResponse.status).toBe(200);
+		expect(disabledClient).toMatchObject({ enabled: false, generation: 1 });
+		await expect(
+			runtime.getActive().provider.AccessToken.find(disabledClientTokens.access_token),
+		).resolves.toBeUndefined();
+		expect((await refresh(urls, requireRefreshToken(disabledClientTokens))).status).toBe(401);
+
+		await management.updateClient(client.id, { enabled: true }, ACCOUNT_ID);
+		expect(await dataSource.getRepository(McpOAuthClientEntity).findOneByOrFail({ id: client.id })).toMatchObject({
+			enabled: true,
+			generation: 2,
+		});
+		await expect(
+			runtime.getActive().provider.AccessToken.find(disabledClientTokens.access_token),
+		).resolves.toBeUndefined();
+		expect((await refresh(urls, requireRefreshToken(disabledClientTokens))).status).toBe(400);
+		const reenabledClientAuthorization = await authorize(urls);
+		const reenabledClientResponse = await exchangeCode(
+			urls,
+			requireAuthorizationCode(reenabledClientAuthorization.callback),
+			reenabledClientAuthorization.verifier,
+		);
+		expect(reenabledClientResponse.status).toBe(200);
 	} finally {
 		releaseActivePause();
 		await new Promise<void>((resolve) => server.close(() => resolve()));
