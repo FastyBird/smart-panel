@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 6 in progress — runtime lifecycle and refresh replay E2E plus switch-off adapter-race coverage implemented
+**Status:** Phase 6 in progress — runtime lifecycle, refresh replay, and switch-off handler/adapter race coverage implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -419,9 +419,11 @@ amend ADR 0002.
 - [x] E2E: switch OAuth off with active OAuth and static subscriptions; prove new OAuth traffic is rejected and OAuth
       streams and artifacts are invalidated before success while static streams remain open, then prove re-enable
       reruns readiness and old OAuth artifacts remain unusable.
-- [ ] E2E: pause authorization, code-exchange, and refresh handlers immediately before artifact commit, switch OAuth
-      off, then resume them; prove each stale-generation commit fails, no late artifact escapes revoke-all, and none
-      becomes usable after re-enable.
+- [x] Provider integration E2E: pause authorization, code-exchange, and refresh handlers immediately before artifact
+      commit, initiate switch-off, then prove the public route gate closes immediately while switch-off waits for the
+      serialized handler; after resume, prove revoke-all removes every returned artifact before reporting success and
+      none becomes usable after re-enable. Complement this commit-first branch with adapter-level stale-generation
+      rejection coverage so both allowed serialization outcomes are exercised.
 - [ ] E2E: repeat the barrier-synchronized artifact-commit race for server-secret rotation, public-identity rotation,
       client disable/re-enable, grant revocation, module/client/grant scope contraction/expansion, and approver
       demotion/restoration; prove stale commits fail and later state restoration never revives an artifact.

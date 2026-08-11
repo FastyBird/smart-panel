@@ -31,6 +31,8 @@ import { McpSubscriptionRegistryService } from '../src/modules/mcp/services/mcp-
 import { UserEntity } from '../src/modules/users/entities/users.entity';
 import { UserLanguage, UserRole } from '../src/modules/users/users.constants';
 
+import { runMcpOAuthHandlerSwitchOffRace } from './support/mcp-oauth-handler-switch-off-race';
+
 const CLIENT_ID = 'phase3-public-client';
 const ACCOUNT_ID = 'owner-1';
 const REGISTERED_REDIRECT_URI = 'http://127.0.0.1:1455/callback';
@@ -729,4 +731,9 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		expect(refreshRevocation.status).toBe(200);
 		expect((await refresh(tokens.refresh_token)).status).toBe(400);
 	});
+
+	it(
+		'synchronizes authorization, code-exchange, and refresh commits with OAuth switch-off',
+		runMcpOAuthHandlerSwitchOffRace,
+	);
 });
