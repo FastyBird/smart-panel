@@ -2,10 +2,16 @@ import { RequestListener } from 'node:http';
 import type { Adapter } from 'oidc-provider';
 import { DataSource } from 'typeorm';
 
+import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import { Test } from '@nestjs/testing';
+
 import { hashToken } from '../src/modules/auth/utils/token.utils';
 import { ConfigService } from '../src/modules/config/services/config.service';
 import { ModuleConfigMutationRegistryService } from '../src/modules/config/services/module-config-mutation-registry.service';
+import { McpController } from '../src/modules/mcp/controllers/mcp.controller';
 import { UpdateMcpConfigDto } from '../src/modules/mcp/dto/update-config.dto';
+import { McpClientEntity } from '../src/modules/mcp/entities/mcp-client.entity';
 import {
 	McpOAuthAccessTokenEntity,
 	McpOAuthApproverAuthorityEntity,
@@ -21,7 +27,9 @@ import {
 	McpOAuthRefreshTokenFamilyEntity,
 	McpOAuthServerStateEntity,
 } from '../src/modules/mcp/entities/mcp-oauth.entity';
+import { McpClientGuard } from '../src/modules/mcp/guards/mcp-client.guard';
 import {
+	MCP_CATALOG_REGISTRAR,
 	MCP_MODULE_NAME,
 	MCP_OAUTH_SERVER_STATE_KEY,
 	McpCapability,
@@ -37,6 +45,7 @@ import { McpOAuthClientService } from '../src/modules/mcp/services/mcp-oauth-cli
 import { McpOAuthGlobalInvalidationService } from '../src/modules/mcp/services/mcp-oauth-global-invalidation.service';
 import { McpOAuthLifecycleService } from '../src/modules/mcp/services/mcp-oauth-lifecycle.service';
 import { McpOAuthModuleConfigMutationService } from '../src/modules/mcp/services/mcp-oauth-module-config-mutation.service';
+import { McpOAuthProxyPolicyService } from '../src/modules/mcp/services/mcp-oauth-proxy-policy.service';
 import { McpOAuthPublicUrlService } from '../src/modules/mcp/services/mcp-oauth-public-url.service';
 import {
 	MCP_OAUTH_REQUIRED_READINESS_CONTROLS,
@@ -46,6 +55,8 @@ import { McpOAuthResourceServerService } from '../src/modules/mcp/services/mcp-o
 import { McpOAuthRouteGateService } from '../src/modules/mcp/services/mcp-oauth-route-gate.service';
 import { McpOAuthRuntimeService } from '../src/modules/mcp/services/mcp-oauth-runtime.service';
 import { McpOAuthSwitchOffService } from '../src/modules/mcp/services/mcp-oauth-switch-off.service';
+import { McpPolicyRequest, McpPolicyService } from '../src/modules/mcp/services/mcp-policy.service';
+import { McpServerService } from '../src/modules/mcp/services/mcp-server.service';
 import { McpSubscriptionRegistryService } from '../src/modules/mcp/services/mcp-subscription-registry.service';
 import { UserEntity } from '../src/modules/users/entities/users.entity';
 import { UserLanguage, UserRole } from '../src/modules/users/users.constants';
@@ -66,6 +77,15 @@ interface ArtifactProvider {
 	authorizationCodes: Adapter;
 	accessTokens: Adapter;
 	refreshTokens: Adapter;
+}
+
+interface WireSubscriptions {
+	endpoint: URL;
+	oauthClient: Client;
+	oauthSubscription: Awaited<ReturnType<Client['listen']>>;
+	staticClient: Client;
+	staticSubscription: Awaited<ReturnType<Client['listen']>>;
+	close: () => Promise<void>;
 }
 
 const getArtifactProvider = (provider: McpOAuthProviderRuntime['provider']): ArtifactProvider =>
@@ -96,12 +116,9 @@ describe('MCP OAuth artifact lifecycle', () => {
 		});
 		await dataSource.initialize();
 
-		const auditService = {
-			recordOAuthAuthorizationInvalidation: jest.fn(),
-			recordSubscriptionClosed: jest.fn(),
-			recordSubscriptionOpened: jest.fn(),
-		};
-		const subscriptions = new McpSubscriptionRegistryService(auditService as unknown as McpAuditService);
+		const auditService = new McpAuditService();
+		const subscriptions = new McpSubscriptionRegistryService(auditService);
+		let wireSubscriptions: WireSubscriptions | undefined;
 
 		try {
 			const user = await dataSource.getRepository(UserEntity).save({
@@ -199,18 +216,13 @@ describe('MCP OAuth artifact lifecycle', () => {
 				runtime,
 			);
 			const globalInvalidation = new McpOAuthGlobalInvalidationService(dataSource, subscriptions);
-			const switchOff = new McpOAuthSwitchOffService(
-				routeGate,
-				runtime,
-				globalInvalidation,
-				auditService as unknown as McpAuditService,
-			);
+			const switchOff = new McpOAuthSwitchOffService(routeGate, runtime, globalInvalidation, auditService);
 			const moduleConfigMutation = new McpOAuthModuleConfigMutationService(
 				configService as unknown as ConfigService,
 				dataSource.getRepository(McpOAuthServerStateEntity),
 				subscriptions,
 				globalInvalidation,
-				auditService as unknown as McpAuditService,
+				auditService,
 				routeGate,
 				lifecycle,
 				switchOff,
@@ -269,9 +281,20 @@ describe('MCP OAuth artifact lifecycle', () => {
 				{ getUrls: jest.fn(() => urls) } as unknown as McpOAuthPublicUrlService,
 			);
 
-			await expect(resourceServer.verifyAccessToken(rawAccessToken)).resolves.toMatchObject({
+			const authInfo = await resourceServer.verifyAccessToken(rawAccessToken);
+			expect(authInfo).toMatchObject({
 				clientId: client.clientIdentifier,
 			});
+			wireSubscriptions = await openWireSubscriptions(
+				config,
+				routeGate,
+				resourceServer,
+				subscriptions,
+				auditService,
+				rawAccessToken,
+			);
+
+			expect(subscriptions.activeCount).toBe(2);
 			await expect(initialProvider.authorizationCodes.find(rawAuthorizationCode)).resolves.toBeDefined();
 			await expect(initialProvider.accessTokens.find(rawAccessToken)).resolves.toBeDefined();
 			await expect(initialProvider.refreshTokens.find(rawRefreshToken)).resolves.toBeDefined();
@@ -280,7 +303,13 @@ describe('MCP OAuth artifact lifecycle', () => {
 
 			expect(config.oauthEnabled).toBe(false);
 			expect(routeGate.isOpen).toBe(false);
+			expect(() => routeGate.assertOpen()).toThrow('The MCP OAuth route gate is closed');
 			expect(() => runtime.getActive()).toThrow('The MCP OAuth route gate is closed');
+			await expect(wireSubscriptions.oauthSubscription.closed).resolves.toBe('remote');
+			await expectOAuthConnectionRejected(wireSubscriptions.endpoint, rawAccessToken);
+			await expect(wireSubscriptions.staticClient.listTools()).resolves.toMatchObject({ tools: [] });
+			await expectSubscriptionOpen(wireSubscriptions.staticSubscription.closed);
+			expect(subscriptions.activeCount).toBe(1);
 			expect(await dataSource.getRepository(McpOAuthProviderArtifactEntity).count()).toBe(0);
 			expect(
 				await dataSource
@@ -293,6 +322,10 @@ describe('MCP OAuth artifact lifecycle', () => {
 			expect(config.oauthEnabled).toBe(true);
 			expect(routeGate.isOpen).toBe(true);
 			expect(createRuntime).toHaveBeenCalledTimes(2);
+			await expectOAuthConnectionRejected(wireSubscriptions.endpoint, rawAccessToken);
+			await expect(wireSubscriptions.staticClient.listTools()).resolves.toMatchObject({ tools: [] });
+			await expectSubscriptionOpen(wireSubscriptions.staticSubscription.closed);
+			expect(subscriptions.activeCount).toBe(1);
 			const replacementProvider = getArtifactProvider(runtime.getActive().provider);
 
 			expect(replacementProvider).not.toBe(initialProvider);
@@ -313,8 +346,131 @@ describe('MCP OAuth artifact lifecycle', () => {
 			await expect(replacementProvider.accessTokens.find(rawAccessToken)).resolves.toBeUndefined();
 			await expect(replacementProvider.refreshTokens.find(rawRefreshToken)).resolves.toBeUndefined();
 		} finally {
+			await wireSubscriptions?.close();
 			await subscriptions.closeAll();
 			await dataSource.destroy();
 		}
 	});
 });
+
+async function openWireSubscriptions(
+	config: McpConfigModel,
+	routeGate: McpOAuthRouteGateService,
+	resourceServer: McpOAuthResourceServerService,
+	subscriptions: McpSubscriptionRegistryService,
+	auditService: McpAuditService,
+	oauthAccessToken: string,
+): Promise<WireSubscriptions> {
+	const staticClientId = 'static-lifecycle-client';
+	const staticToken = 'static-lifecycle-token';
+	const moduleRef = await Test.createTestingModule({
+		controllers: [McpController],
+		providers: [
+			{ provide: McpAuditService, useValue: auditService },
+			{ provide: McpOAuthProxyPolicyService, useValue: { assertForwardedHeadersTrusted: jest.fn() } },
+			{ provide: McpOAuthResourceServerService, useValue: resourceServer },
+			{ provide: McpOAuthRouteGateService, useValue: routeGate },
+			{ provide: McpPolicyService, useValue: { validateOAuthRequestOrigin: jest.fn() } },
+			McpServerService,
+			{ provide: McpSubscriptionRegistryService, useValue: subscriptions },
+			{ provide: MCP_CATALOG_REGISTRAR, useValue: { register: () => undefined } },
+		],
+	})
+		.overrideGuard(McpClientGuard)
+		.useValue({
+			canActivate: (context: { switchToHttp: () => { getRequest: () => McpPolicyRequest } }): boolean => {
+				const request = context.switchToHttp().getRequest();
+
+				if (request.headers.authorization !== `Bearer ${staticToken}`) return true;
+
+				request.mcpPolicy = {
+					client: {
+						id: staticClientId,
+						name: 'Static lifecycle client',
+						enabled: true,
+						capabilities: [McpCapability.READ],
+						tokenId: staticToken,
+						token: { id: staticToken, revoked: false, expiresAt: new Date(Date.now() + 60_000) },
+					} as McpClientEntity,
+					config,
+					clientPolicyRevision: 0,
+					effectiveCapabilities: [McpCapability.READ],
+					installationId: 'artifact-lifecycle-installation',
+					policyRevision: 0,
+					tokenId: staticToken,
+				};
+
+				return true;
+			},
+		})
+		.compile();
+	const app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
+
+	await app.listen(0, '127.0.0.1');
+	const endpoint = new URL('/', await app.getUrl());
+	const staticClient = new Client(
+		{ name: 'static-lifecycle-e2e', version: '1.0.0' },
+		{ versionNegotiation: { mode: 'auto' } },
+	);
+	const oauthClient = new Client(
+		{ name: 'oauth-lifecycle-e2e', version: '1.0.0' },
+		{ versionNegotiation: { mode: 'auto' } },
+	);
+	const staticTransport = new StreamableHTTPClientTransport(endpoint, {
+		requestInit: { headers: { Authorization: `Bearer ${staticToken}` } },
+	});
+	const oauthTransport = new StreamableHTTPClientTransport(endpoint, {
+		requestInit: { headers: { Authorization: `Bearer ${oauthAccessToken}` } },
+	});
+
+	try {
+		await staticClient.connect(staticTransport);
+		await oauthClient.connect(oauthTransport);
+		const staticSubscription = await staticClient.listen({ toolsListChanged: true });
+		const oauthSubscription = await oauthClient.listen({ toolsListChanged: true });
+
+		return {
+			endpoint,
+			oauthClient,
+			oauthSubscription,
+			staticClient,
+			staticSubscription,
+			close: async () => {
+				await Promise.allSettled([oauthClient.close(), staticClient.close()]);
+				await app.get(McpServerService).closeAll();
+				await app.close();
+			},
+		};
+	} catch (error) {
+		await Promise.allSettled([oauthClient.close(), staticClient.close()]);
+		await app.close();
+		throw error;
+	}
+}
+
+async function expectOAuthConnectionRejected(endpoint: URL, accessToken: string): Promise<void> {
+	const client = new Client(
+		{ name: 'fresh-oauth-lifecycle-probe', version: '1.0.0' },
+		{ versionNegotiation: { mode: 'auto' } },
+	);
+	const transport = new StreamableHTTPClientTransport(endpoint, {
+		requestInit: { headers: { Authorization: `Bearer ${accessToken}` } },
+	});
+
+	try {
+		await expect(client.connect(transport)).rejects.toThrow();
+	} finally {
+		await client.close();
+	}
+}
+
+async function expectSubscriptionOpen(closed: Promise<unknown>): Promise<void> {
+	const closedEarly = await Promise.race([
+		closed.then(() => true),
+		new Promise<boolean>((resolve) => {
+			setTimeout(() => resolve(false), 50);
+		}),
+	]);
+
+	expect(closedEarly).toBe(false);
+}
