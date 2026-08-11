@@ -221,7 +221,7 @@ When implementing features:
 | `tasks` | `tasks/**` |
 | `cross` | Genuinely cross-cutting |
 
-**Subject:** starts lowercase (acronyms later are fine — `add MCP OAuth …` is valid), no trailing period, imperative mood, whole header ≤ 100 characters.
+**Subject:** must not start with an uppercase letter in any script (`Add …`, `Čeština …` and `Überarbeiten …` are all rejected; acronyms later are fine, so `add MCP OAuth …` is valid), no trailing period, imperative mood, whole header ≤ 100 characters.
 
 **Breaking changes:** `feat(backend)!: …`, and add the `breaking change` label — release-drafter categorises by label, not by the `!` marker.
 

@@ -6,8 +6,10 @@ module.exports = {
 	plugins: [
 		{
 			rules: {
-				// Mirrors lint-pr.yml's subjectPattern: ^(?![A-Z]).+$
-				// — the first character of the subject must not be uppercase.
+				// The PR-title workflow runs this exact predicate (see the
+				// "Validate PR title subject" step in .github/workflows/lint-pr.yml)
+				// rather than an equivalent regex, so the two enforcement paths agree
+				// for every script, including non-ASCII uppercase such as "Č" or "Ü".
 				// Acronyms later in the subject (MCP, OAuth, API, UI, JSON, ...) are fine.
 				'subject-first-char-lowercase': ({ subject }) => {
 					if (!subject) return [true];

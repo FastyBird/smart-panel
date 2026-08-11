@@ -43,24 +43,53 @@ jobs:
             tasks
             cross
           requireScope: true
-          # Mirrors commitlint's subject-first-char-lowercase and subject-full-stop.
-          # The header length rule is checked in the next step, because the action
-          # only exposes the subject, not the whole title.
-          subjectPattern: ^(?![A-Z])(?!.*\.$).+$
-          subjectPatternError: |
-            The subject "{subject}" found in the pull request title "{title}"
-            didn't match the configured pattern. Please ensure that the subject
-            doesn't start with an uppercase character and doesn't end with a period.
+          # No subjectPattern here on purpose. The action builds a RegExp without the
+          # `u` flag, so it cannot express "not an uppercase letter" for non-ASCII
+          # scripts — `^(?![A-Z])` accepts "Čeština translations" while commitlint
+          # rejects it. Subject rules are checked in the next step instead, using
+          # commitlint's own predicate, so the two paths cannot disagree.
 
-      # commitlint applies @commitlint/config-conventional's header-max-length to
-      # local commits, but nothing sees the PR title — and the PR title is what
-      # becomes the commit on main and the release-note line. Check it here.
-      - name: Validate PR title length
+      # commitlint governs local commit messages but never sees the PR title — and the
+      # PR title is what squash-merge writes onto main and what release-drafter renders
+      # into the release notes. These checks mirror commitlint/config-conventional's
+      # header-max-length and this repo's subject-first-char-lowercase and
+      # subject-full-stop rules. Keep them in step with commitlint.config.js.
+      - name: Validate PR title subject
         env:
-          # Never interpolate the title into `run` directly — it is untrusted input.
+          # Untrusted input: pass it through the environment, never interpolate it
+          # into the script body.
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          if [ "${#PR_TITLE}" -gt 100 ]; then
-            echo "::error::PR title is ${#PR_TITLE} characters long; the limit is 100. See CONTRIBUTING.md."
-            exit 1
-          fi
+          node -e '
+          const title = process.env.PR_TITLE ?? "";
+          const errors = [];
+
+          if (title.length > 100) {
+            errors.push("header is " + title.length + " characters long; the limit is 100");
+          }
+
+          const match = /^[a-z]+(?:\([^)]+\))?!?: (.+)$/.exec(title);
+
+          if (match === null) {
+            errors.push("could not read a subject from the title");
+          } else {
+            const subject = match[1];
+
+            // Identical predicate to commitlint.config.js subject-first-char-lowercase.
+            // Not a character class: this way the two enforcement paths agree by
+            // construction, for every script, rather than by two regexes staying in sync.
+            if (subject[0] !== subject[0].toLowerCase()) {
+              errors.push("subject must not start with an uppercase letter");
+            }
+
+            if (subject.endsWith(".")) {
+              errors.push("subject must not end with a period");
+            }
+          }
+
+          for (const error of errors) {
+            console.log("::error::PR title: " + error + ". See CONTRIBUTING.md.");
+          }
+
+          process.exit(errors.length === 0 ? 0 : 1);
+          '

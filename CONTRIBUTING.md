@@ -59,7 +59,7 @@ The scope list is deliberately closed and derived from the directory layout, so 
 
 ### Subject
 
-- Must start with a **lowercase** character. Acronyms later in the subject are fine — `add MCP OAuth artifact administration` is valid.
+- Must **not start with an uppercase letter**, in any script — `Add …`, `Čeština …` and `Überarbeiten …` are all rejected. Acronyms later in the subject are fine: `add MCP OAuth artifact administration` is valid. Digits and punctuation are allowed as the first character.
 - No trailing period.
 - Imperative mood — "add", "fix", "drop", not "added" or "adds".
 - Keep the whole header at 100 characters or fewer, including the `type(scope): ` prefix.
