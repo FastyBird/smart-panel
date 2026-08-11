@@ -18,9 +18,13 @@ import { McpOAuthClientService } from '../services/mcp-oauth-client.service';
 export interface McpOAuthProviderAdapterOptions {
 	allowTestInMemory?: boolean;
 	artifactReuseError?: () => Error;
-	beforeArtifactConsume?: (context: { model: string }) => Promise<void>;
+	artifactLifecycleHook?: (context: McpOAuthProviderArtifactLifecycleContext) => Promise<void>;
 	beforeArtifactUpsert?: (context: { model: string; refreshFamilyId: string | null }) => Promise<void>;
 }
+
+export type McpOAuthProviderArtifactLifecycleContext =
+	| { phase: 'before-consume' | 'before-consume-transaction'; model: string }
+	| { phase: 'after-upsert'; model: string; refreshFamilyId: string | null };
 
 const isInMemoryDataSource = (dataSource: DataSource): boolean =>
 	'database' in dataSource.options && dataSource.options.database === ':memory:';
@@ -120,6 +124,7 @@ export const createMcpOAuthProviderAdapter = (
 				},
 				['model', 'idHash'],
 			);
+			await options.artifactLifecycleHook?.({ phase: 'after-upsert', model: this.model, refreshFamilyId });
 
 			if (this.model === 'RefreshToken' && grantIdHash && refreshFamilyId) {
 				await repository.update({ model: 'AccessToken', grantIdHash, refreshFamilyId: IsNull() }, { refreshFamilyId });
@@ -172,10 +177,11 @@ export const createMcpOAuthProviderAdapter = (
 		}
 
 		async consume(id: string): Promise<void> {
-			await options.beforeArtifactConsume?.({ model: this.model });
+			await options.artifactLifecycleHook?.({ phase: 'before-consume', model: this.model });
 			const release = await this.acquireConsumeQueue();
 
 			try {
+				await options.artifactLifecycleHook?.({ phase: 'before-consume-transaction', model: this.model });
 				let reuseDetected = false;
 
 				await dataSource.transaction(async (manager) => {

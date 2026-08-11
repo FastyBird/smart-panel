@@ -23,7 +23,7 @@ import { McpOAuthRouteGateService } from '../services/mcp-oauth-route-gate.servi
 import { McpSubscriptionRegistryService } from '../services/mcp-subscription-registry.service';
 
 import { McpOAuthAuthorizationServerMetadata, buildMcpOAuthAuthorizationServerMetadata } from './mcp-oauth-metadata';
-import { createMcpOAuthProviderAdapter } from './mcp-oauth-provider.adapter';
+import { type McpOAuthProviderAdapterOptions, createMcpOAuthProviderAdapter } from './mcp-oauth-provider.adapter';
 import { loadMcpOAuthProvider } from './mcp-oauth-provider.loader';
 import { McpOAuthPublicUrls } from './mcp-oauth.types';
 
@@ -39,7 +39,7 @@ export interface McpOAuthProviderRuntime {
 export interface McpOAuthProviderFactoryOptions {
 	allowTestInMemory?: boolean;
 	allowInsecureTestCookies?: boolean;
-	beforeArtifactConsume?: (context: { model: string }) => Promise<void>;
+	artifactLifecycleHook?: McpOAuthProviderAdapterOptions['artifactLifecycleHook'];
 	cookieKeys?: string[];
 	interactionUrl?: (uid: string) => string;
 	jwks?: { keys: JWK[] };
@@ -80,7 +80,7 @@ export class McpOAuthProviderFactory {
 		const adapter = createMcpOAuthProviderAdapter(this.dataSource, this.clientsService, {
 			allowTestInMemory: options.allowTestInMemory,
 			artifactReuseError: () => new oidcProvider.errors.InvalidGrant('OAuth artifact already used'),
-			beforeArtifactConsume: options.beforeArtifactConsume,
+			artifactLifecycleHook: options.artifactLifecycleHook,
 		});
 		const provider = new oidcProvider.default(urls.issuer, {
 			adapter,

@@ -16,7 +16,10 @@ import {
 	McpOAuthServerStateEntity,
 } from '../src/modules/mcp/entities/mcp-oauth.entity';
 import { MCP_OAUTH_SERVER_STATE_KEY, McpOAuthScope } from '../src/modules/mcp/mcp.constants';
-import { createMcpOAuthProviderAdapter } from '../src/modules/mcp/oauth/mcp-oauth-provider.adapter';
+import {
+	type McpOAuthProviderAdapterOptions,
+	createMcpOAuthProviderAdapter,
+} from '../src/modules/mcp/oauth/mcp-oauth-provider.adapter';
 import { McpOAuthProviderFactory } from '../src/modules/mcp/oauth/mcp-oauth-provider.factory';
 import { McpOAuthPublicUrls } from '../src/modules/mcp/oauth/mcp-oauth.types';
 import { McpOAuthClientService } from '../src/modules/mcp/services/mcp-oauth-client.service';
@@ -33,7 +36,8 @@ const ACCOUNT_ID = 'owner-1';
 const REGISTERED_REDIRECT_URI = 'http://127.0.0.1:1455/callback';
 let consentPromptCount = 0;
 let persistSmartPanelGrant = (_providerGrantId: string): Promise<void> => Promise.resolve();
-let beforeArtifactConsume = (_context: { model: string }): Promise<void> => Promise.resolve();
+let artifactLifecycleHook: NonNullable<McpOAuthProviderAdapterOptions['artifactLifecycleHook']> = () =>
+	Promise.resolve();
 
 interface TokenResponse {
 	access_token: string;
@@ -260,7 +264,7 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		const runtime = await factory.create({
 			allowTestInMemory: true,
 			allowInsecureTestCookies: true,
-			beforeArtifactConsume: (context) => beforeArtifactConsume(context),
+			artifactLifecycleHook: (context) => artifactLifecycleHook(context),
 			interactionUrl: (uid) => `${origin}/api/v1/modules/mcp/oauth/interaction/${uid}`,
 		});
 		provider = runtime.provider;
@@ -639,10 +643,29 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 
 		const upsertSpy = jest.spyOn(artifacts, 'upsert');
 		const enterConsumeBarrier = createBarrier(2);
-		const consumeHook = jest.fn(async ({ model }: { model: string }): Promise<void> => {
-			if (model === 'RefreshToken') await enterConsumeBarrier();
+		let consumeAttempts = 0;
+		let markSuccessorStored = (): void => undefined;
+		const successorStored = new Promise<void>((resolve) => {
+			markSuccessorStored = resolve;
 		});
-		beforeArtifactConsume = consumeHook;
+		const lifecycleHook = jest.fn(async (context: Parameters<typeof artifactLifecycleHook>[0]): Promise<void> => {
+			if (context.model !== 'RefreshToken') return;
+
+			if (context.phase === 'before-consume') {
+				await enterConsumeBarrier();
+				return;
+			}
+
+			if (context.phase === 'before-consume-transaction') {
+				consumeAttempts += 1;
+
+				if (consumeAttempts === 2) await successorStored;
+				return;
+			}
+
+			if (context.phase === 'after-upsert' && context.refreshFamilyId === refreshFamilyId) markSuccessorStored();
+		});
+		artifactLifecycleHook = lifecycleHook;
 
 		try {
 			const responses = await Promise.all([refresh(initialRefreshToken), refresh(initialRefreshToken)]);
@@ -660,10 +683,9 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 			const refreshAdapter = new Adapter('RefreshToken');
 
 			expect(responses.every(({ status }) => status < 500)).toBe(true);
-			expect(consumeHook).toHaveBeenCalledTimes(2);
+			expect(lifecycleHook).toHaveBeenCalledWith({ phase: 'after-upsert', model: 'RefreshToken', refreshFamilyId });
 			expect(successful.length).toBeLessThanOrEqual(1);
-			expect(successorUpserts.length).toBeLessThanOrEqual(1);
-			expect(successorUpserts.length).toBeGreaterThanOrEqual(successful.length);
+			expect(successorUpserts).toHaveLength(1);
 			expect(bodies).toContainEqual(expect.objectContaining({ error: 'invalid_grant' }));
 			expect(await artifacts.countBy({ refreshFamilyId })).toBe(0);
 			expect(await dataSource.getRepository(McpOAuthProviderRevokedGrantEntity).existsBy({ grantIdHash })).toBe(true);
@@ -679,7 +701,7 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 				expect((await refresh(tokens.refresh_token)).status).toBe(400);
 			}
 		} finally {
-			beforeArtifactConsume = () => Promise.resolve();
+			artifactLifecycleHook = () => Promise.resolve();
 			upsertSpy.mockRestore();
 		}
 	});
