@@ -52,7 +52,9 @@ describe('McpOAuthModuleConfigMutationService', () => {
 		recordSubscriptionOpened: jest.Mock;
 	};
 	let lifecycle: { reconfigureInternal: jest.Mock };
+	let routeGate: { isOpen: boolean };
 	let switchOff: McpOAuthSwitchOffService;
+	let switchOffDisableSpy: jest.SpyInstance;
 	let subscriptions: McpSubscriptionRegistryService;
 	let service: McpOAuthModuleConfigMutationService;
 
@@ -79,6 +81,7 @@ describe('McpOAuthModuleConfigMutationService', () => {
 		lifecycle = {
 			reconfigureInternal: jest.fn(async (mutation: () => Promise<void>) => mutation()),
 		};
+		routeGate = { isOpen: true };
 		subscriptions = new McpSubscriptionRegistryService(auditService as unknown as McpAuditService);
 		switchOff = new McpOAuthSwitchOffService(
 			{ closeInternal: jest.fn() } as unknown as McpOAuthRouteGateService,
@@ -86,13 +89,14 @@ describe('McpOAuthModuleConfigMutationService', () => {
 			globalInvalidation as unknown as McpOAuthGlobalInvalidationService,
 			auditService as unknown as McpAuditService,
 		);
-		jest.spyOn(switchOff, 'disableInternal');
+		switchOffDisableSpy = jest.spyOn(switchOff, 'disableInternal');
 		service = new McpOAuthModuleConfigMutationService(
 			configService as unknown as ConfigService,
 			serverState as unknown as Repository<McpOAuthServerStateEntity>,
 			subscriptions,
 			globalInvalidation as unknown as McpOAuthGlobalInvalidationService,
 			auditService as unknown as McpAuditService,
+			routeGate as unknown as McpOAuthRouteGateService,
 			lifecycle as unknown as McpOAuthLifecycleService,
 			switchOff,
 		);
@@ -276,7 +280,7 @@ describe('McpOAuthModuleConfigMutationService', () => {
 
 		await service.update({ type: MCP_MODULE_NAME, oauth_enabled: false } as UpdateMcpConfigDto, commit);
 
-		expect(switchOff.disableInternal).toHaveBeenCalledWith(expect.any(Function), {
+		expect(switchOffDisableSpy).toHaveBeenCalledWith(expect.any(Function), {
 			generations: ['oauthEnabledGeneration'],
 			reasons: ['oauth_disabled'],
 			authorizationProfile: 'oauth',
@@ -284,6 +288,18 @@ describe('McpOAuthModuleConfigMutationService', () => {
 		expect(globalInvalidation.invalidate).toHaveBeenCalledWith(['oauthEnabledGeneration'], expect.any(Function));
 		expect(globalInvalidation.invalidateAll).not.toHaveBeenCalled();
 		expect(lifecycle.reconfigureInternal).not.toHaveBeenCalled();
+	});
+
+	it('retries activation when persisted OAuth configuration remains closed', async () => {
+		config.oauthEnabled = true;
+		config.oauthPublicBaseUrl = 'https://panel.example.com';
+		routeGate.isOpen = false;
+		const commit = jest.fn();
+
+		await service.update({ type: MCP_MODULE_NAME } as UpdateMcpConfigDto, commit);
+
+		expect(lifecycle.reconfigureInternal).toHaveBeenCalledWith(commit);
+		expect(commit).toHaveBeenCalledTimes(1);
 	});
 
 	it('closes, invalidates, and reactivates around a live public identity change', async () => {

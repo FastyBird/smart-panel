@@ -14,6 +14,7 @@ import { toMcpOAuthScope } from '../oauth/mcp-oauth-scope.utils';
 import { McpAuditOutcome, McpAuditService, McpOAuthInvalidationReason } from './mcp-audit.service';
 import { McpOAuthGlobalGeneration, McpOAuthGlobalInvalidationService } from './mcp-oauth-global-invalidation.service';
 import { McpOAuthLifecycleService } from './mcp-oauth-lifecycle.service';
+import { McpOAuthRouteGateService } from './mcp-oauth-route-gate.service';
 import { McpOAuthSwitchOffService } from './mcp-oauth-switch-off.service';
 import { McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
 
@@ -28,6 +29,7 @@ export class McpOAuthModuleConfigMutationService {
 		private readonly subscriptions: McpSubscriptionRegistryService,
 		private readonly globalInvalidation: McpOAuthGlobalInvalidationService,
 		private readonly auditService: McpAuditService,
+		private readonly routeGate: McpOAuthRouteGateService,
 		private readonly lifecycle: McpOAuthLifecycleService,
 		private readonly switchOff: McpOAuthSwitchOffService,
 	) {}
@@ -57,6 +59,7 @@ export class McpOAuthModuleConfigMutationService {
 		const oauthDisabled = current.oauthEnabled && !nextOAuthEnabled;
 		const oauthEnabled = !current.oauthEnabled && nextOAuthEnabled;
 		const oauthShouldRun = nextEnabled && nextOAuthEnabled;
+		const oauthNeedsActivation = oauthShouldRun && !this.routeGate.isOpen;
 		const nextCapabilities = update.capabilities ?? current.capabilities;
 		const capabilitiesChanged = !this.sameCapabilities(current.capabilities, nextCapabilities);
 		const nextPublicBaseUrl =
@@ -174,36 +177,46 @@ export class McpOAuthModuleConfigMutationService {
 		}
 
 		if (!capabilitiesChanged) {
-			await commit();
+			if (oauthNeedsActivation) await this.lifecycle.reconfigureInternal(commit);
+			else await commit();
 			return;
 		}
 
-		let commitError: unknown;
-		let commitFailed = false;
+		const reconcileCapabilities = async (): Promise<void> => {
+			let commitError: unknown;
+			let commitFailed = false;
 
-		await this.subscriptions.closeOAuthScopeContractions(nextCapabilities.map(toMcpOAuthScope), async () => {
-			const result = await this.serverState.increment({ key: MCP_OAUTH_SERVER_STATE_KEY }, 'modulePolicyGeneration', 1);
+			await this.subscriptions.closeOAuthScopeContractions(nextCapabilities.map(toMcpOAuthScope), async () => {
+				const result = await this.serverState.increment(
+					{ key: MCP_OAUTH_SERVER_STATE_KEY },
+					'modulePolicyGeneration',
+					1,
+				);
 
-			if (result.affected !== 1) {
-				throw new ServiceUnavailableException('MCP OAuth module policy state is unavailable');
-			}
+				if (result.affected !== 1) {
+					throw new ServiceUnavailableException('MCP OAuth module policy state is unavailable');
+				}
 
-			try {
-				await commit();
-			} catch (error) {
-				this.configService.reload();
-				commitFailed = true;
-				commitError = error;
-			}
-		});
+				try {
+					await commit();
+				} catch (error) {
+					this.configService.reload();
+					commitFailed = true;
+					commitError = error;
+				}
+			});
 
-		this.auditService.recordOAuthAuthorizationInvalidation({
-			reasons: ['module_policy_changed'],
-			authorizationProfile: 'oauth',
-			outcome: commitFailed ? McpAuditOutcome.PARTIAL : McpAuditOutcome.COMPLETED,
-		});
+			this.auditService.recordOAuthAuthorizationInvalidation({
+				reasons: ['module_policy_changed'],
+				authorizationProfile: 'oauth',
+				outcome: commitFailed ? McpAuditOutcome.PARTIAL : McpAuditOutcome.COMPLETED,
+			});
 
-		if (commitFailed) throw commitError;
+			if (commitFailed) throw commitError;
+		};
+
+		if (oauthNeedsActivation) await this.lifecycle.reconfigureInternal(reconcileCapabilities);
+		else await reconcileCapabilities();
 	}
 
 	private async runSwitchOff(

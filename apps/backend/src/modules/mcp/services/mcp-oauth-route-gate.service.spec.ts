@@ -35,4 +35,20 @@ describe('McpOAuthRouteGateService', () => {
 		expect(gate.isOpen).toBe(false);
 		expect(() => gate.assertOpen()).toThrow(ServiceUnavailableException);
 	});
+
+	it('rejects a request generation that crossed a close and reopen boundary', () => {
+		const readiness = new McpOAuthReadinessService();
+		readiness.register(...MCP_OAUTH_REQUIRED_READINESS_CONTROLS);
+		readiness.onApplicationBootstrap();
+		const gate = new McpOAuthRouteGateService(readiness);
+		gate.openInternal();
+		const generation = gate.assertOpen();
+
+		gate.closeInternal();
+		gate.openInternal();
+
+		expect(() => gate.assertOpenGeneration(generation)).toThrow(
+			'The MCP OAuth route gate changed while the request was queued',
+		);
+	});
 });

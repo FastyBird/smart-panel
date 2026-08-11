@@ -19,6 +19,7 @@ import {
 } from '../services/mcp-oauth-endpoint-rate-limit.service';
 import { McpOAuthProviderMaterialService } from '../services/mcp-oauth-provider-material.service';
 import { McpOAuthPublicUrlService } from '../services/mcp-oauth-public-url.service';
+import { McpOAuthRouteGateService } from '../services/mcp-oauth-route-gate.service';
 import { McpSubscriptionRegistryService } from '../services/mcp-subscription-registry.service';
 
 import { McpOAuthAuthorizationServerMetadata, buildMcpOAuthAuthorizationServerMetadata } from './mcp-oauth-metadata';
@@ -52,6 +53,7 @@ export class McpOAuthProviderFactory {
 		private readonly providerMaterial: McpOAuthProviderMaterialService,
 		private readonly subscriptions: McpSubscriptionRegistryService,
 		private readonly endpointRateLimit: McpOAuthEndpointRateLimitService,
+		private readonly routeGate: McpOAuthRouteGateService,
 	) {}
 
 	async create(options: McpOAuthProviderFactoryOptions = {}): Promise<McpOAuthProviderRuntime> {
@@ -244,6 +246,7 @@ export class McpOAuthProviderFactory {
 		const pathname = new URL(request.url ?? '/', urls.issuer).pathname;
 		const tokenPathname = new URL(urls.tokenEndpoint).pathname;
 		const rateLimitedEndpoint = this.getRateLimitedEndpoint(pathname, urls);
+		const routeGeneration = this.routeGate.assertOpen();
 
 		if (rateLimitedEndpoint) {
 			const decision = await this.endpointRateLimit.consume(rateLimitedEndpoint, request.socket?.remoteAddress);
@@ -276,6 +279,7 @@ export class McpOAuthProviderFactory {
 
 		await this.subscriptions.runOAuthMutation(async () => {
 			if (this.isDisconnected(request, response)) return;
+			this.routeGate.assertOpenGeneration(routeGeneration);
 
 			await providerCallback(request, response);
 		});

@@ -9,6 +9,11 @@ import {
 } from '../services/mcp-oauth-endpoint-rate-limit.service';
 import { McpOAuthProviderMaterialService } from '../services/mcp-oauth-provider-material.service';
 import { McpOAuthPublicUrlService } from '../services/mcp-oauth-public-url.service';
+import {
+	MCP_OAUTH_REQUIRED_READINESS_CONTROLS,
+	McpOAuthReadinessService,
+} from '../services/mcp-oauth-readiness.service';
+import { McpOAuthRouteGateService } from '../services/mcp-oauth-route-gate.service';
 import { McpSubscriptionRegistryService } from '../services/mcp-subscription-registry.service';
 
 import { McpOAuthProviderFactory } from './mcp-oauth-provider.factory';
@@ -36,6 +41,7 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 	let subscriptions: McpSubscriptionRegistryService;
 	let dispatch: ProviderDispatcher;
 	let consumeRateLimit: jest.MockedFunction<McpOAuthEndpointRateLimitService['consume']>;
+	let routeGate: McpOAuthRouteGateService;
 	const createRequest = (): IncomingMessage =>
 		({
 			method: 'GET',
@@ -55,6 +61,11 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 		const audit = { recordSubscriptionClosed: jest.fn(), recordSubscriptionOpened: jest.fn() };
 		subscriptions = new McpSubscriptionRegistryService(audit as unknown as McpAuditService);
 		consumeRateLimit = jest.fn().mockResolvedValue({ allowed: true, retryAfterSeconds: 60 });
+		const readiness = new McpOAuthReadinessService();
+		readiness.register(...MCP_OAUTH_REQUIRED_READINESS_CONTROLS);
+		readiness.onApplicationBootstrap();
+		routeGate = new McpOAuthRouteGateService(readiness);
+		routeGate.openInternal();
 		const factory = new McpOAuthProviderFactory(
 			{} as DataSource,
 			{} as McpOAuthClientService,
@@ -62,6 +73,7 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 			{} as McpOAuthProviderMaterialService,
 			subscriptions,
 			{ consume: consumeRateLimit } as unknown as McpOAuthEndpointRateLimitService,
+			routeGate,
 		);
 		const target = factory as unknown as { dispatchProviderRequest: ProviderDispatcher };
 		dispatch = (...args) => target.dispatchProviderRequest(...args);
@@ -80,6 +92,7 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 			{ get } as unknown as McpOAuthProviderMaterialService,
 			subscriptions,
 			{ consume: consumeRateLimit } as unknown as McpOAuthEndpointRateLimitService,
+			routeGate,
 		);
 
 		try {
@@ -224,6 +237,35 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 		await invalidation;
 		await expect(providerRequest).rejects.toThrow('stale OAuth authorization generation');
 		expect(providerCallback).toHaveBeenCalledTimes(1);
+	});
+
+	it('rejects provider work queued across a route gate close and reopen boundary', async () => {
+		let invalidationStarted = (): void => undefined;
+		const started = new Promise<void>((resolve) => {
+			invalidationStarted = resolve;
+		});
+		let releaseInvalidation = (): void => undefined;
+		const release = new Promise<void>((resolve) => {
+			releaseInvalidation = resolve;
+		});
+		const invalidation = subscriptions.closeAllOAuth(async () => {
+			invalidationStarted();
+			await release;
+		});
+
+		await started;
+		const providerCallback = jest.fn(() => Promise.resolve());
+		const providerRequest = dispatch(createRequest(), createResponse(), providerCallback, urls);
+		await Promise.resolve();
+		expect(providerCallback).not.toHaveBeenCalled();
+
+		routeGate.closeInternal();
+		routeGate.openInternal();
+		releaseInvalidation();
+		await invalidation;
+
+		await expect(providerRequest).rejects.toThrow('The MCP OAuth route gate changed while the request was queued');
+		expect(providerCallback).not.toHaveBeenCalled();
 	});
 
 	it('skips provider processing when a queued request disconnects before the gate opens', async () => {
