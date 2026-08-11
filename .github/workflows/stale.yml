@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: "Stale"
-        uses: "actions/stale@v10"
+        uses: "actions/stale@v11"
         with:
           stale-issue-label: "stale"
           exempt-issue-labels: "pinned,security,long running,discussion,vision,pending,verified"
