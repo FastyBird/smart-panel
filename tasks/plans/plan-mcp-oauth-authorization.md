@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 6 in progress — runtime route-set and stale-artifact lifecycle E2E implemented
+**Status:** Phase 6 in progress — runtime route-set, switch-off subscription, and stale-artifact lifecycle E2E implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -416,7 +416,7 @@ amend ADR 0002.
       then resume registration and prove the stale request cannot open after invalidation success.
 - [ ] E2E: submit the same refresh token concurrently behind a synchronization barrier; prove at most one successor is
       stored, the reuse loser revokes the entire family including that successor, and no fork remains usable.
-- [ ] E2E: switch OAuth off with active OAuth and static subscriptions; prove new OAuth traffic is rejected and OAuth
+- [x] E2E: switch OAuth off with active OAuth and static subscriptions; prove new OAuth traffic is rejected and OAuth
       streams and artifacts are invalidated before success while static streams remain open, then prove re-enable
       reruns readiness and old OAuth artifacts remain unusable.
 - [ ] E2E: pause authorization, code-exchange, and refresh handlers immediately before artifact commit, switch OAuth

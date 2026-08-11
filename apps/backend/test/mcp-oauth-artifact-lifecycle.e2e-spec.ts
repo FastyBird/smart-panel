@@ -30,7 +30,7 @@ import {
 import { McpConfigModel } from '../src/modules/mcp/models/config.model';
 import { createMcpOAuthProviderAdapter } from '../src/modules/mcp/oauth/mcp-oauth-provider.adapter';
 import { McpOAuthProviderFactory, McpOAuthProviderRuntime } from '../src/modules/mcp/oauth/mcp-oauth-provider.factory';
-import { McpOAuthPublicUrls } from '../src/modules/mcp/oauth/mcp-oauth.types';
+import { McpOAuthPrincipal, McpOAuthPublicUrls } from '../src/modules/mcp/oauth/mcp-oauth.types';
 import { McpAuditService } from '../src/modules/mcp/services/mcp-audit.service';
 import { McpInstallationService } from '../src/modules/mcp/services/mcp-installation.service';
 import { McpOAuthClientService } from '../src/modules/mcp/services/mcp-oauth-client.service';
@@ -269,9 +269,36 @@ describe('MCP OAuth artifact lifecycle', () => {
 				{ getUrls: jest.fn(() => urls) } as unknown as McpOAuthPublicUrlService,
 			);
 
-			await expect(resourceServer.verifyAccessToken(rawAccessToken)).resolves.toMatchObject({
+			const authInfo = await resourceServer.verifyAccessToken(rawAccessToken);
+			expect(authInfo).toMatchObject({
 				clientId: client.clientIdentifier,
 			});
+			const principal = authInfo.extra?.principal as McpOAuthPrincipal;
+			const staticSubscription = subscriptions.open('static-lifecycle-client', 'static-lifecycle-stream');
+			const oauthSubscription = await subscriptions.openOAuth('oauth-lifecycle-stream', () =>
+				Promise.resolve({
+					clientId: principal.clientId,
+					binding: {
+						accessTokenId: principal.accessTokenId,
+						approverAuthorityGeneration: principal.approverAuthorityGeneration,
+						approverId: principal.approverId,
+						authorizationDeadline: new Date(principal.authorizationDeadline),
+						clientGeneration: principal.clientGeneration,
+						effectiveScopes: principal.effectiveScopes,
+						grantGeneration: principal.grantGeneration,
+						grantId: principal.grantId,
+						modulePolicyGeneration: principal.modulePolicyGeneration,
+						oauthEnabledGeneration: principal.oauthEnabledGeneration,
+						publicIdentityGeneration: principal.publicIdentityGeneration,
+						...(principal.refreshFamilyId ? { refreshFamilyId: principal.refreshFamilyId } : {}),
+						serverSecretVersion: principal.serverSecretVersion,
+					},
+				}),
+			);
+
+			expect(staticSubscription.signal.aborted).toBe(false);
+			expect(oauthSubscription.signal.aborted).toBe(false);
+			expect(subscriptions.activeCount).toBe(2);
 			await expect(initialProvider.authorizationCodes.find(rawAuthorizationCode)).resolves.toBeDefined();
 			await expect(initialProvider.accessTokens.find(rawAccessToken)).resolves.toBeDefined();
 			await expect(initialProvider.refreshTokens.find(rawRefreshToken)).resolves.toBeDefined();
@@ -280,7 +307,11 @@ describe('MCP OAuth artifact lifecycle', () => {
 
 			expect(config.oauthEnabled).toBe(false);
 			expect(routeGate.isOpen).toBe(false);
+			expect(() => routeGate.assertOpen()).toThrow('The MCP OAuth route gate is closed');
 			expect(() => runtime.getActive()).toThrow('The MCP OAuth route gate is closed');
+			expect(oauthSubscription.signal.aborted).toBe(true);
+			expect(staticSubscription.signal.aborted).toBe(false);
+			expect(subscriptions.activeCount).toBe(1);
 			expect(await dataSource.getRepository(McpOAuthProviderArtifactEntity).count()).toBe(0);
 			expect(
 				await dataSource
@@ -293,6 +324,9 @@ describe('MCP OAuth artifact lifecycle', () => {
 			expect(config.oauthEnabled).toBe(true);
 			expect(routeGate.isOpen).toBe(true);
 			expect(createRuntime).toHaveBeenCalledTimes(2);
+			expect(oauthSubscription.signal.aborted).toBe(true);
+			expect(staticSubscription.signal.aborted).toBe(false);
+			expect(subscriptions.activeCount).toBe(1);
 			const replacementProvider = getArtifactProvider(runtime.getActive().provider);
 
 			expect(replacementProvider).not.toBe(initialProvider);
