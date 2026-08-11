@@ -80,6 +80,7 @@ interface ArtifactProvider {
 }
 
 interface WireSubscriptions {
+	endpoint: URL;
 	oauthClient: Client;
 	oauthSubscription: Awaited<ReturnType<Client['listen']>>;
 	staticClient: Client;
@@ -305,7 +306,7 @@ describe('MCP OAuth artifact lifecycle', () => {
 			expect(() => routeGate.assertOpen()).toThrow('The MCP OAuth route gate is closed');
 			expect(() => runtime.getActive()).toThrow('The MCP OAuth route gate is closed');
 			await expect(wireSubscriptions.oauthSubscription.closed).resolves.toBe('remote');
-			await expect(wireSubscriptions.oauthClient.listTools()).rejects.toThrow();
+			await expectOAuthConnectionRejected(wireSubscriptions.endpoint, rawAccessToken);
 			await expect(wireSubscriptions.staticClient.listTools()).resolves.toMatchObject({ tools: [] });
 			await expectSubscriptionOpen(wireSubscriptions.staticSubscription.closed);
 			expect(subscriptions.activeCount).toBe(1);
@@ -321,7 +322,7 @@ describe('MCP OAuth artifact lifecycle', () => {
 			expect(config.oauthEnabled).toBe(true);
 			expect(routeGate.isOpen).toBe(true);
 			expect(createRuntime).toHaveBeenCalledTimes(2);
-			await expect(wireSubscriptions.oauthClient.listTools()).rejects.toThrow();
+			await expectOAuthConnectionRejected(wireSubscriptions.endpoint, rawAccessToken);
 			await expect(wireSubscriptions.staticClient.listTools()).resolves.toMatchObject({ tools: [] });
 			await expectSubscriptionOpen(wireSubscriptions.staticSubscription.closed);
 			expect(subscriptions.activeCount).toBe(1);
@@ -429,6 +430,7 @@ async function openWireSubscriptions(
 		const oauthSubscription = await oauthClient.listen({ toolsListChanged: true });
 
 		return {
+			endpoint,
 			oauthClient,
 			oauthSubscription,
 			staticClient,
@@ -443,6 +445,22 @@ async function openWireSubscriptions(
 		await Promise.allSettled([oauthClient.close(), staticClient.close()]);
 		await app.close();
 		throw error;
+	}
+}
+
+async function expectOAuthConnectionRejected(endpoint: URL, accessToken: string): Promise<void> {
+	const client = new Client(
+		{ name: 'fresh-oauth-lifecycle-probe', version: '1.0.0' },
+		{ versionNegotiation: { mode: 'auto' } },
+	);
+	const transport = new StreamableHTTPClientTransport(endpoint, {
+		requestInit: { headers: { Authorization: `Bearer ${accessToken}` } },
+	});
+
+	try {
+		await expect(client.connect(transport)).rejects.toThrow();
+	} finally {
+		await client.close();
 	}
 }
 
