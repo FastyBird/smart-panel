@@ -10,7 +10,11 @@ import { McpConfigModel } from '../models/config.model';
 
 import { McpAuditService } from './mcp-audit.service';
 import { McpOAuthGlobalInvalidationService } from './mcp-oauth-global-invalidation.service';
+import { McpOAuthLifecycleService } from './mcp-oauth-lifecycle.service';
 import { McpOAuthModuleConfigMutationService } from './mcp-oauth-module-config-mutation.service';
+import { McpOAuthRouteGateService } from './mcp-oauth-route-gate.service';
+import { McpOAuthRuntimeService } from './mcp-oauth-runtime.service';
+import { McpOAuthSwitchOffService } from './mcp-oauth-switch-off.service';
 import { McpOAuthSubscriptionBinding, McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
 
 const deferred = <T = void>(): { promise: Promise<T>; resolve: (value: T) => void } => {
@@ -47,6 +51,8 @@ describe('McpOAuthModuleConfigMutationService', () => {
 		recordSubscriptionClosed: jest.Mock;
 		recordSubscriptionOpened: jest.Mock;
 	};
+	let lifecycle: { reconfigureInternal: jest.Mock };
+	let switchOff: McpOAuthSwitchOffService;
 	let subscriptions: McpSubscriptionRegistryService;
 	let service: McpOAuthModuleConfigMutationService;
 
@@ -70,13 +76,25 @@ describe('McpOAuthModuleConfigMutationService', () => {
 			recordSubscriptionClosed: jest.fn(),
 			recordSubscriptionOpened: jest.fn(),
 		};
+		lifecycle = {
+			reconfigureInternal: jest.fn(async (mutation: () => Promise<void>) => mutation()),
+		};
 		subscriptions = new McpSubscriptionRegistryService(auditService as unknown as McpAuditService);
+		switchOff = new McpOAuthSwitchOffService(
+			{ closeInternal: jest.fn() } as unknown as McpOAuthRouteGateService,
+			{ deactivateInternal: jest.fn() } as unknown as McpOAuthRuntimeService,
+			globalInvalidation as unknown as McpOAuthGlobalInvalidationService,
+			auditService as unknown as McpAuditService,
+		);
+		jest.spyOn(switchOff, 'disableInternal');
 		service = new McpOAuthModuleConfigMutationService(
 			configService as unknown as ConfigService,
 			serverState as unknown as Repository<McpOAuthServerStateEntity>,
 			subscriptions,
 			globalInvalidation as unknown as McpOAuthGlobalInvalidationService,
 			auditService as unknown as McpAuditService,
+			lifecycle as unknown as McpOAuthLifecycleService,
+			switchOff,
 		);
 	});
 
@@ -228,6 +246,98 @@ describe('McpOAuthModuleConfigMutationService', () => {
 			authorizationProfile: 'oauth',
 			outcome: 'completed',
 		});
+	});
+
+	it('reconciles generations and activates only after enabling OAuth commits', async () => {
+		config.oauthEnabled = false;
+		config.oauthPublicBaseUrl = 'https://panel.example.com';
+		const commit = jest.fn().mockImplementation(() => {
+			config.oauthEnabled = true;
+		});
+
+		await service.update({ type: MCP_MODULE_NAME, oauth_enabled: true } as UpdateMcpConfigDto, commit);
+
+		expect(lifecycle.reconfigureInternal).toHaveBeenCalledTimes(1);
+		expect(globalInvalidation.invalidate).toHaveBeenCalledWith(['oauthEnabledGeneration'], expect.any(Function));
+		expect(commit).toHaveBeenCalledTimes(1);
+		expect(auditService.recordOAuthAuthorizationInvalidation).toHaveBeenCalledWith({
+			reasons: ['oauth_enabled_reconciliation'],
+			authorizationProfile: 'oauth',
+			outcome: 'completed',
+		});
+	});
+
+	it('routes OAuth switch-off through awaited OAuth-only invalidation', async () => {
+		config.oauthEnabled = true;
+		config.oauthPublicBaseUrl = 'https://panel.example.com';
+		const commit = jest.fn().mockImplementation(() => {
+			config.oauthEnabled = false;
+		});
+
+		await service.update({ type: MCP_MODULE_NAME, oauth_enabled: false } as UpdateMcpConfigDto, commit);
+
+		expect(switchOff.disableInternal).toHaveBeenCalledWith(expect.any(Function), {
+			generations: ['oauthEnabledGeneration'],
+			reasons: ['oauth_disabled'],
+			authorizationProfile: 'oauth',
+		});
+		expect(globalInvalidation.invalidate).toHaveBeenCalledWith(['oauthEnabledGeneration'], expect.any(Function));
+		expect(globalInvalidation.invalidateAll).not.toHaveBeenCalled();
+		expect(lifecycle.reconfigureInternal).not.toHaveBeenCalled();
+	});
+
+	it('closes, invalidates, and reactivates around a live public identity change', async () => {
+		config.oauthEnabled = true;
+		config.oauthPublicBaseUrl = 'https://panel.example.com';
+		const commit = jest.fn().mockImplementation(() => {
+			config.oauthPublicBaseUrl = 'https://new-panel.example.com';
+		});
+
+		await service.update(
+			{ type: MCP_MODULE_NAME, oauth_public_base_url: 'https://new-panel.example.com' } as UpdateMcpConfigDto,
+			commit,
+		);
+
+		expect(lifecycle.reconfigureInternal).toHaveBeenCalledTimes(1);
+		expect(globalInvalidation.invalidate).toHaveBeenCalledWith(['publicIdentityGeneration'], expect.any(Function));
+		expect(commit).toHaveBeenCalledTimes(1);
+	});
+
+	it('rejects OAuth enablement without an enabled module and explicit public identity', async () => {
+		config.enabled = false;
+		config.oauthEnabled = false;
+		const commit = jest.fn();
+
+		await expect(
+			service.update({ type: MCP_MODULE_NAME, oauth_enabled: true } as UpdateMcpConfigDto, commit),
+		).rejects.toThrow('MCP OAuth cannot be enabled while the MCP module is disabled');
+
+		config.enabled = true;
+
+		await expect(
+			service.update({ type: MCP_MODULE_NAME, oauth_enabled: true } as UpdateMcpConfigDto, commit),
+		).rejects.toThrow('MCP OAuth requires an explicit public base URL before it can be enabled');
+		expect(commit).not.toHaveBeenCalled();
+	});
+
+	it('serializes concurrent configuration mutations before reading current state', async () => {
+		const firstStarted = deferred();
+		const releaseFirst = deferred();
+		const firstCommit = jest.fn(async () => {
+			firstStarted.resolve();
+			await releaseFirst.promise;
+		});
+		const secondCommit = jest.fn();
+		const first = service.update({ type: MCP_MODULE_NAME } as UpdateMcpConfigDto, firstCommit);
+
+		await firstStarted.promise;
+		const second = service.update({ type: MCP_MODULE_NAME } as UpdateMcpConfigDto, secondCommit);
+		await Promise.resolve();
+
+		expect(secondCommit).not.toHaveBeenCalled();
+		releaseFirst.resolve();
+		await Promise.all([first, second]);
+		expect(secondCommit).toHaveBeenCalledTimes(1);
 	});
 
 	it('routes module disable through global invalidation and all-stream closure', async () => {

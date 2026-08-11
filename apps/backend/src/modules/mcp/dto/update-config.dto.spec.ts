@@ -5,6 +5,7 @@ import {
 	MCP_DEFAULT_ALLOWED_ORIGINS,
 	MCP_DEFAULT_CAPABILITIES,
 	MCP_DEFAULT_ENABLED,
+	MCP_DEFAULT_OAUTH_ENABLED,
 	MCP_DEFAULT_OAUTH_PUBLIC_BASE_URL,
 	MCP_MODULE_NAME,
 	McpCapability,
@@ -31,11 +32,20 @@ describe('MCP configuration', () => {
 		expect(config).toMatchObject({
 			type: MCP_MODULE_NAME,
 			enabled: MCP_DEFAULT_ENABLED,
+			oauthEnabled: MCP_DEFAULT_OAUTH_ENABLED,
 			capabilities: MCP_DEFAULT_CAPABILITIES,
 			allowedOrigins: MCP_DEFAULT_ALLOWED_ORIGINS,
 			oauthPublicBaseUrl: MCP_DEFAULT_OAUTH_PUBLIC_BASE_URL,
 		});
 		expect(await validate(config)).toHaveLength(0);
+	});
+
+	it('accepts only a boolean OAuth enabled state', async () => {
+		const enabled = plainToInstance(UpdateMcpConfigDto, { type: MCP_MODULE_NAME, oauth_enabled: true });
+		const invalid = plainToInstance(UpdateMcpConfigDto, { type: MCP_MODULE_NAME, oauth_enabled: 'true' });
+
+		expect(await validate(enabled)).toHaveLength(0);
+		expect(await validate(invalid)).not.toHaveLength(0);
 	});
 
 	it('accepts only a normalized HTTPS OAuth public base URL and permits clearing it', async () => {
@@ -115,6 +125,7 @@ describe('MCP configuration', () => {
 	it('serializes the persisted model using API field names', () => {
 		const config = new McpConfigModel();
 		config.enabled = true;
+		config.oauthEnabled = true;
 		config.capabilities = [McpCapability.WRITE, McpCapability.TRIGGER];
 		config.allowedOrigins = ['https://panel.example.com'];
 		config.oauthPublicBaseUrl = 'https://panel.example.com/smart-panel';
@@ -122,6 +133,7 @@ describe('MCP configuration', () => {
 		expect(instanceToPlain(config)).toEqual({
 			type: MCP_MODULE_NAME,
 			enabled: true,
+			oauth_enabled: true,
 			capabilities: [McpCapability.WRITE, McpCapability.TRIGGER],
 			allowed_origins: ['https://panel.example.com'],
 			oauth_public_base_url: 'https://panel.example.com/smart-panel',

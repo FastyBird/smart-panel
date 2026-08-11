@@ -34,6 +34,16 @@
 			"title": "Endpoint MCP de la instalación",
 			"description": "Utiliza esta URL con un cliente MCP de confianza y la credencial mostrada una sola vez."
 		},
+		"oauth": {
+			"warningTitle": "Autorización expuesta a Internet",
+			"warningDescription": "OAuth expone rutas de autorización en la identidad pública configurada. Usa un proxy inverso de confianza y un certificado HTTPS válido antes de habilitarlo.",
+			"publicBaseUrlTitle": "URL base pública de OAuth",
+			"publicBaseUrlDescription": "URL HTTPS externa canónica usada como identidad OAuth. Cambiarla revoca todo el acceso OAuth y conserva los clientes MCP estáticos.",
+			"publicBaseUrlPlaceholder": "https://panel.example.com",
+			"publicBaseUrlInvalid": "Utiliza una URL HTTPS absoluta sin credenciales, consulta, fragmento ni barra final.",
+			"enabledTitle": "Habilitar MCP OAuth",
+			"enabledDescription": "Comprueba la preparación de seguridad antes de abrir todas las rutas OAuth. Al deshabilitarlo se revocan todas las concesiones y tokens OAuth y solo se cierran las suscripciones OAuth."
+		},
 		"capabilities": {
 			"title": "Límite de capacidades de la instalación",
 			"warningTitle": "Acceso a dispositivos físicos",

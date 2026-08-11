@@ -30,6 +30,8 @@ export const MCP_DEFAULT_ALLOWED_ORIGINS: readonly string[] = [];
 
 export const MCP_DEFAULT_OAUTH_PUBLIC_BASE_URL: string | null = null;
 
+export const MCP_DEFAULT_OAUTH_ENABLED = false;
+
 export const MCP_OAUTH_PROVIDER_MATERIAL_FILENAME = '.mcp-oauth-provider.json';
 
 export const MCP_OAUTH_PRINCIPAL_TYPE = 'mcp_oauth';

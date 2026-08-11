@@ -48,6 +48,47 @@
 
 		<el-divider />
 
+		<el-alert
+			type="warning"
+			:title="t('mcpModule.config.oauth.warningTitle')"
+			:description="t('mcpModule.config.oauth.warningDescription')"
+			:closable="false"
+			show-icon
+			class="mb-4"
+		/>
+
+		<el-form-item
+			:label="t('mcpModule.config.oauth.publicBaseUrlTitle')"
+			prop="oauthPublicBaseUrl"
+		>
+			<el-input
+				v-model="model.oauthPublicBaseUrl"
+				:placeholder="t('mcpModule.config.oauth.publicBaseUrlPlaceholder')"
+				name="oauthPublicBaseUrl"
+				clearable
+			/>
+			<div class="text-sm text-gray-500 mt-1">
+				{{ t('mcpModule.config.oauth.publicBaseUrlDescription') }}
+			</div>
+		</el-form-item>
+
+		<el-form-item
+			:label="t('mcpModule.config.oauth.enabledTitle')"
+			prop="oauthEnabled"
+			label-position="left"
+		>
+			<el-switch
+				v-model="model.oauthEnabled"
+				name="oauthEnabled"
+				:disabled="!model.enabled"
+			/>
+			<div class="w-full text-sm text-gray-500 mt-1">
+				{{ t('mcpModule.config.oauth.enabledDescription') }}
+			</div>
+		</el-form-item>
+
+		<el-divider />
+
 		<el-form-item
 			:label="t('mcpModule.config.capabilities.title')"
 			prop="capabilities"
@@ -134,7 +175,7 @@ import { useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import { McpCapability } from '../mcp.constants';
 import { resolveMcpEndpoint } from '../mcp.utils';
-import { McpOriginSchema } from '../schemas/config.schemas';
+import { McpOAuthPublicBaseUrlSchema, McpOriginSchema } from '../schemas/config.schemas';
 import type { IMcpConfigEditForm } from '../schemas/config.types';
 
 import type { IMcpConfigFormProps } from './mcp-config-form.types';
@@ -169,6 +210,17 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 });
 
 const rules = reactive<FormRules<IMcpConfigEditForm>>({
+	oauthPublicBaseUrl: [
+		{
+			validator: (_rule, value: string | null, callback): void => {
+				const required = model.enabled && model.oauthEnabled;
+				const missing = value === null || value === '';
+				const valid = missing ? !required : McpOAuthPublicBaseUrlSchema.safeParse(value).success;
+				callback(valid ? undefined : new Error(t('mcpModule.config.oauth.publicBaseUrlInvalid')));
+			},
+			trigger: 'change',
+		},
+	],
 	allowedOrigins: [
 		{
 			validator: (_rule, value: string[], callback): void => {

@@ -42,6 +42,16 @@
 			"title": "Installation MCP endpoint",
 			"description": "Use this URL with a trusted MCP client and the one-time bearer credential."
 		},
+		"oauth": {
+			"warningTitle": "Internet-facing authorization",
+			"warningDescription": "OAuth exposes authorization routes at the configured public identity. Use a trusted reverse proxy and valid HTTPS certificate before enabling it.",
+			"publicBaseUrlTitle": "OAuth public base URL",
+			"publicBaseUrlDescription": "Canonical external HTTPS URL used as the OAuth identity. Changing it revokes all OAuth access while preserving static MCP clients.",
+			"publicBaseUrlPlaceholder": "https://panel.example.com",
+			"publicBaseUrlInvalid": "Use an absolute HTTPS URL without credentials, query, fragment, or trailing slash.",
+			"enabledTitle": "Enable MCP OAuth",
+			"enabledDescription": "Runs readiness checks before opening the complete OAuth route set. Disabling revokes every OAuth grant and token and closes only OAuth subscriptions."
+		},
 		"capabilities": {
 			"title": "Installation capability ceiling",
 			"warningTitle": "Physical device access",

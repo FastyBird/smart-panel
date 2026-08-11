@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { ArrayUnique, IsArray, IsEnum, IsOptional, IsString, Validate } from 'class-validator';
+import { ArrayUnique, IsArray, IsBoolean, IsEnum, IsOptional, IsString, Validate } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -18,6 +18,17 @@ export class UpdateMcpConfigDto extends UpdateModuleConfigDto {
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid string."}]' })
 	type: string = MCP_MODULE_NAME;
+
+	@ApiPropertyOptional({
+		name: 'oauth_enabled',
+		description: 'Whether the readiness-gated MCP OAuth authorization profile is enabled',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'oauth_enabled' })
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"oauth_enabled","reason":"OAuth enabled state must be a boolean."}]' })
+	oauth_enabled?: boolean;
 
 	@ApiPropertyOptional({
 		description: 'Installation-wide ceiling for capabilities that MCP clients may receive',
@@ -55,7 +66,7 @@ export class UpdateMcpConfigDto extends UpdateModuleConfigDto {
 
 	@ApiPropertyOptional({
 		name: 'oauth_public_base_url',
-		description: 'Explicit canonical HTTPS base URL used to derive the inactive MCP OAuth identity',
+		description: 'Explicit canonical HTTPS base URL used to derive the MCP OAuth identity',
 		type: 'string',
 		nullable: true,
 		example: 'https://panel.example.com',

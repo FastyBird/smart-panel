@@ -69,6 +69,7 @@ import { McpOAuthClientService } from './services/mcp-oauth-client.service';
 import { McpOAuthEndpointRateLimitService } from './services/mcp-oauth-endpoint-rate-limit.service';
 import { McpOAuthGlobalInvalidationService } from './services/mcp-oauth-global-invalidation.service';
 import { McpOAuthInteractionService } from './services/mcp-oauth-interaction.service';
+import { McpOAuthLifecycleService } from './services/mcp-oauth-lifecycle.service';
 import { McpOAuthManagementService } from './services/mcp-oauth-management.service';
 import { McpOAuthModuleConfigMutationService } from './services/mcp-oauth-module-config-mutation.service';
 import { McpOAuthProviderMaterialService } from './services/mcp-oauth-provider-material.service';
@@ -152,6 +153,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpOAuthPublicUrlService,
 		McpOAuthReadinessRegistrationService,
 		McpOAuthReadinessService,
+		McpOAuthLifecycleService,
 		McpOAuthRefreshTokenService,
 		McpOAuthResourceServerService,
 		McpOAuthRouteGateService,
@@ -255,9 +257,10 @@ Connects trusted MCP-compatible agents to a curated set of Smart Panel tools and
 | Option | Description | Default |
 |--------|-------------|---------|
 | \`enabled\` | Accept MCP protocol requests | \`false\` |
+| \`oauth_enabled\` | Enable the readiness-gated OAuth authorization profile | \`false\` |
 | \`capabilities\` | Allowed combination of \`read\`, \`write\`, and \`trigger\` | \`read\` |
 | \`allowed_origins\` | Additional browser origins allowed to call the endpoint | empty |
-| \`oauth_public_base_url\` | Canonical HTTPS base used by the inactive OAuth foundation | empty |`,
+| \`oauth_public_base_url\` | Canonical external HTTPS base used as the OAuth identity | empty |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs/admin-management/mcp',
 				repository: 'https://github.com/FastyBird/smart-panel',
