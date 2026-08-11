@@ -248,6 +248,52 @@ describe('McpOAuthModuleConfigMutationService', () => {
 		expect(configService.reload).toHaveBeenCalledTimes(1);
 	});
 
+	it('invalidates legacy OAuth state before re-enabling a disabled module', async () => {
+		config.enabled = false;
+		const commit = jest.fn().mockImplementation(() => {
+			config.enabled = true;
+		});
+
+		await service.update({ type: MCP_MODULE_NAME, enabled: true } as UpdateMcpConfigDto, commit);
+
+		expect(globalInvalidation.invalidate).toHaveBeenCalledWith(['oauthEnabledGeneration'], expect.any(Function));
+		expect(globalInvalidation.invalidateAll).not.toHaveBeenCalled();
+		expect(commit).toHaveBeenCalledTimes(1);
+	});
+
+	it('combines re-enable reconciliation with other changed OAuth generations', async () => {
+		config.enabled = false;
+		config.oauthPublicBaseUrl = 'https://panel.example.com';
+		const commit = jest.fn();
+
+		await service.update(
+			{
+				type: MCP_MODULE_NAME,
+				enabled: true,
+				oauth_public_base_url: 'https://new-panel.example.com',
+				capabilities: [McpCapability.READ],
+			} as UpdateMcpConfigDto,
+			commit,
+		);
+
+		expect(globalInvalidation.invalidate).toHaveBeenCalledWith(
+			['oauthEnabledGeneration', 'publicIdentityGeneration', 'modulePolicyGeneration'],
+			expect.any(Function),
+		);
+		expect(globalInvalidation.invalidateAll).not.toHaveBeenCalled();
+	});
+
+	it('reloads configuration and propagates a failed re-enable commit after invalidation', async () => {
+		config.enabled = false;
+		const commitError = new Error('configuration persistence failed');
+
+		await expect(
+			service.update({ type: MCP_MODULE_NAME, enabled: true } as UpdateMcpConfigDto, () => Promise.reject(commitError)),
+		).rejects.toBe(commitError);
+
+		expect(configService.reload).toHaveBeenCalledTimes(1);
+	});
+
 	it('advances public identity and module policy together when both inputs change', async () => {
 		config.oauthPublicBaseUrl = 'https://panel.example.com';
 		const commit = jest.fn();

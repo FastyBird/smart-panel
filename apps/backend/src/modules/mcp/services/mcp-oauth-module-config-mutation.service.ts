@@ -28,6 +28,7 @@ export class McpOAuthModuleConfigMutationService {
 		const current = this.configService.getModuleConfig<McpConfigModel>(MCP_MODULE_NAME);
 		const nextEnabled = update.enabled ?? current.enabled;
 		const moduleDisabled = current.enabled && !nextEnabled;
+		const moduleEnabled = !current.enabled && nextEnabled;
 		const nextCapabilities = update.capabilities ?? current.capabilities;
 		const capabilitiesChanged = !this.sameCapabilities(current.capabilities, nextCapabilities);
 		const nextPublicBaseUrl =
@@ -42,6 +43,24 @@ export class McpOAuthModuleConfigMutationService {
 			];
 
 			await this.globalInvalidation.invalidateAll(generations, async () => {
+				try {
+					await commit();
+				} catch (error) {
+					this.configService.reload();
+					throw error;
+				}
+			});
+			return;
+		}
+
+		if (moduleEnabled) {
+			const generations: McpOAuthGlobalGeneration[] = [
+				'oauthEnabledGeneration',
+				...(publicIdentityChanged ? (['publicIdentityGeneration'] as const) : []),
+				...(capabilitiesChanged ? (['modulePolicyGeneration'] as const) : []),
+			];
+
+			await this.globalInvalidation.invalidate(generations, async () => {
 				try {
 					await commit();
 				} catch (error) {

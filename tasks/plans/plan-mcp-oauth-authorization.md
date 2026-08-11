@@ -255,6 +255,8 @@ amend ADR 0002.
       registrations after disable begins, and close both profiles before reporting success.
 - [x] Combine simultaneous public-identity and module-policy changes into the same invalidation transaction, and keep
       the advanced generations, revoked artifacts, and closed streams when configuration persistence fails.
+- [x] Reconcile installations disabled before the awaited mutation existed by invalidating legacy OAuth state before
+      re-enable, preventing old bearer artifacts from becoming usable when the module becomes active again.
 - [x] Preserve OAuth-only stream closure for public identity changes while proving only MCP module disable closes
       static MCP streams.
 
