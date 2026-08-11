@@ -96,6 +96,10 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 		['/api/v1/modules/mcp/oauth/authorize', McpOAuthRateLimitedEndpoint.AUTHORIZE],
 		['/api/v1/modules/mcp/oauth/token', McpOAuthRateLimitedEndpoint.TOKEN],
 		['/api/v1/modules/mcp/oauth/token/revocation', McpOAuthRateLimitedEndpoint.REVOCATION],
+		['/auth', McpOAuthRateLimitedEndpoint.AUTHORIZE],
+		['/auth/provider-resume', McpOAuthRateLimitedEndpoint.AUTHORIZE],
+		['/token', McpOAuthRateLimitedEndpoint.TOKEN],
+		['/token/revocation', McpOAuthRateLimitedEndpoint.REVOCATION],
 	] as const)('maps %s to its dedicated endpoint budget', async (pathname, endpoint) => {
 		const request = createRequest();
 		request.url = pathname;

@@ -302,9 +302,19 @@ export class McpOAuthProviderFactory {
 	}
 
 	private getRateLimitedEndpoint(pathname: string, urls: McpOAuthPublicUrls): McpOAuthRateLimitedEndpoint | null {
-		if (pathname === new URL(urls.authorizationEndpoint).pathname) return McpOAuthRateLimitedEndpoint.AUTHORIZE;
-		if (pathname === new URL(urls.tokenEndpoint).pathname) return McpOAuthRateLimitedEndpoint.TOKEN;
-		if (pathname === new URL(urls.revocationEndpoint).pathname) return McpOAuthRateLimitedEndpoint.REVOCATION;
+		if (
+			pathname === new URL(urls.authorizationEndpoint).pathname ||
+			pathname === '/auth' ||
+			pathname.startsWith('/auth/')
+		) {
+			return McpOAuthRateLimitedEndpoint.AUTHORIZE;
+		}
+		if (pathname === new URL(urls.tokenEndpoint).pathname || pathname === '/token') {
+			return McpOAuthRateLimitedEndpoint.TOKEN;
+		}
+		if (pathname === new URL(urls.revocationEndpoint).pathname || pathname === '/token/revocation') {
+			return McpOAuthRateLimitedEndpoint.REVOCATION;
+		}
 
 		return null;
 	}

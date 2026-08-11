@@ -42,11 +42,11 @@ export class McpOAuthEndpointRateLimitService {
 			MCP_OAUTH_RATE_LIMIT_TTL_MS,
 			`mcp-oauth-${endpoint}`,
 		);
-		const retryAfterMs = result.timeToBlockExpire || result.timeToExpire;
+		const retryAfterSeconds = result.timeToBlockExpire || result.timeToExpire;
 
 		return {
 			allowed: !result.isBlocked,
-			retryAfterSeconds: Math.max(1, Math.ceil(retryAfterMs / 1_000)),
+			retryAfterSeconds: Math.max(1, Math.ceil(retryAfterSeconds)),
 		};
 	}
 }
