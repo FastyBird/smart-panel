@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 5 in progress — revoke-all recovery control implemented
+**Status:** Phase 5 in progress — fail-closed OAuth readiness gate foundation implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -281,6 +281,18 @@ amend ADR 0002.
       and stream closure still completed; do not report an event when invalidation itself failed.
 - [x] Add unit coverage for successful, partial, and failed automatic invalidation audit behavior; retain end-to-end
       audit verification for the Phase 6 security-profile suite.
+
+### Phase 5q — Fail-closed readiness and shared route gate foundation
+
+- [x] Define one immutable readiness inventory for authorization-deadline and targeted subscription aborts, live-scope
+      contraction, awaited approver lifecycle invalidation, subscription and artifact issuance gates, global rotation,
+      switch-off, administrative revocation, audit, endpoint throttling, and the complete bootstrap route set.
+- [x] Register only controls backed by completed services during module initialization, then seal the inventory at
+      application bootstrap so late or partial registration cannot make OAuth reachable.
+- [x] Add one shared runtime route gate that cannot open before successful complete readiness verification and make the
+      embedded provider inaccessible while that gate is closed.
+- [x] Prove incomplete readiness stays closed and explicitly reports the remaining switch-off, endpoint-rate-limit,
+      and complete-route-set controls without exposing any production OAuth route.
 
 ### Remaining Phase 5 controls
 

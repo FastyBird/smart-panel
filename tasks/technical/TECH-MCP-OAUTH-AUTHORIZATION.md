@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 5 revoke-all recovery control implemented
+Status: in progress — Phase 5 fail-closed readiness gate foundation implemented
 
 ## 1. Business goal
 
