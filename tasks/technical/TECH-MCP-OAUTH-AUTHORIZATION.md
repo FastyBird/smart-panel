@@ -73,7 +73,7 @@ upgrade consequences.
       request cannot open after invalidation reports success.
 - [ ] Refresh tokens are atomically compare-and-consumed; concurrent replay creates at most one successor and revokes
       the entire family without leaving a usable fork.
-- [ ] Every OAuth artifact commit is serialized with all applicable persistent enabled/secret/identity/client/grant/
+- [x] Every OAuth artifact commit is serialized with all applicable persistent enabled/secret/identity/client/grant/
       policy/approver generations so no invalidation can miss a racing authorization, exchange, or refresh result and
       later state restoration cannot make it usable.
 - [ ] Switching OAuth off rejects all OAuth traffic, revokes OAuth artifacts, and closes OAuth subscriptions before
