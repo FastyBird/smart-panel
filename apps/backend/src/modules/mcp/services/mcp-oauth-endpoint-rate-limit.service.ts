@@ -35,12 +35,13 @@ export class McpOAuthEndpointRateLimitService {
 	async consume(endpoint: McpOAuthRateLimitedEndpoint, immediateAddress?: string): Promise<McpOAuthRateLimitDecision> {
 		const address = immediateAddress?.trim() || 'unknown';
 		const limit = ENDPOINT_LIMITS[endpoint];
+		const storageKey = `mcp-oauth:${endpoint}:${address}`;
 		const result = await this.storage.increment(
-			`mcp-oauth:${endpoint}:${address}`,
+			storageKey,
 			MCP_OAUTH_RATE_LIMIT_TTL_MS,
 			limit,
 			MCP_OAUTH_RATE_LIMIT_TTL_MS,
-			`mcp-oauth-${endpoint}`,
+			storageKey,
 		);
 		const retryAfterSeconds = result.timeToBlockExpire || result.timeToExpire;
 

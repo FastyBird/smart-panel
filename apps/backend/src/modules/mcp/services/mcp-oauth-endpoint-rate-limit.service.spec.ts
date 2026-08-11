@@ -37,7 +37,7 @@ describe('McpOAuthEndpointRateLimitService', () => {
 			MCP_OAUTH_RATE_LIMIT_TTL_MS,
 			limit,
 			MCP_OAUTH_RATE_LIMIT_TTL_MS,
-			`mcp-oauth-${endpoint}`,
+			`mcp-oauth:${endpoint}:192.0.2.15`,
 		);
 	});
 
@@ -49,8 +49,16 @@ describe('McpOAuthEndpointRateLimitService', () => {
 			MCP_OAUTH_RATE_LIMIT_TTL_MS,
 			MCP_OAUTH_TOKEN_RATE_LIMIT,
 			MCP_OAUTH_RATE_LIMIT_TTL_MS,
-			'mcp-oauth-token',
+			'mcp-oauth:token:unknown',
 		);
+	});
+
+	it('isolates throttler timer groups between immediate peers', async () => {
+		await service.consume(McpOAuthRateLimitedEndpoint.TOKEN, '192.0.2.20');
+		await service.consume(McpOAuthRateLimitedEndpoint.TOKEN, '192.0.2.21');
+
+		expect(increment.mock.calls[0]?.[4]).toBe('mcp-oauth:token:192.0.2.20');
+		expect(increment.mock.calls[1]?.[4]).toBe('mcp-oauth:token:192.0.2.21');
 	});
 
 	it('returns a bounded retry-after value for blocked requests', async () => {
