@@ -52,7 +52,13 @@
     "admin:build": "pnpm --filter @fastybird/smart-panel-admin build",
     "admin:postinstall": "node -e \"process.exit(process.env.FB_NO_ADMIN_BUILD ? 0 : 1)\" || pnpm run admin:extensions && pnpm run admin:build",
     "testing:dev": "pnpm --filter @fastybird/smart-panel-testing start:dev",
-    "testing:build": "pnpm --filter @fastybird/smart-panel-testing build"
+    "testing:build": "pnpm --filter @fastybird/smart-panel-testing build",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
+    "husky": "^9.1.7"
   },
   "engines": {
     "node": ">=20",
