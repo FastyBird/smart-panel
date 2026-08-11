@@ -31,7 +31,7 @@ import { McpSubscriptionRegistryService } from '../src/modules/mcp/services/mcp-
 import { UserEntity } from '../src/modules/users/entities/users.entity';
 import { UserLanguage, UserRole } from '../src/modules/users/users.constants';
 
-import { runMcpOAuthHandlerSwitchOffRace } from './support/mcp-oauth-handler-switch-off-race';
+import { runMcpOAuthHandlerInvalidationRaces } from './support/mcp-oauth-handler-invalidation-races';
 
 const CLIENT_ID = 'phase3-public-client';
 const ACCOUNT_ID = 'owner-1';
@@ -733,7 +733,7 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 	});
 
 	it(
-		'synchronizes authorization, code-exchange, and refresh commits with OAuth switch-off',
-		runMcpOAuthHandlerSwitchOffRace,
+		'synchronizes handler commits with OAuth switch-off and global security rotations',
+		runMcpOAuthHandlerInvalidationRaces,
 	);
 });
