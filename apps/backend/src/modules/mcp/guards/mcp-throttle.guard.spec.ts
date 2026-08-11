@@ -8,6 +8,8 @@ import { ThrottlerException, ThrottlerStorage } from '@nestjs/throttler';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { MCP_AUTHENTICATED_RATE_LIMIT, MCP_RATE_LIMIT_TTL_MS, MCP_UNAUTHENTICATED_RATE_LIMIT } from '../mcp.constants';
 import { McpInstallationService } from '../services/mcp-installation.service';
+import { McpOAuthResourceServerService } from '../services/mcp-oauth-resource-server.service';
+import { McpOAuthRouteGateService } from '../services/mcp-oauth-route-gate.service';
 
 import { McpThrottleGuard } from './mcp-throttle.guard';
 
@@ -16,6 +18,8 @@ describe('McpThrottleGuard', () => {
 	let jwtService: jest.Mocked<Pick<JwtService, 'decode' | 'verifyAsync'>>;
 	let storage: jest.Mocked<ThrottlerStorage>;
 	let increment: jest.MockedFunction<ThrottlerStorage['increment']>;
+	let oauthRouteGate: { isOpen: boolean };
+	let oauthResourceServer: { verifyMcpBearerToken: jest.Mock };
 	let guard: McpThrottleGuard;
 
 	beforeEach(() => {
@@ -33,11 +37,15 @@ describe('McpThrottleGuard', () => {
 		storage = {
 			increment,
 		};
+		oauthRouteGate = { isOpen: false };
+		oauthResourceServer = { verifyMcpBearerToken: jest.fn() };
 		guard = new McpThrottleGuard(
 			{ getAllAndOverride: jest.fn(() => isMcpEndpoint) } as unknown as Reflector,
 			jwtService as unknown as JwtService,
 			{ getAudience: jest.fn().mockResolvedValue('audience') } as unknown as McpInstallationService,
 			storage,
+			oauthRouteGate as McpOAuthRouteGateService,
+			oauthResourceServer as unknown as McpOAuthResourceServerService,
 		);
 	});
 
@@ -55,6 +63,22 @@ describe('McpThrottleGuard', () => {
 		await expect(guard.canActivate(context(request('valid-token')))).resolves.toBe(true);
 		expect(increment).toHaveBeenCalledWith(
 			'mcp-client:client-id',
+			MCP_RATE_LIMIT_TTL_MS,
+			MCP_AUTHENTICATED_RATE_LIMIT,
+			MCP_RATE_LIMIT_TTL_MS,
+			'mcp',
+		);
+	});
+
+	it('uses the isolated verified OAuth client identity for the authenticated budget only while the gate is open', async () => {
+		oauthRouteGate.isOpen = true;
+		jwtService.decode.mockReturnValue(null);
+		oauthResourceServer.verifyMcpBearerToken.mockResolvedValue({ clientId: 'oauth-public-client' });
+
+		await expect(guard.canActivate(context(request('opaque-token')))).resolves.toBe(true);
+		expect(oauthResourceServer.verifyMcpBearerToken).toHaveBeenCalledWith('Bearer opaque-token', ['read']);
+		expect(increment).toHaveBeenCalledWith(
+			'mcp-client:oauth:oauth-public-client',
 			MCP_RATE_LIMIT_TTL_MS,
 			MCP_AUTHENTICATED_RATE_LIMIT,
 			MCP_RATE_LIMIT_TTL_MS,

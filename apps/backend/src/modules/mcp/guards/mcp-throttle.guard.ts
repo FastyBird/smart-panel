@@ -1,6 +1,6 @@
 import { FastifyRequest } from 'fastify';
 
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, Optional } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { InjectThrottlerStorage, ThrottlerException, ThrottlerStorage } from '@nestjs/throttler';
@@ -12,8 +12,11 @@ import {
 	MCP_AUTHENTICATED_RATE_LIMIT,
 	MCP_RATE_LIMIT_TTL_MS,
 	MCP_UNAUTHENTICATED_RATE_LIMIT,
+	McpCapability,
 } from '../mcp.constants';
 import { McpInstallationService } from '../services/mcp-installation.service';
+import { McpOAuthResourceServerService } from '../services/mcp-oauth-resource-server.service';
+import { McpOAuthRouteGateService } from '../services/mcp-oauth-route-gate.service';
 
 interface McpJwtPayload {
 	sub?: string;
@@ -41,6 +44,8 @@ export class McpThrottleGuard implements CanActivate {
 		private readonly installationService: McpInstallationService,
 		@InjectThrottlerStorage()
 		private readonly storage: ThrottlerStorage,
+		@Optional() private readonly oauthRouteGate?: McpOAuthRouteGateService,
+		@Optional() private readonly oauthResourceServer?: McpOAuthResourceServerService,
 	) {}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -76,7 +81,7 @@ export class McpThrottleGuard implements CanActivate {
 		const decoded = this.safeDecode(token);
 
 		if (!decoded || decoded.type !== TokenOwnerType.MCP || !decoded.sub) {
-			return null;
+			return this.getOAuthClientId(token);
 		}
 
 		const cached = this.readVerifyCache(token);
@@ -100,6 +105,18 @@ export class McpThrottleGuard implements CanActivate {
 			return clientId;
 		} catch {
 			this.writeVerifyCache(token, null);
+			return this.getOAuthClientId(token);
+		}
+	}
+
+	private async getOAuthClientId(token: string): Promise<string | null> {
+		if (!this.oauthRouteGate?.isOpen || !this.oauthResourceServer) return null;
+
+		try {
+			const authInfo = await this.oauthResourceServer.verifyMcpBearerToken(`Bearer ${token}`, [McpCapability.READ]);
+
+			return `oauth:${authInfo.clientId}`;
+		} catch {
 			return null;
 		}
 	}

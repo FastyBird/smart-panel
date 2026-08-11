@@ -129,6 +129,18 @@ export class McpServerService implements OnApplicationShutdown {
 		await clientHandler.nodeHandler(rawRequest, reply.raw, request.body);
 	}
 
+	async handleOAuth(request: McpPolicyRequest, reply: FastifyReply, authInfo: AuthInfo): Promise<void> {
+		const requestId = this.auditService.getRequestId(request.body);
+		this.auditProtocolRequest(request.body, requestId, authInfo.clientId);
+		const clientHandler = this.getOrCreateHandler(`oauth:${authInfo.clientId}`);
+		const rawRequest = request.raw as AuthenticatedIncomingMessage;
+
+		rawRequest.auth = authInfo;
+		reply.hijack();
+
+		await clientHandler.nodeHandler(rawRequest, reply.raw, request.body);
+	}
+
 	notifyToolsChanged(clientId?: string): void {
 		this.notify(clientId, (handler) => handler.notify.toolsChanged());
 	}

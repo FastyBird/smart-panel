@@ -236,6 +236,17 @@ describe('McpPolicyService', () => {
 		);
 	});
 
+	it('accepts only the configured canonical OAuth origin on the OAuth resource path', () => {
+		config.oauthPublicBaseUrl = 'https://oauth-panel.example.com/smart-panel';
+
+		expect(() =>
+			service.validateOAuthRequestOrigin(request('https://oauth-panel.example.com', 'oauth-panel.example.com')),
+		).not.toThrow();
+		expect(() => service.validateRequestOrigin(request(undefined, 'oauth-panel.example.com'), policy())).toThrow(
+			ForbiddenException,
+		);
+	});
+
 	function policy(): McpPolicyContext {
 		return {
 			client,

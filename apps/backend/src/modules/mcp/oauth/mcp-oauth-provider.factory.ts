@@ -76,6 +76,11 @@ export class McpOAuthProviderFactory {
 		});
 		const provider = new oidcProvider.default(urls.issuer, {
 			adapter,
+			routes: {
+				authorization: new URL(urls.authorizationEndpoint).pathname,
+				token: new URL(urls.tokenEndpoint).pathname,
+				revocation: new URL(urls.revocationEndpoint).pathname,
+			},
 			clientAuthMethods: ['none'],
 			responseTypes: ['code'],
 			scopes: Object.values(McpOAuthScope),
@@ -304,6 +309,7 @@ export class McpOAuthProviderFactory {
 	private getRateLimitedEndpoint(pathname: string, urls: McpOAuthPublicUrls): McpOAuthRateLimitedEndpoint | null {
 		if (
 			pathname === new URL(urls.authorizationEndpoint).pathname ||
+			pathname === '/authorize' ||
 			pathname === '/auth' ||
 			pathname.startsWith('/auth/')
 		) {

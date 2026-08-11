@@ -34,6 +34,20 @@ export const MCP_OAUTH_PRINCIPAL_TYPE = 'mcp_oauth';
 
 export const MCP_OAUTH_SERVER_STATE_KEY = 'primary';
 
+export const MCP_OAUTH_RESOURCE_PATH = '/api/v1/modules/mcp';
+
+export const MCP_OAUTH_ISSUER_PATH = `${MCP_OAUTH_RESOURCE_PATH}/oauth`;
+
+export const MCP_OAUTH_PROTECTED_RESOURCE_METADATA_PATH = `/.well-known/oauth-protected-resource${MCP_OAUTH_RESOURCE_PATH}`;
+
+export const MCP_OAUTH_AUTHORIZATION_SERVER_METADATA_PATH = `/.well-known/oauth-authorization-server${MCP_OAUTH_ISSUER_PATH}`;
+
+export const MCP_OAUTH_AUTHORIZATION_PATH = `${MCP_OAUTH_ISSUER_PATH}/authorize`;
+
+export const MCP_OAUTH_TOKEN_PATH = `${MCP_OAUTH_ISSUER_PATH}/token`;
+
+export const MCP_OAUTH_REVOCATION_PATH = `${MCP_OAUTH_TOKEN_PATH}/revocation`;
+
 export const MCP_OAUTH_ACCESS_TOKEN_LIFETIME_MS = 10 * 60 * 1000;
 
 export const MCP_OAUTH_REFRESH_FAMILY_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;

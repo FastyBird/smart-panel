@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 5 in progress — OAuth switch-off invalidation foundation implemented
+**Status:** Phase 5 in progress — complete bootstrap OAuth route-set foundation implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -317,6 +317,21 @@ amend ADR 0002.
       invalidation itself fails, and register the coordinator in the sealed readiness inventory. The complete route
       set remains the only missing readiness control, so the user-facing switch stays absent.
 
+### Phase 5t — Complete bootstrap OAuth route-set foundation
+
+- [x] Install one finite OAuth router before Fastify begins listening, register readiness only after the complete hook
+      is installed, and reject duplicate registration so enable/disable never mounts or unmounts routes.
+- [x] Register only the path-aware protected-resource and bounded authorization-server metadata projections plus the
+      explicit authorization/resume, token, and revocation provider routes; keep dependency discovery, registration,
+      and every unrelated provider route unreachable.
+- [x] Preserve the existing static MCP request path while selecting isolated OAuth bearer verification only when the
+      shared gate is open; apply the same proxy and Host/Origin policy, authenticated request budget, minimum read
+      scope, and RFC 6750 challenge boundary.
+- [x] Prove every registered OAuth route returns one uniform fail-closed response while the gate is closed, public path
+      prefixes are remapped only from trusted runtime URLs, static dispatch remains unchanged, and the provider's full
+      PKCE/refresh/revocation security spike still passes. Keep the user-facing switch absent until activation and
+      switch-off are wired through configuration.
+
 ### Remaining Phase 5 controls
 
 - [x] Bind OAuth subscriptions to client, grant, access-token, optional refresh-family IDs, and an authorization
@@ -352,7 +367,7 @@ amend ADR 0002.
       serialized subscription-open/invalidation and all-generation artifact-issuance gates,
       public-identity/server-secret rotation, OAuth switch-off invalidation, revoke controls, audit hooks, and rate
       limits are registered; fail closed and keep the shared OAuth route gate closed if any readiness check fails.
-- [ ] Register the complete protected-resource metadata, authorization-server metadata,
+- [x] Register the complete protected-resource metadata, authorization-server metadata,
       authorization/token/revocation, challenge, and OAuth MCP route set once during NestJS/Fastify bootstrap. Every
       route must check the same fail-closed gate before its handler; never mount or unmount routes after startup.
 - [ ] On enable, rerun readiness and open the shared gate for the complete pre-registered OAuth surface atomically;
