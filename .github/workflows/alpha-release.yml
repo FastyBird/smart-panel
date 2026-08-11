@@ -495,7 +495,7 @@ jobs:
           rm ./pnpm-workspace.yaml
 
       - name: "Download Display Assets"
-        uses: "actions/download-artifact@v7"
+        uses: "actions/download-artifact@v8"
         with:
           name: "display-panel-flutterpi-arm64"
 
@@ -607,22 +607,22 @@ jobs:
           echo "- Display App: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
 
       - name: "Download ARM64 Application Build"
-        uses: "actions/download-artifact@v7"
+        uses: "actions/download-artifact@v8"
         with:
           name: "server-bundle-arm64"
 
       - name: "Download Android APK"
-        uses: "actions/download-artifact@v7"
+        uses: "actions/download-artifact@v8"
         with:
           name: "display-panel-android"
 
       - name: "Download Linux Desktop Build"
-        uses: "actions/download-artifact@v7"
+        uses: "actions/download-artifact@v8"
         with:
           name: "display-panel-linux-x64"
 
       - name: "Download flutter-pi ARM64 Build"
-        uses: "actions/download-artifact@v7"
+        uses: "actions/download-artifact@v8"
         with:
           name: "display-panel-flutterpi-arm64"
 
