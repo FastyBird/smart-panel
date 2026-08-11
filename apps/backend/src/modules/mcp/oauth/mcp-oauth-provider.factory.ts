@@ -13,6 +13,10 @@ import {
 	McpOAuthScope,
 } from '../mcp.constants';
 import { McpOAuthClientService } from '../services/mcp-oauth-client.service';
+import {
+	McpOAuthEndpointRateLimitService,
+	McpOAuthRateLimitedEndpoint,
+} from '../services/mcp-oauth-endpoint-rate-limit.service';
 import { McpOAuthPublicUrlService } from '../services/mcp-oauth-public-url.service';
 import { McpSubscriptionRegistryService } from '../services/mcp-subscription-registry.service';
 
@@ -45,6 +49,7 @@ export class McpOAuthProviderFactory {
 		private readonly clientsService: McpOAuthClientService,
 		private readonly publicUrlService: McpOAuthPublicUrlService,
 		private readonly subscriptions: McpSubscriptionRegistryService,
+		private readonly endpointRateLimit: McpOAuthEndpointRateLimitService,
 	) {}
 
 	async create(options: McpOAuthProviderFactoryOptions = {}): Promise<McpOAuthProviderRuntime> {
@@ -229,6 +234,16 @@ export class McpOAuthProviderFactory {
 	): Promise<void> {
 		const pathname = new URL(request.url ?? '/', urls.issuer).pathname;
 		const tokenPathname = new URL(urls.tokenEndpoint).pathname;
+		const rateLimitedEndpoint = this.getRateLimitedEndpoint(pathname, urls);
+
+		if (rateLimitedEndpoint) {
+			const decision = await this.endpointRateLimit.consume(rateLimitedEndpoint, request.socket?.remoteAddress);
+
+			if (!decision.allowed) {
+				this.writeRateLimitError(request, response, decision.retryAfterSeconds);
+				return;
+			}
+		}
 
 		if (request.method === 'POST' && (pathname === tokenPathname || pathname === '/token')) {
 			const contentType = request.headers['content-type']?.split(';', 1)[0]?.trim().toLowerCase();
@@ -284,5 +299,36 @@ export class McpOAuthProviderFactory {
 		response.setHeader('cache-control', 'no-store');
 		response.setHeader('pragma', 'no-cache');
 		response.end(JSON.stringify({ error, error_description: description }));
+	}
+
+	private getRateLimitedEndpoint(pathname: string, urls: McpOAuthPublicUrls): McpOAuthRateLimitedEndpoint | null {
+		if (
+			pathname === new URL(urls.authorizationEndpoint).pathname ||
+			pathname === '/auth' ||
+			pathname.startsWith('/auth/')
+		) {
+			return McpOAuthRateLimitedEndpoint.AUTHORIZE;
+		}
+		if (pathname === new URL(urls.tokenEndpoint).pathname || pathname === '/token') {
+			return McpOAuthRateLimitedEndpoint.TOKEN;
+		}
+		if (pathname === new URL(urls.revocationEndpoint).pathname || pathname === '/token/revocation') {
+			return McpOAuthRateLimitedEndpoint.REVOCATION;
+		}
+
+		return null;
+	}
+
+	private writeRateLimitError(request: IncomingMessage, response: ServerResponse, retryAfterSeconds: number): void {
+		response.statusCode = 429;
+		response.setHeader('content-type', 'application/json');
+		response.setHeader('cache-control', 'no-store');
+		response.setHeader('pragma', 'no-cache');
+		response.setHeader('retry-after', retryAfterSeconds.toString());
+		response.setHeader('connection', 'close');
+		response.end(
+			JSON.stringify({ error: 'temporarily_unavailable', error_description: 'Too many OAuth requests' }),
+			() => request.destroy(),
+		);
 	}
 }

@@ -4,6 +4,7 @@ import { McpOAuthProviderFactory } from '../oauth/mcp-oauth-provider.factory';
 
 import { McpAuditService } from './mcp-audit.service';
 import { McpOAuthApproverAuthorityService } from './mcp-oauth-approver-authority.service';
+import { McpOAuthEndpointRateLimitService } from './mcp-oauth-endpoint-rate-limit.service';
 import { McpOAuthGlobalInvalidationService } from './mcp-oauth-global-invalidation.service';
 import { McpOAuthManagementService } from './mcp-oauth-management.service';
 import { McpOAuthModuleConfigMutationService } from './mcp-oauth-module-config-mutation.service';
@@ -16,6 +17,7 @@ export class McpOAuthReadinessRegistrationService implements OnModuleInit {
 		private readonly readiness: McpOAuthReadinessService,
 		private readonly subscriptions: McpSubscriptionRegistryService,
 		private readonly approverAuthority: McpOAuthApproverAuthorityService,
+		private readonly endpointRateLimit: McpOAuthEndpointRateLimitService,
 		private readonly providerFactory: McpOAuthProviderFactory,
 		private readonly globalInvalidation: McpOAuthGlobalInvalidationService,
 		private readonly moduleConfigMutation: McpOAuthModuleConfigMutationService,
@@ -35,6 +37,7 @@ export class McpOAuthReadinessRegistrationService implements OnModuleInit {
 			[McpOAuthReadinessControl.SERVER_SECRET_ROTATION, this.globalInvalidation],
 			[McpOAuthReadinessControl.ADMIN_REVOCATION, this.management],
 			[McpOAuthReadinessControl.AUDIT_HOOKS, this.audit],
+			[McpOAuthReadinessControl.ENDPOINT_RATE_LIMITS, this.endpointRateLimit],
 		]);
 
 		this.readiness.register(...registrations.keys());
