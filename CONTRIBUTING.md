@@ -42,8 +42,9 @@ The scope is the **surface** you changed, not the feature domain. The domain bel
 | `admin` | `apps/admin/**` |
 | `panel` | `apps/panel/**` |
 | `website` | `apps/website/**` |
+| `testing` | `apps/testing/**` — the testing app |
 | `sdk` | `packages/**` — extension SDK and the example extension |
-| `installer` | `build/**` — installer package, raspbian image, service scripts |
+| `installer` | `build/**` (installer package, raspbian image, service scripts), `scripts/**` (`install-server.sh`, `install-display.sh`), `apps/get-script/**` (the site serving `get.smart-panel.fastybird.com`) |
 | `spec` | `spec/**` — OpenAPI plus device, channel, display and weather specs |
 | `infra` | `docker/**`, `docker-compose.yml`, `Makefile`, `bin/**`, and root workspace tooling (`package.json`, `pnpm-workspace.yaml`, `melos.yaml`, `tsconfig*`, linter and formatter config) |
 | `ci` | `.github/**` |

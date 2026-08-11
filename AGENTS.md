@@ -153,12 +153,18 @@ apps/
 │   ├── plugins/     # Plugin implementations
 │   ├── api/         # Generated API client (DO NOT EDIT)
 │   └── spec/        # Generated device/channel specs (DO NOT EDIT)
-└── website/         # Next.js documentation site
+├── website/         # Next.js documentation site
+├── testing/         # Testing app (@fastybird/smart-panel-testing)
+└── get-script/      # Cloudflare Pages site serving get.smart-panel.fastybird.com
 
 packages/
 ├── extension-sdk/       # SDK for building extensions
 └── example-extension/   # Example extension
 
+build/                   # Installer package, raspbian image, service scripts
+scripts/                 # install-server.sh, install-display.sh
+docker/                  # Dev and prod compose setups
+spec/                    # OpenAPI + device/channel/display/weather specs
 docs/                    # Architecture reference documents
 tasks/                   # Feature and technical task specifications
 ```
@@ -204,8 +210,9 @@ When implementing features:
 | `admin` | `apps/admin/**` |
 | `panel` | `apps/panel/**` |
 | `website` | `apps/website/**` |
+| `testing` | `apps/testing/**` |
 | `sdk` | `packages/**` |
-| `installer` | `build/**` |
+| `installer` | `build/**`, `scripts/**`, `apps/get-script/**` |
 | `spec` | `spec/**` |
 | `infra` | `docker/**`, `docker-compose.yml`, `Makefile`, `bin/**`, root workspace tooling |
 | `ci` | `.github/**` |

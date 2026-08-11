@@ -32,6 +32,7 @@ jobs:
             admin
             panel
             website
+            testing
             sdk
             installer
             spec

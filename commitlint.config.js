@@ -33,6 +33,7 @@ module.exports = {
 				'admin',
 				'panel',
 				'website',
+				'testing',
 				'sdk',
 				'installer',
 				'spec',
