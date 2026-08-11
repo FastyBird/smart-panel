@@ -14,9 +14,12 @@ module.exports = {
 				'subject-first-char-lowercase': ({ subject }) => {
 					if (!subject) return [true];
 
-					const first = subject[0];
+					// Destructuring iterates by code point, not UTF-16 code unit. `subject[0]`
+					// would yield a lone high surrogate for a non-BMP letter such as `𐐀`, and a
+					// surrogate lowercases to itself, so the check would silently accept it.
+					const [first] = subject;
 
-					return [first === first.toLowerCase(), 'subject must start with a lowercase character'];
+					return [first === first.toLowerCase(), 'subject must not start with an uppercase letter'];
 				},
 			},
 		},

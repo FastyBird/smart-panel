@@ -78,7 +78,11 @@ jobs:
             // Identical predicate to commitlint.config.js subject-first-char-lowercase.
             // Not a character class: this way the two enforcement paths agree by
             // construction, for every script, rather than by two regexes staying in sync.
-            if (subject[0] !== subject[0].toLowerCase()) {
+            // Destructuring iterates by code point — `subject[0]` would yield a lone high
+            // surrogate for a non-BMP letter such as `𐐀`, which lowercases to itself.
+            const [first] = subject;
+
+            if (first !== first.toLowerCase()) {
               errors.push("subject must not start with an uppercase letter");
             }
 
