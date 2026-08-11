@@ -68,9 +68,16 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 	it('rejects a blocked provider endpoint before entering the artifact mutation gate', async () => {
 		consumeRateLimit.mockResolvedValue({ allowed: false, retryAfterSeconds: 17 });
 		const request = createRequest();
+		request.method = 'POST';
+		request.headers['content-length'] = '1048576';
 		request.headers['x-forwarded-for'] = '198.51.100.40';
+		const destroy = jest.fn();
+		request.destroy = destroy;
 		const setHeader = jest.fn();
-		const end = jest.fn();
+		let responseCompletion: (() => void) | undefined;
+		const end = jest.fn((_body: string, completion: () => void) => {
+			responseCompletion = completion;
+		});
 		const response = {
 			closed: false,
 			destroyed: false,
@@ -87,9 +94,13 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 		expect(response.statusCode).toBe(429);
 		expect(setHeader).toHaveBeenCalledWith('retry-after', '17');
 		expect(setHeader).toHaveBeenCalledWith('cache-control', 'no-store');
+		expect(setHeader).toHaveBeenCalledWith('connection', 'close');
 		expect(end).toHaveBeenCalledWith(
 			JSON.stringify({ error: 'temporarily_unavailable', error_description: 'Too many OAuth requests' }),
+			expect.any(Function),
 		);
+		responseCompletion?.();
+		expect(destroy).toHaveBeenCalledTimes(1);
 	});
 
 	it.each([

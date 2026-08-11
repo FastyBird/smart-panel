@@ -240,7 +240,7 @@ export class McpOAuthProviderFactory {
 			const decision = await this.endpointRateLimit.consume(rateLimitedEndpoint, request.socket?.remoteAddress);
 
 			if (!decision.allowed) {
-				this.writeRateLimitError(response, decision.retryAfterSeconds);
+				this.writeRateLimitError(request, response, decision.retryAfterSeconds);
 				return;
 			}
 		}
@@ -319,12 +319,16 @@ export class McpOAuthProviderFactory {
 		return null;
 	}
 
-	private writeRateLimitError(response: ServerResponse, retryAfterSeconds: number): void {
+	private writeRateLimitError(request: IncomingMessage, response: ServerResponse, retryAfterSeconds: number): void {
 		response.statusCode = 429;
 		response.setHeader('content-type', 'application/json');
 		response.setHeader('cache-control', 'no-store');
 		response.setHeader('pragma', 'no-cache');
 		response.setHeader('retry-after', retryAfterSeconds.toString());
-		response.end(JSON.stringify({ error: 'temporarily_unavailable', error_description: 'Too many OAuth requests' }));
+		response.setHeader('connection', 'close');
+		response.end(
+			JSON.stringify({ error: 'temporarily_unavailable', error_description: 'Too many OAuth requests' }),
+			() => request.destroy(),
+		);
 	}
 }
