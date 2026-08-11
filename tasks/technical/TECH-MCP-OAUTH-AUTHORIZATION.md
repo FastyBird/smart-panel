@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 6 runtime lifecycle E2E underway
+Status: in progress — Phase 6 runtime and stale-artifact lifecycle E2E underway
 
 ## 1. Business goal
 

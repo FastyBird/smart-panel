@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 6 in progress — runtime route-set lifecycle E2E implemented
+**Status:** Phase 6 in progress — runtime route-set and stale-artifact lifecycle E2E implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -431,7 +431,7 @@ amend ADR 0002.
 - [x] E2E: start disabled, enable without restarting, disable without restarting, and re-enable; prove the
       bootstrap-registered route set is uniformly unreachable/reachable behind one gate, never partially exposed, and
       replaces the deactivated provider runtime before reopening.
-- [ ] E2E: prove readiness-gated re-enable never makes OAuth artifacts issued before switch-off usable again.
+- [x] E2E: prove readiness-gated re-enable never makes OAuth artifacts issued before switch-off usable again.
 - [ ] Reverse-proxy E2E: explicit external prefix, hostile forwarded headers, untrusted proxy, trusted proxy, public URL
       change, and rollback.
 - [ ] Codex smoke: discovery, authorization, list/call, refresh, scope failure, and revocation; record exact version and
