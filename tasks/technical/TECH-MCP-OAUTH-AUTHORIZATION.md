@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 6 runtime lifecycle, refresh replay, and switch-off commit-race E2E underway
+Status: in progress — Phase 6 lifecycle and refresh E2E plus switch-off adapter-race coverage underway
 
 ## 1. Business goal
 

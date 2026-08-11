@@ -92,7 +92,7 @@ const getArtifactProvider = (provider: McpOAuthProviderRuntime['provider']): Art
 	provider as unknown as ArtifactProvider;
 
 describe('MCP OAuth artifact lifecycle', () => {
-	it('rejects paused artifact commits and never reactivates pre-switch-off artifacts after re-enable', async () => {
+	it('rejects paused provider-adapter commits and never reactivates pre-switch-off artifacts after re-enable', async () => {
 		const dataSource = new DataSource({
 			type: 'sqlite',
 			database: ':memory:',
