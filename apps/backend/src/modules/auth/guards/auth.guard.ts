@@ -19,6 +19,7 @@ import { IS_MCP_ENDPOINT_KEY, MCP_OAUTH_PRINCIPAL_TYPE, McpCapability } from '..
 import { McpAuditService } from '../../mcp/services/mcp-audit.service';
 import { McpClientService } from '../../mcp/services/mcp-client.service';
 import { McpInstallationService } from '../../mcp/services/mcp-installation.service';
+import { McpOAuthRouteGateService } from '../../mcp/services/mcp-oauth-route-gate.service';
 import { ApiPublic } from '../../swagger/decorators/api-documentation.decorator';
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
@@ -81,6 +82,7 @@ export class AuthGuard implements CanActivate {
 		private readonly mcpClientsService: McpClientService,
 		private readonly mcpInstallationService: McpInstallationService,
 		private readonly mcpAuditService: McpAuditService,
+		private readonly mcpOAuthRouteGate: McpOAuthRouteGateService,
 		@Inject(CACHE_MANAGER)
 		private readonly cacheManager: Cache,
 	) {}
@@ -112,6 +114,10 @@ export class AuthGuard implements CanActivate {
 				return true;
 			}
 		} catch (error) {
+			if (isMcpEndpoint && this.mcpOAuthRouteGate.isOpen && error instanceof UnauthorizedException) {
+				return true;
+			}
+
 			if (isMcpEndpoint) {
 				this.mcpAuditService.recordAuthenticationFailure(
 					{ requestId: this.mcpAuditService.getRequestId(request.body) },
@@ -120,6 +126,10 @@ export class AuthGuard implements CanActivate {
 			}
 
 			throw error;
+		}
+
+		if (isMcpEndpoint && this.mcpOAuthRouteGate.isOpen) {
+			return true;
 		}
 
 		// If auth method didn't work, reject the request

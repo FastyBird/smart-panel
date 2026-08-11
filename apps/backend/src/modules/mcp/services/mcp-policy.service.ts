@@ -128,10 +128,24 @@ export class McpPolicyService {
 	}
 
 	validateRequestOrigin(request: FastifyRequest, policy: McpPolicyContext): void {
+		this.validateOrigin(request, policy.config);
+	}
+
+	validateOAuthRequestOrigin(request: FastifyRequest): void {
+		const config = this.configService.getModuleConfig<McpConfigModel>(MCP_MODULE_NAME);
+
+		if (!config.enabled) throw new McpEndpointDisabledException();
+
+		this.validateOrigin(request, config, config.oauthPublicBaseUrl ? new URL(config.oauthPublicBaseUrl) : undefined);
+	}
+
+	private validateOrigin(request: FastifyRequest, config: McpConfigModel, additionalOrigin?: URL): void {
 		const host = this.getHeader(request.headers.host);
-		const allowedOrigins = new Set(policy.config.allowedOrigins);
+		const allowedOrigins = new Set(config.allowedOrigins);
 		const appOrigin = this.getAppOrigin();
 		const allowedHostnames = new Set(['localhost', '127.0.0.1', '[::1]', appOrigin.hostname]);
+
+		if (additionalOrigin) allowedHostnames.add(additionalOrigin.hostname);
 
 		for (const origin of allowedOrigins) {
 			allowedHostnames.add(new URL(origin).hostname);
@@ -157,7 +171,12 @@ export class McpPolicyService {
 
 		const sameOrigin = `${request.protocol}://${host}`;
 
-		if (origin !== sameOrigin && origin !== appOrigin.origin && !allowedOrigins.has(origin)) {
+		if (
+			origin !== sameOrigin &&
+			origin !== appOrigin.origin &&
+			origin !== additionalOrigin?.origin &&
+			!allowedOrigins.has(origin)
+		) {
 			throw new ForbiddenException('Origin is not allowed for the MCP endpoint');
 		}
 	}

@@ -2,6 +2,7 @@ import { CanActivate, ExecutionContext, ForbiddenException, Injectable, Unauthor
 
 import { McpEndpointDisabledException } from '../mcp.exceptions';
 import { McpAuditDenialReason, McpAuditService } from '../services/mcp-audit.service';
+import { McpOAuthRouteGateService } from '../services/mcp-oauth-route-gate.service';
 import { McpPolicyRequest, McpPolicyService } from '../services/mcp-policy.service';
 import { McpServerService } from '../services/mcp-server.service';
 
@@ -11,10 +12,14 @@ export class McpClientGuard implements CanActivate {
 		private readonly policyService: McpPolicyService,
 		private readonly serverService: McpServerService,
 		private readonly auditService: McpAuditService,
+		private readonly oauthRouteGate: McpOAuthRouteGateService,
 	) {}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
 		const request = context.switchToHttp().getRequest<McpPolicyRequest>();
+
+		if (!request.auth && this.oauthRouteGate.isOpen) return true;
+
 		const policyRevision = this.serverService.getPolicyRevision();
 		const clientPolicyRevision =
 			request.auth?.type === 'token' && request.auth.ownerId

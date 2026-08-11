@@ -8,6 +8,8 @@ import { ThrottlerException, ThrottlerStorage } from '@nestjs/throttler';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { MCP_AUTHENTICATED_RATE_LIMIT, MCP_RATE_LIMIT_TTL_MS, MCP_UNAUTHENTICATED_RATE_LIMIT } from '../mcp.constants';
 import { McpInstallationService } from '../services/mcp-installation.service';
+import { McpOAuthResourceServerService } from '../services/mcp-oauth-resource-server.service';
+import { McpOAuthRouteGateService } from '../services/mcp-oauth-route-gate.service';
 
 import { McpThrottleGuard } from './mcp-throttle.guard';
 
@@ -16,6 +18,8 @@ describe('McpThrottleGuard', () => {
 	let jwtService: jest.Mocked<Pick<JwtService, 'decode' | 'verifyAsync'>>;
 	let storage: jest.Mocked<ThrottlerStorage>;
 	let increment: jest.MockedFunction<ThrottlerStorage['increment']>;
+	let oauthRouteGate: { isOpen: boolean };
+	let oauthResourceServer: { verifyMcpBearerToken: jest.Mock };
 	let guard: McpThrottleGuard;
 
 	beforeEach(() => {
@@ -33,11 +37,15 @@ describe('McpThrottleGuard', () => {
 		storage = {
 			increment,
 		};
+		oauthRouteGate = { isOpen: false };
+		oauthResourceServer = { verifyMcpBearerToken: jest.fn() };
 		guard = new McpThrottleGuard(
 			{ getAllAndOverride: jest.fn(() => isMcpEndpoint) } as unknown as Reflector,
 			jwtService as unknown as JwtService,
 			{ getAudience: jest.fn().mockResolvedValue('audience') } as unknown as McpInstallationService,
 			storage,
+			oauthRouteGate as McpOAuthRouteGateService,
+			oauthResourceServer as unknown as McpOAuthResourceServerService,
 		);
 	});
 
@@ -60,6 +68,71 @@ describe('McpThrottleGuard', () => {
 			MCP_RATE_LIMIT_TTL_MS,
 			'mcp',
 		);
+	});
+
+	it('uses the isolated verified OAuth client identity for the authenticated budget only while the gate is open', async () => {
+		oauthRouteGate.isOpen = true;
+		jwtService.decode.mockReturnValue(null);
+		oauthResourceServer.verifyMcpBearerToken.mockResolvedValue({ clientId: 'oauth-public-client' });
+
+		await expect(guard.canActivate(context(request('opaque-token')))).resolves.toBe(true);
+		expect(oauthResourceServer.verifyMcpBearerToken).toHaveBeenCalledWith('Bearer opaque-token', ['read']);
+		expect(increment).toHaveBeenCalledWith(
+			'mcp-client:oauth:oauth-public-client',
+			MCP_RATE_LIMIT_TTL_MS,
+			MCP_AUTHENTICATED_RATE_LIMIT,
+			MCP_RATE_LIMIT_TTL_MS,
+			'mcp',
+		);
+	});
+
+	it('keeps static and OAuth verification caches isolated', async () => {
+		oauthRouteGate.isOpen = true;
+		jwtService.decode.mockReturnValue({ sub: 'static-client', type: TokenOwnerType.MCP });
+		jwtService.verifyAsync.mockRejectedValue(new Error('not a valid static credential'));
+		oauthResourceServer.verifyMcpBearerToken.mockResolvedValue({ clientId: 'oauth-public-client' });
+
+		await expect(guard.canActivate(context(request('oauth-token-with-jwt-shape')))).resolves.toBe(true);
+
+		expect(oauthResourceServer.verifyMcpBearerToken).toHaveBeenCalledTimes(1);
+		expect(increment).toHaveBeenCalledWith(
+			'mcp-client:oauth:oauth-public-client',
+			MCP_RATE_LIMIT_TTL_MS,
+			MCP_AUTHENTICATED_RATE_LIMIT,
+			MCP_RATE_LIMIT_TTL_MS,
+			'mcp',
+		);
+	});
+
+	it('caches rejected OAuth tokens before charging the unauthenticated request budget', async () => {
+		oauthRouteGate.isOpen = true;
+		jwtService.decode.mockReturnValue(null);
+		oauthResourceServer.verifyMcpBearerToken.mockRejectedValue(new Error('invalid'));
+
+		await expect(guard.canActivate(context(request('rejected-oauth-token')))).resolves.toBe(true);
+		await expect(guard.canActivate(context(request('rejected-oauth-token')))).resolves.toBe(true);
+
+		expect(oauthResourceServer.verifyMcpBearerToken).toHaveBeenCalledTimes(1);
+		expect(increment).toHaveBeenCalledTimes(2);
+	});
+
+	it('bounds verification work for rotating opaque OAuth tokens', async () => {
+		oauthRouteGate.isOpen = true;
+		jwtService.decode.mockReturnValue(null);
+		oauthResourceServer.verifyMcpBearerToken.mockRejectedValue(new Error('invalid'));
+		const now = Date.now();
+		const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(now);
+
+		try {
+			for (let index = 0; index <= 200; index += 1) {
+				await expect(guard.canActivate(context(request(`rotating-oauth-token-${index}`)))).resolves.toBe(true);
+			}
+		} finally {
+			nowSpy.mockRestore();
+		}
+
+		expect(oauthResourceServer.verifyMcpBearerToken).toHaveBeenCalledTimes(200);
+		expect(increment).toHaveBeenCalledTimes(201);
 	});
 
 	it.each([

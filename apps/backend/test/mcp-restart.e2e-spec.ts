@@ -25,7 +25,9 @@ import { McpConfigModel } from '../src/modules/mcp/models/config.model';
 import { McpAuditService } from '../src/modules/mcp/services/mcp-audit.service';
 import { McpClientService } from '../src/modules/mcp/services/mcp-client.service';
 import { McpInstallationService } from '../src/modules/mcp/services/mcp-installation.service';
+import { McpOAuthProxyPolicyService } from '../src/modules/mcp/services/mcp-oauth-proxy-policy.service';
 import { McpOAuthResourceServerService } from '../src/modules/mcp/services/mcp-oauth-resource-server.service';
+import { McpOAuthRouteGateService } from '../src/modules/mcp/services/mcp-oauth-route-gate.service';
 import { McpPolicyService } from '../src/modules/mcp/services/mcp-policy.service';
 import { McpServerService } from '../src/modules/mcp/services/mcp-server.service';
 import { McpSubscriptionRegistryService } from '../src/modules/mcp/services/mcp-subscription-registry.service';
@@ -162,6 +164,8 @@ describe('MCP disabled restart', () => {
 					provide: McpOAuthResourceServerService,
 					useValue: { authorizeAccessToken: jest.fn(), verifyMcpBearerToken: jest.fn() },
 				},
+				{ provide: McpOAuthProxyPolicyService, useValue: { assertForwardedHeadersTrusted: jest.fn() } },
+				{ provide: McpOAuthRouteGateService, useValue: { assertOpen: jest.fn(), isOpen: false } },
 				McpAuditService,
 				McpClientGuard,
 				McpPolicyService,

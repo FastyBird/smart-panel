@@ -1,6 +1,6 @@
 import { FastifyRequest } from 'fastify';
 
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, Optional } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { InjectThrottlerStorage, ThrottlerException, ThrottlerStorage } from '@nestjs/throttler';
@@ -12,8 +12,11 @@ import {
 	MCP_AUTHENTICATED_RATE_LIMIT,
 	MCP_RATE_LIMIT_TTL_MS,
 	MCP_UNAUTHENTICATED_RATE_LIMIT,
+	McpCapability,
 } from '../mcp.constants';
 import { McpInstallationService } from '../services/mcp-installation.service';
+import { McpOAuthResourceServerService } from '../services/mcp-oauth-resource-server.service';
+import { McpOAuthRouteGateService } from '../services/mcp-oauth-route-gate.service';
 
 interface McpJwtPayload {
 	sub?: string;
@@ -24,6 +27,8 @@ interface VerifyCacheEntry {
 	clientId: string | null;
 	expiresAt: number;
 }
+
+type VerifyCacheProfile = 'oauth' | 'static';
 
 const VERIFY_CACHE_TTL_MS = 60_000;
 const VERIFY_CACHE_MAX_ENTRIES = 1_000;
@@ -41,6 +46,8 @@ export class McpThrottleGuard implements CanActivate {
 		private readonly installationService: McpInstallationService,
 		@InjectThrottlerStorage()
 		private readonly storage: ThrottlerStorage,
+		@Optional() private readonly oauthRouteGate?: McpOAuthRouteGateService,
+		@Optional() private readonly oauthResourceServer?: McpOAuthResourceServerService,
 	) {}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -76,7 +83,7 @@ export class McpThrottleGuard implements CanActivate {
 		const decoded = this.safeDecode(token);
 
 		if (!decoded || decoded.type !== TokenOwnerType.MCP || !decoded.sub) {
-			return null;
+			return this.getOAuthClientId(token);
 		}
 
 		const cached = this.readVerifyCache(token);
@@ -100,6 +107,27 @@ export class McpThrottleGuard implements CanActivate {
 			return clientId;
 		} catch {
 			this.writeVerifyCache(token, null);
+			return this.getOAuthClientId(token);
+		}
+	}
+
+	private async getOAuthClientId(token: string): Promise<string | null> {
+		if (!this.oauthRouteGate?.isOpen || !this.oauthResourceServer) return null;
+
+		const cached = this.readVerifyCache(token, 'oauth');
+
+		if (cached !== undefined) return cached;
+		if (!this.tryConsumeVerifyToken()) return null;
+
+		try {
+			const authInfo = await this.oauthResourceServer.verifyMcpBearerToken(`Bearer ${token}`, [McpCapability.READ]);
+			const clientId = `oauth:${authInfo.clientId}`;
+
+			this.writeVerifyCache(token, clientId, 'oauth');
+
+			return clientId;
+		} catch {
+			this.writeVerifyCache(token, null, 'oauth');
 			return null;
 		}
 	}
@@ -129,8 +157,8 @@ export class McpThrottleGuard implements CanActivate {
 		return true;
 	}
 
-	private readVerifyCache(token: string): string | null | undefined {
-		const key = hashToken(token);
+	private readVerifyCache(token: string, profile: VerifyCacheProfile = 'static'): string | null | undefined {
+		const key = `${profile}:${hashToken(token)}`;
 		const entry = this.verifyCache.get(key);
 
 		if (!entry) {
@@ -145,8 +173,8 @@ export class McpThrottleGuard implements CanActivate {
 		return entry.clientId;
 	}
 
-	private writeVerifyCache(token: string, clientId: string | null): void {
-		const key = hashToken(token);
+	private writeVerifyCache(token: string, clientId: string | null, profile: VerifyCacheProfile = 'static'): void {
+		const key = `${profile}:${hashToken(token)}`;
 
 		if (this.verifyCache.size >= VERIFY_CACHE_MAX_ENTRIES && !this.verifyCache.has(key)) {
 			for (const oldestKey of this.verifyCache.keys()) {

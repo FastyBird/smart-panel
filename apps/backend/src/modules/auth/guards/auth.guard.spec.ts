@@ -17,6 +17,7 @@ import { IS_MCP_ENDPOINT_KEY, MCP_OAUTH_PRINCIPAL_TYPE } from '../../mcp/mcp.con
 import { McpAuditService } from '../../mcp/services/mcp-audit.service';
 import { McpClientService } from '../../mcp/services/mcp-client.service';
 import { McpInstallationService } from '../../mcp/services/mcp-installation.service';
+import { McpOAuthRouteGateService } from '../../mcp/services/mcp-oauth-route-gate.service';
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
@@ -48,6 +49,7 @@ describe('AuthGuard', () => {
 	let mcpClientsService: McpClientService;
 	let mcpInstallationService: McpInstallationService;
 	let mcpAuditService: { getRequestId: jest.Mock; recordAuthenticationFailure: jest.Mock };
+	let mcpOAuthRouteGate: { isOpen: boolean };
 
 	const mockUserId = uuid().toString();
 	const mockDisplayId = uuid().toString();
@@ -145,6 +147,7 @@ describe('AuthGuard', () => {
 	};
 
 	beforeEach(async () => {
+		mcpOAuthRouteGate = { isOpen: false };
 		mcpAuditService = {
 			getRequestId: jest.fn().mockReturnValue('request-1'),
 			recordAuthenticationFailure: jest.fn(),
@@ -197,6 +200,10 @@ describe('AuthGuard', () => {
 				{
 					provide: McpAuditService,
 					useValue: mcpAuditService,
+				},
+				{
+					provide: McpOAuthRouteGateService,
+					useValue: mcpOAuthRouteGate,
 				},
 				{
 					provide: CACHE_MANAGER,
@@ -597,6 +604,20 @@ describe('AuthGuard', () => {
 				ownerId: mockMcpClientId,
 				capabilities: [],
 			});
+		});
+
+		it('defers an opaque bearer and missing credentials to the isolated OAuth verifier only while the gate is open', async () => {
+			mcpOAuthRouteGate.isOpen = true;
+			const opaque = createMockExecutionContext({ authorization: 'Bearer opaque-oauth-token' });
+			const missing = createMockExecutionContext();
+			markMcpEndpoint();
+			jest.spyOn(jwtService, 'verifyAsync').mockRejectedValue(new UnauthorizedException('not a static JWT'));
+
+			await expect(guard.canActivate(opaque)).resolves.toBe(true);
+			await expect(guard.canActivate(missing)).resolves.toBe(true);
+			expect(opaque.switchToHttp().getRequest<AuthenticatedRequest>().auth).toBeUndefined();
+			expect(missing.switchToHttp().getRequest<AuthenticatedRequest>().auth).toBeUndefined();
+			expect(mcpAuditService.recordAuthenticationFailure).not.toHaveBeenCalled();
 		});
 
 		it('should reject an MCP credential on an ordinary REST endpoint', async () => {

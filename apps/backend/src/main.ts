@@ -25,6 +25,7 @@ import { ValidationExceptionFactory } from './common/validation/validation-excep
 import { OAuthCallbackService } from './modules/buddy/services/oauth-callback.service';
 import { getDiscoveredExtensions } from './modules/extensions/services/extensions-discovery-cache';
 import { MCP_MODULE_PREFIX, MCP_REQUEST_BODY_LIMIT_BYTES } from './modules/mcp/mcp.constants';
+import { McpOAuthBootstrapService } from './modules/mcp/services/mcp-oauth-bootstrap.service';
 import { MdnsService } from './modules/mdns/services/mdns.service';
 import { SystemLoggerService } from './modules/system/services/system-logger.service';
 import { SYSTEM_MODULE_PREFIX } from './modules/system/system.constants';
@@ -159,6 +160,8 @@ async function bootstrap() {
 
 	const websocketGateway = app.get(WebsocketGateway);
 	websocketGateway.enable();
+
+	app.get(McpOAuthBootstrapService).register(fastifyInstance);
 
 	app.enableCors();
 

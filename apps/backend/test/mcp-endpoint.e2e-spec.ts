@@ -25,7 +25,9 @@ import { McpAuditService } from '../src/modules/mcp/services/mcp-audit.service';
 import { McpClientService } from '../src/modules/mcp/services/mcp-client.service';
 import { McpContextService } from '../src/modules/mcp/services/mcp-context.service';
 import { McpInstallationService } from '../src/modules/mcp/services/mcp-installation.service';
+import { McpOAuthProxyPolicyService } from '../src/modules/mcp/services/mcp-oauth-proxy-policy.service';
 import { McpOAuthResourceServerService } from '../src/modules/mcp/services/mcp-oauth-resource-server.service';
+import { McpOAuthRouteGateService } from '../src/modules/mcp/services/mcp-oauth-route-gate.service';
 import { McpPolicyService } from '../src/modules/mcp/services/mcp-policy.service';
 import { McpPolicyRequest } from '../src/modules/mcp/services/mcp-policy.service';
 import { McpServerService } from '../src/modules/mcp/services/mcp-server.service';
@@ -229,7 +231,10 @@ describe('MCP endpoint', () => {
 			controllers: [McpController],
 			providers: [
 				{ provide: McpAuditService, useValue: auditService },
+				{ provide: McpOAuthProxyPolicyService, useValue: { assertForwardedHeadersTrusted: jest.fn() } },
 				{ provide: McpOAuthResourceServerService, useValue: { verifyMcpBearerToken: jest.fn() } },
+				{ provide: McpOAuthRouteGateService, useValue: { assertOpen: jest.fn(), isOpen: false } },
+				{ provide: McpPolicyService, useValue: policyService },
 				McpServerService,
 				McpSubscriptionRegistryService,
 				{ provide: MCP_CATALOG_REGISTRAR, useValue: catalog },

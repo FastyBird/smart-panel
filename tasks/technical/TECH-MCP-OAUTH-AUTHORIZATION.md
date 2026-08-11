@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 5 OAuth switch-off invalidation foundation implemented
+Status: in progress — Phase 5 complete bootstrap OAuth route-set foundation implemented
 
 ## 1. Business goal
 
@@ -78,7 +78,7 @@ upgrade consequences.
       later state restoration cannot make it usable.
 - [ ] Switching OAuth off rejects all OAuth traffic, revokes OAuth artifacts, and closes OAuth subscriptions before
       success while leaving static MCP subscriptions active; re-enable does not reactivate old OAuth artifacts.
-- [ ] The complete OAuth route set is registered once at NestJS/Fastify bootstrap behind one shared fail-closed gate;
+- [x] The complete OAuth route set is registered once at NestJS/Fastify bootstrap behind one shared fail-closed gate;
       runtime enable/disable never mounts or unmounts routes and never exposes a partial surface.
 - [ ] Public OAuth identity and server-secret rotation revoke OAuth artifacts and close OAuth subscriptions while
       preserving static MCP streams; only MCP-module disable closes both authorization profiles.

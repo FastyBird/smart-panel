@@ -251,17 +251,11 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 
 			if (
 				url.pathname === `${issuerPath}/authorize` ||
+				url.pathname.startsWith(`${issuerPath}/authorize/`) ||
 				url.pathname === `${issuerPath}/token` ||
-				url.pathname === `${issuerPath}/token/revocation` ||
-				url.pathname.startsWith('/auth/')
+				url.pathname === `${issuerPath}/token/revocation`
 			) {
-				request.url = `${
-					url.pathname.startsWith('/auth/')
-						? url.pathname
-						: url.pathname === `${issuerPath}/authorize`
-							? '/auth'
-							: url.pathname.slice(issuerPath.length)
-				}${url.search}`;
+				request.url = `${url.pathname}${url.search}`;
 				void providerCallback(request, response);
 				return;
 			}
