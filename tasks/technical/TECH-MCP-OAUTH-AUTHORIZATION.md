@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 5 complete bootstrap OAuth route-set foundation implemented
+Status: in progress — Phase 6 runtime lifecycle E2E underway
 
 ## 1. Business goal
 
