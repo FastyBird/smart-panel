@@ -39,6 +39,7 @@ export interface McpOAuthProviderRuntime {
 export interface McpOAuthProviderFactoryOptions {
 	allowTestInMemory?: boolean;
 	allowInsecureTestCookies?: boolean;
+	beforeArtifactConsume?: (context: { model: string }) => Promise<void>;
 	cookieKeys?: string[];
 	interactionUrl?: (uid: string) => string;
 	jwks?: { keys: JWK[] };
@@ -79,6 +80,7 @@ export class McpOAuthProviderFactory {
 		const adapter = createMcpOAuthProviderAdapter(this.dataSource, this.clientsService, {
 			allowTestInMemory: options.allowTestInMemory,
 			artifactReuseError: () => new oidcProvider.errors.InvalidGrant('OAuth artifact already used'),
+			beforeArtifactConsume: options.beforeArtifactConsume,
 		});
 		const provider = new oidcProvider.default(urls.issuer, {
 			adapter,

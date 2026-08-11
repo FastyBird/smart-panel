@@ -33,6 +33,7 @@ const ACCOUNT_ID = 'owner-1';
 const REGISTERED_REDIRECT_URI = 'http://127.0.0.1:1455/callback';
 let consentPromptCount = 0;
 let persistSmartPanelGrant = (_providerGrantId: string): Promise<void> => Promise.resolve();
+let beforeArtifactConsume = (_context: { model: string }): Promise<void> => Promise.resolve();
 
 interface TokenResponse {
 	access_token: string;
@@ -259,6 +260,7 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		const runtime = await factory.create({
 			allowTestInMemory: true,
 			allowInsecureTestCookies: true,
+			beforeArtifactConsume: (context) => beforeArtifactConsume(context),
 			interactionUrl: (uid) => `${origin}/api/v1/modules/mcp/oauth/interaction/${uid}`,
 		});
 		provider = runtime.provider;
@@ -636,15 +638,14 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		if (!refreshFamilyId || !grantIdHash) throw new Error('Expected the initial refresh token family and grant');
 
 		const upsertSpy = jest.spyOn(artifacts, 'upsert');
-		const enterBarrier = createBarrier(2);
-		const submitRefresh = async (): Promise<Response> => {
-			await enterBarrier();
-
-			return refresh(initialRefreshToken);
-		};
+		const enterConsumeBarrier = createBarrier(2);
+		const consumeHook = jest.fn(async ({ model }: { model: string }): Promise<void> => {
+			if (model === 'RefreshToken') await enterConsumeBarrier();
+		});
+		beforeArtifactConsume = consumeHook;
 
 		try {
-			const responses = await Promise.all([submitRefresh(), submitRefresh()]);
+			const responses = await Promise.all([refresh(initialRefreshToken), refresh(initialRefreshToken)]);
 			const bodies = (await Promise.all(responses.map((response) => response.json()))) as Array<
 				TokenResponse | { error: string }
 			>;
@@ -659,6 +660,7 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 			const refreshAdapter = new Adapter('RefreshToken');
 
 			expect(responses.every(({ status }) => status < 500)).toBe(true);
+			expect(consumeHook).toHaveBeenCalledTimes(2);
 			expect(successful.length).toBeLessThanOrEqual(1);
 			expect(successorUpserts.length).toBeLessThanOrEqual(1);
 			expect(successorUpserts.length).toBeGreaterThanOrEqual(successful.length);
@@ -677,6 +679,7 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 				expect((await refresh(tokens.refresh_token)).status).toBe(400);
 			}
 		} finally {
+			beforeArtifactConsume = () => Promise.resolve();
 			upsertSpy.mockRestore();
 		}
 	});

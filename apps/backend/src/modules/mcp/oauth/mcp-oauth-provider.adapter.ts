@@ -18,6 +18,7 @@ import { McpOAuthClientService } from '../services/mcp-oauth-client.service';
 export interface McpOAuthProviderAdapterOptions {
 	allowTestInMemory?: boolean;
 	artifactReuseError?: () => Error;
+	beforeArtifactConsume?: (context: { model: string }) => Promise<void>;
 	beforeArtifactUpsert?: (context: { model: string; refreshFamilyId: string | null }) => Promise<void>;
 }
 
@@ -171,6 +172,7 @@ export const createMcpOAuthProviderAdapter = (
 		}
 
 		async consume(id: string): Promise<void> {
+			await options.beforeArtifactConsume?.({ model: this.model });
 			const release = await this.acquireConsumeQueue();
 
 			try {
