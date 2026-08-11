@@ -1,4 +1,5 @@
 import { RequestListener } from 'node:http';
+import type { Adapter } from 'oidc-provider';
 import { DataSource } from 'typeorm';
 
 import { hashToken } from '../src/modules/auth/utils/token.utils';
@@ -60,6 +61,15 @@ const urls: McpOAuthPublicUrls = {
 	tokenEndpoint: 'https://panel.example.com/api/v1/modules/mcp/oauth/token',
 	revocationEndpoint: 'https://panel.example.com/api/v1/modules/mcp/oauth/token/revocation',
 };
+
+interface ArtifactProvider {
+	authorizationCodes: Adapter;
+	accessTokens: Adapter;
+	refreshTokens: Adapter;
+}
+
+const getArtifactProvider = (provider: McpOAuthProviderRuntime['provider']): ArtifactProvider =>
+	provider as unknown as ArtifactProvider;
 
 describe('MCP OAuth artifact lifecycle', () => {
 	it('never reactivates artifacts issued before readiness-gated switch-off and re-enable', async () => {
@@ -154,14 +164,23 @@ describe('MCP OAuth artifact lifecycle', () => {
 				getModuleConfig: jest.fn(() => config),
 				reload: jest.fn(),
 			};
+			const Adapter = createMcpOAuthProviderAdapter(dataSource, {} as McpOAuthClientService, {
+				allowTestInMemory: true,
+				artifactReuseError: () => new Error('The OAuth artifact is no longer active'),
+			});
 			const readiness = new McpOAuthReadinessService();
 			readiness.register(...MCP_OAUTH_REQUIRED_READINESS_CONTROLS);
 			readiness.onApplicationBootstrap();
 			const routeGate = new McpOAuthRouteGateService(readiness);
 			const createRuntime = jest.fn(() => {
 				const callback: RequestListener = (_request, response) => response.end();
+				const provider: ArtifactProvider = {
+					authorizationCodes: new Adapter('AuthorizationCode'),
+					accessTokens: new Adapter('AccessToken'),
+					refreshTokens: new Adapter('RefreshToken'),
+				};
 				const runtime: McpOAuthProviderRuntime = {
-					provider: {} as McpOAuthProviderRuntime['provider'],
+					provider: provider as unknown as McpOAuthProviderRuntime['provider'],
 					callback,
 					urls,
 					metadata: { issuer: urls.issuer } as McpOAuthProviderRuntime['metadata'],
@@ -213,13 +232,7 @@ describe('MCP OAuth artifact lifecycle', () => {
 			expect(routeGate.isOpen).toBe(true);
 			expect(createRuntime).toHaveBeenCalledTimes(1);
 
-			const Adapter = createMcpOAuthProviderAdapter(dataSource, {} as McpOAuthClientService, {
-				allowTestInMemory: true,
-				artifactReuseError: () => new Error('The OAuth artifact is no longer active'),
-			});
-			const authorizationCodes = new Adapter('AuthorizationCode');
-			const accessTokens = new Adapter('AccessToken');
-			const refreshTokens = new Adapter('RefreshToken');
+			const initialProvider = getArtifactProvider(runtime.getActive().provider);
 			const rawAuthorizationCode = 'authorization-code-before-switch-off';
 			const rawAccessToken = 'access-token-before-switch-off';
 			const rawRefreshToken = 'refresh-token-before-switch-off';
@@ -231,9 +244,17 @@ describe('MCP OAuth artifact lifecycle', () => {
 				scope: `${McpOAuthScope.READ} ${McpOAuthScope.OFFLINE_ACCESS}`,
 			};
 
-			await authorizationCodes.upsert(rawAuthorizationCode, { ...basePayload, kind: 'AuthorizationCode' }, 60);
-			await refreshTokens.upsert(rawRefreshToken, { ...basePayload, kind: 'RefreshToken' }, 3_600);
-			await accessTokens.upsert(rawAccessToken, { ...basePayload, gty: 'refresh_token', kind: 'AccessToken' }, 600);
+			await initialProvider.authorizationCodes.upsert(
+				rawAuthorizationCode,
+				{ ...basePayload, kind: 'AuthorizationCode' },
+				60,
+			);
+			await initialProvider.refreshTokens.upsert(rawRefreshToken, { ...basePayload, kind: 'RefreshToken' }, 3_600);
+			await initialProvider.accessTokens.upsert(
+				rawAccessToken,
+				{ ...basePayload, gty: 'refresh_token', kind: 'AccessToken' },
+				600,
+			);
 
 			const resourceServer = new McpOAuthResourceServerService(
 				dataSource.getRepository(McpOAuthProviderArtifactEntity),
@@ -251,8 +272,9 @@ describe('MCP OAuth artifact lifecycle', () => {
 			await expect(resourceServer.verifyAccessToken(rawAccessToken)).resolves.toMatchObject({
 				clientId: client.clientIdentifier,
 			});
-			await expect(authorizationCodes.find(rawAuthorizationCode)).resolves.toBeDefined();
-			await expect(refreshTokens.find(rawRefreshToken)).resolves.toBeDefined();
+			await expect(initialProvider.authorizationCodes.find(rawAuthorizationCode)).resolves.toBeDefined();
+			await expect(initialProvider.accessTokens.find(rawAccessToken)).resolves.toBeDefined();
+			await expect(initialProvider.refreshTokens.find(rawRefreshToken)).resolves.toBeDefined();
 
 			await updateOAuth(false);
 
@@ -271,6 +293,9 @@ describe('MCP OAuth artifact lifecycle', () => {
 			expect(config.oauthEnabled).toBe(true);
 			expect(routeGate.isOpen).toBe(true);
 			expect(createRuntime).toHaveBeenCalledTimes(2);
+			const replacementProvider = getArtifactProvider(runtime.getActive().provider);
+
+			expect(replacementProvider).not.toBe(initialProvider);
 			expect(
 				(
 					await dataSource.getRepository(McpOAuthServerStateEntity).findOneByOrFail({
@@ -284,8 +309,9 @@ describe('MCP OAuth artifact lifecycle', () => {
 			await expect(resourceServer.verifyAccessToken(rawAccessToken)).rejects.toThrow(
 				'The MCP OAuth access token is invalid or no longer active',
 			);
-			await expect(authorizationCodes.find(rawAuthorizationCode)).resolves.toBeUndefined();
-			await expect(refreshTokens.find(rawRefreshToken)).resolves.toBeUndefined();
+			await expect(replacementProvider.authorizationCodes.find(rawAuthorizationCode)).resolves.toBeUndefined();
+			await expect(replacementProvider.accessTokens.find(rawAccessToken)).resolves.toBeUndefined();
+			await expect(replacementProvider.refreshTokens.find(rawRefreshToken)).resolves.toBeUndefined();
 		} finally {
 			await subscriptions.closeAll();
 			await dataSource.destroy();
