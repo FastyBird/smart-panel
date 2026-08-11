@@ -3,6 +3,10 @@ import { DataSource } from 'typeorm';
 
 import { McpAuditService } from '../services/mcp-audit.service';
 import { McpOAuthClientService } from '../services/mcp-oauth-client.service';
+import {
+	McpOAuthEndpointRateLimitService,
+	McpOAuthRateLimitedEndpoint,
+} from '../services/mcp-oauth-endpoint-rate-limit.service';
 import { McpOAuthPublicUrlService } from '../services/mcp-oauth-public-url.service';
 import { McpSubscriptionRegistryService } from '../services/mcp-subscription-registry.service';
 
@@ -30,12 +34,14 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 	} satisfies McpOAuthPublicUrls;
 	let subscriptions: McpSubscriptionRegistryService;
 	let dispatch: ProviderDispatcher;
+	let consumeRateLimit: jest.MockedFunction<McpOAuthEndpointRateLimitService['consume']>;
 	const createRequest = (): IncomingMessage =>
 		({
 			method: 'GET',
 			url: '/api/v1/modules/mcp/oauth/authorize',
 			headers: {},
 			aborted: false,
+			socket: { remoteAddress: '192.0.2.25' },
 		}) as IncomingMessage;
 	const createResponse = (): ServerResponse =>
 		({
@@ -47,14 +53,69 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 	beforeEach(() => {
 		const audit = { recordSubscriptionClosed: jest.fn(), recordSubscriptionOpened: jest.fn() };
 		subscriptions = new McpSubscriptionRegistryService(audit as unknown as McpAuditService);
+		consumeRateLimit = jest.fn().mockResolvedValue({ allowed: true, retryAfterSeconds: 60 });
 		const factory = new McpOAuthProviderFactory(
 			{} as DataSource,
 			{} as McpOAuthClientService,
 			{} as McpOAuthPublicUrlService,
 			subscriptions,
+			{ consume: consumeRateLimit } as unknown as McpOAuthEndpointRateLimitService,
 		);
 		const target = factory as unknown as { dispatchProviderRequest: ProviderDispatcher };
 		dispatch = (...args) => target.dispatchProviderRequest(...args);
+	});
+
+	it('rejects a blocked provider endpoint before entering the artifact mutation gate', async () => {
+		consumeRateLimit.mockResolvedValue({ allowed: false, retryAfterSeconds: 17 });
+		const request = createRequest();
+		request.headers['x-forwarded-for'] = '198.51.100.40';
+		const setHeader = jest.fn();
+		const end = jest.fn();
+		const response = {
+			closed: false,
+			destroyed: false,
+			writableEnded: false,
+			setHeader,
+			end,
+		} as unknown as ServerResponse;
+		const providerCallback = jest.fn(() => Promise.resolve());
+
+		await dispatch(request, response, providerCallback, urls);
+
+		expect(consumeRateLimit).toHaveBeenCalledWith(McpOAuthRateLimitedEndpoint.AUTHORIZE, '192.0.2.25');
+		expect(providerCallback).not.toHaveBeenCalled();
+		expect(response.statusCode).toBe(429);
+		expect(setHeader).toHaveBeenCalledWith('retry-after', '17');
+		expect(setHeader).toHaveBeenCalledWith('cache-control', 'no-store');
+		expect(end).toHaveBeenCalledWith(
+			JSON.stringify({ error: 'temporarily_unavailable', error_description: 'Too many OAuth requests' }),
+		);
+	});
+
+	it.each([
+		['/api/v1/modules/mcp/oauth/authorize', McpOAuthRateLimitedEndpoint.AUTHORIZE],
+		['/api/v1/modules/mcp/oauth/token', McpOAuthRateLimitedEndpoint.TOKEN],
+		['/api/v1/modules/mcp/oauth/token/revocation', McpOAuthRateLimitedEndpoint.REVOCATION],
+	] as const)('maps %s to its dedicated endpoint budget', async (pathname, endpoint) => {
+		const request = createRequest();
+		request.url = pathname;
+		const providerCallback = jest.fn(() => Promise.resolve());
+
+		await dispatch(request, createResponse(), providerCallback, urls);
+
+		expect(consumeRateLimit).toHaveBeenCalledWith(endpoint, '192.0.2.25');
+		expect(providerCallback).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not apply an OAuth endpoint budget to an unrelated provider path', async () => {
+		const request = createRequest();
+		request.url = '/api/v1/modules/mcp/oauth/unregistered';
+		const providerCallback = jest.fn(() => Promise.resolve());
+
+		await dispatch(request, createResponse(), providerCallback, urls);
+
+		expect(consumeRateLimit).not.toHaveBeenCalled();
+		expect(providerCallback).toHaveBeenCalledTimes(1);
 	});
 
 	it('lets provider work that wins the gate commit before the following invalidation', async () => {

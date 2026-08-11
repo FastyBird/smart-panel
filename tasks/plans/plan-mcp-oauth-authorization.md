@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 5 in progress — fail-closed OAuth readiness gate foundation implemented
+**Status:** Phase 5 in progress — embedded OAuth endpoint rate limits implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -293,6 +293,17 @@ amend ADR 0002.
       embedded provider inaccessible while that gate is closed.
 - [x] Prove incomplete readiness stays closed and explicitly reports the remaining switch-off, endpoint-rate-limit,
       and complete-route-set controls without exposing any production OAuth route.
+
+### Phase 5r — Embedded OAuth endpoint rate limits
+
+- [x] Add separate authorize, token, and revocation budgets at the raw embedded-provider boundary, before request-body
+      parsing and the serialized artifact mutation gate.
+- [x] Key raw provider budgets only from the immediate socket peer and ignore forwarded headers until explicit trusted
+      proxy handling exists; use one conservative shared bucket when the immediate address is unavailable.
+- [x] Return a bounded `429` OAuth error with `Retry-After`, `no-store`, and `no-cache`, without entering provider
+      processing or recording artifact state.
+- [x] Register endpoint throttling in the sealed readiness inventory while keeping OAuth closed because switch-off
+      invalidation and the complete bootstrap route set are still absent.
 
 ### Remaining Phase 5 controls
 

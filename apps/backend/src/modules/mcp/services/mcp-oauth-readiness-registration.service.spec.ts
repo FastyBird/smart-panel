@@ -2,6 +2,7 @@ import { McpOAuthProviderFactory } from '../oauth/mcp-oauth-provider.factory';
 
 import { McpAuditService } from './mcp-audit.service';
 import { McpOAuthApproverAuthorityService } from './mcp-oauth-approver-authority.service';
+import { McpOAuthEndpointRateLimitService } from './mcp-oauth-endpoint-rate-limit.service';
 import { McpOAuthGlobalInvalidationService } from './mcp-oauth-global-invalidation.service';
 import { McpOAuthManagementService } from './mcp-oauth-management.service';
 import { McpOAuthModuleConfigMutationService } from './mcp-oauth-module-config-mutation.service';
@@ -16,6 +17,7 @@ describe('McpOAuthReadinessRegistrationService', () => {
 			readiness,
 			{} as McpSubscriptionRegistryService,
 			{} as McpOAuthApproverAuthorityService,
+			{} as McpOAuthEndpointRateLimitService,
 			{} as McpOAuthProviderFactory,
 			{} as McpOAuthGlobalInvalidationService,
 			{} as McpOAuthModuleConfigMutationService,
@@ -38,10 +40,10 @@ describe('McpOAuthReadinessRegistrationService', () => {
 			McpOAuthReadinessControl.SERVER_SECRET_ROTATION,
 			McpOAuthReadinessControl.ADMIN_REVOCATION,
 			McpOAuthReadinessControl.AUDIT_HOOKS,
+			McpOAuthReadinessControl.ENDPOINT_RATE_LIMITS,
 		]);
 		expect(readiness.snapshot.missing).toEqual([
 			McpOAuthReadinessControl.OAUTH_SWITCH_OFF_INVALIDATION,
-			McpOAuthReadinessControl.ENDPOINT_RATE_LIMITS,
 			McpOAuthReadinessControl.COMPLETE_ROUTE_SET,
 		]);
 	});

@@ -65,6 +65,7 @@ import { McpInstallationService } from './services/mcp-installation.service';
 import { McpOAuthApproverAuthorityService } from './services/mcp-oauth-approver-authority.service';
 import { McpOAuthArtifactService } from './services/mcp-oauth-artifact.service';
 import { McpOAuthClientService } from './services/mcp-oauth-client.service';
+import { McpOAuthEndpointRateLimitService } from './services/mcp-oauth-endpoint-rate-limit.service';
 import { McpOAuthGlobalInvalidationService } from './services/mcp-oauth-global-invalidation.service';
 import { McpOAuthInteractionService } from './services/mcp-oauth-interaction.service';
 import { McpOAuthManagementService } from './services/mcp-oauth-management.service';
@@ -136,6 +137,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpOAuthArtifactService,
 		McpOAuthApproverAuthorityService,
 		McpOAuthClientService,
+		McpOAuthEndpointRateLimitService,
 		McpOAuthGlobalInvalidationService,
 		McpOAuthInteractionService,
 		McpOAuthManagementService,
