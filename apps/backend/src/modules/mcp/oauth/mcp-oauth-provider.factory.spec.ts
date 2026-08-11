@@ -7,6 +7,7 @@ import {
 	McpOAuthEndpointRateLimitService,
 	McpOAuthRateLimitedEndpoint,
 } from '../services/mcp-oauth-endpoint-rate-limit.service';
+import { McpOAuthProviderMaterialService } from '../services/mcp-oauth-provider-material.service';
 import { McpOAuthPublicUrlService } from '../services/mcp-oauth-public-url.service';
 import { McpSubscriptionRegistryService } from '../services/mcp-subscription-registry.service';
 
@@ -58,11 +59,38 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 			{} as DataSource,
 			{} as McpOAuthClientService,
 			{} as McpOAuthPublicUrlService,
+			{} as McpOAuthProviderMaterialService,
 			subscriptions,
 			{ consume: consumeRateLimit } as unknown as McpOAuthEndpointRateLimitService,
 		);
 		const target = factory as unknown as { dispatchProviderRequest: ProviderDispatcher };
 		dispatch = (...args) => target.dispatchProviderRequest(...args);
+	});
+
+	it('loads persistent provider material before non-test activation', async () => {
+		const originalNodeEnv = process.env.NODE_ENV;
+		const materialFailure = new Error('provider material unavailable');
+		const get = jest.fn(() => {
+			throw materialFailure;
+		});
+		const factory = new McpOAuthProviderFactory(
+			{} as DataSource,
+			{} as McpOAuthClientService,
+			{ getUrls: jest.fn(() => urls) } as unknown as McpOAuthPublicUrlService,
+			{ get } as unknown as McpOAuthProviderMaterialService,
+			subscriptions,
+			{ consume: consumeRateLimit } as unknown as McpOAuthEndpointRateLimitService,
+		);
+
+		try {
+			process.env.NODE_ENV = 'production';
+
+			await expect(factory.create()).rejects.toBe(materialFailure);
+			expect(get).toHaveBeenCalledTimes(1);
+		} finally {
+			if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+			else process.env.NODE_ENV = originalNodeEnv;
+		}
 	});
 
 	it('rejects a blocked provider endpoint before entering the artifact mutation gate', async () => {
