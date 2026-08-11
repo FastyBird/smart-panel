@@ -42,6 +42,11 @@ describe('McpOAuthModuleConfigMutationService', () => {
 	let configService: { getModuleConfig: jest.Mock; reload: jest.Mock };
 	let serverState: { increment: jest.Mock };
 	let globalInvalidation: { invalidate: jest.Mock; invalidateAll: jest.Mock };
+	let auditService: {
+		recordOAuthAuthorizationInvalidation: jest.Mock;
+		recordSubscriptionClosed: jest.Mock;
+		recordSubscriptionOpened: jest.Mock;
+	};
 	let subscriptions: McpSubscriptionRegistryService;
 	let service: McpOAuthModuleConfigMutationService;
 
@@ -60,7 +65,8 @@ describe('McpOAuthModuleConfigMutationService', () => {
 			invalidate: jest.fn(async (_generations: string[], commit: () => Promise<void> | void) => commit()),
 			invalidateAll: jest.fn(async (_generations: string[], commit: () => Promise<void> | void) => commit()),
 		};
-		const auditService = {
+		auditService = {
+			recordOAuthAuthorizationInvalidation: jest.fn(),
 			recordSubscriptionClosed: jest.fn(),
 			recordSubscriptionOpened: jest.fn(),
 		};
@@ -70,6 +76,7 @@ describe('McpOAuthModuleConfigMutationService', () => {
 			serverState as unknown as Repository<McpOAuthServerStateEntity>,
 			subscriptions,
 			globalInvalidation as unknown as McpOAuthGlobalInvalidationService,
+			auditService as unknown as McpAuditService,
 		);
 	});
 
@@ -103,6 +110,11 @@ describe('McpOAuthModuleConfigMutationService', () => {
 		expect(readStream.signal.aborted).toBe(false);
 		expect(writeStream.signal.aborted).toBe(true);
 		expect(staticStream.signal.aborted).toBe(false);
+		expect(auditService.recordOAuthAuthorizationInvalidation).toHaveBeenCalledWith({
+			reasons: ['module_policy_changed'],
+			authorizationProfile: 'oauth',
+			outcome: 'completed',
+		});
 	});
 
 	it('holds queued OAuth registration until the new policy has committed', async () => {
@@ -147,6 +159,11 @@ describe('McpOAuthModuleConfigMutationService', () => {
 		const newReadStream = await registration;
 
 		expect(commit).toHaveBeenCalledTimes(1);
+		expect(auditService.recordOAuthAuthorizationInvalidation).toHaveBeenCalledWith({
+			reasons: ['module_policy_changed'],
+			authorizationProfile: 'oauth',
+			outcome: 'completed',
+		});
 		expect(observedCapabilities).toEqual([[McpCapability.READ]]);
 		expect(oldWriteStream.signal.aborted).toBe(true);
 		expect(newReadStream.signal.aborted).toBe(false);
@@ -168,6 +185,11 @@ describe('McpOAuthModuleConfigMutationService', () => {
 
 		expect(serverState.increment).toHaveBeenCalledTimes(1);
 		expect(commit).toHaveBeenCalledTimes(1);
+		expect(auditService.recordOAuthAuthorizationInvalidation).toHaveBeenCalledWith({
+			reasons: ['module_policy_changed'],
+			authorizationProfile: 'oauth',
+			outcome: 'completed',
+		});
 		expect(readStream.signal.aborted).toBe(false);
 	});
 
@@ -184,6 +206,7 @@ describe('McpOAuthModuleConfigMutationService', () => {
 
 		expect(serverState.increment).not.toHaveBeenCalled();
 		expect(commit).toHaveBeenCalledTimes(1);
+		expect(auditService.recordOAuthAuthorizationInvalidation).not.toHaveBeenCalled();
 	});
 
 	it('routes public OAuth identity changes through global invalidation', async () => {
@@ -200,6 +223,11 @@ describe('McpOAuthModuleConfigMutationService', () => {
 		expect(globalInvalidation.invalidate).toHaveBeenCalledWith(['publicIdentityGeneration'], expect.any(Function));
 		expect(serverState.increment).not.toHaveBeenCalled();
 		expect(commit).toHaveBeenCalledTimes(1);
+		expect(auditService.recordOAuthAuthorizationInvalidation).toHaveBeenCalledWith({
+			reasons: ['public_identity_changed'],
+			authorizationProfile: 'oauth',
+			outcome: 'completed',
+		});
 	});
 
 	it('routes module disable through global invalidation and all-stream closure', async () => {
@@ -212,6 +240,11 @@ describe('McpOAuthModuleConfigMutationService', () => {
 		expect(globalInvalidation.invalidateAll).toHaveBeenCalledWith(['oauthEnabledGeneration'], expect.any(Function));
 		expect(globalInvalidation.invalidate).not.toHaveBeenCalled();
 		expect(commit).toHaveBeenCalledTimes(1);
+		expect(auditService.recordOAuthAuthorizationInvalidation).toHaveBeenCalledWith({
+			reasons: ['module_disabled'],
+			authorizationProfile: 'all',
+			outcome: 'completed',
+		});
 	});
 
 	it('advances every changed global generation together when disabling the module', async () => {
@@ -234,6 +267,11 @@ describe('McpOAuthModuleConfigMutationService', () => {
 		);
 		expect(globalInvalidation.invalidate).not.toHaveBeenCalled();
 		expect(serverState.increment).not.toHaveBeenCalled();
+		expect(auditService.recordOAuthAuthorizationInvalidation).toHaveBeenCalledWith({
+			reasons: ['module_disabled', 'public_identity_changed', 'module_policy_changed'],
+			authorizationProfile: 'all',
+			outcome: 'completed',
+		});
 	});
 
 	it('reloads configuration and propagates a failed module-disable commit after invalidation', async () => {
@@ -246,6 +284,11 @@ describe('McpOAuthModuleConfigMutationService', () => {
 		).rejects.toBe(commitError);
 
 		expect(configService.reload).toHaveBeenCalledTimes(1);
+		expect(auditService.recordOAuthAuthorizationInvalidation).toHaveBeenCalledWith({
+			reasons: ['module_disabled'],
+			authorizationProfile: 'all',
+			outcome: 'partial',
+		});
 	});
 
 	it('invalidates legacy OAuth state before re-enabling a disabled module', async () => {
@@ -259,6 +302,11 @@ describe('McpOAuthModuleConfigMutationService', () => {
 		expect(globalInvalidation.invalidate).toHaveBeenCalledWith(['oauthEnabledGeneration'], expect.any(Function));
 		expect(globalInvalidation.invalidateAll).not.toHaveBeenCalled();
 		expect(commit).toHaveBeenCalledTimes(1);
+		expect(auditService.recordOAuthAuthorizationInvalidation).toHaveBeenCalledWith({
+			reasons: ['module_enabled_reconciliation'],
+			authorizationProfile: 'oauth',
+			outcome: 'completed',
+		});
 	});
 
 	it('combines re-enable reconciliation with other changed OAuth generations', async () => {
@@ -281,6 +329,11 @@ describe('McpOAuthModuleConfigMutationService', () => {
 			expect.any(Function),
 		);
 		expect(globalInvalidation.invalidateAll).not.toHaveBeenCalled();
+		expect(auditService.recordOAuthAuthorizationInvalidation).toHaveBeenCalledWith({
+			reasons: ['module_enabled_reconciliation', 'public_identity_changed', 'module_policy_changed'],
+			authorizationProfile: 'oauth',
+			outcome: 'completed',
+		});
 	});
 
 	it('reloads configuration and propagates a failed re-enable commit after invalidation', async () => {
@@ -292,6 +345,11 @@ describe('McpOAuthModuleConfigMutationService', () => {
 		).rejects.toBe(commitError);
 
 		expect(configService.reload).toHaveBeenCalledTimes(1);
+		expect(auditService.recordOAuthAuthorizationInvalidation).toHaveBeenCalledWith({
+			reasons: ['module_enabled_reconciliation'],
+			authorizationProfile: 'oauth',
+			outcome: 'partial',
+		});
 	});
 
 	it('advances public identity and module policy together when both inputs change', async () => {
@@ -312,6 +370,11 @@ describe('McpOAuthModuleConfigMutationService', () => {
 			expect.any(Function),
 		);
 		expect(commit).toHaveBeenCalledTimes(1);
+		expect(auditService.recordOAuthAuthorizationInvalidation).toHaveBeenCalledWith({
+			reasons: ['public_identity_changed', 'module_policy_changed'],
+			authorizationProfile: 'oauth',
+			outcome: 'completed',
+		});
 	});
 
 	it('reloads configuration and propagates a failed public identity commit after invalidation', async () => {
@@ -326,6 +389,11 @@ describe('McpOAuthModuleConfigMutationService', () => {
 		).rejects.toBe(commitError);
 
 		expect(configService.reload).toHaveBeenCalledTimes(1);
+		expect(auditService.recordOAuthAuthorizationInvalidation).toHaveBeenCalledWith({
+			reasons: ['public_identity_changed'],
+			authorizationProfile: 'oauth',
+			outcome: 'partial',
+		});
 	});
 
 	it('does not commit or close streams when policy generation cannot advance', async () => {
@@ -344,6 +412,7 @@ describe('McpOAuthModuleConfigMutationService', () => {
 
 		expect(commit).not.toHaveBeenCalled();
 		expect(writeStream.signal.aborted).toBe(false);
+		expect(auditService.recordOAuthAuthorizationInvalidation).not.toHaveBeenCalled();
 	});
 
 	it('closes contracted streams before propagating a configuration commit failure', async () => {
@@ -368,6 +437,11 @@ describe('McpOAuthModuleConfigMutationService', () => {
 		expect(configService.reload).toHaveBeenCalledTimes(1);
 		expect(readStream.signal.aborted).toBe(false);
 		expect(writeStream.signal.aborted).toBe(true);
+		expect(auditService.recordOAuthAuthorizationInvalidation).toHaveBeenCalledWith({
+			reasons: ['module_policy_changed'],
+			authorizationProfile: 'oauth',
+			outcome: 'partial',
+		});
 	});
 
 	it('discards an unpersisted capability expansion before propagating a commit failure', async () => {

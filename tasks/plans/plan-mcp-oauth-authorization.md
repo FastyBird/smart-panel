@@ -271,6 +271,17 @@ amend ADR 0002.
 - [x] Prove browser issuance that wins the gate finishes before invalidation enumeration, while work queued behind an
       invalidation observes current authorization inputs before any artifact commit.
 
+### Phase 5p — Automatic invalidation audit coverage
+
+- [x] Define one structured, secret-free audit event for automatic OAuth authorization invalidation with allowlisted
+      reasons, affected authorization profile, outcome, and an optional internal target identifier.
+- [x] Audit module disable, legacy re-enable reconciliation, public-identity change, module-policy change, and
+      approver-authority invalidation only after their awaited security mutation completes.
+- [x] Record configuration-persistence failure as a partial outcome when generation advancement, artifact revocation,
+      and stream closure still completed; do not report an event when invalidation itself failed.
+- [x] Add unit coverage for successful, partial, and failed automatic invalidation audit behavior; retain end-to-end
+      audit verification for the Phase 6 security-profile suite.
+
 ### Remaining Phase 5 controls
 
 - [x] Bind OAuth subscriptions to client, grant, access-token, optional refresh-family IDs, and an authorization
@@ -297,7 +308,8 @@ amend ADR 0002.
       rotation, advance the applicable artifact generation before revoke-all, revoke every OAuth artifact, and close
       every OAuth subscription while preserving static MCP credentials and streams.
 - [x] Add revoke-all recovery action and document password-reset versus OAuth-revocation semantics.
-- [ ] Add audit events and unit/e2e coverage for targeted and global invalidation.
+- [ ] Add audit events and unit/e2e coverage for targeted and global invalidation. Automatic and owner/admin unit
+      coverage is complete; end-to-end audit verification remains in Phase 6.
 - [x] Prove user update/delete promises remain pending until approver invalidation and stream closure finish, propagate
       invalidation failure, and never leave a demoted/deleted approver's grant usable.
 - [ ] Add the user-facing OAuth enable switch only after startup verifies authorization-deadline timers, targeted

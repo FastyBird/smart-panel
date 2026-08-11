@@ -143,6 +143,22 @@ describe('McpAuditService', () => {
 		});
 	});
 
+	it('audits allowlisted automatic OAuth invalidation details without credential material', () => {
+		service.recordOAuthAuthorizationInvalidation({
+			reasons: ['module_disabled', 'public_identity_changed', 'module_disabled'],
+			authorizationProfile: 'all',
+			outcome: McpAuditOutcome.COMPLETED,
+		});
+
+		expect(log).toHaveBeenCalledWith('MCP audit event', {
+			event: 'oauth_authorization_invalidation',
+			request_id: 'administrative',
+			reasons: ['module_disabled', 'public_identity_changed'],
+			authorization_profile: 'all',
+			outcome: McpAuditOutcome.COMPLETED,
+		});
+	});
+
 	it('counts policy-resolution outages as failures without incrementing denials', () => {
 		service.recordRequestFailure({ requestId: '1', clientId: 'client-1' }, 'policy_resolution_error');
 

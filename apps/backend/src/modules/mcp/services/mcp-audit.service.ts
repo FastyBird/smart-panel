@@ -27,6 +27,13 @@ export type McpAuditRequestFailureReason = 'policy_resolution_error';
 
 export type McpOAuthManagementArtifact = 'access_token' | 'client' | 'grant' | 'refresh_family';
 export type McpOAuthManagementAction = 'disabled' | 'revoked' | 'scopes_updated';
+export type McpOAuthInvalidationReason =
+	| 'approver_authority_changed'
+	| 'module_disabled'
+	| 'module_enabled_reconciliation'
+	| 'module_policy_changed'
+	| 'public_identity_changed';
+export type McpOAuthAuthorizationProfile = 'all' | 'oauth';
 
 export type McpSubscriptionCloseReason =
 	| 'authorization_expired'
@@ -150,6 +157,24 @@ export class McpAuditService {
 			{
 				actor_id: actorId,
 				action: 'revoked_all',
+			},
+		);
+	}
+
+	recordOAuthAuthorizationInvalidation(input: {
+		reasons: McpOAuthInvalidationReason[];
+		authorizationProfile: McpOAuthAuthorizationProfile;
+		outcome: McpAuditOutcome.COMPLETED | McpAuditOutcome.PARTIAL;
+		target?: { type: 'approver'; id: string };
+	}): void {
+		this.log(
+			'oauth_authorization_invalidation',
+			{ requestId: 'administrative' },
+			{
+				reasons: [...new Set(input.reasons)],
+				authorization_profile: input.authorizationProfile,
+				outcome: input.outcome,
+				...(input.target ? { target_type: input.target.type, target_id: input.target.id } : {}),
 			},
 		);
 	}
