@@ -163,20 +163,10 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 		server.listen(0, '127.0.0.1');
 		await once(server, 'listening');
 		const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-		const urls: McpOAuthPublicUrls = {
-			publicBaseUrl: origin,
-			resource: `${origin}/api/v1/modules/mcp`,
-			protectedResourceMetadata: `${origin}/.well-known/oauth-protected-resource/api/v1/modules/mcp`,
-			issuer: `${origin}/api/v1/modules/mcp/oauth`,
-			authorizationServerMetadata: `${origin}/.well-known/oauth-authorization-server/api/v1/modules/mcp/oauth`,
-			authorizationEndpoint: `${origin}/api/v1/modules/mcp/oauth/authorize`,
-			tokenEndpoint: `${origin}/api/v1/modules/mcp/oauth/token`,
-			revocationEndpoint: `${origin}/api/v1/modules/mcp/oauth/token/revocation`,
-		};
 		const config = Object.assign(new McpConfigModel(), {
 			enabled: true,
 			oauthEnabled: true,
-			oauthPublicBaseUrl: urls.publicBaseUrl,
+			oauthPublicBaseUrl: origin,
 			capabilities: [McpCapability.READ],
 		});
 		const configService = {
@@ -186,6 +176,10 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 			}),
 			reload: jest.fn(),
 		};
+		const publicUrlService = new McpOAuthPublicUrlService(configService as unknown as ConfigService);
+		const urls = publicUrlService.getUrls();
+
+		if (!urls) throw new Error('Expected initial MCP OAuth public URLs');
 		const clientsService = {
 			findActiveByIdentifier: jest.fn((clientIdentifier: string) =>
 				Promise.resolve(clientIdentifier === CLIENT_ID ? client : null),
@@ -201,7 +195,7 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 		const providerFactory = new McpOAuthProviderFactory(
 			dataSource,
 			clientsService,
-			{ getUrls: jest.fn(() => urls) } as unknown as McpOAuthPublicUrlService,
+			publicUrlService,
 			{} as McpOAuthProviderMaterialService,
 			subscriptions,
 			{
@@ -216,7 +210,13 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 						allowTestInMemory: true,
 						allowInsecureTestCookies: true,
 						beforeArtifactUpsert: (context) => beforeArtifactUpsert(context),
-						interactionUrl: (uid) => `${origin}/api/v1/modules/mcp/oauth/interaction/${uid}`,
+						interactionUrl: (uid) => {
+							const activeUrls = publicUrlService.getUrls();
+
+							if (!activeUrls) throw new Error('Expected active MCP OAuth public URLs');
+
+							return `${activeUrls.issuer}/interaction/${uid}`;
+						},
 					}),
 			} as unknown as McpOAuthProviderFactory,
 			routeGate,
@@ -273,14 +273,17 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 			const state = await dataSource
 				.getRepository(McpOAuthServerStateEntity)
 				.findOneByOrFail({ key: MCP_OAUTH_SERVER_STATE_KEY });
+			const activeUrls = publicUrlService.getUrls();
+
+			if (!activeUrls) throw new Error('Expected active MCP OAuth public URLs');
 
 			await dataSource.getRepository(McpOAuthGrantEntity).save({
 				providerGrantIdHash: hashToken(providerGrantId),
 				clientId: client.id,
 				approvedById: user.id,
 				installationId: INSTALLATION_ID,
-				issuer: urls.issuer,
-				resource: urls.resource,
+				issuer: activeUrls.issuer,
+				resource: activeUrls.resource,
 				approvedScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS],
 				expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
 				revokedAt: null,
@@ -295,7 +298,7 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 		};
 
 		server.on('request', (request, response) => {
-			void dispatchRequest(request, response, runtime, subscriptions, persistGrant, urls).catch((error: unknown) => {
+			void dispatchRequest(request, response, runtime, subscriptions, persistGrant, origin).catch((error: unknown) => {
 				if (response.headersSent) {
 					response.destroy();
 					return;
@@ -456,8 +459,11 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 			true,
 		);
 		const publicIdentityTokens = (await publicIdentityResponse.json()) as TokenResponse;
+		const rotatedUrls = runtime.getActive().urls;
 		expect(publicIdentityResponse.status).toBe(200);
 		expect(config.oauthPublicBaseUrl).toBe(rotatedPublicIdentity);
+		expect(rotatedUrls.publicBaseUrl).toBe(rotatedPublicIdentity);
+		expect(rotatedUrls.issuer).toBe(`${rotatedPublicIdentity}/api/v1/modules/mcp/oauth`);
 		expect(routeGate.isOpen).toBe(true);
 		expect(
 			(await dataSource.getRepository(McpOAuthServerStateEntity).findOneByOrFail({ key: MCP_OAUTH_SERVER_STATE_KEY }))
@@ -466,9 +472,10 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 		await expect(
 			runtime.getActive().provider.AccessToken.find(publicIdentityTokens.access_token),
 		).resolves.toBeUndefined();
-		expect((await refresh(urls, requireRefreshToken(publicIdentityTokens))).status).toBe(400);
+		expect((await refresh(rotatedUrls, requireRefreshToken(publicIdentityTokens))).status).toBe(400);
 		await updatePublicIdentity(origin);
 		expect(config.oauthPublicBaseUrl).toBe(origin);
+		expect(runtime.getActive().urls).toMatchObject({ publicBaseUrl: origin, issuer: urls.issuer });
 		await expect(
 			runtime.getActive().provider.AccessToken.find(publicIdentityTokens.access_token),
 		).resolves.toBeUndefined();
@@ -486,20 +493,21 @@ async function dispatchRequest(
 	runtime: McpOAuthRuntimeService,
 	subscriptions: McpSubscriptionRegistryService,
 	persistGrant: (providerGrantId: string) => Promise<void>,
-	urls: McpOAuthPublicUrls,
+	origin: string,
 ): Promise<void> {
-	const url = new URL(request.url ?? '/', urls.publicBaseUrl);
-	const interactionPrefix = '/api/v1/modules/mcp/oauth/interaction/';
+	const url = new URL(request.url ?? '/', origin);
+	const active = runtime.getActive();
+	const interactionPrefix = `${new URL(active.urls.issuer).pathname}/interaction/`;
 
 	if (url.pathname.startsWith(interactionPrefix)) {
-		const { provider } = runtime.getActive();
-
-		await subscriptions.runOAuthMutation(() => finishInteraction(provider, request, response, persistGrant, urls));
+		await subscriptions.runOAuthMutation(() =>
+			finishInteraction(active.provider, request, response, persistGrant, active.urls),
+		);
 		return;
 	}
 
 	request.url = `${url.pathname}${url.search}`;
-	runtime.getActive().callback(request, response);
+	active.callback(request, response);
 }
 
 async function finishInteraction(
