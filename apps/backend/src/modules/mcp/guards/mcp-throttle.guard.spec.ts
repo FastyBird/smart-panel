@@ -86,6 +86,55 @@ describe('McpThrottleGuard', () => {
 		);
 	});
 
+	it('keeps static and OAuth verification caches isolated', async () => {
+		oauthRouteGate.isOpen = true;
+		jwtService.decode.mockReturnValue({ sub: 'static-client', type: TokenOwnerType.MCP });
+		jwtService.verifyAsync.mockRejectedValue(new Error('not a valid static credential'));
+		oauthResourceServer.verifyMcpBearerToken.mockResolvedValue({ clientId: 'oauth-public-client' });
+
+		await expect(guard.canActivate(context(request('oauth-token-with-jwt-shape')))).resolves.toBe(true);
+
+		expect(oauthResourceServer.verifyMcpBearerToken).toHaveBeenCalledTimes(1);
+		expect(increment).toHaveBeenCalledWith(
+			'mcp-client:oauth:oauth-public-client',
+			MCP_RATE_LIMIT_TTL_MS,
+			MCP_AUTHENTICATED_RATE_LIMIT,
+			MCP_RATE_LIMIT_TTL_MS,
+			'mcp',
+		);
+	});
+
+	it('caches rejected OAuth tokens before charging the unauthenticated request budget', async () => {
+		oauthRouteGate.isOpen = true;
+		jwtService.decode.mockReturnValue(null);
+		oauthResourceServer.verifyMcpBearerToken.mockRejectedValue(new Error('invalid'));
+
+		await expect(guard.canActivate(context(request('rejected-oauth-token')))).resolves.toBe(true);
+		await expect(guard.canActivate(context(request('rejected-oauth-token')))).resolves.toBe(true);
+
+		expect(oauthResourceServer.verifyMcpBearerToken).toHaveBeenCalledTimes(1);
+		expect(increment).toHaveBeenCalledTimes(2);
+	});
+
+	it('bounds verification work for rotating opaque OAuth tokens', async () => {
+		oauthRouteGate.isOpen = true;
+		jwtService.decode.mockReturnValue(null);
+		oauthResourceServer.verifyMcpBearerToken.mockRejectedValue(new Error('invalid'));
+		const now = Date.now();
+		const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(now);
+
+		try {
+			for (let index = 0; index <= 200; index += 1) {
+				await expect(guard.canActivate(context(request(`rotating-oauth-token-${index}`)))).resolves.toBe(true);
+			}
+		} finally {
+			nowSpy.mockRestore();
+		}
+
+		expect(oauthResourceServer.verifyMcpBearerToken).toHaveBeenCalledTimes(200);
+		expect(increment).toHaveBeenCalledTimes(201);
+	});
+
 	it.each([
 		['missing token', undefined],
 		['non-MCP token', 'ordinary-token'],

@@ -28,6 +28,8 @@ interface VerifyCacheEntry {
 	expiresAt: number;
 }
 
+type VerifyCacheProfile = 'oauth' | 'static';
+
 const VERIFY_CACHE_TTL_MS = 60_000;
 const VERIFY_CACHE_MAX_ENTRIES = 1_000;
 const MAX_VERIFY_PER_SEC = 200;
@@ -112,11 +114,20 @@ export class McpThrottleGuard implements CanActivate {
 	private async getOAuthClientId(token: string): Promise<string | null> {
 		if (!this.oauthRouteGate?.isOpen || !this.oauthResourceServer) return null;
 
+		const cached = this.readVerifyCache(token, 'oauth');
+
+		if (cached !== undefined) return cached;
+		if (!this.tryConsumeVerifyToken()) return null;
+
 		try {
 			const authInfo = await this.oauthResourceServer.verifyMcpBearerToken(`Bearer ${token}`, [McpCapability.READ]);
+			const clientId = `oauth:${authInfo.clientId}`;
 
-			return `oauth:${authInfo.clientId}`;
+			this.writeVerifyCache(token, clientId, 'oauth');
+
+			return clientId;
 		} catch {
+			this.writeVerifyCache(token, null, 'oauth');
 			return null;
 		}
 	}
@@ -146,8 +157,8 @@ export class McpThrottleGuard implements CanActivate {
 		return true;
 	}
 
-	private readVerifyCache(token: string): string | null | undefined {
-		const key = hashToken(token);
+	private readVerifyCache(token: string, profile: VerifyCacheProfile = 'static'): string | null | undefined {
+		const key = `${profile}:${hashToken(token)}`;
 		const entry = this.verifyCache.get(key);
 
 		if (!entry) {
@@ -162,8 +173,8 @@ export class McpThrottleGuard implements CanActivate {
 		return entry.clientId;
 	}
 
-	private writeVerifyCache(token: string, clientId: string | null): void {
-		const key = hashToken(token);
+	private writeVerifyCache(token: string, clientId: string | null, profile: VerifyCacheProfile = 'static'): void {
+		const key = `${profile}:${hashToken(token)}`;
 
 		if (this.verifyCache.size >= VERIFY_CACHE_MAX_ENTRIES && !this.verifyCache.has(key)) {
 			for (const oldestKey of this.verifyCache.keys()) {

@@ -31,6 +31,7 @@ describe('McpOAuthBootstrapService', () => {
 	};
 	let runtime: { getActive: jest.Mock };
 	let providerCallback: jest.Mock;
+	let laterPreflightHook: jest.Mock;
 	let service: McpOAuthBootstrapService;
 
 	beforeEach(async () => {
@@ -71,6 +72,13 @@ describe('McpOAuthBootstrapService', () => {
 		);
 		fastify = Fastify();
 		service.register(fastify);
+		laterPreflightHook = jest.fn();
+		fastify.addHook('onRequest', async (request, reply) => {
+			if (request.method !== 'OPTIONS') return;
+
+			laterPreflightHook();
+			await reply.status(204).send();
+		});
 		await fastify.ready();
 	});
 
@@ -101,6 +109,14 @@ describe('McpOAuthBootstrapService', () => {
 		expect(response.headers['cache-control']).toBe('no-store');
 		expect(proxyPolicy.assertForwardedHeadersTrusted).not.toHaveBeenCalled();
 		expect(runtime.getActive).not.toHaveBeenCalled();
+	});
+
+	it('checks the shared gate before a later CORS-style preflight hook can terminate the request', async () => {
+		const response = await fastify.inject({ method: 'OPTIONS', url: MCP_OAUTH_TOKEN_PATH });
+
+		expect(response.statusCode).toBe(503);
+		expect(response.json()).toEqual({ error: 'temporarily_unavailable' });
+		expect(laterPreflightHook).not.toHaveBeenCalled();
 	});
 
 	it('publishes only the bounded metadata projections after the gate opens', async () => {

@@ -161,9 +161,9 @@ async function bootstrap() {
 	const websocketGateway = app.get(WebsocketGateway);
 	websocketGateway.enable();
 
-	app.enableCors();
-
 	app.get(McpOAuthBootstrapService).register(fastifyInstance);
+
+	app.enableCors();
 
 	// Swagger UI is not loaded during normal startup — use the CLI command
 	// 'pnpm run cli swagger:serve' to start a standalone Swagger UI server.
