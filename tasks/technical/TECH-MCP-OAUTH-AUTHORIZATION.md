@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 6 runtime lifecycle and stale listen-registration E2E underway
+Status: in progress — Phase 6 runtime lifecycle and concurrent refresh replay E2E underway
 
 ## 1. Business goal
 
@@ -71,7 +71,7 @@ upgrade consequences.
       subscription whose effective read/write/trigger scope set contracts before the mutation reports success.
 - [x] Subscription registration is serialized with artifact and policy invalidation so a stale in-flight listen
       request cannot open after invalidation reports success.
-- [ ] Refresh tokens are atomically compare-and-consumed; concurrent replay creates at most one successor and revokes
+- [x] Refresh tokens are atomically compare-and-consumed; concurrent replay creates at most one successor and revokes
       the entire family without leaving a usable fork.
 - [x] Every OAuth artifact commit is serialized with all applicable persistent enabled/secret/identity/client/grant/
       policy/approver generations so no invalidation can miss a racing authorization, exchange, or refresh result and

@@ -73,6 +73,21 @@ const isStringArray = (value: unknown): value is string[] =>
 
 const hash = (value: string): string => createHash('sha256').update(value).digest('hex');
 
+const createBarrier = (participants: number): (() => Promise<void>) => {
+	let arrivals = 0;
+	let release = (): void => undefined;
+	const released = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+
+	return async (): Promise<void> => {
+		arrivals += 1;
+
+		if (arrivals === participants) release();
+		await released;
+	};
+};
+
 const finishInteraction = async (
 	provider: Provider,
 	request: IncomingMessage,
@@ -602,21 +617,67 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		expect(await dataSource.getRepository(McpOAuthProviderArtifactEntity).existsBy({ grantIdHash })).toBe(false);
 	});
 
-	it('rotates refresh tokens and revokes the complete family after concurrent reuse', async () => {
+	it('allows at most one barrier-synchronized refresh successor and revokes the complete family', async () => {
 		const authorization = await authorize();
 		const initialResponse = await exchangeCode(authorization.callback.searchParams.get('code'), authorization.verifier);
 		const initial = (await initialResponse.json()) as TokenResponse;
-		const responses = await Promise.all([refresh(initial.refresh_token), refresh(initial.refresh_token)]);
-		const bodies = (await Promise.all(responses.map((response) => response.json()))) as Array<
-			TokenResponse | { error: string }
-		>;
-		const successful = bodies.filter((body): body is TokenResponse => 'access_token' in body);
+		const initialRefreshToken = initial.refresh_token;
 
-		expect(successful.length).toBeLessThanOrEqual(1);
-		expect(bodies).toContainEqual(expect.objectContaining({ error: 'invalid_grant' }));
+		if (!initialRefreshToken) throw new Error('Expected an initial refresh token');
 
-		for (const tokens of successful) {
-			expect((await refresh(tokens.refresh_token)).status).toBe(400);
+		const artifacts = dataSource.getRepository(McpOAuthProviderArtifactEntity);
+		const initialRefreshArtifact = await artifacts.findOneByOrFail({
+			model: 'RefreshToken',
+			idHash: hash(initialRefreshToken),
+		});
+		const refreshFamilyId = initialRefreshArtifact.refreshFamilyId;
+		const grantIdHash = initialRefreshArtifact.grantIdHash;
+
+		if (!refreshFamilyId || !grantIdHash) throw new Error('Expected the initial refresh token family and grant');
+
+		const upsertSpy = jest.spyOn(artifacts, 'upsert');
+		const enterBarrier = createBarrier(2);
+		const submitRefresh = async (): Promise<Response> => {
+			await enterBarrier();
+
+			return refresh(initialRefreshToken);
+		};
+
+		try {
+			const responses = await Promise.all([submitRefresh(), submitRefresh()]);
+			const bodies = (await Promise.all(responses.map((response) => response.json()))) as Array<
+				TokenResponse | { error: string }
+			>;
+			const successful = bodies.filter((body): body is TokenResponse => 'access_token' in body);
+			const successorUpserts = upsertSpy.mock.calls.filter(
+				([entity]) => isRecord(entity) && entity.model === 'RefreshToken' && entity.refreshFamilyId === refreshFamilyId,
+			);
+			const Adapter = createMcpOAuthProviderAdapter(dataSource, {} as McpOAuthClientService, {
+				allowTestInMemory: true,
+			});
+			const accessAdapter = new Adapter('AccessToken');
+			const refreshAdapter = new Adapter('RefreshToken');
+
+			expect(responses.every(({ status }) => status < 500)).toBe(true);
+			expect(successful.length).toBeLessThanOrEqual(1);
+			expect(successorUpserts.length).toBeLessThanOrEqual(1);
+			expect(successorUpserts.length).toBeGreaterThanOrEqual(successful.length);
+			expect(bodies).toContainEqual(expect.objectContaining({ error: 'invalid_grant' }));
+			expect(await artifacts.countBy({ refreshFamilyId })).toBe(0);
+			expect(await dataSource.getRepository(McpOAuthProviderRevokedGrantEntity).existsBy({ grantIdHash })).toBe(true);
+			await expect(accessAdapter.find(initial.access_token)).resolves.toBeUndefined();
+			await expect(refreshAdapter.find(initialRefreshToken)).resolves.toBeUndefined();
+			expect((await refresh(initialRefreshToken)).status).toBe(400);
+
+			for (const tokens of successful) {
+				if (!tokens.refresh_token) throw new Error('Expected a rotated refresh token');
+
+				await expect(accessAdapter.find(tokens.access_token)).resolves.toBeUndefined();
+				await expect(refreshAdapter.find(tokens.refresh_token)).resolves.toBeUndefined();
+				expect((await refresh(tokens.refresh_token)).status).toBe(400);
+			}
+		} finally {
+			upsertSpy.mockRestore();
 		}
 	});
 
