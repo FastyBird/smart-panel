@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 6 runtime lifecycle and concurrent refresh replay E2E underway
+Status: in progress — Phase 6 runtime lifecycle, refresh replay, and switch-off commit-race E2E underway
 
 ## 1. Business goal
 
@@ -76,7 +76,7 @@ upgrade consequences.
 - [x] Every OAuth artifact commit is serialized with all applicable persistent enabled/secret/identity/client/grant/
       policy/approver generations so no invalidation can miss a racing authorization, exchange, or refresh result and
       later state restoration cannot make it usable.
-- [ ] Switching OAuth off rejects all OAuth traffic, revokes OAuth artifacts, and closes OAuth subscriptions before
+- [x] Switching OAuth off rejects all OAuth traffic, revokes OAuth artifacts, and closes OAuth subscriptions before
       success while leaving static MCP subscriptions active; re-enable does not reactivate old OAuth artifacts.
 - [x] The complete OAuth route set is registered once at NestJS/Fastify bootstrap behind one shared fail-closed gate;
       runtime enable/disable never mounts or unmounts routes and never exposes a partial surface.
