@@ -6,7 +6,7 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 
 import { ConfigService } from '../../config/services/config.service';
 import { McpOAuthClientEntity, McpOAuthInteractionEntity } from '../entities/mcp-oauth.entity';
-import { McpOAuthScope } from '../mcp.constants';
+import { MCP_MODULE_NAME, McpCapability, McpOAuthScope } from '../mcp.constants';
 import { McpOAuthInteractionAction } from '../models/mcp-oauth-interaction.model';
 
 import { McpInstallationService } from './mcp-installation.service';
@@ -15,6 +15,7 @@ import { McpOAuthArtifactService } from './mcp-oauth-artifact.service';
 import { McpOAuthClientService } from './mcp-oauth-client.service';
 import { McpOAuthInteractionService } from './mcp-oauth-interaction.service';
 import { McpOAuthRuntimeService } from './mcp-oauth-runtime.service';
+import { McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
 
 describe('McpOAuthInteractionService', () => {
 	const rawUid = 'opaque-interaction-identifier-123456';
@@ -108,7 +109,16 @@ describe('McpOAuthInteractionService', () => {
 		runAuthorized: jest.fn((_userId: string, operation: (generation: number) => Promise<unknown>) => operation(4)),
 	};
 	const installationService = { getInstallationId: jest.fn(() => Promise.resolve(uuid())) };
-	const configService = { getModuleConfig: jest.fn(() => ({ serviceName: 'Kitchen panel' })) };
+	let mcpEnabled = true;
+	let mcpCapabilities = [McpCapability.READ, McpCapability.WRITE, McpCapability.TRIGGER];
+	const configService = {
+		getModuleConfig: jest.fn((module: string) =>
+			module === MCP_MODULE_NAME
+				? { enabled: mcpEnabled, capabilities: [...mcpCapabilities] }
+				: { serviceName: 'Kitchen panel' },
+		),
+	};
+	const subscriptions = { runOAuthMutation: jest.fn((operation: () => Promise<unknown>) => operation()) };
 	const runtimeService = { getActive: jest.fn(() => ({ provider, urls })) };
 	const request = { headers: { cookie: '_interaction=signed' } } as IncomingMessage;
 	let service: McpOAuthInteractionService;
@@ -116,6 +126,8 @@ describe('McpOAuthInteractionService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		stored.clear();
+		mcpEnabled = true;
+		mcpCapabilities = [McpCapability.READ, McpCapability.WRITE, McpCapability.TRIGGER];
 		delete (providerGrant as { expiresIn?: number }).expiresIn;
 		interactionDetails.mockResolvedValue({ ...details, prompt: { ...details.prompt } });
 		service = new McpOAuthInteractionService(
@@ -126,6 +138,7 @@ describe('McpOAuthInteractionService', () => {
 			approverAuthority as unknown as McpOAuthApproverAuthorityService,
 			installationService as unknown as McpInstallationService,
 			configService as unknown as ConfigService,
+			subscriptions as unknown as McpSubscriptionRegistryService,
 		);
 	});
 
@@ -238,6 +251,64 @@ describe('McpOAuthInteractionService', () => {
 		).rejects.toBeInstanceOf(BadRequestException);
 	});
 
+	it('rechecks the live module ceiling inside the authoritative approval gate', async () => {
+		await service.getInteraction(rawUid, userId, request);
+		let enterApproval = (): void => undefined;
+		const approvalEntered = new Promise<void>((resolve) => {
+			enterApproval = resolve;
+		});
+		let releaseApproval = (): void => undefined;
+		const release = new Promise<void>((resolve) => {
+			releaseApproval = resolve;
+		});
+		approverAuthority.runAuthorized.mockImplementationOnce(
+			async (_userId: string, operation: (generation: number) => Promise<unknown>) => {
+				enterApproval();
+				await release;
+
+				return operation(4);
+			},
+		);
+		const approval = service.approve(rawUid, userId, { scopes: [McpOAuthScope.WRITE], expiresInDays: 30 }, request);
+
+		await approvalEntered;
+		mcpCapabilities = [McpCapability.READ];
+		releaseApproval();
+
+		await expect(approval).rejects.toBeInstanceOf(BadRequestException);
+		expect(providerGrant.save).not.toHaveBeenCalled();
+		expect(interactions.update).not.toHaveBeenCalled();
+	});
+
+	it('rejects approval when the module is disabled before the gate opens', async () => {
+		await service.getInteraction(rawUid, userId, request);
+		let enterApproval = (): void => undefined;
+		const approvalEntered = new Promise<void>((resolve) => {
+			enterApproval = resolve;
+		});
+		let releaseApproval = (): void => undefined;
+		const release = new Promise<void>((resolve) => {
+			releaseApproval = resolve;
+		});
+		approverAuthority.runAuthorized.mockImplementationOnce(
+			async (_userId: string, operation: (generation: number) => Promise<unknown>) => {
+				enterApproval();
+				await release;
+
+				return operation(4);
+			},
+		);
+		const approval = service.approve(rawUid, userId, { scopes: [McpOAuthScope.READ], expiresInDays: 30 }, request);
+
+		await approvalEntered;
+		mcpEnabled = false;
+		releaseApproval();
+
+		await expect(approval).rejects.toBeInstanceOf(ForbiddenException);
+		expect(providerGrant.save).not.toHaveBeenCalled();
+		expect(interactions.update).not.toHaveBeenCalled();
+	});
+
 	it('claims consent before issuing artifacts so concurrent approval cannot escape replay protection', async () => {
 		await service.getInteraction(rawUid, userId, request);
 
@@ -265,5 +336,6 @@ describe('McpOAuthInteractionService', () => {
 			{ mergeWithLastSubmission: false },
 		);
 		expect(interactions.update).toHaveBeenCalled();
+		expect(subscriptions.runOAuthMutation).toHaveBeenCalled();
 	});
 });

@@ -13,18 +13,27 @@ import { MDNS_DEFAULT_SERVICE_NAME, MDNS_MODULE_NAME } from '../../mdns/mdns.con
 import { MdnsConfigModel } from '../../mdns/models/config.model';
 import { ApproveMcpOAuthInteractionDto } from '../dto/mcp-oauth-interaction.dto';
 import { McpOAuthInteractionEntity } from '../entities/mcp-oauth.entity';
-import { MCP_OAUTH_ACCESS_TOKEN_LIFETIME_MS, MCP_OAUTH_GRANT_LIFETIME_MS, McpOAuthScope } from '../mcp.constants';
+import {
+	MCP_MODULE_NAME,
+	MCP_OAUTH_ACCESS_TOKEN_LIFETIME_MS,
+	MCP_OAUTH_GRANT_LIFETIME_MS,
+	McpCapability,
+	McpOAuthScope,
+} from '../mcp.constants';
+import { McpConfigModel } from '../models/config.model';
 import {
 	McpOAuthInteractionAction,
 	McpOAuthInteractionCompletionModel,
 	McpOAuthInteractionModel,
 } from '../models/mcp-oauth-interaction.model';
+import { toMcpOAuthScope } from '../oauth/mcp-oauth-scope.utils';
 
 import { McpInstallationService } from './mcp-installation.service';
 import { McpOAuthApproverAuthorityService } from './mcp-oauth-approver-authority.service';
 import { McpOAuthArtifactService } from './mcp-oauth-artifact.service';
 import { McpOAuthClientService } from './mcp-oauth-client.service';
 import { McpOAuthRuntimeService } from './mcp-oauth-runtime.service';
+import { McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
 
 const DAYS_TO_MILLISECONDS = 24 * 60 * 60 * 1_000;
 
@@ -113,10 +122,20 @@ export class McpOAuthInteractionService {
 		private readonly approverAuthority: McpOAuthApproverAuthorityService,
 		private readonly installationService: McpInstallationService,
 		private readonly configService: ConfigService,
+		private readonly subscriptions: McpSubscriptionRegistryService,
 	) {}
 
 	async getInteraction(rawUid: string, userId: string, request: IncomingMessage): Promise<McpOAuthInteractionModel> {
 		this.assertUid(rawUid);
+
+		return this.subscriptions.runOAuthMutation(() => this.getInteractionWithinGate(rawUid, userId, request));
+	}
+
+	private async getInteractionWithinGate(
+		rawUid: string,
+		userId: string,
+		request: IncomingMessage,
+	): Promise<McpOAuthInteractionModel> {
 		const { provider } = this.runtimeService.getActive();
 		const details = await provider.interactionDetails(request, this.captureResponse());
 
@@ -166,6 +185,19 @@ export class McpOAuthInteractionService {
 		request: IncomingMessage,
 	): Promise<McpOAuthInteractionCompletionModel> {
 		this.assertUid(rawUid);
+
+		return this.approverAuthority.runAuthorized(userId, (approverAuthorityGeneration) =>
+			this.approveWithinGate(rawUid, userId, dto, request, approverAuthorityGeneration),
+		);
+	}
+
+	private async approveWithinGate(
+		rawUid: string,
+		userId: string,
+		dto: ApproveMcpOAuthInteractionDto,
+		request: IncomingMessage,
+		approverAuthorityGeneration: number,
+	): Promise<McpOAuthInteractionCompletionModel> {
 		const { provider, urls } = this.runtimeService.getActive();
 		const details = await provider.interactionDetails(request, this.captureResponse());
 
@@ -174,7 +206,18 @@ export class McpOAuthInteractionService {
 		}
 
 		const context = await this.resolveContext(details, rawUid, userId);
-		this.assertApprovedScopes(dto.scopes, context.requestedScopes, context.client.maximumScopes);
+		const moduleConfig = this.configService.getModuleConfig<McpConfigModel>(MCP_MODULE_NAME);
+
+		if (!moduleConfig.enabled) {
+			throw new ForbiddenException('The MCP module is disabled');
+		}
+
+		this.assertApprovedScopes(
+			dto.scopes,
+			context.requestedScopes,
+			context.client.maximumScopes,
+			moduleConfig.capabilities,
+		);
 		await this.consumeInteraction(context.interaction, userId);
 
 		const providerGrant = new provider.Grant({ accountId: userId, clientId: context.client.clientIdentifier });
@@ -188,23 +231,30 @@ export class McpOAuthInteractionService {
 		}
 
 		(providerGrant as unknown as { expiresIn: number }).expiresIn = dto.expiresInDays * 24 * 60 * 60;
-		return this.approverAuthority.runAuthorized(userId, async (approverAuthorityGeneration) => {
-			const savedGrantId = await providerGrant.save();
-			await this.artifactService.createGrant({
-				providerGrantId: savedGrantId,
-				clientId: context.client.id,
-				approvedById: userId,
-				approvedScopes: dto.scopes,
-				expiresAt: new Date(Date.now() + dto.expiresInDays * DAYS_TO_MILLISECONDS),
-				approverAuthorityGeneration,
-			});
-
-			return this.finish(provider, request, { consent: { grantId: savedGrantId } }, true);
+		const savedGrantId = await providerGrant.save();
+		await this.artifactService.createGrant({
+			providerGrantId: savedGrantId,
+			clientId: context.client.id,
+			approvedById: userId,
+			approvedScopes: dto.scopes,
+			expiresAt: new Date(Date.now() + dto.expiresInDays * DAYS_TO_MILLISECONDS),
+			approverAuthorityGeneration,
 		});
+
+		return this.finish(provider, request, { consent: { grantId: savedGrantId } }, true);
 	}
 
 	async deny(rawUid: string, userId: string, request: IncomingMessage): Promise<McpOAuthInteractionCompletionModel> {
 		this.assertUid(rawUid);
+
+		return this.subscriptions.runOAuthMutation(() => this.denyWithinGate(rawUid, userId, request));
+	}
+
+	private async denyWithinGate(
+		rawUid: string,
+		userId: string,
+		request: IncomingMessage,
+	): Promise<McpOAuthInteractionCompletionModel> {
 		const { provider } = this.runtimeService.getActive();
 		const details = await provider.interactionDetails(request, this.captureResponse());
 
@@ -275,14 +325,26 @@ export class McpOAuthInteractionService {
 		return { client, redirectUri, requestedScopes, interaction };
 	}
 
-	private assertApprovedScopes(approved: McpOAuthScope[], requested: McpOAuthScope[], maximum: McpOAuthScope[]): void {
+	private assertApprovedScopes(
+		approved: McpOAuthScope[],
+		requested: McpOAuthScope[],
+		clientMaximum: McpOAuthScope[],
+		moduleCapabilities: McpCapability[],
+	): void {
+		const moduleMaximum = new Set(moduleCapabilities.map(toMcpOAuthScope));
+
 		if (
 			approved.length === 0 ||
 			!approved.some((scope) => scope !== McpOAuthScope.OFFLINE_ACCESS) ||
-			approved.some((scope) => !requested.includes(scope) || !maximum.includes(scope))
+			approved.some(
+				(scope) =>
+					!requested.includes(scope) ||
+					!clientMaximum.includes(scope) ||
+					(scope !== McpOAuthScope.OFFLINE_ACCESS && !moduleMaximum.has(scope)),
+			)
 		) {
 			throw new BadRequestException(
-				'Approved scopes must be a capability-bearing subset of the request and client maximum',
+				'Approved scopes must be a capability-bearing subset of the request and live authorization ceilings',
 			);
 		}
 	}

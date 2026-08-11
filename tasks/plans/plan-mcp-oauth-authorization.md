@@ -260,6 +260,17 @@ amend ADR 0002.
 - [x] Preserve OAuth-only stream closure for public identity changes while proving only MCP module disable closes
       static MCP streams.
 
+### Phase 5o — Complete browser artifact issuance gate
+
+- [x] Serialize login completion and denial with every OAuth invalidation through the same authoritative gate used by
+      provider token/code issuance and subscription registration.
+- [x] Move consent context resolution, replay claiming, grant persistence, and provider continuation inside the
+      awaited approver-authority gate so no browser artifact can commit from pre-invalidation state.
+- [x] Recheck the live MCP enabled state, registered-client maximum, and module capability ceiling inside that gate;
+      a queued approval must fail after disable or scope contraction without consuming consent or creating a grant.
+- [x] Prove browser issuance that wins the gate finishes before invalidation enumeration, while work queued behind an
+      invalidation observes current authorization inputs before any artifact commit.
+
 ### Remaining Phase 5 controls
 
 - [x] Bind OAuth subscriptions to client, grant, access-token, optional refresh-family IDs, and an authorization
@@ -269,7 +280,7 @@ amend ADR 0002.
       recheck the OAuth-enabled and artifact/authorization-input generations plus live scopes while registering, and
       increment or close the applicable gate before an invalidating mutation enumerates streams. A racing open must
       either register first and be closed or observe the new generation and fail/revalidate.
-- [ ] Serialize every grant, authorization-code, access-token, and refresh-token creation/rotation with every
+- [x] Serialize every grant, authorization-code, access-token, and refresh-token creation/rotation with every
       invalidating mutation. Conditionally commit against the captured OAuth-enabled, server-secret, public-identity,
       client, grant, module-policy, and approver-authority generations and current states. Each invalidation must advance
       its generation before enumeration, so a racing handler either commits first and is revoked or its stale commit
