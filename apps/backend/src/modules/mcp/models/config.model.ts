@@ -8,6 +8,7 @@ import {
 	MCP_DEFAULT_ALLOWED_ORIGINS,
 	MCP_DEFAULT_CAPABILITIES,
 	MCP_DEFAULT_ENABLED,
+	MCP_DEFAULT_OAUTH_ENABLED,
 	MCP_DEFAULT_OAUTH_PUBLIC_BASE_URL,
 	MCP_MODULE_NAME,
 	McpCapability,
@@ -36,6 +37,16 @@ export class McpConfigModel extends ModuleConfigModel {
 	override enabled: boolean = MCP_DEFAULT_ENABLED;
 
 	@ApiProperty({
+		name: 'oauth_enabled',
+		description: 'Whether the readiness-gated MCP OAuth authorization profile is enabled',
+		type: 'boolean',
+		example: MCP_DEFAULT_OAUTH_ENABLED,
+	})
+	@Expose({ name: 'oauth_enabled' })
+	@IsBoolean()
+	oauthEnabled: boolean = MCP_DEFAULT_OAUTH_ENABLED;
+
+	@ApiProperty({
 		description: 'Installation-wide ceiling for capabilities that MCP clients may receive',
 		type: 'array',
 		items: { type: 'string', enum: Object.values(McpCapability) },
@@ -62,7 +73,7 @@ export class McpConfigModel extends ModuleConfigModel {
 
 	@ApiProperty({
 		name: 'oauth_public_base_url',
-		description: 'Explicit canonical HTTPS base URL used to derive the inactive MCP OAuth identity',
+		description: 'Explicit canonical HTTPS base URL used to derive the MCP OAuth identity',
 		type: 'string',
 		nullable: true,
 		example: 'https://panel.example.com',

@@ -7,7 +7,7 @@ import { McpOAuthSwitchOffService } from './mcp-oauth-switch-off.service';
 describe('McpOAuthSwitchOffService', () => {
 	let routeGate: { closeInternal: jest.Mock; openInternal: jest.Mock };
 	let runtime: { deactivateInternal: jest.Mock };
-	let globalInvalidation: { invalidate: jest.Mock };
+	let globalInvalidation: { invalidate: jest.Mock; invalidateAll: jest.Mock };
 	let auditService: { recordOAuthAuthorizationInvalidation: jest.Mock };
 	let service: McpOAuthSwitchOffService;
 
@@ -16,6 +16,7 @@ describe('McpOAuthSwitchOffService', () => {
 		runtime = { deactivateInternal: jest.fn() };
 		globalInvalidation = {
 			invalidate: jest.fn(async (_generations: string[], commit: () => Promise<void>) => commit()),
+			invalidateAll: jest.fn(async (_generations: string[], commit: () => Promise<void>) => commit()),
 		};
 		auditService = { recordOAuthAuthorizationInvalidation: jest.fn() };
 		service = new McpOAuthSwitchOffService(
@@ -24,6 +25,27 @@ describe('McpOAuthSwitchOffService', () => {
 			globalInvalidation as unknown as McpOAuthGlobalInvalidationService,
 			auditService as unknown as McpAuditService,
 		);
+	});
+
+	it('can close both authorization profiles for a combined module-disable mutation', async () => {
+		const commit = jest.fn();
+
+		await service.disableInternal(commit, {
+			generations: ['oauthEnabledGeneration', 'publicIdentityGeneration'],
+			reasons: ['module_disabled', 'public_identity_changed'],
+			authorizationProfile: 'all',
+		});
+
+		expect(globalInvalidation.invalidateAll).toHaveBeenCalledWith(
+			['oauthEnabledGeneration', 'publicIdentityGeneration'],
+			expect.any(Function),
+		);
+		expect(globalInvalidation.invalidate).not.toHaveBeenCalled();
+		expect(auditService.recordOAuthAuthorizationInvalidation).toHaveBeenCalledWith({
+			reasons: ['module_disabled', 'public_identity_changed'],
+			authorizationProfile: 'all',
+			outcome: 'completed',
+		});
 	});
 
 	it('closes the shared gate before advancing OAuth enablement and preserves the static profile', async () => {

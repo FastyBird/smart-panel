@@ -23,6 +23,7 @@ import { McpOAuthClientService } from '../src/modules/mcp/services/mcp-oauth-cli
 import { McpOAuthEndpointRateLimitService } from '../src/modules/mcp/services/mcp-oauth-endpoint-rate-limit.service';
 import { McpOAuthProviderMaterialService } from '../src/modules/mcp/services/mcp-oauth-provider-material.service';
 import { McpOAuthPublicUrlService } from '../src/modules/mcp/services/mcp-oauth-public-url.service';
+import { McpOAuthRouteGateService } from '../src/modules/mcp/services/mcp-oauth-route-gate.service';
 import { McpSubscriptionRegistryService } from '../src/modules/mcp/services/mcp-subscription-registry.service';
 import { UserEntity } from '../src/modules/users/entities/users.entity';
 import { UserLanguage, UserRole } from '../src/modules/users/users.constants';
@@ -235,6 +236,10 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 			{
 				consume: () => Promise.resolve({ allowed: true, retryAfterSeconds: 60 }),
 			} as unknown as McpOAuthEndpointRateLimitService,
+			{
+				assertOpen: () => 0,
+				assertOpenGeneration: () => undefined,
+			} as unknown as McpOAuthRouteGateService,
 		);
 		const runtime = await factory.create({
 			allowTestInMemory: true,

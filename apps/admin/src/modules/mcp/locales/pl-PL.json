@@ -34,6 +34,16 @@
 			"title": "Endpoint MCP instalacji",
 			"description": "Użyj tego adresu URL z zaufanym klientem MCP i poświadczeniem wyświetlanym tylko raz."
 		},
+		"oauth": {
+			"warningTitle": "Autoryzacja dostępna z Internetu",
+			"warningDescription": "OAuth udostępnia trasy autoryzacji pod skonfigurowaną publiczną tożsamością. Przed włączeniem użyj zaufanego reverse proxy i prawidłowego certyfikatu HTTPS.",
+			"publicBaseUrlTitle": "Publiczny bazowy adres URL OAuth",
+			"publicBaseUrlDescription": "Kanoniczny zewnętrzny adres HTTPS używany jako tożsamość OAuth. Jego zmiana unieważnia cały dostęp OAuth, zachowując statycznych klientów MCP.",
+			"publicBaseUrlPlaceholder": "https://panel.example.com",
+			"publicBaseUrlInvalid": "Użyj bezwzględnego adresu HTTPS bez poświadczeń, zapytania, fragmentu ani końcowego ukośnika.",
+			"enabledTitle": "Włącz MCP OAuth",
+			"enabledDescription": "Przed otwarciem wszystkich tras OAuth sprawdza gotowość zabezpieczeń. Wyłączenie unieważnia wszystkie granty i tokeny OAuth oraz zamyka tylko subskrypcje OAuth."
+		},
 		"capabilities": {
 			"title": "Limit uprawnień instalacji",
 			"warningTitle": "Dostęp do urządzeń fizycznych",

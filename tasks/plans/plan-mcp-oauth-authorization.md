@@ -343,6 +343,20 @@ amend ADR 0002.
       isolated ephemeral test setup. Keep the user-facing switch absent until configuration lifecycle activation and
       invalidation are wired through the shared readiness and route gates.
 
+### Phase 5v — Readiness-gated OAuth configuration lifecycle
+
+- [x] Add the opt-in `oauth_enabled` configuration field and Admin control with an explicit canonical HTTPS public
+      identity prerequisite and deployment warning; keep the static MCP profile independently configurable.
+- [x] At startup, activate the persistent provider and open the complete pre-registered OAuth route set only after the
+      sealed readiness inventory passes twice; log activation failure and keep OAuth closed without aborting the rest
+      of the application. A global configuration reset also closes the gate and deactivates the provider immediately.
+- [x] Serialize authoritative MCP configuration mutations. On enable, advance the persistent OAuth generation and
+      revoke legacy artifacts before activating and opening; on switch-off or module disable, close/deactivate first,
+      advance every changed generation, persist, revoke, and close the correct OAuth-only or all-profile streams.
+- [x] Close/deactivate around a live public-identity change and reopen only after invalidation, persistence, readiness,
+      and provider reactivation succeed. Any failed mutation or activation remains fail-closed and never restores old
+      artifacts on a later retry.
+
 ### Remaining Phase 5 controls
 
 - [x] Bind OAuth subscriptions to client, grant, access-token, optional refresh-family IDs, and an authorization
@@ -365,7 +379,7 @@ amend ADR 0002.
       their authority generation before revoking every grant and token artifact they approved and closing matching
       subscriptions. A paused consent using the old generation must fail, role restoration must not revive old grants,
       invalidation failures propagate, and profile-only updates by an authorized approver preserve the generation.
-- [ ] Close all MCP subscriptions only when the MCP module is disabled. On public OAuth identity or server-secret
+- [x] Close all MCP subscriptions only when the MCP module is disabled. On public OAuth identity or server-secret
       rotation, advance the applicable artifact generation before revoke-all, revoke every OAuth artifact, and close
       every OAuth subscription while preserving static MCP credentials and streams.
 - [x] Add revoke-all recovery action and document password-reset versus OAuth-revocation semantics.
@@ -373,7 +387,7 @@ amend ADR 0002.
       coverage is complete; end-to-end audit verification remains in Phase 6.
 - [x] Prove user update/delete promises remain pending until approver invalidation and stream closure finish, propagate
       invalidation failure, and never leave a demoted/deleted approver's grant usable.
-- [ ] Add the user-facing OAuth enable switch only after startup verifies authorization-deadline timers, targeted
+- [x] Add the user-facing OAuth enable switch only after startup verifies authorization-deadline timers, targeted
       artifact and live-scope-reduction subscription aborts, awaited approver lifecycle invalidation,
       serialized subscription-open/invalidation and all-generation artifact-issuance gates,
       public-identity/server-secret rotation, OAuth switch-off invalidation, revoke controls, audit hooks, and rate
@@ -381,9 +395,9 @@ amend ADR 0002.
 - [x] Register the complete protected-resource metadata, authorization-server metadata,
       authorization/token/revocation, challenge, and OAuth MCP route set once during NestJS/Fastify bootstrap. Every
       route must check the same fail-closed gate before its handler; never mount or unmount routes after startup.
-- [ ] On enable, rerun readiness and open the shared gate for the complete pre-registered OAuth surface atomically;
+- [x] On enable, rerun readiness and open the shared gate for the complete pre-registered OAuth surface atomically;
       never expose a partial subset.
-- [ ] On switch-off, atomically close and increment the persistent OAuth generation before handlers can commit more
+- [x] On switch-off, atomically close and increment the persistent OAuth generation before handlers can commit more
       artifacts, revoke all OAuth artifacts, and abort all OAuth subscriptions before reporting success; preserve
       static MCP credentials and streams, remain fail-closed if invalidation fails, and require a new authorization
       flow after readiness-gated re-enable.

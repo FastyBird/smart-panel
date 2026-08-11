@@ -28,6 +28,16 @@
 			"title": "Koncový bod MCP této instalace",
 			"description": "Použijte tuto adresu URL s důvěryhodným klientem MCP a jednorázově zobrazenými přihlašovacími údaji."
 		},
+		"oauth": {
+			"warningTitle": "Autorizace dostupná z internetu",
+			"warningDescription": "OAuth zpřístupňuje autorizační trasy pod nastavenou veřejnou identitou. Před povolením použijte důvěryhodný reverzní proxy server a platný certifikát HTTPS.",
+			"publicBaseUrlTitle": "Veřejná základní URL OAuth",
+			"publicBaseUrlDescription": "Kanonická externí HTTPS URL používaná jako identita OAuth. Její změna odvolá veškerý přístup OAuth a zachová statické klienty MCP.",
+			"publicBaseUrlPlaceholder": "https://panel.example.com",
+			"publicBaseUrlInvalid": "Použijte absolutní HTTPS URL bez přihlašovacích údajů, parametrů, fragmentu a koncového lomítka.",
+			"enabledTitle": "Povolit MCP OAuth",
+			"enabledDescription": "Před otevřením všech tras OAuth ověří připravenost zabezpečení. Vypnutí odvolá všechna oprávnění a tokeny OAuth a uzavře pouze odběry OAuth."
+		},
 		"capabilities": {
 			"title": "Limit oprávnění instalace",
 			"warningTitle": "Přístup k fyzickým zařízením",

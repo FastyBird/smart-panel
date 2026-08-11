@@ -31,6 +31,16 @@
 			"title": "MCP-Endpunkt der Installation",
 			"description": "Verwenden Sie diese URL mit einem vertrauenswürdigen MCP-Client und den einmalig angezeigten Zugangsdaten."
 		},
+		"oauth": {
+			"warningTitle": "Öffentlich erreichbare Autorisierung",
+			"warningDescription": "OAuth stellt Autorisierungsrouten unter der konfigurierten öffentlichen Identität bereit. Verwenden Sie vor der Aktivierung einen vertrauenswürdigen Reverse-Proxy und ein gültiges HTTPS-Zertifikat.",
+			"publicBaseUrlTitle": "Öffentliche OAuth-Basis-URL",
+			"publicBaseUrlDescription": "Kanonische externe HTTPS-URL für die OAuth-Identität. Eine Änderung widerruft alle OAuth-Zugriffe, während statische MCP-Clients erhalten bleiben.",
+			"publicBaseUrlPlaceholder": "https://panel.example.com",
+			"publicBaseUrlInvalid": "Verwenden Sie eine absolute HTTPS-URL ohne Zugangsdaten, Abfrage, Fragment oder abschließenden Schrägstrich.",
+			"enabledTitle": "MCP OAuth aktivieren",
+			"enabledDescription": "Prüft vor dem Öffnen aller OAuth-Routen die Sicherheitsbereitschaft. Beim Deaktivieren werden alle OAuth-Berechtigungen und Tokens widerrufen und nur OAuth-Abonnements geschlossen."
+		},
 		"capabilities": {
 			"title": "Berechtigungsgrenze der Installation",
 			"warningTitle": "Zugriff auf physische Geräte",

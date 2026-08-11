@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import { transformConfigModuleResponse, transformConfigModuleUpdateRequest } from '../../config/store/config-modules.store.transformers';
 import { McpCapability } from '../mcp.constants';
 import { isCapabilitySubset } from '../mcp.utils';
+import { McpConfigSchema, McpConfigUpdateReqSchema } from '../store/config.store.schemas';
 
 import { McpCreateClientSchema } from './client.schemas';
-import { McpConfigEditFormSchema, McpOriginSchema } from './config.schemas';
+import { McpConfigEditFormSchema, McpOAuthPublicBaseUrlSchema, McpOriginSchema } from './config.schemas';
 
 describe('MCP admin schemas', () => {
 	const capabilityCombinations = [
@@ -35,6 +37,58 @@ describe('MCP admin schemas', () => {
 		expect(McpOriginSchema.safeParse('https://agent.example.com/path').success).toBe(false);
 		expect(McpOriginSchema.safeParse('https://user:secret@agent.example.com').success).toBe(false);
 		expect(McpOriginSchema.safeParse('file:///tmp/agent').success).toBe(false);
+	});
+
+	it('accepts only normalized HTTPS OAuth public identities', () => {
+		expect(McpOAuthPublicBaseUrlSchema.safeParse('https://panel.example.com').success).toBe(true);
+		expect(McpOAuthPublicBaseUrlSchema.safeParse('https://panel.example.com/smart-panel').success).toBe(true);
+		expect(McpOAuthPublicBaseUrlSchema.safeParse('http://panel.example.com').success).toBe(false);
+		expect(McpOAuthPublicBaseUrlSchema.safeParse('https://panel.example.com/').success).toBe(false);
+		expect(McpOAuthPublicBaseUrlSchema.safeParse('https://panel.example.com/path/').success).toBe(false);
+		expect(McpOAuthPublicBaseUrlSchema.safeParse('https://user:secret@panel.example.com').success).toBe(false);
+	});
+
+	it('requires a public identity when active OAuth is enabled', () => {
+		const base = {
+			type: 'mcp-module',
+			enabled: true,
+			capabilities: [McpCapability.read],
+			allowedOrigins: [],
+		};
+
+		expect(
+			McpConfigEditFormSchema.safeParse({
+				...base,
+				oauthEnabled: true,
+				oauthPublicBaseUrl: 'https://panel.example.com',
+			}).success
+		).toBe(true);
+		expect(McpConfigEditFormSchema.safeParse({ ...base, oauthEnabled: true, oauthPublicBaseUrl: null }).success).toBe(false);
+		expect(McpConfigEditFormSchema.safeParse({ ...base, enabled: false, oauthEnabled: true, oauthPublicBaseUrl: null }).success).toBe(true);
+		expect(McpConfigEditFormSchema.safeParse({ ...base, oauthEnabled: false, oauthPublicBaseUrl: '' }).data?.oauthPublicBaseUrl).toBeNull();
+	});
+
+	it('maps the OAuth lifecycle fields across the camel-case Admin and snake-case API boundary', () => {
+		const config = transformConfigModuleResponse(
+			{
+				type: 'mcp-module',
+				enabled: true,
+				oauth_enabled: true,
+				oauth_public_base_url: 'https://panel.example.com',
+				capabilities: [McpCapability.read],
+				allowed_origins: [],
+			} as never,
+			McpConfigSchema
+		) as Record<string, unknown>;
+
+		expect(config).toMatchObject({
+			oauthEnabled: true,
+			oauthPublicBaseUrl: 'https://panel.example.com',
+		});
+		expect(transformConfigModuleUpdateRequest(config as never, McpConfigUpdateReqSchema)).toMatchObject({
+			oauth_enabled: true,
+			oauth_public_base_url: 'https://panel.example.com',
+		});
 	});
 
 	it('requires a finite bounded credential lifetime', () => {
