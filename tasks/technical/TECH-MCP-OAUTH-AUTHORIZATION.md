@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 5 embedded OAuth endpoint rate limits implemented
+Status: in progress — Phase 5 OAuth switch-off invalidation foundation implemented
 
 ## 1. Business goal
 

@@ -37,4 +37,41 @@ describe('McpOAuthRuntimeService', () => {
 
 		expect(() => service.getActive()).toThrow('The internal MCP OAuth route gate is closed');
 	});
+
+	it('does not retain an activation that finishes after switch-off', async () => {
+		const staleRuntime = {
+			provider: {},
+			callback: jest.fn(),
+			urls: {},
+			metadata: {},
+		} as unknown as McpOAuthProviderRuntime;
+		const freshRuntime = {
+			provider: {},
+			callback: jest.fn(),
+			urls: {},
+			metadata: {},
+		} as unknown as McpOAuthProviderRuntime;
+		let resolveActivation = (_runtime: McpOAuthProviderRuntime): void => undefined;
+		const delayedActivation = new Promise<McpOAuthProviderRuntime>((resolve) => {
+			resolveActivation = resolve;
+		});
+		const providerFactory = {
+			create: jest.fn().mockReturnValueOnce(delayedActivation).mockResolvedValueOnce(freshRuntime),
+		};
+		const readiness = new McpOAuthReadinessService();
+		readiness.register(...MCP_OAUTH_REQUIRED_READINESS_CONTROLS);
+		readiness.onApplicationBootstrap();
+		const routeGate = new McpOAuthRouteGateService(readiness);
+		const service = new McpOAuthRuntimeService(providerFactory as unknown as McpOAuthProviderFactory, routeGate);
+		routeGate.openInternal();
+		const staleActivation = service.activateInternal();
+
+		service.deactivateInternal();
+		resolveActivation(staleRuntime);
+
+		await expect(staleActivation).rejects.toThrow('MCP OAuth provider activation was cancelled');
+		expect(() => service.getActive()).toThrow('The internal MCP OAuth route gate is closed');
+		await expect(service.activateInternal()).resolves.toBe(freshRuntime);
+		expect(service.getActive()).toBe(freshRuntime);
+	});
 });

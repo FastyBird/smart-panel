@@ -78,6 +78,7 @@ import { McpOAuthRefreshTokenService } from './services/mcp-oauth-refresh-token.
 import { McpOAuthResourceServerService } from './services/mcp-oauth-resource-server.service';
 import { McpOAuthRouteGateService } from './services/mcp-oauth-route-gate.service';
 import { McpOAuthRuntimeService } from './services/mcp-oauth-runtime.service';
+import { McpOAuthSwitchOffService } from './services/mcp-oauth-switch-off.service';
 import { McpPolicyService } from './services/mcp-policy.service';
 import { McpServerService } from './services/mcp-server.service';
 import { McpSubscriptionRegistryService } from './services/mcp-subscription-registry.service';
@@ -151,6 +152,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpOAuthResourceServerService,
 		McpOAuthRouteGateService,
 		McpOAuthRuntimeService,
+		McpOAuthSwitchOffService,
 		McpPolicyService,
 		McpServerService,
 		McpAuditService,
@@ -186,6 +188,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpOAuthResourceServerService,
 		McpOAuthRouteGateService,
 		McpOAuthRuntimeService,
+		McpOAuthSwitchOffService,
 		McpPolicyService,
 		McpServerService,
 	],
