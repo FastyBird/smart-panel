@@ -17,6 +17,7 @@ import {
 	McpOAuthEndpointRateLimitService,
 	McpOAuthRateLimitedEndpoint,
 } from '../services/mcp-oauth-endpoint-rate-limit.service';
+import { McpOAuthProviderMaterialService } from '../services/mcp-oauth-provider-material.service';
 import { McpOAuthPublicUrlService } from '../services/mcp-oauth-public-url.service';
 import { McpSubscriptionRegistryService } from '../services/mcp-subscription-registry.service';
 
@@ -48,6 +49,7 @@ export class McpOAuthProviderFactory {
 		private readonly dataSource: DataSource,
 		private readonly clientsService: McpOAuthClientService,
 		private readonly publicUrlService: McpOAuthPublicUrlService,
+		private readonly providerMaterial: McpOAuthProviderMaterialService,
 		private readonly subscriptions: McpSubscriptionRegistryService,
 		private readonly endpointRateLimit: McpOAuthEndpointRateLimitService,
 	) {}
@@ -59,15 +61,17 @@ export class McpOAuthProviderFactory {
 			throw new ServiceUnavailableException('MCP OAuth public URL is not configured');
 		}
 
-		if (process.env.NODE_ENV !== 'test' && (!options.cookieKeys?.length || !options.jwks?.keys.length)) {
-			throw new ServiceUnavailableException('Persistent MCP OAuth cookie and signing keys are not available');
-		}
+		const persistentMaterial =
+			process.env.NODE_ENV !== 'test' && (!options.cookieKeys || !options.jwks) ? this.providerMaterial.get() : null;
+		const cookieKeys = options.cookieKeys ?? persistentMaterial?.cookieKeys;
+		const jwks = options.jwks ?? persistentMaterial?.jwks;
+
 		if (process.env.NODE_ENV !== 'test' && options.allowInsecureTestCookies === true) {
 			throw new ServiceUnavailableException('Insecure MCP OAuth cookies are permitted only by explicit test setups');
 		}
 
 		const oidcProvider = await loadMcpOAuthProvider();
-		const testPrivateKey = options.jwks
+		const testPrivateKey = jwks
 			? null
 			: generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ format: 'jwk' });
 		const adapter = createMcpOAuthProviderAdapter(this.dataSource, this.clientsService, {
@@ -94,7 +98,7 @@ export class McpOAuthProviderFactory {
 			allowOmittingSingleRegisteredRedirectUri: false,
 			acceptQueryParamAccessTokens: false,
 			cookies: {
-				keys: options.cookieKeys ?? [randomBytes(32).toString('base64url')],
+				keys: cookieKeys ?? [randomBytes(32).toString('base64url')],
 				long: {
 					httpOnly: true,
 					sameSite: 'lax',
@@ -199,7 +203,7 @@ export class McpOAuthProviderFactory {
 				Session: 30 * 60,
 			},
 			jwks:
-				options.jwks ??
+				jwks ??
 				({ keys: [{ ...testPrivateKey, use: 'sig', alg: 'RS256', kid: 'mcp-oauth-internal-test' }] } as {
 					keys: JWK[];
 				}),

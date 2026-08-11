@@ -332,6 +332,17 @@ amend ADR 0002.
       PKCE/refresh/revocation security spike still passes. Keep the user-facing switch absent until activation and
       switch-off are wired through configuration.
 
+### Phase 5u — Persistent OAuth provider material foundation
+
+- [x] Generate the provider's private cookie and RSA signing material once inside the owner-only `FB_CONFIG_PATH`,
+      which is already covered by the system backup boundary; publish the completed file atomically without
+      overwriting material created by a concurrent process.
+- [x] Validate the complete versioned material shape on every cold load, tighten existing file permissions to `0600`,
+      reject symlinks and malformed or incomplete files, and fail closed without replacing unreadable material.
+- [x] Wire non-test provider activation to defensive copies of the persistent material while preserving explicitly
+      isolated ephemeral test setup. Keep the user-facing switch absent until configuration lifecycle activation and
+      invalidation are wired through the shared readiness and route gates.
+
 ### Remaining Phase 5 controls
 
 - [x] Bind OAuth subscriptions to client, grant, access-token, optional refresh-family IDs, and an authorization

@@ -71,6 +71,7 @@ import { McpOAuthGlobalInvalidationService } from './services/mcp-oauth-global-i
 import { McpOAuthInteractionService } from './services/mcp-oauth-interaction.service';
 import { McpOAuthManagementService } from './services/mcp-oauth-management.service';
 import { McpOAuthModuleConfigMutationService } from './services/mcp-oauth-module-config-mutation.service';
+import { McpOAuthProviderMaterialService } from './services/mcp-oauth-provider-material.service';
 import { McpOAuthProxyPolicyService } from './services/mcp-oauth-proxy-policy.service';
 import { McpOAuthPublicUrlService } from './services/mcp-oauth-public-url.service';
 import { McpOAuthReadinessRegistrationService } from './services/mcp-oauth-readiness-registration.service';
@@ -146,6 +147,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpOAuthManagementService,
 		McpOAuthModuleConfigMutationService,
 		McpOAuthProxyPolicyService,
+		McpOAuthProviderMaterialService,
 		McpOAuthProviderFactory,
 		McpOAuthPublicUrlService,
 		McpOAuthReadinessRegistrationService,
