@@ -42,8 +42,24 @@ jobs:
             tasks
             cross
           requireScope: true
-          subjectPattern: ^(?![A-Z]).+$
+          # Mirrors commitlint's subject-first-char-lowercase and subject-full-stop.
+          # The header length rule is checked in the next step, because the action
+          # only exposes the subject, not the whole title.
+          subjectPattern: ^(?![A-Z])(?!.*\.$).+$
           subjectPatternError: |
             The subject "{subject}" found in the pull request title "{title}"
             didn't match the configured pattern. Please ensure that the subject
-            doesn't start with an uppercase character.
+            doesn't start with an uppercase character and doesn't end with a period.
+
+      # commitlint applies @commitlint/config-conventional's header-max-length to
+      # local commits, but nothing sees the PR title — and the PR title is what
+      # becomes the commit on main and the release-note line. Check it here.
+      - name: Validate PR title length
+        env:
+          # Never interpolate the title into `run` directly — it is untrusted input.
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if [ "${#PR_TITLE}" -gt 100 ]; then
+            echo "::error::PR title is ${#PR_TITLE} characters long; the limit is 100. See CONTRIBUTING.md."
+            exit 1
+          fi
