@@ -11,6 +11,7 @@ import { MCP_MODULE_NAME, MCP_OAUTH_SERVER_STATE_KEY, McpCapability } from '../m
 import { McpConfigModel } from '../models/config.model';
 import { toMcpOAuthScope } from '../oauth/mcp-oauth-scope.utils';
 
+import { McpAuditOutcome, McpAuditService, McpOAuthInvalidationReason } from './mcp-audit.service';
 import { McpOAuthGlobalGeneration, McpOAuthGlobalInvalidationService } from './mcp-oauth-global-invalidation.service';
 import { McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
 
@@ -22,6 +23,7 @@ export class McpOAuthModuleConfigMutationService {
 		private readonly serverState: Repository<McpOAuthServerStateEntity>,
 		private readonly subscriptions: McpSubscriptionRegistryService,
 		private readonly globalInvalidation: McpOAuthGlobalInvalidationService,
+		private readonly auditService: McpAuditService,
 	) {}
 
 	async update(update: UpdateMcpConfigDto, commit: ModuleConfigCommit): Promise<void> {
@@ -42,14 +44,16 @@ export class McpOAuthModuleConfigMutationService {
 				...(capabilitiesChanged ? (['modulePolicyGeneration'] as const) : []),
 			];
 
-			await this.globalInvalidation.invalidateAll(generations, async () => {
-				try {
-					await commit();
-				} catch (error) {
-					this.configService.reload();
-					throw error;
-				}
-			});
+			await this.runGlobalInvalidation(
+				generations,
+				[
+					'module_disabled',
+					...(publicIdentityChanged ? (['public_identity_changed'] as const) : []),
+					...(capabilitiesChanged ? (['module_policy_changed'] as const) : []),
+				],
+				'all',
+				commit,
+			);
 			return;
 		}
 
@@ -60,14 +64,16 @@ export class McpOAuthModuleConfigMutationService {
 				...(capabilitiesChanged ? (['modulePolicyGeneration'] as const) : []),
 			];
 
-			await this.globalInvalidation.invalidate(generations, async () => {
-				try {
-					await commit();
-				} catch (error) {
-					this.configService.reload();
-					throw error;
-				}
-			});
+			await this.runGlobalInvalidation(
+				generations,
+				[
+					'module_enabled_reconciliation',
+					...(publicIdentityChanged ? (['public_identity_changed'] as const) : []),
+					...(capabilitiesChanged ? (['module_policy_changed'] as const) : []),
+				],
+				'oauth',
+				commit,
+			);
 			return;
 		}
 
@@ -77,14 +83,12 @@ export class McpOAuthModuleConfigMutationService {
 				...(capabilitiesChanged ? (['modulePolicyGeneration'] as const) : []),
 			];
 
-			await this.globalInvalidation.invalidate(generations, async () => {
-				try {
-					await commit();
-				} catch (error) {
-					this.configService.reload();
-					throw error;
-				}
-			});
+			await this.runGlobalInvalidation(
+				generations,
+				['public_identity_changed', ...(capabilitiesChanged ? (['module_policy_changed'] as const) : [])],
+				'oauth',
+				commit,
+			);
 			return;
 		}
 
@@ -112,7 +116,55 @@ export class McpOAuthModuleConfigMutationService {
 			}
 		});
 
+		this.auditService.recordOAuthAuthorizationInvalidation({
+			reasons: ['module_policy_changed'],
+			authorizationProfile: 'oauth',
+			outcome: commitFailed ? McpAuditOutcome.PARTIAL : McpAuditOutcome.COMPLETED,
+		});
+
 		if (commitFailed) throw commitError;
+	}
+
+	private async runGlobalInvalidation(
+		generations: McpOAuthGlobalGeneration[],
+		reasons: McpOAuthInvalidationReason[],
+		authorizationProfile: 'all' | 'oauth',
+		commit: ModuleConfigCommit,
+	): Promise<void> {
+		let commitFailed = false;
+		const persist = async (): Promise<void> => {
+			try {
+				await commit();
+			} catch (error) {
+				commitFailed = true;
+				this.configService.reload();
+				throw error;
+			}
+		};
+
+		try {
+			if (authorizationProfile === 'all') {
+				await this.globalInvalidation.invalidateAll(generations, persist);
+			} else {
+				await this.globalInvalidation.invalidate(generations, persist);
+			}
+		} catch (error) {
+			if (commitFailed) {
+				this.auditService.recordOAuthAuthorizationInvalidation({
+					reasons,
+					authorizationProfile,
+					outcome: McpAuditOutcome.PARTIAL,
+				});
+			}
+
+			throw error;
+		}
+
+		this.auditService.recordOAuthAuthorizationInvalidation({
+			reasons,
+			authorizationProfile,
+			outcome: McpAuditOutcome.COMPLETED,
+		});
 	}
 
 	private sameCapabilities(first: McpCapability[], second: McpCapability[]): boolean {

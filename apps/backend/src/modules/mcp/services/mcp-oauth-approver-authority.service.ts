@@ -16,6 +16,7 @@ import {
 	McpOAuthProviderRevokedGrantEntity,
 } from '../entities/mcp-oauth.entity';
 
+import { McpAuditOutcome, McpAuditService } from './mcp-audit.service';
 import { McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
 
 const APPROVER_ROLES = [UserRole.OWNER, UserRole.ADMIN];
@@ -27,6 +28,7 @@ export class McpOAuthApproverAuthorityService implements UserLifecycleMutationHa
 		private readonly authorities: Repository<McpOAuthApproverAuthorityEntity>,
 		private readonly dataSource: DataSource,
 		private readonly subscriptions: McpSubscriptionRegistryService,
+		private readonly auditService: McpAuditService,
 	) {}
 
 	async getGeneration(approverId: string): Promise<number> {
@@ -85,6 +87,13 @@ export class McpOAuthApproverAuthorityService implements UserLifecycleMutationHa
 
 		if (invalidationError) throw invalidationError;
 		if (!committed) throw new ServiceUnavailableException('MCP OAuth approver invalidation did not commit');
+
+		this.auditService.recordOAuthAuthorizationInvalidation({
+			reasons: ['approver_authority_changed'],
+			authorizationProfile: 'oauth',
+			outcome: McpAuditOutcome.COMPLETED,
+			target: { type: 'approver', id: approverId },
+		});
 
 		return result;
 	}

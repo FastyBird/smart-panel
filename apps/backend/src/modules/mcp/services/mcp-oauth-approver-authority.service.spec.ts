@@ -20,6 +20,11 @@ import { McpSubscriptionRegistryService } from './mcp-subscription-registry.serv
 describe('McpOAuthApproverAuthorityService', () => {
 	let dataSource: DataSource;
 	let subscriptions: McpSubscriptionRegistryService;
+	let auditService: {
+		recordOAuthAuthorizationInvalidation: jest.Mock;
+		recordSubscriptionClosed: jest.Mock;
+		recordSubscriptionOpened: jest.Mock;
+	};
 	let service: McpOAuthApproverAuthorityService;
 	let approver: UserEntity;
 	let otherApprover: UserEntity;
@@ -41,12 +46,17 @@ describe('McpOAuthApproverAuthorityService', () => {
 			synchronize: true,
 		});
 		await dataSource.initialize();
-		const audit = { recordSubscriptionClosed: jest.fn(), recordSubscriptionOpened: jest.fn() };
-		subscriptions = new McpSubscriptionRegistryService(audit as unknown as McpAuditService);
+		auditService = {
+			recordOAuthAuthorizationInvalidation: jest.fn(),
+			recordSubscriptionClosed: jest.fn(),
+			recordSubscriptionOpened: jest.fn(),
+		};
+		subscriptions = new McpSubscriptionRegistryService(auditService as unknown as McpAuditService);
 		service = new McpOAuthApproverAuthorityService(
 			dataSource.getRepository(McpOAuthApproverAuthorityEntity),
 			dataSource,
 			subscriptions,
+			auditService as unknown as McpAuditService,
 		);
 		const users = dataSource.getRepository(UserEntity);
 		approver = await users.save(users.create(user('approver', UserRole.ADMIN)));
@@ -118,6 +128,12 @@ describe('McpOAuthApproverAuthorityService', () => {
 		expect(matching.signal.aborted).toBe(true);
 		expect(other.signal.aborted).toBe(false);
 		expect(staticStream.signal.aborted).toBe(false);
+		expect(auditService.recordOAuthAuthorizationInvalidation).toHaveBeenCalledWith({
+			reasons: ['approver_authority_changed'],
+			authorizationProfile: 'oauth',
+			outcome: 'completed',
+			target: { type: 'approver', id: approver.id },
+		});
 	});
 
 	it('closes approver streams and propagates an invalidation failure', async () => {
@@ -128,6 +144,7 @@ describe('McpOAuthApproverAuthorityService', () => {
 
 		expect(matching.signal.aborted).toBe(true);
 		expect(await service.getGeneration(approver.id)).toBe(0);
+		expect(auditService.recordOAuthAuthorizationInvalidation).not.toHaveBeenCalled();
 	});
 
 	it('rolls back both demotion and invalidation when the atomic user commit fails', async () => {
@@ -147,6 +164,7 @@ describe('McpOAuthApproverAuthorityService', () => {
 			(await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: grant.id })).revokedAt,
 		).toBeNull();
 		expect(matching.signal.aborted).toBe(true);
+		expect(auditService.recordOAuthAuthorizationInvalidation).not.toHaveBeenCalled();
 	});
 
 	it('keeps deletion inside the gate so queued consent observes the removed user', async () => {
@@ -186,6 +204,7 @@ describe('McpOAuthApproverAuthorityService', () => {
 		expect(
 			(await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: grant.id })).revokedAt,
 		).toBeNull();
+		expect(auditService.recordOAuthAuthorizationInvalidation).not.toHaveBeenCalled();
 	});
 
 	it('rejects a consent queued behind approver invalidation and keeps restored roles on the new generation', async () => {
