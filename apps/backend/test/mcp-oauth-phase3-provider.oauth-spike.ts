@@ -16,7 +16,10 @@ import {
 	McpOAuthServerStateEntity,
 } from '../src/modules/mcp/entities/mcp-oauth.entity';
 import { MCP_OAUTH_SERVER_STATE_KEY, McpOAuthScope } from '../src/modules/mcp/mcp.constants';
-import { createMcpOAuthProviderAdapter } from '../src/modules/mcp/oauth/mcp-oauth-provider.adapter';
+import {
+	type McpOAuthProviderAdapterOptions,
+	createMcpOAuthProviderAdapter,
+} from '../src/modules/mcp/oauth/mcp-oauth-provider.adapter';
 import { McpOAuthProviderFactory } from '../src/modules/mcp/oauth/mcp-oauth-provider.factory';
 import { McpOAuthPublicUrls } from '../src/modules/mcp/oauth/mcp-oauth.types';
 import { McpOAuthClientService } from '../src/modules/mcp/services/mcp-oauth-client.service';
@@ -33,6 +36,8 @@ const ACCOUNT_ID = 'owner-1';
 const REGISTERED_REDIRECT_URI = 'http://127.0.0.1:1455/callback';
 let consentPromptCount = 0;
 let persistSmartPanelGrant = (_providerGrantId: string): Promise<void> => Promise.resolve();
+let artifactLifecycleHook: NonNullable<McpOAuthProviderAdapterOptions['artifactLifecycleHook']> = () =>
+	Promise.resolve();
 
 interface TokenResponse {
 	access_token: string;
@@ -72,6 +77,21 @@ const isStringArray = (value: unknown): value is string[] =>
 	Array.isArray(value) && value.every((item) => typeof item === 'string');
 
 const hash = (value: string): string => createHash('sha256').update(value).digest('hex');
+
+const createBarrier = (participants: number): (() => Promise<void>) => {
+	let arrivals = 0;
+	let release = (): void => undefined;
+	const released = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+
+	return async (): Promise<void> => {
+		arrivals += 1;
+
+		if (arrivals === participants) release();
+		await released;
+	};
+};
 
 const finishInteraction = async (
 	provider: Provider,
@@ -244,6 +264,7 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		const runtime = await factory.create({
 			allowTestInMemory: true,
 			allowInsecureTestCookies: true,
+			artifactLifecycleHook: (context) => artifactLifecycleHook(context),
 			interactionUrl: (uid) => `${origin}/api/v1/modules/mcp/oauth/interaction/${uid}`,
 		});
 		provider = runtime.provider;
@@ -602,21 +623,86 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		expect(await dataSource.getRepository(McpOAuthProviderArtifactEntity).existsBy({ grantIdHash })).toBe(false);
 	});
 
-	it('rotates refresh tokens and revokes the complete family after concurrent reuse', async () => {
+	it('allows at most one barrier-synchronized refresh successor and revokes the complete family', async () => {
 		const authorization = await authorize();
 		const initialResponse = await exchangeCode(authorization.callback.searchParams.get('code'), authorization.verifier);
 		const initial = (await initialResponse.json()) as TokenResponse;
-		const responses = await Promise.all([refresh(initial.refresh_token), refresh(initial.refresh_token)]);
-		const bodies = (await Promise.all(responses.map((response) => response.json()))) as Array<
-			TokenResponse | { error: string }
-		>;
-		const successful = bodies.filter((body): body is TokenResponse => 'access_token' in body);
+		const initialRefreshToken = initial.refresh_token;
 
-		expect(successful.length).toBeLessThanOrEqual(1);
-		expect(bodies).toContainEqual(expect.objectContaining({ error: 'invalid_grant' }));
+		if (!initialRefreshToken) throw new Error('Expected an initial refresh token');
 
-		for (const tokens of successful) {
-			expect((await refresh(tokens.refresh_token)).status).toBe(400);
+		const artifacts = dataSource.getRepository(McpOAuthProviderArtifactEntity);
+		const initialRefreshArtifact = await artifacts.findOneByOrFail({
+			model: 'RefreshToken',
+			idHash: hash(initialRefreshToken),
+		});
+		const refreshFamilyId = initialRefreshArtifact.refreshFamilyId;
+		const grantIdHash = initialRefreshArtifact.grantIdHash;
+
+		if (!refreshFamilyId || !grantIdHash) throw new Error('Expected the initial refresh token family and grant');
+
+		const upsertSpy = jest.spyOn(artifacts, 'upsert');
+		const enterConsumeBarrier = createBarrier(2);
+		let consumeAttempts = 0;
+		let markSuccessorStored = (): void => undefined;
+		const successorStored = new Promise<void>((resolve) => {
+			markSuccessorStored = resolve;
+		});
+		const lifecycleHook = jest.fn(async (context: Parameters<typeof artifactLifecycleHook>[0]): Promise<void> => {
+			if (context.model !== 'RefreshToken') return;
+
+			if (context.phase === 'before-consume') {
+				await enterConsumeBarrier();
+				return;
+			}
+
+			if (context.phase === 'before-consume-transaction') {
+				consumeAttempts += 1;
+
+				if (consumeAttempts === 2) await successorStored;
+				return;
+			}
+
+			if (context.phase === 'after-upsert' && context.refreshFamilyId === refreshFamilyId) markSuccessorStored();
+		});
+		artifactLifecycleHook = lifecycleHook;
+
+		try {
+			const responses = await Promise.all([refresh(initialRefreshToken), refresh(initialRefreshToken)]);
+			const bodies = (await Promise.all(responses.map((response) => response.json()))) as Array<
+				TokenResponse | { error: string }
+			>;
+			const successful = bodies.filter((body): body is TokenResponse => 'access_token' in body);
+			const successorUpserts = upsertSpy.mock.calls.filter(
+				([entity]) => isRecord(entity) && entity.model === 'RefreshToken' && entity.refreshFamilyId === refreshFamilyId,
+			);
+			const Adapter = createMcpOAuthProviderAdapter(dataSource, {} as McpOAuthClientService, {
+				allowTestInMemory: true,
+			});
+			const accessAdapter = new Adapter('AccessToken');
+			const refreshAdapter = new Adapter('RefreshToken');
+
+			expect(responses.every(({ status }) => status < 500)).toBe(true);
+			expect(lifecycleHook).toHaveBeenCalledWith({ phase: 'after-upsert', model: 'RefreshToken', refreshFamilyId });
+			expect(successful.length).toBeLessThanOrEqual(1);
+			expect(successorUpserts).toHaveLength(1);
+			expect(bodies).toContainEqual(expect.objectContaining({ error: 'invalid_grant' }));
+			expect(await artifacts.countBy({ refreshFamilyId })).toBe(0);
+			expect(await dataSource.getRepository(McpOAuthProviderRevokedGrantEntity).existsBy({ grantIdHash })).toBe(true);
+			await expect(accessAdapter.find(initial.access_token)).resolves.toBeUndefined();
+			await expect(refreshAdapter.find(initialRefreshToken)).resolves.toBeUndefined();
+			expect((await refresh(initialRefreshToken)).status).toBe(400);
+
+			for (const tokens of successful) {
+				if (!tokens.refresh_token) throw new Error('Expected a rotated refresh token');
+
+				await expect(accessAdapter.find(tokens.access_token)).resolves.toBeUndefined();
+				await expect(refreshAdapter.find(tokens.refresh_token)).resolves.toBeUndefined();
+				expect((await refresh(tokens.refresh_token)).status).toBe(400);
+			}
+		} finally {
+			artifactLifecycleHook = () => Promise.resolve();
+			upsertSpy.mockRestore();
 		}
 	});
 

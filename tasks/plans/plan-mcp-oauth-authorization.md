@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 6 in progress — runtime lifecycle and stale listen-registration E2E implemented
+**Status:** Phase 6 in progress — runtime lifecycle and concurrent refresh replay E2E implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -414,7 +414,7 @@ amend ADR 0002.
       effective read, write, or trigger scope.
 - [x] E2E: pause a listen request after authentication, complete a matching artifact revocation or scope reduction,
       then resume registration and prove the stale request cannot open after invalidation success.
-- [ ] E2E: submit the same refresh token concurrently behind a synchronization barrier; prove at most one successor is
+- [x] E2E: submit the same refresh token concurrently behind a synchronization barrier; prove at most one successor is
       stored, the reuse loser revokes the entire family including that successor, and no fork remains usable.
 - [x] E2E: switch OAuth off with active OAuth and static subscriptions; prove new OAuth traffic is rejected and OAuth
       streams and artifacts are invalidated before success while static streams remain open, then prove re-enable
