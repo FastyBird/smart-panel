@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 6 in progress — runtime route-set, switch-off subscription, and stale-artifact lifecycle E2E implemented
+**Status:** Phase 6 in progress — runtime lifecycle and stale listen-registration E2E implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -412,7 +412,7 @@ amend ADR 0002.
       grant expiry, client/grant/access-token/refresh-family revocation, awaited approver demotion/deletion
       invalidation, global server-secret rotation, and each module/client/grant scope reduction that removes a stream's
       effective read, write, or trigger scope.
-- [ ] E2E: pause a listen request after authentication, complete a matching artifact revocation or scope reduction,
+- [x] E2E: pause a listen request after authentication, complete a matching artifact revocation or scope reduction,
       then resume registration and prove the stale request cannot open after invalidation success.
 - [ ] E2E: submit the same refresh token concurrently behind a synchronization barrier; prove at most one successor is
       stored, the reuse loser revokes the entire family including that successor, and no fork remains usable.
