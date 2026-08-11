@@ -1,20 +1,27 @@
 import fastify, { FastifyInstance } from 'fastify';
 import { RequestListener } from 'node:http';
+import { Repository } from 'typeorm';
 
 import { ConfigService } from '../src/modules/config/services/config.service';
+import { ModuleConfigMutationRegistryService } from '../src/modules/config/services/module-config-mutation-registry.service';
+import { UpdateMcpConfigDto } from '../src/modules/mcp/dto/update-config.dto';
+import { McpOAuthServerStateEntity } from '../src/modules/mcp/entities/mcp-oauth.entity';
 import {
+	MCP_MODULE_NAME,
 	MCP_OAUTH_AUTHORIZATION_PATH,
 	MCP_OAUTH_AUTHORIZATION_SERVER_METADATA_PATH,
 	MCP_OAUTH_PROTECTED_RESOURCE_METADATA_PATH,
 	MCP_OAUTH_REVOCATION_PATH,
 	MCP_OAUTH_TOKEN_PATH,
 } from '../src/modules/mcp/mcp.constants';
+import { McpConfigModel } from '../src/modules/mcp/models/config.model';
 import { McpOAuthProviderFactory, McpOAuthProviderRuntime } from '../src/modules/mcp/oauth/mcp-oauth-provider.factory';
 import { McpOAuthPublicUrls } from '../src/modules/mcp/oauth/mcp-oauth.types';
 import { McpAuditService } from '../src/modules/mcp/services/mcp-audit.service';
 import { McpOAuthBootstrapService } from '../src/modules/mcp/services/mcp-oauth-bootstrap.service';
 import { McpOAuthGlobalInvalidationService } from '../src/modules/mcp/services/mcp-oauth-global-invalidation.service';
 import { McpOAuthLifecycleService } from '../src/modules/mcp/services/mcp-oauth-lifecycle.service';
+import { McpOAuthModuleConfigMutationService } from '../src/modules/mcp/services/mcp-oauth-module-config-mutation.service';
 import { McpOAuthProxyPolicyService } from '../src/modules/mcp/services/mcp-oauth-proxy-policy.service';
 import {
 	MCP_OAUTH_REQUIRED_READINESS_CONTROLS,
@@ -25,6 +32,7 @@ import { McpOAuthResourceServerService } from '../src/modules/mcp/services/mcp-o
 import { McpOAuthRouteGateService } from '../src/modules/mcp/services/mcp-oauth-route-gate.service';
 import { McpOAuthRuntimeService } from '../src/modules/mcp/services/mcp-oauth-runtime.service';
 import { McpOAuthSwitchOffService } from '../src/modules/mcp/services/mcp-oauth-switch-off.service';
+import { McpSubscriptionRegistryService } from '../src/modules/mcp/services/mcp-subscription-registry.service';
 
 type RouteMethod = 'GET' | 'OPTIONS' | 'POST';
 
@@ -96,9 +104,17 @@ describe('MCP OAuth runtime route lifecycle', () => {
 			{ create: createRuntime } as unknown as McpOAuthProviderFactory,
 			routeGate,
 		);
-		const config = { enabled: true, oauthEnabled: false };
+		const config = Object.assign(new McpConfigModel(), {
+			enabled: true,
+			oauthEnabled: false,
+			oauthPublicBaseUrl: urls.publicBaseUrl,
+		});
+		const configService = {
+			getModuleConfig: jest.fn(() => config),
+			reload: jest.fn(),
+		};
 		const lifecycle = new McpOAuthLifecycleService(
-			{ getModuleConfig: jest.fn(() => config) } as unknown as ConfigService,
+			configService as unknown as ConfigService,
 			readiness,
 			routeGate,
 			runtime,
@@ -121,12 +137,43 @@ describe('MCP OAuth runtime route lifecycle', () => {
 			expect(() => runtime.getActive()).toThrow('The MCP OAuth route gate is closed');
 			await persist();
 		});
+		const auditService = {
+			recordOAuthAuthorizationInvalidation: jest.fn(),
+			recordSubscriptionClosed: jest.fn(),
+			recordSubscriptionOpened: jest.fn(),
+		};
+		const globalInvalidation = {
+			invalidate,
+			invalidateAll: jest.fn(),
+		};
 		const switchOff = new McpOAuthSwitchOffService(
 			routeGate,
 			runtime,
-			{ invalidate } as unknown as McpOAuthGlobalInvalidationService,
-			{ recordOAuthAuthorizationInvalidation: jest.fn() } as unknown as McpAuditService,
+			globalInvalidation as unknown as McpOAuthGlobalInvalidationService,
+			auditService as unknown as McpAuditService,
 		);
+		const moduleConfigMutation = new McpOAuthModuleConfigMutationService(
+			configService as unknown as ConfigService,
+			{} as Repository<McpOAuthServerStateEntity>,
+			new McpSubscriptionRegistryService(auditService as unknown as McpAuditService),
+			globalInvalidation as unknown as McpOAuthGlobalInvalidationService,
+			auditService as unknown as McpAuditService,
+			routeGate,
+			lifecycle,
+			switchOff,
+		);
+		const moduleConfigMutations = new ModuleConfigMutationRegistryService();
+		moduleConfigMutations.register<UpdateMcpConfigDto>(MCP_MODULE_NAME, (update, commit) =>
+			moduleConfigMutation.update(update, commit),
+		);
+		const updateOAuth = (oauthEnabled: boolean): Promise<void> =>
+			moduleConfigMutations.execute(
+				MCP_MODULE_NAME,
+				Object.assign(new UpdateMcpConfigDto(), { oauth_enabled: oauthEnabled }),
+				() => {
+					config.oauthEnabled = oauthEnabled;
+				},
+			);
 
 		server = fastify();
 		bootstrap.register(server);
@@ -137,24 +184,18 @@ describe('MCP OAuth runtime route lifecycle', () => {
 		await expectRouteSet(origin, 503);
 		expect(providerRequests).toEqual([]);
 
-		await lifecycle.reconfigureInternal(() => {
-			config.oauthEnabled = true;
-		});
+		await updateOAuth(true);
 
 		await expectRouteSet(origin, 200, 1);
 		expect(createRuntime).toHaveBeenCalledTimes(1);
 
-		await switchOff.disableInternal(() => {
-			config.oauthEnabled = false;
-		});
+		await updateOAuth(false);
 
 		await expectRouteSet(origin, 503);
 		expect(invalidate).toHaveBeenCalledWith(['oauthEnabledGeneration'], expect.any(Function));
 		expect(createRuntime).toHaveBeenCalledTimes(1);
 
-		await lifecycle.reconfigureInternal(() => {
-			config.oauthEnabled = true;
-		});
+		await updateOAuth(true);
 
 		await expectRouteSet(origin, 200, 2);
 		expect(createRuntime).toHaveBeenCalledTimes(2);
