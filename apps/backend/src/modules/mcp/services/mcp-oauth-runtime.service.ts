@@ -6,12 +6,17 @@ import {
 	McpOAuthProviderRuntime,
 } from '../oauth/mcp-oauth-provider.factory';
 
+import { McpOAuthRouteGateService } from './mcp-oauth-route-gate.service';
+
 @Injectable()
 export class McpOAuthRuntimeService {
 	private runtime: McpOAuthProviderRuntime | null = null;
 	private activation: Promise<McpOAuthProviderRuntime> | null = null;
 
-	constructor(private readonly providerFactory: McpOAuthProviderFactory) {}
+	constructor(
+		private readonly providerFactory: McpOAuthProviderFactory,
+		private readonly routeGate: McpOAuthRouteGateService,
+	) {}
 
 	async activateInternal(options: McpOAuthProviderFactoryOptions = {}): Promise<McpOAuthProviderRuntime> {
 		if (this.runtime) return this.runtime;
@@ -26,6 +31,8 @@ export class McpOAuthRuntimeService {
 	}
 
 	getActive(): McpOAuthProviderRuntime {
+		this.routeGate.assertOpen();
+
 		if (!this.runtime) {
 			throw new ServiceUnavailableException('The internal MCP OAuth route gate is closed');
 		}

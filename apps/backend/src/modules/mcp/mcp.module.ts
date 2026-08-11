@@ -71,8 +71,11 @@ import { McpOAuthManagementService } from './services/mcp-oauth-management.servi
 import { McpOAuthModuleConfigMutationService } from './services/mcp-oauth-module-config-mutation.service';
 import { McpOAuthProxyPolicyService } from './services/mcp-oauth-proxy-policy.service';
 import { McpOAuthPublicUrlService } from './services/mcp-oauth-public-url.service';
+import { McpOAuthReadinessRegistrationService } from './services/mcp-oauth-readiness-registration.service';
+import { McpOAuthReadinessService } from './services/mcp-oauth-readiness.service';
 import { McpOAuthRefreshTokenService } from './services/mcp-oauth-refresh-token.service';
 import { McpOAuthResourceServerService } from './services/mcp-oauth-resource-server.service';
+import { McpOAuthRouteGateService } from './services/mcp-oauth-route-gate.service';
 import { McpOAuthRuntimeService } from './services/mcp-oauth-runtime.service';
 import { McpPolicyService } from './services/mcp-policy.service';
 import { McpServerService } from './services/mcp-server.service';
@@ -140,8 +143,11 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpOAuthProxyPolicyService,
 		McpOAuthProviderFactory,
 		McpOAuthPublicUrlService,
+		McpOAuthReadinessRegistrationService,
+		McpOAuthReadinessService,
 		McpOAuthRefreshTokenService,
 		McpOAuthResourceServerService,
+		McpOAuthRouteGateService,
 		McpOAuthRuntimeService,
 		McpPolicyService,
 		McpServerService,
@@ -173,8 +179,10 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		McpOAuthProxyPolicyService,
 		McpOAuthProviderFactory,
 		McpOAuthPublicUrlService,
+		McpOAuthReadinessService,
 		McpOAuthRefreshTokenService,
 		McpOAuthResourceServerService,
+		McpOAuthRouteGateService,
 		McpOAuthRuntimeService,
 		McpPolicyService,
 		McpServerService,
