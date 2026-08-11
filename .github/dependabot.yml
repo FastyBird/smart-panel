@@ -4,4 +4,8 @@ updates:
     directory: '/'
     schedule:
       interval: 'daily'
-    target-branch: dev
+    # Emits `chore(deps): bump ...`, which satisfies the PR title convention
+    # enforced by .github/workflows/lint-pr.yml. See CONTRIBUTING.md.
+    commit-message:
+      prefix: 'chore'
+      include: 'scope'

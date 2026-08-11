@@ -181,8 +181,48 @@ When implementing features:
 ## Key Rules
 
 1. **NEVER push directly to main.** All changes must go through a feature branch and Pull Request — no exceptions, not even for "quick fixes" or lint fixes. Only push to main if the user explicitly requests it.
-2. Respect modular architecture — avoid "god services" mixing multiple concerns.
-3. Prefer existing patterns, helpers, and abstractions over inventing new ones.
-4. Do not introduce new dependencies without a strong reason.
-5. Pay special attention to: auth, error handling, timeouts on external calls, data validation.
-6. Migration policy: always create incremental migration files for schema changes (e.g., `1000000000002-AddTokenLastUsedAt.ts`). Never modify the initial migration — alpha releases are deployed and existing installations have already run it.
+2. **Commit messages and PR titles are `<type>(<scope>): <subject>`, with the scope required.** Enforced by `commitlint` locally and `lint-pr.yml` in CI. The PR title becomes the squash commit on `main` and is rendered verbatim into release notes, so it has to be right. See [Commit and PR titles](#commit-and-pr-titles) below and [CONTRIBUTING.md](CONTRIBUTING.md).
+3. Respect modular architecture — avoid "god services" mixing multiple concerns.
+4. Prefer existing patterns, helpers, and abstractions over inventing new ones.
+5. Do not introduce new dependencies without a strong reason.
+6. Pay special attention to: auth, error handling, timeouts on external calls, data validation.
+7. Migration policy: always create incremental migration files for schema changes (e.g., `1000000000002-AddTokenLastUsedAt.ts`). Never modify the initial migration — alpha releases are deployed and existing installations have already run it.
+
+## Commit and PR titles
+
+```
+<type>(<scope>): <subject>
+```
+
+**Types:** `feat` `fix` `docs` `style` `refactor` `test` `chore` `perf` `ci` `build` `revert`
+
+**Scopes** — required, closed list. The scope is the *surface* changed, not the feature domain:
+
+| Scope | Covers |
+|---|---|
+| `backend` | `apps/backend/**` |
+| `admin` | `apps/admin/**` |
+| `panel` | `apps/panel/**` |
+| `website` | `apps/website/**` |
+| `sdk` | `packages/**` |
+| `installer` | `build/**` |
+| `spec` | `spec/**` |
+| `infra` | `docker/**`, `docker-compose.yml`, `Makefile`, `bin/**`, root workspace tooling |
+| `ci` | `.github/**` |
+| `deps` | Dependency bumps |
+| `docs` | `docs/**`, root `*.md` |
+| `tasks` | `tasks/**` |
+| `cross` | Genuinely cross-cutting |
+
+**Subject:** starts lowercase (acronyms later are fine — `add MCP OAuth …` is valid), no trailing period, imperative mood, whole header ≤ 100 characters.
+
+**Breaking changes:** `feat(backend)!: …`, and add the `breaking change` label — release-drafter categorises by label, not by the `!` marker.
+
+```
+feat(backend): add MCP OAuth artifact administration
+fix(admin): recover the websocket after the machine wakes from sleep
+docs(tasks): close the virtual devices epic
+chore(cross): align PR workflow docs and automation
+```
+
+Common mistakes: omitting the scope; using a domain (`mcp`, `energy`, `devices`) instead of a surface; starting the subject with a capital; using `security`, `feature` or `doc` as a type. Adding a scope means editing `commitlint.config.js`, `.github/workflows/lint-pr.yml` and `CONTRIBUTING.md` together.
