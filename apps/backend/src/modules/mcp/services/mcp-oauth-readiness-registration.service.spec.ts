@@ -8,6 +8,7 @@ import { McpOAuthManagementService } from './mcp-oauth-management.service';
 import { McpOAuthModuleConfigMutationService } from './mcp-oauth-module-config-mutation.service';
 import { McpOAuthReadinessRegistrationService } from './mcp-oauth-readiness-registration.service';
 import { McpOAuthReadinessControl, McpOAuthReadinessService } from './mcp-oauth-readiness.service';
+import { McpOAuthSwitchOffService } from './mcp-oauth-switch-off.service';
 import { McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
 
 describe('McpOAuthReadinessRegistrationService', () => {
@@ -23,6 +24,7 @@ describe('McpOAuthReadinessRegistrationService', () => {
 			{} as McpOAuthModuleConfigMutationService,
 			{} as McpOAuthManagementService,
 			{} as McpAuditService,
+			{} as McpOAuthSwitchOffService,
 		);
 
 		service.onModuleInit();
@@ -38,13 +40,11 @@ describe('McpOAuthReadinessRegistrationService', () => {
 			McpOAuthReadinessControl.ARTIFACT_ISSUANCE_GATE,
 			McpOAuthReadinessControl.PUBLIC_IDENTITY_ROTATION,
 			McpOAuthReadinessControl.SERVER_SECRET_ROTATION,
+			McpOAuthReadinessControl.OAUTH_SWITCH_OFF_INVALIDATION,
 			McpOAuthReadinessControl.ADMIN_REVOCATION,
 			McpOAuthReadinessControl.AUDIT_HOOKS,
 			McpOAuthReadinessControl.ENDPOINT_RATE_LIMITS,
 		]);
-		expect(readiness.snapshot.missing).toEqual([
-			McpOAuthReadinessControl.OAUTH_SWITCH_OFF_INVALIDATION,
-			McpOAuthReadinessControl.COMPLETE_ROUTE_SET,
-		]);
+		expect(readiness.snapshot.missing).toEqual([McpOAuthReadinessControl.COMPLETE_ROUTE_SET]);
 	});
 });

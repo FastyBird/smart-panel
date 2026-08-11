@@ -11,7 +11,9 @@ import { McpOAuthRouteGateService } from './mcp-oauth-route-gate.service';
 @Injectable()
 export class McpOAuthRuntimeService {
 	private runtime: McpOAuthProviderRuntime | null = null;
-	private activation: Promise<McpOAuthProviderRuntime> | null = null;
+	private activation: { generation: number; promise: Promise<McpOAuthProviderRuntime> } | null = null;
+	private activationGeneration = 0;
+	private activationBlocked = false;
 
 	constructor(
 		private readonly providerFactory: McpOAuthProviderFactory,
@@ -19,14 +21,28 @@ export class McpOAuthRuntimeService {
 	) {}
 
 	async activateInternal(options: McpOAuthProviderFactoryOptions = {}): Promise<McpOAuthProviderRuntime> {
+		if (this.activationBlocked) {
+			throw new ServiceUnavailableException('MCP OAuth provider activation is disabled');
+		}
+
 		if (this.runtime) return this.runtime;
-		this.activation ??= this.providerFactory.create(options);
+		const activation =
+			this.activation?.generation === this.activationGeneration
+				? this.activation
+				: { generation: this.activationGeneration, promise: this.providerFactory.create(options) };
+		this.activation = activation;
 
 		try {
-			this.runtime = await this.activation;
-			return this.runtime;
+			const runtime = await activation.promise;
+
+			if (activation.generation !== this.activationGeneration) {
+				throw new ServiceUnavailableException('MCP OAuth provider activation was cancelled');
+			}
+
+			this.runtime = runtime;
+			return runtime;
 		} finally {
-			this.activation = null;
+			if (this.activation === activation) this.activation = null;
 		}
 	}
 
@@ -41,6 +57,12 @@ export class McpOAuthRuntimeService {
 	}
 
 	deactivateInternal(): void {
+		this.activationBlocked = true;
+		this.activationGeneration += 1;
 		this.runtime = null;
+	}
+
+	allowActivationInternal(): void {
+		this.activationBlocked = false;
 	}
 }

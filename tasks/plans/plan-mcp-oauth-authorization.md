@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 5 in progress — embedded OAuth endpoint rate limits implemented
+**Status:** Phase 5 in progress — OAuth switch-off invalidation foundation implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -304,6 +304,18 @@ amend ADR 0002.
       processing or recording artifact state.
 - [x] Register endpoint throttling in the sealed readiness inventory while keeping OAuth closed because switch-off
       invalidation and the complete bootstrap route set are still absent.
+
+### Phase 5s — OAuth switch-off invalidation foundation
+
+- [x] Add one internal switch-off coordinator that synchronously closes the shared route gate and deactivates the
+      embedded provider before starting persistent invalidation; never reopen the gate automatically after failure.
+- [x] Block new provider activation after deactivation and cancel in-flight activation by generation so no provider
+      created during or after switch-off can be reused until an explicit internal re-enable step allows activation.
+- [x] Advance the persistent OAuth-enabled generation through the authoritative global invalidation boundary, revoke
+      all OAuth artifacts, and close only OAuth subscriptions while preserving static MCP streams.
+- [x] Audit completed and configuration-persistence-partial switch-off outcomes without reporting success when
+      invalidation itself fails, and register the coordinator in the sealed readiness inventory. The complete route
+      set remains the only missing readiness control, so the user-facing switch stays absent.
 
 ### Remaining Phase 5 controls
 

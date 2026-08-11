@@ -9,6 +9,7 @@ import { McpOAuthGlobalInvalidationService } from './mcp-oauth-global-invalidati
 import { McpOAuthManagementService } from './mcp-oauth-management.service';
 import { McpOAuthModuleConfigMutationService } from './mcp-oauth-module-config-mutation.service';
 import { McpOAuthReadinessControl, McpOAuthReadinessService } from './mcp-oauth-readiness.service';
+import { McpOAuthSwitchOffService } from './mcp-oauth-switch-off.service';
 import { McpSubscriptionRegistryService } from './mcp-subscription-registry.service';
 
 @Injectable()
@@ -23,6 +24,7 @@ export class McpOAuthReadinessRegistrationService implements OnModuleInit {
 		private readonly moduleConfigMutation: McpOAuthModuleConfigMutationService,
 		private readonly management: McpOAuthManagementService,
 		private readonly audit: McpAuditService,
+		private readonly switchOff: McpOAuthSwitchOffService,
 	) {}
 
 	onModuleInit(): void {
@@ -38,6 +40,7 @@ export class McpOAuthReadinessRegistrationService implements OnModuleInit {
 			[McpOAuthReadinessControl.ADMIN_REVOCATION, this.management],
 			[McpOAuthReadinessControl.AUDIT_HOOKS, this.audit],
 			[McpOAuthReadinessControl.ENDPOINT_RATE_LIMITS, this.endpointRateLimit],
+			[McpOAuthReadinessControl.OAUTH_SWITCH_OFF_INVALIDATION, this.switchOff],
 		]);
 
 		this.readiness.register(...registrations.keys());

@@ -32,6 +32,7 @@ export type McpOAuthInvalidationReason =
 	| 'module_disabled'
 	| 'module_enabled_reconciliation'
 	| 'module_policy_changed'
+	| 'oauth_disabled'
 	| 'public_identity_changed';
 export type McpOAuthAuthorizationProfile = 'all' | 'oauth';
 
