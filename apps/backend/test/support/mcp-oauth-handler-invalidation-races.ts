@@ -38,6 +38,7 @@ import { McpOAuthClientService } from '../../src/modules/mcp/services/mcp-oauth-
 import { McpOAuthEndpointRateLimitService } from '../../src/modules/mcp/services/mcp-oauth-endpoint-rate-limit.service';
 import { McpOAuthGlobalInvalidationService } from '../../src/modules/mcp/services/mcp-oauth-global-invalidation.service';
 import { McpOAuthLifecycleService } from '../../src/modules/mcp/services/mcp-oauth-lifecycle.service';
+import { McpOAuthManagementService } from '../../src/modules/mcp/services/mcp-oauth-management.service';
 import { McpOAuthModuleConfigMutationService } from '../../src/modules/mcp/services/mcp-oauth-module-config-mutation.service';
 import { McpOAuthProviderMaterialService } from '../../src/modules/mcp/services/mcp-oauth-provider-material.service';
 import { McpOAuthPublicUrlService } from '../../src/modules/mcp/services/mcp-oauth-public-url.service';
@@ -96,7 +97,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const isStringArray = (value: unknown): value is string[] =>
 	Array.isArray(value) && value.every((item) => typeof item === 'string');
 
-export async function runMcpOAuthHandlerSwitchOffRace(): Promise<void> {
+export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 	const dataSource = new DataSource({
 		type: 'sqlite',
 		database: ':memory:',
@@ -250,6 +251,24 @@ export async function runMcpOAuthHandlerSwitchOffRace(): Promise<void> {
 					config.oauthEnabled = oauthEnabled;
 				},
 			);
+		const updatePublicIdentity = (publicBaseUrl: string): Promise<void> =>
+			moduleConfigMutations.execute(
+				MCP_MODULE_NAME,
+				Object.assign(new UpdateMcpConfigDto(), { oauth_public_base_url: publicBaseUrl }),
+				() => {
+					config.oauthPublicBaseUrl = publicBaseUrl;
+				},
+			);
+		const management = new McpOAuthManagementService(
+			dataSource.getRepository(McpOAuthGrantEntity),
+			dataSource.getRepository(McpOAuthProviderArtifactEntity),
+			dataSource,
+			configService as unknown as ConfigService,
+			clientsService,
+			subscriptions,
+			globalInvalidation,
+			auditService,
+		);
 		const persistGrant = async (providerGrantId: string): Promise<void> => {
 			const state = await dataSource
 				.getRepository(McpOAuthServerStateEntity)
@@ -334,6 +353,32 @@ export async function runMcpOAuthHandlerSwitchOffRace(): Promise<void> {
 
 			return result;
 		};
+		const raceGlobalInvalidation = async <T>(
+			model: string,
+			startHandler: () => Promise<T>,
+			startInvalidation: () => Promise<void>,
+			closesRouteGate: boolean,
+		): Promise<T> => {
+			const pause = armPause(model);
+			const handler = startHandler();
+			await pause.entered;
+			let invalidationSettled = false;
+			const invalidation = startInvalidation().finally(() => {
+				invalidationSettled = true;
+			});
+
+			if (closesRouteGate) await waitFor(() => !routeGate.isOpen);
+			else expect(routeGate.isOpen).toBe(true);
+			expect(await settlesWithin(invalidation, 25)).toBe(false);
+			expect(invalidationSettled).toBe(false);
+			pause.release();
+			const result = await handler;
+			await invalidation;
+			beforeArtifactUpsert = () => Promise.resolve();
+			expect(await dataSource.getRepository(McpOAuthProviderArtifactEntity).count()).toBe(0);
+
+			return result;
+		};
 
 		const authorization = await raceSwitchOff('AuthorizationCode', () => authorize(urls));
 		const authorizationCode = requireAuthorizationCode(authorization.callback);
@@ -366,6 +411,68 @@ export async function runMcpOAuthHandlerSwitchOffRace(): Promise<void> {
 		await updateOAuth(true);
 		await expect(runtime.getActive().provider.AccessToken.find(refreshedTokens.access_token)).resolves.toBeUndefined();
 		expect((await refresh(urls, requireRefreshToken(refreshedTokens))).status).toBe(400);
+
+		const serverSecretBefore = (
+			await dataSource.getRepository(McpOAuthServerStateEntity).findOneByOrFail({ key: MCP_OAUTH_SERVER_STATE_KEY })
+		).serverSecretVersion;
+		const serverSecretAuthorization = await authorize(urls);
+		const serverSecretResponse = await raceGlobalInvalidation(
+			'AccessToken',
+			() =>
+				exchangeCode(
+					urls,
+					requireAuthorizationCode(serverSecretAuthorization.callback),
+					serverSecretAuthorization.verifier,
+				),
+			() => management.revokeAll(ACCOUNT_ID),
+			false,
+		);
+		const serverSecretTokens = (await serverSecretResponse.json()) as TokenResponse;
+		expect(serverSecretResponse.status).toBe(200);
+		expect(
+			(await dataSource.getRepository(McpOAuthServerStateEntity).findOneByOrFail({ key: MCP_OAUTH_SERVER_STATE_KEY }))
+				.serverSecretVersion,
+		).toBe(serverSecretBefore + 1);
+		await expect(
+			runtime.getActive().provider.AccessToken.find(serverSecretTokens.access_token),
+		).resolves.toBeUndefined();
+		expect((await refresh(urls, requireRefreshToken(serverSecretTokens))).status).toBe(400);
+
+		const publicIdentityBefore = (
+			await dataSource.getRepository(McpOAuthServerStateEntity).findOneByOrFail({ key: MCP_OAUTH_SERVER_STATE_KEY })
+		).publicIdentityGeneration;
+		const publicIdentityAuthorization = await authorize(urls);
+		const publicIdentityInitialResponse = await exchangeCode(
+			urls,
+			requireAuthorizationCode(publicIdentityAuthorization.callback),
+			publicIdentityAuthorization.verifier,
+		);
+		const publicIdentityInitialTokens = (await publicIdentityInitialResponse.json()) as TokenResponse;
+		const rotatedPublicIdentity = `${origin}/rotated`;
+		const publicIdentityResponse = await raceGlobalInvalidation(
+			'AccessToken',
+			() => refresh(urls, requireRefreshToken(publicIdentityInitialTokens)),
+			() => updatePublicIdentity(rotatedPublicIdentity),
+			true,
+		);
+		const publicIdentityTokens = (await publicIdentityResponse.json()) as TokenResponse;
+		expect(publicIdentityResponse.status).toBe(200);
+		expect(config.oauthPublicBaseUrl).toBe(rotatedPublicIdentity);
+		expect(routeGate.isOpen).toBe(true);
+		expect(
+			(await dataSource.getRepository(McpOAuthServerStateEntity).findOneByOrFail({ key: MCP_OAUTH_SERVER_STATE_KEY }))
+				.publicIdentityGeneration,
+		).toBe(publicIdentityBefore + 1);
+		await expect(
+			runtime.getActive().provider.AccessToken.find(publicIdentityTokens.access_token),
+		).resolves.toBeUndefined();
+		expect((await refresh(urls, requireRefreshToken(publicIdentityTokens))).status).toBe(400);
+		await updatePublicIdentity(origin);
+		expect(config.oauthPublicBaseUrl).toBe(origin);
+		await expect(
+			runtime.getActive().provider.AccessToken.find(publicIdentityTokens.access_token),
+		).resolves.toBeUndefined();
+		expect((await refresh(urls, requireRefreshToken(publicIdentityTokens))).status).toBe(400);
 	} finally {
 		releaseActivePause();
 		await new Promise<void>((resolve) => server.close(() => resolve()));

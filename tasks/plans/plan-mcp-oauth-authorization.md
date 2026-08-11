@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 6 in progress — runtime lifecycle, refresh replay, and switch-off handler/adapter race coverage implemented
+**Status:** Phase 6 in progress — runtime lifecycle, refresh replay, switch-off, and global-rotation race coverage implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -427,6 +427,11 @@ amend ADR 0002.
 - [ ] E2E: repeat the barrier-synchronized artifact-commit race for server-secret rotation, public-identity rotation,
       client disable/re-enable, grant revocation, module/client/grant scope contraction/expansion, and approver
       demotion/restoration; prove stale commits fail and later state restoration never revives an artifact.
+  - [x] Provider integration: cover server-secret and public-identity rotation against paused token handlers; prove each
+        rotation waits for the serialized commit, revokes its returned artifacts before success, and restoring the old
+        public identity never revives them.
+  - [ ] Cover client disable/re-enable, grant revocation, module/client/grant scope contraction/expansion, and approver
+        demotion/restoration.
 - [ ] E2E: rotate the public OAuth identity and server secret with simultaneous OAuth and static subscriptions; prove
       only OAuth artifacts/streams are invalidated and static streams remain open. Separately prove MCP-module disable
       closes both kinds.
