@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 5 in progress — complete bootstrap OAuth route-set foundation implemented
+**Status:** Phase 6 in progress — runtime route-set lifecycle E2E implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -428,8 +428,10 @@ amend ADR 0002.
 - [ ] E2E: rotate the public OAuth identity and server secret with simultaneous OAuth and static subscriptions; prove
       only OAuth artifacts/streams are invalidated and static streams remain open. Separately prove MCP-module disable
       closes both kinds.
-- [ ] E2E: start disabled, enable without restarting, disable without restarting, and re-enable; prove the
-      bootstrap-registered route set is uniformly unreachable/reachable behind one gate and never partially exposed.
+- [x] E2E: start disabled, enable without restarting, disable without restarting, and re-enable; prove the
+      bootstrap-registered route set is uniformly unreachable/reachable behind one gate, never partially exposed, and
+      replaces the deactivated provider runtime before reopening.
+- [ ] E2E: prove readiness-gated re-enable never makes OAuth artifacts issued before switch-off usable again.
 - [ ] Reverse-proxy E2E: explicit external prefix, hostile forwarded headers, untrusted proxy, trusted proxy, public URL
       change, and rollback.
 - [ ] Codex smoke: discovery, authorization, list/call, refresh, scope failure, and revocation; record exact version and
