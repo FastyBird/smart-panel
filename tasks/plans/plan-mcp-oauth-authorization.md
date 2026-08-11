@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 6 in progress — runtime lifecycle and concurrent refresh replay E2E implemented
+**Status:** Phase 6 in progress — runtime lifecycle and refresh replay E2E plus switch-off adapter-race coverage implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 

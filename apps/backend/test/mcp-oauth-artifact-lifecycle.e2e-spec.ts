@@ -92,7 +92,7 @@ const getArtifactProvider = (provider: McpOAuthProviderRuntime['provider']): Art
 	provider as unknown as ArtifactProvider;
 
 describe('MCP OAuth artifact lifecycle', () => {
-	it('never reactivates artifacts issued before readiness-gated switch-off and re-enable', async () => {
+	it('rejects paused provider-adapter commits and never reactivates pre-switch-off artifacts after re-enable', async () => {
 		const dataSource = new DataSource({
 			type: 'sqlite',
 			database: ':memory:',
@@ -119,6 +119,8 @@ describe('MCP OAuth artifact lifecycle', () => {
 		const auditService = new McpAuditService();
 		const subscriptions = new McpSubscriptionRegistryService(auditService);
 		let wireSubscriptions: WireSubscriptions | undefined;
+		let releasePausedArtifacts = (): void => undefined;
+		let pendingArtifactCommits: Promise<PromiseSettledResult<void>[]> | undefined;
 
 		try {
 			const user = await dataSource.getRepository(UserEntity).save({
@@ -181,9 +183,12 @@ describe('MCP OAuth artifact lifecycle', () => {
 				getModuleConfig: jest.fn(() => config),
 				reload: jest.fn(),
 			};
+			let beforeArtifactUpsert = (_context: { model: string; refreshFamilyId: string | null }): Promise<void> =>
+				Promise.resolve();
 			const Adapter = createMcpOAuthProviderAdapter(dataSource, {} as McpOAuthClientService, {
 				allowTestInMemory: true,
 				artifactReuseError: () => new Error('The OAuth artifact is no longer active'),
+				beforeArtifactUpsert: (context) => beforeArtifactUpsert(context),
 			});
 			const readiness = new McpOAuthReadinessService();
 			readiness.register(...MCP_OAUTH_REQUIRED_READINESS_CONTROLS);
@@ -299,7 +304,67 @@ describe('MCP OAuth artifact lifecycle', () => {
 			await expect(initialProvider.accessTokens.find(rawAccessToken)).resolves.toBeDefined();
 			await expect(initialProvider.refreshTokens.find(rawRefreshToken)).resolves.toBeDefined();
 
+			const lateAuthorizationCode = 'authorization-code-racing-switch-off';
+			const lateAccessToken = 'access-token-racing-switch-off';
+			const lateRefreshToken = 'refresh-token-racing-switch-off';
+			const pausedModels = new Set<string>();
+			let signalAllArtifactsPaused = (): void => undefined;
+			const allArtifactsPaused = new Promise<void>((resolve) => {
+				signalAllArtifactsPaused = resolve;
+			});
+			const allowArtifactCommits = new Promise<void>((resolve) => {
+				releasePausedArtifacts = resolve;
+			});
+			beforeArtifactUpsert = async ({ model }): Promise<void> => {
+				if (!['AuthorizationCode', 'AccessToken', 'RefreshToken'].includes(model)) return;
+
+				pausedModels.add(model);
+
+				if (pausedModels.size === 3) signalAllArtifactsPaused();
+				await allowArtifactCommits;
+			};
+			pendingArtifactCommits = Promise.allSettled([
+				initialProvider.authorizationCodes.upsert(
+					lateAuthorizationCode,
+					{ ...basePayload, kind: 'AuthorizationCode' },
+					60,
+				),
+				initialProvider.accessTokens.upsert(
+					lateAccessToken,
+					{ ...basePayload, gty: 'authorization_code', kind: 'AccessToken' },
+					600,
+				),
+				initialProvider.refreshTokens.upsert(
+					lateRefreshToken,
+					{
+						...basePayload,
+						gty: 'authorization_code refresh_token',
+						kind: 'RefreshToken',
+						rotations: 1,
+					},
+					3_600,
+				),
+			]);
+
+			await allArtifactsPaused;
+			expect(pausedModels).toEqual(new Set(['AuthorizationCode', 'AccessToken', 'RefreshToken']));
 			await updateOAuth(false);
+			releasePausedArtifacts();
+			beforeArtifactUpsert = () => Promise.resolve();
+			const staleCommits = await pendingArtifactCommits;
+
+			expect(staleCommits).toHaveLength(3);
+			for (const result of staleCommits) {
+				expect(result.status).toBe('rejected');
+
+				if (result.status !== 'rejected') throw new Error('Expected the stale artifact commit to fail');
+
+				const reason: unknown = result.reason;
+
+				expect(reason).toBeInstanceOf(Error);
+				if (!(reason instanceof Error)) throw new Error('Expected the stale artifact failure to be an Error');
+				expect(reason.message).toBe('The OAuth artifact is no longer active');
+			}
 
 			expect(config.oauthEnabled).toBe(false);
 			expect(routeGate.isOpen).toBe(false);
@@ -345,7 +410,15 @@ describe('MCP OAuth artifact lifecycle', () => {
 			await expect(replacementProvider.authorizationCodes.find(rawAuthorizationCode)).resolves.toBeUndefined();
 			await expect(replacementProvider.accessTokens.find(rawAccessToken)).resolves.toBeUndefined();
 			await expect(replacementProvider.refreshTokens.find(rawRefreshToken)).resolves.toBeUndefined();
+			await expect(replacementProvider.authorizationCodes.find(lateAuthorizationCode)).resolves.toBeUndefined();
+			await expect(replacementProvider.accessTokens.find(lateAccessToken)).resolves.toBeUndefined();
+			await expect(replacementProvider.refreshTokens.find(lateRefreshToken)).resolves.toBeUndefined();
+			await expect(resourceServer.verifyAccessToken(lateAccessToken)).rejects.toThrow(
+				'The MCP OAuth access token is invalid or no longer active',
+			);
 		} finally {
+			releasePausedArtifacts();
+			if (pendingArtifactCommits !== undefined) await pendingArtifactCommits;
 			await wireSubscriptions?.close();
 			await subscriptions.closeAll();
 			await dataSource.destroy();
