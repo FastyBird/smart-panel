@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 6 lifecycle and refresh E2E plus switch-off adapter-race coverage underway
+Status: in progress — Phase 6 lifecycle, refresh, and switch-off handler/adapter race coverage underway
 
 ## 1. Business goal
 
