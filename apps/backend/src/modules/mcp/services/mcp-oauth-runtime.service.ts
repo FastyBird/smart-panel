@@ -13,6 +13,7 @@ export class McpOAuthRuntimeService {
 	private runtime: McpOAuthProviderRuntime | null = null;
 	private activation: { generation: number; promise: Promise<McpOAuthProviderRuntime> } | null = null;
 	private activationGeneration = 0;
+	private activationBlocked = false;
 
 	constructor(
 		private readonly providerFactory: McpOAuthProviderFactory,
@@ -20,6 +21,10 @@ export class McpOAuthRuntimeService {
 	) {}
 
 	async activateInternal(options: McpOAuthProviderFactoryOptions = {}): Promise<McpOAuthProviderRuntime> {
+		if (this.activationBlocked) {
+			throw new ServiceUnavailableException('MCP OAuth provider activation is disabled');
+		}
+
 		if (this.runtime) return this.runtime;
 		const activation =
 			this.activation?.generation === this.activationGeneration
@@ -52,7 +57,12 @@ export class McpOAuthRuntimeService {
 	}
 
 	deactivateInternal(): void {
+		this.activationBlocked = true;
 		this.activationGeneration += 1;
 		this.runtime = null;
+	}
+
+	allowActivationInternal(): void {
+		this.activationBlocked = false;
 	}
 }

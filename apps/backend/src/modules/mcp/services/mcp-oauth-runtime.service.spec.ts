@@ -36,6 +36,7 @@ describe('McpOAuthRuntimeService', () => {
 		service.deactivateInternal();
 
 		expect(() => service.getActive()).toThrow('The internal MCP OAuth route gate is closed');
+		await expect(service.activateInternal()).rejects.toThrow('MCP OAuth provider activation is disabled');
 	});
 
 	it('does not retain an activation that finishes after switch-off', async () => {
@@ -71,6 +72,10 @@ describe('McpOAuthRuntimeService', () => {
 
 		await expect(staleActivation).rejects.toThrow('MCP OAuth provider activation was cancelled');
 		expect(() => service.getActive()).toThrow('The internal MCP OAuth route gate is closed');
+		await expect(service.activateInternal()).rejects.toThrow('MCP OAuth provider activation is disabled');
+
+		service.allowActivationInternal();
+
 		await expect(service.activateInternal()).resolves.toBe(freshRuntime);
 		expect(service.getActive()).toBe(freshRuntime);
 	});

@@ -309,8 +309,8 @@ amend ADR 0002.
 
 - [x] Add one internal switch-off coordinator that synchronously closes the shared route gate and deactivates the
       embedded provider before starting persistent invalidation; never reopen the gate automatically after failure.
-- [x] Cancel in-flight provider activation by generation so a late provider result cannot restore stale runtime state
-      after switch-off.
+- [x] Block new provider activation after deactivation and cancel in-flight activation by generation so no provider
+      created during or after switch-off can be reused until an explicit internal re-enable step allows activation.
 - [x] Advance the persistent OAuth-enabled generation through the authoritative global invalidation boundary, revoke
       all OAuth artifacts, and close only OAuth subscriptions while preserving static MCP streams.
 - [x] Audit completed and configuration-persistence-partial switch-off outcomes without reporting success when
