@@ -101,12 +101,12 @@ export const createSanitizationAliases = (): SanitizationAliases => ({
 
 const registerSourceValues = (value: unknown, aliases: SanitizationAliases): void => {
 	if (typeof value === 'string') {
-		aliases.sourceValues.add(value);
+		aliases.sourceValues.add(value.toLowerCase());
 	} else if (Array.isArray(value)) {
 		value.forEach((item) => registerSourceValues(item, aliases));
 	} else if (isRecord(value)) {
 		Object.entries(value).forEach(([key, nestedValue]) => {
-			aliases.sourceValues.add(key);
+			aliases.sourceValues.add(key.toLowerCase());
 			registerSourceValues(nestedValue, aliases);
 		});
 	}
@@ -126,7 +126,7 @@ const pseudonym = (kind: string, value: string, aliases: SanitizationAliases): s
 	do {
 		sequence += 1;
 		alias = `${kind}-${String(sequence).padStart(6, '0')}`;
-	} while (aliases.sourceValues.has(alias));
+	} while (aliases.sourceValues.has(alias.toLowerCase()));
 
 	aliases.counters.set(kind, sequence);
 	aliases.values.set(key, alias);
@@ -343,7 +343,11 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 	return Object.fromEntries(
 		Object.entries(value).map(([nestedKey, nestedValue]) => {
 			const identifierMapKey =
-				UUID_PATTERN.test(nestedKey) || /^\d+$/.test(nestedKey) || IDENTIFIER_KEY_PATTERN.test(nestedKey);
+				UUID_PATTERN.test(nestedKey) ||
+				/^\d+$/.test(nestedKey) ||
+				/(?:^|[_-])\d+$/.test(nestedKey) ||
+				/^[A-Za-z]+\d+$/.test(nestedKey) ||
+				IDENTIFIER_KEY_PATTERN.test(nestedKey);
 			const privateMapKey = !preserveKeys && identifierMapKey && isDriverMetadata(nextPath);
 			const safeKey = privateMapKey ? pseudonym('id', nestedKey, context.aliases) : nestedKey;
 

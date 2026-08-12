@@ -110,6 +110,7 @@ describe('Homey SHS compatibility probe', () => {
 						nodes: {
 							'opaque-device-id': { reachable: true },
 							'123456789': { reachable: false },
+							'node-42': { enabled: false, reachable: true },
 						},
 						device_id: 'private-driver-device-id',
 						hardware_id: 'private-hardware-id',
@@ -151,9 +152,11 @@ describe('Homey SHS compatibility probe', () => {
 		const sanitizedNodes = (devices[sanitizedDeviceId] as { data: { nodes: Record<string, unknown> } }).data.nodes;
 		const sanitizedData = (devices[sanitizedDeviceId] as { data: Record<string, unknown> }).data;
 
-		expect(Object.keys(sanitizedNodes)).toHaveLength(2);
+		expect(Object.keys(sanitizedNodes)).toHaveLength(3);
 		expect(Object.keys(sanitizedNodes).every((key) => /^id-/.test(key))).toBe(true);
-		expect(Object.values(sanitizedNodes)).toEqual(expect.arrayContaining([{ reachable: true }, { reachable: false }]));
+		expect(Object.values(sanitizedNodes)).toEqual(
+			expect.arrayContaining([{ reachable: true }, { reachable: false }, { enabled: false, reachable: true }]),
+		);
 		expect(Object.values(sanitizedData)).toEqual(expect.arrayContaining([{ reachable: true }, { reachable: false }]));
 		expect(sanitizedData.configuration).toEqual({ enabled: true, threshold: false });
 		expect(() => assertHomeyCaptureSafe({ metadata: {}, systemInfo: {}, zones, devices }, [], ['home'])).not.toThrow();
@@ -169,6 +172,7 @@ describe('Homey SHS compatibility probe', () => {
 		expect(serialized).not.toContain('private-bridge-id');
 		expect(serialized).not.toContain('private-driver-device-id');
 		expect(serialized).not.toContain('opaque-device-id');
+		expect(serialized).not.toContain('node-42');
 		expect(serialized).not.toContain('opaque-direct-id');
 		expect(serialized).not.toContain('"42"');
 		expect(serialized).not.toContain('private-hardware-id');
@@ -224,7 +228,7 @@ describe('Homey SHS compatibility probe', () => {
 			customActivityField: '2026-08-12T20:16:31+02:00',
 		});
 		const collisionSafeDevices = sanitizeHomeyDevices({
-			'device-000001': { id: 'device-000001', name: 'Synthetic source' },
+			'DEVICE-000001': { id: 'DEVICE-000001', name: 'Synthetic source' },
 		});
 
 		expect(sanitized).toEqual({
