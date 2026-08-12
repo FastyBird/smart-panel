@@ -106,12 +106,16 @@ describe('Homey SHS compatibility probe', () => {
 						node: 123_456_789,
 						'opaque-direct-id': { reachable: true },
 						'42': { reachable: false },
-						configuration: { enabled: true, threshold: false },
+						configuration: { button1: true, enabled: true, threshold: false },
 						nodes: {
 							'opaque-device-id': { reachable: true },
 							'123456789': { reachable: false },
 							'node-42': { enabled: false, reachable: true },
+							'42-node': { enabled: true, reachable: false },
+							'node.42': { enabled: false, reachable: false },
+							'0x2a': { enabled: true, reachable: true },
 						},
+						outputs: { output2: { enabled: true } },
 						device_id: 'private-driver-device-id',
 						hardware_id: 'private-hardware-id',
 						accountId: 'private-account-id',
@@ -152,13 +156,14 @@ describe('Homey SHS compatibility probe', () => {
 		const sanitizedNodes = (devices[sanitizedDeviceId] as { data: { nodes: Record<string, unknown> } }).data.nodes;
 		const sanitizedData = (devices[sanitizedDeviceId] as { data: Record<string, unknown> }).data;
 
-		expect(Object.keys(sanitizedNodes)).toHaveLength(3);
+		expect(Object.keys(sanitizedNodes)).toHaveLength(6);
 		expect(Object.keys(sanitizedNodes).every((key) => /^id-/.test(key))).toBe(true);
 		expect(Object.values(sanitizedNodes)).toEqual(
 			expect.arrayContaining([{ reachable: true }, { reachable: false }, { enabled: false, reachable: true }]),
 		);
 		expect(Object.values(sanitizedData)).toEqual(expect.arrayContaining([{ reachable: true }, { reachable: false }]));
-		expect(sanitizedData.configuration).toEqual({ enabled: true, threshold: false });
+		expect(sanitizedData.configuration).toEqual({ button1: true, enabled: true, threshold: false });
+		expect(sanitizedData.outputs).toEqual({ output2: { enabled: true } });
 		expect(() => assertHomeyCaptureSafe({ metadata: {}, systemInfo: {}, zones, devices }, [], ['home'])).not.toThrow();
 
 		expect(serialized).not.toContain('Private Room');
@@ -173,6 +178,9 @@ describe('Homey SHS compatibility probe', () => {
 		expect(serialized).not.toContain('private-driver-device-id');
 		expect(serialized).not.toContain('opaque-device-id');
 		expect(serialized).not.toContain('node-42');
+		expect(serialized).not.toContain('42-node');
+		expect(serialized).not.toContain('node.42');
+		expect(serialized).not.toContain('0x2a');
 		expect(serialized).not.toContain('opaque-direct-id');
 		expect(serialized).not.toContain('"42"');
 		expect(serialized).not.toContain('private-hardware-id');

@@ -19,6 +19,8 @@ const BOUNDED_ADDRESS_KEY_PATTERN =
 const ENDPOINT_KEY_PATTERN = /(?:^|[_-])(?:endpoint|origin|uri|url)$|(?:Endpoint|Origin|Uri|URI|Url|URL)$/;
 const IDENTIFIER_KEY_PATTERN =
 	/(?:^(?:id|ids|identifier|identifiers|uuid|uuids)$|(?:Id|ID|Ids|IDs|Identifier|Identifiers|Uuid|UUID)$|(?:^|[_-])(?:id|ids|identifier|identifiers|uuid|uuids)$)/;
+const CAMEL_CASE_IDENTIFIER_MAP_KEY_PATTERN = /(?:Nodes|Devices|Channels|Endpoints|Components|Instances)$/;
+const BOUNDED_IDENTIFIER_MAP_KEY_PATTERN = /(?:^|[_-])(?:nodes|devices|channels|endpoints|components|instances)$/i;
 const CAMEL_CASE_PERSONAL_KEY_PATTERN = /(?:Name|Note|Title|Label|Email|Username)$/;
 const BOUNDED_PERSONAL_KEY_PATTERN = /(?:^|[_-])(?:name|note|title|label|email|username)$/i;
 const REFERENCE_KEY_PATTERN = /^(?:deviceId|zone|zoneId|parent|homeyId|ownerUri|driverId|userId)$/i;
@@ -219,6 +221,10 @@ const isCapabilityListEntry = (path: string[], rootKind: SanitizerContext['rootK
 
 const isDriverMetadata = (path: string[]): boolean => path.includes('data') || path.includes('settings');
 
+const isDriverIdentifierMap = (key: string, path: string[]): boolean =>
+	isDriverMetadata(path) &&
+	(CAMEL_CASE_IDENTIFIER_MAP_KEY_PATTERN.test(key) || BOUNDED_IDENTIFIER_MAP_KEY_PATTERN.test(key));
+
 const isTimestampKey = (key: string): boolean =>
 	CAMEL_CASE_TIMESTAMP_KEY_PATTERN.test(key) || BOUNDED_TIMESTAMP_KEY_PATTERN.test(key);
 
@@ -339,14 +345,14 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 
 	const nextPath = [...context.path, key];
 	const preserveKeys = isCapabilityMap(nextPath, context.rootKind);
+	const identifierMap = isDriverIdentifierMap(key, nextPath);
 
 	return Object.fromEntries(
 		Object.entries(value).map(([nestedKey, nestedValue]) => {
 			const identifierMapKey =
+				identifierMap ||
 				UUID_PATTERN.test(nestedKey) ||
 				/^\d+$/.test(nestedKey) ||
-				/(?:^|[_-])\d+$/.test(nestedKey) ||
-				/^[A-Za-z]+\d+$/.test(nestedKey) ||
 				IDENTIFIER_KEY_PATTERN.test(nestedKey);
 			const privateMapKey = !preserveKeys && identifierMapKey && isDriverMetadata(nextPath);
 			const safeKey = privateMapKey ? pseudonym('id', nestedKey, context.aliases) : nestedKey;
