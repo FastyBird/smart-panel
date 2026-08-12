@@ -132,8 +132,17 @@ export class WledDeviceMapperService {
 		await this.createDeviceInformationChannel(device, context.info);
 		const lightChannel = await this.createLightChannel(device, context.state);
 		await this.createElectricalPowerChannel(device, context.info, lightChannel?.id);
-		await this.pruneObsoleteSegmentChannels(device, context.state);
 		await this.createSegmentChannels(device, context.state, lightChannel?.id);
+		try {
+			await this.pruneObsoleteSegmentChannels(device, context.state);
+		} catch (error) {
+			// Current device structure is already fully mapped. Treat obsolete-channel cleanup as
+			// best effort so a delete failure cannot trigger rollback after history was pruned.
+			this.logger.warn(`Could not prune obsolete WLED segment channels for device ${device.id}`, {
+				resource: device.id,
+				message: error instanceof Error ? error.message : String(error),
+			});
+		}
 
 		// Set connection state to CONNECTED
 		await this.deviceConnectivityService.setConnectionState(device.id, {

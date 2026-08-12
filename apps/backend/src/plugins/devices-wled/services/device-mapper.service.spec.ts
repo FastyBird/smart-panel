@@ -306,6 +306,21 @@ describe('WledDeviceMapperService', () => {
 			expect(channelsService.remove).toHaveBeenCalledWith('segment-obsolete');
 		});
 
+		it('does not prune segment history when current segment mapping fails', async () => {
+			const mockDevice = createMockDevice('device-1', 'wled-ddeeff', '192.168.1.100');
+			const obsoleteSegment = createMockChannel('segment-obsolete', 'segment_1', mockDevice.id);
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
+			channelsService.findAll.mockResolvedValue([obsoleteSegment]);
+			channelsService.findOneBy.mockResolvedValue(null);
+			channelsService.create.mockRejectedValueOnce(new Error('Current segment mapping failed'));
+
+			await expect(service.mapDevice('192.168.1.100', mockDeviceContext)).rejects.toThrow(
+				'Current segment mapping failed',
+			);
+
+			expect(channelsService.remove).not.toHaveBeenCalled();
+		});
+
 		it('should apply confirmed adoption fields when updating an existing device', async () => {
 			const mockDevice = {
 				...createMockDevice('device-1', 'wled-ddeeff', '192.168.1.100', false),
