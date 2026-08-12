@@ -360,6 +360,12 @@ describe('Homey SHS compatibility probe', () => {
 
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [], ['Private'])).toThrow('private term');
 
+		for (const dynamicKey of ['PrivateName', 'PrivateAddress', 'PrivateUpdated', 'PrivateToken']) {
+			unsafeCapture.systemInfo = { aliases: { [dynamicKey]: true } };
+
+			expect(() => assertHomeyCaptureSafe(unsafeCapture, [], ['Private'])).toThrow('private term');
+		}
+
 		unsafeCapture.systemInfo = { leaked: 'hpat_abcdefghijklmnop1234' };
 
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret');

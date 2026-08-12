@@ -578,26 +578,27 @@ export const assertHomeyCaptureSafe = (
 		'capabilitiesObj',
 		'capabilityOptions',
 		'data',
+		'deviceId',
+		'deviceIds',
+		'driverId',
 		'enabled',
 		'format',
+		'homeyId',
 		'id',
 		'metadata',
+		'name',
+		'ownerUri',
+		'parent',
 		'settings',
 		'type',
 		'ui',
 		'update',
+		'userId',
 		'value',
+		'zone',
+		'zoneId',
+		'zoneIds',
 	]);
-	const isFixedPayloadKey = (key: string): boolean =>
-		fixedPayloadKeys.has(key) ||
-		isSecretKey(key) ||
-		isTimestampKey(key) ||
-		isAddressKey(key) ||
-		isPersonalKey(key) ||
-		isReferenceArrayKey(key) ||
-		REFERENCE_KEY_PATTERN.test(key) ||
-		IDENTIFIER_KEY_PATTERN.test(key) ||
-		ENDPOINT_KEY_PATTERN.test(key);
 	const dynamicKeyContainsPrivateTerm = (key: string, term: string): boolean =>
 		key.toLowerCase().includes(term.toLowerCase());
 	const inspectPrivateTermValues = (value: unknown, key: string, path: string[], term: string): boolean => {
@@ -625,7 +626,7 @@ export const assertHomeyCaptureSafe = (
 				const privateDynamicKey =
 					!preserveKeys &&
 					!generatedKey &&
-					!isFixedPayloadKey(nestedKey) &&
+					!fixedPayloadKeys.has(nestedKey) &&
 					dynamicKeyContainsPrivateTerm(nestedKey, term);
 
 				return privateDynamicKey || inspectPrivateTermValues(nestedValue, nestedKey, nextPath, term);
