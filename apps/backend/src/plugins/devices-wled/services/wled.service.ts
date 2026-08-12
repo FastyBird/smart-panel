@@ -547,6 +547,7 @@ export class WledService extends BaseManagedPluginService {
 			existingDevice: WledDeviceEntity | null;
 			identifier: string;
 		}> = [];
+		const plannedIdentities = new Set<string>();
 
 		for (const [index, request] of requests.entries()) {
 			let host = request.host.trim();
@@ -556,6 +557,20 @@ export class WledService extends BaseManagedPluginService {
 				const context = await this.wledAdapter.probe(host, this.config.timeouts.connectionTimeout);
 				const existingDevice = this.findExistingDevice(databaseDevices, host, context.info.mac);
 				const identifier = existingDevice?.identifier || this.identifierFromMac(context.info.mac);
+				const canonicalIdentity = this.identifierFromMac(context.info.mac);
+
+				if (plannedIdentities.has(canonicalIdentity)) {
+					results[index] = {
+						host,
+						name: request.name,
+						status: 'failed',
+						error: 'The same WLED controller was selected more than once',
+						deviceId: existingDevice?.id ?? null,
+					};
+					continue;
+				}
+
+				plannedIdentities.add(canonicalIdentity);
 
 				plans.push({ index, request, host, context, existingDevice, identifier });
 			} catch (error) {
@@ -572,10 +587,34 @@ export class WledService extends BaseManagedPluginService {
 		const selectedDeviceIds = new Set(
 			plans.flatMap(({ existingDevice }) => (existingDevice ? [existingDevice.id] : [])),
 		);
+		const dependentPlanIndexes = new Set<number>();
+		for (const plan of plans) {
+			const selectedTargetOwner = plans.find(
+				(candidate) =>
+					candidate.existingDevice?.hostname === plan.host && candidate.existingDevice.id !== plan.existingDevice?.id,
+			);
+
+			if (selectedTargetOwner) {
+				dependentPlanIndexes.add(plan.index);
+				dependentPlanIndexes.add(selectedTargetOwner.index);
+			}
+		}
 
 		const retiredDeviceIds = new Set<string>();
+		let dependentFailure: string | null = null;
 
 		for (const { index, request, host, context, existingDevice, identifier } of plans) {
+			if (dependentPlanIndexes.has(index) && dependentFailure) {
+				results[index] = {
+					host,
+					name: request.name,
+					status: 'failed',
+					error: dependentFailure,
+					deviceId: existingDevice?.id ?? null,
+				};
+				continue;
+			}
+
 			try {
 				if (existingDevice && !existingDevice.identifier) {
 					await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(existingDevice.id, {
@@ -659,13 +698,54 @@ export class WledService extends BaseManagedPluginService {
 					deviceId: device.id,
 				};
 			} catch (error) {
-				results[index] = {
-					host,
-					name: request.name,
-					status: 'failed',
-					error: error instanceof Error ? error.message : String(error),
-					deviceId: null,
-				};
+				const reason = error instanceof Error ? error.message : String(error);
+
+				if (dependentPlanIndexes.has(index)) {
+					dependentFailure = `A related WLED address move failed: ${reason}`;
+					const dependentPlans = plans.filter((plan) => dependentPlanIndexes.has(plan.index));
+					const involvedHosts = new Set(
+						dependentPlans.flatMap((plan) =>
+							[plan.host, plan.existingDevice?.hostname].filter((item): item is string => !!item),
+						),
+					);
+
+					for (const involvedHost of involvedHosts) {
+						this.wledAdapter.disconnect(involvedHost, false);
+					}
+
+					for (const dependentPlan of dependentPlans) {
+						if (dependentPlan.existingDevice) {
+							const original = dependentPlan.existingDevice;
+							await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(original.id, {
+								type: DEVICES_WLED_TYPE,
+								identifier: original.identifier,
+								name: original.name,
+								description: original.description,
+								enabled: original.enabled,
+								hostname: original.hostname,
+							});
+							await this.deviceConnectivityService.setConnectionState(original.id, {
+								state: ConnectionState.DISCONNECTED,
+							});
+						}
+
+						results[dependentPlan.index] = {
+							host: dependentPlan.host,
+							name: dependentPlan.request.name,
+							status: 'failed',
+							error: dependentFailure,
+							deviceId: dependentPlan.existingDevice?.id ?? null,
+						};
+					}
+				} else {
+					results[index] = {
+						host,
+						name: request.name,
+						status: 'failed',
+						error: reason,
+						deviceId: null,
+					};
+				}
 			}
 		}
 
