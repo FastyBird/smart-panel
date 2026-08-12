@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { isIP } from 'node:net';
 import { resolve } from 'node:path';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -15,9 +16,23 @@ const REFERENCE_ARRAY_KEY_PATTERN = /(?:Ids|Origins)$/i;
 const TIMESTAMP_KEY_PATTERN = /(?:At|Date|Timestamp)$/i;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const IPV4_PATTERN = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
+const BRACKETED_IPV6_PATTERN = /\[([0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?)\]/g;
+const UNBRACKETED_IPV6_PATTERN =
+	/(?<![0-9A-Fa-f:.])(?:[0-9A-Fa-f.]*:[0-9A-Fa-f:.]+)(?:%[A-Za-z0-9_.-]+)?(?![0-9A-Fa-f:.])/g;
 const MAC_PATTERN = /\b(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}\b/gi;
 const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
 const HOMEY_TOKEN_PATTERN = /\b(?:hpat|pat|homey)[_-][A-Za-z0-9_-]{16,}\b/gi;
+
+const REDACTION = {
+	address: '[~0~]',
+	email: '[~1~]',
+	privateTerm: '[~2~]',
+	secret: '[~3~]',
+	unsupported: '[~4~]',
+	url: '[~5~]',
+	value: '[~6~]',
+} as const;
+const REDACTION_PATTERN = /\[~[0-6]~\]/g;
 
 const READ_ENDPOINTS = {
 	systemInfo: '/api/manager/system/',
@@ -52,16 +67,27 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const pseudonym = (kind: string, value: string): string =>
 	`${kind}-${createHash('sha256').update(`smart-panel-homey-fixture:${kind}:${value}`).digest('hex').slice(0, 12)}`;
 
+const escapeRegularExpression = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const ipv6Address = (candidate: string): string => candidate.split('%', 1)[0];
+
+const replaceIpv6Addresses = (value: string, replacement: string): string =>
+	value
+		.replace(BRACKETED_IPV6_PATTERN, (candidate, address: string) =>
+			isIP(ipv6Address(address)) === 6 ? replacement : candidate,
+		)
+		.replace(UNBRACKETED_IPV6_PATTERN, (candidate) => (isIP(ipv6Address(candidate)) === 6 ? replacement : candidate));
+
 const sanitizeString = (value: string, privateTerms: string[]): string => {
-	let sanitized = value
-		.replace(/\b(?:https?|wss?):\/\/[^\s"']+/gi, '[REDACTED_URL]')
-		.replace(IPV4_PATTERN, '[REDACTED_ADDRESS]')
-		.replace(MAC_PATTERN, '[REDACTED_ADDRESS]')
-		.replace(EMAIL_PATTERN, '[REDACTED_EMAIL]')
-		.replace(HOMEY_TOKEN_PATTERN, '[REDACTED_SECRET]');
+	let sanitized = replaceIpv6Addresses(value, REDACTION.address)
+		.replace(/\b(?:https?|wss?):\/\/[^\s"']+/gi, REDACTION.url)
+		.replace(IPV4_PATTERN, REDACTION.address)
+		.replace(MAC_PATTERN, REDACTION.address)
+		.replace(EMAIL_PATTERN, REDACTION.email)
+		.replace(HOMEY_TOKEN_PATTERN, REDACTION.secret);
 
 	for (const term of privateTerms) {
-		sanitized = sanitized.replaceAll(term, '[REDACTED_PRIVATE_TERM]');
+		sanitized = sanitized.replace(new RegExp(escapeRegularExpression(term), 'gi'), REDACTION.privateTerm);
 	}
 
 	return sanitized;
@@ -88,7 +114,7 @@ const sanitizeReference = (key: string, value: string): string => {
 
 const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): unknown => {
 	if (SECRET_KEY_PATTERN.test(key)) {
-		return '[REDACTED_SECRET]';
+		return REDACTION.secret;
 	}
 
 	if (value === null || typeof value === 'number' || typeof value === 'boolean') {
@@ -97,7 +123,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 
 	if (typeof value === 'string') {
 		if (ADDRESS_KEY_PATTERN.test(key)) {
-			return '[REDACTED_ADDRESS]';
+			return REDACTION.address;
 		}
 
 		if (PERSONAL_KEY_PATTERN.test(key)) {
@@ -121,14 +147,14 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 
 	if (Array.isArray(value)) {
 		if (REFERENCE_ARRAY_KEY_PATTERN.test(key)) {
-			return value.map((item) => (typeof item === 'string' ? pseudonym('reference', item) : '[REDACTED_VALUE]'));
+			return value.map((item) => (typeof item === 'string' ? pseudonym('reference', item) : REDACTION.value));
 		}
 
 		return value.map((item, index) => sanitizeValue(item, String(index), { ...context, path: [...context.path, key] }));
 	}
 
 	if (!isRecord(value)) {
-		return '[REDACTED_UNSUPPORTED_VALUE]';
+		return REDACTION.unsupported;
 	}
 
 	const nextPath = [...context.path, key];
@@ -358,9 +384,14 @@ export const captureHomeyShs = async (
 	};
 };
 
-export const assertHomeyCaptureSafe = (capture: HomeyShsCapture, forbiddenValues: string[]): void => {
+export const assertHomeyCaptureSafe = (
+	capture: HomeyShsCapture,
+	forbiddenValues: string[],
+	privateTerms: string[] = [],
+): void => {
 	const serialized = JSON.stringify(capture);
 	const forbidden = forbiddenValues.filter((value) => value.length > 0);
+	const withoutRedactionMarkers = serialized.replace(REDACTION_PATTERN, '');
 
 	for (const value of forbidden) {
 		if (serialized.toLowerCase().includes(value.toLowerCase())) {
@@ -368,9 +399,18 @@ export const assertHomeyCaptureSafe = (capture: HomeyShsCapture, forbiddenValues
 		}
 	}
 
+	for (const term of privateTerms) {
+		if (withoutRedactionMarkers.toLowerCase().includes(term.toLowerCase())) {
+			throw new Error('Sanitized Homey capture still contains a configured private term');
+		}
+	}
+
 	const unsafePatterns = [IPV4_PATTERN, MAC_PATTERN, EMAIL_PATTERN, HOMEY_TOKEN_PATTERN];
 
-	if (unsafePatterns.some((pattern) => new RegExp(pattern.source, pattern.flags).test(serialized))) {
+	if (
+		unsafePatterns.some((pattern) => new RegExp(pattern.source, pattern.flags).test(serialized)) ||
+		replaceIpv6Addresses(serialized, REDACTION.address) !== serialized
+	) {
 		throw new Error('Sanitized Homey capture still contains a secret, address, or email-like value');
 	}
 };
@@ -396,7 +436,7 @@ const run = async (): Promise<void> => {
 	const config = loadHomeyShsProbeConfig(process.env);
 	const capture = await captureHomeyShs(config);
 
-	assertHomeyCaptureSafe(capture, [config.apiKey, config.expectedHost, ...config.privateTerms]);
+	assertHomeyCaptureSafe(capture, [config.apiKey, config.expectedHost], config.privateTerms);
 
 	const outputDirectory = await writeHomeyShsCapture(capture, config.outputRoot);
 	const counts = capture.metadata.counts as { devices: number; zones: number };

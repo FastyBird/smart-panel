@@ -94,9 +94,10 @@ not survive sanitization. Each entry must contain at least three characters. Opt
 | `FB_HOMEY_SHS_CAPTURE_DIR` | `test/.homey-shs-captures` | Output root; the default repository path is ignored by Git |
 
 The probe writes a new non-overwriting directory with mode `0700` and JSON files with mode `0600`. It sanitizes before
-writing and aborts if the result still contains the API key, expected hostname, configured private terms, IPv4
-addresses, MAC addresses, or email-like values. IDs are deterministically pseudonymized, personal labels and timestamps
-are replaced, and full capability IDs—including suffixes—are preserved.
+writing and aborts if the result still contains the API key, expected hostname, configured private terms, IPv4 or IPv6
+addresses, MAC addresses, or email-like values. Redaction markers are opaque and excluded only from private-term
+collision checks; credential checks remain fail-closed. IDs are deterministically pseudonymized, personal labels and
+timestamps are replaced, and full capability IDs—including suffixes—are preserved.
 
 Automation is not a substitute for review. Before promoting any capture into committed fixtures:
 
