@@ -970,6 +970,42 @@ describe('WledService', () => {
 			expect(wledAdapter.disconnect).not.toHaveBeenCalled();
 		});
 
+		it('blocks an entire move chain when its closing selection probe fails', async () => {
+			const firstDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
+			const secondDevice = createMockDevice('device-2', 'wled-112233445566', '192.168.1.200');
+			const thirdDevice = createMockDevice('device-3', 'wled-778899aabbcc', '192.168.1.30');
+			const secondContext = {
+				...mockContext,
+				info: { ...mockContext.info, mac: '11:22:33:44:55:66' },
+			};
+			wledAdapter.probe
+				.mockResolvedValueOnce(mockContext)
+				.mockResolvedValueOnce(secondContext)
+				.mockRejectedValueOnce(new Error('Third controller offline'));
+			devicesService.findAll.mockResolvedValue([firstDevice, secondDevice, thirdDevice]);
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.200', name: 'First moved', category: DeviceCategory.LIGHTING },
+				{ host: '192.168.1.30', name: 'Second moved', category: DeviceCategory.LIGHTING },
+				{ host: '192.168.1.100', name: 'Third moved', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(results).toEqual([
+				expect.objectContaining({
+					status: 'failed',
+					error: 'A related selected WLED controller could not be probed',
+				}),
+				expect.objectContaining({
+					status: 'failed',
+					error: 'A related selected WLED controller could not be probed',
+				}),
+				expect.objectContaining({ status: 'failed', error: 'Third controller offline' }),
+			]);
+			expect(deviceMapper.mapDevice).not.toHaveBeenCalled();
+			expect(devicesService.update).not.toHaveBeenCalled();
+			expect(wledAdapter.disconnect).not.toHaveBeenCalled();
+		});
+
 		it('continues independent adoption after a dependent rollback write fails', async () => {
 			const firstDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
 			const secondDevice = createMockDevice('device-2', 'wled-112233445566', '192.168.1.200');

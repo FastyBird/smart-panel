@@ -615,19 +615,38 @@ export class WledService extends BaseManagedPluginService {
 			[...normalizedHostsByIndex].flatMap(([index, host]) => (!plannedIndices.has(index) ? [host] : [])),
 		);
 		const selectedDeviceIds = plannedExistingDeviceIds;
+		const moveHostEdges = new Map<string, Set<string>>();
+		for (const plan of plans) {
+			const sourceHost = plan.existingDevice?.hostname;
+			if (!sourceHost || sourceHost === plan.host) {
+				continue;
+			}
+
+			const sourceEdges = moveHostEdges.get(sourceHost) ?? new Set<string>();
+			sourceEdges.add(plan.host);
+			moveHostEdges.set(sourceHost, sourceEdges);
+			const targetEdges = moveHostEdges.get(plan.host) ?? new Set<string>();
+			targetEdges.add(sourceHost);
+			moveHostEdges.set(plan.host, targetEdges);
+		}
+		const failedMoveHosts = new Set<string>();
+		const pendingFailedHosts = [...failedSelectionHosts];
+		while (pendingFailedHosts.length > 0) {
+			const currentHost = pendingFailedHosts.pop();
+			if (!currentHost || failedMoveHosts.has(currentHost)) {
+				continue;
+			}
+
+			failedMoveHosts.add(currentHost);
+			pendingFailedHosts.push(...(moveHostEdges.get(currentHost) ?? []));
+		}
 		const blockedPlanIndices = new Set<number>();
 		for (const plan of plans) {
-			const unplannedSelectedTargetOwner = databaseDevices.find(
-				(device) =>
-					device.hostname === plan.host &&
-					device.id !== plan.existingDevice?.id &&
-					!plannedExistingDeviceIds.has(device.id),
-			);
-
 			if (
-				unplannedSelectedTargetOwner &&
-				plan.existingDevice?.hostname &&
-				failedSelectionHosts.has(plan.existingDevice.hostname)
+				failedMoveHosts.has(plan.host) ||
+				(plan.existingDevice?.hostname !== null &&
+					plan.existingDevice?.hostname !== undefined &&
+					failedMoveHosts.has(plan.existingDevice.hostname))
 			) {
 				blockedPlanIndices.add(plan.index);
 				results[plan.index] = {
