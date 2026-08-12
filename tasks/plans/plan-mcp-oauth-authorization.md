@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 6 in progress — external-host and wire-level compatibility gates remain
+**Status:** Phase 6 in progress — security-profile E2E, audit E2E, external-host, and wire-level gates remain
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
