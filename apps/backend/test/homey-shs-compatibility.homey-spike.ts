@@ -126,7 +126,12 @@ describe('Homey SHS compatibility probe', () => {
 			hardware_id: 'switch-1',
 			serialNumber: 123_456_789,
 			deviceId: 987_654_321,
+			deviceIds: ['device-one', 'device-two'],
+			zone_ids: ['zone-one'],
 			grid: 'preserved non-identifier',
+			solids: ['preserved-array-value'],
+			diagnostic: 'gateway_192.168.1.25_backup',
+			macTag: 'mac_aa:bb:cc:dd:ee:ff_backup',
 			format: { type: 'json' },
 			thermostat: true,
 			chip: 'preserved chip',
@@ -145,7 +150,12 @@ describe('Homey SHS compatibility probe', () => {
 			hardware_id: '[~7~]',
 			serialNumber: '[~0~]',
 			deviceId: '[~7~]',
+			deviceIds: [expect.stringMatching(/^reference-/), expect.stringMatching(/^reference-/)],
+			zone_ids: [expect.stringMatching(/^reference-/)],
 			grid: 'preserved non-identifier',
+			solids: ['preserved-array-value'],
+			diagnostic: 'gateway_[~0~]_backup',
+			macTag: 'mac_[~0~]_backup',
 			format: { type: 'json' },
 			thermostat: true,
 			chip: 'preserved chip',
@@ -266,6 +276,14 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret, address');
 
 		unsafeCapture.systemInfo = { description: 'gateway fd12:3456:789a::1.' };
+
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret, address');
+
+		unsafeCapture.systemInfo = { diagnostic: 'gateway_192.168.1.25_backup' };
+
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret, address');
+
+		unsafeCapture.systemInfo = { diagnostic: 'mac_aa:bb:cc:dd:ee:ff_backup' };
 
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret, address');
 	});

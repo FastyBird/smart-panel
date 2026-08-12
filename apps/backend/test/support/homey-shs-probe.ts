@@ -19,15 +19,16 @@ const IDENTIFIER_KEY_PATTERN =
 	/(?:^(?:id|ids|identifier|identifiers|uuid|uuids)$|(?:Id|ID|Ids|IDs|Identifier|Identifiers|Uuid|UUID)$|(?:^|[_-])(?:id|ids|identifier|identifiers|uuid|uuids)$)/;
 const PERSONAL_KEY_PATTERN = /(?:name|note|title|label|email|username)$/i;
 const REFERENCE_KEY_PATTERN = /^(?:deviceId|zone|zoneId|parent|homeyId|ownerUri|driverId|userId)$/i;
-const REFERENCE_ARRAY_KEY_PATTERN = /(?:Ids|Origins)$/i;
+const CAMEL_CASE_REFERENCE_ARRAY_KEY_PATTERN = /(?:Ids|Origins)$/;
+const BOUNDED_REFERENCE_ARRAY_KEY_PATTERN = /(?:^|[_-])(?:ids|origins)$/i;
 const CAMEL_CASE_TIMESTAMP_KEY_PATTERN = /(?:At|Date|Timestamp|Updated|Modified|Created)$/;
 const BOUNDED_TIMESTAMP_KEY_PATTERN = /(?:^|[_-])(?:at|date|timestamp|updated|modified|created)$/i;
 const ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const IPV4_PATTERN = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
+const IPV4_PATTERN = /(?:\d{1,3}\.){3}\d{1,3}/g;
 const BRACKETED_IPV6_PATTERN = /\[([0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?)\]/g;
 const UNBRACKETED_IPV6_PATTERN = /[0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?/g;
-const MAC_PATTERN = /\b(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}\b/gi;
+const MAC_PATTERN = /(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}/gi;
 const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
 const HOMEY_TOKEN_PATTERN = /\b(?:hpat|pat|homey)[_-][A-Za-z0-9_-]{16,}\b/gi;
 
@@ -124,6 +125,9 @@ const isTimestampKey = (key: string): boolean =>
 const isAddressKey = (key: string): boolean =>
 	CAMEL_CASE_ADDRESS_KEY_PATTERN.test(key) || BOUNDED_ADDRESS_KEY_PATTERN.test(key);
 
+const isReferenceArrayKey = (key: string): boolean =>
+	CAMEL_CASE_REFERENCE_ARRAY_KEY_PATTERN.test(key) || BOUNDED_REFERENCE_ARRAY_KEY_PATTERN.test(key);
+
 const sanitizeReference = (key: string, value: string): string => {
 	if (/^(?:zone|zoneId|parent)$/i.test(key)) {
 		return pseudonym('zone', value);
@@ -153,6 +157,10 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 
 	if (value !== null && !capabilityMapEntry && isAddressKey(key)) {
 		return REDACTION.address;
+	}
+
+	if (Array.isArray(value) && !capabilityMapEntry && isReferenceArrayKey(key)) {
+		return value.map((item) => (typeof item === 'string' ? pseudonym('reference', item) : REDACTION.value));
 	}
 
 	if (
@@ -191,10 +199,6 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 	}
 
 	if (Array.isArray(value)) {
-		if (REFERENCE_ARRAY_KEY_PATTERN.test(key)) {
-			return value.map((item) => (typeof item === 'string' ? pseudonym('reference', item) : REDACTION.value));
-		}
-
 		return value.map((item, index) => sanitizeValue(item, String(index), { ...context, path: [...context.path, key] }));
 	}
 
