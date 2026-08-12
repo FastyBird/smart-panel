@@ -229,8 +229,9 @@ Build a device from properties of other devices — splitting one physical devic
 | 2 | [FEATURE-PLUGIN-MATTER](features/FEATURE-PLUGIN-MATTER.md) | backend, admin | :clipboard: Planned |
 | 3 | [FEATURE-PLUGIN-ZIGBEE-HERDSMAN](features/FEATURE-PLUGIN-ZIGBEE-HERDSMAN.md) | backend, admin | :clipboard: Planned |
 | 4 | [FEATURE-DEVICE-PLUGIN-ADOPTION-WIZARDS](features/FEATURE-DEVICE-PLUGIN-ADOPTION-WIZARDS.md) | backend, admin, spec | :construction: In Progress |
+| 5 | [FEATURE-PLUGIN-HOMEY](features/FEATURE-PLUGIN-HOMEY.md) | backend, admin, panel | :clipboard: Planned |
 
-**Remaining work:** WLED adoption wizard and remaining cross-plugin QA; Matter plugin implementation; direct Zigbee integration via zigbee-herdsman (6 phases: coordinator service, converters, device platform, adoption flow, admin UI, network management).
+**Remaining work:** WLED adoption wizard and remaining cross-plugin QA; Homey local integration (SHS/Homey Pro) followed by Homey Cloud; Matter plugin implementation; and direct Zigbee integration via zigbee-herdsman (6 phases: coordinator service, converters, device platform, adoption flow, admin UI, network management). Homey's [approved design](../docs/superpowers/specs/2026-08-12-homey-integration-design.md) and [implementation plan](../docs/superpowers/plans/2026-08-12-homey-integration.md) front-load compatibility testing and sanitized fixture capture during the one-month SHS subscription.
 
 ---
 
@@ -382,10 +383,10 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | Security | 1 | 0 | 0 | 1 |
 | Virtual Devices | 0 | 1 | 0 | 1 |
 | Companion Display | 0 | 0 | 9 | 9 |
-| Plugins | 1 | 0 | 2 | 3 |
+| Plugins | 1 | 1 | 3 | 5 |
 | Extension Actions | 3 | 0 | 5 | 8 |
 | Device & Infrastructure | 5 | 0 | 1 | 6 |
 | Technical | 6 | 0 | 0 | 6 |
 | Other Features | 4 | 0 | 1 | 5 |
 | Plans | 2 | 0 | 1 | 3 |
-| **Total** | **72** | **1** | **30** | **103** |
+| **Total** | **72** | **2** | **31** | **105** |
