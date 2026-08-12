@@ -208,6 +208,21 @@ describe('PropertyValueService', () => {
 				"DELETE FROM property_value WHERE propertyId = 'test-property-id'",
 			);
 		});
+
+		it('strictly deletes only measurements written since a rollback snapshot and clears caches', async () => {
+			const property = { id: 'test-property-id' } as ChannelPropertyEntity;
+			const since = new Date('2026-08-12T20:00:00.000Z');
+			service['valuesMap'].set(property.id, new PropertyValueState(42));
+			service['recentValuesMap'].set(property.id, [40, 42]);
+
+			await service.deleteSinceStrict(property, since);
+
+			expect(storageService.queryStrict).toHaveBeenCalledWith(
+				"DELETE FROM property_value WHERE propertyId = 'test-property-id' AND time >= '2026-08-12T20:00:00.001Z'",
+			);
+			expect(service['valuesMap'].has(property.id)).toBe(false);
+			expect(service['recentValuesMap'].has(property.id)).toBe(false);
+		});
 	});
 
 	describe('validation', () => {

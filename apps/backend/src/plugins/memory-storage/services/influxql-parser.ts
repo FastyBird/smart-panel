@@ -367,8 +367,9 @@ export class InfluxQLParser {
 
 	private executeDelete(parsed: ParsedDelete): unknown[] {
 		const tagFilters = this.buildTagFilters(parsed.where);
+		const { timeFrom, timeTo } = this.buildTimeRange(parsed.where);
 
-		this.store.delete(parsed.measurement, tagFilters);
+		this.store.delete(parsed.measurement, tagFilters, timeFrom, timeTo);
 
 		return [];
 	}

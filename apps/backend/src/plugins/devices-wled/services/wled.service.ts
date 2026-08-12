@@ -635,13 +635,17 @@ export class WledService extends BaseManagedPluginService {
 	async probeDevice(host: string): Promise<WledDiscoveredDeviceModel> {
 		const normalizedHost = this.normalizeHost(host);
 		const context = await this.wledAdapter.probe(normalizedHost, this.config.timeouts.connectionTimeout);
+		const mac = this.normalizeMac(context.info.mac);
+		if (!mac) {
+			throw new WledValidationException('WLED device did not report a valid MAC address');
+		}
 		const databaseDevices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
-		const existingDevice = this.findExistingDevice(databaseDevices, normalizedHost, context.info.mac);
+		const existingDevice = this.findExistingDevice(databaseDevices, normalizedHost, mac);
 
 		return {
 			host: normalizedHost,
-			name: existingDevice?.name || context.info.name || `WLED ${context.info.mac}`,
-			mac: context.info.mac,
+			name: existingDevice?.name || context.info.name || `WLED ${mac}`,
+			mac,
 			port: this.portFromHost(normalizedHost),
 			adoptedDeviceId: existingDevice?.id ?? null,
 		};

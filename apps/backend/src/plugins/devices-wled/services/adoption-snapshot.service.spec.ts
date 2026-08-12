@@ -62,19 +62,26 @@ describe('WledAdoptionSnapshotService', () => {
 		} as unknown as DataSource;
 		const write = jest.fn().mockResolvedValue(true);
 		const deleteValue = jest.fn().mockResolvedValue(undefined);
+		const deleteSinceStrict = jest.fn().mockResolvedValue(undefined);
 		const propertyValueService = {
 			write,
 			delete: deleteValue,
+			deleteSinceStrict,
 		} as unknown as PropertyValueService;
 		const service = new WledAdoptionSnapshotService(dataSource, propertyValueService);
 
 		await service.restore({
 			deviceId: 'device-1',
+			capturedAt: new Date('2026-08-12T20:00:00.000Z'),
 			channels: [channel],
 			properties: [valuedProperty, emptyProperty],
 		});
 
 		expect(write).toHaveBeenCalledWith(expect.objectContaining({ id: 'property-1' }), 'original');
+		expect(deleteSinceStrict).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'property-1' }),
+			new Date('2026-08-12T20:00:00.000Z'),
+		);
 		expect(deleteValue).toHaveBeenCalledWith(expect.objectContaining({ id: 'property-2' }));
 		expect(deleteValue).toHaveBeenCalledWith(expect.objectContaining({ id: 'property-extra' }));
 	});

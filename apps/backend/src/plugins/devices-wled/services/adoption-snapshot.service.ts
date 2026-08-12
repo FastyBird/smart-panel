@@ -8,6 +8,7 @@ import { WledChannelEntity, WledChannelPropertyEntity } from '../entities/device
 
 export interface WledAdoptionStructureSnapshot {
 	deviceId: string;
+	capturedAt: Date;
 	channels: WledChannelEntity[];
 	properties: WledChannelPropertyEntity[];
 }
@@ -20,6 +21,7 @@ export class WledAdoptionSnapshotService {
 	) {}
 
 	async capture(deviceId: string): Promise<WledAdoptionStructureSnapshot> {
+		const capturedAt = new Date();
 		const channels = await this.dataSource.getRepository(WledChannelEntity).find({
 			where: { device: { id: deviceId } },
 			relations: ['device'],
@@ -38,7 +40,7 @@ export class WledAdoptionSnapshotService {
 			property.value = values.get(property.id) ?? null;
 		}
 
-		return { deviceId, channels, properties };
+		return { deviceId, capturedAt, channels, properties };
 	}
 
 	async restore(snapshot: WledAdoptionStructureSnapshot): Promise<void> {
@@ -107,6 +109,7 @@ export class WledAdoptionSnapshotService {
 			if (value === null) {
 				await this.propertyValueService.delete(property);
 			} else {
+				await this.propertyValueService.deleteSinceStrict(property, snapshot.capturedAt);
 				await this.propertyValueService.write(property, value);
 			}
 		}

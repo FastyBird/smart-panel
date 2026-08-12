@@ -894,7 +894,7 @@ describe('WledService', () => {
 				expect.objectContaining({
 					host: '192.168.1.100',
 					name: 'Probed WLED',
-					mac: 'AA:BB:CC:DD:EE:FF',
+					mac: 'aabbccddeeff',
 					adoptedDeviceId: null,
 				}),
 			);
@@ -917,6 +917,19 @@ describe('WledService', () => {
 					adoptedDeviceId: 'device-1',
 				}),
 			);
+		});
+
+		it('rejects a manual probe whose controller reports a malformed MAC', async () => {
+			wledAdapter.probe.mockResolvedValue({
+				...mockContext,
+				info: { ...mockContext.info, mac: 'not-a-mac' },
+			});
+
+			await expect(service.probeDevice('192.168.1.100')).rejects.toThrow(
+				'WLED device did not report a valid MAC address',
+			);
+
+			expect(devicesService.findAll).not.toHaveBeenCalled();
 		});
 
 		it('brackets a bare IPv6 host before probing', async () => {
