@@ -97,6 +97,7 @@ describe('Homey SHS compatibility probe', () => {
 						bridgeIdentifier: 'private-bridge-id',
 					},
 					data: {
+						node: 123_456_789,
 						device_id: 'private-driver-device-id',
 						hardware_id: 'private-hardware-id',
 						accountId: 'private-account-id',
@@ -127,6 +128,9 @@ describe('Homey SHS compatibility probe', () => {
 				pin: '[~3~]',
 				passcode: '[~3~]',
 				access_code: '[~3~]',
+			},
+			data: {
+				node: '[~7~]',
 			},
 		});
 		expect((devices[sanitizedDeviceId] as { capabilities: string[] }).capabilities).toContain('homealarm_state');
@@ -284,6 +288,10 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() => assertHomeyCaptureSafe(capture, [], [], 'homey')).toThrow('expected host in a value');
 
 		capture.systemInfo = { description: 'controller homey.local' };
+
+		expect(() => assertHomeyCaptureSafe(capture, [], [], 'homey.local')).toThrow('expected host in a value');
+
+		capture.systemInfo = { aliases: { 'homey.local': true } };
 
 		expect(() => assertHomeyCaptureSafe(capture, [], [], 'homey.local')).toThrow('expected host in a value');
 	});

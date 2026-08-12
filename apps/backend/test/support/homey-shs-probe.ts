@@ -245,6 +245,10 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 			: REDACTION.identifier;
 	}
 
+	if (typeof value === 'number' && isDriverMetadata(context.path)) {
+		return REDACTION.identifier;
+	}
+
 	if (value === null || typeof value === 'number' || typeof value === 'boolean') {
 		return value;
 	}
@@ -547,7 +551,10 @@ export const assertHomeyCaptureSafe = (
 			} else if (Array.isArray(value)) {
 				value.forEach((item) => inspectEndpointValues(item, key));
 			} else if (isRecord(value)) {
-				Object.entries(value).forEach(([nestedKey, nestedValue]) => inspectEndpointValues(nestedValue, nestedKey));
+				Object.entries(value).forEach(([nestedKey, nestedValue]) => {
+					hostLeakFound ||= globallyIdentifiableHost && hostTokenPattern.test(nestedKey);
+					inspectEndpointValues(nestedValue, nestedKey);
+				});
 			}
 		};
 
