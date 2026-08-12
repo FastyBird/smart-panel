@@ -9,6 +9,7 @@ import { AdoptDeviceRequestDto } from '../dto/mapping-preview.dto';
 import { HelperMappingPreviewModel } from '../models/helper-mapping-preview.model';
 import {
 	HomeAssistantDeviceRegistryResultModel,
+	HomeAssistantDiscoveredDeviceModel,
 	HomeAssistantDiscoveredHelperModel,
 } from '../models/home-assistant.model';
 import { MappingPreviewModel } from '../models/mapping-preview.model';
@@ -40,6 +41,7 @@ interface HomeAssistantWizardSession {
 interface ResolvedAdoptionRequest {
 	request: AdoptDeviceRequestDto | AdoptHelperRequestDto;
 	registryDevice?: HomeAssistantDeviceRegistryResultModel;
+	discoveredDevice?: HomeAssistantDiscoveredDeviceModel;
 	discoveredHelper?: HomeAssistantDiscoveredHelperModel;
 }
 
@@ -216,7 +218,11 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 				const request = resolved.request;
 				const device =
 					candidate.snapshot.kind === 'device'
-						? await this.deviceAdoptionService.adoptDevice(request as AdoptDeviceRequestDto, resolved.registryDevice)
+						? await this.deviceAdoptionService.adoptDevice(
+								request as AdoptDeviceRequestDto,
+								resolved.registryDevice,
+								resolved.discoveredDevice,
+							)
 						: await this.helperAdoptionService.adoptHelper(request as AdoptHelperRequestDto, resolved.discoveredHelper);
 
 				candidate.snapshot.status = 'already_registered';
@@ -269,7 +275,11 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 				requests.set(
 					candidate.snapshot.key,
 					result.preview.readyToAdopt && result.preview.warnings.length === 0 && request.channels.length > 0
-						? { request, registryDevice: result.registryDevice ?? undefined }
+						? {
+								request,
+								registryDevice: result.registryDevice ?? undefined,
+								discoveredDevice: result.source,
+							}
 						: new Error('Automatic mapping changed and now requires manual review'),
 				);
 				continue;
@@ -317,7 +327,7 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 				previewChannelCount: request.channels.length,
 				warningCount: preview.warnings.length,
 				adoptedDeviceId,
-				error: null,
+				error: status === 'needs_attention' ? this.mappingReviewReason(preview.warnings) : null,
 			},
 			request: status === 'ready' ? request : null,
 		};
@@ -349,10 +359,19 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 				previewChannelCount: request.channels.length,
 				warningCount: preview.warnings.length,
 				adoptedDeviceId,
-				error: null,
+				error: status === 'needs_attention' ? this.mappingReviewReason(preview.warnings) : null,
 			},
 			request: status === 'ready' ? request : null,
 		};
+	}
+
+	private mappingReviewReason(warnings: Array<{ message: string }>): string {
+		return (
+			warnings
+				.map((warning) => warning.message)
+				.filter(Boolean)
+				.join('; ') || 'Automatic mapping requires manual review'
+		);
 	}
 
 	private buildDeviceRequest(preview: MappingPreviewModel): AdoptDeviceRequestDto {

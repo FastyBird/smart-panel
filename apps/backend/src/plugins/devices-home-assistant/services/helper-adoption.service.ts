@@ -36,7 +36,8 @@ import {
 	HomeAssistantChannelPropertyEntity,
 	HomeAssistantDeviceEntity,
 } from '../entities/devices-home-assistant.entity';
-import { HomeAssistantDiscoveredHelperModel } from '../models/home-assistant.model';
+import { TransformerRegistry } from '../mappings/transformers/transformer.registry';
+import { HomeAssistantDiscoveredHelperModel, HomeAssistantStateModel } from '../models/home-assistant.model';
 import { buildHelperDeviceStructure } from '../utils/helper-structure.utils';
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
@@ -58,6 +59,7 @@ export class HelperAdoptionService {
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly deviceValidationService: DeviceValidationService,
+		private readonly transformerRegistry: TransformerRegistry,
 	) {}
 
 	/**
@@ -149,7 +151,7 @@ export class HelperAdoptionService {
 			}
 
 			// Sync initial state
-			await this.syncHelperState(device.id, request.entityId);
+			await this.syncHelperState(device.id, request.entityId, helper.state);
 
 			// Set device connection state to connected (helper is available if we got here)
 			await this.deviceConnectivityService.setConnectionState(device.id, {
@@ -294,9 +296,13 @@ export class HelperAdoptionService {
 	 * Sync the initial state from Home Assistant
 	 * This method fetches the helper's state and updates all matching property values
 	 */
-	private async syncHelperState(deviceId: string, entityId: string): Promise<void> {
+	private async syncHelperState(
+		deviceId: string,
+		entityId: string,
+		discoveredState?: HomeAssistantStateModel | null,
+	): Promise<void> {
 		try {
-			const state = await this.homeAssistantHttpService.getState(entityId);
+			const state = discoveredState ?? (await this.homeAssistantHttpService.getState(entityId));
 
 			// Load all properties for this device's channels
 			const allProperties = await this.channelsPropertiesService.findAll<HomeAssistantChannelPropertyEntity>(
@@ -329,6 +335,21 @@ export class HelperAdoptionService {
 					const attrValue = state.attributes[property.haAttribute];
 					if (attrValue !== undefined) {
 						newValue = attrValue as string | number | boolean;
+					}
+				}
+
+				if (newValue !== null && property.haTransformer) {
+					const transformer = this.transformerRegistry.getOrCreateMonitored(property.haTransformer);
+					if (transformer.canRead()) {
+						const transformedValue = transformer.read(newValue);
+						if (
+							typeof transformedValue === 'string' ||
+							typeof transformedValue === 'number' ||
+							typeof transformedValue === 'boolean' ||
+							transformedValue === null
+						) {
+							newValue = transformedValue as string | number | boolean | null;
+						}
 					}
 				}
 

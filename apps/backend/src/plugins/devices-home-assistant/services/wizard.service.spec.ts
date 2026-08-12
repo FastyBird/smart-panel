@@ -185,6 +185,7 @@ describe('HomeAssistantWizardService', () => {
 		const snapshot = await service.start();
 
 		expect(snapshot.candidates.find((candidate) => candidate.kind === 'device')?.status).toBe('needs_attention');
+		expect(snapshot.candidates.find((candidate) => candidate.kind === 'device')?.error).toBe('Review mapping');
 		const results = await service.adopt(snapshot.id, ['device:ha-device-1']);
 
 		expect(results?.[0]).toEqual(
@@ -209,6 +210,7 @@ describe('HomeAssistantWizardService', () => {
 				channels: [expect.objectContaining({ entityId: 'light.living_room', category: ChannelCategory.LIGHT })],
 			}),
 			undefined,
+			expect.objectContaining({ id: 'ha-device-1' }),
 		);
 		expect(homeAssistantHttpService.getDiscoveredInventory).toHaveBeenCalledTimes(2);
 		expect(mappingPreviewService.generateSettledPreviews).toHaveBeenLastCalledWith([
@@ -413,7 +415,7 @@ describe('HomeAssistantWizardService', () => {
 		const snapshot = await service.start();
 
 		expect(snapshot.candidates.find((candidate) => candidate.kind === 'helper')).toEqual(
-			expect.objectContaining({ status: 'needs_attention' }),
+			expect.objectContaining({ status: 'needs_attention', error: 'Automatic mapping requires manual review' }),
 		);
 		expect(helperAdoptionService.adoptHelper).not.toHaveBeenCalled();
 	});

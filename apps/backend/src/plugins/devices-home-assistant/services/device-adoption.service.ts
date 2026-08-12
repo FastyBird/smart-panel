@@ -21,7 +21,10 @@ import { CreateHomeAssistantChannelDto } from '../dto/create-channel.dto';
 import { CreateHomeAssistantDeviceDto } from '../dto/create-device.dto';
 import { AdoptDeviceRequestDto } from '../dto/mapping-preview.dto';
 import { HomeAssistantDeviceEntity } from '../entities/devices-home-assistant.entity';
-import { HomeAssistantDeviceRegistryResultModel } from '../models/home-assistant.model';
+import {
+	HomeAssistantDeviceRegistryResultModel,
+	HomeAssistantDiscoveredDeviceModel,
+} from '../models/home-assistant.model';
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { HomeAssistantWsService } from './home-assistant.ws.service';
@@ -60,6 +63,7 @@ export class DeviceAdoptionService {
 	async adoptDevice(
 		request: AdoptDeviceRequestDto,
 		registryDevice?: HomeAssistantDeviceRegistryResultModel,
+		discoveredDevice?: HomeAssistantDiscoveredDeviceModel,
 	): Promise<HomeAssistantDeviceEntity> {
 		// Validate HA device exists
 		const haDevice =
@@ -155,7 +159,7 @@ export class DeviceAdoptionService {
 
 			// Sync initial states from Home Assistant to populate property values
 			// This also updates virtual property values and sets device connection state
-			await this.homeAssistantHttpService.syncDeviceStates(device.id);
+			await this.homeAssistantHttpService.syncDeviceStates(device.id, discoveredDevice);
 
 			// Return the fully loaded device
 			return await this.devicesService.findOne<HomeAssistantDeviceEntity>(device.id, DEVICES_HOME_ASSISTANT_TYPE);

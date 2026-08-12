@@ -28,6 +28,7 @@ const mockConfigService = {
 
 const mockDevicesService = {
 	findAll: jest.fn(),
+	findOne: jest.fn(),
 };
 
 const mockChannelsPropertiesService = {
@@ -80,6 +81,7 @@ describe('HomeAssistantHttpService', () => {
 
 		mockConfigService.getPluginConfig.mockReturnValue({
 			apiKey: 'test-api-key',
+			enabled: true,
 			hostname: 'localhost',
 		});
 		mockDevicesService.findAll.mockResolvedValue([]);
@@ -321,6 +323,40 @@ describe('HomeAssistantHttpService', () => {
 			jest.spyOn<HomeAssistantHttpService, any>(service, 'fetchSingleHaState').mockResolvedValue(null);
 
 			await expect(service.getState('sensor.temp')).rejects.toThrow(DevicesHomeAssistantNotFoundException);
+		});
+	});
+
+	describe('syncDeviceStates', () => {
+		it('reuses a discovered device snapshot without refetching Home Assistant inventory', async () => {
+			mockDevicesService.findOne.mockResolvedValue(
+				Object.assign(new HomeAssistantDeviceEntity(), {
+					id: 'panel-device-1',
+					haDeviceId: 'device_1',
+					name: 'Test device',
+				}),
+			);
+			const fetchDevices = jest.spyOn<HomeAssistantHttpService, any>(service, 'fetchListHaDevices');
+			const fetchStates = jest.spyOn<HomeAssistantHttpService, any>(service, 'fetchListHaStates');
+
+			await service.syncDeviceStates('panel-device-1', {
+				id: 'device_1',
+				name: 'Test device',
+				entities: ['sensor.temp'],
+				adoptedDeviceId: null,
+				states: [
+					{
+						entityId: 'sensor.temp',
+						state: '22',
+						attributes: {},
+						lastChanged: new Date(),
+						lastReported: new Date(),
+						lastUpdated: new Date(),
+					},
+				],
+			});
+
+			expect(fetchDevices).not.toHaveBeenCalled();
+			expect(fetchStates).not.toHaveBeenCalled();
 		});
 	});
 

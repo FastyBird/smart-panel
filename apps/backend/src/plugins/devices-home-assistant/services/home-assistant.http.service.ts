@@ -490,7 +490,7 @@ export class HomeAssistantHttpService {
 	 * Sync states for a specific device from Home Assistant
 	 * This is called after device adoption to immediately populate property values
 	 */
-	async syncDeviceStates(deviceId: string): Promise<void> {
+	async syncDeviceStates(deviceId: string, discoveredDevice?: HomeAssistantDiscoveredDeviceModel): Promise<void> {
 		if (this.apiKey === null || this.enabled !== true) {
 			this.logger.debug(`[SYNC] Skipping sync for device ${deviceId} - HA not configured`, { resource: deviceId });
 			return;
@@ -510,23 +510,37 @@ export class HomeAssistantHttpService {
 				return;
 			}
 
-			// Fetch HA device info and states
-			const [haDevices, states] = await Promise.all([this.fetchListHaDevices(), this.fetchListHaStates()]);
+			let deviceStates: HomeAssistantStateDto[];
 
-			if (!haDevices?.length || !states?.length) {
-				this.logger.debug(`[SYNC] Missing HA data for device ${deviceId}`, { resource: deviceId });
-				return;
+			if (discoveredDevice?.id === device.haDeviceId) {
+				deviceStates = discoveredDevice.states.map((state) =>
+					toInstance(HomeAssistantStateDto, {
+						entity_id: state.entityId,
+						state: String(state.state ?? ''),
+						attributes: state.attributes,
+						last_changed: state.lastChanged ?? new Date(0),
+						last_reported: state.lastReported ?? new Date(0),
+						last_updated: state.lastUpdated ?? new Date(0),
+						context: { id: '', parent_id: null, user_id: null },
+					}),
+				);
+			} else {
+				// Manual adoption has no shared discovery snapshot, so retain the existing fetch path.
+				const [haDevices, states] = await Promise.all([this.fetchListHaDevices(), this.fetchListHaStates()]);
+
+				if (!haDevices?.length || !states?.length) {
+					this.logger.debug(`[SYNC] Missing HA data for device ${deviceId}`, { resource: deviceId });
+					return;
+				}
+
+				const haDevice = haDevices.find((candidate) => candidate.id === device.haDeviceId);
+				if (!haDevice) {
+					this.logger.warn(`[SYNC] HA device ${device.haDeviceId} not found in registry`, { resource: deviceId });
+					return;
+				}
+
+				deviceStates = states.filter((state) => haDevice.entities.includes(state.entity_id));
 			}
-
-			// Find the HA device
-			const haDevice = haDevices.find((d) => d.id === device.haDeviceId);
-			if (!haDevice) {
-				this.logger.warn(`[SYNC] HA device ${device.haDeviceId} not found in registry`, { resource: deviceId });
-				return;
-			}
-
-			// Get states for this device's entities
-			const deviceStates = states.filter((s) => haDevice.entities.includes(s.entity_id));
 
 			if (!deviceStates.length) {
 				this.logger.debug(`[SYNC] No states found for device ${deviceId}`, { resource: deviceId });
