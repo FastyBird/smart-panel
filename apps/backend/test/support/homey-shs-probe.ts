@@ -10,6 +10,8 @@ const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 const FIXTURE_TIMESTAMP = '2000-01-01T00:00:00.000Z';
 
 const SECRET_KEY_PATTERN = /(?:token|secret|password|authorization|api.?key|credential|cookie)/i;
+const CAMEL_CASE_SECRET_CODE_KEY_PATTERN = /(?:Pin|PIN|PinCode|PINCode|Passcode|AccessCode)$/;
+const BOUNDED_SECRET_CODE_KEY_PATTERN = /(?:^|[_-])(?:pin|pin.?code|passcode|access.?code)$/i;
 const CAMEL_CASE_ADDRESS_KEY_PATTERN =
 	/(?:Addr|Address|Host|Hostname|Ip|IP|Ipv4|IPv4|Ipv6|IPv6|Mac|MAC|Serial|SerialNumber|Ssid|SSID|Bssid|BSSID)$/;
 const BOUNDED_ADDRESS_KEY_PATTERN =
@@ -76,6 +78,11 @@ interface SanitizerContext {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isSecretKey = (key: string): boolean =>
+	SECRET_KEY_PATTERN.test(key) ||
+	CAMEL_CASE_SECRET_CODE_KEY_PATTERN.test(key) ||
+	BOUNDED_SECRET_CODE_KEY_PATTERN.test(key);
 
 const pseudonym = (kind: string, value: string): string => {
 	const digest = createHash('sha256').update(`smart-panel-homey-fixture:${kind}:${value}`).digest('hex').slice(0, 12);
@@ -207,7 +214,7 @@ const sanitizeReference = (key: string, value: string): string => {
 const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): unknown => {
 	const capabilityMapEntry = isCapabilityMap(context.path);
 
-	if (!capabilityMapEntry && SECRET_KEY_PATTERN.test(key)) {
+	if (!capabilityMapEntry && isSecretKey(key)) {
 		return REDACTION.secret;
 	}
 
@@ -509,7 +516,6 @@ export const assertHomeyCaptureSafe = (
 ): void => {
 	const serialized = JSON.stringify(capture);
 	const forbidden = forbiddenValues.filter((value) => value.length > 0);
-	const withoutRedactionMarkers = serialized.replace(REDACTION_PATTERN, '');
 
 	for (const value of forbidden) {
 		if (serialized.toLowerCase().includes(value.toLowerCase())) {
@@ -520,10 +526,12 @@ export const assertHomeyCaptureSafe = (
 	if (expectedHost !== undefined) {
 		const escapedHost = escapeRegularExpression(expectedHost);
 		const hostTokenPattern = new RegExp(`(^|[^A-Za-z0-9.-])${escapedHost}(?=$|[^A-Za-z0-9.-])`, 'i');
+		const globallyIdentifiableHost = expectedHost.includes('.') || expectedHost.includes(':');
 		let hostLeakFound = false;
 		const inspectEndpointValues = (value: unknown, key = ''): void => {
 			if (typeof value === 'string') {
 				const endpointShaped =
+					globallyIdentifiableHost ||
 					isAddressKey(key) ||
 					ENDPOINT_KEY_PATTERN.test(key) ||
 					value.includes('://') ||
@@ -544,8 +552,40 @@ export const assertHomeyCaptureSafe = (
 		}
 	}
 
+	const generatedPseudonymPattern = /^(?:device|homey|id|reference|zone)-[0-9a-f]{6}g[0-9a-f]{6}$/;
+	const syntheticLabelPattern = /^Synthetic (?:device|zone) \d{3}$/;
+	const inspectPrivateTermValues = (value: unknown, key: string, path: string[], term: string): boolean => {
+		if (typeof value === 'string') {
+			const capabilityListEntry = path.at(-1) === 'capabilities';
+			const generatedValue = generatedPseudonymPattern.test(value) || syntheticLabelPattern.test(value);
+
+			return (
+				!capabilityListEntry &&
+				!isCapabilityIdentifier(key, path) &&
+				!generatedValue &&
+				value.replace(REDACTION_PATTERN, '').toLowerCase().includes(term.toLowerCase())
+			);
+		}
+
+		if (Array.isArray(value)) {
+			return value.some((item, index) => inspectPrivateTermValues(item, String(index), [...path, key], term));
+		}
+
+		if (isRecord(value)) {
+			return Object.entries(value).some(([nestedKey, nestedValue]) =>
+				inspectPrivateTermValues(nestedValue, nestedKey, [...path, key], term),
+			);
+		}
+
+		return false;
+	};
+
 	for (const term of privateTerms) {
-		if (withoutRedactionMarkers.toLowerCase().includes(term.toLowerCase())) {
+		const privateTermFound = [capture.systemInfo, capture.zones, capture.devices].some((value) =>
+			inspectPrivateTermValues(value, 'root', [], term),
+		);
+
+		if (privateTermFound) {
 			throw new Error('Sanitized Homey capture still contains a configured private term');
 		}
 	}

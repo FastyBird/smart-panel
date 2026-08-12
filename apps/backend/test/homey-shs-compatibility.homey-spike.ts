@@ -84,6 +84,9 @@ describe('Homey SHS compatibility probe', () => {
 					deviceId: { id: 'deviceId', value: 'capability-value' },
 				},
 				settings: {
+					pin: 1234,
+					passcode: 5678,
+					access_code: 9012,
 					address: '192.168.1.25',
 					serial: 'aa:bb:cc:dd:ee:ff',
 					gateway: 'fd12:3456:789a::1',
@@ -115,6 +118,11 @@ describe('Homey SHS compatibility probe', () => {
 					authorization: '[~3~]',
 				},
 			},
+			settings: {
+				pin: '[~3~]',
+				passcode: '[~3~]',
+				access_code: '[~3~]',
+			},
 		});
 
 		expect(serialized).not.toContain('Private Room');
@@ -135,6 +143,9 @@ describe('Homey SHS compatibility probe', () => {
 		expect(serialized).not.toContain('private-timestamp-capability-account-id');
 		expect(serialized).not.toContain('private-driver-model');
 		expect(serialized).not.toContain('Recoverable Room Name');
+		expect(serialized).not.toContain('1234');
+		expect(serialized).not.toContain('5678');
+		expect(serialized).not.toContain('9012');
 		expect(serialized).toContain('[~7~]');
 		expect(serialized).toContain('measure_temperature.inside');
 		expect(serialized).toContain('lastUpdated');
@@ -259,10 +270,15 @@ describe('Homey SHS compatibility probe', () => {
 
 		expect(() => assertHomeyCaptureSafe(capture, [], [], 'homey')).not.toThrow();
 		expect(() => assertHomeyCaptureSafe(capture, [], [], 'shs')).not.toThrow();
+		expect(() => assertHomeyCaptureSafe(capture, [], [], 'homey.local')).not.toThrow();
 
 		capture.systemInfo = { endpoint: 'http://homey:4859' };
 
 		expect(() => assertHomeyCaptureSafe(capture, [], [], 'homey')).toThrow('expected host in a value');
+
+		capture.systemInfo = { description: 'controller homey.local' };
+
+		expect(() => assertHomeyCaptureSafe(capture, [], [], 'homey.local')).toThrow('expected host in a value');
 	});
 
 	it('does not confuse opaque redaction markers with configured private terms', () => {
@@ -283,6 +299,26 @@ describe('Homey SHS compatibility probe', () => {
 		expect(serialized).not.toContain('private');
 		expect(serialized).not.toContain('term');
 		expect(() => assertHomeyCaptureSafe(sanitizedCapture, [], ['red', 'private', 'term'])).not.toThrow();
+
+		expect(() =>
+			assertHomeyCaptureSafe(
+				{
+					metadata: { schemaVersion: 1, homey: { id: 'homey-aaaaaagbbbbbb' } },
+					systemInfo: {},
+					zones: { 'zone-aaaaaagbbbbbb': { id: 'zone-aaaaaagbbbbbb', name: 'Synthetic zone 001' } },
+					devices: {
+						'device-aaaaaagbbbbbb': {
+							id: 'device-aaaaaagbbbbbb',
+							name: 'Synthetic device 001',
+							capabilities: ['device_status'],
+							capabilitiesObj: { device_status: { id: 'device_status', value: true } },
+						},
+					},
+				},
+				[],
+				['home', 'device', 'system'],
+			),
+		).not.toThrow();
 	});
 
 	it('rejects captures containing a configured forbidden value', () => {
