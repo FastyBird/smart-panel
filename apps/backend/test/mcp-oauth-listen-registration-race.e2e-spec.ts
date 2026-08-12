@@ -71,7 +71,7 @@ const deferred = (): { promise: Promise<void>; resolve: () => void } => {
 };
 
 describe('MCP OAuth listen registration race', () => {
-	it('expires a live access-token subscription and rejects a stale listen after revocation', async () => {
+	it('expires live token and grant subscriptions and rejects a stale listen after revocation', async () => {
 		const dataSource = new DataSource({
 			type: 'sqlite',
 			database: ':memory:',
@@ -102,6 +102,7 @@ describe('MCP OAuth listen registration race', () => {
 		let app: NestFastifyApplication | undefined;
 		let client: Client | undefined;
 		let expiryClient: Client | undefined;
+		let grantExpiryClient: Client | undefined;
 		const releaseListen = deferred();
 
 		try {
@@ -142,6 +143,25 @@ describe('MCP OAuth listen registration race', () => {
 			const rawGrantId = 'listen-registration-race-grant';
 			const grant = await dataSource.getRepository(McpOAuthGrantEntity).save({
 				providerGrantIdHash: hashToken(rawGrantId),
+				clientId: oauthClient.id,
+				approvedById: user.id,
+				installationId: 'listen-registration-race-installation',
+				issuer: urls.issuer,
+				resource: urls.resource,
+				approvedScopes: [McpOAuthScope.READ],
+				expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
+				revokedAt: null,
+				generation: 0,
+				approverAuthorityGeneration: 0,
+				oauthEnabledGeneration: 0,
+				serverSecretVersion: 1,
+				publicIdentityGeneration: 0,
+				clientGeneration: 0,
+				modulePolicyGeneration: 0,
+			});
+			const rawExpiringGrantId = 'listen-expiring-grant';
+			const expiringGrant = await dataSource.getRepository(McpOAuthGrantEntity).save({
+				providerGrantIdHash: hashToken(rawExpiringGrantId),
 				clientId: oauthClient.id,
 				approvedById: user.id,
 				installationId: 'listen-registration-race-installation',
@@ -276,6 +296,47 @@ describe('MCP OAuth listen registration race', () => {
 			await expiryClient.close();
 			expiryClient = undefined;
 
+			const grantExpiryAccessToken = 'listen-grant-expiry-access-token';
+
+			await accessTokens.upsert(
+				grantExpiryAccessToken,
+				{
+					accountId: user.id,
+					aud: urls.resource,
+					clientId: oauthClient.clientIdentifier,
+					grantId: rawExpiringGrantId,
+					kind: 'AccessToken',
+					scope: McpOAuthScope.READ,
+				},
+				60,
+			);
+			grantExpiryClient = new Client(
+				{ name: 'listen-grant-expiry-e2e', version: '1.0.0' },
+				{ versionNegotiation: { mode: 'auto' } },
+			);
+			const grantExpiryTransport = new StreamableHTTPClientTransport(endpoint, {
+				requestInit: { headers: { Authorization: `Bearer ${grantExpiryAccessToken}` } },
+			});
+
+			await grantExpiryClient.connect(grantExpiryTransport);
+			await dataSource
+				.getRepository(McpOAuthGrantEntity)
+				.update({ id: expiringGrant.id }, { expiresAt: new Date(Date.now() + 5_000) });
+			const grantExpiringSubscription = await grantExpiryClient.listen({ toolsListChanged: true });
+
+			await expect(grantExpiringSubscription.closed).resolves.toBe('remote');
+			expect(subscriptions.activeCount).toBe(0);
+			expect(
+				auditLog.mock.calls.filter(
+					([message, event]) =>
+						message === 'MCP audit event' &&
+						(event as { event?: string; reason?: string }).event === 'subscription_close' &&
+						(event as { event?: string; reason?: string }).reason === 'authorization_expired',
+				),
+			).toHaveLength(2);
+			await grantExpiryClient.close();
+			grantExpiryClient = undefined;
+
 			jest
 				.spyOn(serverService, 'handleOAuth')
 				.mockImplementation(
@@ -332,6 +393,7 @@ describe('MCP OAuth listen registration race', () => {
 		} finally {
 			releaseListen.resolve();
 			await expiryClient?.close();
+			await grantExpiryClient?.close();
 			await client?.close();
 			if (app) {
 				await app.get(McpServerService).closeAll();
@@ -340,5 +402,5 @@ describe('MCP OAuth listen registration race', () => {
 			await subscriptions.closeAll();
 			await dataSource.destroy();
 		}
-	}, 20_000);
+	}, 30_000);
 });
