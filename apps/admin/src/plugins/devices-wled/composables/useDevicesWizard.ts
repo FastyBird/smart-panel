@@ -53,8 +53,6 @@ const deviceKey = (device: IWledWizardDevice): string =>
 	device.mac ? `mac:${device.mac.replace(/[^a-fA-F0-9]/g, '').toLowerCase()}` : `host:${device.host}`;
 
 const adoptionHost = (device: IWledWizardDevice): string => {
-	if (device.port === 80) return device.host;
-
 	try {
 		if (new URL(`http://${device.host}`).port) return device.host;
 	} catch {
@@ -62,6 +60,8 @@ const adoptionHost = (device: IWledWizardDevice): string => {
 	}
 
 	const host = device.host.includes(':') && !device.host.startsWith('[') ? `[${device.host}]` : device.host;
+	if (device.port === 80) return host;
+
 	return `${host}:${device.port}`;
 };
 

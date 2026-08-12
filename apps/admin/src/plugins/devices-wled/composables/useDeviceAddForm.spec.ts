@@ -23,7 +23,7 @@ vi.mock('../../../common', async () => {
 		injectStoresManager: () => ({ getStore: vi.fn(() => devicesStore) }),
 		useBackend: () => ({ client: backendClient }),
 		useFlashMessage: () => flashMessage,
-		useLogger: () => ({ error: vi.fn() }),
+		useLogger: () => ({ error: vi.fn(), warn: vi.fn() }),
 	};
 });
 
@@ -66,5 +66,19 @@ describe('useDeviceAddForm', () => {
 			},
 		});
 		expect(devicesStore.fetch).toHaveBeenCalledTimes(1);
+	});
+
+	it('completes successfully when the post-adoption store refresh fails', async () => {
+		devicesStore.fetch.mockRejectedValueOnce(new Error('Refresh failed'));
+		const form = useDeviceAddForm({ id: '6ce8b8e8-c15c-4f10-86dc-50d342c7ec35' });
+		form.formEl.value = { clearValidate: vi.fn(), validate: vi.fn().mockResolvedValue(true) } as never;
+		form.model.name = 'Desk strip';
+		form.model.category = DevicesModuleDeviceCategory.lighting;
+		form.model.hostname = '192.168.1.100';
+
+		await expect(form.submit()).resolves.toBe('added');
+
+		expect(flashMessage.success).toHaveBeenCalled();
+		expect(flashMessage.error).not.toHaveBeenCalled();
 	});
 });

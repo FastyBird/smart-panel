@@ -203,6 +203,38 @@ describe('useDevicesWizard', () => {
 		await adapter.dispose?.();
 	});
 
+	it('brackets an IPv6 discovery host on the default port', async () => {
+		backendClient.GET.mockResolvedValue({
+			data: {
+				data: {
+					...inventory,
+					devices: [{ ...inventory.devices[0], host: 'fe80::1234', port: 80 }],
+				},
+			},
+			response: { status: 200 },
+		});
+		backendClient.POST.mockResolvedValue({
+			data: { data: [{ host: '[fe80::1234]', name: 'Strip', status: 'created', error: null }] },
+			response: { status: 200 },
+		});
+		const adapter = useDevicesWizard();
+		await adapter.start();
+
+		await adapter.adopt([{ key: 'mac:aabbccddeeff', name: 'Strip', category: DevicesModuleDeviceCategory.lighting }]);
+
+		expect(backendClient.POST).toHaveBeenCalledWith(
+			`/plugins/${DEVICES_WLED_PLUGIN_PREFIX}/discovery/adopt`,
+			expect.objectContaining({
+				body: expect.objectContaining({
+					data: expect.objectContaining({
+						devices: [expect.objectContaining({ host: '[fe80::1234]' })],
+					}),
+				}),
+			})
+		);
+		await adapter.dispose?.();
+	});
+
 	it('stops polling when disposed', async () => {
 		const adapter = useDevicesWizard();
 		await adapter.start();

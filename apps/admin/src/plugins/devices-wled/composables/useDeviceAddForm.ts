@@ -114,7 +114,13 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 				throw new DevicesWledApiException(result?.error ?? errorMessage, 422);
 			}
 
-			await devicesStore.fetch();
+			try {
+				await devicesStore.fetch();
+			} catch (error: unknown) {
+				logger.warn('WLED device was created, but the device store could not be refreshed', {
+					message: error instanceof Error ? error.message : String(error),
+				});
+			}
 		} catch (error: unknown) {
 			formResult.value = FormResult.ERROR;
 
