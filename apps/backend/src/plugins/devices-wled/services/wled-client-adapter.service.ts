@@ -641,10 +641,14 @@ export class WledClientAdapterService {
 
 		try {
 			const ws = new WebSocket(wsUrl);
+			this.websockets.set(host, ws);
 
 			ws.on('open', () => {
+				if (this.websockets.get(host) !== ws) {
+					return;
+				}
+
 				this.logger.log(`WebSocket connected to ${host}`);
-				this.websockets.set(host, ws);
 
 				const device = this.devices.get(host);
 				if (device) {
@@ -653,6 +657,10 @@ export class WledClientAdapterService {
 			});
 
 			ws.on('message', (data: WebSocket.Data) => {
+				if (this.websockets.get(host) !== ws) {
+					return;
+				}
+
 				try {
 					let dataStr: string;
 
@@ -693,6 +701,10 @@ export class WledClientAdapterService {
 			});
 
 			ws.on('close', () => {
+				if (this.websockets.get(host) !== ws) {
+					return;
+				}
+
 				this.logger.debug(`WebSocket disconnected from ${host}`);
 				this.websockets.delete(host);
 

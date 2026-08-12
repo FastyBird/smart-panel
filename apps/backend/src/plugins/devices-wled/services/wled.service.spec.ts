@@ -749,6 +749,9 @@ describe('WledService', () => {
 			]);
 
 			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.100');
+			expect(deviceMapper.mapDevice.mock.invocationCallOrder[0]).toBeLessThan(
+				wledAdapter.disconnect.mock.invocationCallOrder[0],
+			);
 			expect(devicesService.update).toHaveBeenCalledWith('device-1', {
 				type: DEVICES_WLED_TYPE,
 				enabled: false,
@@ -783,6 +786,7 @@ describe('WledService', () => {
 			]);
 
 			expect(devicesService.update).not.toHaveBeenCalled();
+			expect(wledAdapter.disconnect).not.toHaveBeenCalled();
 			expect(results).toEqual([expect.objectContaining({ status: 'failed', error: 'Provisioning failed' })]);
 		});
 

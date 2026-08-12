@@ -5,12 +5,15 @@ eslint-disable @typescript-eslint/require-await
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { WledAdapterCallbacks } from '../interfaces/wled.interface';
+import WebSocket from 'ws';
+
+import { WledAdapterCallbacks, WledDeviceContext } from '../interfaces/wled.interface';
 
 import { WledClientAdapterService } from './wled-client-adapter.service';
 
 // Mock global fetch
 global.fetch = jest.fn();
+jest.mock('ws');
 
 describe('WledClientAdapterService', () => {
 	let service: WledClientAdapterService;
@@ -204,6 +207,49 @@ describe('WledClientAdapterService', () => {
 			service.disconnect('192.168.1.100');
 
 			expect(callbacks.onDeviceDisconnected).not.toHaveBeenCalled();
+		});
+
+		it('ignores a stale socket close after a replacement is registered at the same host', () => {
+			jest.useFakeTimers();
+			const sockets: Array<{
+				on: jest.Mock;
+				close: jest.Mock;
+				handlers: Map<string, (...args: unknown[]) => void>;
+			}> = [];
+			(WebSocket as unknown as jest.Mock).mockImplementation(() => {
+				const handlers = new Map<string, (...args: unknown[]) => void>();
+				const socket = {
+					on: jest.fn((event: string, handler: (...args: unknown[]) => void) => {
+						handlers.set(event, handler);
+					}),
+					close: jest.fn(),
+					handlers,
+				};
+				sockets.push(socket);
+
+				return socket;
+			});
+			const context = {
+				state: { on: true, brightness: 128, segments: [] },
+				info: { name: 'WLED', mac: 'AA:BB:CC:DD:EE:FF' },
+				effects: [],
+				palettes: [],
+			} as WledDeviceContext;
+			service.configureWebSocket(true, 5000);
+
+			service.connectWithContext('192.168.1.100', 'wled-old', context);
+			sockets[0].handlers.get('open')?.();
+			service.disconnect('192.168.1.100');
+			service.connectWithContext('192.168.1.100', 'wled-new', context);
+			sockets[1].handlers.get('open')?.();
+			sockets[0].handlers.get('close')?.();
+			jest.advanceTimersByTime(5000);
+
+			expect(service.getDevice('192.168.1.100')).toEqual(
+				expect.objectContaining({ identifier: 'wled-new', websocket: sockets[1] }),
+			);
+			expect(WebSocket).toHaveBeenCalledTimes(2);
+			jest.useRealTimers();
 		});
 	});
 

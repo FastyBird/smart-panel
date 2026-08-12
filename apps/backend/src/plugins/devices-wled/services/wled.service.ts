@@ -580,10 +580,6 @@ export class WledService extends BaseManagedPluginService {
 			if (existingDevice?.hostname && existingDevice.hostname !== host) {
 				this.wledAdapter.disconnect(existingDevice.hostname);
 			}
-
-			if (databaseDevices.some((device) => device.hostname === host && device.id !== existingDevice?.id)) {
-				this.wledAdapter.disconnect(host);
-			}
 		}
 
 		const retiredDeviceIds = new Set<string>();
@@ -605,9 +601,13 @@ export class WledService extends BaseManagedPluginService {
 					request.description,
 					request.enabled,
 				);
-				for (const staleHostOwner of databaseDevices.filter(
+				const staleHostOwners = databaseDevices.filter(
 					(device) => device.hostname === host && device.id !== existingDevice?.id,
-				)) {
+				);
+				if (staleHostOwners.length > 0) {
+					this.wledAdapter.disconnect(host);
+				}
+				for (const staleHostOwner of staleHostOwners) {
 					if (selectedDeviceIds.has(staleHostOwner.id) || retiredDeviceIds.has(staleHostOwner.id)) {
 						continue;
 					}
