@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { orderBy } from 'natural-orderby';
 
 import { PLUGINS_PREFIX } from '../../../app.constants';
-import { getErrorReason, useBackend, useFlashMessage, useLogger } from '../../../common';
+import { getErrorReason, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../common';
 import { RouteNames as ConfigRouteNames } from '../../../modules/config';
 import {
 	RouteNames as DevicesRouteNames,
@@ -15,6 +15,7 @@ import {
 	type IWizardControl,
 	type IWizardResult,
 	type IWizardRow,
+	devicesStoreKey,
 } from '../../../modules/devices';
 import type {
 	DevicesHomeAssistantPluginAdoptWizardOperation,
@@ -26,6 +27,7 @@ import type {
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException } from '../devices-home-assistant.exceptions';
 import type { IHomeAssistantWizardAdoptionResult, IHomeAssistantWizardCandidate, IHomeAssistantWizardSession } from '../schemas/wizard.types';
+import { discoveredDevicesStoreKey, discoveredHelpersStoreKey } from '../store/keys';
 import { transformWizardAdoptRequest, transformWizardAdoptionResponse, transformWizardSessionResponse } from '../utils/wizard.transformers';
 
 export const useDevicesWizard = (): IDeviceWizardAdapter => {
@@ -33,6 +35,10 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const backend = useBackend();
 	const flashMessage = useFlashMessage();
 	const logger = useLogger();
+	const storesManager = injectStoresManager();
+	const devicesStore = storesManager.getStore(devicesStoreKey);
+	const discoveredDevicesStore = storesManager.getStore(discoveredDevicesStoreKey);
+	const discoveredHelpersStore = storesManager.getStore(discoveredHelpersStoreKey);
 	const session = ref<IHomeAssistantWizardSession | null>(null);
 	// Keep the last non-null session identity across DELETE so a refresh produces a direct
 	// old-id -> new-id transition. The shared shell uses that transition to clear row state.
@@ -52,7 +58,8 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			subLabel: [candidate.manufacturer, candidate.model].filter(Boolean).join(' · ') || null,
 			identifier: candidate.sourceId,
 			status: candidate.status,
-			statusLabel: candidate.status === 'needs_attention' ? t('devicesHomeAssistantPlugin.wizard.statuses.needsAttention') : undefined,
+			statusLabel:
+				candidate.error ?? (candidate.status === 'needs_attention' ? t('devicesHomeAssistantPlugin.wizard.statuses.needsAttention') : undefined),
 			adoptable: candidate.status === 'ready',
 			selectedByDefault: false,
 			willUpdate: false,
@@ -80,7 +87,10 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 					}),
 					variant: candidate.warningCount > 0 ? 'warning' : 'success',
 					tooltip:
-						candidate.warningCount > 0 ? t('devicesHomeAssistantPlugin.wizard.columns.warningsCount', { count: candidate.warningCount }) : undefined,
+						candidate.error ??
+						(candidate.warningCount > 0
+							? t('devicesHomeAssistantPlugin.wizard.columns.warningsCount', { count: candidate.warningCount })
+							: undefined),
 				},
 			},
 		}))
@@ -210,6 +220,14 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 
 		if (typeof data !== 'undefined') {
 			adoptionResults.value = transformWizardAdoptionResponse((data as { data: DevicesHomeAssistantPluginWizardAdoptionSchema }).data);
+			if (adoptionResults.value.some((result) => result.status === 'created')) {
+				const refreshes = await Promise.allSettled([devicesStore.fetch(), discoveredDevicesStore.fetch(), discoveredHelpersStore.fetch()]);
+				for (const refresh of refreshes) {
+					if (refresh.status === 'rejected') {
+						logger.warn('Failed to refresh a device store after Home Assistant bulk adoption', refresh.reason);
+					}
+				}
+			}
 			formResult.value = adoptionResults.value.some((result) => result.status === 'failed') ? FormResult.ERROR : FormResult.OK;
 			return results.value;
 		}

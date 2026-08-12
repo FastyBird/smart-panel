@@ -23,6 +23,11 @@ const flashMessage = {
 	warning: vi.fn(),
 };
 
+const devicesStore = { fetch: vi.fn() };
+const discoveredDevicesStore = { fetch: vi.fn() };
+const discoveredHelpersStore = { fetch: vi.fn() };
+const stores = [devicesStore, discoveredDevicesStore, discoveredHelpersStore];
+
 vi.mock('vue-i18n', () => ({
 	createI18n: () => ({
 		global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => undefined },
@@ -37,6 +42,7 @@ vi.mock('../../../common', async () => {
 
 	return {
 		...actual,
+		injectStoresManager: () => ({ getStore: vi.fn(() => stores.shift()) }),
 		useBackend: () => ({ client: backendClient }),
 		useFlashMessage: () => flashMessage,
 		useLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() }),
@@ -67,6 +73,10 @@ const wizardSession: DevicesHomeAssistantPluginWizardSessionSchema = {
 describe('useDevicesWizard', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		stores.splice(0, stores.length, devicesStore, discoveredDevicesStore, discoveredHelpersStore);
+		devicesStore.fetch.mockResolvedValue([]);
+		discoveredDevicesStore.fetch.mockResolvedValue([]);
+		discoveredHelpersStore.fetch.mockResolvedValue([]);
 	});
 
 	it('starts a selection-only bulk session and maps ready candidates', async () => {
@@ -144,6 +154,34 @@ describe('useDevicesWizard', () => {
 				error: null,
 			},
 		]);
+		expect(devicesStore.fetch).toHaveBeenCalledTimes(1);
+		expect(discoveredDevicesStore.fetch).toHaveBeenCalledTimes(1);
+		expect(discoveredHelpersStore.fetch).toHaveBeenCalledTimes(1);
+	});
+
+	it('surfaces an isolated candidate mapping error in its status and tooltip', async () => {
+		backendClient.POST.mockResolvedValue({
+			data: {
+				data: {
+					...wizardSession,
+					candidates: [
+						{
+							...readyCandidate,
+							status: DevicesHomeAssistantPluginDataWizardCandidateStatus.failed,
+							warningCount: 1,
+							error: 'Home Assistant registry entry disappeared',
+						},
+					],
+				},
+			},
+			response: { status: 201 },
+		});
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		expect(adapter.rows.value[0].statusLabel).toBe('Home Assistant registry entry disappeared');
+		expect(adapter.rows.value[0].cells?.channels).toEqual(expect.objectContaining({ tooltip: 'Home Assistant registry entry disappeared' }));
 	});
 
 	it('shows an actionable configuration banner when the inventory cannot be loaded', async () => {

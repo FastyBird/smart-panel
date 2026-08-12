@@ -2,6 +2,7 @@ import { NotFoundException, UnprocessableEntityException } from '@nestjs/common'
 import { Test, TestingModule } from '@nestjs/testing';
 
 import {
+	DevicesHomeAssistantException,
 	DevicesHomeAssistantNotFoundException,
 	DevicesHomeAssistantValidationException,
 } from '../devices-home-assistant.exceptions';
@@ -54,6 +55,14 @@ describe('HomeAssistantWizardController', () => {
 		);
 
 		await expect(controller.startSession()).rejects.toBeInstanceOf(NotFoundException);
+	});
+
+	it('returns unprocessable entity when a Home Assistant connection request fails', async () => {
+		wizardService.start.mockRejectedValueOnce(
+			new DevicesHomeAssistantException('Home Assistant registry request timed out'),
+		);
+
+		await expect(controller.startSession()).rejects.toBeInstanceOf(UnprocessableEntityException);
 	});
 
 	it('returns not found for an unknown session', () => {
