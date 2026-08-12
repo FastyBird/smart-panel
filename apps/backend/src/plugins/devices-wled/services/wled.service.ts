@@ -587,7 +587,7 @@ export class WledService extends BaseManagedPluginService {
 		const selectedDeviceIds = new Set(
 			plans.flatMap(({ existingDevice }) => (existingDevice ? [existingDevice.id] : [])),
 		);
-		const dependentPlanIndexes = new Set<number>();
+		const dependencyEdges = new Map<number, Set<number>>();
 		for (const plan of plans) {
 			const selectedTargetOwner = plans.find(
 				(candidate) =>
@@ -595,21 +595,50 @@ export class WledService extends BaseManagedPluginService {
 			);
 
 			if (selectedTargetOwner) {
-				dependentPlanIndexes.add(plan.index);
-				dependentPlanIndexes.add(selectedTargetOwner.index);
+				const planEdges = dependencyEdges.get(plan.index) ?? new Set<number>();
+				planEdges.add(selectedTargetOwner.index);
+				dependencyEdges.set(plan.index, planEdges);
+				const ownerEdges = dependencyEdges.get(selectedTargetOwner.index) ?? new Set<number>();
+				ownerEdges.add(plan.index);
+				dependencyEdges.set(selectedTargetOwner.index, ownerEdges);
+			}
+		}
+		const dependencyGroupByIndex = new Map<number, Set<number>>();
+		for (const start of dependencyEdges.keys()) {
+			if (dependencyGroupByIndex.has(start)) {
+				continue;
+			}
+
+			const group = new Set<number>();
+			const pending = [start];
+			while (pending.length > 0) {
+				const current = pending.pop();
+				if (current === undefined || group.has(current)) {
+					continue;
+				}
+
+				group.add(current);
+				pending.push(...(dependencyEdges.get(current) ?? []));
+			}
+
+			for (const member of group) {
+				dependencyGroupByIndex.set(member, group);
 			}
 		}
 
 		const retiredDeviceIds = new Set<string>();
-		let dependentFailure: string | null = null;
+		const failedDependencyGroups = new Map<Set<number>, string>();
+		const createdDeviceIdsByPlan = new Map<number, string>();
 
 		for (const { index, request, host, context, existingDevice, identifier } of plans) {
-			if (dependentPlanIndexes.has(index) && dependentFailure) {
+			const dependencyGroup = dependencyGroupByIndex.get(index);
+			const dependencyFailure = dependencyGroup ? failedDependencyGroups.get(dependencyGroup) : undefined;
+			if (dependencyFailure) {
 				results[index] = {
 					host,
 					name: request.name,
 					status: 'failed',
-					error: dependentFailure,
+					error: dependencyFailure,
 					deviceId: existingDevice?.id ?? null,
 				};
 				continue;
@@ -631,6 +660,9 @@ export class WledService extends BaseManagedPluginService {
 					request.description,
 					request.enabled,
 				);
+				if (!existingDevice) {
+					createdDeviceIdsByPlan.set(index, device.id);
+				}
 				if (existingDevice?.hostname && existingDevice.hostname !== host) {
 					const sourceRegistration = this.wledAdapter.getDevice(existingDevice.hostname);
 
@@ -700,9 +732,10 @@ export class WledService extends BaseManagedPluginService {
 			} catch (error) {
 				const reason = error instanceof Error ? error.message : String(error);
 
-				if (dependentPlanIndexes.has(index)) {
-					dependentFailure = `A related WLED address move failed: ${reason}`;
-					const dependentPlans = plans.filter((plan) => dependentPlanIndexes.has(plan.index));
+				if (dependencyGroup) {
+					const dependentFailure = `A related WLED address move failed: ${reason}`;
+					failedDependencyGroups.set(dependencyGroup, dependentFailure);
+					const dependentPlans = plans.filter((plan) => dependencyGroup.has(plan.index));
 					const involvedHosts = new Set(
 						dependentPlans.flatMap((plan) =>
 							[plan.host, plan.existingDevice?.hostname].filter((item): item is string => !!item),
@@ -727,6 +760,12 @@ export class WledService extends BaseManagedPluginService {
 							await this.deviceConnectivityService.setConnectionState(original.id, {
 								state: ConnectionState.DISCONNECTED,
 							});
+						} else {
+							const createdDeviceId = createdDeviceIdsByPlan.get(dependentPlan.index);
+							if (createdDeviceId) {
+								await this.devicesService.remove(createdDeviceId);
+								createdDeviceIdsByPlan.delete(dependentPlan.index);
+							}
 						}
 
 						results[dependentPlan.index] = {

@@ -147,6 +147,7 @@ describe('WledService', () => {
 						findAll: jest.fn().mockResolvedValue([]),
 						findOneBy: jest.fn(),
 						update: jest.fn(),
+						remove: jest.fn(),
 					},
 				},
 				{
@@ -815,6 +816,65 @@ describe('WledService', () => {
 			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith('device-2', {
 				state: ConnectionState.DISCONNECTED,
 			});
+		});
+
+		it('removes a newly created device when its dependent move group fails', async () => {
+			const existingDevice = createMockDevice('device-existing', 'wled-aabbccddeeff', '192.168.1.100');
+			const newContext = {
+				...mockContext,
+				info: { ...mockContext.info, mac: '77:88:99:AA:BB:CC' },
+			};
+			wledAdapter.probe.mockResolvedValueOnce(newContext).mockResolvedValueOnce(mockContext);
+			devicesService.findAll.mockResolvedValue([existingDevice]);
+			deviceMapper.mapDevice
+				.mockResolvedValueOnce(createMockDevice('device-new', 'wled-778899aabbcc', '192.168.1.100'))
+				.mockRejectedValueOnce(new Error('Existing move failed'));
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.100', name: 'New controller', category: DeviceCategory.LIGHTING },
+				{ host: '192.168.1.200', name: 'Existing controller', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(results.map((result) => result.status)).toEqual(['failed', 'failed']);
+			expect(devicesService.remove).toHaveBeenCalledWith('device-new');
+			expect(devicesService.update).toHaveBeenCalledWith(
+				'device-existing',
+				expect.objectContaining({ hostname: '192.168.1.100', enabled: true }),
+			);
+		});
+
+		it('rolls back only the failed connected address-move group', async () => {
+			const devices = [
+				createMockDevice('device-1', 'wled-000000000001', '192.168.1.1'),
+				createMockDevice('device-2', 'wled-000000000002', '192.168.1.2'),
+				createMockDevice('device-3', 'wled-000000000003', '192.168.1.3'),
+				createMockDevice('device-4', 'wled-000000000004', '192.168.1.4'),
+			];
+			const contexts = devices.map((device, index) => ({
+				...mockContext,
+				info: { ...mockContext.info, mac: `00:00:00:00:00:0${index + 1}` },
+			}));
+			wledAdapter.probe
+				.mockResolvedValueOnce(contexts[0])
+				.mockResolvedValueOnce(contexts[1])
+				.mockResolvedValueOnce(contexts[2])
+				.mockResolvedValueOnce(contexts[3]);
+			devicesService.findAll.mockResolvedValue(devices);
+			deviceMapper.mapDevice
+				.mockResolvedValueOnce({ ...devices[0], hostname: '192.168.1.2' } as WledDeviceEntity)
+				.mockResolvedValueOnce({ ...devices[1], hostname: '192.168.1.1' } as WledDeviceEntity)
+				.mockResolvedValueOnce({ ...devices[2], hostname: '192.168.1.4' } as WledDeviceEntity)
+				.mockRejectedValueOnce(new Error('Second group failed'));
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.2', name: 'First A', category: DeviceCategory.LIGHTING },
+				{ host: '192.168.1.1', name: 'First B', category: DeviceCategory.LIGHTING },
+				{ host: '192.168.1.4', name: 'Second A', category: DeviceCategory.LIGHTING },
+				{ host: '192.168.1.3', name: 'Second B', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(results.map((result) => result.status)).toEqual(['updated', 'updated', 'failed', 'failed']);
+			expect(devicesService.update.mock.calls.map(([id]) => id)).toEqual(['device-3', 'device-4']);
 		});
 
 		it('rejects a duplicate controller identity within one adoption batch', async () => {
