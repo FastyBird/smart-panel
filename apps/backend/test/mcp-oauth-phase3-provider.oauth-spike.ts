@@ -309,7 +309,7 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 
 	const createAuthorizationRequest = (
 		redirectUri = REGISTERED_REDIRECT_URI,
-		scope = 'mcp:read offline_access',
+		scope: string | undefined = 'mcp:read offline_access',
 		forceConsent = true,
 	) => {
 		const verifier = randomBytes(32).toString('base64url');
@@ -320,7 +320,7 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 			client_id: CLIENT_ID,
 			redirect_uri: redirectUri,
 			response_type: 'code',
-			scope,
+			...(scope === undefined ? {} : { scope }),
 			code_challenge: challenge,
 			code_challenge_method: 'S256',
 			resource: urls.resource,
@@ -333,7 +333,7 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 
 	const authorize = async (
 		redirectUri = REGISTERED_REDIRECT_URI,
-		scope = 'mcp:read offline_access',
+		scope: string | undefined = 'mcp:read offline_access',
 		browser = new CookieBrowser(),
 		forceConsent = true,
 	) => {
@@ -443,6 +443,16 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 
 		expect(accessArtifact.refreshFamilyId).toBe(refreshArtifact.refreshFamilyId);
 		expect(refreshArtifact.refreshFamilyId).toMatch(/^[0-9a-f-]{36}$/);
+	});
+
+	it('defaults an omitted scope to the pre-registered client ceiling', async () => {
+		const { callback, verifier } = await authorize(REGISTERED_REDIRECT_URI, undefined);
+		const response = await exchangeCode(callback.searchParams.get('code'), verifier);
+		const tokens = (await response.json()) as TokenResponse;
+
+		expect(response.status).toBe(200);
+		expect(tokens.scope).toBe(McpOAuthScope.READ);
+		expect(tokens.refresh_token).toBeDefined();
 	});
 
 	it('requires fresh consent even when the browser has an existing client grant', async () => {

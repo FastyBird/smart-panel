@@ -158,6 +158,18 @@ describe('McpOAuthInteractionService', () => {
 		});
 	});
 
+	it('defaults an omitted OAuth scope to the pre-registered client ceiling', async () => {
+		interactionDetails.mockResolvedValue({
+			...details,
+			prompt: { ...details.prompt },
+			params: { ...details.params, scope: undefined },
+		});
+
+		const interaction = await service.getInteraction(rawUid, userId, request);
+
+		expect(interaction.requestedScopes).toEqual(client.maximumScopes);
+	});
+
 	it('binds the interaction to the first authenticated owner/admin', async () => {
 		await service.getInteraction(rawUid, userId, request);
 

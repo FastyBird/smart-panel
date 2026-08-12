@@ -277,7 +277,11 @@ export class McpOAuthInteractionService {
 		const redirectUri = details.params.redirect_uri;
 		const scope = details.params.scope;
 
-		if (typeof clientIdentifier !== 'string' || typeof redirectUri !== 'string' || typeof scope !== 'string') {
+		if (
+			typeof clientIdentifier !== 'string' ||
+			typeof redirectUri !== 'string' ||
+			(scope !== undefined && typeof scope !== 'string')
+		) {
 			throw new BadRequestException('OAuth interaction parameters are incomplete');
 		}
 
@@ -287,11 +291,15 @@ export class McpOAuthInteractionService {
 			throw new ForbiddenException('OAuth client or redirect URI is no longer authorized');
 		}
 
-		const requestedScopes = scope
-			.split(' ')
-			.filter((value): value is McpOAuthScope => Object.values(McpOAuthScope).includes(value as McpOAuthScope));
+		const requestedScope = typeof scope === 'string' ? scope : undefined;
+		const requestedScopes =
+			requestedScope === undefined
+				? [...client.maximumScopes]
+				: requestedScope
+						.split(' ')
+						.filter((value): value is McpOAuthScope => Object.values(McpOAuthScope).includes(value as McpOAuthScope));
 
-		if (requestedScopes.length !== scope.split(' ').filter(Boolean).length) {
+		if (requestedScope !== undefined && requestedScopes.length !== requestedScope.split(' ').filter(Boolean).length) {
 			throw new BadRequestException('OAuth interaction contains an unsupported scope');
 		}
 

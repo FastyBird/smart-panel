@@ -93,11 +93,25 @@ export class McpOAuthProviderFactory {
 			},
 			clientAuthMethods: ['none'],
 			responseTypes: ['code'],
-			scopes: Object.values(McpOAuthScope),
+			// Capability scopes belong to the MCP resource server. Keeping them out of the provider's OIDC scope set
+			// makes oidc-provider evaluate them as resource scopes instead of requesting a second consent prompt.
+			scopes: [McpOAuthScope.OFFLINE_ACCESS],
 			extraParams: {
-				state: (context, state) => {
+				state: async (context, state) => {
 					if (context.oidc.route === 'authorization' && !state) {
 						throw new oidcProvider.errors.InvalidRequest('The OAuth state parameter is required');
+					}
+
+					// OAuth permits clients to omit scope. Use the pre-registered client ceiling as the explicit consent
+					// request so hosts such as Codex can receive a useful, refreshable least-authority grant.
+					if (context.oidc.route === 'authorization' && !context.oidc.params.scope) {
+						const clientIdentifier = context.oidc.params.client_id;
+						const registeredClient =
+							typeof clientIdentifier === 'string'
+								? await this.clientsService.findActiveByIdentifier(clientIdentifier)
+								: null;
+
+						if (registeredClient) context.oidc.params.scope = registeredClient.maximumScopes.join(' ');
 					}
 				},
 			},
@@ -214,6 +228,10 @@ export class McpOAuthProviderFactory {
 					keys: JWK[];
 				}),
 		});
+		// The bootstrap gate rejects forwarded headers unless the immediate peer is explicitly trusted. Once a request
+		// passes that boundary, let Koa honor X-Forwarded-Proto so secure OAuth cookies work behind the supported TLS
+		// reverse-proxy topology.
+		provider.proxy = true;
 
 		const providerCallback = provider.callback();
 		const callback: RequestListener = (request, response) => {
