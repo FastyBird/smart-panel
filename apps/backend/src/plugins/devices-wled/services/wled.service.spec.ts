@@ -73,7 +73,12 @@ describe('WledService', () => {
 		},
 	} as unknown as WledConfigModel;
 
-	const createMockDevice = (id: string, identifier: string, hostname: string, enabled = true): WledDeviceEntity =>
+	const createMockDevice = (
+		id: string,
+		identifier: string | null,
+		hostname: string,
+		enabled = true,
+	): WledDeviceEntity =>
 		({
 			id,
 			type: DEVICES_WLED_TYPE,
@@ -141,6 +146,7 @@ describe('WledService', () => {
 					useValue: {
 						findAll: jest.fn().mockResolvedValue([]),
 						findOneBy: jest.fn(),
+						update: jest.fn(),
 					},
 				},
 				{
@@ -529,6 +535,16 @@ describe('WledService', () => {
 			expect(wledAdapter.connectWithContext).not.toHaveBeenCalled();
 		});
 
+		it('brackets a bare IPv6 host before probing', async () => {
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			devicesService.findAll.mockResolvedValue([]);
+
+			const result = await service.probeDevice('fe80::1234');
+
+			expect(wledAdapter.probe).toHaveBeenCalledWith('[fe80::1234]', 5000);
+			expect(result.host).toBe('[fe80::1234]');
+		});
+
 		it('provisions each device through the mapper and retains partial failures', async () => {
 			wledAdapter.probe.mockResolvedValueOnce(mockContext).mockRejectedValueOnce(new Error('Device offline'));
 			devicesService.findAll.mockResolvedValue([]);
@@ -582,6 +598,36 @@ describe('WledService', () => {
 				mockContext,
 				'Living room',
 				'wled-ddeeff',
+				undefined,
+				undefined,
+			);
+			expect(results).toEqual([expect.objectContaining({ status: 'created', deviceId: 'device-1' })]);
+		});
+
+		it('upgrades a legacy same-host device without an identifier before provisioning', async () => {
+			const legacyDevice = createMockDevice('device-1', null, '192.168.1.100');
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			devicesService.findAll.mockResolvedValue([legacyDevice]);
+			devicesService.update.mockResolvedValue({ ...legacyDevice, identifier: 'wled-aabbccddeeff' } as WledDeviceEntity);
+			deviceMapper.mapDevice.mockResolvedValue({
+				...legacyDevice,
+				identifier: 'wled-aabbccddeeff',
+			} as WledDeviceEntity);
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.100', name: 'Legacy strip', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(devicesService.update).toHaveBeenCalledWith('device-1', {
+				type: DEVICES_WLED_TYPE,
+				identifier: 'wled-aabbccddeeff',
+				hostname: '192.168.1.100',
+			});
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(
+				'192.168.1.100',
+				mockContext,
+				'Legacy strip',
+				'wled-aabbccddeeff',
 				undefined,
 				undefined,
 			);

@@ -14,6 +14,7 @@ import {
 import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
 import { DEVICES_WLED_PLUGIN_NAME, DEVICES_WLED_TYPE } from '../devices-wled.constants';
 import { WledValidationException } from '../devices-wled.exceptions';
+import { UpdateWledDeviceDto } from '../dto/update-device.dto';
 import { WledAdoptDeviceDto } from '../dto/wled-adoption.dto';
 import { WledDeviceEntity } from '../entities/devices-wled.entity';
 import {
@@ -541,6 +542,13 @@ export class WledService extends BaseManagedPluginService {
 				const databaseDevices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
 				const existingDevice = this.findExistingDevice(databaseDevices, host, context.info.mac);
 				const identifier = existingDevice?.identifier || this.identifierFromMac(context.info.mac);
+				if (existingDevice && !existingDevice.identifier) {
+					await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(existingDevice.id, {
+						type: DEVICES_WLED_TYPE,
+						identifier,
+						hostname: host,
+					});
+				}
 				const device = await this.deviceMapper.mapDevice(
 					host,
 					context,
@@ -611,6 +619,10 @@ export class WledService extends BaseManagedPluginService {
 			throw new WledValidationException('WLED address must be a hostname or IP address');
 		}
 
+		if (!trimmed.startsWith('[') && (trimmed.match(/:/g)?.length ?? 0) > 1) {
+			return `[${trimmed}]`;
+		}
+
 		return trimmed;
 	}
 
@@ -632,7 +644,9 @@ export class WledService extends BaseManagedPluginService {
 			const normalizedMac = mac.replace(/[^a-fA-F0-9]/g, '').toLowerCase();
 			if (normalizedMac.length === 12) {
 				const identifiers = new Set([`wled-${normalizedMac}`, `wled-${normalizedMac.slice(-6)}`]);
-				return devices.find((device) => identifiers.has(device.identifier));
+				return devices.find(
+					(device) => identifiers.has(device.identifier) || (device.identifier === null && device.hostname === host),
+				);
 			}
 		}
 
