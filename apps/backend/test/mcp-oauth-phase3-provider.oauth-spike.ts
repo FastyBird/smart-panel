@@ -732,5 +732,5 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		expect((await refresh(tokens.refresh_token)).status).toBe(400);
 	});
 
-	it('synchronizes handlers with invalidation and module-scope contraction', runMcpOAuthHandlerInvalidationRaces);
+	it('synchronizes handlers with invalidation and policy-scope contraction', runMcpOAuthHandlerInvalidationRaces);
 });

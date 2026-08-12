@@ -621,6 +621,78 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 		expect(
 			(await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: latestGrantId })).approvedScopes,
 		).toEqual(expect.arrayContaining([McpOAuthScope.WRITE]));
+
+		const clientGenerationBefore = (
+			await dataSource.getRepository(McpOAuthClientEntity).findOneByOrFail({ id: client.id })
+		).generation;
+		const clientScopeAuthorization = await authorize(
+			urls,
+			`${McpOAuthScope.READ} ${McpOAuthScope.WRITE} ${McpOAuthScope.OFFLINE_ACCESS}`,
+		);
+		const clientScopeInitialResponse = await exchangeCode(
+			urls,
+			requireAuthorizationCode(clientScopeAuthorization.callback),
+			clientScopeAuthorization.verifier,
+		);
+		const clientScopeInitialTokens = (await clientScopeInitialResponse.json()) as TokenResponse;
+		expect(clientScopeInitialResponse.status).toBe(200);
+		expect(clientScopeInitialTokens.scope.split(' ')).toEqual(expect.arrayContaining([McpOAuthScope.WRITE]));
+		const clientContractionResponse = await raceGlobalInvalidation(
+			'AccessToken',
+			() => refresh(urls, requireRefreshToken(clientScopeInitialTokens)),
+			async () => {
+				await management.updateClient(
+					client.id,
+					{ maximumScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS] },
+					ACCOUNT_ID,
+				);
+			},
+			false,
+			false,
+		);
+		const contractedClientTokens = (await clientContractionResponse.json()) as TokenResponse;
+		expect(clientContractionResponse.status).toBe(200);
+		expect(contractedClientTokens.scope.split(' ')).toEqual(expect.arrayContaining([McpOAuthScope.WRITE]));
+		expect(await dataSource.getRepository(McpOAuthClientEntity).findOneByOrFail({ id: client.id })).toMatchObject({
+			maximumScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS],
+			generation: clientGenerationBefore + 1,
+		});
+		await expect(
+			runtime.getActive().provider.AccessToken.find(contractedClientTokens.access_token),
+		).resolves.toBeUndefined();
+		expect((await refresh(urls, requireRefreshToken(contractedClientTokens))).status).toBe(400);
+
+		await management.updateClient(
+			client.id,
+			{ maximumScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE, McpOAuthScope.OFFLINE_ACCESS] },
+			ACCOUNT_ID,
+		);
+		expect(await dataSource.getRepository(McpOAuthClientEntity).findOneByOrFail({ id: client.id })).toMatchObject({
+			maximumScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE, McpOAuthScope.OFFLINE_ACCESS],
+			generation: clientGenerationBefore + 2,
+		});
+		await expect(
+			runtime.getActive().provider.AccessToken.find(contractedClientTokens.access_token),
+		).resolves.toBeUndefined();
+		expect((await refresh(urls, requireRefreshToken(contractedClientTokens))).status).toBe(400);
+		const expandedClientAuthorization = await authorize(
+			urls,
+			`${McpOAuthScope.READ} ${McpOAuthScope.WRITE} ${McpOAuthScope.OFFLINE_ACCESS}`,
+		);
+		const expandedClientResponse = await exchangeCode(
+			urls,
+			requireAuthorizationCode(expandedClientAuthorization.callback),
+			expandedClientAuthorization.verifier,
+		);
+		const expandedClientTokens = (await expandedClientResponse.json()) as TokenResponse;
+		expect(expandedClientResponse.status).toBe(200);
+		expect(expandedClientTokens.scope.split(' ')).toEqual(expect.arrayContaining([McpOAuthScope.WRITE]));
+		expect(latestGrantId).not.toBeNull();
+		const expandedClientGrant = await dataSource
+			.getRepository(McpOAuthGrantEntity)
+			.findOneByOrFail({ id: latestGrantId });
+		expect(expandedClientGrant.approvedScopes).toEqual(expect.arrayContaining([McpOAuthScope.WRITE]));
+		expect(expandedClientGrant.clientGeneration).toBe(clientGenerationBefore + 2);
 	} finally {
 		releaseActivePause();
 		await new Promise<void>((resolve) => server.close(() => resolve()));

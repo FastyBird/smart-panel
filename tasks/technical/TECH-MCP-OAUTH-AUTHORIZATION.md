@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 6 lifecycle, refresh, invalidation, and module-scope race coverage underway
+Status: in progress — Phase 6 lifecycle, refresh, invalidation, and policy-scope race coverage underway
 
 ## 1. Business goal
 

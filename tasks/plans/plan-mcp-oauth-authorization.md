@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 6 in progress — runtime lifecycle, refresh replay, invalidation, and module-scope race coverage implemented
+**Status:** Phase 6 in progress — runtime lifecycle, refresh replay, invalidation, and policy-scope race coverage implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -438,7 +438,10 @@ amend ADR 0002.
   - [x] Provider integration: contract the module ceiling against a paused write-scoped refresh, then expand it; prove
         contraction waits, the committed successor is permanently invalid, and fresh write authorization works after
         expansion with the advanced policy generation.
-  - [ ] Cover client/grant scope contraction/expansion and approver demotion/restoration.
+  - [x] Provider integration: contract a client's scope ceiling against a paused write-scoped refresh, then expand it;
+        prove contraction waits, the committed successor is permanently invalid, and fresh write authorization works
+        with the advanced client generation.
+  - [ ] Cover grant scope contraction/replacement and approver demotion/restoration.
 - [ ] E2E: rotate the public OAuth identity and server secret with simultaneous OAuth and static subscriptions; prove
       only OAuth artifacts/streams are invalidated and static streams remain open. Separately prove MCP-module disable
       closes both kinds.
