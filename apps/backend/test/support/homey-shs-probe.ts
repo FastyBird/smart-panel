@@ -292,12 +292,12 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 
 	const nextPath = [...context.path, key];
 	const preserveKeys = isCapabilityMap(nextPath);
-	const identifierMapEntry = UUID_PATTERN.test(key) || /^\d+$/.test(key) || IDENTIFIER_KEY_PATTERN.test(key);
-	const nestedDriverMap = isDriverMetadata(context.path) && !['data', 'settings'].includes(key) && !identifierMapEntry;
 
 	return Object.fromEntries(
 		Object.entries(value).map(([nestedKey, nestedValue]) => {
-			const privateMapKey = !preserveKeys && (nestedDriverMap || UUID_PATTERN.test(nestedKey));
+			const identifierMapKey =
+				UUID_PATTERN.test(nestedKey) || /^\d+$/.test(nestedKey) || IDENTIFIER_KEY_PATTERN.test(nestedKey);
+			const privateMapKey = !preserveKeys && identifierMapKey && isDriverMetadata(nextPath);
 			const safeKey = privateMapKey ? pseudonym('id', nestedKey) : nestedKey;
 
 			return [safeKey, sanitizeValue(nestedValue, nestedKey, { ...context, path: nextPath })];
@@ -605,6 +605,23 @@ export const assertHomeyCaptureSafe = (
 	]);
 	const dynamicKeyContainsPrivateTerm = (key: string, term: string): boolean =>
 		key.toLowerCase().includes(term.toLowerCase());
+	const isStructuralRecordPath = (path: string[]): boolean => {
+		if (path.length === 1 && path[0] === 'systemInfo') {
+			return true;
+		}
+
+		if (
+			path.length === 2 &&
+			(path[0] === 'devices' || path[0] === 'zones') &&
+			generatedPseudonymPattern.test(path[1])
+		) {
+			return true;
+		}
+
+		const capabilityMapIndex = path.findIndex((part) => part === 'capabilitiesObj' || part === 'capabilityOptions');
+
+		return capabilityMapIndex >= 0 && capabilityMapIndex === path.length - 2;
+	};
 	const inspectPrivateTermValues = (value: unknown, key: string, path: string[], term: string): boolean => {
 		if (typeof value === 'string') {
 			const generatedValue = generatedPseudonymPattern.test(value) || syntheticLabelPattern.test(value);
@@ -624,11 +641,11 @@ export const assertHomeyCaptureSafe = (
 		if (isRecord(value)) {
 			const nextPath = [...path, key];
 			const preserveKeys = isCapabilityMap(nextPath);
-			const resourceRecord = Object.hasOwn(value, 'id');
+			const structuralRecord = isStructuralRecordPath(nextPath);
 
 			return Object.entries(value).some(([nestedKey, nestedValue]) => {
 				const generatedKey = generatedPseudonymPattern.test(nestedKey);
-				const structuralKey = resourceRecord && fixedPayloadKeys.has(nestedKey);
+				const structuralKey = structuralRecord && fixedPayloadKeys.has(nestedKey);
 				const privateDynamicKey =
 					!preserveKeys && !generatedKey && !structuralKey && dynamicKeyContainsPrivateTerm(nestedKey, term);
 
@@ -640,9 +657,11 @@ export const assertHomeyCaptureSafe = (
 	};
 
 	for (const term of privateTerms) {
-		const privateTermFound = [capture.systemInfo, capture.zones, capture.devices].some((value) =>
-			inspectPrivateTermValues(value, 'root', [], term),
-		);
+		const privateTermFound = [
+			['systemInfo', capture.systemInfo],
+			['zones', capture.zones],
+			['devices', capture.devices],
+		].some(([payloadKey, value]) => inspectPrivateTermValues(value, payloadKey as string, [], term));
 
 		if (privateTermFound) {
 			throw new Error('Sanitized Homey capture still contains a configured private term');

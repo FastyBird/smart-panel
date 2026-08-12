@@ -98,6 +98,9 @@ describe('Homey SHS compatibility probe', () => {
 					},
 					data: {
 						node: 123_456_789,
+						'opaque-direct-id': { reachable: true },
+						'987654321': { reachable: false },
+						configuration: { enabled: true, threshold: false },
 						nodes: {
 							'opaque-device-id': { reachable: true },
 							'123456789': { reachable: false },
@@ -139,10 +142,13 @@ describe('Homey SHS compatibility probe', () => {
 		});
 		expect((devices[sanitizedDeviceId] as { capabilities: string[] }).capabilities).toContain('homealarm_state');
 		const sanitizedNodes = (devices[sanitizedDeviceId] as { data: { nodes: Record<string, unknown> } }).data.nodes;
+		const sanitizedData = (devices[sanitizedDeviceId] as { data: Record<string, unknown> }).data;
 
 		expect(Object.keys(sanitizedNodes)).toHaveLength(2);
 		expect(Object.keys(sanitizedNodes).every((key) => /^id-/.test(key))).toBe(true);
 		expect(Object.values(sanitizedNodes)).toEqual(expect.arrayContaining([{ reachable: true }, { reachable: false }]));
+		expect(Object.values(sanitizedData)).toEqual(expect.arrayContaining([{ reachable: true }, { reachable: false }]));
+		expect(sanitizedData.configuration).toEqual({ enabled: true, threshold: false });
 		expect(() => assertHomeyCaptureSafe({ metadata: {}, systemInfo: {}, zones, devices }, [], ['home'])).not.toThrow();
 
 		expect(serialized).not.toContain('Private Room');
@@ -156,6 +162,8 @@ describe('Homey SHS compatibility probe', () => {
 		expect(serialized).not.toContain('private-bridge-id');
 		expect(serialized).not.toContain('private-driver-device-id');
 		expect(serialized).not.toContain('opaque-device-id');
+		expect(serialized).not.toContain('opaque-direct-id');
+		expect(serialized).not.toContain('987654321');
 		expect(serialized).not.toContain('private-hardware-id');
 		expect(serialized).not.toContain('private-account-id');
 		expect(serialized).not.toContain('private-capability-account-id');
@@ -377,6 +385,10 @@ describe('Homey SHS compatibility probe', () => {
 		}
 
 		unsafeCapture.systemInfo = { aliases: { deviceId: true } };
+
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [], ['device'])).toThrow('private term');
+
+		unsafeCapture.systemInfo = { aliases: { id: 'record', deviceId: true } };
 
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [], ['device'])).toThrow('private term');
 
