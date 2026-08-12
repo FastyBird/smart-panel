@@ -6,6 +6,25 @@ import { WledChannelEntity, WledChannelPropertyEntity } from '../entities/device
 import { WledAdoptionSnapshotService } from './adoption-snapshot.service';
 
 describe('WledAdoptionSnapshotService', () => {
+	it('rejects capture when original property values cannot be read strictly', async () => {
+		const channel = { id: 'channel-1', device: { id: 'device-1' } } as WledChannelEntity;
+		const property = { id: 'property-1', channel, value: undefined } as WledChannelPropertyEntity;
+		const channelRepository = { find: jest.fn().mockResolvedValue([channel]) };
+		const propertyRepository = { find: jest.fn().mockResolvedValue([property]) };
+		const dataSource = {
+			getRepository: jest.fn((entity) => (entity === WledChannelEntity ? channelRepository : propertyRepository)),
+		} as unknown as DataSource;
+		const readLatestManyStrict = jest.fn().mockRejectedValue(new Error('Property value storage is unavailable'));
+		const propertyValueService = {
+			readLatestManyStrict,
+		} as unknown as PropertyValueService;
+		const service = new WledAdoptionSnapshotService(dataSource, propertyValueService);
+
+		await expect(service.capture('device-1')).rejects.toThrow('Property value storage is unavailable');
+
+		expect(readLatestManyStrict).toHaveBeenCalledWith([property]);
+	});
+
 	it('restores captured latest values through the property value service', async () => {
 		const channel = { id: 'channel-1', device: { id: 'device-1' } } as WledChannelEntity;
 		const valuedProperty = {

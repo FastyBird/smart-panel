@@ -2087,6 +2087,37 @@ describe('WledService', () => {
 			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-1' })]);
 		});
 
+		it('adopts a terminal-dot DNS endpoint over its equivalent legacy row', async () => {
+			const legacyDevice = createMockDevice('device-1', null, 'wled.local');
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			devicesService.findAll.mockResolvedValue([legacyDevice]);
+			devicesService.update.mockResolvedValue({
+				...legacyDevice,
+				identifier: 'wled-aabbccddeeff',
+				hostname: 'wled.local.',
+			} as WledDeviceEntity);
+			deviceMapper.mapDevice.mockResolvedValue({
+				...legacyDevice,
+				identifier: 'wled-aabbccddeeff',
+				hostname: 'wled.local.',
+			} as WledDeviceEntity);
+
+			const results = await service.adoptDevices([
+				{ host: 'wled.local.', name: 'Legacy strip', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(
+				'wled.local.',
+				mockContext,
+				'Legacy strip',
+				'wled-aabbccddeeff',
+				undefined,
+				undefined,
+			);
+			expect(devicesService.remove).not.toHaveBeenCalled();
+			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-1' })]);
+		});
+
 		it('marks discovered devices as already adopted by MAC identity', async () => {
 			mdnsDiscoverer.getDiscoveredDevices.mockReturnValue([
 				{ host: '192.168.1.200', name: 'Moved WLED', mac: 'AA:BB:CC:DD:EE:FF', port: 80 },

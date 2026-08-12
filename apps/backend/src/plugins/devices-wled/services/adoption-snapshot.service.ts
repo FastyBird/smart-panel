@@ -32,6 +32,11 @@ export class WledAdoptionSnapshotService {
 						where: { channel: { id: In(channelIds) } },
 						relations: ['channel'],
 					});
+		const values = await this.propertyValueService.readLatestManyStrict(properties);
+
+		for (const property of properties) {
+			property.value = values.get(property.id) ?? null;
+		}
 
 		return { deviceId, channels, properties };
 	}
@@ -97,11 +102,7 @@ export class WledAdoptionSnapshotService {
 
 		for (const property of restoredProperties) {
 			const snapshotProperty = snapshot.properties.find(({ id }) => id === property.id);
-			if (snapshotProperty?.value === undefined) {
-				continue;
-			}
-
-			const value = snapshotProperty.value?.value ?? null;
+			const value = snapshotProperty?.value?.value ?? null;
 
 			if (value === null) {
 				await this.propertyValueService.delete(property);

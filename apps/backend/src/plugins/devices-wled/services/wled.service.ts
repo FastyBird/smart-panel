@@ -1295,7 +1295,7 @@ export class WledService extends BaseManagedPluginService {
 
 		try {
 			const url = new URL(`http://${urlHost}`);
-			return `${url.hostname}${url.port ? `:${url.port}` : ''}`;
+			return `${url.hostname.replace(/\.$/, '')}${url.port ? `:${url.port}` : ''}`;
 		} catch {
 			// Fall through for unusual host spellings (for example scoped IPv6 literals)
 			// that URL cannot parse but the WLED client may still support.
@@ -1311,7 +1311,7 @@ export class WledService extends BaseManagedPluginService {
 			return `[${trimmed}]`;
 		}
 
-		return trimmed.replace(/:80$/, '');
+		return trimmed.replace(/\.(?=:\d+$|$)/, '').replace(/:80$/, '');
 	}
 
 	private legacyHostIdentifiers(endpoint: string): Set<string> {
