@@ -421,25 +421,23 @@ describe('WledService', () => {
 				port: 80,
 				mac: 'FF:EE:DD:CC:BB:AA',
 			};
+			const discoveredContext = {
+				...mockContext,
+				info: { ...mockContext.info, mac: 'FF:EE:DD:CC:BB:AA' },
+			};
 
 			devicesService.findAll.mockResolvedValue([]);
-			wledAdapter.connect.mockResolvedValue(undefined);
-			wledAdapter.getDevice.mockReturnValue({
-				host: '192.168.1.200',
-				identifier: 'wled-ffeeddccbbaa',
-				connected: true,
-				enabled: true,
-				context: {
-					state: { on: true, brightness: 128, segments: [] },
-					info: { mac: 'FF:EE:DD:CC:BB:AA' },
-					effects: [],
-					palettes: [],
-				},
-			} as RegisteredWledDevice);
+			wledAdapter.probe.mockResolvedValue(discoveredContext);
+			deviceMapper.mapDevice.mockResolvedValue(createMockDevice('device-1', 'wled-ffeeddccbbaa', '192.168.1.200'));
 
 			await mdnsCallbacks.onDeviceDiscovered?.(discoveredDevice);
 
-			expect(wledAdapter.connect).toHaveBeenCalledWith('192.168.1.200', 'wled-ffeeddccbbaa', 5000);
+			expect(wledAdapter.probe).toHaveBeenCalledWith('192.168.1.200', 5000);
+			expect(wledAdapter.connectWithContext).toHaveBeenCalledWith(
+				'192.168.1.200',
+				'wled-ffeeddccbbaa',
+				discoveredContext,
+			);
 		});
 
 		it('should auto-add a device through its advertised non-default port', async () => {
@@ -453,27 +451,71 @@ describe('WledService', () => {
 				port: 8080,
 				mac: 'FF:EE:DD:CC:BB:AA',
 			};
-			const registeredDevice = {
-				host: 'wled.local:8080',
-				identifier: 'wled-ffeeddccbbaa',
-				connected: true,
-				context: mockContext,
-			} as RegisteredWledDevice;
+			const discoveredContext = {
+				...mockContext,
+				info: { ...mockContext.info, mac: 'FF:EE:DD:CC:BB:AA' },
+			};
 			devicesService.findAll.mockResolvedValue([]);
-			wledAdapter.connect.mockResolvedValue(undefined);
-			wledAdapter.getDevice.mockReturnValue(registeredDevice);
+			wledAdapter.probe.mockResolvedValue(discoveredContext);
 			deviceMapper.mapDevice.mockResolvedValue(createMockDevice('device-1', 'wled-ffeeddccbbaa', 'wled.local:8080'));
 
 			await mdnsCallbacks.onDeviceDiscovered?.(discoveredDevice);
 
-			expect(wledAdapter.connect).toHaveBeenCalledWith('wled.local:8080', 'wled-ffeeddccbbaa', 5000);
-			expect(wledAdapter.getDevice).toHaveBeenCalledWith('wled.local:8080');
+			expect(wledAdapter.probe).toHaveBeenCalledWith('wled.local:8080', 5000);
+			expect(wledAdapter.connectWithContext).toHaveBeenCalledWith(
+				'wled.local:8080',
+				'wled-ffeeddccbbaa',
+				discoveredContext,
+			);
 			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(
 				'wled.local:8080',
-				mockContext,
+				discoveredContext,
 				'Port-qualified WLED',
 				'wled-ffeeddccbbaa',
+				undefined,
+				undefined,
 			);
+		});
+
+		it('should reconcile a known MAC at its newly advertised endpoint', async () => {
+			configService.getPluginConfig.mockReturnValue({
+				...mockConfig,
+				mdns: { ...(mockConfig as WledConfigModel).mdns, autoAdd: true },
+			} as WledConfigModel);
+			const existingDevice = {
+				...createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100'),
+				name: 'Administrator name',
+			} as WledDeviceEntity;
+			const discoveredDevice: WledMdnsDiscoveredDevice = {
+				name: 'Advertised name',
+				host: '192.168.1.200',
+				port: 80,
+				mac: 'AA:BB:CC:DD:EE:FF',
+			};
+			devicesService.findAll.mockResolvedValue([existingDevice]);
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			wledAdapter.getDevice.mockReturnValueOnce({
+				host: '192.168.1.100',
+				identifier: 'wled-aabbccddeeff',
+				connected: true,
+			} as RegisteredWledDevice);
+			deviceMapper.mapDevice.mockResolvedValue({
+				...existingDevice,
+				hostname: '192.168.1.200',
+			} as WledDeviceEntity);
+
+			await mdnsCallbacks.onDeviceDiscovered?.(discoveredDevice);
+
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(
+				'192.168.1.200',
+				mockContext,
+				'Administrator name',
+				'wled-aabbccddeeff',
+				undefined,
+				undefined,
+			);
+			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.100', false);
+			expect(wledAdapter.connectWithContext).toHaveBeenCalledWith('192.168.1.200', 'wled-aabbccddeeff', mockContext);
 		});
 
 		it('should not auto-add device when autoAdd is disabled', async () => {
@@ -903,6 +945,31 @@ describe('WledService', () => {
 			});
 		});
 
+		it('does not retire a selected address owner when its swap probe fails', async () => {
+			const firstDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
+			const secondDevice = createMockDevice('device-2', 'wled-112233445566', '192.168.1.200');
+			wledAdapter.probe
+				.mockResolvedValueOnce(mockContext)
+				.mockRejectedValueOnce(new Error('Second controller offline'));
+			devicesService.findAll.mockResolvedValue([firstDevice, secondDevice]);
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.200', name: 'First moved', category: DeviceCategory.LIGHTING },
+				{ host: '192.168.1.100', name: 'Second moved', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(results).toEqual([
+				expect.objectContaining({
+					status: 'failed',
+					error: 'A related selected WLED controller could not be probed',
+				}),
+				expect.objectContaining({ status: 'failed', error: 'Second controller offline' }),
+			]);
+			expect(deviceMapper.mapDevice).not.toHaveBeenCalled();
+			expect(devicesService.update).not.toHaveBeenCalled();
+			expect(wledAdapter.disconnect).not.toHaveBeenCalled();
+		});
+
 		it('continues independent adoption after a dependent rollback write fails', async () => {
 			const firstDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
 			const secondDevice = createMockDevice('device-2', 'wled-112233445566', '192.168.1.200');
@@ -1087,6 +1154,7 @@ describe('WledService', () => {
 			devicesService.findAll
 				.mockResolvedValueOnce([])
 				.mockResolvedValueOnce([])
+				.mockResolvedValueOnce([])
 				.mockResolvedValueOnce([autoAddedDevice]);
 			wledAdapter.connect.mockResolvedValue(undefined);
 			wledAdapter.probe.mockResolvedValue(mockContext);
@@ -1107,13 +1175,13 @@ describe('WledService', () => {
 			await Promise.resolve();
 			await Promise.resolve();
 
-			expect(devicesService.findAll).toHaveBeenCalledTimes(2);
+			expect(devicesService.findAll).toHaveBeenCalledTimes(3);
 			finishAutoAdd?.(autoAddedDevice);
 
 			await autoAdd;
 			const results = await adoption;
 
-			expect(devicesService.findAll).toHaveBeenCalledTimes(3);
+			expect(devicesService.findAll).toHaveBeenCalledTimes(4);
 			expect(devicesService.remove).not.toHaveBeenCalled();
 			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-1' })]);
 		});

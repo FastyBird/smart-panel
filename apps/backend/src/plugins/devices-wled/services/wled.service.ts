@@ -3,7 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { ConnectionState } from '../../../modules/devices/devices.constants';
+import { ConnectionState, DeviceCategory } from '../../../modules/devices/devices.constants';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { BaseManagedPluginService } from '../../../modules/extensions/services/base-managed-plugin.service';
@@ -446,8 +446,11 @@ export class WledService extends BaseManagedPluginService {
 		if (existingDevice) {
 			this.logger.debug(`Device at ${endpoint} already exists in database`);
 
-			// If device is enabled and not connected, try to connect
-			if (existingDevice.enabled && !this.wledAdapter.isConnected(endpoint)) {
+			// Reconcile a known MAC at a new endpoint through the same guarded
+			// provisioning path as administrator adoption.
+			if (existingDevice.hostname !== endpoint && this.config.mdns.autoAdd) {
+				await this.connectAndMapDiscoveredDevice(device);
+			} else if (existingDevice.enabled && !this.wledAdapter.isConnected(endpoint)) {
 				this.logger.debug(`Connecting to existing device at ${endpoint}`);
 				await this.connectToDevice(existingDevice);
 			}
@@ -472,21 +475,20 @@ export class WledService extends BaseManagedPluginService {
 				const endpoint = this.discoveryEndpoint(device.host, device.port);
 				const devices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
 				const existingDevice = this.findExistingDevice(devices, endpoint, device.mac);
-				if (existingDevice) {
+				if (existingDevice?.hostname === endpoint) {
 					if (existingDevice.enabled && !this.wledAdapter.isConnected(endpoint)) {
 						await this.connectToDevice(existingDevice);
 					}
 					return;
 				}
 
-				const identifier = device.mac ? this.identifierFromMac(device.mac) : `wled-${device.host.replace(/\./g, '-')}`;
-				await this.wledAdapter.connect(endpoint, identifier, this.config.timeouts.connectionTimeout);
-
-				const registeredDevice = this.wledAdapter.getDevice(endpoint);
-
-				if (registeredDevice?.context) {
-					await this.deviceMapper.mapDevice(endpoint, registeredDevice.context, device.name, identifier);
-				}
+				await this.doAdoptDevices([
+					{
+						host: endpoint,
+						name: existingDevice?.name ?? device.name,
+						category: DeviceCategory.LIGHTING,
+					},
+				]);
 			} catch (error) {
 				this.logger.error(`Failed to connect to discovered device at ${device.host}`, {
 					message: error instanceof Error ? error.message : String(error),
@@ -558,6 +560,7 @@ export class WledService extends BaseManagedPluginService {
 	private async doAdoptDevices(requests: WledAdoptDeviceDto[]): Promise<WledAdoptionResultModel[]> {
 		const results = requests.map<WledAdoptionResultModel | undefined>(() => undefined);
 		const databaseDevices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
+		const normalizedHostsByIndex = new Map<number, string>();
 		const plans: Array<{
 			index: number;
 			request: WledAdoptDeviceDto;
@@ -573,6 +576,7 @@ export class WledService extends BaseManagedPluginService {
 
 			try {
 				host = this.normalizeHost(request.host);
+				normalizedHostsByIndex.set(index, host);
 				const context = await this.wledAdapter.probe(host, this.config.timeouts.connectionTimeout);
 				const existingDevice = this.findExistingDevice(databaseDevices, host, context.info.mac);
 				const identifier = existingDevice?.identifier || this.identifierFromMac(context.info.mac);
@@ -603,11 +607,40 @@ export class WledService extends BaseManagedPluginService {
 			}
 		}
 
-		const selectedDeviceIds = new Set(
+		const plannedExistingDeviceIds = new Set(
 			plans.flatMap(({ existingDevice }) => (existingDevice ? [existingDevice.id] : [])),
 		);
-		const dependencyEdges = new Map<number, Set<number>>();
+		const plannedIndices = new Set(plans.map(({ index }) => index));
+		const failedSelectionHosts = new Set(
+			[...normalizedHostsByIndex].flatMap(([index, host]) => (!plannedIndices.has(index) ? [host] : [])),
+		);
+		const selectedDeviceIds = plannedExistingDeviceIds;
+		const blockedPlanIndices = new Set<number>();
 		for (const plan of plans) {
+			const unplannedSelectedTargetOwner = databaseDevices.find(
+				(device) =>
+					device.hostname === plan.host &&
+					device.id !== plan.existingDevice?.id &&
+					!plannedExistingDeviceIds.has(device.id),
+			);
+
+			if (
+				unplannedSelectedTargetOwner &&
+				plan.existingDevice?.hostname &&
+				failedSelectionHosts.has(plan.existingDevice.hostname)
+			) {
+				blockedPlanIndices.add(plan.index);
+				results[plan.index] = {
+					host: plan.host,
+					name: plan.request.name,
+					status: 'failed',
+					error: 'A related selected WLED controller could not be probed',
+					deviceId: plan.existingDevice?.id ?? null,
+				};
+			}
+		}
+		const dependencyEdges = new Map<number, Set<number>>();
+		for (const plan of plans.filter(({ index }) => !blockedPlanIndices.has(index))) {
 			const selectedTargetOwner = plans.find(
 				(candidate) =>
 					candidate.existingDevice?.hostname === plan.host && candidate.existingDevice.id !== plan.existingDevice?.id,
@@ -651,6 +684,10 @@ export class WledService extends BaseManagedPluginService {
 		const retiredStaleOwnersByDependencyGroup = new Map<Set<number>, Map<string, WledDeviceEntity>>();
 
 		for (const { index, request, host, context, existingDevice, identifier } of plans) {
+			if (blockedPlanIndices.has(index)) {
+				continue;
+			}
+
 			const dependencyGroup = dependencyGroupByIndex.get(index);
 			const dependencyFailure = dependencyGroup ? failedDependencyGroups.get(dependencyGroup) : undefined;
 			if (dependencyFailure) {
