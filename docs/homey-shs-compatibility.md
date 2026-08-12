@@ -86,7 +86,8 @@ unset FB_HOMEY_SHS_URL FB_HOMEY_SHS_EXPECTED_HOST FB_HOMEY_SHS_API_KEY FB_HOMEY_
 ```
 
 `FB_HOMEY_SHS_PRIVATE_TERMS` is a comma-separated defense-in-depth list of household names or other strings that must
-not survive sanitization. Each entry must contain at least three characters. Optional settings are:
+not survive sanitization. Every nonempty entry must contain at least three characters; configuration fails instead of
+silently ignoring a shorter entry. Optional settings are:
 
 | Variable | Default | Constraint |
 | --- | --- | --- |

@@ -15,7 +15,8 @@ const IDENTIFIER_KEY_PATTERN =
 	/(?:^(?:id|ids|identifier|identifiers|uuid|uuids)$|(?:Id|ID|Ids|IDs|Identifier|Identifiers|Uuid|UUID)$|(?:^|[_-])(?:id|ids|identifier|identifiers|uuid|uuids)$)/;
 const PERSONAL_KEY_PATTERN = /(?:name|note|title|label|email|username)$/i;
 const REFERENCE_ARRAY_KEY_PATTERN = /(?:Ids|Origins)$/i;
-const TIMESTAMP_KEY_PATTERN = /(?:At|Date|Timestamp)$/i;
+const TIMESTAMP_KEY_PATTERN = /(?:At|Date|Timestamp|Updated|Modified|Created)$/i;
+const ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const IPV4_PATTERN = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
 const BRACKETED_IPV6_PATTERN = /\[([0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?)\]/g;
@@ -135,7 +136,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 			return REDACTION.privateTerm;
 		}
 
-		if (TIMESTAMP_KEY_PATTERN.test(key)) {
+		if (TIMESTAMP_KEY_PATTERN.test(key) || ISO_TIMESTAMP_PATTERN.test(value)) {
 			return FIXTURE_TIMESTAMP;
 		}
 
@@ -267,10 +268,16 @@ export const loadHomeyShsProbeConfig = (
 		throw new Error('FB_HOMEY_SHS_API_KEY must not be empty');
 	}
 
-	const privateTerms = (environment.FB_HOMEY_SHS_PRIVATE_TERMS ?? '')
+	const configuredPrivateTerms = (environment.FB_HOMEY_SHS_PRIVATE_TERMS ?? '')
 		.split(',')
 		.map((term) => term.trim())
-		.filter((term) => term.length >= 3);
+		.filter((term) => term.length > 0);
+
+	if (configuredPrivateTerms.some((term) => term.length < 3)) {
+		throw new Error('Every FB_HOMEY_SHS_PRIVATE_TERMS entry must contain at least three characters');
+	}
+
+	const privateTerms = [...new Set(configuredPrivateTerms)];
 
 	return {
 		origin: new URL(origin.origin),

@@ -39,6 +39,15 @@ describe('Homey SHS compatibility probe', () => {
 				FB_HOMEY_SHS_EXPECTED_HOST: 'homey.local',
 			}),
 		).toThrow('does not match');
+
+		expect(() =>
+			loadHomeyShsProbeConfig({
+				FB_HOMEY_SHS_URL: 'http://127.0.0.1:4859',
+				FB_HOMEY_SHS_API_KEY: 'secret',
+				FB_HOMEY_SHS_EXPECTED_HOST: '127.0.0.1',
+				FB_HOMEY_SHS_PRIVATE_TERMS: 'Private Room,Bo',
+			}),
+		).toThrow('at least three characters');
 	});
 
 	it('preserves capability identifiers while replacing household identities', () => {
@@ -98,6 +107,8 @@ describe('Homey SHS compatibility probe', () => {
 			accountId: 'family',
 			hardware_id: 'switch-1',
 			grid: 'preserved non-identifier',
+			lastUpdated: '2026-08-12T20:15:30.123Z',
+			customActivityField: '2026-08-12T20:16:31+02:00',
 		});
 
 		expect(sanitized).toEqual({
@@ -105,6 +116,8 @@ describe('Homey SHS compatibility probe', () => {
 			accountId: '[~7~]',
 			hardware_id: '[~7~]',
 			grid: 'preserved non-identifier',
+			lastUpdated: '2000-01-01T00:00:00.000Z',
+			customActivityField: '2000-01-01T00:00:00.000Z',
 		});
 	});
 
