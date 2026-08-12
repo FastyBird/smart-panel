@@ -249,5 +249,33 @@
 		"mapping": {
 			"customizationDescription": "Mozesz dostosowac mapowanie zmieniajac kategorie kanalow dla encji lub wlaczajac/wylaczajac encje. Domyslnie wszystkie encje z sugerowana kategoria kanalu sa wlaczone. Kliknij 'Dalej', aby kontynuowac z wybrana konfiguracja."
 		}
+	},
+	"wizard": {
+		"title": "Dodaj zbiorczo urządzenia Home Assistant",
+		"subtitle": "Sprawdź automatycznie zmapowane urządzenia i dodaj wybrane pozycje bez dodatkowej konfiguracji.",
+		"breadcrumb": "Import zbiorczy Home Assistant",
+		"columns": {
+			"identifier": "ID Home Assistant",
+			"kind": "Typ",
+			"channels": "Kanały",
+			"channelsCount": "Liczba kanałów: {count}",
+			"warningsCount": "Liczba ostrzeżeń mapowania: {count}"
+		},
+		"kinds": { "device": "Urządzenie", "helper": "Pomocnik" },
+		"statuses": { "needsAttention": "Kontrola ręczna" },
+		"actions": { "refresh": "Odśwież inwentarz" },
+		"manualReview": {
+			"title": "Pozycje wymagające kontroli ręcznej: {count}",
+			"message": "Te pozycje nie są wybrane do importu zbiorczego. Użyj istniejącego kontrolowanego formularza, aby sprawdzić kategorię, kanały i właściwości.",
+			"open": "Otwórz ręczne dodawanie urządzenia"
+		},
+		"connectionError": {
+			"title": "Inwentarz Home Assistant jest niedostępny",
+			"openConfig": "Otwórz konfigurację Home Assistant"
+		},
+		"messages": {
+			"sessionNotStarted": "Nie udało się przygotować urządzeń Home Assistant do importu zbiorczego.",
+			"adoptionFailed": "Nie udało się dodać wybranych urządzeń Home Assistant."
+		}
 	}
 }

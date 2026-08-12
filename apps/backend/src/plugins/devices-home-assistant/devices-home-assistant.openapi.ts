@@ -28,6 +28,7 @@ import { UpdateHomeAssistantChannelPropertyDto } from './dto/update-channel-prop
 import { UpdateHomeAssistantChannelDto } from './dto/update-channel.dto';
 import { HomeAssistantUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateHomeAssistantDeviceDto } from './dto/update-device.dto';
+import { HomeAssistantWizardAdoptDto, ReqHomeAssistantWizardAdoptDto } from './dto/wizard-adopt.dto';
 import {
 	HomeAssistantChannelEntity,
 	HomeAssistantChannelPropertyEntity,
@@ -73,6 +74,14 @@ import {
 	SuggestedChannelModel,
 	SuggestedDeviceModel,
 } from './models/mapping-preview.model';
+import {
+	HomeAssistantWizardAdoptionModel,
+	HomeAssistantWizardAdoptionResponseModel,
+	HomeAssistantWizardAdoptionResultModel,
+	HomeAssistantWizardCandidateModel,
+	HomeAssistantWizardSessionModel,
+	HomeAssistantWizardSessionResponseModel,
+} from './models/wizard.model';
 
 export const DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	// DTOs
@@ -99,6 +108,8 @@ export const DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	AdoptHelperRequestDto,
 	AdoptHelperChannelDefinitionDto,
 	AdoptHelperPropertyDefinitionDto,
+	HomeAssistantWizardAdoptDto,
+	ReqHomeAssistantWizardAdoptDto,
 	// Response models
 	HomeAssistantDiscoveredDeviceResponseModel,
 	HomeAssistantDiscoveredDevicesResponseModel,
@@ -134,6 +145,12 @@ export const DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	HelperInfoModel,
 	SuggestedHelperDeviceModel,
 	HelperMappingWarningModel,
+	HomeAssistantWizardCandidateModel,
+	HomeAssistantWizardSessionModel,
+	HomeAssistantWizardSessionResponseModel,
+	HomeAssistantWizardAdoptionResultModel,
+	HomeAssistantWizardAdoptionModel,
+	HomeAssistantWizardAdoptionResponseModel,
 	// Entities
 	HomeAssistantDeviceEntity,
 	HomeAssistantChannelEntity,

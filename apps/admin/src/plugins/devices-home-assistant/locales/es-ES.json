@@ -249,5 +249,33 @@
     "mapping": {
       "customizationDescription": "Puede personalizar el mapeo cambiando las categorías de canal para las entidades o habilitando/deshabilitando entidades. Por defecto, todas las entidades con una categoría de canal sugerida están habilitadas. Haga clic en 'Siguiente' para continuar con la configuración seleccionada."
     }
+  },
+  "wizard": {
+    "title": "Añadir dispositivos de Home Assistant en lote",
+    "subtitle": "Revise los dispositivos asignados automáticamente y añada los elementos seleccionados sin más configuración.",
+    "breadcrumb": "Importación masiva de Home Assistant",
+    "columns": {
+      "identifier": "ID de Home Assistant",
+      "kind": "Tipo",
+      "channels": "Canales",
+      "channelsCount": "{count} canales",
+      "warningsCount": "{count} avisos de mapeo"
+    },
+    "kinds": { "device": "Dispositivo", "helper": "Ayudante" },
+    "statuses": { "needsAttention": "Revisión manual" },
+    "actions": { "refresh": "Actualizar inventario" },
+    "manualReview": {
+      "title": "{count} elementos necesitan revisión manual",
+      "message": "Estos elementos no están seleccionados para la importación masiva. Use el formulario controlado existente para revisar su categoría, canales y propiedades.",
+      "open": "Abrir adopción manual de dispositivos"
+    },
+    "connectionError": {
+      "title": "El inventario de Home Assistant no está disponible",
+      "openConfig": "Abrir configuración de Home Assistant"
+    },
+    "messages": {
+      "sessionNotStarted": "No se pudieron preparar los dispositivos de Home Assistant para la importación masiva.",
+      "adoptionFailed": "No se pudieron añadir los dispositivos de Home Assistant seleccionados."
+    }
   }
 }

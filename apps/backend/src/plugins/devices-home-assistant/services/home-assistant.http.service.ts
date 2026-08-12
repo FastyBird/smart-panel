@@ -59,6 +59,11 @@ const DISCOVERED_DEVICE_TEMPLATE =
 const DISCOVERED_HELPERS_TEMPLATE =
 	"{% set helper_domains = ['input_boolean', 'input_number', 'input_select', 'input_text', 'input_datetime', 'input_button', 'timer', 'climate', 'sensor', 'binary_sensor', 'switch', 'light', 'fan', 'cover', 'lock', 'humidifier', 'water_heater', 'vacuum'] %}{% set virtual_device_domains = ['climate', 'humidifier', 'water_heater'] %}{% set ns = namespace(list=[]) %}{% for state in states %}{% set domain = state.entity_id.split('.')[0] %}{% if domain in helper_domains %}{% set dev_id = device_id(state.entity_id) %}{% if dev_id is none or dev_id == '' or domain in virtual_device_domains %}{% set ns.list = ns.list + [{'entity_id': state.entity_id, 'name': state.attributes.friendly_name | default(state.entity_id), 'domain': domain}] %}{% endif %}{% endif %}{% endfor %}{{ ns.list | tojson }}";
 
+export interface HomeAssistantDiscoveredInventory {
+	devices: HomeAssistantDiscoveredDeviceModel[];
+	helpers: HomeAssistantDiscoveredHelperModel[];
+}
+
 @Injectable()
 export class HomeAssistantHttpService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
@@ -154,6 +159,57 @@ export class HomeAssistantHttpService {
 		}
 
 		throw new DevicesHomeAssistantNotFoundException('Home Assistant discovered devices list could not be loaded');
+	}
+
+	/**
+	 * Fetch the complete wizard inventory with one shared states response and one adopted-devices lookup.
+	 */
+	async getDiscoveredInventory(): Promise<HomeAssistantDiscoveredInventory> {
+		this.ensureApiKey();
+
+		try {
+			const [devices, helpers, states, panelDevices] = await Promise.all([
+				this.fetchListHaDevices(),
+				this.fetchListHaHelpers(),
+				this.fetchListHaStates(),
+				this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE),
+			]);
+
+			if (!devices || !helpers || !states) {
+				throw new DevicesHomeAssistantNotFoundException('Home Assistant discovered inventory could not be loaded');
+			}
+
+			return {
+				devices: devices.map((device) => {
+					const model = this.toDiscoveredDeviceModel(device);
+					model.adoptedDeviceId = panelDevices.find((item) => item.haDeviceId === device.id)?.id ?? null;
+					model.states = states
+						.filter((state) => device.entities.includes(state.entity_id))
+						.map((state) => this.toStateModel(state));
+					return model;
+				}),
+				helpers: helpers.map((helper) => {
+					const model = this.toDiscoveredHelperModel(helper);
+					model.adoptedDeviceId = panelDevices.find((item) => item.haDeviceId === helper.entity_id)?.id ?? null;
+					const state = states.find((item) => item.entity_id === helper.entity_id);
+					if (state) {
+						model.state = this.toStateModel(state);
+					}
+					return model;
+				}),
+			};
+		} catch (error) {
+			if (error instanceof DevicesHomeAssistantNotFoundException) {
+				throw error;
+			}
+
+			const err = error as Error;
+			this.logger.error('Failed to fetch Home Assistant discovered inventory', {
+				message: err.message,
+				stack: err.stack,
+			});
+			throw new DevicesHomeAssistantException('Home Assistant discovered inventory could not be loaded');
+		}
 	}
 
 	async getDiscoveredHelper(entityId: string): Promise<HomeAssistantDiscoveredHelperModel> {

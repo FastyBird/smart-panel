@@ -22,6 +22,7 @@ import {
 	HomeAssistantDeviceAddForm,
 	HomeAssistantDeviceEditForm,
 } from './components/components';
+import { useDevicesWizard } from './composables/composables';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from './devices-home-assistant.constants';
 import { locales } from './locales';
 import { HomeAssistantChannelPropertyAddFormSchema, HomeAssistantChannelPropertyEditFormSchema } from './schemas/channels.properties.schemas';
@@ -106,6 +107,7 @@ export default {
 					components: {
 						deviceAddForm: HomeAssistantDeviceAddForm,
 						deviceEditForm: HomeAssistantDeviceEditForm,
+						deviceWizardAdapter: useDevicesWizard,
 						channelPropertyAddForm: HomeAssistantChannelPropertyAddForm,
 						channelPropertyEditForm: HomeAssistantChannelPropertyEditForm,
 					},

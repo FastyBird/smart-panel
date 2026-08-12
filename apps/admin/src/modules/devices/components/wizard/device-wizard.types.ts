@@ -5,7 +5,7 @@ import type { DevicesModuleDeviceCategory } from '../../../../openapi.constants'
 
 export type IWizardStep = 'discover' | 'confirm' | 'results';
 
-export type IWizardRowStatus = 'checking' | 'ready' | 'needs_credentials' | 'already_registered' | 'unsupported' | 'failed';
+export type IWizardRowStatus = 'checking' | 'ready' | 'needs_credentials' | 'needs_attention' | 'already_registered' | 'unsupported' | 'failed';
 
 export type IWizardCell =
 	| { render: 'text'; value: string; muted?: boolean }
@@ -33,6 +33,8 @@ export interface IWizardRow {
 	statusLabel?: string;
 	/** The adapter decides; the shell never infers adoptability from status. */
 	adoptable: boolean;
+	/** Defaults to `status === 'ready'`. Set false for explicit-selection bulk inventories. */
+	selectedByDefault?: boolean;
 	willUpdate: boolean;
 	suggestedName: string;
 	suggestedCategory: DevicesModuleDeviceCategory | null;
@@ -117,6 +119,8 @@ interface IDeviceWizardAdapterBase {
 	/** Breadcrumb route param, e.g. 'devices-shelly-ng-plugin'. */
 	pluginType: string;
 	identifierLabel: string;
+	/** Defaults to editable. Selection-only keeps automatic names/categories read-only. */
+	confirmationMode?: 'editable' | 'selection-only';
 
 	rows: ComputedRef<IWizardRow[]>;
 	results: ComputedRef<IWizardResult[]>;
@@ -183,7 +187,7 @@ export const wizardStatusTagType = (status: IWizardRowStatus): 'success' | 'info
 		return 'info';
 	}
 
-	if (status === 'needs_credentials' || status === 'unsupported') {
+	if (status === 'needs_credentials' || status === 'needs_attention' || status === 'unsupported') {
 		return 'warning';
 	}
 

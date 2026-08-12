@@ -106,10 +106,9 @@
 					:name-by-key="nameByKey"
 					:category-by-key="categoryByKey"
 					:identifier-label="adapter.identifierLabel"
-					:all-selected="allSelected"
-					:some-selected="someSelected"
-					@toggle-all="toggleAll"
+					:confirmation-mode="adapter.confirmationMode ?? 'editable'"
 					@toggle-row="onToggleRow"
+					@toggle-rows="toggleRows"
 					@update-name="onUpdateName"
 					@update-category="onUpdateCategory"
 				/>
@@ -184,21 +183,8 @@ const { isMDDevice, isLGDevice } = useBreakpoints();
 // useI18n / useBackend / inject internally, which are only valid in an injection context.
 const adapter = props.adapterFactory();
 
-const {
-	activeStep,
-	activeStepIndex,
-	selected,
-	nameByKey,
-	categoryByKey,
-	adoptableRows,
-	canContinue,
-	allSelected,
-	someSelected,
-	toggleAll,
-	reconcile,
-	reset,
-	buildSelection,
-} = useDeviceWizardState(adapter.rows);
+const { activeStep, activeStepIndex, selected, nameByKey, categoryByKey, adoptableRows, canContinue, toggleRows, reconcile, reset, buildSelection } =
+	useDeviceWizardState(adapter.rows);
 
 // A rescan opens a brand new discovery session, and the previous session's selections must not
 // survive into it: a device that was `ready` last time may come back as `already_registered`,

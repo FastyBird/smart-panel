@@ -9,6 +9,7 @@ import {
 	DevicesHomeAssistantValidationException,
 } from '../devices-home-assistant.exceptions';
 import { HomeAssistantDiscoveredDeviceDto } from '../dto/home-assistant-discovered-device.dto';
+import { HomeAssistantDiscoveredHelperDto } from '../dto/home-assistant-discovered-helper.dto';
 import { HomeAssistantStateDto } from '../dto/home-assistant-state.dto';
 import { HomeAssistantDeviceEntity } from '../entities/devices-home-assistant.entity';
 import { MapperService } from '../mappers/mapper.service';
@@ -199,6 +200,60 @@ describe('HomeAssistantHttpService', () => {
 			jest.spyOn<HomeAssistantHttpService, any>(service, 'fetchListHaStates').mockResolvedValue(null);
 
 			await expect(service.getDiscoveredDevices()).rejects.toThrow(DevicesHomeAssistantNotFoundException);
+		});
+	});
+
+	describe('getDiscoveredInventory', () => {
+		it('shares one states response across physical devices and helpers', async () => {
+			const mockDevice: HomeAssistantDiscoveredDeviceDto = {
+				id: 'device_1',
+				name: 'Test Device',
+				entities: ['sensor.temp'],
+			};
+			const mockHelper: HomeAssistantDiscoveredHelperDto = {
+				entity_id: 'input_boolean.guest_mode',
+				name: 'Guest mode',
+				domain: 'input_boolean',
+			};
+			const states: HomeAssistantStateDto[] = [
+				{
+					entity_id: 'sensor.temp',
+					state: '22',
+					attributes: {},
+					last_changed: new Date(),
+					last_updated: new Date(),
+					last_reported: new Date(),
+					context: { id: 'device-state', parent_id: null, user_id: null },
+				},
+				{
+					entity_id: 'input_boolean.guest_mode',
+					state: 'off',
+					attributes: {},
+					last_changed: new Date(),
+					last_updated: new Date(),
+					last_reported: new Date(),
+					context: { id: 'helper-state', parent_id: null, user_id: null },
+				},
+			];
+			const fetchDevices = jest
+				.spyOn<HomeAssistantHttpService, any>(service, 'fetchListHaDevices')
+				.mockResolvedValue([mockDevice]);
+			const fetchHelpers = jest
+				.spyOn<HomeAssistantHttpService, any>(service, 'fetchListHaHelpers')
+				.mockResolvedValue([mockHelper]);
+			const fetchStates = jest
+				.spyOn<HomeAssistantHttpService, any>(service, 'fetchListHaStates')
+				.mockResolvedValue(states);
+			mockDevicesService.findAll.mockResolvedValue([]);
+
+			const result = await service.getDiscoveredInventory();
+
+			expect(result.devices[0].states[0].entityId).toBe('sensor.temp');
+			expect(result.helpers[0].state?.entityId).toBe('input_boolean.guest_mode');
+			expect(fetchDevices.mock.calls).toHaveLength(1);
+			expect(fetchHelpers.mock.calls).toHaveLength(1);
+			expect(fetchStates.mock.calls).toHaveLength(1);
+			expect(mockDevicesService.findAll.mock.calls).toHaveLength(1);
 		});
 	});
 

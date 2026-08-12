@@ -51,9 +51,27 @@ export class HelperMappingPreviewService {
 		entityId: string,
 		options?: HelperMappingPreviewRequestDto,
 	): Promise<HelperMappingPreviewModel> {
-		// Fetch helper information
 		const helper = await this.homeAssistantHttpService.getDiscoveredHelper(entityId);
 
+		return this.generatePreviewFromSnapshot(entityId, helper, options);
+	}
+
+	/**
+	 * Generate automatic previews for all discoverable helpers from one Home Assistant snapshot.
+	 */
+	async generatePreviews(
+		discoveredHelpers?: HomeAssistantDiscoveredHelperModel[],
+	): Promise<HelperMappingPreviewModel[]> {
+		const helpers = discoveredHelpers ?? (await this.homeAssistantHttpService.getDiscoveredHelpers());
+
+		return helpers.map((helper) => this.generatePreviewFromSnapshot(helper.entityId, helper));
+	}
+
+	private generatePreviewFromSnapshot(
+		entityId: string,
+		helper: HomeAssistantDiscoveredHelperModel,
+		options?: HelperMappingPreviewRequestDto,
+	): HelperMappingPreviewModel {
 		if (!helper) {
 			throw new DevicesHomeAssistantNotFoundException(`Home Assistant helper with entity_id ${entityId} not found`);
 		}

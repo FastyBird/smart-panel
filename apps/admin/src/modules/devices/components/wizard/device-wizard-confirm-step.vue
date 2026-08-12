@@ -1,7 +1,18 @@
 <template>
 	<div class="flex flex-col gap-3 h-full overflow-hidden">
+		<div
+			data-test-id="wizard-confirm-search"
+			class="shrink-0"
+		>
+			<el-input
+				v-model="search"
+				:placeholder="t('devicesModule.fields.devices.search.placeholder')"
+				clearable
+			/>
+		</div>
+
 		<el-table
-			:data="rows"
+			:data="filteredRows"
 			class="h-full w-full flex-grow"
 			table-layout="fixed"
 			:empty-text="t('devicesModule.wizard.texts.noSelection')"
@@ -10,10 +21,17 @@
 			<el-table-column width="60">
 				<template #header>
 					<el-checkbox
-						:model-value="allSelected"
-						:indeterminate="someSelected && !allSelected"
-						:disabled="rows.length === 0"
-						@change="(value: boolean | string | number) => emit('toggle-all', value === true)"
+						:model-value="allFilteredSelected"
+						:indeterminate="someFilteredSelected && !allFilteredSelected"
+						:disabled="filteredRows.length === 0"
+						@change="
+							(value: boolean | string | number) =>
+								emit(
+									'toggle-rows',
+									filteredRows.map((row) => row.key),
+									value === true
+								)
+						"
 					/>
 				</template>
 				<template #default="{ row }: { row: IWizardRow }">
@@ -33,9 +51,16 @@
 			>
 				<template #default="{ row }: { row: IWizardRow }">
 					<el-input
+						v-if="confirmationMode === 'editable'"
 						:model-value="nameByKey[row.key] ?? ''"
 						@update:model-value="(value: string) => emit('update-name', row.key, value)"
 					/>
+					<span
+						v-else
+						class="font-medium"
+					>
+						{{ nameByKey[row.key] ?? row.suggestedName }}
+					</span>
 				</template>
 			</el-table-column>
 
@@ -75,6 +100,7 @@
 			>
 				<template #default="{ row }: { row: IWizardRow }">
 					<el-select
+						v-if="confirmationMode === 'editable'"
 						:model-value="categoryByKey[row.key] ?? null"
 						filterable
 						@update:model-value="(value: DevicesModuleDeviceCategory | null) => emit('update-category', row.key, value)"
@@ -86,6 +112,9 @@
 							:value="option.value"
 						/>
 					</el-select>
+					<span v-else>
+						{{ categoryLabel(row) }}
+					</span>
 				</template>
 			</el-table-column>
 
@@ -107,7 +136,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElCheckbox, ElInput, ElOption, ElSelect, ElTable, ElTableColumn, ElTag } from 'element-plus';
@@ -129,20 +158,55 @@ interface IProps {
 	nameByKey: Record<string, string>;
 	categoryByKey: Record<string, DevicesModuleDeviceCategory | null>;
 	identifierLabel: string;
-	allSelected: boolean;
-	someSelected: boolean;
+	confirmationMode: 'editable' | 'selection-only';
 }
 
 const props = defineProps<IProps>();
 
 const emit = defineEmits<{
-	(e: 'toggle-all', value: boolean): void;
 	(e: 'toggle-row', key: string, value: boolean): void;
+	(e: 'toggle-rows', keys: string[], value: boolean): void;
 	(e: 'update-name', key: string, value: string): void;
 	(e: 'update-category', key: string, value: DevicesModuleDeviceCategory | null): void;
 }>();
 
 const { t } = useI18n();
+
+const search = ref<string>('');
+
+const categoryLabel = (row: IWizardRow): string => {
+	const category = props.categoryByKey[row.key] ?? row.suggestedCategory;
+
+	return row.categoryOptions.find((option) => option.value === category)?.label ?? '';
+};
+
+const filteredRows = computed<IWizardRow[]>(() => {
+	const query = search.value.trim().toLocaleLowerCase();
+
+	if (query.length === 0) {
+		return props.rows;
+	}
+
+	return props.rows.filter((row) => {
+		const values = [
+			row.label,
+			row.subLabel,
+			row.identifier,
+			row.statusLabel,
+			props.nameByKey[row.key],
+			categoryLabel(row),
+			...Object.values(row.cells ?? {}).map((cell) => cell.value),
+		];
+
+		return values.some((value) => value?.toLocaleLowerCase().includes(query));
+	});
+});
+
+const allFilteredSelected = computed<boolean>(
+	() => filteredRows.value.length > 0 && filteredRows.value.every((row) => props.selected[row.key] === true)
+);
+
+const someFilteredSelected = computed<boolean>(() => filteredRows.value.some((row) => props.selected[row.key] === true));
 
 const extraColumns = computed<IWizardColumn[]>(() => props.columns.filter((column) => column.steps.includes('confirm')));
 
@@ -161,13 +225,7 @@ const sortByChange = (a: IWizardRow, b: IWizardRow): number => {
 };
 
 const sortByCategory = (a: IWizardRow, b: IWizardRow): number => {
-	const label = (row: IWizardRow): string => {
-		const category = props.categoryByKey[row.key];
-
-		return row.categoryOptions.find((option) => option.value === category)?.label ?? '';
-	};
-
-	return compareLocale(label(a), label(b));
+	return compareLocale(categoryLabel(a), categoryLabel(b));
 };
 
 const sortByCell = (key: string, a: IWizardRow, b: IWizardRow): number => compareLocale(a.cells?.[key]?.value, b.cells?.[key]?.value);

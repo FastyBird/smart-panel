@@ -7,7 +7,6 @@
  *
  * @module openapi.constants
  */
-
 // Core OpenAPI Types
 // ==================
 import type { components, operations, paths } from './openapi';
@@ -143,11 +142,22 @@ export type DevicesHomeAssistantPluginAdoptHelperRequestSchema = components['sch
 export type DevicesHomeAssistantPluginStateSchema = components['schemas']['DevicesHomeAssistantPluginDataState'];
 export type DevicesHomeAssistantPluginUpdateConfigSchema = components['schemas']['DevicesHomeAssistantPluginUpdateConfig'];
 export type DevicesHomeAssistantPluginConfigSchema = components['schemas']['DevicesHomeAssistantPluginDataConfig'];
+export type DevicesHomeAssistantPluginWizardCandidateSchema = components['schemas']['DevicesHomeAssistantPluginDataWizardCandidate'];
+export type DevicesHomeAssistantPluginWizardSessionSchema = components['schemas']['DevicesHomeAssistantPluginDataWizardSession'];
+export type DevicesHomeAssistantPluginWizardAdoptionSchema = components['schemas']['DevicesHomeAssistantPluginDataWizardAdoption'];
+export {
+	DevicesHomeAssistantPluginDataWizardAdoptionResultStatus,
+	DevicesHomeAssistantPluginDataWizardCandidateKind,
+	DevicesHomeAssistantPluginDataWizardCandidateStatus,
+} from './openapi';
 
 // Data Sources Device Channel Plugin Schemas
-export type DataSourcesDeviceChannelPluginCreateDeviceChannelDataSourceSchema = components['schemas']['DataSourcesDeviceChannelPluginCreateDeviceChannelDataSource'];
-export type DataSourcesDeviceChannelPluginUpdateDeviceChannelDataSourceSchema = components['schemas']['DataSourcesDeviceChannelPluginUpdateDeviceChannelDataSource'];
-export type DataSourcesDeviceChannelPluginDeviceChannelDataSourceSchema = components['schemas']['DataSourcesDeviceChannelPluginDataDeviceChannelDataSource'];
+export type DataSourcesDeviceChannelPluginCreateDeviceChannelDataSourceSchema =
+	components['schemas']['DataSourcesDeviceChannelPluginCreateDeviceChannelDataSource'];
+export type DataSourcesDeviceChannelPluginUpdateDeviceChannelDataSourceSchema =
+	components['schemas']['DataSourcesDeviceChannelPluginUpdateDeviceChannelDataSource'];
+export type DataSourcesDeviceChannelPluginDeviceChannelDataSourceSchema =
+	components['schemas']['DataSourcesDeviceChannelPluginDataDeviceChannelDataSource'];
 
 // Devices Shelly V1 Plugin Schemas
 export type DevicesShellyV1PluginDeviceSchema = components['schemas']['DevicesShellyV1PluginDataDevice'];
@@ -421,6 +431,10 @@ export type DevicesHomeAssistantPluginGetHelpersOperation = operations['get-devi
 export type DevicesHomeAssistantPluginGetHelperOperation = operations['get-devices-home-assistant-plugin-helper'];
 export type DevicesHomeAssistantPluginPreviewHelperMappingOperation = operations['preview-devices-home-assistant-plugin-helper-mapping'];
 export type DevicesHomeAssistantPluginAdoptHelperOperation = operations['adopt-devices-home-assistant-plugin-helper'];
+export type DevicesHomeAssistantPluginCreateWizardOperation = operations['create-devices-home-assistant-plugin-wizard'];
+export type DevicesHomeAssistantPluginGetWizardOperation = operations['get-devices-home-assistant-plugin-wizard'];
+export type DevicesHomeAssistantPluginDeleteWizardOperation = operations['delete-devices-home-assistant-plugin-wizard'];
+export type DevicesHomeAssistantPluginAdoptWizardOperation = operations['adopt-devices-home-assistant-plugin-wizard'];
 
 // Devices Virtual Plugin Operations
 export type DevicesVirtualPluginCheckCompatibilityOperation = operations['check-devices-virtual-plugin-devices-compatibility'];

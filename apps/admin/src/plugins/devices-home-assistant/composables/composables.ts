@@ -11,5 +11,6 @@ export * from './useEntitiesOptions';
 export * from './useAttributesOptions';
 export { useMappingPreview, type IUseMappingPreview } from './useMappingPreview';
 export { useDeviceAdoption, type IUseDeviceAdoption } from './useDeviceAdoption';
+export * from './useDevicesWizard';
 
 export * from './types';

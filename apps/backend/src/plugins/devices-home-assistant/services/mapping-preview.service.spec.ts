@@ -83,6 +83,7 @@ describe('MappingPreviewService', () => {
 	beforeEach(async () => {
 		const homeAssistantHttpServiceMock: Partial<jest.Mocked<HomeAssistantHttpService>> = {
 			getDiscoveredDevice: jest.fn(),
+			getDiscoveredDevices: jest.fn(),
 		};
 
 		const homeAssistantWsServiceMock: Partial<jest.Mocked<HomeAssistantWsService>> = {
@@ -154,6 +155,23 @@ describe('MappingPreviewService', () => {
 
 	it('should be defined', () => {
 		expect(service).toBeDefined();
+	});
+
+	describe('generatePreviews', () => {
+		it('uses one registry and discovery snapshot for the complete inventory', async () => {
+			homeAssistantWsService.getDevicesRegistry.mockResolvedValue(mockDeviceRegistry);
+			homeAssistantWsService.getEntitiesRegistry.mockResolvedValue(mockEntityRegistry);
+			homeAssistantHttpService.getDiscoveredDevices.mockResolvedValue([mockDiscoveredDevice]);
+
+			const result = await service.generatePreviews();
+
+			expect(result).toHaveLength(1);
+			expect(result[0].haDevice.id).toBe('device123');
+			expect(homeAssistantWsService.getDevicesRegistry.mock.calls).toHaveLength(1);
+			expect(homeAssistantWsService.getEntitiesRegistry.mock.calls).toHaveLength(1);
+			expect(homeAssistantHttpService.getDiscoveredDevices.mock.calls).toHaveLength(1);
+			expect(homeAssistantHttpService.getDiscoveredDevice.mock.calls).toHaveLength(0);
+		});
 	});
 
 	describe('generatePreview', () => {
