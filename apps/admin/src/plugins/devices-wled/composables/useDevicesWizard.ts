@@ -356,7 +356,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 				status: result.status,
 				error: result.error ?? null,
 			}));
-			if (adoptionResults.value.some((result) => result.status === 'created')) {
+			if (adoptionResults.value.some((result) => result.status === 'created' || result.status === 'updated')) {
 				try {
 					await devicesStore.fetch();
 				} catch (error: unknown) {

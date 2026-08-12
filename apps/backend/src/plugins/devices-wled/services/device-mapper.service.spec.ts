@@ -263,6 +263,42 @@ describe('WledDeviceMapperService', () => {
 			);
 		});
 
+		it('should apply confirmed adoption fields when updating an existing device', async () => {
+			const mockDevice = {
+				...createMockDevice('device-1', 'wled-ddeeff', '192.168.1.100', false),
+				name: 'Old strip',
+				description: 'Old description',
+			} as WledDeviceEntity;
+			const updatedDevice = {
+				...mockDevice,
+				name: 'Renamed strip',
+				description: null,
+				enabled: true,
+			};
+
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
+			devicesService.update.mockResolvedValue(updatedDevice as WledDeviceEntity);
+			channelsService.findOneBy.mockResolvedValue(null);
+			channelsService.create.mockResolvedValue(createMockChannel('channel-1', 'device_information', 'device-1'));
+			channelsPropertiesService.findOneBy.mockResolvedValue(null);
+			channelsPropertiesService.create.mockResolvedValue(createMockProperty('prop-1', 'test', 'channel-1'));
+			channelsPropertiesService.update.mockResolvedValue(createMockProperty('prop-1', 'test', 'channel-1'));
+			deviceConnectivityService.setConnectionState.mockResolvedValue(undefined);
+
+			await service.mapDevice('192.168.1.100', mockDeviceContext, 'Renamed strip', 'wled-ddeeff', null, true);
+
+			expect(devicesService.update).toHaveBeenCalledWith(mockDevice.id, {
+				type: DEVICES_WLED_TYPE,
+				hostname: '192.168.1.100',
+				name: 'Renamed strip',
+				description: null,
+				enabled: true,
+			});
+			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith(mockDevice.id, {
+				state: ConnectionState.CONNECTED,
+			});
+		});
+
 		it('should resume idempotent provisioning for an existing disabled device', async () => {
 			const mockDevice = createMockDevice('device-1', 'wled-ddeeff', '192.168.1.100', false);
 

@@ -97,16 +97,23 @@ export class WledDeviceMapperService {
 
 			device = await this.devicesService.create<WledDeviceEntity, CreateWledDeviceDto>(createDto);
 		} else {
-			// Update hostname if it changed
-			if (device.hostname !== host) {
-				this.logger.log(`Updating hostname for device ${identifier}: ${device.hostname} -> ${host}`, {
+			const updateDto: UpdateWledDeviceDto = {
+				type: DEVICES_WLED_TYPE,
+				hostname: host,
+				...(configName !== undefined && configName !== null ? { name: configName } : {}),
+				...(configDescription !== undefined ? { description: configDescription } : {}),
+				...(configEnabled !== undefined ? { enabled: configEnabled } : {}),
+			};
+			const shouldUpdate =
+				device.hostname !== host ||
+				(configName !== undefined && configName !== null && device.name !== configName) ||
+				(configDescription !== undefined && device.description !== configDescription) ||
+				(configEnabled !== undefined && device.enabled !== configEnabled);
+
+			if (shouldUpdate) {
+				this.logger.log(`Updating device ${identifier} from confirmed adoption data`, {
 					resource: device.id,
 				});
-
-				const updateDto: UpdateWledDeviceDto = {
-					type: DEVICES_WLED_TYPE,
-					hostname: host,
-				};
 
 				device = await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(device.id, updateDto);
 			}

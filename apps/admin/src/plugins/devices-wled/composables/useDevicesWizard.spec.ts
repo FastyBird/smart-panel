@@ -138,6 +138,23 @@ describe('useDevicesWizard', () => {
 		await adapter.dispose?.();
 	});
 
+	it('refreshes the device store after updating an adopted device', async () => {
+		backendClient.POST.mockResolvedValue({
+			data: { data: [{ host: '192.168.1.100', name: 'Renamed strip', status: 'updated', error: null }] },
+			response: { status: 200 },
+		});
+		const adapter = useDevicesWizard();
+		await adapter.start();
+
+		const results = await adapter.adopt([
+			{ key: 'mac:aabbccddeeff', name: 'Renamed strip', category: DevicesModuleDeviceCategory.lighting },
+		]);
+
+		expect(results[0]).toEqual(expect.objectContaining({ key: 'mac:aabbccddeeff', status: 'updated' }));
+		expect(devicesStore.fetch).toHaveBeenCalledTimes(1);
+		await adapter.dispose?.();
+	});
+
 	it('includes a discovered non-default port in the adoption host', async () => {
 		backendClient.GET.mockResolvedValue({
 			data: {
