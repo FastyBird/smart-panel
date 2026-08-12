@@ -732,8 +732,5 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		expect((await refresh(tokens.refresh_token)).status).toBe(400);
 	});
 
-	it(
-		'synchronizes handler commits with OAuth switch-off, rotations, client disable, and grant revocation',
-		runMcpOAuthHandlerInvalidationRaces,
-	);
+	it('synchronizes handlers with invalidation and module-scope contraction', runMcpOAuthHandlerInvalidationRaces);
 });

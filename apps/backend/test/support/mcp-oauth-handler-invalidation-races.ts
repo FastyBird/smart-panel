@@ -140,7 +140,7 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 			clientIdentifier: CLIENT_ID,
 			name: 'Handler race client',
 			redirectUris: [REDIRECT_URI],
-			maximumScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS],
+			maximumScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE, McpOAuthScope.OFFLINE_ACCESS],
 			enabled: true,
 			generation: 0,
 			createdById: user.id,
@@ -167,7 +167,7 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 			enabled: true,
 			oauthEnabled: true,
 			oauthPublicBaseUrl: origin,
-			capabilities: [McpCapability.READ],
+			capabilities: [McpCapability.READ, McpCapability.WRITE],
 		});
 		const configService = {
 			getModuleConfig: jest.fn((moduleName: string) => {
@@ -258,6 +258,10 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 					config.oauthPublicBaseUrl = publicBaseUrl;
 				},
 			);
+		const updateCapabilities = (capabilities: McpCapability[]): Promise<void> =>
+			moduleConfigMutations.execute(MCP_MODULE_NAME, Object.assign(new UpdateMcpConfigDto(), { capabilities }), () => {
+				config.capabilities = [...capabilities];
+			});
 		const management = new McpOAuthManagementService(
 			dataSource.getRepository(McpOAuthGrantEntity),
 			dataSource.getRepository(McpOAuthProviderArtifactEntity),
@@ -269,7 +273,7 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 			auditService,
 		);
 		let latestGrantId: string | null = null;
-		const persistGrant = async (providerGrantId: string): Promise<void> => {
+		const persistGrant = async (providerGrantId: string, approvedScopes: McpOAuthScope[]): Promise<void> => {
 			const state = await dataSource
 				.getRepository(McpOAuthServerStateEntity)
 				.findOneByOrFail({ key: MCP_OAUTH_SERVER_STATE_KEY });
@@ -287,7 +291,7 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 				installationId: INSTALLATION_ID,
 				issuer: activeUrls.issuer,
 				resource: activeUrls.resource,
-				approvedScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS],
+				approvedScopes: [...approvedScopes],
 				expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
 				revokedAt: null,
 				generation: 0,
@@ -561,6 +565,55 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 		await expect(
 			runtime.getActive().provider.AccessToken.find(revokedGrantTokens.access_token),
 		).resolves.toBeUndefined();
+
+		const modulePolicyBefore = (
+			await dataSource.getRepository(McpOAuthServerStateEntity).findOneByOrFail({ key: MCP_OAUTH_SERVER_STATE_KEY })
+		).modulePolicyGeneration;
+		const writeAuthorization = await authorize(
+			urls,
+			`${McpOAuthScope.READ} ${McpOAuthScope.WRITE} ${McpOAuthScope.OFFLINE_ACCESS}`,
+		);
+		const writeInitialResponse = await exchangeCode(
+			urls,
+			requireAuthorizationCode(writeAuthorization.callback),
+			writeAuthorization.verifier,
+		);
+		const writeInitialTokens = (await writeInitialResponse.json()) as TokenResponse;
+		const moduleContractionResponse = await raceGlobalInvalidation(
+			'AccessToken',
+			() => refresh(urls, requireRefreshToken(writeInitialTokens)),
+			() => updateCapabilities([McpCapability.READ]),
+			false,
+			false,
+		);
+		const contractedModuleTokens = (await moduleContractionResponse.json()) as TokenResponse;
+		expect(moduleContractionResponse.status).toBe(200);
+		expect(config.capabilities).toEqual([McpCapability.READ]);
+		expect(
+			(await dataSource.getRepository(McpOAuthServerStateEntity).findOneByOrFail({ key: MCP_OAUTH_SERVER_STATE_KEY }))
+				.modulePolicyGeneration,
+		).toBe(modulePolicyBefore + 1);
+		await expect(
+			runtime.getActive().provider.AccessToken.find(contractedModuleTokens.access_token),
+		).resolves.toBeUndefined();
+		expect((await refresh(urls, requireRefreshToken(contractedModuleTokens))).status).toBe(400);
+
+		await updateCapabilities([McpCapability.READ, McpCapability.WRITE]);
+		expect(config.capabilities).toEqual([McpCapability.READ, McpCapability.WRITE]);
+		await expect(
+			runtime.getActive().provider.AccessToken.find(contractedModuleTokens.access_token),
+		).resolves.toBeUndefined();
+		expect((await refresh(urls, requireRefreshToken(contractedModuleTokens))).status).toBe(400);
+		const expandedModuleAuthorization = await authorize(
+			urls,
+			`${McpOAuthScope.READ} ${McpOAuthScope.WRITE} ${McpOAuthScope.OFFLINE_ACCESS}`,
+		);
+		const expandedModuleResponse = await exchangeCode(
+			urls,
+			requireAuthorizationCode(expandedModuleAuthorization.callback),
+			expandedModuleAuthorization.verifier,
+		);
+		expect(expandedModuleResponse.status).toBe(200);
 	} finally {
 		releaseActivePause();
 		await new Promise<void>((resolve) => server.close(() => resolve()));
@@ -573,7 +626,7 @@ async function dispatchRequest(
 	response: ServerResponse,
 	runtime: McpOAuthRuntimeService,
 	subscriptions: McpSubscriptionRegistryService,
-	persistGrant: (providerGrantId: string) => Promise<void>,
+	persistGrant: (providerGrantId: string, approvedScopes: McpOAuthScope[]) => Promise<void>,
 	origin: string,
 ): Promise<void> {
 	const url = new URL(request.url ?? '/', origin);
@@ -581,9 +634,7 @@ async function dispatchRequest(
 	const interactionPrefix = `${new URL(active.urls.issuer).pathname}/interaction/`;
 
 	if (url.pathname.startsWith(interactionPrefix)) {
-		await subscriptions.runOAuthMutation(() =>
-			finishInteraction(active.provider, request, response, persistGrant, active.urls),
-		);
+		await subscriptions.runOAuthMutation(() => finishInteraction(active.provider, request, response, persistGrant));
 		return;
 	}
 
@@ -595,8 +646,7 @@ async function finishInteraction(
 	provider: Provider,
 	request: IncomingMessage,
 	response: ServerResponse,
-	persistGrant: (providerGrantId: string) => Promise<void>,
-	urls: McpOAuthPublicUrls,
+	persistGrant: (providerGrantId: string, approvedScopes: McpOAuthScope[]) => Promise<void>,
 ): Promise<void> {
 	const details = await provider.interactionDetails(request, response);
 
@@ -615,26 +665,40 @@ async function finishInteraction(
 	}
 
 	const grant = new provider.Grant({ accountId: ACCOUNT_ID, clientId: details.params.client_id });
+	const approvedScopes = new Set<McpOAuthScope>();
 	const promptDetails = isRecord(details.prompt.details) ? details.prompt.details : {};
 	const missingResourceScopes = promptDetails.missingResourceScopes;
 
 	if (isRecord(missingResourceScopes)) {
 		for (const [resource, scopes] of Object.entries(missingResourceScopes)) {
-			if (isStringArray(scopes)) grant.addResourceScope(resource, scopes.join(' '));
+			if (isStringArray(scopes)) {
+				grant.addResourceScope(resource, scopes.join(' '));
+				for (const scope of scopes) {
+					if (Object.values(McpOAuthScope).includes(scope as McpOAuthScope)) {
+						approvedScopes.add(scope as McpOAuthScope);
+					}
+				}
+			}
 		}
 	}
 
 	const missingOidcScope = promptDetails.missingOIDCScope;
 
-	if (isStringArray(missingOidcScope)) grant.addOIDCScope(missingOidcScope.join(' '));
-	grant.addResourceScope(urls.resource, McpOAuthScope.READ);
-	grant.addOIDCScope(McpOAuthScope.OFFLINE_ACCESS);
+	if (isStringArray(missingOidcScope)) {
+		grant.addOIDCScope(missingOidcScope.join(' '));
+		if (missingOidcScope.includes(McpOAuthScope.OFFLINE_ACCESS)) {
+			approvedScopes.add(McpOAuthScope.OFFLINE_ACCESS);
+		}
+	}
 	const grantId = await grant.save();
-	await persistGrant(grantId);
+	await persistGrant(grantId, [...approvedScopes]);
 	await provider.interactionFinished(request, response, { consent: { grantId } }, { mergeWithLastSubmission: true });
 }
 
-async function authorize(urls: McpOAuthPublicUrls): Promise<{ callback: URL; verifier: string }> {
+async function authorize(
+	urls: McpOAuthPublicUrls,
+	scope = `${McpOAuthScope.READ} ${McpOAuthScope.OFFLINE_ACCESS}`,
+): Promise<{ callback: URL; verifier: string }> {
 	const verifier = randomBytes(32).toString('base64url');
 	const challenge = createHash('sha256').update(verifier).digest('base64url');
 	const browser = new CookieBrowser();
@@ -643,7 +707,7 @@ async function authorize(urls: McpOAuthPublicUrls): Promise<{ callback: URL; ver
 		client_id: CLIENT_ID,
 		redirect_uri: REDIRECT_URI,
 		response_type: 'code',
-		scope: `${McpOAuthScope.READ} ${McpOAuthScope.OFFLINE_ACCESS}`,
+		scope,
 		code_challenge: challenge,
 		code_challenge_method: 'S256',
 		resource: urls.resource,
