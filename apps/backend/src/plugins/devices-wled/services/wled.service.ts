@@ -19,6 +19,7 @@ import { WledAdoptDeviceDto } from '../dto/wled-adoption.dto';
 import { WledDeviceEntity } from '../entities/devices-wled.entity';
 import {
 	WledDeviceConnectedEvent,
+	WledDeviceContext,
 	WledDeviceDisconnectedEvent,
 	WledDeviceErrorEvent,
 	WledDeviceStateChangedEvent,
@@ -531,17 +532,59 @@ export class WledService extends BaseManagedPluginService {
 	}
 
 	async adoptDevices(requests: WledAdoptDeviceDto[]): Promise<WledAdoptionResultModel[]> {
-		const results: WledAdoptionResultModel[] = [];
+		const results = requests.map<WledAdoptionResultModel | undefined>(() => undefined);
+		const databaseDevices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
+		const plans: Array<{
+			index: number;
+			request: WledAdoptDeviceDto;
+			host: string;
+			context: WledDeviceContext;
+			existingDevice: WledDeviceEntity | null;
+			identifier: string;
+		}> = [];
 
-		for (const request of requests) {
+		for (const [index, request] of requests.entries()) {
 			let host = request.host.trim();
 
 			try {
 				host = this.normalizeHost(request.host);
 				const context = await this.wledAdapter.probe(host, this.config.timeouts.connectionTimeout);
-				const databaseDevices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
 				const existingDevice = this.findExistingDevice(databaseDevices, host, context.info.mac);
 				const identifier = existingDevice?.identifier || this.identifierFromMac(context.info.mac);
+
+				plans.push({ index, request, host, context, existingDevice, identifier });
+			} catch (error) {
+				results[index] = {
+					host,
+					name: request.name,
+					status: 'failed',
+					error: error instanceof Error ? error.message : String(error),
+					deviceId: null,
+				};
+			}
+		}
+
+		const selectedDeviceIds = new Set(
+			plans.flatMap(({ existingDevice }) => (existingDevice ? [existingDevice.id] : [])),
+		);
+
+		// Tear down every connection involved in an address move before registering any
+		// replacement. This makes address swaps safe: processing the first item cannot
+		// disconnect the second item after it has already been moved to its new host.
+		for (const { host, existingDevice } of plans) {
+			if (existingDevice?.hostname && existingDevice.hostname !== host) {
+				this.wledAdapter.disconnect(existingDevice.hostname);
+			}
+
+			if (databaseDevices.some((device) => device.hostname === host && device.id !== existingDevice?.id)) {
+				this.wledAdapter.disconnect(host);
+			}
+		}
+
+		const retiredDeviceIds = new Set<string>();
+
+		for (const { index, request, host, context, existingDevice, identifier } of plans) {
+			try {
 				if (existingDevice && !existingDevice.identifier) {
 					await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(existingDevice.id, {
 						type: DEVICES_WLED_TYPE,
@@ -549,18 +592,19 @@ export class WledService extends BaseManagedPluginService {
 						hostname: host,
 					});
 				}
-				if (existingDevice?.hostname && existingDevice.hostname !== host) {
-					this.wledAdapter.disconnect(existingDevice.hostname);
-				}
 				for (const staleHostOwner of databaseDevices.filter(
 					(device) => device.hostname === host && device.id !== existingDevice?.id,
 				)) {
-					this.wledAdapter.disconnect(host);
+					if (selectedDeviceIds.has(staleHostOwner.id) || retiredDeviceIds.has(staleHostOwner.id)) {
+						continue;
+					}
+
 					await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(staleHostOwner.id, {
 						type: DEVICES_WLED_TYPE,
 						enabled: false,
 						hostname: null,
 					});
+					retiredDeviceIds.add(staleHostOwner.id);
 				}
 				const device = await this.deviceMapper.mapDevice(
 					host,
@@ -570,7 +614,22 @@ export class WledService extends BaseManagedPluginService {
 					request.description,
 					request.enabled,
 				);
-				if (device.enabled) {
+				if (!device.enabled) {
+					this.wledAdapter.disconnect(host);
+				} else {
+					const registeredDevice = this.wledAdapter.getDevice(host);
+
+					if (registeredDevice?.identifier === identifier && registeredDevice.connected) {
+						results[index] = {
+							host,
+							name: request.name,
+							status: existingDevice ? 'updated' : 'created',
+							error: null,
+							deviceId: device.id,
+						};
+						continue;
+					}
+
 					try {
 						this.wledAdapter.connectWithContext(host, identifier, context);
 					} catch (error) {
@@ -580,25 +639,25 @@ export class WledService extends BaseManagedPluginService {
 						});
 					}
 				}
-				results.push({
+				results[index] = {
 					host,
 					name: request.name,
 					status: existingDevice ? 'updated' : 'created',
 					error: null,
 					deviceId: device.id,
-				});
+				};
 			} catch (error) {
-				results.push({
+				results[index] = {
 					host,
 					name: request.name,
 					status: 'failed',
 					error: error instanceof Error ? error.message : String(error),
 					deviceId: null,
-				});
+				};
 			}
 		}
 
-		return results;
+		return results.filter((result): result is WledAdoptionResultModel => result !== undefined);
 	}
 
 	/**

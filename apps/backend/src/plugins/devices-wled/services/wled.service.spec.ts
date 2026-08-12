@@ -626,6 +626,91 @@ describe('WledService', () => {
 			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-1' })]);
 		});
 
+		it('disconnects an existing same-host device when adoption disables it', async () => {
+			const existingDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			devicesService.findAll.mockResolvedValue([existingDevice]);
+			deviceMapper.mapDevice.mockResolvedValue({ ...existingDevice, enabled: false } as WledDeviceEntity);
+
+			const results = await service.adoptDevices([
+				{
+					host: '192.168.1.100',
+					name: 'Disabled strip',
+					category: DeviceCategory.LIGHTING,
+					enabled: false,
+				},
+			]);
+
+			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.100');
+			expect(wledAdapter.connectWithContext).not.toHaveBeenCalled();
+			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-1' })]);
+		});
+
+		it('reuses an existing connection when an enabled device keeps its host', async () => {
+			const existingDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			wledAdapter.getDevice.mockReturnValue({
+				host: '192.168.1.100',
+				identifier: 'wled-aabbccddeeff',
+				connected: true,
+			} as RegisteredWledDevice);
+			devicesService.findAll.mockResolvedValue([existingDevice]);
+			deviceMapper.mapDevice.mockResolvedValue(existingDevice);
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.100', name: 'Living room', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(wledAdapter.disconnect).not.toHaveBeenCalled();
+			expect(wledAdapter.connectWithContext).not.toHaveBeenCalled();
+			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-1' })]);
+		});
+
+		it('preserves both selected devices when adopted controllers exchange hosts', async () => {
+			const firstDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
+			const secondDevice = createMockDevice('device-2', 'wled-112233445566', '192.168.1.200');
+			const secondContext = {
+				...mockContext,
+				info: { ...mockContext.info, mac: '11:22:33:44:55:66' },
+			};
+			wledAdapter.probe.mockResolvedValueOnce(mockContext).mockResolvedValueOnce(secondContext);
+			devicesService.findAll.mockResolvedValue([firstDevice, secondDevice]);
+			deviceMapper.mapDevice
+				.mockResolvedValueOnce({ ...firstDevice, hostname: '192.168.1.200' } as WledDeviceEntity)
+				.mockResolvedValueOnce({ ...secondDevice, hostname: '192.168.1.100' } as WledDeviceEntity);
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.200', name: 'First strip', category: DeviceCategory.LIGHTING },
+				{ host: '192.168.1.100', name: 'Second strip', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.100');
+			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.200');
+			expect(devicesService.update).not.toHaveBeenCalled();
+			expect(deviceMapper.mapDevice).toHaveBeenNthCalledWith(
+				1,
+				'192.168.1.200',
+				mockContext,
+				'First strip',
+				'wled-aabbccddeeff',
+				undefined,
+				undefined,
+			);
+			expect(deviceMapper.mapDevice).toHaveBeenNthCalledWith(
+				2,
+				'192.168.1.100',
+				secondContext,
+				'Second strip',
+				'wled-112233445566',
+				undefined,
+				undefined,
+			);
+			expect(results).toEqual([
+				expect.objectContaining({ status: 'updated', deviceId: 'device-1' }),
+				expect.objectContaining({ status: 'updated', deviceId: 'device-2' }),
+			]);
+		});
+
 		it('retires a stale hostname owner before provisioning a different MAC', async () => {
 			const staleDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
 			const replacementContext = {
