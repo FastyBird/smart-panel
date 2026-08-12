@@ -37,8 +37,7 @@ const mountStep = (rows: IWizardRow[] = [row()], props: Record<string, unknown> 
 			nameByKey: { 'shelly-1.local': 'Living room switch' },
 			categoryByKey: { 'shelly-1.local': DevicesModuleDeviceCategory.lighting },
 			identifierLabel: 'Hostname',
-			allSelected: true,
-			someSelected: true,
+			confirmationMode: 'editable',
 			...props,
 		},
 	});
@@ -62,14 +61,14 @@ describe('DeviceWizardConfirmStep', () => {
 		expect(wrapper.emitted('toggle-row')?.[0]).toEqual(['shelly-1.local', false]);
 	});
 
-	it('emits toggle-all when the header checkbox changes', async () => {
+	it('emits toggle-rows for the filtered rows when the header checkbox changes', async () => {
 		const wrapper = mountStep();
 
 		await flushPromises();
 
 		await wrapper.find('thead input[type="checkbox"]').setValue(false);
 
-		expect(wrapper.emitted('toggle-all')?.[0]).toEqual([false]);
+		expect(wrapper.emitted('toggle-rows')?.[0]).toEqual([['shelly-1.local'], false]);
 	});
 
 	it('emits update-name when the name input changes', async () => {
@@ -145,8 +144,10 @@ describe('DeviceWizardConfirmStep', () => {
 		expect(order).toEqual(['a', 'b']);
 	});
 
-	it('marks the header checkbox indeterminate when some but not all rows are selected', async () => {
-		const wrapper = mountStep([row(), row({ key: 'b', identifier: 'b' })], { allSelected: false, someSelected: true });
+	it('marks the header checkbox indeterminate when some but not all filtered rows are selected', async () => {
+		const wrapper = mountStep([row(), row({ key: 'b', identifier: 'b' })], {
+			selected: { 'shelly-1.local': true, b: false },
+		});
 
 		await flushPromises();
 
@@ -155,7 +156,9 @@ describe('DeviceWizardConfirmStep', () => {
 	});
 
 	it('does not mark the header checkbox indeterminate once every row is selected', async () => {
-		const wrapper = mountStep([row(), row({ key: 'b', identifier: 'b' })], { allSelected: true, someSelected: true });
+		const wrapper = mountStep([row(), row({ key: 'b', identifier: 'b' })], {
+			selected: { 'shelly-1.local': true, b: true },
+		});
 
 		await flushPromises();
 
@@ -183,5 +186,50 @@ describe('DeviceWizardConfirmStep', () => {
 		await wrapper.findComponent(ElSelect).setValue(DevicesModuleDeviceCategory.switcher);
 
 		expect(wrapper.emitted('update-category')?.[0]).toEqual(['shelly-1.local', DevicesModuleDeviceCategory.switcher]);
+	});
+
+	it('renders automatic names and categories read-only in selection-only mode', async () => {
+		const wrapper = mountStep([row()], { confirmationMode: 'selection-only' });
+
+		await flushPromises();
+
+		expect(wrapper.find('tbody input[type="text"]').exists()).toBe(false);
+		expect(wrapper.findComponent(ElSelect).exists()).toBe(false);
+		expect(wrapper.text()).toContain('Living room switch');
+		expect(wrapper.text()).toContain('Lighting');
+	});
+
+	it('filters rows and applies the header toggle only to visible matches', async () => {
+		const wrapper = mountStep([
+			row(),
+			row({ key: 'kitchen.local', identifier: 'kitchen.local', label: 'Kitchen light', suggestedName: 'Kitchen light' }),
+		]);
+
+		await flushPromises();
+		await wrapper.find('[data-test-id="wizard-confirm-search"] input').setValue('kitchen');
+		await flushPromises();
+
+		expect(wrapper.findAll('tbody tr')).toHaveLength(1);
+		await wrapper.find('thead input[type="checkbox"]').setValue(true);
+
+		expect(wrapper.emitted('toggle-rows')?.[0]).toEqual([['kitchen.local'], true]);
+	});
+
+	it('filters by the rendered fallback status label', async () => {
+		const wrapper = mountStep([row(), row({ key: 'registered', identifier: 'registered', status: 'already_registered', willUpdate: true })], {
+			selected: { 'shelly-1.local': true, registered: true },
+			nameByKey: { 'shelly-1.local': 'Living room switch', registered: 'Registered switch' },
+			categoryByKey: {
+				'shelly-1.local': DevicesModuleDeviceCategory.lighting,
+				registered: DevicesModuleDeviceCategory.lighting,
+			},
+		});
+
+		await flushPromises();
+		await wrapper.find('[data-test-id="wizard-confirm-search"] input').setValue('already_registered');
+		await flushPromises();
+
+		expect(wrapper.findAll('tbody tr')).toHaveLength(1);
+		expect(wrapper.text()).toContain('registered');
 	});
 });

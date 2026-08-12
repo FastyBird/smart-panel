@@ -15,6 +15,7 @@ export interface IUseDeviceWizardState {
 	allSelected: ComputedRef<boolean>;
 	someSelected: ComputedRef<boolean>;
 	toggleAll: (value: boolean) => void;
+	toggleRows: (keys: string[], value: boolean) => void;
 	reconcile: (rows: IWizardRow[]) => void;
 	reset: () => void;
 	buildSelection: () => IWizardAdoptSelection[];
@@ -68,10 +69,21 @@ export const useDeviceWizardState = (rows: Ref<IWizardRow[]> | ComputedRef<IWiza
 
 	const someSelected = computed<boolean>(() => adoptableRows.value.some((item) => selected[item.key] === true));
 
-	const toggleAll = (value: boolean): void => {
-		for (const item of adoptableRows.value) {
-			selected[item.key] = value;
+	const toggleRows = (keys: string[], value: boolean): void => {
+		const adoptableKeys = new Set(adoptableRows.value.map((item) => item.key));
+
+		for (const key of keys) {
+			if (adoptableKeys.has(key)) {
+				selected[key] = value;
+			}
 		}
+	};
+
+	const toggleAll = (value: boolean): void => {
+		toggleRows(
+			adoptableRows.value.map((item) => item.key),
+			value
+		);
 	};
 
 	const buildSelection = (): IWizardAdoptSelection[] =>
@@ -85,14 +97,15 @@ export const useDeviceWizardState = (rows: Ref<IWizardRow[]> | ComputedRef<IWiza
 		for (const row of rows) {
 			const previous = previousRows.value.find((item) => item.key === row.key);
 
-			const firstTimeReady = row.status === 'ready' && !everReady.has(row.key);
+			const selectedByDefault = row.selectedByDefault ?? row.status === 'ready';
+			const firstTimeReady = row.status === 'ready' && selectedByDefault && !everReady.has(row.key);
 			const becameAlreadyRegistered = previous !== undefined && previous.status !== 'already_registered' && row.status === 'already_registered';
 			const becameAdoptable = previous !== undefined && !previous.adoptable && row.adoptable;
 
 			// Pre-select ready devices on first sight and on their first transition to ready,
 			// but never resurrect a selection the user cleared.
 			if (selected[row.key] === undefined || firstTimeReady) {
-				selected[row.key] = row.status === 'ready';
+				selected[row.key] = selectedByDefault;
 			} else if (becameAlreadyRegistered) {
 				// The background connector adopted this device mid-session. Updating it is now
 				// an explicit opt-in rather than the default.
@@ -149,6 +162,7 @@ export const useDeviceWizardState = (rows: Ref<IWizardRow[]> | ComputedRef<IWiza
 		allSelected,
 		someSelected,
 		toggleAll,
+		toggleRows,
 		reconcile,
 		reset,
 		buildSelection,

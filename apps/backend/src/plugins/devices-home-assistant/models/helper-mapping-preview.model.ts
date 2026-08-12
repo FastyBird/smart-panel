@@ -93,6 +93,17 @@ export class HelperPropertyMappingPreviewModel {
 	@Expose({ name: 'current_value' })
 	@IsOptional()
 	currentValue: string | number | boolean | null;
+
+	@ApiPropertyOptional({
+		description: 'Transformer name for value conversion',
+		type: 'string',
+		nullable: true,
+		name: 'ha_transformer',
+	})
+	@Expose({ name: 'ha_transformer' })
+	@IsOptional()
+	@IsString()
+	haTransformer?: string | null;
 }
 
 @ApiSchema({ name: 'DevicesHomeAssistantPluginDataHelperChannelMappingPreview' })

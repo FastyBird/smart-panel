@@ -9,8 +9,13 @@ import {
 	DevicesHomeAssistantValidationException,
 } from '../devices-home-assistant.exceptions';
 import { HomeAssistantDiscoveredDeviceDto } from '../dto/home-assistant-discovered-device.dto';
+import { HomeAssistantDiscoveredHelperDto } from '../dto/home-assistant-discovered-helper.dto';
 import { HomeAssistantStateDto } from '../dto/home-assistant-state.dto';
-import { HomeAssistantDeviceEntity } from '../entities/devices-home-assistant.entity';
+import {
+	HomeAssistantChannelEntity,
+	HomeAssistantChannelPropertyEntity,
+	HomeAssistantDeviceEntity,
+} from '../entities/devices-home-assistant.entity';
 import { MapperService } from '../mappers/mapper.service';
 
 import { HaSupervisorService } from './ha-supervisor.service';
@@ -23,6 +28,7 @@ const mockConfigService = {
 
 const mockDevicesService = {
 	findAll: jest.fn(),
+	findOne: jest.fn(),
 };
 
 const mockChannelsPropertiesService = {
@@ -75,8 +81,11 @@ describe('HomeAssistantHttpService', () => {
 
 		mockConfigService.getPluginConfig.mockReturnValue({
 			apiKey: 'test-api-key',
+			enabled: true,
 			hostname: 'localhost',
 		});
+		mockDevicesService.findAll.mockResolvedValue([]);
+		mockChannelsPropertiesService.findAll.mockResolvedValue([]);
 	});
 
 	afterEach(() => {
@@ -202,6 +211,86 @@ describe('HomeAssistantHttpService', () => {
 		});
 	});
 
+	describe('getDiscoveredInventory', () => {
+		it('shares one states response across physical devices and helpers', async () => {
+			const mockDevice: HomeAssistantDiscoveredDeviceDto = {
+				id: 'device_1',
+				name: 'Test Device',
+				entities: ['sensor.temp'],
+			};
+			const mockHelper: HomeAssistantDiscoveredHelperDto = {
+				entity_id: 'input_boolean.guest_mode',
+				name: 'Guest mode',
+				domain: 'input_boolean',
+			};
+			const states: HomeAssistantStateDto[] = [
+				{
+					entity_id: 'sensor.temp',
+					state: '22',
+					attributes: {},
+					last_changed: new Date(),
+					last_updated: new Date(),
+					last_reported: new Date(),
+					context: { id: 'device-state', parent_id: null, user_id: null },
+				},
+				{
+					entity_id: 'input_boolean.guest_mode',
+					state: 'off',
+					attributes: {},
+					last_changed: new Date(),
+					last_updated: new Date(),
+					last_reported: new Date(),
+					context: { id: 'helper-state', parent_id: null, user_id: null },
+				},
+			];
+			const fetchDevices = jest
+				.spyOn<HomeAssistantHttpService, any>(service, 'fetchListHaDevices')
+				.mockResolvedValue([mockDevice]);
+			const fetchHelpers = jest
+				.spyOn<HomeAssistantHttpService, any>(service, 'fetchListHaHelpers')
+				.mockResolvedValue([mockHelper]);
+			const fetchStates = jest
+				.spyOn<HomeAssistantHttpService, any>(service, 'fetchListHaStates')
+				.mockResolvedValue(states);
+			const result = await service.getDiscoveredInventory();
+
+			expect(result.devices[0].states[0].entityId).toBe('sensor.temp');
+			expect(result.helpers[0].state?.entityId).toBe('input_boolean.guest_mode');
+			expect(fetchDevices.mock.calls).toHaveLength(1);
+			expect(fetchHelpers.mock.calls).toHaveLength(1);
+			expect(fetchStates.mock.calls).toHaveLength(1);
+			expect(mockDevicesService.findAll.mock.calls).toHaveLength(1);
+			expect(mockChannelsPropertiesService.findAll.mock.calls).toHaveLength(1);
+		});
+
+		it('marks a helper adopted when it is mapped to a property of a physical device', async () => {
+			const helper: HomeAssistantDiscoveredHelperDto = {
+				entity_id: 'climate.living_room',
+				name: 'Living room thermostat',
+				domain: 'climate',
+			};
+			const panelDevice = Object.assign(new HomeAssistantDeviceEntity(), {
+				id: 'panel-device-1',
+				haDeviceId: 'ha-physical-device-1',
+			});
+			const channel = Object.assign(new HomeAssistantChannelEntity(), { device: panelDevice });
+			const property = Object.assign(new HomeAssistantChannelPropertyEntity(), {
+				haEntityId: helper.entity_id,
+				channel,
+			});
+
+			jest.spyOn<HomeAssistantHttpService, any>(service, 'fetchListHaDevices').mockResolvedValue([]);
+			jest.spyOn<HomeAssistantHttpService, any>(service, 'fetchListHaHelpers').mockResolvedValue([helper]);
+			jest.spyOn<HomeAssistantHttpService, any>(service, 'fetchListHaStates').mockResolvedValue([]);
+			mockDevicesService.findAll.mockResolvedValue([panelDevice]);
+			mockChannelsPropertiesService.findAll.mockResolvedValue([property]);
+
+			const result = await service.getDiscoveredInventory();
+
+			expect(result.helpers[0].adoptedDeviceId).toBe(panelDevice.id);
+		});
+	});
+
 	describe('getState', () => {
 		it('should return parsed state model if successful', async () => {
 			const mockDto = {
@@ -234,6 +323,40 @@ describe('HomeAssistantHttpService', () => {
 			jest.spyOn<HomeAssistantHttpService, any>(service, 'fetchSingleHaState').mockResolvedValue(null);
 
 			await expect(service.getState('sensor.temp')).rejects.toThrow(DevicesHomeAssistantNotFoundException);
+		});
+	});
+
+	describe('syncDeviceStates', () => {
+		it('reuses a discovered device snapshot without refetching Home Assistant inventory', async () => {
+			mockDevicesService.findOne.mockResolvedValue(
+				Object.assign(new HomeAssistantDeviceEntity(), {
+					id: 'panel-device-1',
+					haDeviceId: 'device_1',
+					name: 'Test device',
+				}),
+			);
+			const fetchDevices = jest.spyOn<HomeAssistantHttpService, any>(service, 'fetchListHaDevices');
+			const fetchStates = jest.spyOn<HomeAssistantHttpService, any>(service, 'fetchListHaStates');
+
+			await service.syncDeviceStates('panel-device-1', {
+				id: 'device_1',
+				name: 'Test device',
+				entities: ['sensor.temp'],
+				adoptedDeviceId: null,
+				states: [
+					{
+						entityId: 'sensor.temp',
+						state: '22',
+						attributes: {},
+						lastChanged: new Date(),
+						lastReported: new Date(),
+						lastUpdated: new Date(),
+					},
+				],
+			});
+
+			expect(fetchDevices).not.toHaveBeenCalled();
+			expect(fetchStates).not.toHaveBeenCalled();
 		});
 	});
 

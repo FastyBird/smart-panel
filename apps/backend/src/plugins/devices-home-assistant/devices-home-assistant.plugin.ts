@@ -28,6 +28,7 @@ import { HomeAssistantDiscoveredHelpersController } from './controllers/home-ass
 import { HomeAssistantDiscoveryController } from './controllers/home-assistant-discovery.controller';
 import { HomeAssistantRegistryController } from './controllers/home-assistant-registry.controller';
 import { HomeAssistantStatesController } from './controllers/home-assistant-states.controller';
+import { HomeAssistantWizardController } from './controllers/home-assistant-wizard.controller';
 import {
 	DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_DESCRIPTION,
 	DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME,
@@ -70,6 +71,7 @@ import { LightCapabilityAnalyzer } from './services/light-capability.analyzer';
 import { MappingPreviewService } from './services/mapping-preview.service';
 import { StateChangedEventService } from './services/state-changed.event.service';
 import { VirtualPropertyService } from './services/virtual-property.service';
+import { HomeAssistantWizardService } from './services/wizard.service';
 import { DevicesServiceSubscriber } from './subscribers/devices-service.subscriber';
 
 @ApiTag({
@@ -116,6 +118,7 @@ import { DevicesServiceSubscriber } from './subscribers/devices-service.subscrib
 		LightCapabilityAnalyzer,
 		HaMdnsDiscovererService,
 		VirtualPropertyService,
+		HomeAssistantWizardService,
 	],
 	controllers: [
 		HomeAssistantDiscoveredDevicesController,
@@ -123,6 +126,7 @@ import { DevicesServiceSubscriber } from './subscribers/devices-service.subscrib
 		HomeAssistantDiscoveryController,
 		HomeAssistantStatesController,
 		HomeAssistantRegistryController,
+		HomeAssistantWizardController,
 	],
 	exports: [HomeAssistantHttpService],
 })

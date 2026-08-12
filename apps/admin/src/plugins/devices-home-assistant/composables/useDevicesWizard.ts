@@ -1,0 +1,353 @@
+import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+import { orderBy } from 'natural-orderby';
+
+import { PLUGINS_PREFIX } from '../../../app.constants';
+import { getErrorReason, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../common';
+import { RouteNames as ConfigRouteNames } from '../../../modules/config';
+import {
+	RouteNames as DevicesRouteNames,
+	FormResult,
+	type FormResultType,
+	type IDeviceWizardAdapter,
+	type IWizardAdoptSelection,
+	type IWizardControl,
+	type IWizardResult,
+	type IWizardRow,
+	devicesStoreKey,
+} from '../../../modules/devices';
+import type {
+	DevicesHomeAssistantPluginAdoptWizardOperation,
+	DevicesHomeAssistantPluginCreateWizardOperation,
+	DevicesHomeAssistantPluginDeleteWizardOperation,
+	DevicesHomeAssistantPluginGetWizardOperation,
+	DevicesHomeAssistantPluginWizardAdoptionSchema,
+	DevicesHomeAssistantPluginWizardSessionSchema,
+} from '../../../openapi.constants';
+import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
+import { DevicesHomeAssistantApiException } from '../devices-home-assistant.exceptions';
+import type { IHomeAssistantWizardAdoptionResult, IHomeAssistantWizardCandidate, IHomeAssistantWizardSession } from '../schemas/wizard.types';
+import { discoveredDevicesStoreKey, discoveredHelpersStoreKey } from '../store/keys';
+import { transformWizardAdoptRequest, transformWizardAdoptionResponse, transformWizardSessionResponse } from '../utils/wizard.transformers';
+
+export const useDevicesWizard = (): IDeviceWizardAdapter => {
+	const sessionKeepaliveMs = 4 * 60_000;
+	const { t } = useI18n();
+	const backend = useBackend();
+	const flashMessage = useFlashMessage();
+	const logger = useLogger();
+	const storesManager = injectStoresManager();
+	const devicesStore = storesManager.getStore(devicesStoreKey);
+	const discoveredDevicesStore = storesManager.getStore(discoveredDevicesStoreKey);
+	const discoveredHelpersStore = storesManager.getStore(discoveredHelpersStoreKey);
+	const session = ref<IHomeAssistantWizardSession | null>(null);
+	// Keep the last non-null session identity across DELETE so a refresh produces a direct
+	// old-id -> new-id transition. The shared shell uses that transition to clear row state.
+	const sessionKey = ref<string | null>(null);
+	const adoptionResults = ref<IHomeAssistantWizardAdoptionResult[]>([]);
+	const formResult = ref<FormResultType>(FormResult.NONE);
+	const sessionError = ref<string | null>(null);
+	let keepaliveTimer: ReturnType<typeof setInterval> | null = null;
+	let restartPromise: Promise<void> | null = null;
+	let disposed = false;
+
+	const stopKeepalive = (): void => {
+		if (keepaliveTimer !== null) {
+			clearInterval(keepaliveTimer);
+			keepaliveTimer = null;
+		}
+	};
+
+	const startKeepalive = (id: string): void => {
+		stopKeepalive();
+		keepaliveTimer = setInterval(() => {
+			void backend.client
+				.GET(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/wizard/{id}`, {
+					params: { path: { id } },
+				})
+				.then(({ error }) => {
+					if (error) {
+						logger.warn(
+							getErrorReason<DevicesHomeAssistantPluginGetWizardOperation>(error, 'Failed to keep the Home Assistant wizard session active')
+						);
+					}
+				})
+				.catch((error: unknown) => logger.warn('Failed to keep the Home Assistant wizard session active', error));
+		}, sessionKeepaliveMs);
+	};
+
+	const deleteSession = async (id: string): Promise<void> => {
+		try {
+			const { error } = await backend.client.DELETE(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/wizard/{id}`, {
+				params: { path: { id } },
+			});
+
+			if (error) {
+				logger.warn(getErrorReason<DevicesHomeAssistantPluginDeleteWizardOperation>(error, 'Failed to cleanly end Home Assistant wizard session'));
+			}
+		} catch (error: unknown) {
+			logger.warn('Failed to cleanly end Home Assistant wizard session', error);
+		}
+	};
+
+	const candidates = computed<IHomeAssistantWizardCandidate[]>(() =>
+		orderBy(session.value?.candidates ?? [], [(candidate) => (candidate.status === 'ready' ? 0 : 1), (candidate) => candidate.name], ['asc', 'asc'])
+	);
+
+	const rows = computed<IWizardRow[]>(() =>
+		candidates.value.map((candidate) => ({
+			key: candidate.key,
+			label: candidate.name,
+			subLabel: [candidate.manufacturer, candidate.model].filter(Boolean).join(' · ') || null,
+			identifier: candidate.sourceId,
+			status: candidate.status,
+			statusLabel:
+				candidate.error ?? (candidate.status === 'needs_attention' ? t('devicesHomeAssistantPlugin.wizard.statuses.needsAttention') : undefined),
+			adoptable: candidate.status === 'ready',
+			selectedByDefault: false,
+			willUpdate: false,
+			suggestedName: candidate.name,
+			suggestedCategory: candidate.suggestedCategory,
+			categoryOptions:
+				candidate.suggestedCategory === null
+					? []
+					: [
+							{
+								value: candidate.suggestedCategory,
+								label: t(`devicesModule.categories.devices.${candidate.suggestedCategory}`),
+							},
+						],
+			cells: {
+				kind: {
+					render: 'tag',
+					value: t(`devicesHomeAssistantPlugin.wizard.kinds.${candidate.kind}`),
+					variant: 'info',
+				},
+				channels: {
+					render: 'tag',
+					value: t('devicesHomeAssistantPlugin.wizard.columns.channelsCount', {
+						count: candidate.previewChannelCount,
+					}),
+					variant: candidate.warningCount > 0 ? 'warning' : 'success',
+					tooltip:
+						candidate.error ??
+						(candidate.warningCount > 0
+							? t('devicesHomeAssistantPlugin.wizard.columns.warningsCount', { count: candidate.warningCount })
+							: undefined),
+				},
+			},
+		}))
+	);
+
+	const results = computed<IWizardResult[]>(() =>
+		adoptionResults.value.map((result) => ({
+			key: result.key,
+			name: result.name,
+			identifier: session.value?.candidates.find((candidate) => candidate.key === result.key)?.sourceId ?? result.key,
+			status: result.status,
+			error: result.error,
+		}))
+	);
+
+	const controls = computed<IWizardControl[]>(() => {
+		const refreshControl: IWizardControl = {
+			type: 'action',
+			id: 'refresh',
+			label: t('devicesHomeAssistantPlugin.wizard.actions.refresh'),
+			icon: 'mdi:refresh',
+			variant: 'default',
+			disabled: formResult.value === FormResult.WORKING,
+			loading: formResult.value === FormResult.WORKING,
+			handler: restartSession,
+		};
+
+		if (sessionError.value !== null) {
+			return [
+				{
+					type: 'banner',
+					id: 'connection-error',
+					severity: 'warning',
+					title: t('devicesHomeAssistantPlugin.wizard.connectionError.title'),
+					message: sessionError.value,
+					link: {
+						label: t('devicesHomeAssistantPlugin.wizard.connectionError.openConfig'),
+						to: {
+							name: ConfigRouteNames.CONFIG_PLUGIN_EDIT,
+							params: { plugin: DEVICES_HOME_ASSISTANT_PLUGIN_NAME },
+						},
+					},
+				},
+				refreshControl,
+			];
+		}
+
+		const reviewCount = candidates.value.filter((candidate) => candidate.status === 'needs_attention').length;
+
+		if (reviewCount === 0) {
+			return [refreshControl];
+		}
+
+		return [
+			{
+				type: 'banner',
+				id: 'manual-review',
+				severity: 'info',
+				title: t('devicesHomeAssistantPlugin.wizard.manualReview.title', { count: reviewCount }),
+				message: t('devicesHomeAssistantPlugin.wizard.manualReview.message'),
+				link: {
+					label: t('devicesHomeAssistantPlugin.wizard.manualReview.open'),
+					to: { name: DevicesRouteNames.DEVICES_ADD },
+				},
+			},
+			refreshControl,
+		];
+	});
+
+	const startSession = async (): Promise<void> => {
+		formResult.value = FormResult.WORKING;
+		sessionError.value = null;
+		let started;
+
+		try {
+			started = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/wizard`);
+		} catch (transportError: unknown) {
+			const fallback = t('devicesHomeAssistantPlugin.wizard.messages.sessionNotStarted');
+			const reason = transportError instanceof Error && transportError.message ? transportError.message : fallback;
+			formResult.value = FormResult.ERROR;
+			sessionError.value = reason;
+			flashMessage.error(reason);
+			throw new DevicesHomeAssistantApiException(reason, null, transportError instanceof Error ? transportError : null);
+		}
+
+		const { data, error, response } = started;
+
+		if (typeof data !== 'undefined') {
+			const nextSession = transformWizardSessionResponse((data as { data: DevicesHomeAssistantPluginWizardSessionSchema }).data);
+			if (disposed) {
+				await deleteSession(nextSession.id);
+				return;
+			}
+			session.value = nextSession;
+			sessionKey.value = nextSession.id;
+			startKeepalive(nextSession.id);
+			adoptionResults.value = [];
+			formResult.value = FormResult.OK;
+			return;
+		}
+
+		const fallback = t('devicesHomeAssistantPlugin.wizard.messages.sessionNotStarted');
+		const reason = error ? getErrorReason<DevicesHomeAssistantPluginCreateWizardOperation>(error, fallback) : fallback;
+		formResult.value = FormResult.ERROR;
+		sessionError.value = reason;
+		flashMessage.error(reason);
+		throw new DevicesHomeAssistantApiException(reason, response.status);
+	};
+
+	const endSession = async (): Promise<void> => {
+		stopKeepalive();
+		const currentSession = session.value;
+		session.value = null;
+		sessionError.value = null;
+
+		if (!currentSession) {
+			return;
+		}
+
+		await deleteSession(currentSession.id);
+	};
+
+	const disposeSession = async (): Promise<void> => {
+		disposed = true;
+		await endSession();
+	};
+
+	const restartSession = (): Promise<void> => {
+		if (restartPromise !== null) {
+			return restartPromise;
+		}
+
+		formResult.value = FormResult.WORKING;
+		restartPromise = (async (): Promise<void> => {
+			await endSession();
+			await startSession();
+		})().finally(() => {
+			restartPromise = null;
+		});
+
+		return restartPromise;
+	};
+
+	const adopt = async (selection: IWizardAdoptSelection[]): Promise<IWizardResult[]> => {
+		if (!session.value) {
+			return [];
+		}
+
+		formResult.value = FormResult.WORKING;
+		let adopted;
+
+		try {
+			adopted = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/wizard/{id}/adopt`, {
+				params: { path: { id: session.value.id } },
+				body: transformWizardAdoptRequest(selection.map((item) => item.key)),
+			});
+		} catch (transportError: unknown) {
+			const fallback = t('devicesHomeAssistantPlugin.wizard.messages.adoptionFailed');
+			const reason = transportError instanceof Error && transportError.message ? transportError.message : fallback;
+			formResult.value = FormResult.ERROR;
+			flashMessage.error(reason);
+			throw new DevicesHomeAssistantApiException(reason, null, transportError instanceof Error ? transportError : null);
+		}
+
+		const { data, error, response } = adopted;
+
+		if (typeof data !== 'undefined') {
+			adoptionResults.value = transformWizardAdoptionResponse((data as { data: DevicesHomeAssistantPluginWizardAdoptionSchema }).data);
+			if (adoptionResults.value.some((result) => result.status === 'created')) {
+				const refreshes = await Promise.allSettled([devicesStore.fetch(), discoveredDevicesStore.fetch(), discoveredHelpersStore.fetch()]);
+				for (const refresh of refreshes) {
+					if (refresh.status === 'rejected') {
+						logger.warn('Failed to refresh a device store after Home Assistant bulk adoption', refresh.reason);
+					}
+				}
+			}
+			formResult.value = adoptionResults.value.some((result) => result.status === 'failed') ? FormResult.ERROR : FormResult.OK;
+			return results.value;
+		}
+
+		const fallback = t('devicesHomeAssistantPlugin.wizard.messages.adoptionFailed');
+		const reason = error ? getErrorReason<DevicesHomeAssistantPluginAdoptWizardOperation>(error, fallback) : fallback;
+		formResult.value = FormResult.ERROR;
+		flashMessage.error(reason);
+		throw new DevicesHomeAssistantApiException(reason, response.status);
+	};
+
+	return {
+		title: t('devicesHomeAssistantPlugin.wizard.title'),
+		subtitle: t('devicesHomeAssistantPlugin.wizard.subtitle'),
+		breadcrumbLabel: t('devicesHomeAssistantPlugin.wizard.breadcrumb'),
+		pluginType: DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+		identifierLabel: t('devicesHomeAssistantPlugin.wizard.columns.identifier'),
+		confirmationMode: 'selection-only',
+		rows,
+		results,
+		columns: [
+			{ key: 'kind', label: t('devicesHomeAssistantPlugin.wizard.columns.kind'), steps: ['discover'], width: 120 },
+			{
+				key: 'channels',
+				label: t('devicesHomeAssistantPlugin.wizard.columns.channels'),
+				steps: ['discover', 'confirm'],
+				width: 130,
+			},
+		],
+		controls,
+		sessionKey: computed(() => sessionKey.value),
+		ready: computed(() => session.value !== null || sessionError.value !== null),
+		busy: computed(() => formResult.value === FormResult.WORKING),
+		capabilities: { addMore: true },
+		start: startSession,
+		adopt,
+		restart: restartSession,
+		dispose: disposeSession,
+	};
+};

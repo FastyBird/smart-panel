@@ -83,6 +83,7 @@ describe('MappingPreviewService', () => {
 	beforeEach(async () => {
 		const homeAssistantHttpServiceMock: Partial<jest.Mocked<HomeAssistantHttpService>> = {
 			getDiscoveredDevice: jest.fn(),
+			getDiscoveredDevices: jest.fn(),
 		};
 
 		const homeAssistantWsServiceMock: Partial<jest.Mocked<HomeAssistantWsService>> = {
@@ -154,6 +155,42 @@ describe('MappingPreviewService', () => {
 
 	it('should be defined', () => {
 		expect(service).toBeDefined();
+	});
+
+	describe('generatePreviews', () => {
+		it('uses one registry and discovery snapshot for the complete inventory', async () => {
+			homeAssistantWsService.getDevicesRegistry.mockResolvedValue(mockDeviceRegistry);
+			homeAssistantWsService.getEntitiesRegistry.mockResolvedValue(mockEntityRegistry);
+			homeAssistantHttpService.getDiscoveredDevices.mockResolvedValue([mockDiscoveredDevice]);
+
+			const result = await service.generatePreviews();
+
+			expect(result).toHaveLength(1);
+			expect(result[0].haDevice.id).toBe('device123');
+			expect(homeAssistantWsService.getDevicesRegistry.mock.calls).toHaveLength(1);
+			expect(homeAssistantWsService.getEntitiesRegistry.mock.calls).toHaveLength(1);
+			expect(homeAssistantHttpService.getDiscoveredDevices.mock.calls).toHaveLength(1);
+			expect(homeAssistantHttpService.getDiscoveredDevice.mock.calls).toHaveLength(0);
+		});
+
+		it('isolates a device missing from the registry snapshot', async () => {
+			homeAssistantWsService.getDevicesRegistry.mockResolvedValue(mockDeviceRegistry);
+			homeAssistantWsService.getEntitiesRegistry.mockResolvedValue(mockEntityRegistry);
+			const missingDevice = { ...mockDiscoveredDevice, id: 'removed-device', name: 'Removed device' };
+
+			const results = await service.generateSettledPreviews([mockDiscoveredDevice, missingDevice]);
+
+			expect(results[0].source).toBe(mockDiscoveredDevice);
+			expect(results[0].registryDevice).toBe(mockDeviceRegistry[0]);
+			expect(results[0].preview?.haDevice.id).toBe('device123');
+			expect(results[0].error).toBeNull();
+			expect(results[1]).toEqual({
+				source: missingDevice,
+				registryDevice: null,
+				preview: null,
+				error: 'Home Assistant device with ID removed-device not found',
+			});
+		});
 	});
 
 	describe('generatePreview', () => {

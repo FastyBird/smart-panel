@@ -139,4 +139,38 @@ describe('DeviceWizardDiscoverStep', () => {
 		expect(wrapper.text()).toContain('Shelly Plus 1');
 		expect(wrapper.text()).toContain('shelly-1.local');
 	});
+
+	it('filters discovered rows by label, identifier, and extra-cell value', async () => {
+		const wrapper = mountStep(
+			[],
+			[
+				row(),
+				row({
+					key: 'kitchen.local',
+					identifier: 'kitchen.local',
+					label: 'Kitchen light',
+					cells: { kind: { render: 'text', value: 'helper' } },
+				}),
+			]
+		);
+
+		await flushPromises();
+		await wrapper.find('[data-test-id="wizard-discover-search"] input').setValue('helper');
+		await flushPromises();
+
+		expect(wrapper.findAll('tbody tr')).toHaveLength(1);
+		expect(wrapper.text()).toContain('Kitchen light');
+		expect(wrapper.text()).not.toContain('Living room switch');
+	});
+
+	it('filters by the rendered fallback status label', async () => {
+		const wrapper = mountStep([], [row(), row({ key: 'registered', identifier: 'registered', status: 'already_registered' })]);
+
+		await flushPromises();
+		await wrapper.find('[data-test-id="wizard-discover-search"] input').setValue('already_registered');
+		await flushPromises();
+
+		expect(wrapper.findAll('tbody tr')).toHaveLength(1);
+		expect(wrapper.text()).toContain('registered');
+	});
 });

@@ -249,5 +249,40 @@
     "mapping": {
       "customizationDescription": "You can customize the mapping by changing channel categories for entities or enabling/disabling entities. By default, all entities with a suggested channel category are enabled. Click 'Next' to proceed with the selected configuration."
     }
+  },
+  "wizard": {
+    "title": "Add Home Assistant devices in bulk",
+    "subtitle": "Review the automatically mapped devices and add the selected items without additional configuration.",
+    "breadcrumb": "Home Assistant bulk import",
+    "columns": {
+      "identifier": "Home Assistant ID",
+      "kind": "Type",
+      "channels": "Channels",
+      "channelsCount": "{count} channels",
+      "warningsCount": "{count} mapping warnings"
+    },
+    "kinds": {
+      "device": "Device",
+      "helper": "Helper"
+    },
+    "statuses": {
+      "needsAttention": "Manual review"
+    },
+    "actions": {
+      "refresh": "Refresh inventory"
+    },
+    "manualReview": {
+      "title": "{count} items need manual review",
+      "message": "These items are not selected for bulk import. Use the existing controlled add form to review their category, channels, and properties.",
+      "open": "Open manual device adoption"
+    },
+    "connectionError": {
+      "title": "Home Assistant inventory is unavailable",
+      "openConfig": "Open Home Assistant configuration"
+    },
+    "messages": {
+      "sessionNotStarted": "Home Assistant devices could not be prepared for bulk import.",
+      "adoptionFailed": "The selected Home Assistant devices could not be added."
+    }
   }
 }

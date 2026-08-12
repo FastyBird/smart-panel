@@ -27,7 +27,12 @@ import { DevicesHomeAssistantNotFoundException } from '../devices-home-assistant
 import { MappingPreviewRequestDto } from '../dto/mapping-preview.dto';
 import { EntityRole, MappingLoaderService, ResolvedHaMapping, ResolvedPropertyBinding } from '../mappings';
 import { TransformerRegistry } from '../mappings/transformers/transformer.registry';
-import { HomeAssistantDeviceRegistryResultModel, HomeAssistantStateModel } from '../models/home-assistant.model';
+import {
+	HomeAssistantDeviceRegistryResultModel,
+	HomeAssistantDiscoveredDeviceModel,
+	HomeAssistantEntityRegistryResultModel,
+	HomeAssistantStateModel,
+} from '../models/home-assistant.model';
 import {
 	EntityMappingPreviewModel,
 	HaDeviceInfoModel,
@@ -43,6 +48,13 @@ import { HomeAssistantWsService } from './home-assistant.ws.service';
 import { LightCapabilityAnalyzer } from './light-capability.analyzer';
 import { VirtualPropertyService } from './virtual-property.service';
 import { VirtualPropertyContext } from './virtual-property.types';
+
+export interface DeviceMappingPreviewResult {
+	source: HomeAssistantDiscoveredDeviceModel;
+	registryDevice: HomeAssistantDeviceRegistryResultModel | null;
+	preview: MappingPreviewModel | null;
+	error: string | null;
+}
 
 /**
  * Service for generating mapping previews for Home Assistant devices
@@ -71,13 +83,58 @@ export class MappingPreviewService {
 	 * Generate a mapping preview for a Home Assistant device
 	 */
 	async generatePreview(haDeviceId: string, options?: MappingPreviewRequestDto): Promise<MappingPreviewModel> {
-		// Fetch device information and states
 		const [devicesRegistry, entitiesRegistry, discoveredDevice] = await Promise.all([
 			this.homeAssistantWsService.getDevicesRegistry(),
 			this.homeAssistantWsService.getEntitiesRegistry(),
 			this.homeAssistantHttpService.getDiscoveredDevice(haDeviceId),
 		]);
 
+		return this.generatePreviewFromSnapshot(haDeviceId, devicesRegistry, entitiesRegistry, discoveredDevice, options);
+	}
+
+	/**
+	 * Generate automatic previews for all discoverable devices from one Home Assistant snapshot.
+	 */
+	async generatePreviews(discoveredDevices?: HomeAssistantDiscoveredDeviceModel[]): Promise<MappingPreviewModel[]> {
+		const results = await this.generateSettledPreviews(discoveredDevices);
+
+		return results.flatMap((result) => (result.preview ? [result.preview] : []));
+	}
+
+	/**
+	 * Generate previews from one registry snapshot while keeping a failure scoped to its source device.
+	 */
+	async generateSettledPreviews(
+		discoveredDevices?: HomeAssistantDiscoveredDeviceModel[],
+	): Promise<DeviceMappingPreviewResult[]> {
+		const [devicesRegistry, entitiesRegistry, inventory] = await Promise.all([
+			this.homeAssistantWsService.getDevicesRegistry(),
+			this.homeAssistantWsService.getEntitiesRegistry(),
+			discoveredDevices ?? this.homeAssistantHttpService.getDiscoveredDevices(),
+		]);
+
+		return inventory.map((device) => {
+			try {
+				const registryDevice = devicesRegistry.find((item) => item.id === device.id) ?? null;
+				return {
+					source: device,
+					registryDevice,
+					preview: this.generatePreviewFromSnapshot(device.id, devicesRegistry, entitiesRegistry, device),
+					error: null,
+				};
+			} catch (error) {
+				return { source: device, registryDevice: null, preview: null, error: (error as Error).message };
+			}
+		});
+	}
+
+	private generatePreviewFromSnapshot(
+		haDeviceId: string,
+		devicesRegistry: HomeAssistantDeviceRegistryResultModel[],
+		entitiesRegistry: HomeAssistantEntityRegistryResultModel[],
+		discoveredDevice: HomeAssistantDiscoveredDeviceModel,
+		options?: MappingPreviewRequestDto,
+	): MappingPreviewModel {
 		// Find device in registry
 		const deviceRegistry = devicesRegistry.find((d) => d.id === haDeviceId);
 		if (!deviceRegistry) {

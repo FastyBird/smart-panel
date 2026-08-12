@@ -15,6 +15,7 @@ import {
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
+import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
 	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
@@ -35,6 +36,9 @@ import {
 	HomeAssistantChannelPropertyEntity,
 	HomeAssistantDeviceEntity,
 } from '../entities/devices-home-assistant.entity';
+import { TransformerRegistry } from '../mappings/transformers/transformer.registry';
+import { HomeAssistantDiscoveredHelperModel, HomeAssistantStateModel } from '../models/home-assistant.model';
+import { buildHelperDeviceStructure } from '../utils/helper-structure.utils';
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 
@@ -54,14 +58,22 @@ export class HelperAdoptionService {
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
+		private readonly deviceValidationService: DeviceValidationService,
+		private readonly transformerRegistry: TransformerRegistry,
 	) {}
 
 	/**
 	 * Adopt a Home Assistant helper into the Smart Panel system
 	 */
-	async adoptHelper(request: AdoptHelperRequestDto): Promise<HomeAssistantDeviceEntity> {
+	async adoptHelper(
+		request: AdoptHelperRequestDto,
+		discoveredHelper?: HomeAssistantDiscoveredHelperModel,
+	): Promise<HomeAssistantDeviceEntity> {
 		// Validate helper exists
-		const helper = await this.homeAssistantHttpService.getDiscoveredHelper(request.entityId);
+		const helper =
+			discoveredHelper?.entityId === request.entityId
+				? discoveredHelper
+				: await this.homeAssistantHttpService.getDiscoveredHelper(request.entityId);
 
 		if (!helper) {
 			throw new DevicesHomeAssistantNotFoundException(
@@ -116,6 +128,14 @@ export class HelperAdoptionService {
 			throw new DevicesHomeAssistantValidationException('Device validation failed');
 		}
 
+		const structureValidation = this.deviceValidationService.validateDeviceStructure(
+			buildHelperDeviceStructure(request),
+		);
+		if (!structureValidation.isValid) {
+			const reasons = structureValidation.issues.map((issue) => issue.message).join('; ');
+			throw new DevicesHomeAssistantValidationException(`Device structure validation failed: ${reasons}`);
+		}
+
 		// Create the device
 		const device = await this.devicesService.create<HomeAssistantDeviceEntity, CreateHomeAssistantDeviceDto>(
 			createDeviceDto,
@@ -131,7 +151,7 @@ export class HelperAdoptionService {
 			}
 
 			// Sync initial state
-			await this.syncHelperState(device.id, request.entityId);
+			await this.syncHelperState(device.id, request.entityId, helper.state);
 
 			// Set device connection state to connected (helper is available if we got here)
 			await this.deviceConnectivityService.setConnectionState(device.id, {
@@ -276,9 +296,13 @@ export class HelperAdoptionService {
 	 * Sync the initial state from Home Assistant
 	 * This method fetches the helper's state and updates all matching property values
 	 */
-	private async syncHelperState(deviceId: string, entityId: string): Promise<void> {
+	private async syncHelperState(
+		deviceId: string,
+		entityId: string,
+		discoveredState?: HomeAssistantStateModel | null,
+	): Promise<void> {
 		try {
-			const state = await this.homeAssistantHttpService.getState(entityId);
+			const state = discoveredState ?? (await this.homeAssistantHttpService.getState(entityId));
 
 			// Load all properties for this device's channels
 			const allProperties = await this.channelsPropertiesService.findAll<HomeAssistantChannelPropertyEntity>(
@@ -311,6 +335,21 @@ export class HelperAdoptionService {
 					const attrValue = state.attributes[property.haAttribute];
 					if (attrValue !== undefined) {
 						newValue = attrValue as string | number | boolean;
+					}
+				}
+
+				if (newValue !== null && property.haTransformer) {
+					const transformer = this.transformerRegistry.getOrCreateMonitored(property.haTransformer);
+					if (transformer.canRead()) {
+						const transformedValue = transformer.read(newValue);
+						if (
+							typeof transformedValue === 'string' ||
+							typeof transformedValue === 'number' ||
+							typeof transformedValue === 'boolean' ||
+							transformedValue === null
+						) {
+							newValue = transformedValue as string | number | boolean | null;
+						}
 					}
 				}
 

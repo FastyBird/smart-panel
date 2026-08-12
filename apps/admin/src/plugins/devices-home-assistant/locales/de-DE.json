@@ -249,5 +249,33 @@
     "mapping": {
       "customizationDescription": "Sie können die Zuordnung anpassen, indem Sie Kanalkategorien für Entitäten ändern oder Entitäten aktivieren/deaktivieren. Standardmäßig sind alle Entitäten mit einer vorgeschlagenen Kanalkategorie aktiviert. Klicken Sie auf 'Weiter', um mit der ausgewählten Konfiguration fortzufahren."
     }
+  },
+  "wizard": {
+    "title": "Home Assistant-Geräte gesammelt hinzufügen",
+    "subtitle": "Prüfen Sie die automatisch zugeordneten Geräte und fügen Sie die ausgewählten Einträge ohne weitere Konfiguration hinzu.",
+    "breadcrumb": "Home Assistant-Sammelimport",
+    "columns": {
+      "identifier": "Home Assistant-ID",
+      "kind": "Typ",
+      "channels": "Kanäle",
+      "channelsCount": "{count} Kanäle",
+      "warningsCount": "{count} Zuordnungswarnungen"
+    },
+    "kinds": { "device": "Gerät", "helper": "Helfer" },
+    "statuses": { "needsAttention": "Manuelle Prüfung" },
+    "actions": { "refresh": "Inventar aktualisieren" },
+    "manualReview": {
+      "title": "{count} Einträge müssen manuell geprüft werden",
+      "message": "Diese Einträge sind nicht für den Sammelimport ausgewählt. Verwenden Sie das vorhandene kontrollierte Formular, um Kategorie, Kanäle und Eigenschaften zu prüfen.",
+      "open": "Manuelle Geräteübernahme öffnen"
+    },
+    "connectionError": {
+      "title": "Home Assistant-Inventar ist nicht verfügbar",
+      "openConfig": "Home Assistant-Konfiguration öffnen"
+    },
+    "messages": {
+      "sessionNotStarted": "Home Assistant-Geräte konnten nicht für den Sammelimport vorbereitet werden.",
+      "adoptionFailed": "Die ausgewählten Home Assistant-Geräte konnten nicht hinzugefügt werden."
+    }
   }
 }

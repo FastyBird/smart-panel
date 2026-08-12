@@ -1,6 +1,6 @@
 # Smart Panel — Task Roadmap
 
-> Last updated: 2026-08-01. Reflects actual codebase state.
+> Last updated: 2026-08-12. Reflects actual codebase state.
 
 ---
 
@@ -228,8 +228,9 @@ Build a device from properties of other devices — splitting one physical devic
 | 1 | [FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS](features/FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS.md) | backend, admin | :white_check_mark: Done |
 | 2 | [FEATURE-PLUGIN-MATTER](features/FEATURE-PLUGIN-MATTER.md) | backend, admin | :clipboard: Planned |
 | 3 | [FEATURE-PLUGIN-ZIGBEE-HERDSMAN](features/FEATURE-PLUGIN-ZIGBEE-HERDSMAN.md) | backend, admin | :clipboard: Planned |
+| 4 | [FEATURE-DEVICE-PLUGIN-ADOPTION-WIZARDS](features/FEATURE-DEVICE-PLUGIN-ADOPTION-WIZARDS.md) | backend, admin, spec | :construction: In Progress |
 
-**Remaining work:** Matter plugin implementation. Direct Zigbee integration via zigbee-herdsman (6 phases: coordinator service, converters, device platform, adoption flow, admin UI, network management).
+**Remaining work:** WLED adoption wizard and remaining cross-plugin QA; Matter plugin implementation; direct Zigbee integration via zigbee-herdsman (6 phases: coordinator service, converters, device platform, adoption flow, admin UI, network management).
 
 ---
 

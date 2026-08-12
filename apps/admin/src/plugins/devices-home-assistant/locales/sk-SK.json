@@ -249,5 +249,33 @@
 		"mapping": {
 			"customizationDescription": "Môžete prispôsobiť mapovanie zmenou kategórií kanálov pre entity alebo povolením/zakázaním entít. Predvolene sú všetky entity s navrhovanou kategóriou kanála povolené. Kliknite na 'Ďalej' pre pokračovanie s vybranou konfiguráciou."
 		}
+	},
+	"wizard": {
+		"title": "Hromadne pridať zariadenia Home Assistant",
+		"subtitle": "Skontrolujte automaticky namapované zariadenia a pridajte vybrané položky bez ďalšej konfigurácie.",
+		"breadcrumb": "Hromadný import Home Assistant",
+		"columns": {
+			"identifier": "ID Home Assistant",
+			"kind": "Typ",
+			"channels": "Kanály",
+			"channelsCount": "Počet kanálov: {count}",
+			"warningsCount": "Počet upozornení mapovania: {count}"
+		},
+		"kinds": { "device": "Zariadenie", "helper": "Pomocná entita" },
+		"statuses": { "needsAttention": "Ručná kontrola" },
+		"actions": { "refresh": "Obnoviť inventár" },
+		"manualReview": {
+			"title": "Položky vyžadujúce ručnú kontrolu: {count}",
+			"message": "Tieto položky nie sú vybrané na hromadný import. Na kontrolu kategórie, kanálov a vlastností použite existujúce riadené pridanie.",
+			"open": "Otvoriť ručné pridanie zariadenia"
+		},
+		"connectionError": {
+			"title": "Inventár Home Assistant nie je dostupný",
+			"openConfig": "Otvoriť konfiguráciu Home Assistant"
+		},
+		"messages": {
+			"sessionNotStarted": "Zariadenia Home Assistant sa nepodarilo pripraviť na hromadný import.",
+			"adoptionFailed": "Vybrané zariadenia Home Assistant sa nepodarilo pridať."
+		}
 	}
 }

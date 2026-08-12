@@ -38,6 +38,14 @@ describe('useDeviceWizardState — reconciliation', () => {
 		expect(state.selected['shelly-1.local']).toBe(false);
 	});
 
+	it('lets an adapter require explicit selection for a ready row', () => {
+		const state = useDeviceWizardState();
+
+		state.reconcile([row({ selectedByDefault: false })]);
+
+		expect(state.selected['shelly-1.local']).toBe(false);
+	});
+
 	it('selects a row on its first transition to ready', () => {
 		const state = useDeviceWizardState();
 
@@ -227,6 +235,21 @@ describe('useDeviceWizardState — derived state', () => {
 
 		state.toggleAll(true);
 		expect(state.allSelected.value).toBe(true);
+		expect(state.selected['c']).toBeUndefined();
+	});
+
+	it('toggleRows changes only the requested adoptable rows', () => {
+		const rows = ref<IWizardRow[]>([
+			row(),
+			row({ key: 'b', identifier: 'b' }),
+			row({ key: 'c', identifier: 'c', adoptable: false, status: 'failed' }),
+		]);
+		const state = useDeviceWizardState(rows);
+
+		state.toggleRows(['b', 'c'], true);
+
+		expect(state.selected['shelly-1.local']).toBeUndefined();
+		expect(state.selected['b']).toBe(true);
 		expect(state.selected['c']).toBeUndefined();
 	});
 

@@ -103,8 +103,19 @@
 			</el-form>
 		</div>
 
+		<div
+			data-test-id="wizard-discover-search"
+			class="shrink-0"
+		>
+			<el-input
+				v-model="search"
+				:placeholder="t('devicesModule.fields.devices.search.placeholder')"
+				clearable
+			/>
+		</div>
+
 		<el-table
-			:data="rows"
+			:data="filteredRows"
 			class="h-full w-full flex-grow"
 			table-layout="fixed"
 			:empty-text="t('devicesModule.wizard.texts.empty')"
@@ -171,7 +182,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, ElProgress, ElTable, ElTableColumn, ElTag, ElText, vLoading } from 'element-plus';
@@ -205,6 +216,28 @@ interface IProps {
 const props = defineProps<IProps>();
 
 const { t } = useI18n();
+
+const search = ref<string>('');
+
+const filteredRows = computed<IWizardRow[]>(() => {
+	const query = search.value.trim().toLocaleLowerCase();
+
+	if (query.length === 0) {
+		return props.rows;
+	}
+
+	return props.rows.filter((row) => {
+		const values = [
+			row.label,
+			row.subLabel,
+			row.identifier,
+			row.statusLabel ?? t(`devicesModule.wizard.statuses.${row.status}`),
+			...Object.values(row.cells ?? {}).map((cell) => cell.value),
+		];
+
+		return values.some((value) => value?.toLocaleLowerCase().includes(query));
+	});
+});
 
 const banners = computed<IWizardBannerControl[]>(() => props.controls.filter((item): item is IWizardBannerControl => item.type === 'banner'));
 
