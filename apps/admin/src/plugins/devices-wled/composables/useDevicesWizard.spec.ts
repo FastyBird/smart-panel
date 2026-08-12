@@ -315,6 +315,64 @@ describe('useDevicesWizard', () => {
 		await adapter.dispose?.();
 	});
 
+	it('replaces a DNS discovery row when the manual hostname has a terminal root dot', async () => {
+		backendClient.GET.mockResolvedValue({
+			data: {
+				data: {
+					...inventory,
+					devices: [{ ...inventory.devices[0], host: 'wled.local', port: 80, mac: null }],
+				},
+			},
+			response: { status: 200 },
+		});
+		backendClient.POST.mockResolvedValue({
+			data: { data: { ...inventory.devices[0], host: 'wled.local.', port: 80 } },
+			response: { status: 201 },
+		});
+		const adapter = useDevicesWizard();
+		await adapter.start();
+		const form = adapter.controls.value.find((control) => control.type === 'form') as IWizardFormControl;
+
+		await form.handler({ host: 'wled.local.' });
+
+		expect(adapter.rows.value).toHaveLength(1);
+		expect(adapter.rows.value[0]).toEqual(expect.objectContaining({ key: 'mac:aabbccddeeff' }));
+		await adapter.dispose?.();
+	});
+
+	it('uses fresh adopted inventory state instead of a stale manual probe overlay', async () => {
+		backendClient.GET.mockResolvedValueOnce({
+			data: { data: { ...inventory, devices: [] } },
+			response: { status: 200 },
+		}).mockResolvedValue({
+			data: {
+				data: {
+					...inventory,
+					devices: [{ ...inventory.devices[0], name: 'Administrator name', adoptedDeviceId: 'device-1' }],
+				},
+			},
+			response: { status: 200 },
+		});
+		backendClient.POST.mockResolvedValue({
+			data: { data: { ...inventory.devices[0], name: 'Stale probed name' } },
+			response: { status: 201 },
+		});
+		const adapter = useDevicesWizard();
+		await adapter.start();
+		const form = adapter.controls.value.find((control) => control.type === 'form') as IWizardFormControl;
+		await form.handler({ host: '192.168.1.100' });
+
+		expect(adapter.rows.value[0]).toEqual(expect.objectContaining({ label: 'Stale probed name', status: 'ready' }));
+
+		await vi.advanceTimersByTimeAsync(2_000);
+
+		expect(adapter.rows.value).toHaveLength(1);
+		expect(adapter.rows.value[0]).toEqual(
+			expect.objectContaining({ label: 'Administrator name', status: 'already_registered', willUpdate: true })
+		);
+		await adapter.dispose?.();
+	});
+
 	it('replaces a MAC-less IPv6 discovery row when the manual probe uses an equivalent expanded address', async () => {
 		backendClient.GET.mockResolvedValue({
 			data: {

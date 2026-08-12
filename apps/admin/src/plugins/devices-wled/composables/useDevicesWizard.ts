@@ -68,9 +68,9 @@ const adoptionEndpointKey = (device: IWledWizardDevice): string => {
 
 	try {
 		const url = new URL(`http://${endpoint}`);
-		return `${url.hostname.toLowerCase()}${url.port ? `:${url.port}` : ''}`;
+		return `${url.hostname.toLowerCase().replace(/\.$/, '')}${url.port ? `:${url.port}` : ''}`;
 	} catch {
-		return endpoint.toLowerCase().replace(/:80$/, '');
+		return endpoint.toLowerCase().replace(/\.(?=:\d+$|$)/, '').replace(/:80$/, '');
 	}
 };
 
@@ -97,10 +97,18 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			merged.set(deviceKey(device), device);
 		}
 		for (const device of manualDevices.value) {
+			let inventoryMatch = merged.get(deviceKey(device));
 			for (const [key, candidate] of merged) {
-				if (adoptionEndpointKey(candidate) === adoptionEndpointKey(device)) merged.delete(key);
+				if (adoptionEndpointKey(candidate) === adoptionEndpointKey(device)) {
+					if (!inventoryMatch || candidate.adoptedDeviceId !== null) inventoryMatch = candidate;
+					merged.delete(key);
+				}
 			}
-			merged.set(deviceKey(device), device);
+
+			// Once the live inventory recognizes an adopted controller it is authoritative:
+			// retaining the older manual probe would hide its registration and current name.
+			const resolvedDevice = inventoryMatch && inventoryMatch.adoptedDeviceId !== null ? inventoryMatch : device;
+			merged.set(deviceKey(resolvedDevice), resolvedDevice);
 		}
 		return orderBy(Array.from(merged.values()), [(device) => (device.adoptedDeviceId ? 1 : 0), 'name'], ['asc', 'asc']);
 	});
