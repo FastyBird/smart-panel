@@ -1061,6 +1061,42 @@ describe('WledService', () => {
 			expect(results).toEqual([expect.objectContaining({ status: 'created', deviceId: 'device-new' })]);
 		});
 
+		it('does not reuse a null-identifier endpoint whose stored serial contradicts the probed MAC', async () => {
+			const staleDevice = {
+				...createMockDevice('device-stale', null, '192.168.1.100'),
+				mac: null,
+				channels: [
+					{
+						identifier: 'device_information',
+						properties: [{ identifier: 'serial_number', value: { value: '77:88:99:AA:BB:CC' } }],
+					},
+				],
+			} as WledDeviceEntity;
+			const createdDevice = createMockDevice('device-new', 'wled-aabbccddeeff', '192.168.1.100');
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			devicesService.findAll.mockResolvedValue([staleDevice]);
+			deviceMapper.mapDevice.mockResolvedValue(createdDevice);
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.100', name: 'Replacement strip', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(
+				'192.168.1.100',
+				mockContext,
+				'Replacement strip',
+				'wled-aabbccddeeff',
+				undefined,
+				undefined,
+			);
+			expect(devicesService.update).toHaveBeenCalledWith('device-stale', {
+				type: DEVICES_WLED_TYPE,
+				enabled: false,
+				hostname: null,
+			});
+			expect(results).toEqual([expect.objectContaining({ status: 'created', deviceId: 'device-new' })]);
+		});
+
 		it('reuses a moved legacy short-MAC row when its stored serial matches the full MAC', async () => {
 			const legacyDevice = {
 				...createMockDevice('device-legacy', 'wled-ddeeff', '192.168.1.100'),

@@ -1290,7 +1290,11 @@ export class WledService extends BaseManagedPluginService {
 				const canonicalIdentifier = `wled-${normalizedMac}`;
 				const legacyIdentifier = `wled-${normalizedMac.slice(-6)}`;
 				const legacyHostIdentifiers = this.legacyHostIdentifiers(host);
-				const legacyDevices = devices.filter((device) => device.identifier === legacyIdentifier);
+				const identityCompatible = (device: WledDeviceEntity): boolean =>
+					!this.hasContradictoryIdentity(device, normalizedMac);
+				const legacyDevices = devices.filter(
+					(device) => device.identifier === legacyIdentifier && identityCompatible(device),
+				);
 
 				return (
 					devices.find((device) => device.identifier === canonicalIdentifier) ??
@@ -1299,6 +1303,7 @@ export class WledService extends BaseManagedPluginService {
 					legacyDevices.find((device) => device.hostname !== null && this.endpointsEquivalent(device.hostname, host)) ??
 					devices.find(
 						(device) =>
+							identityCompatible(device) &&
 							device.identifier !== null &&
 							legacyHostIdentifiers.has(device.identifier.toLowerCase()) &&
 							device.hostname !== null &&
@@ -1306,7 +1311,10 @@ export class WledService extends BaseManagedPluginService {
 					) ??
 					devices.find(
 						(device) =>
-							device.identifier === null && device.hostname !== null && this.endpointsEquivalent(device.hostname, host),
+							identityCompatible(device) &&
+							device.identifier === null &&
+							device.hostname !== null &&
+							this.endpointsEquivalent(device.hostname, host),
 					)
 				);
 			}
@@ -1335,6 +1343,14 @@ export class WledService extends BaseManagedPluginService {
 		}
 
 		return this.normalizeMac(serial);
+	}
+
+	private hasContradictoryIdentity(device: WledDeviceEntity, reportedMac: string): boolean {
+		const knownIdentities = [this.normalizeMac(device.mac), this.deviceSerialMac(device)].filter(
+			(identity): identity is string => identity !== null,
+		);
+
+		return knownIdentities.some((identity) => identity !== reportedMac);
 	}
 
 	private requiresCanonicalIdentity(device: WledDeviceEntity, host: string, mac?: string | null): boolean {
