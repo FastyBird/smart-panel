@@ -70,6 +70,11 @@ const deferred = (): { promise: Promise<void>; resolve: () => void } => {
 	return { promise, resolve };
 };
 
+const waitForAuthorizationDeadline = (): Promise<void> =>
+	new Promise((resolve) => {
+		setTimeout(resolve, 5_500);
+	});
+
 describe('MCP OAuth listen registration race', () => {
 	it('expires live subscriptions and closes matching streams during revocation', async () => {
 		const dataSource = new DataSource({
@@ -288,6 +293,7 @@ describe('MCP OAuth listen registration race', () => {
 				.update({ model: 'AccessToken', idHash: hashToken(shortLivedAccessToken) }, { expiresAt: Date.now() + 5_000 });
 			const expiringSubscription = await expiryClient.listen({ toolsListChanged: true });
 
+			await waitForAuthorizationDeadline();
 			await expect(expiringSubscription.closed).resolves.toBe('remote');
 			expect(subscriptions.activeCount).toBe(0);
 			expect(auditLog).toHaveBeenCalledWith(
@@ -325,6 +331,7 @@ describe('MCP OAuth listen registration race', () => {
 				.update({ id: expiringGrant.id }, { expiresAt: new Date(Date.now() + 5_000) });
 			const grantExpiringSubscription = await grantExpiryClient.listen({ toolsListChanged: true });
 
+			await waitForAuthorizationDeadline();
 			await expect(grantExpiringSubscription.closed).resolves.toBe('remote');
 			expect(subscriptions.activeCount).toBe(0);
 			expect(
