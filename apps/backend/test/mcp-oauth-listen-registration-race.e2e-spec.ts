@@ -436,6 +436,12 @@ describe('MCP OAuth listen registration race', () => {
 			await expect(resourceServer.verifyAccessToken(grantRevocationAccessToken)).rejects.toThrow(
 				'The MCP OAuth access token is invalid or no longer active',
 			);
+			expect(
+				await dataSource.getRepository(McpOAuthProviderArtifactEntity).findOneBy({
+					model: 'AccessToken',
+					idHash: hashToken(grantRevocationAccessToken),
+				}),
+			).toBeNull();
 			await grantRevocationClient.close();
 			grantRevocationClient = undefined;
 		} finally {
