@@ -1,0 +1,573 @@
+# Homey Device Integration — Implementation Plan
+
+**Goal:** Deliver a secure local Homey SHS/Homey Pro provider with discovery, mapping preview, adoption, real-time synchronization, and control, then add Homey Cloud as a second connector.
+
+**Architecture:** One `devices-homey` plugin owns provider-domain behavior. A transport-independent `HomeyConnector` produces normalized devices/capabilities/events. Mapping, preview, adoption, synchronization, and control depend only on that contract. Admin uses the shared device wizard; Flutter uses the normal Devices API and state stream.
+
+**Spec:** `docs/superpowers/specs/2026-08-12-homey-integration-design.md`
+
+**Task:** `tasks/features/FEATURE-PLUGIN-HOMEY.md`
+
+## Global constraints
+
+- Complete the live compatibility spike and fixture capture while the one-month SHS subscription is active.
+- Never commit or print a real API key, OAuth token, household device name, private address, or unsanitized payload.
+- Do not edit generated files manually. Generate OpenAPI/admin/panel clients from backend Swagger sources and device specs from their generators.
+- Follow existing TypeScript tab indentation, naming, imports, Swagger response envelopes, tests, and plugin registration conventions.
+- Keep external calls bounded by timeouts and classify authentication, authorization, timeout, unavailable, protocol, validation, and unsupported failures.
+- Never pair, rename, remove, or otherwise mutate upstream Homey devices except an explicitly allowlisted harmless capability-write test.
+- No database schema change is expected. If implementation evidence requires one, add an incremental migration and update this plan before proceeding.
+- Do not push to `main`. Use a feature branch and PR when implementation begins.
+
+## Delivery map
+
+| Milestone | Outcome | Estimate |
+|---|---|---:|
+| 0 | Verified SHS contract and sanitized fixture corpus | 2–3 days |
+| 1 | Secret-safe config foundation and backend plugin shell | 3–4 days |
+| 2 | Local connector, lifecycle, normalization, and health | 4–6 days |
+| 3 | Mapping, preview, discovery, and adoption | 6–8 days |
+| 4 | Real-time sync, reconciliation, and control | 4–6 days |
+| 5 | Admin wizard/config and panel integration | 4–6 days |
+| 6 | Hardening, live matrix, docs, and release gate | 2–3 days |
+| 7 | Homey Cloud connector | 7–12 additional days |
+
+Local MVP total: approximately 25–36 engineering days. Backend and admin tasks can overlap after Milestone 3 stabilizes the API contract.
+
+---
+
+## Milestone 0: SHS compatibility spike and fixtures
+
+### Task 0.1: Establish a safe live test environment
+
+**Deliverables:**
+
+- Create: `docs/homey-shs-compatibility.md`
+- Create: `apps/backend/src/plugins/devices-homey/__fixtures__/README.md` when the plugin directory is introduced
+
+- [ ] Record SHS version, container image digest, installation topology, exposed ports, capture date, and Smart Panel runtime network path.
+- [ ] Give SHS a stable LAN address; prefer host networking or a dedicated address consistent with Homey guidance.
+- [ ] Create a least-privilege API key with only device read/control, zone read, and system read permissions required by the design.
+- [ ] Designate one harmless writable test capability; record only a synthetic alias in repository documents.
+- [ ] Define environment variables for live tests. Do not store secret values in shell history, fixtures, `.env` files, or repository config.
+- [ ] Add an explicit live-write allowlist contract requiring both device ID and capability ID.
+
+**Verification:** Review the compatibility document for secret/private data before committing it.
+
+### Task 0.2: Probe the local API contract
+
+**Reference:** Official local API factory, ManagerDevices, Device capability/event documentation, and SHS port documentation linked by the design.
+
+- [ ] Verify connection with the documented SDK against HTTP `4859` and HTTPS `4860` where the installation supports them.
+- [ ] Capture sanitized system information and manager state.
+- [ ] Capture zones and zone hierarchy.
+- [ ] Capture the complete device inventory and individual device objects.
+- [ ] Capture capabilities with values, types, units, ranges, enums, readable/writable flags, and repeated/suffixed IDs.
+- [ ] Verify Socket.IO connection and record subscription/event ordering for capability changes and availability changes.
+- [ ] Write the allowlisted test capability and confirm the resulting event plus subsequent read.
+- [ ] Test invalid key, missing scopes, bad URL, unavailable host, and request timeout behavior.
+- [ ] Test SHS restart, network interruption/restoration, and API-key revocation.
+- [ ] Test device add, rename, zone move, unavailable, and removal events or inventory deltas.
+- [ ] Inspect mDNS advertisements before and after restart. Record exact service type/TXT fields only if stable.
+- [ ] If Homey Pro hardware is available, repeat the minimum inventory/event/write suite against its local API.
+
+### Task 0.3: Decide SDK vs. direct protocol
+
+- [ ] Review the exact `homey-api` package version, license text, transitive dependencies, Node 24 support, release activity, and bundle/runtime implications.
+- [ ] Exercise connect/disconnect, timeouts, subscription cleanup, and reconnect behavior in a disposable spike.
+- [ ] Record one decision: `use SDK behind connector` or `use documented HTTP/Socket.IO directly`.
+- [ ] Record replacement considerations so the rest of the plugin does not depend on SDK-specific objects.
+- [ ] Do not add the dependency to production packages until this decision is reviewed.
+
+### Task 0.4: Build the sanitized fixture corpus
+
+**Proposed files:**
+
+```text
+apps/backend/src/plugins/devices-homey/__fixtures__/
+  README.md
+  system-info.json
+  zones.json
+  devices/
+    light.json
+    switch.json
+    climate.json
+    cover.json
+    lock.json
+    sensor-air-quality.json
+    sensor-safety.json
+    energy-meter.json
+    repeated-capabilities.json
+    unavailable.json
+  events/
+    capability-updates.json
+    availability.json
+    reconnect.json
+    lifecycle.json
+```
+
+- [ ] Replace IDs, names, zones, addresses, and sensitive driver metadata with deterministic synthetic values.
+- [ ] Preserve field shape, ordering where relevant, types, units, ranges, enum values, and capability suffix behavior.
+- [ ] Add expected normalized output fixtures for representative devices.
+- [ ] Add forbidden-token assertions or a fixture-safety test covering key prefixes, original host/address, and known private names.
+- [ ] Confirm the corpus can drive connector/domain tests after live SHS access ends.
+
+**Gate:** Milestone 1 may scaffold interfaces in parallel, but no production connector or mDNS implementation is finalized until Tasks 0.2–0.4 are complete.
+
+---
+
+## Milestone 1: Secret-safe config and plugin foundation
+
+### Task 1.1: Add generic write-only secret semantics to config
+
+**Inspect first:**
+
+- `apps/backend/src/modules/config/services/config.service.ts`
+- `apps/backend/src/modules/config/controllers/config.controller.ts`
+- Config type mapper/registry services and plugin config DTO/model conventions
+- Existing token/password configuration implementations, if any
+
+**Outcome:** Plugin config owners can mark fields as secret without Homey-specific controller hacks.
+
+- [ ] Define a registry/metadata contract for secret fields owned by module/plugin config DTOs.
+- [ ] Redact secret values from complete-config, plugin-config, validation-error, and serialization paths.
+- [ ] Expose a non-secret configured indicator suitable for admin forms.
+- [ ] Implement merge semantics: omitted secret preserves stored value; explicit clear removes it; provided value replaces it.
+- [ ] Ensure mutation events and plugin reload receive the resolved secret without exposing it to responses.
+- [ ] Ensure debug/error logs serialize redacted DTOs.
+- [ ] Add unit tests for get-all, get-one, update-preserve, update-replace, explicit-clear, validation failure, and logging helpers.
+- [ ] Document the registration convention for future secret-bearing plugins.
+
+**Verification:**
+
+```bash
+pnpm run test:unit -- config
+pnpm run lint:js
+```
+
+### Task 1.2: Scaffold the backend plugin
+
+**Create under:** `apps/backend/src/plugins/devices-homey/`
+
+Proposed initial structure:
+
+```text
+connectors/
+controllers/
+dto/
+entities/
+errors/
+mappings/
+models/
+platforms/
+services/
+__fixtures__/
+devices-homey.constants.ts
+devices-homey.openapi.ts
+devices-homey.plugin.ts
+index.ts
+```
+
+- [ ] Define plugin name/type, API tag, config keys, injection tokens, default timeouts/intervals, and health states.
+- [ ] Add Homey device entity discriminator by following the closest provider entity pattern.
+- [ ] Register the plugin through the repository's backend plugin mechanism.
+- [ ] Extend the managed plugin lifecycle base used by current providers.
+- [ ] Add local config DTO/model with URL, write-only API key mutation fields, timeout, reconciliation interval, and disabled/enabled state.
+- [ ] Register config validation/mutation and secret metadata.
+- [ ] Add a placeholder status response and controller using standard response envelopes.
+- [ ] Add plugin bootstrap/config tests, including disabled and incomplete configuration states.
+
+**Verification:** Targeted Jest tests and `pnpm run lint:js`.
+
+### Task 1.3: Define connector and normalized model contracts
+
+**Proposed files:**
+
+- `connectors/homey-connector.interface.ts`
+- `connectors/homey-connector.types.ts`
+- `models/homey-system-info.model.ts`
+- `models/homey-zone.model.ts`
+- `models/homey-device.model.ts`
+- `models/homey-capability.model.ts`
+- `models/homey-event.model.ts`
+- `errors/homey-connector.error.ts`
+
+- [ ] Define connect/disconnect, inventory, device read, write, and subscribe semantics.
+- [ ] Define idempotent cleanup/unsubscribe semantics.
+- [ ] Define system, zone, device, capability, and event plain-data models.
+- [ ] Preserve full capability IDs; expose separately derived base IDs for matching.
+- [ ] Define normalized error categories and retryability.
+- [ ] Define connector contract tests reusable by local and cloud implementations.
+- [ ] Add model/ID derivation unit tests, especially repeated capabilities such as `measure_temperature.inside`.
+
+---
+
+## Milestone 2: Local connector, lifecycle, normalization, and health
+
+### Task 2.1: Implement the local connector
+
+**Proposed files:**
+
+- `connectors/homey-local.connector.ts`
+- `connectors/homey-local.transformer.ts`
+- Corresponding specs using captured fixtures/fakes
+
+- [ ] Add the reviewed dependency only if Milestone 0 selected the SDK.
+- [ ] Construct a local API client from validated address/token without logging either.
+- [ ] Apply explicit connect/read/write/subscription timeouts.
+- [ ] Transform SDK/protocol objects into normalized models.
+- [ ] Convert raw errors into normalized categories.
+- [ ] Implement inventory, zones, system info, device lookup, capability writes, subscriptions, and cleanup.
+- [ ] Ensure one connector instance owns one transport connection.
+- [ ] Add fixture-backed tests for every operation and error category.
+- [ ] Add environment-gated contract tests against live SHS.
+
+### Task 2.2: Implement plugin lifecycle and connection state machine
+
+**Proposed service:** `services/homey.service.ts`
+
+- [ ] Start only when enabled and minimally configured.
+- [ ] Connect, load metadata/inventory, establish subscriptions, then publish healthy state.
+- [ ] Stop subscriptions/timers/connector on disable, config change, module shutdown, or failed startup cleanup.
+- [ ] Reconfigure safely when URL/key/timeouts change; never overlap old/new connectors.
+- [ ] Use exponential reconnect backoff with jitter and a maximum delay.
+- [ ] Treat authentication/authorization failures differently from transient network failures.
+- [ ] Prevent concurrent reconnect and reconciliation loops.
+- [ ] Track last successful connection, inventory sync, event, error category, reconnect count, and degraded state.
+- [ ] Unit-test all state transitions with fake timers.
+
+### Task 2.3: Implement status and connection test APIs
+
+- [ ] Expand the status model with state, Homey identity/version, last sync/event timestamps, reconnect count, and sanitized error.
+- [ ] Add `POST test-connection` accepting saved configuration plus optional unsaved URL/key input through secret-safe DTO semantics.
+- [ ] Use a temporary connector for connection tests and always disconnect it.
+- [ ] Return categorized validation/auth/timeout/unavailable errors without raw response bodies.
+- [ ] Add controller/service tests for saved secret reuse and unsaved secret replacement.
+
+### Task 2.4: Implement server discovery only from evidence
+
+- [ ] If Milestone 0 found a stable mDNS service, implement a Homey discoverer using the existing mDNS module.
+- [ ] Deduplicate by stable server identity and retain manual URL as fallback.
+- [ ] Expose start/restart/results endpoints following existing discovery patterns.
+- [ ] Test expiry, duplicate records, restart, and malformed TXT records.
+- [ ] If no stable record exists, document manual-only setup and mark automatic discovery deferred; do not ship guessed records.
+
+---
+
+## Milestone 3: Mapping, preview, discovery, and adoption
+
+### Task 3.1: Implement mapping loader and override storage
+
+**Inspect first:** Home Assistant mapping/adoption services and Shelly mapping loader/storage patterns.
+
+**Proposed files:**
+
+- `mappings/definitions/devices.yaml`
+- `mappings/definitions/channels.yaml`
+- `mappings/definitions/properties.yaml`
+- `mappings/mapping-loader.service.ts`
+- `mappings/property-mapping-storage.service.ts`
+- Mapping schemas/types/specs
+
+- [ ] Define strict schemas for device, channel, and property descriptors.
+- [ ] Match on Homey class plus capability base ID; permit driver/vendor restrictions only where necessary.
+- [ ] Define priority, exclusivity/conflict, read/write direction, unit/range, and transformations.
+- [ ] Load built-ins and deterministic user overrides from `var/data/plugin.devices-homey.*.yaml` or the closest established naming scheme.
+- [ ] Validate mappings at startup and fail the plugin clearly on invalid built-ins while isolating invalid user overrides with actionable errors.
+- [ ] Add tests for precedence, duplicates, invalid schemas, ambiguous matches, and suffix/base-ID handling.
+
+### Task 3.2: Add MVP mapping definitions
+
+- [ ] Power: `onoff`.
+- [ ] Lighting: `dim`, hue, saturation, and temperature.
+- [ ] Climate: measured temperature, target temperature, and verified thermostat modes.
+- [ ] Environment: humidity, pressure, luminance, and CO2.
+- [ ] Safety/contact: motion, contact, smoke, carbon monoxide.
+- [ ] Energy: instantaneous power and accumulated energy.
+- [ ] Battery: level and low-battery alarm.
+- [ ] Lock: state/control when writable.
+- [ ] Covers: state, position, tilt, open/close/stop behavior after fixture validation.
+- [ ] Add representative fixture tests for each mapping family and inverse transformation.
+
+### Task 3.3: Implement device inventory/discovery service and API
+
+**Proposed files:**
+
+- `services/homey-device-inventory.service.ts`
+- `controllers/homey-devices.controller.ts`
+- Inventory models/response models/specs
+
+- [ ] Return normalized devices with resolved zone path, capabilities summary, availability, support state, and adoption state.
+- [ ] Determine adoption by plugin discriminator plus Homey device identifier.
+- [ ] Keep unsupported devices visible with reasons.
+- [ ] Support stable sorting/filtering without exposing raw SDK data.
+- [ ] Add list and single-device endpoints with authorization, standard response envelopes, and tests.
+
+### Task 3.4: Implement mapping preview
+
+**Proposed service:** `services/mapping-preview.service.ts`
+
+- [ ] Fetch a fresh normalized device snapshot.
+- [ ] Infer suggested category and valid alternatives.
+- [ ] Produce proposed channels/properties with identifiers, transformed values, access, and conversion metadata.
+- [ ] Warn for unsupported capabilities, unavailable values, conflicting descriptors, and lossy/ambiguous conversions.
+- [ ] Keep output deterministic for identical snapshot/mapping versions.
+- [ ] Add request/response models and `POST mapping-preview` endpoint.
+- [ ] Add comprehensive fixture-backed tests.
+
+### Task 3.5: Implement idempotent adoption
+
+**Proposed service:** `services/device-adoption.service.ts`
+
+- [ ] Re-fetch the device and recompute/validate mapping immediately before mutation.
+- [ ] Create/update the plugin-specific device by full Homey device ID.
+- [ ] Create/reconcile channels by stable mapping key.
+- [ ] Create/reconcile properties by full Homey capability ID.
+- [ ] Apply current transformed values through normal Devices service paths.
+- [ ] Isolate each batch selection in its own transaction where repository transaction patterns permit.
+- [ ] Return created/updated/skipped/failed per device with sanitized errors.
+- [ ] Make retry idempotent and prevent duplicates under concurrent requests.
+- [ ] Never mutate or delete anything in Homey.
+- [ ] Add single and batch adoption endpoints and tests for partial success, stale preview, duplicate request, unknown device, unsupported mapping, and rollback.
+
+### Task 3.6: Verify persistence assumptions
+
+- [ ] Prove device uniqueness is scoped by provider/entity type plus identifier.
+- [ ] Prove channel and property lookup/reconciliation use the appropriate parent/type scope.
+- [ ] Document that no migration is required.
+- [ ] If proof fails, design the minimum new entity metadata and add an incremental TypeORM migration with upgrade/rollback tests.
+
+---
+
+## Milestone 4: Real-time synchronization, reconciliation, and control
+
+### Task 4.1: Implement event synchronization
+
+**Proposed service:** `services/homey-synchronizer.service.ts`
+
+- [ ] Maintain an index from adopted Homey device/full capability IDs to Smart Panel properties.
+- [ ] Subscribe through the active connector after initial inventory is available.
+- [ ] Validate/filter events and ignore unadopted or unmapped capabilities.
+- [ ] Transform values and update properties through the standard Devices service path.
+- [ ] Update whole-device/capability availability when corresponding events arrive.
+- [ ] Coalesce bursts per property while preserving the final order/value.
+- [ ] Avoid feedback loops when a command confirmation event returns.
+- [ ] Add tests for unknown devices, unknown capabilities, duplicate/out-of-order events, bursts, invalid values, and unsubscribe.
+
+### Task 4.2: Implement reconciliation fallback
+
+- [ ] Reconcile all adopted devices immediately after every successful reconnect.
+- [ ] Reconcile inventory periodically at a conservative bounded interval.
+- [ ] Update current values, availability, renamed metadata where policy permits, and missing-upstream status.
+- [ ] Never delete orphaned Smart Panel devices automatically.
+- [ ] Prevent overlapping reconciliation runs and cap per-device errors.
+- [ ] Transition to `degraded_polling` when events are unavailable but reads succeed.
+- [ ] Expose reconciliation duration/count/failure metrics in status/logging.
+- [ ] Add fake-timer tests for scheduling, overlap prevention, reconnect, and shutdown.
+
+### Task 4.3: Implement Homey device control platform
+
+**Proposed files:**
+
+- `platforms/homey-device.platform.ts`
+- Command transformation/confirmation helpers and specs
+
+- [ ] Register a device platform for Homey-backed devices.
+- [ ] Resolve the property mapping and full capability ID.
+- [ ] Validate writable access, value type, enum/range, and device availability.
+- [ ] Apply the inverse transformation.
+- [ ] Serialize writes per device/capability.
+- [ ] Send the command through the connector with a bounded timeout.
+- [ ] Await a matching event as authoritative confirmation.
+- [ ] Perform at most one targeted read when confirmation times out.
+- [ ] Return a rejected/timeout result without treating an unconfirmed optimistic value as final.
+- [ ] Test on/off, dim normalization, temperature/range conversion, enums, covers, lock, concurrent commands, disconnect mid-command, rejection, event confirmation, and read fallback.
+
+### Task 4.4: Add observability and operational diagnostics
+
+- [ ] Add structured sanitized logs for state transitions, inventory/reconciliation summaries, and command failures.
+- [ ] Keep routine value payloads at trace/debug and rate-limit repetitive failures.
+- [ ] Expose adopted, missing, unsupported, and unavailable counts.
+- [ ] Add last-event age so a silent broken subscription is visible.
+- [ ] Stop aggressive retries on authentication failure until configuration changes or slow retry policy permits.
+
+---
+
+## Milestone 5: Admin and panel integration
+
+### Task 5.1: Scaffold the admin plugin
+
+**Create under:** `apps/admin/src/plugins/devices-homey/`
+
+Proposed structure:
+
+```text
+components/
+composables/
+locales/
+schemas/
+store/
+devices-homey.constants.ts
+devices-homey.plugin.ts
+index.ts
+```
+
+- [ ] Register the plugin, config component, add/edit components only where needed, and wizard adapter.
+- [ ] Add stores/schemas/transformers for config, status, inventory, preview, and adoption results.
+- [ ] Follow generated OpenAPI types after backend generation; do not create shadow API types without need.
+- [ ] Add all required locale files and update locale consistency tests.
+
+### Task 5.2: Implement secret-safe configuration UI
+
+- [ ] Add mode selection with local mode active and cloud mode marked unavailable until Phase 7.
+- [ ] Add URL, API-key replacement input, explicit clear action, bounded timeout/interval inputs, and enabled state.
+- [ ] Show only whether an API key is configured; never populate the key field from GET data.
+- [ ] Preserve the stored key when the field is untouched.
+- [ ] Add test-connection action supporting saved or newly entered key.
+- [ ] Display connector state, Homey identity/version, last sync/event, and sanitized error guidance.
+- [ ] Unit-test initial state, preserve/replace/clear payloads, validation, working state, successful test, and categorized failures.
+
+### Task 5.3: Implement the generic wizard adapter
+
+**Reference:** `apps/admin/src/modules/devices/components/wizard/device-wizard.types.ts` and current Shelly/Z2M factories.
+
+- [ ] Start/load Homey inventory and expose normalized wizard rows.
+- [ ] Map name, model/class, zone, capability count, availability, and support/adoption status into built-in/extra cells.
+- [ ] Provide stable device ID keys, suggested name/category, and category options.
+- [ ] Fetch or derive read-only mapping summaries for confirmation.
+- [ ] Submit batch adoption and translate per-device results.
+- [ ] Clean up polling/subscriptions on wizard disposal.
+- [ ] Handle offline, empty, loading, reconnect, unsupported, already adopted, and partial-success states.
+- [ ] Add adapter/store/component tests using generated API mocks.
+
+### Task 5.4: Generate OpenAPI clients and verify the admin app
+
+- [ ] Run `pnpm run generate:openapi` after Swagger models/controllers stabilize.
+- [ ] Update manually maintained `apps/admin/src/openapi.constants.ts` exports only if needed.
+- [ ] Fix admin compile/test issues against generated types without editing `apps/admin/src/openapi.ts`.
+- [ ] Run admin unit tests, build, and JS lint/type checks.
+
+**Verification:**
+
+```bash
+pnpm run generate:openapi
+pnpm --filter ./apps/admin run test:unit
+pnpm run admin:build
+pnpm run lint:js
+```
+
+### Task 5.5: Integrate and verify the panel
+
+- [ ] Determine whether the new backend entity discriminator needs plugin-specific Dart model mappers.
+- [ ] If required, add minimal mappers/registration under `apps/panel/lib/plugins/devices-homey/` following current provider patterns.
+- [ ] Do not add a Homey HTTP/Socket.IO client or credentials to Flutter.
+- [ ] Regenerate API/spec clients with `melos rebuild-all` after backend generation.
+- [ ] Add/extend tests for representative Homey-backed lighting, sensor, thermostat, cover, lock, and energy device rendering/control.
+- [ ] Run `melos analyze` and relevant Flutter tests.
+
+---
+
+## Milestone 6: Hardening and local release gate
+
+### Task 6.1: Complete automated verification
+
+- [ ] Backend normalization, connector, mapping, preview, adoption, sync, reconciliation, control, config-secret, controller, and lifecycle suites pass.
+- [ ] Admin config, status, inventory, wizard adapter, results, and locale suites pass.
+- [ ] Panel representative widget/control tests pass.
+- [ ] OpenAPI/spec generation is clean and generated diffs are intentional.
+- [ ] Default CI requires no live Homey/SHS access.
+
+### Task 6.2: Run the live lifecycle matrix
+
+- [ ] Fresh startup with SHS online.
+- [ ] Startup with SHS offline, then recovery.
+- [ ] SHS restart during event flow.
+- [ ] Network interruption/restoration.
+- [ ] API key revoked, replaced, and insufficiently scoped.
+- [ ] Device add/rename/zone move/unavailable/removal.
+- [ ] Physical/Homey/flow-originated state changes.
+- [ ] Allowlisted Smart Panel control for every writable MVP mapping family available.
+- [ ] Burst updates and concurrent commands.
+- [ ] Plugin disable/enable and backend shutdown with no leaked connections/timers.
+
+### Task 6.3: Validate performance and security
+
+- [ ] Measure inventory/normalization with up to 250 fixture-generated devices and on supported panel/backend hardware where available.
+- [ ] Measure capability event handoff and command-start latency against design targets.
+- [ ] Confirm no full inventory call occurs per event.
+- [ ] Scan config responses, logs, fixtures, snapshots, build artifacts, and generated OpenAPI examples for secrets/private data.
+- [ ] Verify all external calls have timeouts and reconnect loops have upper bounds.
+- [ ] Verify no route or service can delete/pair/rename an upstream Homey device.
+
+### Task 6.4: Documentation and release checklist
+
+**Proposed documentation updates:**
+
+- `apps/website/` integration guide in the website's current content structure
+- Root/project feature listing where providers are enumerated
+- `docs/homey-shs-compatibility.md`
+- Plugin README or module documentation if current plugins use one
+
+- [ ] Document SHS installation/network/port assumptions and least-privilege API-key creation.
+- [ ] Document local configuration, discovery/manual URL, adoption, supported capability families, limitations, and troubleshooting.
+- [ ] Document backups/secret behavior without revealing storage internals unnecessarily.
+- [ ] Document fixture refresh procedure for future SHS/Homey versions.
+- [ ] Update `FEATURE-PLUGIN-HOMEY` acceptance checkboxes and status to `review` only when evidence is recorded.
+
+**Local MVP gate:** All Phase 0 and Phase 1 acceptance criteria in `tasks/features/FEATURE-PLUGIN-HOMEY.md` are checked or carry an approved, explicit deferral. Cloud criteria remain unchecked.
+
+---
+
+## Milestone 7: Homey Cloud connector
+
+This milestone starts only after the local MVP is stable. It should be a separate PR series because OAuth/client registration and external approval can move independently.
+
+### Task 7.1: Register and document the Athom API client
+
+- [ ] Register the OAuth client and production/development redirect URIs.
+- [ ] Confirm current user limits, approval requirements, scopes, and branding/legal requirements with Athom.
+- [ ] Record client configuration as deployment secrets, not repository values.
+
+### Task 7.2: Implement cloud authorization
+
+- [ ] Add authorization start/callback/disconnect/reconnect endpoints using repository OAuth/state/PKCE patterns where applicable.
+- [ ] Store access/refresh tokens through the generic secret mechanism or established encrypted credential store.
+- [ ] Handle expiry, refresh rotation, revocation, invalid state, callback errors, and account reauthorization.
+- [ ] List/select a Homey when an account has more than one.
+- [ ] Add security-focused controller/service tests.
+
+### Task 7.3: Implement `HomeyCloudConnector`
+
+- [ ] Implement the same connector contract and normalized error categories.
+- [ ] Run the shared connector contract suite.
+- [ ] Verify inventory, subscriptions, writes, reconnect, rate limits, and cloud-specific latency behavior.
+- [ ] Keep mapping, preview, adoption, synchronizer, and control code unchanged.
+
+### Task 7.4: Extend admin configuration and release docs
+
+- [ ] Enable cloud mode and OAuth connect/disconnect/status UI.
+- [ ] Add Homey selection when required.
+- [ ] Explain local vs. cloud latency, reachability, and credential tradeoffs.
+- [ ] Run the full common acceptance suite against cloud mode.
+
+---
+
+## Final verification commands
+
+Use targeted suites during development, then run the repository-appropriate full checks before review:
+
+```bash
+pnpm run test:unit
+pnpm --filter ./apps/admin run test:unit
+pnpm run lint:js
+pnpm run generate:openapi
+pnpm run admin:build
+melos rebuild-all
+melos analyze
+```
+
+Run backend E2E and relevant Flutter widget tests if the implementation adds or changes their covered paths. Record any skipped command with the concrete environment reason in the feature task/PR.
+
+## Definition of done
+
+The local integration is done when a new administrator can configure a scoped SHS key without secret exposure, discover and batch-adopt supported logical Homey devices, see initial and live state, issue confirmed controls, survive network/SHS restarts, understand unsupported and degraded states, disable the plugin cleanly, and run the automated suite after the SHS subscription has expired.
