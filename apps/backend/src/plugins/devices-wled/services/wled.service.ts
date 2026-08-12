@@ -445,6 +445,7 @@ export class WledService extends BaseManagedPluginService {
 	private async handleMdnsDeviceDiscovered(device: WledMdnsDiscoveredDevice): Promise<void> {
 		this.logger.log(`mDNS discovered device: ${device.name} at ${device.host}`);
 		const endpoint = this.discoveryEndpoint(device.host, device.port);
+		const advertisedMac = this.normalizeMac(device.mac) ? device.mac : undefined;
 
 		// Check if we already have this device configured by hostname
 		let devices: WledDeviceEntity[];
@@ -457,10 +458,10 @@ export class WledService extends BaseManagedPluginService {
 			});
 			return;
 		}
-		let identifiedDevice = device;
-		let existingDevice = this.findExistingDevice(devices, endpoint, device.mac);
+		let identifiedDevice = { ...device, mac: advertisedMac };
+		let existingDevice = this.findExistingDevice(devices, endpoint, advertisedMac);
 
-		if (!existingDevice && !device.mac && !this.config.mdns.autoAdd) {
+		if (!existingDevice && !advertisedMac && !this.config.mdns.autoAdd) {
 			try {
 				const context = await this.wledAdapter.probe(endpoint, this.config.timeouts.connectionTimeout);
 				identifiedDevice = { ...device, mac: context.info.mac };
@@ -1159,8 +1160,8 @@ export class WledService extends BaseManagedPluginService {
 	}
 
 	private identifierFromMac(mac: string): string {
-		const normalizedMac = mac.replace(/[^a-fA-F0-9]/g, '').toLowerCase();
-		if (normalizedMac.length !== 12) {
+		const normalizedMac = this.normalizeMac(mac);
+		if (!normalizedMac) {
 			throw new WledValidationException('WLED device did not report a valid MAC address');
 		}
 
@@ -1173,8 +1174,8 @@ export class WledService extends BaseManagedPluginService {
 		mac?: string | null,
 	): WledDeviceEntity | undefined {
 		if (mac) {
-			const normalizedMac = mac.replace(/[^a-fA-F0-9]/g, '').toLowerCase();
-			if (normalizedMac.length === 12) {
+			const normalizedMac = this.normalizeMac(mac);
+			if (normalizedMac) {
 				const canonicalIdentifier = `wled-${normalizedMac}`;
 				const legacyIdentifier = `wled-${normalizedMac.slice(-6)}`;
 				const legacyHostIdentifiers = this.legacyHostIdentifiers(host);
@@ -1202,6 +1203,15 @@ export class WledService extends BaseManagedPluginService {
 		return devices.find((device) => device.hostname !== null && this.endpointsEquivalent(device.hostname, host));
 	}
 
+	private normalizeMac(mac?: string | null): string | null {
+		if (!mac) {
+			return null;
+		}
+
+		const normalized = mac.replace(/[^a-fA-F0-9]/g, '').toLowerCase();
+		return normalized.length === 12 ? normalized : null;
+	}
+
 	private deviceSerialMac(device: WledDeviceEntity): string | null {
 		const serial = device.channels
 			?.find((channel) => channel.identifier === WLED_CHANNEL_IDENTIFIERS.DEVICE_INFORMATION)
@@ -1212,8 +1222,7 @@ export class WledService extends BaseManagedPluginService {
 			return null;
 		}
 
-		const normalized = serial.replace(/[^a-fA-F0-9]/g, '').toLowerCase();
-		return normalized.length === 12 ? normalized : null;
+		return this.normalizeMac(serial);
 	}
 
 	private requiresCanonicalIdentity(device: WledDeviceEntity, host: string, mac?: string | null): boolean {

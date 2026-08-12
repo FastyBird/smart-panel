@@ -622,6 +622,25 @@ describe('WledService', () => {
 			expect(wledAdapter.connect).not.toHaveBeenCalled();
 		});
 
+		it('should treat a malformed advertised MAC as unavailable without rejecting the discovery callback', async () => {
+			const existingDevice = createMockDevice('device-1', 'wled-existing', '192.168.1.100');
+			const discoveredDevice: WledMdnsDiscoveredDevice = {
+				name: 'Existing WLED',
+				host: '192.168.1.100',
+				port: 80,
+				mac: 'not-a-mac',
+			};
+			devicesService.findAll.mockResolvedValue([existingDevice]);
+			wledAdapter.isConnected.mockReturnValue(false);
+			wledAdapter.connect.mockResolvedValue(undefined);
+			wledAdapter.getDevice.mockReturnValue(null);
+
+			await expect(mdnsCallbacks.onDeviceDiscovered?.(discoveredDevice)).resolves.toBeUndefined();
+
+			expect(wledAdapter.connect).toHaveBeenCalledWith('192.168.1.100', 'wled-existing', 5000);
+			expect(deviceMapper.mapDevice).not.toHaveBeenCalled();
+		});
+
 		it('should probe and reconcile a known MAC-less announcement when auto-add is disabled', async () => {
 			const existingDevice = {
 				...createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100'),
