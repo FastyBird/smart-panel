@@ -30,7 +30,8 @@ const BRACKETED_IPV6_PATTERN = /\[([0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?)\]/g;
 const UNBRACKETED_IPV6_PATTERN = /[0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?/g;
 const MAX_IPV6_ADDRESS_LENGTH = 45;
 const MAX_IPV6_CANDIDATE_SCAN_LENGTH = 256;
-const MAC_PATTERN = /(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}/gi;
+const MAC_PATTERN =
+	/(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}|[0-9a-f]{4}(?:\.[0-9a-f]{4}){2}|(?<![0-9a-f])[0-9a-f]{12}(?![0-9a-f])/gi;
 const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
 const HOMEY_TOKEN_PATTERN = /\b(?:hpat|pat|homey)[_-][A-Za-z0-9_-]{16,}\b/gi;
 
@@ -76,8 +77,11 @@ interface SanitizerContext {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const pseudonym = (kind: string, value: string): string =>
-	`${kind}-${createHash('sha256').update(`smart-panel-homey-fixture:${kind}:${value}`).digest('hex').slice(0, 12)}`;
+const pseudonym = (kind: string, value: string): string => {
+	const digest = createHash('sha256').update(`smart-panel-homey-fixture:${kind}:${value}`).digest('hex').slice(0, 12);
+
+	return `${kind}-${digest.slice(0, 6)}g${digest.slice(6)}`;
+};
 
 const escapeRegularExpression = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 

@@ -154,6 +154,8 @@ describe('Homey SHS compatibility probe', () => {
 			solids: ['preserved-array-value'],
 			diagnostic: 'gateway_192.168.1.25_backup',
 			macTag: 'mac_aa:bb:cc:dd:ee:ff_backup',
+			dottedMacTag: 'mac_aabb.ccdd.eeff_backup',
+			compactMacTag: 'mac_AABBCCDDEEFF_backup',
 			ipv6Tag: 'deadfd12:3456:789a::1backup',
 			format: { type: 'json' },
 			thermostat: true,
@@ -179,6 +181,8 @@ describe('Homey SHS compatibility probe', () => {
 			solids: ['preserved-array-value'],
 			diagnostic: 'gateway_[~0~]_backup',
 			macTag: 'mac_[~0~]_backup',
+			dottedMacTag: 'mac_[~0~]_backup',
+			compactMacTag: 'mac_[~0~]_backup',
 			ipv6Tag: 'dead[~0~]kup',
 			format: { type: 'json' },
 			thermostat: true,
@@ -308,6 +312,14 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret, address');
 
 		unsafeCapture.systemInfo = { diagnostic: 'mac_aa:bb:cc:dd:ee:ff_backup' };
+
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret, address');
+
+		unsafeCapture.systemInfo = { diagnostic: 'mac_aabb.ccdd.eeff_backup' };
+
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret, address');
+
+		unsafeCapture.systemInfo = { diagnostic: 'mac_AABBCCDDEEFF_backup' };
 
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret, address');
 
