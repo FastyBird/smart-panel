@@ -21,6 +21,7 @@ import type {
 	DevicesHomeAssistantPluginAdoptWizardOperation,
 	DevicesHomeAssistantPluginCreateWizardOperation,
 	DevicesHomeAssistantPluginDeleteWizardOperation,
+	DevicesHomeAssistantPluginGetWizardOperation,
 	DevicesHomeAssistantPluginWizardAdoptionSchema,
 	DevicesHomeAssistantPluginWizardSessionSchema,
 } from '../../../openapi.constants';
@@ -31,6 +32,7 @@ import { discoveredDevicesStoreKey, discoveredHelpersStoreKey } from '../store/k
 import { transformWizardAdoptRequest, transformWizardAdoptionResponse, transformWizardSessionResponse } from '../utils/wizard.transformers';
 
 export const useDevicesWizard = (): IDeviceWizardAdapter => {
+	const sessionKeepaliveMs = 4 * 60_000;
 	const { t } = useI18n();
 	const backend = useBackend();
 	const flashMessage = useFlashMessage();
@@ -46,6 +48,33 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const adoptionResults = ref<IHomeAssistantWizardAdoptionResult[]>([]);
 	const formResult = ref<FormResultType>(FormResult.NONE);
 	const sessionError = ref<string | null>(null);
+	let keepaliveTimer: ReturnType<typeof setInterval> | null = null;
+	let restartPromise: Promise<void> | null = null;
+
+	const stopKeepalive = (): void => {
+		if (keepaliveTimer !== null) {
+			clearInterval(keepaliveTimer);
+			keepaliveTimer = null;
+		}
+	};
+
+	const startKeepalive = (id: string): void => {
+		stopKeepalive();
+		keepaliveTimer = setInterval(() => {
+			void backend.client
+				.GET(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/wizard/{id}`, {
+					params: { path: { id } },
+				})
+				.then(({ error }) => {
+					if (error) {
+						logger.warn(
+							getErrorReason<DevicesHomeAssistantPluginGetWizardOperation>(error, 'Failed to keep the Home Assistant wizard session active')
+						);
+					}
+				})
+				.catch((error: unknown) => logger.warn('Failed to keep the Home Assistant wizard session active', error));
+		}, sessionKeepaliveMs);
+	};
 
 	const candidates = computed<IHomeAssistantWizardCandidate[]>(() =>
 		orderBy(session.value?.candidates ?? [], [(candidate) => (candidate.status === 'ready' ? 0 : 1), (candidate) => candidate.name], ['asc', 'asc'])
@@ -115,10 +144,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			variant: 'default',
 			disabled: formResult.value === FormResult.WORKING,
 			loading: formResult.value === FormResult.WORKING,
-			handler: async (): Promise<void> => {
-				await endSession();
-				await startSession();
-			},
+			handler: restartSession,
 		};
 
 		if (sessionError.value !== null) {
@@ -172,6 +198,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			const nextSession = transformWizardSessionResponse((data as { data: DevicesHomeAssistantPluginWizardSessionSchema }).data);
 			session.value = nextSession;
 			sessionKey.value = nextSession.id;
+			startKeepalive(nextSession.id);
 			adoptionResults.value = [];
 			formResult.value = FormResult.OK;
 			return;
@@ -186,6 +213,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	};
 
 	const endSession = async (): Promise<void> => {
+		stopKeepalive();
 		const currentSession = session.value;
 		session.value = null;
 		sessionError.value = null;
@@ -205,6 +233,22 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		} catch (error: unknown) {
 			logger.warn('Failed to cleanly end Home Assistant wizard session', error);
 		}
+	};
+
+	const restartSession = (): Promise<void> => {
+		if (restartPromise !== null) {
+			return restartPromise;
+		}
+
+		formResult.value = FormResult.WORKING;
+		restartPromise = (async (): Promise<void> => {
+			await endSession();
+			await startSession();
+		})().finally(() => {
+			restartPromise = null;
+		});
+
+		return restartPromise;
 	};
 
 	const adopt = async (selection: IWizardAdoptSelection[]): Promise<IWizardResult[]> => {
@@ -264,10 +308,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		capabilities: { addMore: true },
 		start: startSession,
 		adopt,
-		restart: async (): Promise<void> => {
-			await endSession();
-			await startSession();
-		},
+		restart: restartSession,
 		dispose: endSession,
 	};
 };

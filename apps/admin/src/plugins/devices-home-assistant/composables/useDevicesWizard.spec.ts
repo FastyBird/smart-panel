@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { IWizardBannerControl } from '../../../modules/devices';
 import {
@@ -12,6 +12,7 @@ import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.
 import { useDevicesWizard } from './useDevicesWizard';
 
 const backendClient = {
+	GET: vi.fn(),
 	POST: vi.fn(),
 	DELETE: vi.fn(),
 };
@@ -72,11 +73,18 @@ const wizardSession: DevicesHomeAssistantPluginWizardSessionSchema = {
 
 describe('useDevicesWizard', () => {
 	beforeEach(() => {
+		vi.useFakeTimers();
 		vi.clearAllMocks();
 		stores.splice(0, stores.length, devicesStore, discoveredDevicesStore, discoveredHelpersStore);
 		devicesStore.fetch.mockResolvedValue([]);
 		discoveredDevicesStore.fetch.mockResolvedValue([]);
 		discoveredHelpersStore.fetch.mockResolvedValue([]);
+		backendClient.GET.mockResolvedValue({ data: { data: wizardSession }, response: { status: 200 } });
+	});
+
+	afterEach(() => {
+		vi.clearAllTimers();
+		vi.useRealTimers();
 	});
 
 	it('starts a selection-only bulk session and maps ready candidates', async () => {
@@ -216,7 +224,7 @@ describe('useDevicesWizard', () => {
 		const refresh = adapter.controls.value.find((control) => control.type === 'action' && control.id === 'refresh');
 		expect(refresh?.type).toBe('action');
 		if (refresh?.type === 'action') {
-			await refresh.handler();
+			await Promise.all([refresh.handler(), refresh.handler()]);
 		}
 
 		expect(backendClient.DELETE).toHaveBeenCalledWith(`/plugins/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/wizard/{id}`, {
@@ -224,5 +232,18 @@ describe('useDevicesWizard', () => {
 		});
 		expect(backendClient.POST).toHaveBeenCalledTimes(2);
 		expect(adapter.sessionKey?.value).toBe('session-2');
+	});
+
+	it('keeps an open wizard session active while the administrator reviews candidates', async () => {
+		backendClient.POST.mockResolvedValue({ data: { data: wizardSession }, response: { status: 201 } });
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+		await vi.advanceTimersByTimeAsync(4 * 60_000);
+
+		expect(backendClient.GET).toHaveBeenCalledWith(`/plugins/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/wizard/{id}`, {
+			params: { path: { id: 'session-1' } },
+		});
+		await adapter.dispose?.();
 	});
 });
