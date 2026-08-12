@@ -34,6 +34,7 @@ const UNBRACKETED_IPV6_PATTERN = /[0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?/g;
 const MAX_IPV6_ADDRESS_LENGTH = 45;
 const MAX_IPV6_CANDIDATE_SCAN_LENGTH = 256;
 const MAC_PATTERN = /(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}|[0-9a-f]{4}(?:\.[0-9a-f]{4}){2}|[0-9a-f]{12}/gi;
+const URL_PATTERN = /(?:https?|wss?):\/\/[^\s"']+/gi;
 const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 const HOMEY_TOKEN_PATTERN = /(?:hpat|pat|homey)[_-][A-Za-z0-9_-]{16,}/gi;
 
@@ -168,7 +169,7 @@ const replaceIpv6Addresses = (value: string, replacement: string): string =>
 
 const sanitizeString = (value: string, privateTerms: string[]): string => {
 	let sanitized = replaceIpv6Addresses(value, REDACTION.address)
-		.replace(/\b(?:https?|wss?):\/\/[^\s"']+/gi, REDACTION.url)
+		.replace(URL_PATTERN, REDACTION.url)
 		.replace(IPV4_PATTERN, REDACTION.address)
 		.replace(MAC_PATTERN, REDACTION.address)
 		.replace(EMAIL_PATTERN, REDACTION.email)
@@ -720,7 +721,7 @@ export const assertHomeyCaptureSafe = (
 		}
 	}
 
-	const unsafePatterns = [IPV4_PATTERN, MAC_PATTERN, EMAIL_PATTERN, HOMEY_TOKEN_PATTERN];
+	const unsafePatterns = [IPV4_PATTERN, MAC_PATTERN, URL_PATTERN, EMAIL_PATTERN, HOMEY_TOKEN_PATTERN];
 
 	if (
 		unsafePatterns.some((pattern) => new RegExp(pattern.source, pattern.flags).test(serialized)) ||

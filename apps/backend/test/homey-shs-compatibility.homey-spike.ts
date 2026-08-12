@@ -210,6 +210,7 @@ describe('Homey SHS compatibility probe', () => {
 			ipv6Tag: 'deadfd12:3456:789a::1backup',
 			emailTag: 'owner_alice@example.com_backup',
 			activityTag: 'prefix_hpat_abcdefghijklmnop1234',
+			urlTag: 'prefix_https://user:pass@private-host.local/api',
 			format: { type: 'json' },
 			thermostat: true,
 			chip: 'preserved chip',
@@ -243,6 +244,7 @@ describe('Homey SHS compatibility probe', () => {
 			ipv6Tag: 'dead[~0~]kup',
 			emailTag: '[~1~]_backup',
 			activityTag: 'prefix_[~3~]',
+			urlTag: 'prefix_[~5~]',
 			format: { type: 'json' },
 			thermostat: true,
 			chip: 'preserved chip',
@@ -433,6 +435,14 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret');
 
 		unsafeCapture.systemInfo = { leaked: 'owner_alice@example.com_backup' };
+
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret');
+
+		unsafeCapture.systemInfo = { leaked: 'prefix_https://user:pass@private-host.local/api' };
+
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret');
+
+		unsafeCapture.systemInfo = { aliases: { 'https://user:pass@private-host.local/api': true } };
 
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret');
 
