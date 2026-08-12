@@ -200,6 +200,8 @@ describe('Homey SHS compatibility probe', () => {
 			dottedMacTag: 'mac_aabb.ccdd.eeff_backup',
 			compactMacTag: 'mac_AABBCCDDEEFF_backup',
 			ipv6Tag: 'deadfd12:3456:789a::1backup',
+			emailTag: 'owner_alice@example.com_backup',
+			activityTag: 'prefix_hpat_abcdefghijklmnop1234',
 			format: { type: 'json' },
 			thermostat: true,
 			chip: 'preserved chip',
@@ -230,6 +232,8 @@ describe('Homey SHS compatibility probe', () => {
 			dottedMacTag: 'mac_[~0~]_backup',
 			compactMacTag: 'mac_[~0~]_backup',
 			ipv6Tag: 'dead[~0~]kup',
+			emailTag: '[~1~]_backup',
+			activityTag: 'prefix_[~3~]',
 			format: { type: 'json' },
 			thermostat: true,
 			chip: 'preserved chip',
@@ -412,6 +416,14 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [], ['Private'])).toThrow('private term');
 
 		unsafeCapture.systemInfo = { leaked: 'hpat_abcdefghijklmnop1234' };
+
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret');
+
+		unsafeCapture.systemInfo = { leaked: 'prefix_hpat_abcdefghijklmnop1234' };
+
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret');
+
+		unsafeCapture.systemInfo = { leaked: 'owner_alice@example.com_backup' };
 
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret');
 

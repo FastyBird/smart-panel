@@ -35,8 +35,8 @@ const MAX_IPV6_ADDRESS_LENGTH = 45;
 const MAX_IPV6_CANDIDATE_SCAN_LENGTH = 256;
 const MAC_PATTERN =
 	/(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}|[0-9a-f]{4}(?:\.[0-9a-f]{4}){2}|(?<![0-9a-f])[0-9a-f]{12}(?![0-9a-f])/gi;
-const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
-const HOMEY_TOKEN_PATTERN = /\b(?:hpat|pat|homey)[_-][A-Za-z0-9_-]{16,}\b/gi;
+const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+const HOMEY_TOKEN_PATTERN = /(?:hpat|pat|homey)[_-][A-Za-z0-9_-]{16,}/gi;
 
 const REDACTION = {
 	address: '[~0~]',
