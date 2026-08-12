@@ -1142,6 +1142,30 @@ describe('WledService', () => {
 			]);
 		});
 
+		it('does not propagate a duplicate alias as a failed move probe', async () => {
+			const existingDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			devicesService.findAll.mockResolvedValue([existingDevice]);
+			deviceMapper.mapDevice.mockResolvedValue({
+				...existingDevice,
+				hostname: 'wled.local',
+			} as WledDeviceEntity);
+
+			const results = await service.adoptDevices([
+				{ host: 'wled.local', name: 'Moved strip', category: DeviceCategory.LIGHTING },
+				{ host: '192.168.1.100', name: 'Duplicate alias', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(results).toEqual([
+				expect.objectContaining({ status: 'updated', deviceId: 'device-1' }),
+				expect.objectContaining({
+					status: 'failed',
+					error: 'The same WLED controller was selected more than once',
+				}),
+			]);
+			expect(deviceMapper.mapDevice).toHaveBeenCalledTimes(1);
+		});
+
 		it('serializes overlapping adoption batches before taking their database snapshots', async () => {
 			const createdDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
 			let finishFirstMapping: ((device: WledDeviceEntity) => void) | undefined;
@@ -1530,6 +1554,24 @@ describe('WledService', () => {
 			mdnsDiscoverer.getDiscoveredDevices.mockReturnValue([
 				{ host: 'wled.local', name: 'Advertised name', port: 8080 },
 			]);
+			devicesService.findAll.mockResolvedValue([existingDevice]);
+
+			const inventory = await service.getDiscoveryInventory();
+
+			expect(inventory.devices[0]).toEqual(
+				expect.objectContaining({
+					name: 'Administrator name',
+					adoptedDeviceId: 'device-1',
+				}),
+			);
+		});
+
+		it('matches a MAC-less default-port record to an explicit port 80 endpoint', async () => {
+			const existingDevice = {
+				...createMockDevice('device-1', 'wled-aabbccddeeff', 'wled.local:80'),
+				name: 'Administrator name',
+			} as WledDeviceEntity;
+			mdnsDiscoverer.getDiscoveredDevices.mockReturnValue([{ host: 'wled.local', name: 'Advertised name', port: 80 }]);
 			devicesService.findAll.mockResolvedValue([existingDevice]);
 
 			const inventory = await service.getDiscoveryInventory();

@@ -448,7 +448,11 @@ export class WledService extends BaseManagedPluginService {
 
 			// Reconcile a known MAC at a new endpoint through the same guarded
 			// provisioning path as administrator adoption.
-			if (existingDevice.hostname !== endpoint && this.config.mdns.autoAdd) {
+			if (
+				existingDevice.hostname &&
+				!this.endpointsEquivalent(existingDevice.hostname, endpoint) &&
+				this.config.mdns.autoAdd
+			) {
 				await this.connectAndMapDiscoveredDevice(device);
 			} else if (existingDevice.enabled && !this.wledAdapter.isConnected(endpoint)) {
 				this.logger.debug(`Connecting to existing device at ${endpoint}`);
@@ -475,7 +479,7 @@ export class WledService extends BaseManagedPluginService {
 				const endpoint = this.discoveryEndpoint(device.host, device.port);
 				const devices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
 				const existingDevice = this.findExistingDevice(devices, endpoint, device.mac);
-				if (existingDevice?.hostname === endpoint) {
+				if (existingDevice?.hostname && this.endpointsEquivalent(existingDevice.hostname, endpoint)) {
 					if (existingDevice.enabled && !this.wledAdapter.isConnected(endpoint)) {
 						await this.connectToDevice(existingDevice);
 					}
@@ -560,7 +564,7 @@ export class WledService extends BaseManagedPluginService {
 	private async doAdoptDevices(requests: WledAdoptDeviceDto[]): Promise<WledAdoptionResultModel[]> {
 		const results = requests.map<WledAdoptionResultModel | undefined>(() => undefined);
 		const databaseDevices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
-		const normalizedHostsByIndex = new Map<number, string>();
+		const failedSelectionHosts = new Set<string>();
 		const plans: Array<{
 			index: number;
 			request: WledAdoptDeviceDto;
@@ -576,7 +580,6 @@ export class WledService extends BaseManagedPluginService {
 
 			try {
 				host = this.normalizeHost(request.host);
-				normalizedHostsByIndex.set(index, host);
 				const context = await this.wledAdapter.probe(host, this.config.timeouts.connectionTimeout);
 				const existingDevice = this.findExistingDevice(databaseDevices, host, context.info.mac);
 				const identifier = existingDevice?.identifier || this.identifierFromMac(context.info.mac);
@@ -597,6 +600,7 @@ export class WledService extends BaseManagedPluginService {
 
 				plans.push({ index, request, host, context, existingDevice, identifier });
 			} catch (error) {
+				failedSelectionHosts.add(host);
 				results[index] = {
 					host,
 					name: request.name,
@@ -610,27 +614,24 @@ export class WledService extends BaseManagedPluginService {
 		const plannedExistingDeviceIds = new Set(
 			plans.flatMap(({ existingDevice }) => (existingDevice ? [existingDevice.id] : [])),
 		);
-		const plannedIndices = new Set(plans.map(({ index }) => index));
-		const failedSelectionHosts = new Set(
-			[...normalizedHostsByIndex].flatMap(([index, host]) => (!plannedIndices.has(index) ? [host] : [])),
-		);
 		const selectedDeviceIds = plannedExistingDeviceIds;
 		const moveHostEdges = new Map<string, Set<string>>();
 		for (const plan of plans) {
-			const sourceHost = plan.existingDevice?.hostname;
-			if (!sourceHost || sourceHost === plan.host) {
+			const sourceHost = plan.existingDevice?.hostname ? this.canonicalEndpoint(plan.existingDevice.hostname) : null;
+			const targetHost = this.canonicalEndpoint(plan.host);
+			if (!sourceHost || sourceHost === targetHost) {
 				continue;
 			}
 
 			const sourceEdges = moveHostEdges.get(sourceHost) ?? new Set<string>();
-			sourceEdges.add(plan.host);
+			sourceEdges.add(targetHost);
 			moveHostEdges.set(sourceHost, sourceEdges);
-			const targetEdges = moveHostEdges.get(plan.host) ?? new Set<string>();
+			const targetEdges = moveHostEdges.get(targetHost) ?? new Set<string>();
 			targetEdges.add(sourceHost);
-			moveHostEdges.set(plan.host, targetEdges);
+			moveHostEdges.set(targetHost, targetEdges);
 		}
 		const failedMoveHosts = new Set<string>();
-		const pendingFailedHosts = [...failedSelectionHosts];
+		const pendingFailedHosts = [...failedSelectionHosts].map((host) => this.canonicalEndpoint(host));
 		while (pendingFailedHosts.length > 0) {
 			const currentHost = pendingFailedHosts.pop();
 			if (!currentHost || failedMoveHosts.has(currentHost)) {
@@ -643,10 +644,10 @@ export class WledService extends BaseManagedPluginService {
 		const blockedPlanIndices = new Set<number>();
 		for (const plan of plans) {
 			if (
-				failedMoveHosts.has(plan.host) ||
+				failedMoveHosts.has(this.canonicalEndpoint(plan.host)) ||
 				(plan.existingDevice?.hostname !== null &&
 					plan.existingDevice?.hostname !== undefined &&
-					failedMoveHosts.has(plan.existingDevice.hostname))
+					failedMoveHosts.has(this.canonicalEndpoint(plan.existingDevice.hostname)))
 			) {
 				blockedPlanIndices.add(plan.index);
 				results[plan.index] = {
@@ -662,7 +663,10 @@ export class WledService extends BaseManagedPluginService {
 		for (const plan of plans.filter(({ index }) => !blockedPlanIndices.has(index))) {
 			const selectedTargetOwner = plans.find(
 				(candidate) =>
-					candidate.existingDevice?.hostname === plan.host && candidate.existingDevice.id !== plan.existingDevice?.id,
+					candidate.existingDevice?.hostname !== null &&
+					candidate.existingDevice?.hostname !== undefined &&
+					this.endpointsEquivalent(candidate.existingDevice.hostname, plan.host) &&
+					candidate.existingDevice.id !== plan.existingDevice?.id,
 			);
 
 			if (selectedTargetOwner) {
@@ -756,7 +760,10 @@ export class WledService extends BaseManagedPluginService {
 					}
 				}
 				const staleHostOwners = databaseDevices.filter(
-					(device) => device.hostname === host && device.id !== existingDevice?.id,
+					(device) =>
+						device.hostname !== null &&
+						this.endpointsEquivalent(device.hostname, host) &&
+						device.id !== existingDevice?.id,
 				);
 				const retiringHostOwners = staleHostOwners.filter(
 					(staleHostOwner) => !selectedDeviceIds.has(staleHostOwner.id) && !retiredDeviceIds.has(staleHostOwner.id),
@@ -1018,7 +1025,11 @@ export class WledService extends BaseManagedPluginService {
 
 		// Filter out devices that are already in the database
 		return discoveredDevices.filter(
-			(device) => !existingHostnames.has(this.discoveryEndpoint(device.host, device.port)),
+			(device) =>
+				![...existingHostnames].some(
+					(hostname) =>
+						hostname !== null && this.endpointsEquivalent(hostname, this.discoveryEndpoint(device.host, device.port)),
+				),
 		);
 	}
 
@@ -1085,14 +1096,28 @@ export class WledService extends BaseManagedPluginService {
 					devices.find((device) => device.identifier === legacyIdentifier) ??
 					devices.find(
 						(device) =>
-							device.identifier !== null && legacyHostIdentifiers.has(device.identifier) && device.hostname === host,
+							device.identifier !== null &&
+							legacyHostIdentifiers.has(device.identifier) &&
+							device.hostname !== null &&
+							this.endpointsEquivalent(device.hostname, host),
 					) ??
-					devices.find((device) => device.identifier === null && device.hostname === host)
+					devices.find(
+						(device) =>
+							device.identifier === null && device.hostname !== null && this.endpointsEquivalent(device.hostname, host),
+					)
 				);
 			}
 		}
 
-		return devices.find((device) => device.hostname === host);
+		return devices.find((device) => device.hostname !== null && this.endpointsEquivalent(device.hostname, host));
+	}
+
+	private endpointsEquivalent(first: string, second: string): boolean {
+		return this.canonicalEndpoint(first) === this.canonicalEndpoint(second);
+	}
+
+	private canonicalEndpoint(endpoint: string): string {
+		return endpoint.replace(/:80$/, '');
 	}
 
 	private legacyHostIdentifiers(endpoint: string): Set<string> {
