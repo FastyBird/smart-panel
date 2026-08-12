@@ -388,8 +388,10 @@ const replaceCollectionIdentity = (
 	return Object.fromEntries(
 		Object.entries(value)
 			.sort(([left], [right]) => left.localeCompare(right))
-			.map(([rawId, rawItem], index) => {
+			.map(([rawId, rawItem]) => {
 				const safeId = pseudonym(kind, rawId, aliases);
+				const rawName = isRecord(rawItem) && typeof rawItem.name === 'string' ? rawItem.name : rawId;
+				const safeName = pseudonym(`${kind}-label`, rawName, aliases);
 				const sanitized = sanitizeHomeyPayload(rawItem, privateTerms, kind, aliases);
 				const safeItem = isRecord(sanitized) ? sanitized : { value: sanitized };
 
@@ -398,7 +400,7 @@ const replaceCollectionIdentity = (
 					{
 						...safeItem,
 						id: safeId,
-						name: `Synthetic ${kind} ${String(index + 1).padStart(3, '0')}`,
+						name: safeName,
 					},
 				];
 			}),
@@ -664,8 +666,7 @@ export const assertHomeyCaptureSafe = (
 		}
 	}
 
-	const generatedPseudonymPattern = /^(?:device|homey|id|reference|zone)-\d{6}$/;
-	const syntheticLabelPattern = /^Synthetic (?:device|zone) \d{3}$/;
+	const generatedPseudonymPattern = /^(?:device|device-label|homey|id|reference|zone|zone-label)-\d{6}$/;
 	const fixedPayloadKeys = new Set([
 		'active',
 		'available',
@@ -722,7 +723,7 @@ export const assertHomeyCaptureSafe = (
 	};
 	const inspectPrivateTermValues = (value: unknown, key: string, path: string[], term: string): boolean => {
 		if (typeof value === 'string') {
-			const generatedValue = generatedPseudonymPattern.test(value) || syntheticLabelPattern.test(value);
+			const generatedValue = generatedPseudonymPattern.test(value);
 
 			return (
 				!isCapturedCapabilityListEntry(path) &&

@@ -244,7 +244,7 @@ describe('Homey SHS compatibility probe', () => {
 			customActivityField: '2026-08-12T20:16:31+02:00',
 		});
 		const collisionSafeDevices = sanitizeHomeyDevices({
-			'DEVICE-000001': { id: 'DEVICE-000001', name: 'Synthetic source' },
+			'DEVICE-000001': { id: 'DEVICE-000001', name: 'DEVICE-LABEL-000001' },
 		});
 
 		expect(sanitized).toEqual({
@@ -282,7 +282,10 @@ describe('Homey SHS compatibility probe', () => {
 			customActivityField: '2000-01-01T00:00:00.000Z',
 		});
 		expect(Object.keys(collisionSafeDevices)).toEqual(['device-000002']);
-		expect(collisionSafeDevices['device-000002']).toMatchObject({ id: 'device-000002' });
+		expect(collisionSafeDevices['device-000002']).toMatchObject({
+			id: 'device-000002',
+			name: 'device-label-000002',
+		});
 	});
 
 	it('uses unauthenticated ping, bounded read-only calls, and blocks redirects', async () => {
@@ -394,11 +397,11 @@ describe('Homey SHS compatibility probe', () => {
 				{
 					metadata: { schemaVersion: 1, homey: { id: 'homey-000001' } },
 					systemInfo: {},
-					zones: { 'zone-000001': { id: 'zone-000001', name: 'Synthetic zone 001' } },
+					zones: { 'zone-000001': { id: 'zone-000001', name: 'zone-label-000001' } },
 					devices: {
 						'device-000001': {
 							id: 'device-000001',
-							name: 'Synthetic device 001',
+							name: 'device-label-000001',
 							capabilities: ['device_status'],
 							capabilitiesObj: { device_status: { id: 'device_status', value: true } },
 						},
