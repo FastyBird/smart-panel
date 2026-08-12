@@ -886,6 +886,27 @@ describe('WledService', () => {
 			expect(results).toEqual([expect.objectContaining({ status: 'failed', error: 'Provisioning failed' })]);
 		});
 
+		it('preserves a healthy same-host connection when provisioning fails', async () => {
+			const existingDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			wledAdapter.getDevice.mockReturnValue({
+				host: '192.168.1.100',
+				identifier: 'wled-aabbccddeeff',
+				connected: true,
+			} as RegisteredWledDevice);
+			devicesService.findAll.mockResolvedValue([existingDevice]);
+			deviceMapper.mapDevice.mockRejectedValue(new Error('Provisioning failed'));
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.100', name: 'Living room', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(wledAdapter.disconnect).not.toHaveBeenCalled();
+			expect(wledAdapter.connect).not.toHaveBeenCalled();
+			expect(wledAdapter.connectWithContext).not.toHaveBeenCalled();
+			expect(results).toEqual([expect.objectContaining({ status: 'failed', error: 'Provisioning failed' })]);
+		});
+
 		it('disconnects a failed move target before restoring the source connection', async () => {
 			const existingDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
 			wledAdapter.probe.mockResolvedValue(mockContext);

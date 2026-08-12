@@ -752,6 +752,7 @@ export class WledService extends BaseManagedPluginService {
 
 			let mappedDevice: WledDeviceEntity | null = null;
 			let existingDeviceDisconnected = false;
+			let attemptedRegistrationCreated = false;
 			const retiredStaleOwners: WledDeviceEntity[] = [];
 			const disconnectedStaleOwners: WledDeviceEntity[] = [];
 
@@ -852,6 +853,7 @@ export class WledService extends BaseManagedPluginService {
 					} else {
 						try {
 							this.wledAdapter.connectWithContext(host, identifier, context);
+							attemptedRegistrationCreated = true;
 							connectionState = ConnectionState.CONNECTED;
 						} catch (error) {
 							this.logger.warn(
@@ -961,10 +963,7 @@ export class WledService extends BaseManagedPluginService {
 						}
 					}
 				} else {
-					const attemptedRegistration = this.wledAdapter.getDevice(host);
-					const attemptedHostDisconnected =
-						attemptedRegistration?.host === host && attemptedRegistration.identifier === identifier;
-					if (attemptedHostDisconnected) {
+					if (attemptedRegistrationCreated) {
 						await this.tryRollback(`disconnect ${host}`, () =>
 							Promise.resolve(this.wledAdapter.disconnect(host, false)),
 						);
@@ -994,7 +993,7 @@ export class WledService extends BaseManagedPluginService {
 								hostname: existingDevice.hostname,
 							}),
 						);
-						if (existingDeviceDisconnected || attemptedHostDisconnected) {
+						if (existingDeviceDisconnected || attemptedRegistrationCreated) {
 							await this.tryRollback(`reconnect device ${existingDevice.id}`, () =>
 								this.restoreDeviceConnection(existingDevice),
 							);
