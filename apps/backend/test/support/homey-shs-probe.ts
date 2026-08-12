@@ -22,8 +22,7 @@ const ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const IPV4_PATTERN = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
 const BRACKETED_IPV6_PATTERN = /\[([0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?)\]/g;
-const UNBRACKETED_IPV6_PATTERN =
-	/(?<![0-9A-Fa-f:.])(?:[0-9A-Fa-f.]*:[0-9A-Fa-f:.]+)(?:%[A-Za-z0-9_.-]+)?(?![0-9A-Fa-f:.])/g;
+const UNBRACKETED_IPV6_PATTERN = /[0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?/g;
 const MAC_PATTERN = /\b(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}\b/gi;
 const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
 const HOMEY_TOKEN_PATTERN = /\b(?:hpat|pat|homey)[_-][A-Za-z0-9_-]{16,}\b/gi;
@@ -82,7 +81,12 @@ const replaceIpv6Addresses = (value: string, replacement: string): string =>
 		.replace(BRACKETED_IPV6_PATTERN, (candidate, address: string) =>
 			isIP(ipv6Address(address)) === 6 ? replacement : candidate,
 		)
-		.replace(UNBRACKETED_IPV6_PATTERN, (candidate) => (isIP(ipv6Address(candidate)) === 6 ? replacement : candidate));
+		.replace(UNBRACKETED_IPV6_PATTERN, (candidate) => {
+			const address = candidate.replace(/[.,;!?]+$/, '');
+			const punctuation = candidate.slice(address.length);
+
+			return isIP(ipv6Address(address)) === 6 ? `${replacement}${punctuation}` : candidate;
+		});
 
 const sanitizeString = (value: string, privateTerms: string[]): string => {
 	let sanitized = replaceIpv6Addresses(value, REDACTION.address)
@@ -130,20 +134,23 @@ const sanitizeReference = (key: string, value: string): string => {
 };
 
 const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): unknown => {
+	const capabilityMapEntry = isCapabilityMap(context.path);
+
 	if (SECRET_KEY_PATTERN.test(key)) {
 		return REDACTION.secret;
 	}
 
-	if (value !== null && isTimestampKey(key)) {
+	if (value !== null && !capabilityMapEntry && isTimestampKey(key)) {
 		return FIXTURE_TIMESTAMP;
 	}
 
-	if (value !== null && ADDRESS_KEY_PATTERN.test(key)) {
+	if (value !== null && !capabilityMapEntry && ADDRESS_KEY_PATTERN.test(key)) {
 		return REDACTION.address;
 	}
 
 	if (
 		value !== null &&
+		!capabilityMapEntry &&
 		!isCapabilityIdentifier(key, context.path) &&
 		(REFERENCE_KEY_PATTERN.test(key) || IDENTIFIER_KEY_PATTERN.test(key))
 	) {
@@ -425,6 +432,7 @@ export const assertHomeyCaptureSafe = (
 	capture: HomeyShsCapture,
 	forbiddenValues: string[],
 	privateTerms: string[] = [],
+	expectedHost?: string,
 ): void => {
 	const serialized = JSON.stringify(capture);
 	const forbidden = forbiddenValues.filter((value) => value.length > 0);
@@ -433,6 +441,25 @@ export const assertHomeyCaptureSafe = (
 	for (const value of forbidden) {
 		if (serialized.toLowerCase().includes(value.toLowerCase())) {
 			throw new Error('Sanitized Homey capture still contains a configured forbidden value');
+		}
+	}
+
+	if (expectedHost !== undefined) {
+		const scalarValues: string[] = [];
+		const collectScalarValues = (value: unknown): void => {
+			if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+				scalarValues.push(String(value));
+			} else if (Array.isArray(value)) {
+				value.forEach(collectScalarValues);
+			} else if (isRecord(value)) {
+				Object.values(value).forEach(collectScalarValues);
+			}
+		};
+
+		collectScalarValues(capture);
+
+		if (scalarValues.some((value) => value.toLowerCase().includes(expectedHost.toLowerCase()))) {
+			throw new Error('Sanitized Homey capture still contains the expected host in a value');
 		}
 	}
 
@@ -473,7 +500,7 @@ const run = async (): Promise<void> => {
 	const config = loadHomeyShsProbeConfig(process.env);
 	const capture = await captureHomeyShs(config);
 
-	assertHomeyCaptureSafe(capture, [config.apiKey, config.expectedHost], config.privateTerms);
+	assertHomeyCaptureSafe(capture, [config.apiKey], config.privateTerms, config.expectedHost);
 
 	const outputDirectory = await writeHomeyShsCapture(capture, config.outputRoot);
 	const counts = capture.metadata.counts as { devices: number; zones: number };

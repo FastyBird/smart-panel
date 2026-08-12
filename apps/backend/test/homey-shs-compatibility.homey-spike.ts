@@ -69,6 +69,12 @@ describe('Homey SHS compatibility probe', () => {
 						metadata: { id: 'private-capability-metadata-id' },
 					},
 					'measure_temperature.inside': { id: 'measure_temperature.inside', value: 21.5 },
+					lastUpdated: {
+						id: 'lastUpdated',
+						value: true,
+						accountId: 'private-timestamp-capability-account-id',
+					},
+					deviceId: { id: 'deviceId', value: 'capability-value' },
 				},
 				settings: {
 					address: '192.168.1.25',
@@ -104,10 +110,13 @@ describe('Homey SHS compatibility probe', () => {
 		expect(serialized).not.toContain('private-capability-account-id');
 		expect(serialized).not.toContain('private-capability-hardware-id');
 		expect(serialized).not.toContain('private-capability-metadata-id');
+		expect(serialized).not.toContain('private-timestamp-capability-account-id');
 		expect(serialized).not.toContain('private-driver-model');
 		expect(serialized).not.toContain('Recoverable Room Name');
 		expect(serialized).toContain('[~7~]');
 		expect(serialized).toContain('measure_temperature.inside');
+		expect(serialized).toContain('lastUpdated');
+		expect(serialized).toContain('deviceId');
 	});
 
 	it('redacts generic personal labels without publishing a value-derived hash', () => {
@@ -193,7 +202,22 @@ describe('Homey SHS compatibility probe', () => {
 			expect(new Headers(call.init?.headers).get('authorization')).toBe(`Bearer ${config.apiKey}`);
 		}
 
-		assertHomeyCaptureSafe(capture, [config.apiKey, config.expectedHost], config.privateTerms);
+		assertHomeyCaptureSafe(capture, [config.apiKey], config.privateTerms, config.expectedHost);
+	});
+
+	it('checks an expected host against values rather than fixed metadata keys', () => {
+		const capture: HomeyShsCapture = {
+			metadata: { homey: { id: 'synthetic-source-id' } },
+			systemInfo: {},
+			zones: {},
+			devices: {},
+		};
+
+		expect(() => assertHomeyCaptureSafe(capture, [], [], 'homey')).not.toThrow();
+
+		capture.systemInfo = { endpoint: 'http://homey:4859' };
+
+		expect(() => assertHomeyCaptureSafe(capture, [], [], 'homey')).toThrow('expected host in a value');
 	});
 
 	it('does not confuse opaque redaction markers with configured private terms', () => {
@@ -231,6 +255,10 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret');
 
 		unsafeCapture.systemInfo = { gateway: 'fd12:3456:789a::1' };
+
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret, address');
+
+		unsafeCapture.systemInfo = { description: 'gateway fd12:3456:789a::1.' };
 
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret, address');
 	});
