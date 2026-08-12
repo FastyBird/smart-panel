@@ -63,7 +63,7 @@ const adoptionHost = (device: IWledWizardDevice): string => {
 	return `${normalizedHost}:${device.port}`;
 };
 
-const adoptionEndpointKey = (device: IWledWizardDevice): string => adoptionHost(device).replace(/:80$/, '');
+const adoptionEndpointKey = (device: IWledWizardDevice): string => adoptionHost(device).toLowerCase().replace(/:80$/, '');
 
 export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const { t } = useI18n();
