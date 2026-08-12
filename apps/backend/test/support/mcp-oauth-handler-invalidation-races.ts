@@ -693,6 +693,84 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 			.findOneByOrFail({ id: latestGrantId });
 		expect(expandedClientGrant.approvedScopes).toEqual(expect.arrayContaining([McpOAuthScope.WRITE]));
 		expect(expandedClientGrant.clientGeneration).toBe(clientGenerationBefore + 2);
+
+		const grantScopeAuthorization = await authorize(
+			urls,
+			`${McpOAuthScope.READ} ${McpOAuthScope.WRITE} ${McpOAuthScope.OFFLINE_ACCESS}`,
+		);
+		const grantScopeInitialResponse = await exchangeCode(
+			urls,
+			requireAuthorizationCode(grantScopeAuthorization.callback),
+			grantScopeAuthorization.verifier,
+		);
+		const grantScopeInitialTokens = (await grantScopeInitialResponse.json()) as TokenResponse;
+		expect(grantScopeInitialResponse.status).toBe(200);
+		expect(grantScopeInitialTokens.scope.split(' ')).toEqual(expect.arrayContaining([McpOAuthScope.WRITE]));
+		const grantScopeId = latestGrantId;
+
+		if (!grantScopeId) throw new Error('Expected a persisted grant for the scope-contraction race');
+
+		const grantContractionResponse = await raceGlobalInvalidation(
+			'AccessToken',
+			() => refresh(urls, requireRefreshToken(grantScopeInitialTokens)),
+			async () => {
+				await management.updateGrant(
+					grantScopeId,
+					{ approvedScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS] },
+					ACCOUNT_ID,
+				);
+			},
+			false,
+			false,
+		);
+		const contractedGrantTokens = (await grantContractionResponse.json()) as TokenResponse;
+		expect(grantContractionResponse.status).toBe(200);
+		expect(contractedGrantTokens.scope.split(' ')).toEqual(expect.arrayContaining([McpOAuthScope.WRITE]));
+		expect(await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: grantScopeId })).toMatchObject({
+			approvedScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS],
+			generation: 1,
+		});
+		await expect(
+			runtime.getActive().provider.AccessToken.find(contractedGrantTokens.access_token),
+		).resolves.toBeUndefined();
+		expect((await refresh(urls, requireRefreshToken(contractedGrantTokens))).status).toBe(400);
+		await expect(
+			management.updateGrant(
+				grantScopeId,
+				{ approvedScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE, McpOAuthScope.OFFLINE_ACCESS] },
+				ACCOUNT_ID,
+			),
+		).rejects.toThrow('can only be reduced');
+		expect((await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: grantScopeId })).generation).toBe(
+			1,
+		);
+		await expect(
+			runtime.getActive().provider.AccessToken.find(contractedGrantTokens.access_token),
+		).resolves.toBeUndefined();
+
+		const replacementScopeAuthorization = await authorize(
+			urls,
+			`${McpOAuthScope.READ} ${McpOAuthScope.WRITE} ${McpOAuthScope.OFFLINE_ACCESS}`,
+		);
+		const replacementScopeResponse = await exchangeCode(
+			urls,
+			requireAuthorizationCode(replacementScopeAuthorization.callback),
+			replacementScopeAuthorization.verifier,
+		);
+		const replacementScopeTokens = (await replacementScopeResponse.json()) as TokenResponse;
+		expect(replacementScopeResponse.status).toBe(200);
+		expect(replacementScopeTokens.scope.split(' ')).toEqual(expect.arrayContaining([McpOAuthScope.WRITE]));
+		expect(latestGrantId).not.toBe(grantScopeId);
+		expect(latestGrantId).not.toBeNull();
+		const replacementScopeGrant = await dataSource
+			.getRepository(McpOAuthGrantEntity)
+			.findOneByOrFail({ id: latestGrantId });
+		expect(replacementScopeGrant.approvedScopes).toEqual(expect.arrayContaining([McpOAuthScope.WRITE]));
+		expect(replacementScopeGrant.generation).toBe(0);
+		await expect(
+			runtime.getActive().provider.AccessToken.find(contractedGrantTokens.access_token),
+		).resolves.toBeUndefined();
+		expect((await refresh(urls, requireRefreshToken(contractedGrantTokens))).status).toBe(400);
 	} finally {
 		releaseActivePause();
 		await new Promise<void>((resolve) => server.close(() => resolve()));

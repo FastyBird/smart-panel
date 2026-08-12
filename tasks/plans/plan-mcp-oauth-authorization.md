@@ -441,7 +441,10 @@ amend ADR 0002.
   - [x] Provider integration: contract a client's scope ceiling against a paused write-scoped refresh, then expand it;
         prove contraction waits, the committed successor is permanently invalid, and fresh write authorization works
         with the advanced client generation.
-  - [ ] Cover grant scope contraction/replacement and approver demotion/restoration.
+  - [x] Provider integration: contract a grant against a paused write-scoped refresh; prove contraction waits, the
+        committed successor is permanently invalid, in-place scope expansion is rejected, and fresh write consent
+        creates a replacement grant without reviving the contracted artifacts.
+  - [ ] Cover approver demotion/restoration.
 - [ ] E2E: rotate the public OAuth identity and server secret with simultaneous OAuth and static subscriptions; prove
       only OAuth artifacts/streams are invalidated and static streams remain open. Separately prove MCP-module disable
       closes both kinds.
