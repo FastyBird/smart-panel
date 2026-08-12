@@ -203,7 +203,7 @@ const sanitizeReference = (key: string, value: string): string => {
 const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): unknown => {
 	const capabilityMapEntry = isCapabilityMap(context.path);
 
-	if (SECRET_KEY_PATTERN.test(key)) {
+	if (!capabilityMapEntry && SECRET_KEY_PATTERN.test(key)) {
 		return REDACTION.secret;
 	}
 

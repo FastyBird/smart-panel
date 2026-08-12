@@ -61,8 +61,13 @@ describe('Homey SHS compatibility probe', () => {
 				zone: 'private-zone-id',
 				deviceIds: ['private-device-id'],
 				zoneIds: ['private-zone-id'],
-				capabilities: ['onoff', 'measure_temperature.inside'],
+				capabilities: ['onoff', 'measure_temperature.inside', 'secret_token_status'],
 				capabilitiesObj: {
+					secret_token_status: {
+						id: 'secret_token_status',
+						value: true,
+						authorization: 'private-capability-authorization',
+					},
 					onoff: {
 						id: 'onoff',
 						value: true,
@@ -103,6 +108,13 @@ describe('Homey SHS compatibility probe', () => {
 			zone: sanitizedZoneId,
 			deviceIds: [sanitizedDeviceId],
 			zoneIds: [sanitizedZoneId],
+			capabilitiesObj: {
+				secret_token_status: {
+					id: 'secret_token_status',
+					value: true,
+					authorization: '[~3~]',
+				},
+			},
 		});
 
 		expect(serialized).not.toContain('Private Room');
