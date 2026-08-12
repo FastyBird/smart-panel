@@ -127,6 +127,8 @@ describe('MCP OAuth artifact lifecycle', () => {
 		await dataSource.initialize();
 
 		const auditService = new McpAuditService();
+		const auditLogger = (auditService as unknown as { logger: { log: (...args: unknown[]) => void } }).logger;
+		const auditLog = jest.spyOn(auditLogger, 'log').mockImplementation(() => undefined);
 		const subscriptions = new McpSubscriptionRegistryService(auditService);
 		let wireSubscriptions: WireSubscriptions | undefined;
 		let releasePausedArtifacts = (): void => undefined;
@@ -378,6 +380,13 @@ describe('MCP OAuth artifact lifecycle', () => {
 
 			expect(config.oauthEnabled).toBe(false);
 			expect(routeGate.isOpen).toBe(false);
+			expect(auditLog).toHaveBeenCalledWith('MCP audit event', {
+				event: 'oauth_authorization_invalidation',
+				request_id: 'administrative',
+				reasons: ['oauth_disabled'],
+				authorization_profile: 'oauth',
+				outcome: 'completed',
+			});
 			expect(() => routeGate.assertOpen()).toThrow('The MCP OAuth route gate is closed');
 			expect(() => runtime.getActive()).toThrow('The MCP OAuth route gate is closed');
 			await expect(wireSubscriptions.oauthSubscription.closed).resolves.toBe('remote');
@@ -426,6 +435,14 @@ describe('MCP OAuth artifact lifecycle', () => {
 			await expect(resourceServer.verifyAccessToken(lateAccessToken)).rejects.toThrow(
 				'The MCP OAuth access token is invalid or no longer active',
 			);
+			const capturedAudit = JSON.stringify(auditLog.mock.calls);
+
+			expect(capturedAudit).not.toContain(rawAuthorizationCode);
+			expect(capturedAudit).not.toContain(rawAccessToken);
+			expect(capturedAudit).not.toContain(rawRefreshToken);
+			expect(capturedAudit).not.toContain(lateAuthorizationCode);
+			expect(capturedAudit).not.toContain(lateAccessToken);
+			expect(capturedAudit).not.toContain(lateRefreshToken);
 		} finally {
 			releasePausedArtifacts();
 			if (pendingArtifactCommits !== undefined) await pendingArtifactCommits;

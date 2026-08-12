@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 6 security-profile E2E, audit E2E, external-host, and wire-level gates remain
+Status: in progress — Phase 6 security-profile E2E, external-host, and wire-level gates remain
 
 ## 1. Business goal
 
