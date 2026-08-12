@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 6 in progress — security-profile E2E, audit E2E, external-host, and wire-level gates remain
+**Status:** Phase 6 in progress — security-profile E2E, external-host, and wire-level gates remain
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -383,8 +383,8 @@ amend ADR 0002.
       rotation, advance the applicable artifact generation before revoke-all, revoke every OAuth artifact, and close
       every OAuth subscription while preserving static MCP credentials and streams.
 - [x] Add revoke-all recovery action and document password-reset versus OAuth-revocation semantics.
-- [ ] Add audit events and unit/e2e coverage for targeted and global invalidation. Automatic and owner/admin unit
-      coverage is complete; end-to-end audit verification remains in Phase 6.
+- [x] Add audit events and unit/e2e coverage for targeted and global invalidation, including structured provider-backed
+      E2E assertions that raw authorization codes, access tokens, and refresh tokens are never recorded.
 - [x] Prove user update/delete promises remain pending until approver invalidation and stream closure finish, propagate
       invalidation failure, and never leave a demoted/deleted approver's grant usable.
 - [x] Add the user-facing OAuth enable switch only after startup verifies authorization-deadline timers, targeted

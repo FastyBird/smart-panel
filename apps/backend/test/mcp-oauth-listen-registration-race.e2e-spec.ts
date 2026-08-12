@@ -96,6 +96,8 @@ describe('MCP OAuth listen registration race', () => {
 		await dataSource.initialize();
 
 		const auditService = new McpAuditService();
+		const auditLogger = (auditService as unknown as { logger: { log: (...args: unknown[]) => void } }).logger;
+		const auditLog = jest.spyOn(auditLogger, 'log').mockImplementation(() => undefined);
 		const subscriptions = new McpSubscriptionRegistryService(auditService);
 		let app: NestFastifyApplication | undefined;
 		let client: Client | undefined;
@@ -262,6 +264,15 @@ describe('MCP OAuth listen registration race', () => {
 			await management.revokeAccessToken(accessArtifact.managementId, 'owner-actor');
 
 			expect(subscriptions.activeCount).toBe(0);
+			expect(auditLog).toHaveBeenCalledWith('MCP audit event', {
+				event: 'oauth_management',
+				request_id: 'administrative',
+				actor_id: 'owner-actor',
+				artifact: 'access_token',
+				artifact_id: accessArtifact.managementId,
+				action: 'revoked',
+			});
+			expect(JSON.stringify(auditLog.mock.calls)).not.toContain(rawAccessToken);
 			await expect(resourceServer.verifyAccessToken(rawAccessToken)).rejects.toThrow(
 				'The MCP OAuth access token is invalid or no longer active',
 			);
