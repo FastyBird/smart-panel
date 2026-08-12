@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 6 in progress — runtime lifecycle, refresh replay, switch-off, global-rotation, and client-disable race coverage implemented
+**Status:** Phase 6 in progress — runtime lifecycle, refresh replay, switch-off, global-rotation, client-disable, and grant-revocation race coverage implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -433,7 +433,9 @@ amend ADR 0002.
   - [x] Provider integration: disable a client against a paused token handler, then re-enable it; prove disable waits,
         revokes the returned artifacts before success, restoration never revives them, and a fresh authorization flow
         succeeds with the advanced client generation.
-  - [ ] Cover grant revocation, module/client/grant scope contraction/expansion, and approver demotion/restoration.
+  - [x] Provider integration: revoke a grant against a paused refresh handler; prove revocation waits, removes the
+        returned successor artifacts before success, and a replacement grant works without reviving the revoked one.
+  - [ ] Cover module/client/grant scope contraction/expansion and approver demotion/restoration.
 - [ ] E2E: rotate the public OAuth identity and server secret with simultaneous OAuth and static subscriptions; prove
       only OAuth artifacts/streams are invalidated and static streams remain open. Separately prove MCP-module disable
       closes both kinds.
