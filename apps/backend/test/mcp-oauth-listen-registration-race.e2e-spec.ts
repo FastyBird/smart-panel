@@ -71,7 +71,7 @@ const deferred = (): { promise: Promise<void>; resolve: () => void } => {
 };
 
 describe('MCP OAuth listen registration race', () => {
-	it('rejects a listen request resumed after matching access-token revocation succeeds', async () => {
+	it('expires a live access-token subscription and rejects a stale listen after revocation', async () => {
 		const dataSource = new DataSource({
 			type: 'sqlite',
 			database: ':memory:',
@@ -101,6 +101,7 @@ describe('MCP OAuth listen registration race', () => {
 		const subscriptions = new McpSubscriptionRegistryService(auditService);
 		let app: NestFastifyApplication | undefined;
 		let client: Client | undefined;
+		let expiryClient: Client | undefined;
 		const releaseListen = deferred();
 
 		try {
@@ -172,7 +173,9 @@ describe('MCP OAuth listen registration race', () => {
 			});
 			const rawAccessToken = 'listen-registration-race-access-token';
 
-			await new Adapter('AccessToken').upsert(
+			const accessTokens = new Adapter('AccessToken');
+
+			await accessTokens.upsert(
 				rawAccessToken,
 				{
 					accountId: user.id,
@@ -235,6 +238,43 @@ describe('MCP OAuth listen registration race', () => {
 			await app.listen(0, '127.0.0.1');
 			const serverService = app.get<McpServerService>(McpServerService);
 			const listenAuthenticated = deferred();
+			const endpoint = new URL('/', await app.getUrl());
+			const shortLivedAccessToken = 'listen-expiry-access-token';
+
+			await accessTokens.upsert(
+				shortLivedAccessToken,
+				{
+					accountId: user.id,
+					aud: urls.resource,
+					clientId: oauthClient.clientIdentifier,
+					grantId: rawGrantId,
+					kind: 'AccessToken',
+					scope: McpOAuthScope.READ,
+				},
+				60,
+			);
+			expiryClient = new Client(
+				{ name: 'listen-expiry-e2e', version: '1.0.0' },
+				{ versionNegotiation: { mode: 'auto' } },
+			);
+			const expiryTransport = new StreamableHTTPClientTransport(endpoint, {
+				requestInit: { headers: { Authorization: `Bearer ${shortLivedAccessToken}` } },
+			});
+
+			await expiryClient.connect(expiryTransport);
+			await dataSource
+				.getRepository(McpOAuthProviderArtifactEntity)
+				.update({ model: 'AccessToken', idHash: hashToken(shortLivedAccessToken) }, { expiresAt: Date.now() + 5_000 });
+			const expiringSubscription = await expiryClient.listen({ toolsListChanged: true });
+
+			await expect(expiringSubscription.closed).resolves.toBe('remote');
+			expect(subscriptions.activeCount).toBe(0);
+			expect(auditLog).toHaveBeenCalledWith(
+				'MCP audit event',
+				expect.objectContaining({ event: 'subscription_close', reason: 'authorization_expired' }),
+			);
+			await expiryClient.close();
+			expiryClient = undefined;
 
 			jest
 				.spyOn(serverService, 'handleOAuth')
@@ -248,7 +288,7 @@ describe('MCP OAuth listen registration race', () => {
 						await McpServerService.prototype.handleOAuth.call(serverService, request, reply, authInfo);
 					},
 				);
-			const endpoint = new URL('/', await app.getUrl());
+
 			client = new Client(
 				{ name: 'listen-registration-race-e2e', version: '1.0.0' },
 				{ versionNegotiation: { mode: 'auto' } },
@@ -280,12 +320,18 @@ describe('MCP OAuth listen registration race', () => {
 			releaseListen.resolve();
 			await rejectedListen;
 			expect(subscriptions.activeCount).toBe(0);
-			expect(await dataSource.getRepository(McpOAuthProviderArtifactEntity).count()).toBe(0);
+			expect(
+				await dataSource.getRepository(McpOAuthProviderArtifactEntity).findOneBy({
+					model: 'AccessToken',
+					idHash: hashToken(rawAccessToken),
+				}),
+			).toBeNull();
 			expect(
 				(await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: grant.id })).revokedAt,
 			).toBeNull();
 		} finally {
 			releaseListen.resolve();
+			await expiryClient?.close();
 			await client?.close();
 			if (app) {
 				await app.get(McpServerService).closeAll();
@@ -294,5 +340,5 @@ describe('MCP OAuth listen registration race', () => {
 			await subscriptions.closeAll();
 			await dataSource.destroy();
 		}
-	});
+	}, 20_000);
 });
