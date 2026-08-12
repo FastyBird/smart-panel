@@ -34,6 +34,9 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const flashMessage = useFlashMessage();
 	const logger = useLogger();
 	const session = ref<IHomeAssistantWizardSession | null>(null);
+	// Keep the last non-null session identity across DELETE so a refresh produces a direct
+	// old-id -> new-id transition. The shared shell uses that transition to clear row state.
+	const sessionKey = ref<string | null>(null);
 	const adoptionResults = ref<IHomeAssistantWizardAdoptionResult[]>([]);
 	const formResult = ref<FormResultType>(FormResult.NONE);
 	const sessionError = ref<string | null>(null);
@@ -156,7 +159,9 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		const { data, error, response } = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/wizard`);
 
 		if (typeof data !== 'undefined') {
-			session.value = transformWizardSessionResponse((data as { data: DevicesHomeAssistantPluginWizardSessionSchema }).data);
+			const nextSession = transformWizardSessionResponse((data as { data: DevicesHomeAssistantPluginWizardSessionSchema }).data);
+			session.value = nextSession;
+			sessionKey.value = nextSession.id;
 			adoptionResults.value = [];
 			formResult.value = FormResult.OK;
 			return;
@@ -235,7 +240,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			},
 		],
 		controls,
-		sessionKey: computed(() => session.value?.id ?? null),
+		sessionKey: computed(() => sessionKey.value),
 		ready: computed(() => session.value !== null || sessionError.value !== null),
 		busy: computed(() => formResult.value === FormResult.WORKING),
 		capabilities: { addMore: true },

@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, HttpCode, NotFoundException, Param, Post } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Delete,
+	Get,
+	HttpCode,
+	NotFoundException,
+	Param,
+	Post,
+	UnprocessableEntityException,
+} from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import {
@@ -7,8 +17,13 @@ import {
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME } from '../devices-home-assistant.constants';
+import {
+	DevicesHomeAssistantNotFoundException,
+	DevicesHomeAssistantValidationException,
+} from '../devices-home-assistant.exceptions';
 import { ReqHomeAssistantWizardAdoptDto } from '../dto/wizard-adopt.dto';
 import {
 	HomeAssistantWizardAdoptionResponseModel,
@@ -28,12 +43,18 @@ export class HomeAssistantWizardController {
 		operationId: 'create-devices-home-assistant-plugin-wizard',
 	})
 	@ApiCreatedSuccessResponse(HomeAssistantWizardSessionResponseModel, 'Wizard session was started successfully')
+	@ApiNotFoundResponse('Home Assistant inventory could not be loaded')
+	@ApiUnprocessableEntityResponse('Devices Home Assistant plugin is not properly configured')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post()
 	async startSession(): Promise<HomeAssistantWizardSessionResponseModel> {
-		const response = new HomeAssistantWizardSessionResponseModel();
-		response.data = await this.wizardService.start();
-		return response;
+		try {
+			const response = new HomeAssistantWizardSessionResponseModel();
+			response.data = await this.wizardService.start();
+			return response;
+		} catch (error) {
+			this.translatePluginError(error);
+		}
 	}
 
 	@ApiOperation({
@@ -99,5 +120,17 @@ export class HomeAssistantWizardController {
 		const response = new HomeAssistantWizardAdoptionResponseModel();
 		response.data = { results };
 		return response;
+	}
+
+	private translatePluginError(error: unknown): never {
+		if (error instanceof DevicesHomeAssistantValidationException) {
+			throw new UnprocessableEntityException(error.message);
+		}
+
+		if (error instanceof DevicesHomeAssistantNotFoundException) {
+			throw new NotFoundException(error.message);
+		}
+
+		throw error;
 	}
 }

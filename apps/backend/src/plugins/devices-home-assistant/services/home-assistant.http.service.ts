@@ -168,11 +168,15 @@ export class HomeAssistantHttpService {
 		this.ensureApiKey();
 
 		try {
-			const [devices, helpers, states, panelDevices] = await Promise.all([
+			const [devices, helpers, states, panelDevices, properties] = await Promise.all([
 				this.fetchListHaDevices(),
 				this.fetchListHaHelpers(),
 				this.fetchListHaStates(),
 				this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE),
+				this.channelsPropertiesService.findAll<HomeAssistantChannelPropertyEntity>(
+					undefined,
+					DEVICES_HOME_ASSISTANT_TYPE,
+				),
 			]);
 
 			if (!devices || !helpers || !states) {
@@ -190,7 +194,14 @@ export class HomeAssistantHttpService {
 				}),
 				helpers: helpers.map((helper) => {
 					const model = this.toDiscoveredHelperModel(helper);
-					model.adoptedDeviceId = panelDevices.find((item) => item.haDeviceId === helper.entity_id)?.id ?? null;
+					const directlyAdoptedDeviceId = panelDevices.find((item) => item.haDeviceId === helper.entity_id)?.id ?? null;
+					const mappedProperty = properties.find((property) => property.haEntityId === helper.entity_id);
+					const mappedDeviceId =
+						mappedProperty?.channel instanceof HomeAssistantChannelEntity &&
+						mappedProperty.channel.device instanceof HomeAssistantDeviceEntity
+							? mappedProperty.channel.device.id
+							: null;
+					model.adoptedDeviceId = directlyAdoptedDeviceId ?? mappedDeviceId;
 					const state = states.find((item) => item.entity_id === helper.entity_id);
 					if (state) {
 						model.state = this.toStateModel(state);

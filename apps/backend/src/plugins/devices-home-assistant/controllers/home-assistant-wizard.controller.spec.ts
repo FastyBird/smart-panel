@@ -1,6 +1,10 @@
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import {
+	DevicesHomeAssistantNotFoundException,
+	DevicesHomeAssistantValidationException,
+} from '../devices-home-assistant.exceptions';
 import { HomeAssistantWizardService } from '../services/wizard.service';
 
 import { HomeAssistantWizardController } from './home-assistant-wizard.controller';
@@ -34,6 +38,22 @@ describe('HomeAssistantWizardController', () => {
 		wizardService.start.mockResolvedValueOnce(session);
 
 		await expect(controller.startSession()).resolves.toEqual(expect.objectContaining({ data: session }));
+	});
+
+	it('returns unprocessable entity when the plugin is not configured', async () => {
+		wizardService.start.mockRejectedValueOnce(
+			new DevicesHomeAssistantValidationException('Home Assistant API key is not configured'),
+		);
+
+		await expect(controller.startSession()).rejects.toBeInstanceOf(UnprocessableEntityException);
+	});
+
+	it('returns not found when the Home Assistant inventory cannot be loaded', async () => {
+		wizardService.start.mockRejectedValueOnce(
+			new DevicesHomeAssistantNotFoundException('Home Assistant discovered inventory could not be loaded'),
+		);
+
+		await expect(controller.startSession()).rejects.toBeInstanceOf(NotFoundException);
 	});
 
 	it('returns not found for an unknown session', () => {

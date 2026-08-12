@@ -166,11 +166,15 @@ describe('useDevicesWizard', () => {
 	});
 
 	it('rescans by replacing the server-side snapshot', async () => {
-		backendClient.POST.mockResolvedValue({ data: { data: wizardSession }, response: { status: 201 } });
+		backendClient.POST.mockResolvedValueOnce({ data: { data: wizardSession }, response: { status: 201 } }).mockResolvedValueOnce({
+			data: { data: { ...wizardSession, id: 'session-2' } },
+			response: { status: 201 },
+		});
 		backendClient.DELETE.mockResolvedValue({ response: { status: 204 } });
 		const adapter = useDevicesWizard();
 
 		await adapter.start();
+		expect(adapter.sessionKey?.value).toBe('session-1');
 		const refresh = adapter.controls.value.find((control) => control.type === 'action' && control.id === 'refresh');
 		expect(refresh?.type).toBe('action');
 		if (refresh?.type === 'action') {
@@ -181,5 +185,6 @@ describe('useDevicesWizard', () => {
 			params: { path: { id: 'session-1' } },
 		});
 		expect(backendClient.POST).toHaveBeenCalledTimes(2);
+		expect(adapter.sessionKey?.value).toBe('session-2');
 	});
 });

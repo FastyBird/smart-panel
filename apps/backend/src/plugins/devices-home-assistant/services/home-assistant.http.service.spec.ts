@@ -11,7 +11,11 @@ import {
 import { HomeAssistantDiscoveredDeviceDto } from '../dto/home-assistant-discovered-device.dto';
 import { HomeAssistantDiscoveredHelperDto } from '../dto/home-assistant-discovered-helper.dto';
 import { HomeAssistantStateDto } from '../dto/home-assistant-state.dto';
-import { HomeAssistantDeviceEntity } from '../entities/devices-home-assistant.entity';
+import {
+	HomeAssistantChannelEntity,
+	HomeAssistantChannelPropertyEntity,
+	HomeAssistantDeviceEntity,
+} from '../entities/devices-home-assistant.entity';
 import { MapperService } from '../mappers/mapper.service';
 
 import { HaSupervisorService } from './ha-supervisor.service';
@@ -78,6 +82,8 @@ describe('HomeAssistantHttpService', () => {
 			apiKey: 'test-api-key',
 			hostname: 'localhost',
 		});
+		mockDevicesService.findAll.mockResolvedValue([]);
+		mockChannelsPropertiesService.findAll.mockResolvedValue([]);
 	});
 
 	afterEach(() => {
@@ -244,8 +250,6 @@ describe('HomeAssistantHttpService', () => {
 			const fetchStates = jest
 				.spyOn<HomeAssistantHttpService, any>(service, 'fetchListHaStates')
 				.mockResolvedValue(states);
-			mockDevicesService.findAll.mockResolvedValue([]);
-
 			const result = await service.getDiscoveredInventory();
 
 			expect(result.devices[0].states[0].entityId).toBe('sensor.temp');
@@ -254,6 +258,34 @@ describe('HomeAssistantHttpService', () => {
 			expect(fetchHelpers.mock.calls).toHaveLength(1);
 			expect(fetchStates.mock.calls).toHaveLength(1);
 			expect(mockDevicesService.findAll.mock.calls).toHaveLength(1);
+			expect(mockChannelsPropertiesService.findAll.mock.calls).toHaveLength(1);
+		});
+
+		it('marks a helper adopted when it is mapped to a property of a physical device', async () => {
+			const helper: HomeAssistantDiscoveredHelperDto = {
+				entity_id: 'climate.living_room',
+				name: 'Living room thermostat',
+				domain: 'climate',
+			};
+			const panelDevice = Object.assign(new HomeAssistantDeviceEntity(), {
+				id: 'panel-device-1',
+				haDeviceId: 'ha-physical-device-1',
+			});
+			const channel = Object.assign(new HomeAssistantChannelEntity(), { device: panelDevice });
+			const property = Object.assign(new HomeAssistantChannelPropertyEntity(), {
+				haEntityId: helper.entity_id,
+				channel,
+			});
+
+			jest.spyOn<HomeAssistantHttpService, any>(service, 'fetchListHaDevices').mockResolvedValue([]);
+			jest.spyOn<HomeAssistantHttpService, any>(service, 'fetchListHaHelpers').mockResolvedValue([helper]);
+			jest.spyOn<HomeAssistantHttpService, any>(service, 'fetchListHaStates').mockResolvedValue([]);
+			mockDevicesService.findAll.mockResolvedValue([panelDevice]);
+			mockChannelsPropertiesService.findAll.mockResolvedValue([property]);
+
+			const result = await service.getDiscoveredInventory();
+
+			expect(result.helpers[0].adoptedDeviceId).toBe(panelDevice.id);
 		});
 	});
 
