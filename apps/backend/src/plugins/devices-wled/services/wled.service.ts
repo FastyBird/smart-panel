@@ -437,17 +437,18 @@ export class WledService extends BaseManagedPluginService {
 	 */
 	private async handleMdnsDeviceDiscovered(device: WledMdnsDiscoveredDevice): Promise<void> {
 		this.logger.log(`mDNS discovered device: ${device.name} at ${device.host}`);
+		const endpoint = this.discoveryEndpoint(device.host, device.port);
 
 		// Check if we already have this device configured by hostname
 		const devices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
-		const existingDevice = devices.find((d) => d.hostname === device.host);
+		const existingDevice = this.findExistingDevice(devices, endpoint, device.mac);
 
 		if (existingDevice) {
-			this.logger.debug(`Device at ${device.host} already exists in database`);
+			this.logger.debug(`Device at ${endpoint} already exists in database`);
 
 			// If device is enabled and not connected, try to connect
-			if (existingDevice.enabled && !this.wledAdapter.isConnected(device.host)) {
-				this.logger.debug(`Connecting to existing device at ${device.host}`);
+			if (existingDevice.enabled && !this.wledAdapter.isConnected(endpoint)) {
+				this.logger.debug(`Connecting to existing device at ${endpoint}`);
 				await this.connectToDevice(existingDevice);
 			}
 			return;
@@ -468,13 +469,23 @@ export class WledService extends BaseManagedPluginService {
 	private async connectAndMapDiscoveredDevice(device: WledMdnsDiscoveredDevice): Promise<void> {
 		await this.enqueueProvisioning(async () => {
 			try {
-				const identifier = device.mac ? this.identifierFromMac(device.mac) : `wled-${device.host.replace(/\./g, '-')}`;
-				await this.wledAdapter.connect(device.host, identifier, this.config.timeouts.connectionTimeout);
+				const endpoint = this.discoveryEndpoint(device.host, device.port);
+				const devices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
+				const existingDevice = this.findExistingDevice(devices, endpoint, device.mac);
+				if (existingDevice) {
+					if (existingDevice.enabled && !this.wledAdapter.isConnected(endpoint)) {
+						await this.connectToDevice(existingDevice);
+					}
+					return;
+				}
 
-				const registeredDevice = this.wledAdapter.getDevice(device.host);
+				const identifier = device.mac ? this.identifierFromMac(device.mac) : `wled-${device.host.replace(/\./g, '-')}`;
+				await this.wledAdapter.connect(endpoint, identifier, this.config.timeouts.connectionTimeout);
+
+				const registeredDevice = this.wledAdapter.getDevice(endpoint);
 
 				if (registeredDevice?.context) {
-					await this.deviceMapper.mapDevice(device.host, registeredDevice.context, device.name, identifier);
+					await this.deviceMapper.mapDevice(endpoint, registeredDevice.context, device.name, identifier);
 				}
 			} catch (error) {
 				this.logger.error(`Failed to connect to discovered device at ${device.host}`, {
