@@ -93,11 +93,52 @@ export class McpOAuthProviderFactory {
 			},
 			clientAuthMethods: ['none'],
 			responseTypes: ['code'],
-			scopes: Object.values(McpOAuthScope),
+			// Capability scopes belong to the MCP resource server. Keeping them out of the provider's OIDC scope set
+			// makes oidc-provider evaluate them as resource scopes instead of requesting a second consent prompt.
+			scopes: [McpOAuthScope.OFFLINE_ACCESS],
 			extraParams: {
-				state: (context, state) => {
+				state: async (context, state) => {
 					if (context.oidc.route === 'authorization' && !state) {
 						throw new oidcProvider.errors.InvalidRequest('The OAuth state parameter is required');
+					}
+
+					if (context.oidc.route !== 'authorization') return;
+
+					const clientIdentifier = context.oidc.params.client_id;
+					const registeredClient =
+						typeof clientIdentifier === 'string'
+							? await this.clientsService.findActiveByIdentifier(clientIdentifier)
+							: null;
+
+					if (!registeredClient) return;
+
+					const requestedScope = context.oidc.params.scope;
+					const scopeWasProvided = context.query.scope !== undefined;
+
+					if (!requestedScope && !scopeWasProvided) {
+						// OAuth permits clients to omit scope. Default only capability scopes; renewable access continues
+						// to require an explicit offline_access request as well as owner/admin consent.
+						context.oidc.params.scope = registeredClient.maximumScopes
+							.filter((scope) => scope !== McpOAuthScope.OFFLINE_ACCESS)
+							.join(' ');
+						return;
+					}
+
+					if (!requestedScope) {
+						throw new oidcProvider.errors.InvalidScope(
+							'requested scope contains no capability scope',
+							McpOAuthScope.OFFLINE_ACCESS,
+						);
+					}
+
+					if (typeof requestedScope !== 'string') return;
+
+					const disallowedScopes = requestedScope
+						.split(' ')
+						.filter((scope) => !registeredClient.maximumScopes.includes(scope as McpOAuthScope));
+
+					if (disallowedScopes.length > 0) {
+						throw new oidcProvider.errors.InvalidScope('requested scope is not allowed', disallowedScopes.join(' '));
 					}
 				},
 			},
@@ -214,6 +255,10 @@ export class McpOAuthProviderFactory {
 					keys: JWK[];
 				}),
 		});
+		// The bootstrap gate rejects forwarded headers unless the immediate peer is explicitly trusted. Once a request
+		// passes that boundary, let Koa honor X-Forwarded-Proto so secure OAuth cookies work behind the supported TLS
+		// reverse-proxy topology.
+		provider.proxy = true;
 
 		const providerCallback = provider.callback();
 		const callback: RequestListener = (request, response) => {

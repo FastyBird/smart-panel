@@ -309,7 +309,7 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 
 	const createAuthorizationRequest = (
 		redirectUri = REGISTERED_REDIRECT_URI,
-		scope = 'mcp:read offline_access',
+		scope: string | null = 'mcp:read offline_access',
 		forceConsent = true,
 	) => {
 		const verifier = randomBytes(32).toString('base64url');
@@ -320,7 +320,7 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 			client_id: CLIENT_ID,
 			redirect_uri: redirectUri,
 			response_type: 'code',
-			scope,
+			...(scope === null ? {} : { scope }),
 			code_challenge: challenge,
 			code_challenge_method: 'S256',
 			resource: urls.resource,
@@ -333,7 +333,7 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 
 	const authorize = async (
 		redirectUri = REGISTERED_REDIRECT_URI,
-		scope = 'mcp:read offline_access',
+		scope: string | null = 'mcp:read offline_access',
 		browser = new CookieBrowser(),
 		forceConsent = true,
 	) => {
@@ -443,6 +443,46 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 
 		expect(accessArtifact.refreshFamilyId).toBe(refreshArtifact.refreshFamilyId);
 		expect(refreshArtifact.refreshFamilyId).toMatch(/^[0-9a-f-]{36}$/);
+	});
+
+	it('defaults an omitted scope to capability scopes without issuing renewable access', async () => {
+		const { callback, verifier } = await authorize(REGISTERED_REDIRECT_URI, null);
+		const response = await exchangeCode(callback.searchParams.get('code'), verifier);
+		const tokens = (await response.json()) as TokenResponse;
+
+		expect(response.status).toBe(200);
+		expect(tokens.scope).toBe(McpOAuthScope.READ);
+		expect(tokens.refresh_token).toBeUndefined();
+	});
+
+	it('rejects an explicitly requested resource scope above the client ceiling before consent', async () => {
+		const before = consentPromptCount;
+		const response = await fetch(
+			createAuthorizationRequest(REGISTERED_REDIRECT_URI, McpOAuthScope.WRITE).authorizationUrl,
+			{
+				redirect: 'manual',
+			},
+		);
+		const callback = new URL(response.headers.get('location') ?? '', origin);
+
+		expect(response.status).toBe(303);
+		expect(callback.pathname).toBe('/callback');
+		expect(callback.searchParams.get('error')).toBe('invalid_scope');
+		expect(consentPromptCount).toBe(before);
+	});
+
+	it('does not add capabilities to an explicit offline-only request without consent prompting', async () => {
+		const before = consentPromptCount;
+		const response = await fetch(
+			createAuthorizationRequest(REGISTERED_REDIRECT_URI, McpOAuthScope.OFFLINE_ACCESS, false).authorizationUrl,
+			{ redirect: 'manual' },
+		);
+		const callback = new URL(response.headers.get('location') ?? '', origin);
+
+		expect(response.status).toBe(303);
+		expect(callback.pathname).toBe('/callback');
+		expect(callback.searchParams.get('error')).toBe('invalid_scope');
+		expect(consentPromptCount).toBe(before);
 	});
 
 	it('requires fresh consent even when the browser has an existing client grant', async () => {

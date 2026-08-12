@@ -242,7 +242,6 @@ export const createMcpOAuthProviderAdapter = (
 				response_types: ['code'],
 				grant_types: ['authorization_code', 'refresh_token'],
 				token_endpoint_auth_method: 'none',
-				scope: client.maximumScopes.join(' '),
 			};
 		}
 

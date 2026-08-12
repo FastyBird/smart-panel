@@ -1,6 +1,7 @@
 import { IncomingMessage, ServerResponse } from 'node:http';
 import { DataSource } from 'typeorm';
 
+import { McpOAuthScope } from '../mcp.constants';
 import { McpAuditService } from '../services/mcp-audit.service';
 import { McpOAuthClientService } from '../services/mcp-oauth-client.service';
 import {
@@ -18,6 +19,31 @@ import { McpSubscriptionRegistryService } from '../services/mcp-subscription-reg
 
 import { McpOAuthProviderFactory } from './mcp-oauth-provider.factory';
 import { McpOAuthPublicUrls } from './mcp-oauth.types';
+
+jest.mock('./mcp-oauth-provider.loader', () => ({
+	loadMcpOAuthProvider: jest.fn(() =>
+		Promise.resolve({
+			default: class {
+				proxy = false;
+				configuration: unknown;
+
+				constructor(_issuer: string, configuration: unknown) {
+					this.configuration = configuration;
+				}
+
+				callback(): () => Promise<void> {
+					return () => Promise.resolve();
+				}
+			},
+			errors: {
+				InvalidGrant: class extends Error {},
+				InvalidRequest: class extends Error {},
+				InvalidScope: class extends Error {},
+				InvalidTarget: class extends Error {},
+			},
+		}),
+	),
+}));
 
 type ProviderDispatcher = (
 	request: IncomingMessage,
@@ -104,6 +130,108 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 			if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
 			else process.env.NODE_ENV = originalNodeEnv;
 		}
+	});
+
+	it('honors the forwarded protocol after the bootstrap trusted-proxy boundary', async () => {
+		const factory = new McpOAuthProviderFactory(
+			{ options: {} } as DataSource,
+			{} as McpOAuthClientService,
+			{ getUrls: jest.fn(() => urls) } as unknown as McpOAuthPublicUrlService,
+			{} as McpOAuthProviderMaterialService,
+			subscriptions,
+			{ consume: consumeRateLimit } as unknown as McpOAuthEndpointRateLimitService,
+			routeGate,
+		);
+
+		const runtime = await factory.create({ allowTestInMemory: true, allowInsecureTestCookies: true });
+
+		expect(runtime.provider.proxy).toBe(true);
+		expect((runtime.provider as unknown as { configuration: { scopes: string[] } }).configuration.scopes).toEqual([
+			McpOAuthScope.OFFLINE_ACCESS,
+		]);
+	});
+
+	it('defaults an omitted authorization scope to capability scopes in the pre-registered client ceiling', async () => {
+		const findActiveByIdentifier = jest.fn(() =>
+			Promise.resolve({ maximumScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS] }),
+		);
+		const factory = new McpOAuthProviderFactory(
+			{ options: {} } as DataSource,
+			{ findActiveByIdentifier } as unknown as McpOAuthClientService,
+			{ getUrls: jest.fn(() => urls) } as unknown as McpOAuthPublicUrlService,
+			{} as McpOAuthProviderMaterialService,
+			subscriptions,
+			{ consume: consumeRateLimit } as unknown as McpOAuthEndpointRateLimitService,
+			routeGate,
+		);
+		const runtime = await factory.create({ allowTestInMemory: true, allowInsecureTestCookies: true });
+		const configuration = (runtime.provider as unknown as { configuration: Record<string, unknown> }).configuration;
+		const stateValidator = (configuration.extraParams as { state: (...args: unknown[]) => Promise<void> }).state;
+		const context = {
+			query: {},
+			oidc: { route: 'authorization', params: { client_id: 'codex-client' } as { client_id: string; scope?: string } },
+		};
+
+		await stateValidator(context, 'opaque-state');
+
+		expect(context.oidc.params.scope).toBe('mcp:read');
+		expect(findActiveByIdentifier).toHaveBeenCalledWith('codex-client');
+	});
+
+	it('rejects explicitly requested resource scopes above the pre-registered client ceiling', async () => {
+		const findActiveByIdentifier = jest.fn(() =>
+			Promise.resolve({ maximumScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS] }),
+		);
+		const factory = new McpOAuthProviderFactory(
+			{ options: {} } as DataSource,
+			{ findActiveByIdentifier } as unknown as McpOAuthClientService,
+			{ getUrls: jest.fn(() => urls) } as unknown as McpOAuthPublicUrlService,
+			{} as McpOAuthProviderMaterialService,
+			subscriptions,
+			{ consume: consumeRateLimit } as unknown as McpOAuthEndpointRateLimitService,
+			routeGate,
+		);
+		const runtime = await factory.create({ allowTestInMemory: true, allowInsecureTestCookies: true });
+		const configuration = (runtime.provider as unknown as { configuration: Record<string, unknown> }).configuration;
+		const stateValidator = (configuration.extraParams as { state: (...args: unknown[]) => Promise<void> }).state;
+		const context = {
+			query: { scope: McpOAuthScope.WRITE },
+			oidc: {
+				route: 'authorization',
+				params: { client_id: 'codex-client', scope: McpOAuthScope.WRITE },
+			},
+		};
+
+		await expect(stateValidator(context, 'opaque-state')).rejects.toThrow();
+		expect(findActiveByIdentifier).toHaveBeenCalledWith('codex-client');
+	});
+
+	it('rejects an explicit offline-only scope after provider normalization', async () => {
+		const findActiveByIdentifier = jest.fn(() =>
+			Promise.resolve({ maximumScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS] }),
+		);
+		const factory = new McpOAuthProviderFactory(
+			{ options: {} } as DataSource,
+			{ findActiveByIdentifier } as unknown as McpOAuthClientService,
+			{ getUrls: jest.fn(() => urls) } as unknown as McpOAuthPublicUrlService,
+			{} as McpOAuthProviderMaterialService,
+			subscriptions,
+			{ consume: consumeRateLimit } as unknown as McpOAuthEndpointRateLimitService,
+			routeGate,
+		);
+		const runtime = await factory.create({ allowTestInMemory: true, allowInsecureTestCookies: true });
+		const configuration = (runtime.provider as unknown as { configuration: Record<string, unknown> }).configuration;
+		const stateValidator = (configuration.extraParams as { state: (...args: unknown[]) => Promise<void> }).state;
+		const context = {
+			query: { scope: McpOAuthScope.OFFLINE_ACCESS },
+			oidc: {
+				route: 'authorization',
+				params: { client_id: 'codex-client', scope: undefined as string | undefined },
+			},
+		};
+
+		await expect(stateValidator(context, 'opaque-state')).rejects.toThrow();
+		expect(findActiveByIdentifier).toHaveBeenCalledWith('codex-client');
 	});
 
 	it('rejects a blocked provider endpoint before entering the artifact mutation gate', async () => {
