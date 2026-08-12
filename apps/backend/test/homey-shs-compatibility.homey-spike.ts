@@ -249,6 +249,9 @@ describe('Homey SHS compatibility probe', () => {
 		const collisionSafeDevices = sanitizeHomeyDevices({
 			'DEVICE-000001': { id: 'DEVICE-000001', name: 'DEVICE-LABEL-000001' },
 		});
+		const genericIdentifierMap = sanitizeHomeyPayload({ aliases: { 'opaque-user-id': true, 'p-000001': false } }, [
+			'000001',
+		]) as { aliases: Record<string, boolean> };
 
 		expect(sanitized).toEqual({
 			title: '[~2~]',
@@ -320,6 +323,9 @@ describe('Homey SHS compatibility probe', () => {
 
 		expect(privatePrefixSerialized).not.toContain('device-');
 		expect(privatePrefixSerialized).not.toContain('device-label');
+		expect(Object.keys(genericIdentifierMap.aliases).every((key) => /^id-/.test(key))).toBe(true);
+		expect(JSON.stringify(genericIdentifierMap)).not.toContain('opaque-user-id');
+		expect(JSON.stringify(genericIdentifierMap)).not.toContain('p-000001');
 		const blockedNeutralPrefixDevices = sanitizeHomeyDevices(
 			{
 				'private-device-id': { id: 'private-device-id', name: 'Private source' },
@@ -462,13 +468,13 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() =>
 			assertHomeyCaptureSafe(
 				{
-					metadata: { schemaVersion: 1, homey: { id: 'homey-000001' } },
+					metadata: { schemaVersion: 1, homey: { id: 'p-000003' } },
 					systemInfo: {},
 					zones: { 'zone-000001': { id: 'zone-000001', name: 'zone-label-000001' } },
 					devices: {
-						'device-000001': {
-							id: 'device-000001',
-							name: 'device-label-000001',
+						'p-000001': {
+							id: 'p-000001',
+							name: 'p-000002',
 							capabilities: ['device_status'],
 							capabilitiesObj: { device_status: { id: 'device_status', value: true } },
 						},

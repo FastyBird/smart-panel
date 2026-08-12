@@ -21,8 +21,9 @@ const BOUNDED_ADDRESS_KEY_PATTERN =
 const ENDPOINT_KEY_PATTERN = /(?:^|[_-])(?:endpoint|origin|uri|url)$|(?:Endpoint|Origin|Uri|URI|Url|URL)$/;
 const IDENTIFIER_KEY_PATTERN =
 	/(?:^(?:id|ids|identifier|identifiers|uuid|uuids)$|(?:Id|ID|Ids|IDs|Identifier|Identifiers|Uuid|UUID)$|(?:^|[_-])(?:id|ids|identifier|identifiers|uuid|uuids)$)/;
-const CAMEL_CASE_IDENTIFIER_MAP_KEY_PATTERN = /(?:Nodes|Devices|Channels|Endpoints|Components|Instances)$/;
-const BOUNDED_IDENTIFIER_MAP_KEY_PATTERN = /(?:^|[_-])(?:nodes|devices|channels|endpoints|components|instances)$/i;
+const CAMEL_CASE_IDENTIFIER_MAP_KEY_PATTERN = /(?:Aliases|Nodes|Devices|Channels|Endpoints|Components|Instances)$/;
+const BOUNDED_IDENTIFIER_MAP_KEY_PATTERN =
+	/(?:^|[_-])(?:aliases|nodes|devices|channels|endpoints|components|instances)$/i;
 const CAMEL_CASE_PERSONAL_KEY_PATTERN = /(?:Name|Note|Title|Label|Email|Username)$/;
 const BOUNDED_PERSONAL_KEY_PATTERN = /(?:^|[_-])(?:name|note|title|label|email|username)$/i;
 const REFERENCE_KEY_PATTERN = /^(?:deviceId|zone|zoneId|parent|homeyId|ownerUri|driverId|userId)$/i;
@@ -32,6 +33,7 @@ const CAMEL_CASE_TIMESTAMP_KEY_PATTERN = /(?:At|Date|Timestamp|Updated|Modified|
 const BOUNDED_TIMESTAMP_KEY_PATTERN = /(?:^|[_-])(?:at|date|timestamp|updated|modified|created)$/i;
 const ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const GENERATED_PSEUDONYM_PATTERN = /^(?:device|device-label|homey|id|p|q|reference|x|z|zone|zone-label)-\d{6}$/;
 const IPV4_PATTERN = /(?:\d{1,3}\.){3}\d{1,3}/g;
 const BRACKETED_IPV6_PATTERN = /\[([0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?)\]/g;
 const UNBRACKETED_IPV6_PATTERN = /[0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?/g;
@@ -41,6 +43,26 @@ const MAC_PATTERN = /(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}|[0-9a-f]{4}(?:\.[0-9a-f]{
 const URL_PATTERN = /(?:[A-Z][A-Z0-9+.-]*:)?\/\/[^\s"']+/gi;
 const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 const HOMEY_TOKEN_PATTERN = /(?:hpat|pat|homey)[_-][A-Za-z0-9_-]{16,}/gi;
+const PRESERVED_STRUCTURAL_KEY_SET = new Set([
+	'accountId',
+	'capabilities',
+	'capabilitiesObj',
+	'capabilityOptions',
+	'deviceId',
+	'deviceIds',
+	'device_id',
+	'driverId',
+	'hardware_id',
+	'homeyId',
+	'id',
+	'ownerUri',
+	'parent',
+	'userId',
+	'zone',
+	'zoneId',
+	'zoneIds',
+	'zone_ids',
+]);
 
 const REDACTION = {
 	address: '[~0~]',
@@ -252,9 +274,8 @@ const isCapabilityListEntry = (path: string[], rootKind: SanitizerContext['rootK
 
 const isDriverMetadata = (path: string[]): boolean => path.includes('data') || path.includes('settings');
 
-const isDriverIdentifierMap = (key: string, path: string[]): boolean =>
-	isDriverMetadata(path) &&
-	(CAMEL_CASE_IDENTIFIER_MAP_KEY_PATTERN.test(key) || BOUNDED_IDENTIFIER_MAP_KEY_PATTERN.test(key));
+const isIdentifierMap = (key: string): boolean =>
+	CAMEL_CASE_IDENTIFIER_MAP_KEY_PATTERN.test(key) || BOUNDED_IDENTIFIER_MAP_KEY_PATTERN.test(key);
 
 const isTimestampKey = (key: string): boolean =>
 	CAMEL_CASE_TIMESTAMP_KEY_PATTERN.test(key) || BOUNDED_TIMESTAMP_KEY_PATTERN.test(key);
@@ -380,16 +401,20 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 
 	const nextPath = [...context.path, key];
 	const preserveKeys = isCapabilityMap(nextPath, context.rootKind);
-	const identifierMap = isDriverIdentifierMap(key, nextPath);
+	const identifierMap = isIdentifierMap(key);
 
 	return Object.fromEntries(
 		Object.entries(value).map(([nestedKey, nestedValue]) => {
 			const identifierMapKey =
 				identifierMap ||
+				GENERATED_PSEUDONYM_PATTERN.test(nestedKey) ||
 				UUID_PATTERN.test(nestedKey) ||
 				/^\d+$/.test(nestedKey) ||
 				IDENTIFIER_KEY_PATTERN.test(nestedKey);
-			const privateMapKey = !preserveKeys && identifierMapKey && isDriverMetadata(nextPath);
+			const privateMapKey =
+				!preserveKeys &&
+				(identifierMap ||
+					(identifierMapKey && isDriverMetadata(nextPath) && !PRESERVED_STRUCTURAL_KEY_SET.has(nestedKey)));
 			const safeKey = privateMapKey ? pseudonym('id', nestedKey, context.aliases) : nestedKey;
 
 			return [safeKey, sanitizeValue(nestedValue, nestedKey, { ...context, path: nextPath })];
@@ -684,7 +709,6 @@ export const assertHomeyCaptureSafe = (
 		}
 	}
 
-	const generatedPseudonymPattern = /^(?:device|device-label|homey|id|p|q|reference|x|z|zone|zone-label)-\d{6}$/;
 	const fixedPayloadKeys = new Set([
 		'active',
 		'available',
@@ -716,12 +740,15 @@ export const assertHomeyCaptureSafe = (
 	const isCapturedCapabilityMapPath = (path: string[]): boolean =>
 		path.length === 3 &&
 		path[0] === 'devices' &&
-		generatedPseudonymPattern.test(path[1]) &&
+		GENERATED_PSEUDONYM_PATTERN.test(path[1]) &&
 		(path[2] === 'capabilitiesObj' || path[2] === 'capabilityOptions');
 	const isCapturedCapabilityIdentifier = (key: string, path: string[]): boolean =>
 		key === 'id' && isCapturedCapabilityMapPath(path.slice(0, -1));
 	const isCapturedCapabilityListEntry = (path: string[]): boolean =>
-		path.length === 3 && path[0] === 'devices' && generatedPseudonymPattern.test(path[1]) && path[2] === 'capabilities';
+		path.length === 3 &&
+		path[0] === 'devices' &&
+		GENERATED_PSEUDONYM_PATTERN.test(path[1]) &&
+		path[2] === 'capabilities';
 	const isStructuralRecordPath = (path: string[]): boolean => {
 		if (path.length === 1 && path[0] === 'systemInfo') {
 			return true;
@@ -730,7 +757,7 @@ export const assertHomeyCaptureSafe = (
 		if (
 			path.length === 2 &&
 			(path[0] === 'devices' || path[0] === 'zones') &&
-			generatedPseudonymPattern.test(path[1])
+			GENERATED_PSEUDONYM_PATTERN.test(path[1])
 		) {
 			return true;
 		}
@@ -816,12 +843,9 @@ export const assertHomeyCaptureSafe = (
 		key.toLowerCase().includes(term.toLowerCase());
 	const inspectPrivateTermValues = (value: unknown, key: string, path: string[], term: string): boolean => {
 		if (typeof value === 'string') {
-			const generatedValue = generatedPseudonymPattern.test(value);
-
 			return (
 				!isCapturedCapabilityListEntry(path) &&
 				!isCapturedCapabilityIdentifier(key, path) &&
-				!generatedValue &&
 				value.replace(REDACTION_PATTERN, '').toLowerCase().includes(term.toLowerCase())
 			);
 		}
@@ -840,10 +864,8 @@ export const assertHomeyCaptureSafe = (
 			const structuralRecord = isStructuralRecordPath(nextPath);
 
 			return Object.entries(value).some(([nestedKey, nestedValue]) => {
-				const generatedKey = generatedPseudonymPattern.test(nestedKey);
 				const structuralKey = structuralRecord && fixedPayloadKeys.has(nestedKey);
-				const privateDynamicKey =
-					!preserveKeys && !generatedKey && !structuralKey && dynamicKeyContainsPrivateTerm(nestedKey, term);
+				const privateDynamicKey = !preserveKeys && !structuralKey && dynamicKeyContainsPrivateTerm(nestedKey, term);
 
 				return privateDynamicKey || inspectPrivateTermValues(nestedValue, nestedKey, nextPath, term);
 			});
