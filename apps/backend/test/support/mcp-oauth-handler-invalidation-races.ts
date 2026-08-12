@@ -268,6 +268,7 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 			globalInvalidation,
 			auditService,
 		);
+		let latestGrantId: string | null = null;
 		const persistGrant = async (providerGrantId: string): Promise<void> => {
 			const state = await dataSource
 				.getRepository(McpOAuthServerStateEntity)
@@ -279,7 +280,7 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 
 			if (!activeUrls) throw new Error('Expected active MCP OAuth public URLs');
 
-			await dataSource.getRepository(McpOAuthGrantEntity).save({
+			const savedGrant = await dataSource.getRepository(McpOAuthGrantEntity).save({
 				providerGrantIdHash: hashToken(providerGrantId),
 				clientId: activeClient.id,
 				approvedById: user.id,
@@ -297,6 +298,7 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 				clientGeneration: activeClient.generation,
 				modulePolicyGeneration: state.modulePolicyGeneration,
 			});
+			latestGrantId = savedGrant.id;
 		};
 
 		server.on('request', (request, response) => {
@@ -519,6 +521,46 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 			reenabledClientAuthorization.verifier,
 		);
 		expect(reenabledClientResponse.status).toBe(200);
+
+		const grantAuthorization = await authorize(urls);
+		const grantInitialResponse = await exchangeCode(
+			urls,
+			requireAuthorizationCode(grantAuthorization.callback),
+			grantAuthorization.verifier,
+		);
+		const grantInitialTokens = (await grantInitialResponse.json()) as TokenResponse;
+		const grantId = latestGrantId;
+
+		if (!grantId) throw new Error('Expected a persisted grant for the revocation race');
+		const grantRevocationResponse = await raceGlobalInvalidation(
+			'AccessToken',
+			() => refresh(urls, requireRefreshToken(grantInitialTokens)),
+			async () => {
+				await management.revokeGrant(grantId, ACCOUNT_ID);
+			},
+			false,
+			false,
+		);
+		const revokedGrantTokens = (await grantRevocationResponse.json()) as TokenResponse;
+		const revokedGrant = await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: grantId });
+		expect(grantRevocationResponse.status).toBe(200);
+		expect(revokedGrant.revokedAt).not.toBeNull();
+		expect(revokedGrant.generation).toBe(1);
+		await expect(
+			runtime.getActive().provider.AccessToken.find(revokedGrantTokens.access_token),
+		).resolves.toBeUndefined();
+		expect((await refresh(urls, requireRefreshToken(revokedGrantTokens))).status).toBe(400);
+		const replacementGrantAuthorization = await authorize(urls);
+		const replacementGrantResponse = await exchangeCode(
+			urls,
+			requireAuthorizationCode(replacementGrantAuthorization.callback),
+			replacementGrantAuthorization.verifier,
+		);
+		expect(replacementGrantResponse.status).toBe(200);
+		expect(latestGrantId).not.toBe(grantId);
+		await expect(
+			runtime.getActive().provider.AccessToken.find(revokedGrantTokens.access_token),
+		).resolves.toBeUndefined();
 	} finally {
 		releaseActivePause();
 		await new Promise<void>((resolve) => server.close(() => resolve()));

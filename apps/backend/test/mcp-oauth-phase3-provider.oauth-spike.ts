@@ -733,7 +733,7 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 	});
 
 	it(
-		'synchronizes handler commits with OAuth switch-off, security rotations, and client disable',
+		'synchronizes handler commits with OAuth switch-off, rotations, client disable, and grant revocation',
 		runMcpOAuthHandlerInvalidationRaces,
 	);
 });
