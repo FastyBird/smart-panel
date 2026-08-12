@@ -584,6 +584,42 @@ describe('WledService', () => {
 			expect(wledAdapter.connectWithContext).toHaveBeenCalledWith('192.168.1.200', 'wled-aabbccddeeff', mockContext);
 		});
 
+		it('should probe and reconcile a known MAC-less announcement when auto-add is disabled', async () => {
+			const existingDevice = {
+				...createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100'),
+				name: 'Administrator name',
+			} as WledDeviceEntity;
+			const discoveredDevice: WledMdnsDiscoveredDevice = {
+				name: 'Advertised name',
+				host: '192.168.1.200',
+				port: 80,
+			};
+			devicesService.findAll.mockResolvedValue([existingDevice]);
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			wledAdapter.getDevice.mockReturnValueOnce({
+				host: '192.168.1.100',
+				identifier: 'wled-aabbccddeeff',
+				connected: true,
+			} as RegisteredWledDevice);
+			deviceMapper.mapDevice.mockResolvedValue({
+				...existingDevice,
+				hostname: '192.168.1.200',
+			} as WledDeviceEntity);
+
+			await mdnsCallbacks.onDeviceDiscovered?.(discoveredDevice);
+
+			expect(wledAdapter.probe).toHaveBeenCalledWith('192.168.1.200', 5000);
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(
+				'192.168.1.200',
+				mockContext,
+				'Administrator name',
+				'wled-aabbccddeeff',
+				undefined,
+				undefined,
+			);
+			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.100', false);
+		});
+
 		it('should not auto-add device when autoAdd is disabled', async () => {
 			const discoveredDevice: WledMdnsDiscoveredDevice = {
 				name: 'Discovered WLED',
@@ -743,6 +779,37 @@ describe('WledService', () => {
 				'[2001:db8::1]',
 				mockContext,
 				'Legacy IPv6 strip',
+				'wled-aabbccddeeff',
+				undefined,
+				undefined,
+			);
+			expect(devicesService.remove).not.toHaveBeenCalled();
+			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-1' })]);
+		});
+
+		it('adopts an equivalent expanded IPv6 endpoint over a compressed null-identifier row', async () => {
+			const legacyDevice = createMockDevice('device-1', null, '[2001:db8::1]');
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			devicesService.findAll.mockResolvedValue([legacyDevice]);
+			devicesService.update.mockResolvedValue({
+				...legacyDevice,
+				identifier: 'wled-aabbccddeeff',
+				hostname: '[2001:0db8::1]',
+			} as WledDeviceEntity);
+			deviceMapper.mapDevice.mockResolvedValue({
+				...legacyDevice,
+				identifier: 'wled-aabbccddeeff',
+				hostname: '[2001:0db8::1]',
+			} as WledDeviceEntity);
+
+			const results = await service.adoptDevices([
+				{ host: '2001:0db8::1', name: 'Expanded IPv6 strip', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(
+				'[2001:0db8::1]',
+				mockContext,
+				'Expanded IPv6 strip',
 				'wled-aabbccddeeff',
 				undefined,
 				undefined,

@@ -457,7 +457,21 @@ export class WledService extends BaseManagedPluginService {
 			});
 			return;
 		}
-		const existingDevice = this.findExistingDevice(devices, endpoint, device.mac);
+		let identifiedDevice = device;
+		let existingDevice = this.findExistingDevice(devices, endpoint, device.mac);
+
+		if (!existingDevice && !device.mac && !this.config.mdns.autoAdd) {
+			try {
+				const context = await this.wledAdapter.probe(endpoint, this.config.timeouts.connectionTimeout);
+				identifiedDevice = { ...device, mac: context.info.mac };
+				existingDevice = this.findExistingDevice(devices, endpoint, context.info.mac);
+			} catch (error) {
+				this.logger.debug(`Could not identify MAC-less WLED device at ${endpoint}`, {
+					message: error instanceof Error ? error.message : String(error),
+				});
+				return;
+			}
+		}
 
 		if (existingDevice) {
 			this.logger.debug(`Device at ${endpoint} already exists in database`);
@@ -465,7 +479,7 @@ export class WledService extends BaseManagedPluginService {
 			// Reconcile a known MAC at a new endpoint through the same guarded
 			// provisioning path as administrator adoption.
 			if (existingDevice.hostname && !this.endpointsEquivalent(existingDevice.hostname, endpoint)) {
-				await this.connectAndMapDiscoveredDevice(device);
+				await this.connectAndMapDiscoveredDevice(identifiedDevice);
 			} else if (existingDevice.enabled && !this.wledAdapter.isConnected(endpoint)) {
 				this.logger.debug(`Connecting to existing device at ${endpoint}`);
 				await this.connectToDevice(existingDevice);
@@ -1198,6 +1212,16 @@ export class WledService extends BaseManagedPluginService {
 
 	private canonicalEndpoint(endpoint: string): string {
 		const trimmed = endpoint.trim().toLowerCase();
+		const urlHost = !trimmed.startsWith('[') && (trimmed.match(/:/g)?.length ?? 0) > 1 ? `[${trimmed}]` : trimmed;
+
+		try {
+			const url = new URL(`http://${urlHost}`);
+			return `${url.hostname}${url.port ? `:${url.port}` : ''}`;
+		} catch {
+			// Fall through for unusual host spellings (for example scoped IPv6 literals)
+			// that URL cannot parse but the WLED client may still support.
+		}
+
 		const bracketedIpv6 = trimmed.match(/^\[([^\]]+)](?::(\d+))?$/);
 		if (bracketedIpv6) {
 			const [, address, port] = bracketedIpv6;
