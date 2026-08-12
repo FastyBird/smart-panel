@@ -113,14 +113,22 @@ export class McpOAuthProviderFactory {
 					if (!registeredClient) return;
 
 					const requestedScope = context.oidc.params.scope;
+					const scopeWasProvided = context.query.scope !== undefined;
 
-					if (!requestedScope) {
+					if (!requestedScope && !scopeWasProvided) {
 						// OAuth permits clients to omit scope. Default only capability scopes; renewable access continues
 						// to require an explicit offline_access request as well as owner/admin consent.
 						context.oidc.params.scope = registeredClient.maximumScopes
 							.filter((scope) => scope !== McpOAuthScope.OFFLINE_ACCESS)
 							.join(' ');
 						return;
+					}
+
+					if (!requestedScope) {
+						throw new oidcProvider.errors.InvalidScope(
+							'requested scope contains no capability scope',
+							McpOAuthScope.OFFLINE_ACCESS,
+						);
 					}
 
 					if (typeof requestedScope !== 'string') return;

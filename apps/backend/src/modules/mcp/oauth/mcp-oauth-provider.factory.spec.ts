@@ -168,6 +168,7 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 		const configuration = (runtime.provider as unknown as { configuration: Record<string, unknown> }).configuration;
 		const stateValidator = (configuration.extraParams as { state: (...args: unknown[]) => Promise<void> }).state;
 		const context = {
+			query: {},
 			oidc: { route: 'authorization', params: { client_id: 'codex-client' } as { client_id: string; scope?: string } },
 		};
 
@@ -194,9 +195,38 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 		const configuration = (runtime.provider as unknown as { configuration: Record<string, unknown> }).configuration;
 		const stateValidator = (configuration.extraParams as { state: (...args: unknown[]) => Promise<void> }).state;
 		const context = {
+			query: { scope: McpOAuthScope.WRITE },
 			oidc: {
 				route: 'authorization',
 				params: { client_id: 'codex-client', scope: McpOAuthScope.WRITE },
+			},
+		};
+
+		await expect(stateValidator(context, 'opaque-state')).rejects.toThrow();
+		expect(findActiveByIdentifier).toHaveBeenCalledWith('codex-client');
+	});
+
+	it('rejects an explicit offline-only scope after provider normalization', async () => {
+		const findActiveByIdentifier = jest.fn(() =>
+			Promise.resolve({ maximumScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS] }),
+		);
+		const factory = new McpOAuthProviderFactory(
+			{ options: {} } as DataSource,
+			{ findActiveByIdentifier } as unknown as McpOAuthClientService,
+			{ getUrls: jest.fn(() => urls) } as unknown as McpOAuthPublicUrlService,
+			{} as McpOAuthProviderMaterialService,
+			subscriptions,
+			{ consume: consumeRateLimit } as unknown as McpOAuthEndpointRateLimitService,
+			routeGate,
+		);
+		const runtime = await factory.create({ allowTestInMemory: true, allowInsecureTestCookies: true });
+		const configuration = (runtime.provider as unknown as { configuration: Record<string, unknown> }).configuration;
+		const stateValidator = (configuration.extraParams as { state: (...args: unknown[]) => Promise<void> }).state;
+		const context = {
+			query: { scope: McpOAuthScope.OFFLINE_ACCESS },
+			oidc: {
+				route: 'authorization',
+				params: { client_id: 'codex-client', scope: undefined as string | undefined },
 			},
 		};
 

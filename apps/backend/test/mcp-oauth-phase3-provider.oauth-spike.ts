@@ -471,6 +471,20 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		expect(consentPromptCount).toBe(before);
 	});
 
+	it('does not add capabilities to an explicit offline-only request without consent prompting', async () => {
+		const before = consentPromptCount;
+		const response = await fetch(
+			createAuthorizationRequest(REGISTERED_REDIRECT_URI, McpOAuthScope.OFFLINE_ACCESS, false).authorizationUrl,
+			{ redirect: 'manual' },
+		);
+		const callback = new URL(response.headers.get('location') ?? '', origin);
+
+		expect(response.status).toBe(303);
+		expect(callback.pathname).toBe('/callback');
+		expect(callback.searchParams.get('error')).toBe('invalid_scope');
+		expect(consentPromptCount).toBe(before);
+	});
+
 	it('requires fresh consent even when the browser has an existing client grant', async () => {
 		const browser = new CookieBrowser();
 		const before = consentPromptCount;
