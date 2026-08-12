@@ -460,8 +460,8 @@ amend ADR 0002.
       callback profile.
 - [ ] Claude Code smoke: the same sequence; record exact version and callback profile.
 - [x] Repeat static bearer compatibility tests to prove coexistence. The static endpoint list/call suite and the
-      simultaneous static-plus-OAuth lifecycle E2E pass together, including OAuth switch-off/re-enable while the
-      static stream remains usable.
+      simultaneous static-plus-OAuth lifecycle E2E exercise the production authentication and policy guards, including
+      OAuth switch-off/re-enable while the static stream remains usable.
 - [ ] Use MCP Inspector/TypeScript client for wire-level negative cases that user hosts do not expose.
 
 ## Phase 7 — Deployment, incident response, and rollout
