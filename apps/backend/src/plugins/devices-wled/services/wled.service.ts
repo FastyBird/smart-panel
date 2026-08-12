@@ -960,6 +960,9 @@ export class WledService extends BaseManagedPluginService {
 				await this.deviceConnectivityService.setConnectionState(device.id, {
 					state: connectionState,
 				});
+				// This destructive cleanup intentionally runs after every rollback-capable adoption
+				// step. It is best-effort and cannot turn a mapped device into a failed adoption.
+				await this.deviceMapper.pruneObsoleteSegmentChannels(device, context.state);
 				results[index] = {
 					host,
 					name: request.name,

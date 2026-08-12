@@ -141,6 +141,7 @@ describe('WledService', () => {
 					provide: WledDeviceMapperService,
 					useValue: {
 						mapDevice: jest.fn(),
+						pruneObsoleteSegmentChannels: jest.fn(),
 						updateDeviceState: jest.fn(),
 						setDeviceConnectionState: jest.fn(),
 					},
@@ -1023,6 +1024,10 @@ describe('WledService', () => {
 				undefined,
 			);
 			expect(wledAdapter.connectWithContext).toHaveBeenCalledWith('192.168.1.100', 'wled-aabbccddeeff', mockContext);
+			expect(deviceMapper.pruneObsoleteSegmentChannels).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'device-1' }),
+				mockContext.state,
+			);
 			expect(results).toEqual([
 				expect.objectContaining({ status: 'created', deviceId: 'device-1' }),
 				expect.objectContaining({ status: 'failed', error: 'Device offline' }),
@@ -1047,6 +1052,7 @@ describe('WledService', () => {
 
 			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.100', false);
 			expect(devicesService.remove).toHaveBeenCalledWith('device-1');
+			expect(deviceMapper.pruneObsoleteSegmentChannels).not.toHaveBeenCalled();
 			expect(results).toEqual([expect.objectContaining({ status: 'failed', error: 'Connectivity write failed' })]);
 		});
 
