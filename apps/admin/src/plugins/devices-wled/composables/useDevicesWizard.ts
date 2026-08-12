@@ -322,7 +322,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 				body: {
 					data: {
 						devices: selectedDevices.map(({ item, device }) => ({
-							host: device.host,
+							host: device.port === 80 ? device.host : `${device.host}:${device.port}`,
 							name: item.name,
 							category: DevicesWledPluginAdoptDeviceCategory.lighting,
 						})),

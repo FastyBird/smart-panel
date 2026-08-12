@@ -138,6 +138,38 @@ describe('useDevicesWizard', () => {
 		await adapter.dispose?.();
 	});
 
+	it('includes a discovered non-default port in the adoption host', async () => {
+		backendClient.GET.mockResolvedValue({
+			data: {
+				data: {
+					...inventory,
+					devices: [{ ...inventory.devices[0], port: 8080 }],
+				},
+			},
+			response: { status: 200 },
+		});
+		backendClient.POST.mockResolvedValue({
+			data: { data: [{ host: '192.168.1.100:8080', name: 'Strip', status: 'created', error: null }] },
+			response: { status: 200 },
+		});
+		const adapter = useDevicesWizard();
+		await adapter.start();
+
+		await adapter.adopt([{ key: 'mac:aabbccddeeff', name: 'Strip', category: DevicesModuleDeviceCategory.lighting }]);
+
+		expect(backendClient.POST).toHaveBeenCalledWith(
+			`/plugins/${DEVICES_WLED_PLUGIN_PREFIX}/discovery/adopt`,
+			expect.objectContaining({
+				body: expect.objectContaining({
+					data: expect.objectContaining({
+						devices: [expect.objectContaining({ host: '192.168.1.100:8080' })],
+					}),
+				}),
+			})
+		);
+		await adapter.dispose?.();
+	});
+
 	it('stops polling when disposed', async () => {
 		const adapter = useDevicesWizard();
 		await adapter.start();

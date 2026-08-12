@@ -621,7 +621,7 @@ export class WledService extends BaseManagedPluginService {
 
 	private identifierFromMac(mac: string): string {
 		const normalizedMac = mac.replace(/[^a-fA-F0-9]/g, '').toLowerCase();
-		if (!normalizedMac) {
+		if (normalizedMac.length !== 12) {
 			throw new WledValidationException('WLED device did not report a valid MAC address');
 		}
 
@@ -633,14 +633,15 @@ export class WledService extends BaseManagedPluginService {
 		host: string,
 		mac?: string | null,
 	): WledDeviceEntity | undefined {
-		const identifiers = new Set<string>();
 		if (mac) {
-			const fullIdentifier = this.identifierFromMac(mac);
-			identifiers.add(fullIdentifier);
-			identifiers.add(`wled-${fullIdentifier.slice(-6)}`);
+			const normalizedMac = mac.replace(/[^a-fA-F0-9]/g, '').toLowerCase();
+			if (normalizedMac.length === 12) {
+				const identifiers = new Set([`wled-${normalizedMac}`, `wled-${normalizedMac.slice(-6)}`]);
+				return devices.find((device) => identifiers.has(device.identifier));
+			}
 		}
 
-		return devices.find((device) => device.hostname === host || identifiers.has(device.identifier));
+		return devices.find((device) => device.hostname === host);
 	}
 
 	private portFromHost(host: string): number {

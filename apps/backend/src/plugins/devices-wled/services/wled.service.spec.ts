@@ -577,6 +577,17 @@ describe('WledService', () => {
 
 			expect(inventory.devices[0].adoptedDeviceId).toBe('device-1');
 		});
+
+		it('does not match a reused hostname when the probed MAC belongs to another device', async () => {
+			mdnsDiscoverer.getDiscoveredDevices.mockReturnValue([
+				{ host: '192.168.1.100', name: 'Replacement WLED', mac: '11:22:33:44:55:66', port: 80 },
+			]);
+			devicesService.findAll.mockResolvedValue([createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100')]);
+
+			const inventory = await service.getDiscoveryInventory();
+
+			expect(inventory.devices[0].adoptedDeviceId).toBeNull();
+		});
 	});
 
 	describe('polling', () => {
