@@ -438,12 +438,17 @@ export class McpServerService implements OnApplicationShutdown {
 		}
 
 		const reader = response.body.getReader();
+		const cancelReader = (): void => {
+			void reader.cancel(subscription.signal.reason).catch(() => undefined);
+		};
+		const removeAbortListener = (): void => subscription.signal.removeEventListener('abort', cancelReader);
 		const stream = new ReadableStream<Uint8Array>({
 			pull: async (controller) => {
 				try {
 					const result = await reader.read();
 
 					if (result.done) {
+						removeAbortListener();
 						subscription.close('completed');
 						controller.close();
 						return;
@@ -452,15 +457,19 @@ export class McpServerService implements OnApplicationShutdown {
 					subscription.touch();
 					controller.enqueue(result.value);
 				} catch (error) {
+					removeAbortListener();
 					subscription.close('error');
 					controller.error(error);
 				}
 			},
 			cancel: async (reason) => {
+				removeAbortListener();
 				subscription.close('cancelled');
 				await reader.cancel(reason);
 			},
 		});
+		subscription.signal.addEventListener('abort', cancelReader, { once: true });
+		if (subscription.signal.aborted) cancelReader();
 
 		return new Response(stream, {
 			status: response.status,

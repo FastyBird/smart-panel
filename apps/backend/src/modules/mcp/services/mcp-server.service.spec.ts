@@ -363,6 +363,7 @@ describe('McpServerService policy revision', () => {
 	it('refreshes the idle deadline when subscription traffic is forwarded', async () => {
 		const touch = jest.fn();
 		const close = jest.fn();
+		const controller = new AbortController();
 		const upstream = new ReadableStream<Uint8Array>({
 			start(controller) {
 				controller.enqueue(new Uint8Array([1]));
@@ -370,7 +371,7 @@ describe('McpServerService policy revision', () => {
 			},
 		});
 		const response = new Response(upstream, { headers: { 'content-type': 'text/event-stream' } });
-		const subscription = { close, touch } as unknown as McpSubscriptionHandle;
+		const subscription = { close, signal: controller.signal, touch } as unknown as McpSubscriptionHandle;
 		const tracked = (
 			service as unknown as {
 				trackSubscriptionResponse(response: Response, subscription: McpSubscriptionHandle): Response;
@@ -384,5 +385,31 @@ describe('McpServerService policy revision', () => {
 
 		await expect(reader?.read()).resolves.toEqual({ done: true, value: undefined });
 		expect(close).toHaveBeenCalledTimes(1);
+	});
+
+	it('terminates a forwarded subscription stream when its authorization signal aborts', async () => {
+		const cancelled = jest.fn();
+		const upstream = new ReadableStream<Uint8Array>({ cancel: cancelled });
+		const response = new Response(upstream, { headers: { 'content-type': 'text/event-stream' } });
+		const controller = new AbortController();
+		const close = jest.fn();
+		const subscription = {
+			close,
+			signal: controller.signal,
+			touch: jest.fn(),
+		} as unknown as McpSubscriptionHandle;
+		const tracked = (
+			service as unknown as {
+				trackSubscriptionResponse(response: Response, subscription: McpSubscriptionHandle): Response;
+			}
+		).trackSubscriptionResponse(response, subscription);
+		const reader = tracked.body?.getReader();
+		const pendingRead = reader?.read();
+
+		controller.abort(new Error('authorization expired'));
+
+		await expect(pendingRead).resolves.toEqual({ done: true, value: undefined });
+		expect(cancelled).toHaveBeenCalledWith(controller.signal.reason);
+		expect(close).toHaveBeenCalledWith('completed');
 	});
 });

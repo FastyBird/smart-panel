@@ -142,6 +142,15 @@ describe('MCP OAuth listen registration race', () => {
 				generation: 0,
 				createdById: user.id,
 			});
+			const grantExpiryOAuthClient = await dataSource.getRepository(McpOAuthClientEntity).save({
+				clientIdentifier: 'listen-grant-expiry-client',
+				name: 'Listen grant expiry client',
+				redirectUris: ['http://127.0.0.1:1456/callback'],
+				maximumScopes: [McpOAuthScope.READ],
+				enabled: true,
+				generation: 0,
+				createdById: user.id,
+			});
 			await dataSource.getRepository(McpOAuthApproverAuthorityEntity).save({
 				approverId: user.id,
 				generation: 0,
@@ -178,7 +187,7 @@ describe('MCP OAuth listen registration race', () => {
 			const rawExpiringGrantId = 'listen-expiring-grant';
 			const expiringGrant = await dataSource.getRepository(McpOAuthGrantEntity).save({
 				providerGrantIdHash: hashToken(rawExpiringGrantId),
-				clientId: oauthClient.id,
+				clientId: grantExpiryOAuthClient.id,
 				approvedById: user.id,
 				installationId: 'listen-registration-race-installation',
 				issuer: urls.issuer,
@@ -210,6 +219,16 @@ describe('MCP OAuth listen registration race', () => {
 			const rawAccessToken = 'listen-registration-race-access-token';
 
 			const accessTokens = new Adapter('AccessToken');
+			const providerGrants = new Adapter('Grant');
+
+			await providerGrants.upsert(
+				rawGrantId,
+				{
+					accountId: user.id,
+					clientId: oauthClient.clientIdentifier,
+				},
+				600,
+			);
 
 			await accessTokens.upsert(
 				rawAccessToken,
@@ -319,7 +338,7 @@ describe('MCP OAuth listen registration race', () => {
 				{
 					accountId: user.id,
 					aud: urls.resource,
-					clientId: oauthClient.clientIdentifier,
+					clientId: grantExpiryOAuthClient.clientIdentifier,
 					grantId: rawExpiringGrantId,
 					kind: 'AccessToken',
 					scope: McpOAuthScope.READ,
@@ -455,6 +474,12 @@ describe('MCP OAuth listen registration race', () => {
 				await dataSource.getRepository(McpOAuthProviderArtifactEntity).findOneBy({
 					model: 'AccessToken',
 					idHash: hashToken(grantRevocationAccessToken),
+				}),
+			).toBeNull();
+			expect(
+				await dataSource.getRepository(McpOAuthProviderArtifactEntity).findOneBy({
+					model: 'Grant',
+					idHash: hashToken(rawGrantId),
 				}),
 			).toBeNull();
 			await grantRevocationClient.close();
