@@ -70,8 +70,23 @@ const deferred = (): { promise: Promise<void>; resolve: () => void } => {
 	return { promise, resolve };
 };
 
+const waitForRemoteClosure = async (closed: Promise<string>): Promise<string> => {
+	let timeout: NodeJS.Timeout | undefined;
+
+	try {
+		return await Promise.race([
+			closed,
+			new Promise<never>((_, reject) => {
+				timeout = setTimeout(() => reject(new Error('The OAuth subscription did not close at its deadline')), 15_000);
+			}),
+		]);
+	} finally {
+		if (timeout) clearTimeout(timeout);
+	}
+};
+
 describe('MCP OAuth listen registration race', () => {
-	it('expires live token and grant subscriptions and rejects a stale listen after revocation', async () => {
+	it('expires live subscriptions and closes matching streams during revocation', async () => {
 		const dataSource = new DataSource({
 			type: 'sqlite',
 			database: ':memory:',
@@ -103,6 +118,7 @@ describe('MCP OAuth listen registration race', () => {
 		let client: Client | undefined;
 		let expiryClient: Client | undefined;
 		let grantExpiryClient: Client | undefined;
+		let grantRevocationClient: Client | undefined;
 		const releaseListen = deferred();
 
 		try {
@@ -121,6 +137,15 @@ describe('MCP OAuth listen registration race', () => {
 				clientIdentifier: 'listen-registration-race-client',
 				name: 'Listen registration race client',
 				redirectUris: ['http://127.0.0.1:1455/callback'],
+				maximumScopes: [McpOAuthScope.READ],
+				enabled: true,
+				generation: 0,
+				createdById: user.id,
+			});
+			const grantExpiryOAuthClient = await dataSource.getRepository(McpOAuthClientEntity).save({
+				clientIdentifier: 'listen-grant-expiry-client',
+				name: 'Listen grant expiry client',
+				redirectUris: ['http://127.0.0.1:1456/callback'],
 				maximumScopes: [McpOAuthScope.READ],
 				enabled: true,
 				generation: 0,
@@ -162,7 +187,7 @@ describe('MCP OAuth listen registration race', () => {
 			const rawExpiringGrantId = 'listen-expiring-grant';
 			const expiringGrant = await dataSource.getRepository(McpOAuthGrantEntity).save({
 				providerGrantIdHash: hashToken(rawExpiringGrantId),
-				clientId: oauthClient.id,
+				clientId: grantExpiryOAuthClient.id,
 				approvedById: user.id,
 				installationId: 'listen-registration-race-installation',
 				issuer: urls.issuer,
@@ -194,6 +219,16 @@ describe('MCP OAuth listen registration race', () => {
 			const rawAccessToken = 'listen-registration-race-access-token';
 
 			const accessTokens = new Adapter('AccessToken');
+			const providerGrants = new Adapter('Grant');
+
+			await providerGrants.upsert(
+				rawGrantId,
+				{
+					accountId: user.id,
+					clientId: oauthClient.clientIdentifier,
+				},
+				600,
+			);
 
 			await accessTokens.upsert(
 				rawAccessToken,
@@ -287,7 +322,7 @@ describe('MCP OAuth listen registration race', () => {
 				.update({ model: 'AccessToken', idHash: hashToken(shortLivedAccessToken) }, { expiresAt: Date.now() + 5_000 });
 			const expiringSubscription = await expiryClient.listen({ toolsListChanged: true });
 
-			await expect(expiringSubscription.closed).resolves.toBe('remote');
+			await expect(waitForRemoteClosure(expiringSubscription.closed)).resolves.toBe('remote');
 			expect(subscriptions.activeCount).toBe(0);
 			expect(auditLog).toHaveBeenCalledWith(
 				'MCP audit event',
@@ -303,7 +338,7 @@ describe('MCP OAuth listen registration race', () => {
 				{
 					accountId: user.id,
 					aud: urls.resource,
-					clientId: oauthClient.clientIdentifier,
+					clientId: grantExpiryOAuthClient.clientIdentifier,
 					grantId: rawExpiringGrantId,
 					kind: 'AccessToken',
 					scope: McpOAuthScope.READ,
@@ -324,7 +359,7 @@ describe('MCP OAuth listen registration race', () => {
 				.update({ id: expiringGrant.id }, { expiresAt: new Date(Date.now() + 5_000) });
 			const grantExpiringSubscription = await grantExpiryClient.listen({ toolsListChanged: true });
 
-			await expect(grantExpiringSubscription.closed).resolves.toBe('remote');
+			await expect(waitForRemoteClosure(grantExpiringSubscription.closed)).resolves.toBe('remote');
 			expect(subscriptions.activeCount).toBe(0);
 			expect(
 				auditLog.mock.calls.filter(
@@ -390,10 +425,70 @@ describe('MCP OAuth listen registration race', () => {
 			expect(
 				(await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: grant.id })).revokedAt,
 			).toBeNull();
+
+			const grantRevocationAccessToken = 'listen-grant-revocation-access-token';
+
+			await accessTokens.upsert(
+				grantRevocationAccessToken,
+				{
+					accountId: user.id,
+					aud: urls.resource,
+					clientId: oauthClient.clientIdentifier,
+					grantId: rawGrantId,
+					kind: 'AccessToken',
+					scope: McpOAuthScope.READ,
+				},
+				600,
+			);
+			grantRevocationClient = new Client(
+				{ name: 'listen-grant-revocation-e2e', version: '1.0.0' },
+				{ versionNegotiation: { mode: 'auto' } },
+			);
+			const grantRevocationTransport = new StreamableHTTPClientTransport(endpoint, {
+				requestInit: { headers: { Authorization: `Bearer ${grantRevocationAccessToken}` } },
+			});
+
+			await grantRevocationClient.connect(grantRevocationTransport);
+			const grantRevokedSubscription = await grantRevocationClient.listen({ toolsListChanged: true });
+
+			expect(subscriptions.activeCount).toBe(1);
+			await management.revokeGrant(grant.id, 'owner-actor');
+			await expect(grantRevokedSubscription.closed).resolves.toBe('remote');
+			expect(subscriptions.activeCount).toBe(0);
+			expect(auditLog).toHaveBeenCalledWith(
+				'MCP audit event',
+				expect.objectContaining({ event: 'subscription_close', reason: 'authorization_revoked' }),
+			);
+			expect(auditLog).toHaveBeenCalledWith('MCP audit event', {
+				event: 'oauth_management',
+				request_id: 'administrative',
+				actor_id: 'owner-actor',
+				artifact: 'grant',
+				artifact_id: grant.id,
+				action: 'revoked',
+			});
+			await expect(resourceServer.verifyAccessToken(grantRevocationAccessToken)).rejects.toThrow(
+				'The MCP OAuth access token is invalid or no longer active',
+			);
+			expect(
+				await dataSource.getRepository(McpOAuthProviderArtifactEntity).findOneBy({
+					model: 'AccessToken',
+					idHash: hashToken(grantRevocationAccessToken),
+				}),
+			).toBeNull();
+			expect(
+				await dataSource.getRepository(McpOAuthProviderArtifactEntity).findOneBy({
+					model: 'Grant',
+					idHash: hashToken(rawGrantId),
+				}),
+			).toBeNull();
+			await grantRevocationClient.close();
+			grantRevocationClient = undefined;
 		} finally {
 			releaseListen.resolve();
 			await expiryClient?.close();
 			await grantExpiryClient?.close();
+			await grantRevocationClient?.close();
 			await client?.close();
 			if (app) {
 				await app.get(McpServerService).closeAll();

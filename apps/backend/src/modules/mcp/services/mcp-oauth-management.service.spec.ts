@@ -166,6 +166,30 @@ describe('McpOAuthManagementService', () => {
 		const artifacts = dataSource.getRepository(McpOAuthProviderArtifactEntity);
 		await artifacts.save([
 			artifacts.create({
+				model: 'Grant',
+				idHash: grant.providerGrantIdHash,
+				managementId: uuid(),
+				payload: JSON.stringify({ accountId: user.id, clientId: client.clientIdentifier }),
+				grantIdHash: null,
+				refreshFamilyId: null,
+				userCodeHash: null,
+				uidHash: null,
+				consumedAt: null,
+				expiresAt: Date.now() + 60_000,
+			}),
+			artifacts.create({
+				model: 'Grant',
+				idHash: otherGrant.providerGrantIdHash,
+				managementId: uuid(),
+				payload: JSON.stringify({ accountId: user.id, clientId: otherClient.clientIdentifier }),
+				grantIdHash: null,
+				refreshFamilyId: null,
+				userCodeHash: null,
+				uidHash: null,
+				consumedAt: null,
+				expiresAt: Date.now() + 60_000,
+			}),
+			artifacts.create({
 				model: 'AccessToken',
 				idHash: hashToken('access-one'),
 				managementId: accessId,
@@ -432,6 +456,21 @@ describe('McpOAuthManagementService', () => {
 			await dataSource
 				.getRepository(McpOAuthProviderRevokedGrantEntity)
 				.existsBy({ grantIdHash: grant.providerGrantIdHash }),
+		).toBe(true);
+		expect(
+			await dataSource
+				.getRepository(McpOAuthProviderArtifactEntity)
+				.existsBy({ grantIdHash: grant.providerGrantIdHash }),
+		).toBe(false);
+		expect(
+			await dataSource
+				.getRepository(McpOAuthProviderArtifactEntity)
+				.existsBy({ model: 'Grant', idHash: grant.providerGrantIdHash }),
+		).toBe(false);
+		expect(
+			await dataSource
+				.getRepository(McpOAuthProviderArtifactEntity)
+				.existsBy({ model: 'Grant', idHash: otherGrant.providerGrantIdHash }),
 		).toBe(true);
 	});
 

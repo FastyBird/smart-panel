@@ -257,9 +257,9 @@ export class McpOAuthManagementService {
 					await manager
 						.getRepository(McpOAuthProviderRevokedGrantEntity)
 						.upsert({ grantIdHash: grant.providerGrantIdHash, revokedAt: revokedAt.getTime() }, ['grantIdHash']);
-					await manager
-						.getRepository(McpOAuthProviderArtifactEntity)
-						.delete({ grantIdHash: grant.providerGrantIdHash });
+					const artifacts = manager.getRepository(McpOAuthProviderArtifactEntity);
+					await artifacts.delete({ grantIdHash: grant.providerGrantIdHash });
+					await artifacts.delete({ model: 'Grant', idHash: grant.providerGrantIdHash });
 				}
 			});
 		});
