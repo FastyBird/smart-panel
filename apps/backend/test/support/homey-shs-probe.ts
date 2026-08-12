@@ -28,6 +28,8 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
 const IPV4_PATTERN = /(?:\d{1,3}\.){3}\d{1,3}/g;
 const BRACKETED_IPV6_PATTERN = /\[([0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?)\]/g;
 const UNBRACKETED_IPV6_PATTERN = /[0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?/g;
+const MAX_IPV6_ADDRESS_LENGTH = 45;
+const MAX_IPV6_CANDIDATE_SCAN_LENGTH = 256;
 const MAC_PATTERN = /(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}/gi;
 const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
 const HOMEY_TOKEN_PATTERN = /\b(?:hpat|pat|homey)[_-][A-Za-z0-9_-]{16,}\b/gi;
@@ -81,17 +83,57 @@ const escapeRegularExpression = (value: string): string => value.replace(/[.*+?^
 
 const ipv6Address = (candidate: string): string => candidate.split('%', 1)[0];
 
+const findIpv6Range = (candidate: string): { end: number; start: number } | null => {
+	const addressCandidate = ipv6Address(candidate);
+	let bestRange: { end: number; start: number } | null = null;
+
+	if (addressCandidate.length > MAX_IPV6_CANDIDATE_SCAN_LENGTH) {
+		return addressCandidate.includes('::') || (addressCandidate.match(/:/g)?.length ?? 0) >= 7
+			? { start: 0, end: candidate.length }
+			: null;
+	}
+
+	for (let start = 0; start < addressCandidate.length; start += 1) {
+		const maximumEnd = Math.min(addressCandidate.length, start + MAX_IPV6_ADDRESS_LENGTH);
+
+		for (let end = maximumEnd; end > start; end -= 1) {
+			const possibleAddress = addressCandidate.slice(start, end);
+
+			if (!possibleAddress.includes(':') || isIP(possibleAddress) !== 6) {
+				continue;
+			}
+
+			if (bestRange === null || end - start > bestRange.end - bestRange.start) {
+				bestRange = { start, end: end === addressCandidate.length ? candidate.length : end };
+			}
+
+			break;
+		}
+	}
+
+	return bestRange;
+};
+
+const replaceIpv6Candidate = (candidate: string, replacement: string): string => {
+	let remainder = candidate;
+	let sanitized = '';
+	let range = findIpv6Range(remainder);
+
+	while (range !== null) {
+		sanitized += `${remainder.slice(0, range.start)}${replacement}`;
+		remainder = remainder.slice(range.end);
+		range = findIpv6Range(remainder);
+	}
+
+	return sanitized + remainder;
+};
+
 const replaceIpv6Addresses = (value: string, replacement: string): string =>
 	value
 		.replace(BRACKETED_IPV6_PATTERN, (candidate, address: string) =>
 			isIP(ipv6Address(address)) === 6 ? replacement : candidate,
 		)
-		.replace(UNBRACKETED_IPV6_PATTERN, (candidate) => {
-			const address = candidate.replace(/[.,;!?]+$/, '');
-			const punctuation = candidate.slice(address.length);
-
-			return isIP(ipv6Address(address)) === 6 ? `${replacement}${punctuation}` : candidate;
-		});
+		.replace(UNBRACKETED_IPV6_PATTERN, (candidate) => replaceIpv6Candidate(candidate, replacement));
 
 const sanitizeString = (value: string, privateTerms: string[]): string => {
 	let sanitized = replaceIpv6Addresses(value, REDACTION.address)
@@ -128,6 +170,20 @@ const isAddressKey = (key: string): boolean =>
 const isReferenceArrayKey = (key: string): boolean =>
 	CAMEL_CASE_REFERENCE_ARRAY_KEY_PATTERN.test(key) || BOUNDED_REFERENCE_ARRAY_KEY_PATTERN.test(key);
 
+const referenceArrayKind = (key: string): 'device' | 'reference' | 'zone' => {
+	const normalizedKey = key.replaceAll(/[_-]/g, '').toLowerCase();
+
+	if (normalizedKey.endsWith('deviceids')) {
+		return 'device';
+	}
+
+	if (normalizedKey.endsWith('zoneids')) {
+		return 'zone';
+	}
+
+	return 'reference';
+};
+
 const sanitizeReference = (key: string, value: string): string => {
 	if (/^(?:zone|zoneId|parent)$/i.test(key)) {
 		return pseudonym('zone', value);
@@ -160,7 +216,9 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 	}
 
 	if (Array.isArray(value) && !capabilityMapEntry && isReferenceArrayKey(key)) {
-		return value.map((item) => (typeof item === 'string' ? pseudonym('reference', item) : REDACTION.value));
+		const kind = referenceArrayKind(key);
+
+		return value.map((item) => (typeof item === 'string' ? pseudonym(kind, item) : REDACTION.value));
 	}
 
 	if (

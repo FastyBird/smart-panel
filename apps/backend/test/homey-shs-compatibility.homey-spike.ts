@@ -59,6 +59,8 @@ describe('Homey SHS compatibility probe', () => {
 				id: 'private-device-id',
 				name: 'Private Device',
 				zone: 'private-zone-id',
+				deviceIds: ['private-device-id'],
+				zoneIds: ['private-zone-id'],
 				capabilities: ['onoff', 'measure_temperature.inside'],
 				capabilitiesObj: {
 					onoff: {
@@ -93,7 +95,15 @@ describe('Homey SHS compatibility probe', () => {
 				ui: { title: 'Recoverable Room Name' },
 			},
 		});
+		const sanitizedZoneId = Object.keys(zones)[0];
+		const sanitizedDeviceId = Object.keys(devices)[0];
 		const serialized = JSON.stringify({ zones, devices });
+
+		expect(devices[sanitizedDeviceId]).toMatchObject({
+			zone: sanitizedZoneId,
+			deviceIds: [sanitizedDeviceId],
+			zoneIds: [sanitizedZoneId],
+		});
 
 		expect(serialized).not.toContain('Private Room');
 		expect(serialized).not.toContain('Private Device');
@@ -132,6 +142,7 @@ describe('Homey SHS compatibility probe', () => {
 			solids: ['preserved-array-value'],
 			diagnostic: 'gateway_192.168.1.25_backup',
 			macTag: 'mac_aa:bb:cc:dd:ee:ff_backup',
+			ipv6Tag: 'deadfd12:3456:789a::1backup',
 			format: { type: 'json' },
 			thermostat: true,
 			chip: 'preserved chip',
@@ -150,12 +161,13 @@ describe('Homey SHS compatibility probe', () => {
 			hardware_id: '[~7~]',
 			serialNumber: '[~0~]',
 			deviceId: '[~7~]',
-			deviceIds: [expect.stringMatching(/^reference-/), expect.stringMatching(/^reference-/)],
-			zone_ids: [expect.stringMatching(/^reference-/)],
+			deviceIds: [expect.stringMatching(/^device-/), expect.stringMatching(/^device-/)],
+			zone_ids: [expect.stringMatching(/^zone-/)],
 			grid: 'preserved non-identifier',
 			solids: ['preserved-array-value'],
 			diagnostic: 'gateway_[~0~]_backup',
 			macTag: 'mac_[~0~]_backup',
+			ipv6Tag: 'dead[~0~]kup',
 			format: { type: 'json' },
 			thermostat: true,
 			chip: 'preserved chip',
@@ -284,6 +296,10 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret, address');
 
 		unsafeCapture.systemInfo = { diagnostic: 'mac_aa:bb:cc:dd:ee:ff_backup' };
+
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret, address');
+
+		unsafeCapture.systemInfo = { diagnostic: 'deadfd12:3456:789a::1backup' };
 
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret, address');
 	});
