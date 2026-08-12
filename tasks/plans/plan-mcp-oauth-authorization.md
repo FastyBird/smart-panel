@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 6 in progress — runtime lifecycle, refresh replay, invalidation, and policy-scope race coverage implemented
+**Status:** Phase 6 in progress — runtime lifecycle, refresh replay, and invalidation race coverage implemented
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -424,7 +424,7 @@ amend ADR 0002.
       serialized handler; after resume, prove revoke-all removes every returned artifact before reporting success and
       none becomes usable after re-enable. Complement this commit-first branch with adapter-level stale-generation
       rejection coverage so both allowed serialization outcomes are exercised.
-- [ ] E2E: repeat the barrier-synchronized artifact-commit race for server-secret rotation, public-identity rotation,
+- [x] E2E: repeat the barrier-synchronized artifact-commit race for server-secret rotation, public-identity rotation,
       client disable/re-enable, grant revocation, module/client/grant scope contraction/expansion, and approver
       demotion/restoration; prove stale commits fail and later state restoration never revives an artifact.
   - [x] Provider integration: cover server-secret and public-identity rotation against paused token handlers; prove each
@@ -444,7 +444,9 @@ amend ADR 0002.
   - [x] Provider integration: contract a grant against a paused write-scoped refresh; prove contraction waits, the
         committed successor is permanently invalid, in-place scope expansion is rejected, and fresh write consent
         creates a replacement grant without reviving the contracted artifacts.
-  - [ ] Cover approver demotion/restoration.
+  - [x] Provider integration: demote an approver against a paused refresh, then restore the role; prove demotion waits,
+        advances authority and revokes the grant and committed successor, restoration never revives stale artifacts,
+        and fresh authorization binds a usable grant to the advanced authority generation.
 - [ ] E2E: rotate the public OAuth identity and server secret with simultaneous OAuth and static subscriptions; prove
       only OAuth artifacts/streams are invalidated and static streams remain open. Separately prove MCP-module disable
       closes both kinds.

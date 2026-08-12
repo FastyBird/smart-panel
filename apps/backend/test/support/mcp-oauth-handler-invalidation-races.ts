@@ -34,6 +34,7 @@ import { McpConfigModel } from '../../src/modules/mcp/models/config.model';
 import { McpOAuthProviderFactory } from '../../src/modules/mcp/oauth/mcp-oauth-provider.factory';
 import { McpOAuthPublicUrls } from '../../src/modules/mcp/oauth/mcp-oauth.types';
 import { McpAuditService } from '../../src/modules/mcp/services/mcp-audit.service';
+import { McpOAuthApproverAuthorityService } from '../../src/modules/mcp/services/mcp-oauth-approver-authority.service';
 import { McpOAuthClientService } from '../../src/modules/mcp/services/mcp-oauth-client.service';
 import { McpOAuthEndpointRateLimitService } from '../../src/modules/mcp/services/mcp-oauth-endpoint-rate-limit.service';
 import { McpOAuthGlobalInvalidationService } from '../../src/modules/mcp/services/mcp-oauth-global-invalidation.service';
@@ -187,6 +188,12 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 		);
 		const auditService = new McpAuditService();
 		const subscriptions = new McpSubscriptionRegistryService(auditService);
+		const approverAuthority = new McpOAuthApproverAuthorityService(
+			dataSource.getRepository(McpOAuthApproverAuthorityEntity),
+			dataSource,
+			subscriptions,
+			auditService,
+		);
 		const readiness = new McpOAuthReadinessService();
 		readiness.register(...MCP_OAUTH_REQUIRED_READINESS_CONTROLS);
 		readiness.onApplicationBootstrap();
@@ -282,6 +289,7 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 			const activeClient = await dataSource
 				.getRepository(McpOAuthClientEntity)
 				.findOneByOrFail({ clientIdentifier: CLIENT_ID });
+			const authorityGeneration = await approverAuthority.getGeneration(user.id);
 
 			if (!activeUrls) throw new Error('Expected active MCP OAuth public URLs');
 
@@ -296,7 +304,7 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 				expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
 				revokedAt: null,
 				generation: 0,
-				approverAuthorityGeneration: 0,
+				approverAuthorityGeneration: authorityGeneration,
 				oauthEnabledGeneration: state.oauthEnabledGeneration,
 				serverSecretVersion: state.serverSecretVersion,
 				publicIdentityGeneration: state.publicIdentityGeneration,
@@ -781,6 +789,87 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 			runtime.getActive().provider.AccessToken.find(contractedGrantTokens.access_token),
 		).resolves.toBeUndefined();
 		expect((await refresh(urls, requireRefreshToken(contractedGrantTokens))).status).toBe(400);
+
+		const approverAuthorization = await authorize(urls);
+		const approverInitialResponse = await exchangeCode(
+			urls,
+			requireAuthorizationCode(approverAuthorization.callback),
+			approverAuthorization.verifier,
+		);
+		const approverInitialTokens = (await approverInitialResponse.json()) as TokenResponse;
+		expect(approverInitialResponse.status).toBe(200);
+		const approverGrantId = latestGrantId;
+
+		if (!approverGrantId) throw new Error('Expected a persisted grant for the approver-demotion race');
+		expect(
+			(await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: approverGrantId }))
+				.approverAuthorityGeneration,
+		).toBe(0);
+
+		const demotedApproverResponse = await raceGlobalInvalidation(
+			'AccessToken',
+			() => refresh(urls, requireRefreshToken(approverInitialTokens)),
+			async () => {
+				const demoted = Object.assign(new UserEntity(), user, { role: UserRole.USER });
+				await approverAuthority.update(user, demoted, async (manager) => {
+					if (!manager) throw new Error('Expected transactional user lifecycle commit');
+					await manager.getRepository(UserEntity).update({ id: user.id }, { role: UserRole.USER });
+				});
+			},
+			false,
+			false,
+		);
+		const demotedApproverTokens = (await demotedApproverResponse.json()) as TokenResponse;
+		expect(demotedApproverResponse.status).toBe(200);
+		expect((await dataSource.getRepository(UserEntity).findOneByOrFail({ id: user.id })).role).toBe(UserRole.USER);
+		expect(await approverAuthority.getGeneration(user.id)).toBe(1);
+		expect(
+			(await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: approverGrantId })).revokedAt,
+		).not.toBeNull();
+		await expect(
+			runtime.getActive().provider.AccessToken.find(demotedApproverTokens.access_token),
+		).resolves.toBeUndefined();
+		expect((await refresh(urls, requireRefreshToken(demotedApproverTokens))).status).toBe(400);
+
+		const demotedUser = await dataSource.getRepository(UserEntity).findOneByOrFail({ id: user.id });
+		const restoredUser = Object.assign(new UserEntity(), demotedUser, { role: UserRole.OWNER });
+		await approverAuthority.update(demotedUser, restoredUser, async (manager) => {
+			await (manager ?? dataSource.manager).getRepository(UserEntity).update({ id: user.id }, { role: UserRole.OWNER });
+		});
+		expect((await dataSource.getRepository(UserEntity).findOneByOrFail({ id: user.id })).role).toBe(UserRole.OWNER);
+		expect(await approverAuthority.getGeneration(user.id)).toBe(1);
+		await expect(
+			runtime.getActive().provider.AccessToken.find(demotedApproverTokens.access_token),
+		).resolves.toBeUndefined();
+		expect((await refresh(urls, requireRefreshToken(demotedApproverTokens))).status).toBe(400);
+
+		const restoredApproverAuthorization = await authorize(urls);
+		const restoredApproverResponse = await exchangeCode(
+			urls,
+			requireAuthorizationCode(restoredApproverAuthorization.callback),
+			restoredApproverAuthorization.verifier,
+		);
+		const restoredApproverTokens = (await restoredApproverResponse.json()) as TokenResponse;
+		expect(restoredApproverResponse.status).toBe(200);
+		expect(latestGrantId).not.toBe(approverGrantId);
+		expect(latestGrantId).not.toBeNull();
+		const restoredApproverGrant = await dataSource
+			.getRepository(McpOAuthGrantEntity)
+			.findOneByOrFail({ id: latestGrantId });
+		expect(restoredApproverGrant.approverAuthorityGeneration).toBe(1);
+		await expect(
+			runtime.getActive().provider.AccessToken.find(restoredApproverTokens.access_token),
+		).resolves.toBeDefined();
+		const restoredApproverRefreshResponse = await refresh(urls, requireRefreshToken(restoredApproverTokens));
+		const refreshedRestoredApproverTokens = (await restoredApproverRefreshResponse.json()) as TokenResponse;
+		expect(restoredApproverRefreshResponse.status).toBe(200);
+		await expect(
+			runtime.getActive().provider.AccessToken.find(refreshedRestoredApproverTokens.access_token),
+		).resolves.toBeDefined();
+		await expect(
+			runtime.getActive().provider.AccessToken.find(demotedApproverTokens.access_token),
+		).resolves.toBeUndefined();
+		expect((await refresh(urls, requireRefreshToken(demotedApproverTokens))).status).toBe(400);
 	} finally {
 		releaseActivePause();
 		await new Promise<void>((resolve) => server.close(() => resolve()));
