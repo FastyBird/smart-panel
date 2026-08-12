@@ -357,7 +357,13 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 				error: result.error ?? null,
 			}));
 			if (adoptionResults.value.some((result) => result.status === 'created')) {
-				await devicesStore.fetch();
+				try {
+					await devicesStore.fetch();
+				} catch (error: unknown) {
+					logger.warn('WLED devices were adopted, but the device store could not be refreshed', {
+						message: error instanceof Error ? error.message : String(error),
+					});
+				}
 			}
 			formResult.value = adoptionResults.value.some((result) => result.status === 'failed') ? FormResult.ERROR : FormResult.OK;
 			return results.value;

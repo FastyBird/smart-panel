@@ -244,4 +244,20 @@ describe('useDevicesWizard', () => {
 		expect(adapter.busy.value).toBe(false);
 		await adapter.dispose?.();
 	});
+
+	it('returns successful adoption results when the device-store refresh fails', async () => {
+		backendClient.POST.mockResolvedValue({
+			data: { data: [{ host: '192.168.1.100', name: 'Strip', status: 'created', error: null }] },
+			response: { status: 200 },
+		});
+		devicesStore.fetch.mockRejectedValueOnce(new Error('Refresh failed'));
+		const adapter = useDevicesWizard();
+		await adapter.start();
+
+		const results = await adapter.adopt([{ key: 'mac:aabbccddeeff', name: 'Strip', category: DevicesModuleDeviceCategory.lighting }]);
+
+		expect(results[0]).toEqual(expect.objectContaining({ key: 'mac:aabbccddeeff', status: 'created' }));
+		expect(adapter.busy.value).toBe(false);
+		await adapter.dispose?.();
+	});
 });
