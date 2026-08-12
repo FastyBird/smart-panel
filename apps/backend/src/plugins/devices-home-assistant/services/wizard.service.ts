@@ -326,7 +326,7 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 						dataType: property.dataType,
 						permissions: property.permissions,
 						format: property.format,
-						haTransformer: null,
+						haTransformer: property.haTransformer,
 					})),
 				})),
 		};

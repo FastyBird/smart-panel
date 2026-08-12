@@ -41,6 +41,7 @@ const createDevicePreview = (warnings: MappingPreviewModel['warnings'] = []): Ma
 						format: null,
 						required: true,
 						currentValue: false,
+						haTransformer: null,
 					},
 				],
 				unmappedAttributes: [],
@@ -215,6 +216,32 @@ describe('HomeAssistantWizardService', () => {
 		);
 	});
 
+	it('preserves helper mapping transformers during bulk adoption', async () => {
+		const transformedPreview = createHelperPreview();
+		transformedPreview.suggestedChannels[0].suggestedProperties[0].haTransformer = 'brightness_to_percent';
+		helperMappingPreviewService.generateSettledPreviews.mockResolvedValueOnce([
+			{
+				source: { entityId: 'input_boolean.guest_mode', name: 'Guest mode', domain: 'input_boolean' },
+				preview: transformedPreview,
+				error: null,
+			},
+		]);
+		helperMappingPreviewService.generatePreview.mockResolvedValueOnce(transformedPreview);
+		const snapshot = await service.start();
+
+		await service.adopt(snapshot.id, ['helper:input_boolean.guest_mode']);
+
+		expect(helperAdoptionService.adoptHelper).toHaveBeenCalledWith(
+			expect.objectContaining({
+				channels: [
+					expect.objectContaining({
+						properties: [expect.objectContaining({ haTransformer: 'brightness_to_percent' })],
+					}),
+				],
+			}),
+		);
+	});
+
 	it('revalidates automatic mapping immediately before persistence', async () => {
 		const snapshot = await service.start();
 		mappingPreviewService.generatePreview.mockResolvedValueOnce(
@@ -320,6 +347,7 @@ describe('HomeAssistantWizardService', () => {
 						format: null,
 						required: false,
 						currentValue: false,
+						haTransformer: null,
 					},
 				],
 			},

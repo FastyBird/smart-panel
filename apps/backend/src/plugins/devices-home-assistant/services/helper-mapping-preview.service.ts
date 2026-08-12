@@ -353,6 +353,7 @@ export class HelperMappingPreviewService {
 					null,
 				required: propertyMetadata?.required ?? false,
 				currentValue,
+				haTransformer: binding.transformerName ?? null,
 			});
 		}
 
