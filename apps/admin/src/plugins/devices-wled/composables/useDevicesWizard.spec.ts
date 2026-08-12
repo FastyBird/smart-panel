@@ -220,6 +220,41 @@ describe('useDevicesWizard', () => {
 		await adapter.dispose?.();
 	});
 
+	it.each(['192.168.1.100:80', 'wled.local:80', '[fe80::1234]:80'])(
+		'preserves an explicit default port from a manual probe: %s',
+		async (host) => {
+			backendClient.GET.mockResolvedValue({
+				data: { data: { ...inventory, mdnsEnabled: false, devices: [] } },
+				response: { status: 200 },
+			});
+			backendClient.POST.mockResolvedValueOnce({
+				data: { data: { ...inventory.devices[0], host, port: 80 } },
+				response: { status: 201 },
+			}).mockResolvedValueOnce({
+				data: { data: [{ host, name: 'Strip', status: 'created', error: null }] },
+				response: { status: 200 },
+			});
+			const adapter = useDevicesWizard();
+			await adapter.start();
+			const form = adapter.controls.value.find((control) => control.type === 'form') as IWizardFormControl;
+			await form.handler({ host });
+
+			await adapter.adopt([{ key: 'mac:aabbccddeeff', name: 'Strip', category: DevicesModuleDeviceCategory.lighting }]);
+
+			expect(backendClient.POST).toHaveBeenLastCalledWith(
+				`/plugins/${DEVICES_WLED_PLUGIN_PREFIX}/discovery/adopt`,
+				expect.objectContaining({
+					body: expect.objectContaining({
+						data: expect.objectContaining({
+							devices: [expect.objectContaining({ host })],
+						}),
+					}),
+				}),
+			);
+			await adapter.dispose?.();
+		},
+	);
+
 	it('brackets an IPv6 discovery host on the default port', async () => {
 		backendClient.GET.mockResolvedValue({
 			data: {

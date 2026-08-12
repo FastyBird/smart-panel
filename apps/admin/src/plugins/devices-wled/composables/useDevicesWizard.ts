@@ -53,16 +53,14 @@ const deviceKey = (device: IWledWizardDevice): string =>
 	device.mac ? `mac:${device.mac.replace(/[^a-fA-F0-9]/g, '').toLowerCase()}` : `host:${device.host}`;
 
 const adoptionHost = (device: IWledWizardDevice): string => {
-	try {
-		if (new URL(`http://${device.host}`).port) return device.host;
-	} catch {
-		// The backend will return a scoped validation error for malformed hosts.
-	}
+	const host = device.host.trim();
+	const hasExplicitPort = /^\[[^\]]+\]:\d+$/.test(host) || /^[^:]+:\d+$/.test(host);
+	if (hasExplicitPort) return host;
 
-	const host = device.host.includes(':') && !device.host.startsWith('[') ? `[${device.host}]` : device.host;
-	if (device.port === 80) return host;
+	const normalizedHost = host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
+	if (device.port === 80) return normalizedHost;
 
-	return `${host}:${device.port}`;
+	return `${normalizedHost}:${device.port}`;
 };
 
 export const useDevicesWizard = (): IDeviceWizardAdapter => {
