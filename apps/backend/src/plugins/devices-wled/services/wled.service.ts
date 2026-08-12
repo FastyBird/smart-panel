@@ -498,7 +498,8 @@ export class WledService extends BaseManagedPluginService {
 			mdnsEnabled: this.config.mdns.enabled,
 			discoveryRunning: this.mdnsDiscoverer.isDiscoveryRunning(),
 			devices: discoveredDevices.map((device) => {
-				const existingDevice = this.findExistingDevice(databaseDevices, device.host, device.mac);
+				const discoveryEndpoint = this.discoveryEndpoint(device.host, device.port);
+				const existingDevice = this.findExistingDevice(databaseDevices, discoveryEndpoint, device.mac);
 
 				return {
 					host: device.host,
@@ -761,7 +762,12 @@ export class WledService extends BaseManagedPluginService {
 								state: ConnectionState.DISCONNECTED,
 							});
 						} else {
-							const createdDeviceId = createdDeviceIdsByPlan.get(dependentPlan.index);
+							const partialDevice = await this.devicesService.findOneBy<WledDeviceEntity>(
+								'identifier',
+								dependentPlan.identifier,
+								DEVICES_WLED_TYPE,
+							);
+							const createdDeviceId = createdDeviceIdsByPlan.get(dependentPlan.index) ?? partialDevice?.id;
 							if (createdDeviceId) {
 								await this.devicesService.remove(createdDeviceId);
 								createdDeviceIdsByPlan.delete(dependentPlan.index);
@@ -802,7 +808,16 @@ export class WledService extends BaseManagedPluginService {
 		const existingHostnames = new Set(databaseDevices.map((d) => d.hostname));
 
 		// Filter out devices that are already in the database
-		return discoveredDevices.filter((device) => !existingHostnames.has(device.host));
+		return discoveredDevices.filter(
+			(device) => !existingHostnames.has(this.discoveryEndpoint(device.host, device.port)),
+		);
+	}
+
+	private discoveryEndpoint(host: string, port: number): string {
+		const normalizedHost = this.normalizeHost(host);
+		const hasExplicitPort = /^\[[^\]]+\]:\d+$/.test(normalizedHost) || /^[^:]+:\d+$/.test(normalizedHost);
+
+		return port === 80 || hasExplicitPort ? normalizedHost : `${normalizedHost}:${port}`;
 	}
 
 	private normalizeHost(host: string): string {

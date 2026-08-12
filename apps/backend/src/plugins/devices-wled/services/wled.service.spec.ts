@@ -843,6 +843,29 @@ describe('WledService', () => {
 			);
 		});
 
+		it('removes a partial new device when its mapper rejects inside a dependent group', async () => {
+			const existingDevice = createMockDevice('device-existing', 'wled-aabbccddeeff', '192.168.1.100');
+			const partialDevice = createMockDevice('device-partial', 'wled-778899aabbcc', '192.168.1.100');
+			const newContext = {
+				...mockContext,
+				info: { ...mockContext.info, mac: '77:88:99:AA:BB:CC' },
+			};
+			wledAdapter.probe.mockResolvedValueOnce(newContext).mockResolvedValueOnce(mockContext);
+			devicesService.findAll.mockResolvedValue([existingDevice]);
+			devicesService.findOneBy.mockResolvedValue(partialDevice);
+			deviceMapper.mapDevice.mockRejectedValueOnce(new Error('Channel provisioning failed'));
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.100', name: 'Partial controller', category: DeviceCategory.LIGHTING },
+				{ host: '192.168.1.200', name: 'Existing controller', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(results.map((result) => result.status)).toEqual(['failed', 'failed']);
+			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'wled-778899aabbcc', DEVICES_WLED_TYPE);
+			expect(devicesService.remove).toHaveBeenCalledWith('device-partial');
+			expect(deviceMapper.mapDevice).toHaveBeenCalledTimes(1);
+		});
+
 		it('rolls back only the failed connected address-move group', async () => {
 			const devices = [
 				createMockDevice('device-1', 'wled-000000000001', '192.168.1.1'),
@@ -1001,6 +1024,26 @@ describe('WledService', () => {
 			} as WledDeviceEntity;
 			mdnsDiscoverer.getDiscoveredDevices.mockReturnValue([
 				{ host: '192.168.1.200', name: 'Advertised name', mac: 'AA:BB:CC:DD:EE:FF', port: 80 },
+			]);
+			devicesService.findAll.mockResolvedValue([existingDevice]);
+
+			const inventory = await service.getDiscoveryInventory();
+
+			expect(inventory.devices[0]).toEqual(
+				expect.objectContaining({
+					name: 'Administrator name',
+					adoptedDeviceId: 'device-1',
+				}),
+			);
+		});
+
+		it('matches a MAC-less discovery record using its non-default port', async () => {
+			const existingDevice = {
+				...createMockDevice('device-1', 'wled-aabbccddeeff', 'wled.local:8080'),
+				name: 'Administrator name',
+			} as WledDeviceEntity;
+			mdnsDiscoverer.getDiscoveredDevices.mockReturnValue([
+				{ host: 'wled.local', name: 'Advertised name', port: 8080 },
 			]);
 			devicesService.findAll.mockResolvedValue([existingDevice]);
 
