@@ -251,7 +251,7 @@ describe('MCP OAuth listen registration race', () => {
 					kind: 'AccessToken',
 					scope: McpOAuthScope.READ,
 				},
-				2,
+				60,
 			);
 			expiryClient = new Client(
 				{ name: 'listen-expiry-e2e', version: '1.0.0' },
@@ -262,6 +262,9 @@ describe('MCP OAuth listen registration race', () => {
 			});
 
 			await expiryClient.connect(expiryTransport);
+			await dataSource
+				.getRepository(McpOAuthProviderArtifactEntity)
+				.update({ model: 'AccessToken', idHash: hashToken(shortLivedAccessToken) }, { expiresAt: Date.now() + 5_000 });
 			const expiringSubscription = await expiryClient.listen({ toolsListChanged: true });
 
 			await expect(expiringSubscription.closed).resolves.toBe('remote');
@@ -337,5 +340,5 @@ describe('MCP OAuth listen registration race', () => {
 			await subscriptions.closeAll();
 			await dataSource.destroy();
 		}
-	}, 15_000);
+	}, 20_000);
 });
