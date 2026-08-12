@@ -466,20 +466,22 @@ export class WledService extends BaseManagedPluginService {
 	 * Connect to a newly discovered device and map it to the database
 	 */
 	private async connectAndMapDiscoveredDevice(device: WledMdnsDiscoveredDevice): Promise<void> {
-		try {
-			const identifier = device.mac ? this.identifierFromMac(device.mac) : `wled-${device.host.replace(/\./g, '-')}`;
-			await this.wledAdapter.connect(device.host, identifier, this.config.timeouts.connectionTimeout);
+		await this.enqueueProvisioning(async () => {
+			try {
+				const identifier = device.mac ? this.identifierFromMac(device.mac) : `wled-${device.host.replace(/\./g, '-')}`;
+				await this.wledAdapter.connect(device.host, identifier, this.config.timeouts.connectionTimeout);
 
-			const registeredDevice = this.wledAdapter.getDevice(device.host);
+				const registeredDevice = this.wledAdapter.getDevice(device.host);
 
-			if (registeredDevice?.context) {
-				await this.deviceMapper.mapDevice(device.host, registeredDevice.context, device.name, identifier);
+				if (registeredDevice?.context) {
+					await this.deviceMapper.mapDevice(device.host, registeredDevice.context, device.name, identifier);
+				}
+			} catch (error) {
+				this.logger.error(`Failed to connect to discovered device at ${device.host}`, {
+					message: error instanceof Error ? error.message : String(error),
+				});
 			}
-		} catch (error) {
-			this.logger.error(`Failed to connect to discovered device at ${device.host}`, {
-				message: error instanceof Error ? error.message : String(error),
-			});
-		}
+		});
 	}
 
 	/**
@@ -539,13 +541,7 @@ export class WledService extends BaseManagedPluginService {
 	}
 
 	async adoptDevices(requests: WledAdoptDeviceDto[]): Promise<WledAdoptionResultModel[]> {
-		const operation: Promise<WledAdoptionResultModel[]> = this.adoptionQueue.then(() => this.doAdoptDevices(requests));
-		this.adoptionQueue = operation.then<void>(
-			() => undefined,
-			() => undefined,
-		);
-
-		return operation;
+		return this.enqueueProvisioning(() => this.doAdoptDevices(requests));
 	}
 
 	private async doAdoptDevices(requests: WledAdoptDeviceDto[]): Promise<WledAdoptionResultModel[]> {
@@ -641,6 +637,7 @@ export class WledService extends BaseManagedPluginService {
 		const retiredDeviceIds = new Set<string>();
 		const failedDependencyGroups = new Map<Set<number>, string>();
 		const createdDeviceIdsByPlan = new Map<number, string>();
+		const retiredStaleOwnersByDependencyGroup = new Map<Set<number>, Map<string, WledDeviceEntity>>();
 
 		for (const { index, request, host, context, existingDevice, identifier } of plans) {
 			const dependencyGroup = dependencyGroupByIndex.get(index);
@@ -697,6 +694,14 @@ export class WledService extends BaseManagedPluginService {
 				const retiringHostOwners = staleHostOwners.filter(
 					(staleHostOwner) => !selectedDeviceIds.has(staleHostOwner.id) && !retiredDeviceIds.has(staleHostOwner.id),
 				);
+				if (dependencyGroup && retiringHostOwners.length > 0) {
+					const groupOwners =
+						retiredStaleOwnersByDependencyGroup.get(dependencyGroup) ?? new Map<string, WledDeviceEntity>();
+					for (const staleHostOwner of retiringHostOwners) {
+						groupOwners.set(staleHostOwner.id, staleHostOwner);
+					}
+					retiredStaleOwnersByDependencyGroup.set(dependencyGroup, groupOwners);
+				}
 				if (staleHostOwners.length > 0) {
 					this.wledAdapter.disconnect(host, false);
 					disconnectedStaleOwners.push(...retiringHostOwners);
@@ -798,6 +803,19 @@ export class WledService extends BaseManagedPluginService {
 							deviceId: dependentPlan.existingDevice?.id ?? null,
 						};
 					}
+
+					for (const staleHostOwner of retiredStaleOwnersByDependencyGroup.get(dependencyGroup)?.values() ?? []) {
+						await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(staleHostOwner.id, {
+							type: DEVICES_WLED_TYPE,
+							identifier: staleHostOwner.identifier,
+							name: staleHostOwner.name,
+							description: staleHostOwner.description,
+							enabled: staleHostOwner.enabled,
+							hostname: staleHostOwner.hostname,
+						});
+						retiredDeviceIds.delete(staleHostOwner.id);
+						await this.restoreDeviceConnection(staleHostOwner);
+					}
 				} else {
 					const partialDevice =
 						mappedDevice ??
@@ -843,6 +861,16 @@ export class WledService extends BaseManagedPluginService {
 		}
 
 		return results.filter((result): result is WledAdoptionResultModel => result !== undefined);
+	}
+
+	private enqueueProvisioning<T>(operation: () => Promise<T>): Promise<T> {
+		const result = this.adoptionQueue.then(operation);
+		this.adoptionQueue = result.then<void>(
+			() => undefined,
+			() => undefined,
+		);
+
+		return result;
 	}
 
 	private async restoreDeviceConnection(device: WledDeviceEntity): Promise<void> {
