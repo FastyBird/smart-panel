@@ -9,13 +9,14 @@ import {
 	sanitizeHomeyZones,
 } from './support/homey-shs-probe';
 
-const createConfig = () =>
+const createConfig = (environment: NodeJS.ProcessEnv = {}) =>
 	loadHomeyShsProbeConfig(
 		{
 			FB_HOMEY_SHS_URL: 'http://127.0.0.1:4859',
 			FB_HOMEY_SHS_API_KEY: 'test-api-key-that-must-not-leak',
 			FB_HOMEY_SHS_EXPECTED_HOST: '127.0.0.1',
 			FB_HOMEY_SHS_PRIVATE_TERMS: 'Private Room,Private Device',
+			...environment,
 		},
 		'/tmp/homey-spike',
 	);
@@ -338,6 +339,22 @@ describe('Homey SHS compatibility probe', () => {
 		}
 
 		assertHomeyCaptureSafe(capture, [config.apiKey], config.privateTerms, config.expectedHost);
+
+		const hostCollisionConfig = createConfig({
+			FB_HOMEY_SHS_URL: 'http://homey-000001:4859',
+			FB_HOMEY_SHS_EXPECTED_HOST: 'homey-000001',
+		});
+		const hostCollisionCapture = await captureHomeyShs(hostCollisionConfig, fetchMock as typeof fetch);
+
+		expect((hostCollisionCapture.metadata.homey as { id: string }).id).toBe('homey-000002');
+		expect(() =>
+			assertHomeyCaptureSafe(
+				hostCollisionCapture,
+				[hostCollisionConfig.apiKey],
+				hostCollisionConfig.privateTerms,
+				hostCollisionConfig.expectedHost,
+			),
+		).not.toThrow();
 	});
 
 	it('checks an expected host against values rather than fixed metadata keys', () => {

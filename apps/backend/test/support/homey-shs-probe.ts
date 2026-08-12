@@ -583,6 +583,7 @@ export const captureHomeyShs = async (
 		readJson(devicesResponse, 'devices'),
 	]);
 	const aliases = createSanitizationAliases();
+	registerSourceValues(config.expectedHost, aliases);
 	registerSourceValues(systemInfo, aliases);
 	registerSourceValues(zones, aliases);
 	registerSourceValues(devices, aliases);
