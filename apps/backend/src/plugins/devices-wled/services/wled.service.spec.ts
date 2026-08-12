@@ -1049,6 +1049,40 @@ describe('WledService', () => {
 			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-legacy' })]);
 		});
 
+		it('reuses a moved custom-identifier row when its stored serial matches the full MAC', async () => {
+			const customDevice = {
+				...createMockDevice('device-custom', 'custom-living-room-strip', '192.168.1.100'),
+				channels: [
+					{
+						identifier: 'device_information',
+						properties: [{ identifier: 'serial_number', value: { value: 'AA:BB:CC:DD:EE:FF' } }],
+					},
+				],
+			} as WledDeviceEntity;
+			const movedDevice = { ...customDevice, hostname: '192.168.1.200' } as WledDeviceEntity;
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			devicesService.findAll.mockResolvedValue([customDevice]);
+			deviceMapper.mapDevice.mockResolvedValue(movedDevice);
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.200', name: 'Moved custom strip', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(
+				'192.168.1.200',
+				mockContext,
+				'Moved custom strip',
+				'custom-living-room-strip',
+				undefined,
+				undefined,
+			);
+			expect(devicesService.update).not.toHaveBeenCalledWith(
+				'device-custom',
+				expect.objectContaining({ identifier: 'wled-aabbccddeeff' }),
+			);
+			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-custom' })]);
+		});
+
 		it('updates an adopted MAC when it is discovered at a new host', async () => {
 			const existingDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
 			wledAdapter.probe.mockResolvedValue(mockContext);

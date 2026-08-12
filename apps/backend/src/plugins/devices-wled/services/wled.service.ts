@@ -1183,7 +1183,7 @@ export class WledService extends BaseManagedPluginService {
 
 				return (
 					devices.find((device) => device.identifier === canonicalIdentifier) ??
-					legacyDevices.find((device) => this.deviceSerialMac(device) === normalizedMac) ??
+					devices.find((device) => this.deviceSerialMac(device) === normalizedMac) ??
 					legacyDevices.find((device) => device.hostname !== null && this.endpointsEquivalent(device.hostname, host)) ??
 					devices.find(
 						(device) =>
