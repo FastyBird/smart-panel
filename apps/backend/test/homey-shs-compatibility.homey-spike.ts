@@ -233,6 +233,7 @@ describe('Homey SHS compatibility probe', () => {
 			activityTag: 'prefix_hpat_abcdefghijklmnop1234',
 			urlTag: 'prefix_https://user:pass@private-host.local/api',
 			brokerUrl: 'mqtt://broker.private/topic',
+			endpoint: 'private-host.local:1883',
 			format: { type: 'json' },
 			thermostat: true,
 			chip: 'preserved chip',
@@ -271,6 +272,7 @@ describe('Homey SHS compatibility probe', () => {
 			activityTag: 'prefix_[~3~]',
 			urlTag: 'prefix_[~5~]',
 			brokerUrl: '[~5~]',
+			endpoint: '[~5~]',
 			format: { type: 'json' },
 			thermostat: true,
 			chip: 'preserved chip',
@@ -453,6 +455,12 @@ describe('Homey SHS compatibility probe', () => {
 
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [], ['known-private-value'])).toThrow('private term');
 
+		for (const escapedForbiddenValue of ['abc"def', 'abc\\def']) {
+			unsafeCapture.systemInfo = { echoedCredential: escapedForbiddenValue };
+
+			expect(() => assertHomeyCaptureSafe(unsafeCapture, [escapedForbiddenValue])).toThrow('forbidden value');
+		}
+
 		unsafeCapture.systemInfo = { aliases: { 'Private Room': true } };
 
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [], ['Private Room'])).toThrow('private term');
@@ -512,7 +520,11 @@ describe('Homey SHS compatibility probe', () => {
 
 		unsafeCapture.systemInfo = { brokerUrl: 'mqtt://broker.private/topic' };
 
-		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret');
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('unredacted endpoint');
+
+		unsafeCapture.systemInfo = { endpoint: 'private-host.local:1883' };
+
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('unredacted endpoint');
 
 		unsafeCapture.systemInfo = { gateway: 'fd12:3456:789a::1' };
 

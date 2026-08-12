@@ -282,6 +282,10 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 		return REDACTION.address;
 	}
 
+	if (value !== null && !capabilityMapEntry && ENDPOINT_KEY_PATTERN.test(key)) {
+		return REDACTION.url;
+	}
+
 	if (Array.isArray(value) && !capabilityMapEntry && isReferenceArrayKey(key)) {
 		const kind = referenceArrayKind(key);
 
@@ -624,9 +628,27 @@ export const assertHomeyCaptureSafe = (
 ): void => {
 	const serialized = JSON.stringify(capture);
 	const forbidden = forbiddenValues.filter((value) => value.length > 0);
+	const containsForbiddenValue = (value: unknown, forbiddenValue: string): boolean => {
+		if (typeof value === 'string' || typeof value === 'number') {
+			return String(value).toLowerCase().includes(forbiddenValue);
+		}
+
+		if (Array.isArray(value)) {
+			return value.some((item) => containsForbiddenValue(item, forbiddenValue));
+		}
+
+		if (isRecord(value)) {
+			return Object.entries(value).some(
+				([key, nestedValue]) =>
+					key.toLowerCase().includes(forbiddenValue) || containsForbiddenValue(nestedValue, forbiddenValue),
+			);
+		}
+
+		return false;
+	};
 
 	for (const value of forbidden) {
-		if (serialized.toLowerCase().includes(value.toLowerCase())) {
+		if (containsForbiddenValue(capture, value.toLowerCase())) {
 			throw new Error('Sanitized Homey capture still contains a configured forbidden value');
 		}
 	}
@@ -805,6 +827,24 @@ export const assertHomeyCaptureSafe = (
 		if (privateTermFound) {
 			throw new Error('Sanitized Homey capture still contains a configured private term');
 		}
+	}
+
+	const containsUnredactedEndpoint = (value: unknown, key = ''): boolean => {
+		if (typeof value === 'string') {
+			return ENDPOINT_KEY_PATTERN.test(key) && value !== REDACTION.url;
+		}
+
+		if (Array.isArray(value)) {
+			return value.some((item) => containsUnredactedEndpoint(item, key));
+		}
+
+		return isRecord(value)
+			? Object.entries(value).some(([nestedKey, nestedValue]) => containsUnredactedEndpoint(nestedValue, nestedKey))
+			: false;
+	};
+
+	if (containsUnredactedEndpoint(capture)) {
+		throw new Error('Sanitized Homey capture still contains an unredacted endpoint value');
 	}
 
 	const unsafePatterns = [IPV4_PATTERN, MAC_PATTERN, URL_PATTERN, EMAIL_PATTERN, HOMEY_TOKEN_PATTERN];
