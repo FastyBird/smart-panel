@@ -80,6 +80,13 @@ Local configuration contains:
 
 An omitted API key preserves the configured secret. An explicit clear action removes it. The response exposes only `apiKeyConfigured: boolean`.
 
+Connection tests have two mutually exclusive request modes:
+
+- `saved`: test the fully persisted connector identity and its stored secret; endpoint/mode overrides are rejected.
+- `candidate`: test an unsaved local configuration; the request must provide both the complete URL and a newly entered API key, and the backend must not resolve or reuse the stored key.
+
+This boundary prevents an administrator-supplied URL from receiving a credential associated with the saved Homey endpoint. Canonical URL equality must not silently convert a `candidate` request into stored-secret reuse; only the explicit `saved` mode may access the stored key.
+
 ### Discover and adopt
 
 The existing generic device wizard presents Homey devices that are available for adoption:
@@ -370,7 +377,7 @@ The backend remains the OpenAPI source of truth. Proposed plugin routes, under t
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/plugins/devices-homey/status` | Connection and synchronization health |
-| `POST` | `/plugins/devices-homey/test-connection` | Validate unsaved or saved local configuration without exposing the key |
+| `POST` | `/plugins/devices-homey/test-connection` | Validate either the fully saved configuration or a complete candidate URL/key pair without exposing the key |
 | `GET` | `/plugins/devices-homey/discovery` | Discover local Homey/SHS endpoints if supported |
 | `POST` | `/plugins/devices-homey/discovery` | Restart server discovery |
 | `GET` | `/plugins/devices-homey/devices` | List Homey devices with adoption status |
@@ -388,6 +395,7 @@ Credential safety is a release blocker, not an optional hardening task.
 - Add a generic config-secret redaction and merge mechanism if the config module still returns registered plugin DTOs verbatim.
 - API keys and OAuth tokens are write-only fields.
 - Omitted secret values preserve existing secrets; explicit clear is intentional and separately represented.
+- Test-connection requests may reuse a stored secret only in explicit `saved` mode with no connector identity override. Candidate mode requires a complete new endpoint/secret pair and never falls back to persistence.
 - Logs, exceptions, telemetry, fixtures, snapshots, and OpenAPI examples never contain real credentials.
 - Use the narrowest Homey permissions that support inventory, zones, state reads, and device control.
 - Connection tests use short timeouts and return categorized, sanitized errors.

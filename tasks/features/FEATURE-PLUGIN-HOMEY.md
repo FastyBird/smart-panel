@@ -93,6 +93,7 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - [ ] Homey API keys and OAuth tokens are write-only through every config endpoint.
 - [ ] Config responses expose only a configured/not-configured indicator for secrets.
 - [ ] Omitting a secret during update preserves it; explicit clear removes it.
+- [ ] Connection testing reuses the stored key only for an explicit fully saved configuration request; every candidate/overridden URL requires a newly supplied key and can never fall back to the stored secret.
 - [ ] Secrets are absent from logs, exceptions, telemetry, OpenAPI examples, tests, and fixtures.
 - [ ] URLs, schemes, timeouts, intervals, and permission errors are validated and sanitized.
 - [ ] Disabling the plugin closes subscriptions, stops timers, and disconnects the connector cleanly.
@@ -130,6 +131,7 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 
 - [ ] The Homey plugin configuration form supports local URL, write-only API key, test connection, and health display.
 - [ ] The form never repopulates or displays a stored API key.
+- [ ] The form distinguishes testing the fully saved configuration from testing a complete candidate URL/new-key pair and never submits an endpoint override without a new key.
 - [ ] A `deviceWizardAdapter` integrates Homey with the shared three-step adoption wizard.
 - [ ] Discovery rows show name, identifier, class/model, zone, availability, capability count, and adoption/support status.
 - [ ] Confirm rows provide sensible names/categories and a read-only mapping summary.

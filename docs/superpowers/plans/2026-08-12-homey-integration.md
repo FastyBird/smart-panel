@@ -242,10 +242,11 @@ index.ts
 ### Task 2.3: Implement status and connection test APIs
 
 - [ ] Expand the status model with state, Homey identity/version, last sync/event timestamps, reconnect count, and sanitized error.
-- [ ] Add `POST test-connection` accepting saved configuration plus optional unsaved URL/key input through secret-safe DTO semantics.
+- [ ] Add `POST test-connection` with a discriminated request: `saved` accepts no endpoint/mode override and may resolve the persisted key; `candidate` requires a complete unsaved URL plus a newly entered key and must never resolve the persisted key.
+- [ ] Reject mixed requests, including an overridden URL with an omitted key, even when the candidate URL canonicalizes to the saved URL. Stored-secret reuse is authorized only by explicit `saved` mode.
 - [ ] Use a temporary connector for connection tests and always disconnect it.
 - [ ] Return categorized validation/auth/timeout/unavailable errors without raw response bodies.
-- [ ] Add controller/service tests for saved secret reuse and unsaved secret replacement.
+- [ ] Add controller/service tests for fully saved reuse, complete candidate URL/key, URL override without key, key-only candidate, mixed saved/override fields, canonical-equivalent candidate URL, and proof that candidate mode never reads or sends the stored secret.
 
 ### Task 2.4: Implement server discovery only from evidence
 
@@ -426,9 +427,9 @@ index.ts
 - [ ] Add URL, API-key replacement input, explicit clear action, bounded timeout/interval inputs, and enabled state.
 - [ ] Show only whether an API key is configured; never populate the key field from GET data.
 - [ ] Preserve the stored key when the field is untouched.
-- [ ] Add test-connection action supporting saved or newly entered key.
+- [ ] Add separate test actions/payloads for the fully saved configuration and a complete candidate URL/newly entered key pair; disable candidate testing until both fields are present.
 - [ ] Display connector state, Homey identity/version, last sync/event, and sanitized error guidance.
-- [ ] Unit-test initial state, preserve/replace/clear payloads, validation, working state, successful test, and categorized failures.
+- [ ] Unit-test initial state, preserve/replace/clear payloads, saved-vs-candidate test payloads, candidate URL without a new key, validation, working state, successful test, and categorized failures.
 
 ### Task 5.3: Implement the generic wizard adapter
 
