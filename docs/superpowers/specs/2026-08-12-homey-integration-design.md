@@ -318,10 +318,12 @@ Upstream removal behavior:
 After connecting:
 
 - Load system and zone metadata.
-- Load the complete Homey device inventory.
-- Reconcile availability and current values for adopted devices.
-- Subscribe to manager/device/capability events.
+- Establish manager/device/capability subscriptions before taking the authoritative state snapshot.
+- Buffer events behind a startup barrier while loading the complete Homey device inventory and reconciling adopted devices.
+- Merge buffered events with the snapshot using the ordering metadata verified in Phase 0, then atomically switch to live event processing. If Homey exposes no reliable ordering metadata, use a subscription-first reconciliation barrier plus a final targeted reconciliation for capabilities touched while the snapshot was in flight.
 - Mark the plugin healthy only after inventory and subscription setup succeed.
+
+This order is mandatory: reading state before subscribing creates a gap in which a Homey change can be missed until periodic reconciliation. Startup and reconnect tests must exercise a capability change during the snapshot/subscription boundary and prove that the final Smart Panel value is the newest authoritative value.
 
 ### Real-time updates
 
@@ -437,6 +439,7 @@ The subscription is time-limited, so live verification and fixture capture happe
 - Record SHS version, container image digest, exposed ports, and Smart Panel runtime topology.
 - Create a narrowly scoped API key.
 - Populate representative devices, using virtual devices where physical coverage is unavailable.
+- Designate a disposable virtual/test device for lifecycle mutation tests. It must not represent household equipment and its synthetic alias, rather than its live identifier, is recorded in repository documents.
 - Verify authentication against HTTP `4859` and HTTPS `4860` where configured.
 - Capture sanitized responses for system info, zones, device inventory, individual devices, capability metadata, and current values.
 - Capture sanitized Socket.IO connection and capability-event sequences.
@@ -450,7 +453,7 @@ Test and record:
 - SHS restart while connected.
 - API key revoked or insufficiently scoped.
 - Network interruption and restoration.
-- Device added, renamed, moved between zones, made unavailable, and removed.
+- Disposable test device added, renamed, moved between zones, made unavailable, and removed.
 - Capability value changed physically, through Homey, through a flow, and through Smart Panel.
 - Repeated capability instances with suffixes.
 - Multiple fast updates and multiple fast commands.
@@ -509,7 +512,8 @@ Routine capability updates should be trace/debug-level and rate-limited. Authent
 - Environment-gated and excluded from default CI.
 - Read-only tests run against all configured representative devices.
 - Write tests require an explicit device ID/capability allowlist.
-- No test may pair, remove, rename, or otherwise mutate upstream devices unless separately and explicitly enabled.
+- Lifecycle mutation tests require a separate explicit environment gate plus an allowlist naming the disposable virtual/test device and permitted operations.
+- Pairing, renaming, moving, making unavailable, or removing ordinary household devices is always forbidden. The lifecycle exception applies only to the designated disposable device and is cleaned up after capture.
 
 ### Admin and panel tests
 

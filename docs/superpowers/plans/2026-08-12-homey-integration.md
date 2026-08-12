@@ -15,7 +15,7 @@
 - Do not edit generated files manually. Generate OpenAPI/admin/panel clients from backend Swagger sources and device specs from their generators.
 - Follow existing TypeScript tab indentation, naming, imports, Swagger response envelopes, tests, and plugin registration conventions.
 - Keep external calls bounded by timeouts and classify authentication, authorization, timeout, unavailable, protocol, validation, and unsupported failures.
-- Never pair, rename, remove, or otherwise mutate upstream Homey devices except an explicitly allowlisted harmless capability-write test.
+- Never mutate ordinary upstream Homey devices. Capability writes require an explicit device/capability allowlist; add/rename/zone-move/unavailable/remove lifecycle tests require a separate environment gate and an operation allowlist restricted to a designated disposable virtual/test device.
 - No database schema change is expected. If implementation evidence requires one, add an incremental migration and update this plan before proceeding.
 - Do not push to `main`. Use a feature branch and PR when implementation begins.
 
@@ -49,8 +49,10 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 - [ ] Give SHS a stable LAN address; prefer host networking or a dedicated address consistent with Homey guidance.
 - [ ] Create a least-privilege API key with only device read/control, zone read, and system read permissions required by the design.
 - [ ] Designate one harmless writable test capability; record only a synthetic alias in repository documents.
+- [ ] Designate one disposable virtual/test device for lifecycle mutations. It must not represent household equipment, and repository documents record only its synthetic alias.
 - [ ] Define environment variables for live tests. Do not store secret values in shell history, fixtures, `.env` files, or repository config.
 - [ ] Add an explicit live-write allowlist contract requiring both device ID and capability ID.
+- [ ] Add a separately enabled lifecycle-mutation allowlist containing the disposable device ID and the exact permitted operations: add, rename, zone move, availability change, and remove.
 
 **Verification:** Review the compatibility document for secret/private data before committing it.
 
@@ -67,7 +69,7 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 - [ ] Write the allowlisted test capability and confirm the resulting event plus subsequent read.
 - [ ] Test invalid key, missing scopes, bad URL, unavailable host, and request timeout behavior.
 - [ ] Test SHS restart, network interruption/restoration, and API-key revocation.
-- [ ] Test device add, rename, zone move, unavailable, and removal events or inventory deltas.
+- [ ] On the separately gated disposable device only, test add, rename, zone move, unavailable, and removal events or inventory deltas; clean up the disposable device after capture.
 - [ ] Inspect mDNS advertisements before and after restart. Record exact service type/TXT fields only if stable.
 - [ ] If Homey Pro hardware is available, repeat the minimum inventory/event/write suite against its local API.
 
@@ -227,7 +229,8 @@ index.ts
 **Proposed service:** `services/homey.service.ts`
 
 - [ ] Start only when enabled and minimally configured.
-- [ ] Connect, load metadata/inventory, establish subscriptions, then publish healthy state.
+- [ ] Connect, load system/zone metadata, establish event subscriptions, perform the authoritative inventory reconciliation behind a startup event barrier, merge buffered events, then publish healthy state.
+- [ ] Use Homey ordering metadata verified in Phase 0 to merge snapshot/events. If none is reliable, perform a final targeted reconciliation for capabilities touched while the startup snapshot was in flight before releasing the barrier.
 - [ ] Stop subscriptions/timers/connector on disable, config change, module shutdown, or failed startup cleanup.
 - [ ] Reconfigure safely when URL/key/timeouts change; never overlap old/new connectors.
 - [ ] Use exponential reconnect backoff with jitter and a maximum delay.
@@ -346,13 +349,13 @@ index.ts
 **Proposed service:** `services/homey-synchronizer.service.ts`
 
 - [ ] Maintain an index from adopted Homey device/full capability IDs to Smart Panel properties.
-- [ ] Subscribe through the active connector after initial inventory is available.
+- [ ] Subscribe through the active connector before the authoritative initial inventory reconciliation; buffer/serialize events through the startup barrier so a snapshot cannot overwrite a newer event.
 - [ ] Validate/filter events and ignore unadopted or unmapped capabilities.
 - [ ] Transform values and update properties through the standard Devices service path.
 - [ ] Update whole-device/capability availability when corresponding events arrive.
 - [ ] Coalesce bursts per property while preserving the final order/value.
 - [ ] Avoid feedback loops when a command confirmation event returns.
-- [ ] Add tests for unknown devices, unknown capabilities, duplicate/out-of-order events, bursts, invalid values, and unsubscribe.
+- [ ] Add tests for unknown devices, unknown capabilities, duplicate/out-of-order events, bursts, invalid values, unsubscribe, and a capability change during the startup snapshot/subscription boundary.
 
 ### Task 4.2: Implement reconciliation fallback
 
@@ -484,7 +487,7 @@ pnpm run lint:js
 - [ ] SHS restart during event flow.
 - [ ] Network interruption/restoration.
 - [ ] API key revoked, replaced, and insufficiently scoped.
-- [ ] Device add/rename/zone move/unavailable/removal.
+- [ ] Separately gated add/rename/zone-move/unavailable/removal lifecycle tests on the allowlisted disposable device only, followed by cleanup.
 - [ ] Physical/Homey/flow-originated state changes.
 - [ ] Allowlisted Smart Panel control for every writable MVP mapping family available.
 - [ ] Burst updates and concurrent commands.

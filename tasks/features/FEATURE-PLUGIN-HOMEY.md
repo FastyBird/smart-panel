@@ -67,7 +67,7 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 
 ### Out of scope
 
-- Pairing, commissioning, interviewing, renaming, or removing physical devices in Homey.
+- Product support for pairing, commissioning, interviewing, renaming, or removing physical devices in Homey. Phase 0 may exercise lifecycle mutations only on a separately gated, explicitly allowlisted disposable virtual/test device.
 - Homey apps, drivers, flows, alarms, insights, firmware, backups, or user administration.
 - Automatic deletion of Smart Panel devices when upstream Homey devices disappear.
 - Direct Homey credentials or transport in the Flutter panel.
@@ -82,7 +82,7 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - [ ] A least-privilege API key can read devices, zones, system information, and current capability values.
 - [ ] A designated harmless writable capability can be controlled and its resulting event observed.
 - [ ] Socket.IO connection, subscription, disconnect, restart, and reconnect behavior are recorded.
-- [ ] Device add, rename, zone move, unavailable, removal, and suffixed-capability behavior are captured.
+- [ ] Device add, rename, zone move, unavailable, and removal behavior is captured only with a separately gated, explicitly allowlisted disposable virtual/test device; suffixed-capability behavior may use read-only fixtures/devices.
 - [ ] mDNS behavior is verified; discovery is either specified from evidence or explicitly deferred.
 - [ ] The SDK license/distribution decision and SDK-vs-direct-protocol choice are recorded.
 - [ ] Sanitized fixtures contain no API keys, household identifiers, private IP addresses, or personal names.
@@ -112,6 +112,7 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - [ ] Single and batch adoption are idempotent and return per-device outcomes.
 - [ ] Adoption reuses generic device/channel/property identifiers without a migration, or an incremental migration is added if evidence shows one is required.
 - [ ] Initial reconciliation populates current values and availability for adopted devices.
+- [ ] Subscriptions are established before the authoritative initial reconciliation, and a tested startup barrier prevents snapshot/event races from losing the newest value.
 - [ ] Real-time Homey events update only adopted, mapped properties.
 - [ ] Reconnect performs a full reconciliation and bounded periodic reconciliation repairs missed events.
 - [ ] A missing upstream device is marked unavailable/orphaned but never automatically deleted.
