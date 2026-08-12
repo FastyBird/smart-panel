@@ -10,7 +10,11 @@ const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 const FIXTURE_TIMESTAMP = '2000-01-01T00:00:00.000Z';
 
 const SECRET_KEY_PATTERN = /(?:token|secret|password|authorization|api.?key|credential|cookie)/i;
-const ADDRESS_KEY_PATTERN = /(?:addr|address|host|hostname|ip|ipv4|ipv6|mac|serial|serialNumber|ssid|bssid)$/i;
+const CAMEL_CASE_ADDRESS_KEY_PATTERN =
+	/(?:Addr|Address|Host|Hostname|Ip|IP|Ipv4|IPv4|Ipv6|IPv6|Mac|MAC|Serial|SerialNumber|Ssid|SSID|Bssid|BSSID)$/;
+const BOUNDED_ADDRESS_KEY_PATTERN =
+	/(?:^|[_-])(?:addr|address|host|hostname|ip|ipv4|ipv6|mac|serial|serialnumber|serial_number|ssid|bssid)$/i;
+const ENDPOINT_KEY_PATTERN = /(?:^|[_-])(?:endpoint|origin|uri|url)$|(?:Endpoint|Origin|Uri|URI|Url|URL)$/;
 const IDENTIFIER_KEY_PATTERN =
 	/(?:^(?:id|ids|identifier|identifiers|uuid|uuids)$|(?:Id|ID|Ids|IDs|Identifier|Identifiers|Uuid|UUID)$|(?:^|[_-])(?:id|ids|identifier|identifiers|uuid|uuids)$)/;
 const PERSONAL_KEY_PATTERN = /(?:name|note|title|label|email|username)$/i;
@@ -117,6 +121,9 @@ const isDriverMetadata = (path: string[]): boolean => path.includes('data') || p
 const isTimestampKey = (key: string): boolean =>
 	CAMEL_CASE_TIMESTAMP_KEY_PATTERN.test(key) || BOUNDED_TIMESTAMP_KEY_PATTERN.test(key);
 
+const isAddressKey = (key: string): boolean =>
+	CAMEL_CASE_ADDRESS_KEY_PATTERN.test(key) || BOUNDED_ADDRESS_KEY_PATTERN.test(key);
+
 const sanitizeReference = (key: string, value: string): string => {
 	if (/^(?:zone|zoneId|parent)$/i.test(key)) {
 		return pseudonym('zone', value);
@@ -144,7 +151,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 		return FIXTURE_TIMESTAMP;
 	}
 
-	if (value !== null && !capabilityMapEntry && ADDRESS_KEY_PATTERN.test(key)) {
+	if (value !== null && !capabilityMapEntry && isAddressKey(key)) {
 		return REDACTION.address;
 	}
 
@@ -445,20 +452,28 @@ export const assertHomeyCaptureSafe = (
 	}
 
 	if (expectedHost !== undefined) {
-		const scalarValues: string[] = [];
-		const collectScalarValues = (value: unknown): void => {
-			if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-				scalarValues.push(String(value));
+		const escapedHost = escapeRegularExpression(expectedHost);
+		const hostTokenPattern = new RegExp(`(^|[^A-Za-z0-9.-])${escapedHost}(?=$|[^A-Za-z0-9.-])`, 'i');
+		let hostLeakFound = false;
+		const inspectEndpointValues = (value: unknown, key = ''): void => {
+			if (typeof value === 'string') {
+				const endpointShaped =
+					isAddressKey(key) ||
+					ENDPOINT_KEY_PATTERN.test(key) ||
+					value.includes('://') ||
+					new RegExp(`${escapedHost}:\\d+`, 'i').test(value);
+
+				hostLeakFound ||= endpointShaped && hostTokenPattern.test(value);
 			} else if (Array.isArray(value)) {
-				value.forEach(collectScalarValues);
+				value.forEach((item) => inspectEndpointValues(item, key));
 			} else if (isRecord(value)) {
-				Object.values(value).forEach(collectScalarValues);
+				Object.entries(value).forEach(([nestedKey, nestedValue]) => inspectEndpointValues(nestedValue, nestedKey));
 			}
 		};
 
-		collectScalarValues(capture);
+		inspectEndpointValues(capture);
 
-		if (scalarValues.some((value) => value.toLowerCase().includes(expectedHost.toLowerCase()))) {
+		if (hostLeakFound) {
 			throw new Error('Sanitized Homey capture still contains the expected host in a value');
 		}
 	}

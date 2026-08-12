@@ -129,6 +129,9 @@ describe('Homey SHS compatibility probe', () => {
 			grid: 'preserved non-identifier',
 			format: { type: 'json' },
 			thermostat: true,
+			chip: 'preserved chip',
+			membership: { type: 'standard' },
+			tooltip: 'preserved tooltip',
 			candidate: 'preserved candidate',
 			update: { available: true },
 			lastUpdated: '2026-08-12T20:15:30.123Z',
@@ -145,6 +148,9 @@ describe('Homey SHS compatibility probe', () => {
 			grid: 'preserved non-identifier',
 			format: { type: 'json' },
 			thermostat: true,
+			chip: 'preserved chip',
+			membership: { type: 'standard' },
+			tooltip: 'preserved tooltip',
 			candidate: 'preserved candidate',
 			update: { available: true },
 			lastUpdated: '2000-01-01T00:00:00.000Z',
@@ -207,13 +213,14 @@ describe('Homey SHS compatibility probe', () => {
 
 	it('checks an expected host against values rather than fixed metadata keys', () => {
 		const capture: HomeyShsCapture = {
-			metadata: { homey: { id: 'synthetic-source-id' } },
+			metadata: { homey: { id: 'synthetic-source-id', tier: 'shs' } },
 			systemInfo: {},
 			zones: {},
 			devices: {},
 		};
 
 		expect(() => assertHomeyCaptureSafe(capture, [], [], 'homey')).not.toThrow();
+		expect(() => assertHomeyCaptureSafe(capture, [], [], 'shs')).not.toThrow();
 
 		capture.systemInfo = { endpoint: 'http://homey:4859' };
 
