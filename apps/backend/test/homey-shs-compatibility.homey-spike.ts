@@ -54,55 +54,59 @@ describe('Homey SHS compatibility probe', () => {
 		const zones = sanitizeHomeyZones({
 			'private-zone-id': { id: 'private-zone-id', name: 'Private Room', parent: null, active: true },
 		});
-		const devices = sanitizeHomeyDevices({
-			'private-device-id': {
-				id: 'private-device-id',
-				name: 'Private Device',
-				zone: 'private-zone-id',
-				deviceIds: ['private-device-id'],
-				zoneIds: ['private-zone-id'],
-				capabilities: ['onoff', 'measure_temperature.inside', 'secret_token_status'],
-				capabilitiesObj: {
-					secret_token_status: {
-						id: 'secret_token_status',
-						value: true,
-						authorization: 'private-capability-authorization',
+		const devices = sanitizeHomeyDevices(
+			{
+				'private-device-id': {
+					id: 'private-device-id',
+					name: 'Private Device',
+					zone: 'private-zone-id',
+					deviceIds: ['private-device-id'],
+					zoneIds: ['private-zone-id'],
+					capabilities: ['onoff', 'measure_temperature.inside', 'secret_token_status', 'homealarm_state'],
+					capabilitiesObj: {
+						homealarm_state: { id: 'homealarm_state', value: false },
+						secret_token_status: {
+							id: 'secret_token_status',
+							value: true,
+							authorization: 'private-capability-authorization',
+						},
+						onoff: {
+							id: 'onoff',
+							value: true,
+							accountId: 'private-capability-account-id',
+							hardware_id: 'private-capability-hardware-id',
+							metadata: { id: 'private-capability-metadata-id' },
+						},
+						'measure_temperature.inside': { id: 'measure_temperature.inside', value: 21.5 },
+						lastUpdated: {
+							id: 'lastUpdated',
+							value: true,
+							accountId: 'private-timestamp-capability-account-id',
+						},
+						deviceId: { id: 'deviceId', value: 'capability-value' },
 					},
-					onoff: {
-						id: 'onoff',
-						value: true,
-						accountId: 'private-capability-account-id',
-						hardware_id: 'private-capability-hardware-id',
-						metadata: { id: 'private-capability-metadata-id' },
+					settings: {
+						pin: 1234,
+						passcode: 5678,
+						access_code: 9012,
+						address: '192.168.1.25',
+						serial: 'aa:bb:cc:dd:ee:ff',
+						gateway: 'fd12:3456:789a::1',
+						endpoint: 'https://[fe80::1%eth0]:4860/api',
+						mappedAddress: '::ffff:192.168.1.1',
+						bridgeIdentifier: 'private-bridge-id',
 					},
-					'measure_temperature.inside': { id: 'measure_temperature.inside', value: 21.5 },
-					lastUpdated: {
-						id: 'lastUpdated',
-						value: true,
-						accountId: 'private-timestamp-capability-account-id',
+					data: {
+						device_id: 'private-driver-device-id',
+						hardware_id: 'private-hardware-id',
+						accountId: 'private-account-id',
+						model: 'private-driver-model',
 					},
-					deviceId: { id: 'deviceId', value: 'capability-value' },
+					ui: { title: 'Recoverable Room Name' },
 				},
-				settings: {
-					pin: 1234,
-					passcode: 5678,
-					access_code: 9012,
-					address: '192.168.1.25',
-					serial: 'aa:bb:cc:dd:ee:ff',
-					gateway: 'fd12:3456:789a::1',
-					endpoint: 'https://[fe80::1%eth0]:4860/api',
-					mappedAddress: '::ffff:192.168.1.1',
-					bridgeIdentifier: 'private-bridge-id',
-				},
-				data: {
-					device_id: 'private-driver-device-id',
-					hardware_id: 'private-hardware-id',
-					accountId: 'private-account-id',
-					model: 'private-driver-model',
-				},
-				ui: { title: 'Recoverable Room Name' },
 			},
-		});
+			['home'],
+		);
 		const sanitizedZoneId = Object.keys(zones)[0];
 		const sanitizedDeviceId = Object.keys(devices)[0];
 		const serialized = JSON.stringify({ zones, devices });
@@ -112,6 +116,7 @@ describe('Homey SHS compatibility probe', () => {
 			deviceIds: [sanitizedDeviceId],
 			zoneIds: [sanitizedZoneId],
 			capabilitiesObj: {
+				homealarm_state: { id: 'homealarm_state', value: false },
 				secret_token_status: {
 					id: 'secret_token_status',
 					value: true,
@@ -124,6 +129,8 @@ describe('Homey SHS compatibility probe', () => {
 				access_code: '[~3~]',
 			},
 		});
+		expect((devices[sanitizedDeviceId] as { capabilities: string[] }).capabilities).toContain('homealarm_state');
+		expect(() => assertHomeyCaptureSafe({ metadata: {}, systemInfo: {}, zones, devices }, [], ['home'])).not.toThrow();
 
 		expect(serialized).not.toContain('Private Room');
 		expect(serialized).not.toContain('Private Device');
@@ -330,6 +337,10 @@ describe('Homey SHS compatibility probe', () => {
 		};
 
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [], ['known-private-value'])).toThrow('private term');
+
+		unsafeCapture.systemInfo = { aliases: { 'Private Room': true } };
+
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [], ['Private Room'])).toThrow('private term');
 
 		unsafeCapture.systemInfo = { leaked: 'hpat_abcdefghijklmnop1234' };
 

@@ -170,6 +170,8 @@ const isCapabilityMap = (path: string[]): boolean => {
 const isCapabilityIdentifier = (key: string, path: string[]): boolean =>
 	key === 'id' && isCapabilityMap(path.slice(0, -1));
 
+const isCapabilityListEntry = (path: string[]): boolean => path.at(-1) === 'capabilities';
+
 const isDriverMetadata = (path: string[]): boolean => path.includes('data') || path.includes('settings');
 
 const isTimestampKey = (key: string): boolean =>
@@ -248,6 +250,10 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 	}
 
 	if (typeof value === 'string') {
+		if (isCapabilityListEntry(context.path) || isCapabilityIdentifier(key, context.path)) {
+			return value;
+		}
+
 		if (PERSONAL_KEY_PATTERN.test(key)) {
 			return REDACTION.privateTerm;
 		}
@@ -256,11 +262,11 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 			return FIXTURE_TIMESTAMP;
 		}
 
-		if (!isCapabilityIdentifier(key, context.path) && isDriverMetadata(context.path)) {
+		if (isDriverMetadata(context.path)) {
 			return REDACTION.identifier;
 		}
 
-		if ((key === 'id' || UUID_PATTERN.test(value)) && !isCapabilityIdentifier(key, context.path)) {
+		if (key === 'id' || UUID_PATTERN.test(value)) {
 			return pseudonym('id', value);
 		}
 
@@ -554,13 +560,19 @@ export const assertHomeyCaptureSafe = (
 
 	const generatedPseudonymPattern = /^(?:device|homey|id|reference|zone)-[0-9a-f]{6}g[0-9a-f]{6}$/;
 	const syntheticLabelPattern = /^Synthetic (?:device|zone) \d{3}$/;
+	const dynamicKeyContainsPrivateTerm = (key: string, term: string): boolean => {
+		const normalizedKey = key.toLowerCase();
+		const normalizedTerm = term.toLowerCase();
+		const labelLike = /[^A-Za-z0-9_-]/.test(key) || /[^A-Za-z0-9_-]/.test(term);
+
+		return normalizedKey === normalizedTerm || (labelLike && normalizedKey.includes(normalizedTerm));
+	};
 	const inspectPrivateTermValues = (value: unknown, key: string, path: string[], term: string): boolean => {
 		if (typeof value === 'string') {
-			const capabilityListEntry = path.at(-1) === 'capabilities';
 			const generatedValue = generatedPseudonymPattern.test(value) || syntheticLabelPattern.test(value);
 
 			return (
-				!capabilityListEntry &&
+				!isCapabilityListEntry(path) &&
 				!isCapabilityIdentifier(key, path) &&
 				!generatedValue &&
 				value.replace(REDACTION_PATTERN, '').toLowerCase().includes(term.toLowerCase())
@@ -572,9 +584,15 @@ export const assertHomeyCaptureSafe = (
 		}
 
 		if (isRecord(value)) {
-			return Object.entries(value).some(([nestedKey, nestedValue]) =>
-				inspectPrivateTermValues(nestedValue, nestedKey, [...path, key], term),
-			);
+			const nextPath = [...path, key];
+			const preserveKeys = isCapabilityMap(nextPath);
+
+			return Object.entries(value).some(([nestedKey, nestedValue]) => {
+				const generatedKey = generatedPseudonymPattern.test(nestedKey);
+				const privateDynamicKey = !preserveKeys && !generatedKey && dynamicKeyContainsPrivateTerm(nestedKey, term);
+
+				return privateDynamicKey || inspectPrivateTermValues(nestedValue, nestedKey, nextPath, term);
+			});
 		}
 
 		return false;
