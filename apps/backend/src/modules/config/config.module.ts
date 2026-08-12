@@ -19,6 +19,7 @@ import { CONFIG_SWAGGER_EXTRA_MODELS } from './config.openapi';
 import { ConfigController } from './controllers/config.controller';
 import { UpdateConfigModuleConfigDto } from './dto/update-module-config.dto';
 import { ConfigModuleConfigModel } from './models/module-config.model';
+import { ConfigSecretsService } from './services/config-secrets.service';
 import { ConfigService } from './services/config.service';
 import { ModuleConfigMutationRegistryService } from './services/module-config-mutation-registry.service';
 import { ModulesTypeMapperService } from './services/modules-type-mapper.service';
@@ -34,12 +35,13 @@ import { PluginConfigValidatorService } from './services/plugin-config-validator
 	imports: [NestConfigModule, PlatformModule, SwaggerModule],
 	providers: [
 		ConfigService,
+		ConfigSecretsService,
 		ModuleConfigMutationRegistryService,
 		PluginConfigValidatorService,
 		GenerateAdminExtensionsCommand,
 	],
 	controllers: [ConfigController],
-	exports: [ConfigService, ModuleConfigMutationRegistryService, PluginConfigValidatorService],
+	exports: [ConfigService, ConfigSecretsService, ModuleConfigMutationRegistryService, PluginConfigValidatorService],
 })
 export class ConfigModule implements OnModuleInit {
 	constructor(

@@ -4,12 +4,14 @@ import { createExtensionLogger } from '../../../common/logger';
 import { CONFIG_MODULE_NAME } from '../config.constants';
 import { ConfigException } from '../config.exceptions';
 import { UpdatePluginConfigDto } from '../dto/config.dto';
+import { ConfigSecretField } from '../interfaces/config-secret.interface';
 import { PluginConfigModel } from '../models/config.model';
 
 export interface PluginTypeMapping<TPlugin extends PluginConfigModel, TConfigDTO extends UpdatePluginConfigDto> {
 	type: string; // e.g., 'third-party', 'shelly'
 	class: new (...args: any[]) => TPlugin; // Constructor for the configuration class
 	configDto: new (...args: any[]) => TConfigDTO; // Constructor for the DTO
+	secretFields?: readonly ConfigSecretField[];
 }
 
 @Injectable()
