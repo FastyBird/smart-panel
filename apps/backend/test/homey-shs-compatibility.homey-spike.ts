@@ -318,6 +318,15 @@ describe('Homey SHS compatibility probe', () => {
 
 		expect(privatePrefixSerialized).not.toContain('device-');
 		expect(privatePrefixSerialized).not.toContain('device-label');
+		const blockedNeutralPrefixDevices = sanitizeHomeyDevices(
+			{
+				'private-device-id': { id: 'private-device-id', name: 'Private source' },
+			},
+			['device', ...Array.from({ length: 10 }, (_, digit) => `p-${digit}`)],
+		);
+
+		expect(Object.keys(blockedNeutralPrefixDevices)[0]).toMatch(/^q-/);
+		expect((Object.values(blockedNeutralPrefixDevices)[0] as { name: string }).name).toMatch(/^q-/);
 	});
 
 	it('uses unauthenticated ping, bounded read-only calls, and blocks redirects', async () => {

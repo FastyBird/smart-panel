@@ -7,7 +7,9 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 const MIN_TIMEOUT_MS = 1_000;
 const MAX_TIMEOUT_MS = 60_000;
 const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
+const MAX_ALIAS_ATTEMPTS_PER_PREFIX = 1_000;
 const FIXTURE_TIMESTAMP = '2000-01-01T00:00:00.000Z';
+const NEUTRAL_ALIAS_PREFIXES = ['p', 'q', 'x', 'z'] as const;
 
 const SECRET_KEY_PATTERN = /(?:token|secret|password|authorization|api.?key|credential|cookie)/i;
 const CAMEL_CASE_SECRET_CODE_KEY_PATTERN = /(?:Pin|PIN|PinCode|PINCode|Passcode|AccessCode)$/;
@@ -129,17 +131,34 @@ const pseudonym = (kind: string, value: string, aliases: SanitizationAliases): s
 	}
 
 	let sequence = aliases.counters.get(kind) ?? 0;
-	let alias: string;
+	let alias: string | undefined;
 	const normalizedKind = kind.toLowerCase();
-	const prefix = [...aliases.forbiddenSubstrings].some((term) => normalizedKind.includes(term)) ? 'p' : kind;
+	const kindConflicts = [...aliases.forbiddenSubstrings].some((term) => normalizedKind.includes(term));
+	const prefixes = kindConflicts ? NEUTRAL_ALIAS_PREFIXES : [kind, ...NEUTRAL_ALIAS_PREFIXES];
 
-	do {
-		sequence += 1;
-		alias = `${prefix}-${String(sequence).padStart(6, '0')}`;
-	} while (
-		aliases.sourceValues.has(alias.toLowerCase()) ||
-		[...aliases.forbiddenSubstrings].some((term) => alias.toLowerCase().includes(term))
-	);
+	for (const prefix of prefixes) {
+		for (let attempt = 0; attempt < MAX_ALIAS_ATTEMPTS_PER_PREFIX; attempt += 1) {
+			sequence += 1;
+			const candidate = `${prefix}-${String(sequence).padStart(6, '0')}`;
+			const normalizedCandidate = candidate.toLowerCase();
+			const conflicts =
+				aliases.sourceValues.has(normalizedCandidate) ||
+				[...aliases.forbiddenSubstrings].some((term) => normalizedCandidate.includes(term));
+
+			if (!conflicts) {
+				alias = candidate;
+				break;
+			}
+		}
+
+		if (alias !== undefined) {
+			break;
+		}
+	}
+
+	if (alias === undefined) {
+		throw new Error('Unable to allocate a Homey capture alias that excludes configured private terms');
+	}
 
 	aliases.counters.set(kind, sequence);
 	aliases.sourceValues.add(alias.toLowerCase());
@@ -665,7 +684,7 @@ export const assertHomeyCaptureSafe = (
 		}
 	}
 
-	const generatedPseudonymPattern = /^(?:device|device-label|homey|id|p|reference|zone|zone-label)-\d{6}$/;
+	const generatedPseudonymPattern = /^(?:device|device-label|homey|id|p|q|reference|x|z|zone|zone-label)-\d{6}$/;
 	const fixedPayloadKeys = new Set([
 		'active',
 		'available',
