@@ -7,6 +7,10 @@ import { DeviceValidationService } from '../../../modules/devices/services/devic
 import { AdoptHelperRequestDto } from '../dto/helper-mapping-preview.dto';
 import { AdoptDeviceRequestDto } from '../dto/mapping-preview.dto';
 import { HelperMappingPreviewModel } from '../models/helper-mapping-preview.model';
+import {
+	HomeAssistantDeviceRegistryResultModel,
+	HomeAssistantDiscoveredHelperModel,
+} from '../models/home-assistant.model';
 import { MappingPreviewModel } from '../models/mapping-preview.model';
 import {
 	HomeAssistantWizardAdoptionResultModel,
@@ -31,6 +35,12 @@ interface HomeAssistantWizardSession {
 	startedAt: Date;
 	candidates: Map<string, HomeAssistantWizardCandidate>;
 	idleTimer?: NodeJS.Timeout;
+}
+
+interface ResolvedAdoptionRequest {
+	request: AdoptDeviceRequestDto | AdoptHelperRequestDto;
+	registryDevice?: HomeAssistantDeviceRegistryResultModel;
+	discoveredHelper?: HomeAssistantDiscoveredHelperModel;
 }
 
 @Injectable()
@@ -152,8 +162,24 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 
 		this.refreshIdleTimer(session);
 		const results: HomeAssistantWizardAdoptionResultModel[] = [];
+		const uniqueKeys = [...new Set(keys)];
+		const adoptableCandidates = uniqueKeys.flatMap((key) => {
+			const candidate = session.candidates.get(key);
+			return candidate?.snapshot.status === 'ready' && candidate.request ? [candidate] : [];
+		});
+		let currentRequests = new Map<string, ResolvedAdoptionRequest | Error>();
 
-		for (const key of [...new Set(keys)]) {
+		if (adoptableCandidates.length > 0) {
+			try {
+				currentRequests = await this.resolveCurrentRequests(adoptableCandidates);
+			} catch (error) {
+				for (const candidate of adoptableCandidates) {
+					currentRequests.set(candidate.snapshot.key, error as Error);
+				}
+			}
+		}
+
+		for (const key of uniqueKeys) {
 			const candidate = session.candidates.get(key);
 
 			if (!candidate || candidate.snapshot.status !== 'ready' || !candidate.request) {
@@ -167,11 +193,18 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 			}
 
 			try {
-				const request = await this.resolveCurrentRequest(candidate.snapshot);
+				const resolved = currentRequests.get(key);
+				if (!resolved) {
+					throw new Error('Automatic mapping is no longer available');
+				}
+				if (resolved instanceof Error) {
+					throw resolved;
+				}
+				const request = resolved.request;
 				const device =
 					candidate.snapshot.kind === 'device'
-						? await this.deviceAdoptionService.adoptDevice(request as AdoptDeviceRequestDto)
-						: await this.helperAdoptionService.adoptHelper(request as AdoptHelperRequestDto);
+						? await this.deviceAdoptionService.adoptDevice(request as AdoptDeviceRequestDto, resolved.registryDevice)
+						: await this.helperAdoptionService.adoptHelper(request as AdoptHelperRequestDto, resolved.discoveredHelper);
 
 				candidate.snapshot.status = 'already_registered';
 				candidate.snapshot.adoptedDeviceId = device.id;
@@ -186,33 +219,67 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 		return results;
 	}
 
-	private async resolveCurrentRequest(
-		candidate: HomeAssistantWizardCandidateModel,
-	): Promise<AdoptDeviceRequestDto | AdoptHelperRequestDto> {
-		if (candidate.kind === 'device') {
-			const preview = await this.mappingPreviewService.generatePreview(candidate.sourceId);
-			const request = this.buildDeviceRequest(preview);
+	private async resolveCurrentRequests(
+		candidates: HomeAssistantWizardCandidate[],
+	): Promise<Map<string, ResolvedAdoptionRequest | Error>> {
+		const inventory = await this.homeAssistantHttpService.getDiscoveredInventory();
+		const deviceIds = new Set(
+			candidates
+				.filter((candidate) => candidate.snapshot.kind === 'device')
+				.map((candidate) => candidate.snapshot.sourceId),
+		);
+		const helperIds = new Set(
+			candidates
+				.filter((candidate) => candidate.snapshot.kind === 'helper')
+				.map((candidate) => candidate.snapshot.sourceId),
+		);
+		const [deviceResults, helperResults] = await Promise.all([
+			this.mappingPreviewService.generateSettledPreviews(
+				inventory.devices.filter((device) => deviceIds.has(device.id)),
+			),
+			this.helperMappingPreviewService.generateSettledPreviews(
+				inventory.helpers.filter((helper) => helperIds.has(helper.entityId)),
+			),
+		]);
+		const deviceResultsById = new Map(deviceResults.map((result) => [result.source.id, result]));
+		const helperResultsById = new Map(helperResults.map((result) => [result.source.entityId, result]));
+		const requests = new Map<string, ResolvedAdoptionRequest | Error>();
 
-			if (!preview.readyToAdopt || preview.warnings.length > 0 || request.channels.length === 0) {
-				throw new Error('Automatic mapping changed and now requires manual review');
+		for (const candidate of candidates) {
+			if (candidate.snapshot.kind === 'device') {
+				const result = deviceResultsById.get(candidate.snapshot.sourceId);
+				if (!result?.preview) {
+					requests.set(candidate.snapshot.key, new Error(result?.error ?? 'Automatic mapping is no longer available'));
+					continue;
+				}
+				const request = this.buildDeviceRequest(result.preview);
+				requests.set(
+					candidate.snapshot.key,
+					result.preview.readyToAdopt && result.preview.warnings.length === 0 && request.channels.length > 0
+						? { request, registryDevice: result.registryDevice ?? undefined }
+						: new Error('Automatic mapping changed and now requires manual review'),
+				);
+				continue;
 			}
 
-			return request;
+			const result = helperResultsById.get(candidate.snapshot.sourceId);
+			if (!result?.preview) {
+				requests.set(candidate.snapshot.key, new Error(result?.error ?? 'Automatic mapping is no longer available'));
+				continue;
+			}
+			const request = this.buildHelperRequest(result.preview);
+			requests.set(
+				candidate.snapshot.key,
+				result.preview.readyToAdopt &&
+					result.preview.warnings.length === 0 &&
+					request.channels.length > 0 &&
+					this.isHelperRequestValid(request)
+					? { request, discoveredHelper: result.source }
+					: new Error('Automatic mapping changed and now requires manual review'),
+			);
 		}
 
-		const preview = await this.helperMappingPreviewService.generatePreview(candidate.sourceId);
-		const request = this.buildHelperRequest(preview);
-
-		if (
-			!preview.readyToAdopt ||
-			preview.warnings.length > 0 ||
-			request.channels.length === 0 ||
-			!this.isHelperRequestValid(request)
-		) {
-			throw new Error('Automatic mapping changed and now requires manual review');
-		}
-
-		return request;
+		return requests;
 	}
 
 	private createDeviceCandidate(

@@ -181,10 +181,12 @@ describe('MappingPreviewService', () => {
 			const results = await service.generateSettledPreviews([mockDiscoveredDevice, missingDevice]);
 
 			expect(results[0].source).toBe(mockDiscoveredDevice);
+			expect(results[0].registryDevice).toBe(mockDeviceRegistry[0]);
 			expect(results[0].preview?.haDevice.id).toBe('device123');
 			expect(results[0].error).toBeNull();
 			expect(results[1]).toEqual({
 				source: missingDevice,
+				registryDevice: null,
 				preview: null,
 				error: 'Home Assistant device with ID removed-device not found',
 			});

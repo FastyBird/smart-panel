@@ -36,6 +36,7 @@ import {
 	HomeAssistantChannelPropertyEntity,
 	HomeAssistantDeviceEntity,
 } from '../entities/devices-home-assistant.entity';
+import { HomeAssistantDiscoveredHelperModel } from '../models/home-assistant.model';
 import { buildHelperDeviceStructure } from '../utils/helper-structure.utils';
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
@@ -62,9 +63,15 @@ export class HelperAdoptionService {
 	/**
 	 * Adopt a Home Assistant helper into the Smart Panel system
 	 */
-	async adoptHelper(request: AdoptHelperRequestDto): Promise<HomeAssistantDeviceEntity> {
+	async adoptHelper(
+		request: AdoptHelperRequestDto,
+		discoveredHelper?: HomeAssistantDiscoveredHelperModel,
+	): Promise<HomeAssistantDeviceEntity> {
 		// Validate helper exists
-		const helper = await this.homeAssistantHttpService.getDiscoveredHelper(request.entityId);
+		const helper =
+			discoveredHelper?.entityId === request.entityId
+				? discoveredHelper
+				: await this.homeAssistantHttpService.getDiscoveredHelper(request.entityId);
 
 		if (!helper) {
 			throw new DevicesHomeAssistantNotFoundException(

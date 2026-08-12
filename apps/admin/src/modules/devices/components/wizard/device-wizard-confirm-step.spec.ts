@@ -214,4 +214,22 @@ describe('DeviceWizardConfirmStep', () => {
 
 		expect(wrapper.emitted('toggle-rows')?.[0]).toEqual([['kitchen.local'], true]);
 	});
+
+	it('filters by the rendered fallback status label', async () => {
+		const wrapper = mountStep([row(), row({ key: 'registered', identifier: 'registered', status: 'already_registered', willUpdate: true })], {
+			selected: { 'shelly-1.local': true, registered: true },
+			nameByKey: { 'shelly-1.local': 'Living room switch', registered: 'Registered switch' },
+			categoryByKey: {
+				'shelly-1.local': DevicesModuleDeviceCategory.lighting,
+				registered: DevicesModuleDeviceCategory.lighting,
+			},
+		});
+
+		await flushPromises();
+		await wrapper.find('[data-test-id="wizard-confirm-search"] input').setValue('already_registered');
+		await flushPromises();
+
+		expect(wrapper.findAll('tbody tr')).toHaveLength(1);
+		expect(wrapper.text()).toContain('registered');
+	});
 });

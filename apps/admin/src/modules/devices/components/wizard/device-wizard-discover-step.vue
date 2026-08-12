@@ -227,7 +227,13 @@ const filteredRows = computed<IWizardRow[]>(() => {
 	}
 
 	return props.rows.filter((row) => {
-		const values = [row.label, row.subLabel, row.identifier, row.statusLabel, ...Object.values(row.cells ?? {}).map((cell) => cell.value)];
+		const values = [
+			row.label,
+			row.subLabel,
+			row.identifier,
+			row.statusLabel ?? t(`devicesModule.wizard.statuses.${row.status}`),
+			...Object.values(row.cells ?? {}).map((cell) => cell.value),
+		];
 
 		return values.some((value) => value?.toLocaleLowerCase().includes(query));
 	});

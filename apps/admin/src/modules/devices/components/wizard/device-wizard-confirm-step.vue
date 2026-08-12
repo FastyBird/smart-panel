@@ -192,7 +192,7 @@ const filteredRows = computed<IWizardRow[]>(() => {
 			row.label,
 			row.subLabel,
 			row.identifier,
-			row.statusLabel,
+			row.statusLabel ?? t(`devicesModule.wizard.statuses.${row.status}`),
 			props.nameByKey[row.key],
 			categoryLabel(row),
 			...Object.values(row.cells ?? {}).map((cell) => cell.value),

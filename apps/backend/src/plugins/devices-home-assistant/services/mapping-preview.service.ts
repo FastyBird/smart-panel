@@ -51,6 +51,7 @@ import { VirtualPropertyContext } from './virtual-property.types';
 
 export interface DeviceMappingPreviewResult {
 	source: HomeAssistantDiscoveredDeviceModel;
+	registryDevice: HomeAssistantDeviceRegistryResultModel | null;
 	preview: MappingPreviewModel | null;
 	error: string | null;
 }
@@ -114,13 +115,15 @@ export class MappingPreviewService {
 
 		return inventory.map((device) => {
 			try {
+				const registryDevice = devicesRegistry.find((item) => item.id === device.id) ?? null;
 				return {
 					source: device,
+					registryDevice,
 					preview: this.generatePreviewFromSnapshot(device.id, devicesRegistry, entitiesRegistry, device),
 					error: null,
 				};
 			} catch (error) {
-				return { source: device, preview: null, error: (error as Error).message };
+				return { source: device, registryDevice: null, preview: null, error: (error as Error).message };
 			}
 		});
 	}

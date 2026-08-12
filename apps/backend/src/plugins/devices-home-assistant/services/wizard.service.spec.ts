@@ -208,8 +208,12 @@ describe('HomeAssistantWizardService', () => {
 				category: DeviceCategory.LIGHTING,
 				channels: [expect.objectContaining({ entityId: 'light.living_room', category: ChannelCategory.LIGHT })],
 			}),
+			undefined,
 		);
-		expect(mappingPreviewService.generatePreview).toHaveBeenCalledWith('ha-device-1');
+		expect(homeAssistantHttpService.getDiscoveredInventory).toHaveBeenCalledTimes(2);
+		expect(mappingPreviewService.generateSettledPreviews).toHaveBeenLastCalledWith([
+			expect.objectContaining({ id: 'ha-device-1' }),
+		]);
 		expect(helperAdoptionService.adoptHelper).not.toHaveBeenCalled();
 		expect(service.get(snapshot.id)?.candidates.find((candidate) => candidate.key === 'device:ha-device-1')).toEqual(
 			expect.objectContaining({ status: 'already_registered', adoptedDeviceId: 'device-1' }),
@@ -226,8 +230,14 @@ describe('HomeAssistantWizardService', () => {
 				error: null,
 			},
 		]);
-		helperMappingPreviewService.generatePreview.mockResolvedValueOnce(transformedPreview);
 		const snapshot = await service.start();
+		helperMappingPreviewService.generateSettledPreviews.mockResolvedValueOnce([
+			{
+				source: { entityId: 'input_boolean.guest_mode', name: 'Guest mode', domain: 'input_boolean' },
+				preview: transformedPreview,
+				error: null,
+			},
+		]);
 
 		await service.adopt(snapshot.id, ['helper:input_boolean.guest_mode']);
 
@@ -239,14 +249,21 @@ describe('HomeAssistantWizardService', () => {
 					}),
 				],
 			}),
+			expect.objectContaining({ entityId: 'input_boolean.guest_mode' }),
 		);
 	});
 
 	it('revalidates automatic mapping immediately before persistence', async () => {
 		const snapshot = await service.start();
-		mappingPreviewService.generatePreview.mockResolvedValueOnce(
-			createDevicePreview([{ type: 'unsupported_entity', entityId: 'sensor.changed', message: 'Mapping changed' }]),
-		);
+		mappingPreviewService.generateSettledPreviews.mockResolvedValueOnce([
+			{
+				source: { id: 'ha-device-1', name: 'Living room lamp' },
+				preview: createDevicePreview([
+					{ type: 'unsupported_entity', entityId: 'sensor.changed', message: 'Mapping changed' },
+				]),
+				error: null,
+			},
+		]);
 
 		const results = await service.adopt(snapshot.id, ['device:ha-device-1']);
 
@@ -270,6 +287,9 @@ describe('HomeAssistantWizardService', () => {
 			{ key: 'device:ha-device-1', name: 'Living room lamp', status: 'created', error: null },
 			{ key: 'helper:input_boolean.guest_mode', name: 'Guest mode', status: 'failed', error: 'Helper disappeared' },
 		]);
+		expect(homeAssistantHttpService.getDiscoveredInventory).toHaveBeenCalledTimes(2);
+		expect(mappingPreviewService.generateSettledPreviews).toHaveBeenCalledTimes(2);
+		expect(helperMappingPreviewService.generateSettledPreviews).toHaveBeenCalledTimes(2);
 	});
 
 	it('marks candidates already adopted outside the wizard as unavailable', async () => {

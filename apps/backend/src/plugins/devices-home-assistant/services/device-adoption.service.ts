@@ -21,6 +21,7 @@ import { CreateHomeAssistantChannelDto } from '../dto/create-channel.dto';
 import { CreateHomeAssistantDeviceDto } from '../dto/create-device.dto';
 import { AdoptDeviceRequestDto } from '../dto/mapping-preview.dto';
 import { HomeAssistantDeviceEntity } from '../entities/devices-home-assistant.entity';
+import { HomeAssistantDeviceRegistryResultModel } from '../models/home-assistant.model';
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { HomeAssistantWsService } from './home-assistant.ws.service';
@@ -56,10 +57,15 @@ export class DeviceAdoptionService {
 	/**
 	 * Adopt a Home Assistant device into the Smart Panel system
 	 */
-	async adoptDevice(request: AdoptDeviceRequestDto): Promise<HomeAssistantDeviceEntity> {
+	async adoptDevice(
+		request: AdoptDeviceRequestDto,
+		registryDevice?: HomeAssistantDeviceRegistryResultModel,
+	): Promise<HomeAssistantDeviceEntity> {
 		// Validate HA device exists
-		const devicesRegistry = await this.homeAssistantWsService.getDevicesRegistry();
-		const haDevice = devicesRegistry.find((d) => d.id === request.haDeviceId);
+		const haDevice =
+			registryDevice?.id === request.haDeviceId
+				? registryDevice
+				: (await this.homeAssistantWsService.getDevicesRegistry()).find((device) => device.id === request.haDeviceId);
 
 		if (!haDevice) {
 			throw new DevicesHomeAssistantNotFoundException(
