@@ -768,6 +768,16 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 		expect(replacementScopeGrant.approvedScopes).toEqual(expect.arrayContaining([McpOAuthScope.WRITE]));
 		expect(replacementScopeGrant.generation).toBe(0);
 		await expect(
+			runtime.getActive().provider.AccessToken.find(replacementScopeTokens.access_token),
+		).resolves.toBeDefined();
+		const replacementScopeRefreshResponse = await refresh(urls, requireRefreshToken(replacementScopeTokens));
+		const refreshedReplacementScopeTokens = (await replacementScopeRefreshResponse.json()) as TokenResponse;
+		expect(replacementScopeRefreshResponse.status).toBe(200);
+		expect(refreshedReplacementScopeTokens.scope.split(' ')).toEqual(expect.arrayContaining([McpOAuthScope.WRITE]));
+		await expect(
+			runtime.getActive().provider.AccessToken.find(refreshedReplacementScopeTokens.access_token),
+		).resolves.toBeDefined();
+		await expect(
 			runtime.getActive().provider.AccessToken.find(contractedGrantTokens.access_token),
 		).resolves.toBeUndefined();
 		expect((await refresh(urls, requireRefreshToken(contractedGrantTokens))).status).toBe(400);
