@@ -1477,7 +1477,14 @@ describe('WledService', () => {
 			const legacyDevice = createMockDevice('device-1', 'wled-192-168-1-100', '192.168.1.100');
 			wledAdapter.probe.mockResolvedValue(mockContext);
 			devicesService.findAll.mockResolvedValue([legacyDevice]);
-			deviceMapper.mapDevice.mockResolvedValue(legacyDevice);
+			devicesService.update.mockResolvedValue({
+				...legacyDevice,
+				identifier: 'wled-aabbccddeeff',
+			} as WledDeviceEntity);
+			deviceMapper.mapDevice.mockResolvedValue({
+				...legacyDevice,
+				identifier: 'wled-aabbccddeeff',
+			} as WledDeviceEntity);
 
 			const results = await service.adoptDevices([
 				{ host: '192.168.1.100', name: 'Legacy strip', category: DeviceCategory.LIGHTING },
@@ -1487,10 +1494,15 @@ describe('WledService', () => {
 				'192.168.1.100',
 				mockContext,
 				'Legacy strip',
-				'wled-192-168-1-100',
+				'wled-aabbccddeeff',
 				undefined,
 				undefined,
 			);
+			expect(devicesService.update).toHaveBeenCalledWith('device-1', {
+				type: DEVICES_WLED_TYPE,
+				identifier: 'wled-aabbccddeeff',
+				hostname: '192.168.1.100',
+			});
 			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-1' })]);
 		});
 
@@ -1498,7 +1510,14 @@ describe('WledService', () => {
 			const legacyDevice = createMockDevice('device-1', 'wled-wled-local', 'wled.local:8080');
 			wledAdapter.probe.mockResolvedValue(mockContext);
 			devicesService.findAll.mockResolvedValue([legacyDevice]);
-			deviceMapper.mapDevice.mockResolvedValue(legacyDevice);
+			devicesService.update.mockResolvedValue({
+				...legacyDevice,
+				identifier: 'wled-aabbccddeeff',
+			} as WledDeviceEntity);
+			deviceMapper.mapDevice.mockResolvedValue({
+				...legacyDevice,
+				identifier: 'wled-aabbccddeeff',
+			} as WledDeviceEntity);
 
 			const results = await service.adoptDevices([
 				{ host: 'wled.local:8080', name: 'Legacy strip', category: DeviceCategory.LIGHTING },
@@ -1508,7 +1527,7 @@ describe('WledService', () => {
 				'wled.local:8080',
 				mockContext,
 				'Legacy strip',
-				'wled-wled-local',
+				'wled-aabbccddeeff',
 				undefined,
 				undefined,
 			);

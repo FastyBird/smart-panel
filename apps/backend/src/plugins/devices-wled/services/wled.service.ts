@@ -582,8 +582,12 @@ export class WledService extends BaseManagedPluginService {
 				host = this.normalizeHost(request.host);
 				const context = await this.wledAdapter.probe(host, this.config.timeouts.connectionTimeout);
 				const existingDevice = this.findExistingDevice(databaseDevices, host, context.info.mac);
-				const identifier = existingDevice?.identifier || this.identifierFromMac(context.info.mac);
 				const canonicalIdentity = this.identifierFromMac(context.info.mac);
+				const existingIdentifier = existingDevice?.identifier;
+				const identifier =
+					existingIdentifier && !this.legacyHostIdentifiers(existingDevice.hostname ?? host).has(existingIdentifier)
+						? existingIdentifier
+						: canonicalIdentity;
 
 				if (plannedIdentities.has(canonicalIdentity)) {
 					results[index] = {
@@ -729,7 +733,7 @@ export class WledService extends BaseManagedPluginService {
 			const disconnectedStaleOwners: WledDeviceEntity[] = [];
 
 			try {
-				if (existingDevice && !existingDevice.identifier) {
+				if (existingDevice && existingDevice.identifier !== identifier) {
 					await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(existingDevice.id, {
 						type: DEVICES_WLED_TYPE,
 						identifier,
