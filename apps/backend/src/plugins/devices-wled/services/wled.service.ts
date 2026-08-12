@@ -767,30 +767,41 @@ export class WledService extends BaseManagedPluginService {
 					);
 
 					for (const involvedHost of involvedHosts) {
-						this.wledAdapter.disconnect(involvedHost, false);
+						await this.tryRollback(`disconnect ${involvedHost}`, () =>
+							Promise.resolve(this.wledAdapter.disconnect(involvedHost, false)),
+						);
 					}
 
 					for (const dependentPlan of dependentPlans) {
 						if (dependentPlan.existingDevice) {
 							const original = dependentPlan.existingDevice;
-							await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(original.id, {
-								type: DEVICES_WLED_TYPE,
-								identifier: original.identifier,
-								name: original.name,
-								description: original.description,
-								enabled: original.enabled,
-								hostname: original.hostname,
-							});
-							await this.restoreDeviceConnection(original);
+							await this.tryRollback(`restore device ${original.id}`, () =>
+								this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(original.id, {
+									type: DEVICES_WLED_TYPE,
+									identifier: original.identifier,
+									name: original.name,
+									description: original.description,
+									enabled: original.enabled,
+									hostname: original.hostname,
+								}),
+							);
+							await this.tryRollback(`reconnect device ${original.id}`, () => this.restoreDeviceConnection(original));
 						} else {
-							const partialDevice = await this.devicesService.findOneBy<WledDeviceEntity>(
-								'identifier',
-								dependentPlan.identifier,
-								DEVICES_WLED_TYPE,
+							const partialDevice = await this.tryRollback(
+								`find partial device ${dependentPlan.identifier}`,
+								() =>
+									this.devicesService.findOneBy<WledDeviceEntity>(
+										'identifier',
+										dependentPlan.identifier,
+										DEVICES_WLED_TYPE,
+									),
+								null,
 							);
 							const createdDeviceId = createdDeviceIdsByPlan.get(dependentPlan.index) ?? partialDevice?.id;
 							if (createdDeviceId) {
-								await this.devicesService.remove(createdDeviceId);
+								await this.tryRollback(`remove partial device ${createdDeviceId}`, () =>
+									this.devicesService.remove(createdDeviceId),
+								);
 								createdDeviceIdsByPlan.delete(dependentPlan.index);
 							}
 						}
@@ -805,54 +816,74 @@ export class WledService extends BaseManagedPluginService {
 					}
 
 					for (const staleHostOwner of retiredStaleOwnersByDependencyGroup.get(dependencyGroup)?.values() ?? []) {
-						await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(staleHostOwner.id, {
-							type: DEVICES_WLED_TYPE,
-							identifier: staleHostOwner.identifier,
-							name: staleHostOwner.name,
-							description: staleHostOwner.description,
-							enabled: staleHostOwner.enabled,
-							hostname: staleHostOwner.hostname,
-						});
+						await this.tryRollback(`restore stale owner ${staleHostOwner.id}`, () =>
+							this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(staleHostOwner.id, {
+								type: DEVICES_WLED_TYPE,
+								identifier: staleHostOwner.identifier,
+								name: staleHostOwner.name,
+								description: staleHostOwner.description,
+								enabled: staleHostOwner.enabled,
+								hostname: staleHostOwner.hostname,
+							}),
+						);
 						retiredDeviceIds.delete(staleHostOwner.id);
-						await this.restoreDeviceConnection(staleHostOwner);
+						await this.tryRollback(`reconnect stale owner ${staleHostOwner.id}`, () =>
+							this.restoreDeviceConnection(staleHostOwner),
+						);
 					}
 				} else {
 					const attemptedRegistration = this.wledAdapter.getDevice(host);
 					const attemptedHostDisconnected =
 						attemptedRegistration?.host === host && attemptedRegistration.identifier === identifier;
 					if (attemptedHostDisconnected) {
-						this.wledAdapter.disconnect(host, false);
+						await this.tryRollback(`disconnect ${host}`, () =>
+							Promise.resolve(this.wledAdapter.disconnect(host, false)),
+						);
 					}
 					const partialDevice =
 						mappedDevice ??
-						(await this.devicesService.findOneBy<WledDeviceEntity>('identifier', identifier, DEVICES_WLED_TYPE));
+						(await this.tryRollback(
+							`find partial device ${identifier}`,
+							() => this.devicesService.findOneBy<WledDeviceEntity>('identifier', identifier, DEVICES_WLED_TYPE),
+							null,
+						));
 
 					if (existingDevice) {
-						await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(existingDevice.id, {
-							type: DEVICES_WLED_TYPE,
-							identifier: existingDevice.identifier,
-							name: existingDevice.name,
-							description: existingDevice.description,
-							enabled: existingDevice.enabled,
-							hostname: existingDevice.hostname,
-						});
+						await this.tryRollback(`restore device ${existingDevice.id}`, () =>
+							this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(existingDevice.id, {
+								type: DEVICES_WLED_TYPE,
+								identifier: existingDevice.identifier,
+								name: existingDevice.name,
+								description: existingDevice.description,
+								enabled: existingDevice.enabled,
+								hostname: existingDevice.hostname,
+							}),
+						);
 						if (existingDeviceDisconnected || attemptedHostDisconnected) {
-							await this.restoreDeviceConnection(existingDevice);
+							await this.tryRollback(`reconnect device ${existingDevice.id}`, () =>
+								this.restoreDeviceConnection(existingDevice),
+							);
 						}
 					} else if (partialDevice) {
-						await this.devicesService.remove(partialDevice.id);
+						await this.tryRollback(`remove partial device ${partialDevice.id}`, () =>
+							this.devicesService.remove(partialDevice.id),
+						);
 					}
 
 					for (const staleHostOwner of disconnectedStaleOwners) {
-						await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(staleHostOwner.id, {
-							type: DEVICES_WLED_TYPE,
-							identifier: staleHostOwner.identifier,
-							name: staleHostOwner.name,
-							description: staleHostOwner.description,
-							enabled: staleHostOwner.enabled,
-							hostname: staleHostOwner.hostname,
-						});
-						await this.restoreDeviceConnection(staleHostOwner);
+						await this.tryRollback(`restore stale owner ${staleHostOwner.id}`, () =>
+							this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(staleHostOwner.id, {
+								type: DEVICES_WLED_TYPE,
+								identifier: staleHostOwner.identifier,
+								name: staleHostOwner.name,
+								description: staleHostOwner.description,
+								enabled: staleHostOwner.enabled,
+								hostname: staleHostOwner.hostname,
+							}),
+						);
+						await this.tryRollback(`reconnect stale owner ${staleHostOwner.id}`, () =>
+							this.restoreDeviceConnection(staleHostOwner),
+						);
 					}
 
 					results[index] = {
@@ -877,6 +908,17 @@ export class WledService extends BaseManagedPluginService {
 		);
 
 		return result;
+	}
+
+	private async tryRollback<T>(description: string, operation: () => Promise<T>, fallback?: T): Promise<T | undefined> {
+		try {
+			return await operation();
+		} catch (error) {
+			this.logger.error(`WLED adoption rollback could not ${description}`, {
+				message: error instanceof Error ? error.message : String(error),
+			});
+			return fallback;
+		}
 	}
 
 	private async restoreDeviceConnection(device: WledDeviceEntity): Promise<void> {

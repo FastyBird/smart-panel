@@ -869,6 +869,40 @@ describe('WledService', () => {
 			});
 		});
 
+		it('continues independent adoption after a dependent rollback write fails', async () => {
+			const firstDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
+			const secondDevice = createMockDevice('device-2', 'wled-112233445566', '192.168.1.200');
+			const secondContext = {
+				...mockContext,
+				info: { ...mockContext.info, mac: '11:22:33:44:55:66' },
+			};
+			const independentContext = {
+				...mockContext,
+				info: { ...mockContext.info, mac: '77:88:99:AA:BB:CC' },
+			};
+			const independentDevice = createMockDevice('device-3', 'wled-778899aabbcc', '192.168.1.30');
+			wledAdapter.probe
+				.mockResolvedValueOnce(mockContext)
+				.mockResolvedValueOnce(secondContext)
+				.mockResolvedValueOnce(independentContext);
+			devicesService.findAll.mockResolvedValue([firstDevice, secondDevice]);
+			devicesService.update.mockRejectedValue(new Error('Rollback write failed'));
+			deviceMapper.mapDevice
+				.mockResolvedValueOnce({ ...firstDevice, hostname: '192.168.1.200' } as WledDeviceEntity)
+				.mockRejectedValueOnce(new Error('Second mapping failed'))
+				.mockResolvedValueOnce(independentDevice);
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.200', name: 'First moved', category: DeviceCategory.LIGHTING },
+				{ host: '192.168.1.100', name: 'Second moved', category: DeviceCategory.LIGHTING },
+				{ host: '192.168.1.30', name: 'Independent', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(results.map((result) => result.status)).toEqual(['failed', 'failed', 'created']);
+			expect(deviceMapper.mapDevice).toHaveBeenCalledTimes(3);
+			expect(results[2]).toEqual(expect.objectContaining({ deviceId: 'device-3' }));
+		});
+
 		it('removes a newly created device when its dependent move group fails', async () => {
 			const existingDevice = createMockDevice('device-existing', 'wled-aabbccddeeff', '192.168.1.100');
 			const newContext = {
