@@ -25,6 +25,14 @@ const jsonResponse = (body: unknown, status = 200, headers: Record<string, strin
 
 describe('Homey SHS compatibility probe', () => {
 	it('requires an exact expected host and rejects credential-bearing URLs', () => {
+		const ipv6Config = loadHomeyShsProbeConfig({
+			FB_HOMEY_SHS_URL: 'http://[fe80::1]:4859',
+			FB_HOMEY_SHS_API_KEY: 'secret',
+			FB_HOMEY_SHS_EXPECTED_HOST: 'fe80::1',
+		});
+
+		expect(ipv6Config.expectedHost).toBe('fe80::1');
+
 		expect(() =>
 			loadHomeyShsProbeConfig({
 				FB_HOMEY_SHS_URL: 'http://user:password@127.0.0.1:4859',

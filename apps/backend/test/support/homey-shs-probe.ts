@@ -431,6 +431,9 @@ const parseTimeout = (value: string | undefined): number => {
 	return parsed;
 };
 
+const normalizeHost = (value: string): string =>
+	value.startsWith('[') && value.endsWith(']') ? value.slice(1, -1) : value;
+
 export const loadHomeyShsProbeConfig = (
 	environment: NodeJS.ProcessEnv,
 	workingDirectory = process.cwd(),
@@ -457,7 +460,9 @@ export const loadHomeyShsProbeConfig = (
 		throw new Error('FB_HOMEY_SHS_URL must contain only the Homey origin, without an API path');
 	}
 
-	if (origin.hostname.toLowerCase() !== expectedHost.toLowerCase()) {
+	const normalizedExpectedHost = normalizeHost(expectedHost);
+
+	if (normalizeHost(origin.hostname).toLowerCase() !== normalizedExpectedHost.toLowerCase()) {
 		throw new Error('FB_HOMEY_SHS_EXPECTED_HOST does not match the configured URL host');
 	}
 
@@ -479,7 +484,7 @@ export const loadHomeyShsProbeConfig = (
 	return {
 		origin: new URL(origin.origin),
 		apiKey,
-		expectedHost,
+		expectedHost: normalizedExpectedHost,
 		timeoutMs: parseTimeout(environment.FB_HOMEY_SHS_TIMEOUT_MS),
 		outputRoot: resolve(workingDirectory, environment.FB_HOMEY_SHS_CAPTURE_DIR ?? 'test/.homey-shs-captures'),
 		privateTerms,
