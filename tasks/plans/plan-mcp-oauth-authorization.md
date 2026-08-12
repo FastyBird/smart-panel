@@ -454,7 +454,7 @@ amend ADR 0002.
       bootstrap-registered route set is uniformly unreachable/reachable behind one gate, never partially exposed, and
       replaces the deactivated provider runtime before reopening.
 - [x] E2E: prove readiness-gated re-enable never makes OAuth artifacts issued before switch-off usable again.
-- [ ] Reverse-proxy E2E: explicit external prefix, hostile forwarded headers, untrusted proxy, trusted proxy, public URL
+- [x] Reverse-proxy E2E: explicit external prefix, hostile forwarded headers, untrusted proxy, trusted proxy, public URL
       change, and rollback.
 - [ ] Codex smoke: discovery, authorization, list/call, refresh, scope failure, and revocation; record exact version and
       callback profile.

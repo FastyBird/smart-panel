@@ -80,11 +80,11 @@ upgrade consequences.
       success while leaving static MCP subscriptions active; re-enable does not reactivate old OAuth artifacts.
 - [x] The complete OAuth route set is registered once at NestJS/Fastify bootstrap behind one shared fail-closed gate;
       runtime enable/disable never mounts or unmounts routes and never exposes a partial surface.
-- [ ] Public OAuth identity and server-secret rotation revoke OAuth artifacts and close OAuth subscriptions while
+- [x] Public OAuth identity and server-secret rotation revoke OAuth artifacts and close OAuth subscriptions while
       preserving static MCP streams; only MCP-module disable closes both authorization profiles.
 - [ ] Dynamic client registration is implemented only if required by supported target hosts and protected by an
       explicit registration policy; otherwise the supported registration path is documented.
-- [ ] Trusted reverse-proxy behavior is explicit and tested; forwarded headers are ignored unless the proxy is
+- [x] Trusted reverse-proxy behavior is explicit and tested; forwarded headers are ignored unless the proxy is
       configured as trusted.
 - [ ] Static bearer clients continue to work for trusted LAN/VPN deployments until a separately documented removal or
       migration policy is approved.
