@@ -2,6 +2,7 @@ import type { HomeyShsCapture } from './support/homey-shs-probe';
 import {
 	assertHomeyCaptureSafe,
 	captureHomeyShs,
+	createSanitizationAliases,
 	loadHomeyShsProbeConfig,
 	sanitizeHomeyDevices,
 	sanitizeHomeyPayload,
@@ -51,9 +52,14 @@ describe('Homey SHS compatibility probe', () => {
 	});
 
 	it('preserves capability identifiers while replacing household identities', () => {
-		const zones = sanitizeHomeyZones({
-			'private-zone-id': { id: 'private-zone-id', name: 'Private Room', parent: null, active: true },
-		});
+		const aliases = createSanitizationAliases();
+		const zones = sanitizeHomeyZones(
+			{
+				'private-zone-id': { id: 'private-zone-id', name: 'Private Room', parent: null, active: true },
+			},
+			[],
+			aliases,
+		);
 		const devices = sanitizeHomeyDevices(
 			{
 				'private-device-id': {
@@ -99,7 +105,7 @@ describe('Homey SHS compatibility probe', () => {
 					data: {
 						node: 123_456_789,
 						'opaque-direct-id': { reachable: true },
-						'987654321': { reachable: false },
+						'42': { reachable: false },
 						configuration: { enabled: true, threshold: false },
 						nodes: {
 							'opaque-device-id': { reachable: true },
@@ -114,6 +120,7 @@ describe('Homey SHS compatibility probe', () => {
 				},
 			},
 			['home'],
+			aliases,
 		);
 		const sanitizedZoneId = Object.keys(zones)[0];
 		const sanitizedDeviceId = Object.keys(devices)[0];
@@ -163,7 +170,7 @@ describe('Homey SHS compatibility probe', () => {
 		expect(serialized).not.toContain('private-driver-device-id');
 		expect(serialized).not.toContain('opaque-device-id');
 		expect(serialized).not.toContain('opaque-direct-id');
-		expect(serialized).not.toContain('987654321');
+		expect(serialized).not.toContain('"42"');
 		expect(serialized).not.toContain('private-hardware-id');
 		expect(serialized).not.toContain('private-account-id');
 		expect(serialized).not.toContain('private-capability-account-id');
@@ -199,6 +206,7 @@ describe('Homey SHS compatibility probe', () => {
 			macTag: 'mac_aa:bb:cc:dd:ee:ff_backup',
 			dottedMacTag: 'mac_aabb.ccdd.eeff_backup',
 			compactMacTag: 'mac_AABBCCDDEEFF_backup',
+			compactAdjacentMacTag: 'macaabbccddeeffbackup',
 			ipv6Tag: 'deadfd12:3456:789a::1backup',
 			emailTag: 'owner_alice@example.com_backup',
 			activityTag: 'prefix_hpat_abcdefghijklmnop1234',
@@ -231,6 +239,7 @@ describe('Homey SHS compatibility probe', () => {
 			macTag: 'mac_[~0~]_backup',
 			dottedMacTag: 'mac_[~0~]_backup',
 			compactMacTag: 'mac_[~0~]_backup',
+			compactAdjacentMacTag: 'm[~0~]ffbackup',
 			ipv6Tag: 'dead[~0~]kup',
 			emailTag: '[~1~]_backup',
 			activityTag: 'prefix_[~3~]',
@@ -350,12 +359,12 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() =>
 			assertHomeyCaptureSafe(
 				{
-					metadata: { schemaVersion: 1, homey: { id: 'homey-aaaaaagbbbbbb' } },
+					metadata: { schemaVersion: 1, homey: { id: 'homey-000001' } },
 					systemInfo: {},
-					zones: { 'zone-aaaaaagbbbbbb': { id: 'zone-aaaaaagbbbbbb', name: 'Synthetic zone 001' } },
+					zones: { 'zone-000001': { id: 'zone-000001', name: 'Synthetic zone 001' } },
 					devices: {
-						'device-aaaaaagbbbbbb': {
-							id: 'device-aaaaaagbbbbbb',
+						'device-000001': {
+							id: 'device-000001',
 							name: 'Synthetic device 001',
 							capabilities: ['device_status'],
 							capabilitiesObj: { device_status: { id: 'device_status', value: true } },
@@ -448,6 +457,10 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret, address');
 
 		unsafeCapture.systemInfo = { diagnostic: 'mac_AABBCCDDEEFF_backup' };
+
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret, address');
+
+		unsafeCapture.systemInfo = { diagnostic: 'macaabbccddeeffbackup' };
 
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret, address');
 

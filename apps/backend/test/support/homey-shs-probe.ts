@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { isIP } from 'node:net';
 import { resolve } from 'node:path';
@@ -33,8 +33,7 @@ const BRACKETED_IPV6_PATTERN = /\[([0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?)\]/g;
 const UNBRACKETED_IPV6_PATTERN = /[0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?/g;
 const MAX_IPV6_ADDRESS_LENGTH = 45;
 const MAX_IPV6_CANDIDATE_SCAN_LENGTH = 256;
-const MAC_PATTERN =
-	/(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}|[0-9a-f]{4}(?:\.[0-9a-f]{4}){2}|(?<![0-9a-f])[0-9a-f]{12}(?![0-9a-f])/gi;
+const MAC_PATTERN = /(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}|[0-9a-f]{4}(?:\.[0-9a-f]{4}){2}|[0-9a-f]{12}/gi;
 const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 const HOMEY_TOKEN_PATTERN = /(?:hpat|pat|homey)[_-][A-Za-z0-9_-]{16,}/gi;
 
@@ -73,9 +72,15 @@ export interface HomeyShsCapture {
 }
 
 interface SanitizerContext {
+	aliases: SanitizationAliases;
 	privateTerms: string[];
 	path: string[];
 	rootKind: 'device' | 'generic' | 'zone';
+}
+
+export interface SanitizationAliases {
+	counters: Map<string, number>;
+	values: Map<string, string>;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -86,10 +91,23 @@ const isSecretKey = (key: string): boolean =>
 	CAMEL_CASE_SECRET_CODE_KEY_PATTERN.test(key) ||
 	BOUNDED_SECRET_CODE_KEY_PATTERN.test(key);
 
-const pseudonym = (kind: string, value: string): string => {
-	const digest = createHash('sha256').update(`smart-panel-homey-fixture:${kind}:${value}`).digest('hex').slice(0, 12);
+export const createSanitizationAliases = (): SanitizationAliases => ({ counters: new Map(), values: new Map() });
 
-	return `${kind}-${digest.slice(0, 6)}g${digest.slice(6)}`;
+const pseudonym = (kind: string, value: string, aliases: SanitizationAliases): string => {
+	const key = `${kind}\0${value}`;
+	const existing = aliases.values.get(key);
+
+	if (existing !== undefined) {
+		return existing;
+	}
+
+	const sequence = (aliases.counters.get(kind) ?? 0) + 1;
+	const alias = `${kind}-${String(sequence).padStart(6, '0')}`;
+
+	aliases.counters.set(kind, sequence);
+	aliases.values.set(key, alias);
+
+	return alias;
 };
 
 const escapeRegularExpression = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -203,20 +221,20 @@ const referenceArrayKind = (key: string): 'device' | 'reference' | 'zone' => {
 	return 'reference';
 };
 
-const sanitizeReference = (key: string, value: string): string => {
+const sanitizeReference = (key: string, value: string, aliases: SanitizationAliases): string => {
 	if (/^(?:zone|zoneId|parent)$/i.test(key)) {
-		return pseudonym('zone', value);
+		return pseudonym('zone', value, aliases);
 	}
 
 	if (/^deviceId$/i.test(key)) {
-		return pseudonym('device', value);
+		return pseudonym('device', value, aliases);
 	}
 
 	if (/^homeyId$/i.test(key)) {
-		return pseudonym('homey', value);
+		return pseudonym('homey', value, aliases);
 	}
 
-	return pseudonym('reference', value);
+	return pseudonym('reference', value, aliases);
 };
 
 const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): unknown => {
@@ -237,7 +255,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 	if (Array.isArray(value) && !capabilityMapEntry && isReferenceArrayKey(key)) {
 		const kind = referenceArrayKind(key);
 
-		return value.map((item) => (typeof item === 'string' ? pseudonym(kind, item) : REDACTION.value));
+		return value.map((item) => (typeof item === 'string' ? pseudonym(kind, item, context.aliases) : REDACTION.value));
 	}
 
 	if (
@@ -248,7 +266,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 		(REFERENCE_KEY_PATTERN.test(key) || IDENTIFIER_KEY_PATTERN.test(key))
 	) {
 		return typeof value === 'string' && REFERENCE_KEY_PATTERN.test(key)
-			? sanitizeReference(key, value)
+			? sanitizeReference(key, value, context.aliases)
 			: REDACTION.identifier;
 	}
 
@@ -281,7 +299,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 		}
 
 		if (key === 'id' || UUID_PATTERN.test(value)) {
-			return pseudonym('id', value);
+			return pseudonym('id', value, context.aliases);
 		}
 
 		return sanitizeString(value, context.privateTerms);
@@ -303,7 +321,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 			const identifierMapKey =
 				UUID_PATTERN.test(nestedKey) || /^\d+$/.test(nestedKey) || IDENTIFIER_KEY_PATTERN.test(nestedKey);
 			const privateMapKey = !preserveKeys && identifierMapKey && isDriverMetadata(nextPath);
-			const safeKey = privateMapKey ? pseudonym('id', nestedKey) : nestedKey;
+			const safeKey = privateMapKey ? pseudonym('id', nestedKey, context.aliases) : nestedKey;
 
 			return [safeKey, sanitizeValue(nestedValue, nestedKey, { ...context, path: nextPath })];
 		}),
@@ -314,12 +332,14 @@ export const sanitizeHomeyPayload = (
 	value: unknown,
 	privateTerms: string[] = [],
 	rootKind: SanitizerContext['rootKind'] = 'generic',
-): unknown => sanitizeValue(value, 'root', { privateTerms, path: [], rootKind });
+	aliases: SanitizationAliases = createSanitizationAliases(),
+): unknown => sanitizeValue(value, 'root', { aliases, privateTerms, path: [], rootKind });
 
 const replaceCollectionIdentity = (
 	value: unknown,
 	kind: 'device' | 'zone',
 	privateTerms: string[],
+	aliases: SanitizationAliases,
 ): Record<string, unknown> => {
 	if (!isRecord(value)) {
 		throw new Error(`Homey ${kind} response is not an object`);
@@ -329,8 +349,8 @@ const replaceCollectionIdentity = (
 		Object.entries(value)
 			.sort(([left], [right]) => left.localeCompare(right))
 			.map(([rawId, rawItem], index) => {
-				const safeId = pseudonym(kind, rawId);
-				const sanitized = sanitizeHomeyPayload(rawItem, privateTerms, kind);
+				const safeId = pseudonym(kind, rawId, aliases);
+				const sanitized = sanitizeHomeyPayload(rawItem, privateTerms, kind, aliases);
 				const safeItem = isRecord(sanitized) ? sanitized : { value: sanitized };
 
 				return [
@@ -345,11 +365,17 @@ const replaceCollectionIdentity = (
 	);
 };
 
-export const sanitizeHomeyZones = (value: unknown, privateTerms: string[] = []): Record<string, unknown> =>
-	replaceCollectionIdentity(value, 'zone', privateTerms);
+export const sanitizeHomeyZones = (
+	value: unknown,
+	privateTerms: string[] = [],
+	aliases: SanitizationAliases = createSanitizationAliases(),
+): Record<string, unknown> => replaceCollectionIdentity(value, 'zone', privateTerms, aliases);
 
-export const sanitizeHomeyDevices = (value: unknown, privateTerms: string[] = []): Record<string, unknown> =>
-	replaceCollectionIdentity(value, 'device', privateTerms);
+export const sanitizeHomeyDevices = (
+	value: unknown,
+	privateTerms: string[] = [],
+	aliases: SanitizationAliases = createSanitizationAliases(),
+): Record<string, unknown> => replaceCollectionIdentity(value, 'device', privateTerms, aliases);
 
 const parseTimeout = (value: string | undefined): number => {
 	if (value === undefined) {
@@ -509,8 +535,9 @@ export const captureHomeyShs = async (
 		readJson(zonesResponse, 'zones'),
 		readJson(devicesResponse, 'devices'),
 	]);
-	const sanitizedZones = sanitizeHomeyZones(zones, config.privateTerms);
-	const sanitizedDevices = sanitizeHomeyDevices(devices, config.privateTerms);
+	const aliases = createSanitizationAliases();
+	const sanitizedZones = sanitizeHomeyZones(zones, config.privateTerms, aliases);
+	const sanitizedDevices = sanitizeHomeyDevices(devices, config.privateTerms, aliases);
 
 	return {
 		metadata: {
@@ -518,7 +545,7 @@ export const captureHomeyShs = async (
 			capturedAt: new Date().toISOString(),
 			transport: { protocol: config.origin.protocol.slice(0, -1), port: config.origin.port || 'default' },
 			homey: {
-				id: pseudonym('homey', ping.headers.get('x-homey-id') ?? 'unknown'),
+				id: pseudonym('homey', ping.headers.get('x-homey-id') ?? 'unknown', aliases),
 				version: sanitizeString(ping.headers.get('x-homey-version') ?? 'unknown', config.privateTerms),
 				tier: sanitizeString(ping.headers.get('x-homey-tier') ?? 'unknown', config.privateTerms),
 			},
@@ -528,7 +555,7 @@ export const captureHomeyShs = async (
 			},
 			readEndpoints: READ_ENDPOINTS,
 		},
-		systemInfo: sanitizeHomeyPayload(systemInfo, config.privateTerms),
+		systemInfo: sanitizeHomeyPayload(systemInfo, config.privateTerms, 'generic', aliases),
 		zones: sanitizedZones,
 		devices: sanitizedDevices,
 	};
@@ -587,7 +614,7 @@ export const assertHomeyCaptureSafe = (
 		}
 	}
 
-	const generatedPseudonymPattern = /^(?:device|homey|id|reference|zone)-[0-9a-f]{6}g[0-9a-f]{6}$/;
+	const generatedPseudonymPattern = /^(?:device|homey|id|reference|zone)-\d{6}$/;
 	const syntheticLabelPattern = /^Synthetic (?:device|zone) \d{3}$/;
 	const fixedPayloadKeys = new Set([
 		'active',
