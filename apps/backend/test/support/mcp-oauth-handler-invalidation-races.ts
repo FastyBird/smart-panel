@@ -258,6 +258,10 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 					config.oauthEnabled = oauthEnabled;
 				},
 			);
+		const updateModuleEnabled = (enabled: boolean): Promise<void> =>
+			moduleConfigMutations.execute(MCP_MODULE_NAME, Object.assign(new UpdateMcpConfigDto(), { enabled }), () => {
+				config.enabled = enabled;
+			});
 		const updatePublicIdentity = (publicBaseUrl: string): Promise<void> =>
 			moduleConfigMutations.execute(
 				MCP_MODULE_NAME,
@@ -400,6 +404,29 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 
 			return result;
 		};
+		const openOAuthSubscription = async (requestId: string, grantId: string) => {
+			const grant = await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: grantId });
+
+			return subscriptions.openOAuth(requestId, () =>
+				Promise.resolve({
+					clientId: grant.clientId,
+					binding: {
+						accessTokenId: `${requestId}-access-token`,
+						approverAuthorityGeneration: grant.approverAuthorityGeneration,
+						approverId: grant.approvedById ?? ACCOUNT_ID,
+						grantId: grant.id,
+						authorizationDeadline: grant.expiresAt,
+						effectiveScopes: [...grant.approvedScopes],
+						modulePolicyGeneration: grant.modulePolicyGeneration,
+						oauthEnabledGeneration: grant.oauthEnabledGeneration,
+						publicIdentityGeneration: grant.publicIdentityGeneration,
+						serverSecretVersion: grant.serverSecretVersion,
+						clientGeneration: grant.clientGeneration,
+						grantGeneration: grant.generation,
+					},
+				}),
+			);
+		};
 
 		const authorization = await raceSwitchOff('AuthorizationCode', () => authorize(urls));
 		const authorizationCode = requireAuthorizationCode(authorization.callback);
@@ -437,14 +464,22 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 			await dataSource.getRepository(McpOAuthServerStateEntity).findOneByOrFail({ key: MCP_OAUTH_SERVER_STATE_KEY })
 		).serverSecretVersion;
 		const serverSecretAuthorization = await authorize(urls);
+		const serverSecretInitialResponse = await exchangeCode(
+			urls,
+			requireAuthorizationCode(serverSecretAuthorization.callback),
+			serverSecretAuthorization.verifier,
+		);
+		const serverSecretInitialTokens = (await serverSecretInitialResponse.json()) as TokenResponse;
+		expect(serverSecretInitialResponse.status).toBe(200);
+		const serverSecretGrantId = latestGrantId;
+
+		if (!serverSecretGrantId) throw new Error('Expected a persisted grant for server-secret rotation');
+
+		const serverSecretStaticStream = subscriptions.open('server-secret-static');
+		const serverSecretOAuthStream = await openOAuthSubscription('server-secret-oauth', serverSecretGrantId);
 		const serverSecretResponse = await raceGlobalInvalidation(
 			'AccessToken',
-			() =>
-				exchangeCode(
-					urls,
-					requireAuthorizationCode(serverSecretAuthorization.callback),
-					serverSecretAuthorization.verifier,
-				),
+			() => refresh(urls, requireRefreshToken(serverSecretInitialTokens)),
 			() => management.revokeAll(ACCOUNT_ID),
 			false,
 		);
@@ -454,6 +489,9 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 			(await dataSource.getRepository(McpOAuthServerStateEntity).findOneByOrFail({ key: MCP_OAUTH_SERVER_STATE_KEY }))
 				.serverSecretVersion,
 		).toBe(serverSecretBefore + 1);
+		expect(serverSecretOAuthStream.signal.aborted).toBe(true);
+		expect(serverSecretStaticStream.signal.aborted).toBe(false);
+		serverSecretStaticStream.close();
 		await expect(
 			runtime.getActive().provider.AccessToken.find(serverSecretTokens.access_token),
 		).resolves.toBeUndefined();
@@ -469,6 +507,12 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 			publicIdentityAuthorization.verifier,
 		);
 		const publicIdentityInitialTokens = (await publicIdentityInitialResponse.json()) as TokenResponse;
+		const publicIdentityGrantId = latestGrantId;
+
+		if (!publicIdentityGrantId) throw new Error('Expected a persisted grant for public-identity rotation');
+
+		const publicIdentityStaticStream = subscriptions.open('public-identity-static');
+		const publicIdentityOAuthStream = await openOAuthSubscription('public-identity-oauth', publicIdentityGrantId);
 		const rotatedPublicIdentity = `${origin}/rotated`;
 		const publicIdentityResponse = await raceGlobalInvalidation(
 			'AccessToken',
@@ -487,6 +531,9 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 			(await dataSource.getRepository(McpOAuthServerStateEntity).findOneByOrFail({ key: MCP_OAUTH_SERVER_STATE_KEY }))
 				.publicIdentityGeneration,
 		).toBe(publicIdentityBefore + 1);
+		expect(publicIdentityOAuthStream.signal.aborted).toBe(true);
+		expect(publicIdentityStaticStream.signal.aborted).toBe(false);
+		publicIdentityStaticStream.close();
 		await expect(
 			runtime.getActive().provider.AccessToken.find(publicIdentityTokens.access_token),
 		).resolves.toBeUndefined();
@@ -870,6 +917,19 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 			runtime.getActive().provider.AccessToken.find(demotedApproverTokens.access_token),
 		).resolves.toBeUndefined();
 		expect((await refresh(urls, requireRefreshToken(demotedApproverTokens))).status).toBe(400);
+
+		const moduleDisableGrantId = latestGrantId;
+
+		if (!moduleDisableGrantId) throw new Error('Expected a persisted grant for module disable');
+
+		const moduleDisableStaticStream = subscriptions.open('module-disable-static');
+		const moduleDisableOAuthStream = await openOAuthSubscription('module-disable-oauth', moduleDisableGrantId);
+		await updateModuleEnabled(false);
+		expect(config.enabled).toBe(false);
+		expect(routeGate.isOpen).toBe(false);
+		expect(moduleDisableOAuthStream.signal.aborted).toBe(true);
+		expect(moduleDisableStaticStream.signal.aborted).toBe(true);
+		expect(await dataSource.getRepository(McpOAuthProviderArtifactEntity).count()).toBe(0);
 	} finally {
 		releaseActivePause();
 		await new Promise<void>((resolve) => server.close(() => resolve()));

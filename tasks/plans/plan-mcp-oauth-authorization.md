@@ -447,9 +447,9 @@ amend ADR 0002.
   - [x] Provider integration: demote an approver against a paused refresh, then restore the role; prove demotion waits,
         advances authority and revokes the grant and committed successor, restoration never revives stale artifacts,
         and fresh authorization binds a usable grant to the advanced authority generation.
-- [ ] E2E: rotate the public OAuth identity and server secret with simultaneous OAuth and static subscriptions; prove
-      only OAuth artifacts/streams are invalidated and static streams remain open. Separately prove MCP-module disable
-      closes both kinds.
+- [x] Provider integration E2E: rotate the public OAuth identity and server secret with simultaneous OAuth and static
+      subscriptions; prove only OAuth artifacts/streams are invalidated and static streams remain open. Separately
+      prove MCP-module disable closes both kinds.
 - [x] E2E: start disabled, enable without restarting, disable without restarting, and re-enable; prove the
       bootstrap-registered route set is uniformly unreachable/reachable behind one gate, never partially exposed, and
       replaces the deactivated provider runtime before reopening.
