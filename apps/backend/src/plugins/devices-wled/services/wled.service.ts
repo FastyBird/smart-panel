@@ -440,7 +440,16 @@ export class WledService extends BaseManagedPluginService {
 		const endpoint = this.discoveryEndpoint(device.host, device.port);
 
 		// Check if we already have this device configured by hostname
-		const devices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
+		let devices: WledDeviceEntity[];
+		try {
+			devices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
+		} catch (error) {
+			this.mdnsDiscoverer.forgetDiscoveredDevice(device.host);
+			this.logger.error(`Could not inspect discovered WLED device at ${endpoint}`, {
+				message: error instanceof Error ? error.message : String(error),
+			});
+			return;
+		}
 		const existingDevice = this.findExistingDevice(devices, endpoint, device.mac);
 
 		if (existingDevice) {
@@ -737,6 +746,7 @@ export class WledService extends BaseManagedPluginService {
 
 			let mappedDevice: WledDeviceEntity | null = null;
 			let existingDeviceDisconnected = false;
+			const retiredStaleOwners: WledDeviceEntity[] = [];
 			const disconnectedStaleOwners: WledDeviceEntity[] = [];
 
 			try {
@@ -802,6 +812,7 @@ export class WledService extends BaseManagedPluginService {
 					}
 				}
 				for (const staleHostOwner of retiringHostOwners) {
+					retiredStaleOwners.push(staleHostOwner);
 					await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(staleHostOwner.id, {
 						type: DEVICES_WLED_TYPE,
 						enabled: false,
@@ -965,7 +976,7 @@ export class WledService extends BaseManagedPluginService {
 						);
 					}
 
-					for (const staleHostOwner of disconnectedStaleOwners) {
+					for (const staleHostOwner of retiredStaleOwners) {
 						await this.tryRollback(`restore stale owner ${staleHostOwner.id}`, () =>
 							this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(staleHostOwner.id, {
 								type: DEVICES_WLED_TYPE,
@@ -976,9 +987,11 @@ export class WledService extends BaseManagedPluginService {
 								hostname: staleHostOwner.hostname,
 							}),
 						);
-						await this.tryRollback(`reconnect stale owner ${staleHostOwner.id}`, () =>
-							this.restoreDeviceConnection(staleHostOwner),
-						);
+						if (disconnectedStaleOwners.some(({ id }) => id === staleHostOwner.id)) {
+							await this.tryRollback(`reconnect stale owner ${staleHostOwner.id}`, () =>
+								this.restoreDeviceConnection(staleHostOwner),
+							);
+						}
 					}
 
 					results[index] = {

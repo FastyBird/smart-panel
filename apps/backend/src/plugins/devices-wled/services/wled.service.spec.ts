@@ -513,6 +513,24 @@ describe('WledService', () => {
 			expect(mdnsDiscoverer.forgetDiscoveredDevice).toHaveBeenCalledWith('192.168.1.200');
 		});
 
+		it('should make the initial mDNS database lookup failure retryable', async () => {
+			configService.getPluginConfig.mockReturnValue({
+				...mockConfig,
+				mdns: { ...(mockConfig as WledConfigModel).mdns, autoAdd: true },
+			} as WledConfigModel);
+			const discoveredDevice: WledMdnsDiscoveredDevice = {
+				name: 'Unknown WLED',
+				host: '192.168.1.200',
+				port: 80,
+			};
+			devicesService.findAll.mockRejectedValueOnce(new Error('Database unavailable'));
+
+			await mdnsCallbacks.onDeviceDiscovered?.(discoveredDevice);
+
+			expect(mdnsDiscoverer.forgetDiscoveredDevice).toHaveBeenCalledWith('192.168.1.200');
+			expect(wledAdapter.probe).not.toHaveBeenCalled();
+		});
+
 		it('should reconcile a known MAC at its newly advertised endpoint', async () => {
 			configService.getPluginConfig.mockReturnValue({
 				...mockConfig,
@@ -1528,6 +1546,39 @@ describe('WledService', () => {
 				hostname: '192.168.1.100',
 			});
 			expect(wledAdapter.connect).toHaveBeenCalledWith('192.168.1.100', 'wled-aabbccddeeff', 5000);
+			expect(results).toEqual([expect.objectContaining({ status: 'failed', error: 'Connectivity write failed' })]);
+		});
+
+		it('restores an offline stale owner snapshot after replacement failure', async () => {
+			const staleDevice = {
+				...createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100'),
+				name: 'Offline original',
+			} as WledDeviceEntity;
+			const replacementDevice = createMockDevice('device-2', 'wled-112233445566', '192.168.1.100');
+			const replacementContext = {
+				...mockContext,
+				info: { ...mockContext.info, mac: '11:22:33:44:55:66' },
+			};
+			wledAdapter.probe.mockResolvedValue(replacementContext);
+			wledAdapter.getDevice.mockReturnValue(null);
+			devicesService.findAll.mockResolvedValue([staleDevice]);
+			devicesService.update.mockResolvedValue(staleDevice);
+			deviceMapper.mapDevice.mockResolvedValue(replacementDevice);
+			deviceConnectivityService.setConnectionState.mockRejectedValueOnce(new Error('Connectivity write failed'));
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.100', name: 'Replacement strip', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(devicesService.update).toHaveBeenLastCalledWith('device-1', {
+				type: DEVICES_WLED_TYPE,
+				identifier: 'wled-aabbccddeeff',
+				name: 'Offline original',
+				description: null,
+				enabled: true,
+				hostname: '192.168.1.100',
+			});
+			expect(wledAdapter.connect).not.toHaveBeenCalled();
 			expect(results).toEqual([expect.objectContaining({ status: 'failed', error: 'Connectivity write failed' })]);
 		});
 
