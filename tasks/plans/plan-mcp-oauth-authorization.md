@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 6 in progress — runtime lifecycle, refresh replay, and invalidation race coverage implemented
+**Status:** Phase 6 in progress — external-host and wire-level compatibility gates remain
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -459,7 +459,9 @@ amend ADR 0002.
 - [ ] Codex smoke: discovery, authorization, list/call, refresh, scope failure, and revocation; record exact version and
       callback profile.
 - [ ] Claude Code smoke: the same sequence; record exact version and callback profile.
-- [ ] Repeat static bearer compatibility tests to prove coexistence.
+- [x] Repeat static bearer compatibility tests to prove coexistence. The static endpoint list/call suite and the
+      simultaneous static-plus-OAuth lifecycle E2E pass together, including OAuth switch-off/re-enable while the
+      static stream remains usable.
 - [ ] Use MCP Inspector/TypeScript client for wire-level negative cases that user hosts do not expose.
 
 ## Phase 7 — Deployment, incident response, and rollout
