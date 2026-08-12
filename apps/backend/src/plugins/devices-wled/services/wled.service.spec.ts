@@ -734,7 +734,7 @@ describe('WledService', () => {
 			]);
 		});
 
-		it('retires a stale hostname owner before provisioning a different MAC', async () => {
+		it('retires a stale hostname owner after provisioning a different MAC', async () => {
 			const staleDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
 			const replacementContext = {
 				...mockContext,
@@ -754,6 +754,9 @@ describe('WledService', () => {
 				enabled: false,
 				hostname: null,
 			});
+			expect(deviceMapper.mapDevice.mock.invocationCallOrder[0]).toBeLessThan(
+				devicesService.update.mock.invocationCallOrder[0],
+			);
 			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(
 				'192.168.1.100',
 				replacementContext,
@@ -763,6 +766,24 @@ describe('WledService', () => {
 				undefined,
 			);
 			expect(results).toEqual([expect.objectContaining({ status: 'created', deviceId: 'device-2' })]);
+		});
+
+		it('does not retire a stale hostname owner when replacement provisioning fails', async () => {
+			const staleDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
+			const replacementContext = {
+				...mockContext,
+				info: { ...mockContext.info, mac: '11:22:33:44:55:66' },
+			};
+			wledAdapter.probe.mockResolvedValue(replacementContext);
+			devicesService.findAll.mockResolvedValue([staleDevice]);
+			deviceMapper.mapDevice.mockRejectedValue(new Error('Provisioning failed'));
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.100', name: 'Replacement strip', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(devicesService.update).not.toHaveBeenCalled();
+			expect(results).toEqual([expect.objectContaining({ status: 'failed', error: 'Provisioning failed' })]);
 		});
 
 		it('upgrades a legacy same-host device without an identifier before provisioning', async () => {

@@ -597,6 +597,14 @@ export class WledService extends BaseManagedPluginService {
 						hostname: host,
 					});
 				}
+				const device = await this.deviceMapper.mapDevice(
+					host,
+					context,
+					request.name,
+					identifier,
+					request.description,
+					request.enabled,
+				);
 				for (const staleHostOwner of databaseDevices.filter(
 					(device) => device.hostname === host && device.id !== existingDevice?.id,
 				)) {
@@ -611,14 +619,6 @@ export class WledService extends BaseManagedPluginService {
 					});
 					retiredDeviceIds.add(staleHostOwner.id);
 				}
-				const device = await this.deviceMapper.mapDevice(
-					host,
-					context,
-					request.name,
-					identifier,
-					request.description,
-					request.enabled,
-				);
 				if (!device.enabled) {
 					this.wledAdapter.disconnect(host);
 				} else {
