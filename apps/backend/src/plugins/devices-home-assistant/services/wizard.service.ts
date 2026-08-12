@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 
 import { ChannelCategory } from '../../../modules/devices/devices.constants';
+import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
 import { AdoptHelperRequestDto } from '../dto/helper-mapping-preview.dto';
 import { AdoptDeviceRequestDto } from '../dto/mapping-preview.dto';
 import { HelperMappingPreviewModel } from '../models/helper-mapping-preview.model';
@@ -12,6 +13,7 @@ import {
 	HomeAssistantWizardCandidateModel,
 	HomeAssistantWizardSessionModel,
 } from '../models/wizard.model';
+import { buildHelperDeviceStructure } from '../utils/helper-structure.utils';
 
 import { DeviceAdoptionService } from './device-adoption.service';
 import { HelperAdoptionService } from './helper-adoption.service';
@@ -43,13 +45,14 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 		private readonly deviceAdoptionService: DeviceAdoptionService,
 		private readonly helperAdoptionService: HelperAdoptionService,
 		private readonly homeAssistantHttpService: HomeAssistantHttpService,
+		private readonly deviceValidationService: DeviceValidationService,
 	) {}
 
 	async start(): Promise<HomeAssistantWizardSessionModel> {
 		const inventory = await this.homeAssistantHttpService.getDiscoveredInventory();
-		const [devicePreviews, helperPreviews] = await Promise.all([
-			this.mappingPreviewService.generatePreviews(inventory.devices),
-			this.helperMappingPreviewService.generatePreviews(inventory.helpers),
+		const [devicePreviewResults, helperPreviewResults] = await Promise.all([
+			this.mappingPreviewService.generateSettledPreviews(inventory.devices),
+			this.helperMappingPreviewService.generateSettledPreviews(inventory.helpers),
 		]);
 		const adoptedBySourceId = new Map<string, string>();
 		for (const item of [...inventory.devices, ...inventory.helpers]) {
@@ -65,13 +68,36 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 			candidates: new Map(),
 		};
 
-		for (const preview of devicePreviews) {
-			const candidate = this.createDeviceCandidate(preview, adoptedBySourceId.get(preview.haDevice.id) ?? null);
+		for (const result of devicePreviewResults) {
+			const candidate = result.preview
+				? this.createDeviceCandidate(result.preview, adoptedBySourceId.get(result.source.id) ?? null)
+				: this.createFailedCandidate('device', result.source.id, result.source.name, null, null, result.error);
 			session.candidates.set(candidate.snapshot.key, candidate);
 		}
 
-		for (const preview of helperPreviews) {
-			const candidate = this.createHelperCandidate(preview, adoptedBySourceId.get(preview.helper.entityId) ?? null);
+		const representedEntityIds = new Set(
+			Array.from(session.candidates.values()).flatMap((candidate) =>
+				candidate.snapshot.kind === 'device' && candidate.snapshot.status === 'ready' && candidate.request
+					? (candidate.request as AdoptDeviceRequestDto).channels.map((channel) => channel.entityId)
+					: [],
+			),
+		);
+
+		for (const result of helperPreviewResults) {
+			if (representedEntityIds.has(result.source.entityId)) {
+				continue;
+			}
+
+			const candidate = result.preview
+				? this.createHelperCandidate(result.preview, adoptedBySourceId.get(result.source.entityId) ?? null)
+				: this.createFailedCandidate(
+						'helper',
+						result.source.entityId,
+						result.source.name,
+						'Home Assistant',
+						`Helper (${result.source.domain})`,
+						result.error,
+					);
 			session.candidates.set(candidate.snapshot.key, candidate);
 		}
 
@@ -177,7 +203,12 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 		const preview = await this.helperMappingPreviewService.generatePreview(candidate.sourceId);
 		const request = this.buildHelperRequest(preview);
 
-		if (!preview.readyToAdopt || preview.warnings.length > 0 || request.channels.length === 0) {
+		if (
+			!preview.readyToAdopt ||
+			preview.warnings.length > 0 ||
+			request.channels.length === 0 ||
+			!this.isHelperRequestValid(request)
+		) {
 			throw new Error('Automatic mapping changed and now requires manual review');
 		}
 
@@ -218,7 +249,11 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 	): HomeAssistantWizardCandidate {
 		const key = `helper:${preview.helper.entityId}`;
 		const request = this.buildHelperRequest(preview);
-		const ready = preview.readyToAdopt && preview.warnings.length === 0 && request.channels.length > 0;
+		const ready =
+			preview.readyToAdopt &&
+			preview.warnings.length === 0 &&
+			request.channels.length > 0 &&
+			this.isHelperRequestValid(request);
 		const status = adoptedDeviceId ? 'already_registered' : ready ? 'ready' : 'needs_attention';
 
 		return {
@@ -295,6 +330,37 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 					})),
 				})),
 		};
+	}
+
+	private createFailedCandidate(
+		kind: 'device' | 'helper',
+		sourceId: string,
+		name: string,
+		manufacturer: string | null,
+		model: string | null,
+		error: string | null,
+	): HomeAssistantWizardCandidate {
+		return {
+			snapshot: {
+				key: `${kind}:${sourceId}`,
+				kind,
+				sourceId,
+				name,
+				manufacturer,
+				model,
+				status: 'failed',
+				suggestedCategory: null,
+				previewChannelCount: 0,
+				warningCount: 1,
+				adoptedDeviceId: null,
+				error: error ?? 'Automatic mapping could not be generated',
+			},
+			request: null,
+		};
+	}
+
+	private isHelperRequestValid(request: AdoptHelperRequestDto): boolean {
+		return this.deviceValidationService.validateDeviceStructure(buildHelperDeviceStructure(request)).isValid;
 	}
 
 	private toSnapshot(session: HomeAssistantWizardSession): HomeAssistantWizardSessionModel {

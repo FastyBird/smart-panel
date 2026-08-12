@@ -5,6 +5,8 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
+import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
+import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { HelperMappingPreviewModel } from '../models/helper-mapping-preview.model';
 import { MappingPreviewModel } from '../models/mapping-preview.model';
 
@@ -97,21 +99,34 @@ const createHelperPreview = (): HelperMappingPreviewModel =>
 
 describe('HomeAssistantWizardService', () => {
 	let service: HomeAssistantWizardService;
-	let mappingPreviewService: { generatePreview: jest.Mock; generatePreviews: jest.Mock };
-	let helperMappingPreviewService: { generatePreview: jest.Mock; generatePreviews: jest.Mock };
+	let mappingPreviewService: { generatePreview: jest.Mock; generateSettledPreviews: jest.Mock };
+	let helperMappingPreviewService: { generatePreview: jest.Mock; generateSettledPreviews: jest.Mock };
 	let deviceAdoptionService: { adoptDevice: jest.Mock };
 	let helperAdoptionService: { adoptHelper: jest.Mock };
 	let homeAssistantHttpService: { getDiscoveredInventory: jest.Mock };
+	let deviceValidationService: DeviceValidationService;
 
 	beforeEach(() => {
 		jest.useFakeTimers();
 		mappingPreviewService = {
 			generatePreview: jest.fn().mockResolvedValue(createDevicePreview()),
-			generatePreviews: jest.fn().mockResolvedValue([createDevicePreview()]),
+			generateSettledPreviews: jest.fn().mockResolvedValue([
+				{
+					source: { id: 'ha-device-1', name: 'Living room lamp' },
+					preview: createDevicePreview(),
+					error: null,
+				},
+			]),
 		};
 		helperMappingPreviewService = {
 			generatePreview: jest.fn().mockResolvedValue(createHelperPreview()),
-			generatePreviews: jest.fn().mockResolvedValue([createHelperPreview()]),
+			generateSettledPreviews: jest.fn().mockResolvedValue([
+				{
+					source: { entityId: 'input_boolean.guest_mode', name: 'Guest mode', domain: 'input_boolean' },
+					preview: createHelperPreview(),
+					error: null,
+				},
+			]),
 		};
 		deviceAdoptionService = { adoptDevice: jest.fn().mockResolvedValue({ id: 'device-1' }) };
 		helperAdoptionService = { adoptHelper: jest.fn().mockResolvedValue({ id: 'helper-1' }) };
@@ -121,12 +136,14 @@ describe('HomeAssistantWizardService', () => {
 				helpers: [{ entityId: 'input_boolean.guest_mode', adoptedDeviceId: null }],
 			}),
 		};
+		deviceValidationService = new DeviceValidationService({} as DevicesService);
 		service = new HomeAssistantWizardService(
 			mappingPreviewService as unknown as MappingPreviewService,
 			helperMappingPreviewService as unknown as HelperMappingPreviewService,
 			deviceAdoptionService as unknown as DeviceAdoptionService,
 			helperAdoptionService as unknown as HelperAdoptionService,
 			homeAssistantHttpService as unknown as HomeAssistantHttpService,
+			deviceValidationService,
 		);
 	});
 
@@ -145,18 +162,24 @@ describe('HomeAssistantWizardService', () => {
 				expect.objectContaining({ key: 'helper:input_boolean.guest_mode', status: 'ready', previewChannelCount: 1 }),
 			]),
 		);
-		expect(mappingPreviewService.generatePreviews).toHaveBeenCalledWith(
+		expect(mappingPreviewService.generateSettledPreviews).toHaveBeenCalledWith(
 			expect.arrayContaining([expect.objectContaining({ id: 'ha-device-1' })]),
 		);
-		expect(helperMappingPreviewService.generatePreviews).toHaveBeenCalledWith(
+		expect(helperMappingPreviewService.generateSettledPreviews).toHaveBeenCalledWith(
 			expect.arrayContaining([expect.objectContaining({ entityId: 'input_boolean.guest_mode' })]),
 		);
 		expect(homeAssistantHttpService.getDiscoveredInventory).toHaveBeenCalledTimes(1);
 	});
 
 	it('keeps ambiguous candidates out of automatic adoption', async () => {
-		mappingPreviewService.generatePreviews.mockResolvedValueOnce([
-			createDevicePreview([{ type: 'unsupported_entity', entityId: 'sensor.unknown', message: 'Review mapping' }]),
+		mappingPreviewService.generateSettledPreviews.mockResolvedValueOnce([
+			{
+				source: { id: 'ha-device-1', name: 'Living room lamp' },
+				preview: createDevicePreview([
+					{ type: 'unsupported_entity', entityId: 'sensor.unknown', message: 'Review mapping' },
+				]),
+				error: null,
+			},
 		]);
 		const snapshot = await service.start();
 
@@ -232,6 +255,89 @@ describe('HomeAssistantWizardService', () => {
 		expect(snapshot.candidates.find((candidate) => candidate.key === 'device:ha-device-1')).toEqual(
 			expect.objectContaining({ status: 'already_registered', adoptedDeviceId: 'existing-1' }),
 		);
+	});
+
+	it('keeps valid candidates when another mapping preview fails', async () => {
+		mappingPreviewService.generateSettledPreviews.mockResolvedValueOnce([
+			{
+				source: { id: 'ha-device-1', name: 'Living room lamp' },
+				preview: null,
+				error: 'Home Assistant device with ID ha-device-1 not found',
+			},
+		]);
+
+		const snapshot = await service.start();
+
+		expect(snapshot.candidates).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					key: 'device:ha-device-1',
+					status: 'failed',
+					error: 'Home Assistant device with ID ha-device-1 not found',
+				}),
+				expect.objectContaining({ key: 'helper:input_boolean.guest_mode', status: 'ready' }),
+			]),
+		);
+	});
+
+	it('does not offer a helper that is already represented by a ready physical device mapping', async () => {
+		const overlappingHelper = createHelperPreview();
+		overlappingHelper.helper.entityId = 'light.living_room';
+		helperMappingPreviewService.generateSettledPreviews.mockResolvedValueOnce([
+			{
+				source: { entityId: 'light.living_room', name: 'Living room lamp', domain: 'light' },
+				preview: overlappingHelper,
+				error: null,
+			},
+		]);
+
+		const snapshot = await service.start();
+
+		expect(snapshot.candidates.find((candidate) => candidate.kind === 'helper')).toBeUndefined();
+	});
+
+	it('requires helper mappings to satisfy the complete device specification', async () => {
+		const incompleteClimatePreview = createHelperPreview();
+		incompleteClimatePreview.helper = {
+			entityId: 'climate.living_room',
+			name: 'Living room thermostat',
+			domain: 'climate',
+		};
+		incompleteClimatePreview.suggestedDevice.category = DeviceCategory.THERMOSTAT;
+		incompleteClimatePreview.suggestedChannels = [
+			{
+				category: ChannelCategory.THERMOSTAT,
+				name: 'Thermostat',
+				confidence: 'high',
+				suggestedProperties: [
+					{
+						category: PropertyCategory.LOCKED,
+						name: 'Locked',
+						haAttribute: 'locked',
+						dataType: DataTypeType.BOOL,
+						permissions: [PermissionType.READ_WRITE],
+						unit: null,
+						format: null,
+						required: false,
+						currentValue: false,
+					},
+				],
+			},
+		];
+		helperMappingPreviewService.generateSettledPreviews.mockResolvedValueOnce([
+			{
+				source: { entityId: 'climate.living_room', name: 'Living room thermostat', domain: 'climate' },
+				preview: incompleteClimatePreview,
+				error: null,
+			},
+		]);
+
+		const snapshot = await service.start();
+
+		expect(snapshot.candidates.find((candidate) => candidate.kind === 'helper')).toEqual(
+			expect.objectContaining({ status: 'needs_attention' }),
+		);
+		expect(helperAdoptionService.adoptHelper).not.toHaveBeenCalled();
 	});
 
 	it('returns null for an unknown session', async () => {

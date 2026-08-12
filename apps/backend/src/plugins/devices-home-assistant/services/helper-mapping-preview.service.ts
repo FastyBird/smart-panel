@@ -29,6 +29,12 @@ import { HomeAssistantDiscoveredHelperModel } from '../models/home-assistant.mod
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 
+export interface HelperMappingPreviewResult {
+	source: HomeAssistantDiscoveredHelperModel;
+	preview: HelperMappingPreviewModel | null;
+	error: string | null;
+}
+
 /**
  * Service for generating mapping previews for Home Assistant helpers
  */
@@ -62,9 +68,30 @@ export class HelperMappingPreviewService {
 	async generatePreviews(
 		discoveredHelpers?: HomeAssistantDiscoveredHelperModel[],
 	): Promise<HelperMappingPreviewModel[]> {
+		const results = await this.generateSettledPreviews(discoveredHelpers);
+
+		return results.flatMap((result) => (result.preview ? [result.preview] : []));
+	}
+
+	/**
+	 * Generate helper previews while preserving other candidates if one mapping fails.
+	 */
+	async generateSettledPreviews(
+		discoveredHelpers?: HomeAssistantDiscoveredHelperModel[],
+	): Promise<HelperMappingPreviewResult[]> {
 		const helpers = discoveredHelpers ?? (await this.homeAssistantHttpService.getDiscoveredHelpers());
 
-		return helpers.map((helper) => this.generatePreviewFromSnapshot(helper.entityId, helper));
+		return helpers.map((helper) => {
+			try {
+				return {
+					source: helper,
+					preview: this.generatePreviewFromSnapshot(helper.entityId, helper),
+					error: null,
+				};
+			} catch (error) {
+				return { source: helper, preview: null, error: (error as Error).message };
+			}
+		});
 	}
 
 	private generatePreviewFromSnapshot(

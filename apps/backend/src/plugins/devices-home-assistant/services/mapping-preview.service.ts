@@ -49,6 +49,12 @@ import { LightCapabilityAnalyzer } from './light-capability.analyzer';
 import { VirtualPropertyService } from './virtual-property.service';
 import { VirtualPropertyContext } from './virtual-property.types';
 
+export interface DeviceMappingPreviewResult {
+	source: HomeAssistantDiscoveredDeviceModel;
+	preview: MappingPreviewModel | null;
+	error: string | null;
+}
+
 /**
  * Service for generating mapping previews for Home Assistant devices
  *
@@ -89,15 +95,34 @@ export class MappingPreviewService {
 	 * Generate automatic previews for all discoverable devices from one Home Assistant snapshot.
 	 */
 	async generatePreviews(discoveredDevices?: HomeAssistantDiscoveredDeviceModel[]): Promise<MappingPreviewModel[]> {
+		const results = await this.generateSettledPreviews(discoveredDevices);
+
+		return results.flatMap((result) => (result.preview ? [result.preview] : []));
+	}
+
+	/**
+	 * Generate previews from one registry snapshot while keeping a failure scoped to its source device.
+	 */
+	async generateSettledPreviews(
+		discoveredDevices?: HomeAssistantDiscoveredDeviceModel[],
+	): Promise<DeviceMappingPreviewResult[]> {
 		const [devicesRegistry, entitiesRegistry, inventory] = await Promise.all([
 			this.homeAssistantWsService.getDevicesRegistry(),
 			this.homeAssistantWsService.getEntitiesRegistry(),
 			discoveredDevices ?? this.homeAssistantHttpService.getDiscoveredDevices(),
 		]);
 
-		return inventory.map((device) =>
-			this.generatePreviewFromSnapshot(device.id, devicesRegistry, entitiesRegistry, device),
-		);
+		return inventory.map((device) => {
+			try {
+				return {
+					source: device,
+					preview: this.generatePreviewFromSnapshot(device.id, devicesRegistry, entitiesRegistry, device),
+					error: null,
+				};
+			} catch (error) {
+				return { source: device, preview: null, error: (error as Error).message };
+			}
+		});
 	}
 
 	private generatePreviewFromSnapshot(

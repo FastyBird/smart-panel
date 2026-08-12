@@ -15,6 +15,7 @@ import {
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
+import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
 	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
@@ -35,6 +36,7 @@ import {
 	HomeAssistantChannelPropertyEntity,
 	HomeAssistantDeviceEntity,
 } from '../entities/devices-home-assistant.entity';
+import { buildHelperDeviceStructure } from '../utils/helper-structure.utils';
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 
@@ -54,6 +56,7 @@ export class HelperAdoptionService {
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
+		private readonly deviceValidationService: DeviceValidationService,
 	) {}
 
 	/**
@@ -114,6 +117,14 @@ export class HelperAdoptionService {
 		if (errors.length) {
 			this.logger.error(`[HELPER ADOPTION] Device validation failed: ${JSON.stringify(errors)}`);
 			throw new DevicesHomeAssistantValidationException('Device validation failed');
+		}
+
+		const structureValidation = this.deviceValidationService.validateDeviceStructure(
+			buildHelperDeviceStructure(request),
+		);
+		if (!structureValidation.isValid) {
+			const reasons = structureValidation.issues.map((issue) => issue.message).join('; ');
+			throw new DevicesHomeAssistantValidationException(`Device structure validation failed: ${reasons}`);
 		}
 
 		// Create the device
