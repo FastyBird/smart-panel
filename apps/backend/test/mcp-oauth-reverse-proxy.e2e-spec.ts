@@ -6,9 +6,10 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { ConfigService } from '../src/modules/config/services/config.service';
 import { MCP_OAUTH_PROTECTED_RESOURCE_METADATA_PATH, MCP_OAUTH_TOKEN_PATH } from '../src/modules/mcp/mcp.constants';
 import { McpConfigModel } from '../src/modules/mcp/models/config.model';
-import { McpOAuthProviderRuntime } from '../src/modules/mcp/oauth/mcp-oauth-provider.factory';
+import { McpOAuthProviderFactory, McpOAuthProviderRuntime } from '../src/modules/mcp/oauth/mcp-oauth-provider.factory';
 import { McpOAuthPublicUrls } from '../src/modules/mcp/oauth/mcp-oauth.types';
 import { McpOAuthBootstrapService } from '../src/modules/mcp/services/mcp-oauth-bootstrap.service';
+import { McpOAuthLifecycleService } from '../src/modules/mcp/services/mcp-oauth-lifecycle.service';
 import { McpOAuthProxyPolicyService } from '../src/modules/mcp/services/mcp-oauth-proxy-policy.service';
 import { McpOAuthPublicUrlService } from '../src/modules/mcp/services/mcp-oauth-public-url.service';
 import {
@@ -54,17 +55,24 @@ describe('MCP OAuth reverse-proxy boundary', () => {
 			response.setHeader('content-type', 'application/json');
 			response.end(JSON.stringify({ path: request.url }));
 		};
-		const runtime = {
-			getActive: jest.fn(
-				() =>
-					({
-						provider: {} as McpOAuthProviderRuntime['provider'],
-						callback,
-						urls: requireUrls(publicUrls),
-						metadata: {} as McpOAuthProviderRuntime['metadata'],
-					}) satisfies McpOAuthProviderRuntime,
-			),
-		};
+		const createRuntime = jest.fn(() =>
+			Promise.resolve({
+				provider: {} as McpOAuthProviderRuntime['provider'],
+				callback,
+				urls: requireUrls(publicUrls),
+				metadata: {} as McpOAuthProviderRuntime['metadata'],
+			} satisfies McpOAuthProviderRuntime),
+		);
+		const runtime = new McpOAuthRuntimeService(
+			{ create: createRuntime } as unknown as McpOAuthProviderFactory,
+			routeGate,
+		);
+		const lifecycle = new McpOAuthLifecycleService(
+			configService as unknown as ConfigService,
+			readiness,
+			routeGate,
+			runtime,
+		);
 		const resourceServer = {
 			getProtectedResourceMetadata: jest.fn(() => {
 				const urls = requireUrls(publicUrls);
@@ -78,14 +86,15 @@ describe('MCP OAuth reverse-proxy boundary', () => {
 			routeGate,
 			proxyPolicy,
 			resourceServer as unknown as McpOAuthResourceServerService,
-			runtime as unknown as McpOAuthRuntimeService,
+			runtime,
 		);
 
 		server = fastify();
 		bootstrap.register(server);
 		readiness.onApplicationBootstrap();
-		routeGate.openInternal();
+		await lifecycle.activateInternal();
 		const origin = await server.listen({ host: '127.0.0.1', port: 0 });
+		expect(createRuntime).toHaveBeenCalledTimes(1);
 
 		const direct = await request(origin, MCP_OAUTH_PROTECTED_RESOURCE_METADATA_PATH, {
 			host: 'host-header-attacker.example',
@@ -124,7 +133,10 @@ describe('MCP OAuth reverse-proxy boundary', () => {
 		expect(provider.status).toBe(200);
 		expect(await provider.json()).toEqual({ path: '/smart-panel/api/v1/modules/mcp/oauth/token' });
 
-		config.oauthPublicBaseUrl = changedPublicBaseUrl;
+		await lifecycle.reconfigureInternal(() => {
+			config.oauthPublicBaseUrl = changedPublicBaseUrl;
+		});
+		expect(createRuntime).toHaveBeenCalledTimes(2);
 		const changed = await request(origin, MCP_OAUTH_PROTECTED_RESOURCE_METADATA_PATH);
 		expect(changed.status).toBe(200);
 		expect(await changed.json()).toEqual({
@@ -134,7 +146,10 @@ describe('MCP OAuth reverse-proxy boundary', () => {
 		const changedProvider = await request(origin, MCP_OAUTH_TOKEN_PATH);
 		expect(await changedProvider.json()).toEqual({ path: '/edge/panel/api/v1/modules/mcp/oauth/token' });
 
-		config.oauthPublicBaseUrl = originalPublicBaseUrl;
+		await lifecycle.reconfigureInternal(() => {
+			config.oauthPublicBaseUrl = originalPublicBaseUrl;
+		});
+		expect(createRuntime).toHaveBeenCalledTimes(3);
 		const rolledBack = await request(origin, MCP_OAUTH_PROTECTED_RESOURCE_METADATA_PATH);
 		expect(await rolledBack.json()).toEqual({
 			resource: 'https://panel.example.com/smart-panel/api/v1/modules/mcp',
