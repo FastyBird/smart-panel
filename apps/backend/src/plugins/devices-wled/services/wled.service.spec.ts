@@ -584,6 +584,44 @@ describe('WledService', () => {
 			expect(wledAdapter.connectWithContext).toHaveBeenCalledWith('192.168.1.200', 'wled-aabbccddeeff', mockContext);
 		});
 
+		it('should upgrade a same-endpoint null identity discovered with a MAC', async () => {
+			const legacyDevice = {
+				...createMockDevice('device-1', null, '192.168.1.100'),
+				name: 'Administrator name',
+			} as WledDeviceEntity;
+			const upgradedDevice = {
+				...legacyDevice,
+				identifier: 'wled-aabbccddeeff',
+			} as WledDeviceEntity;
+			const discoveredDevice: WledMdnsDiscoveredDevice = {
+				name: 'Advertised name',
+				host: '192.168.1.100',
+				port: 80,
+				mac: 'AA:BB:CC:DD:EE:FF',
+			};
+			devicesService.findAll.mockResolvedValue([legacyDevice]);
+			devicesService.update.mockResolvedValue(upgradedDevice);
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			deviceMapper.mapDevice.mockResolvedValue(upgradedDevice);
+
+			await mdnsCallbacks.onDeviceDiscovered?.(discoveredDevice);
+
+			expect(devicesService.update).toHaveBeenCalledWith('device-1', {
+				type: DEVICES_WLED_TYPE,
+				identifier: 'wled-aabbccddeeff',
+				hostname: '192.168.1.100',
+			});
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(
+				'192.168.1.100',
+				mockContext,
+				'Administrator name',
+				'wled-aabbccddeeff',
+				undefined,
+				undefined,
+			);
+			expect(wledAdapter.connect).not.toHaveBeenCalled();
+		});
+
 		it('should probe and reconcile a known MAC-less announcement when auto-add is disabled', async () => {
 			const existingDevice = {
 				...createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100'),

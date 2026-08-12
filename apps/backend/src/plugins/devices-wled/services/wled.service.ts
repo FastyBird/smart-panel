@@ -476,10 +476,15 @@ export class WledService extends BaseManagedPluginService {
 
 		if (existingDevice) {
 			this.logger.debug(`Device at ${endpoint} already exists in database`);
+			const identityUpgradeRequired = this.requiresCanonicalIdentity(existingDevice, endpoint, identifiedDevice.mac);
 
 			// Reconcile a known MAC at a new endpoint through the same guarded
-			// provisioning path as administrator adoption.
-			if (existingDevice.hostname && !this.endpointsEquivalent(existingDevice.hostname, endpoint)) {
+			// provisioning path as administrator adoption. Legacy same-endpoint
+			// identities use it too so a later address move remains recognizable.
+			if (
+				identityUpgradeRequired ||
+				(existingDevice.hostname && !this.endpointsEquivalent(existingDevice.hostname, endpoint))
+			) {
 				await this.connectAndMapDiscoveredDevice(identifiedDevice);
 			} else if (existingDevice.enabled && !this.wledAdapter.isConnected(endpoint)) {
 				this.logger.debug(`Connecting to existing device at ${endpoint}`);
@@ -506,7 +511,11 @@ export class WledService extends BaseManagedPluginService {
 				const endpoint = this.discoveryEndpoint(device.host, device.port);
 				const devices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
 				const existingDevice = this.findExistingDevice(devices, endpoint, device.mac);
-				if (existingDevice?.hostname && this.endpointsEquivalent(existingDevice.hostname, endpoint)) {
+				if (
+					existingDevice?.hostname &&
+					this.endpointsEquivalent(existingDevice.hostname, endpoint) &&
+					!this.requiresCanonicalIdentity(existingDevice, endpoint, device.mac)
+				) {
 					if (existingDevice.enabled && !this.wledAdapter.isConnected(endpoint)) {
 						await this.connectToDevice(existingDevice);
 					}
@@ -1205,6 +1214,21 @@ export class WledService extends BaseManagedPluginService {
 
 		const normalized = serial.replace(/[^a-fA-F0-9]/g, '').toLowerCase();
 		return normalized.length === 12 ? normalized : null;
+	}
+
+	private requiresCanonicalIdentity(device: WledDeviceEntity, host: string, mac?: string | null): boolean {
+		if (!mac) {
+			return false;
+		}
+
+		const canonicalIdentifier = this.identifierFromMac(mac);
+		const identifier = device.identifier?.toLowerCase() ?? null;
+
+		return (
+			identifier === null ||
+			identifier === `wled-${canonicalIdentifier.slice(-6)}` ||
+			this.legacyHostIdentifiers(device.hostname ?? host).has(identifier)
+		);
 	}
 
 	private endpointsEquivalent(first: string, second: string): boolean {
