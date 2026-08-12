@@ -564,9 +564,10 @@ export class WledService extends BaseManagedPluginService {
 	}
 
 	async rescanDiscovery(): Promise<WledDiscoveryModel> {
+		this.mdnsDiscoverer.clearDiscoveredDevices();
+
 		if (this.config.mdns.enabled) {
 			this.mdnsDiscoverer.stop();
-			this.mdnsDiscoverer.clearDiscoveredDevices();
 			this.mdnsDiscoverer.start(this.config.mdns.interface ?? undefined);
 		}
 
@@ -1151,7 +1152,7 @@ export class WledService extends BaseManagedPluginService {
 	}
 
 	private canonicalEndpoint(endpoint: string): string {
-		const trimmed = endpoint.trim();
+		const trimmed = endpoint.trim().toLowerCase();
 		const bracketedIpv6 = trimmed.match(/^\[([^\]]+)](?::(\d+))?$/);
 		if (bracketedIpv6) {
 			const [, address, port] = bracketedIpv6;

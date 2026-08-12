@@ -649,6 +649,20 @@ describe('WledService', () => {
 			expect(mdnsDiscoverer.start).toHaveBeenCalled();
 		});
 
+		it('clears stale discovery candidates during a rescan when mDNS is disabled', async () => {
+			configService.getPluginConfig.mockReturnValue({
+				...mockConfig,
+				mdns: { ...(mockConfig as WledConfigModel).mdns, enabled: false },
+			} as WledConfigModel);
+			mdnsDiscoverer.getDiscoveredDevices.mockReturnValue([]);
+
+			await service.rescanDiscovery();
+
+			expect(mdnsDiscoverer.clearDiscoveredDevices).toHaveBeenCalled();
+			expect(mdnsDiscoverer.stop).not.toHaveBeenCalled();
+			expect(mdnsDiscoverer.start).not.toHaveBeenCalled();
+		});
+
 		it('probes without registering a connection', async () => {
 			wledAdapter.probe.mockResolvedValue(mockContext);
 			devicesService.findAll.mockResolvedValue([]);
@@ -1747,6 +1761,24 @@ describe('WledService', () => {
 			mdnsDiscoverer.getDiscoveredDevices.mockReturnValue([
 				{ host: 'wled.local', name: 'Advertised name', port: 8080 },
 			]);
+			devicesService.findAll.mockResolvedValue([existingDevice]);
+
+			const inventory = await service.getDiscoveryInventory();
+
+			expect(inventory.devices[0]).toEqual(
+				expect.objectContaining({
+					name: 'Administrator name',
+					adoptedDeviceId: 'device-1',
+				}),
+			);
+		});
+
+		it('matches a MAC-less discovery hostname case-insensitively', async () => {
+			const existingDevice = {
+				...createMockDevice('device-1', 'wled-aabbccddeeff', 'wled.local'),
+				name: 'Administrator name',
+			} as WledDeviceEntity;
+			mdnsDiscoverer.getDiscoveredDevices.mockReturnValue([{ host: 'WLED.local', name: 'Advertised name', port: 80 }]);
 			devicesService.findAll.mockResolvedValue([existingDevice]);
 
 			const inventory = await service.getDiscoveryInventory();
