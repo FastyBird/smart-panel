@@ -23,6 +23,7 @@ import { UpdateWledDeviceDto } from '../dto/update-device.dto';
 import { WledAdoptDeviceDto } from '../dto/wled-adoption.dto';
 import { WledDeviceEntity } from '../entities/devices-wled.entity';
 import {
+	RegisteredWledDevice,
 	WledDeviceConnectedEvent,
 	WledDeviceContext,
 	WledDeviceDisconnectedEvent,
@@ -336,23 +337,31 @@ export class WledService extends BaseManagedPluginService {
 				DEVICES_WLED_TYPE,
 			);
 			if (storedDevice) {
-				await this.persistHardwareIdentity(storedDevice, event.info.mac);
+				const identityVerified = await this.persistHardwareIdentity(storedDevice, event.info.mac);
+				if (!identityVerified) {
+					this.wledAdapter.disconnect(event.host, false);
+					await this.deviceMapper.setDeviceConnectionState(device.identifier, ConnectionState.DISCONNECTED);
+					return;
+				}
 			}
 			await this.deviceMapper.setDeviceConnectionState(device.identifier, ConnectionState.CONNECTED);
 		}
 	}
 
-	private async persistHardwareIdentity(device: WledDeviceEntity, reportedMac: string): Promise<void> {
+	private async persistHardwareIdentity(device: WledDeviceEntity, reportedMac: string): Promise<boolean> {
 		const mac = this.normalizeMac(reportedMac);
 		if (!mac || device.mac === mac) {
-			return;
+			return true;
 		}
 		const result = await this.hardwareIdentity.persist(device, mac);
 		if (result === 'conflict') {
-			this.logger.warn(`WLED hardware identity ${mac} is already owned by another device`, {
+			this.logger.warn(`WLED hardware identity ${mac} conflicts with the configured device`, {
 				resource: device.id,
 			});
+			return false;
 		}
+
+		return true;
 	}
 
 	/**
@@ -783,13 +792,23 @@ export class WledService extends BaseManagedPluginService {
 				dependencyGroupByIndex.set(member, group);
 			}
 		}
+		const registrationSnapshotsByDependencyGroup = new Map<Set<number>, RegisteredWledDevice[]>();
+		for (const dependencyGroup of new Set(dependencyGroupByIndex.values())) {
+			const involvedHosts = plans
+				.filter((plan) => dependencyGroup.has(plan.index))
+				.flatMap((plan) => [plan.host, plan.existingDevice?.hostname].filter((host): host is string => !!host));
+			const registrations = this.wledAdapter
+				.getRegisteredDevices()
+				.filter((registration) => involvedHosts.some((host) => this.endpointsEquivalent(registration.host, host)))
+				.map((registration) => ({ ...registration }));
+			registrationSnapshotsByDependencyGroup.set(dependencyGroup, registrations);
+		}
 
 		const retiredDeviceIds = new Set<string>();
 		const failedDependencyGroups = new Map<Set<number>, string>();
 		const createdDeviceIdsByPlan = new Map<number, string>();
 		const structureSnapshotsByPlan = new Map<number, WledAdoptionStructureSnapshot>();
 		const retiredStaleOwnersByDependencyGroup = new Map<Set<number>, Map<string, WledDeviceEntity>>();
-		const disconnectedStaleOwnerIdsByDependencyGroup = new Map<Set<number>, Set<string>>();
 
 		for (const { index, request, host, context, existingDevice, identifier } of plans) {
 			if (blockedPlanIndices.has(index)) {
@@ -876,12 +895,6 @@ export class WledService extends BaseManagedPluginService {
 							this.wledAdapter.disconnect(staleHostOwner.hostname, false);
 							if (retiringHostOwners.some(({ id }) => id === staleHostOwner.id)) {
 								disconnectedStaleOwners.push(staleHostOwner);
-								if (dependencyGroup) {
-									const disconnectedIds =
-										disconnectedStaleOwnerIdsByDependencyGroup.get(dependencyGroup) ?? new Set<string>();
-									disconnectedIds.add(staleHostOwner.id);
-									disconnectedStaleOwnerIdsByDependencyGroup.set(dependencyGroup, disconnectedIds);
-								}
 							}
 						}
 					}
@@ -976,7 +989,6 @@ export class WledService extends BaseManagedPluginService {
 							await this.tryRollback(`restore hardware identity ${original.id}`, () =>
 								this.hardwareIdentity.restore(original.id, original.mac),
 							);
-							await this.tryRollback(`reconnect device ${original.id}`, () => this.restoreDeviceConnection(original));
 						} else {
 							const partialDevice = await this.tryRollback(
 								`find partial device ${dependentPlan.identifier}`,
@@ -1021,12 +1033,22 @@ export class WledService extends BaseManagedPluginService {
 							this.hardwareIdentity.restore(staleHostOwner.id, staleHostOwner.mac),
 						);
 						retiredDeviceIds.delete(staleHostOwner.id);
-						if (disconnectedStaleOwnerIdsByDependencyGroup.get(dependencyGroup)?.has(staleHostOwner.id)) {
-							await this.tryRollback(`reconnect stale owner ${staleHostOwner.id}`, () =>
-								this.restoreDeviceConnection(staleHostOwner),
-							);
-						}
 					}
+
+					const snapshotDevices = databaseDevices.filter((device) => {
+						const deviceHost = device.hostname;
+						return (
+							deviceHost !== null &&
+							[...involvedHosts].some((involvedHost) => this.endpointsEquivalent(deviceHost, involvedHost))
+						);
+					});
+					await this.tryRollback('restore dependency group registrations', () =>
+						this.restoreDependencyGroupRegistrations(
+							involvedHosts,
+							registrationSnapshotsByDependencyGroup.get(dependencyGroup) ?? [],
+							snapshotDevices,
+						),
+					);
 				} else {
 					if (attemptedRegistrationCreated) {
 						await this.tryRollback(`disconnect ${host}`, () =>
@@ -1144,6 +1166,51 @@ export class WledService extends BaseManagedPluginService {
 		}
 
 		await this.deviceConnectivityService.setConnectionState(device.id, { state });
+	}
+
+	private async restoreDependencyGroupRegistrations(
+		involvedHosts: Set<string>,
+		registrations: RegisteredWledDevice[],
+		devices: WledDeviceEntity[],
+	): Promise<void> {
+		const belongsToGroup = (host: string): boolean =>
+			[...involvedHosts].some((involvedHost) => this.endpointsEquivalent(host, involvedHost));
+
+		for (const registration of this.wledAdapter.getRegisteredDevices().filter(({ host }) => belongsToGroup(host))) {
+			this.wledAdapter.disconnect(registration.host, false);
+		}
+
+		for (const registration of registrations.filter(({ connected }) => connected)) {
+			if (registration.context) {
+				this.wledAdapter.connectWithContext(registration.host, registration.identifier, registration.context);
+			} else {
+				await this.wledAdapter.connect(
+					registration.host,
+					registration.identifier,
+					this.config.timeouts.connectionTimeout,
+				);
+			}
+
+			const restored = this.wledAdapter.getDevice(registration.host);
+			if (restored) {
+				restored.enabled = registration.enabled;
+				restored.lastSeen = registration.lastSeen;
+			}
+		}
+
+		const uniqueDevices = new Map(devices.map((device) => [device.id, device]));
+		for (const device of uniqueDevices.values()) {
+			const connected = registrations.some(
+				(registration) =>
+					registration.connected &&
+					registration.identifier === device.identifier &&
+					device.hostname !== null &&
+					this.endpointsEquivalent(registration.host, device.hostname),
+			);
+			await this.deviceConnectivityService.setConnectionState(device.id, {
+				state: connected ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED,
+			});
+		}
 	}
 
 	/**

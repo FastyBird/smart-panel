@@ -13,6 +13,9 @@ export class WledHardwareIdentityService {
 		if (!mac || device.mac === mac) {
 			return 'unchanged';
 		}
+		if (device.mac !== null) {
+			return 'conflict';
+		}
 
 		const repository = this.dataSource.getRepository(WledDeviceEntity);
 		const existingOwner = await repository.findOne({ where: { mac } });

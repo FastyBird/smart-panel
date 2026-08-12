@@ -26,6 +26,7 @@ describe('WledDeviceMapperService', () => {
 	let channelsService: jest.Mocked<ChannelsService>;
 	let channelsPropertiesService: jest.Mocked<ChannelsPropertiesService>;
 	let deviceConnectivityService: jest.Mocked<DeviceConnectivityService>;
+	let hardwareIdentity: jest.Mocked<WledHardwareIdentityService>;
 
 	// Quiet logger noise
 
@@ -208,9 +209,23 @@ describe('WledDeviceMapperService', () => {
 		channelsService = module.get(ChannelsService);
 		channelsPropertiesService = module.get(ChannelsPropertiesService);
 		deviceConnectivityService = module.get(DeviceConnectivityService);
+		hardwareIdentity = module.get(WledHardwareIdentityService);
 	});
 
 	describe('mapDevice', () => {
+		it('rejects mapping when the verified hardware identity conflicts', async () => {
+			const mockDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
+			hardwareIdentity.persist.mockResolvedValueOnce('conflict');
+
+			await expect(
+				service.mapDevice('192.168.1.100', mockDeviceContext, undefined, 'wled-aabbccddeeff'),
+			).rejects.toThrow('WLED hardware identity conflicts with the stored device device-1');
+
+			expect(channelsService.create).not.toHaveBeenCalled();
+			expect(deviceConnectivityService.setConnectionState).not.toHaveBeenCalled();
+		});
+
 		it('should create a new device when it does not exist', async () => {
 			const mockDevice = createMockDevice('device-1', 'wled-ddeeff', '192.168.1.100');
 

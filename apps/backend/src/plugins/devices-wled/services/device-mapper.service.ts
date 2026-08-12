@@ -25,6 +25,7 @@ import {
 	wledCurrentToAmps,
 	wledPowerToWatts,
 } from '../devices-wled.constants';
+import { WledValidationException } from '../devices-wled.exceptions';
 import { CreateWledChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { CreateWledChannelDto } from '../dto/create-channel.dto';
 import { CreateWledDeviceDto } from '../dto/create-device.dto';
@@ -122,7 +123,10 @@ export class WledDeviceMapperService {
 			}
 		}
 
-		await this.hardwareIdentity.persist(device, context.info.mac);
+		const identityResult = await this.hardwareIdentity.persist(device, context.info.mac);
+		if (identityResult === 'conflict') {
+			throw new WledValidationException(`WLED hardware identity conflicts with the stored device ${device.id}`);
+		}
 
 		// Create channels and properties
 		await this.createDeviceInformationChannel(device, context.info);

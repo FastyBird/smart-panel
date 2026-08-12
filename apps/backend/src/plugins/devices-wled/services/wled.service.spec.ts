@@ -419,7 +419,7 @@ describe('WledService', () => {
 			expect(hardwareIdentity.persist).toHaveBeenCalledWith(storedDevice, 'aabbccddeeff');
 		});
 
-		it('should skip duplicate hardware identity persistence without rejecting the connected callback', async () => {
+		it('should disconnect a registration whose hardware identity conflicts', async () => {
 			const storedDevice = createMockDevice('device-legacy', 'custom-strip', '192.168.1.100');
 			const event: WledDeviceConnectedEvent = {
 				host: '192.168.1.100',
@@ -437,7 +437,8 @@ describe('WledService', () => {
 			await expect(adapterCallbacks.onDeviceConnected?.(event)).resolves.toBeUndefined();
 
 			expect(hardwareIdentity.persist).toHaveBeenCalledWith(storedDevice, 'aabbccddeeff');
-			expect(deviceMapper.setDeviceConnectionState).toHaveBeenCalledWith('custom-strip', ConnectionState.CONNECTED);
+			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.100', false);
+			expect(deviceMapper.setDeviceConnectionState).toHaveBeenCalledWith('custom-strip', ConnectionState.DISCONNECTED);
 		});
 
 		it('should set connection state to DISCONNECTED on device disconnected', async () => {
@@ -1342,6 +1343,22 @@ describe('WledService', () => {
 				info: { ...mockContext.info, mac: '11:22:33:44:55:66' },
 			};
 			wledAdapter.probe.mockResolvedValueOnce(mockContext).mockResolvedValueOnce(secondContext);
+			wledAdapter.getRegisteredDevices.mockReturnValue([
+				{
+					host: firstDevice.hostname,
+					identifier: firstDevice.identifier,
+					connected: true,
+					enabled: true,
+					context: mockContext,
+				},
+				{
+					host: secondDevice.hostname,
+					identifier: secondDevice.identifier,
+					connected: true,
+					enabled: true,
+					context: secondContext,
+				},
+			] as RegisteredWledDevice[]);
 			devicesService.findAll.mockResolvedValue([firstDevice, secondDevice]);
 			deviceMapper.mapDevice
 				.mockResolvedValueOnce({ ...firstDevice, hostname: '192.168.1.200', name: 'First moved' } as WledDeviceEntity)
@@ -1380,6 +1397,55 @@ describe('WledService', () => {
 				state: ConnectionState.CONNECTED,
 			});
 			expect(adoptionSnapshot.restore).toHaveBeenCalledTimes(2);
+		});
+
+		it('restores an unselected registration when an address-swap group fails before stale-owner tracking', async () => {
+			const firstDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
+			const secondDevice = createMockDevice('device-2', 'wled-112233445566', '192.168.1.200');
+			const staleDevice = createMockDevice('device-stale', 'custom-stale-strip', '192.168.1.200');
+			const secondContext = {
+				...mockContext,
+				info: { ...mockContext.info, mac: '11:22:33:44:55:66' },
+			};
+			const staleContext = {
+				...mockContext,
+				info: { ...mockContext.info, mac: '77:88:99:AA:BB:CC' },
+			};
+			wledAdapter.probe.mockResolvedValueOnce(mockContext).mockResolvedValueOnce(secondContext);
+			wledAdapter.getRegisteredDevices.mockReturnValue([
+				{
+					host: firstDevice.hostname,
+					identifier: firstDevice.identifier,
+					connected: true,
+					enabled: true,
+					context: mockContext,
+				},
+				{
+					host: staleDevice.hostname,
+					identifier: staleDevice.identifier,
+					connected: true,
+					enabled: true,
+					context: staleContext,
+				},
+			] as RegisteredWledDevice[]);
+			devicesService.findAll.mockResolvedValue([firstDevice, secondDevice, staleDevice]);
+			deviceMapper.mapDevice.mockRejectedValueOnce(new Error('First mapping failed'));
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.200', name: 'First moved', category: DeviceCategory.LIGHTING },
+				{ host: '192.168.1.100', name: 'Second moved', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(results.map(({ status }) => status)).toEqual(['failed', 'failed']);
+			expect(wledAdapter.connectWithContext).toHaveBeenCalledWith('192.168.1.200', 'custom-stale-strip', staleContext);
+			expect(wledAdapter.connectWithContext).not.toHaveBeenCalledWith(
+				'192.168.1.200',
+				'wled-112233445566',
+				secondContext,
+			);
+			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith('device-stale', {
+				state: ConnectionState.CONNECTED,
+			});
 		});
 
 		it('does not retire a selected address owner when its swap probe fails', async () => {

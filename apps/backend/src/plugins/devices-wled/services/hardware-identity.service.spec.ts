@@ -32,4 +32,16 @@ describe('WledHardwareIdentityService', () => {
 
 		expect(update).not.toHaveBeenCalled();
 	});
+
+	it('rejects replacing an identity already verified for the device', async () => {
+		const device = { id: 'device-1', mac: 'aabbccddeeff' } as WledDeviceEntity;
+		const getRepository = jest.fn();
+		const dataSource = { getRepository } as unknown as DataSource;
+		const service = new WledHardwareIdentityService(dataSource);
+
+		await expect(service.persist(device, '11:22:33:44:55:66')).resolves.toBe('conflict');
+
+		expect(getRepository).not.toHaveBeenCalled();
+		expect(device.mac).toBe('aabbccddeeff');
+	});
 });
