@@ -28,11 +28,4 @@ export class UpdateWledDeviceDto extends UpdateDeviceDto {
 	@IsString()
 	@ValidateIf((_, value) => value !== null)
 	hostname?: string | null;
-
-	@ApiPropertyOptional({ description: 'Verified WLED hardware MAC identity', example: 'aabbccddeeff', nullable: true })
-	@Expose()
-	@IsOptional()
-	@IsString()
-	@ValidateIf((_, value) => value !== null)
-	mac?: string | null;
 }

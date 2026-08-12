@@ -43,6 +43,7 @@ import { WledConfigModel } from './models/config.model';
 import { WledDevicePlatform } from './platforms/wled.device.platform';
 import { WledAdoptionSnapshotService } from './services/adoption-snapshot.service';
 import { WledDeviceMapperService } from './services/device-mapper.service';
+import { WledHardwareIdentityService } from './services/hardware-identity.service';
 import { WledClientAdapterService } from './services/wled-client-adapter.service';
 import { WledMdnsDiscovererService } from './services/wled-mdns-discoverer.service';
 import { WledService } from './services/wled.service';
@@ -64,6 +65,7 @@ import { WledService } from './services/wled.service';
 		WledClientAdapterService,
 		WledMdnsDiscovererService,
 		WledAdoptionSnapshotService,
+		WledHardwareIdentityService,
 		WledDeviceMapperService,
 		WledDevicePlatform,
 		WledService,

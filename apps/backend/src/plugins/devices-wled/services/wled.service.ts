@@ -35,6 +35,7 @@ import { WledAdoptionResultModel, WledDiscoveredDeviceModel, WledDiscoveryModel 
 
 import { WledAdoptionSnapshotService, WledAdoptionStructureSnapshot } from './adoption-snapshot.service';
 import { WledDeviceMapperService } from './device-mapper.service';
+import { WledHardwareIdentityService } from './hardware-identity.service';
 import { WledClientAdapterService } from './wled-client-adapter.service';
 import { WledMdnsDiscovererService } from './wled-mdns-discoverer.service';
 
@@ -61,6 +62,7 @@ export class WledService extends BaseManagedPluginService {
 		private readonly wledAdapter: WledClientAdapterService,
 		private readonly deviceMapper: WledDeviceMapperService,
 		private readonly adoptionSnapshot: WledAdoptionSnapshotService,
+		private readonly hardwareIdentity: WledHardwareIdentityService,
 		private readonly devicesService: DevicesService,
 		private readonly mdnsDiscoverer: WledMdnsDiscovererService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
@@ -345,19 +347,12 @@ export class WledService extends BaseManagedPluginService {
 		if (!mac || device.mac === mac) {
 			return;
 		}
-		const devices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
-		const existingOwner = devices.find((candidate) => candidate.id !== device.id && candidate.mac === mac);
-		if (existingOwner) {
-			this.logger.warn(`WLED hardware identity ${mac} is already owned by device ${existingOwner.id}`, {
+		const result = await this.hardwareIdentity.persist(device, mac);
+		if (result === 'conflict') {
+			this.logger.warn(`WLED hardware identity ${mac} is already owned by another device`, {
 				resource: device.id,
 			});
-			return;
 		}
-
-		await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(device.id, {
-			type: DEVICES_WLED_TYPE,
-			mac,
-		});
 	}
 
 	/**
@@ -605,7 +600,7 @@ export class WledService extends BaseManagedPluginService {
 				return {
 					host: device.host,
 					name: existingDevice?.name ?? device.name,
-					mac: device.mac ?? null,
+					mac: this.normalizeMac(device.mac),
 					port: device.port,
 					adoptedDeviceId: existingDevice?.id ?? null,
 				};
@@ -976,8 +971,10 @@ export class WledService extends BaseManagedPluginService {
 									description: original.description,
 									enabled: original.enabled,
 									hostname: original.hostname,
-									mac: original.mac,
 								}),
+							);
+							await this.tryRollback(`restore hardware identity ${original.id}`, () =>
+								this.hardwareIdentity.restore(original.id, original.mac),
 							);
 							await this.tryRollback(`reconnect device ${original.id}`, () => this.restoreDeviceConnection(original));
 						} else {
@@ -1018,8 +1015,10 @@ export class WledService extends BaseManagedPluginService {
 								description: staleHostOwner.description,
 								enabled: staleHostOwner.enabled,
 								hostname: staleHostOwner.hostname,
-								mac: staleHostOwner.mac,
 							}),
+						);
+						await this.tryRollback(`restore stale owner hardware identity ${staleHostOwner.id}`, () =>
+							this.hardwareIdentity.restore(staleHostOwner.id, staleHostOwner.mac),
 						);
 						retiredDeviceIds.delete(staleHostOwner.id);
 						if (disconnectedStaleOwnerIdsByDependencyGroup.get(dependencyGroup)?.has(staleHostOwner.id)) {
@@ -1057,8 +1056,10 @@ export class WledService extends BaseManagedPluginService {
 								description: existingDevice.description,
 								enabled: existingDevice.enabled,
 								hostname: existingDevice.hostname,
-								mac: existingDevice.mac,
 							}),
+						);
+						await this.tryRollback(`restore hardware identity ${existingDevice.id}`, () =>
+							this.hardwareIdentity.restore(existingDevice.id, existingDevice.mac),
 						);
 						if (existingDeviceDisconnected || attemptedRegistrationCreated) {
 							await this.tryRollback(`reconnect device ${existingDevice.id}`, () =>
@@ -1080,8 +1081,10 @@ export class WledService extends BaseManagedPluginService {
 								description: staleHostOwner.description,
 								enabled: staleHostOwner.enabled,
 								hostname: staleHostOwner.hostname,
-								mac: staleHostOwner.mac,
 							}),
+						);
+						await this.tryRollback(`restore stale owner hardware identity ${staleHostOwner.id}`, () =>
+							this.hardwareIdentity.restore(staleHostOwner.id, staleHostOwner.mac),
 						);
 						if (disconnectedStaleOwners.some(({ id }) => id === staleHostOwner.id)) {
 							await this.tryRollback(`reconnect stale owner ${staleHostOwner.id}`, () =>

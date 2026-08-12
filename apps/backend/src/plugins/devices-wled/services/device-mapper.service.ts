@@ -34,6 +34,8 @@ import { UpdateWledDeviceDto } from '../dto/update-device.dto';
 import { WledChannelEntity, WledChannelPropertyEntity, WledDeviceEntity } from '../entities/devices-wled.entity';
 import { WledDeviceContext, WledInfo, WledState } from '../interfaces/wled.interface';
 
+import { WledHardwareIdentityService } from './hardware-identity.service';
+
 /**
  * WLED Device Mapper Service
  *
@@ -49,6 +51,7 @@ export class WledDeviceMapperService {
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly provisionQueue: DeviceProvisionQueueService,
+		private readonly hardwareIdentity: WledHardwareIdentityService,
 	) {}
 
 	/**
@@ -78,7 +81,6 @@ export class WledDeviceMapperService {
 		configEnabled?: boolean,
 	): Promise<WledDeviceEntity> {
 		const name = configName || context.info.name || `WLED ${identifier}`;
-		const mac = context.info.mac.replace(/[^a-fA-F0-9]/g, '').toLowerCase();
 
 		// Create or update the device entity
 		let device = await this.devicesService.findOneBy<WledDeviceEntity>('identifier', identifier, DEVICES_WLED_TYPE);
@@ -94,7 +96,6 @@ export class WledDeviceMapperService {
 				category: DeviceCategory.LIGHTING,
 				enabled: configEnabled ?? true,
 				hostname: host,
-				mac,
 			};
 
 			device = await this.devicesService.create<WledDeviceEntity, CreateWledDeviceDto>(createDto);
@@ -102,14 +103,12 @@ export class WledDeviceMapperService {
 			const updateDto: UpdateWledDeviceDto = {
 				type: DEVICES_WLED_TYPE,
 				hostname: host,
-				mac,
 				...(configName !== undefined && configName !== null ? { name: configName } : {}),
 				...(configDescription !== undefined ? { description: configDescription } : {}),
 				...(configEnabled !== undefined ? { enabled: configEnabled } : {}),
 			};
 			const shouldUpdate =
 				device.hostname !== host ||
-				device.mac !== mac ||
 				(configName !== undefined && configName !== null && device.name !== configName) ||
 				(configDescription !== undefined && device.description !== configDescription) ||
 				(configEnabled !== undefined && device.enabled !== configEnabled);
@@ -122,6 +121,8 @@ export class WledDeviceMapperService {
 				device = await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(device.id, updateDto);
 			}
 		}
+
+		await this.hardwareIdentity.persist(device, context.info.mac);
 
 		// Create channels and properties
 		await this.createDeviceInformationChannel(device, context.info);

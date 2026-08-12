@@ -30,6 +30,7 @@ import { WledConfigModel } from '../models/config.model';
 
 import { WledAdoptionSnapshotService } from './adoption-snapshot.service';
 import { WledDeviceMapperService } from './device-mapper.service';
+import { WledHardwareIdentityService } from './hardware-identity.service';
 import { WledClientAdapterService } from './wled-client-adapter.service';
 import { WledMdnsDiscovererService } from './wled-mdns-discoverer.service';
 import { WledService } from './wled.service';
@@ -40,6 +41,7 @@ describe('WledService', () => {
 	let wledAdapter: jest.Mocked<WledClientAdapterService>;
 	let deviceMapper: jest.Mocked<WledDeviceMapperService>;
 	let adoptionSnapshot: jest.Mocked<WledAdoptionSnapshotService>;
+	let hardwareIdentity: jest.Mocked<WledHardwareIdentityService>;
 	let devicesService: jest.Mocked<DevicesService>;
 	let mdnsDiscoverer: jest.Mocked<WledMdnsDiscovererService>;
 	let deviceConnectivityService: jest.Mocked<DeviceConnectivityService>;
@@ -157,6 +159,10 @@ describe('WledService', () => {
 					},
 				},
 				{
+					provide: WledHardwareIdentityService,
+					useValue: { persist: jest.fn().mockResolvedValue('persisted'), restore: jest.fn() },
+				},
+				{
 					provide: DevicesService,
 					useValue: {
 						findAll: jest.fn().mockResolvedValue([]),
@@ -199,6 +205,7 @@ describe('WledService', () => {
 		wledAdapter = module.get(WledClientAdapterService);
 		deviceMapper = module.get(WledDeviceMapperService);
 		adoptionSnapshot = module.get(WledAdoptionSnapshotService);
+		hardwareIdentity = module.get(WledHardwareIdentityService);
 		devicesService = module.get(DevicesService);
 		mdnsDiscoverer = module.get(WledMdnsDiscovererService);
 		deviceConnectivityService = module.get(DeviceConnectivityService);
@@ -406,22 +413,14 @@ describe('WledService', () => {
 				enabled: true,
 			} as RegisteredWledDevice);
 			devicesService.findOneBy.mockResolvedValue(storedDevice);
-			devicesService.update.mockResolvedValue({ ...storedDevice, mac: 'aabbccddeeff' } as WledDeviceEntity);
 
 			await adapterCallbacks.onDeviceConnected?.(event);
 
-			expect(devicesService.update).toHaveBeenCalledWith('device-1', {
-				type: DEVICES_WLED_TYPE,
-				mac: 'aabbccddeeff',
-			});
+			expect(hardwareIdentity.persist).toHaveBeenCalledWith(storedDevice, 'aabbccddeeff');
 		});
 
 		it('should skip duplicate hardware identity persistence without rejecting the connected callback', async () => {
 			const storedDevice = createMockDevice('device-legacy', 'custom-strip', '192.168.1.100');
-			const existingOwner = {
-				...createMockDevice('device-canonical', 'wled-aabbccddeeff', '192.168.1.200'),
-				mac: 'aabbccddeeff',
-			} as WledDeviceEntity;
 			const event: WledDeviceConnectedEvent = {
 				host: '192.168.1.100',
 				info: { name: 'Test WLED', mac: 'AA:BB:CC:DD:EE:FF' } as WledInfo,
@@ -433,11 +432,11 @@ describe('WledService', () => {
 				enabled: true,
 			} as RegisteredWledDevice);
 			devicesService.findOneBy.mockResolvedValue(storedDevice);
-			devicesService.findAll.mockResolvedValue([storedDevice, existingOwner]);
+			hardwareIdentity.persist.mockResolvedValueOnce('conflict');
 
 			await expect(adapterCallbacks.onDeviceConnected?.(event)).resolves.toBeUndefined();
 
-			expect(devicesService.update).not.toHaveBeenCalled();
+			expect(hardwareIdentity.persist).toHaveBeenCalledWith(storedDevice, 'aabbccddeeff');
 			expect(deviceMapper.setDeviceConnectionState).toHaveBeenCalledWith('custom-strip', ConnectionState.CONNECTED);
 		});
 
@@ -2097,6 +2096,18 @@ describe('WledService', () => {
 			const inventory = await service.getDiscoveryInventory();
 
 			expect(inventory.devices[0].adoptedDeviceId).toBe('device-1');
+		});
+
+		it('returns null identities for malformed advertised MAC addresses', async () => {
+			mdnsDiscoverer.getDiscoveredDevices.mockReturnValue([
+				{ host: '192.168.1.100', name: 'Malformed one', mac: 'not-a-mac', port: 80 },
+				{ host: '192.168.1.101', name: 'Malformed two', mac: 'also-bad', port: 80 },
+			]);
+			devicesService.findAll.mockResolvedValue([]);
+
+			const inventory = await service.getDiscoveryInventory();
+
+			expect(inventory.devices.map((device) => device.mac)).toEqual([null, null]);
 		});
 
 		it('preserves an adopted device name in discovery inventory', async () => {

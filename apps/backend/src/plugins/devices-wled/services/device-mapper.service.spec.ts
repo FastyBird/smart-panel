@@ -18,6 +18,7 @@ import { WledChannelEntity, WledChannelPropertyEntity, WledDeviceEntity } from '
 import { WledDeviceContext, WledInfo, WledState } from '../interfaces/wled.interface';
 
 import { WledDeviceMapperService } from './device-mapper.service';
+import { WledHardwareIdentityService } from './hardware-identity.service';
 
 describe('WledDeviceMapperService', () => {
 	let service: WledDeviceMapperService;
@@ -195,6 +196,10 @@ describe('WledDeviceMapperService', () => {
 					},
 				},
 				DeviceProvisionQueueService,
+				{
+					provide: WledHardwareIdentityService,
+					useValue: { persist: jest.fn().mockResolvedValue('persisted') },
+				},
 			],
 		}).compile();
 
@@ -230,7 +235,6 @@ describe('WledDeviceMapperService', () => {
 					type: DEVICES_WLED_TYPE,
 					category: DeviceCategory.LIGHTING,
 					hostname: '192.168.1.100',
-					mac: 'aabbccddeeff',
 				}),
 			);
 			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith(mockDevice.id, {
@@ -292,7 +296,6 @@ describe('WledDeviceMapperService', () => {
 			expect(devicesService.update).toHaveBeenCalledWith(mockDevice.id, {
 				type: DEVICES_WLED_TYPE,
 				hostname: '192.168.1.100',
-				mac: 'aabbccddeeff',
 				name: 'Renamed strip',
 				description: null,
 				enabled: true,
