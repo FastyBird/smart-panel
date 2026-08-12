@@ -174,6 +174,9 @@ describe('Homey SHS compatibility probe', () => {
 			zone_ids: ['zone-one'],
 			grid: 'preserved non-identifier',
 			solids: ['preserved-array-value'],
+			filename: 'preserved filename',
+			codename: 'preserved codename',
+			typename: 'preserved typename',
 			diagnostic: 'gateway_192.168.1.25_backup',
 			macTag: 'mac_aa:bb:cc:dd:ee:ff_backup',
 			dottedMacTag: 'mac_aabb.ccdd.eeff_backup',
@@ -201,6 +204,9 @@ describe('Homey SHS compatibility probe', () => {
 			zone_ids: [expect.stringMatching(/^zone-/)],
 			grid: 'preserved non-identifier',
 			solids: ['preserved-array-value'],
+			filename: 'preserved filename',
+			codename: 'preserved codename',
+			typename: 'preserved typename',
 			diagnostic: 'gateway_[~0~]_backup',
 			macTag: 'mac_[~0~]_backup',
 			dottedMacTag: 'mac_[~0~]_backup',
@@ -349,6 +355,10 @@ describe('Homey SHS compatibility probe', () => {
 		unsafeCapture.systemInfo = { aliases: { 'Private Room': true } };
 
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [], ['Private Room'])).toThrow('private term');
+
+		unsafeCapture.systemInfo = { aliases: { PrivateRoom: true } };
+
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [], ['Private'])).toThrow('private term');
 
 		unsafeCapture.systemInfo = { leaked: 'hpat_abcdefghijklmnop1234' };
 

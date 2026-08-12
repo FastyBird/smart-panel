@@ -19,7 +19,8 @@ const BOUNDED_ADDRESS_KEY_PATTERN =
 const ENDPOINT_KEY_PATTERN = /(?:^|[_-])(?:endpoint|origin|uri|url)$|(?:Endpoint|Origin|Uri|URI|Url|URL)$/;
 const IDENTIFIER_KEY_PATTERN =
 	/(?:^(?:id|ids|identifier|identifiers|uuid|uuids)$|(?:Id|ID|Ids|IDs|Identifier|Identifiers|Uuid|UUID)$|(?:^|[_-])(?:id|ids|identifier|identifiers|uuid|uuids)$)/;
-const PERSONAL_KEY_PATTERN = /(?:name|note|title|label|email|username)$/i;
+const CAMEL_CASE_PERSONAL_KEY_PATTERN = /(?:Name|Note|Title|Label|Email|Username)$/;
+const BOUNDED_PERSONAL_KEY_PATTERN = /(?:^|[_-])(?:name|note|title|label|email|username)$/i;
 const REFERENCE_KEY_PATTERN = /^(?:deviceId|zone|zoneId|parent|homeyId|ownerUri|driverId|userId)$/i;
 const CAMEL_CASE_REFERENCE_ARRAY_KEY_PATTERN = /(?:Ids|Origins)$/;
 const BOUNDED_REFERENCE_ARRAY_KEY_PATTERN = /(?:^|[_-])(?:ids|origins)$/i;
@@ -180,6 +181,9 @@ const isTimestampKey = (key: string): boolean =>
 const isAddressKey = (key: string): boolean =>
 	CAMEL_CASE_ADDRESS_KEY_PATTERN.test(key) || BOUNDED_ADDRESS_KEY_PATTERN.test(key);
 
+const isPersonalKey = (key: string): boolean =>
+	CAMEL_CASE_PERSONAL_KEY_PATTERN.test(key) || BOUNDED_PERSONAL_KEY_PATTERN.test(key);
+
 const isReferenceArrayKey = (key: string): boolean =>
 	CAMEL_CASE_REFERENCE_ARRAY_KEY_PATTERN.test(key) || BOUNDED_REFERENCE_ARRAY_KEY_PATTERN.test(key);
 
@@ -258,7 +262,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 			return value;
 		}
 
-		if (PERSONAL_KEY_PATTERN.test(key)) {
+		if (isPersonalKey(key)) {
 			return REDACTION.privateTerm;
 		}
 
@@ -567,13 +571,35 @@ export const assertHomeyCaptureSafe = (
 
 	const generatedPseudonymPattern = /^(?:device|homey|id|reference|zone)-[0-9a-f]{6}g[0-9a-f]{6}$/;
 	const syntheticLabelPattern = /^Synthetic (?:device|zone) \d{3}$/;
-	const dynamicKeyContainsPrivateTerm = (key: string, term: string): boolean => {
-		const normalizedKey = key.toLowerCase();
-		const normalizedTerm = term.toLowerCase();
-		const labelLike = /[^A-Za-z0-9_-]/.test(key) || /[^A-Za-z0-9_-]/.test(term);
-
-		return normalizedKey === normalizedTerm || (labelLike && normalizedKey.includes(normalizedTerm));
-	};
+	const fixedPayloadKeys = new Set([
+		'active',
+		'available',
+		'capabilities',
+		'capabilitiesObj',
+		'capabilityOptions',
+		'data',
+		'enabled',
+		'format',
+		'id',
+		'metadata',
+		'settings',
+		'type',
+		'ui',
+		'update',
+		'value',
+	]);
+	const isFixedPayloadKey = (key: string): boolean =>
+		fixedPayloadKeys.has(key) ||
+		isSecretKey(key) ||
+		isTimestampKey(key) ||
+		isAddressKey(key) ||
+		isPersonalKey(key) ||
+		isReferenceArrayKey(key) ||
+		REFERENCE_KEY_PATTERN.test(key) ||
+		IDENTIFIER_KEY_PATTERN.test(key) ||
+		ENDPOINT_KEY_PATTERN.test(key);
+	const dynamicKeyContainsPrivateTerm = (key: string, term: string): boolean =>
+		key.toLowerCase().includes(term.toLowerCase());
 	const inspectPrivateTermValues = (value: unknown, key: string, path: string[], term: string): boolean => {
 		if (typeof value === 'string') {
 			const generatedValue = generatedPseudonymPattern.test(value) || syntheticLabelPattern.test(value);
@@ -596,7 +622,11 @@ export const assertHomeyCaptureSafe = (
 
 			return Object.entries(value).some(([nestedKey, nestedValue]) => {
 				const generatedKey = generatedPseudonymPattern.test(nestedKey);
-				const privateDynamicKey = !preserveKeys && !generatedKey && dynamicKeyContainsPrivateTerm(nestedKey, term);
+				const privateDynamicKey =
+					!preserveKeys &&
+					!generatedKey &&
+					!isFixedPayloadKey(nestedKey) &&
+					dynamicKeyContainsPrivateTerm(nestedKey, term);
 
 				return privateDynamicKey || inspectPrivateTermValues(nestedValue, nestedKey, nextPath, term);
 			});
