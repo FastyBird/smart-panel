@@ -110,6 +110,28 @@ describe('useDevicesWizard', () => {
 		await adapter.dispose?.();
 	});
 
+	it('keeps cache clearing available when mDNS is disabled', async () => {
+		backendClient.GET.mockResolvedValue({
+			data: { data: { ...inventory, mdnsEnabled: false } },
+			response: { status: 200 },
+		});
+		backendClient.POST.mockResolvedValue({
+			data: { data: { ...inventory, mdnsEnabled: false, discoveryRunning: false, devices: [] } },
+			response: { status: 200 },
+		});
+		const adapter = useDevicesWizard();
+		await adapter.start();
+		const action = adapter.controls.value.find((control) => control.type === 'action');
+		if (action?.type !== 'action') throw new Error('Rescan action not found');
+
+		expect(action.disabled).toBe(false);
+		await action.handler();
+
+		expect(backendClient.POST).toHaveBeenCalledWith(`/plugins/${DEVICES_WLED_PLUGIN_PREFIX}/discovery/rescan`);
+		expect(adapter.rows.value).toHaveLength(0);
+		await adapter.dispose?.();
+	});
+
 	it('adopts selected devices in one mapper-backed batch and refreshes the device store', async () => {
 		backendClient.POST.mockResolvedValue({
 			data: { data: [{ host: '192.168.1.100', name: 'Renamed strip', status: 'created', error: null }] },
@@ -409,6 +431,40 @@ describe('useDevicesWizard', () => {
 		await Promise.all(rescans);
 
 		expect(backendClient.POST).toHaveBeenCalledTimes(1);
+		await adapter.dispose?.();
+	});
+
+	it('ignores an in-flight poll response that predates a completed rescan', async () => {
+		let resolvePoll: ((value: unknown) => void) | undefined;
+		backendClient.GET.mockResolvedValueOnce({
+			data: { data: inventory },
+			response: { status: 200 },
+		}).mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					resolvePoll = resolve;
+				})
+		);
+		backendClient.POST.mockResolvedValue({
+			data: { data: { ...inventory, devices: [] } },
+			response: { status: 200 },
+		});
+		const adapter = useDevicesWizard();
+		await adapter.start();
+
+		vi.advanceTimersByTime(2_000);
+		await Promise.resolve();
+		expect(backendClient.GET).toHaveBeenCalledTimes(2);
+		const action = adapter.controls.value.find((control) => control.type === 'action');
+		if (action?.type !== 'action') throw new Error('Rescan action not found');
+		await action.handler();
+		expect(adapter.rows.value).toHaveLength(0);
+
+		resolvePoll?.({ data: { data: inventory }, response: { status: 200 } });
+		await Promise.resolve();
+		await Promise.resolve();
+
+		expect(adapter.rows.value).toHaveLength(0);
 		await adapter.dispose?.();
 	});
 

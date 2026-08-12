@@ -159,9 +159,12 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	};
 
 	const loadDiscovery = async (): Promise<void> => {
+		const requestedGeneration = generation.value;
 		const { data, error, response } = await backend.client.GET(`/${PLUGINS_PREFIX}/${DEVICES_WLED_PLUGIN_PREFIX}/discovery`);
 		if (typeof data !== 'undefined') {
-			applyInventory(data.data);
+			if (requestedGeneration === generation.value) {
+				applyInventory(data.data);
+			}
 			return;
 		}
 
@@ -308,7 +311,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 				id: 'rescan',
 				label: t('devicesWledPlugin.wizard.actions.rescan'),
 				icon: 'mdi:radar',
-				disabled: inventory.value?.mdnsEnabled === false || formResult.value === FormResult.WORKING,
+				disabled: formResult.value === FormResult.WORKING,
 				loading: formResult.value === FormResult.WORKING,
 				handler: rescan,
 			},
