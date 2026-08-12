@@ -70,7 +70,15 @@ export class WledService extends BaseManagedPluginService {
 
 		// Set up adapter callbacks
 		this.wledAdapter.setCallbacks({
-			onDeviceConnected: (event) => this.handleDeviceConnected(event),
+			onDeviceConnected: async (event) => {
+				try {
+					await this.handleDeviceConnected(event);
+				} catch (error) {
+					this.logger.error(`Failed to process WLED connected event for ${event.host}`, {
+						message: error instanceof Error ? error.message : String(error),
+					});
+				}
+			},
 			onDeviceDisconnected: (event) => this.handleDeviceDisconnected(event),
 			onDeviceStateChanged: (event) => this.handleDeviceStateChanged(event),
 			onDeviceError: (event) => this.handleDeviceError(event),
@@ -335,6 +343,14 @@ export class WledService extends BaseManagedPluginService {
 	private async persistHardwareIdentity(device: WledDeviceEntity, reportedMac: string): Promise<void> {
 		const mac = this.normalizeMac(reportedMac);
 		if (!mac || device.mac === mac) {
+			return;
+		}
+		const devices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
+		const existingOwner = devices.find((candidate) => candidate.id !== device.id && candidate.mac === mac);
+		if (existingOwner) {
+			this.logger.warn(`WLED hardware identity ${mac} is already owned by device ${existingOwner.id}`, {
+				resource: device.id,
+			});
 			return;
 		}
 

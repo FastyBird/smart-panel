@@ -5,9 +5,7 @@ export class AddWledHardwareIdentity1000000000018 implements MigrationInterface 
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(`ALTER TABLE "devices_module_devices" ADD COLUMN "mac" varchar`);
-		await queryRunner.query(
-			`CREATE UNIQUE INDEX "IDX_devices_wled_mac_type" ON "devices_module_devices" ("mac", "type") WHERE "mac" IS NOT NULL`,
-		);
+		await queryRunner.query(`CREATE INDEX "IDX_devices_wled_mac_type" ON "devices_module_devices" ("mac", "type")`);
 		await queryRunner.query(
 			`UPDATE "devices_module_devices"
 			 SET "mac" = substr(lower("identifier"), 6)

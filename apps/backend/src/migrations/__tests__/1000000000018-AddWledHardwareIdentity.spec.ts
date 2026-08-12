@@ -22,7 +22,7 @@ describe('AddWledHardwareIdentity1000000000018', () => {
 		await dataSource.destroy();
 	});
 
-	it('persists one hardware identity per device type', async () => {
+	it('indexes hardware identity without rejecting pre-existing duplicate owners', async () => {
 		await migration.up(queryRunner);
 		await queryRunner.query(
 			`INSERT INTO "devices_module_devices" ("id", "type", "mac") VALUES ('wled-1', 'devices-wled', 'aabbccddeeff')`,
@@ -32,7 +32,7 @@ describe('AddWledHardwareIdentity1000000000018', () => {
 			queryRunner.query(
 				`INSERT INTO "devices_module_devices" ("id", "type", "mac") VALUES ('wled-2', 'devices-wled', 'aabbccddeeff')`,
 			),
-		).rejects.toThrow();
+		).resolves.toBeDefined();
 
 		await expect(
 			queryRunner.query(

@@ -18,13 +18,18 @@ describe('WledAdoptionSnapshotService', () => {
 			channel,
 			value: null,
 		} as WledChannelPropertyEntity;
+		const extraProperty = {
+			id: 'property-extra',
+			channel,
+			value: { value: 'orphaned' },
+		} as WledChannelPropertyEntity;
 		const channelRepository = {
 			find: jest.fn().mockResolvedValue([channel]),
 			delete: jest.fn(),
 			save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
 		};
 		const propertyRepository = {
-			find: jest.fn().mockResolvedValue([valuedProperty, emptyProperty]),
+			find: jest.fn().mockResolvedValue([valuedProperty, emptyProperty, extraProperty]),
 			delete: jest.fn(),
 			save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
 		};
@@ -52,5 +57,6 @@ describe('WledAdoptionSnapshotService', () => {
 
 		expect(write).toHaveBeenCalledWith(expect.objectContaining({ id: 'property-1' }), 'original');
 		expect(deleteValue).toHaveBeenCalledWith(expect.objectContaining({ id: 'property-2' }));
+		expect(deleteValue).toHaveBeenCalledWith(expect.objectContaining({ id: 'property-extra' }));
 	});
 });

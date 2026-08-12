@@ -38,6 +38,7 @@ export class WledAdoptionSnapshotService {
 
 	async restore(snapshot: WledAdoptionStructureSnapshot): Promise<void> {
 		const restoredProperties: WledChannelPropertyEntity[] = [];
+		const removedProperties: WledChannelPropertyEntity[] = [];
 
 		await this.dataSource.transaction(async (manager) => {
 			const channelRepository = manager.getRepository(WledChannelEntity);
@@ -48,6 +49,12 @@ export class WledAdoptionSnapshotService {
 			const extraChannelIds = currentChannelIds.filter((id) => !snapshotChannelIds.has(id));
 
 			if (extraChannelIds.length > 0) {
+				removedProperties.push(
+					...(await propertyRepository.find({
+						where: { channel: { id: In(extraChannelIds) } },
+						relations: ['channel'],
+					})),
+				);
 				await channelRepository.delete({ id: In(extraChannelIds) });
 			}
 
@@ -74,6 +81,7 @@ export class WledAdoptionSnapshotService {
 			const extraPropertyIds = currentProperties.map(({ id }) => id).filter((id) => !snapshotPropertyIds.has(id));
 
 			if (extraPropertyIds.length > 0) {
+				removedProperties.push(...currentProperties.filter(({ id }) => extraPropertyIds.includes(id)));
 				await propertyRepository.delete({ id: In(extraPropertyIds) });
 			}
 
@@ -82,6 +90,10 @@ export class WledAdoptionSnapshotService {
 				restoredProperties.push(await propertyRepository.save({ ...property, channel: channelId }));
 			}
 		});
+
+		for (const property of removedProperties) {
+			await this.propertyValueService.delete(property);
+		}
 
 		for (const property of restoredProperties) {
 			const snapshotProperty = snapshot.properties.find(({ id }) => id === property.id);
