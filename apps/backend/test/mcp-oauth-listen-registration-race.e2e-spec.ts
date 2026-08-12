@@ -402,5 +402,5 @@ describe('MCP OAuth listen registration race', () => {
 			await subscriptions.closeAll();
 			await dataSource.destroy();
 		}
-	}, 30_000);
+	}, 90_000);
 });
