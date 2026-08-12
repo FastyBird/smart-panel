@@ -52,6 +52,19 @@ const POLL_INTERVAL_MS = 2_000;
 const deviceKey = (device: IWledWizardDevice): string =>
 	device.mac ? `mac:${device.mac.replace(/[^a-fA-F0-9]/g, '').toLowerCase()}` : `host:${device.host}`;
 
+const adoptionHost = (device: IWledWizardDevice): string => {
+	if (device.port === 80) return device.host;
+
+	try {
+		if (new URL(`http://${device.host}`).port) return device.host;
+	} catch {
+		// The backend will return a scoped validation error for malformed hosts.
+	}
+
+	const host = device.host.includes(':') && !device.host.startsWith('[') ? `[${device.host}]` : device.host;
+	return `${host}:${device.port}`;
+};
+
 export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const { t } = useI18n();
 	const backend = useBackend();
@@ -108,7 +121,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 
 	const results = computed<IWizardResult[]>(() =>
 		adoptionResults.value.map((result) => {
-			const device = devices.value.find((candidate) => candidate.host === result.host);
+			const device = devices.value.find((candidate) => adoptionHost(candidate) === result.host);
 			return {
 				key: device ? deviceKey(device) : `host:${result.host}`,
 				name: result.name,
@@ -322,7 +335,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 				body: {
 					data: {
 						devices: selectedDevices.map(({ item, device }) => ({
-							host: device.port === 80 ? device.host : `${device.host}:${device.port}`,
+							host: adoptionHost(device),
 							name: item.name,
 							category: DevicesWledPluginAdoptDeviceCategory.lighting,
 						})),

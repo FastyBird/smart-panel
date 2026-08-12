@@ -97,15 +97,6 @@ export class WledDeviceMapperService {
 
 			device = await this.devicesService.create<WledDeviceEntity, CreateWledDeviceDto>(createDto);
 		} else {
-			// Device exists - check if enabled
-			if (!device.enabled) {
-				await this.deviceConnectivityService.setConnectionState(device.id, {
-					state: ConnectionState.UNKNOWN,
-				});
-
-				return device;
-			}
-
 			// Update hostname if it changed
 			if (device.hostname !== host) {
 				this.logger.log(`Updating hostname for device ${identifier}: ${device.hostname} -> ${host}`, {

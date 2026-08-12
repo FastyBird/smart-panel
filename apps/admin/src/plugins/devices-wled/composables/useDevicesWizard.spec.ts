@@ -155,9 +155,42 @@ describe('useDevicesWizard', () => {
 		const adapter = useDevicesWizard();
 		await adapter.start();
 
-		await adapter.adopt([{ key: 'mac:aabbccddeeff', name: 'Strip', category: DevicesModuleDeviceCategory.lighting }]);
+		const results = await adapter.adopt([{ key: 'mac:aabbccddeeff', name: 'Strip', category: DevicesModuleDeviceCategory.lighting }]);
 
 		expect(backendClient.POST).toHaveBeenCalledWith(
+			`/plugins/${DEVICES_WLED_PLUGIN_PREFIX}/discovery/adopt`,
+			expect.objectContaining({
+				body: expect.objectContaining({
+					data: expect.objectContaining({
+						devices: [expect.objectContaining({ host: '192.168.1.100:8080' })],
+					}),
+				}),
+			})
+		);
+		expect(results[0].key).toBe('mac:aabbccddeeff');
+		await adapter.dispose?.();
+	});
+
+	it('does not append the port twice after a manual probe', async () => {
+		backendClient.GET.mockResolvedValue({
+			data: { data: { ...inventory, mdnsEnabled: false, devices: [] } },
+			response: { status: 200 },
+		});
+		backendClient.POST.mockResolvedValueOnce({
+			data: { data: { ...inventory.devices[0], host: '192.168.1.100:8080', port: 8080 } },
+			response: { status: 201 },
+		}).mockResolvedValueOnce({
+			data: { data: [{ host: '192.168.1.100:8080', name: 'Strip', status: 'created', error: null }] },
+			response: { status: 200 },
+		});
+		const adapter = useDevicesWizard();
+		await adapter.start();
+		const form = adapter.controls.value.find((control) => control.type === 'form') as IWizardFormControl;
+		await form.handler({ host: '192.168.1.100:8080' });
+
+		await adapter.adopt([{ key: 'mac:aabbccddeeff', name: 'Strip', category: DevicesModuleDeviceCategory.lighting }]);
+
+		expect(backendClient.POST).toHaveBeenLastCalledWith(
 			`/plugins/${DEVICES_WLED_PLUGIN_PREFIX}/discovery/adopt`,
 			expect.objectContaining({
 				body: expect.objectContaining({

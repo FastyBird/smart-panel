@@ -567,6 +567,27 @@ describe('WledService', () => {
 			expect(results.map((result) => result.status)).toEqual(['failed', 'created']);
 		});
 
+		it('resumes mapper provisioning for an existing device after a partial failure', async () => {
+			const partialDevice = createMockDevice('device-1', 'wled-ddeeff', '192.168.1.100');
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			devicesService.findAll.mockResolvedValue([partialDevice]);
+			deviceMapper.mapDevice.mockResolvedValue(partialDevice);
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.100', name: 'Living room', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(
+				'192.168.1.100',
+				mockContext,
+				'Living room',
+				'wled-ddeeff',
+				undefined,
+				undefined,
+			);
+			expect(results).toEqual([expect.objectContaining({ status: 'created', deviceId: 'device-1' })]);
+		});
+
 		it('marks discovered devices as already adopted by MAC identity', async () => {
 			mdnsDiscoverer.getDiscoveredDevices.mockReturnValue([
 				{ host: '192.168.1.200', name: 'Moved WLED', mac: 'AA:BB:CC:DD:EE:FF', port: 80 },

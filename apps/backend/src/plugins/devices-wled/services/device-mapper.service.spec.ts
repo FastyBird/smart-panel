@@ -263,10 +263,15 @@ describe('WledDeviceMapperService', () => {
 			);
 		});
 
-		it('should skip updates for disabled device and set connection to UNKNOWN', async () => {
+		it('should resume idempotent provisioning for an existing disabled device', async () => {
 			const mockDevice = createMockDevice('device-1', 'wled-ddeeff', '192.168.1.100', false);
 
 			devicesService.findOneBy.mockResolvedValue(mockDevice);
+			channelsService.findOneBy.mockResolvedValue(null);
+			channelsService.create.mockResolvedValue(createMockChannel('channel-1', 'device_information', 'device-1'));
+			channelsPropertiesService.findOneBy.mockResolvedValue(null);
+			channelsPropertiesService.create.mockResolvedValue(createMockProperty('prop-1', 'test', 'channel-1'));
+			channelsPropertiesService.update.mockResolvedValue(createMockProperty('prop-1', 'test', 'channel-1'));
 			deviceConnectivityService.setConnectionState.mockResolvedValue(undefined);
 
 			const result = await service.mapDevice('192.168.1.100', mockDeviceContext);
@@ -275,7 +280,7 @@ describe('WledDeviceMapperService', () => {
 			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith(mockDevice.id, {
 				state: ConnectionState.UNKNOWN,
 			});
-			expect(channelsService.findOneBy).not.toHaveBeenCalled();
+			expect(channelsService.create).toHaveBeenCalled();
 		});
 
 		it('should create device_information channel with correct property identifiers', async () => {

@@ -540,12 +540,7 @@ export class WledService extends BaseManagedPluginService {
 				const context = await this.wledAdapter.probe(host, this.config.timeouts.connectionTimeout);
 				const databaseDevices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
 				const existingDevice = this.findExistingDevice(databaseDevices, host, context.info.mac);
-
-				if (existingDevice) {
-					throw new Error(`WLED device is already adopted as ${existingDevice.name}`);
-				}
-
-				const identifier = this.identifierFromMac(context.info.mac);
+				const identifier = existingDevice?.identifier || this.identifierFromMac(context.info.mac);
 				const device = await this.deviceMapper.mapDevice(
 					host,
 					context,
