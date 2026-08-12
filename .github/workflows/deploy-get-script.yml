@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
 
       - name: "Prepare output directory"
         run: "cp apps/get-script/_worker.js apps/get-script/public/_worker.js"
