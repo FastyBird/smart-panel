@@ -1022,18 +1022,28 @@ export class WledService extends BaseManagedPluginService {
 			if (normalizedMac.length === 12) {
 				const canonicalIdentifier = `wled-${normalizedMac}`;
 				const legacyIdentifier = `wled-${normalizedMac.slice(-6)}`;
-				const legacyHostIdentifier = `wled-${host.replace(/\./g, '-')}`;
+				const legacyHostIdentifiers = this.legacyHostIdentifiers(host);
 
 				return (
 					devices.find((device) => device.identifier === canonicalIdentifier) ??
 					devices.find((device) => device.identifier === legacyIdentifier) ??
-					devices.find((device) => device.identifier === legacyHostIdentifier && device.hostname === host) ??
+					devices.find(
+						(device) =>
+							device.identifier !== null && legacyHostIdentifiers.has(device.identifier) && device.hostname === host,
+					) ??
 					devices.find((device) => device.identifier === null && device.hostname === host)
 				);
 			}
 		}
 
 		return devices.find((device) => device.hostname === host);
+	}
+
+	private legacyHostIdentifiers(endpoint: string): Set<string> {
+		const bracketedHost = endpoint.match(/^\[([^\]]+)](?::\d+)?$/)?.[1];
+		const rawHost = bracketedHost ?? endpoint.replace(/:\d+$/, '');
+
+		return new Set([endpoint, rawHost].map((host) => `wled-${host.replace(/\./g, '-')}`));
 	}
 
 	private portFromHost(host: string): number {
