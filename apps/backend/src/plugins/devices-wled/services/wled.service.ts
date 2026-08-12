@@ -657,6 +657,8 @@ export class WledService extends BaseManagedPluginService {
 			}
 
 			let mappedDevice: WledDeviceEntity | null = null;
+			let existingDeviceDisconnected = false;
+			const disconnectedStaleOwners: WledDeviceEntity[] = [];
 
 			try {
 				if (existingDevice && !existingDevice.identifier) {
@@ -686,19 +688,20 @@ export class WledService extends BaseManagedPluginService {
 					// that actually belongs to this device.
 					if (sourceRegistration?.identifier === existingDevice.identifier) {
 						this.wledAdapter.disconnect(existingDevice.hostname, false);
+						existingDeviceDisconnected = true;
 					}
 				}
 				const staleHostOwners = databaseDevices.filter(
 					(device) => device.hostname === host && device.id !== existingDevice?.id,
 				);
+				const retiringHostOwners = staleHostOwners.filter(
+					(staleHostOwner) => !selectedDeviceIds.has(staleHostOwner.id) && !retiredDeviceIds.has(staleHostOwner.id),
+				);
 				if (staleHostOwners.length > 0) {
 					this.wledAdapter.disconnect(host, false);
+					disconnectedStaleOwners.push(...retiringHostOwners);
 				}
-				for (const staleHostOwner of staleHostOwners) {
-					if (selectedDeviceIds.has(staleHostOwner.id) || retiredDeviceIds.has(staleHostOwner.id)) {
-						continue;
-					}
-
+				for (const staleHostOwner of retiringHostOwners) {
 					await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(staleHostOwner.id, {
 						type: DEVICES_WLED_TYPE,
 						enabled: false,
@@ -712,6 +715,7 @@ export class WledService extends BaseManagedPluginService {
 				let connectionState = ConnectionState.DISCONNECTED;
 				if (!device.enabled) {
 					this.wledAdapter.disconnect(host, false);
+					existingDeviceDisconnected = existingDevice !== null;
 				} else {
 					const registeredDevice = this.wledAdapter.getDevice(host);
 
@@ -772,9 +776,7 @@ export class WledService extends BaseManagedPluginService {
 								enabled: original.enabled,
 								hostname: original.hostname,
 							});
-							await this.deviceConnectivityService.setConnectionState(original.id, {
-								state: ConnectionState.DISCONNECTED,
-							});
+							await this.restoreDeviceConnection(original);
 						} else {
 							const partialDevice = await this.devicesService.findOneBy<WledDeviceEntity>(
 								'identifier',
@@ -810,11 +812,15 @@ export class WledService extends BaseManagedPluginService {
 							enabled: existingDevice.enabled,
 							hostname: existingDevice.hostname,
 						});
-						await this.deviceConnectivityService.setConnectionState(existingDevice.id, {
-							state: ConnectionState.DISCONNECTED,
-						});
+						if (existingDeviceDisconnected) {
+							await this.restoreDeviceConnection(existingDevice);
+						}
 					} else if (partialDevice) {
 						await this.devicesService.remove(partialDevice.id);
+					}
+
+					for (const staleHostOwner of disconnectedStaleOwners) {
+						await this.restoreDeviceConnection(staleHostOwner);
 					}
 
 					results[index] = {
@@ -829,6 +835,24 @@ export class WledService extends BaseManagedPluginService {
 		}
 
 		return results.filter((result): result is WledAdoptionResultModel => result !== undefined);
+	}
+
+	private async restoreDeviceConnection(device: WledDeviceEntity): Promise<void> {
+		let state = ConnectionState.DISCONNECTED;
+
+		if (device.enabled && device.hostname && device.identifier) {
+			try {
+				await this.wledAdapter.connect(device.hostname, device.identifier, this.config.timeouts.connectionTimeout);
+				state = ConnectionState.CONNECTED;
+			} catch (error) {
+				this.logger.warn(`Could not restore the WLED connection for ${device.identifier}`, {
+					resource: device.id,
+					message: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+
+		await this.deviceConnectivityService.setConnectionState(device.id, { state });
 	}
 
 	/**
@@ -903,10 +927,12 @@ export class WledService extends BaseManagedPluginService {
 			if (normalizedMac.length === 12) {
 				const canonicalIdentifier = `wled-${normalizedMac}`;
 				const legacyIdentifier = `wled-${normalizedMac.slice(-6)}`;
+				const legacyHostIdentifier = `wled-${host.replace(/\./g, '-')}`;
 
 				return (
 					devices.find((device) => device.identifier === canonicalIdentifier) ??
 					devices.find((device) => device.identifier === legacyIdentifier) ??
+					devices.find((device) => device.identifier === legacyHostIdentifier && device.hostname === host) ??
 					devices.find((device) => device.identifier === null && device.hostname === host)
 				);
 			}

@@ -669,6 +669,7 @@ describe('WledService', () => {
 			]);
 
 			expect(wledAdapter.disconnect).not.toHaveBeenCalled();
+			expect(deviceConnectivityService.setConnectionState).not.toHaveBeenCalled();
 			expect(results).toEqual([expect.objectContaining({ status: 'failed', error: 'Provisioning failed' })]);
 		});
 
@@ -811,10 +812,10 @@ describe('WledService', () => {
 				}),
 			);
 			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith('device-1', {
-				state: ConnectionState.DISCONNECTED,
+				state: ConnectionState.CONNECTED,
 			});
 			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith('device-2', {
-				state: ConnectionState.DISCONNECTED,
+				state: ConnectionState.CONNECTED,
 			});
 		});
 
@@ -1022,6 +1023,10 @@ describe('WledService', () => {
 			]);
 
 			expect(devicesService.remove).toHaveBeenCalledWith('device-2');
+			expect(wledAdapter.connect).toHaveBeenCalledWith('192.168.1.100', 'wled-aabbccddeeff', 5000);
+			expect(deviceConnectivityService.setConnectionState).toHaveBeenLastCalledWith('device-1', {
+				state: ConnectionState.CONNECTED,
+			});
 			expect(results).toEqual([expect.objectContaining({ status: 'failed', error: 'Retirement failed' })]);
 		});
 
@@ -1049,6 +1054,27 @@ describe('WledService', () => {
 				mockContext,
 				'Legacy strip',
 				'wled-aabbccddeeff',
+				undefined,
+				undefined,
+			);
+			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-1' })]);
+		});
+
+		it('adopts a legacy host-derived identifier without creating a duplicate', async () => {
+			const legacyDevice = createMockDevice('device-1', 'wled-192-168-1-100', '192.168.1.100');
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			devicesService.findAll.mockResolvedValue([legacyDevice]);
+			deviceMapper.mapDevice.mockResolvedValue(legacyDevice);
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.100', name: 'Legacy strip', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(
+				'192.168.1.100',
+				mockContext,
+				'Legacy strip',
+				'wled-192-168-1-100',
 				undefined,
 				undefined,
 			);
