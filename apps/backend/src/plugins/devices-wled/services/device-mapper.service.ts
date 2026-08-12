@@ -132,6 +132,7 @@ export class WledDeviceMapperService {
 		await this.createDeviceInformationChannel(device, context.info);
 		const lightChannel = await this.createLightChannel(device, context.state);
 		await this.createElectricalPowerChannel(device, context.info, lightChannel?.id);
+		await this.pruneObsoleteSegmentChannels(device, context.state);
 		await this.createSegmentChannels(device, context.state, lightChannel?.id);
 
 		// Set connection state to CONNECTED
@@ -414,6 +415,23 @@ export class WledDeviceMapperService {
 			// Create/update properties
 			for (const binding of segmentBindings) {
 				await this.createOrUpdateProperty(channel, binding, propertyValues[binding.propertyIdentifier]);
+			}
+		}
+	}
+
+	private async pruneObsoleteSegmentChannels(device: WledDeviceEntity, state: WledState): Promise<void> {
+		const segmentPrefix = `${WLED_CHANNEL_IDENTIFIERS.SEGMENT}_`;
+		const desiredIdentifiers = new Set(state.segments.map((_, index) => `${segmentPrefix}${index}`));
+		const channels = await this.channelsService.findAll<WledChannelEntity>(device.id, DEVICES_WLED_TYPE);
+
+		for (const channel of channels) {
+			if (
+				/^\d+$/.test(channel.identifier.slice(segmentPrefix.length)) &&
+				channel.identifier.startsWith(segmentPrefix)
+			) {
+				if (!desiredIdentifiers.has(channel.identifier)) {
+					await this.channelsService.remove(channel.id);
+				}
 			}
 		}
 	}

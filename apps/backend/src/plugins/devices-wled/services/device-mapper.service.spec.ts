@@ -178,8 +178,10 @@ describe('WledDeviceMapperService', () => {
 				{
 					provide: ChannelsService,
 					useValue: {
+						findAll: jest.fn().mockResolvedValue([]),
 						findOneBy: jest.fn(),
 						create: jest.fn(),
+						remove: jest.fn(),
 					},
 				},
 				{
@@ -282,6 +284,26 @@ describe('WledDeviceMapperService', () => {
 					hostname: '192.168.1.100',
 				}),
 			);
+		});
+
+		it('removes obsolete mapper-owned segment channels during re-adoption', async () => {
+			const mockDevice = createMockDevice('device-1', 'wled-ddeeff', '192.168.1.100');
+			const currentSegment = createMockChannel('segment-current', 'segment_0', mockDevice.id);
+			const obsoleteSegment = createMockChannel('segment-obsolete', 'segment_1', mockDevice.id);
+			const customChannel = createMockChannel('custom-channel', 'segment_custom', mockDevice.id);
+
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
+			channelsService.findAll.mockResolvedValue([currentSegment, obsoleteSegment, customChannel]);
+			channelsService.findOneBy.mockResolvedValue(null);
+			channelsService.create.mockResolvedValue(createMockChannel('channel-1', 'device_information', mockDevice.id));
+			channelsPropertiesService.findOneBy.mockResolvedValue(null);
+			channelsPropertiesService.create.mockResolvedValue(createMockProperty('prop-1', 'test', 'channel-1'));
+			channelsPropertiesService.update.mockResolvedValue(createMockProperty('prop-1', 'test', 'channel-1'));
+
+			await service.mapDevice('192.168.1.100', mockDeviceContext);
+
+			expect(channelsService.remove).toHaveBeenCalledTimes(1);
+			expect(channelsService.remove).toHaveBeenCalledWith('segment-obsolete');
 		});
 
 		it('should apply confirmed adoption fields when updating an existing device', async () => {
