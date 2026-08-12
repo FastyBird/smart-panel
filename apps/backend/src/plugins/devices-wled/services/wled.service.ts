@@ -48,6 +48,7 @@ export class WledService extends BaseManagedPluginService {
 
 	private pluginConfig: WledConfigModel | null = null;
 	private pollingInterval: NodeJS.Timeout | null = null;
+	private adoptionQueue: Promise<void> = Promise.resolve();
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -538,6 +539,16 @@ export class WledService extends BaseManagedPluginService {
 	}
 
 	async adoptDevices(requests: WledAdoptDeviceDto[]): Promise<WledAdoptionResultModel[]> {
+		const operation: Promise<WledAdoptionResultModel[]> = this.adoptionQueue.then(() => this.doAdoptDevices(requests));
+		this.adoptionQueue = operation.then<void>(
+			() => undefined,
+			() => undefined,
+		);
+
+		return operation;
+	}
+
+	private async doAdoptDevices(requests: WledAdoptDeviceDto[]): Promise<WledAdoptionResultModel[]> {
 		const results = requests.map<WledAdoptionResultModel | undefined>(() => undefined);
 		const databaseDevices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
 		const plans: Array<{
@@ -645,6 +656,8 @@ export class WledService extends BaseManagedPluginService {
 				continue;
 			}
 
+			let mappedDevice: WledDeviceEntity | null = null;
+
 			try {
 				if (existingDevice && !existingDevice.identifier) {
 					await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(existingDevice.id, {
@@ -661,6 +674,7 @@ export class WledService extends BaseManagedPluginService {
 					request.description,
 					request.enabled,
 				);
+				mappedDevice = device;
 				if (!existingDevice) {
 					createdDeviceIdsByPlan.set(index, device.id);
 				}
@@ -783,6 +797,26 @@ export class WledService extends BaseManagedPluginService {
 						};
 					}
 				} else {
+					const partialDevice =
+						mappedDevice ??
+						(await this.devicesService.findOneBy<WledDeviceEntity>('identifier', identifier, DEVICES_WLED_TYPE));
+
+					if (existingDevice) {
+						await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(existingDevice.id, {
+							type: DEVICES_WLED_TYPE,
+							identifier: existingDevice.identifier,
+							name: existingDevice.name,
+							description: existingDevice.description,
+							enabled: existingDevice.enabled,
+							hostname: existingDevice.hostname,
+						});
+						await this.deviceConnectivityService.setConnectionState(existingDevice.id, {
+							state: ConnectionState.DISCONNECTED,
+						});
+					} else if (partialDevice) {
+						await this.devicesService.remove(partialDevice.id);
+					}
+
 					results[index] = {
 						host,
 						name: request.name,
