@@ -61,6 +61,7 @@ const REDIRECT_URI = 'http://127.0.0.1:1455/callback';
 interface TokenResponse {
 	access_token: string;
 	refresh_token?: string;
+	scope: string;
 }
 
 interface ArtifactPause {
@@ -613,7 +614,13 @@ export async function runMcpOAuthHandlerInvalidationRaces(): Promise<void> {
 			requireAuthorizationCode(expandedModuleAuthorization.callback),
 			expandedModuleAuthorization.verifier,
 		);
+		const expandedModuleTokens = (await expandedModuleResponse.json()) as TokenResponse;
 		expect(expandedModuleResponse.status).toBe(200);
+		expect(expandedModuleTokens.scope.split(' ')).toEqual(expect.arrayContaining([McpOAuthScope.WRITE]));
+		expect(latestGrantId).not.toBeNull();
+		expect(
+			(await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: latestGrantId })).approvedScopes,
+		).toEqual(expect.arrayContaining([McpOAuthScope.WRITE]));
 	} finally {
 		releaseActivePause();
 		await new Promise<void>((resolve) => server.close(() => resolve()));
