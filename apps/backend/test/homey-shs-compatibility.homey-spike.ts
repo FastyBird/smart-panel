@@ -318,6 +318,10 @@ describe('Homey SHS compatibility probe', () => {
 		capture.systemInfo = { aliases: { 'homey.local': true } };
 
 		expect(() => assertHomeyCaptureSafe(capture, [], [], 'homey.local')).toThrow('expected host in a value');
+
+		capture.systemInfo = { aliases: { 'http://homey:4859': true } };
+
+		expect(() => assertHomeyCaptureSafe(capture, [], [], 'homey')).toThrow('expected host in a value');
 	});
 
 	it('does not confuse opaque redaction markers with configured private terms', () => {
@@ -391,6 +395,21 @@ describe('Homey SHS compatibility probe', () => {
 		unsafeCapture.systemInfo = { aliases: { id: 'record', deviceId: true } };
 
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [], ['device'])).toThrow('private term');
+
+		unsafeCapture.systemInfo = { householdCode: 123_456 };
+
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [], ['123456'])).toThrow('private term');
+
+		unsafeCapture.systemInfo = {};
+		unsafeCapture.devices = sanitizeHomeyDevices({
+			'driver-metadata-device': {
+				id: 'driver-metadata-device',
+				name: 'Synthetic source',
+				data: { capabilitiesObj: { PrivateRoom: true } },
+			},
+		});
+
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [], ['Private'])).toThrow('private term');
 
 		unsafeCapture.systemInfo = { leaked: 'hpat_abcdefghijklmnop1234' };
 

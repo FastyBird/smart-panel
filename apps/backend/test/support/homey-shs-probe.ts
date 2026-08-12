@@ -75,6 +75,7 @@ export interface HomeyShsCapture {
 interface SanitizerContext {
 	privateTerms: string[];
 	path: string[];
+	rootKind: 'device' | 'generic' | 'zone';
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -162,16 +163,17 @@ const sanitizeString = (value: string, privateTerms: string[]): string => {
 	return sanitized;
 };
 
-const isCapabilityMap = (path: string[]): boolean => {
-	const key = path.at(-1);
+const isCapabilityMap = (path: string[], rootKind: SanitizerContext['rootKind']): boolean =>
+	rootKind === 'device' &&
+	path.length === 2 &&
+	path[0] === 'root' &&
+	(path[1] === 'capabilitiesObj' || path[1] === 'capabilityOptions');
 
-	return key === 'capabilitiesObj' || key === 'capabilityOptions';
-};
+const isCapabilityIdentifier = (key: string, path: string[], rootKind: SanitizerContext['rootKind']): boolean =>
+	key === 'id' && isCapabilityMap(path.slice(0, -1), rootKind);
 
-const isCapabilityIdentifier = (key: string, path: string[]): boolean =>
-	key === 'id' && isCapabilityMap(path.slice(0, -1));
-
-const isCapabilityListEntry = (path: string[]): boolean => path.at(-1) === 'capabilities';
+const isCapabilityListEntry = (path: string[], rootKind: SanitizerContext['rootKind']): boolean =>
+	rootKind === 'device' && path.length === 2 && path[0] === 'root' && path[1] === 'capabilities';
 
 const isDriverMetadata = (path: string[]): boolean => path.includes('data') || path.includes('settings');
 
@@ -218,7 +220,7 @@ const sanitizeReference = (key: string, value: string): string => {
 };
 
 const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): unknown => {
-	const capabilityMapEntry = isCapabilityMap(context.path);
+	const capabilityMapEntry = isCapabilityMap(context.path, context.rootKind);
 
 	if (!capabilityMapEntry && isSecretKey(key)) {
 		return REDACTION.secret;
@@ -242,7 +244,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 		value !== null &&
 		!isRecord(value) &&
 		!capabilityMapEntry &&
-		!isCapabilityIdentifier(key, context.path) &&
+		!isCapabilityIdentifier(key, context.path, context.rootKind) &&
 		(REFERENCE_KEY_PATTERN.test(key) || IDENTIFIER_KEY_PATTERN.test(key))
 	) {
 		return typeof value === 'string' && REFERENCE_KEY_PATTERN.test(key)
@@ -259,7 +261,10 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 	}
 
 	if (typeof value === 'string') {
-		if (isCapabilityListEntry(context.path) || isCapabilityIdentifier(key, context.path)) {
+		if (
+			isCapabilityListEntry(context.path, context.rootKind) ||
+			isCapabilityIdentifier(key, context.path, context.rootKind)
+		) {
 			return value;
 		}
 
@@ -291,7 +296,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 	}
 
 	const nextPath = [...context.path, key];
-	const preserveKeys = isCapabilityMap(nextPath);
+	const preserveKeys = isCapabilityMap(nextPath, context.rootKind);
 
 	return Object.fromEntries(
 		Object.entries(value).map(([nestedKey, nestedValue]) => {
@@ -305,8 +310,11 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 	);
 };
 
-export const sanitizeHomeyPayload = (value: unknown, privateTerms: string[] = []): unknown =>
-	sanitizeValue(value, 'root', { privateTerms, path: [] });
+export const sanitizeHomeyPayload = (
+	value: unknown,
+	privateTerms: string[] = [],
+	rootKind: SanitizerContext['rootKind'] = 'generic',
+): unknown => sanitizeValue(value, 'root', { privateTerms, path: [], rootKind });
 
 const replaceCollectionIdentity = (
 	value: unknown,
@@ -322,7 +330,7 @@ const replaceCollectionIdentity = (
 			.sort(([left], [right]) => left.localeCompare(right))
 			.map(([rawId, rawItem], index) => {
 				const safeId = pseudonym(kind, rawId);
-				const sanitized = sanitizeHomeyPayload(rawItem, privateTerms);
+				const sanitized = sanitizeHomeyPayload(rawItem, privateTerms, kind);
 				const safeItem = isRecord(sanitized) ? sanitized : { value: sanitized };
 
 				return [
@@ -560,7 +568,13 @@ export const assertHomeyCaptureSafe = (
 				value.forEach((item) => inspectEndpointValues(item, key));
 			} else if (isRecord(value)) {
 				Object.entries(value).forEach(([nestedKey, nestedValue]) => {
-					hostLeakFound ||= globallyIdentifiableHost && hostTokenPattern.test(nestedKey);
+					const endpointShapedKey =
+						isAddressKey(nestedKey) ||
+						ENDPOINT_KEY_PATTERN.test(nestedKey) ||
+						nestedKey.includes('://') ||
+						new RegExp(`${escapedHost}:\\d+`, 'i').test(nestedKey);
+
+					hostLeakFound ||= (globallyIdentifiableHost || endpointShapedKey) && hostTokenPattern.test(nestedKey);
 					inspectEndpointValues(nestedValue, nestedKey);
 				});
 			}
@@ -605,6 +619,15 @@ export const assertHomeyCaptureSafe = (
 	]);
 	const dynamicKeyContainsPrivateTerm = (key: string, term: string): boolean =>
 		key.toLowerCase().includes(term.toLowerCase());
+	const isCapturedCapabilityMapPath = (path: string[]): boolean =>
+		path.length === 3 &&
+		path[0] === 'devices' &&
+		generatedPseudonymPattern.test(path[1]) &&
+		(path[2] === 'capabilitiesObj' || path[2] === 'capabilityOptions');
+	const isCapturedCapabilityIdentifier = (key: string, path: string[]): boolean =>
+		key === 'id' && isCapturedCapabilityMapPath(path.slice(0, -1));
+	const isCapturedCapabilityListEntry = (path: string[]): boolean =>
+		path.length === 3 && path[0] === 'devices' && generatedPseudonymPattern.test(path[1]) && path[2] === 'capabilities';
 	const isStructuralRecordPath = (path: string[]): boolean => {
 		if (path.length === 1 && path[0] === 'systemInfo') {
 			return true;
@@ -618,20 +641,22 @@ export const assertHomeyCaptureSafe = (
 			return true;
 		}
 
-		const capabilityMapIndex = path.findIndex((part) => part === 'capabilitiesObj' || part === 'capabilityOptions');
-
-		return capabilityMapIndex >= 0 && capabilityMapIndex === path.length - 2;
+		return isCapturedCapabilityMapPath(path.slice(0, -1));
 	};
 	const inspectPrivateTermValues = (value: unknown, key: string, path: string[], term: string): boolean => {
 		if (typeof value === 'string') {
 			const generatedValue = generatedPseudonymPattern.test(value) || syntheticLabelPattern.test(value);
 
 			return (
-				!isCapabilityListEntry(path) &&
-				!isCapabilityIdentifier(key, path) &&
+				!isCapturedCapabilityListEntry(path) &&
+				!isCapturedCapabilityIdentifier(key, path) &&
 				!generatedValue &&
 				value.replace(REDACTION_PATTERN, '').toLowerCase().includes(term.toLowerCase())
 			);
+		}
+
+		if (typeof value === 'number') {
+			return String(value).includes(term);
 		}
 
 		if (Array.isArray(value)) {
@@ -640,7 +665,7 @@ export const assertHomeyCaptureSafe = (
 
 		if (isRecord(value)) {
 			const nextPath = [...path, key];
-			const preserveKeys = isCapabilityMap(nextPath);
+			const preserveKeys = isCapturedCapabilityMapPath(nextPath);
 			const structuralRecord = isStructuralRecordPath(nextPath);
 
 			return Object.entries(value).some(([nestedKey, nestedValue]) => {
