@@ -1030,6 +1030,40 @@ describe('WledService', () => {
 			expect(results).toEqual([expect.objectContaining({ status: 'failed', error: 'Retirement failed' })]);
 		});
 
+		it('restores a retired owner snapshot when a later connectivity write fails', async () => {
+			const staleDevice = {
+				...createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100'),
+				name: 'Original strip',
+				description: 'Original description',
+			} as WledDeviceEntity;
+			const replacementDevice = createMockDevice('device-2', 'wled-112233445566', '192.168.1.100');
+			const replacementContext = {
+				...mockContext,
+				info: { ...mockContext.info, mac: '11:22:33:44:55:66' },
+			};
+			wledAdapter.probe.mockResolvedValue(replacementContext);
+			devicesService.findAll.mockResolvedValue([staleDevice]);
+			deviceMapper.mapDevice.mockResolvedValue(replacementDevice);
+			devicesService.update.mockResolvedValue(staleDevice);
+			deviceConnectivityService.setConnectionState.mockRejectedValueOnce(new Error('Connectivity write failed'));
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.100', name: 'Replacement strip', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(devicesService.remove).toHaveBeenCalledWith('device-2');
+			expect(devicesService.update).toHaveBeenLastCalledWith('device-1', {
+				type: DEVICES_WLED_TYPE,
+				identifier: 'wled-aabbccddeeff',
+				name: 'Original strip',
+				description: 'Original description',
+				enabled: true,
+				hostname: '192.168.1.100',
+			});
+			expect(wledAdapter.connect).toHaveBeenCalledWith('192.168.1.100', 'wled-aabbccddeeff', 5000);
+			expect(results).toEqual([expect.objectContaining({ status: 'failed', error: 'Connectivity write failed' })]);
+		});
+
 		it('upgrades a legacy same-host device without an identifier before provisioning', async () => {
 			const legacyDevice = createMockDevice('device-1', null, '192.168.1.100');
 			wledAdapter.probe.mockResolvedValue(mockContext);

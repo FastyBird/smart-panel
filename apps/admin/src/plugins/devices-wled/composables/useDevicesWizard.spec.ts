@@ -220,6 +220,31 @@ describe('useDevicesWizard', () => {
 		await adapter.dispose?.();
 	});
 
+	it('replaces a MAC-less discovery row with a manual probe at the same normalized endpoint', async () => {
+		backendClient.GET.mockResolvedValue({
+			data: {
+				data: {
+					...inventory,
+					devices: [{ ...inventory.devices[0], host: 'wled.local', port: 8080, mac: null }],
+				},
+			},
+			response: { status: 200 },
+		});
+		backendClient.POST.mockResolvedValue({
+			data: { data: { ...inventory.devices[0], host: 'wled.local:8080', port: 8080 } },
+			response: { status: 201 },
+		});
+		const adapter = useDevicesWizard();
+		await adapter.start();
+		const form = adapter.controls.value.find((control) => control.type === 'form') as IWizardFormControl;
+
+		await form.handler({ host: 'wled.local:8080' });
+
+		expect(adapter.rows.value).toHaveLength(1);
+		expect(adapter.rows.value[0]).toEqual(expect.objectContaining({ key: 'mac:aabbccddeeff' }));
+		await adapter.dispose?.();
+	});
+
 	it.each(['192.168.1.100:80', 'wled.local:80', '[fe80::1234]:80'])(
 		'preserves an explicit default port from a manual probe: %s',
 		async (host) => {

@@ -87,7 +87,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		}
 		for (const device of manualDevices.value) {
 			for (const [key, candidate] of merged) {
-				if (candidate.host === device.host) merged.delete(key);
+				if (adoptionHost(candidate) === adoptionHost(device)) merged.delete(key);
 			}
 			merged.set(deviceKey(device), device);
 		}

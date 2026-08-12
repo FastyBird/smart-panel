@@ -820,6 +820,14 @@ export class WledService extends BaseManagedPluginService {
 					}
 
 					for (const staleHostOwner of disconnectedStaleOwners) {
+						await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(staleHostOwner.id, {
+							type: DEVICES_WLED_TYPE,
+							identifier: staleHostOwner.identifier,
+							name: staleHostOwner.name,
+							description: staleHostOwner.description,
+							enabled: staleHostOwner.enabled,
+							hostname: staleHostOwner.hostname,
+						});
 						await this.restoreDeviceConnection(staleHostOwner);
 					}
 
