@@ -337,6 +337,10 @@ describe('Homey SHS compatibility probe', () => {
 
 		expect(() => assertHomeyCaptureSafe(capture, [], [], 'homey.local')).toThrow('expected host in a value');
 
+		capture.systemInfo = { description: 'prefixhomey.localbackup' };
+
+		expect(() => assertHomeyCaptureSafe(capture, [], [], 'homey.local')).toThrow('expected host in a value');
+
 		capture.systemInfo = { aliases: { 'homey.local': true } };
 
 		expect(() => assertHomeyCaptureSafe(capture, [], [], 'homey.local')).toThrow('expected host in a value');

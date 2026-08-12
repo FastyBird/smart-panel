@@ -112,6 +112,9 @@ jobs:
       - name: "Run OAuth Provider Spike"
         run: "pnpm --filter @fastybird/smart-panel-backend test:oauth-spike"
 
+      - name: "Run Homey Compatibility Spike"
+        run: "pnpm --filter @fastybird/smart-panel-backend test:homey-spike"
+
       - name: "Generate Coverage Report"
         run: "pnpm --filter @fastybird/smart-panel-backend test:cov"
 

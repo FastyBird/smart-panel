@@ -614,6 +614,7 @@ export const assertHomeyCaptureSafe = (
 		const escapedHost = escapeRegularExpression(expectedHost);
 		const hostTokenPattern = new RegExp(`(^|[^A-Za-z0-9.-])${escapedHost}(?=$|[^A-Za-z0-9.-])`, 'i');
 		const globallyIdentifiableHost = expectedHost.includes('.') || expectedHost.includes(':');
+		const hostLeakPattern = globallyIdentifiableHost ? new RegExp(escapedHost, 'i') : hostTokenPattern;
 		let hostLeakFound = false;
 		const inspectEndpointValues = (value: unknown, key = ''): void => {
 			if (typeof value === 'string') {
@@ -624,7 +625,7 @@ export const assertHomeyCaptureSafe = (
 					value.includes('://') ||
 					new RegExp(`${escapedHost}:\\d+`, 'i').test(value);
 
-				hostLeakFound ||= endpointShaped && hostTokenPattern.test(value);
+				hostLeakFound ||= endpointShaped && hostLeakPattern.test(value);
 			} else if (Array.isArray(value)) {
 				value.forEach((item) => inspectEndpointValues(item, key));
 			} else if (isRecord(value)) {
@@ -635,7 +636,7 @@ export const assertHomeyCaptureSafe = (
 						nestedKey.includes('://') ||
 						new RegExp(`${escapedHost}:\\d+`, 'i').test(nestedKey);
 
-					hostLeakFound ||= (globallyIdentifiableHost || endpointShapedKey) && hostTokenPattern.test(nestedKey);
+					hostLeakFound ||= (globallyIdentifiableHost || endpointShapedKey) && hostLeakPattern.test(nestedKey);
 					inspectEndpointValues(nestedValue, nestedKey);
 				});
 			}
