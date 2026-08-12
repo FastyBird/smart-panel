@@ -12,7 +12,12 @@ import {
 	ServiceState,
 } from '../../../modules/extensions/services/managed-plugin-service.interface';
 import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
-import { DEVICES_WLED_PLUGIN_NAME, DEVICES_WLED_TYPE } from '../devices-wled.constants';
+import {
+	DEVICES_WLED_PLUGIN_NAME,
+	DEVICES_WLED_TYPE,
+	WLED_CHANNEL_IDENTIFIERS,
+	WLED_DEVICE_INFO_PROPERTY_IDENTIFIERS,
+} from '../devices-wled.constants';
 import { WledValidationException } from '../devices-wled.exceptions';
 import { UpdateWledDeviceDto } from '../dto/update-device.dto';
 import { WledAdoptDeviceDto } from '../dto/wled-adoption.dto';
@@ -601,7 +606,8 @@ export class WledService extends BaseManagedPluginService {
 				const existingIdentifier = existingDevice?.identifier;
 				const identifier =
 					existingIdentifier &&
-					!this.legacyHostIdentifiers(existingDevice.hostname ?? host).has(existingIdentifier.toLowerCase())
+					!this.legacyHostIdentifiers(existingDevice.hostname ?? host).has(existingIdentifier.toLowerCase()) &&
+					existingIdentifier.toLowerCase() !== `wled-${canonicalIdentity.slice(-6)}`
 						? existingIdentifier
 						: canonicalIdentity;
 
@@ -1148,15 +1154,12 @@ export class WledService extends BaseManagedPluginService {
 				const canonicalIdentifier = `wled-${normalizedMac}`;
 				const legacyIdentifier = `wled-${normalizedMac.slice(-6)}`;
 				const legacyHostIdentifiers = this.legacyHostIdentifiers(host);
+				const legacyDevices = devices.filter((device) => device.identifier === legacyIdentifier);
 
 				return (
 					devices.find((device) => device.identifier === canonicalIdentifier) ??
-					devices.find(
-						(device) =>
-							device.identifier === legacyIdentifier &&
-							device.hostname !== null &&
-							this.endpointsEquivalent(device.hostname, host),
-					) ??
+					legacyDevices.find((device) => this.deviceSerialMac(device) === normalizedMac) ??
+					legacyDevices.find((device) => device.hostname !== null && this.endpointsEquivalent(device.hostname, host)) ??
 					devices.find(
 						(device) =>
 							device.identifier !== null &&
@@ -1173,6 +1176,20 @@ export class WledService extends BaseManagedPluginService {
 		}
 
 		return devices.find((device) => device.hostname !== null && this.endpointsEquivalent(device.hostname, host));
+	}
+
+	private deviceSerialMac(device: WledDeviceEntity): string | null {
+		const serial = device.channels
+			?.find((channel) => channel.identifier === WLED_CHANNEL_IDENTIFIERS.DEVICE_INFORMATION)
+			?.properties?.find((property) => property.identifier === WLED_DEVICE_INFO_PROPERTY_IDENTIFIERS.SERIAL_NUMBER)
+			?.value?.value;
+
+		if (typeof serial !== 'string') {
+			return null;
+		}
+
+		const normalized = serial.replace(/[^a-fA-F0-9]/g, '').toLowerCase();
+		return normalized.length === 12 ? normalized : null;
 	}
 
 	private endpointsEquivalent(first: string, second: string): boolean {

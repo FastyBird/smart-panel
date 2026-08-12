@@ -814,6 +814,10 @@ describe('WledService', () => {
 			const partialDevice = createMockDevice('device-1', 'wled-ddeeff', '192.168.1.100');
 			wledAdapter.probe.mockResolvedValue(mockContext);
 			devicesService.findAll.mockResolvedValue([partialDevice]);
+			devicesService.update.mockResolvedValue({
+				...partialDevice,
+				identifier: 'wled-aabbccddeeff',
+			} as WledDeviceEntity);
 			deviceMapper.mapDevice.mockResolvedValue(partialDevice);
 
 			const results = await service.adoptDevices([
@@ -824,15 +828,28 @@ describe('WledService', () => {
 				'192.168.1.100',
 				mockContext,
 				'Living room',
-				'wled-ddeeff',
+				'wled-aabbccddeeff',
 				undefined,
 				undefined,
 			);
+			expect(devicesService.update).toHaveBeenCalledWith('device-1', {
+				type: DEVICES_WLED_TYPE,
+				identifier: 'wled-aabbccddeeff',
+				hostname: '192.168.1.100',
+			});
 			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-1' })]);
 		});
 
 		it('does not reuse a moved legacy short-MAC row for a different full MAC', async () => {
-			const legacyDevice = createMockDevice('device-legacy', 'wled-aabbcc', '192.168.1.100');
+			const legacyDevice = {
+				...createMockDevice('device-legacy', 'wled-aabbcc', '192.168.1.100'),
+				channels: [
+					{
+						identifier: 'device_information',
+						properties: [{ identifier: 'serial_number', value: { value: '77:88:99:AA:BB:CC' } }],
+					},
+				],
+			} as WledDeviceEntity;
 			const collidingContext = {
 				...mockContext,
 				info: { ...mockContext.info, mac: '11:22:33:AA:BB:CC' },
@@ -855,6 +872,42 @@ describe('WledService', () => {
 				undefined,
 			);
 			expect(results).toEqual([expect.objectContaining({ status: 'created', deviceId: 'device-new' })]);
+		});
+
+		it('reuses a moved legacy short-MAC row when its stored serial matches the full MAC', async () => {
+			const legacyDevice = {
+				...createMockDevice('device-legacy', 'wled-ddeeff', '192.168.1.100'),
+				channels: [
+					{
+						identifier: 'device_information',
+						properties: [{ identifier: 'serial_number', value: { value: 'AA:BB:CC:DD:EE:FF' } }],
+					},
+				],
+			} as WledDeviceEntity;
+			const movedDevice = { ...legacyDevice, hostname: '192.168.1.200' } as WledDeviceEntity;
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			devicesService.findAll.mockResolvedValue([legacyDevice]);
+			devicesService.update.mockResolvedValue({ ...legacyDevice, identifier: 'wled-aabbccddeeff' } as WledDeviceEntity);
+			deviceMapper.mapDevice.mockResolvedValue(movedDevice);
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.200', name: 'Moved legacy strip', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(devicesService.update).toHaveBeenCalledWith('device-legacy', {
+				type: DEVICES_WLED_TYPE,
+				identifier: 'wled-aabbccddeeff',
+				hostname: '192.168.1.200',
+			});
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(
+				'192.168.1.200',
+				mockContext,
+				'Moved legacy strip',
+				'wled-aabbccddeeff',
+				undefined,
+				undefined,
+			);
+			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-legacy' })]);
 		});
 
 		it('updates an adopted MAC when it is discovered at a new host', async () => {
