@@ -97,8 +97,14 @@ const sanitizeString = (value: string, privateTerms: string[]): string => {
 	return sanitized;
 };
 
-const preservesCapabilityIdentifier = (path: string[]): boolean =>
-	path.includes('capabilitiesObj') || path.includes('capabilityOptions');
+const isCapabilityMap = (path: string[]): boolean => {
+	const key = path.at(-1);
+
+	return key === 'capabilitiesObj' || key === 'capabilityOptions';
+};
+
+const isCapabilityIdentifier = (key: string, path: string[]): boolean =>
+	key === 'id' && isCapabilityMap(path.slice(0, -1));
 
 const isDriverMetadata = (path: string[]): boolean => path.includes('data') || path.includes('settings');
 
@@ -123,6 +129,10 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 		return REDACTION.secret;
 	}
 
+	if (value !== null && TIMESTAMP_KEY_PATTERN.test(key)) {
+		return FIXTURE_TIMESTAMP;
+	}
+
 	if (value === null || typeof value === 'number' || typeof value === 'boolean') {
 		return value;
 	}
@@ -136,7 +146,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 			return REDACTION.privateTerm;
 		}
 
-		if (TIMESTAMP_KEY_PATTERN.test(key) || ISO_TIMESTAMP_PATTERN.test(value)) {
+		if (ISO_TIMESTAMP_PATTERN.test(value)) {
 			return FIXTURE_TIMESTAMP;
 		}
 
@@ -145,13 +155,13 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 		}
 
 		if (
-			!preservesCapabilityIdentifier(context.path) &&
+			!isCapabilityIdentifier(key, context.path) &&
 			(isDriverMetadata(context.path) || IDENTIFIER_KEY_PATTERN.test(key))
 		) {
 			return REDACTION.identifier;
 		}
 
-		if ((key === 'id' || UUID_PATTERN.test(value)) && !preservesCapabilityIdentifier(context.path)) {
+		if ((key === 'id' || UUID_PATTERN.test(value)) && !isCapabilityIdentifier(key, context.path)) {
 			return pseudonym('id', value);
 		}
 
@@ -171,7 +181,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 	}
 
 	const nextPath = [...context.path, key];
-	const preserveKeys = preservesCapabilityIdentifier(nextPath);
+	const preserveKeys = isCapabilityMap(nextPath);
 
 	return Object.fromEntries(
 		Object.entries(value).map(([nestedKey, nestedValue]) => {

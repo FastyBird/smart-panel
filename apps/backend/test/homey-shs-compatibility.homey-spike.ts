@@ -61,7 +61,13 @@ describe('Homey SHS compatibility probe', () => {
 				zone: 'private-zone-id',
 				capabilities: ['onoff', 'measure_temperature.inside'],
 				capabilitiesObj: {
-					onoff: { id: 'onoff', value: true },
+					onoff: {
+						id: 'onoff',
+						value: true,
+						accountId: 'private-capability-account-id',
+						hardware_id: 'private-capability-hardware-id',
+						metadata: { id: 'private-capability-metadata-id' },
+					},
 					'measure_temperature.inside': { id: 'measure_temperature.inside', value: 21.5 },
 				},
 				settings: {
@@ -95,6 +101,9 @@ describe('Homey SHS compatibility probe', () => {
 		expect(serialized).not.toContain('private-driver-device-id');
 		expect(serialized).not.toContain('private-hardware-id');
 		expect(serialized).not.toContain('private-account-id');
+		expect(serialized).not.toContain('private-capability-account-id');
+		expect(serialized).not.toContain('private-capability-hardware-id');
+		expect(serialized).not.toContain('private-capability-metadata-id');
 		expect(serialized).not.toContain('private-driver-model');
 		expect(serialized).not.toContain('Recoverable Room Name');
 		expect(serialized).toContain('[~7~]');
@@ -108,6 +117,7 @@ describe('Homey SHS compatibility probe', () => {
 			hardware_id: 'switch-1',
 			grid: 'preserved non-identifier',
 			lastUpdated: '2026-08-12T20:15:30.123Z',
+			lastModified: 1_786_579_200_000,
 			customActivityField: '2026-08-12T20:16:31+02:00',
 		});
 
@@ -117,6 +127,7 @@ describe('Homey SHS compatibility probe', () => {
 			hardware_id: '[~7~]',
 			grid: 'preserved non-identifier',
 			lastUpdated: '2000-01-01T00:00:00.000Z',
+			lastModified: '2000-01-01T00:00:00.000Z',
 			customActivityField: '2000-01-01T00:00:00.000Z',
 		});
 	});
