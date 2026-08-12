@@ -50,9 +50,9 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 - [ ] Create a least-privilege API key with only device read/control, zone read, and system read permissions required by the design.
 - [ ] Designate one harmless writable test capability; record only a synthetic alias in repository documents.
 - [ ] Designate one disposable virtual/test device for lifecycle mutations. It must not represent household equipment, and repository documents record only its synthetic alias.
-- [ ] Define environment variables for live tests. Do not store secret values in shell history, fixtures, `.env` files, or repository config.
-- [ ] Add an explicit live-write allowlist contract requiring both device ID and capability ID.
-- [ ] Add a separately enabled lifecycle-mutation allowlist containing the disposable device ID and the exact permitted operations: add, rename, zone move, availability change, and remove.
+- [x] Define environment variables for live tests. Do not store secret values in shell history, fixtures, `.env` files, or repository config.
+- [x] Add an explicit live-write allowlist contract requiring both device ID and capability ID.
+- [x] Add a separately enabled lifecycle-mutation allowlist containing the disposable device ID and the exact permitted operations: add, rename, zone move, availability change, and remove.
 
 **Verification:** Review the compatibility document for secret/private data before committing it.
 
@@ -75,7 +75,7 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 
 ### Task 0.3: Decide SDK vs. direct protocol
 
-- [ ] Review the exact `homey-api` package version, license text, transitive dependencies, Node 24 support, release activity, and bundle/runtime implications.
+- [x] Review the exact `homey-api` package version, license text, transitive dependencies, Node 24 support, release activity, and bundle/runtime implications.
 - [ ] Exercise connect/disconnect, timeouts, subscription cleanup, and reconnect behavior in a disposable spike.
 - [ ] Record one decision: `use SDK behind connector` or `use documented HTTP/Socket.IO directly`.
 - [ ] Record replacement considerations so the rest of the plugin does not depend on SDK-specific objects.
@@ -108,10 +108,10 @@ apps/backend/src/plugins/devices-homey/__fixtures__/
     lifecycle.json
 ```
 
-- [ ] Replace IDs, names, zones, addresses, and sensitive driver metadata with deterministic synthetic values.
+- [x] Add a capture sanitizer that replaces IDs, names, zones, addresses, and sensitive driver metadata with deterministic synthetic values.
 - [ ] Preserve field shape, ordering where relevant, types, units, ranges, enum values, and capability suffix behavior.
 - [ ] Add expected normalized output fixtures for representative devices.
-- [ ] Add forbidden-token assertions or a fixture-safety test covering key prefixes, original host/address, and known private names.
+- [x] Add forbidden-token assertions or a fixture-safety test covering key prefixes, original host/address, and known private names.
 - [ ] Confirm the corpus can drive connector/domain tests after live SHS access ends.
 
 **Gate:** Milestone 1 may scaffold interfaces in parallel, but no production connector or mDNS implementation is finalized until Tasks 0.2–0.4 are complete.

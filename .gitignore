@@ -25,6 +25,7 @@
 *.swp
 
 .env.local
+apps/backend/test/.homey-shs-captures/
 
 # Node.js Tools for Visual Studio
 .ntvs_analysis.dat

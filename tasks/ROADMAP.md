@@ -229,7 +229,7 @@ Build a device from properties of other devices — splitting one physical devic
 | 2 | [FEATURE-PLUGIN-MATTER](features/FEATURE-PLUGIN-MATTER.md) | backend, admin | :clipboard: Planned |
 | 3 | [FEATURE-PLUGIN-ZIGBEE-HERDSMAN](features/FEATURE-PLUGIN-ZIGBEE-HERDSMAN.md) | backend, admin | :clipboard: Planned |
 | 4 | [FEATURE-DEVICE-PLUGIN-ADOPTION-WIZARDS](features/FEATURE-DEVICE-PLUGIN-ADOPTION-WIZARDS.md) | backend, admin, spec | :construction: In Progress |
-| 5 | [FEATURE-PLUGIN-HOMEY](features/FEATURE-PLUGIN-HOMEY.md) | backend, admin, panel | :clipboard: Planned |
+| 5 | [FEATURE-PLUGIN-HOMEY](features/FEATURE-PLUGIN-HOMEY.md) | backend, admin, panel | :construction: In Progress |
 
 **Remaining work:** WLED adoption wizard and remaining cross-plugin QA; Homey local integration (SHS/Homey Pro) followed by Homey Cloud; Matter plugin implementation; and direct Zigbee integration via zigbee-herdsman (6 phases: coordinator service, converters, device platform, adoption flow, admin UI, network management). Homey's [approved design](../docs/superpowers/specs/2026-08-12-homey-integration-design.md) and [implementation plan](../docs/superpowers/plans/2026-08-12-homey-integration.md) front-load compatibility testing and sanitized fixture capture during the one-month SHS subscription.
 
