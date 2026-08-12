@@ -817,6 +817,12 @@ export class WledService extends BaseManagedPluginService {
 						await this.restoreDeviceConnection(staleHostOwner);
 					}
 				} else {
+					const attemptedRegistration = this.wledAdapter.getDevice(host);
+					const attemptedHostDisconnected =
+						attemptedRegistration?.host === host && attemptedRegistration.identifier === identifier;
+					if (attemptedHostDisconnected) {
+						this.wledAdapter.disconnect(host, false);
+					}
 					const partialDevice =
 						mappedDevice ??
 						(await this.devicesService.findOneBy<WledDeviceEntity>('identifier', identifier, DEVICES_WLED_TYPE));
@@ -830,7 +836,7 @@ export class WledService extends BaseManagedPluginService {
 							enabled: existingDevice.enabled,
 							hostname: existingDevice.hostname,
 						});
-						if (existingDeviceDisconnected) {
+						if (existingDeviceDisconnected || attemptedHostDisconnected) {
 							await this.restoreDeviceConnection(existingDevice);
 						}
 					} else if (partialDevice) {

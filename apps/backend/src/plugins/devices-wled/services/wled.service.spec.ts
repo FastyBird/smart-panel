@@ -589,6 +589,27 @@ describe('WledService', () => {
 			]);
 		});
 
+		it('disconnects a newly registered host when final adoption persistence fails', async () => {
+			const createdDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			wledAdapter.getDevice.mockReturnValueOnce(null).mockReturnValueOnce({
+				host: '192.168.1.100',
+				identifier: 'wled-aabbccddeeff',
+				connected: true,
+			} as RegisteredWledDevice);
+			devicesService.findAll.mockResolvedValue([]);
+			deviceMapper.mapDevice.mockResolvedValue(createdDevice);
+			deviceConnectivityService.setConnectionState.mockRejectedValueOnce(new Error('Connectivity write failed'));
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.100', name: 'Living room', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.100', false);
+			expect(devicesService.remove).toHaveBeenCalledWith('device-1');
+			expect(results).toEqual([expect.objectContaining({ status: 'failed', error: 'Connectivity write failed' })]);
+		});
+
 		it('keeps an invalid host scoped to its batch item', async () => {
 			wledAdapter.probe.mockResolvedValue(mockContext);
 			devicesService.findAll.mockResolvedValue([]);
@@ -671,6 +692,35 @@ describe('WledService', () => {
 			expect(wledAdapter.disconnect).not.toHaveBeenCalled();
 			expect(deviceConnectivityService.setConnectionState).not.toHaveBeenCalled();
 			expect(results).toEqual([expect.objectContaining({ status: 'failed', error: 'Provisioning failed' })]);
+		});
+
+		it('disconnects a failed move target before restoring the source connection', async () => {
+			const existingDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			wledAdapter.getDevice
+				.mockReturnValueOnce({
+					host: '192.168.1.100',
+					identifier: 'wled-aabbccddeeff',
+					connected: true,
+				} as RegisteredWledDevice)
+				.mockReturnValueOnce(null)
+				.mockReturnValueOnce({
+					host: '192.168.1.200',
+					identifier: 'wled-aabbccddeeff',
+					connected: true,
+				} as RegisteredWledDevice);
+			devicesService.findAll.mockResolvedValue([existingDevice]);
+			deviceMapper.mapDevice.mockResolvedValue({ ...existingDevice, hostname: '192.168.1.200' } as WledDeviceEntity);
+			deviceConnectivityService.setConnectionState.mockRejectedValueOnce(new Error('Connectivity write failed'));
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.200', name: 'Moved strip', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.100', false);
+			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.200', false);
+			expect(wledAdapter.connect).toHaveBeenCalledWith('192.168.1.100', 'wled-aabbccddeeff', 5000);
+			expect(results).toEqual([expect.objectContaining({ status: 'failed', error: 'Connectivity write failed' })]);
 		});
 
 		it('disconnects an existing same-host device when adoption disables it', async () => {
