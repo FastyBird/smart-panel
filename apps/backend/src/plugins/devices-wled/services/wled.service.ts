@@ -573,15 +573,6 @@ export class WledService extends BaseManagedPluginService {
 			plans.flatMap(({ existingDevice }) => (existingDevice ? [existingDevice.id] : [])),
 		);
 
-		// Tear down every connection involved in an address move before registering any
-		// replacement. This makes address swaps safe: processing the first item cannot
-		// disconnect the second item after it has already been moved to its new host.
-		for (const { host, existingDevice } of plans) {
-			if (existingDevice?.hostname && existingDevice.hostname !== host) {
-				this.wledAdapter.disconnect(existingDevice.hostname);
-			}
-		}
-
 		const retiredDeviceIds = new Set<string>();
 
 		for (const { index, request, host, context, existingDevice, identifier } of plans) {
@@ -601,6 +592,16 @@ export class WledService extends BaseManagedPluginService {
 					request.description,
 					request.enabled,
 				);
+				if (existingDevice?.hostname && existingDevice.hostname !== host) {
+					const sourceRegistration = this.wledAdapter.getDevice(existingDevice.hostname);
+
+					// During a batch address swap, the previous source host may already hold
+					// another successfully moved controller. Disconnect only the registration
+					// that actually belongs to this device.
+					if (sourceRegistration?.identifier === existingDevice.identifier) {
+						this.wledAdapter.disconnect(existingDevice.hostname);
+					}
+				}
 				const staleHostOwners = databaseDevices.filter(
 					(device) => device.hostname === host && device.id !== existingDevice?.id,
 				);

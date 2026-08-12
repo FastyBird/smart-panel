@@ -625,6 +625,11 @@ describe('WledService', () => {
 		it('updates an adopted MAC when it is discovered at a new host', async () => {
 			const existingDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
 			wledAdapter.probe.mockResolvedValue(mockContext);
+			wledAdapter.getDevice.mockReturnValue({
+				host: '192.168.1.100',
+				identifier: 'wled-aabbccddeeff',
+				connected: true,
+			} as RegisteredWledDevice);
 			devicesService.findAll.mockResolvedValue([existingDevice]);
 			deviceMapper.mapDevice.mockResolvedValue({ ...existingDevice, hostname: '192.168.1.200' } as WledDeviceEntity);
 
@@ -642,6 +647,25 @@ describe('WledService', () => {
 				undefined,
 			);
 			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-1' })]);
+		});
+
+		it('keeps the source connection when moved-device provisioning fails', async () => {
+			const existingDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			wledAdapter.getDevice.mockReturnValue({
+				host: '192.168.1.100',
+				identifier: 'wled-aabbccddeeff',
+				connected: true,
+			} as RegisteredWledDevice);
+			devicesService.findAll.mockResolvedValue([existingDevice]);
+			deviceMapper.mapDevice.mockRejectedValue(new Error('Provisioning failed'));
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.200', name: 'Moved strip', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(wledAdapter.disconnect).not.toHaveBeenCalled();
+			expect(results).toEqual([expect.objectContaining({ status: 'failed', error: 'Provisioning failed' })]);
 		});
 
 		it('disconnects an existing same-host device when adoption disables it', async () => {
