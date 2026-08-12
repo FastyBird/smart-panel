@@ -412,9 +412,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 				/^\d+$/.test(nestedKey) ||
 				IDENTIFIER_KEY_PATTERN.test(nestedKey);
 			const privateMapKey =
-				!preserveKeys &&
-				(identifierMap ||
-					(identifierMapKey && isDriverMetadata(nextPath) && !PRESERVED_STRUCTURAL_KEY_SET.has(nestedKey)));
+				!preserveKeys && (identifierMap || (identifierMapKey && !PRESERVED_STRUCTURAL_KEY_SET.has(nestedKey)));
 			const safeKey = privateMapKey ? pseudonym('id', nestedKey, context.aliases) : nestedKey;
 
 			return [safeKey, sanitizeValue(nestedValue, nestedKey, { ...context, path: nextPath })];

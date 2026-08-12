@@ -249,9 +249,13 @@ describe('Homey SHS compatibility probe', () => {
 		const collisionSafeDevices = sanitizeHomeyDevices({
 			'DEVICE-000001': { id: 'DEVICE-000001', name: 'DEVICE-LABEL-000001' },
 		});
-		const genericIdentifierMap = sanitizeHomeyPayload({ aliases: { 'opaque-user-id': true, 'p-000001': false } }, [
-			'000001',
-		]) as { aliases: Record<string, boolean> };
+		const genericIdentifierMap = sanitizeHomeyPayload(
+			{
+				aliases: { 'opaque-user-id': true, 'p-000001': false },
+				mappings: { 'another-opaque-user-id': true },
+			},
+			['000001'],
+		) as { aliases: Record<string, boolean>; mappings: Record<string, boolean> };
 
 		expect(sanitized).toEqual({
 			title: '[~2~]',
@@ -324,7 +328,9 @@ describe('Homey SHS compatibility probe', () => {
 		expect(privatePrefixSerialized).not.toContain('device-');
 		expect(privatePrefixSerialized).not.toContain('device-label');
 		expect(Object.keys(genericIdentifierMap.aliases).every((key) => /^id-/.test(key))).toBe(true);
+		expect(Object.keys(genericIdentifierMap.mappings).every((key) => /^id-/.test(key))).toBe(true);
 		expect(JSON.stringify(genericIdentifierMap)).not.toContain('opaque-user-id');
+		expect(JSON.stringify(genericIdentifierMap)).not.toContain('another-opaque-user-id');
 		expect(JSON.stringify(genericIdentifierMap)).not.toContain('p-000001');
 		const blockedNeutralPrefixDevices = sanitizeHomeyDevices(
 			{
