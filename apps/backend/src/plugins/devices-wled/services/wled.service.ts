@@ -599,14 +599,14 @@ export class WledService extends BaseManagedPluginService {
 					// another successfully moved controller. Disconnect only the registration
 					// that actually belongs to this device.
 					if (sourceRegistration?.identifier === existingDevice.identifier) {
-						this.wledAdapter.disconnect(existingDevice.hostname);
+						this.wledAdapter.disconnect(existingDevice.hostname, false);
 					}
 				}
 				const staleHostOwners = databaseDevices.filter(
 					(device) => device.hostname === host && device.id !== existingDevice?.id,
 				);
 				if (staleHostOwners.length > 0) {
-					this.wledAdapter.disconnect(host);
+					this.wledAdapter.disconnect(host, false);
 				}
 				for (const staleHostOwner of staleHostOwners) {
 					if (selectedDeviceIds.has(staleHostOwner.id) || retiredDeviceIds.has(staleHostOwner.id)) {
@@ -618,35 +618,39 @@ export class WledService extends BaseManagedPluginService {
 						enabled: false,
 						hostname: null,
 					});
+					await this.deviceConnectivityService.setConnectionState(staleHostOwner.id, {
+						state: ConnectionState.DISCONNECTED,
+					});
 					retiredDeviceIds.add(staleHostOwner.id);
 				}
+				let connectionState = ConnectionState.DISCONNECTED;
 				if (!device.enabled) {
-					this.wledAdapter.disconnect(host);
+					this.wledAdapter.disconnect(host, false);
 				} else {
 					const registeredDevice = this.wledAdapter.getDevice(host);
 
 					if (registeredDevice?.identifier === identifier && registeredDevice.connected) {
 						registeredDevice.context = context;
 						registeredDevice.lastSeen = new Date();
-						results[index] = {
-							host,
-							name: request.name,
-							status: existingDevice ? 'updated' : 'created',
-							error: null,
-							deviceId: device.id,
-						};
-						continue;
-					}
-
-					try {
-						this.wledAdapter.connectWithContext(host, identifier, context);
-					} catch (error) {
-						this.logger.warn(`WLED device ${identifier} was adopted but its live connection could not be registered`, {
-							resource: device.id,
-							message: error instanceof Error ? error.message : String(error),
-						});
+						connectionState = ConnectionState.CONNECTED;
+					} else {
+						try {
+							this.wledAdapter.connectWithContext(host, identifier, context);
+							connectionState = ConnectionState.CONNECTED;
+						} catch (error) {
+							this.logger.warn(
+								`WLED device ${identifier} was adopted but its live connection could not be registered`,
+								{
+									resource: device.id,
+									message: error instanceof Error ? error.message : String(error),
+								},
+							);
+						}
 					}
 				}
+				await this.deviceConnectivityService.setConnectionState(device.id, {
+					state: connectionState,
+				});
 				results[index] = {
 					host,
 					name: request.name,
@@ -729,9 +733,13 @@ export class WledService extends BaseManagedPluginService {
 		if (mac) {
 			const normalizedMac = mac.replace(/[^a-fA-F0-9]/g, '').toLowerCase();
 			if (normalizedMac.length === 12) {
-				const identifiers = new Set([`wled-${normalizedMac}`, `wled-${normalizedMac.slice(-6)}`]);
-				return devices.find(
-					(device) => identifiers.has(device.identifier) || (device.identifier === null && device.hostname === host),
+				const canonicalIdentifier = `wled-${normalizedMac}`;
+				const legacyIdentifier = `wled-${normalizedMac.slice(-6)}`;
+
+				return (
+					devices.find((device) => device.identifier === canonicalIdentifier) ??
+					devices.find((device) => device.identifier === legacyIdentifier) ??
+					devices.find((device) => device.identifier === null && device.hostname === host)
 				);
 			}
 		}

@@ -209,6 +209,17 @@ describe('WledClientAdapterService', () => {
 			expect(callbacks.onDeviceDisconnected).not.toHaveBeenCalled();
 		});
 
+		it('can suppress the disconnected callback during controlled replacement', async () => {
+			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
+			await service.connect('192.168.1.100', 'wled-test');
+			jest.clearAllMocks();
+
+			service.disconnect('192.168.1.100', false);
+
+			expect(service.getDevice('192.168.1.100')).toBeUndefined();
+			expect(callbacks.onDeviceDisconnected).not.toHaveBeenCalled();
+		});
+
 		it('ignores a stale socket close after a replacement is registered at the same host', () => {
 			jest.useFakeTimers();
 			const sockets: Array<{

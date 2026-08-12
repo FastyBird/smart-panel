@@ -637,7 +637,7 @@ describe('WledService', () => {
 				{ host: '192.168.1.200', name: 'Moved strip', category: DeviceCategory.LIGHTING },
 			]);
 
-			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.100');
+			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.100', false);
 			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(
 				'192.168.1.200',
 				mockContext,
@@ -646,6 +646,9 @@ describe('WledService', () => {
 				undefined,
 				undefined,
 			);
+			expect(deviceConnectivityService.setConnectionState).toHaveBeenLastCalledWith('device-1', {
+				state: ConnectionState.CONNECTED,
+			});
 			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-1' })]);
 		});
 
@@ -683,8 +686,11 @@ describe('WledService', () => {
 				},
 			]);
 
-			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.100');
+			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.100', false);
 			expect(wledAdapter.connectWithContext).not.toHaveBeenCalled();
+			expect(deviceConnectivityService.setConnectionState).toHaveBeenLastCalledWith('device-1', {
+				state: ConnectionState.DISCONNECTED,
+			});
 			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-1' })]);
 		});
 
@@ -731,8 +737,8 @@ describe('WledService', () => {
 				{ host: '192.168.1.100', name: 'Second strip', category: DeviceCategory.LIGHTING },
 			]);
 
-			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.100');
-			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.200');
+			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.100', false);
+			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.200', false);
 			expect(devicesService.update).not.toHaveBeenCalled();
 			expect(deviceMapper.mapDevice).toHaveBeenNthCalledWith(
 				1,
@@ -772,7 +778,7 @@ describe('WledService', () => {
 				{ host: '192.168.1.100', name: 'Replacement strip', category: DeviceCategory.LIGHTING },
 			]);
 
-			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.100');
+			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.100', false);
 			expect(deviceMapper.mapDevice.mock.invocationCallOrder[0]).toBeLessThan(
 				wledAdapter.disconnect.mock.invocationCallOrder[0],
 			);
@@ -871,6 +877,34 @@ describe('WledService', () => {
 				expect.objectContaining({
 					name: 'Administrator name',
 					adoptedDeviceId: 'device-1',
+				}),
+			);
+		});
+
+		it('prefers the canonical MAC device over legacy rows at the same host', async () => {
+			const nullIdentifierDevice = {
+				...createMockDevice('device-null', null, '192.168.1.200'),
+				name: 'Null identifier',
+			} as WledDeviceEntity;
+			const legacyDevice = {
+				...createMockDevice('device-legacy', 'wled-ddeeff', '192.168.1.200'),
+				name: 'Legacy identifier',
+			} as WledDeviceEntity;
+			const canonicalDevice = {
+				...createMockDevice('device-canonical', 'wled-aabbccddeeff', '192.168.1.100'),
+				name: 'Canonical identifier',
+			} as WledDeviceEntity;
+			mdnsDiscoverer.getDiscoveredDevices.mockReturnValue([
+				{ host: '192.168.1.200', name: 'Advertised name', mac: 'AA:BB:CC:DD:EE:FF', port: 80 },
+			]);
+			devicesService.findAll.mockResolvedValue([nullIdentifierDevice, legacyDevice, canonicalDevice]);
+
+			const inventory = await service.getDiscoveryInventory();
+
+			expect(inventory.devices[0]).toEqual(
+				expect.objectContaining({
+					name: 'Canonical identifier',
+					adoptedDeviceId: 'device-canonical',
 				}),
 			);
 		});

@@ -197,7 +197,7 @@ export class WledClientAdapterService {
 	/**
 	 * Disconnect from a WLED device
 	 */
-	disconnect(host: string): void {
+	disconnect(host: string, emitEvent = true): void {
 		const device = this.devices.get(host);
 
 		if (device) {
@@ -230,12 +230,13 @@ export class WledClientAdapterService {
 
 			this.logger.log(`Disconnected from WLED device at ${host}`);
 
-			// Invoke disconnected callback
-			void this.callbacks.onDeviceDisconnected?.({
-				host,
-				identifier,
-				reason: 'manual disconnect',
-			});
+			if (emitEvent) {
+				void this.callbacks.onDeviceDisconnected?.({
+					host,
+					identifier,
+					reason: 'manual disconnect',
+				});
+			}
 		}
 	}
 
