@@ -14,8 +14,10 @@ const ADDRESS_KEY_PATTERN = /(?:addr|address|host|hostname|ip|ipv4|ipv6|mac|seri
 const IDENTIFIER_KEY_PATTERN =
 	/(?:^(?:id|ids|identifier|identifiers|uuid|uuids)$|(?:Id|ID|Ids|IDs|Identifier|Identifiers|Uuid|UUID)$|(?:^|[_-])(?:id|ids|identifier|identifiers|uuid|uuids)$)/;
 const PERSONAL_KEY_PATTERN = /(?:name|note|title|label|email|username)$/i;
+const REFERENCE_KEY_PATTERN = /^(?:deviceId|zone|zoneId|parent|homeyId|ownerUri|driverId|userId)$/i;
 const REFERENCE_ARRAY_KEY_PATTERN = /(?:Ids|Origins)$/i;
-const TIMESTAMP_KEY_PATTERN = /(?:At|Date|Timestamp|Updated|Modified|Created)$/i;
+const CAMEL_CASE_TIMESTAMP_KEY_PATTERN = /(?:At|Date|Timestamp|Updated|Modified|Created)$/;
+const BOUNDED_TIMESTAMP_KEY_PATTERN = /(?:^|[_-])(?:at|date|timestamp|updated|modified|created)$/i;
 const ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const IPV4_PATTERN = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
@@ -108,6 +110,9 @@ const isCapabilityIdentifier = (key: string, path: string[]): boolean =>
 
 const isDriverMetadata = (path: string[]): boolean => path.includes('data') || path.includes('settings');
 
+const isTimestampKey = (key: string): boolean =>
+	CAMEL_CASE_TIMESTAMP_KEY_PATTERN.test(key) || BOUNDED_TIMESTAMP_KEY_PATTERN.test(key);
+
 const sanitizeReference = (key: string, value: string): string => {
 	if (/^(?:zone|zoneId|parent)$/i.test(key)) {
 		return pseudonym('zone', value);
@@ -129,8 +134,22 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 		return REDACTION.secret;
 	}
 
-	if (value !== null && TIMESTAMP_KEY_PATTERN.test(key)) {
+	if (value !== null && isTimestampKey(key)) {
 		return FIXTURE_TIMESTAMP;
+	}
+
+	if (value !== null && ADDRESS_KEY_PATTERN.test(key)) {
+		return REDACTION.address;
+	}
+
+	if (
+		value !== null &&
+		!isCapabilityIdentifier(key, context.path) &&
+		(REFERENCE_KEY_PATTERN.test(key) || IDENTIFIER_KEY_PATTERN.test(key))
+	) {
+		return typeof value === 'string' && REFERENCE_KEY_PATTERN.test(key)
+			? sanitizeReference(key, value)
+			: REDACTION.identifier;
 	}
 
 	if (value === null || typeof value === 'number' || typeof value === 'boolean') {
@@ -138,10 +157,6 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 	}
 
 	if (typeof value === 'string') {
-		if (ADDRESS_KEY_PATTERN.test(key)) {
-			return REDACTION.address;
-		}
-
 		if (PERSONAL_KEY_PATTERN.test(key)) {
 			return REDACTION.privateTerm;
 		}
@@ -150,14 +165,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 			return FIXTURE_TIMESTAMP;
 		}
 
-		if (/^(?:deviceId|zone|zoneId|parent|homeyId|ownerUri|driverId|userId)$/i.test(key)) {
-			return sanitizeReference(key, value);
-		}
-
-		if (
-			!isCapabilityIdentifier(key, context.path) &&
-			(isDriverMetadata(context.path) || IDENTIFIER_KEY_PATTERN.test(key))
-		) {
+		if (!isCapabilityIdentifier(key, context.path) && isDriverMetadata(context.path)) {
 			return REDACTION.identifier;
 		}
 
