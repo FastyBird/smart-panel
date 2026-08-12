@@ -620,6 +620,21 @@ describe('WledService', () => {
 			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.100', false);
 		});
 
+		it('should make a failed MAC-less identity probe retryable when auto-add is disabled', async () => {
+			const discoveredDevice: WledMdnsDiscoveredDevice = {
+				name: 'Temporarily offline WLED',
+				host: '192.168.1.200',
+				port: 80,
+			};
+			devicesService.findAll.mockResolvedValue([]);
+			wledAdapter.probe.mockRejectedValue(new Error('Device offline'));
+
+			await mdnsCallbacks.onDeviceDiscovered?.(discoveredDevice);
+
+			expect(mdnsDiscoverer.forgetDiscoveredDevice).toHaveBeenCalledWith('192.168.1.200');
+			expect(deviceMapper.mapDevice).not.toHaveBeenCalled();
+		});
+
 		it('should not auto-add device when autoAdd is disabled', async () => {
 			const discoveredDevice: WledMdnsDiscoveredDevice = {
 				name: 'Discovered WLED',

@@ -466,6 +466,7 @@ export class WledService extends BaseManagedPluginService {
 				identifiedDevice = { ...device, mac: context.info.mac };
 				existingDevice = this.findExistingDevice(devices, endpoint, context.info.mac);
 			} catch (error) {
+				this.mdnsDiscoverer.forgetDiscoveredDevice(device.host);
 				this.logger.debug(`Could not identify MAC-less WLED device at ${endpoint}`, {
 					message: error instanceof Error ? error.message : String(error),
 				});
