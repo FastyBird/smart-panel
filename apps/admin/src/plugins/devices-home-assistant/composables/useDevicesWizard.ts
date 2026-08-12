@@ -192,7 +192,20 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const startSession = async (): Promise<void> => {
 		formResult.value = FormResult.WORKING;
 		sessionError.value = null;
-		const { data, error, response } = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/wizard`);
+		let started;
+
+		try {
+			started = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/wizard`);
+		} catch (transportError: unknown) {
+			const fallback = t('devicesHomeAssistantPlugin.wizard.messages.sessionNotStarted');
+			const reason = transportError instanceof Error && transportError.message ? transportError.message : fallback;
+			formResult.value = FormResult.ERROR;
+			sessionError.value = reason;
+			flashMessage.error(reason);
+			throw new DevicesHomeAssistantApiException(reason, null, transportError instanceof Error ? transportError : null);
+		}
+
+		const { data, error, response } = started;
 
 		if (typeof data !== 'undefined') {
 			const nextSession = transformWizardSessionResponse((data as { data: DevicesHomeAssistantPluginWizardSessionSchema }).data);
@@ -257,10 +270,22 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		}
 
 		formResult.value = FormResult.WORKING;
-		const { data, error, response } = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/wizard/{id}/adopt`, {
-			params: { path: { id: session.value.id } },
-			body: transformWizardAdoptRequest(selection.map((item) => item.key)),
-		});
+		let adopted;
+
+		try {
+			adopted = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/wizard/{id}/adopt`, {
+				params: { path: { id: session.value.id } },
+				body: transformWizardAdoptRequest(selection.map((item) => item.key)),
+			});
+		} catch (transportError: unknown) {
+			const fallback = t('devicesHomeAssistantPlugin.wizard.messages.adoptionFailed');
+			const reason = transportError instanceof Error && transportError.message ? transportError.message : fallback;
+			formResult.value = FormResult.ERROR;
+			flashMessage.error(reason);
+			throw new DevicesHomeAssistantApiException(reason, null, transportError instanceof Error ? transportError : null);
+		}
+
+		const { data, error, response } = adopted;
 
 		if (typeof data !== 'undefined') {
 			adoptionResults.value = transformWizardAdoptionResponse((data as { data: DevicesHomeAssistantPluginWizardAdoptionSchema }).data);

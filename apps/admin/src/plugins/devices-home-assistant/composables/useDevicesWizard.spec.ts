@@ -211,6 +211,30 @@ describe('useDevicesWizard', () => {
 		});
 	});
 
+	it('clears the busy state and shows a retry banner when session transport rejects', async () => {
+		backendClient.POST.mockRejectedValueOnce(new Error('Backend unreachable'));
+		const adapter = useDevicesWizard();
+
+		await expect(adapter.start()).rejects.toThrow('Backend unreachable');
+
+		expect(adapter.busy.value).toBe(false);
+		expect(adapter.ready.value).toBe(true);
+		expect((adapter.controls.value[0] as IWizardBannerControl).message).toBe('Backend unreachable');
+	});
+
+	it('clears the busy state when adoption transport rejects', async () => {
+		backendClient.POST.mockResolvedValueOnce({ data: { data: wizardSession }, response: { status: 201 } });
+		backendClient.POST.mockRejectedValueOnce(new Error('Connection dropped'));
+		const adapter = useDevicesWizard();
+		await adapter.start();
+
+		await expect(
+			adapter.adopt([{ key: readyCandidate.key, name: readyCandidate.name, category: DevicesModuleDeviceCategory.generic }])
+		).rejects.toThrow('Connection dropped');
+
+		expect(adapter.busy.value).toBe(false);
+	});
+
 	it('rescans by replacing the server-side snapshot', async () => {
 		backendClient.POST.mockResolvedValueOnce({ data: { data: wizardSession }, response: { status: 201 } }).mockResolvedValueOnce({
 			data: { data: { ...wizardSession, id: 'session-2' } },
