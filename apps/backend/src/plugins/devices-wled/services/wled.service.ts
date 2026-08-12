@@ -311,7 +311,12 @@ export class WledService extends BaseManagedPluginService {
 			const registeredDevice = this.wledAdapter.getDevice(device.hostname);
 
 			if (registeredDevice?.context) {
-				await this.persistHardwareIdentity(device, registeredDevice.context.info.mac);
+				const identityVerified = await this.persistHardwareIdentity(device, registeredDevice.context.info.mac);
+				if (!identityVerified) {
+					this.wledAdapter.disconnect(device.hostname, false);
+					await this.deviceMapper.setDeviceConnectionState(device.identifier, ConnectionState.DISCONNECTED);
+					return;
+				}
 				await this.deviceMapper.updateDeviceState(device.identifier, registeredDevice.context.state);
 			}
 		} catch (error) {
@@ -350,7 +355,17 @@ export class WledService extends BaseManagedPluginService {
 
 	private async persistHardwareIdentity(device: WledDeviceEntity, reportedMac: string): Promise<boolean> {
 		const mac = this.normalizeMac(reportedMac);
-		if (!mac || device.mac === mac) {
+		if (!mac) {
+			if (device.mac) {
+				this.logger.warn('WLED did not report a valid hardware identity for the configured device', {
+					resource: device.id,
+				});
+				return false;
+			}
+
+			return true;
+		}
+		if (device.mac === mac) {
 			return true;
 		}
 		const result = await this.hardwareIdentity.persist(device, mac);
