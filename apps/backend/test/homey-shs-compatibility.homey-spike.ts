@@ -61,7 +61,15 @@ describe('Homey SHS compatibility probe', () => {
 					gateway: 'fd12:3456:789a::1',
 					endpoint: 'https://[fe80::1%eth0]:4860/api',
 					mappedAddress: '::ffff:192.168.1.1',
+					bridgeIdentifier: 'private-bridge-id',
 				},
+				data: {
+					device_id: 'private-driver-device-id',
+					hardware_id: 'private-hardware-id',
+					accountId: 'private-account-id',
+					model: 'private-driver-model',
+				},
+				ui: { title: 'Recoverable Room Name' },
 			},
 		});
 		const serialized = JSON.stringify({ zones, devices });
@@ -74,7 +82,30 @@ describe('Homey SHS compatibility probe', () => {
 		expect(serialized).not.toContain('fd12:3456:789a::1');
 		expect(serialized).not.toContain('fe80::1');
 		expect(serialized).not.toContain('::ffff:192.168.1.1');
+		expect(serialized).not.toContain('private-bridge-id');
+		expect(serialized).not.toContain('private-driver-device-id');
+		expect(serialized).not.toContain('private-hardware-id');
+		expect(serialized).not.toContain('private-account-id');
+		expect(serialized).not.toContain('private-driver-model');
+		expect(serialized).not.toContain('Recoverable Room Name');
+		expect(serialized).toContain('[~7~]');
 		expect(serialized).toContain('measure_temperature.inside');
+	});
+
+	it('redacts generic personal labels without publishing a value-derived hash', () => {
+		const sanitized = sanitizeHomeyPayload({
+			title: 'Common Kitchen',
+			accountId: 'family',
+			hardware_id: 'switch-1',
+			grid: 'preserved non-identifier',
+		});
+
+		expect(sanitized).toEqual({
+			title: '[~2~]',
+			accountId: '[~7~]',
+			hardware_id: '[~7~]',
+			grid: 'preserved non-identifier',
+		});
 	});
 
 	it('uses unauthenticated ping, bounded read-only calls, and blocks redirects', async () => {

@@ -97,7 +97,9 @@ The probe writes a new non-overwriting directory with mode `0700` and JSON files
 writing and aborts if the result still contains the API key, expected hostname, configured private terms, IPv4 or IPv6
 addresses, MAC addresses, or email-like values. Redaction markers are opaque and excluded only from private-term
 collision checks; credential checks remain fail-closed. IDs are deterministically pseudonymized, personal labels and
-timestamps are replaced, and full capability IDs—including suffixes—are preserved.
+timestamps are replaced, and full capability IDs—including suffixes—are preserved. Personal labels use non-derived
+opaque markers rather than public hashes. String values in driver-defined `data` and `settings` metadata are
+conservatively redacted, and identifier-like key variants outside those containers are redacted as well.
 
 Automation is not a substitute for review. Before promoting any capture into committed fixtures:
 

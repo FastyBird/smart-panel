@@ -10,7 +10,9 @@ const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 const FIXTURE_TIMESTAMP = '2000-01-01T00:00:00.000Z';
 
 const SECRET_KEY_PATTERN = /(?:token|secret|password|authorization|api.?key|credential|cookie)/i;
-const ADDRESS_KEY_PATTERN = /(?:address|host|hostname|ip|ipv4|ipv6|mac|serial|serialNumber|ssid|bssid)$/i;
+const ADDRESS_KEY_PATTERN = /(?:addr|address|host|hostname|ip|ipv4|ipv6|mac|serial|serialNumber|ssid|bssid)$/i;
+const IDENTIFIER_KEY_PATTERN =
+	/(?:^(?:id|ids|identifier|identifiers|uuid|uuids)$|(?:Id|ID|Ids|IDs|Identifier|Identifiers|Uuid|UUID)$|(?:^|[_-])(?:id|ids|identifier|identifiers|uuid|uuids)$)/;
 const PERSONAL_KEY_PATTERN = /(?:name|note|title|label|email|username)$/i;
 const REFERENCE_ARRAY_KEY_PATTERN = /(?:Ids|Origins)$/i;
 const TIMESTAMP_KEY_PATTERN = /(?:At|Date|Timestamp)$/i;
@@ -31,8 +33,9 @@ const REDACTION = {
 	unsupported: '[~4~]',
 	url: '[~5~]',
 	value: '[~6~]',
+	identifier: '[~7~]',
 } as const;
-const REDACTION_PATTERN = /\[~[0-6]~\]/g;
+const REDACTION_PATTERN = /\[~[0-7]~\]/g;
 
 const READ_ENDPOINTS = {
 	systemInfo: '/api/manager/system/',
@@ -96,6 +99,8 @@ const sanitizeString = (value: string, privateTerms: string[]): string => {
 const preservesCapabilityIdentifier = (path: string[]): boolean =>
 	path.includes('capabilitiesObj') || path.includes('capabilityOptions');
 
+const isDriverMetadata = (path: string[]): boolean => path.includes('data') || path.includes('settings');
+
 const sanitizeReference = (key: string, value: string): string => {
 	if (/^(?:zone|zoneId|parent)$/i.test(key)) {
 		return pseudonym('zone', value);
@@ -127,7 +132,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 		}
 
 		if (PERSONAL_KEY_PATTERN.test(key)) {
-			return `Synthetic ${pseudonym('label', value)}`;
+			return REDACTION.privateTerm;
 		}
 
 		if (TIMESTAMP_KEY_PATTERN.test(key)) {
@@ -136,6 +141,13 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 
 		if (/^(?:deviceId|zone|zoneId|parent|homeyId|ownerUri|driverId|userId)$/i.test(key)) {
 			return sanitizeReference(key, value);
+		}
+
+		if (
+			!preservesCapabilityIdentifier(context.path) &&
+			(isDriverMetadata(context.path) || IDENTIFIER_KEY_PATTERN.test(key))
+		) {
+			return REDACTION.identifier;
 		}
 
 		if ((key === 'id' || UUID_PATTERN.test(value)) && !preservesCapabilityIdentifier(context.path)) {
