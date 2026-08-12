@@ -416,6 +416,8 @@ amend ADR 0002.
       then resume registration and prove the stale request cannot open after invalidation success.
 - [x] Provider-backed wire E2E: close an active OAuth subscription at the access-token authorization deadline and
       record `authorization_expired` rather than treating expiry as administrative revocation.
+- [x] Provider-backed wire E2E: close an active OAuth subscription at the grant authorization deadline and record
+      `authorization_expired` rather than treating expiry as administrative revocation.
 - [x] E2E: submit the same refresh token concurrently behind a synchronization barrier; prove at most one successor is
       stored, the reuse loser revokes the entire family including that successor, and no fork remains usable.
 - [x] E2E: switch OAuth off with active OAuth and static subscriptions; prove new OAuth traffic is rejected and OAuth
