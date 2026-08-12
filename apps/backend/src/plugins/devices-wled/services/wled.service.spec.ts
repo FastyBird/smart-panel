@@ -158,6 +158,7 @@ describe('WledService', () => {
 						getDiscoveredDevices: jest.fn().mockReturnValue([]),
 						isDiscoveryRunning: jest.fn().mockReturnValue(true),
 						clearDiscoveredDevices: jest.fn(),
+						forgetDiscoveredDevice: jest.fn(),
 						setCallbacks: jest.fn().mockImplementation((callbacks: WledMdnsCallbacks) => {
 							mdnsCallbacks = callbacks;
 						}),
@@ -475,6 +476,24 @@ describe('WledService', () => {
 				undefined,
 				undefined,
 			);
+		});
+
+		it('should make a failed auto-add discovery retryable', async () => {
+			configService.getPluginConfig.mockReturnValue({
+				...mockConfig,
+				mdns: { ...(mockConfig as WledConfigModel).mdns, autoAdd: true },
+			} as WledConfigModel);
+			const discoveredDevice: WledMdnsDiscoveredDevice = {
+				name: 'Offline WLED',
+				host: '192.168.1.200',
+				port: 80,
+			};
+			devicesService.findAll.mockResolvedValue([]);
+			wledAdapter.probe.mockRejectedValue(new Error('Device offline'));
+
+			await mdnsCallbacks.onDeviceDiscovered?.(discoveredDevice);
+
+			expect(mdnsDiscoverer.forgetDiscoveredDevice).toHaveBeenCalledWith('192.168.1.200');
 		});
 
 		it('should reconcile a known MAC at its newly advertised endpoint', async () => {

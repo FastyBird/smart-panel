@@ -486,13 +486,19 @@ export class WledService extends BaseManagedPluginService {
 					return;
 				}
 
-				await this.doAdoptDevices([
+				const [result] = await this.doAdoptDevices([
 					{
 						host: endpoint,
 						name: existingDevice?.name ?? device.name,
 						category: DeviceCategory.LIGHTING,
 					},
 				]);
+				if (!result || result.status === 'failed') {
+					this.mdnsDiscoverer.forgetDiscoveredDevice(device.host);
+					this.logger.warn(`Auto-add failed for discovered WLED device at ${endpoint}`, {
+						message: result?.error ?? 'No adoption result was returned',
+					});
+				}
 			} catch (error) {
 				this.logger.error(`Failed to connect to discovered device at ${device.host}`, {
 					message: error instanceof Error ? error.message : String(error),
