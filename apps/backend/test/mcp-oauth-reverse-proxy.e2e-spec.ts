@@ -140,9 +140,12 @@ describe('MCP OAuth reverse-proxy boundary', () => {
 			resource: 'https://panel.example.com/smart-panel/api/v1/modules/mcp',
 			authorization_servers: ['https://panel.example.com/smart-panel/api/v1/modules/mcp/oauth'],
 		});
+		const rolledBackProvider = await request(origin, MCP_OAUTH_TOKEN_PATH);
+		expect(await rolledBackProvider.json()).toEqual({ path: '/smart-panel/api/v1/modules/mcp/oauth/token' });
 		expect(providerRequests).toEqual([
 			'/smart-panel/api/v1/modules/mcp/oauth/token',
 			'/edge/panel/api/v1/modules/mcp/oauth/token',
+			'/smart-panel/api/v1/modules/mcp/oauth/token',
 		]);
 	});
 });
