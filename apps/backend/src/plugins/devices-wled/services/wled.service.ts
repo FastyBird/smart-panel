@@ -300,6 +300,7 @@ export class WledService extends BaseManagedPluginService {
 			const registeredDevice = this.wledAdapter.getDevice(device.hostname);
 
 			if (registeredDevice?.context) {
+				await this.persistHardwareIdentity(device, registeredDevice.context.info.mac);
 				await this.deviceMapper.updateDeviceState(device.identifier, registeredDevice.context.state);
 			}
 		} catch (error) {
@@ -319,8 +320,28 @@ export class WledService extends BaseManagedPluginService {
 		const device = this.wledAdapter.getDevice(event.host);
 
 		if (device) {
+			const storedDevice = await this.devicesService.findOneBy<WledDeviceEntity>(
+				'identifier',
+				device.identifier,
+				DEVICES_WLED_TYPE,
+			);
+			if (storedDevice) {
+				await this.persistHardwareIdentity(storedDevice, event.info.mac);
+			}
 			await this.deviceMapper.setDeviceConnectionState(device.identifier, ConnectionState.CONNECTED);
 		}
+	}
+
+	private async persistHardwareIdentity(device: WledDeviceEntity, reportedMac: string): Promise<void> {
+		const mac = this.normalizeMac(reportedMac);
+		if (!mac || device.mac === mac) {
+			return;
+		}
+
+		await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(device.id, {
+			type: DEVICES_WLED_TYPE,
+			mac,
+		});
 	}
 
 	/**
@@ -939,6 +960,7 @@ export class WledService extends BaseManagedPluginService {
 									description: original.description,
 									enabled: original.enabled,
 									hostname: original.hostname,
+									mac: original.mac,
 								}),
 							);
 							await this.tryRollback(`reconnect device ${original.id}`, () => this.restoreDeviceConnection(original));
@@ -980,6 +1002,7 @@ export class WledService extends BaseManagedPluginService {
 								description: staleHostOwner.description,
 								enabled: staleHostOwner.enabled,
 								hostname: staleHostOwner.hostname,
+								mac: staleHostOwner.mac,
 							}),
 						);
 						retiredDeviceIds.delete(staleHostOwner.id);
@@ -1018,6 +1041,7 @@ export class WledService extends BaseManagedPluginService {
 								description: existingDevice.description,
 								enabled: existingDevice.enabled,
 								hostname: existingDevice.hostname,
+								mac: existingDevice.mac,
 							}),
 						);
 						if (existingDeviceDisconnected || attemptedRegistrationCreated) {
@@ -1040,6 +1064,7 @@ export class WledService extends BaseManagedPluginService {
 								description: staleHostOwner.description,
 								enabled: staleHostOwner.enabled,
 								hostname: staleHostOwner.hostname,
+								mac: staleHostOwner.mac,
 							}),
 						);
 						if (disconnectedStaleOwners.some(({ id }) => id === staleHostOwner.id)) {
@@ -1183,6 +1208,7 @@ export class WledService extends BaseManagedPluginService {
 
 				return (
 					devices.find((device) => device.identifier === canonicalIdentifier) ??
+					devices.find((device) => device.mac === normalizedMac) ??
 					devices.find((device) => this.deviceSerialMac(device) === normalizedMac) ??
 					legacyDevices.find((device) => device.hostname !== null && this.endpointsEquivalent(device.hostname, host)) ??
 					devices.find(

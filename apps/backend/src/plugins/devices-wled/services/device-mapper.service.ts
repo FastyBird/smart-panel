@@ -78,6 +78,7 @@ export class WledDeviceMapperService {
 		configEnabled?: boolean,
 	): Promise<WledDeviceEntity> {
 		const name = configName || context.info.name || `WLED ${identifier}`;
+		const mac = context.info.mac.replace(/[^a-fA-F0-9]/g, '').toLowerCase();
 
 		// Create or update the device entity
 		let device = await this.devicesService.findOneBy<WledDeviceEntity>('identifier', identifier, DEVICES_WLED_TYPE);
@@ -93,6 +94,7 @@ export class WledDeviceMapperService {
 				category: DeviceCategory.LIGHTING,
 				enabled: configEnabled ?? true,
 				hostname: host,
+				mac,
 			};
 
 			device = await this.devicesService.create<WledDeviceEntity, CreateWledDeviceDto>(createDto);
@@ -100,12 +102,14 @@ export class WledDeviceMapperService {
 			const updateDto: UpdateWledDeviceDto = {
 				type: DEVICES_WLED_TYPE,
 				hostname: host,
+				mac,
 				...(configName !== undefined && configName !== null ? { name: configName } : {}),
 				...(configDescription !== undefined ? { description: configDescription } : {}),
 				...(configEnabled !== undefined ? { enabled: configEnabled } : {}),
 			};
 			const shouldUpdate =
 				device.hostname !== host ||
+				device.mac !== mac ||
 				(configName !== undefined && configName !== null && device.name !== configName) ||
 				(configDescription !== undefined && device.description !== configDescription) ||
 				(configEnabled !== undefined && device.enabled !== configEnabled);

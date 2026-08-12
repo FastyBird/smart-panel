@@ -393,6 +393,29 @@ describe('WledService', () => {
 			expect(deviceMapper.setDeviceConnectionState).toHaveBeenCalledWith('wled-test', ConnectionState.CONNECTED);
 		});
 
+		it('should persist verified hardware identity when a configured device reconnects', async () => {
+			const storedDevice = createMockDevice('device-1', 'custom-strip', '192.168.1.100');
+			const event: WledDeviceConnectedEvent = {
+				host: '192.168.1.100',
+				info: { name: 'Test WLED', mac: 'AA:BB:CC:DD:EE:FF' } as WledInfo,
+			};
+			wledAdapter.getDevice.mockReturnValue({
+				host: '192.168.1.100',
+				identifier: 'custom-strip',
+				connected: true,
+				enabled: true,
+			} as RegisteredWledDevice);
+			devicesService.findOneBy.mockResolvedValue(storedDevice);
+			devicesService.update.mockResolvedValue({ ...storedDevice, mac: 'aabbccddeeff' } as WledDeviceEntity);
+
+			await adapterCallbacks.onDeviceConnected?.(event);
+
+			expect(devicesService.update).toHaveBeenCalledWith('device-1', {
+				type: DEVICES_WLED_TYPE,
+				mac: 'aabbccddeeff',
+			});
+		});
+
 		it('should set connection state to DISCONNECTED on device disconnected', async () => {
 			const event: WledDeviceDisconnectedEvent = {
 				host: '192.168.1.100',

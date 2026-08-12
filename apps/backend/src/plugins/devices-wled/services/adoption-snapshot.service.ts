@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 
 import { Injectable } from '@nestjs/common';
 
+import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { WledChannelEntity, WledChannelPropertyEntity } from '../entities/devices-wled.entity';
 
 export interface WledAdoptionStructureSnapshot {
@@ -13,7 +14,10 @@ export interface WledAdoptionStructureSnapshot {
 
 @Injectable()
 export class WledAdoptionSnapshotService {
-	constructor(private readonly dataSource: DataSource) {}
+	constructor(
+		private readonly dataSource: DataSource,
+		private readonly propertyValueService: PropertyValueService,
+	) {}
 
 	async capture(deviceId: string): Promise<WledAdoptionStructureSnapshot> {
 		const channels = await this.dataSource.getRepository(WledChannelEntity).find({
@@ -33,6 +37,8 @@ export class WledAdoptionSnapshotService {
 	}
 
 	async restore(snapshot: WledAdoptionStructureSnapshot): Promise<void> {
+		const restoredProperties: WledChannelPropertyEntity[] = [];
+
 		await this.dataSource.transaction(async (manager) => {
 			const channelRepository = manager.getRepository(WledChannelEntity);
 			const propertyRepository = manager.getRepository(WledChannelPropertyEntity);
@@ -73,8 +79,23 @@ export class WledAdoptionSnapshotService {
 
 			for (const property of snapshot.properties) {
 				const channelId = typeof property.channel === 'string' ? property.channel : property.channel.id;
-				await propertyRepository.save({ ...property, channel: channelId });
+				restoredProperties.push(await propertyRepository.save({ ...property, channel: channelId }));
 			}
 		});
+
+		for (const property of restoredProperties) {
+			const snapshotProperty = snapshot.properties.find(({ id }) => id === property.id);
+			if (snapshotProperty?.value === undefined) {
+				continue;
+			}
+
+			const value = snapshotProperty.value?.value ?? null;
+
+			if (value === null) {
+				await this.propertyValueService.delete(property);
+			} else {
+				await this.propertyValueService.write(property, value);
+			}
+		}
 	}
 }

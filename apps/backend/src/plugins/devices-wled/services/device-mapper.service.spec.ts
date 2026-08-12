@@ -123,6 +123,7 @@ describe('WledDeviceMapperService', () => {
 			category: DeviceCategory.LIGHTING,
 			enabled,
 			hostname,
+			mac: 'aabbccddeeff',
 			description: null,
 			icon: null,
 			draft: false,
@@ -229,6 +230,7 @@ describe('WledDeviceMapperService', () => {
 					type: DEVICES_WLED_TYPE,
 					category: DeviceCategory.LIGHTING,
 					hostname: '192.168.1.100',
+					mac: 'aabbccddeeff',
 				}),
 			);
 			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith(mockDevice.id, {
@@ -290,6 +292,7 @@ describe('WledDeviceMapperService', () => {
 			expect(devicesService.update).toHaveBeenCalledWith(mockDevice.id, {
 				type: DEVICES_WLED_TYPE,
 				hostname: '192.168.1.100',
+				mac: 'aabbccddeeff',
 				name: 'Renamed strip',
 				description: null,
 				enabled: true,

@@ -33,6 +33,18 @@ export class WledDeviceEntity extends DeviceEntity {
 	@Column({ nullable: true, default: null })
 	hostname: string | null = null;
 
+	@ApiPropertyOptional({
+		description: 'Verified WLED hardware MAC identity',
+		type: 'string',
+		example: 'aabbccddeeff',
+		nullable: true,
+	})
+	@Expose()
+	@IsOptional()
+	@IsString()
+	@Column({ nullable: true, default: null })
+	mac: string | null = null;
+
 	toString(): string {
 		return `WLED Device [${this.identifier}] -> Device [${this.id}]`;
 	}
