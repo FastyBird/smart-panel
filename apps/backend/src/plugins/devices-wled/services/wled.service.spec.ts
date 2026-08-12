@@ -640,6 +640,37 @@ describe('WledService', () => {
 			expect(result.host).toBe('[fe80::1234]');
 		});
 
+		it('adopts a legacy bare IPv6 row without creating a duplicate', async () => {
+			const legacyDevice = createMockDevice('device-1', 'wled-2001:db8::1', '2001:db8::1');
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			devicesService.findAll.mockResolvedValue([legacyDevice]);
+			devicesService.update.mockResolvedValue({
+				...legacyDevice,
+				identifier: 'wled-aabbccddeeff',
+				hostname: '[2001:db8::1]',
+			} as WledDeviceEntity);
+			deviceMapper.mapDevice.mockResolvedValue({
+				...legacyDevice,
+				identifier: 'wled-aabbccddeeff',
+				hostname: '[2001:db8::1]',
+			} as WledDeviceEntity);
+
+			const results = await service.adoptDevices([
+				{ host: '2001:db8::1', name: 'Legacy IPv6 strip', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(
+				'[2001:db8::1]',
+				mockContext,
+				'Legacy IPv6 strip',
+				'wled-aabbccddeeff',
+				undefined,
+				undefined,
+			);
+			expect(devicesService.remove).not.toHaveBeenCalled();
+			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-1' })]);
+		});
+
 		it('provisions each device through the mapper and retains partial failures', async () => {
 			wledAdapter.probe.mockResolvedValueOnce(mockContext).mockRejectedValueOnce(new Error('Device offline'));
 			devicesService.findAll.mockResolvedValue([]);

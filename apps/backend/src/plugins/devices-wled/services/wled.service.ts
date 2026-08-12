@@ -1121,7 +1121,18 @@ export class WledService extends BaseManagedPluginService {
 	}
 
 	private canonicalEndpoint(endpoint: string): string {
-		return endpoint.replace(/:80$/, '');
+		const trimmed = endpoint.trim();
+		const bracketedIpv6 = trimmed.match(/^\[([^\]]+)](?::(\d+))?$/);
+		if (bracketedIpv6) {
+			const [, address, port] = bracketedIpv6;
+			return port && port !== '80' ? `[${address}]:${port}` : `[${address}]`;
+		}
+
+		if ((trimmed.match(/:/g)?.length ?? 0) > 1) {
+			return `[${trimmed}]`;
+		}
+
+		return trimmed.replace(/:80$/, '');
 	}
 
 	private legacyHostIdentifiers(endpoint: string): Set<string> {
