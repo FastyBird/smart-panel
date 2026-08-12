@@ -368,6 +368,7 @@ export const sanitizeHomeyPayload = (
 	rootKind: SanitizerContext['rootKind'] = 'generic',
 	aliases: SanitizationAliases = createSanitizationAliases(),
 ): unknown => {
+	privateTerms.forEach((term) => registerSourceValues(term, aliases));
 	registerSourceValues(value, aliases);
 
 	return sanitizeValue(value, 'root', { aliases, privateTerms, path: [], rootKind });
@@ -383,6 +384,7 @@ const replaceCollectionIdentity = (
 		throw new Error(`Homey ${kind} response is not an object`);
 	}
 
+	privateTerms.forEach((term) => registerSourceValues(term, aliases));
 	registerSourceValues(value, aliases);
 
 	return Object.fromEntries(
@@ -584,6 +586,7 @@ export const captureHomeyShs = async (
 	]);
 	const aliases = createSanitizationAliases();
 	registerSourceValues(config.expectedHost, aliases);
+	config.privateTerms.forEach((term) => registerSourceValues(term, aliases));
 	registerSourceValues(systemInfo, aliases);
 	registerSourceValues(zones, aliases);
 	registerSourceValues(devices, aliases);
@@ -628,45 +631,6 @@ export const assertHomeyCaptureSafe = (
 		}
 	}
 
-	if (expectedHost !== undefined) {
-		const escapedHost = escapeRegularExpression(expectedHost);
-		const hostTokenPattern = new RegExp(`(^|[^A-Za-z0-9.-])${escapedHost}(?=$|[^A-Za-z0-9.-])`, 'i');
-		const globallyIdentifiableHost = expectedHost.includes('.') || expectedHost.includes(':');
-		const hostLeakPattern = globallyIdentifiableHost ? new RegExp(escapedHost, 'i') : hostTokenPattern;
-		let hostLeakFound = false;
-		const inspectEndpointValues = (value: unknown, key = ''): void => {
-			if (typeof value === 'string') {
-				const endpointShaped =
-					globallyIdentifiableHost ||
-					isAddressKey(key) ||
-					ENDPOINT_KEY_PATTERN.test(key) ||
-					value.includes('://') ||
-					new RegExp(`${escapedHost}:\\d+`, 'i').test(value);
-
-				hostLeakFound ||= endpointShaped && hostLeakPattern.test(value);
-			} else if (Array.isArray(value)) {
-				value.forEach((item) => inspectEndpointValues(item, key));
-			} else if (isRecord(value)) {
-				Object.entries(value).forEach(([nestedKey, nestedValue]) => {
-					const endpointShapedKey =
-						isAddressKey(nestedKey) ||
-						ENDPOINT_KEY_PATTERN.test(nestedKey) ||
-						nestedKey.includes('://') ||
-						new RegExp(`${escapedHost}:\\d+`, 'i').test(nestedKey);
-
-					hostLeakFound ||= (globallyIdentifiableHost || endpointShapedKey) && hostLeakPattern.test(nestedKey);
-					inspectEndpointValues(nestedValue, nestedKey);
-				});
-			}
-		};
-
-		inspectEndpointValues(capture);
-
-		if (hostLeakFound) {
-			throw new Error('Sanitized Homey capture still contains the expected host in a value');
-		}
-	}
-
 	const generatedPseudonymPattern = /^(?:device|device-label|homey|id|reference|zone|zone-label)-\d{6}$/;
 	const fixedPayloadKeys = new Set([
 		'active',
@@ -696,8 +660,6 @@ export const assertHomeyCaptureSafe = (
 		'zoneId',
 		'zoneIds',
 	]);
-	const dynamicKeyContainsPrivateTerm = (key: string, term: string): boolean =>
-		key.toLowerCase().includes(term.toLowerCase());
 	const isCapturedCapabilityMapPath = (path: string[]): boolean =>
 		path.length === 3 &&
 		path[0] === 'devices' &&
@@ -722,6 +684,79 @@ export const assertHomeyCaptureSafe = (
 
 		return isCapturedCapabilityMapPath(path.slice(0, -1));
 	};
+	const fixedCaptureRootKeys = new Set(['devices', 'metadata', 'systemInfo', 'zones']);
+	const fixedMetadataKeys = new Set(['capturedAt', 'counts', 'homey', 'readEndpoints', 'schemaVersion', 'transport']);
+	const fixedMetadataNestedKeys = new Map<string, Set<string>>([
+		['counts', new Set(['devices', 'zones'])],
+		['homey', new Set(['id', 'tier', 'version'])],
+		['readEndpoints', new Set(['devices', 'systemInfo', 'zones'])],
+		['transport', new Set(['port', 'protocol'])],
+	]);
+	const isFixedCaptureKey = (key: string, path: string[]): boolean => {
+		if (path.length === 0) {
+			return fixedCaptureRootKeys.has(key);
+		}
+
+		if (path.length === 1 && path[0] === 'metadata') {
+			return fixedMetadataKeys.has(key);
+		}
+
+		if (path.length === 2 && path[0] === 'metadata') {
+			return fixedMetadataNestedKeys.get(path[1])?.has(key) ?? false;
+		}
+
+		return isStructuralRecordPath(path) && fixedPayloadKeys.has(key);
+	};
+
+	if (expectedHost !== undefined) {
+		const escapedHost = escapeRegularExpression(expectedHost);
+		const hostTokenPattern = new RegExp(`(^|[^A-Za-z0-9.-])${escapedHost}(?=$|[^A-Za-z0-9.-])`, 'i');
+		const globallyIdentifiableHost = expectedHost.includes('.') || expectedHost.includes(':');
+		const hostLeakPattern = globallyIdentifiableHost ? new RegExp(escapedHost, 'i') : hostTokenPattern;
+		let hostLeakFound = false;
+		const inspectEndpointValues = (value: unknown, key = '', path: string[] = []): void => {
+			if (typeof value === 'string') {
+				const endpointShaped =
+					globallyIdentifiableHost ||
+					isAddressKey(key) ||
+					ENDPOINT_KEY_PATTERN.test(key) ||
+					value.includes('://') ||
+					new RegExp(`${escapedHost}:\\d+`, 'i').test(value);
+
+				hostLeakFound ||= endpointShaped && hostLeakPattern.test(value);
+			} else if (Array.isArray(value)) {
+				value.forEach((item) => inspectEndpointValues(item, key, path));
+			} else if (isRecord(value)) {
+				const nextPath = key === '' ? path : [...path, key];
+
+				Object.entries(value).forEach(([nestedKey, nestedValue]) => {
+					const endpointShapedKey =
+						isAddressKey(nestedKey) ||
+						ENDPOINT_KEY_PATTERN.test(nestedKey) ||
+						nestedKey.includes('://') ||
+						new RegExp(`${escapedHost}:\\d+`, 'i').test(nestedKey);
+
+					const exactDynamicHostKey =
+						!globallyIdentifiableHost &&
+						nestedKey.toLowerCase() === expectedHost.toLowerCase() &&
+						!isFixedCaptureKey(nestedKey, nextPath);
+
+					hostLeakFound ||=
+						exactDynamicHostKey || ((globallyIdentifiableHost || endpointShapedKey) && hostLeakPattern.test(nestedKey));
+					inspectEndpointValues(nestedValue, nestedKey, nextPath);
+				});
+			}
+		};
+
+		inspectEndpointValues(capture);
+
+		if (hostLeakFound) {
+			throw new Error('Sanitized Homey capture still contains the expected host in a value');
+		}
+	}
+
+	const dynamicKeyContainsPrivateTerm = (key: string, term: string): boolean =>
+		key.toLowerCase().includes(term.toLowerCase());
 	const inspectPrivateTermValues = (value: unknown, key: string, path: string[], term: string): boolean => {
 		if (typeof value === 'string') {
 			const generatedValue = generatedPseudonymPattern.test(value);

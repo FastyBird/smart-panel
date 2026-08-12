@@ -287,6 +287,15 @@ describe('Homey SHS compatibility probe', () => {
 			id: 'device-000002',
 			name: 'device-label-000002',
 		});
+		const privateTermCollisionDevices = sanitizeHomeyDevices(
+			{
+				'private-device-id': { id: 'private-device-id', name: 'my device-000001 room' },
+			},
+			['device-000001'],
+		);
+
+		expect(Object.keys(privateTermCollisionDevices)).toEqual(['device-000002']);
+		expect(JSON.stringify(privateTermCollisionDevices)).not.toContain('device-000001');
 	});
 
 	it('uses unauthenticated ping, bounded read-only calls, and blocks redirects', async () => {
@@ -386,6 +395,10 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() => assertHomeyCaptureSafe(capture, [], [], 'homey.local')).toThrow('expected host in a value');
 
 		capture.systemInfo = { aliases: { 'http://homey:4859': true } };
+
+		expect(() => assertHomeyCaptureSafe(capture, [], [], 'homey')).toThrow('expected host in a value');
+
+		capture.systemInfo = { aliases: { homey: true } };
 
 		expect(() => assertHomeyCaptureSafe(capture, [], [], 'homey')).toThrow('expected host in a value');
 	});
