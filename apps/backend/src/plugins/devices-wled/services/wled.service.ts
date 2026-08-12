@@ -497,13 +497,17 @@ export class WledService extends BaseManagedPluginService {
 		return {
 			mdnsEnabled: this.config.mdns.enabled,
 			discoveryRunning: this.mdnsDiscoverer.isDiscoveryRunning(),
-			devices: discoveredDevices.map((device) => ({
-				host: device.host,
-				name: device.name,
-				mac: device.mac ?? null,
-				port: device.port,
-				adoptedDeviceId: this.findExistingDevice(databaseDevices, device.host, device.mac)?.id ?? null,
-			})),
+			devices: discoveredDevices.map((device) => {
+				const existingDevice = this.findExistingDevice(databaseDevices, device.host, device.mac);
+
+				return {
+					host: device.host,
+					name: existingDevice?.name ?? device.name,
+					mac: device.mac ?? null,
+					port: device.port,
+					adoptedDeviceId: existingDevice?.id ?? null,
+				};
+			}),
 		};
 	}
 
@@ -511,13 +515,14 @@ export class WledService extends BaseManagedPluginService {
 		const normalizedHost = this.normalizeHost(host);
 		const context = await this.wledAdapter.probe(normalizedHost, this.config.timeouts.connectionTimeout);
 		const databaseDevices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
+		const existingDevice = this.findExistingDevice(databaseDevices, normalizedHost, context.info.mac);
 
 		return {
 			host: normalizedHost,
-			name: context.info.name || `WLED ${context.info.mac}`,
+			name: existingDevice?.name || context.info.name || `WLED ${context.info.mac}`,
 			mac: context.info.mac,
 			port: this.portFromHost(normalizedHost),
-			adoptedDeviceId: this.findExistingDevice(databaseDevices, normalizedHost, context.info.mac)?.id ?? null,
+			adoptedDeviceId: existingDevice?.id ?? null,
 		};
 	}
 

@@ -535,6 +535,24 @@ describe('WledService', () => {
 			expect(wledAdapter.connectWithContext).not.toHaveBeenCalled();
 		});
 
+		it('preserves an adopted device name when probing its current MAC', async () => {
+			const existingDevice = {
+				...createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.50'),
+				name: 'Administrator name',
+			} as WledDeviceEntity;
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			devicesService.findAll.mockResolvedValue([existingDevice]);
+
+			const result = await service.probeDevice('192.168.1.100');
+
+			expect(result).toEqual(
+				expect.objectContaining({
+					name: 'Administrator name',
+					adoptedDeviceId: 'device-1',
+				}),
+			);
+		});
+
 		it('brackets a bare IPv6 host before probing', async () => {
 			wledAdapter.probe.mockResolvedValue(mockContext);
 			devicesService.findAll.mockResolvedValue([]);
@@ -786,6 +804,26 @@ describe('WledService', () => {
 			const inventory = await service.getDiscoveryInventory();
 
 			expect(inventory.devices[0].adoptedDeviceId).toBe('device-1');
+		});
+
+		it('preserves an adopted device name in discovery inventory', async () => {
+			const existingDevice = {
+				...createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100'),
+				name: 'Administrator name',
+			} as WledDeviceEntity;
+			mdnsDiscoverer.getDiscoveredDevices.mockReturnValue([
+				{ host: '192.168.1.200', name: 'Advertised name', mac: 'AA:BB:CC:DD:EE:FF', port: 80 },
+			]);
+			devicesService.findAll.mockResolvedValue([existingDevice]);
+
+			const inventory = await service.getDiscoveryInventory();
+
+			expect(inventory.devices[0]).toEqual(
+				expect.objectContaining({
+					name: 'Administrator name',
+					adoptedDeviceId: 'device-1',
+				}),
+			);
 		});
 
 		it('does not match a reused hostname when the probed MAC belongs to another device', async () => {
