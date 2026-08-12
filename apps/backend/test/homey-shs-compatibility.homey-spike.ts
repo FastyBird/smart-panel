@@ -98,6 +98,10 @@ describe('Homey SHS compatibility probe', () => {
 					},
 					data: {
 						node: 123_456_789,
+						nodes: {
+							'opaque-device-id': { reachable: true },
+							'123456789': { reachable: false },
+						},
 						device_id: 'private-driver-device-id',
 						hardware_id: 'private-hardware-id',
 						accountId: 'private-account-id',
@@ -134,6 +138,11 @@ describe('Homey SHS compatibility probe', () => {
 			},
 		});
 		expect((devices[sanitizedDeviceId] as { capabilities: string[] }).capabilities).toContain('homealarm_state');
+		const sanitizedNodes = (devices[sanitizedDeviceId] as { data: { nodes: Record<string, unknown> } }).data.nodes;
+
+		expect(Object.keys(sanitizedNodes)).toHaveLength(2);
+		expect(Object.keys(sanitizedNodes).every((key) => /^id-/.test(key))).toBe(true);
+		expect(Object.values(sanitizedNodes)).toEqual(expect.arrayContaining([{ reachable: true }, { reachable: false }]));
 		expect(() => assertHomeyCaptureSafe({ metadata: {}, systemInfo: {}, zones, devices }, [], ['home'])).not.toThrow();
 
 		expect(serialized).not.toContain('Private Room');
@@ -146,6 +155,7 @@ describe('Homey SHS compatibility probe', () => {
 		expect(serialized).not.toContain('::ffff:192.168.1.1');
 		expect(serialized).not.toContain('private-bridge-id');
 		expect(serialized).not.toContain('private-driver-device-id');
+		expect(serialized).not.toContain('opaque-device-id');
 		expect(serialized).not.toContain('private-hardware-id');
 		expect(serialized).not.toContain('private-account-id');
 		expect(serialized).not.toContain('private-capability-account-id');
@@ -365,6 +375,10 @@ describe('Homey SHS compatibility probe', () => {
 
 			expect(() => assertHomeyCaptureSafe(unsafeCapture, [], ['Private'])).toThrow('private term');
 		}
+
+		unsafeCapture.systemInfo = { aliases: { deviceId: true } };
+
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [], ['device'])).toThrow('private term');
 
 		unsafeCapture.systemInfo = { leaked: 'hpat_abcdefghijklmnop1234' };
 

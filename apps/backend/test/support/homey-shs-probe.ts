@@ -240,6 +240,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 
 	if (
 		value !== null &&
+		!isRecord(value) &&
 		!capabilityMapEntry &&
 		!isCapabilityIdentifier(key, context.path) &&
 		(REFERENCE_KEY_PATTERN.test(key) || IDENTIFIER_KEY_PATTERN.test(key))
@@ -291,10 +292,13 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 
 	const nextPath = [...context.path, key];
 	const preserveKeys = isCapabilityMap(nextPath);
+	const identifierMapEntry = UUID_PATTERN.test(key) || /^\d+$/.test(key) || IDENTIFIER_KEY_PATTERN.test(key);
+	const nestedDriverMap = isDriverMetadata(context.path) && !['data', 'settings'].includes(key) && !identifierMapEntry;
 
 	return Object.fromEntries(
 		Object.entries(value).map(([nestedKey, nestedValue]) => {
-			const safeKey = UUID_PATTERN.test(nestedKey) && !preserveKeys ? pseudonym('id', nestedKey) : nestedKey;
+			const privateMapKey = !preserveKeys && (nestedDriverMap || UUID_PATTERN.test(nestedKey));
+			const safeKey = privateMapKey ? pseudonym('id', nestedKey) : nestedKey;
 
 			return [safeKey, sanitizeValue(nestedValue, nestedKey, { ...context, path: nextPath })];
 		}),
@@ -620,14 +624,13 @@ export const assertHomeyCaptureSafe = (
 		if (isRecord(value)) {
 			const nextPath = [...path, key];
 			const preserveKeys = isCapabilityMap(nextPath);
+			const resourceRecord = Object.hasOwn(value, 'id');
 
 			return Object.entries(value).some(([nestedKey, nestedValue]) => {
 				const generatedKey = generatedPseudonymPattern.test(nestedKey);
+				const structuralKey = resourceRecord && fixedPayloadKeys.has(nestedKey);
 				const privateDynamicKey =
-					!preserveKeys &&
-					!generatedKey &&
-					!fixedPayloadKeys.has(nestedKey) &&
-					dynamicKeyContainsPrivateTerm(nestedKey, term);
+					!preserveKeys && !generatedKey && !structuralKey && dynamicKeyContainsPrivateTerm(nestedKey, term);
 
 				return privateDynamicKey || inspectPrivateTermValues(nestedValue, nestedKey, nextPath, term);
 			});
