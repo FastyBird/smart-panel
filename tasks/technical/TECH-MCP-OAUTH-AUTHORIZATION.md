@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 6 lifecycle, refresh, and invalidation race coverage implemented
+Status: in progress — Phase 6 security-profile E2E, audit E2E, external-host, and wire-level gates remain
 
 ## 1. Business goal
 
@@ -86,7 +86,7 @@ upgrade consequences.
       explicit registration policy; otherwise the supported registration path is documented.
 - [x] Trusted reverse-proxy behavior is explicit and tested; forwarded headers are ignored unless the proxy is
       configured as trusted.
-- [ ] Static bearer clients continue to work for trusted LAN/VPN deployments until a separately documented removal or
+- [x] Static bearer clients continue to work for trusted LAN/VPN deployments until a separately documented removal or
       migration policy is approved.
 - [ ] E2E tests cover discovery, consent, PKCE success/failure, redirect validation, scope reduction, expiry, refresh,
       concurrent refresh replay, revocation/listen and all invalidation/artifact-commit races, runtime-gated OAuth

@@ -3,9 +3,17 @@ import type { Adapter } from 'oidc-provider';
 import { DataSource } from 'typeorm';
 
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { ConfigService as NestConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtService } from '@nestjs/jwt';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 
+import { TokenOwnerType } from '../src/modules/auth/auth.constants';
+import { LongLiveTokenEntity } from '../src/modules/auth/entities/auth.entity';
+import { AuthGuard } from '../src/modules/auth/guards/auth.guard';
+import { TokensService } from '../src/modules/auth/services/tokens.service';
 import { hashToken } from '../src/modules/auth/utils/token.utils';
 import { ConfigService } from '../src/modules/config/services/config.service';
 import { ModuleConfigMutationRegistryService } from '../src/modules/config/services/module-config-mutation-registry.service';
@@ -40,6 +48,7 @@ import { createMcpOAuthProviderAdapter } from '../src/modules/mcp/oauth/mcp-oaut
 import { McpOAuthProviderFactory, McpOAuthProviderRuntime } from '../src/modules/mcp/oauth/mcp-oauth-provider.factory';
 import { McpOAuthPublicUrls } from '../src/modules/mcp/oauth/mcp-oauth.types';
 import { McpAuditService } from '../src/modules/mcp/services/mcp-audit.service';
+import { McpClientService } from '../src/modules/mcp/services/mcp-client.service';
 import { McpInstallationService } from '../src/modules/mcp/services/mcp-installation.service';
 import { McpOAuthClientService } from '../src/modules/mcp/services/mcp-oauth-client.service';
 import { McpOAuthGlobalInvalidationService } from '../src/modules/mcp/services/mcp-oauth-global-invalidation.service';
@@ -55,10 +64,11 @@ import { McpOAuthResourceServerService } from '../src/modules/mcp/services/mcp-o
 import { McpOAuthRouteGateService } from '../src/modules/mcp/services/mcp-oauth-route-gate.service';
 import { McpOAuthRuntimeService } from '../src/modules/mcp/services/mcp-oauth-runtime.service';
 import { McpOAuthSwitchOffService } from '../src/modules/mcp/services/mcp-oauth-switch-off.service';
-import { McpPolicyRequest, McpPolicyService } from '../src/modules/mcp/services/mcp-policy.service';
+import { McpPolicyService } from '../src/modules/mcp/services/mcp-policy.service';
 import { McpServerService } from '../src/modules/mcp/services/mcp-server.service';
 import { McpSubscriptionRegistryService } from '../src/modules/mcp/services/mcp-subscription-registry.service';
 import { UserEntity } from '../src/modules/users/entities/users.entity';
+import { UsersService } from '../src/modules/users/services/users.service';
 import { UserLanguage, UserRole } from '../src/modules/users/users.constants';
 
 const urls: McpOAuthPublicUrls = {
@@ -435,48 +445,73 @@ async function openWireSubscriptions(
 	oauthAccessToken: string,
 ): Promise<WireSubscriptions> {
 	const staticClientId = 'static-lifecycle-client';
-	const staticToken = 'static-lifecycle-token';
+	const staticTokenId = 'static-lifecycle-token-id';
+	const installationId = 'artifact-lifecycle-installation';
+	const staticAudience = `urn:fastybird:smart-panel:${installationId}:mcp`;
+	const jwtService = new JwtService({ secret: 'static-lifecycle-test-secret' });
+	const staticToken = await jwtService.signAsync(
+		{
+			sub: staticClientId,
+			type: TokenOwnerType.MCP,
+		},
+		{ audience: staticAudience, expiresIn: 60 },
+	);
+	const storedStaticToken = Object.assign(new LongLiveTokenEntity(), {
+		id: staticTokenId,
+		hashedToken: hashToken(staticToken),
+		ownerType: TokenOwnerType.MCP,
+		ownerId: staticClientId,
+		revoked: false,
+		expiresAt: new Date(Date.now() + 60_000),
+	});
+	const storedStaticClient = Object.assign(new McpClientEntity(), {
+		id: staticClientId,
+		name: 'Static lifecycle client',
+		enabled: true,
+		capabilities: [McpCapability.READ],
+		tokenId: staticTokenId,
+		token: storedStaticToken,
+	});
+	const tokensService = {
+		findOneByHashedToken: jest.fn((hashedToken: string) =>
+			Promise.resolve(hashedToken === storedStaticToken.hashedToken ? storedStaticToken : null),
+		),
+		updateLastUsedAt: jest.fn(() => Promise.resolve()),
+	};
+	const clientService = {
+		findActiveByToken: jest.fn((tokenId: string, clientId: string) =>
+			Promise.resolve(tokenId === staticTokenId && clientId === staticClientId ? storedStaticClient : null),
+		),
+		getEffectiveCapabilities: jest.fn(() => [McpCapability.READ]),
+	};
+	const installationService = {
+		getAudience: jest.fn(() => Promise.resolve(staticAudience)),
+		getInstallationId: jest.fn(() => Promise.resolve(installationId)),
+	};
+	const configService = { getModuleConfig: jest.fn(() => config) };
 	const moduleRef = await Test.createTestingModule({
 		controllers: [McpController],
 		providers: [
+			{ provide: APP_GUARD, useClass: AuthGuard },
+			{ provide: CACHE_MANAGER, useValue: {} },
+			{ provide: ConfigService, useValue: configService },
+			{ provide: NestConfigService, useValue: { get: jest.fn(() => 'http://localhost') } },
+			{ provide: JwtService, useValue: jwtService },
+			{ provide: TokensService, useValue: tokensService },
+			{ provide: UsersService, useValue: { findOne: jest.fn() } },
 			{ provide: McpAuditService, useValue: auditService },
+			{ provide: McpClientService, useValue: clientService },
+			{ provide: McpInstallationService, useValue: installationService },
 			{ provide: McpOAuthProxyPolicyService, useValue: { assertForwardedHeadersTrusted: jest.fn() } },
 			{ provide: McpOAuthResourceServerService, useValue: resourceServer },
 			{ provide: McpOAuthRouteGateService, useValue: routeGate },
-			{ provide: McpPolicyService, useValue: { validateOAuthRequestOrigin: jest.fn() } },
+			McpClientGuard,
+			McpPolicyService,
 			McpServerService,
 			{ provide: McpSubscriptionRegistryService, useValue: subscriptions },
 			{ provide: MCP_CATALOG_REGISTRAR, useValue: { register: () => undefined } },
 		],
-	})
-		.overrideGuard(McpClientGuard)
-		.useValue({
-			canActivate: (context: { switchToHttp: () => { getRequest: () => McpPolicyRequest } }): boolean => {
-				const request = context.switchToHttp().getRequest();
-
-				if (request.headers.authorization !== `Bearer ${staticToken}`) return true;
-
-				request.mcpPolicy = {
-					client: {
-						id: staticClientId,
-						name: 'Static lifecycle client',
-						enabled: true,
-						capabilities: [McpCapability.READ],
-						tokenId: staticToken,
-						token: { id: staticToken, revoked: false, expiresAt: new Date(Date.now() + 60_000) },
-					} as McpClientEntity,
-					config,
-					clientPolicyRevision: 0,
-					effectiveCapabilities: [McpCapability.READ],
-					installationId: 'artifact-lifecycle-installation',
-					policyRevision: 0,
-					tokenId: staticToken,
-				};
-
-				return true;
-			},
-		})
-		.compile();
+	}).compile();
 	const app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
 
 	await app.listen(0, '127.0.0.1');
@@ -499,6 +534,8 @@ async function openWireSubscriptions(
 	try {
 		await staticClient.connect(staticTransport);
 		await oauthClient.connect(oauthTransport);
+		expect(tokensService.findOneByHashedToken).toHaveBeenCalledWith(hashToken(staticToken));
+		expect(clientService.findActiveByToken).toHaveBeenCalledWith(staticTokenId, staticClientId);
 		const staticSubscription = await staticClient.listen({ toolsListChanged: true });
 		const oauthSubscription = await oauthClient.listen({ toolsListChanged: true });
 
