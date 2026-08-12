@@ -28,6 +28,7 @@ import {
 import { WledConfigModel } from '../models/config.model';
 import { WledAdoptionResultModel, WledDiscoveredDeviceModel, WledDiscoveryModel } from '../models/wled-discovery.model';
 
+import { WledAdoptionSnapshotService, WledAdoptionStructureSnapshot } from './adoption-snapshot.service';
 import { WledDeviceMapperService } from './device-mapper.service';
 import { WledClientAdapterService } from './wled-client-adapter.service';
 import { WledMdnsDiscovererService } from './wled-mdns-discoverer.service';
@@ -54,6 +55,7 @@ export class WledService extends BaseManagedPluginService {
 		private readonly configService: ConfigService,
 		private readonly wledAdapter: WledClientAdapterService,
 		private readonly deviceMapper: WledDeviceMapperService,
+		private readonly adoptionSnapshot: WledAdoptionSnapshotService,
 		private readonly devicesService: DevicesService,
 		private readonly mdnsDiscoverer: WledMdnsDiscovererService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
@@ -726,7 +728,9 @@ export class WledService extends BaseManagedPluginService {
 		const retiredDeviceIds = new Set<string>();
 		const failedDependencyGroups = new Map<Set<number>, string>();
 		const createdDeviceIdsByPlan = new Map<number, string>();
+		const structureSnapshotsByPlan = new Map<number, WledAdoptionStructureSnapshot>();
 		const retiredStaleOwnersByDependencyGroup = new Map<Set<number>, Map<string, WledDeviceEntity>>();
+		const disconnectedStaleOwnerIdsByDependencyGroup = new Map<Set<number>, Set<string>>();
 
 		for (const { index, request, host, context, existingDevice, identifier } of plans) {
 			if (blockedPlanIndices.has(index)) {
@@ -752,6 +756,9 @@ export class WledService extends BaseManagedPluginService {
 			const disconnectedStaleOwners: WledDeviceEntity[] = [];
 
 			try {
+				if (existingDevice) {
+					structureSnapshotsByPlan.set(index, await this.adoptionSnapshot.capture(existingDevice.id));
+				}
 				if (existingDevice && existingDevice.identifier !== identifier) {
 					await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(existingDevice.id, {
 						type: DEVICES_WLED_TYPE,
@@ -809,6 +816,12 @@ export class WledService extends BaseManagedPluginService {
 							this.wledAdapter.disconnect(staleHostOwner.hostname, false);
 							if (retiringHostOwners.some(({ id }) => id === staleHostOwner.id)) {
 								disconnectedStaleOwners.push(staleHostOwner);
+								if (dependencyGroup) {
+									const disconnectedIds =
+										disconnectedStaleOwnerIdsByDependencyGroup.get(dependencyGroup) ?? new Set<string>();
+									disconnectedIds.add(staleHostOwner.id);
+									disconnectedStaleOwnerIdsByDependencyGroup.set(dependencyGroup, disconnectedIds);
+								}
 							}
 						}
 					}
@@ -883,6 +896,12 @@ export class WledService extends BaseManagedPluginService {
 					for (const dependentPlan of dependentPlans) {
 						if (dependentPlan.existingDevice) {
 							const original = dependentPlan.existingDevice;
+							const structureSnapshot = structureSnapshotsByPlan.get(dependentPlan.index);
+							if (structureSnapshot) {
+								await this.tryRollback(`restore device structure ${original.id}`, () =>
+									this.adoptionSnapshot.restore(structureSnapshot),
+								);
+							}
 							await this.tryRollback(`restore device ${original.id}`, () =>
 								this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(original.id, {
 									type: DEVICES_WLED_TYPE,
@@ -935,9 +954,11 @@ export class WledService extends BaseManagedPluginService {
 							}),
 						);
 						retiredDeviceIds.delete(staleHostOwner.id);
-						await this.tryRollback(`reconnect stale owner ${staleHostOwner.id}`, () =>
-							this.restoreDeviceConnection(staleHostOwner),
-						);
+						if (disconnectedStaleOwnerIdsByDependencyGroup.get(dependencyGroup)?.has(staleHostOwner.id)) {
+							await this.tryRollback(`reconnect stale owner ${staleHostOwner.id}`, () =>
+								this.restoreDeviceConnection(staleHostOwner),
+							);
+						}
 					}
 				} else {
 					const attemptedRegistration = this.wledAdapter.getDevice(host);
@@ -957,6 +978,12 @@ export class WledService extends BaseManagedPluginService {
 						));
 
 					if (existingDevice) {
+						const structureSnapshot = structureSnapshotsByPlan.get(index);
+						if (structureSnapshot) {
+							await this.tryRollback(`restore device structure ${existingDevice.id}`, () =>
+								this.adoptionSnapshot.restore(structureSnapshot),
+							);
+						}
 						await this.tryRollback(`restore device ${existingDevice.id}`, () =>
 							this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(existingDevice.id, {
 								type: DEVICES_WLED_TYPE,

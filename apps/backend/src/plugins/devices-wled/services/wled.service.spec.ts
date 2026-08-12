@@ -28,6 +28,7 @@ import {
 } from '../interfaces/wled.interface';
 import { WledConfigModel } from '../models/config.model';
 
+import { WledAdoptionSnapshotService } from './adoption-snapshot.service';
 import { WledDeviceMapperService } from './device-mapper.service';
 import { WledClientAdapterService } from './wled-client-adapter.service';
 import { WledMdnsDiscovererService } from './wled-mdns-discoverer.service';
@@ -38,6 +39,7 @@ describe('WledService', () => {
 	let configService: jest.Mocked<ConfigService>;
 	let wledAdapter: jest.Mocked<WledClientAdapterService>;
 	let deviceMapper: jest.Mocked<WledDeviceMapperService>;
+	let adoptionSnapshot: jest.Mocked<WledAdoptionSnapshotService>;
 	let devicesService: jest.Mocked<DevicesService>;
 	let mdnsDiscoverer: jest.Mocked<WledMdnsDiscovererService>;
 	let deviceConnectivityService: jest.Mocked<DeviceConnectivityService>;
@@ -142,6 +144,19 @@ describe('WledService', () => {
 					},
 				},
 				{
+					provide: WledAdoptionSnapshotService,
+					useValue: {
+						capture: jest.fn().mockImplementation((deviceId: string) =>
+							Promise.resolve({
+								deviceId,
+								channels: [],
+								properties: [],
+							}),
+						),
+						restore: jest.fn(),
+					},
+				},
+				{
 					provide: DevicesService,
 					useValue: {
 						findAll: jest.fn().mockResolvedValue([]),
@@ -183,6 +198,7 @@ describe('WledService', () => {
 		configService = module.get(ConfigService);
 		wledAdapter = module.get(WledClientAdapterService);
 		deviceMapper = module.get(WledDeviceMapperService);
+		adoptionSnapshot = module.get(WledAdoptionSnapshotService);
 		devicesService = module.get(DevicesService);
 		mdnsDiscoverer = module.get(WledMdnsDiscovererService);
 		deviceConnectivityService = module.get(DeviceConnectivityService);
@@ -866,6 +882,7 @@ describe('WledService', () => {
 
 			expect(wledAdapter.disconnect).not.toHaveBeenCalled();
 			expect(deviceConnectivityService.setConnectionState).not.toHaveBeenCalled();
+			expect(adoptionSnapshot.restore).toHaveBeenCalledWith(expect.objectContaining({ deviceId: 'device-1' }));
 			expect(results).toEqual([expect.objectContaining({ status: 'failed', error: 'Provisioning failed' })]);
 		});
 
@@ -1046,6 +1063,7 @@ describe('WledService', () => {
 			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith('device-2', {
 				state: ConnectionState.CONNECTED,
 			});
+			expect(adoptionSnapshot.restore).toHaveBeenCalledTimes(2);
 		});
 
 		it('does not retire a selected address owner when its swap probe fails', async () => {
@@ -1628,7 +1646,7 @@ describe('WledService', () => {
 				enabled: true,
 				hostname: '192.168.1.200',
 			});
-			expect(wledAdapter.connect).toHaveBeenCalledWith('192.168.1.200', 'wled-778899aabbcc', 5000);
+			expect(wledAdapter.connect).not.toHaveBeenCalledWith('192.168.1.200', 'wled-778899aabbcc', 5000);
 		});
 
 		it('upgrades a legacy same-host device without an identifier before provisioning', async () => {
