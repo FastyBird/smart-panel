@@ -547,11 +547,7 @@ describe('WledService', () => {
 			expect(wledAdapter.probe).not.toHaveBeenCalled();
 		});
 
-		it('should reconcile a known MAC at its newly advertised endpoint', async () => {
-			configService.getPluginConfig.mockReturnValue({
-				...mockConfig,
-				mdns: { ...(mockConfig as WledConfigModel).mdns, autoAdd: true },
-			} as WledConfigModel);
+		it('should reconcile a known MAC at its newly advertised endpoint when auto-add is disabled', async () => {
 			const existingDevice = {
 				...createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100'),
 				name: 'Administrator name',
@@ -833,6 +829,32 @@ describe('WledService', () => {
 				undefined,
 			);
 			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-1' })]);
+		});
+
+		it('does not reuse a moved legacy short-MAC row for a different full MAC', async () => {
+			const legacyDevice = createMockDevice('device-legacy', 'wled-aabbcc', '192.168.1.100');
+			const collidingContext = {
+				...mockContext,
+				info: { ...mockContext.info, mac: '11:22:33:AA:BB:CC' },
+			};
+			const createdDevice = createMockDevice('device-new', 'wled-112233aabbcc', '192.168.1.200');
+			wledAdapter.probe.mockResolvedValue(collidingContext);
+			devicesService.findAll.mockResolvedValue([legacyDevice]);
+			deviceMapper.mapDevice.mockResolvedValue(createdDevice);
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.200', name: 'Different strip', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(
+				'192.168.1.200',
+				collidingContext,
+				'Different strip',
+				'wled-112233aabbcc',
+				undefined,
+				undefined,
+			);
+			expect(results).toEqual([expect.objectContaining({ status: 'created', deviceId: 'device-new' })]);
 		});
 
 		it('updates an adopted MAC when it is discovered at a new host', async () => {

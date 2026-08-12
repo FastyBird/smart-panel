@@ -459,11 +459,7 @@ export class WledService extends BaseManagedPluginService {
 
 			// Reconcile a known MAC at a new endpoint through the same guarded
 			// provisioning path as administrator adoption.
-			if (
-				existingDevice.hostname &&
-				!this.endpointsEquivalent(existingDevice.hostname, endpoint) &&
-				this.config.mdns.autoAdd
-			) {
+			if (existingDevice.hostname && !this.endpointsEquivalent(existingDevice.hostname, endpoint)) {
 				await this.connectAndMapDiscoveredDevice(device);
 			} else if (existingDevice.enabled && !this.wledAdapter.isConnected(endpoint)) {
 				this.logger.debug(`Connecting to existing device at ${endpoint}`);
@@ -1155,7 +1151,12 @@ export class WledService extends BaseManagedPluginService {
 
 				return (
 					devices.find((device) => device.identifier === canonicalIdentifier) ??
-					devices.find((device) => device.identifier === legacyIdentifier) ??
+					devices.find(
+						(device) =>
+							device.identifier === legacyIdentifier &&
+							device.hostname !== null &&
+							this.endpointsEquivalent(device.hostname, host),
+					) ??
 					devices.find(
 						(device) =>
 							device.identifier !== null &&
