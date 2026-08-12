@@ -496,6 +496,23 @@ describe('WledService', () => {
 			expect(mdnsDiscoverer.forgetDiscoveredDevice).toHaveBeenCalledWith('192.168.1.200');
 		});
 
+		it('should make a thrown auto-add setup failure retryable', async () => {
+			configService.getPluginConfig.mockReturnValue({
+				...mockConfig,
+				mdns: { ...(mockConfig as WledConfigModel).mdns, autoAdd: true },
+			} as WledConfigModel);
+			const discoveredDevice: WledMdnsDiscoveredDevice = {
+				name: 'Unknown WLED',
+				host: '192.168.1.200',
+				port: 80,
+			};
+			devicesService.findAll.mockResolvedValueOnce([]).mockRejectedValueOnce(new Error('Database unavailable'));
+
+			await mdnsCallbacks.onDeviceDiscovered?.(discoveredDevice);
+
+			expect(mdnsDiscoverer.forgetDiscoveredDevice).toHaveBeenCalledWith('192.168.1.200');
+		});
+
 		it('should reconcile a known MAC at its newly advertised endpoint', async () => {
 			configService.getPluginConfig.mockReturnValue({
 				...mockConfig,
@@ -905,6 +922,10 @@ describe('WledService', () => {
 				info: { ...mockContext.info, mac: '11:22:33:44:55:66' },
 			};
 			wledAdapter.probe.mockResolvedValueOnce(mockContext).mockResolvedValueOnce(secondContext);
+			wledAdapter.getDevice.mockImplementation((host) => {
+				const device = [firstDevice, secondDevice].find(({ hostname }) => hostname === host);
+				return device ? ({ host, identifier: device.identifier, connected: true } as RegisteredWledDevice) : null;
+			});
 			devicesService.findAll.mockResolvedValue([firstDevice, secondDevice]);
 			deviceMapper.mapDevice
 				.mockResolvedValueOnce({ ...firstDevice, hostname: '192.168.1.200' } as WledDeviceEntity)
@@ -1351,6 +1372,11 @@ describe('WledService', () => {
 				info: { ...mockContext.info, mac: '11:22:33:44:55:66' },
 			};
 			wledAdapter.probe.mockResolvedValue(replacementContext);
+			wledAdapter.getDevice.mockReturnValue({
+				host: '192.168.1.100',
+				identifier: 'wled-aabbccddeeff',
+				connected: true,
+			} as RegisteredWledDevice);
 			devicesService.findAll.mockResolvedValue([staleDevice]);
 			deviceMapper.mapDevice.mockResolvedValue(createMockDevice('device-2', 'wled-112233445566', '192.168.1.100'));
 
@@ -1381,6 +1407,38 @@ describe('WledService', () => {
 			expect(results).toEqual([expect.objectContaining({ status: 'created', deviceId: 'device-2' })]);
 		});
 
+		it('disconnects a stale owner using its explicit default-port registration', async () => {
+			const staleDevice = createMockDevice('device-1', 'wled-aabbccddeeff', 'wled.local:80');
+			const replacementContext = {
+				...mockContext,
+				info: { ...mockContext.info, mac: '11:22:33:44:55:66' },
+			};
+			wledAdapter.probe.mockResolvedValue(replacementContext);
+			wledAdapter.getDevice.mockImplementation((host) =>
+				host === 'wled.local:80'
+					? ({
+							host,
+							identifier: 'wled-aabbccddeeff',
+							connected: true,
+						} as RegisteredWledDevice)
+					: null,
+			);
+			devicesService.findAll.mockResolvedValue([staleDevice]);
+			deviceMapper.mapDevice.mockResolvedValue(createMockDevice('device-2', 'wled-112233445566', 'wled.local'));
+
+			const results = await service.adoptDevices([
+				{ host: 'wled.local', name: 'Replacement strip', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(wledAdapter.disconnect).toHaveBeenCalledWith('wled.local:80', false);
+			expect(devicesService.update).toHaveBeenCalledWith('device-1', {
+				type: DEVICES_WLED_TYPE,
+				enabled: false,
+				hostname: null,
+			});
+			expect(results).toEqual([expect.objectContaining({ status: 'created', deviceId: 'device-2' })]);
+		});
+
 		it('does not retire a stale hostname owner when replacement provisioning fails', async () => {
 			const staleDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
 			const replacementContext = {
@@ -1388,6 +1446,11 @@ describe('WledService', () => {
 				info: { ...mockContext.info, mac: '11:22:33:44:55:66' },
 			};
 			wledAdapter.probe.mockResolvedValue(replacementContext);
+			wledAdapter.getDevice.mockReturnValue({
+				host: '192.168.1.100',
+				identifier: 'wled-aabbccddeeff',
+				connected: true,
+			} as RegisteredWledDevice);
 			devicesService.findAll.mockResolvedValue([staleDevice]);
 			deviceMapper.mapDevice.mockRejectedValue(new Error('Provisioning failed'));
 
@@ -1408,6 +1471,11 @@ describe('WledService', () => {
 				info: { ...mockContext.info, mac: '11:22:33:44:55:66' },
 			};
 			wledAdapter.probe.mockResolvedValue(replacementContext);
+			wledAdapter.getDevice.mockReturnValue({
+				host: '192.168.1.100',
+				identifier: 'wled-aabbccddeeff',
+				connected: true,
+			} as RegisteredWledDevice);
 			devicesService.findAll.mockResolvedValue([staleDevice]);
 			deviceMapper.mapDevice.mockResolvedValue(replacementDevice);
 			devicesService.update.mockRejectedValueOnce(new Error('Retirement failed'));
@@ -1436,6 +1504,11 @@ describe('WledService', () => {
 				info: { ...mockContext.info, mac: '11:22:33:44:55:66' },
 			};
 			wledAdapter.probe.mockResolvedValue(replacementContext);
+			wledAdapter.getDevice.mockReturnValue({
+				host: '192.168.1.100',
+				identifier: 'wled-aabbccddeeff',
+				connected: true,
+			} as RegisteredWledDevice);
 			devicesService.findAll.mockResolvedValue([staleDevice]);
 			deviceMapper.mapDevice.mockResolvedValue(replacementDevice);
 			devicesService.update.mockResolvedValue(staleDevice);

@@ -500,6 +500,7 @@ export class WledService extends BaseManagedPluginService {
 					});
 				}
 			} catch (error) {
+				this.mdnsDiscoverer.forgetDiscoveredDevice(device.host);
 				this.logger.error(`Failed to connect to discovered device at ${device.host}`, {
 					message: error instanceof Error ? error.message : String(error),
 				});
@@ -781,14 +782,24 @@ export class WledService extends BaseManagedPluginService {
 				if (dependencyGroup && retiringHostOwners.length > 0) {
 					const groupOwners =
 						retiredStaleOwnersByDependencyGroup.get(dependencyGroup) ?? new Map<string, WledDeviceEntity>();
-					for (const staleHostOwner of retiringHostOwners) {
+					for (const staleHostOwner of staleHostOwners) {
 						groupOwners.set(staleHostOwner.id, staleHostOwner);
 					}
 					retiredStaleOwnersByDependencyGroup.set(dependencyGroup, groupOwners);
 				}
 				if (staleHostOwners.length > 0) {
-					this.wledAdapter.disconnect(host, false);
-					disconnectedStaleOwners.push(...retiringHostOwners);
+					for (const staleHostOwner of retiringHostOwners) {
+						if (!staleHostOwner.hostname) {
+							continue;
+						}
+						const staleRegistration = this.wledAdapter.getDevice(staleHostOwner.hostname);
+						if (staleRegistration?.identifier === staleHostOwner.identifier) {
+							this.wledAdapter.disconnect(staleHostOwner.hostname, false);
+							if (retiringHostOwners.some(({ id }) => id === staleHostOwner.id)) {
+								disconnectedStaleOwners.push(staleHostOwner);
+							}
+						}
+					}
 				}
 				for (const staleHostOwner of retiringHostOwners) {
 					await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(staleHostOwner.id, {
