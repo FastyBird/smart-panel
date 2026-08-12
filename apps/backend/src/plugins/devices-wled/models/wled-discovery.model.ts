@@ -66,10 +66,10 @@ export class WledAdoptionResultModel {
 	@IsString()
 	name: string;
 
-	@ApiProperty({ enum: ['created', 'failed'] })
+	@ApiProperty({ enum: ['created', 'updated', 'failed'] })
 	@Expose()
-	@IsIn(['created', 'failed'])
-	status: 'created' | 'failed';
+	@IsIn(['created', 'updated', 'failed'])
+	status: 'created' | 'updated' | 'failed';
 
 	@ApiPropertyOptional({ nullable: true })
 	@Expose()

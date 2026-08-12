@@ -601,7 +601,60 @@ describe('WledService', () => {
 				undefined,
 				undefined,
 			);
-			expect(results).toEqual([expect.objectContaining({ status: 'created', deviceId: 'device-1' })]);
+			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-1' })]);
+		});
+
+		it('updates an adopted MAC when it is discovered at a new host', async () => {
+			const existingDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			devicesService.findAll.mockResolvedValue([existingDevice]);
+			deviceMapper.mapDevice.mockResolvedValue({ ...existingDevice, hostname: '192.168.1.200' } as WledDeviceEntity);
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.200', name: 'Moved strip', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.100');
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(
+				'192.168.1.200',
+				mockContext,
+				'Moved strip',
+				'wled-aabbccddeeff',
+				undefined,
+				undefined,
+			);
+			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-1' })]);
+		});
+
+		it('retires a stale hostname owner before provisioning a different MAC', async () => {
+			const staleDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
+			const replacementContext = {
+				...mockContext,
+				info: { ...mockContext.info, mac: '11:22:33:44:55:66' },
+			};
+			wledAdapter.probe.mockResolvedValue(replacementContext);
+			devicesService.findAll.mockResolvedValue([staleDevice]);
+			deviceMapper.mapDevice.mockResolvedValue(createMockDevice('device-2', 'wled-112233445566', '192.168.1.100'));
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.100', name: 'Replacement strip', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(wledAdapter.disconnect).toHaveBeenCalledWith('192.168.1.100');
+			expect(devicesService.update).toHaveBeenCalledWith('device-1', {
+				type: DEVICES_WLED_TYPE,
+				enabled: false,
+				hostname: null,
+			});
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(
+				'192.168.1.100',
+				replacementContext,
+				'Replacement strip',
+				'wled-112233445566',
+				undefined,
+				undefined,
+			);
+			expect(results).toEqual([expect.objectContaining({ status: 'created', deviceId: 'device-2' })]);
 		});
 
 		it('upgrades a legacy same-host device without an identifier before provisioning', async () => {
@@ -631,7 +684,7 @@ describe('WledService', () => {
 				undefined,
 				undefined,
 			);
-			expect(results).toEqual([expect.objectContaining({ status: 'created', deviceId: 'device-1' })]);
+			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-1' })]);
 		});
 
 		it('marks discovered devices as already adopted by MAC identity', async () => {

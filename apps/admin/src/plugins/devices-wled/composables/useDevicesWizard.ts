@@ -43,7 +43,7 @@ interface IWledWizardInventory {
 interface IWledWizardAdoptionResult {
 	host: string;
 	name: string;
-	status: 'created' | 'failed';
+	status: 'created' | 'updated' | 'failed';
 	error: string | null;
 }
 
@@ -103,8 +103,8 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			subLabel: device.mac,
 			identifier: device.mac ?? device.host,
 			status: device.adoptedDeviceId ? 'already_registered' : 'ready',
-			adoptable: device.adoptedDeviceId === null,
-			willUpdate: false,
+			adoptable: true,
+			willUpdate: device.adoptedDeviceId !== null,
 			suggestedName: device.name || device.host,
 			suggestedCategory: DevicesModuleDeviceCategory.lighting,
 			categoryOptions: [

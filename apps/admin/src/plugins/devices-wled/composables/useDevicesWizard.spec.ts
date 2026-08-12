@@ -84,7 +84,7 @@ describe('useDevicesWizard', () => {
 		expect(adapter.rows.value).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ key: 'mac:aabbccddeeff', status: 'ready', adoptable: true }),
-				expect.objectContaining({ status: 'already_registered', adoptable: false }),
+				expect.objectContaining({ status: 'already_registered', adoptable: true, willUpdate: true }),
 			])
 		);
 		await adapter.dispose?.();

@@ -549,6 +549,19 @@ export class WledService extends BaseManagedPluginService {
 						hostname: host,
 					});
 				}
+				if (existingDevice?.hostname && existingDevice.hostname !== host) {
+					this.wledAdapter.disconnect(existingDevice.hostname);
+				}
+				for (const staleHostOwner of databaseDevices.filter(
+					(device) => device.hostname === host && device.id !== existingDevice?.id,
+				)) {
+					this.wledAdapter.disconnect(host);
+					await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(staleHostOwner.id, {
+						type: DEVICES_WLED_TYPE,
+						enabled: false,
+						hostname: null,
+					});
+				}
 				const device = await this.deviceMapper.mapDevice(
 					host,
 					context,
@@ -567,7 +580,13 @@ export class WledService extends BaseManagedPluginService {
 						});
 					}
 				}
-				results.push({ host, name: request.name, status: 'created', error: null, deviceId: device.id });
+				results.push({
+					host,
+					name: request.name,
+					status: existingDevice ? 'updated' : 'created',
+					error: null,
+					deviceId: device.id,
+				});
 			} catch (error) {
 				results.push({
 					host,
