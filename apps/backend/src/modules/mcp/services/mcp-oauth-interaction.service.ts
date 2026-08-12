@@ -294,7 +294,7 @@ export class McpOAuthInteractionService {
 		const requestedScope = typeof scope === 'string' ? scope : undefined;
 		const requestedScopes =
 			requestedScope === undefined
-				? [...client.maximumScopes]
+				? client.maximumScopes.filter((scope) => scope !== McpOAuthScope.OFFLINE_ACCESS)
 				: requestedScope
 						.split(' ')
 						.filter((value): value is McpOAuthScope => Object.values(McpOAuthScope).includes(value as McpOAuthScope));

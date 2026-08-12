@@ -171,15 +171,17 @@ The Phase 6 smoke against Codex CLI `0.136.0` established the following current 
 - Codex discovers the resource and sends the RFC 8707 `resource` automatically. Configuring `--oauth-resource` to the
   same URI duplicates the authorization parameter in `0.136.0`, so the explicit override must be omitted for this
   server profile;
-- Codex omits `scope` from its authorization request. Smart Panel therefore defaults an omitted scope to the
-  pre-registered client ceiling and still requires explicit owner/admin consent; and
+- Codex omits `scope` from its authorization request. Smart Panel therefore defaults an omitted scope to the capability
+  scopes in the pre-registered client ceiling and still requires explicit owner/admin consent. It does not default
+  `offline_access`, because renewable access must be explicitly requested; and
 - behind TLS termination, the proxy must be listed in `FB_MCP_OAUTH_TRUSTED_PROXIES` and must send
   `X-Forwarded-Proto: https`. The finite bootstrap gate validates the immediate peer before the provider honors that
   protocol for secure interaction cookies.
 
-Discovery, authorization, token exchange, tool listing, and a read-only `get_home_context` call succeeded with a
-client ceiling of `mcp:read offline_access`. Codex exposed only read tools under that ceiling. Refresh and administrative
-revocation remain to be exercised before the Phase 6 Codex checkbox is complete.
+Discovery, authorization, token exchange, tool listing, and a read-only `get_home_context` call succeeded with a client
+ceiling of `mcp:read offline_access`. Codex exposed only read tools under that ceiling and received no refresh token
+because its request omitted `offline_access`. An explicit-scope refresh profile and administrative revocation remain to
+be exercised before the Phase 6 Codex checkbox is complete.
 
 ## Primary references
 

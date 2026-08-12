@@ -38,6 +38,7 @@ jest.mock('./mcp-oauth-provider.loader', () => ({
 			errors: {
 				InvalidGrant: class extends Error {},
 				InvalidRequest: class extends Error {},
+				InvalidScope: class extends Error {},
 				InvalidTarget: class extends Error {},
 			},
 		}),
@@ -150,7 +151,7 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 		]);
 	});
 
-	it('defaults an omitted authorization scope to the pre-registered client ceiling', async () => {
+	it('defaults an omitted authorization scope to capability scopes in the pre-registered client ceiling', async () => {
 		const findActiveByIdentifier = jest.fn(() =>
 			Promise.resolve({ maximumScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS] }),
 		);
@@ -172,7 +173,34 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 
 		await stateValidator(context, 'opaque-state');
 
-		expect(context.oidc.params.scope).toBe('mcp:read offline_access');
+		expect(context.oidc.params.scope).toBe('mcp:read');
+		expect(findActiveByIdentifier).toHaveBeenCalledWith('codex-client');
+	});
+
+	it('rejects explicitly requested resource scopes above the pre-registered client ceiling', async () => {
+		const findActiveByIdentifier = jest.fn(() =>
+			Promise.resolve({ maximumScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS] }),
+		);
+		const factory = new McpOAuthProviderFactory(
+			{ options: {} } as DataSource,
+			{ findActiveByIdentifier } as unknown as McpOAuthClientService,
+			{ getUrls: jest.fn(() => urls) } as unknown as McpOAuthPublicUrlService,
+			{} as McpOAuthProviderMaterialService,
+			subscriptions,
+			{ consume: consumeRateLimit } as unknown as McpOAuthEndpointRateLimitService,
+			routeGate,
+		);
+		const runtime = await factory.create({ allowTestInMemory: true, allowInsecureTestCookies: true });
+		const configuration = (runtime.provider as unknown as { configuration: Record<string, unknown> }).configuration;
+		const stateValidator = (configuration.extraParams as { state: (...args: unknown[]) => Promise<void> }).state;
+		const context = {
+			oidc: {
+				route: 'authorization',
+				params: { client_id: 'codex-client', scope: McpOAuthScope.WRITE },
+			},
+		};
+
+		await expect(stateValidator(context, 'opaque-state')).rejects.toThrow();
 		expect(findActiveByIdentifier).toHaveBeenCalledWith('codex-client');
 	});
 

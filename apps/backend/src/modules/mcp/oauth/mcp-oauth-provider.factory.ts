@@ -102,16 +102,35 @@ export class McpOAuthProviderFactory {
 						throw new oidcProvider.errors.InvalidRequest('The OAuth state parameter is required');
 					}
 
-					// OAuth permits clients to omit scope. Use the pre-registered client ceiling as the explicit consent
-					// request so hosts such as Codex can receive a useful, refreshable least-authority grant.
-					if (context.oidc.route === 'authorization' && !context.oidc.params.scope) {
-						const clientIdentifier = context.oidc.params.client_id;
-						const registeredClient =
-							typeof clientIdentifier === 'string'
-								? await this.clientsService.findActiveByIdentifier(clientIdentifier)
-								: null;
+					if (context.oidc.route !== 'authorization') return;
 
-						if (registeredClient) context.oidc.params.scope = registeredClient.maximumScopes.join(' ');
+					const clientIdentifier = context.oidc.params.client_id;
+					const registeredClient =
+						typeof clientIdentifier === 'string'
+							? await this.clientsService.findActiveByIdentifier(clientIdentifier)
+							: null;
+
+					if (!registeredClient) return;
+
+					const requestedScope = context.oidc.params.scope;
+
+					if (!requestedScope) {
+						// OAuth permits clients to omit scope. Default only capability scopes; renewable access continues
+						// to require an explicit offline_access request as well as owner/admin consent.
+						context.oidc.params.scope = registeredClient.maximumScopes
+							.filter((scope) => scope !== McpOAuthScope.OFFLINE_ACCESS)
+							.join(' ');
+						return;
+					}
+
+					if (typeof requestedScope !== 'string') return;
+
+					const disallowedScopes = requestedScope
+						.split(' ')
+						.filter((scope) => !registeredClient.maximumScopes.includes(scope as McpOAuthScope));
+
+					if (disallowedScopes.length > 0) {
+						throw new oidcProvider.errors.InvalidScope('requested scope is not allowed', disallowedScopes.join(' '));
 					}
 				},
 			},
