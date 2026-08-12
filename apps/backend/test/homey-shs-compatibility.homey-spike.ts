@@ -298,6 +298,26 @@ describe('Homey SHS compatibility probe', () => {
 
 		expect(Object.keys(privateTermCollisionDevices)).toEqual(['device-000002']);
 		expect(JSON.stringify(privateTermCollisionDevices)).not.toContain('device-000001');
+		const privateSubstringCollisionDevices = sanitizeHomeyDevices(
+			{
+				'private-device-id': { id: 'private-device-id', name: 'Private device' },
+			},
+			['000001'],
+		);
+
+		expect(Object.keys(privateSubstringCollisionDevices)).toEqual(['device-000002']);
+		expect(privateSubstringCollisionDevices['device-000002']).toMatchObject({ name: 'device-label-000002' });
+		expect(JSON.stringify(privateSubstringCollisionDevices)).not.toContain('000001');
+		const privatePrefixCollisionDevices = sanitizeHomeyDevices(
+			{
+				'private-device-id': { id: 'private-device-id', name: 'Private source' },
+			},
+			['device'],
+		);
+		const privatePrefixSerialized = JSON.stringify(privatePrefixCollisionDevices);
+
+		expect(privatePrefixSerialized).not.toContain('device-');
+		expect(privatePrefixSerialized).not.toContain('device-label');
 	});
 
 	it('uses unauthenticated ping, bounded read-only calls, and blocks redirects', async () => {

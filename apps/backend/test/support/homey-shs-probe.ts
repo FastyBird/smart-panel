@@ -83,6 +83,7 @@ interface SanitizerContext {
 
 export interface SanitizationAliases {
 	counters: Map<string, number>;
+	forbiddenSubstrings: Set<string>;
 	sourceValues: Set<string>;
 	values: Map<string, string>;
 }
@@ -97,9 +98,14 @@ const isSecretKey = (key: string): boolean =>
 
 export const createSanitizationAliases = (): SanitizationAliases => ({
 	counters: new Map(),
+	forbiddenSubstrings: new Set(),
 	sourceValues: new Set(),
 	values: new Map(),
 });
+
+const registerPrivateTerms = (privateTerms: string[], aliases: SanitizationAliases): void => {
+	privateTerms.forEach((term) => aliases.forbiddenSubstrings.add(term.toLowerCase()));
+};
 
 const registerSourceValues = (value: unknown, aliases: SanitizationAliases): void => {
 	if (typeof value === 'string') {
@@ -124,13 +130,19 @@ const pseudonym = (kind: string, value: string, aliases: SanitizationAliases): s
 
 	let sequence = aliases.counters.get(kind) ?? 0;
 	let alias: string;
+	const normalizedKind = kind.toLowerCase();
+	const prefix = [...aliases.forbiddenSubstrings].some((term) => normalizedKind.includes(term)) ? 'p' : kind;
 
 	do {
 		sequence += 1;
-		alias = `${kind}-${String(sequence).padStart(6, '0')}`;
-	} while (aliases.sourceValues.has(alias.toLowerCase()));
+		alias = `${prefix}-${String(sequence).padStart(6, '0')}`;
+	} while (
+		aliases.sourceValues.has(alias.toLowerCase()) ||
+		[...aliases.forbiddenSubstrings].some((term) => alias.toLowerCase().includes(term))
+	);
 
 	aliases.counters.set(kind, sequence);
+	aliases.sourceValues.add(alias.toLowerCase());
 	aliases.values.set(key, alias);
 
 	return alias;
@@ -372,7 +384,7 @@ export const sanitizeHomeyPayload = (
 	rootKind: SanitizerContext['rootKind'] = 'generic',
 	aliases: SanitizationAliases = createSanitizationAliases(),
 ): unknown => {
-	privateTerms.forEach((term) => registerSourceValues(term, aliases));
+	registerPrivateTerms(privateTerms, aliases);
 	registerSourceValues(value, aliases);
 
 	return sanitizeValue(value, 'root', { aliases, privateTerms, path: [], rootKind });
@@ -388,7 +400,7 @@ const replaceCollectionIdentity = (
 		throw new Error(`Homey ${kind} response is not an object`);
 	}
 
-	privateTerms.forEach((term) => registerSourceValues(term, aliases));
+	registerPrivateTerms(privateTerms, aliases);
 	registerSourceValues(value, aliases);
 
 	return Object.fromEntries(
@@ -590,7 +602,7 @@ export const captureHomeyShs = async (
 	]);
 	const aliases = createSanitizationAliases();
 	registerSourceValues(config.expectedHost, aliases);
-	config.privateTerms.forEach((term) => registerSourceValues(term, aliases));
+	registerPrivateTerms(config.privateTerms, aliases);
 	registerSourceValues(systemInfo, aliases);
 	registerSourceValues(zones, aliases);
 	registerSourceValues(devices, aliases);
@@ -653,7 +665,7 @@ export const assertHomeyCaptureSafe = (
 		}
 	}
 
-	const generatedPseudonymPattern = /^(?:device|device-label|homey|id|reference|zone|zone-label)-\d{6}$/;
+	const generatedPseudonymPattern = /^(?:device|device-label|homey|id|p|reference|zone|zone-label)-\d{6}$/;
 	const fixedPayloadKeys = new Set([
 		'active',
 		'available',
