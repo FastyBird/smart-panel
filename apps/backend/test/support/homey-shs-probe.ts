@@ -38,7 +38,7 @@ const UNBRACKETED_IPV6_PATTERN = /[0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?/g;
 const MAX_IPV6_ADDRESS_LENGTH = 45;
 const MAX_IPV6_CANDIDATE_SCAN_LENGTH = 256;
 const MAC_PATTERN = /(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}|[0-9a-f]{4}(?:\.[0-9a-f]{4}){2}|[0-9a-f]{12}/gi;
-const URL_PATTERN = /[A-Z][A-Z0-9+.-]*:\/\/[^\s"']+/gi;
+const URL_PATTERN = /(?:[A-Z][A-Z0-9+.-]*:)?\/\/[^\s"']+/gi;
 const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 const HOMEY_TOKEN_PATTERN = /(?:hpat|pat|homey)[_-][A-Za-z0-9_-]{16,}/gi;
 
@@ -775,8 +775,12 @@ export const assertHomeyCaptureSafe = (
 					ENDPOINT_KEY_PATTERN.test(key) ||
 					value.includes('://') ||
 					new RegExp(`${escapedHost}:\\d+`, 'i').test(value);
+				const exactDynamicHostValue =
+					!globallyIdentifiableHost &&
+					value.toLowerCase() === expectedHost.toLowerCase() &&
+					!isFixedCaptureKey(key, path);
 
-				hostLeakFound ||= endpointShaped && hostLeakPattern.test(value);
+				hostLeakFound ||= exactDynamicHostValue || (endpointShaped && hostLeakPattern.test(value));
 			} else if (Array.isArray(value)) {
 				value.forEach((item) => inspectEndpointValues(item, key, path));
 			} else if (isRecord(value)) {

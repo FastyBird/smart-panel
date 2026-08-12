@@ -232,6 +232,7 @@ describe('Homey SHS compatibility probe', () => {
 			emailTag: 'owner_alice@example.com_backup',
 			activityTag: 'prefix_hpat_abcdefghijklmnop1234',
 			urlTag: 'prefix_https://user:pass@private-host.local/api',
+			networkPath: '//broker.private/api',
 			brokerUrl: 'mqtt://broker.private/topic',
 			endpoint: 'private-host.local:1883',
 			format: { type: 'json' },
@@ -271,6 +272,7 @@ describe('Homey SHS compatibility probe', () => {
 			emailTag: '[~1~]_backup',
 			activityTag: 'prefix_[~3~]',
 			urlTag: 'prefix_[~5~]',
+			networkPath: '[~5~]',
 			brokerUrl: '[~5~]',
 			endpoint: '[~5~]',
 			format: { type: 'json' },
@@ -432,6 +434,10 @@ describe('Homey SHS compatibility probe', () => {
 		capture.systemInfo = { aliases: { homey: true } };
 
 		expect(() => assertHomeyCaptureSafe(capture, [], [], 'homey')).toThrow('expected host in a value');
+
+		capture.systemInfo = { description: 'homey' };
+
+		expect(() => assertHomeyCaptureSafe(capture, [], [], 'homey')).toThrow('expected host in a value');
 	});
 
 	it('does not confuse opaque redaction markers with configured private terms', () => {
@@ -544,6 +550,10 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret');
 
 		unsafeCapture.systemInfo = { aliases: { 'https://user:pass@private-host.local/api': true } };
+
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret');
+
+		unsafeCapture.systemInfo = { leaked: '//broker.private/api' };
 
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret');
 
