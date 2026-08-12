@@ -72,6 +72,9 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 			}
 		}
 		const id = randomUUID();
+		const adoptedHelperIds = new Set(
+			inventory.helpers.filter((helper) => helper.adoptedDeviceId !== null).map((helper) => helper.entityId),
+		);
 		const session: HomeAssistantWizardSession = {
 			id,
 			startedAt: new Date(),
@@ -82,6 +85,16 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 			const candidate = result.preview
 				? this.createDeviceCandidate(result.preview, adoptedBySourceId.get(result.source.id) ?? null)
 				: this.createFailedCandidate('device', result.source.id, result.source.name, null, null, result.error);
+			if (
+				candidate.snapshot.status === 'ready' &&
+				candidate.request &&
+				(candidate.request as AdoptDeviceRequestDto).channels.some((channel) => adoptedHelperIds.has(channel.entityId))
+			) {
+				candidate.snapshot.status = 'needs_attention';
+				candidate.snapshot.warningCount += 1;
+				candidate.snapshot.error = 'One or more entities are already adopted as standalone helpers';
+				candidate.request = null;
+			}
 			session.candidates.set(candidate.snapshot.key, candidate);
 		}
 
@@ -94,7 +107,7 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 		);
 
 		for (const result of helperPreviewResults) {
-			if (representedEntityIds.has(result.source.entityId)) {
+			if (representedEntityIds.has(result.source.entityId) && !result.source.adoptedDeviceId) {
 				continue;
 			}
 

@@ -343,6 +343,36 @@ describe('HomeAssistantWizardService', () => {
 		expect(snapshot.candidates.find((candidate) => candidate.kind === 'helper')).toBeUndefined();
 	});
 
+	it('keeps an adopted helper visible and blocks a conflicting physical device candidate', async () => {
+		const overlappingHelper = createHelperPreview();
+		overlappingHelper.helper.entityId = 'light.living_room';
+		homeAssistantHttpService.getDiscoveredInventory.mockResolvedValueOnce({
+			devices: [{ id: 'ha-device-1', adoptedDeviceId: null }],
+			helpers: [{ entityId: 'light.living_room', adoptedDeviceId: 'helper-device-1' }],
+		});
+		helperMappingPreviewService.generateSettledPreviews.mockResolvedValueOnce([
+			{
+				source: {
+					entityId: 'light.living_room',
+					name: 'Living room lamp',
+					domain: 'light',
+					adoptedDeviceId: 'helper-device-1',
+				},
+				preview: overlappingHelper,
+				error: null,
+			},
+		]);
+
+		const snapshot = await service.start();
+
+		expect(snapshot.candidates.find((candidate) => candidate.kind === 'device')).toEqual(
+			expect.objectContaining({ status: 'needs_attention' }),
+		);
+		expect(snapshot.candidates.find((candidate) => candidate.kind === 'helper')).toEqual(
+			expect.objectContaining({ status: 'already_registered', adoptedDeviceId: 'helper-device-1' }),
+		);
+	});
+
 	it('requires helper mappings to satisfy the complete device specification', async () => {
 		const incompleteClimatePreview = createHelperPreview();
 		incompleteClimatePreview.helper = {

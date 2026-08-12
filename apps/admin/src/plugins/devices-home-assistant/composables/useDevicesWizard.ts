@@ -50,6 +50,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const sessionError = ref<string | null>(null);
 	let keepaliveTimer: ReturnType<typeof setInterval> | null = null;
 	let restartPromise: Promise<void> | null = null;
+	let disposed = false;
 
 	const stopKeepalive = (): void => {
 		if (keepaliveTimer !== null) {
@@ -74,6 +75,20 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 				})
 				.catch((error: unknown) => logger.warn('Failed to keep the Home Assistant wizard session active', error));
 		}, sessionKeepaliveMs);
+	};
+
+	const deleteSession = async (id: string): Promise<void> => {
+		try {
+			const { error } = await backend.client.DELETE(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/wizard/{id}`, {
+				params: { path: { id } },
+			});
+
+			if (error) {
+				logger.warn(getErrorReason<DevicesHomeAssistantPluginDeleteWizardOperation>(error, 'Failed to cleanly end Home Assistant wizard session'));
+			}
+		} catch (error: unknown) {
+			logger.warn('Failed to cleanly end Home Assistant wizard session', error);
+		}
 	};
 
 	const candidates = computed<IHomeAssistantWizardCandidate[]>(() =>
@@ -209,6 +224,10 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 
 		if (typeof data !== 'undefined') {
 			const nextSession = transformWizardSessionResponse((data as { data: DevicesHomeAssistantPluginWizardSessionSchema }).data);
+			if (disposed) {
+				await deleteSession(nextSession.id);
+				return;
+			}
 			session.value = nextSession;
 			sessionKey.value = nextSession.id;
 			startKeepalive(nextSession.id);
@@ -235,17 +254,12 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			return;
 		}
 
-		try {
-			const { error } = await backend.client.DELETE(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/wizard/{id}`, {
-				params: { path: { id: currentSession.id } },
-			});
+		await deleteSession(currentSession.id);
+	};
 
-			if (error) {
-				logger.warn(getErrorReason<DevicesHomeAssistantPluginDeleteWizardOperation>(error, 'Failed to cleanly end Home Assistant wizard session'));
-			}
-		} catch (error: unknown) {
-			logger.warn('Failed to cleanly end Home Assistant wizard session', error);
-		}
+	const disposeSession = async (): Promise<void> => {
+		disposed = true;
+		await endSession();
 	};
 
 	const restartSession = (): Promise<void> => {
@@ -334,6 +348,6 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		start: startSession,
 		adopt,
 		restart: restartSession,
-		dispose: endSession,
+		dispose: disposeSession,
 	};
 };

@@ -270,4 +270,27 @@ describe('useDevicesWizard', () => {
 		});
 		await adapter.dispose?.();
 	});
+
+	it('deletes a session that arrives after the wizard has been disposed', async () => {
+		let resolveStart: ((value: unknown) => void) | undefined;
+		backendClient.POST.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					resolveStart = resolve;
+				})
+		);
+		backendClient.DELETE.mockResolvedValue({ response: { status: 204 } });
+		const adapter = useDevicesWizard();
+
+		const starting = adapter.start();
+		await adapter.dispose?.();
+		resolveStart?.({ data: { data: wizardSession }, response: { status: 201 } });
+		await starting;
+		await vi.advanceTimersByTimeAsync(4 * 60_000);
+
+		expect(backendClient.DELETE).toHaveBeenCalledWith(`/plugins/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/wizard/{id}`, {
+			params: { path: { id: 'session-1' } },
+		});
+		expect(backendClient.GET).not.toHaveBeenCalled();
+	});
 });

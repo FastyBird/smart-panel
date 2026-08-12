@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { ArrayNotEmpty, IsArray, IsString, ValidateNested } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsDefined, IsObject, IsString, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
@@ -21,6 +21,8 @@ export class HomeAssistantWizardAdoptDto {
 export class ReqHomeAssistantWizardAdoptDto {
 	@ApiProperty({ description: 'Wizard adoption payload', type: () => HomeAssistantWizardAdoptDto })
 	@Expose()
+	@IsDefined()
+	@IsObject()
 	@ValidateNested()
 	@Type(() => HomeAssistantWizardAdoptDto)
 	data: HomeAssistantWizardAdoptDto;
