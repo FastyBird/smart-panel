@@ -620,6 +620,8 @@ export class WledService extends BaseManagedPluginService {
 					const registeredDevice = this.wledAdapter.getDevice(host);
 
 					if (registeredDevice?.identifier === identifier && registeredDevice.connected) {
+						registeredDevice.context = context;
+						registeredDevice.lastSeen = new Date();
 						results[index] = {
 							host,
 							name: request.name,

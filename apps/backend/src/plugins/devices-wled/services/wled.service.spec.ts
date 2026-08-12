@@ -648,12 +648,15 @@ describe('WledService', () => {
 
 		it('reuses an existing connection when an enabled device keeps its host', async () => {
 			const existingDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
-			wledAdapter.probe.mockResolvedValue(mockContext);
-			wledAdapter.getDevice.mockReturnValue({
+			const registeredDevice = {
 				host: '192.168.1.100',
 				identifier: 'wled-aabbccddeeff',
 				connected: true,
-			} as RegisteredWledDevice);
+				context: { ...mockContext, state: { ...mockContext.state, brightness: 1 } },
+				lastSeen: new Date(0),
+			} as RegisteredWledDevice;
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			wledAdapter.getDevice.mockReturnValue(registeredDevice);
 			devicesService.findAll.mockResolvedValue([existingDevice]);
 			deviceMapper.mapDevice.mockResolvedValue(existingDevice);
 
@@ -663,6 +666,8 @@ describe('WledService', () => {
 
 			expect(wledAdapter.disconnect).not.toHaveBeenCalled();
 			expect(wledAdapter.connectWithContext).not.toHaveBeenCalled();
+			expect(registeredDevice.context).toBe(mockContext);
+			expect(registeredDevice.lastSeen?.getTime()).toBeGreaterThan(0);
 			expect(results).toEqual([expect.objectContaining({ status: 'updated', deviceId: 'device-1' })]);
 		});
 
