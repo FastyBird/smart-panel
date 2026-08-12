@@ -351,6 +351,38 @@ describe('WledDeviceMapperService', () => {
 				}),
 			);
 		});
+
+		it('preserves manual description and disabled state while provisioning channels', async () => {
+			const mockDevice = {
+				...createMockDevice('device-1', 'custom-wled', '192.168.1.100', false),
+				description: 'Behind the desk',
+			};
+
+			devicesService.findOneBy.mockResolvedValue(null);
+			devicesService.create.mockResolvedValue(mockDevice as WledDeviceEntity);
+			channelsService.findOneBy.mockResolvedValue(null);
+			channelsService.create.mockResolvedValue(createMockChannel('channel-1', 'device_information', 'device-1'));
+			channelsPropertiesService.findOneBy.mockResolvedValue(null);
+			channelsPropertiesService.create.mockResolvedValue(createMockProperty('prop-1', 'test', 'channel-1'));
+			channelsPropertiesService.update.mockResolvedValue(createMockProperty('prop-1', 'test', 'channel-1'));
+
+			await service.mapDevice(
+				'192.168.1.100',
+				mockDeviceContext,
+				'Desk strip',
+				'custom-wled',
+				'Behind the desk',
+				false,
+			);
+
+			expect(devicesService.create).toHaveBeenCalledWith(
+				expect.objectContaining({ description: 'Behind the desk', enabled: false }),
+			);
+			expect(channelsService.create).toHaveBeenCalled();
+			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith('device-1', {
+				state: ConnectionState.UNKNOWN,
+			});
+		});
 	});
 
 	describe('updateDeviceState', () => {

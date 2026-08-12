@@ -5,11 +5,16 @@ import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
-import { deepClone, getSchemaDefaults, injectStoresManager, useFlashMessage, useLogger } from '../../../common';
-import { DevicesApiException, FormResult, type FormResultType, type IDevice, devicesStoreKey } from '../../../modules/devices';
-import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
-import { DEVICES_WLED_TYPE } from '../devices-wled.constants';
-import { DevicesWledValidationException } from '../devices-wled.exceptions';
+import { PLUGINS_PREFIX } from '../../../app.constants';
+import { deepClone, getErrorReason, getSchemaDefaults, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../common';
+import { FormResult, type FormResultType, type IDevice, devicesStoreKey } from '../../../modules/devices';
+import {
+	DevicesModuleDeviceCategory,
+	DevicesWledPluginAdoptDeviceCategory,
+	type DevicesWledPluginAdoptDiscoveryOperation,
+} from '../../../openapi.constants';
+import { DEVICES_WLED_PLUGIN_PREFIX, DEVICES_WLED_TYPE } from '../devices-wled.constants';
+import { DevicesWledApiException, DevicesWledValidationException } from '../devices-wled.exceptions';
 import { WledDeviceAddFormSchema } from '../schemas/devices.schemas';
 import type { IWledDeviceAddForm } from '../schemas/devices.types';
 
@@ -20,12 +25,11 @@ interface IUseDeviceAddFormProps {
 }
 
 // WLED LED controllers typically fall into these categories
-const WLED_CATEGORIES = [
-	DevicesModuleDeviceCategory.lighting,
-];
+const WLED_CATEGORIES = [DevicesModuleDeviceCategory.lighting];
 
 export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddForm => {
 	const storesManager = injectStoresManager();
+	const backend = useBackend();
 
 	const devicesStore = storesManager.getStore(devicesStoreKey);
 
@@ -40,12 +44,10 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 
 	const categoriesOptions = computed<{ value: DevicesModuleDeviceCategory; label: string }[]>(
 		(): { value: DevicesModuleDeviceCategory; label: string }[] => {
-			return orderBy(WLED_CATEGORIES, [(category: string) => t(`devicesModule.categories.devices.${category}`)], ['asc']).map(
-				(value) => ({
-					value,
-					label: t(`devicesModule.categories.devices.${value}`),
-				})
-			);
+			return orderBy(WLED_CATEGORIES, [(category: string) => t(`devicesModule.categories.devices.${category}`)], ['asc']).map((value) => ({
+				value,
+				label: t(`devicesModule.categories.devices.${value}`),
+			}));
 		}
 	);
 
@@ -86,20 +88,39 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 		const errorMessage = t('devicesWledPlugin.messages.devices.notCreated', { device: model.name });
 
 		try {
-			await devicesStore.add({
-				id,
-				draft: false,
-				data: {
-					...parsedModel.data,
-					type: DEVICES_WLED_TYPE,
+			const { data, error, response } = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_WLED_PLUGIN_PREFIX}/discovery/adopt`, {
+				body: {
+					data: {
+						devices: [
+							{
+								host: parsedModel.data.hostname,
+								name: parsedModel.data.name,
+								category: DevicesWledPluginAdoptDeviceCategory.lighting,
+								description: parsedModel.data.description || null,
+								enabled: parsedModel.data.enabled,
+							},
+						],
+					},
 				},
 			});
+
+			if (typeof data === 'undefined') {
+				const reason = error ? getErrorReason<DevicesWledPluginAdoptDiscoveryOperation>(error, errorMessage) : errorMessage;
+				throw new DevicesWledApiException(reason, response.status);
+			}
+
+			const result = data.data[0];
+			if (!result || result.status === 'failed') {
+				throw new DevicesWledApiException(result?.error ?? errorMessage, 422);
+			}
+
+			await devicesStore.fetch();
 		} catch (error: unknown) {
 			formResult.value = FormResult.ERROR;
 
 			timer = window.setTimeout(clear, 2000);
 
-			if (error instanceof DevicesApiException && error.code === 422) {
+			if (error instanceof DevicesWledApiException && error.code === 422) {
 				flashMessage.error(error.message);
 			} else {
 				flashMessage.error(errorMessage);

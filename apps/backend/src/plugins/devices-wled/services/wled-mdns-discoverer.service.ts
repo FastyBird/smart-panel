@@ -98,6 +98,10 @@ export class WledMdnsDiscovererService implements OnModuleDestroy {
 		return Array.from(this.discoveredDevices.values());
 	}
 
+	clearDiscoveredDevices(): void {
+		this.discoveredDevices.clear();
+	}
+
 	/**
 	 * Check if a device has been discovered
 	 */

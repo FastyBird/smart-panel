@@ -154,39 +154,43 @@ export class WledClientAdapterService {
 		this.logger.log(`Connecting to WLED device at ${host}`);
 
 		try {
-			// Fetch device context
 			const context = await this.fetchDeviceContext(host, timeout);
-
-			// Register the device
-			const device: RegisteredWledDevice = {
-				host,
-				identifier,
-				connected: true,
-				enabled: true,
-				context,
-				lastSeen: new Date(),
-			};
-
-			this.devices.set(host, device);
-
-			this.logger.log(`Successfully connected to WLED device at ${host} (${context.info.name})`);
-
-			// Invoke connected callback
-			void this.callbacks.onDeviceConnected?.({
-				host,
-				info: context.info,
-			});
-
-			// Connect WebSocket if enabled
-			if (this.wsEnabled) {
-				this.connectWebSocket(host);
-			}
+			this.connectWithContext(host, identifier, context);
 		} catch (error) {
 			this.logger.error(`Failed to connect to WLED device at ${host}`, {
 				message: error instanceof Error ? error.message : String(error),
 			});
 
 			throw new WledConnectionException(host, error instanceof Error ? error.message : String(error));
+		}
+	}
+
+	/** Fetch device information without registering a persistent connection. */
+	async probe(host: string, timeout: number = DEFAULT_CONNECTION_TIMEOUT_MS): Promise<WledDeviceContext> {
+		try {
+			return await this.fetchDeviceContext(host, timeout);
+		} catch (error) {
+			throw new WledConnectionException(host, error instanceof Error ? error.message : String(error));
+		}
+	}
+
+	/** Register an already-probed device without repeating the HTTP requests. */
+	connectWithContext(host: string, identifier: string, context: WledDeviceContext): void {
+		const device: RegisteredWledDevice = {
+			host,
+			identifier,
+			connected: true,
+			enabled: true,
+			context,
+			lastSeen: new Date(),
+		};
+
+		this.devices.set(host, device);
+		this.logger.log(`Successfully connected to WLED device at ${host} (${context.info.name})`);
+		void this.callbacks.onDeviceConnected?.({ host, info: context.info });
+
+		if (this.wsEnabled) {
+			this.connectWebSocket(host);
 		}
 	}
 

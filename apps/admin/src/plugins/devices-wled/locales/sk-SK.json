@@ -114,5 +114,28 @@
 			"edited": "Zariadenie WLED '{device}' bolo aktualizované",
 			"notEdited": "Nepodarilo sa aktualizovať zariadenie WLED '{device}'"
 		}
+	},
+	"wizard": {
+		"title": "Pridať zariadenia WLED",
+		"subtitle": "Vyhľadajte radiče WLED alebo pridajte zariadenie podľa adresy a prijmite viac zariadení naraz.",
+		"breadcrumb": "Sprievodca prijatím WLED",
+		"columns": {
+			"identifier": "MAC adresa alebo názov hostiteľa",
+			"host": "Hostiteľ"
+		},
+		"actions": {
+			"rescan": "Znova prehľadať sieť",
+			"probe": "Overiť zariadenie"
+		},
+		"mdnsDisabled": {
+			"title": "Automatické vyhľadávanie je vypnuté",
+			"message": "Radič WLED môžete napriek tomu pridať zadaním názvu hostiteľa alebo IP adresy nižšie."
+		},
+		"messages": {
+			"discoveryFailed": "Nepodarilo sa načítať vyhľadávanie WLED.",
+			"rescanFailed": "Nepodarilo sa znova spustiť vyhľadávanie WLED.",
+			"probeFailed": "Nepodarilo sa pripojiť k zariadeniu WLED.",
+			"adoptionFailed": "Nepodarilo sa prijať vybrané zariadenia WLED."
+		}
 	}
 }

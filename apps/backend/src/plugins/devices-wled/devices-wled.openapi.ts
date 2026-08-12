@@ -8,9 +8,23 @@ import { UpdateWledChannelPropertyDto } from './dto/update-channel-property.dto'
 import { UpdateWledChannelDto } from './dto/update-channel.dto';
 import { WledUpdatePluginConfigDto, WledUpdatePollingDto, WledUpdateTimeoutsDto } from './dto/update-config.dto';
 import { UpdateWledDeviceDto } from './dto/update-device.dto';
+import {
+	WledAdoptDeviceDto,
+	WledAdoptDto,
+	WledAdoptRequestDto,
+	WledProbeDto,
+	WledProbeRequestDto,
+} from './dto/wled-adoption.dto';
 import { WledChannelEntity, WledChannelPropertyEntity, WledDeviceEntity } from './entities/devices-wled.entity';
 import { WledConfigModel, WledPollingConfigModel, WledTimeoutsConfigModel } from './models/config.model';
-import { WledDiscoveredDeviceModel, WledDiscoveredDevicesResponseModel } from './models/wled-discovery.model';
+import {
+	WledAdoptionResultModel,
+	WledAdoptionResultsResponseModel,
+	WledDiscoveredDeviceModel,
+	WledDiscoveryModel,
+	WledDiscoveryResponseModel,
+	WledProbedDeviceResponseModel,
+} from './models/wled-discovery.model';
 
 export const DEVICES_WLED_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	// DTOs
@@ -23,13 +37,22 @@ export const DEVICES_WLED_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	WledUpdatePluginConfigDto,
 	WledUpdateTimeoutsDto,
 	WledUpdatePollingDto,
+	WledProbeDto,
+	WledProbeRequestDto,
+	WledAdoptDeviceDto,
+	WledAdoptDto,
+	WledAdoptRequestDto,
 	// Config models
 	WledConfigModel,
 	WledTimeoutsConfigModel,
 	WledPollingConfigModel,
 	// Discovery models
 	WledDiscoveredDeviceModel,
-	WledDiscoveredDevicesResponseModel,
+	WledDiscoveryModel,
+	WledAdoptionResultModel,
+	WledDiscoveryResponseModel,
+	WledProbedDeviceResponseModel,
+	WledAdoptionResultsResponseModel,
 	// Entities
 	WledDeviceEntity,
 	WledChannelEntity,

@@ -13,6 +13,8 @@ import {
 } from '../../../modules/extensions/services/managed-plugin-service.interface';
 import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
 import { DEVICES_WLED_PLUGIN_NAME, DEVICES_WLED_TYPE } from '../devices-wled.constants';
+import { WledValidationException } from '../devices-wled.exceptions';
+import { WledAdoptDeviceDto } from '../dto/wled-adoption.dto';
 import { WledDeviceEntity } from '../entities/devices-wled.entity';
 import {
 	WledDeviceConnectedEvent,
@@ -22,6 +24,7 @@ import {
 	WledMdnsDiscoveredDevice,
 } from '../interfaces/wled.interface';
 import { WledConfigModel } from '../models/config.model';
+import { WledAdoptionResultModel, WledDiscoveredDeviceModel, WledDiscoveryModel } from '../models/wled-discovery.model';
 
 import { WledDeviceMapperService } from './device-mapper.service';
 import { WledClientAdapterService } from './wled-client-adapter.service';
@@ -460,11 +463,8 @@ export class WledService extends BaseManagedPluginService {
 	 * Connect to a newly discovered device and map it to the database
 	 */
 	private async connectAndMapDiscoveredDevice(device: WledMdnsDiscoveredDevice): Promise<void> {
-		const identifier = device.mac
-			? `wled-${device.mac.replace(/:/g, '').toLowerCase()}`
-			: `wled-${device.host.replace(/\./g, '-')}`;
-
 		try {
+			const identifier = device.mac ? this.identifierFromMac(device.mac) : `wled-${device.host.replace(/\./g, '-')}`;
 			await this.wledAdapter.connect(device.host, identifier, this.config.timeouts.connectionTimeout);
 
 			const registeredDevice = this.wledAdapter.getDevice(device.host);
@@ -486,6 +486,99 @@ export class WledService extends BaseManagedPluginService {
 		return this.mdnsDiscoverer.getDiscoveredDevices();
 	}
 
+	async getDiscoveryInventory(): Promise<WledDiscoveryModel> {
+		const [discoveredDevices, databaseDevices] = await Promise.all([
+			Promise.resolve(this.mdnsDiscoverer.getDiscoveredDevices()),
+			this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE),
+		]);
+
+		return {
+			mdnsEnabled: this.config.mdns.enabled,
+			discoveryRunning: this.mdnsDiscoverer.isDiscoveryRunning(),
+			devices: discoveredDevices.map((device) => ({
+				host: device.host,
+				name: device.name,
+				mac: device.mac ?? null,
+				port: device.port,
+				adoptedDeviceId: this.findExistingDevice(databaseDevices, device.host, device.mac)?.id ?? null,
+			})),
+		};
+	}
+
+	async probeDevice(host: string): Promise<WledDiscoveredDeviceModel> {
+		const normalizedHost = this.normalizeHost(host);
+		const context = await this.wledAdapter.probe(normalizedHost, this.config.timeouts.connectionTimeout);
+		const databaseDevices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
+
+		return {
+			host: normalizedHost,
+			name: context.info.name || `WLED ${context.info.mac}`,
+			mac: context.info.mac,
+			port: this.portFromHost(normalizedHost),
+			adoptedDeviceId: this.findExistingDevice(databaseDevices, normalizedHost, context.info.mac)?.id ?? null,
+		};
+	}
+
+	async rescanDiscovery(): Promise<WledDiscoveryModel> {
+		if (this.config.mdns.enabled) {
+			this.mdnsDiscoverer.stop();
+			this.mdnsDiscoverer.clearDiscoveredDevices();
+			this.mdnsDiscoverer.start(this.config.mdns.interface ?? undefined);
+		}
+
+		return this.getDiscoveryInventory();
+	}
+
+	async adoptDevices(requests: WledAdoptDeviceDto[]): Promise<WledAdoptionResultModel[]> {
+		const results: WledAdoptionResultModel[] = [];
+
+		for (const request of requests) {
+			let host = request.host.trim();
+
+			try {
+				host = this.normalizeHost(request.host);
+				const context = await this.wledAdapter.probe(host, this.config.timeouts.connectionTimeout);
+				const databaseDevices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
+				const existingDevice = this.findExistingDevice(databaseDevices, host, context.info.mac);
+
+				if (existingDevice) {
+					throw new Error(`WLED device is already adopted as ${existingDevice.name}`);
+				}
+
+				const identifier = this.identifierFromMac(context.info.mac);
+				const device = await this.deviceMapper.mapDevice(
+					host,
+					context,
+					request.name,
+					identifier,
+					request.description,
+					request.enabled,
+				);
+				if (device.enabled) {
+					try {
+						this.wledAdapter.connectWithContext(host, identifier, context);
+					} catch (error) {
+						this.logger.warn(`WLED device ${identifier} was adopted but its live connection could not be registered`, {
+							resource: device.id,
+							message: error instanceof Error ? error.message : String(error),
+						});
+					}
+				}
+				results.push({ host, name: request.name, status: 'created', error: null, deviceId: device.id });
+			} catch (error) {
+				results.push({
+					host,
+					name: request.name,
+					status: 'failed',
+					error: error instanceof Error ? error.message : String(error),
+					deviceId: null,
+				});
+			}
+		}
+
+		return results;
+	}
+
 	/**
 	 * Get discovered devices that haven't been added to the database yet
 	 */
@@ -498,6 +591,61 @@ export class WledService extends BaseManagedPluginService {
 
 		// Filter out devices that are already in the database
 		return discoveredDevices.filter((device) => !existingHostnames.has(device.host));
+	}
+
+	private normalizeHost(host: string): string {
+		const trimmed = host.trim();
+		if (!trimmed) {
+			throw new WledValidationException('WLED hostname or IP address is required');
+		}
+
+		if (/^https?:\/\//i.test(trimmed)) {
+			let url: URL;
+			try {
+				url = new URL(trimmed);
+			} catch {
+				throw new WledValidationException('WLED address must be a valid hostname or IP address');
+			}
+			if (url.pathname !== '/' || url.search || url.hash) {
+				throw new WledValidationException('WLED address must not include a path, query, or fragment');
+			}
+			return url.host;
+		}
+
+		if (trimmed.includes('/') || trimmed.includes('?') || trimmed.includes('#')) {
+			throw new WledValidationException('WLED address must be a hostname or IP address');
+		}
+
+		return trimmed;
+	}
+
+	private identifierFromMac(mac: string): string {
+		const normalizedMac = mac.replace(/[^a-fA-F0-9]/g, '').toLowerCase();
+		if (!normalizedMac) {
+			throw new WledValidationException('WLED device did not report a valid MAC address');
+		}
+
+		return `wled-${normalizedMac}`;
+	}
+
+	private findExistingDevice(
+		devices: WledDeviceEntity[],
+		host: string,
+		mac?: string | null,
+	): WledDeviceEntity | undefined {
+		const identifiers = new Set<string>();
+		if (mac) {
+			const fullIdentifier = this.identifierFromMac(mac);
+			identifiers.add(fullIdentifier);
+			identifiers.add(`wled-${fullIdentifier.slice(-6)}`);
+		}
+
+		return devices.find((device) => device.hostname === host || identifiers.has(device.identifier));
+	}
+
+	private portFromHost(host: string): number {
+		const port = Number(host.match(/:(\d+)$/)?.[1] ?? 80);
+		return Number.isInteger(port) && port > 0 && port <= 65535 ? port : 80;
 	}
 
 	/**

@@ -114,5 +114,28 @@
 			"edited": "WLED device '{device}' has been updated",
 			"notEdited": "Failed to update WLED device '{device}'"
 		}
+	},
+	"wizard": {
+		"title": "Add WLED devices",
+		"subtitle": "Discover WLED controllers or add one by hostname, then adopt several devices at once.",
+		"breadcrumb": "WLED adoption wizard",
+		"columns": {
+			"identifier": "MAC address or hostname",
+			"host": "Host"
+		},
+		"actions": {
+			"rescan": "Rescan network",
+			"probe": "Check device"
+		},
+		"mdnsDisabled": {
+			"title": "Automatic discovery is disabled",
+			"message": "You can still add a WLED controller by entering its hostname or IP address below."
+		},
+		"messages": {
+			"discoveryFailed": "Failed to load WLED discovery.",
+			"rescanFailed": "Failed to restart WLED discovery.",
+			"probeFailed": "Failed to connect to the WLED device.",
+			"adoptionFailed": "Failed to adopt the selected WLED devices."
+		}
 	}
 }

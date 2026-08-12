@@ -83,9 +83,9 @@ export class WledMdnsConfigModel {
 	@ApiProperty({
 		name: 'auto_add',
 		description: 'Automatically add discovered devices to the system',
-		example: true,
+		example: false,
 	})
-	autoAdd: boolean = true;
+	autoAdd: boolean = false;
 }
 
 /**

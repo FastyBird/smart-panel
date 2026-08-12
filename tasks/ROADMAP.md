@@ -230,7 +230,7 @@ Build a device from properties of other devices — splitting one physical devic
 | 3 | [FEATURE-PLUGIN-ZIGBEE-HERDSMAN](features/FEATURE-PLUGIN-ZIGBEE-HERDSMAN.md) | backend, admin | :clipboard: Planned |
 | 4 | [FEATURE-DEVICE-PLUGIN-ADOPTION-WIZARDS](features/FEATURE-DEVICE-PLUGIN-ADOPTION-WIZARDS.md) | backend, admin, spec | :construction: In Progress |
 
-**Remaining work:** WLED adoption wizard and remaining cross-plugin QA; Matter plugin implementation; direct Zigbee integration via zigbee-herdsman (6 phases: coordinator service, converters, device platform, adoption flow, admin UI, network management).
+**Remaining work:** Adoption-wizard cross-plugin QA; Matter plugin implementation; direct Zigbee integration via zigbee-herdsman (6 phases: coordinator service, converters, device platform, adoption flow, admin UI, network management).
 
 ---
 

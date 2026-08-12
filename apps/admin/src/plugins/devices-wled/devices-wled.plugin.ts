@@ -16,6 +16,7 @@ import {
 } from '../../modules/devices';
 
 import { WledConfigForm, WledDeviceAddForm, WledDeviceEditForm } from './components/components';
+import { useDevicesWizard } from './composables/composables';
 import { DEVICES_WLED_PLUGIN_NAME, DEVICES_WLED_TYPE } from './devices-wled.constants';
 import { locales } from './locales';
 import { WledConfigEditFormSchema } from './schemas/config.schemas';
@@ -75,6 +76,7 @@ export default {
 					components: {
 						deviceAddForm: WledDeviceAddForm,
 						deviceEditForm: WledDeviceEditForm,
+						deviceWizardAdapter: useDevicesWizard,
 					},
 					schemas: {
 						deviceSchema: WledDeviceSchema,

@@ -114,5 +114,28 @@
 			"edited": "WLED-Gerät '{device}' wurde aktualisiert",
 			"notEdited": "Aktualisierung des WLED-Geräts '{device}' fehlgeschlagen"
 		}
+	},
+	"wizard": {
+		"title": "WLED-Geräte hinzufügen",
+		"subtitle": "WLED-Controller erkennen oder per Hostname hinzufügen und mehrere Geräte gemeinsam übernehmen.",
+		"breadcrumb": "WLED-Übernahmeassistent",
+		"columns": {
+			"identifier": "MAC-Adresse oder Hostname",
+			"host": "Host"
+		},
+		"actions": {
+			"rescan": "Netzwerk erneut durchsuchen",
+			"probe": "Gerät prüfen"
+		},
+		"mdnsDisabled": {
+			"title": "Automatische Erkennung ist deaktiviert",
+			"message": "Ein WLED-Controller kann weiterhin über Hostname oder IP-Adresse hinzugefügt werden."
+		},
+		"messages": {
+			"discoveryFailed": "WLED-Erkennung konnte nicht geladen werden.",
+			"rescanFailed": "WLED-Erkennung konnte nicht neu gestartet werden.",
+			"probeFailed": "Verbindung zum WLED-Gerät fehlgeschlagen.",
+			"adoptionFailed": "Die ausgewählten WLED-Geräte konnten nicht übernommen werden."
+		}
 	}
 }

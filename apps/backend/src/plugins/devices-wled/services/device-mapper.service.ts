@@ -59,10 +59,14 @@ export class WledDeviceMapperService {
 		context: WledDeviceContext,
 		configName?: string | null,
 		configIdentifier?: string | null,
+		configDescription?: string | null,
+		configEnabled?: boolean,
 	): Promise<WledDeviceEntity> {
 		const identifier = configIdentifier || this.generateIdentifier(context.info.mac);
 
-		return this.provisionQueue.enqueue(identifier, () => this.doMapDevice(host, context, identifier, configName));
+		return this.provisionQueue.enqueue(identifier, () =>
+			this.doMapDevice(host, context, identifier, configName, configDescription, configEnabled),
+		);
 	}
 
 	private async doMapDevice(
@@ -70,6 +74,8 @@ export class WledDeviceMapperService {
 		context: WledDeviceContext,
 		identifier: string,
 		configName?: string | null,
+		configDescription?: string | null,
+		configEnabled?: boolean,
 	): Promise<WledDeviceEntity> {
 		const name = configName || context.info.name || `WLED ${identifier}`;
 
@@ -83,8 +89,9 @@ export class WledDeviceMapperService {
 				type: DEVICES_WLED_TYPE,
 				identifier,
 				name,
+				description: configDescription ?? null,
 				category: DeviceCategory.LIGHTING,
-				enabled: true,
+				enabled: configEnabled ?? true,
 				hostname: host,
 			};
 
@@ -122,7 +129,7 @@ export class WledDeviceMapperService {
 
 		// Set connection state to CONNECTED
 		await this.deviceConnectivityService.setConnectionState(device.id, {
-			state: ConnectionState.CONNECTED,
+			state: device.enabled ? ConnectionState.CONNECTED : ConnectionState.UNKNOWN,
 		});
 
 		return device;

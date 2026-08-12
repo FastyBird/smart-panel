@@ -18,6 +18,7 @@ import {
 	RegisteredWledDevice,
 	WledAdapterCallbacks,
 	WledDeviceConnectedEvent,
+	WledDeviceContext,
 	WledDeviceDisconnectedEvent,
 	WledDeviceStateChangedEvent,
 	WledInfo,
@@ -88,6 +89,13 @@ describe('WledService', () => {
 			updated_at: new Date(),
 		}) as unknown as WledDeviceEntity;
 
+	const mockContext = {
+		state: { on: true, brightness: 128, segments: [] },
+		info: { name: 'Probed WLED', mac: 'AA:BB:CC:DD:EE:FF' },
+		effects: [],
+		palettes: [],
+	} as WledDeviceContext;
+
 	beforeEach(async () => {
 		jest.clearAllMocks();
 		jest.useFakeTimers();
@@ -105,6 +113,8 @@ describe('WledService', () => {
 					provide: WledClientAdapterService,
 					useValue: {
 						connect: jest.fn(),
+						probe: jest.fn(),
+						connectWithContext: jest.fn(),
 						disconnect: jest.fn(),
 						disconnectAll: jest.fn(),
 						getDevice: jest.fn(),
@@ -139,6 +149,8 @@ describe('WledService', () => {
 						start: jest.fn(),
 						stop: jest.fn(),
 						getDiscoveredDevices: jest.fn().mockReturnValue([]),
+						isDiscoveryRunning: jest.fn().mockReturnValue(true),
+						clearDiscoveredDevices: jest.fn(),
 						setCallbacks: jest.fn().mockImplementation((callbacks: WledMdnsCallbacks) => {
 							mdnsCallbacks = callbacks;
 						}),
@@ -486,6 +498,84 @@ describe('WledService', () => {
 			const result = service.getDiscoveredDevices();
 
 			expect(result).toEqual(mockDiscoveredDevices);
+		});
+	});
+
+	describe('adoption flow', () => {
+		it('restarts and clears mDNS discovery during a rescan', async () => {
+			mdnsDiscoverer.getDiscoveredDevices.mockReturnValue([]);
+
+			await service.rescanDiscovery();
+
+			expect(mdnsDiscoverer.stop).toHaveBeenCalled();
+			expect(mdnsDiscoverer.clearDiscoveredDevices).toHaveBeenCalled();
+			expect(mdnsDiscoverer.start).toHaveBeenCalled();
+		});
+
+		it('probes without registering a connection', async () => {
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			devicesService.findAll.mockResolvedValue([]);
+
+			const result = await service.probeDevice('http://192.168.1.100');
+
+			expect(result).toEqual(
+				expect.objectContaining({
+					host: '192.168.1.100',
+					name: 'Probed WLED',
+					mac: 'AA:BB:CC:DD:EE:FF',
+					adoptedDeviceId: null,
+				}),
+			);
+			expect(wledAdapter.connectWithContext).not.toHaveBeenCalled();
+		});
+
+		it('provisions each device through the mapper and retains partial failures', async () => {
+			wledAdapter.probe.mockResolvedValueOnce(mockContext).mockRejectedValueOnce(new Error('Device offline'));
+			devicesService.findAll.mockResolvedValue([]);
+			deviceMapper.mapDevice.mockResolvedValue(createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100'));
+
+			const results = await service.adoptDevices([
+				{ host: '192.168.1.100', name: 'Living room', category: DeviceCategory.LIGHTING },
+				{ host: '192.168.1.101', name: 'Kitchen', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(
+				'192.168.1.100',
+				mockContext,
+				'Living room',
+				'wled-aabbccddeeff',
+				undefined,
+				undefined,
+			);
+			expect(wledAdapter.connectWithContext).toHaveBeenCalledWith('192.168.1.100', 'wled-aabbccddeeff', mockContext);
+			expect(results).toEqual([
+				expect.objectContaining({ status: 'created', deviceId: 'device-1' }),
+				expect.objectContaining({ status: 'failed', error: 'Device offline' }),
+			]);
+		});
+
+		it('keeps an invalid host scoped to its batch item', async () => {
+			wledAdapter.probe.mockResolvedValue(mockContext);
+			devicesService.findAll.mockResolvedValue([]);
+			deviceMapper.mapDevice.mockResolvedValue(createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100'));
+
+			const results = await service.adoptDevices([
+				{ host: 'not/a/host', name: 'Invalid', category: DeviceCategory.LIGHTING },
+				{ host: '192.168.1.100', name: 'Valid', category: DeviceCategory.LIGHTING },
+			]);
+
+			expect(results.map((result) => result.status)).toEqual(['failed', 'created']);
+		});
+
+		it('marks discovered devices as already adopted by MAC identity', async () => {
+			mdnsDiscoverer.getDiscoveredDevices.mockReturnValue([
+				{ host: '192.168.1.200', name: 'Moved WLED', mac: 'AA:BB:CC:DD:EE:FF', port: 80 },
+			]);
+			devicesService.findAll.mockResolvedValue([createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100')]);
+
+			const inventory = await service.getDiscoveryInventory();
+
+			expect(inventory.devices[0].adoptedDeviceId).toBe('device-1');
 		});
 	});
 

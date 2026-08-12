@@ -436,6 +436,13 @@ export type DevicesHomeAssistantPluginGetWizardOperation = operations['get-devic
 export type DevicesHomeAssistantPluginDeleteWizardOperation = operations['delete-devices-home-assistant-plugin-wizard'];
 export type DevicesHomeAssistantPluginAdoptWizardOperation = operations['adopt-devices-home-assistant-plugin-wizard'];
 
+// Devices WLED Plugin Operations
+export type DevicesWledPluginGetDiscoveryOperation = operations['get-devices-wled-plugin-discovery'];
+export type DevicesWledPluginRescanDiscoveryOperation = operations['rescan-devices-wled-plugin-discovery'];
+export type DevicesWledPluginProbeDiscoveryOperation = operations['probe-devices-wled-plugin-discovery'];
+export type DevicesWledPluginAdoptDiscoveryOperation = operations['adopt-devices-wled-plugin-discovery'];
+export { DevicesWledPluginAdoptDeviceCategory } from './openapi';
+
 // Devices Virtual Plugin Operations
 export type DevicesVirtualPluginCheckCompatibilityOperation = operations['check-devices-virtual-plugin-devices-compatibility'];
 export type DevicesVirtualPluginGetDeviceSourceDevicesOperation = operations['get-devices-virtual-plugin-device-source-devices'];

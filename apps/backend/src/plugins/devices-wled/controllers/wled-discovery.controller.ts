@@ -1,57 +1,91 @@
-import { Controller, Get } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, HttpCode, Post } from '@nestjs/common';
+import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
-import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ApiBadRequestResponse,
+	ApiCreatedSuccessResponse,
 	ApiInternalServerErrorResponse,
+	ApiServiceUnavailableResponse,
 	ApiSuccessResponse,
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
-import { DEVICES_WLED_API_TAG_NAME, DEVICES_WLED_PLUGIN_NAME } from '../devices-wled.constants';
-import { WledDiscoveredDeviceModel, WledDiscoveredDevicesResponseModel } from '../models/wled-discovery.model';
+import { DEVICES_WLED_API_TAG_NAME } from '../devices-wled.constants';
+import { WledAdoptRequestDto, WledProbeRequestDto } from '../dto/wled-adoption.dto';
+import {
+	WledAdoptionResultsResponseModel,
+	WledDiscoveryResponseModel,
+	WledProbedDeviceResponseModel,
+} from '../models/wled-discovery.model';
 import { WledService } from '../services/wled.service';
 
 @ApiTags(DEVICES_WLED_API_TAG_NAME)
 @Controller('discovery')
 export class WledDiscoveryController {
-	private readonly logger: ExtensionLoggerService = createExtensionLogger(
-		DEVICES_WLED_PLUGIN_NAME,
-		'WledDiscoveryController',
-	);
-
 	constructor(private readonly wledService: WledService) {}
 
 	@ApiOperation({
 		tags: [DEVICES_WLED_API_TAG_NAME],
-		summary: 'Get discovered WLED devices',
-		description:
-			'Returns a list of WLED devices discovered via mDNS that have not yet been added to the system. ' +
-			'These devices can be manually added through the device creation endpoint.',
-		operationId: 'get-devices-wled-plugin-discovered',
+		summary: 'Get WLED adoption inventory',
+		description: 'Returns all mDNS candidates with their current Smart Panel adoption state.',
+		operationId: 'get-devices-wled-plugin-discovery',
 	})
-	@ApiSuccessResponse(
-		WledDiscoveredDevicesResponseModel,
-		'List of discovered WLED devices not yet added to the system.',
-	)
-	@ApiBadRequestResponse('Invalid request parameters')
+	@ApiSuccessResponse(WledDiscoveryResponseModel, 'WLED discovery inventory')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
-	async getDiscoveredDevices(): Promise<WledDiscoveredDevicesResponseModel> {
-		const discoveredDevices = await this.wledService.getUnadedDiscoveredDevices();
+	async getDiscovery(): Promise<WledDiscoveryResponseModel> {
+		const response = new WledDiscoveryResponseModel();
+		response.data = await this.wledService.getDiscoveryInventory();
+		return response;
+	}
 
-		const devices: WledDiscoveredDeviceModel[] = discoveredDevices.map((device) =>
-			toInstance(WledDiscoveredDeviceModel, {
-				host: device.host,
-				name: device.name,
-				mac: device.mac ?? null,
-				port: device.port,
-			}),
-		);
+	@ApiOperation({
+		tags: [DEVICES_WLED_API_TAG_NAME],
+		summary: 'Rescan for WLED devices',
+		description: 'Restarts mDNS discovery and clears stale discovery candidates.',
+		operationId: 'rescan-devices-wled-plugin-discovery',
+	})
+	@ApiSuccessResponse(WledDiscoveryResponseModel, 'WLED discovery was restarted')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post('rescan')
+	@HttpCode(200)
+	async rescanDiscovery(): Promise<WledDiscoveryResponseModel> {
+		const response = new WledDiscoveryResponseModel();
+		response.data = await this.wledService.rescanDiscovery();
+		return response;
+	}
 
-		const response = new WledDiscoveredDevicesResponseModel();
-		response.data = devices;
+	@ApiOperation({
+		tags: [DEVICES_WLED_API_TAG_NAME],
+		summary: 'Probe a WLED device',
+		description: 'Loads WLED identity and metadata without persisting or registering a device connection.',
+		operationId: 'probe-devices-wled-plugin-discovery',
+	})
+	@ApiBody({ type: WledProbeRequestDto })
+	@ApiCreatedSuccessResponse(WledProbedDeviceResponseModel, 'WLED device was probed successfully')
+	@ApiBadRequestResponse('Invalid hostname or IP address')
+	@ApiServiceUnavailableResponse('WLED device is unavailable')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post('probe')
+	async probeDevice(@Body() body: WledProbeRequestDto): Promise<WledProbedDeviceResponseModel> {
+		const response = new WledProbedDeviceResponseModel();
+		response.data = await this.wledService.probeDevice(body.data.host);
+		return response;
+	}
 
+	@ApiOperation({
+		tags: [DEVICES_WLED_API_TAG_NAME],
+		summary: 'Adopt WLED devices',
+		description: 'Probes and provisions each selected WLED device, returning an independent result for every item.',
+		operationId: 'adopt-devices-wled-plugin-discovery',
+	})
+	@ApiBody({ type: WledAdoptRequestDto })
+	@ApiSuccessResponse(WledAdoptionResultsResponseModel, 'WLED adoption results')
+	@ApiBadRequestResponse('Invalid adoption request')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post('adopt')
+	@HttpCode(200)
+	async adoptDevices(@Body() body: WledAdoptRequestDto): Promise<WledAdoptionResultsResponseModel> {
+		const response = new WledAdoptionResultsResponseModel();
+		response.data = await this.wledService.adoptDevices(body.data.devices);
 		return response;
 	}
 }

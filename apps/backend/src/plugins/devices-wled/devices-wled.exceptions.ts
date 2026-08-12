@@ -26,3 +26,9 @@ export class WledDeviceNotFoundException extends DevicesWledException {
 		super(`WLED device not found: ${identifier}`, HttpStatus.NOT_FOUND);
 	}
 }
+
+export class WledValidationException extends DevicesWledException {
+	constructor(message: string) {
+		super(message, HttpStatus.BAD_REQUEST);
+	}
+}

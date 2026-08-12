@@ -141,6 +141,16 @@ describe('WledClientAdapterService', () => {
 	};
 
 	describe('connect', () => {
+		it('probes without registering the device or emitting connection events', async () => {
+			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
+
+			const context = await service.probe('192.168.1.100');
+
+			expect(context.info.mac).toBe(mockWledInfo.mac);
+			expect(service.getDevice('192.168.1.100')).toBeUndefined();
+			expect(callbacks.onDeviceConnected).not.toHaveBeenCalled();
+		});
+
 		it('should connect to a WLED device and invoke connected callback', async () => {
 			mockFetchMultiple([
 				{ data: mockWledState },
