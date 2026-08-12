@@ -211,6 +211,7 @@ describe('Homey SHS compatibility probe', () => {
 			emailTag: 'owner_alice@example.com_backup',
 			activityTag: 'prefix_hpat_abcdefghijklmnop1234',
 			urlTag: 'prefix_https://user:pass@private-host.local/api',
+			brokerUrl: 'mqtt://broker.private/topic',
 			format: { type: 'json' },
 			thermostat: true,
 			chip: 'preserved chip',
@@ -221,6 +222,9 @@ describe('Homey SHS compatibility probe', () => {
 			lastUpdated: '2026-08-12T20:15:30.123Z',
 			lastModified: 1_786_579_200_000,
 			customActivityField: '2026-08-12T20:16:31+02:00',
+		});
+		const collisionSafeDevices = sanitizeHomeyDevices({
+			'device-000001': { id: 'device-000001', name: 'Synthetic source' },
 		});
 
 		expect(sanitized).toEqual({
@@ -245,6 +249,7 @@ describe('Homey SHS compatibility probe', () => {
 			emailTag: '[~1~]_backup',
 			activityTag: 'prefix_[~3~]',
 			urlTag: 'prefix_[~5~]',
+			brokerUrl: '[~5~]',
 			format: { type: 'json' },
 			thermostat: true,
 			chip: 'preserved chip',
@@ -256,6 +261,8 @@ describe('Homey SHS compatibility probe', () => {
 			lastModified: '2000-01-01T00:00:00.000Z',
 			customActivityField: '2000-01-01T00:00:00.000Z',
 		});
+		expect(Object.keys(collisionSafeDevices)).toEqual(['device-000002']);
+		expect(collisionSafeDevices['device-000002']).toMatchObject({ id: 'device-000002' });
 	});
 
 	it('uses unauthenticated ping, bounded read-only calls, and blocks redirects', async () => {
@@ -443,6 +450,10 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret');
 
 		unsafeCapture.systemInfo = { aliases: { 'https://user:pass@private-host.local/api': true } };
+
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret');
+
+		unsafeCapture.systemInfo = { brokerUrl: 'mqtt://broker.private/topic' };
 
 		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret');
 

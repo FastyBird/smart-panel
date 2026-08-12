@@ -34,7 +34,7 @@ const UNBRACKETED_IPV6_PATTERN = /[0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?/g;
 const MAX_IPV6_ADDRESS_LENGTH = 45;
 const MAX_IPV6_CANDIDATE_SCAN_LENGTH = 256;
 const MAC_PATTERN = /(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}|[0-9a-f]{4}(?:\.[0-9a-f]{4}){2}|[0-9a-f]{12}/gi;
-const URL_PATTERN = /(?:https?|wss?):\/\/[^\s"']+/gi;
+const URL_PATTERN = /[A-Z][A-Z0-9+.-]*:\/\/[^\s"']+/gi;
 const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 const HOMEY_TOKEN_PATTERN = /(?:hpat|pat|homey)[_-][A-Za-z0-9_-]{16,}/gi;
 
@@ -81,6 +81,7 @@ interface SanitizerContext {
 
 export interface SanitizationAliases {
 	counters: Map<string, number>;
+	sourceValues: Set<string>;
 	values: Map<string, string>;
 }
 
@@ -92,7 +93,24 @@ const isSecretKey = (key: string): boolean =>
 	CAMEL_CASE_SECRET_CODE_KEY_PATTERN.test(key) ||
 	BOUNDED_SECRET_CODE_KEY_PATTERN.test(key);
 
-export const createSanitizationAliases = (): SanitizationAliases => ({ counters: new Map(), values: new Map() });
+export const createSanitizationAliases = (): SanitizationAliases => ({
+	counters: new Map(),
+	sourceValues: new Set(),
+	values: new Map(),
+});
+
+const registerSourceValues = (value: unknown, aliases: SanitizationAliases): void => {
+	if (typeof value === 'string') {
+		aliases.sourceValues.add(value);
+	} else if (Array.isArray(value)) {
+		value.forEach((item) => registerSourceValues(item, aliases));
+	} else if (isRecord(value)) {
+		Object.entries(value).forEach(([key, nestedValue]) => {
+			aliases.sourceValues.add(key);
+			registerSourceValues(nestedValue, aliases);
+		});
+	}
+};
 
 const pseudonym = (kind: string, value: string, aliases: SanitizationAliases): string => {
 	const key = `${kind}\0${value}`;
@@ -102,8 +120,13 @@ const pseudonym = (kind: string, value: string, aliases: SanitizationAliases): s
 		return existing;
 	}
 
-	const sequence = (aliases.counters.get(kind) ?? 0) + 1;
-	const alias = `${kind}-${String(sequence).padStart(6, '0')}`;
+	let sequence = aliases.counters.get(kind) ?? 0;
+	let alias: string;
+
+	do {
+		sequence += 1;
+		alias = `${kind}-${String(sequence).padStart(6, '0')}`;
+	} while (aliases.sourceValues.has(alias));
 
 	aliases.counters.set(kind, sequence);
 	aliases.values.set(key, alias);
@@ -334,7 +357,11 @@ export const sanitizeHomeyPayload = (
 	privateTerms: string[] = [],
 	rootKind: SanitizerContext['rootKind'] = 'generic',
 	aliases: SanitizationAliases = createSanitizationAliases(),
-): unknown => sanitizeValue(value, 'root', { aliases, privateTerms, path: [], rootKind });
+): unknown => {
+	registerSourceValues(value, aliases);
+
+	return sanitizeValue(value, 'root', { aliases, privateTerms, path: [], rootKind });
+};
 
 const replaceCollectionIdentity = (
 	value: unknown,
@@ -345,6 +372,8 @@ const replaceCollectionIdentity = (
 	if (!isRecord(value)) {
 		throw new Error(`Homey ${kind} response is not an object`);
 	}
+
+	registerSourceValues(value, aliases);
 
 	return Object.fromEntries(
 		Object.entries(value)
@@ -537,6 +566,10 @@ export const captureHomeyShs = async (
 		readJson(devicesResponse, 'devices'),
 	]);
 	const aliases = createSanitizationAliases();
+	registerSourceValues(systemInfo, aliases);
+	registerSourceValues(zones, aliases);
+	registerSourceValues(devices, aliases);
+	registerSourceValues(ping.headers.get('x-homey-id'), aliases);
 	const sanitizedZones = sanitizeHomeyZones(zones, config.privateTerms, aliases);
 	const sanitizedDevices = sanitizeHomeyDevices(devices, config.privateTerms, aliases);
 
