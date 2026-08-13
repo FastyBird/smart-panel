@@ -310,7 +310,8 @@ should be driven by the largest real inventory, and Home Assistant delivers the 
 
 ## 9. Follow-ups (separate tasks)
 
-- A Simulator generation wizard using `GET /plugins/simulator/categories` and `POST /plugins/simulator/generate`.
+- [Simulator generation wizard](FEATURE-SIMULATOR-DEVICE-GENERATION-WIZARD.md), completed using the existing category
+  and generation endpoints without forcing Simulator into the shared adoption adapter.
 - A reTerminal integration-status card showing detected variant and automatic provisioning state.
 - A formal provider-discovery contract for Third Party integrations, if that plugin becomes more than the current demo/
   manually-addressed proxy.

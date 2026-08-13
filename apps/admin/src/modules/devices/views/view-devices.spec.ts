@@ -17,9 +17,14 @@ const mocks = vi.hoisted(() => ({
 	fetchValidation: vi.fn(),
 	flashError: vi.fn(),
 	wizardOptions: [] as { value: string; label: string; description: string; disabled: boolean }[],
-	virtualWizardEnabled: true,
-	// Read once per `useBreakpoints()` call (at mount time), same as `virtualWizardEnabled` above — not
-	// reactive within a test, so set it before `mountView()`, not after.
+	wizardRouteOptions: [] as {
+		value: string;
+		label: string;
+		icon: string;
+		to: { name: string };
+		testId: string;
+		disabled: boolean;
+	}[],
 	isLGDevice: false,
 	// Read once per `useBreakpoints()` call, like `isLGDevice` above: set it before `mountView()`.
 	isMDDevice: true,
@@ -129,6 +134,7 @@ vi.mock('../composables/composables', () => ({
 	},
 	useDevicesPlugins: () => ({
 		wizardOptions: computed(() => mocks.wizardOptions),
+		wizardRouteOptions: computed(() => mocks.wizardRouteOptions),
 	}),
 	useDevicesValidation: () => ({
 		fetchValidation: mocks.fetchValidation,
@@ -142,19 +148,6 @@ vi.mock('../devices.constants', () => ({
 		DEVICES_EDIT: 'devices-edit',
 		DEVICES_WIZARD: 'devices-wizard',
 	},
-}));
-
-vi.mock('../../../plugins/devices-virtual/devices-virtual.constants', () => ({
-	RouteNames: {
-		WIZARD: 'devices_virtual-wizard',
-	},
-	DEVICES_VIRTUAL_PLUGIN_NAME: 'devices-virtual',
-}));
-
-vi.mock('../../config', () => ({
-	useConfigPlugins: () => ({
-		enabled: () => mocks.virtualWizardEnabled,
-	}),
 }));
 
 vi.mock('../devices.exceptions', () => ({
@@ -196,7 +189,16 @@ describe('ViewDevices', () => {
 		mocks.fetchDevices.mockResolvedValue(undefined);
 		mocks.fetchValidation.mockResolvedValue(undefined);
 		mocks.wizardOptions = [];
-		mocks.virtualWizardEnabled = true;
+		mocks.wizardRouteOptions = [
+			{
+				value: 'devices-virtual',
+				label: 'devicesVirtualPlugin.wizard.title',
+				icon: 'mdi:call-split',
+				to: { name: 'devices_virtual-wizard' },
+				testId: 'virtual-device-wizard',
+				disabled: false,
+			},
+		];
 		mocks.isLGDevice = false;
 		mocks.isMDDevice = true;
 		mocks.route = {
@@ -282,6 +284,23 @@ describe('ViewDevices', () => {
 		expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'devices_virtual-wizard' });
 	});
 
+	it('renders and navigates an enabled Simulator generation launcher alongside Virtual Devices', async () => {
+		mocks.wizardRouteOptions.push({
+			value: 'simulator-plugin',
+			label: 'simulatorPlugin.wizard.title',
+			icon: 'mdi:test-tube',
+			to: { name: 'simulator-wizard' },
+			testId: 'simulator-device-wizard',
+			disabled: false,
+		});
+
+		const wrapper = mountView();
+
+		await wrapper.find('[data-test-id="simulator-device-wizard"]').trigger('click');
+
+		expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'simulator-wizard' });
+	});
+
 	it('renders the virtual device wizard route on lg+ (desktop) viewports, not just mobile', async () => {
 		// Regression test: the virtual wizard route (`devices_virtual-wizard`, registered as a child of
 		// `RouteNames.DEVICES` by the plugin) used to be invisible to `isWizardRoute`, which checked only
@@ -323,7 +342,7 @@ describe('ViewDevices', () => {
 
 	it('hides the small-screen virtual wizard launcher when the plugin is disabled', async () => {
 		mocks.isMDDevice = false;
-		mocks.virtualWizardEnabled = false;
+		mocks.wizardRouteOptions[0]!.disabled = true;
 
 		const wrapper = mountView();
 
@@ -336,7 +355,7 @@ describe('ViewDevices', () => {
 		// Mirrors 'hides the wizard button when all wizard-capable plugins are disabled' above: the
 		// launcher must not stay visible just because devices-virtual is a core plugin — its config DTO
 		// supports `enabled`, so an admin can genuinely turn it off from Extensions.
-		mocks.virtualWizardEnabled = false;
+		mocks.wizardRouteOptions[0]!.disabled = true;
 
 		const wrapper = mountView();
 

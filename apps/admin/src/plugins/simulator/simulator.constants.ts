@@ -4,6 +4,10 @@ export const SIMULATOR_PLUGIN_NAME = 'simulator-plugin';
 
 export const SIMULATOR_TYPE = 'simulator';
 
+export const RouteNames = {
+	WIZARD: 'simulator-wizard',
+};
+
 export const SIMULATOR_CONNECTION_STATES = [
 	'connected',
 	'disconnected',

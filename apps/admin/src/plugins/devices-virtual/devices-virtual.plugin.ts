@@ -12,12 +12,13 @@ import {
 	type IChannelPluginsSchemas,
 	type IChannelPropertyPluginsComponents,
 	type IChannelPropertyPluginsSchemas,
+	type IDevicePluginRoutes,
 	type IDevicePluginsComponents,
 	type IDevicePluginsSchemas,
 } from '../../modules/devices';
 
 import { VirtualDeviceAddForm, VirtualDeviceEditForm } from './components/components';
-import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from './devices-virtual.constants';
+import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE, RouteNames } from './devices-virtual.constants';
 import { locales } from './locales';
 import { PluginRoutes } from './router';
 import { VirtualDeviceAddFormSchema, VirtualDeviceEditFormSchema } from './schemas/devices.schemas';
@@ -32,7 +33,8 @@ import { VirtualDeviceCreateReqSchema, VirtualDeviceSchema, VirtualDeviceUpdateR
 export const devicesVirtualPluginKey: PluginInjectionKey<
 	IPlugin<
 		IDevicePluginsComponents & IChannelPluginsComponents & IChannelPropertyPluginsComponents,
-		IDevicePluginsSchemas & IChannelPluginsSchemas & IChannelPropertyPluginsSchemas
+		IDevicePluginsSchemas & IChannelPluginsSchemas & IChannelPropertyPluginsSchemas,
+		IDevicePluginRoutes
 	>
 > = Symbol('FB-Plugin-DevicesVirtual');
 
@@ -94,6 +96,18 @@ export default {
 					},
 				},
 			],
+			...(devicesRoute
+				? {
+						routes: {
+							wizard: {
+								label: 'devicesVirtualPlugin.wizard.title',
+								icon: 'mdi:call-split',
+								to: { name: RouteNames.WIZARD },
+								testId: 'virtual-device-wizard',
+							},
+						},
+					}
+				: {}),
 			modules: [DEVICES_MODULE_NAME],
 			isCore: true,
 		});

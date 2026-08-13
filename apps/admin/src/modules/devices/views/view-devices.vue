@@ -66,25 +66,15 @@
 					<el-icon class="mr-1"><icon icon="mdi:wizard-hat" /></el-icon>
 					{{ t('devicesModule.buttons.wizard.title') }}
 				</el-button>
-				<!--
-					The virtual device construction wizard is bespoke (it composes a device from existing
-					channel properties rather than discovering new ones) and deliberately does not register
-					a `deviceWizardAdapter`, so it cannot appear in the discovery dialog above — it gets its
-					own entry point instead. Gated on `enabled('devices-virtual')` the same way the sibling
-					Wizard button above is gated on `enabledWizardOptions`: devices-virtual's config DTO
-					(`VirtualUpdatePluginConfigDto`) extends the base `UpdatePluginConfigDto`, which declares
-					`enabled`, so the backend's `canToggleEnabled` is true for it (it checks only whether the
-					DTO has that property — `isCore` plugins are not exempt) and an admin can genuinely
-					disable it from Extensions.
-				-->
 				<el-button
-					v-if="virtualWizardEnabled"
+					v-for="item in enabledWizardRouteOptions"
+					:key="item.value"
 					class="px-4! ml-2!"
-					data-test-id="virtual-device-wizard"
-					@click="onVirtualWizard"
+					:data-test-id="item.testId"
+					@click="onRouteWizard(item.to)"
 				>
-					<el-icon class="mr-1"><icon icon="mdi:call-split" /></el-icon>
-					{{ t('devicesVirtualPlugin.wizard.title') }}
+					<el-icon class="mr-1"><icon :icon="item.icon" /></el-icon>
+					{{ t(item.label) }}
 				</el-button>
 				<el-button
 					type="primary"
@@ -106,12 +96,10 @@
 		The wizards, for viewports below `md`. `ViewHeader` — which carries them on larger screens — is
 		gated on `isMDDevice` and renders nothing here, and the app bar's single teleported right-hand
 		slot is already the Add button: mounting a second button into it hides the first. Without this
-		row there is no way to reach either wizard on a small screen short of typing its URL, and the
-		virtual one has no other entry point at all, since the plugin deliberately registers no
-		`deviceWizardAdapter` and so never appears in the discovery dialog.
+		row there is no way to reach either kind of wizard on a small screen short of typing its URL.
 	-->
 	<div
-		v-if="!isMDDevice && isDevicesListRoute && !isWizardRoute && (enabledWizardOptions.length > 0 || virtualWizardEnabled)"
+		v-if="!isMDDevice && isDevicesListRoute && !isWizardRoute && (enabledWizardOptions.length > 0 || enabledWizardRouteOptions.length > 0)"
 		class="flex gap-2 lt-sm:mx-1 sm:mx-2 mt-2"
 	>
 		<el-button
@@ -124,13 +112,14 @@
 			{{ t('devicesModule.buttons.wizard.title') }}
 		</el-button>
 		<el-button
-			v-if="virtualWizardEnabled"
+			v-for="item in enabledWizardRouteOptions"
+			:key="item.value"
 			class="flex-1"
-			data-test-id="virtual-device-wizard-small"
-			@click="onVirtualWizard"
+			:data-test-id="`${item.testId}-small`"
+			@click="onRouteWizard(item.to)"
 		>
-			<el-icon class="mr-1"><icon icon="mdi:call-split" /></el-icon>
-			{{ t('devicesVirtualPlugin.wizard.title') }}
+			<el-icon class="mr-1"><icon :icon="item.icon" /></el-icon>
+			{{ t(item.label) }}
 		</el-button>
 	</div>
 
@@ -270,7 +259,7 @@
 import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
+import { type RouteLocationRaw, type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
 import { ElButton, ElCard, ElDialog, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
 
@@ -287,14 +276,6 @@ import {
 	useBreakpoints,
 	useFlashMessage,
 } from '../../../common';
-// Imported directly from the plugin's own constants rather than looked up through the generic plugin
-// registry — the same shortcut `modules/onboarding` already takes for `plugins/weather-open-meteo`.
-// `useDevicesPlugins()`'s `wizardOptions` is deliberately not reused for this: that list is scoped to
-// plugins registering a `deviceWizardAdapter`, and this wizard is bespoke precisely because it does not
-// (see decision 5 in the admin implementation plan). Enablement is still checked below, the same way
-// `wizardOptions` checks it for its own entries — see the template comment by the button.
-import { DEVICES_VIRTUAL_PLUGIN_NAME, RouteNames as DevicesVirtualRouteNames } from '../../../plugins/devices-virtual/devices-virtual.constants';
-import { useConfigPlugins } from '../../config';
 import { ListDevices, ListDevicesAdjust } from '../components/components';
 import { useDevicesActions, useDevicesDataSource, useDevicesPlugins, useDevicesValidation } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
@@ -338,10 +319,9 @@ const {
 } = useDevicesDataSource();
 const deviceActions = useDevicesActions();
 const { fetchValidation } = useDevicesValidation();
-const { wizardOptions } = useDevicesPlugins();
+const { wizardOptions, wizardRouteOptions } = useDevicesPlugins();
 const enabledWizardOptions = computed(() => wizardOptions.value.filter((item) => !item.disabled));
-const { enabled } = useConfigPlugins();
-const virtualWizardEnabled = computed<boolean>((): boolean => enabled(DEVICES_VIRTUAL_PLUGIN_NAME));
+const enabledWizardRouteOptions = computed(() => wizardRouteOptions.value.filter((item) => !item.disabled));
 
 const mounted = ref<boolean>(false);
 
@@ -356,12 +336,10 @@ const isDevicesListRoute = computed<boolean>((): boolean => {
 });
 
 const isWizardRoute = computed<boolean>((): boolean => {
-	// The virtual device wizard (`devices-virtual/wizard`) is registered as a child of `RouteNames.DEVICES`
-	// (see `devices-virtual.plugin.ts`), the same way `RouteNames.DEVICES_WIZARD` is, and needs the same
-	// full-page treatment: neither is a `showDrawer` route (that's only DEVICES_ADD/DEVICES_EDIT), so
-	// without this it would fall through to `(!isDevicesListRoute && !isLGDevice)` below, which is `false`
-	// on any `lg`+ viewport — the device list would stay mounted and the wizard would never render.
-	return route.name === RouteNames.DEVICES_WIZARD || route.name === DevicesVirtualRouteNames.WIZARD;
+	// Plugin-owned construction/generation wizards are children of the Devices list just like the
+	// shared adoption route. Treat every registered launcher target as a full-page wizard so its route
+	// remains visible on lg+ viewports instead of leaving the device list mounted over it.
+	return route.name === RouteNames.DEVICES_WIZARD || wizardRouteOptions.value.some((item) => router.resolve(item.to).name === route.name);
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
@@ -506,11 +484,11 @@ const onStartWizard = (type: string): void => {
 	});
 };
 
-const onVirtualWizard = (): void => {
+const onRouteWizard = (to: RouteLocationRaw): void => {
 	if (isLGDevice.value) {
-		router.replace({ name: DevicesVirtualRouteNames.WIZARD });
+		router.replace(to);
 	} else {
-		router.push({ name: DevicesVirtualRouteNames.WIZARD });
+		router.push(to);
 	}
 };
 

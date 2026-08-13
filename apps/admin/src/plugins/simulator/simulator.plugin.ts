@@ -1,30 +1,29 @@
 import type { App } from 'vue';
+import type { RouteRecordRaw } from 'vue-router';
 
 import { defaultsDeep } from 'lodash';
 
 import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
-import {
-	CONFIG_MODULE_NAME,
-	CONFIG_MODULE_PLUGIN_TYPE,
-	type IPluginsComponents,
-	type IPluginsSchemas,
-} from '../../modules/config';
+import { CONFIG_MODULE_NAME, CONFIG_MODULE_PLUGIN_TYPE, type IPluginsComponents, type IPluginsSchemas } from '../../modules/config';
 import {
 	DEVICES_MODULE_NAME,
+	RouteNames as DevicesRouteNames,
 	type IChannelPluginsComponents,
 	type IChannelPluginsSchemas,
 	type IChannelPropertyPluginsComponents,
 	type IChannelPropertyPluginsSchemas,
+	type IDevicePluginRoutes,
 	type IDevicePluginsComponents,
 	type IDevicePluginsSchemas,
 } from '../../modules/devices';
 
 import { SimulatorConfigForm } from './components/components';
-import { SIMULATOR_PLUGIN_NAME, SIMULATOR_TYPE } from './simulator.constants';
 import { locales } from './locales';
+import { PluginRoutes } from './router';
 import { SimulatorConfigEditFormSchema } from './schemas/config.schemas';
 import { SimulatorDeviceAddFormSchema, SimulatorDeviceEditFormSchema } from './schemas/devices.schemas';
+import { RouteNames, SIMULATOR_PLUGIN_NAME, SIMULATOR_TYPE } from './simulator.constants';
 import { SimulatorChannelPropertySchema } from './store/channels.properties.store.schemas';
 import { SimulatorChannelSchema } from './store/channels.store.schemas';
 import { SimulatorConfigSchema, SimulatorConfigUpdateReqSchema } from './store/config.store.schemas';
@@ -33,7 +32,8 @@ import { SimulatorDeviceCreateReqSchema, SimulatorDeviceSchema, SimulatorDeviceU
 export const simulatorPluginKey: PluginInjectionKey<
 	IPlugin<
 		IDevicePluginsComponents & IChannelPluginsComponents & IChannelPropertyPluginsComponents & IPluginsComponents,
-		IDevicePluginsSchemas & IChannelPluginsSchemas & IChannelPropertyPluginsSchemas & IPluginsSchemas
+		IDevicePluginsSchemas & IChannelPluginsSchemas & IChannelPropertyPluginsSchemas & IPluginsSchemas,
+		IDevicePluginRoutes
 	>
 > = Symbol('FB-Plugin-Simulator');
 
@@ -46,6 +46,14 @@ export default {
 			const mergedMessages = defaultsDeep(currentMessages, { simulatorPlugin: translations });
 
 			options.i18n.global.setLocaleMessage(locale, mergedMessages);
+		}
+
+		const devicesRoute = options.router.getRoutes().find((route) => route.name === DevicesRouteNames.DEVICES);
+
+		if (devicesRoute) {
+			PluginRoutes.forEach((route: RouteRecordRaw): void => {
+				options.router.addRoute(DevicesRouteNames.DEVICES, route);
+			});
 		}
 
 		pluginsManager.addPlugin(simulatorPluginKey, {
@@ -84,6 +92,18 @@ export default {
 					},
 				},
 			],
+			...(devicesRoute
+				? {
+						routes: {
+							wizard: {
+								label: 'simulatorPlugin.wizard.title',
+								icon: 'mdi:test-tube',
+								to: { name: RouteNames.WIZARD },
+								testId: 'simulator-device-wizard',
+							},
+						},
+					}
+				: {}),
 			modules: [DEVICES_MODULE_NAME, CONFIG_MODULE_NAME],
 			isCore: false,
 		});

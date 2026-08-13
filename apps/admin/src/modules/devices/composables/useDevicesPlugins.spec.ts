@@ -20,6 +20,14 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
+		routes: {
+			wizard: {
+				label: 'testPlugin.wizard.title',
+				icon: 'mdi:test-tube',
+				to: { name: 'test-plugin-wizard' },
+				testId: 'test-plugin-wizard',
+			},
+		},
 		elements: [
 			{
 				type: 'test-type',
@@ -149,6 +157,22 @@ describe('useDevicesPlugins', () => {
 				value: 'wizard-plugin',
 				label: 'Wizard Plugin',
 				description: 'Wizard plugin description',
+				disabled: false,
+			},
+		]);
+	});
+
+	it('exposes plugin-owned route wizard launchers separately from adoption adapters', () => {
+		const { wizardOptions, wizardRouteOptions } = useDevicesPlugins();
+
+		expect(wizardOptions.value.map((item) => item.value)).not.toContain('test-plugin');
+		expect(wizardRouteOptions.value).toEqual([
+			{
+				value: 'test-plugin',
+				label: 'testPlugin.wizard.title',
+				icon: 'mdi:test-tube',
+				to: { name: 'test-plugin-wizard' },
+				testId: 'test-plugin-wizard',
 				disabled: false,
 			},
 		]);

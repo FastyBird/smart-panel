@@ -5,7 +5,7 @@ import { orderBy } from 'natural-orderby';
 import { type IPlugin, type IPluginElement, injectPluginsManager } from '../../../common';
 import { useConfigPlugins } from '../../config';
 import { DEVICES_MODULE_NAME } from '../devices.constants';
-import type { IDevicePluginsComponents, IDevicePluginsSchemas } from '../devices.types';
+import type { IDevicePluginRoutes, IDevicePluginsComponents, IDevicePluginsSchemas, IDeviceWizardRouteLauncher } from '../devices.types';
 
 import type { IUseDevicesPlugins } from './types';
 
@@ -24,13 +24,20 @@ export const useDevicesPlugins = (): IUseDevicesPlugins => {
 		'deviceCreateReqSchema',
 		'deviceUpdateReqSchema',
 	];
+	const pluginRoutes: (keyof IDevicePluginRoutes)[] = ['wizard'];
 
-	const plugins = computed<IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas>[]>(() => {
+	const plugins = computed<IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas, IDevicePluginRoutes>[]>(() => {
 		return pluginsManager.getPlugins().filter((plugin) => {
 			const pluginModuleEligible = plugin.modules === undefined || plugin.modules.includes(DEVICES_MODULE_NAME);
 
 			if (!pluginModuleEligible) {
 				return false;
+			}
+
+			const hasRoute = pluginRoutes.some((key) => plugin.routes && key in plugin.routes);
+
+			if (hasRoute) {
+				return true;
 			}
 
 			return (plugin.elements ?? []).some((el) => {
@@ -89,13 +96,33 @@ export const useDevicesPlugins = (): IUseDevicesPlugins => {
 		return orderBy(flat, [(o) => o.label], ['asc']);
 	});
 
-	const getByPluginType = (type: IPlugin['type']): IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined => {
+	const wizardRouteOptions = computed<
+		{ value: IPlugin['type']; label: string; icon: string; to: IDeviceWizardRouteLauncher['to']; testId: string; disabled: boolean }[]
+	>(() => {
+		const flat = plugins.value.flatMap((plugin) => {
+			const launcher = plugin.routes?.wizard;
+
+			return launcher
+				? [
+						{
+							value: plugin.type,
+							...launcher,
+							disabled: !enabled(plugin.type),
+						},
+					]
+				: [];
+		});
+
+		return orderBy(flat, [(o) => o.label], ['asc']);
+	});
+
+	const getByPluginType = (type: IPlugin['type']): IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas, IDevicePluginRoutes> | undefined => {
 		return plugins.value.find((plugin) => plugin.type === type);
 	};
 
 	const getByName = getByPluginType;
 
-	const getByType = (type: IPluginElement['type']): IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined => {
+	const getByType = (type: IPluginElement['type']): IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas, IDevicePluginRoutes> | undefined => {
 		return plugins.value.find((plugin) =>
 			(plugin.elements ?? []).some((el) => el.type === type && (typeof el.modules === 'undefined' || el.modules.includes(DEVICES_MODULE_NAME)))
 		);
@@ -119,6 +146,7 @@ export const useDevicesPlugins = (): IUseDevicesPlugins => {
 		plugins,
 		options,
 		wizardOptions,
+		wizardRouteOptions,
 		getByPluginType,
 		getByName,
 		getByType,

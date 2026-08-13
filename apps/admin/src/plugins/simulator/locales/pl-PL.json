@@ -1,4 +1,52 @@
 {
+	"wizard": {
+		"title": "Generuj symulowane urządzenia",
+		"subtitle": "Utwórz zestaw realistycznych urządzeń z jednej sprawdzonej konfiguracji",
+		"breadcrumb": "Generuj urządzenia",
+		"steps": {
+			"configure": "Konfiguracja",
+			"review": "Przegląd",
+			"results": "Wyniki"
+		},
+		"actions": {
+			"generate": "Generuj urządzenia",
+			"generateMore": "Generuj więcej",
+			"retryCategories": "Ponów ładowanie kategorii",
+			"retryRooms": "Ponów ładowanie pomieszczeń",
+			"viewDevice": "Pokaż urządzenie"
+		},
+		"errors": {
+			"roomsLoadFailed": "Nie udało się załadować pomieszczeń."
+		},
+		"fields": {
+			"category": "Kategoria urządzenia",
+			"namePrefix": "Nazwa lub prefiks nazwy",
+			"count": "Liczba urządzeń",
+			"structure": "Generowana struktura",
+			"requiredChannelsOnly": "Generuj tylko wymagane kanały",
+			"requiredPropertiesOnly": "Generuj tylko wymagane właściwości",
+			"autoSimulate": "Automatycznie symuluj zmiany wartości",
+			"simulateInterval": "Interwał symulacji (ms)",
+			"behaviorMode": "Tryb zachowania",
+			"deviceName": "Nazwa urządzenia"
+		},
+		"behaviorModes": {
+			"default": "Domyślny",
+			"realistic": "Realistyczny"
+		},
+		"review": {
+			"title": "Sprawdź {count} urządzeń",
+			"description": "Generowanie rozpocznie się po zatwierdzeniu pełnej listy.",
+			"noRoom": "Bez pomieszczenia"
+		},
+		"results": {
+			"summary": "Utworzono: {succeeded}, niepowodzenia: {failed}",
+			"status": "Status",
+			"details": "Szczegóły",
+			"created": "Utworzono",
+			"failed": "Niepowodzenie"
+		}
+	},
 	"headings": {
 		"aboutPluginStatus": "Status wtyczki",
 		"aboutSimulation": "Zachowanie symulacji",
