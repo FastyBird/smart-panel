@@ -333,11 +333,21 @@ describe('Homey SHS compatibility probe', () => {
 				'private-device': {
 					id: 'private-device',
 					name: 'Private device',
-					capabilities: ['kids_room_temperature', 'homealarm_state'],
+					capabilities: ['kids_room_temperature', 'measure_temperature.kids_room', 'homealarm_state'],
 					capabilitiesObj: {
 						kids_room_temperature: { id: 'kids_room_temperature', value: 21 },
+						'measure_temperature.kids_room': {
+							id: 'measure_temperature.kids_room',
+							value: 21,
+						},
 						homealarm_state: { id: 'homealarm_state', value: false },
 					},
+					ui: {
+						quickAction: 'measure_temperature.kids_room',
+						uiIndicator: 'measure_temperature.kids_room',
+						components: [{ capabilities: ['measure_temperature.kids_room'] }],
+					},
+					energy: { cumulativeExportedCapability: 'measure_temperature.kids_room' },
 				},
 			},
 			['kids_room', 'home'],
@@ -345,16 +355,44 @@ describe('Homey SHS compatibility probe', () => {
 		const device = devices['device-000001'] as {
 			capabilities: string[];
 			capabilitiesObj: Record<string, { id: string }>;
+			energy: { cumulativeExportedCapability: string };
+			ui: {
+				quickAction: string;
+				uiIndicator: string;
+				components: Array<{ capabilities: string[] }>;
+			};
 		};
 		const privateAlias = 'capability-base-000001';
+		const suffixedAlias = 'measure_temperature.capability-suffix-000001';
 
-		expect(device.capabilities).toEqual([privateAlias, 'homealarm_state']);
+		expect(device.capabilities).toEqual([privateAlias, suffixedAlias, 'homealarm_state']);
 		expect(device.capabilitiesObj[privateAlias]?.id).toBe(privateAlias);
+		expect(device.capabilitiesObj[suffixedAlias]?.id).toBe(suffixedAlias);
+		expect(device.ui.quickAction).toBe(suffixedAlias);
+		expect(device.ui.uiIndicator).toBe(suffixedAlias);
+		expect(device.ui.components[0].capabilities).toEqual([suffixedAlias]);
+		expect(device.energy.cumulativeExportedCapability).toBe(suffixedAlias);
 		expect(JSON.stringify(device)).not.toContain('kids_room');
 		expect(() =>
 			assertHomeyCaptureSafe({ metadata: {}, systemInfo: {}, zones: {}, devices }, [], ['kids_room', 'home']),
 		).not.toThrow();
 		expect(() => assertHomeyCaptureRedacted({ metadata: {}, systemInfo: {}, zones: {}, devices })).not.toThrow();
+
+		const temperatureDevices = sanitizeHomeyDevices(
+			{
+				'private-device': {
+					id: 'private-device',
+					name: 'Private device',
+					capabilities: ['measure_temperature'],
+					capabilitiesObj: { measure_temperature: { id: 'measure_temperature', value: 21 } },
+				},
+			},
+			['temperature'],
+		);
+
+		expect((temperatureDevices['device-000001'] as { capabilities: string[] }).capabilities).toEqual([
+			'measure_temperature',
+		]);
 	});
 
 	it('pseudonymizes distinct enum option IDs and remaps the current value', () => {

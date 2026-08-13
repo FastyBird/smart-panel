@@ -111,7 +111,69 @@ const SYSTEM_INFO_PROTOCOL_KEYS = new Set([
 	'uptime',
 ]);
 const HOMEY_TERM_COLLIDING_PROTOCOL_KEYS = new Set(['homeBattery', 'homeBatteryVirtual', 'homeyclass']);
-const PUBLIC_HOMEY_CAPABILITY_BASES = new Set(['device_status', 'homealarm_state']);
+const PUBLIC_HOMEY_CAPABILITY_BASES = new Set([
+	'actionEvents',
+	'active_map',
+	'alarm_battery',
+	'alarm_bin_full',
+	'alarm_co',
+	'alarm_contact',
+	'alarm_problem',
+	'alarm_smoke',
+	'alarm_stuck',
+	'alarm_tank_empty',
+	'alarm_tank_full',
+	'battery_charging_state',
+	'button',
+	'clean_area',
+	'clean_full',
+	'clean_last',
+	'clean_mode',
+	'clean_time',
+	'device_status',
+	'dim',
+	'dock',
+	'effect',
+	'empty_dustbin',
+	'homealarm_state',
+	'input_1',
+	'input_external',
+	'is_cleaning',
+	'last_seen',
+	'light_hue',
+	'light_mode',
+	'light_saturation',
+	'light_temperature',
+	'measure_battery',
+	'measure_co2',
+	'measure_current',
+	'measure_humidity',
+	'measure_linkquality',
+	'measure_luminance',
+	'measure_power',
+	'measure_power_apparent',
+	'measure_pressure',
+	'measure_temperature',
+	'measure_voltage',
+	'meter_power',
+	'meter_power_factor',
+	'mop_attached',
+	'mop_route',
+	'onoff',
+	'pause_clean',
+	'position_x',
+	'position_y',
+	'power_on_behavior',
+	'rssi',
+	'scrub_intensity',
+	'suction_power',
+	'target_temperature',
+	'wash_mop',
+	'water_box_attached',
+	'windowcoverings_set',
+	'windowcoverings_state',
+	'windowcoverings_tilt_set',
+]);
 
 const READ_ENDPOINTS = {
 	systemInfo: '/api/manager/system/',
@@ -146,6 +208,7 @@ interface UnsafeCaptureMatch {
 
 interface SanitizerContext {
 	aliases: SanitizationAliases;
+	capabilityIdentifiers: Set<string>;
 	privateTerms: string[];
 	path: string[];
 	rootKind: 'device' | 'generic' | 'zone';
@@ -337,6 +400,26 @@ const isCapabilityEnumOptionIdentifier = (
 const isCapabilityListEntry = (path: string[], rootKind: SanitizerContext['rootKind']): boolean =>
 	rootKind === 'device' && path.length === 2 && path[0] === 'root' && path[1] === 'capabilities';
 
+const collectCapabilityIdentifiers = (value: unknown, rootKind: SanitizerContext['rootKind']): Set<string> => {
+	if (rootKind !== 'device' || !isRecord(value)) {
+		return new Set();
+	}
+
+	const identifiers = new Set(
+		Array.isArray(value.capabilities)
+			? value.capabilities.filter((capability): capability is string => typeof capability === 'string')
+			: [],
+	);
+
+	for (const capabilityMap of [value.capabilitiesObj, value.capabilityOptions]) {
+		if (isRecord(capabilityMap)) {
+			Object.keys(capabilityMap).forEach((identifier) => identifiers.add(identifier));
+		}
+	}
+
+	return identifiers;
+};
+
 const sanitizeCapabilityIdentifier = (value: string, aliases: SanitizationAliases): string => {
 	const separator = value.indexOf('.');
 	const base = separator < 0 ? value : value.slice(0, separator);
@@ -492,6 +575,10 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 			return pseudonym('enum-option', value, context.aliases);
 		}
 
+		if (context.capabilityIdentifiers.has(value)) {
+			return sanitizeCapabilityIdentifier(value, context.aliases);
+		}
+
 		if (
 			isCapabilityListEntry(context.path, context.rootKind) ||
 			isCapabilityIdentifier(key, context.path, context.rootKind)
@@ -576,7 +663,13 @@ export const sanitizeHomeyPayload = (
 	registerPrivateTerms(privateTerms, aliases);
 	registerSourceValues(value, aliases);
 
-	return sanitizeValue(value, 'root', { aliases, privateTerms, path: [], rootKind });
+	return sanitizeValue(value, 'root', {
+		aliases,
+		capabilityIdentifiers: collectCapabilityIdentifiers(value, rootKind),
+		privateTerms,
+		path: [],
+		rootKind,
+	});
 };
 
 const sanitizedSystemCpu = (): Record<string, unknown> => ({
@@ -979,6 +1072,10 @@ const assertGeneratedPseudonym = (value: unknown): void => {
 };
 
 const assertHomeyPayloadRedacted = (value: unknown, rootKind: SanitizerContext['rootKind']): void => {
+	const capabilityIdentifiers = collectCapabilityIdentifiers(value, rootKind);
+	const isCapabilityReferenceField = (key: string, path: string[]): boolean =>
+		rootKind === 'device' &&
+		(/capabilit|quickAction|uiIndicator/i.test(key) || path[path.length - 1] === 'capabilities');
 	const inspect = (nestedValue: unknown, key: string, path: string[]): void => {
 		const capabilityMapEntry = isCapabilityMap(path, rootKind);
 		const collectionIdentity =
@@ -1065,6 +1162,13 @@ const assertHomeyPayloadRedacted = (value: unknown, rootKind: SanitizerContext['
 
 			if (isCapabilityListEntry(path, rootKind) || isCapabilityIdentifier(key, path, rootKind)) {
 				assertSanitizedCapabilityIdentifier(nestedValue);
+				return;
+			}
+
+			if (isCapabilityReferenceField(key, path)) {
+				if (nestedValue !== '.none' && !capabilityIdentifiers.has(nestedValue)) {
+					throwUnredactedSensitiveField();
+				}
 				return;
 			}
 
