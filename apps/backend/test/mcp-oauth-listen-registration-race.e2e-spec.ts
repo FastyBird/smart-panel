@@ -615,8 +615,13 @@ describe('MCP OAuth listen registration race', () => {
 			const scopeContractionSubscription = await scopeContractionClient.listen({ toolsListChanged: true });
 
 			expect(subscriptions.activeCount).toBe(1);
-			await management.updateClient(scopeContractionOAuthClient.id, { maximumScopes: [] }, 'owner-actor');
+			const scopeContractionMutation = management.updateClient(
+				scopeContractionOAuthClient.id,
+				{ maximumScopes: [] },
+				'owner-actor',
+			);
 			await expect(scopeContractionSubscription.closed).resolves.toBe('remote');
+			await scopeContractionMutation;
 			expect(subscriptions.activeCount).toBe(0);
 			expect(auditLog).toHaveBeenCalledWith(
 				'MCP audit event',
@@ -625,6 +630,7 @@ describe('MCP OAuth listen registration race', () => {
 			await expect(resourceServer.verifyAccessToken(scopeContractionAccessToken)).rejects.toThrow(
 				'The MCP OAuth access token is invalid or no longer active',
 			);
+			await expectOAuthConnectionRejected(endpoint, scopeContractionAccessToken);
 			expect(
 				await dataSource.getRepository(McpOAuthClientEntity).findOneByOrFail({ id: scopeContractionOAuthClient.id }),
 			).toMatchObject({ maximumScopes: [], generation: 1 });
