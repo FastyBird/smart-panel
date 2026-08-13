@@ -191,6 +191,8 @@ describe('McpSubscriptionRegistryService', () => {
 		await rejection;
 		expect(subscription.signal.aborted).toBe(true);
 		expect(service.activeCount).toBe(1);
+		subscription.close('error');
+		expect(service.activeCount).toBe(1);
 
 		const retry = service.closeOAuthAccessToken('access-one', () => Promise.resolve());
 		const retryRejection = expect(retry).rejects.toThrow('MCP subscription transport did not acknowledge closure');

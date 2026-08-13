@@ -295,14 +295,7 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 		if (!subscription) {
 			return;
 		}
-		if (subscription.closing) {
-			if (reason !== 'authorization_revoked') {
-				this.subscriptions.delete(id);
-				subscription.transportClosure?.resolve();
-			}
-
-			return;
-		}
+		if (subscription.closing) return;
 
 		const awaitsTransport = reason === 'authorization_revoked' && subscription.transportClosure !== undefined;
 		if (awaitsTransport) subscription.closing = true;
