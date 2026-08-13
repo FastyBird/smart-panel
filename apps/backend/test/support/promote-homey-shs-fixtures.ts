@@ -214,6 +214,18 @@ const main = async (): Promise<void> => {
 	assertHomeyCaptureSafe(capture, []);
 
 	const fixtures = selectFixtures(publishedDevices);
+
+	for (const [name, device] of fixtures) {
+		assertHomeyCaptureSafe({ metadata: {}, systemInfo: {}, zones: {}, devices: { [name]: device } }, []);
+	}
+
+	const manifest = {
+		schemaVersion: 1,
+		provenance: fixtureProvenance(capture.metadata),
+		fixtures: FIXTURE_NAMES.map((name) => `devices/${name}.json`),
+		knownCoverageGaps: deriveKnownCoverageGaps(publishedDevices),
+		knownDeviceClassGaps: deriveKnownDeviceClassGaps(publishedDevices),
+	};
 	const devicesRoot = resolve(outputRoot, 'devices');
 
 	await mkdir(devicesRoot, { recursive: true });
@@ -221,17 +233,10 @@ const main = async (): Promise<void> => {
 	await writeJson(resolve(outputRoot, 'zones.json'), capture.zones);
 
 	for (const [name, device] of fixtures) {
-		assertHomeyCaptureSafe({ metadata: {}, systemInfo: {}, zones: {}, devices: { [name]: device } }, []);
 		await writeJson(resolve(devicesRoot, `${name}.json`), device);
 	}
 
-	await writeJson(resolve(outputRoot, 'manifest.json'), {
-		schemaVersion: 1,
-		provenance: fixtureProvenance(capture.metadata),
-		fixtures: FIXTURE_NAMES.map((name) => `devices/${name}.json`),
-		knownCoverageGaps: deriveKnownCoverageGaps(publishedDevices),
-		knownDeviceClassGaps: deriveKnownDeviceClassGaps(publishedDevices),
-	});
+	await writeJson(resolve(outputRoot, 'manifest.json'), manifest);
 
 	process.stdout.write(`Promoted ${fixtures.size} sanitized Homey fixtures.\n`);
 };
