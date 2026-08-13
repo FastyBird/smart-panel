@@ -118,6 +118,7 @@ describe('MCP OAuth listen registration race', () => {
 		let client: Client | undefined;
 		let expiryClient: Client | undefined;
 		let grantExpiryClient: Client | undefined;
+		let refreshFamilyRevocationClient: Client | undefined;
 		let grantRevocationClient: Client | undefined;
 		const releaseListen = deferred();
 
@@ -147,6 +148,15 @@ describe('MCP OAuth listen registration race', () => {
 				name: 'Listen grant expiry client',
 				redirectUris: ['http://127.0.0.1:1456/callback'],
 				maximumScopes: [McpOAuthScope.READ],
+				enabled: true,
+				generation: 0,
+				createdById: user.id,
+			});
+			const refreshFamilyOAuthClient = await dataSource.getRepository(McpOAuthClientEntity).save({
+				clientIdentifier: 'listen-refresh-family-client',
+				name: 'Listen refresh family client',
+				redirectUris: ['http://127.0.0.1:1457/callback'],
+				maximumScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS],
 				enabled: true,
 				generation: 0,
 				createdById: user.id,
@@ -203,6 +213,25 @@ describe('MCP OAuth listen registration race', () => {
 				clientGeneration: 0,
 				modulePolicyGeneration: 0,
 			});
+			const rawRefreshFamilyGrantId = 'listen-refresh-family-grant';
+			const refreshFamilyGrant = await dataSource.getRepository(McpOAuthGrantEntity).save({
+				providerGrantIdHash: hashToken(rawRefreshFamilyGrantId),
+				clientId: refreshFamilyOAuthClient.id,
+				approvedById: user.id,
+				installationId: 'listen-registration-race-installation',
+				issuer: urls.issuer,
+				resource: urls.resource,
+				approvedScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS],
+				expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
+				revokedAt: null,
+				generation: 0,
+				approverAuthorityGeneration: 0,
+				oauthEnabledGeneration: 0,
+				serverSecretVersion: 1,
+				publicIdentityGeneration: 0,
+				clientGeneration: 0,
+				modulePolicyGeneration: 0,
+			});
 			const config = Object.assign(new McpConfigModel(), {
 				enabled: true,
 				oauthEnabled: true,
@@ -220,6 +249,7 @@ describe('MCP OAuth listen registration race', () => {
 
 			const accessTokens = new Adapter('AccessToken');
 			const providerGrants = new Adapter('Grant');
+			const refreshTokens = new Adapter('RefreshToken');
 
 			await providerGrants.upsert(
 				rawGrantId,
@@ -426,6 +456,100 @@ describe('MCP OAuth listen registration race', () => {
 				(await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: grant.id })).revokedAt,
 			).toBeNull();
 
+			const refreshFamilyAccessToken = 'listen-refresh-family-revocation-access-token';
+			const refreshFamilyRefreshToken = 'listen-refresh-family-revocation-refresh-token';
+
+			await providerGrants.upsert(
+				rawRefreshFamilyGrantId,
+				{
+					accountId: user.id,
+					clientId: refreshFamilyOAuthClient.clientIdentifier,
+				},
+				600,
+			);
+			await accessTokens.upsert(
+				refreshFamilyAccessToken,
+				{
+					accountId: user.id,
+					aud: urls.resource,
+					clientId: refreshFamilyOAuthClient.clientIdentifier,
+					grantId: rawRefreshFamilyGrantId,
+					gty: 'authorization_code',
+					kind: 'AccessToken',
+					scope: `${McpOAuthScope.READ} ${McpOAuthScope.OFFLINE_ACCESS}`,
+				},
+				600,
+			);
+			await refreshTokens.upsert(
+				refreshFamilyRefreshToken,
+				{
+					accountId: user.id,
+					clientId: refreshFamilyOAuthClient.clientIdentifier,
+					grantId: rawRefreshFamilyGrantId,
+					gty: 'authorization_code refresh_token',
+					rotations: 0,
+					scope: `${McpOAuthScope.READ} ${McpOAuthScope.OFFLINE_ACCESS}`,
+				},
+				600,
+			);
+			const refreshFamilyAccessArtifact = await dataSource
+				.getRepository(McpOAuthProviderArtifactEntity)
+				.findOneByOrFail({ model: 'AccessToken', idHash: hashToken(refreshFamilyAccessToken) });
+			const refreshFamilyRefreshArtifact = await dataSource
+				.getRepository(McpOAuthProviderArtifactEntity)
+				.findOneByOrFail({ model: 'RefreshToken', idHash: hashToken(refreshFamilyRefreshToken) });
+			const refreshFamilyId = refreshFamilyAccessArtifact.refreshFamilyId;
+
+			expect(refreshFamilyId).not.toBeNull();
+			if (!refreshFamilyId) throw new Error('Expected the access token to be linked to a refresh family');
+			expect(refreshFamilyRefreshArtifact.refreshFamilyId).toBe(refreshFamilyId);
+			expect(await dataSource.getRepository(McpOAuthProviderArtifactEntity).countBy({ refreshFamilyId })).toBe(2);
+			refreshFamilyRevocationClient = new Client(
+				{ name: 'listen-refresh-family-revocation-e2e', version: '1.0.0' },
+				{ versionNegotiation: { mode: 'auto' } },
+			);
+			const refreshFamilyRevocationTransport = new StreamableHTTPClientTransport(endpoint, {
+				requestInit: { headers: { Authorization: `Bearer ${refreshFamilyAccessToken}` } },
+			});
+
+			await refreshFamilyRevocationClient.connect(refreshFamilyRevocationTransport);
+			const refreshFamilyRevokedSubscription = await refreshFamilyRevocationClient.listen({ toolsListChanged: true });
+
+			expect(subscriptions.activeCount).toBe(1);
+			await management.revokeRefreshFamily(refreshFamilyId, 'owner-actor');
+			await expect(refreshFamilyRevokedSubscription.closed).resolves.toBe('remote');
+			expect(subscriptions.activeCount).toBe(0);
+			expect(auditLog).toHaveBeenCalledWith(
+				'MCP audit event',
+				expect.objectContaining({ event: 'subscription_close', reason: 'authorization_revoked' }),
+			);
+			expect(auditLog).toHaveBeenCalledWith('MCP audit event', {
+				event: 'oauth_management',
+				request_id: 'administrative',
+				actor_id: 'owner-actor',
+				artifact: 'refresh_family',
+				artifact_id: refreshFamilyId,
+				action: 'revoked',
+			});
+			await expect(resourceServer.verifyAccessToken(refreshFamilyAccessToken)).rejects.toThrow(
+				'The MCP OAuth access token is invalid or no longer active',
+			);
+			expect(await dataSource.getRepository(McpOAuthProviderArtifactEntity).countBy({ refreshFamilyId })).toBe(0);
+			expect(
+				await dataSource.getRepository(McpOAuthProviderRevokedRefreshFamilyEntity).existsBy({ refreshFamilyId }),
+			).toBe(true);
+			expect(
+				(await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: refreshFamilyGrant.id })).revokedAt,
+			).toBeNull();
+			expect(
+				await dataSource.getRepository(McpOAuthProviderArtifactEntity).existsBy({
+					model: 'Grant',
+					idHash: hashToken(rawRefreshFamilyGrantId),
+				}),
+			).toBe(true);
+			await refreshFamilyRevocationClient.close();
+			refreshFamilyRevocationClient = undefined;
+
 			const grantRevocationAccessToken = 'listen-grant-revocation-access-token';
 
 			await accessTokens.upsert(
@@ -488,6 +612,7 @@ describe('MCP OAuth listen registration race', () => {
 			releaseListen.resolve();
 			await expiryClient?.close();
 			await grantExpiryClient?.close();
+			await refreshFamilyRevocationClient?.close();
 			await grantRevocationClient?.close();
 			await client?.close();
 			if (app) {
