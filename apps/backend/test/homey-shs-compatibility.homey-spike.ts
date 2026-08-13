@@ -10,6 +10,7 @@ import {
 	loadHomeyShsProbeConfig,
 	sanitizeHomeyDevices,
 	sanitizeHomeyPayload,
+	sanitizeHomeyPublishedMetadata,
 	sanitizeHomeyZones,
 } from './support/homey-shs-probe';
 
@@ -118,7 +119,60 @@ describe('Homey SHS compatibility probe', () => {
 			devices: {},
 		};
 
-		expect(() => assertHomeyCaptureSafe(capture, [])).toThrow('unredacted source locale or time metadata');
+		expect(() => assertHomeyCaptureSafe(capture, [])).toThrow('unredacted source metadata or zone semantics');
+
+		capture.systemInfo = {};
+		capture.devices = { 'device-000001': { country: 'Private country' } };
+
+		expect(() => assertHomeyCaptureSafe(capture, [])).toThrow('unredacted source metadata or zone semantics');
+	});
+
+	it('redacts and rejects household zone icon semantics', () => {
+		const zones = sanitizeHomeyZones({
+			'private-zone': { id: 'private-zone', name: 'Private room', icon: 'private-room-kind' },
+		});
+		const sanitizedCapture: HomeyShsCapture = { metadata: {}, systemInfo: {}, zones, devices: {} };
+
+		expect(zones['zone-000001']).toMatchObject({ icon: '[~2~]' });
+		expect(() => assertHomeyCaptureSafe(sanitizedCapture, [])).not.toThrow();
+		expect(() =>
+			assertHomeyCaptureSafe({ ...sanitizedCapture, zones: { 'zone-000001': { icon: 'private-room-kind' } } }, []),
+		).toThrow('unredacted source metadata or zone semantics');
+	});
+
+	it('preserves public capability IDs in individual-device private-term scans', () => {
+		const capture: HomeyShsCapture = {
+			metadata: {},
+			systemInfo: {},
+			zones: {},
+			devices: {},
+			individualDevice: {
+				id: 'device-000001',
+				name: 'device-label-000001',
+				capabilities: ['homealarm_state', 'measure_temperature.home'],
+				capabilitiesObj: {
+					homealarm_state: { id: 'homealarm_state', value: false },
+					'measure_temperature.home': { id: 'measure_temperature.home', value: 21 },
+				},
+			},
+		};
+
+		expect(() => assertHomeyCaptureSafe(capture, [], ['home'])).not.toThrow();
+	});
+
+	it('sanitizes source metadata recursively without changing unrelated values', () => {
+		expect(
+			sanitizeHomeyPublishedMetadata(
+				{ nested: { dateHuman: 'Private date', timezone: 'Private/timezone', icon: 'private-room-kind' } },
+				true,
+			),
+		).toEqual({
+			nested: {
+				dateHuman: '2000-01-01T00:00:00.000Z',
+				timezone: '[~2~]',
+				icon: '[~2~]',
+			},
+		});
 	});
 
 	it('requires an exact expected host and rejects credential-bearing URLs', () => {

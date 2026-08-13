@@ -349,6 +349,10 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 		return REDACTION.address;
 	}
 
+	if (value !== null && context.rootKind === 'zone' && key === 'icon') {
+		return REDACTION.privateTerm;
+	}
+
 	if (value !== null && !capabilityMapEntry && ENDPOINT_KEY_PATTERN.test(key)) {
 		return REDACTION.url;
 	}
@@ -448,6 +452,30 @@ export const sanitizeHomeyPayload = (
 	registerSourceValues(value, aliases);
 
 	return sanitizeValue(value, 'root', { aliases, privateTerms, path: [], rootKind });
+};
+
+export const sanitizeHomeyPublishedMetadata = (value: unknown, redactZoneIcons = false): unknown => {
+	if (Array.isArray(value)) {
+		return value.map((item) => sanitizeHomeyPublishedMetadata(item, redactZoneIcons));
+	}
+
+	if (!isRecord(value)) {
+		return value;
+	}
+
+	return Object.fromEntries(
+		Object.entries(value).map(([key, nestedValue]) => {
+			if (HUMAN_TIMESTAMP_KEY_PATTERN.test(key)) {
+				return [key, FIXTURE_TIMESTAMP];
+			}
+
+			if (LOCATION_METADATA_KEY_PATTERN.test(key) || (redactZoneIcons && key === 'icon')) {
+				return [key, REDACTION.privateTerm];
+			}
+
+			return [key, sanitizeHomeyPublishedMetadata(nestedValue, redactZoneIcons)];
+		}),
+	);
 };
 
 const replaceCollectionIdentity = (
@@ -822,17 +850,21 @@ export const assertHomeyCaptureSafe = (
 		'zoneIds',
 	]);
 	const isCapturedCapabilityMapPath = (path: string[]): boolean =>
-		path.length === 3 &&
-		path[0] === 'devices' &&
-		GENERATED_PSEUDONYM_PATTERN.test(path[1]) &&
-		(path[2] === 'capabilitiesObj' || path[2] === 'capabilityOptions');
+		(path.length === 3 &&
+			path[0] === 'devices' &&
+			GENERATED_PSEUDONYM_PATTERN.test(path[1]) &&
+			(path[2] === 'capabilitiesObj' || path[2] === 'capabilityOptions')) ||
+		(path.length === 2 &&
+			path[0] === 'individualDevice' &&
+			(path[1] === 'capabilitiesObj' || path[1] === 'capabilityOptions'));
 	const isCapturedCapabilityIdentifier = (key: string, path: string[]): boolean =>
 		key === 'id' && isCapturedCapabilityMapPath(path.slice(0, -1));
 	const isCapturedCapabilityListEntry = (path: string[]): boolean =>
-		path.length === 3 &&
-		path[0] === 'devices' &&
-		GENERATED_PSEUDONYM_PATTERN.test(path[1]) &&
-		path[2] === 'capabilities';
+		(path.length === 3 &&
+			path[0] === 'devices' &&
+			GENERATED_PSEUDONYM_PATTERN.test(path[1]) &&
+			path[2] === 'capabilities') ||
+		(path.length === 2 && path[0] === 'individualDevice' && path[1] === 'capabilities');
 	const isCapturedCapabilityReadIdentifier = (key: string, path: string[]): boolean =>
 		key === 'capabilityId' && path.length === 1 && path[0] === 'capabilityValue';
 	const isStructuralRecordPath = (path: string[]): boolean => {
@@ -1003,9 +1035,9 @@ export const assertHomeyCaptureSafe = (
 		throw new Error('Sanitized Homey capture still contains an unredacted endpoint value');
 	}
 
-	const containsUnredactedSourceMetadata = (value: unknown, key = ''): boolean => {
+	const containsUnredactedSourceMetadata = (value: unknown, section = '', key = ''): boolean => {
 		if (Array.isArray(value)) {
-			return value.some((item) => containsUnredactedSourceMetadata(item, key));
+			return value.some((item) => containsUnredactedSourceMetadata(item, section, key));
 		}
 
 		if (isRecord(value)) {
@@ -1018,15 +1050,21 @@ export const assertHomeyCaptureSafe = (
 					return nestedValue !== REDACTION.privateTerm;
 				}
 
-				return containsUnredactedSourceMetadata(nestedValue, nestedKey);
+				if (section === 'zones' && nestedKey === 'icon') {
+					return nestedValue !== REDACTION.privateTerm;
+				}
+
+				const nestedSection = section === '' ? nestedKey : section;
+
+				return containsUnredactedSourceMetadata(nestedValue, nestedSection, nestedKey);
 			});
 		}
 
 		return HUMAN_TIMESTAMP_KEY_PATTERN.test(key) || LOCATION_METADATA_KEY_PATTERN.test(key);
 	};
 
-	if (containsUnredactedSourceMetadata(capture.systemInfo)) {
-		throw new Error('Sanitized Homey capture still contains unredacted source locale or time metadata');
+	if (containsUnredactedSourceMetadata(capture)) {
+		throw new Error('Sanitized Homey capture still contains unredacted source metadata or zone semantics');
 	}
 
 	const unsafeStringCategory = (value: string): UnsafeCaptureCategory | null => {

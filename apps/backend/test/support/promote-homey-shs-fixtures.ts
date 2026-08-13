@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { format } from 'prettier';
 
 import { deriveKnownCoverageGaps } from './homey-shs-fixture-coverage';
-import { HomeyShsCapture, assertHomeyCaptureSafe, sanitizeHomeyPayload } from './homey-shs-probe';
+import { HomeyShsCapture, assertHomeyCaptureSafe, sanitizeHomeyPublishedMetadata } from './homey-shs-probe';
 
 const FIXTURE_NAMES = [
 	'light',
@@ -206,10 +206,19 @@ const main = async (): Promise<void> => {
 		throw new Error('Sanitized Homey capture collections are malformed');
 	}
 
-	capture.systemInfo = sanitizeHomeyPayload(capture.systemInfo);
+	const publishedZones = sanitizeHomeyPublishedMetadata(capture.zones, true);
+	const publishedDevices = sanitizeHomeyPublishedMetadata(capture.devices);
+
+	if (!isRecord(publishedZones) || !isRecord(publishedDevices)) {
+		throw new Error('Sanitized Homey capture collections are malformed after metadata redaction');
+	}
+
+	capture.systemInfo = sanitizeHomeyPublishedMetadata(capture.systemInfo);
+	capture.zones = publishedZones;
+	capture.devices = publishedDevices;
 	assertHomeyCaptureSafe(capture, []);
 
-	const fixtures = selectFixtures(capture.devices);
+	const fixtures = selectFixtures(publishedDevices);
 	const devicesRoot = resolve(outputRoot, 'devices');
 
 	await mkdir(devicesRoot, { recursive: true });
@@ -225,7 +234,7 @@ const main = async (): Promise<void> => {
 		schemaVersion: 1,
 		provenance: fixtureProvenance(capture.metadata),
 		fixtures: FIXTURE_NAMES.map((name) => `devices/${name}.json`),
-		knownCoverageGaps: deriveKnownCoverageGaps(capture.devices),
+		knownCoverageGaps: deriveKnownCoverageGaps(publishedDevices),
 	});
 
 	process.stdout.write(`Promoted ${fixtures.size} sanitized Homey fixtures.\n`);
