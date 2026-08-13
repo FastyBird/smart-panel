@@ -223,6 +223,9 @@ describe('Homey SHS compatibility probe', () => {
 		expect(resolveHomeyTransportPort('https', '')).toBe(443);
 		expect(resolveHomeyTransportPort('http', '4859')).toBe(4859);
 		expect(() => resolveHomeyTransportPort('http', 'invalid')).toThrow('must be an integer');
+		for (const invalidPort of ['0x50', '1e2', '+80', '80.0']) {
+			expect(() => resolveHomeyTransportPort('http', invalidPort)).toThrow('must be an integer');
+		}
 	});
 
 	it('rejects unredacted source locale and human timestamp metadata', () => {
@@ -438,6 +441,32 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() =>
 			assertHomeyCaptureSafe({ metadata: {}, systemInfo: {}, zones: {}, devices }, [], ['home']),
 		).not.toThrow();
+	});
+
+	it('redacts structured personal labels as whole values', () => {
+		const devices = sanitizeHomeyDevices(
+			{
+				'private-device': {
+					id: 'private-device',
+					name: 'Private device',
+					capabilities: ['private_mode'],
+					capabilitiesObj: {
+						private_mode: {
+							id: 'private_mode',
+							type: 'enum',
+							values: [{ id: 'mode', title: { en: 'Kids Room' } }],
+						},
+					},
+				},
+			},
+			['Kids Room'],
+		);
+		const serialized = JSON.stringify(devices);
+
+		expect(serialized).not.toContain('Kids Room');
+		expect(serialized).not.toContain('"en"');
+		expect(serialized).toContain('"title":"[~2~]"');
+		expect(() => assertHomeyCaptureRedacted({ metadata: {}, systemInfo: {}, zones: {}, devices })).not.toThrow();
 	});
 
 	it('sanitizes source metadata recursively without changing unrelated values', () => {

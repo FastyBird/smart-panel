@@ -7,6 +7,10 @@ export const resolveHomeyTransportPort = (protocol: string, port: string | numbe
 		return protocol === 'https' ? 443 : 80;
 	}
 
+	if (typeof port === 'string' && !/^\d+$/.test(port)) {
+		throw new Error('Homey transport port must be an integer between 1 and 65535');
+	}
+
 	const parsedPort = typeof port === 'number' ? port : Number(port);
 
 	if (!Number.isInteger(parsedPort) || parsedPort < 1 || parsedPort > 65_535) {

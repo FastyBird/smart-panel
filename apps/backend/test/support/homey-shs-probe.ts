@@ -521,6 +521,10 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 		return redactScalar(value, REDACTION.secret);
 	}
 
+	if (isPersonalKey(key)) {
+		return redactScalar(value, REDACTION.privateTerm);
+	}
+
 	if (value !== null && !capabilityMapEntry && isTimestampKey(key)) {
 		return redactScalar(value, FIXTURE_TIMESTAMP);
 	}
@@ -584,10 +588,6 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 			isCapabilityIdentifier(key, context.path, context.rootKind)
 		) {
 			return sanitizeCapabilityIdentifier(value, context.aliases);
-		}
-
-		if (isPersonalKey(key)) {
-			return REDACTION.privateTerm;
 		}
 
 		if (ISO_TIMESTAMP_PATTERN.test(value)) {
@@ -1091,6 +1091,13 @@ const assertHomeyPayloadRedacted = (value: unknown, rootKind: SanitizerContext['
 			return;
 		}
 
+		if (isPersonalKey(key)) {
+			if (key !== 'name' || typeof nestedValue !== 'string' || !GENERATED_PSEUDONYM_PATTERN.test(nestedValue)) {
+				assertRedactedScalar(nestedValue, REDACTION.privateTerm);
+			}
+			return;
+		}
+
 		if (nestedValue !== null && !capabilityMapEntry && isTimestampKey(key)) {
 			assertRedactedScalar(nestedValue, FIXTURE_TIMESTAMP);
 			return;
@@ -1168,13 +1175,6 @@ const assertHomeyPayloadRedacted = (value: unknown, rootKind: SanitizerContext['
 			if (isCapabilityReferenceField(key, path)) {
 				if (nestedValue !== '.none' && !capabilityIdentifiers.has(nestedValue)) {
 					throwUnredactedSensitiveField();
-				}
-				return;
-			}
-
-			if (isPersonalKey(key)) {
-				if (key !== 'name' || !GENERATED_PSEUDONYM_PATTERN.test(nestedValue)) {
-					assertRedactedScalar(nestedValue, REDACTION.privateTerm);
 				}
 				return;
 			}
