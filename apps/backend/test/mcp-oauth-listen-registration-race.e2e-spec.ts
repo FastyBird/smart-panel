@@ -101,6 +101,26 @@ const expectOAuthConnectionRejected = async (endpoint: URL, accessToken: string)
 	}
 };
 
+const requestOAuthChallenge = (endpoint: URL, authorization?: string): Promise<Response> =>
+	fetch(endpoint, {
+		method: 'POST',
+		headers: {
+			accept: 'application/json, text/event-stream',
+			'content-type': 'application/json',
+			...(authorization ? { authorization } : {}),
+		},
+		body: JSON.stringify({
+			jsonrpc: '2.0',
+			id: 'oauth-wire-challenge',
+			method: 'initialize',
+			params: {
+				protocolVersion: '2025-06-18',
+				capabilities: {},
+				clientInfo: { name: 'oauth-wire-challenge-e2e', version: '1.0.0' },
+			},
+		}),
+	});
+
 describe('MCP OAuth listen registration race', () => {
 	it('expires live subscriptions and closes matching streams during revocation', async () => {
 		const dataSource = new DataSource({
@@ -405,8 +425,54 @@ describe('MCP OAuth listen registration race', () => {
 			const listenAuthenticated = deferred();
 			const endpoint = new URL('/', await app.getUrl());
 			const wireNegativeAccessToken = 'listen-wire-negative-access-token';
+			const wireMalformedAccessToken = 'listen-wire-malformed-access-token';
+			const wireInsufficientScopeAccessToken = 'listen-wire-insufficient-scope-access-token';
 			const grantRepository = dataSource.getRepository(McpOAuthGrantEntity);
 			const artifactRepository = dataSource.getRepository(McpOAuthProviderArtifactEntity);
+			const expectedResourceMetadata = `resource_metadata="${urls.protectedResourceMetadata}"`;
+
+			const missingBearerResponse = await requestOAuthChallenge(endpoint);
+			const missingBearerChallenge = missingBearerResponse.headers.get('www-authenticate');
+
+			expect(missingBearerResponse.status).toBe(401);
+			expect(missingBearerChallenge).toContain('error="invalid_token"');
+			expect(missingBearerChallenge).toContain('scope="mcp:read"');
+			expect(missingBearerChallenge).toContain(expectedResourceMetadata);
+
+			const malformedBearerResponse = await requestOAuthChallenge(endpoint, `Basic ${wireMalformedAccessToken}`);
+			const malformedBearerChallenge = malformedBearerResponse.headers.get('www-authenticate');
+
+			expect(malformedBearerResponse.status).toBe(401);
+			expect(malformedBearerChallenge).toContain('error="invalid_token"');
+			expect(malformedBearerChallenge).toContain('scope="mcp:read"');
+			expect(malformedBearerChallenge).toContain(expectedResourceMetadata);
+			expect(malformedBearerChallenge).not.toContain(wireMalformedAccessToken);
+
+			await accessTokens.upsert(
+				wireInsufficientScopeAccessToken,
+				{
+					accountId: user.id,
+					aud: urls.resource,
+					clientId: oauthClient.clientIdentifier,
+					grantId: rawGrantId,
+					kind: 'AccessToken',
+					scope: McpOAuthScope.WRITE,
+				},
+				60,
+			);
+			const insufficientScopeResponse = await requestOAuthChallenge(
+				endpoint,
+				`Bearer ${wireInsufficientScopeAccessToken}`,
+			);
+			const insufficientScopeChallenge = insufficientScopeResponse.headers.get('www-authenticate');
+
+			expect(insufficientScopeResponse.status).toBe(403);
+			expect(insufficientScopeChallenge).toContain('error="insufficient_scope"');
+			expect(insufficientScopeChallenge).toContain('scope="mcp:read"');
+			expect(insufficientScopeChallenge).toContain(expectedResourceMetadata);
+			expect(insufficientScopeChallenge).not.toContain(wireInsufficientScopeAccessToken);
+			expect(JSON.stringify(auditLog.mock.calls)).not.toContain(wireMalformedAccessToken);
+			expect(JSON.stringify(auditLog.mock.calls)).not.toContain(wireInsufficientScopeAccessToken);
 
 			await accessTokens.upsert(
 				wireNegativeAccessToken,
