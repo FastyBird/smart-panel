@@ -134,6 +134,20 @@ export class TokensService {
 		this.logger.debug(`Successfully revoked tokens for ownerId=${ownerId}`);
 	}
 
+	async revokeUserCredentials(userId: string): Promise<void> {
+		this.logger.debug(`Revoking all authentication credentials for userId=${userId}`);
+
+		await this.dataSource.transaction(async (manager) => {
+			await manager.getRepository(AccessTokenEntity).update({ ownerId: userId }, { revoked: true });
+			await manager.getRepository(RefreshTokenEntity).update({ ownerId: userId }, { revoked: true });
+			await manager
+				.getRepository(LongLiveTokenEntity)
+				.update({ tokenOwnerId: userId, ownerType: TokenOwnerType.USER }, { revoked: true });
+		});
+
+		this.logger.debug(`Successfully revoked all authentication credentials for userId=${userId}`);
+	}
+
 	async revoke(id: string, manager?: EntityManager): Promise<void> {
 		const repository = (manager ?? this.dataSource).getRepository(LongLiveTokenEntity);
 		const result = await repository.update(id, { revoked: true });

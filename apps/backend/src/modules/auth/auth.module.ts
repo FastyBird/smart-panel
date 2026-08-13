@@ -180,7 +180,7 @@ Handles user authentication, JWT issuing and session management for the Smart Pa
 ## CLI Commands
 
 - \`pnpm run cli auth:onboarding\` — create the initial owner account
-- \`pnpm run cli auth:reset\` — reset the owner password`,
+- \`pnpm run cli auth:reset\` — reset an owner or administrator password and revoke its active credentials`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

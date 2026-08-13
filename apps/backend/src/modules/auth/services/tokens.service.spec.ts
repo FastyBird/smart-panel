@@ -8,7 +8,7 @@ Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import bcrypt from 'bcrypt';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -19,7 +19,7 @@ import { TokenOwnerType, TokenType } from '../auth.constants';
 import { AuthException, AuthNotFoundException } from '../auth.exceptions';
 import { CreateLongLiveTokenDto, CreateTokenDto } from '../dto/create-token.dto';
 import { UpdateLongLiveTokenDto, UpdateTokenDto } from '../dto/update-token.dto';
-import { LongLiveTokenEntity, TokenEntity } from '../entities/auth.entity';
+import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from '../entities/auth.entity';
 
 import { TokensTypeMapperService } from './tokens-type-mapper.service';
 import { TokensService } from './tokens.service';
@@ -38,6 +38,7 @@ describe('TokensService', () => {
 	let repository: Repository<TokenEntity>;
 	let mapper: TokensTypeMapperService;
 	let dataSource: DataSource;
+	let transaction: jest.Mock;
 
 	const mockToken = {
 		id: uuid().toString(),
@@ -54,6 +55,8 @@ describe('TokensService', () => {
 	} as unknown as LongLiveTokenEntity;
 
 	beforeEach(async () => {
+		transaction = jest.fn();
+
 		const mockRepository = () => ({
 			find: jest.fn(),
 			findOne: jest.fn(),
@@ -90,6 +93,7 @@ describe('TokensService', () => {
 					provide: DataSource,
 					useValue: {
 						getRepository: jest.fn(() => {}),
+						transaction,
 					},
 				},
 			],
@@ -403,6 +407,43 @@ describe('TokensService', () => {
 			// Uses tokenOwnerId column for LongLiveTokenEntity to avoid FK conflict
 			expect(mockRepo.update).toHaveBeenCalledWith(
 				{ tokenOwnerId: ownerId, ownerType: TokenOwnerType.DISPLAY },
+				{ revoked: true },
+			);
+		});
+	});
+
+	describe('revokeUserCredentials', () => {
+		it('should revoke login pairs and personal tokens in one transaction', async () => {
+			const userId = uuid().toString();
+			const accessRepository = { update: jest.fn().mockResolvedValue({ affected: 2 }) };
+			const refreshRepository = { update: jest.fn().mockResolvedValue({ affected: 2 }) };
+			const personalRepository = { update: jest.fn().mockResolvedValue({ affected: 1 }) };
+			const manager = {
+				getRepository: jest.fn((entity) => {
+					if (entity === AccessTokenEntity) {
+						return accessRepository;
+					}
+
+					if (entity === RefreshTokenEntity) {
+						return refreshRepository;
+					}
+
+					return personalRepository;
+				}),
+			};
+
+			transaction.mockImplementation(
+				async (callback: (entityManager: EntityManager) => Promise<void>): Promise<void> => {
+					await callback(manager as unknown as EntityManager);
+				},
+			);
+
+			await service.revokeUserCredentials(userId);
+
+			expect(accessRepository.update).toHaveBeenCalledWith({ ownerId: userId }, { revoked: true });
+			expect(refreshRepository.update).toHaveBeenCalledWith({ ownerId: userId }, { revoked: true });
+			expect(personalRepository.update).toHaveBeenCalledWith(
+				{ tokenOwnerId: userId, ownerType: TokenOwnerType.USER },
 				{ revoked: true },
 			);
 		});

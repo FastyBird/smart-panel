@@ -6,17 +6,21 @@ import { createExtensionLogger } from '../../../common/logger';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
 import { AUTH_MODULE_NAME } from '../auth.constants';
+import { TokensService } from '../services/tokens.service';
 
 @Command({
 	name: 'auth:reset',
-	description: 'Reset application owner password',
+	description: 'Reset an application owner or administrator password and revoke its credentials',
 	arguments: '<username> <password>',
 })
 @Injectable()
 export class ResetPasswordCommand extends CommandRunner {
 	private readonly logger = createExtensionLogger(AUTH_MODULE_NAME, 'ResetPasswordCommand');
 
-	constructor(private readonly service: UsersService) {
+	constructor(
+		private readonly service: UsersService,
+		private readonly tokensService: TokensService,
+	) {
 		super();
 	}
 
@@ -31,22 +35,25 @@ export class ResetPasswordCommand extends CommandRunner {
 		}
 		const user = await this.service.findByUsername(username);
 
-		if (user === null || user.role !== UserRole.OWNER) {
-			this.logger.warn('No owner account found.');
+		if (user === null || (user.role !== UserRole.OWNER && user.role !== UserRole.ADMIN)) {
+			this.logger.warn('No owner or administrator account found.');
 
-			console.log('\n\x1b[31m🚨 No owner account found. Cannot reset password.\n');
+			console.log('\n\x1b[31m🚨 No owner or administrator account found. Cannot reset password.\n');
 
 			return;
 		}
 
-		console.log(`\n\x1b[33m🔹 Resetting password for owner: \x1b[1m${user.username}\x1b[0m\n`);
+		console.log(`\n\x1b[33m🔹 Resetting password for privileged account: \x1b[1m${user.username}\x1b[0m\n`);
 
 		await this.service.update(user.id, {
 			password,
 		});
+		await this.tokensService.revokeUserCredentials(user.id);
 
-		console.log(`\n\x1b[32m✅ Successfully reset password for: \x1b[1m${user.username}\x1b[0m\n`);
+		console.log(
+			`\n\x1b[32m✅ Successfully reset password and revoked active sessions and personal tokens for: \x1b[1m${user.username}\x1b[0m\n`,
+		);
 
-		this.logger.log(`Password reset successfully for owner=${user.username}`);
+		this.logger.log(`Password reset and user credentials revoked successfully for user=${user.username}`);
 	}
 }

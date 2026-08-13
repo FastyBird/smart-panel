@@ -350,12 +350,13 @@ Preserve backend logs before cleanup. MCP audit events such as `oauth_management
 `oauth_authorization_invalidation`, and `tool_execution` identify actors, affected management IDs, and outcomes without
 recording raw bearer material.
 
-### Recover an owner account
+### Recover an owner or administrator account
 
-Use the existing backend CLI to reset an owner password when the Admin login is unavailable. On a pre-built image:
+Use the existing backend CLI to reset a privileged account when its Admin login cannot be trusted. On a pre-built
+image:
 
 ```bash copy
-read -rsp 'New owner password: ' SMART_PANEL_RECOVERY_PASSWORD && printf '\n'
+read -rsp 'New privileged-account password: ' SMART_PANEL_RECOVERY_PASSWORD && printf '\n'
 sudo smart-panel-cli auth:reset <username> "$SMART_PANEL_RECOVERY_PASSWORD"
 unset SMART_PANEL_RECOVERY_PASSWORD
 ```
@@ -364,7 +365,8 @@ Other installation methods must invoke the same `auth:reset` command through the
 normal environment and database permissions. Use the same silent-prompt pattern on a trusted local console so the
 recovery password is not written to shell history, and clear the variable immediately after the command.
 
-A password reset restores login access but deliberately does **not** revoke OAuth grants, access tokens, refresh
+The recovery command changes the password and revokes every active Admin login session and personal access token owned
+by that account before reporting success. It deliberately does **not** revoke MCP OAuth grants, access tokens, refresh
 families, or static MCP credentials. After signing in, select **Revoke all OAuth access**, rotate every static client
 that the compromised account could have created or copied, review the registered clients and grants, and remove or
 demote unknown users. Demoting or deleting an approving owner/administrator automatically revokes grants that user
