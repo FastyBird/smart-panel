@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import type { HomeyShsCapture } from './support/homey-shs-probe';
 import {
 	assertHomeyCaptureSafe,
@@ -25,6 +28,74 @@ const jsonResponse = (body: unknown, status = 200, headers: Record<string, strin
 	new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...headers } });
 
 describe('Homey SHS compatibility probe', () => {
+	it('keeps the promoted live fixture corpus safe and representative', () => {
+		const fixtureRoot = resolve(__dirname, '../src/plugins/devices-homey/__fixtures__');
+		const readFixture = (path: string): unknown =>
+			JSON.parse(readFileSync(resolve(fixtureRoot, path), 'utf8')) as unknown;
+		const fixtureNames = [
+			'light',
+			'switch',
+			'climate',
+			'cover',
+			'lock',
+			'sensor-air-quality',
+			'sensor-safety',
+			'energy-meter',
+			'repeated-capabilities',
+			'unavailable',
+		];
+		const fixtures = Object.fromEntries(
+			fixtureNames.map((name) => [name, readFixture(`devices/${name}.json`) as Record<string, unknown>]),
+		);
+		const capabilities = (name: string): string[] => fixtures[name].capabilities as string[];
+		const bases = (name: string): string[] => capabilities(name).map((capability) => capability.split('.', 1)[0]);
+		const expectCapabilities = (name: string, ...expected: string[]): void => {
+			expect(bases(name)).toEqual(expect.arrayContaining(expected));
+		};
+
+		assertHomeyCaptureSafe(
+			{
+				metadata: readFixture('manifest.json') as Record<string, unknown>,
+				systemInfo: readFixture('system-info.json'),
+				zones: readFixture('zones.json'),
+				devices: fixtures,
+			},
+			[],
+		);
+
+		expect(new Set(Object.values(fixtures).map((fixture) => fixture.id)).size).toBe(fixtureNames.length);
+		expect(Object.values(fixtures).every((fixture) => /^device-label-\d{6}$/.test(String(fixture.name)))).toBe(true);
+		expectCapabilities('light', 'onoff', 'dim');
+		expectCapabilities('switch', 'onoff');
+		expectCapabilities('climate', 'measure_temperature', 'measure_humidity');
+		expectCapabilities('cover', 'windowcoverings_state', 'windowcoverings_set');
+		expectCapabilities('lock', 'locked');
+		expectCapabilities('sensor-air-quality', 'measure_temperature', 'measure_humidity', 'measure_luminance');
+		expect(bases('sensor-safety').some((base) => base === 'alarm_motion' || base === 'alarm_battery')).toBe(true);
+		expectCapabilities('energy-meter', 'measure_power', 'meter_power');
+		expect(fixtures.unavailable.available).toBe(false);
+
+		const repeatedCapabilities = capabilities('repeated-capabilities');
+		const repeatedBases = bases('repeated-capabilities');
+
+		expect(repeatedCapabilities.some((capability) => capability.includes('.'))).toBe(true);
+		expect(new Set(repeatedBases).size).toBeLessThan(repeatedBases.length);
+		const manifest = readFixture('manifest.json') as {
+			knownCoverageGaps: string[];
+			provenance: Record<string, unknown>;
+		};
+
+		expect(manifest.provenance).toEqual({
+			captureDate: '2026-08-13',
+			homeyVersion: '13.4.0',
+			transport: { protocol: 'http', port: 4859 },
+			sanitized: true,
+		});
+		expect(manifest.knownCoverageGaps).toEqual(
+			expect.arrayContaining(['target_temperature', 'measure_co2', 'windowcoverings_tilt_set']),
+		);
+	});
+
 	it('requires an exact expected host and rejects credential-bearing URLs', () => {
 		const ipv6Config = loadHomeyShsProbeConfig({
 			FB_HOMEY_SHS_URL: 'http://[fe80::1]:4859',
@@ -547,7 +618,9 @@ describe('Homey SHS compatibility probe', () => {
 
 		unsafeCapture.systemInfo = { leaked: 'hpat_abcdefghijklmnop1234' };
 
-		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret');
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow(
+			'still contains a secret, address, or email-like value (category: homey-token, section: systemInfo)',
+		);
 
 		unsafeCapture.systemInfo = { leaked: 'prefix_hpat_abcdefghijklmnop1234' };
 
@@ -555,7 +628,9 @@ describe('Homey SHS compatibility probe', () => {
 
 		unsafeCapture.systemInfo = { leaked: 'owner_alice@example.com_backup' };
 
-		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret');
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow(
+			'still contains a secret, address, or email-like value (category: email, section: systemInfo)',
+		);
 
 		unsafeCapture.systemInfo = { leaked: 'prefix_https://user:pass@private-host.local/api' };
 
@@ -563,7 +638,9 @@ describe('Homey SHS compatibility probe', () => {
 
 		unsafeCapture.systemInfo = { aliases: { 'https://user:pass@private-host.local/api': true } };
 
-		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret');
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow(
+			'still contains a secret, address, or email-like value (category: url, section: systemInfo)',
+		);
 
 		unsafeCapture.systemInfo = { leaked: '//broker.private/api' };
 
@@ -587,11 +664,15 @@ describe('Homey SHS compatibility probe', () => {
 
 		unsafeCapture.systemInfo = { diagnostic: 'gateway_192.168.1.25_backup' };
 
-		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret, address');
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow(
+			'still contains a secret, address, or email-like value (category: ipv4, section: systemInfo)',
+		);
 
 		unsafeCapture.systemInfo = { diagnostic: 'mac_aa:bb:cc:dd:ee:ff_backup' };
 
-		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret, address');
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow(
+			'still contains a secret, address, or email-like value (category: mac, section: systemInfo)',
+		);
 
 		unsafeCapture.systemInfo = { diagnostic: 'mac_aabb.ccdd.eeff_backup' };
 
@@ -607,6 +688,31 @@ describe('Homey SHS compatibility probe', () => {
 
 		unsafeCapture.systemInfo = { diagnostic: 'deadfd12:3456:789a::1backup' };
 
-		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow('still contains a secret, address');
+		expect(() => assertHomeyCaptureSafe(unsafeCapture, [])).toThrow(
+			'still contains a secret, address, or email-like value (category: ipv6, section: systemInfo)',
+		);
+	});
+
+	it('does not report forbidden values in safe diagnostics or match across JSON token boundaries', () => {
+		const crossTokenCapture: HomeyShsCapture = {
+			metadata: {},
+			systemInfo: { first: 'aa:bb:cc', second: 'dd:ee:ff' },
+			zones: {},
+			devices: {},
+		};
+
+		expect(() => assertHomeyCaptureSafe(crossTokenCapture, [])).not.toThrow();
+
+		const unsafeValue = 'owner_alice@example.com';
+		crossTokenCapture.devices = { leaked: unsafeValue };
+
+		try {
+			assertHomeyCaptureSafe(crossTokenCapture, []);
+			throw new Error('Expected capture safety validation to fail');
+		} catch (error) {
+			expect(error).toBeInstanceOf(Error);
+			expect((error as Error).message).toContain('category: email, section: devices');
+			expect((error as Error).message).not.toContain(unsafeValue);
+		}
 	});
 });

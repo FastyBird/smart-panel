@@ -98,6 +98,13 @@ export interface HomeyShsCapture {
 	devices: unknown;
 }
 
+type UnsafeCaptureCategory = 'email' | 'homey-token' | 'ipv4' | 'ipv6' | 'mac' | 'url';
+
+interface UnsafeCaptureMatch {
+	category: UnsafeCaptureCategory;
+	section: keyof HomeyShsCapture | 'root';
+}
+
 interface SanitizerContext {
 	aliases: SanitizationAliases;
 	privateTerms: string[];
@@ -680,7 +687,6 @@ export const assertHomeyCaptureSafe = (
 	privateTerms: string[] = [],
 	expectedHost?: string,
 ): void => {
-	const serialized = JSON.stringify(capture);
 	const forbidden = forbiddenValues.filter((value) => value.length > 0);
 	const containsForbiddenValue = (value: unknown, forbiddenValue: string): boolean => {
 		if (typeof value === 'string' || typeof value === 'number') {
@@ -902,13 +908,73 @@ export const assertHomeyCaptureSafe = (
 		throw new Error('Sanitized Homey capture still contains an unredacted endpoint value');
 	}
 
-	const unsafePatterns = [IPV4_PATTERN, MAC_PATTERN, URL_PATTERN, EMAIL_PATTERN, HOMEY_TOKEN_PATTERN];
+	const unsafeStringCategory = (value: string): UnsafeCaptureCategory | null => {
+		const patterns: Array<[UnsafeCaptureCategory, RegExp]> = [
+			['ipv4', IPV4_PATTERN],
+			['mac', MAC_PATTERN],
+			['url', URL_PATTERN],
+			['email', EMAIL_PATTERN],
+			['homey-token', HOMEY_TOKEN_PATTERN],
+		];
 
-	if (
-		unsafePatterns.some((pattern) => new RegExp(pattern.source, pattern.flags).test(serialized)) ||
-		replaceIpv6Addresses(serialized, REDACTION.address) !== serialized
-	) {
-		throw new Error('Sanitized Homey capture still contains a secret, address, or email-like value');
+		for (const [category, pattern] of patterns) {
+			if (new RegExp(pattern.source, pattern.flags).test(value)) {
+				return category;
+			}
+		}
+
+		return replaceIpv6Addresses(value, REDACTION.address) !== value ? 'ipv6' : null;
+	};
+	const unsafeCaptureMatch = (
+		value: unknown,
+		section: UnsafeCaptureMatch['section'] = 'root',
+	): UnsafeCaptureMatch | null => {
+		if (typeof value === 'string') {
+			const category = unsafeStringCategory(value);
+
+			return category === null ? null : { category, section };
+		}
+
+		if (Array.isArray(value)) {
+			for (const item of value) {
+				const match = unsafeCaptureMatch(item, section);
+
+				if (match !== null) {
+					return match;
+				}
+			}
+
+			return null;
+		}
+
+		if (!isRecord(value)) {
+			return null;
+		}
+
+		for (const [key, nestedValue] of Object.entries(value)) {
+			const nestedSection = section === 'root' && key in capture ? (key as keyof HomeyShsCapture) : section;
+			const keyCategory = unsafeStringCategory(key);
+
+			if (keyCategory !== null) {
+				return { category: keyCategory, section: nestedSection };
+			}
+
+			const match = unsafeCaptureMatch(nestedValue, nestedSection);
+
+			if (match !== null) {
+				return match;
+			}
+		}
+
+		return null;
+	};
+	const unsafeMatch = unsafeCaptureMatch(capture);
+
+	if (unsafeMatch !== null) {
+		throw new Error(
+			`Sanitized Homey capture still contains a secret, address, or email-like value ` +
+				`(category: ${unsafeMatch.category}, section: ${unsafeMatch.section})`,
+		);
 	}
 };
 

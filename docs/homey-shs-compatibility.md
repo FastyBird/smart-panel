@@ -1,6 +1,6 @@
 # Homey SHS Compatibility Record
 
-**Status:** In progress; safe read-only harness complete, live SHS evidence pending
+**Status:** In progress; safe read-only inventory captured, realtime/write/recovery evidence pending
 
 **Started:** 2026-08-12
 
@@ -19,15 +19,15 @@ file. Live results use synthetic aliases and sanitized captures only.
 
 | Area | Status | Evidence still required |
 | --- | --- | --- |
-| Credential-safe read probe | Ready | Run against the subscribed SHS instance |
-| System, zone, and device inventory | Ready to capture | Record SHS version and sanitized shapes |
-| Capability metadata and suffixed IDs | Pending live access | Verify representative devices and current values |
+| Credential-safe read probe | Passed on SHS `13.4.0` over HTTP `4859` | Repeat over HTTPS `4860` if enabled |
+| System, zone, and device inventory | Captured and sanitized | Individual-device endpoint still needs a separate live read |
+| Capability metadata and suffixed IDs | Captured from inventory | Add explicit capability reads and allowlisted write evidence |
 | Socket.IO events and reconnect | Pending live access | Capture connect, subscribe, event, disconnect, restart, and reconnect ordering |
 | Allowlisted capability write | Contract defined, disabled | Use only the designated harmless test capability |
 | Disposable-device lifecycle | Contract defined, disabled | Use only the separately gated virtual/test device |
 | mDNS discovery | Pending live access | Record stable service/TXT data or explicitly defer discovery |
 | SDK decision | Provisional hold | Complete live Socket.IO and cleanup/reconnect comparison |
-| Sanitized fixture corpus | Sanitizer tested | Review a live capture, split representative fixtures, and add provenance |
+| Sanitized fixture corpus | Ten representative live fixtures promoted | Add event/reconnect fixtures and missing capability families |
 
 ## Installation evidence
 
@@ -35,13 +35,13 @@ Complete this table after the live run. Values committed here must remain non-se
 
 | Field | Recorded value |
 | --- | --- |
-| Capture date | Pending |
-| SHS version | Pending |
+| Capture date | `2026-08-13` |
+| SHS version | `13.4.0` |
 | Container image tag and immutable digest | Pending |
 | Host operating system/architecture | Pending |
 | Topology | Pending; describe generically, for example `same LAN, separate host` |
 | Smart Panel to SHS network path | Pending; do not record addresses |
-| HTTP port `4859` | Pending |
+| HTTP port `4859` | Confirmed for ping and authenticated system/zone/device reads |
 | HTTPS port `4860` | Pending |
 | TLS certificate behavior | Pending |
 | Disposable capability alias | Pending synthetic alias |
@@ -176,14 +176,14 @@ Fill this matrix using synthetic aliases only.
 
 | Scenario | Result | Sanitized observation |
 | --- | --- | --- |
-| HTTP `4859` ping and authenticated reads | Pending | |
+| HTTP `4859` ping and authenticated reads | Pass | Read-only system, zone, and device requests completed without redirects |
 | HTTPS `4860` ping and authenticated reads | Pending | |
 | Invalid key | Pending | |
 | Missing system/zone/device scope | Pending | |
 | Bad URL and unavailable host | Pending | |
 | Request timeout | Pending | |
-| Complete inventory and individual read | Pending | |
-| Suffixed capability IDs | Pending | |
+| Complete inventory and individual read | Partial | Complete inventory captured: 118 devices and 16 zones; separate individual GET pending |
+| Suffixed capability IDs | Pass in inventory | 1,142 capability entries, including 170 suffixed entries; 55 devices repeat a base ID |
 | Socket.IO connect and subscribe | Pending | |
 | Capability and availability events | Pending | |
 | Allowlisted write, event, and read-back | Pending | |
@@ -203,6 +203,17 @@ preservation, and forbidden-value failure:
 cd apps/backend
 pnpm run test:homey-spike
 ```
+
+## Sanitized live fixture corpus
+
+The ignored full capture was reduced to ten distinct representative devices under
+`apps/backend/src/plugins/devices-homey/__fixtures__/`. Selection is deterministic and based on capability shape, not
+household identity. The committed set covers light, switch, environmental sensing, covers, lock, alarm-capability
+shapes, energy, repeated/suffixed capabilities, and device unavailability.
+
+The live inventory did not contain `target_temperature`, `alarm_contact`, `alarm_smoke`, `alarm_co`, `measure_co2`,
+`windowcoverings_tilt_set`, or `measure_pressure`. These remain explicit evidence gaps and must not be represented by
+fixtures that claim live provenance.
 
 ## References
 

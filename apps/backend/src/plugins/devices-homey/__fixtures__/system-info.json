@@ -1,0 +1,49 @@
+{
+	"id-000016": "[~7~]",
+	"id-000017": "[~7~]",
+	"homeyVersion": "13.4.0",
+	"homeyPlatform": "local",
+	"homeyPlatformVersion": 2,
+	"date": "2000-01-01T00:00:00.000Z",
+	"dateHuman": "Thursday 13th August 2026 20:18:49",
+	"dateDst": true,
+	"language": "en",
+	"country": "CZ",
+	"timezone": "Europe/Prague",
+	"rebootReason": "unexpected",
+	"bootDate": "2000-01-01T00:00:00.000Z",
+	"id-000018": "[~7~]",
+	"homeyModelName": "[~2~]",
+	"nodeVersion": "v24.18.0",
+	"hostname": "[~0~]",
+	"totalmem": 33642762240,
+	"freemem": 14498045952,
+	"loadavg": [0.25, 0.31, 0.28],
+	"uptime": 83907.51,
+	"cpus": [
+		{
+			"model": "12th Gen Intel(R) Core(TM) i5-12600K",
+			"speed": 0,
+			"times": { "user": 5005530, "nice": 86640, "sys": 585670, "idle": 77326510, "irq": 0 }
+		},
+		{
+			"model": "12th Gen Intel(R) Core(TM) i5-12600K",
+			"speed": 0,
+			"times": { "user": 5042300, "nice": 75150, "sys": 577600, "idle": 77024130, "irq": 0 }
+		},
+		{
+			"model": "12th Gen Intel(R) Core(TM) i5-12600K",
+			"speed": 0,
+			"times": { "user": 4948950, "nice": 79220, "sys": 580020, "idle": 77306040, "irq": 0 }
+		},
+		{
+			"model": "12th Gen Intel(R) Core(TM) i5-12600K",
+			"speed": 0,
+			"times": { "user": 5115180, "nice": 77480, "sys": 582440, "idle": 77192540, "irq": 0 }
+		}
+	],
+	"platform": "linux",
+	"devmode": false,
+	"address": "[~0~]",
+	"mac": "[~0~]"
+}

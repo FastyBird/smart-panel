@@ -1,0 +1,30 @@
+{
+	"schemaVersion": 1,
+	"provenance": {
+		"captureDate": "2026-08-13",
+		"homeyVersion": "13.4.0",
+		"transport": { "protocol": "http", "port": 4859 },
+		"sanitized": true
+	},
+	"fixtures": [
+		"devices/light.json",
+		"devices/switch.json",
+		"devices/climate.json",
+		"devices/cover.json",
+		"devices/lock.json",
+		"devices/sensor-air-quality.json",
+		"devices/sensor-safety.json",
+		"devices/energy-meter.json",
+		"devices/repeated-capabilities.json",
+		"devices/unavailable.json"
+	],
+	"knownCoverageGaps": [
+		"target_temperature",
+		"alarm_contact",
+		"alarm_smoke",
+		"alarm_co",
+		"measure_co2",
+		"windowcoverings_tilt_set",
+		"measure_pressure"
+	]
+}
