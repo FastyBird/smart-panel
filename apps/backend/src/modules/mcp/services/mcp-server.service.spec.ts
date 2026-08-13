@@ -396,6 +396,26 @@ describe('McpServerService policy revision', () => {
 		expect(close).toHaveBeenCalledTimes(1);
 	});
 
+	it('completes an attached transport when listen setup returns a non-stream response', () => {
+		const close = jest.fn();
+		const completeTransport = jest.fn();
+		const subscription = {
+			close,
+			completeTransport,
+		} as unknown as McpSubscriptionHandle;
+		const response = Response.json({ error: 'listen setup failed' }, { status: 400 });
+
+		const tracked = (
+			service as unknown as {
+				trackSubscriptionResponse(response: Response, subscription: McpSubscriptionHandle): Response;
+			}
+		).trackSubscriptionResponse(response, subscription);
+
+		expect(tracked).toBe(response);
+		expect(close).toHaveBeenCalledWith('completed');
+		expect(completeTransport).toHaveBeenCalledTimes(1);
+	});
+
 	it('terminates a forwarded subscription stream when its authorization signal aborts', async () => {
 		const attachTransport = jest.fn();
 		const completeTransport = jest.fn();

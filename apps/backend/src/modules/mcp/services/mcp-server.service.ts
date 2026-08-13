@@ -275,16 +275,15 @@ export class McpServerService implements OnApplicationShutdown {
 				}
 
 				const signal = AbortSignal.any([webRequest.signal, subscription.signal]);
-				let response: Response;
 
 				try {
-					response = await fetch(new Request(webRequest, { signal }), options);
+					const response = await fetch(new Request(webRequest, { signal }), options);
+
+					return this.trackSubscriptionResponse(response, subscription, webRequest.signal);
 				} catch (error) {
-					subscription.close('error');
+					this.closeSubscriptionBeforeTransport(subscription, 'error');
 					throw error;
 				}
-
-				return this.trackSubscriptionResponse(response, subscription, webRequest.signal);
 			},
 		};
 		const clientHandler = {
@@ -444,7 +443,7 @@ export class McpServerService implements OnApplicationShutdown {
 		transportSignal?: AbortSignal,
 	): Response {
 		if (!response.body || !response.headers.get('content-type')?.includes('text/event-stream')) {
-			subscription.close('completed');
+			this.closeSubscriptionBeforeTransport(subscription, 'completed');
 			return response;
 		}
 		const reader = response.body.getReader();
@@ -542,6 +541,11 @@ export class McpServerService implements OnApplicationShutdown {
 			statusText: response.statusText,
 			headers: response.headers,
 		});
+	}
+
+	private closeSubscriptionBeforeTransport(subscription: McpSubscriptionHandle, reason: 'completed' | 'error'): void {
+		subscription.close(reason);
+		subscription.completeTransport();
 	}
 
 	private subscriptionCancellationEvent(requestId: number | string): Uint8Array {
