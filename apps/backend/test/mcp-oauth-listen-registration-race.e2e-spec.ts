@@ -85,6 +85,15 @@ const waitForRemoteClosure = async (closed: Promise<string>): Promise<string> =>
 	}
 };
 
+const waitForActiveCount = async (subscriptions: McpSubscriptionRegistryService, expected: number): Promise<void> => {
+	for (let count = 0; count < 500; count += 1) {
+		if (subscriptions.activeCount === expected) return;
+		await new Promise<void>((resolve) => setTimeout(resolve, 10));
+	}
+
+	throw new Error(`Timed out waiting for ${expected} active MCP subscriptions`);
+};
+
 describe('MCP OAuth listen registration race', () => {
 	it('expires live subscriptions and closes matching streams during revocation', async () => {
 		const dataSource = new DataSource({
@@ -508,6 +517,7 @@ describe('MCP OAuth listen registration race', () => {
 			await expect(accessTokenSiblingSubscription.closed).resolves.toBe('local');
 			await accessTokenSiblingClient.close();
 			accessTokenSiblingClient = undefined;
+			await waitForActiveCount(subscriptions, 0);
 			expect(subscriptions.activeCount).toBe(0);
 
 			jest
