@@ -218,6 +218,36 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() => assertHomeyCaptureSafe(capture, [], ['home'])).not.toThrow();
 	});
 
+	it('preserves distinct public enum option IDs in capability metadata', () => {
+		const devices = sanitizeHomeyDevices({
+			'private-device': {
+				id: 'private-device',
+				name: 'Private device',
+				capabilities: ['private_mode'],
+				capabilitiesObj: {
+					private_mode: {
+						id: 'private_mode',
+						type: 'enum',
+						values: [
+							{ id: 'home', title: 'At home' },
+							{ id: 'away', title: 'Away' },
+						],
+					},
+				},
+			},
+		});
+		const device = devices['device-000001'] as {
+			capabilitiesObj: { private_mode: { values: Array<{ id: string; title: string }> } };
+		};
+		const values = device.capabilitiesObj.private_mode.values;
+
+		expect(values.map(({ id }) => id)).toEqual(['home', 'away']);
+		expect(values.map(({ title }) => title)).toEqual(['[~2~]', '[~2~]']);
+		expect(() =>
+			assertHomeyCaptureSafe({ metadata: {}, systemInfo: {}, zones: {}, devices }, [], ['home']),
+		).not.toThrow();
+	});
+
 	it('sanitizes source metadata recursively without changing unrelated values', () => {
 		expect(
 			sanitizeHomeyPublishedMetadata(

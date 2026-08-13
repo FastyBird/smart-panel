@@ -292,6 +292,19 @@ const isCapabilityMap = (path: string[], rootKind: SanitizerContext['rootKind'])
 const isCapabilityIdentifier = (key: string, path: string[], rootKind: SanitizerContext['rootKind']): boolean =>
 	key === 'id' && isCapabilityMap(path.slice(0, -1), rootKind);
 
+const isCapabilityEnumOptionIdentifier = (
+	key: string,
+	path: string[],
+	rootKind: SanitizerContext['rootKind'],
+): boolean =>
+	key === 'id' &&
+	rootKind === 'device' &&
+	path.length === 5 &&
+	path[0] === 'root' &&
+	(path[1] === 'capabilitiesObj' || path[1] === 'capabilityOptions') &&
+	path[3] === 'values' &&
+	/^\d+$/.test(path[4]);
+
 const isCapabilityListEntry = (path: string[], rootKind: SanitizerContext['rootKind']): boolean =>
 	rootKind === 'device' && path.length === 2 && path[0] === 'root' && path[1] === 'capabilities';
 
@@ -384,6 +397,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 		!isRecord(value) &&
 		!capabilityMapEntry &&
 		!isCapabilityIdentifier(key, context.path, context.rootKind) &&
+		!isCapabilityEnumOptionIdentifier(key, context.path, context.rootKind) &&
 		(REFERENCE_KEY_PATTERN.test(key) || IDENTIFIER_KEY_PATTERN.test(key))
 	) {
 		return typeof value === 'string' && REFERENCE_KEY_PATTERN.test(key)
@@ -402,7 +416,8 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 	if (typeof value === 'string') {
 		if (
 			isCapabilityListEntry(context.path, context.rootKind) ||
-			isCapabilityIdentifier(key, context.path, context.rootKind)
+			isCapabilityIdentifier(key, context.path, context.rootKind) ||
+			isCapabilityEnumOptionIdentifier(key, context.path, context.rootKind)
 		) {
 			return value;
 		}
@@ -922,6 +937,19 @@ export const assertHomeyCaptureSafe = (
 		(path.length === 2 && path[0] === 'individualDevice' && path[1] === 'capabilities');
 	const isCapturedCapabilityReadIdentifier = (key: string, path: string[]): boolean =>
 		key === 'capabilityId' && path.length === 1 && path[0] === 'capabilityValue';
+	const isCapturedCapabilityEnumOptionIdentifier = (key: string, path: string[]): boolean =>
+		key === 'id' &&
+		((path.length === 6 &&
+			path[0] === 'devices' &&
+			GENERATED_PSEUDONYM_PATTERN.test(path[1]) &&
+			(path[2] === 'capabilitiesObj' || path[2] === 'capabilityOptions') &&
+			path[4] === 'values' &&
+			/^\d+$/.test(path[5])) ||
+			(path.length === 5 &&
+				path[0] === 'individualDevice' &&
+				(path[1] === 'capabilitiesObj' || path[1] === 'capabilityOptions') &&
+				path[3] === 'values' &&
+				/^\d+$/.test(path[4])));
 	const isStructuralRecordPath = (path: string[]): boolean => {
 		if (
 			path.length === 1 &&
@@ -1030,6 +1058,7 @@ export const assertHomeyCaptureSafe = (
 				!isCapturedCapabilityListEntry(path) &&
 				!isCapturedCapabilityIdentifier(key, path) &&
 				!isCapturedCapabilityReadIdentifier(key, path) &&
+				!isCapturedCapabilityEnumOptionIdentifier(key, path) &&
 				value.replace(REDACTION_PATTERN, '').toLowerCase().includes(term.toLowerCase())
 			);
 		}
