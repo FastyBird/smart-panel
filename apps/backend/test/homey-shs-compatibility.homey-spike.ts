@@ -245,6 +245,16 @@ describe('Homey SHS compatibility probe', () => {
 		for (const capturedAt of ['2026-99-99Tgarbage', '2026-08-13T18:18:49.593Ztrailing', 'not-a-date']) {
 			expect(() => buildHomeyFixtureProvenance({ ...metadata, capturedAt })).toThrow('invalid fixture provenance');
 		}
+
+		for (const version of ['', 'unknown', '[~7~]', '13.4']) {
+			expect(() => buildHomeyFixtureProvenance({ ...metadata, homey: { version } })).toThrow(
+				'invalid fixture provenance',
+			);
+		}
+
+		expect(buildHomeyFixtureProvenance({ ...metadata, homey: { version: '13.4.0-rc.1+build.2' } })).toMatchObject({
+			homeyVersion: '13.4.0-rc.1+build.2',
+		});
 	});
 
 	it('requires an exact expected host and rejects credential-bearing URLs', () => {
