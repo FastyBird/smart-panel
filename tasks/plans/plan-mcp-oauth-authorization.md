@@ -505,7 +505,7 @@ amend ADR 0002.
 
 - [x] Document HTTPS and explicit public URL requirements, supported proxy layouts, client pre-registration, Codex and
       Claude setup, consent, and migration from static credentials.
-- [ ] Document backup sensitivity, clone handling, server-secret rotation, revoke-all, compromise response, and account
+- [x] Document backup sensitivity, clone handling, server-secret rotation, revoke-all, compromise response, and account
       recovery.
 - [ ] Document dependency upgrades, metadata diffs, smoke-test requirements, rollback, and static-profile retention.
 - [ ] Confirm no DCR/CIMD endpoints are advertised and create explicit follow-up tasks if the release gate justifies
