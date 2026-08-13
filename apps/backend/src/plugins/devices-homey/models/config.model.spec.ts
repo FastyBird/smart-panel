@@ -11,6 +11,17 @@ describe('Homey configuration', () => {
 		expect(validateSync(new HomeyConfigModel())).toEqual([]);
 	});
 
+	it('rejects an enabled stored configuration without a URL and API key', () => {
+		const errors = validateSync(Object.assign(new HomeyConfigModel(), { enabled: true }));
+
+		expect(errors).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ property: 'url' }),
+				expect.objectContaining({ property: 'apiKey' }),
+			]),
+		);
+	});
+
 	it('projects the API key as a configured indicator', () => {
 		const secrets = new ConfigSecretsService();
 		const config = Object.assign(new HomeyConfigModel(), {

@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min, ValidateIf } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -31,7 +31,8 @@ export class HomeyConfigModel extends PluginConfigModel {
 		nullable: true,
 	})
 	@Expose()
-	@IsOptional()
+	@ValidateIf((config: HomeyConfigModel) => config.enabled || config.url !== null)
+	@IsNotEmpty()
 	@IsSafeHomeyUrl()
 	url: string | null = null;
 
@@ -42,7 +43,8 @@ export class HomeyConfigModel extends PluginConfigModel {
 		name: 'api_key',
 	})
 	@Expose({ name: 'api_key' })
-	@IsOptional()
+	@ValidateIf((config: HomeyConfigModel) => config.enabled || config.apiKey !== null)
+	@IsNotEmpty()
 	@IsString()
 	apiKey: string | null = null;
 

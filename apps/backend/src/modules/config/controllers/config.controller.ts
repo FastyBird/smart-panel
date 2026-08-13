@@ -15,7 +15,7 @@ import {
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
 import { CONFIG_MODULE_API_TAG_NAME, CONFIG_MODULE_NAME } from '../config.constants';
-import { ConfigException } from '../config.exceptions';
+import { ConfigException, ConfigValidationException } from '../config.exceptions';
 import {
 	ReqUpdateModuleDto,
 	ReqUpdatePluginDto,
@@ -190,7 +190,17 @@ export class ConfigController {
 		// block saves when the target service is temporarily unreachable. Users must
 		// be able to pre-configure credentials before the service is online.
 		// Use POST plugin/:plugin/validate for explicit validation.
-		this.service.setPluginConfig(plugin, dtoInstance, pluginConfig.data as Record<string, unknown>);
+		try {
+			this.service.setPluginConfig(plugin, dtoInstance, pluginConfig.data as Record<string, unknown>);
+		} catch (error) {
+			if (error instanceof ConfigValidationException) {
+				throw new BadRequestException([
+					JSON.stringify({ field: 'config', reason: 'The resolved plugin configuration is invalid.' }),
+				]);
+			}
+
+			throw error;
+		}
 
 		const config = this.service.getPublicPluginConfig(plugin);
 
