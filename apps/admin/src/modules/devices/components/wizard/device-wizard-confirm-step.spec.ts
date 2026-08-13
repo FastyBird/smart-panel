@@ -1,4 +1,4 @@
-import { ElSelect } from 'element-plus';
+import { ElPagination, ElSelect } from 'element-plus';
 import { describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
@@ -136,6 +136,35 @@ describe('DeviceWizardConfirmStep', () => {
 
 		expect(wrapper.findAll('tbody tr')).toHaveLength(25);
 		expect(wrapper.find('tbody tr code').text()).toBe('device-25');
+	});
+
+	it('clamps the current page when edited names shrink the filtered inventory', async () => {
+		const rows = Array.from({ length: 30 }, (_, index) =>
+			row({ key: `device-${index}`, identifier: `device-${index}`, suggestedName: `Device ${index}` })
+		);
+		const wrapper = mountStep(rows, {
+			confirmationMode: 'selection-only',
+			selected: {},
+			nameByKey: Object.fromEntries(rows.map((item) => [item.key, `Match ${item.identifier}`])),
+			categoryByKey: {},
+		});
+
+		await flushPromises();
+		await wrapper.find('[data-test-id="wizard-confirm-search"] input').setValue('match');
+		await flushPromises();
+		wrapper.findComponent(ElPagination).vm.$emit('update:current-page', 2);
+		await flushPromises();
+
+		expect(wrapper.findAll('tbody tr')).toHaveLength(5);
+
+		await wrapper.setProps({
+			nameByKey: Object.fromEntries(rows.map((item, index) => [item.key, `${index < 10 ? 'Match' : 'Other'} ${item.identifier}`])),
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="wizard-confirm-pagination"]').exists()).toBe(false);
+		expect(wrapper.findAll('tbody tr')).toHaveLength(10);
+		expect(wrapper.text()).toContain('device-0');
 	});
 
 	it('sorts by the translated category label rather than the raw category value', async () => {

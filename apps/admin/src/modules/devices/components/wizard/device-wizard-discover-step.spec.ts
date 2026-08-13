@@ -221,6 +221,34 @@ describe('DeviceWizardDiscoverStep', () => {
 		expect(wrapper.text()).toContain('device-0');
 	});
 
+	it('preserves the current page when live discovery grows', async () => {
+		const rows = Array.from({ length: 30 }, (_, index) =>
+			row({ key: `device-${index}`, identifier: `device-${index}`, label: `Device ${index}` })
+		);
+		const wrapper = mountStep([], rows);
+
+		await flushPromises();
+		wrapper.findComponent(ElPagination).vm.$emit('update:current-page', 2);
+		await flushPromises();
+
+		expect(wrapper.findAll('tbody tr')).toHaveLength(5);
+		expect(wrapper.text()).toContain('device-25');
+
+		await wrapper.setProps({
+			rows: [
+				...rows,
+				...Array.from({ length: 10 }, (_, index) =>
+					row({ key: `device-${index + 30}`, identifier: `device-${index + 30}`, label: `Device ${index + 30}` })
+				),
+			],
+		});
+		await flushPromises();
+
+		expect(wrapper.findAll('tbody tr')).toHaveLength(15);
+		expect(wrapper.text()).toContain('device-25');
+		expect(wrapper.text()).not.toContain('device-0');
+	});
+
 	it('summarizes and horizontally contains a large responsive inventory', async () => {
 		const rows = Array.from({ length: 100 }, (_, index) =>
 			row({

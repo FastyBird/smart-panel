@@ -366,9 +366,16 @@ const pageRows = computed<IWizardRow[]>(() => {
 	return sortedRows.value.slice(start, start + PAGE_SIZE);
 });
 
-watch([search, () => filteredRows.value.length], () => {
+watch(search, () => {
 	currentPage.value = 1;
 });
+
+watch(
+	() => filteredRows.value.length,
+	(count) => {
+		currentPage.value = Math.min(currentPage.value, Math.max(1, Math.ceil(count / PAGE_SIZE)));
+	}
+);
 
 const onSortChange = ({ prop, order }: { prop: string | null; order: 'ascending' | 'descending' | null }): void => {
 	sortKey.value = prop;
