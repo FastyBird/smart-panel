@@ -871,6 +871,12 @@ describe('MCP OAuth listen registration race', () => {
 				}),
 			).toBe(false);
 			expect(
+				await dataSource.getRepository(McpOAuthProviderArtifactEntity).existsBy({
+					model: 'Grant',
+					idHash: hashToken(rawClientDisableGrantId),
+				}),
+			).toBe(false);
+			expect(
 				await dataSource.getRepository(McpOAuthClientEntity).findOneByOrFail({ id: preservedOAuthClientEntity.id }),
 			).toMatchObject({ enabled: true, generation: 0 });
 			expect(
