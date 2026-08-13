@@ -85,6 +85,22 @@ const waitForRemoteClosure = async (closed: Promise<string>): Promise<string> =>
 	}
 };
 
+const expectOAuthConnectionRejected = async (endpoint: URL, accessToken: string): Promise<void> => {
+	const rejectedClient = new Client(
+		{ name: 'oauth-wire-negative-e2e', version: '1.0.0' },
+		{ versionNegotiation: { mode: 'auto' } },
+	);
+	const transport = new StreamableHTTPClientTransport(endpoint, {
+		requestInit: { headers: { Authorization: `Bearer ${accessToken}` } },
+	});
+
+	try {
+		await expect(rejectedClient.connect(transport)).rejects.toThrow();
+	} finally {
+		await rejectedClient.close();
+	}
+};
+
 describe('MCP OAuth listen registration race', () => {
 	it('expires live subscriptions and closes matching streams during revocation', async () => {
 		const dataSource = new DataSource({
@@ -388,6 +404,55 @@ describe('MCP OAuth listen registration race', () => {
 			const serverService = app.get<McpServerService>(McpServerService);
 			const listenAuthenticated = deferred();
 			const endpoint = new URL('/', await app.getUrl());
+			const wireNegativeAccessToken = 'listen-wire-negative-access-token';
+			const grantRepository = dataSource.getRepository(McpOAuthGrantEntity);
+			const artifactRepository = dataSource.getRepository(McpOAuthProviderArtifactEntity);
+
+			await accessTokens.upsert(
+				wireNegativeAccessToken,
+				{
+					accountId: user.id,
+					aud: urls.resource,
+					clientId: oauthClient.clientIdentifier,
+					grantId: rawGrantId,
+					kind: 'AccessToken',
+					scope: McpOAuthScope.READ,
+				},
+				60,
+			);
+			const wireNegativeArtifact = await artifactRepository.findOneByOrFail({
+				model: 'AccessToken',
+				idHash: hashToken(wireNegativeAccessToken),
+			});
+			const wireNegativePayload = JSON.parse(wireNegativeArtifact.payload) as Record<string, unknown>;
+
+			await grantRepository.update({ id: grant.id }, { issuer: 'https://other.example.com/oauth' });
+			await expectOAuthConnectionRejected(endpoint, wireNegativeAccessToken);
+			await grantRepository.update({ id: grant.id }, { issuer: urls.issuer });
+
+			await grantRepository.update({ id: grant.id }, { resource: 'https://other.example.com/mcp' });
+			await expectOAuthConnectionRejected(endpoint, wireNegativeAccessToken);
+			await grantRepository.update({ id: grant.id }, { resource: urls.resource });
+
+			await artifactRepository.update(
+				{ model: wireNegativeArtifact.model, idHash: wireNegativeArtifact.idHash },
+				{ payload: JSON.stringify({ ...wireNegativePayload, aud: 'https://other.example.com/mcp' }) },
+			);
+			await expectOAuthConnectionRejected(endpoint, wireNegativeAccessToken);
+
+			await artifactRepository.update(
+				{ model: wireNegativeArtifact.model, idHash: wireNegativeArtifact.idHash },
+				{
+					payload: JSON.stringify({
+						...wireNegativePayload,
+						clientId: preservedOAuthClientEntity.clientIdentifier,
+					}),
+				},
+			);
+			await expectOAuthConnectionRejected(endpoint, wireNegativeAccessToken);
+			expect(JSON.stringify(auditLog.mock.calls)).not.toContain(wireNegativeAccessToken);
+			await artifactRepository.delete({ model: wireNegativeArtifact.model, idHash: wireNegativeArtifact.idHash });
+
 			const shortLivedAccessToken = 'listen-expiry-access-token';
 
 			await accessTokens.upsert(
