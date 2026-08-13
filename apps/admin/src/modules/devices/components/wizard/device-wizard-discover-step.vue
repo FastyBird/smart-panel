@@ -125,7 +125,8 @@
 		>
 			<el-table
 				:data="filteredRows"
-				class="h-full w-full min-w-[680px]"
+				class="h-full w-full"
+				:style="{ minWidth: `${tableMinWidth}px` }"
 				table-layout="fixed"
 				:empty-text="t('devicesModule.wizard.texts.empty')"
 			>
@@ -259,6 +260,8 @@ const progressBars = computed<IWizardProgressControl[]>(() =>
 const forms = computed<IWizardFormControl[]>(() => props.controls.filter((item): item is IWizardFormControl => item.type === 'form'));
 
 const extraColumns = computed<IWizardColumn[]>(() => props.columns.filter((column) => column.steps.includes('discover')));
+
+const tableMinWidth = computed<number>(() => extraColumns.value.reduce((width, column) => width + (column.width ?? column.minWidth ?? 150), 680));
 
 // Field values are keyed by control id so several forms can coexist. Rebuilt whenever the
 // set of form controls changes so a newly-declared form always has a backing record.

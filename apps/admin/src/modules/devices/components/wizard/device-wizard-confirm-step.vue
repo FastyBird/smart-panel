@@ -22,7 +22,8 @@
 		>
 			<el-table
 				:data="filteredRows"
-				class="h-full w-full min-w-[900px]"
+				class="h-full w-full"
+				:style="{ minWidth: `${tableMinWidth}px` }"
 				table-layout="fixed"
 				:empty-text="t('devicesModule.wizard.texts.noSelection')"
 				:default-sort="{ prop: 'name', order: 'ascending' }"
@@ -220,6 +221,8 @@ const allFilteredSelected = computed<boolean>(
 const someFilteredSelected = computed<boolean>(() => filteredRows.value.some((row) => props.selected[row.key] === true));
 
 const extraColumns = computed<IWizardColumn[]>(() => props.columns.filter((column) => column.steps.includes('confirm')));
+
+const tableMinWidth = computed<number>(() => extraColumns.value.reduce((width, column) => width + (column.width ?? column.minWidth ?? 150), 900));
 
 // `prop`-based sorting can't reach into the parent-owned name / category records, so each
 // editable column gets a comparator that reads the current value rather than the row field.

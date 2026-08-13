@@ -196,6 +196,6 @@ describe('DeviceWizardDiscoverStep', () => {
 		expect(wrapper.find('[data-test-id="wizard-discover-table-scroll"]').classes()).toEqual(
 			expect.arrayContaining(['min-h-0', 'overflow-x-auto', 'overscroll-x-contain'])
 		);
-		expect(wrapper.find('[data-test-id="wizard-discover-table-scroll"] .el-table').classes()).toContain('min-w-[680px]');
+		expect(wrapper.find('[data-test-id="wizard-discover-table-scroll"] .el-table').attributes('style')).toContain('min-width: 680px');
 	});
 });

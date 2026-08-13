@@ -236,6 +236,7 @@ describe('DeviceWizardConfirmStep', () => {
 	it('keeps a large confirmation inventory inside a mobile horizontal scroller', async () => {
 		const rows = Array.from({ length: 100 }, (_, index) => row({ key: `device-${index}`, identifier: `device-${index}`, label: `Device ${index}` }));
 		const wrapper = mountStep(rows, {
+			columns: [{ key: 'channels', label: 'Channels', steps: ['confirm'], width: 130 }],
 			selected: {},
 			nameByKey: {},
 			categoryByKey: {},
@@ -248,6 +249,6 @@ describe('DeviceWizardConfirmStep', () => {
 		expect(wrapper.find('[data-test-id="wizard-confirm-table-scroll"]').classes()).toEqual(
 			expect.arrayContaining(['min-h-0', 'overflow-x-auto', 'overscroll-x-contain'])
 		);
-		expect(wrapper.find('[data-test-id="wizard-confirm-table-scroll"] .el-table').classes()).toContain('min-w-[900px]');
+		expect(wrapper.find('[data-test-id="wizard-confirm-table-scroll"] .el-table').attributes('style')).toContain('min-width: 1030px');
 	});
 });
