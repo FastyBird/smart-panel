@@ -194,13 +194,13 @@ index.ts
 - `models/homey-event.model.ts`
 - `errors/homey-connector.error.ts`
 
-- [ ] Define connect/disconnect, inventory, device read, write, and subscribe semantics.
-- [ ] Define idempotent cleanup/unsubscribe semantics.
-- [ ] Define system, zone, device, capability, and event plain-data models.
-- [ ] Preserve full capability IDs; expose separately derived base IDs for matching.
-- [ ] Define normalized error categories and retryability.
-- [ ] Define connector contract tests reusable by local and cloud implementations.
-- [ ] Add model/ID derivation unit tests, especially repeated capabilities such as `measure_temperature.inside`.
+- [x] Define connect/disconnect, inventory, device read, write, and subscribe semantics.
+- [x] Define idempotent cleanup/unsubscribe semantics.
+- [x] Define system, zone, device, capability, and event plain-data models.
+- [x] Preserve full capability IDs; expose separately derived base IDs for matching.
+- [x] Define normalized error categories and retryability.
+- [x] Define connector contract tests reusable by local and cloud implementations.
+- [x] Add model/ID derivation unit tests, especially repeated capabilities such as `measure_temperature.inside`.
 
 ---
 
