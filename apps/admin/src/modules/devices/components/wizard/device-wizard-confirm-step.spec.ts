@@ -117,6 +117,27 @@ describe('DeviceWizardConfirmStep', () => {
 		expect(order).toEqual(['a', 'b']);
 	});
 
+	it('sorts the full confirmation inventory before slicing it into pages', async () => {
+		const rows = Array.from({ length: 26 }, (_, index) =>
+			row({
+				key: `device-${index}`,
+				identifier: `device-${index}`,
+				suggestedName: `Device ${String(25 - index).padStart(2, '0')}`,
+			})
+		);
+		const wrapper = mountStep(rows, {
+			confirmationMode: 'selection-only',
+			selected: {},
+			nameByKey: {},
+			categoryByKey: {},
+		});
+
+		await flushPromises();
+
+		expect(wrapper.findAll('tbody tr')).toHaveLength(25);
+		expect(wrapper.find('tbody tr code').text()).toBe('device-25');
+	});
+
 	it('sorts by the translated category label rather than the raw category value', async () => {
 		// Labels are deliberately inverted relative to the raw enum values ('lighting' <
 		// 'switcher' alphabetically, but 'Zzz' > 'Aaa'): a regression back to comparing

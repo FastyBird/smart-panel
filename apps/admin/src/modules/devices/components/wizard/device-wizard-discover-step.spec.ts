@@ -1,3 +1,4 @@
+import { ElPagination } from 'element-plus';
 import { describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
@@ -172,6 +173,52 @@ describe('DeviceWizardDiscoverStep', () => {
 
 		expect(wrapper.findAll('tbody tr')).toHaveLength(1);
 		expect(wrapper.text()).toContain('registered');
+	});
+
+	it('sorts the full discovery inventory before slicing it into pages', async () => {
+		const rows = Array.from({ length: 26 }, (_, index) =>
+			row({
+				key: `device-${index}`,
+				identifier: `device-${index}`,
+				label: `Device ${String(25 - index).padStart(2, '0')}`,
+			})
+		);
+		const wrapper = mountStep([], rows);
+
+		await flushPromises();
+
+		const nameHeader = wrapper.findAll('th').find((header) => header.text().includes('devicesModule.wizard.columns.name'));
+		expect(nameHeader).toBeDefined();
+
+		await nameHeader!.find('.caret-wrapper').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.findAll('tbody tr')).toHaveLength(25);
+		expect(wrapper.find('tbody tr code').text()).toBe('device-25');
+	});
+
+	it('returns to the first page when live row updates shrink the filtered inventory', async () => {
+		const rows = Array.from({ length: 30 }, (_, index) =>
+			row({ key: `device-${index}`, identifier: `device-${index}`, label: `Device ${index}`, status: 'checking' })
+		);
+		const wrapper = mountStep([], rows);
+
+		await flushPromises();
+		await wrapper.find('[data-test-id="wizard-discover-search"] input').setValue('checking');
+		await flushPromises();
+		wrapper.findComponent(ElPagination).vm.$emit('update:current-page', 2);
+		await flushPromises();
+
+		expect(wrapper.findAll('tbody tr')).toHaveLength(5);
+
+		await wrapper.setProps({
+			rows: rows.map((item, index) => ({ ...item, status: index < 10 ? ('checking' as const) : ('ready' as const) })),
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="wizard-discover-pagination"]').exists()).toBe(false);
+		expect(wrapper.findAll('tbody tr')).toHaveLength(10);
+		expect(wrapper.text()).toContain('device-0');
 	});
 
 	it('summarizes and horizontally contains a large responsive inventory', async () => {

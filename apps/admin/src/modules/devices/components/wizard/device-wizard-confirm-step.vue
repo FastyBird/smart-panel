@@ -27,6 +27,7 @@
 				table-layout="fixed"
 				:empty-text="t('devicesModule.wizard.texts.noSelection')"
 				:default-sort="{ prop: 'name', order: 'ascending' }"
+				@sort-change="onSortChange"
 			>
 				<el-table-column width="60">
 					<template #header>
@@ -56,8 +57,7 @@
 					prop="name"
 					:label="t('devicesModule.wizard.columns.name')"
 					min-width="220"
-					sortable
-					:sort-method="sortByName"
+					sortable="custom"
 				>
 					<template #default="{ row }: { row: IWizardRow }">
 						<el-input
@@ -78,8 +78,7 @@
 					prop="identifier"
 					:label="identifierLabel"
 					min-width="150"
-					sortable
-					:sort-method="sortByIdentifier"
+					sortable="custom"
 				>
 					<template #default="{ row }: { row: IWizardRow }">
 						<code class="text-sm">{{ row.identifier }}</code>
@@ -87,10 +86,10 @@
 				</el-table-column>
 
 				<el-table-column
+					prop="change"
 					:label="t('devicesModule.wizard.columns.change')"
 					width="170"
-					sortable
-					:sort-method="sortByChange"
+					sortable="custom"
 				>
 					<template #default="{ row }: { row: IWizardRow }">
 						<el-tag
@@ -103,10 +102,10 @@
 				</el-table-column>
 
 				<el-table-column
+					prop="category"
 					:label="t('devicesModule.wizard.columns.category')"
 					min-width="240"
-					sortable
-					:sort-method="sortByCategory"
+					sortable="custom"
 				>
 					<template #default="{ row }: { row: IWizardRow }">
 						<el-select
@@ -131,11 +130,11 @@
 				<el-table-column
 					v-for="column in extraColumns"
 					:key="column.key"
+					:prop="column.key"
 					:label="column.label"
 					:width="column.width"
 					:min-width="column.minWidth"
-					:sortable="column.sortable"
-					:sort-method="(a: IWizardRow, b: IWizardRow) => sortByCell(column.key, a, b)"
+					:sortable="column.sortable ? 'custom' : false"
 				>
 					<template #default="{ row }: { row: IWizardRow }">
 						<device-wizard-cell :cell="row.cells?.[column.key]" />
@@ -200,6 +199,8 @@ const PAGE_SIZE = 25;
 
 const search = ref<string>('');
 const currentPage = ref<number>(1);
+const sortKey = ref<string | null>('name');
+const sortOrder = ref<'ascending' | 'descending' | null>('ascending');
 
 const categoryLabel = (row: IWizardRow): string => {
 	const category = props.categoryByKey[row.key] ?? row.suggestedCategory;
@@ -227,16 +228,6 @@ const filteredRows = computed<IWizardRow[]>(() => {
 
 		return values.some((value) => value?.toLocaleLowerCase().includes(query));
 	});
-});
-
-const pageRows = computed<IWizardRow[]>(() => {
-	const start = (currentPage.value - 1) * PAGE_SIZE;
-
-	return filteredRows.value.slice(start, start + PAGE_SIZE);
-});
-
-watch([search, () => props.rows.length], () => {
-	currentPage.value = 1;
 });
 
 const allFilteredSelected = computed<boolean>(
@@ -268,4 +259,50 @@ const sortByCategory = (a: IWizardRow, b: IWizardRow): number => {
 };
 
 const sortByCell = (key: string, a: IWizardRow, b: IWizardRow): number => compareLocale(a.cells?.[key]?.value, b.cells?.[key]?.value);
+
+const compareRows = (a: IWizardRow, b: IWizardRow): number => {
+	if (sortKey.value === 'name') {
+		return sortByName(a, b);
+	}
+
+	if (sortKey.value === 'identifier') {
+		return sortByIdentifier(a, b);
+	}
+
+	if (sortKey.value === 'change') {
+		return sortByChange(a, b);
+	}
+
+	if (sortKey.value === 'category') {
+		return sortByCategory(a, b);
+	}
+
+	return sortKey.value === null ? 0 : sortByCell(sortKey.value, a, b);
+};
+
+const sortedRows = computed<IWizardRow[]>(() => {
+	if (sortKey.value === null || sortOrder.value === null) {
+		return filteredRows.value;
+	}
+
+	const direction = sortOrder.value === 'ascending' ? 1 : -1;
+
+	return [...filteredRows.value].sort((a, b) => direction * compareRows(a, b));
+});
+
+const pageRows = computed<IWizardRow[]>(() => {
+	const start = (currentPage.value - 1) * PAGE_SIZE;
+
+	return sortedRows.value.slice(start, start + PAGE_SIZE);
+});
+
+watch([search, () => filteredRows.value.length], () => {
+	currentPage.value = 1;
+});
+
+const onSortChange = ({ prop, order }: { prop: string | null; order: 'ascending' | 'descending' | null }): void => {
+	sortKey.value = prop;
+	sortOrder.value = order;
+	currentPage.value = 1;
+};
 </script>

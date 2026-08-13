@@ -129,12 +129,13 @@
 				:style="{ minWidth: `${tableMinWidth}px` }"
 				table-layout="fixed"
 				:empty-text="t('devicesModule.wizard.texts.empty')"
+				@sort-change="onSortChange"
 			>
 				<el-table-column
+					prop="name"
 					:label="t('devicesModule.wizard.columns.name')"
 					min-width="200"
-					sortable
-					:sort-method="sortByLabel"
+					sortable="custom"
 				>
 					<template #default="{ row }: { row: IWizardRow }">
 						<div class="flex flex-col">
@@ -153,8 +154,7 @@
 					prop="identifier"
 					:label="identifierLabel"
 					min-width="150"
-					sortable
-					:sort-method="sortByIdentifier"
+					sortable="custom"
 				>
 					<template #default="{ row }: { row: IWizardRow }">
 						<code class="text-sm">{{ row.identifier }}</code>
@@ -162,10 +162,10 @@
 				</el-table-column>
 
 				<el-table-column
+					prop="status"
 					:label="t('devicesModule.wizard.columns.status')"
 					width="180"
-					sortable
-					:sort-method="sortByStatus"
+					sortable="custom"
 				>
 					<template #default="{ row }: { row: IWizardRow }">
 						<el-tag :type="wizardStatusTagType(row.status)">
@@ -177,11 +177,11 @@
 				<el-table-column
 					v-for="column in extraColumns"
 					:key="column.key"
+					:prop="column.key"
 					:label="column.label"
 					:width="column.width"
 					:min-width="column.minWidth"
-					:sortable="column.sortable"
-					:sort-method="(a: IWizardRow, b: IWizardRow) => sortByCell(column.key, a, b)"
+					:sortable="column.sortable ? 'custom' : false"
 				>
 					<template #default="{ row }: { row: IWizardRow }">
 						<device-wizard-cell :cell="row.cells?.[column.key]" />
@@ -257,6 +257,8 @@ const PAGE_SIZE = 25;
 
 const search = ref<string>('');
 const currentPage = ref<number>(1);
+const sortKey = ref<string | null>(null);
+const sortOrder = ref<'ascending' | 'descending' | null>(null);
 
 const filteredRows = computed<IWizardRow[]>(() => {
 	const query = search.value.trim().toLocaleLowerCase();
@@ -276,16 +278,6 @@ const filteredRows = computed<IWizardRow[]>(() => {
 
 		return values.some((value) => value?.toLocaleLowerCase().includes(query));
 	});
-});
-
-const pageRows = computed<IWizardRow[]>(() => {
-	const start = (currentPage.value - 1) * PAGE_SIZE;
-
-	return filteredRows.value.slice(start, start + PAGE_SIZE);
-});
-
-watch([search, () => props.rows.length], () => {
-	currentPage.value = 1;
 });
 
 const banners = computed<IWizardBannerControl[]>(() => props.controls.filter((item): item is IWizardBannerControl => item.type === 'banner'));
@@ -341,4 +333,46 @@ const sortByStatus = (a: IWizardRow, b: IWizardRow): number => {
 };
 
 const sortByCell = (key: string, a: IWizardRow, b: IWizardRow): number => compareLocale(a.cells?.[key]?.value, b.cells?.[key]?.value);
+
+const compareRows = (a: IWizardRow, b: IWizardRow): number => {
+	if (sortKey.value === 'name') {
+		return sortByLabel(a, b);
+	}
+
+	if (sortKey.value === 'identifier') {
+		return sortByIdentifier(a, b);
+	}
+
+	if (sortKey.value === 'status') {
+		return sortByStatus(a, b);
+	}
+
+	return sortKey.value === null ? 0 : sortByCell(sortKey.value, a, b);
+};
+
+const sortedRows = computed<IWizardRow[]>(() => {
+	if (sortKey.value === null || sortOrder.value === null) {
+		return filteredRows.value;
+	}
+
+	const direction = sortOrder.value === 'ascending' ? 1 : -1;
+
+	return [...filteredRows.value].sort((a, b) => direction * compareRows(a, b));
+});
+
+const pageRows = computed<IWizardRow[]>(() => {
+	const start = (currentPage.value - 1) * PAGE_SIZE;
+
+	return sortedRows.value.slice(start, start + PAGE_SIZE);
+});
+
+watch([search, () => filteredRows.value.length], () => {
+	currentPage.value = 1;
+});
+
+const onSortChange = ({ prop, order }: { prop: string | null; order: 'ascending' | 'descending' | null }): void => {
+	sortKey.value = prop;
+	sortOrder.value = order;
+	currentPage.value = 1;
+};
 </script>
