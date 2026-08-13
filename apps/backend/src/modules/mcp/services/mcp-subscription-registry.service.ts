@@ -309,7 +309,7 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 		else this.subscriptions.delete(id);
 		clearTimeout(subscription.timer);
 		if (subscription.authorizationTimer) clearTimeout(subscription.authorizationTimer);
-		subscription.controller.abort();
+		subscription.controller.abort(reason);
 		this.auditService.recordSubscriptionClosed(
 			{ requestId: subscription.requestId, clientId: subscription.clientId },
 			subscription.id,
