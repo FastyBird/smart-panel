@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { lstatSync, readFileSync, readlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import {
@@ -41,7 +41,11 @@ const jsonResponse = (body: unknown, status = 200, headers: Record<string, strin
 
 describe('Homey SHS compatibility probe', () => {
 	it('keeps the promoted live fixture corpus safe and representative', () => {
-		const fixtureRoot = resolve(__dirname, '../src/plugins/devices-homey/__fixtures__');
+		const fixtureRoot = resolve(__dirname, '../src/plugins/devices-homey/__fixtures__/current');
+
+		expect(lstatSync(fixtureRoot).isSymbolicLink()).toBe(true);
+		expect(readlinkSync(fixtureRoot)).toMatch(/^versions\/[A-Za-z0-9._-]+$/);
+
 		const readFixture = (path: string): unknown =>
 			JSON.parse(readFileSync(resolve(fixtureRoot, path), 'utf8')) as unknown;
 		const fixtureNames = [

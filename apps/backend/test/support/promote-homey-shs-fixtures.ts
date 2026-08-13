@@ -1,5 +1,5 @@
-import { cp, mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { cp, mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { format } from 'prettier';
 
 import {
@@ -82,13 +82,25 @@ const main = async (): Promise<void> => {
 		knownMetadataGaps: deriveKnownMetadataGaps(publishedDevices),
 		syntheticFixtures: ['synthetic/enum-capability.json'],
 	};
-	const stagingParent = await mkdtemp(resolve(dirname(outputRoot), '.homey-fixtures-staging-'));
+	const versionsRoot = resolve(outputRoot, 'versions');
+	await mkdir(versionsRoot, { recursive: true });
+
+	const stagingParent = await mkdtemp(resolve(versionsRoot, '.staging-'));
 	const stagingRoot = resolve(stagingParent, 'next');
-	const backupRoot = resolve(stagingParent, 'previous');
-	let recoveryFailed = false;
+	const provenance = manifest.provenance as { captureDate: string; homeyVersion: string };
+	const versionName = `${capture.metadata.capturedAt as string}-shs-${provenance.homeyVersion}`.replaceAll(
+		/[^A-Za-z0-9._-]/g,
+		'-',
+	);
+	const versionRoot = resolve(versionsRoot, versionName);
+	let pointerParent: string | null = null;
 
 	try {
-		await cp(outputRoot, stagingRoot, { recursive: true });
+		await mkdir(stagingRoot, { recursive: true });
+		await cp(resolve(outputRoot, 'current/synthetic'), resolve(stagingRoot, 'synthetic'), {
+			dereference: true,
+			recursive: true,
+		});
 
 		const devicesRoot = resolve(stagingRoot, 'devices');
 
@@ -101,26 +113,19 @@ const main = async (): Promise<void> => {
 		}
 
 		await writeJson(resolve(stagingRoot, 'manifest.json'), manifest);
-		await rename(outputRoot, backupRoot);
+		await rename(stagingRoot, versionRoot);
 
-		try {
-			await rename(stagingRoot, outputRoot);
-		} catch (error) {
-			try {
-				await rename(backupRoot, outputRoot);
-			} catch {
-				recoveryFailed = true;
-				throw new Error('Homey fixture replacement failed and requires recovery from the staging directory');
-			}
+		pointerParent = await mkdtemp(resolve(outputRoot, '.pointer-'));
+		const nextPointer = resolve(pointerParent, 'current');
 
-			throw error;
-		}
-
-		await rm(backupRoot, { force: true, recursive: true });
+		await symlink(`versions/${versionName}`, nextPointer);
+		await rename(nextPointer, resolve(outputRoot, 'current'));
 	} finally {
-		if (!recoveryFailed) {
-			await rm(stagingParent, { force: true, recursive: true });
+		if (pointerParent !== null) {
+			await rm(pointerParent, { force: true, recursive: true });
 		}
+
+		await rm(stagingParent, { force: true, recursive: true });
 	}
 
 	process.stdout.write(`Promoted ${fixtures.size} sanitized Homey fixtures.\n`);

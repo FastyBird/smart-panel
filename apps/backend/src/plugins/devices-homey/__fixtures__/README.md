@@ -4,6 +4,9 @@ These fixtures are a minimal, reviewed subset of a credential-safe read-only cap
 2026-08-13. The source capture used HTTP port `4859`. The full 118-device household capture remains ignored and local;
 it must never be committed.
 
+`current` is an atomically replaceable symlink to an immutable complete corpus under `versions/`. Consumers must read
+through `current`; fixture promotion publishes a complete new version before switching this pointer in one rename.
+
 The corpus retains protocol field names, scalar types, capability order, full repeated/suffixed capability IDs, ranges,
 enum metadata, readable/writable flags, null values, and availability state. Homey IDs, zone/device names, addresses,
 URLs, secrets, timestamps, personal metadata, and driver identifiers are pseudonymized or replaced with opaque markers.

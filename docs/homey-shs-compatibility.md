@@ -208,7 +208,7 @@ pnpm run test:homey-spike
 
 ## Sanitized live fixture corpus
 
-The ignored full capture was reduced to ten distinct representative devices under
+The ignored full capture was reduced to nine distinct representative devices under
 `apps/backend/src/plugins/devices-homey/__fixtures__/`. Selection is deterministic and based on capability shape, not
 household identity. The committed set covers light, switch, environmental sensing, covers, alarm-capability shapes,
 energy, repeated/suffixed capabilities, and device unavailability.
