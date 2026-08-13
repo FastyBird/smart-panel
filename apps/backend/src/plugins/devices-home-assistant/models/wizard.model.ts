@@ -10,6 +10,7 @@ export const HOME_ASSISTANT_WIZARD_CANDIDATE_STATUSES = [
 	'ready',
 	'needs_attention',
 	'already_registered',
+	'unsupported',
 	'failed',
 ] as const;
 
@@ -64,6 +65,11 @@ export class HomeAssistantWizardCandidateModel {
 	@Expose()
 	@IsInt()
 	previewChannelCount: number;
+
+	@ApiProperty({ description: 'Number of Home Assistant entities represented by this candidate', example: 3 })
+	@Expose()
+	@IsInt()
+	entityCount: number;
 
 	@ApiProperty({ description: 'Number of mapping warnings requiring manual review', example: 0 })
 	@Expose()

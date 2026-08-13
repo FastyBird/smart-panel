@@ -19,6 +19,7 @@ export const transformWizardSessionResponse = (raw: DevicesHomeAssistantPluginWi
 			status: candidate.status,
 			suggestedCategory: (candidate.suggestedCategory ?? null) as DevicesModuleDeviceCategory | null,
 			previewChannelCount: candidate.previewChannelCount,
+			entityCount: candidate.entityCount,
 			warningCount: candidate.warningCount,
 			adoptedDeviceId: candidate.adoptedDeviceId ?? null,
 			error: candidate.error ?? null,

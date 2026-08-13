@@ -124,6 +124,13 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 					value: t(`devicesHomeAssistantPlugin.wizard.kinds.${candidate.kind}`),
 					variant: 'info',
 				},
+				entities: {
+					render: 'tag',
+					value: t('devicesHomeAssistantPlugin.wizard.columns.entitiesCount', {
+						count: candidate.entityCount,
+					}),
+					variant: 'info',
+				},
 				channels: {
 					render: 'tag',
 					value: t('devicesHomeAssistantPlugin.wizard.columns.channelsCount', {
@@ -333,6 +340,12 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		results,
 		columns: [
 			{ key: 'kind', label: t('devicesHomeAssistantPlugin.wizard.columns.kind'), steps: ['discover'], width: 120 },
+			{
+				key: 'entities',
+				label: t('devicesHomeAssistantPlugin.wizard.columns.entities'),
+				steps: ['discover', 'confirm'],
+				width: 120,
+			},
 			{
 				key: 'channels',
 				label: t('devicesHomeAssistantPlugin.wizard.columns.channels'),

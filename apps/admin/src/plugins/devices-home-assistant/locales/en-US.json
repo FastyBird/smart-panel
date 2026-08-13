@@ -257,6 +257,8 @@
     "columns": {
       "identifier": "Home Assistant ID",
       "kind": "Type",
+      "entities": "Entities",
+      "entitiesCount": "{count} entities",
       "channels": "Channels",
       "channelsCount": "{count} channels",
       "warningsCount": "{count} mapping warnings"

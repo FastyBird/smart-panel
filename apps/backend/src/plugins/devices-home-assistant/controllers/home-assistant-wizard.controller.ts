@@ -108,6 +108,7 @@ export class HomeAssistantWizardController {
 	@ApiNotFoundResponse('Wizard session could not be found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post(':id/adopt')
+	@HttpCode(200)
 	async adopt(
 		@Param('id') id: string,
 		@Body() body: ReqHomeAssistantWizardAdoptDto,

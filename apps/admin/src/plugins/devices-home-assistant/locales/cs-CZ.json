@@ -257,6 +257,8 @@
 		"columns": {
 			"identifier": "ID Home Assistant",
 			"kind": "Typ",
+			"entities": "Entity",
+			"entitiesCount": "Počet entit: {count}",
 			"channels": "Kanály",
 			"channelsCount": "Počet kanálů: {count}",
 			"warningsCount": "Počet upozornění mapování: {count}"

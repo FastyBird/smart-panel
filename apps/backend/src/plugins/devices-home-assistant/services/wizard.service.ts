@@ -85,8 +85,20 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 
 		for (const result of devicePreviewResults) {
 			const candidate = result.preview
-				? this.createDeviceCandidate(result.preview, adoptedBySourceId.get(result.source.id) ?? null)
-				: this.createFailedCandidate('device', result.source.id, result.source.name, null, null, result.error);
+				? this.createDeviceCandidate(
+						result.preview,
+						adoptedBySourceId.get(result.source.id) ?? null,
+						result.source.entities.length,
+					)
+				: this.createUnsupportedCandidate(
+						'device',
+						result.source.id,
+						result.source.name,
+						null,
+						null,
+						result.source.entities.length,
+						result.error,
+					);
 			if (
 				candidate.snapshot.status === 'ready' &&
 				candidate.request &&
@@ -115,12 +127,13 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 
 			const candidate = result.preview
 				? this.createHelperCandidate(result.preview, adoptedBySourceId.get(result.source.entityId) ?? null)
-				: this.createFailedCandidate(
+				: this.createUnsupportedCandidate(
 						'helper',
 						result.source.entityId,
 						result.source.name,
 						'Home Assistant',
 						`Helper (${result.source.domain})`,
+						1,
 						result.error,
 					);
 			session.candidates.set(candidate.snapshot.key, candidate);
@@ -308,6 +321,7 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 	private createDeviceCandidate(
 		preview: MappingPreviewModel,
 		adoptedDeviceId: string | null,
+		entityCount: number,
 	): HomeAssistantWizardCandidate {
 		const key = `device:${preview.haDevice.id}`;
 		const request = this.buildDeviceRequest(preview);
@@ -325,6 +339,7 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 				status,
 				suggestedCategory: preview.suggestedDevice.category,
 				previewChannelCount: request.channels.length,
+				entityCount,
 				warningCount: preview.warnings.length,
 				adoptedDeviceId,
 				error: status === 'needs_attention' ? this.mappingReviewReason(preview.warnings) : null,
@@ -357,6 +372,7 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 				status,
 				suggestedCategory: preview.suggestedDevice.category,
 				previewChannelCount: request.channels.length,
+				entityCount: 1,
 				warningCount: preview.warnings.length,
 				adoptedDeviceId,
 				error: status === 'needs_attention' ? this.mappingReviewReason(preview.warnings) : null,
@@ -431,12 +447,13 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 		};
 	}
 
-	private createFailedCandidate(
+	private createUnsupportedCandidate(
 		kind: 'device' | 'helper',
 		sourceId: string,
 		name: string,
 		manufacturer: string | null,
 		model: string | null,
+		entityCount: number,
 		error: string | null,
 	): HomeAssistantWizardCandidate {
 		return {
@@ -447,9 +464,10 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 				name,
 				manufacturer,
 				model,
-				status: 'failed',
+				status: 'unsupported',
 				suggestedCategory: null,
 				previewChannelCount: 0,
+				entityCount,
 				warningCount: 1,
 				adoptedDeviceId: null,
 				error: error ?? 'Automatic mapping could not be generated',
