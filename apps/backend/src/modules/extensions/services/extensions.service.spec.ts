@@ -7,12 +7,17 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { ConfigValidationException } from '../../config/config.exceptions';
 import { UpdatePluginConfigDto } from '../../config/dto/config.dto';
 import { ConfigService } from '../../config/services/config.service';
 import { ModulesTypeMapperService } from '../../config/services/modules-type-mapper.service';
 import { PluginsTypeMapperService } from '../../config/services/plugins-type-mapper.service';
 import { ExtensionKind } from '../extensions.constants';
-import { ExtensionNotConfigurableException, ExtensionNotFoundException } from '../extensions.exceptions';
+import {
+	ExtensionConfigValidationException,
+	ExtensionNotConfigurableException,
+	ExtensionNotFoundException,
+} from '../extensions.exceptions';
 
 import { ExtensionsBundledService } from './extensions-bundled.service';
 import { ExtensionsService } from './extensions.service';
@@ -228,6 +233,22 @@ describe('ExtensionsService', () => {
 				type: 'pages-tiles-plugin',
 				enabled: false,
 			});
+		});
+
+		it('maps invalid resolved plugin configuration to a client error', async () => {
+			jest.spyOn(configService, 'setPluginConfig').mockImplementation(() => {
+				throw new ConfigValidationException('sensitive provider detail');
+			});
+
+			await expect(service.updateEnabled('pages-tiles-plugin', true)).rejects.toThrow(
+				ExtensionConfigValidationException,
+			);
+
+			try {
+				await service.updateEnabled('pages-tiles-plugin', true);
+			} catch (error) {
+				expect(JSON.stringify(error)).not.toContain('sensitive provider detail');
+			}
 		});
 
 		it('should throw ExtensionNotConfigurableException when plugin DTO has no enabled property', async () => {
