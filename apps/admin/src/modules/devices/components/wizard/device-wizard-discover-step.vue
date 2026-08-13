@@ -124,7 +124,7 @@
 			class="min-h-0 flex-1 overflow-x-auto overscroll-x-contain"
 		>
 			<el-table
-				:data="filteredRows"
+				:data="pageRows"
 				class="h-full w-full"
 				:style="{ minWidth: `${tableMinWidth}px` }"
 				table-layout="fixed"
@@ -189,6 +189,17 @@
 				</el-table-column>
 			</el-table>
 		</div>
+
+		<el-pagination
+			v-if="filteredRows.length > PAGE_SIZE"
+			v-model:current-page="currentPage"
+			data-test-id="wizard-discover-pagination"
+			class="shrink-0 justify-center"
+			layout="prev, pager, next"
+			:page-size="PAGE_SIZE"
+			:pager-count="5"
+			:total="filteredRows.length"
+		/>
 	</div>
 </template>
 
@@ -196,7 +207,20 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, ElProgress, ElTable, ElTableColumn, ElTag, ElText, vLoading } from 'element-plus';
+import {
+	ElAlert,
+	ElButton,
+	ElForm,
+	ElFormItem,
+	ElInput,
+	ElPagination,
+	ElProgress,
+	ElTable,
+	ElTableColumn,
+	ElTag,
+	ElText,
+	vLoading,
+} from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -229,7 +253,10 @@ const props = defineProps<IProps>();
 
 const { t } = useI18n();
 
+const PAGE_SIZE = 25;
+
 const search = ref<string>('');
+const currentPage = ref<number>(1);
 
 const filteredRows = computed<IWizardRow[]>(() => {
 	const query = search.value.trim().toLocaleLowerCase();
@@ -249,6 +276,16 @@ const filteredRows = computed<IWizardRow[]>(() => {
 
 		return values.some((value) => value?.toLocaleLowerCase().includes(query));
 	});
+});
+
+const pageRows = computed<IWizardRow[]>(() => {
+	const start = (currentPage.value - 1) * PAGE_SIZE;
+
+	return filteredRows.value.slice(start, start + PAGE_SIZE);
+});
+
+watch([search, () => props.rows.length], () => {
+	currentPage.value = 1;
 });
 
 const banners = computed<IWizardBannerControl[]>(() => props.controls.filter((item): item is IWizardBannerControl => item.type === 'banner'));
