@@ -6,6 +6,8 @@ import type {
 } from '../../../modules/config/services/plugin-config-validator.service';
 import { PluginConfigValidatorService } from '../../../modules/config/services/plugin-config-validator.service';
 import {
+	DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS,
+	DEFAULT_HOMEY_RECONCILIATION_INTERVAL_MS,
 	DEVICES_HOMEY_PLUGIN_NAME,
 	MAX_HOMEY_CONNECTION_TIMEOUT_MS,
 	MAX_HOMEY_RECONCILIATION_INTERVAL_MS,
@@ -50,7 +52,8 @@ export class HomeyConfigValidatorService implements IPluginConfigValidator, OnMo
 			});
 		}
 
-		const connectionTimeout = config['connectionTimeout'] ?? config['connection_timeout'];
+		const connectionTimeout =
+			config['connectionTimeout'] ?? config['connection_timeout'] ?? DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS;
 
 		if (!this.isIntegerInRange(connectionTimeout, MIN_HOMEY_CONNECTION_TIMEOUT_MS, MAX_HOMEY_CONNECTION_TIMEOUT_MS)) {
 			return Promise.resolve({
@@ -59,7 +62,8 @@ export class HomeyConfigValidatorService implements IPluginConfigValidator, OnMo
 			});
 		}
 
-		const reconciliationInterval = config['reconciliationInterval'] ?? config['reconciliation_interval'];
+		const reconciliationInterval =
+			config['reconciliationInterval'] ?? config['reconciliation_interval'] ?? DEFAULT_HOMEY_RECONCILIATION_INTERVAL_MS;
 
 		if (
 			!this.isIntegerInRange(

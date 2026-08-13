@@ -52,7 +52,7 @@ describe('HomeyService', () => {
 			throw new Error('raw configuration detail');
 		});
 
-		await expect(service.start()).rejects.toThrow('raw configuration detail');
+		await expect(service.start()).rejects.toThrow('Homey service failed to start');
 		expect(service.getState()).toBe('error');
 		expect(service.getStatus().lastError).toBe('Homey service failed to start');
 	});

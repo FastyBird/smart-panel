@@ -55,6 +55,16 @@ describe('HomeyConfigValidatorService', () => {
 		});
 	});
 
+	it('applies interval defaults to a minimal enabled candidate', async () => {
+		await expect(
+			service.validate({
+				enabled: true,
+				url: 'http://homey.local:4859',
+				apiKey: 'configured-secret',
+			}),
+		).resolves.toEqual({ valid: true });
+	});
+
 	it('accepts a complete local configuration without connecting', async () => {
 		await expect(
 			service.validate({

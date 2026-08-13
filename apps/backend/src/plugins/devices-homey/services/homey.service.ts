@@ -43,12 +43,12 @@ export class HomeyService extends BaseManagedPluginService {
 				// managed shell deliberately performs no network activity.
 				this.state = 'started';
 				this.logger.log('Homey plugin shell started; connector is not initialized yet');
-			} catch (error) {
+			} catch {
 				this.state = 'error';
 				this.lastError = 'Homey service failed to start';
 				this.logger.error(this.lastError);
 
-				throw error;
+				throw new Error(this.lastError);
 			}
 
 			return Promise.resolve();
