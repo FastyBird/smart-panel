@@ -160,6 +160,7 @@ describe('MCP OAuth listen registration race', () => {
 		let grantRevocationClient: Client | undefined;
 		let disabledOAuthClient: Client | undefined;
 		let preservedOAuthClient: Client | undefined;
+		let grantScopeContractionClient: Client | undefined;
 		let scopeContractionClient: Client | undefined;
 		const releaseListen = deferred();
 
@@ -357,6 +358,25 @@ describe('MCP OAuth listen registration race', () => {
 				clientGeneration: 0,
 				modulePolicyGeneration: 0,
 			});
+			const rawGrantScopeContractionGrantId = 'listen-grant-scope-contraction-grant';
+			const grantScopeContractionGrant = await dataSource.getRepository(McpOAuthGrantEntity).save({
+				providerGrantIdHash: hashToken(rawGrantScopeContractionGrantId),
+				clientId: scopeContractionOAuthClient.id,
+				approvedById: user.id,
+				installationId: 'listen-registration-race-installation',
+				issuer: urls.issuer,
+				resource: urls.resource,
+				approvedScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE, McpOAuthScope.TRIGGER],
+				expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
+				revokedAt: null,
+				generation: 0,
+				approverAuthorityGeneration: 0,
+				oauthEnabledGeneration: 0,
+				serverSecretVersion: 1,
+				publicIdentityGeneration: 0,
+				clientGeneration: 0,
+				modulePolicyGeneration: 0,
+			});
 			const config = Object.assign(new McpConfigModel(), {
 				enabled: true,
 				oauthEnabled: true,
@@ -386,6 +406,14 @@ describe('MCP OAuth listen registration race', () => {
 			);
 			await providerGrants.upsert(
 				rawScopeContractionGrantId,
+				{
+					accountId: user.id,
+					clientId: scopeContractionOAuthClient.clientIdentifier,
+				},
+				600,
+			);
+			await providerGrants.upsert(
+				rawGrantScopeContractionGrantId,
 				{
 					accountId: user.id,
 					clientId: scopeContractionOAuthClient.clientIdentifier,
@@ -585,6 +613,56 @@ describe('MCP OAuth listen registration race', () => {
 			await expectOAuthConnectionRejected(endpoint, wireNegativeAccessToken);
 			expect(JSON.stringify(auditLog.mock.calls)).not.toContain(wireNegativeAccessToken);
 			await artifactRepository.delete({ model: 'RefreshToken', idHash: wireNegativeArtifact.idHash });
+
+			const grantScopeContractionAccessToken = 'listen-grant-scope-contraction-access-token';
+
+			await accessTokens.upsert(
+				grantScopeContractionAccessToken,
+				{
+					accountId: user.id,
+					aud: urls.resource,
+					clientId: scopeContractionOAuthClient.clientIdentifier,
+					grantId: rawGrantScopeContractionGrantId,
+					kind: 'AccessToken',
+					scope: `${McpOAuthScope.READ} ${McpOAuthScope.WRITE} ${McpOAuthScope.TRIGGER}`,
+				},
+				600,
+			);
+			await expect(resourceServer.verifyAccessToken(grantScopeContractionAccessToken)).resolves.toMatchObject({
+				scopes: [McpOAuthScope.READ, McpOAuthScope.WRITE, McpOAuthScope.TRIGGER],
+			});
+			grantScopeContractionClient = new Client(
+				{ name: 'listen-grant-scope-contraction-e2e', version: '1.0.0' },
+				{ versionNegotiation: { mode: 'auto' } },
+			);
+			await grantScopeContractionClient.connect(
+				new StreamableHTTPClientTransport(endpoint, {
+					requestInit: { headers: { Authorization: `Bearer ${grantScopeContractionAccessToken}` } },
+				}),
+			);
+			const grantScopeContractionSubscription = await grantScopeContractionClient.listen({ toolsListChanged: true });
+
+			expect(subscriptions.activeCount).toBe(1);
+			let grantScopeContractionMutationSettled = false;
+			const grantScopeContractionMutation = management
+				.updateGrant(grantScopeContractionGrant.id, { approvedScopes: [] }, 'owner-actor')
+				.finally(() => {
+					grantScopeContractionMutationSettled = true;
+				});
+			await expect(grantScopeContractionSubscription.closed).resolves.toBe('remote');
+			expect(grantScopeContractionMutationSettled).toBe(false);
+			await grantScopeContractionMutation;
+			expect(subscriptions.activeCount).toBe(0);
+			await expect(resourceServer.verifyAccessToken(grantScopeContractionAccessToken)).rejects.toThrow(
+				'The MCP OAuth access token is invalid or no longer active',
+			);
+			await expectOAuthConnectionRejected(endpoint, grantScopeContractionAccessToken);
+			expect(
+				await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: grantScopeContractionGrant.id }),
+			).toMatchObject({ approvedScopes: [], generation: 1, revokedAt: null });
+			expect(JSON.stringify(auditLog.mock.calls)).not.toContain(grantScopeContractionAccessToken);
+			await grantScopeContractionClient.close();
+			grantScopeContractionClient = undefined;
 
 			const scopeContractionAccessToken = 'listen-client-scope-contraction-access-token';
 
@@ -1164,6 +1242,7 @@ describe('MCP OAuth listen registration race', () => {
 			await grantRevocationClient?.close();
 			await disabledOAuthClient?.close();
 			await preservedOAuthClient?.close();
+			await grantScopeContractionClient?.close();
 			await scopeContractionClient?.close();
 			await client?.close();
 			if (app) {

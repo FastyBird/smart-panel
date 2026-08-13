@@ -423,6 +423,8 @@ amend ADR 0002.
       scope, or stored artifact model, preserve later valid authorization, and never log the raw bearer.
 - [x] Provider-backed wire E2E: contract a client's ceiling to remove effective read, write, and trigger scopes from
       an active subscription; close it before success, reject bearer reuse, preserve its grant, and redact the token.
+- [x] Provider-backed wire E2E: contract an active grant to remove effective read, write, and trigger scopes; close its
+      subscription before success, reject bearer reuse, preserve the reduced grant, and redact the token.
 - [x] E2E: pause a listen request after authentication, complete a matching artifact revocation or scope reduction,
       then resume registration and prove the stale request cannot open after invalidation success.
 - [x] Provider-backed wire E2E: close an active OAuth subscription at the access-token authorization deadline and
