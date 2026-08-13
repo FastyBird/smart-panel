@@ -452,11 +452,11 @@
 		}
 	},
 	"settings": {
-		"updateinterval": "[~7~]",
+		"updateinterval": 0,
 		"allow_local_connection": true,
 		"ip": "[~0~]",
 		"map_enabled": false,
-		"map_rotation": "[~7~]"
+		"map_rotation": 0
 	},
 	"settingsObj": true,
 	"insights": [

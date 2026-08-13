@@ -79,6 +79,7 @@ const REDACTION = {
 	identifier: '[~7~]',
 } as const;
 const REDACTION_PATTERN = /\[~[0-7]~\]/g;
+const NUMERIC_REDACTION = 0;
 const DEVICE_ICON_KEY_PATTERN = /^(?:icon|iconOverride)$/;
 const SYSTEM_FINGERPRINT_STRING_KEYS = new Set(['nodeVersion', 'platform', 'rebootReason']);
 const SYSTEM_FINGERPRINT_NUMBER_KEYS = new Set(['freemem', 'totalmem', 'uptime']);
@@ -359,37 +360,55 @@ const sanitizeReference = (key: string, value: string, aliases: SanitizationAlia
 	return pseudonym('reference', value, aliases);
 };
 
+const redactScalar = (value: unknown, marker: string): unknown => {
+	if (value === null) {
+		return null;
+	}
+
+	if (typeof value === 'number') {
+		return NUMERIC_REDACTION;
+	}
+
+	if (typeof value === 'boolean') {
+		return false;
+	}
+
+	return marker;
+};
+
 const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): unknown => {
 	const capabilityMapEntry = isCapabilityMap(context.path, context.rootKind);
 
 	if (!capabilityMapEntry && isSecretKey(key)) {
-		return REDACTION.secret;
+		return redactScalar(value, REDACTION.secret);
 	}
 
 	if (value !== null && !capabilityMapEntry && isTimestampKey(key)) {
-		return FIXTURE_TIMESTAMP;
+		return redactScalar(value, FIXTURE_TIMESTAMP);
 	}
 
 	if (value !== null && !capabilityMapEntry && isAddressKey(key)) {
-		return REDACTION.address;
+		return redactScalar(value, REDACTION.address);
 	}
 
 	if (value !== null && context.rootKind === 'zone' && key === 'icon') {
-		return REDACTION.privateTerm;
+		return redactScalar(value, REDACTION.privateTerm);
 	}
 
 	if (value !== null && context.rootKind === 'device' && DEVICE_ICON_KEY_PATTERN.test(key)) {
-		return REDACTION.privateTerm;
+		return redactScalar(value, REDACTION.privateTerm);
 	}
 
 	if (value !== null && !capabilityMapEntry && ENDPOINT_KEY_PATTERN.test(key)) {
-		return REDACTION.url;
+		return redactScalar(value, REDACTION.url);
 	}
 
 	if (Array.isArray(value) && !capabilityMapEntry && isReferenceArrayKey(key)) {
 		const kind = referenceArrayKind(key);
 
-		return value.map((item) => (typeof item === 'string' ? pseudonym(kind, item, context.aliases) : REDACTION.value));
+		return value.map((item) =>
+			typeof item === 'string' ? pseudonym(kind, item, context.aliases) : redactScalar(item, REDACTION.value),
+		);
 	}
 
 	if (
@@ -402,11 +421,11 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 	) {
 		return typeof value === 'string' && REFERENCE_KEY_PATTERN.test(key)
 			? sanitizeReference(key, value, context.aliases)
-			: REDACTION.identifier;
+			: redactScalar(value, REDACTION.identifier);
 	}
 
 	if (typeof value === 'number' && isDriverMetadata(context.path)) {
-		return REDACTION.identifier;
+		return NUMERIC_REDACTION;
 	}
 
 	if (value === null || typeof value === 'number' || typeof value === 'boolean') {
