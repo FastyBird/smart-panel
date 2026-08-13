@@ -418,6 +418,9 @@ amend ADR 0002.
       record `authorization_expired` rather than treating expiry as administrative revocation.
 - [x] Provider-backed wire E2E: close an active OAuth subscription at the grant authorization deadline and record
       `authorization_expired` rather than treating expiry as administrative revocation.
+- [x] Provider-backed wire E2E: revoke an active access token through the management service, close its live
+      subscription as `authorization_revoked`, delete only that token artifact, reject subsequent bearer reuse, and
+      preserve a sibling token's live stream and the grant.
 - [x] Provider-backed wire E2E: revoke an active grant through the management service, close its live subscription as
       `authorization_revoked`, delete its provider artifacts, and reject subsequent bearer reuse.
 - [x] Provider-backed wire E2E: revoke an active refresh family through the management service, close its live
