@@ -356,21 +356,24 @@ Use the existing backend CLI to reset a privileged account when its Admin login 
 image:
 
 ```bash copy
-read -rsp 'New privileged-account password: ' SMART_PANEL_RECOVERY_PASSWORD && printf '\n'
-sudo smart-panel-cli auth:reset <username> "$SMART_PANEL_RECOVERY_PASSWORD"
-unset SMART_PANEL_RECOVERY_PASSWORD
+sudo smart-panel-service stop \
+  && sudo smart-panel-cli auth:reset <username> \
+  && sudo smart-panel-service start
 ```
 
 Other installation methods must invoke the same `auth:reset` command through their backend CLI with the installation's
-normal environment and database permissions. Use the same silent-prompt pattern on a trusted local console so the
-recovery password is not written to shell history, and clear the variable immediately after the command.
+normal environment and database permissions. Stop every backend instance before invoking it and keep them stopped until
+the command reports success; this immediately closes live WebSocket sessions and prevents a concurrent login from
+creating new credentials during recovery. The command reads the replacement password from its masked terminal prompt;
+it never accepts the password as a command-line argument. Run it on a trusted local console.
 
 The recovery command changes the password and revokes every active Admin login session and personal access token owned
-by that account before reporting success. It deliberately does **not** revoke MCP OAuth grants, access tokens, refresh
-families, or static MCP credentials. After signing in, select **Revoke all OAuth access**, rotate every static client
-that the compromised account could have created or copied, review the registered clients and grants, and remove or
-demote unknown users. Demoting or deleting an approving owner/administrator automatically revokes grants that user
-approved, but it is not a substitute for global revocation when the exposure is uncertain.
+by that account before reporting success. Restarting the backend after that success cannot restore the disconnected
+sessions. The command deliberately does **not** revoke MCP OAuth grants, access tokens, refresh families, or static MCP
+credentials. After signing in, select **Revoke all OAuth access**, rotate every static client that the compromised
+account could have created or copied, review the registered clients and grants, and remove or demote unknown users.
+Demoting or deleting an approving owner/administrator automatically revokes grants that user approved, but it is not a
+substitute for global revocation when the exposure is uncertain.
 
 ## Connect an Agent
 

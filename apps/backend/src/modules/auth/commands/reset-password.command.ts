@@ -1,3 +1,4 @@
+import inquirer from 'inquirer';
 import { Command, CommandRunner } from 'nest-commander';
 
 import { Injectable } from '@nestjs/common';
@@ -11,7 +12,7 @@ import { TokensService } from '../services/tokens.service';
 @Command({
 	name: 'auth:reset',
 	description: 'Reset an application owner or administrator password and revoke its credentials',
-	arguments: '<username> <password>',
+	arguments: '<username>',
 })
 @Injectable()
 export class ResetPasswordCommand extends CommandRunner {
@@ -26,11 +27,10 @@ export class ResetPasswordCommand extends CommandRunner {
 
 	async run(passedParams: string[], _options?: Record<string, any>): Promise<void> {
 		const username = passedParams[0];
-		const password = passedParams[1];
 
-		if (!username || !password) {
-			console.error('\x1b[31m❌ Error: username and password are required\n');
-			console.error('Usage: auth:reset <username> <password>');
+		if (!username) {
+			console.error('\x1b[31m❌ Error: username is required\n');
+			console.error('Usage: auth:reset <username>');
 			process.exit(1);
 		}
 		const user = await this.service.findByUsername(username);
@@ -44,6 +44,15 @@ export class ResetPasswordCommand extends CommandRunner {
 		}
 
 		console.log(`\n\x1b[33m🔹 Resetting password for privileged account: \x1b[1m${user.username}\x1b[0m\n`);
+		const { password } = await inquirer.prompt<{ password: string }>([
+			{
+				type: 'password',
+				name: 'password',
+				message: 'New password:',
+				mask: '*',
+				validate: (value: string) => value.length > 0 || 'Password is required',
+			},
+		]);
 
 		await this.service.update(user.id, {
 			password,

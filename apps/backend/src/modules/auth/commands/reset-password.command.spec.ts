@@ -1,9 +1,16 @@
+import inquirer from 'inquirer';
+
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
 import { TokensService } from '../services/tokens.service';
 
 import { ResetPasswordCommand } from './reset-password.command';
+
+jest.mock('inquirer', () => ({
+	__esModule: true,
+	default: { prompt: jest.fn() },
+}));
 
 describe('ResetPasswordCommand', () => {
 	afterEach(() => {
@@ -13,6 +20,7 @@ describe('ResetPasswordCommand', () => {
 	it.each([UserRole.OWNER, UserRole.ADMIN])(
 		'should reset a %s password and revoke every user credential',
 		async (role) => {
+			jest.mocked(inquirer.prompt).mockResolvedValue({ password: 'replacement-password' });
 			const update = jest.fn().mockResolvedValue(undefined);
 			const revokeUserCredentials = jest.fn().mockResolvedValue(undefined);
 			const user = {
@@ -31,7 +39,7 @@ describe('ResetPasswordCommand', () => {
 
 			jest.spyOn(console, 'log').mockImplementation(() => undefined);
 
-			await command.run(['privileged-user', 'replacement-password']);
+			await command.run(['privileged-user']);
 
 			expect(update).toHaveBeenCalledWith(user.id, { password: 'replacement-password' });
 			expect(revokeUserCredentials).toHaveBeenCalledWith(user.id);
