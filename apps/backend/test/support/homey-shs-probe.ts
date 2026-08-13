@@ -174,6 +174,12 @@ const PUBLIC_HOMEY_CAPABILITY_BASES = new Set([
 	'windowcoverings_state',
 	'windowcoverings_tilt_set',
 ]);
+const PUBLIC_HOMEY_ENUM_STATES = new Map<string, ReadonlySet<string>>([
+	['battery_charging_state', new Set(['charging', 'discharging', 'full'])],
+	['light_mode', new Set(['color', 'temperature'])],
+	['power_on_behavior', new Set(['off', 'on', 'previous'])],
+	['windowcoverings_state', new Set(['down', 'idle', 'up'])],
+]);
 
 const READ_ENDPOINTS = {
 	systemInfo: '/api/manager/system/',
@@ -397,6 +403,16 @@ const isCapabilityEnumOptionIdentifier = (
 	path[3] === 'values' &&
 	/^\d+$/.test(path[4]);
 
+const isPublicHomeyEnumState = (capabilityId: string, value: string): boolean => {
+	const separator = capabilityId.indexOf('.');
+	const capabilityBase = separator < 0 ? capabilityId : capabilityId.slice(0, separator);
+
+	return PUBLIC_HOMEY_ENUM_STATES.get(capabilityBase)?.has(value) ?? false;
+};
+
+const sanitizeHomeyEnumState = (capabilityId: string, value: string, aliases: SanitizationAliases): string =>
+	isPublicHomeyEnumState(capabilityId, value) ? value : pseudonym('enum-option', value, aliases);
+
 const isCapabilityListEntry = (path: string[], rootKind: SanitizerContext['rootKind']): boolean =>
 	rootKind === 'device' && path.length === 2 && path[0] === 'root' && path[1] === 'capabilities';
 
@@ -579,7 +595,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 
 	if (typeof value === 'string') {
 		if (isCapabilityEnumOptionIdentifier(key, context.path, context.rootKind)) {
-			return pseudonym('enum-option', value, context.aliases);
+			return sanitizeHomeyEnumState(context.path[2], value, context.aliases);
 		}
 
 		if (isCapabilityReferenceField(key, context.path, context.rootKind) && context.capabilityIdentifiers.has(value)) {
@@ -619,7 +635,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 	if (isCapabilityMap(context.path, context.rootKind) && value.type === 'enum' && Array.isArray(value.values)) {
 		value.values.forEach((option) => {
 			if (isRecord(option) && typeof option.id === 'string') {
-				pseudonym('enum-option', option.id, context.aliases);
+				sanitizeHomeyEnumState(key, option.id, context.aliases);
 			}
 		});
 	}
@@ -649,7 +665,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 
 			const safeValue =
 				enumCapability && nestedKey === 'value' && typeof nestedValue === 'string'
-					? pseudonym('enum-option', nestedValue, context.aliases)
+					? sanitizeHomeyEnumState(key, nestedValue, context.aliases)
 					: sanitizeValue(nestedValue, nestedKey, { ...context, path: nextPath });
 
 			return [safeKey, safeValue];
@@ -1163,7 +1179,9 @@ const assertHomeyPayloadRedacted = (value: unknown, rootKind: SanitizerContext['
 
 		if (typeof nestedValue === 'string') {
 			if (isCapabilityEnumOptionIdentifier(key, path, rootKind)) {
-				assertGeneratedPseudonym(nestedValue);
+				if (!isPublicHomeyEnumState(path[2], nestedValue)) {
+					assertGeneratedPseudonym(nestedValue);
+				}
 				return;
 			}
 
@@ -1210,7 +1228,11 @@ const assertHomeyPayloadRedacted = (value: unknown, rootKind: SanitizerContext['
 			if (Array.isArray(nestedValue.values)) {
 				const optionIds = nestedValue.values.map((option) => (isRecord(option) ? option.id : undefined));
 
-				optionIds.forEach(assertGeneratedPseudonym);
+				optionIds.forEach((optionId) => {
+					if (typeof optionId !== 'string' || !isPublicHomeyEnumState(key, optionId)) {
+						assertGeneratedPseudonym(optionId);
+					}
+				});
 
 				if (new Set(optionIds).size !== optionIds.length) {
 					throwUnredactedSensitiveField();
@@ -1220,7 +1242,7 @@ const assertHomeyPayloadRedacted = (value: unknown, rootKind: SanitizerContext['
 					throwUnredactedSensitiveField();
 				}
 			} else {
-				if (typeof nestedValue.value === 'string') {
+				if (typeof nestedValue.value === 'string' && !isPublicHomeyEnumState(key, nestedValue.value)) {
 					assertGeneratedPseudonym(nestedValue.value);
 				}
 			}

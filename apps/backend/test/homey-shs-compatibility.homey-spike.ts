@@ -525,6 +525,35 @@ describe('Homey SHS compatibility probe', () => {
 		).toThrow('unredacted sensitive field');
 	});
 
+	it('preserves recognized public enum states without exposing unknown states', () => {
+		const devices = sanitizeHomeyDevices({
+			'cover-device': {
+				id: 'cover-device',
+				name: 'Cover device',
+				capabilities: ['windowcoverings_state'],
+				capabilitiesObj: {
+					windowcoverings_state: { id: 'windowcoverings_state', type: 'enum', value: 'down' },
+				},
+			},
+			'private-device': {
+				id: 'private-device',
+				name: 'Private device',
+				capabilities: ['private_mode'],
+				capabilitiesObj: {
+					private_mode: { id: 'private_mode', type: 'enum', value: 'Kids Room' },
+				},
+			},
+		});
+		const publicState = (devices['device-000001'] as { capabilitiesObj: { windowcoverings_state: { value: string } } })
+			.capabilitiesObj.windowcoverings_state.value;
+		const unknownState = (devices['device-000002'] as { capabilitiesObj: { private_mode: { value: string } } })
+			.capabilitiesObj.private_mode.value;
+
+		expect(publicState).toBe('down');
+		expect(unknownState).toMatch(/^enum-option-\d{6}$/);
+		expect(() => assertHomeyCaptureRedacted({ metadata: {}, systemInfo: {}, zones: {}, devices })).not.toThrow();
+	});
+
 	it('reuses an identical fixture version after an interrupted publication', async () => {
 		const outputRoot = await mkdtemp(resolve(tmpdir(), 'homey-fixture-publication-'));
 		const versionName = 'capture-000001';
