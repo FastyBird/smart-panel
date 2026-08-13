@@ -122,6 +122,8 @@ describe('MCP OAuth listen registration race', () => {
 		let accessTokenSiblingClient: Client | undefined;
 		let refreshFamilyRevocationClient: Client | undefined;
 		let grantRevocationClient: Client | undefined;
+		let disabledOAuthClient: Client | undefined;
+		let preservedOAuthClient: Client | undefined;
 		const releaseListen = deferred();
 
 		try {
@@ -159,6 +161,24 @@ describe('MCP OAuth listen registration race', () => {
 				name: 'Listen refresh family client',
 				redirectUris: ['http://127.0.0.1:1457/callback'],
 				maximumScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS],
+				enabled: true,
+				generation: 0,
+				createdById: user.id,
+			});
+			const clientDisableOAuthClient = await dataSource.getRepository(McpOAuthClientEntity).save({
+				clientIdentifier: 'listen-client-disable-target',
+				name: 'Listen client disable target',
+				redirectUris: ['http://127.0.0.1:1458/callback'],
+				maximumScopes: [McpOAuthScope.READ],
+				enabled: true,
+				generation: 0,
+				createdById: user.id,
+			});
+			const preservedOAuthClientEntity = await dataSource.getRepository(McpOAuthClientEntity).save({
+				clientIdentifier: 'listen-client-disable-preserved',
+				name: 'Listen client disable preserved',
+				redirectUris: ['http://127.0.0.1:1459/callback'],
+				maximumScopes: [McpOAuthScope.READ],
 				enabled: true,
 				generation: 0,
 				createdById: user.id,
@@ -234,6 +254,44 @@ describe('MCP OAuth listen registration race', () => {
 				clientGeneration: 0,
 				modulePolicyGeneration: 0,
 			});
+			const rawClientDisableGrantId = 'listen-client-disable-grant';
+			const clientDisableGrant = await dataSource.getRepository(McpOAuthGrantEntity).save({
+				providerGrantIdHash: hashToken(rawClientDisableGrantId),
+				clientId: clientDisableOAuthClient.id,
+				approvedById: user.id,
+				installationId: 'listen-registration-race-installation',
+				issuer: urls.issuer,
+				resource: urls.resource,
+				approvedScopes: [McpOAuthScope.READ],
+				expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
+				revokedAt: null,
+				generation: 0,
+				approverAuthorityGeneration: 0,
+				oauthEnabledGeneration: 0,
+				serverSecretVersion: 1,
+				publicIdentityGeneration: 0,
+				clientGeneration: 0,
+				modulePolicyGeneration: 0,
+			});
+			const rawPreservedGrantId = 'listen-client-disable-preserved-grant';
+			const preservedGrant = await dataSource.getRepository(McpOAuthGrantEntity).save({
+				providerGrantIdHash: hashToken(rawPreservedGrantId),
+				clientId: preservedOAuthClientEntity.id,
+				approvedById: user.id,
+				installationId: 'listen-registration-race-installation',
+				issuer: urls.issuer,
+				resource: urls.resource,
+				approvedScopes: [McpOAuthScope.READ],
+				expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
+				revokedAt: null,
+				generation: 0,
+				approverAuthorityGeneration: 0,
+				oauthEnabledGeneration: 0,
+				serverSecretVersion: 1,
+				publicIdentityGeneration: 0,
+				clientGeneration: 0,
+				modulePolicyGeneration: 0,
+			});
 			const config = Object.assign(new McpConfigModel(), {
 				enabled: true,
 				oauthEnabled: true,
@@ -290,12 +348,16 @@ describe('MCP OAuth listen registration race', () => {
 				} as unknown as McpInstallationService,
 				{ getUrls: jest.fn(() => urls) } as unknown as McpOAuthPublicUrlService,
 			);
+			const oauthClientsService = new McpOAuthClientService(
+				dataSource.getRepository(McpOAuthClientEntity),
+				configService as unknown as ConfigService,
+			);
 			const management = new McpOAuthManagementService(
 				dataSource.getRepository(McpOAuthGrantEntity),
 				dataSource.getRepository(McpOAuthProviderArtifactEntity),
 				dataSource,
 				configService as unknown as ConfigService,
-				{} as McpOAuthClientService,
+				oauthClientsService,
 				subscriptions,
 				{} as McpOAuthGlobalInvalidationService,
 				auditService,
@@ -717,6 +779,125 @@ describe('MCP OAuth listen registration race', () => {
 			).toBeNull();
 			await grantRevocationClient.close();
 			grantRevocationClient = undefined;
+
+			const disabledAccessToken = 'listen-client-disable-access-token';
+			const preservedAccessToken = 'listen-client-disable-preserved-access-token';
+
+			await providerGrants.upsert(
+				rawClientDisableGrantId,
+				{ accountId: user.id, clientId: clientDisableOAuthClient.clientIdentifier },
+				600,
+			);
+			await providerGrants.upsert(
+				rawPreservedGrantId,
+				{ accountId: user.id, clientId: preservedOAuthClientEntity.clientIdentifier },
+				600,
+			);
+			await accessTokens.upsert(
+				disabledAccessToken,
+				{
+					accountId: user.id,
+					aud: urls.resource,
+					clientId: clientDisableOAuthClient.clientIdentifier,
+					grantId: rawClientDisableGrantId,
+					kind: 'AccessToken',
+					scope: McpOAuthScope.READ,
+				},
+				600,
+			);
+			await accessTokens.upsert(
+				preservedAccessToken,
+				{
+					accountId: user.id,
+					aud: urls.resource,
+					clientId: preservedOAuthClientEntity.clientIdentifier,
+					grantId: rawPreservedGrantId,
+					kind: 'AccessToken',
+					scope: McpOAuthScope.READ,
+				},
+				600,
+			);
+			disabledOAuthClient = new Client(
+				{ name: 'listen-client-disable-target-e2e', version: '1.0.0' },
+				{ versionNegotiation: { mode: 'auto' } },
+			);
+			preservedOAuthClient = new Client(
+				{ name: 'listen-client-disable-preserved-e2e', version: '1.0.0' },
+				{ versionNegotiation: { mode: 'auto' } },
+			);
+			await disabledOAuthClient.connect(
+				new StreamableHTTPClientTransport(endpoint, {
+					requestInit: { headers: { Authorization: `Bearer ${disabledAccessToken}` } },
+				}),
+			);
+			await preservedOAuthClient.connect(
+				new StreamableHTTPClientTransport(endpoint, {
+					requestInit: { headers: { Authorization: `Bearer ${preservedAccessToken}` } },
+				}),
+			);
+			const disabledSubscription = await disabledOAuthClient.listen({ toolsListChanged: true });
+			const preservedSubscription = await preservedOAuthClient.listen({ toolsListChanged: true });
+
+			expect(subscriptions.activeCount).toBe(2);
+			await management.disableClient(clientDisableOAuthClient.id, 'owner-actor');
+			await expect(disabledSubscription.closed).resolves.toBe('remote');
+			expect(subscriptions.activeCount).toBe(1);
+			expect(auditLog).toHaveBeenCalledWith('MCP audit event', {
+				event: 'oauth_management',
+				request_id: 'administrative',
+				actor_id: 'owner-actor',
+				artifact: 'client',
+				artifact_id: clientDisableOAuthClient.id,
+				action: 'disabled',
+			});
+			await expect(resourceServer.verifyAccessToken(disabledAccessToken)).rejects.toThrow(
+				'The MCP OAuth access token is invalid or no longer active',
+			);
+			await expect(resourceServer.verifyAccessToken(preservedAccessToken)).resolves.toMatchObject({
+				clientId: preservedOAuthClientEntity.clientIdentifier,
+			});
+			expect(
+				await dataSource.getRepository(McpOAuthClientEntity).findOneByOrFail({ id: clientDisableOAuthClient.id }),
+			).toMatchObject({ enabled: false, generation: 1 });
+			expect(
+				await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: clientDisableGrant.id }),
+			).toMatchObject({ generation: 1 });
+			expect(
+				(await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: clientDisableGrant.id })).revokedAt,
+			).toBeInstanceOf(Date);
+			expect(
+				await dataSource.getRepository(McpOAuthProviderArtifactEntity).existsBy({
+					grantIdHash: hashToken(rawClientDisableGrantId),
+				}),
+			).toBe(false);
+			expect(
+				await dataSource.getRepository(McpOAuthProviderArtifactEntity).existsBy({
+					model: 'Grant',
+					idHash: hashToken(rawClientDisableGrantId),
+				}),
+			).toBe(false);
+			expect(
+				await dataSource.getRepository(McpOAuthClientEntity).findOneByOrFail({ id: preservedOAuthClientEntity.id }),
+			).toMatchObject({ enabled: true, generation: 0 });
+			expect(
+				(await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: preservedGrant.id })).revokedAt,
+			).toBeNull();
+			expect(
+				await dataSource.getRepository(McpOAuthProviderArtifactEntity).existsBy({
+					model: 'AccessToken',
+					idHash: hashToken(preservedAccessToken),
+				}),
+			).toBe(true);
+			expect(JSON.stringify(auditLog.mock.calls)).not.toContain(disabledAccessToken);
+			expect(JSON.stringify(auditLog.mock.calls)).not.toContain(preservedAccessToken);
+			await disabledOAuthClient.close();
+			disabledOAuthClient = undefined;
+			await preservedSubscription.close();
+			await expect(preservedSubscription.closed).resolves.toBe('local');
+			await preservedOAuthClient.close();
+			preservedOAuthClient = undefined;
+			await subscriptions.closeAll();
+			expect(subscriptions.activeCount).toBe(0);
 		} finally {
 			releaseListen.resolve();
 			await expiryClient?.close();
@@ -725,6 +906,8 @@ describe('MCP OAuth listen registration race', () => {
 			await accessTokenSiblingClient?.close();
 			await refreshFamilyRevocationClient?.close();
 			await grantRevocationClient?.close();
+			await disabledOAuthClient?.close();
+			await preservedOAuthClient?.close();
 			await client?.close();
 			if (app) {
 				await app.get(McpServerService).closeAll();

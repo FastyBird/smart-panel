@@ -183,7 +183,9 @@ export class McpOAuthManagementService {
 						grantHashes.map((grantIdHash) => ({ grantIdHash, revokedAt: revokedAt.getTime() })),
 						['grantIdHash'],
 					);
-					await manager.getRepository(McpOAuthProviderArtifactEntity).delete({ grantIdHash: In(grantHashes) });
+					const artifacts = manager.getRepository(McpOAuthProviderArtifactEntity);
+					await artifacts.delete({ grantIdHash: In(grantHashes) });
+					await artifacts.delete({ model: 'Grant', idHash: In(grantHashes) });
 				}
 			});
 		});

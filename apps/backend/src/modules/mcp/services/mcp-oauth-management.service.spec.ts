@@ -681,6 +681,16 @@ describe('McpOAuthManagementService', () => {
 		expect(other.signal.aborted).toBe(false);
 		expect((await service.getGrant(grant.id)).active).toBe(false);
 		expect(await service.findAccessTokens()).toEqual([expect.objectContaining({ clientId: otherClient.id })]);
+		expect(
+			await dataSource
+				.getRepository(McpOAuthProviderArtifactEntity)
+				.existsBy({ model: 'Grant', idHash: grant.providerGrantIdHash }),
+		).toBe(false);
+		expect(
+			await dataSource
+				.getRepository(McpOAuthProviderArtifactEntity)
+				.existsBy({ model: 'Grant', idHash: otherGrant.providerGrantIdHash }),
+		).toBe(true);
 	});
 
 	it('preserves metadata updates when a client is disabled through PATCH', async () => {

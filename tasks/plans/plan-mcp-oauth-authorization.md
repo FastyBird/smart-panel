@@ -429,6 +429,8 @@ amend ADR 0002.
 - [x] Provider-backed wire E2E: revoke an active refresh family through the management service, close its live
       subscription as `authorization_revoked`, delete every family artifact, reject subsequent bearer reuse, and
       preserve the grant.
+- [x] Provider-backed wire E2E: disable an active client, close only its live subscription, revoke its grants and
+      provider artifacts, reject subsequent bearer reuse, and preserve an unrelated client's stream and artifacts.
 - [x] E2E: submit the same refresh token concurrently behind a synchronization barrier; prove at most one successor is
       stored, the reuse loser revokes the entire family including that successor, and no fork remains usable.
 - [x] E2E: switch OAuth off with active OAuth and static subscriptions; prove new OAuth traffic is rejected and OAuth
