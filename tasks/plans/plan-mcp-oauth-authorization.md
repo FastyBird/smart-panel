@@ -426,6 +426,8 @@ amend ADR 0002.
 - [x] Provider-backed wire E2E: independently contract active grants to remove effective write or trigger scope while
       retaining read; close each subscription before success, reject bearer reuse, preserve each reduced grant, and
       redact both tokens.
+- [x] Provider-backed wire E2E: independently contract the module ceiling to remove effective write or trigger scope
+      while retaining read; close each subscription before success, reject bearer reuse, and redact both tokens.
 - [x] E2E: pause a listen request after authentication, complete a matching artifact revocation or scope reduction,
       then resume registration and prove the stale request cannot open after invalidation success.
 - [x] Provider-backed wire E2E: close an active OAuth subscription at the access-token authorization deadline and
