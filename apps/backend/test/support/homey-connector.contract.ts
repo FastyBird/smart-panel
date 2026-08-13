@@ -202,6 +202,33 @@ export function describeHomeyConnectorContract(
 			expect(events).toStrictEqual([harness.fixtures.events[0]]);
 		});
 
+		it('keeps duplicate listener registrations and stale cleanup callbacks independent', async () => {
+			await harness.connector.connect();
+			const listener = jest.fn();
+			const unsubscribeFirst = await harness.connector.subscribe(listener);
+			const unsubscribeSecond = await harness.connector.subscribe(listener);
+
+			await harness.emit(harness.fixtures.events[0]);
+			expect(listener).toHaveBeenCalledTimes(2);
+			expect(harness.subscriberCount).toBe(2);
+
+			await unsubscribeFirst();
+			await harness.emit(harness.fixtures.events[0]);
+			expect(listener).toHaveBeenCalledTimes(3);
+			expect(harness.subscriberCount).toBe(1);
+
+			await harness.connector.disconnect();
+			await harness.connector.connect();
+			const unsubscribeAfterReconnect = await harness.connector.subscribe(listener);
+
+			await unsubscribeSecond();
+			await harness.emit(harness.fixtures.events[0]);
+			expect(listener).toHaveBeenCalledTimes(4);
+			expect(harness.subscriberCount).toBe(1);
+
+			await unsubscribeAfterReconnect();
+		});
+
 		it('drops subscriptions during disconnect and keeps cleanup callbacks safe', async () => {
 			await harness.connector.connect();
 			const listener = jest.fn();

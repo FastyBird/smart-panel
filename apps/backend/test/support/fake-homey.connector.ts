@@ -22,10 +22,14 @@ export interface FakeHomeyCapabilityWrite {
 	value: unknown;
 }
 
+interface FakeHomeySubscription {
+	listener: HomeyEventListener;
+}
+
 /** Deterministic connector used by the shared connector contract and service tests. */
 export class FakeHomeyConnector implements HomeyConnector {
 	private connected = false;
-	private readonly listeners = new Set<HomeyEventListener>();
+	private readonly subscriptions = new Set<FakeHomeySubscription>();
 	private readonly failures = new Map<HomeyConnectorOperation, HomeyConnectorErrorCategory>();
 	private readonly capabilityWrites: FakeHomeyCapabilityWrite[] = [];
 	private transportConnectCount = 0;
@@ -38,7 +42,7 @@ export class FakeHomeyConnector implements HomeyConnector {
 	}
 
 	get subscriberCount(): number {
-		return this.listeners.size;
+		return this.subscriptions.size;
 	}
 
 	get connectCount(): number {
@@ -75,7 +79,7 @@ export class FakeHomeyConnector implements HomeyConnector {
 
 			this.transportDisconnectCount += 1;
 			this.connected = false;
-			this.listeners.clear();
+			this.subscriptions.clear();
 
 			if (failure) {
 				throw failure;
@@ -133,7 +137,9 @@ export class FakeHomeyConnector implements HomeyConnector {
 		return this.execute(() => {
 			this.assertConnected(HomeyConnectorOperation.SUBSCRIBE);
 			this.throwNextFailure(HomeyConnectorOperation.SUBSCRIBE);
-			this.listeners.add(listener);
+
+			const subscription: FakeHomeySubscription = { listener };
+			this.subscriptions.add(subscription);
 
 			let subscribed = true;
 
@@ -143,7 +149,7 @@ export class FakeHomeyConnector implements HomeyConnector {
 				}
 
 				subscribed = false;
-				this.listeners.delete(listener);
+				this.subscriptions.delete(subscription);
 			};
 		});
 	}
@@ -153,7 +159,7 @@ export class FakeHomeyConnector implements HomeyConnector {
 			return;
 		}
 
-		for (const listener of [...this.listeners]) {
+		for (const { listener } of [...this.subscriptions]) {
 			try {
 				await listener(structuredClone(event));
 			} catch {
@@ -192,7 +198,7 @@ export class FakeHomeyConnector implements HomeyConnector {
 		try {
 			return Promise.resolve(operation());
 		} catch (error) {
-			return Promise.reject(error);
+			return Promise.reject(error instanceof Error ? error : new Error('Fake Homey connector operation failed'));
 		}
 	}
 }
