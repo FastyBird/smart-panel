@@ -516,8 +516,38 @@ describe('MCP OAuth listen registration race', () => {
 				},
 			);
 			await expectOAuthConnectionRejected(endpoint, wireNegativeAccessToken);
-			expect(JSON.stringify(auditLog.mock.calls)).not.toContain(wireNegativeAccessToken);
+
+			await artifactRepository.update(
+				{ model: wireNegativeArtifact.model, idHash: wireNegativeArtifact.idHash },
+				{ payload: JSON.stringify({ ...wireNegativePayload, grantId: 'other-provider-grant' }) },
+			);
+			await expectOAuthConnectionRejected(endpoint, wireNegativeAccessToken);
+
+			await artifactRepository.update(
+				{ model: wireNegativeArtifact.model, idHash: wireNegativeArtifact.idHash },
+				{ payload: JSON.stringify({ ...wireNegativePayload, accountId: 'other-approver' }) },
+			);
+			await expectOAuthConnectionRejected(endpoint, wireNegativeAccessToken);
+
+			await artifactRepository.update(
+				{ model: wireNegativeArtifact.model, idHash: wireNegativeArtifact.idHash },
+				{ payload: JSON.stringify({ ...wireNegativePayload, scope: `${McpOAuthScope.READ} mcp:unknown` }) },
+			);
+			await expectOAuthConnectionRejected(endpoint, wireNegativeAccessToken);
+
+			await artifactRepository.update(
+				{ model: wireNegativeArtifact.model, idHash: wireNegativeArtifact.idHash },
+				{ payload: JSON.stringify(wireNegativePayload) },
+			);
+			await grantRepository.update({ id: grant.id }, { installationId: 'other-installation' });
+			await expectOAuthConnectionRejected(endpoint, wireNegativeAccessToken);
+			await grantRepository.update({ id: grant.id }, { installationId: 'listen-registration-race-installation' });
+
 			await artifactRepository.delete({ model: wireNegativeArtifact.model, idHash: wireNegativeArtifact.idHash });
+			await artifactRepository.save(artifactRepository.create({ ...wireNegativeArtifact, model: 'RefreshToken' }));
+			await expectOAuthConnectionRejected(endpoint, wireNegativeAccessToken);
+			expect(JSON.stringify(auditLog.mock.calls)).not.toContain(wireNegativeAccessToken);
+			await artifactRepository.delete({ model: 'RefreshToken', idHash: wireNegativeArtifact.idHash });
 
 			const shortLivedAccessToken = 'listen-expiry-access-token';
 
