@@ -268,6 +268,105 @@ Keep static credentials for trusted LAN/VPN agents if desired. Disabling OAuth r
 OAuth streams; it is the supported rollback when remote authorization must be withdrawn without interrupting static
 agents.
 
+## Protect Backups and Restored Installations
+
+<Callout type="warning">
+  Smart Panel backups are not encrypted. Store and transfer them as credentials,
+  restrict access, and securely remove obsolete copies after the retention
+  period.
+</Callout>
+
+A complete backup contains the installation database and configuration directory. For MCP, that includes:
+
+- the installation UUID, static-client records and token hashes, and OAuth clients, grants, and artifact metadata in
+  the database;
+- resolved write-only configuration secrets in `config.yaml`; and
+- `.mcp-oauth-provider.json`, containing the private OAuth signing key and interaction-cookie keys, after OAuth has
+  first been activated.
+
+Raw static and OAuth bearer values are stored only as hashes and cannot be recovered from the backup. The remaining
+identity, authorization, private-key, and configuration data is still security-sensitive.
+
+### Restore a replacement or create a clone
+
+Decide whether the restored host replaces a failed installation or becomes a separate installation:
+
+- **Replacement:** Permanently retire or isolate the old host. A trusted backup preserves the installation identity and
+  can preserve existing client access. Verify the public URL, TLS certificate, proxy trust, and known clients before
+  reopening ingress. If the old host or backup may have been exposed, follow the compromise procedure below instead.
+- **Separate clone:** Keep the clone isolated from public ingress and MCP agent networks while recovering it. A database
+  restore preserves the original installation UUID; do not run the original and clone concurrently with copied
+  credentials.
+
+Before exposing a separate clone:
+
+1. Assign its dedicated public origin and change **OAuth public base URL**. The identity change revokes copied OAuth
+   grants and tokens and closes OAuth subscriptions.
+2. In **MCP clients**, rotate, revoke, or delete every copied static client. Copy replacement credentials only to agents
+   intended for the clone.
+3. In **MCP OAuth access**, select **Revoke all OAuth access**, then disable copied OAuth clients that the clone should
+   not accept.
+4. Complete fresh consent for every retained OAuth client and verify one minimum-scope tool call.
+5. Open public ingress only after old credentials fail against the clone and the original host can no longer answer for
+   the clone's public identity.
+
+### Revoke all and rotate OAuth server material
+
+**Revoke all OAuth access** is the supported logical server-secret rotation. It advances the persistent
+authorization-server security epoch, revokes every grant, authorization code, access token, and refresh family, and
+closes every OAuth subscription before reporting success. Pre-registered public clients remain available for fresh
+consent, and static MCP credentials and streams remain active.
+
+Use it after an unknown OAuth leak, owner/administrator compromise, risky restore, or before transferring an
+installation. Disabling OAuth also performs global OAuth invalidation, but leaves the remote profile closed until it is
+explicitly enabled again.
+
+If the backup, Smart Panel host, or `.mcp-oauth-provider.json` itself was disclosed, also replace the cryptographic
+provider material:
+
+1. Isolate the host, revoke all OAuth access, and disable OAuth.
+2. Stop the backend. Never edit, remove, or replace provider material while it is running.
+3. Move `.mcp-oauth-provider.json` out of `FB_CONFIG_PATH` into access-controlled incident evidence, or securely remove
+   it after evidence retention. Do not restore that file from a potentially exposed backup.
+4. Start the backend. Smart Panel creates new owner-only provider material when OAuth is next activated. It tightens
+   permissions to `0600`; malformed, incomplete, or symlinked material keeps OAuth fail-closed.
+5. Verify the public identity and proxy, enable OAuth, and require fresh browser consent. Rotate every other secret
+   contained in the exposed configuration backup separately.
+
+## Respond to Credential or Account Compromise
+
+Use the narrowest control that contains the known exposure:
+
+| Exposure                                   | Immediate action                                                                                                       |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| One static bearer                          | Rotate that client credential; revoke or delete the client if it is no longer trusted                                  |
+| One OAuth access token                     | Revoke that access token; it expires after at most 10 minutes                                                          |
+| OAuth refresh token or one agent host      | Revoke its refresh family and grant, or disable the OAuth client if all of its access is suspect                       |
+| Unknown or installation-wide OAuth access  | Select **Revoke all OAuth access**                                                                                     |
+| Backup, provider material, or backend host | Isolate the host, revoke all, replace provider material, rotate every static client and other copied configuration key |
+| Owner or administrator account             | Recover the account, revoke all OAuth access, rotate static clients, and remove or demote unknown administrative users |
+
+Preserve backend logs before cleanup. MCP audit events such as `oauth_management`, `oauth_global_revocation`,
+`oauth_authorization_invalidation`, and `tool_execution` identify actors, affected management IDs, and outcomes without
+recording raw bearer material.
+
+### Recover an owner account
+
+Use the existing backend CLI to reset an owner password when the Admin login is unavailable. On a pre-built image:
+
+```bash copy
+sudo smart-panel-cli auth:reset <username> '<new-password>'
+```
+
+Other installation methods must invoke the same `auth:reset` command through their backend CLI with the installation's
+normal environment and database permissions. Avoid leaving the recovery password in shared terminal history.
+
+A password reset restores login access but deliberately does **not** revoke OAuth grants, access tokens, refresh
+families, or static MCP credentials. After signing in, select **Revoke all OAuth access**, rotate every static client
+that the compromised account could have created or copied, review the registered clients and grants, and remove or
+demote unknown users. Demoting or deleting an approving owner/administrator automatically revokes grants that user
+approved, but it is not a substitute for global revocation when the exposure is uncertain.
+
 ## Connect an Agent
 
 The client must support **Streamable HTTP** and either a preconfigured bearer token or standards-based OAuth.
