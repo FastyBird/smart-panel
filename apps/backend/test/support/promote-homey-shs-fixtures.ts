@@ -1,4 +1,4 @@
-import { cp, mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { format } from 'prettier';
 
@@ -9,6 +9,7 @@ import {
 	deriveKnownMetadataGaps,
 } from './homey-shs-fixture-coverage';
 import { buildHomeyFixtureProvenance } from './homey-shs-fixture-manifest';
+import { publishHomeyFixtureCorpus } from './homey-shs-fixture-publication';
 import { HOMEY_FIXTURE_NAMES, JsonRecord, selectHomeyFixtures } from './homey-shs-fixture-selection';
 import {
 	HomeyShsCapture,
@@ -92,8 +93,6 @@ const main = async (): Promise<void> => {
 		/[^A-Za-z0-9._-]/g,
 		'-',
 	);
-	const versionRoot = resolve(versionsRoot, versionName);
-	let pointerParent: string | null = null;
 
 	try {
 		await mkdir(stagingRoot, { recursive: true });
@@ -113,18 +112,8 @@ const main = async (): Promise<void> => {
 		}
 
 		await writeJson(resolve(stagingRoot, 'manifest.json'), manifest);
-		await rename(stagingRoot, versionRoot);
-
-		pointerParent = await mkdtemp(resolve(outputRoot, '.pointer-'));
-		const nextPointer = resolve(pointerParent, 'current');
-
-		await symlink(`versions/${versionName}`, nextPointer);
-		await rename(nextPointer, resolve(outputRoot, 'current'));
+		await publishHomeyFixtureCorpus(outputRoot, stagingRoot, versionName);
 	} finally {
-		if (pointerParent !== null) {
-			await rm(pointerParent, { force: true, recursive: true });
-		}
-
 		await rm(stagingParent, { force: true, recursive: true });
 	}
 

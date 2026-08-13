@@ -1206,17 +1206,23 @@ const assertHomeyPayloadRedacted = (value: unknown, rootKind: SanitizerContext['
 			return throwUnredactedSensitiveField();
 		}
 
-		if (isCapabilityMap(path, rootKind) && nestedValue.type === 'enum' && Array.isArray(nestedValue.values)) {
-			const optionIds = nestedValue.values.map((option) => (isRecord(option) ? option.id : undefined));
+		if (isCapabilityMap(path, rootKind) && nestedValue.type === 'enum') {
+			if (Array.isArray(nestedValue.values)) {
+				const optionIds = nestedValue.values.map((option) => (isRecord(option) ? option.id : undefined));
 
-			optionIds.forEach(assertGeneratedPseudonym);
+				optionIds.forEach(assertGeneratedPseudonym);
 
-			if (new Set(optionIds).size !== optionIds.length) {
-				throwUnredactedSensitiveField();
-			}
+				if (new Set(optionIds).size !== optionIds.length) {
+					throwUnredactedSensitiveField();
+				}
 
-			if (typeof nestedValue.value === 'string' && !optionIds.includes(nestedValue.value)) {
-				throwUnredactedSensitiveField();
+				if (typeof nestedValue.value === 'string' && !optionIds.includes(nestedValue.value)) {
+					throwUnredactedSensitiveField();
+				}
+			} else {
+				if (typeof nestedValue.value === 'string') {
+					assertGeneratedPseudonym(nestedValue.value);
+				}
 			}
 		}
 

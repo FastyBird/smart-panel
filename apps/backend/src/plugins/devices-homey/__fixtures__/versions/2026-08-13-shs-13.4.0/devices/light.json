@@ -120,7 +120,7 @@
 			"setable": true,
 			"insightsTitleTrue": null,
 			"insightsTitleFalse": null,
-			"value": "color",
+			"value": "enum-option-000001",
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
 		"effect": {
@@ -148,7 +148,7 @@
 			"insights": false,
 			"insightsTitleTrue": null,
 			"insightsTitleFalse": null,
-			"value": "off",
+			"value": "enum-option-000002",
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
 		"button.capability-suffix-000005": {

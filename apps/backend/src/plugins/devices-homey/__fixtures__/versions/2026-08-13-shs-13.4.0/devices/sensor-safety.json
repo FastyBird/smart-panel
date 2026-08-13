@@ -118,7 +118,7 @@
 			"setable": false,
 			"insightsTitleTrue": null,
 			"insightsTitleFalse": null,
-			"value": "charging",
+			"value": "enum-option-000004",
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
 		"button.capability-suffix-000006": {
@@ -209,7 +209,7 @@
 			"setable": true,
 			"insightsTitleTrue": null,
 			"insightsTitleFalse": null,
-			"value": "0",
+			"value": "enum-option-000005",
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
 		"position_x": {
@@ -298,7 +298,7 @@
 			"setable": true,
 			"insightsTitleTrue": null,
 			"insightsTitleFalse": null,
-			"value": "104",
+			"value": "enum-option-000006",
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
 		"mop_route": {
@@ -311,7 +311,7 @@
 			"setable": true,
 			"insightsTitleTrue": null,
 			"insightsTitleFalse": null,
-			"value": "300",
+			"value": "enum-option-000007",
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
 		"scrub_intensity": {
@@ -324,7 +324,7 @@
 			"setable": true,
 			"insightsTitleTrue": null,
 			"insightsTitleFalse": null,
-			"value": "203",
+			"value": "enum-option-000008",
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
 		"clean_mode": {
@@ -337,7 +337,7 @@
 			"setable": true,
 			"insightsTitleTrue": null,
 			"insightsTitleFalse": null,
-			"value": "1",
+			"value": "enum-option-000009",
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
 		"empty_dustbin": {

@@ -1,4 +1,6 @@
 import { lstatSync, readFileSync, readlinkSync } from 'node:fs';
+import { mkdir, mkdtemp, readlink, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 
 import {
@@ -9,6 +11,7 @@ import {
 	deriveKnownMetadataGaps,
 } from './support/homey-shs-fixture-coverage';
 import { buildHomeyFixtureProvenance } from './support/homey-shs-fixture-manifest';
+import { publishHomeyFixtureCorpus } from './support/homey-shs-fixture-publication';
 import { selectHomeyFixtures } from './support/homey-shs-fixture-selection';
 import type { HomeyShsCapture } from './support/homey-shs-probe';
 import {
@@ -488,6 +491,72 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() =>
 			assertHomeyCaptureSafe({ metadata: {}, systemInfo: {}, zones: {}, devices }, [], ['home']),
 		).not.toThrow();
+	});
+
+	it('requires pseudonymized enum values when option metadata is absent', () => {
+		const devices = sanitizeHomeyDevices({
+			'private-device': {
+				id: 'private-device',
+				name: 'Private device',
+				capabilities: ['private_mode'],
+				capabilitiesObj: {
+					private_mode: { id: 'private_mode', type: 'enum', value: 'Kids Room' },
+				},
+			},
+		});
+		const sanitizedValue = (devices['device-000001'] as { capabilitiesObj: { private_mode: { value: string } } })
+			.capabilitiesObj.private_mode.value;
+
+		expect(sanitizedValue).toBe('enum-option-000001');
+		expect(() => assertHomeyCaptureSafe({ metadata: {}, systemInfo: {}, zones: {}, devices }, [])).not.toThrow();
+		expect(() =>
+			assertHomeyCaptureRedacted({
+				metadata: {},
+				systemInfo: {},
+				zones: {},
+				devices: {
+					device: {
+						capabilitiesObj: {
+							private_mode: { type: 'enum', value: 'Kids Room' },
+						},
+					},
+				},
+			}),
+		).toThrow('unredacted sensitive field');
+	});
+
+	it('reuses an identical fixture version after an interrupted publication', async () => {
+		const outputRoot = await mkdtemp(resolve(tmpdir(), 'homey-fixture-publication-'));
+		const versionName = 'capture-000001';
+
+		try {
+			await mkdir(resolve(outputRoot, 'versions'), { recursive: true });
+			const firstStagingRoot = resolve(outputRoot, 'versions/first');
+
+			await mkdir(firstStagingRoot);
+			await writeFile(resolve(firstStagingRoot, 'manifest.json'), '{"schemaVersion":1}\n');
+			await publishHomeyFixtureCorpus(outputRoot, firstStagingRoot, versionName);
+			await rm(resolve(outputRoot, 'current'));
+
+			const retryStagingRoot = resolve(outputRoot, 'versions/retry');
+
+			await mkdir(retryStagingRoot);
+			await writeFile(resolve(retryStagingRoot, 'manifest.json'), '{"schemaVersion":1}\n');
+			await publishHomeyFixtureCorpus(outputRoot, retryStagingRoot, versionName);
+
+			expect(await readlink(resolve(outputRoot, 'current'))).toBe(`versions/${versionName}`);
+			expect(readFileSync(resolve(outputRoot, 'current/manifest.json'), 'utf8')).toBe('{"schemaVersion":1}\n');
+
+			const conflictingStagingRoot = resolve(outputRoot, 'versions/conflict');
+
+			await mkdir(conflictingStagingRoot);
+			await writeFile(resolve(conflictingStagingRoot, 'manifest.json'), '{"schemaVersion":2}\n');
+			await expect(publishHomeyFixtureCorpus(outputRoot, conflictingStagingRoot, versionName)).rejects.toThrow(
+				'already exists with different content',
+			);
+		} finally {
+			await rm(outputRoot, { force: true, recursive: true });
+		}
 	});
 
 	it('redacts structured personal labels as whole values', () => {
