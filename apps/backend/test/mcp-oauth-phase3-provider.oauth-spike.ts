@@ -438,6 +438,8 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 			token_endpoint_auth_methods_supported: ['none'],
 			authorization_response_iss_parameter_supported: true,
 		});
+		expect(runtime.metadata).not.toHaveProperty('registration_endpoint');
+		expect(runtime.metadata).not.toHaveProperty('client_id_metadata_document_supported');
 	});
 
 	it('authorizes a dynamically pre-registered public client with PKCE S256', async () => {

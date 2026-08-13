@@ -85,6 +85,37 @@ CIMD is deferred until the chosen authorization component supports the same draf
 specification and Smart Panel has a reviewed SSRF-safe metadata fetch policy. DCR is not implemented unless a supported
 host fails the pre-registration gate and the failure cannot be fixed with its documented client-ID/callback settings.
 
+### Release registration decision
+
+The bounded authorization-server metadata snapshots and provider integration tests assert that neither a
+`registration_endpoint` nor any CIMD capability is advertised. The documented Codex and Claude Code profiles both
+accept a predefined public client, so there is currently no host evidence that justifies DCR or CIMD and no
+implementation follow-up is opened. The live smoke gate remains responsible for validating both profiles end to end.
+
+Reconsider this decision only when a named supported host cannot complete the required smoke sequence with
+pre-registration. That evidence must identify the exact host version and failed callback/registration behavior. DCR
+would then require registration authentication, quotas, redirect-policy enforcement, abuse handling, and lifecycle
+administration; CIMD would require a draft-revision decision plus an SSRF-safe fetch policy covering DNS rebinding,
+redirects, address ranges, size/time limits, caching, and metadata validation.
+
+## Dependency and metadata upgrade gate
+
+The release profile pins `oidc-provider` `9.11.2`, `@types/oidc-provider` `9.11.1`, and the official MCP server and
+client packages at `2.0.0`. Any change to those versions must be treated as a security-profile change even when the
+package manager classifies it as minor or patch.
+
+Before merging an upgrade:
+
+1. Compare the bounded authorization-server and protected-resource metadata snapshots. Reject unreviewed endpoints,
+   grants, response types, authentication methods, algorithms, scopes, DCR, CIMD, or OIDC-only fields.
+2. Run the provider OAuth spike, focused metadata/resource-server tests, complete backend unit/E2E suites, and the
+   TypeScript client wire matrix, including PKCE, redirect, resource/audience, refresh replay, revocation, scope
+   contraction, stream closure, switch-off, and redaction cases.
+3. Repeat the exact Codex and Claude Code smoke profiles and record their versions, callback URIs, requested scopes,
+   refresh behavior, and revocation result. A successful automated TypeScript client run does not replace either host.
+4. Verify OAuth can be disabled while static bearer clients remain usable. Roll back with OAuth disabled, never map an
+   OAuth bearer into the static profile, and require fresh authorization after the previous version is restored.
+
 ## Authorization component survey
 
 Smart Panel must not implement OAuth protocol machinery ad hoc. The leading embedded candidate is `oidc-provider`

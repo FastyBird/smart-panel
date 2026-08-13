@@ -51,19 +51,19 @@ upgrade consequences.
 ## 4. Acceptance criteria
 
 - [x] An ADR documents the authorization-server architecture and a threat model for internet-reachable MCP.
-- [ ] The MCP endpoint publishes standards-compliant protected-resource metadata with its canonical resource identifier
+- [x] The MCP endpoint publishes standards-compliant protected-resource metadata with its canonical resource identifier
       and authorization-server location.
-- [ ] Unauthenticated MCP responses include a protocol-correct bearer challenge pointing clients to protected-resource
+- [x] Unauthenticated MCP responses include a protocol-correct bearer challenge pointing clients to protected-resource
       metadata without leaking installation or credential secrets.
-- [ ] Authorization-server metadata is standards compliant and advertises only implemented endpoints, response types,
+- [x] Authorization-server metadata is standards compliant and advertises only implemented endpoints, response types,
       grant types, PKCE methods, scopes, and signing algorithms.
-- [ ] Authorization uses the code flow with PKCE `S256`, exact redirect-URI matching, state validation, short-lived
+- [x] Authorization uses the code flow with PKCE `S256`, exact redirect-URI matching, state validation, short-lived
       codes, and replay prevention.
-- [ ] Access tokens are finite, issuer/resource/audience bound, revocable, and rejected by ordinary REST, WebSocket,
+- [x] Access tokens are finite, issuer/resource/audience bound, revocable, and rejected by ordinary REST, WebSocket,
       display, and personal-access-token paths.
-- [ ] OAuth scopes map to the curated `read`, `write`, and `trigger` capabilities and remain bounded by the live module
+- [x] OAuth scopes map to the curated `read`, `write`, and `trigger` capabilities and remain bounded by the live module
       ceiling and approved grant.
-- [ ] Consent clearly names the installation, requesting client, redirect destination, expiry, and physical-device
+- [x] Consent clearly names the installation, requesting client, redirect destination, expiry, and physical-device
       impact of write/trigger scopes.
 - [x] Owners/admins can list and revoke OAuth clients, grants, access tokens, and refresh tokens; revocation closes the
       affected MCP subscriptions immediately.
@@ -82,19 +82,19 @@ upgrade consequences.
       runtime enable/disable never mounts or unmounts routes and never exposes a partial surface.
 - [x] Public OAuth identity and server-secret rotation revoke OAuth artifacts and close OAuth subscriptions while
       preserving static MCP streams; only MCP-module disable closes both authorization profiles.
-- [ ] Dynamic client registration is implemented only if required by supported target hosts and protected by an
+- [x] Dynamic client registration is implemented only if required by supported target hosts and protected by an
       explicit registration policy; otherwise the supported registration path is documented.
 - [x] Trusted reverse-proxy behavior is explicit and tested; forwarded headers are ignored unless the proxy is
       configured as trusted.
 - [x] Static bearer clients continue to work for trusted LAN/VPN deployments until a separately documented removal or
       migration policy is approved.
-- [ ] E2E tests cover discovery, consent, PKCE success/failure, redirect validation, scope reduction, expiry, refresh,
+- [x] E2E tests cover discovery, consent, PKCE success/failure, redirect validation, scope reduction, expiry, refresh,
       concurrent refresh replay, revocation/listen and all invalidation/artifact-commit races, runtime-gated OAuth
       switch-off/re-enable, static-stream preservation, wrong issuer/resource/audience, cross-client isolation, stream
       closure, and log redaction.
 - [ ] At least two supported OAuth-capable MCP hosts complete discovery, authorization, tool listing, tool execution,
       refresh, and revocation smoke tests.
-- [ ] Public deployment documentation requires HTTPS and provides reverse-proxy, key rotation, backup, incident
+- [x] Public deployment documentation requires HTTPS and provides reverse-proxy, key rotation, backup, incident
       response, and rollback guidance.
 
 ## 5. Example scenarios
