@@ -220,6 +220,7 @@ describe('McpServerService policy revision', () => {
 			handle,
 		});
 		expect(oauthResourceServerService.verifyMcpBearerToken).toHaveBeenCalledWith('Bearer opaque-token');
+		expect(subscriptions.openOAuth).toHaveBeenCalledWith('request-1', expect.any(Function), 'request-1', true);
 		expect(subscriptions.open).not.toHaveBeenCalled();
 	});
 
@@ -276,7 +277,7 @@ describe('McpServerService policy revision', () => {
 			authInfo: undefined,
 			handle,
 		});
-		expect(subscriptions.open).toHaveBeenCalledWith('static-client-id', 'request-1');
+		expect(subscriptions.open).toHaveBeenCalledWith('static-client-id', 'request-1', 'request-1');
 		expect(subscriptions.openOAuth).not.toHaveBeenCalled();
 		expect(oauthResourceServerService.verifyMcpBearerToken).not.toHaveBeenCalled();
 	});
@@ -361,6 +362,7 @@ describe('McpServerService policy revision', () => {
 	});
 
 	it('refreshes the idle deadline when subscription traffic is forwarded', async () => {
+		const attachTransport = jest.fn();
 		const touch = jest.fn();
 		const close = jest.fn();
 		const controller = new AbortController();
@@ -371,7 +373,13 @@ describe('McpServerService policy revision', () => {
 			},
 		});
 		const response = new Response(upstream, { headers: { 'content-type': 'text/event-stream' } });
-		const subscription = { close, signal: controller.signal, touch } as unknown as McpSubscriptionHandle;
+		const subscription = {
+			attachTransport,
+			close,
+			wireRequestId: 'listen:1',
+			signal: controller.signal,
+			touch,
+		} as unknown as McpSubscriptionHandle;
 		const tracked = (
 			service as unknown as {
 				trackSubscriptionResponse(response: Response, subscription: McpSubscriptionHandle): Response;
@@ -380,6 +388,7 @@ describe('McpServerService policy revision', () => {
 		const reader = tracked.body?.getReader();
 
 		await expect(reader?.read()).resolves.toEqual({ done: false, value: new Uint8Array([1]) });
+		expect(attachTransport).not.toHaveBeenCalled();
 		expect(touch).toHaveBeenCalledTimes(1);
 		expect(close).not.toHaveBeenCalled();
 
@@ -387,29 +396,74 @@ describe('McpServerService policy revision', () => {
 		expect(close).toHaveBeenCalledTimes(1);
 	});
 
-	it('terminates a forwarded subscription stream when its authorization signal aborts', async () => {
-		const cancelled = jest.fn();
-		const upstream = new ReadableStream<Uint8Array>({ cancel: cancelled });
-		const response = new Response(upstream, { headers: { 'content-type': 'text/event-stream' } });
-		const controller = new AbortController();
+	it('completes an attached transport when listen setup returns a non-stream response', () => {
 		const close = jest.fn();
+		const completeTransport = jest.fn();
 		const subscription = {
 			close,
-			signal: controller.signal,
-			touch: jest.fn(),
+			completeTransport,
 		} as unknown as McpSubscriptionHandle;
+		const response = Response.json({ error: 'listen setup failed' }, { status: 400 });
+
 		const tracked = (
 			service as unknown as {
 				trackSubscriptionResponse(response: Response, subscription: McpSubscriptionHandle): Response;
 			}
 		).trackSubscriptionResponse(response, subscription);
+
+		expect(tracked).toBe(response);
+		expect(close).toHaveBeenCalledWith('completed');
+		expect(completeTransport).toHaveBeenCalledTimes(1);
+	});
+
+	it('terminates a forwarded subscription stream when its authorization signal aborts', async () => {
+		const attachTransport = jest.fn();
+		const completeTransport = jest.fn();
+		const cancelled = jest.fn();
+		const upstream = new ReadableStream<Uint8Array>({ cancel: cancelled });
+		const response = new Response(upstream, { headers: { 'content-type': 'text/event-stream' } });
+		const controller = new AbortController();
+		const transportController = new AbortController();
+		const close = jest.fn();
+		const subscription = {
+			attachTransport,
+			close,
+			completeTransport,
+			wireRequestId: 'listen:1',
+			signal: controller.signal,
+			touch: jest.fn(),
+		} as unknown as McpSubscriptionHandle;
+		const tracked = (
+			service as unknown as {
+				trackSubscriptionResponse(
+					response: Response,
+					subscription: McpSubscriptionHandle,
+					transportSignal?: AbortSignal,
+				): Response;
+			}
+		).trackSubscriptionResponse(response, subscription, transportController.signal);
 		const reader = tracked.body?.getReader();
 		const pendingRead = reader?.read();
+		expect(attachTransport).not.toHaveBeenCalled();
 
-		controller.abort(new Error('authorization expired'));
+		controller.abort('authorization_revoked');
 
-		await expect(pendingRead).resolves.toEqual({ done: true, value: undefined });
+		const cancellation = await pendingRead;
+		expect(cancellation?.done).toBe(false);
+		expect(new TextDecoder().decode(cancellation?.value)).toContain(
+			'"method":"notifications/cancelled","params":{"requestId":"listen:1"}',
+		);
+		let nextReadSettled = false;
+		const nextRead = reader?.read().finally(() => {
+			nextReadSettled = true;
+		});
+		await Promise.resolve();
+		expect(nextReadSettled).toBe(false);
+
+		transportController.abort('remote client closed the request');
+		await expect(nextRead).resolves.toEqual({ done: true, value: undefined });
 		expect(cancelled).toHaveBeenCalledWith(controller.signal.reason);
-		expect(close).toHaveBeenCalledWith('completed');
+		expect(close).toHaveBeenCalledWith('cancelled');
+		expect(completeTransport).toHaveBeenCalledTimes(1);
 	});
 });

@@ -258,6 +258,7 @@ export class McpServerService implements OnApplicationShutdown {
 						clientId,
 						this.auditService.getRequestId(requestOptions?.parsedBody),
 						requestOptions?.authInfo,
+						this.getWireRequestId(requestOptions?.parsedBody),
 					);
 
 					subscription = opened.handle;
@@ -274,16 +275,15 @@ export class McpServerService implements OnApplicationShutdown {
 				}
 
 				const signal = AbortSignal.any([webRequest.signal, subscription.signal]);
-				let response: Response;
 
 				try {
-					response = await fetch(new Request(webRequest, { signal }), options);
+					const response = await fetch(new Request(webRequest, { signal }), options);
+
+					return this.trackSubscriptionResponse(response, subscription, webRequest.signal);
 				} catch (error) {
-					subscription.close('error');
+					this.closeSubscriptionBeforeTransport(subscription, 'error');
 					throw error;
 				}
-
-				return this.trackSubscriptionResponse(response, subscription);
 			},
 		};
 		const clientHandler = {
@@ -368,27 +368,33 @@ export class McpServerService implements OnApplicationShutdown {
 		clientId: string,
 		requestId: string,
 		authInfo?: AuthInfo,
+		wireRequestId: number | string = requestId,
 	): Promise<McpOpenedSubscription> {
 		const registration = this.getSubscriptionRegistration(clientId, authInfo);
 
 		if (!registration.oauth) {
-			return { authInfo, handle: this.subscriptions.open(registration.clientId, requestId) };
+			return { authInfo, handle: this.subscriptions.open(registration.clientId, requestId, wireRequestId) };
 		}
 		if (!authInfo) {
 			throw new UnauthorizedException('MCP OAuth subscription identity is unavailable');
 		}
 
 		let currentAuthInfo: AuthInfo | undefined;
-		const handle = await this.subscriptions.openOAuth(requestId, async () => {
-			currentAuthInfo = await this.oauthResourceServerService.verifyMcpBearerToken(`Bearer ${authInfo.token}`);
-			const current = this.getSubscriptionRegistration(clientId, currentAuthInfo);
+		const handle = await this.subscriptions.openOAuth(
+			requestId,
+			async () => {
+				currentAuthInfo = await this.oauthResourceServerService.verifyMcpBearerToken(`Bearer ${authInfo.token}`);
+				const current = this.getSubscriptionRegistration(clientId, currentAuthInfo);
 
-			if (!current.oauth) {
-				throw new UnauthorizedException('MCP OAuth subscription identity is unavailable');
-			}
+				if (!current.oauth) {
+					throw new UnauthorizedException('MCP OAuth subscription identity is unavailable');
+				}
 
-			return { clientId: current.clientId, binding: current.oauth };
-		});
+				return { clientId: current.clientId, binding: current.oauth };
+			},
+			wireRequestId,
+			true,
+		);
 
 		if (!currentAuthInfo) {
 			throw new UnauthorizedException('MCP OAuth subscription revalidation did not complete');
@@ -431,24 +437,75 @@ export class McpServerService implements OnApplicationShutdown {
 		return typeof value === 'string' && value.length > 0;
 	}
 
-	private trackSubscriptionResponse(response: Response, subscription: McpSubscriptionHandle): Response {
+	private trackSubscriptionResponse(
+		response: Response,
+		subscription: McpSubscriptionHandle,
+		transportSignal?: AbortSignal,
+	): Response {
 		if (!response.body || !response.headers.get('content-type')?.includes('text/event-stream')) {
-			subscription.close('completed');
+			this.closeSubscriptionBeforeTransport(subscription, 'completed');
 			return response;
 		}
-
 		const reader = response.body.getReader();
-		const cancelReader = (): void => {
-			void reader.cancel(subscription.signal.reason).catch(() => undefined);
-		};
-		const removeAbortListener = (): void => subscription.signal.removeEventListener('abort', cancelReader);
+		let streamClosed = false;
+		let cancellationSent = false;
+		let abortStream = (): void => undefined;
+		let abortTransport = (): void => undefined;
+		const removeAbortListener = (): void => subscription.signal.removeEventListener('abort', abortStream);
+		const removeTransportAbortListener = (): void => transportSignal?.removeEventListener('abort', abortTransport);
 		const stream = new ReadableStream<Uint8Array>({
+			start: (controller) => {
+				abortTransport = (): void => {
+					if (streamClosed) return;
+
+					streamClosed = true;
+					removeAbortListener();
+					removeTransportAbortListener();
+					try {
+						controller.close();
+					} catch {
+						// The response consumer already closed the stream.
+					} finally {
+						void reader.cancel(transportSignal?.reason).catch(() => undefined);
+						subscription.close('cancelled');
+						subscription.completeTransport();
+					}
+				};
+				transportSignal?.addEventListener('abort', abortTransport, { once: true });
+				if (transportSignal?.aborted) abortTransport();
+
+				abortStream = (): void => {
+					if (streamClosed || cancellationSent) return;
+
+					cancellationSent = true;
+					removeAbortListener();
+					try {
+						controller.enqueue(this.subscriptionCancellationEvent(subscription.wireRequestId));
+						if (subscription.signal.reason !== 'authorization_revoked') {
+							streamClosed = true;
+							removeTransportAbortListener();
+							controller.close();
+						}
+					} catch {
+						// The response consumer already closed the stream.
+					} finally {
+						void reader.cancel(subscription.signal.reason).catch(() => undefined);
+					}
+				};
+				subscription.signal.addEventListener('abort', abortStream, { once: true });
+				if (subscription.signal.aborted) abortStream();
+			},
 			pull: async (controller) => {
+				if (streamClosed || cancellationSent) return;
+
 				try {
 					const result = await reader.read();
+					if (streamClosed || cancellationSent) return;
 
 					if (result.done) {
+						streamClosed = true;
 						removeAbortListener();
+						removeTransportAbortListener();
 						subscription.close('completed');
 						controller.close();
 						return;
@@ -457,25 +514,54 @@ export class McpServerService implements OnApplicationShutdown {
 					subscription.touch();
 					controller.enqueue(result.value);
 				} catch (error) {
+					if (streamClosed) return;
+
+					streamClosed = true;
 					removeAbortListener();
+					removeTransportAbortListener();
 					subscription.close('error');
 					controller.error(error);
 				}
 			},
 			cancel: async (reason) => {
+				streamClosed = true;
 				removeAbortListener();
+				removeTransportAbortListener();
 				subscription.close('cancelled');
-				await reader.cancel(reason);
+				try {
+					await reader.cancel(reason);
+				} finally {
+					subscription.completeTransport();
+				}
 			},
 		});
-		subscription.signal.addEventListener('abort', cancelReader, { once: true });
-		if (subscription.signal.aborted) cancelReader();
 
 		return new Response(stream, {
 			status: response.status,
 			statusText: response.statusText,
 			headers: response.headers,
 		});
+	}
+
+	private closeSubscriptionBeforeTransport(subscription: McpSubscriptionHandle, reason: 'completed' | 'error'): void {
+		subscription.close(reason);
+		subscription.completeTransport();
+	}
+
+	private subscriptionCancellationEvent(requestId: number | string): Uint8Array {
+		return new TextEncoder().encode(
+			`event: message\ndata: ${JSON.stringify({
+				jsonrpc: '2.0',
+				method: 'notifications/cancelled',
+				params: { requestId },
+			})}\n\n`,
+		);
+	}
+
+	private getWireRequestId(body: unknown): number | string {
+		const id = this.getRequestBody(body).id;
+
+		return typeof id === 'number' || typeof id === 'string' ? id : this.auditService.getRequestId(body);
 	}
 
 	private auditProtocolRequest(body: unknown, requestId: string, clientId: string): void {
