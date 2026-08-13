@@ -52,6 +52,20 @@ const POLL_INTERVAL_MS = 2_000;
 const deviceKey = (device: IWledWizardDevice): string =>
 	device.mac ? `mac:${device.mac.replace(/[^a-fA-F0-9]/g, '').toLowerCase()}` : `host:${device.host}`;
 
+const normalizedMac = (device: IWledWizardDevice): string | null => {
+	if (!device.mac) return null;
+
+	const normalized = device.mac.replace(/[^a-fA-F0-9]/g, '').toLowerCase();
+	return normalized.length === 12 ? normalized : null;
+};
+
+const identitiesAreCompatible = (first: IWledWizardDevice, second: IWledWizardDevice): boolean => {
+	const firstMac = normalizedMac(first);
+	const secondMac = normalizedMac(second);
+
+	return firstMac === null || secondMac === null || firstMac === secondMac;
+};
+
 const adoptionHost = (device: IWledWizardDevice): string => {
 	const host = device.host.trim();
 	const hasExplicitPort = /^\[[^\]]+\]:\d+$/.test(host) || /^[^:]+:\d+$/.test(host);
@@ -70,7 +84,10 @@ const adoptionEndpointKey = (device: IWledWizardDevice): string => {
 		const url = new URL(`http://${endpoint}`);
 		return `${url.hostname.toLowerCase().replace(/\.$/, '')}${url.port ? `:${url.port}` : ''}`;
 	} catch {
-		return endpoint.toLowerCase().replace(/\.(?=:\d+$|$)/, '').replace(/:80$/, '');
+		return endpoint
+			.toLowerCase()
+			.replace(/\.(?=:\d+$|$)/, '')
+			.replace(/:80$/, '');
 	}
 };
 
@@ -99,7 +116,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		for (const device of manualDevices.value) {
 			let inventoryMatch = merged.get(deviceKey(device));
 			for (const [key, candidate] of merged) {
-				if (adoptionEndpointKey(candidate) === adoptionEndpointKey(device)) {
+				if (adoptionEndpointKey(candidate) === adoptionEndpointKey(device) && identitiesAreCompatible(candidate, device)) {
 					if (!inventoryMatch || candidate.adoptedDeviceId !== null) inventoryMatch = candidate;
 					merged.delete(key);
 				}

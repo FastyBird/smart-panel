@@ -1435,6 +1435,19 @@ describe('WledService', () => {
 				expect.objectContaining({ status: 'updated', deviceId: 'device-1' }),
 				expect.objectContaining({ status: 'updated', deviceId: 'device-2' }),
 			]);
+			expect(deviceMapper.pruneObsoleteSegmentChannels).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({ id: 'device-1' }),
+				mockContext.state,
+			);
+			expect(deviceMapper.pruneObsoleteSegmentChannels).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({ id: 'device-2' }),
+				secondContext.state,
+			);
+			expect(deviceMapper.pruneObsoleteSegmentChannels.mock.invocationCallOrder[0]).toBeGreaterThan(
+				deviceConnectivityService.setConnectionState.mock.invocationCallOrder.at(-1) ?? 0,
+			);
 		});
 
 		it('rolls back every selected device when one address-swap mapping fails', async () => {
@@ -1505,6 +1518,7 @@ describe('WledService', () => {
 				state: ConnectionState.CONNECTED,
 			});
 			expect(adoptionSnapshot.restore).toHaveBeenCalledTimes(2);
+			expect(deviceMapper.pruneObsoleteSegmentChannels).not.toHaveBeenCalled();
 		});
 
 		it('restores an unselected registration when an address-swap group fails before stale-owner tracking', async () => {

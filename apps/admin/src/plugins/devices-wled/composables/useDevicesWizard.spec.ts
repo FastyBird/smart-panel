@@ -367,8 +367,50 @@ describe('useDevicesWizard', () => {
 		await vi.advanceTimersByTimeAsync(2_000);
 
 		expect(adapter.rows.value).toHaveLength(1);
-		expect(adapter.rows.value[0]).toEqual(
-			expect.objectContaining({ label: 'Administrator name', status: 'already_registered', willUpdate: true })
+		expect(adapter.rows.value[0]).toEqual(expect.objectContaining({ label: 'Administrator name', status: 'already_registered', willUpdate: true }));
+		await adapter.dispose?.();
+	});
+
+	it('keeps a manual probe when an adopted endpoint reports a contradictory MAC', async () => {
+		backendClient.GET.mockResolvedValue({
+			data: {
+				data: {
+					...inventory,
+					devices: [
+						{
+							...inventory.devices[0],
+							name: 'Cached controller',
+							mac: 'AA:BB:CC:DD:EE:FF',
+							adoptedDeviceId: 'device-1',
+						},
+					],
+				},
+			},
+			response: { status: 200 },
+		});
+		backendClient.POST.mockResolvedValue({
+			data: {
+				data: {
+					...inventory.devices[0],
+					name: 'Live replacement',
+					mac: '11:22:33:44:55:66',
+					adoptedDeviceId: null,
+				},
+			},
+			response: { status: 201 },
+		});
+		const adapter = useDevicesWizard();
+		await adapter.start();
+		const form = adapter.controls.value.find((control) => control.type === 'form') as IWizardFormControl;
+
+		await form.handler({ host: '192.168.1.100' });
+
+		expect(adapter.rows.value).toHaveLength(2);
+		expect(adapter.rows.value).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ label: 'Live replacement', status: 'ready', key: 'mac:112233445566' }),
+				expect.objectContaining({ label: 'Cached controller', status: 'already_registered', key: 'mac:aabbccddeeff' }),
+			])
 		);
 		await adapter.dispose?.();
 	});

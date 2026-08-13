@@ -30,6 +30,7 @@ import {
 	WledDeviceErrorEvent,
 	WledDeviceStateChangedEvent,
 	WledMdnsDiscoveredDevice,
+	WledState,
 } from '../interfaces/wled.interface';
 import { WledConfigModel } from '../models/config.model';
 import { WledAdoptionResultModel, WledDiscoveredDeviceModel, WledDiscoveryModel } from '../models/wled-discovery.model';
@@ -828,6 +829,10 @@ export class WledService extends BaseManagedPluginService {
 		const createdDeviceIdsByPlan = new Map<number, string>();
 		const structureSnapshotsByPlan = new Map<number, WledAdoptionStructureSnapshot>();
 		const retiredStaleOwnersByDependencyGroup = new Map<Set<number>, Map<string, WledDeviceEntity>>();
+		const deferredPruningByDependencyGroup = new Map<
+			Set<number>,
+			Array<{ device: WledDeviceEntity; state: WledState }>
+		>();
 
 		for (const { index, request, host, context, existingDevice, identifier } of plans) {
 			if (blockedPlanIndices.has(index)) {
@@ -960,9 +965,14 @@ export class WledService extends BaseManagedPluginService {
 				await this.deviceConnectivityService.setConnectionState(device.id, {
 					state: connectionState,
 				});
-				// This destructive cleanup intentionally runs after every rollback-capable adoption
-				// step. It is best-effort and cannot turn a mapped device into a failed adoption.
-				await this.deviceMapper.pruneObsoleteSegmentChannels(device, context.state);
+				if (dependencyGroup) {
+					const deferredPruning = deferredPruningByDependencyGroup.get(dependencyGroup) ?? [];
+					deferredPruning.push({ device, state: context.state });
+					deferredPruningByDependencyGroup.set(dependencyGroup, deferredPruning);
+				} else {
+					// Independent plans cannot be rolled back by a later batch item.
+					await this.deviceMapper.pruneObsoleteSegmentChannels(device, context.state);
+				}
 				results[index] = {
 					host,
 					name: request.name,
@@ -1145,6 +1155,21 @@ export class WledService extends BaseManagedPluginService {
 						deviceId: null,
 					};
 				}
+			}
+		}
+
+		// A dependency group commits atomically: no destructive history cleanup may run
+		// until every member has succeeded and the group can no longer roll back.
+		for (const [dependencyGroup, deferredPruning] of deferredPruningByDependencyGroup) {
+			if (
+				failedDependencyGroups.has(dependencyGroup) ||
+				[...dependencyGroup].some((index) => results[index]?.status === 'failed')
+			) {
+				continue;
+			}
+
+			for (const { device, state } of deferredPruning) {
+				await this.deviceMapper.pruneObsoleteSegmentChannels(device, state);
 			}
 		}
 
