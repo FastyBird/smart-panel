@@ -10,7 +10,12 @@ import {
 } from './homey-shs-fixture-coverage';
 import { buildHomeyFixtureProvenance } from './homey-shs-fixture-manifest';
 import { HOMEY_FIXTURE_NAMES, JsonRecord, selectHomeyFixtures } from './homey-shs-fixture-selection';
-import { HomeyShsCapture, assertHomeyCaptureSafe, sanitizeHomeyPublishedMetadata } from './homey-shs-probe';
+import {
+	HomeyShsCapture,
+	assertHomeyCaptureRedacted,
+	assertHomeyCaptureSafe,
+	sanitizeHomeyPublishedMetadata,
+} from './homey-shs-probe';
 
 const isRecord = (value: unknown): value is JsonRecord =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -58,6 +63,7 @@ const main = async (): Promise<void> => {
 	capture.systemInfo = sanitizeHomeyPublishedMetadata(capture.systemInfo, { redactSystemFingerprint: true });
 	capture.zones = publishedZones;
 	capture.devices = publishedDevices;
+	assertHomeyCaptureRedacted(capture);
 	assertHomeyCaptureSafe(capture, []);
 	assertDistinctHomeyEnumOptionIds(publishedDevices);
 

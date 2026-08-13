@@ -11,6 +11,7 @@ import { buildHomeyFixtureProvenance } from './support/homey-shs-fixture-manifes
 import { selectHomeyFixtures } from './support/homey-shs-fixture-selection';
 import type { HomeyShsCapture } from './support/homey-shs-probe';
 import {
+	assertHomeyCaptureRedacted,
 	assertHomeyCaptureSafe,
 	captureHomeyShs,
 	createSanitizationAliases,
@@ -71,6 +72,12 @@ describe('Homey SHS compatibility probe', () => {
 			},
 			[],
 		);
+		assertHomeyCaptureRedacted({
+			metadata: {},
+			systemInfo: readFixture('system-info.json'),
+			zones: readFixture('zones.json'),
+			devices: Object.fromEntries(Object.values(fixtures).map((fixture) => [fixture.id as string, fixture])),
+		});
 
 		expect(new Set(Object.values(fixtures).map((fixture) => fixture.id)).size).toBe(fixtureNames.length);
 		expect(
@@ -285,31 +292,37 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() => assertHomeyCaptureSafe(capture, [], ['home'])).not.toThrow();
 	});
 
-	it('preserves distinct public enum option IDs in capability metadata', () => {
-		const devices = sanitizeHomeyDevices({
-			'private-device': {
-				id: 'private-device',
-				name: 'Private device',
-				capabilities: ['private_mode'],
-				capabilitiesObj: {
-					private_mode: {
-						id: 'private_mode',
-						type: 'enum',
-						values: [
-							{ id: 'home', title: 'At home' },
-							{ id: 'away', title: 'Away' },
-						],
+	it('pseudonymizes distinct enum option IDs and remaps the current value', () => {
+		const devices = sanitizeHomeyDevices(
+			{
+				'private-device': {
+					id: 'private-device',
+					name: 'Private device',
+					capabilities: ['private_mode'],
+					capabilitiesObj: {
+						private_mode: {
+							id: 'private_mode',
+							type: 'enum',
+							value: 'home',
+							values: [
+								{ id: 'home', title: 'At home' },
+								{ id: 'away', title: 'Away' },
+							],
+						},
 					},
 				},
 			},
-		});
+			['home'],
+		);
 		const device = devices['device-000001'] as {
-			capabilitiesObj: { private_mode: { values: Array<{ id: string; title: string }> } };
+			capabilitiesObj: { private_mode: { value: string; values: Array<{ id: string; title: string }> } };
 		};
-		const values = device.capabilitiesObj.private_mode.values;
+		const capability = device.capabilitiesObj.private_mode;
+		const values = capability.values;
 
-		expect(values.map(({ id }) => id)).toEqual(['home', 'away']);
+		expect(values.map(({ id }) => id)).toEqual(['enum-option-000001', 'enum-option-000002']);
 		expect(values.map(({ title }) => title)).toEqual(['[~2~]', '[~2~]']);
+		expect(capability.value).toBe('enum-option-000001');
 		expect(() =>
 			assertHomeyCaptureSafe({ metadata: {}, systemInfo: {}, zones: {}, devices }, [], ['home']),
 		).not.toThrow();
@@ -743,6 +756,7 @@ describe('Homey SHS compatibility probe', () => {
 			expect(new Headers(call.init?.headers).get('authorization')).toBe(`Bearer ${config.apiKey}`);
 		}
 
+		assertHomeyCaptureRedacted(capture);
 		assertHomeyCaptureSafe(capture, [config.apiKey], config.privateTerms, config.expectedHost);
 		expect(capture.individualDevice).toMatchObject({ id: 'device-000001', name: 'device-label-000001' });
 		expect(capture.capabilityValue).toEqual({
@@ -757,6 +771,7 @@ describe('Homey SHS compatibility probe', () => {
 		});
 		const hostCollisionCapture = await captureHomeyShs(hostCollisionConfig, fetchMock as typeof fetch);
 
+		assertHomeyCaptureRedacted(hostCollisionCapture);
 		expect((hostCollisionCapture.metadata.homey as { id: string }).id).toBe('homey-000002');
 		expect(() =>
 			assertHomeyCaptureSafe(
@@ -847,6 +862,43 @@ describe('Homey SHS compatibility probe', () => {
 				['home', 'device', 'system'],
 			),
 		).not.toThrow();
+	});
+
+	it('rejects sanitizer-sensitive fields that were not redacted before promotion', () => {
+		const aliases = createSanitizationAliases();
+		const capture: HomeyShsCapture = {
+			metadata: {},
+			systemInfo: sanitizeHomeyPayload({ hostname: 'private-host', password: 'hunter2', serial: 'ABC123' }),
+			zones: sanitizeHomeyZones(
+				{ 'private-zone': { id: 'private-zone', name: 'Private zone', parent: null } },
+				[],
+				aliases,
+			),
+			devices: sanitizeHomeyDevices(
+				{
+					'private-device': {
+						id: 'private-device',
+						name: 'Private device',
+						zone: 'private-zone',
+						settings: { hostname: 'private-host', password: 'hunter2', serial: 'ABC123' },
+					},
+				},
+				[],
+				aliases,
+			),
+		};
+
+		expect(() => assertHomeyCaptureRedacted(capture)).not.toThrow();
+
+		for (const [key, value] of [
+			['password', 'hunter2'],
+			['hostname', 'private-host'],
+			['serial', 'ABC123'],
+		] as const) {
+			expect(() => assertHomeyCaptureRedacted({ ...capture, systemInfo: { [key]: value } })).toThrow(
+				'unredacted sensitive field',
+			);
+		}
 	});
 
 	it('rejects captures containing a configured forbidden value', () => {

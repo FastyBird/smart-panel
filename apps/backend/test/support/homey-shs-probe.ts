@@ -37,7 +37,8 @@ const CAMEL_CASE_TIMESTAMP_KEY_PATTERN = /(?:At|Date|Timestamp|Updated|Modified|
 const BOUNDED_TIMESTAMP_KEY_PATTERN = /(?:^|[_-])(?:at|date|timestamp|updated|modified|created)$/i;
 const ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const GENERATED_PSEUDONYM_PATTERN = /^(?:device|device-label|homey|id|p|q|reference|x|z|zone|zone-label)-\d{6}$/;
+const GENERATED_PSEUDONYM_PATTERN =
+	/^(?:device|device-label|enum-option|homey|id|p|q|reference|x|z|zone|zone-label)-\d{6}$/;
 const IPV4_PATTERN = /(?:\d{1,3}\.){3}\d{1,3}/g;
 const BRACKETED_IPV6_PATTERN = /\[([0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?)\]/g;
 const UNBRACKETED_IPV6_PATTERN = /[0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?/g;
@@ -306,6 +307,13 @@ const isCapabilityEnumOptionIdentifier = (
 	path[3] === 'values' &&
 	/^\d+$/.test(path[4]);
 
+const isCapabilityEnumCurrentValue = (key: string, path: string[], rootKind: SanitizerContext['rootKind']): boolean =>
+	key === 'value' &&
+	rootKind === 'device' &&
+	path.length === 3 &&
+	path[0] === 'root' &&
+	(path[1] === 'capabilitiesObj' || path[1] === 'capabilityOptions');
+
 const isCapabilityListEntry = (path: string[], rootKind: SanitizerContext['rootKind']): boolean =>
 	rootKind === 'device' && path.length === 2 && path[0] === 'root' && path[1] === 'capabilities';
 
@@ -433,10 +441,21 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 	}
 
 	if (typeof value === 'string') {
+		if (isCapabilityEnumOptionIdentifier(key, context.path, context.rootKind)) {
+			return pseudonym('enum-option', value, context.aliases);
+		}
+
+		if (isCapabilityEnumCurrentValue(key, context.path, context.rootKind)) {
+			const enumOptionAlias = context.aliases.values.get(`enum-option\0${value}`);
+
+			if (enumOptionAlias !== undefined) {
+				return enumOptionAlias;
+			}
+		}
+
 		if (
 			isCapabilityListEntry(context.path, context.rootKind) ||
-			isCapabilityIdentifier(key, context.path, context.rootKind) ||
-			isCapabilityEnumOptionIdentifier(key, context.path, context.rootKind)
+			isCapabilityIdentifier(key, context.path, context.rootKind)
 		) {
 			return value;
 		}
@@ -466,6 +485,14 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 
 	if (!isRecord(value)) {
 		return REDACTION.unsupported;
+	}
+
+	if (isCapabilityMap(context.path, context.rootKind) && value.type === 'enum' && Array.isArray(value.values)) {
+		value.values.forEach((option) => {
+			if (isRecord(option) && typeof option.id === 'string') {
+				pseudonym('enum-option', option.id, context.aliases);
+			}
+		});
 	}
 
 	const nextPath = [...context.path, key];
@@ -877,6 +904,217 @@ export const captureHomeyShs = async (
 	};
 };
 
+const throwUnredactedSensitiveField = (): never => {
+	throw new Error('Sanitized Homey capture contains an unredacted sensitive field');
+};
+
+const assertRedactedScalar = (value: unknown, marker: string): void => {
+	if (
+		value !== null &&
+		value !== marker &&
+		!(typeof value === 'number' && value === NUMERIC_REDACTION) &&
+		!(typeof value === 'boolean' && value === false)
+	) {
+		throwUnredactedSensitiveField();
+	}
+};
+
+const assertGeneratedPseudonym = (value: unknown): void => {
+	if (typeof value !== 'string' || !GENERATED_PSEUDONYM_PATTERN.test(value)) {
+		throwUnredactedSensitiveField();
+	}
+};
+
+const assertHomeyPayloadRedacted = (value: unknown, rootKind: SanitizerContext['rootKind']): void => {
+	const inspect = (nestedValue: unknown, key: string, path: string[]): void => {
+		const capabilityMapEntry = isCapabilityMap(path, rootKind);
+		const collectionIdentity =
+			rootKind !== 'generic' && path.length === 1 && path[0] === 'root' && (key === 'id' || key === 'name');
+
+		if (collectionIdentity) {
+			assertGeneratedPseudonym(nestedValue);
+			return;
+		}
+
+		if (!capabilityMapEntry && isSecretKey(key)) {
+			assertRedactedScalar(nestedValue, REDACTION.secret);
+			return;
+		}
+
+		if (nestedValue !== null && !capabilityMapEntry && isTimestampKey(key)) {
+			assertRedactedScalar(nestedValue, FIXTURE_TIMESTAMP);
+			return;
+		}
+
+		if (nestedValue !== null && !capabilityMapEntry && isAddressKey(key)) {
+			assertRedactedScalar(nestedValue, REDACTION.address);
+			return;
+		}
+
+		if (nestedValue !== null && rootKind === 'zone' && key === 'icon') {
+			assertRedactedScalar(nestedValue, REDACTION.privateTerm);
+			return;
+		}
+
+		if (nestedValue !== null && rootKind === 'device' && DEVICE_ICON_KEY_PATTERN.test(key)) {
+			assertRedactedScalar(nestedValue, REDACTION.privateTerm);
+			return;
+		}
+
+		if (nestedValue !== null && !capabilityMapEntry && ENDPOINT_KEY_PATTERN.test(key)) {
+			assertRedactedScalar(nestedValue, REDACTION.url);
+			return;
+		}
+
+		if (Array.isArray(nestedValue) && !capabilityMapEntry && isReferenceArrayKey(key)) {
+			nestedValue.forEach((item) => {
+				if (typeof item === 'string') {
+					assertGeneratedPseudonym(item);
+				} else {
+					assertRedactedScalar(item, REDACTION.value);
+				}
+			});
+			return;
+		}
+
+		if (
+			nestedValue !== null &&
+			!isRecord(nestedValue) &&
+			!capabilityMapEntry &&
+			!isCapabilityIdentifier(key, path, rootKind) &&
+			!isCapabilityEnumOptionIdentifier(key, path, rootKind) &&
+			(REFERENCE_KEY_PATTERN.test(key) || IDENTIFIER_KEY_PATTERN.test(key))
+		) {
+			if (typeof nestedValue === 'string' && REFERENCE_KEY_PATTERN.test(key)) {
+				assertGeneratedPseudonym(nestedValue);
+			} else {
+				assertRedactedScalar(nestedValue, REDACTION.identifier);
+			}
+			return;
+		}
+
+		if (typeof nestedValue === 'number' && isDriverMetadata(path)) {
+			if (nestedValue !== NUMERIC_REDACTION) {
+				throwUnredactedSensitiveField();
+			}
+			return;
+		}
+
+		if (nestedValue === null || typeof nestedValue === 'number' || typeof nestedValue === 'boolean') {
+			return;
+		}
+
+		if (typeof nestedValue === 'string') {
+			if (isCapabilityEnumOptionIdentifier(key, path, rootKind)) {
+				assertGeneratedPseudonym(nestedValue);
+				return;
+			}
+
+			if (isCapabilityListEntry(path, rootKind) || isCapabilityIdentifier(key, path, rootKind)) {
+				return;
+			}
+
+			if (isPersonalKey(key)) {
+				if (key !== 'name' || !GENERATED_PSEUDONYM_PATTERN.test(nestedValue)) {
+					assertRedactedScalar(nestedValue, REDACTION.privateTerm);
+				}
+				return;
+			}
+
+			if (isDriverMetadata(path)) {
+				assertRedactedScalar(nestedValue, REDACTION.identifier);
+				return;
+			}
+
+			if (key === 'id' || UUID_PATTERN.test(nestedValue)) {
+				assertGeneratedPseudonym(nestedValue);
+			}
+			return;
+		}
+
+		if (Array.isArray(nestedValue)) {
+			nestedValue.forEach((item, index) => inspect(item, String(index), [...path, key]));
+			return;
+		}
+
+		if (!isRecord(nestedValue)) {
+			return throwUnredactedSensitiveField();
+		}
+
+		if (isCapabilityMap(path, rootKind) && nestedValue.type === 'enum' && Array.isArray(nestedValue.values)) {
+			const optionIds = nestedValue.values.map((option) => (isRecord(option) ? option.id : undefined));
+
+			optionIds.forEach(assertGeneratedPseudonym);
+
+			if (new Set(optionIds).size !== optionIds.length) {
+				throwUnredactedSensitiveField();
+			}
+
+			if (typeof nestedValue.value === 'string' && !optionIds.includes(nestedValue.value)) {
+				throwUnredactedSensitiveField();
+			}
+		}
+
+		const nextPath = [...path, key];
+		const preserveKeys = isCapabilityMap(nextPath, rootKind);
+		const identifierMap = isIdentifierMap(key);
+
+		Object.entries(nestedValue).forEach(([nestedKey, childValue]) => {
+			const generatedPseudonym = GENERATED_PSEUDONYM_PATTERN.test(nestedKey);
+			const sanitizedIdentifierEntry = generatedPseudonym && childValue === REDACTION.identifier;
+			const identifierMapKey =
+				identifierMap ||
+				generatedPseudonym ||
+				UUID_PATTERN.test(nestedKey) ||
+				/^\d+$/.test(nestedKey) ||
+				IDENTIFIER_KEY_PATTERN.test(nestedKey);
+			const privateMapKey =
+				!preserveKeys && (identifierMap || (identifierMapKey && !PRESERVED_STRUCTURAL_KEY_SET.has(nestedKey)));
+
+			if (privateMapKey && !sanitizedIdentifierEntry && !generatedPseudonym) {
+				throwUnredactedSensitiveField();
+			}
+
+			inspect(childValue, nestedKey, nextPath);
+		});
+	};
+
+	inspect(value, 'root', []);
+};
+
+export const assertHomeyCaptureRedacted = (capture: HomeyShsCapture): void => {
+	assertHomeyPayloadRedacted(capture.systemInfo, 'generic');
+
+	if (!isRecord(capture.zones) || !isRecord(capture.devices)) {
+		throwUnredactedSensitiveField();
+	}
+
+	for (const [id, zone] of Object.entries(capture.zones)) {
+		assertGeneratedPseudonym(id);
+		assertHomeyPayloadRedacted(zone, 'zone');
+	}
+
+	for (const [id, device] of Object.entries(capture.devices)) {
+		assertGeneratedPseudonym(id);
+		assertHomeyPayloadRedacted(device, 'device');
+	}
+
+	if (capture.individualDevice !== undefined) {
+		assertHomeyPayloadRedacted(capture.individualDevice, 'device');
+	}
+
+	if (capture.capabilityValue !== undefined) {
+		const capabilityValue = capture.capabilityValue;
+
+		if (!isRecord(capabilityValue) || typeof capabilityValue.capabilityId !== 'string') {
+			return throwUnredactedSensitiveField();
+		}
+
+		assertGeneratedPseudonym(capabilityValue.deviceId);
+		assertHomeyPayloadRedacted(capabilityValue.response, 'generic');
+	}
+};
+
 export const assertHomeyCaptureSafe = (
 	capture: HomeyShsCapture,
 	forbiddenValues: string[],
@@ -956,19 +1194,6 @@ export const assertHomeyCaptureSafe = (
 		(path.length === 2 && path[0] === 'individualDevice' && path[1] === 'capabilities');
 	const isCapturedCapabilityReadIdentifier = (key: string, path: string[]): boolean =>
 		key === 'capabilityId' && path.length === 1 && path[0] === 'capabilityValue';
-	const isCapturedCapabilityEnumOptionIdentifier = (key: string, path: string[]): boolean =>
-		key === 'id' &&
-		((path.length === 6 &&
-			path[0] === 'devices' &&
-			GENERATED_PSEUDONYM_PATTERN.test(path[1]) &&
-			(path[2] === 'capabilitiesObj' || path[2] === 'capabilityOptions') &&
-			path[4] === 'values' &&
-			/^\d+$/.test(path[5])) ||
-			(path.length === 5 &&
-				path[0] === 'individualDevice' &&
-				(path[1] === 'capabilitiesObj' || path[1] === 'capabilityOptions') &&
-				path[3] === 'values' &&
-				/^\d+$/.test(path[4])));
 	const isStructuralRecordPath = (path: string[]): boolean => {
 		if (
 			path.length === 1 &&
@@ -1077,7 +1302,6 @@ export const assertHomeyCaptureSafe = (
 				!isCapturedCapabilityListEntry(path) &&
 				!isCapturedCapabilityIdentifier(key, path) &&
 				!isCapturedCapabilityReadIdentifier(key, path) &&
-				!isCapturedCapabilityEnumOptionIdentifier(key, path) &&
 				value.replace(REDACTION_PATTERN, '').toLowerCase().includes(term.toLowerCase())
 			);
 		}
@@ -1287,6 +1511,7 @@ const run = async (): Promise<void> => {
 	const config = loadHomeyShsProbeConfig(process.env);
 	const capture = await captureHomeyShs(config);
 
+	assertHomeyCaptureRedacted(capture);
 	assertHomeyCaptureSafe(capture, [config.apiKey], config.privateTerms, config.expectedHost);
 
 	const outputDirectory = await writeHomeyShsCapture(capture, config.outputRoot);
