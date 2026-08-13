@@ -125,21 +125,18 @@ be an absolute HTTPS URL without credentials, query, fragment, or trailing slash
 issuer, authorization, token, revocation, and discovery URLs only from this stored value; `Host`, `Forwarded`, and
 `X-Forwarded-*` headers never choose the OAuth identity.
 
-Two proxy layouts are supported:
+Use a dedicated public origin, such as `https://panel.example.com`, and preserve the complete request path when
+forwarding to Smart Panel. A path-prefixed public base URL is not supported: OAuth discovery can include the prefix,
+but the Admin router cannot complete the browser consent route beneath it.
 
-| Layout                | OAuth public base URL                     | Public MCP resource                                          | Required upstream mapping                              |
-| --------------------- | ----------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------ |
-| Dedicated origin      | `https://panel.example.com`               | `https://panel.example.com/api/v1/modules/mcp`               | Preserve the complete request path                     |
-| Path-prefixed gateway | `https://gateway.example.com/smart-panel` | `https://gateway.example.com/smart-panel/api/v1/modules/mcp` | Remove `/smart-panel` before forwarding to Smart Panel |
+The dedicated origin must forward the complete Smart Panel application, including these OAuth entry points:
 
-For a path-prefixed gateway, configure all three mappings. OAuth discovery will fail if only the resource path is
-forwarded:
-
-| External path prefix                                                           | Smart Panel upstream path prefix                                   |
-| ------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
-| `/smart-panel/api/v1/modules/mcp`                                              | `/api/v1/modules/mcp`                                              |
-| `/.well-known/oauth-protected-resource/smart-panel/api/v1/modules/mcp`         | `/.well-known/oauth-protected-resource/api/v1/modules/mcp`         |
-| `/.well-known/oauth-authorization-server/smart-panel/api/v1/modules/mcp/oauth` | `/.well-known/oauth-authorization-server/api/v1/modules/mcp/oauth` |
+| Purpose                        | Public and upstream path                                           |
+| ------------------------------ | ------------------------------------------------------------------ |
+| MCP resource                   | `/api/v1/modules/mcp`                                              |
+| Protected-resource discovery   | `/.well-known/oauth-protected-resource/api/v1/modules/mcp`         |
+| Authorization-server discovery | `/.well-known/oauth-authorization-server/api/v1/modules/mcp/oauth` |
+| Browser consent and Admin UI   | `/mcp-oauth-consent` and the Admin application's routes/assets     |
 
 The proxy must:
 
@@ -166,13 +163,13 @@ address; trust only the address reported as the backend socket peer.
 <Steps>
 	### Verify the public routes
 
-    Configure the proxy and confirm that the external MCP resource and both well-known paths above reach the intended
-    installation over HTTPS. Do not enable OAuth while DNS, certificates, or prefix rewrites are incomplete.
+    Configure the proxy and confirm that the external MCP resource, both well-known paths, and browser consent route
+    above reach the intended installation over HTTPS. Do not enable OAuth while DNS or certificates are incomplete.
 
     ### Store the canonical identity
 
-    Go to **Config → Modules → Model Context Protocol** and set **OAuth public base URL** to the external origin or
-    prefixed base, such as `https://panel.example.com` or `https://gateway.example.com/smart-panel`.
+    Go to **Config → Modules → Model Context Protocol** and set **OAuth public base URL** to the dedicated external
+    origin, such as `https://panel.example.com`.
 
     ### Enable the complete profile
 
@@ -221,6 +218,10 @@ codex mcp login smart-panel --scopes mcp:read,offline_access
 The first authorization request is rejected because Codex appends a callback ID. Copy the full decoded
 `redirect_uri` from the browser's authorization URL, edit the Smart Panel OAuth client, replace the temporary redirect
 with that exact URI, and run `codex mcp login` again. Never approve a redirect on another host or path.
+
+The `--scopes` option is available in current Codex CLI builds. The earlier Phase 6 smoke used a build that omitted the
+scope parameter even though it reported version `0.136.0`, so confirm `codex mcp login --help` lists `--scopes` before
+requesting `offline_access`; otherwise omit the option and use a finite access token without refresh.
 
 The ChatGPT desktop app, Codex CLI, and IDE extension on the same Codex host share this MCP configuration. Restart the
 app or extension after adding the server, then use `/mcp` or `codex mcp list` to verify it. See the
@@ -390,10 +391,10 @@ exact normalized origin too. Do not use a wildcard.
 For OAuth discovery or token requests behind a proxy, also confirm that the immediate proxy IP is listed in
 `FB_MCP_OAUTH_TRUSTED_PROXIES`. Smart Panel rejects every forwarded header from an untrusted peer.
 
-### OAuth discovery fails behind a path prefix
+### The browser consent page is not found
 
-Forward the resource path and both path-aware well-known metadata paths using the mapping table above. Do not rely on
-`X-Forwarded-Prefix`; Smart Panel uses the stored public base URL and expects the proxy to remove the external prefix.
+Use a dedicated public origin without a path prefix. Confirm that the proxy forwards `/mcp-oauth-consent` and the Admin
+application's routes and assets, in addition to the MCP resource and both well-known metadata paths.
 
 ### The browser reports a redirect mismatch
 

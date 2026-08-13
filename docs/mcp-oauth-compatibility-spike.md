@@ -195,20 +195,19 @@ The Phase 6 smoke against Codex CLI `0.136.0` established the following current 
 - Codex omits `scope` from its authorization request. Smart Panel therefore defaults an omitted scope to the capability
   scopes in the pre-registered client ceiling and still requires explicit owner/admin consent. It does not default
   `offline_access`, because renewable access must be explicitly requested; and
-- Codex CLI `0.136.0` exposes client-ID and resource overrides, while neither its help nor the current official MCP
-  configuration reference exposes an explicit OAuth scope setting. This host version therefore cannot request
-  `offline_access`, and Smart Panel must not silently broaden the omitted request merely to manufacture a refresh
-  token; and
+- the CLI build used for the live smoke omitted `scope` and did not expose a scope setting despite reporting version
+  `0.136.0`. Current builds reporting the same version expose `codex mcp login --scopes <SCOPE,SCOPE>`; operators must
+  confirm the option in their installed CLI before requesting `offline_access`. Smart Panel must not silently broaden
+  an omitted request merely to manufacture a refresh token; and
 - behind TLS termination, the proxy must be listed in `FB_MCP_OAUTH_TRUSTED_PROXIES` and must send
   `X-Forwarded-Proto: https`. The finite bootstrap gate validates the immediate peer before the provider honors that
   protocol for secure interaction cookies.
 
 Discovery, authorization, token exchange, tool listing, and a read-only `get_home_context` call succeeded with a client
 ceiling of `mcp:read offline_access`. Codex exposed only read tools under that ceiling and received no refresh token
-because its request omitted `offline_access`. Administrative revocation remains to be exercised with this host. The
-Codex refresh subcase remains open until a supported Codex release can explicitly request `offline_access`; refresh
-rotation continues to be exercised through the protocol client and the Claude Code target instead of weakening the
-server's scope policy.
+because its request omitted `offline_access`. Administrative revocation and the newer `--scopes` refresh path remain to
+be exercised with this host. Refresh rotation continues to be exercised through the protocol client and the Claude Code
+target instead of weakening the server's scope policy.
 
 ## Primary references
 
