@@ -9,6 +9,7 @@ import { Test } from '@nestjs/testing';
 import { hashToken } from '../src/modules/auth/utils/token.utils';
 import { ConfigService } from '../src/modules/config/services/config.service';
 import { McpController } from '../src/modules/mcp/controllers/mcp.controller';
+import { UpdateMcpConfigDto } from '../src/modules/mcp/dto/update-config.dto';
 import {
 	McpOAuthAccessTokenEntity,
 	McpOAuthApproverAuthorityEntity,
@@ -27,6 +28,7 @@ import {
 import { McpClientGuard } from '../src/modules/mcp/guards/mcp-client.guard';
 import {
 	MCP_CATALOG_REGISTRAR,
+	MCP_MODULE_NAME,
 	MCP_OAUTH_SERVER_STATE_KEY,
 	McpCapability,
 	McpOAuthScope,
@@ -38,11 +40,14 @@ import { McpAuditService } from '../src/modules/mcp/services/mcp-audit.service';
 import { McpInstallationService } from '../src/modules/mcp/services/mcp-installation.service';
 import { McpOAuthClientService } from '../src/modules/mcp/services/mcp-oauth-client.service';
 import { McpOAuthGlobalInvalidationService } from '../src/modules/mcp/services/mcp-oauth-global-invalidation.service';
+import { McpOAuthLifecycleService } from '../src/modules/mcp/services/mcp-oauth-lifecycle.service';
 import { McpOAuthManagementService } from '../src/modules/mcp/services/mcp-oauth-management.service';
+import { McpOAuthModuleConfigMutationService } from '../src/modules/mcp/services/mcp-oauth-module-config-mutation.service';
 import { McpOAuthProxyPolicyService } from '../src/modules/mcp/services/mcp-oauth-proxy-policy.service';
 import { McpOAuthPublicUrlService } from '../src/modules/mcp/services/mcp-oauth-public-url.service';
 import { McpOAuthResourceServerService } from '../src/modules/mcp/services/mcp-oauth-resource-server.service';
 import { McpOAuthRouteGateService } from '../src/modules/mcp/services/mcp-oauth-route-gate.service';
+import { McpOAuthSwitchOffService } from '../src/modules/mcp/services/mcp-oauth-switch-off.service';
 import { McpPolicyRequest, McpPolicyService } from '../src/modules/mcp/services/mcp-policy.service';
 import { McpServerService } from '../src/modules/mcp/services/mcp-server.service';
 import { McpSubscriptionRegistryService } from '../src/modules/mcp/services/mcp-subscription-registry.service';
@@ -162,6 +167,8 @@ describe('MCP OAuth listen registration race', () => {
 		let preservedOAuthClient: Client | undefined;
 		let grantWriteScopeContractionClient: Client | undefined;
 		let grantTriggerScopeContractionClient: Client | undefined;
+		let moduleWriteScopeContractionClient: Client | undefined;
+		let moduleTriggerScopeContractionClient: Client | undefined;
 		let scopeContractionClient: Client | undefined;
 		const releaseListen = deferred();
 
@@ -226,6 +233,15 @@ describe('MCP OAuth listen registration race', () => {
 				clientIdentifier: 'listen-client-scope-contraction',
 				name: 'Listen client scope contraction',
 				redirectUris: ['http://127.0.0.1:1460/callback'],
+				maximumScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE, McpOAuthScope.TRIGGER],
+				enabled: true,
+				generation: 0,
+				createdById: user.id,
+			});
+			const moduleScopeContractionOAuthClient = await dataSource.getRepository(McpOAuthClientEntity).save({
+				clientIdentifier: 'listen-module-scope-contraction',
+				name: 'Listen module scope contraction',
+				redirectUris: ['http://127.0.0.1:1461/callback'],
 				maximumScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE, McpOAuthScope.TRIGGER],
 				enabled: true,
 				generation: 0,
@@ -397,6 +413,44 @@ describe('MCP OAuth listen registration race', () => {
 				clientGeneration: 0,
 				modulePolicyGeneration: 0,
 			});
+			const rawModuleWriteScopeContractionGrantId = 'listen-module-write-scope-contraction-grant';
+			const moduleWriteScopeContractionGrant = await dataSource.getRepository(McpOAuthGrantEntity).save({
+				providerGrantIdHash: hashToken(rawModuleWriteScopeContractionGrantId),
+				clientId: moduleScopeContractionOAuthClient.id,
+				approvedById: user.id,
+				installationId: 'listen-registration-race-installation',
+				issuer: urls.issuer,
+				resource: urls.resource,
+				approvedScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE],
+				expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
+				revokedAt: null,
+				generation: 0,
+				approverAuthorityGeneration: 0,
+				oauthEnabledGeneration: 0,
+				serverSecretVersion: 1,
+				publicIdentityGeneration: 0,
+				clientGeneration: 0,
+				modulePolicyGeneration: 0,
+			});
+			const rawModuleTriggerScopeContractionGrantId = 'listen-module-trigger-scope-contraction-grant';
+			const moduleTriggerScopeContractionGrant = await dataSource.getRepository(McpOAuthGrantEntity).save({
+				providerGrantIdHash: hashToken(rawModuleTriggerScopeContractionGrantId),
+				clientId: moduleScopeContractionOAuthClient.id,
+				approvedById: user.id,
+				installationId: 'listen-registration-race-installation',
+				issuer: urls.issuer,
+				resource: urls.resource,
+				approvedScopes: [McpOAuthScope.READ, McpOAuthScope.TRIGGER],
+				expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
+				revokedAt: null,
+				generation: 0,
+				approverAuthorityGeneration: 0,
+				oauthEnabledGeneration: 0,
+				serverSecretVersion: 1,
+				publicIdentityGeneration: 0,
+				clientGeneration: 0,
+				modulePolicyGeneration: 0,
+			});
 			const config = Object.assign(new McpConfigModel(), {
 				enabled: true,
 				oauthEnabled: true,
@@ -448,6 +502,16 @@ describe('MCP OAuth listen registration race', () => {
 				},
 				600,
 			);
+			await providerGrants.upsert(
+				rawModuleWriteScopeContractionGrantId,
+				{ accountId: user.id, clientId: moduleScopeContractionOAuthClient.clientIdentifier },
+				600,
+			);
+			await providerGrants.upsert(
+				rawModuleTriggerScopeContractionGrantId,
+				{ accountId: user.id, clientId: moduleScopeContractionOAuthClient.clientIdentifier },
+				600,
+			);
 
 			await accessTokens.upsert(
 				rawAccessToken,
@@ -490,6 +554,16 @@ describe('MCP OAuth listen registration race', () => {
 				subscriptions,
 				{} as McpOAuthGlobalInvalidationService,
 				auditService,
+			);
+			const moduleConfigMutation = new McpOAuthModuleConfigMutationService(
+				configService as unknown as ConfigService,
+				dataSource.getRepository(McpOAuthServerStateEntity),
+				subscriptions,
+				{} as McpOAuthGlobalInvalidationService,
+				auditService,
+				{ isOpen: true } as McpOAuthRouteGateService,
+				{} as McpOAuthLifecycleService,
+				{} as McpOAuthSwitchOffService,
 			);
 			const routeGate = {
 				isOpen: true,
@@ -1330,6 +1404,199 @@ describe('MCP OAuth listen registration race', () => {
 			await expect(preservedSubscription.closed).resolves.toBe('local');
 			await preservedOAuthClient.close();
 			preservedOAuthClient = undefined;
+
+			const moduleWriteScopeContractionAccessToken = 'listen-module-write-scope-contraction-access-token';
+			const moduleTriggerScopeContractionAccessToken = 'listen-module-trigger-scope-contraction-access-token';
+
+			await accessTokens.upsert(
+				moduleWriteScopeContractionAccessToken,
+				{
+					accountId: user.id,
+					aud: urls.resource,
+					clientId: moduleScopeContractionOAuthClient.clientIdentifier,
+					grantId: rawModuleWriteScopeContractionGrantId,
+					kind: 'AccessToken',
+					scope: `${McpOAuthScope.READ} ${McpOAuthScope.WRITE}`,
+				},
+				600,
+			);
+			await accessTokens.upsert(
+				moduleTriggerScopeContractionAccessToken,
+				{
+					accountId: user.id,
+					aud: urls.resource,
+					clientId: moduleScopeContractionOAuthClient.clientIdentifier,
+					grantId: rawModuleTriggerScopeContractionGrantId,
+					kind: 'AccessToken',
+					scope: `${McpOAuthScope.READ} ${McpOAuthScope.TRIGGER}`,
+				},
+				600,
+			);
+			await expect(resourceServer.verifyAccessToken(moduleWriteScopeContractionAccessToken)).resolves.toMatchObject({
+				scopes: [McpOAuthScope.READ, McpOAuthScope.WRITE],
+			});
+			await expect(resourceServer.verifyAccessToken(moduleTriggerScopeContractionAccessToken)).resolves.toMatchObject({
+				scopes: [McpOAuthScope.READ, McpOAuthScope.TRIGGER],
+			});
+			moduleWriteScopeContractionClient = new Client(
+				{ name: 'listen-module-write-scope-contraction-e2e', version: '1.0.0' },
+				{ versionNegotiation: { mode: 'auto' } },
+			);
+			moduleTriggerScopeContractionClient = new Client(
+				{ name: 'listen-module-trigger-scope-contraction-e2e', version: '1.0.0' },
+				{ versionNegotiation: { mode: 'auto' } },
+			);
+			await moduleWriteScopeContractionClient.connect(
+				new StreamableHTTPClientTransport(endpoint, {
+					requestInit: { headers: { Authorization: `Bearer ${moduleWriteScopeContractionAccessToken}` } },
+				}),
+			);
+			await moduleTriggerScopeContractionClient.connect(
+				new StreamableHTTPClientTransport(endpoint, {
+					requestInit: { headers: { Authorization: `Bearer ${moduleTriggerScopeContractionAccessToken}` } },
+				}),
+			);
+			const moduleWriteScopeContractionSubscription = await moduleWriteScopeContractionClient.listen({
+				toolsListChanged: true,
+			});
+			const moduleTriggerScopeContractionSubscription = await moduleTriggerScopeContractionClient.listen({
+				toolsListChanged: true,
+			});
+			let moduleTriggerScopeSubscriptionClosed = false;
+			void moduleTriggerScopeContractionSubscription.closed.then(() => {
+				moduleTriggerScopeSubscriptionClosed = true;
+			});
+
+			expect(subscriptions.activeCount).toBe(2);
+			let moduleWriteScopeContractionMutationSettled = false;
+			const moduleWriteScopeContractionMutation = moduleConfigMutation
+				.update(
+					Object.assign(new UpdateMcpConfigDto(), {
+						type: MCP_MODULE_NAME,
+						capabilities: [McpCapability.READ, McpCapability.TRIGGER],
+					}),
+					() => {
+						config.capabilities = [McpCapability.READ, McpCapability.TRIGGER];
+					},
+				)
+				.finally(() => {
+					moduleWriteScopeContractionMutationSettled = true;
+				});
+			await expect(moduleWriteScopeContractionSubscription.closed).resolves.toBe('remote');
+			expect(moduleWriteScopeContractionMutationSettled).toBe(false);
+			await moduleWriteScopeContractionMutation;
+			expect(moduleTriggerScopeSubscriptionClosed).toBe(false);
+			expect(subscriptions.activeCount).toBe(1);
+			await expect(resourceServer.verifyAccessToken(moduleWriteScopeContractionAccessToken)).rejects.toThrow(
+				'The MCP OAuth access token is invalid or no longer active',
+			);
+			await expectOAuthConnectionRejected(endpoint, moduleWriteScopeContractionAccessToken);
+			await expect(resourceServer.verifyAccessToken(moduleTriggerScopeContractionAccessToken)).rejects.toThrow(
+				'The MCP OAuth access token is invalid or no longer active',
+			);
+			await moduleTriggerScopeContractionSubscription.close();
+			await expect(moduleTriggerScopeContractionSubscription.closed).resolves.toBe('local');
+			expect(subscriptions.activeCount).toBe(0);
+			await moduleTriggerScopeContractionClient.close();
+
+			const rawFreshModuleTriggerScopeContractionGrantId = 'listen-module-trigger-scope-contraction-fresh-grant';
+			const freshModuleTriggerScopeContractionGrant = await grantRepository.save({
+				providerGrantIdHash: hashToken(rawFreshModuleTriggerScopeContractionGrantId),
+				clientId: moduleScopeContractionOAuthClient.id,
+				approvedById: user.id,
+				installationId: 'listen-registration-race-installation',
+				issuer: urls.issuer,
+				resource: urls.resource,
+				approvedScopes: [McpOAuthScope.READ, McpOAuthScope.TRIGGER],
+				expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
+				revokedAt: null,
+				generation: 0,
+				approverAuthorityGeneration: 0,
+				oauthEnabledGeneration: 0,
+				serverSecretVersion: 1,
+				publicIdentityGeneration: 0,
+				clientGeneration: 0,
+				modulePolicyGeneration: 1,
+			});
+			await providerGrants.upsert(
+				rawFreshModuleTriggerScopeContractionGrantId,
+				{ accountId: user.id, clientId: moduleScopeContractionOAuthClient.clientIdentifier },
+				600,
+			);
+			const freshModuleTriggerScopeContractionAccessToken =
+				'listen-module-trigger-scope-contraction-fresh-access-token';
+			await accessTokens.upsert(
+				freshModuleTriggerScopeContractionAccessToken,
+				{
+					accountId: user.id,
+					aud: urls.resource,
+					clientId: moduleScopeContractionOAuthClient.clientIdentifier,
+					grantId: rawFreshModuleTriggerScopeContractionGrantId,
+					kind: 'AccessToken',
+					scope: `${McpOAuthScope.READ} ${McpOAuthScope.TRIGGER}`,
+				},
+				600,
+			);
+			await expect(
+				resourceServer.verifyAccessToken(freshModuleTriggerScopeContractionAccessToken),
+			).resolves.toMatchObject({ scopes: [McpOAuthScope.READ, McpOAuthScope.TRIGGER] });
+			await expect(resourceServer.verifyAccessToken(moduleTriggerScopeContractionAccessToken)).rejects.toThrow(
+				'The MCP OAuth access token is invalid or no longer active',
+			);
+			moduleTriggerScopeContractionClient = new Client(
+				{ name: 'listen-module-trigger-scope-contraction-fresh-e2e', version: '1.0.0' },
+				{ versionNegotiation: { mode: 'auto' } },
+			);
+			await moduleTriggerScopeContractionClient.connect(
+				new StreamableHTTPClientTransport(endpoint, {
+					requestInit: { headers: { Authorization: `Bearer ${freshModuleTriggerScopeContractionAccessToken}` } },
+				}),
+			);
+			const freshModuleTriggerScopeContractionSubscription = await moduleTriggerScopeContractionClient.listen({
+				toolsListChanged: true,
+			});
+			expect(subscriptions.activeCount).toBe(1);
+
+			let moduleTriggerScopeContractionMutationSettled = false;
+			const moduleTriggerScopeContractionMutation = moduleConfigMutation
+				.update(
+					Object.assign(new UpdateMcpConfigDto(), {
+						type: MCP_MODULE_NAME,
+						capabilities: [McpCapability.READ],
+					}),
+					() => {
+						config.capabilities = [McpCapability.READ];
+					},
+				)
+				.finally(() => {
+					moduleTriggerScopeContractionMutationSettled = true;
+				});
+			await expect(freshModuleTriggerScopeContractionSubscription.closed).resolves.toBe('remote');
+			expect(moduleTriggerScopeContractionMutationSettled).toBe(false);
+			await moduleTriggerScopeContractionMutation;
+			expect(subscriptions.activeCount).toBe(0);
+			await expect(resourceServer.verifyAccessToken(freshModuleTriggerScopeContractionAccessToken)).rejects.toThrow(
+				'The MCP OAuth access token is invalid or no longer active',
+			);
+			await expectOAuthConnectionRejected(endpoint, freshModuleTriggerScopeContractionAccessToken);
+			expect(config.capabilities).toEqual([McpCapability.READ]);
+			expect(
+				await dataSource.getRepository(McpOAuthServerStateEntity).findOneByOrFail({ key: MCP_OAUTH_SERVER_STATE_KEY }),
+			).toMatchObject({ modulePolicyGeneration: 2 });
+			expect((await grantRepository.findOneByOrFail({ id: moduleWriteScopeContractionGrant.id })).revokedAt).toBeNull();
+			expect(
+				(await grantRepository.findOneByOrFail({ id: moduleTriggerScopeContractionGrant.id })).revokedAt,
+			).toBeNull();
+			expect(
+				(await grantRepository.findOneByOrFail({ id: freshModuleTriggerScopeContractionGrant.id })).revokedAt,
+			).toBeNull();
+			expect(JSON.stringify(auditLog.mock.calls)).not.toContain(moduleWriteScopeContractionAccessToken);
+			expect(JSON.stringify(auditLog.mock.calls)).not.toContain(moduleTriggerScopeContractionAccessToken);
+			expect(JSON.stringify(auditLog.mock.calls)).not.toContain(freshModuleTriggerScopeContractionAccessToken);
+			await moduleWriteScopeContractionClient.close();
+			moduleWriteScopeContractionClient = undefined;
+			await moduleTriggerScopeContractionClient.close();
+			moduleTriggerScopeContractionClient = undefined;
 			await subscriptions.closeAll();
 			expect(subscriptions.activeCount).toBe(0);
 		} finally {
@@ -1344,6 +1611,8 @@ describe('MCP OAuth listen registration race', () => {
 			await preservedOAuthClient?.close();
 			await grantWriteScopeContractionClient?.close();
 			await grantTriggerScopeContractionClient?.close();
+			await moduleWriteScopeContractionClient?.close();
+			await moduleTriggerScopeContractionClient?.close();
 			await scopeContractionClient?.close();
 			await client?.close();
 			if (app) {
