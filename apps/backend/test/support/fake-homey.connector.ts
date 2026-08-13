@@ -53,83 +53,99 @@ export class FakeHomeyConnector implements HomeyConnector {
 		this.failures.set(operation, category);
 	}
 
-	async connect(): Promise<void> {
-		if (this.connected) {
-			return;
-		}
-
-		this.throwNextFailure(HomeyConnectorOperation.CONNECT);
-		this.transportConnectCount += 1;
-		this.connected = true;
-	}
-
-	async disconnect(): Promise<void> {
-		if (!this.connected) {
-			return;
-		}
-
-		const failure = this.takeNextFailure(HomeyConnectorOperation.DISCONNECT);
-
-		this.transportDisconnectCount += 1;
-		this.connected = false;
-		this.listeners.clear();
-
-		if (failure) {
-			throw failure;
-		}
-	}
-
-	async getSystemInfo(): Promise<HomeySystemInfo> {
-		this.assertConnected(HomeyConnectorOperation.GET_SYSTEM_INFO);
-		this.throwNextFailure(HomeyConnectorOperation.GET_SYSTEM_INFO);
-
-		return structuredClone(this.fixtures.systemInfo);
-	}
-
-	async getZones(): Promise<readonly HomeyZone[]> {
-		this.assertConnected(HomeyConnectorOperation.GET_ZONES);
-		this.throwNextFailure(HomeyConnectorOperation.GET_ZONES);
-
-		return structuredClone(this.fixtures.zones);
-	}
-
-	async getDevices(): Promise<readonly HomeyDevice[]> {
-		this.assertConnected(HomeyConnectorOperation.GET_DEVICES);
-		this.throwNextFailure(HomeyConnectorOperation.GET_DEVICES);
-
-		return structuredClone(this.fixtures.devices);
-	}
-
-	async getDevice(deviceId: string): Promise<HomeyDevice | null> {
-		this.assertConnected(HomeyConnectorOperation.GET_DEVICE);
-		this.throwNextFailure(HomeyConnectorOperation.GET_DEVICE);
-
-		const device = this.fixtures.devices.find((item) => item.id === deviceId);
-
-		return device ? structuredClone(device) : null;
-	}
-
-	async setCapabilityValue(deviceId: string, capabilityId: string, value: unknown): Promise<void> {
-		this.assertConnected(HomeyConnectorOperation.SET_CAPABILITY_VALUE);
-		this.throwNextFailure(HomeyConnectorOperation.SET_CAPABILITY_VALUE);
-		this.capabilityWrites.push({ deviceId, capabilityId, value });
-	}
-
-	async subscribe(listener: HomeyEventListener): Promise<HomeyUnsubscribe> {
-		this.assertConnected(HomeyConnectorOperation.SUBSCRIBE);
-		this.throwNextFailure(HomeyConnectorOperation.SUBSCRIBE);
-		this.listeners.add(listener);
-
-		let subscribed = true;
-
-		return () => {
-			if (!subscribed) {
+	connect(): Promise<void> {
+		return this.execute(() => {
+			if (this.connected) {
 				return;
 			}
 
-			subscribed = false;
-			this.listeners.delete(listener);
-		};
+			this.throwNextFailure(HomeyConnectorOperation.CONNECT);
+			this.transportConnectCount += 1;
+			this.connected = true;
+		});
+	}
+
+	disconnect(): Promise<void> {
+		return this.execute(() => {
+			if (!this.connected) {
+				return;
+			}
+
+			const failure = this.takeNextFailure(HomeyConnectorOperation.DISCONNECT);
+
+			this.transportDisconnectCount += 1;
+			this.connected = false;
+			this.listeners.clear();
+
+			if (failure) {
+				throw failure;
+			}
+		});
+	}
+
+	getSystemInfo(): Promise<HomeySystemInfo> {
+		return this.execute(() => {
+			this.assertConnected(HomeyConnectorOperation.GET_SYSTEM_INFO);
+			this.throwNextFailure(HomeyConnectorOperation.GET_SYSTEM_INFO);
+
+			return structuredClone(this.fixtures.systemInfo);
+		});
+	}
+
+	getZones(): Promise<readonly HomeyZone[]> {
+		return this.execute(() => {
+			this.assertConnected(HomeyConnectorOperation.GET_ZONES);
+			this.throwNextFailure(HomeyConnectorOperation.GET_ZONES);
+
+			return structuredClone(this.fixtures.zones);
+		});
+	}
+
+	getDevices(): Promise<readonly HomeyDevice[]> {
+		return this.execute(() => {
+			this.assertConnected(HomeyConnectorOperation.GET_DEVICES);
+			this.throwNextFailure(HomeyConnectorOperation.GET_DEVICES);
+
+			return structuredClone(this.fixtures.devices);
+		});
+	}
+
+	getDevice(deviceId: string): Promise<HomeyDevice | null> {
+		return this.execute(() => {
+			this.assertConnected(HomeyConnectorOperation.GET_DEVICE);
+			this.throwNextFailure(HomeyConnectorOperation.GET_DEVICE);
+
+			const device = this.fixtures.devices.find((item) => item.id === deviceId);
+
+			return device ? structuredClone(device) : null;
+		});
+	}
+
+	setCapabilityValue(deviceId: string, capabilityId: string, value: unknown): Promise<void> {
+		return this.execute(() => {
+			this.assertConnected(HomeyConnectorOperation.SET_CAPABILITY_VALUE);
+			this.throwNextFailure(HomeyConnectorOperation.SET_CAPABILITY_VALUE);
+			this.capabilityWrites.push({ deviceId, capabilityId, value });
+		});
+	}
+
+	subscribe(listener: HomeyEventListener): Promise<HomeyUnsubscribe> {
+		return this.execute(() => {
+			this.assertConnected(HomeyConnectorOperation.SUBSCRIBE);
+			this.throwNextFailure(HomeyConnectorOperation.SUBSCRIBE);
+			this.listeners.add(listener);
+
+			let subscribed = true;
+
+			return () => {
+				if (!subscribed) {
+					return;
+				}
+
+				subscribed = false;
+				this.listeners.delete(listener);
+			};
+		});
 	}
 
 	async emit(event: HomeyEvent): Promise<void> {
@@ -170,5 +186,13 @@ export class FakeHomeyConnector implements HomeyConnector {
 		this.failures.delete(operation);
 
 		return new HomeyConnectorError(category, operation);
+	}
+
+	private execute<T>(operation: () => T): Promise<T> {
+		try {
+			return Promise.resolve(operation());
+		} catch (error) {
+			return Promise.reject(error);
+		}
 	}
 }
