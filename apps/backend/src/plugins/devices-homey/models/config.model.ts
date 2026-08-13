@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min, ValidateIf } from 'class-validator';
+import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Matches, Max, Min, ValidateIf } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -46,6 +46,7 @@ export class HomeyConfigModel extends PluginConfigModel {
 	@ValidateIf((config: HomeyConfigModel) => config.enabled || config.apiKey !== null)
 	@IsNotEmpty()
 	@IsString()
+	@Matches(/\S/)
 	apiKey: string | null = null;
 
 	@ApiProperty({

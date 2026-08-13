@@ -64,4 +64,19 @@ describe('Homey configuration', () => {
 		expect(validateSync(config)).toEqual(expect.arrayContaining([expect.objectContaining({ property: 'url' })]));
 		expect(validateSync(update)).toEqual(expect.arrayContaining([expect.objectContaining({ property: 'url' })]));
 	});
+
+	it('rejects whitespace-only API keys in stored and update configuration', () => {
+		const config = Object.assign(new HomeyConfigModel(), {
+			enabled: true,
+			url: 'http://homey.local:4859',
+			apiKey: '   ',
+		});
+		const update = plainToInstance(HomeyUpdatePluginConfigDto, {
+			type: 'devices-homey-plugin',
+			api_key: '   ',
+		});
+
+		expect(validateSync(config)).toEqual(expect.arrayContaining([expect.objectContaining({ property: 'apiKey' })]));
+		expect(validateSync(update)).toEqual(expect.arrayContaining([expect.objectContaining({ property: 'apiKey' })]));
+	});
 });

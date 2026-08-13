@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Matches, Max, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -46,6 +46,7 @@ export class HomeyUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	@Expose({ name: 'api_key' })
 	@IsOptional()
 	@IsString({ message: '[{"field":"api_key","reason":"API key must be a valid string."}]' })
+	@Matches(/\S/, { message: '[{"field":"api_key","reason":"API key must contain a non-whitespace character."}]' })
 	apiKey?: string | null;
 
 	@ApiPropertyOptional({
