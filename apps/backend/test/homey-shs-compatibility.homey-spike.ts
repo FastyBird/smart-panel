@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import {
+	assertDistinctHomeyEnumCapabilityOptionIds,
 	assertDistinctHomeyEnumOptionIds,
 	deriveKnownCoverageGaps,
 	deriveKnownDeviceClassGaps,
@@ -126,7 +127,7 @@ describe('Homey SHS compatibility probe', () => {
 
 		expect(syntheticEnum.provenance).toBe('synthetic-protocol-contract');
 		expect(syntheticEnum.values.map(({ id }) => id)).toEqual(['mode_a', 'mode_b', 'mode_c']);
-		assertDistinctHomeyEnumOptionIds(syntheticEnum);
+		assertDistinctHomeyEnumCapabilityOptionIds(syntheticEnum);
 	});
 
 	it('finds a deterministic global fixture assignment instead of choosing greedily', () => {
@@ -159,7 +160,7 @@ describe('Homey SHS compatibility probe', () => {
 
 	it('rejects collapsed live enum option IDs before fixture writes', () => {
 		expect(() =>
-			assertDistinctHomeyEnumOptionIds({
+			assertDistinctHomeyEnumCapabilityOptionIds({
 				type: 'enum',
 				values: [
 					{ id: '[~7~]', title: '[~2~]' },
@@ -173,9 +174,22 @@ describe('Homey SHS compatibility probe', () => {
 		expect(deriveKnownMetadataGaps({ device: { capabilitiesObj: {} } })).toEqual(['live_enum_option_ids']);
 		expect(
 			deriveKnownMetadataGaps({
+				device: { capabilitiesObj: {}, ui: { type: 'enum', values: [{ id: 'ui-only' }] } },
+			}),
+		).toEqual(['live_enum_option_ids']);
+		expect(
+			deriveKnownMetadataGaps({
 				device: { capabilitiesObj: { mode: { type: 'enum', values: [{ id: 'home' }, { id: 'away' }] } } },
 			}),
 		).toEqual([]);
+		expect(() =>
+			assertDistinctHomeyEnumOptionIds({
+				device: {
+					capabilitiesObj: {},
+					ui: { type: 'enum', values: [{ id: '[~7~]' }, { id: '[~7~]' }] },
+				},
+			}),
+		).not.toThrow();
 	});
 
 	it('derives tracked capability gaps from the full captured inventory', () => {
