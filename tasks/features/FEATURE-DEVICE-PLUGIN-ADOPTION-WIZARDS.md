@@ -277,22 +277,22 @@ should be driven by the largest real inventory, and Home Assistant delivers the 
 
 ### WLED
 
-- [ ] WLED appears in the device wizard chooser only when its plugin is enabled.
-- [ ] mDNS devices appear without being auto-created.
-- [ ] An administrator can probe a manual hostname/IP when mDNS is disabled or unavailable.
-- [ ] Probe-only operations do not persist devices or leak client connections.
-- [ ] Adoption derives identity from WLED data and provisions the full mapped device structure.
-- [ ] Duplicate/already-adopted devices are not created twice.
-- [ ] The existing manual WLED path cannot create an incomplete device.
-- [ ] Rescan, add-more, offline, timeout, and partial-failure flows are covered.
+- [x] WLED appears in the device wizard chooser only when its plugin is enabled.
+- [x] mDNS devices appear without being auto-created.
+- [x] An administrator can probe a manual hostname/IP when mDNS is disabled or unavailable.
+- [x] Probe-only operations do not persist devices or leak client connections.
+- [x] Adoption derives identity from WLED data and provisions the full mapped device structure.
+- [x] Duplicate/already-adopted devices are not created twice.
+- [x] The existing manual WLED path cannot create an incomplete device.
+- [x] Rescan, add-more, offline, timeout, and partial-failure flows are covered.
 
 ### Quality
 
 - [x] Backend unit tests cover snapshot reuse, identity/deduplication, mapping delegation, and partial outcomes.
 - [x] Admin unit/component tests cover adapter row mapping, controls, lifecycle cleanup, and adoption payloads.
-- [ ] Relevant authenticated E2E endpoints are covered.
+- [x] Relevant authenticated E2E endpoints are covered.
 - [x] OpenAPI is regenerated from backend Swagger decorators.
-- [ ] `pnpm --filter ./apps/admin run test:unit`, relevant backend Jest suites, and `pnpm run lint:js` pass.
+- [x] `pnpm --filter ./apps/admin run test:unit`, relevant backend Jest suites, and `pnpm run lint:js` pass.
 - [x] All six admin locales have parity for new user-visible keys.
 
 ## 8. Risks and mitigations

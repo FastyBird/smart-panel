@@ -154,33 +154,8 @@ export class WledClientAdapterService {
 		this.logger.log(`Connecting to WLED device at ${host}`);
 
 		try {
-			// Fetch device context
 			const context = await this.fetchDeviceContext(host, timeout);
-
-			// Register the device
-			const device: RegisteredWledDevice = {
-				host,
-				identifier,
-				connected: true,
-				enabled: true,
-				context,
-				lastSeen: new Date(),
-			};
-
-			this.devices.set(host, device);
-
-			this.logger.log(`Successfully connected to WLED device at ${host} (${context.info.name})`);
-
-			// Invoke connected callback
-			void this.callbacks.onDeviceConnected?.({
-				host,
-				info: context.info,
-			});
-
-			// Connect WebSocket if enabled
-			if (this.wsEnabled) {
-				this.connectWebSocket(host);
-			}
+			this.connectWithContext(host, identifier, context);
 		} catch (error) {
 			this.logger.error(`Failed to connect to WLED device at ${host}`, {
 				message: error instanceof Error ? error.message : String(error),
@@ -190,10 +165,39 @@ export class WledClientAdapterService {
 		}
 	}
 
+	/** Fetch device information without registering a persistent connection. */
+	async probe(host: string, timeout: number = DEFAULT_CONNECTION_TIMEOUT_MS): Promise<WledDeviceContext> {
+		try {
+			return await this.fetchDeviceContext(host, timeout);
+		} catch (error) {
+			throw new WledConnectionException(host, error instanceof Error ? error.message : String(error));
+		}
+	}
+
+	/** Register an already-probed device without repeating the HTTP requests. */
+	connectWithContext(host: string, identifier: string, context: WledDeviceContext): void {
+		const device: RegisteredWledDevice = {
+			host,
+			identifier,
+			connected: true,
+			enabled: true,
+			context,
+			lastSeen: new Date(),
+		};
+
+		this.devices.set(host, device);
+		this.logger.log(`Successfully connected to WLED device at ${host} (${context.info.name})`);
+		void this.callbacks.onDeviceConnected?.({ host, info: context.info });
+
+		if (this.wsEnabled) {
+			this.connectWebSocket(host);
+		}
+	}
+
 	/**
 	 * Disconnect from a WLED device
 	 */
-	disconnect(host: string): void {
+	disconnect(host: string, emitEvent = true): void {
 		const device = this.devices.get(host);
 
 		if (device) {
@@ -226,12 +230,13 @@ export class WledClientAdapterService {
 
 			this.logger.log(`Disconnected from WLED device at ${host}`);
 
-			// Invoke disconnected callback
-			void this.callbacks.onDeviceDisconnected?.({
-				host,
-				identifier,
-				reason: 'manual disconnect',
-			});
+			if (emitEvent) {
+				void this.callbacks.onDeviceDisconnected?.({
+					host,
+					identifier,
+					reason: 'manual disconnect',
+				});
+			}
 		}
 	}
 
@@ -637,10 +642,14 @@ export class WledClientAdapterService {
 
 		try {
 			const ws = new WebSocket(wsUrl);
+			this.websockets.set(host, ws);
 
 			ws.on('open', () => {
+				if (this.websockets.get(host) !== ws) {
+					return;
+				}
+
 				this.logger.log(`WebSocket connected to ${host}`);
-				this.websockets.set(host, ws);
 
 				const device = this.devices.get(host);
 				if (device) {
@@ -649,6 +658,10 @@ export class WledClientAdapterService {
 			});
 
 			ws.on('message', (data: WebSocket.Data) => {
+				if (this.websockets.get(host) !== ws) {
+					return;
+				}
+
 				try {
 					let dataStr: string;
 
@@ -689,6 +702,10 @@ export class WledClientAdapterService {
 			});
 
 			ws.on('close', () => {
+				if (this.websockets.get(host) !== ws) {
+					return;
+				}
+
 				this.logger.debug(`WebSocket disconnected from ${host}`);
 				this.websockets.delete(host);
 

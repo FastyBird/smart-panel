@@ -41,7 +41,9 @@ import { UpdateWledDeviceDto } from './dto/update-device.dto';
 import { WledChannelEntity, WledChannelPropertyEntity, WledDeviceEntity } from './entities/devices-wled.entity';
 import { WledConfigModel } from './models/config.model';
 import { WledDevicePlatform } from './platforms/wled.device.platform';
+import { WledAdoptionSnapshotService } from './services/adoption-snapshot.service';
 import { WledDeviceMapperService } from './services/device-mapper.service';
+import { WledHardwareIdentityService } from './services/hardware-identity.service';
 import { WledClientAdapterService } from './services/wled-client-adapter.service';
 import { WledMdnsDiscovererService } from './services/wled-mdns-discoverer.service';
 import { WledService } from './services/wled.service';
@@ -62,6 +64,8 @@ import { WledService } from './services/wled.service';
 	providers: [
 		WledClientAdapterService,
 		WledMdnsDiscovererService,
+		WledAdoptionSnapshotService,
+		WledHardwareIdentityService,
 		WledDeviceMapperService,
 		WledDevicePlatform,
 		WledService,
@@ -231,7 +235,7 @@ Any ESP8266 / ESP32 controller running WLED firmware **0.13** or later.
 |--------|-------------|---------|
 | \`mdns.enabled\` | Run mDNS discovery for WLED devices | \`true\` |
 | \`mdns.interface\` | Network interface to bind discovery to | all |
-| \`mdns.auto_add\` | Auto-add discovered devices | \`true\` |
+| \`mdns.auto_add\` | Auto-add discovered devices | \`false\` |
 | \`websocket.enabled\` | Use WebSocket for real-time updates | \`true\` |
 | \`websocket.reconnect_interval\` | WebSocket reconnect interval (ms, min 1000) | \`5000\` |
 | \`polling.interval\` | State polling interval (ms, min 5000) | \`30000\` |

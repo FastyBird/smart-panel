@@ -3,7 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { ConnectionState } from '../../../modules/devices/devices.constants';
+import { ConnectionState, DeviceCategory } from '../../../modules/devices/devices.constants';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { BaseManagedPluginService } from '../../../modules/extensions/services/base-managed-plugin.service';
@@ -12,18 +12,32 @@ import {
 	ServiceState,
 } from '../../../modules/extensions/services/managed-plugin-service.interface';
 import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
-import { DEVICES_WLED_PLUGIN_NAME, DEVICES_WLED_TYPE } from '../devices-wled.constants';
+import {
+	DEVICES_WLED_PLUGIN_NAME,
+	DEVICES_WLED_TYPE,
+	WLED_CHANNEL_IDENTIFIERS,
+	WLED_DEVICE_INFO_PROPERTY_IDENTIFIERS,
+} from '../devices-wled.constants';
+import { WledValidationException } from '../devices-wled.exceptions';
+import { UpdateWledDeviceDto } from '../dto/update-device.dto';
+import { WledAdoptDeviceDto } from '../dto/wled-adoption.dto';
 import { WledDeviceEntity } from '../entities/devices-wled.entity';
 import {
+	RegisteredWledDevice,
 	WledDeviceConnectedEvent,
+	WledDeviceContext,
 	WledDeviceDisconnectedEvent,
 	WledDeviceErrorEvent,
 	WledDeviceStateChangedEvent,
 	WledMdnsDiscoveredDevice,
+	WledState,
 } from '../interfaces/wled.interface';
 import { WledConfigModel } from '../models/config.model';
+import { WledAdoptionResultModel, WledDiscoveredDeviceModel, WledDiscoveryModel } from '../models/wled-discovery.model';
 
+import { WledAdoptionSnapshotService, WledAdoptionStructureSnapshot } from './adoption-snapshot.service';
 import { WledDeviceMapperService } from './device-mapper.service';
+import { WledHardwareIdentityService } from './hardware-identity.service';
 import { WledClientAdapterService } from './wled-client-adapter.service';
 import { WledMdnsDiscovererService } from './wled-mdns-discoverer.service';
 
@@ -43,11 +57,14 @@ export class WledService extends BaseManagedPluginService {
 
 	private pluginConfig: WledConfigModel | null = null;
 	private pollingInterval: NodeJS.Timeout | null = null;
+	private adoptionQueue: Promise<void> = Promise.resolve();
 
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly wledAdapter: WledClientAdapterService,
 		private readonly deviceMapper: WledDeviceMapperService,
+		private readonly adoptionSnapshot: WledAdoptionSnapshotService,
+		private readonly hardwareIdentity: WledHardwareIdentityService,
 		private readonly devicesService: DevicesService,
 		private readonly mdnsDiscoverer: WledMdnsDiscovererService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
@@ -57,7 +74,15 @@ export class WledService extends BaseManagedPluginService {
 
 		// Set up adapter callbacks
 		this.wledAdapter.setCallbacks({
-			onDeviceConnected: (event) => this.handleDeviceConnected(event),
+			onDeviceConnected: async (event) => {
+				try {
+					await this.handleDeviceConnected(event);
+				} catch (error) {
+					this.logger.error(`Failed to process WLED connected event for ${event.host}`, {
+						message: error instanceof Error ? error.message : String(error),
+					});
+				}
+			},
 			onDeviceDisconnected: (event) => this.handleDeviceDisconnected(event),
 			onDeviceStateChanged: (event) => this.handleDeviceStateChanged(event),
 			onDeviceError: (event) => this.handleDeviceError(event),
@@ -287,6 +312,12 @@ export class WledService extends BaseManagedPluginService {
 			const registeredDevice = this.wledAdapter.getDevice(device.hostname);
 
 			if (registeredDevice?.context) {
+				const identityVerified = await this.persistHardwareIdentity(device, registeredDevice.context.info.mac);
+				if (!identityVerified) {
+					this.wledAdapter.disconnect(device.hostname, false);
+					await this.deviceMapper.setDeviceConnectionState(device.identifier, ConnectionState.DISCONNECTED);
+					return;
+				}
 				await this.deviceMapper.updateDeviceState(device.identifier, registeredDevice.context.state);
 			}
 		} catch (error) {
@@ -306,8 +337,47 @@ export class WledService extends BaseManagedPluginService {
 		const device = this.wledAdapter.getDevice(event.host);
 
 		if (device) {
+			const storedDevice = await this.devicesService.findOneBy<WledDeviceEntity>(
+				'identifier',
+				device.identifier,
+				DEVICES_WLED_TYPE,
+			);
+			if (storedDevice) {
+				const identityVerified = await this.persistHardwareIdentity(storedDevice, event.info.mac);
+				if (!identityVerified) {
+					this.wledAdapter.disconnect(event.host, false);
+					await this.deviceMapper.setDeviceConnectionState(device.identifier, ConnectionState.DISCONNECTED);
+					return;
+				}
+			}
 			await this.deviceMapper.setDeviceConnectionState(device.identifier, ConnectionState.CONNECTED);
 		}
+	}
+
+	private async persistHardwareIdentity(device: WledDeviceEntity, reportedMac: string): Promise<boolean> {
+		const mac = this.normalizeMac(reportedMac);
+		if (!mac) {
+			if (device.mac) {
+				this.logger.warn('WLED did not report a valid hardware identity for the configured device', {
+					resource: device.id,
+				});
+				return false;
+			}
+
+			return true;
+		}
+		if (device.mac === mac) {
+			return true;
+		}
+		const result = await this.hardwareIdentity.persist(device, mac);
+		if (result === 'conflict') {
+			this.logger.warn(`WLED hardware identity ${mac} conflicts with the configured device`, {
+				resource: device.id,
+			});
+			return false;
+		}
+
+		return true;
 	}
 
 	/**
@@ -431,17 +501,51 @@ export class WledService extends BaseManagedPluginService {
 	 */
 	private async handleMdnsDeviceDiscovered(device: WledMdnsDiscoveredDevice): Promise<void> {
 		this.logger.log(`mDNS discovered device: ${device.name} at ${device.host}`);
+		const endpoint = this.discoveryEndpoint(device.host, device.port);
+		const advertisedMac = this.normalizeMac(device.mac) ? device.mac : undefined;
 
 		// Check if we already have this device configured by hostname
-		const devices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
-		const existingDevice = devices.find((d) => d.hostname === device.host);
+		let devices: WledDeviceEntity[];
+		try {
+			devices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
+		} catch (error) {
+			this.mdnsDiscoverer.forgetDiscoveredDevice(device.host);
+			this.logger.error(`Could not inspect discovered WLED device at ${endpoint}`, {
+				message: error instanceof Error ? error.message : String(error),
+			});
+			return;
+		}
+		let identifiedDevice = { ...device, mac: advertisedMac };
+		let existingDevice = this.findExistingDevice(devices, endpoint, advertisedMac);
+
+		if (!existingDevice && !advertisedMac && !this.config.mdns.autoAdd) {
+			try {
+				const context = await this.wledAdapter.probe(endpoint, this.config.timeouts.connectionTimeout);
+				identifiedDevice = { ...device, mac: context.info.mac };
+				existingDevice = this.findExistingDevice(devices, endpoint, context.info.mac);
+			} catch (error) {
+				this.mdnsDiscoverer.forgetDiscoveredDevice(device.host);
+				this.logger.debug(`Could not identify MAC-less WLED device at ${endpoint}`, {
+					message: error instanceof Error ? error.message : String(error),
+				});
+				return;
+			}
+		}
 
 		if (existingDevice) {
-			this.logger.debug(`Device at ${device.host} already exists in database`);
+			this.logger.debug(`Device at ${endpoint} already exists in database`);
+			const identityUpgradeRequired = this.requiresCanonicalIdentity(existingDevice, endpoint, identifiedDevice.mac);
 
-			// If device is enabled and not connected, try to connect
-			if (existingDevice.enabled && !this.wledAdapter.isConnected(device.host)) {
-				this.logger.debug(`Connecting to existing device at ${device.host}`);
+			// Reconcile a known MAC at a new endpoint through the same guarded
+			// provisioning path as administrator adoption. Legacy same-endpoint
+			// identities use it too so a later address move remains recognizable.
+			if (
+				identityUpgradeRequired ||
+				(existingDevice.hostname && !this.endpointsEquivalent(existingDevice.hostname, endpoint))
+			) {
+				await this.connectAndMapDiscoveredDevice(identifiedDevice);
+			} else if (existingDevice.enabled && !this.wledAdapter.isConnected(endpoint)) {
+				this.logger.debug(`Connecting to existing device at ${endpoint}`);
 				await this.connectToDevice(existingDevice);
 			}
 			return;
@@ -460,23 +564,42 @@ export class WledService extends BaseManagedPluginService {
 	 * Connect to a newly discovered device and map it to the database
 	 */
 	private async connectAndMapDiscoveredDevice(device: WledMdnsDiscoveredDevice): Promise<void> {
-		const identifier = device.mac
-			? `wled-${device.mac.replace(/:/g, '').toLowerCase()}`
-			: `wled-${device.host.replace(/\./g, '-')}`;
+		await this.enqueueProvisioning(async () => {
+			try {
+				const endpoint = this.discoveryEndpoint(device.host, device.port);
+				const devices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
+				const existingDevice = this.findExistingDevice(devices, endpoint, device.mac);
+				if (
+					existingDevice?.hostname &&
+					this.endpointsEquivalent(existingDevice.hostname, endpoint) &&
+					!this.requiresCanonicalIdentity(existingDevice, endpoint, device.mac)
+				) {
+					if (existingDevice.enabled && !this.wledAdapter.isConnected(endpoint)) {
+						await this.connectToDevice(existingDevice);
+					}
+					return;
+				}
 
-		try {
-			await this.wledAdapter.connect(device.host, identifier, this.config.timeouts.connectionTimeout);
-
-			const registeredDevice = this.wledAdapter.getDevice(device.host);
-
-			if (registeredDevice?.context) {
-				await this.deviceMapper.mapDevice(device.host, registeredDevice.context, device.name, identifier);
+				const [result] = await this.doAdoptDevices([
+					{
+						host: endpoint,
+						name: existingDevice?.name ?? device.name,
+						category: DeviceCategory.LIGHTING,
+					},
+				]);
+				if (!result || result.status === 'failed') {
+					this.mdnsDiscoverer.forgetDiscoveredDevice(device.host);
+					this.logger.warn(`Auto-add failed for discovered WLED device at ${endpoint}`, {
+						message: result?.error ?? 'No adoption result was returned',
+					});
+				}
+			} catch (error) {
+				this.mdnsDiscoverer.forgetDiscoveredDevice(device.host);
+				this.logger.error(`Failed to connect to discovered device at ${device.host}`, {
+					message: error instanceof Error ? error.message : String(error),
+				});
 			}
-		} catch (error) {
-			this.logger.error(`Failed to connect to discovered device at ${device.host}`, {
-				message: error instanceof Error ? error.message : String(error),
-			});
-		}
+		});
 	}
 
 	/**
@@ -484,6 +607,657 @@ export class WledService extends BaseManagedPluginService {
 	 */
 	getDiscoveredDevices(): WledMdnsDiscoveredDevice[] {
 		return this.mdnsDiscoverer.getDiscoveredDevices();
+	}
+
+	async getDiscoveryInventory(): Promise<WledDiscoveryModel> {
+		const [discoveredDevices, databaseDevices] = await Promise.all([
+			Promise.resolve(this.mdnsDiscoverer.getDiscoveredDevices()),
+			this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE),
+		]);
+
+		return {
+			mdnsEnabled: this.config.mdns.enabled,
+			discoveryRunning: this.mdnsDiscoverer.isDiscoveryRunning(),
+			devices: discoveredDevices.map((device) => {
+				const discoveryEndpoint = this.discoveryEndpoint(device.host, device.port);
+				const existingDevice = this.findExistingDevice(databaseDevices, discoveryEndpoint, device.mac);
+
+				return {
+					host: device.host,
+					name: existingDevice?.name ?? device.name,
+					mac: this.normalizeMac(device.mac),
+					port: device.port,
+					adoptedDeviceId: existingDevice?.id ?? null,
+				};
+			}),
+		};
+	}
+
+	async probeDevice(host: string): Promise<WledDiscoveredDeviceModel> {
+		const normalizedHost = this.normalizeHost(host);
+		const context = await this.wledAdapter.probe(normalizedHost, this.config.timeouts.connectionTimeout);
+		const mac = this.normalizeMac(context.info.mac);
+		if (!mac) {
+			throw new WledValidationException('WLED device did not report a valid MAC address');
+		}
+		const databaseDevices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
+		const existingDevice = this.findExistingDevice(databaseDevices, normalizedHost, mac);
+
+		return {
+			host: normalizedHost,
+			name: existingDevice?.name || context.info.name || `WLED ${mac}`,
+			mac,
+			port: this.portFromHost(normalizedHost),
+			adoptedDeviceId: existingDevice?.id ?? null,
+		};
+	}
+
+	async rescanDiscovery(): Promise<WledDiscoveryModel> {
+		this.mdnsDiscoverer.clearDiscoveredDevices();
+
+		if (this.config.mdns.enabled) {
+			this.mdnsDiscoverer.stop();
+			this.mdnsDiscoverer.start(this.config.mdns.interface ?? undefined);
+		}
+
+		return this.getDiscoveryInventory();
+	}
+
+	async adoptDevices(requests: WledAdoptDeviceDto[]): Promise<WledAdoptionResultModel[]> {
+		return this.enqueueProvisioning(() => this.doAdoptDevices(requests));
+	}
+
+	private async doAdoptDevices(requests: WledAdoptDeviceDto[]): Promise<WledAdoptionResultModel[]> {
+		const results = requests.map<WledAdoptionResultModel | undefined>(() => undefined);
+		const databaseDevices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
+		const failedSelectionHosts = new Set<string>();
+		const plans: Array<{
+			index: number;
+			request: WledAdoptDeviceDto;
+			host: string;
+			context: WledDeviceContext;
+			existingDevice: WledDeviceEntity | null;
+			identifier: string;
+		}> = [];
+		const plannedIdentities = new Set<string>();
+
+		for (const [index, request] of requests.entries()) {
+			let host = request.host.trim();
+
+			try {
+				host = this.normalizeHost(request.host);
+				const context = await this.wledAdapter.probe(host, this.config.timeouts.connectionTimeout);
+				const existingDevice = this.findExistingDevice(databaseDevices, host, context.info.mac);
+				const canonicalIdentity = this.identifierFromMac(context.info.mac);
+				const existingIdentifier = existingDevice?.identifier;
+				const identifier =
+					existingIdentifier &&
+					!this.legacyHostIdentifiers(existingDevice.hostname ?? host).has(existingIdentifier.toLowerCase()) &&
+					existingIdentifier.toLowerCase() !== `wled-${canonicalIdentity.slice(-6)}`
+						? existingIdentifier
+						: canonicalIdentity;
+
+				if (plannedIdentities.has(canonicalIdentity)) {
+					results[index] = {
+						host,
+						name: request.name,
+						status: 'failed',
+						error: 'The same WLED controller was selected more than once',
+						deviceId: existingDevice?.id ?? null,
+					};
+					continue;
+				}
+
+				plannedIdentities.add(canonicalIdentity);
+
+				plans.push({ index, request, host, context, existingDevice, identifier });
+			} catch (error) {
+				failedSelectionHosts.add(host);
+				results[index] = {
+					host,
+					name: request.name,
+					status: 'failed',
+					error: error instanceof Error ? error.message : String(error),
+					deviceId: null,
+				};
+			}
+		}
+
+		const plannedExistingDeviceIds = new Set(
+			plans.flatMap(({ existingDevice }) => (existingDevice ? [existingDevice.id] : [])),
+		);
+		const selectedDeviceIds = plannedExistingDeviceIds;
+		const moveHostEdges = new Map<string, Set<string>>();
+		for (const plan of plans) {
+			const sourceHost = plan.existingDevice?.hostname ? this.canonicalEndpoint(plan.existingDevice.hostname) : null;
+			const targetHost = this.canonicalEndpoint(plan.host);
+			if (!sourceHost || sourceHost === targetHost) {
+				continue;
+			}
+
+			const sourceEdges = moveHostEdges.get(sourceHost) ?? new Set<string>();
+			sourceEdges.add(targetHost);
+			moveHostEdges.set(sourceHost, sourceEdges);
+			const targetEdges = moveHostEdges.get(targetHost) ?? new Set<string>();
+			targetEdges.add(sourceHost);
+			moveHostEdges.set(targetHost, targetEdges);
+		}
+		const failedMoveHosts = new Set<string>();
+		const pendingFailedHosts = [...failedSelectionHosts].map((host) => this.canonicalEndpoint(host));
+		while (pendingFailedHosts.length > 0) {
+			const currentHost = pendingFailedHosts.pop();
+			if (!currentHost || failedMoveHosts.has(currentHost)) {
+				continue;
+			}
+
+			failedMoveHosts.add(currentHost);
+			pendingFailedHosts.push(...(moveHostEdges.get(currentHost) ?? []));
+		}
+		const blockedPlanIndices = new Set<number>();
+		for (const plan of plans) {
+			if (
+				failedMoveHosts.has(this.canonicalEndpoint(plan.host)) ||
+				(plan.existingDevice?.hostname !== null &&
+					plan.existingDevice?.hostname !== undefined &&
+					failedMoveHosts.has(this.canonicalEndpoint(plan.existingDevice.hostname)))
+			) {
+				blockedPlanIndices.add(plan.index);
+				results[plan.index] = {
+					host: plan.host,
+					name: plan.request.name,
+					status: 'failed',
+					error: 'A related selected WLED controller could not be probed',
+					deviceId: plan.existingDevice?.id ?? null,
+				};
+			}
+		}
+		const dependencyEdges = new Map<number, Set<number>>();
+		for (const plan of plans.filter(({ index }) => !blockedPlanIndices.has(index))) {
+			const selectedTargetOwner = plans.find(
+				(candidate) =>
+					candidate.existingDevice?.hostname !== null &&
+					candidate.existingDevice?.hostname !== undefined &&
+					this.endpointsEquivalent(candidate.existingDevice.hostname, plan.host) &&
+					candidate.existingDevice.id !== plan.existingDevice?.id,
+			);
+
+			if (selectedTargetOwner) {
+				const planEdges = dependencyEdges.get(plan.index) ?? new Set<number>();
+				planEdges.add(selectedTargetOwner.index);
+				dependencyEdges.set(plan.index, planEdges);
+				const ownerEdges = dependencyEdges.get(selectedTargetOwner.index) ?? new Set<number>();
+				ownerEdges.add(plan.index);
+				dependencyEdges.set(selectedTargetOwner.index, ownerEdges);
+			}
+		}
+		const dependencyGroupByIndex = new Map<number, Set<number>>();
+		for (const start of dependencyEdges.keys()) {
+			if (dependencyGroupByIndex.has(start)) {
+				continue;
+			}
+
+			const group = new Set<number>();
+			const pending = [start];
+			while (pending.length > 0) {
+				const current = pending.pop();
+				if (current === undefined || group.has(current)) {
+					continue;
+				}
+
+				group.add(current);
+				pending.push(...(dependencyEdges.get(current) ?? []));
+			}
+
+			for (const member of group) {
+				dependencyGroupByIndex.set(member, group);
+			}
+		}
+		const registrationSnapshotsByDependencyGroup = new Map<Set<number>, RegisteredWledDevice[]>();
+		for (const dependencyGroup of new Set(dependencyGroupByIndex.values())) {
+			const involvedHosts = plans
+				.filter((plan) => dependencyGroup.has(plan.index))
+				.flatMap((plan) => [plan.host, plan.existingDevice?.hostname].filter((host): host is string => !!host));
+			const registrations = this.wledAdapter
+				.getRegisteredDevices()
+				.filter((registration) => involvedHosts.some((host) => this.endpointsEquivalent(registration.host, host)))
+				.map((registration) => ({ ...registration }));
+			registrationSnapshotsByDependencyGroup.set(dependencyGroup, registrations);
+		}
+
+		const retiredDeviceIds = new Set<string>();
+		const failedDependencyGroups = new Map<Set<number>, string>();
+		const createdDeviceIdsByPlan = new Map<number, string>();
+		const structureSnapshotsByPlan = new Map<number, WledAdoptionStructureSnapshot>();
+		const retiredStaleOwnersByDependencyGroup = new Map<Set<number>, Map<string, WledDeviceEntity>>();
+		const deferredPruningByDependencyGroup = new Map<
+			Set<number>,
+			Array<{ device: WledDeviceEntity; state: WledState }>
+		>();
+
+		for (const { index, request, host, context, existingDevice, identifier } of plans) {
+			if (blockedPlanIndices.has(index)) {
+				continue;
+			}
+
+			const dependencyGroup = dependencyGroupByIndex.get(index);
+			const dependencyFailure = dependencyGroup ? failedDependencyGroups.get(dependencyGroup) : undefined;
+			if (dependencyFailure) {
+				results[index] = {
+					host,
+					name: request.name,
+					status: 'failed',
+					error: dependencyFailure,
+					deviceId: existingDevice?.id ?? null,
+				};
+				continue;
+			}
+
+			let mappedDevice: WledDeviceEntity | null = null;
+			let existingDeviceDisconnected = false;
+			let attemptedRegistrationCreated = false;
+			const retiredStaleOwners: WledDeviceEntity[] = [];
+			const disconnectedStaleOwners: WledDeviceEntity[] = [];
+
+			try {
+				if (existingDevice) {
+					structureSnapshotsByPlan.set(index, await this.adoptionSnapshot.capture(existingDevice.id));
+				}
+				if (existingDevice && existingDevice.identifier !== identifier) {
+					await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(existingDevice.id, {
+						type: DEVICES_WLED_TYPE,
+						identifier,
+						hostname: host,
+					});
+				}
+				const device = await this.deviceMapper.mapDevice(
+					host,
+					context,
+					request.name,
+					identifier,
+					request.description,
+					request.enabled,
+				);
+				mappedDevice = device;
+				if (!existingDevice) {
+					createdDeviceIdsByPlan.set(index, device.id);
+				}
+				if (existingDevice?.hostname && existingDevice.hostname !== host) {
+					const sourceRegistration = this.wledAdapter.getDevice(existingDevice.hostname);
+
+					// During a batch address swap, the previous source host may already hold
+					// another successfully moved controller. Disconnect only the registration
+					// that actually belongs to this device.
+					if (sourceRegistration?.identifier === existingDevice.identifier) {
+						this.wledAdapter.disconnect(existingDevice.hostname, false);
+						existingDeviceDisconnected = true;
+					}
+				}
+				const staleHostOwners = databaseDevices.filter(
+					(device) =>
+						device.hostname !== null &&
+						this.endpointsEquivalent(device.hostname, host) &&
+						device.id !== existingDevice?.id,
+				);
+				const retiringHostOwners = staleHostOwners.filter(
+					(staleHostOwner) => !selectedDeviceIds.has(staleHostOwner.id) && !retiredDeviceIds.has(staleHostOwner.id),
+				);
+				if (dependencyGroup && retiringHostOwners.length > 0) {
+					const groupOwners =
+						retiredStaleOwnersByDependencyGroup.get(dependencyGroup) ?? new Map<string, WledDeviceEntity>();
+					for (const staleHostOwner of staleHostOwners) {
+						groupOwners.set(staleHostOwner.id, staleHostOwner);
+					}
+					retiredStaleOwnersByDependencyGroup.set(dependencyGroup, groupOwners);
+				}
+				if (staleHostOwners.length > 0) {
+					for (const staleHostOwner of retiringHostOwners) {
+						if (!staleHostOwner.hostname) {
+							continue;
+						}
+						const staleRegistration = this.wledAdapter.getDevice(staleHostOwner.hostname);
+						if (staleRegistration?.identifier === staleHostOwner.identifier) {
+							this.wledAdapter.disconnect(staleHostOwner.hostname, false);
+							if (retiringHostOwners.some(({ id }) => id === staleHostOwner.id)) {
+								disconnectedStaleOwners.push(staleHostOwner);
+							}
+						}
+					}
+				}
+				for (const staleHostOwner of retiringHostOwners) {
+					retiredStaleOwners.push(staleHostOwner);
+					await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(staleHostOwner.id, {
+						type: DEVICES_WLED_TYPE,
+						enabled: false,
+						hostname: null,
+					});
+					await this.deviceConnectivityService.setConnectionState(staleHostOwner.id, {
+						state: ConnectionState.DISCONNECTED,
+					});
+					retiredDeviceIds.add(staleHostOwner.id);
+				}
+				let connectionState = ConnectionState.DISCONNECTED;
+				if (!device.enabled) {
+					this.wledAdapter.disconnect(host, false);
+					existingDeviceDisconnected = existingDevice !== null;
+				} else {
+					const registeredDevice = this.wledAdapter.getDevice(host);
+
+					if (registeredDevice?.identifier === identifier && registeredDevice.connected) {
+						registeredDevice.context = context;
+						registeredDevice.lastSeen = new Date();
+						connectionState = ConnectionState.CONNECTED;
+					} else {
+						try {
+							this.wledAdapter.connectWithContext(host, identifier, context);
+							attemptedRegistrationCreated = true;
+							connectionState = ConnectionState.CONNECTED;
+						} catch (error) {
+							this.logger.warn(
+								`WLED device ${identifier} was adopted but its live connection could not be registered`,
+								{
+									resource: device.id,
+									message: error instanceof Error ? error.message : String(error),
+								},
+							);
+						}
+					}
+				}
+				await this.deviceConnectivityService.setConnectionState(device.id, {
+					state: connectionState,
+				});
+				if (dependencyGroup) {
+					const deferredPruning = deferredPruningByDependencyGroup.get(dependencyGroup) ?? [];
+					deferredPruning.push({ device, state: context.state });
+					deferredPruningByDependencyGroup.set(dependencyGroup, deferredPruning);
+				} else {
+					// Independent plans cannot be rolled back by a later batch item.
+					await this.deviceMapper.pruneObsoleteSegmentChannels(device, context.state);
+				}
+				results[index] = {
+					host,
+					name: request.name,
+					status: existingDevice ? 'updated' : 'created',
+					error: null,
+					deviceId: device.id,
+				};
+			} catch (error) {
+				const reason = error instanceof Error ? error.message : String(error);
+
+				if (dependencyGroup) {
+					const dependentFailure = `A related WLED address move failed: ${reason}`;
+					failedDependencyGroups.set(dependencyGroup, dependentFailure);
+					const dependentPlans = plans.filter((plan) => dependencyGroup.has(plan.index));
+					const involvedHosts = new Set(
+						dependentPlans.flatMap((plan) =>
+							[plan.host, plan.existingDevice?.hostname].filter((item): item is string => !!item),
+						),
+					);
+
+					for (const involvedHost of involvedHosts) {
+						await this.tryRollback(`disconnect ${involvedHost}`, () =>
+							Promise.resolve(this.wledAdapter.disconnect(involvedHost, false)),
+						);
+					}
+
+					for (const dependentPlan of dependentPlans) {
+						if (dependentPlan.existingDevice) {
+							const original = dependentPlan.existingDevice;
+							const structureSnapshot = structureSnapshotsByPlan.get(dependentPlan.index);
+							if (structureSnapshot) {
+								await this.tryRollback(`restore device structure ${original.id}`, () =>
+									this.adoptionSnapshot.restore(structureSnapshot),
+								);
+							}
+							await this.tryRollback(`restore device ${original.id}`, () =>
+								this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(original.id, {
+									type: DEVICES_WLED_TYPE,
+									identifier: original.identifier,
+									name: original.name,
+									description: original.description,
+									enabled: original.enabled,
+									hostname: original.hostname,
+								}),
+							);
+							await this.tryRollback(`restore hardware identity ${original.id}`, () =>
+								this.hardwareIdentity.restore(original.id, original.mac),
+							);
+						} else {
+							const partialDevice = await this.tryRollback(
+								`find partial device ${dependentPlan.identifier}`,
+								() =>
+									this.devicesService.findOneBy<WledDeviceEntity>(
+										'identifier',
+										dependentPlan.identifier,
+										DEVICES_WLED_TYPE,
+									),
+								null,
+							);
+							const createdDeviceId = createdDeviceIdsByPlan.get(dependentPlan.index) ?? partialDevice?.id;
+							if (createdDeviceId) {
+								await this.tryRollback(`remove partial device ${createdDeviceId}`, () =>
+									this.devicesService.remove(createdDeviceId),
+								);
+								createdDeviceIdsByPlan.delete(dependentPlan.index);
+							}
+						}
+
+						results[dependentPlan.index] = {
+							host: dependentPlan.host,
+							name: dependentPlan.request.name,
+							status: 'failed',
+							error: dependentFailure,
+							deviceId: dependentPlan.existingDevice?.id ?? null,
+						};
+					}
+
+					for (const staleHostOwner of retiredStaleOwnersByDependencyGroup.get(dependencyGroup)?.values() ?? []) {
+						await this.tryRollback(`restore stale owner ${staleHostOwner.id}`, () =>
+							this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(staleHostOwner.id, {
+								type: DEVICES_WLED_TYPE,
+								identifier: staleHostOwner.identifier,
+								name: staleHostOwner.name,
+								description: staleHostOwner.description,
+								enabled: staleHostOwner.enabled,
+								hostname: staleHostOwner.hostname,
+							}),
+						);
+						await this.tryRollback(`restore stale owner hardware identity ${staleHostOwner.id}`, () =>
+							this.hardwareIdentity.restore(staleHostOwner.id, staleHostOwner.mac),
+						);
+						retiredDeviceIds.delete(staleHostOwner.id);
+					}
+
+					const snapshotDevices = databaseDevices.filter((device) => {
+						const deviceHost = device.hostname;
+						return (
+							deviceHost !== null &&
+							[...involvedHosts].some((involvedHost) => this.endpointsEquivalent(deviceHost, involvedHost))
+						);
+					});
+					await this.tryRollback('restore dependency group registrations', () =>
+						this.restoreDependencyGroupRegistrations(
+							involvedHosts,
+							registrationSnapshotsByDependencyGroup.get(dependencyGroup) ?? [],
+							snapshotDevices,
+						),
+					);
+				} else {
+					if (attemptedRegistrationCreated) {
+						await this.tryRollback(`disconnect ${host}`, () =>
+							Promise.resolve(this.wledAdapter.disconnect(host, false)),
+						);
+					}
+					const partialDevice =
+						mappedDevice ??
+						(await this.tryRollback(
+							`find partial device ${identifier}`,
+							() => this.devicesService.findOneBy<WledDeviceEntity>('identifier', identifier, DEVICES_WLED_TYPE),
+							null,
+						));
+
+					if (existingDevice) {
+						const structureSnapshot = structureSnapshotsByPlan.get(index);
+						if (structureSnapshot) {
+							await this.tryRollback(`restore device structure ${existingDevice.id}`, () =>
+								this.adoptionSnapshot.restore(structureSnapshot),
+							);
+						}
+						await this.tryRollback(`restore device ${existingDevice.id}`, () =>
+							this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(existingDevice.id, {
+								type: DEVICES_WLED_TYPE,
+								identifier: existingDevice.identifier,
+								name: existingDevice.name,
+								description: existingDevice.description,
+								enabled: existingDevice.enabled,
+								hostname: existingDevice.hostname,
+							}),
+						);
+						await this.tryRollback(`restore hardware identity ${existingDevice.id}`, () =>
+							this.hardwareIdentity.restore(existingDevice.id, existingDevice.mac),
+						);
+						if (existingDeviceDisconnected || attemptedRegistrationCreated) {
+							await this.tryRollback(`reconnect device ${existingDevice.id}`, () =>
+								this.restoreDeviceConnection(existingDevice),
+							);
+						}
+					} else if (partialDevice) {
+						await this.tryRollback(`remove partial device ${partialDevice.id}`, () =>
+							this.devicesService.remove(partialDevice.id),
+						);
+					}
+
+					for (const staleHostOwner of retiredStaleOwners) {
+						await this.tryRollback(`restore stale owner ${staleHostOwner.id}`, () =>
+							this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(staleHostOwner.id, {
+								type: DEVICES_WLED_TYPE,
+								identifier: staleHostOwner.identifier,
+								name: staleHostOwner.name,
+								description: staleHostOwner.description,
+								enabled: staleHostOwner.enabled,
+								hostname: staleHostOwner.hostname,
+							}),
+						);
+						await this.tryRollback(`restore stale owner hardware identity ${staleHostOwner.id}`, () =>
+							this.hardwareIdentity.restore(staleHostOwner.id, staleHostOwner.mac),
+						);
+						if (disconnectedStaleOwners.some(({ id }) => id === staleHostOwner.id)) {
+							await this.tryRollback(`reconnect stale owner ${staleHostOwner.id}`, () =>
+								this.restoreDeviceConnection(staleHostOwner),
+							);
+						}
+					}
+
+					results[index] = {
+						host,
+						name: request.name,
+						status: 'failed',
+						error: reason,
+						deviceId: null,
+					};
+				}
+			}
+		}
+
+		// A dependency group commits atomically: no destructive history cleanup may run
+		// until every member has succeeded and the group can no longer roll back.
+		for (const [dependencyGroup, deferredPruning] of deferredPruningByDependencyGroup) {
+			if (
+				failedDependencyGroups.has(dependencyGroup) ||
+				[...dependencyGroup].some((index) => results[index]?.status === 'failed')
+			) {
+				continue;
+			}
+
+			for (const { device, state } of deferredPruning) {
+				await this.deviceMapper.pruneObsoleteSegmentChannels(device, state);
+			}
+		}
+
+		return results.filter((result): result is WledAdoptionResultModel => result !== undefined);
+	}
+
+	private enqueueProvisioning<T>(operation: () => Promise<T>): Promise<T> {
+		const result = this.adoptionQueue.then(operation);
+		this.adoptionQueue = result.then<void>(
+			() => undefined,
+			() => undefined,
+		);
+
+		return result;
+	}
+
+	private async tryRollback<T>(description: string, operation: () => Promise<T>, fallback?: T): Promise<T | undefined> {
+		try {
+			return await operation();
+		} catch (error) {
+			this.logger.error(`WLED adoption rollback could not ${description}`, {
+				message: error instanceof Error ? error.message : String(error),
+			});
+			return fallback;
+		}
+	}
+
+	private async restoreDeviceConnection(device: WledDeviceEntity): Promise<void> {
+		let state = ConnectionState.DISCONNECTED;
+
+		if (device.enabled && device.hostname && device.identifier) {
+			try {
+				await this.wledAdapter.connect(device.hostname, device.identifier, this.config.timeouts.connectionTimeout);
+				state = ConnectionState.CONNECTED;
+			} catch (error) {
+				this.logger.warn(`Could not restore the WLED connection for ${device.identifier}`, {
+					resource: device.id,
+					message: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+
+		await this.deviceConnectivityService.setConnectionState(device.id, { state });
+	}
+
+	private async restoreDependencyGroupRegistrations(
+		involvedHosts: Set<string>,
+		registrations: RegisteredWledDevice[],
+		devices: WledDeviceEntity[],
+	): Promise<void> {
+		const belongsToGroup = (host: string): boolean =>
+			[...involvedHosts].some((involvedHost) => this.endpointsEquivalent(host, involvedHost));
+
+		for (const registration of this.wledAdapter.getRegisteredDevices().filter(({ host }) => belongsToGroup(host))) {
+			this.wledAdapter.disconnect(registration.host, false);
+		}
+
+		for (const registration of registrations.filter(({ connected }) => connected)) {
+			if (registration.context) {
+				this.wledAdapter.connectWithContext(registration.host, registration.identifier, registration.context);
+			} else {
+				await this.wledAdapter.connect(
+					registration.host,
+					registration.identifier,
+					this.config.timeouts.connectionTimeout,
+				);
+			}
+
+			const restored = this.wledAdapter.getDevice(registration.host);
+			if (restored) {
+				restored.enabled = registration.enabled;
+				restored.lastSeen = registration.lastSeen;
+			}
+		}
+
+		const uniqueDevices = new Map(devices.map((device) => [device.id, device]));
+		for (const device of uniqueDevices.values()) {
+			const connected = registrations.some(
+				(registration) =>
+					registration.connected &&
+					registration.identifier === device.identifier &&
+					device.hostname !== null &&
+					this.endpointsEquivalent(registration.host, device.hostname),
+			);
+			await this.deviceConnectivityService.setConnectionState(device.id, {
+				state: connected ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED,
+			});
+		}
 	}
 
 	/**
@@ -497,7 +1271,189 @@ export class WledService extends BaseManagedPluginService {
 		const existingHostnames = new Set(databaseDevices.map((d) => d.hostname));
 
 		// Filter out devices that are already in the database
-		return discoveredDevices.filter((device) => !existingHostnames.has(device.host));
+		return discoveredDevices.filter(
+			(device) =>
+				![...existingHostnames].some(
+					(hostname) =>
+						hostname !== null && this.endpointsEquivalent(hostname, this.discoveryEndpoint(device.host, device.port)),
+				),
+		);
+	}
+
+	private discoveryEndpoint(host: string, port: number): string {
+		const normalizedHost = this.normalizeHost(host);
+		const hasExplicitPort = /^\[[^\]]+\]:\d+$/.test(normalizedHost) || /^[^:]+:\d+$/.test(normalizedHost);
+
+		return port === 80 || hasExplicitPort ? normalizedHost : `${normalizedHost}:${port}`;
+	}
+
+	private normalizeHost(host: string): string {
+		const trimmed = host.trim();
+		if (!trimmed) {
+			throw new WledValidationException('WLED hostname or IP address is required');
+		}
+
+		if (/^https?:\/\//i.test(trimmed)) {
+			let url: URL;
+			try {
+				url = new URL(trimmed);
+			} catch {
+				throw new WledValidationException('WLED address must be a valid hostname or IP address');
+			}
+			if (url.pathname !== '/' || url.search || url.hash) {
+				throw new WledValidationException('WLED address must not include a path, query, or fragment');
+			}
+			return url.host;
+		}
+
+		if (trimmed.includes('/') || trimmed.includes('?') || trimmed.includes('#')) {
+			throw new WledValidationException('WLED address must be a hostname or IP address');
+		}
+
+		if (!trimmed.startsWith('[') && (trimmed.match(/:/g)?.length ?? 0) > 1) {
+			return `[${trimmed}]`;
+		}
+
+		return trimmed;
+	}
+
+	private identifierFromMac(mac: string): string {
+		const normalizedMac = this.normalizeMac(mac);
+		if (!normalizedMac) {
+			throw new WledValidationException('WLED device did not report a valid MAC address');
+		}
+
+		return `wled-${normalizedMac}`;
+	}
+
+	private findExistingDevice(
+		devices: WledDeviceEntity[],
+		host: string,
+		mac?: string | null,
+	): WledDeviceEntity | undefined {
+		if (mac) {
+			const normalizedMac = this.normalizeMac(mac);
+			if (normalizedMac) {
+				const canonicalIdentifier = `wled-${normalizedMac}`;
+				const legacyIdentifier = `wled-${normalizedMac.slice(-6)}`;
+				const legacyHostIdentifiers = this.legacyHostIdentifiers(host);
+				const identityCompatible = (device: WledDeviceEntity): boolean =>
+					!this.hasContradictoryIdentity(device, normalizedMac);
+				const legacyDevices = devices.filter(
+					(device) => device.identifier === legacyIdentifier && identityCompatible(device),
+				);
+
+				return (
+					devices.find((device) => device.identifier === canonicalIdentifier) ??
+					devices.find((device) => device.mac === normalizedMac) ??
+					devices.find((device) => this.deviceSerialMac(device) === normalizedMac) ??
+					legacyDevices.find((device) => device.hostname !== null && this.endpointsEquivalent(device.hostname, host)) ??
+					devices.find(
+						(device) =>
+							identityCompatible(device) &&
+							device.identifier !== null &&
+							legacyHostIdentifiers.has(device.identifier.toLowerCase()) &&
+							device.hostname !== null &&
+							this.endpointsEquivalent(device.hostname, host),
+					) ??
+					devices.find(
+						(device) =>
+							identityCompatible(device) &&
+							device.identifier === null &&
+							device.hostname !== null &&
+							this.endpointsEquivalent(device.hostname, host),
+					)
+				);
+			}
+		}
+
+		return devices.find((device) => device.hostname !== null && this.endpointsEquivalent(device.hostname, host));
+	}
+
+	private normalizeMac(mac?: string | null): string | null {
+		if (!mac) {
+			return null;
+		}
+
+		const normalized = mac.replace(/[^a-fA-F0-9]/g, '').toLowerCase();
+		return normalized.length === 12 ? normalized : null;
+	}
+
+	private deviceSerialMac(device: WledDeviceEntity): string | null {
+		const serial = device.channels
+			?.find((channel) => channel.identifier === WLED_CHANNEL_IDENTIFIERS.DEVICE_INFORMATION)
+			?.properties?.find((property) => property.identifier === WLED_DEVICE_INFO_PROPERTY_IDENTIFIERS.SERIAL_NUMBER)
+			?.value?.value;
+
+		if (typeof serial !== 'string') {
+			return null;
+		}
+
+		return this.normalizeMac(serial);
+	}
+
+	private hasContradictoryIdentity(device: WledDeviceEntity, reportedMac: string): boolean {
+		const knownIdentities = [this.normalizeMac(device.mac), this.deviceSerialMac(device)].filter(
+			(identity): identity is string => identity !== null,
+		);
+
+		return knownIdentities.some((identity) => identity !== reportedMac);
+	}
+
+	private requiresCanonicalIdentity(device: WledDeviceEntity, host: string, mac?: string | null): boolean {
+		if (!mac) {
+			return false;
+		}
+
+		const canonicalIdentifier = this.identifierFromMac(mac);
+		const identifier = device.identifier?.toLowerCase() ?? null;
+
+		return (
+			identifier === null ||
+			identifier === `wled-${canonicalIdentifier.slice(-6)}` ||
+			this.legacyHostIdentifiers(device.hostname ?? host).has(identifier)
+		);
+	}
+
+	private endpointsEquivalent(first: string, second: string): boolean {
+		return this.canonicalEndpoint(first) === this.canonicalEndpoint(second);
+	}
+
+	private canonicalEndpoint(endpoint: string): string {
+		const trimmed = endpoint.trim().toLowerCase();
+		const urlHost = !trimmed.startsWith('[') && (trimmed.match(/:/g)?.length ?? 0) > 1 ? `[${trimmed}]` : trimmed;
+
+		try {
+			const url = new URL(`http://${urlHost}`);
+			return `${url.hostname.replace(/\.$/, '')}${url.port ? `:${url.port}` : ''}`;
+		} catch {
+			// Fall through for unusual host spellings (for example scoped IPv6 literals)
+			// that URL cannot parse but the WLED client may still support.
+		}
+
+		const bracketedIpv6 = trimmed.match(/^\[([^\]]+)](?::(\d+))?$/);
+		if (bracketedIpv6) {
+			const [, address, port] = bracketedIpv6;
+			return port && port !== '80' ? `[${address}]:${port}` : `[${address}]`;
+		}
+
+		if ((trimmed.match(/:/g)?.length ?? 0) > 1) {
+			return `[${trimmed}]`;
+		}
+
+		return trimmed.replace(/\.(?=:\d+$|$)/, '').replace(/:80$/, '');
+	}
+
+	private legacyHostIdentifiers(endpoint: string): Set<string> {
+		const bracketedHost = endpoint.match(/^\[([^\]]+)](?::\d+)?$/)?.[1];
+		const rawHost = bracketedHost ?? endpoint.replace(/:\d+$/, '');
+
+		return new Set([endpoint, rawHost].map((host) => `wled-${host.replace(/\./g, '-')}`.toLowerCase()));
+	}
+
+	private portFromHost(host: string): number {
+		const port = Number(host.match(/:(\d+)$/)?.[1] ?? 80);
+		return Number.isInteger(port) && port > 0 && port <= 65535 ? port : 80;
 	}
 
 	/**

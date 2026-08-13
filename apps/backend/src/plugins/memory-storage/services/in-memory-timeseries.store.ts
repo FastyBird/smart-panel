@@ -362,8 +362,8 @@ export class InMemoryTimeSeriesStore {
 		return results;
 	}
 
-	delete(measurement: string, where?: Record<string, string | string[]>): void {
-		if (!where || Object.keys(where).length === 0) {
+	delete(measurement: string, where?: Record<string, string | string[]>, timeFrom?: Date, timeTo?: Date): void {
+		if ((!where || Object.keys(where).length === 0) && !timeFrom && !timeTo) {
 			this.data.delete(measurement);
 			return;
 		}
@@ -375,7 +375,7 @@ export class InMemoryTimeSeriesStore {
 		}
 
 		const remaining = arr.filter((p) => {
-			return !Object.entries(where).every(([key, value]) => {
+			const matchesTags = Object.entries(where ?? {}).every(([key, value]) => {
 				const pointValue = key in p.tags ? p.tags[key] : key in p.fields ? String(p.fields[key]) : undefined;
 
 				if (pointValue === undefined) {
@@ -388,6 +388,9 @@ export class InMemoryTimeSeriesStore {
 
 				return pointValue === value;
 			});
+			const matchesTime = (!timeFrom || p.timestamp >= timeFrom) && (!timeTo || p.timestamp <= timeTo);
+
+			return !(matchesTags && matchesTime);
 		});
 
 		if (remaining.length === 0) {

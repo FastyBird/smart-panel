@@ -416,6 +416,23 @@ export class PropertyValueService {
 		}
 	}
 
+	async deleteSinceStrict(property: ChannelPropertyEntity, since: Date): Promise<void> {
+		const key = this.valueSourceRegistry.resolve(property);
+		if (key !== property.id) {
+			return;
+		}
+		if (!this.storageService.isConnected()) {
+			throw new Error('Property value storage is unavailable');
+		}
+
+		this.valuesMap.delete(key);
+		this.recentValuesMap.delete(key);
+		const firstTransientMillisecond = new Date(since.getTime() + 1);
+		await this.storageService.queryStrict(
+			`DELETE FROM property_value WHERE propertyId = '${this.escapeTagValue(key)}' AND time >= '${firstTransientMillisecond.toISOString()}'`,
+		);
+	}
+
 	/**
 	 * Compute trend direction from recent cached values.
 	 * Returns null for non-numeric types or insufficient data.

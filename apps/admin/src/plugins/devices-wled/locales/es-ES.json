@@ -114,5 +114,28 @@
 			"edited": "El dispositivo WLED '{device}' ha sido actualizado",
 			"notEdited": "Error al actualizar el dispositivo WLED '{device}'"
 		}
+	},
+	"wizard": {
+		"title": "Añadir dispositivos WLED",
+		"subtitle": "Descubre controladores WLED o añade uno por nombre de host y adopta varios dispositivos a la vez.",
+		"breadcrumb": "Asistente de adopción WLED",
+		"columns": {
+			"identifier": "Dirección MAC o nombre de host",
+			"host": "Host"
+		},
+		"actions": {
+			"rescan": "Volver a explorar la red",
+			"probe": "Comprobar dispositivo"
+		},
+		"mdnsDisabled": {
+			"title": "El descubrimiento automático está desactivado",
+			"message": "Aún puedes añadir un controlador WLED indicando su nombre de host o dirección IP."
+		},
+		"messages": {
+			"discoveryFailed": "No se pudo cargar el descubrimiento WLED.",
+			"rescanFailed": "No se pudo reiniciar el descubrimiento WLED.",
+			"probeFailed": "No se pudo conectar con el dispositivo WLED.",
+			"adoptionFailed": "No se pudieron adoptar los dispositivos WLED seleccionados."
+		}
 	}
 }

@@ -114,5 +114,28 @@
 			"edited": "Urzadzenie WLED '{device}' zostalo zaktualizowane",
 			"notEdited": "Nie udalo sie zaktualizowac urzadzenia WLED '{device}'"
 		}
+	},
+	"wizard": {
+		"title": "Dodaj urządzenia WLED",
+		"subtitle": "Wykryj sterowniki WLED lub dodaj urządzenie po nazwie hosta i przyjmij wiele urządzeń naraz.",
+		"breadcrumb": "Kreator przyjmowania WLED",
+		"columns": {
+			"identifier": "Adres MAC lub nazwa hosta",
+			"host": "Host"
+		},
+		"actions": {
+			"rescan": "Skanuj sieć ponownie",
+			"probe": "Sprawdź urządzenie"
+		},
+		"mdnsDisabled": {
+			"title": "Automatyczne wykrywanie jest wyłączone",
+			"message": "Nadal możesz dodać sterownik WLED, podając poniżej nazwę hosta lub adres IP."
+		},
+		"messages": {
+			"discoveryFailed": "Nie udało się wczytać wykrywania WLED.",
+			"rescanFailed": "Nie udało się ponownie uruchomić wykrywania WLED.",
+			"probeFailed": "Nie udało się połączyć z urządzeniem WLED.",
+			"adoptionFailed": "Nie udało się przyjąć wybranych urządzeń WLED."
+		}
 	}
 }

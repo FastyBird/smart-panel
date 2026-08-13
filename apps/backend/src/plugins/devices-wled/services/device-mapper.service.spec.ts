@@ -18,6 +18,7 @@ import { WledChannelEntity, WledChannelPropertyEntity, WledDeviceEntity } from '
 import { WledDeviceContext, WledInfo, WledState } from '../interfaces/wled.interface';
 
 import { WledDeviceMapperService } from './device-mapper.service';
+import { WledHardwareIdentityService } from './hardware-identity.service';
 
 describe('WledDeviceMapperService', () => {
 	let service: WledDeviceMapperService;
@@ -25,6 +26,7 @@ describe('WledDeviceMapperService', () => {
 	let channelsService: jest.Mocked<ChannelsService>;
 	let channelsPropertiesService: jest.Mocked<ChannelsPropertiesService>;
 	let deviceConnectivityService: jest.Mocked<DeviceConnectivityService>;
+	let hardwareIdentity: jest.Mocked<WledHardwareIdentityService>;
 
 	// Quiet logger noise
 
@@ -123,6 +125,7 @@ describe('WledDeviceMapperService', () => {
 			category: DeviceCategory.LIGHTING,
 			enabled,
 			hostname,
+			mac: 'aabbccddeeff',
 			description: null,
 			icon: null,
 			draft: false,
@@ -175,8 +178,10 @@ describe('WledDeviceMapperService', () => {
 				{
 					provide: ChannelsService,
 					useValue: {
+						findAll: jest.fn().mockResolvedValue([]),
 						findOneBy: jest.fn(),
 						create: jest.fn(),
+						remove: jest.fn(),
 					},
 				},
 				{
@@ -194,6 +199,10 @@ describe('WledDeviceMapperService', () => {
 					},
 				},
 				DeviceProvisionQueueService,
+				{
+					provide: WledHardwareIdentityService,
+					useValue: { persist: jest.fn().mockResolvedValue('persisted') },
+				},
 			],
 		}).compile();
 
@@ -202,9 +211,23 @@ describe('WledDeviceMapperService', () => {
 		channelsService = module.get(ChannelsService);
 		channelsPropertiesService = module.get(ChannelsPropertiesService);
 		deviceConnectivityService = module.get(DeviceConnectivityService);
+		hardwareIdentity = module.get(WledHardwareIdentityService);
 	});
 
 	describe('mapDevice', () => {
+		it('rejects mapping when the verified hardware identity conflicts', async () => {
+			const mockDevice = createMockDevice('device-1', 'wled-aabbccddeeff', '192.168.1.100');
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
+			hardwareIdentity.persist.mockResolvedValueOnce('conflict');
+
+			await expect(
+				service.mapDevice('192.168.1.100', mockDeviceContext, undefined, 'wled-aabbccddeeff'),
+			).rejects.toThrow('WLED hardware identity conflicts with the stored device device-1');
+
+			expect(channelsService.create).not.toHaveBeenCalled();
+			expect(deviceConnectivityService.setConnectionState).not.toHaveBeenCalled();
+		});
+
 		it('should create a new device when it does not exist', async () => {
 			const mockDevice = createMockDevice('device-1', 'wled-ddeeff', '192.168.1.100');
 
@@ -263,10 +286,71 @@ describe('WledDeviceMapperService', () => {
 			);
 		});
 
-		it('should skip updates for disabled device and set connection to UNKNOWN', async () => {
+		it('removes obsolete mapper-owned segment channels during re-adoption', async () => {
+			const mockDevice = createMockDevice('device-1', 'wled-ddeeff', '192.168.1.100');
+			const currentSegment = createMockChannel('segment-current', 'segment_0', mockDevice.id);
+			const obsoleteSegment = createMockChannel('segment-obsolete', 'segment_1', mockDevice.id);
+			const customChannel = createMockChannel('custom-channel', 'segment_custom', mockDevice.id);
+
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
+			channelsService.findAll.mockResolvedValue([currentSegment, obsoleteSegment, customChannel]);
+			channelsService.findOneBy.mockResolvedValue(null);
+			channelsService.create.mockResolvedValue(createMockChannel('channel-1', 'device_information', mockDevice.id));
+			channelsPropertiesService.findOneBy.mockResolvedValue(null);
+			channelsPropertiesService.create.mockResolvedValue(createMockProperty('prop-1', 'test', 'channel-1'));
+			channelsPropertiesService.update.mockResolvedValue(createMockProperty('prop-1', 'test', 'channel-1'));
+
+			await service.pruneObsoleteSegmentChannels(mockDevice, mockDeviceContext.state);
+
+			expect(channelsService.remove).toHaveBeenCalledTimes(1);
+			expect(channelsService.remove).toHaveBeenCalledWith('segment-obsolete');
+		});
+
+		it('should apply confirmed adoption fields when updating an existing device', async () => {
+			const mockDevice = {
+				...createMockDevice('device-1', 'wled-ddeeff', '192.168.1.100', false),
+				name: 'Old strip',
+				description: 'Old description',
+			} as WledDeviceEntity;
+			const updatedDevice = {
+				...mockDevice,
+				name: 'Renamed strip',
+				description: null,
+				enabled: true,
+			};
+
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
+			devicesService.update.mockResolvedValue(updatedDevice as WledDeviceEntity);
+			channelsService.findOneBy.mockResolvedValue(null);
+			channelsService.create.mockResolvedValue(createMockChannel('channel-1', 'device_information', 'device-1'));
+			channelsPropertiesService.findOneBy.mockResolvedValue(null);
+			channelsPropertiesService.create.mockResolvedValue(createMockProperty('prop-1', 'test', 'channel-1'));
+			channelsPropertiesService.update.mockResolvedValue(createMockProperty('prop-1', 'test', 'channel-1'));
+			deviceConnectivityService.setConnectionState.mockResolvedValue(undefined);
+
+			await service.mapDevice('192.168.1.100', mockDeviceContext, 'Renamed strip', 'wled-ddeeff', null, true);
+
+			expect(devicesService.update).toHaveBeenCalledWith(mockDevice.id, {
+				type: DEVICES_WLED_TYPE,
+				hostname: '192.168.1.100',
+				name: 'Renamed strip',
+				description: null,
+				enabled: true,
+			});
+			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith(mockDevice.id, {
+				state: ConnectionState.CONNECTED,
+			});
+		});
+
+		it('should resume idempotent provisioning for an existing disabled device', async () => {
 			const mockDevice = createMockDevice('device-1', 'wled-ddeeff', '192.168.1.100', false);
 
 			devicesService.findOneBy.mockResolvedValue(mockDevice);
+			channelsService.findOneBy.mockResolvedValue(null);
+			channelsService.create.mockResolvedValue(createMockChannel('channel-1', 'device_information', 'device-1'));
+			channelsPropertiesService.findOneBy.mockResolvedValue(null);
+			channelsPropertiesService.create.mockResolvedValue(createMockProperty('prop-1', 'test', 'channel-1'));
+			channelsPropertiesService.update.mockResolvedValue(createMockProperty('prop-1', 'test', 'channel-1'));
 			deviceConnectivityService.setConnectionState.mockResolvedValue(undefined);
 
 			const result = await service.mapDevice('192.168.1.100', mockDeviceContext);
@@ -275,7 +359,7 @@ describe('WledDeviceMapperService', () => {
 			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith(mockDevice.id, {
 				state: ConnectionState.UNKNOWN,
 			});
-			expect(channelsService.findOneBy).not.toHaveBeenCalled();
+			expect(channelsService.create).toHaveBeenCalled();
 		});
 
 		it('should create device_information channel with correct property identifiers', async () => {
@@ -350,6 +434,38 @@ describe('WledDeviceMapperService', () => {
 					name: 'Custom WLED Name',
 				}),
 			);
+		});
+
+		it('preserves manual description and disabled state while provisioning channels', async () => {
+			const mockDevice = {
+				...createMockDevice('device-1', 'custom-wled', '192.168.1.100', false),
+				description: 'Behind the desk',
+			};
+
+			devicesService.findOneBy.mockResolvedValue(null);
+			devicesService.create.mockResolvedValue(mockDevice as WledDeviceEntity);
+			channelsService.findOneBy.mockResolvedValue(null);
+			channelsService.create.mockResolvedValue(createMockChannel('channel-1', 'device_information', 'device-1'));
+			channelsPropertiesService.findOneBy.mockResolvedValue(null);
+			channelsPropertiesService.create.mockResolvedValue(createMockProperty('prop-1', 'test', 'channel-1'));
+			channelsPropertiesService.update.mockResolvedValue(createMockProperty('prop-1', 'test', 'channel-1'));
+
+			await service.mapDevice(
+				'192.168.1.100',
+				mockDeviceContext,
+				'Desk strip',
+				'custom-wled',
+				'Behind the desk',
+				false,
+			);
+
+			expect(devicesService.create).toHaveBeenCalledWith(
+				expect.objectContaining({ description: 'Behind the desk', enabled: false }),
+			);
+			expect(channelsService.create).toHaveBeenCalled();
+			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith('device-1', {
+				state: ConnectionState.UNKNOWN,
+			});
 		});
 	});
 

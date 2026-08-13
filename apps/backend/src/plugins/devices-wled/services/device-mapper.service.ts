@@ -25,6 +25,7 @@ import {
 	wledCurrentToAmps,
 	wledPowerToWatts,
 } from '../devices-wled.constants';
+import { WledValidationException } from '../devices-wled.exceptions';
 import { CreateWledChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { CreateWledChannelDto } from '../dto/create-channel.dto';
 import { CreateWledDeviceDto } from '../dto/create-device.dto';
@@ -33,6 +34,8 @@ import { UpdateWledChannelDto } from '../dto/update-channel.dto';
 import { UpdateWledDeviceDto } from '../dto/update-device.dto';
 import { WledChannelEntity, WledChannelPropertyEntity, WledDeviceEntity } from '../entities/devices-wled.entity';
 import { WledDeviceContext, WledInfo, WledState } from '../interfaces/wled.interface';
+
+import { WledHardwareIdentityService } from './hardware-identity.service';
 
 /**
  * WLED Device Mapper Service
@@ -49,6 +52,7 @@ export class WledDeviceMapperService {
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly provisionQueue: DeviceProvisionQueueService,
+		private readonly hardwareIdentity: WledHardwareIdentityService,
 	) {}
 
 	/**
@@ -59,10 +63,14 @@ export class WledDeviceMapperService {
 		context: WledDeviceContext,
 		configName?: string | null,
 		configIdentifier?: string | null,
+		configDescription?: string | null,
+		configEnabled?: boolean,
 	): Promise<WledDeviceEntity> {
 		const identifier = configIdentifier || this.generateIdentifier(context.info.mac);
 
-		return this.provisionQueue.enqueue(identifier, () => this.doMapDevice(host, context, identifier, configName));
+		return this.provisionQueue.enqueue(identifier, () =>
+			this.doMapDevice(host, context, identifier, configName, configDescription, configEnabled),
+		);
 	}
 
 	private async doMapDevice(
@@ -70,6 +78,8 @@ export class WledDeviceMapperService {
 		context: WledDeviceContext,
 		identifier: string,
 		configName?: string | null,
+		configDescription?: string | null,
+		configEnabled?: boolean,
 	): Promise<WledDeviceEntity> {
 		const name = configName || context.info.name || `WLED ${identifier}`;
 
@@ -83,35 +93,39 @@ export class WledDeviceMapperService {
 				type: DEVICES_WLED_TYPE,
 				identifier,
 				name,
+				description: configDescription ?? null,
 				category: DeviceCategory.LIGHTING,
-				enabled: true,
+				enabled: configEnabled ?? true,
 				hostname: host,
 			};
 
 			device = await this.devicesService.create<WledDeviceEntity, CreateWledDeviceDto>(createDto);
 		} else {
-			// Device exists - check if enabled
-			if (!device.enabled) {
-				await this.deviceConnectivityService.setConnectionState(device.id, {
-					state: ConnectionState.UNKNOWN,
-				});
+			const updateDto: UpdateWledDeviceDto = {
+				type: DEVICES_WLED_TYPE,
+				hostname: host,
+				...(configName !== undefined && configName !== null ? { name: configName } : {}),
+				...(configDescription !== undefined ? { description: configDescription } : {}),
+				...(configEnabled !== undefined ? { enabled: configEnabled } : {}),
+			};
+			const shouldUpdate =
+				device.hostname !== host ||
+				(configName !== undefined && configName !== null && device.name !== configName) ||
+				(configDescription !== undefined && device.description !== configDescription) ||
+				(configEnabled !== undefined && device.enabled !== configEnabled);
 
-				return device;
-			}
-
-			// Update hostname if it changed
-			if (device.hostname !== host) {
-				this.logger.log(`Updating hostname for device ${identifier}: ${device.hostname} -> ${host}`, {
+			if (shouldUpdate) {
+				this.logger.log(`Updating device ${identifier} from confirmed adoption data`, {
 					resource: device.id,
 				});
 
-				const updateDto: UpdateWledDeviceDto = {
-					type: DEVICES_WLED_TYPE,
-					hostname: host,
-				};
-
 				device = await this.devicesService.update<WledDeviceEntity, UpdateWledDeviceDto>(device.id, updateDto);
 			}
+		}
+
+		const identityResult = await this.hardwareIdentity.persist(device, context.info.mac);
+		if (identityResult === 'conflict') {
+			throw new WledValidationException(`WLED hardware identity conflicts with the stored device ${device.id}`);
 		}
 
 		// Create channels and properties
@@ -122,7 +136,7 @@ export class WledDeviceMapperService {
 
 		// Set connection state to CONNECTED
 		await this.deviceConnectivityService.setConnectionState(device.id, {
-			state: ConnectionState.CONNECTED,
+			state: device.enabled ? ConnectionState.CONNECTED : ConnectionState.UNKNOWN,
 		});
 
 		return device;
@@ -401,6 +415,29 @@ export class WledDeviceMapperService {
 			for (const binding of segmentBindings) {
 				await this.createOrUpdateProperty(channel, binding, propertyValues[binding.propertyIdentifier]);
 			}
+		}
+	}
+
+	async pruneObsoleteSegmentChannels(device: WledDeviceEntity, state: WledState): Promise<void> {
+		try {
+			const segmentPrefix = `${WLED_CHANNEL_IDENTIFIERS.SEGMENT}_`;
+			const desiredIdentifiers = new Set(state.segments.map((_, index) => `${segmentPrefix}${index}`));
+			const channels = await this.channelsService.findAll<WledChannelEntity>(device.id, DEVICES_WLED_TYPE);
+
+			for (const channel of channels) {
+				if (
+					/^\d+$/.test(channel.identifier.slice(segmentPrefix.length)) &&
+					channel.identifier.startsWith(segmentPrefix) &&
+					!desiredIdentifiers.has(channel.identifier)
+				) {
+					await this.channelsService.remove(channel.id);
+				}
+			}
+		} catch (error) {
+			this.logger.warn(`Could not prune obsolete WLED segment channels for device ${device.id}`, {
+				resource: device.id,
+				message: error instanceof Error ? error.message : String(error),
+			});
 		}
 	}
 
