@@ -2,7 +2,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { format } from 'prettier';
 
-import { HomeyShsCapture, assertHomeyCaptureSafe } from './homey-shs-probe';
+import { deriveKnownCoverageGaps } from './homey-shs-fixture-coverage';
+import { HomeyShsCapture, assertHomeyCaptureSafe, sanitizeHomeyPayload } from './homey-shs-probe';
 
 const FIXTURE_NAMES = [
 	'light',
@@ -205,6 +206,7 @@ const main = async (): Promise<void> => {
 		throw new Error('Sanitized Homey capture collections are malformed');
 	}
 
+	capture.systemInfo = sanitizeHomeyPayload(capture.systemInfo);
 	assertHomeyCaptureSafe(capture, []);
 
 	const fixtures = selectFixtures(capture.devices);
@@ -223,21 +225,15 @@ const main = async (): Promise<void> => {
 		schemaVersion: 1,
 		provenance: fixtureProvenance(capture.metadata),
 		fixtures: FIXTURE_NAMES.map((name) => `devices/${name}.json`),
-		knownCoverageGaps: [
-			'target_temperature',
-			'alarm_contact',
-			'alarm_smoke',
-			'alarm_co',
-			'measure_co2',
-			'windowcoverings_tilt_set',
-			'measure_pressure',
-		],
+		knownCoverageGaps: deriveKnownCoverageGaps(capture.devices),
 	});
 
 	process.stdout.write(`Promoted ${fixtures.size} sanitized Homey fixtures.\n`);
 };
 
-void main().catch((error: unknown) => {
-	process.stderr.write(`${error instanceof Error ? error.message : 'Homey fixture promotion failed'}\n`);
-	process.exitCode = 1;
-});
+if (require.main === module) {
+	void main().catch((error: unknown) => {
+		process.stderr.write(`${error instanceof Error ? error.message : 'Homey fixture promotion failed'}\n`);
+		process.exitCode = 1;
+	});
+}

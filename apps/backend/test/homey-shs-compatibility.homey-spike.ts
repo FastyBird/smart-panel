@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { deriveKnownCoverageGaps } from './support/homey-shs-fixture-coverage';
 import type { HomeyShsCapture } from './support/homey-shs-probe';
 import {
 	assertHomeyCaptureSafe,
@@ -98,6 +99,26 @@ describe('Homey SHS compatibility probe', () => {
 		expect(manifest.knownCoverageGaps).toEqual(
 			expect.arrayContaining(['target_temperature', 'measure_co2', 'windowcoverings_tilt_set']),
 		);
+	});
+
+	it('derives tracked capability gaps from the full captured inventory', () => {
+		expect(
+			deriveKnownCoverageGaps({
+				first: { capabilities: ['target_temperature', 'alarm_contact.front'] },
+				second: { capabilities: ['measure_co2'] },
+			}),
+		).toEqual(['alarm_smoke', 'alarm_co', 'windowcoverings_tilt_set', 'measure_pressure']);
+	});
+
+	it('rejects unredacted source locale and human timestamp metadata', () => {
+		const capture: HomeyShsCapture = {
+			metadata: {},
+			systemInfo: { dateHuman: 'Private capture date', country: 'Private country', timezone: 'Private/timezone' },
+			zones: {},
+			devices: {},
+		};
+
+		expect(() => assertHomeyCaptureSafe(capture, [])).toThrow('unredacted source locale or time metadata');
 	});
 
 	it('requires an exact expected host and rejects credential-bearing URLs', () => {
@@ -320,6 +341,10 @@ describe('Homey SHS compatibility probe', () => {
 			lastUpdated: '2026-08-12T20:15:30.123Z',
 			lastModified: 1_786_579_200_000,
 			customActivityField: '2026-08-12T20:16:31+02:00',
+			dateHuman: 'Wed Aug 12 2026 20:15:30 GMT+0200',
+			country: 'Private Country',
+			language: 'Private Language',
+			timezone: 'Private/Timezone',
 		});
 		const collisionSafeDevices = sanitizeHomeyDevices({
 			'DEVICE-000001': { id: 'DEVICE-000001', name: 'DEVICE-LABEL-000001' },
@@ -367,6 +392,10 @@ describe('Homey SHS compatibility probe', () => {
 			lastUpdated: '2000-01-01T00:00:00.000Z',
 			lastModified: '2000-01-01T00:00:00.000Z',
 			customActivityField: '2000-01-01T00:00:00.000Z',
+			dateHuman: '2000-01-01T00:00:00.000Z',
+			country: '[~2~]',
+			language: '[~2~]',
+			timezone: '[~2~]',
 		});
 		expect(Object.keys(collisionSafeDevices)).toEqual(['device-000002']);
 		expect(collisionSafeDevices['device-000002']).toMatchObject({

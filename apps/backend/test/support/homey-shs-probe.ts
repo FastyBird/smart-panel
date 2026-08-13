@@ -26,6 +26,8 @@ const BOUNDED_IDENTIFIER_MAP_KEY_PATTERN =
 	/(?:^|[_-])(?:aliases|nodes|devices|channels|endpoints|components|instances)$/i;
 const CAMEL_CASE_PERSONAL_KEY_PATTERN = /(?:Name|Note|Title|Label|Email|Username)$/;
 const BOUNDED_PERSONAL_KEY_PATTERN = /(?:^|[_-])(?:name|note|title|label|email|username)$/i;
+const LOCATION_METADATA_KEY_PATTERN = /^(?:country|language|locale|region|time_?zone)$/i;
+const HUMAN_TIMESTAMP_KEY_PATTERN = /^(?:dateHuman|humanDate)$/i;
 const REFERENCE_KEY_PATTERN = /^(?:deviceId|zone|zoneId|parent|homeyId|ownerUri|driverId|userId)$/i;
 const CAMEL_CASE_REFERENCE_ARRAY_KEY_PATTERN = /(?:Ids|Origins)$/;
 const BOUNDED_REFERENCE_ARRAY_KEY_PATTERN = /(?:^|[_-])(?:ids|origins)$/i;
@@ -287,13 +289,17 @@ const isIdentifierMap = (key: string): boolean =>
 	CAMEL_CASE_IDENTIFIER_MAP_KEY_PATTERN.test(key) || BOUNDED_IDENTIFIER_MAP_KEY_PATTERN.test(key);
 
 const isTimestampKey = (key: string): boolean =>
-	CAMEL_CASE_TIMESTAMP_KEY_PATTERN.test(key) || BOUNDED_TIMESTAMP_KEY_PATTERN.test(key);
+	CAMEL_CASE_TIMESTAMP_KEY_PATTERN.test(key) ||
+	BOUNDED_TIMESTAMP_KEY_PATTERN.test(key) ||
+	HUMAN_TIMESTAMP_KEY_PATTERN.test(key);
 
 const isAddressKey = (key: string): boolean =>
 	CAMEL_CASE_ADDRESS_KEY_PATTERN.test(key) || BOUNDED_ADDRESS_KEY_PATTERN.test(key);
 
 const isPersonalKey = (key: string): boolean =>
-	CAMEL_CASE_PERSONAL_KEY_PATTERN.test(key) || BOUNDED_PERSONAL_KEY_PATTERN.test(key);
+	CAMEL_CASE_PERSONAL_KEY_PATTERN.test(key) ||
+	BOUNDED_PERSONAL_KEY_PATTERN.test(key) ||
+	LOCATION_METADATA_KEY_PATTERN.test(key);
 
 const isReferenceArrayKey = (key: string): boolean =>
 	CAMEL_CASE_REFERENCE_ARRAY_KEY_PATTERN.test(key) || BOUNDED_REFERENCE_ARRAY_KEY_PATTERN.test(key);
@@ -414,15 +420,18 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 
 	return Object.fromEntries(
 		Object.entries(value).map(([nestedKey, nestedValue]) => {
+			const generatedPseudonym = GENERATED_PSEUDONYM_PATTERN.test(nestedKey);
+			const sanitizedIdentifierEntry = generatedPseudonym && nestedValue === REDACTION.identifier;
 			const identifierMapKey =
 				identifierMap ||
-				GENERATED_PSEUDONYM_PATTERN.test(nestedKey) ||
+				generatedPseudonym ||
 				UUID_PATTERN.test(nestedKey) ||
 				/^\d+$/.test(nestedKey) ||
 				IDENTIFIER_KEY_PATTERN.test(nestedKey);
 			const privateMapKey =
 				!preserveKeys && (identifierMap || (identifierMapKey && !PRESERVED_STRUCTURAL_KEY_SET.has(nestedKey)));
-			const safeKey = privateMapKey ? pseudonym('id', nestedKey, context.aliases) : nestedKey;
+			const safeKey =
+				privateMapKey && !sanitizedIdentifierEntry ? pseudonym('id', nestedKey, context.aliases) : nestedKey;
 
 			return [safeKey, sanitizeValue(nestedValue, nestedKey, { ...context, path: nextPath })];
 		}),
@@ -992,6 +1001,32 @@ export const assertHomeyCaptureSafe = (
 
 	if (containsUnredactedEndpoint(capture)) {
 		throw new Error('Sanitized Homey capture still contains an unredacted endpoint value');
+	}
+
+	const containsUnredactedSourceMetadata = (value: unknown, key = ''): boolean => {
+		if (Array.isArray(value)) {
+			return value.some((item) => containsUnredactedSourceMetadata(item, key));
+		}
+
+		if (isRecord(value)) {
+			return Object.entries(value).some(([nestedKey, nestedValue]) => {
+				if (HUMAN_TIMESTAMP_KEY_PATTERN.test(nestedKey)) {
+					return nestedValue !== FIXTURE_TIMESTAMP;
+				}
+
+				if (LOCATION_METADATA_KEY_PATTERN.test(nestedKey)) {
+					return nestedValue !== REDACTION.privateTerm;
+				}
+
+				return containsUnredactedSourceMetadata(nestedValue, nestedKey);
+			});
+		}
+
+		return HUMAN_TIMESTAMP_KEY_PATTERN.test(key) || LOCATION_METADATA_KEY_PATTERN.test(key);
+	};
+
+	if (containsUnredactedSourceMetadata(capture.systemInfo)) {
+		throw new Error('Sanitized Homey capture still contains unredacted source locale or time metadata');
 	}
 
 	const unsafeStringCategory = (value: string): UnsafeCaptureCategory | null => {
