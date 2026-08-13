@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, spec
 Size: large
 Parent: (none)
-Status: in-progress
+Status: done
 Created: 2026-08-12
 
 ## 1. Business goal
@@ -254,7 +254,7 @@ should be driven by the largest real inventory, and Home Assistant delivers the 
 - [x] An adapter can use selection-only confirmation while existing adapters retain editable name/category confirmation.
 - [x] Discover and confirm inventories can be searched without losing edits or selection state.
 - [x] Select-all acts on the documented filtered set and has correct checked/indeterminate states.
-- [ ] Large inventories remain usable on desktop and mobile layouts.
+- [x] Large inventories remain usable on desktop and mobile layouts.
 
 ### Home Assistant
 

@@ -1,3 +1,4 @@
+import { ElPagination } from 'element-plus';
 import { describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
@@ -9,7 +10,7 @@ import type { IWizardControl, IWizardRow } from './device-wizard.types';
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({
-		t: (key: string) => key,
+		t: (key: string, params?: { count?: number }) => (params?.count === undefined ? key : `${key}:${params.count}`),
 	}),
 }));
 
@@ -172,5 +173,106 @@ describe('DeviceWizardDiscoverStep', () => {
 
 		expect(wrapper.findAll('tbody tr')).toHaveLength(1);
 		expect(wrapper.text()).toContain('registered');
+	});
+
+	it('sorts the full discovery inventory before slicing it into pages', async () => {
+		const rows = Array.from({ length: 26 }, (_, index) =>
+			row({
+				key: `device-${index}`,
+				identifier: `device-${index}`,
+				label: `Device ${String(25 - index).padStart(2, '0')}`,
+			})
+		);
+		const wrapper = mountStep([], rows);
+
+		await flushPromises();
+
+		const nameHeader = wrapper.findAll('th').find((header) => header.text().includes('devicesModule.wizard.columns.name'));
+		expect(nameHeader).toBeDefined();
+
+		await nameHeader!.find('.caret-wrapper').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.findAll('tbody tr')).toHaveLength(25);
+		expect(wrapper.find('tbody tr code').text()).toBe('device-25');
+	});
+
+	it('returns to the first page when live row updates shrink the filtered inventory', async () => {
+		const rows = Array.from({ length: 30 }, (_, index) =>
+			row({ key: `device-${index}`, identifier: `device-${index}`, label: `Device ${index}`, status: 'checking' })
+		);
+		const wrapper = mountStep([], rows);
+
+		await flushPromises();
+		await wrapper.find('[data-test-id="wizard-discover-search"] input').setValue('checking');
+		await flushPromises();
+		wrapper.findComponent(ElPagination).vm.$emit('update:current-page', 2);
+		await flushPromises();
+
+		expect(wrapper.findAll('tbody tr')).toHaveLength(5);
+
+		await wrapper.setProps({
+			rows: rows.map((item, index) => ({ ...item, status: index < 10 ? ('checking' as const) : ('ready' as const) })),
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="wizard-discover-pagination"]').exists()).toBe(false);
+		expect(wrapper.findAll('tbody tr')).toHaveLength(10);
+		expect(wrapper.text()).toContain('device-0');
+	});
+
+	it('preserves the current page when live discovery grows', async () => {
+		const rows = Array.from({ length: 30 }, (_, index) =>
+			row({ key: `device-${index}`, identifier: `device-${index}`, label: `Device ${index}` })
+		);
+		const wrapper = mountStep([], rows);
+
+		await flushPromises();
+		wrapper.findComponent(ElPagination).vm.$emit('update:current-page', 2);
+		await flushPromises();
+
+		expect(wrapper.findAll('tbody tr')).toHaveLength(5);
+		expect(wrapper.text()).toContain('device-25');
+
+		await wrapper.setProps({
+			rows: [
+				...rows,
+				...Array.from({ length: 10 }, (_, index) =>
+					row({ key: `device-${index + 30}`, identifier: `device-${index + 30}`, label: `Device ${index + 30}` })
+				),
+			],
+		});
+		await flushPromises();
+
+		expect(wrapper.findAll('tbody tr')).toHaveLength(15);
+		expect(wrapper.text()).toContain('device-25');
+		expect(wrapper.text()).not.toContain('device-0');
+	});
+
+	it('summarizes and horizontally contains a large responsive inventory', async () => {
+		const rows = Array.from({ length: 100 }, (_, index) =>
+			row({
+				key: `device-${index}`,
+				identifier: `device-${index}`,
+				label: `Device ${index}`,
+				status: index < 80 ? 'ready' : index < 90 ? 'already_registered' : 'unsupported',
+				adoptable: index < 80,
+			})
+		);
+		const wrapper = mountStep([], rows);
+
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="wizard-inventory-found"]').text()).toBe('devicesModule.wizard.totals.found:100');
+		expect(wrapper.find('[data-test-id="wizard-inventory-adoptable"]').text()).toBe('devicesModule.wizard.totals.adoptable:80');
+		expect(wrapper.find('[data-test-id="wizard-inventory-alreadyAdded"]').text()).toBe('devicesModule.wizard.totals.alreadyAdded:10');
+		expect(wrapper.find('[data-test-id="wizard-inventory-unsupported"]').text()).toBe('devicesModule.wizard.totals.unsupported:10');
+		expect(wrapper.find('[data-test-id="wizard-inventory-visible"]').text()).toBe('devicesModule.wizard.totals.visible:100');
+		expect(wrapper.findAll('tbody tr')).toHaveLength(25);
+		expect(wrapper.find('[data-test-id="wizard-discover-pagination"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="wizard-discover-table-scroll"]').classes()).toEqual(
+			expect.arrayContaining(['min-h-0', 'overflow-x-auto', 'overscroll-x-contain'])
+		);
+		expect(wrapper.find('[data-test-id="wizard-discover-table-scroll"] .el-table').attributes('style')).toContain('min-width: 680px');
 	});
 });

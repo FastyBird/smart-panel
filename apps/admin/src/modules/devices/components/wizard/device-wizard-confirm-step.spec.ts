@@ -1,4 +1,4 @@
-import { ElSelect } from 'element-plus';
+import { ElPagination, ElSelect } from 'element-plus';
 import { describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
@@ -10,7 +10,7 @@ import type { IWizardColumn, IWizardRow } from './device-wizard.types';
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({
-		t: (key: string) => key,
+		t: (key: string, params?: { count?: number }) => (params?.count === undefined ? key : `${key}:${params.count}`),
 	}),
 }));
 
@@ -32,6 +32,7 @@ const mountStep = (rows: IWizardRow[] = [row()], props: Record<string, unknown> 
 	mount(DeviceWizardConfirmStep, {
 		props: {
 			rows,
+			summaryRows: rows,
 			columns: [],
 			selected: { 'shelly-1.local': true },
 			nameByKey: { 'shelly-1.local': 'Living room switch' },
@@ -114,6 +115,56 @@ describe('DeviceWizardConfirmStep', () => {
 		const order = wrapper.findAll('tbody tr').map((tr) => tr.find('code').text());
 
 		expect(order).toEqual(['a', 'b']);
+	});
+
+	it('sorts the full confirmation inventory before slicing it into pages', async () => {
+		const rows = Array.from({ length: 26 }, (_, index) =>
+			row({
+				key: `device-${index}`,
+				identifier: `device-${index}`,
+				suggestedName: `Device ${String(25 - index).padStart(2, '0')}`,
+			})
+		);
+		const wrapper = mountStep(rows, {
+			confirmationMode: 'selection-only',
+			selected: {},
+			nameByKey: {},
+			categoryByKey: {},
+		});
+
+		await flushPromises();
+
+		expect(wrapper.findAll('tbody tr')).toHaveLength(25);
+		expect(wrapper.find('tbody tr code').text()).toBe('device-25');
+	});
+
+	it('clamps the current page when edited names shrink the filtered inventory', async () => {
+		const rows = Array.from({ length: 30 }, (_, index) =>
+			row({ key: `device-${index}`, identifier: `device-${index}`, suggestedName: `Device ${index}` })
+		);
+		const wrapper = mountStep(rows, {
+			confirmationMode: 'selection-only',
+			selected: {},
+			nameByKey: Object.fromEntries(rows.map((item) => [item.key, `Match ${item.identifier}`])),
+			categoryByKey: {},
+		});
+
+		await flushPromises();
+		await wrapper.find('[data-test-id="wizard-confirm-search"] input').setValue('match');
+		await flushPromises();
+		wrapper.findComponent(ElPagination).vm.$emit('update:current-page', 2);
+		await flushPromises();
+
+		expect(wrapper.findAll('tbody tr')).toHaveLength(5);
+
+		await wrapper.setProps({
+			nameByKey: Object.fromEntries(rows.map((item, index) => [item.key, `${index < 10 ? 'Match' : 'Other'} ${item.identifier}`])),
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="wizard-confirm-pagination"]').exists()).toBe(false);
+		expect(wrapper.findAll('tbody tr')).toHaveLength(10);
+		expect(wrapper.text()).toContain('device-0');
 	});
 
 	it('sorts by the translated category label rather than the raw category value', async () => {
@@ -231,5 +282,43 @@ describe('DeviceWizardConfirmStep', () => {
 
 		expect(wrapper.findAll('tbody tr')).toHaveLength(1);
 		expect(wrapper.text()).toContain('registered');
+	});
+
+	it('keeps full discovery totals while the confirmation table contains only adoptable rows', async () => {
+		const adoptable = row();
+		const wrapper = mountStep([adoptable], {
+			summaryRows: [
+				adoptable,
+				row({ key: 'registered', identifier: 'registered', status: 'already_registered', adoptable: false }),
+				row({ key: 'unsupported', identifier: 'unsupported', status: 'unsupported', adoptable: false }),
+			],
+		});
+
+		await flushPromises();
+
+		expect(wrapper.findAll('tbody tr')).toHaveLength(1);
+		expect(wrapper.find('[data-test-id="wizard-inventory-found"]').text()).toBe('devicesModule.wizard.totals.found:3');
+		expect(wrapper.find('[data-test-id="wizard-inventory-alreadyAdded"]').text()).toBe('devicesModule.wizard.totals.alreadyAdded:1');
+		expect(wrapper.find('[data-test-id="wizard-inventory-unsupported"]').text()).toBe('devicesModule.wizard.totals.unsupported:1');
+		expect(wrapper.find('[data-test-id="wizard-inventory-visible"]').text()).toBe('devicesModule.wizard.totals.visible:1');
+	});
+
+	it('keeps a large confirmation inventory inside a mobile horizontal scroller', async () => {
+		const rows = Array.from({ length: 100 }, (_, index) => row({ key: `device-${index}`, identifier: `device-${index}`, label: `Device ${index}` }));
+		const wrapper = mountStep(rows, {
+			columns: [{ key: 'channels', label: 'Channels', steps: ['confirm'], width: 130 }],
+			confirmationMode: 'selection-only',
+		});
+
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="wizard-inventory-found"]').text()).toBe('devicesModule.wizard.totals.found:100');
+		expect(wrapper.find('[data-test-id="wizard-inventory-visible"]').text()).toBe('devicesModule.wizard.totals.visible:100');
+		expect(wrapper.findAll('tbody tr')).toHaveLength(25);
+		expect(wrapper.find('[data-test-id="wizard-confirm-pagination"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="wizard-confirm-table-scroll"]').classes()).toEqual(
+			expect.arrayContaining(['min-h-0', 'overflow-x-auto', 'overscroll-x-contain'])
+		);
+		expect(wrapper.find('[data-test-id="wizard-confirm-table-scroll"] .el-table').attributes('style')).toContain('min-width: 1030px');
 	});
 });

@@ -114,70 +114,92 @@
 			/>
 		</div>
 
-		<el-table
-			:data="filteredRows"
-			class="h-full w-full flex-grow"
-			table-layout="fixed"
-			:empty-text="t('devicesModule.wizard.texts.empty')"
+		<device-wizard-inventory-summary
+			:rows="rows"
+			:visible-count="filteredRows.length"
+		/>
+
+		<div
+			data-test-id="wizard-discover-table-scroll"
+			class="min-h-0 flex-1 overflow-x-auto overscroll-x-contain"
 		>
-			<el-table-column
-				:label="t('devicesModule.wizard.columns.name')"
-				min-width="200"
-				sortable
-				:sort-method="sortByLabel"
+			<el-table
+				:data="pageRows"
+				class="h-full w-full"
+				:style="{ minWidth: `${tableMinWidth}px` }"
+				table-layout="fixed"
+				:empty-text="t('devicesModule.wizard.texts.empty')"
+				@sort-change="onSortChange"
 			>
-				<template #default="{ row }: { row: IWizardRow }">
-					<div class="flex flex-col">
-						<span class="font-medium">{{ row.label }}</span>
-						<span
-							v-if="row.subLabel"
-							class="text-xs text-gray-500"
-						>
-							{{ row.subLabel }}
-						</span>
-					</div>
-				</template>
-			</el-table-column>
+				<el-table-column
+					prop="name"
+					:label="t('devicesModule.wizard.columns.name')"
+					min-width="200"
+					sortable="custom"
+				>
+					<template #default="{ row }: { row: IWizardRow }">
+						<div class="flex flex-col">
+							<span class="font-medium">{{ row.label }}</span>
+							<span
+								v-if="row.subLabel"
+								class="text-xs text-gray-500"
+							>
+								{{ row.subLabel }}
+							</span>
+						</div>
+					</template>
+				</el-table-column>
 
-			<el-table-column
-				prop="identifier"
-				:label="identifierLabel"
-				min-width="150"
-				sortable
-				:sort-method="sortByIdentifier"
-			>
-				<template #default="{ row }: { row: IWizardRow }">
-					<code class="text-sm">{{ row.identifier }}</code>
-				</template>
-			</el-table-column>
+				<el-table-column
+					prop="identifier"
+					:label="identifierLabel"
+					min-width="150"
+					sortable="custom"
+				>
+					<template #default="{ row }: { row: IWizardRow }">
+						<code class="text-sm">{{ row.identifier }}</code>
+					</template>
+				</el-table-column>
 
-			<el-table-column
-				:label="t('devicesModule.wizard.columns.status')"
-				width="180"
-				sortable
-				:sort-method="sortByStatus"
-			>
-				<template #default="{ row }: { row: IWizardRow }">
-					<el-tag :type="wizardStatusTagType(row.status)">
-						{{ row.statusLabel ?? t(`devicesModule.wizard.statuses.${row.status}`) }}
-					</el-tag>
-				</template>
-			</el-table-column>
+				<el-table-column
+					prop="status"
+					:label="t('devicesModule.wizard.columns.status')"
+					width="180"
+					sortable="custom"
+				>
+					<template #default="{ row }: { row: IWizardRow }">
+						<el-tag :type="wizardStatusTagType(row.status)">
+							{{ row.statusLabel ?? t(`devicesModule.wizard.statuses.${row.status}`) }}
+						</el-tag>
+					</template>
+				</el-table-column>
 
-			<el-table-column
-				v-for="column in extraColumns"
-				:key="column.key"
-				:label="column.label"
-				:width="column.width"
-				:min-width="column.minWidth"
-				:sortable="column.sortable"
-				:sort-method="(a: IWizardRow, b: IWizardRow) => sortByCell(column.key, a, b)"
-			>
-				<template #default="{ row }: { row: IWizardRow }">
-					<device-wizard-cell :cell="row.cells?.[column.key]" />
-				</template>
-			</el-table-column>
-		</el-table>
+				<el-table-column
+					v-for="column in extraColumns"
+					:key="column.key"
+					:prop="column.key"
+					:label="column.label"
+					:width="column.width"
+					:min-width="column.minWidth"
+					:sortable="column.sortable ? 'custom' : false"
+				>
+					<template #default="{ row }: { row: IWizardRow }">
+						<device-wizard-cell :cell="row.cells?.[column.key]" />
+					</template>
+				</el-table-column>
+			</el-table>
+		</div>
+
+		<el-pagination
+			v-if="filteredRows.length > PAGE_SIZE"
+			v-model:current-page="currentPage"
+			data-test-id="wizard-discover-pagination"
+			class="shrink-0 justify-center"
+			layout="prev, pager, next"
+			:page-size="PAGE_SIZE"
+			:pager-count="5"
+			:total="filteredRows.length"
+		/>
 	</div>
 </template>
 
@@ -185,11 +207,25 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, ElProgress, ElTable, ElTableColumn, ElTag, ElText, vLoading } from 'element-plus';
+import {
+	ElAlert,
+	ElButton,
+	ElForm,
+	ElFormItem,
+	ElInput,
+	ElPagination,
+	ElProgress,
+	ElTable,
+	ElTableColumn,
+	ElTag,
+	ElText,
+	vLoading,
+} from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import DeviceWizardCell from './device-wizard-cell.vue';
+import DeviceWizardInventorySummary from './device-wizard-inventory-summary.vue';
 import { compareLocale } from './device-wizard.sort';
 import {
 	type IWizardBannerControl,
@@ -217,7 +253,12 @@ const props = defineProps<IProps>();
 
 const { t } = useI18n();
 
+const PAGE_SIZE = 25;
+
 const search = ref<string>('');
+const currentPage = ref<number>(1);
+const sortKey = ref<string | null>(null);
+const sortOrder = ref<'ascending' | 'descending' | null>(null);
 
 const filteredRows = computed<IWizardRow[]>(() => {
 	const query = search.value.trim().toLocaleLowerCase();
@@ -248,6 +289,8 @@ const progressBars = computed<IWizardProgressControl[]>(() =>
 const forms = computed<IWizardFormControl[]>(() => props.controls.filter((item): item is IWizardFormControl => item.type === 'form'));
 
 const extraColumns = computed<IWizardColumn[]>(() => props.columns.filter((column) => column.steps.includes('discover')));
+
+const tableMinWidth = computed<number>(() => extraColumns.value.reduce((width, column) => width + (column.width ?? column.minWidth ?? 150), 680));
 
 // Field values are keyed by control id so several forms can coexist. Rebuilt whenever the
 // set of form controls changes so a newly-declared form always has a backing record.
@@ -290,4 +333,53 @@ const sortByStatus = (a: IWizardRow, b: IWizardRow): number => {
 };
 
 const sortByCell = (key: string, a: IWizardRow, b: IWizardRow): number => compareLocale(a.cells?.[key]?.value, b.cells?.[key]?.value);
+
+const compareRows = (a: IWizardRow, b: IWizardRow): number => {
+	if (sortKey.value === 'name') {
+		return sortByLabel(a, b);
+	}
+
+	if (sortKey.value === 'identifier') {
+		return sortByIdentifier(a, b);
+	}
+
+	if (sortKey.value === 'status') {
+		return sortByStatus(a, b);
+	}
+
+	return sortKey.value === null ? 0 : sortByCell(sortKey.value, a, b);
+};
+
+const sortedRows = computed<IWizardRow[]>(() => {
+	if (sortKey.value === null || sortOrder.value === null) {
+		return filteredRows.value;
+	}
+
+	const direction = sortOrder.value === 'ascending' ? 1 : -1;
+
+	return [...filteredRows.value].sort((a, b) => direction * compareRows(a, b));
+});
+
+const pageRows = computed<IWizardRow[]>(() => {
+	const start = (currentPage.value - 1) * PAGE_SIZE;
+
+	return sortedRows.value.slice(start, start + PAGE_SIZE);
+});
+
+watch(search, () => {
+	currentPage.value = 1;
+});
+
+watch(
+	() => filteredRows.value.length,
+	(count) => {
+		currentPage.value = Math.min(currentPage.value, Math.max(1, Math.ceil(count / PAGE_SIZE)));
+	}
+);
+
+const onSortChange = ({ prop, order }: { prop: string | null; order: 'ascending' | 'descending' | null }): void => {
+	sortKey.value = prop;
+	sortOrder.value = order;
+	currentPage.value = 1;
+};
 </script>
