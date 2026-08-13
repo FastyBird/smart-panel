@@ -101,6 +101,8 @@ collision checks; credential checks remain fail-closed. IDs are deterministicall
 timestamps are replaced, and full capability IDs—including suffixes—are preserved. Personal labels use non-derived
 opaque markers rather than public hashes. String values in driver-defined `data` and `settings` metadata are
 conservatively redacted, and identifier-like key variants outside those containers are redacted as well.
+Device/zone icons are made opaque, while source-host memory, load, CPU, runtime, and platform fields retain only
+synthetic field shapes.
 
 Automation is not a substitute for review. Before promoting any capture into committed fixtures:
 

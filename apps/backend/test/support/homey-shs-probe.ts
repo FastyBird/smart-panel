@@ -79,6 +79,10 @@ const REDACTION = {
 	identifier: '[~7~]',
 } as const;
 const REDACTION_PATTERN = /\[~[0-7]~\]/g;
+const DEVICE_ICON_KEY_PATTERN = /^(?:icon|iconOverride)$/;
+const SYSTEM_FINGERPRINT_STRING_KEYS = new Set(['nodeVersion', 'platform', 'rebootReason']);
+const SYSTEM_FINGERPRINT_NUMBER_KEYS = new Set(['freemem', 'totalmem', 'uptime']);
+const SYSTEM_FINGERPRINT_BOOLEAN_KEYS = new Set(['dateDst', 'devmode']);
 
 const READ_ENDPOINTS = {
 	systemInfo: '/api/manager/system/',
@@ -116,6 +120,12 @@ interface SanitizerContext {
 	privateTerms: string[];
 	path: string[];
 	rootKind: 'device' | 'generic' | 'zone';
+}
+
+interface PublishedMetadataOptions {
+	redactDeviceIcons?: boolean;
+	redactSystemFingerprint?: boolean;
+	redactZoneIcons?: boolean;
 }
 
 export interface SanitizationAliases {
@@ -355,6 +365,10 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 		return REDACTION.privateTerm;
 	}
 
+	if (value !== null && context.rootKind === 'device' && DEVICE_ICON_KEY_PATTERN.test(key)) {
+		return REDACTION.privateTerm;
+	}
+
 	if (value !== null && !capabilityMapEntry && ENDPOINT_KEY_PATTERN.test(key)) {
 		return REDACTION.url;
 	}
@@ -456,9 +470,15 @@ export const sanitizeHomeyPayload = (
 	return sanitizeValue(value, 'root', { aliases, privateTerms, path: [], rootKind });
 };
 
-export const sanitizeHomeyPublishedMetadata = (value: unknown, redactZoneIcons = false): unknown => {
+const sanitizedSystemCpu = (): Record<string, unknown> => ({
+	model: REDACTION.identifier,
+	speed: 0,
+	times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
+});
+
+export const sanitizeHomeyPublishedMetadata = (value: unknown, options: PublishedMetadataOptions = {}): unknown => {
 	if (Array.isArray(value)) {
-		return value.map((item) => sanitizeHomeyPublishedMetadata(item, redactZoneIcons));
+		return value.map((item) => sanitizeHomeyPublishedMetadata(item, options));
 	}
 
 	if (!isRecord(value)) {
@@ -471,11 +491,37 @@ export const sanitizeHomeyPublishedMetadata = (value: unknown, redactZoneIcons =
 				return [key, FIXTURE_TIMESTAMP];
 			}
 
-			if (LOCATION_METADATA_KEY_PATTERN.test(key) || (redactZoneIcons && key === 'icon')) {
+			if (
+				LOCATION_METADATA_KEY_PATTERN.test(key) ||
+				(options.redactZoneIcons && key === 'icon') ||
+				(options.redactDeviceIcons && DEVICE_ICON_KEY_PATTERN.test(key))
+			) {
 				return [key, REDACTION.privateTerm];
 			}
 
-			return [key, sanitizeHomeyPublishedMetadata(nestedValue, redactZoneIcons)];
+			if (options.redactSystemFingerprint) {
+				if (SYSTEM_FINGERPRINT_STRING_KEYS.has(key)) {
+					return [key, REDACTION.identifier];
+				}
+
+				if (SYSTEM_FINGERPRINT_NUMBER_KEYS.has(key)) {
+					return [key, 0];
+				}
+
+				if (SYSTEM_FINGERPRINT_BOOLEAN_KEYS.has(key)) {
+					return [key, false];
+				}
+
+				if (key === 'loadavg') {
+					return [key, [0, 0, 0]];
+				}
+
+				if (key === 'cpus') {
+					return [key, [sanitizedSystemCpu()]];
+				}
+			}
+
+			return [key, sanitizeHomeyPublishedMetadata(nestedValue, options)];
 		}),
 	);
 };
@@ -782,7 +828,10 @@ export const captureHomeyShs = async (
 				capabilityValue: '/api/manager/devices/device/:deviceId/capability/:capabilityId',
 			},
 		},
-		systemInfo: sanitizeHomeyPayload(systemInfo, config.privateTerms, 'generic', aliases),
+		systemInfo: sanitizeHomeyPublishedMetadata(
+			sanitizeHomeyPayload(systemInfo, config.privateTerms, 'generic', aliases),
+			{ redactSystemFingerprint: true },
+		),
 		zones: sanitizedZones,
 		devices: sanitizedDevices,
 		individualDevice: sanitizedIndividualDevices[safeDeviceId],
@@ -1060,6 +1109,32 @@ export const assertHomeyCaptureSafe = (
 					return nestedValue !== REDACTION.privateTerm;
 				}
 
+				if ((section === 'devices' || section === 'individualDevice') && DEVICE_ICON_KEY_PATTERN.test(nestedKey)) {
+					return nestedValue !== REDACTION.privateTerm;
+				}
+
+				if (section === 'systemInfo') {
+					if (SYSTEM_FINGERPRINT_STRING_KEYS.has(nestedKey)) {
+						return nestedValue !== REDACTION.identifier;
+					}
+
+					if (SYSTEM_FINGERPRINT_NUMBER_KEYS.has(nestedKey)) {
+						return nestedValue !== 0;
+					}
+
+					if (SYSTEM_FINGERPRINT_BOOLEAN_KEYS.has(nestedKey)) {
+						return nestedValue !== false;
+					}
+
+					if (nestedKey === 'loadavg') {
+						return JSON.stringify(nestedValue) !== JSON.stringify([0, 0, 0]);
+					}
+
+					if (nestedKey === 'cpus') {
+						return JSON.stringify(nestedValue) !== JSON.stringify([sanitizedSystemCpu()]);
+					}
+				}
+
 				const nestedSection = section === '' ? nestedKey : section;
 
 				return containsUnredactedSourceMetadata(nestedValue, nestedSection, nestedKey);
@@ -1070,7 +1145,7 @@ export const assertHomeyCaptureSafe = (
 	};
 
 	if (containsUnredactedSourceMetadata(capture)) {
-		throw new Error('Sanitized Homey capture still contains unredacted source metadata or zone semantics');
+		throw new Error('Sanitized Homey capture still contains unredacted metadata, icons, or host fingerprint');
 	}
 
 	const unsafeStringCategory = (value: string): UnsafeCaptureCategory | null => {

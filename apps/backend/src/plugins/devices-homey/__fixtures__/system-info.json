@@ -6,43 +6,22 @@
 	"homeyPlatformVersion": 2,
 	"date": "2000-01-01T00:00:00.000Z",
 	"dateHuman": "2000-01-01T00:00:00.000Z",
-	"dateDst": true,
+	"dateDst": false,
 	"language": "[~2~]",
 	"country": "[~2~]",
 	"timezone": "[~2~]",
-	"rebootReason": "unexpected",
+	"rebootReason": "[~7~]",
 	"bootDate": "2000-01-01T00:00:00.000Z",
 	"id-000018": "[~7~]",
 	"homeyModelName": "[~2~]",
-	"nodeVersion": "v24.18.0",
+	"nodeVersion": "[~7~]",
 	"hostname": "[~0~]",
-	"totalmem": 33642762240,
-	"freemem": 14498045952,
-	"loadavg": [0.25, 0.31, 0.28],
-	"uptime": 83907.51,
-	"cpus": [
-		{
-			"model": "12th Gen Intel(R) Core(TM) i5-12600K",
-			"speed": 0,
-			"times": { "user": 5005530, "nice": 86640, "sys": 585670, "idle": 77326510, "irq": 0 }
-		},
-		{
-			"model": "12th Gen Intel(R) Core(TM) i5-12600K",
-			"speed": 0,
-			"times": { "user": 5042300, "nice": 75150, "sys": 577600, "idle": 77024130, "irq": 0 }
-		},
-		{
-			"model": "12th Gen Intel(R) Core(TM) i5-12600K",
-			"speed": 0,
-			"times": { "user": 4948950, "nice": 79220, "sys": 580020, "idle": 77306040, "irq": 0 }
-		},
-		{
-			"model": "12th Gen Intel(R) Core(TM) i5-12600K",
-			"speed": 0,
-			"times": { "user": 5115180, "nice": 77480, "sys": 582440, "idle": 77192540, "irq": 0 }
-		}
-	],
-	"platform": "linux",
+	"totalmem": 0,
+	"freemem": 0,
+	"loadavg": [0, 0, 0],
+	"uptime": 0,
+	"cpus": [{ "model": "[~7~]", "speed": 0, "times": { "user": 0, "nice": 0, "sys": 0, "idle": 0, "irq": 0 } }],
+	"platform": "[~7~]",
 	"devmode": false,
 	"address": "[~0~]",
 	"mac": "[~0~]"

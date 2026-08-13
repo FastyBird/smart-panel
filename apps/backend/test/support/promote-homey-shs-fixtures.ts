@@ -3,8 +3,8 @@ import { resolve } from 'node:path';
 import { format } from 'prettier';
 
 import { deriveKnownCoverageGaps, deriveKnownDeviceClassGaps } from './homey-shs-fixture-coverage';
+import { buildHomeyFixtureProvenance } from './homey-shs-fixture-manifest';
 import { HomeyShsCapture, assertHomeyCaptureSafe, sanitizeHomeyPublishedMetadata } from './homey-shs-probe';
-import { resolveHomeyTransportPort } from './homey-shs-transport';
 
 const FIXTURE_NAMES = [
 	'light',
@@ -153,34 +153,6 @@ const writeJson = async (path: string, value: unknown): Promise<void> => {
 	await writeFile(path, formatted, { encoding: 'utf8', mode: 0o644 });
 };
 
-const fixtureProvenance = (metadata: JsonRecord): JsonRecord => {
-	const capturedAt = metadata.capturedAt;
-	const homey = metadata.homey;
-	const transport = metadata.transport;
-
-	if (
-		typeof capturedAt !== 'string' ||
-		!/^\d{4}-\d{2}-\d{2}T/.test(capturedAt) ||
-		!isRecord(homey) ||
-		typeof homey.version !== 'string' ||
-		!isRecord(transport) ||
-		typeof transport.protocol !== 'string' ||
-		(typeof transport.port !== 'string' && typeof transport.port !== 'number')
-	) {
-		throw new Error('Sanitized Homey capture metadata is missing fixture provenance');
-	}
-
-	return {
-		captureDate: capturedAt.slice(0, 10),
-		homeyVersion: homey.version,
-		transport: {
-			protocol: transport.protocol,
-			port: resolveHomeyTransportPort(transport.protocol, transport.port),
-		},
-		sanitized: true,
-	};
-};
-
 const main = async (): Promise<void> => {
 	const captureDirectory = process.argv.slice(2).find((argument) => argument !== '--');
 
@@ -201,14 +173,14 @@ const main = async (): Promise<void> => {
 		throw new Error('Sanitized Homey capture collections are malformed');
 	}
 
-	const publishedZones = sanitizeHomeyPublishedMetadata(capture.zones, true);
-	const publishedDevices = sanitizeHomeyPublishedMetadata(capture.devices);
+	const publishedZones = sanitizeHomeyPublishedMetadata(capture.zones, { redactZoneIcons: true });
+	const publishedDevices = sanitizeHomeyPublishedMetadata(capture.devices, { redactDeviceIcons: true });
 
 	if (!isRecord(publishedZones) || !isRecord(publishedDevices)) {
 		throw new Error('Sanitized Homey capture collections are malformed after metadata redaction');
 	}
 
-	capture.systemInfo = sanitizeHomeyPublishedMetadata(capture.systemInfo);
+	capture.systemInfo = sanitizeHomeyPublishedMetadata(capture.systemInfo, { redactSystemFingerprint: true });
 	capture.zones = publishedZones;
 	capture.devices = publishedDevices;
 	assertHomeyCaptureSafe(capture, []);
@@ -221,7 +193,7 @@ const main = async (): Promise<void> => {
 
 	const manifest = {
 		schemaVersion: 1,
-		provenance: fixtureProvenance(capture.metadata),
+		provenance: buildHomeyFixtureProvenance(capture.metadata),
 		fixtures: FIXTURE_NAMES.map((name) => `devices/${name}.json`),
 		knownCoverageGaps: deriveKnownCoverageGaps(publishedDevices),
 		knownDeviceClassGaps: deriveKnownDeviceClassGaps(publishedDevices),

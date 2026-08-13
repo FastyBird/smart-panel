@@ -7,6 +7,7 @@ it must never be committed.
 The corpus retains protocol field names, scalar types, capability order, full repeated/suffixed capability IDs, ranges,
 enum metadata, readable/writable flags, null values, and availability state. Homey IDs, zone/device names, addresses,
 URLs, secrets, timestamps, personal metadata, and driver identifiers are pseudonymized or replaced with opaque markers.
+Device/zone icons and source-host runtime telemetry are replaced with shape-preserving synthetic values.
 
 `climate.json` represents temperature/humidity sensing only. The live corpus contained no target-temperature capability.
 `sensor-air-quality.json` covers the available environmental sensor shape but does not claim CO₂ support.

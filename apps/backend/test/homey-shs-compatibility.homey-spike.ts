@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { deriveKnownCoverageGaps, deriveKnownDeviceClassGaps } from './support/homey-shs-fixture-coverage';
+import { buildHomeyFixtureProvenance } from './support/homey-shs-fixture-manifest';
 import type { HomeyShsCapture } from './support/homey-shs-probe';
 import {
 	assertHomeyCaptureSafe,
@@ -132,12 +133,12 @@ describe('Homey SHS compatibility probe', () => {
 			devices: {},
 		};
 
-		expect(() => assertHomeyCaptureSafe(capture, [])).toThrow('unredacted source metadata or zone semantics');
+		expect(() => assertHomeyCaptureSafe(capture, [])).toThrow('unredacted metadata, icons, or host fingerprint');
 
 		capture.systemInfo = {};
 		capture.devices = { 'device-000001': { country: 'Private country' } };
 
-		expect(() => assertHomeyCaptureSafe(capture, [])).toThrow('unredacted source metadata or zone semantics');
+		expect(() => assertHomeyCaptureSafe(capture, [])).toThrow('unredacted metadata, icons, or host fingerprint');
 	});
 
 	it('redacts and rejects household zone icon semantics', () => {
@@ -150,7 +151,51 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() => assertHomeyCaptureSafe(sanitizedCapture, [])).not.toThrow();
 		expect(() =>
 			assertHomeyCaptureSafe({ ...sanitizedCapture, zones: { 'zone-000001': { icon: 'private-room-kind' } } }, []),
-		).toThrow('unredacted source metadata or zone semantics');
+		).toThrow('unredacted metadata, icons, or host fingerprint');
+	});
+
+	it('redacts device icons and source host fingerprints', () => {
+		const devices = sanitizeHomeyDevices({
+			'private-device': {
+				id: 'private-device',
+				name: 'Private device',
+				icon: 'private-device-icon',
+				iconOverride: 'private-assignment-icon',
+			},
+		});
+		const systemInfo = sanitizeHomeyPublishedMetadata(
+			{
+				nodeVersion: 'private-version',
+				platform: 'private-platform',
+				totalmem: 123,
+				freemem: 45,
+				uptime: 67,
+				loadavg: [1, 2, 3],
+				cpus: [{ model: 'private-cpu', speed: 123, times: { user: 1 } }],
+			},
+			{ redactSystemFingerprint: true },
+		);
+		const capture: HomeyShsCapture = { metadata: {}, systemInfo, zones: {}, devices };
+
+		expect(devices['device-000001']).toMatchObject({ icon: '[~2~]', iconOverride: '[~2~]' });
+		expect(systemInfo).toMatchObject({
+			nodeVersion: '[~7~]',
+			platform: '[~7~]',
+			totalmem: 0,
+			freemem: 0,
+			uptime: 0,
+			loadavg: [0, 0, 0],
+		});
+		expect(() => assertHomeyCaptureSafe(capture, [])).not.toThrow();
+
+		capture.devices = { 'device-000001': { icon: 'private-device-icon' } };
+
+		expect(() => assertHomeyCaptureSafe(capture, [])).toThrow('unredacted metadata, icons, or host fingerprint');
+
+		capture.devices = devices;
+		capture.systemInfo = { totalmem: 123 };
+
+		expect(() => assertHomeyCaptureSafe(capture, [])).toThrow('unredacted metadata, icons, or host fingerprint');
 	});
 
 	it('preserves public capability IDs in individual-device private-term scans', () => {
@@ -177,7 +222,7 @@ describe('Homey SHS compatibility probe', () => {
 		expect(
 			sanitizeHomeyPublishedMetadata(
 				{ nested: { dateHuman: 'Private date', timezone: 'Private/timezone', icon: 'private-room-kind' } },
-				true,
+				{ redactZoneIcons: true },
 			),
 		).toEqual({
 			nested: {
@@ -186,6 +231,20 @@ describe('Homey SHS compatibility probe', () => {
 				icon: '[~2~]',
 			},
 		});
+	});
+
+	it('requires a complete valid ISO timestamp for fixture provenance', () => {
+		const metadata = {
+			capturedAt: '2026-08-13T18:18:49.593Z',
+			homey: { version: '13.4.0' },
+			transport: { protocol: 'http', port: 4859 },
+		};
+
+		expect(buildHomeyFixtureProvenance(metadata)).toMatchObject({ captureDate: '2026-08-13' });
+
+		for (const capturedAt of ['2026-99-99Tgarbage', '2026-08-13T18:18:49.593Ztrailing', 'not-a-date']) {
+			expect(() => buildHomeyFixtureProvenance({ ...metadata, capturedAt })).toThrow('invalid fixture provenance');
+		}
 	});
 
 	it('requires an exact expected host and rejects credential-bearing URLs', () => {
