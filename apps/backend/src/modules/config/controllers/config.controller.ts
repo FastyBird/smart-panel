@@ -34,6 +34,7 @@ import {
 	ConfigValidationResultModel,
 } from '../models/config-validation-response.model';
 import { ModuleConfigModel, PluginConfigModel } from '../models/config.model';
+import { ConfigSecretsService } from '../services/config-secrets.service';
 import { ConfigService } from '../services/config.service';
 import { ModuleTypeMapping, ModulesTypeMapperService } from '../services/modules-type-mapper.service';
 import { PluginConfigValidatorService } from '../services/plugin-config-validator.service';
@@ -46,6 +47,7 @@ export class ConfigController {
 
 	constructor(
 		private readonly service: ConfigService,
+		private readonly configSecrets: ConfigSecretsService,
 		private readonly pluginsMapperService: PluginsTypeMapperService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly pluginConfigValidator: PluginConfigValidatorService,
@@ -64,7 +66,7 @@ export class ConfigController {
 	getAllConfig(): ConfigModuleResAppConfig {
 		this.logger.debug('Fetching application configuration');
 
-		const config = this.service.getConfig();
+		const config = this.service.getPublicConfig();
 
 		this.logger.debug(`Retrieved application configuration`);
 
@@ -87,7 +89,7 @@ export class ConfigController {
 	getPluginsConfig(): ConfigModuleResPlugins {
 		this.logger.debug('Fetching configuration for all plugins');
 
-		const config: PluginConfigModel[] = this.service.getPluginsConfig();
+		const config: PluginConfigModel[] = this.service.getPublicPluginsConfig();
 
 		this.logger.debug('Found configuration for all plugins');
 
@@ -111,7 +113,7 @@ export class ConfigController {
 	getPluginConfig(@Param('plugin') plugin: string): ConfigModuleResPluginConfig {
 		this.logger.debug(`Fetching configuration plugin=${plugin}`);
 
-		const config: PluginConfigModel = this.service.getPluginConfig(plugin);
+		const config: PluginConfigModel = this.service.getPublicPluginConfig(plugin);
 
 		this.logger.debug(`Found configuration plugin=${plugin}`);
 
@@ -171,23 +173,26 @@ export class ConfigController {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 			stopAtFirstError: false,
+			validationError: { target: false, value: false },
 		});
 
 		if (errors.length > 0) {
+			const redactedErrors = this.configSecrets.redactForLogging(errors, mapping.secretFields, dtoInstance);
+
 			this.logger.error(
-				`[VALIDATION FAILED] Validation failed for plugin modification error=${JSON.stringify(errors)} plugin=${plugin} `,
+				`[VALIDATION FAILED] Validation failed for plugin modification error=${JSON.stringify(redactedErrors)} plugin=${plugin} `,
 			);
 
-			throw ValidationExceptionFactory.createException(errors);
+			throw ValidationExceptionFactory.createException(redactedErrors);
 		}
 
 		// Plugin-specific validation (connection tests) is NOT run here — it would
 		// block saves when the target service is temporarily unreachable. Users must
 		// be able to pre-configure credentials before the service is online.
 		// Use POST plugin/:plugin/validate for explicit validation.
-		this.service.setPluginConfig(plugin, dtoInstance);
+		this.service.setPluginConfig(plugin, dtoInstance, pluginConfig.data as Record<string, unknown>);
 
-		const config = this.service.getPluginConfig(plugin);
+		const config = this.service.getPublicPluginConfig(plugin);
 
 		this.logger.debug(`Successfully updated configuration plugin=${plugin}`);
 
@@ -248,21 +253,34 @@ export class ConfigController {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 			stopAtFirstError: false,
+			validationError: { target: false, value: false },
 		});
 
 		if (errors.length > 0) {
+			const redactedErrors = this.configSecrets.redactForLogging(errors, mapping.secretFields, dtoInstance);
+
 			this.logger.error(`[VALIDATION FAILED] Schema validation failed for plugin validation plugin=${plugin}`);
 
-			throw ValidationExceptionFactory.createException(errors);
+			throw ValidationExceptionFactory.createException(redactedErrors);
 		}
 
 		// Plugin-specific validation (connection tests, credential checks, etc.).
-		// Pass the DTO instance (not raw body) so validators get consistent property names.
-		const result = await this.pluginConfigValidator.validate(plugin, dtoInstance as unknown as Record<string, unknown>);
+		// Resolve omitted write-only fields from storage so a saved configuration can
+		// be validated without returning or re-entering its secret.
+		const resolvedConfig = this.service.resolvePluginConfigUpdate(
+			plugin,
+			dtoInstance,
+			pluginConfig.data as Record<string, unknown>,
+		);
+		const result = await this.pluginConfigValidator.validate(
+			plugin,
+			resolvedConfig as unknown as Record<string, unknown>,
+		);
+		const redactedResult = this.configSecrets.redactForLogging(result, mapping.secretFields, resolvedConfig);
 
 		const resultModel = new ConfigValidationResultModel();
-		resultModel.valid = result.valid;
-		resultModel.errors = result.errors;
+		resultModel.valid = redactedResult.valid;
+		resultModel.errors = redactedResult.errors;
 
 		const response = new ConfigModuleResPluginConfigValidation();
 		response.data = resultModel;
@@ -283,7 +301,7 @@ export class ConfigController {
 	getModulesConfig(): ConfigModuleResModules {
 		this.logger.debug('Fetching configuration for all modules');
 
-		const config: ModuleConfigModel[] = this.service.getModulesConfig();
+		const config: ModuleConfigModel[] = this.service.getPublicModulesConfig();
 
 		this.logger.debug('Found configuration for all modules');
 
@@ -307,7 +325,7 @@ export class ConfigController {
 	getModuleConfig(@Param('module') module: string): ConfigModuleResModuleConfig {
 		this.logger.debug(`Fetching configuration module=${module}`);
 
-		const config: ModuleConfigModel = this.service.getModuleConfig(module);
+		const config: ModuleConfigModel = this.service.getPublicModuleConfig(module);
 
 		this.logger.debug(`Found configuration module=${module}`);
 
@@ -368,19 +386,22 @@ export class ConfigController {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 			stopAtFirstError: false,
+			validationError: { target: false, value: false },
 		});
 
 		if (errors.length > 0) {
+			const redactedErrors = this.configSecrets.redactForLogging(errors, mapping.secretFields, dtoInstance);
+
 			this.logger.error(
-				`[VALIDATION FAILED] Validation failed for module modification error=${JSON.stringify(errors)} module=${module} `,
+				`[VALIDATION FAILED] Validation failed for module modification error=${JSON.stringify(redactedErrors)} module=${module} `,
 			);
 
-			throw ValidationExceptionFactory.createException(errors);
+			throw ValidationExceptionFactory.createException(redactedErrors);
 		}
 
-		await this.service.updateModuleConfig(module, dtoInstance);
+		await this.service.updateModuleConfig(module, dtoInstance, moduleConfig.data as Record<string, unknown>);
 
-		const config = this.service.getModuleConfig(module);
+		const config = this.service.getPublicModuleConfig(module);
 
 		this.logger.debug(`Successfully updated configuration module=${module}`);
 

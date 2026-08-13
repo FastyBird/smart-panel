@@ -43,14 +43,12 @@ export class PluginConfigValidatorService {
 
 		try {
 			return await validator.validate(config);
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error(`Config validator for '${pluginType}' threw: ${err.message}`);
+		} catch {
+			this.logger.error(`Config validator for '${pluginType}' failed unexpectedly`);
 
 			return {
 				valid: false,
-				errors: [{ message: err.message }],
+				errors: [{ message: 'Configuration validation failed unexpectedly' }],
 			};
 		}
 	}

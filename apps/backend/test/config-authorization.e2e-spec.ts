@@ -12,6 +12,7 @@ import { AuthenticatedEntity, AuthenticatedRequest } from '../src/modules/auth/g
 import { ConfigController } from '../src/modules/config/controllers/config.controller';
 import { UpdateModuleConfigDto } from '../src/modules/config/dto/config.dto';
 import { ModuleConfigModel } from '../src/modules/config/models/config.model';
+import { ConfigSecretsService } from '../src/modules/config/services/config-secrets.service';
 import { ConfigService } from '../src/modules/config/services/config.service';
 import { ModulesTypeMapperService } from '../src/modules/config/services/modules-type-mapper.service';
 import { PluginConfigValidatorService } from '../src/modules/config/services/plugin-config-validator.service';
@@ -72,11 +73,14 @@ class TestCredentialGuard implements CanActivate {
 
 describe('Module configuration authorization (e2e)', () => {
 	let app: INestApplication;
-	let configService: { getModuleConfig: jest.Mock; updateModuleConfig: jest.Mock };
+	let configService: { getPublicModuleConfig: jest.Mock; updateModuleConfig: jest.Mock };
 
 	beforeAll(async () => {
 		configService = {
-			getModuleConfig: jest.fn().mockReturnValue({ type: 'mock-module', enabled: false } as ModuleConfigModel),
+			getPublicModuleConfig: jest.fn().mockReturnValue({
+				type: 'mock-module',
+				enabled: false,
+			} as ModuleConfigModel),
 			updateModuleConfig: jest.fn().mockResolvedValue(undefined),
 		};
 
@@ -86,6 +90,7 @@ describe('Module configuration authorization (e2e)', () => {
 				{ provide: APP_GUARD, useClass: TestCredentialGuard },
 				{ provide: APP_GUARD, useClass: RolesGuard },
 				{ provide: ConfigService, useValue: configService },
+				ConfigSecretsService,
 				{ provide: PluginsTypeMapperService, useValue: { getMapping: jest.fn() } },
 				{
 					provide: ModulesTypeMapperService,

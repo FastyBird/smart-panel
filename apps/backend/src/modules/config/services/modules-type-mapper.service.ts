@@ -4,12 +4,14 @@ import { createExtensionLogger } from '../../../common/logger';
 import { CONFIG_MODULE_NAME } from '../config.constants';
 import { ConfigException } from '../config.exceptions';
 import { UpdateModuleConfigDto } from '../dto/config.dto';
+import { ConfigSecretField } from '../interfaces/config-secret.interface';
 import { ModuleConfigModel } from '../models/config.model';
 
 export interface ModuleTypeMapping<TModule extends ModuleConfigModel, TConfigDTO extends UpdateModuleConfigDto> {
 	type: string; // e.g., 'devices-module', 'dashboard-module'
 	class: new (...args: any[]) => TModule; // Constructor for the configuration class
 	configDto: new (...args: any[]) => TConfigDTO; // Constructor for the DTO
+	secretFields?: readonly ConfigSecretField[];
 }
 
 @Injectable()

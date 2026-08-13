@@ -1,5 +1,5 @@
 import { instanceToPlain } from 'class-transformer';
-import { validateSync } from 'class-validator';
+import { ValidatorOptions, validateSync } from 'class-validator';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'yaml';
@@ -17,6 +17,7 @@ import { ConfigCorruptedException, ConfigNotFoundException, ConfigValidationExce
 import { UpdateModuleConfigDto, UpdatePluginConfigDto } from '../dto/config.dto';
 import { AppConfigModel, ModuleConfigModel, PluginConfigModel } from '../models/config.model';
 
+import { ConfigSecretsService } from './config-secrets.service';
 import { ModuleConfigMutationRegistryService } from './module-config-mutation-registry.service';
 import { ModulesTypeMapperService } from './modules-type-mapper.service';
 import { PluginsTypeMapperService } from './plugins-type-mapper.service';
@@ -27,11 +28,18 @@ export class ConfigService {
 	private readonly filename = 'config.yaml';
 	private config: AppConfigModel | null = null;
 	private isSaving = false;
+	private readonly validationOptions: ValidatorOptions = {
+		whitelist: true,
+		forbidNonWhitelisted: true,
+		stopAtFirstError: false,
+		validationError: { target: false, value: false },
+	};
 
 	constructor(
 		private readonly configService: NestConfigService,
 		private readonly pluginsMapperService: PluginsTypeMapperService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
+		private readonly configSecrets: ConfigSecretsService,
 		private readonly moduleConfigMutations: ModuleConfigMutationRegistryService,
 		private readonly platform: PlatformService,
 		private readonly eventEmitter: EventEmitter2,
@@ -99,11 +107,7 @@ export class ConfigService {
 			appConfigInstance.modules = this.loadModules(parsedConfig);
 
 			// Validate the transformed configuration
-			const errors = validateSync(appConfigInstance, {
-				whitelist: true,
-				forbidNonWhitelisted: true,
-				stopAtFirstError: false,
-			});
+			const errors = validateSync(appConfigInstance, this.validationOptions);
 
 			if (errors.length > 0) {
 				this.logger.error(`[VALIDATION] Configuration validation failed error=${JSON.stringify(errors)}`);
@@ -219,11 +223,7 @@ export class ConfigService {
 					},
 				);
 
-				const errors = validateSync(instance, {
-					whitelist: true,
-					forbidNonWhitelisted: true,
-					stopAtFirstError: false,
-				});
+				const errors = validateSync(instance, this.validationOptions);
 
 				if (errors.length > 0) {
 					this.logger.warn(`[VALIDATION] Plugin '${pluginType}' is invalid, initializing with defaults`);
@@ -264,11 +264,7 @@ export class ConfigService {
 					},
 				);
 
-				const errors = validateSync(instance, {
-					whitelist: true,
-					forbidNonWhitelisted: true,
-					stopAtFirstError: false,
-				});
+				const errors = validateSync(instance, this.validationOptions);
 
 				if (errors.length > 0) {
 					this.logger.warn(`[VALIDATION] Module '${moduleType}' is invalid, initializing with defaults`);
@@ -294,6 +290,15 @@ export class ConfigService {
 		return this.appConfig;
 	}
 
+	getPublicConfig(): AppConfigModel {
+		const config = instanceToPlain(this.getConfig()) as AppConfigModel;
+
+		config.plugins = this.getPublicPluginsConfig();
+		config.modules = this.getPublicModulesConfig();
+
+		return config;
+	}
+
 	getPluginsConfig<TConfig extends PluginConfigModel>(): TConfig[] {
 		this.logger.debug('Fetching configuration for plugins');
 
@@ -314,11 +319,13 @@ export class ConfigService {
 				excludeExtraneousValues: false,
 			});
 
-			const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true, stopAtFirstError: false });
+			const errors = validateSync(instance, this.validationOptions);
 
 			if (errors.length > 0) {
+				const redactedErrors = this.configSecrets.redactForLogging(errors, mapping.secretFields, instance);
+
 				this.logger.error(
-					`[VALIDATION] Configuration plugin=${pluginConfig.type} is corrupted error=${JSON.stringify(errors)}`,
+					`[VALIDATION] Configuration plugin=${pluginConfig.type} is corrupted error=${JSON.stringify(redactedErrors)}`,
 				);
 
 				throw new ConfigCorruptedException(
@@ -332,6 +339,14 @@ export class ConfigService {
 		this.logger.log('Successfully retrieved configuration for all plugin');
 
 		return configs;
+	}
+
+	getPublicPluginsConfig<TConfig extends PluginConfigModel>(): TConfig[] {
+		return this.getPluginsConfig<TConfig>().map((config) => {
+			const mapping = this.pluginsMapperService.getMapping<TConfig, UpdatePluginConfigDto>(config.type);
+
+			return this.configSecrets.toPublic(config, mapping.secretFields);
+		});
 	}
 
 	getPluginConfig<TConfig extends PluginConfigModel>(plugin: string): TConfig {
@@ -359,10 +374,14 @@ export class ConfigService {
 			excludeExtraneousValues: false,
 		});
 
-		const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true, stopAtFirstError: false });
+		const errors = validateSync(instance, this.validationOptions);
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION] Configuration plugin=${plugin} is corrupted error=${JSON.stringify(errors)}`);
+			const redactedErrors = this.configSecrets.redactForLogging(errors, mapping.secretFields, instance);
+
+			this.logger.error(
+				`[VALIDATION] Configuration plugin=${plugin} is corrupted error=${JSON.stringify(redactedErrors)}`,
+			);
 
 			throw new ConfigCorruptedException(`Configuration plugin '${plugin}' is corrupted and can not be loaded.`);
 		}
@@ -372,7 +391,35 @@ export class ConfigService {
 		return instance;
 	}
 
-	setPluginConfig<TUpdateDto extends UpdatePluginConfigDto>(plugin: string, value: TUpdateDto): void {
+	getPublicPluginConfig<TConfig extends PluginConfigModel>(plugin: string): TConfig {
+		const config = this.getPluginConfig<TConfig>(plugin);
+		const mapping = this.pluginsMapperService.getMapping<TConfig, UpdatePluginConfigDto>(plugin);
+
+		return this.configSecrets.toPublic(config, mapping.secretFields);
+	}
+
+	resolvePluginConfigUpdate<TUpdateDto extends UpdatePluginConfigDto>(
+		plugin: string,
+		value: TUpdateDto,
+		submittedValue: Record<string, unknown> = value as unknown as Record<string, unknown>,
+	): TUpdateDto {
+		const mapping = this.pluginsMapperService.getMapping<PluginConfigModel, TUpdateDto>(plugin);
+		const existingPlugin = (this.appConfig.plugins ?? []).find((existingPlugin) => existingPlugin.type === plugin);
+		const resolvedUpdate = this.configSecrets.resolveUpdate(
+			existingPlugin,
+			value,
+			submittedValue,
+			mapping.secretFields,
+		);
+
+		return toInstance(mapping.configDto, resolvedUpdate, { excludeExtraneousValues: false });
+	}
+
+	setPluginConfig<TUpdateDto extends UpdatePluginConfigDto>(
+		plugin: string,
+		value: TUpdateDto,
+		submittedValue: Record<string, unknown> = value as unknown as Record<string, unknown>,
+	): void {
 		const mapping = this.pluginsMapperService.getMapping<PluginConfigModel, TUpdateDto>(plugin);
 
 		const existingPlugin = (this.appConfig.plugins ?? []).find((existingPlugin) => existingPlugin.type === plugin);
@@ -381,13 +428,17 @@ export class ConfigService {
 			excludeExtraneousValues: false,
 		});
 
-		const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true, stopAtFirstError: false });
+		const errors = validateSync(instance, this.validationOptions);
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION] Validation failed for plugin=${plugin} error=${JSON.stringify(errors)}`);
+			const redactedErrors = this.configSecrets.redactForLogging(errors, mapping.secretFields, instance);
+
+			this.logger.error(`[VALIDATION] Validation failed for plugin=${plugin} error=${JSON.stringify(redactedErrors)}`);
 
 			throw new ConfigValidationException(`New configuration for plugin '${plugin}' is invalid.`);
 		}
+
+		const resolvedUpdate = this.resolvePluginConfigUpdate(plugin, instance, submittedValue);
 
 		this.logger.log(`Updating configuration for plugin=${plugin}`);
 
@@ -397,11 +448,13 @@ export class ConfigService {
 		appConfig.plugins = (appConfig.plugins ?? []).filter((existingPlugin) => existingPlugin.type !== plugin);
 		// Add the new plugin config
 		appConfig.plugins.push(
-			toInstance(mapping.class, {
-				type: plugin,
-				...instanceToPlain(existingPlugin),
-				...instance,
-			}),
+			toInstance(
+				mapping.class,
+				this.configSecrets.merge(existingPlugin, {
+					type: plugin,
+					...resolvedUpdate,
+				}),
+			),
 		);
 
 		this.logger.log(`[SAVE] Saving updated configuration for plugin=${plugin}`);
@@ -436,11 +489,13 @@ export class ConfigService {
 				excludeExtraneousValues: false,
 			});
 
-			const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true, stopAtFirstError: false });
+			const errors = validateSync(instance, this.validationOptions);
 
 			if (errors.length > 0) {
+				const redactedErrors = this.configSecrets.redactForLogging(errors, mapping.secretFields, instance);
+
 				this.logger.error(
-					`[VALIDATION] Configuration module=${moduleConfig.type} is corrupted error=${JSON.stringify(errors)}`,
+					`[VALIDATION] Configuration module=${moduleConfig.type} is corrupted error=${JSON.stringify(redactedErrors)}`,
 				);
 
 				throw new ConfigCorruptedException(
@@ -454,6 +509,14 @@ export class ConfigService {
 		this.logger.log('Successfully retrieved configuration for all modules');
 
 		return configs;
+	}
+
+	getPublicModulesConfig<TConfig extends ModuleConfigModel>(): TConfig[] {
+		return this.getModulesConfig<TConfig>().map((config) => {
+			const mapping = this.modulesMapperService.getMapping<TConfig, UpdateModuleConfigDto>(config.type);
+
+			return this.configSecrets.toPublic(config, mapping.secretFields);
+		});
 	}
 
 	getModuleConfig<TConfig extends ModuleConfigModel>(module: string): TConfig {
@@ -481,10 +544,14 @@ export class ConfigService {
 			excludeExtraneousValues: false,
 		});
 
-		const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true, stopAtFirstError: false });
+		const errors = validateSync(instance, this.validationOptions);
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION] Configuration module=${module} is corrupted error=${JSON.stringify(errors)}`);
+			const redactedErrors = this.configSecrets.redactForLogging(errors, mapping.secretFields, instance);
+
+			this.logger.error(
+				`[VALIDATION] Configuration module=${module} is corrupted error=${JSON.stringify(redactedErrors)}`,
+			);
 
 			throw new ConfigCorruptedException(`Configuration module '${module}' is corrupted and can not be loaded.`);
 		}
@@ -494,7 +561,35 @@ export class ConfigService {
 		return instance;
 	}
 
-	setModuleConfig<TUpdateDto extends UpdateModuleConfigDto>(module: string, value: TUpdateDto): void {
+	getPublicModuleConfig<TConfig extends ModuleConfigModel>(module: string): TConfig {
+		const config = this.getModuleConfig<TConfig>(module);
+		const mapping = this.modulesMapperService.getMapping<TConfig, UpdateModuleConfigDto>(module);
+
+		return this.configSecrets.toPublic(config, mapping.secretFields);
+	}
+
+	resolveModuleConfigUpdate<TUpdateDto extends UpdateModuleConfigDto>(
+		module: string,
+		value: TUpdateDto,
+		submittedValue: Record<string, unknown> = value as unknown as Record<string, unknown>,
+	): TUpdateDto {
+		const mapping = this.modulesMapperService.getMapping<ModuleConfigModel, TUpdateDto>(module);
+		const existingModule = (this.appConfig.modules ?? []).find((existingModule) => existingModule.type === module);
+		const resolvedUpdate = this.configSecrets.resolveUpdate(
+			existingModule,
+			value,
+			submittedValue,
+			mapping.secretFields,
+		);
+
+		return toInstance(mapping.configDto, resolvedUpdate, { excludeExtraneousValues: false });
+	}
+
+	setModuleConfig<TUpdateDto extends UpdateModuleConfigDto>(
+		module: string,
+		value: TUpdateDto,
+		submittedValue: Record<string, unknown> = value as unknown as Record<string, unknown>,
+	): void {
 		const mapping = this.modulesMapperService.getMapping<ModuleConfigModel, TUpdateDto>(module);
 
 		const existingModule = (this.appConfig.modules ?? []).find((existingModule) => existingModule.type === module);
@@ -503,13 +598,17 @@ export class ConfigService {
 			excludeExtraneousValues: false,
 		});
 
-		const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true, stopAtFirstError: false });
+		const errors = validateSync(instance, this.validationOptions);
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION] Validation failed for module=${module} error=${JSON.stringify(errors)}`);
+			const redactedErrors = this.configSecrets.redactForLogging(errors, mapping.secretFields, instance);
+
+			this.logger.error(`[VALIDATION] Validation failed for module=${module} error=${JSON.stringify(redactedErrors)}`);
 
 			throw new ConfigValidationException(`New configuration for module '${module}' is invalid.`);
 		}
+
+		const resolvedUpdate = this.resolveModuleConfigUpdate(module, instance, submittedValue);
 
 		this.logger.log(`Updating configuration for module=${module}`);
 
@@ -519,11 +618,13 @@ export class ConfigService {
 		appConfig.modules = (appConfig.modules ?? []).filter((existingModule) => existingModule.type !== module);
 		// Add the new module config
 		appConfig.modules.push(
-			toInstance(mapping.class, {
-				type: module,
-				...instanceToPlain(existingModule),
-				...instance,
-			}),
+			toInstance(
+				mapping.class,
+				this.configSecrets.merge(existingModule, {
+					type: module,
+					...resolvedUpdate,
+				}),
+			),
 		);
 
 		this.logger.log(`[SAVE] Saving updated configuration for module=${module}`);
@@ -538,8 +639,16 @@ export class ConfigService {
 		this.logger.log(`Configuration update for module=${module} completed successfully`);
 	}
 
-	async updateModuleConfig<TUpdateDto extends UpdateModuleConfigDto>(module: string, value: TUpdateDto): Promise<void> {
-		await this.moduleConfigMutations.execute(module, value, () => this.setModuleConfig(module, value));
+	async updateModuleConfig<TUpdateDto extends UpdateModuleConfigDto>(
+		module: string,
+		value: TUpdateDto,
+		submittedValue: Record<string, unknown> = value as unknown as Record<string, unknown>,
+	): Promise<void> {
+		const resolvedInstance = this.resolveModuleConfigUpdate(module, value, submittedValue);
+
+		await this.moduleConfigMutations.execute(module, resolvedInstance, () =>
+			this.setModuleConfig(module, resolvedInstance, instanceToPlain(resolvedInstance)),
+		);
 	}
 
 	async resetConfig(): Promise<void> {

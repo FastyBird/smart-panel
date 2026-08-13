@@ -131,14 +131,14 @@ apps/backend/src/plugins/devices-homey/__fixtures__/
 
 **Outcome:** Plugin config owners can mark fields as secret without Homey-specific controller hacks.
 
-- [ ] Define a registry/metadata contract for secret fields owned by module/plugin config DTOs.
-- [ ] Redact secret values from complete-config, plugin-config, validation-error, and serialization paths.
-- [ ] Expose a non-secret configured indicator suitable for admin forms.
-- [ ] Implement merge semantics: omitted secret preserves stored value; explicit clear removes it; provided value replaces it.
-- [ ] Ensure mutation events and plugin reload receive the resolved secret without exposing it to responses.
-- [ ] Ensure debug/error logs serialize redacted DTOs.
-- [ ] Add unit tests for get-all, get-one, update-preserve, update-replace, explicit-clear, validation failure, and logging helpers.
-- [ ] Document the registration convention for future secret-bearing plugins.
+- [x] Define a registry/metadata contract for secret fields owned by module/plugin config DTOs.
+- [x] Redact secret values from complete-config, plugin-config, validation-error, and serialization paths.
+- [x] Expose a non-secret configured indicator suitable for admin forms.
+- [x] Implement merge semantics: omitted secret preserves stored value; explicit clear removes it; provided value replaces it.
+- [x] Ensure mutation events and plugin reload receive the resolved secret without exposing it to responses.
+- [x] Ensure debug/error logs serialize redacted DTOs.
+- [x] Add unit tests for get-all, get-one, update-preserve, update-replace, explicit-clear, validation failure, and logging helpers.
+- [x] Document the registration convention for future secret-bearing plugins.
 
 **Verification:**
 
