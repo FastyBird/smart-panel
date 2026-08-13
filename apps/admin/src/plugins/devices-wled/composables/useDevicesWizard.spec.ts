@@ -371,6 +371,78 @@ describe('useDevicesWizard', () => {
 		await adapter.dispose?.();
 	});
 
+	it('adopts a moved controller through its freshly probed endpoint while retaining adoption metadata', async () => {
+		backendClient.GET.mockResolvedValue({
+			data: {
+				data: {
+					...inventory,
+					devices: [
+						{
+							...inventory.devices[0],
+							name: 'Administrator name',
+							adoptedDeviceId: 'device-1',
+						},
+					],
+				},
+			},
+			response: { status: 200 },
+		});
+		backendClient.POST.mockResolvedValueOnce({
+			data: {
+				data: {
+					...inventory.devices[0],
+					host: '192.168.1.200',
+					name: 'Probed name',
+					adoptedDeviceId: null,
+				},
+			},
+			response: { status: 201 },
+		}).mockResolvedValueOnce({
+			data: {
+				data: [{ host: '192.168.1.200', name: 'Administrator name', status: 'updated', error: null }],
+			},
+			response: { status: 200 },
+		});
+		const adapter = useDevicesWizard();
+		await adapter.start();
+		const form = adapter.controls.value.find((control) => control.type === 'form') as IWizardFormControl;
+
+		await form.handler({ host: '192.168.1.200' });
+
+		expect(adapter.rows.value).toEqual([
+			expect.objectContaining({
+				key: 'mac:aabbccddeeff',
+				label: 'Administrator name',
+				status: 'already_registered',
+				willUpdate: true,
+				cells: { host: { render: 'code', value: '192.168.1.200' } },
+			}),
+		]);
+
+		await adapter.adopt([
+			{
+				key: 'mac:aabbccddeeff',
+				name: 'Administrator name',
+				category: DevicesModuleDeviceCategory.lighting,
+			},
+		]);
+
+		expect(backendClient.POST).toHaveBeenLastCalledWith(`/plugins/${DEVICES_WLED_PLUGIN_PREFIX}/discovery/adopt`, {
+			body: {
+				data: {
+					devices: [
+						{
+							host: '192.168.1.200',
+							name: 'Administrator name',
+							category: DevicesWledPluginAdoptDeviceCategory.lighting,
+						},
+					],
+				},
+			},
+		});
+		await adapter.dispose?.();
+	});
+
 	it('keeps a manual probe when an adopted endpoint reports a contradictory MAC', async () => {
 		backendClient.GET.mockResolvedValue({
 			data: {

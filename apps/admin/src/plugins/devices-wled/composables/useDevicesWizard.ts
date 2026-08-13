@@ -122,9 +122,16 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 				}
 			}
 
-			// Once the live inventory recognizes an adopted controller it is authoritative:
-			// retaining the older manual probe would hide its registration and current name.
-			const resolvedDevice = inventoryMatch && inventoryMatch.adoptedDeviceId !== null ? inventoryMatch : device;
+			// Preserve the freshly verified manual endpoint while carrying forward the
+			// administrator-owned name and adoption state from a matching inventory row.
+			const resolvedDevice =
+				inventoryMatch && inventoryMatch.adoptedDeviceId !== null
+					? {
+							...device,
+							name: inventoryMatch.name,
+							adoptedDeviceId: inventoryMatch.adoptedDeviceId,
+						}
+					: device;
 			merged.set(deviceKey(resolvedDevice), resolvedDevice);
 		}
 		return orderBy(Array.from(merged.values()), [(device) => (device.adoptedDeviceId ? 1 : 0), 'name'], ['asc', 'asc']);
