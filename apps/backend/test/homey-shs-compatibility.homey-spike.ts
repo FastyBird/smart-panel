@@ -327,6 +327,36 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() => assertHomeyCaptureRedacted(capture)).toThrow('unredacted sensitive field');
 	});
 
+	it('pseudonymizes private custom capability bases consistently', () => {
+		const devices = sanitizeHomeyDevices(
+			{
+				'private-device': {
+					id: 'private-device',
+					name: 'Private device',
+					capabilities: ['kids_room_temperature', 'homealarm_state'],
+					capabilitiesObj: {
+						kids_room_temperature: { id: 'kids_room_temperature', value: 21 },
+						homealarm_state: { id: 'homealarm_state', value: false },
+					},
+				},
+			},
+			['kids_room', 'home'],
+		);
+		const device = devices['device-000001'] as {
+			capabilities: string[];
+			capabilitiesObj: Record<string, { id: string }>;
+		};
+		const privateAlias = 'capability-base-000001';
+
+		expect(device.capabilities).toEqual([privateAlias, 'homealarm_state']);
+		expect(device.capabilitiesObj[privateAlias]?.id).toBe(privateAlias);
+		expect(JSON.stringify(device)).not.toContain('kids_room');
+		expect(() =>
+			assertHomeyCaptureSafe({ metadata: {}, systemInfo: {}, zones: {}, devices }, [], ['kids_room', 'home']),
+		).not.toThrow();
+		expect(() => assertHomeyCaptureRedacted({ metadata: {}, systemInfo: {}, zones: {}, devices })).not.toThrow();
+	});
+
 	it('pseudonymizes distinct enum option IDs and remaps the current value', () => {
 		const devices = sanitizeHomeyDevices(
 			{

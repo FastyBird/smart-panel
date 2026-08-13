@@ -38,7 +38,7 @@ const BOUNDED_TIMESTAMP_KEY_PATTERN = /(?:^|[_-])(?:at|date|timestamp|updated|mo
 const ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const GENERATED_PSEUDONYM_PATTERN =
-	/^(?:capability-suffix|device|device-label|enum-option|homey|id|p|q|reference|x|z|zone|zone-label)-\d{6}$/;
+	/^(?:capability-base|capability-suffix|device|device-label|enum-option|homey|id|p|q|reference|x|z|zone|zone-label)-\d{6}$/;
 const IPV4_PATTERN = /(?:\d{1,3}\.){3}\d{1,3}/g;
 const BRACKETED_IPV6_PATTERN = /\[([0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?)\]/g;
 const UNBRACKETED_IPV6_PATTERN = /[0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?/g;
@@ -111,6 +111,7 @@ const SYSTEM_INFO_PROTOCOL_KEYS = new Set([
 	'uptime',
 ]);
 const HOMEY_TERM_COLLIDING_PROTOCOL_KEYS = new Set(['homeBattery', 'homeBatteryVirtual', 'homeyclass']);
+const PUBLIC_HOMEY_CAPABILITY_BASES = new Set(['device_status', 'homealarm_state']);
 
 const READ_ENDPOINTS = {
 	systemInfo: '/api/manager/system/',
@@ -338,12 +339,17 @@ const isCapabilityListEntry = (path: string[], rootKind: SanitizerContext['rootK
 
 const sanitizeCapabilityIdentifier = (value: string, aliases: SanitizationAliases): string => {
 	const separator = value.indexOf('.');
+	const base = separator < 0 ? value : value.slice(0, separator);
+	const privateBase =
+		!PUBLIC_HOMEY_CAPABILITY_BASES.has(base) &&
+		[...aliases.forbiddenSubstrings].some((term) => base.toLowerCase().includes(term));
+	const safeBase = privateBase ? pseudonym('capability-base', base, aliases) : base;
 
 	if (separator < 0) {
-		return value;
+		return safeBase;
 	}
 
-	return `${value.slice(0, separator)}.${pseudonym('capability-suffix', value.slice(separator + 1), aliases)}`;
+	return `${safeBase}.${pseudonym('capability-suffix', value.slice(separator + 1), aliases)}`;
 };
 
 const assertSanitizedCapabilityIdentifier = (value: unknown): void => {
@@ -1369,12 +1375,17 @@ export const assertHomeyCaptureSafe = (
 				isCapturedCapabilityListEntry(path) ||
 				isCapturedCapabilityIdentifier(key, path) ||
 				isCapturedCapabilityReadIdentifier(key, path);
-			const inspectedValue = publicCapabilityIdentifier ? value.slice(Math.max(0, value.indexOf('.') + 1)) : value;
+			if (publicCapabilityIdentifier) {
+				const separator = value.indexOf('.');
+				const base = separator < 0 ? value : value.slice(0, separator);
+				const suffix = separator < 0 ? '' : value.slice(separator + 1);
+				const privateBase = !PUBLIC_HOMEY_CAPABILITY_BASES.has(base) && base.toLowerCase().includes(term.toLowerCase());
+				const privateSuffix = suffix.replace(REDACTION_PATTERN, '').toLowerCase().includes(term.toLowerCase());
 
-			return (
-				(!publicCapabilityIdentifier || value.includes('.')) &&
-				inspectedValue.replace(REDACTION_PATTERN, '').toLowerCase().includes(term.toLowerCase())
-			);
+				return privateBase || privateSuffix;
+			}
+
+			return value.replace(REDACTION_PATTERN, '').toLowerCase().includes(term.toLowerCase());
 		}
 
 		if (typeof value === 'number') {
