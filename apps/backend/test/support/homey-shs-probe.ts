@@ -400,6 +400,9 @@ const isCapabilityEnumOptionIdentifier = (
 const isCapabilityListEntry = (path: string[], rootKind: SanitizerContext['rootKind']): boolean =>
 	rootKind === 'device' && path.length === 2 && path[0] === 'root' && path[1] === 'capabilities';
 
+const isCapabilityReferenceField = (key: string, path: string[], rootKind: SanitizerContext['rootKind']): boolean =>
+	rootKind === 'device' && (/capabilit|quickAction|uiIndicator/i.test(key) || path[path.length - 1] === 'capabilities');
+
 const collectCapabilityIdentifiers = (value: unknown, rootKind: SanitizerContext['rootKind']): Set<string> => {
 	if (rootKind !== 'device' || !isRecord(value)) {
 		return new Set();
@@ -579,7 +582,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 			return pseudonym('enum-option', value, context.aliases);
 		}
 
-		if (context.capabilityIdentifiers.has(value)) {
+		if (isCapabilityReferenceField(key, context.path, context.rootKind) && context.capabilityIdentifiers.has(value)) {
 			return sanitizeCapabilityIdentifier(value, context.aliases);
 		}
 
@@ -1073,9 +1076,6 @@ const assertGeneratedPseudonym = (value: unknown): void => {
 
 const assertHomeyPayloadRedacted = (value: unknown, rootKind: SanitizerContext['rootKind']): void => {
 	const capabilityIdentifiers = collectCapabilityIdentifiers(value, rootKind);
-	const isCapabilityReferenceField = (key: string, path: string[]): boolean =>
-		rootKind === 'device' &&
-		(/capabilit|quickAction|uiIndicator/i.test(key) || path[path.length - 1] === 'capabilities');
 	const inspect = (nestedValue: unknown, key: string, path: string[]): void => {
 		const capabilityMapEntry = isCapabilityMap(path, rootKind);
 		const collectionIdentity =
@@ -1172,7 +1172,7 @@ const assertHomeyPayloadRedacted = (value: unknown, rootKind: SanitizerContext['
 				return;
 			}
 
-			if (isCapabilityReferenceField(key, path)) {
+			if (isCapabilityReferenceField(key, path, rootKind)) {
 				if (nestedValue !== '.none' && !capabilityIdentifiers.has(nestedValue)) {
 					throwUnredactedSensitiveField();
 				}

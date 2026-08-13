@@ -398,6 +398,30 @@ describe('Homey SHS compatibility probe', () => {
 		]);
 	});
 
+	it('rewrites capability references without changing equal ordinary state values', () => {
+		const sourceIdentifier = 'measure_temperature.room';
+		const devices = sanitizeHomeyDevices({
+			'private-device': {
+				id: 'private-device',
+				name: 'Private device',
+				capabilities: [sourceIdentifier, 'status_text'],
+				capabilitiesObj: {
+					[sourceIdentifier]: { id: sourceIdentifier, value: 21 },
+					status_text: { id: 'status_text', type: 'string', value: sourceIdentifier },
+				},
+				ui: { quickAction: sourceIdentifier },
+			},
+		});
+		const device = devices['device-000001'] as {
+			capabilitiesObj: Record<string, { value: unknown }>;
+			ui: { quickAction: string };
+		};
+		const alias = 'measure_temperature.capability-suffix-000001';
+
+		expect(device.ui.quickAction).toBe(alias);
+		expect(device.capabilitiesObj.status_text.value).toBe(sourceIdentifier);
+	});
+
 	it('pseudonymizes distinct enum option IDs and remaps the current value', () => {
 		const devices = sanitizeHomeyDevices(
 			{
