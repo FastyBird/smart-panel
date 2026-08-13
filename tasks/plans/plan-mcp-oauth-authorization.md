@@ -412,6 +412,9 @@ amend ADR 0002.
       grant expiry, client/grant/access-token/refresh-family revocation, awaited approver demotion/deletion
       invalidation, global server-secret rotation, and each module/client/grant scope reduction that removes a stream's
       effective read, write, or trigger scope.
+- [x] Provider-backed E2E: deny consent through the production interaction service, return an issuer-bound
+      `access_denied` callback with the original state, consume the interaction against replay, and persist no grant,
+      authorization code, access token, or refresh token.
 - [x] E2E: pause a listen request after authentication, complete a matching artifact revocation or scope reduction,
       then resume registration and prove the stale request cannot open after invalidation success.
 - [x] Provider-backed wire E2E: close an active OAuth subscription at the access-token authorization deadline and

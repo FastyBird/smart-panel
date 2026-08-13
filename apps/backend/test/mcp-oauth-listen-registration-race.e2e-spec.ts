@@ -508,6 +508,7 @@ describe('MCP OAuth listen registration race', () => {
 			await expect(accessTokenSiblingSubscription.closed).resolves.toBe('local');
 			await accessTokenSiblingClient.close();
 			accessTokenSiblingClient = undefined;
+			await subscriptions.closeAll();
 			expect(subscriptions.activeCount).toBe(0);
 
 			jest
