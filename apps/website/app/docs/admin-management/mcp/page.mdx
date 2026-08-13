@@ -355,11 +355,14 @@ recording raw bearer material.
 Use the existing backend CLI to reset an owner password when the Admin login is unavailable. On a pre-built image:
 
 ```bash copy
-sudo smart-panel-cli auth:reset <username> '<new-password>'
+read -rsp 'New owner password: ' SMART_PANEL_RECOVERY_PASSWORD && printf '\n'
+sudo smart-panel-cli auth:reset <username> "$SMART_PANEL_RECOVERY_PASSWORD"
+unset SMART_PANEL_RECOVERY_PASSWORD
 ```
 
 Other installation methods must invoke the same `auth:reset` command through their backend CLI with the installation's
-normal environment and database permissions. Avoid leaving the recovery password in shared terminal history.
+normal environment and database permissions. Use the same silent-prompt pattern on a trusted local console so the
+recovery password is not written to shell history, and clear the variable immediately after the command.
 
 A password reset restores login access but deliberately does **not** revoke OAuth grants, access tokens, refresh
 families, or static MCP credentials. After signing in, select **Revoke all OAuth access**, rotate every static client
