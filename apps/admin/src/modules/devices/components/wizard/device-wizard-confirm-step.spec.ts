@@ -257,9 +257,7 @@ describe('DeviceWizardConfirmStep', () => {
 		const rows = Array.from({ length: 100 }, (_, index) => row({ key: `device-${index}`, identifier: `device-${index}`, label: `Device ${index}` }));
 		const wrapper = mountStep(rows, {
 			columns: [{ key: 'channels', label: 'Channels', steps: ['confirm'], width: 130 }],
-			selected: {},
-			nameByKey: {},
-			categoryByKey: {},
+			confirmationMode: 'selection-only',
 		});
 
 		await flushPromises();
