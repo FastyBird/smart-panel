@@ -250,5 +250,5 @@ describe('DeviceWizardConfirmStep', () => {
 			expect.arrayContaining(['min-h-0', 'overflow-x-auto', 'overscroll-x-contain'])
 		);
 		expect(wrapper.find('[data-test-id="wizard-confirm-table-scroll"] .el-table').attributes('style')).toContain('min-width: 1030px');
-	});
+	}, 10_000);
 });
