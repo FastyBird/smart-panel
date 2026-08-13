@@ -615,12 +615,14 @@ describe('MCP OAuth listen registration race', () => {
 			const scopeContractionSubscription = await scopeContractionClient.listen({ toolsListChanged: true });
 
 			expect(subscriptions.activeCount).toBe(1);
-			const scopeContractionMutation = management.updateClient(
-				scopeContractionOAuthClient.id,
-				{ maximumScopes: [] },
-				'owner-actor',
-			);
+			let scopeContractionMutationSettled = false;
+			const scopeContractionMutation = management
+				.updateClient(scopeContractionOAuthClient.id, { maximumScopes: [] }, 'owner-actor')
+				.finally(() => {
+					scopeContractionMutationSettled = true;
+				});
 			await expect(scopeContractionSubscription.closed).resolves.toBe('remote');
+			expect(scopeContractionMutationSettled).toBe(false);
 			await scopeContractionMutation;
 			expect(subscriptions.activeCount).toBe(0);
 			expect(auditLog).toHaveBeenCalledWith(

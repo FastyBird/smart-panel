@@ -1,6 +1,7 @@
 import {
 	MCP_MAX_ACTIVE_SUBSCRIPTIONS,
 	MCP_MAX_SUBSCRIPTIONS_PER_CLIENT,
+	MCP_SUBSCRIPTION_CLOSE_TIMEOUT_MS,
 	MCP_SUBSCRIPTION_IDLE_TIMEOUT_MS,
 	McpOAuthScope,
 } from '../mcp.constants';
@@ -158,6 +159,37 @@ describe('McpSubscriptionRegistryService', () => {
 
 		expect(other.signal.aborted).toBe(true);
 		expect(staticStream.signal.aborted).toBe(false);
+	});
+
+	it('waits for an attached OAuth transport to finish closing before mutation success', async () => {
+		const subscription = await service.openOAuth('transport-close', () => Promise.resolve(oauthRegistration()));
+		subscription.attachTransport();
+		const aborted = new Promise<void>((resolve) => subscription.signal.addEventListener('abort', () => resolve()));
+		let mutationSettled = false;
+		const mutation = service
+			.closeOAuthAccessToken('access-one', () => Promise.resolve())
+			.finally(() => {
+				mutationSettled = true;
+			});
+
+		await aborted;
+
+		expect(mutationSettled).toBe(false);
+		subscription.completeTransport();
+		await mutation;
+		expect(mutationSettled).toBe(true);
+	});
+
+	it('fails a mutation closed when an attached OAuth transport does not acknowledge closure', async () => {
+		jest.useFakeTimers();
+		const subscription = await service.openOAuth('stalled-transport-close', () => Promise.resolve(oauthRegistration()));
+		subscription.attachTransport();
+		const mutation = service.closeOAuthAccessToken('access-one', () => Promise.resolve());
+		const rejection = expect(mutation).rejects.toThrow('MCP subscription transport did not acknowledge closure');
+
+		await jest.advanceTimersByTimeAsync(MCP_SUBSCRIPTION_CLOSE_TIMEOUT_MS);
+		await rejection;
+		expect(subscription.signal.aborted).toBe(true);
 	});
 
 	it('closes a registration that wins the gate before matching invalidation', async () => {
