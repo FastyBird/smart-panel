@@ -1,5 +1,5 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { cp, mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 import { format } from 'prettier';
 
 import {
@@ -82,17 +82,46 @@ const main = async (): Promise<void> => {
 		knownMetadataGaps: deriveKnownMetadataGaps(publishedDevices),
 		syntheticFixtures: ['synthetic/enum-capability.json'],
 	};
-	const devicesRoot = resolve(outputRoot, 'devices');
+	const stagingParent = await mkdtemp(resolve(dirname(outputRoot), '.homey-fixtures-staging-'));
+	const stagingRoot = resolve(stagingParent, 'next');
+	const backupRoot = resolve(stagingParent, 'previous');
+	let recoveryFailed = false;
 
-	await mkdir(devicesRoot, { recursive: true });
-	await writeJson(resolve(outputRoot, 'system-info.json'), capture.systemInfo);
-	await writeJson(resolve(outputRoot, 'zones.json'), capture.zones);
+	try {
+		await cp(outputRoot, stagingRoot, { recursive: true });
 
-	for (const [name, device] of fixtures) {
-		await writeJson(resolve(devicesRoot, `${name}.json`), device);
+		const devicesRoot = resolve(stagingRoot, 'devices');
+
+		await mkdir(devicesRoot, { recursive: true });
+		await writeJson(resolve(stagingRoot, 'system-info.json'), capture.systemInfo);
+		await writeJson(resolve(stagingRoot, 'zones.json'), capture.zones);
+
+		for (const [name, device] of fixtures) {
+			await writeJson(resolve(devicesRoot, `${name}.json`), device);
+		}
+
+		await writeJson(resolve(stagingRoot, 'manifest.json'), manifest);
+		await rename(outputRoot, backupRoot);
+
+		try {
+			await rename(stagingRoot, outputRoot);
+		} catch (error) {
+			try {
+				await rename(backupRoot, outputRoot);
+			} catch {
+				recoveryFailed = true;
+				throw new Error('Homey fixture replacement failed and requires recovery from the staging directory');
+			}
+
+			throw error;
+		}
+
+		await rm(backupRoot, { force: true, recursive: true });
+	} finally {
+		if (!recoveryFailed) {
+			await rm(stagingParent, { force: true, recursive: true });
+		}
 	}
-
-	await writeJson(resolve(outputRoot, 'manifest.json'), manifest);
 
 	process.stdout.write(`Promoted ${fixtures.size} sanitized Homey fixtures.\n`);
 };

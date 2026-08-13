@@ -73,6 +73,18 @@ describe('Homey SHS compatibility probe', () => {
 			},
 			[],
 		);
+		expect(() =>
+			assertHomeyCaptureSafe(
+				{
+					metadata: {},
+					systemInfo: readFixture('system-info.json'),
+					zones: readFixture('zones.json'),
+					devices: fixtures,
+				},
+				[],
+				['home'],
+			),
+		).not.toThrow();
 		assertHomeyCaptureRedacted({
 			metadata: {},
 			systemInfo: readFixture('system-info.json'),

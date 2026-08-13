@@ -85,6 +85,32 @@ const DEVICE_ICON_KEY_PATTERN = /^(?:icon|iconOverride)$/;
 const SYSTEM_FINGERPRINT_STRING_KEYS = new Set(['nodeVersion', 'platform', 'rebootReason']);
 const SYSTEM_FINGERPRINT_NUMBER_KEYS = new Set(['freemem', 'totalmem', 'uptime']);
 const SYSTEM_FINGERPRINT_BOOLEAN_KEYS = new Set(['dateDst', 'devmode']);
+const SYSTEM_INFO_PROTOCOL_KEYS = new Set([
+	'address',
+	'bootDate',
+	'country',
+	'cpus',
+	'date',
+	'dateDst',
+	'dateHuman',
+	'devmode',
+	'freemem',
+	'homeyModelName',
+	'homeyPlatform',
+	'homeyPlatformVersion',
+	'homeyVersion',
+	'hostname',
+	'language',
+	'loadavg',
+	'mac',
+	'nodeVersion',
+	'platform',
+	'rebootReason',
+	'timezone',
+	'totalmem',
+	'uptime',
+]);
+const HOMEY_TERM_COLLIDING_PROTOCOL_KEYS = new Set(['homeBattery', 'homeBatteryVirtual', 'homeyclass']);
 
 const READ_ENDPOINTS = {
 	systemInfo: '/api/manager/system/',
@@ -1194,7 +1220,10 @@ export const assertHomeyCaptureSafe = (
 		'driverId',
 		'enabled',
 		'format',
+		'homeBattery',
+		'homeBatteryVirtual',
 		'homeyId',
+		'homeyclass',
 		'id',
 		'metadata',
 		'name',
@@ -1272,6 +1301,10 @@ export const assertHomeyCaptureSafe = (
 
 		if (path.length === 2 && path[0] === 'metadata') {
 			return fixedMetadataNestedKeys.get(path[1])?.has(key) ?? false;
+		}
+
+		if (path.length === 1 && path[0] === 'systemInfo') {
+			return SYSTEM_INFO_PROTOCOL_KEYS.has(key) || GENERATED_PSEUDONYM_PATTERN.test(key);
 		}
 
 		return isStructuralRecordPath(path) && fixedPayloadKeys.has(key);
@@ -1358,7 +1391,10 @@ export const assertHomeyCaptureSafe = (
 			const structuralRecord = isStructuralRecordPath(nextPath);
 
 			return Object.entries(value).some(([nestedKey, nestedValue]) => {
-				const structuralKey = structuralRecord && fixedPayloadKeys.has(nestedKey);
+				const structuralKey =
+					(structuralRecord && isFixedCaptureKey(nestedKey, nextPath)) ||
+					(isDriverMetadata(nextPath) && fixedPayloadKeys.has(nestedKey)) ||
+					HOMEY_TERM_COLLIDING_PROTOCOL_KEYS.has(nestedKey);
 				const privateDynamicKey = !preserveKeys && !structuralKey && dynamicKeyContainsPrivateTerm(nestedKey, term);
 
 				return privateDynamicKey || inspectPrivateTermValues(nestedValue, nestedKey, nextPath, term);
