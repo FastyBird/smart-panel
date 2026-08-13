@@ -118,6 +118,8 @@ describe('MCP OAuth listen registration race', () => {
 		let client: Client | undefined;
 		let expiryClient: Client | undefined;
 		let grantExpiryClient: Client | undefined;
+		let accessTokenRevocationClient: Client | undefined;
+		let accessTokenSiblingClient: Client | undefined;
 		let refreshFamilyRevocationClient: Client | undefined;
 		let grantRevocationClient: Client | undefined;
 		const releaseListen = deferred();
@@ -402,6 +404,112 @@ describe('MCP OAuth listen registration race', () => {
 			await grantExpiryClient.close();
 			grantExpiryClient = undefined;
 
+			const activeRevocationAccessToken = 'listen-active-revocation-access-token';
+			const siblingAccessToken = 'listen-active-revocation-sibling-access-token';
+
+			await accessTokens.upsert(
+				activeRevocationAccessToken,
+				{
+					accountId: user.id,
+					aud: urls.resource,
+					clientId: oauthClient.clientIdentifier,
+					grantId: rawGrantId,
+					kind: 'AccessToken',
+					scope: McpOAuthScope.READ,
+				},
+				600,
+			);
+			await accessTokens.upsert(
+				siblingAccessToken,
+				{
+					accountId: user.id,
+					aud: urls.resource,
+					clientId: oauthClient.clientIdentifier,
+					grantId: rawGrantId,
+					kind: 'AccessToken',
+					scope: McpOAuthScope.READ,
+				},
+				600,
+			);
+			const activeRevocationAccessArtifact = await dataSource
+				.getRepository(McpOAuthProviderArtifactEntity)
+				.findOneByOrFail({ model: 'AccessToken', idHash: hashToken(activeRevocationAccessToken) });
+			const siblingAccessArtifact = await dataSource
+				.getRepository(McpOAuthProviderArtifactEntity)
+				.findOneByOrFail({ model: 'AccessToken', idHash: hashToken(siblingAccessToken) });
+			accessTokenRevocationClient = new Client(
+				{ name: 'listen-access-token-revocation-e2e', version: '1.0.0' },
+				{ versionNegotiation: { mode: 'auto' } },
+			);
+			const accessTokenRevocationTransport = new StreamableHTTPClientTransport(endpoint, {
+				requestInit: { headers: { Authorization: `Bearer ${activeRevocationAccessToken}` } },
+			});
+			accessTokenSiblingClient = new Client(
+				{ name: 'listen-access-token-sibling-e2e', version: '1.0.0' },
+				{ versionNegotiation: { mode: 'auto' } },
+			);
+			const accessTokenSiblingTransport = new StreamableHTTPClientTransport(endpoint, {
+				requestInit: { headers: { Authorization: `Bearer ${siblingAccessToken}` } },
+			});
+
+			await accessTokenRevocationClient.connect(accessTokenRevocationTransport);
+			await accessTokenSiblingClient.connect(accessTokenSiblingTransport);
+			const accessTokenRevokedSubscription = await accessTokenRevocationClient.listen({ toolsListChanged: true });
+			const accessTokenSiblingSubscription = await accessTokenSiblingClient.listen({ toolsListChanged: true });
+
+			expect(subscriptions.activeCount).toBe(2);
+			await management.revokeAccessToken(activeRevocationAccessArtifact.managementId, 'owner-actor');
+			await expect(accessTokenRevokedSubscription.closed).resolves.toBe('remote');
+			expect(subscriptions.activeCount).toBe(1);
+			expect(auditLog).toHaveBeenCalledWith(
+				'MCP audit event',
+				expect.objectContaining({ event: 'subscription_close', reason: 'authorization_revoked' }),
+			);
+			expect(auditLog).toHaveBeenCalledWith('MCP audit event', {
+				event: 'oauth_management',
+				request_id: 'administrative',
+				actor_id: 'owner-actor',
+				artifact: 'access_token',
+				artifact_id: activeRevocationAccessArtifact.managementId,
+				action: 'revoked',
+			});
+			await expect(resourceServer.verifyAccessToken(activeRevocationAccessToken)).rejects.toThrow(
+				'The MCP OAuth access token is invalid or no longer active',
+			);
+			await expect(resourceServer.verifyAccessToken(siblingAccessToken)).resolves.toMatchObject({
+				clientId: oauthClient.clientIdentifier,
+			});
+			expect(
+				await dataSource.getRepository(McpOAuthProviderArtifactEntity).findOneBy({
+					model: 'AccessToken',
+					idHash: hashToken(activeRevocationAccessToken),
+				}),
+			).toBeNull();
+			expect(
+				await dataSource.getRepository(McpOAuthProviderArtifactEntity).findOneBy({
+					model: 'AccessToken',
+					managementId: siblingAccessArtifact.managementId,
+				}),
+			).not.toBeNull();
+			expect(
+				(await dataSource.getRepository(McpOAuthGrantEntity).findOneByOrFail({ id: grant.id })).revokedAt,
+			).toBeNull();
+			expect(
+				await dataSource.getRepository(McpOAuthProviderArtifactEntity).existsBy({
+					model: 'Grant',
+					idHash: hashToken(rawGrantId),
+				}),
+			).toBe(true);
+			expect(JSON.stringify(auditLog.mock.calls)).not.toContain(activeRevocationAccessToken);
+			expect(JSON.stringify(auditLog.mock.calls)).not.toContain(siblingAccessToken);
+			await accessTokenRevocationClient.close();
+			accessTokenRevocationClient = undefined;
+			await accessTokenSiblingSubscription.close();
+			await expect(accessTokenSiblingSubscription.closed).resolves.toBe('local');
+			await accessTokenSiblingClient.close();
+			accessTokenSiblingClient = undefined;
+			expect(subscriptions.activeCount).toBe(0);
+
 			jest
 				.spyOn(serverService, 'handleOAuth')
 				.mockImplementation(
@@ -612,6 +720,8 @@ describe('MCP OAuth listen registration race', () => {
 			releaseListen.resolve();
 			await expiryClient?.close();
 			await grantExpiryClient?.close();
+			await accessTokenRevocationClient?.close();
+			await accessTokenSiblingClient?.close();
 			await refreshFamilyRevocationClient?.close();
 			await grantRevocationClient?.close();
 			await client?.close();
