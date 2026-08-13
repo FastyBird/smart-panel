@@ -3,13 +3,14 @@ import { Callout, Steps } from "nextra/components";
 # Model Context Protocol (MCP)
 
 Smart Panel's Model Context Protocol module lets trusted AI agents inspect and control one installation through a
-small, explicitly registered catalog. It is disabled by default, uses installation-local credentials, and never turns
-the REST or OpenAPI surface into agent tools automatically.
+small, explicitly registered catalog. It is disabled by default, supports installation-local static credentials and an
+opt-in browser-mediated OAuth profile, and never turns the REST or OpenAPI surface into agent tools automatically.
 
 <Callout type="warning">
-  The initial release uses static bearer credentials and is intended for a
-  trusted LAN or VPN. Put remote connections behind HTTPS on a reverse proxy. Do
-  not expose the MCP endpoint directly to the public internet.
+  Use static bearer credentials only on a trusted LAN or VPN. Remote OAuth
+  access requires a canonical public HTTPS URL, a valid certificate, and an
+  explicitly trusted reverse proxy. Do not enable OAuth on a direct, unencrypted
+  backend listener.
 </Callout>
 
 The endpoint for an installation is:
@@ -17,6 +18,16 @@ The endpoint for an installation is:
 ```text
 https://<installation-host>/api/v1/modules/mcp
 ```
+
+## Choose an Authorization Profile
+
+| Profile       | Intended network                   | Authentication                                             | Operational behavior                                                                   |
+| ------------- | ---------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Static bearer | Trusted LAN or VPN                 | One-time installation-local token copied to the agent host | Finite credential; rotate or revoke it from **MCP clients**                            |
+| OAuth         | Remote access through public HTTPS | Browser login and explicit owner/administrator consent     | Short-lived access token; optional refresh; manage clients, grants, and token families |
+
+The profiles coexist and use separate credential types. Enabling, disabling, or revoking OAuth does not convert or
+invalidate static credentials. Disabling the complete MCP module closes both profiles.
 
 ## Before You Begin
 
@@ -66,7 +77,7 @@ https://<installation-host>/api/v1/modules/mcp
   reported by the MCP server.
 </Callout>
 
-## Create a Client Credential
+## Create a Static Client Credential
 
 <Steps>
 	### Open MCP clients
@@ -103,12 +114,165 @@ Create separate clients when agents have different responsibilities.
 For a new integration, begin with a read-only client. Add `write` or `trigger` only after reviewing the exact tools and
 the agent's approval behavior.
 
+## Deploy Remote OAuth
+
+OAuth is disabled by default. Complete the proxy and public-identity setup before enabling it.
+
+### Public URL and reverse-proxy requirements
+
+The **OAuth public base URL** is the canonical external identity of this installation, not merely a proxy hint. It must
+be an absolute HTTPS URL without credentials, query, fragment, or trailing slash. Smart Panel derives the resource,
+issuer, authorization, token, revocation, and discovery URLs only from this stored value; `Host`, `Forwarded`, and
+`X-Forwarded-*` headers never choose the OAuth identity.
+
+Two proxy layouts are supported:
+
+| Layout                | OAuth public base URL                     | Public MCP resource                                          | Required upstream mapping                              |
+| --------------------- | ----------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------ |
+| Dedicated origin      | `https://panel.example.com`               | `https://panel.example.com/api/v1/modules/mcp`               | Preserve the complete request path                     |
+| Path-prefixed gateway | `https://gateway.example.com/smart-panel` | `https://gateway.example.com/smart-panel/api/v1/modules/mcp` | Remove `/smart-panel` before forwarding to Smart Panel |
+
+For a path-prefixed gateway, configure all three mappings. OAuth discovery will fail if only the resource path is
+forwarded:
+
+| External path prefix                                                           | Smart Panel upstream path prefix                                   |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `/smart-panel/api/v1/modules/mcp`                                              | `/api/v1/modules/mcp`                                              |
+| `/.well-known/oauth-protected-resource/smart-panel/api/v1/modules/mcp`         | `/.well-known/oauth-protected-resource/api/v1/modules/mcp`         |
+| `/.well-known/oauth-authorization-server/smart-panel/api/v1/modules/mcp/oauth` | `/.well-known/oauth-authorization-server/api/v1/modules/mcp/oauth` |
+
+The proxy must:
+
+- terminate TLS with a certificate trusted by every agent host;
+- preserve methods, query strings, response streaming, and browser cookies;
+- send `X-Forwarded-Proto: https` when it terminates TLS;
+- use long streaming timeouts and disable response buffering for the MCP resource; and
+- restrict the public routes with its normal firewall, rate limiting, and request-size controls.
+
+If the proxy sends any `Forwarded` or `X-Forwarded-*` header, list its **immediate socket IP address** in the backend
+environment variable `FB_MCP_OAUTH_TRUSTED_PROXIES`. The value is a comma-separated list of individual IPv4 or IPv6
+addresses; hostnames and CIDR ranges are not accepted.
+
+```dotenv copy
+FB_MCP_OAUTH_TRUSTED_PROXIES=172.18.0.2,127.0.0.1
+```
+
+Restart the backend after changing its environment. A request containing forwarded headers from any other immediate
+peer is rejected. Do not add a load balancer's client-facing address when Smart Panel actually sees a sidecar or ingress
+address; trust only the address reported as the backend socket peer.
+
+### Enable OAuth
+
+<Steps>
+	### Verify the public routes
+
+    Configure the proxy and confirm that the external MCP resource and both well-known paths above reach the intended
+    installation over HTTPS. Do not enable OAuth while DNS, certificates, or prefix rewrites are incomplete.
+
+    ### Store the canonical identity
+
+    Go to **Config → Modules → Model Context Protocol** and set **OAuth public base URL** to the external origin or
+    prefixed base, such as `https://panel.example.com` or `https://gateway.example.com/smart-panel`.
+
+    ### Enable the complete profile
+
+    Turn on **Enable MCP OAuth** and save. Smart Panel reruns its readiness checks before opening the complete route set.
+    A readiness failure keeps every OAuth route closed.
+
+</Steps>
+
+Changing the public base URL later revokes every OAuth artifact and closes OAuth subscriptions because it changes the
+resource and issuer identity. Static MCP clients remain active.
+
+### Pre-register an OAuth client
+
+Open **MCP OAuth access**, select **Pre-register OAuth client**, and provide:
+
+- a name identifying the agent and device;
+- one or more exact redirect URIs; and
+- the maximum scopes the client may request: `mcp:read`, `mcp:write`, `mcp:trigger`, and optionally `offline_access`.
+
+Smart Panel creates a public client ID, not a client secret. Redirect URIs must be absolute HTTPS URLs or HTTP loopback
+URLs. They match exactly, except that a `127.0.0.1` or `[::1]` loopback registration may use a different runtime port
+when its scheme, host, path, and query remain identical. `localhost` requires an exact port.
+
+`offline_access` allows a consenting client to refresh access for at most 30 days. It is not a device capability and
+does not bypass the client, grant, or installation capability ceilings. Access tokens expire after 10 minutes.
+
+### Connect Codex with OAuth
+
+Current Codex clients append a server-specific callback ID to their callback base. Configure a stable port in
+`~/.codex/config.toml`:
+
+```toml copy
+mcp_oauth_callback_port = 41456
+```
+
+To discover the full callback URI safely, pre-register the client initially with
+`http://127.0.0.1:41456/callback`, copy its client ID, then add the server:
+
+```bash copy
+codex mcp add smart-panel \
+  --url https://panel.example.com/api/v1/modules/mcp \
+  --oauth-client-id '<client-id>'
+codex mcp login smart-panel --scopes mcp:read,offline_access
+```
+
+The first authorization request is rejected because Codex appends a callback ID. Copy the full decoded
+`redirect_uri` from the browser's authorization URL, edit the Smart Panel OAuth client, replace the temporary redirect
+with that exact URI, and run `codex mcp login` again. Never approve a redirect on another host or path.
+
+The ChatGPT desktop app, Codex CLI, and IDE extension on the same Codex host share this MCP configuration. Restart the
+app or extension after adding the server, then use `/mcp` or `codex mcp list` to verify it. See the
+[official Codex MCP documentation](https://learn.chatgpt.com/docs/extend/mcp?surface=cli) for current client controls.
+
+### Connect Claude Code with OAuth
+
+Choose a fixed callback port and pre-register its exact loopback URI, for example
+`http://localhost:41457/callback`. Include `offline_access` in the client's maximum scopes if Claude should refresh its
+access without another browser login. Add the public client with pinned capability scopes:
+
+```bash copy
+claude mcp add-json smart-panel \
+  '{"type":"http","url":"https://panel.example.com/api/v1/modules/mcp","oauth":{"clientId":"<client-id>","callbackPort":41457,"scopes":"mcp:read"}}'
+```
+
+Run Claude Code, enter `/mcp`, select `smart-panel`, and complete authentication in the browser. Claude Code adds
+`offline_access` when the server advertises it, so the pre-registered client ceiling must include that scope for the
+renewable profile. Use `claude mcp get smart-panel` to inspect the saved configuration. See the
+[official Claude Code MCP documentation](https://code.claude.com/docs/en/mcp) for current installation scopes and OAuth
+options.
+
+### Review consent
+
+The consent page names the Smart Panel installation, requesting client, redirect destination, requested scopes, grant
+lifetime, and access-token lifetime. An owner or administrator must approve at least one MCP capability or deny the
+request. Treat `write` and `trigger` as physical access: they can change devices or run scenes. Approve
+`offline_access` only for a device that may retain renewable access.
+
+A new client or redirect, a wider scope request, an expired/revoked grant, or a later authority change requires fresh
+consent. Resetting a Smart Panel password does not revoke existing OAuth grants; use **MCP OAuth access** to revoke the
+client, grant, access token, refresh family, or all OAuth access.
+
+### Migrate from a static credential
+
+Do not paste a static bearer into an OAuth field or try to exchange it. The profiles are intentionally isolated:
+
+1. Leave the working static client enabled while deploying and testing HTTPS OAuth.
+2. Pre-register the remote agent as an OAuth client and complete browser consent with the minimum scopes.
+3. Verify discovery, tool listing, one expected tool call, and—if requested—refresh after the first access token expires.
+4. Revoke or delete the old static client only after the OAuth connection is proven.
+
+Keep static credentials for trusted LAN/VPN agents if desired. Disabling OAuth revokes OAuth artifacts and closes only
+OAuth streams; it is the supported rollback when remote authorization must be withdrawn without interrupting static
+agents.
+
 ## Connect an Agent
 
-The client must support **Streamable HTTP** and a preconfigured bearer token or `Authorization` header. Stdio-only,
-legacy HTTP+SSE-only, OAuth-only, and persistent-session-only clients are not supported by this initial profile.
+The client must support **Streamable HTTP** and either a preconfigured bearer token or standards-based OAuth.
+Stdio-only, legacy HTTP+SSE-only, and persistent-session-only remote clients are not supported.
 
-### Codex CLI, app, or IDE extension
+### Codex CLI, app, or IDE extension with a static bearer
 
 Keep the token in an environment variable available to the Codex process:
 
@@ -139,7 +303,7 @@ url = "https://panel.example.lan/api/v1/modules/mcp"
 bearer_token_env_var = "SMART_PANEL_MCP_TOKEN"
 ```
 
-### Other compatible agents
+### Other static-bearer agents
 
 Configure a **Streamable HTTP** server with the copied endpoint and this request header:
 
@@ -148,8 +312,7 @@ Authorization: Bearer <copied-mcp-token>
 ```
 
 Use the client's secret or environment-variable support instead of committing the token to a repository. Claude Code
-and the official MCP TypeScript SDK have been verified with bearer-authenticated Streamable HTTP. Client profiles that
-require standards-based remote OAuth must wait for the planned OAuth authorization follow-up.
+and the official MCP TypeScript SDK have been verified with bearer-authenticated Streamable HTTP.
 
 ## Curated Catalog
 
@@ -215,11 +378,27 @@ Check that the client sends the MCP token as a bearer credential, the token has 
 and the credential belongs to this installation. User access tokens, personal access tokens, and display tokens do not
 work on the MCP endpoint.
 
+For OAuth, confirm the public URL has not changed, the client is still enabled, the grant and token are active, and the
+agent is using the OAuth profile rather than a static bearer from another client.
+
 ### The client receives `403 Forbidden`
 
 Smart Panel rejected the request's `Host` or browser `Origin`. Ensure the endpoint hostname is loopback, matches the
 hostname in `FB_APP_HOST`, or belongs to an origin in **Allowed origins**. For a cross-origin browser client, add its
 exact normalized origin too. Do not use a wildcard.
+
+For OAuth discovery or token requests behind a proxy, also confirm that the immediate proxy IP is listed in
+`FB_MCP_OAUTH_TRUSTED_PROXIES`. Smart Panel rejects every forwarded header from an untrusted peer.
+
+### OAuth discovery fails behind a path prefix
+
+Forward the resource path and both path-aware well-known metadata paths using the mapping table above. Do not rely on
+`X-Forwarded-Prefix`; Smart Panel uses the stored public base URL and expects the proxy to remove the external prefix.
+
+### The browser reports a redirect mismatch
+
+Compare the complete runtime `redirect_uri` with the OAuth client's registered value, including scheme, IP literal or
+hostname, path, query, and callback suffix. Only the runtime port may vary for `127.0.0.1` and `[::1]` registrations.
 
 ### The client connects but shows no tools
 
