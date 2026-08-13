@@ -494,9 +494,10 @@ amend ADR 0002.
       simultaneous static-plus-OAuth lifecycle E2E exercise the production authentication and policy guards, including
       OAuth switch-off/re-enable while the static stream remains usable.
 - [x] Use the pinned official TypeScript client `2.0.0` for wire-level negative cases that user hosts do not expose:
-      token-binding and stored-claim rejection, expiry, revocation, scope contraction, listen/invalidation races,
-      lifecycle invalidation, and static-profile isolation. Use direct HTTP where the client hides OAuth callbacks or
-      challenge headers, and record the scenario-to-test matrix in the compatibility evidence.
+      token-binding and stored-claim rejection, expiry and revocation stream closure, scope contraction, listen/
+      invalidation races, OAuth switch-off/re-enable, and static-profile isolation. Use direct HTTP and service-level
+      verification where the client hides OAuth callbacks, challenge headers, or persisted bearer state, and record the
+      scenario-to-test matrix in the compatibility evidence.
 
 ## Phase 7 — Deployment, incident response, and rollout
 
