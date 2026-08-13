@@ -159,6 +159,27 @@ authorization server and therefore do not remove the need for the component spik
 - Reverse-proxy path prefixes without trusting forwarded headers.
 - Coexistence of static URN-audience credentials and OAuth HTTPS-resource credentials.
 
+## Automated TypeScript client wire evidence
+
+Phase 6 uses the official `@modelcontextprotocol/client` `2.0.0` as the reproducible wire client for negative cases that
+Codex and Claude Code do not expose to an operator. The client negotiates the protocol automatically over
+`StreamableHTTPClientTransport`; the tests cross the real NestJS/Fastify HTTP boundary and do not call MCP handlers
+directly.
+
+| Boundary                                                                                                                    | Automated evidence                                                                                                                                                                                   |
+| --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Wrong grant issuer/resource and token audience/client binding; wrong grant, account, installation, scope, or artifact model | `mcp-oauth-listen-registration-race.e2e-spec.ts` attempts a fresh TypeScript-client connection for every rejected bearer and proves a later valid authorization still works.                         |
+| Access-token/grant expiry and access-token, grant, refresh-family, or client revocation                                     | `mcp-oauth-listen-registration-race.e2e-spec.ts` opens real `subscriptions/listen` streams, observes remote closure, rejects bearer reuse through a fresh connection, and checks artifact isolation. |
+| Module, client, and grant scope contraction                                                                                 | `mcp-oauth-listen-registration-race.e2e-spec.ts` observes remote stream closure before each mutation succeeds, including isolated write/trigger removal while read remains and client read removal.  |
+| Listen registration racing invalidation                                                                                     | `mcp-oauth-listen-registration-race.e2e-spec.ts` pauses a TypeScript-client listen after authentication and proves it cannot register after matching invalidation completes.                         |
+| OAuth switch-off, identity/secret rotation, module disable, and static-profile coexistence                                  | `mcp-oauth-artifact-lifecycle.e2e-spec.ts` maintains simultaneous OAuth and static TypeScript-client streams and verifies only the matching authorization profile closes.                            |
+
+Raw HTTP assertions intentionally complement the client where its abstraction would hide required protocol evidence:
+the same listen-registration suite inspects bounded RFC 6750 `WWW-Authenticate` headers and 401/403 status selection;
+`mcp-oauth-phase3-provider.oauth-spike.ts` inspects authorization/token callbacks, PKCE errors, redirect rejection,
+refresh replay, and RFC 7009 responses; and `mcp-oauth-reverse-proxy.e2e-spec.ts` verifies trusted-proxy behavior. This
+combination closes the Inspector/TypeScript-client negative-case gate without depending on a GUI Inspector session.
+
 ## Live Codex evidence
 
 The Phase 6 smoke against Codex CLI `0.136.0` established the following current host profile:
