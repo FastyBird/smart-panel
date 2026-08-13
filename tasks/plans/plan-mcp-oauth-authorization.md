@@ -421,8 +421,9 @@ amend ADR 0002.
       valid token without effective read scope, using 401/403 correctly and never reflecting or logging credentials.
 - [x] TypeScript client wire E2E: reject provider access tokens with the wrong grant, account, installation, unknown
       scope, or stored artifact model, preserve later valid authorization, and never log the raw bearer.
-- [x] Provider-backed wire E2E: contract a client's ceiling to remove effective read, write, and trigger scopes from
-      an active subscription; close it before success, reject bearer reuse, preserve its grant, and redact the token.
+- [x] Provider-backed wire E2E: independently contract a client's ceiling to remove effective write or trigger scope
+      while retaining read, then remove read; close each active subscription before success, reject bearer reuse,
+      preserve each reduced grant, and redact every token.
 - [x] Provider-backed wire E2E: independently contract active grants to remove effective write or trigger scope while
       retaining read; close each subscription before success, reject bearer reuse, preserve each reduced grant, and
       redact both tokens.
