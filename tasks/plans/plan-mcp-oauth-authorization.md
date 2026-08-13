@@ -417,6 +417,8 @@ amend ADR 0002.
       authorization code, access token, or refresh token.
 - [x] TypeScript client wire E2E: reject access when the persisted grant has the wrong issuer or resource, or the
       provider access token has the wrong audience or cross-client binding, without recording the raw bearer.
+- [x] TypeScript wire E2E: return bounded RFC 6750 discovery challenges for missing or malformed authorization and a
+      valid token without effective read scope, using 401/403 correctly and never reflecting or logging credentials.
 - [x] E2E: pause a listen request after authentication, complete a matching artifact revocation or scope reduction,
       then resume registration and prove the stale request cannot open after invalidation success.
 - [x] Provider-backed wire E2E: close an active OAuth subscription at the access-token authorization deadline and
