@@ -792,6 +792,47 @@ describe('Homey SHS compatibility probe', () => {
 		).not.toThrow();
 	});
 
+	it('rejects missing or mismatched raw individual-device identities', async () => {
+		const createIdentityFetch = (individualDevice: Record<string, unknown>) =>
+			jest.fn((input: URL | RequestInfo): Promise<Response> => {
+				const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+				const inventoryDevice = {
+					id: 'private-device-id',
+					name: 'Private Device',
+					capabilities: ['onoff'],
+					capabilitiesObj: { onoff: { id: 'onoff', value: false, getable: true } },
+				};
+
+				if (url.endsWith('/api/manager/system/ping')) {
+					return Promise.resolve(jsonResponse({}, 200, { 'x-homey-id': 'private-homey-id' }));
+				}
+
+				if (url.endsWith('/api/manager/system/')) {
+					return Promise.resolve(jsonResponse({}));
+				}
+
+				if (url.endsWith('/api/manager/zones/zone')) {
+					return Promise.resolve(jsonResponse({}));
+				}
+
+				if (url.endsWith('/api/manager/devices/device/private-device-id/capability/onoff')) {
+					return Promise.resolve(jsonResponse({ value: false }));
+				}
+
+				if (url.endsWith('/api/manager/devices/device/private-device-id')) {
+					return Promise.resolve(jsonResponse(individualDevice));
+				}
+
+				return Promise.resolve(jsonResponse({ 'private-device-id': inventoryDevice }));
+			});
+
+		for (const individualDevice of [{ name: 'Missing ID' }, { id: 'different-device-id' }]) {
+			await expect(
+				captureHomeyShs(createConfig(), createIdentityFetch(individualDevice) as typeof fetch),
+			).rejects.toThrow('response identity did not match');
+		}
+	});
+
 	it('checks an expected host against values rather than fixed metadata keys', () => {
 		const capture: HomeyShsCapture = {
 			metadata: { homey: { id: 'synthetic-source-id', tier: 'shs' } },

@@ -838,6 +838,11 @@ export const captureHomeyShs = async (
 		readJson(individualDeviceResponse, 'individualDevice'),
 		readJson(capabilityValueResponse, 'capabilityValue'),
 	]);
+
+	if (!isRecord(individualDevice) || individualDevice.id !== readTarget.deviceId) {
+		throw new Error('Homey individualDevice response identity did not match the requested inventory device');
+	}
+
 	const aliases = createSanitizationAliases();
 	registerSourceValues(config.expectedHost, aliases);
 	registerPrivateTerms(config.privateTerms, aliases);
