@@ -8,3 +8,4 @@ export * from './store/stores';
 export * from './schemas/schemas';
 
 export * from './simulator.constants';
+export * from './router';

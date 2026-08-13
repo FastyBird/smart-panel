@@ -1,97 +1,145 @@
 {
-  "headings": {
-    "aboutPluginStatus": "Plugin status",
-    "aboutSimulation": "Simulation behaviour",
-    "aboutEnvironment": "Environment settings"
-  },
-  "fields": {
-    "devices": {
-      "id": {
-        "title": "Internal identifier",
-        "placeholder": "Device id"
-      },
-      "identifier": {
-        "title": "System identifier",
-        "placeholder": "Device system identifier"
-      },
-      "category": {
-        "title": "Category",
-        "placeholder": "Device category",
-        "validation": {
-          "required": "Please select device category"
-        }
-      },
-      "name": {
-        "title": "Name",
-        "placeholder": "Device name",
-        "validation": {
-          "required": "Please fill in device name"
-        }
-      },
-      "description": {
-        "title": "Description",
-        "placeholder": "Device description"
-      },
-      "enabled": {
-        "title": "Enabled"
-      }
-    },
-    "config": {
-      "enabled": {
-        "title": "Enabled"
-      },
-      "updateOnStart": {
-        "title": "Simulate on service start"
-      },
-      "simulationInterval": {
-        "title": "Auto simulation interval (ms)",
-        "placeholder": "Set 0 to disable automatic updates",
-        "validation": {
-          "required": "Please set simulation interval",
-          "number": "Simulation interval must be between 0 and 3 600 000"
-        }
-      },
-      "latitude": {
-        "title": "Latitude",
-        "placeholder": "Latitude used for environment-based simulations",
-        "validation": {
-          "required": "Please set latitude",
-          "number": "Latitude must be between -90 and 90"
-        }
-      },
-      "smoothTransitions": {
-        "title": "Smooth value transitions"
-      },
-      "connectionStateOnStart": {
-        "title": "Initial connection state",
-        "placeholder": "Choose the connection state to set on startup",
-        "validation": {
-          "required": "Please select initial connection state"
-        },
-        "options": {
-          "connected": "Connected",
-          "disconnected": "Disconnected",
-          "init": "Initializing",
-          "ready": "Ready",
-          "running": "Running",
-          "sleeping": "Sleeping",
-          "stopped": "Stopped",
-          "lost": "Lost",
-          "alert": "Alert",
-          "unknown": "Unknown"
-        }
-      }
-    }
-  },
-  "messages": {
-    "config": {
-      "edited": "Changes saved! The device simulator configuration has been updated.",
-      "notEdited": "Something went wrong. Device simulator configuration update was not successful."
-    }
-  },
-  "texts": {
-    "aboutPluginStatus": "Enable or disable the Device Simulator integration so that simulated devices are available across the Smart Panel.",
-    "aboutSimulation": "Configure how the simulator updates values automatically. You can trigger a single pass on service start or run a recurring update loop.",
-    "aboutEnvironment": "Set environmental parameters used by the simulator when generating realistic values. Only latitude is used in calculations; longitude is ignored."
-  }
+	"wizard": {
+		"title": "Generate simulated devices",
+		"subtitle": "Create a batch of realistic devices from one reviewed configuration",
+		"breadcrumb": "Generate devices",
+		"steps": {
+			"configure": "Configure",
+			"review": "Review",
+			"results": "Results"
+		},
+		"actions": {
+			"generate": "Generate devices",
+			"generateMore": "Generate more",
+			"retryCategories": "Retry loading categories",
+			"retryRooms": "Retry loading rooms",
+			"viewDevice": "View device"
+		},
+		"errors": {
+			"roomsLoadFailed": "Rooms could not be loaded."
+		},
+		"fields": {
+			"category": "Device category",
+			"namePrefix": "Name or name prefix",
+			"count": "Number of devices",
+			"structure": "Generated structure",
+			"requiredChannelsOnly": "Generate required channels only",
+			"requiredPropertiesOnly": "Generate required properties only",
+			"autoSimulate": "Automatically simulate value changes",
+			"simulateInterval": "Simulation interval (ms)",
+			"behaviorMode": "Behaviour mode",
+			"deviceName": "Device name"
+		},
+		"behaviorModes": {
+			"default": "Default",
+			"realistic": "Realistic"
+		},
+		"review": {
+			"title": "Review {count} devices",
+			"description": "Generation starts only after you confirm this complete list.",
+			"noRoom": "No room"
+		},
+		"results": {
+			"summary": "Created: {succeeded}, failed: {failed}",
+			"status": "Status",
+			"details": "Details",
+			"created": "Created",
+			"failed": "Failed"
+		}
+	},
+	"headings": {
+		"aboutPluginStatus": "Plugin status",
+		"aboutSimulation": "Simulation behaviour",
+		"aboutEnvironment": "Environment settings"
+	},
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Internal identifier",
+				"placeholder": "Device id"
+			},
+			"identifier": {
+				"title": "System identifier",
+				"placeholder": "Device system identifier"
+			},
+			"category": {
+				"title": "Category",
+				"placeholder": "Device category",
+				"validation": {
+					"required": "Please select device category"
+				}
+			},
+			"name": {
+				"title": "Name",
+				"placeholder": "Device name",
+				"validation": {
+					"required": "Please fill in device name"
+				}
+			},
+			"description": {
+				"title": "Description",
+				"placeholder": "Device description"
+			},
+			"enabled": {
+				"title": "Enabled"
+			}
+		},
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"updateOnStart": {
+				"title": "Simulate on service start"
+			},
+			"simulationInterval": {
+				"title": "Auto simulation interval (ms)",
+				"placeholder": "Set 0 to disable automatic updates",
+				"validation": {
+					"required": "Please set simulation interval",
+					"number": "Simulation interval must be between 0 and 3 600 000"
+				}
+			},
+			"latitude": {
+				"title": "Latitude",
+				"placeholder": "Latitude used for environment-based simulations",
+				"validation": {
+					"required": "Please set latitude",
+					"number": "Latitude must be between -90 and 90"
+				}
+			},
+			"smoothTransitions": {
+				"title": "Smooth value transitions"
+			},
+			"connectionStateOnStart": {
+				"title": "Initial connection state",
+				"placeholder": "Choose the connection state to set on startup",
+				"validation": {
+					"required": "Please select initial connection state"
+				},
+				"options": {
+					"connected": "Connected",
+					"disconnected": "Disconnected",
+					"init": "Initializing",
+					"ready": "Ready",
+					"running": "Running",
+					"sleeping": "Sleeping",
+					"stopped": "Stopped",
+					"lost": "Lost",
+					"alert": "Alert",
+					"unknown": "Unknown"
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Changes saved! The device simulator configuration has been updated.",
+			"notEdited": "Something went wrong. Device simulator configuration update was not successful."
+		}
+	},
+	"texts": {
+		"aboutPluginStatus": "Enable or disable the Device Simulator integration so that simulated devices are available across the Smart Panel.",
+		"aboutSimulation": "Configure how the simulator updates values automatically. You can trigger a single pass on service start or run a recurring update loop.",
+		"aboutEnvironment": "Set environmental parameters used by the simulator when generating realistic values. Only latitude is used in calculations; longitude is ignored."
+	}
 }

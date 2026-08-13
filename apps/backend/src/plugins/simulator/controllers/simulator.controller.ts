@@ -94,11 +94,23 @@ export class SimulatorController {
 			...generatedData,
 		});
 
-		// Set initial connection state to connected
-		await this.deviceConnectivityService.setConnectionState(device.id, {
-			state: ConnectionState.CONNECTED,
-			reason: 'Simulator device created',
-		});
+		// Connection metadata is ancillary to persistence. Once the device exists, a transient status-write
+		// failure must not turn the response into an apparent generation failure: bulk clients would retry
+		// and create a duplicate device even though this one was successfully stored.
+		try {
+			await this.deviceConnectivityService.setConnectionState(device.id, {
+				state: ConnectionState.CONNECTED,
+				reason: 'Simulator device created',
+			});
+		} catch (error) {
+			this.logger.warn(
+				`Generated simulator device id=${device.id}, but its initial connection state could not be set`,
+				{
+					error: error instanceof Error ? error.message : String(error),
+					resource: device.id,
+				},
+			);
+		}
 
 		this.logger.log(`Successfully generated simulated device id=${device.id}`, { resource: device.id });
 

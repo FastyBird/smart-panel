@@ -1,4 +1,52 @@
 {
+	"wizard": {
+		"title": "Vygenerovať simulované zariadenia",
+		"subtitle": "Vytvorte dávku realistických zariadení z jedného skontrolovaného nastavenia",
+		"breadcrumb": "Generovať zariadenia",
+		"steps": {
+			"configure": "Nastavenie",
+			"review": "Kontrola",
+			"results": "Výsledky"
+		},
+		"actions": {
+			"generate": "Vygenerovať zariadenia",
+			"generateMore": "Vygenerovať ďalšie",
+			"retryCategories": "Znovu načítať kategórie",
+			"retryRooms": "Znovu načítať miestnosti",
+			"viewDevice": "Zobraziť zariadenie"
+		},
+		"errors": {
+			"roomsLoadFailed": "Miestnosti sa nepodarilo načítať."
+		},
+		"fields": {
+			"category": "Kategória zariadenia",
+			"namePrefix": "Názov alebo predpona názvu",
+			"count": "Počet zariadení",
+			"structure": "Generovaná štruktúra",
+			"requiredChannelsOnly": "Generovať len povinné kanály",
+			"requiredPropertiesOnly": "Generovať len povinné vlastnosti",
+			"autoSimulate": "Automaticky simulovať zmeny hodnôt",
+			"simulateInterval": "Interval simulácie (ms)",
+			"behaviorMode": "Režim správania",
+			"deviceName": "Názov zariadenia"
+		},
+		"behaviorModes": {
+			"default": "Predvolený",
+			"realistic": "Realistický"
+		},
+		"review": {
+			"title": "Skontrolovať {count} zariadení",
+			"description": "Generovanie začne až po potvrdení tohto úplného zoznamu.",
+			"noRoom": "Bez miestnosti"
+		},
+		"results": {
+			"summary": "Vytvorené: {succeeded}, zlyhania: {failed}",
+			"status": "Stav",
+			"details": "Podrobnosti",
+			"created": "Vytvorené",
+			"failed": "Zlyhalo"
+		}
+	},
 	"headings": {
 		"aboutPluginStatus": "Stav pluginu",
 		"aboutSimulation": "Správanie simulácie",

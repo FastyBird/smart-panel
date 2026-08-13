@@ -152,6 +152,26 @@ describe('devicesVirtualPlugin', () => {
 		);
 	});
 
+	it('registers its bespoke wizard as route-based launcher metadata when the route is available', () => {
+		const options = createOptions([{ name: DevicesRouteNames.DEVICES }]);
+
+		DevicesVirtualPlugin.install({} as App, options);
+
+		expect(mocks.addPlugin).toHaveBeenCalledWith(
+			expect.any(Symbol),
+			expect.objectContaining({
+				routes: {
+					wizard: {
+						label: 'devicesVirtualPlugin.wizard.title',
+						icon: 'mdi:call-split',
+						to: { name: VirtualRouteNames.WIZARD },
+						testId: 'virtual-device-wizard',
+					},
+				},
+			})
+		);
+	});
+
 	describe('route reachability against a real router', () => {
 		// The tests above assert install() *calls* addRoute correctly against a hand-rolled fake
 		// router. This one runs the same install() against vue-router's real implementation, so the

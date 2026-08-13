@@ -2,6 +2,7 @@
 eslint-disable @typescript-eslint/no-empty-object-type
 */
 import type { ComponentOptionsMixin, DefineComponent } from 'vue';
+import type { RouteLocationRaw } from 'vue-router';
 
 import { type IChannelAddFormProps, channelAddFormEmits } from './components/channels/channel-add-form.types';
 import { type IChannelEditFormProps, channelEditFormEmits } from './components/channels/channel-edit-form.types';
@@ -33,6 +34,19 @@ export type IDevicePluginsSchemas = {
 	deviceEditFormSchema?: typeof DeviceEditFormSchema;
 	deviceCreateReqSchema?: typeof DeviceCreateReqSchema;
 	deviceUpdateReqSchema?: typeof DeviceUpdateReqSchema;
+};
+
+export interface IDeviceWizardRouteLauncher {
+	/** Translation key rendered by the Devices view. */
+	label: string;
+	icon: string;
+	to: RouteLocationRaw;
+	/** Stable base id; the small-screen launcher appends `-small`. */
+	testId: string;
+}
+
+export type IDevicePluginRoutes = {
+	wizard?: IDeviceWizardRouteLauncher;
 };
 
 export type IChannelPluginsComponents = {
