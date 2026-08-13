@@ -130,6 +130,7 @@ export class DevicesHomeyPlugin implements OnModuleInit {
 			name: 'Homey',
 			description: 'Imports and synchronizes logical devices managed by Homey',
 			author: 'FastyBird',
+			defaultEnabled: false,
 			readme: `# Homey
 
 > Plugin · by FastyBird · platform: devices

@@ -63,7 +63,7 @@ describe('DevicesHomeyPlugin', () => {
 		);
 		expect(swaggerRegistry.register).toHaveBeenCalledTimes(DEVICES_HOMEY_PLUGIN_SWAGGER_EXTRA_MODELS.length);
 		expect(extensionsService.registerPluginMetadata).toHaveBeenCalledWith(
-			expect.objectContaining({ type: DEVICES_HOMEY_PLUGIN_NAME, name: 'Homey' }),
+			expect.objectContaining({ type: DEVICES_HOMEY_PLUGIN_NAME, name: 'Homey', defaultEnabled: false }),
 		);
 		expect(pluginServiceManager.register).toHaveBeenCalledWith(homeyService);
 	});
