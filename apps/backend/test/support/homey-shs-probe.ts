@@ -1395,6 +1395,22 @@ export const assertHomeyCaptureSafe = (
 		(path.length === 2 && path[0] === 'individualDevice' && path[1] === 'capabilities');
 	const isCapturedCapabilityReadIdentifier = (key: string, path: string[]): boolean =>
 		key === 'capabilityId' && path.length === 1 && path[0] === 'capabilityValue';
+	const capturedEnumCapabilityId = (key: string, path: string[]): string | null => {
+		if (key === 'value' && isCapturedCapabilityMapPath(path.slice(0, -1))) {
+			return path[path.length - 1];
+		}
+
+		if (
+			key === 'id' &&
+			path.length >= 5 &&
+			path[path.length - 2] === 'values' &&
+			isCapturedCapabilityMapPath(path.slice(0, -3))
+		) {
+			return path[path.length - 3];
+		}
+
+		return null;
+	};
 	const isStructuralRecordPath = (path: string[]): boolean => {
 		if (
 			path.length === 1 &&
@@ -1526,6 +1542,13 @@ export const assertHomeyCaptureSafe = (
 	registerCapturedCapabilityIdentifiers(capture.individualDevice);
 	const inspectPrivateTermValues = (value: unknown, key: string, path: string[], term: string): boolean => {
 		if (typeof value === 'string') {
+			const enumCapabilityId = capturedEnumCapabilityId(key, path);
+			const publicEnumState = enumCapabilityId !== null && isPublicHomeyEnumState(enumCapabilityId, value);
+
+			if (publicEnumState) {
+				return false;
+			}
+
 			const publicCapabilityIdentifier =
 				isCapturedCapabilityListEntry(path) ||
 				isCapturedCapabilityIdentifier(key, path) ||

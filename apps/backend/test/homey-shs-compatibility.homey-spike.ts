@@ -554,6 +554,38 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() => assertHomeyCaptureRedacted({ metadata: {}, systemInfo: {}, zones: {}, devices })).not.toThrow();
 	});
 
+	it('exempts recognized public enum states from overlapping private-term scans', () => {
+		const devices = sanitizeHomeyDevices(
+			{
+				'light-device': {
+					id: 'light-device',
+					name: 'Light device',
+					capabilities: ['light_mode'],
+					capabilitiesObj: {
+						light_mode: {
+							id: 'light_mode',
+							type: 'enum',
+							value: 'color',
+							values: [{ id: 'color', title: 'Color' }],
+						},
+					},
+				},
+			},
+			['color'],
+		);
+		const lightMode = (
+			devices['device-000001'] as {
+				capabilitiesObj: { light_mode: { value: string; values: Array<{ id: string; title: string }> } };
+			}
+		).capabilitiesObj.light_mode;
+
+		expect(lightMode.value).toBe('color');
+		expect(lightMode.values).toEqual([{ id: 'color', title: '[~2~]' }]);
+		expect(() =>
+			assertHomeyCaptureSafe({ metadata: {}, systemInfo: {}, zones: {}, devices }, [], ['color']),
+		).not.toThrow();
+	});
+
 	it('reuses an identical fixture version after an interrupted publication', async () => {
 		const outputRoot = await mkdtemp(resolve(tmpdir(), 'homey-fixture-publication-'));
 		const versionName = 'capture-000001';
