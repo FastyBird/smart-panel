@@ -1,4 +1,6 @@
+import { EventEmitter } from 'events';
 import { FastifyReply } from 'fastify';
+import { ServerResponse } from 'http';
 
 import { AuthInfo, OAuthError, OAuthErrorCode } from '@modelcontextprotocol/server';
 import { UnauthorizedException } from '@nestjs/common';
@@ -429,5 +431,27 @@ describe('McpServerService policy revision', () => {
 		await expect(reader?.read()).resolves.toEqual({ done: true, value: undefined });
 		expect(cancelled).toHaveBeenCalledWith(controller.signal.reason);
 		expect(close).not.toHaveBeenCalled();
+	});
+
+	it('waits for the Node response to finish before completing transport teardown', async () => {
+		const response = new EventEmitter() as unknown as ServerResponse;
+		Object.defineProperties(response, {
+			destroyed: { configurable: true, value: false },
+			writableFinished: { configurable: true, value: false },
+		});
+		const completion = (
+			service as unknown as { waitForResponseCompletion(response: ServerResponse): Promise<void> }
+		).waitForResponseCompletion(response);
+		let settled = false;
+		void completion.then(() => {
+			settled = true;
+		});
+
+		await Promise.resolve();
+		expect(settled).toBe(false);
+
+		response.emit('finish');
+		await completion;
+		expect(settled).toBe(true);
 	});
 });

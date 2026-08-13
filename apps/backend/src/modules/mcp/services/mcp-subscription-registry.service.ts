@@ -71,6 +71,7 @@ interface SubscriptionRecord {
 	timer: NodeJS.Timeout;
 	authorizationTimer?: NodeJS.Timeout;
 	oauth?: McpOAuthSubscriptionBinding;
+	closing?: boolean;
 	transportClosure?: { promise: Promise<void>; resolve: () => void };
 }
 
@@ -294,8 +295,18 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 		if (!subscription) {
 			return;
 		}
+		if (subscription.closing) {
+			if (reason !== 'authorization_revoked') {
+				this.subscriptions.delete(id);
+				subscription.transportClosure?.resolve();
+			}
 
-		this.subscriptions.delete(id);
+			return;
+		}
+
+		const awaitsTransport = reason === 'authorization_revoked' && subscription.transportClosure !== undefined;
+		if (awaitsTransport) subscription.closing = true;
+		else this.subscriptions.delete(id);
 		clearTimeout(subscription.timer);
 		if (subscription.authorizationTimer) clearTimeout(subscription.authorizationTimer);
 		subscription.controller.abort();
@@ -320,6 +331,7 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 
 	private completeTransport(subscription: SubscriptionRecord): void {
 		subscription.transportClosure?.resolve();
+		if (subscription.closing) this.subscriptions.delete(subscription.id);
 	}
 
 	private createIdleTimer(id: string): NodeJS.Timeout {

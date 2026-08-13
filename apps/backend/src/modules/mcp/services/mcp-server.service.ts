@@ -554,9 +554,27 @@ export class McpServerService implements OnApplicationShutdown {
 		try {
 			await clientHandler.nodeHandler(request, response, body);
 		} finally {
-			if (context.subscription) await new Promise<void>((resolve) => setTimeout(resolve, 0));
-			context.subscription?.completeTransport();
+			if (context.subscription) {
+				await this.waitForResponseCompletion(response);
+				await new Promise<void>((resolve) => setTimeout(resolve, 0));
+				context.subscription.completeTransport();
+			}
 		}
+	}
+
+	private async waitForResponseCompletion(response: ServerResponse): Promise<void> {
+		if (response.writableFinished || response.destroyed) return;
+
+		await new Promise<void>((resolve) => {
+			const complete = (): void => {
+				response.off('close', complete);
+				response.off('finish', complete);
+				resolve();
+			};
+			response.once('close', complete);
+			response.once('finish', complete);
+			if (response.writableFinished || response.destroyed) complete();
+		});
 	}
 
 	private auditProtocolRequest(body: unknown, requestId: string, clientId: string): void {

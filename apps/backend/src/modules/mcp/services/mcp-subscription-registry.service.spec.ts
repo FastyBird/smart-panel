@@ -190,6 +190,16 @@ describe('McpSubscriptionRegistryService', () => {
 		await jest.advanceTimersByTimeAsync(MCP_SUBSCRIPTION_CLOSE_TIMEOUT_MS);
 		await rejection;
 		expect(subscription.signal.aborted).toBe(true);
+		expect(service.activeCount).toBe(1);
+
+		const retry = service.closeOAuthAccessToken('access-one', () => Promise.resolve());
+		const retryRejection = expect(retry).rejects.toThrow('MCP subscription transport did not acknowledge closure');
+		await jest.advanceTimersByTimeAsync(MCP_SUBSCRIPTION_CLOSE_TIMEOUT_MS);
+		await retryRejection;
+		expect(service.activeCount).toBe(1);
+
+		subscription.completeTransport();
+		expect(service.activeCount).toBe(0);
 	});
 
 	it('closes a registration that wins the gate before matching invalidation', async () => {
