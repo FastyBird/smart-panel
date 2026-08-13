@@ -265,8 +265,15 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 			await this.withOAuthGate(async () => {
 				if (advanceGeneration) await advanceGeneration();
 
-				for (const id of [...this.subscriptions.keys()]) {
-					this.close(id, 'shutdown');
+				if (advanceGeneration) {
+					for (const subscription of [...this.subscriptions.values()]) {
+						if (!subscription.oauth) this.close(subscription.id, 'shutdown');
+					}
+					await this.closeMatching((subscription) => subscription.oauth !== undefined);
+				} else {
+					for (const id of [...this.subscriptions.keys()]) {
+						this.close(id, 'shutdown');
+					}
 				}
 			});
 		} finally {

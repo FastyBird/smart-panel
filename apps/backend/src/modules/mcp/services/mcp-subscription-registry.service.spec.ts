@@ -128,6 +128,31 @@ describe('McpSubscriptionRegistryService', () => {
 		expect(service.activeCount).toBe(0);
 	});
 
+	it('awaits attached OAuth transports during authorization-changing close-all', async () => {
+		const staticStream = service.open('static-client');
+		const oauthStream = await service.openOAuth('disable-oauth', () => Promise.resolve(oauthRegistration()));
+		oauthStream.attachTransport();
+		let mutationSettled = false;
+		const mutation = service
+			.closeAll(() => Promise.resolve())
+			.finally(() => {
+				mutationSettled = true;
+			});
+		const aborted = new Promise<void>((resolve) => {
+			if (oauthStream.signal.aborted) resolve();
+			else oauthStream.signal.addEventListener('abort', () => resolve(), { once: true });
+		});
+
+		await aborted;
+		expect(staticStream.signal.aborted).toBe(true);
+		expect(mutationSettled).toBe(false);
+		expect(service.activeCount).toBe(1);
+
+		oauthStream.completeTransport();
+		await mutation;
+		expect(service.activeCount).toBe(0);
+	});
+
 	it('closes only OAuth streams matching a revoked artifact identity', async () => {
 		const staticStream = service.open('client-a');
 		const first = await service.openOAuth('one', () =>
