@@ -1021,6 +1021,13 @@ const assertHomeyPayloadRedacted = (value: unknown, rootKind: SanitizerContext['
 				return;
 			}
 
+			if (ISO_TIMESTAMP_PATTERN.test(nestedValue)) {
+				if (nestedValue !== FIXTURE_TIMESTAMP) {
+					throwUnredactedSensitiveField();
+				}
+				return;
+			}
+
 			if (isDriverMetadata(path)) {
 				assertRedactedScalar(nestedValue, REDACTION.identifier);
 				return;

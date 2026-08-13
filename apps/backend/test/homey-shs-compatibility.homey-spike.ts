@@ -899,6 +899,25 @@ describe('Homey SHS compatibility probe', () => {
 				'unredacted sensitive field',
 			);
 		}
+
+		expect(() =>
+			assertHomeyCaptureRedacted({
+				...capture,
+				devices: {
+					'device-000001': {
+						id: 'device-000001',
+						name: 'device-label-000001',
+						capabilities: ['last_seen'],
+						capabilitiesObj: {
+							last_seen: {
+								id: 'last_seen',
+								value: '2026-08-13T18:18:49.593Z',
+							},
+						},
+					},
+				},
+			}),
+		).toThrow('unredacted sensitive field');
 	});
 
 	it('rejects captures containing a configured forbidden value', () => {
