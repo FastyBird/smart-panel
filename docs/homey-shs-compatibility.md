@@ -220,6 +220,10 @@ fixtures that claim live provenance.
 The inventory also contained no device with Homey's `lock` class. A `locked.child` capability on a non-lock device is
 not treated as lock evidence; the manifest records `lock` under `knownDeviceClassGaps`.
 
+The first sanitized capture irreversibly collapsed enum option IDs. Corrupted option lists are omitted from live
+fixtures and recorded under `knownMetadataGaps`; a clearly labeled synthetic enum capability covers distinct-ID
+contract testing until a fresh corrected live capture is available.
+
 ## References
 
 - [Homey SHS installation and ports](https://support.homey.app/hc/en-us/articles/24010537261980-How-to-install-Homey-Self-Hosted-Server-with-Docker-on-Linux)

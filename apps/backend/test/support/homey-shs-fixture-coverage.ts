@@ -36,3 +36,45 @@ export const deriveKnownDeviceClassGaps = (devices: Record<string, unknown>): st
 
 	return TRACKED_DEVICE_CLASS_COVERAGE.filter((deviceClass) => !capturedClasses.has(deviceClass));
 };
+
+const hasHomeyEnumOptionIds = (value: unknown): boolean => {
+	if (Array.isArray(value)) {
+		return value.some(hasHomeyEnumOptionIds);
+	}
+
+	if (!isRecord(value)) {
+		return false;
+	}
+
+	return value.type === 'enum' && Array.isArray(value.values) && value.values.length > 0
+		? true
+		: Object.values(value).some(hasHomeyEnumOptionIds);
+};
+
+export const deriveKnownMetadataGaps = (devices: Record<string, unknown>): string[] =>
+	hasHomeyEnumOptionIds(devices) ? [] : ['live_enum_option_ids'];
+
+export const assertDistinctHomeyEnumOptionIds = (value: unknown): void => {
+	if (Array.isArray(value)) {
+		value.forEach(assertDistinctHomeyEnumOptionIds);
+		return;
+	}
+
+	if (!isRecord(value)) {
+		return;
+	}
+
+	if (value.type === 'enum' && Array.isArray(value.values)) {
+		const optionIds = value.values.map((option) => (isRecord(option) ? option.id : undefined));
+		const validOptionIds = optionIds.every(
+			(optionId): optionId is string =>
+				typeof optionId === 'string' && optionId.length > 0 && !/^\[~\d+~\]$/.test(optionId),
+		);
+
+		if (!validOptionIds || new Set(optionIds).size !== optionIds.length) {
+			throw new Error('Sanitized Homey capture has missing, redacted, or duplicate enum option IDs');
+		}
+	}
+
+	Object.values(value).forEach(assertDistinctHomeyEnumOptionIds);
+};

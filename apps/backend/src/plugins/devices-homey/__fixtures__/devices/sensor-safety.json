@@ -118,11 +118,6 @@
 			"setable": false,
 			"insightsTitleTrue": null,
 			"insightsTitleFalse": null,
-			"values": [
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" }
-			],
 			"value": "charging",
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
@@ -214,7 +209,6 @@
 			"setable": true,
 			"insightsTitleTrue": null,
 			"insightsTitleFalse": null,
-			"values": [{ "id": "[~7~]", "title": "[~2~]" }],
 			"value": "0",
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
@@ -304,14 +298,6 @@
 			"setable": true,
 			"insightsTitleTrue": null,
 			"insightsTitleFalse": null,
-			"values": [
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" }
-			],
 			"value": "104",
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
@@ -325,12 +311,6 @@
 			"setable": true,
 			"insightsTitleTrue": null,
 			"insightsTitleFalse": null,
-			"values": [
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" }
-			],
 			"value": "300",
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
@@ -344,12 +324,6 @@
 			"setable": true,
 			"insightsTitleTrue": null,
 			"insightsTitleFalse": null,
-			"values": [
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" }
-			],
 			"value": "203",
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
@@ -363,11 +337,6 @@
 			"setable": true,
 			"insightsTitleTrue": null,
 			"insightsTitleFalse": null,
-			"values": [
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" }
-			],
 			"value": "1",
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},

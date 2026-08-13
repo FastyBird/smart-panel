@@ -20,6 +20,11 @@ capability, but that is not promoted as lock evidence. `knownDeviceClassGaps` in
 Known live-evidence gaps are listed in `manifest.json`. Do not invent fixtures for those capabilities; add them only from
 a separately sanitized capture or a documented synthetic protocol fixture clearly marked as synthetic.
 
+The original sanitized capture collapsed live enum option IDs before this corpus was promoted. Those corrupted option
+lists are omitted from the live fixtures and recorded under `knownMetadataGaps`. `synthetic/enum-capability.json` is
+explicitly synthetic and preserves distinct option IDs for transport-independent enum contract tests. A future live
+capture produced by the corrected probe may replace this gap; promotion now rejects redacted or duplicate enum IDs.
+
 To regenerate the selected subset from an ignored sanitized capture:
 
 ```bash

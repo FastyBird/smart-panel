@@ -26,5 +26,7 @@
 		"windowcoverings_tilt_set",
 		"measure_pressure"
 	],
-	"knownDeviceClassGaps": ["lock"]
+	"knownDeviceClassGaps": ["lock"],
+	"knownMetadataGaps": ["live_enum_option_ids"],
+	"syntheticFixtures": ["synthetic/enum-capability.json"]
 }

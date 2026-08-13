@@ -2,145 +2,20 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { format } from 'prettier';
 
-import { deriveKnownCoverageGaps, deriveKnownDeviceClassGaps } from './homey-shs-fixture-coverage';
+import {
+	assertDistinctHomeyEnumOptionIds,
+	deriveKnownCoverageGaps,
+	deriveKnownDeviceClassGaps,
+	deriveKnownMetadataGaps,
+} from './homey-shs-fixture-coverage';
 import { buildHomeyFixtureProvenance } from './homey-shs-fixture-manifest';
+import { HOMEY_FIXTURE_NAMES, JsonRecord, selectHomeyFixtures } from './homey-shs-fixture-selection';
 import { HomeyShsCapture, assertHomeyCaptureSafe, sanitizeHomeyPublishedMetadata } from './homey-shs-probe';
-
-const FIXTURE_NAMES = [
-	'light',
-	'switch',
-	'climate',
-	'cover',
-	'sensor-air-quality',
-	'sensor-safety',
-	'energy-meter',
-	'repeated-capabilities',
-	'unavailable',
-] as const;
-
-type FixtureName = (typeof FIXTURE_NAMES)[number];
-type JsonRecord = Record<string, unknown>;
 
 const isRecord = (value: unknown): value is JsonRecord =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const readJson = async (path: string): Promise<unknown> => JSON.parse(await readFile(path, 'utf8')) as unknown;
-
-const capabilityIds = (device: JsonRecord): string[] =>
-	Array.isArray(device.capabilities)
-		? device.capabilities.filter((capability): capability is string => typeof capability === 'string')
-		: [];
-
-const capabilityBases = (device: JsonRecord): Set<string> =>
-	new Set(capabilityIds(device).map((capability) => capability.split('.', 1)[0]));
-
-const hasAllCapabilities = (device: JsonRecord, ...bases: string[]): boolean => {
-	const available = capabilityBases(device);
-
-	return bases.every((base) => available.has(base));
-};
-
-const suffixedCapabilityCount = (device: JsonRecord): number =>
-	capabilityIds(device).filter((capability) => capability.includes('.')).length;
-
-const repeatedBaseCount = (device: JsonRecord): number => {
-	const bases = capabilityIds(device).map((capability) => capability.split('.', 1)[0]);
-
-	return bases.length - new Set(bases).size;
-};
-
-interface FixtureSelector {
-	name: FixtureName;
-	matches(device: JsonRecord): boolean;
-	score(device: JsonRecord): number;
-}
-
-const selectors: FixtureSelector[] = [
-	{
-		name: 'light',
-		matches: (device) => device.class === 'light' && hasAllCapabilities(device, 'onoff', 'dim'),
-		score: (device) =>
-			['light_hue', 'light_saturation', 'light_temperature'].filter((capability) =>
-				capabilityBases(device).has(capability),
-			).length,
-	},
-	{
-		name: 'switch',
-		matches: (device) => device.class === 'socket' && hasAllCapabilities(device, 'onoff'),
-		score: (device) => Number(hasAllCapabilities(device, 'measure_power', 'meter_power')),
-	},
-	{
-		name: 'climate',
-		matches: (device) => hasAllCapabilities(device, 'measure_temperature', 'measure_humidity'),
-		score: (device) => capabilityIds(device).length,
-	},
-	{
-		name: 'cover',
-		matches: (device) =>
-			device.class === 'windowcoverings' && hasAllCapabilities(device, 'windowcoverings_state', 'windowcoverings_set'),
-		score: (device) => capabilityIds(device).length,
-	},
-	{
-		name: 'sensor-air-quality',
-		matches: (device) =>
-			device.class === 'sensor' &&
-			hasAllCapabilities(device, 'measure_temperature', 'measure_humidity', 'measure_luminance'),
-		score: (device) => capabilityIds(device).length,
-	},
-	{
-		name: 'sensor-safety',
-		matches: (device) => hasAllCapabilities(device, 'alarm_motion') || hasAllCapabilities(device, 'alarm_battery'),
-		score: (device) => capabilityIds(device).length,
-	},
-	{
-		name: 'energy-meter',
-		matches: (device) => hasAllCapabilities(device, 'measure_power', 'meter_power'),
-		score: (device) => capabilityIds(device).length,
-	},
-	{
-		name: 'repeated-capabilities',
-		matches: (device) => repeatedBaseCount(device) > 0,
-		score: (device) => repeatedBaseCount(device) * 100 + suffixedCapabilityCount(device),
-	},
-	{
-		name: 'unavailable',
-		matches: (device) => device.available === false,
-		score: (device) => capabilityIds(device).length,
-	},
-];
-
-const selectFixtures = (devices: JsonRecord): Map<FixtureName, JsonRecord> => {
-	const entries = Object.entries(devices).sort(([left], [right]) => left.localeCompare(right));
-	const selectedIds = new Set<string>();
-	const selected = new Map<FixtureName, JsonRecord>();
-	const matchingCandidateCount = (selector: FixtureSelector): number =>
-		entries.filter(([, device]) => isRecord(device) && selector.matches(device)).length;
-	const orderedSelectors = [...selectors].sort(
-		(left, right) => matchingCandidateCount(left) - matchingCandidateCount(right),
-	);
-
-	for (const selector of orderedSelectors) {
-		const candidates = entries
-			.filter(([id, device]) => !selectedIds.has(id) && isRecord(device) && selector.matches(device))
-			.sort(([leftId, left], [rightId, right]) => {
-				if (!isRecord(left) || !isRecord(right)) {
-					return leftId.localeCompare(rightId);
-				}
-
-				return selector.score(right) - selector.score(left) || leftId.localeCompare(rightId);
-			});
-		const candidate = candidates[0];
-
-		if (!candidate || !isRecord(candidate[1])) {
-			throw new Error(`Sanitized Homey capture has no distinct candidate for fixture '${selector.name}'`);
-		}
-
-		selectedIds.add(candidate[0]);
-		selected.set(selector.name, candidate[1]);
-	}
-
-	return selected;
-};
 
 const writeJson = async (path: string, value: unknown): Promise<void> => {
 	const formatted = await format(JSON.stringify(value), {
@@ -184,8 +59,9 @@ const main = async (): Promise<void> => {
 	capture.zones = publishedZones;
 	capture.devices = publishedDevices;
 	assertHomeyCaptureSafe(capture, []);
+	assertDistinctHomeyEnumOptionIds(publishedDevices);
 
-	const fixtures = selectFixtures(publishedDevices);
+	const fixtures = selectHomeyFixtures(publishedDevices);
 
 	for (const [name, device] of fixtures) {
 		assertHomeyCaptureSafe({ metadata: {}, systemInfo: {}, zones: {}, devices: { [name]: device } }, []);
@@ -194,9 +70,11 @@ const main = async (): Promise<void> => {
 	const manifest = {
 		schemaVersion: 1,
 		provenance: buildHomeyFixtureProvenance(capture.metadata),
-		fixtures: FIXTURE_NAMES.map((name) => `devices/${name}.json`),
+		fixtures: HOMEY_FIXTURE_NAMES.map((name) => `devices/${name}.json`),
 		knownCoverageGaps: deriveKnownCoverageGaps(publishedDevices),
 		knownDeviceClassGaps: deriveKnownDeviceClassGaps(publishedDevices),
+		knownMetadataGaps: deriveKnownMetadataGaps(publishedDevices),
+		syntheticFixtures: ['synthetic/enum-capability.json'],
 	};
 	const devicesRoot = resolve(outputRoot, 'devices');
 

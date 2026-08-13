@@ -24,11 +24,6 @@
 			"setable": true,
 			"insightsTitleTrue": null,
 			"insightsTitleFalse": null,
-			"values": [
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" }
-			],
 			"value": "down",
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},

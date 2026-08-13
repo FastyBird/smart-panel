@@ -1,8 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { deriveKnownCoverageGaps, deriveKnownDeviceClassGaps } from './support/homey-shs-fixture-coverage';
+import {
+	assertDistinctHomeyEnumOptionIds,
+	deriveKnownCoverageGaps,
+	deriveKnownDeviceClassGaps,
+	deriveKnownMetadataGaps,
+} from './support/homey-shs-fixture-coverage';
 import { buildHomeyFixtureProvenance } from './support/homey-shs-fixture-manifest';
+import { selectHomeyFixtures } from './support/homey-shs-fixture-selection';
 import type { HomeyShsCapture } from './support/homey-shs-probe';
 import {
 	assertHomeyCaptureSafe,
@@ -89,7 +95,9 @@ describe('Homey SHS compatibility probe', () => {
 		const manifest = readFixture('manifest.json') as {
 			knownCoverageGaps: string[];
 			knownDeviceClassGaps: string[];
+			knownMetadataGaps: string[];
 			provenance: Record<string, unknown>;
+			syntheticFixtures: string[];
 		};
 
 		expect(manifest.provenance).toEqual({
@@ -102,6 +110,65 @@ describe('Homey SHS compatibility probe', () => {
 			expect.arrayContaining(['target_temperature', 'measure_co2', 'windowcoverings_tilt_set']),
 		);
 		expect(manifest.knownDeviceClassGaps).toEqual(['lock']);
+		expect(manifest.knownMetadataGaps).toEqual(['live_enum_option_ids']);
+		expect(manifest.syntheticFixtures).toEqual(['synthetic/enum-capability.json']);
+		const syntheticEnum = readFixture('synthetic/enum-capability.json') as {
+			provenance: string;
+			values: Array<{ id: string }>;
+		};
+
+		expect(syntheticEnum.provenance).toBe('synthetic-protocol-contract');
+		expect(syntheticEnum.values.map(({ id }) => id)).toEqual(['mode_a', 'mode_b', 'mode_c']);
+		assertDistinctHomeyEnumOptionIds(syntheticEnum);
+	});
+
+	it('finds a deterministic global fixture assignment instead of choosing greedily', () => {
+		const devices = {
+			plainSocket: { class: 'socket', capabilities: ['onoff'] },
+			powerSocket: {
+				class: 'socket',
+				capabilities: ['onoff', 'measure_power', 'meter_power', 'measure_power.second'],
+			},
+			secondPowerMeter: {
+				class: 'sensor',
+				capabilities: ['measure_power', 'meter_power', 'measure_power.second'],
+			},
+			light: { class: 'light', capabilities: ['onoff', 'dim'] },
+			climate: { class: 'sensor', capabilities: ['measure_temperature', 'measure_humidity'] },
+			cover: { class: 'windowcoverings', capabilities: ['windowcoverings_state', 'windowcoverings_set'] },
+			air: {
+				class: 'sensor',
+				capabilities: ['measure_temperature', 'measure_humidity', 'measure_luminance'],
+			},
+			safety: { class: 'sensor', capabilities: ['alarm_motion'] },
+			unavailable: { class: 'other', capabilities: [], available: false },
+		};
+		const fixtures = selectHomeyFixtures(devices);
+
+		expect(fixtures.get('switch')).toBe(devices.plainSocket);
+		expect(fixtures.get('energy-meter')).toBe(devices.powerSocket);
+		expect(fixtures.get('repeated-capabilities')).toBe(devices.secondPowerMeter);
+	});
+
+	it('rejects collapsed live enum option IDs before fixture writes', () => {
+		expect(() =>
+			assertDistinctHomeyEnumOptionIds({
+				type: 'enum',
+				values: [
+					{ id: '[~7~]', title: '[~2~]' },
+					{ id: '[~7~]', title: '[~2~]' },
+				],
+			}),
+		).toThrow('redacted, or duplicate enum option IDs');
+	});
+
+	it('derives the live enum evidence gap from the sanitized inventory', () => {
+		expect(deriveKnownMetadataGaps({ device: { capabilitiesObj: {} } })).toEqual(['live_enum_option_ids']);
+		expect(
+			deriveKnownMetadataGaps({
+				device: { capabilitiesObj: { mode: { type: 'enum', values: [{ id: 'home' }, { id: 'away' }] } } },
+			}),
+		).toEqual([]);
 	});
 
 	it('derives tracked capability gaps from the full captured inventory', () => {

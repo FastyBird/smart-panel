@@ -120,10 +120,6 @@
 			"setable": true,
 			"insightsTitleTrue": null,
 			"insightsTitleFalse": null,
-			"values": [
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" }
-			],
 			"value": "color",
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
@@ -138,16 +134,6 @@
 			"insights": false,
 			"insightsTitleTrue": null,
 			"insightsTitleFalse": null,
-			"values": [
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" }
-			],
 			"value": null,
 			"lastUpdated": null
 		},
@@ -162,12 +148,6 @@
 			"insights": false,
 			"insightsTitleTrue": null,
 			"insightsTitleFalse": null,
-			"values": [
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" },
-				{ "id": "[~7~]", "title": "[~2~]" }
-			],
 			"value": "off",
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
