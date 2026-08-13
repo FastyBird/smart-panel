@@ -1491,6 +1491,71 @@ describe('MCP OAuth listen registration race', () => {
 				'The MCP OAuth access token is invalid or no longer active',
 			);
 			await expectOAuthConnectionRejected(endpoint, moduleWriteScopeContractionAccessToken);
+			await expect(resourceServer.verifyAccessToken(moduleTriggerScopeContractionAccessToken)).rejects.toThrow(
+				'The MCP OAuth access token is invalid or no longer active',
+			);
+			await moduleTriggerScopeContractionSubscription.close();
+			await expect(moduleTriggerScopeContractionSubscription.closed).resolves.toBe('local');
+			expect(subscriptions.activeCount).toBe(0);
+			await moduleTriggerScopeContractionClient.close();
+
+			const rawFreshModuleTriggerScopeContractionGrantId = 'listen-module-trigger-scope-contraction-fresh-grant';
+			const freshModuleTriggerScopeContractionGrant = await grantRepository.save({
+				providerGrantIdHash: hashToken(rawFreshModuleTriggerScopeContractionGrantId),
+				clientId: moduleScopeContractionOAuthClient.id,
+				approvedById: user.id,
+				installationId: 'listen-registration-race-installation',
+				issuer: urls.issuer,
+				resource: urls.resource,
+				approvedScopes: [McpOAuthScope.READ, McpOAuthScope.TRIGGER],
+				expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
+				revokedAt: null,
+				generation: 0,
+				approverAuthorityGeneration: 0,
+				oauthEnabledGeneration: 0,
+				serverSecretVersion: 1,
+				publicIdentityGeneration: 0,
+				clientGeneration: 0,
+				modulePolicyGeneration: 1,
+			});
+			await providerGrants.upsert(
+				rawFreshModuleTriggerScopeContractionGrantId,
+				{ accountId: user.id, clientId: moduleScopeContractionOAuthClient.clientIdentifier },
+				600,
+			);
+			const freshModuleTriggerScopeContractionAccessToken =
+				'listen-module-trigger-scope-contraction-fresh-access-token';
+			await accessTokens.upsert(
+				freshModuleTriggerScopeContractionAccessToken,
+				{
+					accountId: user.id,
+					aud: urls.resource,
+					clientId: moduleScopeContractionOAuthClient.clientIdentifier,
+					grantId: rawFreshModuleTriggerScopeContractionGrantId,
+					kind: 'AccessToken',
+					scope: `${McpOAuthScope.READ} ${McpOAuthScope.TRIGGER}`,
+				},
+				600,
+			);
+			await expect(
+				resourceServer.verifyAccessToken(freshModuleTriggerScopeContractionAccessToken),
+			).resolves.toMatchObject({ scopes: [McpOAuthScope.READ, McpOAuthScope.TRIGGER] });
+			await expect(resourceServer.verifyAccessToken(moduleTriggerScopeContractionAccessToken)).rejects.toThrow(
+				'The MCP OAuth access token is invalid or no longer active',
+			);
+			moduleTriggerScopeContractionClient = new Client(
+				{ name: 'listen-module-trigger-scope-contraction-fresh-e2e', version: '1.0.0' },
+				{ versionNegotiation: { mode: 'auto' } },
+			);
+			await moduleTriggerScopeContractionClient.connect(
+				new StreamableHTTPClientTransport(endpoint, {
+					requestInit: { headers: { Authorization: `Bearer ${freshModuleTriggerScopeContractionAccessToken}` } },
+				}),
+			);
+			const freshModuleTriggerScopeContractionSubscription = await moduleTriggerScopeContractionClient.listen({
+				toolsListChanged: true,
+			});
+			expect(subscriptions.activeCount).toBe(1);
 
 			let moduleTriggerScopeContractionMutationSettled = false;
 			const moduleTriggerScopeContractionMutation = moduleConfigMutation
@@ -1506,14 +1571,14 @@ describe('MCP OAuth listen registration race', () => {
 				.finally(() => {
 					moduleTriggerScopeContractionMutationSettled = true;
 				});
-			await expect(moduleTriggerScopeContractionSubscription.closed).resolves.toBe('remote');
+			await expect(freshModuleTriggerScopeContractionSubscription.closed).resolves.toBe('remote');
 			expect(moduleTriggerScopeContractionMutationSettled).toBe(false);
 			await moduleTriggerScopeContractionMutation;
 			expect(subscriptions.activeCount).toBe(0);
-			await expect(resourceServer.verifyAccessToken(moduleTriggerScopeContractionAccessToken)).rejects.toThrow(
+			await expect(resourceServer.verifyAccessToken(freshModuleTriggerScopeContractionAccessToken)).rejects.toThrow(
 				'The MCP OAuth access token is invalid or no longer active',
 			);
-			await expectOAuthConnectionRejected(endpoint, moduleTriggerScopeContractionAccessToken);
+			await expectOAuthConnectionRejected(endpoint, freshModuleTriggerScopeContractionAccessToken);
 			expect(config.capabilities).toEqual([McpCapability.READ]);
 			expect(
 				await dataSource.getRepository(McpOAuthServerStateEntity).findOneByOrFail({ key: MCP_OAUTH_SERVER_STATE_KEY }),
@@ -1522,8 +1587,12 @@ describe('MCP OAuth listen registration race', () => {
 			expect(
 				(await grantRepository.findOneByOrFail({ id: moduleTriggerScopeContractionGrant.id })).revokedAt,
 			).toBeNull();
+			expect(
+				(await grantRepository.findOneByOrFail({ id: freshModuleTriggerScopeContractionGrant.id })).revokedAt,
+			).toBeNull();
 			expect(JSON.stringify(auditLog.mock.calls)).not.toContain(moduleWriteScopeContractionAccessToken);
 			expect(JSON.stringify(auditLog.mock.calls)).not.toContain(moduleTriggerScopeContractionAccessToken);
+			expect(JSON.stringify(auditLog.mock.calls)).not.toContain(freshModuleTriggerScopeContractionAccessToken);
 			await moduleWriteScopeContractionClient.close();
 			moduleWriteScopeContractionClient = undefined;
 			await moduleTriggerScopeContractionClient.close();
