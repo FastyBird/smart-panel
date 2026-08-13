@@ -96,6 +96,8 @@ export interface HomeyShsCapture {
 	systemInfo: unknown;
 	zones: unknown;
 	devices: unknown;
+	individualDevice?: unknown;
+	capabilityValue?: unknown;
 }
 
 type UnsafeCaptureCategory = 'email' | 'homey-token' | 'ipv4' | 'ipv6' | 'mac' | 'url';
@@ -628,6 +630,45 @@ const readJson = async (response: Response, label: string): Promise<unknown> => 
 	}
 };
 
+interface HomeyReadTarget {
+	deviceId: string;
+	capabilityId: string;
+}
+
+const selectHomeyReadTarget = (devices: unknown): HomeyReadTarget => {
+	if (!isRecord(devices)) {
+		throw new Error('Homey devices response is not an object');
+	}
+
+	const candidates = Object.entries(devices)
+		.sort(([left], [right]) => left.localeCompare(right))
+		.flatMap(([deviceId, device]) => {
+			if (!isRecord(device) || !isRecord(device.capabilitiesObj)) {
+				return [];
+			}
+
+			return Object.entries(device.capabilitiesObj)
+				.filter(([, capability]) => !isRecord(capability) || capability.getable !== false)
+				.map(([capabilityId]) => ({ deviceId, capabilityId }));
+		})
+		.sort((left, right) => {
+			const suffixPreference = Number(right.capabilityId.includes('.')) - Number(left.capabilityId.includes('.'));
+
+			return (
+				suffixPreference ||
+				left.deviceId.localeCompare(right.deviceId) ||
+				left.capabilityId.localeCompare(right.capabilityId)
+			);
+		});
+	const target = candidates[0];
+
+	if (!target) {
+		throw new Error('Homey devices response has no readable capability target');
+	}
+
+	return target;
+};
+
 export const captureHomeyShs = async (
 	config: HomeyShsProbeConfig,
 	fetchImplementation: typeof fetch = fetch,
@@ -649,15 +690,34 @@ export const captureHomeyShs = async (
 		readJson(zonesResponse, 'zones'),
 		readJson(devicesResponse, 'devices'),
 	]);
+	const readTarget = selectHomeyReadTarget(devices);
+	const individualDevicePath = `/api/manager/devices/device/${encodeURIComponent(readTarget.deviceId)}`;
+	const capabilityValuePath = `${individualDevicePath}/capability/${encodeURIComponent(readTarget.capabilityId)}`;
+	const [individualDeviceResponse, capabilityValueResponse] = await Promise.all([
+		fetchHomey(config, individualDevicePath, 'individualDevice', true, fetchImplementation),
+		fetchHomey(config, capabilityValuePath, 'capabilityValue', true, fetchImplementation),
+	]);
+	const [individualDevice, capabilityValue] = await Promise.all([
+		readJson(individualDeviceResponse, 'individualDevice'),
+		readJson(capabilityValueResponse, 'capabilityValue'),
+	]);
 	const aliases = createSanitizationAliases();
 	registerSourceValues(config.expectedHost, aliases);
 	registerPrivateTerms(config.privateTerms, aliases);
 	registerSourceValues(systemInfo, aliases);
 	registerSourceValues(zones, aliases);
 	registerSourceValues(devices, aliases);
+	registerSourceValues(individualDevice, aliases);
+	registerSourceValues(capabilityValue, aliases);
 	registerSourceValues(ping.headers.get('x-homey-id'), aliases);
 	const sanitizedZones = sanitizeHomeyZones(zones, config.privateTerms, aliases);
 	const sanitizedDevices = sanitizeHomeyDevices(devices, config.privateTerms, aliases);
+	const sanitizedIndividualDevices = sanitizeHomeyDevices(
+		{ [readTarget.deviceId]: individualDevice },
+		config.privateTerms,
+		aliases,
+	);
+	const safeDeviceId = pseudonym('device', readTarget.deviceId, aliases);
 
 	return {
 		metadata: {
@@ -673,11 +733,21 @@ export const captureHomeyShs = async (
 				zones: Object.keys(sanitizedZones).length,
 				devices: Object.keys(sanitizedDevices).length,
 			},
-			readEndpoints: READ_ENDPOINTS,
+			readEndpoints: {
+				...READ_ENDPOINTS,
+				individualDevice: '/api/manager/devices/device/:deviceId',
+				capabilityValue: '/api/manager/devices/device/:deviceId/capability/:capabilityId',
+			},
 		},
 		systemInfo: sanitizeHomeyPayload(systemInfo, config.privateTerms, 'generic', aliases),
 		zones: sanitizedZones,
 		devices: sanitizedDevices,
+		individualDevice: sanitizedIndividualDevices[safeDeviceId],
+		capabilityValue: {
+			deviceId: safeDeviceId,
+			capabilityId: readTarget.capabilityId,
+			response: sanitizeHomeyPayload(capabilityValue, config.privateTerms, 'generic', aliases),
+		},
 	};
 };
 
@@ -719,6 +789,7 @@ export const assertHomeyCaptureSafe = (
 		'capabilities',
 		'capabilitiesObj',
 		'capabilityOptions',
+		'capabilityId',
 		'data',
 		'deviceId',
 		'deviceIds',
@@ -753,8 +824,13 @@ export const assertHomeyCaptureSafe = (
 		path[0] === 'devices' &&
 		GENERATED_PSEUDONYM_PATTERN.test(path[1]) &&
 		path[2] === 'capabilities';
+	const isCapturedCapabilityReadIdentifier = (key: string, path: string[]): boolean =>
+		key === 'capabilityId' && path.length === 1 && path[0] === 'capabilityValue';
 	const isStructuralRecordPath = (path: string[]): boolean => {
-		if (path.length === 1 && path[0] === 'systemInfo') {
+		if (
+			path.length === 1 &&
+			(path[0] === 'systemInfo' || path[0] === 'individualDevice' || path[0] === 'capabilityValue')
+		) {
 			return true;
 		}
 
@@ -768,12 +844,19 @@ export const assertHomeyCaptureSafe = (
 
 		return isCapturedCapabilityMapPath(path.slice(0, -1));
 	};
-	const fixedCaptureRootKeys = new Set(['devices', 'metadata', 'systemInfo', 'zones']);
+	const fixedCaptureRootKeys = new Set([
+		'capabilityValue',
+		'devices',
+		'individualDevice',
+		'metadata',
+		'systemInfo',
+		'zones',
+	]);
 	const fixedMetadataKeys = new Set(['capturedAt', 'counts', 'homey', 'readEndpoints', 'schemaVersion', 'transport']);
 	const fixedMetadataNestedKeys = new Map<string, Set<string>>([
 		['counts', new Set(['devices', 'zones'])],
 		['homey', new Set(['id', 'tier', 'version'])],
-		['readEndpoints', new Set(['devices', 'systemInfo', 'zones'])],
+		['readEndpoints', new Set(['capabilityValue', 'devices', 'individualDevice', 'systemInfo', 'zones'])],
 		['transport', new Set(['port', 'protocol'])],
 	]);
 	const isFixedCaptureKey = (key: string, path: string[]): boolean => {
@@ -850,6 +933,7 @@ export const assertHomeyCaptureSafe = (
 			return (
 				!isCapturedCapabilityListEntry(path) &&
 				!isCapturedCapabilityIdentifier(key, path) &&
+				!isCapturedCapabilityReadIdentifier(key, path) &&
 				value.replace(REDACTION_PATTERN, '').toLowerCase().includes(term.toLowerCase())
 			);
 		}
@@ -883,6 +967,8 @@ export const assertHomeyCaptureSafe = (
 			['systemInfo', capture.systemInfo],
 			['zones', capture.zones],
 			['devices', capture.devices],
+			['individualDevice', capture.individualDevice],
+			['capabilityValue', capture.capabilityValue],
 		].some(([payloadKey, value]) => inspectPrivateTermValues(value, payloadKey as string, [], term));
 
 		if (privateTermFound) {

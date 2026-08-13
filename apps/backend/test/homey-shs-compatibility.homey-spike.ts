@@ -64,7 +64,11 @@ describe('Homey SHS compatibility probe', () => {
 		);
 
 		expect(new Set(Object.values(fixtures).map((fixture) => fixture.id)).size).toBe(fixtureNames.length);
-		expect(Object.values(fixtures).every((fixture) => /^device-label-\d{6}$/.test(String(fixture.name)))).toBe(true);
+		expect(
+			Object.values(fixtures).every(
+				(fixture) => typeof fixture.name === 'string' && /^device-label-\d{6}$/.test(fixture.name),
+			),
+		).toBe(true);
 		expectCapabilities('light', 'onoff', 'dim');
 		expectCapabilities('switch', 'onoff');
 		expectCapabilities('climate', 'measure_temperature', 'measure_humidity');
@@ -440,21 +444,31 @@ describe('Homey SHS compatibility probe', () => {
 				return Promise.resolve(jsonResponse({ 'private-zone-id': { id: 'private-zone-id', name: 'Private Room' } }));
 			}
 
+			if (url.endsWith('/api/manager/devices/device/private-device-id/capability/onoff')) {
+				return Promise.resolve(jsonResponse({ value: false }));
+			}
+
+			const device = {
+				id: 'private-device-id',
+				name: 'Private Device',
+				capabilities: ['onoff'],
+				capabilitiesObj: { onoff: { id: 'onoff', value: false, getable: true } },
+			};
+
+			if (url.endsWith('/api/manager/devices/device/private-device-id')) {
+				return Promise.resolve(jsonResponse(device));
+			}
+
 			return Promise.resolve(
 				jsonResponse({
-					'private-device-id': {
-						id: 'private-device-id',
-						name: 'Private Device',
-						capabilities: ['onoff'],
-						capabilitiesObj: { onoff: { id: 'onoff', value: false } },
-					},
+					'private-device-id': device,
 				}),
 			);
 		});
 
 		const capture = await captureHomeyShs(config, fetchMock as typeof fetch);
 
-		expect(calls).toHaveLength(4);
+		expect(calls).toHaveLength(6);
 		expect(new Headers(calls[0].init?.headers).has('authorization')).toBe(false);
 
 		for (const call of calls.slice(1)) {
@@ -464,6 +478,12 @@ describe('Homey SHS compatibility probe', () => {
 		}
 
 		assertHomeyCaptureSafe(capture, [config.apiKey], config.privateTerms, config.expectedHost);
+		expect(capture.individualDevice).toMatchObject({ id: 'device-000001', name: 'device-label-000001' });
+		expect(capture.capabilityValue).toEqual({
+			deviceId: 'device-000001',
+			capabilityId: 'onoff',
+			response: { value: false },
+		});
 
 		const hostCollisionConfig = createConfig({
 			FB_HOMEY_SHS_URL: 'http://homey-000001:4859',

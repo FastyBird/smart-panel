@@ -63,7 +63,7 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 - [ ] Verify connection with the documented SDK against HTTP `4859` and HTTPS `4860` where the installation supports them.
 - [x] Capture sanitized system information and manager state.
 - [x] Capture zones and zone hierarchy.
-- [ ] Capture the complete device inventory and individual device objects.
+- [x] Capture the complete device inventory and individual device objects.
 - [x] Capture capabilities with values, types, units, ranges, enums, readable/writable flags, and repeated/suffixed IDs.
 - [ ] Verify Socket.IO connection and record subscription/event ordering for capability changes and availability changes.
 - [ ] Write the allowlisted test capability and confirm the resulting event plus subsequent read.

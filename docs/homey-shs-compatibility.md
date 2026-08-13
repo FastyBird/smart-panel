@@ -20,8 +20,8 @@ file. Live results use synthetic aliases and sanitized captures only.
 | Area | Status | Evidence still required |
 | --- | --- | --- |
 | Credential-safe read probe | Passed on SHS `13.4.0` over HTTP `4859` | Repeat over HTTPS `4860` if enabled |
-| System, zone, and device inventory | Captured and sanitized | Individual-device endpoint still needs a separate live read |
-| Capability metadata and suffixed IDs | Captured from inventory | Add explicit capability reads and allowlisted write evidence |
+| System, zone, device inventory, and individual device | Captured and sanitized | Add lifecycle delta evidence on the disposable test device |
+| Capability metadata and suffixed IDs | Captured from inventory and an explicit read | Add allowlisted write and read-back evidence |
 | Socket.IO events and reconnect | Pending live access | Capture connect, subscribe, event, disconnect, restart, and reconnect ordering |
 | Allowlisted capability write | Contract defined, disabled | Use only the designated harmless test capability |
 | Disposable-device lifecycle | Contract defined, disabled | Use only the separately gated virtual/test device |
@@ -68,10 +68,10 @@ before creating a local client.
 
 ## Safe read-only probe
 
-The probe is intentionally independent of `homey-api`. It uses Node's built-in `fetch`, performs only the four GET
-requests listed above, blocks redirects, applies a bounded timeout and response-size limit, and pins the configured URL
-to a separately supplied expected host. The API key is not sent to the unauthenticated ping endpoint and is never
-written to a capture.
+The probe is intentionally independent of `homey-api`. It uses Node's built-in `fetch`, performs only six GET requests
+(ping, system information, zones, inventory, one selected individual device, and one readable capability), blocks
+redirects, applies a bounded timeout and response-size limit, and pins the configured URL to a separately supplied
+expected host. The API key is not sent to the unauthenticated ping endpoint and is never written to a capture.
 
 From `apps/backend`, enter values interactively so the key and private identifiers do not appear in shell history:
 
@@ -182,8 +182,8 @@ Fill this matrix using synthetic aliases only.
 | Missing system/zone/device scope | Pending | |
 | Bad URL and unavailable host | Pending | |
 | Request timeout | Pending | |
-| Complete inventory and individual read | Partial | Complete inventory captured: 118 devices and 16 zones; separate individual GET pending |
-| Suffixed capability IDs | Pass in inventory | 1,142 capability entries, including 170 suffixed entries; 55 devices repeat a base ID |
+| Complete inventory and individual read | Pass | Complete inventory captured: 118 devices and 16 zones; the selected individual-device response matched its pseudonymized inventory identity |
+| Suffixed capability IDs | Pass in inventory and explicit read | 1,142 capability entries, including 170 suffixed entries; 55 devices repeat a base ID; an explicit suffixed capability GET returned a numeric scalar |
 | Socket.IO connect and subscribe | Pending | |
 | Capability and availability events | Pending | |
 | Allowlisted write, event, and read-back | Pending | |
@@ -196,8 +196,8 @@ Fill this matrix using synthetic aliases only.
 ## Verification
 
 The offline harness test covers exact-host validation, credential-bearing URL rejection, redirect blocking, read-only
-methods, Bearer placement, deterministic identity replacement, private address/name removal, suffixed capability ID
-preservation, and forbidden-value failure:
+methods, Bearer placement, deterministic identity replacement across inventory/detail reads, private address/name
+removal, suffixed capability selection and preservation, and forbidden-value failure:
 
 ```bash
 cd apps/backend
