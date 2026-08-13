@@ -113,7 +113,7 @@ describe('HomeAssistantWizardService', () => {
 			generatePreview: jest.fn().mockResolvedValue(createDevicePreview()),
 			generateSettledPreviews: jest.fn().mockResolvedValue([
 				{
-					source: { id: 'ha-device-1', name: 'Living room lamp' },
+					source: { id: 'ha-device-1', name: 'Living room lamp', entities: ['light.living_room'] },
 					preview: createDevicePreview(),
 					error: null,
 				},
@@ -133,7 +133,7 @@ describe('HomeAssistantWizardService', () => {
 		helperAdoptionService = { adoptHelper: jest.fn().mockResolvedValue({ id: 'helper-1' }) };
 		homeAssistantHttpService = {
 			getDiscoveredInventory: jest.fn().mockResolvedValue({
-				devices: [{ id: 'ha-device-1', adoptedDeviceId: null }],
+				devices: [{ id: 'ha-device-1', entities: ['light.living_room'], adoptedDeviceId: null }],
 				helpers: [{ entityId: 'input_boolean.guest_mode', adoptedDeviceId: null }],
 			}),
 		};
@@ -159,8 +159,13 @@ describe('HomeAssistantWizardService', () => {
 		expect(snapshot.id).toMatch(/^[0-9a-f-]{36}$/);
 		expect(snapshot.candidates).toEqual(
 			expect.arrayContaining([
-				expect.objectContaining({ key: 'device:ha-device-1', status: 'ready', previewChannelCount: 1 }),
-				expect.objectContaining({ key: 'helper:input_boolean.guest_mode', status: 'ready', previewChannelCount: 1 }),
+				expect.objectContaining({ key: 'device:ha-device-1', status: 'ready', previewChannelCount: 1, entityCount: 1 }),
+				expect.objectContaining({
+					key: 'helper:input_boolean.guest_mode',
+					status: 'ready',
+					previewChannelCount: 1,
+					entityCount: 1,
+				}),
 			]),
 		);
 		expect(mappingPreviewService.generateSettledPreviews).toHaveBeenCalledWith(
@@ -175,7 +180,7 @@ describe('HomeAssistantWizardService', () => {
 	it('keeps ambiguous candidates out of automatic adoption', async () => {
 		mappingPreviewService.generateSettledPreviews.mockResolvedValueOnce([
 			{
-				source: { id: 'ha-device-1', name: 'Living room lamp' },
+				source: { id: 'ha-device-1', name: 'Living room lamp', entities: ['light.living_room'] },
 				preview: createDevicePreview([
 					{ type: 'unsupported_entity', entityId: 'sensor.unknown', message: 'Review mapping' },
 				]),
@@ -259,7 +264,7 @@ describe('HomeAssistantWizardService', () => {
 		const snapshot = await service.start();
 		mappingPreviewService.generateSettledPreviews.mockResolvedValueOnce([
 			{
-				source: { id: 'ha-device-1', name: 'Living room lamp' },
+				source: { id: 'ha-device-1', name: 'Living room lamp', entities: ['light.living_room'] },
 				preview: createDevicePreview([
 					{ type: 'unsupported_entity', entityId: 'sensor.changed', message: 'Mapping changed' },
 				]),
@@ -296,7 +301,7 @@ describe('HomeAssistantWizardService', () => {
 
 	it('marks candidates already adopted outside the wizard as unavailable', async () => {
 		homeAssistantHttpService.getDiscoveredInventory.mockResolvedValueOnce({
-			devices: [{ id: 'ha-device-1', adoptedDeviceId: 'existing-1' }],
+			devices: [{ id: 'ha-device-1', entities: ['light.living_room'], adoptedDeviceId: 'existing-1' }],
 			helpers: [{ entityId: 'input_boolean.guest_mode', adoptedDeviceId: null }],
 		});
 		const snapshot = await service.start();
@@ -309,7 +314,7 @@ describe('HomeAssistantWizardService', () => {
 	it('keeps valid candidates when another mapping preview fails', async () => {
 		mappingPreviewService.generateSettledPreviews.mockResolvedValueOnce([
 			{
-				source: { id: 'ha-device-1', name: 'Living room lamp' },
+				source: { id: 'ha-device-1', name: 'Living room lamp', entities: ['light.living_room'] },
 				preview: null,
 				error: 'Home Assistant device with ID ha-device-1 not found',
 			},
@@ -321,7 +326,8 @@ describe('HomeAssistantWizardService', () => {
 			expect.arrayContaining([
 				expect.objectContaining({
 					key: 'device:ha-device-1',
-					status: 'failed',
+					status: 'unsupported',
+					entityCount: 1,
 					error: 'Home Assistant device with ID ha-device-1 not found',
 				}),
 				expect.objectContaining({ key: 'helper:input_boolean.guest_mode', status: 'ready' }),
@@ -349,7 +355,7 @@ describe('HomeAssistantWizardService', () => {
 		const overlappingHelper = createHelperPreview();
 		overlappingHelper.helper.entityId = 'light.living_room';
 		homeAssistantHttpService.getDiscoveredInventory.mockResolvedValueOnce({
-			devices: [{ id: 'ha-device-1', adoptedDeviceId: null }],
+			devices: [{ id: 'ha-device-1', entities: ['light.living_room'], adoptedDeviceId: null }],
 			helpers: [{ entityId: 'light.living_room', adoptedDeviceId: 'helper-device-1' }],
 		});
 		helperMappingPreviewService.generateSettledPreviews.mockResolvedValueOnce([

@@ -60,6 +60,7 @@ const readyCandidate = {
 	status: DevicesHomeAssistantPluginDataWizardCandidateStatus.ready,
 	suggestedCategory: DevicesModuleDeviceCategory.lighting,
 	previewChannelCount: 2,
+	entityCount: 3,
 	warningCount: 0,
 	adoptedDeviceId: null,
 	error: null,
@@ -175,7 +176,7 @@ describe('useDevicesWizard', () => {
 					candidates: [
 						{
 							...readyCandidate,
-							status: DevicesHomeAssistantPluginDataWizardCandidateStatus.failed,
+							status: DevicesHomeAssistantPluginDataWizardCandidateStatus.unsupported,
 							warningCount: 1,
 							error: 'Home Assistant registry entry disappeared',
 						},
@@ -189,6 +190,10 @@ describe('useDevicesWizard', () => {
 		await adapter.start();
 
 		expect(adapter.rows.value[0].statusLabel).toBe('Home Assistant registry entry disappeared');
+		expect(adapter.rows.value[0]).toEqual(expect.objectContaining({ status: 'unsupported', adoptable: false }));
+		expect(adapter.rows.value[0].cells?.entities).toEqual(
+			expect.objectContaining({ value: 'devicesHomeAssistantPlugin.wizard.columns.entitiesCount:{"count":3}' })
+		);
 		expect(adapter.rows.value[0].cells?.channels).toEqual(expect.objectContaining({ tooltip: 'Home Assistant registry entry disappeared' }));
 	});
 

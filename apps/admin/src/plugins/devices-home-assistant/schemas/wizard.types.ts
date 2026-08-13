@@ -1,6 +1,6 @@
 import type { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 
-export type IHomeAssistantWizardCandidateStatus = 'ready' | 'needs_attention' | 'already_registered' | 'failed';
+export type IHomeAssistantWizardCandidateStatus = 'ready' | 'needs_attention' | 'already_registered' | 'unsupported' | 'failed';
 
 export interface IHomeAssistantWizardCandidate {
 	key: string;
@@ -12,6 +12,7 @@ export interface IHomeAssistantWizardCandidate {
 	status: IHomeAssistantWizardCandidateStatus;
 	suggestedCategory: DevicesModuleDeviceCategory | null;
 	previewChannelCount: number;
+	entityCount: number;
 	warningCount: number;
 	adoptedDeviceId: string | null;
 	error: string | null;
