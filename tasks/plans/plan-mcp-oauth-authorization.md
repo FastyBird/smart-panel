@@ -493,7 +493,11 @@ amend ADR 0002.
 - [x] Repeat static bearer compatibility tests to prove coexistence. The static endpoint list/call suite and the
       simultaneous static-plus-OAuth lifecycle E2E exercise the production authentication and policy guards, including
       OAuth switch-off/re-enable while the static stream remains usable.
-- [ ] Use MCP Inspector/TypeScript client for wire-level negative cases that user hosts do not expose.
+- [x] Use the pinned official TypeScript client `2.0.0` for wire-level negative cases that user hosts do not expose:
+      token-binding and stored-claim rejection, expiry and revocation stream closure, scope contraction, listen/
+      invalidation races, OAuth switch-off/re-enable, and static-profile isolation. Use direct HTTP and service-level
+      verification where the client hides OAuth callbacks, challenge headers, or persisted bearer state, and record the
+      scenario-to-test matrix in the compatibility evidence.
 
 ## Phase 7 — Deployment, incident response, and rollout
 
