@@ -85,6 +85,8 @@ import { DataSourcesDeviceChannelPlugin } from './plugins/data-sources-device-ch
 import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather/data-sources-weather.plugin';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from './plugins/devices-home-assistant/devices-home-assistant.constants';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant/devices-home-assistant.plugin';
+import { DEVICES_HOMEY_PLUGIN_PREFIX } from './plugins/devices-homey/devices-homey.constants';
+import { DevicesHomeyPlugin } from './plugins/devices-homey/devices-homey.plugin';
 import { DEVICES_RETERMINAL_PLUGIN_PREFIX } from './plugins/devices-reterminal/devices-reterminal.constants';
 import { DevicesReTerminalPlugin } from './plugins/devices-reterminal/devices-reterminal.plugin';
 import { DEVICES_SHELLY_NG_PLUGIN_PREFIX } from './plugins/devices-shelly-ng/devices-shelly-ng.constants';
@@ -315,6 +317,10 @@ export class AppModule {
 								module: DevicesHomeAssistantPlugin,
 							},
 							{
+								path: DEVICES_HOMEY_PLUGIN_PREFIX,
+								module: DevicesHomeyPlugin,
+							},
+							{
 								path: DEVICES_THIRD_PARTY_PLUGIN_PREFIX,
 								module: DevicesThirdPartyPlugin,
 							},
@@ -440,6 +446,7 @@ export class AppModule {
 				DevicesReTerminalPlugin,
 				DevicesThirdPartyPlugin,
 				DevicesHomeAssistantPlugin,
+				DevicesHomeyPlugin,
 				DevicesShellyNgPlugin,
 				DevicesShellyV1Plugin,
 				DevicesWledPlugin,

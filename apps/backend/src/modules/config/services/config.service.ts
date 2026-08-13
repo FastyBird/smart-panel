@@ -439,6 +439,24 @@ export class ConfigService {
 		}
 
 		const resolvedUpdate = this.resolvePluginConfigUpdate(plugin, instance, submittedValue);
+		const candidate = toInstance(
+			mapping.class,
+			this.configSecrets.merge(existingPlugin, {
+				type: plugin,
+				...resolvedUpdate,
+			}),
+		);
+		const candidateErrors = validateSync(candidate, this.validationOptions);
+
+		if (candidateErrors.length > 0) {
+			const redactedErrors = this.configSecrets.redactForLogging(candidateErrors, mapping.secretFields, candidate);
+
+			this.logger.error(
+				`[VALIDATION] Resolved configuration is invalid for plugin=${plugin} error=${JSON.stringify(redactedErrors)}`,
+			);
+
+			throw new ConfigValidationException(`New configuration for plugin '${plugin}' is invalid.`);
+		}
 
 		this.logger.log(`Updating configuration for plugin=${plugin}`);
 
@@ -447,15 +465,7 @@ export class ConfigService {
 		// Remove the old plugin if it exists
 		appConfig.plugins = (appConfig.plugins ?? []).filter((existingPlugin) => existingPlugin.type !== plugin);
 		// Add the new plugin config
-		appConfig.plugins.push(
-			toInstance(
-				mapping.class,
-				this.configSecrets.merge(existingPlugin, {
-					type: plugin,
-					...resolvedUpdate,
-				}),
-			),
-		);
+		appConfig.plugins.push(candidate);
 
 		this.logger.log(`[SAVE] Saving updated configuration for plugin=${plugin}`);
 		this.saveConfig(appConfig);

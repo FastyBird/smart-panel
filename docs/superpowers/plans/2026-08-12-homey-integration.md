@@ -170,14 +170,14 @@ devices-homey.plugin.ts
 index.ts
 ```
 
-- [ ] Define plugin name/type, API tag, config keys, injection tokens, default timeouts/intervals, and health states.
-- [ ] Add Homey device entity discriminator by following the closest provider entity pattern.
-- [ ] Register the plugin through the repository's backend plugin mechanism.
-- [ ] Extend the managed plugin lifecycle base used by current providers.
-- [ ] Add local config DTO/model with URL, write-only API key mutation fields, timeout, reconciliation interval, and disabled/enabled state.
-- [ ] Register config validation/mutation and secret metadata.
-- [ ] Add a placeholder status response and controller using standard response envelopes.
-- [ ] Add plugin bootstrap/config tests, including disabled and incomplete configuration states.
+- [x] Define plugin name/type, API tag, config keys, injection tokens, default timeouts/intervals, and health states.
+- [x] Add Homey device entity discriminator by following the closest provider entity pattern.
+- [x] Register the plugin through the repository's backend plugin mechanism.
+- [x] Extend the managed plugin lifecycle base used by current providers.
+- [x] Add local config DTO/model with URL, write-only API key mutation fields, timeout, reconciliation interval, and disabled/enabled state.
+- [x] Register config validation/mutation and secret metadata.
+- [x] Add a placeholder status response and controller using standard response envelopes.
+- [x] Add plugin bootstrap/config tests, including disabled and incomplete configuration states.
 
 **Verification:** Targeted Jest tests and `pnpm run lint:js`.
 

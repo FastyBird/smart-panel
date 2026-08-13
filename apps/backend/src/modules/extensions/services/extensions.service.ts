@@ -1,12 +1,17 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { ConfigValidationException } from '../../config/config.exceptions';
 import { UpdateModuleConfigDto, UpdatePluginConfigDto } from '../../config/dto/config.dto';
 import { ConfigService } from '../../config/services/config.service';
 import { ModulesTypeMapperService } from '../../config/services/modules-type-mapper.service';
 import { PluginsTypeMapperService } from '../../config/services/plugins-type-mapper.service';
 import { EXTENSIONS_MODULE_NAME, ExtensionKind, NON_TOGGLEABLE_MODULES } from '../extensions.constants';
-import { ExtensionNotConfigurableException, ExtensionNotFoundException } from '../extensions.exceptions';
+import {
+	ExtensionConfigValidationException,
+	ExtensionNotConfigurableException,
+	ExtensionNotFoundException,
+} from '../extensions.exceptions';
 import { ExtensionLinksModel, ExtensionModel } from '../models/extension.model';
 
 import { ExtensionsBundledService } from './extensions-bundled.service';
@@ -151,10 +156,18 @@ export class ExtensionsService {
 
 		// Update the config based on extension kind
 		// Note: type is required in the DTO validation
-		if (extension.kind === ExtensionKind.MODULE) {
-			await this.configService.updateModuleConfig(type, { type, enabled } as UpdateModuleConfigDto);
-		} else {
-			this.configService.setPluginConfig(type, { type, enabled } as UpdatePluginConfigDto);
+		try {
+			if (extension.kind === ExtensionKind.MODULE) {
+				await this.configService.updateModuleConfig(type, { type, enabled } as UpdateModuleConfigDto);
+			} else {
+				this.configService.setPluginConfig(type, { type, enabled } as UpdatePluginConfigDto);
+			}
+		} catch (error) {
+			if (error instanceof ConfigValidationException) {
+				throw new ExtensionConfigValidationException(type);
+			}
+
+			throw error;
 		}
 
 		// Return updated extension

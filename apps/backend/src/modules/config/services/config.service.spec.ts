@@ -6,7 +6,7 @@ Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Expose, Transform } from 'class-transformer';
-import { IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import * as fs from 'fs';
 import path from 'path';
 import * as yaml from 'yaml';
@@ -40,10 +40,15 @@ class MockPluginConfig extends PluginConfigModel {
 
 	@Expose({ name: 'mock_value' })
 	@IsString()
-	@Transform(({ obj }: { obj: { mock_value?: string; mockValue?: string } }) => obj.mock_value || obj.mockValue, {
-		toClassOnly: true,
-	})
-	mockValue: string = 'default value';
+	@IsNotEmpty()
+	@Transform(
+		({ obj }: { obj: { mock_value?: string | null; mockValue?: string | null } }) =>
+			Object.prototype.hasOwnProperty.call(obj, 'mock_value') ? obj.mock_value : obj.mockValue,
+		{
+			toClassOnly: true,
+		},
+	)
+	mockValue: string | null = 'default value';
 
 	@Expose({ name: 'secret_value' })
 	@IsOptional()
@@ -55,7 +60,7 @@ class PluginConfigDto extends UpdatePluginConfigDto {
 	@Expose()
 	@IsOptional()
 	@IsString()
-	mock_value?: string;
+	mock_value?: string | null;
 
 	@Expose({ name: 'secret_value' })
 	@IsOptional()
@@ -431,6 +436,20 @@ describe('ConfigService', () => {
 			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']));
 			expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']), 'utf8');
 			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(mockRawConfig));
+		});
+
+		it('validates the resolved persisted model before saving', () => {
+			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
+			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
+
+			expect(() =>
+				service.setPluginConfig('mock', toInstance(PluginConfigDto, { type: 'mock', mock_value: null }), {
+					type: 'mock',
+					mock_value: null,
+				}),
+			).toThrow(ConfigValidationException);
+			expect(yaml.stringify).not.toHaveBeenCalled();
 		});
 	});
 

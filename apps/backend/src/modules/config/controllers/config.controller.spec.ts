@@ -13,7 +13,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { ROLES_KEY } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
-import { ConfigException } from '../config.exceptions';
+import { ConfigException, ConfigValidationException } from '../config.exceptions';
 import { UpdateModuleConfigDto, UpdatePluginConfigDto } from '../dto/config.dto';
 import { AppConfigModel, ModuleConfigModel, PluginConfigModel } from '../models/config.model';
 import { ConfigSecretsService } from '../services/config-secrets.service';
@@ -172,6 +172,18 @@ describe('ConfigController', () => {
 			);
 			expect(response.data.errors).toEqual([{ field: 'api_key', message: 'Rejected [REDACTED]' }]);
 			expect(JSON.stringify(response)).not.toContain('stored-secret');
+		});
+	});
+
+	describe('updatePluginConfig', () => {
+		it('returns a bad request when the resolved stored configuration is invalid', async () => {
+			jest.spyOn(configService, 'setPluginConfig').mockImplementation(() => {
+				throw new ConfigValidationException('invalid resolved configuration');
+			});
+
+			await expect(
+				controller.updatePluginConfig('mock-plugin', { data: { type: 'mock-plugin', enabled: true } }),
+			).rejects.toThrow(BadRequestException);
 		});
 	});
 
