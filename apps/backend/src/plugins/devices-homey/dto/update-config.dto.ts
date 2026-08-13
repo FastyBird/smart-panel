@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsInt, IsOptional, IsString, IsUrl, Max, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -13,6 +13,7 @@ import {
 	MIN_HOMEY_CONNECTION_TIMEOUT_MS,
 	MIN_HOMEY_RECONCILIATION_INTERVAL_MS,
 } from '../devices-homey.constants';
+import { IsSafeHomeyUrl } from '../validators/homey-url.validator';
 
 @ApiSchema({ name: 'DevicesHomeyPluginUpdateConfig' })
 export class HomeyUpdatePluginConfigDto extends UpdatePluginConfigDto {
@@ -31,10 +32,9 @@ export class HomeyUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	})
 	@Expose()
 	@IsOptional()
-	@IsUrl(
-		{ protocols: ['http', 'https'], require_protocol: true, require_tld: false },
-		{ message: '[{"field":"url","reason":"URL must use HTTP or HTTPS and include a protocol."}]' },
-	)
+	@IsSafeHomeyUrl({
+		message: '[{"field":"url","reason":"URL must use HTTP or HTTPS without embedded credentials."}]',
+	})
 	url?: string | null;
 
 	@ApiPropertyOptional({

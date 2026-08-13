@@ -72,6 +72,21 @@ describe('HomeyService', () => {
 		expect(status).not.toHaveProperty('url');
 	});
 
+	it('reads current configuration for each status snapshot while stopped', () => {
+		expect(service.getStatus()).toMatchObject({ enabled: true, configured: true });
+
+		configService.getPluginConfig.mockReturnValue(
+			Object.assign(new HomeyConfigModel(), {
+				enabled: false,
+				url: null,
+				apiKey: null,
+			}),
+		);
+
+		expect(service.getStatus()).toMatchObject({ enabled: false, configured: false });
+		expect(configService.getPluginConfig).toHaveBeenCalledTimes(2);
+	});
+
 	it('requests a restart only when connector configuration changes', async () => {
 		await service.start();
 

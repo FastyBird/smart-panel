@@ -41,4 +41,16 @@ describe('Homey configuration', () => {
 		expect(update.reconciliationInterval).toBe(60000);
 		expect(validateSync(update)).toEqual([]);
 	});
+
+	it('rejects embedded URL credentials in stored and update configuration', () => {
+		const url = 'http://owner:credential@homey.local:4859';
+		const config = Object.assign(new HomeyConfigModel(), { url });
+		const update = plainToInstance(HomeyUpdatePluginConfigDto, {
+			type: 'devices-homey-plugin',
+			url,
+		});
+
+		expect(validateSync(config)).toEqual(expect.arrayContaining([expect.objectContaining({ property: 'url' })]));
+		expect(validateSync(update)).toEqual(expect.arrayContaining([expect.objectContaining({ property: 'url' })]));
+	});
 });

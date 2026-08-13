@@ -93,7 +93,7 @@ export class HomeyService extends BaseManagedPluginService {
 	}
 
 	getStatus(): HomeyStatusModel {
-		const config = this.getPluginConfigOrDefault();
+		const config = this.getCurrentPluginConfigOrDefault();
 		const status = new HomeyStatusModel();
 
 		status.serviceState = this.getState();
@@ -114,9 +114,9 @@ export class HomeyService extends BaseManagedPluginService {
 		return this.pluginConfig;
 	}
 
-	private getPluginConfigOrDefault(): HomeyConfigModel {
+	private getCurrentPluginConfigOrDefault(): HomeyConfigModel {
 		try {
-			return this.getPluginConfig();
+			return this.configService.getPluginConfig<HomeyConfigModel>(DEVICES_HOMEY_PLUGIN_NAME);
 		} catch {
 			return new HomeyConfigModel();
 		}

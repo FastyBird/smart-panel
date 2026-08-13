@@ -12,6 +12,7 @@ import {
 	MIN_HOMEY_CONNECTION_TIMEOUT_MS,
 	MIN_HOMEY_RECONCILIATION_INTERVAL_MS,
 } from '../devices-homey.constants';
+import { isSafeHomeyUrl } from '../validators/homey-url.validator';
 
 @Injectable()
 export class HomeyConfigValidatorService implements IPluginConfigValidator, OnModuleInit {
@@ -35,7 +36,7 @@ export class HomeyConfigValidatorService implements IPluginConfigValidator, OnMo
 			return Promise.resolve({ valid: false, errors: [{ message: 'Homey URL is required', field: 'url' }] });
 		}
 
-		if (!this.isSafeUrl(url)) {
+		if (!isSafeHomeyUrl(url)) {
 			return Promise.resolve({
 				valid: false,
 				errors: [{ message: 'Homey URL must use HTTP or HTTPS without embedded credentials', field: 'url' }],
@@ -79,16 +80,6 @@ export class HomeyConfigValidatorService implements IPluginConfigValidator, OnMo
 		}
 
 		return Promise.resolve({ valid: true });
-	}
-
-	private isSafeUrl(value: string): boolean {
-		try {
-			const url = new URL(value);
-
-			return ['http:', 'https:'].includes(url.protocol) && url.username.length === 0 && url.password.length === 0;
-		} catch {
-			return false;
-		}
 	}
 
 	private isIntegerInRange(value: unknown, minimum: number, maximum: number): boolean {

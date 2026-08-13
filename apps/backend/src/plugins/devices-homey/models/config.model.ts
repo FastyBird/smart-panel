@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsBoolean, IsInt, IsOptional, IsString, IsUrl, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -13,6 +13,7 @@ import {
 	MIN_HOMEY_CONNECTION_TIMEOUT_MS,
 	MIN_HOMEY_RECONCILIATION_INTERVAL_MS,
 } from '../devices-homey.constants';
+import { IsSafeHomeyUrl } from '../validators/homey-url.validator';
 
 @ApiSchema({ name: 'DevicesHomeyPluginDataConfig' })
 export class HomeyConfigModel extends PluginConfigModel {
@@ -31,7 +32,7 @@ export class HomeyConfigModel extends PluginConfigModel {
 	})
 	@Expose()
 	@IsOptional()
-	@IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false })
+	@IsSafeHomeyUrl()
 	url: string | null = null;
 
 	@ApiPropertyOptional({
