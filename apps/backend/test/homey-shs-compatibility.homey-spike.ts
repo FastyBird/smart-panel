@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { deriveKnownCoverageGaps } from './support/homey-shs-fixture-coverage';
+import { deriveKnownCoverageGaps, deriveKnownDeviceClassGaps } from './support/homey-shs-fixture-coverage';
 import type { HomeyShsCapture } from './support/homey-shs-probe';
 import {
 	assertHomeyCaptureSafe,
@@ -13,6 +13,7 @@ import {
 	sanitizeHomeyPublishedMetadata,
 	sanitizeHomeyZones,
 } from './support/homey-shs-probe';
+import { resolveHomeyTransportPort } from './support/homey-shs-transport';
 
 const createConfig = (environment: NodeJS.ProcessEnv = {}) =>
 	loadHomeyShsProbeConfig(
@@ -39,7 +40,6 @@ describe('Homey SHS compatibility probe', () => {
 			'switch',
 			'climate',
 			'cover',
-			'lock',
 			'sensor-air-quality',
 			'sensor-safety',
 			'energy-meter',
@@ -75,7 +75,6 @@ describe('Homey SHS compatibility probe', () => {
 		expectCapabilities('switch', 'onoff');
 		expectCapabilities('climate', 'measure_temperature', 'measure_humidity');
 		expectCapabilities('cover', 'windowcoverings_state', 'windowcoverings_set');
-		expectCapabilities('lock', 'locked');
 		expectCapabilities('sensor-air-quality', 'measure_temperature', 'measure_humidity', 'measure_luminance');
 		expect(bases('sensor-safety').some((base) => base === 'alarm_motion' || base === 'alarm_battery')).toBe(true);
 		expectCapabilities('energy-meter', 'measure_power', 'meter_power');
@@ -88,6 +87,7 @@ describe('Homey SHS compatibility probe', () => {
 		expect(new Set(repeatedBases).size).toBeLessThan(repeatedBases.length);
 		const manifest = readFixture('manifest.json') as {
 			knownCoverageGaps: string[];
+			knownDeviceClassGaps: string[];
 			provenance: Record<string, unknown>;
 		};
 
@@ -100,6 +100,7 @@ describe('Homey SHS compatibility probe', () => {
 		expect(manifest.knownCoverageGaps).toEqual(
 			expect.arrayContaining(['target_temperature', 'measure_co2', 'windowcoverings_tilt_set']),
 		);
+		expect(manifest.knownDeviceClassGaps).toEqual(['lock']);
 	});
 
 	it('derives tracked capability gaps from the full captured inventory', () => {
@@ -109,6 +110,18 @@ describe('Homey SHS compatibility probe', () => {
 				second: { capabilities: ['measure_co2'] },
 			}),
 		).toEqual(['alarm_smoke', 'alarm_co', 'windowcoverings_tilt_set', 'measure_pressure']);
+	});
+
+	it('records lock-class evidence separately from child-lock capabilities', () => {
+		expect(deriveKnownDeviceClassGaps({ fan: { class: 'fan', capabilities: ['locked.child'] } })).toEqual(['lock']);
+		expect(deriveKnownDeviceClassGaps({ lock: { class: 'lock', capabilities: ['locked'] } })).toEqual([]);
+	});
+
+	it('resolves numeric fixture ports for explicit and default origins', () => {
+		expect(resolveHomeyTransportPort('http', 'default')).toBe(80);
+		expect(resolveHomeyTransportPort('https', '')).toBe(443);
+		expect(resolveHomeyTransportPort('http', '4859')).toBe(4859);
+		expect(() => resolveHomeyTransportPort('http', 'invalid')).toThrow('must be an integer');
 	});
 
 	it('rejects unredacted source locale and human timestamp metadata', () => {

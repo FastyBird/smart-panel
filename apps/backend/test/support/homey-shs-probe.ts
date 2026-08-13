@@ -3,6 +3,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { isIP } from 'node:net';
 import { resolve } from 'node:path';
 
+import { resolveHomeyTransportPort } from './homey-shs-transport';
+
 const DEFAULT_TIMEOUT_MS = 10_000;
 const MIN_TIMEOUT_MS = 1_000;
 const MAX_TIMEOUT_MS = 60_000;
@@ -755,12 +757,16 @@ export const captureHomeyShs = async (
 		aliases,
 	);
 	const safeDeviceId = pseudonym('device', readTarget.deviceId, aliases);
+	const transportProtocol = config.origin.protocol.slice(0, -1);
 
 	return {
 		metadata: {
 			schemaVersion: 1,
 			capturedAt: new Date().toISOString(),
-			transport: { protocol: config.origin.protocol.slice(0, -1), port: config.origin.port || 'default' },
+			transport: {
+				protocol: transportProtocol,
+				port: resolveHomeyTransportPort(transportProtocol, config.origin.port),
+			},
 			homey: {
 				id: pseudonym('homey', ping.headers.get('x-homey-id') ?? 'unknown', aliases),
 				version: sanitizeString(ping.headers.get('x-homey-version') ?? 'unknown', config.privateTerms),

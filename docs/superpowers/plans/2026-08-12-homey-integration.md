@@ -95,7 +95,6 @@ apps/backend/src/plugins/devices-homey/__fixtures__/
     switch.json
     climate.json
     cover.json
-    lock.json
     sensor-air-quality.json
     sensor-safety.json
     energy-meter.json

@@ -2,15 +2,15 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { format } from 'prettier';
 
-import { deriveKnownCoverageGaps } from './homey-shs-fixture-coverage';
+import { deriveKnownCoverageGaps, deriveKnownDeviceClassGaps } from './homey-shs-fixture-coverage';
 import { HomeyShsCapture, assertHomeyCaptureSafe, sanitizeHomeyPublishedMetadata } from './homey-shs-probe';
+import { resolveHomeyTransportPort } from './homey-shs-transport';
 
 const FIXTURE_NAMES = [
 	'light',
 	'switch',
 	'climate',
 	'cover',
-	'lock',
 	'sensor-air-quality',
 	'sensor-safety',
 	'energy-meter',
@@ -78,11 +78,6 @@ const selectors: FixtureSelector[] = [
 		name: 'cover',
 		matches: (device) =>
 			device.class === 'windowcoverings' && hasAllCapabilities(device, 'windowcoverings_state', 'windowcoverings_set'),
-		score: (device) => capabilityIds(device).length,
-	},
-	{
-		name: 'lock',
-		matches: (device) => hasAllCapabilities(device, 'locked'),
 		score: (device) => capabilityIds(device).length,
 	},
 	{
@@ -180,7 +175,7 @@ const fixtureProvenance = (metadata: JsonRecord): JsonRecord => {
 		homeyVersion: homey.version,
 		transport: {
 			protocol: transport.protocol,
-			port: Number(transport.port),
+			port: resolveHomeyTransportPort(transport.protocol, transport.port),
 		},
 		sanitized: true,
 	};
@@ -235,6 +230,7 @@ const main = async (): Promise<void> => {
 		provenance: fixtureProvenance(capture.metadata),
 		fixtures: FIXTURE_NAMES.map((name) => `devices/${name}.json`),
 		knownCoverageGaps: deriveKnownCoverageGaps(publishedDevices),
+		knownDeviceClassGaps: deriveKnownDeviceClassGaps(publishedDevices),
 	});
 
 	process.stdout.write(`Promoted ${fixtures.size} sanitized Homey fixtures.\n`);

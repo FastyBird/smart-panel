@@ -13,6 +13,9 @@ URLs, secrets, timestamps, personal metadata, and driver identifiers are pseudon
 `sensor-safety.json` is selected by alarm capability shape and retains its real sanitized Homey class; its filename does
 not assert that Homey classified the source device as `sensor`.
 
+The live inventory contained no device with Homey's `lock` class. A non-lock device exposed a suffixed child-lock
+capability, but that is not promoted as lock evidence. `knownDeviceClassGaps` in the manifest records this explicitly.
+
 Known live-evidence gaps are listed in `manifest.json`. Do not invent fixtures for those capabilities; add them only from
 a separately sanitized capture or a documented synthetic protocol fixture clearly marked as synthetic.
 

@@ -27,7 +27,7 @@ file. Live results use synthetic aliases and sanitized captures only.
 | Disposable-device lifecycle | Contract defined, disabled | Use only the separately gated virtual/test device |
 | mDNS discovery | Pending live access | Record stable service/TXT data or explicitly defer discovery |
 | SDK decision | Provisional hold | Complete live Socket.IO and cleanup/reconnect comparison |
-| Sanitized fixture corpus | Ten representative live fixtures promoted | Add event/reconnect fixtures and missing capability families |
+| Sanitized fixture corpus | Nine representative live fixtures promoted | Add event/reconnect fixtures and missing capability families/classes |
 
 ## Installation evidence
 
@@ -208,12 +208,15 @@ pnpm run test:homey-spike
 
 The ignored full capture was reduced to ten distinct representative devices under
 `apps/backend/src/plugins/devices-homey/__fixtures__/`. Selection is deterministic and based on capability shape, not
-household identity. The committed set covers light, switch, environmental sensing, covers, lock, alarm-capability
-shapes, energy, repeated/suffixed capabilities, and device unavailability.
+household identity. The committed set covers light, switch, environmental sensing, covers, alarm-capability shapes,
+energy, repeated/suffixed capabilities, and device unavailability.
 
 The live inventory did not contain `target_temperature`, `alarm_contact`, `alarm_smoke`, `alarm_co`, `measure_co2`,
 `windowcoverings_tilt_set`, or `measure_pressure`. These remain explicit evidence gaps and must not be represented by
 fixtures that claim live provenance.
+
+The inventory also contained no device with Homey's `lock` class. A `locked.child` capability on a non-lock device is
+not treated as lock evidence; the manifest records `lock` under `knownDeviceClassGaps`.
 
 ## References
 

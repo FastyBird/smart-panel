@@ -8,6 +8,8 @@ const TRACKED_CAPABILITY_COVERAGE = [
 	'measure_pressure',
 ] as const;
 
+const TRACKED_DEVICE_CLASS_COVERAGE = ['lock'] as const;
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -22,4 +24,15 @@ export const deriveKnownCoverageGaps = (devices: Record<string, unknown>): strin
 	const capturedCapabilityBases = new Set(Object.values(devices).filter(isRecord).flatMap(capabilityBases));
 
 	return TRACKED_CAPABILITY_COVERAGE.filter((capability) => !capturedCapabilityBases.has(capability));
+};
+
+export const deriveKnownDeviceClassGaps = (devices: Record<string, unknown>): string[] => {
+	const capturedClasses = new Set(
+		Object.values(devices)
+			.filter(isRecord)
+			.map((device) => device.class)
+			.filter((deviceClass): deviceClass is string => typeof deviceClass === 'string'),
+	);
+
+	return TRACKED_DEVICE_CLASS_COVERAGE.filter((deviceClass) => !capturedClasses.has(deviceClass));
 };
