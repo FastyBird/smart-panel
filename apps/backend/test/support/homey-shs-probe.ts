@@ -1473,12 +1473,36 @@ export const assertHomeyCaptureSafe = (
 
 	const dynamicKeyContainsPrivateTerm = (key: string, term: string): boolean =>
 		key.toLowerCase().includes(term.toLowerCase());
+	const capturedCapabilityIdentifiers = new Set<string>();
+	const registerCapturedCapabilityIdentifiers = (value: unknown): void => {
+		if (!isRecord(value)) {
+			return;
+		}
+
+		for (const capability of Array.isArray(value.capabilities) ? value.capabilities : []) {
+			if (typeof capability === 'string') {
+				capturedCapabilityIdentifiers.add(capability);
+			}
+		}
+
+		for (const capabilityMap of [value.capabilitiesObj, value.capabilityOptions]) {
+			if (isRecord(capabilityMap)) {
+				Object.keys(capabilityMap).forEach((identifier) => capturedCapabilityIdentifiers.add(identifier));
+			}
+		}
+	};
+
+	if (isRecord(capture.devices)) {
+		Object.values(capture.devices).forEach(registerCapturedCapabilityIdentifiers);
+	}
+	registerCapturedCapabilityIdentifiers(capture.individualDevice);
 	const inspectPrivateTermValues = (value: unknown, key: string, path: string[], term: string): boolean => {
 		if (typeof value === 'string') {
 			const publicCapabilityIdentifier =
 				isCapturedCapabilityListEntry(path) ||
 				isCapturedCapabilityIdentifier(key, path) ||
-				isCapturedCapabilityReadIdentifier(key, path);
+				isCapturedCapabilityReadIdentifier(key, path) ||
+				(isCapabilityReferenceField(key, path, 'device') && capturedCapabilityIdentifiers.has(value));
 			if (publicCapabilityIdentifier) {
 				const separator = value.indexOf('.');
 				const base = separator < 0 ? value : value.slice(0, separator);

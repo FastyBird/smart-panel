@@ -422,6 +422,25 @@ describe('Homey SHS compatibility probe', () => {
 		expect(device.capabilitiesObj.status_text.value).toBe(sourceIdentifier);
 	});
 
+	it('accepts declared public capability references that overlap private terms', () => {
+		const devices = sanitizeHomeyDevices(
+			{
+				'private-device': {
+					id: 'private-device',
+					name: 'Private device',
+					capabilities: ['measure_temperature'],
+					capabilitiesObj: { measure_temperature: { id: 'measure_temperature', value: 21 } },
+					ui: { uiIndicator: 'measure_temperature' },
+				},
+			},
+			['temperature'],
+		);
+
+		expect(() =>
+			assertHomeyCaptureSafe({ metadata: {}, systemInfo: {}, zones: {}, devices }, [], ['temperature']),
+		).not.toThrow();
+	});
+
 	it('pseudonymizes distinct enum option IDs and remaps the current value', () => {
 		const devices = sanitizeHomeyDevices(
 			{
