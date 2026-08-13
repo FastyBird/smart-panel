@@ -298,7 +298,7 @@ describe('Homey SHS compatibility probe', () => {
 				'private-device': {
 					id: 'private-device',
 					name: 'Private device',
-					capabilities: ['private_mode'],
+					capabilities: ['private_mode', 'status_text'],
 					capabilitiesObj: {
 						private_mode: {
 							id: 'private_mode',
@@ -309,13 +309,21 @@ describe('Homey SHS compatibility probe', () => {
 								{ id: 'away', title: 'Away' },
 							],
 						},
+						status_text: {
+							id: 'status_text',
+							type: 'string',
+							value: 'away',
+						},
 					},
 				},
 			},
 			['home'],
 		);
 		const device = devices['device-000001'] as {
-			capabilitiesObj: { private_mode: { value: string; values: Array<{ id: string; title: string }> } };
+			capabilitiesObj: {
+				private_mode: { value: string; values: Array<{ id: string; title: string }> };
+				status_text: { value: string };
+			};
 		};
 		const capability = device.capabilitiesObj.private_mode;
 		const values = capability.values;
@@ -323,6 +331,7 @@ describe('Homey SHS compatibility probe', () => {
 		expect(values.map(({ id }) => id)).toEqual(['enum-option-000001', 'enum-option-000002']);
 		expect(values.map(({ title }) => title)).toEqual(['[~2~]', '[~2~]']);
 		expect(capability.value).toBe('enum-option-000001');
+		expect(device.capabilitiesObj.status_text.value).toBe('away');
 		expect(() =>
 			assertHomeyCaptureSafe({ metadata: {}, systemInfo: {}, zones: {}, devices }, [], ['home']),
 		).not.toThrow();

@@ -307,13 +307,6 @@ const isCapabilityEnumOptionIdentifier = (
 	path[3] === 'values' &&
 	/^\d+$/.test(path[4]);
 
-const isCapabilityEnumCurrentValue = (key: string, path: string[], rootKind: SanitizerContext['rootKind']): boolean =>
-	key === 'value' &&
-	rootKind === 'device' &&
-	path.length === 3 &&
-	path[0] === 'root' &&
-	(path[1] === 'capabilitiesObj' || path[1] === 'capabilityOptions');
-
 const isCapabilityListEntry = (path: string[], rootKind: SanitizerContext['rootKind']): boolean =>
 	rootKind === 'device' && path.length === 2 && path[0] === 'root' && path[1] === 'capabilities';
 
@@ -445,14 +438,6 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 			return pseudonym('enum-option', value, context.aliases);
 		}
 
-		if (isCapabilityEnumCurrentValue(key, context.path, context.rootKind)) {
-			const enumOptionAlias = context.aliases.values.get(`enum-option\0${value}`);
-
-			if (enumOptionAlias !== undefined) {
-				return enumOptionAlias;
-			}
-		}
-
 		if (
 			isCapabilityListEntry(context.path, context.rootKind) ||
 			isCapabilityIdentifier(key, context.path, context.rootKind)
@@ -498,6 +483,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 	const nextPath = [...context.path, key];
 	const preserveKeys = isCapabilityMap(nextPath, context.rootKind);
 	const identifierMap = isIdentifierMap(key);
+	const enumCapability = isCapabilityMap(context.path, context.rootKind) && value.type === 'enum';
 
 	return Object.fromEntries(
 		Object.entries(value).map(([nestedKey, nestedValue]) => {
@@ -514,7 +500,12 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 			const safeKey =
 				privateMapKey && !sanitizedIdentifierEntry ? pseudonym('id', nestedKey, context.aliases) : nestedKey;
 
-			return [safeKey, sanitizeValue(nestedValue, nestedKey, { ...context, path: nextPath })];
+			const safeValue =
+				enumCapability && nestedKey === 'value' && typeof nestedValue === 'string'
+					? pseudonym('enum-option', nestedValue, context.aliases)
+					: sanitizeValue(nestedValue, nestedKey, { ...context, path: nextPath });
+
+			return [safeKey, safeValue];
 		}),
 	);
 };
