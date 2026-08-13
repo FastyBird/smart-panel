@@ -9,6 +9,7 @@ import {
 	McpOAuthApproverAuthorityEntity,
 	McpOAuthClientEntity,
 	McpOAuthGrantEntity,
+	McpOAuthInteractionEntity,
 	McpOAuthProviderArtifactEntity,
 	McpOAuthProviderRefreshFamilyLineageEntity,
 	McpOAuthProviderRevokedGrantEntity,
@@ -24,14 +25,18 @@ import { McpOAuthProviderFactory } from '../src/modules/mcp/oauth/mcp-oauth-prov
 import { McpOAuthPublicUrls } from '../src/modules/mcp/oauth/mcp-oauth.types';
 import { McpOAuthClientService } from '../src/modules/mcp/services/mcp-oauth-client.service';
 import { McpOAuthEndpointRateLimitService } from '../src/modules/mcp/services/mcp-oauth-endpoint-rate-limit.service';
+import { McpOAuthInteractionService } from '../src/modules/mcp/services/mcp-oauth-interaction.service';
 import { McpOAuthProviderMaterialService } from '../src/modules/mcp/services/mcp-oauth-provider-material.service';
 import { McpOAuthPublicUrlService } from '../src/modules/mcp/services/mcp-oauth-public-url.service';
 import { McpOAuthRouteGateService } from '../src/modules/mcp/services/mcp-oauth-route-gate.service';
+import { McpOAuthRuntimeService } from '../src/modules/mcp/services/mcp-oauth-runtime.service';
 import { McpSubscriptionRegistryService } from '../src/modules/mcp/services/mcp-subscription-registry.service';
 import { UserEntity } from '../src/modules/users/entities/users.entity';
 import { UserLanguage, UserRole } from '../src/modules/users/users.constants';
 
 import { runMcpOAuthHandlerInvalidationRaces } from './support/mcp-oauth-handler-invalidation-races';
+
+jest.mock('../src/modules/mcp/services/mcp-installation.service', () => ({ McpInstallationService: class {} }));
 
 const CLIENT_ID = 'phase3-public-client';
 const ACCOUNT_ID = 'owner-1';
@@ -40,6 +45,9 @@ let consentPromptCount = 0;
 let persistSmartPanelGrant = (_providerGrantId: string): Promise<void> => Promise.resolve();
 let artifactLifecycleHook: NonNullable<McpOAuthProviderAdapterOptions['artifactLifecycleHook']> = () =>
 	Promise.resolve();
+let denyNextConsent = false;
+let deniedInteraction: { uid: string; cookie: string; url: string } | undefined;
+let interactionService: McpOAuthInteractionService | undefined;
 
 interface TokenResponse {
 	access_token: string;
@@ -117,6 +125,25 @@ const finishInteraction = async (
 	}
 	consentPromptCount += 1;
 
+	if (denyNextConsent) {
+		denyNextConsent = false;
+
+		if (!interactionService) throw new Error('The production OAuth interaction service is unavailable');
+
+		deniedInteraction = {
+			uid: details.uid,
+			cookie: request.headers.cookie ?? '',
+			url: request.url ?? '',
+		};
+		const completion = await interactionService.deny(details.uid, ACCOUNT_ID, request);
+
+		response.statusCode = 303;
+		response.setHeader('location', completion.redirectTo);
+		if (completion.setCookies.length > 0) response.setHeader('set-cookie', completion.setCookies);
+		response.end();
+		return;
+	}
+
 	let grant = details.grantId === undefined ? undefined : await provider.Grant.find(details.grantId);
 	grant ??= new provider.Grant({ accountId: ACCOUNT_ID, clientId: details.params.client_id });
 	const promptDetails = isRecord(details.prompt.details) ? details.prompt.details : {};
@@ -159,6 +186,7 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 				McpOAuthApproverAuthorityEntity,
 				McpOAuthClientEntity,
 				McpOAuthGrantEntity,
+				McpOAuthInteractionEntity,
 				McpOAuthProviderArtifactEntity,
 				McpOAuthProviderRefreshFamilyLineageEntity,
 				McpOAuthProviderRevokedGrantEntity,
@@ -271,6 +299,20 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		});
 		provider = runtime.provider;
 		const providerCallback = runtime.callback;
+		interactionService = new McpOAuthInteractionService(
+			dataSource.getRepository(McpOAuthInteractionEntity),
+			{ getActive: () => ({ provider, urls }) } as unknown as McpOAuthRuntimeService,
+			{
+				...clientsService,
+				isRedirectUriAllowed: (_candidate: McpOAuthClientEntity, requested: string) =>
+					requested === REGISTERED_REDIRECT_URI,
+			} as unknown as McpOAuthClientService,
+			{} as never,
+			{} as never,
+			{} as never,
+			{} as never,
+			subscriptions,
+		);
 
 		server.removeAllListeners('request');
 		server.on('request', (request, response) => {
@@ -443,6 +485,42 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 
 		expect(accessArtifact.refreshFamilyId).toBe(refreshArtifact.refreshFamilyId);
 		expect(refreshArtifact.refreshFamilyId).toMatch(/^[0-9a-f-]{36}$/);
+	});
+
+	it('denies consent through the production interaction service without issuing artifacts', async () => {
+		const grants = dataSource.getRepository(McpOAuthGrantEntity);
+		const artifacts = dataSource.getRepository(McpOAuthProviderArtifactEntity);
+		const interactions = dataSource.getRepository(McpOAuthInteractionEntity);
+		const beforeGrantCount = await grants.count();
+		const artifactModels = ['Grant', 'AuthorizationCode', 'AccessToken', 'RefreshToken'] as const;
+		const beforeArtifactCounts = new Map<string, number>();
+
+		for (const model of artifactModels) beforeArtifactCounts.set(model, await artifacts.countBy({ model }));
+		denyNextConsent = true;
+		deniedInteraction = undefined;
+
+		const { callback } = await authorize();
+
+		expect(callback.searchParams.get('error')).toBe('access_denied');
+		expect(callback.searchParams.get('state')).toBe('phase3-state');
+		expect(callback.searchParams.get('iss')).toBe(urls.issuer);
+		expect(callback.searchParams.has('code')).toBe(false);
+		expect(await grants.count()).toBe(beforeGrantCount);
+		for (const [model, count] of beforeArtifactCounts) {
+			expect(await artifacts.countBy({ model })).toBe(count);
+		}
+
+		if (!deniedInteraction || !interactionService) throw new Error('Expected the denied interaction to be captured');
+
+		const consumed = await interactions.findOneByOrFail({ uidHash: hash(deniedInteraction.uid) });
+		const replayRequest = {
+			headers: { cookie: deniedInteraction.cookie },
+			method: 'GET',
+			url: deniedInteraction.url,
+		} as IncomingMessage;
+
+		expect(consumed.consumedAt).toBeInstanceOf(Date);
+		await expect(interactionService.deny(deniedInteraction.uid, ACCOUNT_ID, replayRequest)).rejects.toThrow();
 	});
 
 	it('defaults an omitted scope to capability scopes without issuing renewable access', async () => {
