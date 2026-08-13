@@ -114,70 +114,80 @@
 			/>
 		</div>
 
-		<el-table
-			:data="filteredRows"
-			class="h-full w-full flex-grow"
-			table-layout="fixed"
-			:empty-text="t('devicesModule.wizard.texts.empty')"
+		<device-wizard-inventory-summary
+			:rows="rows"
+			:visible-count="filteredRows.length"
+		/>
+
+		<div
+			data-test-id="wizard-discover-table-scroll"
+			class="min-h-0 flex-1 overflow-x-auto overscroll-x-contain"
 		>
-			<el-table-column
-				:label="t('devicesModule.wizard.columns.name')"
-				min-width="200"
-				sortable
-				:sort-method="sortByLabel"
+			<el-table
+				:data="filteredRows"
+				class="h-full w-full min-w-[680px]"
+				table-layout="fixed"
+				:empty-text="t('devicesModule.wizard.texts.empty')"
 			>
-				<template #default="{ row }: { row: IWizardRow }">
-					<div class="flex flex-col">
-						<span class="font-medium">{{ row.label }}</span>
-						<span
-							v-if="row.subLabel"
-							class="text-xs text-gray-500"
-						>
-							{{ row.subLabel }}
-						</span>
-					</div>
-				</template>
-			</el-table-column>
+				<el-table-column
+					:label="t('devicesModule.wizard.columns.name')"
+					min-width="200"
+					sortable
+					:sort-method="sortByLabel"
+				>
+					<template #default="{ row }: { row: IWizardRow }">
+						<div class="flex flex-col">
+							<span class="font-medium">{{ row.label }}</span>
+							<span
+								v-if="row.subLabel"
+								class="text-xs text-gray-500"
+							>
+								{{ row.subLabel }}
+							</span>
+						</div>
+					</template>
+				</el-table-column>
 
-			<el-table-column
-				prop="identifier"
-				:label="identifierLabel"
-				min-width="150"
-				sortable
-				:sort-method="sortByIdentifier"
-			>
-				<template #default="{ row }: { row: IWizardRow }">
-					<code class="text-sm">{{ row.identifier }}</code>
-				</template>
-			</el-table-column>
+				<el-table-column
+					prop="identifier"
+					:label="identifierLabel"
+					min-width="150"
+					sortable
+					:sort-method="sortByIdentifier"
+				>
+					<template #default="{ row }: { row: IWizardRow }">
+						<code class="text-sm">{{ row.identifier }}</code>
+					</template>
+				</el-table-column>
 
-			<el-table-column
-				:label="t('devicesModule.wizard.columns.status')"
-				width="180"
-				sortable
-				:sort-method="sortByStatus"
-			>
-				<template #default="{ row }: { row: IWizardRow }">
-					<el-tag :type="wizardStatusTagType(row.status)">
-						{{ row.statusLabel ?? t(`devicesModule.wizard.statuses.${row.status}`) }}
-					</el-tag>
-				</template>
-			</el-table-column>
+				<el-table-column
+					:label="t('devicesModule.wizard.columns.status')"
+					width="180"
+					sortable
+					:sort-method="sortByStatus"
+				>
+					<template #default="{ row }: { row: IWizardRow }">
+						<el-tag :type="wizardStatusTagType(row.status)">
+							{{ row.statusLabel ?? t(`devicesModule.wizard.statuses.${row.status}`) }}
+						</el-tag>
+					</template>
+				</el-table-column>
 
-			<el-table-column
-				v-for="column in extraColumns"
-				:key="column.key"
-				:label="column.label"
-				:width="column.width"
-				:min-width="column.minWidth"
-				:sortable="column.sortable"
-				:sort-method="(a: IWizardRow, b: IWizardRow) => sortByCell(column.key, a, b)"
-			>
-				<template #default="{ row }: { row: IWizardRow }">
-					<device-wizard-cell :cell="row.cells?.[column.key]" />
-				</template>
-			</el-table-column>
-		</el-table>
+				<el-table-column
+					v-for="column in extraColumns"
+					:key="column.key"
+					:label="column.label"
+					:width="column.width"
+					:min-width="column.minWidth"
+					:sortable="column.sortable"
+					:sort-method="(a: IWizardRow, b: IWizardRow) => sortByCell(column.key, a, b)"
+				>
+					<template #default="{ row }: { row: IWizardRow }">
+						<device-wizard-cell :cell="row.cells?.[column.key]" />
+					</template>
+				</el-table-column>
+			</el-table>
+		</div>
 	</div>
 </template>
 
@@ -190,6 +200,7 @@ import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, ElProgress, ElTable, El
 import { Icon } from '@iconify/vue';
 
 import DeviceWizardCell from './device-wizard-cell.vue';
+import DeviceWizardInventorySummary from './device-wizard-inventory-summary.vue';
 import { compareLocale } from './device-wizard.sort';
 import {
 	type IWizardBannerControl,

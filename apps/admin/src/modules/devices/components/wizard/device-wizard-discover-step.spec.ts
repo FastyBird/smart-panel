@@ -9,7 +9,7 @@ import type { IWizardControl, IWizardRow } from './device-wizard.types';
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({
-		t: (key: string) => key,
+		t: (key: string, params?: { count?: number }) => (params?.count === undefined ? key : `${key}:${params.count}`),
 	}),
 }));
 
@@ -172,5 +172,30 @@ describe('DeviceWizardDiscoverStep', () => {
 
 		expect(wrapper.findAll('tbody tr')).toHaveLength(1);
 		expect(wrapper.text()).toContain('registered');
+	});
+
+	it('summarizes and horizontally contains a large responsive inventory', async () => {
+		const rows = Array.from({ length: 100 }, (_, index) =>
+			row({
+				key: `device-${index}`,
+				identifier: `device-${index}`,
+				label: `Device ${index}`,
+				status: index < 80 ? 'ready' : index < 90 ? 'already_registered' : 'unsupported',
+				adoptable: index < 80,
+			})
+		);
+		const wrapper = mountStep([], rows);
+
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="wizard-inventory-found"]').text()).toBe('devicesModule.wizard.totals.found:100');
+		expect(wrapper.find('[data-test-id="wizard-inventory-adoptable"]').text()).toBe('devicesModule.wizard.totals.adoptable:80');
+		expect(wrapper.find('[data-test-id="wizard-inventory-alreadyAdded"]').text()).toBe('devicesModule.wizard.totals.alreadyAdded:10');
+		expect(wrapper.find('[data-test-id="wizard-inventory-unsupported"]').text()).toBe('devicesModule.wizard.totals.unsupported:10');
+		expect(wrapper.find('[data-test-id="wizard-inventory-visible"]').text()).toBe('devicesModule.wizard.totals.visible:100');
+		expect(wrapper.find('[data-test-id="wizard-discover-table-scroll"]').classes()).toEqual(
+			expect.arrayContaining(['min-h-0', 'overflow-x-auto', 'overscroll-x-contain'])
+		);
+		expect(wrapper.find('[data-test-id="wizard-discover-table-scroll"] .el-table').classes()).toContain('min-w-[680px]');
 	});
 });

@@ -998,6 +998,13 @@
 			"change": "Aktion",
 			"error": "Fehler"
 		},
+		"totals": {
+			"found": "Gefunden: {count}",
+			"adoptable": "Hinzufügbar: {count}",
+			"alreadyAdded": "Bereits hinzugefügt: {count}",
+			"unsupported": "Nicht unterstützt: {count}",
+			"visible": "Sichtbar: {count}"
+		},
 		"texts": {
 			"loading": "Suchsitzung wird geladen...",
 			"empty": "Noch keine Geräte gefunden",

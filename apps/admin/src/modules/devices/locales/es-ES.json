@@ -998,6 +998,13 @@
 			"change": "Acción",
 			"error": "Error"
 		},
+		"totals": {
+			"found": "Encontrados: {count}",
+			"adoptable": "Adoptables: {count}",
+			"alreadyAdded": "Ya añadidos: {count}",
+			"unsupported": "No compatibles: {count}",
+			"visible": "Visibles: {count}"
+		},
 		"texts": {
 			"loading": "Cargando sesión de búsqueda...",
 			"empty": "Todavía no se han encontrado dispositivos",

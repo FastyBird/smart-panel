@@ -998,6 +998,13 @@
 			"change": "Akcia",
 			"error": "Chyba"
 		},
+		"totals": {
+			"found": "Nájdené: {count}",
+			"adoptable": "Možno pridať: {count}",
+			"alreadyAdded": "Už pridané: {count}",
+			"unsupported": "Nepodporované: {count}",
+			"visible": "Zobrazené: {count}"
+		},
 		"texts": {
 			"loading": "Načítavanie relácie vyhľadávania...",
 			"empty": "Zatiaľ neboli nájdené žiadne zariadenia",

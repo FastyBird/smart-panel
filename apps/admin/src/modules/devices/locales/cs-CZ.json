@@ -998,6 +998,13 @@
 			"change": "Akce",
 			"error": "Chyba"
 		},
+		"totals": {
+			"found": "Nalezeno: {count}",
+			"adoptable": "Lze přidat: {count}",
+			"alreadyAdded": "Již přidáno: {count}",
+			"unsupported": "Nepodporováno: {count}",
+			"visible": "Zobrazeno: {count}"
+		},
 		"texts": {
 			"loading": "Načítání vyhledávací relace...",
 			"empty": "Zatím nebyla nalezena žádná zařízení",

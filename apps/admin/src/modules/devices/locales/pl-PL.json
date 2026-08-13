@@ -998,6 +998,13 @@
 			"change": "Akcja",
 			"error": "Błąd"
 		},
+		"totals": {
+			"found": "Znaleziono: {count}",
+			"adoptable": "Możliwe do dodania: {count}",
+			"alreadyAdded": "Już dodano: {count}",
+			"unsupported": "Nieobsługiwane: {count}",
+			"visible": "Widoczne: {count}"
+		},
 		"texts": {
 			"loading": "Ładowanie sesji wyszukiwania...",
 			"empty": "Nie znaleziono jeszcze żadnych urządzeń",

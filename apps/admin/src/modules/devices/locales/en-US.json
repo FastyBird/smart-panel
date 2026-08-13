@@ -999,6 +999,13 @@
 			"change": "Action",
 			"error": "Error"
 		},
+		"totals": {
+			"found": "Found: {count}",
+			"adoptable": "Adoptable: {count}",
+			"alreadyAdded": "Already added: {count}",
+			"unsupported": "Unsupported: {count}",
+			"visible": "Visible: {count}"
+		},
 		"texts": {
 			"loading": "Loading discovery session...",
 			"empty": "No devices found yet",

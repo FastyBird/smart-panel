@@ -10,7 +10,7 @@ import type { IWizardColumn, IWizardRow } from './device-wizard.types';
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({
-		t: (key: string) => key,
+		t: (key: string, params?: { count?: number }) => (params?.count === undefined ? key : `${key}:${params.count}`),
 	}),
 }));
 
@@ -231,5 +231,23 @@ describe('DeviceWizardConfirmStep', () => {
 
 		expect(wrapper.findAll('tbody tr')).toHaveLength(1);
 		expect(wrapper.text()).toContain('registered');
+	});
+
+	it('keeps a large confirmation inventory inside a mobile horizontal scroller', async () => {
+		const rows = Array.from({ length: 100 }, (_, index) => row({ key: `device-${index}`, identifier: `device-${index}`, label: `Device ${index}` }));
+		const wrapper = mountStep(rows, {
+			selected: {},
+			nameByKey: {},
+			categoryByKey: {},
+		});
+
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="wizard-inventory-found"]').text()).toBe('devicesModule.wizard.totals.found:100');
+		expect(wrapper.find('[data-test-id="wizard-inventory-visible"]').text()).toBe('devicesModule.wizard.totals.visible:100');
+		expect(wrapper.find('[data-test-id="wizard-confirm-table-scroll"]').classes()).toEqual(
+			expect.arrayContaining(['min-h-0', 'overflow-x-auto', 'overscroll-x-contain'])
+		);
+		expect(wrapper.find('[data-test-id="wizard-confirm-table-scroll"] .el-table').classes()).toContain('min-w-[900px]');
 	});
 });
