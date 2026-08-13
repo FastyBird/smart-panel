@@ -101,6 +101,7 @@
 					v-else-if="activeStep === 'confirm'"
 					data-test-id="wizard-step-confirm"
 					:rows="adoptableRows"
+					:summary-rows="adapter.rows.value"
 					:columns="adapter.columns"
 					:selected="selected"
 					:name-by-key="nameByKey"

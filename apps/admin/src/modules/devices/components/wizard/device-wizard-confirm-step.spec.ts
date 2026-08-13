@@ -32,6 +32,7 @@ const mountStep = (rows: IWizardRow[] = [row()], props: Record<string, unknown> 
 	mount(DeviceWizardConfirmStep, {
 		props: {
 			rows,
+			summaryRows: rows,
 			columns: [],
 			selected: { 'shelly-1.local': true },
 			nameByKey: { 'shelly-1.local': 'Living room switch' },
@@ -231,6 +232,25 @@ describe('DeviceWizardConfirmStep', () => {
 
 		expect(wrapper.findAll('tbody tr')).toHaveLength(1);
 		expect(wrapper.text()).toContain('registered');
+	});
+
+	it('keeps full discovery totals while the confirmation table contains only adoptable rows', async () => {
+		const adoptable = row();
+		const wrapper = mountStep([adoptable], {
+			summaryRows: [
+				adoptable,
+				row({ key: 'registered', identifier: 'registered', status: 'already_registered', adoptable: false }),
+				row({ key: 'unsupported', identifier: 'unsupported', status: 'unsupported', adoptable: false }),
+			],
+		});
+
+		await flushPromises();
+
+		expect(wrapper.findAll('tbody tr')).toHaveLength(1);
+		expect(wrapper.find('[data-test-id="wizard-inventory-found"]').text()).toBe('devicesModule.wizard.totals.found:3');
+		expect(wrapper.find('[data-test-id="wizard-inventory-alreadyAdded"]').text()).toBe('devicesModule.wizard.totals.alreadyAdded:1');
+		expect(wrapper.find('[data-test-id="wizard-inventory-unsupported"]').text()).toBe('devicesModule.wizard.totals.unsupported:1');
+		expect(wrapper.find('[data-test-id="wizard-inventory-visible"]').text()).toBe('devicesModule.wizard.totals.visible:1');
 	});
 
 	it('keeps a large confirmation inventory inside a mobile horizontal scroller', async () => {

@@ -12,7 +12,7 @@
 		</div>
 
 		<device-wizard-inventory-summary
-			:rows="rows"
+			:rows="summaryRows"
 			:visible-count="filteredRows.length"
 		/>
 
@@ -165,6 +165,7 @@ defineOptions({
 
 interface IProps {
 	rows: IWizardRow[];
+	summaryRows: IWizardRow[];
 	columns: IWizardColumn[];
 	selected: Record<string, boolean>;
 	nameByKey: Record<string, string>;
