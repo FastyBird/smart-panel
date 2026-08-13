@@ -16,13 +16,13 @@
 		"onoff",
 		"measure_power",
 		"meter_power",
-		"meter_power.total_returned",
+		"meter_power.capability-suffix-000008",
 		"meter_power_factor",
 		"measure_voltage",
 		"measure_current",
 		"measure_temperature",
 		"actionEvents",
-		"meter_power.returned",
+		"meter_power.capability-suffix-000007",
 		"measure_power_apparent"
 	],
 	"capabilitiesObj": {
@@ -74,8 +74,8 @@
 			"value": 58.03,
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
-		"meter_power.total_returned": {
-			"id": "meter_power.total_returned",
+		"meter_power.capability-suffix-000008": {
+			"id": "meter_power.capability-suffix-000008",
 			"type": "number",
 			"iconObj": null,
 			"title": "[~2~]",
@@ -167,8 +167,8 @@
 			"value": null,
 			"lastUpdated": null
 		},
-		"meter_power.returned": {
-			"id": "meter_power.returned",
+		"meter_power.capability-suffix-000007": {
+			"id": "meter_power.capability-suffix-000007",
 			"type": "number",
 			"iconObj": null,
 			"title": "[~2~]",
@@ -304,14 +304,14 @@
 	"energy": {
 		"cumulative": true,
 		"cumulativeImportedCapability": "meter_power",
-		"cumulativeExportedCapability": "meter_power.total_returned"
+		"cumulativeExportedCapability": "meter_power.capability-suffix-000008"
 	},
 	"energyObj": {
 		"W": 0,
 		"batteries": null,
 		"cumulative": true,
 		"cumulativeImportedCapability": "meter_power",
-		"cumulativeExportedCapability": "meter_power.total_returned",
+		"cumulativeExportedCapability": "meter_power.capability-suffix-000008",
 		"homeBattery": null,
 		"homeBatteryVirtual": null,
 		"electricCar": null,
@@ -332,12 +332,12 @@
 				"capabilities": [
 					"measure_power",
 					"meter_power",
-					"meter_power.total_returned",
+					"meter_power.capability-suffix-000008",
 					"meter_power_factor",
 					"measure_voltage",
 					"measure_current",
 					"measure_temperature",
-					"meter_power.returned",
+					"meter_power.capability-suffix-000007",
 					"measure_power_apparent"
 				]
 			}

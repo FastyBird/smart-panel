@@ -15,18 +15,18 @@
 	"capabilities": [
 		"onoff",
 		"dim",
-		"dim.white",
+		"dim.capability-suffix-000009",
 		"light_hue",
 		"light_saturation",
 		"measure_power",
 		"meter_power",
 		"measure_voltage",
 		"measure_current",
-		"onoff.whitemode",
+		"onoff.capability-suffix-000010",
 		"measure_temperature",
 		"rssi",
-		"button.enable_ble_script",
-		"button.disable_ble_script",
+		"button.capability-suffix-000004",
+		"button.capability-suffix-000003",
 		"actionEvents",
 		"deviceGen2",
 		"multiInputs"
@@ -65,8 +65,8 @@
 			"value": 0.05,
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
-		"dim.white": {
-			"id": "dim.white",
+		"dim.capability-suffix-000009": {
+			"id": "dim.capability-suffix-000009",
 			"type": "number",
 			"iconObj": null,
 			"title": "[~2~]",
@@ -180,8 +180,8 @@
 			"value": 0,
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
-		"onoff.whitemode": {
-			"id": "onoff.whitemode",
+		"onoff.capability-suffix-000010": {
+			"id": "onoff.capability-suffix-000010",
 			"type": "boolean",
 			"iconObj": null,
 			"title": "[~2~]",
@@ -227,8 +227,8 @@
 			"value": -45,
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
-		"button.enable_ble_script": {
-			"id": "button.enable_ble_script",
+		"button.capability-suffix-000004": {
+			"id": "button.capability-suffix-000004",
 			"type": "boolean",
 			"iconObj": null,
 			"title": "[~2~]",
@@ -244,8 +244,8 @@
 			"value": null,
 			"lastUpdated": null
 		},
-		"button.disable_ble_script": {
-			"id": "button.disable_ble_script",
+		"button.capability-suffix-000003": {
+			"id": "button.capability-suffix-000003",
 			"type": "boolean",
 			"iconObj": null,
 			"title": "[~2~]",
@@ -390,8 +390,8 @@
 	"ui": {
 		"quickAction": "onoff",
 		"components": [
-			{ "id": "[~7~]", "capabilities": ["onoff", "onoff.whitemode"] },
-			{ "id": "[~7~]", "capabilities": ["dim", "dim.white"] },
+			{ "id": "[~7~]", "capabilities": ["onoff", "onoff.capability-suffix-000010"] },
+			{ "id": "[~7~]", "capabilities": ["dim", "dim.capability-suffix-000009"] },
 			{ "id": "[~7~]", "capabilities": ["light_hue", "light_saturation"] },
 			{
 				"id": "[~7~]",

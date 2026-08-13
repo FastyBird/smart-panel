@@ -38,7 +38,7 @@ const BOUNDED_TIMESTAMP_KEY_PATTERN = /(?:^|[_-])(?:at|date|timestamp|updated|mo
 const ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const GENERATED_PSEUDONYM_PATTERN =
-	/^(?:device|device-label|enum-option|homey|id|p|q|reference|x|z|zone|zone-label)-\d{6}$/;
+	/^(?:capability-suffix|device|device-label|enum-option|homey|id|p|q|reference|x|z|zone|zone-label)-\d{6}$/;
 const IPV4_PATTERN = /(?:\d{1,3}\.){3}\d{1,3}/g;
 const BRACKETED_IPV6_PATTERN = /\[([0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?)\]/g;
 const UNBRACKETED_IPV6_PATTERN = /[0-9A-Fa-f:.]+(?:%[A-Za-z0-9_.-]+)?/g;
@@ -310,6 +310,28 @@ const isCapabilityEnumOptionIdentifier = (
 const isCapabilityListEntry = (path: string[], rootKind: SanitizerContext['rootKind']): boolean =>
 	rootKind === 'device' && path.length === 2 && path[0] === 'root' && path[1] === 'capabilities';
 
+const sanitizeCapabilityIdentifier = (value: string, aliases: SanitizationAliases): string => {
+	const separator = value.indexOf('.');
+
+	if (separator < 0) {
+		return value;
+	}
+
+	return `${value.slice(0, separator)}.${pseudonym('capability-suffix', value.slice(separator + 1), aliases)}`;
+};
+
+const assertSanitizedCapabilityIdentifier = (value: unknown): void => {
+	if (typeof value !== 'string') {
+		throw new Error('Sanitized Homey capture contains an unredacted sensitive field');
+	}
+
+	const separator = value.indexOf('.');
+
+	if (separator >= 0 && !GENERATED_PSEUDONYM_PATTERN.test(value.slice(separator + 1))) {
+		throw new Error('Sanitized Homey capture contains an unredacted sensitive field');
+	}
+};
+
 const isDriverMetadata = (path: string[]): boolean => path.includes('data') || path.includes('settings');
 
 const isIdentifierMap = (key: string): boolean =>
@@ -442,7 +464,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 			isCapabilityListEntry(context.path, context.rootKind) ||
 			isCapabilityIdentifier(key, context.path, context.rootKind)
 		) {
-			return value;
+			return sanitizeCapabilityIdentifier(value, context.aliases);
 		}
 
 		if (isPersonalKey(key)) {
@@ -497,8 +519,11 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 				IDENTIFIER_KEY_PATTERN.test(nestedKey);
 			const privateMapKey =
 				!preserveKeys && (identifierMap || (identifierMapKey && !PRESERVED_STRUCTURAL_KEY_SET.has(nestedKey)));
-			const safeKey =
-				privateMapKey && !sanitizedIdentifierEntry ? pseudonym('id', nestedKey, context.aliases) : nestedKey;
+			const safeKey = preserveKeys
+				? sanitizeCapabilityIdentifier(nestedKey, context.aliases)
+				: privateMapKey && !sanitizedIdentifierEntry
+					? pseudonym('id', nestedKey, context.aliases)
+					: nestedKey;
 
 			const safeValue =
 				enumCapability && nestedKey === 'value' && typeof nestedValue === 'string'
@@ -894,7 +919,7 @@ export const captureHomeyShs = async (
 		individualDevice: sanitizedIndividualDevices[safeDeviceId],
 		capabilityValue: {
 			deviceId: safeDeviceId,
-			capabilityId: readTarget.capabilityId,
+			capabilityId: sanitizeCapabilityIdentifier(readTarget.capabilityId, aliases),
 			response: sanitizeHomeyPayload(capabilityValue, config.privateTerms, 'generic', aliases),
 		},
 	};
@@ -1007,6 +1032,7 @@ const assertHomeyPayloadRedacted = (value: unknown, rootKind: SanitizerContext['
 			}
 
 			if (isCapabilityListEntry(path, rootKind) || isCapabilityIdentifier(key, path, rootKind)) {
+				assertSanitizedCapabilityIdentifier(nestedValue);
 				return;
 			}
 
@@ -1063,6 +1089,10 @@ const assertHomeyPayloadRedacted = (value: unknown, rootKind: SanitizerContext['
 		const identifierMap = isIdentifierMap(key);
 
 		Object.entries(nestedValue).forEach(([nestedKey, childValue]) => {
+			if (preserveKeys) {
+				assertSanitizedCapabilityIdentifier(nestedKey);
+			}
+
 			const generatedPseudonym = GENERATED_PSEUDONYM_PATTERN.test(nestedKey);
 			const sanitizedIdentifierEntry = generatedPseudonym && childValue === REDACTION.identifier;
 			const identifierMapKey =
@@ -1114,6 +1144,7 @@ export const assertHomeyCaptureRedacted = (capture: HomeyShsCapture): void => {
 		}
 
 		assertGeneratedPseudonym(capabilityValue.deviceId);
+		assertSanitizedCapabilityIdentifier(capabilityValue.capabilityId);
 		assertHomeyPayloadRedacted(capabilityValue.response, 'generic');
 	}
 };
@@ -1301,11 +1332,15 @@ export const assertHomeyCaptureSafe = (
 		key.toLowerCase().includes(term.toLowerCase());
 	const inspectPrivateTermValues = (value: unknown, key: string, path: string[], term: string): boolean => {
 		if (typeof value === 'string') {
+			const publicCapabilityIdentifier =
+				isCapturedCapabilityListEntry(path) ||
+				isCapturedCapabilityIdentifier(key, path) ||
+				isCapturedCapabilityReadIdentifier(key, path);
+			const inspectedValue = publicCapabilityIdentifier ? value.slice(Math.max(0, value.indexOf('.') + 1)) : value;
+
 			return (
-				!isCapturedCapabilityListEntry(path) &&
-				!isCapturedCapabilityIdentifier(key, path) &&
-				!isCapturedCapabilityReadIdentifier(key, path) &&
-				value.replace(REDACTION_PATTERN, '').toLowerCase().includes(term.toLowerCase())
+				(!publicCapabilityIdentifier || value.includes('.')) &&
+				inspectedValue.replace(REDACTION_PATTERN, '').toLowerCase().includes(term.toLowerCase())
 			);
 		}
 

@@ -17,35 +17,35 @@ file. Live results use synthetic aliases and sanitized captures only.
 
 ## Current gate status
 
-| Area | Status | Evidence still required |
-| --- | --- | --- |
-| Credential-safe read probe | Passed on SHS `13.4.0` over HTTP `4859` | Repeat over HTTPS `4860` if enabled |
-| System, zone, device inventory, and individual device | Captured and sanitized | Add lifecycle delta evidence on the disposable test device |
-| Capability metadata and suffixed IDs | Captured from inventory and an explicit read | Add allowlisted write and read-back evidence |
-| Socket.IO events and reconnect | Pending live access | Capture connect, subscribe, event, disconnect, restart, and reconnect ordering |
-| Allowlisted capability write | Contract defined, disabled | Use only the designated harmless test capability |
-| Disposable-device lifecycle | Contract defined, disabled | Use only the separately gated virtual/test device |
-| mDNS discovery | Pending live access | Record stable service/TXT data or explicitly defer discovery |
-| SDK decision | Provisional hold | Complete live Socket.IO and cleanup/reconnect comparison |
-| Sanitized fixture corpus | Nine representative live fixtures promoted | Add event/reconnect fixtures and missing capability families/classes |
+| Area                                                  | Status                                       | Evidence still required                                                        |
+| ----------------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------ |
+| Credential-safe read probe                            | Passed on SHS `13.4.0` over HTTP `4859`      | Repeat over HTTPS `4860` if enabled                                            |
+| System, zone, device inventory, and individual device | Captured and sanitized                       | Add lifecycle delta evidence on the disposable test device                     |
+| Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read | Add allowlisted write and read-back evidence                                   |
+| Socket.IO events and reconnect                        | Pending live access                          | Capture connect, subscribe, event, disconnect, restart, and reconnect ordering |
+| Allowlisted capability write                          | Contract defined, disabled                   | Use only the designated harmless test capability                               |
+| Disposable-device lifecycle                           | Contract defined, disabled                   | Use only the separately gated virtual/test device                              |
+| mDNS discovery                                        | Pending live access                          | Record stable service/TXT data or explicitly defer discovery                   |
+| SDK decision                                          | Provisional hold                             | Complete live Socket.IO and cleanup/reconnect comparison                       |
+| Sanitized fixture corpus                              | Nine representative live fixtures promoted   | Add event/reconnect fixtures and missing capability families/classes           |
 
 ## Installation evidence
 
 Complete this table after the live run. Values committed here must remain non-sensitive.
 
-| Field | Recorded value |
-| --- | --- |
-| Capture date | `2026-08-13` |
-| SHS version | `13.4.0` |
-| Container image tag and immutable digest | Pending |
-| Host operating system/architecture | Pending |
-| Topology | Pending; describe generically, for example `same LAN, separate host` |
-| Smart Panel to SHS network path | Pending; do not record addresses |
-| HTTP port `4859` | Confirmed for ping and authenticated system/zone/device reads |
-| HTTPS port `4860` | Pending |
-| TLS certificate behavior | Pending |
-| Disposable capability alias | Pending synthetic alias |
-| Disposable lifecycle-device alias | Pending synthetic alias |
+| Field                                    | Recorded value                                                       |
+| ---------------------------------------- | -------------------------------------------------------------------- |
+| Capture date                             | `2026-08-13`                                                         |
+| SHS version                              | `13.4.0`                                                             |
+| Container image tag and immutable digest | Pending                                                              |
+| Host operating system/architecture       | Pending                                                              |
+| Topology                                 | Pending; describe generically, for example `same LAN, separate host` |
+| Smart Panel to SHS network path          | Pending; do not record addresses                                     |
+| HTTP port `4859`                         | Confirmed for ping and authenticated system/zone/device reads        |
+| HTTPS port `4860`                        | Pending                                                              |
+| TLS certificate behavior                 | Pending                                                              |
+| Disposable capability alias              | Pending synthetic alias                                              |
+| Disposable lifecycle-device alias        | Pending synthetic alias                                              |
 
 ## Published protocol baseline
 
@@ -53,14 +53,14 @@ The following facts were confirmed from the `homey-api` `3.19.2` package artifac
 `HomeyAPIV3Local.json` specification on 2026-08-12. They are inputs to the live test, not proof that the subscribed SHS
 build behaves identically.
 
-| Operation | Method and path | Required scope |
-| --- | --- | --- |
-| Identify Homey | `GET /api/manager/system/ping` | none |
-| System information | `GET /api/manager/system/` | `homey.system.readonly` |
-| Zones | `GET /api/manager/zones/zone` | `homey.zone.readonly` |
-| Devices | `GET /api/manager/devices/device` | `homey.device.readonly` |
-| Capability value | `GET /api/manager/devices/device/:deviceId/capability/:capabilityId` | `homey.device.readonly` |
-| Capability write | `PUT /api/manager/devices/device/:deviceId/capability/:capabilityId` | `homey.device.control` |
+| Operation          | Method and path                                                      | Required scope          |
+| ------------------ | -------------------------------------------------------------------- | ----------------------- |
+| Identify Homey     | `GET /api/manager/system/ping`                                       | none                    |
+| System information | `GET /api/manager/system/`                                           | `homey.system.readonly` |
+| Zones              | `GET /api/manager/zones/zone`                                        | `homey.zone.readonly`   |
+| Devices            | `GET /api/manager/devices/device`                                    | `homey.device.readonly` |
+| Capability value   | `GET /api/manager/devices/device/:deviceId/capability/:capabilityId` | `homey.device.readonly` |
+| Capability write   | `PUT /api/manager/devices/device/:deviceId/capability/:capabilityId` | `homey.device.control`  |
 
 Authenticated calls use `Authorization: Bearer <token>`. The ping response is expected to include `X-Homey-ID` and
 `X-Homey-Version`. The official local factory is `HomeyAPI.createLocalAPI({ address, token })` and performs the ping
@@ -89,9 +89,9 @@ unset FB_HOMEY_SHS_URL FB_HOMEY_SHS_EXPECTED_HOST FB_HOMEY_SHS_API_KEY FB_HOMEY_
 not survive sanitization. Every nonempty entry must contain at least three characters; configuration fails instead of
 silently ignoring a shorter entry. Optional settings are:
 
-| Variable | Default | Constraint |
-| --- | --- | --- |
-| `FB_HOMEY_SHS_TIMEOUT_MS` | `10000` | Integer from `1000` through `60000` |
+| Variable                   | Default                    | Constraint                                                 |
+| -------------------------- | -------------------------- | ---------------------------------------------------------- |
+| `FB_HOMEY_SHS_TIMEOUT_MS`  | `10000`                    | Integer from `1000` through `60000`                        |
 | `FB_HOMEY_SHS_CAPTURE_DIR` | `test/.homey-shs-captures` | Output root; the default repository path is ignored by Git |
 
 The probe writes a new non-overwriting directory with mode `0700` and JSON files with mode `0600`. It sanitizes before
@@ -144,16 +144,16 @@ unpair ordinary household devices.
 
 Artifact snapshot inspected on 2026-08-12:
 
-| Property | Finding |
-| --- | --- |
-| Package | `homey-api` `3.19.2`, published 2026-07-29 |
-| Runtime declaration | Node.js `>=24`; current agent/workspace guidance requires 24, while package manifests still declare `>=20` |
-| License | Use permitted with Homey products; source proprietary to Athom B.V.; no warranty |
-| Installed size | Approximately 1.19 MB unpacked across 128 files |
-| Runtime dependencies | `engine.io-client ^3.5.5`, `socket.io-client ^2.5.0`, `node-fetch ^2.6.7`, `form-data ^4.0.0` |
-| Local entry point | `HomeyAPI.createLocalAPI({ address, token })` |
-| HTTP behavior | Bearer authentication and generated manager paths described above |
-| Realtime behavior | WebSocket-only Socket.IO client; live session/auth/subscription behavior not yet verified against SHS |
+| Property             | Finding                                                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Package              | `homey-api` `3.19.2`, published 2026-07-29                                                                 |
+| Runtime declaration  | Node.js `>=24`; current agent/workspace guidance requires 24, while package manifests still declare `>=20` |
+| License              | Use permitted with Homey products; source proprietary to Athom B.V.; no warranty                           |
+| Installed size       | Approximately 1.19 MB unpacked across 128 files                                                            |
+| Runtime dependencies | `engine.io-client ^3.5.5`, `socket.io-client ^2.5.0`, `node-fetch ^2.6.7`, `form-data ^4.0.0`              |
+| Local entry point    | `HomeyAPI.createLocalAPI({ address, token })`                                                              |
+| HTTP behavior        | Bearer authentication and generated manager paths described above                                          |
+| Realtime behavior    | WebSocket-only Socket.IO client; live session/auth/subscription behavior not yet verified against SHS      |
 
 ### Provisional dependency decision
 
@@ -176,24 +176,24 @@ Either route must retain plain normalized models and the same connector contract
 
 Fill this matrix using synthetic aliases only.
 
-| Scenario | Result | Sanitized observation |
-| --- | --- | --- |
-| HTTP `4859` ping and authenticated reads | Pass | Read-only system, zone, and device requests completed without redirects |
-| HTTPS `4860` ping and authenticated reads | Pending | |
-| Invalid key | Pending | |
-| Missing system/zone/device scope | Pending | |
-| Bad URL and unavailable host | Pending | |
-| Request timeout | Pending | |
-| Complete inventory and individual read | Pass | Complete inventory captured: 118 devices and 16 zones; the selected individual-device response matched its pseudonymized inventory identity |
-| Suffixed capability IDs | Pass in inventory and explicit read | 1,142 capability entries, including 170 suffixed entries; 55 devices repeat a base ID; an explicit suffixed capability GET returned a numeric scalar |
-| Socket.IO connect and subscribe | Pending | |
-| Capability and availability events | Pending | |
-| Allowlisted write, event, and read-back | Pending | |
-| Network interruption and restoration | Pending | |
-| SHS restart and reconnect | Pending | |
-| API-key revocation and replacement | Pending | |
-| Disposable-device lifecycle sequence | Pending | |
-| Stable mDNS service before/after restart | Pending | |
+| Scenario                                  | Result                              | Sanitized observation                                                                                                                                |
+| ----------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HTTP `4859` ping and authenticated reads  | Pass                                | Read-only system, zone, and device requests completed without redirects                                                                              |
+| HTTPS `4860` ping and authenticated reads | Pending                             |                                                                                                                                                      |
+| Invalid key                               | Pending                             |                                                                                                                                                      |
+| Missing system/zone/device scope          | Pending                             |                                                                                                                                                      |
+| Bad URL and unavailable host              | Pending                             |                                                                                                                                                      |
+| Request timeout                           | Pending                             |                                                                                                                                                      |
+| Complete inventory and individual read    | Pass                                | Complete inventory captured: 118 devices and 16 zones; the selected individual-device response matched its pseudonymized inventory identity          |
+| Suffixed capability IDs                   | Pass in inventory and explicit read | 1,142 capability entries, including 170 suffixed entries; 55 devices repeat a base ID; an explicit suffixed capability GET returned a numeric scalar |
+| Socket.IO connect and subscribe           | Pending                             |                                                                                                                                                      |
+| Capability and availability events        | Pending                             |                                                                                                                                                      |
+| Allowlisted write, event, and read-back   | Pending                             |                                                                                                                                                      |
+| Network interruption and restoration      | Pending                             |                                                                                                                                                      |
+| SHS restart and reconnect                 | Pending                             |                                                                                                                                                      |
+| API-key revocation and replacement        | Pending                             |                                                                                                                                                      |
+| Disposable-device lifecycle sequence      | Pending                             |                                                                                                                                                      |
+| Stable mDNS service before/after restart  | Pending                             |                                                                                                                                                      |
 
 ## Verification
 
@@ -223,6 +223,12 @@ not treated as lock evidence; the manifest records `lock` under `knownDeviceClas
 The first sanitized capture irreversibly collapsed enum option IDs. Corrupted option lists are omitted from live
 fixtures and recorded under `knownMetadataGaps`; a clearly labeled synthetic enum capability covers distinct-ID
 contract testing until a fresh corrected live capture is available.
+
+Capability bases are retained, while suffixes after the first `.` are consistently pseudonymized across every
+representation because driver suffixes can contain household-derived semantics.
+
+Capability bases are retained, while suffixes after the first `.` are consistently pseudonymized across every
+representation because driver suffixes can contain household-derived semantics.
 
 ## References
 

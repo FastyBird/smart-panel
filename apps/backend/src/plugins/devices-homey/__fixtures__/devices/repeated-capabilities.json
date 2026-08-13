@@ -16,18 +16,18 @@
 		"onoff",
 		"measure_power",
 		"meter_power",
-		"meter_power.returned",
+		"meter_power.capability-suffix-000007",
 		"measure_voltage",
 		"measure_current",
 		"measure_temperature",
 		"input_1",
 		"rssi",
-		"button.enable_ble_script",
-		"button.disable_ble_script",
+		"button.capability-suffix-000004",
+		"button.capability-suffix-000003",
 		"actionEvents",
 		"deviceGen2",
-		"measure_voltage.1",
-		"measure_temperature.1"
+		"measure_voltage.capability-suffix-000001",
+		"measure_temperature.capability-suffix-000001"
 	],
 	"capabilitiesObj": {
 		"onoff": {
@@ -78,8 +78,8 @@
 			"value": 99.75,
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
-		"meter_power.returned": {
-			"id": "meter_power.returned",
+		"meter_power.capability-suffix-000007": {
+			"id": "meter_power.capability-suffix-000007",
 			"type": "number",
 			"iconObj": null,
 			"title": "[~2~]",
@@ -173,8 +173,8 @@
 			"value": -54,
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
-		"button.enable_ble_script": {
-			"id": "button.enable_ble_script",
+		"button.capability-suffix-000004": {
+			"id": "button.capability-suffix-000004",
 			"type": "boolean",
 			"iconObj": null,
 			"title": "[~2~]",
@@ -190,8 +190,8 @@
 			"value": null,
 			"lastUpdated": null
 		},
-		"button.disable_ble_script": {
-			"id": "button.disable_ble_script",
+		"button.capability-suffix-000003": {
+			"id": "button.capability-suffix-000003",
 			"type": "boolean",
 			"iconObj": null,
 			"title": "[~2~]",
@@ -235,8 +235,8 @@
 			"value": null,
 			"lastUpdated": null
 		},
-		"measure_voltage.1": {
-			"id": "measure_voltage.1",
+		"measure_voltage.capability-suffix-000001": {
+			"id": "measure_voltage.capability-suffix-000001",
 			"type": "number",
 			"iconObj": null,
 			"title": "[~2~]",
@@ -251,8 +251,8 @@
 			"value": 6.21,
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
-		"measure_temperature.1": {
-			"id": "measure_temperature.1",
+		"measure_temperature.capability-suffix-000001": {
+			"id": "measure_temperature.capability-suffix-000001",
 			"type": "number",
 			"iconObj": null,
 			"title": "[~2~]",
@@ -396,21 +396,21 @@
 				"capabilities": [
 					"measure_power",
 					"meter_power",
-					"meter_power.returned",
+					"meter_power.capability-suffix-000007",
 					"measure_voltage",
 					"measure_current",
 					"measure_temperature",
 					"input_1",
 					"rssi",
-					"measure_voltage.1",
-					"measure_temperature.1"
+					"measure_voltage.capability-suffix-000001",
+					"measure_temperature.capability-suffix-000001"
 				]
 			}
 		],
 		"componentsStartAt": "2000-01-01T00:00:00.000Z",
 		"quickActionOverride": null
 	},
-	"uiIndicator": "measure_temperature.1",
+	"uiIndicator": "measure_temperature.capability-suffix-000001",
 	"available": true,
 	"unavailableMessage": null,
 	"warningMessage": null,

@@ -21,7 +21,7 @@
 		"light_mode",
 		"effect",
 		"power_on_behavior",
-		"button.identify",
+		"button.capability-suffix-000005",
 		"measure_linkquality",
 		"last_seen"
 	],
@@ -151,8 +151,8 @@
 			"value": "off",
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
-		"button.identify": {
-			"id": "button.identify",
+		"button.capability-suffix-000005": {
+			"id": "button.capability-suffix-000005",
 			"type": "boolean",
 			"iconObj": null,
 			"title": "[~2~]",
@@ -253,7 +253,7 @@
 		"components": [
 			{ "id": "[~7~]", "capabilities": ["onoff"] },
 			{ "id": "[~7~]", "capabilities": ["dim"] },
-			{ "id": "[~7~]", "capabilities": ["button.identify"] },
+			{ "id": "[~7~]", "capabilities": ["button.capability-suffix-000005"] },
 			{ "id": "[~7~]", "capabilities": ["light_temperature", "light_hue", "light_saturation", "light_mode"] },
 			{ "id": "[~7~]", "capabilities": ["effect", "power_on_behavior"] },
 			{ "id": "[~7~]", "capabilities": ["measure_linkquality", "last_seen"] }

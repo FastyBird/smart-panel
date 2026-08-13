@@ -20,8 +20,8 @@
 		"deviceGen1",
 		"measure_humidity",
 		"input_external",
-		"measure_temperature.1",
-		"measure_temperature.3"
+		"measure_temperature.capability-suffix-000001",
+		"measure_temperature.capability-suffix-000002"
 	],
 	"capabilitiesObj": {
 		"onoff": {
@@ -131,8 +131,8 @@
 			"value": true,
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
-		"measure_temperature.1": {
-			"id": "measure_temperature.1",
+		"measure_temperature.capability-suffix-000001": {
+			"id": "measure_temperature.capability-suffix-000001",
 			"type": "number",
 			"iconObj": null,
 			"title": "[~2~]",
@@ -147,8 +147,8 @@
 			"value": null,
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
-		"measure_temperature.3": {
-			"id": "measure_temperature.3",
+		"measure_temperature.capability-suffix-000002": {
+			"id": "measure_temperature.capability-suffix-000002",
 			"type": "number",
 			"iconObj": null,
 			"title": "[~2~]",
@@ -265,8 +265,8 @@
 					"rssi",
 					"measure_humidity",
 					"input_external",
-					"measure_temperature.1",
-					"measure_temperature.3"
+					"measure_temperature.capability-suffix-000001",
+					"measure_temperature.capability-suffix-000002"
 				]
 			}
 		],

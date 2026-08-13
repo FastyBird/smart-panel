@@ -18,7 +18,7 @@
 		"is_cleaning",
 		"measure_battery",
 		"battery_charging_state",
-		"button.refresh_rooms",
+		"button.capability-suffix-000006",
 		"clean_last",
 		"clean_full",
 		"pause_clean",
@@ -121,8 +121,8 @@
 			"value": "charging",
 			"lastUpdated": "2000-01-01T00:00:00.000Z"
 		},
-		"button.refresh_rooms": {
-			"id": "button.refresh_rooms",
+		"button.capability-suffix-000006": {
+			"id": "button.capability-suffix-000006",
 			"type": "boolean",
 			"iconObj": null,
 			"title": "[~2~]",

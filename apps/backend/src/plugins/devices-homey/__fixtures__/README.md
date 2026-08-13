@@ -9,6 +9,9 @@ enum metadata, readable/writable flags, null values, and availability state. Hom
 URLs, secrets, timestamps, personal metadata, and driver identifiers are pseudonymized or replaced with opaque markers.
 Device/zone icons and source-host runtime telemetry are replaced with shape-preserving synthetic values.
 
+Capability bases remain public protocol identifiers. Any suffix after the first `.` is replaced consistently with an
+opaque alias across capability lists, maps, embedded IDs, and references so household-derived suffixes cannot leak.
+
 `climate.json` represents temperature/humidity sensing only. The live corpus contained no target-temperature capability.
 `sensor-air-quality.json` covers the available environmental sensor shape but does not claim CO₂ support.
 `sensor-safety.json` is selected by alarm capability shape and retains its real sanitized Homey class; its filename does

@@ -272,7 +272,7 @@ describe('Homey SHS compatibility probe', () => {
 		expect(() => assertHomeyCaptureSafe(capture, [])).toThrow('unredacted metadata, icons, or host fingerprint');
 	});
 
-	it('preserves public capability IDs in individual-device private-term scans', () => {
+	it('preserves capability bases while rejecting private raw suffixes', () => {
 		const capture: HomeyShsCapture = {
 			metadata: {},
 			systemInfo: {},
@@ -281,15 +281,24 @@ describe('Homey SHS compatibility probe', () => {
 			individualDevice: {
 				id: 'device-000001',
 				name: 'device-label-000001',
-				capabilities: ['homealarm_state', 'measure_temperature.home'],
+				capabilities: ['homealarm_state', 'measure_temperature.capability-suffix-000001'],
 				capabilitiesObj: {
 					homealarm_state: { id: 'homealarm_state', value: false },
-					'measure_temperature.home': { id: 'measure_temperature.home', value: 21 },
+					'measure_temperature.capability-suffix-000001': {
+						id: 'measure_temperature.capability-suffix-000001',
+						value: 21,
+					},
 				},
 			},
 		};
 
 		expect(() => assertHomeyCaptureSafe(capture, [], ['home'])).not.toThrow();
+		expect(() => assertHomeyCaptureRedacted(capture)).not.toThrow();
+
+		(capture.individualDevice as { capabilities: string[] }).capabilities[1] = 'measure_temperature.kids_room';
+
+		expect(() => assertHomeyCaptureSafe(capture, [], ['kids_room'])).toThrow('private term');
+		expect(() => assertHomeyCaptureRedacted(capture)).toThrow('unredacted sensitive field');
 	});
 
 	it('pseudonymizes distinct enum option IDs and remaps the current value', () => {
@@ -559,7 +568,8 @@ describe('Homey SHS compatibility probe', () => {
 		expect(serialized).not.toContain('5678');
 		expect(serialized).not.toContain('9012');
 		expect(serialized).toContain('[~7~]');
-		expect(serialized).toContain('measure_temperature.inside');
+		expect(serialized).toContain('measure_temperature.capability-suffix-000001');
+		expect(serialized).not.toContain('measure_temperature.inside');
 		expect(serialized).toContain('lastUpdated');
 		expect(serialized).toContain('deviceId');
 	});
