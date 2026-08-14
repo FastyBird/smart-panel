@@ -180,6 +180,9 @@ describe('McpOAuthResourceServerService', () => {
   },
 }
 `);
+
+		expect(service.getAuthorizationServerMetadata()).not.toHaveProperty('registration_endpoint');
+		expect(service.getProtectedResourceMetadata()).not.toHaveProperty('client_id_metadata_document_supported');
 	});
 
 	it('maps the four-way live scope intersection to MCP capabilities', async () => {

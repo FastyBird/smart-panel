@@ -406,7 +406,7 @@ amend ADR 0002.
 
 **Goal:** Prove the complete security profile before documenting it as supported.
 
-- [ ] E2E: discovery, consent approval/denial, PKCE success/failure, RFC 8252 loopback port variation, strict redirect
+- [x] E2E: discovery, consent approval/denial, PKCE success/failure, RFC 8252 loopback port variation, strict redirect
       rejection otherwise, code replay, scope reduction, expiry, refresh rotation/reuse, revocation, wrong
       issuer/resource/audience, cross-client isolation, and redaction; cover open-stream abort on token expiry and
       grant expiry, client/grant/access-token/refresh-family revocation, awaited approver demotion/deletion
@@ -507,9 +507,10 @@ amend ADR 0002.
       Claude setup, consent, and migration from static credentials.
 - [x] Document backup sensitivity, clone handling, server-secret rotation, revoke-all, compromise response, and account
       recovery.
-- [ ] Document dependency upgrades, metadata diffs, smoke-test requirements, rollback, and static-profile retention.
-- [ ] Confirm no DCR/CIMD endpoints are advertised and create explicit follow-up tasks if the release gate justifies
-      either feature.
+- [x] Document dependency upgrades, metadata diffs, smoke-test requirements, rollback, and static-profile retention.
+- [x] Confirm no DCR/CIMD endpoints are advertised and create explicit follow-up tasks if the release gate justifies
+      either feature. The bounded metadata snapshots advertise neither; pre-registration satisfies the current target
+      profiles, so no implementation follow-up is justified without a named host failure.
 - [ ] Update task acceptance criteria and mark completion only after every deferred item has a named follow-up.
 
 ## Required verification cadence

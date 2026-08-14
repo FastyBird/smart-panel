@@ -256,6 +256,14 @@ identity and MCP client tables without converting existing users or credentials.
 default: MCP is disabled, `read` is preselected as the enablement default, and the additional browser-origin allowlist
 is empty.
 
+MCP OAuth remains separately opt-in and uses exactly pinned authorization and protocol dependencies. Before deploying a
+release that changes `oidc-provider`, its type definitions, or the MCP server/client packages, review the bounded
+authorization-server and protected-resource metadata snapshots for newly advertised fields or changed defaults. The
+release must pass the complete OAuth negative/E2E suite plus the recorded Codex and Claude Code smoke profiles before
+OAuth is re-enabled. An upgraded dependency must never publish Dynamic Client Registration or Client ID Metadata
+Document support merely because it enables either feature internally; the supported profile continues to use
+owner/admin pre-registration.
+
 After updating, an owner or administrator must explicitly enable MCP and create finite-lived client credentials. Back
 up both the database and configuration first.
 
@@ -265,6 +273,18 @@ migration tooling. Do not only switch a symlink or container tag: application ro
 The migration's down step deletes MCP-owned tokens before older authentication code can load them.
 
 See [Model Context Protocol](/docs/admin-management/mcp) for setup, security guidance, and the exact curated catalog.
+
+### Rolling Back MCP OAuth
+
+If an upgrade changes OAuth metadata or breaks either supported host profile, use the Admin MCP settings to disable
+OAuth before rolling back. Disabling OAuth closes its public route gate, revokes its grants and provider artifacts, and
+closes OAuth subscriptions while preserving registered OAuth clients and the independent static bearer profile. Static
+LAN/VPN clients can therefore remain available during diagnosis.
+
+Do not attempt to convert, reissue, or reuse an OAuth token as a static credential. Restore the previous application
+version only after OAuth is disabled and the database schema is compatible with that version. After rollback, keep
+OAuth disabled until the previous version's metadata snapshots and target-host smoke profile have been verified, then
+require every OAuth client to complete a fresh authorization flow.
 
 ---
 
