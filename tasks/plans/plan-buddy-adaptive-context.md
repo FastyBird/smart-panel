@@ -427,8 +427,10 @@ Before read tools are enabled, extend the provider-neutral conversation contract
 - Explicit tool outcomes for malformed, denied, timed-out, partial, failed, and action-`indeterminate` calls
 - Complete ordering across parallel calls and iterations
 
-Provider adapters for OpenAI, Anthropic, and Ollama must map this canonical representation to their native
-assistant-tool-call and tool-result message formats. Do not emulate tool results as ordinary user prose.
+Provider adapters for OpenAI Chat, Anthropic, Ollama, and OpenAI Codex Responses must map this canonical representation
+to their native assistant-tool-call and tool-result formats. The Codex adapter emits `function_call` and
+`function_call_output` input items correlated by the native `call_id`; it must not serialize a dependent tool result as
+an ordinary user/assistant `message`. Do not emulate tool results as ordinary user prose in any adapter.
 
 Canonical tool transcripts may remain in memory for the active turn. Existing persistence can continue to store the
 original user message and final assistant response; the rolling summary, entity references, and action-result metadata
@@ -460,12 +462,20 @@ registry allows access solely from the validated `authorization.allowedAccessKin
 Missing/unmapped authorization fails to `READ` only. Trusted internal/system turns use an explicit internal actor and
 policy decision rather than silently receiving elevated access.
 
-Each entry point preserves its validated inbound request ID or generates a server-side turn ID when none exists. The
-conversation boundary durably claims `(source, conversationId, requestId, requestContentHash)` before any action-capable
-provider call; an exact duplicate delivery resumes/returns the recorded request outcome, while reuse of the same request
-ID with different content is rejected. A tool execution carries the parent turn request ID and transcript-local
-tool-call ID separately, and derives its bounded correlation/audit `requestId` from both. Never replace the parent ID
-with `toolCall.id` alone: provider-local values such as `ollama-0` can repeat across turns.
+Each entry point preserves a validated client/event-stable inbound request ID. Both REST text and audio endpoints require
+a documented `Idempotency-Key` header; every first-party REST client generates one key per logical send and reuses it for
+every network retry. Validate a conservative length/character format before the handler, expose the header in Swagger, and
+bind it to source, actor, conversation, and a content hash (including the uploaded audio bytes/semantic request fields).
+Messaging adapters use their stable source-qualified platform event/message ID, and trusted internal callers supply a
+stable job/event ID. A server-generated per-attempt ID is allowed only for explicitly read-only internal work and cannot
+authorize an action-capable turn.
+
+The conversation boundary durably claims `(source, actorId, conversationId, requestId, requestContentHash)` before any
+action-capable provider call; an exact duplicate delivery resumes/returns the recorded request outcome, while reuse of
+the same request ID with different content returns a typed conflict and executes nothing. A tool execution carries the
+parent turn request ID and transcript-local tool-call ID separately, and derives its bounded correlation/audit
+`requestId` from both. Never replace the parent ID with `toolCall.id` alone: provider-local values such as `ollama-0` can
+repeat across turns.
 
 The service must validate that `BuddyRequestContext.conversationId` matches the conversation being processed, then copy
 it into every Buddy tool execution context. Read tools register exposed short IDs under that scope; action providers
@@ -777,6 +787,7 @@ apps/backend/src/modules/buddy/
 │   ├── buddy-conversation-memory.service.ts
 │   ├── buddy-conversation.service.ts
 │   ├── buddy-request-budget.service.ts
+│   ├── buddy-request-idempotency.service.ts
 │   ├── buddy-context.service.ts             # retained for evaluators
 │   └── home-context-tool-provider.service.ts
 └── buddy.module.ts
@@ -797,9 +808,10 @@ apps/backend/src/migrations/
 └── <next-timestamp>-AddBuddyConversationMemory.ts
 ```
 
-Generated OpenAPI/admin/panel clients remain unchanged for the internal retrieval architecture except for the Phase 5
-capacity-error contract. That phase adds a public HTTP 422 response to the existing Buddy text/audio endpoints and must
-regenerate the checked-in artifacts from backend Swagger sources; never edit generated clients manually.
+Generated OpenAPI/admin/panel clients remain unchanged for the internal retrieval architecture except for two explicit
+public contracts: Phase 2 adds the required `Idempotency-Key` header and typed reuse-conflict response to both Buddy
+text/audio endpoints, and Phase 5 adds their HTTP 422 capacity response. Each phase must regenerate checked-in artifacts
+from backend Swagger sources; never edit generated clients manually.
 
 ---
 
@@ -876,22 +888,32 @@ bounded search without loading the full catalog.
 - `apps/backend/src/modules/buddy/platforms/llm-provider.platform.ts`
 - `apps/backend/src/modules/buddy/controllers/buddy-conversations.controller.ts`
 - `apps/backend/src/modules/buddy/services/buddy-conversation.service.ts`
+- `apps/backend/src/modules/buddy/services/buddy-request-idempotency.service.ts`
 - `apps/backend/src/modules/tools/platforms/tool-provider.platform.ts`
+- `apps/backend/src/plugins/buddy-openai-codex/platforms/openai-codex.provider.ts`
 - Buddy LLM provider plugins/adapters and their specs
 - Buddy Discord, Telegram, and WhatsApp adapters and their specs
 - Existing command/scene/intent idempotency persistence, or a minimal Buddy action-execution ledger entity/service and
   incremental migration if existing storage cannot enforce a unique execution identity
+- Backend Swagger decorators/error models plus generated OpenAPI/admin/panel artifacts for the idempotency header/conflict
 - Shared tools registry specs as needed
 
 **Tasks:**
 
 - [ ] Represent assistant tool calls and tool results as canonical conversation items with stable call IDs.
 - [ ] Carry validated `ToolExecutionResult.data` to the next model iteration.
-- [ ] Map canonical items to native OpenAI, Anthropic, and Ollama formats.
+- [ ] Map canonical items to native OpenAI Chat, Anthropic, Ollama, and OpenAI Codex Responses formats. For Codex, emit
+      correlated `function_call`/`function_call_output` input items rather than ordinary messages.
 - [ ] Preserve ordering and one result/error per call, including malformed provider responses.
 - [ ] Pass explicit Buddy audience/source/access context to the registry.
 - [ ] Add `BuddyRequestContext` to the conversation-service boundary and plumb the validated conversation ID plus REST,
       voice, Discord, Telegram, and WhatsApp actor/source/request identity into every call and tool execution context.
+- [ ] Require and validate a client-stable `Idempotency-Key` header on both REST text and audio sends; document the header,
+      missing/invalid HTTP 400 response, and typed conflicting-reuse HTTP 409 response in Swagger. Update
+      every first-party REST caller (admin, panel, voice, or other discovered consumer) to reuse the same key across
+      retries, then run `pnpm run generate:openapi` instead of editing generated clients manually.
+- [ ] Derive messaging/internal request IDs from stable source event/job IDs; never use a per-attempt generated ID for an
+      action-capable request.
 - [ ] Carry an explicit entry-point authorization decision separately from actor attribution. Keep unmapped messaging
       identities and missing decisions `READ` only even when adapter admission is configured as allow-all; grant
       write/trigger only through authenticated Smart Panel mapping or an explicit action-capable allowlist/role.
@@ -908,19 +930,22 @@ bounded search without loading the full catalog.
 - [ ] Add per-result byte/token caps, structured truncation metadata, duplicate-call suppression, and timeout handling.
 - [ ] Ensure provider logs and persisted messages do not leak full raw tool data.
 
-**Tests:** Provider adapter contract tests; REST/voice/Discord/Telegram/WhatsApp conversation/identity/access propagation;
-rejection of a mismatched request-context conversation ID; unmapped platform users under empty/allow-all admission remain
-read-only; mapped/explicitly action-allowlisted users receive only their authorized access kinds; parent request ID
-preservation and uniqueness when `ollama-0` repeats across turns; rejection of one request ID with changed content;
-parallel call ordering; malformed arguments; unknown tools; denied access; partial results; read timeouts; action timeout
-before dispatch; confirmed cancellation; a hanging non-cancellable device command and scene trigger returning
-`INDETERMINATE`; concurrent and post-restart replay of the same inbound request with a changed provider call ID causing
-exactly one domain execution; two intentional identical action slots remaining distinct; late-result reconciliation; no
-model auto-retry; oversized results; repeated reads; and max-iteration behavior.
+**Tests:** Provider adapter contract tests, including a two-iteration OpenAI Codex Responses payload with matching
+`function_call`/`function_call_output.call_id`; REST text/audio required-header validation; generated client header
+support; client-timeout retry after restart with the same key; conflicting content/audio hash returning the documented
+error with zero execution; REST/voice/Discord/Telegram/WhatsApp conversation/identity/access propagation; rejection of a
+mismatched request-context conversation ID; unmapped platform users under empty/allow-all admission remain read-only;
+mapped/explicitly action-allowlisted users receive only their authorized access kinds; parent request ID preservation and
+uniqueness when `ollama-0` repeats across turns; parallel call ordering; malformed arguments; unknown tools; denied
+access; partial results; read timeouts; action timeout before dispatch; confirmed cancellation; a hanging non-cancellable
+device command and scene trigger returning `INDETERMINATE`; concurrent and post-restart replay of the same inbound request
+with a changed provider call ID causing exactly one domain execution; two intentional identical action slots remaining
+distinct; late-result reconciliation; no model auto-retry; oversized results; repeated reads; and max-iteration behavior.
 
 **Gate:** Using a schema-validated test tool provider, every provider adapter correlates a tool call with its bounded
 structured result, supports a second dependent call, and produces a final response grounded in the result status/data.
-No timed-out or replayed action test executes the same physical command twice or reports an unproven terminal outcome.
+This explicitly includes the OpenAI Codex Responses adapter's native call/output items. No timed-out or replayed action
+test executes the same physical command twice or reports an unproven terminal outcome.
 
 ### Phase 3 — Add Buddy read tools
 
@@ -1198,6 +1223,8 @@ designated safe targets and reversible values. Scale/shadow evaluation must neve
 - [ ] Complete provider requests are budgeted, including schemas, history, tool results, and output reserve.
 - [ ] Long conversations use token-aware history plus persisted bounded summary/reference memory.
 - [ ] Ambiguous actions never silently select a candidate.
+- [ ] REST text/audio retries use the required client-stable idempotency key, and replay after timeout/restart cannot
+      execute an action twice even when the provider returns a different tool-call ID.
 - [ ] Shared home-query services are usable by Buddy with MCP externally disabled.
 - [ ] MCP transport/auth/policy/configuration remains independent and externally backward compatible.
 - [ ] Existing heartbeat/evaluator full-context behavior remains unchanged.
@@ -1303,5 +1330,5 @@ pnpm run lint:js
 
 When a migration is added, verify upgrade against a copy of a pre-change SQLite database in addition to a clean test
 database. When Swagger decorators/public models change, run `pnpm run generate:openapi` rather than editing generated
-clients. Phase 5 is the sole currently planned public-contract change: its HTTP 422 capacity response requires this
-generation; the internal retrieval, tool, query, and memory phases do not.
+clients. Phase 2's required idempotency header/HTTP 409 contract and Phase 5's HTTP 422 capacity response require this
+generation; the remaining internal retrieval, tool, query, and memory work does not.
