@@ -1,7 +1,7 @@
 # Homey SHS Compatibility Record
 
-**Status:** In progress; safe inventory and SDK session/cleanup evidence captured, live capability-event, write, error-matrix,
-reconnect, and recovery evidence pending
+**Status:** In progress; safe inventory, SDK session/cleanup, and pre-restart mDNS host-match evidence captured; live
+capability-event, write, error-matrix, reconnect, and recovery evidence pending
 
 **Started:** 2026-08-12
 
@@ -27,7 +27,7 @@ file. Live results use synthetic aliases and sanitized captures only.
 | Allowlisted capability write                          | Hard-gated probe implemented, disabled         | Use only the designated harmless test capability                        |
 | Error classification                                  | SDK invalid key returned `401`; matrix pending | Verify missing-scope, bad-URL, unavailable, and timeout behavior        |
 | Disposable-device lifecycle                           | Contract defined, disabled                     | Use only the separately gated virtual/test device                       |
-| mDNS discovery                                        | Pending live access                            | Record stable service/TXT data or explicitly defer discovery            |
+| mDNS discovery                                        | Partial pre-restart observation                | Attribute the generic host record and repeat after SHS restart          |
 | SDK decision                                          | Live session/cleanup passed; provisional hold  | Complete event, timeout, cleanup-failure, and reconnect comparison      |
 | Sanitized fixture corpus                              | Nine representative live fixtures promoted     | Add event/reconnect fixtures and missing capability families/classes    |
 
@@ -39,6 +39,7 @@ Complete this table after the live run. Values committed here must remain non-se
 | ---------------------------------------- | -------------------------------------------------------------------- |
 | Capture date                             | `2026-08-13`                                                         |
 | Realtime SDK probe date                  | `2026-08-14`                                                         |
+| mDNS observation date                    | `2026-08-14`                                                         |
 | SHS version                              | `13.4.0`                                                             |
 | Container image tag and immutable digest | Pending                                                              |
 | Host operating system/architecture       | Pending                                                              |
@@ -188,6 +189,33 @@ The implementation must validate the exact operation list, require a synthetic t
 setup, and clean up only resources created by that run. It must never pair, rename, move, make unavailable, remove, or
 unpair ordinary household devices.
 
+## Privacy-safe mDNS observation probe
+
+The mDNS probe performs a bounded wildcard DNS-SD observation because SHS's service type has not been established. It
+does not read or send `FB_HOMEY_SHS_API_KEY`. Although the browser necessarily receives other LAN advertisements in
+memory, the probe immediately discards every service whose hostname or address does not exactly match
+`FB_HOMEY_SHS_EXPECTED_HOST`. The persisted exact-schema report contains only the matched service type, protocol, port,
+and sorted TXT key names. Service names, hostnames, addresses, TXT values, referer data, FQDNs, URLs, credentials, and
+raw errors have no report fields.
+
+Run it from the same interactive shell as the read-only probe:
+
+```bash
+pnpm run homey:probe-mdns
+```
+
+`FB_HOMEY_SHS_MDNS_OBSERVE_MS` optionally controls the observation window from `1000` through `30000` milliseconds and
+defaults to `5000`. The report uses the shared `FB_HOMEY_SHS_CAPTURE_DIR` and the same non-overwriting `0700` directory
+and `0600` file modes as the other probes. A zero-match result is valid evidence that no matching advertisement was
+seen during that bounded window; it is not proof that SHS never advertises. Closing the discovery decision still
+requires stable observations before and after an SHS restart, or an explicit documented decision to defer mDNS.
+
+Two consecutive five-second observations on 2026-08-14 produced the same sanitized host match: `_http._tcp` on port
+`80` with no TXT keys. The reviewed report is committed as
+`__fixtures__/evidence/2026-08-14-shs-13.4.0-mdns-host-match.json`. Because the record is generic and the observed port
+is not either documented SHS API port, this does not establish that SHS owns the advertisement or provide a safe
+discovery discriminator. The discovery gate remains open pending attribution and an observation after SHS restart.
+
 ## Non-mutating error-classification probe
 
 The error probe records only fixed category labels, rejection booleans, and HTTP status codes. It performs three live
@@ -273,7 +301,7 @@ Fill this matrix using synthetic aliases only.
 | SHS restart and reconnect                 | Pending                             |                                                                                                                                                      |
 | API-key revocation and replacement        | Pending                             |                                                                                                                                                      |
 | Disposable-device lifecycle sequence      | Pending                             |                                                                                                                                                      |
-| Stable mDNS service before/after restart  | Pending                             |                                                                                                                                                      |
+| Stable mDNS service before/after restart  | Partial pre-restart evidence        | Two identical windows matched generic `_http._tcp` port `80` with no TXT keys; SHS attribution and post-restart stability remain unproven            |
 
 ## Verification
 

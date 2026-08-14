@@ -1,0 +1,18 @@
+{
+	"metadata": {
+		"probe": "homey-shs-mdns",
+		"schemaVersion": 1
+	},
+	"observation": {
+		"durationMs": 5000,
+		"matchedServices": 1,
+		"services": [
+			{
+				"port": 80,
+				"protocol": "tcp",
+				"txtKeys": [],
+				"type": "http"
+			}
+		]
+	}
+}
