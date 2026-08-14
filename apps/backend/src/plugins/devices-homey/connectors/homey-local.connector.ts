@@ -30,6 +30,7 @@ interface HomeyLocalSubscription {
  */
 export class HomeyLocalConnector implements HomeyConnector {
 	private connected = false;
+	private transportCleanupNeeded = false;
 	private connectionGeneration = 0;
 	private lifecycleTail: Promise<void> = Promise.resolve();
 	private readonly subscriptions = new Set<HomeyLocalSubscription>();
@@ -158,6 +159,17 @@ export class HomeyLocalConnector implements HomeyConnector {
 	}
 
 	private async connectTransport(): Promise<void> {
+		if (this.transportCleanupNeeded) {
+			try {
+				await this.transport.disconnect();
+				this.transportCleanupNeeded = false;
+			} catch (error) {
+				throw mapHomeyLocalTransportError(error, HomeyConnectorOperation.CONNECT);
+			}
+		}
+
+		this.transportCleanupNeeded = true;
+
 		try {
 			await this.transport.connect();
 			this.connected = true;
@@ -167,6 +179,7 @@ export class HomeyLocalConnector implements HomeyConnector {
 
 			try {
 				await this.transport.disconnect();
+				this.transportCleanupNeeded = false;
 			} catch {
 				// Preserve the categorized connect failure after best-effort partial cleanup.
 			}
@@ -176,11 +189,11 @@ export class HomeyLocalConnector implements HomeyConnector {
 	}
 
 	private async disconnectTransport(): Promise<void> {
-		if (!this.connected && this.subscriptions.size === 0) {
+		if (!this.connected && !this.transportCleanupNeeded && this.subscriptions.size === 0) {
 			return;
 		}
 
-		const wasConnected = this.connected;
+		const shouldDisconnectTransport = this.connected || this.transportCleanupNeeded;
 		const subscriptions = [...this.subscriptions];
 		this.connected = false;
 		this.connectionGeneration += 1;
@@ -203,10 +216,13 @@ export class HomeyLocalConnector implements HomeyConnector {
 			}
 		}
 
-		if (wasConnected) {
+		if (shouldDisconnectTransport) {
 			try {
 				await this.transport.disconnect();
+				this.transportCleanupNeeded = false;
 			} catch (error) {
+				this.transportCleanupNeeded = true;
+
 				if (!failed) {
 					failed = true;
 					failureReason = error;

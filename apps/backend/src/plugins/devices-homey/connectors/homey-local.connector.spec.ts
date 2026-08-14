@@ -348,6 +348,22 @@ describe('Homey local connector lifecycle serialization', () => {
 		});
 		await expect(connector.connect()).resolves.toBeUndefined();
 		expect(transport.connectCount).toBe(2);
+		expect(transport.disconnectCount).toBe(2);
 		await connector.disconnect();
+	});
+
+	it('retries a failed transport teardown on a later disconnect', async () => {
+		const transport = new FakeHomeyLocalTransport();
+		const connector = new HomeyLocalConnector(transport);
+
+		await connector.connect();
+		transport.failNext(HomeyConnectorOperation.DISCONNECT, HomeyConnectorErrorCategory.UNAVAILABLE);
+
+		await expect(connector.disconnect()).rejects.toMatchObject({
+			category: HomeyConnectorErrorCategory.UNAVAILABLE,
+		});
+		await expect(connector.disconnect()).resolves.toBeUndefined();
+		await expect(connector.disconnect()).resolves.toBeUndefined();
+		expect(transport.disconnectCount).toBe(2);
 	});
 });

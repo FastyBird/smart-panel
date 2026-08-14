@@ -209,6 +209,31 @@ describe('Homey local protocol transformer', () => {
 		});
 	});
 
+	it('preserves explicit null capability events and rejects missing or malformed values', () => {
+		const event = {
+			type: 'capability' as const,
+			deviceId: 'device-1',
+			payload: { capabilityId: 'meter_power.instance', value: null },
+		};
+
+		expect(transformHomeyLocalEvent(event)).toMatchObject({ value: null });
+		expect(() => transformHomeyLocalEvent({ ...event, payload: { capabilityId: 'meter_power.instance' } })).toThrow(
+			'Homey protocol event capability value is missing',
+		);
+		expect(() =>
+			transformHomeyLocalEvent({
+				...event,
+				payload: { capabilityId: 'meter_power.instance', value: { leaked: 'invalid' } },
+			}),
+		).toThrow('Homey protocol event capability value is malformed');
+		expect(() =>
+			transformHomeyLocalEvent({
+				...event,
+				payload: { capabilityId: 'meter_power.instance', value: Number.NaN },
+			}),
+		).toThrow('Homey protocol event capability value is malformed');
+	});
+
 	it.each([
 		['device.create', HomeyEventType.DEVICE_ADDED, 'deviceId'],
 		['device.update', HomeyEventType.DEVICE_UPDATED, 'deviceId'],

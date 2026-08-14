@@ -88,6 +88,28 @@ const capabilityValue = (value: unknown): HomeyCapabilityValue => {
 	return asNumber(value);
 };
 
+const requireCapabilityValue = (value: HomeyProtocolRecord, key: string, label: string): HomeyCapabilityValue => {
+	if (!Object.hasOwn(value, key)) {
+		throw new Error(`Homey protocol ${label} is missing`);
+	}
+
+	const candidate = value[key];
+
+	if (candidate === null) {
+		return null;
+	}
+
+	if (typeof candidate === 'boolean' || typeof candidate === 'string') {
+		return candidate;
+	}
+
+	if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+		return candidate;
+	}
+
+	throw new Error(`Homey protocol ${label} is malformed`);
+};
+
 const enumValues = (value: unknown): readonly HomeyCapabilityEnumValue[] => {
 	if (!Array.isArray(value)) {
 		return [];
@@ -257,7 +279,7 @@ export const transformHomeyLocalEvent = (event: HomeyLocalTransportEvent): Homey
 				type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
 				deviceId: requireString(event.deviceId ?? payload.deviceId, 'event device id'),
 				capabilityId: requireString(firstString(payload.capabilityId, payload.capability), 'event capability id'),
-				value: capabilityValue(payload.value),
+				value: requireCapabilityValue(payload, 'value', 'event capability value'),
 				lastUpdatedAt: firstString(payload.lastUpdatedAt, payload.lastUpdated),
 				...metadata,
 			};
