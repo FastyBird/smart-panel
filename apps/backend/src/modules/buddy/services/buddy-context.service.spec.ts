@@ -5,6 +5,11 @@ import { IntentType } from '../../intents/intents.constants';
 import { ScenesService } from '../../scenes/services/scenes.service';
 import { SpacesService } from '../../spaces/services/spaces.service';
 import { WeatherService } from '../../weather/services/weather.service';
+import {
+	BUDDY_CONTEXT_SCALE_DEVICE_COUNTS,
+	createBuddyContextFixture,
+	createBuddyDeviceEntityFixtures,
+} from '../testing/buddy-context-evaluation.fixtures';
 
 import { ActionObserverService } from './action-observer.service';
 import { BuddyContextService } from './buddy-context.service';
@@ -435,6 +440,66 @@ describe('BuddyContextService', () => {
 			const ctx = await service.buildContext('nonexistent');
 
 			expect(ctx.spaces).toHaveLength(0);
+		});
+	});
+
+	describe('eager snapshot characterization', () => {
+		it('should retain the current global domain query footprint', async () => {
+			await service.buildContext();
+
+			expect(spacesService.findAll).toHaveBeenCalledTimes(1);
+			expect(spacesService.findDevicesBySpace).toHaveBeenCalledTimes(2);
+			expect(spacesService.findDevicesBySpace).toHaveBeenNthCalledWith(1, 'space-1');
+			expect(spacesService.findDevicesBySpace).toHaveBeenNthCalledWith(2, 'space-2');
+			expect(devicesService.findAll).toHaveBeenCalledTimes(1);
+			expect(scenesService.findAll).toHaveBeenCalledTimes(1);
+			expect(scenesService.findBySpace).not.toHaveBeenCalled();
+			expect(weatherService.getPrimaryWeather).toHaveBeenCalledTimes(1);
+			expect(energyDataService.getDeltas).toHaveBeenCalledTimes(1);
+		});
+
+		it('should retain the current space-scoped domain query footprint', async () => {
+			spacesService.findDevicesBySpace.mockResolvedValue([]);
+
+			await service.buildContext('space-1');
+
+			expect(spacesService.findAll).not.toHaveBeenCalled();
+			expect(spacesService.findOne).toHaveBeenCalledTimes(1);
+			expect(spacesService.findOne).toHaveBeenCalledWith('space-1');
+			// The eager implementation separately queries the space count and device details.
+			expect(spacesService.findDevicesBySpace).toHaveBeenCalledTimes(2);
+			expect(spacesService.findDevicesBySpace).toHaveBeenNthCalledWith(1, 'space-1');
+			expect(spacesService.findDevicesBySpace).toHaveBeenNthCalledWith(2, 'space-1');
+			expect(devicesService.findAll).not.toHaveBeenCalled();
+			expect(scenesService.findAll).not.toHaveBeenCalled();
+			expect(scenesService.findBySpace).toHaveBeenCalledTimes(1);
+			expect(scenesService.findBySpace).toHaveBeenCalledWith('space-1');
+			expect(weatherService.getPrimaryWeather).toHaveBeenCalledTimes(1);
+			expect(energyDataService.getDeltas).toHaveBeenCalledTimes(1);
+		});
+
+		it('should preserve the last device, channel, and property in a full large space snapshot', async () => {
+			const deviceCount = BUDDY_CONTEXT_SCALE_DEVICE_COUNTS[BUDDY_CONTEXT_SCALE_DEVICE_COUNTS.length - 1];
+			const options = { spaceId: 'space-1' };
+			const rawDevices = createBuddyDeviceEntityFixtures(deviceCount, options);
+			const expected = createBuddyContextFixture(deviceCount, options);
+
+			spacesService.findDevicesBySpace.mockResolvedValue(rawDevices);
+
+			const context = await service.buildContext('space-1');
+			const lastDevice = context.devices[deviceCount - 1];
+			const expectedLastDevice = expected.devices[deviceCount - 1];
+			const lastChannel = lastDevice.channels[lastDevice.channels.length - 1];
+			const expectedLastChannel = expectedLastDevice.channels[expectedLastDevice.channels.length - 1];
+
+			expect(context.spaces[0].deviceCount).toBe(deviceCount);
+			expect(context.devices).toHaveLength(deviceCount);
+			expect(lastDevice).toEqual(expectedLastDevice);
+			expect(lastDevice.channels).toHaveLength(3);
+			expect(lastChannel).toEqual(expectedLastChannel);
+			expect(lastChannel.properties).toHaveLength(1);
+			expect(lastChannel.properties[0]).toEqual(expectedLastChannel.properties[0]);
+			expect(lastDevice.state['energy.power']).toBe(expectedLastDevice.state['energy.power']);
 		});
 	});
 

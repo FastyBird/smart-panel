@@ -19,6 +19,34 @@ import {
 } from '../buddy-openai-codex.constants';
 import { BuddyOpenaiCodexConfigModel } from '../models/config.model';
 
+/** Build the exact JSON payload sent to the OpenAI Codex Responses endpoint. */
+export function buildOpenAiCodexRequestPayload(
+	model: string,
+	systemPrompt: string,
+	messages: ChatMessage[],
+	tools?: ToolDefinition[],
+): Record<string, unknown> {
+	return {
+		model,
+		instructions: systemPrompt,
+		input: messages.map((message) => ({
+			role: message.role === MessageRole.USER ? 'user' : 'assistant',
+			content: message.content,
+			type: 'message',
+		})),
+		stream: true,
+		store: false,
+		tools:
+			tools?.map((tool) => ({
+				type: 'function',
+				name: tool.name,
+				description: tool.description,
+				parameters: tool.parameters,
+			})) ?? [],
+		tool_choice: 'auto',
+	};
+}
+
 @Injectable()
 export class OpenAiCodexProvider implements ILlmProvider {
 	private readonly tokenManager = new OAuthTokenManager({
@@ -74,15 +102,7 @@ export class OpenAiCodexProvider implements ILlmProvider {
 		const resolvedModel = config?.model ?? model;
 		const timeout = options?.timeout ?? 30_000;
 
-		// Build input array matching the Codex Responses API format
-		const input = messages.map((m) => ({
-			role: m.role === MessageRole.USER ? 'user' : 'assistant',
-			content: m.content,
-			type: 'message',
-		}));
-
-		// Build tools in Responses API format
-		const tools = this.formatTools(options?.tools);
+		const requestPayload = buildOpenAiCodexRequestPayload(resolvedModel, systemPrompt, messages, options?.tools);
 
 		// ChatGPT backend requires streaming. We collect SSE chunks and assemble the response.
 		const controller = new AbortController();
@@ -97,15 +117,7 @@ export class OpenAiCodexProvider implements ILlmProvider {
 					Authorization: `Bearer ${accessToken}`,
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({
-					model: resolvedModel,
-					instructions: systemPrompt,
-					input,
-					stream: true,
-					store: false,
-					tools,
-					tool_choice: 'auto',
-				}),
+				body: JSON.stringify(requestPayload),
 				signal: controller.signal,
 			});
 
@@ -135,19 +147,6 @@ export class OpenAiCodexProvider implements ILlmProvider {
 		} finally {
 			clearTimeout(timeoutId);
 		}
-	}
-
-	private formatTools(tools?: ToolDefinition[]): unknown[] {
-		if (!tools || tools.length === 0) {
-			return [];
-		}
-
-		return tools.map((t) => ({
-			type: 'function',
-			name: t.name,
-			description: t.description,
-			parameters: t.parameters,
-		}));
 	}
 
 	private async collectStreamResponse(response: Response): Promise<{ content: string; toolCalls: LlmToolCall[] }> {

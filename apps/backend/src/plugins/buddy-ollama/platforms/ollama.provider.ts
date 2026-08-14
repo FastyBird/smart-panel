@@ -29,6 +29,39 @@ interface OllamaResponse {
 	done_reason?: string;
 }
 
+/** Build the exact JSON payload sent to Ollama's chat endpoint. */
+export function buildOllamaRequestPayload(
+	model: string,
+	systemPrompt: string,
+	messages: ChatMessage[],
+	tools?: ToolDefinition[],
+): Record<string, unknown> {
+	const requestPayload: Record<string, unknown> = {
+		model,
+		stream: false,
+		messages: [
+			{ role: 'system', content: systemPrompt },
+			...messages.map((message) => ({
+				role: message.role === MessageRole.USER ? 'user' : 'assistant',
+				content: message.content,
+			})),
+		],
+	};
+
+	if (tools && tools.length > 0) {
+		requestPayload.tools = tools.map((tool) => ({
+			type: 'function',
+			function: {
+				name: tool.name,
+				description: tool.description,
+				parameters: tool.parameters,
+			},
+		}));
+	}
+
+	return requestPayload;
+}
+
 @Injectable()
 export class OllamaProvider implements ILlmProvider {
 	constructor(private readonly configService: ConfigService) {}
@@ -76,21 +109,7 @@ export class OllamaProvider implements ILlmProvider {
 		const start = Date.now();
 
 		try {
-			const requestPayload: Record<string, unknown> = {
-				model: resolvedModel,
-				stream: false,
-				messages: [
-					{ role: 'system', content: systemPrompt },
-					...messages.map((m) => ({
-						role: m.role === MessageRole.USER ? 'user' : 'assistant',
-						content: m.content,
-					})),
-				],
-			};
-
-			if (options?.tools && options.tools.length > 0) {
-				requestPayload.tools = this.formatTools(options.tools);
-			}
+			const requestPayload = buildOllamaRequestPayload(resolvedModel, systemPrompt, messages, options?.tools);
 
 			const response = await fetch(`${baseUrl}/api/chat`, {
 				method: 'POST',
@@ -136,17 +155,6 @@ export class OllamaProvider implements ILlmProvider {
 		} finally {
 			clearTimeout(timeoutId);
 		}
-	}
-
-	private formatTools(tools: ToolDefinition[]): unknown[] {
-		return tools.map((t) => ({
-			type: 'function',
-			function: {
-				name: t.name,
-				description: t.description,
-				parameters: t.parameters,
-			},
-		}));
 	}
 
 	private getPluginConfig(): BuddyOllamaConfigModel | null {
