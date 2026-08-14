@@ -9,6 +9,7 @@ import { ModulesTypeMapperService } from '../config/services/modules-type-mapper
 import { DevicesModule } from '../devices/devices.module';
 import { EnergyModule } from '../energy/energy.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
+import { HomeContextModule } from '../home-context/home-context.module';
 import { ScenesModule } from '../scenes/scenes.module';
 import { SecurityModule } from '../security/security.module';
 import { SpacesModule } from '../spaces/spaces.module';
@@ -98,6 +99,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 		AuthModule,
 		DevicesModule,
 		EnergyModule,
+		HomeContextModule,
 		NestConfigModule,
 		ScenesModule,
 		SecurityModule,
