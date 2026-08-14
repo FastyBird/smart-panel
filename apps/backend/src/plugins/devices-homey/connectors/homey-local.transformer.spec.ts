@@ -2,10 +2,13 @@ import { readFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 
 import { HomeyCapabilityType } from '../models/homey-capability.model';
+import { HomeyEventType } from '../models/homey-event.model';
 
 import {
 	transformHomeyLocalDevice,
 	transformHomeyLocalDevices,
+	transformHomeyLocalEvent,
+	transformHomeyLocalSystemInfo,
 	transformHomeyLocalZones,
 } from './homey-local.transformer';
 
@@ -24,6 +27,25 @@ const rawZones = readJson(resolve(sourceRoot, 'zones.json'));
 const expectedZones = readJson(resolve(EXPECTED_ROOT, 'zones.json'));
 
 describe('Homey local protocol transformer', () => {
+	it('normalizes local system aliases without retaining the source object', () => {
+		const raw = {
+			homeyId: 'homey-1',
+			homeyModelName: 'Homey Pro',
+			homeyName: 'House',
+			homeyTier: 'pro',
+			homeyVersion: '12.4.0',
+			privateField: 'must-not-leak',
+		};
+
+		expect(transformHomeyLocalSystemInfo(raw)).toStrictEqual({
+			id: 'homey-1',
+			model: 'Homey Pro',
+			name: 'House',
+			tier: 'pro',
+			version: '12.4.0',
+		});
+	});
+
 	it('normalizes the captured zone hierarchy in source order', () => {
 		expect(transformHomeyLocalZones(rawZones)).toStrictEqual(expectedZones);
 	});
@@ -143,5 +165,63 @@ describe('Homey local protocol transformer', () => {
 		expect(() => transformHomeyLocalDevice({ class: 'other', id: 'private-source-value' }, [])).toThrow(
 			'Homey protocol device name is missing',
 		);
+	});
+
+	it('normalizes capability and availability events with full IDs and metadata', () => {
+		expect(
+			transformHomeyLocalEvent({
+				type: 'capability',
+				deviceId: 'device-1',
+				payload: {
+					capabilityId: 'measure_temperature.inside',
+					lastUpdated: '2026-08-13T10:01:00.000Z',
+					sequence: 1,
+					value: 0,
+				},
+			}),
+		).toStrictEqual({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: 'device-1',
+			capabilityId: 'measure_temperature.inside',
+			value: 0,
+			lastUpdatedAt: '2026-08-13T10:01:00.000Z',
+			occurredAt: '2026-08-13T10:01:00.000Z',
+			sequence: 1,
+		});
+
+		expect(
+			transformHomeyLocalEvent({
+				type: 'device.availability',
+				payload: {
+					available: false,
+					id: 'device-1',
+					sequence: 'event-2',
+					unavailableMessage: 'Device unavailable',
+				},
+			}),
+		).toStrictEqual({
+			type: HomeyEventType.DEVICE_AVAILABILITY_CHANGED,
+			deviceId: 'device-1',
+			available: false,
+			availabilityMessage: 'Device unavailable',
+			occurredAt: null,
+			sequence: 'event-2',
+		});
+	});
+
+	it.each([
+		['device.create', HomeyEventType.DEVICE_ADDED, 'deviceId'],
+		['device.update', HomeyEventType.DEVICE_UPDATED, 'deviceId'],
+		['device.delete', HomeyEventType.DEVICE_REMOVED, 'deviceId'],
+		['zone.create', HomeyEventType.ZONE_ADDED, 'zoneId'],
+		['zone.update', HomeyEventType.ZONE_UPDATED, 'zoneId'],
+		['zone.delete', HomeyEventType.ZONE_REMOVED, 'zoneId'],
+	] as const)('normalizes %s lifecycle events', (type, normalizedType, idKey) => {
+		expect(transformHomeyLocalEvent({ type, payload: { id: 'entity-1' } })).toStrictEqual({
+			type: normalizedType,
+			[idKey]: 'entity-1',
+			occurredAt: null,
+			sequence: null,
+		});
 	});
 });
