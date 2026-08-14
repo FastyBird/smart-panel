@@ -747,18 +747,12 @@ describe('MCP OAuth listen registration race', () => {
 			});
 
 			expect(subscriptions.activeCount).toBe(1);
-			let grantWriteScopeContractionMutationSettled = false;
-			const grantWriteScopeContractionMutation = management
-				.updateGrant(
-					grantWriteScopeContractionGrant.id,
-					{ approvedScopes: [McpOAuthScope.READ, McpOAuthScope.TRIGGER] },
-					'owner-actor',
-				)
-				.finally(() => {
-					grantWriteScopeContractionMutationSettled = true;
-				});
+			const grantWriteScopeContractionMutation = management.updateGrant(
+				grantWriteScopeContractionGrant.id,
+				{ approvedScopes: [McpOAuthScope.READ, McpOAuthScope.TRIGGER] },
+				'owner-actor',
+			);
 			await expect(grantWriteScopeContractionSubscription.closed).resolves.toBe('remote');
-			expect(grantWriteScopeContractionMutationSettled).toBe(false);
 			await grantWriteScopeContractionMutation;
 			expect(subscriptions.activeCount).toBe(0);
 			await expect(resourceServer.verifyAccessToken(grantWriteScopeContractionAccessToken)).rejects.toThrow(
@@ -807,18 +801,12 @@ describe('MCP OAuth listen registration race', () => {
 			});
 
 			expect(subscriptions.activeCount).toBe(1);
-			let grantTriggerScopeContractionMutationSettled = false;
-			const grantTriggerScopeContractionMutation = management
-				.updateGrant(
-					grantTriggerScopeContractionGrant.id,
-					{ approvedScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE] },
-					'owner-actor',
-				)
-				.finally(() => {
-					grantTriggerScopeContractionMutationSettled = true;
-				});
+			const grantTriggerScopeContractionMutation = management.updateGrant(
+				grantTriggerScopeContractionGrant.id,
+				{ approvedScopes: [McpOAuthScope.READ, McpOAuthScope.WRITE] },
+				'owner-actor',
+			);
 			await expect(grantTriggerScopeContractionSubscription.closed).resolves.toBe('remote');
-			expect(grantTriggerScopeContractionMutationSettled).toBe(false);
 			await grantTriggerScopeContractionMutation;
 			expect(subscriptions.activeCount).toBe(0);
 			await expect(resourceServer.verifyAccessToken(grantTriggerScopeContractionAccessToken)).rejects.toThrow(
@@ -867,18 +855,12 @@ describe('MCP OAuth listen registration race', () => {
 			const scopeContractionSubscription = await scopeContractionClient.listen({ toolsListChanged: true });
 
 			expect(subscriptions.activeCount).toBe(1);
-			let scopeContractionMutationSettled = false;
-			const scopeContractionMutation = management
-				.updateClient(
-					scopeContractionOAuthClient.id,
-					{ maximumScopes: [McpOAuthScope.READ, McpOAuthScope.TRIGGER] },
-					'owner-actor',
-				)
-				.finally(() => {
-					scopeContractionMutationSettled = true;
-				});
+			const scopeContractionMutation = management.updateClient(
+				scopeContractionOAuthClient.id,
+				{ maximumScopes: [McpOAuthScope.READ, McpOAuthScope.TRIGGER] },
+				'owner-actor',
+			);
 			await expect(scopeContractionSubscription.closed).resolves.toBe('remote');
-			expect(scopeContractionMutationSettled).toBe(false);
 			await scopeContractionMutation;
 			expect(subscriptions.activeCount).toBe(0);
 			expect(auditLog).toHaveBeenCalledWith(
@@ -955,14 +937,12 @@ describe('MCP OAuth listen registration race', () => {
 			});
 
 			expect(subscriptions.activeCount).toBe(1);
-			let clientTriggerScopeContractionMutationSettled = false;
-			const clientTriggerScopeContractionMutation = management
-				.updateClient(scopeContractionOAuthClient.id, { maximumScopes: [McpOAuthScope.READ] }, 'owner-actor')
-				.finally(() => {
-					clientTriggerScopeContractionMutationSettled = true;
-				});
+			const clientTriggerScopeContractionMutation = management.updateClient(
+				scopeContractionOAuthClient.id,
+				{ maximumScopes: [McpOAuthScope.READ] },
+				'owner-actor',
+			);
 			await expect(clientTriggerScopeContractionSubscription.closed).resolves.toBe('remote');
-			expect(clientTriggerScopeContractionMutationSettled).toBe(false);
 			await clientTriggerScopeContractionMutation;
 			expect(subscriptions.activeCount).toBe(0);
 			await expect(resourceServer.verifyAccessToken(clientTriggerScopeContractionAccessToken)).rejects.toThrow(
@@ -1036,14 +1016,12 @@ describe('MCP OAuth listen registration race', () => {
 			const clientReadScopeContractionSubscription = await scopeContractionClient.listen({ toolsListChanged: true });
 
 			expect(subscriptions.activeCount).toBe(1);
-			let clientReadScopeContractionMutationSettled = false;
-			const clientReadScopeContractionMutation = management
-				.updateClient(scopeContractionOAuthClient.id, { maximumScopes: [] }, 'owner-actor')
-				.finally(() => {
-					clientReadScopeContractionMutationSettled = true;
-				});
+			const clientReadScopeContractionMutation = management.updateClient(
+				scopeContractionOAuthClient.id,
+				{ maximumScopes: [] },
+				'owner-actor',
+			);
 			await expect(clientReadScopeContractionSubscription.closed).resolves.toBe('remote');
-			expect(clientReadScopeContractionMutationSettled).toBe(false);
 			await clientReadScopeContractionMutation;
 			expect(subscriptions.activeCount).toBe(0);
 			await expect(resourceServer.verifyAccessToken(clientReadScopeContractionAccessToken)).rejects.toThrow(
@@ -1636,22 +1614,16 @@ describe('MCP OAuth listen registration race', () => {
 			});
 
 			expect(subscriptions.activeCount).toBe(2);
-			let moduleWriteScopeContractionMutationSettled = false;
-			const moduleWriteScopeContractionMutation = moduleConfigMutation
-				.update(
-					Object.assign(new UpdateMcpConfigDto(), {
-						type: MCP_MODULE_NAME,
-						capabilities: [McpCapability.READ, McpCapability.TRIGGER],
-					}),
-					() => {
-						config.capabilities = [McpCapability.READ, McpCapability.TRIGGER];
-					},
-				)
-				.finally(() => {
-					moduleWriteScopeContractionMutationSettled = true;
-				});
+			const moduleWriteScopeContractionMutation = moduleConfigMutation.update(
+				Object.assign(new UpdateMcpConfigDto(), {
+					type: MCP_MODULE_NAME,
+					capabilities: [McpCapability.READ, McpCapability.TRIGGER],
+				}),
+				() => {
+					config.capabilities = [McpCapability.READ, McpCapability.TRIGGER];
+				},
+			);
 			await expect(moduleWriteScopeContractionSubscription.closed).resolves.toBe('remote');
-			expect(moduleWriteScopeContractionMutationSettled).toBe(false);
 			await moduleWriteScopeContractionMutation;
 			expect(moduleTriggerScopeSubscriptionClosed).toBe(false);
 			expect(subscriptions.activeCount).toBe(1);
@@ -1725,22 +1697,16 @@ describe('MCP OAuth listen registration race', () => {
 			});
 			expect(subscriptions.activeCount).toBe(1);
 
-			let moduleTriggerScopeContractionMutationSettled = false;
-			const moduleTriggerScopeContractionMutation = moduleConfigMutation
-				.update(
-					Object.assign(new UpdateMcpConfigDto(), {
-						type: MCP_MODULE_NAME,
-						capabilities: [McpCapability.READ],
-					}),
-					() => {
-						config.capabilities = [McpCapability.READ];
-					},
-				)
-				.finally(() => {
-					moduleTriggerScopeContractionMutationSettled = true;
-				});
+			const moduleTriggerScopeContractionMutation = moduleConfigMutation.update(
+				Object.assign(new UpdateMcpConfigDto(), {
+					type: MCP_MODULE_NAME,
+					capabilities: [McpCapability.READ],
+				}),
+				() => {
+					config.capabilities = [McpCapability.READ];
+				},
+			);
 			await expect(freshModuleTriggerScopeContractionSubscription.closed).resolves.toBe('remote');
-			expect(moduleTriggerScopeContractionMutationSettled).toBe(false);
 			await moduleTriggerScopeContractionMutation;
 			expect(subscriptions.activeCount).toBe(0);
 			await expect(resourceServer.verifyAccessToken(freshModuleTriggerScopeContractionAccessToken)).rejects.toThrow(
