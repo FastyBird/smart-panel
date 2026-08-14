@@ -52,7 +52,10 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 - [ ] Designate one disposable virtual/test device for lifecycle mutations. It must not represent household equipment, and repository documents record only its synthetic alias.
 - [x] Define environment variables for live tests. Do not store secret values in shell history, fixtures, `.env` files, or repository config.
 - [x] Add an explicit live-write allowlist contract requiring both device ID and capability ID.
-- [x] Add a separately enabled lifecycle-mutation allowlist containing the disposable device ID and the exact permitted operations: add, rename, zone move, availability change, and remove.
+- [x] Add a separately enabled lifecycle-mutation allowlist with an immutable synthetic marker, exact test
+      driver/owner/names/zones, and the canonical operations: add, rename, zone move, availability change, and remove.
+      Bind the runtime device ID only after a matching create event and fresh ownership read-back because Homey assigns
+      the top-level ID during creation.
 
 **Verification:** Review the compatibility document for secret/private data before committing it.
 
