@@ -6,7 +6,10 @@ import { resolve } from 'node:path';
 import { type HomeyShsProbeConfig, loadHomeyShsProbeConfig } from './homey-shs-probe';
 
 const SDK_VERSION = '3.19.2';
-const RECOVERY_ACKNOWLEDGEMENT = 'I_WILL_RESTART_THE_TEST_SHS_DURING_THIS_PROBE';
+const RECOVERY_ACKNOWLEDGEMENTS = {
+	'network-interruption': 'I_WILL_INTERRUPT_AND_RESTORE_THE_TEST_SHS_NETWORK_DURING_THIS_PROBE',
+	restart: 'I_WILL_RESTART_THE_TEST_SHS_DURING_THIS_PROBE',
+} as const;
 const DEFAULT_OBSERVE_MS = 90_000;
 const MIN_OBSERVE_MS = 10_000;
 const MAX_OBSERVE_MS = 300_000;
@@ -34,6 +37,8 @@ const SAFE_EVENT_LABELS = new Set([
 ]);
 
 type EventListener = (...arguments_: unknown[]) => void;
+
+export type HomeyShsRecoveryScenario = keyof typeof RECOVERY_ACKNOWLEDGEMENTS;
 
 class HomeyShsRecoveryTimeoutError extends Error {
 	constructor(label: string, timeoutMs: number) {
@@ -66,12 +71,14 @@ export interface HomeyRecoverySdkFactory {
 
 export interface HomeyShsRecoveryProbeConfig extends HomeyShsProbeConfig {
 	observeMs: number;
+	scenario: HomeyShsRecoveryScenario;
 }
 
 export interface HomeyShsRecoveryReport {
 	metadata: {
 		probe: 'homey-shs-recovery';
-		schemaVersion: 1;
+		scenario: HomeyShsRecoveryScenario;
+		schemaVersion: 2;
 		sdkVersion: string;
 	};
 	recovery: {
@@ -136,11 +143,23 @@ const parseObserveMs = (value: string | undefined): number => {
 	return parsed;
 };
 
+const parseScenario = (value: string | undefined): HomeyShsRecoveryScenario => {
+	const scenario = value ?? 'restart';
+
+	if (scenario !== 'network-interruption' && scenario !== 'restart') {
+		throw new Error('FB_HOMEY_SHS_RECOVERY_SCENARIO must be network-interruption or restart');
+	}
+
+	return scenario;
+};
+
 export const loadHomeyShsRecoveryProbeConfig = (
 	environment: NodeJS.ProcessEnv,
 	workingDirectory = process.cwd(),
 ): HomeyShsRecoveryProbeConfig => {
-	if (environment.FB_HOMEY_SHS_RECOVERY_ENABLE !== RECOVERY_ACKNOWLEDGEMENT) {
+	const scenario = parseScenario(environment.FB_HOMEY_SHS_RECOVERY_SCENARIO);
+
+	if (environment.FB_HOMEY_SHS_RECOVERY_ENABLE !== RECOVERY_ACKNOWLEDGEMENTS[scenario]) {
 		throw new Error('FB_HOMEY_SHS_RECOVERY_ENABLE does not contain the required operator acknowledgement');
 	}
 
@@ -155,6 +174,7 @@ export const loadHomeyShsRecoveryProbeConfig = (
 	return {
 		...loadHomeyShsProbeConfig(environment, workingDirectory),
 		observeMs: parseObserveMs(environment.FB_HOMEY_SHS_RECOVERY_OBSERVE_MS),
+		scenario,
 	};
 };
 
@@ -239,12 +259,16 @@ const waitForManagerResubscription = async (
 	}
 };
 
-const waitForTransportRecovery = async (recoveryDetected: Promise<void>, observeMs: number): Promise<void> => {
+const waitForTransportRecovery = async (
+	recoveryDetected: Promise<void>,
+	config: HomeyShsRecoveryProbeConfig,
+): Promise<void> => {
 	let timeout: ReturnType<typeof setTimeout> | undefined;
+	const label = config.scenario === 'restart' ? 'operator restart observation' : 'operator network restoration';
 	const timeoutPromise = new Promise<never>((_resolvePromise, rejectPromise) => {
 		timeout = setTimeout(
-			() => rejectPromise(new HomeyShsRecoveryTimeoutError('operator restart observation', observeMs)),
-			observeMs,
+			() => rejectPromise(new HomeyShsRecoveryTimeoutError(label, config.observeMs)),
+			config.observeMs,
 		);
 	});
 
@@ -262,9 +286,15 @@ export const probeHomeyShsRecovery = async (
 	factory: HomeyRecoverySdkFactory = sdkFactory,
 	wait: HomeyRecoveryWait = sleep,
 	onWindowOpen: () => void = () => undefined,
+	onDisconnectObserved: () => void = () => undefined,
 ): Promise<HomeyShsRecoveryReport> => {
 	const report: HomeyShsRecoveryReport = {
-		metadata: { probe: 'homey-shs-recovery', schemaVersion: 1, sdkVersion: SDK_VERSION },
+		metadata: {
+			probe: 'homey-shs-recovery',
+			scenario: config.scenario,
+			schemaVersion: 2,
+			sdkVersion: SDK_VERSION,
+		},
 		recovery: {
 			disconnectObserved: false,
 			inventoryReadSucceeded: false,
@@ -313,6 +343,7 @@ export const probeHomeyShsRecovery = async (
 			if (recoveryWindowOpen && !report.recovery.disconnectObserved) {
 				report.recovery.disconnectObserved = true;
 				appendEvent(report, 'socket.disconnect');
+				onDisconnectObserved();
 			}
 		}),
 		...['reconnect_attempt', 'reconnect_error', 'reconnecting'].map((event) =>
@@ -335,7 +366,7 @@ export const probeHomeyShsRecovery = async (
 		appendEvent(report, 'recovery.window.open');
 		onWindowOpen();
 
-		await waitForTransportRecovery(transportRecoveryDetected, config.observeMs);
+		await waitForTransportRecovery(transportRecoveryDetected, config);
 
 		if (verificationPromise === null) {
 			throw new Error('Homey recovery verification did not start');
@@ -402,7 +433,7 @@ export const probeHomeyShsRecovery = async (
 
 export function assertHomeyShsRecoveryReportSchema(value: unknown): asserts value is HomeyShsRecoveryReport {
 	const report = requireExactKeys(value, ['metadata', 'recovery', 'session'], 'root');
-	const metadata = requireExactKeys(report.metadata, ['probe', 'schemaVersion', 'sdkVersion'], 'metadata');
+	const metadata = requireExactKeys(report.metadata, ['probe', 'scenario', 'schemaVersion', 'sdkVersion'], 'metadata');
 	const recovery = requireExactKeys(
 		report.recovery,
 		['disconnectObserved', 'inventoryReadSucceeded', 'managerResubscribed', 'transportReconnected'],
@@ -410,7 +441,12 @@ export function assertHomeyShsRecoveryReportSchema(value: unknown): asserts valu
 	);
 	const session = requireExactKeys(report.session, ['cleanupCompleted', 'events', 'managerSubscribed'], 'session');
 
-	if (metadata.probe !== 'homey-shs-recovery' || metadata.schemaVersion !== 1 || metadata.sdkVersion !== SDK_VERSION) {
+	if (
+		metadata.probe !== 'homey-shs-recovery' ||
+		(metadata.scenario !== 'network-interruption' && metadata.scenario !== 'restart') ||
+		metadata.schemaVersion !== 2 ||
+		metadata.sdkVersion !== SDK_VERSION
+	) {
 		throw new Error('Homey recovery report metadata schema is invalid');
 	}
 
@@ -453,6 +489,10 @@ export function assertHomeyShsRecoveryReportSafe(
 		throw new Error('Sanitized Homey recovery report contains a configured secret or private value');
 	}
 
+	if (value.metadata.scenario !== config.scenario) {
+		throw new Error('Homey recovery report scenario does not match the requested scenario');
+	}
+
 	if (
 		!value.session.managerSubscribed ||
 		!value.session.cleanupCompleted ||
@@ -461,7 +501,7 @@ export function assertHomeyShsRecoveryReportSafe(
 		!value.recovery.managerResubscribed ||
 		!value.recovery.inventoryReadSucceeded
 	) {
-		throw new Error('Homey recovery probe did not verify restart recovery and cleanup');
+		throw new Error(`Homey recovery probe did not verify ${config.scenario} recovery and cleanup`);
 	}
 
 	if (value.session.events.some(({ event, order }, index) => !SAFE_EVENT_LABELS.has(event) || order !== index + 1)) {
@@ -476,7 +516,7 @@ export function assertHomeyShsRecoveryReportSafe(
 		const index = eventNames.indexOf(event);
 
 		if (index <= previousIndex) {
-			throw new Error('Homey recovery report does not contain the required restart ordering');
+			throw new Error('Homey recovery report does not contain the required recovery ordering');
 		}
 
 		previousIndex = index;
@@ -487,7 +527,7 @@ export function assertHomeyShsRecoveryReportSafe(
 	);
 
 	if (recoveryIndex <= previousIndex) {
-		throw new Error('Homey recovery report does not contain the required restart ordering');
+		throw new Error('Homey recovery report does not contain the required recovery ordering');
 	}
 
 	previousIndex = recoveryIndex;
@@ -496,7 +536,7 @@ export function assertHomeyShsRecoveryReportSafe(
 		const index = eventNames.indexOf(event);
 
 		if (index <= previousIndex) {
-			throw new Error('Homey recovery report does not contain the required restart ordering');
+			throw new Error('Homey recovery report does not contain the required recovery ordering');
 		}
 
 		previousIndex = index;
@@ -524,11 +564,26 @@ export const writeHomeyShsRecoveryReport = async (
 
 const run = async (): Promise<void> => {
 	const config = loadHomeyShsRecoveryProbeConfig(process.env);
-	const report = await probeHomeyShsRecovery(config, sdkFactory, sleep, () => {
-		process.stdout.write(
-			`Homey recovery observation window is open for ${config.observeMs} ms. Restart the test SHS now.\n`,
-		);
-	});
+	const report = await probeHomeyShsRecovery(
+		config,
+		sdkFactory,
+		sleep,
+		() => {
+			const instruction =
+				config.scenario === 'restart'
+					? 'Restart the test SHS now.'
+					: 'Interrupt only the test SHS network now; wait for disconnect confirmation before restoring it.';
+
+			process.stdout.write(
+				`Homey ${config.scenario} recovery observation window is open for ${config.observeMs} ms. ${instruction}\n`,
+			);
+		},
+		() => {
+			if (config.scenario === 'network-interruption') {
+				process.stdout.write('Homey network disconnect observed. Restore the test SHS network now.\n');
+			}
+		},
+	);
 
 	assertHomeyShsRecoveryReportSafe(report, config);
 

@@ -24,6 +24,12 @@ const BASE_ENVIRONMENT: NodeJS.ProcessEnv = {
 	FB_HOMEY_SHS_URL: 'http://127.0.0.1:4859',
 };
 
+const NETWORK_ENVIRONMENT: NodeJS.ProcessEnv = {
+	...BASE_ENVIRONMENT,
+	FB_HOMEY_SHS_RECOVERY_ENABLE: 'I_WILL_INTERRUPT_AND_RESTORE_THE_TEST_SHS_NETWORK_DURING_THIS_PROBE',
+	FB_HOMEY_SHS_RECOVERY_SCENARIO: 'network-interruption',
+};
+
 type RecoveryScenario =
 	| 'connect-recovery'
 	| 'inventory-failure'
@@ -159,6 +165,24 @@ describe('Homey SHS recovery compatibility probe', () => {
 		expect(() =>
 			loadHomeyShsRecoveryProbeConfig({
 				...BASE_ENVIRONMENT,
+				FB_HOMEY_SHS_RECOVERY_SCENARIO: 'network-interruption',
+			}),
+		).toThrow('required operator acknowledgement');
+		expect(() =>
+			loadHomeyShsRecoveryProbeConfig({
+				...NETWORK_ENVIRONMENT,
+				FB_HOMEY_SHS_RECOVERY_ENABLE: BASE_ENVIRONMENT.FB_HOMEY_SHS_RECOVERY_ENABLE,
+			}),
+		).toThrow('required operator acknowledgement');
+		expect(() =>
+			loadHomeyShsRecoveryProbeConfig({
+				...BASE_ENVIRONMENT,
+				FB_HOMEY_SHS_RECOVERY_SCENARIO: 'unsupported',
+			}),
+		).toThrow('must be network-interruption or restart');
+		expect(() =>
+			loadHomeyShsRecoveryProbeConfig({
+				...BASE_ENVIRONMENT,
 				FB_HOMEY_SHS_RECOVERY_ENABLE: undefined,
 			}),
 		).toThrow('required operator acknowledgement');
@@ -190,6 +214,7 @@ describe('Homey SHS recovery compatibility probe', () => {
 			expectedHost: '127.0.0.1',
 			observeMs: 10_000,
 			outputRoot: '/tmp/homey-recovery-spike/test/.homey-shs-captures',
+			scenario: 'restart',
 			timeoutMs: 1000,
 		});
 		expect(config.origin.origin).toBe('http://127.0.0.1:4859');
@@ -205,12 +230,21 @@ describe('Homey SHS recovery compatibility probe', () => {
 		const config = fastConfig();
 		const harness = createFactory('success');
 		let windowOpenCount = 0;
-		const report = await probeHomeyShsRecovery(config, harness.factory, undefined, () => {
-			windowOpenCount += 1;
-		});
+		let disconnectObservedCount = 0;
+		const report = await probeHomeyShsRecovery(
+			config,
+			harness.factory,
+			undefined,
+			() => {
+				windowOpenCount += 1;
+			},
+			() => {
+				disconnectObservedCount += 1;
+			},
+		);
 
 		expect(report).toStrictEqual({
-			metadata: { probe: 'homey-shs-recovery', schemaVersion: 1, sdkVersion: '3.19.2' },
+			metadata: { probe: 'homey-shs-recovery', scenario: 'restart', schemaVersion: 2, sdkVersion: '3.19.2' },
 			recovery: {
 				disconnectObserved: true,
 				inventoryReadSucceeded: true,
@@ -244,9 +278,28 @@ describe('Homey SHS recovery compatibility probe', () => {
 		expect(harness.clients[0].disconnectCount).toBe(1);
 		expect(harness.clients[0].destroyCount).toBe(1);
 		expect(windowOpenCount).toBe(1);
+		expect(disconnectObservedCount).toBe(1);
 		expect(() => assertHomeyShsRecoveryReportSafe(report, config)).not.toThrow();
 		expect(JSON.stringify(report)).not.toContain('test-api-key-that-must-not-leak');
 		expect(JSON.stringify(report)).not.toContain('Private Device');
+	});
+
+	it('records operator-controlled network interruption as distinct recovery evidence', async () => {
+		const config = {
+			...loadHomeyShsRecoveryProbeConfig(NETWORK_ENVIRONMENT, '/tmp/homey-recovery-spike'),
+			observeMs: 100,
+			timeoutMs: 50,
+		};
+		const report = await probeHomeyShsRecovery(config, createFactory('success').factory);
+
+		expect(report.metadata.scenario).toBe('network-interruption');
+		expect(report.recovery).toStrictEqual({
+			disconnectObserved: true,
+			inventoryReadSucceeded: true,
+			managerResubscribed: true,
+			transportReconnected: true,
+		});
+		expect(() => assertHomeyShsRecoveryReportSafe(report, config)).not.toThrow();
 	});
 
 	it('accepts a post-disconnect connect event as transport recovery', async () => {
@@ -298,6 +351,20 @@ describe('Homey SHS recovery compatibility probe', () => {
 		expect(harness.clients[0].destroyCount).toBe(1);
 	});
 
+	it('uses a network-specific timeout when restoration is not observed', async () => {
+		const config = {
+			...loadHomeyShsRecoveryProbeConfig(NETWORK_ENVIRONMENT, '/tmp/homey-recovery-spike'),
+			observeMs: 10,
+			timeoutMs: 50,
+		};
+		const harness = createFactory('no-recovery');
+
+		await expect(probeHomeyShsRecovery(config, harness.factory)).rejects.toThrow(
+			'Homey recovery operator network restoration timed out after 10 ms',
+		);
+		expect(harness.clients[0].destroyCount).toBe(1);
+	});
+
 	it('requires manager restoration after transport reconnect and sanitizes failures', async () => {
 		const offlineConfig = fastConfig({ timeoutMs: 10 });
 		const offlineHarness = createFactory('manager-offline');
@@ -332,7 +399,7 @@ describe('Homey SHS recovery compatibility probe', () => {
 
 	it('rejects extra fields, invalid state, unsafe values, and unordered evidence', () => {
 		const report: HomeyShsRecoveryReport = {
-			metadata: { probe: 'homey-shs-recovery', schemaVersion: 1, sdkVersion: '3.19.2' },
+			metadata: { probe: 'homey-shs-recovery', scenario: 'restart', schemaVersion: 2, sdkVersion: '3.19.2' },
 			recovery: {
 				disconnectObserved: true,
 				inventoryReadSucceeded: true,
@@ -368,6 +435,9 @@ describe('Homey SHS recovery compatibility probe', () => {
 		expect(() => assertHomeyShsRecoveryReportSafe(incomplete, fastConfig())).toThrow(
 			'did not verify restart recovery and cleanup',
 		);
+		expect(() =>
+			assertHomeyShsRecoveryReportSafe(report, { ...fastConfig(), scenario: 'network-interruption' }),
+		).toThrow('scenario does not match the requested scenario');
 
 		const unordered = structuredClone(report);
 		unordered.session.events = [
@@ -380,14 +450,14 @@ describe('Homey SHS recovery compatibility probe', () => {
 		];
 
 		expect(() => assertHomeyShsRecoveryReportSafe(unordered, fastConfig())).toThrow(
-			'does not contain the required restart ordering',
+			'does not contain the required recovery ordering',
 		);
 	});
 
 	it('writes a new restrictive, schema-validated report directory', async () => {
 		const root = await mkdtemp(join(tmpdir(), 'homey-recovery-spike-'));
 		const report: HomeyShsRecoveryReport = {
-			metadata: { probe: 'homey-shs-recovery', schemaVersion: 1, sdkVersion: '3.19.2' },
+			metadata: { probe: 'homey-shs-recovery', scenario: 'restart', schemaVersion: 2, sdkVersion: '3.19.2' },
 			recovery: {
 				disconnectObserved: true,
 				inventoryReadSucceeded: true,
