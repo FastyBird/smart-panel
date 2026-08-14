@@ -38,6 +38,14 @@ const authorizationToken = (init: RequestInit): string | null => {
 	return authorization?.replace(/^Bearer /, '') ?? null;
 };
 
+const isPingRequest = (input: URL): boolean => input.pathname === '/api/manager/system/ping';
+
+const homeyPingResponse = (): Response =>
+	new Response(null, {
+		status: 200,
+		headers: { 'x-homey-id': 'synthetic-homey-id', 'x-homey-version': '13.4.0' },
+	});
+
 describe('Homey SHS credential rotation compatibility probe', () => {
 	it('requires the exact acknowledgement, distinct replacement key, and isolated gates', () => {
 		expect(() =>
@@ -95,7 +103,11 @@ describe('Homey SHS credential rotation compatibility probe', () => {
 		let primaryRequests = 0;
 		let nowMs = 0;
 		let windowOpenCount = 0;
-		const fetchImplementation = jest.fn<Promise<Response>, [URL, RequestInit]>((_input, init) => {
+		const fetchImplementation = jest.fn<Promise<Response>, [URL, RequestInit]>((input, init) => {
+			if (isPingRequest(input)) {
+				return Promise.resolve(homeyPingResponse());
+			}
+
 			const token = authorizationToken(init);
 
 			if (token === config.apiKey) {
@@ -135,20 +147,25 @@ describe('Homey SHS credential rotation compatibility probe', () => {
 			},
 			session: {
 				events: [
-					{ event: 'primary.validation.resolved', order: 1 },
-					{ event: 'replacement.preflight.resolved', order: 2 },
-					{ event: 'rotation.window.open', order: 3 },
-					{ event: 'primary.revocation.observed', order: 4 },
-					{ event: 'replacement.validation.resolved', order: 5 },
+					{ event: 'endpoint.identity.resolved', order: 1 },
+					{ event: 'primary.validation.resolved', order: 2 },
+					{ event: 'replacement.preflight.resolved', order: 3 },
+					{ event: 'rotation.window.open', order: 4 },
+					{ event: 'primary.revocation.observed', order: 5 },
+					{ event: 'replacement.validation.resolved', order: 6 },
 				],
 			},
 		});
-		expect(fetchImplementation).toHaveBeenCalledTimes(5);
+		expect(fetchImplementation).toHaveBeenCalledTimes(6);
+		expect(isPingRequest(fetchImplementation.mock.calls[0][0])).toBe(true);
+		expect(new Headers(fetchImplementation.mock.calls[0][1].headers).has('authorization')).toBe(false);
 		expect(
-			fetchImplementation.mock.calls.every(
-				([input, init]) =>
-					input.pathname === '/api/manager/devices/device' && init.method === 'GET' && init.redirect === 'error',
-			),
+			fetchImplementation.mock.calls
+				.slice(1)
+				.every(
+					([input, init]) =>
+						input.pathname === '/api/manager/devices/device' && init.method === 'GET' && init.redirect === 'error',
+				),
 		).toBe(true);
 		expect(windowOpenCount).toBe(1);
 		expect(() => assertHomeyShsCredentialRotationReportSafe(report, config)).not.toThrow();
@@ -159,8 +176,8 @@ describe('Homey SHS credential rotation compatibility probe', () => {
 	it('times out safely when the primary key is not revoked', async () => {
 		const config = createConfig({ observeMs: 10 });
 		let nowMs = 0;
-		const fetchImplementation = jest.fn<Promise<Response>, [URL, RequestInit]>(() =>
-			Promise.resolve(new Response(null, { status: 200 })),
+		const fetchImplementation = jest.fn<Promise<Response>, [URL, RequestInit]>((input) =>
+			Promise.resolve(isPingRequest(input) ? homeyPingResponse() : new Response(null, { status: 200 })),
 		);
 
 		await expect(
@@ -181,7 +198,11 @@ describe('Homey SHS credential rotation compatibility probe', () => {
 	it('requires both replacement-key validations to succeed', async () => {
 		const config = createConfig();
 		let replacementRequests = 0;
-		const fetchImplementation = jest.fn<Promise<Response>, [URL, RequestInit]>((_input, init) => {
+		const fetchImplementation = jest.fn<Promise<Response>, [URL, RequestInit]>((input, init) => {
+			if (isPingRequest(input)) {
+				return Promise.resolve(homeyPingResponse());
+			}
+
 			if (authorizationToken(init) === config.apiKey) {
 				return Promise.resolve(new Response(null, { status: 200 }));
 			}
@@ -197,7 +218,11 @@ describe('Homey SHS credential rotation compatibility probe', () => {
 
 		let primaryRequests = 0;
 		replacementRequests = 0;
-		fetchImplementation.mockImplementation((_input, init) => {
+		fetchImplementation.mockImplementation((input, init) => {
+			if (isPingRequest(input)) {
+				return Promise.resolve(homeyPingResponse());
+			}
+
 			if (authorizationToken(init) === config.apiKey) {
 				primaryRequests += 1;
 
@@ -214,14 +239,28 @@ describe('Homey SHS credential rotation compatibility probe', () => {
 		);
 	});
 
-	it('returns fixed request errors without exposing transport detail', async () => {
+	it('rejects a non-Homey endpoint before sending either credential', async () => {
+		const config = createConfig();
+		const fetchImplementation = jest.fn<Promise<Response>, [URL, RequestInit]>(() =>
+			Promise.resolve(new Response(null, { status: 200 })),
+		);
+
+		await expect(probeHomeyShsCredentialRotation(config, fetchImplementation)).rejects.toThrow(
+			'Homey credential rotation endpoint identity validation failed',
+		);
+		expect(fetchImplementation).toHaveBeenCalledTimes(1);
+		expect(isPingRequest(fetchImplementation.mock.calls[0][0])).toBe(true);
+		expect(new Headers(fetchImplementation.mock.calls[0][1].headers).has('authorization')).toBe(false);
+	});
+
+	it('returns fixed identity request errors without exposing transport detail', async () => {
 		const config = createConfig();
 		const fetchImplementation = jest.fn<Promise<Response>, [URL, RequestInit]>(() =>
 			Promise.reject(new Error(`${config.origin.origin}?key=${config.apiKey}`)),
 		);
 
 		await expect(probeHomeyShsCredentialRotation(config, fetchImplementation)).rejects.toThrow(
-			'Homey credential rotation inventory request failed',
+			'Homey credential rotation endpoint identity request failed',
 		);
 		await expect(probeHomeyShsCredentialRotation(config, fetchImplementation)).rejects.not.toThrow(config.apiKey);
 	});
@@ -229,7 +268,11 @@ describe('Homey SHS credential rotation compatibility probe', () => {
 	it('rejects unsafe or structurally changed reports', async () => {
 		const config = createConfig();
 		let primaryRequests = 0;
-		const fetchImplementation: HomeyCredentialRotationFetch = (_input, init) => {
+		const fetchImplementation: HomeyCredentialRotationFetch = (input, init) => {
+			if (isPingRequest(input)) {
+				return Promise.resolve(homeyPingResponse());
+			}
+
 			if (authorizationToken(init) === config.apiKey) {
 				primaryRequests += 1;
 
@@ -255,7 +298,11 @@ describe('Homey SHS credential rotation compatibility probe', () => {
 	it('writes a new restrictive, schema-validated report directory', async () => {
 		const config = createConfig();
 		let primaryRequests = 0;
-		const report = await probeHomeyShsCredentialRotation(config, (_input, init) => {
+		const report = await probeHomeyShsCredentialRotation(config, (input, init) => {
+			if (isPingRequest(input)) {
+				return Promise.resolve(homeyPingResponse());
+			}
+
 			if (authorizationToken(init) === config.apiKey) {
 				primaryRequests += 1;
 

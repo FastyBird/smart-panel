@@ -229,10 +229,11 @@ until an operator intentionally performs the restart while the gated probe is op
 ## Operator-controlled API-key revocation and replacement probe
 
 The credential-rotation probe verifies the remaining revoked-key behavior without changing devices or revoking a key
-itself. Before opening its operator window, it proves that both the primary dedicated test key and a distinct
-replacement key can read device inventory. The operator then revokes only the primary test key through Homey. The
-probe polls the same pinned inventory endpoint until that key returns HTTP `401`, then proves the replacement key still
-works. It performs only GET requests, refuses redirects, and sends both keys only to the already validated SHS origin.
+itself. Before attaching either credential, it performs the unauthenticated system ping and requires the Homey identity
+and version headers. It then proves that both the primary dedicated test key and a distinct replacement key can read
+device inventory. The operator revokes only the primary test key through Homey. The probe polls the same pinned
+inventory endpoint until that key returns HTTP `401`, then proves the replacement key still works. It performs only GET
+requests, refuses redirects, and sends both keys only after the configured endpoint proves it is Homey.
 
 Do not use a key shared by Smart Panel, another application, or a person. Create two disposable test keys with
 `homey.device.readonly`, enter the replacement without adding it to shell history, and ensure every write, lifecycle,
@@ -254,7 +255,7 @@ Wait for `Homey credential rotation observation window is open`, then revoke onl
 `FB_HOMEY_SHS_TIMEOUT_MS`, while the whole polling loop cannot exceed the operator window. Any transport failure,
 unexpected status, replacement-key failure, timeout, or report-safety failure writes no evidence.
 
-The exact-schema report contains only five fixed ordered event labels, completion booleans, and the expected `401`
+The exact-schema report contains only six fixed ordered event labels, completion booleans, and the expected `401`
 status. It contains no endpoint, token, device data, inventory count, response body, raw error, or identifier. After a
 successful run, replace the exported primary value for any later probe and clear the rotation-only variables:
 

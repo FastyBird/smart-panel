@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { type HomeyShsProbeConfig, loadHomeyShsProbeConfig } from './homey-shs-probe';
 
 const DEVICE_PATH = '/api/manager/devices/device';
+const PING_PATH = '/api/manager/system/ping';
 const CREDENTIAL_ROTATION_ACKNOWLEDGEMENT = 'I_WILL_REVOKE_THE_TEST_KEY_DURING_THIS_PROBE';
 const DEFAULT_OBSERVE_MS = 90_000;
 const MIN_OBSERVE_MS = 10_000;
@@ -13,6 +14,7 @@ const REVOCATION_POLL_MS = 1_000;
 const PUBLIC_HOMEY_TERMS = new Set(['home', 'homey']);
 const INCOMPATIBLE_GATE_PREFIXES = ['FB_HOMEY_SHS_LIFECYCLE_', 'FB_HOMEY_SHS_RECOVERY_', 'FB_HOMEY_SHS_WRITE_'];
 const EXPECTED_EVENTS = [
+	'endpoint.identity.resolved',
 	'primary.validation.resolved',
 	'replacement.preflight.resolved',
 	'rotation.window.open',
@@ -155,6 +157,42 @@ const requestInventory = async (
 	}
 };
 
+const verifyHomeyIdentity = async (
+	config: HomeyShsCredentialRotationProbeConfig,
+	fetchImplementation: HomeyCredentialRotationFetch,
+): Promise<void> => {
+	let response: Response;
+
+	try {
+		response = await fetchImplementation(new URL(PING_PATH, config.origin), {
+			headers: new Headers({ accept: 'application/json' }),
+			method: 'GET',
+			redirect: 'error',
+			signal: AbortSignal.timeout(config.timeoutMs),
+		});
+	} catch {
+		// Raw transport errors may contain the candidate endpoint or private network detail.
+		throw new Error('Homey credential rotation endpoint identity request failed');
+	}
+
+	try {
+		const homeyId = response.headers.get('x-homey-id');
+		const homeyVersion = response.headers.get('x-homey-version');
+
+		if (
+			!response.ok ||
+			homeyId?.trim() === '' ||
+			homeyId === null ||
+			homeyVersion?.trim() === '' ||
+			homeyVersion === null
+		) {
+			throw new Error('Homey credential rotation endpoint identity validation failed');
+		}
+	} finally {
+		await discardResponse(response);
+	}
+};
+
 const requireValidKey = async (
 	config: HomeyShsCredentialRotationProbeConfig,
 	token: string,
@@ -238,6 +276,8 @@ export const probeHomeyShsCredentialRotation = async (
 		session: { events: [] },
 	};
 
+	await verifyHomeyIdentity(config, fetchImplementation);
+	appendEvent(report, 'endpoint.identity.resolved');
 	await requireValidKey(config, config.apiKey, 'primary key', fetchImplementation);
 	appendEvent(report, 'primary.validation.resolved');
 	await requireValidKey(config, config.replacementApiKey, 'replacement key preflight', fetchImplementation);
