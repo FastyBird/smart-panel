@@ -32,10 +32,13 @@ interface FakeMdnsService {
 
 const createMdnsHarness = (options: { destroyFails?: boolean; stopFails?: boolean } = {}) => {
 	let onError: (() => void) | null = null;
-	let onUp: ((service: FakeMdnsService) => void) | null = null;
 	let destroyed = false;
+	let services: FakeMdnsService[] = [];
 	let stopped = false;
 	const browser: HomeyMdnsBrowser = {
+		get services() {
+			return services;
+		},
 		stop: () => {
 			stopped = true;
 
@@ -55,20 +58,19 @@ const createMdnsHarness = (options: { destroyFails?: boolean; stopFails?: boolea
 					throw new Error('raw client cleanup detail');
 				}
 			},
-			find: (_query, serviceListener) => {
-				onUp = serviceListener;
-
-				return browser;
-			},
+			find: () => browser,
 		};
 	};
 
 	return {
-		emit: (service: FakeMdnsService) => onUp?.(service),
+		emit: (service: FakeMdnsService) => services.push(service),
 		fail: () => onError?.(),
 		factory,
 		isDestroyed: () => destroyed,
 		isStopped: () => stopped,
+		replaceServices: (updatedServices: FakeMdnsService[]) => {
+			services = updatedServices;
+		},
 	};
 };
 
@@ -115,35 +117,38 @@ describe('Homey SHS mDNS compatibility probe', () => {
 		);
 	});
 
-	it('keeps only exact host matches and only public service metadata', async () => {
+	it('uses the final browser state after late service updates and keeps only public metadata', async () => {
 		const config = loadHomeyShsMdnsProbeConfig(BASE_ENVIRONMENT);
 		const harness = createMdnsHarness();
 		const report = await probeHomeyShsMdns(config, harness.factory, () => {
-			harness.emit({
-				addresses: ['192.0.2.99'],
-				host: 'unrelated.local',
-				name: 'Unrelated private service',
-				port: 1234,
-				protocol: 'tcp',
-				txt: { private: 'unrelated private value' },
-				type: 'unrelated',
-			});
 			harness.emit({
 				addresses: ['192.0.2.10'],
 				host: 'private-host.local.',
 				name: 'Private Room Homey',
 				port: 4859,
 				protocol: 'tcp',
-				txt: { id: 'private-id', version: '13.4.0' },
 				type: 'homey-shs',
 			});
-			harness.emit({
-				addresses: ['192.0.2.10'],
-				port: 4859,
-				protocol: 'tcp',
-				txt: { version: 'a different private value', id: 'another private id' },
-				type: 'homey-shs',
-			});
+			harness.replaceServices([
+				{
+					addresses: ['192.0.2.99'],
+					host: 'unrelated.local',
+					name: 'Unrelated private service',
+					port: 1234,
+					protocol: 'tcp',
+					txt: { private: 'unrelated private value' },
+					type: 'unrelated',
+				},
+				{
+					addresses: ['192.0.2.10'],
+					host: 'private-host.local.',
+					name: 'Private Room Homey',
+					port: 4860,
+					protocol: 'tcp',
+					txt: { id: 'private-id', version: '13.4.0' },
+					type: 'homey-shs',
+				},
+			]);
 
 			return Promise.resolve();
 		});
@@ -153,7 +158,7 @@ describe('Homey SHS mDNS compatibility probe', () => {
 			observation: {
 				durationMs: 1000,
 				matchedServices: 1,
-				services: [{ port: 4859, protocol: 'tcp', txtKeys: ['id', 'version'], type: 'homey-shs' }],
+				services: [{ port: 4860, protocol: 'tcp', txtKeys: ['id', 'version'], type: 'homey-shs' }],
 			},
 		});
 		expect(JSON.stringify(report)).not.toContain('Private Room');
@@ -256,7 +261,38 @@ describe('Homey SHS mDNS compatibility probe', () => {
 		expect(() => assertHomeyShsMdnsReportSafe(privateReport, privateConfig)).toThrow(
 			'contains a secret, address, or email-like value',
 		);
+
+		const publicHomeyConfig = loadHomeyShsMdnsProbeConfig({
+			...BASE_ENVIRONMENT,
+			FB_HOMEY_SHS_EXPECTED_HOST: 'homey',
+			FB_HOMEY_SHS_PRIVATE_TERMS: 'homey',
+			FB_HOMEY_SHS_URL: 'http://homey:4859',
+		});
+		const zeroMatchReport: HomeyShsMdnsReport = {
+			metadata: { probe: 'homey-shs-mdns', schemaVersion: 1 },
+			observation: { durationMs: 1000, matchedServices: 0, services: [] },
+		};
+
+		expect(() => assertHomeyShsMdnsReportSafe(zeroMatchReport, publicHomeyConfig)).not.toThrow();
 	});
+
+	it.each(['aa-bb-cc-dd-ee-ff', 'aabb.ccdd.eeff', 'aabbccddeeff'])(
+		'rejects a MAC-derived public metadata identifier in %s format',
+		(identifier) => {
+			const report: HomeyShsMdnsReport = {
+				metadata: { probe: 'homey-shs-mdns', schemaVersion: 1 },
+				observation: {
+					durationMs: 1000,
+					matchedServices: 1,
+					services: [{ port: 4859, protocol: 'tcp', txtKeys: [identifier], type: 'homey-shs' }],
+				},
+			};
+
+			expect(() => assertHomeyShsMdnsReportSafe(report, loadHomeyShsMdnsProbeConfig(BASE_ENVIRONMENT))).toThrow(
+				'contains a secret, address, or email-like value',
+			);
+		},
+	);
 
 	it('writes a new restrictive, schema-validated report directory', async () => {
 		const root = await mkdtemp(join(tmpdir(), 'homey-mdns-spike-'));

@@ -10,7 +10,10 @@ const PUBLIC_IDENTIFIER_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
 const URL_PATTERN = /(?:https?|wss?):\/\//i;
 const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 const IPV4_PATTERN = /(?:^|[^\d])(?:\d{1,3}\.){3}\d{1,3}(?:$|[^\d])/;
+const MAC_PATTERN =
+	/(?:^|[^A-F0-9])(?:[0-9a-f]{2}(?:[:-][0-9a-f]{2}){5}|[0-9a-f]{4}(?:\.[0-9a-f]{4}){2}|[0-9a-f]{12})(?:$|[^A-F0-9])/i;
 const HOMEY_TOKEN_PATTERN = /(?:hpat|pat|homey)[_-][A-Za-z0-9_-]{16,}/i;
+const PUBLIC_HOMEY_TERMS = new Set(['home', 'homey']);
 
 export interface HomeyShsMdnsProbeConfig {
 	expectedHost: string;
@@ -48,12 +51,13 @@ interface HomeyMdnsService {
 }
 
 export interface HomeyMdnsBrowser {
+	readonly services: HomeyMdnsService[];
 	stop(): void;
 }
 
 export interface HomeyMdnsClient {
 	destroy(): void;
-	find(options: null, onUp: (service: HomeyMdnsService) => void): HomeyMdnsBrowser;
+	find(options: null): HomeyMdnsBrowser;
 }
 
 export type HomeyMdnsClientFactory = (onError: () => void) => HomeyMdnsClient;
@@ -64,7 +68,7 @@ const defaultClientFactory: HomeyMdnsClientFactory = (onError) => {
 
 	return {
 		destroy: () => bonjour.destroy(),
-		find: (options, onUp) => bonjour.find(options, onUp),
+		find: (options) => bonjour.find(options),
 	};
 };
 
@@ -224,25 +228,26 @@ export const probeHomeyShsMdns = async (
 		client = clientFactory(() => {
 			observationFailure = new Error('Homey mDNS observation failed');
 		});
-		browser = client.find(null, (service) => {
-			if (observationFailure !== null) {
-				return;
-			}
-
-			try {
-				if (!serviceMatchesExpectedHost(service, config.expectedHost)) {
-					return;
-				}
-
-				const report = toSafeServiceReport(service);
-
-				services.set(serviceSignature(report), report);
-			} catch {
-				observationFailure = new Error('Homey mDNS service metadata was not safe to record');
-			}
-		});
+		browser = client.find(null);
 
 		await wait(config.observeMs);
+
+		if (observationFailure === null) {
+			for (const service of browser.services) {
+				if (!serviceMatchesExpectedHost(service, config.expectedHost)) {
+					continue;
+				}
+
+				try {
+					const report = toSafeServiceReport(service);
+
+					services.set(serviceSignature(report), report);
+				} catch {
+					observationFailure = new Error('Homey mDNS service metadata was not safe to record');
+					break;
+				}
+			}
+		}
 	} catch {
 		observationFailure ??= new Error('Homey mDNS observation failed');
 	} finally {
@@ -358,13 +363,14 @@ export function assertHomeyShsMdnsReportSafe(
 	]);
 	const forbiddenValues = [config.expectedHost, ...config.privateTerms]
 		.map((item) => item.trim().toLowerCase())
-		.filter((item) => item.length >= 3);
+		.filter((item) => item.length >= 3 && !PUBLIC_HOMEY_TERMS.has(item));
 
 	if (
 		forbiddenValues.some((item) => serialized.includes(item)) ||
 		URL_PATTERN.test(serialized) ||
 		EMAIL_PATTERN.test(serialized) ||
 		IPV4_PATTERN.test(serialized) ||
+		MAC_PATTERN.test(serialized) ||
 		reportStrings.some((item) => item.includes(':')) ||
 		HOMEY_TOKEN_PATTERN.test(serialized)
 	) {
