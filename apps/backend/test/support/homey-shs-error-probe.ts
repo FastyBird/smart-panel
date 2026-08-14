@@ -9,6 +9,7 @@ const DEVICE_PATH = '/api/manager/devices/device';
 const SYSTEM_PATH = '/api/manager/system/';
 const REPORT_SCHEMA_VERSION = 1;
 const MAX_LOCAL_SIMULATION_TIMEOUT_MS = 250;
+const LOCAL_REFUSAL_TIMEOUT_MS = 250;
 
 type FailureCategory = 'authentication' | 'authorization' | 'timeout' | 'unavailable' | 'validation';
 
@@ -228,7 +229,7 @@ export const probeLocalNetworkFailures = async (
 
 	const unavailableResult = await request(
 		new URL(`http://127.0.0.1:${unavailablePort}/unavailable`),
-		simulationTimeoutMs,
+		LOCAL_REFUSAL_TIMEOUT_MS,
 		fetchImplementation,
 	);
 

@@ -118,7 +118,7 @@ describe('Homey SHS error compatibility probe', () => {
 		).rejects.toThrow('did not return an authorization rejection for system read');
 	});
 
-	it('classifies real bounded local connection refusal and timeout failures', async () => {
+	it('keeps a short timeout simulation from racing real connection refusal', async () => {
 		const result = await probeLocalNetworkFailures(20);
 
 		expect(result).toEqual(LOCAL_FAILURES);
