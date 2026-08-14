@@ -23,8 +23,10 @@ type ResourceListCallback = (
 describe('McpReadToolService', () => {
 	let service: McpReadToolService;
 	let contextService: {
+		getDeviceState: jest.Mock;
 		getHomeContext: jest.Mock;
 		getInstallation: jest.Mock;
+		getPropertyTimeseries: jest.Mock;
 		getSecurityStatus: jest.Mock;
 		getWeather: jest.Mock;
 		listSpaces: jest.Mock;
@@ -39,6 +41,7 @@ describe('McpReadToolService', () => {
 
 	beforeEach(() => {
 		contextService = {
+			getDeviceState: jest.fn(),
 			getHomeContext: jest.fn().mockResolvedValue({
 				scope: { type: 'home' },
 				spaces: [],
@@ -61,6 +64,7 @@ describe('McpReadToolService', () => {
 				endpoint: 'https://panel.test/api/v1/modules/mcp',
 				effective_capabilities: [McpCapability.READ],
 			}),
+			getPropertyTimeseries: jest.fn(),
 			getSecurityStatus: jest.fn().mockResolvedValue({ active_alerts_count: 0 }),
 			getWeather: jest.fn().mockResolvedValue({ location: 'Prague' }),
 			listSpaces: jest.fn().mockResolvedValue({ spaces: [], nextCursor: undefined }),
@@ -108,6 +112,86 @@ describe('McpReadToolService', () => {
 			'get_security_status',
 		]);
 		expect(registerResource).toHaveBeenCalledTimes(3);
+	});
+
+	it('forwards get_device_state arguments and envelopes the exact direct-read data unchanged', async () => {
+		const deviceId = '10000000-0000-4000-8000-000000000001';
+		const deviceState = {
+			id: deviceId,
+			name: 'Lamp',
+			category: 'lighting',
+			enabled: true,
+			room_id: '20000000-0000-4000-8000-000000000001',
+			zone_ids: ['30000000-0000-4000-8000-000000000001'],
+			status: {
+				online: true,
+				state: 'connected',
+				last_changed: '2026-08-06T12:00:00.000Z',
+			},
+			channels: [
+				{
+					id: '40000000-0000-4000-8000-000000000001',
+					name: 'Light',
+					category: 'light',
+					properties: [
+						{
+							id: '50000000-0000-4000-8000-000000000001',
+							name: 'Brightness',
+							category: 'brightness',
+							data_type: 'uchar',
+							unit: '%',
+							value: 50,
+							last_updated: '2026-08-06T12:00:00.000Z',
+							trend: 'stable',
+						},
+					],
+					properties_truncated: false,
+				},
+			],
+			channels_truncated: false,
+		};
+		contextService.getDeviceState.mockResolvedValue(deviceState);
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await callbacks.get('get_device_state')?.({ device_id: deviceId }, requestContext());
+
+		expect(contextService.getDeviceState).toHaveBeenCalledTimes(1);
+		expect(contextService.getDeviceState).toHaveBeenCalledWith(deviceId);
+		expect(result?.isError).toBeUndefined();
+		expect(result?.structuredContent.tool).toBe('get_device_state');
+		expect(result?.structuredContent.data).toBe(deviceState);
+		expect(result?.structuredContent.data).toEqual(deviceState);
+	});
+
+	it('forwards get_property_timeseries arguments and envelopes the exact direct-read data unchanged', async () => {
+		const propertyId = '50000000-0000-4000-8000-000000000001';
+		const from = '2026-08-01T00:00:00.000Z';
+		const to = '2026-08-01T01:00:00.000Z';
+		const propertyTimeseries = {
+			property_id: propertyId,
+			from,
+			to,
+			bucket: '5m',
+			points: [
+				{ time: '2026-08-01T00:00:00.000Z', value: 1 },
+				{ time: '2026-08-01T00:05:00.000Z', value: 2 },
+			],
+			truncated: false,
+		};
+		contextService.getPropertyTimeseries.mockResolvedValue(propertyTimeseries);
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await callbacks.get('get_property_timeseries')?.(
+			{ property_id: propertyId, from, to, bucket: '5m' },
+			requestContext(),
+		);
+
+		expect(contextService.getPropertyTimeseries).toHaveBeenCalledTimes(1);
+		expect(contextService.getPropertyTimeseries).toHaveBeenCalledWith(propertyId, from, to, '5m');
+		expect(result?.isError).toBeUndefined();
+		expect(result?.structuredContent.tool).toBe('get_property_timeseries');
+		expect(result?.structuredContent.data).toBe(propertyTimeseries);
+		expect(result?.structuredContent.data).toEqual(propertyTimeseries);
 	});
 
 	it('reauthorizes a tool call and returns structured installation metadata', async () => {

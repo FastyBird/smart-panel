@@ -277,6 +277,7 @@ describe('DevicesService', () => {
 			const queryBuilderMock: any = {
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
 				orderBy: jest.fn().mockReturnThis(),
 				callListeners: jest.fn().mockReturnThis(),
 				take: jest.fn().mockReturnThis(),
@@ -289,7 +290,10 @@ describe('DevicesService', () => {
 				total: 1,
 			});
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('device.hidden = :hidden', { hidden: false });
-			expect(queryBuilderMock.where).not.toHaveBeenCalledWith(expect.stringContaining('enabled'), expect.anything());
+			const predicates = [...queryBuilderMock.where.mock.calls, ...queryBuilderMock.andWhere.mock.calls].map(
+				([predicate]: [unknown]) => predicate,
+			);
+			expect(predicates).not.toEqual(expect.arrayContaining([expect.stringContaining('enabled')]));
 		});
 
 		it('bounds the query before loading device summaries', async () => {
@@ -365,7 +369,10 @@ describe('DevicesService', () => {
 			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledTimes(1);
 			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('device.deviceZones', 'deviceZones');
 			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('device.hidden = :hidden', { hidden: false });
-			expect(queryBuilderMock.andWhere).not.toHaveBeenCalledWith(expect.stringContaining('enabled'), expect.anything());
+			const predicates = [...queryBuilderMock.where.mock.calls, ...queryBuilderMock.andWhere.mock.calls].map(
+				([predicate]: [unknown]) => predicate,
+			);
+			expect(predicates).not.toEqual(expect.arrayContaining([expect.stringContaining('enabled')]));
 			expect(queryBuilderMock.callListeners).toHaveBeenCalledWith(false);
 		});
 	});

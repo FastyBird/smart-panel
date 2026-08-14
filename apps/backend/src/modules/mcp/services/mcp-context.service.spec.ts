@@ -769,7 +769,7 @@ describe('McpContextService', () => {
 		expect(result.alerts_truncated).toBe(true);
 	});
 
-	it('maps current values for a requested disabled-but-visible device', async () => {
+	it('maps the complete direct device-state contract for a requested disabled-but-visible device', async () => {
 		devices.findVisibleSummaryById.mockResolvedValue({
 			id: 'device-id',
 			name: 'Lamp',
@@ -777,7 +777,7 @@ describe('McpContextService', () => {
 			enabled: false,
 			hidden: false,
 			roomId: 'room-id',
-			zoneIds: [],
+			zoneIds: ['zone-id'],
 			status: { online: true, status: 'connected', lastChanged: new Date('2026-08-06T12:00:00Z') },
 		} as unknown as DeviceEntity);
 		channels.findSummaryPage.mockResolvedValue({
@@ -807,19 +807,40 @@ describe('McpContextService', () => {
 
 		const result = await service.getDeviceState('device-id');
 
-		expect(result).toEqual(
-			expect.objectContaining({
-				id: 'device-id',
-				enabled: false,
-				channels_truncated: true,
-				channels: [
-					expect.objectContaining({
-						properties_truncated: true,
-						properties: [expect.objectContaining({ id: 'property-id', value: 50, trend: 'stable' })],
-					}),
-				],
-			}),
-		);
+		expect(result).toEqual({
+			id: 'device-id',
+			name: 'Lamp',
+			category: 'lighting',
+			enabled: false,
+			room_id: 'room-id',
+			zone_ids: ['zone-id'],
+			status: {
+				online: true,
+				state: 'connected',
+				last_changed: '2026-08-06T12:00:00.000Z',
+			},
+			channels: [
+				{
+					id: 'channel-id',
+					name: 'Light',
+					category: 'light',
+					properties: [
+						{
+							id: 'property-id',
+							name: 'Brightness',
+							category: 'brightness',
+							data_type: 'uchar',
+							unit: '%',
+							value: 50,
+							last_updated: '2026-08-06T12:00:00Z',
+							trend: 'stable',
+						},
+					],
+					properties_truncated: true,
+				},
+			],
+			channels_truncated: true,
+		});
 		expect(channels.findSummaryPage).toHaveBeenCalledWith('device-id', MCP_MAX_CHANNELS_PER_DEVICE);
 		expect(connectionStates.readLatestManyStrict).toHaveBeenCalledWith([expect.objectContaining({ id: 'device-id' })]);
 		expect(properties.findBoundedForChannels).toHaveBeenCalledWith(
@@ -950,19 +971,43 @@ describe('McpContextService', () => {
 		expect(timeseries.queryTimeseriesStrict).toHaveBeenCalledTimes(1);
 	});
 
-	it('returns bounded property history for a visible device', async () => {
+	it('maps the complete direct property-timeseries contract for a visible device', async () => {
 		properties.findOne.mockResolvedValue({
 			id: 'property-id',
 			channel: { device: { hidden: false } },
 		} as unknown as ChannelPropertyEntity);
 		timeseries.queryTimeseriesStrict.mockResolvedValue({
 			bucket: '5m',
-			points: [{ time: '2026-08-01T00:00:00.000Z', value: 1 }],
+			points: [
+				{ time: '2026-08-01T00:00:00.000Z', value: 1 },
+				{ time: '2026-08-01T00:05:00.000Z', value: 2 },
+			],
 		});
 
-		await expect(
-			service.getPropertyTimeseries('property-id', '2026-08-01T00:00:00.000Z', '2026-08-01T01:00:00.000Z', '5m'),
-		).resolves.toEqual(expect.objectContaining({ property_id: 'property-id', bucket: '5m', truncated: false }));
+		const result = await service.getPropertyTimeseries(
+			'property-id',
+			'2026-08-01T00:00:00.000Z',
+			'2026-08-01T01:00:00.000Z',
+			'5m',
+		);
+
+		expect(result).toEqual({
+			property_id: 'property-id',
+			from: '2026-08-01T00:00:00.000Z',
+			to: '2026-08-01T01:00:00.000Z',
+			bucket: '5m',
+			points: [
+				{ time: '2026-08-01T00:00:00.000Z', value: 1 },
+				{ time: '2026-08-01T00:05:00.000Z', value: 2 },
+			],
+			truncated: false,
+		});
+		expect(timeseries.queryTimeseriesStrict).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'property-id' }),
+			new Date('2026-08-01T00:00:00.000Z'),
+			new Date('2026-08-01T01:00:00.000Z'),
+			'5m',
+		);
 	});
 
 	it('caps returned timeseries points and reports truncation', async () => {
