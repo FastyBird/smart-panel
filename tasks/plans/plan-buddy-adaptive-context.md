@@ -566,12 +566,21 @@ on conversation deletion. Store only bounded outcome digests and opaque identifi
 
 Factory reset is the explicit exception to normal non-cascading retention. `BuddyModuleResetService` first advances a
 singleton durable module reset epoch and fences new/leased work so an in-process or late callback cannot repopulate
-cleared tables. Claims capture that epoch, and every claim/action/outbound persistence CAS verifies it still matches.
+cleared tables. In the same durable module-state row, store per-source reset freshness guards: reset time plus the highest
+authoritative platform cursor/order key observed where the source provides one. Claims capture the reset epoch, and every
+claim/action/outbound persistence CAS verifies it still matches.
 The reset then clears outbound deliveries, uncertainty fences/action executions, claim-linked messages, request claims,
 messaging bindings, conversation memory/conversations, and suggestions in foreign-key-safe dependency order, and clears
 related in-memory single-flight/mapping caches. Reset must remove opaque scopes, digests, outcomes, leases, and stale
 conflict state. If already-dispatched external work cannot be cancelled authoritatively, fence/drop its late persistence
 callback; the reset cannot promise to undo a physical action that already began.
+
+Before creating a post-reset messaging binding or claim, each adapter must prove the delivery is newer than its retained
+source guard using a provider-authenticated monotonic cursor/order key or trustworthy event timestamp (for example the
+platform-specific update/message metadata already validated by that adapter). A delivery at/before the high-water mark or
+reset cutoff is rejected provider-free and executes/sends nothing. If a source/event cannot prove post-reset freshness,
+fail closed rather than treating it as new; a genuinely new user event with valid fresh metadata establishes the next
+binding. The compact reset guards are system safety state, contain no raw chat/account ID, and survive the user-data purge.
 
 Before any physical dispatch, persist the complete bounded canonical action plan—validated tool name, canonical targets,
 normalized arguments, fingerprint, user-evidenced allowance/occurrence slot, and execution identity—and transition the
@@ -1158,7 +1167,11 @@ snapshots are produced through the shared query layer without making that eager 
       binding, and reject stale post-retention deliveries instead of executing them as new.
 - [ ] Extend `BuddyModuleResetService` with a durable reset epoch that fences active/late workers, then explicitly clear
       every new binding, outbound, claim, action/fence, message, memory/conversation, suggestion, and process-cache record
-      in dependency order. Preserve only the incremented epoch needed to reject pre-reset callbacks.
+      in dependency order. Preserve only the incremented epoch and source reset cutoffs/high-water marks needed to reject
+      pre-reset callbacks and newly redelivered old platform events.
+- [ ] Add a source-specific messaging delivery-freshness contract. Before binding/claim creation, require an authenticated
+      cursor/order key or trustworthy timestamp newer than the reset guard; reject old or unverifiable deliveries
+      provider-free, without model, persistence, action, or outbound reply.
 - [ ] Carry an explicit entry-point authorization decision separately from actor attribution. Keep unmapped messaging
       identities and missing decisions `READ` only even when adapter admission is configured as allow-all; grant
       write/trigger only through authenticated Smart Panel mapping or an explicit action-capable allowlist/role.
@@ -1241,7 +1254,9 @@ an old-event replay returns its retained outcome without recreating the deleted 
 deletion racing `MODEL_IN_FLIGHT`, `ACTION_PLANNED`, and uncertain dispatch; expired/stale delivery rejection after the
 documented retention window;
 factory reset with populated bindings/outbound rows/claims/action ledgers/uncertainty fences/messages/memory/suggestions,
-including an active worker and late callback, leaving only the advanced reset epoch and allowing a clean post-reset turn;
+including an active worker and late callback, leaving only the advanced reset epoch/source guards; for each messaging
+adapter, redelivery of a pre-reset action event and an event with unverifiable freshness producing zero model calls,
+outbound sends, messages, or actions, while a provably fresh event creates a clean post-reset turn;
 REST/voice/Discord/Telegram/WhatsApp conversation/identity/access propagation; rejection of a mismatched request-context
 conversation ID; unmapped platform users under empty/allow-all admission remain read-only;
 mapped/explicitly action-allowlisted users receive only their authorized access kinds; mapping/role revocation while
@@ -1567,7 +1582,8 @@ designated safe targets and reversible values. Scale/shadow evaluation must neve
 - [ ] Queued/recovered writes and triggers intersect their admission snapshot with fresh authorization/principal state;
       revoked or remapped identities execute nothing.
 - [ ] Buddy factory reset removes all new durable replay, delivery, claim, action/fence, and memory data and prevents
-      pre-reset workers or callbacks from recreating it.
+      pre-reset workers, callbacks, or redelivered platform events from recreating it; only provably post-reset deliveries
+      may establish fresh state.
 - [ ] Shared home-query services are usable by Buddy with MCP externally disabled.
 - [ ] MCP transport/auth/policy/configuration remains independent and externally backward compatible.
 - [ ] Existing heartbeat/evaluator full-context behavior remains unchanged.
