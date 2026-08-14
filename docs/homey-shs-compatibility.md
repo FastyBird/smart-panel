@@ -1,6 +1,6 @@
 # Homey SHS Compatibility Record
 
-**Status:** In progress; safe read-only inventory captured, realtime/write/recovery evidence pending
+**Status:** In progress; safe inventory captured and realtime probe implemented, live realtime/write/recovery evidence pending
 
 **Started:** 2026-08-12
 
@@ -22,8 +22,8 @@ file. Live results use synthetic aliases and sanitized captures only.
 | Credential-safe read probe                            | Passed on SHS `13.4.0` over HTTP `4859`      | Repeat over HTTPS `4860` if enabled                                            |
 | System, zone, device inventory, and individual device | Captured and sanitized                       | Add lifecycle delta evidence on the disposable test device                     |
 | Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read | Add allowlisted write and read-back evidence                                   |
-| Socket.IO events and reconnect                        | Pending live access                          | Capture connect, subscribe, event, disconnect, restart, and reconnect ordering |
-| Allowlisted capability write                          | Contract defined, disabled                   | Use only the designated harmless test capability                               |
+| Socket.IO events and reconnect                        | Probe implemented; live run pending          | Capture connect, subscribe, event, disconnect, restart, and reconnect ordering |
+| Allowlisted capability write                          | Hard-gated probe implemented, disabled       | Use only the designated harmless test capability                               |
 | Disposable-device lifecycle                           | Contract defined, disabled                   | Use only the separately gated virtual/test device                              |
 | mDNS discovery                                        | Pending live access                          | Record stable service/TXT data or explicitly defer discovery                   |
 | SDK decision                                          | Provisional hold                             | Complete live Socket.IO and cleanup/reconnect comparison                       |
@@ -112,14 +112,36 @@ Automation is not a substitute for review. Before promoting any capture into com
 4. record only the synthetic SHS version/provenance fields required to reproduce compatibility behavior; and
 5. run `pnpm run test:homey-spike` without live SHS access.
 
-## Live mutation gates
+## Realtime SDK probe and live mutation gate
+
+The realtime probe exercises the reviewed `homey-api` `3.19.2` package as a development-only compatibility tool. It
+connects and subscribes to the devices manager, records only allowlisted event labels and ordering, disconnects and
+destroys the client, then verifies that a generated invalid key is rejected by the same pinned SHS endpoint. Raw event
+payloads, errors, endpoints, keys, IDs, and values are never written to the report. Run it from the same interactive
+shell that contains the read-only variables:
+
+```bash
+pnpm run homey:probe-realtime
+```
+
+`FB_HOMEY_SHS_REALTIME_OBSERVE_MS` optionally controls the passive event observation window from `0` through `60000`
+milliseconds and defaults to `2000`. Without every write variable below, the probe has no code path that issues a
+mutation. Every SDK client, subscription, read, write, restoration, and disconnect operation is bounded by
+`FB_HOMEY_SHS_TIMEOUT_MS`. A failed or timed-out disconnect fails the probe and is never recorded as resolved, so no
+report can claim successful cleanup when the transport did not confirm it.
+
+Manager reads and writes also receive the SDK-native `$timeout`; that timeout is registered before the probe's outer
+watchdog. A timed-out write therefore settles inside the SDK before restoration is emitted afterward on the same
+ordered Socket.IO transport. Capability-event matching opens only immediately before the allowlisted write and closes
+after its observation window, preventing an unrelated matching event during subscription setup from satisfying the
+write evidence.
 
 Read and write tests must use different least-privilege keys where SHS supports that workflow. The read-only probe needs
 only `homey.system.readonly`, `homey.zone.readonly`, and `homey.device.readonly`. A write test additionally needs
 `homey.device.control`; do not grant general device management.
 
-No mutation harness is enabled yet. Any later write harness must refuse to start unless all of the following variables
-are present and the live device/capability exactly matches both allowlist values:
+The write probe refuses to start unless all of the following variables are present and the live device/capability
+exactly matches both allowlist values:
 
 ```text
 FB_HOMEY_SHS_WRITE_ENABLE=I_ACKNOWLEDGE_THIS_CHANGES_A_TEST_DEVICE
@@ -127,6 +149,12 @@ FB_HOMEY_SHS_WRITE_DEVICE_ID=<disposable device ID>
 FB_HOMEY_SHS_WRITE_CAPABILITY_ID=<harmless capability ID>
 FB_HOMEY_SHS_WRITE_VALUE=<validated scalar value>
 ```
+
+The value must be a JSON boolean, finite number, or string. Before mutation, the probe verifies that the exact
+capability is settable, validates type/range/enum constraints, and performs a fresh API read of a safely restorable
+original value. The requested value must differ from that original. It then requires the requested-value event and
+read-back, restores the original value in `finally`, and requires a second read-back confirming restoration before the
+sanitized report can be written.
 
 Lifecycle mutations have a separate gate and may target only the designated disposable virtual/test device:
 
@@ -146,7 +174,7 @@ Artifact snapshot inspected on 2026-08-12:
 
 | Property             | Finding                                                                                                    |
 | -------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Package              | `homey-api` `3.19.2`, published 2026-07-29                                                                 |
+| Package              | `homey-api` `3.19.2`, published 2026-07-29; installed as a development-only spike dependency               |
 | Runtime declaration  | Node.js `>=24`; current agent/workspace guidance requires 24, while package manifests still declare `>=20` |
 | License              | Use permitted with Homey products; source proprietary to Athom B.V.; no warranty                           |
 | Installed size       | Approximately 1.19 MB unpacked across 128 files                                                            |
@@ -157,8 +185,9 @@ Artifact snapshot inspected on 2026-08-12:
 
 ### Provisional dependency decision
 
-Do not add `homey-api` to a production package yet. Use direct, built-in HTTP only for the read-only compatibility and
-fixture-capture gate. The final connector decision remains open until the live spike compares:
+Do not move `homey-api` into production dependencies yet. Use direct, built-in HTTP for read-only inventory and fixture
+capture; the development-only SDK probe exists solely to measure realtime behavior. The final connector decision
+remains open until the live spike compares:
 
 - Socket.IO authentication and manager subscription behavior;
 - disconnect and idempotent cleanup;
@@ -223,9 +252,6 @@ not treated as lock evidence; the manifest records `lock` under `knownDeviceClas
 The first sanitized capture irreversibly collapsed enum option IDs. Corrupted option lists are omitted from live
 fixtures and recorded under `knownMetadataGaps`; a clearly labeled synthetic enum capability covers distinct-ID
 contract testing until a fresh corrected live capture is available.
-
-Capability bases are retained, while suffixes after the first `.` are consistently pseudonymized across every
-representation because driver suffixes can contain household-derived semantics.
 
 Capability bases are retained, while suffixes after the first `.` are consistently pseudonymized across every
 representation because driver suffixes can contain household-derived semantics.

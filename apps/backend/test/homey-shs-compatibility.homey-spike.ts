@@ -1,5 +1,6 @@
 import { lstatSync, readFileSync, readlinkSync } from 'node:fs';
 import { mkdir, mkdtemp, readlink, rm, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 
@@ -43,6 +44,28 @@ const jsonResponse = (body: unknown, status = 200, headers: Record<string, strin
 	new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...headers } });
 
 describe('Homey SHS compatibility probe', () => {
+	it('keeps the Homey Socket.IO 2 client on its callback-based parser generation', () => {
+		const requireFromHomeyApi = createRequire(require.resolve('homey-api/package.json'));
+		const socketIoClientPackagePath = requireFromHomeyApi.resolve('socket.io-client/package.json');
+		const socketIoClientPackage = requireFromHomeyApi(socketIoClientPackagePath) as { version: string };
+		const requireFromSocketIoClient = createRequire(socketIoClientPackagePath);
+		const parser = requireFromSocketIoClient('socket.io-parser') as {
+			Encoder: new () => {
+				encode(packet: Record<string, unknown>, callback: (packets: unknown[]) => void): void;
+			};
+			protocol: number;
+		};
+		let encodedPackets: unknown[] | undefined;
+
+		new parser.Encoder().encode({ data: ['probe'], nsp: '/', type: 2 }, (packets) => {
+			encodedPackets = packets;
+		});
+
+		expect(socketIoClientPackage.version).toBe('2.5.0');
+		expect(parser.protocol).toBe(4);
+		expect(encodedPackets).toEqual(['2["probe"]']);
+	});
+
 	it('keeps the promoted live fixture corpus safe and representative', () => {
 		const fixtureRoot = resolve(__dirname, '../src/plugins/devices-homey/__fixtures__/current');
 
