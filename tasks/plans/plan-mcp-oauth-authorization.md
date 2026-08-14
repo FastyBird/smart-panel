@@ -489,7 +489,9 @@ amend ADR 0002.
       change, and rollback.
 - [ ] Codex smoke: discovery, authorization, list/call, refresh, scope failure, and revocation; record exact version and
       callback profile.
-- [ ] Claude Code smoke: the same sequence; record exact version and callback profile.
+- [x] Claude Code smoke: discovery, authorization, list/call, forced-expiry refresh rotation, scope failure, and live
+      refresh-family revocation passed with Claude Code `2.1.229`; both fixed-port loopback callback host forms are
+      recorded in the compatibility evidence.
 - [x] Repeat static bearer compatibility tests to prove coexistence. The static endpoint list/call suite and the
       simultaneous static-plus-OAuth lifecycle E2E exercise the production authentication and policy guards, including
       OAuth switch-off/re-enable while the static stream remains usable.

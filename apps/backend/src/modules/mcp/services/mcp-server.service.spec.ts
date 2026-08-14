@@ -1,4 +1,6 @@
+import { EventEmitter } from 'events';
 import { FastifyReply } from 'fastify';
+import { ServerResponse } from 'http';
 
 import { AuthInfo, OAuthError, OAuthErrorCode } from '@modelcontextprotocol/server';
 import { UnauthorizedException } from '@nestjs/common';
@@ -418,30 +420,23 @@ describe('McpServerService policy revision', () => {
 
 	it('terminates a forwarded subscription stream when its authorization signal aborts', async () => {
 		const attachTransport = jest.fn();
-		const completeTransport = jest.fn();
 		const cancelled = jest.fn();
 		const upstream = new ReadableStream<Uint8Array>({ cancel: cancelled });
 		const response = new Response(upstream, { headers: { 'content-type': 'text/event-stream' } });
 		const controller = new AbortController();
-		const transportController = new AbortController();
 		const close = jest.fn();
 		const subscription = {
 			attachTransport,
 			close,
-			completeTransport,
 			wireRequestId: 'listen:1',
 			signal: controller.signal,
 			touch: jest.fn(),
 		} as unknown as McpSubscriptionHandle;
 		const tracked = (
 			service as unknown as {
-				trackSubscriptionResponse(
-					response: Response,
-					subscription: McpSubscriptionHandle,
-					transportSignal?: AbortSignal,
-				): Response;
+				trackSubscriptionResponse(response: Response, subscription: McpSubscriptionHandle): Response;
 			}
-		).trackSubscriptionResponse(response, subscription, transportController.signal);
+		).trackSubscriptionResponse(response, subscription);
 		const reader = tracked.body?.getReader();
 		const pendingRead = reader?.read();
 		expect(attachTransport).not.toHaveBeenCalled();
@@ -453,17 +448,30 @@ describe('McpServerService policy revision', () => {
 		expect(new TextDecoder().decode(cancellation?.value)).toContain(
 			'"method":"notifications/cancelled","params":{"requestId":"listen:1"}',
 		);
-		let nextReadSettled = false;
-		const nextRead = reader?.read().finally(() => {
-			nextReadSettled = true;
-		});
-		await Promise.resolve();
-		expect(nextReadSettled).toBe(false);
-
-		transportController.abort('remote client closed the request');
-		await expect(nextRead).resolves.toEqual({ done: true, value: undefined });
+		await expect(reader?.read()).resolves.toEqual({ done: true, value: undefined });
 		expect(cancelled).toHaveBeenCalledWith(controller.signal.reason);
-		expect(close).toHaveBeenCalledWith('cancelled');
-		expect(completeTransport).toHaveBeenCalledTimes(1);
+		expect(close).not.toHaveBeenCalled();
+	});
+
+	it('waits for the Node response to finish before completing transport teardown', async () => {
+		const response = new EventEmitter() as unknown as ServerResponse;
+		Object.defineProperties(response, {
+			destroyed: { configurable: true, value: false },
+			writableFinished: { configurable: true, value: false },
+		});
+		const completion = (
+			service as unknown as { waitForResponseCompletion(response: ServerResponse): Promise<void> }
+		).waitForResponseCompletion(response);
+		let settled = false;
+		void completion.then(() => {
+			settled = true;
+		});
+
+		await Promise.resolve();
+		expect(settled).toBe(false);
+
+		response.emit('finish');
+		await completion;
+		expect(settled).toBe(true);
 	});
 });

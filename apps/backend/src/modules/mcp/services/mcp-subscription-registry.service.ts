@@ -372,7 +372,7 @@ export class McpSubscriptionRegistryService implements OnApplicationShutdown {
 				closure,
 				new Promise<never>((_, reject) => {
 					timer = setTimeout(
-						() => reject(new Error('MCP subscription transport did not acknowledge closure')),
+						() => reject(new Error('MCP subscription transport did not complete closure')),
 						MCP_SUBSCRIPTION_CLOSE_TIMEOUT_MS,
 					);
 					timer.unref();

@@ -210,7 +210,7 @@ describe('McpSubscriptionRegistryService', () => {
 		const subscription = await service.openOAuth('stalled-transport-close', () => Promise.resolve(oauthRegistration()));
 		subscription.attachTransport();
 		const mutation = service.closeOAuthAccessToken('access-one', () => Promise.resolve());
-		const rejection = expect(mutation).rejects.toThrow('MCP subscription transport did not acknowledge closure');
+		const rejection = expect(mutation).rejects.toThrow('MCP subscription transport did not complete closure');
 
 		await jest.advanceTimersByTimeAsync(MCP_SUBSCRIPTION_CLOSE_TIMEOUT_MS);
 		await rejection;
@@ -220,7 +220,7 @@ describe('McpSubscriptionRegistryService', () => {
 		expect(service.activeCount).toBe(1);
 
 		const retry = service.closeOAuthAccessToken('access-one', () => Promise.resolve());
-		const retryRejection = expect(retry).rejects.toThrow('MCP subscription transport did not acknowledge closure');
+		const retryRejection = expect(retry).rejects.toThrow('MCP subscription transport did not complete closure');
 		await jest.advanceTimersByTimeAsync(MCP_SUBSCRIPTION_CLOSE_TIMEOUT_MS);
 		await retryRejection;
 		expect(service.activeCount).toBe(1);

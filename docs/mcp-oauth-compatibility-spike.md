@@ -240,6 +240,27 @@ because its request omitted `offline_access`. Administrative revocation and the 
 be exercised with this host. Refresh rotation continues to be exercised through the protocol client and the Claude Code
 target instead of weakening the server's scope policy.
 
+## Live Claude Code evidence
+
+The Phase 6 smoke against Claude Code `2.1.229` exercised the production provider through a local HTTPS reverse proxy
+with a private test CA trusted only by the Claude Node.js process. The installed client used a pre-registered public
+client, discovered the protected-resource and authorization-server metadata, sent PKCE S256 and the RFC 8707 `resource`,
+and explicitly requested `mcp:read offline_access` with `prompt=consent`.
+
+Claude selected both `http://127.0.0.1:41457/callback` and `http://localhost:41457/callback` across fresh login attempts,
+so deployments using this fixed callback port must pre-register both exact loopback forms. Owner consent, authorization
+code exchange, `tools/list`, and a read-only `get_home_context` call succeeded. After the isolated provider access-token
+and mirror expiry were forced into the past, the next real Claude request succeeded and the persisted artifacts showed
+refresh-family rotation with exactly one live refresh successor.
+
+Revoking that refresh family through the production administrative API while Claude held live listen requests returned
+`204` and forced `claude mcp get` to report `Needs authentication`. This host check also established that invalidation
+must send `notifications/cancelled` and then end the server response: Claude does not send a separate acknowledgement for
+the cancelled listen request, so waiting for client-side cancellation would incorrectly turn a successful fail-closed
+revocation into a timeout. Finally, after contracting the client's ceiling to `mcp:read offline_access`, a fresh
+Claude-generated authorization request for `mcp:write offline_access` was redirected to its validated callback with
+`error=invalid_scope`, the original state, and the provider issuer.
+
 ## Primary references
 
 - [MCP authorization, revision 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization)
