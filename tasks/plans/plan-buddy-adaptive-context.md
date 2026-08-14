@@ -593,6 +593,16 @@ foreign-key-safe dependency order, and clears related in-memory single-flight/ma
 scopes, payload/outcome data, leases, and terminal/stale conflict state while retaining these minimal active safety
 fences.
 
+Factory reset also owns the external restore-journal lifecycle. While the global maintenance gate is closed, inspect and
+integrity-validate any pending `BuddySafetyRestoreJournal`; include its unresolved dispatched/indeterminate executions in
+the same minimal reset-action-fence promotion, but do not import its replay, outbound, identity, or terminal data. In the
+database reset transaction, record the pending journal ID as reset-invalidated alongside the advanced safety epoch and
+purged state. Only after that commit may the sidecar and pending manifest be securely deleted/rotated. If the process
+crashes after the database commit but before sidecar cleanup, bootstrap recognizes the reset-invalidated journal ID,
+refuses to import it, and completes cleanup. If it crashes before the reset transaction commits, the original pending
+manifest remains authoritative and normal default-closed restore recovery runs. Thus reset never resurrects pre-reset
+state and never discards a physical action that may still complete.
+
 Every post-reset action provider checks both ordinary and reset-action fences immediately before dispatch. Conflicting
 actions remain blocked until the old external action is authoritatively completed or cancelled; unrelated targets remain
 available. A narrowly scoped late callback/reconciler may update or clear only its matching reset-action fence despite the
@@ -630,7 +640,8 @@ maintenance/action gate is default-closed on every process start. In `BuddySafet
 DataSource and migrations are ready but before the registry exposes action schemas or any Buddy request is admitted,
 inspect that manifest and `BuddyModuleStateEntity.lastImportedRestoreJournalId`. If pending and not imported, validate
 and perform the same transactional idempotent union; if the database marker already matches, finish sidecar
-acknowledgement/rotation.
+acknowledgement/rotation. If `BuddyModuleStateEntity.lastResetInvalidatedRestoreJournalId` matches instead, never import
+the journal and finish its secure deletion/rotation under the reset lifecycle.
 Only then open `WRITE`/`TRIGGER`. A crash after database replacement, during merge, or after DB commit but before sidecar
 cleanup therefore re-enters recovery on the next startup. A missing/corrupt pending journal or failed import keeps the
 gate closed and cannot be bypassed by normal configuration.
@@ -1258,6 +1269,11 @@ snapshots are produced through the shared query layer without making that eager 
       action's minimal canonical conflict/reconciliation data into epoch-qualified reset-action fences. Preserve only
       those active fences plus the incremented epoch and source reset cutoffs/high-water marks needed to reject pre-reset
       callbacks and newly redelivered old platform events.
+- [ ] Coordinate factory reset with the external restore-journal lifecycle under the maintenance gate. Validate any
+      pending journal, promote only its unresolved physical-action conflicts into reset-action fences, transactionally
+      mark its journal ID reset-invalidated with the epoch/purge, and securely delete/rotate its manifest and sidecar
+      after commit. Startup must recognize that marker and complete cleanup without importing pre-reset replay,
+      outbound, identity, or terminal state after any crash window.
 - [ ] Make every post-reset action provider check reset-action fences. Permit only matching authoritative reconciliation
       callbacks to clear them without recreating purged rows; report retained-fence counts and keep conflicting actions
       blocked while unrelated targets remain available.
@@ -1369,6 +1385,10 @@ and restart preserves the fence; other active/late workers cannot recreate purge
 epoch/source guards and active reset-action fences; for each messaging
 adapter, redelivery of a pre-reset action event and an event with unverifiable freshness producing zero model calls,
 outbound sends, messages, or actions, while a provably fresh event creates a clean post-reset turn;
+factory reset with a pending restore manifest/journal containing replay/outbound/identity state plus an unresolved action:
+only that action's minimal conflict fence survives; restart at each boundary (before reset commit, after commit before
+sidecar cleanup, and after cleanup) either performs normal pre-reset recovery or recognizes the reset-invalidated marker,
+never imports purged state, and never loses the unresolved-action fence;
 backup creation, successful action/outbound reply after that backup, lost client/platform acknowledgement, then restore and
 same REST key/platform-event redelivery returning replay-protected status with zero provider/action/outbound calls;
 restore with an unresolved post-backup action retaining its conflict fence; crash after journal write, database replace,
@@ -1717,7 +1737,8 @@ designated safe targets and reversible values. Scale/shadow evaluation must neve
 - [ ] Buddy factory reset removes all replay, delivery, claim, conversation/memory, and terminal action data, retaining
       only minimal safety fences for physical actions that may still complete. Conflicting post-reset actions remain
       blocked until authoritative resolution, pre-reset workers/events cannot recreate purged state, and only provably
-      post-reset deliveries may establish fresh state.
+      post-reset deliveries may establish fresh state. Pending restore journals/manifests are reset-invalidated and
+      purged without later import, while their unresolved physical actions are retained only as reset-action fences.
 - [ ] Restoring an older database cannot erase newer replay/action/outbound guards: action-capable Buddy traffic remains
       default-closed across the restore-triggered restart until the external safety journal is merged, and post-backup
       retries execute/send nothing twice.
