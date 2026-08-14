@@ -128,6 +128,81 @@ const sdkFactory: HomeySdkFactory = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
 
+const requireExactKeys = (value: unknown, expectedKeys: readonly string[], label: string): Record<string, unknown> => {
+	if (!isRecord(value)) {
+		throw new Error(`Homey realtime report ${label} schema is invalid`);
+	}
+
+	const actualKeys = Object.keys(value).sort();
+	const sortedExpectedKeys = [...expectedKeys].sort();
+
+	if (
+		actualKeys.length !== sortedExpectedKeys.length ||
+		actualKeys.some((key, index) => key !== sortedExpectedKeys[index])
+	) {
+		throw new Error(`Homey realtime report ${label} schema is invalid`);
+	}
+
+	return value;
+};
+
+/** Validates every persisted key and scalar type before evidence is accepted or written. */
+export function assertHomeyShsRealtimeReportSchema(value: unknown): asserts value is HomeyShsRealtimeReport {
+	const report = requireExactKeys(value, ['metadata', 'session', 'invalidKey', 'write'], 'root');
+	const metadata = requireExactKeys(report.metadata, ['probe', 'schemaVersion', 'sdkVersion'], 'metadata');
+	const session = requireExactKeys(report.session, ['cleanupCompleted', 'events', 'managerSubscribed'], 'session');
+	const invalidKey = requireExactKeys(report.invalidKey, ['category', 'rejected', 'statusCode'], 'invalid-key');
+	const write = requireExactKeys(
+		report.write,
+		['attempted', 'eventObserved', 'readBackMatched', 'restoreReadBackMatched', 'restored'],
+		'write',
+	);
+
+	if (metadata.probe !== 'homey-shs-realtime' || metadata.schemaVersion !== 1 || metadata.sdkVersion !== SDK_VERSION) {
+		throw new Error('Homey realtime report metadata schema is invalid');
+	}
+
+	if (
+		typeof session.cleanupCompleted !== 'boolean' ||
+		typeof session.managerSubscribed !== 'boolean' ||
+		!Array.isArray(session.events)
+	) {
+		throw new Error('Homey realtime report session schema is invalid');
+	}
+
+	for (const eventValue of session.events) {
+		const event = requireExactKeys(eventValue, ['event', 'order'], 'event');
+
+		if (
+			typeof event.event !== 'string' ||
+			!SAFE_EVENT_LABELS.has(event.event) ||
+			typeof event.order !== 'number' ||
+			!Number.isInteger(event.order) ||
+			event.order < 1
+		) {
+			throw new Error('Homey realtime report event schema is invalid');
+		}
+	}
+
+	if (
+		invalidKey.category !== 'authentication' ||
+		invalidKey.rejected !== true ||
+		(invalidKey.statusCode !== 401 && invalidKey.statusCode !== 403)
+	) {
+		throw new Error('Homey realtime report invalid-key schema is invalid');
+	}
+
+	if (
+		typeof write.attempted !== 'boolean' ||
+		typeof write.eventObserved !== 'boolean' ||
+		typeof write.readBackMatched !== 'boolean' ||
+		typeof write.restoreReadBackMatched !== 'boolean' ||
+		typeof write.restored !== 'boolean'
+	) {
+		throw new Error('Homey realtime report write schema is invalid');
+	}
+}
+
 const parseObserveMs = (value: string | undefined): number => {
 	if (value === undefined) {
 		return DEFAULT_OBSERVE_MS;
@@ -640,10 +715,12 @@ export const probeHomeyShsRealtime = async (
 	return report;
 };
 
-export const assertHomeyShsRealtimeReportSafe = (
-	report: HomeyShsRealtimeReport,
+export function assertHomeyShsRealtimeReportSafe(
+	report: unknown,
 	config: HomeyShsRealtimeProbeConfig,
-): void => {
+): asserts report is HomeyShsRealtimeReport {
+	assertHomeyShsRealtimeReportSchema(report);
+
 	const serialized = JSON.stringify(report).toLowerCase();
 	const forbidden = [
 		config.apiKey,
@@ -676,12 +753,14 @@ export const assertHomeyShsRealtimeReportSafe = (
 	) {
 		throw new Error('Homey realtime probe did not verify the allowlisted write, event, read-back, and restoration');
 	}
-};
+}
 
 export const writeHomeyShsRealtimeReport = async (
 	report: HomeyShsRealtimeReport,
 	outputRoot: string,
 ): Promise<string> => {
+	assertHomeyShsRealtimeReportSchema(report);
+
 	const suffix = `${new Date().toISOString().replaceAll(/[:.]/g, '-')}-${randomBytes(4).toString('hex')}`;
 	const outputDirectory = resolve(outputRoot, `realtime-${suffix}`);
 

@@ -6,6 +6,7 @@ import {
 	type HomeySdkFactory,
 	type HomeyShsRealtimeReport,
 	assertHomeyShsRealtimeReportSafe,
+	assertHomeyShsRealtimeReportSchema,
 	loadHomeyShsRealtimeProbeConfig,
 	probeHomeyShsRealtime,
 } from './support/homey-shs-realtime-probe';
@@ -16,6 +17,15 @@ const BASE_ENVIRONMENT: NodeJS.ProcessEnv = {
 	FB_HOMEY_SHS_PRIVATE_TERMS: 'Private Room,Private Device',
 	FB_HOMEY_SHS_REALTIME_OBSERVE_MS: '0',
 	FB_HOMEY_SHS_URL: 'http://127.0.0.1:4859',
+};
+
+const loadLiveEvidence = (): unknown => {
+	const evidencePath = resolve(
+		__dirname,
+		'../src/plugins/devices-homey/__fixtures__/evidence/2026-08-14-shs-13.4.0-sdk-session.json',
+	);
+
+	return JSON.parse(readFileSync(evidencePath, 'utf8')) as unknown;
 };
 
 class FakeDevice extends EventEmitter {
@@ -169,13 +179,10 @@ const createFactory = (
 
 describe('Homey SHS realtime compatibility probe', () => {
 	it('preserves the sanitized live SHS SDK session evidence', () => {
-		const evidencePath = resolve(
-			__dirname,
-			'../src/plugins/devices-homey/__fixtures__/evidence/2026-08-14-shs-13.4.0-sdk-session.json',
-		);
-		const report = JSON.parse(readFileSync(evidencePath, 'utf8')) as HomeyShsRealtimeReport;
+		const report = loadLiveEvidence();
 		const config = loadHomeyShsRealtimeProbeConfig(BASE_ENVIRONMENT, '/tmp/homey-realtime-spike');
 
+		assertHomeyShsRealtimeReportSchema(report);
 		expect(report.session.events.map(({ event, order }) => ({ event, order }))).toStrictEqual([
 			{ event: 'sdk.create.resolved', order: 1 },
 			{ event: 'socket.connect', order: 2 },
@@ -195,6 +202,27 @@ describe('Homey SHS realtime compatibility probe', () => {
 			restored: false,
 		});
 		expect(() => assertHomeyShsRealtimeReportSafe(report, config)).not.toThrow();
+	});
+
+	it('rejects extra fields and invalid scalar types in persisted evidence', () => {
+		const rootExtra = loadLiveEvidence() as Record<string, unknown>;
+		rootExtra.rawEndpoint = 'private-endpoint';
+
+		expect(() => assertHomeyShsRealtimeReportSchema(rootExtra)).toThrow('Homey realtime report root schema is invalid');
+
+		const nestedExtra = loadLiveEvidence() as HomeyShsRealtimeReport;
+		(nestedExtra.session.events[0] as unknown as Record<string, unknown>).rawPayload = 'private-payload';
+
+		expect(() => assertHomeyShsRealtimeReportSchema(nestedExtra)).toThrow(
+			'Homey realtime report event schema is invalid',
+		);
+
+		const invalidScalar = loadLiveEvidence() as HomeyShsRealtimeReport;
+		(invalidScalar.write as unknown as Record<string, unknown>).attempted = 'false';
+
+		expect(() => assertHomeyShsRealtimeReportSchema(invalidScalar)).toThrow(
+			'Homey realtime report write schema is invalid',
+		);
 	});
 
 	it('keeps writes disabled when none of the four gate variables is present', () => {
@@ -441,6 +469,8 @@ describe('Homey SHS realtime compatibility probe', () => {
 
 		report.session.events[0] = { event: 'private-device-id', order: 2 };
 
-		expect(() => assertHomeyShsRealtimeReportSafe(report, config)).toThrow('unsafe or unordered event label');
+		expect(() => assertHomeyShsRealtimeReportSafe(report, config)).toThrow(
+			'Homey realtime report event schema is invalid',
+		);
 	});
 });
