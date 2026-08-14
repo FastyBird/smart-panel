@@ -532,7 +532,11 @@ conversation must match the current active binding/generation.
 
 Deletion also fences workers through claim compare-and-swap. Claims with no possible dispatch may be cancelled without
 execution; `ACTION_DISPATCHING`/`ACTION_DISPATCHED` claims follow the authoritative-reconciliation-or-`INDETERMINATE`
-rule and remain retained. Terminal claims and binding tombstones live for at least the configured maximum supported
+rule and remain retained. In the same transaction that terminalizes/cancels/marks a claim indeterminate, clear any
+claim-local canonical text or STT transcript retained for nonterminal recovery; keep only its payload digest, bounded
+terminal/indeterminate outcome, canonical action/reconciliation metadata, and opaque replay keys. Conversation deletion
+then cascades the ordinary user/assistant message rows, so hard-deleted content cannot survive in a non-cascading claim.
+Terminal claims and binding tombstones live for at least the configured maximum supported
 platform-redelivery/idempotency window. After that window, adapters reject verifiably stale deliveries rather than
 treating them as fresh. This makes retention bounded without turning cleanup or conversation deletion into a replay path.
 
@@ -562,12 +566,14 @@ plan/outcome references, and timestamps.
 only optimize joining requests already owned by this process and is never the authority for uniqueness, leases, or
 restart recovery.
 
-Persist the canonical user message with its claim (or idempotently before `MODEL_IN_FLIGHT`) and key stored turn rows by
-`requestClaimId + role + ordinal`. Persist the final assistant message, bounded terminal outcome, and claim transition to
-`COMPLETED` in one database transaction. Recovery checks these uniquely keyed rows before provider dispatch: a committed
-terminal turn is reconciled/returned without invoking the model, while a fault between row writes rolls back the entire
-transaction. The request-claim migration adds the message linkage/unique index; conversation deletion may cascade the
-display messages only after the retained claim contains the bounded terminal outcome needed for replay.
+Persist the canonical user message as a claim-linked message row (or idempotently before `MODEL_IN_FLIGHT`) and key stored
+turn rows by `requestClaimId + role + ordinal`. A bounded claim-local recovery copy, including an `INPUT_READY` STT
+transcript, may exist only while the claim is nonterminal. Persist the final assistant message, bounded terminal outcome,
+claim transition to `COMPLETED`, and removal of that recovery copy in one database transaction. Recovery checks the
+uniquely keyed rows before provider dispatch: a committed terminal turn is reconciled/returned without invoking the
+model, while a fault between row writes rolls back the entire transaction. The request-claim migration adds the message
+linkage/unique index; conversation deletion may cascade the display messages only after the retained claim contains the
+bounded terminal outcome needed for replay and no raw input.
 
 Messaging replies use a durable `BuddyOutboundDeliveryEntity` keyed by request claim, platform, opaque destination scope,
 and reply ordinal. After terminal turn commit, the adapter atomically creates/reuses `PENDING`, commits `DISPATCHING`
@@ -671,9 +677,11 @@ was persisted and no uniquely keyed terminal message/outcome was committed; othe
 Recovery finalizes from stored structured results using a read-only/no-action provider call or a
 deterministic response. Full tool transcript persistence remains unnecessary.
 
-A tool execution carries the claim ID, parent turn request ID, and transcript-local tool-call ID separately, and derives
-its bounded correlation/audit `requestId` from the latter two. Never replace the parent ID with `toolCall.id` alone:
-provider-local values such as `ollama-0` can repeat across turns.
+A tool execution carries the claim ID, parent turn request ID, loop iteration ordinal, call ordinal, canonical
+transcript-local tool-call ID, and provider-native tool-call ID separately. Generate/name-space the canonical ID and its
+bounded correlation/audit `requestId` from the parent request plus iteration/call ordinals; retain the native ID only for
+adapter correlation. Never derive uniqueness from `toolCall.id` alone: provider-local values such as `ollama-0` can
+repeat across turns and across dependent responses within the same turn.
 
 For a fresh delivery, the service must validate that `BuddyRequestContext.conversationId` matches the active persisted
 source binding generation and the conversation being processed, then bind that conversation to the new claim. For an
@@ -694,8 +702,16 @@ an unscoped hallucinated token must fail closed and prompt fresh discovery inste
 	actorId,
 	requestClaimId,
 	parentRequestId: requestContext.requestId,
-	toolCallId: toolCall.id,
-	requestId: deriveScopedToolRequestId(requestContext.requestId, toolCall.id),
+	iterationOrdinal,
+	toolCallOrdinal,
+	toolCallId: canonicalToolCallId,
+	providerToolCallId: toolCall.id,
+	requestId: deriveScopedToolRequestId(
+		requestContext.requestId,
+		iterationOrdinal,
+		toolCallOrdinal,
+		canonicalToolCallId,
+	),
 	allowedAccessKinds: effectiveAuthorization.allowedAccessKinds,
 }
 ```
@@ -1267,7 +1283,9 @@ snapshots are produced through the shared query layer without making that eager 
       sufficient.
 - [ ] Integrate conversation deletion with messaging bindings and claims: tombstone/rebind binding generations without
       cascading claims, fence active workers transactionally, replay retained delivery claims before resolving the active
-      binding, and reject stale post-retention deliveries instead of executing them as new.
+      binding, and reject stale post-retention deliveries instead of executing them as new. Terminalize/reconcile claims
+      and redact every claim-local user text/STT recovery copy before cascading message rows; retained claims contain
+      only digests, bounded outcomes, opaque replay keys, and necessary action reconciliation metadata.
 - [ ] Extend `BuddyModuleResetService` with a durable safety-epoch advance that fences active/late workers, then
       explicitly clear every new binding, outbound, claim, ordinary action/fence, message, memory/conversation,
       suggestion, and process cache in dependency order. Before clearing action rows, cancel/reconcile or promote every
@@ -1301,8 +1319,9 @@ snapshots are produced through the shared query layer without making that eager 
 - [ ] Re-resolve current mapping/allowlist/role/policy when a claim acquires its turn and immediately before every action
       dispatch. Effective access is the intersection with the first-delivery snapshot, and action-capable principal
       identity must still match; revocation/remapping fails closed and regrant cannot widen the stored claim.
-- [ ] Preserve the parent entry-point request ID plus the tool-call ID and derive a bounded unique tool-correlation/audit
-      request ID from both; never use a provider-local tool-call ID alone or use it as the action idempotency key.
+- [ ] Preserve the parent entry-point request ID, iteration/call ordinals, canonical transcript call ID, and native
+      provider call ID separately. Derive a bounded unique tool-correlation/audit request ID from the parent and ordinals;
+      never use a repeating provider-local ID alone or use the correlation ID as the action idempotency key.
 - [ ] Durably claim REST/voice by `(source, actor claim key, stable idempotency scope, request ID)` and messaging by
       immutable `(source, stable idempotency scope, platform event ID)`, storing the first-delivery actor/authorization,
       resolved Buddy conversation/binding generation, and payload digest as bound data. Implement state/lease ownership
@@ -1315,7 +1334,8 @@ snapshots are produced through the shared query layer without making that eager 
 - [ ] Add `BuddyRequestClaimEntity`, its incremental migration/source-aware database constraints, and transactional
       repository/service transitions for claim creation, lease takeover, plan persistence, dispatch intent, terminal
       outcomes, and bounded retention. Treat the database as the cross-process/restart authority; process-local
-      single-flight is only an optimization.
+      single-flight is only an optimization. Permit bounded raw input/transcript on the claim only for nonterminal
+      recovery and atomically redact it on every terminal/indeterminate transition.
 - [ ] Add durable per-conversation sequence allocation and `BuddyConversationTurnCoordinatorService`. Hold one
       cross-process lease across the full preprocessing/history/model/tool/action/final-persistence/reference lifecycle;
       atomically release it with terminal commit, and never let a higher sequence overtake a lower nonterminal turn.
@@ -1388,7 +1408,8 @@ redelivery after the platform account is remapped to another Smart Panel actor r
 executing nothing; conversation deletion followed by a genuinely new event creating the next binding generation, while
 an old-event replay returns its retained outcome without recreating the deleted conversation or invoking the model;
 deletion racing `MODEL_IN_FLIGHT`, `ACTION_PLANNED`, and uncertain dispatch; expired/stale delivery rejection after the
-documented retention window;
+documented retention window; completed and active-then-cancelled conversation deletion leaving no canonical user text or
+STT transcript in retained claims while exact replay still returns the bounded outcome from digest/opaque metadata;
 factory reset with populated bindings/outbound rows/claims/action ledgers/uncertainty fences/messages/memory/suggestions,
 including an already-dispatched non-cancellable action: reset promotes its minimal conflict keys, a post-reset conflicting
 action executes zero times until authoritative late reconciliation clears the reset fence, an unrelated action proceeds,
@@ -1411,8 +1432,9 @@ REST/voice/Discord/Telegram/WhatsApp conversation/identity/access propagation; r
 conversation ID; unmapped platform users under empty/allow-all admission remain read-only;
 mapped/explicitly action-allowlisted users receive only their authorized access kinds; mapping/role revocation while
 queued and between model response/action dispatch causing zero execution; actor remapping failing the principal match;
-later regrant not widening the original snapshot; parent request ID preservation and
-uniqueness when `ollama-0` repeats across turns; parallel call ordering; malformed arguments; unknown tools; denied
+later regrant not widening the original snapshot; parent request ID preservation and correlation uniqueness when
+`ollama-0` repeats across turns and as the first call in two dependent iterations of one turn, while the native IDs still
+correlate adapter results; parallel call ordering; malformed arguments; unknown tools; denied
 access; partial results; read timeouts; action timeout before dispatch; confirmed cancellation; a hanging non-cancellable
 device command and scene trigger returning `INDETERMINATE`; concurrent and post-restart replay of the same inbound request
 with a changed provider call ID causing exactly one domain execution; two intentional identical action slots remaining
@@ -1736,7 +1758,8 @@ designated safe targets and reversible values. Scale/shadow evaluation must neve
 - [ ] Discord/Telegram/WhatsApp bindings survive process restart, and replay of one stable platform event resolves the
       same Buddy conversation/idempotency scope and cannot duplicate messages or actions.
 - [ ] Messaging replay protection survives actor remapping and conversation deletion: old events resolve retained claims,
-      while only new events may establish the next conversation binding generation.
+      while only new events may establish the next conversation binding generation. Retained terminal claims contain no
+      raw user text or STT transcript after deletion.
 - [ ] A redelivered messaging event never causes a second outbound bot reply; uncertain platform sends are reconciled or
       suppressed, never automatically resent.
 - [ ] Distinct turns in one conversation cannot overtake each other: dependent follow-ups observe prior references and
