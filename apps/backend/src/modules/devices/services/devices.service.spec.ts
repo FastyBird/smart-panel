@@ -316,6 +316,7 @@ describe('DevicesService', () => {
 			});
 			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledTimes(1);
 			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('device.deviceZones', 'deviceZones');
+			expect(queryBuilderMock.orderBy).toHaveBeenCalledWith('device.name', 'ASC');
 			expect(queryBuilderMock.take).toHaveBeenCalledWith(10);
 			expect(queryBuilderMock.callListeners).toHaveBeenCalledWith(false);
 			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('device.roomId IN (:...roomIds)', {

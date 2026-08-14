@@ -132,6 +132,7 @@ describe('McpReadToolService', () => {
 			'get_security_status',
 		]);
 		expect(registerResource).toHaveBeenCalledTimes(3);
+		expect(registeredResourceUris.get('installation')).toBe('smart-panel://installation');
 		expect(registeredResourceUris.get('home-context')).toBe('smart-panel://home/context');
 
 		const spaceSnapshotTemplate = registeredResourceUris.get('space-snapshot');

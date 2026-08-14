@@ -56,6 +56,7 @@ describe('ScenesService', () => {
 
 		await expect(service.findSummaryPage(50, 'space-id')).resolves.toEqual({ scenes: [scene], total: 60 });
 		expect(query.select).toHaveBeenCalledWith(expect.not.arrayContaining(['scene.actions']));
+		expect(query.orderBy).toHaveBeenCalledWith('scene.name', 'ASC');
 		expect(query.where).toHaveBeenCalledWith('scene.primarySpaceId = :primarySpaceId', {
 			primarySpaceId: 'space-id',
 		});
