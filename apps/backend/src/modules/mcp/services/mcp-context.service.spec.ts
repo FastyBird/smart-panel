@@ -795,6 +795,15 @@ describe('McpContextService', () => {
 	});
 
 	it('caps security alerts and preserves alert truncation metadata', async () => {
+		const activeAlerts = Array.from({ length: 23 }, (_, index) => ({
+			id: `alert-${index}`,
+			type: 'intrusion',
+			severity: 'warning',
+			timestamp: `2026-08-14T12:${String(index).padStart(2, '0')}:00.000Z`,
+			acknowledged: index % 2 === 0,
+			sourceDeviceId: `device-${index}`,
+			message: `Alert ${index}`,
+		}));
 		security.getBoundedStatus.mockResolvedValue({
 			status: {
 				armedState: 'armed',
@@ -802,11 +811,7 @@ describe('McpContextService', () => {
 				highestSeverity: 'warning',
 				activeAlertsCount: 23,
 				hasCriticalAlert: false,
-				activeAlerts: Array.from({ length: 23 }, (_, index) => ({
-					id: `alert-${index}`,
-					severity: 'warning',
-					message: `Alert ${index}`,
-				})),
+				activeAlerts,
 			},
 			devicesTruncated: false,
 			channelsTruncated: false,
@@ -815,7 +820,17 @@ describe('McpContextService', () => {
 
 		const result = await service.getSecurityStatus();
 
-		expect(result.active_alerts).toHaveLength(20);
+		expect(result.active_alerts).toEqual(
+			Array.from({ length: 20 }, (_, index) => ({
+				id: `alert-${index}`,
+				type: 'intrusion',
+				severity: 'warning',
+				timestamp: `2026-08-14T12:${String(index).padStart(2, '0')}:00.000Z`,
+				acknowledged: index % 2 === 0,
+				source_device_id: `device-${index}`,
+				message: `Alert ${index}`,
+			})),
+		);
 		expect(result).toEqual(expect.objectContaining({ active_alerts_count: 23 }));
 		expect(result.alerts_truncated).toBe(true);
 	});
@@ -992,7 +1007,13 @@ describe('McpContextService', () => {
 
 		expect(weather.getPrimaryWeather).toHaveBeenCalledTimes(1);
 		expect(weather.getWeather).toHaveBeenCalledWith('location-id');
-		expect(primary.forecast).toHaveLength(5);
+		expect(primary.forecast).toEqual([
+			{ date: '2026-08-15' },
+			{ date: '2026-08-16' },
+			{ date: '2026-08-17' },
+			{ date: '2026-08-18' },
+			{ date: '2026-08-19' },
+		]);
 		expect(explicit).toEqual(primary);
 		expect(explicit).toEqual(expect.objectContaining({ location_id: 'location-id', location: 'Prague' }));
 	});
@@ -1078,7 +1099,7 @@ describe('McpContextService', () => {
 			'1h',
 		);
 
-		expect(result.points).toHaveLength(500);
+		expect(result.points).toEqual(Array.from({ length: 500 }, (_, index) => ({ time: index, value: index })));
 		expect(result.truncated).toBe(true);
 	});
 
