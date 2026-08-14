@@ -300,9 +300,10 @@ profile at the adapter boundary: in particular, both whole-home and space-scoped
 current 100-device cap. A shared service may accept a named internal limit profile, but a model or protocol client must
 never be able to raise a limit directly.
 
-| Operation | Required filters | Buddy default / hard bound | Result |
+| Operation | Required filters | Caller-profile default / hard bound | Result |
 | --- | --- | --- | --- |
 | `searchHome` | query, kinds, space, category, role, capability | 10 / 20 matches | Ranked typed entities with canonical IDs and reasons |
+| `getHomeSnapshot` | optional space ID, trusted adapter profile | Not a Buddy tool; MCP profile preserves spaces 50, devices 100, scenes 50, and existing domain caps | Composite spaces/devices/scenes/weather/energy/security snapshot with per-section truncation/partial metadata |
 | `getDeviceStates` | canonical device IDs, include fields | 1 / 10 devices | Bounded channels/properties and current values |
 | `getSpaceSnapshot` | one space ID, categories/capabilities | 20 / 50 devices; MCP compatibility profile: 100 devices | Compact scoped state plus truncation |
 | `queryHomeState` | spaces, categories, roles, capabilities, online/value predicates | 20 / 50 matches | Safe filtered rows and/or aggregate |
@@ -315,6 +316,12 @@ never be able to raise a limit directly.
 No operation accepts arbitrary SQL, arbitrary property paths, unbounded `include` trees, or client-selected limits above
 its caller profile's hard cap. Phase 1 must preserve the other existing MCP space, scene, channel, property, security,
 forecast, timeseries, and energy caps as well as its truncation semantics.
+
+`getHomeSnapshot` is a provider-neutral compatibility contract for `McpContextService.getHomeContext()`. An omitted space
+reproduces the existing composite whole-home result; a supplied space reproduces its scoped form, including ordering,
+visibility/disabled semantics, weather selection, totals, and section-specific caps/truncation. The Buddy conversational
+planner/tool provider must not expose this composite MCP profile or use it as an eager fallback; Buddy uses the focused
+operations above with its stricter profiles.
 
 ### 5.3 Database-bounded discovery
 
@@ -452,6 +459,7 @@ Every external entry point must pass a request context through the conversation-
 interface BuddyRequestContext {
 	conversationId: string;
 	source: 'rest' | 'voice' | 'discord' | 'telegram' | 'whatsapp' | 'internal';
+	idempotencyScopeId: string;
 	actorId?: string;
 	requestId: string;
 	idempotencyDigest: string;
@@ -482,8 +490,14 @@ attempts or collide for different recordings. Messaging adapters use their stabl
 ID plus a payload digest, and trusted internal callers supply a stable job/event ID and digest. A server-generated
 per-attempt ID is allowed only for explicitly read-only internal work and cannot authorize an action-capable turn.
 
-The conversation boundary uniquely claims `(source, actorId, conversationId, requestId)` before any action-capable
-provider call and stores the digest as bound data, not as part of the uniqueness key. It returns a stable
+REST uses the stable route conversation ID as `idempotencyScopeId`. Messaging adapters derive a source-qualified opaque
+scope from the platform chat/channel/thread identity and persist an atomic mapping from that scope to the Buddy
+conversation ID; never rely on their current in-memory maps for replay correctness. Raw platform identifiers are neither
+logged nor stored when a stable keyed digest/opaque form is sufficient. Trusted internal jobs supply a stable scope.
+
+The conversation boundary uniquely claims `(source, actorId, idempotencyScopeId, requestId)` before any action-capable
+provider call and stores the resolved Buddy conversation ID and payload digest as bound data, not as part of the
+uniqueness key. It returns a stable
 `requestClaimId`. The claim is a durable state machine with an owner/lease and bounded stored outcome metadata, for
 example `RECEIVED`, `MODEL_IN_FLIGHT`, `ACTION_PLANNED`, `ACTION_DISPATCHED`, `COMPLETED`, `FAILED`, or `INDETERMINATE`.
 An exact duplicate with the same digest joins the existing in-process single-flight. A duplicate owned by another
@@ -503,8 +517,9 @@ A tool execution carries the claim ID, parent turn request ID, and transcript-lo
 its bounded correlation/audit `requestId` from the latter two. Never replace the parent ID with `toolCall.id` alone:
 provider-local values such as `ollama-0` can repeat across turns.
 
-The service must validate that `BuddyRequestContext.conversationId` matches the conversation being processed, then copy
-it into every Buddy tool execution context. Read tools register exposed short IDs under that scope; action providers
+The service must validate that `BuddyRequestContext.conversationId` matches the persisted source binding, any existing
+claim's bound Buddy conversation, and the conversation being processed, then copy it into every Buddy tool execution
+context. Read tools register exposed short IDs under that scope; action providers
 resolve Buddy short IDs with the same required scope. A token exposed in another conversation, a stale/evicted token, or
 an unscoped hallucinated token must fail closed and prompt fresh discovery instead of resolving through global state.
 
@@ -515,6 +530,7 @@ an unscoped hallucinated token must fail closed and prompt fresh discovery inste
 	audience: ToolAudience.BUDDY,
 	source: 'buddy',
 	conversationId,
+	idempotencyScopeId: requestContext.idempotencyScopeId,
 	actorId,
 	requestClaimId,
 	parentRequestId: requestContext.requestId,
@@ -815,13 +831,15 @@ apps/backend/src/modules/home-context/
 
 apps/backend/src/modules/buddy/
 ├── entities/
-│   └── buddy-conversation.entity.ts
+│   ├── buddy-conversation.entity.ts
+│   └── buddy-messaging-conversation-binding.entity.ts
 ├── platforms/
 │   └── llm-provider.platform.ts
 ├── services/
 │   ├── buddy-context-planner.service.ts
 │   ├── buddy-context-renderer.service.ts
 │   ├── buddy-deterministic-action-handoff.service.ts
+│   ├── buddy-messaging-conversation-binding.service.ts
 │   ├── buddy-conversation-memory.service.ts
 │   ├── buddy-conversation.service.ts
 │   ├── buddy-request-budget.service.ts
@@ -843,6 +861,7 @@ apps/backend/src/modules/scenes/services/    # bounded filtered scene search as 
 apps/backend/src/modules/spaces/services/    # bounded filtered space search as needed
 apps/backend/src/migrations/
 ├── <next-timestamp>-AddBuddyActionExecutionLedger.ts # only if existing command storage cannot enforce idempotency
+├── <next-timestamp>-AddBuddyMessagingConversationBinding.ts
 └── <next-timestamp>-AddBuddyConversationMemory.ts
 ```
 
@@ -895,6 +914,10 @@ captured as an opt-in/expected baseline measurement rather than a failing normal
 - [ ] Create `HomeContextModule` with typed inputs, outputs, shared limits, and schema validation.
 - [ ] Move bounded home/device/weather/energy/security/timeseries mapping from MCP into shared services without changing
       MCP external output behavior.
+- [ ] Implement shared `getHomeSnapshot(optionalSpaceId, trustedProfile)` and make MCP `get_home_context` delegate both
+      its whole-home and scoped variants to it. Preserve the composite spaces/devices/scenes/weather/energy/security
+      shape, ordering, visibility, disabled entities, section caps, totals, and truncation; do not expose the MCP
+      composite profile as a Buddy conversational tool/fallback.
 - [ ] Preserve MCP weather selection semantics: `location_id` reads that exact configured location, while an omitted ID
       reads the primary location.
 - [ ] Preserve MCP read visibility semantics: hidden entities remain excluded, while disabled devices/scenes remain in
@@ -915,8 +938,9 @@ captured as an opt-in/expected baseline measurement rather than a failing normal
 - [ ] Add targeted catalog cache invalidation and in-flight query deduplication without changing evaluator snapshot cache
       semantics.
 
-**Tests:** Shared service unit tests; domain query integration tests; MCP facade/tool regression tests, including explicit
-and omitted weather location IDs; visibility-profile tests proving hidden exclusion, MCP disabled-entity compatibility,
+**Tests:** Shared service unit tests; domain query integration tests; MCP facade/tool regression tests, including
+`get_home_context` with omitted and supplied space IDs matching pre-extraction composite fixtures, and explicit/omitted
+weather location IDs; visibility-profile tests proving hidden exclusion, MCP disabled-entity compatibility,
 and Buddy action-target exclusion; long property/weather/security strings proving MCP output remains unchanged while
 Buddy output is bounded; cached values newer than storage; storage disconnected with cached, missing, and mixed values;
 `any`/`all` sound short-circuit cases; incomplete negative/min/max/average/sum results marked partial; chunk/deadline work
@@ -924,7 +948,8 @@ limits; query limit and truncation tests; N+1/query-count assertions for large f
 
 **Gate:** MCP behavior is backward compatible, and a targeted entity beyond the first 100 alphabetic devices is found by
 bounded search without loading the full catalog. Live-value aggregates use `PropertyValueService` authority and never
-report a definitive complete answer when eligible values could not all be evaluated.
+report a definitive complete answer when eligible values could not all be evaluated. MCP whole-home/scoped composite
+snapshots are produced through the shared query layer without making that eager profile available to Buddy.
 
 ### Phase 2 — Canonical structured tool turns
 
@@ -932,12 +957,15 @@ report a definitive complete answer when eligible values could not all be evalua
 
 - `apps/backend/src/modules/buddy/platforms/llm-provider.platform.ts`
 - `apps/backend/src/modules/buddy/controllers/buddy-conversations.controller.ts`
+- `apps/backend/src/modules/buddy/entities/buddy-messaging-conversation-binding.entity.ts`
 - `apps/backend/src/modules/buddy/services/buddy-conversation.service.ts`
+- `apps/backend/src/modules/buddy/services/buddy-messaging-conversation-binding.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-request-idempotency.service.ts`
 - `apps/backend/src/modules/tools/platforms/tool-provider.platform.ts`
 - `apps/backend/src/plugins/buddy-openai-codex/platforms/openai-codex.provider.ts`
 - Buddy LLM provider plugins/adapters and their specs
 - Buddy Discord, Telegram, and WhatsApp adapters and their specs
+- New incremental migration for the persistent messaging-conversation binding
 - Existing command/scene/intent idempotency persistence, or a minimal Buddy action-execution ledger entity/service and
   incremental migration if existing storage cannot enforce a unique execution identity
 - Backend Swagger decorators/error models plus generated OpenAPI/admin/panel artifacts for the idempotency header/conflict
@@ -963,17 +991,22 @@ report a definitive complete answer when eligible values could not all be evalua
       output. Hash incrementally for streamed/multipart uploads and do not persist raw audio solely for idempotency.
 - [ ] Derive messaging/internal request IDs from stable source event/job IDs; never use a per-attempt generated ID for an
       action-capable request.
+- [ ] Replace Discord/Telegram/WhatsApp in-memory-only platform-conversation maps with an atomic persistent binding from a
+      source-qualified opaque chat/channel/thread scope to the Buddy conversation ID. Pass that stable scope as
+      `idempotencyScopeId`; REST uses its route conversation ID. Do not store/log raw platform IDs when a keyed digest is
+      sufficient.
 - [ ] Carry an explicit entry-point authorization decision separately from actor attribution. Keep unmapped messaging
       identities and missing decisions `READ` only even when adapter admission is configured as allow-all; grant
       write/trigger only through authenticated Smart Panel mapping or an explicit action-capable allowlist/role.
 - [ ] Preserve the parent entry-point request ID plus the tool-call ID and derive a bounded unique tool-correlation/audit
       request ID from both; never use a provider-local tool-call ID alone or use it as the action idempotency key.
-- [ ] Durably claim the unique `(source, actor, conversation, request ID)` key and store/compare its payload digest as
-      bound data. Implement state/lease ownership so exact duplicates single-flight before provider dispatch; cross-worker
-      duplicates never run the model concurrently. Persist the canonical action plan/identity atomically before any
-      physical dispatch. Derive action identity from the resulting actor-qualified claim ID, canonical action fingerprint,
-      and deterministic occurrence slot—independently of provider call IDs. Reuse an existing durable idempotency
-      authority or add a bounded persistent ledger if none spans retries/restarts.
+- [ ] Durably claim the unique `(source, actor, stable idempotency scope, request ID)` key and store/compare its resolved
+      Buddy conversation ID and payload digest as bound data. Implement state/lease ownership so exact duplicates
+      single-flight before provider dispatch; cross-worker duplicates never run the model concurrently. Persist the
+      canonical action plan/identity atomically before any physical dispatch. Derive action identity from the resulting
+      actor-qualified claim ID, canonical action fingerprint, and deterministic occurrence slot—independently of provider
+      call IDs. Reuse an existing durable idempotency authority or add a bounded persistent ledger if none spans
+      retries/restarts.
 - [ ] Persist a default-one `BuddyActionAllowance` per canonical fingerprint. Allocate additional occurrence slots only
       from a bounded repeat count parsed from original user input or an explicit structured confirmation tied to the
       resolved action; require confirmation for repeated non-idempotent triggers and coalesce all model-only duplicates.
@@ -993,6 +1026,8 @@ same-process duplicate while the first model call is blocked joining one provide
 returning in-progress/`Retry-After` without provider dispatch; safe lease takeover after a crash in `MODEL_IN_FLIGHT`
 before any action plan exists; crash after `ACTION_PLANNED` or `ACTION_DISPATCHED` resuming the persisted plan without an
 action-capable model call even when a mocked second stochastic invocation would choose different arguments;
+Discord/Telegram/WhatsApp restart with empty process maps followed by redelivery of the same platform event resolving the
+persisted Buddy conversation/scope, one claim, one stored message, and at most one action;
 REST/voice/Discord/Telegram/WhatsApp conversation/identity/access propagation; rejection of a mismatched request-context
 conversation ID; unmapped platform users under empty/allow-all admission remain read-only;
 mapped/explicitly action-allowlisted users receive only their authorized access kinds; parent request ID preservation and
@@ -1291,6 +1326,8 @@ designated safe targets and reversible values. Scale/shadow evaluation must neve
 - [ ] Ambiguous actions never silently select a candidate.
 - [ ] REST text/audio retries use the required client-stable idempotency key, and replay after timeout/restart cannot
       execute an action twice even when the provider returns a different tool-call ID.
+- [ ] Discord/Telegram/WhatsApp bindings survive process restart, and replay of one stable platform event resolves the
+      same Buddy conversation/idempotency scope and cannot duplicate messages or actions.
 - [ ] Shared home-query services are usable by Buddy with MCP externally disabled.
 - [ ] MCP transport/auth/policy/configuration remains independent and externally backward compatible.
 - [ ] Existing heartbeat/evaluator full-context behavior remains unchanged.
