@@ -286,6 +286,11 @@ describe('ChannelsService', () => {
 				ChannelCategory.ALARM,
 				2,
 			]);
+			expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('ORDER BY channel."name", channel."id"'), [
+				mockDevice.id,
+				ChannelCategory.ALARM,
+				2,
+			]);
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('channel.id IN (:...channelIds)', {
 				channelIds: [mockChannel.id],
 			});
