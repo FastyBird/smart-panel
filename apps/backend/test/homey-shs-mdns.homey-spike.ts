@@ -276,7 +276,7 @@ describe('Homey SHS mDNS compatibility probe', () => {
 		expect(() => assertHomeyShsMdnsReportSafe(zeroMatchReport, publicHomeyConfig)).not.toThrow();
 	});
 
-	it.each(['aa-bb-cc-dd-ee-ff', 'aabb.ccdd.eeff', 'aabbccddeeff'])(
+	it.each(['aa-bb-cc-dd-ee-ff', 'aabb.ccdd.eeff', 'aabbccddeeff', 'macaabbccddeeff'])(
 		'rejects a MAC-derived public metadata identifier in %s format',
 		(identifier) => {
 			const report: HomeyShsMdnsReport = {

@@ -10,8 +10,7 @@ const PUBLIC_IDENTIFIER_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
 const URL_PATTERN = /(?:https?|wss?):\/\//i;
 const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 const IPV4_PATTERN = /(?:^|[^\d])(?:\d{1,3}\.){3}\d{1,3}(?:$|[^\d])/;
-const MAC_PATTERN =
-	/(?:^|[^A-F0-9])(?:[0-9a-f]{2}(?:[:-][0-9a-f]{2}){5}|[0-9a-f]{4}(?:\.[0-9a-f]{4}){2}|[0-9a-f]{12})(?:$|[^A-F0-9])/i;
+const MAC_PATTERN = /(?:[0-9a-f]{2}(?:[:-][0-9a-f]{2}){5}|[0-9a-f]{4}(?:\.[0-9a-f]{4}){2}|[0-9a-f]{12})/i;
 const HOMEY_TOKEN_PATTERN = /(?:hpat|pat|homey)[_-][A-Za-z0-9_-]{16,}/i;
 const PUBLIC_HOMEY_TERMS = new Set(['home', 'homey']);
 
