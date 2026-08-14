@@ -495,24 +495,44 @@ scope from the platform chat/channel/thread identity and persist an atomic mappi
 conversation ID; never rely on their current in-memory maps for replay correctness. Raw platform identifiers are neither
 logged nor stored when a stable keyed digest/opaque form is sufficient. Trusted internal jobs supply a stable scope.
 
-The conversation boundary uniquely claims `(source, actorId, idempotencyScopeId, requestId)` before any action-capable
-provider call and stores the resolved Buddy conversation ID and payload digest as bound data, not as part of the
-uniqueness key. It returns a stable
+Conversation deletion must not cascade away messaging bindings or request claims. In the delete transaction, lock each
+affected binding, clear its active conversation, increment its generation, and retain a tombstone containing only the
+opaque scope and prior generation metadata; claims retain the bound conversation UUID as a non-cascading scalar. A later
+new platform event atomically creates/rebinds a conversation at the next generation. Before resolving that active
+binding, however, the adapter checks the immutable delivery claim: an old redelivery returns its retained terminal,
+in-progress, or indeterminate outcome and never creates a conversation or calls a model. For a fresh claim, the context
+conversation must match the current active binding/generation.
+
+Deletion also fences workers through claim compare-and-swap. Claims with no possible dispatch may be cancelled without
+execution; `ACTION_DISPATCHING`/`ACTION_DISPATCHED` claims follow the authoritative-reconciliation-or-`INDETERMINATE`
+rule and remain retained. Terminal claims and binding tombstones live for at least the configured maximum supported
+platform-redelivery/idempotency window. After that window, adapters reject verifiably stale deliveries rather than
+treating them as fresh. This makes retention bounded without turning cleanup or conversation deletion into a replay path.
+
+The conversation boundary uniquely claims every external delivery before any provider call. REST/voice claims use
+`(source, actorClaimKey, idempotencyScopeId, requestId)`, so two authenticated actors may legitimately reuse a client
+key. Messaging claims use immutable platform delivery identity `(source, idempotencyScopeId, requestId)` independent of
+the account's mutable Smart Panel user mapping. The resolved actor/authorization snapshot, Buddy conversation ID, and
+payload digest are bound data, not messaging uniqueness inputs. A redelivery after account remapping therefore resolves
+the original claim/outcome and cannot run under either the old or new actor; only a genuinely new platform event uses the
+new mapping. The service returns a stable
 `requestClaimId`. The claim is a durable state machine with an owner/lease and bounded stored outcome metadata, for
 example `RECEIVED`, `MODEL_IN_FLIGHT`, `ACTION_PLANNED`, `ACTION_DISPATCHING`, `ACTION_DISPATCHED`, `COMPLETED`, `FAILED`,
-or `INDETERMINATE`.
+`CANCELLED`, or `INDETERMINATE`.
 An exact duplicate with the same digest joins the existing in-process single-flight. A duplicate owned by another
 worker/process waits only within the request deadline, then returns a typed in-progress response with `Retry-After`; it
 must not invoke the model concurrently. The same key with a different text/audio digest returns a typed conflict and
 executes nothing.
 
 Store this state machine in a new `BuddyRequestClaimEntity` created by an incremental migration. Its database-enforced
-unique key uses source, a normalized non-null actor claim key, stable idempotency scope, and request ID; action-capable
-requests require a stable verified actor key, while any read-only anonymous sentinel remains isolated by source and
-scope. Bound columns include the resolved Buddy conversation ID, payload digest, state, lease owner/expiry, optimistic
-version, bounded canonical plan/outcome references, and timestamps. `BuddyRequestIdempotencyService` owns transactional
-create-or-read and compare-and-swap transitions; an in-memory map may only optimize joining requests already owned by
-this process and is never the authority for uniqueness, leases, or restart recovery.
+unique key uses source, a normalized non-null `claimPrincipalKey`, stable idempotency scope, and request ID. Trusted
+entry-point code derives `claimPrincipalKey` from the stable authenticated actor for REST/voice/internal traffic and a
+fixed delivery sentinel for messaging, making messaging uniqueness actor-independent. Bound columns include the
+first-delivery actor/authorization snapshot, resolved Buddy conversation ID and binding generation, payload digest,
+state, lease owner/expiry, optimistic version, bounded canonical plan/outcome references, and timestamps.
+`BuddyRequestIdempotencyService` owns transactional create-or-read and compare-and-swap transitions; an in-memory map may
+only optimize joining requests already owned by this process and is never the authority for uniqueness, leases, or
+restart recovery.
 
 Before any physical dispatch, persist the complete bounded canonical action plan—validated tool name, canonical targets,
 normalized arguments, fingerprint, user-evidenced allowance/occurrence slot, and execution identity—and transition the
@@ -536,9 +556,11 @@ A tool execution carries the claim ID, parent turn request ID, and transcript-lo
 its bounded correlation/audit `requestId` from the latter two. Never replace the parent ID with `toolCall.id` alone:
 provider-local values such as `ollama-0` can repeat across turns.
 
-The service must validate that `BuddyRequestContext.conversationId` matches the persisted source binding, any existing
-claim's bound Buddy conversation, and the conversation being processed, then copy it into every Buddy tool execution
-context. Read tools register exposed short IDs under that scope; action providers
+For a fresh delivery, the service must validate that `BuddyRequestContext.conversationId` matches the active persisted
+source binding generation and the conversation being processed, then bind that conversation to the new claim. For an
+existing exact delivery claim, its bound conversation/generation and stored outcome take precedence over any later
+binding or actor mapping; replay does not enter the conversation/tool pipeline. Copy the validated active conversation
+into every new Buddy tool execution context. Read tools register exposed short IDs under that scope; action providers
 resolve Buddy short IDs with the same required scope. A token exposed in another conversation, a stale/evicted token, or
 an unscoped hallucinated token must fail closed and prompt fresh discovery instead of resolving through global state.
 
@@ -572,9 +594,10 @@ confirmation bound to the exact resolved target/action/count. Model repetition i
 non-idempotent scene/intent triggers require explicit confirmation before a repeat count above one. Persist the bounded
 `BuddyActionAllowance` and canonical slots with the claim before dispatch.
 
-Derive `actionExecutionId` from `requestClaimId + actionFingerprint + allowedOccurrenceSlot`. Because the claim is scoped
-by stable actor identity, two actors may legitimately reuse the same client key without collision. Never derive the
-action identity from the provider's tool-call ID. Atomically register or reuse it and durably associate every observed
+Derive `actionExecutionId` from `requestClaimId + actionFingerprint + allowedOccurrenceSlot`. REST/voice claims remain
+actor-qualified, so two actors may legitimately reuse the same client key without collision; messaging claims instead
+bind the actor observed on the immutable delivery's first processing. Never derive the action identity from the
+provider's tool-call ID. Atomically register or reuse it and durably associate every observed
 provider call ID with it. A replay that receives a different OpenAI/Anthropic call ID therefore reuses the original
 operation/result instead of issuing a second physical action. Prefer an existing durable command or audit mechanism when
 it enforces uniqueness; otherwise add a minimal persistent execution ledger with a unique key, bounded result metadata,
@@ -1020,22 +1043,27 @@ snapshots are produced through the shared query layer without making that eager 
       source-qualified opaque chat/channel/thread scope to the Buddy conversation ID. Pass that stable scope as
       `idempotencyScopeId`; REST uses its route conversation ID. Do not store/log raw platform IDs when a keyed digest is
       sufficient.
+- [ ] Integrate conversation deletion with messaging bindings and claims: tombstone/rebind binding generations without
+      cascading claims, fence active workers transactionally, replay retained delivery claims before resolving the active
+      binding, and reject stale post-retention deliveries instead of executing them as new.
 - [ ] Carry an explicit entry-point authorization decision separately from actor attribution. Keep unmapped messaging
       identities and missing decisions `READ` only even when adapter admission is configured as allow-all; grant
       write/trigger only through authenticated Smart Panel mapping or an explicit action-capable allowlist/role.
 - [ ] Preserve the parent entry-point request ID plus the tool-call ID and derive a bounded unique tool-correlation/audit
       request ID from both; never use a provider-local tool-call ID alone or use it as the action idempotency key.
-- [ ] Durably claim the unique `(source, actor, stable idempotency scope, request ID)` key and store/compare its resolved
-      Buddy conversation ID and payload digest as bound data. Implement state/lease ownership so exact duplicates
+- [ ] Durably claim REST/voice by `(source, actor claim key, stable idempotency scope, request ID)` and messaging by
+      immutable `(source, stable idempotency scope, platform event ID)`, storing the first-delivery actor/authorization,
+      resolved Buddy conversation/binding generation, and payload digest as bound data. Implement state/lease ownership
+      so exact duplicates
       single-flight before provider dispatch; cross-worker duplicates never run the model concurrently. Persist the
       canonical action plan/identity atomically before any physical dispatch. Derive action identity from the resulting
-      actor-qualified claim ID, canonical action fingerprint, and deterministic occurrence slot—independently of provider
-      call IDs. Reuse an existing durable idempotency authority or add a bounded persistent ledger if none spans
+      claim ID, canonical action fingerprint, and deterministic occurrence slot—independently of provider call IDs.
+      Reuse an existing durable idempotency authority or add a bounded persistent ledger if none spans
       retries/restarts.
-- [ ] Add `BuddyRequestClaimEntity`, its incremental migration/database constraints, and transactional repository/service
-      transitions for claim creation, lease takeover, plan persistence, dispatch intent, terminal outcomes, and bounded
-      retention. Treat the database as the cross-process/restart authority; process-local single-flight is only an
-      optimization.
+- [ ] Add `BuddyRequestClaimEntity`, its incremental migration/source-aware database constraints, and transactional
+      repository/service transitions for claim creation, lease takeover, plan persistence, dispatch intent, terminal
+      outcomes, and bounded retention. Treat the database as the cross-process/restart authority; process-local
+      single-flight is only an optimization.
 - [ ] Commit an `ACTION_DISPATCHING` intent containing `actionExecutionId` before every domain invocation. Resume
       `ACTION_PLANNED` only because no invocation can precede that commit. Recover `ACTION_DISPATCHING`/`ACTION_DISPATCHED`
       through authoritative downstream idempotency when available; otherwise mark the outcome `INDETERMINATE` and never
@@ -1054,7 +1082,7 @@ snapshots are produced through the shared query layer without making that eager 
 `function_call`/`function_call_output.call_id`; REST text/audio required-header validation; generated client header
 support; client-timeout retry after restart with the same key; identical uploaded audio with different mocked STT output
 reusing one claim; different audio with identical mocked transcription returning HTTP 409 and zero execution; text digest
-conflict behavior; two actors in one conversation legitimately using the same key/action without ledger collision;
+conflict behavior; two REST actors in one conversation legitimately using the same key/action without ledger collision;
 request-claim migration/schema tests for the normalized composite unique key, lease/version compare-and-swap, bounded
 plan/outcome persistence, retention, and concurrent create-or-read from two database connections;
 same-process duplicate while the first model call is blocked joining one provider invocation; cross-worker duplicate
@@ -1066,6 +1094,11 @@ redispatches when no downstream authority exists; the same fault with a fake aut
 reconciling/resubmitting by `actionExecutionId` to one physical execution;
 Discord/Telegram/WhatsApp restart with empty process maps followed by redelivery of the same platform event resolving the
 persisted Buddy conversation/scope, one claim, one stored message, and at most one action;
+redelivery after the platform account is remapped to another Smart Panel actor resolving the original delivery claim and
+executing nothing; conversation deletion followed by a genuinely new event creating the next binding generation, while
+an old-event replay returns its retained outcome without recreating the deleted conversation or invoking the model;
+deletion racing `MODEL_IN_FLIGHT`, `ACTION_PLANNED`, and uncertain dispatch; expired/stale delivery rejection after the
+documented retention window;
 REST/voice/Discord/Telegram/WhatsApp conversation/identity/access propagation; rejection of a mismatched request-context
 conversation ID; unmapped platform users under empty/allow-all admission remain read-only;
 mapped/explicitly action-allowlisted users receive only their authorized access kinds; parent request ID preservation and
@@ -1367,6 +1400,8 @@ designated safe targets and reversible values. Scale/shadow evaluation must neve
       execute an action twice even when the provider returns a different tool-call ID.
 - [ ] Discord/Telegram/WhatsApp bindings survive process restart, and replay of one stable platform event resolves the
       same Buddy conversation/idempotency scope and cannot duplicate messages or actions.
+- [ ] Messaging replay protection survives actor remapping and conversation deletion: old events resolve retained claims,
+      while only new events may establish the next conversation binding generation.
 - [ ] Shared home-query services are usable by Buddy with MCP externally disabled.
 - [ ] MCP transport/auth/policy/configuration remains independent and externally backward compatible.
 - [ ] Existing heartbeat/evaluator full-context behavior remains unchanged.
