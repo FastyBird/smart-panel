@@ -250,6 +250,35 @@ describe('McpReadToolService', () => {
 	});
 
 	it('reauthorizes a tool call and returns structured installation metadata', async () => {
+		const securityStatus = {
+			armed_state: 'armed_away',
+			alarm_state: 'triggered',
+			highest_severity: 'critical',
+			active_alerts_count: 2,
+			has_critical_alert: true,
+			active_alerts: [
+				{
+					id: 'alert-id',
+					type: 'intrusion',
+					severity: 'critical',
+					timestamp: '2026-08-15T08:00:00.000Z',
+					acknowledged: false,
+					source_device_id: '10000000-0000-4000-8000-000000000001',
+					message: 'Entry sensor opened while armed',
+				},
+			],
+			alerts_truncated: true,
+			devices_truncated: true,
+			channels_truncated: true,
+			properties_truncated: true,
+			state_truncated: true,
+			last_event: {
+				id: 'event-id',
+				type: 'alarm_triggered',
+				timestamp: '2026-08-15T08:00:00.000Z',
+			},
+		};
+		contextService.getSecurityStatus.mockResolvedValue(securityStatus);
 		service.register(server(), authInfo([McpCapability.READ]));
 		const callback = callbacks.get('get_security_status');
 
@@ -265,7 +294,8 @@ describe('McpReadToolService', () => {
 		expect(result?.structuredContent.installation).toEqual(expect.objectContaining({ id: 'installation-id' }));
 		expect(result?.structuredContent.tool).toBe('get_security_status');
 		expect(result?.structuredContent.request_id).toBe('17');
-		expect(result?.structuredContent.data).toEqual({ active_alerts_count: 0 });
+		expect(result?.structuredContent.data).toBe(securityStatus);
+		expect(result?.structuredContent.data).toEqual(securityStatus);
 		expect(auditService.recordToolResult).toHaveBeenCalledWith(
 			expect.objectContaining({
 				requestId: '17',
