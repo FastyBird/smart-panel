@@ -506,6 +506,14 @@ worker/process waits only within the request deadline, then returns a typed in-p
 must not invoke the model concurrently. The same key with a different text/audio digest returns a typed conflict and
 executes nothing.
 
+Store this state machine in a new `BuddyRequestClaimEntity` created by an incremental migration. Its database-enforced
+unique key uses source, a normalized non-null actor claim key, stable idempotency scope, and request ID; action-capable
+requests require a stable verified actor key, while any read-only anonymous sentinel remains isolated by source and
+scope. Bound columns include the resolved Buddy conversation ID, payload digest, state, lease owner/expiry, optimistic
+version, bounded canonical plan/outcome references, and timestamps. `BuddyRequestIdempotencyService` owns transactional
+create-or-read and compare-and-swap transitions; an in-memory map may only optimize joining requests already owned by
+this process and is never the authority for uniqueness, leases, or restart recovery.
+
 Before any physical dispatch, persist the complete bounded canonical action plan—validated tool name, canonical targets,
 normalized arguments, fingerprint, user-evidenced allowance/occurrence slot, and execution identity—and transition the
 claim atomically to `ACTION_PLANNED`. Immediately before invoking a domain action, durably commit `ACTION_DISPATCHING`
@@ -845,7 +853,8 @@ apps/backend/src/modules/home-context/
 apps/backend/src/modules/buddy/
 ├── entities/
 │   ├── buddy-conversation.entity.ts
-│   └── buddy-messaging-conversation-binding.entity.ts
+│   ├── buddy-messaging-conversation-binding.entity.ts
+│   └── buddy-request-claim.entity.ts
 ├── platforms/
 │   └── llm-provider.platform.ts
 ├── services/
@@ -875,6 +884,7 @@ apps/backend/src/modules/spaces/services/    # bounded filtered space search as 
 apps/backend/src/migrations/
 ├── <next-timestamp>-AddBuddyActionExecutionLedger.ts # only if existing command storage cannot enforce idempotency
 ├── <next-timestamp>-AddBuddyMessagingConversationBinding.ts
+├── <next-timestamp>-AddBuddyRequestClaims.ts
 └── <next-timestamp>-AddBuddyConversationMemory.ts
 ```
 
@@ -971,6 +981,7 @@ snapshots are produced through the shared query layer without making that eager 
 - `apps/backend/src/modules/buddy/platforms/llm-provider.platform.ts`
 - `apps/backend/src/modules/buddy/controllers/buddy-conversations.controller.ts`
 - `apps/backend/src/modules/buddy/entities/buddy-messaging-conversation-binding.entity.ts`
+- `apps/backend/src/modules/buddy/entities/buddy-request-claim.entity.ts`
 - `apps/backend/src/modules/buddy/services/buddy-conversation.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-messaging-conversation-binding.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-request-idempotency.service.ts`
@@ -979,6 +990,7 @@ snapshots are produced through the shared query layer without making that eager 
 - Buddy LLM provider plugins/adapters and their specs
 - Buddy Discord, Telegram, and WhatsApp adapters and their specs
 - New incremental migration for the persistent messaging-conversation binding
+- New incremental migration for the durable Buddy request-claim table and its unique/lease indexes
 - Existing command/scene/intent idempotency persistence, or a minimal Buddy action-execution ledger entity/service and
   incremental migration if existing storage cannot enforce a unique execution identity
 - Backend Swagger decorators/error models plus generated OpenAPI/admin/panel artifacts for the idempotency header/conflict
@@ -1020,6 +1032,10 @@ snapshots are produced through the shared query layer without making that eager 
       actor-qualified claim ID, canonical action fingerprint, and deterministic occurrence slot—independently of provider
       call IDs. Reuse an existing durable idempotency authority or add a bounded persistent ledger if none spans
       retries/restarts.
+- [ ] Add `BuddyRequestClaimEntity`, its incremental migration/database constraints, and transactional repository/service
+      transitions for claim creation, lease takeover, plan persistence, dispatch intent, terminal outcomes, and bounded
+      retention. Treat the database as the cross-process/restart authority; process-local single-flight is only an
+      optimization.
 - [ ] Commit an `ACTION_DISPATCHING` intent containing `actionExecutionId` before every domain invocation. Resume
       `ACTION_PLANNED` only because no invocation can precede that commit. Recover `ACTION_DISPATCHING`/`ACTION_DISPATCHED`
       through authoritative downstream idempotency when available; otherwise mark the outcome `INDETERMINATE` and never
@@ -1039,6 +1055,8 @@ snapshots are produced through the shared query layer without making that eager 
 support; client-timeout retry after restart with the same key; identical uploaded audio with different mocked STT output
 reusing one claim; different audio with identical mocked transcription returning HTTP 409 and zero execution; text digest
 conflict behavior; two actors in one conversation legitimately using the same key/action without ledger collision;
+request-claim migration/schema tests for the normalized composite unique key, lease/version compare-and-swap, bounded
+plan/outcome persistence, retention, and concurrent create-or-read from two database connections;
 same-process duplicate while the first model call is blocked joining one provider invocation; cross-worker duplicate
 returning in-progress/`Retry-After` without provider dispatch; safe lease takeover after a crash in `MODEL_IN_FLIGHT`
 before any action plan exists; crash while safely `ACTION_PLANNED` resuming the persisted plan without an action-capable
@@ -1064,7 +1082,8 @@ max-iteration behavior.
 structured result, supports a second dependent call, and produces a final response grounded in the result status/data.
 This explicitly includes the OpenAI Codex Responses adapter's native call/output items. No timed-out or replayed action
 test executes the same physical command twice or reports an unproven terminal outcome, and no exact duplicate request
-invokes a second concurrent provider call.
+invokes a second concurrent provider call. A fresh process can recover every nonexpired/nonterminal request claim using
+only durable state and cannot bypass the database uniqueness or lease rules.
 
 ### Phase 3 — Add Buddy read tools
 
