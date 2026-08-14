@@ -9,7 +9,8 @@ This baseline characterizes the current eager Buddy conversation path before the
 It is deliberately a green test suite: known budget failures are asserted as measured current behavior, not left as
 failing CI tests.
 
-The deterministic corpus covers all 16 message classes from the plan. Today every row— including greetings, general
+The deterministic corpus covers 18 cases across all message classes from the plan, including resolvable, missing, and
+ambiguous recent-reference follow-ups. Today every row—including greetings, general
 questions, unsupported requests, and single-domain queries—calls `BuddyContextService.buildContext(...)` exactly once
 before provider dispatch. The future strategy/domain expectations are checked in at
 `apps/backend/src/modules/buddy/testing/buddy-context-evaluation.matrix.ts` and remain stable through the later phases.

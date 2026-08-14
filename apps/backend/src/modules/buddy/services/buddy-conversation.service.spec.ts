@@ -293,11 +293,14 @@ describe('BuddyConversationService', () => {
 
 		it.each(BUDDY_CONTEXT_EVALUATION_MATRIX)(
 			'should eagerly build one full context snapshot for $id',
-			async ({ conversationSpaceId, message }) => {
+			async ({ conversationSpaceId, message, priorTurns = [] }) => {
 				conversationRepo.findOne.mockResolvedValue({
 					...mockConversation,
 					spaceId: conversationSpaceId,
 				});
+				messageRepo.find.mockResolvedValue(
+					priorTurns.map(({ role, content }) => ({ role: role as MessageRole, content })),
+				);
 
 				await service.sendMessage('conv-1', message);
 

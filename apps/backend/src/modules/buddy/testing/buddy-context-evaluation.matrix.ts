@@ -7,10 +7,23 @@ export type BuddyContextEvaluationStrategy =
 
 export type BuddyContextEvaluationDomain = 'general' | 'home' | 'weather' | 'energy' | 'security' | 'history';
 
+export interface BuddyContextEvaluationEntityReference {
+	kind: 'device' | 'space' | 'scene' | 'property';
+	id: string;
+	name: string;
+}
+
+export interface BuddyContextEvaluationPriorTurn {
+	role: 'user' | 'assistant';
+	content: string;
+	entityReferences?: readonly BuddyContextEvaluationEntityReference[];
+}
+
 export interface BuddyContextEvaluationCase {
 	id: string;
 	message: string;
 	conversationSpaceId: string | null;
+	priorTurns?: readonly BuddyContextEvaluationPriorTurn[];
 	expectedDomains: BuddyContextEvaluationDomain[];
 	expectedStrategy: BuddyContextEvaluationStrategy;
 	expectsAction: boolean;
@@ -142,9 +155,46 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 		currentEagerSnapshot: true,
 	},
 	{
-		id: 'recent-reference-follow-up',
+		id: 'recent-reference-follow-up-resolvable',
 		message: 'Turn it off',
 		conversationSpaceId: 'space-000',
+		priorTurns: [
+			{ role: 'user', content: 'Turn on the reading lamp.' },
+			{
+				role: 'assistant',
+				content: 'The reading lamp is now on.',
+				entityReferences: [{ kind: 'device', id: 'device-reading-lamp', name: 'Reading lamp' }],
+			},
+		],
+		expectedDomains: ['home'],
+		expectedStrategy: 'deterministic-action',
+		expectsAction: true,
+		currentEagerSnapshot: true,
+	},
+	{
+		id: 'recent-reference-follow-up-missing',
+		message: 'Turn it off',
+		conversationSpaceId: 'space-000',
+		expectedDomains: ['home'],
+		expectedStrategy: 'clarify',
+		expectsAction: true,
+		currentEagerSnapshot: true,
+	},
+	{
+		id: 'recent-reference-follow-up-ambiguous',
+		message: 'Turn it off',
+		conversationSpaceId: 'space-000',
+		priorTurns: [
+			{ role: 'user', content: 'Turn on both bedside lamps.' },
+			{
+				role: 'assistant',
+				content: 'Both bedside lamps are now on.',
+				entityReferences: [
+					{ kind: 'device', id: 'device-left-bedside-lamp', name: 'Left bedside lamp' },
+					{ kind: 'device', id: 'device-right-bedside-lamp', name: 'Right bedside lamp' },
+				],
+			},
+		],
 		expectedDomains: ['home'],
 		expectedStrategy: 'clarify',
 		expectsAction: true,
