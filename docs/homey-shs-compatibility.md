@@ -1,7 +1,7 @@
 # Homey SHS Compatibility Record
 
 **Status:** In progress; safe inventory, SDK session/cleanup, and pre-restart mDNS host-match evidence captured; live
-capability-event, write, error-matrix, reconnect, and recovery evidence pending
+capability-event, write, error-matrix, reconnect, recovery, and credential-rotation evidence pending
 
 **Started:** 2026-08-12
 
@@ -26,6 +26,7 @@ file. Live results use synthetic aliases and sanitized captures only.
 | Socket.IO events and reconnect                        | Recovery probe ready; live restart pending     | Capture capability/availability events, restart, and reconnect ordering |
 | Allowlisted capability write                          | Hard-gated probe implemented, disabled         | Use only the designated harmless test capability                        |
 | Error classification                                  | SDK invalid key returned `401`; matrix pending | Verify missing-scope, bad-URL, unavailable, and timeout behavior        |
+| API-key revocation and replacement                    | Operator-controlled probe ready                | Revoke only a dedicated test key during the gated observation window    |
 | Disposable-device lifecycle                           | Contract defined, disabled                     | Use only the separately gated virtual/test device                       |
 | mDNS discovery                                        | Partial pre-restart observation                | Attribute the generic host record and repeat after SHS restart          |
 | SDK decision                                          | Live session/cleanup passed; provisional hold  | Complete event, timeout, cleanup-failure, and reconnect comparison      |
@@ -224,6 +225,48 @@ cleanup failure writes no report and exposes only a fixed sanitized error.
 
 This runbook does not authorize Smart Panel tooling or an automated agent to restart SHS. Live evidence remains pending
 until an operator intentionally performs the restart while the gated probe is open.
+
+## Operator-controlled API-key revocation and replacement probe
+
+The credential-rotation probe verifies the remaining revoked-key behavior without changing devices or revoking a key
+itself. Before attaching either credential, it performs the unauthenticated system ping and requires the Homey identity
+and version headers. It then proves that both the primary dedicated test key and a distinct replacement key can read
+device inventory. The operator revokes only the primary test key through Homey. The probe polls the same pinned
+inventory endpoint until that key returns HTTP `401`, then proves the replacement key still works. It performs only GET
+requests, refuses redirects, and sends both keys only after the configured endpoint proves it is Homey.
+
+Do not use a key shared by Smart Panel, another application, or a person. Create two disposable test keys with
+`homey.device.readonly`, enter the replacement without adding it to shell history, and ensure every write, lifecycle,
+and recovery gate is unset:
+
+```bash
+read -r -s FB_HOMEY_SHS_REPLACEMENT_API_KEY
+export FB_HOMEY_SHS_REPLACEMENT_API_KEY
+unset FB_HOMEY_SHS_WRITE_ENABLE FB_HOMEY_SHS_WRITE_DEVICE_ID FB_HOMEY_SHS_WRITE_CAPABILITY_ID
+unset FB_HOMEY_SHS_WRITE_VALUE FB_HOMEY_SHS_LIFECYCLE_ENABLE FB_HOMEY_SHS_LIFECYCLE_DEVICE_ID
+unset FB_HOMEY_SHS_LIFECYCLE_OPERATIONS FB_HOMEY_SHS_RECOVERY_ENABLE FB_HOMEY_SHS_RECOVERY_OBSERVE_MS
+export FB_HOMEY_SHS_CREDENTIAL_ROTATION_ENABLE=I_WILL_REVOKE_THE_TEST_KEY_DURING_THIS_PROBE
+pnpm run homey:probe-credential-rotation
+```
+
+Wait for `Homey credential rotation observation window is open`, then revoke only the key currently stored in
+`FB_HOMEY_SHS_API_KEY`. `FB_HOMEY_SHS_CREDENTIAL_ROTATION_OBSERVE_MS` controls the operator window from `10000` through
+`300000` milliseconds and defaults to `90000`. Each inventory request remains independently bounded by
+`FB_HOMEY_SHS_TIMEOUT_MS`, while the whole polling loop cannot exceed the operator window. Any transport failure,
+unexpected status, replacement-key failure, timeout, or report-safety failure writes no evidence.
+
+The exact-schema report contains only six fixed ordered event labels, completion booleans, and the expected `401`
+status. It contains no endpoint, token, device data, inventory count, response body, raw error, or identifier. After a
+successful run, replace the exported primary value for any later probe and clear the rotation-only variables:
+
+```bash
+export FB_HOMEY_SHS_API_KEY="$FB_HOMEY_SHS_REPLACEMENT_API_KEY"
+unset FB_HOMEY_SHS_REPLACEMENT_API_KEY FB_HOMEY_SHS_CREDENTIAL_ROTATION_ENABLE
+unset FB_HOMEY_SHS_CREDENTIAL_ROTATION_OBSERVE_MS
+```
+
+This runbook authorizes only the operator to revoke the dedicated primary test key. The probe and automated agents do
+not create, revoke, rotate, or otherwise administer Homey credentials.
 
 ## Privacy-safe mDNS observation probe
 
