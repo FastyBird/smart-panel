@@ -18,19 +18,19 @@ file. Live results use synthetic aliases and sanitized captures only.
 
 ## Current gate status
 
-| Area                                                  | Status                                         | Evidence still required                                                 |
-| ----------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------- |
-| Credential-safe read probe                            | Passed on SHS `13.4.0` over HTTP `4859`        | Repeat over HTTPS `4860` if enabled                                     |
-| System, zone, device inventory, and individual device | Captured and sanitized                         | Add lifecycle delta evidence on the disposable test device              |
-| Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read   | Add allowlisted write and read-back evidence                            |
-| Socket.IO events and reconnect                        | Recovery probe ready; live restart pending     | Capture capability/availability events, restart, and reconnect ordering |
-| Allowlisted capability write                          | Hard-gated probe implemented, disabled         | Use only the designated harmless test capability                        |
-| Error classification                                  | SDK invalid key returned `401`; matrix pending | Verify missing-scope, bad-URL, unavailable, and timeout behavior        |
-| API-key revocation and replacement                    | Operator-controlled probe ready                | Revoke only a dedicated test key during the gated observation window    |
-| Disposable-device lifecycle                           | Contract defined, disabled                     | Use only the separately gated virtual/test device                       |
-| mDNS discovery                                        | Partial pre-restart observation                | Attribute the generic host record and repeat after SHS restart          |
-| SDK decision                                          | Live session/cleanup passed; provisional hold  | Complete event, timeout, cleanup-failure, and reconnect comparison      |
-| Sanitized fixture corpus                              | Nine representative live fixtures promoted     | Add event/reconnect fixtures and missing capability families/classes    |
+| Area                                                  | Status                                          | Evidence still required                                              |
+| ----------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------- |
+| Credential-safe read probe                            | Passed on SHS `13.4.0` over HTTP `4859`         | Repeat over HTTPS `4860` if enabled                                  |
+| System, zone, device inventory, and individual device | Captured and sanitized                          | Add lifecycle delta evidence on the disposable test device           |
+| Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read    | Add allowlisted write and read-back evidence                         |
+| Socket.IO events and reconnect                        | Restart/network probes ready; live runs pending | Capture capability/availability events and both recovery orderings   |
+| Allowlisted capability write                          | Hard-gated probe implemented, disabled          | Use only the designated harmless test capability                     |
+| Error classification                                  | SDK invalid key returned `401`; matrix pending  | Verify missing-scope, bad-URL, unavailable, and timeout behavior     |
+| API-key revocation and replacement                    | Operator-controlled probe ready                 | Revoke only a dedicated test key during the gated observation window |
+| Disposable-device lifecycle                           | Contract defined, disabled                      | Use only the separately gated virtual/test device                    |
+| mDNS discovery                                        | Partial pre-restart observation                 | Attribute the generic host record and repeat after SHS restart       |
+| SDK decision                                          | Live session/cleanup passed; provisional hold   | Complete event, timeout, cleanup-failure, and reconnect comparison   |
+| Sanitized fixture corpus                              | Nine representative live fixtures promoted      | Add event/reconnect fixtures and missing capability families/classes |
 
 ## Installation evidence
 
@@ -213,18 +213,53 @@ Start from the same interactive shell as the read-only probe, ensure every `FB_H
 unset FB_HOMEY_SHS_WRITE_ENABLE FB_HOMEY_SHS_WRITE_DEVICE_ID FB_HOMEY_SHS_WRITE_CAPABILITY_ID
 unset FB_HOMEY_SHS_WRITE_VALUE FB_HOMEY_SHS_LIFECYCLE_ENABLE FB_HOMEY_SHS_LIFECYCLE_DEVICE_ID
 unset FB_HOMEY_SHS_LIFECYCLE_OPERATIONS
+export FB_HOMEY_SHS_RECOVERY_SCENARIO=restart
 export FB_HOMEY_SHS_RECOVERY_ENABLE=I_WILL_RESTART_THE_TEST_SHS_DURING_THIS_PROBE
 pnpm run homey:probe-recovery
 ```
 
-Wait for `Homey recovery observation window is open`, restart the test SHS, and do not alter networking, credentials,
-or ordinary household devices during the run. `FB_HOMEY_SHS_RECOVERY_OBSERVE_MS` optionally controls the operator
-window from `10000` through `300000` milliseconds and defaults to `90000`. SDK creation, manager operations,
-post-reconnect verification, and cleanup remain independently bounded by `FB_HOMEY_SHS_TIMEOUT_MS`. A timeout or
-cleanup failure writes no report and exposes only a fixed sanitized error.
+Wait for `Homey restart recovery observation window is open`, restart the test SHS, and do not alter networking,
+credentials, or ordinary household devices during the run. `FB_HOMEY_SHS_RECOVERY_OBSERVE_MS` optionally controls the
+operator window from `10000` through `300000` milliseconds and defaults to `90000`. SDK creation, manager operations,
+post-reconnect verification, and cleanup remain independently bounded by `FB_HOMEY_SHS_TIMEOUT_MS`. A timeout or cleanup
+failure writes no report and exposes only a fixed sanitized error.
 
 This runbook does not authorize Smart Panel tooling or an automated agent to restart SHS. Live evidence remains pending
 until an operator intentionally performs the restart while the gated probe is open.
+
+### Operator-controlled network interruption and restoration
+
+The same recovery harness can record a network interruption as a separate exact-schema scenario. It does not change
+interfaces, routes, firewall rules, containers, or network state. After the manager subscription is active, the
+operator temporarily interrupts only the designated test SHS network path. The probe prints a second message after it
+observes the socket disconnect; only then does the operator restore the test path. The probe requires transport
+reconnection, manager resubscription, a fresh inventory read, and complete cleanup exactly as it does for restart.
+
+Start from the base read-only environment, ensure every write and lifecycle variable is unset, then select the network
+scenario and its distinct acknowledgement:
+
+```bash
+unset FB_HOMEY_SHS_WRITE_ENABLE FB_HOMEY_SHS_WRITE_DEVICE_ID FB_HOMEY_SHS_WRITE_CAPABILITY_ID
+unset FB_HOMEY_SHS_WRITE_VALUE FB_HOMEY_SHS_LIFECYCLE_ENABLE FB_HOMEY_SHS_LIFECYCLE_DEVICE_ID
+unset FB_HOMEY_SHS_LIFECYCLE_OPERATIONS
+export FB_HOMEY_SHS_RECOVERY_SCENARIO=network-interruption
+export FB_HOMEY_SHS_RECOVERY_ENABLE=I_WILL_INTERRUPT_AND_RESTORE_THE_TEST_SHS_NETWORK_DURING_THIS_PROBE
+pnpm run homey:probe-recovery
+```
+
+Wait for the network-scenario observation window, interrupt only the test SHS path, then wait for `Homey network
+disconnect observed` before restoring it. Do not interrupt the broader household LAN, the Smart Panel agent host, or an
+ordinary Homey installation. The restart acknowledgement is rejected in network mode and the network acknowledgement
+is rejected in restart mode, preventing one operator authorization from being reused for a different action.
+
+After the run, restore the default restart mode explicitly or clear the scenario and acknowledgement:
+
+```bash
+unset FB_HOMEY_SHS_RECOVERY_SCENARIO FB_HOMEY_SHS_RECOVERY_ENABLE
+```
+
+This runbook authorizes only the operator to interrupt and restore the dedicated test SHS path. The probe and automated
+agents do not change networking.
 
 ## Operator-controlled API-key revocation and replacement probe
 
@@ -245,6 +280,7 @@ export FB_HOMEY_SHS_REPLACEMENT_API_KEY
 unset FB_HOMEY_SHS_WRITE_ENABLE FB_HOMEY_SHS_WRITE_DEVICE_ID FB_HOMEY_SHS_WRITE_CAPABILITY_ID
 unset FB_HOMEY_SHS_WRITE_VALUE FB_HOMEY_SHS_LIFECYCLE_ENABLE FB_HOMEY_SHS_LIFECYCLE_DEVICE_ID
 unset FB_HOMEY_SHS_LIFECYCLE_OPERATIONS FB_HOMEY_SHS_RECOVERY_ENABLE FB_HOMEY_SHS_RECOVERY_OBSERVE_MS
+unset FB_HOMEY_SHS_RECOVERY_SCENARIO
 export FB_HOMEY_SHS_CREDENTIAL_ROTATION_ENABLE=I_WILL_REVOKE_THE_TEST_KEY_DURING_THIS_PROBE
 pnpm run homey:probe-credential-rotation
 ```
