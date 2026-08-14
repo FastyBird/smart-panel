@@ -184,6 +184,80 @@ describe('McpTargetDiscoveryToolService', () => {
 		expect(channelsPropertiesService.findWritableCandidates).not.toHaveBeenCalled();
 	});
 
+	it('queries and returns 50 triggerable scenes without marking the scene collection as truncated', async () => {
+		providerTools = [providerTool('run_scene', ToolAccessKind.TRIGGER)];
+		const targets = triggerableScenes(50);
+		scenesService.findTriggerableSummaryPage.mockResolvedValue({ scenes: targets, total: 50 });
+		service.register(server(), authInfo([McpCapability.TRIGGER]));
+
+		const result = await callbacks.get('list_trigger_targets')?.({}, requestContext([McpCapability.TRIGGER]));
+		const data = result?.structuredContent.data as {
+			scenes: Array<{ scene_id: string }>;
+			truncated: { scenes: boolean; spaces: boolean };
+		};
+
+		expect(scenesService.findTriggerableSummaryPage).toHaveBeenCalledWith(50);
+		expect(data.scenes).toHaveLength(50);
+		expect(data.scenes[0]?.scene_id).toBe(targets[0]?.id);
+		expect(data.scenes[49]?.scene_id).toBe(targets[49]?.id);
+		expect(data.truncated.scenes).toBe(false);
+	});
+
+	it('returns 50 of 51 triggerable scenes and marks the scene collection as truncated', async () => {
+		providerTools = [providerTool('run_scene', ToolAccessKind.TRIGGER)];
+		const targets = triggerableScenes(50);
+		scenesService.findTriggerableSummaryPage.mockResolvedValue({ scenes: targets, total: 51 });
+		service.register(server(), authInfo([McpCapability.TRIGGER]));
+
+		const result = await callbacks.get('list_trigger_targets')?.({}, requestContext([McpCapability.TRIGGER]));
+		const data = result?.structuredContent.data as {
+			scenes: Array<{ scene_id: string }>;
+			truncated: { scenes: boolean; spaces: boolean };
+		};
+
+		expect(scenesService.findTriggerableSummaryPage).toHaveBeenCalledWith(50);
+		expect(data.scenes).toHaveLength(50);
+		expect(data.scenes[49]?.scene_id).toBe(targets[49]?.id);
+		expect(data.truncated.scenes).toBe(true);
+	});
+
+	it('queries and returns 50 lighting spaces without marking the space collection as truncated', async () => {
+		providerTools = [providerTool('set_space_lighting', ToolAccessKind.TRIGGER)];
+		const targets = lightingSpaces(50);
+		spacesService.findLightingTriggerSummaryPage.mockResolvedValue({ spaces: targets, total: 50 });
+		service.register(server(), authInfo([McpCapability.TRIGGER]));
+
+		const result = await callbacks.get('list_trigger_targets')?.({}, requestContext([McpCapability.TRIGGER]));
+		const data = result?.structuredContent.data as {
+			spaces: Array<{ space_id: string }>;
+			truncated: { scenes: boolean; spaces: boolean };
+		};
+
+		expect(spacesService.findLightingTriggerSummaryPage).toHaveBeenCalledWith(50);
+		expect(data.spaces).toHaveLength(50);
+		expect(data.spaces[0]?.space_id).toBe(targets[0]?.id);
+		expect(data.spaces[49]?.space_id).toBe(targets[49]?.id);
+		expect(data.truncated.spaces).toBe(false);
+	});
+
+	it('returns 50 of 51 lighting spaces and marks the space collection as truncated', async () => {
+		providerTools = [providerTool('set_space_lighting', ToolAccessKind.TRIGGER)];
+		const targets = lightingSpaces(50);
+		spacesService.findLightingTriggerSummaryPage.mockResolvedValue({ spaces: targets, total: 51 });
+		service.register(server(), authInfo([McpCapability.TRIGGER]));
+
+		const result = await callbacks.get('list_trigger_targets')?.({}, requestContext([McpCapability.TRIGGER]));
+		const data = result?.structuredContent.data as {
+			spaces: Array<{ space_id: string }>;
+			truncated: { scenes: boolean; spaces: boolean };
+		};
+
+		expect(spacesService.findLightingTriggerSummaryPage).toHaveBeenCalledWith(50);
+		expect(data.spaces).toHaveLength(50);
+		expect(data.spaces[49]?.space_id).toBe(targets[49]?.id);
+		expect(data.truncated.spaces).toBe(true);
+	});
+
 	it('does not advertise or control writable properties without a registered device platform', async () => {
 		providerTools = [providerTool('control_device', ToolAccessKind.WRITE)];
 		const target = property('10000000-0000-4000-8000-000000000001', PermissionType.READ_WRITE);
@@ -598,11 +672,30 @@ describe('McpTargetDiscoveryToolService', () => {
 		} as SceneEntity;
 	}
 
+	function triggerableScenes(count: number): SceneEntity[] {
+		return Array.from({ length: count }, (_, index) => ({
+			id: `40000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+			name: `Scene ${index + 1}`,
+			category: SceneCategory.GENERIC,
+			enabled: true,
+			triggerable: true,
+			primarySpaceId: null,
+		})) as SceneEntity[];
+	}
+
 	function space(): SpaceEntity {
 		return {
 			id: '50000000-0000-4000-8000-000000000001',
 			name: 'Living room',
 			type: SpaceType.ROOM,
 		} as SpaceEntity;
+	}
+
+	function lightingSpaces(count: number): SpaceEntity[] {
+		return Array.from({ length: count }, (_, index) => ({
+			id: `50000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+			name: `Room ${index + 1}`,
+			type: SpaceType.ROOM,
+		})) as SpaceEntity[];
 	}
 });

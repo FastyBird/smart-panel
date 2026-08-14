@@ -124,6 +124,10 @@ describe('McpContextService', () => {
 		);
 	});
 
+	afterEach(() => {
+		jest.useRealTimers();
+	});
+
 	it('returns stable installation metadata with effective capabilities', async () => {
 		await expect(
 			service.getInstallation([McpCapability.READ], 'https://panel.test/api/v1/modules/mcp'),
@@ -222,6 +226,8 @@ describe('McpContextService', () => {
 	});
 
 	it('returns the exact whole-home composite contract with stable collection ordering', async () => {
+		jest.useFakeTimers();
+		jest.setSystemTime(new Date('2026-08-14T12:00:00.000Z'));
 		spaces.findSummaryPage.mockResolvedValue({
 			spaces: [
 				{ id: 'room-1', name: 'Kitchen', type: SpaceType.ROOM, parentId: null } as unknown as SpaceEntity,
@@ -262,6 +268,48 @@ describe('McpContextService', () => {
 			],
 			total: 1,
 		});
+		weather.getPrimaryWeather.mockResolvedValue({
+			locationId: 'location-1',
+			location: 'Prague',
+			current: { temperature: 21, condition: 'clear' },
+			forecast: [{ date: '2026-08-15', temperature: 23 }],
+		});
+		energy.getSummary.mockResolvedValue({
+			totalConsumptionKwh: 12.5,
+			totalProductionKwh: 3.25,
+			totalGridImportKwh: 10,
+			totalGridExportKwh: 0.75,
+			hasGridMetrics: true,
+			lastUpdatedAt: '2026-08-14T11:55:00.000Z',
+		});
+		security.getBoundedStatus.mockResolvedValue({
+			status: {
+				armedState: 'armed_away',
+				alarmState: 'idle',
+				highestSeverity: 'warning',
+				activeAlertsCount: 1,
+				hasCriticalAlert: false,
+				activeAlerts: [
+					{
+						id: 'alert-1',
+						type: 'intrusion',
+						severity: 'warning',
+						timestamp: '2026-08-14T11:58:00.000Z',
+						acknowledged: false,
+						sourceDeviceId: 'device-1',
+						message: 'Motion detected',
+					},
+				],
+				lastEvent: {
+					type: 'intrusion',
+					timestamp: '2026-08-14T11:58:00.000Z',
+					sourceDeviceId: 'device-1',
+				},
+			},
+			devicesTruncated: false,
+			channelsTruncated: false,
+			propertiesTruncated: false,
+		});
 
 		await expect(service.getHomeContext()).resolves.toEqual({
 			scope: { type: 'home' },
@@ -290,30 +338,133 @@ describe('McpContextService', () => {
 					primary_space_id: 'room-1',
 				},
 			],
-			weather: null,
-			energy: null,
-			security: null,
+			weather: {
+				location_id: 'location-1',
+				location: 'Prague',
+				current: { temperature: 21, condition: 'clear' },
+				forecast: [{ date: '2026-08-15', temperature: 23 }],
+			},
+			energy: {
+				scope: { type: 'home' },
+				from: '2026-08-13T12:00:00.000Z',
+				to: '2026-08-14T12:00:00.000Z',
+				totalConsumptionKwh: 12.5,
+				totalProductionKwh: 3.25,
+				totalGridImportKwh: 10,
+				totalGridExportKwh: 0.75,
+				hasGridMetrics: true,
+				lastUpdatedAt: '2026-08-14T11:55:00.000Z',
+			},
+			security: {
+				armed_state: 'armed_away',
+				alarm_state: 'idle',
+				highest_severity: 'warning',
+				active_alerts_count: 1,
+				has_critical_alert: false,
+				active_alerts: [
+					{
+						id: 'alert-1',
+						type: 'intrusion',
+						severity: 'warning',
+						timestamp: '2026-08-14T11:58:00.000Z',
+						acknowledged: false,
+						source_device_id: 'device-1',
+						message: 'Motion detected',
+					},
+				],
+				alerts_truncated: false,
+				devices_truncated: false,
+				channels_truncated: false,
+				properties_truncated: false,
+				state_truncated: false,
+				last_event: {
+					type: 'intrusion',
+					timestamp: '2026-08-14T11:58:00.000Z',
+					sourceDeviceId: 'device-1',
+				},
+			},
 			limits: { spaces_truncated: false, devices_truncated: false, scenes_truncated: false },
 		});
 	});
 
 	it('returns the exact scoped composite contract', async () => {
+		jest.useFakeTimers();
+		jest.setSystemTime(new Date('2026-08-14T12:00:00.000Z'));
 		spaces.findOne.mockResolvedValue({
 			id: 'room-1',
 			name: 'Kitchen',
 			type: SpaceType.ROOM,
 			parentId: null,
 		} as unknown as SpaceEntity);
-		energy.getSpaceSummary.mockRejectedValue(new Error('energy unavailable'));
+		weather.getPrimaryWeather.mockResolvedValue({
+			locationId: 'location-1',
+			location: 'Prague',
+			current: { temperature: 21, condition: 'clear' },
+			forecast: [{ date: '2026-08-15', temperature: 23 }],
+		});
+		energy.getSpaceSummary.mockResolvedValue({
+			totalConsumptionKwh: 4,
+			totalProductionKwh: 1,
+			totalGridImportKwh: 3.5,
+			totalGridExportKwh: 0.5,
+			netKwh: 3,
+			netGridKwh: 3,
+			hasGridMetrics: true,
+			lastUpdatedAt: '2026-08-14T11:55:00.000Z',
+		});
+		security.getBoundedStatus.mockResolvedValue({
+			status: {
+				armedState: 'disarmed',
+				alarmState: null,
+				highestSeverity: 'info',
+				activeAlertsCount: 0,
+				hasCriticalAlert: false,
+				activeAlerts: [],
+				lastEvent: undefined,
+			},
+			devicesTruncated: false,
+			channelsTruncated: false,
+			propertiesTruncated: false,
+		});
 
 		await expect(service.getHomeContext('room-1')).resolves.toEqual({
 			scope: { type: 'space', id: 'room-1', name: 'Kitchen' },
 			spaces: [{ id: 'room-1', name: 'Kitchen', type: SpaceType.ROOM, parent_id: null, device_count: 0 }],
 			devices: [],
 			scenes: [],
-			weather: null,
-			energy: null,
-			security: null,
+			weather: {
+				location_id: 'location-1',
+				location: 'Prague',
+				current: { temperature: 21, condition: 'clear' },
+				forecast: [{ date: '2026-08-15', temperature: 23 }],
+			},
+			energy: {
+				scope: { type: 'space', id: 'room-1' },
+				from: '2026-08-13T12:00:00.000Z',
+				to: '2026-08-14T12:00:00.000Z',
+				totalConsumptionKwh: 4,
+				totalProductionKwh: 1,
+				totalGridImportKwh: 3.5,
+				totalGridExportKwh: 0.5,
+				netKwh: 3,
+				netGridKwh: 3,
+				hasGridMetrics: true,
+				lastUpdatedAt: '2026-08-14T11:55:00.000Z',
+			},
+			security: {
+				armed_state: 'disarmed',
+				alarm_state: null,
+				highest_severity: 'info',
+				active_alerts_count: 0,
+				has_critical_alert: false,
+				active_alerts: [],
+				alerts_truncated: false,
+				devices_truncated: false,
+				channels_truncated: false,
+				properties_truncated: false,
+				state_truncated: false,
+				last_event: null,
+			},
 			limits: { spaces_truncated: false, devices_truncated: false, scenes_truncated: false },
 		});
 	});
