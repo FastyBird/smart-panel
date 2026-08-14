@@ -486,9 +486,14 @@ every network retry. Validate a conservative length/character format before the 
 The text controller hashes the canonical request payload. The audio controller computes a cryptographic digest from the
 uploaded bytes plus stable semantic fields before transcription and passes it through
 `BuddyRequestContext.idempotencyDigest`; never recompute audio idempotency from transcription text, which may vary across
-attempts or collide for different recordings. Messaging adapters use their stable source-qualified platform event/message
-ID plus a payload digest, and trusted internal callers supply a stable job/event ID and digest. A server-generated
-per-attempt ID is allowed only for explicitly read-only internal work and cannot authorize an action-capable turn.
+attempts or collide for different recordings. Immediately after hashing, the audio controller acquires the durable claim
+and transitions its owner to `PREPROCESSING` before calling any STT provider. Same-process duplicates join it;
+cross-worker duplicates wait only within the deadline or receive the typed in-progress response, and neither invokes STT.
+Persist the first successful bounded transcript and transition to `INPUT_READY` before model dispatch so recovery reuses
+it. An expired preprocessing lease may retry side-effect-free STT only when no transcript was committed. Messaging
+adapters use their stable source-qualified platform event/message ID plus a payload digest, and trusted internal callers
+supply a stable job/event ID and digest. A server-generated per-attempt ID is allowed only for explicitly read-only
+internal work and cannot authorize an action-capable turn.
 
 REST uses the stable route conversation ID as `idempotencyScopeId`. Messaging adapters derive a source-qualified opaque
 scope from the platform chat/channel/thread identity and persist an atomic mapping from that scope to the Buddy
@@ -517,8 +522,8 @@ payload digest are bound data, not messaging uniqueness inputs. A redelivery aft
 the original claim/outcome and cannot run under either the old or new actor; only a genuinely new platform event uses the
 new mapping. The service returns a stable
 `requestClaimId`. The claim is a durable state machine with an owner/lease and bounded stored outcome metadata, for
-example `RECEIVED`, `MODEL_IN_FLIGHT`, `ACTION_PLANNED`, `ACTION_DISPATCHING`, `ACTION_DISPATCHED`, `COMPLETED`, `FAILED`,
-`CANCELLED`, or `INDETERMINATE`.
+example `RECEIVED`, `PREPROCESSING`, `INPUT_READY`, `MODEL_IN_FLIGHT`, `ACTION_PLANNED`, `ACTION_DISPATCHING`,
+`ACTION_DISPATCHED`, `COMPLETED`, `FAILED`, `CANCELLED`, or `INDETERMINATE`.
 An exact duplicate with the same digest joins the existing in-process single-flight. A duplicate owned by another
 worker/process waits only within the request deadline, then returns a typed in-progress response with `Retry-After`; it
 must not invoke the model concurrently. The same key with a different text/audio digest returns a typed conflict and
@@ -533,6 +538,22 @@ state, lease owner/expiry, optimistic version, bounded canonical plan/outcome re
 `BuddyRequestIdempotencyService` owns transactional create-or-read and compare-and-swap transitions; an in-memory map may
 only optimize joining requests already owned by this process and is never the authority for uniqueness, leases, or
 restart recovery.
+
+Persist the canonical user message with its claim (or idempotently before `MODEL_IN_FLIGHT`) and key stored turn rows by
+`requestClaimId + role + ordinal`. Persist the final assistant message, bounded terminal outcome, and claim transition to
+`COMPLETED` in one database transaction. Recovery checks these uniquely keyed rows before provider dispatch: a committed
+terminal turn is reconciled/returned without invoking the model, while a fault between row writes rolls back the entire
+transaction. The request-claim migration adds the message linkage/unique index; conversation deletion may cascade the
+display messages only after the retained claim contains the bounded terminal outcome needed for replay.
+
+Messaging replies use a durable `BuddyOutboundDeliveryEntity` keyed by request claim, platform, opaque destination scope,
+and reply ordinal. After terminal turn commit, the adapter atomically creates/reuses `PENDING`, commits `DISPATCHING`
+before the platform send, and records `SENT` plus the returned platform message ID/digest. A redelivery whose row is
+`SENT` returns an internal `already_delivered` disposition and the adapter sends nothing. If a crash leaves
+`DISPATCHING`, recover through a platform-supported idempotency key/status lookup when authoritative; otherwise mark the
+delivery `INDETERMINATE` and suppress automatic resend, accepting a possible missing reply rather than a duplicate.
+`BuddyOutboundDeliveryService` provides the lease/CAS boundary, and request claims/bindings/outbound rows do not cascade
+on conversation deletion. Store only bounded outcome digests and opaque identifiers outside the canonical Buddy message.
 
 Before any physical dispatch, persist the complete bounded canonical action plan—validated tool name, canonical targets,
 normalized arguments, fingerprint, user-evidenced allowance/occurrence slot, and execution identity—and transition the
@@ -549,7 +570,8 @@ that only propagates a request ID and scene execution without a durable unique k
 `INDETERMINATE`, never redispatch, and disclose that the action may or may not have occurred. This deliberately accepts
 a possible false-unknown when a crash happens after the intent commit but before the domain call; it never risks a
 duplicate physical action. An expired `MODEL_IN_FLIGHT` lease may be taken over and rerun only when no canonical action
-was persisted. Recovery finalizes from stored structured results using a read-only/no-action provider call or a
+was persisted and no uniquely keyed terminal message/outcome was committed; otherwise it reconciles durable state.
+Recovery finalizes from stored structured results using a read-only/no-action provider call or a
 deterministic response. Full tool transcript persistence remains unnecessary.
 
 A tool execution carries the claim ID, parent turn request ID, and transcript-local tool-call ID separately, and derives
@@ -876,7 +898,9 @@ apps/backend/src/modules/home-context/
 apps/backend/src/modules/buddy/
 ├── entities/
 │   ├── buddy-conversation.entity.ts
+│   ├── buddy-message.entity.ts
 │   ├── buddy-messaging-conversation-binding.entity.ts
+│   ├── buddy-outbound-delivery.entity.ts
 │   └── buddy-request-claim.entity.ts
 ├── platforms/
 │   └── llm-provider.platform.ts
@@ -885,6 +909,7 @@ apps/backend/src/modules/buddy/
 │   ├── buddy-context-renderer.service.ts
 │   ├── buddy-deterministic-action-handoff.service.ts
 │   ├── buddy-messaging-conversation-binding.service.ts
+│   ├── buddy-outbound-delivery.service.ts
 │   ├── buddy-conversation-memory.service.ts
 │   ├── buddy-conversation.service.ts
 │   ├── buddy-request-budget.service.ts
@@ -907,6 +932,7 @@ apps/backend/src/modules/spaces/services/    # bounded filtered space search as 
 apps/backend/src/migrations/
 ├── <next-timestamp>-AddBuddyActionExecutionLedger.ts # only if existing command storage cannot enforce idempotency
 ├── <next-timestamp>-AddBuddyMessagingConversationBinding.ts
+├── <next-timestamp>-AddBuddyOutboundDeliveries.ts
 ├── <next-timestamp>-AddBuddyRequestClaims.ts
 └── <next-timestamp>-AddBuddyConversationMemory.ts
 ```
@@ -1003,16 +1029,20 @@ snapshots are produced through the shared query layer without making that eager 
 
 - `apps/backend/src/modules/buddy/platforms/llm-provider.platform.ts`
 - `apps/backend/src/modules/buddy/controllers/buddy-conversations.controller.ts`
+- `apps/backend/src/modules/buddy/entities/buddy-message.entity.ts`
 - `apps/backend/src/modules/buddy/entities/buddy-messaging-conversation-binding.entity.ts`
+- `apps/backend/src/modules/buddy/entities/buddy-outbound-delivery.entity.ts`
 - `apps/backend/src/modules/buddy/entities/buddy-request-claim.entity.ts`
 - `apps/backend/src/modules/buddy/services/buddy-conversation.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-messaging-conversation-binding.service.ts`
+- `apps/backend/src/modules/buddy/services/buddy-outbound-delivery.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-request-idempotency.service.ts`
 - `apps/backend/src/modules/tools/platforms/tool-provider.platform.ts`
 - `apps/backend/src/plugins/buddy-openai-codex/platforms/openai-codex.provider.ts`
 - Buddy LLM provider plugins/adapters and their specs
 - Buddy Discord, Telegram, and WhatsApp adapters and their specs
 - New incremental migration for the persistent messaging-conversation binding
+- New incremental migration for durable outbound-delivery state
 - New incremental migration for the durable Buddy request-claim table and its unique/lease indexes
 - Existing command/scene/intent idempotency persistence, or a minimal Buddy action-execution ledger entity/service and
   incremental migration if existing storage cannot enforce a unique execution identity
@@ -1037,6 +1067,8 @@ snapshots are produced through the shared query layer without making that eager 
 - [ ] Compute the text payload digest in the controller and the audio digest from uploaded bytes/stable semantic fields
       before transcription; pass the digest in `BuddyRequestContext` so idempotency never depends on nondeterministic STT
       output. Hash incrementally for streamed/multipart uploads and do not persist raw audio solely for idempotency.
+      Acquire/own the durable request claim immediately after hashing and before STT; persist the first bounded transcript
+      as `INPUT_READY`, and let duplicate audio requests join/wait without invoking the STT provider.
 - [ ] Derive messaging/internal request IDs from stable source event/job IDs; never use a per-attempt generated ID for an
       action-capable request.
 - [ ] Replace Discord/Telegram/WhatsApp in-memory-only platform-conversation maps with an atomic persistent binding from a
@@ -1054,9 +1086,9 @@ snapshots are produced through the shared query layer without making that eager 
 - [ ] Durably claim REST/voice by `(source, actor claim key, stable idempotency scope, request ID)` and messaging by
       immutable `(source, stable idempotency scope, platform event ID)`, storing the first-delivery actor/authorization,
       resolved Buddy conversation/binding generation, and payload digest as bound data. Implement state/lease ownership
-      so exact duplicates
-      single-flight before provider dispatch; cross-worker duplicates never run the model concurrently. Persist the
-      canonical action plan/identity atomically before any physical dispatch. Derive action identity from the resulting
+      so exact duplicates single-flight before provider dispatch; cross-worker duplicates never run the model
+      concurrently. Persist the canonical action plan/identity atomically before any physical dispatch. Derive action
+      identity from the resulting
       claim ID, canonical action fingerprint, and deterministic occurrence slot—independently of provider call IDs.
       Reuse an existing durable idempotency authority or add a bounded persistent ledger if none spans
       retries/restarts.
@@ -1064,6 +1096,11 @@ snapshots are produced through the shared query layer without making that eager 
       repository/service transitions for claim creation, lease takeover, plan persistence, dispatch intent, terminal
       outcomes, and bounded retention. Treat the database as the cross-process/restart authority; process-local
       single-flight is only an optimization.
+- [ ] Link Buddy messages uniquely to request claim/role/ordinal. Commit the final assistant message, bounded outcome, and
+      terminal claim transition atomically; recovery must reconcile a committed turn before any model dispatch.
+- [ ] Add durable outbound-delivery rows and adapter coordination for messaging replies. Suppress sends for `SENT`
+      replays, and reconcile `DISPATCHING` through authoritative platform idempotency/status or mark it `INDETERMINATE`
+      without automatic resend. Replace each adapter's unconditional send of a replayed result.
 - [ ] Commit an `ACTION_DISPATCHING` intent containing `actionExecutionId` before every domain invocation. Resume
       `ACTION_PLANNED` only because no invocation can precede that commit. Recover `ACTION_DISPATCHING`/`ACTION_DISPATCHED`
       through authoritative downstream idempotency when available; otherwise mark the outcome `INDETERMINATE` and never
@@ -1081,10 +1118,13 @@ snapshots are produced through the shared query layer without making that eager 
 **Tests:** Provider adapter contract tests, including a two-iteration OpenAI Codex Responses payload with matching
 `function_call`/`function_call_output.call_id`; REST text/audio required-header validation; generated client header
 support; client-timeout retry after restart with the same key; identical uploaded audio with different mocked STT output
-reusing one claim; different audio with identical mocked transcription returning HTTP 409 and zero execution; text digest
-conflict behavior; two REST actors in one conversation legitimately using the same key/action without ledger collision;
+reusing one claim; concurrent duplicate audio while the owner's STT call is blocked invoking STT exactly once; different
+audio with identical mocked transcription returning HTTP 409 and zero execution; text digest conflict behavior; two REST
+actors in one conversation legitimately using the same key/action without ledger collision;
 request-claim migration/schema tests for the normalized composite unique key, lease/version compare-and-swap, bounded
 plan/outcome persistence, retention, and concurrent create-or-read from two database connections;
+fault injection between assistant-message insert and claim completion rolling back both, plus crash immediately after the
+atomic commit recovering the one stored turn/outcome without provider invocation;
 same-process duplicate while the first model call is blocked joining one provider invocation; cross-worker duplicate
 returning in-progress/`Retry-After` without provider dispatch; safe lease takeover after a crash in `MODEL_IN_FLIGHT`
 before any action plan exists; crash while safely `ACTION_PLANNED` resuming the persisted plan without an action-capable
@@ -1094,6 +1134,8 @@ redispatches when no downstream authority exists; the same fault with a fake aut
 reconciling/resubmitting by `actionExecutionId` to one physical execution;
 Discord/Telegram/WhatsApp restart with empty process maps followed by redelivery of the same platform event resolving the
 persisted Buddy conversation/scope, one claim, one stored message, and at most one action;
+redelivery after the original outbound reply was sent producing zero additional platform sends; crash with outbound
+`DISPATCHING` reconciling by a fake authoritative platform key, or becoming `INDETERMINATE` with zero automatic resends;
 redelivery after the platform account is remapped to another Smart Panel actor resolving the original delivery claim and
 executing nothing; conversation deletion followed by a genuinely new event creating the next binding generation, while
 an old-event replay returns its retained outcome without recreating the deleted conversation or invoking the model;
@@ -1116,7 +1158,9 @@ structured result, supports a second dependent call, and produces a final respon
 This explicitly includes the OpenAI Codex Responses adapter's native call/output items. No timed-out or replayed action
 test executes the same physical command twice or reports an unproven terminal outcome, and no exact duplicate request
 invokes a second concurrent provider call. A fresh process can recover every nonexpired/nonterminal request claim using
-only durable state and cannot bypass the database uniqueness or lease rules.
+only durable state and cannot bypass the database uniqueness or lease rules. Terminal message/outcome persistence is
+atomic with claim completion, duplicate messaging deliveries produce at most one outbound platform send, and duplicate
+audio requests cannot invoke STT concurrently.
 
 ### Phase 3 — Add Buddy read tools
 
@@ -1402,6 +1446,8 @@ designated safe targets and reversible values. Scale/shadow evaluation must neve
       same Buddy conversation/idempotency scope and cannot duplicate messages or actions.
 - [ ] Messaging replay protection survives actor remapping and conversation deletion: old events resolve retained claims,
       while only new events may establish the next conversation binding generation.
+- [ ] A redelivered messaging event never causes a second outbound bot reply; uncertain platform sends are reconciled or
+      suppressed, never automatically resent.
 - [ ] Shared home-query services are usable by Buddy with MCP externally disabled.
 - [ ] MCP transport/auth/policy/configuration remains independent and externally backward compatible.
 - [ ] Existing heartbeat/evaluator full-context behavior remains unchanged.
