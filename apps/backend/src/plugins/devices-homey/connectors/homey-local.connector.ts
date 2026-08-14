@@ -140,6 +140,7 @@ export class HomeyLocalConnector implements HomeyConnector {
 			try {
 				await this.cleanupSubscription(subscription);
 			} catch (error) {
+				this.transportCleanupNeeded = true;
 				throw mapHomeyLocalTransportError(error, HomeyConnectorOperation.SUBSCRIBE);
 			}
 

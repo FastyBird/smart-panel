@@ -137,6 +137,7 @@ class FakeHomeyLocalTransport implements HomeyLocalTransport {
 	private transportConnectCount = 0;
 	private transportDisconnectCount = 0;
 	private connectGate: Promise<void> | null = null;
+	private subscribeGate: Promise<void> | null = null;
 	private unsubscribeFailuresRemaining = 0;
 	private transportUnsubscribeCount = 0;
 
@@ -171,6 +172,15 @@ class FakeHomeyLocalTransport implements HomeyLocalTransport {
 	deferNextConnect(): () => void {
 		let release = (): void => undefined;
 		this.connectGate = new Promise((resolve) => {
+			release = resolve;
+		});
+
+		return release;
+	}
+
+	deferNextSubscribe(): () => void {
+		let release = (): void => undefined;
+		this.subscribeGate = new Promise((resolve) => {
 			release = resolve;
 		});
 
@@ -246,7 +256,14 @@ class FakeHomeyLocalTransport implements HomeyLocalTransport {
 		});
 	}
 
-	subscribe(listener: HomeyLocalTransportEventListener): Promise<HomeyLocalTransportUnsubscribe> {
+	async subscribe(listener: HomeyLocalTransportEventListener): Promise<HomeyLocalTransportUnsubscribe> {
+		const gate = this.subscribeGate;
+		this.subscribeGate = null;
+
+		if (gate !== null) {
+			await gate;
+		}
+
 		return this.execute(() => {
 			this.throwNextFailure(HomeyConnectorOperation.SUBSCRIBE);
 			this.listeners.add(listener);
@@ -336,6 +353,30 @@ describeHomeyConnectorContract('Local', (): HomeyConnectorContractHarness => {
 });
 
 describe('Homey local connector lifecycle serialization', () => {
+	it('retires a stale subscription that resolves and fails cleanup after transport teardown', async () => {
+		const transport = new FakeHomeyLocalTransport();
+		const connector = new HomeyLocalConnector(transport);
+
+		await connector.connect();
+		const releaseSubscribe = transport.deferNextSubscribe();
+		const subscribe = connector.subscribe(() => undefined);
+
+		await connector.disconnect();
+		transport.failNextUnsubscribe();
+		releaseSubscribe();
+
+		await expect(subscribe).rejects.toMatchObject({
+			category: HomeyConnectorErrorCategory.UNAVAILABLE,
+			operation: HomeyConnectorOperation.SUBSCRIBE,
+		});
+		expect(transport.subscriberCount).toBe(1);
+
+		await expect(connector.connect()).resolves.toBeUndefined();
+		expect(transport.disconnectCount).toBe(2);
+		expect(transport.subscriberCount).toBe(0);
+		await connector.disconnect();
+	});
+
 	it('keeps failed subscription cleanup retryable while suppressing further delivery', async () => {
 		const transport = new FakeHomeyLocalTransport();
 		const connector = new HomeyLocalConnector(transport);
