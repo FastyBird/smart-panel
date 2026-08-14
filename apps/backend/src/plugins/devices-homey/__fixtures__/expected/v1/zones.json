@@ -1,0 +1,108 @@
+[
+	{
+		"id": "zone-000001",
+		"name": "zone-label-000001",
+		"parentId": "zone-000002",
+		"active": false,
+		"path": ["zone-label-000005", "zone-label-000001"]
+	},
+	{
+		"id": "zone-000003",
+		"name": "zone-label-000002",
+		"parentId": "zone-000002",
+		"active": true,
+		"path": ["zone-label-000005", "zone-label-000002"]
+	},
+	{
+		"id": "zone-000004",
+		"name": "zone-label-000003",
+		"parentId": "zone-000002",
+		"active": false,
+		"path": ["zone-label-000005", "zone-label-000003"]
+	},
+	{
+		"id": "zone-000005",
+		"name": "zone-label-000004",
+		"parentId": "zone-000002",
+		"active": false,
+		"path": ["zone-label-000005", "zone-label-000004"]
+	},
+	{ "id": "zone-000002", "name": "zone-label-000005", "parentId": null, "active": true, "path": ["zone-label-000005"] },
+	{
+		"id": "zone-000006",
+		"name": "zone-label-000006",
+		"parentId": "zone-000002",
+		"active": false,
+		"path": ["zone-label-000005", "zone-label-000006"]
+	},
+	{
+		"id": "zone-000007",
+		"name": "zone-label-000007",
+		"parentId": "zone-000002",
+		"active": false,
+		"path": ["zone-label-000005", "zone-label-000007"]
+	},
+	{
+		"id": "zone-000008",
+		"name": "zone-label-000008",
+		"parentId": "zone-000002",
+		"active": false,
+		"path": ["zone-label-000005", "zone-label-000008"]
+	},
+	{
+		"id": "zone-000009",
+		"name": "zone-label-000009",
+		"parentId": "zone-000002",
+		"active": false,
+		"path": ["zone-label-000005", "zone-label-000009"]
+	},
+	{
+		"id": "zone-000010",
+		"name": "zone-label-000010",
+		"parentId": "zone-000002",
+		"active": false,
+		"path": ["zone-label-000005", "zone-label-000010"]
+	},
+	{
+		"id": "zone-000011",
+		"name": "zone-label-000011",
+		"parentId": "zone-000002",
+		"active": false,
+		"path": ["zone-label-000005", "zone-label-000011"]
+	},
+	{
+		"id": "zone-000012",
+		"name": "zone-label-000012",
+		"parentId": "zone-000002",
+		"active": false,
+		"path": ["zone-label-000005", "zone-label-000012"]
+	},
+	{
+		"id": "zone-000013",
+		"name": "zone-label-000013",
+		"parentId": "zone-000002",
+		"active": false,
+		"path": ["zone-label-000005", "zone-label-000013"]
+	},
+	{
+		"id": "zone-000014",
+		"name": "zone-label-000014",
+		"parentId": "zone-000002",
+		"active": false,
+		"path": ["zone-label-000005", "zone-label-000014"]
+	},
+	{
+		"id": "zone-000015",
+		"name": "zone-label-000015",
+		"parentId": "zone-000002",
+		"active": false,
+		"path": ["zone-label-000005", "zone-label-000015"]
+	},
+	{
+		"id": "zone-000016",
+		"name": "zone-label-000016",
+		"parentId": "zone-000002",
+		"active": false,
+		"path": ["zone-label-000005", "zone-label-000016"]
+	}
+]

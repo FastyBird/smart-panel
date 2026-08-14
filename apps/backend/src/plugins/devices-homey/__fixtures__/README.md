@@ -36,7 +36,15 @@ To regenerate the selected subset from an ignored sanitized capture:
 ```bash
 cd apps/backend
 pnpm run homey:promote-fixtures -- test/.homey-shs-captures/<capture-directory>
+pnpm run homey:generate-normalized-fixtures
 pnpm run test:homey-spike
 ```
+
+`expected/v1` contains the reviewed transport-neutral output for every representative device and the complete zone
+hierarchy. Its manifest pins the immutable raw fixture version used as input. These files are golden expectations, not
+additional protocol captures: regenerate them only after intentionally changing the normalized contract or promoting a
+new raw fixture version, then review the complete diff. The connector transformer tests compare all raw fixtures with
+these outputs and add explicit assertions for source ordering, suffixed capability IDs, null/false/zero preservation,
+enum options, availability independence, and zone-cycle rejection.
 
 Before committing regenerated fixtures, inspect every value and key and confirm that no private source value survives.
