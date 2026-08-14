@@ -504,6 +504,37 @@ describe('McpReadToolService', () => {
 		}
 	});
 
+	it('reads the installation resource with live capabilities and the exact bare JSON wrapper', async () => {
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await resourceCallbacks.get('installation')?.(
+			new URL('smart-panel://installation'),
+			requestContext(),
+		);
+
+		expect(contextService.getInstallation).toHaveBeenCalledTimes(1);
+		expect(contextService.getInstallation).toHaveBeenCalledWith(
+			[McpCapability.READ],
+			'https://panel.test/api/v1/modules/mcp',
+		);
+		expect(result).toEqual({
+			contents: [
+				{
+					uri: 'smart-panel://installation',
+					mimeType: 'application/json',
+					text: JSON.stringify({
+						id: 'installation-id',
+						name: 'FastyBird Smart Panel',
+						version: '1.0.0',
+						timezone: 'UTC',
+						endpoint: 'https://panel.test/api/v1/modules/mcp',
+						effective_capabilities: [McpCapability.READ],
+					}),
+				},
+			],
+		});
+	});
+
 	it('reads the home-context resource with whole-home forwarding and the exact compatible JSON wrapper', async () => {
 		jest.useFakeTimers();
 		jest.setSystemTime(new Date('2026-08-14T12:00:00.000Z'));

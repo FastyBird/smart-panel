@@ -115,6 +115,8 @@ describe('ScenesService', () => {
 		await expect(service.findTriggerableSummaryPage(50)).resolves.toEqual({ scenes: [scene], total: 1 });
 		expect(query.where).toHaveBeenCalledWith('scene.enabled = :enabled', { enabled: true });
 		expect(query.andWhere).toHaveBeenCalledWith('scene.triggerable = :triggerable', { triggerable: true });
+		expect(query.orderBy).toHaveBeenCalledWith('scene.name', 'ASC');
+		expect(query.addOrderBy).toHaveBeenCalledWith('scene.id', 'ASC');
 		expect(query.take).toHaveBeenCalledWith(50);
 	});
 });

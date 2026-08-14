@@ -306,6 +306,10 @@ describe('ChannelsPropertiesService', () => {
 				totals: { [mockChannel.id]: 45 },
 			});
 			expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('ROW_NUMBER() OVER'), [mockChannel.id, 40]);
+			expect(dataSource.query).toHaveBeenCalledWith(
+				expect.stringContaining(`ORDER BY COALESCE(property."name", ''), property."id"`),
+				[mockChannel.id, 40],
+			);
 			expect(entityQuery.where).toHaveBeenCalledWith('property.id IN (:...propertyIds)', {
 				propertyIds: [mockChannelProperty.id],
 			});
