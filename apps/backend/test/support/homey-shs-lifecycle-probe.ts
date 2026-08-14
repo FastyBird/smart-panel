@@ -17,13 +17,6 @@ const CONFLICTING_GATE_PREFIXES = [
 	'FB_HOMEY_SHS_RECOVERY_',
 	'FB_HOMEY_SHS_WRITE_',
 ];
-const REQUIRED_SCOPES = [
-	'homey.device',
-	'homey.device.readonly',
-	'homey.flow.readonly',
-	'homey.system.readonly',
-	'homey.zone.readonly',
-] as const;
 const EXPECTED_EVENTS = [
 	'sdk.create.resolved',
 	'manager.subscribe.resolved',
@@ -86,6 +79,10 @@ interface HomeyLifecycleFlowManager {
 	getFlows(options?: { $cache?: boolean; $timeout?: number; $updateCache?: boolean }): Promise<Record<string, unknown>>;
 }
 
+interface HomeyLifecycleDriversManager {
+	getPairSession(options: { $timeout?: number; id: string }): Promise<unknown>;
+}
+
 interface HomeyLifecycleDevicesManager extends EventSource {
 	connect(): Promise<void>;
 	deleteDevice(options: { $timeout?: number; id: string }): Promise<unknown>;
@@ -102,12 +99,17 @@ interface HomeyLifecycleZonesManager {
 	getZones(options?: { $cache?: boolean; $timeout?: number; $updateCache?: boolean }): Promise<Record<string, unknown>>;
 }
 
+interface HomeyLifecycleSystemManager {
+	getInfo(options?: { $timeout?: number }): Promise<unknown>;
+}
+
 interface HomeyLifecycleClient {
 	destroy(): void;
 	disconnect(): Promise<void>;
 	devices: HomeyLifecycleDevicesManager;
+	drivers: HomeyLifecycleDriversManager;
 	flow: HomeyLifecycleFlowManager;
-	hasScope(scope: string): boolean;
+	system: HomeyLifecycleSystemManager;
 	zones: HomeyLifecycleZonesManager;
 }
 
@@ -534,18 +536,60 @@ const assertNoAttachedFlows = async (
 	}
 };
 
-const assertRequiredScopes = (client: HomeyLifecycleClient): void => {
-	let hasAllRequiredScopes = false;
+const statusCodeOf = (error: unknown): number | null =>
+	isRecord(error) && typeof error.statusCode === 'number' ? error.statusCode : null;
+
+const proveDeviceWriteScope = async (
+	client: HomeyLifecycleClient,
+	config: HomeyShsLifecycleProbeConfig,
+): Promise<void> => {
+	const missingPairSessionId = `fbsp-lifecycle-scope-preflight-${randomBytes(16).toString('hex')}`;
 
 	try {
-		hasAllRequiredScopes =
-			typeof client.hasScope === 'function' && REQUIRED_SCOPES.every((scope) => client.hasScope(scope));
-	} catch {
-		// The caller receives only the fixed scope-preflight error below.
+		await settleOperation('device write-scope preflight', config.timeoutMs, () =>
+			client.drivers.getPairSession({ $timeout: config.timeoutMs, id: missingPairSessionId }),
+		);
+	} catch (error: unknown) {
+		if (statusCodeOf(error) === 404) {
+			return;
+		}
+
+		if (error instanceof HomeyShsLifecycleTimeoutError) {
+			throw error;
+		}
+
+		// eslint-disable-next-line preserve-caught-error -- API errors can contain endpoint and authorization detail.
+		throw new Error('Homey lifecycle device write-scope preflight failed');
 	}
 
-	if (!hasAllRequiredScopes) {
-		throw new Error('The dedicated Homey lifecycle key is missing a required scope');
+	throw new Error('Homey lifecycle device write-scope preflight returned an unexpected pair session');
+};
+
+const assertPermissionPreflight = async (
+	client: HomeyLifecycleClient,
+	config: HomeyShsLifecycleProbeConfig,
+): Promise<void> => {
+	const results = await Promise.allSettled([
+		runOperation('system permission preflight', config.timeoutMs, () =>
+			client.system.getInfo({ $timeout: config.timeoutMs }),
+		),
+		runOperation('device-read permission preflight', config.timeoutMs, () =>
+			client.devices.getDevices({ $cache: false, $timeout: config.timeoutMs, $updateCache: false }),
+		),
+		runOperation('zone permission preflight', config.timeoutMs, () =>
+			client.zones.getZones({ $cache: false, $timeout: config.timeoutMs, $updateCache: false }),
+		),
+		runOperation('flow permission preflight', config.timeoutMs, () =>
+			client.flow.getFlows({ $cache: false, $timeout: config.timeoutMs, $updateCache: false }),
+		),
+		runOperation('advanced-flow permission preflight', config.timeoutMs, () =>
+			client.flow.getAdvancedFlows({ $cache: false, $timeout: config.timeoutMs, $updateCache: false }),
+		),
+		proveDeviceWriteScope(client, config),
+	]);
+
+	if (results.some((result) => result.status === 'rejected')) {
+		throw new Error('The dedicated Homey lifecycle key failed the required permission preflight');
 	}
 };
 
@@ -596,7 +640,7 @@ export const probeHomeyShsLifecycle = async (
 	const transportCleanupFailures: string[] = [];
 
 	try {
-		assertRequiredScopes(client);
+		await assertPermissionPreflight(client, config);
 		await runOperation('manager subscription', config.timeoutMs, () => client.devices.connect());
 		appendEvent(report, 'manager.subscribe.resolved');
 		await assertZonePreflight(client, config);

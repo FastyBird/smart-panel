@@ -60,14 +60,6 @@ const COMPLETE_EVENTS = [
 	'sdk.destroyed',
 ] as const;
 
-const REQUIRED_SCOPES = [
-	'homey.device',
-	'homey.device.readonly',
-	'homey.flow.readonly',
-	'homey.system.readonly',
-	'homey.zone.readonly',
-] as const;
-
 const completeReport = (): HomeyShsLifecycleReport => ({
 	lifecycle: {
 		addVerified: true,
@@ -101,17 +93,17 @@ type FakeDevice = EventEmitter &
 class FakeLifecycleFlowManager {
 	advancedFlows: Record<string, unknown> = {};
 	readonly advancedFlowReadOptions: Array<{ $cache?: boolean; $timeout?: number; $updateCache?: boolean }> = [];
-	failFlowRead = false;
+	failFlowReadAt?: number;
 	flows: Record<string, unknown> = {};
 	readonly flowReadOptions: Array<{ $cache?: boolean; $timeout?: number; $updateCache?: boolean }> = [];
-	hangAdvancedFlowRead = false;
+	hangAdvancedFlowReadAt?: number;
 
 	getAdvancedFlows(
 		options: { $cache?: boolean; $timeout?: number; $updateCache?: boolean } = {},
 	): Promise<Record<string, unknown>> {
 		this.advancedFlowReadOptions.push(options);
 
-		if (this.hangAdvancedFlowRead) {
+		if (this.advancedFlowReadOptions.length === this.hangAdvancedFlowReadAt) {
 			return new Promise((_resolvePromise) => undefined);
 		}
 
@@ -123,9 +115,23 @@ class FakeLifecycleFlowManager {
 	): Promise<Record<string, unknown>> {
 		this.flowReadOptions.push(options);
 
-		return this.failFlowRead
+		return this.flowReadOptions.length === this.failFlowReadAt
 			? Promise.reject(new Error('raw private flow failure'))
 			: Promise.resolve({ ...this.flows });
+	}
+}
+
+const fakeApiError = (statusCode: number): Error & { statusCode: number } =>
+	Object.assign(new Error('raw private API failure'), { statusCode });
+
+class FakeLifecycleDriversManager {
+	failStatusCode = 404;
+	readonly pairSessionRequests: Array<{ $timeout?: number; id: string }> = [];
+
+	getPairSession(options: { $timeout?: number; id: string }): Promise<unknown> {
+		this.pairSessionRequests.push(options);
+
+		return Promise.reject(fakeApiError(this.failStatusCode));
 	}
 }
 
@@ -134,6 +140,7 @@ class FakeLifecycleDevicesManager extends EventEmitter {
 	deleteRequests: Array<{ $timeout?: number; id: string }> = [];
 	disconnectCount = 0;
 	failDisconnect = false;
+	failInventoryReadAt?: number;
 	inventory: Record<string, FakeDevice> = {};
 	inventoryReadHook?: (readCount: number) => void;
 	readonly inventoryReadOptions: Array<{ $cache?: boolean; $timeout?: number; $updateCache?: boolean }> = [];
@@ -156,6 +163,10 @@ class FakeLifecycleDevicesManager extends EventEmitter {
 	): Promise<Record<string, FakeDevice>> {
 		this.inventoryReadOptions.push(options);
 		this.inventoryReadHook?.(this.inventoryReadOptions.length);
+
+		if (this.inventoryReadOptions.length === this.failInventoryReadAt) {
+			return Promise.reject(new Error('raw private inventory failure'));
+		}
 
 		return Promise.resolve({ ...this.inventory });
 	}
@@ -195,9 +206,14 @@ class FakeLifecycleClient {
 	disconnectCount = 0;
 	failDestroy = false;
 	failDisconnect = false;
+	failSystemRead = false;
+	failZoneRead = false;
 	readonly devices = new FakeLifecycleDevicesManager();
+	readonly drivers = new FakeLifecycleDriversManager();
 	readonly flow = new FakeLifecycleFlowManager();
-	readonly scopes = new Set<string>(REQUIRED_SCOPES);
+	readonly system: {
+		getInfo(options?: { $timeout?: number }): Promise<unknown>;
+	};
 	readonly zones: {
 		getZones(options?: {
 			$cache?: boolean;
@@ -207,12 +223,18 @@ class FakeLifecycleClient {
 	};
 
 	constructor(config: HomeyShsLifecycleProbeConfig) {
+		this.system = {
+			getInfo: () =>
+				this.failSystemRead ? Promise.reject(new Error('raw private system failure')) : Promise.resolve({ ok: true }),
+		};
 		this.zones = {
 			getZones: () =>
-				Promise.resolve({
-					[config.destinationZoneId]: {},
-					[config.sourceZoneId]: {},
-				}),
+				this.failZoneRead
+					? Promise.reject(new Error('raw private zone failure'))
+					: Promise.resolve({
+							[config.destinationZoneId]: {},
+							[config.sourceZoneId]: {},
+						}),
 		};
 	}
 
@@ -229,10 +251,6 @@ class FakeLifecycleClient {
 		this.disconnectCount += 1;
 
 		return this.failDisconnect ? Promise.reject(new Error('raw private socket cleanup detail')) : Promise.resolve();
-	}
-
-	hasScope(scope: string): boolean {
-		return this.scopes.has(scope);
 	}
 }
 
@@ -389,12 +407,49 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 		).toThrow('between 10000 and 300000');
 	});
 
-	it.each(REQUIRED_SCOPES)('refuses a key missing %s before opening the add window', async (scope) => {
+	it.each([
+		{
+			deny: (client: FakeLifecycleClient): void => {
+				client.drivers.failStatusCode = 403;
+			},
+			permission: 'device write',
+		},
+		{
+			deny: (client: FakeLifecycleClient): void => {
+				client.devices.failInventoryReadAt = 1;
+			},
+			permission: 'device read',
+		},
+		{
+			deny: (client: FakeLifecycleClient): void => {
+				client.flow.failFlowReadAt = 1;
+			},
+			permission: 'standard-flow read',
+		},
+		{
+			deny: (client: FakeLifecycleClient): void => {
+				client.flow.hangAdvancedFlowReadAt = 1;
+			},
+			permission: 'advanced-flow read',
+		},
+		{
+			deny: (client: FakeLifecycleClient): void => {
+				client.failSystemRead = true;
+			},
+			permission: 'system read',
+		},
+		{
+			deny: (client: FakeLifecycleClient): void => {
+				client.failZoneRead = true;
+			},
+			permission: 'zone read',
+		},
+	])('refuses a key without $permission permission before opening the add window', async ({ deny }) => {
 		const config = fastConfig();
 		const harness = createHarness(config);
 		let addWindowCount = 0;
 
-		harness.client.scopes.delete(scope);
+		deny(harness.client);
 
 		await expect(
 			probeHomeyShsLifecycle(config, harness.factory, {
@@ -402,23 +457,21 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 					addWindowCount += 1;
 				},
 			}),
-		).rejects.toThrow('dedicated Homey lifecycle key is missing a required scope');
+		).rejects.toThrow('dedicated Homey lifecycle key failed the required permission preflight');
 		expect(addWindowCount).toBe(0);
 		expect(harness.client.devices.connectCount).toBe(0);
 		expect(harness.client.devices.updateRequests).toStrictEqual([]);
 		expect(harness.client.devices.deleteRequests).toStrictEqual([]);
 	});
 
-	it('sanitizes scope-preflight failures before any lifecycle action', async () => {
+	it('sanitizes unexpected permission-preflight failures before any lifecycle action', async () => {
 		const config = fastConfig();
 		const harness = createHarness(config);
 
-		jest.spyOn(harness.client, 'hasScope').mockImplementation(() => {
-			throw new Error('raw private scope detail');
-		});
+		harness.client.drivers.failStatusCode = 500;
 
 		await expect(probeHomeyShsLifecycle(config, harness.factory)).rejects.toThrow(
-			'dedicated Homey lifecycle key is missing a required scope',
+			'dedicated Homey lifecycle key failed the required permission preflight',
 		);
 		expect(harness.client.devices.connectCount).toBe(0);
 		expect(harness.client.devices.deleteRequests).toStrictEqual([]);
@@ -478,11 +531,16 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 		expect(harness.client.flow.flowReadOptions).toStrictEqual([
 			{ $cache: false, $timeout: 25, $updateCache: false },
 			{ $cache: false, $timeout: 25, $updateCache: false },
+			{ $cache: false, $timeout: 25, $updateCache: false },
 		]);
 		expect(harness.client.flow.advancedFlowReadOptions).toStrictEqual([
 			{ $cache: false, $timeout: 25, $updateCache: false },
 			{ $cache: false, $timeout: 25, $updateCache: false },
+			{ $cache: false, $timeout: 25, $updateCache: false },
 		]);
+		expect(harness.client.drivers.pairSessionRequests).toHaveLength(1);
+		expect(harness.client.drivers.pairSessionRequests[0]).toMatchObject({ $timeout: 25 });
+		expect(harness.client.drivers.pairSessionRequests[0]?.id).toMatch(/^fbsp-lifecycle-scope-preflight-[a-f0-9]{32}$/);
 		expect(harness.client.devices.disconnectCount).toBe(1);
 		expect(harness.client.disconnectCount).toBe(1);
 		expect(harness.client.destroyCount).toBe(1);
@@ -739,8 +797,8 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 		});
 
 		harness.client.devices.inventory[unrelatedId] = unrelated;
-		harness.client.flow.failFlowRead = true;
-		harness.client.flow.hangAdvancedFlowRead = true;
+		harness.client.flow.failFlowReadAt = 2;
+		harness.client.flow.hangAdvancedFlowReadAt = 2;
 
 		await expect(
 			probeHomeyShsLifecycle(config, harness.factory, {
@@ -750,8 +808,12 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 				},
 			}),
 		).rejects.toThrow('manual disposable-device cleanup required');
-		expect(harness.client.flow.flowReadOptions).toStrictEqual([{ $cache: false, $timeout: 5, $updateCache: false }]);
+		expect(harness.client.flow.flowReadOptions).toStrictEqual([
+			{ $cache: false, $timeout: 5, $updateCache: false },
+			{ $cache: false, $timeout: 5, $updateCache: false },
+		]);
 		expect(harness.client.flow.advancedFlowReadOptions).toStrictEqual([
+			{ $cache: false, $timeout: 5, $updateCache: false },
 			{ $cache: false, $timeout: 5, $updateCache: false },
 		]);
 		expect(harness.client.devices.deleteRequests).toStrictEqual([]);

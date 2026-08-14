@@ -184,8 +184,10 @@ Lifecycle evidence uses a separate management-scoped, disposable API key and may
 created for this run. Do not reuse the regular read-only or capability-control key. The lifecycle key needs
 `homey.device` for metadata updates and removal, plus `homey.device.readonly`, `homey.zone.readonly`,
 `homey.system.readonly`, and `homey.flow.readonly` for fail-closed preflight, ownership, zone, instance, and flow
-validation. The probe verifies all five scopes before it opens the operator add window. Revoke the key when the run is
-complete.
+validation. Before it opens the operator add window, the probe exercises each read permission with bounded,
+cache-bypassing requests and proves `homey.device` through a non-mutating lookup of a fresh cryptographically random
+pair-session ID: only `404` proves authorization, while a collision, permission error, timeout, or transport failure
+fails closed. Revoke the key when the run is complete.
 
 The local Web API cannot generically create a virtual device or set device availability. The probe therefore
 subscribes first and then opens a bounded observation window. During that window, the operator or a dedicated test
