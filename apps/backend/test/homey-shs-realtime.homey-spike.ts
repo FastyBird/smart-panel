@@ -21,9 +21,14 @@ class FakeDevice extends EventEmitter {
 	};
 	connectCount = 0;
 	disconnectCount = 0;
+	emitRequestedValueOnConnect = false;
 
 	connect(): Promise<void> {
 		this.connectCount += 1;
+
+		if (this.emitRequestedValueOnConnect) {
+			this.emit('capability', { capabilityId: 'onoff', value: true });
+		}
 
 		return Promise.resolve();
 	}
@@ -38,6 +43,7 @@ class FakeDevice extends EventEmitter {
 class FakeDevicesManager extends EventEmitter {
 	connectCount = 0;
 	disconnectCount = 0;
+	emitWriteEvent = true;
 	failDisconnect = false;
 	hangNextWrite = false;
 	readonly device = new FakeDevice();
@@ -80,23 +86,32 @@ class FakeDevicesManager extends EventEmitter {
 	}
 
 	setCapabilityValue(options: {
+		$timeout?: number;
 		capabilityId: string;
 		deviceId: string;
 		value: boolean | number | string;
 	}): Promise<void> {
 		this.writes.push(options.value);
 		this.device.capabilitiesObj.onoff.value = options.value as boolean;
-		this.device.emit('capability', {
-			capabilityId: options.capabilityId,
-			transactionId: `transaction-${this.writes.length}`,
-			transactionTime: this.writes.length,
-			value: options.value,
-		});
+
+		if (this.emitWriteEvent) {
+			this.device.emit('capability', {
+				capabilityId: options.capabilityId,
+				transactionId: `transaction-${this.writes.length}`,
+				transactionTime: this.writes.length,
+				value: options.value,
+			});
+		}
 
 		if (this.hangNextWrite) {
 			this.hangNextWrite = false;
 
-			return new Promise(() => undefined);
+			return new Promise((_resolvePromise, rejectPromise) => {
+				setTimeout(
+					() => rejectPromise(Object.assign(new Error('raw SDK timeout detail'), { statusCode: 408 })),
+					options.$timeout ?? 10_000,
+				);
+			});
 		}
 
 		return Promise.resolve();
@@ -243,7 +258,7 @@ describe('Homey SHS realtime compatibility probe', () => {
 		expect(() => assertHomeyShsRealtimeReportSafe(report, config)).not.toThrow();
 	});
 
-	it('times out a write that applies but never settles and still restores the original value', async () => {
+	it('restores the original value after an applied write reaches the SDK-native timeout', async () => {
 		const config = loadHomeyShsRealtimeProbeConfig(
 			{
 				...BASE_ENVIRONMENT,
@@ -270,6 +285,29 @@ describe('Homey SHS realtime compatibility probe', () => {
 		expect(clients[0].devices.disconnectCount).toBe(1);
 		expect(clients[0].disconnectCount).toBe(1);
 		expect(clients[0].destroyCount).toBe(1);
+	});
+
+	it('ignores a matching capability event observed before the write begins', async () => {
+		const config = loadHomeyShsRealtimeProbeConfig(
+			{
+				...BASE_ENVIRONMENT,
+				FB_HOMEY_SHS_WRITE_CAPABILITY_ID: 'onoff',
+				FB_HOMEY_SHS_WRITE_DEVICE_ID: 'allowlisted-device',
+				FB_HOMEY_SHS_WRITE_ENABLE: 'I_ACKNOWLEDGE_THIS_CHANGES_A_TEST_DEVICE',
+				FB_HOMEY_SHS_WRITE_VALUE: 'true',
+			},
+			'/tmp/homey-realtime-spike',
+		);
+		const { factory } = createFactory((client, index) => {
+			if (index === 0) {
+				client.devices.device.emitRequestedValueOnConnect = true;
+				client.devices.emitWriteEvent = false;
+			}
+		});
+		const report = await probeHomeyShsRealtime(config, factory, () => Promise.resolve());
+
+		expect(report.write).toMatchObject({ attempted: true, eventObserved: false, readBackMatched: true });
+		expect(() => assertHomeyShsRealtimeReportSafe(report, config)).toThrow('write, event, read-back, and restoration');
 	});
 
 	it.each(['manager', 'socket'] as const)('fails the probe when %s disconnect cleanup rejects', async (failure) => {

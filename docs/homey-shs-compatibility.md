@@ -130,6 +130,12 @@ mutation. Every SDK client, subscription, read, write, restoration, and disconne
 `FB_HOMEY_SHS_TIMEOUT_MS`. A failed or timed-out disconnect fails the probe and is never recorded as resolved, so no
 report can claim successful cleanup when the transport did not confirm it.
 
+Manager reads and writes also receive the SDK-native `$timeout`; that timeout is registered before the probe's outer
+watchdog. A timed-out write therefore settles inside the SDK before restoration is emitted afterward on the same
+ordered Socket.IO transport. Capability-event matching opens only immediately before the allowlisted write and closes
+after its observation window, preventing an unrelated matching event during subscription setup from satisfying the
+write evidence.
+
 Read and write tests must use different least-privilege keys where SHS supports that workflow. The read-only probe needs
 only `homey.system.readonly`, `homey.zone.readonly`, and `homey.device.readonly`. A write test additionally needs
 `homey.device.control`; do not grant general device management.

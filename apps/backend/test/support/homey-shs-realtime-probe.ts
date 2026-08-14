@@ -64,9 +64,14 @@ interface HomeyDevice extends EventSource {
 interface HomeyDevicesManager extends EventSource {
 	connect(): Promise<void>;
 	disconnect(): Promise<void>;
-	getCapabilityValue(options: { capabilityId: string; deviceId: string }): Promise<unknown>;
-	getDevices(): Promise<Record<string, HomeyDevice>>;
-	setCapabilityValue(options: { capabilityId: string; deviceId: string; value: HomeyScalar }): Promise<unknown>;
+	getCapabilityValue(options: { $timeout?: number; capabilityId: string; deviceId: string }): Promise<unknown>;
+	getDevices(options?: { $timeout?: number }): Promise<Record<string, HomeyDevice>>;
+	setCapabilityValue(options: {
+		$timeout?: number;
+		capabilityId: string;
+		deviceId: string;
+		value: HomeyScalar;
+	}): Promise<unknown>;
 }
 
 interface HomeySdkClient extends EventSource {
@@ -205,7 +210,9 @@ const sleep = async (milliseconds: number): Promise<void> => {
 
 const settleSdkOperation = async <T>(label: string, timeoutMs: number, operation: () => Promise<T>): Promise<T> => {
 	let timeout: ReturnType<typeof setTimeout> | undefined;
-	const operationPromise = Promise.resolve().then(operation);
+	// Invoke first so manager operations register the SDK-native $timeout before this outer watchdog.
+	// A timed-out write therefore settles inside the SDK before restoration is sent on the same ordered transport.
+	const operationPromise = operation();
 	const timeoutPromise = new Promise<never>((_resolvePromise, rejectPromise) => {
 		timeout = setTimeout(() => rejectPromise(new HomeyShsSdkTimeoutError(label, timeoutMs)), timeoutMs);
 	});
@@ -225,6 +232,10 @@ const runSdkOperation = async <T>(label: string, timeoutMs: number, operation: (
 	} catch (error: unknown) {
 		if (error instanceof HomeyShsSdkTimeoutError) {
 			throw error;
+		}
+
+		if (statusCodeOf(error) === 408) {
+			throw new HomeyShsSdkTimeoutError(label, timeoutMs);
 		}
 
 		// eslint-disable-next-line preserve-caught-error -- SDK causes may contain endpoints or credential-bearing detail.
@@ -329,7 +340,9 @@ const assertInvalidKeyRejected = async (
 		);
 		const invalidClient = client;
 
-		await settleSdkOperation('invalid-key inventory read', config.timeoutMs, () => invalidClient.devices.getDevices());
+		await settleSdkOperation('invalid-key inventory read', config.timeoutMs, () =>
+			invalidClient.devices.getDevices({ $timeout: config.timeoutMs }),
+		);
 	} catch (error: unknown) {
 		if (error instanceof HomeyShsSdkTimeoutError) {
 			operationFailed = true;
@@ -424,12 +437,18 @@ export const probeHomeyShsRealtime = async (
 		} else {
 			const write = config.write;
 			const devices = await runSdkOperation('device inventory read', config.timeoutMs, () =>
-				client.devices.getDevices(),
+				client.devices.getDevices({ $timeout: config.timeoutMs }),
 			);
 			const device = assertSafeWriteTarget(devices, write);
 			connectedDevice = device;
+			let acceptCapabilityEvents = false;
 			const capabilityListener = (payload: unknown): void => {
-				if (isRecord(payload) && payload.capabilityId === write.capabilityId && Object.is(payload.value, write.value)) {
+				if (
+					acceptCapabilityEvents &&
+					isRecord(payload) &&
+					payload.capabilityId === write.capabilityId &&
+					Object.is(payload.value, write.value)
+				) {
 					report.write.eventObserved = true;
 					report.session.events.push({
 						event: 'capability.update',
@@ -446,6 +465,7 @@ export const probeHomeyShsRealtime = async (
 					scalarCapabilityValue(
 						await runSdkOperation('pre-write capability read', config.timeoutMs, () =>
 							client.devices.getCapabilityValue({
+								$timeout: config.timeoutMs,
 								capabilityId: write.capabilityId,
 								deviceId: write.deviceId,
 							}),
@@ -456,17 +476,26 @@ export const probeHomeyShsRealtime = async (
 
 				try {
 					report.write.attempted = true;
-					await runSdkOperation('capability write', config.timeoutMs, () =>
-						client.devices.setCapabilityValue({
-							capabilityId: write.capabilityId,
-							deviceId: write.deviceId,
-							value: write.value,
-						}),
-					);
-					await wait(config.observeMs);
+					acceptCapabilityEvents = true;
+
+					try {
+						await runSdkOperation('capability write', config.timeoutMs, () =>
+							client.devices.setCapabilityValue({
+								$timeout: config.timeoutMs,
+								capabilityId: write.capabilityId,
+								deviceId: write.deviceId,
+								value: write.value,
+							}),
+						);
+						await wait(config.observeMs);
+					} finally {
+						acceptCapabilityEvents = false;
+					}
+
 					const readBack = scalarCapabilityValue(
 						await runSdkOperation('post-write capability read', config.timeoutMs, () =>
 							client.devices.getCapabilityValue({
+								$timeout: config.timeoutMs,
 								capabilityId: write.capabilityId,
 								deviceId: write.deviceId,
 							}),
@@ -478,6 +507,7 @@ export const probeHomeyShsRealtime = async (
 					if (report.write.attempted) {
 						await runSdkOperation('capability restoration', config.timeoutMs, () =>
 							client.devices.setCapabilityValue({
+								$timeout: config.timeoutMs,
 								capabilityId: write.capabilityId,
 								deviceId: write.deviceId,
 								value: originalValue,
@@ -487,6 +517,7 @@ export const probeHomeyShsRealtime = async (
 						const restored = scalarCapabilityValue(
 							await runSdkOperation('restoration capability read', config.timeoutMs, () =>
 								client.devices.getCapabilityValue({
+									$timeout: config.timeoutMs,
 									capabilityId: write.capabilityId,
 									deviceId: write.deviceId,
 								}),
