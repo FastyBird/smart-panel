@@ -72,6 +72,7 @@
     "test:homey-spike": "jest --config ./test/jest-homey-spike.json --runInBand",
     "test:oauth-spike": "NODE_OPTIONS=\"${NODE_OPTIONS:-} --experimental-vm-modules\" jest --config ./test/jest-oauth-spike.json --runInBand",
     "homey:probe": "ts-node --project tsconfig.json test/support/homey-shs-probe.ts",
+    "homey:probe-errors": "ts-node --project tsconfig.json test/support/homey-shs-error-probe.ts",
     "homey:probe-realtime": "ts-node --project tsconfig.json test/support/homey-shs-realtime-probe.ts",
     "homey:promote-fixtures": "ts-node --project tsconfig.json test/support/promote-homey-shs-fixtures.ts",
     "type-check": "tsc --noEmit",

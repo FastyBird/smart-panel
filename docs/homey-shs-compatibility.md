@@ -1,6 +1,6 @@
 # Homey SHS Compatibility Record
 
-**Status:** In progress; safe inventory captured and realtime probe implemented, live realtime/write/recovery evidence pending
+**Status:** In progress; safe inventory captured and realtime/error probes implemented, live error/realtime/write/recovery evidence pending
 
 **Started:** 2026-08-12
 
@@ -24,6 +24,7 @@ file. Live results use synthetic aliases and sanitized captures only.
 | Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read | Add allowlisted write and read-back evidence                                   |
 | Socket.IO events and reconnect                        | Probe implemented; live run pending          | Capture connect, subscribe, event, disconnect, restart, and reconnect ordering |
 | Allowlisted capability write                          | Hard-gated probe implemented, disabled       | Use only the designated harmless test capability                               |
+| Error classification                                  | Non-mutating probe implemented; live run pending | Verify invalid-key and missing-scope status behavior                         |
 | Disposable-device lifecycle                           | Contract defined, disabled                   | Use only the separately gated virtual/test device                              |
 | mDNS discovery                                        | Pending live access                          | Record stable service/TXT data or explicitly defer discovery                   |
 | SDK decision                                          | Provisional hold                             | Complete live Socket.IO and cleanup/reconnect comparison                       |
@@ -167,6 +168,31 @@ FB_HOMEY_SHS_LIFECYCLE_OPERATIONS=add,rename,zone-move,availability,remove
 The implementation must validate the exact operation list, require a synthetic test-device marker established during
 setup, and clean up only resources created by that run. It must never pair, rename, move, make unavailable, remove, or
 unpair ordinary household devices.
+
+## Non-mutating error-classification probe
+
+The error probe records only fixed category labels, rejection booleans, and HTTP status codes. It performs three live
+GET requests against the pinned SHS origin: a generated invalid key, an allowed device inventory read using a separate
+device-only key, and a system-information read using that same restricted key. The allowed read must succeed before a
+`403` system response can count as missing-scope evidence, so an invalid second token cannot be mislabeled as an
+authorization failure.
+
+Create a second least-privilege key with only `homey.device.readonly`, enter it without adding it to shell history, and
+run the probe from the same interactive shell as the read-only capture:
+
+```bash
+read -r -s FB_HOMEY_SHS_DEVICE_ONLY_API_KEY
+export FB_HOMEY_SHS_DEVICE_ONLY_API_KEY
+pnpm run homey:probe-errors
+unset FB_HOMEY_SHS_DEVICE_ONLY_API_KEY
+```
+
+The probe also verifies the shared URL validator rejects a non-HTTP candidate. Unavailable-host and timeout categories
+are exercised against ephemeral loopback servers owned by the probe; it does not scan another LAN port or send the API
+keys anywhere except the configured SHS origin. Every request uses `GET`, blocks redirects, and is bounded by
+`FB_HOMEY_SHS_TIMEOUT_MS`; the local simulations use a shorter `250` ms cap. Response bodies, raw transport errors,
+URLs, addresses, keys, and private terms are never written. A report is created only after all five scenarios pass,
+under the same ignored capture root and restrictive directory/file modes as the inventory and realtime probes.
 
 ## SDK artifact review
 
