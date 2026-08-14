@@ -460,10 +460,12 @@ registry allows access solely from the validated `authorization.allowedAccessKin
 Missing/unmapped authorization fails to `READ` only. Trusted internal/system turns use an explicit internal actor and
 policy decision rather than silently receiving elevated access.
 
-Each entry point preserves its validated inbound request ID or generates a server-side turn ID when none exists. A tool
-execution carries the parent turn request ID and transcript-local tool-call ID separately, and derives its bounded
-idempotency/audit `requestId` from both. Never replace the parent ID with `toolCall.id` alone: provider-local values such
-as `ollama-0` can repeat across turns.
+Each entry point preserves its validated inbound request ID or generates a server-side turn ID when none exists. The
+conversation boundary durably claims `(source, conversationId, requestId, requestContentHash)` before any action-capable
+provider call; an exact duplicate delivery resumes/returns the recorded request outcome, while reuse of the same request
+ID with different content is rejected. A tool execution carries the parent turn request ID and transcript-local
+tool-call ID separately, and derives its bounded correlation/audit `requestId` from both. Never replace the parent ID
+with `toolCall.id` alone: provider-local values such as `ollama-0` can repeat across turns.
 
 The service must validate that `BuddyRequestContext.conversationId` matches the conversation being processed, then copy
 it into every Buddy tool execution context. Read tools register exposed short IDs under that scope; action providers
@@ -485,17 +487,20 @@ an unscoped hallucinated token must fail closed and prompt fresh discovery inste
 }
 ```
 
-`deriveScopedToolRequestId` produces a validated, bounded opaque/namespaced value suitable for existing command and audit
-paths. The allowed set may be narrowed further per turn but never widened beyond the entry-point decision. The registry,
-tool schema, and provider response are all validated; unknown tools or malformed data are returned to the model as
-bounded errors, not thrown into an uncontrolled retry.
+`deriveScopedToolRequestId` produces a validated, bounded opaque/namespaced correlation value for audit/transcript links;
+it is not the physical-action idempotency key. The allowed set may be narrowed further per turn but never widened beyond
+the entry-point decision. The registry, tool schema, and provider response are all validated; unknown tools or malformed
+data are returned to the model as bounded errors, not thrown into an uncontrolled retry.
 
-Write/trigger execution uses that derived ID as an `actionExecutionId` before dispatch. The command/scene/intent boundary
-must atomically register or reuse the execution identity so concurrent deliveries and retries with the same identity
-share the original operation/result instead of issuing a second physical action. Prefer an existing durable command or
-audit mechanism when it enforces uniqueness; otherwise add a minimal persistent execution ledger with a unique key,
-bounded result metadata, retention/cleanup, and no raw sensitive values. Do not enable the new action loop without an
-idempotency authority that spans the adapter retry window and process restarts.
+Before dispatch, normalize the validated canonical tool name, canonical target IDs, and action arguments into a stable
+`actionFingerprint`. Assign a deterministic occurrence slot for repeated identical actions in the same inbound request,
+then derive `actionExecutionId` from `source + conversationId + parentRequestId + actionFingerprint + occurrenceSlot`—
+never from the provider's tool-call ID. Atomically register or reuse this identity and durably associate every observed
+provider call ID with it. A replay that receives a different OpenAI/Anthropic call ID therefore reuses the original
+operation/result instead of issuing a second physical action. Prefer an existing durable command or audit mechanism when
+it enforces uniqueness; otherwise add a minimal persistent execution ledger with a unique key, bounded result metadata,
+retention/cleanup, and no raw sensitive values. Do not enable the new action loop without an idempotency authority that
+spans the adapter retry window and process restarts.
 
 Read timeout semantics do not apply blindly to physical actions. If an action has not started, or the domain service
 authoritatively confirms cancellation before application, `TIMED_OUT` is safe. Once dispatched, if completion or
@@ -613,6 +618,10 @@ serialized input = stable system instructions
                  + current user message
                  + prefetched or returned tool data
 ```
+
+The requested output reserve is an enforced generation limit, not accounting metadata. Pass it as
+`LlmOptions.maxTokens` on every iteration, and require each adapter to serialize its native cap (including Ollama
+`options.num_predict` and OpenAI Codex `max_output_tokens`) before dispatch.
 
 The provider call is rejected or compacted before dispatch when `serialized input > available input`. A final payload
 check belongs as close as possible to provider serialization so adapter-specific overhead is not ignored.
@@ -812,10 +821,13 @@ regenerate the checked-in artifacts from backend Swagger sources; never edit gen
 - [ ] Add a serialization-level test helper that measures the complete provider input, not only the system prompt.
 - [ ] Add characterization tests proving heartbeat/evaluators consume the broad `BuddyContextService` snapshot.
 - [ ] Define test thresholds and a checked-in evaluation matrix; do not rely on anecdotal manual prompts.
+- [ ] Record the eager small-window budget violation as a measured baseline fixture or opt-in expected-failure evaluation
+      excluded from normal CI. Keep the Phase 0 verification suite green; promote the fixture to a required passing
+      bounded-request assertion when Phase 7 switches the production conversation path.
 - [ ] Confirm existing MCP context outputs/limits in tests before extracting them.
 
-**Gate:** Baseline numbers and characterization tests exist, including at least one test that fails under eager full-home
-conversation context for a small-window model.
+**Gate:** Baseline numbers and green characterization tests exist, and the eager full-home small-window failure is
+captured as an opt-in/expected baseline measurement rather than a failing normal-CI test.
 
 ### Phase 1 — Extract the provider-neutral home query layer
 
@@ -883,10 +895,12 @@ bounded search without loading the full catalog.
 - [ ] Carry an explicit entry-point authorization decision separately from actor attribution. Keep unmapped messaging
       identities and missing decisions `READ` only even when adapter admission is configured as allow-all; grant
       write/trigger only through authenticated Smart Panel mapping or an explicit action-capable allowlist/role.
-- [ ] Preserve the parent entry-point request ID plus the tool-call ID and derive a bounded unique downstream action/audit
-      request ID from both; never use a provider-local tool-call ID alone.
-- [ ] Register the derived action execution identity atomically before dispatch and coalesce concurrent/replayed calls.
-      Reuse an existing durable idempotency authority or add a bounded persistent ledger if none spans retries/restarts.
+- [ ] Preserve the parent entry-point request ID plus the tool-call ID and derive a bounded unique tool-correlation/audit
+      request ID from both; never use a provider-local tool-call ID alone or use it as the action idempotency key.
+- [ ] Durably claim the stable inbound request ID/content hash, then derive action identity independently of provider call
+      IDs from the parent request, canonical action fingerprint, and deterministic occurrence slot. Atomically register
+      it before dispatch, associate call IDs only as audit links, and coalesce concurrent/replayed calls. Reuse an
+      existing durable idempotency authority or add a bounded persistent ledger if none spans retries/restarts.
 - [ ] Distinguish action timeouts before dispatch/confirmed cancellation from post-dispatch uncertainty. Return
       `INDETERMINATE` for non-cancellable unknown outcomes, reconcile late completion, and prohibit automatic retries or
       success/failure claims for that identity.
@@ -897,11 +911,12 @@ bounded search without loading the full catalog.
 **Tests:** Provider adapter contract tests; REST/voice/Discord/Telegram/WhatsApp conversation/identity/access propagation;
 rejection of a mismatched request-context conversation ID; unmapped platform users under empty/allow-all admission remain
 read-only; mapped/explicitly action-allowlisted users receive only their authorized access kinds; parent request ID
-preservation and uniqueness when `ollama-0` repeats across turns; parallel call ordering; malformed arguments; unknown
-tools; denied access; partial results; read timeouts; action timeout before dispatch; confirmed cancellation; a hanging
-non-cancellable device command and scene trigger returning `INDETERMINATE`; concurrent and post-restart replay of the
-same action identity causing exactly one domain execution; late-result reconciliation; no model auto-retry; oversized
-results; repeated reads; and max-iteration behavior.
+preservation and uniqueness when `ollama-0` repeats across turns; rejection of one request ID with changed content;
+parallel call ordering; malformed arguments; unknown tools; denied access; partial results; read timeouts; action timeout
+before dispatch; confirmed cancellation; a hanging non-cancellable device command and scene trigger returning
+`INDETERMINATE`; concurrent and post-restart replay of the same inbound request with a changed provider call ID causing
+exactly one domain execution; two intentional identical action slots remaining distinct; late-result reconciliation; no
+model auto-retry; oversized results; repeated reads; and max-iteration behavior.
 
 **Gate:** Using a schema-validated test tool provider, every provider adapter correlates a tool call with its bounded
 structured result, supports a second dependent call, and produces a final response grounded in the result status/data.
@@ -985,6 +1000,8 @@ deterministic handoff after any required clarification, while ambiguous or unsup
 - `apps/backend/src/modules/buddy/controllers/buddy-conversations.controller.ts`
 - `apps/backend/src/modules/buddy/services/buddy-request-budget.service.ts`
 - `apps/backend/src/modules/buddy/services/llm-provider.service.ts`
+- `apps/backend/src/plugins/buddy-ollama/platforms/ollama.provider.ts`
+- `apps/backend/src/plugins/buddy-openai-codex/platforms/openai-codex.provider.ts`
 - Buddy messaging adapters where capacity errors are translated to local replies
 - Provider plugins/adapters and config model only where required
 - Backend Swagger response models/decorators as required for the typed capacity error
@@ -1000,7 +1017,10 @@ deterministic handoff after any required clarification, while ambiguous or unsup
       orphan assistant message or make Phase 5 depend on Phase 6 persistence.
 - [ ] Recompute the budget before every tool-loop provider call.
 - [ ] Add token-aware compaction in the required order and preserve complete tool groups.
-- [ ] Add provider-adapter final serialized-payload checks.
+- [ ] Pass the reserved output limit as `LlmOptions.maxTokens` on every provider iteration and require every registered
+      adapter to map it to its native generation cap. In particular, add Ollama's `options.num_predict` and the OpenAI
+      Codex Responses API `max_output_tokens`; do not treat a budget subtraction as enforcement when the payload omits it.
+- [ ] Add provider-adapter final serialized-payload checks that verify both the input bound and native output cap.
 - [ ] Add irreducible-input preflight and `BuddyMessageCapacityExceededException`; document the REST/voice 422 response
       and provider-free messaging fallback without changing the successful response contract.
 - [ ] Add the Swagger 422 response decorator/model to both Buddy text and audio endpoints, then run
@@ -1013,10 +1033,12 @@ deterministic handoff after any required clarification, while ambiguous or unsup
 **Tests:** 2k/4k/8k/128k/200k windows; a 10,000-character DTO-valid message that cannot fit a 2k model; existing history
 that overflows a small window before any summary exists; complete-turn eviction without orphan messages; REST/voice 422
 mapping; provider-free messaging replies; large tool schemas; oversized property strings; many tool iterations;
-estimator error; unknown Ollama model; and output reserve enforcement.
+estimator error; unknown Ollama model; and output-reserve payload enforcement for OpenAI chat, Anthropic/Claude, Ollama,
+and OpenAI Codex on the initial and every subsequent tool-loop call.
 
 **Gate:** No test provider receives an over-window serialized request, including a small-window conversation with no
-persisted summary, and the requested entity/action constraints survive compaction.
+persisted summary, and every adapter receives/enforces the reserved generation cap; the requested entity/action
+constraints survive compaction.
 
 ### Phase 6 — Conversation summary and structured reference memory
 
@@ -1067,6 +1089,8 @@ message history.
       its renderer must consume bounded query results and must never call `BuddyContextService.buildContext()` or fetch
       every device/property.
 - [ ] Ensure provider/tool/query failures produce a useful partial response or focused clarification.
+- [ ] Promote the Phase 0 eager-context baseline fixture into a required green assertion against the bounded production
+      path for the small-window and scale cases.
 - [ ] Update Buddy module metadata/readme claims so they describe adaptive retrieval rather than a full snapshot.
 
 **Tests:** Conversation controller/service regression, concurrent messages, title update behavior, LLM timeouts, existing
