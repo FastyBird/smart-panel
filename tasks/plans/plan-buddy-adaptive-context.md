@@ -380,7 +380,10 @@ Result rules:
   expose that status when needed to answer the user, while action-target discovery excludes disabled or otherwise
   non-actionable targets.
 - Never include credentials, token material, secure configuration, internal stack traces, or unrelated metadata.
-- Cap every string field, collection, serialized result byte size, and tool-result token contribution.
+- Apply prompt/tool token-oriented string, serialized-byte, and token-contribution caps at the Buddy adapter/renderer
+  boundary. The shared query layer may expose named trusted serialization profiles; the MCP compatibility profile keeps
+  existing textual values unchanged and preserves its current collection/point limits and truncation metadata. Do not
+  silently apply new Buddy string caps to MCP property values, weather fields, alert messages, or other protocol output.
 - Treat device/space/scene names and third-party values as untrusted data, not instructions.
 - Preserve explicit `partial`, `unavailable`, and `truncated` states. An empty list must not falsely mean “none exist” if
   retrieval was incomplete.
@@ -800,6 +803,8 @@ conversation context for a small-window model.
       reads the primary location.
 - [ ] Preserve MCP read visibility semantics: hidden entities remain excluded, while disabled devices/scenes remain in
       snapshots and direct reads with their `enabled` state.
+- [ ] Define trusted adapter serialization profiles: MCP keeps existing strings byte-for-byte and its established
+      collection/point caps, while Buddy applies stricter prompt/tool string, byte, and token caps after shared queries.
 - [ ] Convert MCP/Nest transport exceptions at the adapter boundary; shared query services return typed domain results
       and errors rather than MCP/HTTP-specific failures.
 - [ ] Keep MCP installation identity, auth, policy, auditing, request envelope, and transport deadlines in MCP.
@@ -813,7 +818,8 @@ conversation context for a small-window model.
 
 **Tests:** Shared service unit tests; domain query integration tests; MCP facade/tool regression tests, including explicit
 and omitted weather location IDs; visibility-profile tests proving hidden exclusion, MCP disabled-entity compatibility,
-and Buddy action-target exclusion; query limit and truncation tests; N+1/query-count assertions for large fixtures.
+and Buddy action-target exclusion; long property/weather/security strings proving MCP output remains unchanged while
+Buddy output is bounded; query limit and truncation tests; N+1/query-count assertions for large fixtures.
 
 **Gate:** MCP behavior is backward compatible, and a targeted entity beyond the first 100 alphabetic devices is found by
 bounded search without loading the full catalog.
@@ -884,9 +890,10 @@ long labels/values; multi-language/diacritic search; same-token collisions acros
 one conversation; and proof that a short ID exposed only in conversation A is denied in conversation B and after
 scope eviction instead of resolving through the global mapping.
 
-**Gate:** Buddy can answer every read-only home-state row in the message matrix using tools without the eager context. A
-model can call `search_home`, receive structured IDs, perform a dependent state read or validated action, and produce a
-final response grounded in the action/result status.
+**Gate:** An isolated Buddy tool-loop integration harness can answer every read-only home-state row in the message matrix
+through the new provider without that provider calling the eager snapshot. A model can call `search_home`, receive
+structured IDs, perform a dependent state read or validated action, and produce a final response grounded in the
+action/result status. The production conversation-path removal is intentionally deferred to the Phase 7 gate.
 
 ### Phase 4 — Deterministic planner and bounded prefetch
 
