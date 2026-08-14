@@ -72,6 +72,7 @@
     "test:homey-spike": "jest --config ./test/jest-homey-spike.json --runInBand",
     "test:oauth-spike": "NODE_OPTIONS=\"${NODE_OPTIONS:-} --experimental-vm-modules\" jest --config ./test/jest-oauth-spike.json --runInBand",
     "homey:probe": "ts-node --project tsconfig.json test/support/homey-shs-probe.ts",
+    "homey:probe-credential-rotation": "ts-node --project tsconfig.json test/support/homey-shs-credential-rotation-probe.ts",
     "homey:probe-errors": "ts-node --project tsconfig.json test/support/homey-shs-error-probe.ts",
     "homey:generate-normalized-fixtures": "ts-node --project tsconfig.json test/support/generate-homey-normalized-fixtures.ts",
     "homey:probe-realtime": "ts-node --project tsconfig.json test/support/homey-shs-realtime-probe.ts",
