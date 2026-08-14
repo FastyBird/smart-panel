@@ -469,6 +469,34 @@ describe('McpContextService', () => {
 		});
 	});
 
+	it('caps a scoped space snapshot at 100 devices and reports the omitted device', async () => {
+		spaces.findOne.mockResolvedValue({
+			id: 'room-1',
+			name: 'Kitchen',
+			type: SpaceType.ROOM,
+			parentId: null,
+		} as unknown as SpaceEntity);
+		spaces.findVisibleDeviceSummariesBySpace.mockResolvedValue({
+			devices: Array.from({ length: 100 }, (_, index) => ({
+				id: `device-${index}`,
+				name: `Device ${index}`,
+				category: 'generic',
+				enabled: true,
+				hidden: false,
+				roomId: 'room-1',
+				zoneIds: [],
+				status: { online: true, status: 'connected', lastChanged: null },
+			})) as DeviceEntity[],
+			total: 101,
+		});
+
+		const result = await service.getHomeContext('room-1');
+
+		expect(spaces.findVisibleDeviceSummariesBySpace).toHaveBeenCalledWith('room-1', 100);
+		expect(result.devices).toHaveLength(100);
+		expect(result.limits).toEqual(expect.objectContaining({ devices_truncated: true }));
+	});
+
 	it('propagates strict connection status failures from home context', async () => {
 		devices.findVisibleSummaryPage.mockResolvedValue({
 			devices: [{ id: 'device-id', hidden: false } as DeviceEntity],

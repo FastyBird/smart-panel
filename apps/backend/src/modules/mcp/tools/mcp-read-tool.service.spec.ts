@@ -1,4 +1,4 @@
-import { AuthInfo, McpServer, ServerContext } from '@modelcontextprotocol/server';
+import { AuthInfo, McpServer, ResourceTemplate, ServerContext } from '@modelcontextprotocol/server';
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 
 import { WeatherNotFoundException } from '../../weather/weather.exceptions';
@@ -44,6 +44,7 @@ describe('McpReadToolService', () => {
 	let registerResource: jest.Mock;
 	let callbacks: Map<string, ToolCallback>;
 	let resourceCallbacks: Map<string, ResourceCallback>;
+	let registeredResourceUris: Map<string, unknown>;
 	let resourceTemplateCallbacks: Map<string, ResourceTemplateCallback>;
 	let resourceListCallback: ResourceListCallback | undefined;
 
@@ -88,13 +89,16 @@ describe('McpReadToolService', () => {
 		};
 		callbacks = new Map();
 		resourceCallbacks = new Map();
+		registeredResourceUris = new Map();
 		resourceTemplateCallbacks = new Map();
 		resourceListCallback = undefined;
 		registerTool = jest.fn((name: string, _config: unknown, callback: ToolCallback) => {
 			callbacks.set(name, callback);
 		});
 		registerResource = jest.fn(
-			(name: string, _uri: unknown, _config: unknown, callback: ResourceCallback | ResourceTemplateCallback) => {
+			(name: string, uri: unknown, _config: unknown, callback: ResourceCallback | ResourceTemplateCallback) => {
+				registeredResourceUris.set(name, uri);
+
 				if (name === 'space-snapshot') {
 					resourceTemplateCallbacks.set(name, callback as ResourceTemplateCallback);
 				} else {
@@ -128,6 +132,15 @@ describe('McpReadToolService', () => {
 			'get_security_status',
 		]);
 		expect(registerResource).toHaveBeenCalledTimes(3);
+		expect(registeredResourceUris.get('home-context')).toBe('smart-panel://home/context');
+
+		const spaceSnapshotTemplate = registeredResourceUris.get('space-snapshot');
+
+		expect(spaceSnapshotTemplate).toBeInstanceOf(ResourceTemplate);
+		if (!(spaceSnapshotTemplate instanceof ResourceTemplate)) {
+			throw new Error('Space snapshot did not register an MCP ResourceTemplate');
+		}
+		expect(spaceSnapshotTemplate.uriTemplate.toString()).toBe('smart-panel://spaces/{spaceId}/snapshot');
 	});
 
 	it('forwards get_device_state arguments and envelopes the exact direct-read data unchanged', async () => {
