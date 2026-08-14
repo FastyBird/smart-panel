@@ -351,7 +351,7 @@ entity outside that page. Add bounded filter/search methods to the owning domain
 
 Initial deterministic ranking order:
 
-1. Exact canonical or short ID exposed in this conversation
+1. Exact canonical or short ID explicitly present in the original user input and valid in this conversation
 2. Exact normalized display name
 3. Exact normalized name in the current/conversation space
 4. Prefix and whole-token match
@@ -364,8 +364,22 @@ unless tests prove the platform implementation insufficient.
 
 For reads, several close matches may be returned with scores/reasons. For writes/triggers, the resolver must mark the
 result ambiguous if more than one compatible candidate is plausible. Never use a tiny score difference to authorize an
-action. Canonical UUIDs remain valid tool inputs. Buddy short-ID mappings are namespaced by conversation: register only
-entities actually exposed in that conversation, and resolve a Buddy short ID only inside the same conversation scope.
+action. Canonical UUIDs remain valid tool inputs, but for a Buddy-origin action the UUID/short ID supplied by the model is
+not resolution proof. Search/read exposure never grants action authority. `BuddyActionResolutionService` must bind a
+server-generated `BuddyActionResolutionProof` to the request claim, original-user-intent digest, action kind/arguments,
+canonical target, candidate-set digest, conversation/safety epoch, resolution method, and expiry. Valid methods are an
+identifier explicitly supplied by the user, a deterministic unique match/reference with a completeness-safe collision
+check, or a structured user selection bound to an expiring clarification candidate set. The proof is server-held and not
+a model-selectable tool argument.
+
+Immediately before planning and dispatch, re-resolve current target existence/capability and validate the proof. If the
+original request was ambiguous, search was truncated/incomplete, a new plausible collision appears, or the model selects
+one ID from several returned candidates, no proof exists and the action fails closed with a structured ambiguity result.
+Persist the proof with the canonical action plan before dispatch. Non-Buddy MCP/tool consumers retain their existing ID
+semantics and authorization paths.
+
+Buddy short-ID mappings are namespaced by conversation: register only entities actually exposed in that conversation,
+and resolve a Buddy short ID only inside the same conversation scope.
 Never fall back from a failed scoped Buddy lookup to the application-wide mapping. Preserve the existing unscoped
 mapping behavior for non-Buddy consumers that require compatibility. If two UUIDs collide inside one conversation,
 generate a distinct salted token before exposure; expire or evict the scoped mapping with the conversation/reference
@@ -627,9 +641,10 @@ hooks backed by `BuddySafetyStateService`; `BackupService` invokes the registry 
 safety sidecar is explicitly excluded from normal backup contributions and the database replacement target.
 
 Before any physical dispatch, persist the complete bounded canonical action plan—validated tool name, canonical targets,
-normalized arguments, fingerprint, user-evidenced allowance/occurrence slot, and execution identity—and transition the
-claim atomically to `ACTION_PLANNED`. Immediately before invoking a domain action, durably commit `ACTION_DISPATCHING`
-with its `actionExecutionId`; the adapter must never begin the call while the durable row still says `ACTION_PLANNED`.
+normalized arguments, claim-bound resolution proof, fingerprint, user-evidenced allowance/occurrence slot, and execution
+identity—and transition the claim atomically to `ACTION_PLANNED`. Immediately before invoking a domain action, durably
+commit `ACTION_DISPATCHING` with its `actionExecutionId`; the adapter must never begin the call while the durable row still
+says `ACTION_PLANNED`.
 `ACTION_DISPATCHED` records a domain acknowledgement that execution started, not merely the caller's intent.
 
 After a crash/restart, no state at or beyond `ACTION_PLANNED` may return to an action-capable stochastic model.
@@ -960,6 +975,8 @@ Requirements:
   traces.
 - Log IDs/counts/statuses where useful, but do not log raw sensitive property values or full prompts by default.
 - Reads may return several candidates. Writes and triggers require one unambiguous compatible target.
+- Treat model-selected canonical/short IDs as untrusted arguments, not evidence of user intent. Buddy dispatch requires
+  the server-held claim-bound resolution proof from Section 5.4 and fails closed if ambiguity/completeness changed.
 - For safety-relevant/security devices, preserve existing authorization/command restrictions and add focused regression
   tests; retrieval does not broaden tool permissions.
 - A model saying an action succeeded is not evidence. The final response must be grounded in the structured tool result.
@@ -1034,6 +1051,7 @@ apps/backend/src/modules/buddy/
 │   ├── buddy-context-planner.service.ts
 │   ├── buddy-context-renderer.service.ts
 │   ├── buddy-action-conflict-fence.service.ts
+│   ├── buddy-action-resolution.service.ts
 │   ├── buddy-deterministic-action-handoff.service.ts
 │   ├── buddy-messaging-conversation-binding.service.ts
 │   ├── buddy-outbound-delivery.service.ts
@@ -1177,6 +1195,7 @@ snapshots are produced through the shared query layer without making that eager 
 - `apps/backend/src/modules/buddy/entities/buddy-request-claim.entity.ts`
 - `apps/backend/src/modules/buddy/services/buddy-conversation.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-conversation-turn-coordinator.service.ts`
+- `apps/backend/src/modules/buddy/services/buddy-action-resolution.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-action-conflict-fence.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-messaging-conversation-binding.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-outbound-delivery.service.ts`
@@ -1290,6 +1309,10 @@ snapshots are produced through the shared query layer without making that eager 
 - [ ] Persist canonical affected-resource conflict keys with dispatch intent. Keep indeterminate keys fenced after the
       conversation sequence advances; every later provider must block a conflicting action until authoritative
       reconciliation/cancellation or a structured user acknowledgement bound to the predecessor and ordering risk.
+- [ ] Require a server-generated claim/intent/candidate/target-bound resolution proof for every Buddy-origin write or
+      trigger. A model-supplied canonical/short ID is only an argument; rerun deterministic ambiguity/completeness checks
+      and reject dispatch unless the original user explicitly identified the target, unique resolution is proven, or an
+      exact structured clarification selection is valid. Preserve non-Buddy action-provider behavior.
 - [ ] Persist a default-one `BuddyActionAllowance` per canonical fingerprint. Allocate additional occurrence slots only
       from a bounded repeat count parsed from original user input or an explicit structured confirmation tied to the
       resolved action; require confirmation for repeated non-idempotent triggers and coalesce all model-only duplicates.
@@ -1313,6 +1336,10 @@ later dependent follow-up observing the first turn's persisted entity reference;
 sequence even when the older provider is delayed; lease-expiry recovery that finishes/marks the older turn before
 advancing; busy/`Retry-After` without history/model/action work when the wait deadline expires; different conversations
 remaining parallel;
+a reliable tool model receiving two plausible search candidates and then calling an action with either returned canonical
+or short ID executing zero times; hallucinated/foreign/expired resolution proof executing zero; exact user-supplied ID,
+completeness-safe unique name/reference, and structured clarification selection producing valid bound proofs; truncated
+search or a new plausible collision before dispatch invalidating proof; non-Buddy action-provider regression;
 fault injection between assistant-message insert and claim completion/turn-lease release rolling back the whole
 transaction, plus crash immediately after the atomic commit recovering the one stored turn/outcome without provider
 invocation and allowing exactly the next sequence;
@@ -1398,12 +1425,14 @@ in sequence, while different conversations can proceed concurrently.
 **Tests:** Every schema boundary and hard cap; missing optional modules; stale/missing entities; hidden/disabled entities;
 long labels/values; multi-language/diacritic search; same-token collisions across conversations; two colliding UUIDs in
 one conversation; and proof that a short ID exposed only in conversation A is denied in conversation B and after
-scope eviction instead of resolving through the global mapping.
+scope eviction instead of resolving through the global mapping; multiple plausible search results followed by a model
+choosing one exposed UUID/short ID still yielding ambiguity and zero execution.
 
 **Gate:** An isolated Buddy tool-loop integration harness can answer every read-only home-state row in the message matrix
 through the new provider without that provider calling the eager snapshot. A model can call `search_home`, receive
 structured IDs, perform a dependent state read or validated action, and produce a final response grounded in the
 action/result status. The production conversation-path removal is intentionally deferred to the Phase 7 gate.
+An exposed search ID alone never satisfies Buddy action-resolution proof.
 
 ### Phase 4 — Deterministic planner and bounded prefetch
 
@@ -1424,6 +1453,8 @@ action/result status. The production conversation-path removal is intentionally 
       per-query timeouts, bounded concurrency, cancellation propagation where supported, and late-result disposal.
 - [ ] Render compact typed sections with untrusted-data delimiters and explicit partial/truncated states.
 - [ ] Add ambiguity detection and deterministic clarification candidates for risky actions.
+- [ ] Generate server-held resolution proof only from exact original-input resolution or a structured clarification
+      selection; bind it to the claim/intent/candidate digest/target and revalidate immediately before dispatch.
 - [ ] Run the conservative irreducible-input admission preflight before planner/prefetch or deterministic handoff. Bind
       its success to the claim digest/model profile, and require the marker again before any handoff/action dispatch.
 - [ ] Implement the deterministic action handoff for tool-less/limited providers using an allowlisted command grammar,
@@ -1666,7 +1697,8 @@ designated safe targets and reversible values. Scale/shadow evaluation must neve
       control/trigger commands through the non-LLM action handoff; ambiguous or unsupported commands execute nothing.
 - [ ] Complete provider requests are budgeted, including schemas, history, tool results, and output reserve.
 - [ ] Long conversations use token-aware history plus persisted bounded summary/reference memory.
-- [ ] Ambiguous actions never silently select a candidate.
+- [ ] Ambiguous actions never silently select a candidate; a model choosing one exposed UUID/short ID cannot dispatch
+      without server-held proof of the user's unambiguous intent or structured selection.
 - [ ] REST text/audio retries use the required client-stable idempotency key, and replay after timeout/restart cannot
       execute an action twice even when the provider returns a different tool-call ID.
 - [ ] Discord/Telegram/WhatsApp bindings survive process restart, and replay of one stable platform event resolves the
