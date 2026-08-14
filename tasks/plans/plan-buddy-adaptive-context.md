@@ -588,20 +588,29 @@ restart recovery.
 Persist the canonical user message as a claim-linked message row (or idempotently before `MODEL_IN_FLIGHT`) and key stored
 turn rows by `requestClaimId + role + ordinal`. A bounded claim-local recovery copy, including an `INPUT_READY` STT
 transcript, may exist only while the claim is nonterminal. Persist the final assistant message, bounded terminal outcome,
-claim transition to `COMPLETED`, and removal of that recovery copy in one database transaction. Recovery checks the
-uniquely keyed rows before provider dispatch: a committed terminal turn is reconciled/returned without invoking the
-model, while a fault between row writes rolls back the entire transaction. The request-claim migration adds the message
-linkage/unique index; conversation deletion may cascade the display messages only after the retained claim contains the
-bounded terminal outcome needed for replay and no raw input.
+claim transition to `COMPLETED`, removal of that recovery copy, and—for messaging—the ordered `PENDING` outbound rows in
+one database transaction. Recovery checks the uniquely keyed rows before provider dispatch: a committed terminal turn is
+reconciled/returned without invoking the model, while a fault between row writes rolls back the entire transaction. The
+request-claim migration adds the message linkage/unique index; conversation deletion may cascade the display messages
+only after the retained claim contains the bounded terminal outcome needed for replay and no raw input.
 
 Messaging replies use a durable `BuddyOutboundDeliveryEntity` keyed by request claim, platform, opaque destination scope,
-and reply ordinal. After terminal turn commit, the adapter atomically creates/reuses `PENDING`, commits `DISPATCHING`
-before the platform send, and records `SENT` plus the returned platform message ID/digest. A redelivery whose row is
-`SENT` returns an internal `already_delivered` disposition and the adapter sends nothing. If a crash leaves
-`DISPATCHING`, recover through a platform-supported idempotency key/status lookup when authoritative; otherwise mark the
-delivery `INDETERMINATE` and suppress automatic resend, accepting a possible missing reply rather than a duplicate.
-`BuddyOutboundDeliveryService` provides the lease/CAS boundary, and request claims/bindings/outbound rows do not cascade
-on conversation deletion. Store only bounded outcome digests and opaque identifiers outside the canonical Buddy message.
+destination-delivery sequence, and reply ordinal. The terminal transaction locks the persistent qualified destination
+binding/tombstone, allocates its next monotonic `destinationDeliverySequence` (which survives conversation deletion and
+binding-generation changes), and creates/reuses the `PENDING` rows. A durable per-destination dispatcher lease selects
+only the lowest outstanding `(destinationDeliverySequence, replyOrdinal)`, commits `DISPATCHING` before the platform
+send, and records `SENT` plus the returned platform message ID/digest before advancing the queue. A redelivery whose row
+is `SENT` returns an internal `already_delivered` disposition and the adapter sends nothing. Later conversation turns may
+compute and enqueue in order, but their platform sends cannot overtake a slow earlier row.
+
+If a crash leaves `DISPATCHING`, recover through a platform-supported idempotency key/status lookup when authoritative.
+An authoritatively `SENT` or proven-not-sent/cancelled row may advance the destination queue; otherwise mark the delivery
+`INDETERMINATE`, suppress automatic resend, and keep later rows for that destination blocked because a late first send
+could still overtake them. Reconciliation or an explicit operator decision bound to the uncertain row is required to
+advance, and the blocked queue is operator-visible. `BuddyOutboundDeliveryService` provides both the delivery and ordered
+destination lease/CAS boundary. Request claims/bindings/outbound rows do not cascade on conversation deletion, and the
+binding tombstone retains the destination counter/order barrier for the next generation. Store only bounded outcome
+digests and opaque identifiers outside the canonical Buddy message.
 
 Factory reset is the explicit exception to normal non-cascading retention. `BuddyModuleResetService` first advances the
 singleton durable module safety epoch and fences new/leased work so an in-process or late callback cannot repopulate
@@ -805,7 +814,9 @@ must not read history, invoke a model, or dispatch an action until every lower s
 follow-up references and action order such as “turn it on” followed by “turn it off”.
 
 The final assistant message, claim terminal state, memory/reference version, active-lease release, and next-sequence
-eligibility commit atomically. On owner failure, normal claim/action recovery completes or marks the older turn
+eligibility commit atomically; messaging turns also allocate and enqueue their destination delivery rows in that commit.
+The conversation lease need not remain held across external platform I/O because the independent persistent destination
+dispatcher enforces reply order. On owner failure, normal claim/action recovery completes or marks the older turn
 indeterminate and persists its canonical target-conflict fences before the coordinator advances. Later turns may read or
 act on unrelated targets, but a conflicting action remains blocked unless the predecessor is authoritatively resolved or
 the user explicitly acknowledges the bound uncertainty. Exact duplicate requests reuse their existing sequence and do
@@ -1367,7 +1378,11 @@ snapshots are produced through the shared query layer without making that eager 
       terminal claim transition atomically; recovery must reconcile a committed turn before any model dispatch.
 - [ ] Add durable outbound-delivery rows and adapter coordination for messaging replies. Suppress sends for `SENT`
       replays, and reconcile `DISPATCHING` through authoritative platform idempotency/status or mark it `INDETERMINATE`
-      without automatic resend. Replace each adapter's unconditional send of a replayed result.
+      without automatic resend. In the terminal turn transaction, allocate a monotonic sequence on the persistent
+      account-qualified destination binding/tombstone and enqueue `PENDING` rows. Dispatch only the lowest outstanding
+      sequence/reply ordinal under a cross-process destination lease; an uncertain earlier send blocks later replies until
+      authoritative reconciliation or an explicit operator decision. Replace each adapter's unconditional send of a
+      replayed result.
 - [ ] Commit an `ACTION_DISPATCHING` intent containing `actionExecutionId` before every domain invocation. Resume
       `ACTION_PLANNED` only because no invocation can precede that commit. Recover `ACTION_DISPATCHING`/`ACTION_DISPATCHED`
       through authoritative downstream idempotency when available; otherwise mark the outcome `INDETERMINATE` and never
@@ -1434,6 +1449,10 @@ bot/application/business-account credentials with overlapping chat/event IDs cre
 being suppressed as an old replay; unauthenticated account identity admitting zero deliveries;
 redelivery after the original outbound reply was sent producing zero additional platform sends; crash with outbound
 `DISPATCHING` reconciling by a fake authoritative platform key, or becoming `INDETERMINATE` with zero automatic resends;
+two sequential turns whose first platform send is blocked while the second completes/enqueues, proving the second send
+does not start until the first is durably `SENT`; restart with two queued rows preserving that order across workers;
+conversation deletion/rebinding retaining the qualified destination counter; an indeterminate first send blocking later
+rows until authoritative reconciliation/operator resolution rather than permitting a late-send overtake;
 redelivery after the platform account is remapped to another Smart Panel actor resolving the original delivery claim and
 executing nothing; conversation deletion followed by a genuinely new event creating the next binding generation, while
 an old-event replay returns its retained outcome without recreating the deleted conversation or invoking the model;
@@ -1481,8 +1500,9 @@ invokes a second concurrent provider call. A fresh process can recover every non
 only durable state and cannot bypass the database uniqueness or lease rules. Terminal message/outcome persistence is
 atomic with claim completion, duplicate messaging deliveries produce at most one outbound platform send, and duplicate
 audio requests cannot invoke STT concurrently. Distinct turns within one conversation execute their complete lifecycle
-in sequence, while different conversations can proceed concurrently. No busy response leaves an ownerless nonterminal
-sequence capable of blocking later turns.
+in sequence, while different conversations can proceed concurrently. Messaging replies are durably enqueued with the
+terminal turn and dispatched in qualified-destination sequence, so a slow/uncertain earlier send cannot be overtaken. No
+busy response leaves an ownerless nonterminal sequence capable of blocking later turns.
 
 ### Phase 3 — Add Buddy read tools
 
@@ -1799,7 +1819,9 @@ designated safe targets and reversible values. Scale/shadow evaluation must neve
       while only new events may establish the next conversation binding generation. Retained terminal claims contain no
       raw user text or STT transcript after deletion.
 - [ ] A redelivered messaging event never causes a second outbound bot reply; uncertain platform sends are reconciled or
-      suppressed, never automatically resent.
+      suppressed, never automatically resent. Replies for distinct turns are durably ordered per account-qualified
+      destination across processes, restarts, and conversation rebinding; a slow/uncertain earlier send cannot be
+      overtaken by a later reply.
 - [ ] Distinct turns in one conversation cannot overtake each other: dependent follow-ups observe prior references and
       explicit actions execute in user-send order; an indeterminate predecessor keeps conflicting targets fenced until
       reconciliation or explicit acknowledgement, while separate conversations and unrelated targets remain available.
