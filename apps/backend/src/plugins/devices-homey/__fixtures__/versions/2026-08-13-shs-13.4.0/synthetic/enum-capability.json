@@ -1,0 +1,11 @@
+{
+	"provenance": "synthetic-protocol-contract",
+	"id": "synthetic_mode",
+	"type": "enum",
+	"value": "mode_a",
+	"values": [
+		{ "id": "mode_a", "title": "Synthetic mode A" },
+		{ "id": "mode_b", "title": "Synthetic mode B" },
+		{ "id": "mode_c", "title": "Synthetic mode C" }
+	]
+}

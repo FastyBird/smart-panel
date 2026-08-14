@@ -61,10 +61,10 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 **Reference:** Official local API factory, ManagerDevices, Device capability/event documentation, and SHS port documentation linked by the design.
 
 - [ ] Verify connection with the documented SDK against HTTP `4859` and HTTPS `4860` where the installation supports them.
-- [ ] Capture sanitized system information and manager state.
-- [ ] Capture zones and zone hierarchy.
-- [ ] Capture the complete device inventory and individual device objects.
-- [ ] Capture capabilities with values, types, units, ranges, enums, readable/writable flags, and repeated/suffixed IDs.
+- [x] Capture sanitized system information and manager state.
+- [x] Capture zones and zone hierarchy.
+- [x] Capture the complete device inventory and individual device objects.
+- [x] Capture capabilities with values, types, units, ranges, enums, readable/writable flags, and repeated/suffixed IDs.
 - [ ] Verify Socket.IO connection and record subscription/event ordering for capability changes and availability changes.
 - [ ] Write the allowlisted test capability and confirm the resulting event plus subsequent read.
 - [ ] Test invalid key, missing scopes, bad URL, unavailable host, and request timeout behavior.
@@ -95,7 +95,6 @@ apps/backend/src/plugins/devices-homey/__fixtures__/
     switch.json
     climate.json
     cover.json
-    lock.json
     sensor-air-quality.json
     sensor-safety.json
     energy-meter.json
@@ -109,10 +108,10 @@ apps/backend/src/plugins/devices-homey/__fixtures__/
 ```
 
 - [x] Add a capture sanitizer that replaces IDs, names, zones, addresses, and sensitive driver metadata with deterministic synthetic values.
-- [ ] Preserve field shape, ordering where relevant, types, units, ranges, enum values, and capability suffix behavior.
+- [x] Preserve field shape, ordering where relevant, types, units, ranges, enum values, and capability suffix behavior.
 - [ ] Add expected normalized output fixtures for representative devices.
 - [x] Add forbidden-token assertions or a fixture-safety test covering key prefixes, original host/address, and known private names.
-- [ ] Confirm the corpus can drive connector/domain tests after live SHS access ends.
+- [x] Confirm the corpus can drive connector/domain tests after live SHS access ends.
 
 **Gate:** Milestone 1 may scaffold interfaces in parallel, but no production connector or mDNS implementation is finalized until Tasks 0.2–0.4 are complete.
 

@@ -1,0 +1,162 @@
+{
+	"zone-000001": {
+		"id": "zone-000001",
+		"name": "zone-label-000001",
+		"parent": "zone-000002",
+		"sortIndex": null,
+		"active": false,
+		"activeOrigins": [],
+		"activeLastUpdated": null,
+		"icon": "[~2~]"
+	},
+	"zone-000003": {
+		"id": "zone-000003",
+		"name": "zone-label-000002",
+		"parent": "zone-000002",
+		"sortIndex": null,
+		"active": true,
+		"activeOrigins": ["reference-000001"],
+		"activeLastUpdated": "2000-01-01T00:00:00.000Z",
+		"icon": "[~2~]"
+	},
+	"zone-000004": {
+		"id": "zone-000004",
+		"name": "zone-label-000003",
+		"parent": "zone-000002",
+		"sortIndex": null,
+		"active": false,
+		"activeOrigins": [],
+		"activeLastUpdated": null,
+		"icon": "[~2~]"
+	},
+	"zone-000005": {
+		"id": "zone-000005",
+		"name": "zone-label-000004",
+		"parent": "zone-000002",
+		"sortIndex": null,
+		"active": false,
+		"activeOrigins": [],
+		"activeLastUpdated": "2000-01-01T00:00:00.000Z",
+		"icon": "[~2~]"
+	},
+	"zone-000002": {
+		"id": "zone-000002",
+		"name": "zone-label-000005",
+		"parent": null,
+		"sortIndex": null,
+		"active": true,
+		"activeOrigins": ["reference-000002"],
+		"activeLastUpdated": "2000-01-01T00:00:00.000Z",
+		"icon": "[~2~]"
+	},
+	"zone-000006": {
+		"id": "zone-000006",
+		"name": "zone-label-000006",
+		"parent": "zone-000002",
+		"sortIndex": null,
+		"active": false,
+		"activeOrigins": [],
+		"activeLastUpdated": null,
+		"icon": "[~2~]"
+	},
+	"zone-000007": {
+		"id": "zone-000007",
+		"name": "zone-label-000007",
+		"parent": "zone-000002",
+		"sortIndex": null,
+		"active": false,
+		"activeOrigins": [],
+		"activeLastUpdated": null,
+		"icon": "[~2~]"
+	},
+	"zone-000008": {
+		"id": "zone-000008",
+		"name": "zone-label-000008",
+		"parent": "zone-000002",
+		"sortIndex": null,
+		"active": false,
+		"activeOrigins": [],
+		"activeLastUpdated": null,
+		"icon": "[~2~]"
+	},
+	"zone-000009": {
+		"id": "zone-000009",
+		"name": "zone-label-000009",
+		"parent": "zone-000002",
+		"sortIndex": null,
+		"active": false,
+		"activeOrigins": [],
+		"activeLastUpdated": null,
+		"icon": "[~2~]"
+	},
+	"zone-000010": {
+		"id": "zone-000010",
+		"name": "zone-label-000010",
+		"parent": "zone-000002",
+		"sortIndex": null,
+		"active": false,
+		"activeOrigins": [],
+		"activeLastUpdated": null,
+		"icon": "[~2~]"
+	},
+	"zone-000011": {
+		"id": "zone-000011",
+		"name": "zone-label-000011",
+		"parent": "zone-000002",
+		"sortIndex": null,
+		"active": false,
+		"activeOrigins": [],
+		"activeLastUpdated": null,
+		"icon": "[~2~]"
+	},
+	"zone-000012": {
+		"id": "zone-000012",
+		"name": "zone-label-000012",
+		"parent": "zone-000002",
+		"sortIndex": null,
+		"active": false,
+		"activeOrigins": [],
+		"activeLastUpdated": "2000-01-01T00:00:00.000Z",
+		"icon": "[~2~]"
+	},
+	"zone-000013": {
+		"id": "zone-000013",
+		"name": "zone-label-000013",
+		"parent": "zone-000002",
+		"sortIndex": null,
+		"active": false,
+		"activeOrigins": [],
+		"activeLastUpdated": null,
+		"icon": "[~2~]"
+	},
+	"zone-000014": {
+		"id": "zone-000014",
+		"name": "zone-label-000014",
+		"parent": "zone-000002",
+		"sortIndex": null,
+		"active": false,
+		"activeOrigins": [],
+		"activeLastUpdated": "2000-01-01T00:00:00.000Z",
+		"icon": "[~2~]"
+	},
+	"zone-000015": {
+		"id": "zone-000015",
+		"name": "zone-label-000015",
+		"parent": "zone-000002",
+		"sortIndex": null,
+		"active": false,
+		"activeOrigins": [],
+		"activeLastUpdated": "2000-01-01T00:00:00.000Z",
+		"icon": "[~2~]"
+	},
+	"zone-000016": {
+		"id": "zone-000016",
+		"name": "zone-label-000016",
+		"parent": "zone-000002",
+		"sortIndex": null,
+		"active": false,
+		"activeOrigins": [],
+		"activeLastUpdated": "2000-01-01T00:00:00.000Z",
+		"icon": "[~2~]"
+	}
+}
