@@ -25,6 +25,11 @@ import {
 	MCP_MAX_SECURITY_DEVICES,
 	MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
 	MCP_MAX_TIMESERIES_POINTS,
+	MCP_MAX_TIMESERIES_RANGE_DAYS,
+	MCP_MAX_TRIGGER_SCENES,
+	MCP_MAX_TRIGGER_SPACES,
+	MCP_MAX_WRITABLE_PROPERTIES,
+	MCP_MAX_WRITABLE_PROPERTY_CANDIDATES,
 	McpCapability,
 } from '../mcp.constants';
 
@@ -131,6 +136,46 @@ describe('McpContextService', () => {
 				effective_capabilities: [McpCapability.READ],
 			}),
 		);
+	});
+
+	it('freezes the numeric MCP context and discovery compatibility limits', () => {
+		expect({
+			spaces: MCP_MAX_CONTEXT_SPACES,
+			devices: MCP_MAX_CONTEXT_DEVICES,
+			channelsPerDevice: MCP_MAX_CHANNELS_PER_DEVICE,
+			propertiesPerChannel: MCP_MAX_PROPERTIES_PER_CHANNEL,
+			scenes: MCP_MAX_CONTEXT_SCENES,
+			writableProperties: MCP_MAX_WRITABLE_PROPERTIES,
+			writableCandidates: MCP_MAX_WRITABLE_PROPERTY_CANDIDATES,
+			triggerScenes: MCP_MAX_TRIGGER_SCENES,
+			triggerSpaces: MCP_MAX_TRIGGER_SPACES,
+			securityAlerts: MCP_MAX_SECURITY_ALERTS,
+			securityDevices: MCP_MAX_SECURITY_DEVICES,
+			securityChannelsPerDevice: MCP_MAX_SECURITY_CHANNELS_PER_DEVICE,
+			securityPropertiesPerChannel: MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
+			forecastDays: MCP_MAX_FORECAST_DAYS,
+			timeseriesRangeDays: MCP_MAX_TIMESERIES_RANGE_DAYS,
+			timeseriesPoints: MCP_MAX_TIMESERIES_POINTS,
+			energyRangeDays: MCP_MAX_ENERGY_RANGE_DAYS,
+		}).toEqual({
+			spaces: 50,
+			devices: 100,
+			channelsPerDevice: 20,
+			propertiesPerChannel: 40,
+			scenes: 50,
+			writableProperties: 100,
+			writableCandidates: 500,
+			triggerScenes: 50,
+			triggerSpaces: 50,
+			securityAlerts: 20,
+			securityDevices: 100,
+			securityChannelsPerDevice: 10,
+			securityPropertiesPerChannel: 20,
+			forecastDays: 5,
+			timeseriesRangeDays: 14,
+			timeseriesPoints: 500,
+			energyRangeDays: 31,
+		});
 	});
 
 	it('bounds compact home context and normalizes unavailable optional domains', async () => {
@@ -553,9 +598,9 @@ describe('McpContextService', () => {
 				armedState: 'armed',
 				alarmState: null,
 				highestSeverity: 'warning',
-				activeAlertsCount: MCP_MAX_SECURITY_ALERTS + 3,
+				activeAlertsCount: 23,
 				hasCriticalAlert: false,
-				activeAlerts: Array.from({ length: MCP_MAX_SECURITY_ALERTS + 3 }, (_, index) => ({
+				activeAlerts: Array.from({ length: 23 }, (_, index) => ({
 					id: `alert-${index}`,
 					severity: 'warning',
 					message: `Alert ${index}`,
@@ -568,8 +613,8 @@ describe('McpContextService', () => {
 
 		const result = await service.getSecurityStatus();
 
-		expect(result.active_alerts).toHaveLength(MCP_MAX_SECURITY_ALERTS);
-		expect(result).toEqual(expect.objectContaining({ active_alerts_count: MCP_MAX_SECURITY_ALERTS + 3 }));
+		expect(result.active_alerts).toHaveLength(20);
+		expect(result).toEqual(expect.objectContaining({ active_alerts_count: 23 }));
 		expect(result.alerts_truncated).toBe(true);
 	});
 
@@ -694,16 +739,19 @@ describe('McpContextService', () => {
 
 	it('rejects energy ranges beyond the MCP compatibility limit before querying', async () => {
 		const from = '2026-01-01T00:00:00.000Z';
-		const to = new Date(Date.parse(from) + (MCP_MAX_ENERGY_RANGE_DAYS + 1) * 24 * 60 * 60 * 1000).toISOString();
+		const atLimit = '2026-02-01T00:00:00.000Z';
+		const beyondLimit = '2026-02-02T00:00:00.000Z';
+		energy.getSummary.mockResolvedValue({ totalConsumptionKwh: 1 });
 
-		await expect(service.getEnergySummary(from, to)).rejects.toThrow(
-			`may not exceed ${MCP_MAX_ENERGY_RANGE_DAYS} days`,
+		await expect(service.getEnergySummary(from, atLimit)).resolves.toEqual(
+			expect.objectContaining({ totalConsumptionKwh: 1 }),
 		);
-		expect(energy.getSummary).not.toHaveBeenCalled();
+		await expect(service.getEnergySummary(from, beyondLimit)).rejects.toThrow('may not exceed 31 days');
+		expect(energy.getSummary).toHaveBeenCalledTimes(1);
 	});
 
 	it('uses primary or explicit weather selection and caps the forecast', async () => {
-		const forecast = Array.from({ length: MCP_MAX_FORECAST_DAYS + 2 }, (_, index) => ({
+		const forecast = Array.from({ length: 7 }, (_, index) => ({
 			date: `2026-08-${String(index + 15).padStart(2, '0')}`,
 		}));
 		const weatherResult = {
@@ -720,7 +768,7 @@ describe('McpContextService', () => {
 
 		expect(weather.getPrimaryWeather).toHaveBeenCalledTimes(1);
 		expect(weather.getWeather).toHaveBeenCalledWith('location-id');
-		expect(primary.forecast).toHaveLength(MCP_MAX_FORECAST_DAYS);
+		expect(primary.forecast).toHaveLength(5);
 		expect(explicit).toEqual(primary);
 		expect(explicit).toEqual(expect.objectContaining({ location_id: 'location-id', location: 'Prague' }));
 	});
@@ -755,7 +803,7 @@ describe('McpContextService', () => {
 		} as unknown as ChannelPropertyEntity);
 		timeseries.queryTimeseriesStrict.mockResolvedValue({
 			bucket: '1h',
-			points: Array.from({ length: MCP_MAX_TIMESERIES_POINTS + 1 }, (_, index) => ({ time: index, value: index })),
+			points: Array.from({ length: 501 }, (_, index) => ({ time: index, value: index })),
 		});
 
 		const result = await service.getPropertyTimeseries(
@@ -765,7 +813,7 @@ describe('McpContextService', () => {
 			'1h',
 		);
 
-		expect(result.points).toHaveLength(MCP_MAX_TIMESERIES_POINTS);
+		expect(result.points).toHaveLength(500);
 		expect(result.truncated).toBe(true);
 	});
 
