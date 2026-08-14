@@ -24,7 +24,13 @@ const BASE_ENVIRONMENT: NodeJS.ProcessEnv = {
 	FB_HOMEY_SHS_URL: 'http://127.0.0.1:4859',
 };
 
-type RecoveryScenario = 'inventory-failure' | 'manager-offline' | 'no-recovery' | 'success';
+type RecoveryScenario =
+	| 'connect-recovery'
+	| 'inventory-failure'
+	| 'late-success'
+	| 'manager-offline'
+	| 'no-recovery'
+	| 'success';
 
 class FakeRecoveryDevicesManager {
 	connectCount = 0;
@@ -44,14 +50,25 @@ class FakeRecoveryDevicesManager {
 		this.client.emit('connect');
 
 		if (this.scenario !== 'no-recovery') {
-			setTimeout(() => {
-				this.connected = false;
-				this.client.emit('disconnect', 'raw private disconnect reason');
-				this.client.emit('reconnect_attempt', 1);
-				this.client.emit('reconnecting', 1);
-				this.connected = this.scenario !== 'manager-offline';
-				this.client.emit('reconnect');
-			}, 0);
+			setTimeout(
+				() => {
+					this.connected = false;
+					this.client.emit('disconnect', 'raw private disconnect reason');
+					this.client.emit('reconnect_attempt', 1);
+					this.client.emit('reconnecting', 1);
+
+					if (this.scenario === 'late-success') {
+						this.client.emit('reconnect');
+						setTimeout(() => {
+							this.connected = true;
+						}, 20);
+					} else {
+						this.connected = this.scenario !== 'manager-offline';
+						this.client.emit(this.scenario === 'connect-recovery' ? 'connect' : 'reconnect');
+					}
+				},
+				this.scenario === 'late-success' ? 90 : 0,
+			);
 		}
 
 		return Promise.resolve();
@@ -230,6 +247,43 @@ describe('Homey SHS recovery compatibility probe', () => {
 		expect(() => assertHomeyShsRecoveryReportSafe(report, config)).not.toThrow();
 		expect(JSON.stringify(report)).not.toContain('test-api-key-that-must-not-leak');
 		expect(JSON.stringify(report)).not.toContain('Private Device');
+	});
+
+	it('accepts a post-disconnect connect event as transport recovery', async () => {
+		const config = fastConfig();
+		const report = await probeHomeyShsRecovery(config, createFactory('connect-recovery').factory);
+		const eventNames = report.session.events.map(({ event }) => event);
+
+		expect(eventNames).toContain('socket.connect');
+		expect(eventNames).not.toContain('socket.reconnect');
+		expect(report.recovery).toStrictEqual({
+			disconnectObserved: true,
+			inventoryReadSucceeded: true,
+			managerResubscribed: true,
+			transportReconnected: true,
+		});
+		expect(() => assertHomeyShsRecoveryReportSafe(report, config)).not.toThrow();
+	});
+
+	it('gives verification a fresh timeout budget after late transport recovery', async () => {
+		jest.useFakeTimers();
+
+		try {
+			const config = fastConfig({ observeMs: 100, timeoutMs: 50 });
+			const recovery = probeHomeyShsRecovery(config, createFactory('late-success').factory);
+			const assertion = expect(recovery).resolves.toMatchObject({
+				recovery: {
+					inventoryReadSucceeded: true,
+					managerResubscribed: true,
+					transportReconnected: true,
+				},
+			});
+
+			await jest.advanceTimersByTimeAsync(200);
+			await assertion;
+		} finally {
+			jest.useRealTimers();
+		}
 	});
 
 	it('fails safely when no operator restart occurs and still cleans up', async () => {

@@ -239,7 +239,7 @@ const waitForManagerResubscription = async (
 	}
 };
 
-const waitForRecoveryCompletion = async (completion: Promise<void>, observeMs: number): Promise<void> => {
+const waitForTransportRecovery = async (recoveryDetected: Promise<void>, observeMs: number): Promise<void> => {
 	let timeout: ReturnType<typeof setTimeout> | undefined;
 	const timeoutPromise = new Promise<never>((_resolvePromise, rejectPromise) => {
 		timeout = setTimeout(
@@ -249,7 +249,7 @@ const waitForRecoveryCompletion = async (completion: Promise<void>, observeMs: n
 	});
 
 	try {
-		await Promise.race([completion, timeoutPromise]);
+		await Promise.race([recoveryDetected, timeoutPromise]);
 	} finally {
 		if (timeout !== undefined) {
 			clearTimeout(timeout);
@@ -276,22 +276,38 @@ export const probeHomeyShsRecovery = async (
 	const client = await createClient(config, factory);
 	appendEvent(report, 'sdk.create.resolved');
 	let recoveryWindowOpen = false;
-	let resolveRecovery: (() => void) | undefined;
-	let rejectRecovery: ((error: Error) => void) | undefined;
-	const recoveryCompletion = new Promise<void>((resolvePromise, rejectPromise) => {
-		resolveRecovery = resolvePromise;
-		rejectRecovery = rejectPromise;
+	let resolveTransportRecovery: (() => void) | undefined;
+	const transportRecoveryDetected = new Promise<void>((resolvePromise) => {
+		resolveTransportRecovery = resolvePromise;
 	});
 	const cleanupListeners: Array<() => void> = [];
 	let verificationPromise: Promise<void> | null = null;
 	let operationError: unknown;
 	const cleanupFailures: string[] = [];
+	const beginRecoveryVerification = (event: 'socket.connect' | 'socket.reconnect'): void => {
+		if (!recoveryWindowOpen || !report.recovery.disconnectObserved || report.recovery.transportReconnected) {
+			return;
+		}
+
+		report.recovery.transportReconnected = true;
+		appendEvent(report, event);
+		verificationPromise = (async () => {
+			await waitForManagerResubscription(client, config, wait);
+			report.recovery.managerResubscribed = true;
+			appendEvent(report, 'manager.resubscribe.observed');
+			await runOperation('post-reconnect inventory read', config.timeoutMs, () =>
+				client.devices.getDevices({ $timeout: config.timeoutMs }),
+			);
+			report.recovery.inventoryReadSucceeded = true;
+			appendEvent(report, 'inventory.read.resolved');
+		})();
+		void verificationPromise.catch(() => undefined);
+		resolveTransportRecovery?.();
+	};
 
 	cleanupListeners.push(
 		attachListener(client, 'connect', () => {
-			if (recoveryWindowOpen) {
-				appendEvent(report, 'socket.connect');
-			}
+			beginRecoveryVerification('socket.connect');
 		}),
 		attachListener(client, 'disconnect', () => {
 			if (recoveryWindowOpen && !report.recovery.disconnectObserved) {
@@ -307,27 +323,7 @@ export const probeHomeyShsRecovery = async (
 			}),
 		),
 		attachListener(client, 'reconnect', () => {
-			if (!recoveryWindowOpen || !report.recovery.disconnectObserved || report.recovery.transportReconnected) {
-				return;
-			}
-
-			report.recovery.transportReconnected = true;
-			appendEvent(report, 'socket.reconnect');
-			verificationPromise = (async () => {
-				try {
-					await waitForManagerResubscription(client, config, wait);
-					report.recovery.managerResubscribed = true;
-					appendEvent(report, 'manager.resubscribe.observed');
-					await runOperation('post-reconnect inventory read', config.timeoutMs, () =>
-						client.devices.getDevices({ $timeout: config.timeoutMs }),
-					);
-					report.recovery.inventoryReadSucceeded = true;
-					appendEvent(report, 'inventory.read.resolved');
-					resolveRecovery?.();
-				} catch (error: unknown) {
-					rejectRecovery?.(error instanceof Error ? error : new Error('Homey recovery verification failed'));
-				}
-			})();
+			beginRecoveryVerification('socket.reconnect');
 		}),
 	);
 
@@ -339,7 +335,13 @@ export const probeHomeyShsRecovery = async (
 		appendEvent(report, 'recovery.window.open');
 		onWindowOpen();
 
-		await waitForRecoveryCompletion(recoveryCompletion, config.observeMs);
+		await waitForTransportRecovery(transportRecoveryDetected, config.observeMs);
+
+		if (verificationPromise === null) {
+			throw new Error('Homey recovery verification did not start');
+		}
+
+		await verificationPromise;
 	} catch (error: unknown) {
 		operationError = error;
 	} finally {
@@ -349,7 +351,7 @@ export const probeHomeyShsRecovery = async (
 			try {
 				await verificationPromise;
 			} catch {
-				// The fixed verification error is already captured through recoveryCompletion.
+				// The fixed verification error is already captured as operationError.
 			}
 		}
 
@@ -467,17 +469,30 @@ export function assertHomeyShsRecoveryReportSafe(
 	}
 
 	const eventNames = value.session.events.map(({ event }) => event);
-	const requiredOrder = [
-		'manager.subscribe.resolved',
-		'recovery.window.open',
-		'socket.disconnect',
-		'socket.reconnect',
-		'manager.resubscribe.observed',
-		'inventory.read.resolved',
-	];
+	const requiredBeforeRecovery = ['manager.subscribe.resolved', 'recovery.window.open', 'socket.disconnect'];
 	let previousIndex = -1;
 
-	for (const event of requiredOrder) {
+	for (const event of requiredBeforeRecovery) {
+		const index = eventNames.indexOf(event);
+
+		if (index <= previousIndex) {
+			throw new Error('Homey recovery report does not contain the required restart ordering');
+		}
+
+		previousIndex = index;
+	}
+
+	const recoveryIndex = eventNames.findIndex(
+		(event, index) => index > previousIndex && (event === 'socket.connect' || event === 'socket.reconnect'),
+	);
+
+	if (recoveryIndex <= previousIndex) {
+		throw new Error('Homey recovery report does not contain the required restart ordering');
+	}
+
+	previousIndex = recoveryIndex;
+
+	for (const event of ['manager.resubscribe.observed', 'inventory.read.resolved']) {
 		const index = eventNames.indexOf(event);
 
 		if (index <= previousIndex) {
