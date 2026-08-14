@@ -781,6 +781,23 @@ describe('McpContextService', () => {
 		expect(timeseries.queryTimeseriesStrict).not.toHaveBeenCalled();
 	});
 
+	it('accepts a 14-day timeseries range and rejects a longer range before querying storage', async () => {
+		properties.findOne.mockResolvedValue({
+			id: 'property-id',
+			channel: { device: { hidden: false } },
+		} as unknown as ChannelPropertyEntity);
+		timeseries.queryTimeseriesStrict.mockResolvedValue({ bucket: '1h', points: [] });
+
+		await expect(
+			service.getPropertyTimeseries('property-id', '2026-08-01T00:00:00.000Z', '2026-08-15T00:00:00.000Z', '1h'),
+		).resolves.toEqual(expect.objectContaining({ property_id: 'property-id', bucket: '1h' }));
+		await expect(
+			service.getPropertyTimeseries('property-id', '2026-08-01T00:00:00.000Z', '2026-08-15T00:00:01.000Z', '1h'),
+		).rejects.toThrow('may not exceed 14 days');
+		expect(properties.findOne).toHaveBeenCalledTimes(1);
+		expect(timeseries.queryTimeseriesStrict).toHaveBeenCalledTimes(1);
+	});
+
 	it('returns bounded property history for a visible device', async () => {
 		properties.findOne.mockResolvedValue({
 			id: 'property-id',
