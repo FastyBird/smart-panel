@@ -272,6 +272,26 @@ describe('DevicesService', () => {
 	});
 
 	describe('findVisibleSummaryPage', () => {
+		it('includes disabled devices while excluding hidden devices at the query boundary', async () => {
+			const disabledVisibleDevice = toInstance(MockDevice, { ...mockDevice, enabled: false, hidden: false });
+			const queryBuilderMock: any = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				getManyAndCount: jest.fn().mockResolvedValue([[disabledVisibleDevice], 1]),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+
+			await expect(service.findVisibleSummaryPage(100)).resolves.toEqual({
+				devices: [expect.objectContaining({ id: disabledVisibleDevice.id, enabled: false, hidden: false })],
+				total: 1,
+			});
+			expect(queryBuilderMock.where).toHaveBeenCalledWith('device.hidden = :hidden', { hidden: false });
+			expect(queryBuilderMock.where).not.toHaveBeenCalledWith(expect.stringContaining('enabled'), expect.anything());
+		});
+
 		it('bounds the query before loading device summaries', async () => {
 			const visibleDevice = toInstance(MockDevice, { ...mockDevice, hidden: false });
 			const queryBuilderMock: any = {
