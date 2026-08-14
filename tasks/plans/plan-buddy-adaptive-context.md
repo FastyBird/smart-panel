@@ -522,7 +522,7 @@ payload digest are bound data, not messaging uniqueness inputs. A redelivery aft
 the original claim/outcome and cannot run under either the old or new actor; only a genuinely new platform event uses the
 new mapping. The service returns a stable
 `requestClaimId`. The claim is a durable state machine with an owner/lease and bounded stored outcome metadata, for
-example `RECEIVED`, `PREPROCESSING`, `INPUT_READY`, `MODEL_IN_FLIGHT`, `ACTION_PLANNED`, `ACTION_DISPATCHING`,
+example `RECEIVED`, `QUEUED`, `PREPROCESSING`, `INPUT_READY`, `MODEL_IN_FLIGHT`, `ACTION_PLANNED`, `ACTION_DISPATCHING`,
 `ACTION_DISPATCHED`, `COMPLETED`, `FAILED`, `CANCELLED`, or `INDETERMINATE`.
 An exact duplicate with the same digest joins the existing in-process single-flight. A duplicate owned by another
 worker/process waits only within the request deadline, then returns a typed in-progress response with `Retry-After`; it
@@ -534,7 +534,8 @@ unique key uses source, a normalized non-null `claimPrincipalKey`, stable idempo
 entry-point code derives `claimPrincipalKey` from the stable authenticated actor for REST/voice/internal traffic and a
 fixed delivery sentinel for messaging, making messaging uniqueness actor-independent. Bound columns include the
 first-delivery actor/authorization snapshot, resolved Buddy conversation ID and binding generation, payload digest,
-state, lease owner/expiry, optimistic version, bounded canonical plan/outcome references, and timestamps.
+conversation turn sequence, state, lease owner/expiry, optimistic version, bounded canonical plan/outcome references, and
+timestamps.
 `BuddyRequestIdempotencyService` owns transactional create-or-read and compare-and-swap transitions; an in-memory map may
 only optimize joining requests already owned by this process and is never the authority for uniqueness, leases, or
 restart recovery.
@@ -648,6 +649,28 @@ after the uncertainty is disclosed.
   because the model emitted the call twice.
 - Preserve idempotency/request IDs through existing command and intent paths, coalesce concurrent executions with the
   same action identity, and suppress automatic retries while an action is pending or indeterminate.
+
+### 6.4 Per-conversation turn sequencing
+
+Distinct request claims for one Buddy conversation must not execute concurrently. At claim creation, transactionally
+allocate a monotonic `conversationTurnSequence` under the conversation row and enqueue the claim. A durable
+`BuddyConversationTurnCoordinatorService` grants one leased active sequence per conversation across processes. The lease
+covers input preprocessing when applicable, history/summary/reference reads, planning, every provider/tool/action
+iteration, terminal message/outcome and essential reference persistence, and release to the next sequence. A later turn
+must not read history, invoke a model, or dispatch an action until every lower sequence is terminal; this preserves
+follow-up references and action order such as “turn it on” followed by “turn it off”.
+
+The final assistant message, claim terminal state, memory/reference version, active-lease release, and next-sequence
+eligibility commit atomically. On owner failure, normal claim/action recovery completes or marks the older turn
+indeterminate before the coordinator advances. Exact duplicate requests reuse their existing sequence and do not enqueue
+again. Conversation deletion locks/fences the coordinator and cancels safe queued work without allowing it to dispatch.
+Different conversations remain parallel.
+
+Wait for the active sequence only within the whole-request deadline. If the product path cannot safely wait or queue, it
+must reject the later turn before history/model/action work with a typed `conversation_busy`/`Retry-After` result and no
+conversational message persistence; it may not run the turn optimistically. First-party clients retry the same request
+identity, while messaging adapters either await the durable queue within their delivery contract or send a provider-free
+busy response, atomically cancel that queued claim, and require a new user event.
 
 ---
 
@@ -804,10 +827,10 @@ SQLite query and update patterns.
 Requirements:
 
 - Add a new incremental TypeORM migration.
-- Serialize summary/reference updates per conversation after a successful turn. Use either a per-conversation queue/lock
-  that covers the read-compute-write sequence or an optimistic compare-and-retry update against the prior
-  `summaryThrough`/version. A transaction or idempotency key alone is insufficient because two concurrent turns must not
-  overwrite one another's summary progress or references.
+- Run essential reference and memory-version updates inside the full-turn coordinator lease and terminal transaction from
+  Section 6.4. Optimistic compare-and-retry may protect a later nonessential summary refresh, but it is not a substitute
+  for serializing history read, model/tools/actions, and final persistence. Two distinct turns must never generate from
+  the same prior conversation version or overtake each other's actions/references.
 - Never summarize the same message range twice after retry.
 - Cap summary and reference JSON sizes.
 - If LLM summarization is unavailable, use deterministic truncation/extractive fallback.
@@ -912,6 +935,7 @@ apps/backend/src/modules/buddy/
 │   ├── buddy-outbound-delivery.service.ts
 │   ├── buddy-conversation-memory.service.ts
 │   ├── buddy-conversation.service.ts
+│   ├── buddy-conversation-turn-coordinator.service.ts
 │   ├── buddy-request-budget.service.ts
 │   ├── buddy-request-idempotency.service.ts
 │   ├── buddy-context.service.ts             # retained for evaluators
@@ -938,8 +962,9 @@ apps/backend/src/migrations/
 ```
 
 Generated OpenAPI/admin/panel clients remain unchanged for the internal retrieval architecture except for two explicit
-public contracts: Phase 2 adds the required `Idempotency-Key` header plus typed conflict and in-progress/`Retry-After`
-responses to both Buddy text/audio endpoints, and Phase 5 adds their HTTP 422 capacity response. Each phase must
+public contracts: Phase 2 adds the required `Idempotency-Key` header plus typed conflict, in-progress, and
+conversation-busy/`Retry-After` responses to both Buddy text/audio endpoints, and Phase 5 adds their HTTP 422 capacity
+response. Each phase must
 regenerate checked-in artifacts from backend Swagger sources; never edit generated clients manually.
 
 ---
@@ -1029,11 +1054,13 @@ snapshots are produced through the shared query layer without making that eager 
 
 - `apps/backend/src/modules/buddy/platforms/llm-provider.platform.ts`
 - `apps/backend/src/modules/buddy/controllers/buddy-conversations.controller.ts`
+- `apps/backend/src/modules/buddy/entities/buddy-conversation.entity.ts`
 - `apps/backend/src/modules/buddy/entities/buddy-message.entity.ts`
 - `apps/backend/src/modules/buddy/entities/buddy-messaging-conversation-binding.entity.ts`
 - `apps/backend/src/modules/buddy/entities/buddy-outbound-delivery.entity.ts`
 - `apps/backend/src/modules/buddy/entities/buddy-request-claim.entity.ts`
 - `apps/backend/src/modules/buddy/services/buddy-conversation.service.ts`
+- `apps/backend/src/modules/buddy/services/buddy-conversation-turn-coordinator.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-messaging-conversation-binding.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-outbound-delivery.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-request-idempotency.service.ts`
@@ -1043,7 +1070,7 @@ snapshots are produced through the shared query layer without making that eager 
 - Buddy Discord, Telegram, and WhatsApp adapters and their specs
 - New incremental migration for the persistent messaging-conversation binding
 - New incremental migration for durable outbound-delivery state
-- New incremental migration for the durable Buddy request-claim table and its unique/lease indexes
+- New incremental migration for the durable Buddy request-claim table, conversation sequence/lease fields, and indexes
 - Existing command/scene/intent idempotency persistence, or a minimal Buddy action-execution ledger entity/service and
   incremental migration if existing storage cannot enforce a unique execution identity
 - Backend Swagger decorators/error models plus generated OpenAPI/admin/panel artifacts for the idempotency header/conflict
@@ -1061,7 +1088,8 @@ snapshots are produced through the shared query layer without making that eager 
       voice, Discord, Telegram, and WhatsApp actor/source/request identity into every call and tool execution context.
 - [ ] Require and validate a client-stable `Idempotency-Key` header on both REST text and audio sends; document the header,
       missing/invalid HTTP 400 response, typed conflicting-reuse HTTP 409 response, and typed in-progress HTTP 409 with
-      `Retry-After` in Swagger. Update
+      `Retry-After` in Swagger. Include typed `conversation_busy`/`Retry-After` when a distinct later turn cannot acquire
+      its sequence within the deadline. Update
       every first-party REST caller (admin, panel, voice, or other discovered consumer) to reuse the same key across
       retries, then run `pnpm run generate:openapi` instead of editing generated clients manually.
 - [ ] Compute the text payload digest in the controller and the audio digest from uploaded bytes/stable semantic fields
@@ -1096,6 +1124,9 @@ snapshots are produced through the shared query layer without making that eager 
       repository/service transitions for claim creation, lease takeover, plan persistence, dispatch intent, terminal
       outcomes, and bounded retention. Treat the database as the cross-process/restart authority; process-local
       single-flight is only an optimization.
+- [ ] Add durable per-conversation sequence allocation and `BuddyConversationTurnCoordinatorService`. Hold one
+      cross-process lease across the full preprocessing/history/model/tool/action/final-persistence/reference lifecycle;
+      atomically release it with terminal commit, and never let a higher sequence overtake a lower nonterminal turn.
 - [ ] Link Buddy messages uniquely to request claim/role/ordinal. Commit the final assistant message, bounded outcome, and
       terminal claim transition atomically; recovery must reconcile a committed turn before any model dispatch.
 - [ ] Add durable outbound-delivery rows and adapter coordination for messaging replies. Suppress sends for `SENT`
@@ -1123,8 +1154,14 @@ audio with identical mocked transcription returning HTTP 409 and zero execution;
 actors in one conversation legitimately using the same key/action without ledger collision;
 request-claim migration/schema tests for the normalized composite unique key, lease/version compare-and-swap, bounded
 plan/outcome persistence, retention, and concurrent create-or-read from two database connections;
-fault injection between assistant-message insert and claim completion rolling back both, plus crash immediately after the
-atomic commit recovering the one stored turn/outcome without provider invocation;
+two distinct concurrent claims in one conversation receiving monotonic sequences across two database connections; the
+later dependent follow-up observing the first turn's persisted entity reference; explicit on/off actions executing in
+sequence even when the older provider is delayed; lease-expiry recovery that finishes/marks the older turn before
+advancing; busy/`Retry-After` without history/model/action work when the wait deadline expires; different conversations
+remaining parallel;
+fault injection between assistant-message insert and claim completion/turn-lease release rolling back the whole
+transaction, plus crash immediately after the atomic commit recovering the one stored turn/outcome without provider
+invocation and allowing exactly the next sequence;
 same-process duplicate while the first model call is blocked joining one provider invocation; cross-worker duplicate
 returning in-progress/`Retry-After` without provider dispatch; safe lease takeover after a crash in `MODEL_IN_FLIGHT`
 before any action plan exists; crash while safely `ACTION_PLANNED` resuming the persisted plan without an action-capable
@@ -1160,7 +1197,8 @@ test executes the same physical command twice or reports an unproven terminal ou
 invokes a second concurrent provider call. A fresh process can recover every nonexpired/nonterminal request claim using
 only durable state and cannot bypass the database uniqueness or lease rules. Terminal message/outcome persistence is
 atomic with claim completion, duplicate messaging deliveries produce at most one outbound platform send, and duplicate
-audio requests cannot invoke STT concurrently.
+audio requests cannot invoke STT concurrently. Distinct turns within one conversation execute their complete lifecycle
+in sequence, while different conversations can proceed concurrently.
 
 ### Phase 3 — Add Buddy read tools
 
@@ -1296,14 +1334,16 @@ constraints survive compaction.
       summary while retaining the no-summary complete-turn eviction fallback.
 - [ ] Preserve complete user/final-assistant pairs during window selection; preserve canonical tool groups if they are
       persisted in a future extension.
-- [ ] Update summaries incrementally and idempotently with a deterministic failure fallback, serializing each
-      conversation's read-compute-write sequence through a queue/lock or optimistic compare-and-retry invariant.
+- [ ] Update summaries incrementally and idempotently with a deterministic failure fallback under the Phase 2 full-turn
+      coordinator. Optimistic compare-and-retry is allowed only for nonessential post-turn summary refresh and must not
+      permit concurrent history/model/action execution.
 - [ ] Resolve follow-up pronouns only when kind/action compatibility and recency make the reference unambiguous.
 - [ ] Expire and cap references; handle deleted or moved entities gracefully.
 - [ ] Keep memory fields private to the backend unless separately approved.
 
-**Tests:** 100+ message conversations; concurrent sends that start from the same memory version and prove both turns'
-summary progress and references survive; restart persistence; summary-provider failure; duplicate retry; deleted entities;
+**Tests:** 100+ message conversations; concurrent dependent sends proving the second cannot start from the first turn's
+prior memory version and that both turns' summary progress/references survive; restart persistence; summary-provider
+failure; duplicate retry; deleted entities;
 reference ambiguity; and migration upgrade from an existing installation.
 
 **Gate:** Long conversations remain inside budget and correct recent references work after restart without loading full
@@ -1333,8 +1373,9 @@ message history.
       path for the small-window and scale cases.
 - [ ] Update Buddy module metadata/readme claims so they describe adaptive retrieval rather than a full snapshot.
 
-**Tests:** Conversation controller/service regression, concurrent messages, title update behavior, LLM timeouts, existing
-write/trigger tools, messaging adapters, and heartbeat/evaluator regression.
+**Tests:** Conversation controller/service regression, dependent concurrent messages and ordered actions within one
+conversation, parallel turns across different conversations, title update behavior, LLM timeouts, existing write/trigger
+tools, messaging adapters, and heartbeat/evaluator regression.
 
 **Gate:** No conversational code path loads or serializes every device/property, while proactive suggestions still pass
 their full existing test suite.
@@ -1448,6 +1489,8 @@ designated safe targets and reversible values. Scale/shadow evaluation must neve
       while only new events may establish the next conversation binding generation.
 - [ ] A redelivered messaging event never causes a second outbound bot reply; uncertain platform sends are reconciled or
       suppressed, never automatically resent.
+- [ ] Distinct turns in one conversation cannot overtake each other: dependent follow-ups observe prior references and
+      explicit actions execute in user-send order; separate conversations remain parallel.
 - [ ] Shared home-query services are usable by Buddy with MCP externally disabled.
 - [ ] MCP transport/auth/policy/configuration remains independent and externally backward compatible.
 - [ ] Existing heartbeat/evaluator full-context behavior remains unchanged.
