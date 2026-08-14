@@ -523,7 +523,7 @@ the original claim/outcome and cannot run under either the old or new actor; onl
 new mapping. The service returns a stable
 `requestClaimId`. The claim is a durable state machine with an owner/lease and bounded stored outcome metadata, for
 example `RECEIVED`, `QUEUED`, `PREPROCESSING`, `INPUT_READY`, `MODEL_IN_FLIGHT`, `ACTION_PLANNED`, `ACTION_DISPATCHING`,
-`ACTION_DISPATCHED`, `COMPLETED`, `FAILED`, `CANCELLED`, or `INDETERMINATE`.
+`ACTION_DISPATCHED`, `COMPLETED`, `FAILED`, `CANCELLED`, `REJECTED_CAPACITY`, or `INDETERMINATE`.
 An exact duplicate with the same digest joins the existing in-process single-flight. A duplicate owned by another
 worker/process waits only within the request deadline, then returns a typed in-progress response with `Retry-After`; it
 must not invoke the model concurrently. The same key with a different text/audio digest returns a typed conflict and
@@ -636,6 +636,16 @@ settles, and state that the outcome is unknown. The model must not automatically
 failure/success. A state read may help reconciliation; a new non-idempotent trigger requires an explicit user decision
 after the uncertainty is disclosed.
 
+At `ACTION_DISPATCHING`, also persist durable conflict keys for every canonical resource the action can affect (for
+example property/device, resolved scene targets, or a conservative scene/intent scope when effects cannot be enumerated).
+An `INDETERMINATE` outcome keeps those `BuddyActionUncertaintyFence` rows active after the conversation turn releases.
+Every later action provider rechecks them after target resolution and immediately before dispatch. A conflicting action
+is blocked until authoritative completion/cancellation clears the predecessor, or the user gives a structured explicit
+acknowledgement bound to the prior execution, target, requested new action, and disclosed ordering risk. A current-state
+read alone cannot clear a fence while the older command may still land. Reads, general conversation, and actions on
+nonconflicting targets may proceed. Store/index fences in the authoritative action-execution ledger, or add a minimal
+entity/service when existing domain persistence cannot query unresolved executions by canonical conflict key.
+
 ### 6.3 Loop limits and safety
 
 - Keep a configurable total iteration limit and add per-turn read/action call limits.
@@ -649,6 +659,8 @@ after the uncertainty is disclosed.
   because the model emitted the call twice.
 - Preserve idempotency/request IDs through existing command and intent paths, coalesce concurrent executions with the
   same action identity, and suppress automatic retries while an action is pending or indeterminate.
+- Recheck durable uncertainty fences immediately before every write/trigger; model text or a transient state value cannot
+  bypass an unresolved conflicting predecessor.
 
 ### 6.4 Per-conversation turn sequencing
 
@@ -662,9 +674,15 @@ follow-up references and action order such as “turn it on” followed by “tu
 
 The final assistant message, claim terminal state, memory/reference version, active-lease release, and next-sequence
 eligibility commit atomically. On owner failure, normal claim/action recovery completes or marks the older turn
-indeterminate before the coordinator advances. Exact duplicate requests reuse their existing sequence and do not enqueue
-again. Conversation deletion locks/fences the coordinator and cancels safe queued work without allowing it to dispatch.
-Different conversations remain parallel.
+indeterminate and persists its canonical target-conflict fences before the coordinator advances. Later turns may read or
+act on unrelated targets, but a conflicting action remains blocked unless the predecessor is authoritatively resolved or
+the user explicitly acknowledges the bound uncertainty. Exact duplicate requests reuse their existing sequence and do
+not enqueue again. Conversation deletion locks/fences the coordinator and cancels safe queued work without allowing it to
+dispatch. Different conversations remain parallel.
+
+Every admitted claim exits the active slot only through an atomic terminal transition plus lease release. Validation,
+authorization, capacity, cancellation, and provider-free failures each have an explicit terminal outcome and cannot
+strand the sequence; only a deliberately queued claim remains nonterminal without holding the active lease.
 
 Wait for the active sequence only within the whole-request deadline. If the product path cannot safely wait or queue, it
 must reject the later turn before history/model/action work with a typed `conversation_busy`/`Retry-After` result and no
@@ -783,8 +801,11 @@ If that floor exceeds the selected model's window, do not truncate the message a
 Raise a typed `BuddyMessageCapacityExceededException` containing only safe limit metadata and a recommended maximum
 input size. REST/voice maps it to a documented HTTP 422 response; messaging adapters translate it to a short local
 provider-free reply asking the user to shorten or split the message. Do not echo the oversized content, persist a failed
-turn, or retry against the full snapshot. The DTO's static 10,000-character ceiling remains a transport safety bound;
-this preflight is the model-aware semantic bound.
+conversational message, or retry against the full snapshot. Because Phase 2 has already created the request claim and
+conversation sequence, atomically persist its safe bounded capacity outcome as terminal `REJECTED_CAPACITY`, release the
+active turn lease, and make exactly the next sequence eligible. An exact retry returns the stored 422/local rejection;
+a later valid turn is not blocked. The DTO's static 10,000-character ceiling remains a transport safety bound; this
+preflight is the model-aware semantic bound.
 
 ### 8.3 Compaction order
 
@@ -920,6 +941,7 @@ apps/backend/src/modules/home-context/
 
 apps/backend/src/modules/buddy/
 ├── entities/
+│   ├── buddy-action-uncertainty-fence.entity.ts # only if existing action storage cannot index conflict keys
 │   ├── buddy-conversation.entity.ts
 │   ├── buddy-message.entity.ts
 │   ├── buddy-messaging-conversation-binding.entity.ts
@@ -930,6 +952,7 @@ apps/backend/src/modules/buddy/
 ├── services/
 │   ├── buddy-context-planner.service.ts
 │   ├── buddy-context-renderer.service.ts
+│   ├── buddy-action-conflict-fence.service.ts
 │   ├── buddy-deterministic-action-handoff.service.ts
 │   ├── buddy-messaging-conversation-binding.service.ts
 │   ├── buddy-outbound-delivery.service.ts
@@ -955,6 +978,7 @@ apps/backend/src/modules/scenes/services/    # bounded filtered scene search as 
 apps/backend/src/modules/spaces/services/    # bounded filtered space search as needed
 apps/backend/src/migrations/
 ├── <next-timestamp>-AddBuddyActionExecutionLedger.ts # only if existing command storage cannot enforce idempotency
+├── <next-timestamp>-AddBuddyActionUncertaintyFences.ts # only if the selected ledger cannot index conflict keys
 ├── <next-timestamp>-AddBuddyMessagingConversationBinding.ts
 ├── <next-timestamp>-AddBuddyOutboundDeliveries.ts
 ├── <next-timestamp>-AddBuddyRequestClaims.ts
@@ -1061,6 +1085,7 @@ snapshots are produced through the shared query layer without making that eager 
 - `apps/backend/src/modules/buddy/entities/buddy-request-claim.entity.ts`
 - `apps/backend/src/modules/buddy/services/buddy-conversation.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-conversation-turn-coordinator.service.ts`
+- `apps/backend/src/modules/buddy/services/buddy-action-conflict-fence.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-messaging-conversation-binding.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-outbound-delivery.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-request-idempotency.service.ts`
@@ -1073,6 +1098,7 @@ snapshots are produced through the shared query layer without making that eager 
 - New incremental migration for the durable Buddy request-claim table, conversation sequence/lease fields, and indexes
 - Existing command/scene/intent idempotency persistence, or a minimal Buddy action-execution ledger entity/service and
   incremental migration if existing storage cannot enforce a unique execution identity
+- Existing action-execution conflict-key index, or a minimal Buddy uncertainty-fence entity and incremental migration
 - Backend Swagger decorators/error models plus generated OpenAPI/admin/panel artifacts for the idempotency header/conflict
 - Shared tools registry specs as needed
 
@@ -1136,6 +1162,9 @@ snapshots are produced through the shared query layer without making that eager 
       `ACTION_PLANNED` only because no invocation can precede that commit. Recover `ACTION_DISPATCHING`/`ACTION_DISPATCHED`
       through authoritative downstream idempotency when available; otherwise mark the outcome `INDETERMINATE` and never
       redispatch. Do not treat the existing command tracking request ID or scene path as durable deduplication.
+- [ ] Persist canonical affected-resource conflict keys with dispatch intent. Keep indeterminate keys fenced after the
+      conversation sequence advances; every later provider must block a conflicting action until authoritative
+      reconciliation/cancellation or a structured user acknowledgement bound to the predecessor and ordering risk.
 - [ ] Persist a default-one `BuddyActionAllowance` per canonical fingerprint. Allocate additional occurrence slots only
       from a bounded repeat count parsed from original user input or an explicit structured confirmation tied to the
       resolved action; require confirmation for repeated non-idempotent triggers and coalesce all model-only duplicates.
@@ -1169,6 +1198,9 @@ model call even when a mocked second stochastic invocation would choose differen
 starts but before the post-call ledger transition leaving `ACTION_DISPATCHING`, then producing `INDETERMINATE` and zero
 redispatches when no downstream authority exists; the same fault with a fake authoritative domain idempotency store
 reconciling/resubmitting by `actionExecutionId` to one physical execution;
+an earlier delayed “on” becoming indeterminate, then a later “off” for the same conflict key executing zero times until
+authoritative completion/cancellation or exact structured acknowledgement; transient current state not clearing the
+fence; unrelated-target action proceeding; conflict-fence persistence/recovery across restart;
 Discord/Telegram/WhatsApp restart with empty process maps followed by redelivery of the same platform event resolving the
 persisted Buddy conversation/scope, one claim, one stored message, and at most one action;
 redelivery after the original outbound reply was sent producing zero additional platform sends; crash with outbound
@@ -1303,12 +1335,16 @@ deterministic handoff after any required clarification, while ambiguous or unsup
       and provider-free messaging fallback without changing the successful response contract.
 - [ ] Add the Swagger 422 response decorator/model to both Buddy text and audio endpoints, then run
       `pnpm run generate:openapi` so the backend specification and generated admin/panel clients expose the new error.
-- [ ] Ensure rejected oversized turns are not persisted, do not invoke a provider, and never fall back to eager context.
+- [ ] Ensure rejected oversized turns persist no conversational messages, invoke no provider, and never fall back to
+      eager context. Atomically terminalize their existing claim as `REJECTED_CAPACITY`, store only safe limit metadata,
+      release the conversation-turn lease, and advance exactly the next sequence.
 - [ ] Calibrate estimator safety margins against actual token usage from OpenAI/Anthropic and representative Ollama
       models.
 - [ ] Keep the existing configured context window as override/fallback for providers that cannot report a model limit.
 
-**Tests:** 2k/4k/8k/128k/200k windows; a 10,000-character DTO-valid message that cannot fit a 2k model; existing history
+**Tests:** 2k/4k/8k/128k/200k windows; a 10,000-character DTO-valid message that cannot fit a 2k model, followed by a
+normal queued message that acquires the released next sequence and succeeds; exact oversized retry returning the stored
+422 without provider/message persistence; existing history
 that overflows a small window before any summary exists; complete-turn eviction without orphan messages; REST/voice 422
 mapping; provider-free messaging replies; large tool schemas; oversized property strings; many tool iterations;
 estimator error; unknown Ollama model; and output-reserve payload enforcement for OpenAI chat, Anthropic/Claude, Ollama,
@@ -1316,7 +1352,7 @@ and OpenAI Codex on the initial and every subsequent tool-loop call.
 
 **Gate:** No test provider receives an over-window serialized request, including a small-window conversation with no
 persisted summary, and every adapter receives/enforces the reserved generation cap; the requested entity/action
-constraints survive compaction.
+constraints survive compaction. Capacity rejection terminalizes/releases its sequence and cannot block a valid follow-up.
 
 ### Phase 6 — Conversation summary and structured reference memory
 
@@ -1490,7 +1526,10 @@ designated safe targets and reversible values. Scale/shadow evaluation must neve
 - [ ] A redelivered messaging event never causes a second outbound bot reply; uncertain platform sends are reconciled or
       suppressed, never automatically resent.
 - [ ] Distinct turns in one conversation cannot overtake each other: dependent follow-ups observe prior references and
-      explicit actions execute in user-send order; separate conversations remain parallel.
+      explicit actions execute in user-send order; an indeterminate predecessor keeps conflicting targets fenced until
+      reconciliation or explicit acknowledgement, while separate conversations and unrelated targets remain available.
+- [ ] A capacity-rejected turn stores no conversation message/provider output and atomically releases its sequence so the
+      next valid turn can complete.
 - [ ] Shared home-query services are usable by Buddy with MCP externally disabled.
 - [ ] MCP transport/auth/policy/configuration remains independent and externally backward compatible.
 - [ ] Existing heartbeat/evaluator full-context behavior remains unchanged.
