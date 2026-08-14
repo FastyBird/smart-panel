@@ -47,4 +47,10 @@ new raw fixture version, then review the complete diff. The connector transforme
 these outputs and add explicit assertions for source ordering, suffixed capability IDs, null/false/zero preservation,
 enum options, availability independence, and zone-cycle rejection.
 
+`evidence/` contains separately reviewed, minimal live behavior reports that do not belong to the immutable inventory
+corpus. The filename records the observation date and SHS version. Each report must retain only the probe's allowlisted
+labels, booleans, ordering numbers, public dependency versions, and non-sensitive status codes, and must have a focused
+test that re-applies the report safety assertions. The 2026-08-14 SDK session evidence records connection,
+subscription, cleanup, and invalid-key behavior only; it does not claim capability-event, write, or reconnect coverage.
+
 Before committing regenerated fixtures, inspect every value and key and confirm that no private source value survives.

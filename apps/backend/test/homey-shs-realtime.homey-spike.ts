@@ -1,7 +1,10 @@
 import { EventEmitter } from 'node:events';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import {
 	type HomeySdkFactory,
+	type HomeyShsRealtimeReport,
 	assertHomeyShsRealtimeReportSafe,
 	loadHomeyShsRealtimeProbeConfig,
 	probeHomeyShsRealtime,
@@ -165,6 +168,35 @@ const createFactory = (
 };
 
 describe('Homey SHS realtime compatibility probe', () => {
+	it('preserves the sanitized live SHS SDK session evidence', () => {
+		const evidencePath = resolve(
+			__dirname,
+			'../src/plugins/devices-homey/__fixtures__/evidence/2026-08-14-shs-13.4.0-sdk-session.json',
+		);
+		const report = JSON.parse(readFileSync(evidencePath, 'utf8')) as HomeyShsRealtimeReport;
+		const config = loadHomeyShsRealtimeProbeConfig(BASE_ENVIRONMENT, '/tmp/homey-realtime-spike');
+
+		expect(report.session.events.map(({ event, order }) => ({ event, order }))).toStrictEqual([
+			{ event: 'sdk.create.resolved', order: 1 },
+			{ event: 'socket.connect', order: 2 },
+			{ event: 'manager.subscribe.resolved', order: 3 },
+			{ event: 'manager.unsubscribe.resolved', order: 4 },
+			{ event: 'socket.disconnect', order: 5 },
+			{ event: 'socket.disconnect.resolved', order: 6 },
+			{ event: 'sdk.destroyed', order: 7 },
+		]);
+		expect(report.session).toMatchObject({ cleanupCompleted: true, managerSubscribed: true });
+		expect(report.invalidKey).toStrictEqual({ category: 'authentication', rejected: true, statusCode: 401 });
+		expect(report.write).toStrictEqual({
+			attempted: false,
+			eventObserved: false,
+			readBackMatched: false,
+			restoreReadBackMatched: false,
+			restored: false,
+		});
+		expect(() => assertHomeyShsRealtimeReportSafe(report, config)).not.toThrow();
+	});
+
 	it('keeps writes disabled when none of the four gate variables is present', () => {
 		const config = loadHomeyShsRealtimeProbeConfig(BASE_ENVIRONMENT, '/tmp/homey-realtime-spike');
 
