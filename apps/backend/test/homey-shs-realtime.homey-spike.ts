@@ -38,6 +38,8 @@ class FakeDevice extends EventEmitter {
 class FakeDevicesManager extends EventEmitter {
 	connectCount = 0;
 	disconnectCount = 0;
+	failDisconnect = false;
+	hangNextWrite = false;
 	readonly device = new FakeDevice();
 	readonly writes: Array<boolean | number | string> = [];
 	private readonly invalidKey: boolean;
@@ -55,6 +57,10 @@ class FakeDevicesManager extends EventEmitter {
 
 	disconnect(): Promise<void> {
 		this.disconnectCount += 1;
+
+		if (this.failDisconnect) {
+			return Promise.reject(new Error('raw manager disconnect detail'));
+		}
 
 		return Promise.resolve();
 	}
@@ -87,6 +93,12 @@ class FakeDevicesManager extends EventEmitter {
 			value: options.value,
 		});
 
+		if (this.hangNextWrite) {
+			this.hangNextWrite = false;
+
+			return new Promise(() => undefined);
+		}
+
 		return Promise.resolve();
 	}
 }
@@ -94,6 +106,7 @@ class FakeDevicesManager extends EventEmitter {
 class FakeHomeyClient extends EventEmitter {
 	destroyCount = 0;
 	disconnectCount = 0;
+	failDisconnect = false;
 	readonly devices: FakeDevicesManager;
 
 	constructor(invalidKey: boolean) {
@@ -105,6 +118,10 @@ class FakeHomeyClient extends EventEmitter {
 		this.disconnectCount += 1;
 		this.emit('disconnect');
 
+		if (this.failDisconnect) {
+			return Promise.reject(new Error('raw socket disconnect detail'));
+		}
+
 		return Promise.resolve();
 	}
 
@@ -114,12 +131,15 @@ class FakeHomeyClient extends EventEmitter {
 	}
 }
 
-const createFactory = (): { clients: FakeHomeyClient[]; factory: HomeySdkFactory } => {
+const createFactory = (
+	configureClient?: (client: FakeHomeyClient, index: number) => void,
+): { clients: FakeHomeyClient[]; factory: HomeySdkFactory } => {
 	const clients: FakeHomeyClient[] = [];
 	const factory: HomeySdkFactory = {
 		createLocalApi: ({ token }) => {
 			const client = new FakeHomeyClient(token.startsWith('invalid-homey-probe-'));
 
+			configureClient?.(client, clients.length);
 			clients.push(client);
 
 			return Promise.resolve(client);
@@ -221,6 +241,53 @@ describe('Homey SHS realtime compatibility probe', () => {
 		});
 		expect(report.session.events.filter(({ event }) => event === 'capability.update')).toHaveLength(1);
 		expect(() => assertHomeyShsRealtimeReportSafe(report, config)).not.toThrow();
+	});
+
+	it('times out a write that applies but never settles and still restores the original value', async () => {
+		const config = loadHomeyShsRealtimeProbeConfig(
+			{
+				...BASE_ENVIRONMENT,
+				FB_HOMEY_SHS_TIMEOUT_MS: '1000',
+				FB_HOMEY_SHS_WRITE_CAPABILITY_ID: 'onoff',
+				FB_HOMEY_SHS_WRITE_DEVICE_ID: 'allowlisted-device',
+				FB_HOMEY_SHS_WRITE_ENABLE: 'I_ACKNOWLEDGE_THIS_CHANGES_A_TEST_DEVICE',
+				FB_HOMEY_SHS_WRITE_VALUE: 'true',
+			},
+			'/tmp/homey-realtime-spike',
+		);
+		config.timeoutMs = 10;
+		const { clients, factory } = createFactory((client, index) => {
+			if (index === 0) {
+				client.devices.hangNextWrite = true;
+			}
+		});
+
+		await expect(probeHomeyShsRealtime(config, factory, () => Promise.resolve())).rejects.toThrow(
+			'Homey capability write timed out after 10 ms',
+		);
+		expect(clients[0].devices.writes).toEqual([true, false]);
+		expect(clients[0].devices.device.capabilitiesObj.onoff.value).toBe(false);
+		expect(clients[0].devices.disconnectCount).toBe(1);
+		expect(clients[0].disconnectCount).toBe(1);
+		expect(clients[0].destroyCount).toBe(1);
+	});
+
+	it.each(['manager', 'socket'] as const)('fails the probe when %s disconnect cleanup rejects', async (failure) => {
+		const config = loadHomeyShsRealtimeProbeConfig(BASE_ENVIRONMENT, '/tmp/homey-realtime-spike');
+		const { clients, factory } = createFactory((client, index) => {
+			if (index === 0) {
+				client.devices.failDisconnect = failure === 'manager';
+				client.failDisconnect = failure === 'socket';
+			}
+		});
+
+		await expect(probeHomeyShsRealtime(config, factory, () => Promise.resolve())).rejects.toThrow(
+			`Homey realtime cleanup failed: ${failure === 'manager' ? 'manager unsubscribe' : 'socket disconnect'}`,
+		);
+		expect(clients).toHaveLength(1);
+		expect(clients[0].devices.disconnectCount).toBe(1);
+		expect(clients[0].disconnectCount).toBe(1);
+		expect(clients[0].destroyCount).toBe(1);
 	});
 
 	it('rejects an unsafe target before issuing a write and still cleans up', async () => {

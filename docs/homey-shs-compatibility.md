@@ -126,7 +126,9 @@ pnpm run homey:probe-realtime
 
 `FB_HOMEY_SHS_REALTIME_OBSERVE_MS` optionally controls the passive event observation window from `0` through `60000`
 milliseconds and defaults to `2000`. Without every write variable below, the probe has no code path that issues a
-mutation.
+mutation. Every SDK client, subscription, read, write, restoration, and disconnect operation is bounded by
+`FB_HOMEY_SHS_TIMEOUT_MS`. A failed or timed-out disconnect fails the probe and is never recorded as resolved, so no
+report can claim successful cleanup when the transport did not confirm it.
 
 Read and write tests must use different least-privilege keys where SHS supports that workflow. The read-only probe needs
 only `homey.system.readonly`, `homey.zone.readonly`, and `homey.device.readonly`. A write test additionally needs

@@ -14,12 +14,17 @@ const SAFE_EVENT_LABELS = new Set([
 	'device.create',
 	'device.delete',
 	'device.update',
+	'device.unsubscribe.failed',
+	'device.unsubscribe.resolved',
 	'manager.subscribe.resolved',
+	'manager.unsubscribe.failed',
 	'manager.unsubscribe.resolved',
 	'sdk.create.resolved',
+	'sdk.destroy.failed',
 	'sdk.destroyed',
 	'socket.connect',
 	'socket.disconnect',
+	'socket.disconnect.failed',
 	'socket.disconnect.resolved',
 	'socket.reconnect',
 	'socket.reconnect_attempt',
@@ -28,6 +33,13 @@ const SAFE_EVENT_LABELS = new Set([
 
 type HomeyScalar = boolean | number | string;
 type EventListener = (...arguments_: unknown[]) => void;
+
+class HomeyShsSdkTimeoutError extends Error {
+	constructor(label: string, timeoutMs: number) {
+		super(`Homey ${label} timed out after ${timeoutMs} ms`);
+		this.name = 'HomeyShsSdkTimeoutError';
+	}
+}
 
 interface EventSource {
 	on(event: string, listener: EventListener): unknown;
@@ -191,6 +203,35 @@ const sleep = async (milliseconds: number): Promise<void> => {
 	}
 };
 
+const settleSdkOperation = async <T>(label: string, timeoutMs: number, operation: () => Promise<T>): Promise<T> => {
+	let timeout: ReturnType<typeof setTimeout> | undefined;
+	const operationPromise = Promise.resolve().then(operation);
+	const timeoutPromise = new Promise<never>((_resolvePromise, rejectPromise) => {
+		timeout = setTimeout(() => rejectPromise(new HomeyShsSdkTimeoutError(label, timeoutMs)), timeoutMs);
+	});
+
+	try {
+		return await Promise.race([operationPromise, timeoutPromise]);
+	} finally {
+		if (timeout !== undefined) {
+			clearTimeout(timeout);
+		}
+	}
+};
+
+const runSdkOperation = async <T>(label: string, timeoutMs: number, operation: () => Promise<T>): Promise<T> => {
+	try {
+		return await settleSdkOperation(label, timeoutMs, operation);
+	} catch (error: unknown) {
+		if (error instanceof HomeyShsSdkTimeoutError) {
+			throw error;
+		}
+
+		// eslint-disable-next-line preserve-caught-error -- SDK causes may contain endpoints or credential-bearing detail.
+		throw new Error(`Homey ${label} failed`);
+	}
+};
+
 const statusCodeOf = (error: unknown): number | null => {
 	if (!isRecord(error)) {
 		return null;
@@ -275,27 +316,63 @@ const assertInvalidKeyRejected = async (
 	factory: HomeySdkFactory,
 ): Promise<HomeyShsRealtimeReport['invalidKey']> => {
 	let client: HomeySdkClient | undefined;
+	let operationError: unknown;
+	let operationFailed = false;
+	let result: HomeyShsRealtimeReport['invalidKey'] | undefined;
 
 	try {
-		client = await factory.createLocalApi({
-			address: config.origin.origin,
-			token: `invalid-homey-probe-${randomBytes(24).toString('hex')}`,
-		});
-		await client.devices.getDevices();
+		client = await settleSdkOperation('invalid-key client creation', config.timeoutMs, () =>
+			factory.createLocalApi({
+				address: config.origin.origin,
+				token: `invalid-homey-probe-${randomBytes(24).toString('hex')}`,
+			}),
+		);
+		const invalidClient = client;
+
+		await settleSdkOperation('invalid-key inventory read', config.timeoutMs, () => invalidClient.devices.getDevices());
 	} catch (error: unknown) {
-		const statusCode = statusCodeOf(error);
+		if (error instanceof HomeyShsSdkTimeoutError) {
+			operationFailed = true;
+			operationError = error;
+		} else {
+			const statusCode = statusCodeOf(error);
 
-		if (statusCode === 401 || statusCode === 403) {
-			return { category: 'authentication', rejected: true, statusCode };
+			if (statusCode === 401 || statusCode === 403) {
+				result = { category: 'authentication', rejected: true, statusCode };
+			} else {
+				operationFailed = true;
+				operationError = new Error('The Homey invalid-key probe did not return an authentication rejection');
+			}
+		}
+	}
+
+	if (client !== undefined) {
+		const invalidClient = client;
+		let cleanupFailed = false;
+
+		try {
+			await runSdkOperation('invalid-key client disconnect', config.timeoutMs, () => invalidClient.disconnect());
+		} catch {
+			cleanupFailed = true;
 		}
 
-		// eslint-disable-next-line preserve-caught-error -- SDK causes may contain the endpoint or credential-bearing detail.
-		throw new Error('The Homey invalid-key probe did not return an authentication rejection');
-	} finally {
-		if (client !== undefined) {
-			await client.disconnect().catch(() => undefined);
+		try {
 			client.destroy();
+		} catch {
+			cleanupFailed = true;
 		}
+
+		if (cleanupFailed) {
+			throw new Error('Homey invalid-key probe cleanup failed');
+		}
+	}
+
+	if (operationFailed) {
+		throw operationError;
+	}
+
+	if (result !== undefined) {
+		return result;
 	}
 
 	throw new Error('The Homey invalid-key probe unexpectedly authenticated');
@@ -318,7 +395,9 @@ export const probeHomeyShsRealtime = async (
 			restored: false,
 		},
 	};
-	const client = await factory.createLocalApi({ address: config.origin.origin, token: config.apiKey });
+	const client = await runSdkOperation('client creation', config.timeoutMs, () =>
+		factory.createLocalApi({ address: config.origin.origin, token: config.apiKey }),
+	);
 	report.session.events.push({ event: 'sdk.create.resolved', order: 1 });
 	const cleanupListeners = [
 		attachSequenceListener(client, 'connect', report, 'socket.connect'),
@@ -331,24 +410,26 @@ export const probeHomeyShsRealtime = async (
 		attachSequenceListener(client.devices, 'device.delete', report),
 	];
 	let connectedDevice: HomeyDevice | undefined;
+	let operationError: unknown;
+	let operationFailed = false;
+	const cleanupFailures: string[] = [];
 
 	try {
-		await client.devices.connect();
+		await runSdkOperation('manager subscription', config.timeoutMs, () => client.devices.connect());
 		report.session.managerSubscribed = true;
 		report.session.events.push({ event: 'manager.subscribe.resolved', order: report.session.events.length + 1 });
 
 		if (config.write === null) {
 			await wait(config.observeMs);
 		} else {
-			const devices = await client.devices.getDevices();
-			const device = assertSafeWriteTarget(devices, config.write);
+			const write = config.write;
+			const devices = await runSdkOperation('device inventory read', config.timeoutMs, () =>
+				client.devices.getDevices(),
+			);
+			const device = assertSafeWriteTarget(devices, write);
 			connectedDevice = device;
 			const capabilityListener = (payload: unknown): void => {
-				if (
-					isRecord(payload) &&
-					payload.capabilityId === config.write?.capabilityId &&
-					Object.is(payload.value, config.write.value)
-				) {
+				if (isRecord(payload) && payload.capabilityId === write.capabilityId && Object.is(payload.value, write.value)) {
 					report.write.eventObserved = true;
 					report.session.events.push({
 						event: 'capability.update',
@@ -360,46 +441,56 @@ export const probeHomeyShsRealtime = async (
 			device.on('capability', capabilityListener);
 
 			try {
-				await device.connect();
+				await runSdkOperation('device subscription', config.timeoutMs, () => device.connect());
 				const originalValue = assertRestorableOriginalValue(
 					scalarCapabilityValue(
-						await client.devices.getCapabilityValue({
-							capabilityId: config.write.capabilityId,
-							deviceId: config.write.deviceId,
-						}),
+						await runSdkOperation('pre-write capability read', config.timeoutMs, () =>
+							client.devices.getCapabilityValue({
+								capabilityId: write.capabilityId,
+								deviceId: write.deviceId,
+							}),
+						),
 					),
-					config.write.value,
+					write.value,
 				);
 
 				try {
 					report.write.attempted = true;
-					await client.devices.setCapabilityValue({
-						capabilityId: config.write.capabilityId,
-						deviceId: config.write.deviceId,
-						value: config.write.value,
-					});
-					await wait(config.observeMs);
-					const readBack = scalarCapabilityValue(
-						await client.devices.getCapabilityValue({
-							capabilityId: config.write.capabilityId,
-							deviceId: config.write.deviceId,
+					await runSdkOperation('capability write', config.timeoutMs, () =>
+						client.devices.setCapabilityValue({
+							capabilityId: write.capabilityId,
+							deviceId: write.deviceId,
+							value: write.value,
 						}),
 					);
+					await wait(config.observeMs);
+					const readBack = scalarCapabilityValue(
+						await runSdkOperation('post-write capability read', config.timeoutMs, () =>
+							client.devices.getCapabilityValue({
+								capabilityId: write.capabilityId,
+								deviceId: write.deviceId,
+							}),
+						),
+					);
 
-					report.write.readBackMatched = Object.is(readBack, config.write.value);
+					report.write.readBackMatched = Object.is(readBack, write.value);
 				} finally {
 					if (report.write.attempted) {
-						await client.devices.setCapabilityValue({
-							capabilityId: config.write.capabilityId,
-							deviceId: config.write.deviceId,
-							value: originalValue,
-						});
+						await runSdkOperation('capability restoration', config.timeoutMs, () =>
+							client.devices.setCapabilityValue({
+								capabilityId: write.capabilityId,
+								deviceId: write.deviceId,
+								value: originalValue,
+							}),
+						);
 						report.write.restored = true;
 						const restored = scalarCapabilityValue(
-							await client.devices.getCapabilityValue({
-								capabilityId: config.write.capabilityId,
-								deviceId: config.write.deviceId,
-							}),
+							await runSdkOperation('restoration capability read', config.timeoutMs, () =>
+								client.devices.getCapabilityValue({
+									capabilityId: write.capabilityId,
+									deviceId: write.deviceId,
+								}),
+							),
 						);
 
 						report.write.restoreReadBackMatched = Object.is(restored, originalValue);
@@ -409,19 +500,58 @@ export const probeHomeyShsRealtime = async (
 				device.off?.('capability', capabilityListener);
 			}
 		}
+	} catch (error: unknown) {
+		operationError = error;
+		operationFailed = true;
 	} finally {
+		const cleanup = async (
+			label: string,
+			resolvedEvent: string,
+			failedEvent: string,
+			operation: () => Promise<unknown>,
+		): Promise<void> => {
+			try {
+				await runSdkOperation(label, config.timeoutMs, operation);
+				report.session.events.push({ event: resolvedEvent, order: report.session.events.length + 1 });
+			} catch {
+				cleanupFailures.push(label);
+				report.session.events.push({ event: failedEvent, order: report.session.events.length + 1 });
+			}
+		};
+
 		if (connectedDevice !== undefined) {
-			await connectedDevice.disconnect().catch(() => undefined);
+			const device = connectedDevice;
+
+			await cleanup('device unsubscribe', 'device.unsubscribe.resolved', 'device.unsubscribe.failed', () =>
+				device.disconnect(),
+			);
 		}
 
-		await client.devices.disconnect().catch(() => undefined);
-		report.session.events.push({ event: 'manager.unsubscribe.resolved', order: report.session.events.length + 1 });
-		await client.disconnect().catch(() => undefined);
-		report.session.events.push({ event: 'socket.disconnect.resolved', order: report.session.events.length + 1 });
+		await cleanup('manager unsubscribe', 'manager.unsubscribe.resolved', 'manager.unsubscribe.failed', () =>
+			client.devices.disconnect(),
+		);
+		await cleanup('socket disconnect', 'socket.disconnect.resolved', 'socket.disconnect.failed', () =>
+			client.disconnect(),
+		);
 		cleanupListeners.forEach((cleanup) => cleanup());
-		client.destroy();
-		report.session.cleanupCompleted = true;
-		report.session.events.push({ event: 'sdk.destroyed', order: report.session.events.length + 1 });
+
+		try {
+			client.destroy();
+			report.session.events.push({ event: 'sdk.destroyed', order: report.session.events.length + 1 });
+		} catch {
+			cleanupFailures.push('client destroy');
+			report.session.events.push({ event: 'sdk.destroy.failed', order: report.session.events.length + 1 });
+		}
+
+		report.session.cleanupCompleted = cleanupFailures.length === 0;
+	}
+
+	if (cleanupFailures.length > 0) {
+		throw new Error(`Homey realtime cleanup failed: ${cleanupFailures.join(', ')}`);
+	}
+
+	if (operationFailed) {
+		throw operationError;
 	}
 
 	report.invalidKey = await assertInvalidKeyRejected(config, factory);
