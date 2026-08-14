@@ -30,6 +30,35 @@ export interface AnthropicSdkResult {
 	cacheWriteTokens: number | null;
 }
 
+/** Build the exact JSON payload passed to the Anthropic Messages SDK. */
+export function buildAnthropicRequestPayload(
+	model: string,
+	systemPrompt: string,
+	messages: ChatMessage[],
+	maxTokens: number = 1024,
+	tools?: ToolDefinition[],
+): Record<string, unknown> {
+	const requestPayload: Record<string, unknown> = {
+		model,
+		max_tokens: maxTokens,
+		system: systemPrompt,
+		messages: messages.map((message) => ({
+			role: message.role === MessageRole.USER ? ('user' as const) : ('assistant' as const),
+			content: message.content,
+		})),
+	};
+
+	if (tools && tools.length > 0) {
+		requestPayload.tools = tools.map((tool) => ({
+			name: tool.name,
+			description: tool.description,
+			input_schema: tool.parameters,
+		}));
+	}
+
+	return requestPayload;
+}
+
 /**
  * Shared Anthropic SDK interaction logic used by all Claude-based providers.
  * Handles SDK import, client creation, API call, and response parsing.
@@ -52,24 +81,7 @@ export async function sendAnthropicMessage(
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
 	const client = new Anthropic({ ...credentials, timeout, defaultHeaders });
 
-	// Build the request payload
-	const requestPayload: Record<string, unknown> = {
-		model,
-		max_tokens: maxTokens,
-		system: systemPrompt,
-		messages: messages.map((m) => ({
-			role: m.role === MessageRole.USER ? ('user' as const) : ('assistant' as const),
-			content: m.content,
-		})),
-	};
-
-	if (tools && tools.length > 0) {
-		requestPayload.tools = tools.map((t) => ({
-			name: t.name,
-			description: t.description,
-			input_schema: t.parameters,
-		}));
-	}
+	const requestPayload = buildAnthropicRequestPayload(model, systemPrompt, messages, maxTokens, tools);
 
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 	const response = await client.messages.create(requestPayload);

@@ -71,6 +71,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "test:homey-spike": "jest --config ./test/jest-homey-spike.json --runInBand",
     "test:oauth-spike": "NODE_OPTIONS=\"${NODE_OPTIONS:-} --experimental-vm-modules\" jest --config ./test/jest-oauth-spike.json --runInBand",
+    "test:buddy-context-soak": "jest --config ./test/jest-buddy-context-soak.json --runInBand",
     "homey:probe": "ts-node --project tsconfig.json test/support/homey-shs-probe.ts",
     "homey:probe-credential-rotation": "ts-node --project tsconfig.json test/support/homey-shs-credential-rotation-probe.ts",
     "homey:probe-errors": "ts-node --project tsconfig.json test/support/homey-shs-error-probe.ts",

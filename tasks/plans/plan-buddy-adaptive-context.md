@@ -1174,13 +1174,14 @@ regenerate checked-in artifacts from backend Swagger sources; never edit generat
 
 **Tasks:**
 
-- [ ] Add fixtures for 10, 100, and 1,000-device installations with realistic channels/properties.
-- [ ] Add an opt-in 5,000-device soak fixture outside normal unit CI for query/result/memory bounds.
-- [ ] Record current prompt/request size, domain-query counts, latency, and failure behavior for the message matrix.
-- [ ] Add a serialization-level test helper that measures the complete provider input, not only the system prompt.
-- [ ] Add characterization tests proving heartbeat/evaluators consume the broad `BuddyContextService` snapshot.
-- [ ] Define test thresholds and a checked-in evaluation matrix; do not rely on anecdotal manual prompts.
-- [ ] Record the eager small-window budget violation as a measured baseline fixture or opt-in expected-failure evaluation
+- [x] Add fixtures for 10, 100, and 1,000-device installations with realistic channels/properties.
+- [x] Add an opt-in 5,000-device soak fixture outside normal unit CI for query/result/memory bounds.
+- [x] Record current prompt/request size, domain-query counts, latency, and failure behavior for the message matrix in
+      [buddy-adaptive-context-phase-0-baseline.md](./buddy-adaptive-context-phase-0-baseline.md).
+- [x] Add a serialization-level test helper that measures the complete provider input, not only the system prompt.
+- [x] Add characterization tests proving heartbeat/evaluators consume the broad `BuddyContextService` snapshot.
+- [x] Define test thresholds and a checked-in evaluation matrix; do not rely on anecdotal manual prompts.
+- [x] Record the eager small-window budget violation as a measured baseline fixture or opt-in expected-failure evaluation
       excluded from normal CI. Keep the Phase 0 verification suite green; promote the fixture to a required passing
       bounded-request assertion when Phase 7 switches the production conversation path.
 - [ ] Confirm existing MCP context outputs/limits in tests before extracting them.

@@ -4,6 +4,10 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { ConfigService } from '../../config/services/config.service';
 import { SpacesService } from '../../spaces/services/spaces.service';
 import { HEARTBEAT_DEFAULT_INTERVAL_MS, SuggestionType } from '../buddy.constants';
+import {
+	BUDDY_CONTEXT_SCALE_DEVICE_COUNTS,
+	createBuddyContextFixture,
+} from '../testing/buddy-context-evaluation.fixtures';
 
 import { BuddyContext, BuddyContextService } from './buddy-context.service';
 import { HeartbeatService } from './heartbeat.service';
@@ -297,6 +301,35 @@ describe('HeartbeatService', () => {
 			await service.runCycle();
 
 			expect(callOrder).toEqual(['eval1', 'eval2']);
+		});
+
+		it('should forward the exact complete context object unchanged to every evaluator', async () => {
+			const context = createBuddyContextFixture(BUDDY_CONTEXT_SCALE_DEVICE_COUNTS[0], { spaceId: 'space-1' });
+			const evaluator1Evaluate = jest.fn((receivedContext: BuddyContext) => {
+				expect(receivedContext).toBe(context);
+
+				return Promise.resolve([]);
+			});
+			const evaluator2Evaluate = jest.fn((receivedContext: BuddyContext) => {
+				expect(receivedContext).toBe(context);
+
+				return Promise.resolve([]);
+			});
+
+			spacesService.findAll.mockResolvedValue([{ id: 'space-1', suggestionsEnabled: true }]);
+			contextService.buildContext.mockResolvedValue(context);
+			service.registerEvaluator({ name: 'Evaluator1', evaluate: evaluator1Evaluate });
+			service.registerEvaluator({ name: 'Evaluator2', evaluate: evaluator2Evaluate });
+
+			await service.runCycle();
+
+			expect(contextService.buildContext).toHaveBeenCalledWith('space-1');
+			expect(evaluator1Evaluate).toHaveBeenCalledTimes(1);
+			expect(evaluator2Evaluate).toHaveBeenCalledTimes(1);
+			expect(evaluator1Evaluate).toHaveBeenCalledWith(context);
+			expect(evaluator2Evaluate).toHaveBeenCalledWith(context);
+			expect(context.devices).toHaveLength(BUDDY_CONTEXT_SCALE_DEVICE_COUNTS[0]);
+			expect(context.devices[context.devices.length - 1].channels).toHaveLength(3);
 		});
 	});
 

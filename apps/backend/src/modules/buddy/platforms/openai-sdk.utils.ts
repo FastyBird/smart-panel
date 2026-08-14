@@ -19,6 +19,40 @@ export interface OpenAiSdkResult {
 	finishReason: string | null;
 }
 
+/** Build the exact JSON payload passed to the OpenAI Chat Completions SDK. */
+export function buildOpenAiRequestPayload(
+	model: string,
+	systemPrompt: string,
+	messages: ChatMessage[],
+	maxTokens: number = 1024,
+	tools?: ToolDefinition[],
+): Record<string, unknown> {
+	const requestPayload: Record<string, unknown> = {
+		model,
+		max_completion_tokens: maxTokens,
+		messages: [
+			{ role: 'system' as const, content: systemPrompt },
+			...messages.map((message) => ({
+				role: message.role === MessageRole.USER ? ('user' as const) : ('assistant' as const),
+				content: message.content,
+			})),
+		],
+	};
+
+	if (tools && tools.length > 0) {
+		requestPayload.tools = tools.map((tool) => ({
+			type: 'function',
+			function: {
+				name: tool.name,
+				description: tool.description,
+				parameters: tool.parameters,
+			},
+		}));
+	}
+
+	return requestPayload;
+}
+
 /**
  * Shared OpenAI SDK interaction logic used by all OpenAI-based providers.
  * Handles SDK import, client creation, API call, and response parsing.
@@ -37,29 +71,7 @@ export async function sendOpenAiMessage(
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
 	const client = new OpenAI({ apiKey, timeout });
 
-	// Build the request payload
-	const requestPayload: Record<string, unknown> = {
-		model,
-		max_completion_tokens: maxTokens,
-		messages: [
-			{ role: 'system' as const, content: systemPrompt },
-			...messages.map((m) => ({
-				role: m.role === MessageRole.USER ? ('user' as const) : ('assistant' as const),
-				content: m.content,
-			})),
-		],
-	};
-
-	if (tools && tools.length > 0) {
-		requestPayload.tools = tools.map((t) => ({
-			type: 'function',
-			function: {
-				name: t.name,
-				description: t.description,
-				parameters: t.parameters,
-			},
-		}));
-	}
+	const requestPayload = buildOpenAiRequestPayload(model, systemPrompt, messages, maxTokens, tools);
 
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 	const response = await client.chat.completions.create(requestPayload);

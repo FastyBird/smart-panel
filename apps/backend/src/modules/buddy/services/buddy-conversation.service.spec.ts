@@ -1,65 +1,88 @@
 /* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { DataSource as OrmDataSource, Repository } from 'typeorm';
+import { z } from 'zod';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { ConfigService } from '../../config/services/config.service';
+import { ToolAccessKind, ToolAudience, createToolDefinition } from '../../tools/platforms/tool-provider.platform';
 import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
 import { EventType, MessageRole } from '../buddy.constants';
 import { BuddyConversationNotFoundException, BuddyProviderNotConfiguredException } from '../buddy.exceptions';
 import { BuddyConversationEntity } from '../entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from '../entities/buddy-message.entity';
+import { buildOpenAiRequestPayload } from '../platforms/openai-sdk.utils';
+import {
+	BUDDY_CONTEXT_SCALE_DEVICE_COUNTS,
+	createBuddyContextFixture,
+} from '../testing/buddy-context-evaluation.fixtures';
+import { BUDDY_CONTEXT_EVALUATION_MATRIX } from '../testing/buddy-context-evaluation.matrix';
+import {
+	estimateConservativeTokens,
+	measureJsonUtf8Bytes,
+	measureLlmRequestPayload,
+} from '../testing/llm-request-measurement.helper';
 
 import { BuddyContextService } from './buddy-context.service';
 import { BuddyConversationService } from './buddy-conversation.service';
 import { BuddyPersonalityService } from './buddy-personality.service';
 import { LlmProviderService } from './llm-provider.service';
 
-/**
- * Helper to generate N fake devices with channels and properties.
- * Each device gets 3 channels with 5 properties each to simulate a realistic home.
- */
-function generateDevices(
-	count: number,
-	spaceId: string | null = null,
-): {
-	id: string;
-	name: string;
-	space: string | null;
-	category: string;
-	state: Record<string, unknown>;
-	channels: { id: string; name: string; properties: { id: string; category: string; value: unknown }[] }[];
-}[] {
-	return Array.from({ length: count }, (_, i) => {
-		const channels = Array.from({ length: 3 }, (_, ch) => ({
-			id: `ch-${i}-${ch}`,
-			name: `channel_${ch}`,
-			properties: Array.from({ length: 5 }, (_, p) => ({
-				id: `prop-${i}-${ch}-${p}`,
-				category: `sensor_${p}`,
-				value: Math.round(Math.random() * 100) / 10,
-			})),
-		}));
+const BUDDY_EVALUATION_HISTORY: Partial<BuddyMessageEntity>[] = Array.from({ length: 19 }, (_, index) => ({
+	role: index % 2 === 0 ? MessageRole.USER : MessageRole.ASSISTANT,
+	content:
+		index % 2 === 0
+			? `Earlier request ${index + 1}: report the living-room temperature and lighting state.`
+			: `Earlier response ${index + 1}: the room is comfortable and its main light is available.`,
+}));
 
-		const state: Record<string, unknown> = {};
-
-		for (const ch of channels) {
-			for (const prop of ch.properties) {
-				state[`${ch.name}.${prop.category}`] = prop.value;
-			}
-		}
-
-		return {
-			id: `device-${i}`,
-			name: `Device ${i}`,
-			space: spaceId,
-			category: 'sensor',
-			state,
-			channels,
-		};
-	});
-}
+const toolOutputSchema = z.object({ success: z.boolean(), message: z.string() });
+const BUDDY_EVALUATION_TOOLS = [
+	createToolDefinition({
+		name: 'search_home_entities',
+		description: 'Find devices, spaces, properties, and scenes matching a user-provided name or capability.',
+		audiences: [ToolAudience.BUDDY],
+		access: ToolAccessKind.READ,
+		inputSchema: z.object({
+			query: z.string().min(1).describe('Name or capability to find'),
+			space_id: z.string().optional().describe('Optional space identifier used to narrow the search'),
+			limit: z.number().int().min(1).max(25).default(10),
+		}),
+		outputSchema: toolOutputSchema,
+	}),
+	createToolDefinition({
+		name: 'get_device_state',
+		description: 'Read the current state and selected properties of an exact smart-home device.',
+		audiences: [ToolAudience.BUDDY],
+		access: ToolAccessKind.READ,
+		inputSchema: z.object({
+			device_id: z.string().min(1).describe('Exact device identifier returned by entity search'),
+			property_categories: z.array(z.string()).max(20).optional(),
+		}),
+		outputSchema: toolOutputSchema,
+	}),
+	createToolDefinition({
+		name: 'set_device_property',
+		description: 'Set one writable property on an exact device after resolving an unambiguous target.',
+		audiences: [ToolAudience.BUDDY],
+		access: ToolAccessKind.WRITE,
+		inputSchema: z.object({
+			device_id: z.string().min(1),
+			property_id: z.string().min(1),
+			value: z.union([z.boolean(), z.number(), z.string()]),
+		}),
+		outputSchema: toolOutputSchema,
+	}),
+	createToolDefinition({
+		name: 'run_scene',
+		description: 'Trigger an enabled scene by its exact identifier.',
+		audiences: [ToolAudience.BUDDY],
+		access: ToolAccessKind.TRIGGER,
+		inputSchema: z.object({ scene_id: z.string().min(1) }),
+		outputSchema: toolOutputSchema,
+	}),
+];
 
 describe('BuddyConversationService', () => {
 	let service: BuddyConversationService;
@@ -71,6 +94,7 @@ describe('BuddyConversationService', () => {
 	let personalityService: Record<string, jest.Mock>;
 	let toolProviderRegistry: Record<string, jest.Mock>;
 	let eventEmitter: jest.Mocked<EventEmitter2>;
+	let configService: Record<string, jest.Mock>;
 
 	const mockConversation: BuddyConversationEntity = {
 		id: 'conv-1',
@@ -161,7 +185,7 @@ describe('BuddyConversationService', () => {
 			emit: jest.fn(),
 		} as any;
 
-		const configService = {
+		configService = {
 			getModuleConfig: jest.fn().mockReturnValue({ name: 'Buddy', maxToolIterations: 5, contextWindowTokens: 8_000 }),
 		};
 
@@ -266,6 +290,21 @@ describe('BuddyConversationService', () => {
 
 			expect(contextService.buildContext).toHaveBeenCalled();
 		});
+
+		it.each(BUDDY_CONTEXT_EVALUATION_MATRIX)(
+			'should eagerly build one full context snapshot for $id',
+			async ({ conversationSpaceId, message }) => {
+				conversationRepo.findOne.mockResolvedValue({
+					...mockConversation,
+					spaceId: conversationSpaceId,
+				});
+
+				await service.sendMessage('conv-1', message);
+
+				expect(contextService.buildContext).toHaveBeenCalledTimes(1);
+				expect(contextService.buildContext).toHaveBeenCalledWith(conversationSpaceId ?? undefined);
+			},
+		);
 
 		it('should call LLM provider with system prompt and messages', async () => {
 			await service.sendMessage('conv-1', 'What is the temperature?');
@@ -540,19 +579,250 @@ describe('BuddyConversationService', () => {
 		});
 	});
 
+	describe('sendMessage - Phase 0 complete request measurements', () => {
+		it('should snapshot the native provider request for 10, 100, and 1,000 devices', async () => {
+			const measurements: Array<Record<string, unknown>> = [];
+
+			llmProvider.supportsTools.mockReturnValue(true);
+			toolProviderRegistry.getAllToolDefinitions.mockReturnValue(BUDDY_EVALUATION_TOOLS);
+			messageRepo.find.mockResolvedValue(BUDDY_EVALUATION_HISTORY);
+
+			for (const deviceCount of BUDDY_CONTEXT_SCALE_DEVICE_COUNTS) {
+				contextService.buildContext.mockResolvedValue(createBuddyContextFixture(deviceCount));
+
+				await service.sendMessage('conv-1', 'Give me a complete status overview for the current home.');
+
+				const [systemPrompt, messages, options] = llmProvider.sendMessage.mock.calls.at(-1) as [
+					string,
+					Array<{ role: MessageRole.USER | MessageRole.ASSISTANT; content: string }>,
+					{ tools: typeof BUDDY_EVALUATION_TOOLS },
+				];
+				const payload = buildOpenAiRequestPayload('gpt-4o', systemPrompt, messages, 1_024, options.tools);
+				const measurement = measureLlmRequestPayload(payload, {
+					contextWindowTokens: 128_000,
+					requestedOutputTokens: 1_024,
+					providerFramingTokens: 32,
+					safetyMarginTokens: 256,
+				});
+				const nativeMessages = payload.messages as Array<{ role: string; content: string }>;
+
+				expect(nativeMessages).toHaveLength(21);
+				expect(nativeMessages[0]).toEqual({ role: 'system', content: systemPrompt });
+				expect(nativeMessages.slice(1, -1)).toHaveLength(19);
+				expect(nativeMessages.at(-1)).toEqual({
+					role: 'user',
+					content: 'Give me a complete status overview for the current home.',
+				});
+				expect(payload.tools).toHaveLength(BUDDY_EVALUATION_TOOLS.length);
+				expect(measurement.components.history.estimatedTokens).toBeGreaterThan(0);
+				expect(measurement.components.current.estimatedTokens).toBeGreaterThan(0);
+				expect(measurement.components.tools.estimatedTokens).toBeGreaterThan(0);
+				expect(measurement.components.toolResults.estimatedTokens).toBe(0);
+				expect(measurement.jsonUtf8Bytes).toBeGreaterThan(measureJsonUtf8Bytes(systemPrompt));
+				expect(measurement.estimatedInputTokens).toBeGreaterThan(estimateConservativeTokens(systemPrompt));
+				expect(measurement.output).toEqual({
+					requestedTokens: 1_024,
+					nativeCapTokens: 1_024,
+					status: 'enforced',
+				});
+
+				measurements.push({
+					deviceCount,
+					jsonUtf8Bytes: measurement.jsonUtf8Bytes,
+					estimatedInputTokens: measurement.estimatedInputTokens,
+					availableInputTokens: measurement.availableInputTokens,
+					fitsWindow: measurement.fitsWindow,
+					components: measurement.components,
+				});
+			}
+
+			expect(measurements).toMatchInlineSnapshot(`
+			[
+			  {
+			    "availableInputTokens": 126688,
+			    "components": {
+			      "current": {
+			        "estimatedTokens": 29,
+			        "jsonUtf8Bytes": 86,
+			      },
+			      "history": {
+			        "estimatedTokens": 674,
+			        "jsonUtf8Bytes": 2021,
+			      },
+			      "other": {
+			        "estimatedTokens": 6,
+			        "jsonUtf8Bytes": 18,
+			      },
+			      "system": {
+			        "estimatedTokens": 1422,
+			        "jsonUtf8Bytes": 4265,
+			      },
+			      "toolResults": {
+			        "estimatedTokens": 0,
+			        "jsonUtf8Bytes": 0,
+			      },
+			      "tools": {
+			        "estimatedTokens": 557,
+			        "jsonUtf8Bytes": 1670,
+			      },
+			    },
+			    "deviceCount": 10,
+			    "estimatedInputTokens": 2693,
+			    "fitsWindow": true,
+			    "jsonUtf8Bytes": 8108,
+			  },
+			  {
+			    "availableInputTokens": 126688,
+			    "components": {
+			      "current": {
+			        "estimatedTokens": 29,
+			        "jsonUtf8Bytes": 86,
+			      },
+			      "history": {
+			        "estimatedTokens": 674,
+			        "jsonUtf8Bytes": 2021,
+			      },
+			      "other": {
+			        "estimatedTokens": 6,
+			        "jsonUtf8Bytes": 18,
+			      },
+			      "system": {
+			        "estimatedTokens": 6276,
+			        "jsonUtf8Bytes": 18826,
+			      },
+			      "toolResults": {
+			        "estimatedTokens": 0,
+			        "jsonUtf8Bytes": 0,
+			      },
+			      "tools": {
+			        "estimatedTokens": 557,
+			        "jsonUtf8Bytes": 1670,
+			      },
+			    },
+			    "deviceCount": 100,
+			    "estimatedInputTokens": 7547,
+			    "fitsWindow": true,
+			    "jsonUtf8Bytes": 22669,
+			  },
+			  {
+			    "availableInputTokens": 126688,
+			    "components": {
+			      "current": {
+			        "estimatedTokens": 29,
+			        "jsonUtf8Bytes": 86,
+			      },
+			      "history": {
+			        "estimatedTokens": 674,
+			        "jsonUtf8Bytes": 2021,
+			      },
+			      "other": {
+			        "estimatedTokens": 6,
+			        "jsonUtf8Bytes": 18,
+			      },
+			      "system": {
+			        "estimatedTokens": 337,
+			        "jsonUtf8Bytes": 1010,
+			      },
+			      "toolResults": {
+			        "estimatedTokens": 0,
+			        "jsonUtf8Bytes": 0,
+			      },
+			      "tools": {
+			        "estimatedTokens": 557,
+			        "jsonUtf8Bytes": 1670,
+			      },
+			    },
+			    "deviceCount": 1000,
+			    "estimatedInputTokens": 1608,
+			    "fitsWindow": true,
+			    "jsonUtf8Bytes": 4853,
+			  },
+			]
+			`);
+		});
+
+		it('should record the current eager request as over budget for a 2k-token model', async () => {
+			configService.getModuleConfig.mockReturnValue({
+				name: 'Buddy',
+				maxToolIterations: 5,
+				contextWindowTokens: 2_000,
+			});
+			llmProvider.supportsTools.mockReturnValue(true);
+			toolProviderRegistry.getAllToolDefinitions.mockReturnValue(BUDDY_EVALUATION_TOOLS);
+			messageRepo.find.mockResolvedValue(BUDDY_EVALUATION_HISTORY);
+			contextService.buildContext.mockResolvedValue(createBuddyContextFixture(10));
+
+			await service.sendMessage('conv-1', 'Give me a complete status overview for the current home.');
+
+			const [systemPrompt, messages, options] = llmProvider.sendMessage.mock.calls[0] as [
+				string,
+				Array<{ role: MessageRole.USER | MessageRole.ASSISTANT; content: string }>,
+				{ tools: typeof BUDDY_EVALUATION_TOOLS },
+			];
+			const payload = buildOpenAiRequestPayload('gpt-4o', systemPrompt, messages, 1_024, options.tools);
+			const measurement = measureLlmRequestPayload(payload, {
+				contextWindowTokens: 2_000,
+				requestedOutputTokens: 1_024,
+				providerFramingTokens: 32,
+				safetyMarginTokens: 128,
+			});
+
+			expect(estimateConservativeTokens(systemPrompt)).toBeLessThanOrEqual(1_600);
+			expect(measurement.availableInputTokens).toBe(816);
+			expect(measurement.estimatedInputTokens).toBeGreaterThan(measurement.availableInputTokens);
+			expect(measurement.fitsWindow).toBe(false);
+			expect(measurement.output.status).toBe('enforced');
+			expect({
+				jsonUtf8Bytes: measurement.jsonUtf8Bytes,
+				estimatedInputTokens: measurement.estimatedInputTokens,
+				availableInputTokens: measurement.availableInputTokens,
+				fitsWindow: measurement.fitsWindow,
+				components: measurement.components,
+			}).toMatchInlineSnapshot(`
+			{
+			  "availableInputTokens": 816,
+			  "components": {
+			    "current": {
+			      "estimatedTokens": 29,
+			      "jsonUtf8Bytes": 86,
+			    },
+			    "history": {
+			      "estimatedTokens": 674,
+			      "jsonUtf8Bytes": 2021,
+			    },
+			    "other": {
+			      "estimatedTokens": 6,
+			      "jsonUtf8Bytes": 18,
+			    },
+			    "system": {
+			      "estimatedTokens": 1422,
+			      "jsonUtf8Bytes": 4265,
+			    },
+			    "toolResults": {
+			      "estimatedTokens": 0,
+			      "jsonUtf8Bytes": 0,
+			    },
+			    "tools": {
+			      "estimatedTokens": 557,
+			      "jsonUtf8Bytes": 1670,
+			    },
+			  },
+			  "estimatedInputTokens": 2693,
+			  "fitsWindow": false,
+			  "jsonUtf8Bytes": 8108,
+			}
+		`);
+		});
+	});
+
 	describe('sendMessage - prompt truncation', () => {
 		it('should include all devices for a small home (no truncation)', async () => {
-			const devices = generateDevices(5);
+			const fixture = createBuddyContextFixture(5);
+			const devices = fixture.devices;
 
 			contextService.buildContext.mockResolvedValue({
-				timestamp: new Date().toISOString(),
-				timezone: 'Europe/Prague',
+				...fixture,
 				spaces: [{ id: 'space-1', name: 'Living Room', category: 'room', deviceCount: 5 }],
-				devices,
-				scenes: [],
-				weather: null,
-				energy: null,
-				recentIntents: [],
 			});
 
 			await service.sendMessage('conv-1', 'Status?');
@@ -571,8 +841,11 @@ describe('BuddyConversationService', () => {
 		it('should truncate devices for a large global conversation', async () => {
 			// Global conversation (spaceId=null) with 100 devices across two spaces
 			// exceeds the 8k * 0.8 = 6.4k token budget
-			const space1Devices = generateDevices(10, 'space-1');
-			const space2Devices = generateDevices(90, 'space-2');
+			const space1Devices = createBuddyContextFixture(10, { spaceId: 'space-1' }).devices;
+			const space2Devices = createBuddyContextFixture(90, {
+				spaceId: 'space-2',
+				deviceIndexOffset: 10,
+			}).devices;
 			const allDevices = [...space1Devices, ...space2Devices];
 
 			contextService.buildContext.mockResolvedValue({
@@ -617,8 +890,11 @@ describe('BuddyConversationService', () => {
 
 			conversationRepo.findOne.mockResolvedValue(scopedConversation);
 
-			const currentDevices = generateDevices(5, 'space-1');
-			const otherDevices = generateDevices(80, 'space-2');
+			const currentDevices = createBuddyContextFixture(5, { spaceId: 'space-1' }).devices;
+			const otherDevices = createBuddyContextFixture(80, {
+				spaceId: 'space-2',
+				deviceIndexOffset: 5,
+			}).devices;
 			const allDevices = [...currentDevices, ...otherDevices];
 
 			contextService.buildContext.mockResolvedValue({
@@ -659,7 +935,7 @@ describe('BuddyConversationService', () => {
 
 		it('should aggressively truncate for a very large home', async () => {
 			// Generate 200 devices — far beyond budget, global conversation
-			const allDevices = generateDevices(200, 'space-other');
+			const allDevices = createBuddyContextFixture(200, { spaceId: 'space-other' }).devices;
 			const spaces = [
 				{ id: 'space-1', name: 'Master Bedroom', category: 'room', deviceCount: 5 },
 				{ id: 'space-other', name: 'Whole House', category: 'zone', deviceCount: 200 },
