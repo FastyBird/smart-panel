@@ -27,7 +27,7 @@ file. Live results use synthetic aliases and sanitized captures only.
 | Allowlisted capability write                          | Hard-gated probe implemented, disabled          | Use only the designated harmless test capability                     |
 | Error classification                                  | SDK invalid key returned `401`; matrix pending  | Verify missing-scope, bad-URL, unavailable, and timeout behavior     |
 | API-key revocation and replacement                    | Operator-controlled probe ready                 | Revoke only a dedicated test key during the gated observation window |
-| Disposable-device lifecycle                           | Contract defined, disabled                      | Use only the separately gated virtual/test device                    |
+| Disposable-device lifecycle                           | Guarded operator probe ready                    | Use only the separately gated virtual/test device                    |
 | mDNS discovery                                        | Partial pre-restart observation                 | Attribute the generic host record and repeat after SHS restart       |
 | SDK decision                                          | Live session/cleanup passed; provisional hold   | Complete event, timeout, cleanup-failure, and reconnect comparison   |
 | Sanitized fixture corpus                              | Nine representative live fixtures promoted      | Add event/reconnect fixtures and missing capability families/classes |
@@ -178,17 +178,75 @@ original value. The requested value must differ from that original. It then requ
 read-back, restores the original value in `finally`, and requires a second read-back confirming restoration before the
 sanitized report can be written.
 
-Lifecycle mutations have a separate gate and may target only the designated disposable virtual/test device:
+## Operator-controlled disposable-device lifecycle probe
 
-```text
-FB_HOMEY_SHS_LIFECYCLE_ENABLE=I_ACKNOWLEDGE_THIS_MUTATES_A_DISPOSABLE_DEVICE
-FB_HOMEY_SHS_LIFECYCLE_DEVICE_ID=<disposable virtual/test device ID>
-FB_HOMEY_SHS_LIFECYCLE_OPERATIONS=add,rename,zone-move,availability,remove
+Lifecycle evidence uses a separate management-scoped, disposable API key and may target only a virtual/test device
+created for this run. Do not reuse the regular read-only or capability-control key. The lifecycle key needs
+`homey.device` for metadata updates and removal, plus `homey.device.readonly`, `homey.zone.readonly`,
+`homey.system.readonly`, and `homey.flow.readonly` for fail-closed preflight, ownership, zone, instance, and flow
+validation. Before it opens the operator add window, the probe exercises each read permission with bounded,
+cache-bypassing requests and proves `homey.device` through a non-mutating lookup of a fresh cryptographically random
+pair-session ID: only `404` proves authorization, while a collision, permission error, timeout, or transport failure
+fails closed. Revoke the key when the run is complete.
+
+The local Web API cannot generically create a virtual device or set device availability. The probe therefore
+subscribes first and then opens a bounded observation window. During that window, the operator or a dedicated test
+driver adds exactly one disposable device carrying the configured synthetic marker. Later, when prompted, the
+operator or that same test driver makes only that device unavailable and available again. Do not disable a shared app:
+that could change every device owned by the app. The probe rejects a lifecycle owner that has any device at baseline
+and requires the run-bound device to remain its only device during availability checks.
+
+After the `device.create` event exactly matches the marker, driver, owner, initial name, and source zone allowlist, the
+probe binds the new runtime device ID in memory. Only after that binding may it use the bounded local API operations
+to rename the device, move it to the destination zone, and remove it. The probe observes `device.update` for rename,
+zone, and availability changes and `device.delete` for removal, with fresh reads after mutations. It never accepts the
+first unrelated lifecycle event and never writes an identifier, name, event payload, or raw error to the report.
+
+Start from the base URL, expected-host, and private-term environment used by the safe read probe, but replace
+`FB_HOMEY_SHS_API_KEY` with the dedicated lifecycle key. Enter all private values interactively:
+
+```bash
+read -r -s FB_HOMEY_SHS_API_KEY
+read -r FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER
+read -r FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID
+read -r FB_HOMEY_SHS_LIFECYCLE_OWNER_URI
+read -r FB_HOMEY_SHS_LIFECYCLE_INITIAL_NAME
+read -r FB_HOMEY_SHS_LIFECYCLE_RENAMED_NAME
+read -r FB_HOMEY_SHS_LIFECYCLE_SOURCE_ZONE_ID
+read -r FB_HOMEY_SHS_LIFECYCLE_DESTINATION_ZONE_ID
+export FB_HOMEY_SHS_API_KEY FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER
+export FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID FB_HOMEY_SHS_LIFECYCLE_OWNER_URI
+export FB_HOMEY_SHS_LIFECYCLE_INITIAL_NAME FB_HOMEY_SHS_LIFECYCLE_RENAMED_NAME
+export FB_HOMEY_SHS_LIFECYCLE_SOURCE_ZONE_ID FB_HOMEY_SHS_LIFECYCLE_DESTINATION_ZONE_ID
+export FB_HOMEY_SHS_LIFECYCLE_ENABLE=I_ACKNOWLEDGE_THIS_MUTATES_A_DISPOSABLE_DEVICE
+export FB_HOMEY_SHS_LIFECYCLE_OPERATIONS=add,rename,zone-move,availability,remove
+pnpm run homey:probe-lifecycle
 ```
 
-The implementation must validate the exact operation list, require a synthetic test-device marker established during
-setup, and clean up only resources created by that run. It must never pair, rename, move, make unavailable, remove, or
-unpair ordinary household devices.
+The probe fails closed unless the acknowledgement and ordered operation list match those exact values. The device
+marker must start with `fbsp-lifecycle-`, and both names must start with `FBSP Lifecycle`. The driver ID must belong to
+the exact owner URI using Homey's `<owner-uri>:driver:<driver>` form. Driver ID, owner URI, initial and renamed names,
+and both distinct zone IDs are exact allowlist values. `FB_HOMEY_SHS_LIFECYCLE_OBSERVE_MS` optionally sets the bounded
+time available for each requested operator action from `10000` through `300000` milliseconds and defaults to `90000`.
+
+Never add, rename, move, make unavailable, or remove an ordinary household device. Use a dedicated test driver where
+possible, and do not pair or discover physical equipment as part of this run. Successful completion requires the
+device to be available again before removal, cleanup to complete, and a fresh final inventory read to prove the
+runtime-bound ID, marker, and dedicated-app ownership are all absent. Automatic failure cleanup revalidates ownership,
+app isolation, and the absence of standard or advanced flows immediately before its single permitted delete attempt.
+If the probe stops after creation, follow its cleanup warning and remove only the marker-matching disposable device;
+do not guess an ID or broaden the allowlist.
+
+Clear the lifecycle variables and the disposable management key immediately after the final absence check:
+
+```bash
+unset FB_HOMEY_SHS_LIFECYCLE_ENABLE FB_HOMEY_SHS_LIFECYCLE_OPERATIONS
+unset FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID
+unset FB_HOMEY_SHS_LIFECYCLE_OWNER_URI FB_HOMEY_SHS_LIFECYCLE_INITIAL_NAME
+unset FB_HOMEY_SHS_LIFECYCLE_RENAMED_NAME FB_HOMEY_SHS_LIFECYCLE_SOURCE_ZONE_ID
+unset FB_HOMEY_SHS_LIFECYCLE_DESTINATION_ZONE_ID FB_HOMEY_SHS_LIFECYCLE_OBSERVE_MS
+unset FB_HOMEY_SHS_API_KEY
+```
 
 ## Operator-controlled restart recovery probe
 
