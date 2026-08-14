@@ -976,15 +976,31 @@ describe('McpContextService', () => {
 		expect(energy.getSpaceSummary).not.toHaveBeenCalled();
 	});
 
-	it('rejects energy ranges beyond the MCP compatibility limit before querying', async () => {
+	it('maps an explicit 31-day home energy range and rejects a longer range before querying', async () => {
 		const from = '2026-01-01T00:00:00.000Z';
 		const atLimit = '2026-02-01T00:00:00.000Z';
 		const beyondLimit = '2026-02-02T00:00:00.000Z';
-		energy.getSummary.mockResolvedValue({ totalConsumptionKwh: 1 });
+		energy.getSummary.mockResolvedValue({
+			totalConsumptionKwh: 12.5,
+			totalProductionKwh: 3.25,
+			totalGridImportKwh: 10,
+			totalGridExportKwh: 0.75,
+			hasGridMetrics: true,
+			lastUpdatedAt: '2026-01-31T23:55:00.000Z',
+		});
 
-		await expect(service.getEnergySummary(from, atLimit)).resolves.toEqual(
-			expect.objectContaining({ totalConsumptionKwh: 1 }),
-		);
+		await expect(service.getEnergySummary(from, atLimit)).resolves.toEqual({
+			scope: { type: 'home' },
+			from,
+			to: atLimit,
+			totalConsumptionKwh: 12.5,
+			totalProductionKwh: 3.25,
+			totalGridImportKwh: 10,
+			totalGridExportKwh: 0.75,
+			hasGridMetrics: true,
+			lastUpdatedAt: '2026-01-31T23:55:00.000Z',
+		});
+		expect(energy.getSummary).toHaveBeenCalledWith(new Date(from), new Date(atLimit));
 		await expect(service.getEnergySummary(from, beyondLimit)).rejects.toThrow('may not exceed 31 days');
 		expect(energy.getSummary).toHaveBeenCalledTimes(1);
 	});
