@@ -121,18 +121,23 @@ describe('McpTargetDiscoveryToolService', () => {
 		const connected = property('10000000-0000-4000-8000-000000000001', PermissionType.READ_WRITE);
 		connected.category = PropertyCategory.TEMPERATURE;
 		connected.dataType = DataTypeType.FLOAT;
+		connected.format = [-40, 125];
+		connected.step = 0.1;
+		connected.invalid = -999;
 		(connected.channel as { category: ChannelCategory }).category = ChannelCategory.TEMPERATURE;
 		const disconnected = property('10000000-0000-4000-8000-000000000002', PermissionType.WRITE_ONLY);
 		const readOnly = property('10000000-0000-4000-8000-000000000003', PermissionType.READ_ONLY);
+		const connectedSecond = property('10000000-0000-4000-8000-000000000004', PermissionType.WRITE_ONLY);
 		channelsPropertiesService.findWritableCandidates.mockResolvedValue({
-			properties: [connected, disconnected, readOnly],
-			total: 3,
+			properties: [connected, disconnected, readOnly, connectedSecond],
+			total: 4,
 		});
 		deviceConnectionStateService.readLatestMany.mockResolvedValue(
 			new Map([
 				[deviceId(connected), { online: true, status: ConnectionState.CONNECTED, lastChanged: new Date() }],
 				[deviceId(disconnected), { online: false, status: ConnectionState.DISCONNECTED, lastChanged: new Date() }],
 				[deviceId(readOnly), { online: true, status: ConnectionState.CONNECTED, lastChanged: new Date() }],
+				[deviceId(connectedSecond), { online: true, status: ConnectionState.CONNECTED, lastChanged: new Date() }],
 			]),
 		);
 		service.register(server(), authInfo([McpCapability.WRITE]));
@@ -146,29 +151,52 @@ describe('McpTargetDiscoveryToolService', () => {
 			McpCapability.WRITE,
 		);
 		expect(data.properties).toEqual([
-			expect.objectContaining({
+			{
 				property_id: connected.id,
+				property_name: 'Power 1',
+				property_category: PropertyCategory.TEMPERATURE,
 				device_id: deviceId(connected),
+				device_name: 'Device 1',
+				channel_id: '20000000-0000-4000-8000-000000000001',
+				channel_name: 'Switch 1',
+				channel_category: ChannelCategory.TEMPERATURE,
 				data_type: DataTypeType.FLOAT,
 				unit: '°C',
-			}),
+				format: [-40, 125],
+				step: 0.1,
+				invalid: -999,
+			},
+			{
+				property_id: connectedSecond.id,
+				property_name: 'Power 4',
+				property_category: PropertyCategory.ON,
+				device_id: deviceId(connectedSecond),
+				device_name: 'Device 4',
+				channel_id: '20000000-0000-4000-8000-000000000004',
+				channel_name: 'Switch 4',
+				channel_category: ChannelCategory.SWITCHER,
+				data_type: DataTypeType.BOOL,
+				unit: null,
+				format: null,
+				step: null,
+				invalid: null,
+			},
 		]);
-		expect(data.properties[0]).not.toHaveProperty('value');
 		expect(scenesService.findTriggerableSummaryPage).not.toHaveBeenCalled();
 	});
 
-	it('lets a trigger-only client discover enabled scenes and lighting-capable spaces', async () => {
+	it('maps exact mixed trigger targets with independent scene and space truncation', async () => {
 		providerTools = [
 			providerTool('run_scene', ToolAccessKind.TRIGGER),
 			providerTool('set_space_lighting', ToolAccessKind.TRIGGER),
 		];
 		scenesService.findTriggerableSummaryPage.mockResolvedValue({
 			scenes: [scene(true), scene(false)],
-			total: 2,
+			total: 51,
 		});
 		spacesService.findLightingTriggerSummaryPage.mockResolvedValue({
 			spaces: [space()],
-			total: 1,
+			total: 50,
 		});
 		service.register(server(), authInfo([McpCapability.TRIGGER]));
 
@@ -177,10 +205,30 @@ describe('McpTargetDiscoveryToolService', () => {
 		const data = result?.structuredContent.data as {
 			scenes: Array<Record<string, unknown>>;
 			spaces: Array<Record<string, unknown>>;
+			truncated: { scenes: boolean; spaces: boolean };
 		};
 
-		expect(data.scenes).toHaveLength(1);
-		expect(data.spaces).toEqual([expect.objectContaining({ modes: ['off', 'on', 'work', 'relax', 'night'] })]);
+		expect(scenesService.findTriggerableSummaryPage).toHaveBeenCalledWith(50);
+		expect(spacesService.findLightingTriggerSummaryPage).toHaveBeenCalledWith(50);
+		expect(data).toEqual({
+			scenes: [
+				{
+					scene_id: '40000000-0000-4000-8000-000000000001',
+					name: 'Movie night',
+					category: SceneCategory.GENERIC,
+					primary_space_id: null,
+				},
+			],
+			spaces: [
+				{
+					space_id: '50000000-0000-4000-8000-000000000001',
+					name: 'Living room',
+					type: SpaceType.ROOM,
+					modes: ['off', 'on', 'work', 'relax', 'night'],
+				},
+			],
+			truncated: { scenes: true, spaces: false },
+		});
 		expect(channelsPropertiesService.findWritableCandidates).not.toHaveBeenCalled();
 	});
 
