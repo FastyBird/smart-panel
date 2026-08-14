@@ -211,7 +211,8 @@ To discover the full callback URI safely, pre-register the client initially with
 ```bash copy
 codex mcp add smart-panel \
   --url https://panel.example.com/api/v1/modules/mcp \
-  --oauth-client-id '<client-id>'
+  --oauth-client-id '<client-id>' \
+  --oauth-resource https://panel.example.com/api/v1/modules/mcp
 codex mcp login smart-panel --scopes mcp:read,offline_access
 ```
 
@@ -219,9 +220,16 @@ The first authorization request is rejected because Codex appends a callback ID.
 `redirect_uri` from the browser's authorization URL, edit the Smart Panel OAuth client, replace the temporary redirect
 with that exact URI, and run `codex mcp login` again. Never approve a redirect on another host or path.
 
-The `--scopes` option is available in current Codex CLI builds. The earlier Phase 6 smoke used a build that omitted the
-scope parameter even though it reported version `0.136.0`, so confirm `codex mcp login --help` lists `--scopes` before
-requesting `offline_access`; otherwise omit the option and use a finite access token without refresh.
+The completed Phase 6 profile passed on Codex CLI `0.147.0`. Use that release or a newer smoke-tested stable build and
+confirm `codex mcp login --help` lists `--scopes`. `--oauth-resource` is required for renewable access because it carries
+the canonical resource into refresh requests. The authorization URL may contain the same resource twice after discovery;
+Smart Panel accepts repeated identical indicators and still rejects any different resource. The older observed
+`0.136.0` client did not propagate the configured resource on refresh and received `invalid_target` from the strict
+token endpoint.
+
+When `offline_access` is explicit and Codex omits an OAuth prompt, Smart Panel sends the request through its existing
+owner/admin consent interaction as `prompt=consent`. This does not broaden the requested scopes or bypass the configured
+client, grant, and module ceilings.
 
 The ChatGPT desktop app, Codex CLI, and IDE extension on the same Codex host share this MCP configuration. Restart the
 app or extension after adding the server, then use `/mcp` or `codex mcp list` to verify it. See the

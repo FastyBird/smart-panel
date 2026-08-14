@@ -18,19 +18,19 @@ exercise yet.
 Implementation must target the exact revisions below. OAuth 2.1 is still an IETF draft, so documentation and metadata
 must not describe it as a published RFC.
 
-| Concern | Revision used by this task |
-| --- | --- |
-| MCP authorization | MCP `2026-07-28` |
-| OAuth security profile | `draft-ietf-oauth-v2-1-13` plus OAuth 2.0 Security BCP, RFC 9700 |
-| Bearer challenges | RFC 6750 |
-| PKCE | RFC 7636, `S256` only |
-| Authorization-server metadata | RFC 8414 |
-| Resource indicators | RFC 8707 |
-| Authorization-response issuer | RFC 9207 |
-| Protected-resource metadata | RFC 9728 |
-| Token revocation | RFC 7009 |
-| Native loopback redirects | RFC 8252 |
-| Client registration | Pre-registration initially; CIMD draft support tracked separately |
+| Concern                       | Revision used by this task                                        |
+| ----------------------------- | ----------------------------------------------------------------- |
+| MCP authorization             | MCP `2026-07-28`                                                  |
+| OAuth security profile        | `draft-ietf-oauth-v2-1-13` plus OAuth 2.0 Security BCP, RFC 9700  |
+| Bearer challenges             | RFC 6750                                                          |
+| PKCE                          | RFC 7636, `S256` only                                             |
+| Authorization-server metadata | RFC 8414                                                          |
+| Resource indicators           | RFC 8707                                                          |
+| Authorization-response issuer | RFC 9207                                                          |
+| Protected-resource metadata   | RFC 9728                                                          |
+| Token revocation              | RFC 7009                                                          |
+| Native loopback redirects     | RFC 8252                                                          |
+| Client registration           | Pre-registration initially; CIMD draft support tracked separately |
 
 MCP `2026-07-28` requires protected-resource metadata and the `resource` parameter in authorization and token
 requests. It prefers Client ID Metadata Documents (CIMD), permits pre-registration, and deprecates Dynamic Client
@@ -53,12 +53,12 @@ the resource identifier.
 The matrix records documented capabilities as of the spike date. “Target” means it will receive a real smoke test once
 the endpoints exist.
 
-| Host | Documented registration paths | Relevant behavior | Release use |
-| --- | --- | --- | --- |
-| Codex CLI/app | Predefined client ID; OAuth discovery used by `codex mcp login`; ChatGPT connectors additionally support CIMD and DCR | Streamable HTTP OAuth, scopes, RFC 8707 resource override, fixed or ephemeral loopback callback, PKCE | Target 1 |
-| Claude Code | CIMD, DCR, or predefined public/confidential client | RFC 9728 discovery, HTTP OAuth, fixed loopback callback, automatic refresh, scope pinning | Target 2 |
-| MCP TypeScript client / Inspector | Programmatic provider or interactive inspector | Fine-grained discovery, PKCE, token and negative-path tests | Automated harness, not one of the two user hosts |
-| ChatGPT connector | CIMD preferred, DCR fallback, or predefined client | Cloud callback, authorization code plus PKCE, resource binding | Follow-up compatibility target |
+| Host                              | Documented registration paths                                                                                         | Relevant behavior                                                                                     | Release use                                      |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Codex CLI/app                     | Predefined client ID; OAuth discovery used by `codex mcp login`; ChatGPT connectors additionally support CIMD and DCR | Streamable HTTP OAuth, scopes, RFC 8707 resource override, fixed or ephemeral loopback callback, PKCE | Target 1                                         |
+| Claude Code                       | CIMD, DCR, or predefined public/confidential client                                                                   | RFC 9728 discovery, HTTP OAuth, fixed loopback callback, automatic refresh, scope pinning             | Target 2                                         |
+| MCP TypeScript client / Inspector | Programmatic provider or interactive inspector                                                                        | Fine-grained discovery, PKCE, token and negative-path tests                                           | Automated harness, not one of the two user hosts |
+| ChatGPT connector                 | CIMD preferred, DCR fallback, or predefined client                                                                    | Cloud callback, authorization code plus PKCE, resource binding                                        | Follow-up compatibility target                   |
 
 Both initial target hosts can use an owner-created public client ID and a registered loopback redirect. That means DCR
 is not required for the first supported profile. The live smoke test must record exact host versions, callback URIs,
@@ -213,32 +213,41 @@ combination closes the Inspector/TypeScript-client negative-case gate without de
 
 ## Live Codex evidence
 
-The Phase 6 smoke against Codex CLI `0.136.0` established the following current host profile:
+The completed Phase 6 smoke used current stable Codex CLI `0.147.0`. The CLI ran in an arm64 Debian container with the
+private smoke CA installed only in that container's OS trust store; the container changed certificate trust and network
+placement, not the Codex build or OAuth behavior. The supported host profile is:
 
-- pre-registration works with `codex mcp add --url <resource> --oauth-client-id <client-id>` followed by
-  `codex mcp login <name>`; the persisted client ID is stored under the server's nested `oauth.client_id` setting;
-- with `mcp_oauth_callback_port = 41456`, Codex uses a stable per-server callback path such as
-  `http://127.0.0.1:41456/callback/YCvSk6oijOs3`, so that exact path must be pre-registered while the loopback port may
-  vary under the RFC 8252 rule;
-- Codex discovers the resource and sends the RFC 8707 `resource` automatically. Configuring `--oauth-resource` to the
-  same URI duplicates the authorization parameter in `0.136.0`, so the explicit override must be omitted for this
-  server profile;
-- Codex omits `scope` from its authorization request. Smart Panel therefore defaults an omitted scope to the capability
-  scopes in the pre-registered client ceiling and still requires explicit owner/admin consent. It does not default
-  `offline_access`, because renewable access must be explicitly requested; and
-- the CLI build used for the live smoke omitted `scope` and did not expose a scope setting despite reporting version
-  `0.136.0`. Current builds reporting the same version expose `codex mcp login --scopes <SCOPE,SCOPE>`; operators must
-  confirm the option in their installed CLI before requesting `offline_access`. Smart Panel must not silently broaden
-  an omitted request merely to manufacture a refresh token; and
-- behind TLS termination, the proxy must be listed in `FB_MCP_OAUTH_TRUSTED_PROXIES` and must send
-  `X-Forwarded-Proto: https`. The finite bootstrap gate validates the immediate peer before the provider honors that
-  protocol for secure interaction cookies.
+- pre-register the public client, then use
+  `codex mcp add --url <resource> --oauth-client-id <client-id> --oauth-resource <resource>` and
+  `codex mcp login <name> --scopes mcp:read,offline_access`;
+- keep `mcp_oauth_callback_port = 41456` stable. Codex derives a stable path for the server profile; this run used
+  `http://127.0.0.1:41456/callback/ZaELrI6T7BVV`, and that exact path was pre-registered;
+- keep `--oauth-resource` even though the authorization URL contains the same canonical resource twice: once from
+  protected-resource discovery and once from the explicit override. The provider accepts repeated identical resource
+  indicators. More importantly, `0.147.0` carries the configured resource into refresh requests, satisfying the strict
+  token-endpoint boundary;
+- request `offline_access` explicitly with `--scopes`. Codex does not add `prompt=consent`, so Smart Panel makes consent
+  explicit only when the client explicitly requested `offline_access` and supplied no prompt. The owner/admin consent
+  interaction still controls the approved scopes and lifetime; and
+- behind TLS termination, list the immediate proxy in `FB_MCP_OAUTH_TRUSTED_PROXIES` and send
+  `X-Forwarded-Proto: https` so secure interaction cookies remain valid after the bootstrap trust check.
 
-Discovery, authorization, token exchange, tool listing, and a read-only `get_home_context` call succeeded with a client
-ceiling of `mcp:read offline_access`. Codex exposed only read tools under that ceiling and received no refresh token
-because its request omitted `offline_access`. Administrative revocation and the newer `--scopes` refresh path remain to
-be exercised with this host. Refresh rotation continues to be exercised through the protocol client and the Claude Code
-target instead of weakening the server's scope policy.
+Fresh discovery, authorization, code exchange, `tools/list`, and a read-only `get_home_context` call succeeded. Moving
+the stored Codex access expiry into the CLI's 30-second refresh window caused a refresh before tool discovery: the token
+endpoint returned `200`, the predecessor refresh artifact was consumed, exactly one successor remained live in the same
+family, and the read call succeeded with the successor access token. The old access token remained valid for the initial
+MCP handshake because Codex runs its proactive refresh hook after `initialize` and before `tools/list` and tool calls.
+
+Revoking that family through the production administrative API returned `204`, removed the live successor and linked
+access token, and made the next Codex connection fail with `AuthRequired` / `invalid_token` before any tool call. After
+the client ceiling was contracted to `mcp:read offline_access`, a fresh Codex request for
+`mcp:write offline_access` reached its validated callback with `error=invalid_scope`, the original state, and the
+provider issuer.
+
+Codex CLI `0.136.0` remains useful historical evidence for discovery, authorization, listing, and calling, but it did
+not propagate the configured resource on refresh and therefore received the intentional `invalid_target` response.
+`0.147.0` is the minimum release observed completing the strict Smart Panel refresh profile; deployments should repeat
+the smoke before lowering that supported version.
 
 ## Live Claude Code evidence
 

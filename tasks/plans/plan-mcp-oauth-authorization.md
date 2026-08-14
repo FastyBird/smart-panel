@@ -1,6 +1,6 @@
 # Smart Panel MCP OAuth Authorization — Implementation Plan
 
-**Status:** Phase 6 in progress — security-profile E2E, external-host, and wire-level gates remain
+**Status:** Complete
 
 **Task:** [TECH-MCP-OAUTH-AUTHORIZATION](../technical/TECH-MCP-OAUTH-AUTHORIZATION.md)
 
@@ -487,8 +487,9 @@ amend ADR 0002.
 - [x] E2E: prove readiness-gated re-enable never makes OAuth artifacts issued before switch-off usable again.
 - [x] Reverse-proxy E2E: explicit external prefix, hostile forwarded headers, untrusted proxy, trusted proxy, public URL
       change, and rollback.
-- [ ] Codex smoke: discovery, authorization, list/call, refresh, scope failure, and revocation; record exact version and
-      callback profile.
+- [x] Codex smoke: Codex CLI `0.147.0` completed discovery, authorization, list/call, proactive refresh rotation,
+      administrative refresh-family revocation, and a validated `invalid_scope` callback. The exact fixed-port derived
+      callback and required explicit RFC 8707 resource override are recorded in the compatibility evidence.
 - [x] Claude Code smoke: discovery, authorization, list/call, forced-expiry refresh rotation, scope failure, and live
       refresh-family revocation passed with Claude Code `2.1.229`; both fixed-port loopback callback host forms are
       recorded in the compatibility evidence.
@@ -513,7 +514,8 @@ amend ADR 0002.
 - [x] Confirm no DCR/CIMD endpoints are advertised and create explicit follow-up tasks if the release gate justifies
       either feature. The bounded metadata snapshots advertise neither; pre-registration satisfies the current target
       profiles, so no implementation follow-up is justified without a named host failure.
-- [ ] Update task acceptance criteria and mark completion only after every deferred item has a named follow-up.
+- [x] Update task acceptance criteria and mark completion only after every deferred item has a named follow-up. Both
+      named host gates and every deferred implementation item are closed; no unnamed follow-up remains.
 
 ## Required verification cadence
 
