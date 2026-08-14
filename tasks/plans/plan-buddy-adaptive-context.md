@@ -499,7 +499,8 @@ The conversation boundary uniquely claims `(source, actorId, idempotencyScopeId,
 provider call and stores the resolved Buddy conversation ID and payload digest as bound data, not as part of the
 uniqueness key. It returns a stable
 `requestClaimId`. The claim is a durable state machine with an owner/lease and bounded stored outcome metadata, for
-example `RECEIVED`, `MODEL_IN_FLIGHT`, `ACTION_PLANNED`, `ACTION_DISPATCHED`, `COMPLETED`, `FAILED`, or `INDETERMINATE`.
+example `RECEIVED`, `MODEL_IN_FLIGHT`, `ACTION_PLANNED`, `ACTION_DISPATCHING`, `ACTION_DISPATCHED`, `COMPLETED`, `FAILED`,
+or `INDETERMINATE`.
 An exact duplicate with the same digest joins the existing in-process single-flight. A duplicate owned by another
 worker/process waits only within the request deadline, then returns a typed in-progress response with `Retry-After`; it
 must not invoke the model concurrently. The same key with a different text/audio digest returns a typed conflict and
@@ -507,11 +508,21 @@ executes nothing.
 
 Before any physical dispatch, persist the complete bounded canonical action plan—validated tool name, canonical targets,
 normalized arguments, fingerprint, user-evidenced allowance/occurrence slot, and execution identity—and transition the
-claim atomically to `ACTION_PLANNED`. After a crash/restart, claims at or beyond that state resume/reconcile only the
-stored plan/outcomes and never call a stochastic model again with action tools. An expired `MODEL_IN_FLIGHT` lease may
-be taken over and rerun only when no canonical action was persisted, which proves no physical action could have been
-dispatched. Recovery finalizes from stored structured results using a read-only/no-action provider call or a deterministic
-response. Full tool transcript persistence remains unnecessary.
+claim atomically to `ACTION_PLANNED`. Immediately before invoking a domain action, durably commit `ACTION_DISPATCHING`
+with its `actionExecutionId`; the adapter must never begin the call while the durable row still says `ACTION_PLANNED`.
+`ACTION_DISPATCHED` records a domain acknowledgement that execution started, not merely the caller's intent.
+
+After a crash/restart, no state at or beyond `ACTION_PLANNED` may return to an action-capable stochastic model.
+`ACTION_PLANNED` is safe to resume from the stored plan because the committed dispatch-intent transition proves the
+domain call has not begun. `ACTION_DISPATCHING` and `ACTION_DISPATCHED` are uncertain unless the target domain provides
+authoritative durable lookup/deduplication keyed by `actionExecutionId`. With such an authority, recovery may reconcile
+or resubmit through that authority and obtain the one existing outcome. Without it—including existing command tracking
+that only propagates a request ID and scene execution without a durable unique key—recovery must transition to
+`INDETERMINATE`, never redispatch, and disclose that the action may or may not have occurred. This deliberately accepts
+a possible false-unknown when a crash happens after the intent commit but before the domain call; it never risks a
+duplicate physical action. An expired `MODEL_IN_FLIGHT` lease may be taken over and rerun only when no canonical action
+was persisted. Recovery finalizes from stored structured results using a read-only/no-action provider call or a
+deterministic response. Full tool transcript persistence remains unnecessary.
 
 A tool execution carries the claim ID, parent turn request ID, and transcript-local tool-call ID separately, and derives
 its bounded correlation/audit `requestId` from the latter two. Never replace the parent ID with `toolCall.id` alone:
@@ -560,7 +571,9 @@ provider call ID with it. A replay that receives a different OpenAI/Anthropic ca
 operation/result instead of issuing a second physical action. Prefer an existing durable command or audit mechanism when
 it enforces uniqueness; otherwise add a minimal persistent execution ledger with a unique key, bounded result metadata,
 retention/cleanup, and no raw sensitive values. Do not enable the new action loop without an idempotency authority that
-spans the adapter retry window and process restarts.
+spans the adapter retry window and process restarts. A Buddy-only ledger prevents two workers from intentionally starting
+the same execution, but it is not authoritative downstream idempotency across the external-call crash window; unless the
+device/scene/intent domain durably accepts and deduplicates `actionExecutionId`, uncertain dispatch is never replayed.
 
 Read timeout semantics do not apply blindly to physical actions. If an action has not started, or the domain service
 authoritatively confirms cancellation before application, `TIMED_OUT` is safe. Once dispatched, if completion or
@@ -1007,6 +1020,10 @@ snapshots are produced through the shared query layer without making that eager 
       actor-qualified claim ID, canonical action fingerprint, and deterministic occurrence slot—independently of provider
       call IDs. Reuse an existing durable idempotency authority or add a bounded persistent ledger if none spans
       retries/restarts.
+- [ ] Commit an `ACTION_DISPATCHING` intent containing `actionExecutionId` before every domain invocation. Resume
+      `ACTION_PLANNED` only because no invocation can precede that commit. Recover `ACTION_DISPATCHING`/`ACTION_DISPATCHED`
+      through authoritative downstream idempotency when available; otherwise mark the outcome `INDETERMINATE` and never
+      redispatch. Do not treat the existing command tracking request ID or scene path as durable deduplication.
 - [ ] Persist a default-one `BuddyActionAllowance` per canonical fingerprint. Allocate additional occurrence slots only
       from a bounded repeat count parsed from original user input or an explicit structured confirmation tied to the
       resolved action; require confirmation for repeated non-idempotent triggers and coalesce all model-only duplicates.
@@ -1024,8 +1041,11 @@ reusing one claim; different audio with identical mocked transcription returning
 conflict behavior; two actors in one conversation legitimately using the same key/action without ledger collision;
 same-process duplicate while the first model call is blocked joining one provider invocation; cross-worker duplicate
 returning in-progress/`Retry-After` without provider dispatch; safe lease takeover after a crash in `MODEL_IN_FLIGHT`
-before any action plan exists; crash after `ACTION_PLANNED` or `ACTION_DISPATCHED` resuming the persisted plan without an
-action-capable model call even when a mocked second stochastic invocation would choose different arguments;
+before any action plan exists; crash while safely `ACTION_PLANNED` resuming the persisted plan without an action-capable
+model call even when a mocked second stochastic invocation would choose different arguments; crash after the domain call
+starts but before the post-call ledger transition leaving `ACTION_DISPATCHING`, then producing `INDETERMINATE` and zero
+redispatches when no downstream authority exists; the same fault with a fake authoritative domain idempotency store
+reconciling/resubmitting by `actionExecutionId` to one physical execution;
 Discord/Telegram/WhatsApp restart with empty process maps followed by redelivery of the same platform event resolving the
 persisted Buddy conversation/scope, one claim, one stored message, and at most one action;
 REST/voice/Discord/Telegram/WhatsApp conversation/identity/access propagation; rejection of a mismatched request-context
