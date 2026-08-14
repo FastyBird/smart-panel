@@ -635,6 +635,9 @@ describe('SpacesService', () => {
 				expect.stringContaining('spaces_module_space_roles'),
 				expect.any(Object),
 			);
+			expect(queryBuilder.orderBy).toHaveBeenCalledWith('space.displayOrder', 'ASC');
+			expect(queryBuilder.addOrderBy).toHaveBeenNthCalledWith(1, 'space.name', 'ASC');
+			expect(queryBuilder.addOrderBy).toHaveBeenNthCalledWith(2, 'space.id', 'ASC');
 			expect(queryBuilder.take).toHaveBeenCalledWith(50);
 			expect(deviceQueryBuilder.take).toHaveBeenCalledWith(100);
 			expect(deviceConnectionStateService.readLatestMany).toHaveBeenCalledWith([onlineDevice]);

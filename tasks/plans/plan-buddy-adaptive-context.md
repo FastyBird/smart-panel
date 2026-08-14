@@ -1184,7 +1184,8 @@ regenerate checked-in artifacts from backend Swagger sources; never edit generat
 - [x] Record the eager small-window budget violation as a measured baseline fixture or opt-in expected-failure evaluation
       excluded from normal CI. Keep the Phase 0 verification suite green; promote the fixture to a required passing
       bounded-request assertion when Phase 7 switches the production conversation path.
-- [ ] Confirm existing MCP context outputs/limits in tests before extracting them.
+- [x] Confirm existing MCP context outputs/limits in tests before extracting them; the frozen compatibility contract is
+      recorded in [buddy-adaptive-context-mcp-baseline.md](./buddy-adaptive-context-mcp-baseline.md).
 
 **Gate:** Baseline numbers and green characterization tests exist, and the eager full-home small-window failure is
 captured as an opt-in/expected baseline measurement rather than a failing normal-CI test.

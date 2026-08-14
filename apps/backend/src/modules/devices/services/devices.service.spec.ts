@@ -272,6 +272,30 @@ describe('DevicesService', () => {
 	});
 
 	describe('findVisibleSummaryPage', () => {
+		it('includes disabled devices while excluding hidden devices at the query boundary', async () => {
+			const disabledVisibleDevice = toInstance(MockDevice, { ...mockDevice, enabled: false, hidden: false });
+			const queryBuilderMock: any = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				getManyAndCount: jest.fn().mockResolvedValue([[disabledVisibleDevice], 1]),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+
+			await expect(service.findVisibleSummaryPage(100)).resolves.toEqual({
+				devices: [expect.objectContaining({ id: disabledVisibleDevice.id, enabled: false, hidden: false })],
+				total: 1,
+			});
+			expect(queryBuilderMock.where).toHaveBeenCalledWith('device.hidden = :hidden', { hidden: false });
+			const predicates = [...queryBuilderMock.where.mock.calls, ...queryBuilderMock.andWhere.mock.calls].map(
+				([predicate]: [unknown]) => predicate,
+			);
+			expect(predicates).not.toEqual(expect.arrayContaining([expect.stringContaining('enabled')]));
+		});
+
 		it('bounds the query before loading device summaries', async () => {
 			const visibleDevice = toInstance(MockDevice, { ...mockDevice, hidden: false });
 			const queryBuilderMock: any = {
@@ -292,6 +316,7 @@ describe('DevicesService', () => {
 			});
 			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledTimes(1);
 			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('device.deviceZones', 'deviceZones');
+			expect(queryBuilderMock.orderBy).toHaveBeenCalledWith('device.name', 'ASC');
 			expect(queryBuilderMock.take).toHaveBeenCalledWith(10);
 			expect(queryBuilderMock.callListeners).toHaveBeenCalledWith(false);
 			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('device.roomId IN (:...roomIds)', {
@@ -328,8 +353,8 @@ describe('DevicesService', () => {
 			expect(result.devices[0].zoneIds).toEqual(['selected-zone', 'other-zone']);
 		});
 
-		it('loads one visible device without channel relations', async () => {
-			const visibleDevice = toInstance(MockDevice, { ...mockDevice, hidden: false });
+		it('loads one disabled-but-visible device without channel relations', async () => {
+			const visibleDevice = toInstance(MockDevice, { ...mockDevice, enabled: false, hidden: false });
 			const queryBuilderMock: any = {
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
@@ -339,9 +364,16 @@ describe('DevicesService', () => {
 			};
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
-			await expect(service.findVisibleSummaryById(mockDevice.id)).resolves.toEqual(visibleDevice);
+			await expect(service.findVisibleSummaryById(mockDevice.id)).resolves.toEqual(
+				expect.objectContaining({ id: visibleDevice.id, enabled: false, hidden: false }),
+			);
 			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledTimes(1);
 			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('device.deviceZones', 'deviceZones');
+			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('device.hidden = :hidden', { hidden: false });
+			const predicates = [...queryBuilderMock.where.mock.calls, ...queryBuilderMock.andWhere.mock.calls].map(
+				([predicate]: [unknown]) => predicate,
+			);
+			expect(predicates).not.toEqual(expect.arrayContaining([expect.stringContaining('enabled')]));
 			expect(queryBuilderMock.callListeners).toHaveBeenCalledWith(false);
 		});
 	});
@@ -381,6 +413,11 @@ describe('DevicesService', () => {
 				propertiesTruncated: true,
 			});
 			expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('device."roomId" IN (?)'), [
+				ChannelCategory.ALARM,
+				'room-1',
+				2,
+			]);
+			expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('ORDER BY device."name", device."id"'), [
 				ChannelCategory.ALARM,
 				'room-1',
 				2,

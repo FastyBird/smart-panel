@@ -121,18 +121,23 @@ describe('McpTargetDiscoveryToolService', () => {
 		const connected = property('10000000-0000-4000-8000-000000000001', PermissionType.READ_WRITE);
 		connected.category = PropertyCategory.TEMPERATURE;
 		connected.dataType = DataTypeType.FLOAT;
+		connected.format = [-40, 125];
+		connected.step = 0.1;
+		connected.invalid = -999;
 		(connected.channel as { category: ChannelCategory }).category = ChannelCategory.TEMPERATURE;
 		const disconnected = property('10000000-0000-4000-8000-000000000002', PermissionType.WRITE_ONLY);
 		const readOnly = property('10000000-0000-4000-8000-000000000003', PermissionType.READ_ONLY);
+		const connectedSecond = property('10000000-0000-4000-8000-000000000004', PermissionType.WRITE_ONLY);
 		channelsPropertiesService.findWritableCandidates.mockResolvedValue({
-			properties: [connected, disconnected, readOnly],
-			total: 3,
+			properties: [connected, disconnected, readOnly, connectedSecond],
+			total: 4,
 		});
 		deviceConnectionStateService.readLatestMany.mockResolvedValue(
 			new Map([
 				[deviceId(connected), { online: true, status: ConnectionState.CONNECTED, lastChanged: new Date() }],
 				[deviceId(disconnected), { online: false, status: ConnectionState.DISCONNECTED, lastChanged: new Date() }],
 				[deviceId(readOnly), { online: true, status: ConnectionState.CONNECTED, lastChanged: new Date() }],
+				[deviceId(connectedSecond), { online: true, status: ConnectionState.CONNECTED, lastChanged: new Date() }],
 			]),
 		);
 		service.register(server(), authInfo([McpCapability.WRITE]));
@@ -146,29 +151,52 @@ describe('McpTargetDiscoveryToolService', () => {
 			McpCapability.WRITE,
 		);
 		expect(data.properties).toEqual([
-			expect.objectContaining({
+			{
 				property_id: connected.id,
+				property_name: 'Power 1',
+				property_category: PropertyCategory.TEMPERATURE,
 				device_id: deviceId(connected),
+				device_name: 'Device 1',
+				channel_id: '20000000-0000-4000-8000-000000000001',
+				channel_name: 'Switch 1',
+				channel_category: ChannelCategory.TEMPERATURE,
 				data_type: DataTypeType.FLOAT,
 				unit: '°C',
-			}),
+				format: [-40, 125],
+				step: 0.1,
+				invalid: -999,
+			},
+			{
+				property_id: connectedSecond.id,
+				property_name: 'Power 4',
+				property_category: PropertyCategory.ON,
+				device_id: deviceId(connectedSecond),
+				device_name: 'Device 4',
+				channel_id: '20000000-0000-4000-8000-000000000004',
+				channel_name: 'Switch 4',
+				channel_category: ChannelCategory.SWITCHER,
+				data_type: DataTypeType.BOOL,
+				unit: null,
+				format: null,
+				step: null,
+				invalid: null,
+			},
 		]);
-		expect(data.properties[0]).not.toHaveProperty('value');
 		expect(scenesService.findTriggerableSummaryPage).not.toHaveBeenCalled();
 	});
 
-	it('lets a trigger-only client discover enabled scenes and lighting-capable spaces', async () => {
+	it('maps exact mixed trigger targets with independent scene and space truncation', async () => {
 		providerTools = [
 			providerTool('run_scene', ToolAccessKind.TRIGGER),
 			providerTool('set_space_lighting', ToolAccessKind.TRIGGER),
 		];
 		scenesService.findTriggerableSummaryPage.mockResolvedValue({
 			scenes: [scene(true), scene(false)],
-			total: 2,
+			total: 51,
 		});
 		spacesService.findLightingTriggerSummaryPage.mockResolvedValue({
 			spaces: [space()],
-			total: 1,
+			total: 50,
 		});
 		service.register(server(), authInfo([McpCapability.TRIGGER]));
 
@@ -177,11 +205,105 @@ describe('McpTargetDiscoveryToolService', () => {
 		const data = result?.structuredContent.data as {
 			scenes: Array<Record<string, unknown>>;
 			spaces: Array<Record<string, unknown>>;
+			truncated: { scenes: boolean; spaces: boolean };
 		};
 
-		expect(data.scenes).toHaveLength(1);
-		expect(data.spaces).toEqual([expect.objectContaining({ modes: ['off', 'on', 'work', 'relax', 'night'] })]);
+		expect(scenesService.findTriggerableSummaryPage).toHaveBeenCalledWith(50);
+		expect(spacesService.findLightingTriggerSummaryPage).toHaveBeenCalledWith(50);
+		expect(data).toEqual({
+			scenes: [
+				{
+					scene_id: '40000000-0000-4000-8000-000000000001',
+					name: 'Movie night',
+					category: SceneCategory.GENERIC,
+					primary_space_id: null,
+				},
+			],
+			spaces: [
+				{
+					space_id: '50000000-0000-4000-8000-000000000001',
+					name: 'Living room',
+					type: SpaceType.ROOM,
+					modes: ['off', 'on', 'work', 'relax', 'night'],
+				},
+			],
+			truncated: { scenes: true, spaces: false },
+		});
 		expect(channelsPropertiesService.findWritableCandidates).not.toHaveBeenCalled();
+	});
+
+	it('queries and returns 50 triggerable scenes without marking the scene collection as truncated', async () => {
+		providerTools = [providerTool('run_scene', ToolAccessKind.TRIGGER)];
+		const targets = triggerableScenes(50);
+		scenesService.findTriggerableSummaryPage.mockResolvedValue({ scenes: targets, total: 50 });
+		service.register(server(), authInfo([McpCapability.TRIGGER]));
+
+		const result = await callbacks.get('list_trigger_targets')?.({}, requestContext([McpCapability.TRIGGER]));
+		const data = result?.structuredContent.data as {
+			scenes: Array<{ scene_id: string }>;
+			truncated: { scenes: boolean; spaces: boolean };
+		};
+
+		expect(scenesService.findTriggerableSummaryPage).toHaveBeenCalledWith(50);
+		expect(data.scenes).toHaveLength(50);
+		expect(data.scenes[0]?.scene_id).toBe(targets[0]?.id);
+		expect(data.scenes[49]?.scene_id).toBe(targets[49]?.id);
+		expect(data.truncated.scenes).toBe(false);
+	});
+
+	it('returns 50 of 51 triggerable scenes and marks the scene collection as truncated', async () => {
+		providerTools = [providerTool('run_scene', ToolAccessKind.TRIGGER)];
+		const targets = triggerableScenes(50);
+		scenesService.findTriggerableSummaryPage.mockResolvedValue({ scenes: targets, total: 51 });
+		service.register(server(), authInfo([McpCapability.TRIGGER]));
+
+		const result = await callbacks.get('list_trigger_targets')?.({}, requestContext([McpCapability.TRIGGER]));
+		const data = result?.structuredContent.data as {
+			scenes: Array<{ scene_id: string }>;
+			truncated: { scenes: boolean; spaces: boolean };
+		};
+
+		expect(scenesService.findTriggerableSummaryPage).toHaveBeenCalledWith(50);
+		expect(data.scenes).toHaveLength(50);
+		expect(data.scenes[49]?.scene_id).toBe(targets[49]?.id);
+		expect(data.truncated.scenes).toBe(true);
+	});
+
+	it('queries and returns 50 lighting spaces without marking the space collection as truncated', async () => {
+		providerTools = [providerTool('set_space_lighting', ToolAccessKind.TRIGGER)];
+		const targets = lightingSpaces(50);
+		spacesService.findLightingTriggerSummaryPage.mockResolvedValue({ spaces: targets, total: 50 });
+		service.register(server(), authInfo([McpCapability.TRIGGER]));
+
+		const result = await callbacks.get('list_trigger_targets')?.({}, requestContext([McpCapability.TRIGGER]));
+		const data = result?.structuredContent.data as {
+			spaces: Array<{ space_id: string }>;
+			truncated: { scenes: boolean; spaces: boolean };
+		};
+
+		expect(spacesService.findLightingTriggerSummaryPage).toHaveBeenCalledWith(50);
+		expect(data.spaces).toHaveLength(50);
+		expect(data.spaces[0]?.space_id).toBe(targets[0]?.id);
+		expect(data.spaces[49]?.space_id).toBe(targets[49]?.id);
+		expect(data.truncated.spaces).toBe(false);
+	});
+
+	it('returns 50 of 51 lighting spaces and marks the space collection as truncated', async () => {
+		providerTools = [providerTool('set_space_lighting', ToolAccessKind.TRIGGER)];
+		const targets = lightingSpaces(50);
+		spacesService.findLightingTriggerSummaryPage.mockResolvedValue({ spaces: targets, total: 51 });
+		service.register(server(), authInfo([McpCapability.TRIGGER]));
+
+		const result = await callbacks.get('list_trigger_targets')?.({}, requestContext([McpCapability.TRIGGER]));
+		const data = result?.structuredContent.data as {
+			spaces: Array<{ space_id: string }>;
+			truncated: { scenes: boolean; spaces: boolean };
+		};
+
+		expect(spacesService.findLightingTriggerSummaryPage).toHaveBeenCalledWith(50);
+		expect(data.spaces).toHaveLength(50);
+		expect(data.spaces[49]?.space_id).toBe(targets[49]?.id);
+		expect(data.truncated.spaces).toBe(true);
 	});
 
 	it('does not advertise or control writable properties without a registered device platform', async () => {
@@ -254,6 +376,41 @@ describe('McpTargetDiscoveryToolService', () => {
 		);
 		expect(data.properties).toEqual([expect.objectContaining({ property_id: connected.id })]);
 		expect(data.truncated).toBe(false);
+	});
+
+	it('returns all 100 actionable writable properties without marking the discovery result as truncated', async () => {
+		const targets = writableProperties(100);
+		channelsPropertiesService.findWritableCandidates.mockResolvedValue({
+			properties: targets,
+			total: 100,
+		});
+		service.register(server(), authInfo([McpCapability.WRITE]));
+
+		const result = await callbacks.get('list_writable_properties')?.({}, requestContext([McpCapability.WRITE]));
+		const data = result?.structuredContent.data as { properties: Array<{ property_id: string }>; truncated: boolean };
+
+		expect(data.properties).toHaveLength(100);
+		expect(data.properties[0]?.property_id).toBe(targets[0]?.id);
+		expect(data.properties[99]?.property_id).toBe(targets[99]?.id);
+		expect(data.truncated).toBe(false);
+	});
+
+	it('returns only 100 of 101 actionable writable properties and marks the discovery result as truncated', async () => {
+		const targets = writableProperties(101);
+		channelsPropertiesService.findWritableCandidates.mockResolvedValue({
+			properties: targets,
+			total: 101,
+		});
+		service.register(server(), authInfo([McpCapability.WRITE]));
+
+		const result = await callbacks.get('list_writable_properties')?.({}, requestContext([McpCapability.WRITE]));
+		const data = result?.structuredContent.data as { properties: Array<{ property_id: string }>; truncated: boolean };
+
+		expect(data.properties).toHaveLength(100);
+		expect(data.properties[0]?.property_id).toBe(targets[0]?.id);
+		expect(data.properties[99]?.property_id).toBe(targets[99]?.id);
+		expect(data.properties).not.toContainEqual(expect.objectContaining({ property_id: targets[100]?.id }));
+		expect(data.truncated).toBe(true);
 	});
 
 	it('omits space targets and the lighting tool when the optional provider is absent', async () => {
@@ -542,6 +699,12 @@ describe('McpTargetDiscoveryToolService', () => {
 		} as unknown as ChannelPropertyEntity;
 	}
 
+	function writableProperties(count: number): ChannelPropertyEntity[] {
+		return Array.from({ length: count }, (_, index) =>
+			property(`10000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`, PermissionType.READ_WRITE),
+		);
+	}
+
 	function deviceId(target: ChannelPropertyEntity): string {
 		return (target.channel as { device: { id: string } }).device.id;
 	}
@@ -557,11 +720,30 @@ describe('McpTargetDiscoveryToolService', () => {
 		} as SceneEntity;
 	}
 
+	function triggerableScenes(count: number): SceneEntity[] {
+		return Array.from({ length: count }, (_, index) => ({
+			id: `40000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+			name: `Scene ${index + 1}`,
+			category: SceneCategory.GENERIC,
+			enabled: true,
+			triggerable: true,
+			primarySpaceId: null,
+		})) as SceneEntity[];
+	}
+
 	function space(): SpaceEntity {
 		return {
 			id: '50000000-0000-4000-8000-000000000001',
 			name: 'Living room',
 			type: SpaceType.ROOM,
 		} as SpaceEntity;
+	}
+
+	function lightingSpaces(count: number): SpaceEntity[] {
+		return Array.from({ length: count }, (_, index) => ({
+			id: `50000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+			name: `Room ${index + 1}`,
+			type: SpaceType.ROOM,
+		})) as SpaceEntity[];
 	}
 });

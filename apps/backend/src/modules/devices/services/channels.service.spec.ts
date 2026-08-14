@@ -259,6 +259,7 @@ describe('ChannelsService', () => {
 				total: 25,
 			});
 			expect(queryBuilderMock.innerJoin).toHaveBeenCalledWith('channel.device', 'device');
+			expect(queryBuilderMock.orderBy).toHaveBeenCalledWith('channel.name', 'ASC');
 			expect(queryBuilderMock.take).toHaveBeenCalledWith(20);
 		});
 	});
@@ -281,6 +282,11 @@ describe('ChannelsService', () => {
 				truncated: true,
 			});
 			expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('ROW_NUMBER() OVER'), [
+				mockDevice.id,
+				ChannelCategory.ALARM,
+				2,
+			]);
+			expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('ORDER BY channel."name", channel."id"'), [
 				mockDevice.id,
 				ChannelCategory.ALARM,
 				2,

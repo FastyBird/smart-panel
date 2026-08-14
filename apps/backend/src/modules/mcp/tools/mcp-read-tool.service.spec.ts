@@ -1,4 +1,4 @@
-import { AuthInfo, McpServer, ServerContext } from '@modelcontextprotocol/server';
+import { AuthInfo, McpServer, ResourceTemplate, ServerContext } from '@modelcontextprotocol/server';
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 
 import { WeatherNotFoundException } from '../../weather/weather.exceptions';
@@ -14,7 +14,13 @@ type ToolCallback = (
 	args: Record<string, unknown>,
 	ctx: ServerContext,
 ) => Promise<{ isError?: boolean; structuredContent: Record<string, unknown> }>;
-type ResourceCallback = (uri: URL, ctx: ServerContext) => Promise<unknown>;
+type ResourceReadResult = { contents: Array<{ uri: string; mimeType: string; text: string }> };
+type ResourceCallback = (uri: URL, ctx: ServerContext) => Promise<ResourceReadResult>;
+type ResourceTemplateCallback = (
+	uri: URL,
+	variables: Record<string, string>,
+	ctx: ServerContext,
+) => Promise<ResourceReadResult>;
 type ResourceListCallback = (
 	request: { params?: { cursor?: string } },
 	ctx: ServerContext,
@@ -23,7 +29,11 @@ type ResourceListCallback = (
 describe('McpReadToolService', () => {
 	let service: McpReadToolService;
 	let contextService: {
+		getDeviceState: jest.Mock;
+		getEnergySummary: jest.Mock;
+		getHomeContext: jest.Mock;
 		getInstallation: jest.Mock;
+		getPropertyTimeseries: jest.Mock;
 		getSecurityStatus: jest.Mock;
 		getWeather: jest.Mock;
 		listSpaces: jest.Mock;
@@ -34,10 +44,28 @@ describe('McpReadToolService', () => {
 	let registerResource: jest.Mock;
 	let callbacks: Map<string, ToolCallback>;
 	let resourceCallbacks: Map<string, ResourceCallback>;
+	let registeredResourceUris: Map<string, unknown>;
+	let resourceTemplateCallbacks: Map<string, ResourceTemplateCallback>;
 	let resourceListCallback: ResourceListCallback | undefined;
 
 	beforeEach(() => {
 		contextService = {
+			getDeviceState: jest.fn(),
+			getEnergySummary: jest.fn(),
+			getHomeContext: jest.fn().mockResolvedValue({
+				scope: { type: 'home' },
+				spaces: [],
+				devices: [],
+				scenes: [],
+				weather: null,
+				energy: null,
+				security: null,
+				limits: {
+					spaces_truncated: false,
+					devices_truncated: false,
+					scenes_truncated: false,
+				},
+			}),
 			getInstallation: jest.fn().mockResolvedValue({
 				id: 'installation-id',
 				name: 'FastyBird Smart Panel',
@@ -46,6 +74,7 @@ describe('McpReadToolService', () => {
 				endpoint: 'https://panel.test/api/v1/modules/mcp',
 				effective_capabilities: [McpCapability.READ],
 			}),
+			getPropertyTimeseries: jest.fn(),
 			getSecurityStatus: jest.fn().mockResolvedValue({ active_alerts_count: 0 }),
 			getWeather: jest.fn().mockResolvedValue({ location: 'Prague' }),
 			listSpaces: jest.fn().mockResolvedValue({ spaces: [], nextCursor: undefined }),
@@ -60,13 +89,23 @@ describe('McpReadToolService', () => {
 		};
 		callbacks = new Map();
 		resourceCallbacks = new Map();
+		registeredResourceUris = new Map();
+		resourceTemplateCallbacks = new Map();
 		resourceListCallback = undefined;
 		registerTool = jest.fn((name: string, _config: unknown, callback: ToolCallback) => {
 			callbacks.set(name, callback);
 		});
-		registerResource = jest.fn((name: string, _uri: unknown, _config: unknown, callback: ResourceCallback) => {
-			resourceCallbacks.set(name, callback);
-		});
+		registerResource = jest.fn(
+			(name: string, uri: unknown, _config: unknown, callback: ResourceCallback | ResourceTemplateCallback) => {
+				registeredResourceUris.set(name, uri);
+
+				if (name === 'space-snapshot') {
+					resourceTemplateCallbacks.set(name, callback as ResourceTemplateCallback);
+				} else {
+					resourceCallbacks.set(name, callback as ResourceCallback);
+				}
+			},
+		);
 		service = new McpReadToolService(
 			contextService as unknown as McpContextService,
 			policyService as unknown as McpPolicyService,
@@ -93,9 +132,153 @@ describe('McpReadToolService', () => {
 			'get_security_status',
 		]);
 		expect(registerResource).toHaveBeenCalledTimes(3);
+		expect(registeredResourceUris.get('installation')).toBe('smart-panel://installation');
+		expect(registeredResourceUris.get('home-context')).toBe('smart-panel://home/context');
+
+		const spaceSnapshotTemplate = registeredResourceUris.get('space-snapshot');
+
+		expect(spaceSnapshotTemplate).toBeInstanceOf(ResourceTemplate);
+		if (!(spaceSnapshotTemplate instanceof ResourceTemplate)) {
+			throw new Error('Space snapshot did not register an MCP ResourceTemplate');
+		}
+		expect(spaceSnapshotTemplate.uriTemplate.toString()).toBe('smart-panel://spaces/{spaceId}/snapshot');
+	});
+
+	it('forwards get_device_state arguments and envelopes the exact direct-read data unchanged', async () => {
+		const deviceId = '10000000-0000-4000-8000-000000000001';
+		const deviceState = {
+			id: deviceId,
+			name: 'Lamp',
+			category: 'lighting',
+			enabled: true,
+			room_id: '20000000-0000-4000-8000-000000000001',
+			zone_ids: ['30000000-0000-4000-8000-000000000001'],
+			status: {
+				online: true,
+				state: 'connected',
+				last_changed: '2026-08-06T12:00:00.000Z',
+			},
+			channels: [
+				{
+					id: '40000000-0000-4000-8000-000000000001',
+					name: 'Light',
+					category: 'light',
+					properties: [
+						{
+							id: '50000000-0000-4000-8000-000000000001',
+							name: 'Brightness',
+							category: 'brightness',
+							data_type: 'uchar',
+							unit: '%',
+							value: 50,
+							last_updated: '2026-08-06T12:00:00.000Z',
+							trend: 'stable',
+						},
+					],
+					properties_truncated: false,
+				},
+			],
+			channels_truncated: false,
+		};
+		contextService.getDeviceState.mockResolvedValue(deviceState);
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await callbacks.get('get_device_state')?.({ device_id: deviceId }, requestContext());
+
+		expect(contextService.getDeviceState).toHaveBeenCalledTimes(1);
+		expect(contextService.getDeviceState).toHaveBeenCalledWith(deviceId);
+		expect(result?.isError).toBeUndefined();
+		expect(result?.structuredContent.tool).toBe('get_device_state');
+		expect(result?.structuredContent.data).toBe(deviceState);
+		expect(result?.structuredContent.data).toEqual(deviceState);
+	});
+
+	it('forwards get_property_timeseries arguments and envelopes the exact direct-read data unchanged', async () => {
+		const propertyId = '50000000-0000-4000-8000-000000000001';
+		const from = '2026-08-01T00:00:00.000Z';
+		const to = '2026-08-01T01:00:00.000Z';
+		const propertyTimeseries = {
+			property_id: propertyId,
+			from,
+			to,
+			bucket: '5m',
+			points: [
+				{ time: '2026-08-01T00:00:00.000Z', value: 1 },
+				{ time: '2026-08-01T00:05:00.000Z', value: 2 },
+			],
+			truncated: false,
+		};
+		contextService.getPropertyTimeseries.mockResolvedValue(propertyTimeseries);
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await callbacks.get('get_property_timeseries')?.(
+			{ property_id: propertyId, from, to, bucket: '5m' },
+			requestContext(),
+		);
+
+		expect(contextService.getPropertyTimeseries).toHaveBeenCalledTimes(1);
+		expect(contextService.getPropertyTimeseries).toHaveBeenCalledWith(propertyId, from, to, '5m');
+		expect(result?.isError).toBeUndefined();
+		expect(result?.structuredContent.tool).toBe('get_property_timeseries');
+		expect(result?.structuredContent.data).toBe(propertyTimeseries);
+		expect(result?.structuredContent.data).toEqual(propertyTimeseries);
+	});
+
+	it('forwards get_energy_summary arguments in service order and envelopes the exact data unchanged', async () => {
+		const from = '2026-08-01T00:00:00.000Z';
+		const to = '2026-08-02T00:00:00.000Z';
+		const spaceId = '20000000-0000-4000-8000-000000000001';
+		const energySummary = {
+			scope: { type: 'space', id: spaceId },
+			from,
+			to,
+			totalConsumptionKwh: 12.5,
+			totalCost: 4.25,
+			currency: 'EUR',
+		};
+		contextService.getEnergySummary.mockResolvedValue(energySummary);
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await callbacks.get('get_energy_summary')?.({ from, to, space_id: spaceId }, requestContext());
+
+		expect(contextService.getEnergySummary).toHaveBeenCalledTimes(1);
+		expect(contextService.getEnergySummary).toHaveBeenCalledWith(from, to, spaceId);
+		expect(result?.isError).toBeUndefined();
+		expect(result?.structuredContent.tool).toBe('get_energy_summary');
+		expect(result?.structuredContent.data).toBe(energySummary);
+		expect(result?.structuredContent.data).toEqual(energySummary);
 	});
 
 	it('reauthorizes a tool call and returns structured installation metadata', async () => {
+		const securityStatus = {
+			armed_state: 'armed_away',
+			alarm_state: 'triggered',
+			highest_severity: 'critical',
+			active_alerts_count: 2,
+			has_critical_alert: true,
+			active_alerts: [
+				{
+					id: 'alert-id',
+					type: 'intrusion',
+					severity: 'critical',
+					timestamp: '2026-08-15T08:00:00.000Z',
+					acknowledged: false,
+					source_device_id: '10000000-0000-4000-8000-000000000001',
+					message: 'Entry sensor opened while armed',
+				},
+			],
+			alerts_truncated: true,
+			devices_truncated: true,
+			channels_truncated: true,
+			properties_truncated: true,
+			state_truncated: true,
+			last_event: {
+				id: 'event-id',
+				type: 'alarm_triggered',
+				timestamp: '2026-08-15T08:00:00.000Z',
+			},
+		};
+		contextService.getSecurityStatus.mockResolvedValue(securityStatus);
 		service.register(server(), authInfo([McpCapability.READ]));
 		const callback = callbacks.get('get_security_status');
 
@@ -111,7 +294,8 @@ describe('McpReadToolService', () => {
 		expect(result?.structuredContent.installation).toEqual(expect.objectContaining({ id: 'installation-id' }));
 		expect(result?.structuredContent.tool).toBe('get_security_status');
 		expect(result?.structuredContent.request_id).toBe('17');
-		expect(result?.structuredContent.data).toEqual({ active_alerts_count: 0 });
+		expect(result?.structuredContent.data).toBe(securityStatus);
+		expect(result?.structuredContent.data).toEqual(securityStatus);
 		expect(auditService.recordToolResult).toHaveBeenCalledWith(
 			expect.objectContaining({
 				requestId: '17',
@@ -121,6 +305,106 @@ describe('McpReadToolService', () => {
 				outcome: 'completed',
 			}),
 		);
+	});
+
+	it('requests whole-home context when get_home_context omits a space', async () => {
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await callbacks.get('get_home_context')?.({}, requestContext());
+
+		expect(contextService.getHomeContext).toHaveBeenCalledTimes(1);
+		expect(contextService.getHomeContext).toHaveBeenCalledWith(undefined);
+		expect(result?.structuredContent.tool).toBe('get_home_context');
+		expect(result?.structuredContent.data).toEqual({
+			scope: { type: 'home' },
+			spaces: [],
+			devices: [],
+			scenes: [],
+			weather: null,
+			energy: null,
+			security: null,
+			limits: {
+				spaces_truncated: false,
+				devices_truncated: false,
+				scenes_truncated: false,
+			},
+		});
+	});
+
+	it('passes the requested space to get_home_context and preserves bounded-output metadata in the envelope', async () => {
+		const spaceId = '550e8400-e29b-41d4-a716-446655440000';
+		const scopedContext = {
+			scope: { type: 'space', id: spaceId, name: 'Living room' },
+			spaces: [{ id: spaceId, name: 'Living room', type: 'room', device_count: 101 }],
+			devices: [{ id: 'device-id', name: 'Ceiling light' }],
+			scenes: [],
+			weather: null,
+			energy: null,
+			security: {
+				devices_truncated: true,
+				channels_truncated: true,
+				properties_truncated: true,
+				state_truncated: true,
+			},
+			limits: {
+				spaces_truncated: false,
+				devices_truncated: true,
+				scenes_truncated: true,
+			},
+		};
+		contextService.getHomeContext.mockResolvedValue(scopedContext);
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await callbacks.get('get_home_context')?.({ space_id: spaceId }, requestContext());
+		const installation = result?.structuredContent.installation as { id: string } | undefined;
+
+		expect(contextService.getHomeContext).toHaveBeenCalledTimes(1);
+		expect(contextService.getHomeContext).toHaveBeenCalledWith(spaceId);
+		expect(result?.isError).toBeUndefined();
+		expect(installation?.id).toBe('installation-id');
+		expect(result?.structuredContent.tool).toBe('get_home_context');
+		expect(result?.structuredContent.request_id).toBe('17');
+		expect(typeof result?.structuredContent.observed_at).toBe('string');
+		expect(result?.structuredContent.data).toBe(scopedContext);
+	});
+
+	it('requests primary weather when get_weather omits a location', async () => {
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await callbacks.get('get_weather')?.({}, requestContext());
+
+		expect(contextService.getWeather).toHaveBeenCalledTimes(1);
+		expect(contextService.getWeather).toHaveBeenCalledWith(undefined);
+		expect(result?.structuredContent).toEqual(
+			expect.objectContaining({
+				tool: 'get_weather',
+				data: { location: 'Prague' },
+			}),
+		);
+	});
+
+	it('passes an explicit location to get_weather and preserves its output in the envelope', async () => {
+		const locationId = '550e8400-e29b-41d4-a716-446655440000';
+		const weatherContext = {
+			location_id: locationId,
+			location: 'Prague',
+			current: { temperature: 21 },
+			forecast: [{ date: '2026-08-15', temperature_max: 25 }],
+		};
+		contextService.getWeather.mockResolvedValue(weatherContext);
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await callbacks.get('get_weather')?.({ location_id: locationId }, requestContext());
+
+		expect(contextService.getWeather).toHaveBeenCalledTimes(1);
+		expect(contextService.getWeather).toHaveBeenCalledWith(locationId);
+		expect(result?.structuredContent).toEqual(
+			expect.objectContaining({
+				tool: 'get_weather',
+				data: weatherContext,
+			}),
+		);
+		expect(result?.structuredContent.data).toBe(weatherContext);
 	});
 
 	it('returns a sanitized denial when live policy no longer grants read', async () => {
@@ -245,6 +529,140 @@ describe('McpReadToolService', () => {
 					outcome: 'timed_out',
 				}),
 			);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it('reads the installation resource with live capabilities and the exact bare JSON wrapper', async () => {
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await resourceCallbacks.get('installation')?.(
+			new URL('smart-panel://installation'),
+			requestContext(),
+		);
+
+		expect(contextService.getInstallation).toHaveBeenCalledTimes(1);
+		expect(contextService.getInstallation).toHaveBeenCalledWith(
+			[McpCapability.READ],
+			'https://panel.test/api/v1/modules/mcp',
+		);
+		expect(result).toEqual({
+			contents: [
+				{
+					uri: 'smart-panel://installation',
+					mimeType: 'application/json',
+					text: JSON.stringify({
+						id: 'installation-id',
+						name: 'FastyBird Smart Panel',
+						version: '1.0.0',
+						timezone: 'UTC',
+						endpoint: 'https://panel.test/api/v1/modules/mcp',
+						effective_capabilities: [McpCapability.READ],
+					}),
+				},
+			],
+		});
+	});
+
+	it('reads the home-context resource with whole-home forwarding and the exact compatible JSON wrapper', async () => {
+		jest.useFakeTimers();
+		jest.setSystemTime(new Date('2026-08-14T12:00:00.000Z'));
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		try {
+			const result = await resourceCallbacks.get('home-context')?.(
+				new URL('smart-panel://home/context'),
+				requestContext(),
+			);
+
+			expect(contextService.getHomeContext).toHaveBeenCalledTimes(1);
+			expect(contextService.getHomeContext).toHaveBeenCalledWith();
+			expect(result).toEqual({
+				contents: [
+					{
+						uri: 'smart-panel://home/context',
+						mimeType: 'application/json',
+						text: JSON.stringify({
+							installation: {
+								id: 'installation-id',
+								name: 'FastyBird Smart Panel',
+								version: '1.0.0',
+								timezone: 'UTC',
+								endpoint: 'https://panel.test/api/v1/modules/mcp',
+								effective_capabilities: [McpCapability.READ],
+							},
+							observed_at: '2026-08-14T12:00:00.000Z',
+							data: {
+								scope: { type: 'home' },
+								spaces: [],
+								devices: [],
+								scenes: [],
+								weather: null,
+								energy: null,
+								security: null,
+								limits: {
+									spaces_truncated: false,
+									devices_truncated: false,
+									scenes_truncated: false,
+								},
+							},
+						}),
+					},
+				],
+			});
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it('reads a space snapshot resource with scoped forwarding and the exact compatible JSON wrapper', async () => {
+		jest.useFakeTimers();
+		jest.setSystemTime(new Date('2026-08-14T12:00:00.000Z'));
+		const spaceId = '20000000-0000-4000-8000-000000000001';
+		const scopedContext = {
+			scope: { type: 'space', id: spaceId, name: 'Living room' },
+			spaces: [{ id: spaceId, name: 'Living room', type: 'room', device_count: 1 }],
+			devices: [{ id: 'device-id', name: 'Lamp' }],
+			scenes: [],
+			weather: null,
+			energy: null,
+			security: null,
+			limits: {
+				spaces_truncated: false,
+				devices_truncated: false,
+				scenes_truncated: false,
+			},
+		};
+		contextService.getHomeContext.mockResolvedValue(scopedContext);
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		try {
+			const uri = new URL(`smart-panel://spaces/${spaceId}/snapshot`);
+			const result = await resourceTemplateCallbacks.get('space-snapshot')?.(uri, { spaceId }, requestContext());
+
+			expect(contextService.getHomeContext).toHaveBeenCalledTimes(1);
+			expect(contextService.getHomeContext).toHaveBeenCalledWith(spaceId);
+			expect(result).toEqual({
+				contents: [
+					{
+						uri: `smart-panel://spaces/${spaceId}/snapshot`,
+						mimeType: 'application/json',
+						text: JSON.stringify({
+							installation: {
+								id: 'installation-id',
+								name: 'FastyBird Smart Panel',
+								version: '1.0.0',
+								timezone: 'UTC',
+								endpoint: 'https://panel.test/api/v1/modules/mcp',
+								effective_capabilities: [McpCapability.READ],
+							},
+							observed_at: '2026-08-14T12:00:00.000Z',
+							data: scopedContext,
+						}),
+					},
+				],
+			});
 		} finally {
 			jest.useRealTimers();
 		}
