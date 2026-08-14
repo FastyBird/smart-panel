@@ -371,7 +371,10 @@ Result rules:
 - Include canonical IDs, display names, space identity, type/category/role, and only capabilities necessary for the
   caller's next decision.
 - Include property data type, unit, enum/range constraints, writability, and freshness when needed for an action.
-- Exclude hidden/disabled entities according to existing domain behavior.
+- Apply a trusted visibility profile per adapter/operation. Hidden entities remain excluded. MCP compatibility reads
+  preserve the current behavior of returning disabled devices/scenes with `enabled: false`; Buddy read results may
+  expose that status when needed to answer the user, while action-target discovery excludes disabled or otherwise
+  non-actionable targets.
 - Never include credentials, token material, secure configuration, internal stack traces, or unrelated metadata.
 - Cap every string field, collection, serialized result byte size, and tool-result token contribution.
 - Treat device/space/scene names and third-party values as untrusted data, not instructions.
@@ -590,7 +593,8 @@ Requirements:
 - Continue to execute device writes through `PropertyCommandService` and scenes/intents through their existing validated
   runtime services.
 - Re-resolve canonical IDs and current constraints at execution time; never act only on text returned by search.
-- Use shared visibility rules so hidden/disabled entities cannot be discovered through Buddy.
+- Use shared visibility profiles so hidden entities cannot be discovered through Buddy. Disabled entities may appear in
+  read results with an explicit status, but must not be offered or resolved as executable action targets.
 - Treat all catalog labels, descriptions, third-party values, and historical strings as untrusted data. Tool-result
   serialization must clearly delimit data and prohibit interpreting it as system/tool instructions.
 - Limit and escape strings before prompt inclusion. Reject invalid UTF-8/control patterns according to existing JSON
@@ -726,6 +730,8 @@ conversation context for a small-window model.
       MCP external output behavior.
 - [ ] Preserve MCP weather selection semantics: `location_id` reads that exact configured location, while an omitted ID
       reads the primary location.
+- [ ] Preserve MCP read visibility semantics: hidden entities remain excluded, while disabled devices/scenes remain in
+      snapshots and direct reads with their `enabled` state.
 - [ ] Convert MCP/Nest transport exceptions at the adapter boundary; shared query services return typed domain results
       and errors rather than MCP/HTTP-specific failures.
 - [ ] Keep MCP installation identity, auth, policy, auditing, request envelope, and transport deadlines in MCP.
@@ -738,8 +744,8 @@ conversation context for a small-window model.
       semantics.
 
 **Tests:** Shared service unit tests; domain query integration tests; MCP facade/tool regression tests, including explicit
-and omitted weather location IDs; hidden/disabled entity tests; query limit and truncation tests; N+1/query-count
-assertions for large fixtures.
+and omitted weather location IDs; visibility-profile tests proving hidden exclusion, MCP disabled-entity compatibility,
+and Buddy action-target exclusion; query limit and truncation tests; N+1/query-count assertions for large fixtures.
 
 **Gate:** MCP behavior is backward compatible, and a targeted entity beyond the first 100 alphabetic devices is found by
 bounded search without loading the full catalog.
