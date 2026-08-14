@@ -603,7 +603,10 @@ SQLite query and update patterns.
 Requirements:
 
 - Add a new incremental TypeORM migration.
-- Update summary/reference state transactionally after a successful turn or through an idempotent queued update.
+- Serialize summary/reference updates per conversation after a successful turn. Use either a per-conversation queue/lock
+  that covers the read-compute-write sequence or an optimistic compare-and-retry update against the prior
+  `summaryThrough`/version. A transaction or idempotency key alone is insufficient because two concurrent turns must not
+  overwrite one another's summary progress or references.
 - Never summarize the same message range twice after retry.
 - Cap summary and reference JSON sizes.
 - If LLM summarization is unavailable, use deterministic truncation/extractive fallback.
@@ -711,8 +714,9 @@ apps/backend/src/migrations/
 └── <next-timestamp>-AddBuddyConversationMemory.ts
 ```
 
-Generated OpenAPI/admin/panel clients are unchanged unless a later, separately approved public API change requires
-regeneration from backend Swagger sources.
+Generated OpenAPI/admin/panel clients remain unchanged for the internal retrieval architecture except for the Phase 5
+capacity-error contract. That phase adds a public HTTP 422 response to the existing Buddy text/audio endpoints and must
+regenerate the checked-in artifacts from backend Swagger sources; never edit generated clients manually.
 
 ---
 
@@ -865,6 +869,8 @@ load no home state.
 - `apps/backend/src/modules/buddy/services/llm-provider.service.ts`
 - Buddy messaging adapters where capacity errors are translated to local replies
 - Provider plugins/adapters and config model only where required
+- Backend Swagger response models/decorators as required for the typed capacity error
+- Generated OpenAPI/admin/panel client artifacts produced by `pnpm run generate:openapi` (never edited manually)
 
 **Tasks:**
 
@@ -876,6 +882,8 @@ load no home state.
 - [ ] Add provider-adapter final serialized-payload checks.
 - [ ] Add irreducible-input preflight and `BuddyMessageCapacityExceededException`; document the REST/voice 422 response
       and provider-free messaging fallback without changing the successful response contract.
+- [ ] Add the Swagger 422 response decorator/model to both Buddy text and audio endpoints, then run
+      `pnpm run generate:openapi` so the backend specification and generated admin/panel clients expose the new error.
 - [ ] Ensure rejected oversized turns are not persisted, do not invoke a provider, and never fall back to eager context.
 - [ ] Calibrate estimator safety margins against actual token usage from OpenAI/Anthropic and representative Ollama
       models.
@@ -903,13 +911,15 @@ compaction.
 - [ ] Load recent messages by token budget instead of fixed count.
 - [ ] Preserve complete user/final-assistant pairs during window selection; preserve canonical tool groups if they are
       persisted in a future extension.
-- [ ] Update summaries incrementally and idempotently with a deterministic failure fallback.
+- [ ] Update summaries incrementally and idempotently with a deterministic failure fallback, serializing each
+      conversation's read-compute-write sequence through a queue/lock or optimistic compare-and-retry invariant.
 - [ ] Resolve follow-up pronouns only when kind/action compatibility and recency make the reference unambiguous.
 - [ ] Expire and cap references; handle deleted or moved entities gracefully.
 - [ ] Keep memory fields private to the backend unless separately approved.
 
-**Tests:** 100+ message conversations, concurrent messages, restart persistence, summary-provider failure, duplicate retry,
-deleted entities, reference ambiguity, and migration upgrade from an existing installation.
+**Tests:** 100+ message conversations; concurrent sends that start from the same memory version and prove both turns'
+summary progress and references survive; restart persistence; summary-provider failure; duplicate retry; deleted entities;
+reference ambiguity; and migration upgrade from an existing installation.
 
 **Gate:** Long conversations remain inside budget and correct recent references work after restart without loading full
 message history.
@@ -1140,4 +1150,5 @@ pnpm run lint:js
 
 When a migration is added, verify upgrade against a copy of a pre-change SQLite database in addition to a clean test
 database. When Swagger decorators/public models change, run `pnpm run generate:openapi` rather than editing generated
-clients. No OpenAPI generation is expected for the internal-only design described here.
+clients. Phase 5 is the sole currently planned public-contract change: its HTTP 422 capacity response requires this
+generation; the internal retrieval, tool, query, and memory phases do not.
