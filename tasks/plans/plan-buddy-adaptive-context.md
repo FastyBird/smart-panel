@@ -611,6 +611,16 @@ journal only after committed import and retention requirements are satisfied. If
 or import fails, keep Buddy `WRITE`/`TRIGGER` traffic disabled (read-only where safe) and surface an operator-visible
 restore-safety error; never resume action-capable traffic with rolled-back replay state.
 
+The journal sidecar includes a durable pending manifest and journal ID written before database replacement. Buddy's
+maintenance/action gate is default-closed on every process start. In `BuddySafetyStateService` bootstrap, after the
+DataSource and migrations are ready but before the registry exposes action schemas or any Buddy request is admitted,
+inspect that manifest and `BuddyModuleStateEntity.lastImportedRestoreJournalId`. If pending and not imported, validate
+and perform the same transactional idempotent union; if the database marker already matches, finish sidecar
+acknowledgement/rotation.
+Only then open `WRITE`/`TRIGGER`. A crash after database replacement, during merge, or after DB commit but before sidecar
+cleanup therefore re-enters recovery on the next startup. A missing/corrupt pending journal or failed import keeps the
+gate closed and cannot be bypassed by normal configuration.
+
 Integrate this without a System↔Buddy module cycle: add a provider-neutral `BackupRestoreLifecycleRegistry` to the existing
 `BackupContributionModule`. Buddy registers ordered `beforeDatabaseReplace`, `afterDatabaseReady`, and `restoreFailed`
 hooks backed by `BuddySafetyStateService`; `BackupService` invokes the registry around its database replacement. The
@@ -1147,6 +1157,7 @@ snapshots are produced through the shared query layer without making that eager 
 
 **Files:**
 
+- `apps/backend/src/modules/buddy/buddy.module.ts`
 - `apps/backend/src/modules/buddy/platforms/llm-provider.platform.ts`
 - `apps/backend/src/modules/buddy/controllers/buddy-conversations.controller.ts`
 - `apps/backend/src/modules/buddy/entities/buddy-conversation.entity.ts`
@@ -1231,6 +1242,10 @@ snapshots are produced through the shared query layer without making that eager 
       journal outside the replaced database. After restore/migrations, idempotently union the journal, advance the safety
       epoch, fence unresolved dispatches, and reopen actions only after committed success. On any failure remain read-only
       and expose an operator error; exclude the journal from normal backups and rotate it only after safe import/retention.
+- [ ] Default the Buddy action gate closed at process start. During Buddy bootstrap, detect the durable pending-journal
+      manifest and database import marker, then validate/import or acknowledge the journal idempotently before request
+      admission/action-schema exposure. A restore-triggered restart or any crash window must resume this bootstrap path;
+      missing/corrupt/failed state keeps write/trigger disabled.
 - [ ] Carry an explicit entry-point authorization decision separately from actor attribution. Keep unmapped messaging
       identities and missing decisions `READ` only even when adapter admission is configured as allow-all; grant
       write/trigger only through authenticated Smart Panel mapping or an explicit action-capable allowlist/role.
@@ -1322,7 +1337,8 @@ outbound sends, messages, or actions, while a provably fresh event creates a cle
 backup creation, successful action/outbound reply after that backup, lost client/platform acknowledgement, then restore and
 same REST key/platform-event redelivery returning replay-protected status with zero provider/action/outbound calls;
 restore with an unresolved post-backup action retaining its conflict fence; crash after journal write, database replace,
-and merge commit proving idempotent recovery; corrupt/missing journal keeping write/trigger disabled; different
+and merge commit, starting a fresh application at each point and proving the default-closed gate plus idempotent bootstrap
+recovery before any action schema/request exposure; corrupt/missing journal keeping write/trigger disabled; different
 conversation read-only traffic remaining available where safe; lifecycle-hook ordering and proof System does not import
 Buddy;
 REST/voice/Discord/Telegram/WhatsApp conversation/identity/access propagation; rejection of a mismatched request-context
@@ -1654,7 +1670,8 @@ designated safe targets and reversible values. Scale/shadow evaluation must neve
       blocked until authoritative resolution, pre-reset workers/events cannot recreate purged state, and only provably
       post-reset deliveries may establish fresh state.
 - [ ] Restoring an older database cannot erase newer replay/action/outbound guards: action-capable Buddy traffic remains
-      gated until the external safety journal is merged, and post-backup retries execute/send nothing twice.
+      default-closed across the restore-triggered restart until the external safety journal is merged, and post-backup
+      retries execute/send nothing twice.
 - [ ] Shared home-query services are usable by Buddy with MCP externally disabled.
 - [ ] MCP transport/auth/policy/configuration remains independent and externally backward compatible.
 - [ ] Existing heartbeat/evaluator full-context behavior remains unchanged.
