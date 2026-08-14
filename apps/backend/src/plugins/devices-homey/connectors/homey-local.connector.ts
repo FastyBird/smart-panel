@@ -24,6 +24,12 @@ interface HomeyLocalSubscription {
 	cleanup: HomeyLocalTransportUnsubscribe;
 	cleanupNeeded: boolean;
 	cleanupPromise: Promise<void> | null;
+	deliveryTail: Promise<void>;
+}
+
+interface HomeyPendingSubscription {
+	settled: Promise<void>;
+	settle: () => void;
 }
 
 /**
@@ -36,6 +42,7 @@ export class HomeyLocalConnector implements HomeyConnector {
 	private connectionGeneration = 0;
 	private lifecycleTail: Promise<void> = Promise.resolve();
 	private readonly subscriptions = new Set<HomeyLocalSubscription>();
+	private readonly pendingSubscriptions = new Set<HomeyPendingSubscription>();
 
 	constructor(private readonly transport: HomeyLocalTransport) {}
 
@@ -106,6 +113,17 @@ export class HomeyLocalConnector implements HomeyConnector {
 
 	async subscribe(listener: HomeyEventListener): Promise<HomeyUnsubscribe> {
 		this.assertConnected(HomeyConnectorOperation.SUBSCRIBE);
+		const pending = this.createPendingSubscription();
+
+		try {
+			return await this.subscribeTransport(listener);
+		} finally {
+			this.pendingSubscriptions.delete(pending);
+			pending.settle();
+		}
+	}
+
+	private async subscribeTransport(listener: HomeyEventListener): Promise<HomeyUnsubscribe> {
 		const connectionGeneration = this.connectionGeneration;
 
 		const subscription: HomeyLocalSubscription = {
@@ -113,19 +131,24 @@ export class HomeyLocalConnector implements HomeyConnector {
 			cleanup: () => undefined,
 			cleanupNeeded: false,
 			cleanupPromise: null,
+			deliveryTail: Promise.resolve(),
 		};
 
 		try {
-			subscription.cleanup = await this.transport.subscribe(async (rawEvent) => {
-				if (!subscription.active || !this.connected || connectionGeneration !== this.connectionGeneration) {
-					return;
-				}
+			subscription.cleanup = await this.transport.subscribe((rawEvent) => {
+				subscription.deliveryTail = subscription.deliveryTail.then(async () => {
+					if (!subscription.active || !this.connected || connectionGeneration !== this.connectionGeneration) {
+						return;
+					}
 
-				try {
-					await listener(transformHomeyLocalEvent(rawEvent));
-				} catch {
-					// Malformed upstream events and consumer failures cannot stop sibling subscribers.
-				}
+					try {
+						await listener(transformHomeyLocalEvent(rawEvent));
+					} catch {
+						// Malformed upstream events and consumer failures cannot stop sibling subscribers.
+					}
+				});
+
+				return subscription.deliveryTail;
 			});
 			subscription.cleanupNeeded = true;
 			this.subscriptions.add(subscription);
@@ -163,6 +186,8 @@ export class HomeyLocalConnector implements HomeyConnector {
 	}
 
 	private async connectTransport(): Promise<void> {
+		await Promise.all([...this.pendingSubscriptions].map((pending) => pending.settled));
+
 		if (this.transportCleanupNeeded) {
 			try {
 				await this.transport.disconnect();
@@ -286,6 +311,19 @@ export class HomeyLocalConnector implements HomeyConnector {
 		}
 
 		this.subscriptions.clear();
+	}
+
+	private createPendingSubscription(): HomeyPendingSubscription {
+		let settle = (): void => undefined;
+		const pending: HomeyPendingSubscription = {
+			settled: new Promise((resolve) => {
+				settle = resolve;
+			}),
+			settle: () => settle(),
+		};
+		this.pendingSubscriptions.add(pending);
+
+		return pending;
 	}
 
 	private assertConnected(operation: HomeyConnectorOperation): void {

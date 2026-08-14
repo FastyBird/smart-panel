@@ -353,6 +353,44 @@ describeHomeyConnectorContract('Local', (): HomeyConnectorContractHarness => {
 });
 
 describe('Homey local connector lifecycle serialization', () => {
+	it('serializes asynchronous event delivery independently for each subscriber', async () => {
+		const transport = new FakeHomeyLocalTransport();
+		const connector = new HomeyLocalConnector(transport);
+		let releaseFirst = (): void => undefined;
+		let markFirstStarted = (): void => undefined;
+		const firstBlocked = new Promise<void>((resolve) => {
+			releaseFirst = resolve;
+		});
+		const firstStarted = new Promise<void>((resolve) => {
+			markFirstStarted = resolve;
+		});
+		const started: HomeyEventType[] = [];
+
+		await connector.connect();
+		await connector.subscribe(async (event) => {
+			started.push(event.type);
+
+			if (started.length === 1) {
+				markFirstStarted();
+				await firstBlocked;
+			}
+		});
+
+		const firstDelivery = transport.emit(contractFixtures.events[0]);
+		await firstStarted;
+		const secondDelivery = transport.emit(contractFixtures.events[1]);
+		await Promise.resolve();
+		expect(started).toStrictEqual([HomeyEventType.CAPABILITY_VALUE_CHANGED]);
+
+		releaseFirst();
+		await Promise.all([firstDelivery, secondDelivery]);
+		expect(started).toStrictEqual([
+			HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			HomeyEventType.DEVICE_AVAILABILITY_CHANGED,
+		]);
+		await connector.disconnect();
+	});
+
 	it('retires a stale subscription that resolves and fails cleanup after transport teardown', async () => {
 		const transport = new FakeHomeyLocalTransport();
 		const connector = new HomeyLocalConnector(transport);
@@ -372,6 +410,29 @@ describe('Homey local connector lifecycle serialization', () => {
 		expect(transport.subscriberCount).toBe(1);
 
 		await expect(connector.connect()).resolves.toBeUndefined();
+		expect(transport.disconnectCount).toBe(2);
+		expect(transport.subscriberCount).toBe(0);
+		await connector.disconnect();
+	});
+
+	it('waits for an old pending subscription before reconnecting', async () => {
+		const transport = new FakeHomeyLocalTransport();
+		const connector = new HomeyLocalConnector(transport);
+
+		await connector.connect();
+		const releaseSubscribe = transport.deferNextSubscribe();
+		const subscribe = connector.subscribe(() => undefined);
+		await connector.disconnect();
+		const reconnect = connector.connect();
+
+		await Promise.resolve();
+		expect(transport.connectCount).toBe(1);
+		transport.failNextUnsubscribe();
+		releaseSubscribe();
+
+		await expect(subscribe).rejects.toMatchObject({ category: HomeyConnectorErrorCategory.UNAVAILABLE });
+		await expect(reconnect).resolves.toBeUndefined();
+		expect(transport.connectCount).toBe(2);
 		expect(transport.disconnectCount).toBe(2);
 		expect(transport.subscriberCount).toBe(0);
 		await connector.disconnect();
