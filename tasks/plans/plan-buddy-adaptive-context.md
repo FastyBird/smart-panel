@@ -425,6 +425,23 @@ original user message and final assistant response; the rolling summary, entity 
 carry only the bounded information required by later turns. Persisting full tool transcripts is not required by this
 plan.
 
+Every external entry point must pass a request context through the conversation-service boundary:
+
+```typescript
+interface BuddyRequestContext {
+	source: 'rest' | 'voice' | 'discord' | 'telegram' | 'whatsapp' | 'internal';
+	actorId?: string;
+	requestId?: string;
+}
+```
+
+`BuddyConversationService.sendMessage()` accepts this context together with the conversation ID and content. REST and
+voice controllers derive a stable actor ID from the authenticated request. Messaging adapters pass their mapped Smart
+Panel user ID when available, otherwise a stable source-qualified opaque platform actor ID. Raw platform identifiers
+must not be logged. User-originated turns without an actor ID remain read-only: Buddy omits write/trigger schemas and
+the registry execution context denies those access kinds. Trusted internal/system turns use an explicit internal actor
+rather than silently leaving attribution undefined.
+
 `BuddyConversationService` must call the registry with an explicit execution context:
 
 ```typescript
@@ -538,6 +555,15 @@ serialized input = stable system instructions
 The provider call is rejected or compacted before dispatch when `serialized input > available input`. A final payload
 check belongs as close as possible to provider serialization so adapter-specific overhead is not ignored.
 
+Before persisting the user turn or calling a provider, compute the irreducible input floor: minimal stable/safety
+instructions, the complete current message, provider framing reserve, safety margin, and minimum useful output reserve.
+If that floor exceeds the selected model's window, do not truncate the message and do not attempt an LLM clarification.
+Raise a typed `BuddyMessageCapacityExceededException` containing only safe limit metadata and a recommended maximum
+input size. REST/voice maps it to a documented HTTP 422 response; messaging adapters translate it to a short local
+provider-free reply asking the user to shorten or split the message. Do not echo the oversized content, persist a failed
+turn, or retry against the full snapshot. The DTO's static 10,000-character ceiling remains a transport safety bound;
+this preflight is the model-aware semantic bound.
+
 ### 8.3 Compaction order
 
 When over budget, compact in this order:
@@ -547,7 +573,7 @@ When over budget, compact in this order:
 3. Replace old recent messages with the persisted rolling summary.
 4. Remove low-priority old reference entries.
 5. Shorten nonessential result labels/descriptions at schema boundaries.
-6. Ask a focused clarification if the request still cannot be grounded safely.
+6. If the irreducible input fits, ask a focused clarification when the request still cannot be grounded safely.
 
 Never silently drop the current message, action constraints, tool call/result pairing, ambiguity warnings, or the only
 matching target. Never retry with the full snapshot.
@@ -755,8 +781,10 @@ bounded search without loading the full catalog.
 **Files:**
 
 - `apps/backend/src/modules/buddy/platforms/llm-provider.platform.ts`
+- `apps/backend/src/modules/buddy/controllers/buddy-conversations.controller.ts`
 - `apps/backend/src/modules/buddy/services/buddy-conversation.service.ts`
 - Buddy LLM provider plugins/adapters and their specs
+- Buddy Discord, Telegram, and WhatsApp adapters and their specs
 - Shared tools registry specs as needed
 
 **Tasks:**
@@ -766,11 +794,15 @@ bounded search without loading the full catalog.
 - [ ] Map canonical items to native OpenAI, Anthropic, and Ollama formats.
 - [ ] Preserve ordering and one result/error per call, including malformed provider responses.
 - [ ] Pass explicit Buddy audience/source/access context to the registry.
+- [ ] Add `BuddyRequestContext` to the conversation-service boundary and plumb REST, voice, Discord, Telegram, and
+      WhatsApp actor/source/request identity into every call.
+- [ ] Restrict turns without actor attribution to `READ` access and omit write/trigger tool schemas.
 - [ ] Add per-result byte/token caps, structured truncation metadata, duplicate-call suppression, and timeout handling.
 - [ ] Ensure provider logs and persisted messages do not leak full raw tool data.
 
-**Tests:** Provider adapter contract tests, parallel call ordering, malformed arguments, unknown tools, denied access, partial
-results, timeouts, oversized results, repeated calls, and max-iteration behavior.
+**Tests:** Provider adapter contract tests; REST/voice/Discord/Telegram/WhatsApp identity propagation; unattributed-turn
+read-only enforcement; parallel call ordering; malformed arguments; unknown tools; denied access; partial results;
+timeouts; oversized results; repeated calls; and max-iteration behavior.
 
 **Gate:** Using a schema-validated test tool provider, every provider adapter correlates a tool call with its bounded
 structured result, supports a second dependent call, and produces a final response grounded in the result status/data.
@@ -828,8 +860,10 @@ load no home state.
 **Files:**
 
 - `apps/backend/src/modules/buddy/platforms/llm-provider.platform.ts`
+- `apps/backend/src/modules/buddy/controllers/buddy-conversations.controller.ts`
 - `apps/backend/src/modules/buddy/services/buddy-request-budget.service.ts`
 - `apps/backend/src/modules/buddy/services/llm-provider.service.ts`
+- Buddy messaging adapters where capacity errors are translated to local replies
 - Provider plugins/adapters and config model only where required
 
 **Tasks:**
@@ -840,12 +874,16 @@ load no home state.
 - [ ] Recompute the budget before every tool-loop provider call.
 - [ ] Add token-aware compaction in the required order and preserve complete tool groups.
 - [ ] Add provider-adapter final serialized-payload checks.
+- [ ] Add irreducible-input preflight and `BuddyMessageCapacityExceededException`; document the REST/voice 422 response
+      and provider-free messaging fallback without changing the successful response contract.
+- [ ] Ensure rejected oversized turns are not persisted, do not invoke a provider, and never fall back to eager context.
 - [ ] Calibrate estimator safety margins against actual token usage from OpenAI/Anthropic and representative Ollama
       models.
 - [ ] Keep the existing configured context window as override/fallback for providers that cannot report a model limit.
 
-**Tests:** 2k/4k/8k/128k/200k windows, large tool schemas, oversized property strings, many tool iterations, estimator error,
-unknown Ollama model, and output reserve enforcement.
+**Tests:** 2k/4k/8k/128k/200k windows; a 10,000-character DTO-valid message that cannot fit a 2k model; REST/voice 422
+mapping; provider-free messaging replies; large tool schemas; oversized property strings; many tool iterations;
+estimator error; unknown Ollama model; and output reserve enforcement.
 
 **Gate:** No test provider receives an over-window serialized request, and the requested entity/action constraints survive
 compaction.
