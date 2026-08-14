@@ -417,6 +417,11 @@ describe('DevicesService', () => {
 				'room-1',
 				2,
 			]);
+			expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('ORDER BY device."name", device."id"'), [
+				ChannelCategory.ALARM,
+				'room-1',
+				2,
+			]);
 			expect(channelsService.findBoundedForDevices).toHaveBeenCalledWith(['device-1'], [ChannelCategory.ALARM], 10);
 			expect(propertiesService.findBoundedForChannels).toHaveBeenCalledWith(['channel-1'], 20, true, undefined);
 		});

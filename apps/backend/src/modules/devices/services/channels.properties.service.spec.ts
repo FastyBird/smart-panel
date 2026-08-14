@@ -276,6 +276,12 @@ describe('ChannelsPropertiesService', () => {
 				expect.stringContaining('property.permissions'),
 				expect.objectContaining({ readWrite: PermissionType.READ_WRITE, writeOnly: PermissionType.WRITE_ONLY }),
 			);
+			expect(queryBuilder.orderBy).toHaveBeenCalledTimes(1);
+			expect(queryBuilder.orderBy).toHaveBeenCalledWith('device.name', 'ASC');
+			expect(queryBuilder.addOrderBy).toHaveBeenCalledTimes(3);
+			expect(queryBuilder.addOrderBy).toHaveBeenNthCalledWith(1, 'channel.name', 'ASC');
+			expect(queryBuilder.addOrderBy).toHaveBeenNthCalledWith(2, 'property.name', 'ASC');
+			expect(queryBuilder.addOrderBy).toHaveBeenNthCalledWith(3, 'property.id', 'ASC');
 			expect(queryBuilder.callListeners).toHaveBeenCalledWith(false);
 			expect(queryBuilder.take).toHaveBeenCalledWith(100);
 			expect(queryBuilder.skip).toHaveBeenCalledWith(0);
