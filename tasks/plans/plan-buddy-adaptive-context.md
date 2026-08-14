@@ -492,12 +492,12 @@ must not invoke the model concurrently. The same key with a different text/audio
 executes nothing.
 
 Before any physical dispatch, persist the complete bounded canonical action plan—validated tool name, canonical targets,
-normalized arguments, fingerprint/occurrence slot, and execution identity—and transition the claim atomically to
-`ACTION_PLANNED`. After a crash/restart, claims at or beyond that state resume/reconcile only the stored plan/outcomes and
-never call a stochastic model again with action tools. An expired `MODEL_IN_FLIGHT` lease may be taken over and rerun only
-when no canonical action was persisted, which proves no physical action could have been dispatched. Recovery finalizes
-from stored structured results using a read-only/no-action provider call or a deterministic response. Full tool transcript
-persistence remains unnecessary.
+normalized arguments, fingerprint, user-evidenced allowance/occurrence slot, and execution identity—and transition the
+claim atomically to `ACTION_PLANNED`. After a crash/restart, claims at or beyond that state resume/reconcile only the
+stored plan/outcomes and never call a stochastic model again with action tools. An expired `MODEL_IN_FLIGHT` lease may
+be taken over and rerun only when no canonical action was persisted, which proves no physical action could have been
+dispatched. Recovery finalizes from stored structured results using a read-only/no-action provider call or a deterministic
+response. Full tool transcript persistence remains unnecessary.
 
 A tool execution carries the claim ID, parent turn request ID, and transcript-local tool-call ID separately, and derives
 its bounded correlation/audit `requestId` from the latter two. Never replace the parent ID with `toolCall.id` alone:
@@ -530,8 +530,14 @@ the entry-point decision. The registry, tool schema, and provider response are a
 data are returned to the model as bounded errors, not thrown into an uncontrolled retry.
 
 Before dispatch, normalize the validated canonical tool name, canonical target IDs, and action arguments into a stable
-`actionFingerprint`. Assign a deterministic occurrence slot for repeated identical actions in the same inbound request,
-then derive `actionExecutionId` from `requestClaimId + actionFingerprint + occurrenceSlot`. Because the claim is scoped
+`actionFingerprint`. The default multiplicity is one per fingerprint per request claim: repeated model calls with the
+same fingerprint coalesce to occurrence slot `0`, even when call IDs differ. Additional slots may be allocated only from
+a small configured maximum repeat count parsed deterministically from the original user message, or from a structured
+confirmation bound to the exact resolved target/action/count. Model repetition is never evidence of user intent;
+non-idempotent scene/intent triggers require explicit confirmation before a repeat count above one. Persist the bounded
+`BuddyActionAllowance` and canonical slots with the claim before dispatch.
+
+Derive `actionExecutionId` from `requestClaimId + actionFingerprint + allowedOccurrenceSlot`. Because the claim is scoped
 by stable actor identity, two actors may legitimately reuse the same client key without collision. Never derive the
 action identity from the provider's tool-call ID. Atomically register or reuse it and durably associate every observed
 provider call ID with it. A replay that receives a different OpenAI/Anthropic call ID therefore reuses the original
@@ -555,8 +561,9 @@ after the uncertainty is disclosed.
 - If retrieval truncates, let the model refine its query rather than requesting the entire catalog.
 - A read timeout or optional-domain error can produce a partial answer; action validation failure cannot be converted
   into success. A dispatched non-cancellable action timeout is `INDETERMINATE`, not a normal failed/timed-out result.
-- Prevent repeated identical tool calls with the same arguments within one turn unless an action or freshness event
-  justifies a reread.
+- Suppress repeated identical read calls unless a freshness event justifies a reread. Coalesce identical action
+  fingerprints by default; allocate another action slot only from a persisted deterministic user repeat allowance, never
+  because the model emitted the call twice.
 - Preserve idempotency/request IDs through existing command and intent paths, coalesce concurrent executions with the
   same action identity, and suppress automatic retries while an action is pending or indeterminate.
 
@@ -601,7 +608,8 @@ For a provider/model without reliable tools:
   parses an allowlisted local command grammar from the original user message or a structured clarification selection,
   runs bounded `searchActionTargets`, and creates a canonical action call only when action kind, target, value/constraints,
   authorization, and ambiguity checks are all exact. It invokes the same registry/action provider, action-execution
-  identity, timeout, and indeterminate-outcome path as a reliable model tool call; it never writes to a domain directly.
+  identity, user-evidenced repeat allowance, timeout, and indeterminate-outcome path as a reliable model tool call; it
+  never writes to a domain directly.
 - Never parse the LLM's generated text into a side effect. Unsupported grammar, unresolved pronouns, unsafe/invalid
   values, multiple targets, or compound conditions outside the allowlisted deterministic operators produce bounded
   clarification/reformulation options. A clarification stores only a scoped, expiring action draft/candidate set and
@@ -752,6 +760,8 @@ Requirements:
 - A model saying an action succeeded is not evidence. The final response must be grounded in the structured tool result.
 - A post-dispatch timeout without authoritative cancellation is not evidence of failure. Surface `INDETERMINATE`, retain
   the execution identity, and require reconciliation or explicit user direction before any new non-idempotent attempt.
+- Repeated model calls are not evidence of repeated user intent. Default each canonical action fingerprint to one
+  execution and require bounded deterministic user evidence/confirmation for every additional occurrence slot.
 
 ---
 
@@ -964,6 +974,9 @@ report a definitive complete answer when eligible values could not all be evalua
       physical dispatch. Derive action identity from the resulting actor-qualified claim ID, canonical action fingerprint,
       and deterministic occurrence slot—independently of provider call IDs. Reuse an existing durable idempotency
       authority or add a bounded persistent ledger if none spans retries/restarts.
+- [ ] Persist a default-one `BuddyActionAllowance` per canonical fingerprint. Allocate additional occurrence slots only
+      from a bounded repeat count parsed from original user input or an explicit structured confirmation tied to the
+      resolved action; require confirmation for repeated non-idempotent triggers and coalesce all model-only duplicates.
 - [ ] Distinguish action timeouts before dispatch/confirmed cancellation from post-dispatch uncertainty. Return
       `INDETERMINATE` for non-cancellable unknown outcomes, reconcile late completion, and prohibit automatic retries or
       success/failure claims for that identity.
@@ -987,7 +1000,10 @@ uniqueness when `ollama-0` repeats across turns; parallel call ordering; malform
 access; partial results; read timeouts; action timeout before dispatch; confirmed cancellation; a hanging non-cancellable
 device command and scene trigger returning `INDETERMINATE`; concurrent and post-restart replay of the same inbound request
 with a changed provider call ID causing exactly one domain execution; two intentional identical action slots remaining
-distinct; late-result reconciliation; no model auto-retry; oversized results; repeated reads; and max-iteration behavior.
+distinct only after explicit user count/confirmation; duplicate identical model calls with different IDs causing one
+execution; missing/ambiguous count, count above the configured cap, and repeated scene trigger without confirmation
+executing zero times; late-result reconciliation; no model auto-retry; oversized results; repeated reads; and
+max-iteration behavior.
 
 **Gate:** Using a schema-validated test tool provider, every provider adapter correlates a tool call with its bounded
 structured result, supports a second dependent call, and produces a final response grounded in the result status/data.
