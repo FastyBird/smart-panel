@@ -783,9 +783,14 @@ strand the sequence; only a deliberately queued claim remains nonterminal withou
 
 Wait for the active sequence only within the whole-request deadline. If the product path cannot safely wait or queue, it
 must reject the later turn before history/model/action work with a typed `conversation_busy`/`Retry-After` result and no
-conversational message persistence; it may not run the turn optimistically. First-party clients retry the same request
-identity, while messaging adapters either await the durable queue within their delivery contract or send a provider-free
-busy response, atomically cancel that queued claim, and require a new user event.
+conversational message persistence; it may not run the turn optimistically. The initial REST/voice behavior atomically
+transitions that never-active queued claim to terminal `CANCELLED` with reason `conversation_busy` and makes the next
+eligible sequence skippable in the same transaction before returning the response. An exact transport retry with the
+same idempotency key returns the stored busy outcome; a user-initiated resubmission uses a new key. Messaging adapters
+either await the durable queue within their delivery contract or send a provider-free busy response and perform the same
+atomic cancellation before requiring a new user event. A future endpoint may leave a busy claim queued only when a
+durable server-side worker has accepted ownership and is guaranteed to drain/recover it independently of the client
+connection; a `Retry-After` response and hoped-for client retry alone are never such a guarantee.
 
 ---
 
@@ -1244,8 +1249,9 @@ snapshots are produced through the shared query layer without making that eager 
 - [ ] Require and validate a client-stable `Idempotency-Key` header on both REST text and audio sends; document the header,
       missing/invalid HTTP 400 response, typed conflicting-reuse HTTP 409 response, and typed in-progress HTTP 409 with
       `Retry-After` in Swagger. Include typed `conversation_busy`/`Retry-After` when a distinct later turn cannot acquire
-      its sequence within the deadline and typed HTTP 409 `restored_replay_protected` when a merged journal guard lacks
-      the original safe terminal response. Update
+      its sequence within the deadline; atomically terminalize that never-active claim before returning, and document
+      that an exact retry returns the stored busy outcome while a new user attempt needs a new key. Also include typed
+      HTTP 409 `restored_replay_protected` when a merged journal guard lacks the original safe terminal response. Update
       every first-party REST caller (admin, panel, voice, or other discovered consumer) to reuse the same key across
       retries, then run `pnpm run generate:openapi` instead of editing generated clients manually.
 - [ ] Compute the text payload digest in the controller and the audio digest from uploaded bytes/stable semantic fields
@@ -1313,6 +1319,9 @@ snapshots are produced through the shared query layer without making that eager 
 - [ ] Add durable per-conversation sequence allocation and `BuddyConversationTurnCoordinatorService`. Hold one
       cross-process lease across the full preprocessing/history/model/tool/action/final-persistence/reference lifecycle;
       atomically release it with terminal commit, and never let a higher sequence overtake a lower nonterminal turn.
+      When REST/voice/messaging returns `conversation_busy` rather than accepting durable background ownership,
+      terminalize the queued claim with its bounded busy outcome and skip/release its sequence atomically; never depend
+      on a disconnected client to retry and drain it.
 - [ ] Link Buddy messages uniquely to request claim/role/ordinal. Commit the final assistant message, bounded outcome, and
       terminal claim transition atomically; recovery must reconcile a committed turn before any model dispatch.
 - [ ] Add durable outbound-delivery rows and adapter coordination for messaging replies. Suppress sends for `SENT`
@@ -1350,8 +1359,10 @@ plan/outcome persistence, retention, and concurrent create-or-read from two data
 two distinct concurrent claims in one conversation receiving monotonic sequences across two database connections; the
 later dependent follow-up observing the first turn's persisted entity reference; explicit on/off actions executing in
 sequence even when the older provider is delayed; lease-expiry recovery that finishes/marks the older turn before
-advancing; busy/`Retry-After` without history/model/action work when the wait deadline expires; different conversations
-remaining parallel;
+advancing; busy/`Retry-After` without history/model/action work when the wait deadline expires, atomically storing
+terminal `CANCELLED`/`conversation_busy`, allowing a later sequence to run after the active predecessor finishes even
+when the busy client disconnects and never retries, and returning the same stored outcome for an exact retry; different
+conversations remaining parallel;
 a reliable tool model receiving two plausible search candidates and then calling an action with either returned canonical
 or short ID executing zero times; hallucinated/foreign/expired resolution proof executing zero; exact user-supplied ID,
 completeness-safe unique name/reference, and structured clarification selection producing valid bound proofs; truncated
@@ -1418,7 +1429,8 @@ invokes a second concurrent provider call. A fresh process can recover every non
 only durable state and cannot bypass the database uniqueness or lease rules. Terminal message/outcome persistence is
 atomic with claim completion, duplicate messaging deliveries produce at most one outbound platform send, and duplicate
 audio requests cannot invoke STT concurrently. Distinct turns within one conversation execute their complete lifecycle
-in sequence, while different conversations can proceed concurrently.
+in sequence, while different conversations can proceed concurrently. No busy response leaves an ownerless nonterminal
+sequence capable of blocking later turns.
 
 ### Phase 3 — Add Buddy read tools
 
@@ -1732,6 +1744,8 @@ designated safe targets and reversible values. Scale/shadow evaluation must neve
       reconciliation or explicit acknowledgement, while separate conversations and unrelated targets remain available.
 - [ ] A capacity-rejected turn stores no conversation message/provider output, executes no deterministic/model-driven
       action, and atomically releases its sequence so the next valid turn can complete.
+- [ ] A `conversation_busy` response terminalizes its never-active queued claim and makes its sequence skippable before
+      returning; a disconnected client cannot strand later turns, and an exact retry returns the stored busy outcome.
 - [ ] Queued/recovered writes and triggers intersect their admission snapshot with fresh authorization/principal state;
       revoked or remapped identities execute nothing.
 - [ ] Buddy factory reset removes all replay, delivery, claim, conversation/memory, and terminal action data, retaining
