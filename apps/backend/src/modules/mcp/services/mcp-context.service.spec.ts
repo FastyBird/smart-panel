@@ -1059,6 +1059,18 @@ describe('McpContextService', () => {
 		expect(timeseries.queryTimeseriesStrict).toHaveBeenCalledTimes(1);
 	});
 
+	it('rejects property history when the owning device is hidden before querying storage', async () => {
+		properties.findOne.mockResolvedValue({
+			id: 'property-id',
+			channel: { device: { hidden: true } },
+		} as unknown as ChannelPropertyEntity);
+
+		await expect(
+			service.getPropertyTimeseries('property-id', '2026-08-01T00:00:00.000Z', '2026-08-02T00:00:00.000Z', '1h'),
+		).rejects.toThrow('Requested property does not exist');
+		expect(timeseries.queryTimeseriesStrict).not.toHaveBeenCalled();
+	});
+
 	it('maps the complete direct property-timeseries contract for a visible device', async () => {
 		properties.findOne.mockResolvedValue({
 			id: 'property-id',
