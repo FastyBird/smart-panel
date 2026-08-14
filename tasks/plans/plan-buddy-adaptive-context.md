@@ -480,6 +480,14 @@ registry allows access solely from the validated `authorization.allowedAccessKin
 Missing/unmapped authorization fails to `READ` only. Trusted internal/system turns use an explicit internal actor and
 policy decision rather than silently receiving elevated access.
 
+The stored authorization is the first-delivery attribution and maximum grant, not a timeless capability. When a queued
+or recovered claim acquires its turn lease, resolve the current user mapping/allowlist/role/policy and intersect its
+access kinds with the stored snapshot; require the current mapped principal to match the originally bound actor for any
+write/trigger. Repeat that fresh check immediately before every `ACTION_DISPATCHING` transition. Revocation or remapping
+removes action schemas when known before the model call and must still fail closed in the registry/provider if it changes
+during the loop. A later regrant never widens an old claim beyond its snapshot. Already-dispatched actions follow normal
+indeterminate/reconciliation handling; authorization changes cannot retroactively prove cancellation.
+
 Each entry point preserves a validated client/event-stable inbound request ID. Both REST text and audio endpoints require
 a documented `Idempotency-Key` header; every first-party REST client generates one key per logical send and reuses it for
 every network retry. Validate a conservative length/character format before the handler and expose the header in Swagger.
@@ -534,8 +542,8 @@ unique key uses source, a normalized non-null `claimPrincipalKey`, stable idempo
 entry-point code derives `claimPrincipalKey` from the stable authenticated actor for REST/voice/internal traffic and a
 fixed delivery sentinel for messaging, making messaging uniqueness actor-independent. Bound columns include the
 first-delivery actor/authorization snapshot, resolved Buddy conversation ID and binding generation, payload digest,
-conversation turn sequence, state, lease owner/expiry, optimistic version, bounded canonical plan/outcome references, and
-timestamps.
+module reset epoch, conversation turn sequence, state, lease owner/expiry, optimistic version, bounded canonical
+plan/outcome references, and timestamps.
 `BuddyRequestIdempotencyService` owns transactional create-or-read and compare-and-swap transitions; an in-memory map may
 only optimize joining requests already owned by this process and is never the authority for uniqueness, leases, or
 restart recovery.
@@ -555,6 +563,15 @@ before the platform send, and records `SENT` plus the returned platform message 
 delivery `INDETERMINATE` and suppress automatic resend, accepting a possible missing reply rather than a duplicate.
 `BuddyOutboundDeliveryService` provides the lease/CAS boundary, and request claims/bindings/outbound rows do not cascade
 on conversation deletion. Store only bounded outcome digests and opaque identifiers outside the canonical Buddy message.
+
+Factory reset is the explicit exception to normal non-cascading retention. `BuddyModuleResetService` first advances a
+singleton durable module reset epoch and fences new/leased work so an in-process or late callback cannot repopulate
+cleared tables. Claims capture that epoch, and every claim/action/outbound persistence CAS verifies it still matches.
+The reset then clears outbound deliveries, uncertainty fences/action executions, claim-linked messages, request claims,
+messaging bindings, conversation memory/conversations, and suggestions in foreign-key-safe dependency order, and clears
+related in-memory single-flight/mapping caches. Reset must remove opaque scopes, digests, outcomes, leases, and stale
+conflict state. If already-dispatched external work cannot be cancelled authoritatively, fence/drop its late persistence
+callback; the reset cannot promise to undo a physical action that already began.
 
 Before any physical dispatch, persist the complete bounded canonical action plan—validated tool name, canonical targets,
 normalized arguments, fingerprint, user-evidenced allowance/occurrence slot, and execution identity—and transition the
@@ -600,13 +617,14 @@ an unscoped hallucinated token must fail closed and prompt fresh discovery inste
 	parentRequestId: requestContext.requestId,
 	toolCallId: toolCall.id,
 	requestId: deriveScopedToolRequestId(requestContext.requestId, toolCall.id),
-	allowedAccessKinds: requestContext.authorization.allowedAccessKinds,
+	allowedAccessKinds: effectiveAuthorization.allowedAccessKinds,
 }
 ```
 
 `deriveScopedToolRequestId` produces a validated, bounded opaque/namespaced correlation value for audit/transcript links;
 it is not the physical-action idempotency key. The allowed set may be narrowed further per turn but never widened beyond
-the entry-point decision. The registry, tool schema, and provider response are all validated; unknown tools or malformed
+the entry-point decision; for write/trigger it is the intersection with the latest verified authorization and matching
+principal at execution time. The registry, tool schema, and provider response are all validated; unknown tools or malformed
 data are returned to the model as bounded errors, not thrown into an uncontrolled retry.
 
 Before dispatch, normalize the validated canonical tool name, canonical target IDs, and action arguments into a stable
@@ -945,6 +963,7 @@ apps/backend/src/modules/buddy/
 │   ├── buddy-conversation.entity.ts
 │   ├── buddy-message.entity.ts
 │   ├── buddy-messaging-conversation-binding.entity.ts
+│   ├── buddy-module-state.entity.ts          # singleton reset epoch/fence
 │   ├── buddy-outbound-delivery.entity.ts
 │   └── buddy-request-claim.entity.ts
 ├── platforms/
@@ -962,6 +981,7 @@ apps/backend/src/modules/buddy/
 │   ├── buddy-request-budget.service.ts
 │   ├── buddy-request-idempotency.service.ts
 │   ├── buddy-context.service.ts             # retained for evaluators
+│   ├── module-reset.service.ts
 │   └── home-context-tool-provider.service.ts
 └── buddy.module.ts
 
@@ -980,6 +1000,7 @@ apps/backend/src/migrations/
 ├── <next-timestamp>-AddBuddyActionExecutionLedger.ts # only if existing command storage cannot enforce idempotency
 ├── <next-timestamp>-AddBuddyActionUncertaintyFences.ts # only if the selected ledger cannot index conflict keys
 ├── <next-timestamp>-AddBuddyMessagingConversationBinding.ts
+├── <next-timestamp>-AddBuddyModuleState.ts
 ├── <next-timestamp>-AddBuddyOutboundDeliveries.ts
 ├── <next-timestamp>-AddBuddyRequestClaims.ts
 └── <next-timestamp>-AddBuddyConversationMemory.ts
@@ -1081,6 +1102,7 @@ snapshots are produced through the shared query layer without making that eager 
 - `apps/backend/src/modules/buddy/entities/buddy-conversation.entity.ts`
 - `apps/backend/src/modules/buddy/entities/buddy-message.entity.ts`
 - `apps/backend/src/modules/buddy/entities/buddy-messaging-conversation-binding.entity.ts`
+- `apps/backend/src/modules/buddy/entities/buddy-module-state.entity.ts`
 - `apps/backend/src/modules/buddy/entities/buddy-outbound-delivery.entity.ts`
 - `apps/backend/src/modules/buddy/entities/buddy-request-claim.entity.ts`
 - `apps/backend/src/modules/buddy/services/buddy-conversation.service.ts`
@@ -1089,11 +1111,13 @@ snapshots are produced through the shared query layer without making that eager 
 - `apps/backend/src/modules/buddy/services/buddy-messaging-conversation-binding.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-outbound-delivery.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-request-idempotency.service.ts`
+- `apps/backend/src/modules/buddy/services/module-reset.service.ts`
 - `apps/backend/src/modules/tools/platforms/tool-provider.platform.ts`
 - `apps/backend/src/plugins/buddy-openai-codex/platforms/openai-codex.provider.ts`
 - Buddy LLM provider plugins/adapters and their specs
 - Buddy Discord, Telegram, and WhatsApp adapters and their specs
 - New incremental migration for the persistent messaging-conversation binding
+- New incremental migration for the singleton Buddy module reset epoch/fence
 - New incremental migration for durable outbound-delivery state
 - New incremental migration for the durable Buddy request-claim table, conversation sequence/lease fields, and indexes
 - Existing command/scene/intent idempotency persistence, or a minimal Buddy action-execution ledger entity/service and
@@ -1132,9 +1156,15 @@ snapshots are produced through the shared query layer without making that eager 
 - [ ] Integrate conversation deletion with messaging bindings and claims: tombstone/rebind binding generations without
       cascading claims, fence active workers transactionally, replay retained delivery claims before resolving the active
       binding, and reject stale post-retention deliveries instead of executing them as new.
+- [ ] Extend `BuddyModuleResetService` with a durable reset epoch that fences active/late workers, then explicitly clear
+      every new binding, outbound, claim, action/fence, message, memory/conversation, suggestion, and process-cache record
+      in dependency order. Preserve only the incremented epoch needed to reject pre-reset callbacks.
 - [ ] Carry an explicit entry-point authorization decision separately from actor attribution. Keep unmapped messaging
       identities and missing decisions `READ` only even when adapter admission is configured as allow-all; grant
       write/trigger only through authenticated Smart Panel mapping or an explicit action-capable allowlist/role.
+- [ ] Re-resolve current mapping/allowlist/role/policy when a claim acquires its turn and immediately before every action
+      dispatch. Effective access is the intersection with the first-delivery snapshot, and action-capable principal
+      identity must still match; revocation/remapping fails closed and regrant cannot widen the stored claim.
 - [ ] Preserve the parent entry-point request ID plus the tool-call ID and derive a bounded unique tool-correlation/audit
       request ID from both; never use a provider-local tool-call ID alone or use it as the action idempotency key.
 - [ ] Durably claim REST/voice by `(source, actor claim key, stable idempotency scope, request ID)` and messaging by
@@ -1210,9 +1240,13 @@ executing nothing; conversation deletion followed by a genuinely new event creat
 an old-event replay returns its retained outcome without recreating the deleted conversation or invoking the model;
 deletion racing `MODEL_IN_FLIGHT`, `ACTION_PLANNED`, and uncertain dispatch; expired/stale delivery rejection after the
 documented retention window;
+factory reset with populated bindings/outbound rows/claims/action ledgers/uncertainty fences/messages/memory/suggestions,
+including an active worker and late callback, leaving only the advanced reset epoch and allowing a clean post-reset turn;
 REST/voice/Discord/Telegram/WhatsApp conversation/identity/access propagation; rejection of a mismatched request-context
 conversation ID; unmapped platform users under empty/allow-all admission remain read-only;
-mapped/explicitly action-allowlisted users receive only their authorized access kinds; parent request ID preservation and
+mapped/explicitly action-allowlisted users receive only their authorized access kinds; mapping/role revocation while
+queued and between model response/action dispatch causing zero execution; actor remapping failing the principal match;
+later regrant not widening the original snapshot; parent request ID preservation and
 uniqueness when `ollama-0` repeats across turns; parallel call ordering; malformed arguments; unknown tools; denied
 access; partial results; read timeouts; action timeout before dispatch; confirmed cancellation; a hanging non-cancellable
 device command and scene trigger returning `INDETERMINATE`; concurrent and post-restart replay of the same inbound request
@@ -1530,6 +1564,10 @@ designated safe targets and reversible values. Scale/shadow evaluation must neve
       reconciliation or explicit acknowledgement, while separate conversations and unrelated targets remain available.
 - [ ] A capacity-rejected turn stores no conversation message/provider output and atomically releases its sequence so the
       next valid turn can complete.
+- [ ] Queued/recovered writes and triggers intersect their admission snapshot with fresh authorization/principal state;
+      revoked or remapped identities execute nothing.
+- [ ] Buddy factory reset removes all new durable replay, delivery, claim, action/fence, and memory data and prevents
+      pre-reset workers or callbacks from recreating it.
 - [ ] Shared home-query services are usable by Buddy with MCP externally disabled.
 - [ ] MCP transport/auth/policy/configuration remains independent and externally backward compatible.
 - [ ] Existing heartbeat/evaluator full-context behavior remains unchanged.
