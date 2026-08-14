@@ -1,6 +1,6 @@
 import { FastifyReply } from 'fastify';
 import { readFileSync } from 'fs';
-import { IncomingMessage } from 'http';
+import { IncomingMessage, ServerResponse } from 'http';
 import { resolve } from 'path';
 
 import { toNodeHandler } from '@modelcontextprotocol/node';
@@ -33,7 +33,15 @@ const packageJson = JSON.parse(readFileSync(resolve(__dirname, '../../../../pack
 	version: string;
 };
 
-type AuthenticatedIncomingMessage = IncomingMessage & { auth?: AuthInfo };
+const MCP_SUBSCRIPTION_CONTEXT = Symbol('mcp-subscription-context');
+
+interface McpSubscriptionRequestContext {
+	subscription?: McpSubscriptionHandle;
+}
+
+type McpRequestAuthInfo = AuthInfo & { [MCP_SUBSCRIPTION_CONTEXT]?: McpSubscriptionRequestContext };
+
+type AuthenticatedIncomingMessage = IncomingMessage & { auth?: McpRequestAuthInfo };
 
 interface ClientHandler {
 	handler: McpHttpHandler;
@@ -108,6 +116,7 @@ export class McpServerService implements OnApplicationShutdown {
 		const rawRequest = request.raw as AuthenticatedIncomingMessage;
 		const endpoint = new URL(request.url, `${request.protocol}://${request.headers.host ?? 'localhost'}`);
 
+		const subscriptionContext: McpSubscriptionRequestContext = {};
 		rawRequest.auth = {
 			token,
 			clientId: policy.client.id,
@@ -122,11 +131,12 @@ export class McpServerService implements OnApplicationShutdown {
 				clientName: policy.client.name,
 				tokenId: policy.tokenId,
 			},
-		};
+			[MCP_SUBSCRIPTION_CONTEXT]: subscriptionContext,
+		} as McpRequestAuthInfo;
 
 		reply.hijack();
 
-		await clientHandler.nodeHandler(rawRequest, reply.raw, request.body);
+		await this.handleNodeRequest(clientHandler, rawRequest, reply.raw, request.body, subscriptionContext);
 	}
 
 	async handleOAuth(request: McpPolicyRequest, reply: FastifyReply, authInfo: AuthInfo): Promise<void> {
@@ -135,10 +145,11 @@ export class McpServerService implements OnApplicationShutdown {
 		const clientHandler = this.getOrCreateHandler(`oauth:${authInfo.clientId}`);
 		const rawRequest = request.raw as AuthenticatedIncomingMessage;
 
-		rawRequest.auth = authInfo;
+		const subscriptionContext: McpSubscriptionRequestContext = {};
+		rawRequest.auth = { ...authInfo, [MCP_SUBSCRIPTION_CONTEXT]: subscriptionContext } as McpRequestAuthInfo;
 		reply.hijack();
 
-		await clientHandler.nodeHandler(rawRequest, reply.raw, request.body);
+		await this.handleNodeRequest(clientHandler, rawRequest, reply.raw, request.body, subscriptionContext);
 	}
 
 	notifyToolsChanged(clientId?: string): void {
@@ -263,8 +274,18 @@ export class McpServerService implements OnApplicationShutdown {
 
 					subscription = opened.handle;
 					if (opened.authInfo !== requestOptions?.authInfo) {
-						options = { ...requestOptions, authInfo: opened.authInfo };
+						options = {
+							...requestOptions,
+							authInfo: {
+								...opened.authInfo,
+								[MCP_SUBSCRIPTION_CONTEXT]: (requestOptions?.authInfo as McpRequestAuthInfo | undefined)?.[
+									MCP_SUBSCRIPTION_CONTEXT
+								],
+							} as McpRequestAuthInfo,
+						};
 					}
+					const context = (options?.authInfo as McpRequestAuthInfo | undefined)?.[MCP_SUBSCRIPTION_CONTEXT];
+					if (context) context.subscription = subscription;
 				} catch (error) {
 					if (error instanceof McpSubscriptionUnavailableError) {
 						return this.getSubscriptionErrorResponse(error, requestOptions?.parsedBody);
@@ -477,15 +498,13 @@ export class McpServerService implements OnApplicationShutdown {
 				abortStream = (): void => {
 					if (streamClosed || cancellationSent) return;
 
+					streamClosed = true;
 					cancellationSent = true;
 					removeAbortListener();
+					removeTransportAbortListener();
 					try {
 						controller.enqueue(this.subscriptionCancellationEvent(subscription.wireRequestId));
-						if (subscription.signal.reason !== 'authorization_revoked') {
-							streamClosed = true;
-							removeTransportAbortListener();
-							controller.close();
-						}
+						controller.close();
 					} catch {
 						// The response consumer already closed the stream.
 					} finally {
@@ -562,6 +581,39 @@ export class McpServerService implements OnApplicationShutdown {
 		const id = this.getRequestBody(body).id;
 
 		return typeof id === 'number' || typeof id === 'string' ? id : this.auditService.getRequestId(body);
+	}
+
+	private async handleNodeRequest(
+		clientHandler: ClientHandler,
+		request: AuthenticatedIncomingMessage,
+		response: ServerResponse,
+		body: unknown,
+		context: McpSubscriptionRequestContext,
+	): Promise<void> {
+		try {
+			await clientHandler.nodeHandler(request, response, body);
+		} finally {
+			if (context.subscription) {
+				await this.waitForResponseCompletion(response);
+				await new Promise<void>((resolve) => setTimeout(resolve, 0));
+				context.subscription.completeTransport();
+			}
+		}
+	}
+
+	private async waitForResponseCompletion(response: ServerResponse): Promise<void> {
+		if (response.writableFinished || response.destroyed) return;
+
+		await new Promise<void>((resolve) => {
+			const complete = (): void => {
+				response.off('close', complete);
+				response.off('finish', complete);
+				resolve();
+			};
+			response.once('close', complete);
+			response.once('finish', complete);
+			if (response.writableFinished || response.destroyed) complete();
+		});
 	}
 
 	private auditProtocolRequest(body: unknown, requestId: string, clientId: string): void {
