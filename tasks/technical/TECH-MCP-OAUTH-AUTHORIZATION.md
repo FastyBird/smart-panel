@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: large
 Parent: Smart Panel MCP Module
-Status: in progress — Phase 6 security-profile E2E, external-host, and wire-level gates remain
+Status: complete
 
 ## 1. Business goal
 
@@ -92,8 +92,9 @@ upgrade consequences.
       concurrent refresh replay, revocation/listen and all invalidation/artifact-commit races, runtime-gated OAuth
       switch-off/re-enable, static-stream preservation, wrong issuer/resource/audience, cross-client isolation, stream
       closure, and log redaction.
-- [ ] At least two supported OAuth-capable MCP hosts complete discovery, authorization, tool listing, tool execution,
-      refresh, and revocation smoke tests.
+- [x] Codex CLI `0.147.0` and Claude Code `2.1.229` complete discovery, authorization, tool listing, tool execution,
+      refresh rotation, scope-failure, and administrative revocation smoke tests with their exact callback profiles
+      recorded in the compatibility evidence.
 - [x] Public deployment documentation requires HTTPS and provides reverse-proxy, key rotation, backup, incident
       response, and rollback guidance.
 

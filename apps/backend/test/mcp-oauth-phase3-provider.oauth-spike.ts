@@ -535,6 +535,21 @@ describe('MCP OAuth Phase 3 provider runtime', () => {
 		expect(tokens.refresh_token).toBeUndefined();
 	});
 
+	it('issues renewable access when a host explicitly requests it without a prompt parameter', async () => {
+		const { callback, verifier } = await authorize(
+			REGISTERED_REDIRECT_URI,
+			'mcp:read offline_access',
+			new CookieBrowser(),
+			false,
+		);
+		const response = await exchangeCode(callback.searchParams.get('code'), verifier);
+		const tokens = (await response.json()) as TokenResponse;
+
+		expect(response.status).toBe(200);
+		expect(tokens.scope).toBe(McpOAuthScope.READ);
+		expect(tokens.refresh_token).toBeDefined();
+	});
+
 	it('rejects an explicitly requested resource scope above the client ceiling before consent', async () => {
 		const before = consentPromptCount;
 		const response = await fetch(

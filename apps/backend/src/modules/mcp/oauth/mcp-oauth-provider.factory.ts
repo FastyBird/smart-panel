@@ -133,9 +133,18 @@ export class McpOAuthProviderFactory {
 
 					if (typeof requestedScope !== 'string') return;
 
-					const disallowedScopes = requestedScope
-						.split(' ')
-						.filter((scope) => !registeredClient.maximumScopes.includes(scope as McpOAuthScope));
+					const requestedScopes = requestedScope.split(' ').filter(Boolean);
+
+					if (!requestedScopes.some((scope) => scope !== String(McpOAuthScope.OFFLINE_ACCESS))) {
+						throw new oidcProvider.errors.InvalidScope(
+							'requested scope contains no capability scope',
+							McpOAuthScope.OFFLINE_ACCESS,
+						);
+					}
+
+					const disallowedScopes = requestedScopes.filter(
+						(scope) => !registeredClient.maximumScopes.includes(scope as McpOAuthScope),
+					);
 
 					if (disallowedScopes.length > 0) {
 						throw new oidcProvider.errors.InvalidScope('requested scope is not allowed', disallowedScopes.join(' '));
@@ -306,6 +315,10 @@ export class McpOAuthProviderFactory {
 			}
 		}
 
+		if (request.method === 'GET' && pathname === new URL(urls.authorizationEndpoint).pathname) {
+			this.ensureOfflineAccessConsentPrompt(request, urls);
+		}
+
 		if (request.method === 'POST' && (pathname === tokenPathname || pathname === '/token')) {
 			const contentType = request.headers['content-type']?.split(';', 1)[0]?.trim().toLowerCase();
 
@@ -332,6 +345,19 @@ export class McpOAuthProviderFactory {
 
 			await providerCallback(request, response);
 		});
+	}
+
+	private ensureOfflineAccessConsentPrompt(request: IncomingMessage, urls: McpOAuthPublicUrls): void {
+		const authorizationUrl = new URL(request.url ?? '/', urls.issuer);
+		const requestedScopes = authorizationUrl.searchParams.get('scope')?.split(/\s+/).filter(Boolean) ?? [];
+
+		if (requestedScopes.includes(McpOAuthScope.OFFLINE_ACCESS) && !authorizationUrl.searchParams.has('prompt')) {
+			// Codex requests offline_access but does not expose an OAuth prompt option. Smart Panel always requires its
+			// owner/admin consent interaction, so make that existing consent explicit before oidc-provider applies the
+			// OIDC offline-access rule. Explicit client prompt choices remain untouched.
+			authorizationUrl.searchParams.set('prompt', 'consent');
+			request.url = `${authorizationUrl.pathname}${authorizationUrl.search}`;
+		}
 	}
 
 	private isDisconnected(request: IncomingMessage, response: ServerResponse): boolean {

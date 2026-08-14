@@ -206,7 +206,7 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 		expect(findActiveByIdentifier).toHaveBeenCalledWith('codex-client');
 	});
 
-	it('rejects an explicit offline-only scope after provider normalization', async () => {
+	it('rejects an explicit offline-only scope', async () => {
 		const findActiveByIdentifier = jest.fn(() =>
 			Promise.resolve({ maximumScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS] }),
 		);
@@ -226,12 +226,45 @@ describe('McpOAuthProviderFactory artifact request gate', () => {
 			query: { scope: McpOAuthScope.OFFLINE_ACCESS },
 			oidc: {
 				route: 'authorization',
-				params: { client_id: 'codex-client', scope: undefined as string | undefined },
+				params: { client_id: 'codex-client', scope: McpOAuthScope.OFFLINE_ACCESS },
 			},
 		};
 
 		await expect(stateValidator(context, 'opaque-state')).rejects.toThrow();
 		expect(findActiveByIdentifier).toHaveBeenCalledWith('codex-client');
+	});
+
+	it('adds consent when renewable access is explicit and the client omitted prompt', async () => {
+		const request = createRequest();
+		request.url = `${request.url}?scope=mcp%3Aread+offline_access&state=opaque-state`;
+		let dispatchedRequest: IncomingMessage | undefined;
+		const providerCallback = jest.fn((candidate: IncomingMessage) => {
+			dispatchedRequest = candidate;
+			return Promise.resolve();
+		});
+
+		await dispatch(request, createResponse(), providerCallback, urls);
+
+		const dispatchedUrl = new URL(dispatchedRequest?.url ?? '/', urls.issuer);
+
+		expect(dispatchedUrl.searchParams.get('scope')).toBe('mcp:read offline_access');
+		expect(dispatchedUrl.searchParams.get('prompt')).toBe('consent');
+	});
+
+	it('preserves an explicit client prompt for renewable access', async () => {
+		const request = createRequest();
+		request.url = `${request.url}?scope=mcp%3Aread+offline_access&prompt=login`;
+		let dispatchedRequest: IncomingMessage | undefined;
+		const providerCallback = jest.fn((candidate: IncomingMessage) => {
+			dispatchedRequest = candidate;
+			return Promise.resolve();
+		});
+
+		await dispatch(request, createResponse(), providerCallback, urls);
+
+		const dispatchedUrl = new URL(dispatchedRequest?.url ?? '/', urls.issuer);
+
+		expect(dispatchedUrl.searchParams.get('prompt')).toBe('login');
 	});
 
 	it('rejects a blocked provider endpoint before entering the artifact mutation gate', async () => {
