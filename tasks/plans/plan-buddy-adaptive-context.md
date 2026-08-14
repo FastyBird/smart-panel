@@ -305,7 +305,7 @@ never be able to raise a limit directly.
 | `queryHomeState` | spaces, categories, roles, capabilities, online/value predicates | 20 / 50 matches | Safe filtered rows and/or aggregate |
 | `getPropertyTimeseries` | property ID, from/to, aggregation, point limit | 100 / 500 points, max 14 days | Series, unit, source, truncation |
 | `getEnergySummary` | optional space and period | max 31 days | Consumption/production/current power with units |
-| `getWeather` | current and forecast days | max 5 days | Current conditions and forecast |
+| `getWeather` | optional location ID, forecast days | max 5 days | Requested location, or primary location when omitted, plus current conditions and forecast |
 | `getSecurityStatus` | active state and alerts | max 20 alerts | Status, active alerts, partial/truncation |
 | `searchActionTargets` | query, space, action kind, capability | 10 / 20 matches | Writable properties, scenes, or supported intents |
 
@@ -724,6 +724,8 @@ conversation context for a small-window model.
 - [ ] Create `HomeContextModule` with typed inputs, outputs, shared limits, and schema validation.
 - [ ] Move bounded home/device/weather/energy/security/timeseries mapping from MCP into shared services without changing
       MCP external output behavior.
+- [ ] Preserve MCP weather selection semantics: `location_id` reads that exact configured location, while an omitted ID
+      reads the primary location.
 - [ ] Convert MCP/Nest transport exceptions at the adapter boundary; shared query services return typed domain results
       and errors rather than MCP/HTTP-specific failures.
 - [ ] Keep MCP installation identity, auth, policy, auditing, request envelope, and transport deadlines in MCP.
@@ -735,8 +737,9 @@ conversation context for a small-window model.
 - [ ] Add targeted catalog cache invalidation and in-flight query deduplication without changing evaluator snapshot cache
       semantics.
 
-**Tests:** Shared service unit tests; domain query integration tests; MCP facade/tool regression tests; hidden/disabled entity
-tests; query limit and truncation tests; N+1/query-count assertions for large fixtures.
+**Tests:** Shared service unit tests; domain query integration tests; MCP facade/tool regression tests, including explicit
+and omitted weather location IDs; hidden/disabled entity tests; query limit and truncation tests; N+1/query-count
+assertions for large fixtures.
 
 **Gate:** MCP behavior is backward compatible, and a targeted entity beyond the first 100 alphabetic devices is found by
 bounded search without loading the full catalog.
@@ -763,8 +766,8 @@ bounded search without loading the full catalog.
 **Tests:** Provider adapter contract tests, parallel call ordering, malformed arguments, unknown tools, denied access, partial
 results, timeouts, oversized results, repeated calls, and max-iteration behavior.
 
-**Gate:** A model can search, receive structured IDs/state, perform a second dependent read or validated action, and
-produce a final grounded response.
+**Gate:** Using a schema-validated test tool provider, every provider adapter correlates a tool call with its bounded
+structured result, supports a second dependent call, and produces a final response grounded in the result status/data.
 
 ### Phase 3 — Add Buddy read tools
 
@@ -787,7 +790,9 @@ produce a final grounded response.
 **Tests:** Every schema boundary and hard cap, missing optional modules, stale/missing entities, hidden/disabled entities,
 long labels/values, and multi-language/diacritic search.
 
-**Gate:** Buddy can answer every read-only home-state row in the message matrix using tools without the eager context.
+**Gate:** Buddy can answer every read-only home-state row in the message matrix using tools without the eager context. A
+model can call `search_home`, receive structured IDs, perform a dependent state read or validated action, and produce a
+final response grounded in the action/result status.
 
 ### Phase 4 — Deterministic planner and bounded prefetch
 
