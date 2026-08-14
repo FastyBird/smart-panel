@@ -1,0 +1,53 @@
+{
+	"metadata": {
+		"probe": "homey-shs-realtime",
+		"schemaVersion": 1,
+		"sdkVersion": "3.19.2"
+	},
+	"session": {
+		"cleanupCompleted": true,
+		"events": [
+			{
+				"event": "sdk.create.resolved",
+				"order": 1
+			},
+			{
+				"event": "socket.connect",
+				"order": 2
+			},
+			{
+				"event": "manager.subscribe.resolved",
+				"order": 3
+			},
+			{
+				"event": "manager.unsubscribe.resolved",
+				"order": 4
+			},
+			{
+				"event": "socket.disconnect",
+				"order": 5
+			},
+			{
+				"event": "socket.disconnect.resolved",
+				"order": 6
+			},
+			{
+				"event": "sdk.destroyed",
+				"order": 7
+			}
+		],
+		"managerSubscribed": true
+	},
+	"invalidKey": {
+		"category": "authentication",
+		"rejected": true,
+		"statusCode": 401
+	},
+	"write": {
+		"attempted": false,
+		"eventObserved": false,
+		"readBackMatched": false,
+		"restoreReadBackMatched": false,
+		"restored": false
+	}
+}

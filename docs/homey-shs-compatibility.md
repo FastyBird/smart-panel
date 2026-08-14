@@ -1,6 +1,7 @@
 # Homey SHS Compatibility Record
 
-**Status:** In progress; safe inventory captured and realtime/error probes implemented, live error/realtime/write/recovery evidence pending
+**Status:** In progress; safe inventory and SDK session/cleanup evidence captured, live capability-event, write, error-matrix,
+reconnect, and recovery evidence pending
 
 **Started:** 2026-08-12
 
@@ -17,18 +18,18 @@ file. Live results use synthetic aliases and sanitized captures only.
 
 ## Current gate status
 
-| Area                                                  | Status                                           | Evidence still required                                                        |
-| ----------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------ |
-| Credential-safe read probe                            | Passed on SHS `13.4.0` over HTTP `4859`          | Repeat over HTTPS `4860` if enabled                                            |
-| System, zone, device inventory, and individual device | Captured and sanitized                           | Add lifecycle delta evidence on the disposable test device                     |
-| Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read     | Add allowlisted write and read-back evidence                                   |
-| Socket.IO events and reconnect                        | Probe implemented; live run pending              | Capture connect, subscribe, event, disconnect, restart, and reconnect ordering |
-| Allowlisted capability write                          | Hard-gated probe implemented, disabled           | Use only the designated harmless test capability                               |
-| Error classification                                  | Non-mutating probe implemented; live run pending | Verify invalid-key and missing-scope status behavior                           |
-| Disposable-device lifecycle                           | Contract defined, disabled                       | Use only the separately gated virtual/test device                              |
-| mDNS discovery                                        | Pending live access                              | Record stable service/TXT data or explicitly defer discovery                   |
-| SDK decision                                          | Provisional hold                                 | Complete live Socket.IO and cleanup/reconnect comparison                       |
-| Sanitized fixture corpus                              | Nine representative live fixtures promoted       | Add event/reconnect fixtures and missing capability families/classes           |
+| Area                                                  | Status                                         | Evidence still required                                                 |
+| ----------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------- |
+| Credential-safe read probe                            | Passed on SHS `13.4.0` over HTTP `4859`        | Repeat over HTTPS `4860` if enabled                                     |
+| System, zone, device inventory, and individual device | Captured and sanitized                         | Add lifecycle delta evidence on the disposable test device              |
+| Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read   | Add allowlisted write and read-back evidence                            |
+| Socket.IO events and reconnect                        | Connect/subscription/cleanup passed live       | Capture capability/availability events, restart, and reconnect ordering |
+| Allowlisted capability write                          | Hard-gated probe implemented, disabled         | Use only the designated harmless test capability                        |
+| Error classification                                  | SDK invalid key returned `401`; matrix pending | Verify missing-scope, bad-URL, unavailable, and timeout behavior        |
+| Disposable-device lifecycle                           | Contract defined, disabled                     | Use only the separately gated virtual/test device                       |
+| mDNS discovery                                        | Pending live access                            | Record stable service/TXT data or explicitly defer discovery            |
+| SDK decision                                          | Live session/cleanup passed; provisional hold  | Complete event, timeout, cleanup-failure, and reconnect comparison      |
+| Sanitized fixture corpus                              | Nine representative live fixtures promoted     | Add event/reconnect fixtures and missing capability families/classes    |
 
 ## Installation evidence
 
@@ -37,12 +38,13 @@ Complete this table after the live run. Values committed here must remain non-se
 | Field                                    | Recorded value                                                       |
 | ---------------------------------------- | -------------------------------------------------------------------- |
 | Capture date                             | `2026-08-13`                                                         |
+| Realtime SDK probe date                  | `2026-08-14`                                                         |
 | SHS version                              | `13.4.0`                                                             |
 | Container image tag and immutable digest | Pending                                                              |
 | Host operating system/architecture       | Pending                                                              |
 | Topology                                 | Pending; describe generically, for example `same LAN, separate host` |
 | Smart Panel to SHS network path          | Pending; do not record addresses                                     |
-| HTTP port `4859`                         | Confirmed for ping and authenticated system/zone/device reads        |
+| HTTP port `4859`                         | Confirmed for reads and the SDK Socket.IO session                    |
 | HTTPS port `4860`                        | Pending                                                              |
 | TLS certificate behavior                 | Pending                                                              |
 | Disposable capability alias              | Pending synthetic alias                                              |
@@ -133,6 +135,21 @@ mutation. Every SDK client, subscription, read, write, restoration, and disconne
 `FB_HOMEY_SHS_TIMEOUT_MS`. A failed or timed-out disconnect fails the probe and is never recorded as resolved, so no
 report can claim successful cleanup when the transport did not confirm it.
 
+The read-only live run on 2026-08-14 against SHS `13.4.0` and `homey-api` `3.19.2` recorded this sanitized order:
+
+1. SDK creation resolved;
+2. the Socket.IO connection opened;
+3. the devices manager subscription resolved;
+4. manager unsubscription resolved;
+5. the socket emitted disconnect;
+6. the explicit socket disconnect resolved; and
+7. the SDK client was destroyed.
+
+Cleanup completed and the write gate remained disabled. The same run proved that a generated invalid key was rejected
+with HTTP `401`. No capability or availability event occurred during the passive observation window, so this result
+does not close event-delivery, write-confirmation, restart, reconnect, timeout, or revoked-key evidence. The reviewed
+report is committed as `__fixtures__/evidence/2026-08-14-shs-13.4.0-sdk-session.json`.
+
 Manager reads and writes also receive the SDK-native `$timeout`; that timeout is registered before the probe's outer
 watchdog. A timed-out write therefore settles inside the SDK before restoration is emitted afterward on the same
 ordered Socket.IO transport. Capability-event matching opens only immediately before the allowlisted write and closes
@@ -215,7 +232,7 @@ Artifact snapshot inspected on 2026-08-12:
 | Runtime dependencies | `engine.io-client ^3.5.5`, `socket.io-client ^2.5.0`, `node-fetch ^2.6.7`, `form-data ^4.0.0`              |
 | Local entry point    | `HomeyAPI.createLocalAPI({ address, token })`                                                              |
 | HTTP behavior        | Bearer authentication and generated manager paths described above                                          |
-| Realtime behavior    | WebSocket-only Socket.IO client; live session/auth/subscription behavior not yet verified against SHS      |
+| Realtime behavior    | WebSocket-only Socket.IO; live connect, subscribe, unsubscribe, disconnect, and destroy order verified     |
 
 ### Provisional dependency decision
 
@@ -243,13 +260,13 @@ Fill this matrix using synthetic aliases only.
 | ----------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | HTTP `4859` ping and authenticated reads  | Pass                                | Read-only system, zone, and device requests completed without redirects                                                                              |
 | HTTPS `4860` ping and authenticated reads | Pending                             |                                                                                                                                                      |
-| Invalid key                               | Pending                             |                                                                                                                                                      |
+| Invalid key                               | Partial pass                        | The SDK local factory rejected a generated invalid key with HTTP `401`; revocation and the restricted-scope matrix remain pending                    |
 | Missing system/zone/device scope          | Pending                             |                                                                                                                                                      |
 | Bad URL and unavailable host              | Pending                             |                                                                                                                                                      |
 | Request timeout                           | Pending                             |                                                                                                                                                      |
 | Complete inventory and individual read    | Pass                                | Complete inventory captured: 118 devices and 16 zones; the selected individual-device response matched its pseudonymized inventory identity          |
 | Suffixed capability IDs                   | Pass in inventory and explicit read | 1,142 capability entries, including 170 suffixed entries; 55 devices repeat a base ID; an explicit suffixed capability GET returned a numeric scalar |
-| Socket.IO connect and subscribe           | Pending                             |                                                                                                                                                      |
+| Socket.IO connect and subscribe           | Pass                                | SDK creation, socket connect, manager subscribe/unsubscribe, socket disconnect, disconnect resolution, and SDK destruction completed in strict order |
 | Capability and availability events        | Pending                             |                                                                                                                                                      |
 | Allowlisted write, event, and read-back   | Pending                             |                                                                                                                                                      |
 | Network interruption and restoration      | Pending                             |                                                                                                                                                      |
