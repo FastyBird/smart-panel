@@ -445,6 +445,7 @@ interface BuddyRequestContext {
 	source: 'rest' | 'voice' | 'discord' | 'telegram' | 'whatsapp' | 'internal';
 	actorId?: string;
 	requestId: string;
+	idempotencyDigest: string;
 	authorization: {
 		decision: 'authenticated-user' | 'mapped-user' | 'allowlisted-platform' | 'unmapped-platform' | 'internal';
 		allowedAccessKinds: Array<'read' | 'write' | 'trigger'>;
@@ -464,18 +465,21 @@ policy decision rather than silently receiving elevated access.
 
 Each entry point preserves a validated client/event-stable inbound request ID. Both REST text and audio endpoints require
 a documented `Idempotency-Key` header; every first-party REST client generates one key per logical send and reuses it for
-every network retry. Validate a conservative length/character format before the handler, expose the header in Swagger, and
-bind it to source, actor, conversation, and a content hash (including the uploaded audio bytes/semantic request fields).
-Messaging adapters use their stable source-qualified platform event/message ID, and trusted internal callers supply a
-stable job/event ID. A server-generated per-attempt ID is allowed only for explicitly read-only internal work and cannot
-authorize an action-capable turn.
+every network retry. Validate a conservative length/character format before the handler and expose the header in Swagger.
+The text controller hashes the canonical request payload. The audio controller computes a cryptographic digest from the
+uploaded bytes plus stable semantic fields before transcription and passes it through
+`BuddyRequestContext.idempotencyDigest`; never recompute audio idempotency from transcription text, which may vary across
+attempts or collide for different recordings. Messaging adapters use their stable source-qualified platform event/message
+ID plus a payload digest, and trusted internal callers supply a stable job/event ID and digest. A server-generated
+per-attempt ID is allowed only for explicitly read-only internal work and cannot authorize an action-capable turn.
 
-The conversation boundary durably claims `(source, actorId, conversationId, requestId, requestContentHash)` before any
-action-capable provider call; an exact duplicate delivery resumes/returns the recorded request outcome, while reuse of
-the same request ID with different content returns a typed conflict and executes nothing. A tool execution carries the
-parent turn request ID and transcript-local tool-call ID separately, and derives its bounded correlation/audit
-`requestId` from both. Never replace the parent ID with `toolCall.id` alone: provider-local values such as `ollama-0` can
-repeat across turns.
+The conversation boundary uniquely claims `(source, actorId, conversationId, requestId)` before any action-capable
+provider call and stores the digest as bound data, not as part of the uniqueness key. It returns a stable
+`requestClaimId`. An existing claim with the same digest resumes/returns the recorded request outcome; the same key with a
+different text/audio digest returns a typed conflict and executes nothing. A tool execution carries the claim ID, parent
+turn request ID, and transcript-local tool-call ID separately, and derives its bounded correlation/audit `requestId` from
+the latter two. Never replace the parent ID with `toolCall.id` alone: provider-local values such as `ollama-0` can repeat
+across turns.
 
 The service must validate that `BuddyRequestContext.conversationId` matches the conversation being processed, then copy
 it into every Buddy tool execution context. Read tools register exposed short IDs under that scope; action providers
@@ -490,6 +494,7 @@ an unscoped hallucinated token must fail closed and prompt fresh discovery inste
 	source: 'buddy',
 	conversationId,
 	actorId,
+	requestClaimId,
 	parentRequestId: requestContext.requestId,
 	toolCallId: toolCall.id,
 	requestId: deriveScopedToolRequestId(requestContext.requestId, toolCall.id),
@@ -504,8 +509,9 @@ data are returned to the model as bounded errors, not thrown into an uncontrolle
 
 Before dispatch, normalize the validated canonical tool name, canonical target IDs, and action arguments into a stable
 `actionFingerprint`. Assign a deterministic occurrence slot for repeated identical actions in the same inbound request,
-then derive `actionExecutionId` from `source + conversationId + parentRequestId + actionFingerprint + occurrenceSlot`—
-never from the provider's tool-call ID. Atomically register or reuse this identity and durably associate every observed
+then derive `actionExecutionId` from `requestClaimId + actionFingerprint + occurrenceSlot`. Because the claim is scoped
+by stable actor identity, two actors may legitimately reuse the same client key without collision. Never derive the
+action identity from the provider's tool-call ID. Atomically register or reuse it and durably associate every observed
 provider call ID with it. A replay that receives a different OpenAI/Anthropic call ID therefore reuses the original
 operation/result instead of issuing a second physical action. Prefer an existing durable command or audit mechanism when
 it enforces uniqueness; otherwise add a minimal persistent execution ledger with a unique key, bounded result metadata,
@@ -912,6 +918,9 @@ bounded search without loading the full catalog.
       missing/invalid HTTP 400 response, and typed conflicting-reuse HTTP 409 response in Swagger. Update
       every first-party REST caller (admin, panel, voice, or other discovered consumer) to reuse the same key across
       retries, then run `pnpm run generate:openapi` instead of editing generated clients manually.
+- [ ] Compute the text payload digest in the controller and the audio digest from uploaded bytes/stable semantic fields
+      before transcription; pass the digest in `BuddyRequestContext` so idempotency never depends on nondeterministic STT
+      output. Hash incrementally for streamed/multipart uploads and do not persist raw audio solely for idempotency.
 - [ ] Derive messaging/internal request IDs from stable source event/job IDs; never use a per-attempt generated ID for an
       action-capable request.
 - [ ] Carry an explicit entry-point authorization decision separately from actor attribution. Keep unmapped messaging
@@ -919,10 +928,11 @@ bounded search without loading the full catalog.
       write/trigger only through authenticated Smart Panel mapping or an explicit action-capable allowlist/role.
 - [ ] Preserve the parent entry-point request ID plus the tool-call ID and derive a bounded unique tool-correlation/audit
       request ID from both; never use a provider-local tool-call ID alone or use it as the action idempotency key.
-- [ ] Durably claim the stable inbound request ID/content hash, then derive action identity independently of provider call
-      IDs from the parent request, canonical action fingerprint, and deterministic occurrence slot. Atomically register
-      it before dispatch, associate call IDs only as audit links, and coalesce concurrent/replayed calls. Reuse an
-      existing durable idempotency authority or add a bounded persistent ledger if none spans retries/restarts.
+- [ ] Durably claim the unique `(source, actor, conversation, request ID)` key and store/compare its payload digest as
+      bound data. Derive action identity from the resulting actor-qualified claim ID, canonical action fingerprint, and
+      deterministic occurrence slot—independently of provider call IDs. Atomically register it before dispatch,
+      associate call IDs only as audit links, and coalesce concurrent/replayed calls. Reuse an existing durable
+      idempotency authority or add a bounded persistent ledger if none spans retries/restarts.
 - [ ] Distinguish action timeouts before dispatch/confirmed cancellation from post-dispatch uncertainty. Return
       `INDETERMINATE` for non-cancellable unknown outcomes, reconcile late completion, and prohibit automatic retries or
       success/failure claims for that identity.
@@ -932,9 +942,11 @@ bounded search without loading the full catalog.
 
 **Tests:** Provider adapter contract tests, including a two-iteration OpenAI Codex Responses payload with matching
 `function_call`/`function_call_output.call_id`; REST text/audio required-header validation; generated client header
-support; client-timeout retry after restart with the same key; conflicting content/audio hash returning the documented
-error with zero execution; REST/voice/Discord/Telegram/WhatsApp conversation/identity/access propagation; rejection of a
-mismatched request-context conversation ID; unmapped platform users under empty/allow-all admission remain read-only;
+support; client-timeout retry after restart with the same key; identical uploaded audio with different mocked STT output
+reusing one claim; different audio with identical mocked transcription returning HTTP 409 and zero execution; text digest
+conflict behavior; two actors in one conversation legitimately using the same key/action without ledger collision;
+REST/voice/Discord/Telegram/WhatsApp conversation/identity/access propagation; rejection of a mismatched request-context
+conversation ID; unmapped platform users under empty/allow-all admission remain read-only;
 mapped/explicitly action-allowlisted users receive only their authorized access kinds; parent request ID preservation and
 uniqueness when `ollama-0` repeats across turns; parallel call ordering; malformed arguments; unknown tools; denied
 access; partial results; read timeouts; action timeout before dispatch; confirmed cancellation; a hanging non-cancellable
