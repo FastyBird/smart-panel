@@ -291,13 +291,17 @@ domains back into Tools would create a circular module graph.
 
 ### 5.2 Required query operations
 
-The internal API names can be refined during implementation, but the capabilities and bounds are required:
+The internal API names can be refined during implementation, but the capabilities and bounds are required. The values
+below are Buddy's conversational defaults and hard caps. Existing MCP operations select a trusted compatibility limit
+profile at the adapter boundary: in particular, both whole-home and space-scoped `get_home_context` calls retain the
+current 100-device cap. A shared service may accept a named internal limit profile, but a model or protocol client must
+never be able to raise a limit directly.
 
-| Operation | Required filters | Default / hard bound | Result |
+| Operation | Required filters | Buddy default / hard bound | Result |
 | --- | --- | --- | --- |
 | `searchHome` | query, kinds, space, category, role, capability | 10 / 20 matches | Ranked typed entities with canonical IDs and reasons |
 | `getDeviceStates` | canonical device IDs, include fields | 1 / 10 devices | Bounded channels/properties and current values |
-| `getSpaceSnapshot` | one space ID, categories/capabilities | 20 / 50 matches | Compact scoped state plus truncation |
+| `getSpaceSnapshot` | one space ID, categories/capabilities | 20 / 50 devices; MCP compatibility profile: 100 devices | Compact scoped state plus truncation |
 | `queryHomeState` | spaces, categories, roles, capabilities, online/value predicates | 20 / 50 matches | Safe filtered rows and/or aggregate |
 | `getPropertyTimeseries` | property ID, from/to, aggregation, point limit | 100 / 500 points, max 14 days | Series, unit, source, truncation |
 | `getEnergySummary` | optional space and period | max 31 days | Consumption/production/current power with units |
@@ -306,7 +310,8 @@ The internal API names can be refined during implementation, but the capabilitie
 | `searchActionTargets` | query, space, action kind, capability | 10 / 20 matches | Writable properties, scenes, or supported intents |
 
 No operation accepts arbitrary SQL, arbitrary property paths, unbounded `include` trees, or client-selected limits above
-the hard cap.
+its caller profile's hard cap. Phase 1 must preserve the other existing MCP space, scene, channel, property, security,
+forecast, timeseries, and energy caps as well as its truncation semantics.
 
 ### 5.3 Database-bounded discovery
 
