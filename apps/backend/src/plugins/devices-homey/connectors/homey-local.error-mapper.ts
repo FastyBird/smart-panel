@@ -58,14 +58,11 @@ export const classifyHomeyLocalTransportError = (error: unknown): HomeyConnector
 
 	const code = stringCode(error);
 
-	if (code !== null && ['ABORTERROR', 'ETIMEDOUT', 'TIMEOUTERROR'].includes(code)) {
+	if (code !== null && ['ABORTERROR', 'ECONNABORTED', 'ETIMEDOUT', 'TIMEOUTERROR'].includes(code)) {
 		return HomeyConnectorErrorCategory.TIMEOUT;
 	}
 
-	if (
-		code !== null &&
-		['ECONNABORTED', 'ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH', 'ENOTFOUND'].includes(code)
-	) {
+	if (code !== null && ['ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH', 'ENOTFOUND'].includes(code)) {
 		return HomeyConnectorErrorCategory.UNAVAILABLE;
 	}
 

@@ -22,6 +22,8 @@ import { HomeyLocalTransport, HomeyLocalTransportUnsubscribe } from './homey-loc
 interface HomeyLocalSubscription {
 	active: boolean;
 	cleanup: HomeyLocalTransportUnsubscribe;
+	cleanupNeeded: boolean;
+	cleanupPromise: Promise<void> | null;
 }
 
 /**
@@ -109,6 +111,8 @@ export class HomeyLocalConnector implements HomeyConnector {
 		const subscription: HomeyLocalSubscription = {
 			active: true,
 			cleanup: () => undefined,
+			cleanupNeeded: false,
+			cleanupPromise: null,
 		};
 
 		try {
@@ -123,6 +127,8 @@ export class HomeyLocalConnector implements HomeyConnector {
 					// Malformed upstream events and consumer failures cannot stop sibling subscribers.
 				}
 			});
+			subscription.cleanupNeeded = true;
+			this.subscriptions.add(subscription);
 		} catch (error) {
 			subscription.active = false;
 			throw mapHomeyLocalTransportError(error, HomeyConnectorOperation.SUBSCRIBE);
@@ -140,15 +146,12 @@ export class HomeyLocalConnector implements HomeyConnector {
 			throw new HomeyConnectorError(HomeyConnectorErrorCategory.UNAVAILABLE, HomeyConnectorOperation.SUBSCRIBE);
 		}
 
-		this.subscriptions.add(subscription);
-
 		return async () => {
-			if (!subscription.active) {
+			if (!subscription.cleanupNeeded) {
 				return;
 			}
 
 			subscription.active = false;
-			this.subscriptions.delete(subscription);
 
 			try {
 				await this.cleanupSubscription(subscription);
@@ -197,7 +200,6 @@ export class HomeyLocalConnector implements HomeyConnector {
 		const subscriptions = [...this.subscriptions];
 		this.connected = false;
 		this.connectionGeneration += 1;
-		this.subscriptions.clear();
 		for (const subscription of subscriptions) {
 			subscription.active = false;
 		}
@@ -220,6 +222,12 @@ export class HomeyLocalConnector implements HomeyConnector {
 			try {
 				await this.transport.disconnect();
 				this.transportCleanupNeeded = false;
+
+				for (const subscription of this.subscriptions) {
+					subscription.cleanupNeeded = false;
+				}
+
+				this.subscriptions.clear();
 			} catch (error) {
 				this.transportCleanupNeeded = true;
 
@@ -251,7 +259,27 @@ export class HomeyLocalConnector implements HomeyConnector {
 	}
 
 	private async cleanupSubscription(subscription: HomeyLocalSubscription): Promise<void> {
+		if (!subscription.cleanupNeeded) {
+			return;
+		}
+
+		if (subscription.cleanupPromise !== null) {
+			return subscription.cleanupPromise;
+		}
+
+		subscription.cleanupPromise = this.performSubscriptionCleanup(subscription);
+
+		try {
+			await subscription.cleanupPromise;
+		} finally {
+			subscription.cleanupPromise = null;
+		}
+	}
+
+	private async performSubscriptionCleanup(subscription: HomeyLocalSubscription): Promise<void> {
 		await subscription.cleanup();
+		subscription.cleanupNeeded = false;
+		this.subscriptions.delete(subscription);
 	}
 
 	private assertConnected(operation: HomeyConnectorOperation): void {

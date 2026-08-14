@@ -137,6 +137,7 @@ class FakeHomeyLocalTransport implements HomeyLocalTransport {
 	private transportConnectCount = 0;
 	private transportDisconnectCount = 0;
 	private connectGate: Promise<void> | null = null;
+	private unsubscribeFailure: Error | null = null;
 
 	get writes(): readonly CapabilityWrite[] {
 		return this.capabilityWrites;
@@ -156,6 +157,10 @@ class FakeHomeyLocalTransport implements HomeyLocalTransport {
 
 	failNext(operation: HomeyConnectorOperation, category: HomeyConnectorErrorCategory): void {
 		this.failures.set(operation, category);
+	}
+
+	failNextUnsubscribe(): void {
+		this.unsubscribeFailure = Object.assign(new Error('sentinel-secret'), { code: 'ECONNRESET' });
 	}
 
 	deferNextConnect(): () => void {
@@ -242,14 +247,22 @@ class FakeHomeyLocalTransport implements HomeyLocalTransport {
 			this.listeners.add(listener);
 			let active = true;
 
-			return () => {
-				if (!active) {
-					return;
-				}
+			return () =>
+				this.execute(() => {
+					if (!active) {
+						return;
+					}
 
-				active = false;
-				this.listeners.delete(listener);
-			};
+					const failure = this.unsubscribeFailure;
+					this.unsubscribeFailure = null;
+
+					if (failure !== null) {
+						throw failure;
+					}
+
+					active = false;
+					this.listeners.delete(listener);
+				});
 		});
 	}
 
@@ -318,6 +331,28 @@ describeHomeyConnectorContract('Local', (): HomeyConnectorContractHarness => {
 });
 
 describe('Homey local connector lifecycle serialization', () => {
+	it('keeps failed subscription cleanup retryable while suppressing further delivery', async () => {
+		const transport = new FakeHomeyLocalTransport();
+		const connector = new HomeyLocalConnector(transport);
+		const listener = jest.fn();
+
+		await connector.connect();
+		const unsubscribe = await connector.subscribe(listener);
+		transport.failNextUnsubscribe();
+
+		await expect(unsubscribe()).rejects.toMatchObject({
+			category: HomeyConnectorErrorCategory.UNAVAILABLE,
+			operation: HomeyConnectorOperation.SUBSCRIBE,
+		});
+		expect(transport.subscriberCount).toBe(1);
+		await transport.emit(contractFixtures.events[0]);
+		expect(listener).not.toHaveBeenCalled();
+
+		await expect(unsubscribe()).resolves.toBeUndefined();
+		expect(transport.subscriberCount).toBe(0);
+		await connector.disconnect();
+	});
+
 	it('honors connect, disconnect, connect call order while the first connection is pending', async () => {
 		const transport = new FakeHomeyLocalTransport();
 		const connector = new HomeyLocalConnector(transport);
