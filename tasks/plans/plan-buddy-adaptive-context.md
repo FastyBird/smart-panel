@@ -97,6 +97,8 @@ flowchart LR
     F --> Q
     Q --> D["Domain services and bounded database queries"]
     L --> A["Existing write and trigger tools"]
+    F -->|"validated exact action"| H["Deterministic action handoff"]
+    H --> A
     F --> R["Retrieved context sections"]
     R --> LLM["LLM provider"]
     A --> D
@@ -107,7 +109,8 @@ The same typed query services support two access styles:
 
 1. **Model-driven retrieval:** A reliable tool-capable model starts with a small prompt and calls bounded read tools.
 2. **Application-driven retrieval:** A deterministic planner classifies the message and prefetches bounded results for
-   providers or selected models that cannot be trusted to call tools.
+   providers or selected models that cannot be trusted to call tools. A separate deterministic handoff can turn only a
+   high-confidence, fully resolved user command into the same validated action-provider call.
 
 Both paths use the same filters, authorization-independent visibility rules, result schemas, freshness semantics,
 limits, and truncation metadata.
@@ -237,9 +240,9 @@ The planner is multi-label: one message may require several domains and both rea
 | Contextual current state | “Is it too warm in here?” | Conversation space plus temperature/humidity capabilities | Use current space; ask which space if none can be inferred |
 | Global aggregate | “Are any windows open?” | Structured category/value aggregate | Return count and bounded matches, not all devices |
 | Target discovery | “Which lights can I dim?” | Capability-filtered search | Return bounded candidates and truncation notice |
-| Exact device control | “Set kitchen light to 40%” | Target search/current constraints, then existing write tool | Validate target/value and report actual result |
+| Exact device control | “Set kitchen light to 40%” | Target search/current constraints, then existing write tool or deterministic handoff | Validate target/value and report actual result |
 | Ambiguous control | “Turn on the lamp” with several lamps | Ranked candidates only | Ask for clarification; do not choose silently |
-| Scene or intent trigger | “Start movie night” | Targeted scene/trigger search | Run only an unambiguous enabled target |
+| Scene or intent trigger | “Start movie night” | Targeted search, then model tool or deterministic handoff | Run only an unambiguous enabled target |
 | Weather | “Will it rain tomorrow?” | Bounded weather query | Use configured provider state; explain unavailability |
 | Energy | “How much power did we use today?” | Bounded energy summary | Return period/unit/source with partial metadata |
 | Security | “Is the house secure?” | Security status and bounded active alerts | Avoid exposing secrets; distinguish unavailable from secure |
@@ -257,8 +260,8 @@ Rules:
 - `conversation.spaceId` is a default scope and ranking hint, not an authorization boundary. An explicit whole-home or
   other-space request may broaden retrieval; an unscoped phrase such as “in here” prefers the conversation space.
 - Negation, units, ranges, temporal phrases, room names, and recent references must be retained in the plan.
-- The planner must not execute actions. It selects reads and tool availability; existing action tools perform validated
-  writes/triggers.
+- The planner must not execute actions. It selects reads, tool availability, or the deterministic-handoff strategy;
+  existing action providers still perform every validated write/trigger.
 
 ---
 
@@ -531,7 +534,7 @@ interface BuddyContextPlan {
 	queries: HomeContextQuery[];
 	toolNames: string[];
 	ambiguityRisk: 'none' | 'read' | 'action';
-	strategy: 'no-home-context' | 'model-tools' | 'prefetch' | 'clarify';
+	strategy: 'no-home-context' | 'model-tools' | 'prefetch' | 'deterministic-action' | 'clarify';
 }
 ```
 
@@ -549,9 +552,19 @@ For a provider/model without reliable tools:
   await against the deadline, discard late results, and continue with explicit timed-out/partial metadata. Bound
   concurrency so ignored late work cannot grow without limit.
 - Render typed results as compact structured sections with clear data delimiters.
-- Offer no action tool to a text-only provider. If current product behavior parses text into actions elsewhere, that
-  path remains outside this plan and must preserve existing validation.
-- For an ambiguous action, ask a deterministic clarification question with bounded candidates.
+- A `limited` model may receive the minimal safe read-tool set only when its adapter passes the capability contract; do
+  not rely on an unreliable model to issue a physical action call. A truly text-only provider receives no tool schema.
+- Route write/trigger messages through `BuddyDeterministicActionHandoffService`, not through model prose. The handoff
+  parses an allowlisted local command grammar from the original user message or a structured clarification selection,
+  runs bounded `searchActionTargets`, and creates a canonical action call only when action kind, target, value/constraints,
+  authorization, and ambiguity checks are all exact. It invokes the same registry/action provider, action-execution
+  identity, timeout, and indeterminate-outcome path as a reliable model tool call; it never writes to a domain directly.
+- Never parse the LLM's generated text into a side effect. Unsupported grammar, unresolved pronouns, unsafe/invalid
+  values, multiple targets, or compound conditions outside the allowlisted deterministic operators produce bounded
+  clarification/reformulation options. A clarification stores only a scoped, expiring action draft/candidate set and
+  revalidates fresh target state and authorization before execution.
+- Feed the structured action outcome into the final bounded provider context for wording, or emit a deterministic local
+  success/partial/indeterminate response if the provider is unavailable. Do not let the model alter the recorded status.
 - For a compound query that exceeds the safe prefetch capability, answer the supported portion and ask a focused
   follow-up rather than injecting the full home.
 
@@ -699,7 +712,7 @@ Requirements:
 
 Record bounded metadata for each turn and provider iteration:
 
-- Context strategy: no-home-context, model-tools, prefetch, or clarification
+- Context strategy: no-home-context, model-tools, prefetch, deterministic-action, or clarification
 - Planner domains/intent and selected tool names
 - Estimated total input, output reserve, actual provider input/output tokens, and estimation error when actuals exist
 - Counts of history turns, summary bytes/tokens, references, retrieved entities, and truncated results
@@ -751,6 +764,7 @@ apps/backend/src/modules/buddy/
 ├── services/
 │   ├── buddy-context-planner.service.ts
 │   ├── buddy-context-renderer.service.ts
+│   ├── buddy-deterministic-action-handoff.service.ts
 │   ├── buddy-conversation-memory.service.ts
 │   ├── buddy-conversation.service.ts
 │   ├── buddy-request-budget.service.ts
@@ -932,8 +946,9 @@ action/result status. The production conversation-path removal is intentionally 
 - `apps/backend/src/modules/buddy/services/buddy-context-planner.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-context-prefetch.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-context-renderer.service.ts`
+- `apps/backend/src/modules/buddy/services/buddy-deterministic-action-handoff.service.ts`
 - Shared home-context/domain query contracts where deadline/`AbortSignal` propagation is supported
-- Planner/renderer specs
+- Planner/prefetch/handoff/renderer specs
 
 **Tasks:**
 
@@ -942,17 +957,25 @@ action/result status. The production conversation-path removal is intentionally 
       per-query timeouts, bounded concurrency, cancellation propagation where supported, and late-result disposal.
 - [ ] Render compact typed sections with untrusted-data delimiters and explicit partial/truncated states.
 - [ ] Add ambiguity detection and deterministic clarification candidates for risky actions.
+- [ ] Implement the deterministic action handoff for tool-less/limited providers using an allowlisted command grammar,
+      bounded target discovery, scoped expiring clarification drafts, fresh validation, and the same registry/action
+      providers and execution ledger as reliable model tool calls. It must never execute from generated LLM prose.
 - [ ] Add safe unknown/low-confidence behavior that never falls back to the full snapshot.
 - [ ] Select only domain-relevant read and action tool schemas.
 
 **Tests:** Every message class, compound queries, negation, units, temporal ranges, missing/current space, ambiguous names,
 recent references, unsupported requests, tool-less/limited provider strategies, a weather provider that never resolves,
 partial completion before the aggregate deadline, ignored cancellation, and proof that timed-out prefetch still produces
-a bounded partial/unavailable response without calling the eager snapshot.
+a bounded partial/unavailable response without calling the eager snapshot. For both `limited` and `unsupported` models,
+test exact device writes, numeric/range validation, scene/intent triggers, ambiguous targets, clarification follow-ups,
+expired drafts, changed/deleted targets, denied authorization, unsupported/compound grammar, injection attempts in names,
+provider failure after action, and indeterminate/replay outcomes; assert every side effect passes through the existing
+validated action provider exactly once and none originates from LLM output.
 
 **Gate:** A tool-less small-context model receives bounded relevant context for all supported read classes, greetings
 load no home state, and a hanging optional-domain provider cannot hold the response beyond the configured prefetch
-deadline.
+deadline. The same model can complete an exact authorized device control and scene/intent trigger through the
+deterministic handoff after any required clarification, while ambiguous or unsupported commands execute nothing.
 
 ### Phase 5 — Complete request budget manager and provider capabilities
 
@@ -1035,7 +1058,8 @@ message history.
 **Tasks:**
 
 - [ ] Remove `BuddyContextService.buildContext()` from the interactive conversation path.
-- [ ] Integrate planner, budget manager, memory, selected tools, prefetch, and structured tool loop.
+- [ ] Integrate planner, budget manager, memory, selected tools, prefetch, deterministic action handoff, and structured
+      tool loop.
 - [ ] Keep `BuddyContextService` and its cache listener for heartbeat/evaluators.
 - [ ] Add an internal rollout switch only among bounded strategies such as prefetch-only, model-tools, and hybrid; every
       selectable mode must use `HomeContextQueryService` bounds and the complete-request budget.
@@ -1141,10 +1165,12 @@ designated safe targets and reversible values. Scale/shadow evaluation must neve
 ### Required acceptance criteria
 
 - [ ] Buddy conversations no longer eagerly build or serialize the full installation context.
-- [ ] Buddy supports every message class in Section 4 through model tools, bounded prefetch, or explicit clarification.
+- [ ] Buddy supports every message class in Section 4 through reliable model tools, bounded prefetch, deterministic
+      validated action handoff, or explicit clarification/reformulation.
 - [ ] Context size for scoped queries remains effectively constant as unrelated devices are added.
 - [ ] Tool-capable providers receive native structured read results, including data and call IDs.
-- [ ] Tool-less/limited providers receive deterministic bounded prefetched context.
+- [ ] Tool-less/limited providers receive deterministic bounded prefetched context and can complete exact authorized
+      control/trigger commands through the non-LLM action handoff; ambiguous or unsupported commands execute nothing.
 - [ ] Complete provider requests are budgeted, including schemas, history, tool results, and output reserve.
 - [ ] Long conversations use token-aware history plus persisted bounded summary/reference memory.
 - [ ] Ambiguous actions never silently select a candidate.
