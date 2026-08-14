@@ -299,13 +299,21 @@ describe('BuddyConversationService', () => {
 					spaceId: conversationSpaceId,
 				});
 				messageRepo.find.mockResolvedValue(
-					priorTurns.map(({ role, content }) => ({ role: role as MessageRole, content })),
+					[...priorTurns].reverse().map(({ role, content }) => ({ role: role as MessageRole, content })),
 				);
 
 				await service.sendMessage('conv-1', message);
 
 				expect(contextService.buildContext).toHaveBeenCalledTimes(1);
 				expect(contextService.buildContext).toHaveBeenCalledWith(conversationSpaceId ?? undefined);
+				const providerMessages = llmProvider.sendMessage.mock.calls[0][1] as Array<{
+					role: MessageRole;
+					content: string;
+				}>;
+
+				expect(providerMessages.slice(0, priorTurns.length)).toEqual(
+					priorTurns.map(({ role, content }) => ({ role, content })),
+				);
 			},
 		);
 
