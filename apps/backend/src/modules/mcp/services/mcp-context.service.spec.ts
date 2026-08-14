@@ -618,12 +618,12 @@ describe('McpContextService', () => {
 		expect(result.alerts_truncated).toBe(true);
 	});
 
-	it('maps current values only for a requested visible device', async () => {
+	it('maps current values for a requested disabled-but-visible device', async () => {
 		devices.findVisibleSummaryById.mockResolvedValue({
 			id: 'device-id',
 			name: 'Lamp',
 			category: 'lighting',
-			enabled: true,
+			enabled: false,
 			hidden: false,
 			roomId: 'room-id',
 			zoneIds: [],
@@ -659,6 +659,7 @@ describe('McpContextService', () => {
 		expect(result).toEqual(
 			expect.objectContaining({
 				id: 'device-id',
+				enabled: false,
 				channels_truncated: true,
 				channels: [
 					expect.objectContaining({

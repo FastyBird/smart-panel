@@ -348,8 +348,8 @@ describe('DevicesService', () => {
 			expect(result.devices[0].zoneIds).toEqual(['selected-zone', 'other-zone']);
 		});
 
-		it('loads one visible device without channel relations', async () => {
-			const visibleDevice = toInstance(MockDevice, { ...mockDevice, hidden: false });
+		it('loads one disabled-but-visible device without channel relations', async () => {
+			const visibleDevice = toInstance(MockDevice, { ...mockDevice, enabled: false, hidden: false });
 			const queryBuilderMock: any = {
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
@@ -359,9 +359,13 @@ describe('DevicesService', () => {
 			};
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
-			await expect(service.findVisibleSummaryById(mockDevice.id)).resolves.toEqual(visibleDevice);
+			await expect(service.findVisibleSummaryById(mockDevice.id)).resolves.toEqual(
+				expect.objectContaining({ id: visibleDevice.id, enabled: false, hidden: false }),
+			);
 			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledTimes(1);
 			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('device.deviceZones', 'deviceZones');
+			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('device.hidden = :hidden', { hidden: false });
+			expect(queryBuilderMock.andWhere).not.toHaveBeenCalledWith(expect.stringContaining('enabled'), expect.anything());
 			expect(queryBuilderMock.callListeners).toHaveBeenCalledWith(false);
 		});
 	});

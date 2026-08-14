@@ -256,6 +256,41 @@ describe('McpTargetDiscoveryToolService', () => {
 		expect(data.truncated).toBe(false);
 	});
 
+	it('returns all 100 actionable writable properties without marking the discovery result as truncated', async () => {
+		const targets = writableProperties(100);
+		channelsPropertiesService.findWritableCandidates.mockResolvedValue({
+			properties: targets,
+			total: 100,
+		});
+		service.register(server(), authInfo([McpCapability.WRITE]));
+
+		const result = await callbacks.get('list_writable_properties')?.({}, requestContext([McpCapability.WRITE]));
+		const data = result?.structuredContent.data as { properties: Array<{ property_id: string }>; truncated: boolean };
+
+		expect(data.properties).toHaveLength(100);
+		expect(data.properties[0]?.property_id).toBe(targets[0]?.id);
+		expect(data.properties[99]?.property_id).toBe(targets[99]?.id);
+		expect(data.truncated).toBe(false);
+	});
+
+	it('returns only 100 of 101 actionable writable properties and marks the discovery result as truncated', async () => {
+		const targets = writableProperties(101);
+		channelsPropertiesService.findWritableCandidates.mockResolvedValue({
+			properties: targets,
+			total: 101,
+		});
+		service.register(server(), authInfo([McpCapability.WRITE]));
+
+		const result = await callbacks.get('list_writable_properties')?.({}, requestContext([McpCapability.WRITE]));
+		const data = result?.structuredContent.data as { properties: Array<{ property_id: string }>; truncated: boolean };
+
+		expect(data.properties).toHaveLength(100);
+		expect(data.properties[0]?.property_id).toBe(targets[0]?.id);
+		expect(data.properties[99]?.property_id).toBe(targets[99]?.id);
+		expect(data.properties).not.toContainEqual(expect.objectContaining({ property_id: targets[100]?.id }));
+		expect(data.truncated).toBe(true);
+	});
+
 	it('omits space targets and the lighting tool when the optional provider is absent', async () => {
 		providerTools = [providerTool('run_scene', ToolAccessKind.TRIGGER)];
 		service.register(server(), authInfo([McpCapability.TRIGGER]));
@@ -540,6 +575,12 @@ describe('McpTargetDiscoveryToolService', () => {
 				},
 			},
 		} as unknown as ChannelPropertyEntity;
+	}
+
+	function writableProperties(count: number): ChannelPropertyEntity[] {
+		return Array.from({ length: count }, (_, index) =>
+			property(`10000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`, PermissionType.READ_WRITE),
+		);
 	}
 
 	function deviceId(target: ChannelPropertyEntity): string {
