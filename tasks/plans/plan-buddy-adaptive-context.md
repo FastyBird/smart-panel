@@ -569,11 +569,21 @@ singleton durable module reset epoch and fences new/leased work so an in-process
 cleared tables. In the same durable module-state row, store per-source reset freshness guards: reset time plus the highest
 authoritative platform cursor/order key observed where the source provides one. Claims capture the reset epoch, and every
 claim/action/outbound persistence CAS verifies it still matches.
-The reset then clears outbound deliveries, uncertainty fences/action executions, claim-linked messages, request claims,
-messaging bindings, conversation memory/conversations, and suggestions in foreign-key-safe dependency order, and clears
-related in-memory single-flight/mapping caches. Reset must remove opaque scopes, digests, outcomes, leases, and stale
-conflict state. If already-dispatched external work cannot be cancelled authoritatively, fence/drop its late persistence
-callback; the reset cannot promise to undo a physical action that already began.
+Before purging, the reset attempts authoritative cancellation/reconciliation of dispatched actions. For every execution
+that remains `ACTION_DISPATCHING`, `ACTION_DISPATCHED`, or `INDETERMINATE`, atomically promote only its canonical conflict
+keys, opaque execution/reconciliation handle, status, and timestamps into epoch-qualified reset-action fences in the
+minimal normalized `BuddyResetActionFenceEntity` table. The reset then clears outbound deliveries, ordinary uncertainty
+fences/action executions,
+claim-linked messages, request claims, messaging bindings, conversation memory/conversations, and suggestions in
+foreign-key-safe dependency order, and clears related in-memory single-flight/mapping caches. It removes opaque user
+scopes, payload/outcome data, leases, and terminal/stale conflict state while retaining these minimal active safety
+fences.
+
+Every post-reset action provider checks both ordinary and reset-action fences immediately before dispatch. Conflicting
+actions remain blocked until the old external action is authoritatively completed or cancelled; unrelated targets remain
+available. A narrowly scoped late callback/reconciler may update or clear only its matching reset-action fence despite the
+old epoch and cannot recreate claims, messages, bindings, or outcomes. The reset cannot promise to undo a physical action
+that already began, and it must report the count of retained safety fences to operators.
 
 Before creating a post-reset messaging binding or claim, each adapter must prove the delivery is newer than its retained
 source guard using a provider-authenticated monotonic cursor/order key or trustworthy event timestamp (for example the
@@ -972,8 +982,9 @@ apps/backend/src/modules/buddy/
 │   ├── buddy-conversation.entity.ts
 │   ├── buddy-message.entity.ts
 │   ├── buddy-messaging-conversation-binding.entity.ts
-│   ├── buddy-module-state.entity.ts          # singleton reset epoch/fence
+│   ├── buddy-module-state.entity.ts          # singleton reset epoch and delivery guards
 │   ├── buddy-outbound-delivery.entity.ts
+│   ├── buddy-reset-action-fence.entity.ts    # survives reset only while external action is unresolved
 │   └── buddy-request-claim.entity.ts
 ├── platforms/
 │   └── llm-provider.platform.ts
@@ -1012,6 +1023,7 @@ apps/backend/src/migrations/
 ├── <next-timestamp>-AddBuddyModuleState.ts
 ├── <next-timestamp>-AddBuddyOutboundDeliveries.ts
 ├── <next-timestamp>-AddBuddyRequestClaims.ts
+├── <next-timestamp>-AddBuddyResetActionFences.ts
 └── <next-timestamp>-AddBuddyConversationMemory.ts
 ```
 
@@ -1113,6 +1125,7 @@ snapshots are produced through the shared query layer without making that eager 
 - `apps/backend/src/modules/buddy/entities/buddy-messaging-conversation-binding.entity.ts`
 - `apps/backend/src/modules/buddy/entities/buddy-module-state.entity.ts`
 - `apps/backend/src/modules/buddy/entities/buddy-outbound-delivery.entity.ts`
+- `apps/backend/src/modules/buddy/entities/buddy-reset-action-fence.entity.ts`
 - `apps/backend/src/modules/buddy/entities/buddy-request-claim.entity.ts`
 - `apps/backend/src/modules/buddy/services/buddy-conversation.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-conversation-turn-coordinator.service.ts`
@@ -1127,6 +1140,7 @@ snapshots are produced through the shared query layer without making that eager 
 - Buddy Discord, Telegram, and WhatsApp adapters and their specs
 - New incremental migration for the persistent messaging-conversation binding
 - New incremental migration for the singleton Buddy module reset epoch/fence
+- New incremental migration for minimal epoch-qualified reset-action fences
 - New incremental migration for durable outbound-delivery state
 - New incremental migration for the durable Buddy request-claim table, conversation sequence/lease fields, and indexes
 - Existing command/scene/intent idempotency persistence, or a minimal Buddy action-execution ledger entity/service and
@@ -1166,9 +1180,14 @@ snapshots are produced through the shared query layer without making that eager 
       cascading claims, fence active workers transactionally, replay retained delivery claims before resolving the active
       binding, and reject stale post-retention deliveries instead of executing them as new.
 - [ ] Extend `BuddyModuleResetService` with a durable reset epoch that fences active/late workers, then explicitly clear
-      every new binding, outbound, claim, action/fence, message, memory/conversation, suggestion, and process-cache record
-      in dependency order. Preserve only the incremented epoch and source reset cutoffs/high-water marks needed to reject
-      pre-reset callbacks and newly redelivered old platform events.
+      every new binding, outbound, claim, ordinary action/fence, message, memory/conversation, suggestion, and process
+      cache in dependency order. Before clearing action rows, cancel/reconcile or promote every unresolved dispatched
+      action's minimal canonical conflict/reconciliation data into epoch-qualified reset-action fences. Preserve only
+      those active fences plus the incremented epoch and source reset cutoffs/high-water marks needed to reject pre-reset
+      callbacks and newly redelivered old platform events.
+- [ ] Make every post-reset action provider check reset-action fences. Permit only matching authoritative reconciliation
+      callbacks to clear them without recreating purged rows; report retained-fence counts and keep conflicting actions
+      blocked while unrelated targets remain available.
 - [ ] Add a source-specific messaging delivery-freshness contract. Before binding/claim creation, require an authenticated
       cursor/order key or trustworthy timestamp newer than the reset guard; reject old or unverifiable deliveries
       provider-free, without model, persistence, action, or outbound reply.
@@ -1254,7 +1273,10 @@ an old-event replay returns its retained outcome without recreating the deleted 
 deletion racing `MODEL_IN_FLIGHT`, `ACTION_PLANNED`, and uncertain dispatch; expired/stale delivery rejection after the
 documented retention window;
 factory reset with populated bindings/outbound rows/claims/action ledgers/uncertainty fences/messages/memory/suggestions,
-including an active worker and late callback, leaving only the advanced reset epoch/source guards; for each messaging
+including an already-dispatched non-cancellable action: reset promotes its minimal conflict keys, a post-reset conflicting
+action executes zero times until authoritative late reconciliation clears the reset fence, an unrelated action proceeds,
+and restart preserves the fence; other active/late workers cannot recreate purged rows; reset leaves only the advanced
+epoch/source guards and active reset-action fences; for each messaging
 adapter, redelivery of a pre-reset action event and an event with unverifiable freshness producing zero model calls,
 outbound sends, messages, or actions, while a provably fresh event creates a clean post-reset turn;
 REST/voice/Discord/Telegram/WhatsApp conversation/identity/access propagation; rejection of a mismatched request-context
@@ -1581,9 +1603,10 @@ designated safe targets and reversible values. Scale/shadow evaluation must neve
       next valid turn can complete.
 - [ ] Queued/recovered writes and triggers intersect their admission snapshot with fresh authorization/principal state;
       revoked or remapped identities execute nothing.
-- [ ] Buddy factory reset removes all new durable replay, delivery, claim, action/fence, and memory data and prevents
-      pre-reset workers, callbacks, or redelivered platform events from recreating it; only provably post-reset deliveries
-      may establish fresh state.
+- [ ] Buddy factory reset removes all replay, delivery, claim, conversation/memory, and terminal action data, retaining
+      only minimal safety fences for physical actions that may still complete. Conflicting post-reset actions remain
+      blocked until authoritative resolution, pre-reset workers/events cannot recreate purged state, and only provably
+      post-reset deliveries may establish fresh state.
 - [ ] Shared home-query services are usable by Buddy with MCP externally disabled.
 - [ ] MCP transport/auth/policy/configuration remains independent and externally backward compatible.
 - [ ] Existing heartbeat/evaluator full-context behavior remains unchanged.
