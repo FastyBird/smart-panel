@@ -229,6 +229,58 @@ describe('Homey SHS realtime compatibility probe', () => {
 		expect(JSON.stringify(report)).not.toContain('raw invalid-key detail');
 	});
 
+	it('destroys a client that resolves after the creation watchdog expires', async () => {
+		const config = loadHomeyShsRealtimeProbeConfig(BASE_ENVIRONMENT, '/tmp/homey-realtime-spike');
+		config.timeoutMs = 1;
+		const lateClient = new FakeHomeyClient(false);
+		let resolveCreation: ((client: FakeHomeyClient) => void) | undefined;
+		const factory: HomeySdkFactory = {
+			createLocalApi: () =>
+				new Promise((resolvePromise) => {
+					resolveCreation = resolvePromise;
+				}),
+		};
+
+		await expect(probeHomeyShsRealtime(config, factory, () => Promise.resolve())).rejects.toThrow(
+			'Homey client creation timed out after 1 ms',
+		);
+		resolveCreation?.(lateClient);
+		await Promise.resolve();
+
+		expect(lateClient.destroyCount).toBe(1);
+	});
+
+	it('destroys an invalid-key client that resolves after the creation watchdog expires', async () => {
+		const config = loadHomeyShsRealtimeProbeConfig(BASE_ENVIRONMENT, '/tmp/homey-realtime-spike');
+		config.timeoutMs = 1;
+		const clients: FakeHomeyClient[] = [];
+		let resolveInvalidCreation: ((client: FakeHomeyClient) => void) | undefined;
+		const factory: HomeySdkFactory = {
+			createLocalApi: ({ token }) => {
+				const client = new FakeHomeyClient(token.startsWith('invalid-homey-probe-'));
+
+				clients.push(client);
+
+				if (clients.length === 1) {
+					return Promise.resolve(client);
+				}
+
+				return new Promise((resolvePromise) => {
+					resolveInvalidCreation = resolvePromise;
+				});
+			},
+		};
+
+		await expect(probeHomeyShsRealtime(config, factory, () => Promise.resolve())).rejects.toThrow(
+			'Homey invalid-key client creation timed out after 1 ms',
+		);
+		resolveInvalidCreation?.(clients[1]);
+		await Promise.resolve();
+
+		expect(clients[0].destroyCount).toBe(1);
+		expect(clients[1].destroyCount).toBe(1);
+	});
+
 	it('writes only the exact allowlisted capability and restores its original value', async () => {
 		const config = loadHomeyShsRealtimeProbeConfig(
 			{

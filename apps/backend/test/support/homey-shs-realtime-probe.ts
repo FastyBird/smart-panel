@@ -226,9 +226,59 @@ const settleSdkOperation = async <T>(label: string, timeoutMs: number, operation
 	}
 };
 
+const settleSdkClientCreation = async (
+	label: string,
+	timeoutMs: number,
+	operation: () => Promise<HomeySdkClient>,
+): Promise<HomeySdkClient> => {
+	const creationPromise = operation();
+
+	try {
+		return await settleSdkOperation(label, timeoutMs, () => creationPromise);
+	} catch (error: unknown) {
+		if (error instanceof HomeyShsSdkTimeoutError) {
+			// The SDK does not expose cancellation for createLocalAPI. If it resolves after the watchdog,
+			// destroy the otherwise-unreachable client immediately so its socket cannot outlive the probe.
+			void creationPromise.then(
+				(lateClient) => {
+					try {
+						lateClient.destroy();
+					} catch {
+						// The probe has already failed with the sanitized creation timeout.
+					}
+				},
+				() => undefined,
+			);
+		}
+
+		throw error;
+	}
+};
+
 const runSdkOperation = async <T>(label: string, timeoutMs: number, operation: () => Promise<T>): Promise<T> => {
 	try {
 		return await settleSdkOperation(label, timeoutMs, operation);
+	} catch (error: unknown) {
+		if (error instanceof HomeyShsSdkTimeoutError) {
+			throw error;
+		}
+
+		if (statusCodeOf(error) === 408) {
+			throw new HomeyShsSdkTimeoutError(label, timeoutMs);
+		}
+
+		// eslint-disable-next-line preserve-caught-error -- SDK causes may contain endpoints or credential-bearing detail.
+		throw new Error(`Homey ${label} failed`);
+	}
+};
+
+const runSdkClientCreation = async (
+	label: string,
+	timeoutMs: number,
+	operation: () => Promise<HomeySdkClient>,
+): Promise<HomeySdkClient> => {
+	try {
+		return await settleSdkClientCreation(label, timeoutMs, operation);
 	} catch (error: unknown) {
 		if (error instanceof HomeyShsSdkTimeoutError) {
 			throw error;
@@ -332,7 +382,7 @@ const assertInvalidKeyRejected = async (
 	let result: HomeyShsRealtimeReport['invalidKey'] | undefined;
 
 	try {
-		client = await settleSdkOperation('invalid-key client creation', config.timeoutMs, () =>
+		client = await settleSdkClientCreation('invalid-key client creation', config.timeoutMs, () =>
 			factory.createLocalApi({
 				address: config.origin.origin,
 				token: `invalid-homey-probe-${randomBytes(24).toString('hex')}`,
@@ -408,7 +458,7 @@ export const probeHomeyShsRealtime = async (
 			restored: false,
 		},
 	};
-	const client = await runSdkOperation('client creation', config.timeoutMs, () =>
+	const client = await runSdkClientCreation('client creation', config.timeoutMs, () =>
 		factory.createLocalApi({ address: config.origin.origin, token: config.apiKey }),
 	);
 	report.session.events.push({ event: 'sdk.create.resolved', order: 1 });
