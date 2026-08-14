@@ -542,7 +542,7 @@ unique key uses source, a normalized non-null `claimPrincipalKey`, stable idempo
 entry-point code derives `claimPrincipalKey` from the stable authenticated actor for REST/voice/internal traffic and a
 fixed delivery sentinel for messaging, making messaging uniqueness actor-independent. Bound columns include the
 first-delivery actor/authorization snapshot, resolved Buddy conversation ID and binding generation, payload digest,
-module reset epoch, conversation turn sequence, state, lease owner/expiry, optimistic version, bounded canonical
+module safety epoch, conversation turn sequence, state, lease owner/expiry, optimistic version, bounded canonical
 plan/outcome references, and timestamps.
 `BuddyRequestIdempotencyService` owns transactional create-or-read and compare-and-swap transitions; an in-memory map may
 only optimize joining requests already owned by this process and is never the authority for uniqueness, leases, or
@@ -564,10 +564,10 @@ delivery `INDETERMINATE` and suppress automatic resend, accepting a possible mis
 `BuddyOutboundDeliveryService` provides the lease/CAS boundary, and request claims/bindings/outbound rows do not cascade
 on conversation deletion. Store only bounded outcome digests and opaque identifiers outside the canonical Buddy message.
 
-Factory reset is the explicit exception to normal non-cascading retention. `BuddyModuleResetService` first advances a
-singleton durable module reset epoch and fences new/leased work so an in-process or late callback cannot repopulate
+Factory reset is the explicit exception to normal non-cascading retention. `BuddyModuleResetService` first advances the
+singleton durable module safety epoch and fences new/leased work so an in-process or late callback cannot repopulate
 cleared tables. In the same durable module-state row, store per-source reset freshness guards: reset time plus the highest
-authoritative platform cursor/order key observed where the source provides one. Claims capture the reset epoch, and every
+authoritative platform cursor/order key observed where the source provides one. Claims capture the safety epoch, and every
 claim/action/outbound persistence CAS verifies it still matches.
 Before purging, the reset attempts authoritative cancellation/reconciliation of dispatched actions. For every execution
 that remains `ACTION_DISPATCHING`, `ACTION_DISPATCHED`, or `INDETERMINATE`, atomically promote only its canonical conflict
@@ -591,6 +591,30 @@ platform-specific update/message metadata already validated by that adapter). A 
 reset cutoff is rejected provider-free and executes/sends nothing. If a source/event cannot prove post-reset freshness,
 fail closed rather than treating it as new; a genuinely new user event with valid fresh metadata establishes the next
 binding. The compact reset guards are system safety state, contain no raw chat/account ID, and survive the user-data purge.
+
+Database backup restoration has a separate safety lifecycle because device effects are not rolled back with SQLite.
+Before `BackupService` replaces the live database file, enter a global Buddy maintenance gate, stop new claims/actions,
+drain safe work within a deadline, and mark uncertain dispatches. Export the live nonexpired replay keys/digests,
+action-execution identities/status/conflict keys, outbound-delivery sent/uncertain guards, reset-action fences, messaging
+delivery guards, and current safety epoch into an atomically written, fsynced, integrity-protected
+`BuddySafetyRestoreJournal` sidecar outside the database file being replaced. Store only the minimal bounded hashes/opaque
+IDs and reconciliation data needed to reject replay or fence a target—never raw messages, prompts, platform IDs, or
+property values. Authenticate the journal with an installation-scoped secret that is not rolled back with the database,
+and create it with restrictive filesystem permissions.
+
+After restoring and migrating the database, transactionally union/import the journal into the restored safety tables,
+advance the module safety epoch above both live and restored values, mark unresolved post-backup dispatches
+indeterminate/fenced, and record an idempotent journal-import marker before reopening traffic. REST/messaging retries whose
+newer claim was absent from the backup return a typed `restored_replay_protected` outcome (or their retained bounded
+terminal status) and never invoke the model/action/outbound path. A crash may repeat the merge safely. Delete/rotate the
+journal only after committed import and retention requirements are satisfied. If export, integrity validation, migration,
+or import fails, keep Buddy `WRITE`/`TRIGGER` traffic disabled (read-only where safe) and surface an operator-visible
+restore-safety error; never resume action-capable traffic with rolled-back replay state.
+
+Integrate this without a System↔Buddy module cycle: add a provider-neutral `BackupRestoreLifecycleRegistry` to the existing
+`BackupContributionModule`. Buddy registers ordered `beforeDatabaseReplace`, `afterDatabaseReady`, and `restoreFailed`
+hooks backed by `BuddySafetyStateService`; `BackupService` invokes the registry around its database replacement. The
+safety sidecar is explicitly excluded from normal backup contributions and the database replacement target.
 
 Before any physical dispatch, persist the complete bounded canonical action plan—validated tool name, canonical targets,
 normalized arguments, fingerprint, user-evidenced allowance/occurrence slot, and execution identity—and transition the
@@ -982,7 +1006,7 @@ apps/backend/src/modules/buddy/
 │   ├── buddy-conversation.entity.ts
 │   ├── buddy-message.entity.ts
 │   ├── buddy-messaging-conversation-binding.entity.ts
-│   ├── buddy-module-state.entity.ts          # singleton reset epoch and delivery guards
+│   ├── buddy-module-state.entity.ts          # singleton safety epoch and delivery guards
 │   ├── buddy-outbound-delivery.entity.ts
 │   ├── buddy-reset-action-fence.entity.ts    # survives reset only while external action is unresolved
 │   └── buddy-request-claim.entity.ts
@@ -1000,6 +1024,7 @@ apps/backend/src/modules/buddy/
 │   ├── buddy-conversation-turn-coordinator.service.ts
 │   ├── buddy-request-budget.service.ts
 │   ├── buddy-request-idempotency.service.ts
+│   ├── buddy-safety-state.service.ts         # reset/restore journal and maintenance gate
 │   ├── buddy-context.service.ts             # retained for evaluators
 │   ├── module-reset.service.ts
 │   └── home-context-tool-provider.service.ts
@@ -1012,6 +1037,10 @@ apps/backend/src/modules/mcp/
 │   ├── mcp-read-tool.service.ts             # MCP auth/audit/envelope adapter
 │   └── mcp-target-discovery-tool.service.ts # MCP auth/audit/envelope adapter
 └── mcp.module.ts
+
+apps/backend/src/modules/system/services/
+├── backup-restore-lifecycle-registry.service.ts # provider-neutral ordered restore hooks
+└── backup.service.ts                            # invokes hooks around database replacement
 
 apps/backend/src/modules/devices/services/   # bounded filtered domain queries as needed
 apps/backend/src/modules/scenes/services/    # bounded filtered scene search as needed
@@ -1029,8 +1058,8 @@ apps/backend/src/migrations/
 
 Generated OpenAPI/admin/panel clients remain unchanged for the internal retrieval architecture except for two explicit
 public contracts: Phase 2 adds the required `Idempotency-Key` header plus typed conflict, in-progress, and
-conversation-busy/`Retry-After` responses to both Buddy text/audio endpoints, and Phase 5 adds their HTTP 422 capacity
-response. Each phase must
+conversation-busy/`Retry-After` responses plus a restored-replay-protected response to both Buddy text/audio endpoints,
+and Phase 5 adds their HTTP 422 capacity response. Each phase must
 regenerate checked-in artifacts from backend Swagger sources; never edit generated clients manually.
 
 ---
@@ -1133,13 +1162,17 @@ snapshots are produced through the shared query layer without making that eager 
 - `apps/backend/src/modules/buddy/services/buddy-messaging-conversation-binding.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-outbound-delivery.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-request-idempotency.service.ts`
+- `apps/backend/src/modules/buddy/services/buddy-safety-state.service.ts`
 - `apps/backend/src/modules/buddy/services/module-reset.service.ts`
+- `apps/backend/src/modules/system/backup-contribution.module.ts`
+- `apps/backend/src/modules/system/services/backup-restore-lifecycle-registry.service.ts`
+- `apps/backend/src/modules/system/services/backup.service.ts`
 - `apps/backend/src/modules/tools/platforms/tool-provider.platform.ts`
 - `apps/backend/src/plugins/buddy-openai-codex/platforms/openai-codex.provider.ts`
 - Buddy LLM provider plugins/adapters and their specs
 - Buddy Discord, Telegram, and WhatsApp adapters and their specs
 - New incremental migration for the persistent messaging-conversation binding
-- New incremental migration for the singleton Buddy module reset epoch/fence
+- New incremental migration for the singleton Buddy module safety epoch/fence
 - New incremental migration for minimal epoch-qualified reset-action fences
 - New incremental migration for durable outbound-delivery state
 - New incremental migration for the durable Buddy request-claim table, conversation sequence/lease fields, and indexes
@@ -1162,7 +1195,8 @@ snapshots are produced through the shared query layer without making that eager 
 - [ ] Require and validate a client-stable `Idempotency-Key` header on both REST text and audio sends; document the header,
       missing/invalid HTTP 400 response, typed conflicting-reuse HTTP 409 response, and typed in-progress HTTP 409 with
       `Retry-After` in Swagger. Include typed `conversation_busy`/`Retry-After` when a distinct later turn cannot acquire
-      its sequence within the deadline. Update
+      its sequence within the deadline and typed HTTP 409 `restored_replay_protected` when a merged journal guard lacks
+      the original safe terminal response. Update
       every first-party REST caller (admin, panel, voice, or other discovered consumer) to reuse the same key across
       retries, then run `pnpm run generate:openapi` instead of editing generated clients manually.
 - [ ] Compute the text payload digest in the controller and the audio digest from uploaded bytes/stable semantic fields
@@ -1179,9 +1213,10 @@ snapshots are produced through the shared query layer without making that eager 
 - [ ] Integrate conversation deletion with messaging bindings and claims: tombstone/rebind binding generations without
       cascading claims, fence active workers transactionally, replay retained delivery claims before resolving the active
       binding, and reject stale post-retention deliveries instead of executing them as new.
-- [ ] Extend `BuddyModuleResetService` with a durable reset epoch that fences active/late workers, then explicitly clear
-      every new binding, outbound, claim, ordinary action/fence, message, memory/conversation, suggestion, and process
-      cache in dependency order. Before clearing action rows, cancel/reconcile or promote every unresolved dispatched
+- [ ] Extend `BuddyModuleResetService` with a durable safety-epoch advance that fences active/late workers, then
+      explicitly clear every new binding, outbound, claim, ordinary action/fence, message, memory/conversation,
+      suggestion, and process cache in dependency order. Before clearing action rows, cancel/reconcile or promote every
+      unresolved dispatched
       action's minimal canonical conflict/reconciliation data into epoch-qualified reset-action fences. Preserve only
       those active fences plus the incremented epoch and source reset cutoffs/high-water marks needed to reject pre-reset
       callbacks and newly redelivered old platform events.
@@ -1191,6 +1226,11 @@ snapshots are produced through the shared query layer without making that eager 
 - [ ] Add a source-specific messaging delivery-freshness contract. Before binding/claim creation, require an authenticated
       cursor/order key or trustworthy timestamp newer than the reset guard; reject old or unverifiable deliveries
       provider-free, without model, persistence, action, or outbound reply.
+- [ ] Add provider-neutral ordered restore hooks to `BackupContributionModule`; do not import Buddy into `SystemModule`.
+      Before database replacement, maintenance-gate Buddy and atomically write the minimal integrity-protected safety
+      journal outside the replaced database. After restore/migrations, idempotently union the journal, advance the safety
+      epoch, fence unresolved dispatches, and reopen actions only after committed success. On any failure remain read-only
+      and expose an operator error; exclude the journal from normal backups and rotate it only after safe import/retention.
 - [ ] Carry an explicit entry-point authorization decision separately from actor attribution. Keep unmapped messaging
       identities and missing decisions `READ` only even when adapter admission is configured as allow-all; grant
       write/trigger only through authenticated Smart Panel mapping or an explicit action-capable allowlist/role.
@@ -1279,6 +1319,12 @@ and restart preserves the fence; other active/late workers cannot recreate purge
 epoch/source guards and active reset-action fences; for each messaging
 adapter, redelivery of a pre-reset action event and an event with unverifiable freshness producing zero model calls,
 outbound sends, messages, or actions, while a provably fresh event creates a clean post-reset turn;
+backup creation, successful action/outbound reply after that backup, lost client/platform acknowledgement, then restore and
+same REST key/platform-event redelivery returning replay-protected status with zero provider/action/outbound calls;
+restore with an unresolved post-backup action retaining its conflict fence; crash after journal write, database replace,
+and merge commit proving idempotent recovery; corrupt/missing journal keeping write/trigger disabled; different
+conversation read-only traffic remaining available where safe; lifecycle-hook ordering and proof System does not import
+Buddy;
 REST/voice/Discord/Telegram/WhatsApp conversation/identity/access propagation; rejection of a mismatched request-context
 conversation ID; unmapped platform users under empty/allow-all admission remain read-only;
 mapped/explicitly action-allowlisted users receive only their authorized access kinds; mapping/role revocation while
@@ -1607,6 +1653,8 @@ designated safe targets and reversible values. Scale/shadow evaluation must neve
       only minimal safety fences for physical actions that may still complete. Conflicting post-reset actions remain
       blocked until authoritative resolution, pre-reset workers/events cannot recreate purged state, and only provably
       post-reset deliveries may establish fresh state.
+- [ ] Restoring an older database cannot erase newer replay/action/outbound guards: action-capable Buddy traffic remains
+      gated until the external safety journal is merged, and post-backup retries execute/send nothing twice.
 - [ ] Shared home-query services are usable by Buddy with MCP externally disabled.
 - [ ] MCP transport/auth/policy/configuration remains independent and externally backward compatible.
 - [ ] Existing heartbeat/evaluator full-context behavior remains unchanged.
