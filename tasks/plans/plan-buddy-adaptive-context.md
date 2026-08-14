@@ -334,7 +334,7 @@ entity outside that page. Add bounded filter/search methods to the owning domain
 
 Initial deterministic ranking order:
 
-1. Exact canonical or exposed short ID
+1. Exact canonical or short ID exposed in this conversation
 2. Exact normalized display name
 3. Exact normalized name in the current/conversation space
 4. Prefix and whole-token match
@@ -347,8 +347,12 @@ unless tests prove the platform implementation insufficient.
 
 For reads, several close matches may be returned with scores/reasons. For writes/triggers, the resolver must mark the
 result ambiguous if more than one compatible candidate is plausible. Never use a tiny score difference to authorize an
-action. Canonical UUIDs remain valid tool inputs; short IDs may be registered only for entities actually exposed in the
-current conversation.
+action. Canonical UUIDs remain valid tool inputs. Buddy short-ID mappings are namespaced by conversation: register only
+entities actually exposed in that conversation, and resolve a Buddy short ID only inside the same conversation scope.
+Never fall back from a failed scoped Buddy lookup to the application-wide mapping. Preserve the existing unscoped
+mapping behavior for non-Buddy consumers that require compatibility. If two UUIDs collide inside one conversation,
+generate a distinct salted token before exposure; expire or evict the scoped mapping with the conversation/reference
+retention policy.
 
 ### 5.5 Result contract rules
 
@@ -429,6 +433,7 @@ Every external entry point must pass a request context through the conversation-
 
 ```typescript
 interface BuddyRequestContext {
+	conversationId: string;
 	source: 'rest' | 'voice' | 'discord' | 'telegram' | 'whatsapp' | 'internal';
 	actorId?: string;
 	requestId?: string;
@@ -442,12 +447,18 @@ must not be logged. User-originated turns without an actor ID remain read-only: 
 the registry execution context denies those access kinds. Trusted internal/system turns use an explicit internal actor
 rather than silently leaving attribution undefined.
 
+The service must validate that `BuddyRequestContext.conversationId` matches the conversation being processed, then copy
+it into every Buddy tool execution context. Read tools register exposed short IDs under that scope; action providers
+resolve Buddy short IDs with the same required scope. A token exposed in another conversation, a stale/evicted token, or
+an unscoped hallucinated token must fail closed and prompt fresh discovery instead of resolving through global state.
+
 `BuddyConversationService` must call the registry with an explicit execution context:
 
 ```typescript
 {
 	audience: ToolAudience.BUDDY,
 	source: 'buddy',
+	conversationId,
 	actorId,
 	requestId: toolCall.id,
 	allowedAccessKinds: [ToolAccessKind.READ, ToolAccessKind.WRITE, ToolAccessKind.TRIGGER],
@@ -626,6 +637,8 @@ Requirements:
   read results with an explicit status, but must not be offered or resolved as executable action targets.
 - Treat all catalog labels, descriptions, third-party values, and historical strings as untrusted data. Tool-result
   serialization must clearly delimit data and prohibit interpreting it as system/tool instructions.
+- Treat Buddy short IDs as conversation-scoped capabilities: action resolution requires the matching validated
+  conversation ID, and a missing, foreign, expired, or unexposed token fails closed without global fallback.
 - Limit and escape strings before prompt inclusion. Reject invalid UTF-8/control patterns according to existing JSON
   serialization behavior.
 - Never expose configuration secrets, credentials, authorization data, secure storage, raw provider errors, or stack
@@ -787,6 +800,7 @@ bounded search without loading the full catalog.
 - `apps/backend/src/modules/buddy/platforms/llm-provider.platform.ts`
 - `apps/backend/src/modules/buddy/controllers/buddy-conversations.controller.ts`
 - `apps/backend/src/modules/buddy/services/buddy-conversation.service.ts`
+- `apps/backend/src/modules/tools/platforms/tool-provider.platform.ts`
 - Buddy LLM provider plugins/adapters and their specs
 - Buddy Discord, Telegram, and WhatsApp adapters and their specs
 - Shared tools registry specs as needed
@@ -798,15 +812,16 @@ bounded search without loading the full catalog.
 - [ ] Map canonical items to native OpenAI, Anthropic, and Ollama formats.
 - [ ] Preserve ordering and one result/error per call, including malformed provider responses.
 - [ ] Pass explicit Buddy audience/source/access context to the registry.
-- [ ] Add `BuddyRequestContext` to the conversation-service boundary and plumb REST, voice, Discord, Telegram, and
-      WhatsApp actor/source/request identity into every call.
+- [ ] Add `BuddyRequestContext` to the conversation-service boundary and plumb the validated conversation ID plus REST,
+      voice, Discord, Telegram, and WhatsApp actor/source/request identity into every call and tool execution context.
 - [ ] Restrict turns without actor attribution to `READ` access and omit write/trigger tool schemas.
 - [ ] Add per-result byte/token caps, structured truncation metadata, duplicate-call suppression, and timeout handling.
 - [ ] Ensure provider logs and persisted messages do not leak full raw tool data.
 
-**Tests:** Provider adapter contract tests; REST/voice/Discord/Telegram/WhatsApp identity propagation; unattributed-turn
-read-only enforcement; parallel call ordering; malformed arguments; unknown tools; denied access; partial results;
-timeouts; oversized results; repeated calls; and max-iteration behavior.
+**Tests:** Provider adapter contract tests; REST/voice/Discord/Telegram/WhatsApp conversation/identity propagation;
+rejection of a mismatched request-context conversation ID; unattributed-turn read-only enforcement; parallel call
+ordering; malformed arguments; unknown tools; denied access; partial results; timeouts; oversized results; repeated
+calls; and max-iteration behavior.
 
 **Gate:** Using a schema-validated test tool provider, every provider adapter correlates a tool call with its bounded
 structured result, supports a second dependent call, and produces a final response grounded in the result status/data.
@@ -817,6 +832,8 @@ structured result, supports a second dependent call, and produces a final respon
 
 - `apps/backend/src/modules/buddy/services/home-context-tool-provider.service.ts`
 - `apps/backend/src/modules/buddy/buddy.module.ts`
+- `apps/backend/src/modules/tools/services/short-id-mapping.service.ts`
+- Existing action tool providers that resolve short IDs
 - New tool-provider specs
 
 **Tasks:**
@@ -825,12 +842,16 @@ structured result, supports a second dependent call, and produces a final respon
 - [ ] Mark tools `ToolAudience.BUDDY` and `ToolAccessKind.READ`.
 - [ ] Validate inputs and outputs using the shared schemas.
 - [ ] Return concise messages plus bounded structured data and freshness/truncation metadata.
-- [ ] Register only exposed results in `ShortIdMappingService`; retain canonical UUID fallback.
+- [ ] Add conversation-scoped Buddy mappings to `ShortIdMappingService`; register only results exposed in that
+      conversation and require the same scope in every Buddy short-ID action lookup, with no unscoped/global fallback.
+      Preserve existing non-Buddy mapping behavior and canonical UUID fallback.
 - [ ] Add tool selection support so unrelated schemas are not advertised on every turn.
 - [ ] Verify no MCP configuration, token, policy, or server service is injected.
 
-**Tests:** Every schema boundary and hard cap, missing optional modules, stale/missing entities, hidden/disabled entities,
-long labels/values, and multi-language/diacritic search.
+**Tests:** Every schema boundary and hard cap; missing optional modules; stale/missing entities; hidden/disabled entities;
+long labels/values; multi-language/diacritic search; same-token collisions across conversations; two colliding UUIDs in
+one conversation; and proof that a short ID exposed only in conversation A is denied in conversation B and after
+scope eviction instead of resolving through the global mapping.
 
 **Gate:** Buddy can answer every read-only home-state row in the message matrix using tools without the eager context. A
 model can call `search_home`, receive structured IDs, perform a dependent state read or validated action, and produce a
