@@ -24,6 +24,7 @@ describe('McpReadToolService', () => {
 	let service: McpReadToolService;
 	let contextService: {
 		getDeviceState: jest.Mock;
+		getEnergySummary: jest.Mock;
 		getHomeContext: jest.Mock;
 		getInstallation: jest.Mock;
 		getPropertyTimeseries: jest.Mock;
@@ -42,6 +43,7 @@ describe('McpReadToolService', () => {
 	beforeEach(() => {
 		contextService = {
 			getDeviceState: jest.fn(),
+			getEnergySummary: jest.fn(),
 			getHomeContext: jest.fn().mockResolvedValue({
 				scope: { type: 'home' },
 				spaces: [],
@@ -192,6 +194,31 @@ describe('McpReadToolService', () => {
 		expect(result?.structuredContent.tool).toBe('get_property_timeseries');
 		expect(result?.structuredContent.data).toBe(propertyTimeseries);
 		expect(result?.structuredContent.data).toEqual(propertyTimeseries);
+	});
+
+	it('forwards get_energy_summary arguments in service order and envelopes the exact data unchanged', async () => {
+		const from = '2026-08-01T00:00:00.000Z';
+		const to = '2026-08-02T00:00:00.000Z';
+		const spaceId = '20000000-0000-4000-8000-000000000001';
+		const energySummary = {
+			scope: { type: 'space', id: spaceId },
+			from,
+			to,
+			totalConsumptionKwh: 12.5,
+			totalCost: 4.25,
+			currency: 'EUR',
+		};
+		contextService.getEnergySummary.mockResolvedValue(energySummary);
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await callbacks.get('get_energy_summary')?.({ from, to, space_id: spaceId }, requestContext());
+
+		expect(contextService.getEnergySummary).toHaveBeenCalledTimes(1);
+		expect(contextService.getEnergySummary).toHaveBeenCalledWith(from, to, spaceId);
+		expect(result?.isError).toBeUndefined();
+		expect(result?.structuredContent.tool).toBe('get_energy_summary');
+		expect(result?.structuredContent.data).toBe(energySummary);
+		expect(result?.structuredContent.data).toEqual(energySummary);
 	});
 
 	it('reauthorizes a tool call and returns structured installation metadata', async () => {
