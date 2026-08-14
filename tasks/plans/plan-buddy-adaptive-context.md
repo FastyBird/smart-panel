@@ -238,7 +238,7 @@ The planner is multi-label: one message may require several domains and both rea
 | General explanation | “How does a thermostat work?” | No home state unless explicitly connected to the installation | Give a general answer |
 | Scoped current state | “What is the bedroom temperature?” | Search target, then bounded device/space state | Report fresh matching values and timestamp when useful |
 | Contextual current state | “Is it too warm in here?” | Conversation space plus temperature/humidity capabilities | Use current space; ask which space if none can be inferred |
-| Global aggregate | “Are any windows open?” | Structured category/value aggregate | Return count and bounded matches, not all devices |
+| Global aggregate | “Are any windows open?” | Structured category/value aggregate through live-value authority | Return count/bounded matches, or explicit partial coverage when values are unknown |
 | Target discovery | “Which lights can I dim?” | Capability-filtered search | Return bounded candidates and truncation notice |
 | Exact device control | “Set kitchen light to 40%” | Target search/current constraints, then existing write tool or deterministic handoff | Validate target/value and report actual result |
 | Ambiguous control | “Turn on the lamp” with several lamps | Ranked candidates only | Ask for clarification; do not choose silently |
@@ -328,9 +328,16 @@ entity outside that page. Add bounded filter/search methods to the owning domain
 - Avoid N+1 channel/property loading; use existing bounded summary queries or explicit batched relation queries.
 - Search across entity kinds in parallel, cap each kind, merge/rank, and cap again globally.
 - A candidate scan for capability discovery must remain bounded and report truncation/cursor state.
-- Aggregates such as counts, `any`, `all`, minimum, maximum, average, and sum are computed over the complete eligible
-  filtered set in the database. Only returned examples are capped; never compute a “whole-home” answer from the first
-  result page.
+- Metadata-only aggregates such as entity counts may execute over the complete eligible filtered set in the database.
+  Current property values are not a normal persisted TypeORM column: use database filters only to identify eligible
+  property IDs, then call a new batch/aggregate API on the owning `PropertyValueService`. That API reconciles its newer
+  in-memory values with available storage values, processes eligible IDs in bounded chunks under a deadline/work ceiling,
+  and tracks missing/unknown values. It may short-circuit only when logically sound (`any=true` after one match or
+  `all=false` after one counterexample); a negative/complete result requires complete coverage.
+- Return `partial: true` plus eligible/evaluated/unknown counts and source/freshness metadata whenever storage is
+  disconnected, values are missing, or the scan/deadline cannot establish completeness. Never report a definitive
+  `none`, `all`, minimum, maximum, average, or sum from a first page or incomplete value set. Only returned examples are
+  capped; server-side aggregate work remains independently bounded.
 - Prefer additions to existing domain service contracts over repositories leaking into `HomeContextModule`.
 
 ### 5.4 Ranking and ambiguity
@@ -366,6 +373,8 @@ interface HomeQueryMeta {
 	observedAt: string;
 	total?: number;
 	returned: number;
+	evaluated?: number;
+	unknown?: number;
 	truncated: boolean;
 	nextCursor?: string;
 	partial?: boolean;
@@ -855,6 +864,7 @@ captured as an opt-in/expected baseline measurement rather than a failing normal
 - `apps/backend/src/modules/mcp/services/mcp-context.service.ts`
 - `apps/backend/src/modules/mcp/tools/mcp-target-discovery-tool.service.ts`
 - `apps/backend/src/modules/mcp/mcp.module.ts`
+- `apps/backend/src/modules/devices/services/property-value.service.ts`
 - Owning domain services/specs under Devices, Spaces, and Scenes
 
 **Tasks:**
@@ -873,6 +883,9 @@ captured as an opt-in/expected baseline measurement rather than a failing normal
 - [ ] Keep MCP installation identity, auth, policy, auditing, request envelope, and transport deadlines in MCP.
 - [ ] Extract pure writable/trigger discovery logic from the MCP tool adapter.
 - [ ] Add database-bounded lexical/entity search and safe filtered/aggregate state queries.
+- [ ] Add a bounded `PropertyValueService` batch/aggregate contract for current-value predicates and aggregates. Resolve
+      eligible metadata in the database, reconcile cache/storage values in chunks, short-circuit only sound outcomes,
+      and return eligible/evaluated/unknown/freshness/partial metadata when completeness cannot be established.
 - [ ] Preserve `observed_at`, `total`, `returned`, `partial`, and `truncated` metadata.
 - [ ] Import `HomeContextModule` from MCP and prove the MCP endpoint can be disabled while shared queries still work.
 - [ ] Avoid a Buddy-to-`McpModule` dependency and avoid a domain-to-`ToolsModule` cycle.
@@ -882,10 +895,13 @@ captured as an opt-in/expected baseline measurement rather than a failing normal
 **Tests:** Shared service unit tests; domain query integration tests; MCP facade/tool regression tests, including explicit
 and omitted weather location IDs; visibility-profile tests proving hidden exclusion, MCP disabled-entity compatibility,
 and Buddy action-target exclusion; long property/weather/security strings proving MCP output remains unchanged while
-Buddy output is bounded; query limit and truncation tests; N+1/query-count assertions for large fixtures.
+Buddy output is bounded; cached values newer than storage; storage disconnected with cached, missing, and mixed values;
+`any`/`all` sound short-circuit cases; incomplete negative/min/max/average/sum results marked partial; chunk/deadline work
+limits; query limit and truncation tests; N+1/query-count assertions for large fixtures.
 
 **Gate:** MCP behavior is backward compatible, and a targeted entity beyond the first 100 alphabetic devices is found by
-bounded search without loading the full catalog.
+bounded search without loading the full catalog. Live-value aggregates use `PropertyValueService` authority and never
+report a definitive complete answer when eligible values could not all be evaluated.
 
 ### Phase 2 — Canonical structured tool turns
 
@@ -1229,6 +1245,8 @@ designated safe targets and reversible values. Scale/shadow evaluation must neve
 - [ ] Buddy supports every message class in Section 4 through reliable model tools, bounded prefetch, deterministic
       validated action handoff, or explicit clarification/reformulation.
 - [ ] Context size for scoped queries remains effectively constant as unrelated devices are added.
+- [ ] Current-state aggregates reconcile live cached/stored values through `PropertyValueService` and report partial
+      coverage instead of a definitive negative/complete result when values are missing or the bounded scan cannot finish.
 - [ ] Tool-capable providers receive native structured read results, including data and call IDs.
 - [ ] Tool-less/limited providers receive deterministic bounded prefetched context and can complete exact authorized
       control/trigger commands through the non-LLM action handoff; ambiguous or unsupported commands execute nothing.
@@ -1299,7 +1317,7 @@ Only evaluate these after structured retrieval meets the rollout thresholds:
 | Should Buddy import all of `McpModule`? | No for the final design. Extract `HomeContextModule`; direct MCP import is only a disposable migration spike. |
 | Should the existing Buddy context service be replaced? | Not for evaluators. Remove only its conversation consumer and retain full deterministic snapshots. |
 | Could first-page limits hide a target in a large home? | Yes; add filtered database-bounded search before limiting, plus explicit truncation/cursor metadata. |
-| Could bounded examples produce an incorrect aggregate? | Yes; compute aggregates over the complete eligible filtered set and cap only examples. |
+| Could bounded examples produce an incorrect aggregate? | Yes; metadata counts use the complete filtered database set, while live-value aggregates use bounded `PropertyValueService` batch reconciliation. Cap only examples and mark incomplete value coverage partial. |
 | Could provider tool support vary by model? | Yes; capability reporting is per selected model with conservative fallback. |
 | Could tool schemas consume too much local-model context? | Yes; planner advertises a minimal domain-relevant subset and budgets serialized schemas. |
 | Could device names inject instructions? | Yes; treat all home data as untrusted, delimit/cap it, and validate every action outside the model. |
