@@ -866,7 +866,8 @@ The requested output reserve is an enforced generation limit, not accounting met
 The provider call is rejected or compacted before dispatch when `serialized input > available input`. A final payload
 check belongs as close as possible to provider serialization so adapter-specific overhead is not ignored.
 
-Before persisting the user turn or calling a provider, compute the irreducible input floor: minimal stable/safety
+After claim/sequence acquisition but before persisting a conversational message, planner/prefetch execution,
+deterministic handoff, tool/action dispatch, or provider call, compute the irreducible input floor: minimal stable/safety
 instructions, the complete current message, provider framing reserve, safety margin, and minimum useful output reserve.
 If that floor exceeds the selected model's window, do not truncate the message and do not attempt an LLM clarification.
 Raise a typed `BuddyMessageCapacityExceededException` containing only safe limit metadata and a recommended maximum
@@ -877,6 +878,13 @@ conversation sequence, atomically persist its safe bounded capacity outcome as t
 active turn lease, and make exactly the next sequence eligible. An exact retry returns the stored 422/local rejection;
 a later valid turn is not blocked. The DTO's static 10,000-character ceiling remains a transport safety bound; this
 preflight is the model-aware semantic bound.
+
+Persist a claim-bound capacity-admission marker containing the request digest and selected model-profile fingerprint after
+the check succeeds. `BuddyDeterministicActionHandoffService` and every Buddy-origin action-provider invocation require
+that marker and revalidate it immediately before `ACTION_DISPATCHING`; non-Buddy provider behavior is unchanged, and no
+alternate/tool-less Buddy path may act first and budget later. Phase 4 introduces this conservative admission check using
+the selected profile or configured fallback, while Phase 5 completes exact serialized-request accounting and
+per-iteration rebudgeting.
 
 ### 8.3 Compaction order
 
@@ -1405,6 +1413,7 @@ action/result status. The production conversation-path removal is intentionally 
 - `apps/backend/src/modules/buddy/services/buddy-context-prefetch.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-context-renderer.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-deterministic-action-handoff.service.ts`
+- `apps/backend/src/modules/buddy/services/buddy-request-budget.service.ts`
 - Shared home-context/domain query contracts where deadline/`AbortSignal` propagation is supported
 - Planner/prefetch/handoff/renderer specs
 
@@ -1415,6 +1424,8 @@ action/result status. The production conversation-path removal is intentionally 
       per-query timeouts, bounded concurrency, cancellation propagation where supported, and late-result disposal.
 - [ ] Render compact typed sections with untrusted-data delimiters and explicit partial/truncated states.
 - [ ] Add ambiguity detection and deterministic clarification candidates for risky actions.
+- [ ] Run the conservative irreducible-input admission preflight before planner/prefetch or deterministic handoff. Bind
+      its success to the claim digest/model profile, and require the marker again before any handoff/action dispatch.
 - [ ] Implement the deterministic action handoff for tool-less/limited providers using an allowlisted command grammar,
       bounded target discovery, scoped expiring clarification drafts, fresh validation, and the same registry/action
       providers and execution ledger as reliable model tool calls. It must never execute from generated LLM prose.
@@ -1428,12 +1439,15 @@ a bounded partial/unavailable response without calling the eager snapshot. For b
 test exact device writes, numeric/range validation, scene/intent triggers, ambiguous targets, clarification follow-ups,
 expired drafts, changed/deleted targets, denied authorization, unsupported/compound grammar, injection attempts in names,
 provider failure after action, and indeterminate/replay outcomes; assert every side effect passes through the existing
-validated action provider exactly once and none originates from LLM output.
+validated action provider exactly once and none originates from LLM output. For each limited/unsupported strategy, a
+DTO-valid exact action exceeding the model's irreducible floor must terminalize as `REJECTED_CAPACITY` with zero target
+queries beyond admission, model calls, action plans, or physical executions; a valid follow-up still proceeds.
 
 **Gate:** A tool-less small-context model receives bounded relevant context for all supported read classes, greetings
 load no home state, and a hanging optional-domain provider cannot hold the response beyond the configured prefetch
 deadline. The same model can complete an exact authorized device control and scene/intent trigger through the
 deterministic handoff after any required clarification, while ambiguous or unsupported commands execute nothing.
+No deterministic action path can execute without a successful claim-bound capacity admission.
 
 ### Phase 5 — Complete request budget manager and provider capabilities
 
@@ -1470,14 +1484,16 @@ deterministic handoff after any required clarification, while ambiguous or unsup
       `pnpm run generate:openapi` so the backend specification and generated admin/panel clients expose the new error.
 - [ ] Ensure rejected oversized turns persist no conversational messages, invoke no provider, and never fall back to
       eager context. Atomically terminalize their existing claim as `REJECTED_CAPACITY`, store only safe limit metadata,
-      release the conversation-turn lease, and advance exactly the next sequence.
+      release the conversation-turn lease, and advance exactly the next sequence. They must execute no deterministic
+      handoff, tool, action plan, or physical action.
 - [ ] Calibrate estimator safety margins against actual token usage from OpenAI/Anthropic and representative Ollama
       models.
 - [ ] Keep the existing configured context window as override/fallback for providers that cannot report a model limit.
 
 **Tests:** 2k/4k/8k/128k/200k windows; a 10,000-character DTO-valid message that cannot fit a 2k model, followed by a
 normal queued message that acquires the released next sequence and succeeds; exact oversized retry returning the stored
-422 without provider/message persistence; existing history
+422 without provider/message persistence; oversized exact device/scene commands for tool-less and tool-capable models
+executing zero deterministic/tool/domain actions; existing history
 that overflows a small window before any summary exists; complete-turn eviction without orphan messages; REST/voice 422
 mapping; provider-free messaging replies; large tool schemas; oversized property strings; many tool iterations;
 estimator error; unknown Ollama model; and output-reserve payload enforcement for OpenAI chat, Anthropic/Claude, Ollama,
@@ -1486,6 +1502,7 @@ and OpenAI Codex on the initial and every subsequent tool-loop call.
 **Gate:** No test provider receives an over-window serialized request, including a small-window conversation with no
 persisted summary, and every adapter receives/enforces the reserved generation cap; the requested entity/action
 constraints survive compaction. Capacity rejection terminalizes/releases its sequence and cannot block a valid follow-up.
+It occurs before every deterministic or model-driven action path and guarantees zero side effects.
 
 ### Phase 6 — Conversation summary and structured reference memory
 
@@ -1661,8 +1678,8 @@ designated safe targets and reversible values. Scale/shadow evaluation must neve
 - [ ] Distinct turns in one conversation cannot overtake each other: dependent follow-ups observe prior references and
       explicit actions execute in user-send order; an indeterminate predecessor keeps conflicting targets fenced until
       reconciliation or explicit acknowledgement, while separate conversations and unrelated targets remain available.
-- [ ] A capacity-rejected turn stores no conversation message/provider output and atomically releases its sequence so the
-      next valid turn can complete.
+- [ ] A capacity-rejected turn stores no conversation message/provider output, executes no deterministic/model-driven
+      action, and atomically releases its sequence so the next valid turn can complete.
 - [ ] Queued/recovered writes and triggers intersect their admission snapshot with fresh authorization/principal state;
       revoked or remapped identities execute nothing.
 - [ ] Buddy factory reset removes all replay, delivery, claim, conversation/memory, and terminal action data, retaining
