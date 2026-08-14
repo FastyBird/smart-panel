@@ -259,6 +259,7 @@ describe('ChannelsService', () => {
 				total: 25,
 			});
 			expect(queryBuilderMock.innerJoin).toHaveBeenCalledWith('channel.device', 'device');
+			expect(queryBuilderMock.orderBy).toHaveBeenCalledWith('channel.name', 'ASC');
 			expect(queryBuilderMock.take).toHaveBeenCalledWith(20);
 		});
 	});
