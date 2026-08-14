@@ -23,7 +23,7 @@ file. Live results use synthetic aliases and sanitized captures only.
 | Credential-safe read probe                            | Passed on SHS `13.4.0` over HTTP `4859`        | Repeat over HTTPS `4860` if enabled                                     |
 | System, zone, device inventory, and individual device | Captured and sanitized                         | Add lifecycle delta evidence on the disposable test device              |
 | Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read   | Add allowlisted write and read-back evidence                            |
-| Socket.IO events and reconnect                        | Connect/subscription/cleanup passed live       | Capture capability/availability events, restart, and reconnect ordering |
+| Socket.IO events and reconnect                        | Recovery probe ready; live restart pending     | Capture capability/availability events, restart, and reconnect ordering |
 | Allowlisted capability write                          | Hard-gated probe implemented, disabled         | Use only the designated harmless test capability                        |
 | Error classification                                  | SDK invalid key returned `401`; matrix pending | Verify missing-scope, bad-URL, unavailable, and timeout behavior        |
 | Disposable-device lifecycle                           | Contract defined, disabled                     | Use only the separately gated virtual/test device                       |
@@ -188,6 +188,42 @@ FB_HOMEY_SHS_LIFECYCLE_OPERATIONS=add,rename,zone-move,availability,remove
 The implementation must validate the exact operation list, require a synthetic test-device marker established during
 setup, and clean up only resources created by that run. It must never pair, rename, move, make unavailable, remove, or
 unpair ordinary household devices.
+
+## Operator-controlled restart recovery probe
+
+The recovery probe measures the SDK's behavior across a real SHS restart without performing the restart itself. It
+first creates the local SDK client and subscribes to the devices manager. Only then does it print that the observation
+window is open. During that window, the operator restarts only the designated test SHS instance from a separate
+terminal or management interface. The probe requires this ordered evidence before writing a report:
+
+1. the subscribed socket disconnects;
+2. the SDK transport reconnects;
+3. the devices manager reports that its subscription is restored; and
+4. a bounded post-reconnect inventory read succeeds.
+
+Cleanup then unsubscribes the manager, disconnects the socket, and destroys the SDK client. The exact-schema report
+contains only fixed event labels, their order, and completion booleans. It contains no endpoint, API key, device data,
+inventory count, event payload, error detail, or identifier.
+
+Start from the same interactive shell as the read-only probe, ensure every `FB_HOMEY_SHS_WRITE_*` and
+`FB_HOMEY_SHS_LIFECYCLE_*` variable is unset, then enable only the operator-controlled recovery gate:
+
+```bash
+unset FB_HOMEY_SHS_WRITE_ENABLE FB_HOMEY_SHS_WRITE_DEVICE_ID FB_HOMEY_SHS_WRITE_CAPABILITY_ID
+unset FB_HOMEY_SHS_WRITE_VALUE FB_HOMEY_SHS_LIFECYCLE_ENABLE FB_HOMEY_SHS_LIFECYCLE_DEVICE_ID
+unset FB_HOMEY_SHS_LIFECYCLE_OPERATIONS
+export FB_HOMEY_SHS_RECOVERY_ENABLE=I_WILL_RESTART_THE_TEST_SHS_DURING_THIS_PROBE
+pnpm run homey:probe-recovery
+```
+
+Wait for `Homey recovery observation window is open`, restart the test SHS, and do not alter networking, credentials,
+or ordinary household devices during the run. `FB_HOMEY_SHS_RECOVERY_OBSERVE_MS` optionally controls the operator
+window from `10000` through `300000` milliseconds and defaults to `90000`. SDK creation, manager operations,
+post-reconnect verification, and cleanup remain independently bounded by `FB_HOMEY_SHS_TIMEOUT_MS`. A timeout or
+cleanup failure writes no report and exposes only a fixed sanitized error.
+
+This runbook does not authorize Smart Panel tooling or an automated agent to restart SHS. Live evidence remains pending
+until an operator intentionally performs the restart while the gated probe is open.
 
 ## Privacy-safe mDNS observation probe
 
