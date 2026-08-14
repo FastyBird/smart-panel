@@ -581,7 +581,9 @@ When over budget, compact in this order:
 
 1. Drop irrelevant optional tools.
 2. Reduce retrieved result limits while preserving the requested/selected entity.
-3. Replace old recent messages with the persisted rolling summary.
+3. Replace eligible old complete turns with the persisted rolling summary when one exists. Before Phase 6 or when a
+   summary is unavailable/stale, drop the oldest complete user/final-assistant turn and repeat until the remaining
+   history fits; never split a turn or require a summary to dispatch a request.
 4. Remove low-priority old reference entries.
 5. Shorten nonessential result labels/descriptions at schema boundaries.
 6. If the irreducible input fits, ask a focused clarification when the request still cannot be grounded safely.
@@ -898,6 +900,9 @@ load no home state.
 - [ ] Add selected-model context/output/tool capability reporting with conservative fallback.
 - [ ] Budget system instructions, schemas, summary, references, complete recent turns, current message, retrieved data,
       provider framing, output, and safety reserve.
+- [ ] Replace the fixed 19-row history load with budget-aware selection of newest complete user/final-assistant turns.
+      When no persisted summary exists yet, evict oldest complete turns until the request fits; never begin with an
+      orphan assistant message or make Phase 5 depend on Phase 6 persistence.
 - [ ] Recompute the budget before every tool-loop provider call.
 - [ ] Add token-aware compaction in the required order and preserve complete tool groups.
 - [ ] Add provider-adapter final serialized-payload checks.
@@ -910,12 +915,13 @@ load no home state.
       models.
 - [ ] Keep the existing configured context window as override/fallback for providers that cannot report a model limit.
 
-**Tests:** 2k/4k/8k/128k/200k windows; a 10,000-character DTO-valid message that cannot fit a 2k model; REST/voice 422
+**Tests:** 2k/4k/8k/128k/200k windows; a 10,000-character DTO-valid message that cannot fit a 2k model; existing history
+that overflows a small window before any summary exists; complete-turn eviction without orphan messages; REST/voice 422
 mapping; provider-free messaging replies; large tool schemas; oversized property strings; many tool iterations;
 estimator error; unknown Ollama model; and output reserve enforcement.
 
-**Gate:** No test provider receives an over-window serialized request, and the requested entity/action constraints survive
-compaction.
+**Gate:** No test provider receives an over-window serialized request, including a small-window conversation with no
+persisted summary, and the requested entity/action constraints survive compaction.
 
 ### Phase 6 — Conversation summary and structured reference memory
 
@@ -929,7 +935,8 @@ compaction.
 **Tasks:**
 
 - [ ] Persist bounded rolling summary progress and structured entity references.
-- [ ] Load recent messages by token budget instead of fixed count.
+- [ ] Extend the Phase 5 token-bounded history loader to substitute eligible older complete turns with the persisted
+      summary while retaining the no-summary complete-turn eviction fallback.
 - [ ] Preserve complete user/final-assistant pairs during window selection; preserve canonical tool groups if they are
       persisted in a future extension.
 - [ ] Update summaries incrementally and idempotently with a deterministic failure fallback, serializing each
