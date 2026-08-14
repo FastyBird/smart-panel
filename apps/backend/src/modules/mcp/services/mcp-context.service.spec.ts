@@ -225,6 +225,28 @@ describe('McpContextService', () => {
 		);
 	});
 
+	it('caps a whole-home snapshot at 100 devices and reports the omitted device', async () => {
+		devices.findVisibleSummaryPage.mockResolvedValue({
+			devices: Array.from({ length: 100 }, (_, index) => ({
+				id: `device-${index}`,
+				name: `Device ${index}`,
+				category: 'generic',
+				enabled: true,
+				hidden: false,
+				roomId: null,
+				zoneIds: [],
+				status: { online: true, status: 'connected', lastChanged: null },
+			})) as DeviceEntity[],
+			total: 101,
+		});
+
+		const result = await service.getHomeContext();
+
+		expect(devices.findVisibleSummaryPage).toHaveBeenCalledWith(100);
+		expect(result.devices).toHaveLength(100);
+		expect(result.limits).toEqual(expect.objectContaining({ devices_truncated: true }));
+	});
+
 	it('returns the exact whole-home composite contract with stable collection ordering', async () => {
 		jest.useFakeTimers();
 		jest.setSystemTime(new Date('2026-08-14T12:00:00.000Z'));
@@ -761,6 +783,7 @@ describe('McpContextService', () => {
 
 		const result = await service.getSecurityStatus();
 
+		expect(security.getBoundedStatus).toHaveBeenCalledWith(100, 10, 20);
 		expect(result).toEqual(
 			expect.objectContaining({
 				devices_truncated: false,
