@@ -41,7 +41,12 @@ describe('McpReadToolService', () => {
 		contextService = {
 			getHomeContext: jest.fn().mockResolvedValue({
 				scope: { type: 'home' },
+				spaces: [],
 				devices: [],
+				scenes: [],
+				weather: null,
+				energy: null,
+				security: null,
 				limits: {
 					spaces_truncated: false,
 					devices_truncated: false,
@@ -143,7 +148,12 @@ describe('McpReadToolService', () => {
 		expect(result?.structuredContent.tool).toBe('get_home_context');
 		expect(result?.structuredContent.data).toEqual({
 			scope: { type: 'home' },
+			spaces: [],
 			devices: [],
+			scenes: [],
+			weather: null,
+			energy: null,
+			security: null,
 			limits: {
 				spaces_truncated: false,
 				devices_truncated: false,

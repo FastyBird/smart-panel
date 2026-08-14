@@ -176,6 +176,103 @@ describe('McpContextService', () => {
 		);
 	});
 
+	it('returns the exact whole-home composite contract with stable collection ordering', async () => {
+		spaces.findSummaryPage.mockResolvedValue({
+			spaces: [
+				{ id: 'room-1', name: 'Kitchen', type: SpaceType.ROOM, parentId: null } as unknown as SpaceEntity,
+				{ id: 'room-2', name: 'Office', type: SpaceType.ROOM, parentId: null } as unknown as SpaceEntity,
+			],
+			total: 2,
+		});
+		devices.findVisibleSummaryPage.mockResolvedValue({
+			devices: [
+				{
+					id: 'device-1',
+					name: 'Kitchen light',
+					category: 'lighting',
+					enabled: true,
+					hidden: false,
+					roomId: 'room-1',
+					zoneIds: ['zone-1'],
+					status: { online: true, status: 'connected', lastChanged: new Date('2026-08-14T12:00:00.000Z') },
+				} as unknown as DeviceEntity,
+			],
+			total: 1,
+		});
+		devices.getVisibleSpaceCounts.mockResolvedValue({
+			rooms: { 'room-1': 1, 'room-2': 0 },
+			zones: {},
+			floors: {},
+		});
+		scenes.findSummaryPage.mockResolvedValue({
+			scenes: [
+				{
+					id: 'scene-1',
+					name: 'Morning',
+					category: 'generic',
+					enabled: true,
+					triggerable: true,
+					primarySpaceId: 'room-1',
+				},
+			],
+			total: 1,
+		});
+
+		await expect(service.getHomeContext()).resolves.toEqual({
+			scope: { type: 'home' },
+			spaces: [
+				{ id: 'room-1', name: 'Kitchen', type: SpaceType.ROOM, parent_id: null, device_count: 1 },
+				{ id: 'room-2', name: 'Office', type: SpaceType.ROOM, parent_id: null, device_count: 0 },
+			],
+			devices: [
+				{
+					id: 'device-1',
+					name: 'Kitchen light',
+					category: 'lighting',
+					enabled: true,
+					room_id: 'room-1',
+					zone_ids: ['zone-1'],
+					status: { online: true, state: 'connected', last_changed: '2026-08-14T12:00:00.000Z' },
+				},
+			],
+			scenes: [
+				{
+					id: 'scene-1',
+					name: 'Morning',
+					category: 'generic',
+					enabled: true,
+					triggerable: true,
+					primary_space_id: 'room-1',
+				},
+			],
+			weather: null,
+			energy: null,
+			security: null,
+			limits: { spaces_truncated: false, devices_truncated: false, scenes_truncated: false },
+		});
+	});
+
+	it('returns the exact scoped composite contract', async () => {
+		spaces.findOne.mockResolvedValue({
+			id: 'room-1',
+			name: 'Kitchen',
+			type: SpaceType.ROOM,
+			parentId: null,
+		} as unknown as SpaceEntity);
+		energy.getSpaceSummary.mockRejectedValue(new Error('energy unavailable'));
+
+		await expect(service.getHomeContext('room-1')).resolves.toEqual({
+			scope: { type: 'space', id: 'room-1', name: 'Kitchen' },
+			spaces: [{ id: 'room-1', name: 'Kitchen', type: SpaceType.ROOM, parent_id: null, device_count: 0 }],
+			devices: [],
+			scenes: [],
+			weather: null,
+			energy: null,
+			security: null,
+			limits: { spaces_truncated: false, devices_truncated: false, scenes_truncated: false },
+		});
+	});
+
 	it('propagates strict connection status failures from home context', async () => {
 		devices.findVisibleSummaryPage.mockResolvedValue({
 			devices: [{ id: 'device-id', hidden: false } as DeviceEntity],
