@@ -421,7 +421,7 @@ Before read tools are enabled, extend the provider-neutral conversation contract
 
 - Assistant text and zero or more tool calls with stable IDs
 - One result for every tool-call ID, including status, concise message, and validated bounded structured data
-- Explicit tool errors for malformed, denied, timed-out, partial, and failed calls
+- Explicit tool outcomes for malformed, denied, timed-out, partial, failed, and action-`indeterminate` calls
 - Complete ordering across parallel calls and iterations
 
 Provider adapters for OpenAI, Anthropic, and Ollama must map this canonical representation to their native
@@ -487,17 +487,32 @@ paths. The allowed set may be narrowed further per turn but never widened beyond
 tool schema, and provider response are all validated; unknown tools or malformed data are returned to the model as
 bounded errors, not thrown into an uncontrolled retry.
 
+Write/trigger execution uses that derived ID as an `actionExecutionId` before dispatch. The command/scene/intent boundary
+must atomically register or reuse the execution identity so concurrent deliveries and retries with the same identity
+share the original operation/result instead of issuing a second physical action. Prefer an existing durable command or
+audit mechanism when it enforces uniqueness; otherwise add a minimal persistent execution ledger with a unique key,
+bounded result metadata, retention/cleanup, and no raw sensitive values. Do not enable the new action loop without an
+idempotency authority that spans the adapter retry window and process restarts.
+
+Read timeout semantics do not apply blindly to physical actions. If an action has not started, or the domain service
+authoritatively confirms cancellation before application, `TIMED_OUT` is safe. Once dispatched, if completion or
+cancellation cannot be proven, return `INDETERMINATE`, retain/reconcile the ledger entry when the underlying promise
+settles, and state that the outcome is unknown. The model must not automatically retry that action identity or claim
+failure/success. A state read may help reconciliation; a new non-idempotent trigger requires an explicit user decision
+after the uncertainty is disclosed.
+
 ### 6.3 Loop limits and safety
 
 - Keep a configurable total iteration limit and add per-turn read/action call limits.
 - Permit parallel independent reads where the provider supports them, but serialize dependent actions.
 - Budget every tool result before the next model call; compact or truncate only at schema-defined boundaries.
 - If retrieval truncates, let the model refine its query rather than requesting the entire catalog.
-- A timeout or optional-domain error can produce a partial answer; action validation failure cannot be converted into
-  success.
+- A read timeout or optional-domain error can produce a partial answer; action validation failure cannot be converted
+  into success. A dispatched non-cancellable action timeout is `INDETERMINATE`, not a normal failed/timed-out result.
 - Prevent repeated identical tool calls with the same arguments within one turn unless an action or freshness event
   justifies a reread.
-- Preserve idempotency/request IDs through existing command and intent paths.
+- Preserve idempotency/request IDs through existing command and intent paths, coalesce concurrent executions with the
+  same action identity, and suppress automatic retries while an action is pending or indeterminate.
 
 ---
 
@@ -675,6 +690,8 @@ Requirements:
 - For safety-relevant/security devices, preserve existing authorization/command restrictions and add focused regression
   tests; retrieval does not broaden tool permissions.
 - A model saying an action succeeded is not evidence. The final response must be grounded in the structured tool result.
+- A post-dispatch timeout without authoritative cancellation is not evidence of failure. Surface `INDETERMINATE`, retain
+  the execution identity, and require reconciliation or explicit user direction before any new non-idempotent attempt.
 
 ---
 
@@ -687,6 +704,7 @@ Record bounded metadata for each turn and provider iteration:
 - Estimated total input, output reserve, actual provider input/output tokens, and estimation error when actuals exist
 - Counts of history turns, summary bytes/tokens, references, retrieved entities, and truncated results
 - Query/tool durations, statuses, retry/duplicate suppression, and iteration count
+- Action execution identity status counts, including pending, indeterminate, reconciled, and replay-suppressed outcomes
 - Prefetch deadline/timeout counts and whether an upstream operation ignored cancellation
 - Whether a fallback, partial result, ambiguity guard, or budget compaction occurred
 - Provider/model capability decision
@@ -752,6 +770,7 @@ apps/backend/src/modules/devices/services/   # bounded filtered domain queries a
 apps/backend/src/modules/scenes/services/    # bounded filtered scene search as needed
 apps/backend/src/modules/spaces/services/    # bounded filtered space search as needed
 apps/backend/src/migrations/
+├── <next-timestamp>-AddBuddyActionExecutionLedger.ts # only if existing command storage cannot enforce idempotency
 └── <next-timestamp>-AddBuddyConversationMemory.ts
 ```
 
@@ -834,6 +853,8 @@ bounded search without loading the full catalog.
 - `apps/backend/src/modules/tools/platforms/tool-provider.platform.ts`
 - Buddy LLM provider plugins/adapters and their specs
 - Buddy Discord, Telegram, and WhatsApp adapters and their specs
+- Existing command/scene/intent idempotency persistence, or a minimal Buddy action-execution ledger entity/service and
+  incremental migration if existing storage cannot enforce a unique execution identity
 - Shared tools registry specs as needed
 
 **Tasks:**
@@ -850,6 +871,11 @@ bounded search without loading the full catalog.
       write/trigger only through authenticated Smart Panel mapping or an explicit action-capable allowlist/role.
 - [ ] Preserve the parent entry-point request ID plus the tool-call ID and derive a bounded unique downstream action/audit
       request ID from both; never use a provider-local tool-call ID alone.
+- [ ] Register the derived action execution identity atomically before dispatch and coalesce concurrent/replayed calls.
+      Reuse an existing durable idempotency authority or add a bounded persistent ledger if none spans retries/restarts.
+- [ ] Distinguish action timeouts before dispatch/confirmed cancellation from post-dispatch uncertainty. Return
+      `INDETERMINATE` for non-cancellable unknown outcomes, reconcile late completion, and prohibit automatic retries or
+      success/failure claims for that identity.
 - [ ] Restrict turns without verified action authorization to `READ` access and omit write/trigger tool schemas.
 - [ ] Add per-result byte/token caps, structured truncation metadata, duplicate-call suppression, and timeout handling.
 - [ ] Ensure provider logs and persisted messages do not leak full raw tool data.
@@ -858,10 +884,14 @@ bounded search without loading the full catalog.
 rejection of a mismatched request-context conversation ID; unmapped platform users under empty/allow-all admission remain
 read-only; mapped/explicitly action-allowlisted users receive only their authorized access kinds; parent request ID
 preservation and uniqueness when `ollama-0` repeats across turns; parallel call ordering; malformed arguments; unknown
-tools; denied access; partial results; timeouts; oversized results; repeated calls; and max-iteration behavior.
+tools; denied access; partial results; read timeouts; action timeout before dispatch; confirmed cancellation; a hanging
+non-cancellable device command and scene trigger returning `INDETERMINATE`; concurrent and post-restart replay of the
+same action identity causing exactly one domain execution; late-result reconciliation; no model auto-retry; oversized
+results; repeated reads; and max-iteration behavior.
 
 **Gate:** Using a schema-validated test tool provider, every provider adapter correlates a tool call with its bounded
 structured result, supports a second dependent call, and produces a final response grounded in the result status/data.
+No timed-out or replayed action test executes the same physical command twice or reports an unproven terminal outcome.
 
 ### Phase 3 — Add Buddy read tools
 
