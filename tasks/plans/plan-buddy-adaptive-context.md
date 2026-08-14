@@ -366,17 +366,30 @@ For reads, several close matches may be returned with scores/reasons. For writes
 result ambiguous if more than one compatible candidate is plausible. Never use a tiny score difference to authorize an
 action. Canonical UUIDs remain valid tool inputs, but for a Buddy-origin action the UUID/short ID supplied by the model is
 not resolution proof. Search/read exposure never grants action authority. `BuddyActionResolutionService` must bind a
-server-generated `BuddyActionResolutionProof` to the request claim, original-user-intent digest, action kind/arguments,
-canonical target, candidate-set digest, conversation/safety epoch, resolution method, and expiry. Valid methods are an
-identifier explicitly supplied by the user, a deterministic unique match/reference with a completeness-safe collision
-check, or a structured user selection bound to an expiring clarification candidate set. The proof is server-held and not
-a model-selectable tool argument.
+server-generated `BuddyActionResolutionProof` to the request claim, original-user-intent digest, deterministically
+extracted canonical action semantics/arguments, canonical target, candidate-set digest, conversation/safety epoch,
+resolution method, and expiry. Valid target methods are an identifier explicitly supplied by the user, a deterministic
+unique match/reference with a completeness-safe collision check, or a structured user selection bound to an expiring
+clarification candidate set. Independently, the server must parse the action kind, value, unit, operator, relative change,
+repeat count, and allowlisted condition predicates required by that action from the original user message or exact
+structured clarification—not from model-generated arguments. Missing/ambiguous semantics require clarification, and a
+model-selected value/operator that differs from the canonical semantics invalidates the call. The proof is server-held
+and not a model-selectable tool argument.
 
-Immediately before planning and dispatch, re-resolve current target existence/capability and validate the proof. If the
-original request was ambiguous, search was truncated/incomplete, a new plausible collision appears, or the model selects
-one ID from several returned candidates, no proof exists and the action fails closed with a structured ambiguity result.
-Persist the proof with the canonical action plan before dispatch. Non-Buddy MCP/tool consumers retain their existing ID
-semantics and authorization paths.
+Before issuing a proof for a conditional action, resolve and evaluate every allowlisted predicate from bounded fresh,
+completeness-safe reads. A false predicate produces a provider-free `condition_not_met` outcome and zero action; an
+unknown/partial/stale predicate asks for clarification or reports that the condition cannot be verified. Bind the
+predicate expression, canonical operands, observed versions/timestamps, and successful evaluation digest to the proof,
+then re-read/re-evaluate immediately before `ACTION_DISPATCHING`. If the predicate is no longer proven true, or a
+relative/value-bearing action's bound base state changed, invalidate the proof and execute nothing. Prompt/model text and
+untrusted entity metadata can never create or alter semantic evidence.
+
+Immediately before planning and dispatch, re-resolve current target existence/capability, exact canonical action
+semantics, required predicate truth/base-state version, and validate the proof. If the original request was ambiguous,
+search was truncated/incomplete, a new plausible collision appears, the model changes a requested value/condition, or the
+model selects one ID from several returned candidates, no proof exists and the action fails closed with a structured
+ambiguity/semantic-mismatch result. Persist the proof with the canonical action plan before dispatch. Non-Buddy MCP/tool
+consumers retain their existing ID semantics and authorization paths.
 
 Buddy short-ID mappings are namespaced by conversation: register only entities actually exposed in that conversation,
 and resolve a Buddy short ID only inside the same conversation scope.
@@ -517,10 +530,16 @@ adapters use their stable source-qualified platform event/message ID plus a payl
 supply a stable job/event ID and digest. A server-generated per-attempt ID is allowed only for explicitly read-only
 internal work and cannot authorize an action-capable turn.
 
-REST uses the stable route conversation ID as `idempotencyScopeId`. Messaging adapters derive a source-qualified opaque
-scope from the platform chat/channel/thread identity and persist an atomic mapping from that scope to the Buddy
-conversation ID; never rely on their current in-memory maps for replay correctness. Raw platform identifiers are neither
-logged nor stored when a stable keyed digest/opaque form is sufficient. Trusted internal jobs supply a stable scope.
+REST uses the stable route conversation ID as `idempotencyScopeId`. Messaging adapters derive it from
+`(platform, platformAccountKey, chat/channel/thread identity)`, where `platformAccountKey` is an installation-keyed opaque
+digest of the credential-authenticated stable bot/application/business-account ID (for example Telegram bot user ID,
+Discord application/bot ID, or WhatsApp business account/phone-number ID), never of the credential token itself. Token
+rotation for the same verified account therefore preserves replay scope; replacing the account creates a distinct scope
+even when chat and event IDs overlap. Resolve and validate that account identity during adapter startup/reconfiguration
+before admitting deliveries; if it cannot be authenticated, fail closed rather than using an unqualified chat scope.
+Persist an atomic mapping from this qualified opaque scope to the Buddy conversation ID and never rely on current
+in-memory maps for replay correctness. Raw platform/account identifiers and credentials are neither logged nor stored
+when a keyed digest/opaque form is sufficient. Trusted internal jobs supply a stable scope.
 
 Conversation deletion must not cascade away messaging bindings or request claims. In the delete transaction, lock each
 affected binding, clear its active conversation, increment its generation, and retain a tombstone containing only the
@@ -1278,9 +1297,11 @@ snapshots are produced through the shared query layer without making that eager 
 - [ ] Derive messaging/internal request IDs from stable source event/job IDs; never use a per-attempt generated ID for an
       action-capable request.
 - [ ] Replace Discord/Telegram/WhatsApp in-memory-only platform-conversation maps with an atomic persistent binding from a
-      source-qualified opaque chat/channel/thread scope to the Buddy conversation ID. Pass that stable scope as
-      `idempotencyScopeId`; REST uses its route conversation ID. Do not store/log raw platform IDs when a keyed digest is
-      sufficient.
+      source- and verified-platform-account-qualified opaque chat/channel/thread scope to the Buddy conversation ID. Pass
+      that stable scope as `idempotencyScopeId`; REST uses its route conversation ID. Derive the account component from
+      the authenticated stable bot/application/business identity rather than the credential token, preserving scope on
+      same-account token rotation and isolating a replacement account. Fail closed if startup/reconfiguration cannot
+      authenticate it, and do not store/log raw platform/account IDs when a keyed digest is sufficient.
 - [ ] Integrate conversation deletion with messaging bindings and claims: tombstone/rebind binding generations without
       cascading claims, fence active workers transactionally, replay retained delivery claims before resolving the active
       binding, and reject stale post-retention deliveries instead of executing them as new. Terminalize/reconcile claims
@@ -1355,9 +1376,12 @@ snapshots are produced through the shared query layer without making that eager 
       conversation sequence advances; every later provider must block a conflicting action until authoritative
       reconciliation/cancellation or a structured user acknowledgement bound to the predecessor and ordering risk.
 - [ ] Require a server-generated claim/intent/candidate/target-bound resolution proof for every Buddy-origin write or
-      trigger. A model-supplied canonical/short ID is only an argument; rerun deterministic ambiguity/completeness checks
-      and reject dispatch unless the original user explicitly identified the target, unique resolution is proven, or an
-      exact structured clarification selection is valid. Preserve non-Buddy action-provider behavior.
+      trigger. A model-supplied canonical/short ID or action value/operator is only an argument; deterministically extract
+      canonical action/value/unit/relative/repeat/condition semantics from original user input or structured
+      clarification, rerun target ambiguity/completeness and semantic checks, and reject dispatch unless both target and
+      action meaning are proven. Evaluate allowlisted conditions from complete fresh reads before proof and immediately
+      before dispatch; false, unknown, stale, or model-altered predicates/values execute nothing. Preserve non-Buddy
+      action-provider behavior.
 - [ ] Persist a default-one `BuddyActionAllowance` per canonical fingerprint. Allocate additional occurrence slots only
       from a bounded repeat count parsed from original user input or an explicit structured confirmation tied to the
       resolved action; require confirmation for repeated non-idempotent triggers and coalesce all model-only duplicates.
@@ -1386,7 +1410,10 @@ conversations remaining parallel;
 a reliable tool model receiving two plausible search candidates and then calling an action with either returned canonical
 or short ID executing zero times; hallucinated/foreign/expired resolution proof executing zero; exact user-supplied ID,
 completeness-safe unique name/reference, and structured clarification selection producing valid bound proofs; truncated
-search or a new plausible collision before dispatch invalidating proof; non-Buddy action-provider regression;
+search or a new plausible collision before dispatch invalidating proof; requested 40% followed by a model call for 100%,
+wrong units/operators, omitted/extra repeat counts, and prompt-injected values executing zero times; an allowlisted
+condition proven false/unknown/partial/stale before proof or changed before dispatch executing zero times, while the exact
+true condition/action semantics produce one bound proof; non-Buddy action-provider regression;
 fault injection between assistant-message insert and claim completion/turn-lease release rolling back the whole
 transaction, plus crash immediately after the atomic commit recovering the one stored turn/outcome without provider
 invocation and allowing exactly the next sequence;
@@ -1402,6 +1429,9 @@ authoritative completion/cancellation or exact structured acknowledgement; trans
 fence; unrelated-target action proceeding; conflict-fence persistence/recovery across restart;
 Discord/Telegram/WhatsApp restart with empty process maps followed by redelivery of the same platform event resolving the
 persisted Buddy conversation/scope, one claim, one stored message, and at most one action;
+same-account credential/token rotation retaining the opaque account-qualified scope and replay result, plus replacement
+bot/application/business-account credentials with overlapping chat/event IDs creating a distinct scope/claim rather than
+being suppressed as an old replay; unauthenticated account identity admitting zero deliveries;
 redelivery after the original outbound reply was sent producing zero additional platform sends; crash with outbound
 `DISPATCHING` reconciling by a fake authoritative platform key, or becoming `INDETERMINATE` with zero automatic resends;
 redelivery after the platform account is remapped to another Smart Panel actor resolving the original delivery claim and
@@ -1508,7 +1538,8 @@ An exposed search ID alone never satisfies Buddy action-resolution proof.
 - [ ] Render compact typed sections with untrusted-data delimiters and explicit partial/truncated states.
 - [ ] Add ambiguity detection and deterministic clarification candidates for risky actions.
 - [ ] Generate server-held resolution proof only from exact original-input resolution or a structured clarification
-      selection; bind it to the claim/intent/candidate digest/target and revalidate immediately before dispatch.
+      selection; bind it to the claim, deterministic canonical action/value/unit/operator/relative/repeat/condition
+      semantics, candidate digest, target, predicate/base-state evidence, and revalidate immediately before dispatch.
 - [ ] Run the conservative irreducible-input admission preflight before planner/prefetch or deterministic handoff. Bind
       its success to the claim digest/model profile, and require the marker again before any handoff/action dispatch.
 - [ ] Implement the deterministic action handoff for tool-less/limited providers using an allowlisted command grammar,
@@ -1523,9 +1554,11 @@ partial completion before the aggregate deadline, ignored cancellation, and proo
 a bounded partial/unavailable response without calling the eager snapshot. For both `limited` and `unsupported` models,
 test exact device writes, numeric/range validation, scene/intent triggers, ambiguous targets, clarification follow-ups,
 expired drafts, changed/deleted targets, denied authorization, unsupported/compound grammar, injection attempts in names,
-provider failure after action, and indeterminate/replay outcomes; assert every side effect passes through the existing
-validated action provider exactly once and none originates from LLM output. For each limited/unsupported strategy, a
-DTO-valid exact action exceeding the model's irreducible floor must terminalize as `REJECTED_CAPACITY` with zero target
+model-altered numeric values/units/operators/repeat counts, false/unknown/stale conditional predicates, condition/base
+state changes immediately before dispatch, provider failure after action, and indeterminate/replay outcomes; assert every
+side effect passes through the existing validated action provider exactly once and none originates from LLM output. For
+each limited/unsupported strategy, a DTO-valid exact action exceeding the model's irreducible floor must terminalize as
+`REJECTED_CAPACITY` with zero target
 queries beyond admission, model calls, action plans, or physical executions; a valid follow-up still proceeds.
 
 **Gate:** A tool-less small-context model receives bounded relevant context for all supported read classes, greetings
@@ -1753,10 +1786,15 @@ designated safe targets and reversible values. Scale/shadow evaluation must neve
 - [ ] Long conversations use token-aware history plus persisted bounded summary/reference memory.
 - [ ] Ambiguous actions never silently select a candidate; a model choosing one exposed UUID/short ID cannot dispatch
       without server-held proof of the user's unambiguous intent or structured selection.
+- [ ] Buddy writes/triggers execute only when server-parsed action/value/unit/operator/repeat/condition semantics exactly
+      match the original request or structured clarification; altered values and false/unknown/stale predicates execute
+      nothing, including after the final pre-dispatch recheck.
 - [ ] REST text/audio retries use the required client-stable idempotency key, and replay after timeout/restart cannot
       execute an action twice even when the provider returns a different tool-call ID.
 - [ ] Discord/Telegram/WhatsApp bindings survive process restart, and replay of one stable platform event resolves the
-      same Buddy conversation/idempotency scope and cannot duplicate messages or actions.
+      same Buddy conversation/idempotency scope and cannot duplicate messages or actions. Their opaque scopes include the
+      verified stable platform-account identity: rotating credentials for the same account preserves replay, while a
+      replacement account cannot collide even with overlapping chat/event IDs.
 - [ ] Messaging replay protection survives actor remapping and conversation deletion: old events resolve retained claims,
       while only new events may establish the next conversation binding generation. Retained terminal claims contain no
       raw user text or STT transcript after deletion.
