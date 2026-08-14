@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"sourceFixtureVersion": "2026-08-13-shs-13.4.0",
+	"fixtures": [
+		"devices/light.json",
+		"devices/switch.json",
+		"devices/climate.json",
+		"devices/cover.json",
+		"devices/sensor-air-quality.json",
+		"devices/sensor-safety.json",
+		"devices/energy-meter.json",
+		"devices/repeated-capabilities.json",
+		"devices/unavailable.json"
+	]
+}

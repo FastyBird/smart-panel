@@ -109,7 +109,7 @@ apps/backend/src/plugins/devices-homey/__fixtures__/
 
 - [x] Add a capture sanitizer that replaces IDs, names, zones, addresses, and sensitive driver metadata with deterministic synthetic values.
 - [x] Preserve field shape, ordering where relevant, types, units, ranges, enum values, and capability suffix behavior.
-- [ ] Add expected normalized output fixtures for representative devices.
+- [x] Add expected normalized output fixtures for representative devices.
 - [x] Add forbidden-token assertions or a fixture-safety test covering key prefixes, original host/address, and known private names.
 - [x] Confirm the corpus can drive connector/domain tests after live SHS access ends.
 
