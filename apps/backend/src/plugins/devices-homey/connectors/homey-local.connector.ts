@@ -165,7 +165,7 @@ export class HomeyLocalConnector implements HomeyConnector {
 		if (this.transportCleanupNeeded) {
 			try {
 				await this.transport.disconnect();
-				this.transportCleanupNeeded = false;
+				this.markTransportCleaned();
 			} catch (error) {
 				throw mapHomeyLocalTransportError(error, HomeyConnectorOperation.CONNECT);
 			}
@@ -182,7 +182,7 @@ export class HomeyLocalConnector implements HomeyConnector {
 
 			try {
 				await this.transport.disconnect();
-				this.transportCleanupNeeded = false;
+				this.markTransportCleaned();
 			} catch {
 				// Preserve the categorized connect failure after best-effort partial cleanup.
 			}
@@ -221,13 +221,7 @@ export class HomeyLocalConnector implements HomeyConnector {
 		if (shouldDisconnectTransport) {
 			try {
 				await this.transport.disconnect();
-				this.transportCleanupNeeded = false;
-
-				for (const subscription of this.subscriptions) {
-					subscription.cleanupNeeded = false;
-				}
-
-				this.subscriptions.clear();
+				this.markTransportCleaned();
 			} catch (error) {
 				this.transportCleanupNeeded = true;
 
@@ -280,6 +274,17 @@ export class HomeyLocalConnector implements HomeyConnector {
 		await subscription.cleanup();
 		subscription.cleanupNeeded = false;
 		this.subscriptions.delete(subscription);
+	}
+
+	private markTransportCleaned(): void {
+		this.transportCleanupNeeded = false;
+
+		for (const subscription of this.subscriptions) {
+			subscription.active = false;
+			subscription.cleanupNeeded = false;
+		}
+
+		this.subscriptions.clear();
 	}
 
 	private assertConnected(operation: HomeyConnectorOperation): void {

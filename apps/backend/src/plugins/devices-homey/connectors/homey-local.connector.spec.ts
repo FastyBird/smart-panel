@@ -137,7 +137,8 @@ class FakeHomeyLocalTransport implements HomeyLocalTransport {
 	private transportConnectCount = 0;
 	private transportDisconnectCount = 0;
 	private connectGate: Promise<void> | null = null;
-	private unsubscribeFailure: Error | null = null;
+	private unsubscribeFailuresRemaining = 0;
+	private transportUnsubscribeCount = 0;
 
 	get writes(): readonly CapabilityWrite[] {
 		return this.capabilityWrites;
@@ -155,12 +156,16 @@ class FakeHomeyLocalTransport implements HomeyLocalTransport {
 		return this.transportDisconnectCount;
 	}
 
+	get unsubscribeCount(): number {
+		return this.transportUnsubscribeCount;
+	}
+
 	failNext(operation: HomeyConnectorOperation, category: HomeyConnectorErrorCategory): void {
 		this.failures.set(operation, category);
 	}
 
-	failNextUnsubscribe(): void {
-		this.unsubscribeFailure = Object.assign(new Error('sentinel-secret'), { code: 'ECONNRESET' });
+	failNextUnsubscribe(times = 1): void {
+		this.unsubscribeFailuresRemaining = times;
 	}
 
 	deferNextConnect(): () => void {
@@ -253,11 +258,11 @@ class FakeHomeyLocalTransport implements HomeyLocalTransport {
 						return;
 					}
 
-					const failure = this.unsubscribeFailure;
-					this.unsubscribeFailure = null;
+					this.transportUnsubscribeCount += 1;
 
-					if (failure !== null) {
-						throw failure;
+					if (this.unsubscribeFailuresRemaining > 0) {
+						this.unsubscribeFailuresRemaining -= 1;
+						throw Object.assign(new Error('sentinel-secret'), { code: 'ECONNRESET' });
 					}
 
 					active = false;
@@ -351,6 +356,27 @@ describe('Homey local connector lifecycle serialization', () => {
 		await expect(unsubscribe()).resolves.toBeUndefined();
 		expect(transport.subscriberCount).toBe(0);
 		await connector.disconnect();
+	});
+
+	it('retires stale subscriptions after a transport cleanup retry succeeds before reconnect', async () => {
+		const transport = new FakeHomeyLocalTransport();
+		const connector = new HomeyLocalConnector(transport);
+
+		await connector.connect();
+		const unsubscribe = await connector.subscribe(() => undefined);
+		transport.failNextUnsubscribe(2);
+		transport.failNext(HomeyConnectorOperation.DISCONNECT, HomeyConnectorErrorCategory.UNAVAILABLE);
+
+		await expect(unsubscribe()).rejects.toMatchObject({ category: HomeyConnectorErrorCategory.UNAVAILABLE });
+		await expect(connector.disconnect()).rejects.toMatchObject({
+			category: HomeyConnectorErrorCategory.UNAVAILABLE,
+		});
+		await expect(connector.connect()).resolves.toBeUndefined();
+		await expect(unsubscribe()).resolves.toBeUndefined();
+		expect(transport.unsubscribeCount).toBe(2);
+
+		await connector.disconnect();
+		expect(transport.unsubscribeCount).toBe(2);
 	});
 
 	it('honors connect, disconnect, connect call order while the first connection is pending', async () => {
