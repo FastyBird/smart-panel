@@ -23,6 +23,7 @@ type ResourceListCallback = (
 describe('McpReadToolService', () => {
 	let service: McpReadToolService;
 	let contextService: {
+		getHomeContext: jest.Mock;
 		getInstallation: jest.Mock;
 		getSecurityStatus: jest.Mock;
 		getWeather: jest.Mock;
@@ -38,6 +39,15 @@ describe('McpReadToolService', () => {
 
 	beforeEach(() => {
 		contextService = {
+			getHomeContext: jest.fn().mockResolvedValue({
+				scope: { type: 'home' },
+				devices: [],
+				limits: {
+					spaces_truncated: false,
+					devices_truncated: false,
+					scenes_truncated: false,
+				},
+			}),
 			getInstallation: jest.fn().mockResolvedValue({
 				id: 'installation-id',
 				name: 'FastyBird Smart Panel',
@@ -121,6 +131,101 @@ describe('McpReadToolService', () => {
 				outcome: 'completed',
 			}),
 		);
+	});
+
+	it('requests whole-home context when get_home_context omits a space', async () => {
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await callbacks.get('get_home_context')?.({}, requestContext());
+
+		expect(contextService.getHomeContext).toHaveBeenCalledTimes(1);
+		expect(contextService.getHomeContext).toHaveBeenCalledWith(undefined);
+		expect(result?.structuredContent.tool).toBe('get_home_context');
+		expect(result?.structuredContent.data).toEqual({
+			scope: { type: 'home' },
+			devices: [],
+			limits: {
+				spaces_truncated: false,
+				devices_truncated: false,
+				scenes_truncated: false,
+			},
+		});
+	});
+
+	it('passes the requested space to get_home_context and preserves bounded-output metadata in the envelope', async () => {
+		const spaceId = '550e8400-e29b-41d4-a716-446655440000';
+		const scopedContext = {
+			scope: { type: 'space', id: spaceId, name: 'Living room' },
+			spaces: [{ id: spaceId, name: 'Living room', type: 'room', device_count: 101 }],
+			devices: [{ id: 'device-id', name: 'Ceiling light' }],
+			scenes: [],
+			weather: null,
+			energy: null,
+			security: {
+				devices_truncated: true,
+				channels_truncated: true,
+				properties_truncated: true,
+				state_truncated: true,
+			},
+			limits: {
+				spaces_truncated: false,
+				devices_truncated: true,
+				scenes_truncated: true,
+			},
+		};
+		contextService.getHomeContext.mockResolvedValue(scopedContext);
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await callbacks.get('get_home_context')?.({ space_id: spaceId }, requestContext());
+		const installation = result?.structuredContent.installation as { id: string } | undefined;
+
+		expect(contextService.getHomeContext).toHaveBeenCalledTimes(1);
+		expect(contextService.getHomeContext).toHaveBeenCalledWith(spaceId);
+		expect(result?.isError).toBeUndefined();
+		expect(installation?.id).toBe('installation-id');
+		expect(result?.structuredContent.tool).toBe('get_home_context');
+		expect(result?.structuredContent.request_id).toBe('17');
+		expect(typeof result?.structuredContent.observed_at).toBe('string');
+		expect(result?.structuredContent.data).toBe(scopedContext);
+	});
+
+	it('requests primary weather when get_weather omits a location', async () => {
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await callbacks.get('get_weather')?.({}, requestContext());
+
+		expect(contextService.getWeather).toHaveBeenCalledTimes(1);
+		expect(contextService.getWeather).toHaveBeenCalledWith(undefined);
+		expect(result?.structuredContent).toEqual(
+			expect.objectContaining({
+				tool: 'get_weather',
+				data: { location: 'Prague' },
+			}),
+		);
+	});
+
+	it('passes an explicit location to get_weather and preserves its output in the envelope', async () => {
+		const locationId = '550e8400-e29b-41d4-a716-446655440000';
+		const weatherContext = {
+			location_id: locationId,
+			location: 'Prague',
+			current: { temperature: 21 },
+			forecast: [{ date: '2026-08-15', temperature_max: 25 }],
+		};
+		contextService.getWeather.mockResolvedValue(weatherContext);
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		const result = await callbacks.get('get_weather')?.({ location_id: locationId }, requestContext());
+
+		expect(contextService.getWeather).toHaveBeenCalledTimes(1);
+		expect(contextService.getWeather).toHaveBeenCalledWith(locationId);
+		expect(result?.structuredContent).toEqual(
+			expect.objectContaining({
+				tool: 'get_weather',
+				data: weatherContext,
+			}),
+		);
+		expect(result?.structuredContent.data).toBe(weatherContext);
 	});
 
 	it('returns a sanitized denial when live policy no longer grants read', async () => {

@@ -17,10 +17,14 @@ import {
 	MCP_MAX_CONTEXT_DEVICES,
 	MCP_MAX_CONTEXT_SCENES,
 	MCP_MAX_CONTEXT_SPACES,
+	MCP_MAX_ENERGY_RANGE_DAYS,
+	MCP_MAX_FORECAST_DAYS,
 	MCP_MAX_PROPERTIES_PER_CHANNEL,
+	MCP_MAX_SECURITY_ALERTS,
 	MCP_MAX_SECURITY_CHANNELS_PER_DEVICE,
 	MCP_MAX_SECURITY_DEVICES,
 	MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
+	MCP_MAX_TIMESERIES_POINTS,
 	McpCapability,
 } from '../mcp.constants';
 
@@ -384,6 +388,41 @@ describe('McpContextService', () => {
 		expect(result.limits).toEqual(expect.objectContaining({ scenes_truncated: true }));
 	});
 
+	it('preserves disabled visible devices and scenes in the MCP snapshot', async () => {
+		devices.findVisibleSummaryPage.mockResolvedValue({
+			devices: [
+				{
+					id: 'disabled-device',
+					name: 'Disabled lamp',
+					category: 'lighting',
+					enabled: false,
+					hidden: false,
+					roomId: null,
+					zoneIds: [],
+				} as unknown as DeviceEntity,
+			],
+			total: 1,
+		});
+		scenes.findSummaryPage.mockResolvedValue({
+			scenes: [
+				{
+					id: 'disabled-scene',
+					name: 'Disabled scene',
+					category: 'generic',
+					enabled: false,
+					triggerable: false,
+					primarySpaceId: null,
+				},
+			],
+			total: 1,
+		});
+
+		const result = await service.getHomeContext();
+
+		expect(result.devices).toEqual([expect.objectContaining({ id: 'disabled-device', enabled: false })]);
+		expect(result.scenes).toEqual([expect.objectContaining({ id: 'disabled-scene', enabled: false })]);
+	});
+
 	it('marks bounded security output as incomplete when device selection is truncated', async () => {
 		security.getBoundedStatus.mockResolvedValue({
 			status: {
@@ -409,6 +448,32 @@ describe('McpContextService', () => {
 				state_truncated: true,
 			}),
 		);
+	});
+
+	it('caps security alerts and preserves alert truncation metadata', async () => {
+		security.getBoundedStatus.mockResolvedValue({
+			status: {
+				armedState: 'armed',
+				alarmState: null,
+				highestSeverity: 'warning',
+				activeAlertsCount: MCP_MAX_SECURITY_ALERTS + 3,
+				hasCriticalAlert: false,
+				activeAlerts: Array.from({ length: MCP_MAX_SECURITY_ALERTS + 3 }, (_, index) => ({
+					id: `alert-${index}`,
+					severity: 'warning',
+					message: `Alert ${index}`,
+				})),
+			},
+			devicesTruncated: false,
+			channelsTruncated: false,
+			propertiesTruncated: false,
+		});
+
+		const result = await service.getSecurityStatus();
+
+		expect(result.active_alerts).toHaveLength(MCP_MAX_SECURITY_ALERTS);
+		expect(result).toEqual(expect.objectContaining({ active_alerts_count: MCP_MAX_SECURITY_ALERTS + 3 }));
+		expect(result.alerts_truncated).toBe(true);
 	});
 
 	it('maps current values only for a requested visible device', async () => {
@@ -530,6 +595,39 @@ describe('McpContextService', () => {
 		expect(energy.getSpaceSummary).not.toHaveBeenCalled();
 	});
 
+	it('rejects energy ranges beyond the MCP compatibility limit before querying', async () => {
+		const from = '2026-01-01T00:00:00.000Z';
+		const to = new Date(Date.parse(from) + (MCP_MAX_ENERGY_RANGE_DAYS + 1) * 24 * 60 * 60 * 1000).toISOString();
+
+		await expect(service.getEnergySummary(from, to)).rejects.toThrow(
+			`may not exceed ${MCP_MAX_ENERGY_RANGE_DAYS} days`,
+		);
+		expect(energy.getSummary).not.toHaveBeenCalled();
+	});
+
+	it('uses primary or explicit weather selection and caps the forecast', async () => {
+		const forecast = Array.from({ length: MCP_MAX_FORECAST_DAYS + 2 }, (_, index) => ({
+			date: `2026-08-${String(index + 15).padStart(2, '0')}`,
+		}));
+		const weatherResult = {
+			locationId: 'location-id',
+			location: 'Prague',
+			current: { temperature: 21 },
+			forecast,
+		};
+		weather.getPrimaryWeather.mockResolvedValue(weatherResult);
+		weather.getWeather.mockResolvedValue(weatherResult);
+
+		const primary = await service.getWeather();
+		const explicit = await service.getWeather('location-id');
+
+		expect(weather.getPrimaryWeather).toHaveBeenCalledTimes(1);
+		expect(weather.getWeather).toHaveBeenCalledWith('location-id');
+		expect(primary.forecast).toHaveLength(MCP_MAX_FORECAST_DAYS);
+		expect(explicit).toEqual(primary);
+		expect(explicit).toEqual(expect.objectContaining({ location_id: 'location-id', location: 'Prague' }));
+	});
+
 	it('rejects a timeseries bucket that could exceed the result cap before querying storage', async () => {
 		await expect(
 			service.getPropertyTimeseries('property-id', '2026-08-01T00:00:00.000Z', '2026-08-02T00:00:00.000Z', '1m'),
@@ -551,6 +649,27 @@ describe('McpContextService', () => {
 		await expect(
 			service.getPropertyTimeseries('property-id', '2026-08-01T00:00:00.000Z', '2026-08-01T01:00:00.000Z', '5m'),
 		).resolves.toEqual(expect.objectContaining({ property_id: 'property-id', bucket: '5m', truncated: false }));
+	});
+
+	it('caps returned timeseries points and reports truncation', async () => {
+		properties.findOne.mockResolvedValue({
+			id: 'property-id',
+			channel: { device: { hidden: false } },
+		} as unknown as ChannelPropertyEntity);
+		timeseries.queryTimeseriesStrict.mockResolvedValue({
+			bucket: '1h',
+			points: Array.from({ length: MCP_MAX_TIMESERIES_POINTS + 1 }, (_, index) => ({ time: index, value: index })),
+		});
+
+		const result = await service.getPropertyTimeseries(
+			'property-id',
+			'2026-08-01T00:00:00.000Z',
+			'2026-08-14T00:00:00.000Z',
+			'1h',
+		);
+
+		expect(result.points).toHaveLength(MCP_MAX_TIMESERIES_POINTS);
+		expect(result.truncated).toBe(true);
 	});
 
 	it('propagates storage failures from strict property history reads', async () => {
