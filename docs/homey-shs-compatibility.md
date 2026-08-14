@@ -17,18 +17,18 @@ file. Live results use synthetic aliases and sanitized captures only.
 
 ## Current gate status
 
-| Area                                                  | Status                                       | Evidence still required                                                        |
-| ----------------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------ |
-| Credential-safe read probe                            | Passed on SHS `13.4.0` over HTTP `4859`      | Repeat over HTTPS `4860` if enabled                                            |
-| System, zone, device inventory, and individual device | Captured and sanitized                       | Add lifecycle delta evidence on the disposable test device                     |
-| Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read | Add allowlisted write and read-back evidence                                   |
-| Socket.IO events and reconnect                        | Probe implemented; live run pending          | Capture connect, subscribe, event, disconnect, restart, and reconnect ordering |
-| Allowlisted capability write                          | Hard-gated probe implemented, disabled       | Use only the designated harmless test capability                               |
-| Error classification                                  | Non-mutating probe implemented; live run pending | Verify invalid-key and missing-scope status behavior                         |
-| Disposable-device lifecycle                           | Contract defined, disabled                   | Use only the separately gated virtual/test device                              |
-| mDNS discovery                                        | Pending live access                          | Record stable service/TXT data or explicitly defer discovery                   |
-| SDK decision                                          | Provisional hold                             | Complete live Socket.IO and cleanup/reconnect comparison                       |
-| Sanitized fixture corpus                              | Nine representative live fixtures promoted   | Add event/reconnect fixtures and missing capability families/classes           |
+| Area                                                  | Status                                           | Evidence still required                                                        |
+| ----------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------ |
+| Credential-safe read probe                            | Passed on SHS `13.4.0` over HTTP `4859`          | Repeat over HTTPS `4860` if enabled                                            |
+| System, zone, device inventory, and individual device | Captured and sanitized                           | Add lifecycle delta evidence on the disposable test device                     |
+| Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read     | Add allowlisted write and read-back evidence                                   |
+| Socket.IO events and reconnect                        | Probe implemented; live run pending              | Capture connect, subscribe, event, disconnect, restart, and reconnect ordering |
+| Allowlisted capability write                          | Hard-gated probe implemented, disabled           | Use only the designated harmless test capability                               |
+| Error classification                                  | Non-mutating probe implemented; live run pending | Verify invalid-key and missing-scope status behavior                           |
+| Disposable-device lifecycle                           | Contract defined, disabled                       | Use only the separately gated virtual/test device                              |
+| mDNS discovery                                        | Pending live access                              | Record stable service/TXT data or explicitly defer discovery                   |
+| SDK decision                                          | Provisional hold                                 | Complete live Socket.IO and cleanup/reconnect comparison                       |
+| Sanitized fixture corpus                              | Nine representative live fixtures promoted       | Add event/reconnect fixtures and missing capability families/classes           |
 
 ## Installation evidence
 
@@ -83,8 +83,10 @@ read -r -s FB_HOMEY_SHS_API_KEY
 read -r FB_HOMEY_SHS_PRIVATE_TERMS
 export FB_HOMEY_SHS_URL FB_HOMEY_SHS_EXPECTED_HOST FB_HOMEY_SHS_API_KEY FB_HOMEY_SHS_PRIVATE_TERMS
 pnpm run homey:probe
-unset FB_HOMEY_SHS_URL FB_HOMEY_SHS_EXPECTED_HOST FB_HOMEY_SHS_API_KEY FB_HOMEY_SHS_PRIVATE_TERMS
 ```
+
+Keep these base variables exported while running either optional probe below. Clear them only after the last probe you
+intend to run.
 
 `FB_HOMEY_SHS_PRIVATE_TERMS` is a comma-separated defense-in-depth list of household names or other strings that must
 not survive sanitization. Every nonempty entry must contain at least three characters; configuration fails instead of
@@ -184,7 +186,13 @@ run the probe from the same interactive shell as the read-only capture:
 read -r -s FB_HOMEY_SHS_DEVICE_ONLY_API_KEY
 export FB_HOMEY_SHS_DEVICE_ONLY_API_KEY
 pnpm run homey:probe-errors
-unset FB_HOMEY_SHS_DEVICE_ONLY_API_KEY
+```
+
+After the last probe you intend to run, clear every credential and private value from the interactive shell:
+
+```bash
+unset FB_HOMEY_SHS_DEVICE_ONLY_API_KEY FB_HOMEY_SHS_URL FB_HOMEY_SHS_EXPECTED_HOST FB_HOMEY_SHS_API_KEY
+unset FB_HOMEY_SHS_PRIVATE_TERMS
 ```
 
 The probe also verifies the shared URL validator rejects a non-HTTP candidate. Unavailable-host and timeout categories
