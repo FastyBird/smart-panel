@@ -484,11 +484,24 @@ per-attempt ID is allowed only for explicitly read-only internal work and cannot
 
 The conversation boundary uniquely claims `(source, actorId, conversationId, requestId)` before any action-capable
 provider call and stores the digest as bound data, not as part of the uniqueness key. It returns a stable
-`requestClaimId`. An existing claim with the same digest resumes/returns the recorded request outcome; the same key with a
-different text/audio digest returns a typed conflict and executes nothing. A tool execution carries the claim ID, parent
-turn request ID, and transcript-local tool-call ID separately, and derives its bounded correlation/audit `requestId` from
-the latter two. Never replace the parent ID with `toolCall.id` alone: provider-local values such as `ollama-0` can repeat
-across turns.
+`requestClaimId`. The claim is a durable state machine with an owner/lease and bounded stored outcome metadata, for
+example `RECEIVED`, `MODEL_IN_FLIGHT`, `ACTION_PLANNED`, `ACTION_DISPATCHED`, `COMPLETED`, `FAILED`, or `INDETERMINATE`.
+An exact duplicate with the same digest joins the existing in-process single-flight. A duplicate owned by another
+worker/process waits only within the request deadline, then returns a typed in-progress response with `Retry-After`; it
+must not invoke the model concurrently. The same key with a different text/audio digest returns a typed conflict and
+executes nothing.
+
+Before any physical dispatch, persist the complete bounded canonical action plan—validated tool name, canonical targets,
+normalized arguments, fingerprint/occurrence slot, and execution identity—and transition the claim atomically to
+`ACTION_PLANNED`. After a crash/restart, claims at or beyond that state resume/reconcile only the stored plan/outcomes and
+never call a stochastic model again with action tools. An expired `MODEL_IN_FLIGHT` lease may be taken over and rerun only
+when no canonical action was persisted, which proves no physical action could have been dispatched. Recovery finalizes
+from stored structured results using a read-only/no-action provider call or a deterministic response. Full tool transcript
+persistence remains unnecessary.
+
+A tool execution carries the claim ID, parent turn request ID, and transcript-local tool-call ID separately, and derives
+its bounded correlation/audit `requestId` from the latter two. Never replace the parent ID with `toolCall.id` alone:
+provider-local values such as `ollama-0` can repeat across turns.
 
 The service must validate that `BuddyRequestContext.conversationId` matches the conversation being processed, then copy
 it into every Buddy tool execution context. Read tools register exposed short IDs under that scope; action providers
@@ -824,9 +837,9 @@ apps/backend/src/migrations/
 ```
 
 Generated OpenAPI/admin/panel clients remain unchanged for the internal retrieval architecture except for two explicit
-public contracts: Phase 2 adds the required `Idempotency-Key` header and typed reuse-conflict response to both Buddy
-text/audio endpoints, and Phase 5 adds their HTTP 422 capacity response. Each phase must regenerate checked-in artifacts
-from backend Swagger sources; never edit generated clients manually.
+public contracts: Phase 2 adds the required `Idempotency-Key` header plus typed conflict and in-progress/`Retry-After`
+responses to both Buddy text/audio endpoints, and Phase 5 adds their HTTP 422 capacity response. Each phase must
+regenerate checked-in artifacts from backend Swagger sources; never edit generated clients manually.
 
 ---
 
@@ -931,7 +944,8 @@ report a definitive complete answer when eligible values could not all be evalua
 - [ ] Add `BuddyRequestContext` to the conversation-service boundary and plumb the validated conversation ID plus REST,
       voice, Discord, Telegram, and WhatsApp actor/source/request identity into every call and tool execution context.
 - [ ] Require and validate a client-stable `Idempotency-Key` header on both REST text and audio sends; document the header,
-      missing/invalid HTTP 400 response, and typed conflicting-reuse HTTP 409 response in Swagger. Update
+      missing/invalid HTTP 400 response, typed conflicting-reuse HTTP 409 response, and typed in-progress HTTP 409 with
+      `Retry-After` in Swagger. Update
       every first-party REST caller (admin, panel, voice, or other discovered consumer) to reuse the same key across
       retries, then run `pnpm run generate:openapi` instead of editing generated clients manually.
 - [ ] Compute the text payload digest in the controller and the audio digest from uploaded bytes/stable semantic fields
@@ -945,10 +959,11 @@ report a definitive complete answer when eligible values could not all be evalua
 - [ ] Preserve the parent entry-point request ID plus the tool-call ID and derive a bounded unique tool-correlation/audit
       request ID from both; never use a provider-local tool-call ID alone or use it as the action idempotency key.
 - [ ] Durably claim the unique `(source, actor, conversation, request ID)` key and store/compare its payload digest as
-      bound data. Derive action identity from the resulting actor-qualified claim ID, canonical action fingerprint, and
-      deterministic occurrence slot—independently of provider call IDs. Atomically register it before dispatch,
-      associate call IDs only as audit links, and coalesce concurrent/replayed calls. Reuse an existing durable
-      idempotency authority or add a bounded persistent ledger if none spans retries/restarts.
+      bound data. Implement state/lease ownership so exact duplicates single-flight before provider dispatch; cross-worker
+      duplicates never run the model concurrently. Persist the canonical action plan/identity atomically before any
+      physical dispatch. Derive action identity from the resulting actor-qualified claim ID, canonical action fingerprint,
+      and deterministic occurrence slot—independently of provider call IDs. Reuse an existing durable idempotency
+      authority or add a bounded persistent ledger if none spans retries/restarts.
 - [ ] Distinguish action timeouts before dispatch/confirmed cancellation from post-dispatch uncertainty. Return
       `INDETERMINATE` for non-cancellable unknown outcomes, reconcile late completion, and prohibit automatic retries or
       success/failure claims for that identity.
@@ -961,6 +976,10 @@ report a definitive complete answer when eligible values could not all be evalua
 support; client-timeout retry after restart with the same key; identical uploaded audio with different mocked STT output
 reusing one claim; different audio with identical mocked transcription returning HTTP 409 and zero execution; text digest
 conflict behavior; two actors in one conversation legitimately using the same key/action without ledger collision;
+same-process duplicate while the first model call is blocked joining one provider invocation; cross-worker duplicate
+returning in-progress/`Retry-After` without provider dispatch; safe lease takeover after a crash in `MODEL_IN_FLIGHT`
+before any action plan exists; crash after `ACTION_PLANNED` or `ACTION_DISPATCHED` resuming the persisted plan without an
+action-capable model call even when a mocked second stochastic invocation would choose different arguments;
 REST/voice/Discord/Telegram/WhatsApp conversation/identity/access propagation; rejection of a mismatched request-context
 conversation ID; unmapped platform users under empty/allow-all admission remain read-only;
 mapped/explicitly action-allowlisted users receive only their authorized access kinds; parent request ID preservation and
@@ -973,7 +992,8 @@ distinct; late-result reconciliation; no model auto-retry; oversized results; re
 **Gate:** Using a schema-validated test tool provider, every provider adapter correlates a tool call with its bounded
 structured result, supports a second dependent call, and produces a final response grounded in the result status/data.
 This explicitly includes the OpenAI Codex Responses adapter's native call/output items. No timed-out or replayed action
-test executes the same physical command twice or reports an unproven terminal outcome.
+test executes the same physical command twice or reports an unproven terminal outcome, and no exact duplicate request
+invokes a second concurrent provider call.
 
 ### Phase 3 — Add Buddy read tools
 
