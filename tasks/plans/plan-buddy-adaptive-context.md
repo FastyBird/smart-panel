@@ -436,16 +436,28 @@ interface BuddyRequestContext {
 	conversationId: string;
 	source: 'rest' | 'voice' | 'discord' | 'telegram' | 'whatsapp' | 'internal';
 	actorId?: string;
-	requestId?: string;
+	requestId: string;
+	authorization: {
+		decision: 'authenticated-user' | 'mapped-user' | 'allowlisted-platform' | 'unmapped-platform' | 'internal';
+		allowedAccessKinds: Array<'read' | 'write' | 'trigger'>;
+	};
 }
 ```
 
 `BuddyConversationService.sendMessage()` accepts this context together with the conversation ID and content. REST and
-voice controllers derive a stable actor ID from the authenticated request. Messaging adapters pass their mapped Smart
-Panel user ID when available, otherwise a stable source-qualified opaque platform actor ID. Raw platform identifiers
-must not be logged. User-originated turns without an actor ID remain read-only: Buddy omits write/trigger schemas and
-the registry execution context denies those access kinds. Trusted internal/system turns use an explicit internal actor
-rather than silently leaving attribution undefined.
+voice controllers derive a stable actor ID and explicit access decision from the authenticated request. Messaging
+adapters pass their mapped Smart Panel user ID when available; an explicit platform allowlist/role may also grant action
+access. Otherwise they use a stable source-qualified opaque actor ID with `unmapped-platform` and `READ` only. An
+adapter's “empty allowlist = admit all” behavior permits conversation access only and never grants `WRITE` or `TRIGGER`.
+Raw platform identifiers must not be logged. Actor attribution is not authorization: Buddy selects schemas and the
+registry allows access solely from the validated `authorization.allowedAccessKinds`, never from `actorId` presence.
+Missing/unmapped authorization fails to `READ` only. Trusted internal/system turns use an explicit internal actor and
+policy decision rather than silently receiving elevated access.
+
+Each entry point preserves its validated inbound request ID or generates a server-side turn ID when none exists. A tool
+execution carries the parent turn request ID and transcript-local tool-call ID separately, and derives its bounded
+idempotency/audit `requestId` from both. Never replace the parent ID with `toolCall.id` alone: provider-local values such
+as `ollama-0` can repeat across turns.
 
 The service must validate that `BuddyRequestContext.conversationId` matches the conversation being processed, then copy
 it into every Buddy tool execution context. Read tools register exposed short IDs under that scope; action providers
@@ -460,13 +472,17 @@ an unscoped hallucinated token must fail closed and prompt fresh discovery inste
 	source: 'buddy',
 	conversationId,
 	actorId,
-	requestId: toolCall.id,
-	allowedAccessKinds: [ToolAccessKind.READ, ToolAccessKind.WRITE, ToolAccessKind.TRIGGER],
+	parentRequestId: requestContext.requestId,
+	toolCallId: toolCall.id,
+	requestId: deriveScopedToolRequestId(requestContext.requestId, toolCall.id),
+	allowedAccessKinds: requestContext.authorization.allowedAccessKinds,
 }
 ```
 
-The allowed set may be narrowed per turn. The registry, tool schema, and provider response are all validated; unknown
-tools or malformed data are returned to the model as bounded errors, not thrown into an uncontrolled retry.
+`deriveScopedToolRequestId` produces a validated, bounded opaque/namespaced value suitable for existing command and audit
+paths. The allowed set may be narrowed further per turn but never widened beyond the entry-point decision. The registry,
+tool schema, and provider response are all validated; unknown tools or malformed data are returned to the model as
+bounded errors, not thrown into an uncontrolled retry.
 
 ### 6.3 Loop limits and safety
 
@@ -510,6 +526,10 @@ must not be required for the initial scalable path.
 For a provider/model without reliable tools:
 
 - Execute only the plan's bounded read queries before the provider call.
+- Enforce both a whole-prefetch deadline and a per-query timeout capped by the remaining turn deadline. Pass an
+  `AbortSignal` through shared query/provider contracts where supported; regardless of provider cooperation, race each
+  await against the deadline, discard late results, and continue with explicit timed-out/partial metadata. Bound
+  concurrency so ignored late work cannot grow without limit.
 - Render typed results as compact structured sections with clear data delimiters.
 - Offer no action tool to a text-only provider. If current product behavior parses text into actions elsewhere, that
   path remains outside this plan and must preserve existing validation.
@@ -634,6 +654,8 @@ Requirements:
 
 - Continue to execute device writes through `PropertyCommandService` and scenes/intents through their existing validated
   runtime services.
+- Keep attribution and authorization separate. A nonempty REST or platform actor ID does not grant action access;
+  write/trigger tools require the verified entry-point access decision and remain subject to runtime authorization.
 - Re-resolve canonical IDs and current constraints at execution time; never act only on text returned by search.
 - Use shared visibility profiles so hidden entities cannot be discovered through Buddy. Disabled entities may appear in
   read results with an explicit status, but must not be offered or resolved as executable action targets.
@@ -662,6 +684,7 @@ Record bounded metadata for each turn and provider iteration:
 - Estimated total input, output reserve, actual provider input/output tokens, and estimation error when actuals exist
 - Counts of history turns, summary bytes/tokens, references, retrieved entities, and truncated results
 - Query/tool durations, statuses, retry/duplicate suppression, and iteration count
+- Prefetch deadline/timeout counts and whether an upstream operation ignored cancellation
 - Whether a fallback, partial result, ambiguity guard, or budget compaction occurred
 - Provider/model capability decision
 
@@ -816,14 +839,20 @@ bounded search without loading the full catalog.
 - [ ] Pass explicit Buddy audience/source/access context to the registry.
 - [ ] Add `BuddyRequestContext` to the conversation-service boundary and plumb the validated conversation ID plus REST,
       voice, Discord, Telegram, and WhatsApp actor/source/request identity into every call and tool execution context.
-- [ ] Restrict turns without actor attribution to `READ` access and omit write/trigger tool schemas.
+- [ ] Carry an explicit entry-point authorization decision separately from actor attribution. Keep unmapped messaging
+      identities and missing decisions `READ` only even when adapter admission is configured as allow-all; grant
+      write/trigger only through authenticated Smart Panel mapping or an explicit action-capable allowlist/role.
+- [ ] Preserve the parent entry-point request ID plus the tool-call ID and derive a bounded unique downstream action/audit
+      request ID from both; never use a provider-local tool-call ID alone.
+- [ ] Restrict turns without verified action authorization to `READ` access and omit write/trigger tool schemas.
 - [ ] Add per-result byte/token caps, structured truncation metadata, duplicate-call suppression, and timeout handling.
 - [ ] Ensure provider logs and persisted messages do not leak full raw tool data.
 
-**Tests:** Provider adapter contract tests; REST/voice/Discord/Telegram/WhatsApp conversation/identity propagation;
-rejection of a mismatched request-context conversation ID; unattributed-turn read-only enforcement; parallel call
-ordering; malformed arguments; unknown tools; denied access; partial results; timeouts; oversized results; repeated
-calls; and max-iteration behavior.
+**Tests:** Provider adapter contract tests; REST/voice/Discord/Telegram/WhatsApp conversation/identity/access propagation;
+rejection of a mismatched request-context conversation ID; unmapped platform users under empty/allow-all admission remain
+read-only; mapped/explicitly action-allowlisted users receive only their authorized access kinds; parent request ID
+preservation and uniqueness when `ollama-0` repeats across turns; parallel call ordering; malformed arguments; unknown
+tools; denied access; partial results; timeouts; oversized results; repeated calls; and max-iteration behavior.
 
 **Gate:** Using a schema-validated test tool provider, every provider adapter correlates a tool call with its bounded
 structured result, supports a second dependent call, and produces a final response grounded in the result status/data.
@@ -864,23 +893,29 @@ final response grounded in the action/result status.
 **Files:**
 
 - `apps/backend/src/modules/buddy/services/buddy-context-planner.service.ts`
+- `apps/backend/src/modules/buddy/services/buddy-context-prefetch.service.ts`
 - `apps/backend/src/modules/buddy/services/buddy-context-renderer.service.ts`
+- Shared home-context/domain query contracts where deadline/`AbortSignal` propagation is supported
 - Planner/renderer specs
 
 **Tasks:**
 
 - [ ] Implement multi-label message classification, scope/reference extraction, risk, and provider strategy selection.
-- [ ] Implement deterministic prefetch through the same shared query contracts.
+- [ ] Implement deterministic prefetch through the same shared query contracts with a whole-prefetch deadline,
+      per-query timeouts, bounded concurrency, cancellation propagation where supported, and late-result disposal.
 - [ ] Render compact typed sections with untrusted-data delimiters and explicit partial/truncated states.
 - [ ] Add ambiguity detection and deterministic clarification candidates for risky actions.
 - [ ] Add safe unknown/low-confidence behavior that never falls back to the full snapshot.
 - [ ] Select only domain-relevant read and action tool schemas.
 
 **Tests:** Every message class, compound queries, negation, units, temporal ranges, missing/current space, ambiguous names,
-recent references, unsupported requests, and tool-less/limited provider strategies.
+recent references, unsupported requests, tool-less/limited provider strategies, a weather provider that never resolves,
+partial completion before the aggregate deadline, ignored cancellation, and proof that timed-out prefetch still produces
+a bounded partial/unavailable response without calling the eager snapshot.
 
-**Gate:** A tool-less small-context model receives bounded relevant context for all supported read classes, and greetings
-load no home state.
+**Gate:** A tool-less small-context model receives bounded relevant context for all supported read classes, greetings
+load no home state, and a hanging optional-domain provider cannot hold the response beyond the configured prefetch
+deadline.
 
 ### Phase 5 — Complete request budget manager and provider capabilities
 
