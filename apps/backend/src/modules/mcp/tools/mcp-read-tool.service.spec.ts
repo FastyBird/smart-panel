@@ -14,7 +14,13 @@ type ToolCallback = (
 	args: Record<string, unknown>,
 	ctx: ServerContext,
 ) => Promise<{ isError?: boolean; structuredContent: Record<string, unknown> }>;
-type ResourceCallback = (uri: URL, ctx: ServerContext) => Promise<unknown>;
+type ResourceReadResult = { contents: Array<{ uri: string; mimeType: string; text: string }> };
+type ResourceCallback = (uri: URL, ctx: ServerContext) => Promise<ResourceReadResult>;
+type ResourceTemplateCallback = (
+	uri: URL,
+	variables: Record<string, string>,
+	ctx: ServerContext,
+) => Promise<ResourceReadResult>;
 type ResourceListCallback = (
 	request: { params?: { cursor?: string } },
 	ctx: ServerContext,
@@ -38,6 +44,7 @@ describe('McpReadToolService', () => {
 	let registerResource: jest.Mock;
 	let callbacks: Map<string, ToolCallback>;
 	let resourceCallbacks: Map<string, ResourceCallback>;
+	let resourceTemplateCallbacks: Map<string, ResourceTemplateCallback>;
 	let resourceListCallback: ResourceListCallback | undefined;
 
 	beforeEach(() => {
@@ -81,13 +88,20 @@ describe('McpReadToolService', () => {
 		};
 		callbacks = new Map();
 		resourceCallbacks = new Map();
+		resourceTemplateCallbacks = new Map();
 		resourceListCallback = undefined;
 		registerTool = jest.fn((name: string, _config: unknown, callback: ToolCallback) => {
 			callbacks.set(name, callback);
 		});
-		registerResource = jest.fn((name: string, _uri: unknown, _config: unknown, callback: ResourceCallback) => {
-			resourceCallbacks.set(name, callback);
-		});
+		registerResource = jest.fn(
+			(name: string, _uri: unknown, _config: unknown, callback: ResourceCallback | ResourceTemplateCallback) => {
+				if (name === 'space-snapshot') {
+					resourceTemplateCallbacks.set(name, callback as ResourceTemplateCallback);
+				} else {
+					resourceCallbacks.set(name, callback as ResourceCallback);
+				}
+			},
+		);
 		service = new McpReadToolService(
 			contextService as unknown as McpContextService,
 			policyService as unknown as McpPolicyService,
@@ -471,6 +485,109 @@ describe('McpReadToolService', () => {
 					outcome: 'timed_out',
 				}),
 			);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it('reads the home-context resource with whole-home forwarding and the exact compatible JSON wrapper', async () => {
+		jest.useFakeTimers();
+		jest.setSystemTime(new Date('2026-08-14T12:00:00.000Z'));
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		try {
+			const result = await resourceCallbacks.get('home-context')?.(
+				new URL('smart-panel://home/context'),
+				requestContext(),
+			);
+
+			expect(contextService.getHomeContext).toHaveBeenCalledTimes(1);
+			expect(contextService.getHomeContext).toHaveBeenCalledWith();
+			expect(result).toEqual({
+				contents: [
+					{
+						uri: 'smart-panel://home/context',
+						mimeType: 'application/json',
+						text: JSON.stringify({
+							installation: {
+								id: 'installation-id',
+								name: 'FastyBird Smart Panel',
+								version: '1.0.0',
+								timezone: 'UTC',
+								endpoint: 'https://panel.test/api/v1/modules/mcp',
+								effective_capabilities: [McpCapability.READ],
+							},
+							observed_at: '2026-08-14T12:00:00.000Z',
+							data: {
+								scope: { type: 'home' },
+								spaces: [],
+								devices: [],
+								scenes: [],
+								weather: null,
+								energy: null,
+								security: null,
+								limits: {
+									spaces_truncated: false,
+									devices_truncated: false,
+									scenes_truncated: false,
+								},
+							},
+						}),
+					},
+				],
+			});
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it('reads a space snapshot resource with scoped forwarding and the exact compatible JSON wrapper', async () => {
+		jest.useFakeTimers();
+		jest.setSystemTime(new Date('2026-08-14T12:00:00.000Z'));
+		const spaceId = '20000000-0000-4000-8000-000000000001';
+		const scopedContext = {
+			scope: { type: 'space', id: spaceId, name: 'Living room' },
+			spaces: [{ id: spaceId, name: 'Living room', type: 'room', device_count: 1 }],
+			devices: [{ id: 'device-id', name: 'Lamp' }],
+			scenes: [],
+			weather: null,
+			energy: null,
+			security: null,
+			limits: {
+				spaces_truncated: false,
+				devices_truncated: false,
+				scenes_truncated: false,
+			},
+		};
+		contextService.getHomeContext.mockResolvedValue(scopedContext);
+		service.register(server(), authInfo([McpCapability.READ]));
+
+		try {
+			const uri = new URL(`smart-panel://spaces/${spaceId}/snapshot`);
+			const result = await resourceTemplateCallbacks.get('space-snapshot')?.(uri, { spaceId }, requestContext());
+
+			expect(contextService.getHomeContext).toHaveBeenCalledTimes(1);
+			expect(contextService.getHomeContext).toHaveBeenCalledWith(spaceId);
+			expect(result).toEqual({
+				contents: [
+					{
+						uri: `smart-panel://spaces/${spaceId}/snapshot`,
+						mimeType: 'application/json',
+						text: JSON.stringify({
+							installation: {
+								id: 'installation-id',
+								name: 'FastyBird Smart Panel',
+								version: '1.0.0',
+								timezone: 'UTC',
+								endpoint: 'https://panel.test/api/v1/modules/mcp',
+								effective_capabilities: [McpCapability.READ],
+							},
+							observed_at: '2026-08-14T12:00:00.000Z',
+							data: scopedContext,
+						}),
+					},
+				],
+			});
 		} finally {
 			jest.useRealTimers();
 		}
