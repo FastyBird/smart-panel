@@ -965,9 +965,11 @@ message history.
 - [ ] Remove `BuddyContextService.buildContext()` from the interactive conversation path.
 - [ ] Integrate planner, budget manager, memory, selected tools, prefetch, and structured tool loop.
 - [ ] Keep `BuddyContextService` and its cache listener for heartbeat/evaluators.
-- [ ] Add a bounded internal rollout switch if needed; both new strategies must remain bounded.
-- [ ] If a temporary `legacy`/snapshot rollout mode is retained for comparison, make it explicit (never an automatic
-      error fallback) and enforce the complete-request budget before dispatch.
+- [ ] Add an internal rollout switch only among bounded strategies such as prefetch-only, model-tools, and hybrid; every
+      selectable mode must use `HomeContextQueryService` bounds and the complete-request budget.
+- [ ] Do not retain a conversational snapshot/full-context mode. If temporary response-behavior compatibility is needed,
+      its renderer must consume bounded query results and must never call `BuddyContextService.buildContext()` or fetch
+      every device/property.
 - [ ] Ensure provider/tool/query failures produce a useful partial response or focused clarification.
 - [ ] Update Buddy module metadata/readme claims so they describe adaptive retrieval rather than a full snapshot.
 
@@ -998,7 +1000,7 @@ their full existing test suite.
 
 **Gate:** All acceptance criteria and rollout thresholds in Sections 14 and 15 pass.
 
-### Phase 9 — Rollout and legacy removal
+### Phase 9 — Rollout and temporary-mode removal
 
 **Tasks:**
 
@@ -1006,14 +1008,15 @@ their full existing test suite.
       writes/triggers.
 - [ ] Roll out adaptive prefetch for read-only turns, then read tools, then compound read/action turns.
 - [ ] Monitor budget error, query latency, tool-loop completion, clarification, partial-result, and wrong-target rates.
-- [ ] Remove the legacy conversational full-context prompt builder after the observation gate.
-- [ ] Keep adaptive retrieval as the default for at least one observed release cycle before deleting temporary rollout
-      code, unless the project is still pre-release and equivalent production-like evidence is documented.
+- [ ] Keep adaptive retrieval as the default for at least one observed release cycle before deleting bounded temporary
+      rollout switches or compatibility renderers, unless the project is still pre-release and equivalent
+      production-like evidence is documented. The full-home conversational path was already removed in Phase 7 and is
+      never an available rollback mode.
 - [ ] Retain the evaluator snapshot service and document its distinct purpose.
 - [ ] Update task status/checklists and architecture documentation.
 
-**Gate:** The legacy full-home conversational path is removed, no rollback condition is active, and evaluator behavior is
-unchanged.
+**Gate:** Temporary bounded rollout modes are removed, no rollback to a full-home conversational path exists, and
+evaluator behavior is unchanged.
 
 ---
 
