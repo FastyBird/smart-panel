@@ -238,9 +238,9 @@ index.ts
 - [x] Use Homey ordering metadata verified in Phase 0 to merge snapshot/events. If none is reliable, perform a final targeted reconciliation for capabilities touched while the startup snapshot was in flight before releasing the barrier.
 - [x] Stop subscriptions/timers/connector on disable, config change, module shutdown, or failed startup cleanup.
 - [x] Reconfigure safely when URL/key/timeouts change; never overlap old/new connectors.
-- [ ] Use exponential reconnect backoff with jitter and a maximum delay.
+- [x] Use exponential reconnect backoff with jitter and a maximum delay.
 - [x] Treat authentication/authorization failures differently from transient network failures.
-- [ ] Prevent concurrent reconnect and reconciliation loops.
+- [x] Prevent concurrent reconnect and reconciliation loops.
 - [ ] Track last successful connection, inventory sync, event, error category, reconnect count, and degraded state.
 - [ ] Unit-test all state transitions with fake timers.
 
