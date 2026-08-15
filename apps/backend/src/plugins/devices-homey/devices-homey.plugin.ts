@@ -22,12 +22,15 @@ import { ExtendedDiscriminatorService } from '../../modules/swagger/services/ext
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
+import { HomeyLocalConnectorFactory } from './connectors/homey-local-connector.factory';
+import { HomeySdkClientFactoryService } from './connectors/homey-sdk.client';
 import { HomeyStatusController } from './controllers/homey-status.controller';
 import {
 	DEVICES_HOMEY_PLUGIN_API_TAG_DESCRIPTION,
 	DEVICES_HOMEY_PLUGIN_API_TAG_NAME,
 	DEVICES_HOMEY_PLUGIN_NAME,
 	DEVICES_HOMEY_TYPE,
+	HOMEY_CONNECTOR_FACTORY,
 } from './devices-homey.constants';
 import { DEVICES_HOMEY_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-homey.openapi';
 import { CreateHomeyChannelPropertyDto } from './dto/create-channel-property.dto';
@@ -55,7 +58,16 @@ import { HomeyService } from './services/homey.service';
 		ExtensionsModule,
 		SwaggerModule,
 	],
-	providers: [HomeyConfigValidatorService, HomeyService],
+	providers: [
+		HomeyConfigValidatorService,
+		HomeySdkClientFactoryService,
+		HomeyLocalConnectorFactory,
+		{
+			provide: HOMEY_CONNECTOR_FACTORY,
+			useExisting: HomeyLocalConnectorFactory,
+		},
+		HomeyService,
+	],
 	controllers: [HomeyStatusController],
 	exports: [HomeyService],
 })
