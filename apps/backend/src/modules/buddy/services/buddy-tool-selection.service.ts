@@ -657,7 +657,7 @@ function getActionIntentTokens(
 
 function isExplicitStateQuestion(normalizedMessage: string): boolean {
 	const requestPattern =
-		/^(?:(?:can|could|may|might|will|would)\s+you\s+)?(?:please\s+)?(?:(?:let|show|tell) me(?: know)?|check|confirm|determine|ensure|find out|see|verify)\b/u;
+		/^(?:(?:can|could|may|might|will|would)\s+you\s+)?(?:please\s+)?(?:(?:let|show|tell) me(?: know)?|check|confirm|determine|ensure|find out|report|see|verify)\b/u;
 
 	if (!requestPattern.test(normalizedMessage)) return false;
 	if (/\b(?:if|whether)\b/u.test(normalizedMessage)) return true;
