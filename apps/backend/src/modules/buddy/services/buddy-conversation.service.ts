@@ -42,6 +42,7 @@ import {
 
 import { BuddyContext, BuddyContextService } from './buddy-context.service';
 import { BuddyPersonalityService } from './buddy-personality.service';
+import { BuddyToolSelectionService } from './buddy-tool-selection.service';
 import { QUERY_HOME_STATE_TOOL_NAME, SEARCH_HOME_TOOL_NAME } from './home-context-tool-provider.service';
 import { ChatMessage, LlmProviderService } from './llm-provider.service';
 
@@ -78,6 +79,7 @@ export class BuddyConversationService {
 		private readonly eventEmitter: EventEmitter2,
 		private readonly shortIdMapping: ShortIdMappingService,
 		private readonly configService: ConfigService,
+		private readonly toolSelection: BuddyToolSelectionService,
 	) {}
 
 	async findAll(spaceId?: string): Promise<BuddyConversationEntity[]> {
@@ -130,13 +132,31 @@ export class BuddyConversationService {
 
 	async sendMessage(conversationId: string, content: string): Promise<BuddyMessageEntity> {
 		const conversation = await this.findOneOrThrow(conversationId);
+		const supportsTools = this.llmProvider.supportsTools();
+		const supportsNativeToolResults = supportsTools && this.llmProvider.supportsNativeToolResults();
+		const availableTools = supportsTools
+			? this.toolProviderRegistry
+					.getAllToolDefinitions({ audience: ToolAudience.BUDDY })
+					.filter(
+						(definition) =>
+							supportsNativeToolResults ||
+							(definition.name !== SEARCH_HOME_TOOL_NAME && definition.name !== QUERY_HOME_STATE_TOOL_NAME),
+					)
+			: undefined;
+		const selectedTools = availableTools === undefined ? undefined : this.toolSelection.select(content, availableTools);
+		const tools = selectedTools && selectedTools.length > 0 ? selectedTools : undefined;
 
 		// 1. Build system prompt with context and personality
 		// Short ID mappings accumulate across requests — the same UUID always maps
 		// to the same short ID, so concurrent requests from different bot adapters
 		// won't interfere with each other.
 		const context = await this.contextService.buildContext(conversation.spaceId ?? undefined);
-		const systemPrompt = await this.buildSystemPrompt(context, conversation.id, conversation.spaceId ?? undefined);
+		const systemPrompt = await this.buildSystemPrompt(
+			context,
+			conversation.id,
+			conversation.spaceId ?? undefined,
+			tools !== undefined,
+		);
 
 		// 2. Load most recent conversation history and append the new user message
 		const history = await this.messageRepository.find({
@@ -157,17 +177,6 @@ export class BuddyConversationService {
 		chatMessages.push({ role: MessageRole.USER, content });
 
 		// 3. Call LLM provider with tool support if available
-		const supportsTools = this.llmProvider.supportsTools();
-		const supportsNativeToolResults = supportsTools && this.llmProvider.supportsNativeToolResults();
-		const tools = supportsTools
-			? this.toolProviderRegistry
-					.getAllToolDefinitions({ audience: ToolAudience.BUDDY })
-					.filter(
-						(definition) =>
-							supportsNativeToolResults ||
-							(definition.name !== SEARCH_HOME_TOOL_NAME && definition.name !== QUERY_HOME_STATE_TOOL_NAME),
-					)
-			: undefined;
 		const maxIterations = this.getMaxToolIterations();
 		const llmResponse = await this.sendWithToolExecution(
 			systemPrompt,
@@ -637,8 +646,8 @@ export class BuddyConversationService {
 		context: BuddyContext,
 		conversationId: string,
 		conversationSpaceId?: string,
+		hasTools = false,
 	): Promise<string> {
-		const hasTools = this.llmProvider.supportsTools();
 		const personality = await this.personalityService.getPersonality();
 		const buddyName = this.getBuddyName();
 		let contextWindowTokens = DEFAULT_CONTEXT_WINDOW_TOKENS;

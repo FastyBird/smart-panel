@@ -38,6 +38,7 @@ import { BuddyContextService } from './services/buddy-context.service';
 import { BuddyConversationService } from './services/buddy-conversation.service';
 import { BuddyPersonalityService } from './services/buddy-personality.service';
 import { BuddyProviderStatusService } from './services/buddy-provider-status.service';
+import { BuddyToolSelectionService } from './services/buddy-tool-selection.service';
 import { ConflictDetectorEvaluator } from './services/conflict-detector-evaluator.service';
 import { EnergyEvaluator } from './services/energy-evaluator.service';
 import { HeartbeatService } from './services/heartbeat.service';
@@ -95,6 +96,7 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		LlmProviderRegistryService,
 		LlmProviderService,
 		BuddyConversationService,
+		BuddyToolSelectionService,
 		HomeContextToolProviderService,
 		PatternDetectorService,
 		SuggestionEngineService,

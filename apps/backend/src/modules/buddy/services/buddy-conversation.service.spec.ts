@@ -32,6 +32,7 @@ import {
 import { BuddyContextService } from './buddy-context.service';
 import { BuddyConversationService } from './buddy-conversation.service';
 import { BuddyPersonalityService } from './buddy-personality.service';
+import { BuddyToolSelectionService } from './buddy-tool-selection.service';
 import { QUERY_HOME_STATE_TOOL_NAME, SEARCH_HOME_TOOL_NAME } from './home-context-tool-provider.service';
 import { LlmProviderService } from './llm-provider.service';
 
@@ -89,6 +90,27 @@ const BUDDY_EVALUATION_TOOLS = [
 		outputSchema: toolOutputSchema,
 	}),
 ];
+const BUDDY_SELECTION_TOOLS = [
+	SEARCH_HOME_TOOL_NAME,
+	QUERY_HOME_STATE_TOOL_NAME,
+	'control_device',
+	'run_scene',
+	'set_space_lighting',
+].map((name) =>
+	createToolDefinition({
+		name,
+		description: `${name} test tool`,
+		audiences: [ToolAudience.BUDDY],
+		access:
+			name === 'control_device'
+				? ToolAccessKind.WRITE
+				: name === SEARCH_HOME_TOOL_NAME || name === QUERY_HOME_STATE_TOOL_NAME
+					? ToolAccessKind.READ
+					: ToolAccessKind.TRIGGER,
+		inputSchema: z.object({}),
+		outputSchema: toolOutputSchema,
+	}),
+);
 
 describe('BuddyConversationService', () => {
 	let service: BuddyConversationService;
@@ -102,6 +124,7 @@ describe('BuddyConversationService', () => {
 	let eventEmitter: jest.Mocked<EventEmitter2>;
 	let shortIdMapping: ShortIdMappingService;
 	let configService: Record<string, jest.Mock>;
+	let toolSelection: BuddyToolSelectionService;
 
 	const mockConversation: BuddyConversationEntity = {
 		id: 'conv-1',
@@ -197,6 +220,7 @@ describe('BuddyConversationService', () => {
 			getModuleConfig: jest.fn().mockReturnValue({ name: 'Buddy', maxToolIterations: 5, contextWindowTokens: 8_000 }),
 		};
 		shortIdMapping = new ShortIdMappingService();
+		toolSelection = new BuddyToolSelectionService();
 
 		service = new BuddyConversationService(
 			conversationRepo as unknown as Repository<BuddyConversationEntity>,
@@ -209,6 +233,7 @@ describe('BuddyConversationService', () => {
 			eventEmitter,
 			shortIdMapping,
 			configService as unknown as ConfigService,
+			toolSelection,
 		);
 	});
 
@@ -366,6 +391,40 @@ describe('BuddyConversationService', () => {
 			expect(llmProvider.sendMessage).toHaveBeenCalledWith(expect.any(String), expect.any(Array), {
 				tools: [legacyCompatibleTool],
 			});
+		});
+
+		it('omits built-in schemas and action references for general conversation', async () => {
+			contextService.buildContext.mockResolvedValue(createBuddyContextFixture(1));
+			llmProvider.supportsTools.mockReturnValue(true);
+			llmProvider.supportsNativeToolResults.mockReturnValue(true);
+			toolProviderRegistry.getAllToolDefinitions.mockReturnValue(BUDDY_SELECTION_TOOLS);
+
+			await service.sendMessage('conv-1', 'Hello! Tell me a joke.');
+
+			const [systemPrompt, , options] = llmProvider.sendMessage.mock.calls[0] as [
+				string,
+				unknown[],
+				{ tools?: unknown[] },
+			];
+			expect(options.tools).toBeUndefined();
+			expect(systemPrompt).not.toContain('You can control the home');
+			expect(systemPrompt).not.toContain('[id=');
+			expect(systemPrompt).not.toContain('[p=');
+			expect(shortIdMapping.scopedSize).toBe(0);
+		});
+
+		it('advertises only the dependent read schemas for a focused state request', async () => {
+			llmProvider.supportsTools.mockReturnValue(true);
+			llmProvider.supportsNativeToolResults.mockReturnValue(true);
+			toolProviderRegistry.getAllToolDefinitions.mockReturnValue(BUDDY_SELECTION_TOOLS);
+
+			await service.sendMessage('conv-1', 'What is the bedroom temperature?');
+
+			const options = llmProvider.sendMessage.mock.calls[0][2] as { tools?: Array<{ name: string }> };
+			expect(options.tools?.map((definition) => definition.name)).toEqual([
+				SEARCH_HOME_TOOL_NAME,
+				QUERY_HOME_STATE_TOOL_NAME,
+			]);
 		});
 
 		it('should format energy values with kW units and omit battery when absent', async () => {
@@ -598,6 +657,7 @@ describe('BuddyConversationService', () => {
 			context.scenes = [{ id: 'scene-1', name: 'Evening', enabled: true, space: 'space-1' }];
 			contextService.buildContext.mockResolvedValue(context);
 			llmProvider.supportsTools.mockReturnValue(true);
+			toolProviderRegistry.getAllToolDefinitions.mockReturnValue(BUDDY_SELECTION_TOOLS);
 
 			await service.sendMessage('conv-1', 'Set the evening mood.');
 
@@ -644,6 +704,7 @@ describe('BuddyConversationService', () => {
 			context.scenes = [{ id: 'scene-overflow', name: 'Overflow Scene', enabled: true, space: 'space-overflow' }];
 			contextService.buildContext.mockResolvedValue(context);
 			llmProvider.supportsTools.mockReturnValue(true);
+			toolProviderRegistry.getAllToolDefinitions.mockReturnValue(BUDDY_SELECTION_TOOLS);
 
 			await service.sendMessage('conv-1', 'Describe the visible home context.');
 
@@ -672,6 +733,7 @@ describe('BuddyConversationService', () => {
 			context.scenes = [{ id: 'scene-retained', name: 'Retained Scene', enabled: true, space: 'space-discarded' }];
 			contextService.buildContext.mockResolvedValue(context);
 			llmProvider.supportsTools.mockReturnValue(true);
+			toolProviderRegistry.getAllToolDefinitions.mockReturnValue(BUDDY_SELECTION_TOOLS);
 			const exposeScoped = jest.spyOn(shortIdMapping, 'exposeScoped');
 
 			await service.sendMessage('conv-1', 'Summarize this home.');
@@ -755,6 +817,7 @@ describe('BuddyConversationService', () => {
 					safetyMarginTokens: 256,
 				});
 				const nativeMessages = payload.messages as Array<{ role: string; content: string }>;
+				const payloadTools = payload.tools as Array<{ function: { name: string } }> | undefined;
 
 				expect(nativeMessages).toHaveLength(21);
 				expect(nativeMessages[0]).toEqual({ role: 'system', content: systemPrompt });
@@ -763,7 +826,11 @@ describe('BuddyConversationService', () => {
 					role: 'user',
 					content: 'Give me a complete status overview for the current home.',
 				});
-				expect(payload.tools).toHaveLength(BUDDY_EVALUATION_TOOLS.length);
+				expect(payloadTools?.map((item) => item.function.name)).toEqual([
+					'search_home_entities',
+					'get_device_state',
+					'set_device_property',
+				]);
 				expect(measurement.components.history.estimatedTokens).toBeGreaterThan(0);
 				expect(measurement.components.current.estimatedTokens).toBeGreaterThan(0);
 				expect(measurement.components.tools.estimatedTokens).toBeGreaterThan(0);
@@ -812,14 +879,14 @@ describe('BuddyConversationService', () => {
 			        "jsonUtf8Bytes": 0,
 			      },
 			      "tools": {
-			        "estimatedTokens": 557,
-			        "jsonUtf8Bytes": 1670,
+			        "estimatedTokens": 470,
+			        "jsonUtf8Bytes": 1410,
 			      },
 			    },
 			    "deviceCount": 10,
-			    "estimatedInputTokens": 2898,
+			    "estimatedInputTokens": 2811,
 			    "fitsWindow": true,
-			    "jsonUtf8Bytes": 8721,
+			    "jsonUtf8Bytes": 8461,
 			  },
 			  {
 			    "availableInputTokens": 126688,
@@ -845,14 +912,14 @@ describe('BuddyConversationService', () => {
 			        "jsonUtf8Bytes": 0,
 			      },
 			      "tools": {
-			        "estimatedTokens": 557,
-			        "jsonUtf8Bytes": 1670,
+			        "estimatedTokens": 470,
+			        "jsonUtf8Bytes": 1410,
 			      },
 			    },
 			    "deviceCount": 100,
-			    "estimatedInputTokens": 5063,
+			    "estimatedInputTokens": 4976,
 			    "fitsWindow": true,
-			    "jsonUtf8Bytes": 15217,
+			    "jsonUtf8Bytes": 14957,
 			  },
 			  {
 			    "availableInputTokens": 126688,
@@ -878,14 +945,14 @@ describe('BuddyConversationService', () => {
 			        "jsonUtf8Bytes": 0,
 			      },
 			      "tools": {
-			        "estimatedTokens": 557,
-			        "jsonUtf8Bytes": 1670,
+			        "estimatedTokens": 470,
+			        "jsonUtf8Bytes": 1410,
 			      },
 			    },
 			    "deviceCount": 1000,
-			    "estimatedInputTokens": 1623,
+			    "estimatedInputTokens": 1536,
 			    "fitsWindow": true,
-			    "jsonUtf8Bytes": 4897,
+			    "jsonUtf8Bytes": 4637,
 			  },
 			]
 		`);
@@ -953,13 +1020,13 @@ describe('BuddyConversationService', () => {
 			      "jsonUtf8Bytes": 0,
 			    },
 			    "tools": {
-			      "estimatedTokens": 557,
-			      "jsonUtf8Bytes": 1670,
+			      "estimatedTokens": 470,
+			      "jsonUtf8Bytes": 1410,
 			    },
 			  },
-			  "estimatedInputTokens": 2662,
+			  "estimatedInputTokens": 2575,
 			  "fitsWindow": false,
-			  "jsonUtf8Bytes": 8013,
+			  "jsonUtf8Bytes": 7753,
 			}
 		`);
 		});
@@ -1013,6 +1080,8 @@ describe('BuddyConversationService', () => {
 			});
 
 			llmProvider.supportsTools.mockReturnValue(true);
+			llmProvider.supportsNativeToolResults.mockReturnValue(true);
+			toolProviderRegistry.getAllToolDefinitions.mockReturnValue(BUDDY_SELECTION_TOOLS);
 
 			await service.sendMessage('conv-1', 'What is the temperature?');
 
@@ -1062,6 +1131,8 @@ describe('BuddyConversationService', () => {
 			});
 
 			llmProvider.supportsTools.mockReturnValue(true);
+			llmProvider.supportsNativeToolResults.mockReturnValue(true);
+			toolProviderRegistry.getAllToolDefinitions.mockReturnValue(BUDDY_SELECTION_TOOLS);
 
 			await service.sendMessage('conv-scoped', 'What is the temperature?');
 
@@ -1103,6 +1174,8 @@ describe('BuddyConversationService', () => {
 			});
 
 			llmProvider.supportsTools.mockReturnValue(true);
+			llmProvider.supportsNativeToolResults.mockReturnValue(true);
+			toolProviderRegistry.getAllToolDefinitions.mockReturnValue(BUDDY_SELECTION_TOOLS);
 
 			await service.sendMessage('conv-1', 'Overview');
 

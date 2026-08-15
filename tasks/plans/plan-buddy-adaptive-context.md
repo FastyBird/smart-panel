@@ -1566,7 +1566,10 @@ busy response leaves an ownerless nonterminal sequence capable of blocking later
       unscoped/global or canonical fallback. Per-conversation or global capacity exhaustion omits further action references
       instead of invalidating any reference that may be present in an in-flight prompt. Preserve existing non-Buddy mapping
       behavior and canonical UUID fallback.
-- [ ] Add tool selection support so unrelated schemas are not advertised on every turn.
+- [x] Add conservative deterministic selection for the initial built-in Buddy schemas so greetings, focused reads, and
+      explicit device/scene/space-lighting requests do not advertise unrelated tools. Preserve unknown extension tools and
+      treat schema selection only as a prompt-size optimization, never as authorization; full planner-driven domain and
+      action selection remains open in Phase 4.
 - [x] Register the initial read tools behind conversation-scoped action-reference containment: discovered canonical IDs
       remain valid for dependent reads but cannot authorize Buddy writes/triggers. This containment is not the complete
       server-held action-resolution proof from Section 5.4, which remains open.
