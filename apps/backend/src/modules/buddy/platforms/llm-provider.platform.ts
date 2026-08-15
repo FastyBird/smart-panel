@@ -58,17 +58,69 @@ export interface LlmConversationReasoningItem {
 	status?: 'in_progress' | 'completed' | 'incomplete';
 }
 
+export interface LlmConversationFileCitationAnnotation {
+	type: 'file_citation';
+	file_id: string;
+	filename: string;
+	index: number;
+}
+
+export interface LlmConversationUrlCitationAnnotation {
+	type: 'url_citation';
+	end_index: number;
+	start_index: number;
+	title: string;
+	url: string;
+}
+
+export interface LlmConversationContainerFileCitationAnnotation {
+	type: 'container_file_citation';
+	container_id: string;
+	end_index: number;
+	file_id: string;
+	filename: string;
+	start_index: number;
+}
+
+export interface LlmConversationFilePathAnnotation {
+	type: 'file_path';
+	file_id: string;
+	index: number;
+}
+
+export type LlmConversationAssistantTextAnnotation =
+	| LlmConversationFileCitationAnnotation
+	| LlmConversationUrlCitationAnnotation
+	| LlmConversationContainerFileCitationAnnotation
+	| LlmConversationFilePathAnnotation;
+
+export interface LlmConversationAssistantTopLogprob {
+	token: string;
+	bytes: number[];
+	logprob: number;
+}
+
+export interface LlmConversationAssistantLogprob extends LlmConversationAssistantTopLogprob {
+	top_logprobs: LlmConversationAssistantTopLogprob[];
+}
+
 export interface LlmConversationAssistantTextPart {
 	type: 'output_text';
 	text: string;
-	annotations: [];
+	annotations: LlmConversationAssistantTextAnnotation[];
+	logprobs?: LlmConversationAssistantLogprob[];
+}
+
+export interface LlmConversationAssistantRefusalPart {
+	type: 'refusal';
+	refusal: string;
 }
 
 export interface LlmConversationAssistantMessageItem {
 	type: 'message';
 	id: string;
 	role: 'assistant';
-	content: LlmConversationAssistantTextPart[];
+	content: Array<LlmConversationAssistantTextPart | LlmConversationAssistantRefusalPart>;
 	phase?: 'commentary' | 'final_answer';
 	status?: 'in_progress' | 'completed' | 'incomplete';
 }

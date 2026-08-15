@@ -11,7 +11,10 @@ import {
 import {
 	ILlmProvider,
 	LlmAssistantToolCallsItem,
+	LlmConversationAssistantLogprob,
 	LlmConversationAssistantMessageItem,
+	LlmConversationAssistantTextAnnotation,
+	LlmConversationAssistantTopLogprob,
 	LlmConversationFunctionCallItem,
 	LlmConversationItem,
 	LlmConversationProviderItem,
@@ -133,10 +136,7 @@ function serializeOpenAiCodexProviderItems(
 	const providerCalls = nativeItems.filter(
 		(item): item is LlmConversationFunctionCallItem => item.type === 'function_call',
 	);
-	const providerContent = providerMessages
-		.flatMap((message) => message.content)
-		.map((part) => part.text)
-		.join('');
+	const providerContent = providerMessages.map(getOpenAiCodexAssistantMessageText).join('');
 
 	if (providerContent !== content) {
 		throw new TypeError('OpenAI Codex provider message state does not match canonical assistant content');
@@ -257,19 +257,7 @@ function parseOpenAiCodexAssistantMessageItem(item: OpenAiCodexOutputItem): LlmC
 		throw new TypeError('OpenAI Codex assistant message continuation is incomplete');
 	}
 
-	const content = item.content.map((part) => {
-		if (
-			!isRecord(part) ||
-			part.type !== 'output_text' ||
-			typeof part.text !== 'string' ||
-			!Array.isArray(part.annotations) ||
-			part.annotations.length !== 0
-		) {
-			throw new TypeError('OpenAI Codex assistant message continuation has invalid content');
-		}
-
-		return { type: 'output_text' as const, text: part.text, annotations: [] as [] };
-	});
+	const content = item.content.map(parseOpenAiCodexAssistantContentPart);
 	const allowedPhases = ['commentary', 'final_answer'] as const;
 	const phase = allowedPhases.find((candidate) => candidate === item.phase);
 
@@ -286,6 +274,137 @@ function parseOpenAiCodexAssistantMessageItem(item: OpenAiCodexOutputItem): LlmC
 		...(phase === undefined ? {} : { phase }),
 		...(status === undefined ? {} : { status }),
 	};
+}
+
+function parseOpenAiCodexAssistantContentPart(part: unknown): LlmConversationAssistantMessageItem['content'][number] {
+	if (!isRecord(part)) {
+		throw new TypeError('OpenAI Codex assistant message continuation has invalid content');
+	}
+
+	if (part.type === 'refusal' && typeof part.refusal === 'string') {
+		return { type: 'refusal', refusal: part.refusal };
+	}
+
+	if (part.type !== 'output_text' || typeof part.text !== 'string' || !Array.isArray(part.annotations)) {
+		throw new TypeError('OpenAI Codex assistant message continuation has invalid content');
+	}
+
+	const annotations = part.annotations.map(parseOpenAiCodexAssistantTextAnnotation);
+	let logprobs: LlmConversationAssistantLogprob[] | undefined;
+
+	if (part.logprobs !== undefined) {
+		if (!Array.isArray(part.logprobs)) {
+			throw new TypeError('OpenAI Codex assistant message continuation has invalid log probabilities');
+		}
+		logprobs = part.logprobs.map(parseOpenAiCodexAssistantLogprob);
+	}
+
+	return {
+		type: 'output_text',
+		text: part.text,
+		annotations,
+		...(logprobs === undefined ? {} : { logprobs }),
+	};
+}
+
+function parseOpenAiCodexAssistantTextAnnotation(annotation: unknown): LlmConversationAssistantTextAnnotation {
+	if (!isRecord(annotation)) {
+		throw new TypeError('OpenAI Codex assistant message continuation has an invalid annotation');
+	}
+
+	if (
+		annotation.type === 'file_citation' &&
+		typeof annotation.file_id === 'string' &&
+		typeof annotation.filename === 'string' &&
+		isNonnegativeInteger(annotation.index)
+	) {
+		return {
+			type: 'file_citation',
+			file_id: annotation.file_id,
+			filename: annotation.filename,
+			index: annotation.index,
+		};
+	}
+
+	if (
+		annotation.type === 'url_citation' &&
+		isNonnegativeInteger(annotation.end_index) &&
+		isNonnegativeInteger(annotation.start_index) &&
+		typeof annotation.title === 'string' &&
+		typeof annotation.url === 'string'
+	) {
+		return {
+			type: 'url_citation',
+			end_index: annotation.end_index,
+			start_index: annotation.start_index,
+			title: annotation.title,
+			url: annotation.url,
+		};
+	}
+
+	if (
+		annotation.type === 'container_file_citation' &&
+		typeof annotation.container_id === 'string' &&
+		isNonnegativeInteger(annotation.end_index) &&
+		typeof annotation.file_id === 'string' &&
+		typeof annotation.filename === 'string' &&
+		isNonnegativeInteger(annotation.start_index)
+	) {
+		return {
+			type: 'container_file_citation',
+			container_id: annotation.container_id,
+			end_index: annotation.end_index,
+			file_id: annotation.file_id,
+			filename: annotation.filename,
+			start_index: annotation.start_index,
+		};
+	}
+
+	if (
+		annotation.type === 'file_path' &&
+		typeof annotation.file_id === 'string' &&
+		isNonnegativeInteger(annotation.index)
+	) {
+		return { type: 'file_path', file_id: annotation.file_id, index: annotation.index };
+	}
+
+	throw new TypeError('OpenAI Codex assistant message continuation has an invalid annotation');
+}
+
+function parseOpenAiCodexAssistantLogprob(logprob: unknown): LlmConversationAssistantLogprob {
+	if (!isRecord(logprob) || !Array.isArray(logprob.top_logprobs)) {
+		throw new TypeError('OpenAI Codex assistant message continuation has invalid log probabilities');
+	}
+
+	return {
+		...parseOpenAiCodexAssistantTopLogprob(logprob),
+		top_logprobs: logprob.top_logprobs.map(parseOpenAiCodexAssistantTopLogprob),
+	};
+}
+
+function parseOpenAiCodexAssistantTopLogprob(logprob: unknown): LlmConversationAssistantTopLogprob {
+	if (
+		!isRecord(logprob) ||
+		typeof logprob.token !== 'string' ||
+		!isByteArray(logprob.bytes) ||
+		typeof logprob.logprob !== 'number' ||
+		!Number.isFinite(logprob.logprob)
+	) {
+		throw new TypeError('OpenAI Codex assistant message continuation has invalid log probabilities');
+	}
+
+	return { token: logprob.token, bytes: [...logprob.bytes], logprob: logprob.logprob };
+}
+
+function getOpenAiCodexAssistantMessageText(message: LlmConversationAssistantMessageItem): string {
+	return message.content.map((part) => (part.type === 'output_text' ? part.text : part.refusal)).join('');
+}
+
+function isByteArray(value: unknown): value is number[] {
+	return (
+		Array.isArray(value) &&
+		value.every((byte: unknown) => typeof byte === 'number' && Number.isInteger(byte) && byte >= 0 && byte <= 255)
+	);
 }
 
 function parseOpenAiCodexFunctionCallItem(item: OpenAiCodexOutputItem): LlmConversationFunctionCallItem {
@@ -515,7 +634,7 @@ export class OpenAiCodexProvider implements ILlmProvider {
 					continue;
 				}
 
-				if (event.type === 'response.output_text.delta' && event.delta) {
+				if ((event.type === 'response.output_text.delta' || event.type === 'response.refusal.delta') && event.delta) {
 					content += event.delta;
 				} else if (event.type === 'response.function_call_arguments.delta' && event.call_id && event.delta) {
 					const existing = toolCallMap.get(event.call_id);
@@ -564,13 +683,12 @@ export class OpenAiCodexProvider implements ILlmProvider {
 					item,
 				}),
 			);
-		const providerContent = [...providerItemMap.entries()]
+		const providerMessages = [...providerItemMap.entries()]
 			.sort(([leftIndex], [rightIndex]) => leftIndex - rightIndex)
-			.flatMap(([, item]) => (item.type === 'message' ? item.content : []))
-			.map((part) => part.text)
-			.join('');
+			.flatMap(([, item]) => (item.type === 'message' ? [item] : []));
+		const providerContent = providerMessages.map(getOpenAiCodexAssistantMessageText).join('');
 
-		if (providerContent.length > 0) {
+		if (providerMessages.length > 0) {
 			if (content.length > 0 && content !== providerContent) {
 				throw new TypeError('OpenAI Codex streamed text does not match its completed message output');
 			}
@@ -590,5 +708,9 @@ export class OpenAiCodexProvider implements ILlmProvider {
 }
 
 function isValidOutputIndex(value: unknown): value is number {
+	return isNonnegativeInteger(value);
+}
+
+function isNonnegativeInteger(value: unknown): value is number {
 	return typeof value === 'number' && Number.isInteger(value) && value >= 0;
 }

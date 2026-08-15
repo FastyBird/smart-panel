@@ -44,6 +44,47 @@ const assistantMessageWithoutPhase = {
 	status: 'completed',
 } satisfies LlmConversationAssistantMessageItem;
 
+const annotatedRefusalMessageItem = {
+	id: 'message-annotated',
+	type: 'message',
+	role: 'assistant',
+	content: [
+		{
+			type: 'output_text',
+			text: 'See source.',
+			annotations: [
+				{ type: 'file_citation', file_id: 'file-1', filename: 'guide.pdf', index: 0 },
+				{
+					type: 'url_citation',
+					start_index: 0,
+					end_index: 10,
+					title: 'Guide',
+					url: 'https://example.com/guide',
+				},
+				{
+					type: 'container_file_citation',
+					container_id: 'container-1',
+					start_index: 0,
+					end_index: 10,
+					file_id: 'container-file-1',
+					filename: 'result.txt',
+				},
+				{ type: 'file_path', file_id: 'file-2', index: 1 },
+			],
+			logprobs: [
+				{
+					token: 'See',
+					bytes: [83, 101, 101],
+					logprob: -0.1,
+					top_logprobs: [{ token: 'Read', bytes: [82, 101, 97, 100], logprob: -1.2 }],
+				},
+			],
+		},
+		{ type: 'refusal', refusal: 'I cannot share more.' },
+	],
+	status: 'completed',
+} satisfies LlmConversationAssistantMessageItem;
+
 const firstFunctionCallItem = {
 	id: 'function-item-1',
 	type: 'function_call',
@@ -187,6 +228,79 @@ describe('OpenAiCodexProvider native transcript', () => {
 			tool_choice: 'auto',
 		});
 		expect(provider.supportsNativeToolResults()).toBe(true);
+	});
+
+	it('replays every supported output message content and annotation variant exactly', () => {
+		const annotatedContinuation: LlmConversationItem[] = [
+			{
+				type: 'assistant_tool_calls',
+				content: 'See source.I cannot share more.',
+				calls: [
+					{
+						callId: 'call-1',
+						providerCallId: 'provider-call-1',
+						name: 'get_temperature',
+						arguments: { room: 'kitchen' },
+					},
+				],
+				providerItems: [
+					{ provider: BUDDY_OPENAI_CODEX_PLUGIN_NAME, outputIndex: 0, item: annotatedRefusalMessageItem },
+					{ provider: BUDDY_OPENAI_CODEX_PLUGIN_NAME, outputIndex: 1, item: firstFunctionCallItem },
+				],
+			},
+			{
+				type: 'tool_results',
+				results: [
+					{
+						callId: 'call-1',
+						providerCallId: 'provider-call-1',
+						toolName: 'get_temperature',
+						status: 'completed',
+						message: 'ok',
+						truncated: false,
+					},
+				],
+			},
+		];
+
+		expect(buildOpenAiCodexRequestPayload('codex-test', 'system', annotatedContinuation).input).toEqual([
+			annotatedRefusalMessageItem,
+			firstFunctionCallItem,
+			expect.objectContaining({ type: 'function_call_output', call_id: 'provider-call-1' }),
+		]);
+	});
+
+	it('returns completed annotated text and refusal content to text-only callers', async () => {
+		const events = [
+			{ type: 'response.output_text.delta', output_index: 0, delta: 'See source.' },
+			{ type: 'response.refusal.delta', output_index: 0, delta: 'I cannot share more.' },
+			{ type: 'response.completed', response: { output: [annotatedRefusalMessageItem] } },
+		];
+		const body = `${events.map((event) => `data: ${JSON.stringify(event)}`).join('\n')}\ndata: [DONE]\n`;
+		const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(body, { status: 200 }));
+		const configService = {
+			getPluginConfig: jest.fn().mockReturnValue({ accessToken: 'test-token', model: null }),
+		};
+		const provider = new OpenAiCodexProvider(configService as unknown as ConfigService);
+
+		try {
+			const response = await provider.sendMessage(
+				'system',
+				[{ role: MessageRole.USER, content: 'Show the source.' }],
+				'codex-test',
+			);
+
+			expect(response.content).toBe('See source.I cannot share more.');
+			expect(response.providerItems).toEqual([
+				{
+					provider: BUDDY_OPENAI_CODEX_PLUGIN_NAME,
+					outputIndex: 0,
+					item: annotatedRefusalMessageItem,
+				},
+			]);
+		} finally {
+			fetchSpy.mockRestore();
+		}
 	});
 
 	it('captures exact output order and normalizes a null completed-message phase before replay', async () => {
