@@ -95,6 +95,12 @@ describe('BuddyToolSelectionService', () => {
 			names.scene,
 			names.spaceLighting,
 		]);
+		expect(selectNames('Zavři žaluzie a spusť Večer.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			names.control,
+			names.scene,
+			names.spaceLighting,
+		]);
 	});
 
 	it.each(['Are any windows open? If so, close them.', 'Are all doors closed, and open them if not.'])(
@@ -109,17 +115,23 @@ describe('BuddyToolSelectionService', () => {
 			definitions.map((definition) => definition.name),
 		);
 		expect(selectNames('Run Bedtime if the window is open.')).toEqual(definitions.map((definition) => definition.name));
+		expect(selectNames('If the window is open run Bedtime')).toEqual(definitions.map((definition) => definition.name));
 	});
 
-	it.each(['How does a thermostat work?', 'Explain how smart-home lighting works.'])(
-		'keeps generic smart-home explanations tool-free: %s',
-		(message) => {
-			expect(selectNames(message)).toEqual([]);
-		},
-	);
+	it.each([
+		'How does a thermostat work?',
+		'How does a temperature sensor work?',
+		'Explain how smart-home lighting works.',
+	])('keeps generic smart-home explanations tool-free: %s', (message) => {
+		expect(selectNames(message)).toEqual([]);
+	});
 
 	it('retains live reads for explain-whether state questions', () => {
 		expect(selectNames('Explain whether the kitchen light is on.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+		]);
+		expect(selectNames('Explain why the kitchen light is off.')).toEqual([
 			SEARCH_HOME_TOOL_NAME,
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);

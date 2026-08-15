@@ -80,9 +80,21 @@ const ACTION_SIGNALS = new Set([
 	'zavri',
 ]);
 const ACTION_CLAUSE_PATTERN = new RegExp(
-	String.raw`(?:\band\b|\bthen\b|[,;])\s*(?:please\s+)?(?:${[...ACTION_SIGNALS].join('|')})\b`,
+	String.raw`(?:\ba\b|\band\b|\bpotom\b|\bthen\b|[,;])\s*(?:please\s+)?(?:${[...ACTION_SIGNALS].join('|')})\b`,
 	'u',
 );
+const GROUNDED_STATE_SIGNALS = new Set([
+	'active',
+	'closed',
+	'high',
+	'inactive',
+	'locked',
+	'low',
+	'off',
+	'on',
+	'open',
+	'unlocked',
+]);
 const HOME_SIGNALS = new Set([
 	'air',
 	'bathroom',
@@ -239,13 +251,14 @@ export class BuddyToolSelectionService {
 		const actionTokens = getActionIntentTokens(normalizedMessage, tokens, hasStateSignal);
 		const hasHomeSignal = intersects(tokens, HOME_SIGNALS);
 		const isGenericExplanation = isGenericHomeExplanation(normalizedMessage, tokens);
-		const isStateExplanation = hasHomeSignal && /^explain (?:if|whether)\b/u.test(normalizedMessage);
+		const isStateExplanation =
+			hasHomeSignal &&
+			(/^explain (?:if|whether)\b/u.test(normalizedMessage) ||
+				(/^explain why\b/u.test(normalizedMessage) && intersects(tokens, GROUNDED_STATE_SIGNALS)));
 
 		if (
-			hasSearchSignal ||
-			hasStateSignal ||
 			isStateExplanation ||
-			(message.includes('?') && hasHomeSignal && !isGenericExplanation)
+			(!isGenericExplanation && (hasSearchSignal || hasStateSignal || (message.includes('?') && hasHomeSignal)))
 		) {
 			for (const name of READ_TOOL_NAMES) selected.add(name);
 		}
@@ -328,6 +341,7 @@ function isClearlyGeneralConversation(tokens: Set<string>): boolean {
 
 function isGenericHomeExplanation(normalizedMessage: string, tokens: Set<string>): boolean {
 	if (!intersects(tokens, HOME_SIGNALS)) return false;
+	if (intersects(tokens, GROUNDED_STATE_SIGNALS)) return false;
 
 	return (
 		/^how (?:do|does) .+ work(?:s|ing)?\b/u.test(normalizedMessage) ||
@@ -371,6 +385,8 @@ function getActionIntentTokens(
 		const commandTokens = tokenize(sliceAfterFirst(normalizedMessage, /[,;]|\bthen\b/u));
 
 		if (intersects(commandTokens, ACTION_SIGNALS)) return commandTokens;
+
+		return new Set();
 	}
 
 	return tokens;
