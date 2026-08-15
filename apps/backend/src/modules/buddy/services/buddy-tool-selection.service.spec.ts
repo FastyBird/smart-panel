@@ -175,6 +175,9 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Jaká je teplota a nastav termostat na 20.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
+		expect(selectNames('Is the thermostat set to 20, turn it down.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 	});
 
 	it('retains reads for a grounded state-first clause without a question mark', () => {
@@ -254,6 +257,10 @@ describe('BuddyToolSelectionService', () => {
 			SEARCH_HOME_TOOL_NAME,
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);
+		expect(selectNames('Explain how warm the bedroom is.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+		]);
 	});
 
 	it('treats tell-whether wording as a read-only state question', () => {
@@ -325,6 +332,9 @@ describe('BuddyToolSelectionService', () => {
 
 	it('falls back when an unrecognized action follows a read clause', () => {
 		expect(selectNames('Find Evening and launch it.')).toEqual(definitions.map((definition) => definition.name));
+		expect(selectNames('Execute Evening scene and show the kitchen temperature.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 	});
 
 	it('falls back when an unrecognized action follows a recognized command', () => {

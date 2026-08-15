@@ -334,6 +334,10 @@ export class BuddyToolSelectionService {
 			/^(?:are|is|je|jsou)\b/u.test(normalizedMessage) &&
 			intersects(tokens, GROUNDED_STATE_SIGNALS) &&
 			/[,;]/u.test(normalizedMessage);
+		const hasPredicateStateFirstAction =
+			actionTokens !== null &&
+			isSyntacticPredicateQuestion(normalizedMessage, tokens) &&
+			/[,;]/u.test(normalizedMessage);
 		const hasHomeSignal = intersects(tokens, HOME_SIGNALS);
 		const hasInterrogativeHomeQuestion =
 			hasHomeSignal &&
@@ -350,11 +354,14 @@ export class BuddyToolSelectionService {
 			(!message.includes('?') || UNKNOWN_ACTION_REQUEST_PATTERN.test(normalizedMessage)) &&
 			!/^(?:explain|tell)\b/u.test(normalizedMessage);
 		const hasUnrecognizedReadCompound =
-			actionTokens === null && (hasSearchSignal || hasStateReadSignal) && hasUnknownTrailingClause(normalizedMessage);
+			actionTokens === null &&
+			(hasSearchSignal || hasStateReadSignal) &&
+			(hasUnknownTrailingClause(normalizedMessage) || hasUnknownLeadingIntentBeforeRead(normalizedMessage));
 		const isStateExplanation =
 			hasHomeSignal &&
 			(/^explain (?:if|whether)\b/u.test(normalizedMessage) ||
-				(/^explain why\b/u.test(normalizedMessage) && !/\bwork(?:s|ing)?\b/u.test(normalizedMessage)));
+				(/^explain why\b/u.test(normalizedMessage) && !/\bwork(?:s|ing)?\b/u.test(normalizedMessage)) ||
+				/^explain how\b.*\b(?:are|is)\.?$/u.test(normalizedMessage));
 
 		if (
 			isStateExplanation ||
@@ -365,6 +372,7 @@ export class BuddyToolSelectionService {
 					hasTrailingReadClause ||
 					hasStateFirstAction ||
 					hasGroundedStateFirstAction ||
+					hasPredicateStateFirstAction ||
 					hasInterrogativeHomeQuestion ||
 					hasLiveStatusRequest ||
 					(actionTokens === null &&
@@ -515,6 +523,22 @@ function hasUnknownTrailingClause(normalizedMessage: string): boolean {
 	}
 
 	return false;
+}
+
+function hasUnknownLeadingIntentBeforeRead(normalizedMessage: string): boolean {
+	const readClauseIndex = normalizedMessage.search(READ_CLAUSE_PATTERN);
+
+	if (readClauseIndex <= 0) return false;
+
+	const [firstToken] = tokenize(normalizedMessage.slice(0, readClauseIndex));
+
+	return (
+		firstToken !== undefined &&
+		!SEARCH_SIGNALS.has(firstToken) &&
+		!STATE_SIGNALS.has(firstToken) &&
+		!ACTION_SIGNALS.has(firstToken) &&
+		!GENERAL_CONVERSATION_FILLERS.has(firstToken)
+	);
 }
 
 function isGenericHomeExplanation(normalizedMessage: string, tokens: Set<string>): boolean {
