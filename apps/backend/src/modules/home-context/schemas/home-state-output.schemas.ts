@@ -4,22 +4,32 @@ import { HOME_CONTEXT_LIMIT_PROFILES, HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY } f
 
 const limits = HOME_CONTEXT_LIMIT_PROFILES[HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY];
 
-const scopeSchema = z.union([
-	z.object({ type: z.literal('home') }).strict(),
-	z.object({ type: z.literal('space'), id: z.string(), name: z.string() }).strict(),
-]);
+const propertyValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
 
-const spaceSchema = z
+const devicePropertySchema = z
 	.object({
 		id: z.string(),
 		name: z.string(),
-		type: z.string(),
-		parent_id: z.string().nullable(),
-		device_count: z.number().int().nonnegative(),
+		category: z.string(),
+		data_type: z.string(),
+		unit: z.string().nullable(),
+		value: propertyValueSchema,
+		last_updated: z.string().nullable(),
+		trend: z.string().nullable(),
 	})
 	.strict();
 
-const deviceSchema = z
+const deviceChannelSchema = z
+	.object({
+		id: z.string(),
+		name: z.string(),
+		category: z.string(),
+		properties: z.array(devicePropertySchema).max(limits.propertiesPerChannel),
+		properties_truncated: z.boolean(),
+	})
+	.strict();
+
+export const homeDeviceStateResultSchema = z
 	.object({
 		id: z.string(),
 		name: z.string(),
@@ -34,26 +44,28 @@ const deviceSchema = z
 				last_changed: z.string().nullable(),
 			})
 			.strict(),
+		channels: z.array(deviceChannelSchema).max(limits.channelsPerDevice),
+		channels_truncated: z.boolean(),
 	})
 	.strict();
 
-const sceneSchema = z
+export const homePropertyTimeseriesResultSchema = z
 	.object({
-		id: z.string(),
-		name: z.string(),
-		category: z.string(),
-		enabled: z.boolean(),
-		triggerable: z.boolean(),
-		primary_space_id: z.string().nullable(),
-	})
-	.strict();
-
-const weatherSchema = z
-	.object({
-		location_id: z.string().nullable(),
-		location: z.unknown(),
-		current: z.unknown(),
-		forecast: z.array(z.unknown()).max(limits.forecastDays),
+		property_id: z.string(),
+		from: z.string(),
+		to: z.string(),
+		bucket: z.string().nullable(),
+		points: z
+			.array(
+				z
+					.object({
+						time: z.string(),
+						value: propertyValueSchema,
+					})
+					.strict(),
+			)
+			.max(limits.timeseriesPoints),
+		truncated: z.boolean(),
 	})
 	.strict();
 
@@ -68,7 +80,7 @@ const energyMetricsSchema = z.object({
 	lastUpdatedAt: z.string().nullable(),
 });
 
-const energySchema = z.union([
+export const homeEnergySummaryResultSchema = z.union([
 	energyMetricsSchema.extend({ scope: z.object({ type: z.literal('home') }).strict() }).strict(),
 	energyMetricsSchema
 		.extend({
@@ -79,6 +91,15 @@ const energySchema = z.union([
 		.strict(),
 	energyMetricsSchema.extend({ scope: z.object({ type: z.literal('space'), id: z.string() }).strict() }).strict(),
 ]);
+
+export const homeWeatherResultSchema = z
+	.object({
+		location_id: z.string().nullable(),
+		location: z.unknown(),
+		current: z.unknown(),
+		forecast: z.array(z.unknown()).max(limits.forecastDays),
+	})
+	.strict();
 
 const securityAlertSchema = z
 	.object({
@@ -101,7 +122,7 @@ const securityLastEventSchema = z
 	})
 	.passthrough();
 
-const securitySchema = z
+export const homeSecurityStatusResultSchema = z
 	.object({
 		armed_state: z.string().nullable(),
 		alarm_state: z.string().nullable(),
@@ -115,45 +136,5 @@ const securitySchema = z
 		properties_truncated: z.boolean(),
 		state_truncated: z.boolean(),
 		last_event: securityLastEventSchema.nullable(),
-	})
-	.strict();
-
-export const homeSnapshotResultSchema = z
-	.object({
-		scope: scopeSchema,
-		spaces: z.array(spaceSchema).max(limits.spaces),
-		devices: z.array(deviceSchema).max(limits.devices),
-		scenes: z.array(sceneSchema).max(limits.scenes),
-		weather: weatherSchema.nullable(),
-		energy: energySchema.nullable(),
-		security: securitySchema.nullable(),
-		limits: z
-			.object({
-				spaces_truncated: z.boolean(),
-				devices_truncated: z.boolean(),
-				scenes_truncated: z.boolean(),
-			})
-			.strict(),
-	})
-	.strict();
-
-export const homeContextSpacePageResultSchema = z
-	.object({
-		spaces: z
-			.array(
-				z
-					.object({
-						id: z.string(),
-						name: z.string(),
-						type: z.string(),
-					})
-					.strict(),
-			)
-			.max(limits.spaces),
-		nextCursor: z
-			.string()
-			.regex(/^(0|[1-9]\d*)$/)
-			.refine((cursor) => Number.isSafeInteger(Number(cursor)))
-			.optional(),
 	})
 	.strict();

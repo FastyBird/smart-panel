@@ -10,6 +10,7 @@ import { HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY } from '../../home-context/home-
 import { HomeContextSpaceNotFoundError } from '../../home-context/home-context.errors';
 import { HomeSnapshotResult } from '../../home-context/models/home-context-result.model';
 import { HomeContextQueryService } from '../../home-context/services/home-context-query.service';
+import { HomeStateQueryService } from '../../home-context/services/home-state-query.service';
 import { ScenesService } from '../../scenes/services/scenes.service';
 import { SecurityService } from '../../security/services/security.service';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
@@ -43,6 +44,7 @@ import { McpInstallationService } from './mcp-installation.service';
 describe('McpContextService', () => {
 	let service: McpContextService;
 	let homeContextQueryService: HomeContextQueryService;
+	let homeStateQueryService: HomeStateQueryService;
 	let spaces: {
 		findSummaryPage: jest.Mock;
 		findOne: jest.Mock;
@@ -140,11 +142,7 @@ describe('McpContextService', () => {
 			energy as unknown as EnergyDataService,
 			security as unknown as SecurityService,
 		);
-
-		service = new McpContextService(
-			{ getModuleConfig: jest.fn(() => ({ timezone: 'Europe/Prague' })) } as unknown as ConfigService,
-			{ getInstallationId: jest.fn().mockResolvedValue('installation-id') } as unknown as McpInstallationService,
-			homeContextQueryService,
+		homeStateQueryService = new HomeStateQueryService(
 			spaces as unknown as SpacesService,
 			devices as unknown as DevicesService,
 			connectionStates as unknown as DeviceConnectionStateService,
@@ -154,6 +152,13 @@ describe('McpContextService', () => {
 			weather as unknown as WeatherService,
 			energy as unknown as EnergyDataService,
 			security as unknown as SecurityService,
+		);
+
+		service = new McpContextService(
+			{ getModuleConfig: jest.fn(() => ({ timezone: 'Europe/Prague' })) } as unknown as ConfigService,
+			{ getInstallationId: jest.fn().mockResolvedValue('installation-id') } as unknown as McpInstallationService,
+			homeContextQueryService,
+			homeStateQueryService,
 		);
 	});
 
@@ -1025,7 +1030,16 @@ describe('McpContextService', () => {
 			type: SpaceType.ZONE,
 			category: SpaceZoneCategory.OUTDOOR_GARDEN,
 		} as unknown as SpaceEntity);
-		energy.getDeviceZoneSummary.mockResolvedValue({ totalConsumptionKwh: 2 });
+		energy.getDeviceZoneSummary.mockResolvedValue({
+			totalConsumptionKwh: 2,
+			totalProductionKwh: 0,
+			totalGridImportKwh: 2,
+			totalGridExportKwh: 0,
+			netKwh: 2,
+			netGridKwh: 2,
+			hasGridMetrics: true,
+			lastUpdatedAt: null,
+		});
 
 		await service.getEnergySummary('2026-08-01T00:00:00.000Z', '2026-08-02T00:00:00.000Z', 'zone-id');
 
@@ -1039,7 +1053,14 @@ describe('McpContextService', () => {
 			name: 'Whole home',
 			type: SpaceType.MASTER,
 		} as unknown as SpaceEntity);
-		energy.getSummary.mockResolvedValue({ totalConsumptionKwh: 8 });
+		energy.getSummary.mockResolvedValue({
+			totalConsumptionKwh: 8,
+			totalProductionKwh: 0,
+			totalGridImportKwh: 8,
+			totalGridExportKwh: 0,
+			hasGridMetrics: true,
+			lastUpdatedAt: null,
+		});
 
 		await expect(
 			service.getEnergySummary('2026-08-01T00:00:00.000Z', '2026-08-02T00:00:00.000Z', 'master-id'),
@@ -1183,13 +1204,15 @@ describe('McpContextService', () => {
 	});
 
 	it('caps returned timeseries points and reports truncation', async () => {
+		const pointTime = (index: number): string => new Date(Date.UTC(2026, 7, 1) + index * 60_000).toISOString();
+
 		properties.findOne.mockResolvedValue({
 			id: 'property-id',
 			channel: { device: { hidden: false } },
 		} as unknown as ChannelPropertyEntity);
 		timeseries.queryTimeseriesStrict.mockResolvedValue({
 			bucket: '1h',
-			points: Array.from({ length: 501 }, (_, index) => ({ time: index, value: index })),
+			points: Array.from({ length: 501 }, (_, index) => ({ time: pointTime(index), value: index })),
 		});
 
 		const result = await service.getPropertyTimeseries(
@@ -1199,7 +1222,9 @@ describe('McpContextService', () => {
 			'1h',
 		);
 
-		expect(result.points).toEqual(Array.from({ length: 500 }, (_, index) => ({ time: index, value: index })));
+		expect(result.points).toEqual(
+			Array.from({ length: 500 }, (_, index) => ({ time: pointTime(index), value: index })),
+		);
 		expect(result.truncated).toBe(true);
 	});
 

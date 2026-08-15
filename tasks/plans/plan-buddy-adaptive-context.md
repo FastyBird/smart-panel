@@ -1204,29 +1204,29 @@ captured as an opt-in/expected baseline measurement rather than a failing normal
 **Tasks:**
 
 - [x] Create `HomeContextModule` with typed inputs, outputs, shared limits, and schema validation.
-- [ ] Move bounded home/device/weather/energy/security/timeseries mapping from MCP into shared services without changing
+- [x] Move bounded home/device/weather/energy/security/timeseries mapping from MCP into shared services without changing
       MCP external output behavior.
 - [x] Implement shared `getHomeSnapshot(optionalSpaceId, trustedProfile)` and make MCP `get_home_context` delegate both
       its whole-home and scoped variants to it. Preserve the composite spaces/devices/scenes/weather/energy/security
       shape, ordering, visibility, disabled entities, section caps, totals, and truncation; do not expose the MCP
       composite profile as a Buddy conversational tool/fallback.
-- [ ] Preserve MCP weather selection semantics: `location_id` reads that exact configured location, while an omitted ID
+- [x] Preserve MCP weather selection semantics: `location_id` reads that exact configured location, while an omitted ID
       reads the primary location.
-- [ ] Preserve MCP read visibility semantics: hidden entities remain excluded, while disabled devices/scenes remain in
+- [x] Preserve MCP read visibility semantics: hidden entities remain excluded, while disabled devices/scenes remain in
       snapshots and direct reads with their `enabled` state.
 - [ ] Define trusted adapter serialization profiles: MCP keeps existing strings byte-for-byte and its established
       collection/point caps, while Buddy applies stricter prompt/tool string, byte, and token caps after shared queries.
-- [ ] Convert MCP/Nest transport exceptions at the adapter boundary; shared query services return typed domain results
+- [x] Convert MCP/Nest transport exceptions at the adapter boundary; shared query services return typed domain results
       and errors rather than MCP/HTTP-specific failures.
-- [ ] Keep MCP installation identity, auth, policy, auditing, request envelope, and transport deadlines in MCP.
+- [x] Keep MCP installation identity, auth, policy, auditing, request envelope, and transport deadlines in MCP.
 - [ ] Extract pure writable/trigger discovery logic from the MCP tool adapter.
 - [ ] Add database-bounded lexical/entity search and safe filtered/aggregate state queries.
 - [ ] Add a bounded `PropertyValueService` batch/aggregate contract for current-value predicates and aggregates. Resolve
       eligible metadata in the database, reconcile cache/storage values in chunks, short-circuit only sound outcomes,
       and return eligible/evaluated/unknown/freshness/partial metadata when completeness cannot be established.
 - [ ] Preserve `observed_at`, `total`, `returned`, `partial`, and `truncated` metadata.
-- [ ] Import `HomeContextModule` from MCP and prove the MCP endpoint can be disabled while shared queries still work.
-- [ ] Avoid a Buddy-to-`McpModule` dependency and avoid a domain-to-`ToolsModule` cycle.
+- [x] Import `HomeContextModule` from MCP and prove the MCP endpoint can be disabled while shared queries still work.
+- [x] Avoid a Buddy-to-`McpModule` dependency and avoid a domain-to-`ToolsModule` cycle.
 - [ ] Add targeted catalog cache invalidation and in-flight query deduplication without changing evaluator snapshot cache
       semantics.
 

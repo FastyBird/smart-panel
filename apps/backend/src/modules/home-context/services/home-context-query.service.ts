@@ -10,18 +10,20 @@ import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { SpacesService } from '../../spaces/services/spaces.service';
 import { SpaceType, isFloorZoneCategory } from '../../spaces/spaces.constants';
 import { WeatherService } from '../../weather/services/weather.service';
+import { HomeContextInvalidCursorError } from '../home-context-pagination.errors';
 import { HOME_CONTEXT_LIMIT_PROFILES } from '../home-context.constants';
 import { HomeContextSpaceNotFoundError } from '../home-context.errors';
-import { HomeSnapshotQuery } from '../models/home-context-query.model';
+import { HomeContextSpacePageQuery, HomeSnapshotQuery } from '../models/home-context-query.model';
 import {
+	HomeContextSpacePageResult,
 	HomeSnapshotDevice,
 	HomeSnapshotEnergy,
 	HomeSnapshotResult,
 	HomeSnapshotSecurity,
 	HomeSnapshotWeather,
 } from '../models/home-context-result.model';
-import { homeSnapshotQuerySchema } from '../schemas/home-context-input.schemas';
-import { homeSnapshotResultSchema } from '../schemas/home-context-output.schemas';
+import { homeContextSpacePageQuerySchema, homeSnapshotQuerySchema } from '../schemas/home-context-input.schemas';
+import { homeContextSpacePageResultSchema, homeSnapshotResultSchema } from '../schemas/home-context-output.schemas';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -117,6 +119,41 @@ export class HomeContextQueryService {
 		homeSnapshotResultSchema.parse(result);
 
 		return result;
+	}
+
+	async listSpaces(query: HomeContextSpacePageQuery): Promise<HomeContextSpacePageResult> {
+		const offset = this.parseSpaceCursor(query.cursor);
+
+		homeContextSpacePageQuerySchema.parse(query);
+		const profile = HOME_CONTEXT_LIMIT_PROFILES[query.profile];
+		const page = await this.spacesService.findSummaryPage(profile.spaces, offset);
+		const spaces = page.spaces.map((space) => ({ id: space.id, name: space.name, type: space.type }));
+		const nextOffset = offset + spaces.length;
+		const result: HomeContextSpacePageResult = {
+			spaces,
+			...(nextOffset < page.total ? { nextCursor: String(nextOffset) } : {}),
+		};
+
+		homeContextSpacePageResultSchema.parse(result);
+
+		return result;
+	}
+
+	private parseSpaceCursor(cursor?: string): number {
+		if (cursor === undefined) {
+			return 0;
+		}
+		if (!/^(0|[1-9]\d*)$/.test(cursor)) {
+			throw new HomeContextInvalidCursorError(cursor);
+		}
+
+		const offset = Number(cursor);
+
+		if (!Number.isSafeInteger(offset)) {
+			throw new HomeContextInvalidCursorError(cursor);
+		}
+
+		return offset;
 	}
 
 	private async getEnergySummaryData(space?: SpaceEntity): Promise<HomeSnapshotEnergy> {
