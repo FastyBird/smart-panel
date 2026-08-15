@@ -74,6 +74,7 @@ export interface ToolExecutionResult {
 export interface ToolExecutionContext {
 	audience: ToolAudience;
 	source: string;
+	conversationId?: string;
 	actorId?: string;
 	requestId?: string;
 	allowedAccessKinds?: ToolAccessKind[];
@@ -90,6 +91,7 @@ export const createToolExecutionContext = (
 ): ToolExecutionContext => ({
 	audience: context?.audience ?? ToolAudience.BUDDY,
 	source: context?.source ?? ToolAudience.BUDDY,
+	conversationId: context?.conversationId,
 	actorId: context?.actorId,
 	requestId: context?.requestId ?? toolCall.id,
 	allowedAccessKinds: context?.allowedAccessKinds,

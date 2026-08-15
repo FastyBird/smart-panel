@@ -32,6 +32,7 @@ import {
 	createToolDefinition,
 } from '../../tools/platforms/tool-provider.platform';
 import { BaseToolProviderService } from '../../tools/services/base-tool-provider.service';
+import { ScopedShortIdTargetKind, ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { BUDDY_MODULE_NAME } from '../buddy.constants';
 
 export const BUDDY_HOME_READ_TOOLS_PROVIDER = 'buddy-home-read-tools';
@@ -125,6 +126,7 @@ export class HomeContextToolProviderService extends BaseToolProviderService {
 	constructor(
 		private readonly homeSearch: HomeSearchQueryService,
 		private readonly currentState: HomeCurrentStateQueryService,
+		private readonly shortIdMapping: ShortIdMappingService,
 	) {
 		super();
 	}
@@ -163,20 +165,23 @@ export class HomeContextToolProviderService extends BaseToolProviderService {
 
 	protected async handleToolCall(
 		toolCall: LlmToolCall,
-		_context: ToolExecutionContext,
+		context: ToolExecutionContext,
 	): Promise<ToolExecutionResult | null> {
 		if (toolCall.name === SEARCH_HOME_TOOL_NAME) {
-			return this.searchHome(toolCall.arguments);
+			return this.searchHome(toolCall.arguments, context);
 		}
 
 		if (toolCall.name === QUERY_HOME_STATE_TOOL_NAME) {
-			return this.queryHomeState(toolCall.arguments);
+			return this.queryHomeState(toolCall.arguments, context);
 		}
 
 		return null;
 	}
 
-	private async searchHome(argumentsValue: Record<string, unknown>): Promise<ToolExecutionResult> {
+	private async searchHome(
+		argumentsValue: Record<string, unknown>,
+		context: ToolExecutionContext,
+	): Promise<ToolExecutionResult> {
 		const parsed = searchHomeToolInputSchema.safeParse(argumentsValue);
 
 		if (!parsed.success) {
@@ -188,7 +193,7 @@ export class HomeContextToolProviderService extends BaseToolProviderService {
 				profile: HOME_SEARCH_PROFILE_BUDDY_V1,
 				query: parsed.data.query,
 				kinds: parsed.data.kinds,
-				spaceId: parsed.data.space_id,
+				spaceId: this.resolveSpaceId(parsed.data.space_id, context),
 				categories: parsed.data.categories,
 				candidateCapability: parsed.data.candidate_capability,
 				limit: parsed.data.limit,
@@ -209,7 +214,10 @@ export class HomeContextToolProviderService extends BaseToolProviderService {
 		}
 	}
 
-	private async queryHomeState(argumentsValue: Record<string, unknown>): Promise<ToolExecutionResult> {
+	private async queryHomeState(
+		argumentsValue: Record<string, unknown>,
+		context: ToolExecutionContext,
+	): Promise<ToolExecutionResult> {
 		const parsed = queryHomeStateToolInputSchema.safeParse(argumentsValue);
 
 		if (!parsed.success) {
@@ -220,7 +228,7 @@ export class HomeContextToolProviderService extends BaseToolProviderService {
 			const query = {
 				profile: HOME_CURRENT_STATE_PROFILE_BUDDY_V1,
 				operation: parsed.data.operation,
-				spaceId: parsed.data.space_id,
+				spaceId: this.resolveSpaceId(parsed.data.space_id, context),
 				channelCategories: parsed.data.channel_categories,
 				propertyCategories: parsed.data.property_categories,
 				dataTypes: parsed.data.data_types,
@@ -252,6 +260,14 @@ export class HomeContextToolProviderService extends BaseToolProviderService {
 			message: `Invalid arguments for tool "${toolName}"`,
 			errorCode: 'INVALID_TOOL_ARGUMENTS',
 		};
+	}
+
+	private resolveSpaceId(spaceId: string | undefined, context: ToolExecutionContext): string | undefined {
+		if (spaceId === undefined || context.conversationId === undefined) {
+			return spaceId;
+		}
+
+		return this.shortIdMapping.resolveScoped(context.conversationId, spaceId, ScopedShortIdTargetKind.SPACE) ?? spaceId;
 	}
 
 	private mapExpectedError(error: unknown): ToolExecutionResult {

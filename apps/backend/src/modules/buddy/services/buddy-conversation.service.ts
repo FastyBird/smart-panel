@@ -8,7 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import { ToolAudience, ToolExecutionResult, ToolExecutionStatus } from '../../tools/platforms/tool-provider.platform';
-import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
+import { ScopedShortIdTargetKind, ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
 import {
 	BUDDY_MODULE_NAME,
@@ -42,6 +42,7 @@ import {
 
 import { BuddyContext, BuddyContextService } from './buddy-context.service';
 import { BuddyPersonalityService } from './buddy-personality.service';
+import { QUERY_HOME_STATE_TOOL_NAME, SEARCH_HOME_TOOL_NAME } from './home-context-tool-provider.service';
 import { ChatMessage, LlmProviderService } from './llm-provider.service';
 
 const MAX_HISTORY_MESSAGES = 20;
@@ -53,11 +54,11 @@ const MAX_HISTORY_MESSAGES = 20;
 const PROMPT_TOKEN_BUDGET_RATIO = 0.8;
 
 /**
- * Estimate the number of tokens in a text string.
- * Uses the ~4 characters per token heuristic for English text.
+ * Conservatively estimate the number of tokens in prompt text from its UTF-8 byte length.
+ * Opaque action references have high entropy and must not be budgeted like ordinary English prose.
  */
 function estimateTokens(text: string): number {
-	return Math.ceil(text.length / 4);
+	return Math.ceil(Buffer.byteLength(text, 'utf8') / 3);
 }
 
 @Injectable()
@@ -135,7 +136,7 @@ export class BuddyConversationService {
 		// to the same short ID, so concurrent requests from different bot adapters
 		// won't interfere with each other.
 		const context = await this.contextService.buildContext(conversation.spaceId ?? undefined);
-		const systemPrompt = await this.buildSystemPrompt(context, conversation.spaceId ?? undefined);
+		const systemPrompt = await this.buildSystemPrompt(context, conversation.id, conversation.spaceId ?? undefined);
 
 		// 2. Load most recent conversation history and append the new user message
 		const history = await this.messageRepository.find({
@@ -156,11 +157,25 @@ export class BuddyConversationService {
 		chatMessages.push({ role: MessageRole.USER, content });
 
 		// 3. Call LLM provider with tool support if available
-		const tools = this.llmProvider.supportsTools()
-			? this.toolProviderRegistry.getAllToolDefinitions({ audience: ToolAudience.BUDDY })
+		const supportsTools = this.llmProvider.supportsTools();
+		const supportsNativeToolResults = supportsTools && this.llmProvider.supportsNativeToolResults();
+		const tools = supportsTools
+			? this.toolProviderRegistry
+					.getAllToolDefinitions({ audience: ToolAudience.BUDDY })
+					.filter(
+						(definition) =>
+							supportsNativeToolResults ||
+							(definition.name !== SEARCH_HOME_TOOL_NAME && definition.name !== QUERY_HOME_STATE_TOOL_NAME),
+					)
 			: undefined;
 		const maxIterations = this.getMaxToolIterations();
-		const llmResponse = await this.sendWithToolExecution(systemPrompt, chatMessages, tools, maxIterations);
+		const llmResponse = await this.sendWithToolExecution(
+			systemPrompt,
+			chatMessages,
+			conversation.id,
+			tools,
+			maxIterations,
+		);
 
 		// 4. Persist both user message and assistant response in a single transaction
 		const { savedUser, savedAssistant } = await this.dataSource.transaction(async (manager) => {
@@ -225,6 +240,10 @@ export class BuddyConversationService {
 	async remove(id: string): Promise<void> {
 		const conversation = await this.findOneOrThrow(id);
 
+		// Fail closed at deletion admission: a partial database deletion must not
+		// leave action references for a conversation the user asked to remove.
+		this.shortIdMapping.clearScope(conversation.id);
+
 		// Delete messages first (cascade)
 		await this.messageRepository.delete({ conversationId: conversation.id });
 		await this.conversationRepository.delete(conversation.id);
@@ -240,6 +259,7 @@ export class BuddyConversationService {
 	private async sendWithToolExecution(
 		systemPrompt: string,
 		messages: LlmConversationItem[],
+		conversationId: string,
 		tools?: ToolDefinition[],
 		maxIterations: number = DEFAULT_MAX_TOOL_ITERATIONS,
 	): Promise<LlmResponse> {
@@ -325,6 +345,7 @@ export class BuddyConversationService {
 						result = await this.toolProviderRegistry.executeTool(toolCall, {
 							audience: ToolAudience.BUDDY,
 							source: ToolAudience.BUDDY,
+							conversationId,
 							requestId: canonicalCall.callId,
 						});
 					} catch {
@@ -434,6 +455,7 @@ export class BuddyConversationService {
 				const result = await this.toolProviderRegistry.executeTool(toolCall, {
 					audience: ToolAudience.BUDDY,
 					source: ToolAudience.BUDDY,
+					conversationId,
 					requestId: canonicalCallIds[callIndex],
 				});
 
@@ -611,7 +633,11 @@ export class BuddyConversationService {
 		return (a ?? 0) + (b ?? 0);
 	}
 
-	private async buildSystemPrompt(context: BuddyContext, conversationSpaceId?: string): Promise<string> {
+	private async buildSystemPrompt(
+		context: BuddyContext,
+		conversationId: string,
+		conversationSpaceId?: string,
+	): Promise<string> {
 		const hasTools = this.llmProvider.supportsTools();
 		const personality = await this.personalityService.getPersonality();
 		const buddyName = this.getBuddyName();
@@ -641,9 +667,12 @@ export class BuddyConversationService {
 			lines.push('', '## Spaces');
 
 			for (const space of context.spaces) {
-				const sid = this.shortIdMapping.shorten(space.id);
+				const sid = hasTools
+					? this.shortIdMapping.exposeScoped(conversationId, space.id, ScopedShortIdTargetKind.SPACE)
+					: null;
+				const reference = sid === null ? '' : ` [id=${sid}]`;
 
-				lines.push(`- ${space.name} [id=${sid}] (${space.category ?? 'unknown'}): ${space.deviceCount} devices`);
+				lines.push(`- ${space.name}${reference} (${space.category ?? 'unknown'}): ${space.deviceCount} devices`);
 			}
 		}
 
@@ -652,7 +681,15 @@ export class BuddyConversationService {
 			const currentTokens = estimateTokens(lines.join('\n'));
 
 			if (currentTokens < tokenBudget) {
-				this.appendDevices(lines, context.devices, hasTools, tokenBudget, context.spaces, conversationSpaceId);
+				this.appendDevices(
+					lines,
+					context.devices,
+					hasTools,
+					tokenBudget,
+					context.spaces,
+					conversationId,
+					conversationSpaceId,
+				);
 			}
 		}
 
@@ -666,9 +703,12 @@ export class BuddyConversationService {
 				lines.push('', '## Scenes');
 
 				for (const scene of context.scenes) {
-					const sid = this.shortIdMapping.shorten(scene.id);
+					const sid = hasTools
+						? this.shortIdMapping.exposeScoped(conversationId, scene.id, ScopedShortIdTargetKind.SCENE)
+						: null;
+					const reference = sid === null ? '' : ` [id=${sid}]`;
 
-					lines.push(`- ${scene.name} [id=${sid}]: ${scene.enabled ? 'enabled' : 'disabled'}`);
+					lines.push(`- ${scene.name}${reference}: ${scene.enabled ? 'enabled' : 'disabled'}`);
 				}
 			} else {
 				omittedSections.push('scenes');
@@ -746,6 +786,7 @@ export class BuddyConversationService {
 		hasTools: boolean,
 		tokenBudget: number,
 		spaces: BuddyContext['spaces'],
+		conversationId: string,
 		conversationSpaceId?: string,
 	): void {
 		// Quick estimate: can ALL devices fit with full detail?
@@ -756,7 +797,7 @@ export class BuddyConversationService {
 
 		if (baseTokens + fullDetailEstimate < tokenBudget) {
 			// Everything fits — build the actual formatted lines (registers short IDs)
-			const fullDeviceLines = this.buildDeviceLines(devices, hasTools);
+			const fullDeviceLines = this.buildDeviceLines(devices, hasTools, conversationId);
 
 			lines.push('', '## Devices', ...fullDeviceLines);
 
@@ -790,11 +831,11 @@ export class BuddyConversationService {
 
 		// Add current space devices with full detail (or summarize if still too large)
 		if (currentSpaceDevices.length > 0) {
-			const currentLines = this.buildDeviceLines(currentSpaceDevices, hasTools);
-			const withCurrentSpace = estimateTokens([...lines, ...currentLines].join('\n'));
+			const withCurrentSpace =
+				estimateTokens(lines.join('\n')) + this.estimateDeviceTokens(currentSpaceDevices, hasTools);
 
 			if (withCurrentSpace < tokenBudget) {
-				lines.push(...currentLines);
+				lines.push(...this.buildDeviceLines(currentSpaceDevices, hasTools, conversationId));
 			} else {
 				// Even current space exceeds budget — add without tool details
 				for (const device of currentSpaceDevices) {
@@ -830,12 +871,11 @@ export class BuddyConversationService {
 				break;
 			}
 
-			// Try full detail for this space's devices
-			const spaceDeviceLines = this.buildDeviceLines(spaceDevices, hasTools);
-			const withFullDetail = estimateTokens([...lines, ...spaceDeviceLines].join('\n'));
+			// Estimate without exposing action references; allocate them only after the detail block is accepted.
+			const withFullDetail = estimateTokens(lines.join('\n')) + this.estimateDeviceTokens(spaceDevices, hasTools);
 
 			if (withFullDetail < tokenBudget) {
-				lines.push(...spaceDeviceLines);
+				lines.push(...this.buildDeviceLines(spaceDevices, hasTools, conversationId));
 			} else {
 				// Summarize: just device count for this space
 				const spaceName = spaces.find((s) => s.id === spaceId)?.name ?? spaceId ?? 'unassigned';
@@ -853,7 +893,7 @@ export class BuddyConversationService {
 	/**
 	 * Build device detail lines (shared between full and truncated rendering).
 	 */
-	private buildDeviceLines(devices: BuddyContext['devices'], hasTools: boolean): string[] {
+	private buildDeviceLines(devices: BuddyContext['devices'], hasTools: boolean, conversationId: string): string[] {
 		const lines: string[] = [];
 
 		for (const device of devices) {
@@ -880,10 +920,11 @@ export class BuddyConversationService {
 					lines.push(`  - ${channel.name}:`);
 
 					for (const prop of channel.properties) {
-						const pid = this.shortIdMapping.shorten(prop.id);
+						const pid = this.shortIdMapping.exposeScoped(conversationId, prop.id, ScopedShortIdTargetKind.PROPERTY);
 						const val = prop.value != null ? JSON.stringify(prop.value) : 'null';
+						const reference = pid === null ? '' : ` [p=${pid}]`;
 
-						lines.push(`    - ${prop.category} [p=${pid}] value=${val}`);
+						lines.push(`    - ${prop.category}${reference} value=${val}`);
 					}
 				}
 			}
@@ -903,8 +944,8 @@ export class BuddyConversationService {
 		const STATE_ENTRY_CHARS = 20;
 		// "  - channelName:\n" ≈ 25 chars
 		const CHANNEL_CHARS = 25;
-		// "    - category [p=XXXX] value=...\n" ≈ 45 chars
-		const PROPERTY_CHARS = 45;
+		// "    - category [p=pr_<opaque-reference>] value=...\n" ≈ 60 chars
+		const PROPERTY_CHARS = 60;
 		// "## Devices\n\n"
 		const HEADER_CHARS = 15;
 
@@ -924,7 +965,7 @@ export class BuddyConversationService {
 			}
 		}
 
-		return Math.ceil(chars / 4);
+		return Math.ceil(chars / 3);
 	}
 
 	/**

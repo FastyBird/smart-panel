@@ -1,4 +1,9 @@
-import { ShortIdMappingService } from './short-id-mapping.service';
+import {
+	MAX_SCOPED_SHORT_ID_MAPPINGS,
+	MAX_SCOPED_SHORT_ID_MAPPINGS_PER_CONVERSATION,
+	ScopedShortIdTargetKind,
+	ShortIdMappingService,
+} from './short-id-mapping.service';
 
 describe('ShortIdMappingService', () => {
 	let service: ShortIdMappingService;
@@ -72,6 +77,162 @@ describe('ShortIdMappingService', () => {
 
 			expect(service.resolve(firstShortId)).toBeNull();
 			expect(service.size).toBe(10_000);
+		});
+	});
+
+	describe('conversation-scoped references', () => {
+		it('returns a stable opaque kind-prefixed token for a retained exposure', () => {
+			const first = service.exposeScoped('conversation-1', 'property-1', ScopedShortIdTargetKind.PROPERTY);
+			const second = service.exposeScoped('conversation-1', 'property-1', ScopedShortIdTargetKind.PROPERTY);
+
+			expect(first).toBe(second);
+			expect(first).toMatch(/^pr_[0-9a-z]+_[A-Za-z0-9_-]{10}$/);
+			expect(first).not.toContain('property-1');
+			expect(service.resolveScoped('conversation-1', first, ScopedShortIdTargetKind.PROPERTY)).toBe('property-1');
+		});
+
+		it('isolates identical targets between conversations', () => {
+			const first = service.exposeScoped('conversation-1', 'scene-1', ScopedShortIdTargetKind.SCENE);
+			const second = service.exposeScoped('conversation-2', 'scene-1', ScopedShortIdTargetKind.SCENE);
+
+			expect(first).not.toBe(second);
+			expect(service.resolveScoped('conversation-1', first, ScopedShortIdTargetKind.SCENE)).toBe('scene-1');
+			expect(service.resolveScoped('conversation-2', first, ScopedShortIdTargetKind.SCENE)).toBeNull();
+			expect(service.resolveScoped('conversation-2', second, ScopedShortIdTargetKind.SCENE)).toBe('scene-1');
+		});
+
+		it('isolates the same opaque token string when it collides across conversations', () => {
+			jest
+				.spyOn(
+					service as unknown as {
+						createScopedToken: (conversationId: string, canonicalId: string, kind: ScopedShortIdTargetKind) => string;
+					},
+					'createScopedToken',
+				)
+				.mockReturnValue('pr_shared-token');
+
+			const first = service.exposeScoped('conversation-1', 'property-1', ScopedShortIdTargetKind.PROPERTY);
+			const second = service.exposeScoped('conversation-2', 'property-2', ScopedShortIdTargetKind.PROPERTY);
+
+			expect(first).toBe(second);
+			expect(service.resolveScoped('conversation-1', first ?? '', ScopedShortIdTargetKind.PROPERTY)).toBe('property-1');
+			expect(service.resolveScoped('conversation-2', second ?? '', ScopedShortIdTargetKind.PROPERTY)).toBe(
+				'property-2',
+			);
+		});
+
+		it('does not resolve a token under the wrong target kind', () => {
+			const token = service.exposeScoped('conversation-1', 'target-1', ScopedShortIdTargetKind.SPACE);
+
+			expect(service.resolveScoped('conversation-1', token, ScopedShortIdTargetKind.PROPERTY)).toBeNull();
+			expect(service.resolveScoped('conversation-1', token, ScopedShortIdTargetKind.SCENE)).toBeNull();
+			expect(service.resolveScoped('conversation-1', token, ScopedShortIdTargetKind.SPACE)).toBe('target-1');
+		});
+
+		it('clears only the requested conversation and never falls back to the global mapping', () => {
+			const globalToken = service.shorten('property-1');
+			const first = service.exposeScoped('conversation-1', 'property-1', ScopedShortIdTargetKind.PROPERTY);
+			const second = service.exposeScoped('conversation-2', 'property-2', ScopedShortIdTargetKind.PROPERTY);
+
+			service.clearScope('conversation-1');
+
+			expect(service.resolveScoped('conversation-1', first, ScopedShortIdTargetKind.PROPERTY)).toBeNull();
+			expect(service.resolveScoped('conversation-1', globalToken, ScopedShortIdTargetKind.PROPERTY)).toBeNull();
+			expect(service.resolveScoped('conversation-2', second, ScopedShortIdTargetKind.PROPERTY)).toBe('property-2');
+			expect(service.resolve(globalToken)).toBe('property-1');
+		});
+
+		it('clears all scoped references without changing the global mapping or reusing old tokens', () => {
+			const globalToken = service.shorten('property-global');
+			const first = service.exposeScoped('conversation-1', 'property-1', ScopedShortIdTargetKind.PROPERTY);
+			const second = service.exposeScoped('conversation-2', 'scene-1', ScopedShortIdTargetKind.SCENE);
+
+			service.clearAllScopes();
+
+			expect(service.scopedSize).toBe(0);
+			expect(service.resolveScoped('conversation-1', first ?? '', ScopedShortIdTargetKind.PROPERTY)).toBeNull();
+			expect(service.resolveScoped('conversation-2', second ?? '', ScopedShortIdTargetKind.SCENE)).toBeNull();
+			expect(service.resolve(globalToken)).toBe('property-global');
+
+			const replacement = service.exposeScoped('conversation-1', 'property-1', ScopedShortIdTargetKind.PROPERTY);
+
+			expect(replacement).not.toBe(first);
+		});
+
+		it('retries an active token collision without reassigning the original token', () => {
+			const createScopedToken = jest.spyOn(
+				service as unknown as {
+					createScopedToken: (conversationId: string, canonicalId: string, kind: ScopedShortIdTargetKind) => string;
+				},
+				'createScopedToken',
+			);
+
+			createScopedToken
+				.mockReturnValueOnce('pr_collision')
+				.mockReturnValueOnce('pr_collision')
+				.mockReturnValueOnce('pr_next');
+
+			const first = service.exposeScoped('conversation-1', 'property-1', ScopedShortIdTargetKind.PROPERTY);
+			const second = service.exposeScoped('conversation-1', 'property-2', ScopedShortIdTargetKind.PROPERTY);
+
+			expect(first).toBe('pr_collision');
+			expect(second).toBe('pr_next');
+			expect(service.resolveScoped('conversation-1', first, ScopedShortIdTargetKind.PROPERTY)).toBe('property-1');
+			expect(service.resolveScoped('conversation-1', second, ScopedShortIdTargetKind.PROPERTY)).toBe('property-2');
+		});
+
+		it('returns null at the conversation cap without invalidating a previously exposed token', () => {
+			const first = service.exposeScoped('conversation-1', 'property-0', ScopedShortIdTargetKind.PROPERTY);
+
+			for (let index = 1; index < MAX_SCOPED_SHORT_ID_MAPPINGS_PER_CONVERSATION; index += 1) {
+				expect(
+					service.exposeScoped('conversation-1', `property-${index}`, ScopedShortIdTargetKind.PROPERTY),
+				).not.toBeNull();
+			}
+
+			expect(service.exposeScoped('conversation-1', 'property-overflow', ScopedShortIdTargetKind.PROPERTY)).toBeNull();
+			expect(service.scopedSize).toBe(MAX_SCOPED_SHORT_ID_MAPPINGS_PER_CONVERSATION);
+			expect(service.resolveScoped('conversation-1', first, ScopedShortIdTargetKind.PROPERTY)).toBe('property-0');
+		});
+
+		it('rejects new global-cap exposures without invalidating any retained conversation', () => {
+			const activeToken = service.exposeScoped(
+				'active-conversation',
+				'property-kept',
+				ScopedShortIdTargetKind.PROPERTY,
+			);
+			let otherConversationToken: string | null = null;
+			let remaining = MAX_SCOPED_SHORT_ID_MAPPINGS - 1;
+
+			for (let conversationIndex = 1; remaining > 0; conversationIndex += 1) {
+				const conversationEntries = Math.min(MAX_SCOPED_SHORT_ID_MAPPINGS_PER_CONVERSATION, remaining);
+
+				for (let targetIndex = 0; targetIndex < conversationEntries; targetIndex += 1) {
+					const token = service.exposeScoped(
+						`conversation-${conversationIndex}`,
+						`property-${targetIndex}`,
+						ScopedShortIdTargetKind.PROPERTY,
+					);
+
+					if (conversationIndex === 1 && targetIndex === 0) {
+						otherConversationToken = token;
+					}
+				}
+
+				remaining -= conversationEntries;
+			}
+
+			expect(service.scopedSize).toBe(MAX_SCOPED_SHORT_ID_MAPPINGS);
+			const newest = service.exposeScoped('active-conversation', 'property-new', ScopedShortIdTargetKind.PROPERTY);
+
+			expect(newest).toBeNull();
+			expect(
+				service.resolveScoped('conversation-1', otherConversationToken ?? '', ScopedShortIdTargetKind.PROPERTY),
+			).toBe('property-0');
+			expect(service.resolveScoped('active-conversation', activeToken ?? '', ScopedShortIdTargetKind.PROPERTY)).toBe(
+				'property-kept',
+			);
+			expect(service.scopedSize).toBe(MAX_SCOPED_SHORT_ID_MAPPINGS);
 		});
 	});
 });

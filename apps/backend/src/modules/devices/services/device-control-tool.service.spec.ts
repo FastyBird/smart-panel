@@ -1,5 +1,5 @@
 import { ToolAccessKind, ToolAudience, ToolExecutionStatus } from '../../tools/platforms/tool-provider.platform';
-import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
+import { ScopedShortIdTargetKind, ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 
 import { DeviceControlToolService } from './device-control-tool.service';
 import { PropertyCommandService } from './property-command.service';
@@ -80,7 +80,7 @@ describe('DeviceControlToolService', () => {
 		});
 	});
 
-	it('preserves Buddy as the default execution source', async () => {
+	it('preserves the MCP canonical-ID fallback', async () => {
 		propertyCommandService.executePropertyCommandById.mockResolvedValue({
 			device: 'device-1',
 			deviceName: 'Light',
@@ -90,11 +90,43 @@ describe('DeviceControlToolService', () => {
 			success: true,
 		});
 
-		await service.executeTool({
-			id: 'call-1',
-			name: 'control_device',
-			arguments: { property_id: 'property-1', value: 50 },
+		await service.executeTool(
+			{
+				id: 'call-1',
+				name: 'control_device',
+				arguments: { property_id: 'property-1', value: 50 },
+			},
+			{ audience: ToolAudience.MCP, source: 'mcp' },
+		);
+
+		expect(propertyCommandService.executePropertyCommandById).toHaveBeenCalledWith(
+			'property-1',
+			50,
+			expect.any(Object),
+		);
+	});
+
+	it('executes a Buddy property only through a same-conversation scoped property token', async () => {
+		const token = shortIdMapping.exposeScoped('conversation-1', 'property-1', ScopedShortIdTargetKind.PROPERTY);
+
+		expect(token).not.toBeNull();
+		propertyCommandService.executePropertyCommandById.mockResolvedValue({
+			device: 'device-1',
+			deviceName: 'Light',
+			channel: 'channel-1',
+			property: 'property-1',
+			value: 50,
+			success: true,
 		});
+
+		await service.executeTool(
+			{
+				id: 'call-1',
+				name: 'control_device',
+				arguments: { property_id: token, value: 50 },
+			},
+			{ audience: ToolAudience.BUDDY, source: 'buddy', conversationId: 'conversation-1' },
+		);
 
 		expect(propertyCommandService.executePropertyCommandById).toHaveBeenCalledWith(
 			'property-1',
@@ -112,18 +144,74 @@ describe('DeviceControlToolService', () => {
 		});
 	});
 
+	it('denies unscoped, foreign, wrong-kind, stale, and canonical Buddy property IDs without a domain call', async () => {
+		const valid = shortIdMapping.exposeScoped('conversation-a', 'property-1', ScopedShortIdTargetKind.PROPERTY);
+		const wrongKind = shortIdMapping.exposeScoped('conversation-a', 'scene-1', ScopedShortIdTargetKind.SCENE);
+		const stale = shortIdMapping.exposeScoped('conversation-stale', 'property-2', ScopedShortIdTargetKind.PROPERTY);
+
+		expect(valid).not.toBeNull();
+		expect(wrongKind).not.toBeNull();
+		expect(stale).not.toBeNull();
+		shortIdMapping.clearScope('conversation-stale');
+
+		const attempts = [
+			{ propertyId: valid, context: { audience: ToolAudience.BUDDY, source: 'buddy' } },
+			{
+				propertyId: valid,
+				context: { audience: ToolAudience.BUDDY, source: 'buddy', conversationId: 'conversation-b' },
+			},
+			{
+				propertyId: wrongKind,
+				context: { audience: ToolAudience.BUDDY, source: 'buddy', conversationId: 'conversation-a' },
+			},
+			{
+				propertyId: stale,
+				context: { audience: ToolAudience.BUDDY, source: 'buddy', conversationId: 'conversation-stale' },
+			},
+			{
+				propertyId: 'property-1',
+				context: { audience: ToolAudience.BUDDY, source: 'buddy', conversationId: 'conversation-a' },
+			},
+		];
+
+		for (const attempt of attempts) {
+			await expect(
+				service.executeTool(
+					{
+						id: 'call-denied',
+						name: 'control_device',
+						arguments: { property_id: attempt.propertyId, value: true },
+					},
+					attempt.context,
+				),
+			).resolves.toEqual({
+				success: false,
+				status: ToolExecutionStatus.DENIED,
+				message: 'The requested target is not available in this Buddy conversation.',
+				errorCode: 'BUDDY_TARGET_NOT_EXPOSED',
+			});
+		}
+
+		expect(propertyCommandService.executePropertyCommandById).not.toHaveBeenCalled();
+	});
+
 	it('returns a structured failure from the command service', async () => {
+		const token = shortIdMapping.exposeScoped('conversation-1', 'property-1', ScopedShortIdTargetKind.PROPERTY);
+
 		propertyCommandService.executePropertyCommandById.mockResolvedValue({
 			device: 'device-1',
 			success: false,
 			reason: 'Property is not writable',
 		});
 
-		const result = await service.executeTool({
-			id: 'call-1',
-			name: 'control_device',
-			arguments: { property_id: 'property-1', value: true },
-		});
+		const result = await service.executeTool(
+			{
+				id: 'call-1',
+				name: 'control_device',
+				arguments: { property_id: token, value: true },
+			},
+			{ audience: ToolAudience.BUDDY, source: 'buddy', conversationId: 'conversation-1' },
+		);
 
 		expect(result).toEqual(
 			expect.objectContaining({

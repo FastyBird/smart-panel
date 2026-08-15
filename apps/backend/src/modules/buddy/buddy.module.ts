@@ -14,6 +14,7 @@ import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models
 import { SwaggerModule } from '../swagger/swagger.module';
 import { BackupContributionRegistry } from '../system/services/backup-contribution-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
+import { ToolProviderRegistryService } from '../tools/services/tool-provider-registry.service';
 import { ToolsModule } from '../tools/tools.module';
 import { WeatherModule } from '../weather/weather.module';
 
@@ -94,7 +95,6 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		LlmProviderRegistryService,
 		LlmProviderService,
 		BuddyConversationService,
-		// Provider foundation only. Live registration waits for conversation-scoped action-resolution proof.
 		HomeContextToolProviderService,
 		PatternDetectorService,
 		SuggestionEngineService,
@@ -149,6 +149,8 @@ export class BuddyModule implements OnModuleInit {
 		private readonly energyEvaluator: EnergyEvaluator,
 		private readonly conflictDetector: ConflictDetectorEvaluator,
 		private readonly sceneSuggestion: SceneSuggestionEvaluator,
+		private readonly toolProviderRegistry: ToolProviderRegistryService,
+		private readonly homeContextTools: HomeContextToolProviderService,
 	) {}
 
 	onModuleInit() {
@@ -178,6 +180,7 @@ export class BuddyModule implements OnModuleInit {
 		this.heartbeatService.registerEvaluator(this.energyEvaluator);
 		this.heartbeatService.registerEvaluator(this.conflictDetector);
 		this.heartbeatService.registerEvaluator(this.sceneSuggestion);
+		this.toolProviderRegistry.register(this.homeContextTools);
 		this.modulesMapperService.registerMapping<BuddyConfigModel, UpdateBuddyConfigDto>({
 			type: BUDDY_MODULE_NAME,
 			class: BuddyConfigModel,

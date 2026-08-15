@@ -10,6 +10,7 @@ import { HomeEntitySearchResponse } from '../../home-context/models/home-search-
 import { HomeCurrentStateQueryService } from '../../home-context/services/home-current-state-query.service';
 import { HomeSearchQueryService } from '../../home-context/services/home-search-query.service';
 import { ToolAccessKind, ToolAudience, ToolExecutionStatus } from '../../tools/platforms/tool-provider.platform';
+import { ScopedShortIdTargetKind, ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
 import { MessageRole } from '../buddy.constants';
 import { buildAnthropicRequestPayload } from '../platforms/anthropic-sdk.utils';
@@ -28,14 +29,17 @@ describe('HomeContextToolProviderService', () => {
 	const observedAt = '2026-08-15T12:00:00.000Z';
 	let searchEntities: jest.MockedFunction<HomeSearchQueryService['searchEntities']>;
 	let queryCurrentState: jest.MockedFunction<HomeCurrentStateQueryService['queryCurrentState']>;
+	let shortIdMapping: ShortIdMappingService;
 	let provider: HomeContextToolProviderService;
 
 	beforeEach(() => {
 		searchEntities = jest.fn();
 		queryCurrentState = jest.fn();
+		shortIdMapping = new ShortIdMappingService();
 		provider = new HomeContextToolProviderService(
 			{ searchEntities } as unknown as HomeSearchQueryService,
 			{ queryCurrentState } as unknown as HomeCurrentStateQueryService,
+			shortIdMapping,
 		);
 	});
 
@@ -110,6 +114,7 @@ describe('HomeContextToolProviderService', () => {
 	});
 
 	it('maps the complete search ABI to the fixed Buddy search profile and preserves bounded data', async () => {
+		const scopedSpaceId = shortIdMapping.exposeScoped('conversation-1', 'space-1', ScopedShortIdTargetKind.SPACE);
 		const result: HomeEntitySearchResponse = {
 			query: 'kitchen light',
 			entities: [],
@@ -131,14 +136,18 @@ describe('HomeContextToolProviderService', () => {
 				arguments: {
 					query: ' kitchen light ',
 					kinds: ['property'],
-					space_id: 'space-1',
+					space_id: scopedSpaceId,
 					categories: ['light'],
 					candidate_capability: 'read',
 					limit: 7,
 					cursor: 'cursor-1',
 				},
 			},
-			{ audience: ToolAudience.BUDDY, allowedAccessKinds: [ToolAccessKind.READ] },
+			{
+				audience: ToolAudience.BUDDY,
+				conversationId: 'conversation-1',
+				allowedAccessKinds: [ToolAccessKind.READ],
+			},
 		);
 
 		expect(searchEntities).toHaveBeenCalledWith({

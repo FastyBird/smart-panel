@@ -21,6 +21,7 @@ interface NativeToolLoopHarness {
 	sendWithToolExecution(
 		systemPrompt: string,
 		messages: LlmConversationItem[],
+		conversationId: string,
 		tools?: ToolDefinition[],
 		maxIterations?: number,
 	): Promise<LlmResponse>;
@@ -215,6 +216,7 @@ describe('BuddyConversationService native tool loop', () => {
 			expect.objectContaining({
 				audience: ToolAudience.BUDDY,
 				source: ToolAudience.BUDDY,
+				conversationId: 'conversation-native-loop',
 				requestId: firstCallId,
 			}),
 		);
@@ -224,6 +226,7 @@ describe('BuddyConversationService native tool loop', () => {
 			expect.objectContaining({
 				audience: ToolAudience.BUDDY,
 				source: ToolAudience.BUDDY,
+				conversationId: 'conversation-native-loop',
 				requestId: secondCallId,
 			}),
 		);
@@ -657,6 +660,7 @@ async function runToolLoop(
 	return (service as unknown as NativeToolLoopHarness).sendWithToolExecution(
 		'system',
 		[{ role: MessageRole.USER, content: 'Control the kitchen.' }],
+		'conversation-native-loop',
 		tools,
 		maxIterations,
 	);

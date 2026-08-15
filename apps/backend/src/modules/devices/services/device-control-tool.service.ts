@@ -14,12 +14,14 @@ import {
 	createToolDefinition,
 } from '../../tools/platforms/tool-provider.platform';
 import { BaseToolProviderService } from '../../tools/services/base-tool-provider.service';
-import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
+import { ScopedShortIdTargetKind, ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { DEVICES_MODULE_NAME } from '../devices.constants';
 
 import { PropertyCommandService } from './property-command.service';
 
 const DEVICE_CONTROL_TOOLS_PROVIDER = 'device-control-tools';
+const BUDDY_TARGET_NOT_EXPOSED_MESSAGE = 'The requested target is not available in this Buddy conversation.';
+const BUDDY_TARGET_NOT_EXPOSED_ERROR_CODE = 'BUDDY_TARGET_NOT_EXPOSED';
 
 const CONTROL_DEVICE_INPUT_SCHEMA = z.object({
 	property_id: z.string().min(1).describe('Short property ID from the home context (the p=... value)'),
@@ -81,7 +83,25 @@ export class DeviceControlToolService extends BaseToolProviderService {
 			};
 		}
 
-		const propertyId = this.shortIdMapping.resolve(parsed.data.property_id) ?? parsed.data.property_id;
+		const propertyId =
+			context.audience === ToolAudience.BUDDY
+				? context.conversationId
+					? this.shortIdMapping.resolveScoped(
+							context.conversationId,
+							parsed.data.property_id,
+							ScopedShortIdTargetKind.PROPERTY,
+						)
+					: null
+				: (this.shortIdMapping.resolve(parsed.data.property_id) ?? parsed.data.property_id);
+
+		if (propertyId === null) {
+			return {
+				success: false,
+				status: ToolExecutionStatus.DENIED,
+				message: BUDDY_TARGET_NOT_EXPOSED_MESSAGE,
+				errorCode: BUDDY_TARGET_NOT_EXPOSED_ERROR_CODE,
+			};
+		}
 		const result = await this.propertyCommandService.executePropertyCommandById(propertyId, parsed.data.value, {
 			requestId: context.requestId,
 			context: {

@@ -364,8 +364,10 @@ unless tests prove the platform implementation insufficient.
 
 For reads, several close matches may be returned with scores/reasons. For writes/triggers, the resolver must mark the
 result ambiguous if more than one compatible candidate is plausible. Never use a tiny score difference to authorize an
-action. Canonical UUIDs remain valid tool inputs, but for a Buddy-origin action the UUID/short ID supplied by the model is
-not resolution proof. Search/read exposure never grants action authority. `BuddyActionResolutionService` must bind a
+action. Canonical UUIDs remain valid read and non-Buddy tool inputs, but for a Buddy-origin action an ID supplied by the
+model is not resolution proof. Until the complete proof service lands, live Buddy actions accept only an opaque target
+reference actually rendered in that same conversation; canonical IDs returned by search/read tools fail closed.
+Search/read exposure never grants action authority. `BuddyActionResolutionService` must bind a
 server-generated `BuddyActionResolutionProof` to the request claim, original-user-intent digest, deterministically
 extracted canonical action semantics/arguments, canonical target, candidate-set digest, conversation/safety epoch,
 resolution method, and expiry. Valid target methods are an identifier explicitly supplied by the user, a deterministic
@@ -1236,7 +1238,7 @@ captured as an opt-in/expected baseline measurement rather than a failing normal
 - [x] Add SQL-applied static metadata candidate filters for readable/writable properties and enabled triggerable scenes.
       Expose candidate capabilities derived from persisted metadata and the static command-type allowlist without
       treating discovery as authorization, online availability, or proof that an action can execute.
-- [ ] Expose the bounded metadata search through a Buddy read tool after the structured tool-result loop is available.
+- [x] Expose the bounded metadata search through a Buddy read tool after the structured tool-result loop is available.
 - [x] Add database-bounded current-state rows plus `any`, `all`, and exact `count_matches` predicates over readable
       properties. Require explicit units for numeric comparisons; report eligible/scanned/evaluated/unknown coverage,
       bounded evidence rows, typed partial reasons, and only logically conclusive partial boolean outcomes.
@@ -1555,23 +1557,26 @@ busy response leaves an ownerless nonterminal sequence capable of blocking later
 
 - [ ] Implement the bounded Buddy read tool catalog from Section 6.
 - [x] Add the provider foundation for `search_home` and completeness-safe `query_home_state` with server-selected Buddy
-      profiles; keep the remaining catalog entries and live registration open.
+      profiles; keep the remaining catalog entries open.
 - [x] Mark the initial tools `ToolAudience.BUDDY` and `ToolAccessKind.READ`.
 - [x] Validate their strict adapter inputs and structured outputs using the shared schemas.
 - [x] Return concise messages plus bounded structured data and freshness/truncation/coverage metadata.
-- [ ] Add conversation-scoped Buddy mappings to `ShortIdMappingService`; register only results exposed in that
-      conversation and require the same scope in every Buddy short-ID action lookup, with no unscoped/global fallback.
-      Preserve existing non-Buddy mapping behavior and canonical UUID fallback.
+- [x] Add bounded, opaque, kind-bound conversation-scoped Buddy mappings to `ShortIdMappingService`; register only
+      references rendered in that conversation and require the same scope in every Buddy action lookup, with no
+      unscoped/global or canonical fallback. Per-conversation or global capacity exhaustion omits further action references
+      instead of invalidating any reference that may be present in an in-flight prompt. Preserve existing non-Buddy mapping
+      behavior and canonical UUID fallback.
 - [ ] Add tool selection support so unrelated schemas are not advertised on every turn.
-- [ ] Register the initial read tools after conversation-scoped target exposure and action-resolution proof prevent a
-      discovered canonical ID from authorizing an action by itself.
+- [x] Register the initial read tools behind conversation-scoped action-reference containment: discovered canonical IDs
+      remain valid for dependent reads but cannot authorize Buddy writes/triggers. This containment is not the complete
+      server-held action-resolution proof from Section 5.4, which remains open.
 - [x] Verify no MCP configuration, token, policy, or server service is injected into the Buddy read provider.
 
 **Tests:** Every schema boundary and hard cap; missing optional modules; stale/missing entities; hidden/disabled entities;
 long labels/values; multi-language/diacritic search; same-token collisions across conversations; two colliding UUIDs in
 one conversation; and proof that a short ID exposed only in conversation A is denied in conversation B and after
-scope eviction instead of resolving through the global mapping; multiple plausible search results followed by a model
-choosing one exposed UUID/short ID still yielding ambiguity and zero execution.
+scope eviction instead of resolving through the global mapping. Multiple plausible search results and ambiguity-safe
+action resolution remain acceptance tests for the open `BuddyActionResolutionService` work in Phase 2.
 
 **Gate:** An isolated Buddy tool-loop integration harness can answer every read-only home-state row in the message matrix
 through the new provider without that provider calling the eager snapshot. A model can call `search_home`, receive

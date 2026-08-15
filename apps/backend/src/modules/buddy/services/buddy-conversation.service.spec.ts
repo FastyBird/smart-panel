@@ -5,8 +5,13 @@ import { z } from 'zod';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { ConfigService } from '../../config/services/config.service';
+import { PropertyCategory } from '../../devices/devices.constants';
 import { ToolAccessKind, ToolAudience, createToolDefinition } from '../../tools/platforms/tool-provider.platform';
-import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
+import {
+	MAX_SCOPED_SHORT_ID_MAPPINGS_PER_CONVERSATION,
+	ScopedShortIdTargetKind,
+	ShortIdMappingService,
+} from '../../tools/services/short-id-mapping.service';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
 import { EventType, MessageRole } from '../buddy.constants';
 import { BuddyConversationNotFoundException, BuddyProviderNotConfiguredException } from '../buddy.exceptions';
@@ -27,6 +32,7 @@ import {
 import { BuddyContextService } from './buddy-context.service';
 import { BuddyConversationService } from './buddy-conversation.service';
 import { BuddyPersonalityService } from './buddy-personality.service';
+import { QUERY_HOME_STATE_TOOL_NAME, SEARCH_HOME_TOOL_NAME } from './home-context-tool-provider.service';
 import { LlmProviderService } from './llm-provider.service';
 
 const BUDDY_EVALUATION_HISTORY: Partial<BuddyMessageEntity>[] = Array.from({ length: 19 }, (_, index) => ({
@@ -94,6 +100,7 @@ describe('BuddyConversationService', () => {
 	let personalityService: Record<string, jest.Mock>;
 	let toolProviderRegistry: Record<string, jest.Mock>;
 	let eventEmitter: jest.Mocked<EventEmitter2>;
+	let shortIdMapping: ShortIdMappingService;
 	let configService: Record<string, jest.Mock>;
 
 	const mockConversation: BuddyConversationEntity = {
@@ -189,6 +196,7 @@ describe('BuddyConversationService', () => {
 		configService = {
 			getModuleConfig: jest.fn().mockReturnValue({ name: 'Buddy', maxToolIterations: 5, contextWindowTokens: 8_000 }),
 		};
+		shortIdMapping = new ShortIdMappingService();
 
 		service = new BuddyConversationService(
 			conversationRepo as unknown as Repository<BuddyConversationEntity>,
@@ -199,7 +207,7 @@ describe('BuddyConversationService', () => {
 			personalityService as unknown as BuddyPersonalityService,
 			toolProviderRegistry as unknown as ToolProviderRegistryService,
 			eventEmitter,
-			new ShortIdMappingService(),
+			shortIdMapping,
 			configService as unknown as ConfigService,
 		);
 	});
@@ -328,6 +336,36 @@ describe('BuddyConversationService', () => {
 				]),
 				expect.objectContaining({}),
 			);
+		});
+
+		it('does not advertise structured home read tools without native tool-result support', async () => {
+			const legacyCompatibleTool = createToolDefinition({
+				name: 'run_scene',
+				description: 'Run a scene.',
+				audiences: [ToolAudience.BUDDY],
+				access: ToolAccessKind.TRIGGER,
+				inputSchema: z.object({ scene_id: z.string() }),
+				outputSchema: toolOutputSchema,
+			});
+			const structuredReadTools = [SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME].map((name) =>
+				createToolDefinition({
+					name,
+					description: 'Return structured home data.',
+					audiences: [ToolAudience.BUDDY],
+					access: ToolAccessKind.READ,
+					inputSchema: z.object({}),
+					outputSchema: toolOutputSchema,
+				}),
+			);
+			llmProvider.supportsTools.mockReturnValue(true);
+			llmProvider.supportsNativeToolResults.mockReturnValue(false);
+			toolProviderRegistry.getAllToolDefinitions.mockReturnValue([...structuredReadTools, legacyCompatibleTool]);
+
+			await service.sendMessage('conv-1', 'Run a scene.');
+
+			expect(llmProvider.sendMessage).toHaveBeenCalledWith(expect.any(String), expect.any(Array), {
+				tools: [legacyCompatibleTool],
+			});
 		});
 
 		it('should format energy values with kW units and omit battery when absent', async () => {
@@ -554,6 +592,106 @@ describe('BuddyConversationService', () => {
 			);
 		});
 
+		it('exposes prompt action references only inside the active conversation scope', async () => {
+			const context = createBuddyContextFixture(1, { spaceId: 'space-1' });
+			const propertyId = context.devices[0].channels[0].properties[0].id;
+			context.scenes = [{ id: 'scene-1', name: 'Evening', enabled: true, space: 'space-1' }];
+			contextService.buildContext.mockResolvedValue(context);
+			llmProvider.supportsTools.mockReturnValue(true);
+
+			await service.sendMessage('conv-1', 'Set the evening mood.');
+
+			const systemPrompt = llmProvider.sendMessage.mock.calls[0][0] as string;
+			const spaceToken = systemPrompt.match(/\[id=(sp_[^\]]+)\]/)?.[1];
+			const sceneToken = systemPrompt.match(/\[id=(sc_[^\]]+)\]/)?.[1];
+			const propertyToken = systemPrompt.match(/\[p=(pr_[^\]]+)\]/)?.[1];
+
+			expect(spaceToken).toBeDefined();
+			expect(sceneToken).toBeDefined();
+			expect(propertyToken).toBeDefined();
+			expect(shortIdMapping.resolveScoped('conv-1', spaceToken ?? '', ScopedShortIdTargetKind.SPACE)).toBe('space-1');
+			expect(shortIdMapping.resolveScoped('conv-1', sceneToken ?? '', ScopedShortIdTargetKind.SCENE)).toBe('scene-1');
+			expect(shortIdMapping.resolveScoped('conv-1', propertyToken ?? '', ScopedShortIdTargetKind.PROPERTY)).toBe(
+				propertyId,
+			);
+			expect(
+				shortIdMapping.resolveScoped('another-conversation', propertyToken ?? '', ScopedShortIdTargetKind.PROPERTY),
+			).toBeNull();
+		});
+
+		it('does not allocate action references for providers without tool support', async () => {
+			const context = createBuddyContextFixture(1, { spaceId: 'space-read-only' });
+			context.scenes = [{ id: 'scene-read-only', name: 'Read-only Scene', enabled: true, space: 'space-read-only' }];
+			contextService.buildContext.mockResolvedValue(context);
+			llmProvider.supportsTools.mockReturnValue(false);
+
+			await service.sendMessage('conv-1', 'Describe the home.');
+
+			const systemPrompt = llmProvider.sendMessage.mock.calls[0][0] as string;
+
+			expect(systemPrompt).toContain('Evaluation space-read-only');
+			expect(systemPrompt).toContain('Read-only Scene');
+			expect(systemPrompt).not.toContain('[id=');
+			expect(systemPrompt).not.toContain('[p=');
+			expect(shortIdMapping.scopedSize).toBe(0);
+		});
+
+		it('keeps read context visible without emitting invalid action references when the scope is full', async () => {
+			for (let index = 0; index < MAX_SCOPED_SHORT_ID_MAPPINGS_PER_CONVERSATION; index += 1) {
+				shortIdMapping.exposeScoped('conv-1', `existing-property-${index}`, ScopedShortIdTargetKind.PROPERTY);
+			}
+			const context = createBuddyContextFixture(1, { spaceId: 'space-overflow' });
+			context.scenes = [{ id: 'scene-overflow', name: 'Overflow Scene', enabled: true, space: 'space-overflow' }];
+			contextService.buildContext.mockResolvedValue(context);
+			llmProvider.supportsTools.mockReturnValue(true);
+
+			await service.sendMessage('conv-1', 'Describe the visible home context.');
+
+			const systemPrompt = llmProvider.sendMessage.mock.calls[0][0] as string;
+			expect(systemPrompt).toContain('Evaluation space-overflow');
+			expect(systemPrompt).toContain('Overflow Scene');
+			expect(systemPrompt).toContain(PropertyCategory.ON);
+			expect(systemPrompt).not.toContain('id=null');
+			expect(systemPrompt).not.toContain('p=null');
+		});
+
+		it('allocates action references only for detail that is retained in the prompt', async () => {
+			for (let index = 0; index < MAX_SCOPED_SHORT_ID_MAPPINGS_PER_CONVERSATION - 2; index += 1) {
+				shortIdMapping.exposeScoped('conv-1', `existing-property-${index}`, ScopedShortIdTargetKind.PROPERTY);
+			}
+
+			const context = createBuddyContextFixture(1, { spaceId: 'space-discarded' });
+			const baseProperty = context.devices[0].channels[0].properties[0];
+			context.devices[0].channels[0].properties = Array.from({ length: 500 }, (_, index) => ({
+				...baseProperty,
+				id: `discarded-property-${index}`,
+			}));
+			for (const channel of context.devices[0].channels.slice(1)) {
+				channel.properties = [];
+			}
+			context.scenes = [{ id: 'scene-retained', name: 'Retained Scene', enabled: true, space: 'space-discarded' }];
+			contextService.buildContext.mockResolvedValue(context);
+			llmProvider.supportsTools.mockReturnValue(true);
+			const exposeScoped = jest.spyOn(shortIdMapping, 'exposeScoped');
+
+			await service.sendMessage('conv-1', 'Summarize this home.');
+
+			const systemPrompt = llmProvider.sendMessage.mock.calls[0][0] as string;
+			const sceneToken = systemPrompt.match(/\[id=(sc_[^\]]+)\]/)?.[1];
+
+			expect(systemPrompt).toContain('[Evaluation space-discarded: 1 device(s) — ask for details]');
+			expect(systemPrompt).not.toContain('[p=');
+			expect(sceneToken).toBeDefined();
+			expect(shortIdMapping.resolveScoped('conv-1', sceneToken ?? '', ScopedShortIdTargetKind.SCENE)).toBe(
+				'scene-retained',
+			);
+			expect(exposeScoped.mock.calls.map(([, , kind]) => kind)).toEqual([
+				ScopedShortIdTargetKind.SPACE,
+				ScopedShortIdTargetKind.SCENE,
+			]);
+			expect(shortIdMapping.scopedSize).toBe(MAX_SCOPED_SHORT_ID_MAPPINGS_PER_CONVERSATION);
+		});
+
 		it('should use atomic title update with WHERE title IS NULL', async () => {
 			let capturedManager: Record<string, jest.Mock> | undefined;
 
@@ -666,8 +804,8 @@ describe('BuddyConversationService', () => {
 			        "jsonUtf8Bytes": 18,
 			      },
 			      "system": {
-			        "estimatedTokens": 1422,
-			        "jsonUtf8Bytes": 4265,
+			        "estimatedTokens": 1626,
+			        "jsonUtf8Bytes": 4878,
 			      },
 			      "toolResults": {
 			        "estimatedTokens": 0,
@@ -679,9 +817,9 @@ describe('BuddyConversationService', () => {
 			      },
 			    },
 			    "deviceCount": 10,
-			    "estimatedInputTokens": 2693,
+			    "estimatedInputTokens": 2898,
 			    "fitsWindow": true,
-			    "jsonUtf8Bytes": 8108,
+			    "jsonUtf8Bytes": 8721,
 			  },
 			  {
 			    "availableInputTokens": 126688,
@@ -699,8 +837,8 @@ describe('BuddyConversationService', () => {
 			        "jsonUtf8Bytes": 18,
 			      },
 			      "system": {
-			        "estimatedTokens": 6276,
-			        "jsonUtf8Bytes": 18826,
+			        "estimatedTokens": 3792,
+			        "jsonUtf8Bytes": 11374,
 			      },
 			      "toolResults": {
 			        "estimatedTokens": 0,
@@ -712,9 +850,9 @@ describe('BuddyConversationService', () => {
 			      },
 			    },
 			    "deviceCount": 100,
-			    "estimatedInputTokens": 7547,
+			    "estimatedInputTokens": 5063,
 			    "fitsWindow": true,
-			    "jsonUtf8Bytes": 22669,
+			    "jsonUtf8Bytes": 15217,
 			  },
 			  {
 			    "availableInputTokens": 126688,
@@ -732,8 +870,8 @@ describe('BuddyConversationService', () => {
 			        "jsonUtf8Bytes": 18,
 			      },
 			      "system": {
-			        "estimatedTokens": 337,
-			        "jsonUtf8Bytes": 1010,
+			        "estimatedTokens": 352,
+			        "jsonUtf8Bytes": 1054,
 			      },
 			      "toolResults": {
 			        "estimatedTokens": 0,
@@ -745,12 +883,12 @@ describe('BuddyConversationService', () => {
 			      },
 			    },
 			    "deviceCount": 1000,
-			    "estimatedInputTokens": 1608,
+			    "estimatedInputTokens": 1623,
 			    "fitsWindow": true,
-			    "jsonUtf8Bytes": 4853,
+			    "jsonUtf8Bytes": 4897,
 			  },
 			]
-			`);
+		`);
 		});
 
 		it('should record the current eager request as over budget for a 2k-token model', async () => {
@@ -807,8 +945,8 @@ describe('BuddyConversationService', () => {
 			      "jsonUtf8Bytes": 18,
 			    },
 			    "system": {
-			      "estimatedTokens": 1422,
-			      "jsonUtf8Bytes": 4265,
+			      "estimatedTokens": 1390,
+			      "jsonUtf8Bytes": 4170,
 			    },
 			    "toolResults": {
 			      "estimatedTokens": 0,
@@ -819,9 +957,9 @@ describe('BuddyConversationService', () => {
 			      "jsonUtf8Bytes": 1670,
 			    },
 			  },
-			  "estimatedInputTokens": 2693,
+			  "estimatedInputTokens": 2662,
 			  "fitsWindow": false,
-			  "jsonUtf8Bytes": 8108,
+			  "jsonUtf8Bytes": 8013,
 			}
 		`);
 		});
@@ -884,7 +1022,7 @@ describe('BuddyConversationService', () => {
 			expect(systemPrompt).toContain('omitted for brevity');
 
 			// The prompt should be within a reasonable size
-			const estimatedTokens = Math.ceil(systemPrompt.length / 4);
+			const estimatedTokens = estimateConservativeTokens(systemPrompt);
 
 			expect(estimatedTokens).toBeLessThan(8_000);
 		});
@@ -983,16 +1121,28 @@ describe('BuddyConversationService', () => {
 
 	describe('remove', () => {
 		it('should delete conversation and its messages', async () => {
+			const exposed = shortIdMapping.exposeScoped('conv-1', 'property-1', ScopedShortIdTargetKind.PROPERTY);
+
 			await service.remove('conv-1');
 
 			expect(messageRepo.delete).toHaveBeenCalledWith({ conversationId: 'conv-1' });
 			expect(conversationRepo.delete).toHaveBeenCalledWith('conv-1');
+			expect(shortIdMapping.resolveScoped('conv-1', exposed, ScopedShortIdTargetKind.PROPERTY)).toBeNull();
 		});
 
 		it('should throw BuddyConversationNotFoundException when not found', async () => {
 			conversationRepo.findOne.mockResolvedValue(null);
 
 			await expect(service.remove('nonexistent')).rejects.toThrow(BuddyConversationNotFoundException);
+		});
+
+		it('clears scoped action references before a persistent deletion can fail', async () => {
+			const exposed = shortIdMapping.exposeScoped('conv-1', 'property-1', ScopedShortIdTargetKind.PROPERTY);
+			messageRepo.delete.mockRejectedValue(new Error('database unavailable'));
+
+			await expect(service.remove('conv-1')).rejects.toThrow('database unavailable');
+			expect(shortIdMapping.resolveScoped('conv-1', exposed, ScopedShortIdTargetKind.PROPERTY)).toBeNull();
+			expect(conversationRepo.delete).not.toHaveBeenCalled();
 		});
 	});
 });
