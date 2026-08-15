@@ -73,4 +73,22 @@ describe('HomeyTestConnectionRequestDto', () => {
 	])('rejects $label', async ({ data }) => {
 		await expect(transformRequest({ data })).rejects.toBeDefined();
 	});
+
+	it.each([
+		{ label: 'number', value: 1234 },
+		{ label: 'boolean', value: true },
+		{ label: 'object', value: { secret: 'candidate-secret' } },
+		{ label: 'array', value: ['candidate-secret'] },
+		{ label: 'null', value: null },
+	])('rejects an original $label candidate API key before implicit conversion', async ({ value }) => {
+		await expect(
+			transformRequest({
+				data: {
+					mode: HomeyTestConnectionMode.CANDIDATE,
+					url: 'http://homey.local:4859',
+					api_key: value,
+				},
+			}),
+		).rejects.toBeDefined();
+	});
 });

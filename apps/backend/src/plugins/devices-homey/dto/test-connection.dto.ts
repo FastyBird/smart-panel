@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import { IsDefined, IsEnum, IsIn, IsNotEmpty, IsObject, IsString, Matches, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
@@ -68,6 +68,10 @@ export class HomeyTestCandidateConnectionDto {
 		name: 'api_key',
 	})
 	@Expose({ name: 'api_key' })
+	@Transform(
+		({ obj }: { obj: Record<string, unknown> }) => (Object.hasOwn(obj, 'api_key') ? obj.api_key : obj.apiKey),
+		{ toClassOnly: true },
+	)
 	@IsDefined({ message: '[{"field":"api_key","reason":"A new candidate API key is required."}]' })
 	@IsString({ message: '[{"field":"api_key","reason":"API key must be a valid string."}]' })
 	@Matches(/\S/, { message: '[{"field":"api_key","reason":"API key must contain a non-whitespace character."}]' })
