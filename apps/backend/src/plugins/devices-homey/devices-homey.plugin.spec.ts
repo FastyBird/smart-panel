@@ -9,11 +9,13 @@ import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swa
 
 import { HomeyLocalConnectorFactory } from './connectors/homey-local-connector.factory';
 import { HomeySdkClientFactoryService } from './connectors/homey-sdk.client';
+import { HomeyTestConnectionController } from './controllers/homey-test-connection.controller';
 import { DEVICES_HOMEY_PLUGIN_NAME, DEVICES_HOMEY_TYPE, HOMEY_CONNECTOR_FACTORY } from './devices-homey.constants';
 import { DEVICES_HOMEY_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-homey.openapi';
 import { DevicesHomeyPlugin } from './devices-homey.plugin';
 import { HomeyUpdatePluginConfigDto } from './dto/update-config.dto';
 import { HomeyConfigModel } from './models/config.model';
+import { HomeyConnectionTestService } from './services/homey-connection-test.service';
 import { HomeyService } from './services/homey.service';
 
 describe('DevicesHomeyPlugin', () => {
@@ -72,11 +74,15 @@ describe('DevicesHomeyPlugin', () => {
 
 	it('provides a production SDK-backed connector factory through the transport-neutral token', () => {
 		const providers = Reflect.getMetadata('providers', DevicesHomeyPlugin) as unknown[];
+		const controllers = Reflect.getMetadata('controllers', DevicesHomeyPlugin) as unknown[];
 
-		expect(providers).toEqual(expect.arrayContaining([HomeySdkClientFactoryService, HomeyLocalConnectorFactory]));
+		expect(providers).toEqual(
+			expect.arrayContaining([HomeySdkClientFactoryService, HomeyLocalConnectorFactory, HomeyConnectionTestService]),
+		);
 		expect(providers).toContainEqual({
 			provide: HOMEY_CONNECTOR_FACTORY,
 			useExisting: HomeyLocalConnectorFactory,
 		});
+		expect(controllers).toContain(HomeyTestConnectionController);
 	});
 });
