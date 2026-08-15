@@ -87,11 +87,11 @@ const ACTION_SIGNALS = new Set([
 	'zvys',
 ]);
 const ACTION_CLAUSE_PATTERN = new RegExp(
-	String.raw`(?:\ba\b|\band\b|\bpotom\b|\bthen\b|[,;])\s*(?:(?:also|please|take)\s+)*(?:${[...ACTION_SIGNALS].join('|')})\b`,
+	String.raw`(?:\ba\b|\band\b|\bplus\b|\bpotom\b|\bthen\b|[,;])\s*(?:(?:also|please|take)\s+)*(?:${[...ACTION_SIGNALS].join('|')})\b`,
 	'u',
 );
 const READ_CLAUSE_PATTERN =
-	/(?:\ba\b|\band\b|\bpotom\b|\bthen\b|[,;])\s*(?:check|confirm|determine|ensure|find|make sure|read|report|see|show|tell|verify|what|whether|which)\b/u;
+	/(?:\ba\b|\band\b|\bplus\b|\bpotom\b|\bthen\b|[,;])\s*(?:check|confirm|determine|ensure|find|make sure|read|report|see|show|tell|verify|what|whether|which)\b/u;
 const STATE_QUESTION_PATTERN =
 	/^(?:are|can|could|did|do|does|had|has|have|how|is|may|might|what|which|where|why|will|would|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u;
 const PREDICATE_QUESTION_PATTERN =
@@ -100,9 +100,9 @@ const UNKNOWN_ACTION_REQUEST_PATTERN = /^(?:(?:can|could|may|might|will|would)\s
 const ACTION_REQUEST_AUXILIARIES = new Set(['able', 'possible', 'way']);
 const ACTION_REQUEST_MODALS = new Set(['can', 'could', 'may', 'might', 'will', 'would']);
 const CONDITION_PATTERN =
-	/\b(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|so long as|unless|until|when|whenever|while)\b/u;
+	/\b(?:after|as long as|as soon as|assuming(?: that)?|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|so long as|unless|until|when|whenever|while)\b/u;
 const LEADING_CONDITION_PATTERN =
-	/^(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|so long as|unless|until|when|whenever|while)\b/u;
+	/^(?:after|as long as|as soon as|assuming(?: that)?|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|so long as|unless|until|when|whenever|while)\b/u;
 const GROUNDED_STATE_SIGNALS = new Set([
 	'active',
 	'closed',
@@ -545,7 +545,7 @@ function isClearlyGeneralConversation(normalizedMessage: string, tokens: Set<str
 }
 
 function hasUnknownTrailingClause(normalizedMessage: string): boolean {
-	const trailingClause = sliceAfterFirst(normalizedMessage, /[.!?,;]|\b(?:and|potom|then)\b/u);
+	const trailingClause = sliceAfterFirst(normalizedMessage, /[.!?,;]|\b(?:and|plus|potom|then)\b/u);
 
 	if (trailingClause.length === 0) return false;
 
@@ -615,7 +615,7 @@ function getActionIntentTokens(
 		const trailingClause = [
 			sliceAfterFirst(
 				questionBody,
-				/[,;]|\b(?:a|after|and|before|if not|if so|once|please|potom|then|until|when|while)\b/u,
+				/[,;]|\b(?:a|after|and|assuming(?: that)?|before|if not|if so|once|please|plus|potom|then|until|when|while)\b/u,
 			),
 			questionEnd >= 0 ? normalizedMessage.slice(questionEnd + 1) : '',
 		].join(' ');
@@ -654,7 +654,13 @@ function getActionIntentTokens(
 }
 
 function isExplicitStateQuestion(normalizedMessage: string): boolean {
-	return /^(?:(?:can|could|may|might|will|would)\s+you\s+)?(?:please\s+)?(?:(?:show|tell) me|check|confirm|determine|ensure|find out|see|verify)\b.*\b(?:if|whether)\b/u.test(
+	const requestPattern =
+		/^(?:(?:can|could|may|might|will|would)\s+you\s+)?(?:please\s+)?(?:(?:show|tell) me|check|confirm|determine|ensure|find out|see|verify)\b/u;
+
+	if (!requestPattern.test(normalizedMessage)) return false;
+	if (/\b(?:if|whether)\b/u.test(normalizedMessage)) return true;
+
+	return /\b(?:how|what|when|where|which|why)\b.*\b(?:are|did|do|does|had|has|have|is|was|were)\b/u.test(
 		normalizedMessage,
 	);
 }

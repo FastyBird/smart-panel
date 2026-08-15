@@ -176,6 +176,13 @@ describe('BuddyToolSelectionService', () => {
 		);
 	});
 
+	it('recognizes wh-complement state requests', () => {
+		expect(selectNames('Could you tell me what the thermostat is set to?')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+		]);
+	});
+
 	it('retains every action schema for multiple commands with an arbitrary target name', () => {
 		expect(selectNames('Close the blinds and run Bedtime.')).toEqual([
 			SEARCH_HOME_TOOL_NAME,
@@ -232,6 +239,9 @@ describe('BuddyToolSelectionService', () => {
 		);
 		expect(selectNames('Run Bedtime if the window is open.')).toEqual(definitions.map((definition) => definition.name));
 		expect(selectNames('Run Bedtime so long as Aurora is on.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
+		expect(selectNames('Run Bedtime assuming the hallway sensor is triggered.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
 		expect(selectNames('If the window is open run Bedtime')).toEqual(definitions.map((definition) => definition.name));
@@ -425,6 +435,12 @@ describe('BuddyToolSelectionService', () => {
 			names.spaceLighting,
 		]);
 		expect(selectNames('Close the blinds. Launch Evening.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			names.control,
+			names.scene,
+			names.spaceLighting,
+		]);
+		expect(selectNames('Close the blinds plus launch Evening.')).toEqual([
 			SEARCH_HOME_TOOL_NAME,
 			names.control,
 			names.scene,
