@@ -13,7 +13,11 @@ import {
 	HOMEY_CONNECTOR_FACTORY,
 	HomeyConnectionState,
 } from '../devices-homey.constants';
-import { HomeyConnectorError, HomeyConnectorErrorCategory } from '../errors/homey-connector.error';
+import {
+	HomeyConnectorError,
+	HomeyConnectorErrorCategory,
+	HomeyConnectorOperation,
+} from '../errors/homey-connector.error';
 import { HomeyConfigModel } from '../models/config.model';
 import { HomeyDevice } from '../models/homey-device.model';
 import { HomeyEvent, HomeyEventType } from '../models/homey-event.model';
@@ -37,6 +41,7 @@ export class HomeyService extends BaseManagedPluginService {
 	private connector: HomeyConnector | null = null;
 	private unsubscribe: HomeyUnsubscribe | null = null;
 	private systemInfo: HomeySystemInfo | null = null;
+	private lastSystemInfo: HomeySystemInfo | null = null;
 	private zones: readonly HomeyZone[] = [];
 	private devices = new Map<string, HomeyDevice>();
 	private startupEvents: HomeyEvent[] | null = null;
@@ -45,6 +50,11 @@ export class HomeyService extends BaseManagedPluginService {
 	private reconciliationTimer: ReturnType<typeof setTimeout> | null = null;
 	private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 	private reconnectAttempt = 0;
+	private reconnectCount = 0;
+	private lastConnectedAt: string | null = null;
+	private lastInventorySyncAt: string | null = null;
+	private lastEventAt: string | null = null;
+	private lastErrorCategory: HomeyConnectorErrorCategory | null = null;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -66,6 +76,7 @@ export class HomeyService extends BaseManagedPluginService {
 			this.state = 'starting';
 			this.pluginConfig = null;
 			this.resetReconnectState();
+			this.resetRuntimeHealth();
 			this.lastError = null;
 			this.healthy = false;
 			this.connectionState = HomeyConnectionState.CONNECTING;
@@ -77,13 +88,18 @@ export class HomeyService extends BaseManagedPluginService {
 				this.connector = connector;
 
 				await connector.connect();
-				await this.synchronizeStartup(connector, generation);
+				this.recordSuccessfulConnection();
+				const subscriptionFailure = await this.synchronizeStartup(connector, generation);
 
 				this.state = 'started';
-				this.connectionState = HomeyConnectionState.CONNECTED;
-				this.healthy = true;
-				this.scheduleReconciliation(generation);
-				this.logger.log('Homey connector started and initial inventory synchronized');
+
+				if (subscriptionFailure) {
+					this.markRuntimeDegraded(subscriptionFailure, generation);
+					this.logger.warn('Homey inventory synchronized with event delivery unavailable');
+				} else {
+					this.markRuntimeHealthy(connector, generation);
+					this.logger.log('Homey connector started and initial inventory synchronized');
+				}
 			} catch (error) {
 				this.applyFailureState(error, 'Homey service failed to start');
 				const retryable = this.isRetryableFailure(error);
@@ -127,6 +143,7 @@ export class HomeyService extends BaseManagedPluginService {
 			if (!cleaned) {
 				this.state = 'error';
 				this.lastError = 'Homey service failed to stop';
+				this.lastErrorCategory = null;
 				this.logger.error(this.lastError);
 
 				throw new Error(this.lastError);
@@ -134,6 +151,7 @@ export class HomeyService extends BaseManagedPluginService {
 
 			this.state = 'stopped';
 			this.lastError = null;
+			this.lastErrorCategory = null;
 			this.logger.log('Homey connector stopped');
 		});
 	}
@@ -169,6 +187,15 @@ export class HomeyService extends BaseManagedPluginService {
 		status.enabled = config.enabled;
 		status.configured = this.isConfigured(config);
 		status.healthy = this.healthy;
+		status.degraded = this.connectionState === HomeyConnectionState.DEGRADED_POLLING;
+		status.homeyId = this.lastSystemInfo?.id ?? null;
+		status.homeyName = this.lastSystemInfo?.name ?? null;
+		status.homeyVersion = this.lastSystemInfo?.version ?? null;
+		status.lastConnectedAt = this.lastConnectedAt;
+		status.lastInventorySyncAt = this.lastInventorySyncAt;
+		status.lastEventAt = this.lastEventAt;
+		status.reconnectCount = this.reconnectCount;
+		status.lastErrorCategory = this.lastErrorCategory;
 		status.lastError = this.lastError;
 
 		return status;
@@ -184,11 +211,11 @@ export class HomeyService extends BaseManagedPluginService {
 
 	private createConnector(config: HomeyConfigModel): HomeyConnector {
 		if (!this.isConfigured(config)) {
-			throw new Error('Homey connector configuration is incomplete');
+			throw new HomeyConnectorError(HomeyConnectorErrorCategory.VALIDATION, HomeyConnectorOperation.CONNECT);
 		}
 
 		if (!this.connectorFactory) {
-			throw new Error('Homey connector transport is not available');
+			throw new HomeyConnectorError(HomeyConnectorErrorCategory.UNSUPPORTED, HomeyConnectorOperation.CONNECT);
 		}
 
 		return this.connectorFactory.create({
@@ -198,16 +225,36 @@ export class HomeyService extends BaseManagedPluginService {
 		});
 	}
 
-	private async synchronizeStartup(connector: HomeyConnector, generation: number): Promise<void> {
+	private async synchronizeStartup(connector: HomeyConnector, generation: number): Promise<HomeyConnectorError | null> {
 		this.systemInfo = await connector.getSystemInfo();
+		this.lastSystemInfo = this.systemInfo;
 		this.zones = await connector.getZones();
 		this.startupEvents = [];
-		this.unsubscribe = await connector.subscribe((event) => this.onConnectorEvent(connector, generation, event));
+		let subscriptionFailure: HomeyConnectorError | null = null;
+
+		try {
+			this.unsubscribe = await connector.subscribe((event) => this.onConnectorEvent(connector, generation, event));
+		} catch (error) {
+			this.startupEvents = null;
+
+			if (!this.isDegradableSubscriptionFailure(error)) {
+				throw error;
+			}
+
+			subscriptionFailure = error;
+		}
 
 		await this.enqueueSynchronization(async () => {
 			this.replaceDevices(await connector.getDevices());
-			await this.reconcileStartupEvents(connector, generation);
+
+			if (this.startupEvents) {
+				await this.reconcileStartupEvents(connector, generation);
+			}
+
+			this.recordSuccessfulInventorySync(connector, generation);
 		});
+
+		return subscriptionFailure;
 	}
 
 	private async reconcileStartupEvents(connector: HomeyConnector, generation: number): Promise<void> {
@@ -284,6 +331,10 @@ export class HomeyService extends BaseManagedPluginService {
 				this.devices.delete(deviceId);
 			}
 		}
+
+		if (events.length > 0 && this.isCurrentGeneration(connector, generation)) {
+			this.lastEventAt = this.now();
+		}
 	}
 
 	private isZoneEvent(event: HomeyEvent): boolean {
@@ -303,7 +354,7 @@ export class HomeyService extends BaseManagedPluginService {
 
 		const interval = this.pluginConfig?.reconciliationInterval;
 
-		if (!interval || this.reconnectTimer) {
+		if (!interval || (this.reconnectTimer !== null && this.connectionState !== HomeyConnectionState.DEGRADED_POLLING)) {
 			return;
 		}
 
@@ -338,7 +389,14 @@ export class HomeyService extends BaseManagedPluginService {
 
 				this.zones = zonesResult.value;
 				this.replaceDevices(devicesResult.value);
-				this.markRuntimeHealthy(connector, generation);
+				this.recordSuccessfulInventorySync(connector, generation);
+
+				if (this.unsubscribe) {
+					this.markRuntimeHealthy(connector, generation);
+				} else {
+					this.connectionState = HomeyConnectionState.DEGRADED_POLLING;
+					this.healthy = false;
+				}
 			} catch (error) {
 				if (this.isCurrentGeneration(connector, generation)) {
 					this.handleRuntimeFailure(error, 'Homey inventory reconciliation failed', generation);
@@ -347,18 +405,24 @@ export class HomeyService extends BaseManagedPluginService {
 			}
 		});
 
-		if (this.isCurrentGeneration(connector, generation) && this.state === 'started' && this.reconnectTimer === null) {
+		if (
+			this.isCurrentGeneration(connector, generation) &&
+			this.state === 'started' &&
+			(this.reconnectTimer === null || this.connectionState === HomeyConnectionState.DEGRADED_POLLING)
+		) {
 			this.scheduleReconciliation(generation);
 		}
 	}
 
-	private scheduleReconnect(generation: number): void {
+	private scheduleReconnect(generation: number, preserveDegradedPolling = false): void {
 		if (this.reconnectTimer || this.state !== 'started' || this.generation !== generation) {
 			return;
 		}
 
-		this.clearReconciliationTimer();
-		this.connectionState = HomeyConnectionState.RECONNECTING;
+		if (!preserveDegradedPolling) {
+			this.clearReconciliationTimer();
+			this.connectionState = HomeyConnectionState.RECONNECTING;
+		}
 		this.healthy = false;
 		const delay = calculateHomeyReconnectDelay(this.reconnectAttempt);
 		this.reconnectAttempt += 1;
@@ -376,10 +440,12 @@ export class HomeyService extends BaseManagedPluginService {
 
 			this.connectionState = HomeyConnectionState.RECONNECTING;
 			this.healthy = false;
+			this.reconnectCount += 1;
 			const generation = ++this.generation;
 
 			if (!(await this.cleanupRuntime())) {
 				this.lastError = 'Homey connector cleanup failed before reconnect';
+				this.lastErrorCategory = null;
 				this.scheduleReconnect(generation);
 				return;
 			}
@@ -388,9 +454,16 @@ export class HomeyService extends BaseManagedPluginService {
 				const connector = this.createConnector(this.getPluginConfig());
 				this.connector = connector;
 				await connector.connect();
-				await this.synchronizeStartup(connector, generation);
-				this.markRuntimeHealthy(connector, generation);
-				this.logger.log('Homey connector reconnected and inventory synchronized');
+				this.recordSuccessfulConnection();
+				const subscriptionFailure = await this.synchronizeStartup(connector, generation);
+
+				if (subscriptionFailure) {
+					this.markRuntimeDegraded(subscriptionFailure, generation);
+					this.logger.warn('Homey reconnected in degraded polling mode');
+				} else {
+					this.markRuntimeHealthy(connector, generation);
+					this.logger.log('Homey connector reconnected and inventory synchronized');
+				}
 			} catch (error) {
 				this.applyFailureState(error, 'Homey service failed to reconnect', HomeyConnectionState.RECONNECTING);
 				const retryGeneration = ++this.generation;
@@ -507,6 +580,7 @@ export class HomeyService extends BaseManagedPluginService {
 		transientState: HomeyConnectionState = HomeyConnectionState.ERROR,
 	): void {
 		this.healthy = false;
+		this.lastErrorCategory = error instanceof HomeyConnectorError ? error.category : null;
 
 		if (error instanceof HomeyConnectorError) {
 			switch (error.category) {
@@ -542,6 +616,7 @@ export class HomeyService extends BaseManagedPluginService {
 		this.connectionState = HomeyConnectionState.CONNECTED;
 		this.healthy = true;
 		this.lastError = null;
+		this.lastErrorCategory = null;
 
 		if (recovered && this.state === 'started') {
 			this.scheduleReconciliation(generation);
@@ -550,6 +625,29 @@ export class HomeyService extends BaseManagedPluginService {
 
 	private isRetryableFailure(error: unknown): boolean {
 		return error instanceof HomeyConnectorError && error.retryable;
+	}
+
+	private isDegradableSubscriptionFailure(error: unknown): error is HomeyConnectorError {
+		return (
+			error instanceof HomeyConnectorError &&
+			error.category !== HomeyConnectorErrorCategory.AUTHENTICATION &&
+			error.category !== HomeyConnectorErrorCategory.AUTHORIZATION &&
+			error.category !== HomeyConnectorErrorCategory.VALIDATION
+		);
+	}
+
+	private markRuntimeDegraded(error: HomeyConnectorError, generation: number): void {
+		this.connectionState = HomeyConnectionState.DEGRADED_POLLING;
+		this.healthy = false;
+		this.lastErrorCategory = error.category;
+		this.lastError = error.retryable
+			? 'Homey event subscription is temporarily unavailable; polling is active'
+			: 'Homey event subscription is unavailable; polling is active';
+		this.scheduleReconciliation(generation);
+
+		if (error.retryable) {
+			this.scheduleReconnect(generation, true);
+		}
 	}
 
 	private handleRuntimeFailure(error: unknown, fallback: string, generation: number): void {
@@ -565,6 +663,29 @@ export class HomeyService extends BaseManagedPluginService {
 	private resetReconnectState(): void {
 		this.clearReconnectTimer();
 		this.reconnectAttempt = 0;
+	}
+
+	private resetRuntimeHealth(): void {
+		this.lastSystemInfo = null;
+		this.lastConnectedAt = null;
+		this.lastInventorySyncAt = null;
+		this.lastEventAt = null;
+		this.lastErrorCategory = null;
+		this.reconnectCount = 0;
+	}
+
+	private recordSuccessfulConnection(): void {
+		this.lastConnectedAt = this.now();
+	}
+
+	private recordSuccessfulInventorySync(connector: HomeyConnector, generation: number): void {
+		if (this.isCurrentGeneration(connector, generation)) {
+			this.lastInventorySyncAt = this.now();
+		}
+	}
+
+	private now(): string {
+		return new Date().toISOString();
 	}
 
 	private getCurrentPluginConfigOrDefault(): HomeyConfigModel {

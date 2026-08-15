@@ -22,6 +22,8 @@ import { HomeyZone } from '../models/homey-zone.model';
 
 import { HomeyService } from './homey.service';
 
+const INITIAL_TIME = new Date('2026-08-15T10:00:00.000Z');
+
 const systemInfo: HomeySystemInfo = {
 	id: 'homey-system',
 	name: 'Homey Pro',
@@ -67,6 +69,21 @@ function createConnectorMock(onSubscribe: (listener: HomeyEventListener) => void
 	} satisfies jest.Mocked<HomeyConnector>;
 }
 
+function deferred(): { promise: Promise<void>; resolve: () => void } {
+	let resolve = (): void => undefined;
+	const promise = new Promise<void>((nextResolve) => {
+		resolve = nextResolve;
+	});
+
+	return { promise, resolve };
+}
+
+async function flushMicrotasks(): Promise<void> {
+	for (let index = 0; index < 10; index += 1) {
+		await Promise.resolve();
+	}
+}
+
 describe('HomeyService', () => {
 	let config: HomeyConfigModel;
 	let configService: jest.Mocked<Pick<ConfigService, 'getPluginConfig'>>;
@@ -78,6 +95,7 @@ describe('HomeyService', () => {
 
 	beforeEach(() => {
 		jest.useFakeTimers();
+		jest.setSystemTime(INITIAL_TIME);
 		jest.spyOn(Math, 'random').mockReturnValue(0.5);
 		listener = null;
 		unsubscribe = jest.fn();
@@ -142,7 +160,18 @@ describe('HomeyService', () => {
 		});
 		expect(service.getState()).toBe('started');
 		expect(await service.isHealthy()).toBe(true);
-		expect(service.getStatus().connectionState).toBe(HomeyConnectionState.CONNECTED);
+		expect(service.getStatus()).toMatchObject({
+			connectionState: HomeyConnectionState.CONNECTED,
+			degraded: false,
+			homeyId: systemInfo.id,
+			homeyName: systemInfo.name,
+			homeyVersion: systemInfo.version,
+			lastConnectedAt: INITIAL_TIME.toISOString(),
+			lastInventorySyncAt: INITIAL_TIME.toISOString(),
+			lastEventAt: null,
+			reconnectCount: 0,
+			lastErrorCategory: null,
+		});
 
 		await service.stop();
 		await service.stop();
@@ -151,6 +180,121 @@ describe('HomeyService', () => {
 		expect(connector.disconnect.mock.calls).toHaveLength(1);
 		expect(service.getState()).toBe('stopped');
 		expect(await service.isHealthy()).toBe(false);
+	});
+
+	it('tracks successful events and exposes every lifecycle transition', async () => {
+		const connect = deferred();
+		connector.connect.mockReturnValueOnce(connect.promise);
+		const start = service.start();
+
+		await flushMicrotasks();
+		expect(service.getStatus()).toMatchObject({
+			serviceState: 'starting',
+			connectionState: HomeyConnectionState.CONNECTING,
+		});
+
+		connect.resolve();
+		await start;
+		jest.setSystemTime(new Date('2026-08-15T10:01:00.000Z'));
+		await listener?.({
+			type: HomeyEventType.DEVICE_UPDATED,
+			deviceId: staleDevice.id,
+			occurredAt: null,
+			sequence: null,
+		});
+
+		expect(service.getStatus().lastEventAt).toBe('2026-08-15T10:01:00.000Z');
+
+		const disconnect = deferred();
+		connector.disconnect.mockReturnValueOnce(disconnect.promise);
+		const stop = service.stop();
+		await flushMicrotasks();
+
+		expect(service.getStatus()).toMatchObject({
+			serviceState: 'stopping',
+			connectionState: HomeyConnectionState.STOPPED,
+		});
+
+		disconnect.resolve();
+		await stop;
+		expect(service.getStatus().serviceState).toBe('stopped');
+	});
+
+	it('keeps authoritative inventory available in degraded polling mode', async () => {
+		connector.subscribe.mockRejectedValueOnce(
+			new HomeyConnectorError(HomeyConnectorErrorCategory.UNSUPPORTED, HomeyConnectorOperation.SUBSCRIBE),
+		);
+
+		await service.start();
+
+		expect(service.getStatus()).toMatchObject({
+			serviceState: 'started',
+			connectionState: HomeyConnectionState.DEGRADED_POLLING,
+			healthy: false,
+			degraded: true,
+			lastInventorySyncAt: INITIAL_TIME.toISOString(),
+			lastErrorCategory: HomeyConnectorErrorCategory.UNSUPPORTED,
+			lastError: 'Homey event subscription is unavailable; polling is active',
+		});
+		expect(jest.getTimerCount()).toBe(1);
+
+		jest.setSystemTime(new Date('2026-08-15T10:05:00.000Z'));
+		await jest.advanceTimersByTimeAsync(config.reconciliationInterval);
+
+		expect(connector.getDevices.mock.calls).toHaveLength(2);
+		expect(service.getStatus()).toMatchObject({
+			connectionState: HomeyConnectionState.DEGRADED_POLLING,
+			degraded: true,
+			lastInventorySyncAt: '2026-08-15T10:10:00.000Z',
+			reconnectCount: 0,
+		});
+
+		await service.stop();
+	});
+
+	it('reconnects from transient degraded polling and counts the executed attempt', async () => {
+		const replacementConnector = createConnectorMock(() => undefined, jest.fn());
+		connector.subscribe.mockRejectedValueOnce(
+			new HomeyConnectorError(HomeyConnectorErrorCategory.UNAVAILABLE, HomeyConnectorOperation.SUBSCRIBE),
+		);
+		connectorFactory.create.mockReset().mockReturnValueOnce(connector).mockReturnValueOnce(replacementConnector);
+
+		await service.start();
+
+		expect(service.getStatus()).toMatchObject({
+			connectionState: HomeyConnectionState.DEGRADED_POLLING,
+			degraded: true,
+			reconnectCount: 0,
+			lastErrorCategory: HomeyConnectorErrorCategory.UNAVAILABLE,
+		});
+		expect(jest.getTimerCount()).toBe(2);
+
+		await jest.advanceTimersByTimeAsync(1000);
+
+		expect(service.getStatus()).toMatchObject({
+			connectionState: HomeyConnectionState.CONNECTED,
+			healthy: true,
+			degraded: false,
+			lastConnectedAt: '2026-08-15T10:00:01.000Z',
+			reconnectCount: 1,
+			lastErrorCategory: null,
+		});
+
+		await service.stop();
+	});
+
+	it('fails closed when event subscription lacks authorization', async () => {
+		connector.subscribe.mockRejectedValueOnce(
+			new HomeyConnectorError(HomeyConnectorErrorCategory.AUTHORIZATION, HomeyConnectorOperation.SUBSCRIBE),
+		);
+
+		await expect(service.start()).rejects.toThrow('Homey authentication or authorization failed');
+		expect(service.getStatus()).toMatchObject({
+			serviceState: 'error',
+			connectionState: HomeyConnectionState.AUTHENTICATION_FAILED,
+			degraded: false,
+			lastErrorCategory: HomeyConnectorErrorCategory.AUTHORIZATION,
+		});
 	});
 
 	it('recovers from a retryable initial startup failure without a config change', async () => {
@@ -166,6 +310,8 @@ describe('HomeyService', () => {
 			serviceState: 'started',
 			connectionState: HomeyConnectionState.RECONNECTING,
 			healthy: false,
+			reconnectCount: 0,
+			lastErrorCategory: HomeyConnectorErrorCategory.UNAVAILABLE,
 			lastError: 'Homey connection is temporarily unavailable',
 		});
 		expect(jest.getTimerCount()).toBe(1);
@@ -177,6 +323,8 @@ describe('HomeyService', () => {
 			serviceState: 'started',
 			connectionState: HomeyConnectionState.CONNECTED,
 			healthy: true,
+			reconnectCount: 1,
+			lastErrorCategory: null,
 			lastError: null,
 		});
 
@@ -282,6 +430,10 @@ describe('HomeyService', () => {
 		}
 
 		expect(service.getStatus().connectionState).toBe(HomeyConnectionState.RECONNECTING);
+		expect(service.getStatus()).toMatchObject({
+			lastInventorySyncAt: INITIAL_TIME.toISOString(),
+			lastErrorCategory: HomeyConnectorErrorCategory.UNAVAILABLE,
+		});
 		expect(jest.getTimerCount()).toBe(1);
 
 		await jest.advanceTimersByTimeAsync(1000);
@@ -314,6 +466,8 @@ describe('HomeyService', () => {
 		expect(service.getStatus()).toMatchObject({
 			connectionState: HomeyConnectionState.RECONNECTING,
 			healthy: false,
+			lastEventAt: null,
+			lastErrorCategory: HomeyConnectorErrorCategory.UNAVAILABLE,
 			lastError: 'Homey connection is temporarily unavailable',
 		});
 		expect(jest.getTimerCount()).toBe(1);
@@ -371,7 +525,10 @@ describe('HomeyService', () => {
 
 		expect(connectorFactory.create.mock.calls).toHaveLength(3);
 		expect(recoveredConnector.connect.mock.calls).toHaveLength(1);
-		expect(service.getStatus().connectionState).toBe(HomeyConnectionState.CONNECTED);
+		expect(service.getStatus()).toMatchObject({
+			connectionState: HomeyConnectionState.CONNECTED,
+			reconnectCount: 2,
+		});
 
 		await service.stop();
 	});
@@ -427,6 +584,7 @@ describe('HomeyService', () => {
 		expect(service.getStatus()).toMatchObject({
 			connectionState: HomeyConnectionState.AUTHENTICATION_FAILED,
 			healthy: false,
+			lastErrorCategory: HomeyConnectorErrorCategory.AUTHORIZATION,
 			lastError: 'Homey authentication or authorization failed',
 		});
 		expect(jest.getTimerCount()).toBe(0);
@@ -549,6 +707,7 @@ describe('HomeyService', () => {
 			serviceState: 'error',
 			connectionState: HomeyConnectionState.AUTHENTICATION_FAILED,
 			healthy: false,
+			lastErrorCategory: HomeyConnectorErrorCategory.AUTHENTICATION,
 			lastError: 'Homey authentication or authorization failed',
 		});
 	});
@@ -584,6 +743,7 @@ describe('HomeyService', () => {
 		expect(service.getStatus()).toMatchObject({
 			connectionState: HomeyConnectionState.ERROR,
 			healthy: false,
+			lastErrorCategory: HomeyConnectorErrorCategory.UNSUPPORTED,
 			lastError: 'Homey service failed to start',
 		});
 	});
@@ -593,7 +753,11 @@ describe('HomeyService', () => {
 
 		await expect(service.start()).rejects.toThrow('Homey service failed to start');
 		expect(connectorFactory.create.mock.calls).toHaveLength(0);
-		expect(service.getStatus()).toMatchObject({ configured: false, healthy: false });
+		expect(service.getStatus()).toMatchObject({
+			configured: false,
+			healthy: false,
+			lastErrorCategory: HomeyConnectorErrorCategory.VALIDATION,
+		});
 	});
 
 	it('reports configuration without exposing its URL or API key', () => {
@@ -605,6 +769,15 @@ describe('HomeyService', () => {
 			enabled: true,
 			configured: true,
 			healthy: false,
+			degraded: false,
+			homeyId: null,
+			homeyName: null,
+			homeyVersion: null,
+			lastConnectedAt: null,
+			lastInventorySyncAt: null,
+			lastEventAt: null,
+			reconnectCount: 0,
+			lastErrorCategory: null,
 			lastError: null,
 		});
 		expect(status).not.toHaveProperty('apiKey');
