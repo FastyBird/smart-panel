@@ -40,7 +40,6 @@ export function requireProviderCallId(provider: string, providerCallId: string |
  */
 export function validateLlmConversationItems(items: LlmConversationItem[]): void {
 	const seenCallIds = new Set<string>();
-	const seenProviderCallIds = new Set<string>();
 
 	for (let index = 0; index < items.length; index += 1) {
 		const item = items[index];
@@ -65,6 +64,8 @@ export function validateLlmConversationItems(items: LlmConversationItem[]): void
 		if (resultItem.results.length !== item.calls.length) {
 			throw new TypeError(`Assistant tool call group at index ${index} must have exactly one result per call`);
 		}
+
+		const seenProviderCallIds = new Set<string>();
 
 		for (const [callIndex, call] of item.calls.entries()) {
 			if (call.callId.length === 0 || seenCallIds.has(call.callId)) {

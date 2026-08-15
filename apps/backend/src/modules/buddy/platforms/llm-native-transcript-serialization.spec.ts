@@ -1,7 +1,7 @@
 import { MessageRole } from '../buddy.constants';
 
 import { buildAnthropicRequestPayload } from './anthropic-sdk.utils';
-import { serializeLlmConversationToolResult } from './llm-conversation.utils';
+import { serializeLlmConversationToolResult, validateLlmConversationItems } from './llm-conversation.utils';
 import type { LlmConversationItem, LlmConversationToolResult } from './llm-provider.platform';
 import { buildOpenAiRequestPayload } from './openai-sdk.utils';
 
@@ -214,5 +214,70 @@ describe('native tool transcript serialization', () => {
 		expect(() => buildAnthropicRequestPayload('claude-test', 'System prompt', transcript)).toThrow(
 			'Anthropic tool transcript requires a provider call ID',
 		);
+	});
+
+	it('allows a provider call ID to repeat across dependent groups while canonical IDs remain unique', () => {
+		const dependentTranscript: LlmConversationItem[] = [
+			{
+				type: 'assistant_tool_calls',
+				content: '',
+				calls: [{ callId: 'turn-1-call-1', providerCallId: 'ollama-0', name: 'read', arguments: {} }],
+			},
+			{
+				type: 'tool_results',
+				results: [
+					{
+						callId: 'turn-1-call-1',
+						providerCallId: 'ollama-0',
+						toolName: 'read',
+						status: 'completed',
+						message: 'First result',
+						truncated: false,
+					},
+				],
+			},
+			{
+				type: 'assistant_tool_calls',
+				content: '',
+				calls: [{ callId: 'turn-1-call-2', providerCallId: 'ollama-0', name: 'read', arguments: {} }],
+			},
+			{
+				type: 'tool_results',
+				results: [
+					{
+						callId: 'turn-1-call-2',
+						providerCallId: 'ollama-0',
+						toolName: 'read',
+						status: 'completed',
+						message: 'Second result',
+						truncated: false,
+					},
+				],
+			},
+		];
+
+		expect(() => validateLlmConversationItems(dependentTranscript)).not.toThrow();
+	});
+
+	it('rejects duplicate provider call IDs within one parallel group', () => {
+		const duplicateProviderIds: LlmConversationItem[] = [
+			{
+				type: 'assistant_tool_calls',
+				content: '',
+				calls: [
+					{ callId: 'call-1', providerCallId: 'provider-1', name: 'read', arguments: {} },
+					{ callId: 'call-2', providerCallId: 'provider-1', name: 'read', arguments: {} },
+				],
+			},
+			{
+				type: 'tool_results',
+				results: [
+					{ ...firstResult, callId: 'call-1', providerCallId: 'provider-1', toolName: 'read' },
+					{ ...firstResult, callId: 'call-2', providerCallId: 'provider-1', toolName: 'read' },
+				],
+			},
+		];
+
+		expect(() => validateLlmConversationItems(duplicateProviderIds)).toThrow('duplicate provider ID');
 	});
 });
