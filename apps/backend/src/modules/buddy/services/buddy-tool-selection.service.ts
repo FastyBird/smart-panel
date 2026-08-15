@@ -95,7 +95,7 @@ const STATE_QUESTION_CLAUSE_PATTERN = new RegExp(
 	'u',
 );
 const CAPABILITY_DISCOVERY_PATTERN = new RegExp(
-	String.raw`^(?:what|which)\b.*\bcan i\b.*\b(?:${[...ACTION_SIGNALS].join('|')})\b`,
+	String.raw`^(?:(?:what|which)\b|(?:can|could|would) you (?:show|tell)(?: me)?\b).*\b(?:am i able to|can i|i can)\b.*\b(?:${[...ACTION_SIGNALS].join('|')})\b`,
 	'u',
 );
 const READ_CLAUSE_PATTERN =
@@ -123,6 +123,10 @@ const GROUNDED_STATE_SIGNALS = new Set([
 	'open',
 	'unlocked',
 ]);
+const GROUNDED_ACTION_FILTER_PATTERN = new RegExp(
+	String.raw`\b(?:that|which)\s+(?:are|is|was|were)\s+(?:${[...GROUNDED_STATE_SIGNALS].join('|')})\b`,
+	'u',
+);
 const EXPLICIT_STATE_REQUEST_SIGNALS = new Set(['all', 'any', 'count', 'current', 'state', 'status', 'value']);
 const RELATIVE_ADJUSTMENT_SIGNALS = new Set([
 	'brighten',
@@ -389,6 +393,7 @@ export class BuddyToolSelectionService {
 			actionTokens !== null &&
 			(intersects(tokens, RELATIVE_ADJUSTMENT_SIGNALS) ||
 				/\b(?:\d+|eight|five|four|nine|one|seven|six|ten|three|two) times as\b/u.test(normalizedMessage));
+		const hasGroundedActionFilter = actionTokens !== null && GROUNDED_ACTION_FILTER_PATTERN.test(normalizedMessage);
 		const isGenericExplanation = isGenericHomeExplanation(normalizedMessage, tokens);
 		const hasUnrecognizedStateIntent =
 			hasStateReadSignal &&
@@ -400,6 +405,7 @@ export class BuddyToolSelectionService {
 		const hasUnknownModalRequest =
 			actionTokens === null &&
 			hasHomeSignal &&
+			!isCapabilityDiscovery &&
 			UNKNOWN_ACTION_REQUEST_PATTERN.test(normalizedMessage) &&
 			!hasExplicitStateQuestion;
 		const hasUnrecognizedReadCompound =
@@ -427,6 +433,7 @@ export class BuddyToolSelectionService {
 					hasExplicitStateQuestion ||
 					hasLeadingReadRequest ||
 					hasRelativeAdjustment ||
+					hasGroundedActionFilter ||
 					hasUnknownActionTrailingClause ||
 					(actionTokens === null &&
 						message.includes('?') &&
@@ -604,7 +611,9 @@ function hasUnknownLeadingIntentBeforeRead(normalizedMessage: string): boolean {
 
 function isGenericHomeExplanation(normalizedMessage: string, tokens: Set<string>): boolean {
 	if (!intersects(tokens, HOME_SIGNALS)) return false;
-	if (/^(?:explain how to|how (?:can|could|do|would) i|tell me how to)\b/u.test(normalizedMessage)) return true;
+	if (/^(?:explain how to|how (?:can|could|do|would) i|(?:show|tell) me how to)\b/u.test(normalizedMessage)) {
+		return true;
+	}
 	if (intersects(tokens, GROUNDED_STATE_SIGNALS)) return false;
 	if (intersects(tokens, EXPLICIT_STATE_REQUEST_SIGNALS)) return false;
 	if (/\b(?:currently|right now)\b/u.test(normalizedMessage)) return false;

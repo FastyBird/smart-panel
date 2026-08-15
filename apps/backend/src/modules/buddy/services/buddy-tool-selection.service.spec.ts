@@ -53,6 +53,8 @@ describe('BuddyToolSelectionService', () => {
 		'Report the hallway sensor reading.',
 		'Find Aurora and show its current status.',
 		'Which lights can I dim?',
+		'What lights am I able to dim?',
+		'Can you show which windows I can open?',
 		'Jaká je teplota a vlhkost v ložnici?',
 	])('selects only the dependent read pair for a state or search request: %s', (message) => {
 		expect(selectNames(message)).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
@@ -130,6 +132,15 @@ describe('BuddyToolSelectionService', () => {
 	it('keeps both lighting action shapes when the request names a room', () => {
 		expect(selectNames('Turn off the kitchen lights.')).toEqual([
 			SEARCH_HOME_TOOL_NAME,
+			names.control,
+			names.spaceLighting,
+		]);
+	});
+
+	it('retains reads for grounded-state filters attached to actions', () => {
+		expect(selectNames('Turn off the kitchen lights that are on.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
 			names.control,
 			names.spaceLighting,
 		]);
@@ -316,6 +327,7 @@ describe('BuddyToolSelectionService', () => {
 		'How do I turn off the kitchen light?',
 		'How can I adjust a thermostat?',
 		'Tell me how to turn off the kitchen light.',
+		'Show me how to turn off the kitchen light.',
 	])('keeps generic smart-home explanations tool-free: %s', (message) => {
 		expect(selectNames(message)).toEqual([]);
 	});
