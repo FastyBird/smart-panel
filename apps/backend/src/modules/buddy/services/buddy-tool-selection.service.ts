@@ -239,8 +239,14 @@ export class BuddyToolSelectionService {
 		const actionTokens = getActionIntentTokens(normalizedMessage, tokens, hasStateSignal);
 		const hasHomeSignal = intersects(tokens, HOME_SIGNALS);
 		const isGenericExplanation = isGenericHomeExplanation(normalizedMessage, tokens);
+		const isStateExplanation = hasHomeSignal && /^explain (?:if|whether)\b/u.test(normalizedMessage);
 
-		if (hasSearchSignal || hasStateSignal || (message.includes('?') && hasHomeSignal && !isGenericExplanation)) {
+		if (
+			hasSearchSignal ||
+			hasStateSignal ||
+			isStateExplanation ||
+			(message.includes('?') && hasHomeSignal && !isGenericExplanation)
+		) {
 			for (const name of READ_TOOL_NAMES) selected.add(name);
 		}
 
@@ -327,7 +333,7 @@ function isGenericHomeExplanation(normalizedMessage: string, tokens: Set<string>
 		/^how (?:do|does) .+ work(?:s|ing)?\b/u.test(normalizedMessage) ||
 		/^what (?:do|does) .+ mean\b/u.test(normalizedMessage) ||
 		/^what (?:is|are) (?:a|an)\b/u.test(normalizedMessage) ||
-		/^explain\b/u.test(normalizedMessage)
+		/^explain (?:how|what|why)\b/u.test(normalizedMessage)
 	);
 }
 
@@ -351,6 +357,14 @@ function getActionIntentTokens(
 		const trailingTokens = tokenize(trailingClause);
 
 		return intersects(trailingTokens, ACTION_SIGNALS) ? trailingTokens : null;
+	}
+
+	const trailingCondition = normalizedMessage.search(/\b(?:if|when)\b/u);
+
+	if (trailingCondition > 0) {
+		const commandTokens = tokenize(normalizedMessage.slice(0, trailingCondition));
+
+		if (intersects(commandTokens, ACTION_SIGNALS)) return commandTokens;
 	}
 
 	if (/^(?:if|when)\b/u.test(normalizedMessage)) {

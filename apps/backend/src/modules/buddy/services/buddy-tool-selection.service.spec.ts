@@ -108,6 +108,7 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('If the window is open, run Bedtime.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
+		expect(selectNames('Run Bedtime if the window is open.')).toEqual(definitions.map((definition) => definition.name));
 	});
 
 	it.each(['How does a thermostat work?', 'Explain how smart-home lighting works.'])(
@@ -116,6 +117,13 @@ describe('BuddyToolSelectionService', () => {
 			expect(selectNames(message)).toEqual([]);
 		},
 	);
+
+	it('retains live reads for explain-whether state questions', () => {
+		expect(selectNames('Explain whether the kitchen light is on.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+		]);
+	});
 
 	it('falls back to every built-in tool for ambiguous home-related wording', () => {
 		expect(selectNames('Help me with my smart home.')).toEqual(definitions.map((definition) => definition.name));
