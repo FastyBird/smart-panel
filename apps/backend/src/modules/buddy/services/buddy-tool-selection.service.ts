@@ -88,6 +88,7 @@ const HOME_SIGNALS = new Set([
 	'cooling',
 	'device',
 	'door',
+	'doors',
 	'energy',
 	'garage',
 	'heating',
@@ -107,6 +108,7 @@ const HOME_SIGNALS = new Set([
 	'temperature',
 	'thermostat',
 	'window',
+	'windows',
 	'dvere',
 	'dum',
 	'energie',
@@ -156,6 +158,7 @@ const DEVICE_SIGNALS = new Set([
 	'cooling',
 	'device',
 	'door',
+	'doors',
 	'heating',
 	'humidity',
 	'lamp',
@@ -165,6 +168,7 @@ const DEVICE_SIGNALS = new Set([
 	'temperature',
 	'thermostat',
 	'window',
+	'windows',
 	'dvere',
 	'lampa',
 	'okno',
@@ -228,10 +232,7 @@ export class BuddyToolSelectionService {
 		const selected = new Set<string>();
 		const hasSearchSignal = intersects(tokens, SEARCH_SIGNALS);
 		const hasStateSignal = intersects(tokens, STATE_SIGNALS);
-		const isStateQuestion =
-			hasStateSignal &&
-			/^(?:are|do|does|how|is|what|which|where|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u.test(normalizedMessage);
-		const hasActionSignal = intersects(tokens, ACTION_SIGNALS) && !isStateQuestion;
+		const hasActionSignal = hasActionIntent(normalizedMessage, tokens, hasStateSignal);
 		const hasHomeSignal = intersects(tokens, HOME_SIGNALS);
 
 		if (hasSearchSignal || hasStateSignal || (message.includes('?') && hasHomeSignal)) {
@@ -306,4 +307,22 @@ function isClearlyGeneralConversation(tokens: Set<string>): boolean {
 	}
 
 	return true;
+}
+
+function hasActionIntent(normalizedMessage: string, tokens: Set<string>, hasStateSignal: boolean): boolean {
+	if (!intersects(tokens, ACTION_SIGNALS)) return false;
+
+	const isStateQuestion =
+		hasStateSignal &&
+		/^(?:are|do|does|how|is|what|which|where|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u.test(normalizedMessage);
+
+	if (!isStateQuestion) return true;
+
+	const questionEnd = normalizedMessage.indexOf('?');
+
+	if (questionEnd >= 0 && intersects(tokenize(normalizedMessage.slice(questionEnd + 1)), ACTION_SIGNALS)) return true;
+
+	const conditionalClause = normalizedMessage.search(/\b(?:and|if not|if so|please|then)\b/u);
+
+	return conditionalClause >= 0 && intersects(tokenize(normalizedMessage.slice(conditionalClause + 1)), ACTION_SIGNALS);
 }
