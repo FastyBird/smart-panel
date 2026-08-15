@@ -176,6 +176,47 @@ describe('HomeSearchQueryService SQLite integration', () => {
 		]);
 	});
 
+	it('folds Greek final sigma like unicode61 before applying the candidate cap', async () => {
+		for (let index = 0; index < 30; index += 1) {
+			await dataSource.query(
+				`INSERT INTO devices_module_devices
+				 (id, name, identifier, type, category, enabled, hidden, "roomId")
+				 VALUES (?, ?, ?, 'test', 'sensor', 1, 0, NULL)`,
+				[`greek-competitor-${index}`, `ΟΣ competitor ${index} ΟΣ ΟΣ`, `greek-competitor-${index}`],
+			);
+		}
+		await dataSource.query(
+			`INSERT INTO devices_module_devices
+			 (id, name, identifier, type, category, enabled, hidden, "roomId")
+			 VALUES ('greek-exact', 'ΟΣ', 'greek-exact', 'test', 'sensor', 1, 0, NULL)`,
+		);
+
+		const devicesService = Object.create(DevicesService.prototype) as DevicesService;
+		Object.defineProperty(devicesService, 'dataSource', { value: dataSource });
+		const service = new HomeSearchQueryService(
+			{ findOne: jest.fn(), searchSummaryPage: jest.fn() } as unknown as SpacesService,
+			devicesService,
+			{ searchVisibleSummaryPage: jest.fn() } as unknown as ChannelsPropertiesService,
+			{ searchSummaryPage: jest.fn() } as unknown as ScenesService,
+		);
+
+		const result = await service.searchEntities({
+			profile: HOME_SEARCH_PROFILE_BUDDY_V1,
+			query: 'ΟΣ',
+			kinds: ['device'],
+			limit: 20,
+		});
+
+		expect(result.entities[0]).toMatchObject({
+			id: 'greek-exact',
+			name: 'ΟΣ',
+			score: 900,
+			reasons: ['exact_name'],
+		});
+		expect(result.total).toBe(31);
+		expect(result.truncated).toBe(true);
+	});
+
 	it('keeps an unnamed property with an exact identifier ahead of the per-kind candidate cap', async () => {
 		await dataSource.query(
 			`INSERT INTO devices_module_devices

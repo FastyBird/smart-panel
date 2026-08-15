@@ -37,6 +37,20 @@ import {
 import { homeEntitySearchQuerySchema } from '../schemas/home-search-input.schemas';
 import { homeEntitySearchResponseSchema } from '../schemas/home-search-output.schemas';
 
+const SQLITE_UNICODE61_FOLD_OVERRIDES: Readonly<Record<string, string>> = {
+	µ: 'μ',
+	ſ: 's',
+	ς: 'σ',
+	ϐ: 'β',
+	ϑ: 'θ',
+	ϕ: 'φ',
+	ϖ: 'π',
+	ϰ: 'κ',
+	ϱ: 'ρ',
+	ϵ: 'ε',
+	ẛ: 's',
+};
+
 const KIND_ORDER = new Map<HomeSearchEntityKind, number>(HOME_SEARCH_ENTITY_KINDS.map((kind, index) => [kind, index]));
 
 interface HomeEntitySearchScope {
@@ -361,10 +375,22 @@ export class HomeSearchQueryService {
 	}
 
 	private normalize(value: string): string {
-		return value
+		const canonicalValue = value
 			.normalize('NFD')
 			.replace(/\p{M}/gu, '')
-			.toLocaleLowerCase('en-US')
+			.split('')
+			.map((character) => {
+				const codePoint = character.codePointAt(0) ?? 0;
+
+				if (codePoint >= 0x13a0 && codePoint <= 0x13f5) {
+					return character;
+				}
+
+				return SQLITE_UNICODE61_FOLD_OVERRIDES[character] ?? character.toLocaleLowerCase('en-US');
+			})
+			.join('');
+
+		return canonicalValue
 			.replace(/[^\p{L}\p{N}]+/gu, ' ')
 			.trim()
 			.replace(/\s+/g, ' ');
