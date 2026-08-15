@@ -255,11 +255,15 @@ index.ts
 
 ### Task 2.4: Implement server discovery only from evidence
 
-- [ ] If Milestone 0 found a stable mDNS service, implement a Homey discoverer using the existing mDNS module.
-- [ ] Deduplicate by stable server identity and retain manual URL as fallback.
-- [ ] Expose start/restart/results endpoints following existing discovery patterns.
-- [ ] Test expiry, duplicate records, restart, and malformed TXT records.
-- [ ] If no stable record exists, document manual-only setup and mark automatic discovery deferred; do not ship guessed records.
+**Decision (2026-08-15):** The live probe found only an unattributable generic `_http._tcp` record on port `80` with
+no TXT keys. Automatic server discovery is deferred for the local MVP; manual URL configuration and connection testing
+remain supported. Revisit only after a Homey-specific identity and restart-stable advertisement are verified.
+
+- [x] Evaluate the Milestone 0 evidence and do not register a discoverer without a stable Homey-specific service.
+- [x] Defer stable-identity deduplication and retain manual URL configuration as the supported setup path.
+- [x] Do not expose start/restart/results endpoints while automatic server discovery is deferred.
+- [x] Defer expiry, duplicate-record, restart, and malformed-TXT tests until an evidence-backed service contract exists.
+- [x] Document manual-only setup and the evidence required to reconsider automatic discovery; do not ship guessed records.
 
 ---
 

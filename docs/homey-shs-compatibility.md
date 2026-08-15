@@ -1,7 +1,8 @@
 # Homey SHS Compatibility Record
 
-**Status:** In progress; safe inventory, SDK session/cleanup, and pre-restart mDNS host-match evidence captured; live
-capability-event, write, error-matrix, reconnect, recovery, and credential-rotation evidence pending
+**Status:** In progress; safe inventory and SDK session/cleanup evidence captured, automatic mDNS discovery explicitly
+deferred for the local MVP, and live capability-event, write, error-matrix, reconnect, recovery, and
+credential-rotation evidence pending
 
 **Started:** 2026-08-12
 
@@ -28,7 +29,7 @@ file. Live results use synthetic aliases and sanitized captures only.
 | Error classification                                  | SDK invalid key returned `401`; matrix pending  | Verify missing-scope, bad-URL, unavailable, and timeout behavior     |
 | API-key revocation and replacement                    | Operator-controlled probe ready                 | Revoke only a dedicated test key during the gated observation window |
 | Disposable-device lifecycle                           | Guarded operator probe ready                    | Use only the separately gated virtual/test device                    |
-| mDNS discovery                                        | Partial pre-restart observation                 | Attribute the generic host record and repeat after SHS restart       |
+| mDNS discovery                                        | Deferred; manual URL only for local MVP         | Revisit only after an attributable stable service is verified        |
 | SDK decision                                          | Live session/cleanup passed; provisional hold   | Complete event, timeout, cleanup-failure, and reconnect comparison   |
 | Sanitized fixture corpus                              | Nine representative live fixtures promoted      | Add event/reconnect fixtures and missing capability families/classes |
 
@@ -387,7 +388,35 @@ Two consecutive five-second observations on 2026-08-14 produced the same sanitiz
 `80` with no TXT keys. The reviewed report is committed as
 `__fixtures__/evidence/2026-08-14-shs-13.4.0-mdns-host-match.json`. Because the record is generic and the observed port
 is not either documented SHS API port, this does not establish that SHS owns the advertisement or provide a safe
-discovery discriminator. The discovery gate remains open pending attribution and an observation after SHS restart.
+discovery discriminator.
+
+### Server-discovery decision
+
+Automatic Homey server discovery is explicitly deferred for the local MVP. Smart Panel does not register a Homey
+mDNS discoverer and does not expose Homey server-discovery or rescan endpoints. Shipping `_http._tcp` port `80` as a
+Homey discriminator could present unrelated LAN services as Homey instances, so the observed record is insufficient
+even if a later observation finds it again after an SHS restart.
+
+Administrators configure the local Homey URL manually through the plugin configuration and can verify either the
+fully saved configuration or a complete candidate URL/new-key pair through the connection-test endpoint. Manual setup
+does not depend on the mDNS module and remains the supported fallback if automatic discovery is reconsidered later.
+
+For manual setup:
+
+1. Enter the complete `http` or `https` SHS/Homey local API URL, including its configured port. The URL must not contain
+   embedded credentials.
+2. Enter a newly created scoped API key in the write-only `api_key` field and save the plugin configuration. A later
+   update may omit the field to preserve the stored key; config responses return only `api_key_configured`.
+3. Test the persisted URL/key with `saved` connection-test mode, or test an unsaved URL only by supplying both the
+   candidate URL and a new key in `candidate` mode.
+4. Enable the plugin after the saved configuration passes validation. No discovery scan or discovery result is needed
+   before the connector starts.
+
+The ignored live-capture probe and sanitized evidence fixture remain available for future compatibility work. Automatic
+discovery may be reconsidered only when an advertisement can be attributed specifically to SHS/Homey, is stable before
+and after restart, exposes enough non-secret metadata to deduplicate by Homey identity, and can be validated without
+sending credentials to an unverified endpoint. Until all of those conditions are met, no guessed service type, port,
+TXT field, or discovery route is shipped.
 
 ## Non-mutating error-classification probe
 
@@ -474,7 +503,7 @@ Fill this matrix using synthetic aliases only.
 | SHS restart and reconnect                 | Pending                             |                                                                                                                                                      |
 | API-key revocation and replacement        | Pending                             |                                                                                                                                                      |
 | Disposable-device lifecycle sequence      | Pending                             |                                                                                                                                                      |
-| Stable mDNS service before/after restart  | Partial pre-restart evidence        | Two identical windows matched generic `_http._tcp` port `80` with no TXT keys; SHS attribution and post-restart stability remain unproven            |
+| Stable mDNS service before/after restart  | Deferred for local MVP              | Two identical windows matched only generic `_http._tcp` port `80` with no TXT keys; the record cannot be safely attributed to SHS                    |
 
 ## Verification
 
