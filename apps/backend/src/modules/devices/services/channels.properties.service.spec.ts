@@ -288,6 +288,104 @@ describe('ChannelsPropertiesService', () => {
 		});
 	});
 
+	describe('searchVisibleSummaryPage', () => {
+		it('returns bounded joined metadata without reading values or excluding disabled owners', async () => {
+			const query = jest.spyOn(dataSource, 'query');
+			query
+				.mockResolvedValueOnce([
+					{
+						id: mockChannelProperty.id,
+						name: mockChannelProperty.name,
+						identifier: null,
+						category: PropertyCategory.GENERIC,
+						dataType: DataTypeType.STRING,
+						permissions: `${PermissionType.READ_ONLY},${PermissionType.READ_WRITE}`,
+						channelId: mockChannel.id,
+						channelName: mockChannel.name,
+						channelCategory: ChannelCategory.GENERIC,
+						deviceId: 'device-id',
+						deviceName: 'Disabled sensor',
+						deviceCategory: 'generic',
+						deviceEnabled: 0,
+						roomId: null,
+						rankTier: '3',
+						lexicalScore: '-5',
+					},
+				])
+				.mockResolvedValueOnce([{ total: '4' }]);
+
+			await expect(
+				channelsPropertiesService.searchVisibleSummaryPage({
+					match: '"temperature"*',
+					rawQuery: 'temperature',
+					normalizedQuery: 'temperature',
+					offset: 3,
+					limit: 20,
+					roomParentId: 'floor-id',
+					categories: [PropertyCategory.GENERIC],
+				}),
+			).resolves.toEqual({
+				properties: [
+					expect.objectContaining({
+						id: mockChannelProperty.id,
+						deviceEnabled: false,
+						rankTier: 3,
+						lexicalScore: -5,
+						permissions: [PermissionType.READ_ONLY, PermissionType.READ_WRITE],
+					}),
+				],
+				total: 4,
+			});
+			const [selectSql, selectParameters] = query.mock.calls[0] as [string, unknown[]];
+			const [countSql, countParameters] = query.mock.calls[1] as [string, unknown[]];
+			expect(selectSql).toContain('home_context_entity_search_fts MATCH ?');
+			expect(selectSql.match(/INNER JOIN devices_module_channels channel/g)).toHaveLength(1);
+			expect(selectSql.match(/INNER JOIN devices_module_devices device/g)).toHaveLength(1);
+			expect(selectSql).toContain('device.hidden = 0');
+			expect(selectSql).not.toContain('device.enabled = 1');
+			expect(selectSql).toContain('device."roomId" IN (SELECT scoped_room.id FROM spaces_module_spaces scoped_room');
+			expect(selectSql).toContain('scoped_room."parentId" = ?');
+			expect(selectSql).toContain('property.category IN (?)');
+			expect(selectSql).toContain('WHEN property.id = ? COLLATE NOCASE THEN 0');
+			expect(selectSql).toContain('FROM home_context_entity_search_vocab exact_count');
+			expect(selectSql).toContain('FROM home_context_entity_search_vocab prefix_term');
+			expect(selectSql).toContain("exact_term_fallback.col = 'identifier'");
+			expect(selectSql).toContain('property.name IS NULL');
+			expect(selectSql).toContain('ORDER BY "rankTier" ASC, "lexicalScore" ASC');
+			expect(selectParameters).toEqual([
+				'temperature',
+				1,
+				'temperature',
+				1,
+				'temperature',
+				1,
+				'temperature%',
+				1,
+				'temperature%',
+				'property',
+				'"temperature"*',
+				'floor-id',
+				PropertyCategory.GENERIC,
+				20,
+				3,
+			]);
+			expect(countSql).toContain('SELECT COUNT(*) AS total');
+			expect(countParameters).toEqual(['property', '"temperature"*', 'floor-id', PropertyCategory.GENERIC]);
+			expect(propertyValueService.readLatestManyStrict).not.toHaveBeenCalled();
+		});
+
+		it('does not query an explicitly empty scope', async () => {
+			await expect(
+				channelsPropertiesService.searchVisibleSummaryPage({
+					match: 'temperature',
+					limit: 20,
+					scope: { roomIds: [] },
+				}),
+			).resolves.toEqual({ properties: [], total: 0 });
+			expect(dataSource.query).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('findBoundedForChannels', () => {
 		it('selects capped property IDs before hydrating values', async () => {
 			const countQuery: any = {

@@ -472,6 +472,74 @@ describe('DevicesService', () => {
 		});
 	});
 
+	describe('searchVisibleSummaryPage', () => {
+		it('keeps disabled devices while applying hidden, parent-room, category, and FTS bounds in SQL', async () => {
+			const query = jest.spyOn(dataSource, 'query');
+			query
+				.mockResolvedValueOnce([
+					{
+						id: mockDevice.id,
+						name: mockDevice.name,
+						identifier: mockDevice.identifier,
+						category: DeviceCategory.GENERIC,
+						enabled: 0,
+						roomId: null,
+						rankTier: '2',
+						lexicalScore: -4,
+					},
+				])
+				.mockResolvedValueOnce([{ total: 1 }]);
+
+			await expect(
+				service.searchVisibleSummaryPage({
+					match: '"sensor"*',
+					rawQuery: 'Sensor',
+					normalizedQuery: 'sensor',
+					offset: 5,
+					limit: 20,
+					roomParentId: 'floor-id',
+					categories: [DeviceCategory.GENERIC],
+				}),
+			).resolves.toEqual({
+				devices: [expect.objectContaining({ id: mockDevice.id, enabled: false, rankTier: 2, lexicalScore: -4 })],
+				total: 1,
+			});
+			const [selectSql, selectParameters] = query.mock.calls[0] as [string, unknown[]];
+			const [countSql, countParameters] = query.mock.calls[1] as [string, unknown[]];
+			expect(selectSql).toContain('home_context_entity_search_fts MATCH ?');
+			expect(selectSql).toContain('device.hidden = 0');
+			expect(selectSql).not.toContain('device.enabled = 1');
+			expect(selectSql).toContain('device."roomId" IN (SELECT scoped_room.id FROM spaces_module_spaces scoped_room');
+			expect(selectSql).toContain('scoped_room."parentId" = ?');
+			expect(selectSql).toContain('device.category IN (?)');
+			expect(selectSql).toContain('WHEN device.id = ? COLLATE NOCASE THEN 0');
+			expect(selectSql).toContain('FROM home_context_entity_search_vocab exact_count');
+			expect(selectSql).toContain('ORDER BY "rankTier" ASC, "lexicalScore" ASC, LOWER(device.name) ASC, device.id ASC');
+			expect(selectParameters).toEqual([
+				'Sensor',
+				1,
+				'sensor',
+				1,
+				'sensor%',
+				'device',
+				'"sensor"*',
+				'floor-id',
+				DeviceCategory.GENERIC,
+				20,
+				5,
+			]);
+			expect(countSql).toContain('SELECT COUNT(*) AS total');
+			expect(countParameters).toEqual(['device', '"sensor"*', 'floor-id', DeviceCategory.GENERIC]);
+		});
+
+		it('does not query an explicitly empty room scope', async () => {
+			await expect(
+				service.searchVisibleSummaryPage({ match: 'sensor', limit: 20, scope: { roomIds: [] } }),
+			).resolves.toEqual({ devices: [], total: 0 });
+			expect(dataSource.query).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('findOne', () => {
 		it('should return a device if found', async () => {
 			const queryBuilderMock: any = {

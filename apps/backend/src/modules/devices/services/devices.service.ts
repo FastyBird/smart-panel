@@ -9,12 +9,14 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { buildSqliteFtsNameRankExpression } from '../../../common/utils/sqlite-fts.utils';
 import { toInstance, toSnakeCase, toSnakeCaseKeys } from '../../../common/utils/transform.utils';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { SpaceType } from '../../spaces/spaces.constants';
 import {
 	DEVICES_MODULE_NAME,
 	DEVICE_PLACEMENT_LOCKED_MESSAGE,
+	DeviceCategory,
 	DeviceHiddenBy,
 	DeviceHiddenFilter,
 	EventType,
@@ -44,6 +46,34 @@ export interface VisibleDeviceSummaryScope {
 
 export interface VisibleDeviceSummaryPage {
 	devices: DeviceEntity[];
+	total: number;
+}
+
+export interface VisibleDeviceSearchSummary {
+	id: string;
+	name: string;
+	identifier: string | null;
+	category: DeviceCategory;
+	enabled: boolean;
+	roomId: string | null;
+	rankTier: number;
+	lexicalScore: number;
+}
+
+export interface VisibleDeviceSearchSummaryInput {
+	match: string;
+	offset?: number;
+	limit: number;
+	rawQuery?: string;
+	normalizedQuery?: string;
+	normalizedTokens?: string[];
+	scope?: VisibleDeviceSummaryScope;
+	roomParentId?: string;
+	categories?: string[];
+}
+
+export interface VisibleDeviceSearchSummaryPage {
+	devices: VisibleDeviceSearchSummary[];
 	total: number;
 }
 
@@ -169,6 +199,102 @@ export class DevicesService {
 		const [devices, total] = await query.getManyAndCount();
 
 		return { devices, total };
+	}
+
+	async searchVisibleSummaryPage(input: VisibleDeviceSearchSummaryInput): Promise<VisibleDeviceSearchSummaryPage> {
+		if (input.limit <= 0 || input.scope?.roomIds?.length === 0 || input.categories?.length === 0) {
+			return { devices: [], total: 0 };
+		}
+
+		const predicates = [
+			'home_context_entity_search_fts.entity_kind = ?',
+			'home_context_entity_search_fts MATCH ?',
+			'device.hidden = 0',
+		];
+		const parameters: Array<string | number> = ['device', input.match];
+
+		if (input.scope?.roomIds) {
+			predicates.push(`device."roomId" IN (${input.scope.roomIds.map(() => '?').join(', ')})`);
+			parameters.push(...input.scope.roomIds);
+		}
+
+		if (input.scope?.zoneId) {
+			predicates.push(
+				'EXISTS (SELECT 1 FROM devices_module_devices_zones scoped_zone ' +
+					'WHERE scoped_zone."deviceId" = device.id AND scoped_zone."zoneId" = ?)',
+			);
+			parameters.push(input.scope.zoneId);
+		}
+
+		if (input.roomParentId) {
+			predicates.push(
+				'device."roomId" IN (SELECT scoped_room.id FROM spaces_module_spaces scoped_room ' +
+					'WHERE scoped_room."parentId" = ?)',
+			);
+			parameters.push(input.roomParentId);
+		}
+
+		if (input.categories) {
+			predicates.push(`device.category IN (${input.categories.map(() => '?').join(', ')})`);
+			parameters.push(...input.categories);
+		}
+
+		interface DeviceSearchRow extends Omit<VisibleDeviceSearchSummary, 'enabled' | 'rankTier' | 'lexicalScore'> {
+			enabled: boolean | number;
+			rankTier: string | number;
+			lexicalScore: string | number;
+		}
+
+		interface CountRow {
+			total: string | number;
+		}
+
+		const where = predicates.join('\n AND ');
+		const rank = buildSqliteFtsNameRankExpression({
+			ftsTable: 'home_context_entity_search_fts',
+			vocabularyTable: 'home_context_entity_search_vocab',
+			entityIdExpression: 'device.id',
+			rawQuery: input.rawQuery,
+			normalizedQuery: input.normalizedQuery,
+			normalizedTokens: input.normalizedTokens,
+		});
+		const [rows, countRows] = await Promise.all([
+			this.dataSource.query<DeviceSearchRow[]>(
+				`SELECT device.id AS id,
+				        device.name AS name,
+				        device.identifier AS identifier,
+				        device.category AS category,
+				        device.enabled AS enabled,
+				        device."roomId" AS "roomId",
+				        ${rank.sql} AS "rankTier",
+				        bm25(home_context_entity_search_fts) AS "lexicalScore"
+				 FROM home_context_entity_search_fts
+				 INNER JOIN devices_module_devices device
+				   ON device.id = home_context_entity_search_fts.entity_id
+				 WHERE ${where}
+				 ORDER BY "rankTier" ASC, "lexicalScore" ASC, LOWER(device.name) ASC, device.id ASC
+				 LIMIT ? OFFSET ?`,
+				[...rank.parameters, ...parameters, input.limit, input.offset ?? 0],
+			),
+			this.dataSource.query<CountRow[]>(
+				`SELECT COUNT(*) AS total
+				 FROM home_context_entity_search_fts
+				 INNER JOIN devices_module_devices device
+				   ON device.id = home_context_entity_search_fts.entity_id
+				 WHERE ${where}`,
+				parameters,
+			),
+		]);
+
+		return {
+			devices: rows.map((row) => ({
+				...row,
+				enabled: Boolean(row.enabled),
+				rankTier: Number(row.rankTier),
+				lexicalScore: Number(row.lexicalScore),
+			})),
+			total: Number(countRows[0]?.total ?? 0),
+		};
 	}
 
 	async findVisibleSummaryById(id: string): Promise<DeviceEntity | null> {

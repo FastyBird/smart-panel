@@ -8,6 +8,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { buildSqliteFtsNameRankExpression } from '../../../common/utils/sqlite-fts.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ChannelCategory,
@@ -54,6 +55,34 @@ export interface SpaceSnapshotScope {
 
 export interface SpaceSummaryPage {
 	spaces: SpaceEntity[];
+	total: number;
+}
+
+export interface SpaceSearchSummary {
+	id: string;
+	name: string;
+	type: SpaceType;
+	category: string | null;
+	parentId: string | null;
+	rankTier: number;
+	lexicalScore: number;
+}
+
+export interface SpaceSearchSummaryInput {
+	match: string;
+	offset?: number;
+	limit: number;
+	rawQuery?: string;
+	normalizedQuery?: string;
+	normalizedTokens?: string[];
+	spaceIds?: string[];
+	parentSpaceId?: string;
+	types?: SpaceType[];
+	categories?: string[];
+}
+
+export interface SpaceSearchSummaryPage {
+	spaces: SpaceSearchSummary[];
 	total: number;
 }
 
@@ -132,6 +161,100 @@ export class SpacesService {
 			.getManyAndCount();
 
 		return { spaces, total };
+	}
+
+	async searchSummaryPage(input: SpaceSearchSummaryInput): Promise<SpaceSearchSummaryPage> {
+		if (
+			input.limit <= 0 ||
+			input.spaceIds?.length === 0 ||
+			input.types?.length === 0 ||
+			input.categories?.length === 0
+		) {
+			return { spaces: [], total: 0 };
+		}
+
+		const predicates = ['home_context_entity_search_fts.entity_kind = ?', 'home_context_entity_search_fts MATCH ?'];
+		const parameters: Array<string | number> = ['space', input.match];
+
+		const scopePredicates: string[] = [];
+
+		if (input.spaceIds) {
+			scopePredicates.push(`space.id IN (${input.spaceIds.map(() => '?').join(', ')})`);
+			parameters.push(...input.spaceIds);
+		}
+
+		if (input.parentSpaceId) {
+			scopePredicates.push('space."parentId" = ?');
+			parameters.push(input.parentSpaceId);
+		}
+
+		if (scopePredicates.length > 0) {
+			predicates.push(`(${scopePredicates.join(' OR ')})`);
+		}
+
+		if (input.types) {
+			predicates.push(`space.type IN (${input.types.map(() => '?').join(', ')})`);
+			parameters.push(...input.types);
+		}
+
+		if (input.categories) {
+			predicates.push(`space.category IN (${input.categories.map(() => '?').join(', ')})`);
+			parameters.push(...input.categories);
+		}
+
+		interface SpaceSearchRow extends Omit<SpaceSearchSummary, 'rankTier' | 'lexicalScore'> {
+			rankTier: string | number;
+			lexicalScore: string | number;
+		}
+
+		interface CountRow {
+			total: string | number;
+		}
+
+		const where = predicates.join('\n AND ');
+		const rank = buildSqliteFtsNameRankExpression({
+			ftsTable: 'home_context_entity_search_fts',
+			vocabularyTable: 'home_context_entity_search_vocab',
+			entityIdExpression: 'space.id',
+			rawQuery: input.rawQuery,
+			normalizedQuery: input.normalizedQuery,
+			normalizedTokens: input.normalizedTokens,
+		});
+		const [rows, countRows] = await Promise.all([
+			this.dataSource.query<SpaceSearchRow[]>(
+				`SELECT space.id AS id,
+				        space.name AS name,
+				        space.type AS type,
+				        space.category AS category,
+				        space."parentId" AS "parentId",
+				        ${rank.sql} AS "rankTier",
+				        bm25(home_context_entity_search_fts) AS "lexicalScore"
+				 FROM home_context_entity_search_fts
+				 INNER JOIN spaces_module_spaces space
+				   ON space.id = home_context_entity_search_fts.entity_id
+				 WHERE ${where}
+				 ORDER BY "rankTier" ASC, "lexicalScore" ASC, LOWER(space.name) ASC, space.id ASC
+				 LIMIT ? OFFSET ?`,
+				[...rank.parameters, ...parameters, input.limit, input.offset ?? 0],
+			),
+			this.dataSource.query<CountRow[]>(
+				`SELECT COUNT(*) AS total
+				 FROM home_context_entity_search_fts
+				 INNER JOIN spaces_module_spaces space
+				   ON space.id = home_context_entity_search_fts.entity_id
+				 WHERE ${where}`,
+				parameters,
+			),
+		]);
+
+		return {
+			spaces: rows.map((row) => ({
+				...row,
+				rankTier: Number(row.rankTier),
+				lexicalScore: Number(row.lexicalScore),
+			})),
+			total: Number(countRows[0]?.total ?? 0),
+		};
 	}
 
 	async findLightingTriggerSummaryPage(limit: number): Promise<SpaceSummaryPage> {

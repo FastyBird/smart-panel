@@ -8,8 +8,17 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { buildSqliteFtsNameRankExpression } from '../../../common/utils/sqlite-fts.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { DEVICES_MODULE_NAME, EventType, PermissionType } from '../devices.constants';
+import {
+	ChannelCategory,
+	DEVICES_MODULE_NAME,
+	DataTypeType,
+	DeviceCategory,
+	EventType,
+	PermissionType,
+	PropertyCategory,
+} from '../devices.constants';
 import { DevicesException, DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
@@ -30,6 +39,45 @@ export interface BoundedChannelProperties {
 
 export interface WritablePropertyCandidates {
 	properties: ChannelPropertyEntity[];
+	total: number;
+}
+
+export interface VisiblePropertySearchSummary {
+	id: string;
+	name: string | null;
+	identifier: string | null;
+	category: PropertyCategory;
+	dataType: DataTypeType;
+	permissions: PermissionType[];
+	channelId: string;
+	channelName: string;
+	channelCategory: ChannelCategory;
+	deviceId: string;
+	deviceName: string;
+	deviceCategory: DeviceCategory;
+	deviceEnabled: boolean;
+	roomId: string | null;
+	rankTier: number;
+	lexicalScore: number;
+}
+
+export interface VisiblePropertySearchSummaryInput {
+	match: string;
+	offset?: number;
+	limit: number;
+	rawQuery?: string;
+	normalizedQuery?: string;
+	normalizedTokens?: string[];
+	scope?: {
+		roomIds?: string[];
+		zoneId?: string;
+	};
+	roomParentId?: string;
+	categories?: PropertyCategory[];
+}
+
+export interface VisiblePropertySearchSummaryPage {
+	properties: VisiblePropertySearchSummary[];
 	total: number;
 }
 
@@ -211,6 +259,121 @@ export class ChannelsPropertiesService {
 		const [properties, total] = await query.getManyAndCount();
 
 		return { properties, total };
+	}
+
+	async searchVisibleSummaryPage(input: VisiblePropertySearchSummaryInput): Promise<VisiblePropertySearchSummaryPage> {
+		if (input.limit <= 0 || input.scope?.roomIds?.length === 0 || input.categories?.length === 0) {
+			return { properties: [], total: 0 };
+		}
+
+		const predicates = [
+			'home_context_entity_search_fts.entity_kind = ?',
+			'home_context_entity_search_fts MATCH ?',
+			'device.hidden = 0',
+		];
+		const parameters: Array<string | number> = ['property', input.match];
+
+		if (input.scope?.roomIds) {
+			predicates.push(`device."roomId" IN (${input.scope.roomIds.map(() => '?').join(', ')})`);
+			parameters.push(...input.scope.roomIds);
+		}
+
+		if (input.scope?.zoneId) {
+			predicates.push(
+				'EXISTS (SELECT 1 FROM devices_module_devices_zones scoped_zone ' +
+					'WHERE scoped_zone."deviceId" = device.id AND scoped_zone."zoneId" = ?)',
+			);
+			parameters.push(input.scope.zoneId);
+		}
+
+		if (input.roomParentId) {
+			predicates.push(
+				'device."roomId" IN (SELECT scoped_room.id FROM spaces_module_spaces scoped_room ' +
+					'WHERE scoped_room."parentId" = ?)',
+			);
+			parameters.push(input.roomParentId);
+		}
+
+		if (input.categories) {
+			predicates.push(`property.category IN (${input.categories.map(() => '?').join(', ')})`);
+			parameters.push(...input.categories);
+		}
+
+		interface PropertySearchRow extends Omit<
+			VisiblePropertySearchSummary,
+			'deviceEnabled' | 'rankTier' | 'lexicalScore' | 'permissions'
+		> {
+			deviceEnabled: boolean | number;
+			rankTier: string | number;
+			lexicalScore: string | number;
+			permissions: string;
+		}
+
+		interface CountRow {
+			total: string | number;
+		}
+
+		const joins = `FROM home_context_entity_search_fts
+			 INNER JOIN devices_module_channels_properties property
+			   ON property.id = home_context_entity_search_fts.entity_id
+			 INNER JOIN devices_module_channels channel ON channel.id = property."channelId"
+			 INNER JOIN devices_module_devices device ON device.id = channel."deviceId"`;
+		const where = predicates.join('\n AND ');
+		const rank = buildSqliteFtsNameRankExpression({
+			ftsTable: 'home_context_entity_search_fts',
+			vocabularyTable: 'home_context_entity_search_vocab',
+			entityIdExpression: 'property.id',
+			fallbackName: {
+				vocabularyColumn: 'identifier',
+				whenPrimaryNameExpression: 'property.name',
+			},
+			rawQuery: input.rawQuery,
+			normalizedQuery: input.normalizedQuery,
+			normalizedTokens: input.normalizedTokens,
+		});
+		const [rows, countRows] = await Promise.all([
+			this.dataSource.query<PropertySearchRow[]>(
+				`SELECT property.id AS id,
+				        property.name AS name,
+				        property.identifier AS identifier,
+				        property.category AS category,
+				        property."dataType" AS "dataType",
+				        property.permissions AS permissions,
+				        channel.id AS "channelId",
+				        channel.name AS "channelName",
+				        channel.category AS "channelCategory",
+				        device.id AS "deviceId",
+				        device.name AS "deviceName",
+				        device.category AS "deviceCategory",
+				        device.enabled AS "deviceEnabled",
+				        device."roomId" AS "roomId",
+				        ${rank.sql} AS "rankTier",
+				        bm25(home_context_entity_search_fts) AS "lexicalScore"
+				 ${joins}
+				 WHERE ${where}
+				 ORDER BY "rankTier" ASC, "lexicalScore" ASC, LOWER(device.name) ASC, LOWER(channel.name) ASC,
+				          LOWER(COALESCE(property.name, '')) ASC, property.id ASC
+				 LIMIT ? OFFSET ?`,
+				[...rank.parameters, ...parameters, input.limit, input.offset ?? 0],
+			),
+			this.dataSource.query<CountRow[]>(
+				`SELECT COUNT(*) AS total
+				 ${joins}
+				 WHERE ${where}`,
+				parameters,
+			),
+		]);
+
+		return {
+			properties: rows.map((row) => ({
+				...row,
+				deviceEnabled: Boolean(row.deviceEnabled),
+				rankTier: Number(row.rankTier),
+				lexicalScore: Number(row.lexicalScore),
+				permissions: row.permissions.split(',') as PermissionType[],
+			})),
+			total: Number(countRows[0]?.total ?? 0),
+		};
 	}
 
 	async findOne<TProperty extends ChannelPropertyEntity>(
