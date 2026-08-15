@@ -8,13 +8,26 @@ import { SpacesModule } from '../spaces/spaces.module';
 import { WeatherModule } from '../weather/weather.module';
 
 import { HomeContextQueryService } from './services/home-context-query.service';
+import { HomeCurrentStateQueryService } from './services/home-current-state-query.service';
 import { HomeSearchQueryService } from './services/home-search-query.service';
 import { HomeStateQueryService } from './services/home-state-query.service';
 import { HomeTargetQueryService } from './services/home-target-query.service';
 
 @Module({
 	imports: [DevicesModule, EnergyModule, ScenesModule, SecurityModule, SpacesModule, WeatherModule],
-	providers: [HomeContextQueryService, HomeSearchQueryService, HomeStateQueryService, HomeTargetQueryService],
-	exports: [HomeContextQueryService, HomeSearchQueryService, HomeStateQueryService, HomeTargetQueryService],
+	providers: [
+		HomeContextQueryService,
+		HomeCurrentStateQueryService,
+		HomeSearchQueryService,
+		HomeStateQueryService,
+		HomeTargetQueryService,
+	],
+	exports: [
+		HomeContextQueryService,
+		HomeCurrentStateQueryService,
+		HomeSearchQueryService,
+		HomeStateQueryService,
+		HomeTargetQueryService,
+	],
 })
 export class HomeContextModule {}

@@ -99,3 +99,61 @@ export const HOME_SEARCH_MATCH_REASONS = [
 ] as const;
 
 export type HomeSearchMatchReason = (typeof HOME_SEARCH_MATCH_REASONS)[number];
+
+export const HOME_CURRENT_STATE_PROFILE_BUDDY_V1 = 'buddy-current-state-v1' as const;
+
+export type HomeCurrentStateProfile = typeof HOME_CURRENT_STATE_PROFILE_BUDDY_V1;
+
+export interface HomeCurrentStateLimitProfile {
+	defaultRows: number;
+	maxRows: number;
+	maxCandidates: number;
+	maxChannelCategories: number;
+	maxPropertyCategories: number;
+	maxDataTypes: number;
+	maxPredicateStringCharacters: number;
+}
+
+export const HOME_CURRENT_STATE_LIMIT_PROFILES: Readonly<
+	Record<HomeCurrentStateProfile, Readonly<HomeCurrentStateLimitProfile>>
+> = Object.freeze({
+	[HOME_CURRENT_STATE_PROFILE_BUDDY_V1]: Object.freeze({
+		defaultRows: 20,
+		maxRows: 50,
+		maxCandidates: 500,
+		maxChannelCategories: 16,
+		maxPropertyCategories: 16,
+		maxDataTypes: 16,
+		maxPredicateStringCharacters: 256,
+	}),
+});
+
+export const HOME_CURRENT_STATE_OPERATIONS = ['rows', 'any', 'all', 'count_matches'] as const;
+
+export type HomeCurrentStateOperation = (typeof HOME_CURRENT_STATE_OPERATIONS)[number];
+
+export const HOME_CURRENT_STATE_EQUALITY_OPERATORS = ['eq', 'ne'] as const;
+export const HOME_CURRENT_STATE_ORDERING_OPERATORS = ['gt', 'gte', 'lt', 'lte'] as const;
+
+export type HomeCurrentStateEqualityOperator = (typeof HOME_CURRENT_STATE_EQUALITY_OPERATORS)[number];
+export type HomeCurrentStateOrderingOperator = (typeof HOME_CURRENT_STATE_ORDERING_OPERATORS)[number];
+
+export const HOME_CURRENT_STATE_PARTIAL_REASONS = [
+	'scan_limit',
+	'missing_values',
+	'unprocessed_values',
+	'unknown_freshness',
+	'type_mismatch',
+	'unit_mismatch',
+] as const;
+
+export type HomeCurrentStatePartialReason = (typeof HOME_CURRENT_STATE_PARTIAL_REASONS)[number];
+
+export const HOME_CURRENT_STATE_AGGREGATE_STATUSES = [
+	'complete',
+	'conclusive_partial',
+	'indeterminate',
+	'no_eligible',
+] as const;
+
+export type HomeCurrentStateAggregateStatus = (typeof HOME_CURRENT_STATE_AGGREGATE_STATUSES)[number];

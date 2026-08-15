@@ -1233,14 +1233,18 @@ captured as an opt-in/expected baseline measurement rather than a failing normal
       Expose candidate capabilities derived from persisted metadata and the static command-type allowlist without
       treating discovery as authorization, online availability, or proof that an action can execute.
 - [ ] Expose the bounded metadata search through a Buddy read tool after the structured tool-result loop is available.
-- [ ] Add safe filtered/aggregate current-state queries.
+- [x] Add database-bounded current-state rows plus `any`, `all`, and exact `count_matches` predicates over readable
+      properties. Require explicit units for numeric comparisons; report eligible/scanned/evaluated/unknown coverage,
+      bounded evidence rows, typed partial reasons, and only logically conclusive partial boolean outcomes.
+- [ ] Extend current-state queries with role/online filters and completeness-safe numeric minimum, maximum, sum, and
+      average operations after their unit/freshness contracts are defined.
 - [x] Add a Devices-owned bounded current-value reconciliation primitive: preserve cache hits when storage is
       unavailable, read at most 500 logical properties in sequential 50-source chunks, deduplicate projected source
       keys, enforce a 750 ms soft response deadline, and report available/missing/unprocessed coverage plus value-time
       bounds without changing strict MCP/device reads.
-- [ ] Add a bounded `PropertyValueService` batch/aggregate contract for current-value predicates and aggregates. Resolve
-      eligible metadata in the database, reconcile cache/storage values in chunks, short-circuit only sound outcomes,
-      and return eligible/evaluated/unknown/freshness/partial metadata when completeness cannot be established.
+- [x] Add a bounded HomeContext predicate/aggregate contract backed by the Devices-owned value reconciliation primitive.
+      Resolve eligible metadata in the database, reconcile cache/storage values in chunks, conclude only sound outcomes,
+      and return eligible/scanned/evaluated/unknown/freshness/partial metadata when completeness cannot be established.
 - [ ] Preserve `observed_at`, `total`, `returned`, `partial`, and `truncated` metadata.
 - [ ] Import `HomeContextModule` from MCP and prove the MCP endpoint can be disabled while shared queries still work.
 - [x] Avoid a Buddy-to-`McpModule` dependency and avoid a domain-to-`ToolsModule` cycle.

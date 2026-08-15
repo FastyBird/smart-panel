@@ -42,6 +42,26 @@ export interface WritablePropertyCandidates {
 	total: number;
 }
 
+export interface VisibleReadableStateCandidateScope {
+	roomIds?: string[];
+	zoneId?: string;
+}
+
+export interface VisibleReadableStateCandidatesInput {
+	limit: number;
+	offset?: number;
+	scope?: VisibleReadableStateCandidateScope;
+	roomParentId?: string;
+	channelCategories?: ChannelCategory[];
+	propertyCategories?: PropertyCategory[];
+	dataTypes?: DataTypeType[];
+}
+
+export interface VisibleReadableStateCandidates {
+	properties: ChannelPropertyEntity[];
+	total: number;
+}
+
 export interface VisiblePropertySearchSummary {
 	id: string;
 	name: string | null;
@@ -85,6 +105,7 @@ export interface VisiblePropertySearchSummaryPage {
 @Injectable()
 export class ChannelsPropertiesService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'ChannelsPropertiesService');
+	private static readonly VISIBLE_READABLE_STATE_CANDIDATE_MAX_LIMIT = 500;
 
 	constructor(
 		@InjectRepository(ChannelPropertyEntity)
@@ -258,6 +279,99 @@ export class ChannelsPropertiesService {
 			.take(limit)
 			.skip(offset);
 		const [properties, total] = await query.getManyAndCount();
+
+		return { properties, total };
+	}
+
+	async findVisibleReadableStateCandidates(
+		input: VisibleReadableStateCandidatesInput,
+	): Promise<VisibleReadableStateCandidates> {
+		const offset = input.offset ?? 0;
+
+		if (!Number.isInteger(input.limit) || input.limit < 0) {
+			throw new RangeError('Visible readable state candidate limit must be a non-negative integer');
+		}
+		if (input.limit > ChannelsPropertiesService.VISIBLE_READABLE_STATE_CANDIDATE_MAX_LIMIT) {
+			throw new RangeError(
+				`At most ${ChannelsPropertiesService.VISIBLE_READABLE_STATE_CANDIDATE_MAX_LIMIT} visible readable state candidates may be selected at once`,
+			);
+		}
+		if (!Number.isInteger(offset) || offset < 0) {
+			throw new RangeError('Visible readable state candidate offset must be a non-negative integer');
+		}
+		if (
+			input.limit === 0 ||
+			input.scope?.roomIds?.length === 0 ||
+			input.channelCategories?.length === 0 ||
+			input.propertyCategories?.length === 0 ||
+			input.dataTypes?.length === 0
+		) {
+			return { properties: [], total: 0 };
+		}
+
+		const query = this.repository
+			.createQueryBuilder('property')
+			.innerJoinAndSelect('property.channel', 'channel')
+			.innerJoinAndSelect('channel.device', 'device')
+			.where('device.hidden = :hidden', { hidden: false })
+			.andWhere(
+				'(property.permissions = :readOnly OR property.permissions = :readWrite ' +
+					'OR property.permissions LIKE :readOnlyFirst OR property.permissions LIKE :readOnlyMiddle ' +
+					'OR property.permissions LIKE :readOnlyLast OR property.permissions LIKE :readWriteFirst ' +
+					'OR property.permissions LIKE :readWriteMiddle OR property.permissions LIKE :readWriteLast)',
+				{
+					readOnly: PermissionType.READ_ONLY,
+					readWrite: PermissionType.READ_WRITE,
+					readOnlyFirst: `${PermissionType.READ_ONLY},%`,
+					readOnlyMiddle: `%,${PermissionType.READ_ONLY},%`,
+					readOnlyLast: `%,${PermissionType.READ_ONLY}`,
+					readWriteFirst: `${PermissionType.READ_WRITE},%`,
+					readWriteMiddle: `%,${PermissionType.READ_WRITE},%`,
+					readWriteLast: `%,${PermissionType.READ_WRITE}`,
+				},
+			);
+
+		if (input.scope?.roomIds) {
+			query.andWhere('device.roomId IN (:...roomIds)', { roomIds: input.scope.roomIds });
+		}
+		if (input.scope?.zoneId) {
+			query
+				.innerJoin('device.deviceZones', 'stateCandidateZone')
+				.andWhere('stateCandidateZone.zoneId = :zoneId', { zoneId: input.scope.zoneId });
+		}
+		if (input.roomParentId) {
+			query.andWhere(
+				'device.roomId IN (SELECT state_candidate_room.id FROM spaces_module_spaces state_candidate_room ' +
+					'WHERE state_candidate_room.parentId = :roomParentId)',
+				{ roomParentId: input.roomParentId },
+			);
+		}
+		if (input.channelCategories) {
+			query.andWhere('channel.category IN (:...channelCategories)', {
+				channelCategories: input.channelCategories,
+			});
+		}
+		if (input.propertyCategories) {
+			query.andWhere('property.category IN (:...propertyCategories)', {
+				propertyCategories: input.propertyCategories,
+			});
+		}
+		if (input.dataTypes) {
+			query.andWhere('property.dataType IN (:...dataTypes)', { dataTypes: input.dataTypes });
+		}
+
+		const [properties, total] = await query
+			.addSelect('COALESCE(property.name, property.identifier, property.id)', 'stateCandidatePropertyOrder')
+			.orderBy('device.name', 'ASC')
+			.addOrderBy('device.id', 'ASC')
+			.addOrderBy('channel.name', 'ASC')
+			.addOrderBy('channel.id', 'ASC')
+			.addOrderBy('stateCandidatePropertyOrder', 'ASC')
+			.addOrderBy('property.id', 'ASC')
+			.callListeners(false)
+			.take(input.limit)
+			.skip(offset)
+			.getManyAndCount();
 
 		return { properties, total };
 	}
