@@ -123,6 +123,23 @@ const GROUNDED_STATE_SIGNALS = new Set([
 	'unlocked',
 ]);
 const EXPLICIT_STATE_REQUEST_SIGNALS = new Set(['all', 'any', 'count', 'current', 'state', 'status', 'value']);
+const RELATIVE_ADJUSTMENT_SIGNALS = new Set([
+	'brighten',
+	'brighter',
+	'cooler',
+	'darker',
+	'decrease',
+	'dim',
+	'dimmer',
+	'down',
+	'increase',
+	'less',
+	'lower',
+	'more',
+	'raise',
+	'up',
+	'warmer',
+]);
 const HOME_SIGNALS = new Set([
 	'air',
 	'bathroom',
@@ -347,6 +364,9 @@ export class BuddyToolSelectionService {
 		const hasLiveStatusRequest =
 			hasHomeSignal && actionTokens === null && /\b(?:currently|right now)\b/u.test(normalizedMessage);
 		const hasExplicitStateQuestion = isExplicitStateQuestion(normalizedMessage);
+		const hasLeadingReadRequest =
+			hasHomeSignal && /^(?:check|confirm|determine|ensure|find out|read|see|show|verify)\b/u.test(normalizedMessage);
+		const hasRelativeAdjustment = actionTokens !== null && intersects(tokens, RELATIVE_ADJUSTMENT_SIGNALS);
 		const isGenericExplanation = isGenericHomeExplanation(normalizedMessage, tokens);
 		const hasUnrecognizedStateIntent =
 			hasStateReadSignal &&
@@ -377,6 +397,8 @@ export class BuddyToolSelectionService {
 					hasInterrogativeHomeQuestion ||
 					hasLiveStatusRequest ||
 					hasExplicitStateQuestion ||
+					hasLeadingReadRequest ||
+					hasRelativeAdjustment ||
 					(actionTokens === null &&
 						message.includes('?') &&
 						hasHomeSignal &&

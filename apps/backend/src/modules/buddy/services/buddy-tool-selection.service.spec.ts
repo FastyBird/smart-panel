@@ -68,7 +68,21 @@ describe('BuddyToolSelectionService', () => {
 	});
 
 	it('selects individual device control for a specific lamp', () => {
-		expect(selectNames('Dim the desk lamp.')).toEqual([SEARCH_HOME_TOOL_NAME, names.control]);
+		expect(selectNames('Dim the desk lamp.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+			names.control,
+		]);
+	});
+
+	it('retains live reads for relative adjustments', () => {
+		expect(selectNames('Make the bedroom warmer')).toEqual(definitions.map((definition) => definition.name));
+		expect(selectNames('Turn the bedroom light up a bit')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+			names.control,
+			names.spaceLighting,
+		]);
 	});
 
 	it('uses action verbs without allowing unrestricted target names to exclude schemas', () => {
@@ -121,6 +135,9 @@ describe('BuddyToolSelectionService', () => {
 			names.spaceLighting,
 		]);
 		expect(selectNames('Run Bedtime and tell me whether the window is open.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
+		expect(selectNames('Read the hallway sensor, then close the blinds')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
 		expect(selectNames('Run Bedtime and verify that the hallway sensor is triggered.')).toEqual(
