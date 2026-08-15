@@ -4,14 +4,11 @@ import { AuthInfo, McpServer, ServerContext } from '@modelcontextprotocol/server
 import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 
 import { withTimeout } from '../../../common/utils/http.utils';
-import { ConnectionState, PermissionType } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
-import { DeviceConnectionStateService } from '../../devices/services/device-connection-state.service';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
-import { resolvePropertyUnit } from '../../devices/utils/property-metadata.utils';
-import { SceneSummaryPage, ScenesService } from '../../scenes/services/scenes.service';
-import { SpaceSummaryPage, SpacesService } from '../../spaces/services/spaces.service';
+import { HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY } from '../../home-context/home-context.constants';
+import { HomeTargetQueryService } from '../../home-context/services/home-target-query.service';
 import {
 	ToolAccessKind,
 	ToolAudience,
@@ -19,14 +16,7 @@ import {
 	ToolExecutionStatus,
 } from '../../tools/platforms/tool-provider.platform';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
-import {
-	MCP_MAX_TRIGGER_SCENES,
-	MCP_MAX_TRIGGER_SPACES,
-	MCP_MAX_WRITABLE_PROPERTIES,
-	MCP_MAX_WRITABLE_PROPERTY_CANDIDATES,
-	MCP_TOOL_CALL_TIMEOUT_MS,
-	McpCapability,
-} from '../mcp.constants';
+import { MCP_TOOL_CALL_TIMEOUT_MS, McpCapability } from '../mcp.constants';
 import { McpEndpointDisabledException } from '../mcp.exceptions';
 import { McpAuditDenialReason, McpAuditOutcome, McpAuditService } from '../services/mcp-audit.service';
 import { McpContextService, McpInstallationContext } from '../services/mcp-context.service';
@@ -91,10 +81,8 @@ interface ToolEnvelope {
 export class McpTargetDiscoveryToolService {
 	constructor(
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
-		private readonly deviceConnectionStateService: DeviceConnectionStateService,
 		private readonly platformRegistryService: PlatformRegistryService,
-		private readonly scenesService: ScenesService,
-		private readonly spacesService: SpacesService,
+		private readonly homeTargetQueryService: HomeTargetQueryService,
 		private readonly toolRegistry: ToolProviderRegistryService,
 		private readonly contextService: McpContextService,
 		private readonly policyService: McpPolicyService,
@@ -121,15 +109,13 @@ export class McpTargetDiscoveryToolService {
 			},
 			async (_args, ctx) =>
 				this.runTool('list_writable_properties', McpCapability.WRITE, ctx, async () => {
-					const actionable = await this.findActionableWritableProperties();
-					const properties = actionable
-						.slice(0, MCP_MAX_WRITABLE_PROPERTIES)
-						.map((property) => this.toWritableProperty(property));
-					const truncated = actionable.length > MCP_MAX_WRITABLE_PROPERTIES;
+					const result = await this.homeTargetQueryService.getWritableProperties({
+						profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY,
+					});
 
 					return {
-						data: { properties, truncated },
-						text: `Found ${properties.length} writable device propert${properties.length === 1 ? 'y' : 'ies'}.`,
+						data: result as unknown as Record<string, unknown>,
+						text: `Found ${result.properties.length} writable device propert${result.properties.length === 1 ? 'y' : 'ies'}.`,
 					};
 				}),
 		);
@@ -169,41 +155,15 @@ export class McpTargetDiscoveryToolService {
 				this.runTool('list_trigger_targets', McpCapability.TRIGGER, ctx, async () => {
 					const supportsScenes = this.hasProviderTool('run_scene', ToolAccessKind.TRIGGER);
 					const supportsSpaceLighting = this.hasProviderTool('set_space_lighting', ToolAccessKind.TRIGGER);
-					const emptyScenePage: SceneSummaryPage = { scenes: [], total: 0 };
-					const emptySpacePage: SpaceSummaryPage = { spaces: [], total: 0 };
-					const [scenePage, spacePage] = await Promise.all([
-						supportsScenes
-							? this.scenesService.findTriggerableSummaryPage(MCP_MAX_TRIGGER_SCENES)
-							: Promise.resolve(emptyScenePage),
-						supportsSpaceLighting
-							? this.spacesService.findLightingTriggerSummaryPage(MCP_MAX_TRIGGER_SPACES)
-							: Promise.resolve(emptySpacePage),
-					]);
-					const scenes = scenePage.scenes
-						.filter((scene) => scene.enabled && scene.triggerable)
-						.map((scene) => ({
-							scene_id: scene.id,
-							name: scene.name,
-							category: scene.category,
-							primary_space_id: scene.primarySpaceId,
-						}));
-					const spaces = spacePage.spaces.map((space) => ({
-						space_id: space.id,
-						name: space.name,
-						type: space.type,
-						modes: [...lightingModes],
-					}));
+					const result = await this.homeTargetQueryService.getTriggerTargets({
+						profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY,
+						includeScenes: supportsScenes,
+						includeSpaces: supportsSpaceLighting,
+					});
 
 					return {
-						data: {
-							scenes,
-							spaces,
-							truncated: {
-								scenes: scenePage.total > MCP_MAX_TRIGGER_SCENES,
-								spaces: spacePage.total > MCP_MAX_TRIGGER_SPACES,
-							},
-						},
-						text: `Found ${scenes.length} scene(s) and ${spaces.length} lighting-capable space(s).`,
+						data: result as unknown as Record<string, unknown>,
+						text: `Found ${result.scenes.length} scene(s) and ${result.spaces.length} lighting-capable space(s).`,
 					};
 				}),
 		);
@@ -395,87 +355,6 @@ export class McpTargetDiscoveryToolService {
 		return this.toolRegistry
 			.getAllToolDefinitions({ audience: ToolAudience.MCP, accessKinds: [access] })
 			.some((definition) => definition.name === name);
-	}
-
-	private uniqueDevices(properties: ChannelPropertyEntity[]): DeviceEntity[] {
-		return [
-			...new Map(
-				properties.map((property) => {
-					const device = this.getDevice(property);
-
-					return [device.id, device];
-				}),
-			).values(),
-		];
-	}
-
-	private async findActionableWritableProperties(): Promise<ChannelPropertyEntity[]> {
-		const actionable: ChannelPropertyEntity[] = [];
-		let offset = 0;
-
-		while (true) {
-			const candidates = await this.channelsPropertiesService.findWritableCandidates(
-				MCP_MAX_WRITABLE_PROPERTY_CANDIDATES,
-				offset,
-			);
-
-			if (candidates.properties.length === 0) {
-				return actionable;
-			}
-
-			offset += candidates.properties.length;
-
-			const devices = this.uniqueDevices(candidates.properties);
-			const availableDevices = devices.filter(
-				(device) => device.enabled && !device.hidden && this.platformRegistryService.get(device) !== null,
-			);
-			const availableDeviceIds = new Set(availableDevices.map((device) => device.id));
-			const statuses = await this.deviceConnectionStateService.readLatestMany(availableDevices);
-
-			for (const property of candidates.properties) {
-				const device = this.getDevice(property);
-				const status = statuses.get(device.id);
-
-				if (
-					availableDeviceIds.has(device.id) &&
-					property.permissions.some((permission) =>
-						[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
-					) &&
-					(status === undefined || status.online || status.status === ConnectionState.UNKNOWN)
-				) {
-					actionable.push(property);
-
-					if (actionable.length > MCP_MAX_WRITABLE_PROPERTIES) {
-						return actionable;
-					}
-				}
-			}
-
-			if (offset >= candidates.total) {
-				return actionable;
-			}
-		}
-	}
-
-	private toWritableProperty(property: ChannelPropertyEntity): Record<string, unknown> {
-		const channel = property.channel as ChannelEntity;
-		const device = channel.device as DeviceEntity;
-
-		return {
-			property_id: property.id,
-			property_name: property.name,
-			property_category: property.category,
-			device_id: device.id,
-			device_name: device.name,
-			channel_id: channel.id,
-			channel_name: channel.name,
-			channel_category: channel.category,
-			data_type: property.dataType,
-			unit: resolvePropertyUnit(property),
-			format: property.format,
-			step: property.step,
-			invalid: property.invalid,
-		};
 	}
 
 	private getDevice(property: ChannelPropertyEntity): DeviceEntity {

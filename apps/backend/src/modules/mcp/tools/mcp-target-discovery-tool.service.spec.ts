@@ -1,26 +1,21 @@
 import { AuthInfo, McpServer, ServerContext } from '@modelcontextprotocol/server';
 import { UnauthorizedException } from '@nestjs/common';
 
-import {
-	ChannelCategory,
-	ConnectionState,
-	DataTypeType,
-	PermissionType,
-	PropertyCategory,
-} from '../../devices/devices.constants';
+import { ChannelCategory, DataTypeType, PermissionType, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelPropertyEntity } from '../../devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
-import { DeviceConnectionStateService } from '../../devices/services/device-connection-state.service';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
-import { SceneEntity } from '../../scenes/entities/scenes.entity';
+import { HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY } from '../../home-context/home-context.constants';
+import {
+	HomeTriggerTargetsResult,
+	HomeWritablePropertiesResult,
+} from '../../home-context/models/home-target-result.model';
+import { HomeTargetQueryService } from '../../home-context/services/home-target-query.service';
 import { SceneCategory } from '../../scenes/scenes.constants';
-import { ScenesService } from '../../scenes/services/scenes.service';
-import { SpaceEntity } from '../../spaces/entities/space.entity';
-import { SpacesService } from '../../spaces/services/spaces.service';
 import { SpaceType } from '../../spaces/spaces.constants';
 import { ToolAccessKind, ToolAudience, ToolExecutionStatus } from '../../tools/platforms/tool-provider.platform';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
-import { MCP_MAX_WRITABLE_PROPERTY_CANDIDATES, MCP_TOOL_CALL_TIMEOUT_MS, McpCapability } from '../mcp.constants';
+import { MCP_TOOL_CALL_TIMEOUT_MS, McpCapability } from '../mcp.constants';
 import { McpEndpointDisabledException } from '../mcp.exceptions';
 import { McpAuditService } from '../services/mcp-audit.service';
 import { McpContextService } from '../services/mcp-context.service';
@@ -31,15 +26,17 @@ import { McpTargetDiscoveryToolService } from './mcp-target-discovery-tool.servi
 type ToolCallback = (
 	args: Record<string, unknown>,
 	ctx: ServerContext,
-) => Promise<{ isError?: boolean; structuredContent: Record<string, unknown> }>;
+) => Promise<{
+	content: Array<{ type: string; text: string }>;
+	isError?: boolean;
+	structuredContent: Record<string, unknown>;
+}>;
 
 describe('McpTargetDiscoveryToolService', () => {
 	let service: McpTargetDiscoveryToolService;
-	let channelsPropertiesService: { findOne: jest.Mock; findWritableCandidates: jest.Mock };
-	let deviceConnectionStateService: { readLatestMany: jest.Mock };
+	let channelsPropertiesService: { findOne: jest.Mock };
 	let platformRegistryService: { get: jest.Mock };
-	let scenesService: { findTriggerableSummaryPage: jest.Mock };
-	let spacesService: { findLightingTriggerSummaryPage: jest.Mock };
+	let homeTargetQueryService: { getWritableProperties: jest.Mock; getTriggerTargets: jest.Mock };
 	let toolRegistry: { getAllToolDefinitions: jest.Mock; executeTool: jest.Mock };
 	let contextService: { getInstallation: jest.Mock };
 	let policyService: { authorizeAuthInfo: jest.Mock };
@@ -51,19 +48,17 @@ describe('McpTargetDiscoveryToolService', () => {
 	beforeEach(() => {
 		channelsPropertiesService = {
 			findOne: jest.fn(),
-			findWritableCandidates: jest.fn().mockResolvedValue({ properties: [], total: 0 }),
-		};
-		deviceConnectionStateService = {
-			readLatestMany: jest.fn().mockResolvedValue(new Map()),
 		};
 		platformRegistryService = {
 			get: jest.fn().mockReturnValue({}),
 		};
-		scenesService = {
-			findTriggerableSummaryPage: jest.fn().mockResolvedValue({ scenes: [], total: 0 }),
-		};
-		spacesService = {
-			findLightingTriggerSummaryPage: jest.fn().mockResolvedValue({ spaces: [], total: 0 }),
+		homeTargetQueryService = {
+			getWritableProperties: jest.fn().mockResolvedValue({ properties: [], truncated: false }),
+			getTriggerTargets: jest.fn().mockResolvedValue({
+				scenes: [],
+				spaces: [],
+				truncated: { scenes: false, spaces: false },
+			}),
 		};
 		providerTools = [];
 		toolRegistry = {
@@ -99,10 +94,8 @@ describe('McpTargetDiscoveryToolService', () => {
 		});
 		service = new McpTargetDiscoveryToolService(
 			channelsPropertiesService as unknown as ChannelsPropertiesService,
-			deviceConnectionStateService as unknown as DeviceConnectionStateService,
 			platformRegistryService as unknown as PlatformRegistryService,
-			scenesService as unknown as ScenesService,
-			spacesService as unknown as SpacesService,
+			homeTargetQueryService as unknown as HomeTargetQueryService,
 			toolRegistry as unknown as ToolProviderRegistryService,
 			contextService as unknown as McpContextService,
 			policyService as unknown as McpPolicyService,
@@ -116,101 +109,59 @@ describe('McpTargetDiscoveryToolService', () => {
 		expect(registerTool).not.toHaveBeenCalled();
 	});
 
-	it('lets a write-only client discover only actionable writable properties', async () => {
+	it('delegates writable discovery with the compatibility profile and preserves exact data identity and text', async () => {
 		providerTools = [providerTool('control_device', ToolAccessKind.WRITE)];
-		const connected = property('10000000-0000-4000-8000-000000000001', PermissionType.READ_WRITE);
-		connected.category = PropertyCategory.TEMPERATURE;
-		connected.dataType = DataTypeType.FLOAT;
-		connected.format = [-40, 125];
-		connected.step = 0.1;
-		connected.invalid = -999;
-		(connected.channel as { category: ChannelCategory }).category = ChannelCategory.TEMPERATURE;
-		const disconnected = property('10000000-0000-4000-8000-000000000002', PermissionType.WRITE_ONLY);
-		const readOnly = property('10000000-0000-4000-8000-000000000003', PermissionType.READ_ONLY);
-		const connectedSecond = property('10000000-0000-4000-8000-000000000004', PermissionType.WRITE_ONLY);
-		channelsPropertiesService.findWritableCandidates.mockResolvedValue({
-			properties: [connected, disconnected, readOnly, connectedSecond],
-			total: 4,
-		});
-		deviceConnectionStateService.readLatestMany.mockResolvedValue(
-			new Map([
-				[deviceId(connected), { online: true, status: ConnectionState.CONNECTED, lastChanged: new Date() }],
-				[deviceId(disconnected), { online: false, status: ConnectionState.DISCONNECTED, lastChanged: new Date() }],
-				[deviceId(readOnly), { online: true, status: ConnectionState.CONNECTED, lastChanged: new Date() }],
-				[deviceId(connectedSecond), { online: true, status: ConnectionState.CONNECTED, lastChanged: new Date() }],
-			]),
-		);
+		const discovery: HomeWritablePropertiesResult = {
+			properties: [
+				{
+					property_id: '10000000-0000-4000-8000-000000000001',
+					property_name: 'Temperature',
+					property_category: PropertyCategory.TEMPERATURE,
+					device_id: '30000000-0000-4000-8000-000000000001',
+					device_name: 'Thermostat',
+					channel_id: '20000000-0000-4000-8000-000000000001',
+					channel_name: 'Climate',
+					channel_category: ChannelCategory.TEMPERATURE,
+					data_type: DataTypeType.FLOAT,
+					unit: '°C',
+					format: [-40, 125],
+					step: 0.1,
+					invalid: -999,
+				},
+			],
+			truncated: true,
+		};
+		homeTargetQueryService.getWritableProperties.mockResolvedValue(discovery);
 		service.register(server(), authInfo([McpCapability.WRITE]));
 
 		expect([...callbacks.keys()]).toEqual(['list_writable_properties', 'set_device_property']);
 		const result = await callbacks.get('list_writable_properties')?.({}, requestContext([McpCapability.WRITE]));
-		const data = result?.structuredContent.data as { properties: Array<Record<string, unknown>> };
 
+		expect(homeTargetQueryService.getWritableProperties).toHaveBeenCalledWith({
+			profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY,
+		});
 		expect(policyService.authorizeAuthInfo).toHaveBeenCalledWith(
 			expect.objectContaining({ clientId: 'client-id', token: 'raw-token' }),
 			McpCapability.WRITE,
 		);
-		expect(data.properties).toEqual([
-			{
-				property_id: connected.id,
-				property_name: 'Power 1',
-				property_category: PropertyCategory.TEMPERATURE,
-				device_id: deviceId(connected),
-				device_name: 'Device 1',
-				channel_id: '20000000-0000-4000-8000-000000000001',
-				channel_name: 'Switch 1',
-				channel_category: ChannelCategory.TEMPERATURE,
-				data_type: DataTypeType.FLOAT,
-				unit: '°C',
-				format: [-40, 125],
-				step: 0.1,
-				invalid: -999,
-			},
-			{
-				property_id: connectedSecond.id,
-				property_name: 'Power 4',
-				property_category: PropertyCategory.ON,
-				device_id: deviceId(connectedSecond),
-				device_name: 'Device 4',
-				channel_id: '20000000-0000-4000-8000-000000000004',
-				channel_name: 'Switch 4',
-				channel_category: ChannelCategory.SWITCHER,
-				data_type: DataTypeType.BOOL,
-				unit: null,
-				format: null,
-				step: null,
-				invalid: null,
-			},
-		]);
-		expect(scenesService.findTriggerableSummaryPage).not.toHaveBeenCalled();
+		expect(result?.structuredContent.data).toBe(discovery);
+		expect(result?.structuredContent.data).toEqual(discovery);
+		expect(result?.content).toEqual([{ type: 'text', text: 'Found 1 writable device property.' }]);
+		expect(result?.structuredContent).toEqual(
+			expect.objectContaining({
+				tool: 'list_writable_properties',
+				request_id: '17',
+				data: discovery,
+			}),
+		);
 	});
 
-	it('maps exact mixed trigger targets with independent scene and space truncation', async () => {
+	it('delegates mixed trigger discovery with exact provider flags, data identity, and text', async () => {
 		providerTools = [
 			providerTool('run_scene', ToolAccessKind.TRIGGER),
 			providerTool('set_space_lighting', ToolAccessKind.TRIGGER),
 		];
-		scenesService.findTriggerableSummaryPage.mockResolvedValue({
-			scenes: [scene(true), scene(false)],
-			total: 51,
-		});
-		spacesService.findLightingTriggerSummaryPage.mockResolvedValue({
-			spaces: [space()],
-			total: 50,
-		});
-		service.register(server(), authInfo([McpCapability.TRIGGER]));
-
-		expect([...callbacks.keys()]).toEqual(['list_trigger_targets', 'run_scene', 'set_space_lighting']);
-		const result = await callbacks.get('list_trigger_targets')?.({}, requestContext([McpCapability.TRIGGER]));
-		const data = result?.structuredContent.data as {
-			scenes: Array<Record<string, unknown>>;
-			spaces: Array<Record<string, unknown>>;
-			truncated: { scenes: boolean; spaces: boolean };
-		};
-
-		expect(scenesService.findTriggerableSummaryPage).toHaveBeenCalledWith(50);
-		expect(spacesService.findLightingTriggerSummaryPage).toHaveBeenCalledWith(50);
-		expect(data).toEqual({
+		const discovery: HomeTriggerTargetsResult = {
 			scenes: [
 				{
 					scene_id: '40000000-0000-4000-8000-000000000001',
@@ -228,201 +179,168 @@ describe('McpTargetDiscoveryToolService', () => {
 				},
 			],
 			truncated: { scenes: true, spaces: false },
+		};
+		homeTargetQueryService.getTriggerTargets.mockResolvedValue(discovery);
+		service.register(server(), authInfo([McpCapability.TRIGGER]));
+
+		expect([...callbacks.keys()]).toEqual(['list_trigger_targets', 'run_scene', 'set_space_lighting']);
+		const result = await callbacks.get('list_trigger_targets')?.({}, requestContext([McpCapability.TRIGGER]));
+
+		expect(homeTargetQueryService.getTriggerTargets).toHaveBeenCalledWith({
+			profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY,
+			includeScenes: true,
+			includeSpaces: true,
 		});
-		expect(channelsPropertiesService.findWritableCandidates).not.toHaveBeenCalled();
+		expect(result?.structuredContent.data).toBe(discovery);
+		expect(result?.structuredContent.data).toEqual(discovery);
+		expect(result?.content).toEqual([{ type: 'text', text: 'Found 1 scene(s) and 1 lighting-capable space(s).' }]);
 	});
 
-	it('queries and returns 50 triggerable scenes without marking the scene collection as truncated', async () => {
+	it('passes false for an absent optional trigger provider and omits its execution tool', async () => {
 		providerTools = [providerTool('run_scene', ToolAccessKind.TRIGGER)];
-		const targets = triggerableScenes(50);
-		scenesService.findTriggerableSummaryPage.mockResolvedValue({ scenes: targets, total: 50 });
-		service.register(server(), authInfo([McpCapability.TRIGGER]));
-
-		const result = await callbacks.get('list_trigger_targets')?.({}, requestContext([McpCapability.TRIGGER]));
-		const data = result?.structuredContent.data as {
-			scenes: Array<{ scene_id: string }>;
-			truncated: { scenes: boolean; spaces: boolean };
+		const discovery: HomeTriggerTargetsResult = {
+			scenes: [],
+			spaces: [],
+			truncated: { scenes: false, spaces: false },
 		};
-
-		expect(scenesService.findTriggerableSummaryPage).toHaveBeenCalledWith(50);
-		expect(data.scenes).toHaveLength(50);
-		expect(data.scenes[0]?.scene_id).toBe(targets[0]?.id);
-		expect(data.scenes[49]?.scene_id).toBe(targets[49]?.id);
-		expect(data.truncated.scenes).toBe(false);
-	});
-
-	it('returns 50 of 51 triggerable scenes and marks the scene collection as truncated', async () => {
-		providerTools = [providerTool('run_scene', ToolAccessKind.TRIGGER)];
-		const targets = triggerableScenes(50);
-		scenesService.findTriggerableSummaryPage.mockResolvedValue({ scenes: targets, total: 51 });
-		service.register(server(), authInfo([McpCapability.TRIGGER]));
-
-		const result = await callbacks.get('list_trigger_targets')?.({}, requestContext([McpCapability.TRIGGER]));
-		const data = result?.structuredContent.data as {
-			scenes: Array<{ scene_id: string }>;
-			truncated: { scenes: boolean; spaces: boolean };
-		};
-
-		expect(scenesService.findTriggerableSummaryPage).toHaveBeenCalledWith(50);
-		expect(data.scenes).toHaveLength(50);
-		expect(data.scenes[49]?.scene_id).toBe(targets[49]?.id);
-		expect(data.truncated.scenes).toBe(true);
-	});
-
-	it('queries and returns 50 lighting spaces without marking the space collection as truncated', async () => {
-		providerTools = [providerTool('set_space_lighting', ToolAccessKind.TRIGGER)];
-		const targets = lightingSpaces(50);
-		spacesService.findLightingTriggerSummaryPage.mockResolvedValue({ spaces: targets, total: 50 });
-		service.register(server(), authInfo([McpCapability.TRIGGER]));
-
-		const result = await callbacks.get('list_trigger_targets')?.({}, requestContext([McpCapability.TRIGGER]));
-		const data = result?.structuredContent.data as {
-			spaces: Array<{ space_id: string }>;
-			truncated: { scenes: boolean; spaces: boolean };
-		};
-
-		expect(spacesService.findLightingTriggerSummaryPage).toHaveBeenCalledWith(50);
-		expect(data.spaces).toHaveLength(50);
-		expect(data.spaces[0]?.space_id).toBe(targets[0]?.id);
-		expect(data.spaces[49]?.space_id).toBe(targets[49]?.id);
-		expect(data.truncated.spaces).toBe(false);
-	});
-
-	it('returns 50 of 51 lighting spaces and marks the space collection as truncated', async () => {
-		providerTools = [providerTool('set_space_lighting', ToolAccessKind.TRIGGER)];
-		const targets = lightingSpaces(50);
-		spacesService.findLightingTriggerSummaryPage.mockResolvedValue({ spaces: targets, total: 51 });
-		service.register(server(), authInfo([McpCapability.TRIGGER]));
-
-		const result = await callbacks.get('list_trigger_targets')?.({}, requestContext([McpCapability.TRIGGER]));
-		const data = result?.structuredContent.data as {
-			spaces: Array<{ space_id: string }>;
-			truncated: { scenes: boolean; spaces: boolean };
-		};
-
-		expect(spacesService.findLightingTriggerSummaryPage).toHaveBeenCalledWith(50);
-		expect(data.spaces).toHaveLength(50);
-		expect(data.spaces[49]?.space_id).toBe(targets[49]?.id);
-		expect(data.truncated.spaces).toBe(true);
-	});
-
-	it('does not advertise or control writable properties without a registered device platform', async () => {
-		providerTools = [providerTool('control_device', ToolAccessKind.WRITE)];
-		const target = property('10000000-0000-4000-8000-000000000001', PermissionType.READ_WRITE);
-		channelsPropertiesService.findWritableCandidates.mockResolvedValue({ properties: [target], total: 1 });
-		channelsPropertiesService.findOne.mockResolvedValue(target);
-		platformRegistryService.get.mockReturnValue(null);
-		service.register(server(), authInfo([McpCapability.WRITE]));
-
-		const discoveryResult = await callbacks.get('list_writable_properties')?.(
-			{},
-			requestContext([McpCapability.WRITE]),
-		);
-		const discoveryData = discoveryResult?.structuredContent.data as { properties: unknown[] };
-		const writeResult = await callbacks.get('set_device_property')?.(
-			{ property_id: target.id, value: true },
-			requestContext([McpCapability.WRITE]),
-		);
-
-		expect(discoveryData.properties).toEqual([]);
-		expect(deviceConnectionStateService.readLatestMany).toHaveBeenCalledWith([]);
-		expect(writeResult?.isError).toBe(true);
-		expect(writeResult?.structuredContent.error).toEqual(expect.objectContaining({ code: 'not_found' }));
-		expect(toolRegistry.executeTool).not.toHaveBeenCalled();
-	});
-
-	it('pages past filtered writable candidates to find later actionable properties', async () => {
-		providerTools = [providerTool('control_device', ToolAccessKind.WRITE)];
-		const offline = Array.from({ length: MCP_MAX_WRITABLE_PROPERTY_CANDIDATES }, (_, index) => {
-			const target = property(
-				`10000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
-				PermissionType.READ_WRITE,
-			);
-			(target.channel as { device: { id: string } }).device.id =
-				`30000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`;
-
-			return target;
-		});
-		const connected = property('10000000-0000-4000-8000-999999999999', PermissionType.READ_WRITE);
-		channelsPropertiesService.findWritableCandidates
-			.mockResolvedValueOnce({ properties: offline, total: offline.length + 1 })
-			.mockResolvedValueOnce({ properties: [connected], total: offline.length + 1 });
-		deviceConnectionStateService.readLatestMany
-			.mockResolvedValueOnce(
-				new Map(
-					offline.map((target) => [
-						deviceId(target),
-						{ online: false, status: ConnectionState.DISCONNECTED, lastChanged: new Date() },
-					]),
-				),
-			)
-			.mockResolvedValueOnce(
-				new Map([[deviceId(connected), { online: true, status: ConnectionState.CONNECTED, lastChanged: new Date() }]]),
-			);
-		service.register(server(), authInfo([McpCapability.WRITE]));
-
-		const result = await callbacks.get('list_writable_properties')?.({}, requestContext([McpCapability.WRITE]));
-		const data = result?.structuredContent.data as { properties: Array<{ property_id: string }>; truncated: boolean };
-
-		expect(channelsPropertiesService.findWritableCandidates).toHaveBeenNthCalledWith(
-			1,
-			MCP_MAX_WRITABLE_PROPERTY_CANDIDATES,
-			0,
-		);
-		expect(channelsPropertiesService.findWritableCandidates).toHaveBeenNthCalledWith(
-			2,
-			MCP_MAX_WRITABLE_PROPERTY_CANDIDATES,
-			MCP_MAX_WRITABLE_PROPERTY_CANDIDATES,
-		);
-		expect(data.properties).toEqual([expect.objectContaining({ property_id: connected.id })]);
-		expect(data.truncated).toBe(false);
-	});
-
-	it('returns all 100 actionable writable properties without marking the discovery result as truncated', async () => {
-		const targets = writableProperties(100);
-		channelsPropertiesService.findWritableCandidates.mockResolvedValue({
-			properties: targets,
-			total: 100,
-		});
-		service.register(server(), authInfo([McpCapability.WRITE]));
-
-		const result = await callbacks.get('list_writable_properties')?.({}, requestContext([McpCapability.WRITE]));
-		const data = result?.structuredContent.data as { properties: Array<{ property_id: string }>; truncated: boolean };
-
-		expect(data.properties).toHaveLength(100);
-		expect(data.properties[0]?.property_id).toBe(targets[0]?.id);
-		expect(data.properties[99]?.property_id).toBe(targets[99]?.id);
-		expect(data.truncated).toBe(false);
-	});
-
-	it('returns only 100 of 101 actionable writable properties and marks the discovery result as truncated', async () => {
-		const targets = writableProperties(101);
-		channelsPropertiesService.findWritableCandidates.mockResolvedValue({
-			properties: targets,
-			total: 101,
-		});
-		service.register(server(), authInfo([McpCapability.WRITE]));
-
-		const result = await callbacks.get('list_writable_properties')?.({}, requestContext([McpCapability.WRITE]));
-		const data = result?.structuredContent.data as { properties: Array<{ property_id: string }>; truncated: boolean };
-
-		expect(data.properties).toHaveLength(100);
-		expect(data.properties[0]?.property_id).toBe(targets[0]?.id);
-		expect(data.properties[99]?.property_id).toBe(targets[99]?.id);
-		expect(data.properties).not.toContainEqual(expect.objectContaining({ property_id: targets[100]?.id }));
-		expect(data.truncated).toBe(true);
-	});
-
-	it('omits space targets and the lighting tool when the optional provider is absent', async () => {
-		providerTools = [providerTool('run_scene', ToolAccessKind.TRIGGER)];
+		homeTargetQueryService.getTriggerTargets.mockResolvedValue(discovery);
 		service.register(server(), authInfo([McpCapability.TRIGGER]));
 
 		expect([...callbacks.keys()]).toEqual(['list_trigger_targets', 'run_scene']);
 		const result = await callbacks.get('list_trigger_targets')?.({}, requestContext([McpCapability.TRIGGER]));
-		const data = result?.structuredContent.data as { spaces: unknown[] };
 
-		expect(data.spaces).toEqual([]);
-		expect(spacesService.findLightingTriggerSummaryPage).not.toHaveBeenCalled();
+		expect(homeTargetQueryService.getTriggerTargets).toHaveBeenCalledWith({
+			profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY,
+			includeScenes: true,
+			includeSpaces: false,
+		});
+		expect(result?.structuredContent.data).toBe(discovery);
+	});
+
+	it('preserves the exact legacy discovery contracts through the real shared mapper and MCP envelope', async () => {
+		const target = property('10000000-0000-4000-8000-000000000001', PermissionType.READ_WRITE);
+		const targetDevice = (target.channel as { device: { id: string } }).device;
+		const realTargetQuery = new HomeTargetQueryService(
+			{ findWritableCandidates: jest.fn().mockResolvedValue({ properties: [target], total: 1 }) } as never,
+			{
+				readLatestMany: jest
+					.fn()
+					.mockResolvedValue(new Map([[targetDevice.id, { online: true, status: 'connected', lastChanged: null }]])),
+			} as never,
+			platformRegistryService as unknown as PlatformRegistryService,
+			{
+				findTriggerableSummaryPage: jest.fn().mockResolvedValue({
+					scenes: [
+						{
+							id: '40000000-0000-4000-8000-000000000001',
+							name: 'Movie night',
+							category: SceneCategory.GENERIC,
+							enabled: true,
+							triggerable: true,
+							primarySpaceId: null,
+						},
+					],
+					total: 1,
+				}),
+			} as never,
+			{
+				findLightingTriggerSummaryPage: jest.fn().mockResolvedValue({
+					spaces: [
+						{
+							id: '50000000-0000-4000-8000-000000000001',
+							name: 'Living room',
+							type: SpaceType.ROOM,
+						},
+					],
+					total: 1,
+				}),
+			} as never,
+		);
+		service = new McpTargetDiscoveryToolService(
+			channelsPropertiesService as unknown as ChannelsPropertiesService,
+			platformRegistryService as unknown as PlatformRegistryService,
+			realTargetQuery,
+			toolRegistry as unknown as ToolProviderRegistryService,
+			contextService as unknown as McpContextService,
+			policyService as unknown as McpPolicyService,
+			auditService as unknown as McpAuditService,
+		);
+		providerTools = [
+			providerTool('control_device', ToolAccessKind.WRITE),
+			providerTool('run_scene', ToolAccessKind.TRIGGER),
+			providerTool('set_space_lighting', ToolAccessKind.TRIGGER),
+		];
+		service.register(server(), authInfo([McpCapability.WRITE, McpCapability.TRIGGER]));
+
+		const writable = await callbacks.get('list_writable_properties')?.(
+			{},
+			requestContext([McpCapability.WRITE, McpCapability.TRIGGER]),
+		);
+		const triggers = await callbacks.get('list_trigger_targets')?.(
+			{},
+			requestContext([McpCapability.WRITE, McpCapability.TRIGGER]),
+		);
+
+		expect(writable?.structuredContent.data).toEqual({
+			properties: [
+				{
+					property_id: target.id,
+					property_name: 'Power 1',
+					property_category: PropertyCategory.ON,
+					device_id: '30000000-0000-4000-8000-000000000001',
+					device_name: 'Device 1',
+					channel_id: '20000000-0000-4000-8000-000000000001',
+					channel_name: 'Switch 1',
+					channel_category: ChannelCategory.SWITCHER,
+					data_type: DataTypeType.BOOL,
+					unit: null,
+					format: null,
+					step: null,
+					invalid: null,
+				},
+			],
+			truncated: false,
+		});
+		expect(triggers?.structuredContent.data).toEqual({
+			scenes: [
+				{
+					scene_id: '40000000-0000-4000-8000-000000000001',
+					name: 'Movie night',
+					category: SceneCategory.GENERIC,
+					primary_space_id: null,
+				},
+			],
+			spaces: [
+				{
+					space_id: '50000000-0000-4000-8000-000000000001',
+					name: 'Living room',
+					type: SpaceType.ROOM,
+					modes: ['off', 'on', 'work', 'relax', 'night'],
+				},
+			],
+			truncated: { scenes: false, spaces: false },
+		});
+	});
+
+	it('keeps writable execution preflight local when the device platform is unavailable', async () => {
+		providerTools = [providerTool('control_device', ToolAccessKind.WRITE)];
+		const target = property('10000000-0000-4000-8000-000000000001', PermissionType.READ_WRITE);
+		channelsPropertiesService.findOne.mockResolvedValue(target);
+		platformRegistryService.get.mockReturnValue(null);
+		service.register(server(), authInfo([McpCapability.WRITE]));
+
+		const result = await callbacks.get('set_device_property')?.(
+			{ property_id: target.id, value: true },
+			requestContext([McpCapability.WRITE]),
+		);
+
+		expect(channelsPropertiesService.findOne).toHaveBeenCalledWith(target.id);
+		expect(platformRegistryService.get).toHaveBeenCalledWith(
+			expect.objectContaining({ id: '30000000-0000-4000-8000-000000000001' }),
+		);
+		expect(result?.isError).toBe(true);
+		expect(result?.structuredContent.error).toEqual(expect.objectContaining({ code: 'not_found' }));
+		expect(toolRegistry.executeTool).not.toHaveBeenCalled();
 	});
 
 	it('adapts the public set_device_property name to the shared write provider', async () => {
@@ -697,53 +615,5 @@ describe('McpTargetDiscoveryToolService', () => {
 				},
 			},
 		} as unknown as ChannelPropertyEntity;
-	}
-
-	function writableProperties(count: number): ChannelPropertyEntity[] {
-		return Array.from({ length: count }, (_, index) =>
-			property(`10000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`, PermissionType.READ_WRITE),
-		);
-	}
-
-	function deviceId(target: ChannelPropertyEntity): string {
-		return (target.channel as { device: { id: string } }).device.id;
-	}
-
-	function scene(enabled: boolean): SceneEntity {
-		return {
-			id: enabled ? '40000000-0000-4000-8000-000000000001' : '40000000-0000-4000-8000-000000000002',
-			name: enabled ? 'Movie night' : 'Disabled scene',
-			category: SceneCategory.GENERIC,
-			enabled,
-			triggerable: true,
-			primarySpaceId: null,
-		} as SceneEntity;
-	}
-
-	function triggerableScenes(count: number): SceneEntity[] {
-		return Array.from({ length: count }, (_, index) => ({
-			id: `40000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
-			name: `Scene ${index + 1}`,
-			category: SceneCategory.GENERIC,
-			enabled: true,
-			triggerable: true,
-			primarySpaceId: null,
-		})) as SceneEntity[];
-	}
-
-	function space(): SpaceEntity {
-		return {
-			id: '50000000-0000-4000-8000-000000000001',
-			name: 'Living room',
-			type: SpaceType.ROOM,
-		} as SpaceEntity;
-	}
-
-	function lightingSpaces(count: number): SpaceEntity[] {
-		return Array.from({ length: count }, (_, index) => ({
-			id: `50000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
-			name: `Room ${index + 1}`,
-			type: SpaceType.ROOM,
-		})) as SpaceEntity[];
 	}
 });

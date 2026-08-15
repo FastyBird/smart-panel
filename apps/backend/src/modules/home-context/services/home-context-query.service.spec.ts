@@ -104,6 +104,10 @@ describe('HomeContextQueryService', () => {
 			timeseriesRangeDays: 14,
 			timeseriesPoints: 500,
 			energyRangeDays: 31,
+			writableProperties: 100,
+			writablePropertyCandidates: 500,
+			triggerScenes: 50,
+			triggerSpaces: 50,
 		});
 	});
 

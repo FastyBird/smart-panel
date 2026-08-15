@@ -14,8 +14,8 @@ import { TransformResponseInterceptor } from '../src/modules/api/interceptors/tr
 import { TokensService } from '../src/modules/auth/services/tokens.service';
 import { ConfigService } from '../src/modules/config/services/config.service';
 import { ChannelsPropertiesService } from '../src/modules/devices/services/channels.properties.service';
-import { DeviceConnectionStateService } from '../src/modules/devices/services/device-connection-state.service';
 import { PlatformRegistryService } from '../src/modules/devices/services/platform.registry.service';
+import { HomeTargetQueryService } from '../src/modules/home-context/services/home-target-query.service';
 import { McpController } from '../src/modules/mcp/controllers/mcp.controller';
 import { McpClientEntity } from '../src/modules/mcp/entities/mcp-client.entity';
 import { McpClientGuard } from '../src/modules/mcp/guards/mcp-client.guard';
@@ -34,8 +34,6 @@ import { McpServerService } from '../src/modules/mcp/services/mcp-server.service
 import { McpSubscriptionRegistryService } from '../src/modules/mcp/services/mcp-subscription-registry.service';
 import { McpReadToolService } from '../src/modules/mcp/tools/mcp-read-tool.service';
 import { McpTargetDiscoveryToolService } from '../src/modules/mcp/tools/mcp-target-discovery-tool.service';
-import { ScenesService } from '../src/modules/scenes/services/scenes.service';
-import { SpacesService } from '../src/modules/spaces/services/spaces.service';
 import {
 	ToolAccessKind,
 	ToolAudience,
@@ -212,10 +210,15 @@ describe('MCP endpoint', () => {
 
 		const targetTools = new McpTargetDiscoveryToolService(
 			{} as ChannelsPropertiesService,
-			{} as DeviceConnectionStateService,
 			{} as PlatformRegistryService,
-			{} as ScenesService,
-			{} as SpacesService,
+			{
+				getWritableProperties: jest.fn().mockResolvedValue({ properties: [], truncated: false }),
+				getTriggerTargets: jest.fn().mockResolvedValue({
+					scenes: [],
+					spaces: [],
+					truncated: { scenes: false, spaces: false },
+				}),
+			} as unknown as HomeTargetQueryService,
 			toolRegistry,
 			contextService as unknown as McpContextService,
 			policyService as unknown as McpPolicyService,

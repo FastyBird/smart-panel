@@ -1219,7 +1219,8 @@ captured as an opt-in/expected baseline measurement rather than a failing normal
 - [x] Convert MCP/Nest transport exceptions at the adapter boundary; shared query services return typed domain results
       and errors rather than MCP/HTTP-specific failures.
 - [x] Keep MCP installation identity, auth, policy, auditing, request envelope, and transport deadlines in MCP.
-- [ ] Extract pure writable/trigger discovery logic from the MCP tool adapter.
+- [x] Extract the existing MCP-compatible writable/trigger discovery logic from the MCP tool adapter; query, space,
+      category, and capability filters remain part of the bounded search task below.
 - [ ] Add database-bounded lexical/entity search and safe filtered/aggregate state queries.
 - [ ] Add a bounded `PropertyValueService` batch/aggregate contract for current-value predicates and aggregates. Resolve
       eligible metadata in the database, reconcile cache/storage values in chunks, short-circuit only sound outcomes,

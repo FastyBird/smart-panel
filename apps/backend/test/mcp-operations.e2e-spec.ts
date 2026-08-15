@@ -10,10 +10,10 @@ import { TransformResponseInterceptor } from '../src/modules/api/interceptors/tr
 import { PermissionType } from '../src/modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity } from '../src/modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../src/modules/devices/services/channels.properties.service';
-import { DeviceConnectionStateService } from '../src/modules/devices/services/device-connection-state.service';
 import { DeviceControlToolService } from '../src/modules/devices/services/device-control-tool.service';
 import { PlatformRegistryService } from '../src/modules/devices/services/platform.registry.service';
 import { PropertyCommandService } from '../src/modules/devices/services/property-command.service';
+import { HomeTargetQueryService } from '../src/modules/home-context/services/home-target-query.service';
 import { McpController } from '../src/modules/mcp/controllers/mcp.controller';
 import { McpClientEntity } from '../src/modules/mcp/entities/mcp-client.entity';
 import { McpClientGuard } from '../src/modules/mcp/guards/mcp-client.guard';
@@ -242,12 +242,18 @@ describe('MCP simulator operations', () => {
 			}),
 		};
 		const auditService = new McpAuditService();
+		const homeTargetQueryService = {
+			getWritableProperties: jest.fn().mockResolvedValue({ properties: [], truncated: false }),
+			getTriggerTargets: jest.fn().mockResolvedValue({
+				scenes: [],
+				spaces: [],
+				truncated: { scenes: false, spaces: false },
+			}),
+		};
 		const targetTools = new McpTargetDiscoveryToolService(
 			channelsPropertiesService as unknown as ChannelsPropertiesService,
-			{ readLatestMany: jest.fn().mockResolvedValue(new Map()) } as unknown as DeviceConnectionStateService,
 			{ get: jest.fn().mockReturnValue(simulatorPlatform) } as unknown as PlatformRegistryService,
-			scenesService as unknown as ScenesService,
-			spacesService as unknown as SpacesService,
+			homeTargetQueryService as unknown as HomeTargetQueryService,
 			toolRegistry,
 			contextService as unknown as McpContextService,
 			policyService as unknown as McpPolicyService,
