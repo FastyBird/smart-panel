@@ -201,6 +201,9 @@ describe('BuddyToolSelectionService', () => {
 			QUERY_HOME_STATE_TOOL_NAME,
 			names.control,
 		]);
+		expect(selectNames('Once Aurora is triggered, run Bedtime.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 	});
 
 	it.each([
@@ -258,6 +261,7 @@ describe('BuddyToolSelectionService', () => {
 
 	it('preserves tools for an ambiguous bare clarification reply', () => {
 		expect(selectNames('Morning')).toEqual(definitions.map((definition) => definition.name));
+		expect(selectNames('Good Morning')).toEqual(definitions.map((definition) => definition.name));
 	});
 
 	it('falls back when an unrecognized action follows a read clause', () => {

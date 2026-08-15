@@ -91,8 +91,10 @@ const ACTION_CLAUSE_PATTERN = new RegExp(
 	'u',
 );
 const READ_CLAUSE_PATTERN = /\b(?:a|and|potom|then)\s+(?:check|find|show|tell|what|whether|which)\b/u;
-const CONDITION_PATTERN = /\b(?:as long as|if|kdyz|only if|pokud|provided(?: that)?|unless|when)\b/u;
-const LEADING_CONDITION_PATTERN = /^(?:as long as|if|kdyz|only if|pokud|provided(?: that)?|unless|when)\b/u;
+const CONDITION_PATTERN =
+	/\b(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|unless|when|whenever)\b/u;
+const LEADING_CONDITION_PATTERN =
+	/^(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|unless|when|whenever)\b/u;
 const GROUNDED_STATE_SIGNALS = new Set([
 	'active',
 	'closed',
@@ -452,7 +454,7 @@ function intersects(tokens: Set<string>, signals: Set<string>): boolean {
 
 function isClearlyGeneralConversation(normalizedMessage: string, tokens: Set<string>): boolean {
 	if (!intersects(tokens, GENERAL_CONVERSATION_SIGNALS)) return false;
-	if (tokens.size === 1 && tokens.has('morning')) return false;
+	if (tokens.size <= 2 && tokens.has('morning')) return false;
 	if (/^(?:(?:how|who) is|tell me about)\b/u.test(normalizedMessage)) return false;
 
 	for (const token of tokens) {
