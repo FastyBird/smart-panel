@@ -278,6 +278,10 @@ describe('BuddyToolSelectionService', () => {
 			SEARCH_HOME_TOOL_NAME,
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);
+		expect(selectNames('Can you check whether the window is open?')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+		]);
 	});
 
 	it('treats an action verb used in an interrogative predicate as a state read', () => {

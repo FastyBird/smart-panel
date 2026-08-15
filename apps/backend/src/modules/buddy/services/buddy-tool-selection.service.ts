@@ -346,7 +346,7 @@ export class BuddyToolSelectionService {
 			(message.includes('?') || isSyntacticPredicateQuestion(normalizedMessage, tokens));
 		const hasLiveStatusRequest =
 			hasHomeSignal && actionTokens === null && /\b(?:currently|right now)\b/u.test(normalizedMessage);
-		const hasTellWhetherStateQuestion = isTellWhetherStateQuestion(normalizedMessage);
+		const hasExplicitStateQuestion = isExplicitStateQuestion(normalizedMessage);
 		const isGenericExplanation = isGenericHomeExplanation(normalizedMessage, tokens);
 		const hasUnrecognizedStateIntent =
 			hasStateReadSignal &&
@@ -376,7 +376,7 @@ export class BuddyToolSelectionService {
 					hasPredicateStateFirstAction ||
 					hasInterrogativeHomeQuestion ||
 					hasLiveStatusRequest ||
-					hasTellWhetherStateQuestion ||
+					hasExplicitStateQuestion ||
 					(actionTokens === null &&
 						message.includes('?') &&
 						hasHomeSignal &&
@@ -566,7 +566,7 @@ function getActionIntentTokens(
 	if (!intersects(tokens, ACTION_SIGNALS)) return null;
 
 	const isStateQuestion =
-		isTellWhetherStateQuestion(normalizedMessage) ||
+		isExplicitStateQuestion(normalizedMessage) ||
 		(hasStateSignal &&
 			!hasActionRequestAuxiliary(normalizedMessage, tokens) &&
 			STATE_QUESTION_PATTERN.test(normalizedMessage)) ||
@@ -612,8 +612,8 @@ function getActionIntentTokens(
 	return tokens;
 }
 
-function isTellWhetherStateQuestion(normalizedMessage: string): boolean {
-	return /^(?:(?:can|could|may|might|will|would)\s+you\s+)?(?:please\s+)?tell\b.*\b(?:if|whether)\b/u.test(
+function isExplicitStateQuestion(normalizedMessage: string): boolean {
+	return /^(?:(?:can|could|may|might|will|would)\s+you\s+)?(?:please\s+)?(?:(?:show|tell) me|check|confirm|determine|ensure|find out|see|verify)\b.*\b(?:if|whether)\b/u.test(
 		normalizedMessage,
 	);
 }
