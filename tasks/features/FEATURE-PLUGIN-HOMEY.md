@@ -83,7 +83,7 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - [ ] A designated harmless writable capability can be controlled and its resulting event observed.
 - [ ] Socket.IO connection, subscription, disconnect, restart, and reconnect behavior are recorded.
 - [ ] Device add, rename, zone move, unavailable, and removal behavior is captured only with a separately gated, explicitly allowlisted disposable virtual/test device; suffixed-capability behavior may use read-only fixtures/devices.
-- [ ] mDNS behavior is verified; discovery is either specified from evidence or explicitly deferred.
+- [x] mDNS behavior is verified; automatic discovery is explicitly deferred because no attributable stable Homey service was observed.
 - [ ] The SDK license/distribution decision and SDK-vs-direct-protocol choice are recorded.
 - [ ] Sanitized fixtures contain no API keys, household identifiers, private IP addresses, or personal names.
 - [ ] Fixture-backed tests can run without live SHS access.
@@ -104,7 +104,7 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - [ ] A `HomeyConnector` abstraction prevents SDK/transport objects from leaking into domain services.
 - [ ] The local connector supports connection testing, inventory, zones, device reads, events, and capability writes.
 - [ ] Health exposes connected, degraded polling, reconnecting, authentication failed, and stopped states.
-- [ ] Manual URL setup works without mDNS.
+- [x] Manual URL setup works without mDNS.
 - [ ] Authenticated device discovery lists all logical Homey devices with adoption/support status.
 - [ ] Normalization preserves full device and capability IDs, including capability suffixes.
 - [ ] Mapping definitions cover the agreed MVP light, switch, sensor, climate, cover, lock, battery, and energy capabilities.
@@ -122,7 +122,8 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 
 ### Backend API and OpenAPI
 
-- [ ] Status, test-connection, discovery, device inventory, mapping-preview, and adoption endpoints follow repository controller conventions.
+- [ ] Status, test-connection, device inventory, mapping-preview, and adoption endpoints follow repository controller conventions.
+- [x] Server-discovery endpoints are required only when compatibility evidence establishes a stable Homey-specific advertisement; they are intentionally omitted from the manual-only local MVP.
 - [ ] Every controller action has the required Swagger tags, operation metadata, response envelope, validation, authorization, and error responses.
 - [ ] `pnpm run generate:openapi` succeeds after backend Swagger changes.
 - [ ] No generated OpenAPI, admin API type, panel API client, or generated spec file is edited manually.

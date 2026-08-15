@@ -295,6 +295,11 @@ There are two distinct meanings of discovery:
 
 Manual server URL entry is always supported. mDNS discovery is implemented only after the one-month compatibility spike identifies a stable service type and verifies behavior across SHS restarts. No guessed service record is shipped.
 
+The 2026-08-15 compatibility decision deferred automatic server discovery for the local MVP: the only matched record
+was generic `_http._tcp` on port `80`, without TXT keys or evidence that it belonged to SHS. Consequently, the local
+MVP accepts a manual URL and intentionally omits the optional server-discovery/rescan routes. The compatibility record
+defines the evidence required to revisit this decision.
+
 Device discovery is an authenticated inventory request through the active connector. It does not start radio pairing mode and must remain read-only.
 
 ## Adoption
@@ -387,6 +392,8 @@ The backend remains the OpenAPI source of truth. Proposed plugin routes, under t
 | `POST` | `/plugins/devices-homey/adopt/batch` | Adopt selected devices with per-device results |
 
 Exact path naming should follow the closest current controller convention at implementation time. All actions require the standard tags, operations, response envelopes, validation, and authorization decorators.
+
+The two conditional server-discovery routes are omitted from the local MVP under the recorded manual-only decision.
 
 ## Security
 
