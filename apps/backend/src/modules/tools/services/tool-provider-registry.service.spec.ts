@@ -162,18 +162,25 @@ describe('ToolProviderRegistryService', () => {
 		]);
 	});
 
-	it('returns the original validated structured data object', async () => {
-		const result = completed('validated');
+	it('returns only schema-parsed structured data', async () => {
+		const result = {
+			...completed('validated'),
+			data: { value: ' validated ', secret: 'must not reach the model' },
+		};
+		const parsedDefinition = createToolDefinition({
+			name: 'read-tool',
+			description: 'read-tool description',
+			audiences: [ToolAudience.BUDDY],
+			access: ToolAccessKind.READ,
+			inputSchema,
+			outputSchema: z.object({ value: z.string().transform((value) => value.trim()) }),
+		});
 
-		registry.register(
-			new TestToolProvider('provider-a', [definition('read-tool', [ToolAudience.BUDDY], ToolAccessKind.READ)], () =>
-				Promise.resolve(result),
-			),
-		);
+		registry.register(new TestToolProvider('provider-a', [parsedDefinition], () => Promise.resolve(result)));
 
-		await expect(registry.executeTool({ id: 'request-1', name: 'read-tool', arguments: { value: 'x' } })).resolves.toBe(
-			result,
-		);
+		await expect(
+			registry.executeTool({ id: 'request-1', name: 'read-tool', arguments: { value: 'x' } }),
+		).resolves.toEqual({ ...result, data: { value: 'validated' } });
 	});
 
 	it('omits invalid, oversized, and non-serializable structured data without changing execution status', async () => {
@@ -188,14 +195,26 @@ describe('ToolProviderRegistryService', () => {
 		];
 		const provider = new TestToolProvider(
 			'provider-a',
-			[definition('read-tool', [ToolAudience.BUDDY], ToolAccessKind.READ)],
+			[
+				definition('read-tool', [ToolAudience.BUDDY], ToolAccessKind.READ),
+				createToolDefinition({
+					name: 'passthrough-tool',
+					description: 'passthrough-tool description',
+					audiences: [ToolAudience.BUDDY],
+					access: ToolAccessKind.READ,
+					inputSchema,
+					outputSchema: outputSchema.passthrough(),
+				}),
+			],
 			() => Promise.resolve(results.shift() ?? null),
 		);
 
 		registry.register(provider);
 
 		const bounded = await Promise.all(
-			[1, 2, 3].map((id) => registry.executeTool({ id: String(id), name: 'read-tool', arguments: { value: 'x' } })),
+			['read-tool', 'read-tool', 'passthrough-tool'].map((name, index) =>
+				registry.executeTool({ id: String(index + 1), name, arguments: { value: 'x' } }),
+			),
 		);
 
 		expect(bounded).toEqual([

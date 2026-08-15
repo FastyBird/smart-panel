@@ -143,15 +143,26 @@ export class ToolProviderRegistryService {
 		}
 
 		const parsed = definition.outputSchema.safeParse(result.data);
+
+		if (!parsed.success || typeof parsed.data !== 'object' || parsed.data === null || Array.isArray(parsed.data)) {
+			return {
+				...result,
+				data: undefined,
+				errorCode: result.errorCode ?? 'INVALID_TOOL_RESULT_DATA',
+				truncated: true,
+			};
+		}
+
+		const parsedData = parsed.data as Record<string, unknown>;
 		let serialized: string | undefined;
 
 		try {
-			serialized = JSON.stringify(result.data);
+			serialized = JSON.stringify(parsedData);
 		} catch {
 			serialized = undefined;
 		}
 
-		if (!parsed.success || serialized === undefined) {
+		if (serialized === undefined) {
 			return {
 				...result,
 				data: undefined,
@@ -164,7 +175,7 @@ export class ToolProviderRegistryService {
 			return { ...result, data: undefined, truncated: true };
 		}
 
-		return result;
+		return { ...result, data: parsedData };
 	}
 
 	/**
