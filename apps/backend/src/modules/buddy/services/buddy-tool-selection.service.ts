@@ -582,6 +582,7 @@ function hasUnknownLeadingIntentBeforeRead(normalizedMessage: string): boolean {
 
 function isGenericHomeExplanation(normalizedMessage: string, tokens: Set<string>): boolean {
 	if (!intersects(tokens, HOME_SIGNALS)) return false;
+	if (/^explain how to\b/u.test(normalizedMessage)) return true;
 	if (intersects(tokens, GROUNDED_STATE_SIGNALS)) return false;
 	if (intersects(tokens, EXPLICIT_STATE_REQUEST_SIGNALS)) return false;
 	if (/\b(?:currently|right now)\b/u.test(normalizedMessage)) return false;
@@ -655,7 +656,7 @@ function getActionIntentTokens(
 
 function isExplicitStateQuestion(normalizedMessage: string): boolean {
 	const requestPattern =
-		/^(?:(?:can|could|may|might|will|would)\s+you\s+)?(?:please\s+)?(?:(?:show|tell) me|check|confirm|determine|ensure|find out|see|verify)\b/u;
+		/^(?:(?:can|could|may|might|will|would)\s+you\s+)?(?:please\s+)?(?:(?:let|show|tell) me(?: know)?|check|confirm|determine|ensure|find out|see|verify)\b/u;
 
 	if (!requestPattern.test(normalizedMessage)) return false;
 	if (/\b(?:if|whether)\b/u.test(normalizedMessage)) return true;

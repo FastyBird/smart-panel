@@ -301,6 +301,7 @@ describe('BuddyToolSelectionService', () => {
 		'How does a temperature sensor work?',
 		'Explain how smart-home lighting works.',
 		'Explain how to adjust a thermostat.',
+		'Explain how to turn off the kitchen light.',
 	])('keeps generic smart-home explanations tool-free: %s', (message) => {
 		expect(selectNames(message)).toEqual([]);
 	});
@@ -338,6 +339,10 @@ describe('BuddyToolSelectionService', () => {
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);
 		expect(selectNames('Can you tell me whether the window is open?')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+		]);
+		expect(selectNames('Can you let me know whether the window is open?')).toEqual([
 			SEARCH_HOME_TOOL_NAME,
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);
