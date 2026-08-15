@@ -91,9 +91,15 @@ describe('BuddyToolSelectionService', () => {
 	it.each(['Are any windows open? If so, close them.', 'Are all doors closed, and open them if not.'])(
 		'preserves a command that follows a state-first clause: %s',
 		(message) => {
-			expect(selectNames(message)).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME, names.control]);
+			expect(selectNames(message)).toEqual(definitions.map((definition) => definition.name));
 		},
 	);
+
+	it('does not use condition targets to narrow an ambiguous command target', () => {
+		expect(selectNames('If the window is open, run Bedtime.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
+	});
 
 	it('falls back to every built-in tool for ambiguous home-related wording', () => {
 		expect(selectNames('Help me with my smart home.')).toEqual(definitions.map((definition) => definition.name));

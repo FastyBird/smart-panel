@@ -232,16 +232,16 @@ export class BuddyToolSelectionService {
 		const selected = new Set<string>();
 		const hasSearchSignal = intersects(tokens, SEARCH_SIGNALS);
 		const hasStateSignal = intersects(tokens, STATE_SIGNALS);
-		const hasActionSignal = hasActionIntent(normalizedMessage, tokens, hasStateSignal);
+		const actionTokens = getActionIntentTokens(normalizedMessage, tokens, hasStateSignal);
 		const hasHomeSignal = intersects(tokens, HOME_SIGNALS);
 
 		if (hasSearchSignal || hasStateSignal || (message.includes('?') && hasHomeSignal)) {
 			for (const name of READ_TOOL_NAMES) selected.add(name);
 		}
 
-		if (hasActionSignal) {
+		if (actionTokens) {
 			selected.add(SEARCH_HOME_TOOL_NAME);
-			this.selectActionTools(tokens, selected);
+			this.selectActionTools(actionTokens, selected);
 		}
 
 		if (selected.size === 0 && (hasHomeSignal || !isClearlyGeneralConversation(tokens))) {
@@ -309,20 +309,39 @@ function isClearlyGeneralConversation(tokens: Set<string>): boolean {
 	return true;
 }
 
-function hasActionIntent(normalizedMessage: string, tokens: Set<string>, hasStateSignal: boolean): boolean {
-	if (!intersects(tokens, ACTION_SIGNALS)) return false;
+function getActionIntentTokens(
+	normalizedMessage: string,
+	tokens: Set<string>,
+	hasStateSignal: boolean,
+): Set<string> | null {
+	if (!intersects(tokens, ACTION_SIGNALS)) return null;
 
 	const isStateQuestion =
 		hasStateSignal &&
 		/^(?:are|do|does|how|is|what|which|where|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u.test(normalizedMessage);
 
-	if (!isStateQuestion) return true;
+	if (isStateQuestion) {
+		const questionEnd = normalizedMessage.indexOf('?');
+		const trailingClause =
+			questionEnd >= 0
+				? normalizedMessage.slice(questionEnd + 1)
+				: sliceAfterFirst(normalizedMessage, /\b(?:and|if not|if so|please|then)\b/u);
+		const trailingTokens = tokenize(trailingClause);
 
-	const questionEnd = normalizedMessage.indexOf('?');
+		return intersects(trailingTokens, ACTION_SIGNALS) ? trailingTokens : null;
+	}
 
-	if (questionEnd >= 0 && intersects(tokenize(normalizedMessage.slice(questionEnd + 1)), ACTION_SIGNALS)) return true;
+	if (/^(?:if|when)\b/u.test(normalizedMessage)) {
+		const commandTokens = tokenize(sliceAfterFirst(normalizedMessage, /[,;]|\bthen\b/u));
 
-	const conditionalClause = normalizedMessage.search(/\b(?:and|if not|if so|please|then)\b/u);
+		if (intersects(commandTokens, ACTION_SIGNALS)) return commandTokens;
+	}
 
-	return conditionalClause >= 0 && intersects(tokenize(normalizedMessage.slice(conditionalClause + 1)), ACTION_SIGNALS);
+	return tokens;
+}
+
+function sliceAfterFirst(value: string, delimiter: RegExp): string {
+	const match = delimiter.exec(value);
+
+	return match?.index === undefined ? '' : value.slice(match.index + match[0].length);
 }
