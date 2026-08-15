@@ -373,7 +373,7 @@ function getActionIntentTokens(
 		return intersects(trailingTokens, ACTION_SIGNALS) ? trailingTokens : null;
 	}
 
-	const trailingCondition = normalizedMessage.search(/\b(?:if|when)\b/u);
+	const trailingCondition = normalizedMessage.search(/\b(?:if|kdyz|pokud|when)\b/u);
 
 	if (trailingCondition > 0) {
 		const commandTokens = tokenize(normalizedMessage.slice(0, trailingCondition));
@@ -381,8 +381,8 @@ function getActionIntentTokens(
 		if (intersects(commandTokens, ACTION_SIGNALS)) return commandTokens;
 	}
 
-	if (/^(?:if|when)\b/u.test(normalizedMessage)) {
-		const commandTokens = tokenize(sliceAfterFirst(normalizedMessage, /[,;]|\bthen\b/u));
+	if (/^(?:if|kdyz|pokud|when)\b/u.test(normalizedMessage)) {
+		const commandTokens = tokenize(sliceAfterFirst(normalizedMessage, /[,;]|\b(?:pak|potom|then)\b/u));
 
 		if (intersects(commandTokens, ACTION_SIGNALS)) return commandTokens;
 

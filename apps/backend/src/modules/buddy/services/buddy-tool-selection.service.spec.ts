@@ -116,6 +116,12 @@ describe('BuddyToolSelectionService', () => {
 		);
 		expect(selectNames('Run Bedtime if the window is open.')).toEqual(definitions.map((definition) => definition.name));
 		expect(selectNames('If the window is open run Bedtime')).toEqual(definitions.map((definition) => definition.name));
+		expect(selectNames('Spusť Večer pokud je okno otevřené.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
+		expect(selectNames('Když je okno otevřené, spusť Večer.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 	});
 
 	it.each([
