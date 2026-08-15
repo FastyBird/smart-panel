@@ -21,6 +21,8 @@ import { HomeySystemInfo } from '../models/homey-system-info.model';
 import { HomeyZone } from '../models/homey-zone.model';
 import { HomeyStatusModel } from '../models/status.model';
 
+import { calculateHomeyReconnectDelay } from './homey-reconnect-backoff';
+
 @Injectable()
 export class HomeyService extends BaseManagedPluginService {
 	private readonly logger = createExtensionLogger(DEVICES_HOMEY_PLUGIN_NAME, 'HomeyService');
@@ -41,6 +43,8 @@ export class HomeyService extends BaseManagedPluginService {
 	private generation = 0;
 	private synchronizationTail: Promise<void> = Promise.resolve();
 	private reconciliationTimer: ReturnType<typeof setTimeout> | null = null;
+	private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+	private reconnectAttempt = 0;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -61,6 +65,7 @@ export class HomeyService extends BaseManagedPluginService {
 
 			this.state = 'starting';
 			this.pluginConfig = null;
+			this.resetReconnectState();
 			this.lastError = null;
 			this.healthy = false;
 			this.connectionState = HomeyConnectionState.CONNECTING;
@@ -107,6 +112,7 @@ export class HomeyService extends BaseManagedPluginService {
 			const cleaned = await this.cleanupRuntime();
 
 			this.pluginConfig = null;
+			this.resetReconnectState();
 
 			if (!cleaned) {
 				this.state = 'error';
@@ -227,9 +233,10 @@ export class HomeyService extends BaseManagedPluginService {
 		return this.enqueueSynchronization(async () => {
 			try {
 				await this.reconcileEvents(connector, generation, [event]);
+				this.markRuntimeHealthy(connector, generation);
 			} catch (error) {
 				if (this.isCurrentGeneration(connector, generation)) {
-					this.applyFailureState(error, 'Homey event synchronization failed', HomeyConnectionState.DEGRADED_POLLING);
+					this.handleRuntimeFailure(error, 'Homey event synchronization failed', generation);
 					this.logger.error(this.lastError ?? 'Homey event synchronization failed');
 				}
 			}
@@ -286,7 +293,7 @@ export class HomeyService extends BaseManagedPluginService {
 
 		const interval = this.pluginConfig?.reconciliationInterval;
 
-		if (!interval) {
+		if (!interval || this.reconnectTimer) {
 			return;
 		}
 
@@ -313,20 +320,70 @@ export class HomeyService extends BaseManagedPluginService {
 
 				this.zones = zones;
 				this.replaceDevices(devices);
-				this.connectionState = HomeyConnectionState.CONNECTED;
-				this.healthy = true;
-				this.lastError = null;
+				this.markRuntimeHealthy(connector, generation);
 			} catch (error) {
 				if (this.isCurrentGeneration(connector, generation)) {
-					this.applyFailureState(error, 'Homey inventory reconciliation failed', HomeyConnectionState.DEGRADED_POLLING);
+					this.handleRuntimeFailure(error, 'Homey inventory reconciliation failed', generation);
 					this.logger.error(this.lastError ?? 'Homey inventory reconciliation failed');
 				}
 			}
 		});
 
-		if (this.isCurrentGeneration(connector, generation) && this.state === 'started') {
+		if (this.isCurrentGeneration(connector, generation) && this.state === 'started' && this.reconnectTimer === null) {
 			this.scheduleReconciliation(generation);
 		}
+	}
+
+	private scheduleReconnect(generation: number): void {
+		if (this.reconnectTimer || this.state !== 'started' || this.generation !== generation) {
+			return;
+		}
+
+		this.clearReconciliationTimer();
+		this.connectionState = HomeyConnectionState.RECONNECTING;
+		this.healthy = false;
+		const delay = calculateHomeyReconnectDelay(this.reconnectAttempt);
+		this.reconnectAttempt += 1;
+		this.reconnectTimer = setTimeout(() => {
+			this.reconnectTimer = null;
+			void this.runReconnect(generation);
+		}, delay);
+	}
+
+	private async runReconnect(expectedGeneration: number): Promise<void> {
+		await this.withLock(async () => {
+			if (this.state !== 'started' || this.generation !== expectedGeneration) {
+				return;
+			}
+
+			this.connectionState = HomeyConnectionState.RECONNECTING;
+			this.healthy = false;
+			const generation = ++this.generation;
+
+			if (!(await this.cleanupRuntime())) {
+				this.lastError = 'Homey connector cleanup failed before reconnect';
+				this.scheduleReconnect(generation);
+				return;
+			}
+
+			try {
+				const connector = this.createConnector(this.getPluginConfig());
+				this.connector = connector;
+				await connector.connect();
+				await this.synchronizeStartup(connector, generation);
+				this.markRuntimeHealthy(connector, generation);
+				this.logger.log('Homey connector reconnected and inventory synchronized');
+			} catch (error) {
+				this.applyFailureState(error, 'Homey service failed to reconnect', HomeyConnectionState.RECONNECTING);
+				await this.cleanupRuntime();
+
+				if (this.isRetryableFailure(error)) {
+					this.scheduleReconnect(generation);
+				}
+
+				this.logger.error(this.lastError ?? 'Homey service failed to reconnect');
+			}
+		});
 	}
 
 	private enqueueSynchronization(operation: () => Promise<void>): Promise<void> {
@@ -360,6 +417,7 @@ export class HomeyService extends BaseManagedPluginService {
 
 	private async cleanupRuntime(): Promise<boolean> {
 		this.clearReconciliationTimer();
+		this.clearReconnectTimer();
 		this.startupEvents = null;
 		const unsubscribe = this.unsubscribe;
 		const connector = this.connector;
@@ -404,8 +462,20 @@ export class HomeyService extends BaseManagedPluginService {
 		}
 	}
 
+	private clearReconnectTimer(): void {
+		if (this.reconnectTimer) {
+			clearTimeout(this.reconnectTimer);
+			this.reconnectTimer = null;
+		}
+	}
+
 	private hasRuntimeResources(): boolean {
-		return this.connector !== null || this.unsubscribe !== null || this.reconciliationTimer !== null;
+		return (
+			this.connector !== null ||
+			this.unsubscribe !== null ||
+			this.reconciliationTimer !== null ||
+			this.reconnectTimer !== null
+		);
 	}
 
 	private isCurrentGeneration(connector: HomeyConnector, generation: number): boolean {
@@ -440,6 +510,42 @@ export class HomeyService extends BaseManagedPluginService {
 
 		this.connectionState = HomeyConnectionState.ERROR;
 		this.lastError = fallback;
+	}
+
+	private markRuntimeHealthy(connector: HomeyConnector, generation: number): void {
+		if (!this.isCurrentGeneration(connector, generation)) {
+			return;
+		}
+
+		const recovered = this.connectionState !== HomeyConnectionState.CONNECTED;
+		this.clearReconnectTimer();
+		this.reconnectAttempt = 0;
+		this.connectionState = HomeyConnectionState.CONNECTED;
+		this.healthy = true;
+		this.lastError = null;
+
+		if (recovered && this.state === 'started') {
+			this.scheduleReconciliation(generation);
+		}
+	}
+
+	private isRetryableFailure(error: unknown): boolean {
+		return error instanceof HomeyConnectorError && error.retryable;
+	}
+
+	private handleRuntimeFailure(error: unknown, fallback: string, generation: number): void {
+		this.applyFailureState(error, fallback, HomeyConnectionState.RECONNECTING);
+
+		if (this.isRetryableFailure(error)) {
+			this.scheduleReconnect(generation);
+		} else {
+			this.clearReconciliationTimer();
+		}
+	}
+
+	private resetReconnectState(): void {
+		this.clearReconnectTimer();
+		this.reconnectAttempt = 0;
 	}
 
 	private getCurrentPluginConfigOrDefault(): HomeyConfigModel {

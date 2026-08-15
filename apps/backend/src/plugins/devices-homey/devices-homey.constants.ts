@@ -25,6 +25,12 @@ export const MIN_HOMEY_RECONCILIATION_INTERVAL_MS = 30000;
 
 export const MAX_HOMEY_RECONCILIATION_INTERVAL_MS = 3600000;
 
+export const HOMEY_RECONNECT_INITIAL_DELAY_MS = 1000;
+
+export const HOMEY_RECONNECT_MAX_DELAY_MS = 30000;
+
+export const HOMEY_RECONNECT_JITTER_RATIO = 0.2;
+
 export enum HomeyConnectionState {
 	STOPPED = 'stopped',
 	CONNECTING = 'connecting',
