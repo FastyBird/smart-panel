@@ -106,3 +106,14 @@ export interface HomeSnapshotResult {
 	security: HomeSnapshotSecurity | null;
 	limits: HomeSnapshotLimits;
 }
+
+export interface HomeContextSpaceSummary {
+	id: string;
+	name: string;
+	type: string;
+}
+
+export interface HomeContextSpacePageResult {
+	spaces: HomeContextSpaceSummary[];
+	nextCursor?: string;
+}

@@ -6,3 +6,8 @@ export interface HomeSnapshotQuery {
 	spaceId?: string;
 	profile: HomeContextProfile;
 }
+
+export interface HomeContextSpacePageQuery {
+	cursor?: string;
+	profile: HomeContextProfile;
+}

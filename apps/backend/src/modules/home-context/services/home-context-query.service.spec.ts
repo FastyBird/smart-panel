@@ -10,10 +10,11 @@ import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { SpacesService } from '../../spaces/services/spaces.service';
 import { SpaceType } from '../../spaces/spaces.constants';
 import { WeatherService } from '../../weather/services/weather.service';
+import { HomeContextInvalidCursorError } from '../home-context-pagination.errors';
 import { HOME_CONTEXT_LIMIT_PROFILES, HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY } from '../home-context.constants';
 import { HomeContextSpaceNotFoundError } from '../home-context.errors';
-import { homeSnapshotQuerySchema } from '../schemas/home-context-input.schemas';
-import { homeSnapshotResultSchema } from '../schemas/home-context-output.schemas';
+import { homeContextSpacePageQuerySchema, homeSnapshotQuerySchema } from '../schemas/home-context-input.schemas';
+import { homeContextSpacePageResultSchema, homeSnapshotResultSchema } from '../schemas/home-context-output.schemas';
 
 import { HomeContextQueryService } from './home-context-query.service';
 
@@ -98,6 +99,11 @@ describe('HomeContextQueryService', () => {
 			securityDevices: 100,
 			securityChannelsPerDevice: 10,
 			securityPropertiesPerChannel: 20,
+			channelsPerDevice: 20,
+			propertiesPerChannel: 40,
+			timeseriesRangeDays: 14,
+			timeseriesPoints: 500,
+			energyRangeDays: 31,
 		});
 	});
 
@@ -421,6 +427,94 @@ describe('HomeContextQueryService', () => {
 		).rejects.toBeInstanceOf(HomeContextSpaceNotFoundError);
 		expect(spaces.resolveSnapshotScope).not.toHaveBeenCalled();
 		expect(spaces.findVisibleDeviceSummariesBySpace).not.toHaveBeenCalled();
+	});
+
+	it('returns the exact initial space page in provider order with the literal profile limit', async () => {
+		const spacePage = Array.from({ length: 50 }, (_, index) => ({
+			id: `space-${index}`,
+			name: index === 0 ? 'Zulu' : `Space ${index}`,
+			type: index % 2 === 0 ? SpaceType.ROOM : SpaceType.ZONE,
+		}));
+
+		spaces.findSummaryPage.mockResolvedValue({ spaces: spacePage, total: 51 });
+
+		const result = await service.listSpaces({ profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY });
+
+		expect(spaces.findSummaryPage).toHaveBeenCalledWith(50, 0);
+		expect(result).toEqual({ spaces: spacePage, nextCursor: '50' });
+		expect(result.spaces[0]?.name).toBe('Zulu');
+		expect(result.spaces[1]?.name).toBe('Space 1');
+		expect(homeContextSpacePageResultSchema.safeParse(result).success).toBe(true);
+	});
+
+	it('returns exact continuation and terminal space pages with stable offset cursors', async () => {
+		spaces.findSummaryPage
+			.mockResolvedValueOnce({
+				spaces: [{ id: 'space-51', name: 'Workshop', type: SpaceType.ROOM }],
+				total: 52,
+			})
+			.mockResolvedValueOnce({
+				spaces: [{ id: 'space-52', name: 'Attic', type: SpaceType.ZONE }],
+				total: 52,
+			});
+
+		await expect(
+			service.listSpaces({ profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY, cursor: '50' }),
+		).resolves.toEqual({
+			spaces: [{ id: 'space-51', name: 'Workshop', type: SpaceType.ROOM }],
+			nextCursor: '51',
+		});
+		await expect(
+			service.listSpaces({ profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY, cursor: '51' }),
+		).resolves.toEqual({
+			spaces: [{ id: 'space-52', name: 'Attic', type: SpaceType.ZONE }],
+		});
+		expect(spaces.findSummaryPage).toHaveBeenNthCalledWith(1, 50, 50);
+		expect(spaces.findSummaryPage).toHaveBeenNthCalledWith(2, 50, 51);
+	});
+
+	it('preserves the repeating cursor when a provider returns an empty non-terminal page', async () => {
+		spaces.findSummaryPage.mockResolvedValue({ spaces: [], total: 52 });
+
+		await expect(
+			service.listSpaces({ profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY, cursor: '50' }),
+		).resolves.toEqual({ spaces: [], nextCursor: '50' });
+	});
+
+	it.each(['', '-1', '01', '1.5', 'not-a-cursor', '9007199254740992'])(
+		'rejects invalid space cursor %j with the typed error before querying',
+		async (cursor) => {
+			await expect(
+				service.listSpaces({ profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY, cursor }),
+			).rejects.toBeInstanceOf(HomeContextInvalidCursorError);
+			expect(spaces.findSummaryPage).not.toHaveBeenCalled();
+		},
+	);
+
+	it('validates exact space page input and output schemas', () => {
+		expect(
+			homeContextSpacePageQuerySchema.safeParse({
+				profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY,
+				cursor: '0',
+			}).success,
+		).toBe(true);
+		expect(
+			homeContextSpacePageQuerySchema.safeParse({
+				profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY,
+				cursor: '01',
+			}).success,
+		).toBe(false);
+		expect(
+			homeContextSpacePageResultSchema.safeParse({
+				spaces: [{ id: 'space-1', name: 'Kitchen', type: SpaceType.ROOM }],
+				nextCursor: '1',
+			}).success,
+		).toBe(true);
+		expect(
+			homeContextSpacePageResultSchema.safeParse({
+				spaces: [{ id: 'space-1', name: 'Kitchen' }],
+			}).success,
+		).toBe(false);
 	});
 
 	it('validates the closed trusted input profile and exact output shape', () => {

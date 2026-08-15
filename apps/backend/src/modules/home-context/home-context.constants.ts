@@ -11,6 +11,11 @@ export interface HomeContextLimitProfile {
 	securityDevices: number;
 	securityChannelsPerDevice: number;
 	securityPropertiesPerChannel: number;
+	channelsPerDevice: number;
+	propertiesPerChannel: number;
+	timeseriesRangeDays: number;
+	timeseriesPoints: number;
+	energyRangeDays: number;
 }
 
 export const HOME_CONTEXT_LIMIT_PROFILES: Readonly<Record<HomeContextProfile, Readonly<HomeContextLimitProfile>>> =
@@ -24,5 +29,10 @@ export const HOME_CONTEXT_LIMIT_PROFILES: Readonly<Record<HomeContextProfile, Re
 			securityDevices: 100,
 			securityChannelsPerDevice: 10,
 			securityPropertiesPerChannel: 20,
+			channelsPerDevice: 20,
+			propertiesPerChannel: 40,
+			timeseriesRangeDays: 14,
+			timeseriesPoints: 500,
+			energyRangeDays: 31,
 		}),
 	});
