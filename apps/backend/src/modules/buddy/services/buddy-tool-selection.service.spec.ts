@@ -181,6 +181,10 @@ describe('BuddyToolSelectionService', () => {
 			SEARCH_HOME_TOOL_NAME,
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);
+		expect(selectNames('Please check whether the window is open?')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+		]);
 	});
 
 	it('retains every action schema for multiple commands with an arbitrary target name', () => {

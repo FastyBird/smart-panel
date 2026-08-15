@@ -373,6 +373,7 @@ export class BuddyToolSelectionService {
 			hasStateReadSignal &&
 			actionTokens === null &&
 			!hasSearchSignal &&
+			!hasExplicitStateQuestion &&
 			(!message.includes('?') || UNKNOWN_ACTION_REQUEST_PATTERN.test(normalizedMessage)) &&
 			!/^(?:explain|tell)\b/u.test(normalizedMessage);
 		const hasUnknownModalRequest =
@@ -437,7 +438,6 @@ export class BuddyToolSelectionService {
 		if (hasUnrecognizedReadCompound) {
 			for (const name of BUILT_IN_TOOL_NAMES) selected.add(name);
 		}
-
 		if (
 			selected.size === 0 &&
 			!isGenericExplanation &&
@@ -615,7 +615,7 @@ function getActionIntentTokens(
 		const trailingClause = [
 			sliceAfterFirst(
 				questionBody,
-				/[,;]|\b(?:a|after|and|assuming(?: that)?|before|if not|if so|once|please|plus|potom|then|until|when|while)\b/u,
+				/[,;]|\b(?:a|after|and|assuming(?: that)?|before|if not|if so|once|plus|potom|then|until|when|while)\b/u,
 			),
 			questionEnd >= 0 ? normalizedMessage.slice(questionEnd + 1) : '',
 		].join(' ');
