@@ -144,6 +144,63 @@ describe('HomeSearchQueryService SQLite integration', () => {
 		expect(result.truncated).toBe(true);
 	});
 
+	it('keeps an unnamed property with an exact identifier ahead of the per-kind candidate cap', async () => {
+		await dataSource.query(
+			`INSERT INTO devices_module_devices
+			 (id, name, identifier, type, category, enabled, hidden, "roomId")
+			 VALUES ('property-owner', 'Target owner', 'property-owner', 'test', 'sensor', 1, 0, NULL)`,
+		);
+		await dataSource.query(
+			`INSERT INTO devices_module_channels (id, name, category, "deviceId")
+			 VALUES ('property-channel', 'Target channel', 'generic', 'property-owner')`,
+		);
+		for (let index = 0; index < 30; index += 1) {
+			await dataSource.query(
+				`INSERT INTO devices_module_channels_properties
+				 (id, name, identifier, type, category, "dataType", permissions, "channelId")
+				 VALUES (?, ?, ?, 'test', 'generic', 'string', 'ro', 'property-channel')`,
+				[
+					`property-competitor-${index}`,
+					`Target identifier competitor ${index} target identifier`,
+					`competitor-${index}`,
+				],
+			);
+		}
+		await dataSource.query(
+			`INSERT INTO devices_module_channels_properties
+			 (id, name, identifier, type, category, "dataType", permissions, "channelId")
+			 VALUES ('property-exact', NULL, 'target-identifier', 'test', 'generic', 'string', 'ro',
+			         'property-channel')`,
+		);
+
+		const propertiesService = Object.create(ChannelsPropertiesService.prototype) as ChannelsPropertiesService;
+		Object.defineProperty(propertiesService, 'dataSource', { value: dataSource });
+		const service = new HomeSearchQueryService(
+			{ findOne: jest.fn(), searchSummaryPage: jest.fn() } as unknown as SpacesService,
+			{ searchVisibleSummaryPage: jest.fn() } as unknown as DevicesService,
+			propertiesService,
+			{ searchSummaryPage: jest.fn() } as unknown as ScenesService,
+		);
+
+		const result = await service.searchEntities({
+			profile: HOME_SEARCH_PROFILE_BUDDY_V1,
+			query: 'target-identifier',
+			kinds: ['property'],
+			limit: 20,
+		});
+
+		expect(result.entities).toHaveLength(20);
+		expect(result.entities[0]).toMatchObject({
+			kind: 'property',
+			id: 'property-exact',
+			name: 'target-identifier',
+			score: 900,
+			reasons: ['exact_name'],
+		});
+		expect(result.total).toBe(31);
+		expect(result.truncated).toBe(true);
+	});
+
 	it('executes all four owning-domain queries against the real FTS index and joined metadata', async () => {
 		await dataSource.query(
 			`INSERT INTO spaces_module_spaces (id, name, type, category, "parentId")

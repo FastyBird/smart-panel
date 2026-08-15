@@ -323,6 +323,7 @@ export class ChannelsPropertiesService {
 			ftsTable: 'home_context_entity_search_fts',
 			vocabularyTable: 'home_context_entity_search_vocab',
 			entityIdExpression: 'property.id',
+			fallbackVocabularyColumn: 'identifier',
 			rawQuery: input.rawQuery,
 			normalizedQuery: input.normalizedQuery,
 			normalizedTokens: input.normalizedTokens,
