@@ -48,6 +48,9 @@ describe('BuddyToolSelectionService', () => {
 	it.each([
 		'What is the bedroom temperature?',
 		'Are any windows open?',
+		'Fetch the hallway sensor reading.',
+		'Get the hallway sensor reading.',
+		'Report the hallway sensor reading.',
 		'Find Aurora and show its current status.',
 		'Which lights can I dim?',
 		'Jaká je teplota a vlhkost v ložnici?',
@@ -248,6 +251,9 @@ describe('BuddyToolSelectionService', () => {
 			definitions.map((definition) => definition.name),
 		);
 		expect(selectNames('Close the blinds while you run Evening.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
+		expect(selectNames('Close the blinds before you launch Evening.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
 		expect(selectNames('Run Bedtime assuming the hallway sensor is triggered.')).toEqual(

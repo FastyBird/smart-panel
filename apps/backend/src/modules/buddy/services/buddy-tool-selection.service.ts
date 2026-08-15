@@ -350,7 +350,7 @@ export class BuddyToolSelectionService {
 		const hasActionInTrailingCondition =
 			actionTokens !== null &&
 			trailingConditionIndex > 0 &&
-			intersects(tokenize(normalizedMessage.slice(trailingConditionIndex)), ACTION_SIGNALS);
+			hasPotentialActionIntent(normalizedMessage.slice(trailingConditionIndex));
 		const hasUnknownActionTrailingClause = actionTokens !== null && hasUnknownTrailingClause(normalizedMessage);
 		const hasTrailingReadClause = actionTokens !== null && READ_CLAUSE_PATTERN.test(normalizedMessage);
 		const questionEnd = normalizedMessage.indexOf('?');
@@ -383,7 +383,8 @@ export class BuddyToolSelectionService {
 			hasHomeSignal && actionTokens === null && /\b(?:currently|right now)\b/u.test(normalizedMessage);
 		const hasExplicitStateQuestion = isExplicitStateQuestion(normalizedMessage);
 		const hasLeadingReadRequest =
-			hasHomeSignal && /^(?:check|confirm|determine|ensure|find out|read|see|show|verify)\b/u.test(normalizedMessage);
+			hasHomeSignal &&
+			/^(?:check|confirm|determine|ensure|fetch|find out|get|read|report|see|show|verify)\b/u.test(normalizedMessage);
 		const hasRelativeAdjustment = actionTokens !== null && intersects(tokens, RELATIVE_ADJUSTMENT_SIGNALS);
 		const isGenericExplanation = isGenericHomeExplanation(normalizedMessage, tokens);
 		const hasUnrecognizedStateIntent =
@@ -643,9 +644,9 @@ function getActionIntentTokens(
 	const trailingCondition = normalizedMessage.search(CONDITION_PATTERN);
 
 	if (trailingCondition > 0) {
-		const conditionTokens = tokenize(normalizedMessage.slice(trailingCondition));
+		const conditionClause = normalizedMessage.slice(trailingCondition);
 
-		if (intersects(conditionTokens, ACTION_SIGNALS)) return tokens;
+		if (hasPotentialActionIntent(conditionClause)) return tokens;
 
 		const commandTokens = tokenize(normalizedMessage.slice(0, trailingCondition));
 
@@ -687,6 +688,10 @@ function isExplicitStateQuestion(normalizedMessage: string): boolean {
 
 function isCapabilityDiscoveryRequest(normalizedMessage: string): boolean {
 	return CAPABILITY_DISCOVERY_PATTERN.test(normalizedMessage);
+}
+
+function hasPotentialActionIntent(clause: string): boolean {
+	return intersects(tokenize(clause), ACTION_SIGNALS) || /\byou\b/u.test(clause);
 }
 
 function isSyntacticPredicateQuestion(normalizedMessage: string, tokens: Set<string>): boolean {
