@@ -93,9 +93,9 @@ const ACTION_CLAUSE_PATTERN = new RegExp(
 const READ_CLAUSE_PATTERN =
 	/(?:\ba\b|\band\b|\bpotom\b|\bthen\b|[,;])\s*(?:check|confirm|ensure|find|make sure|read|show|tell|verify|what|whether|which)\b/u;
 const STATE_QUESTION_PATTERN =
-	/^(?:are|can|could|did|do|does|had|has|have|how|is|may|might|what|which|where|will|would|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u;
+	/^(?:are|can|could|did|do|does|had|has|have|how|is|may|might|what|which|where|why|will|would|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u;
 const PREDICATE_QUESTION_PATTERN =
-	/^(?:are|can|could|did|had|has|have|is|may|might|will|would|was|were|what (?:are|did|had|has|have|is|was|were))\b/u;
+	/^(?:are|can|could|did|had|has|have|is|may|might|will|would|was|were|(?:what|why) (?:are|did|had|has|have|is|was|were))\b/u;
 const UNKNOWN_ACTION_REQUEST_PATTERN = /^(?:(?:can|could|may|might|will|would)\s+you\b|please\b)/u;
 const ACTION_REQUEST_AUXILIARIES = new Set(['able', 'possible', 'way']);
 const ACTION_REQUEST_MODALS = new Set(['can', 'could', 'may', 'might', 'will', 'would']);

@@ -340,6 +340,10 @@ describe('BuddyToolSelectionService', () => {
 			SEARCH_HOME_TOOL_NAME,
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);
+		expect(selectNames('Why is the thermostat set to 20?')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+		]);
 	});
 
 	it('preserves actions in polite interrogative commands', () => {
