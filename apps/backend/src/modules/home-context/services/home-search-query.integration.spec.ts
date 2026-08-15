@@ -144,6 +144,38 @@ describe('HomeSearchQueryService SQLite integration', () => {
 		expect(result.truncated).toBe(true);
 	});
 
+	it('preserves compatibility characters so query tokens match the SQLite tokenizer', async () => {
+		await dataSource.query(
+			`INSERT INTO devices_module_devices
+			 (id, name, identifier, type, category, enabled, hidden, "roomId")
+			 VALUES ('ligature-floor', 'ﬂoor', 'ligature-floor', 'test', 'sensor', 1, 0, NULL)`,
+		);
+
+		const devicesService = Object.create(DevicesService.prototype) as DevicesService;
+		Object.defineProperty(devicesService, 'dataSource', { value: dataSource });
+		const service = new HomeSearchQueryService(
+			{ findOne: jest.fn(), searchSummaryPage: jest.fn() } as unknown as SpacesService,
+			devicesService,
+			{ searchVisibleSummaryPage: jest.fn() } as unknown as ChannelsPropertiesService,
+			{ searchSummaryPage: jest.fn() } as unknown as ScenesService,
+		);
+
+		const result = await service.searchEntities({
+			profile: HOME_SEARCH_PROFILE_BUDDY_V1,
+			query: 'ﬂoor',
+			kinds: ['device'],
+		});
+
+		expect(result.entities).toEqual([
+			expect.objectContaining({
+				id: 'ligature-floor',
+				name: 'ﬂoor',
+				score: 900,
+				reasons: ['exact_name'],
+			}),
+		]);
+	});
+
 	it('keeps an unnamed property with an exact identifier ahead of the per-kind candidate cap', async () => {
 		await dataSource.query(
 			`INSERT INTO devices_module_devices

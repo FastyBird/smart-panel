@@ -362,7 +362,7 @@ export class HomeSearchQueryService {
 
 	private normalize(value: string): string {
 		return value
-			.normalize('NFKD')
+			.normalize('NFD')
 			.replace(/\p{M}/gu, '')
 			.toLocaleLowerCase('en-US')
 			.replace(/[^\p{L}\p{N}]+/gu, ' ')
