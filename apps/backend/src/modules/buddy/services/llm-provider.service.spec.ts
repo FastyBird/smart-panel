@@ -46,7 +46,7 @@ describe('LlmProviderService', () => {
 		};
 	}
 
-	function makeMockProvider(type: string, sendMessageMock: jest.Mock): ILlmProvider {
+	function makeMockProvider(type: string, sendMessageMock: jest.Mock, nativeToolResults?: boolean): ILlmProvider {
 		return {
 			getType: () => type,
 			getName: () => type,
@@ -54,6 +54,7 @@ describe('LlmProviderService', () => {
 			getDefaultModel: () => 'mock-model',
 			isConfigured: () => true,
 			sendMessage: sendMessageMock,
+			...(nativeToolResults === undefined ? {} : { supportsNativeToolResults: (): boolean => nativeToolResults }),
 		};
 	}
 
@@ -173,6 +174,25 @@ describe('LlmProviderService', () => {
 				'mock-model',
 				expect.objectContaining({ timeout: 60_000 }),
 			);
+		});
+	});
+
+	describe('native tool-result capability', () => {
+		it('defaults to false when the configured provider does not declare support', () => {
+			expect(service.supportsNativeToolResults()).toBe(false);
+		});
+
+		it('returns the configured provider capability', () => {
+			registry.register(makeMockProvider('buddy-native-plugin', jest.fn(), true));
+			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: 'buddy-native-plugin' }));
+
+			expect(service.supportsNativeToolResults()).toBe(true);
+		});
+
+		it('returns false when there is no configured provider', () => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: LLM_PROVIDER_NONE }));
+
+			expect(service.supportsNativeToolResults()).toBe(false);
 		});
 	});
 });

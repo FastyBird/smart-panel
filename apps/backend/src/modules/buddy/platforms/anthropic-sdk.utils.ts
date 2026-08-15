@@ -1,7 +1,15 @@
 import type { LlmToolCall, ToolDefinition } from '../../tools/platforms/tool-provider.platform';
 import { MessageRole } from '../buddy.constants';
 
-import type { ChatMessage } from './llm-provider.platform';
+import {
+	isChatMessage,
+	isLlmAssistantToolCallsItem,
+	isLlmToolResultError,
+	requireProviderCallId,
+	serializeLlmConversationToolResult,
+	validateLlmConversationItems,
+} from './llm-conversation.utils';
+import type { LlmConversationItem } from './llm-provider.platform';
 
 // Module path as variable to prevent TypeScript from statically resolving optional peer dependency
 const ANTHROPIC_SDK_MODULE = '@anthropic-ai/sdk';
@@ -34,7 +42,7 @@ export interface AnthropicSdkResult {
 export function buildAnthropicRequestPayload(
 	model: string,
 	systemPrompt: string,
-	messages: ChatMessage[],
+	messages: LlmConversationItem[],
 	maxTokens: number = 1024,
 	tools?: ToolDefinition[],
 ): Record<string, unknown> {
@@ -42,10 +50,7 @@ export function buildAnthropicRequestPayload(
 		model,
 		max_tokens: maxTokens,
 		system: systemPrompt,
-		messages: messages.map((message) => ({
-			role: message.role === MessageRole.USER ? ('user' as const) : ('assistant' as const),
-			content: message.content,
-		})),
+		messages: buildAnthropicConversationMessages(messages),
 	};
 
 	if (tools && tools.length > 0) {
@@ -67,7 +72,7 @@ export async function sendAnthropicMessage(
 	credentials: AnthropicCredentials,
 	model: string,
 	systemPrompt: string,
-	messages: ChatMessage[],
+	messages: LlmConversationItem[],
 	timeout: number,
 	maxTokens: number = 1024,
 	tools?: ToolDefinition[],
@@ -133,4 +138,48 @@ export async function sendAnthropicMessage(
 		cacheReadTokens: usage?.cache_read_input_tokens ?? null,
 		cacheWriteTokens: usage?.cache_creation_input_tokens ?? null,
 	};
+}
+
+function buildAnthropicConversationMessages(messages: LlmConversationItem[]): Array<Record<string, unknown>> {
+	validateLlmConversationItems(messages);
+
+	return messages.flatMap((item): Array<Record<string, unknown>> => {
+		if (isChatMessage(item)) {
+			return [
+				{
+					role: item.role === MessageRole.USER ? ('user' as const) : ('assistant' as const),
+					content: item.content,
+				},
+			];
+		}
+
+		if (isLlmAssistantToolCallsItem(item)) {
+			return [
+				{
+					role: 'assistant',
+					content: [
+						...(item.content.length > 0 ? [{ type: 'text', text: item.content }] : []),
+						...item.calls.map((call) => ({
+							type: 'tool_use',
+							id: requireProviderCallId('Anthropic', call.providerCallId),
+							name: call.name,
+							input: call.arguments,
+						})),
+					],
+				},
+			];
+		}
+
+		return [
+			{
+				role: 'user',
+				content: item.results.map((result) => ({
+					type: 'tool_result',
+					tool_use_id: requireProviderCallId('Anthropic', result.providerCallId),
+					content: serializeLlmConversationToolResult(result),
+					...(isLlmToolResultError(result) ? { is_error: true } : {}),
+				})),
+			},
+		];
+	});
 }

@@ -8,6 +8,54 @@ export interface ChatMessage {
 	content: string;
 }
 
+export type LlmToolResultStatus =
+	| 'completed'
+	| 'partial'
+	| 'failed'
+	| 'timed_out'
+	| 'denied'
+	| 'indeterminate'
+	| 'malformed';
+
+export interface LlmConversationToolCall {
+	/** Stable provider-neutral ID for this active transcript. */
+	callId: string;
+	/** Provider-issued correlation ID, or null when the native protocol has none. */
+	providerCallId: string | null;
+	name: string;
+	arguments: Record<string, unknown>;
+	/** Exact provider argument text when the native protocol uses encoded JSON. */
+	rawArguments?: string;
+}
+
+export interface LlmConversationToolResult {
+	callId: string;
+	providerCallId: string | null;
+	toolName: string;
+	status: LlmToolResultStatus;
+	message: string;
+	data?: Record<string, unknown>;
+	errorCode?: string;
+	truncated: boolean;
+}
+
+export interface LlmAssistantToolCallsItem {
+	type: 'assistant_tool_calls';
+	content: string;
+	calls: LlmConversationToolCall[];
+}
+
+export interface LlmToolResultsItem {
+	type: 'tool_results';
+	results: LlmConversationToolResult[];
+}
+
+/**
+ * Additive provider-neutral active-turn transcript. Existing text-only callers can
+ * keep passing ChatMessage objects unchanged.
+ */
+export type LlmConversationItem = ChatMessage | LlmAssistantToolCallsItem | LlmToolResultsItem;
+
 export interface LlmOptions {
 	timeout?: number;
 	model?: string;
@@ -89,11 +137,19 @@ export interface ILlmProvider {
 	 * @param options Additional options (timeout, tools, etc.)
 	 * @returns The assistant's response content and metadata
 	 */
-	sendMessage(systemPrompt: string, messages: ChatMessage[], model: string, options?: LlmOptions): Promise<LlmResponse>;
+	sendMessage(
+		systemPrompt: string,
+		messages: LlmConversationItem[],
+		model: string,
+		options?: LlmOptions,
+	): Promise<LlmResponse>;
 
 	/**
 	 * Whether this provider supports tool use (function calling).
 	 * Providers that don't support tools will gracefully degrade to text-only responses.
 	 */
 	supportsTools?(): boolean;
+
+	/** Whether this provider can receive native correlated tool-result transcript items. */
+	supportsNativeToolResults?(): boolean;
 }

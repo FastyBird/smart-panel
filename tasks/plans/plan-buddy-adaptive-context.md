@@ -1307,9 +1307,12 @@ snapshots are produced through the shared query layer without making that eager 
 
 **Tasks:**
 
-- [ ] Represent assistant tool calls and tool results as canonical conversation items with stable call IDs.
+- [x] Define additive provider-neutral assistant tool-call/result conversation items, including canonical and native call
+      IDs, structured data/status/error fields, and validation of complete adjacent correlation groups. Existing text-only
+      callers remain compatible.
+- [ ] Generate request/iteration/ordinal-qualified canonical call IDs and adopt the conversation items in live Buddy turns.
 - [ ] Carry validated `ToolExecutionResult.data` to the next model iteration.
-- [ ] Map canonical items to native OpenAI Chat, Anthropic, Ollama, and OpenAI Codex Responses formats. For Codex, emit
+- [x] Map canonical items to native OpenAI Chat, Anthropic, Ollama, and OpenAI Codex Responses formats. For Codex, emit
       correlated `function_call`/`function_call_output` input items rather than ordinary messages.
 - [ ] Preserve ordering and one result/error per call, including malformed provider responses.
 - [ ] Pass explicit Buddy audience/source/access context to the registry.
@@ -1635,9 +1638,10 @@ No deterministic action path can execute without a successful claim-bound capaci
       orphan assistant message or make Phase 5 depend on Phase 6 persistence.
 - [ ] Recompute the budget before every tool-loop provider call.
 - [ ] Add token-aware compaction in the required order and preserve complete tool groups.
-- [ ] Pass the reserved output limit as `LlmOptions.maxTokens` on every provider iteration and require every registered
-      adapter to map it to its native generation cap. In particular, add Ollama's `options.num_predict` and the OpenAI
-      Codex Responses API `max_output_tokens`; do not treat a budget subtraction as enforcement when the payload omits it.
+- [x] Map `LlmOptions.maxTokens` to every built-in adapter's native generation cap, including Ollama's
+      `options.num_predict` and the OpenAI Codex Responses API `max_output_tokens`.
+- [ ] Pass the budgeted reserved output limit on every provider iteration and reject adapters that do not enforce it;
+      do not treat a budget subtraction as enforcement when the payload omits its native cap.
 - [ ] Add provider-adapter final serialized-payload checks that verify both the input bound and native output cap.
 - [ ] Add irreducible-input preflight and `BuddyMessageCapacityExceededException`; document the REST/voice 422 response
       and provider-free messaging fallback without changing the successful response contract.

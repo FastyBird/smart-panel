@@ -1,7 +1,14 @@
 import type { LlmToolCall, ToolDefinition } from '../../tools/platforms/tool-provider.platform';
 import { MessageRole } from '../buddy.constants';
 
-import type { ChatMessage, LlmToolError } from './llm-provider.platform';
+import {
+	isChatMessage,
+	isLlmAssistantToolCallsItem,
+	requireProviderCallId,
+	serializeLlmConversationToolResult,
+	validateLlmConversationItems,
+} from './llm-conversation.utils';
+import type { LlmConversationItem, LlmToolError } from './llm-provider.platform';
 
 // Module path as variable to prevent TypeScript from statically resolving optional peer dependency
 const OPENAI_SDK_MODULE = 'openai';
@@ -23,20 +30,14 @@ export interface OpenAiSdkResult {
 export function buildOpenAiRequestPayload(
 	model: string,
 	systemPrompt: string,
-	messages: ChatMessage[],
+	messages: LlmConversationItem[],
 	maxTokens: number = 1024,
 	tools?: ToolDefinition[],
 ): Record<string, unknown> {
 	const requestPayload: Record<string, unknown> = {
 		model,
 		max_completion_tokens: maxTokens,
-		messages: [
-			{ role: 'system' as const, content: systemPrompt },
-			...messages.map((message) => ({
-				role: message.role === MessageRole.USER ? ('user' as const) : ('assistant' as const),
-				content: message.content,
-			})),
-		],
+		messages: [{ role: 'system' as const, content: systemPrompt }, ...buildOpenAiConversationMessages(messages)],
 	};
 
 	if (tools && tools.length > 0) {
@@ -61,7 +62,7 @@ export async function sendOpenAiMessage(
 	apiKey: string,
 	model: string,
 	systemPrompt: string,
-	messages: ChatMessage[],
+	messages: LlmConversationItem[],
 	timeout: number,
 	maxTokens: number = 1024,
 	tools?: ToolDefinition[],
@@ -137,4 +138,42 @@ export async function sendOpenAiMessage(
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		finishReason: (response.choices[0]?.finish_reason as string) ?? null,
 	};
+}
+
+function buildOpenAiConversationMessages(messages: LlmConversationItem[]): Array<Record<string, unknown>> {
+	validateLlmConversationItems(messages);
+
+	return messages.flatMap((item): Array<Record<string, unknown>> => {
+		if (isChatMessage(item)) {
+			return [
+				{
+					role: item.role === MessageRole.USER ? ('user' as const) : ('assistant' as const),
+					content: item.content,
+				},
+			];
+		}
+
+		if (isLlmAssistantToolCallsItem(item)) {
+			return [
+				{
+					role: 'assistant',
+					content: item.content.length > 0 ? item.content : null,
+					tool_calls: item.calls.map((call) => ({
+						id: requireProviderCallId('OpenAI Chat', call.providerCallId),
+						type: 'function',
+						function: {
+							name: call.name,
+							arguments: call.rawArguments ?? JSON.stringify(call.arguments),
+						},
+					})),
+				},
+			];
+		}
+
+		return item.results.map((result) => ({
+			role: 'tool',
+			tool_call_id: requireProviderCallId('OpenAI Chat', result.providerCallId),
+			content: serializeLlmConversationToolResult(result),
+		}));
+	});
 }

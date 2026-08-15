@@ -10,11 +10,11 @@ import {
 } from '../buddy.exceptions';
 import { isTimeoutError, withServiceTimeout } from '../buddy.utils';
 import { BuddyConfigModel } from '../models/config.model';
-import { ChatMessage, LlmOptions, LlmResponse } from '../platforms/llm-provider.platform';
+import { LlmConversationItem, LlmOptions, LlmResponse } from '../platforms/llm-provider.platform';
 
 import { LlmProviderRegistryService } from './llm-provider-registry.service';
 
-export { ChatMessage, LlmOptions, LlmResponse } from '../platforms/llm-provider.platform';
+export { ChatMessage, LlmConversationItem, LlmOptions, LlmResponse } from '../platforms/llm-provider.platform';
 
 @Injectable()
 export class LlmProviderService {
@@ -25,7 +25,7 @@ export class LlmProviderService {
 		private readonly providerRegistry: LlmProviderRegistryService,
 	) {}
 
-	async sendMessage(systemPrompt: string, messages: ChatMessage[], options?: LlmOptions): Promise<LlmResponse> {
+	async sendMessage(systemPrompt: string, messages: LlmConversationItem[], options?: LlmOptions): Promise<LlmResponse> {
 		const config = this.getConfig();
 		const providerName = config.provider;
 
@@ -82,6 +82,21 @@ export class LlmProviderService {
 			const provider = this.providerRegistry.get(providerName);
 
 			return provider?.supportsTools?.() ?? false;
+		} catch {
+			return false;
+		}
+	}
+
+	supportsNativeToolResults(): boolean {
+		try {
+			const config = this.getConfig();
+			const providerName = config.provider;
+
+			if (!providerName || providerName === 'none') {
+				return false;
+			}
+
+			return this.providerRegistry.get(providerName)?.supportsNativeToolResults?.() ?? false;
 		} catch {
 			return false;
 		}

@@ -2,8 +2,15 @@ import { Injectable } from '@nestjs/common';
 
 import { MessageRole } from '../../../modules/buddy/buddy.constants';
 import {
-	ChatMessage,
+	isChatMessage,
+	isLlmAssistantToolCallsItem,
+	requireProviderCallId,
+	serializeLlmConversationToolResult,
+	validateLlmConversationItems,
+} from '../../../modules/buddy/platforms/llm-conversation.utils';
+import {
 	ILlmProvider,
+	LlmConversationItem,
 	LlmOptions,
 	LlmResponse,
 } from '../../../modules/buddy/platforms/llm-provider.platform';
@@ -23,19 +30,49 @@ import { BuddyOpenaiCodexConfigModel } from '../models/config.model';
 export function buildOpenAiCodexRequestPayload(
 	model: string,
 	systemPrompt: string,
-	messages: ChatMessage[],
+	messages: LlmConversationItem[],
 	tools?: ToolDefinition[],
+	maxTokens: number = 1024,
 ): Record<string, unknown> {
+	validateLlmConversationItems(messages);
+
+	const input = messages.flatMap<Record<string, unknown>>((message) => {
+		if (isChatMessage(message)) {
+			return [
+				{
+					role: message.role === MessageRole.USER ? 'user' : 'assistant',
+					content: message.content,
+					type: 'message',
+				},
+			];
+		}
+
+		if (isLlmAssistantToolCallsItem(message)) {
+			return [
+				...(message.content.length === 0 ? [] : [{ role: 'assistant', content: message.content, type: 'message' }]),
+				...message.calls.map((call) => ({
+					type: 'function_call',
+					call_id: requireProviderCallId('OpenAI Codex', call.providerCallId),
+					name: call.name,
+					arguments: call.rawArguments ?? JSON.stringify(call.arguments),
+				})),
+			];
+		}
+
+		return message.results.map((result) => ({
+			type: 'function_call_output',
+			call_id: requireProviderCallId('OpenAI Codex', result.providerCallId),
+			output: serializeLlmConversationToolResult(result),
+		}));
+	});
+
 	return {
 		model,
 		instructions: systemPrompt,
-		input: messages.map((message) => ({
-			role: message.role === MessageRole.USER ? 'user' : 'assistant',
-			content: message.content,
-			type: 'message',
-		})),
+		input,
 		stream: true,
 		store: false,
+		max_output_tokens: maxTokens,
 		tools:
 			tools?.map((tool) => ({
 				type: 'function',
@@ -91,9 +128,13 @@ export class OpenAiCodexProvider implements ILlmProvider {
 		return true;
 	}
 
+	supportsNativeToolResults(): boolean {
+		return true;
+	}
+
 	async sendMessage(
 		systemPrompt: string,
-		messages: ChatMessage[],
+		messages: LlmConversationItem[],
 		model: string,
 		options?: LlmOptions,
 	): Promise<LlmResponse> {
@@ -102,7 +143,13 @@ export class OpenAiCodexProvider implements ILlmProvider {
 		const resolvedModel = config?.model ?? model;
 		const timeout = options?.timeout ?? 30_000;
 
-		const requestPayload = buildOpenAiCodexRequestPayload(resolvedModel, systemPrompt, messages, options?.tools);
+		const requestPayload = buildOpenAiCodexRequestPayload(
+			resolvedModel,
+			systemPrompt,
+			messages,
+			options?.tools,
+			options?.maxTokens ?? 1024,
+		);
 
 		// ChatGPT backend requires streaming. We collect SSE chunks and assemble the response.
 		const controller = new AbortController();

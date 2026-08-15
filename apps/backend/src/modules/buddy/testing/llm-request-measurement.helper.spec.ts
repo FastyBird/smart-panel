@@ -60,12 +60,12 @@ describe('native LLM request payload builders', () => {
 		]);
 	});
 
-	it('characterizes Ollama and Codex as currently omitting maxTokens', () => {
-		const ollama = buildOllamaRequestPayload('llama-test', 'system', messages, [nestedTool]);
-		const codex = buildOpenAiCodexRequestPayload('codex-test', 'system', messages, [nestedTool]);
+	it('builds Ollama and Codex payloads with their native output caps', () => {
+		const ollama = buildOllamaRequestPayload('llama-test', 'system', messages, [nestedTool], 321);
+		const codex = buildOpenAiCodexRequestPayload('codex-test', 'system', messages, [nestedTool], 321);
 
-		expect(ollama).not.toHaveProperty('options.num_predict');
-		expect(codex).not.toHaveProperty('max_output_tokens');
+		expect(ollama).toMatchObject({ options: { num_predict: 321 } });
+		expect(codex).toMatchObject({ max_output_tokens: 321 });
 		expect(ollama.tools).toEqual([
 			{
 				type: 'function',
@@ -148,17 +148,20 @@ describe('LLM request measurement', () => {
 		expect(measurement.fitsWindow).toBe(measurement.estimatedInputTokens <= 156);
 	});
 
-	it('reports missing and mismatched native output caps', () => {
-		const ollama = measureLlmRequestPayload(buildOllamaRequestPayload('llama-test', 'system', messages), {
-			contextWindowTokens: 8_192,
-			requestedOutputTokens: 512,
-		});
+	it('reports enforced and mismatched native output caps', () => {
+		const ollama = measureLlmRequestPayload(
+			buildOllamaRequestPayload('llama-test', 'system', messages, undefined, 512),
+			{
+				contextWindowTokens: 8_192,
+				requestedOutputTokens: 512,
+			},
+		);
 		const anthropic = measureLlmRequestPayload(buildAnthropicRequestPayload('claude-test', 'system', messages, 256), {
 			contextWindowTokens: 8_192,
 			requestedOutputTokens: 512,
 		});
 
-		expect(ollama.output).toEqual({ requestedTokens: 512, nativeCapTokens: null, status: 'missing' });
+		expect(ollama.output).toEqual({ requestedTokens: 512, nativeCapTokens: 512, status: 'enforced' });
 		expect(anthropic.output).toEqual({ requestedTokens: 512, nativeCapTokens: 256, status: 'mismatched' });
 	});
 });
