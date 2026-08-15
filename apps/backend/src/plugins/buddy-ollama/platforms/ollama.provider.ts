@@ -2,8 +2,14 @@ import { Injectable } from '@nestjs/common';
 
 import { MessageRole } from '../../../modules/buddy/buddy.constants';
 import {
-	ChatMessage,
+	isChatMessage,
+	isLlmAssistantToolCallsItem,
+	serializeLlmConversationToolResult,
+	validateLlmConversationItems,
+} from '../../../modules/buddy/platforms/llm-conversation.utils';
+import {
 	ILlmProvider,
+	LlmConversationItem,
 	LlmOptions,
 	LlmResponse,
 } from '../../../modules/buddy/platforms/llm-provider.platform';
@@ -33,19 +39,49 @@ interface OllamaResponse {
 export function buildOllamaRequestPayload(
 	model: string,
 	systemPrompt: string,
-	messages: ChatMessage[],
+	messages: LlmConversationItem[],
 	tools?: ToolDefinition[],
+	maxTokens: number = 1024,
 ): Record<string, unknown> {
+	validateLlmConversationItems(messages);
+
+	const nativeMessages = messages.flatMap((message) => {
+		if (isChatMessage(message)) {
+			return [
+				{
+					role: message.role === MessageRole.USER ? 'user' : 'assistant',
+					content: message.content,
+				},
+			];
+		}
+
+		if (isLlmAssistantToolCallsItem(message)) {
+			return [
+				{
+					role: 'assistant',
+					content: message.content,
+					tool_calls: message.calls.map((call) => ({
+						function: {
+							name: call.name,
+							arguments: call.arguments,
+						},
+					})),
+				},
+			];
+		}
+
+		return message.results.map((result) => ({
+			role: 'tool',
+			content: serializeLlmConversationToolResult(result),
+			tool_name: result.toolName,
+		}));
+	});
+
 	const requestPayload: Record<string, unknown> = {
 		model,
 		stream: false,
-		messages: [
-			{ role: 'system', content: systemPrompt },
-			...messages.map((message) => ({
-				role: message.role === MessageRole.USER ? 'user' : 'assistant',
-				content: message.content,
-			})),
-		],
+		messages: [{ role: 'system', content: systemPrompt }, ...nativeMessages],
+		options: { num_predict: maxTokens },
 	};
 
 	if (tools && tools.length > 0) {
@@ -92,9 +128,13 @@ export class OllamaProvider implements ILlmProvider {
 		return true;
 	}
 
+	supportsNativeToolResults(): boolean {
+		return true;
+	}
+
 	async sendMessage(
 		systemPrompt: string,
-		messages: ChatMessage[],
+		messages: LlmConversationItem[],
 		model: string,
 		options?: LlmOptions,
 	): Promise<LlmResponse> {
@@ -109,7 +149,13 @@ export class OllamaProvider implements ILlmProvider {
 		const start = Date.now();
 
 		try {
-			const requestPayload = buildOllamaRequestPayload(resolvedModel, systemPrompt, messages, options?.tools);
+			const requestPayload = buildOllamaRequestPayload(
+				resolvedModel,
+				systemPrompt,
+				messages,
+				options?.tools,
+				options?.maxTokens ?? 1024,
+			);
 
 			const response = await fetch(`${baseUrl}/api/chat`, {
 				method: 'POST',

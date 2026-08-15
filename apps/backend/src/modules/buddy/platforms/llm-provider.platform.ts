@@ -8,6 +8,167 @@ export interface ChatMessage {
 	content: string;
 }
 
+export type LlmToolResultStatus =
+	| 'completed'
+	| 'partial'
+	| 'failed'
+	| 'timed_out'
+	| 'denied'
+	| 'indeterminate'
+	| 'malformed';
+
+export interface LlmConversationToolCall {
+	/** Stable provider-neutral ID for this active transcript. */
+	callId: string;
+	/** Provider-issued correlation ID, or null when the native protocol has none. */
+	providerCallId: string | null;
+	name: string;
+	arguments: Record<string, unknown>;
+	/** Exact provider argument text when the native protocol uses encoded JSON. */
+	rawArguments?: string;
+}
+
+export interface LlmConversationToolResult {
+	callId: string;
+	providerCallId: string | null;
+	toolName: string;
+	status: LlmToolResultStatus;
+	message: string;
+	data?: Record<string, unknown>;
+	errorCode?: string;
+	truncated: boolean;
+}
+
+export interface LlmConversationReasoningSummaryPart {
+	type: 'summary_text';
+	text: string;
+}
+
+export interface LlmConversationReasoningContentPart {
+	type: 'reasoning_text';
+	text: string;
+}
+
+export interface LlmConversationReasoningItem {
+	type: 'reasoning';
+	id: string;
+	summary: LlmConversationReasoningSummaryPart[];
+	content?: LlmConversationReasoningContentPart[];
+	encrypted_content: string;
+	status?: 'in_progress' | 'completed' | 'incomplete';
+}
+
+export interface LlmConversationFileCitationAnnotation {
+	type: 'file_citation';
+	file_id: string;
+	filename: string;
+	index: number;
+}
+
+export interface LlmConversationUrlCitationAnnotation {
+	type: 'url_citation';
+	end_index: number;
+	start_index: number;
+	title: string;
+	url: string;
+}
+
+export interface LlmConversationContainerFileCitationAnnotation {
+	type: 'container_file_citation';
+	container_id: string;
+	end_index: number;
+	file_id: string;
+	filename: string;
+	start_index: number;
+}
+
+export interface LlmConversationFilePathAnnotation {
+	type: 'file_path';
+	file_id: string;
+	index: number;
+}
+
+export type LlmConversationAssistantTextAnnotation =
+	| LlmConversationFileCitationAnnotation
+	| LlmConversationUrlCitationAnnotation
+	| LlmConversationContainerFileCitationAnnotation
+	| LlmConversationFilePathAnnotation;
+
+export interface LlmConversationAssistantTopLogprob {
+	token: string;
+	bytes: number[];
+	logprob: number;
+}
+
+export interface LlmConversationAssistantLogprob extends LlmConversationAssistantTopLogprob {
+	top_logprobs: LlmConversationAssistantTopLogprob[];
+}
+
+export interface LlmConversationAssistantTextPart {
+	type: 'output_text';
+	text: string;
+	annotations: LlmConversationAssistantTextAnnotation[];
+	logprobs?: LlmConversationAssistantLogprob[];
+}
+
+export interface LlmConversationAssistantRefusalPart {
+	type: 'refusal';
+	refusal: string;
+}
+
+export interface LlmConversationAssistantMessageItem {
+	type: 'message';
+	id: string;
+	role: 'assistant';
+	content: Array<LlmConversationAssistantTextPart | LlmConversationAssistantRefusalPart>;
+	phase?: 'commentary' | 'final_answer';
+	status?: 'in_progress' | 'completed' | 'incomplete';
+}
+
+export interface LlmConversationFunctionCallItem {
+	type: 'function_call';
+	id?: string;
+	call_id: string;
+	name: string;
+	arguments: string;
+	status?: 'in_progress' | 'completed' | 'incomplete';
+}
+
+export type LlmConversationProviderOutputItem =
+	| LlmConversationReasoningItem
+	| LlmConversationAssistantMessageItem
+	| LlmConversationFunctionCallItem;
+
+/**
+ * Provider-owned active-turn state that must be replayed to continue a native
+ * tool exchange. It is never persisted as ordinary conversation history.
+ */
+export interface LlmConversationProviderItem {
+	provider: string;
+	/** Exact position in the provider's response output array. */
+	outputIndex: number;
+	/** Validated active-turn output returned by the provider. */
+	item: LlmConversationProviderOutputItem;
+}
+
+export interface LlmAssistantToolCallsItem {
+	type: 'assistant_tool_calls';
+	content: string;
+	calls: LlmConversationToolCall[];
+	providerItems?: LlmConversationProviderItem[];
+}
+
+export interface LlmToolResultsItem {
+	type: 'tool_results';
+	results: LlmConversationToolResult[];
+}
+
+/**
+ * Additive provider-neutral active-turn transcript. Existing text-only callers can
+ * keep passing ChatMessage objects unchanged.
+ */
+export type LlmConversationItem = ChatMessage | LlmAssistantToolCallsItem | LlmToolResultsItem;
+
 export interface LlmOptions {
 	timeout?: number;
 	model?: string;
@@ -45,6 +206,8 @@ export interface LlmResponse {
 	content: string;
 	toolCalls?: LlmToolCall[];
 	toolErrors?: LlmToolError[];
+	/** Provider-owned continuation state for the active tool turn only. */
+	providerItems?: LlmConversationProviderItem[];
 	meta: LlmResponseMeta;
 }
 
@@ -89,11 +252,19 @@ export interface ILlmProvider {
 	 * @param options Additional options (timeout, tools, etc.)
 	 * @returns The assistant's response content and metadata
 	 */
-	sendMessage(systemPrompt: string, messages: ChatMessage[], model: string, options?: LlmOptions): Promise<LlmResponse>;
+	sendMessage(
+		systemPrompt: string,
+		messages: LlmConversationItem[],
+		model: string,
+		options?: LlmOptions,
+	): Promise<LlmResponse>;
 
 	/**
 	 * Whether this provider supports tool use (function calling).
 	 * Providers that don't support tools will gracefully degrade to text-only responses.
 	 */
 	supportsTools?(): boolean;
+
+	/** Whether this provider can receive native correlated tool-result transcript items. */
+	supportsNativeToolResults?(): boolean;
 }

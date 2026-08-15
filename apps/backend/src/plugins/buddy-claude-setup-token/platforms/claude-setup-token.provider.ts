@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 
 import { sendAnthropicMessage } from '../../../modules/buddy/platforms/anthropic-sdk.utils';
 import {
-	ChatMessage,
 	ILlmProvider,
+	LlmConversationItem,
 	LlmOptions,
 	LlmResponse,
 } from '../../../modules/buddy/platforms/llm-provider.platform';
@@ -45,9 +45,13 @@ export class ClaudeSetupTokenProvider implements ILlmProvider {
 		return true;
 	}
 
+	supportsNativeToolResults(): boolean {
+		return true;
+	}
+
 	async sendMessage(
 		systemPrompt: string,
-		messages: ChatMessage[],
+		messages: LlmConversationItem[],
 		model: string,
 		options?: LlmOptions,
 	): Promise<LlmResponse> {
