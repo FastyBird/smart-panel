@@ -40,6 +40,7 @@ export function requireProviderCallId(provider: string, providerCallId: string |
  */
 export function validateLlmConversationItems(items: LlmConversationItem[]): void {
 	const seenCallIds = new Set<string>();
+	const seenProviderCallIds = new Set<string>();
 
 	for (let index = 0; index < items.length; index += 1) {
 		const item = items[index];
@@ -71,6 +72,13 @@ export function validateLlmConversationItems(items: LlmConversationItem[]): void
 			}
 			seenCallIds.add(call.callId);
 
+			if (call.providerCallId !== null) {
+				if (call.providerCallId.length === 0 || seenProviderCallIds.has(call.providerCallId)) {
+					throw new TypeError(`Tool call at index ${index}:${callIndex} has an empty or duplicate provider ID`);
+				}
+				seenProviderCallIds.add(call.providerCallId);
+			}
+
 			const result = resultItem.results[callIndex];
 
 			if (
@@ -79,6 +87,21 @@ export function validateLlmConversationItems(items: LlmConversationItem[]): void
 				result.toolName !== call.name
 			) {
 				throw new TypeError(`Tool result at index ${index + 1}:${callIndex} does not match its ordered call`);
+			}
+		}
+
+		for (const [providerItemIndex, providerItem] of (item.providerItems ?? []).entries()) {
+			if (providerItem.provider.length === 0) {
+				throw new TypeError(`Provider item at index ${index}:${providerItemIndex} has an empty provider`);
+			}
+
+			if (
+				providerItem.beforeProviderCallId !== null &&
+				!item.calls.some((call) => call.providerCallId === providerItem.beforeProviderCallId)
+			) {
+				throw new TypeError(
+					`Provider item at index ${index}:${providerItemIndex} references an unknown provider call ID`,
+				);
 			}
 		}
 

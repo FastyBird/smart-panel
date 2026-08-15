@@ -475,6 +475,9 @@ to their native assistant-tool-call and tool-result formats. The Codex adapter e
 `function_call_output` input items correlated by the native `call_id`; it must not serialize a dependent tool result as
 an ordinary user/assistant `message`. Do not emulate tool results as ordinary user prose in any adapter.
 
+Because the Codex Responses adapter uses `store: false`, retain validated encrypted reasoning output items in active-turn
+provider state and replay them in native output order. Never persist or log encrypted reasoning as ordinary history.
+
 Canonical tool transcripts may remain in memory for the active turn. Existing persistence can continue to store the
 original user message and final assistant response; the rolling summary, entity references, and action-result metadata
 carry only the bounded information required by later turns. Persisting full tool transcripts is not required by this

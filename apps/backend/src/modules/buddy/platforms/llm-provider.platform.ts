@@ -39,10 +39,42 @@ export interface LlmConversationToolResult {
 	truncated: boolean;
 }
 
+export interface LlmConversationReasoningSummaryPart {
+	type: 'summary_text';
+	text: string;
+}
+
+export interface LlmConversationReasoningContentPart {
+	type: 'reasoning_text';
+	text: string;
+}
+
+export interface LlmConversationReasoningItem {
+	type: 'reasoning';
+	id: string;
+	summary: LlmConversationReasoningSummaryPart[];
+	content?: LlmConversationReasoningContentPart[];
+	encrypted_content: string;
+	status?: 'in_progress' | 'completed' | 'incomplete';
+}
+
+/**
+ * Provider-owned active-turn state that must be replayed to continue a native
+ * tool exchange. It is never persisted as ordinary conversation history.
+ */
+export interface LlmConversationProviderItem {
+	provider: string;
+	/** Native call before which this output item appeared, or null when it followed all calls. */
+	beforeProviderCallId: string | null;
+	/** Validated active-turn reasoning output returned by the provider. */
+	item: LlmConversationReasoningItem;
+}
+
 export interface LlmAssistantToolCallsItem {
 	type: 'assistant_tool_calls';
 	content: string;
 	calls: LlmConversationToolCall[];
+	providerItems?: LlmConversationProviderItem[];
 }
 
 export interface LlmToolResultsItem {
@@ -93,6 +125,8 @@ export interface LlmResponse {
 	content: string;
 	toolCalls?: LlmToolCall[];
 	toolErrors?: LlmToolError[];
+	/** Provider-owned continuation state for the active tool turn only. */
+	providerItems?: LlmConversationProviderItem[];
 	meta: LlmResponseMeta;
 }
 
