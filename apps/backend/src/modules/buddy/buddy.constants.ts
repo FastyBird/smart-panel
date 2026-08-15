@@ -111,6 +111,23 @@ export const CONFLICT_LIGHTS_UNOCCUPIED_MINUTES = 15; // minutes of no occupancy
 
 export const DEFAULT_MAX_TOOL_ITERATIONS = 5;
 
+/** Hard canonical-JSON bounds for one active Buddy tool turn. */
+export const BUDDY_MAX_TOOL_ITEMS_PER_ITERATION = 8;
+
+export const BUDDY_MAX_TOOL_ITEMS_PER_TURN = 32;
+
+export const BUDDY_MAX_TOOL_ITEM_JSON_BYTES = 16 * 1024;
+
+export const BUDDY_MAX_PROVIDER_ITEMS_PER_ITERATION = 16;
+
+export const BUDDY_MAX_PROVIDER_ITEMS_JSON_BYTES = 48 * 1024;
+
+export const BUDDY_MAX_TOOL_BATCH_JSON_BYTES = 64 * 1024;
+
+export const BUDDY_MAX_TOOL_RESULT_GROUP_JSON_BYTES = 64 * 1024;
+
+export const BUDDY_MAX_ACTIVE_TOOL_TRANSCRIPT_JSON_BYTES = 128 * 1024;
+
 export const BUDDY_CORE_TOOLS_PROVIDER = 'buddy-core-tools';
 
 export const CONTEXT_CACHE_GLOBAL_KEY = '__global__';
