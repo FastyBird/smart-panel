@@ -126,6 +126,12 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Run Bedtime and verify that the hallway sensor is triggered.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
+		expect(selectNames('Run Bedtime and confirm that the hallway sensor is triggered.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
+		expect(selectNames('Run Bedtime and make sure the hallway sensor is triggered.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 	});
 
 	it('retains every action schema for multiple commands with an arbitrary target name', () => {
@@ -260,6 +266,8 @@ describe('BuddyToolSelectionService', () => {
 	it('treats an action verb used in an interrogative predicate as a state read', () => {
 		expect(selectNames('Is the thermostat set to 20?')).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
 		expect(selectNames('Is the thermostat set to 20')).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
+		expect(selectNames('What is the thermostat set to?')).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
+		expect(selectNames('Was the thermostat set to 20?')).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
 	});
 
 	it('preserves actions in polite interrogative commands', () => {

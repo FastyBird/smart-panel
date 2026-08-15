@@ -90,9 +90,10 @@ const ACTION_CLAUSE_PATTERN = new RegExp(
 	String.raw`(?:\ba\b|\band\b|\bpotom\b|\bthen\b|[,;])\s*(?:(?:also|please|take)\s+)*(?:${[...ACTION_SIGNALS].join('|')})\b`,
 	'u',
 );
-const READ_CLAUSE_PATTERN = /\b(?:a|and|potom|then)\s+(?:check|find|show|tell|verify|what|whether|which)\b/u;
+const READ_CLAUSE_PATTERN =
+	/\b(?:a|and|potom|then)\s+(?:check|confirm|ensure|find|make sure|show|tell|verify|what|whether|which)\b/u;
 const STATE_QUESTION_PATTERN = /^(?:are|do|does|how|is|what|which|where|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u;
-const PREDICATE_QUESTION_PATTERN = /^(?:are|is)\b/u;
+const PREDICATE_QUESTION_PATTERN = /^(?:are|is|was|were|what (?:are|is|was|were))\b/u;
 const UNKNOWN_ACTION_REQUEST_PATTERN = /^(?:(?:can|could|may|might|will|would)\s+you\b|please\b)/u;
 const ACTION_REQUEST_AUXILIARIES = new Set([
 	'able',
