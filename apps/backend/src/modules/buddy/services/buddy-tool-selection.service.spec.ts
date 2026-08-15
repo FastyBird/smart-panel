@@ -196,6 +196,11 @@ describe('BuddyToolSelectionService', () => {
 			QUERY_HOME_STATE_TOOL_NAME,
 			names.control,
 		]);
+		expect(selectNames('Close the blinds provided that Aurora is triggered.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+			names.control,
+		]);
 	});
 
 	it.each([
@@ -249,6 +254,14 @@ describe('BuddyToolSelectionService', () => {
 	it('does not treat an entity-like question as confidently tool-free', () => {
 		expect(selectNames('How is Morning?')).toEqual(definitions.map((definition) => definition.name));
 		expect(selectNames('Tell me about Morning.')).toEqual(definitions.map((definition) => definition.name));
+	});
+
+	it('preserves tools for an ambiguous bare clarification reply', () => {
+		expect(selectNames('Morning')).toEqual(definitions.map((definition) => definition.name));
+	});
+
+	it('falls back when an unrecognized action follows a read clause', () => {
+		expect(selectNames('Find Evening and launch it.')).toEqual(definitions.map((definition) => definition.name));
 	});
 
 	it('preserves unknown extension tools and original registry order', () => {

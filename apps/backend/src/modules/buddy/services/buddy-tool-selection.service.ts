@@ -91,6 +91,8 @@ const ACTION_CLAUSE_PATTERN = new RegExp(
 	'u',
 );
 const READ_CLAUSE_PATTERN = /\b(?:a|and|potom|then)\s+(?:check|find|show|tell|what|whether|which)\b/u;
+const CONDITION_PATTERN = /\b(?:as long as|if|kdyz|only if|pokud|provided(?: that)?|unless|when)\b/u;
+const LEADING_CONDITION_PATTERN = /^(?:as long as|if|kdyz|only if|pokud|provided(?: that)?|unless|when)\b/u;
 const GROUNDED_STATE_SIGNALS = new Set([
 	'active',
 	'closed',
@@ -258,6 +260,8 @@ const GENERAL_CONVERSATION_FILLERS = new Set([
 	'good',
 	'i',
 	'is',
+	'it',
+	'its',
 	'me',
 	'morning',
 	'tell',
@@ -265,6 +269,12 @@ const GENERAL_CONVERSATION_FILLERS = new Set([
 	'write',
 	'you',
 	'your',
+	'if',
+	'not',
+	'please',
+	'so',
+	'v',
+	'whether',
 	'jaky',
 	'jak',
 	'jsi',
@@ -287,7 +297,7 @@ export class BuddyToolSelectionService {
 		const hasSearchSignal = intersects(tokens, SEARCH_SIGNALS);
 		const hasStateSignal = intersects(tokens, STATE_SIGNALS);
 		const actionTokens = getActionIntentTokens(normalizedMessage, tokens, hasStateSignal);
-		const hasConditionalAction = actionTokens !== null && /\b(?:if|kdyz|pokud|unless|when)\b/u.test(normalizedMessage);
+		const hasConditionalAction = actionTokens !== null && CONDITION_PATTERN.test(normalizedMessage);
 		const hasTrailingReadClause = actionTokens !== null && READ_CLAUSE_PATTERN.test(normalizedMessage);
 		const questionEnd = normalizedMessage.indexOf('?');
 		const trailingQuestionClause = questionEnd >= 0 ? normalizedMessage.slice(questionEnd + 1).trim() : '';
@@ -313,6 +323,8 @@ export class BuddyToolSelectionService {
 			!hasSearchSignal &&
 			!message.includes('?') &&
 			!/^(?:explain|tell)\b/u.test(normalizedMessage);
+		const hasUnrecognizedReadCompound =
+			actionTokens === null && (hasSearchSignal || hasStateSignal) && hasUnknownTrailingClause(normalizedMessage);
 		const isStateExplanation =
 			hasHomeSignal &&
 			(/^explain (?:if|whether)\b/u.test(normalizedMessage) ||
@@ -342,6 +354,10 @@ export class BuddyToolSelectionService {
 		}
 
 		if (hasUnrecognizedTrailingIntent) {
+			for (const name of BUILT_IN_TOOL_NAMES) selected.add(name);
+		}
+
+		if (hasUnrecognizedReadCompound) {
 			for (const name of BUILT_IN_TOOL_NAMES) selected.add(name);
 		}
 
@@ -436,6 +452,7 @@ function intersects(tokens: Set<string>, signals: Set<string>): boolean {
 
 function isClearlyGeneralConversation(normalizedMessage: string, tokens: Set<string>): boolean {
 	if (!intersects(tokens, GENERAL_CONVERSATION_SIGNALS)) return false;
+	if (tokens.size === 1 && tokens.has('morning')) return false;
 	if (/^(?:(?:how|who) is|tell me about)\b/u.test(normalizedMessage)) return false;
 
 	for (const token of tokens) {
@@ -443,6 +460,26 @@ function isClearlyGeneralConversation(normalizedMessage: string, tokens: Set<str
 	}
 
 	return true;
+}
+
+function hasUnknownTrailingClause(normalizedMessage: string): boolean {
+	const trailingClause = sliceAfterFirst(normalizedMessage, /[,;]|\b(?:and|potom|then)\b/u);
+
+	if (trailingClause.length === 0) return false;
+
+	for (const token of tokenize(trailingClause)) {
+		if (
+			!SEARCH_SIGNALS.has(token) &&
+			!STATE_SIGNALS.has(token) &&
+			!GROUNDED_STATE_SIGNALS.has(token) &&
+			!HOME_SIGNALS.has(token) &&
+			!GENERAL_CONVERSATION_FILLERS.has(token)
+		) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 function isGenericHomeExplanation(normalizedMessage: string, tokens: Set<string>): boolean {
@@ -481,7 +518,7 @@ function getActionIntentTokens(
 		return intersects(trailingTokens, ACTION_SIGNALS) ? trailingTokens : null;
 	}
 
-	const trailingCondition = normalizedMessage.search(/\b(?:if|kdyz|pokud|unless|when)\b/u);
+	const trailingCondition = normalizedMessage.search(CONDITION_PATTERN);
 
 	if (trailingCondition > 0) {
 		const commandTokens = tokenize(normalizedMessage.slice(0, trailingCondition));
@@ -489,7 +526,7 @@ function getActionIntentTokens(
 		if (intersects(commandTokens, ACTION_SIGNALS)) return commandTokens;
 	}
 
-	if (/^(?:if|kdyz|pokud|unless|when)\b/u.test(normalizedMessage)) {
+	if (LEADING_CONDITION_PATTERN.test(normalizedMessage)) {
 		const commandTokens = tokenize(sliceAfterFirst(normalizedMessage, /[,;]|\b(?:pak|potom|then)\b/u));
 
 		if (intersects(commandTokens, ACTION_SIGNALS)) return commandTokens;
