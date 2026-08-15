@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ConfigService } from '../../config/services/config.service';
 import { StoragePlugin } from '../interfaces/storage-plugin.interface';
+import { StorageQueryOptions } from '../storage.types';
 
 import { StorageService } from './storage.service';
 
@@ -54,6 +55,37 @@ describe('StorageService', () => {
 		await expect(service.queryStrict<{ value: number }>('SELECT * FROM test')).resolves.toEqual([{ value: 42 }]);
 		expect(primary.queryStrict).toHaveBeenCalledTimes(1);
 		expect(primary.query).not.toHaveBeenCalled();
+	});
+
+	it('does not start a fallback query after the primary request is aborted', async () => {
+		const service = new StorageService({
+			getModuleConfig: jest.fn().mockReturnValue({ primaryStorage: 'primary', fallbackStorage: 'fallback' }),
+		} as unknown as ConfigService);
+		const primary = createPlugin('primary');
+		const fallback = createPlugin('fallback');
+		const controller = new AbortController();
+		const abortError = new Error('query deadline exceeded');
+		primary.queryStrict = jest.fn().mockImplementation(
+			(_query: string, options?: StorageQueryOptions) =>
+				new Promise((_, reject) => {
+					const signal = options?.signal;
+
+					signal?.addEventListener(
+						'abort',
+						() => reject(signal.reason instanceof Error ? signal.reason : new Error('Storage query aborted')),
+						{ once: true },
+					);
+				}),
+		);
+		fallback.query.mockResolvedValue([{ value: 42 }]);
+		service.registerPlugin(primary.name, primary);
+		service.registerPlugin(fallback.name, fallback);
+		const query = service.queryStrict('SELECT * FROM test', { signal: controller.signal });
+
+		controller.abort(abortError);
+
+		await expect(query).rejects.toBe(abortError);
+		expect(fallback.query).not.toHaveBeenCalled();
 	});
 
 	it('rejects a strict query when no backend is available', async () => {

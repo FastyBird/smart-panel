@@ -324,9 +324,9 @@ export class InfluxV2Storage implements StoragePlugin {
 		}
 	}
 
-	async query<T>(query: string, _options?: StorageQueryOptions): Promise<T[]> {
+	async query<T>(query: string, options?: StorageQueryOptions): Promise<T[]> {
 		try {
-			const rows = await this.getQueryApi().collectRows<T>(query);
+			const rows = await this.collectRows<T>(query, options?.signal);
 
 			return rows;
 		} catch (error) {
@@ -340,9 +340,9 @@ export class InfluxV2Storage implements StoragePlugin {
 		}
 	}
 
-	async queryStrict<T>(query: string, _options?: StorageQueryOptions): Promise<T[]> {
+	async queryStrict<T>(query: string, options?: StorageQueryOptions): Promise<T[]> {
 		const fluxQuery = translateStrictInfluxQl(query, this.config.bucket);
-		const rows = await this.getQueryApi().collectRows<Record<string, unknown>>(fluxQuery);
+		const rows = await this.collectRows<Record<string, unknown>>(fluxQuery, options?.signal);
 
 		return normalizeFluxRows<T>(rows);
 	}
@@ -445,5 +445,59 @@ schema.measurements(bucket: ${bucket})`;
 		}
 
 		return this.queryApi;
+	}
+
+	private collectRows<T>(query: string, signal?: AbortSignal): Promise<T[]> {
+		if (!signal) {
+			return this.getQueryApi().collectRows<T>(query);
+		}
+		if (signal.aborted) {
+			return Promise.reject(this.getAbortReason(signal));
+		}
+
+		return new Promise<T[]>((resolve, reject) => {
+			const rows: T[] = [];
+			let settled = false;
+			let cancellable: { cancel(): void } | undefined;
+			const cleanup = (): void => signal.removeEventListener('abort', onAbort);
+			const finish = (callback: () => void): void => {
+				if (settled) {
+					return;
+				}
+				settled = true;
+				cleanup();
+				callback();
+			};
+			const onAbort = (): void => {
+				finish(() => reject(this.getAbortReason(signal)));
+				cancellable?.cancel();
+			};
+
+			signal.addEventListener('abort', onAbort, { once: true });
+
+			try {
+				this.getQueryApi().queryRows(query, {
+					next: (values, tableMeta) => {
+						if (!settled) {
+							rows.push(tableMeta.toObject(values) as T);
+						}
+					},
+					error: (error) => finish(() => reject(error)),
+					complete: () => finish(() => resolve(rows)),
+					useCancellable: (nextCancellable) => {
+						cancellable = nextCancellable;
+						if (signal.aborted) {
+							onAbort();
+						}
+					},
+				});
+			} catch (error) {
+				finish(() => reject(error as Error));
+			}
+		});
+	}
+
+	private getAbortReason(signal: AbortSignal): Error {
+		return signal.reason instanceof Error ? signal.reason : new Error('Storage query aborted');
 	}
 }

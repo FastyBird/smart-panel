@@ -10,6 +10,7 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { StorageService } from '../../storage/services/storage.service';
+import { StorageQueryOptions } from '../../storage/storage.types';
 import { DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyValueState } from '../models/property-value-state.model';
@@ -206,6 +207,25 @@ describe('PropertyValueService', () => {
 						dataType: DataTypeType.INT,
 					}) as ChannelPropertyEntity,
 			);
+		const waitForAbort = (_query: string, options?: StorageQueryOptions): Promise<never> =>
+			new Promise((_, reject) => {
+				const signal = options?.signal;
+
+				if (!signal) {
+					reject(new Error('Expected a storage abort signal'));
+					return;
+				}
+				if (signal.aborted) {
+					reject(signal.reason instanceof Error ? signal.reason : new Error('Storage query aborted'));
+					return;
+				}
+
+				signal.addEventListener(
+					'abort',
+					() => reject(signal.reason instanceof Error ? signal.reason : new Error('Storage query aborted')),
+					{ once: true },
+				);
+			});
 
 		it('returns an empty complete result without consulting storage', async () => {
 			await expect(service.readLatestManyBounded([])).resolves.toEqual({
@@ -410,6 +430,7 @@ describe('PropertyValueService', () => {
 			expect(storageService.queryStrict).toHaveBeenCalledTimes(1);
 			expect(storageService.queryStrict).toHaveBeenCalledWith(
 				expect.stringContaining("propertyId = 'source-property'"),
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			);
 			expect((storageService.queryStrict.mock.calls[0][0].match(/propertyId =/g) ?? []).length).toBe(1);
 			expect(result.items.map((item) => [item.propertyId, item.sourcePropertyId, item.state?.value])).toEqual([
@@ -467,7 +488,7 @@ describe('PropertyValueService', () => {
 					.mockResolvedValueOnce(
 						properties.slice(0, 50).map((property) => ({ propertyId: property.id, numberValue: 1 })),
 					)
-					.mockReturnValueOnce(new Promise(() => undefined));
+					.mockImplementationOnce(waitForAbort);
 				const read = service.readLatestManyBounded(properties);
 
 				await jest.advanceTimersByTimeAsync(750);
@@ -491,7 +512,12 @@ describe('PropertyValueService', () => {
 			jest.setSystemTime(new Date('2026-08-15T12:00:00.000Z'));
 			try {
 				const [property] = makeProperties(1);
-				storageService.queryStrict.mockReturnValue(new Promise(() => undefined));
+				let receivedSignal: AbortSignal | undefined;
+				storageService.queryStrict.mockImplementation((query, options) => {
+					receivedSignal = options?.signal;
+
+					return waitForAbort(query, options);
+				});
 				const read = service.readLatestManyBounded([property], {
 					deadlineAt: new Date('2026-08-15T13:00:00.000Z'),
 				});
@@ -505,6 +531,7 @@ describe('PropertyValueService', () => {
 					complete: false,
 				});
 				expect(storageService.queryStrict).toHaveBeenCalledTimes(1);
+				expect(receivedSignal?.aborted).toBe(true);
 			} finally {
 				jest.useRealTimers();
 			}

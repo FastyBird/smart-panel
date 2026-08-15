@@ -446,19 +446,22 @@ export class PropertyValueService {
 			return null;
 		}
 
-		let timeout: ReturnType<typeof setTimeout> | undefined;
+		const controller = new AbortController();
+		const timeout = setTimeout(
+			() => controller.abort(new Error('Property value storage query timed out')),
+			remainingMs,
+		);
 
 		try {
-			return await Promise.race([
-				this.storageService.queryStrict<PropertyValueRow>(query),
-				new Promise<null>((resolve) => {
-					timeout = setTimeout(() => resolve(null), remainingMs);
-				}),
-			]);
-		} finally {
-			if (timeout !== undefined) {
-				clearTimeout(timeout);
+			return await this.storageService.queryStrict<PropertyValueRow>(query, { signal: controller.signal });
+		} catch (error) {
+			if (controller.signal.aborted) {
+				return null;
 			}
+
+			throw error;
+		} finally {
+			clearTimeout(timeout);
 		}
 	}
 
