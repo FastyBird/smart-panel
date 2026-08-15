@@ -91,6 +91,7 @@ const ACTION_CLAUSE_PATTERN = new RegExp(
 	'u',
 );
 const READ_CLAUSE_PATTERN = /\b(?:a|and|potom|then)\s+(?:check|find|show|tell|what|whether|which)\b/u;
+const STATE_QUESTION_PATTERN = /^(?:are|do|does|how|is|what|which|where|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u;
 const CONDITION_PATTERN =
 	/\b(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|unless|when|whenever)\b/u;
 const LEADING_CONDITION_PATTERN =
@@ -318,6 +319,8 @@ export class BuddyToolSelectionService {
 			intersects(tokens, GROUNDED_STATE_SIGNALS) &&
 			/[,;]/u.test(normalizedMessage);
 		const hasHomeSignal = intersects(tokens, HOME_SIGNALS);
+		const hasInterrogativeHomeQuestion =
+			hasHomeSignal && message.includes('?') && STATE_QUESTION_PATTERN.test(normalizedMessage);
 		const isGenericExplanation = isGenericHomeExplanation(normalizedMessage, tokens);
 		const hasUnrecognizedStateIntent =
 			hasStateSignal &&
@@ -341,6 +344,7 @@ export class BuddyToolSelectionService {
 					hasTrailingReadClause ||
 					hasStateFirstAction ||
 					hasGroundedStateFirstAction ||
+					hasInterrogativeHomeQuestion ||
 					(message.includes('?') && hasHomeSignal && intersects(tokens, GROUNDED_STATE_SIGNALS))))
 		) {
 			for (const name of READ_TOOL_NAMES) selected.add(name);
@@ -348,7 +352,11 @@ export class BuddyToolSelectionService {
 
 		if (actionTokens) {
 			selected.add(SEARCH_HOME_TOOL_NAME);
-			this.selectActionTools(actionTokens, selected, ACTION_CLAUSE_PATTERN.test(normalizedMessage));
+			this.selectActionTools(
+				actionTokens,
+				selected,
+				ACTION_CLAUSE_PATTERN.test(normalizedMessage) || hasUnknownTrailingClause(normalizedMessage),
+			);
 		}
 
 		if (hasUnrecognizedStateIntent) {
@@ -505,9 +513,10 @@ function getActionIntentTokens(
 	if (!intersects(tokens, ACTION_SIGNALS)) return null;
 
 	const isStateQuestion =
-		hasStateSignal &&
-		(/^(?:are|do|does|how|is|what|which|where|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u.test(normalizedMessage) ||
-			/^(?:please\s+)?tell\b.*\b(?:if|whether)\b/u.test(normalizedMessage));
+		(hasStateSignal &&
+			(STATE_QUESTION_PATTERN.test(normalizedMessage) ||
+				/^(?:please\s+)?tell\b.*\b(?:if|whether)\b/u.test(normalizedMessage))) ||
+		(STATE_QUESTION_PATTERN.test(normalizedMessage) && normalizedMessage.includes('?'));
 
 	if (isStateQuestion) {
 		const questionEnd = normalizedMessage.indexOf('?');

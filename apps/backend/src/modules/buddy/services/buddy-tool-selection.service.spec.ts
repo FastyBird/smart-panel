@@ -236,6 +236,10 @@ describe('BuddyToolSelectionService', () => {
 		]);
 	});
 
+	it('treats an action verb used in an interrogative predicate as a state read', () => {
+		expect(selectNames('Is the thermostat set to 20?')).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
+	});
+
 	it('does not classify an explicit current-status question as a generic explanation', () => {
 		expect(selectNames("What is a thermostat's current status?")).toEqual([
 			SEARCH_HOME_TOOL_NAME,
@@ -266,6 +270,15 @@ describe('BuddyToolSelectionService', () => {
 
 	it('falls back when an unrecognized action follows a read clause', () => {
 		expect(selectNames('Find Evening and launch it.')).toEqual(definitions.map((definition) => definition.name));
+	});
+
+	it('falls back when an unrecognized action follows a recognized command', () => {
+		expect(selectNames('Close the blinds and launch Evening.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			names.control,
+			names.scene,
+			names.spaceLighting,
+		]);
 	});
 
 	it('preserves unknown extension tools and original registry order', () => {
