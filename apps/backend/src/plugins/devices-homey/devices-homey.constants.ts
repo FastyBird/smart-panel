@@ -6,7 +6,7 @@ export const DEVICES_HOMEY_TYPE = 'devices-homey';
 
 export const DEVICES_HOMEY_CONNECTOR_SERVICE_ID = 'connector';
 
-export const HOMEY_CONNECTOR = Symbol('HOMEY_CONNECTOR');
+export const HOMEY_CONNECTOR_FACTORY = Symbol('HOMEY_CONNECTOR_FACTORY');
 
 export const DEVICES_HOMEY_PLUGIN_API_TAG_NAME = 'Devices Homey plugin';
 

@@ -1,4 +1,7 @@
 import { ConfigService } from '../../../modules/config/services/config.service';
+import { HomeyConnectorFactory } from '../connectors/homey-connector.factory';
+import { HomeyConnector } from '../connectors/homey-connector.interface';
+import { HomeyEventListener } from '../connectors/homey-connector.types';
 import {
 	DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS,
 	DEFAULT_HOMEY_RECONCILIATION_INTERVAL_MS,
@@ -6,16 +9,60 @@ import {
 	DEVICES_HOMEY_PLUGIN_NAME,
 	HomeyConnectionState,
 } from '../devices-homey.constants';
+import {
+	HomeyConnectorError,
+	HomeyConnectorErrorCategory,
+	HomeyConnectorOperation,
+} from '../errors/homey-connector.error';
 import { HomeyConfigModel } from '../models/config.model';
+import { HomeyDevice } from '../models/homey-device.model';
+import { HomeyEventType } from '../models/homey-event.model';
+import { HomeySystemInfo } from '../models/homey-system-info.model';
+import { HomeyZone } from '../models/homey-zone.model';
 
 import { HomeyService } from './homey.service';
+
+const systemInfo: HomeySystemInfo = {
+	id: 'homey-system',
+	name: 'Homey Pro',
+	version: '13.4.0',
+	tier: 'pro',
+	model: 'Homey Pro',
+};
+
+const zones: readonly HomeyZone[] = [
+	{ id: 'zone-living', name: 'Living room', parentId: null, active: true, path: ['Living room'] },
+];
+
+const staleDevice: HomeyDevice = {
+	id: 'device-light',
+	name: 'Light',
+	class: 'light',
+	zoneId: 'zone-living',
+	zoneName: 'Living room',
+	zonePath: ['Living room'],
+	available: true,
+	availabilityMessage: null,
+	driverId: 'homey:app:driver:light',
+	manufacturer: 'Example',
+	model: 'Light',
+	energy: null,
+	capabilities: [],
+};
 
 describe('HomeyService', () => {
 	let config: HomeyConfigModel;
 	let configService: jest.Mocked<Pick<ConfigService, 'getPluginConfig'>>;
+	let connector: jest.Mocked<HomeyConnector>;
+	let connectorFactory: jest.Mocked<HomeyConnectorFactory>;
+	let listener: HomeyEventListener | null;
+	let unsubscribe: jest.Mock;
 	let service: HomeyService;
 
 	beforeEach(() => {
+		jest.useFakeTimers();
+		listener = null;
+		unsubscribe = jest.fn();
 		config = Object.assign(new HomeyConfigModel(), {
 			enabled: true,
 			url: 'http://homey.local:4859',
@@ -24,7 +71,26 @@ describe('HomeyService', () => {
 			reconciliationInterval: DEFAULT_HOMEY_RECONCILIATION_INTERVAL_MS,
 		});
 		configService = { getPluginConfig: jest.fn().mockReturnValue(config) };
-		service = new HomeyService(configService as unknown as ConfigService);
+		connector = {
+			connect: jest.fn().mockResolvedValue(undefined),
+			disconnect: jest.fn().mockResolvedValue(undefined),
+			getSystemInfo: jest.fn().mockResolvedValue(systemInfo),
+			getZones: jest.fn().mockResolvedValue(zones),
+			getDevices: jest.fn().mockResolvedValue([staleDevice]),
+			getDevice: jest.fn().mockResolvedValue(staleDevice),
+			setCapabilityValue: jest.fn().mockResolvedValue(undefined),
+			subscribe: jest.fn().mockImplementation((nextListener: HomeyEventListener) => {
+				listener = nextListener;
+
+				return Promise.resolve(unsubscribe);
+			}),
+		};
+		connectorFactory = { create: jest.fn().mockReturnValue(connector) };
+		service = new HomeyService(configService as unknown as ConfigService, connectorFactory);
+	});
+
+	afterEach(() => {
+		jest.useRealTimers();
 	});
 
 	it('exposes the managed connector identity and starts stopped', () => {
@@ -33,28 +99,216 @@ describe('HomeyService', () => {
 		expect(service.getState()).toBe('stopped');
 	});
 
-	it('starts and stops idempotently without opening a transport', async () => {
+	it('connects, subscribes before inventory, and stops idempotently', async () => {
+		const order: string[] = [];
+		connector.connect.mockImplementation(() => {
+			order.push('connect');
+			return Promise.resolve();
+		});
+		connector.getSystemInfo.mockImplementation(() => {
+			order.push('system');
+			return Promise.resolve(systemInfo);
+		});
+		connector.getZones.mockImplementation(() => {
+			order.push('zones');
+			return Promise.resolve(zones);
+		});
+		connector.subscribe.mockImplementation((nextListener: HomeyEventListener) => {
+			order.push('subscribe');
+			listener = nextListener;
+			return Promise.resolve(unsubscribe);
+		});
+		connector.getDevices.mockImplementation(() => {
+			order.push('devices');
+			return Promise.resolve([staleDevice]);
+		});
+
 		await service.start();
 		await service.start();
 
+		expect(order).toEqual(['connect', 'system', 'zones', 'subscribe', 'devices']);
+		expect(connectorFactory.create.mock.calls[0]?.[0]).toEqual({
+			url: config.url,
+			apiKey: config.apiKey,
+			connectionTimeout: config.connectionTimeout,
+		});
 		expect(service.getState()).toBe('started');
-		expect(configService.getPluginConfig).toHaveBeenCalledTimes(1);
+		expect(await service.isHealthy()).toBe(true);
+		expect(service.getStatus().connectionState).toBe(HomeyConnectionState.CONNECTED);
+
+		await service.stop();
+		await service.stop();
+
+		expect(unsubscribe).toHaveBeenCalledTimes(1);
+		expect(connector.disconnect.mock.calls).toHaveLength(1);
+		expect(service.getState()).toBe('stopped');
 		expect(await service.isHealthy()).toBe(false);
+	});
+
+	it('performs a targeted authoritative read for an event received during the startup snapshot', async () => {
+		const freshDevice = { ...staleDevice, available: false, availabilityMessage: 'Offline' };
+		connector.getDevice.mockResolvedValue(freshDevice);
+		connector.getDevices.mockImplementation(async () => {
+			await listener?.({
+				type: HomeyEventType.DEVICE_AVAILABILITY_CHANGED,
+				deviceId: staleDevice.id,
+				available: false,
+				availabilityMessage: 'Offline',
+				occurredAt: null,
+				sequence: null,
+			});
+
+			return [staleDevice];
+		});
+
+		await service.start();
+
+		expect(connector.subscribe.mock.invocationCallOrder[0]).toBeLessThan(
+			connector.getDevices.mock.invocationCallOrder[0],
+		);
+		expect(connector.getDevice.mock.calls).toContainEqual([staleDevice.id]);
+		expect(await service.isHealthy()).toBe(true);
 
 		await service.stop();
+	});
+
+	it('serializes periodic reconciliation and does not schedule an overlapping run', async () => {
+		let resolveInventory: ((devices: readonly HomeyDevice[]) => void) | null = null;
+
+		await service.start();
+		connector.getDevices.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					resolveInventory = resolve;
+				}),
+		);
+
+		jest.advanceTimersByTime(config.reconciliationInterval);
+		await Promise.resolve();
+		await Promise.resolve();
+
+		expect(connector.getDevices.mock.calls).toHaveLength(2);
+
+		jest.advanceTimersByTime(config.reconciliationInterval * 2);
+		await Promise.resolve();
+
+		expect(connector.getDevices.mock.calls).toHaveLength(2);
+
+		resolveInventory?.([staleDevice]);
+
+		for (let index = 0; index < 10; index += 1) {
+			await Promise.resolve();
+		}
+
+		expect(jest.getTimerCount()).toBe(1);
+
+		await service.stop();
+	});
+
+	it('degrades on a transient live synchronization failure and recovers on reconciliation', async () => {
+		await service.start();
+		connector.getDevice.mockRejectedValueOnce(
+			new HomeyConnectorError(HomeyConnectorErrorCategory.UNAVAILABLE, HomeyConnectorOperation.GET_DEVICE),
+		);
+
+		await listener?.({
+			type: HomeyEventType.DEVICE_UPDATED,
+			deviceId: staleDevice.id,
+			occurredAt: null,
+			sequence: null,
+		});
+
+		expect(service.getStatus()).toMatchObject({
+			connectionState: HomeyConnectionState.DEGRADED_POLLING,
+			healthy: false,
+			lastError: 'Homey connection is temporarily unavailable',
+		});
+
+		await jest.advanceTimersByTimeAsync(config.reconciliationInterval);
+
+		expect(service.getStatus()).toMatchObject({
+			connectionState: HomeyConnectionState.CONNECTED,
+			healthy: true,
+			lastError: null,
+		});
+
+		await service.stop();
+	});
+
+	it('refreshes device zone paths after a live zone change', async () => {
+		await service.start();
+		connector.getZones.mockClear();
+		connector.getDevices.mockClear();
+
+		await listener?.({
+			type: HomeyEventType.ZONE_UPDATED,
+			zoneId: zones[0].id,
+			occurredAt: null,
+			sequence: null,
+		});
+
+		expect(connector.getZones.mock.calls).toHaveLength(1);
+		expect(connector.getDevices.mock.calls).toHaveLength(1);
+
+		await service.stop();
+	});
+
+	it('categorizes authentication failures and cleans up partial startup', async () => {
+		connector.connect.mockRejectedValue(
+			new HomeyConnectorError(HomeyConnectorErrorCategory.AUTHENTICATION, HomeyConnectorOperation.CONNECT),
+		);
+
+		await expect(service.start()).rejects.toThrow('Homey authentication or authorization failed');
+		expect(connector.disconnect.mock.calls).toHaveLength(1);
+		expect(service.getStatus()).toMatchObject({
+			serviceState: 'error',
+			connectionState: HomeyConnectionState.AUTHENTICATION_FAILED,
+			healthy: false,
+			lastError: 'Homey authentication or authorization failed',
+		});
+	});
+
+	it('cleans up a subscription after a failed inventory snapshot without exposing raw details', async () => {
+		connector.getDevices.mockRejectedValue(new Error('configured-secret at http://homey.local:4859'));
+
+		await expect(service.start()).rejects.toThrow('Homey service failed to start');
+		expect(unsubscribe).toHaveBeenCalledTimes(1);
+		expect(connector.disconnect.mock.calls).toHaveLength(1);
+		expect(JSON.stringify(service.getStatus())).not.toContain('configured-secret');
+		expect(JSON.stringify(service.getStatus())).not.toContain('homey.local');
+	});
+
+	it('retries connector cleanup after a sanitized stop failure', async () => {
+		await service.start();
+		connector.disconnect.mockRejectedValueOnce(new Error('configured-secret cleanup detail'));
+
+		await expect(service.stop()).rejects.toThrow('Homey service failed to stop');
+		expect(service.getState()).toBe('error');
+		expect(service.getStatus().lastError).toBe('Homey service failed to stop');
+
 		await service.stop();
 
+		expect(connector.disconnect.mock.calls).toHaveLength(2);
 		expect(service.getState()).toBe('stopped');
 	});
 
-	it('enters error state with a sanitized status if configuration loading fails', async () => {
-		configService.getPluginConfig.mockImplementation(() => {
-			throw new Error('raw configuration detail');
-		});
+	it('fails safely when the production connector factory is not registered', async () => {
+		service = new HomeyService(configService as unknown as ConfigService);
 
 		await expect(service.start()).rejects.toThrow('Homey service failed to start');
-		expect(service.getState()).toBe('error');
-		expect(service.getStatus().lastError).toBe('Homey service failed to start');
+		expect(service.getStatus()).toMatchObject({
+			connectionState: HomeyConnectionState.ERROR,
+			healthy: false,
+			lastError: 'Homey service failed to start',
+		});
+	});
+
+	it('does not create a connector from incomplete saved configuration', async () => {
+		config.apiKey = null;
+
+		await expect(service.start()).rejects.toThrow('Homey service failed to start');
+		expect(connectorFactory.create.mock.calls).toHaveLength(0);
+		expect(service.getStatus()).toMatchObject({ configured: false, healthy: false });
 	});
 
 	it('reports configuration without exposing its URL or API key', () => {
@@ -97,5 +351,7 @@ describe('HomeyService', () => {
 		);
 
 		expect(await service.onConfigChanged()).toEqual({ restartRequired: true });
+
+		await service.stop();
 	});
 });
