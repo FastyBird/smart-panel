@@ -122,7 +122,8 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 
 ### Backend API and OpenAPI
 
-- [ ] Status, test-connection, discovery, device inventory, mapping-preview, and adoption endpoints follow repository controller conventions.
+- [ ] Status, test-connection, device inventory, mapping-preview, and adoption endpoints follow repository controller conventions.
+- [x] Server-discovery endpoints are required only when compatibility evidence establishes a stable Homey-specific advertisement; they are intentionally omitted from the manual-only local MVP.
 - [ ] Every controller action has the required Swagger tags, operation metadata, response envelope, validation, authorization, and error responses.
 - [ ] `pnpm run generate:openapi` succeeds after backend Swagger changes.
 - [ ] No generated OpenAPI, admin API type, panel API client, or generated spec file is edited manually.
