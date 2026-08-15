@@ -38,6 +38,14 @@
         "outDir": "dist"
       },
       {
+        "include": "plugins/devices-homey/mappings/schema/**/*.json",
+        "outDir": "dist"
+      },
+      {
+        "include": "plugins/devices-homey/mappings/definitions/**/*.yaml",
+        "outDir": "dist"
+      },
+      {
         "include": "plugins/simulator/scenarios/schema/**/*.json",
         "outDir": "dist"
       },

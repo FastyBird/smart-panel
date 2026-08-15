@@ -282,12 +282,12 @@ remain supported. Revisit only after a Homey-specific identity and restart-stabl
 - `mappings/property-mapping-storage.service.ts`
 - Mapping schemas/types/specs
 
-- [ ] Define strict schemas for device, channel, and property descriptors.
-- [ ] Match on Homey class plus capability base ID; permit driver/vendor restrictions only where necessary.
-- [ ] Define priority, exclusivity/conflict, read/write direction, unit/range, and transformations.
-- [ ] Load built-ins and deterministic user overrides from `var/data/plugin.devices-homey.*.yaml` or the closest established naming scheme.
-- [ ] Validate mappings at startup and fail the plugin clearly on invalid built-ins while isolating invalid user overrides with actionable errors.
-- [ ] Add tests for precedence, duplicates, invalid schemas, ambiguous matches, and suffix/base-ID handling.
+- [x] Define strict schemas for device, channel, and property descriptors.
+- [x] Match on Homey class plus capability base ID; permit driver/vendor restrictions only where necessary.
+- [x] Define priority, exclusivity/conflict, read/write direction, unit/range, and transformations.
+- [x] Load built-ins and deterministic user overrides from `var/data/plugin.devices-homey.*.yaml` or the closest established naming scheme.
+- [x] Validate mappings at startup and fail the plugin clearly on invalid built-ins while isolating invalid user overrides with actionable errors.
+- [x] Add tests for precedence, duplicates, invalid schemas, ambiguous matches, and suffix/base-ID handling.
 
 ### Task 3.2: Add MVP mapping definitions
 

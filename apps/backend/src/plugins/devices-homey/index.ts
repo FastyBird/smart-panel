@@ -8,6 +8,7 @@ export * from './dto/test-connection.dto';
 export * from './dto/update-config.dto';
 export * from './entities/devices-homey.entity';
 export * from './errors/homey-connector.error';
+export * from './mappings';
 export * from './models/config.model';
 export * from './models/homey-capability.model';
 export * from './models/homey-device.model';
