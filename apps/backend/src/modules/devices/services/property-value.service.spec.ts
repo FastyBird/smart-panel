@@ -196,6 +196,301 @@ describe('PropertyValueService', () => {
 		});
 	});
 
+	describe('readLatestManyBounded', () => {
+		const makeProperties = (count: number): ChannelPropertyEntity[] =>
+			Array.from(
+				{ length: count },
+				(_, index) =>
+					({
+						id: `property-${index}`,
+						dataType: DataTypeType.INT,
+					}) as ChannelPropertyEntity,
+			);
+
+		it('returns an empty complete result without consulting storage', async () => {
+			await expect(service.readLatestManyBounded([])).resolves.toEqual({
+				items: [],
+				requestedCount: 0,
+				availableCount: 0,
+				unknownCount: 0,
+				complete: true,
+				storageStatus: 'not_needed',
+				cacheCount: 0,
+				storageCount: 0,
+				missingCount: 0,
+				unprocessedCount: 0,
+				oldestLastUpdated: null,
+				newestLastUpdated: null,
+				freshnessUnknownCount: 0,
+			});
+			expect(storageService.isConnected).not.toHaveBeenCalled();
+		});
+
+		it('preserves complete cache-only values while storage is disconnected', async () => {
+			const properties = makeProperties(2);
+			service['valuesMap'].set(properties[0].id, new PropertyValueState(10, '2026-08-15T10:00:00.000Z'));
+			service['valuesMap'].set(properties[1].id, new PropertyValueState(20, null));
+			storageService.isConnected.mockReturnValue(false);
+
+			const result = await service.readLatestManyBounded(properties);
+
+			expect(result).toMatchObject({
+				requestedCount: 2,
+				availableCount: 2,
+				unknownCount: 0,
+				complete: true,
+				storageStatus: 'not_needed',
+				cacheCount: 2,
+				storageCount: 0,
+				freshnessUnknownCount: 1,
+			});
+			expect(result.items.map((item) => [item.propertyId, item.status, item.source])).toEqual([
+				['property-0', 'available', 'cache'],
+				['property-1', 'available', 'cache'],
+			]);
+			expect(storageService.isConnected).not.toHaveBeenCalled();
+		});
+
+		it('keeps cached coverage and marks only unresolved values when storage is disconnected', async () => {
+			const properties = makeProperties(2);
+			service['valuesMap'].set(properties[0].id, new PropertyValueState(10, '2026-08-15T10:00:00.000Z'));
+			storageService.isConnected.mockReturnValue(false);
+
+			const result = await service.readLatestManyBounded(properties);
+
+			expect(result).toMatchObject({
+				availableCount: 1,
+				unknownCount: 1,
+				complete: false,
+				storageStatus: 'disconnected',
+				cacheCount: 1,
+				unprocessedCount: 1,
+			});
+			expect(result.items[1]).toEqual({
+				propertyId: 'property-1',
+				sourcePropertyId: 'property-1',
+				status: 'unprocessed',
+				source: null,
+				state: null,
+			});
+			expect(storageService.queryStrict).not.toHaveBeenCalled();
+		});
+
+		it('treats a cached null value as missing rather than a false scalar', async () => {
+			const [property] = makeProperties(1);
+			service['valuesMap'].set(property.id, new PropertyValueState(null, '2026-08-15T10:00:00.000Z'));
+
+			const result = await service.readLatestManyBounded([property]);
+
+			expect(result).toMatchObject({
+				availableCount: 0,
+				unknownCount: 1,
+				complete: false,
+				storageStatus: 'not_needed',
+				cacheCount: 1,
+				missingCount: 1,
+			});
+			expect(result.items[0]).toMatchObject({ status: 'missing', source: 'cache', state: { value: null } });
+		});
+
+		it('rechecks the cache before reporting an unresolved disconnected value', async () => {
+			const [property] = makeProperties(1);
+			storageService.isConnected.mockImplementation(() => {
+				service['valuesMap'].set(property.id, new PropertyValueState(9, '2026-08-15T10:00:00.000Z'));
+
+				return false;
+			});
+
+			const result = await service.readLatestManyBounded([property]);
+
+			expect(result.items[0]).toMatchObject({ status: 'available', source: 'cache', state: { value: 9 } });
+			expect(result).toMatchObject({
+				availableCount: 1,
+				unknownCount: 0,
+				storageStatus: 'disconnected',
+				complete: true,
+			});
+		});
+
+		it('distinguishes a completed storage miss from an unprocessed value', async () => {
+			const [property] = makeProperties(1);
+			storageService.queryStrict.mockResolvedValue([]);
+
+			const result = await service.readLatestManyBounded([property]);
+
+			expect(result).toMatchObject({
+				availableCount: 0,
+				unknownCount: 1,
+				complete: false,
+				storageStatus: 'available',
+				storageCount: 1,
+				missingCount: 1,
+				unprocessedCount: 0,
+			});
+			expect(result.items[0]).toEqual({
+				propertyId: property.id,
+				sourcePropertyId: property.id,
+				status: 'missing',
+				source: 'storage',
+				state: null,
+			});
+		});
+
+		it('keeps a newer concurrent cache value instead of an older storage row', async () => {
+			const [property] = makeProperties(1);
+			storageService.queryStrict.mockImplementation(() => {
+				service['valuesMap'].set(property.id, new PropertyValueState(42, '2026-08-15T12:00:00.000Z'));
+
+				return Promise.resolve([{ propertyId: property.id, numberValue: 10, time: '2026-08-15T11:00:00.000Z' }]);
+			});
+
+			const result = await service.readLatestManyBounded([property]);
+
+			expect(result.items[0]).toMatchObject({ status: 'available', source: 'cache', state: { value: 42 } });
+			expect(service['valuesMap'].get(property.id)?.value).toBe(42);
+		});
+
+		it('uses a newer storage row and computes its numeric trend before caching', async () => {
+			const [property] = makeProperties(1);
+			storageService.queryStrict.mockImplementation(() => {
+				service['valuesMap'].set(property.id, new PropertyValueState(5, '2026-08-15T10:00:00.000Z'));
+
+				return Promise.resolve([
+					{ propertyId: property.id, numberValue: 12, time: '2026-08-15T12:00:00.000Z' },
+					{ propertyId: property.id, numberValue: 10, time: '2026-08-15T11:00:00.000Z' },
+				]);
+			});
+
+			const result = await service.readLatestManyBounded([property]);
+
+			expect(result.items[0]).toMatchObject({
+				status: 'available',
+				source: 'storage',
+				state: { value: 12, trend: 'rising' },
+			});
+			expect(service['valuesMap'].get(property.id)).toMatchObject({ value: 12, trend: 'rising' });
+		});
+
+		it('deduplicates projected source keys and preserves logical property order', async () => {
+			const registry = module.get<PropertyValueSourceRegistryService>(PropertyValueSourceRegistryService);
+			registry.register({
+				getType: () => 'virtual',
+				resolve: (property) => (property.type === 'virtual' ? 'source-property' : null),
+			});
+			const properties = [
+				{ id: 'projection-a', type: 'virtual', dataType: DataTypeType.INT },
+				{ id: 'projection-b', type: 'virtual', dataType: DataTypeType.INT },
+			] as ChannelPropertyEntity[];
+			storageService.queryStrict.mockResolvedValue([
+				{ propertyId: 'source-property', numberValue: 7, time: '2026-08-15T12:00:00.000Z' },
+			]);
+
+			const result = await service.readLatestManyBounded(properties);
+
+			expect(storageService.queryStrict).toHaveBeenCalledTimes(1);
+			expect(storageService.queryStrict).toHaveBeenCalledWith(
+				expect.stringContaining("propertyId = 'source-property'"),
+			);
+			expect((storageService.queryStrict.mock.calls[0][0].match(/propertyId =/g) ?? []).length).toBe(1);
+			expect(result.items.map((item) => [item.propertyId, item.sourcePropertyId, item.state?.value])).toEqual([
+				['projection-a', 'source-property', 7],
+				['projection-b', 'source-property', 7],
+			]);
+		});
+
+		it('accepts exactly 500 properties and reads distinct sources in sequential chunks of at most 50', async () => {
+			const properties = makeProperties(500);
+			storageService.queryStrict.mockResolvedValue([]);
+
+			const result = await service.readLatestManyBounded(properties);
+
+			expect(result.requestedCount).toBe(500);
+			expect(storageService.queryStrict).toHaveBeenCalledTimes(10);
+			for (const [query] of storageService.queryStrict.mock.calls) {
+				expect((query.match(/propertyId =/g) ?? []).length).toBe(50);
+			}
+		});
+
+		it('rejects 501 properties before consulting storage', async () => {
+			await expect(service.readLatestManyBounded(makeProperties(501))).rejects.toThrow(
+				'At most 500 property values may be read at once',
+			);
+			expect(storageService.isConnected).not.toHaveBeenCalled();
+			expect(storageService.queryStrict).not.toHaveBeenCalled();
+		});
+
+		it('retains completed chunks and marks the remainder when a later storage chunk fails', async () => {
+			const properties = makeProperties(51);
+			storageService.queryStrict
+				.mockResolvedValueOnce(properties.slice(0, 50).map((property) => ({ propertyId: property.id, numberValue: 1 })))
+				.mockRejectedValueOnce(new Error('storage failed'));
+
+			const result = await service.readLatestManyBounded(properties);
+
+			expect(result).toMatchObject({
+				availableCount: 50,
+				unknownCount: 1,
+				storageStatus: 'failed',
+				storageCount: 50,
+				unprocessedCount: 1,
+				complete: false,
+			});
+			expect(result.items[50].status).toBe('unprocessed');
+		});
+
+		it('retains completed chunks and stops scheduling after a later chunk times out', async () => {
+			jest.useFakeTimers();
+			jest.setSystemTime(new Date('2026-08-15T12:00:00.000Z'));
+			try {
+				const properties = makeProperties(101);
+				storageService.queryStrict
+					.mockResolvedValueOnce(
+						properties.slice(0, 50).map((property) => ({ propertyId: property.id, numberValue: 1 })),
+					)
+					.mockReturnValueOnce(new Promise(() => undefined));
+				const read = service.readLatestManyBounded(properties);
+
+				await jest.advanceTimersByTimeAsync(750);
+
+				await expect(read).resolves.toMatchObject({
+					availableCount: 50,
+					unknownCount: 51,
+					storageStatus: 'timed_out',
+					storageCount: 50,
+					unprocessedCount: 51,
+					complete: false,
+				});
+				expect(storageService.queryStrict).toHaveBeenCalledTimes(2);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		it('enforces the hard 750 ms ceiling even when a caller supplies a later deadline', async () => {
+			jest.useFakeTimers();
+			jest.setSystemTime(new Date('2026-08-15T12:00:00.000Z'));
+			try {
+				const [property] = makeProperties(1);
+				storageService.queryStrict.mockReturnValue(new Promise(() => undefined));
+				const read = service.readLatestManyBounded([property], {
+					deadlineAt: new Date('2026-08-15T13:00:00.000Z'),
+				});
+
+				await jest.advanceTimersByTimeAsync(750);
+
+				await expect(read).resolves.toMatchObject({
+					storageStatus: 'timed_out',
+					availableCount: 0,
+					unprocessedCount: 1,
+					complete: false,
+				});
+				expect(storageService.queryStrict).toHaveBeenCalledTimes(1);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+	});
+
 	describe('delete', () => {
 		it('should delete property data from storage and cache', async () => {
 			const property: ChannelPropertyEntity = {

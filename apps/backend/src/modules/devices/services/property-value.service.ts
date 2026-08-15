@@ -12,12 +12,65 @@ import { PropertyValueSourceRegistryService } from './property-value-source.regi
  * Number of recent data points used for trend computation.
  */
 const TREND_POINTS_COUNT = 5;
+const BOUNDED_READ_MAX_PROPERTIES = 500;
+const BOUNDED_READ_SOURCE_CHUNK_SIZE = 50;
+const BOUNDED_READ_DEFAULT_DEADLINE_MS = 750;
 
 interface PropertyValueRow {
 	time?: Date | string;
 	stringValue?: string;
 	numberValue?: number;
 	propertyId: ChannelPropertyEntity['id'];
+}
+
+export type BoundedPropertyValueSource = 'cache' | 'storage';
+export type BoundedPropertyValueStorageStatus = 'not_needed' | 'available' | 'disconnected' | 'failed' | 'timed_out';
+
+interface BoundedPropertyValueItemBase {
+	propertyId: ChannelPropertyEntity['id'];
+	sourcePropertyId: ChannelPropertyEntity['id'];
+}
+
+export type BoundedPropertyValueItem =
+	| (BoundedPropertyValueItemBase & {
+			status: 'available';
+			source: BoundedPropertyValueSource;
+			state: PropertyValueState & { value: string | number | boolean };
+	  })
+	| (BoundedPropertyValueItemBase & {
+			status: 'missing';
+			source: BoundedPropertyValueSource;
+			state: PropertyValueState | null;
+	  })
+	| (BoundedPropertyValueItemBase & {
+			status: 'unprocessed';
+			source: null;
+			state: null;
+	  });
+
+export interface BoundedPropertyValueReadOptions {
+	deadlineAt?: Date;
+}
+
+export interface BoundedPropertyValueReadResult {
+	items: BoundedPropertyValueItem[];
+	requestedCount: number;
+	availableCount: number;
+	unknownCount: number;
+	complete: boolean;
+	storageStatus: BoundedPropertyValueStorageStatus;
+	cacheCount: number;
+	storageCount: number;
+	missingCount: number;
+	unprocessedCount: number;
+	oldestLastUpdated: string | null;
+	newestLastUpdated: string | null;
+	freshnessUnknownCount: number;
+}
+
+interface BoundedPropertyValueSourceGroup {
+	property: ChannelPropertyEntity;
+	indexes: number[];
 }
 
 @Injectable()
@@ -264,6 +317,320 @@ export class PropertyValueService {
 
 			throw error;
 		}
+	}
+
+	/**
+	 * Reconciles a bounded property set against the live cache and cold storage without discarding cache hits when
+	 * storage is unavailable. Counts are per logical property; projected properties share one source lookup but retain
+	 * separate ordered result items. The optional deadline may tighten, but never extend, the 750 ms response ceiling.
+	 */
+	async readLatestManyBounded(
+		properties: ChannelPropertyEntity[],
+		options: BoundedPropertyValueReadOptions = {},
+	): Promise<BoundedPropertyValueReadResult> {
+		if (properties.length > BOUNDED_READ_MAX_PROPERTIES) {
+			throw new RangeError(`At most ${BOUNDED_READ_MAX_PROPERTIES} property values may be read at once`);
+		}
+
+		const startedAt = Date.now();
+		const requestedDeadlineAt = options.deadlineAt?.getTime() ?? startedAt + BOUNDED_READ_DEFAULT_DEADLINE_MS;
+
+		if (!Number.isFinite(requestedDeadlineAt)) {
+			throw new RangeError('Property value read deadline must be a valid date');
+		}
+
+		const deadlineAt = Math.min(requestedDeadlineAt, startedAt + BOUNDED_READ_DEFAULT_DEADLINE_MS);
+
+		const items = new Array<BoundedPropertyValueItem | undefined>(properties.length);
+		const unresolvedBySource = new Map<ChannelPropertyEntity['id'], BoundedPropertyValueSourceGroup>();
+
+		for (const [index, property] of properties.entries()) {
+			const sourcePropertyId = this.valueSourceRegistry.resolve(property);
+			const cached = this.valuesMap.get(sourcePropertyId);
+
+			if (cached) {
+				items[index] = this.toBoundedItem(property.id, sourcePropertyId, cached, 'cache');
+				continue;
+			}
+
+			const group = unresolvedBySource.get(sourcePropertyId);
+
+			if (group) {
+				group.indexes.push(index);
+			} else {
+				unresolvedBySource.set(sourcePropertyId, { property, indexes: [index] });
+			}
+		}
+
+		if (unresolvedBySource.size === 0) {
+			return this.buildBoundedResult(items, 'not_needed');
+		}
+
+		if (Date.now() >= deadlineAt) {
+			this.fillConcurrentCachedBoundedItems(items, properties, unresolvedBySource);
+			this.fillUnprocessedBoundedItems(items, properties, unresolvedBySource);
+
+			return this.buildBoundedResult(items, 'timed_out');
+		}
+
+		if (!this.storageService.isConnected()) {
+			this.fillConcurrentCachedBoundedItems(items, properties, unresolvedBySource);
+			this.fillUnprocessedBoundedItems(items, properties, unresolvedBySource);
+
+			return this.buildBoundedResult(items, 'disconnected');
+		}
+
+		const sourceEntries = [...unresolvedBySource.entries()];
+		let storageStatus: BoundedPropertyValueStorageStatus = 'available';
+
+		for (let offset = 0; offset < sourceEntries.length; offset += BOUNDED_READ_SOURCE_CHUNK_SIZE) {
+			if (Date.now() >= deadlineAt) {
+				storageStatus = 'timed_out';
+				break;
+			}
+
+			const chunk = sourceEntries.slice(offset, offset + BOUNDED_READ_SOURCE_CHUNK_SIZE);
+			const query = this.buildBoundedPropertyValueQuery(chunk.map(([sourcePropertyId]) => sourcePropertyId));
+
+			try {
+				const queryResult = await this.queryPropertyValuesBeforeDeadline(query, deadlineAt);
+
+				if (queryResult === null) {
+					storageStatus = 'timed_out';
+					break;
+				}
+
+				this.applyBoundedStorageRows(items, properties, chunk, queryResult);
+
+				for (const [sourcePropertyId] of chunk) {
+					unresolvedBySource.delete(sourcePropertyId);
+				}
+			} catch (error) {
+				const err = error as Error;
+				this.logger.error(`Failed to bounded-batch read latest property values error=${err.message}`, err.stack);
+				storageStatus = 'failed';
+				break;
+			}
+		}
+
+		this.fillConcurrentCachedBoundedItems(items, properties, unresolvedBySource);
+		this.fillUnprocessedBoundedItems(items, properties, unresolvedBySource);
+
+		return this.buildBoundedResult(items, storageStatus);
+	}
+
+	private buildBoundedPropertyValueQuery(sourcePropertyIds: ChannelPropertyEntity['id'][]): string {
+		const predicate = sourcePropertyIds
+			.map((sourcePropertyId) => `propertyId = '${this.escapeTagValue(sourcePropertyId)}'`)
+			.join(' OR ');
+
+		return `
+	        SELECT *
+	        FROM property_value
+	        WHERE (${predicate})
+			GROUP BY "propertyId"
+			ORDER BY time DESC
+			LIMIT ${TREND_POINTS_COUNT}
+	      `;
+	}
+
+	private async queryPropertyValuesBeforeDeadline(
+		query: string,
+		deadlineAt: number,
+	): Promise<PropertyValueRow[] | null> {
+		const remainingMs = deadlineAt - Date.now();
+
+		if (remainingMs <= 0) {
+			return null;
+		}
+
+		let timeout: ReturnType<typeof setTimeout> | undefined;
+
+		try {
+			return await Promise.race([
+				this.storageService.queryStrict<PropertyValueRow>(query),
+				new Promise<null>((resolve) => {
+					timeout = setTimeout(() => resolve(null), remainingMs);
+				}),
+			]);
+		} finally {
+			if (timeout !== undefined) {
+				clearTimeout(timeout);
+			}
+		}
+	}
+
+	private applyBoundedStorageRows(
+		items: Array<BoundedPropertyValueItem | undefined>,
+		properties: ChannelPropertyEntity[],
+		chunk: Array<[ChannelPropertyEntity['id'], BoundedPropertyValueSourceGroup]>,
+		rows: PropertyValueRow[],
+	): void {
+		const rowsBySource = new Map<ChannelPropertyEntity['id'], PropertyValueRow[]>();
+
+		for (const row of rows) {
+			rowsBySource.set(row.propertyId, [...(rowsBySource.get(row.propertyId) ?? []), row]);
+		}
+
+		for (const [sourcePropertyId, group] of chunk) {
+			const sourceRows = rowsBySource.get(sourcePropertyId) ?? [];
+			const firstRow = sourceRows[0];
+			let storedState = firstRow ? this.toState(group.property, sourcePropertyId, firstRow) : null;
+			const concurrentCache = this.valuesMap.get(sourcePropertyId);
+			const useCache = concurrentCache !== undefined && this.isStateNewerOrEqual(concurrentCache, storedState);
+
+			if (!useCache && firstRow) {
+				this.updateRecentValuesFromRows(group.property, sourcePropertyId, sourceRows);
+				storedState = this.toState(group.property, sourcePropertyId, firstRow);
+			}
+
+			const state = useCache ? concurrentCache : storedState;
+			const source: BoundedPropertyValueSource = useCache ? 'cache' : 'storage';
+
+			if (!useCache && storedState) {
+				this.valuesMap.set(sourcePropertyId, storedState);
+			}
+
+			for (const index of group.indexes) {
+				items[index] = this.toBoundedItem(properties[index].id, sourcePropertyId, state, source);
+			}
+		}
+	}
+
+	private isStateNewerOrEqual(cached: PropertyValueState, stored: PropertyValueState | null): boolean {
+		if (!stored) {
+			return true;
+		}
+
+		const cachedTime = cached.lastUpdated === null ? null : Date.parse(cached.lastUpdated);
+		const storedTime = stored.lastUpdated === null ? null : Date.parse(stored.lastUpdated);
+
+		if (cachedTime === null || Number.isNaN(cachedTime)) {
+			return storedTime === null || Number.isNaN(storedTime);
+		}
+		if (storedTime === null || Number.isNaN(storedTime)) {
+			return true;
+		}
+
+		return cachedTime >= storedTime;
+	}
+
+	private updateRecentValuesFromRows(
+		property: ChannelPropertyEntity,
+		sourcePropertyId: ChannelPropertyEntity['id'],
+		rows: PropertyValueRow[],
+	): void {
+		if (!this.isNumericDataType(property.dataType)) {
+			return;
+		}
+
+		this.recentValuesMap.set(
+			sourcePropertyId,
+			rows
+				.map((row) => row.numberValue)
+				.filter((value): value is number => value !== undefined)
+				.reverse(),
+		);
+	}
+
+	private toBoundedItem(
+		propertyId: ChannelPropertyEntity['id'],
+		sourcePropertyId: ChannelPropertyEntity['id'],
+		state: PropertyValueState | null,
+		source: BoundedPropertyValueSource,
+	): BoundedPropertyValueItem {
+		if (state === null || state.value === null) {
+			return { propertyId, sourcePropertyId, status: 'missing', source, state };
+		}
+
+		return {
+			propertyId,
+			sourcePropertyId,
+			status: 'available',
+			source,
+			state: state as PropertyValueState & { value: string | number | boolean },
+		};
+	}
+
+	private fillConcurrentCachedBoundedItems(
+		items: Array<BoundedPropertyValueItem | undefined>,
+		properties: ChannelPropertyEntity[],
+		groups: Map<ChannelPropertyEntity['id'], BoundedPropertyValueSourceGroup>,
+	): void {
+		for (const [sourcePropertyId, group] of groups) {
+			const cached = this.valuesMap.get(sourcePropertyId);
+
+			if (!cached) {
+				continue;
+			}
+
+			for (const index of group.indexes) {
+				items[index] = this.toBoundedItem(properties[index].id, sourcePropertyId, cached, 'cache');
+			}
+
+			groups.delete(sourcePropertyId);
+		}
+	}
+
+	private fillUnprocessedBoundedItems(
+		items: Array<BoundedPropertyValueItem | undefined>,
+		properties: ChannelPropertyEntity[],
+		groups: Map<ChannelPropertyEntity['id'], BoundedPropertyValueSourceGroup>,
+	): void {
+		for (const [sourcePropertyId, group] of groups) {
+			for (const index of group.indexes) {
+				if (items[index] !== undefined) {
+					continue;
+				}
+
+				items[index] = {
+					propertyId: properties[index].id,
+					sourcePropertyId,
+					status: 'unprocessed',
+					source: null,
+					state: null,
+				};
+			}
+		}
+	}
+
+	private buildBoundedResult(
+		items: Array<BoundedPropertyValueItem | undefined>,
+		storageStatus: BoundedPropertyValueStorageStatus,
+	): BoundedPropertyValueReadResult {
+		const resolvedItems = items.filter((item): item is BoundedPropertyValueItem => item !== undefined);
+		const cacheCount = resolvedItems.filter((item) => item.source === 'cache').length;
+		const storageCount = resolvedItems.filter((item) => item.source === 'storage').length;
+		const missingCount = resolvedItems.filter((item) => item.status === 'missing').length;
+		const unprocessedCount = resolvedItems.filter((item) => item.status === 'unprocessed').length;
+		const availableCount = resolvedItems.filter((item) => item.status === 'available').length;
+		const unknownCount = missingCount + unprocessedCount;
+		const freshnessUnknownCount = resolvedItems.filter(
+			(item) =>
+				item.status === 'available' &&
+				(item.state.lastUpdated === null || Number.isNaN(Date.parse(item.state.lastUpdated))),
+		).length;
+		const timestamps = resolvedItems
+			.filter((item) => item.status === 'available' && item.state?.lastUpdated !== null)
+			.map((item) => item.state?.lastUpdated)
+			.filter((timestamp): timestamp is string => timestamp !== undefined && !Number.isNaN(Date.parse(timestamp)))
+			.sort((left, right) => Date.parse(left) - Date.parse(right));
+
+		return {
+			items: resolvedItems,
+			requestedCount: items.length,
+			availableCount,
+			unknownCount,
+			complete: unknownCount === 0,
+			storageStatus,
+			cacheCount,
+			storageCount,
+			missingCount,
+			unprocessedCount,
+			oldestLastUpdated: timestamps[0] ?? null,
+			newestLastUpdated: timestamps[timestamps.length - 1] ?? null,
+			freshnessUnknownCount,
+		};
 	}
 
 	private async readLatestInternal(

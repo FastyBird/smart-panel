@@ -1234,6 +1234,10 @@ captured as an opt-in/expected baseline measurement rather than a failing normal
       treating discovery as authorization, online availability, or proof that an action can execute.
 - [ ] Expose the bounded metadata search through a Buddy read tool after the structured tool-result loop is available.
 - [ ] Add safe filtered/aggregate current-state queries.
+- [x] Add a Devices-owned bounded current-value reconciliation primitive: preserve cache hits when storage is
+      unavailable, read at most 500 logical properties in sequential 50-source chunks, deduplicate projected source
+      keys, enforce a 750 ms soft response deadline, and report available/missing/unprocessed coverage plus value-time
+      bounds without changing strict MCP/device reads.
 - [ ] Add a bounded `PropertyValueService` batch/aggregate contract for current-value predicates and aggregates. Resolve
       eligible metadata in the database, reconcile cache/storage values in chunks, short-circuit only sound outcomes,
       and return eligible/evaluated/unknown/freshness/partial metadata when completeness cannot be established.
