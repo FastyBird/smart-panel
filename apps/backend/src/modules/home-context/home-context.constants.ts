@@ -48,3 +48,45 @@ export const HOME_CONTEXT_LIMIT_PROFILES: Readonly<Record<HomeContextProfile, Re
 export const HOME_TARGET_LIGHTING_MODES = ['off', 'on', 'work', 'relax', 'night'] as const;
 
 export type HomeTargetLightingMode = (typeof HOME_TARGET_LIGHTING_MODES)[number];
+
+export const HOME_SEARCH_PROFILE_BUDDY_V1 = 'buddy-search-v1' as const;
+
+export type HomeSearchProfile = typeof HOME_SEARCH_PROFILE_BUDDY_V1;
+
+export interface HomeSearchLimitProfile {
+	defaultResults: number;
+	maxResults: number;
+	maxCandidatesPerKind: number;
+	maxQueryCharacters: number;
+	maxQueryTokens: number;
+	maxKinds: number;
+	maxCategories: number;
+}
+
+export const HOME_SEARCH_LIMIT_PROFILES: Readonly<Record<HomeSearchProfile, Readonly<HomeSearchLimitProfile>>> =
+	Object.freeze({
+		[HOME_SEARCH_PROFILE_BUDDY_V1]: Object.freeze({
+			defaultResults: 10,
+			maxResults: 20,
+			maxCandidatesPerKind: 21,
+			maxQueryCharacters: 128,
+			maxQueryTokens: 8,
+			maxKinds: 4,
+			maxCategories: 16,
+		}),
+	});
+
+export const HOME_SEARCH_ENTITY_KINDS = ['space', 'device', 'property', 'scene'] as const;
+
+export type HomeSearchEntityKind = (typeof HOME_SEARCH_ENTITY_KINDS)[number];
+
+export const HOME_SEARCH_MATCH_REASONS = [
+	'exact_id',
+	'exact_name',
+	'name_prefix',
+	'lexical_match',
+	'space_filter',
+	'category_filter',
+] as const;
+
+export type HomeSearchMatchReason = (typeof HOME_SEARCH_MATCH_REASONS)[number];

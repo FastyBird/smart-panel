@@ -1221,7 +1221,11 @@ captured as an opt-in/expected baseline measurement rather than a failing normal
 - [x] Keep MCP installation identity, auth, policy, auditing, request envelope, and transport deadlines in MCP.
 - [x] Extract the existing MCP-compatible writable/trigger discovery logic from the MCP tool adapter; query, space,
       category, and capability filters remain part of the bounded search task below.
-- [ ] Add database-bounded lexical/entity search and safe filtered/aggregate state queries.
+- [x] Add database-bounded metadata-only lexical/entity search with fixed query count, bounded candidates/results,
+      SQL-applied visibility, space and category filters, deterministic ranking, exact totals, and explicit
+      truncation/refinement metadata. Search results do not include live values or authorize actions.
+- [ ] Add cursor pagination and static candidate-capability filters to metadata search before exposing it as a Buddy tool.
+- [ ] Add safe filtered/aggregate current-state queries.
 - [ ] Add a bounded `PropertyValueService` batch/aggregate contract for current-value predicates and aggregates. Resolve
       eligible metadata in the database, reconcile cache/storage values in chunks, short-circuit only sound outcomes,
       and return eligible/evaluated/unknown/freshness/partial metadata when completeness cannot be established.

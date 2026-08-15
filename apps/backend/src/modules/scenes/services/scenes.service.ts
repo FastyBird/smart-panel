@@ -9,13 +9,14 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { buildSqliteFtsNameRankExpression } from '../../../common/utils/sqlite-fts.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SpacesService } from '../../spaces/services/spaces.service';
 import { CreateSceneActionDto } from '../dto/create-scene-action.dto';
 import { CreateSceneDto } from '../dto/create-scene.dto';
 import { UpdateSceneDto } from '../dto/update-scene.dto';
 import { SceneEntity } from '../entities/scenes.entity';
-import { EventType, SCENES_MODULE_NAME } from '../scenes.constants';
+import { EventType, SCENES_MODULE_NAME, SceneCategory } from '../scenes.constants';
 import {
 	ScenesNotEditableException,
 	ScenesNotFoundException,
@@ -27,6 +28,35 @@ import { SceneActionsService } from './scene-actions.service';
 
 export interface SceneSummaryPage {
 	scenes: SceneEntity[];
+	total: number;
+}
+
+export interface SceneSearchSummary {
+	id: string;
+	name: string;
+	category: SceneCategory;
+	enabled: boolean;
+	triggerable: boolean;
+	primarySpaceId: string | null;
+	rankTier: number;
+	lexicalScore: number;
+}
+
+export interface SceneSearchSummaryInput {
+	match: string;
+	offset?: number;
+	limit: number;
+	rawQuery?: string;
+	normalizedQuery?: string;
+	normalizedTokens?: string[];
+	primarySpaceIds?: string[];
+	primarySpaceId?: string;
+	primarySpaceParentId?: string;
+	categories?: SceneCategory[];
+}
+
+export interface SceneSearchSummaryPage {
+	scenes: SceneSearchSummary[];
 	total: number;
 }
 
@@ -126,6 +156,103 @@ export class ScenesService {
 		const [scenes, total] = await query.getManyAndCount();
 
 		return { scenes, total };
+	}
+
+	async searchSummaryPage(input: SceneSearchSummaryInput): Promise<SceneSearchSummaryPage> {
+		if (input.limit <= 0 || input.primarySpaceIds?.length === 0 || input.categories?.length === 0) {
+			return { scenes: [], total: 0 };
+		}
+
+		const predicates = ['home_context_entity_search_fts.entity_kind = ?', 'home_context_entity_search_fts MATCH ?'];
+		const parameters: Array<string | number> = ['scene', input.match];
+
+		const spacePredicates: string[] = [];
+
+		if (input.primarySpaceIds) {
+			spacePredicates.push(`scene."primarySpaceId" IN (${input.primarySpaceIds.map(() => '?').join(', ')})`);
+			parameters.push(...input.primarySpaceIds);
+		}
+
+		if (input.primarySpaceId) {
+			spacePredicates.push('scene."primarySpaceId" = ?');
+			parameters.push(input.primarySpaceId);
+		}
+
+		if (input.primarySpaceParentId) {
+			spacePredicates.push(
+				'scene."primarySpaceId" IN (SELECT scoped_space.id FROM spaces_module_spaces scoped_space ' +
+					'WHERE scoped_space."parentId" = ?)',
+			);
+			parameters.push(input.primarySpaceParentId);
+		}
+
+		if (spacePredicates.length > 0) {
+			predicates.push(`(${spacePredicates.join(' OR ')})`);
+		}
+
+		if (input.categories) {
+			predicates.push(`scene.category IN (${input.categories.map(() => '?').join(', ')})`);
+			parameters.push(...input.categories);
+		}
+
+		interface SceneSearchRow extends Omit<SceneSearchSummary, 'enabled' | 'triggerable' | 'rankTier' | 'lexicalScore'> {
+			enabled: boolean | number;
+			triggerable: boolean | number;
+			rankTier: string | number;
+			lexicalScore: string | number;
+		}
+
+		interface CountRow {
+			total: string | number;
+		}
+
+		const where = predicates.join('\n AND ');
+		const rank = buildSqliteFtsNameRankExpression({
+			ftsTable: 'home_context_entity_search_fts',
+			vocabularyTable: 'home_context_entity_search_vocab',
+			entityIdExpression: 'scene.id',
+			rawQuery: input.rawQuery,
+			normalizedQuery: input.normalizedQuery,
+			normalizedTokens: input.normalizedTokens,
+		});
+		const [rows, countRows] = await Promise.all([
+			this.dataSource.query<SceneSearchRow[]>(
+				`SELECT scene.id AS id,
+				        scene.name AS name,
+				        scene.category AS category,
+				        scene.enabled AS enabled,
+				        scene.triggerable AS triggerable,
+				        scene."primarySpaceId" AS "primarySpaceId",
+				        ${rank.sql} AS "rankTier",
+				        bm25(home_context_entity_search_fts) AS "lexicalScore"
+				 FROM home_context_entity_search_fts
+				 INNER JOIN scenes_module_scenes scene
+				   ON scene.id = home_context_entity_search_fts.entity_id
+				 WHERE ${where}
+				 ORDER BY "rankTier" ASC, "lexicalScore" ASC, LOWER(scene.name) ASC, scene.id ASC
+				 LIMIT ? OFFSET ?`,
+				[...rank.parameters, ...parameters, input.limit, input.offset ?? 0],
+			),
+			this.dataSource.query<CountRow[]>(
+				`SELECT COUNT(*) AS total
+				 FROM home_context_entity_search_fts
+				 INNER JOIN scenes_module_scenes scene
+				   ON scene.id = home_context_entity_search_fts.entity_id
+				 WHERE ${where}`,
+				parameters,
+			),
+		]);
+
+		return {
+			scenes: rows.map((row) => ({
+				...row,
+				enabled: Boolean(row.enabled),
+				triggerable: Boolean(row.triggerable),
+				rankTier: Number(row.rankTier),
+				lexicalScore: Number(row.lexicalScore),
+			})),
+			total: Number(countRows[0]?.total ?? 0),
+		};
 	}
 
 	async findTriggerableSummaryPage(limit: number): Promise<SceneSummaryPage> {

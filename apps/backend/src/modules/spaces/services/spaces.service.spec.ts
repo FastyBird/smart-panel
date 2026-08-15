@@ -583,6 +583,91 @@ describe('SpacesService', () => {
 		});
 	});
 
+	describe('searchSummaryPage', () => {
+		it('returns bounded FTS-ranked metadata with type, category, and scope filters', async () => {
+			dataSourceQueryMock
+				.mockResolvedValueOnce([
+					{
+						id: mockSpace.id,
+						name: mockSpace.name,
+						type: SpaceType.ROOM,
+						category: SpaceRoomCategory.LIVING_ROOM,
+						parentId: 'floor-id',
+						rankTier: '1',
+						lexicalScore: '-2.5',
+					},
+				])
+				.mockResolvedValueOnce([{ total: '3' }]);
+
+			await expect(
+				service.searchSummaryPage({
+					match: '"living"*',
+					rawQuery: ' Living%Room_ ',
+					normalizedQuery: 'living%room_',
+					offset: 2,
+					limit: 20,
+					spaceIds: [mockSpace.id],
+					parentSpaceId: 'floor-id',
+					types: [SpaceType.ROOM],
+					categories: [SpaceRoomCategory.LIVING_ROOM],
+				}),
+			).resolves.toEqual({
+				spaces: [
+					expect.objectContaining({
+						id: mockSpace.id,
+						category: SpaceRoomCategory.LIVING_ROOM,
+						rankTier: 1,
+						lexicalScore: -2.5,
+					}),
+				],
+				total: 3,
+			});
+			const [selectSql, selectParameters] = dataSourceQueryMock.mock.calls[0] as [string, unknown[]];
+			const [countSql, countParameters] = dataSourceQueryMock.mock.calls[1] as [string, unknown[]];
+			expect(selectSql).toContain('home_context_entity_search_fts MATCH ?');
+			expect(selectSql).toContain('(space.id IN (?) OR space."parentId" = ?)');
+			expect(selectSql).toContain('space.type IN (?)');
+			expect(selectSql).toContain('space.category IN (?)');
+			expect(selectSql).toContain('WHEN space.id = ? COLLATE NOCASE THEN 0');
+			expect(selectSql).toContain('FROM home_context_entity_search_vocab exact_count');
+			expect(selectSql).toContain('FROM home_context_entity_search_vocab prefix_term');
+			expect(selectSql).toContain('ORDER BY "rankTier" ASC, "lexicalScore" ASC, LOWER(space.name) ASC, space.id ASC');
+			expect(selectSql).toContain('LIMIT ? OFFSET ?');
+			expect(selectParameters).toEqual([
+				'Living%Room_',
+				1,
+				'living%room_',
+				1,
+				'living\\%room\\_%',
+				'space',
+				'"living"*',
+				mockSpace.id,
+				'floor-id',
+				SpaceType.ROOM,
+				SpaceRoomCategory.LIVING_ROOM,
+				20,
+				2,
+			]);
+			expect(countSql).toContain('SELECT COUNT(*) AS total');
+			expect(countParameters).toEqual([
+				'space',
+				'"living"*',
+				mockSpace.id,
+				'floor-id',
+				SpaceType.ROOM,
+				SpaceRoomCategory.LIVING_ROOM,
+			]);
+		});
+
+		it('does not query an explicitly empty scope', async () => {
+			await expect(service.searchSummaryPage({ match: 'living', limit: 20, spaceIds: [] })).resolves.toEqual({
+				spaces: [],
+				total: 0,
+			});
+			expect(dataSourceQueryMock).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('findLightingTriggerSummaryPage', () => {
 		it('returns only bounded spaces with enabled visible writable lighting targets', async () => {
 			const onlineDevice = { id: 'device-1' } as DeviceEntity;

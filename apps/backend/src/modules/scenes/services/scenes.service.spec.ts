@@ -4,11 +4,90 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SpacesService } from '../../spaces/services/spaces.service';
 import { SceneEntity } from '../entities/scenes.entity';
+import { SceneCategory } from '../scenes.constants';
 
 import { SceneActionsService } from './scene-actions.service';
 import { ScenesService } from './scenes.service';
 
 describe('ScenesService', () => {
+	it('returns bounded FTS-ranked scene metadata without excluding disabled or non-triggerable scenes', async () => {
+		const dataSource = {
+			query: jest
+				.fn()
+				.mockResolvedValueOnce([
+					{
+						id: 'scene-id',
+						name: 'Quiet evening',
+						category: 'generic',
+						enabled: 0,
+						triggerable: 0,
+						primarySpaceId: 'space-id',
+						rankTier: '0',
+						lexicalScore: '-3.25',
+					},
+				])
+				.mockResolvedValueOnce([{ total: '2' }]),
+		};
+		const service = new ScenesService(
+			{} as Repository<SceneEntity>,
+			{} as SceneActionsService,
+			{} as SpacesService,
+			dataSource as unknown as DataSource,
+			{} as EventEmitter2,
+		);
+
+		await expect(
+			service.searchSummaryPage({
+				match: '"quiet"*',
+				rawQuery: 'scene-id',
+				normalizedQuery: 'quiet',
+				offset: 1,
+				limit: 20,
+				primarySpaceId: 'floor-id',
+				primarySpaceParentId: 'floor-id',
+				categories: [SceneCategory.GENERIC],
+			}),
+		).resolves.toEqual({
+			scenes: [
+				expect.objectContaining({
+					id: 'scene-id',
+					enabled: false,
+					triggerable: false,
+					rankTier: 0,
+					lexicalScore: -3.25,
+				}),
+			],
+			total: 2,
+		});
+		const [selectSql, selectParameters] = dataSource.query.mock.calls[0] as [string, unknown[]];
+		const [countSql, countParameters] = dataSource.query.mock.calls[1] as [string, unknown[]];
+		expect(selectSql).toContain('home_context_entity_search_fts MATCH ?');
+		expect(selectSql).toContain('(scene."primarySpaceId" = ? OR scene."primarySpaceId" IN (SELECT scoped_space.id');
+		expect(selectSql).toContain('scoped_space."parentId" = ?)');
+		expect(selectSql).toContain('scene.category IN (?)');
+		expect(selectSql).not.toContain('scene.enabled = 1');
+		expect(selectSql).not.toContain('scene.triggerable = 1');
+		expect(selectSql).toContain('WHEN scene.id = ? COLLATE NOCASE THEN 0');
+		expect(selectSql).toContain('FROM home_context_entity_search_vocab exact_count');
+		expect(selectSql).toContain('ORDER BY "rankTier" ASC, "lexicalScore" ASC, LOWER(scene.name) ASC, scene.id ASC');
+		expect(selectParameters).toEqual([
+			'scene-id',
+			1,
+			'quiet',
+			1,
+			'quiet%',
+			'scene',
+			'"quiet"*',
+			'floor-id',
+			'floor-id',
+			'generic',
+			20,
+			1,
+		]);
+		expect(countSql).toContain('SELECT COUNT(*) AS total');
+		expect(countParameters).toEqual(['scene', '"quiet"*', 'floor-id', 'floor-id', 'generic']);
+	});
+
 	it('includes disabled scenes in summary queries', async () => {
 		const disabledScene = { id: 'disabled-scene', name: 'Disabled scene', enabled: false } as SceneEntity;
 		const query = {
