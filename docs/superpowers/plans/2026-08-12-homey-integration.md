@@ -241,12 +241,12 @@ index.ts
 - [x] Use exponential reconnect backoff with jitter and a maximum delay.
 - [x] Treat authentication/authorization failures differently from transient network failures.
 - [x] Prevent concurrent reconnect and reconciliation loops.
-- [ ] Track last successful connection, inventory sync, event, error category, reconnect count, and degraded state.
-- [ ] Unit-test all state transitions with fake timers.
+- [x] Track last successful connection, inventory sync, event, error category, reconnect count, and degraded state.
+- [x] Unit-test all state transitions with fake timers.
 
 ### Task 2.3: Implement status and connection test APIs
 
-- [ ] Expand the status model with state, Homey identity/version, last sync/event timestamps, reconnect count, and sanitized error.
+- [x] Expand the status model with state, Homey identity/version, last sync/event timestamps, reconnect count, and sanitized error.
 - [ ] Add `POST test-connection` with a discriminated request: `saved` accepts no endpoint/mode override and may resolve the persisted key; `candidate` requires a complete unsaved URL plus a newly entered key and must never resolve the persisted key.
 - [ ] Reject mixed requests, including an overridden URL with an omitted key, even when the candidate URL canonicalizes to the saved URL. Stored-secret reuse is authorized only by explicit `saved` mode.
 - [ ] Use a temporary connector for connection tests and always disconnect it.

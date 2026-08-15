@@ -1,11 +1,12 @@
 import { Expose } from 'class-transformer';
-import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
 import { ServiceState } from '../../../modules/extensions/services/managed-plugin-service.interface';
 import { HomeyConnectionState } from '../devices-homey.constants';
+import { HomeyConnectorErrorCategory } from '../errors/homey-connector.error';
 
 @ApiSchema({ name: 'DevicesHomeyPluginDataStatus' })
 export class HomeyStatusModel {
@@ -41,6 +42,76 @@ export class HomeyStatusModel {
 	@Expose()
 	@IsBoolean()
 	healthy: boolean;
+
+	@ApiProperty({ description: 'Whether event delivery is unavailable while polling remains operational' })
+	@Expose()
+	@IsBoolean()
+	degraded: boolean;
+
+	@ApiPropertyOptional({ description: 'Connected Homey identifier', nullable: true, name: 'homey_id' })
+	@Expose({ name: 'homey_id' })
+	@IsOptional()
+	@IsString()
+	homeyId: string | null;
+
+	@ApiPropertyOptional({ description: 'Connected Homey display name', nullable: true, name: 'homey_name' })
+	@Expose({ name: 'homey_name' })
+	@IsOptional()
+	@IsString()
+	homeyName: string | null;
+
+	@ApiPropertyOptional({ description: 'Connected Homey software version', nullable: true, name: 'homey_version' })
+	@Expose({ name: 'homey_version' })
+	@IsOptional()
+	@IsString()
+	homeyVersion: string | null;
+
+	@ApiPropertyOptional({
+		description: 'Timestamp of the last successful transport connection',
+		nullable: true,
+		name: 'last_connected_at',
+	})
+	@Expose({ name: 'last_connected_at' })
+	@IsOptional()
+	@IsDateString()
+	lastConnectedAt: string | null;
+
+	@ApiPropertyOptional({
+		description: 'Timestamp of the last successful authoritative inventory synchronization',
+		nullable: true,
+		name: 'last_inventory_sync_at',
+	})
+	@Expose({ name: 'last_inventory_sync_at' })
+	@IsOptional()
+	@IsDateString()
+	lastInventorySyncAt: string | null;
+
+	@ApiPropertyOptional({
+		description: 'Timestamp of the last successfully processed Homey event',
+		nullable: true,
+		name: 'last_event_at',
+	})
+	@Expose({ name: 'last_event_at' })
+	@IsOptional()
+	@IsDateString()
+	lastEventAt: string | null;
+
+	@ApiProperty({ description: 'Reconnect attempts executed since the last explicit start', name: 'reconnect_count' })
+	@Expose({ name: 'reconnect_count' })
+	@IsInt()
+	@Min(0)
+	reconnectCount: number;
+
+	@ApiPropertyOptional({
+		description: 'Normalized category for the current sanitized connector error',
+		enum: HomeyConnectorErrorCategory,
+		nullable: true,
+		name: 'last_error_category',
+	})
+	@Expose({ name: 'last_error_category' })
+	@IsOptional()
+	@IsEnum(HomeyConnectorErrorCategory)
+	lastErrorCategory: HomeyConnectorErrorCategory | null;
 
 	@ApiPropertyOptional({
 		description: 'Sanitized service error summary',
