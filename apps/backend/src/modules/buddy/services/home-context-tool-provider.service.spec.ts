@@ -52,14 +52,13 @@ describe('HomeContextToolProviderService', () => {
 		}
 		expect(stateDefinition.parameters).toMatchObject({
 			type: 'object',
-			properties: {
-				operation: {
-					type: 'string',
-					enum: ['rows', 'any', 'all', 'count_matches'],
-				},
-			},
 		});
-		expect(stateDefinition.parameters).not.toHaveProperty('oneOf');
+		const stateBranches = stateDefinition.parameters.oneOf as Array<{ required: string[] }>;
+		expect(stateBranches).toHaveLength(4);
+		expect(stateBranches[0].required).toEqual(['operation']);
+		for (const branch of stateBranches.slice(1)) {
+			expect(branch.required).toEqual(['operation', 'predicate']);
+		}
 
 		const anthropicPayload = buildAnthropicRequestPayload(
 			'claude-test',
@@ -72,13 +71,19 @@ describe('HomeContextToolProviderService', () => {
 			tools: [
 				{
 					name: QUERY_HOME_STATE_TOOL_NAME,
-					input_schema: { type: 'object' },
+					input_schema: stateDefinition.parameters,
 				},
 			],
 		});
 
 		expect(searchHomeToolInputSchema.safeParse({ query: 'kitchen', profile: 'mcp-compatibility' }).success).toBe(false);
-		expect(queryHomeStateToolInputSchema.safeParse({ operation: 'any' }).success).toBe(false);
+		expect(queryHomeStateToolInputSchema.safeParse({ operation: 'rows' }).success).toBe(true);
+		for (const operation of ['any', 'all', 'count_matches'] as const) {
+			expect(queryHomeStateToolInputSchema.safeParse({ operation }).success).toBe(false);
+			expect(
+				queryHomeStateToolInputSchema.safeParse({ operation, predicate: { operator: 'eq', value: true } }).success,
+			).toBe(true);
+		}
 		expect(
 			queryHomeStateToolInputSchema.safeParse({
 				operation: 'rows',
