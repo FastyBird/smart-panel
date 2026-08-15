@@ -91,7 +91,7 @@ const ACTION_CLAUSE_PATTERN = new RegExp(
 	'u',
 );
 const READ_CLAUSE_PATTERN =
-	/(?:\ba\b|\band\b|\bpotom\b|\bthen\b|[,;])\s*(?:check|confirm|ensure|find|make sure|read|show|tell|verify|what|whether|which)\b/u;
+	/(?:\ba\b|\band\b|\bpotom\b|\bthen\b|[,;])\s*(?:check|confirm|ensure|find|make sure|read|report|show|tell|verify|what|whether|which)\b/u;
 const STATE_QUESTION_PATTERN =
 	/^(?:are|can|could|did|do|does|had|has|have|how|is|may|might|what|which|where|why|will|would|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u;
 const PREDICATE_QUESTION_PATTERN =
@@ -125,7 +125,10 @@ const RELATIVE_ADJUSTMENT_SIGNALS = new Set([
 	'decrease',
 	'dim',
 	'dimmer',
+	'double',
 	'down',
+	'half',
+	'halve',
 	'hotter',
 	'higher',
 	'increase',
@@ -133,6 +136,8 @@ const RELATIVE_ADJUSTMENT_SIGNALS = new Set([
 	'lower',
 	'more',
 	'raise',
+	'triple',
+	'twice',
 	'up',
 	'warmer',
 ]);
@@ -524,7 +529,12 @@ function intersects(tokens: Set<string>, signals: Set<string>): boolean {
 
 function isClearlyGeneralConversation(normalizedMessage: string, tokens: Set<string>): boolean {
 	if (!intersects(tokens, GENERAL_CONVERSATION_SIGNALS)) return false;
-	if (tokens.size <= 2 && (tokens.has('morning') || normalizedMessage === 'thank you')) return false;
+	if (
+		(tokens.size === 1 && !tokens.has('hello') && !tokens.has('hey') && !tokens.has('hi') && !tokens.has('thanks')) ||
+		(tokens.size <= 2 && (tokens.has('morning') || normalizedMessage === 'thank you'))
+	) {
+		return false;
+	}
 	if (/^(?:(?:how|who) is|tell me about)\b/u.test(normalizedMessage)) return false;
 
 	for (const token of tokens) {

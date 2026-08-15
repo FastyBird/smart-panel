@@ -77,6 +77,7 @@ describe('BuddyToolSelectionService', () => {
 
 	it('retains live reads for relative adjustments', () => {
 		expect(selectNames('Make the bedroom warmer')).toEqual(definitions.map((definition) => definition.name));
+		expect(selectNames('Make the bedroom twice as bright')).toEqual(definitions.map((definition) => definition.name));
 		expect(selectNames('Make the bedroom two degrees colder')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
@@ -162,6 +163,9 @@ describe('BuddyToolSelectionService', () => {
 			definitions.map((definition) => definition.name),
 		);
 		expect(selectNames('Run Bedtime and make sure the hallway sensor is triggered.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
+		expect(selectNames('Run Bedtime, report whether the hallway sensor is triggered.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
 	});
@@ -397,6 +401,7 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Morning')).toEqual(definitions.map((definition) => definition.name));
 		expect(selectNames('Good Morning')).toEqual(definitions.map((definition) => definition.name));
 		expect(selectNames('Thank You')).toEqual(definitions.map((definition) => definition.name));
+		expect(selectNames('Joke')).toEqual(definitions.map((definition) => definition.name));
 	});
 
 	it('falls back when an unrecognized action follows a read clause', () => {
