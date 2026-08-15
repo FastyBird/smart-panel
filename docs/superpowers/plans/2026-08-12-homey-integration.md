@@ -233,13 +233,13 @@ index.ts
 
 **Proposed service:** `services/homey.service.ts`
 
-- [ ] Start only when enabled and minimally configured.
-- [ ] Connect, load system/zone metadata, establish event subscriptions, perform the authoritative inventory reconciliation behind a startup event barrier, merge buffered events, then publish healthy state.
-- [ ] Use Homey ordering metadata verified in Phase 0 to merge snapshot/events. If none is reliable, perform a final targeted reconciliation for capabilities touched while the startup snapshot was in flight before releasing the barrier.
-- [ ] Stop subscriptions/timers/connector on disable, config change, module shutdown, or failed startup cleanup.
-- [ ] Reconfigure safely when URL/key/timeouts change; never overlap old/new connectors.
+- [x] Start only when enabled and minimally configured.
+- [x] Connect, load system/zone metadata, establish event subscriptions, perform the authoritative inventory reconciliation behind a startup event barrier, merge buffered events, then publish healthy state.
+- [x] Use Homey ordering metadata verified in Phase 0 to merge snapshot/events. If none is reliable, perform a final targeted reconciliation for capabilities touched while the startup snapshot was in flight before releasing the barrier.
+- [x] Stop subscriptions/timers/connector on disable, config change, module shutdown, or failed startup cleanup.
+- [x] Reconfigure safely when URL/key/timeouts change; never overlap old/new connectors.
 - [ ] Use exponential reconnect backoff with jitter and a maximum delay.
-- [ ] Treat authentication/authorization failures differently from transient network failures.
+- [x] Treat authentication/authorization failures differently from transient network failures.
 - [ ] Prevent concurrent reconnect and reconciliation loops.
 - [ ] Track last successful connection, inventory sync, event, error category, reconnect count, and degraded state.
 - [ ] Unit-test all state transitions with fake timers.

@@ -1,5 +1,6 @@
 export * from './devices-homey.constants';
 export * from './devices-homey.plugin';
+export * from './connectors/homey-connector.factory';
 export * from './connectors/homey-connector.interface';
 export * from './connectors/homey-connector.types';
 export * from './dto/update-config.dto';
