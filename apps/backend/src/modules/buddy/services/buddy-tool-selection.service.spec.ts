@@ -82,6 +82,9 @@ describe('BuddyToolSelectionService', () => {
 	it('retains live reads for relative adjustments', () => {
 		expect(selectNames('Make the bedroom warmer')).toEqual(definitions.map((definition) => definition.name));
 		expect(selectNames('Make the bedroom twice as bright')).toEqual(definitions.map((definition) => definition.name));
+		expect(selectNames('Make the bedroom three times as bright')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 		expect(selectNames('Make the bedroom two degrees colder')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
@@ -257,6 +260,9 @@ describe('BuddyToolSelectionService', () => {
 			definitions.map((definition) => definition.name),
 		);
 		expect(selectNames('Run Bedtime assuming the hallway sensor is triggered.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
+		expect(selectNames('Run Bedtime given that the hallway sensor is triggered.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
 		expect(selectNames('If the window is open run Bedtime')).toEqual(definitions.map((definition) => definition.name));
@@ -478,6 +484,9 @@ describe('BuddyToolSelectionService', () => {
 		);
 		expect(selectNames('Close the blinds. Launch Evening.')).toEqual(definitions.map((definition) => definition.name));
 		expect(selectNames('Close the blinds plus launch Evening.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
+		expect(selectNames('Close the blinds as well as launch Evening.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
 	});
