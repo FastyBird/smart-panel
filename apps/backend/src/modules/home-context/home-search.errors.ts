@@ -13,3 +13,12 @@ export class HomeSearchInvalidQueryError extends Error {
 		this.name = 'HomeSearchInvalidQueryError';
 	}
 }
+
+export class HomeSearchInvalidCursorError extends Error {
+	readonly code = 'invalid_cursor';
+
+	constructor(readonly reason: 'malformed' | 'query_mismatch' | 'offset_out_of_range') {
+		super('Home search cursor is invalid for this query');
+		this.name = 'HomeSearchInvalidCursorError';
+	}
+}

@@ -88,6 +88,42 @@ describe('ScenesService', () => {
 		expect(countParameters).toEqual(['scene', '"quiet"*', 'floor-id', 'floor-id', 'generic']);
 	});
 
+	it('filters trigger candidates by enabled and triggerable state before paging and counting', async () => {
+		const dataSource = {
+			query: jest
+				.fn()
+				.mockResolvedValueOnce([])
+				.mockResolvedValueOnce([{ total: 0 }]),
+		};
+		const service = new ScenesService(
+			{} as Repository<SceneEntity>,
+			{} as SceneActionsService,
+			{} as SpacesService,
+			dataSource as unknown as DataSource,
+			{} as EventEmitter2,
+		);
+
+		await service.searchSummaryPage({
+			match: '"movie"*',
+			offset: 4,
+			limit: 10,
+			primarySpaceId: 'space-id',
+			categories: [SceneCategory.GENERIC],
+			candidateTrigger: true,
+		});
+
+		const [selectSql, selectParameters] = dataSource.query.mock.calls[0] as [string, unknown[]];
+		const [countSql, countParameters] = dataSource.query.mock.calls[1] as [string, unknown[]];
+		for (const sql of [selectSql, countSql]) {
+			expect(sql).toContain('scene."primarySpaceId" = ?');
+			expect(sql).toContain('scene.category IN (?)');
+			expect(sql).toContain('scene.enabled = 1');
+			expect(sql).toContain('scene.triggerable = 1');
+		}
+		expect(selectParameters).toEqual([null, 'scene', '"movie"*', 'space-id', 'generic', 10, 4]);
+		expect(countParameters).toEqual(['scene', '"movie"*', 'space-id', 'generic']);
+	});
+
 	it('includes disabled scenes in summary queries', async () => {
 		const disabledScene = { id: 'disabled-scene', name: 'Disabled scene', enabled: false } as SceneEntity;
 		const query = {

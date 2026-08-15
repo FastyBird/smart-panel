@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import {
+	HOME_SEARCH_CANDIDATE_CAPABILITIES,
 	HOME_SEARCH_ENTITY_KINDS,
 	HOME_SEARCH_LIMIT_PROFILES,
 	HOME_SEARCH_PROFILE_BUDDY_V1,
@@ -25,6 +26,8 @@ export const homeEntitySearchQuerySchema = z
 			.max(limits.maxCategories)
 			.refine((categories) => new Set(categories).size === categories.length, 'Search categories must be unique')
 			.optional(),
+		candidateCapability: z.enum(HOME_SEARCH_CANDIDATE_CAPABILITIES).optional(),
 		limit: z.number().int().min(1).max(limits.maxResults).optional(),
+		cursor: z.string().min(1).max(limits.maxCursorCharacters).optional(),
 	})
 	.strict();

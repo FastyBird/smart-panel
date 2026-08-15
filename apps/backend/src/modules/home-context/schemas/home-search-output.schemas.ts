@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import {
+	HOME_SEARCH_CANDIDATE_CAPABILITIES,
 	HOME_SEARCH_ENTITY_KINDS,
 	HOME_SEARCH_LIMIT_PROFILES,
 	HOME_SEARCH_MATCH_REASONS,
@@ -21,6 +22,7 @@ const entitySchema = z.discriminatedUnion('kind', [
 		.object({
 			kind: z.literal(HOME_SEARCH_ENTITY_KINDS[0]),
 			...baseFields,
+			candidate_capabilities: z.array(z.never()).max(0),
 			type: z.string(),
 			category: z.string().nullable(),
 			parent_id: z.string().nullable(),
@@ -30,6 +32,7 @@ const entitySchema = z.discriminatedUnion('kind', [
 		.object({
 			kind: z.literal(HOME_SEARCH_ENTITY_KINDS[1]),
 			...baseFields,
+			candidate_capabilities: z.array(z.never()).max(0),
 			identifier: z.string().nullable(),
 			category: z.string(),
 			enabled: z.boolean(),
@@ -40,6 +43,7 @@ const entitySchema = z.discriminatedUnion('kind', [
 		.object({
 			kind: z.literal(HOME_SEARCH_ENTITY_KINDS[2]),
 			...baseFields,
+			candidate_capabilities: z.array(z.enum(['read', 'write'])).max(2),
 			property_name: z.string().nullable(),
 			identifier: z.string().nullable(),
 			category: z.string(),
@@ -53,6 +57,7 @@ const entitySchema = z.discriminatedUnion('kind', [
 		.object({
 			kind: z.literal(HOME_SEARCH_ENTITY_KINDS[3]),
 			...baseFields,
+			candidate_capabilities: z.array(z.literal('trigger')).max(1),
 			category: z.string(),
 			enabled: z.boolean(),
 			triggerable: z.boolean(),
@@ -79,5 +84,7 @@ export const homeEntitySearchResponseSchema = z
 		partial: z.literal(false),
 		truncated: z.boolean(),
 		refine_required: z.boolean(),
+		candidate_capability_filter: z.enum(HOME_SEARCH_CANDIDATE_CAPABILITIES).optional(),
+		next_cursor: z.string().min(1).max(limits.maxCursorCharacters).optional(),
 	})
 	.strict();

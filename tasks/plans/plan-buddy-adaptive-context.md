@@ -1224,7 +1224,15 @@ captured as an opt-in/expected baseline measurement rather than a failing normal
 - [x] Add database-bounded metadata-only lexical/entity search with fixed query count, bounded candidates/results,
       SQL-applied visibility, space and category filters, deterministic ranking, exact totals, and explicit
       truncation/refinement metadata. Search results do not include live values or authorize actions.
-- [ ] Add cursor pagination and static candidate-capability filters to metadata search before exposing it as a Buddy tool.
+- [x] Add bounded opaque best-effort cursor pagination to metadata search. Bind cursors to the query, profile, filters,
+      and ranking contract; fetch at most 100 candidates per selected kind, expose a fixed 100-result global paging
+      window through `next_cursor`, and stop at its ceiling with `refine_required`. Treat the cursor offset as untrusted
+      bounded random-access continuation state, reapply every visibility/filter predicate, and do not claim snapshot
+      consistency across catalog mutations or use the cursor as authorization.
+- [x] Add SQL-applied static metadata candidate filters for readable/writable properties and enabled triggerable scenes.
+      Expose candidate capabilities derived from persisted metadata and the static command-type allowlist without
+      treating discovery as authorization, online availability, or proof that an action can execute.
+- [ ] Expose the bounded metadata search through a Buddy read tool after the structured tool-result loop is available.
 - [ ] Add safe filtered/aggregate current-state queries.
 - [ ] Add a bounded `PropertyValueService` batch/aggregate contract for current-value predicates and aggregates. Resolve
       eligible metadata in the database, reconcile cache/storage values in chunks, short-circuit only sound outcomes,
