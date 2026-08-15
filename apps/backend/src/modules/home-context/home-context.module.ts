@@ -9,10 +9,11 @@ import { WeatherModule } from '../weather/weather.module';
 
 import { HomeContextQueryService } from './services/home-context-query.service';
 import { HomeStateQueryService } from './services/home-state-query.service';
+import { HomeTargetQueryService } from './services/home-target-query.service';
 
 @Module({
 	imports: [DevicesModule, EnergyModule, ScenesModule, SecurityModule, SpacesModule, WeatherModule],
-	providers: [HomeContextQueryService, HomeStateQueryService],
-	exports: [HomeContextQueryService, HomeStateQueryService],
+	providers: [HomeContextQueryService, HomeStateQueryService, HomeTargetQueryService],
+	exports: [HomeContextQueryService, HomeStateQueryService, HomeTargetQueryService],
 })
 export class HomeContextModule {}

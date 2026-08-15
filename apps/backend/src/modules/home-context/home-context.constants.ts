@@ -16,6 +16,10 @@ export interface HomeContextLimitProfile {
 	timeseriesRangeDays: number;
 	timeseriesPoints: number;
 	energyRangeDays: number;
+	writableProperties: number;
+	writablePropertyCandidates: number;
+	triggerScenes: number;
+	triggerSpaces: number;
 }
 
 export const HOME_CONTEXT_LIMIT_PROFILES: Readonly<Record<HomeContextProfile, Readonly<HomeContextLimitProfile>>> =
@@ -34,5 +38,13 @@ export const HOME_CONTEXT_LIMIT_PROFILES: Readonly<Record<HomeContextProfile, Re
 			timeseriesRangeDays: 14,
 			timeseriesPoints: 500,
 			energyRangeDays: 31,
+			writableProperties: 100,
+			writablePropertyCandidates: 500,
+			triggerScenes: 50,
+			triggerSpaces: 50,
 		}),
 	});
+
+export const HOME_TARGET_LIGHTING_MODES = ['off', 'on', 'work', 'relax', 'night'] as const;
+
+export type HomeTargetLightingMode = (typeof HOME_TARGET_LIGHTING_MODES)[number];
