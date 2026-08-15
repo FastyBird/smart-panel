@@ -126,6 +126,9 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Run Bedtime and verify that the hallway sensor is triggered.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
+		expect(selectNames('Run Bedtime, check whether the hallway sensor is triggered.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 		expect(selectNames('Run Bedtime and confirm that the hallway sensor is triggered.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
@@ -194,6 +197,9 @@ describe('BuddyToolSelectionService', () => {
 			definitions.map((definition) => definition.name),
 		);
 		expect(selectNames('Když je okno otevřené, spusť Večer.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
+		expect(selectNames('Execute Evening if the window is open.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
 	});
@@ -265,6 +271,10 @@ describe('BuddyToolSelectionService', () => {
 
 	it('treats tell-whether wording as a read-only state question', () => {
 		expect(selectNames('Tell me whether the window is open.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+		]);
+		expect(selectNames('Can you tell me whether the window is open?')).toEqual([
 			SEARCH_HOME_TOOL_NAME,
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);

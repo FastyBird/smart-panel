@@ -91,7 +91,7 @@ const ACTION_CLAUSE_PATTERN = new RegExp(
 	'u',
 );
 const READ_CLAUSE_PATTERN =
-	/\b(?:a|and|potom|then)\s+(?:check|confirm|ensure|find|make sure|show|tell|verify|what|whether|which)\b/u;
+	/(?:\ba\b|\band\b|\bpotom\b|\bthen\b|[,;])\s*(?:check|confirm|ensure|find|make sure|show|tell|verify|what|whether|which)\b/u;
 const STATE_QUESTION_PATTERN = /^(?:are|do|does|how|is|what|which|where|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u;
 const PREDICATE_QUESTION_PATTERN = /^(?:are|is|was|were|what (?:are|is|was|were))\b/u;
 const UNKNOWN_ACTION_REQUEST_PATTERN = /^(?:(?:can|could|may|might|will|would)\s+you\b|please\b)/u;
@@ -346,6 +346,7 @@ export class BuddyToolSelectionService {
 			(message.includes('?') || isSyntacticPredicateQuestion(normalizedMessage, tokens));
 		const hasLiveStatusRequest =
 			hasHomeSignal && actionTokens === null && /\b(?:currently|right now)\b/u.test(normalizedMessage);
+		const hasTellWhetherStateQuestion = isTellWhetherStateQuestion(normalizedMessage);
 		const isGenericExplanation = isGenericHomeExplanation(normalizedMessage, tokens);
 		const hasUnrecognizedStateIntent =
 			hasStateReadSignal &&
@@ -375,6 +376,7 @@ export class BuddyToolSelectionService {
 					hasPredicateStateFirstAction ||
 					hasInterrogativeHomeQuestion ||
 					hasLiveStatusRequest ||
+					hasTellWhetherStateQuestion ||
 					(actionTokens === null &&
 						message.includes('?') &&
 						hasHomeSignal &&
@@ -564,10 +566,10 @@ function getActionIntentTokens(
 	if (!intersects(tokens, ACTION_SIGNALS)) return null;
 
 	const isStateQuestion =
+		isTellWhetherStateQuestion(normalizedMessage) ||
 		(hasStateSignal &&
 			!hasActionRequestAuxiliary(normalizedMessage, tokens) &&
-			(STATE_QUESTION_PATTERN.test(normalizedMessage) ||
-				/^(?:please\s+)?tell\b.*\b(?:if|whether)\b/u.test(normalizedMessage))) ||
+			STATE_QUESTION_PATTERN.test(normalizedMessage)) ||
 		isSyntacticPredicateQuestion(normalizedMessage, tokens);
 
 	if (isStateQuestion) {
@@ -587,6 +589,8 @@ function getActionIntentTokens(
 		const commandTokens = tokenize(normalizedMessage.slice(0, trailingCondition));
 
 		if (intersects(commandTokens, ACTION_SIGNALS)) return commandTokens;
+
+		return new Set();
 	}
 
 	if (LEADING_CONDITION_PATTERN.test(normalizedMessage)) {
@@ -606,6 +610,12 @@ function getActionIntentTokens(
 	}
 
 	return tokens;
+}
+
+function isTellWhetherStateQuestion(normalizedMessage: string): boolean {
+	return /^(?:(?:can|could|may|might|will|would)\s+you\s+)?(?:please\s+)?tell\b.*\b(?:if|whether)\b/u.test(
+		normalizedMessage,
+	);
 }
 
 function isSyntacticPredicateQuestion(normalizedMessage: string, tokens: Set<string>): boolean {
