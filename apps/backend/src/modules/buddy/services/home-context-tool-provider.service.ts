@@ -50,6 +50,7 @@ export const searchHomeToolInputSchema = z
 			.min(1)
 			.max(searchLimits.maxKinds)
 			.refine((kinds) => new Set(kinds).size === kinds.length, 'Search kinds must be unique')
+			.meta({ uniqueItems: true })
 			.optional(),
 		space_id: z.string().trim().min(1).max(128).optional(),
 		categories: z
@@ -57,6 +58,7 @@ export const searchHomeToolInputSchema = z
 			.min(1)
 			.max(searchLimits.maxCategories)
 			.refine((categories) => new Set(categories).size === categories.length, 'Search categories must be unique')
+			.meta({ uniqueItems: true })
 			.optional(),
 		candidate_capability: z.enum(HOME_SEARCH_CANDIDATE_CAPABILITIES).optional(),
 		limit: z.number().int().min(1).max(searchLimits.maxResults).optional(),
@@ -70,6 +72,7 @@ const uniqueArray = <T extends z.ZodType>(schema: T, max: number, label: string)
 		.min(1)
 		.max(max)
 		.refine((values) => new Set(values).size === values.length, `${label} must be unique`)
+		.meta({ uniqueItems: true })
 		.optional();
 
 const statePredicateSchema = z.union([

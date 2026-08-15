@@ -41,6 +41,7 @@ describe('HomeContextToolProviderService', () => {
 
 	it('publishes exactly two Buddy-only READ tools with server-owned profiles', () => {
 		const definitions = provider.getToolDefinitions();
+		const searchDefinition = definitions[0];
 		const stateDefinition = definitions[1];
 
 		expect(provider.getType()).toBe(BUDDY_HOME_READ_TOOLS_PROVIDER);
@@ -50,14 +51,30 @@ describe('HomeContextToolProviderService', () => {
 			expect(definition.access).toBe(ToolAccessKind.READ);
 			expect(definition.parameters).not.toHaveProperty('properties.profile');
 		}
+		expect(searchDefinition.parameters).toMatchObject({
+			properties: {
+				kinds: { uniqueItems: true },
+				categories: { uniqueItems: true },
+			},
+		});
 		expect(stateDefinition.parameters).toMatchObject({
 			type: 'object',
 		});
-		const stateBranches = stateDefinition.parameters.oneOf as Array<{ required: string[] }>;
+		const stateBranches = stateDefinition.parameters.oneOf as Array<{
+			required: string[];
+			properties: Record<string, Record<string, unknown>>;
+		}>;
 		expect(stateBranches).toHaveLength(4);
 		expect(stateBranches[0].required).toEqual(['operation']);
-		for (const branch of stateBranches.slice(1)) {
-			expect(branch.required).toEqual(['operation', 'predicate']);
+		for (const [index, branch] of stateBranches.entries()) {
+			expect(branch.properties).toMatchObject({
+				channel_categories: { uniqueItems: true },
+				property_categories: { uniqueItems: true },
+				data_types: { uniqueItems: true },
+			});
+			if (index > 0) {
+				expect(branch.required).toEqual(['operation', 'predicate']);
+			}
 		}
 
 		const anthropicPayload = buildAnthropicRequestPayload(
