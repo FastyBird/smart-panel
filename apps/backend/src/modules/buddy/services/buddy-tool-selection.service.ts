@@ -94,6 +94,10 @@ const STATE_QUESTION_CLAUSE_PATTERN = new RegExp(
 	String.raw`[,;]|\ba\b(?=\s+(?:${[...ACTION_SIGNALS].join('|')})\b)|\b(?:after|and|assuming(?: that)?|before|if not|if so|once|plus|potom|then|until|when|while)\b`,
 	'u',
 );
+const CAPABILITY_DISCOVERY_PATTERN = new RegExp(
+	String.raw`^(?:what|which)\b.*\bcan i\b.*\b(?:${[...ACTION_SIGNALS].join('|')})\b`,
+	'u',
+);
 const READ_CLAUSE_PATTERN =
 	/(?:\ba\b|\band\b|\bplus\b|\bpotom\b|\bthen\b|[,;])\s*(?:check|confirm|determine|ensure|fetch|find|get|make sure|read|report|see|show|tell|verify|what|whether|which)\b/u;
 const STATE_QUESTION_PATTERN =
@@ -337,8 +341,16 @@ export class BuddyToolSelectionService {
 		const hasStateSignal = intersects(tokens, STATE_SIGNALS);
 		const hasAuxiliaryActionRequest = hasActionRequestAuxiliary(normalizedMessage, tokens);
 		const hasStateReadSignal = hasStateSignal && !hasAuxiliaryActionRequest;
-		const actionTokens = getActionIntentTokens(normalizedMessage, tokens, hasStateReadSignal);
+		const isCapabilityDiscovery = isCapabilityDiscoveryRequest(normalizedMessage);
+		const actionTokens = isCapabilityDiscovery
+			? null
+			: getActionIntentTokens(normalizedMessage, tokens, hasStateReadSignal);
 		const hasConditionalAction = actionTokens !== null && CONDITION_PATTERN.test(normalizedMessage);
+		const trailingConditionIndex = normalizedMessage.search(CONDITION_PATTERN);
+		const hasActionInTrailingCondition =
+			actionTokens !== null &&
+			trailingConditionIndex > 0 &&
+			intersects(tokenize(normalizedMessage.slice(trailingConditionIndex)), ACTION_SIGNALS);
 		const hasTrailingReadClause = actionTokens !== null && READ_CLAUSE_PATTERN.test(normalizedMessage);
 		const questionEnd = normalizedMessage.indexOf('?');
 		const trailingQuestionClause = questionEnd >= 0 ? normalizedMessage.slice(questionEnd + 1).trim() : '';
@@ -423,7 +435,9 @@ export class BuddyToolSelectionService {
 			this.selectActionTools(
 				actionTokens,
 				selected,
-				ACTION_CLAUSE_PATTERN.test(normalizedMessage) || hasUnknownTrailingClause(normalizedMessage),
+				ACTION_CLAUSE_PATTERN.test(normalizedMessage) ||
+					hasActionInTrailingCondition ||
+					hasUnknownTrailingClause(normalizedMessage),
 			);
 		}
 
@@ -629,6 +643,10 @@ function getActionIntentTokens(
 	const trailingCondition = normalizedMessage.search(CONDITION_PATTERN);
 
 	if (trailingCondition > 0) {
+		const conditionTokens = tokenize(normalizedMessage.slice(trailingCondition));
+
+		if (intersects(conditionTokens, ACTION_SIGNALS)) return tokens;
+
 		const commandTokens = tokenize(normalizedMessage.slice(0, trailingCondition));
 
 		if (intersects(commandTokens, ACTION_SIGNALS)) return commandTokens;
@@ -665,6 +683,10 @@ function isExplicitStateQuestion(normalizedMessage: string): boolean {
 	return /\b(?:how|what|when|where|which|why)\b.*\b(?:are|did|do|does|had|has|have|is|was|were)\b/u.test(
 		normalizedMessage,
 	);
+}
+
+function isCapabilityDiscoveryRequest(normalizedMessage: string): boolean {
+	return CAPABILITY_DISCOVERY_PATTERN.test(normalizedMessage);
 }
 
 function isSyntacticPredicateQuestion(normalizedMessage: string, tokens: Set<string>): boolean {

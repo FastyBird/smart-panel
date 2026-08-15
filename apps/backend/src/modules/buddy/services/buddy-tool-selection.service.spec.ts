@@ -49,6 +49,7 @@ describe('BuddyToolSelectionService', () => {
 		'What is the bedroom temperature?',
 		'Are any windows open?',
 		'Find Aurora and show its current status.',
+		'Which lights can I dim?',
 		'Jaká je teplota a vlhkost v ložnici?',
 	])('selects only the dependent read pair for a state or search request: %s', (message) => {
 		expect(selectNames(message)).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
@@ -249,6 +250,9 @@ describe('BuddyToolSelectionService', () => {
 		);
 		expect(selectNames('Run Bedtime if the window is open.')).toEqual(definitions.map((definition) => definition.name));
 		expect(selectNames('Run Bedtime so long as Aurora is on.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
+		expect(selectNames('Close the blinds while you run Evening.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
 		expect(selectNames('Run Bedtime assuming the hallway sensor is triggered.')).toEqual(
