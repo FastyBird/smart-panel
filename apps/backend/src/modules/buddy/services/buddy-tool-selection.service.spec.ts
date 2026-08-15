@@ -149,6 +149,12 @@ describe('BuddyToolSelectionService', () => {
 		},
 	);
 
+	it('falls back conservatively for an unrecognized adjustment after a state question', () => {
+		expect(selectNames('What is the bedroom temperature? Make it warmer.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
+	});
+
 	it('recognizes a punctuation-delimited command after a state-first clause', () => {
 		expect(selectNames('Are any windows open, close them if so.')).toEqual(
 			definitions.map((definition) => definition.name),
@@ -181,6 +187,11 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('If the hallway sensor is triggered, run Bedtime.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
+		expect(selectNames('Close the blinds unless Aurora is triggered.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+			names.control,
+		]);
 	});
 
 	it.each([
@@ -233,6 +244,7 @@ describe('BuddyToolSelectionService', () => {
 
 	it('does not treat an entity-like question as confidently tool-free', () => {
 		expect(selectNames('How is Morning?')).toEqual(definitions.map((definition) => definition.name));
+		expect(selectNames('Tell me about Morning.')).toEqual(definitions.map((definition) => definition.name));
 	});
 
 	it('preserves unknown extension tools and original registry order', () => {

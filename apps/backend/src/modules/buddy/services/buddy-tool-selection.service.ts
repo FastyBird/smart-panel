@@ -64,6 +64,7 @@ const ACTION_SIGNALS = new Set([
 	'increase',
 	'lock',
 	'lower',
+	'make',
 	'open',
 	'raise',
 	'run',
@@ -168,6 +169,7 @@ const DEVICE_ACTION_SIGNALS = new Set([
 	'increase',
 	'lock',
 	'lower',
+	'make',
 	'nastav',
 	'odemkni',
 	'open',
@@ -285,9 +287,15 @@ export class BuddyToolSelectionService {
 		const hasSearchSignal = intersects(tokens, SEARCH_SIGNALS);
 		const hasStateSignal = intersects(tokens, STATE_SIGNALS);
 		const actionTokens = getActionIntentTokens(normalizedMessage, tokens, hasStateSignal);
-		const hasConditionalAction = actionTokens !== null && /\b(?:if|kdyz|pokud|when)\b/u.test(normalizedMessage);
+		const hasConditionalAction = actionTokens !== null && /\b(?:if|kdyz|pokud|unless|when)\b/u.test(normalizedMessage);
 		const hasTrailingReadClause = actionTokens !== null && READ_CLAUSE_PATTERN.test(normalizedMessage);
 		const questionEnd = normalizedMessage.indexOf('?');
+		const trailingQuestionClause = questionEnd >= 0 ? normalizedMessage.slice(questionEnd + 1).trim() : '';
+		const trailingQuestionTokens = tokenize(trailingQuestionClause);
+		const hasUnrecognizedTrailingIntent =
+			actionTokens === null &&
+			trailingQuestionClause.length > 0 &&
+			!isClearlyGeneralConversation(trailingQuestionClause, trailingQuestionTokens);
 		const hasStateFirstAction =
 			actionTokens !== null &&
 			questionEnd >= 0 &&
@@ -330,6 +338,10 @@ export class BuddyToolSelectionService {
 		}
 
 		if (hasUnrecognizedStateIntent) {
+			for (const name of BUILT_IN_TOOL_NAMES) selected.add(name);
+		}
+
+		if (hasUnrecognizedTrailingIntent) {
 			for (const name of BUILT_IN_TOOL_NAMES) selected.add(name);
 		}
 
@@ -424,7 +436,7 @@ function intersects(tokens: Set<string>, signals: Set<string>): boolean {
 
 function isClearlyGeneralConversation(normalizedMessage: string, tokens: Set<string>): boolean {
 	if (!intersects(tokens, GENERAL_CONVERSATION_SIGNALS)) return false;
-	if (/^how is\b/u.test(normalizedMessage)) return false;
+	if (/^(?:(?:how|who) is|tell me about)\b/u.test(normalizedMessage)) return false;
 
 	for (const token of tokens) {
 		if (!GENERAL_CONVERSATION_SIGNALS.has(token) && !GENERAL_CONVERSATION_FILLERS.has(token)) return false;
@@ -469,7 +481,7 @@ function getActionIntentTokens(
 		return intersects(trailingTokens, ACTION_SIGNALS) ? trailingTokens : null;
 	}
 
-	const trailingCondition = normalizedMessage.search(/\b(?:if|kdyz|pokud|when)\b/u);
+	const trailingCondition = normalizedMessage.search(/\b(?:if|kdyz|pokud|unless|when)\b/u);
 
 	if (trailingCondition > 0) {
 		const commandTokens = tokenize(normalizedMessage.slice(0, trailingCondition));
@@ -477,7 +489,7 @@ function getActionIntentTokens(
 		if (intersects(commandTokens, ACTION_SIGNALS)) return commandTokens;
 	}
 
-	if (/^(?:if|kdyz|pokud|when)\b/u.test(normalizedMessage)) {
+	if (/^(?:if|kdyz|pokud|unless|when)\b/u.test(normalizedMessage)) {
 		const commandTokens = tokenize(sliceAfterFirst(normalizedMessage, /[,;]|\b(?:pak|potom|then)\b/u));
 
 		if (intersects(commandTokens, ACTION_SIGNALS)) return commandTokens;
