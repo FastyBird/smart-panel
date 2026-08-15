@@ -80,6 +80,12 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Make the bedroom two degrees colder')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
+		expect(selectNames('Make the kitchen light 10% higher')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+			names.control,
+			names.spaceLighting,
+		]);
 		expect(selectNames('Turn the bedroom light up a bit')).toEqual([
 			SEARCH_HOME_TOOL_NAME,
 			QUERY_HOME_STATE_TOOL_NAME,
@@ -215,6 +221,9 @@ describe('BuddyToolSelectionService', () => {
 			definitions.map((definition) => definition.name),
 		);
 		expect(selectNames('Run Bedtime if the window is open.')).toEqual(definitions.map((definition) => definition.name));
+		expect(selectNames('Run Bedtime so long as Aurora is on.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 		expect(selectNames('If the window is open run Bedtime')).toEqual(definitions.map((definition) => definition.name));
 		expect(selectNames('Spusť Večer pokud je okno otevřené.')).toEqual(
 			definitions.map((definition) => definition.name),

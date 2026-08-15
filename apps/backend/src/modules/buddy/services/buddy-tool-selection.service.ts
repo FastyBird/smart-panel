@@ -100,9 +100,9 @@ const UNKNOWN_ACTION_REQUEST_PATTERN = /^(?:(?:can|could|may|might|will|would)\s
 const ACTION_REQUEST_AUXILIARIES = new Set(['able', 'possible', 'way']);
 const ACTION_REQUEST_MODALS = new Set(['can', 'could', 'may', 'might', 'will', 'would']);
 const CONDITION_PATTERN =
-	/\b(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|unless|until|when|whenever|while)\b/u;
+	/\b(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|so long as|unless|until|when|whenever|while)\b/u;
 const LEADING_CONDITION_PATTERN =
-	/^(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|unless|until|when|whenever|while)\b/u;
+	/^(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|so long as|unless|until|when|whenever|while)\b/u;
 const GROUNDED_STATE_SIGNALS = new Set([
 	'active',
 	'closed',
@@ -127,6 +127,7 @@ const RELATIVE_ADJUSTMENT_SIGNALS = new Set([
 	'dimmer',
 	'down',
 	'hotter',
+	'higher',
 	'increase',
 	'less',
 	'lower',
