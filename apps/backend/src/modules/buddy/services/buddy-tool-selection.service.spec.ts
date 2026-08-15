@@ -282,6 +282,9 @@ describe('BuddyToolSelectionService', () => {
 			SEARCH_HOME_TOOL_NAME,
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);
+		expect(selectNames('Can you check whether the window is open and close it if it is?')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 	});
 
 	it('treats an action verb used in an interrogative predicate as a state read', () => {
@@ -289,6 +292,10 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Is the thermostat set to 20')).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
 		expect(selectNames('What is the thermostat set to?')).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
 		expect(selectNames('Was the thermostat set to 20?')).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
+		expect(selectNames('Did I turn off the kitchen light?')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+		]);
 	});
 
 	it('preserves actions in polite interrogative commands', () => {

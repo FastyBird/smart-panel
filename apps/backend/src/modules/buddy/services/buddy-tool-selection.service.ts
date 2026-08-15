@@ -92,8 +92,8 @@ const ACTION_CLAUSE_PATTERN = new RegExp(
 );
 const READ_CLAUSE_PATTERN =
 	/(?:\ba\b|\band\b|\bpotom\b|\bthen\b|[,;])\s*(?:check|confirm|ensure|find|make sure|show|tell|verify|what|whether|which)\b/u;
-const STATE_QUESTION_PATTERN = /^(?:are|do|does|how|is|what|which|where|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u;
-const PREDICATE_QUESTION_PATTERN = /^(?:are|is|was|were|what (?:are|is|was|were))\b/u;
+const STATE_QUESTION_PATTERN = /^(?:are|did|do|does|how|is|what|which|where|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u;
+const PREDICATE_QUESTION_PATTERN = /^(?:are|did|is|was|were|what (?:are|is|was|were))\b/u;
 const UNKNOWN_ACTION_REQUEST_PATTERN = /^(?:(?:can|could|may|might|will|would)\s+you\b|please\b)/u;
 const ACTION_REQUEST_AUXILIARIES = new Set([
 	'able',
@@ -574,10 +574,11 @@ function getActionIntentTokens(
 
 	if (isStateQuestion) {
 		const questionEnd = normalizedMessage.indexOf('?');
-		const trailingClause =
-			questionEnd >= 0
-				? normalizedMessage.slice(questionEnd + 1)
-				: sliceAfterFirst(normalizedMessage, /[,;]|\b(?:a|and|if not|if so|please|potom|then)\b/u);
+		const questionBody = questionEnd >= 0 ? normalizedMessage.slice(0, questionEnd) : normalizedMessage;
+		const trailingClause = [
+			sliceAfterFirst(questionBody, /[,;]|\b(?:a|and|if not|if so|please|potom|then)\b/u),
+			questionEnd >= 0 ? normalizedMessage.slice(questionEnd + 1) : '',
+		].join(' ');
 		const trailingTokens = tokenize(trailingClause);
 
 		return intersects(trailingTokens, ACTION_SIGNALS) ? trailingTokens : null;
