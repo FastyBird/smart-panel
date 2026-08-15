@@ -7,7 +7,10 @@ import {
 	ToolAudience,
 	ToolExecutionStatus,
 } from '../../../modules/tools/platforms/tool-provider.platform';
-import { ShortIdMappingService } from '../../../modules/tools/services/short-id-mapping.service';
+import {
+	ScopedShortIdTargetKind,
+	ShortIdMappingService,
+} from '../../../modules/tools/services/short-id-mapping.service';
 
 import { SpaceLightingToolService } from './space-lighting-tool.service';
 
@@ -15,6 +18,7 @@ describe('SpaceLightingToolService', () => {
 	let service: SpaceLightingToolService;
 	let spacesService: Record<string, jest.Mock>;
 	let spaceIntentService: Record<string, jest.Mock>;
+	let shortIdMapping: ShortIdMappingService;
 
 	beforeEach(async () => {
 		spacesService = {
@@ -29,10 +33,11 @@ describe('SpaceLightingToolService', () => {
 			get: jest.fn().mockReturnValue(spaceIntentService),
 		};
 
+		shortIdMapping = new ShortIdMappingService();
 		service = new SpaceLightingToolService(
 			spacesService as unknown as SpacesService,
 			moduleRef as unknown as ModuleRef,
-			new ShortIdMappingService(),
+			shortIdMapping,
 		);
 
 		// Simulate onModuleInit which resolves SpaceIntentService lazily
@@ -77,11 +82,7 @@ describe('SpaceLightingToolService', () => {
 			});
 			spacesService.findOne.mockResolvedValue({ id: 'space-1', name: 'Living Room' });
 
-			const result = await service.executeTool({
-				id: 'call-1',
-				name: 'set_space_lighting',
-				arguments: { space_id: 'space-1', mode: 'off' },
-			});
+			const result = await executeBuddyLighting('space-1', 'off');
 
 			expect(result.success).toBe(true);
 			expect(result.status).toBe(ToolExecutionStatus.COMPLETED);
@@ -105,11 +106,7 @@ describe('SpaceLightingToolService', () => {
 			});
 			spacesService.findOne.mockResolvedValue({ id: 'space-1', name: 'Bedroom' });
 
-			const result = await service.executeTool({
-				id: 'call-1',
-				name: 'set_space_lighting',
-				arguments: { space_id: 'space-1', mode: 'relax' },
-			});
+			const result = await executeBuddyLighting('space-1', 'relax');
 
 			expect(result.success).toBe(true);
 			expect(spaceIntentService.executeLightingIntent).toHaveBeenCalledWith(
@@ -122,11 +119,7 @@ describe('SpaceLightingToolService', () => {
 		it('should return failure for non-existent space', async () => {
 			spaceIntentService.executeLightingIntent.mockResolvedValue(null);
 
-			const result = await service.executeTool({
-				id: 'call-1',
-				name: 'set_space_lighting',
-				arguments: { space_id: 'nonexistent', mode: 'off' },
-			});
+			const result = await executeBuddyLighting('nonexistent', 'off');
 
 			expect(result.success).toBe(false);
 			expect(result.message).toContain('not found');
@@ -162,11 +155,7 @@ describe('SpaceLightingToolService', () => {
 			});
 			spacesService.findOne.mockResolvedValue({ id: 'space-1', name: 'Office' });
 
-			const result = await service.executeTool({
-				id: 'call-1',
-				name: 'set_space_lighting',
-				arguments: { space_id: 'space-1', mode: 'work' },
-			});
+			const result = await executeBuddyLighting('space-1', 'work');
 
 			expect(result).toEqual(
 				expect.objectContaining({
@@ -186,11 +175,7 @@ describe('SpaceLightingToolService', () => {
 			});
 			spacesService.findOne.mockResolvedValue({ id: 'space-1', name: 'Office' });
 
-			const result = await service.executeTool({
-				id: 'call-1',
-				name: 'set_space_lighting',
-				arguments: { space_id: 'space-1', mode: 'work' },
-			});
+			const result = await executeBuddyLighting('space-1', 'work');
 
 			expect(result).toEqual(
 				expect.objectContaining({
@@ -215,11 +200,7 @@ describe('SpaceLightingToolService', () => {
 			});
 			spacesService.findOne.mockResolvedValue({ id: 'space-1', name: 'Office' });
 
-			const result = await service.executeTool({
-				id: 'call-1',
-				name: 'set_space_lighting',
-				arguments: { space_id: 'space-1', mode: 'work' },
-			});
+			const result = await executeBuddyLighting('space-1', 'work');
 
 			expect(result).toEqual(
 				expect.objectContaining({
@@ -233,19 +214,25 @@ describe('SpaceLightingToolService', () => {
 	});
 
 	it('returns a structured failure when the optional lighting service is unavailable', async () => {
+		const unavailableMapping = new ShortIdMappingService();
+		const token = unavailableMapping.exposeScoped('conversation-1', 'space-1', ScopedShortIdTargetKind.SPACE);
 		const unavailableService = new SpaceLightingToolService(
 			spacesService as unknown as SpacesService,
 			{ get: jest.fn().mockReturnValue(undefined) } as unknown as ModuleRef,
-			new ShortIdMappingService(),
+			unavailableMapping,
 		);
 
+		expect(token).not.toBeNull();
 		await unavailableService.onModuleInit();
 
-		const result = await unavailableService.executeTool({
-			id: 'call-1',
-			name: 'set_space_lighting',
-			arguments: { space_id: 'space-1', mode: 'off' },
-		});
+		const result = await unavailableService.executeTool(
+			{
+				id: 'call-1',
+				name: 'set_space_lighting',
+				arguments: { space_id: token, mode: 'off' },
+			},
+			{ audience: ToolAudience.BUDDY, source: 'buddy', conversationId: 'conversation-1' },
+		);
 
 		expect(result).toEqual(
 			expect.objectContaining({
@@ -254,6 +241,89 @@ describe('SpaceLightingToolService', () => {
 				errorCode: 'SPACE_LIGHTING_UNAVAILABLE',
 			}),
 		);
+	});
+
+	it('preserves MCP global short-ID and canonical-ID fallback', async () => {
+		const globalShortId = shortIdMapping.shorten('space-1');
+
+		spaceIntentService.executeLightingIntent.mockResolvedValue({
+			success: true,
+			affectedDevices: 1,
+			failedDevices: 0,
+		});
+		spacesService.findOne.mockResolvedValue({ id: 'space-1', name: 'Living Room' });
+
+		for (const spaceId of [globalShortId, 'space-1']) {
+			await service.executeTool(
+				{ id: 'mcp-call', name: 'set_space_lighting', arguments: { space_id: spaceId, mode: 'off' } },
+				{ audience: ToolAudience.MCP, source: 'mcp' },
+			);
+		}
+
+		expect(spaceIntentService.executeLightingIntent).toHaveBeenNthCalledWith(
+			1,
+			'space-1',
+			expect.any(Object),
+			expect.any(Object),
+		);
+		expect(spaceIntentService.executeLightingIntent).toHaveBeenNthCalledWith(
+			2,
+			'space-1',
+			expect.any(Object),
+			expect.any(Object),
+		);
+	});
+
+	it('denies unscoped, foreign, wrong-kind, stale, and canonical Buddy space IDs without a domain call', async () => {
+		const valid = shortIdMapping.exposeScoped('conversation-a', 'space-1', ScopedShortIdTargetKind.SPACE);
+		const wrongKind = shortIdMapping.exposeScoped('conversation-a', 'property-1', ScopedShortIdTargetKind.PROPERTY);
+		const stale = shortIdMapping.exposeScoped('conversation-stale', 'space-2', ScopedShortIdTargetKind.SPACE);
+
+		expect(valid).not.toBeNull();
+		expect(wrongKind).not.toBeNull();
+		expect(stale).not.toBeNull();
+		shortIdMapping.clearScope('conversation-stale');
+
+		const attempts = [
+			{ spaceId: valid, context: { audience: ToolAudience.BUDDY, source: 'buddy' } },
+			{
+				spaceId: valid,
+				context: { audience: ToolAudience.BUDDY, source: 'buddy', conversationId: 'conversation-b' },
+			},
+			{
+				spaceId: wrongKind,
+				context: { audience: ToolAudience.BUDDY, source: 'buddy', conversationId: 'conversation-a' },
+			},
+			{
+				spaceId: stale,
+				context: { audience: ToolAudience.BUDDY, source: 'buddy', conversationId: 'conversation-stale' },
+			},
+			{
+				spaceId: 'space-1',
+				context: { audience: ToolAudience.BUDDY, source: 'buddy', conversationId: 'conversation-a' },
+			},
+		];
+
+		for (const attempt of attempts) {
+			await expect(
+				service.executeTool(
+					{
+						id: 'call-denied',
+						name: 'set_space_lighting',
+						arguments: { space_id: attempt.spaceId, mode: 'off' },
+					},
+					attempt.context,
+				),
+			).resolves.toEqual({
+				success: false,
+				status: ToolExecutionStatus.DENIED,
+				message: 'The requested target is not available in this Buddy conversation.',
+				errorCode: 'BUDDY_TARGET_NOT_EXPOSED',
+			});
+		}
+
+		expect(spaceIntentService.executeLightingIntent).not.toHaveBeenCalled();
+		expect(spacesService.findOne).not.toHaveBeenCalled();
 	});
 
 	describe('executeTool - unknown tool', () => {
@@ -267,4 +337,19 @@ describe('SpaceLightingToolService', () => {
 			expect(result).toBeNull();
 		});
 	});
+
+	async function executeBuddyLighting(canonicalId: string, mode: 'off' | 'on' | 'work' | 'relax' | 'night') {
+		const token = shortIdMapping.exposeScoped('conversation-1', canonicalId, ScopedShortIdTargetKind.SPACE);
+
+		expect(token).not.toBeNull();
+
+		return service.executeTool(
+			{
+				id: 'call-1',
+				name: 'set_space_lighting',
+				arguments: { space_id: token, mode },
+			},
+			{ audience: ToolAudience.BUDDY, source: 'buddy', conversationId: 'conversation-1' },
+		);
+	}
 });

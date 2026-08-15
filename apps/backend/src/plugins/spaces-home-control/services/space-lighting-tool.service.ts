@@ -17,11 +17,16 @@ import {
 	createToolDefinition,
 } from '../../../modules/tools/platforms/tool-provider.platform';
 import { BaseToolProviderService } from '../../../modules/tools/services/base-tool-provider.service';
-import { ShortIdMappingService } from '../../../modules/tools/services/short-id-mapping.service';
+import {
+	ScopedShortIdTargetKind,
+	ShortIdMappingService,
+} from '../../../modules/tools/services/short-id-mapping.service';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import { LightingIntentType, LightingMode } from '../spaces-home-control.constants';
 
 const SPACE_LIGHTING_TOOLS_PROVIDER = 'space-lighting-tools';
+const BUDDY_TARGET_NOT_EXPOSED_MESSAGE = 'The requested target is not available in this Buddy conversation.';
+const BUDDY_TARGET_NOT_EXPOSED_ERROR_CODE = 'BUDDY_TARGET_NOT_EXPOSED';
 const LIGHTING_MODES = ['off', 'on', 'work', 'relax', 'night'] as const;
 
 const SET_SPACE_LIGHTING_INPUT_SCHEMA = z.object({
@@ -92,7 +97,25 @@ export class SpaceLightingToolService extends BaseToolProviderService implements
 			};
 		}
 
-		const spaceId = this.shortIdMapping.resolve(parsed.data.space_id) ?? parsed.data.space_id;
+		const spaceId =
+			context.audience === ToolAudience.BUDDY
+				? context.conversationId
+					? this.shortIdMapping.resolveScoped(
+							context.conversationId,
+							parsed.data.space_id,
+							ScopedShortIdTargetKind.SPACE,
+						)
+					: null
+				: (this.shortIdMapping.resolve(parsed.data.space_id) ?? parsed.data.space_id);
+
+		if (spaceId === null) {
+			return {
+				success: false,
+				status: ToolExecutionStatus.DENIED,
+				message: BUDDY_TARGET_NOT_EXPOSED_MESSAGE,
+				errorCode: BUDDY_TARGET_NOT_EXPOSED_ERROR_CODE,
+			};
+		}
 
 		if (!this.spaceIntentService) {
 			return {

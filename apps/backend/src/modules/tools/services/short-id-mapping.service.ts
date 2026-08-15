@@ -1,4 +1,4 @@
-import { createHash } from 'crypto';
+import { createHash, createHmac, randomBytes } from 'crypto';
 
 import { Injectable } from '@nestjs/common';
 
@@ -14,6 +14,22 @@ const SHORT_ID_LENGTH = 4;
  * 10 000 entries is generous for a home automation context and caps memory usage.
  */
 const MAX_MAPPINGS = 10_000;
+
+export enum ScopedShortIdTargetKind {
+	SPACE = 'space',
+	PROPERTY = 'property',
+	SCENE = 'scene',
+}
+
+export const MAX_SCOPED_SHORT_ID_MAPPINGS = 10_000;
+export const MAX_SCOPED_SHORT_ID_MAPPINGS_PER_CONVERSATION = 1_000;
+
+interface ScopedShortIdMapping {
+	canonicalId: string;
+	conversationId: string;
+	kind: ScopedShortIdTargetKind;
+	token: string;
+}
 
 /**
  * Generates deterministic short IDs for UUIDs used in the LLM system prompt and
@@ -36,6 +52,19 @@ export class ShortIdMappingService {
 
 	/** Full UUID → short ID (reverse lookup to avoid generating duplicates for the same UUID) */
 	private readonly uuidToShort = new Map<string, string>();
+
+	/** Conversation + opaque token -> scoped target. Map insertion order is the global scoped LRU. */
+	private readonly scopedMappings = new Map<string, ScopedShortIdMapping>();
+
+	/** Conversation + kind + canonical ID -> opaque token. */
+	private readonly scopedTargets = new Map<string, string>();
+	private readonly scopedConversationSizes = new Map<string, number>();
+
+	/** Per-process secret keeps scoped references opaque and non-derivable from canonical IDs. */
+	private readonly scopedSecret = randomBytes(32);
+
+	/** Monotonic component guarantees that an evicted token is never reassigned during this service lifetime. */
+	private scopedTokenSequence = 0n;
 
 	/**
 	 * Get or create a short ID for the given UUID.
@@ -83,6 +112,101 @@ export class ShortIdMappingService {
 		return this.shortToUuid.size;
 	}
 
+	/**
+	 * Expose a target under a conversation-scoped opaque reference.
+	 * Repeated exposure of the same kind/target in one conversation returns the same token while retained.
+	 */
+	exposeScoped(conversationId: string, canonicalId: string, kind: ScopedShortIdTargetKind): string | null {
+		if (conversationId.length === 0 || canonicalId.length === 0) {
+			throw new TypeError('Scoped short IDs require non-empty conversation and canonical IDs');
+		}
+
+		const targetKey = this.scopedTargetKey(conversationId, kind, canonicalId);
+		const existing = this.scopedTargets.get(targetKey);
+
+		if (existing) {
+			const mappingKey = this.scopedMappingKey(conversationId, existing);
+			const mapping = this.scopedMappings.get(mappingKey);
+
+			if (mapping) {
+				this.scopedMappings.delete(mappingKey);
+				this.scopedMappings.set(mappingKey, mapping);
+
+				return existing;
+			}
+
+			this.scopedTargets.delete(targetKey);
+		}
+
+		if (this.getScopedConversationSize(conversationId) >= MAX_SCOPED_SHORT_ID_MAPPINGS_PER_CONVERSATION) {
+			return null;
+		}
+
+		let token: string;
+		let attempts = 0;
+
+		do {
+			token = this.createScopedToken(conversationId, canonicalId, kind);
+			attempts += 1;
+
+			if (attempts > 100) {
+				throw new Error('ShortIdMappingService: failed to generate a unique scoped short ID after 100 attempts');
+			}
+		} while (this.scopedMappings.has(this.scopedMappingKey(conversationId, token)));
+
+		if (!this.reserveScopedCapacity(conversationId)) {
+			return null;
+		}
+
+		const mapping: ScopedShortIdMapping = { canonicalId, conversationId, kind, token };
+
+		this.scopedMappings.set(this.scopedMappingKey(conversationId, token), mapping);
+		this.scopedTargets.set(targetKey, token);
+		this.scopedConversationSizes.set(conversationId, this.getScopedConversationSize(conversationId) + 1);
+
+		return token;
+	}
+
+	/** Resolve an opaque reference only inside the same conversation and target kind. */
+	resolveScoped(conversationId: string, token: string, kind: ScopedShortIdTargetKind): string | null {
+		const mappingKey = this.scopedMappingKey(conversationId, token);
+		const mapping = this.scopedMappings.get(mappingKey);
+
+		if (!mapping || mapping.kind !== kind) {
+			return null;
+		}
+
+		this.scopedMappings.delete(mappingKey);
+		this.scopedMappings.set(mappingKey, mapping);
+
+		return mapping.canonicalId;
+	}
+
+	/** Remove every scoped reference exposed in one conversation. */
+	clearScope(conversationId: string): void {
+		for (const [mappingKey, mapping] of this.scopedMappings) {
+			if (mapping.conversationId !== conversationId) {
+				continue;
+			}
+
+			this.scopedMappings.delete(mappingKey);
+			this.scopedTargets.delete(this.scopedTargetKey(mapping.conversationId, mapping.kind, mapping.canonicalId));
+		}
+
+		this.scopedConversationSizes.delete(conversationId);
+	}
+
+	/** Remove all scoped references without resetting token identity. */
+	clearAllScopes(): void {
+		this.scopedMappings.clear();
+		this.scopedTargets.clear();
+		this.scopedConversationSizes.clear();
+	}
+
+	get scopedSize(): number {
+		return this.scopedMappings.size;
+	}
+
 	private evictIfNeeded(): void {
 		while (this.shortToUuid.size >= MAX_MAPPINGS) {
 			// Map iteration order is insertion order — first entry is the oldest
@@ -100,6 +224,74 @@ export class ShortIdMappingService {
 				this.uuidToShort.delete(oldUuid);
 			}
 		}
+	}
+
+	private reserveScopedCapacity(activeConversationId: string): boolean {
+		while (this.scopedMappings.size >= MAX_SCOPED_SHORT_ID_MAPPINGS) {
+			const oldestKey = [...this.scopedMappings].find(
+				([, mapping]) => mapping.conversationId !== activeConversationId,
+			)?.[0];
+
+			if (!oldestKey) {
+				return false;
+			}
+
+			const oldest = this.scopedMappings.get(oldestKey);
+
+			this.scopedMappings.delete(oldestKey);
+
+			if (oldest) {
+				this.scopedTargets.delete(this.scopedTargetKey(oldest.conversationId, oldest.kind, oldest.canonicalId));
+				this.decrementScopedConversationSize(oldest.conversationId);
+			}
+		}
+
+		return true;
+	}
+
+	private getScopedConversationSize(conversationId: string): number {
+		return this.scopedConversationSizes.get(conversationId) ?? 0;
+	}
+
+	private decrementScopedConversationSize(conversationId: string): void {
+		const nextSize = this.getScopedConversationSize(conversationId) - 1;
+
+		if (nextSize <= 0) {
+			this.scopedConversationSizes.delete(conversationId);
+		} else {
+			this.scopedConversationSizes.set(conversationId, nextSize);
+		}
+	}
+
+	private createScopedToken(conversationId: string, canonicalId: string, kind: ScopedShortIdTargetKind): string {
+		this.scopedTokenSequence += 1n;
+
+		const sequence = this.scopedTokenSequence.toString(36);
+		const signature = createHmac('sha256', this.scopedSecret)
+			.update(`${conversationId}\u0000${kind}\u0000${canonicalId}\u0000${sequence}`)
+			.digest('base64url')
+			.slice(0, 10);
+
+		return `${this.scopedKindPrefix(kind)}_${sequence}_${signature}`;
+	}
+
+	private scopedKindPrefix(kind: ScopedShortIdTargetKind): string {
+		switch (kind) {
+			case ScopedShortIdTargetKind.SPACE:
+				return 'sp';
+			case ScopedShortIdTargetKind.PROPERTY:
+				return 'pr';
+			case ScopedShortIdTargetKind.SCENE:
+				return 'sc';
+		}
+	}
+
+	private scopedMappingKey(conversationId: string, token: string): string {
+		return `${conversationId}\u0000${token}`;
+	}
+
+	private scopedTargetKey(conversationId: string, kind: ScopedShortIdTargetKind, canonicalId: string): string {
+		return `${conversationId}\u0000${kind}\u0000${canonicalId}`;
 	}
 
 	/**

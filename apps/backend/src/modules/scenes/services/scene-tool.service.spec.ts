@@ -1,5 +1,5 @@
 import { ToolAccessKind, ToolAudience, ToolExecutionStatus } from '../../tools/platforms/tool-provider.platform';
-import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
+import { ScopedShortIdTargetKind, ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 
 import { SceneExecutorService } from './scene-executor.service';
 import { SceneToolService } from './scene-tool.service';
@@ -9,6 +9,7 @@ describe('SceneToolService', () => {
 	let service: SceneToolService;
 	let scenesService: Record<string, jest.Mock>;
 	let sceneExecutor: Record<string, jest.Mock>;
+	let shortIdMapping: ShortIdMappingService;
 
 	beforeEach(() => {
 		scenesService = {
@@ -19,10 +20,11 @@ describe('SceneToolService', () => {
 			triggerScene: jest.fn(),
 		};
 
+		shortIdMapping = new ShortIdMappingService();
 		service = new SceneToolService(
 			scenesService as unknown as ScenesService,
 			sceneExecutor as unknown as SceneExecutorService,
-			new ShortIdMappingService(),
+			shortIdMapping,
 		);
 	});
 
@@ -60,11 +62,7 @@ describe('SceneToolService', () => {
 				totalActions: 3,
 			});
 
-			const result = await service.executeTool({
-				id: 'call-1',
-				name: 'run_scene',
-				arguments: { scene_id: 'scene-1' },
-			});
+			const result = await executeBuddyScene('scene-1');
 
 			expect(result.success).toBe(true);
 			expect(result.status).toBe(ToolExecutionStatus.COMPLETED);
@@ -83,14 +81,80 @@ describe('SceneToolService', () => {
 			});
 		});
 
+		it('preserves MCP global short-ID and canonical-ID fallback', async () => {
+			const globalShortId = shortIdMapping.shorten('scene-1');
+
+			scenesService.findOne.mockResolvedValue({ id: 'scene-1', name: 'Movie Night', enabled: true });
+			sceneExecutor.triggerScene.mockResolvedValue({
+				status: 'completed',
+				successfulActions: 3,
+				totalActions: 3,
+			});
+
+			for (const sceneId of [globalShortId, 'scene-1']) {
+				await service.executeTool(
+					{ id: 'mcp-call', name: 'run_scene', arguments: { scene_id: sceneId } },
+					{ audience: ToolAudience.MCP, source: 'mcp' },
+				);
+			}
+
+			expect(scenesService.findOne).toHaveBeenNthCalledWith(1, 'scene-1');
+			expect(scenesService.findOne).toHaveBeenNthCalledWith(2, 'scene-1');
+			expect(sceneExecutor.triggerScene).toHaveBeenCalledTimes(2);
+		});
+
+		it('denies unscoped, foreign, wrong-kind, stale, and canonical Buddy scene IDs without a domain call', async () => {
+			const valid = shortIdMapping.exposeScoped('conversation-a', 'scene-1', ScopedShortIdTargetKind.SCENE);
+			const wrongKind = shortIdMapping.exposeScoped('conversation-a', 'property-1', ScopedShortIdTargetKind.PROPERTY);
+			const stale = shortIdMapping.exposeScoped('conversation-stale', 'scene-2', ScopedShortIdTargetKind.SCENE);
+
+			expect(valid).not.toBeNull();
+			expect(wrongKind).not.toBeNull();
+			expect(stale).not.toBeNull();
+			shortIdMapping.clearScope('conversation-stale');
+
+			const attempts = [
+				{ sceneId: valid, context: { audience: ToolAudience.BUDDY, source: 'buddy' } },
+				{
+					sceneId: valid,
+					context: { audience: ToolAudience.BUDDY, source: 'buddy', conversationId: 'conversation-b' },
+				},
+				{
+					sceneId: wrongKind,
+					context: { audience: ToolAudience.BUDDY, source: 'buddy', conversationId: 'conversation-a' },
+				},
+				{
+					sceneId: stale,
+					context: { audience: ToolAudience.BUDDY, source: 'buddy', conversationId: 'conversation-stale' },
+				},
+				{
+					sceneId: 'scene-1',
+					context: { audience: ToolAudience.BUDDY, source: 'buddy', conversationId: 'conversation-a' },
+				},
+			];
+
+			for (const attempt of attempts) {
+				await expect(
+					service.executeTool(
+						{ id: 'call-denied', name: 'run_scene', arguments: { scene_id: attempt.sceneId } },
+						attempt.context,
+					),
+				).resolves.toEqual({
+					success: false,
+					status: ToolExecutionStatus.DENIED,
+					message: 'The requested target is not available in this Buddy conversation.',
+					errorCode: 'BUDDY_TARGET_NOT_EXPOSED',
+				});
+			}
+
+			expect(scenesService.findOne).not.toHaveBeenCalled();
+			expect(sceneExecutor.triggerScene).not.toHaveBeenCalled();
+		});
+
 		it('should return failure for non-existent scene', async () => {
 			scenesService.findOne.mockResolvedValue(null);
 
-			const result = await service.executeTool({
-				id: 'call-1',
-				name: 'run_scene',
-				arguments: { scene_id: 'nonexistent' },
-			});
+			const result = await executeBuddyScene('nonexistent');
 
 			expect(result.success).toBe(false);
 			expect(result.message).toContain('not found');
@@ -115,11 +179,7 @@ describe('SceneToolService', () => {
 				totalActions: 3,
 			});
 
-			const result = await service.executeTool({
-				id: 'call-1',
-				name: 'run_scene',
-				arguments: { scene_id: 'scene-1' },
-			});
+			const result = await executeBuddyScene('scene-1');
 
 			expect(result.success).toBe(true);
 			expect(result.status).toBe(ToolExecutionStatus.PARTIAL);
@@ -136,11 +196,7 @@ describe('SceneToolService', () => {
 				error: 'No platforms registered',
 			});
 
-			const result = await service.executeTool({
-				id: 'call-1',
-				name: 'run_scene',
-				arguments: { scene_id: 'scene-1' },
-			});
+			const result = await executeBuddyScene('scene-1');
 
 			expect(result.success).toBe(false);
 			expect(result.status).toBe(ToolExecutionStatus.FAILED);
@@ -154,11 +210,7 @@ describe('SceneToolService', () => {
 		it('should return failure when scene is disabled', async () => {
 			scenesService.findOne.mockResolvedValue({ id: 'scene-1', name: 'Test', enabled: false });
 
-			const result = await service.executeTool({
-				id: 'call-1',
-				name: 'run_scene',
-				arguments: { scene_id: 'scene-1' },
-			});
+			const result = await executeBuddyScene('scene-1');
 
 			expect(result.success).toBe(false);
 			expect(result.status).toBe(ToolExecutionStatus.DENIED);
@@ -169,11 +221,7 @@ describe('SceneToolService', () => {
 			scenesService.findOne.mockResolvedValue({ id: 'scene-1', name: 'Test', enabled: true });
 			sceneExecutor.triggerScene.mockRejectedValue(new Error('Connection timeout'));
 
-			const result = await service.executeTool({
-				id: 'call-1',
-				name: 'run_scene',
-				arguments: { scene_id: 'scene-1' },
-			});
+			const result = await executeBuddyScene('scene-1');
 
 			expect(result.success).toBe(false);
 			expect(result.status).toBe(ToolExecutionStatus.FAILED);
@@ -193,4 +241,15 @@ describe('SceneToolService', () => {
 			expect(result).toBeNull();
 		});
 	});
+
+	async function executeBuddyScene(canonicalId: string) {
+		const token = shortIdMapping.exposeScoped('conversation-1', canonicalId, ScopedShortIdTargetKind.SCENE);
+
+		expect(token).not.toBeNull();
+
+		return service.executeTool(
+			{ id: 'call-1', name: 'run_scene', arguments: { scene_id: token } },
+			{ audience: ToolAudience.BUDDY, source: 'buddy', conversationId: 'conversation-1' },
+		);
+	}
 });

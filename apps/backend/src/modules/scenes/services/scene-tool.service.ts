@@ -14,13 +14,15 @@ import {
 	createToolDefinition,
 } from '../../tools/platforms/tool-provider.platform';
 import { BaseToolProviderService } from '../../tools/services/base-tool-provider.service';
-import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
+import { ScopedShortIdTargetKind, ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { SCENES_MODULE_NAME, SceneExecutionStatus } from '../scenes.constants';
 
 import { SceneExecutorService } from './scene-executor.service';
 import { ScenesService } from './scenes.service';
 
 const SCENE_TOOLS_PROVIDER = 'scene-tools';
+const BUDDY_TARGET_NOT_EXPOSED_MESSAGE = 'The requested target is not available in this Buddy conversation.';
+const BUDDY_TARGET_NOT_EXPOSED_ERROR_CODE = 'BUDDY_TARGET_NOT_EXPOSED';
 
 const RUN_SCENE_INPUT_SCHEMA = z.object({
 	scene_id: z.string().min(1).describe('Short scene ID from the home context (the id=... value)'),
@@ -77,7 +79,25 @@ export class SceneToolService extends BaseToolProviderService {
 			};
 		}
 
-		const sceneId = this.shortIdMapping.resolve(parsed.data.scene_id) ?? parsed.data.scene_id;
+		const sceneId =
+			context.audience === ToolAudience.BUDDY
+				? context.conversationId
+					? this.shortIdMapping.resolveScoped(
+							context.conversationId,
+							parsed.data.scene_id,
+							ScopedShortIdTargetKind.SCENE,
+						)
+					: null
+				: (this.shortIdMapping.resolve(parsed.data.scene_id) ?? parsed.data.scene_id);
+
+		if (sceneId === null) {
+			return {
+				success: false,
+				status: ToolExecutionStatus.DENIED,
+				message: BUDDY_TARGET_NOT_EXPOSED_MESSAGE,
+				errorCode: BUDDY_TARGET_NOT_EXPOSED_ERROR_CODE,
+			};
+		}
 		const scene = await this.scenesService.findOne(sceneId);
 
 		if (!scene) {
