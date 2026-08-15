@@ -42,6 +42,7 @@ interface OpenAiCodexOutputItem {
 	summary?: unknown;
 	content?: unknown;
 	status?: unknown;
+	phase?: unknown;
 	role?: unknown;
 }
 
@@ -269,6 +270,12 @@ function parseOpenAiCodexAssistantMessageItem(item: OpenAiCodexOutputItem): LlmC
 
 		return { type: 'output_text' as const, text: part.text, annotations: [] as [] };
 	});
+	const allowedPhases = ['commentary', 'final_answer'] as const;
+	const phase = allowedPhases.find((candidate) => candidate === item.phase);
+
+	if (item.phase !== undefined && phase === undefined) {
+		throw new TypeError('OpenAI Codex assistant message continuation has an invalid phase');
+	}
 	const status = parseOpenAiCodexOutputStatus(item.status, 'assistant message');
 
 	return {
@@ -276,6 +283,7 @@ function parseOpenAiCodexAssistantMessageItem(item: OpenAiCodexOutputItem): LlmC
 		id: item.id,
 		role: 'assistant',
 		content,
+		...(phase === undefined ? {} : { phase }),
 		...(status === undefined ? {} : { status }),
 	};
 }

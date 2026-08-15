@@ -32,6 +32,7 @@ const assistantMessageItem = {
 	type: 'message',
 	role: 'assistant',
 	content: [{ type: 'output_text', text: 'I will check both sensors.', annotations: [] }],
+	phase: 'commentary',
 	status: 'completed',
 } satisfies LlmConversationAssistantMessageItem;
 

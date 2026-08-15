@@ -69,6 +69,7 @@ export interface LlmConversationAssistantMessageItem {
 	id: string;
 	role: 'assistant';
 	content: LlmConversationAssistantTextPart[];
+	phase?: 'commentary' | 'final_answer';
 	status?: 'in_progress' | 'completed' | 'incomplete';
 }
 
