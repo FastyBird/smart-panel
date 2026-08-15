@@ -76,6 +76,12 @@ class FakeEventSource implements HomeySdkEventSource {
 		await Promise.all([...(this.listeners.get(event) ?? [])].map(async (listener) => await listener(payload)));
 	}
 
+	emitSynchronously(event: string, payload: unknown): void {
+		for (const listener of this.listeners.get(event) ?? []) {
+			void listener(payload);
+		}
+	}
+
 	listenerCount(event: string): number {
 		return this.listeners.get(event)?.size ?? 0;
 	}
@@ -178,6 +184,32 @@ const createConnector = (client = new FakeSdkClient()) => {
 	const connector = new HomeyLocalConnector(transport);
 
 	return { client, connector, factory, transport };
+};
+
+const createDeviceEventRecorder = () => {
+	const events: HomeyEvent[] = [];
+	let expectedEvent: { deviceId: string; resolve: () => void; type: HomeyEventType } | null = null;
+
+	return {
+		events,
+		listener: (event: HomeyEvent): void => {
+			events.push(event);
+
+			if (
+				expectedEvent !== null &&
+				event.type === expectedEvent.type &&
+				'deviceId' in event &&
+				event.deviceId === expectedEvent.deviceId
+			) {
+				expectedEvent.resolve();
+				expectedEvent = null;
+			}
+		},
+		waitFor: (type: HomeyEventType, deviceId: string): Promise<void> =>
+			new Promise((resolvePromise) => {
+				expectedEvent = { deviceId, resolve: resolvePromise, type };
+			}),
+	};
 };
 
 describe('HomeySdkTransport', () => {
@@ -375,22 +407,58 @@ describe('HomeySdkTransport', () => {
 
 	it('attaches and detaches devices announced after subscription without leaking item listeners', async () => {
 		const { client, connector } = createConnector();
-		const events: HomeyEvent[] = [];
+		const recorder = createDeviceEventRecorder();
 		const addedDevice = new FakeSdkDevice({ ...rawDevice, id: 'added-device' });
 		await connector.connect();
-		await connector.subscribe((event) => {
-			events.push(event);
-		});
+		await connector.subscribe(recorder.listener);
 
+		const createdEvent = recorder.waitFor(HomeyEventType.DEVICE_ADDED, addedDevice.id);
 		await client.devices.emit('device.create', addedDevice);
+		await createdEvent;
 		expect(addedDevice.connect).toHaveBeenCalledTimes(1);
 		expect(addedDevice.listenerCount('capability')).toBe(1);
-		expect(events.at(-1)).toMatchObject({ type: HomeyEventType.DEVICE_ADDED, deviceId: addedDevice.id });
+		expect(recorder.events.at(-1)).toMatchObject({
+			type: HomeyEventType.DEVICE_ADDED,
+			deviceId: addedDevice.id,
+		});
 
+		const deletedEvent = recorder.waitFor(HomeyEventType.DEVICE_REMOVED, addedDevice.id);
 		await client.devices.emit('device.delete', { id: addedDevice.id });
+		await deletedEvent;
 		expect(addedDevice.disconnect).toHaveBeenCalledTimes(1);
 		expect(addedDevice.listenerCount('capability')).toBe(0);
-		expect(events.at(-1)).toMatchObject({ type: HomeyEventType.DEVICE_REMOVED, deviceId: addedDevice.id });
+		expect(recorder.events.at(-1)).toMatchObject({
+			type: HomeyEventType.DEVICE_REMOVED,
+			deviceId: addedDevice.id,
+		});
+
+		await connector.disconnect();
+	});
+
+	it('settles runtime attach and detach failures from synchronous SDK emitters while routing lifecycle events', async () => {
+		const { client, connector } = createConnector();
+		const recorder = createDeviceEventRecorder();
+		const failingAttachDevice = new FakeSdkDevice({ ...rawDevice, id: 'failing-attach-device' });
+		const failingDetachDevice = new FakeSdkDevice({ ...rawDevice, id: 'failing-detach-device' });
+		failingAttachDevice.connect.mockRejectedValueOnce(rawFailure(HomeyConnectorErrorCategory.TIMEOUT));
+		await connector.connect();
+		await connector.subscribe(recorder.listener);
+
+		const attachEvent = recorder.waitFor(HomeyEventType.DEVICE_ADDED, failingAttachDevice.id);
+		client.devices.emitSynchronously('device.create', failingAttachDevice);
+		await attachEvent;
+		expect(failingAttachDevice.listenerCount('capability')).toBe(0);
+
+		const createdEvent = recorder.waitFor(HomeyEventType.DEVICE_ADDED, failingDetachDevice.id);
+		client.devices.emitSynchronously('device.create', failingDetachDevice);
+		await createdEvent;
+		expect(failingDetachDevice.listenerCount('capability')).toBe(1);
+		failingDetachDevice.disconnect.mockRejectedValueOnce(rawFailure(HomeyConnectorErrorCategory.UNAVAILABLE));
+
+		const detachEvent = recorder.waitFor(HomeyEventType.DEVICE_REMOVED, failingDetachDevice.id);
+		client.devices.emitSynchronously('device.delete', { id: failingDetachDevice.id });
+		await detachEvent;
+		expect(failingDetachDevice.listenerCount('capability')).toBe(0);
 
 		await connector.disconnect();
 	});

@@ -297,32 +297,44 @@ export class HomeySdkTransport implements HomeyLocalTransport {
 	}
 
 	private bindManagerEvents(client: HomeySdkClient): void {
-		this.bind(client.devices, 'device.create', async (payload) => {
-			if (isRecord(payload) && typeof payload.id === 'string') {
-				await this.attachDevice(payload as unknown as HomeySdkDevice);
-			}
-
-			await this.queueEvent({ type: 'device.create', payload });
+		this.bind(client.devices, 'device.create', (payload) => {
+			this.routeRuntimeDeviceEvent('device.create', payload);
 		});
-		this.bind(client.devices, 'device.update', async (payload) => {
-			if (isRecord(payload) && typeof payload.id === 'string' && !this.deviceBindings.has(payload.id)) {
-				await this.attachDevice(payload as unknown as HomeySdkDevice);
-			}
-
-			await this.queueEvent({ type: 'device.update', payload });
+		this.bind(client.devices, 'device.update', (payload) => {
+			this.routeRuntimeDeviceEvent('device.update', payload);
 		});
-		this.bind(client.devices, 'device.delete', async (payload) => {
-			const deviceId = identifierOf(payload);
-
-			if (deviceId !== null) {
-				await this.detachDevice(deviceId);
-			}
-
-			await this.queueEvent({ type: 'device.delete', payload });
+		this.bind(client.devices, 'device.delete', (payload) => {
+			this.routeRuntimeDeviceEvent('device.delete', payload);
 		});
 		this.bind(client.zones, 'zone.create', (payload) => this.queueEvent({ type: 'zone.create', payload }));
 		this.bind(client.zones, 'zone.update', (payload) => this.queueEvent({ type: 'zone.update', payload }));
 		this.bind(client.zones, 'zone.delete', (payload) => this.queueEvent({ type: 'zone.delete', payload }));
+	}
+
+	private routeRuntimeDeviceEvent(type: 'device.create' | 'device.update' | 'device.delete', payload: unknown): void {
+		void this.handleRuntimeDeviceEvent(type, payload).catch(() => undefined);
+	}
+
+	private async handleRuntimeDeviceEvent(
+		type: 'device.create' | 'device.update' | 'device.delete',
+		payload: unknown,
+	): Promise<void> {
+		try {
+			const deviceId = identifierOf(payload);
+
+			if (type === 'device.delete') {
+				if (deviceId !== null) {
+					await this.detachDevice(deviceId);
+				}
+			} else if (deviceId !== null && !this.deviceBindings.has(deviceId)) {
+				await this.attachDevice(payload as HomeySdkDevice);
+			}
+		} catch {
+			// The SDK emitter does not observe returned promises. Keep failures settled;
+			// a later update can retry attachment, while the lifecycle event still routes.
+		}
+
+		await this.queueEvent({ type, payload });
 	}
 
 	private async attachDevice(device: HomeySdkDevice): Promise<void> {
