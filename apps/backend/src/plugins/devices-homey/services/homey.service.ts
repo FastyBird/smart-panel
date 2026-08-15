@@ -86,7 +86,17 @@ export class HomeyService extends BaseManagedPluginService {
 				this.logger.log('Homey connector started and initial inventory synchronized');
 			} catch (error) {
 				this.applyFailureState(error, 'Homey service failed to start');
+				const retryable = this.isRetryableFailure(error);
+				const retryGeneration = ++this.generation;
 				await this.cleanupRuntime();
+
+				if (retryable) {
+					this.state = 'started';
+					this.scheduleReconnect(retryGeneration);
+					this.logger.warn('Homey service startup is unavailable; reconnect scheduled');
+					return;
+				}
+
 				this.state = 'error';
 				this.healthy = false;
 				this.logger.error(this.lastError ?? 'Homey service failed to start');
@@ -375,10 +385,11 @@ export class HomeyService extends BaseManagedPluginService {
 				this.logger.log('Homey connector reconnected and inventory synchronized');
 			} catch (error) {
 				this.applyFailureState(error, 'Homey service failed to reconnect', HomeyConnectionState.RECONNECTING);
+				const retryGeneration = ++this.generation;
 				await this.cleanupRuntime();
 
 				if (this.isRetryableFailure(error)) {
-					this.scheduleReconnect(generation);
+					this.scheduleReconnect(retryGeneration);
 				}
 
 				this.logger.error(this.lastError ?? 'Homey service failed to reconnect');
@@ -433,6 +444,8 @@ export class HomeyService extends BaseManagedPluginService {
 			}
 		}
 
+		await this.synchronizationTail;
+
 		if (connector) {
 			try {
 				await connector.disconnect();
@@ -441,8 +454,6 @@ export class HomeyService extends BaseManagedPluginService {
 				disconnectSucceeded = false;
 			}
 		}
-
-		await this.synchronizationTail;
 
 		if (disconnectSucceeded && (unsubscribeSucceeded || connector !== null)) {
 			this.unsubscribe = null;

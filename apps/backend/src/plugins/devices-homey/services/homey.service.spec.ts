@@ -153,6 +153,36 @@ describe('HomeyService', () => {
 		expect(await service.isHealthy()).toBe(false);
 	});
 
+	it('recovers from a retryable initial startup failure without a config change', async () => {
+		const replacementConnector = createConnectorMock(() => undefined, jest.fn());
+		connector.connect.mockRejectedValueOnce(
+			new HomeyConnectorError(HomeyConnectorErrorCategory.UNAVAILABLE, HomeyConnectorOperation.CONNECT),
+		);
+		connectorFactory.create.mockReset().mockReturnValueOnce(connector).mockReturnValueOnce(replacementConnector);
+
+		await service.start();
+
+		expect(service.getStatus()).toMatchObject({
+			serviceState: 'started',
+			connectionState: HomeyConnectionState.RECONNECTING,
+			healthy: false,
+			lastError: 'Homey connection is temporarily unavailable',
+		});
+		expect(jest.getTimerCount()).toBe(1);
+
+		await jest.advanceTimersByTimeAsync(1000);
+
+		expect(replacementConnector.connect.mock.calls).toHaveLength(1);
+		expect(service.getStatus()).toMatchObject({
+			serviceState: 'started',
+			connectionState: HomeyConnectionState.CONNECTED,
+			healthy: true,
+			lastError: null,
+		});
+
+		await service.stop();
+	});
+
 	it('performs a targeted authoritative read for an event received during the startup snapshot', async () => {
 		const freshDevice = { ...staleDevice, available: false, availabilityMessage: 'Offline' };
 		connector.getDevice.mockResolvedValue(freshDevice);
@@ -396,6 +426,49 @@ describe('HomeyService', () => {
 
 		expect(connectorFactory.create.mock.calls).toHaveLength(1);
 		expect(service.getStatus().connectionState).toBe(HomeyConnectionState.STOPPED);
+	});
+
+	it('drains an active reconciliation before disconnecting for reconnect', async () => {
+		const replacementConnector = createConnectorMock(() => undefined, jest.fn());
+		connectorFactory.create.mockReset().mockReturnValueOnce(connector).mockReturnValueOnce(replacementConnector);
+		await service.start();
+		connector.getDevice.mockRejectedValueOnce(
+			new HomeyConnectorError(HomeyConnectorErrorCategory.UNAVAILABLE, HomeyConnectorOperation.GET_DEVICE),
+		);
+		const event = {
+			type: HomeyEventType.DEVICE_UPDATED,
+			deviceId: staleDevice.id,
+			occurredAt: null,
+			sequence: null,
+		} as const;
+
+		await listener?.(event);
+
+		let rejectRead: (error: Error) => void = () => undefined;
+		connector.getDevice.mockImplementationOnce(
+			() =>
+				new Promise((_, reject) => {
+					rejectRead = reject;
+				}),
+		);
+		const activeReconciliation = listener?.(event);
+
+		await jest.advanceTimersByTimeAsync(1000);
+
+		expect(unsubscribe).toHaveBeenCalledTimes(1);
+		expect(connector.disconnect.mock.calls).toHaveLength(0);
+
+		rejectRead(new Error('in-flight read ended'));
+		await activeReconciliation;
+
+		for (let index = 0; index < 10; index += 1) {
+			await Promise.resolve();
+		}
+
+		expect(connector.disconnect.mock.calls).toHaveLength(1);
+		expect(replacementConnector.connect.mock.calls).toHaveLength(1);
+
+		await service.stop();
 	});
 
 	it('refreshes device zone paths after a live zone change', async () => {
