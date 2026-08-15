@@ -95,7 +95,7 @@ const READ_CLAUSE_PATTERN =
 const STATE_QUESTION_PATTERN =
 	/^(?:are|can|could|did|do|does|had|has|have|how|is|may|might|what|which|where|why|will|would|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u;
 const PREDICATE_QUESTION_PATTERN =
-	/^(?:are|can|could|did|had|has|have|is|may|might|will|would|was|were|(?:what|why) (?:are|did|had|has|have|is|was|were))\b/u;
+	/^(?:are|can|could|did|had|has|have|is|may|might|will|would|was|were|(?:how|what|when|where|which|who|why)['’]s|(?:what|why) (?:are|did|had|has|have|is|was|were))\b/u;
 const UNKNOWN_ACTION_REQUEST_PATTERN = /^(?:(?:can|could|may|might|will|would)\s+you\b|please\b)/u;
 const ACTION_REQUEST_AUXILIARIES = new Set(['able', 'possible', 'way']);
 const ACTION_REQUEST_MODALS = new Set(['can', 'could', 'may', 'might', 'will', 'would']);
@@ -582,7 +582,7 @@ function hasUnknownLeadingIntentBeforeRead(normalizedMessage: string): boolean {
 
 function isGenericHomeExplanation(normalizedMessage: string, tokens: Set<string>): boolean {
 	if (!intersects(tokens, HOME_SIGNALS)) return false;
-	if (/^explain how to\b/u.test(normalizedMessage)) return true;
+	if (/^(?:explain how to|how (?:can|could|do|would) i)\b/u.test(normalizedMessage)) return true;
 	if (intersects(tokens, GROUNDED_STATE_SIGNALS)) return false;
 	if (intersects(tokens, EXPLICIT_STATE_REQUEST_SIGNALS)) return false;
 	if (/\b(?:currently|right now)\b/u.test(normalizedMessage)) return false;

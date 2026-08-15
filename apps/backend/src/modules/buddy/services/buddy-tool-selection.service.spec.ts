@@ -302,6 +302,8 @@ describe('BuddyToolSelectionService', () => {
 		'Explain how smart-home lighting works.',
 		'Explain how to adjust a thermostat.',
 		'Explain how to turn off the kitchen light.',
+		'How do I turn off the kitchen light?',
+		'How can I adjust a thermostat?',
 	])('keeps generic smart-home explanations tool-free: %s', (message) => {
 		expect(selectNames(message)).toEqual([]);
 	});
@@ -362,6 +364,7 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Is the thermostat set to 20?')).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
 		expect(selectNames('Is the thermostat set to 20')).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
 		expect(selectNames('What is the thermostat set to?')).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
+		expect(selectNames("What's the thermostat set to?")).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
 		expect(selectNames('Was the thermostat set to 20?')).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
 		expect(selectNames('Did I turn off the kitchen light?')).toEqual([
 			SEARCH_HOME_TOOL_NAME,
