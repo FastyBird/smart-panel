@@ -104,6 +104,12 @@ describe('BuddyToolSelectionService', () => {
 			names.scene,
 			names.spaceLighting,
 		]);
+		expect(selectNames('Run Bedtime and also close the blinds.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			names.control,
+			names.scene,
+			names.spaceLighting,
+		]);
 	});
 
 	it.each(['Are any windows open? If so, close them.', 'Are all doors closed, and open them if not.'])(
@@ -157,6 +163,17 @@ describe('BuddyToolSelectionService', () => {
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);
 		expect(selectNames('Explain why the kitchen light is off.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+		]);
+		expect(selectNames('Explain why the hallway sensor is triggered.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+		]);
+	});
+
+	it('treats tell-whether wording as a read-only state question', () => {
+		expect(selectNames('Tell me whether the window is open.')).toEqual([
 			SEARCH_HOME_TOOL_NAME,
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);

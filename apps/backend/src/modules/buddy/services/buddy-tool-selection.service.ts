@@ -80,7 +80,7 @@ const ACTION_SIGNALS = new Set([
 	'zavri',
 ]);
 const ACTION_CLAUSE_PATTERN = new RegExp(
-	String.raw`(?:\ba\b|\band\b|\bpotom\b|\bthen\b|[,;])\s*(?:please\s+)?(?:${[...ACTION_SIGNALS].join('|')})\b`,
+	String.raw`(?:\ba\b|\band\b|\bpotom\b|\bthen\b|[,;])\s*(?:(?:also|please|take)\s+)*(?:${[...ACTION_SIGNALS].join('|')})\b`,
 	'u',
 );
 const READ_CLAUSE_PATTERN = /\b(?:a|and|potom|then)\s+(?:check|find|show|tell|what|whether|which)\b/u;
@@ -252,17 +252,28 @@ export class BuddyToolSelectionService {
 		const hasStateSignal = intersects(tokens, STATE_SIGNALS);
 		const actionTokens = getActionIntentTokens(normalizedMessage, tokens, hasStateSignal);
 		const hasConditionalAction = actionTokens !== null && /\b(?:if|kdyz|pokud|when)\b/u.test(normalizedMessage);
+		const hasTrailingReadClause = actionTokens !== null && READ_CLAUSE_PATTERN.test(normalizedMessage);
+		const questionEnd = normalizedMessage.indexOf('?');
+		const hasStateFirstAction =
+			actionTokens !== null &&
+			questionEnd >= 0 &&
+			intersects(tokenize(normalizedMessage.slice(questionEnd + 1)), ACTION_SIGNALS);
 		const hasHomeSignal = intersects(tokens, HOME_SIGNALS);
 		const isGenericExplanation = isGenericHomeExplanation(normalizedMessage, tokens);
 		const isStateExplanation =
 			hasHomeSignal &&
 			(/^explain (?:if|whether)\b/u.test(normalizedMessage) ||
-				(/^explain why\b/u.test(normalizedMessage) && intersects(tokens, GROUNDED_STATE_SIGNALS)));
+				(/^explain why\b/u.test(normalizedMessage) && !/\bwork(?:s|ing)?\b/u.test(normalizedMessage)));
 
 		if (
 			isStateExplanation ||
 			(!isGenericExplanation &&
-				(hasSearchSignal || hasStateSignal || hasConditionalAction || (message.includes('?') && hasHomeSignal)))
+				(hasSearchSignal ||
+					hasStateSignal ||
+					hasConditionalAction ||
+					hasTrailingReadClause ||
+					hasStateFirstAction ||
+					(message.includes('?') && hasHomeSignal)))
 		) {
 			for (const name of READ_TOOL_NAMES) selected.add(name);
 		}
@@ -370,7 +381,8 @@ function getActionIntentTokens(
 
 	const isStateQuestion =
 		hasStateSignal &&
-		/^(?:are|do|does|how|is|what|which|where|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u.test(normalizedMessage);
+		(/^(?:are|do|does|how|is|what|which|where|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u.test(normalizedMessage) ||
+			/^(?:please\s+)?tell\b.*\b(?:if|whether)\b/u.test(normalizedMessage));
 
 	if (isStateQuestion) {
 		const questionEnd = normalizedMessage.indexOf('?');
