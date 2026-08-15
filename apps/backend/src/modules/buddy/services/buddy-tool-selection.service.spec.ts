@@ -86,6 +86,9 @@ describe('BuddyToolSelectionService', () => {
 			names.control,
 			names.spaceLighting,
 		]);
+		expect(selectNames('Run Bedtime and tell me whether the window is open.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 	});
 
 	it('retains every action schema for multiple commands with an arbitrary target name', () => {
@@ -176,6 +179,10 @@ describe('BuddyToolSelectionService', () => {
 			expect(selectNames(message)).toEqual(definitions.map((definition) => definition.name));
 		},
 	);
+
+	it('does not treat an entity-like question as confidently tool-free', () => {
+		expect(selectNames('How is Morning?')).toEqual(definitions.map((definition) => definition.name));
+	});
 
 	it('preserves unknown extension tools and original registry order', () => {
 		const extension = tool('extension_specific_tool', ToolAccessKind.READ);

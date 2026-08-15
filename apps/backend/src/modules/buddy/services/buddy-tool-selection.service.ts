@@ -83,6 +83,7 @@ const ACTION_CLAUSE_PATTERN = new RegExp(
 	String.raw`(?:\ba\b|\band\b|\bpotom\b|\bthen\b|[,;])\s*(?:please\s+)?(?:${[...ACTION_SIGNALS].join('|')})\b`,
 	'u',
 );
+const READ_CLAUSE_PATTERN = /\b(?:a|and|potom|then)\s+(?:check|find|show|tell|what|whether|which)\b/u;
 const GROUNDED_STATE_SIGNALS = new Set([
 	'active',
 	'closed',
@@ -271,7 +272,11 @@ export class BuddyToolSelectionService {
 			this.selectActionTools(actionTokens, selected, ACTION_CLAUSE_PATTERN.test(normalizedMessage));
 		}
 
-		if (selected.size === 0 && !isGenericExplanation && (hasHomeSignal || !isClearlyGeneralConversation(tokens))) {
+		if (
+			selected.size === 0 &&
+			!isGenericExplanation &&
+			(hasHomeSignal || !isClearlyGeneralConversation(normalizedMessage, tokens))
+		) {
 			for (const name of BUILT_IN_TOOL_NAMES) selected.add(name);
 		}
 
@@ -332,8 +337,9 @@ function intersects(tokens: Set<string>, signals: Set<string>): boolean {
 	return false;
 }
 
-function isClearlyGeneralConversation(tokens: Set<string>): boolean {
+function isClearlyGeneralConversation(normalizedMessage: string, tokens: Set<string>): boolean {
 	if (!intersects(tokens, GENERAL_CONVERSATION_SIGNALS)) return false;
+	if (/^how is\b/u.test(normalizedMessage)) return false;
 
 	for (const token of tokens) {
 		if (!GENERAL_CONVERSATION_SIGNALS.has(token) && !GENERAL_CONVERSATION_FILLERS.has(token)) return false;
@@ -391,6 +397,14 @@ function getActionIntentTokens(
 		if (intersects(commandTokens, ACTION_SIGNALS)) return commandTokens;
 
 		return new Set();
+	}
+
+	const trailingReadClause = normalizedMessage.search(READ_CLAUSE_PATTERN);
+
+	if (trailingReadClause > 0) {
+		const commandTokens = tokenize(normalizedMessage.slice(0, trailingReadClause));
+
+		if (intersects(commandTokens, ACTION_SIGNALS)) return commandTokens;
 	}
 
 	return tokens;
