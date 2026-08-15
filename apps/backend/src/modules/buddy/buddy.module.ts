@@ -5,6 +5,7 @@ import { ModulesTypeMapperService } from '../config/services/modules-type-mapper
 import { DevicesModule } from '../devices/devices.module';
 import { EnergyModule } from '../energy/energy.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
+import { HomeContextModule } from '../home-context/home-context.module';
 import { IntentsModule } from '../intents/intents.module';
 import { ScenesModule } from '../scenes/scenes.module';
 import { SpacesModule } from '../spaces/spaces.module';
@@ -39,6 +40,7 @@ import { BuddyProviderStatusService } from './services/buddy-provider-status.ser
 import { ConflictDetectorEvaluator } from './services/conflict-detector-evaluator.service';
 import { EnergyEvaluator } from './services/energy-evaluator.service';
 import { HeartbeatService } from './services/heartbeat.service';
+import { HomeContextToolProviderService } from './services/home-context-tool-provider.service';
 import { LlmProviderRegistryService } from './services/llm-provider-registry.service';
 import { LlmProviderService } from './services/llm-provider.service';
 import { MessagingProviderStatusService } from './services/messaging-provider-status.service';
@@ -72,6 +74,7 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		ToolsModule,
 		WeatherModule,
 		EnergyModule,
+		HomeContextModule,
 	],
 	controllers: [
 		BuddyConversationsController,
@@ -91,6 +94,8 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		LlmProviderRegistryService,
 		LlmProviderService,
 		BuddyConversationService,
+		// Provider foundation only. Live registration waits for conversation-scoped action-resolution proof.
+		HomeContextToolProviderService,
 		PatternDetectorService,
 		SuggestionEngineService,
 		HeartbeatService,
