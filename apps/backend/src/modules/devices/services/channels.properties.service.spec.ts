@@ -288,6 +288,134 @@ describe('ChannelsPropertiesService', () => {
 		});
 	});
 
+	describe('findVisibleReadableStateCandidates', () => {
+		const createCandidateQueryBuilder = (properties: ChannelPropertyEntity[] = [], total = 0) => ({
+			innerJoinAndSelect: jest.fn().mockReturnThis(),
+			innerJoin: jest.fn().mockReturnThis(),
+			addSelect: jest.fn().mockReturnThis(),
+			where: jest.fn().mockReturnThis(),
+			andWhere: jest.fn().mockReturnThis(),
+			orderBy: jest.fn().mockReturnThis(),
+			addOrderBy: jest.fn().mockReturnThis(),
+			callListeners: jest.fn().mockReturnThis(),
+			take: jest.fn().mockReturnThis(),
+			skip: jest.fn().mockReturnThis(),
+			getManyAndCount: jest.fn().mockResolvedValue([properties, total]),
+		});
+
+		it('applies visibility, readability, resolved scope, metadata filters, and deterministic bounds in SQL', async () => {
+			const disabledVisibleProperty = {
+				...mockChannelProperty,
+				channel: {
+					...mockChannel,
+					device: {
+						id: 'disabled-device',
+						name: 'Disabled visible sensor',
+						hidden: false,
+						enabled: false,
+					},
+				},
+			} as unknown as ChannelPropertyEntity;
+			const queryBuilder = createCandidateQueryBuilder([disabledVisibleProperty], 42);
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilder as never);
+
+			await expect(
+				channelsPropertiesService.findVisibleReadableStateCandidates({
+					limit: 100,
+					offset: 7,
+					scope: { roomIds: ['room-id'], zoneId: 'zone-id' },
+					roomParentId: 'floor-id',
+					channelCategories: [ChannelCategory.TEMPERATURE],
+					propertyCategories: [PropertyCategory.GENERIC],
+					dataTypes: [DataTypeType.FLOAT],
+				}),
+			).resolves.toEqual({ properties: [disabledVisibleProperty], total: 42 });
+
+			expect(queryBuilder.innerJoinAndSelect).toHaveBeenNthCalledWith(1, 'property.channel', 'channel');
+			expect(queryBuilder.innerJoinAndSelect).toHaveBeenNthCalledWith(2, 'channel.device', 'device');
+			expect(queryBuilder.where).toHaveBeenCalledWith('device.hidden = :hidden', { hidden: false });
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+				expect.stringContaining('property.permissions = :readOnly'),
+				expect.objectContaining({
+					readOnly: PermissionType.READ_ONLY,
+					readWrite: PermissionType.READ_WRITE,
+				}),
+			);
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('device.roomId IN (:...roomIds)', {
+				roomIds: ['room-id'],
+			});
+			expect(queryBuilder.innerJoin).toHaveBeenCalledWith('device.deviceZones', 'stateCandidateZone');
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('stateCandidateZone.zoneId = :zoneId', {
+				zoneId: 'zone-id',
+			});
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+				expect.stringContaining('state_candidate_room.parentId = :roomParentId'),
+				{ roomParentId: 'floor-id' },
+			);
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('channel.category IN (:...channelCategories)', {
+				channelCategories: [ChannelCategory.TEMPERATURE],
+			});
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('property.category IN (:...propertyCategories)', {
+				propertyCategories: [PropertyCategory.GENERIC],
+			});
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('property.dataType IN (:...dataTypes)', {
+				dataTypes: [DataTypeType.FLOAT],
+			});
+			const whereCalls = queryBuilder.where.mock.calls as Array<[string, ...unknown[]]>;
+			const andWhereCalls = queryBuilder.andWhere.mock.calls as Array<[string, ...unknown[]]>;
+			const predicates = [...whereCalls, ...andWhereCalls].map(([predicate]) => predicate);
+			expect(predicates.some((predicate) => predicate.includes('device.enabled'))).toBe(false);
+			expect(queryBuilder.orderBy).toHaveBeenCalledWith('device.name', 'ASC');
+			expect(queryBuilder.addSelect).toHaveBeenCalledWith(
+				'COALESCE(property.name, property.identifier, property.id)',
+				'stateCandidatePropertyOrder',
+			);
+			expect(queryBuilder.addOrderBy.mock.calls).toEqual([
+				['device.id', 'ASC'],
+				['channel.name', 'ASC'],
+				['channel.id', 'ASC'],
+				['stateCandidatePropertyOrder', 'ASC'],
+				['property.id', 'ASC'],
+			]);
+			expect(queryBuilder.callListeners).toHaveBeenCalledWith(false);
+			expect(queryBuilder.take).toHaveBeenCalledWith(100);
+			expect(queryBuilder.skip).toHaveBeenCalledWith(7);
+			expect(propertyValueService.readLatestStrict).not.toHaveBeenCalled();
+			expect(propertyValueService.readLatestManyStrict).not.toHaveBeenCalled();
+		});
+
+		it('accepts the exact hard cap and rejects a larger page before constructing a query', async () => {
+			const queryBuilder = createCandidateQueryBuilder([], 501);
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilder as never);
+
+			await expect(channelsPropertiesService.findVisibleReadableStateCandidates({ limit: 500 })).resolves.toEqual({
+				properties: [],
+				total: 501,
+			});
+			expect(queryBuilder.take).toHaveBeenCalledWith(500);
+
+			jest.mocked(repository.createQueryBuilder).mockClear();
+			await expect(channelsPropertiesService.findVisibleReadableStateCandidates({ limit: 501 })).rejects.toThrow(
+				'At most 500 visible readable state candidates',
+			);
+			expect(repository.createQueryBuilder).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			{ limit: 0 },
+			{ limit: 10, scope: { roomIds: [] } },
+			{ limit: 10, channelCategories: [] },
+			{ limit: 10, propertyCategories: [] },
+			{ limit: 10, dataTypes: [] },
+		])('short-circuits an explicitly empty candidate set %#', async (input) => {
+			await expect(channelsPropertiesService.findVisibleReadableStateCandidates(input)).resolves.toEqual({
+				properties: [],
+				total: 0,
+			});
+			expect(repository.createQueryBuilder).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('searchVisibleSummaryPage', () => {
 		it('returns bounded joined metadata without reading values or excluding disabled owners', async () => {
 			const query = jest.spyOn(dataSource, 'query');
