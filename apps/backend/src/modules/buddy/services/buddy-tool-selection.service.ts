@@ -95,6 +95,7 @@ const GROUNDED_STATE_SIGNALS = new Set([
 	'open',
 	'unlocked',
 ]);
+const EXPLICIT_STATE_REQUEST_SIGNALS = new Set(['all', 'any', 'count', 'current', 'state', 'status', 'value']);
 const HOME_SIGNALS = new Set([
 	'air',
 	'bathroom',
@@ -248,6 +249,8 @@ export class BuddyToolSelectionService {
 		const selected = new Set<string>();
 		const hasSearchSignal = intersects(tokens, SEARCH_SIGNALS);
 		const hasStateSignal = intersects(tokens, STATE_SIGNALS);
+		const hasConditionalStateSignal =
+			/\b(?:if|kdyz|pokud|when)\b/u.test(normalizedMessage) && intersects(tokens, GROUNDED_STATE_SIGNALS);
 		const actionTokens = getActionIntentTokens(normalizedMessage, tokens, hasStateSignal);
 		const hasHomeSignal = intersects(tokens, HOME_SIGNALS);
 		const isGenericExplanation = isGenericHomeExplanation(normalizedMessage, tokens);
@@ -258,7 +261,8 @@ export class BuddyToolSelectionService {
 
 		if (
 			isStateExplanation ||
-			(!isGenericExplanation && (hasSearchSignal || hasStateSignal || (message.includes('?') && hasHomeSignal)))
+			(!isGenericExplanation &&
+				(hasSearchSignal || hasStateSignal || hasConditionalStateSignal || (message.includes('?') && hasHomeSignal)))
 		) {
 			for (const name of READ_TOOL_NAMES) selected.add(name);
 		}
@@ -342,6 +346,7 @@ function isClearlyGeneralConversation(tokens: Set<string>): boolean {
 function isGenericHomeExplanation(normalizedMessage: string, tokens: Set<string>): boolean {
 	if (!intersects(tokens, HOME_SIGNALS)) return false;
 	if (intersects(tokens, GROUNDED_STATE_SIGNALS)) return false;
+	if (intersects(tokens, EXPLICIT_STATE_REQUEST_SIGNALS)) return false;
 
 	return (
 		/^how (?:do|does) .+ work(?:s|ing)?\b/u.test(normalizedMessage) ||
@@ -367,7 +372,7 @@ function getActionIntentTokens(
 		const trailingClause =
 			questionEnd >= 0
 				? normalizedMessage.slice(questionEnd + 1)
-				: sliceAfterFirst(normalizedMessage, /\b(?:and|if not|if so|please|then)\b/u);
+				: sliceAfterFirst(normalizedMessage, /[,;]|\b(?:and|if not|if so|please|then)\b/u);
 		const trailingTokens = tokenize(trailingClause);
 
 		return intersects(trailingTokens, ACTION_SIGNALS) ? trailingTokens : null;

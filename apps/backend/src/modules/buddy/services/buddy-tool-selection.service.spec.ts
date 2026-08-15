@@ -110,6 +110,12 @@ describe('BuddyToolSelectionService', () => {
 		},
 	);
 
+	it('recognizes a punctuation-delimited command after a state-first clause', () => {
+		expect(selectNames('Are any windows open, close them if so.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
+	});
+
 	it('does not use condition targets to narrow an ambiguous command target', () => {
 		expect(selectNames('If the window is open, run Bedtime.')).toEqual(
 			definitions.map((definition) => definition.name),
@@ -122,6 +128,10 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Když je okno otevřené, spusť Večer.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
+	});
+
+	it('retains live reads needed to evaluate conditional actions', () => {
+		expect(selectNames('If Aurora is on, run Bedtime.')).toEqual(definitions.map((definition) => definition.name));
 	});
 
 	it.each([
@@ -138,6 +148,13 @@ describe('BuddyToolSelectionService', () => {
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);
 		expect(selectNames('Explain why the kitchen light is off.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+		]);
+	});
+
+	it('does not classify an explicit current-status question as a generic explanation', () => {
+		expect(selectNames("What is a thermostat's current status?")).toEqual([
 			SEARCH_HOME_TOOL_NAME,
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);
