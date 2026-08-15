@@ -168,6 +168,12 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Run Bedtime, report whether the hallway sensor is triggered.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
+		expect(selectNames('Run Bedtime and determine whether the hallway sensor is triggered.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
+		expect(selectNames('Run Bedtime and see whether the hallway sensor is triggered.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 	});
 
 	it('retains every action schema for multiple commands with an arbitrary target name', () => {
