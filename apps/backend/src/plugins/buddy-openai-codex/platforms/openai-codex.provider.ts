@@ -55,7 +55,7 @@ interface OpenAiCodexStreamEvent {
 	call_id?: string;
 	output_index?: number;
 	item?: OpenAiCodexOutputItem;
-	response?: { output?: OpenAiCodexOutputItem[] };
+	response?: { output?: OpenAiCodexOutputItem[]; incomplete_details?: unknown };
 }
 
 /** Build the exact JSON payload sent to the OpenAI Codex Responses endpoint. */
@@ -634,6 +634,12 @@ export class OpenAiCodexProvider implements ILlmProvider {
 					continue;
 				}
 
+				if (event.type === 'response.incomplete') {
+					throw new Error(
+						`OpenAI Codex response incomplete: ${parseOpenAiCodexIncompleteReason(event.response?.incomplete_details)}`,
+					);
+				}
+
 				if ((event.type === 'response.output_text.delta' || event.type === 'response.refusal.delta') && event.delta) {
 					content += event.delta;
 				} else if (event.type === 'response.function_call_arguments.delta' && event.call_id && event.delta) {
@@ -709,6 +715,14 @@ export class OpenAiCodexProvider implements ILlmProvider {
 
 function isValidOutputIndex(value: unknown): value is number {
 	return isNonnegativeInteger(value);
+}
+
+function parseOpenAiCodexIncompleteReason(details: unknown): 'max_output_tokens' | 'content_filter' | 'unknown' {
+	if (!isRecord(details)) {
+		return 'unknown';
+	}
+
+	return details.reason === 'max_output_tokens' || details.reason === 'content_filter' ? details.reason : 'unknown';
 }
 
 function isNonnegativeInteger(value: unknown): value is number {

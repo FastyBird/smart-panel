@@ -303,6 +303,60 @@ describe('OpenAiCodexProvider native transcript', () => {
 		}
 	});
 
+	it('rejects partial text when the response exhausts max output tokens', async () => {
+		const events = [
+			{ type: 'response.output_text.delta', output_index: 0, delta: 'This answer is partial' },
+			{
+				type: 'response.incomplete',
+				response: { incomplete_details: { reason: 'max_output_tokens' } },
+			},
+		];
+		const body = `${events.map((event) => `data: ${JSON.stringify(event)}`).join('\n')}\ndata: [DONE]\n`;
+		const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(body, { status: 200 }));
+		const configService = {
+			getPluginConfig: jest.fn().mockReturnValue({ accessToken: 'test-token', model: null }),
+		};
+		const provider = new OpenAiCodexProvider(configService as unknown as ConfigService);
+
+		try {
+			await expect(
+				provider.sendMessage('system', [{ role: MessageRole.USER, content: 'Write a long answer.' }], 'codex-test'),
+			).rejects.toEqual(new Error('OpenAI Codex response incomplete: max_output_tokens'));
+		} finally {
+			fetchSpy.mockRestore();
+		}
+	});
+
+	it('rejects truncated tool JSON and sanitizes malformed incomplete details', async () => {
+		const events = [
+			{ type: 'response.output_item.added', output_index: 0, item: { ...firstFunctionCallItem, arguments: '' } },
+			{
+				type: 'response.function_call_arguments.delta',
+				output_index: 0,
+				call_id: 'provider-call-1',
+				delta: '{"room":',
+			},
+			{
+				type: 'response.incomplete',
+				response: { incomplete_details: { reason: 'private-unbounded-provider-detail' } },
+			},
+		];
+		const body = `${events.map((event) => `data: ${JSON.stringify(event)}`).join('\n')}\ndata: [DONE]\n`;
+		const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(body, { status: 200 }));
+		const configService = {
+			getPluginConfig: jest.fn().mockReturnValue({ accessToken: 'test-token', model: null }),
+		};
+		const provider = new OpenAiCodexProvider(configService as unknown as ConfigService);
+
+		try {
+			await expect(
+				provider.sendMessage('system', [{ role: MessageRole.USER, content: 'Read the kitchen.' }], 'codex-test'),
+			).rejects.toEqual(new Error('OpenAI Codex response incomplete: unknown'));
+		} finally {
+			fetchSpy.mockRestore();
+		}
+	});
+
 	it('captures exact output order and normalizes a null completed-message phase before replay', async () => {
 		const events = [
 			{
