@@ -243,6 +243,55 @@ describe('HomeyService', () => {
 		await service.stop();
 	});
 
+	it('waits for every periodic inventory read to settle before reconnecting', async () => {
+		const replacementConnector = createConnectorMock(() => undefined, jest.fn());
+		connectorFactory.create.mockReset().mockReturnValueOnce(connector).mockReturnValueOnce(replacementConnector);
+		await service.start();
+
+		let rejectZones: (error: Error) => void = () => undefined;
+		let resolveDevices: (devices: readonly HomeyDevice[]) => void = () => undefined;
+		connector.getZones.mockImplementationOnce(
+			() =>
+				new Promise<readonly HomeyZone[]>((_, reject) => {
+					rejectZones = reject;
+				}),
+		);
+		connector.getDevices.mockImplementationOnce(
+			() =>
+				new Promise<readonly HomeyDevice[]>((resolve) => {
+					resolveDevices = resolve;
+				}),
+		);
+
+		jest.advanceTimersByTime(config.reconciliationInterval);
+		await Promise.resolve();
+		await Promise.resolve();
+		rejectZones(new HomeyConnectorError(HomeyConnectorErrorCategory.UNAVAILABLE, HomeyConnectorOperation.GET_ZONES));
+
+		for (let index = 0; index < 10; index += 1) {
+			await Promise.resolve();
+		}
+
+		expect(jest.getTimerCount()).toBe(0);
+		expect(connector.disconnect.mock.calls).toHaveLength(0);
+
+		resolveDevices([staleDevice]);
+
+		for (let index = 0; index < 10; index += 1) {
+			await Promise.resolve();
+		}
+
+		expect(service.getStatus().connectionState).toBe(HomeyConnectionState.RECONNECTING);
+		expect(jest.getTimerCount()).toBe(1);
+
+		await jest.advanceTimersByTimeAsync(1000);
+
+		expect(connector.disconnect.mock.calls).toHaveLength(1);
+		expect(replacementConnector.connect.mock.calls).toHaveLength(1);
+
+		await service.stop();
+	});
+
 	it('replaces the connector after a transient live synchronization failure', async () => {
 		let replacementListener: HomeyEventListener | null = null;
 		const replacementUnsubscribe = jest.fn();

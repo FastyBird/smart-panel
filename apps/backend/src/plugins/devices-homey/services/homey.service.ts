@@ -322,14 +322,22 @@ export class HomeyService extends BaseManagedPluginService {
 
 		await this.enqueueSynchronization(async () => {
 			try {
-				const [zones, devices] = await Promise.all([connector.getZones(), connector.getDevices()]);
+				const [zonesResult, devicesResult] = await Promise.allSettled([connector.getZones(), connector.getDevices()]);
+
+				if (zonesResult.status === 'rejected') {
+					throw zonesResult.reason as unknown;
+				}
+
+				if (devicesResult.status === 'rejected') {
+					throw devicesResult.reason as unknown;
+				}
 
 				if (!this.isCurrentGeneration(connector, generation)) {
 					return;
 				}
 
-				this.zones = zones;
-				this.replaceDevices(devices);
+				this.zones = zonesResult.value;
+				this.replaceDevices(devicesResult.value);
 				this.markRuntimeHealthy(connector, generation);
 			} catch (error) {
 				if (this.isCurrentGeneration(connector, generation)) {
