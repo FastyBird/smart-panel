@@ -369,8 +369,8 @@ export class ChannelsPropertiesService {
 				        bm25(home_context_entity_search_fts) AS "lexicalScore"
 				 ${joins}
 				 WHERE ${where}
-				 ORDER BY "rankTier" ASC, "lexicalScore" ASC, LOWER(device.name) ASC, LOWER(channel.name) ASC,
-				          LOWER(COALESCE(property.name, '')) ASC, property.id ASC
+				 ORDER BY "rankTier" ASC, "lexicalScore" ASC,
+				          LOWER(COALESCE(property.name, property.identifier, property.id)) ASC, property.id ASC
 				 LIMIT ? OFFSET ?`,
 				[...rank.parameters, ...parameters, input.limit, input.offset ?? 0],
 			),

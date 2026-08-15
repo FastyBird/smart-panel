@@ -312,6 +312,58 @@ describe('HomeSearchQueryService SQLite integration', () => {
 		]);
 	});
 
+	it('uses the global property display-name tie-break before the 100-candidate SQL cap', async () => {
+		await dataSource.query(
+			`INSERT INTO devices_module_devices
+			 (id, name, identifier, type, category, enabled, hidden, "roomId") VALUES
+			 ('alpha-owner', 'Alpha owner', 'alpha-owner', 'test', 'sensor', 1, 0, NULL),
+			 ('zulu-owner', 'Zulu owner', 'zulu-owner', 'test', 'sensor', 1, 0, NULL)`,
+		);
+		await dataSource.query(
+			`INSERT INTO devices_module_channels (id, name, category, "deviceId") VALUES
+			 ('alpha-channel', 'Alpha channel', 'generic', 'alpha-owner'),
+			 ('zulu-channel', 'Zulu channel', 'generic', 'zulu-owner')`,
+		);
+		for (let index = 0; index < 100; index += 1) {
+			await dataSource.query(
+				`INSERT INTO devices_module_channels_properties
+				 (id, name, identifier, type, category, "dataType", permissions, "channelId")
+				 VALUES (?, ?, ?, 'test', 'generic', 'string', 'ro', 'alpha-channel')`,
+				[
+					`tie-competitor-${String(index).padStart(3, '0')}`,
+					`Target competitor ${String(index).padStart(3, '0')}`,
+					`tie-competitor-${index}`,
+				],
+			);
+		}
+		await dataSource.query(
+			`INSERT INTO devices_module_channels_properties
+			 (id, name, identifier, type, category, "dataType", permissions, "channelId")
+			 VALUES ('tie-aardvark', 'Target aardvark', 'tie-aardvark', 'test', 'generic', 'string', 'ro',
+			         'zulu-channel')`,
+		);
+
+		const propertiesService = Object.create(ChannelsPropertiesService.prototype) as ChannelsPropertiesService;
+		Object.defineProperty(propertiesService, 'dataSource', { value: dataSource });
+		const service = new HomeSearchQueryService(
+			{ findOne: jest.fn(), searchSummaryPage: jest.fn() } as unknown as SpacesService,
+			{ searchVisibleSummaryPage: jest.fn() } as unknown as DevicesService,
+			propertiesService,
+			{ searchSummaryPage: jest.fn() } as unknown as ScenesService,
+		);
+
+		const result = await service.searchEntities({
+			profile: HOME_SEARCH_PROFILE_BUDDY_V1,
+			query: 'target',
+			kinds: ['property'],
+			limit: 20,
+		});
+
+		expect(result.entities[0]).toMatchObject({ kind: 'property', id: 'tie-aardvark', name: 'Target aardvark' });
+		expect(result.total).toBe(101);
+		expect(result.refine_required).toBe(false);
+	});
+
 	it('executes all four owning-domain queries against the real FTS index and joined metadata', async () => {
 		await dataSource.query(
 			`INSERT INTO spaces_module_spaces (id, name, type, category, "parentId")

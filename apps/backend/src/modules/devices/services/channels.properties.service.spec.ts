@@ -352,6 +352,9 @@ describe('ChannelsPropertiesService', () => {
 			expect(selectSql).toContain("exact_term_fallback.col = 'identifier'");
 			expect(selectSql).toContain('property.name IS NULL');
 			expect(selectSql).toContain('ORDER BY "rankTier" ASC, "lexicalScore" ASC');
+			expect(selectSql).toContain('LOWER(COALESCE(property.name, property.identifier, property.id)) ASC');
+			expect(selectSql).not.toContain('LOWER(device.name) ASC');
+			expect(selectSql).not.toContain('LOWER(channel.name) ASC');
 			expect(selectParameters).toEqual([
 				'temperature',
 				1,
