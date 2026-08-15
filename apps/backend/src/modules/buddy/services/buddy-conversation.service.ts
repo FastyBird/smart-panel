@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
+import { ToolAudience, ToolExecutionResult, ToolExecutionStatus } from '../../tools/platforms/tool-provider.platform';
 import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
 import {
@@ -16,11 +17,20 @@ import {
 	EventType,
 	MessageRole,
 } from '../buddy.constants';
-import { BuddyConversationNotFoundException } from '../buddy.exceptions';
+import { BuddyConversationNotFoundException, BuddyProviderErrorException } from '../buddy.exceptions';
 import { BuddyConversationEntity } from '../entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from '../entities/buddy-message.entity';
 import { BuddyConfigModel } from '../models/config.model';
-import { LlmResponse, LlmResponseMeta, ToolDefinition } from '../platforms/llm-provider.platform';
+import {
+	LlmConversationItem,
+	LlmConversationToolCall,
+	LlmConversationToolResult,
+	LlmResponse,
+	LlmResponseMeta,
+	LlmToolCall,
+	LlmToolResultStatus,
+	ToolDefinition,
+} from '../platforms/llm-provider.platform';
 
 import { BuddyContext, BuddyContextService } from './buddy-context.service';
 import { BuddyPersonalityService } from './buddy-personality.service';
@@ -138,7 +148,9 @@ export class BuddyConversationService {
 		chatMessages.push({ role: MessageRole.USER, content });
 
 		// 3. Call LLM provider with tool support if available
-		const tools = this.llmProvider.supportsTools() ? this.toolProviderRegistry.getAllToolDefinitions() : undefined;
+		const tools = this.llmProvider.supportsTools()
+			? this.toolProviderRegistry.getAllToolDefinitions({ audience: ToolAudience.BUDDY })
+			: undefined;
 		const maxIterations = this.getMaxToolIterations();
 		const llmResponse = await this.sendWithToolExecution(systemPrompt, chatMessages, tools, maxIterations);
 
@@ -219,21 +231,24 @@ export class BuddyConversationService {
 	 */
 	private async sendWithToolExecution(
 		systemPrompt: string,
-		messages: ChatMessage[],
+		messages: LlmConversationItem[],
 		tools?: ToolDefinition[],
 		maxIterations: number = DEFAULT_MAX_TOOL_ITERATIONS,
 	): Promise<LlmResponse> {
 		// Work on a shallow copy so we never mutate the caller's array
-		const workingMessages = [...messages];
+		const workingMessages: LlmConversationItem[] = [...messages];
+		const activeTurnId = uuid();
 
 		let response = await this.llmProvider.sendMessage(systemPrompt, workingMessages, { tools });
+		const activeProviderType = response.meta.provider;
+		const useNativeToolResults = this.llmProvider.supportsNativeToolResults(activeProviderType);
 
 		const hasToolWork = (r: typeof response): boolean =>
 			(r.toolCalls !== undefined && r.toolCalls.length > 0) || (r.toolErrors !== undefined && r.toolErrors.length > 0);
 
 		// If no tool calls or errors, return directly
 		if (!hasToolWork(response)) {
-			return response;
+			return this.clearActiveToolState(response);
 		}
 
 		// Accumulate token usage and duration across all LLM calls
@@ -245,14 +260,124 @@ export class BuddyConversationService {
 				break;
 			}
 
-			// If the LLM returned both content and tool calls, the content is its final answer.
-			// Execute the tools for their side effects but return the response as-is afterwards.
 			const hasContentWithTools = !!response.content;
 
 			const callCount = response.toolCalls?.length ?? 0;
 			const errorCount = response.toolErrors?.length ?? 0;
 
 			this.logger.debug(`Tool iteration ${iteration + 1}: ${callCount} tool call(s), ${errorCount} parse error(s)`);
+
+			const toolCalls = response.toolCalls ?? [];
+			const canonicalCallIds = toolCalls.map(
+				(_toolCall, callIndex) => `buddy:${activeTurnId}:${iteration + 1}:${callIndex + 1}`,
+			);
+
+			if (useNativeToolResults && errorCount === 0) {
+				this.assertNativeProviderCallIds(toolCalls);
+
+				const canonicalCalls: LlmConversationToolCall[] = toolCalls.map((toolCall, callIndex) => ({
+					callId: canonicalCallIds[callIndex],
+					providerCallId: toolCall.id,
+					name: toolCall.name,
+					arguments: toolCall.arguments,
+				}));
+				const canonicalResults: LlmConversationToolResult[] = [];
+				let hasIndeterminateExecution = false;
+
+				for (const [callIndex, toolCall] of toolCalls.entries()) {
+					const canonicalCall = canonicalCalls[callIndex];
+					let result: ToolExecutionResult;
+
+					try {
+						result = await this.toolProviderRegistry.executeTool(toolCall, {
+							audience: ToolAudience.BUDDY,
+							source: ToolAudience.BUDDY,
+							requestId: canonicalCall.callId,
+						});
+					} catch {
+						hasIndeterminateExecution = true;
+						canonicalResults.push({
+							callId: canonicalCall.callId,
+							providerCallId: canonicalCall.providerCallId,
+							toolName: canonicalCall.name,
+							status: 'indeterminate',
+							message: `Tool "${canonicalCall.name}" execution outcome is uncertain`,
+							errorCode: 'TOOL_EXECUTION_INDETERMINATE',
+							truncated: false,
+						});
+
+						for (const skippedCall of canonicalCalls.slice(callIndex + 1)) {
+							canonicalResults.push({
+								callId: skippedCall.callId,
+								providerCallId: skippedCall.providerCallId,
+								toolName: skippedCall.name,
+								status: 'denied',
+								message: `Tool "${skippedCall.name}" was not executed after an uncertain earlier outcome`,
+								errorCode: 'TOOL_BATCH_ABORTED_AFTER_INDETERMINATE',
+								truncated: false,
+							});
+						}
+
+						break;
+					}
+
+					canonicalResults.push({
+						callId: canonicalCall.callId,
+						providerCallId: canonicalCall.providerCallId,
+						toolName: canonicalCall.name,
+						status: this.toLlmToolResultStatus(result.status),
+						message: result.message,
+						...(result.data === undefined ? {} : { data: result.data }),
+						...(result.errorCode === undefined ? {} : { errorCode: result.errorCode }),
+						truncated: result.truncated ?? false,
+					});
+				}
+
+				workingMessages.push(
+					{
+						type: 'assistant_tool_calls',
+						content: response.content,
+						calls: canonicalCalls,
+						...(response.providerItems === undefined ? {} : { providerItems: response.providerItems }),
+					},
+					{ type: 'tool_results', results: canonicalResults },
+				);
+
+				if (hasIndeterminateExecution) {
+					const uncertaintyMessage =
+						'I could not confirm whether the requested operation completed, so I stopped further actions.';
+
+					try {
+						response = await this.llmProvider.sendMessage(
+							systemPrompt,
+							workingMessages,
+							{ tools: undefined },
+							activeProviderType,
+						);
+						this.accumulateMeta(accumulatedMeta, response.meta);
+					} catch {
+						// The deterministic uncertainty response must survive provider failure
+						// because retrying an action with an unknown outcome may duplicate it.
+					}
+
+					return this.clearActiveToolState({ ...response, meta: accumulatedMeta, content: uncertaintyMessage });
+				}
+
+				try {
+					response = await this.llmProvider.sendMessage(systemPrompt, workingMessages, { tools }, activeProviderType);
+					this.accumulateMeta(accumulatedMeta, response.meta);
+				} catch {
+					return this.clearActiveToolState({
+						...response,
+						meta: accumulatedMeta,
+						content:
+							'I processed the requested tool step but could not safely continue the assistant turn. ' +
+							'Please check the current state before retrying.',
+					});
+				}
+
+				continue;
+			}
 
 			// Execute all tool calls and include parse errors for malformed arguments
 			const toolResults: { success: boolean; summary: string }[] = [];
@@ -267,8 +392,12 @@ export class BuddyConversationService {
 				}
 			}
 
-			for (const toolCall of response.toolCalls ?? []) {
-				const result = await this.toolProviderRegistry.executeTool(toolCall);
+			for (const [callIndex, toolCall] of toolCalls.entries()) {
+				const result = await this.toolProviderRegistry.executeTool(toolCall, {
+					audience: ToolAudience.BUDDY,
+					source: ToolAudience.BUDDY,
+					requestId: canonicalCallIds[callIndex],
+				});
 
 				toolResults.push({
 					success: result.success,
@@ -278,12 +407,14 @@ export class BuddyConversationService {
 
 			const allSucceeded = toolResults.every((r) => r.success);
 
+			// Legacy/custom providers may emit a final answer with successful tool calls.
+			// Preserve that historical shortcut only for the prose fallback path.
 			// If the LLM already provided a final answer alongside the tool calls
 			// and all tools succeeded, return the LLM's content as-is.
 			// If any tool failed, fall through to re-query the LLM so it can
 			// provide an accurate response reflecting the failures.
 			if (hasContentWithTools && allSucceeded) {
-				return { ...response, meta: accumulatedMeta, toolCalls: undefined, toolErrors: undefined };
+				return this.clearActiveToolState({ ...response, meta: accumulatedMeta });
 			}
 
 			// Append the assistant's tool call response and tool results as a follow-up user message
@@ -311,24 +442,80 @@ export class BuddyConversationService {
 			});
 
 			// Call LLM again with tools so multi-step tool use works
-			response = await this.llmProvider.sendMessage(systemPrompt, workingMessages, { tools });
-			this.accumulateMeta(accumulatedMeta, response.meta);
+			try {
+				response = await this.llmProvider.sendMessage(
+					systemPrompt,
+					workingMessages,
+					{ tools },
+					useNativeToolResults ? activeProviderType : undefined,
+				);
+				this.accumulateMeta(accumulatedMeta, response.meta);
+			} catch (error) {
+				if (!useNativeToolResults || callCount === 0) {
+					throw error;
+				}
+
+				return this.clearActiveToolState({
+					...response,
+					meta: accumulatedMeta,
+					content:
+						'I processed the requested tool step but could not safely continue the assistant turn. ' +
+						'Please check the current state before retrying.',
+				});
+			}
 		}
 
-		// If loop exhausted and final response has no text content, provide a fallback
-		if (!response.content && hasToolWork(response)) {
-			return {
+		// Never present pre-execution assistant text as final when the loop stops with
+		// outstanding tool work. Those final calls have not been executed.
+		if (hasToolWork(response)) {
+			return this.clearActiveToolState({
 				...response,
 				meta: accumulatedMeta,
 				content:
 					'I attempted to perform the requested actions but reached the maximum number of steps. ' +
 					'Please try again or simplify your request.',
-				toolCalls: undefined,
-				toolErrors: undefined,
-			};
+			});
 		}
 
-		return { ...response, meta: accumulatedMeta, toolCalls: undefined, toolErrors: undefined };
+		return this.clearActiveToolState({ ...response, meta: accumulatedMeta });
+	}
+
+	private assertNativeProviderCallIds(toolCalls: LlmToolCall[]): void {
+		const providerCallIds = new Set<string>();
+
+		for (const [callIndex, toolCall] of toolCalls.entries()) {
+			if (toolCall.id.length === 0 || providerCallIds.has(toolCall.id)) {
+				throw new BuddyProviderErrorException(
+					`Native tool response has an empty or duplicate provider call ID at index ${callIndex}`,
+				);
+			}
+
+			providerCallIds.add(toolCall.id);
+		}
+	}
+
+	private toLlmToolResultStatus(status: ToolExecutionStatus): LlmToolResultStatus {
+		switch (status) {
+			case ToolExecutionStatus.COMPLETED:
+				return 'completed';
+			case ToolExecutionStatus.PARTIAL:
+				return 'partial';
+			case ToolExecutionStatus.FAILED:
+				return 'failed';
+			case ToolExecutionStatus.TIMED_OUT:
+				return 'timed_out';
+			case ToolExecutionStatus.DENIED:
+				return 'denied';
+		}
+	}
+
+	private clearActiveToolState(response: LlmResponse): LlmResponse {
+		return {
+			...response,
+			toolCalls: undefined,
+			toolErrors: undefined,
+			providerItems: undefined,
+		};
 	}
 
 	/**

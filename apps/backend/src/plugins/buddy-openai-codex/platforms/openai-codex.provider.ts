@@ -22,6 +22,7 @@ import {
 	LlmConversationReasoningItem,
 	LlmOptions,
 	LlmResponse,
+	LlmToolError,
 } from '../../../modules/buddy/platforms/llm-provider.platform';
 import { OAuthTokenManager } from '../../../modules/buddy/platforms/oauth-token-manager';
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -544,12 +545,13 @@ export class OpenAiCodexProvider implements ILlmProvider {
 				throw new Error(`${response.status} ${errorBody || response.statusText}`);
 			}
 
-			const { content, toolCalls, providerItems } = await this.collectStreamResponse(response);
+			const { content, toolCalls, toolErrors, providerItems } = await this.collectStreamResponse(response);
 			const durationMs = Date.now() - start;
 
 			return {
 				content,
 				toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+				toolErrors: toolErrors.length > 0 ? toolErrors : undefined,
 				providerItems: providerItems.length > 0 ? providerItems : undefined,
 				meta: {
 					provider: BUDDY_OPENAI_CODEX_PLUGIN_NAME,
@@ -567,13 +569,16 @@ export class OpenAiCodexProvider implements ILlmProvider {
 		}
 	}
 
-	private async collectStreamResponse(
-		response: Response,
-	): Promise<{ content: string; toolCalls: LlmToolCall[]; providerItems: LlmConversationProviderItem[] }> {
+	private async collectStreamResponse(response: Response): Promise<{
+		content: string;
+		toolCalls: LlmToolCall[];
+		toolErrors: LlmToolError[];
+		providerItems: LlmConversationProviderItem[];
+	}> {
 		const body = response.body;
 
 		if (!body) {
-			return { content: '', toolCalls: [], providerItems: [] };
+			return { content: '', toolCalls: [], toolErrors: [], providerItems: [] };
 		}
 
 		const reader = body.getReader();
@@ -583,19 +588,60 @@ export class OpenAiCodexProvider implements ILlmProvider {
 
 		// Track tool calls: Responses API emits function_call_arguments.delta events
 		// with a call_id, and we accumulate the JSON argument strings per call
-		const toolCallMap = new Map<string, { id: string; name: string; args: string; outputIndex: number }>();
+		const toolCallMap = new Map<
+			string,
+			{ id: string; name: string; args: string; outputIndex: number; complete: boolean }
+		>();
+		const outputItemIdentityByIndex = new Map<number, string>();
 		const providerItemMap = new Map<number, LlmConversationProviderOutputItem>();
 
 		const captureOutputItem = (item: OpenAiCodexOutputItem, outputIndex: number, complete: boolean): void => {
-			if (complete) {
-				providerItemMap.set(outputIndex, parseOpenAiCodexProviderOutputItem(item));
+			const outputItemIdentity =
+				item.type === 'function_call' && typeof item.call_id === 'string' && item.call_id.length > 0
+					? `function_call:${item.call_id}`
+					: typeof item.type === 'string' && typeof item.id === 'string' && item.id.length > 0
+						? `${item.type}:${item.id}`
+						: undefined;
+			const existingOutputItemIdentity = outputItemIdentityByIndex.get(outputIndex);
+
+			if (
+				existingOutputItemIdentity !== undefined &&
+				outputItemIdentity !== undefined &&
+				existingOutputItemIdentity !== outputItemIdentity
+			) {
+				throw new Error(`OpenAI Codex response contains duplicate output index ${outputIndex}`);
 			}
 
 			if (item.type !== 'function_call' || typeof item.call_id !== 'string' || item.call_id.length === 0) {
+				if (complete) {
+					const providerItem = parseOpenAiCodexProviderOutputItem(item);
+
+					if (outputItemIdentity !== undefined) {
+						outputItemIdentityByIndex.set(outputIndex, outputItemIdentity);
+					}
+
+					providerItemMap.set(outputIndex, providerItem);
+				} else if (outputItemIdentity !== undefined) {
+					outputItemIdentityByIndex.set(outputIndex, outputItemIdentity);
+				}
+
 				return;
 			}
 
 			const existing = toolCallMap.get(item.call_id);
+
+			if (existing !== undefined && existing.outputIndex !== outputIndex) {
+				throw new Error(`OpenAI Codex response contains duplicate call ID at output index ${outputIndex}`);
+			}
+
+			if (complete) {
+				const providerItem = parseOpenAiCodexProviderOutputItem(item);
+
+				providerItemMap.set(outputIndex, providerItem);
+			}
+
+			outputItemIdentityByIndex.set(outputIndex, `function_call:${item.call_id}`);
+
 			const itemArguments = typeof item.arguments === 'string' ? item.arguments : undefined;
 
 			toolCallMap.set(item.call_id, {
@@ -603,6 +649,7 @@ export class OpenAiCodexProvider implements ILlmProvider {
 				name: typeof item.name === 'string' ? item.name : (existing?.name ?? ''),
 				args: itemArguments ?? existing?.args ?? '',
 				outputIndex,
+				complete: complete || existing?.complete === true,
 			});
 		};
 
@@ -646,6 +693,14 @@ export class OpenAiCodexProvider implements ILlmProvider {
 					const existing = toolCallMap.get(event.call_id);
 
 					if (existing) {
+						if (!isValidOutputIndex(event.output_index) || event.output_index !== existing.outputIndex) {
+							throw new Error('OpenAI Codex function call argument delta has a mismatched output index');
+						}
+
+						if (existing.complete) {
+							throw new Error('OpenAI Codex function call arguments changed after completion');
+						}
+
 						existing.args += event.delta;
 					}
 				} else if (
@@ -665,6 +720,12 @@ export class OpenAiCodexProvider implements ILlmProvider {
 		}
 
 		const toolCalls: LlmToolCall[] = [];
+		const toolErrors: LlmToolError[] = [];
+		const incompleteToolCall = [...toolCallMap.values()].find((toolCall) => !toolCall.complete);
+
+		if (incompleteToolCall !== undefined) {
+			throw new Error(`OpenAI Codex function call "${incompleteToolCall.id}" did not complete`);
+		}
 
 		const orderedToolCalls = [...toolCallMap.values()].sort((left, right) => left.outputIndex - right.outputIndex);
 
@@ -676,7 +737,11 @@ export class OpenAiCodexProvider implements ILlmProvider {
 					arguments: JSON.parse(tc.args || '{}') as Record<string, unknown>,
 				});
 			} catch {
-				// Skip tool calls with malformed arguments
+				toolErrors.push({
+					toolCallId: tc.id,
+					toolName: tc.name,
+					error: 'Invalid JSON arguments',
+				});
 			}
 		}
 
@@ -701,7 +766,7 @@ export class OpenAiCodexProvider implements ILlmProvider {
 			content = providerContent;
 		}
 
-		return { content, toolCalls, providerItems };
+		return { content, toolCalls, toolErrors, providerItems };
 	}
 
 	private getPluginConfig(): BuddyOpenaiCodexConfigModel | null {

@@ -25,7 +25,12 @@ export class LlmProviderService {
 		private readonly providerRegistry: LlmProviderRegistryService,
 	) {}
 
-	async sendMessage(systemPrompt: string, messages: LlmConversationItem[], options?: LlmOptions): Promise<LlmResponse> {
+	async sendMessage(
+		systemPrompt: string,
+		messages: LlmConversationItem[],
+		options?: LlmOptions,
+		expectedProviderType?: string,
+	): Promise<LlmResponse> {
 		const config = this.getConfig();
 		const providerName = config.provider;
 
@@ -41,6 +46,10 @@ export class LlmProviderService {
 			);
 
 			throw new BuddyProviderNotConfiguredException();
+		}
+
+		if (expectedProviderType !== undefined && provider.getType() !== expectedProviderType) {
+			throw new BuddyProviderErrorException('The LLM provider changed during the active turn');
 		}
 
 		const timeoutMs = config.llmTimeoutMs;
@@ -87,8 +96,12 @@ export class LlmProviderService {
 		}
 	}
 
-	supportsNativeToolResults(): boolean {
+	supportsNativeToolResults(providerType?: string): boolean {
 		try {
+			if (providerType !== undefined) {
+				return this.providerRegistry.get(providerType)?.supportsNativeToolResults?.() ?? false;
+			}
+
 			const config = this.getConfig();
 			const providerName = config.provider;
 

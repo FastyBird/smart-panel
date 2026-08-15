@@ -13,7 +13,7 @@ import {
 } from '../platforms/tool-provider.platform';
 
 import { BaseToolProviderService } from './base-tool-provider.service';
-import { ToolProviderRegistryService } from './tool-provider-registry.service';
+import { TOOL_RESULT_MAX_JSON_BYTES, ToolProviderRegistryService } from './tool-provider-registry.service';
 
 const inputSchema = z.object({ value: z.string() });
 const outputSchema = z.object({ value: z.string() });
@@ -158,6 +158,66 @@ describe('ToolProviderRegistryService', () => {
 				source: 'mcp',
 				actorId: 'client-1',
 				requestId: 'request-1',
+			}),
+		]);
+	});
+
+	it('returns the original validated structured data object', async () => {
+		const result = completed('validated');
+
+		registry.register(
+			new TestToolProvider('provider-a', [definition('read-tool', [ToolAudience.BUDDY], ToolAccessKind.READ)], () =>
+				Promise.resolve(result),
+			),
+		);
+
+		await expect(registry.executeTool({ id: 'request-1', name: 'read-tool', arguments: { value: 'x' } })).resolves.toBe(
+			result,
+		);
+	});
+
+	it('omits invalid, oversized, and non-serializable structured data without changing execution status', async () => {
+		const cyclicData: Record<string, unknown> = { value: 'cyclic' };
+
+		cyclicData.self = cyclicData;
+
+		const results: ToolExecutionResult[] = [
+			{ ...completed('invalid'), data: { unexpected: true } },
+			{ ...completed('oversized'), data: { value: 'x'.repeat(TOOL_RESULT_MAX_JSON_BYTES) } },
+			{ ...completed('cyclic'), data: cyclicData },
+		];
+		const provider = new TestToolProvider(
+			'provider-a',
+			[definition('read-tool', [ToolAudience.BUDDY], ToolAccessKind.READ)],
+			() => Promise.resolve(results.shift() ?? null),
+		);
+
+		registry.register(provider);
+
+		const bounded = await Promise.all(
+			[1, 2, 3].map((id) => registry.executeTool({ id: String(id), name: 'read-tool', arguments: { value: 'x' } })),
+		);
+
+		expect(bounded).toEqual([
+			expect.objectContaining({
+				success: true,
+				status: ToolExecutionStatus.COMPLETED,
+				data: undefined,
+				errorCode: 'INVALID_TOOL_RESULT_DATA',
+				truncated: true,
+			}),
+			expect.objectContaining({
+				success: true,
+				status: ToolExecutionStatus.COMPLETED,
+				data: undefined,
+				truncated: true,
+			}),
+			expect.objectContaining({
+				success: true,
+				status: ToolExecutionStatus.COMPLETED,
+				data: undefined,
+				errorCode: 'INVALID_TOOL_RESULT_DATA',
+				truncated: true,
 			}),
 		]);
 	});
