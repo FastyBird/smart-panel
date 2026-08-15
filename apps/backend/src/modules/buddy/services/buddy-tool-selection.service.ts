@@ -106,9 +106,9 @@ const ACTION_REQUEST_AUXILIARIES = new Set([
 	'would',
 ]);
 const CONDITION_PATTERN =
-	/\b(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|unless|when|whenever)\b/u;
+	/\b(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|unless|until|when|whenever)\b/u;
 const LEADING_CONDITION_PATTERN =
-	/^(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|unless|when|whenever)\b/u;
+	/^(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|unless|until|when|whenever)\b/u;
 const GROUNDED_STATE_SIGNALS = new Set([
 	'active',
 	'closed',
@@ -517,6 +517,7 @@ function isGenericHomeExplanation(normalizedMessage: string, tokens: Set<string>
 	if (!intersects(tokens, HOME_SIGNALS)) return false;
 	if (intersects(tokens, GROUNDED_STATE_SIGNALS)) return false;
 	if (intersects(tokens, EXPLICIT_STATE_REQUEST_SIGNALS)) return false;
+	if (intersects(tokens, STATE_SIGNALS) && /^explain what\b.*\b(?:are|is)\??$/u.test(normalizedMessage)) return false;
 
 	return (
 		/^how (?:do|does) .+ work(?:s|ing)?\b/u.test(normalizedMessage) ||

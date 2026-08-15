@@ -204,6 +204,11 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Once Aurora is triggered, run Bedtime.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
+		expect(selectNames('Close the blinds until Aurora is triggered.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+			names.control,
+		]);
 	});
 
 	it.each([
@@ -224,6 +229,10 @@ describe('BuddyToolSelectionService', () => {
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);
 		expect(selectNames('Explain why the hallway sensor is triggered.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+		]);
+		expect(selectNames('Explain what the kitchen temperature is?')).toEqual([
 			SEARCH_HOME_TOOL_NAME,
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);
