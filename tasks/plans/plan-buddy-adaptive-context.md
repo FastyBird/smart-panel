@@ -1316,8 +1316,13 @@ snapshots are produced through the shared query layer without making that eager 
       callers remain compatible.
 - [x] Generate turn/iteration/ordinal-qualified canonical call IDs and adopt the conversation items in live Buddy
       turns for native-capable providers, while retaining the legacy prose path for other providers.
-- [x] Carry schema-validated, individually 32 KiB-bounded `ToolExecutionResult.data` to the next model iteration; keep
-      aggregate call/result byte limits as an open task.
+- [x] Carry schema-validated, individually 32 KiB-bounded `ToolExecutionResult.data` to the next model iteration. Apply
+      Buddy-only message/error bounds while preserving existing MCP schema/data mapping behavior.
+- [x] Enforce Buddy active-turn abuse bounds before dispatch: at most 8 calls/errors per iteration and 32 per
+      turn, 16 KiB per call/error, 16 provider items/48 KiB of atomic continuation state, 64 KiB result groups, and a
+      128 KiB cumulative canonical tool transcript. Reject an over-limit batch before executing any prefix; if a known
+      result group is too large, omit structured data from later results without changing status or correlation. These
+      are exact canonical compact-JSON/UTF-8 bounds, not provider-wire, token, or full-request context-window admission.
 - [x] Map canonical items to native OpenAI Chat, Anthropic, Ollama, and OpenAI Codex Responses formats. For Codex, emit
       correlated `function_call`/`function_call_output` input items rather than ordinary messages.
 - [ ] Preserve ordering and one result/error per call, including malformed provider responses.

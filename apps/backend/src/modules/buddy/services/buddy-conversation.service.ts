@@ -22,6 +22,14 @@ import { BuddyConversationEntity } from '../entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from '../entities/buddy-message.entity';
 import { BuddyConfigModel } from '../models/config.model';
 import {
+	BUDDY_TRUNCATED_TOOL_RESULT_MESSAGE,
+	admitBuddyToolResponse,
+	canReserveBuddyLegacyToolTranscript,
+	canReserveBuddyToolResultGroup,
+	fitBuddyToolResultGroup,
+	fitsBuddyLegacyToolTranscript,
+} from '../platforms/llm-conversation-bounds.utils';
+import {
 	LlmConversationItem,
 	LlmConversationToolCall,
 	LlmConversationToolResult,
@@ -238,6 +246,9 @@ export class BuddyConversationService {
 		// Work on a shallow copy so we never mutate the caller's array
 		const workingMessages: LlmConversationItem[] = [...messages];
 		const activeTurnId = uuid();
+		let activeToolItems = 0;
+		let activeToolTranscriptBytes = 0;
+		let hasAttemptedToolExecution = false;
 
 		let response = await this.llmProvider.sendMessage(systemPrompt, workingMessages, { tools });
 		const activeProviderType = response.meta.provider;
@@ -264,6 +275,13 @@ export class BuddyConversationService {
 
 			const callCount = response.toolCalls?.length ?? 0;
 			const errorCount = response.toolErrors?.length ?? 0;
+			const admission = admitBuddyToolResponse(response, activeToolItems);
+
+			if (!admission.accepted) {
+				return this.toolLimitResponse(response, accumulatedMeta, hasAttemptedToolExecution);
+			}
+
+			activeToolItems += admission.itemCount;
 
 			this.logger.debug(`Tool iteration ${iteration + 1}: ${callCount} tool call(s), ${errorCount} parse error(s)`);
 
@@ -272,21 +290,36 @@ export class BuddyConversationService {
 				(_toolCall, callIndex) => `buddy:${activeTurnId}:${iteration + 1}:${callIndex + 1}`,
 			);
 
-			if (useNativeToolResults && errorCount === 0) {
+			if (useNativeToolResults && callCount > 0) {
 				this.assertNativeProviderCallIds(toolCalls);
+			}
 
+			if (useNativeToolResults && errorCount === 0) {
 				const canonicalCalls: LlmConversationToolCall[] = toolCalls.map((toolCall, callIndex) => ({
 					callId: canonicalCallIds[callIndex],
 					providerCallId: toolCall.id,
 					name: toolCall.name,
 					arguments: toolCall.arguments,
 				}));
+				const callItem = {
+					type: 'assistant_tool_calls' as const,
+					content: response.content,
+					calls: canonicalCalls,
+					...(response.providerItems === undefined ? {} : { providerItems: response.providerItems }),
+				};
+
+				if (!canReserveBuddyToolResultGroup(callItem, activeToolTranscriptBytes)) {
+					return this.toolLimitResponse(response, accumulatedMeta, hasAttemptedToolExecution);
+				}
+
 				const canonicalResults: LlmConversationToolResult[] = [];
 				let hasIndeterminateExecution = false;
 
 				for (const [callIndex, toolCall] of toolCalls.entries()) {
 					const canonicalCall = canonicalCalls[callIndex];
 					let result: ToolExecutionResult;
+
+					hasAttemptedToolExecution = true;
 
 					try {
 						result = await this.toolProviderRegistry.executeTool(toolCall, {
@@ -333,15 +366,14 @@ export class BuddyConversationService {
 					});
 				}
 
-				workingMessages.push(
-					{
-						type: 'assistant_tool_calls',
-						content: response.content,
-						calls: canonicalCalls,
-						...(response.providerItems === undefined ? {} : { providerItems: response.providerItems }),
-					},
-					{ type: 'tool_results', results: canonicalResults },
-				);
+				const boundedResultGroup = fitBuddyToolResultGroup(callItem, canonicalResults, activeToolTranscriptBytes);
+
+				if (boundedResultGroup === null) {
+					return this.toolLimitResponse(response, accumulatedMeta, true);
+				}
+
+				activeToolTranscriptBytes = boundedResultGroup.nextActiveTranscriptBytes;
+				workingMessages.push(callItem, boundedResultGroup.item);
 
 				if (hasIndeterminateExecution) {
 					const uncertaintyMessage =
@@ -380,7 +412,11 @@ export class BuddyConversationService {
 			}
 
 			// Execute all tool calls and include parse errors for malformed arguments
-			const toolResults: { success: boolean; summary: string }[] = [];
+			if (!canReserveBuddyLegacyToolTranscript(response, activeToolTranscriptBytes)) {
+				return this.toolLimitResponse(response, accumulatedMeta, hasAttemptedToolExecution);
+			}
+
+			const toolResults: { success: boolean; summary: string; compactSummary: string }[] = [];
 
 			// Report malformed tool call arguments back to the LLM as failed results
 			if (response.toolErrors && response.toolErrors.length > 0) {
@@ -388,11 +424,13 @@ export class BuddyConversationService {
 					toolResults.push({
 						success: false,
 						summary: `Tool "${toolError.toolName}" (id=${toolError.toolCallId}): FAILED — ${toolError.error}`,
+						compactSummary: `Tool "${toolError.toolName}" (id=${toolError.toolCallId}): FAILED — ${BUDDY_TRUNCATED_TOOL_RESULT_MESSAGE}`,
 					});
 				}
 			}
 
 			for (const [callIndex, toolCall] of toolCalls.entries()) {
+				hasAttemptedToolExecution = true;
 				const result = await this.toolProviderRegistry.executeTool(toolCall, {
 					audience: ToolAudience.BUDDY,
 					source: ToolAudience.BUDDY,
@@ -402,6 +440,7 @@ export class BuddyConversationService {
 				toolResults.push({
 					success: result.success,
 					summary: `Tool "${toolCall.name}" (id=${toolCall.id}): ${result.success ? 'SUCCESS' : 'FAILED'} — ${result.message}`,
+					compactSummary: `Tool "${toolCall.name}" (id=${toolCall.id}): ${result.success ? 'SUCCESS' : 'FAILED'} — ${BUDDY_TRUNCATED_TOOL_RESULT_MESSAGE}`,
 				});
 			}
 
@@ -422,24 +461,45 @@ export class BuddyConversationService {
 			// provider-specific tool result message formats
 			const toolResultsSummary = toolResults.map((r) => r.summary).join('\n');
 
+			const legacyMessages: LlmConversationItem[] = [];
+
 			if (response.content) {
-				workingMessages.push({ role: MessageRole.ASSISTANT, content: response.content });
+				legacyMessages.push({ role: MessageRole.ASSISTANT, content: response.content });
 			} else {
 				const toolNames = [
 					...(response.toolCalls ?? []).map((tc) => tc.name),
 					...(response.toolErrors ?? []).map((te) => `${te.toolName} (parse error)`),
 				].join(', ');
 
-				workingMessages.push({
+				legacyMessages.push({
 					role: MessageRole.ASSISTANT,
 					content: `[Executing tools: ${toolNames}]`,
 				});
 			}
 
-			workingMessages.push({
+			legacyMessages.push({
 				role: MessageRole.USER,
 				content: `[Tool execution results]\n${toolResultsSummary}\n\nPlease provide a natural language response based on these results.`,
 			});
+
+			let legacyTranscriptBytes = fitsBuddyLegacyToolTranscript(legacyMessages, activeToolTranscriptBytes);
+
+			if (legacyTranscriptBytes === null) {
+				legacyMessages[legacyMessages.length - 1] = {
+					role: MessageRole.USER,
+					content:
+						`[Tool execution results]\n${toolResults.map((result) => result.compactSummary).join('\n')}\n\n` +
+						'Please provide a natural language response based on these results.',
+				};
+				legacyTranscriptBytes = fitsBuddyLegacyToolTranscript(legacyMessages, activeToolTranscriptBytes);
+			}
+
+			if (legacyTranscriptBytes === null) {
+				return this.toolLimitResponse(response, accumulatedMeta, hasAttemptedToolExecution);
+			}
+
+			activeToolTranscriptBytes = legacyTranscriptBytes;
+			workingMessages.push(...legacyMessages);
 
 			// Call LLM again with tools so multi-step tool use works
 			try {
@@ -478,6 +538,21 @@ export class BuddyConversationService {
 		}
 
 		return this.clearActiveToolState({ ...response, meta: accumulatedMeta });
+	}
+
+	private toolLimitResponse(
+		response: LlmResponse,
+		meta: LlmResponseMeta,
+		hasAttemptedToolExecution: boolean,
+	): LlmResponse {
+		return this.clearActiveToolState({
+			...response,
+			meta,
+			content: hasAttemptedToolExecution
+				? 'I stopped the tool sequence because it exceeded the safe active-turn limits. ' +
+					'Earlier steps may have completed; please check the current state before retrying.'
+				: 'I could not safely process that many tool operations in one turn. Please simplify the request.',
+		});
 	}
 
 	private assertNativeProviderCallIds(toolCalls: LlmToolCall[]): void {
