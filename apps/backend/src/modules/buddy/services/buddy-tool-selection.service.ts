@@ -93,7 +93,18 @@ const ACTION_CLAUSE_PATTERN = new RegExp(
 const READ_CLAUSE_PATTERN = /\b(?:a|and|potom|then)\s+(?:check|find|show|tell|what|whether|which)\b/u;
 const STATE_QUESTION_PATTERN = /^(?:are|do|does|how|is|what|which|where|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u;
 const PREDICATE_QUESTION_PATTERN = /^(?:are|is)\b/u;
-const AUXILIARY_ACTION_REQUEST_PATTERN = /^(?:are you\b|is it possible\b)/u;
+const UNKNOWN_ACTION_REQUEST_PATTERN = /^(?:(?:can|could|may|might|will|would)\s+you\b|please\b)/u;
+const ACTION_REQUEST_AUXILIARIES = new Set([
+	'able',
+	'can',
+	'could',
+	'may',
+	'might',
+	'possible',
+	'way',
+	'will',
+	'would',
+]);
 const CONDITION_PATTERN =
 	/\b(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|unless|when|whenever)\b/u;
 const LEADING_CONDITION_PATTERN =
@@ -301,7 +312,9 @@ export class BuddyToolSelectionService {
 		const selected = new Set<string>();
 		const hasSearchSignal = intersects(tokens, SEARCH_SIGNALS);
 		const hasStateSignal = intersects(tokens, STATE_SIGNALS);
-		const actionTokens = getActionIntentTokens(normalizedMessage, tokens, hasStateSignal);
+		const hasAuxiliaryActionRequest = hasActionRequestAuxiliary(normalizedMessage, tokens);
+		const hasStateReadSignal = hasStateSignal && !hasAuxiliaryActionRequest;
+		const actionTokens = getActionIntentTokens(normalizedMessage, tokens, hasStateReadSignal);
 		const hasConditionalAction = actionTokens !== null && CONDITION_PATTERN.test(normalizedMessage);
 		const hasTrailingReadClause = actionTokens !== null && READ_CLAUSE_PATTERN.test(normalizedMessage);
 		const questionEnd = normalizedMessage.indexOf('?');
@@ -328,13 +341,13 @@ export class BuddyToolSelectionService {
 			(message.includes('?') || isSyntacticPredicateQuestion(normalizedMessage, tokens));
 		const isGenericExplanation = isGenericHomeExplanation(normalizedMessage, tokens);
 		const hasUnrecognizedStateIntent =
-			hasStateSignal &&
+			hasStateReadSignal &&
 			actionTokens === null &&
 			!hasSearchSignal &&
-			!message.includes('?') &&
+			(!message.includes('?') || UNKNOWN_ACTION_REQUEST_PATTERN.test(normalizedMessage)) &&
 			!/^(?:explain|tell)\b/u.test(normalizedMessage);
 		const hasUnrecognizedReadCompound =
-			actionTokens === null && (hasSearchSignal || hasStateSignal) && hasUnknownTrailingClause(normalizedMessage);
+			actionTokens === null && (hasSearchSignal || hasStateReadSignal) && hasUnknownTrailingClause(normalizedMessage);
 		const isStateExplanation =
 			hasHomeSignal &&
 			(/^explain (?:if|whether)\b/u.test(normalizedMessage) ||
@@ -344,7 +357,7 @@ export class BuddyToolSelectionService {
 			isStateExplanation ||
 			(!isGenericExplanation &&
 				(hasSearchSignal ||
-					hasStateSignal ||
+					hasStateReadSignal ||
 					hasConditionalAction ||
 					hasTrailingReadClause ||
 					hasStateFirstAction ||
@@ -522,6 +535,7 @@ function getActionIntentTokens(
 
 	const isStateQuestion =
 		(hasStateSignal &&
+			!hasActionRequestAuxiliary(normalizedMessage, tokens) &&
 			(STATE_QUESTION_PATTERN.test(normalizedMessage) ||
 				/^(?:please\s+)?tell\b.*\b(?:if|whether)\b/u.test(normalizedMessage))) ||
 		isSyntacticPredicateQuestion(normalizedMessage, tokens);
@@ -565,10 +579,19 @@ function getActionIntentTokens(
 }
 
 function isSyntacticPredicateQuestion(normalizedMessage: string, tokens: Set<string>): boolean {
+	if (!PREDICATE_QUESTION_PATTERN.test(normalizedMessage) || !intersects(tokens, ACTION_SIGNALS)) return false;
+
+	return !hasActionRequestAuxiliary(normalizedMessage, tokens);
+}
+
+function hasActionRequestAuxiliary(normalizedMessage: string, tokens: Set<string>): boolean {
+	if (!intersects(tokens, ACTION_SIGNALS)) return false;
+
+	const actionMatch = new RegExp(String.raw`\b(?:${[...ACTION_SIGNALS].join('|')})\b`, 'u').exec(normalizedMessage);
+
 	return (
-		PREDICATE_QUESTION_PATTERN.test(normalizedMessage) &&
-		!AUXILIARY_ACTION_REQUEST_PATTERN.test(normalizedMessage) &&
-		intersects(tokens, ACTION_SIGNALS)
+		actionMatch !== null &&
+		intersects(tokenize(normalizedMessage.slice(0, actionMatch.index)), ACTION_REQUEST_AUXILIARIES)
 	);
 }
 

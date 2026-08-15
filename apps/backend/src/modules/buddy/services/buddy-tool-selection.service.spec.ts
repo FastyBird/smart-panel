@@ -252,6 +252,17 @@ describe('BuddyToolSelectionService', () => {
 			names.control,
 			names.spaceLighting,
 		]);
+		expect(selectNames('Is there any way you can turn off the kitchen light?')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			names.control,
+			names.spaceLighting,
+		]);
+	});
+
+	it('falls back conservatively for unknown verbs in polite adjustments', () => {
+		expect(selectNames('Could you reduce the bedroom temperature?')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 	});
 
 	it('does not classify an explicit current-status question as a generic explanation', () => {
