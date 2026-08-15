@@ -77,6 +77,9 @@ describe('BuddyToolSelectionService', () => {
 
 	it('retains live reads for relative adjustments', () => {
 		expect(selectNames('Make the bedroom warmer')).toEqual(definitions.map((definition) => definition.name));
+		expect(selectNames('Make the bedroom two degrees colder')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 		expect(selectNames('Turn the bedroom light up a bit')).toEqual([
 			SEARCH_HOME_TOOL_NAME,
 			QUERY_HOME_STATE_TOOL_NAME,
@@ -316,6 +319,7 @@ describe('BuddyToolSelectionService', () => {
 			SEARCH_HOME_TOOL_NAME,
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);
+		expect(selectNames('Could the window be open?')).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
 		expect(selectNames('What has the thermostat been set to?')).toEqual([
 			SEARCH_HOME_TOOL_NAME,
 			QUERY_HOME_STATE_TOOL_NAME,
@@ -384,6 +388,12 @@ describe('BuddyToolSelectionService', () => {
 
 	it('falls back when an unrecognized action follows a recognized command', () => {
 		expect(selectNames('Close the blinds and launch Evening.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			names.control,
+			names.scene,
+			names.spaceLighting,
+		]);
+		expect(selectNames('Close the blinds. Launch Evening.')).toEqual([
 			SEARCH_HOME_TOOL_NAME,
 			names.control,
 			names.scene,

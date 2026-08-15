@@ -93,20 +93,12 @@ const ACTION_CLAUSE_PATTERN = new RegExp(
 const READ_CLAUSE_PATTERN =
 	/(?:\ba\b|\band\b|\bpotom\b|\bthen\b|[,;])\s*(?:check|confirm|ensure|find|make sure|show|tell|verify|what|whether|which)\b/u;
 const STATE_QUESTION_PATTERN =
-	/^(?:are|did|do|does|had|has|have|how|is|what|which|where|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u;
-const PREDICATE_QUESTION_PATTERN = /^(?:are|did|had|has|have|is|was|were|what (?:are|had|has|have|is|was|were))\b/u;
+	/^(?:are|can|could|did|do|does|had|has|have|how|is|may|might|what|which|where|will|would|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u;
+const PREDICATE_QUESTION_PATTERN =
+	/^(?:are|can|could|did|had|has|have|is|may|might|will|would|was|were|what (?:are|had|has|have|is|was|were))\b/u;
 const UNKNOWN_ACTION_REQUEST_PATTERN = /^(?:(?:can|could|may|might|will|would)\s+you\b|please\b)/u;
-const ACTION_REQUEST_AUXILIARIES = new Set([
-	'able',
-	'can',
-	'could',
-	'may',
-	'might',
-	'possible',
-	'way',
-	'will',
-	'would',
-]);
+const ACTION_REQUEST_AUXILIARIES = new Set(['able', 'possible', 'way']);
+const ACTION_REQUEST_MODALS = new Set(['can', 'could', 'may', 'might', 'will', 'would']);
 const CONDITION_PATTERN =
 	/\b(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|unless|until|when|whenever|while)\b/u;
 const LEADING_CONDITION_PATTERN =
@@ -127,12 +119,14 @@ const EXPLICIT_STATE_REQUEST_SIGNALS = new Set(['all', 'any', 'count', 'current'
 const RELATIVE_ADJUSTMENT_SIGNALS = new Set([
 	'brighten',
 	'brighter',
+	'colder',
 	'cooler',
 	'darker',
 	'decrease',
 	'dim',
 	'dimmer',
 	'down',
+	'hotter',
 	'increase',
 	'less',
 	'lower',
@@ -375,6 +369,11 @@ export class BuddyToolSelectionService {
 			!hasSearchSignal &&
 			(!message.includes('?') || UNKNOWN_ACTION_REQUEST_PATTERN.test(normalizedMessage)) &&
 			!/^(?:explain|tell)\b/u.test(normalizedMessage);
+		const hasUnknownModalRequest =
+			actionTokens === null &&
+			hasHomeSignal &&
+			UNKNOWN_ACTION_REQUEST_PATTERN.test(normalizedMessage) &&
+			!hasExplicitStateQuestion;
 		const hasUnrecognizedReadCompound =
 			actionTokens === null &&
 			(hasSearchSignal || hasStateReadSignal) &&
@@ -418,6 +417,10 @@ export class BuddyToolSelectionService {
 		}
 
 		if (hasUnrecognizedStateIntent) {
+			for (const name of BUILT_IN_TOOL_NAMES) selected.add(name);
+		}
+
+		if (hasUnknownModalRequest) {
 			for (const name of BUILT_IN_TOOL_NAMES) selected.add(name);
 		}
 
@@ -531,7 +534,7 @@ function isClearlyGeneralConversation(normalizedMessage: string, tokens: Set<str
 }
 
 function hasUnknownTrailingClause(normalizedMessage: string): boolean {
-	const trailingClause = sliceAfterFirst(normalizedMessage, /[,;]|\b(?:and|potom|then)\b/u);
+	const trailingClause = sliceAfterFirst(normalizedMessage, /[.!?,;]|\b(?:and|potom|then)\b/u);
 
 	if (trailingClause.length === 0) return false;
 
@@ -655,10 +658,14 @@ function hasActionRequestAuxiliary(normalizedMessage: string, tokens: Set<string
 	if (!intersects(tokens, ACTION_SIGNALS)) return false;
 
 	const actionMatch = new RegExp(String.raw`\b(?:${[...ACTION_SIGNALS].join('|')})\b`, 'u').exec(normalizedMessage);
+	const prefix = actionMatch === null ? '' : normalizedMessage.slice(0, actionMatch.index);
+	const prefixTokens = tokenize(prefix);
+	const [firstPrefixToken] = prefixTokens;
 
 	return (
 		actionMatch !== null &&
-		intersects(tokenize(normalizedMessage.slice(0, actionMatch.index)), ACTION_REQUEST_AUXILIARIES)
+		(intersects(prefixTokens, ACTION_REQUEST_AUXILIARIES) ||
+			(firstPrefixToken !== undefined && ACTION_REQUEST_MODALS.has(firstPrefixToken) && /^\w+\s+you\b/u.test(prefix)))
 	);
 }
 
