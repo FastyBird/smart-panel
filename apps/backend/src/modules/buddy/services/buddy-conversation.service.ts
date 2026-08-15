@@ -667,7 +667,9 @@ export class BuddyConversationService {
 			lines.push('', '## Spaces');
 
 			for (const space of context.spaces) {
-				const sid = this.shortIdMapping.exposeScoped(conversationId, space.id, ScopedShortIdTargetKind.SPACE);
+				const sid = hasTools
+					? this.shortIdMapping.exposeScoped(conversationId, space.id, ScopedShortIdTargetKind.SPACE)
+					: null;
 				const reference = sid === null ? '' : ` [id=${sid}]`;
 
 				lines.push(`- ${space.name}${reference} (${space.category ?? 'unknown'}): ${space.deviceCount} devices`);
@@ -701,7 +703,9 @@ export class BuddyConversationService {
 				lines.push('', '## Scenes');
 
 				for (const scene of context.scenes) {
-					const sid = this.shortIdMapping.exposeScoped(conversationId, scene.id, ScopedShortIdTargetKind.SCENE);
+					const sid = hasTools
+						? this.shortIdMapping.exposeScoped(conversationId, scene.id, ScopedShortIdTargetKind.SCENE)
+						: null;
 					const reference = sid === null ? '' : ` [id=${sid}]`;
 
 					lines.push(`- ${scene.name}${reference}: ${scene.enabled ? 'enabled' : 'disabled'}`);

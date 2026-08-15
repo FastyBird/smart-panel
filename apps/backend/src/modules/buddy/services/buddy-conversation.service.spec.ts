@@ -619,6 +619,23 @@ describe('BuddyConversationService', () => {
 			).toBeNull();
 		});
 
+		it('does not allocate action references for providers without tool support', async () => {
+			const context = createBuddyContextFixture(1, { spaceId: 'space-read-only' });
+			context.scenes = [{ id: 'scene-read-only', name: 'Read-only Scene', enabled: true, space: 'space-read-only' }];
+			contextService.buildContext.mockResolvedValue(context);
+			llmProvider.supportsTools.mockReturnValue(false);
+
+			await service.sendMessage('conv-1', 'Describe the home.');
+
+			const systemPrompt = llmProvider.sendMessage.mock.calls[0][0] as string;
+
+			expect(systemPrompt).toContain('Evaluation space-read-only');
+			expect(systemPrompt).toContain('Read-only Scene');
+			expect(systemPrompt).not.toContain('[id=');
+			expect(systemPrompt).not.toContain('[p=');
+			expect(shortIdMapping.scopedSize).toBe(0);
+		});
+
 		it('keeps read context visible without emitting invalid action references when the scope is full', async () => {
 			for (let index = 0; index < MAX_SCOPED_SHORT_ID_MAPPINGS_PER_CONVERSATION; index += 1) {
 				shortIdMapping.exposeScoped('conv-1', `existing-property-${index}`, ScopedShortIdTargetKind.PROPERTY);
