@@ -1314,8 +1314,10 @@ snapshots are produced through the shared query layer without making that eager 
 - [x] Define additive provider-neutral assistant tool-call/result conversation items, including canonical and native call
       IDs, structured data/status/error fields, and validation of complete adjacent correlation groups. Existing text-only
       callers remain compatible.
-- [ ] Generate request/iteration/ordinal-qualified canonical call IDs and adopt the conversation items in live Buddy turns.
-- [ ] Carry validated `ToolExecutionResult.data` to the next model iteration.
+- [x] Generate turn/iteration/ordinal-qualified canonical call IDs and adopt the conversation items in live Buddy
+      turns for native-capable providers, while retaining the legacy prose path for other providers.
+- [x] Carry schema-validated, individually 32 KiB-bounded `ToolExecutionResult.data` to the next model iteration; keep
+      aggregate call/result byte limits as an open task.
 - [x] Map canonical items to native OpenAI Chat, Anthropic, Ollama, and OpenAI Codex Responses formats. For Codex, emit
       correlated `function_call`/`function_call_output` input items rather than ordinary messages.
 - [ ] Preserve ordering and one result/error per call, including malformed provider responses.

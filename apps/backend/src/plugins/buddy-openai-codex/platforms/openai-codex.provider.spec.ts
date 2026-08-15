@@ -303,6 +303,182 @@ describe('OpenAiCodexProvider native transcript', () => {
 		}
 	});
 
+	it('returns bounded tool errors for malformed JSON while retaining valid calls and provider items', async () => {
+		const malformedFunctionCallItem = {
+			...firstFunctionCallItem,
+			arguments: '{"room":',
+		};
+		const events = [
+			{
+				type: 'response.completed',
+				response: { output: [malformedFunctionCallItem, secondFunctionCallItem] },
+			},
+		];
+		const body = `${events.map((event) => `data: ${JSON.stringify(event)}`).join('\n')}\ndata: [DONE]\n`;
+		const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(body, { status: 200 }));
+		const configService = {
+			getPluginConfig: jest.fn().mockReturnValue({ accessToken: 'test-token', model: null }),
+		};
+		const provider = new OpenAiCodexProvider(configService as unknown as ConfigService);
+
+		try {
+			const response = await provider.sendMessage(
+				'system',
+				[{ role: MessageRole.USER, content: 'Read the kitchen.' }],
+				'codex-test',
+			);
+
+			expect(response.toolCalls).toEqual([
+				{ id: 'provider-call-2', name: 'get_humidity', arguments: { room: 'kitchen' } },
+			]);
+			expect(response.toolErrors).toEqual([
+				{
+					toolCallId: 'provider-call-1',
+					toolName: 'get_temperature',
+					error: 'Invalid JSON arguments',
+				},
+			]);
+			expect(response.providerItems).toEqual(
+				[malformedFunctionCallItem, secondFunctionCallItem].map((item, outputIndex) => ({
+					provider: BUDDY_OPENAI_CODEX_PLUGIN_NAME,
+					outputIndex,
+					item,
+				})),
+			);
+		} finally {
+			fetchSpy.mockRestore();
+		}
+	});
+
+	it('rejects duplicate provider call IDs from different output items before returning tool calls', async () => {
+		const duplicateFunctionCallItem = {
+			...secondFunctionCallItem,
+			call_id: firstFunctionCallItem.call_id,
+		};
+		const events = [
+			{
+				type: 'response.completed',
+				response: { output: [firstFunctionCallItem, duplicateFunctionCallItem] },
+			},
+		];
+		const body = `${events.map((event) => `data: ${JSON.stringify(event)}`).join('\n')}\ndata: [DONE]\n`;
+		const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(body, { status: 200 }));
+		const configService = {
+			getPluginConfig: jest.fn().mockReturnValue({ accessToken: 'test-token', model: null }),
+		};
+		const provider = new OpenAiCodexProvider(configService as unknown as ConfigService);
+
+		try {
+			await expect(
+				provider.sendMessage('system', [{ role: MessageRole.USER, content: 'Read the kitchen.' }], 'codex-test'),
+			).rejects.toThrow('OpenAI Codex response contains duplicate call ID at output index 1');
+		} finally {
+			fetchSpy.mockRestore();
+		}
+	});
+
+	it('rejects distinct provider call IDs assigned to the same output index', async () => {
+		const events = [
+			{ type: 'response.output_item.done', output_index: 0, item: firstFunctionCallItem },
+			{ type: 'response.output_item.done', output_index: 0, item: secondFunctionCallItem },
+		];
+		const body = `${events.map((event) => `data: ${JSON.stringify(event)}`).join('\n')}\ndata: [DONE]\n`;
+		const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(body, { status: 200 }));
+		const configService = {
+			getPluginConfig: jest.fn().mockReturnValue({ accessToken: 'test-token', model: null }),
+		};
+		const provider = new OpenAiCodexProvider(configService as unknown as ConfigService);
+
+		try {
+			await expect(
+				provider.sendMessage('system', [{ role: MessageRole.USER, content: 'Read the kitchen.' }], 'codex-test'),
+			).rejects.toThrow('OpenAI Codex response contains duplicate output index 0');
+		} finally {
+			fetchSpy.mockRestore();
+		}
+	});
+
+	it('rejects a function call and non-function item assigned to the same output index', async () => {
+		for (const items of [
+			[firstFunctionCallItem, assistantMessageItem],
+			[assistantMessageItem, firstFunctionCallItem],
+		]) {
+			const events = items.map((item) => ({ type: 'response.output_item.done', output_index: 0, item }));
+			const body = `${events.map((event) => `data: ${JSON.stringify(event)}`).join('\n')}\ndata: [DONE]\n`;
+			const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(body, { status: 200 }));
+			const configService = {
+				getPluginConfig: jest.fn().mockReturnValue({ accessToken: 'test-token', model: null }),
+			};
+			const provider = new OpenAiCodexProvider(configService as unknown as ConfigService);
+
+			try {
+				await expect(
+					provider.sendMessage('system', [{ role: MessageRole.USER, content: 'Read the kitchen.' }], 'codex-test'),
+				).rejects.toThrow('OpenAI Codex response contains duplicate output index 0');
+			} finally {
+				fetchSpy.mockRestore();
+			}
+		}
+	});
+
+	it('rejects an added function call that never receives a completion event', async () => {
+		const events = [
+			{ type: 'response.output_item.added', output_index: 0, item: { ...firstFunctionCallItem, arguments: '' } },
+			{
+				type: 'response.function_call_arguments.delta',
+				output_index: 0,
+				call_id: firstFunctionCallItem.call_id,
+				delta: firstFunctionCallItem.arguments,
+			},
+		];
+		const body = `${events.map((event) => `data: ${JSON.stringify(event)}`).join('\n')}\ndata: [DONE]\n`;
+		const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(body, { status: 200 }));
+		const configService = {
+			getPluginConfig: jest.fn().mockReturnValue({ accessToken: 'test-token', model: null }),
+		};
+		const provider = new OpenAiCodexProvider(configService as unknown as ConfigService);
+
+		try {
+			await expect(
+				provider.sendMessage('system', [{ role: MessageRole.USER, content: 'Read the kitchen.' }], 'codex-test'),
+			).rejects.toThrow(`OpenAI Codex function call "${firstFunctionCallItem.call_id}" did not complete`);
+		} finally {
+			fetchSpy.mockRestore();
+		}
+	});
+
+	it('rejects function call argument deltas after completion or for a different output index', async () => {
+		for (const deltaOutputIndex of [0, 1]) {
+			const events = [
+				{ type: 'response.output_item.done', output_index: 0, item: firstFunctionCallItem },
+				{
+					type: 'response.function_call_arguments.delta',
+					output_index: deltaOutputIndex,
+					call_id: firstFunctionCallItem.call_id,
+					delta: ' ',
+				},
+			];
+			const body = `${events.map((event) => `data: ${JSON.stringify(event)}`).join('\n')}\ndata: [DONE]\n`;
+			const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(body, { status: 200 }));
+			const configService = {
+				getPluginConfig: jest.fn().mockReturnValue({ accessToken: 'test-token', model: null }),
+			};
+			const provider = new OpenAiCodexProvider(configService as unknown as ConfigService);
+
+			try {
+				await expect(
+					provider.sendMessage('system', [{ role: MessageRole.USER, content: 'Read the kitchen.' }], 'codex-test'),
+				).rejects.toThrow(
+					deltaOutputIndex === 0
+						? 'OpenAI Codex function call arguments changed after completion'
+						: 'OpenAI Codex function call argument delta has a mismatched output index',
+				);
+			} finally {
+				fetchSpy.mockRestore();
+			}
+		}
+	});
+
 	it('rejects partial text when the response exhausts max output tokens', async () => {
 		const events = [
 			{ type: 'response.output_text.delta', output_index: 0, delta: 'This answer is partial' },

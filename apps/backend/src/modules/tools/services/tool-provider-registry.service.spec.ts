@@ -13,7 +13,7 @@ import {
 } from '../platforms/tool-provider.platform';
 
 import { BaseToolProviderService } from './base-tool-provider.service';
-import { ToolProviderRegistryService } from './tool-provider-registry.service';
+import { TOOL_RESULT_MAX_JSON_BYTES, ToolProviderRegistryService } from './tool-provider-registry.service';
 
 const inputSchema = z.object({ value: z.string() });
 const outputSchema = z.object({ value: z.string() });
@@ -158,6 +158,85 @@ describe('ToolProviderRegistryService', () => {
 				source: 'mcp',
 				actorId: 'client-1',
 				requestId: 'request-1',
+			}),
+		]);
+	});
+
+	it('returns only schema-parsed structured data', async () => {
+		const result = {
+			...completed('validated'),
+			data: { value: ' validated ', secret: 'must not reach the model' },
+		};
+		const parsedDefinition = createToolDefinition({
+			name: 'read-tool',
+			description: 'read-tool description',
+			audiences: [ToolAudience.BUDDY],
+			access: ToolAccessKind.READ,
+			inputSchema,
+			outputSchema: z.object({ value: z.string().transform((value) => value.trim()) }),
+		});
+
+		registry.register(new TestToolProvider('provider-a', [parsedDefinition], () => Promise.resolve(result)));
+
+		await expect(
+			registry.executeTool({ id: 'request-1', name: 'read-tool', arguments: { value: 'x' } }),
+		).resolves.toEqual({ ...result, data: { value: 'validated' } });
+	});
+
+	it('omits invalid, oversized, and non-serializable structured data without changing execution status', async () => {
+		const cyclicData: Record<string, unknown> = { value: 'cyclic' };
+
+		cyclicData.self = cyclicData;
+
+		const results: ToolExecutionResult[] = [
+			{ ...completed('invalid'), data: { unexpected: true } },
+			{ ...completed('oversized'), data: { value: 'x'.repeat(TOOL_RESULT_MAX_JSON_BYTES) } },
+			{ ...completed('cyclic'), data: cyclicData },
+		];
+		const provider = new TestToolProvider(
+			'provider-a',
+			[
+				definition('read-tool', [ToolAudience.BUDDY], ToolAccessKind.READ),
+				createToolDefinition({
+					name: 'passthrough-tool',
+					description: 'passthrough-tool description',
+					audiences: [ToolAudience.BUDDY],
+					access: ToolAccessKind.READ,
+					inputSchema,
+					outputSchema: outputSchema.passthrough(),
+				}),
+			],
+			() => Promise.resolve(results.shift() ?? null),
+		);
+
+		registry.register(provider);
+
+		const bounded = await Promise.all(
+			['read-tool', 'read-tool', 'passthrough-tool'].map((name, index) =>
+				registry.executeTool({ id: String(index + 1), name, arguments: { value: 'x' } }),
+			),
+		);
+
+		expect(bounded).toEqual([
+			expect.objectContaining({
+				success: true,
+				status: ToolExecutionStatus.COMPLETED,
+				data: undefined,
+				errorCode: 'INVALID_TOOL_RESULT_DATA',
+				truncated: true,
+			}),
+			expect.objectContaining({
+				success: true,
+				status: ToolExecutionStatus.COMPLETED,
+				data: undefined,
+				truncated: true,
+			}),
+			expect.objectContaining({
+				success: true,
+				status: ToolExecutionStatus.COMPLETED,
+				data: undefined,
+				errorCode: 'INVALID_TOOL_RESULT_DATA',
+				truncated: true,
 			}),
 		]);
 	});

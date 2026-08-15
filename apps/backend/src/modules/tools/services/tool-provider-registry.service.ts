@@ -14,6 +14,8 @@ import {
 } from '../platforms/tool-provider.platform';
 import { TOOLS_MODULE_NAME } from '../tools.constants';
 
+export const TOOL_RESULT_MAX_JSON_BYTES = 32 * 1024;
+
 @Injectable()
 export class ToolProviderRegistryService {
 	private readonly logger = createExtensionLogger(TOOLS_MODULE_NAME, 'ToolProviderRegistryService');
@@ -124,7 +126,7 @@ export class ToolProviderRegistryService {
 		const result = await registered.provider.executeTool(toolCall, context);
 
 		if (result !== null) {
-			return result;
+			return this.boundToolResultData(registered.definition, result);
 		}
 
 		return {
@@ -133,6 +135,47 @@ export class ToolProviderRegistryService {
 			message: `Provider failed to handle registered tool: ${toolCall.name}`,
 			errorCode: 'TOOL_PROVIDER_MISMATCH',
 		};
+	}
+
+	private boundToolResultData(definition: ToolDefinition, result: ToolExecutionResult): ToolExecutionResult {
+		if (result.data === undefined) {
+			return result;
+		}
+
+		const parsed = definition.outputSchema.safeParse(result.data);
+
+		if (!parsed.success || typeof parsed.data !== 'object' || parsed.data === null || Array.isArray(parsed.data)) {
+			return {
+				...result,
+				data: undefined,
+				errorCode: result.errorCode ?? 'INVALID_TOOL_RESULT_DATA',
+				truncated: true,
+			};
+		}
+
+		const parsedData = parsed.data as Record<string, unknown>;
+		let serialized: string | undefined;
+
+		try {
+			serialized = JSON.stringify(parsedData);
+		} catch {
+			serialized = undefined;
+		}
+
+		if (serialized === undefined) {
+			return {
+				...result,
+				data: undefined,
+				errorCode: result.errorCode ?? 'INVALID_TOOL_RESULT_DATA',
+				truncated: true,
+			};
+		}
+
+		if (Buffer.byteLength(serialized, 'utf8') > TOOL_RESULT_MAX_JSON_BYTES) {
+			return { ...result, data: undefined, truncated: true };
+		}
+
+		return { ...result, data: parsedData };
 	}
 
 	/**

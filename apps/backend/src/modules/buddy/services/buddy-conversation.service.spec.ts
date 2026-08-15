@@ -153,6 +153,7 @@ describe('BuddyConversationService', () => {
 				},
 			}),
 			supportsTools: jest.fn().mockReturnValue(false),
+			supportsNativeToolResults: jest.fn().mockReturnValue(false),
 		};
 
 		contextService = {

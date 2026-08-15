@@ -67,6 +67,8 @@ export interface ToolExecutionResult {
 	message: string;
 	data?: Record<string, unknown>;
 	errorCode?: string;
+	/** True when structured data was omitted because it was invalid or exceeded the transport bound. */
+	truncated?: boolean;
 }
 
 export interface ToolExecutionContext {

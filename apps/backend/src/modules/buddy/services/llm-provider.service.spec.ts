@@ -175,6 +175,15 @@ describe('LlmProviderService', () => {
 				expect.objectContaining({ timeout: 60_000 }),
 			);
 		});
+
+		it('should reject an active-turn continuation after the configured provider changes', async () => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: 'buddy-openai-plugin' }));
+
+			await expect(service.sendMessage(systemPrompt, messages, undefined, 'buddy-claude-plugin')).rejects.toThrow(
+				'provider changed during the active turn',
+			);
+			expect(openaiSendMessage).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('native tool-result capability', () => {
@@ -187,6 +196,13 @@ describe('LlmProviderService', () => {
 			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: 'buddy-native-plugin' }));
 
 			expect(service.supportsNativeToolResults()).toBe(true);
+		});
+
+		it('resolves capability for the provider that produced the active response', () => {
+			registry.register(makeMockProvider('buddy-native-plugin', jest.fn(), true));
+
+			expect(service.supportsNativeToolResults('buddy-native-plugin')).toBe(true);
+			expect(service.supportsNativeToolResults('buddy-claude-plugin')).toBe(false);
 		});
 
 		it('returns false when there is no configured provider', () => {
