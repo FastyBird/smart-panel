@@ -25,6 +25,7 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 import { HomeyLocalConnectorFactory } from './connectors/homey-local-connector.factory';
 import { HomeySdkClientFactoryService } from './connectors/homey-sdk.client';
 import { HomeyStatusController } from './controllers/homey-status.controller';
+import { HomeyTestConnectionController } from './controllers/homey-test-connection.controller';
 import {
 	DEVICES_HOMEY_PLUGIN_API_TAG_DESCRIPTION,
 	DEVICES_HOMEY_PLUGIN_API_TAG_NAME,
@@ -43,6 +44,7 @@ import { UpdateHomeyDeviceDto } from './dto/update-device.dto';
 import { HomeyChannelEntity, HomeyChannelPropertyEntity, HomeyDeviceEntity } from './entities/devices-homey.entity';
 import { HomeyConfigModel } from './models/config.model';
 import { HomeyConfigValidatorService } from './services/homey-config-validator.service';
+import { HomeyConnectionTestService } from './services/homey-connection-test.service';
 import { HomeyService } from './services/homey.service';
 
 @ApiTag({
@@ -66,9 +68,10 @@ import { HomeyService } from './services/homey.service';
 			provide: HOMEY_CONNECTOR_FACTORY,
 			useExisting: HomeyLocalConnectorFactory,
 		},
+		HomeyConnectionTestService,
 		HomeyService,
 	],
-	controllers: [HomeyStatusController],
+	controllers: [HomeyStatusController, HomeyTestConnectionController],
 	exports: [HomeyService],
 })
 export class DevicesHomeyPlugin implements OnModuleInit {

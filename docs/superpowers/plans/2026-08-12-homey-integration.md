@@ -247,11 +247,11 @@ index.ts
 ### Task 2.3: Implement status and connection test APIs
 
 - [x] Expand the status model with state, Homey identity/version, last sync/event timestamps, reconnect count, and sanitized error.
-- [ ] Add `POST test-connection` with a discriminated request: `saved` accepts no endpoint/mode override and may resolve the persisted key; `candidate` requires a complete unsaved URL plus a newly entered key and must never resolve the persisted key.
-- [ ] Reject mixed requests, including an overridden URL with an omitted key, even when the candidate URL canonicalizes to the saved URL. Stored-secret reuse is authorized only by explicit `saved` mode.
-- [ ] Use a temporary connector for connection tests and always disconnect it.
-- [ ] Return categorized validation/auth/timeout/unavailable errors without raw response bodies.
-- [ ] Add controller/service tests for fully saved reuse, complete candidate URL/key, URL override without key, key-only candidate, mixed saved/override fields, canonical-equivalent candidate URL, and proof that candidate mode never reads or sends the stored secret.
+- [x] Add `POST test-connection` with a discriminated request: `saved` accepts no endpoint/mode override and may resolve the persisted key; `candidate` requires a complete unsaved URL plus a newly entered key and must never resolve the persisted key.
+- [x] Reject mixed requests, including an overridden URL with an omitted key, even when the candidate URL canonicalizes to the saved URL. Stored-secret reuse is authorized only by explicit `saved` mode.
+- [x] Use a temporary connector for connection tests and always disconnect it.
+- [x] Return categorized validation/auth/timeout/unavailable errors without raw response bodies.
+- [x] Add controller/service tests for fully saved reuse, complete candidate URL/key, URL override without key, key-only candidate, mixed saved/override fields, canonical-equivalent candidate URL, and proof that candidate mode never reads or sends the stored secret.
 
 ### Task 2.4: Implement server discovery only from evidence
 
