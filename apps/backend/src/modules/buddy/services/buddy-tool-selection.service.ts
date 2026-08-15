@@ -93,6 +93,7 @@ const ACTION_CLAUSE_PATTERN = new RegExp(
 const READ_CLAUSE_PATTERN = /\b(?:a|and|potom|then)\s+(?:check|find|show|tell|what|whether|which)\b/u;
 const STATE_QUESTION_PATTERN = /^(?:are|do|does|how|is|what|which|where|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u;
 const PREDICATE_QUESTION_PATTERN = /^(?:are|is)\b/u;
+const AUXILIARY_ACTION_REQUEST_PATTERN = /^(?:are you\b|is it possible\b)/u;
 const CONDITION_PATTERN =
 	/\b(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|unless|when|whenever)\b/u;
 const LEADING_CONDITION_PATTERN =
@@ -322,6 +323,7 @@ export class BuddyToolSelectionService {
 		const hasHomeSignal = intersects(tokens, HOME_SIGNALS);
 		const hasInterrogativeHomeQuestion =
 			hasHomeSignal &&
+			actionTokens === null &&
 			STATE_QUESTION_PATTERN.test(normalizedMessage) &&
 			(message.includes('?') || isSyntacticPredicateQuestion(normalizedMessage, tokens));
 		const isGenericExplanation = isGenericHomeExplanation(normalizedMessage, tokens);
@@ -348,7 +350,10 @@ export class BuddyToolSelectionService {
 					hasStateFirstAction ||
 					hasGroundedStateFirstAction ||
 					hasInterrogativeHomeQuestion ||
-					(message.includes('?') && hasHomeSignal && intersects(tokens, GROUNDED_STATE_SIGNALS))))
+					(actionTokens === null &&
+						message.includes('?') &&
+						hasHomeSignal &&
+						intersects(tokens, GROUNDED_STATE_SIGNALS))))
 		) {
 			for (const name of READ_TOOL_NAMES) selected.add(name);
 		}
@@ -465,7 +470,7 @@ function intersects(tokens: Set<string>, signals: Set<string>): boolean {
 
 function isClearlyGeneralConversation(normalizedMessage: string, tokens: Set<string>): boolean {
 	if (!intersects(tokens, GENERAL_CONVERSATION_SIGNALS)) return false;
-	if (tokens.size <= 2 && tokens.has('morning')) return false;
+	if (tokens.size <= 2 && (tokens.has('morning') || normalizedMessage === 'thank you')) return false;
 	if (/^(?:(?:how|who) is|tell me about)\b/u.test(normalizedMessage)) return false;
 
 	for (const token of tokens) {
@@ -519,8 +524,7 @@ function getActionIntentTokens(
 		(hasStateSignal &&
 			(STATE_QUESTION_PATTERN.test(normalizedMessage) ||
 				/^(?:please\s+)?tell\b.*\b(?:if|whether)\b/u.test(normalizedMessage))) ||
-		(STATE_QUESTION_PATTERN.test(normalizedMessage) &&
-			(normalizedMessage.includes('?') || isSyntacticPredicateQuestion(normalizedMessage, tokens)));
+		isSyntacticPredicateQuestion(normalizedMessage, tokens);
 
 	if (isStateQuestion) {
 		const questionEnd = normalizedMessage.indexOf('?');
@@ -561,7 +565,11 @@ function getActionIntentTokens(
 }
 
 function isSyntacticPredicateQuestion(normalizedMessage: string, tokens: Set<string>): boolean {
-	return PREDICATE_QUESTION_PATTERN.test(normalizedMessage) && intersects(tokens, ACTION_SIGNALS);
+	return (
+		PREDICATE_QUESTION_PATTERN.test(normalizedMessage) &&
+		!AUXILIARY_ACTION_REQUEST_PATTERN.test(normalizedMessage) &&
+		intersects(tokens, ACTION_SIGNALS)
+	);
 }
 
 function sliceAfterFirst(value: string, delimiter: RegExp): string {

@@ -241,6 +241,19 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Is the thermostat set to 20')).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
 	});
 
+	it('preserves actions in polite interrogative commands', () => {
+		expect(selectNames('Are you able to turn off the kitchen light?')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			names.control,
+			names.spaceLighting,
+		]);
+		expect(selectNames('Is it possible to turn off the kitchen light?')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			names.control,
+			names.spaceLighting,
+		]);
+	});
+
 	it('does not classify an explicit current-status question as a generic explanation', () => {
 		expect(selectNames("What is a thermostat's current status?")).toEqual([
 			SEARCH_HOME_TOOL_NAME,
@@ -267,6 +280,7 @@ describe('BuddyToolSelectionService', () => {
 	it('preserves tools for an ambiguous bare clarification reply', () => {
 		expect(selectNames('Morning')).toEqual(definitions.map((definition) => definition.name));
 		expect(selectNames('Good Morning')).toEqual(definitions.map((definition) => definition.name));
+		expect(selectNames('Thank You')).toEqual(definitions.map((definition) => definition.name));
 	});
 
 	it('falls back when an unrecognized action follows a read clause', () => {
