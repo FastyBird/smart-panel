@@ -92,6 +92,10 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Boost the bedroom temperature.')).toEqual(definitions.map((definition) => definition.name));
 	});
 
+	it('falls back conservatively for a question-form command with an unknown verb', () => {
+		expect(selectNames('Would you execute Evening scene?')).toEqual(definitions.map((definition) => definition.name));
+	});
+
 	it('keeps both lighting action shapes when the request names a room', () => {
 		expect(selectNames('Turn off the kitchen lights.')).toEqual([
 			SEARCH_HOME_TOOL_NAME,

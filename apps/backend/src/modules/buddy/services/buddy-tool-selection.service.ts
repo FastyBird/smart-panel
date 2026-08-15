@@ -327,7 +327,7 @@ export class BuddyToolSelectionService {
 					hasTrailingReadClause ||
 					hasStateFirstAction ||
 					hasGroundedStateFirstAction ||
-					(message.includes('?') && hasHomeSignal)))
+					(message.includes('?') && hasHomeSignal && intersects(tokens, GROUNDED_STATE_SIGNALS))))
 		) {
 			for (const name of READ_TOOL_NAMES) selected.add(name);
 		}
