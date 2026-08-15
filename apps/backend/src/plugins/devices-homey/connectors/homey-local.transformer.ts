@@ -6,7 +6,11 @@ import {
 	createHomeyCapability,
 } from '../models/homey-capability.model';
 import { HomeyDevice, HomeyDeviceEnergy } from '../models/homey-device.model';
+import { HomeyEvent, HomeyEventType } from '../models/homey-event.model';
+import { HomeySystemInfo } from '../models/homey-system-info.model';
 import { HomeyZone } from '../models/homey-zone.model';
+
+import { HomeyLocalTransportEvent } from './homey-local.transport';
 
 type HomeyProtocolRecord = Record<string, unknown>;
 
@@ -30,6 +34,36 @@ const requireString = (value: unknown, label: string): string => {
 	return parsed;
 };
 
+const requireBoolean = (value: unknown, label: string): boolean => {
+	const parsed = asBoolean(value);
+
+	if (parsed === null) {
+		throw new Error(`Homey protocol ${label} is missing`);
+	}
+
+	return parsed;
+};
+
+const firstString = (...values: unknown[]): string | null => {
+	for (const value of values) {
+		const parsed = asString(value);
+
+		if (parsed !== null && parsed.length > 0) {
+			return parsed;
+		}
+	}
+
+	return null;
+};
+
+const eventMetadata = (value: HomeyProtocolRecord): Pick<HomeyEvent, 'occurredAt' | 'sequence'> => ({
+	occurredAt: firstString(value.occurredAt, value.timestamp, value.lastUpdated),
+	sequence:
+		typeof value.sequence === 'string' || (typeof value.sequence === 'number' && Number.isFinite(value.sequence))
+			? value.sequence
+			: null,
+});
+
 const capabilityType = (value: unknown): HomeyCapabilityType => {
 	switch (value) {
 		case HomeyCapabilityType.BOOLEAN:
@@ -52,6 +86,28 @@ const capabilityValue = (value: unknown): HomeyCapabilityValue => {
 	}
 
 	return asNumber(value);
+};
+
+const requireCapabilityValue = (value: HomeyProtocolRecord, key: string, label: string): HomeyCapabilityValue => {
+	if (!Object.hasOwn(value, key)) {
+		throw new Error(`Homey protocol ${label} is missing`);
+	}
+
+	const candidate = value[key];
+
+	if (candidate === null) {
+		return null;
+	}
+
+	if (typeof candidate === 'boolean' || typeof candidate === 'string') {
+		return candidate;
+	}
+
+	if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+		return candidate;
+	}
+
+	throw new Error(`Homey protocol ${label} is malformed`);
 };
 
 const enumValues = (value: unknown): readonly HomeyCapabilityEnumValue[] => {
@@ -115,6 +171,21 @@ const capabilityIds = (device: HomeyProtocolRecord, capabilities: HomeyProtocolR
 	}
 
 	return Object.keys(capabilities);
+};
+
+/** Converts the local system manager response into a transport-neutral snapshot. */
+export const transformHomeyLocalSystemInfo = (value: unknown): HomeySystemInfo => {
+	if (!isRecord(value)) {
+		throw new Error('Homey protocol system response is malformed');
+	}
+
+	return {
+		id: requireString(firstString(value.id, value.homeyId, value.cloudId, value._id), 'system id'),
+		name: firstString(value.name, value.homeyName),
+		version: requireString(firstString(value.homeyVersion, value.version), 'system version'),
+		tier: firstString(value.tier, value.homeyTier),
+		model: firstString(value.homeyModelName, value.model),
+	};
 };
 
 /** Converts the Homey zone map into source-ordered normalized zones with root-to-leaf paths. */
@@ -191,4 +262,70 @@ export const transformHomeyLocalDevices = (value: unknown, zones: readonly Homey
 	}
 
 	return Object.values(value).map((device) => transformHomeyLocalDevice(device, zones));
+};
+
+/** Converts one local manager/item event while preserving full capability IDs. */
+export const transformHomeyLocalEvent = (event: HomeyLocalTransportEvent): HomeyEvent => {
+	if (!isRecord(event.payload)) {
+		throw new Error('Homey protocol event payload is malformed');
+	}
+
+	const payload = event.payload;
+	const metadata = eventMetadata(payload);
+
+	switch (event.type) {
+		case 'capability':
+			return {
+				type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+				deviceId: requireString(event.deviceId ?? payload.deviceId, 'event device id'),
+				capabilityId: requireString(firstString(payload.capabilityId, payload.capability), 'event capability id'),
+				value: requireCapabilityValue(payload, 'value', 'event capability value'),
+				lastUpdatedAt: firstString(payload.lastUpdatedAt, payload.lastUpdated),
+				...metadata,
+			};
+		case 'device.create':
+			return {
+				type: HomeyEventType.DEVICE_ADDED,
+				deviceId: requireString(firstString(payload.id, payload.deviceId), 'event device id'),
+				...metadata,
+			};
+		case 'device.delete':
+			return {
+				type: HomeyEventType.DEVICE_REMOVED,
+				deviceId: requireString(firstString(payload.id, payload.deviceId), 'event device id'),
+				...metadata,
+			};
+		case 'device.availability':
+			return {
+				type: HomeyEventType.DEVICE_AVAILABILITY_CHANGED,
+				deviceId: requireString(firstString(payload.id, payload.deviceId), 'event device id'),
+				available: requireBoolean(payload.available, 'event availability'),
+				availabilityMessage: firstString(payload.unavailableMessage, payload.availabilityMessage),
+				...metadata,
+			};
+		case 'device.update':
+			return {
+				type: HomeyEventType.DEVICE_UPDATED,
+				deviceId: requireString(firstString(payload.id, payload.deviceId), 'event device id'),
+				...metadata,
+			};
+		case 'zone.create':
+			return {
+				type: HomeyEventType.ZONE_ADDED,
+				zoneId: requireString(firstString(payload.id, payload.zoneId), 'event zone id'),
+				...metadata,
+			};
+		case 'zone.delete':
+			return {
+				type: HomeyEventType.ZONE_REMOVED,
+				zoneId: requireString(firstString(payload.id, payload.zoneId), 'event zone id'),
+				...metadata,
+			};
+		case 'zone.update':
+			return {
+				type: HomeyEventType.ZONE_UPDATED,
+				zoneId: requireString(firstString(payload.id, payload.zoneId), 'event zone id'),
+				...metadata,
+			};
+	}
 };
