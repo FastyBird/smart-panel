@@ -9,7 +9,7 @@ const propertyValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null
 const devicePropertySchema = z
 	.object({
 		id: z.string(),
-		name: z.string(),
+		name: z.string().nullable(),
 		category: z.string(),
 		data_type: z.string(),
 		unit: z.string().nullable(),

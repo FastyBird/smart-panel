@@ -6,8 +6,15 @@ import { DeviceConnectionStateService } from '../../devices/services/device-conn
 import { DevicesService } from '../../devices/services/devices.service';
 import { PropertyTimeseriesService } from '../../devices/services/property-timeseries.service';
 import { EnergyDataService } from '../../energy/services/energy-data.service';
+import { HomeContextInvalidCursorError } from '../../home-context/home-context-pagination.errors';
 import { HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY } from '../../home-context/home-context.constants';
 import { HomeContextSpaceNotFoundError } from '../../home-context/home-context.errors';
+import {
+	HomeStateDeviceNotFoundError,
+	HomeStateInvalidRangeError,
+	HomeStatePropertyNotFoundError,
+	HomeStateTimeseriesPointLimitError,
+} from '../../home-context/home-state.errors';
 import { HomeSnapshotResult } from '../../home-context/models/home-context-result.model';
 import { HomeContextQueryService } from '../../home-context/services/home-context-query.service';
 import { HomeStateQueryService } from '../../home-context/services/home-state-query.service';
@@ -242,6 +249,82 @@ describe('McpContextService', () => {
 			profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY,
 			spaceId: 'room-1',
 		});
+	});
+
+	it('delegates every direct read and space page to the shared compatibility profile without remapping', async () => {
+		const sharedResult = Object.freeze({ marker: 'shared-result' }) as never;
+		const deviceState = jest.spyOn(homeStateQueryService, 'getDeviceState').mockResolvedValue(sharedResult);
+		const propertyTimeseries = jest
+			.spyOn(homeStateQueryService, 'getPropertyTimeseries')
+			.mockResolvedValue(sharedResult);
+		const energySummary = jest.spyOn(homeStateQueryService, 'getEnergySummary').mockResolvedValue(sharedResult);
+		const weatherState = jest.spyOn(homeStateQueryService, 'getWeather').mockResolvedValue(sharedResult);
+		const securityStatus = jest.spyOn(homeStateQueryService, 'getSecurityStatus').mockResolvedValue(sharedResult);
+		const spacePage = jest.spyOn(homeContextQueryService, 'listSpaces').mockResolvedValue(sharedResult);
+
+		await expect(service.getDeviceState('device-id')).resolves.toBe(sharedResult);
+		await expect(
+			service.getPropertyTimeseries('property-id', '2026-08-01T00:00:00.000Z', '2026-08-01T01:00:00.000Z', '5m'),
+		).resolves.toBe(sharedResult);
+		await expect(
+			service.getEnergySummary('2026-08-01T00:00:00.000Z', '2026-08-02T00:00:00.000Z', 'room-id'),
+		).resolves.toBe(sharedResult);
+		await expect(service.getWeather('location-id')).resolves.toBe(sharedResult);
+		await expect(service.getSecurityStatus()).resolves.toBe(sharedResult);
+		await expect(service.listSpaces('50')).resolves.toBe(sharedResult);
+
+		expect(deviceState).toHaveBeenCalledWith({
+			deviceId: 'device-id',
+			profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY,
+		});
+		expect(propertyTimeseries).toHaveBeenCalledWith({
+			propertyId: 'property-id',
+			from: '2026-08-01T00:00:00.000Z',
+			to: '2026-08-01T01:00:00.000Z',
+			bucket: '5m',
+			profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY,
+		});
+		expect(energySummary).toHaveBeenCalledWith({
+			from: '2026-08-01T00:00:00.000Z',
+			to: '2026-08-02T00:00:00.000Z',
+			spaceId: 'room-id',
+			profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY,
+		});
+		expect(weatherState).toHaveBeenCalledWith({
+			locationId: 'location-id',
+			profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY,
+		});
+		expect(securityStatus).toHaveBeenCalledWith({ profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY });
+		expect(spacePage).toHaveBeenCalledWith({
+			cursor: '50',
+			profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY,
+		});
+	});
+
+	it('translates shared direct-read errors to the existing MCP HTTP contracts', async () => {
+		jest
+			.spyOn(homeStateQueryService, 'getDeviceState')
+			.mockRejectedValueOnce(new HomeStateDeviceNotFoundError('missing-device'));
+		jest
+			.spyOn(homeStateQueryService, 'getPropertyTimeseries')
+			.mockRejectedValueOnce(new HomeStatePropertyNotFoundError('missing-property'))
+			.mockRejectedValueOnce(new HomeStateInvalidRangeError('timeseries', 'invalid_or_non_ascending'))
+			.mockRejectedValueOnce(new HomeStateTimeseriesPointLimitError(500));
+		jest
+			.spyOn(homeContextQueryService, 'listSpaces')
+			.mockRejectedValueOnce(new HomeContextInvalidCursorError('invalid'));
+
+		await expect(service.getDeviceState('missing-device')).rejects.toThrow('Requested device does not exist');
+		await expect(service.getPropertyTimeseries('missing-property', 'from', 'to', '5m')).rejects.toThrow(
+			'Requested property does not exist',
+		);
+		await expect(service.getPropertyTimeseries('property-id', 'from', 'to', '5m')).rejects.toThrow(
+			'The timeseries range must contain valid ascending timestamps',
+		);
+		await expect(service.getPropertyTimeseries('property-id', 'from', 'to', '5m')).rejects.toThrow(
+			'The selected timeseries bucket would exceed 500 points',
+		);
+		await expect(service.listSpaces('invalid')).rejects.toThrow('The space resource cursor is invalid.');
 	});
 
 	it('translates a shared missing-space error to the existing MCP not-found contract', async () => {
@@ -937,7 +1020,7 @@ describe('McpContextService', () => {
 			properties: [
 				{
 					id: 'property-id',
-					name: 'Brightness',
+					name: null,
 					category: 'brightness',
 					dataType: 'uchar',
 					unit: '%',
@@ -970,7 +1053,7 @@ describe('McpContextService', () => {
 					properties: [
 						{
 							id: 'property-id',
-							name: 'Brightness',
+							name: null,
 							category: 'brightness',
 							data_type: 'uchar',
 							unit: '%',

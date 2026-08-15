@@ -107,7 +107,7 @@ describe('HomeStateQueryService', () => {
 			properties: [
 				{
 					id: 'property-id',
-					name: 'Brightness',
+					name: null,
 					category: 'brightness',
 					dataType: 'uchar',
 					unit: '%',
@@ -138,7 +138,7 @@ describe('HomeStateQueryService', () => {
 					properties: [
 						{
 							id: 'property-id',
-							name: 'Brightness',
+							name: null,
 							category: 'brightness',
 							data_type: 'uchar',
 							unit: '%',
@@ -192,6 +192,37 @@ describe('HomeStateQueryService', () => {
 			}),
 		).rejects.toEqual(expect.objectContaining({ constructor: HomeStateTimeseriesPointLimitError, maxPoints: 500 }));
 		expect(properties.findOne).not.toHaveBeenCalled();
+	});
+
+	it('accepts exactly 500 projected timeseries points and rejects 501 before another lookup', async () => {
+		const property = {
+			id: 'property-id',
+			channel: { device: { hidden: false } },
+		} as unknown as ChannelPropertyEntity;
+		properties.findOne.mockResolvedValue(property);
+		timeseries.queryTimeseriesStrict.mockResolvedValue({ bucket: '1m', points: [] });
+
+		await expect(
+			service.getPropertyTimeseries({
+				propertyId: 'property-id',
+				from: '2026-08-01T00:00:00.000Z',
+				to: '2026-08-01T08:20:00.000Z',
+				bucket: '1m',
+				profile,
+			}),
+		).resolves.toEqual(expect.objectContaining({ property_id: 'property-id', truncated: false }));
+
+		await expect(
+			service.getPropertyTimeseries({
+				propertyId: 'property-id',
+				from: '2026-08-01T00:00:00.000Z',
+				to: '2026-08-01T08:21:00.000Z',
+				bucket: '1m',
+				profile,
+			}),
+		).rejects.toEqual(expect.objectContaining({ constructor: HomeStateTimeseriesPointLimitError, maxPoints: 500 }));
+		expect(properties.findOne).toHaveBeenCalledTimes(1);
+		expect(timeseries.queryTimeseriesStrict).toHaveBeenCalledTimes(1);
 	});
 
 	it('rejects hidden property owners and preserves strict storage failures', async () => {

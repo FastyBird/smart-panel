@@ -1225,7 +1225,7 @@ captured as an opt-in/expected baseline measurement rather than a failing normal
       eligible metadata in the database, reconcile cache/storage values in chunks, short-circuit only sound outcomes,
       and return eligible/evaluated/unknown/freshness/partial metadata when completeness cannot be established.
 - [ ] Preserve `observed_at`, `total`, `returned`, `partial`, and `truncated` metadata.
-- [x] Import `HomeContextModule` from MCP and prove the MCP endpoint can be disabled while shared queries still work.
+- [ ] Import `HomeContextModule` from MCP and prove the MCP endpoint can be disabled while shared queries still work.
 - [x] Avoid a Buddy-to-`McpModule` dependency and avoid a domain-to-`ToolsModule` cycle.
 - [ ] Add targeted catalog cache invalidation and in-flight query deduplication without changing evaluator snapshot cache
       semantics.

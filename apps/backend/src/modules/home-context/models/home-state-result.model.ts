@@ -2,7 +2,7 @@ import { HomeSnapshotEnergy, HomeSnapshotSecurity, HomeSnapshotWeather } from '.
 
 export interface HomeDevicePropertyResult {
 	id: string;
-	name: string;
+	name: string | null;
 	category: string;
 	data_type: string;
 	unit: string | null;
