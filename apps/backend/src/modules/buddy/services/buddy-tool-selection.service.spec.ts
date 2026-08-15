@@ -140,6 +140,9 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Run Bedtime and tell me whether the window is open.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
+		expect(selectNames('Run Bedtime and read the hallway sensor.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 		expect(selectNames('Read the hallway sensor, then close the blinds')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
@@ -321,6 +324,10 @@ describe('BuddyToolSelectionService', () => {
 		]);
 		expect(selectNames('Could the window be open?')).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
 		expect(selectNames('What has the thermostat been set to?')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+		]);
+		expect(selectNames('What did I set the thermostat to?')).toEqual([
 			SEARCH_HOME_TOOL_NAME,
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);
