@@ -1203,10 +1203,10 @@ captured as an opt-in/expected baseline measurement rather than a failing normal
 
 **Tasks:**
 
-- [ ] Create `HomeContextModule` with typed inputs, outputs, shared limits, and schema validation.
+- [x] Create `HomeContextModule` with typed inputs, outputs, shared limits, and schema validation.
 - [ ] Move bounded home/device/weather/energy/security/timeseries mapping from MCP into shared services without changing
       MCP external output behavior.
-- [ ] Implement shared `getHomeSnapshot(optionalSpaceId, trustedProfile)` and make MCP `get_home_context` delegate both
+- [x] Implement shared `getHomeSnapshot(optionalSpaceId, trustedProfile)` and make MCP `get_home_context` delegate both
       its whole-home and scoped variants to it. Preserve the composite spaces/devices/scenes/weather/energy/security
       shape, ordering, visibility, disabled entities, section caps, totals, and truncation; do not expose the MCP
       composite profile as a Buddy conversational tool/fallback.

@@ -6,6 +6,10 @@ import { DeviceConnectionStateService } from '../../devices/services/device-conn
 import { DevicesService } from '../../devices/services/devices.service';
 import { PropertyTimeseriesService } from '../../devices/services/property-timeseries.service';
 import { EnergyDataService } from '../../energy/services/energy-data.service';
+import { HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY } from '../../home-context/home-context.constants';
+import { HomeContextSpaceNotFoundError } from '../../home-context/home-context.errors';
+import { HomeSnapshotResult } from '../../home-context/models/home-context-result.model';
+import { HomeContextQueryService } from '../../home-context/services/home-context-query.service';
 import { ScenesService } from '../../scenes/services/scenes.service';
 import { SecurityService } from '../../security/services/security.service';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
@@ -38,6 +42,7 @@ import { McpInstallationService } from './mcp-installation.service';
 
 describe('McpContextService', () => {
 	let service: McpContextService;
+	let homeContextQueryService: HomeContextQueryService;
 	let spaces: {
 		findSummaryPage: jest.Mock;
 		findOne: jest.Mock;
@@ -103,21 +108,49 @@ describe('McpContextService', () => {
 		};
 		energy = {
 			getSummary: jest.fn().mockRejectedValue(new Error('energy unavailable')),
-			getSpaceSummary: jest.fn(),
-			getDeviceZoneSummary: jest.fn(),
+			getSpaceSummary: jest.fn().mockResolvedValue({
+				totalConsumptionKwh: 4,
+				totalProductionKwh: 1,
+				totalGridImportKwh: 3.5,
+				totalGridExportKwh: 0.5,
+				netKwh: 3,
+				netGridKwh: 3,
+				hasGridMetrics: true,
+				lastUpdatedAt: null,
+			}),
+			getDeviceZoneSummary: jest.fn().mockResolvedValue({
+				totalConsumptionKwh: 4,
+				totalProductionKwh: 1,
+				totalGridImportKwh: 3.5,
+				totalGridExportKwh: 0.5,
+				netKwh: 3,
+				netGridKwh: 3,
+				hasGridMetrics: true,
+				lastUpdatedAt: null,
+			}),
 		};
 		security = { getBoundedStatus: jest.fn().mockRejectedValue(new Error('security unavailable')) };
+
+		homeContextQueryService = new HomeContextQueryService(
+			spaces as unknown as SpacesService,
+			devices as unknown as DevicesService,
+			connectionStates as unknown as DeviceConnectionStateService,
+			scenes as unknown as ScenesService,
+			weather as unknown as WeatherService,
+			energy as unknown as EnergyDataService,
+			security as unknown as SecurityService,
+		);
 
 		service = new McpContextService(
 			{ getModuleConfig: jest.fn(() => ({ timezone: 'Europe/Prague' })) } as unknown as ConfigService,
 			{ getInstallationId: jest.fn().mockResolvedValue('installation-id') } as unknown as McpInstallationService,
+			homeContextQueryService,
 			spaces as unknown as SpacesService,
 			devices as unknown as DevicesService,
 			connectionStates as unknown as DeviceConnectionStateService,
 			channels as unknown as ChannelsService,
 			properties as unknown as ChannelsPropertiesService,
 			timeseries as unknown as PropertyTimeseriesService,
-			scenes as unknown as ScenesService,
 			weather as unknown as WeatherService,
 			energy as unknown as EnergyDataService,
 			security as unknown as SecurityService,
@@ -180,6 +213,38 @@ describe('McpContextService', () => {
 			timeseriesPoints: 500,
 			energyRangeDays: 31,
 		});
+	});
+
+	it('delegates whole-home and scoped context to the shared compatibility profile without remapping the result', async () => {
+		const snapshot = {
+			scope: { type: 'space', id: 'room-1', name: 'Kitchen' },
+			spaces: [],
+			devices: [],
+			scenes: [],
+			weather: null,
+			energy: null,
+			security: null,
+			limits: { spaces_truncated: false, devices_truncated: false, scenes_truncated: false },
+		} as HomeSnapshotResult;
+		const getHomeSnapshot = jest.spyOn(homeContextQueryService, 'getHomeSnapshot').mockResolvedValue(snapshot);
+
+		await expect(service.getHomeContext()).resolves.toBe(snapshot);
+		await expect(service.getHomeContext('room-1')).resolves.toBe(snapshot);
+		expect(getHomeSnapshot).toHaveBeenNthCalledWith(1, {
+			profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY,
+		});
+		expect(getHomeSnapshot).toHaveBeenNthCalledWith(2, {
+			profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY,
+			spaceId: 'room-1',
+		});
+	});
+
+	it('translates a shared missing-space error to the existing MCP not-found contract', async () => {
+		jest
+			.spyOn(homeContextQueryService, 'getHomeSnapshot')
+			.mockRejectedValue(new HomeContextSpaceNotFoundError('missing-space'));
+
+		await expect(service.getHomeContext('missing-space')).rejects.toThrow('Requested space does not exist');
 	});
 
 	it('bounds compact home context and normalizes unavailable optional domains', async () => {
@@ -667,7 +732,14 @@ describe('McpContextService', () => {
 		spaces.findOne.mockResolvedValue(master);
 		spaces.resolveSnapshotScope.mockResolvedValue({ deviceScope: {}, wholeHome: true });
 		spaces.findVisibleDeviceSummariesBySpace.mockResolvedValue({ devices: [], total: 3 });
-		energy.getSummary.mockResolvedValue({ totalConsumptionKwh: 5 });
+		energy.getSummary.mockResolvedValue({
+			totalConsumptionKwh: 5,
+			totalProductionKwh: 1,
+			totalGridImportKwh: 4,
+			totalGridExportKwh: 0,
+			hasGridMetrics: true,
+			lastUpdatedAt: null,
+		});
 
 		const result = await service.getHomeContext('master-id');
 

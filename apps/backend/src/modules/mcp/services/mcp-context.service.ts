@@ -8,10 +8,12 @@ import { ChannelPropertyEntity, DeviceConnectionStatus, DeviceEntity } from '../
 import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
 import { ChannelsService } from '../../devices/services/channels.service';
 import { DeviceConnectionStateService } from '../../devices/services/device-connection-state.service';
-import { DevicesService, VisibleDeviceSpaceCounts } from '../../devices/services/devices.service';
+import { DevicesService } from '../../devices/services/devices.service';
 import { BucketDuration, PropertyTimeseriesService } from '../../devices/services/property-timeseries.service';
 import { EnergyDataService } from '../../energy/services/energy-data.service';
-import { ScenesService } from '../../scenes/services/scenes.service';
+import { HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY } from '../../home-context/home-context.constants';
+import { HomeContextSpaceNotFoundError } from '../../home-context/home-context.errors';
+import { HomeContextQueryService } from '../../home-context/services/home-context-query.service';
 import { SecurityService } from '../../security/services/security.service';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { SpacesService } from '../../spaces/services/spaces.service';
@@ -21,8 +23,6 @@ import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
 import { WeatherService } from '../../weather/services/weather.service';
 import {
 	MCP_MAX_CHANNELS_PER_DEVICE,
-	MCP_MAX_CONTEXT_DEVICES,
-	MCP_MAX_CONTEXT_SCENES,
 	MCP_MAX_CONTEXT_SPACES,
 	MCP_MAX_ENERGY_RANGE_DAYS,
 	MCP_MAX_FORECAST_DAYS,
@@ -63,13 +63,13 @@ export class McpContextService {
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly installationService: McpInstallationService,
+		private readonly homeContextQueryService: HomeContextQueryService,
 		private readonly spacesService: SpacesService,
 		private readonly devicesService: DevicesService,
 		private readonly deviceConnectionStateService: DeviceConnectionStateService,
 		private readonly channelsService: ChannelsService,
 		private readonly propertiesService: ChannelsPropertiesService,
 		private readonly timeseriesService: PropertyTimeseriesService,
-		private readonly scenesService: ScenesService,
 		private readonly weatherService: WeatherService,
 		private readonly energyService: EnergyDataService,
 		private readonly securityService: SecurityService,
@@ -95,83 +95,20 @@ export class McpContextService {
 	}
 
 	async getHomeContext(spaceId?: string): Promise<Record<string, unknown>> {
-		const selectedSpace = spaceId ? await this.spacesService.findOne(spaceId) : null;
+		try {
+			const snapshot = await this.homeContextQueryService.getHomeSnapshot({
+				profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY,
+				...(spaceId ? { spaceId } : {}),
+			});
 
-		if (spaceId && !selectedSpace) {
-			throw new NotFoundException('Requested space does not exist');
+			return snapshot as unknown as Record<string, unknown>;
+		} catch (error) {
+			if (error instanceof HomeContextSpaceNotFoundError) {
+				throw new NotFoundException('Requested space does not exist');
+			}
+
+			throw error;
 		}
-		const snapshotScope = selectedSpace ? await this.spacesService.resolveSnapshotScope(selectedSpace) : null;
-		const spaceCountsPromise: Promise<VisibleDeviceSpaceCounts | null> = selectedSpace
-			? Promise.resolve<VisibleDeviceSpaceCounts | null>(null)
-			: this.devicesService.getVisibleSpaceCounts();
-
-		const [spacePage, devicePage, spaceCounts, scenePage, weather, energy, security] = await Promise.all([
-			selectedSpace
-				? Promise.resolve({ spaces: [selectedSpace], total: 1 })
-				: this.spacesService.findSummaryPage(MCP_MAX_CONTEXT_SPACES + 1, 0),
-			selectedSpace
-				? this.spacesService.findVisibleDeviceSummariesBySpace(selectedSpace.id, MCP_MAX_CONTEXT_DEVICES)
-				: this.devicesService.findVisibleSummaryPage(MCP_MAX_CONTEXT_DEVICES),
-			spaceCountsPromise,
-			this.scenesService.findSummaryPage(MCP_MAX_CONTEXT_SCENES, snapshotScope?.sceneSpaceIds),
-			this.optional(() => this.weatherService.getPrimaryWeather()),
-			this.optional(() =>
-				this.getEnergySummaryData(
-					undefined,
-					undefined,
-					snapshotScope?.wholeHome ? undefined : (selectedSpace ?? undefined),
-				),
-			),
-			this.optional(() =>
-				this.securityService.getBoundedStatus(
-					MCP_MAX_SECURITY_DEVICES,
-					MCP_MAX_SECURITY_CHANNELS_PER_DEVICE,
-					MCP_MAX_SECURITY_PROPERTIES_PER_CHANNEL,
-					snapshotScope?.securityDeviceScope ?? snapshotScope?.deviceScope,
-				),
-			),
-		]);
-		await this.hydrateDeviceStatusesStrict(devicePage.devices);
-
-		const devices = devicePage.devices.filter((device) => !device.hidden);
-		const spaces = spacePage.spaces.slice(0, MCP_MAX_CONTEXT_SPACES);
-		const scenes = scenePage.scenes;
-		const scopedZoneId = selectedSpace?.type === SpaceType.ZONE ? selectedSpace.id : undefined;
-
-		return {
-			scope: selectedSpace ? { type: 'space', id: selectedSpace.id, name: selectedSpace.name } : { type: 'home' },
-			spaces: spaces.map((space) => ({
-				id: space.id,
-				name: space.name,
-				type: space.type,
-				parent_id: space.parentId,
-				device_count: selectedSpace ? devicePage.total : this.getSpaceDeviceCount(space, spaceCounts, devicePage.total),
-			})),
-			devices: devices.map((device) => this.mapDeviceSummary(device, scopedZoneId)),
-			scenes: scenes.map((scene) => ({
-				id: scene.id,
-				name: scene.name,
-				category: scene.category,
-				enabled: scene.enabled,
-				triggerable: scene.triggerable,
-				primary_space_id: scene.primarySpaceId,
-			})),
-			weather: weather ? this.mapWeather(weather) : null,
-			energy,
-			security: security
-				? this.mapSecurity(
-						security.status,
-						security.devicesTruncated,
-						security.channelsTruncated,
-						security.propertiesTruncated,
-					)
-				: null,
-			limits: {
-				spaces_truncated: spacePage.total > spaces.length,
-				devices_truncated: devicePage.total > devices.length,
-				scenes_truncated: scenePage.total > scenes.length,
-			},
-		};
 	}
 
 	async getDeviceState(deviceId: string): Promise<Record<string, unknown>> {
@@ -342,22 +279,6 @@ export class McpContextService {
 		};
 	}
 
-	private mapDeviceSummary(device: DeviceEntity, scopedZoneId?: string): Record<string, unknown> {
-		return {
-			id: device.id,
-			name: device.name,
-			category: device.category,
-			enabled: device.enabled,
-			room_id: device.roomId,
-			zone_ids: this.getZoneIds(device, scopedZoneId),
-			status: {
-				online: device.status?.online ?? false,
-				state: device.status?.status ?? 'unknown',
-				last_changed: this.toIsoString(device.status?.lastChanged),
-			},
-		};
-	}
-
 	private mapDevice(
 		device: DeviceEntity,
 		channelTotal = device.channels?.length ?? 0,
@@ -482,39 +403,6 @@ export class McpContextService {
 		return typeof property.channel === 'string' ? property.channel : property.channel.id;
 	}
 
-	private getZoneIds(device: DeviceEntity, scopedZoneId?: string): string[] {
-		return [...new Set([...(device.zoneIds ?? []), ...(scopedZoneId ? [scopedZoneId] : [])])];
-	}
-
-	private getSpaceDeviceCount(
-		space: SpaceEntity,
-		counts: VisibleDeviceSpaceCounts | null,
-		wholeHomeTotal: number,
-	): number {
-		if (!counts) {
-			return 0;
-		}
-		if (space.type === SpaceType.MASTER) {
-			return wholeHomeTotal;
-		}
-
-		if (space.type === SpaceType.ROOM) {
-			return counts.rooms[space.id] ?? 0;
-		}
-
-		if (space.type !== SpaceType.ZONE) {
-			return 0;
-		}
-
-		const category = (space as { category?: string | null }).category ?? null;
-
-		if (!isFloorZoneCategory(category)) {
-			return counts.zones[space.id] ?? 0;
-		}
-
-		return counts.floors[space.id] ?? 0;
-	}
-
 	private toIsoString(value: Date | string | null | undefined): string | null {
 		if (!value) {
 			return null;
@@ -525,13 +413,5 @@ export class McpContextService {
 
 	private toDateInput(value: Date): string {
 		return Number.isFinite(value.getTime()) ? value.toISOString() : '';
-	}
-
-	private async optional<T>(callback: () => Promise<T>): Promise<T | null> {
-		try {
-			return await callback();
-		} catch {
-			return null;
-		}
 	}
 }
