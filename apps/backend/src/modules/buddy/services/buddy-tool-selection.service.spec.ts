@@ -41,6 +41,8 @@ describe('BuddyToolSelectionService', () => {
 
 	it('omits all built-in schemas for general conversation', () => {
 		expect(selectNames('Hello! Tell me a joke.')).toEqual([]);
+		expect(selectNames('How are you?')).toEqual([]);
+		expect(selectNames('Write me a poem.')).toEqual([]);
 	});
 
 	it.each([
@@ -80,6 +82,13 @@ describe('BuddyToolSelectionService', () => {
 	it('falls back to every built-in tool for ambiguous home-related wording', () => {
 		expect(selectNames('Help me with my smart home.')).toEqual(definitions.map((definition) => definition.name));
 	});
+
+	it.each(['Is Aurora on?', '¿Está encendida Aurora?', 'Tell me about Aurora.'])(
+		'falls back to every built-in tool for unknown or low-confidence wording: %s',
+		(message) => {
+			expect(selectNames(message)).toEqual(definitions.map((definition) => definition.name));
+		},
+	);
 
 	it('preserves unknown extension tools and original registry order', () => {
 		const extension = tool('extension_specific_tool', ToolAccessKind.READ);

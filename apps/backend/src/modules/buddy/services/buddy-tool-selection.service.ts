@@ -177,6 +177,42 @@ const DEVICE_SIGNALS = new Set([
 	'zaluzie',
 	'zarizeni',
 ]);
+const GENERAL_CONVERSATION_SIGNALS = new Set([
+	'hello',
+	'hey',
+	'hi',
+	'how',
+	'joke',
+	'morning',
+	'poem',
+	'thank',
+	'thanks',
+	'who',
+	'ahoj',
+	'dekuji',
+	'diky',
+]);
+const GENERAL_CONVERSATION_FILLERS = new Set([
+	'a',
+	'am',
+	'are',
+	'about',
+	'good',
+	'i',
+	'is',
+	'me',
+	'morning',
+	'tell',
+	'the',
+	'write',
+	'you',
+	'your',
+	'jaky',
+	'jak',
+	'jsi',
+	'mi',
+	'rekni',
+]);
 
 /**
  * Selects built-in Buddy schemas for the current message.
@@ -206,7 +242,7 @@ export class BuddyToolSelectionService {
 			this.selectActionTools(tokens, selected);
 		}
 
-		if (hasHomeSignal && selected.size === 0) {
+		if (selected.size === 0 && (hasHomeSignal || !isClearlyGeneralConversation(tokens))) {
 			for (const name of BUILT_IN_TOOL_NAMES) selected.add(name);
 		}
 
@@ -259,4 +295,14 @@ function intersects(tokens: Set<string>, signals: Set<string>): boolean {
 	}
 
 	return false;
+}
+
+function isClearlyGeneralConversation(tokens: Set<string>): boolean {
+	if (!intersects(tokens, GENERAL_CONVERSATION_SIGNALS)) return false;
+
+	for (const token of tokens) {
+		if (!GENERAL_CONVERSATION_SIGNALS.has(token) && !GENERAL_CONVERSATION_FILLERS.has(token)) return false;
+	}
+
+	return true;
 }
