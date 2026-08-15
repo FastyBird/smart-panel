@@ -371,6 +371,26 @@ describe('PropertyValueService', () => {
 			expect(service['valuesMap'].get(property.id)).toMatchObject({ value: 12, trend: 'rising' });
 		});
 
+		it('refreshes a completed chunk when a later chunk observes a newer cache write', async () => {
+			const properties = makeProperties(51);
+			storageService.queryStrict.mockResolvedValueOnce([]).mockImplementationOnce(() => {
+				service['valuesMap'].set(properties[0].id, new PropertyValueState(99, '2026-08-15T12:00:00.000Z'));
+
+				return Promise.resolve([]);
+			});
+
+			const result = await service.readLatestManyBounded(properties);
+
+			expect(storageService.queryStrict).toHaveBeenCalledTimes(2);
+			expect(result.items[0]).toMatchObject({ status: 'available', source: 'cache', state: { value: 99 } });
+			expect(result).toMatchObject({
+				availableCount: 1,
+				missingCount: 50,
+				cacheCount: 1,
+				storageCount: 50,
+			});
+		});
+
 		it('deduplicates projected source keys and preserves logical property order', async () => {
 			const registry = module.get<PropertyValueSourceRegistryService>(PropertyValueSourceRegistryService);
 			registry.register({

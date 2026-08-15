@@ -342,10 +342,12 @@ export class PropertyValueService {
 		const deadlineAt = Math.min(requestedDeadlineAt, startedAt + BOUNDED_READ_DEFAULT_DEADLINE_MS);
 
 		const items = new Array<BoundedPropertyValueItem | undefined>(properties.length);
+		const sourcePropertyIds = new Array<ChannelPropertyEntity['id']>(properties.length);
 		const unresolvedBySource = new Map<ChannelPropertyEntity['id'], BoundedPropertyValueSourceGroup>();
 
 		for (const [index, property] of properties.entries()) {
 			const sourcePropertyId = this.valueSourceRegistry.resolve(property);
+			sourcePropertyIds[index] = sourcePropertyId;
 			const cached = this.valuesMap.get(sourcePropertyId);
 
 			if (cached) {
@@ -367,14 +369,14 @@ export class PropertyValueService {
 		}
 
 		if (Date.now() >= deadlineAt) {
-			this.fillConcurrentCachedBoundedItems(items, properties, unresolvedBySource);
+			this.refreshBoundedItemsFromCache(items, properties, sourcePropertyIds);
 			this.fillUnprocessedBoundedItems(items, properties, unresolvedBySource);
 
 			return this.buildBoundedResult(items, 'timed_out');
 		}
 
 		if (!this.storageService.isConnected()) {
-			this.fillConcurrentCachedBoundedItems(items, properties, unresolvedBySource);
+			this.refreshBoundedItemsFromCache(items, properties, sourcePropertyIds);
 			this.fillUnprocessedBoundedItems(items, properties, unresolvedBySource);
 
 			return this.buildBoundedResult(items, 'disconnected');
@@ -413,7 +415,7 @@ export class PropertyValueService {
 			}
 		}
 
-		this.fillConcurrentCachedBoundedItems(items, properties, unresolvedBySource);
+		this.refreshBoundedItemsFromCache(items, properties, sourcePropertyIds);
 		this.fillUnprocessedBoundedItems(items, properties, unresolvedBySource);
 
 		return this.buildBoundedResult(items, storageStatus);
@@ -552,23 +554,28 @@ export class PropertyValueService {
 		};
 	}
 
-	private fillConcurrentCachedBoundedItems(
+	private refreshBoundedItemsFromCache(
 		items: Array<BoundedPropertyValueItem | undefined>,
 		properties: ChannelPropertyEntity[],
-		groups: Map<ChannelPropertyEntity['id'], BoundedPropertyValueSourceGroup>,
+		sourcePropertyIds: ChannelPropertyEntity['id'][],
 	): void {
-		for (const [sourcePropertyId, group] of groups) {
+		for (const [index, property] of properties.entries()) {
+			const sourcePropertyId = sourcePropertyIds[index];
 			const cached = this.valuesMap.get(sourcePropertyId);
 
 			if (!cached) {
 				continue;
 			}
+			const current = items[index];
 
-			for (const index of group.indexes) {
-				items[index] = this.toBoundedItem(properties[index].id, sourcePropertyId, cached, 'cache');
+			if (current?.state === cached) {
+				continue;
+			}
+			if (current?.state && !this.isStateNewerOrEqual(cached, current.state)) {
+				continue;
 			}
 
-			groups.delete(sourcePropertyId);
+			items[index] = this.toBoundedItem(property.id, sourcePropertyId, cached, 'cache');
 		}
 	}
 
