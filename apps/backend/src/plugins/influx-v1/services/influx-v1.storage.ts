@@ -110,6 +110,7 @@ function toInfluxQueryOptions(options?: StorageQueryOptions): IQueryOptions | un
 		database: options.database,
 		retentionPolicy: options.retentionPolicy,
 		precision: options.precision,
+		signal: options.signal,
 	};
 }
 

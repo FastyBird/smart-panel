@@ -5,7 +5,7 @@ eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-un
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { HttpError, InfluxDB, Point } from '@influxdata/influxdb-client';
+import { FluxResultObserver, HttpError, InfluxDB, Point } from '@influxdata/influxdb-client';
 
 import { StorageFieldType, StorageMeasurementSchema, StoragePoint } from '../../../modules/storage/storage.types';
 
@@ -14,6 +14,7 @@ import { InfluxV2Storage } from './influx-v2.storage';
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
 const mockCollectRows = jest.fn();
+const mockQueryRows = jest.fn();
 const mockWritePoint = jest.fn();
 const mockFlush = jest.fn();
 const mockClose = jest.fn();
@@ -31,6 +32,7 @@ jest.mock('@influxdata/influxdb-client', () => {
 			}),
 			getQueryApi: jest.fn().mockReturnValue({
 				collectRows: mockCollectRows,
+				queryRows: mockQueryRows,
 			}),
 		})),
 	};
@@ -168,6 +170,28 @@ describe('InfluxV2Storage', () => {
 			mockCollectRows.mockRejectedValue(error);
 
 			await expect(storage.queryStrict('from(bucket: "missing")')).rejects.toBe(error);
+		});
+
+		it('should cancel a strict query when its storage signal is aborted', async () => {
+			const cancel = jest.fn();
+			const controller = new AbortController();
+			const abortError = new Error('query deadline exceeded');
+			mockQueryRows.mockImplementation((_query: string, observer: FluxResultObserver<string[]>) => {
+				observer.useCancellable?.({ cancel, isCancelled: () => false });
+			});
+			const query = storage.queryStrict(
+				`SELECT * FROM property_value
+				 WHERE (propertyId = 'property-a')
+				 GROUP BY "propertyId"
+				 ORDER BY time DESC
+				 LIMIT 5`,
+				{ signal: controller.signal },
+			);
+
+			controller.abort(abortError);
+
+			await expect(query).rejects.toBe(abortError);
+			expect(cancel).toHaveBeenCalledTimes(1);
 		});
 
 		it('should translate grouped latest-value InfluxQL and normalize timestamps', async () => {

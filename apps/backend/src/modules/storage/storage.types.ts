@@ -61,4 +61,6 @@ export interface StorageQueryOptions {
 	retentionPolicy?: string;
 	/** Request-level precision (nanoseconds, milliseconds, etc.). */
 	precision?: 'n' | 'u' | 'ms' | 's' | 'm' | 'h';
+	/** Cancels an in-flight row query and suppresses primary-to-fallback work after cancellation. */
+	signal?: AbortSignal;
 }

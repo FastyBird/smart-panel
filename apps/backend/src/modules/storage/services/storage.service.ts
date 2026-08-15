@@ -143,11 +143,14 @@ export class StorageService {
 	}
 
 	async query<T>(query: string, options?: StorageQueryOptions): Promise<T[]> {
+		this.throwIfQueryAborted(options?.signal);
+
 		// Try primary first, fall back on transient failure
 		if (this.primary?.isAvailable()) {
 			try {
 				return await this.primary.query<T>(query, options);
 			} catch (error) {
+				this.throwIfQueryAborted(options?.signal);
 				const err = error as Error;
 
 				this.logger.error(`Primary query failed, trying fallback: ${err.message}`);
@@ -155,6 +158,7 @@ export class StorageService {
 		}
 
 		if (this.fallback?.isAvailable()) {
+			this.throwIfQueryAborted(options?.signal);
 			return this.fallback.query<T>(query, options);
 		}
 
@@ -166,12 +170,14 @@ export class StorageService {
 	 * but propagate the final failure instead of returning an empty result.
 	 */
 	async queryStrict<T>(query: string, options?: StorageQueryOptions): Promise<T[]> {
+		this.throwIfQueryAborted(options?.signal);
 		let primaryError: unknown;
 
 		if (this.primary?.isAvailable()) {
 			try {
 				return await (this.primary.queryStrict?.<T>(query, options) ?? this.primary.query<T>(query, options));
 			} catch (error) {
+				this.throwIfQueryAborted(options?.signal);
 				primaryError = error;
 				const err = error as Error;
 
@@ -180,6 +186,7 @@ export class StorageService {
 		}
 
 		if (this.fallback?.isAvailable()) {
+			this.throwIfQueryAborted(options?.signal);
 			return this.fallback.queryStrict?.<T>(query, options) ?? this.fallback.query<T>(query, options);
 		}
 
@@ -191,10 +198,13 @@ export class StorageService {
 	}
 
 	async queryRaw<T>(query: string, options?: StorageQueryOptions): Promise<T> {
+		this.throwIfQueryAborted(options?.signal);
+
 		if (this.primary?.isAvailable()) {
 			try {
 				return await this.primary.queryRaw<T>(query, options);
 			} catch (error) {
+				this.throwIfQueryAborted(options?.signal);
 				const err = error as Error;
 
 				this.logger.error(`Primary raw query failed, trying fallback: ${err.message}`);
@@ -202,10 +212,19 @@ export class StorageService {
 		}
 
 		if (this.fallback?.isAvailable()) {
+			this.throwIfQueryAborted(options?.signal);
 			return this.fallback.queryRaw<T>(query, options);
 		}
 
 		return { results: [] } as T;
+	}
+
+	private throwIfQueryAborted(signal?: AbortSignal): void {
+		if (!signal?.aborted) {
+			return;
+		}
+
+		throw signal.reason instanceof Error ? signal.reason : new Error('Storage query aborted');
 	}
 
 	// ─── Measurement Management ───────────────────────────────────────

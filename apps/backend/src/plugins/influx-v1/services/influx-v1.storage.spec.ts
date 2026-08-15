@@ -13,4 +13,18 @@ describe('InfluxV1Storage', () => {
 		await expect(storage.queryStrict('SELECT * FROM property_value')).rejects.toBe(storageError);
 		expect(setupDatabase).toHaveBeenCalledTimes(1);
 	});
+
+	it('forwards the storage abort signal to the Influx v1 request', async () => {
+		const storage = new InfluxV1Storage({ database: 'test' });
+		const query = jest.fn().mockResolvedValue([]);
+		(storage as any).connection = { query };
+		const controller = new AbortController();
+
+		await storage.queryStrict('SELECT * FROM property_value', { signal: controller.signal });
+
+		expect(query).toHaveBeenCalledWith(
+			'SELECT * FROM property_value',
+			expect.objectContaining({ signal: controller.signal }),
+		);
+	});
 });
