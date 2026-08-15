@@ -3,6 +3,7 @@ export * from './devices-homey.plugin';
 export * from './connectors/homey-connector.factory';
 export * from './connectors/homey-connector.interface';
 export * from './connectors/homey-connector.types';
+export * from './connectors/homey-local-connector.factory';
 export * from './dto/update-config.dto';
 export * from './entities/devices-homey.entity';
 export * from './errors/homey-connector.error';

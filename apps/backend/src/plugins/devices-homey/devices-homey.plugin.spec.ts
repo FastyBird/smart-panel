@@ -7,7 +7,9 @@ import { PluginServiceManagerService } from '../../modules/extensions/services/p
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 
-import { DEVICES_HOMEY_PLUGIN_NAME, DEVICES_HOMEY_TYPE } from './devices-homey.constants';
+import { HomeyLocalConnectorFactory } from './connectors/homey-local-connector.factory';
+import { HomeySdkClientFactoryService } from './connectors/homey-sdk.client';
+import { DEVICES_HOMEY_PLUGIN_NAME, DEVICES_HOMEY_TYPE, HOMEY_CONNECTOR_FACTORY } from './devices-homey.constants';
 import { DEVICES_HOMEY_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-homey.openapi';
 import { DevicesHomeyPlugin } from './devices-homey.plugin';
 import { HomeyUpdatePluginConfigDto } from './dto/update-config.dto';
@@ -66,5 +68,15 @@ describe('DevicesHomeyPlugin', () => {
 			expect.objectContaining({ type: DEVICES_HOMEY_PLUGIN_NAME, name: 'Homey', defaultEnabled: false }),
 		);
 		expect(pluginServiceManager.register).toHaveBeenCalledWith(homeyService);
+	});
+
+	it('provides a production SDK-backed connector factory through the transport-neutral token', () => {
+		const providers = Reflect.getMetadata('providers', DevicesHomeyPlugin) as unknown[];
+
+		expect(providers).toEqual(expect.arrayContaining([HomeySdkClientFactoryService, HomeyLocalConnectorFactory]));
+		expect(providers).toContainEqual({
+			provide: HOMEY_CONNECTOR_FACTORY,
+			useExisting: HomeyLocalConnectorFactory,
+		});
 	});
 });

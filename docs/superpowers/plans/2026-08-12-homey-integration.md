@@ -218,15 +218,15 @@ index.ts
 - `connectors/homey-local.transformer.ts`
 - Corresponding specs using captured fixtures/fakes
 
-- [ ] Add the reviewed dependency only if Milestone 0 selected the SDK.
-- [ ] Construct a local API client from validated address/token without logging either.
-- [ ] Apply explicit connect/read/write/subscription timeouts.
+- [x] Add the reviewed dependency only if Milestone 0 selected the SDK.
+- [x] Construct a local API client from validated address/token without logging either.
+- [x] Apply explicit connect/read/write/subscription timeouts.
 - [x] Transform SDK/protocol objects into normalized models.
 - [x] Convert raw errors into normalized categories.
 - [x] Implement transport-neutral connector orchestration and cleanup behind an injectable local transport.
 - [x] Ensure one connector core owns one transport and passes the reusable fake-transport contract suite.
-- [ ] Implement the production adapter for inventory, zones, system info, device lookup, capability writes, and subscriptions.
-- [ ] Add adapter-specific fixture-backed tests for every operation and error category.
+- [x] Implement the production adapter for inventory, zones, system info, device lookup, capability writes, and subscriptions.
+- [x] Add adapter-specific fixture-backed tests for every operation and error category.
 - [ ] Add environment-gated contract tests against live SHS.
 
 ### Task 2.2: Implement plugin lifecycle and connection state machine
