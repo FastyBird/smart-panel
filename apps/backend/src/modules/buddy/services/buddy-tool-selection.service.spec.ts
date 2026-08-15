@@ -174,6 +174,12 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Run Bedtime and see whether the hallway sensor is triggered.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
+		expect(selectNames('Run Bedtime and get the hallway sensor reading.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
+		expect(selectNames('Run Bedtime and fetch the hallway sensor reading.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 	});
 
 	it('recognizes wh-complement state requests', () => {
@@ -294,6 +300,7 @@ describe('BuddyToolSelectionService', () => {
 		'How does a thermostat work?',
 		'How does a temperature sensor work?',
 		'Explain how smart-home lighting works.',
+		'Explain how to adjust a thermostat.',
 	])('keeps generic smart-home explanations tool-free: %s', (message) => {
 		expect(selectNames(message)).toEqual([]);
 	});

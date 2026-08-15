@@ -91,7 +91,7 @@ const ACTION_CLAUSE_PATTERN = new RegExp(
 	'u',
 );
 const READ_CLAUSE_PATTERN =
-	/(?:\ba\b|\band\b|\bplus\b|\bpotom\b|\bthen\b|[,;])\s*(?:check|confirm|determine|ensure|find|make sure|read|report|see|show|tell|verify|what|whether|which)\b/u;
+	/(?:\ba\b|\band\b|\bplus\b|\bpotom\b|\bthen\b|[,;])\s*(?:check|confirm|determine|ensure|fetch|find|get|make sure|read|report|see|show|tell|verify|what|whether|which)\b/u;
 const STATE_QUESTION_PATTERN =
 	/^(?:are|can|could|did|do|does|had|has|have|how|is|may|might|what|which|where|why|will|would|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u;
 const PREDICATE_QUESTION_PATTERN =
@@ -414,7 +414,7 @@ export class BuddyToolSelectionService {
 			for (const name of READ_TOOL_NAMES) selected.add(name);
 		}
 
-		if (actionTokens) {
+		if (actionTokens && !isGenericExplanation) {
 			selected.add(SEARCH_HOME_TOOL_NAME);
 			this.selectActionTools(
 				actionTokens,
