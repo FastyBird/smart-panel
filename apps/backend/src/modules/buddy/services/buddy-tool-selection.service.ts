@@ -351,6 +351,7 @@ export class BuddyToolSelectionService {
 			actionTokens !== null &&
 			trailingConditionIndex > 0 &&
 			intersects(tokenize(normalizedMessage.slice(trailingConditionIndex)), ACTION_SIGNALS);
+		const hasUnknownActionTrailingClause = actionTokens !== null && hasUnknownTrailingClause(normalizedMessage);
 		const hasTrailingReadClause = actionTokens !== null && READ_CLAUSE_PATTERN.test(normalizedMessage);
 		const questionEnd = normalizedMessage.indexOf('?');
 		const trailingQuestionClause = questionEnd >= 0 ? normalizedMessage.slice(questionEnd + 1).trim() : '';
@@ -422,6 +423,7 @@ export class BuddyToolSelectionService {
 					hasExplicitStateQuestion ||
 					hasLeadingReadRequest ||
 					hasRelativeAdjustment ||
+					hasUnknownActionTrailingClause ||
 					(actionTokens === null &&
 						message.includes('?') &&
 						hasHomeSignal &&
@@ -435,9 +437,7 @@ export class BuddyToolSelectionService {
 			this.selectActionTools(
 				actionTokens,
 				selected,
-				ACTION_CLAUSE_PATTERN.test(normalizedMessage) ||
-					hasActionInTrailingCondition ||
-					hasUnknownTrailingClause(normalizedMessage),
+				ACTION_CLAUSE_PATTERN.test(normalizedMessage) || hasActionInTrailingCondition || hasUnknownActionTrailingClause,
 			);
 		}
 
@@ -600,7 +600,7 @@ function hasUnknownLeadingIntentBeforeRead(normalizedMessage: string): boolean {
 
 function isGenericHomeExplanation(normalizedMessage: string, tokens: Set<string>): boolean {
 	if (!intersects(tokens, HOME_SIGNALS)) return false;
-	if (/^(?:explain how to|how (?:can|could|do|would) i)\b/u.test(normalizedMessage)) return true;
+	if (/^(?:explain how to|how (?:can|could|do|would) i|tell me how to)\b/u.test(normalizedMessage)) return true;
 	if (intersects(tokens, GROUNDED_STATE_SIGNALS)) return false;
 	if (intersects(tokens, EXPLICIT_STATE_REQUEST_SIGNALS)) return false;
 	if (/\b(?:currently|right now)\b/u.test(normalizedMessage)) return false;
@@ -675,7 +675,7 @@ function getActionIntentTokens(
 
 function isExplicitStateQuestion(normalizedMessage: string): boolean {
 	const requestPattern =
-		/^(?:(?:can|could|may|might|will|would)\s+you\s+)?(?:please\s+)?(?:(?:let|show|tell) me(?: know)?|check|confirm|determine|ensure|find out|report|see|verify)\b/u;
+		/^(?:(?:can|could|may|might|will|would)\s+you\s+)?(?:please\s+)?(?:(?:let|show|tell) me(?: know)?|check|confirm|determine|ensure|fetch|find out|get|read|report|see|verify)\b/u;
 
 	if (!requestPattern.test(normalizedMessage)) return false;
 	if (/\b(?:if|whether)\b/u.test(normalizedMessage)) return true;

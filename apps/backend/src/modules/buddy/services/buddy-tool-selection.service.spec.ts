@@ -181,6 +181,9 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Run Bedtime and fetch the hallway sensor reading.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
+		expect(selectNames('Run Bedtime and give me the hallway sensor reading.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 	});
 
 	it('recognizes wh-complement state requests', () => {
@@ -195,24 +198,16 @@ describe('BuddyToolSelectionService', () => {
 	});
 
 	it('retains every action schema for multiple commands with an arbitrary target name', () => {
-		expect(selectNames('Close the blinds and run Bedtime.')).toEqual([
-			SEARCH_HOME_TOOL_NAME,
-			names.control,
-			names.scene,
-			names.spaceLighting,
-		]);
+		expect(selectNames('Close the blinds and run Bedtime.')).toEqual(definitions.map((definition) => definition.name));
 		expect(selectNames('Zavři žaluzie a spusť Večer.')).toEqual([
 			SEARCH_HOME_TOOL_NAME,
 			names.control,
 			names.scene,
 			names.spaceLighting,
 		]);
-		expect(selectNames('Run Bedtime and also close the blinds.')).toEqual([
-			SEARCH_HOME_TOOL_NAME,
-			names.control,
-			names.scene,
-			names.spaceLighting,
-		]);
+		expect(selectNames('Run Bedtime and also close the blinds.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 	});
 
 	it.each(['Are any windows open? If so, close them.', 'Are all doors closed, and open them if not.'])(
@@ -308,6 +303,7 @@ describe('BuddyToolSelectionService', () => {
 		'Explain how to turn off the kitchen light.',
 		'How do I turn off the kitchen light?',
 		'How can I adjust a thermostat?',
+		'Tell me how to turn off the kitchen light.',
 	])('keeps generic smart-home explanations tool-free: %s', (message) => {
 		expect(selectNames(message)).toEqual([]);
 	});
@@ -353,6 +349,18 @@ describe('BuddyToolSelectionService', () => {
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);
 		expect(selectNames('Can you report whether the window is open?')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+		]);
+		expect(selectNames('Could you read whether the window is open?')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+		]);
+		expect(selectNames('Could you get whether the window is open?')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+		]);
+		expect(selectNames('Could you fetch whether the window is open?')).toEqual([
 			SEARCH_HOME_TOOL_NAME,
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);
@@ -459,24 +467,13 @@ describe('BuddyToolSelectionService', () => {
 	});
 
 	it('falls back when an unrecognized action follows a recognized command', () => {
-		expect(selectNames('Close the blinds and launch Evening.')).toEqual([
-			SEARCH_HOME_TOOL_NAME,
-			names.control,
-			names.scene,
-			names.spaceLighting,
-		]);
-		expect(selectNames('Close the blinds. Launch Evening.')).toEqual([
-			SEARCH_HOME_TOOL_NAME,
-			names.control,
-			names.scene,
-			names.spaceLighting,
-		]);
-		expect(selectNames('Close the blinds plus launch Evening.')).toEqual([
-			SEARCH_HOME_TOOL_NAME,
-			names.control,
-			names.scene,
-			names.spaceLighting,
-		]);
+		expect(selectNames('Close the blinds and launch Evening.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
+		expect(selectNames('Close the blinds. Launch Evening.')).toEqual(definitions.map((definition) => definition.name));
+		expect(selectNames('Close the blinds plus launch Evening.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 	});
 
 	it('preserves unknown extension tools and original registry order', () => {
