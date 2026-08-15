@@ -150,6 +150,7 @@ const HOME_SIGNALS = new Set([
 	'zarizeni',
 ]);
 const SCENE_SIGNALS = new Set(['automation', 'preset', 'routine', 'scene', 'scena']);
+const SCENE_ACTION_SIGNALS = new Set(['run', 'spust']);
 const LIGHTING_SIGNALS = new Set(['lamp', 'lampa', 'light', 'lighting', 'lights', 'svetla', 'svetlo']);
 const SPACE_SIGNALS = new Set([
 	'all',
@@ -258,6 +259,11 @@ export class BuddyToolSelectionService {
 			actionTokens !== null &&
 			questionEnd >= 0 &&
 			intersects(tokenize(normalizedMessage.slice(questionEnd + 1)), ACTION_SIGNALS);
+		const hasGroundedStateFirstAction =
+			actionTokens !== null &&
+			/^(?:are|is|je|jsou)\b/u.test(normalizedMessage) &&
+			intersects(tokens, GROUNDED_STATE_SIGNALS) &&
+			/[,;]/u.test(normalizedMessage);
 		const hasHomeSignal = intersects(tokens, HOME_SIGNALS);
 		const isGenericExplanation = isGenericHomeExplanation(normalizedMessage, tokens);
 		const isStateExplanation =
@@ -273,6 +279,7 @@ export class BuddyToolSelectionService {
 					hasConditionalAction ||
 					hasTrailingReadClause ||
 					hasStateFirstAction ||
+					hasGroundedStateFirstAction ||
 					(message.includes('?') && hasHomeSignal)))
 		) {
 			for (const name of READ_TOOL_NAMES) selected.add(name);
@@ -303,7 +310,16 @@ export class BuddyToolSelectionService {
 			return;
 		}
 
-		const hasSceneSignal = intersects(tokens, SCENE_SIGNALS);
+		const hasExplicitSceneSignal = intersects(tokens, SCENE_SIGNALS);
+		const hasSceneActionSignal = intersects(tokens, SCENE_ACTION_SIGNALS);
+
+		if (hasSceneActionSignal && !hasExplicitSceneSignal) {
+			for (const name of ACTION_TOOL_NAMES) selected.add(name);
+
+			return;
+		}
+
+		const hasSceneSignal = hasExplicitSceneSignal || hasSceneActionSignal;
 		const hasLightingSignal = intersects(tokens, LIGHTING_SIGNALS);
 		const hasDeviceSignal = intersects(tokens, DEVICE_SIGNALS);
 		let selectedSpecificAction = false;

@@ -58,6 +58,15 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Run the evening scene.')).toEqual([SEARCH_HOME_TOOL_NAME, names.scene]);
 	});
 
+	it('retains scene execution when an unrestricted scene name resembles a device', () => {
+		expect(selectNames('Run Window Watch.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			names.control,
+			names.scene,
+			names.spaceLighting,
+		]);
+	});
+
 	it('selects individual device control for a specific lamp', () => {
 		expect(selectNames('Dim the desk lamp.')).toEqual([SEARCH_HOME_TOOL_NAME, names.control]);
 	});
@@ -126,6 +135,10 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Jaká je teplota a nastav termostat na 20.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
+	});
+
+	it('retains reads for a grounded state-first clause without a question mark', () => {
+		expect(selectNames('Is Aurora locked, unlock it.')).toEqual(definitions.map((definition) => definition.name));
 	});
 
 	it('does not use condition targets to narrow an ambiguous command target', () => {
