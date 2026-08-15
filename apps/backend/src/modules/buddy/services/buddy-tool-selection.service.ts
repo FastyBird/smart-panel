@@ -90,7 +90,7 @@ const ACTION_CLAUSE_PATTERN = new RegExp(
 	String.raw`(?:\ba\b|\band\b|\bpotom\b|\bthen\b|[,;])\s*(?:(?:also|please|take)\s+)*(?:${[...ACTION_SIGNALS].join('|')})\b`,
 	'u',
 );
-const READ_CLAUSE_PATTERN = /\b(?:a|and|potom|then)\s+(?:check|find|show|tell|what|whether|which)\b/u;
+const READ_CLAUSE_PATTERN = /\b(?:a|and|potom|then)\s+(?:check|find|show|tell|verify|what|whether|which)\b/u;
 const STATE_QUESTION_PATTERN = /^(?:are|do|does|how|is|what|which|where|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u;
 const PREDICATE_QUESTION_PATTERN = /^(?:are|is)\b/u;
 const UNKNOWN_ACTION_REQUEST_PATTERN = /^(?:(?:can|could|may|might|will|would)\s+you\b|please\b)/u;
@@ -106,9 +106,9 @@ const ACTION_REQUEST_AUXILIARIES = new Set([
 	'would',
 ]);
 const CONDITION_PATTERN =
-	/\b(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|unless|until|when|whenever)\b/u;
+	/\b(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|unless|until|when|whenever|while)\b/u;
 const LEADING_CONDITION_PATTERN =
-	/^(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|unless|until|when|whenever)\b/u;
+	/^(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|unless|until|when|whenever|while)\b/u;
 const GROUNDED_STATE_SIGNALS = new Set([
 	'active',
 	'closed',
@@ -339,6 +339,8 @@ export class BuddyToolSelectionService {
 			actionTokens === null &&
 			STATE_QUESTION_PATTERN.test(normalizedMessage) &&
 			(message.includes('?') || isSyntacticPredicateQuestion(normalizedMessage, tokens));
+		const hasLiveStatusRequest =
+			hasHomeSignal && actionTokens === null && /\b(?:currently|right now)\b/u.test(normalizedMessage);
 		const isGenericExplanation = isGenericHomeExplanation(normalizedMessage, tokens);
 		const hasUnrecognizedStateIntent =
 			hasStateReadSignal &&
@@ -363,6 +365,7 @@ export class BuddyToolSelectionService {
 					hasStateFirstAction ||
 					hasGroundedStateFirstAction ||
 					hasInterrogativeHomeQuestion ||
+					hasLiveStatusRequest ||
 					(actionTokens === null &&
 						message.includes('?') &&
 						hasHomeSignal &&
@@ -517,6 +520,7 @@ function isGenericHomeExplanation(normalizedMessage: string, tokens: Set<string>
 	if (!intersects(tokens, HOME_SIGNALS)) return false;
 	if (intersects(tokens, GROUNDED_STATE_SIGNALS)) return false;
 	if (intersects(tokens, EXPLICIT_STATE_REQUEST_SIGNALS)) return false;
+	if (/\b(?:currently|right now)\b/u.test(normalizedMessage)) return false;
 	if (intersects(tokens, STATE_SIGNALS) && /^explain what\b.*\b(?:are|is)\??$/u.test(normalizedMessage)) return false;
 
 	return (

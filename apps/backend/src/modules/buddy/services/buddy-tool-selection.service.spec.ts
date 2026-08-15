@@ -123,6 +123,9 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Run Bedtime and tell me whether the window is open.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
+		expect(selectNames('Run Bedtime and verify that the hallway sensor is triggered.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 	});
 
 	it('retains every action schema for multiple commands with an arbitrary target name', () => {
@@ -209,6 +212,11 @@ describe('BuddyToolSelectionService', () => {
 			QUERY_HOME_STATE_TOOL_NAME,
 			names.control,
 		]);
+		expect(selectNames('Close the blinds while the hallway sensor is triggered.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+			names.control,
+		]);
 	});
 
 	it.each([
@@ -233,6 +241,10 @@ describe('BuddyToolSelectionService', () => {
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);
 		expect(selectNames('Explain what the kitchen temperature is?')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			QUERY_HOME_STATE_TOOL_NAME,
+		]);
+		expect(selectNames('Explain how the kitchen thermostat is doing right now.')).toEqual([
 			SEARCH_HOME_TOOL_NAME,
 			QUERY_HOME_STATE_TOOL_NAME,
 		]);
