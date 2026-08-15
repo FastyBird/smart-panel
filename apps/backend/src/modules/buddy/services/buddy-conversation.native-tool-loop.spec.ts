@@ -16,6 +16,7 @@ import { BuddyProviderErrorException } from '../buddy.exceptions';
 import type { LlmConversationItem, LlmOptions, LlmResponse, LlmResponseMeta } from '../platforms/llm-provider.platform';
 
 import { BuddyConversationService } from './buddy-conversation.service';
+import { BuddyToolSelectionService } from './buddy-tool-selection.service';
 
 interface NativeToolLoopHarness {
 	sendWithToolExecution(
@@ -78,6 +79,7 @@ describe('BuddyConversationService native tool loop', () => {
 			{} as never,
 			{} as never,
 			{} as never,
+			new BuddyToolSelectionService(),
 		);
 	});
 
