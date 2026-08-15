@@ -58,10 +58,14 @@ const ACTION_SIGNALS = new Set([
 	'brighten',
 	'change',
 	'close',
+	'decrease',
 	'deactivate',
 	'dim',
+	'increase',
 	'lock',
+	'lower',
 	'open',
+	'raise',
 	'run',
 	'set',
 	'start',
@@ -74,10 +78,12 @@ const ACTION_SIGNALS = new Set([
 	'otevri',
 	'spust',
 	'nastav',
+	'sniz',
 	'vypni',
 	'zamkni',
 	'zapni',
 	'zavri',
+	'zvys',
 ]);
 const ACTION_CLAUSE_PATTERN = new RegExp(
 	String.raw`(?:\ba\b|\band\b|\bpotom\b|\bthen\b|[,;])\s*(?:(?:also|please|take)\s+)*(?:${[...ACTION_SIGNALS].join('|')})\b`,
@@ -151,6 +157,33 @@ const HOME_SIGNALS = new Set([
 ]);
 const SCENE_SIGNALS = new Set(['automation', 'preset', 'routine', 'scene', 'scena']);
 const SCENE_ACTION_SIGNALS = new Set(['run', 'spust']);
+const AMBIGUOUS_ACTION_SIGNALS = new Set(['activate', 'deactivate', 'start', 'stop']);
+const DEVICE_ACTION_SIGNALS = new Set([
+	'adjust',
+	'brighten',
+	'change',
+	'close',
+	'decrease',
+	'dim',
+	'increase',
+	'lock',
+	'lower',
+	'nastav',
+	'odemkni',
+	'open',
+	'otevri',
+	'raise',
+	'set',
+	'sniz',
+	'switch',
+	'turn',
+	'unlock',
+	'vypni',
+	'zamkni',
+	'zapni',
+	'zavri',
+	'zvys',
+]);
 const LIGHTING_SIGNALS = new Set(['lamp', 'lampa', 'light', 'lighting', 'lights', 'svetla', 'svetlo']);
 const SPACE_SIGNALS = new Set([
 	'all',
@@ -266,6 +299,12 @@ export class BuddyToolSelectionService {
 			/[,;]/u.test(normalizedMessage);
 		const hasHomeSignal = intersects(tokens, HOME_SIGNALS);
 		const isGenericExplanation = isGenericHomeExplanation(normalizedMessage, tokens);
+		const hasUnrecognizedStateIntent =
+			hasStateSignal &&
+			actionTokens === null &&
+			!hasSearchSignal &&
+			!message.includes('?') &&
+			!/^(?:explain|tell)\b/u.test(normalizedMessage);
 		const isStateExplanation =
 			hasHomeSignal &&
 			(/^explain (?:if|whether)\b/u.test(normalizedMessage) ||
@@ -290,6 +329,10 @@ export class BuddyToolSelectionService {
 			this.selectActionTools(actionTokens, selected, ACTION_CLAUSE_PATTERN.test(normalizedMessage));
 		}
 
+		if (hasUnrecognizedStateIntent) {
+			for (const name of BUILT_IN_TOOL_NAMES) selected.add(name);
+		}
+
 		if (
 			selected.size === 0 &&
 			!isGenericExplanation &&
@@ -310,6 +353,12 @@ export class BuddyToolSelectionService {
 			return;
 		}
 
+		if (intersects(tokens, AMBIGUOUS_ACTION_SIGNALS)) {
+			for (const name of ACTION_TOOL_NAMES) selected.add(name);
+
+			return;
+		}
+
 		const hasExplicitSceneSignal = intersects(tokens, SCENE_SIGNALS);
 		const hasSceneActionSignal = intersects(tokens, SCENE_ACTION_SIGNALS);
 
@@ -321,7 +370,16 @@ export class BuddyToolSelectionService {
 
 		const hasSceneSignal = hasExplicitSceneSignal || hasSceneActionSignal;
 		const hasLightingSignal = intersects(tokens, LIGHTING_SIGNALS);
-		const hasDeviceSignal = intersects(tokens, DEVICE_SIGNALS);
+		const hasDeviceTargetSignal = intersects(tokens, DEVICE_SIGNALS);
+		const hasDeviceActionSignal = intersects(tokens, DEVICE_ACTION_SIGNALS);
+
+		if (hasDeviceActionSignal && !hasDeviceTargetSignal && !hasExplicitSceneSignal && !hasLightingSignal) {
+			for (const name of ACTION_TOOL_NAMES) selected.add(name);
+
+			return;
+		}
+
+		const hasDeviceSignal = hasDeviceTargetSignal || hasDeviceActionSignal;
 		let selectedSpecificAction = false;
 
 		if (hasSceneSignal) {

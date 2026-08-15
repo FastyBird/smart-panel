@@ -71,6 +71,27 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Dim the desk lamp.')).toEqual([SEARCH_HOME_TOOL_NAME, names.control]);
 	});
 
+	it('uses action verbs without allowing unrestricted target names to exclude schemas', () => {
+		expect(selectNames('Activate Window Watch.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			names.control,
+			names.scene,
+			names.spaceLighting,
+		]);
+		expect(selectNames('Turn off Bedtime Scene.')).toEqual([SEARCH_HOME_TOOL_NAME, names.control, names.scene]);
+	});
+
+	it.each(['Increase the bedroom temperature.', 'Sniž teplotu.'])(
+		'preserves device actions for adjustment wording: %s',
+		(message) => {
+			expect(selectNames(message)).toContain(names.control);
+		},
+	);
+
+	it('falls back conservatively for unrecognized imperative-looking state wording', () => {
+		expect(selectNames('Boost the bedroom temperature.')).toEqual(definitions.map((definition) => definition.name));
+	});
+
 	it('keeps both lighting action shapes when the request names a room', () => {
 		expect(selectNames('Turn off the kitchen lights.')).toEqual([
 			SEARCH_HOME_TOOL_NAME,
