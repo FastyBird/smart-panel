@@ -1554,14 +1554,18 @@ busy response leaves an ownerless nonterminal sequence capable of blocking later
 **Tasks:**
 
 - [ ] Implement the bounded Buddy read tool catalog from Section 6.
-- [ ] Mark tools `ToolAudience.BUDDY` and `ToolAccessKind.READ`.
-- [ ] Validate inputs and outputs using the shared schemas.
-- [ ] Return concise messages plus bounded structured data and freshness/truncation metadata.
+- [x] Add the provider foundation for `search_home` and completeness-safe `query_home_state` with server-selected Buddy
+      profiles; keep the remaining catalog entries and live registration open.
+- [x] Mark the initial tools `ToolAudience.BUDDY` and `ToolAccessKind.READ`.
+- [x] Validate their strict adapter inputs and structured outputs using the shared schemas.
+- [x] Return concise messages plus bounded structured data and freshness/truncation/coverage metadata.
 - [ ] Add conversation-scoped Buddy mappings to `ShortIdMappingService`; register only results exposed in that
       conversation and require the same scope in every Buddy short-ID action lookup, with no unscoped/global fallback.
       Preserve existing non-Buddy mapping behavior and canonical UUID fallback.
 - [ ] Add tool selection support so unrelated schemas are not advertised on every turn.
-- [ ] Verify no MCP configuration, token, policy, or server service is injected.
+- [ ] Register the initial read tools after conversation-scoped target exposure and action-resolution proof prevent a
+      discovered canonical ID from authorizing an action by itself.
+- [x] Verify no MCP configuration, token, policy, or server service is injected into the Buddy read provider.
 
 **Tests:** Every schema boundary and hard cap; missing optional modules; stale/missing entities; hidden/disabled entities;
 long labels/values; multi-language/diacritic search; same-token collisions across conversations; two colliding UUIDs in
