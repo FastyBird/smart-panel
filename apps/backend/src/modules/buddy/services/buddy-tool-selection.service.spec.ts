@@ -52,6 +52,8 @@ describe('BuddyToolSelectionService', () => {
 		'Get the hallway sensor reading.',
 		'Report the hallway sensor reading.',
 		'Find Aurora and show its current status.',
+		'Find the open windows.',
+		'Show me open windows.',
 		'Which lights can I dim?',
 		'What lights am I able to dim?',
 		'Can you show which windows I can open?',

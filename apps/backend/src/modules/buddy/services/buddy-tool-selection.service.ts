@@ -346,9 +346,11 @@ export class BuddyToolSelectionService {
 		const hasAuxiliaryActionRequest = hasActionRequestAuxiliary(normalizedMessage, tokens);
 		const hasStateReadSignal = hasStateSignal && !hasAuxiliaryActionRequest;
 		const isCapabilityDiscovery = isCapabilityDiscoveryRequest(normalizedMessage);
-		const actionTokens = isCapabilityDiscovery
-			? null
-			: getActionIntentTokens(normalizedMessage, tokens, hasStateReadSignal);
+		const isFilteredSearch = isGroundedFilteredSearchRequest(normalizedMessage, tokens);
+		const actionTokens =
+			isCapabilityDiscovery || isFilteredSearch
+				? null
+				: getActionIntentTokens(normalizedMessage, tokens, hasStateReadSignal);
 		const hasConditionalAction = actionTokens !== null && CONDITION_PATTERN.test(normalizedMessage);
 		const trailingConditionIndex = normalizedMessage.search(CONDITION_PATTERN);
 		const hasActionInTrailingCondition =
@@ -700,6 +702,17 @@ function isExplicitStateQuestion(normalizedMessage: string): boolean {
 
 function isCapabilityDiscoveryRequest(normalizedMessage: string): boolean {
 	return CAPABILITY_DISCOVERY_PATTERN.test(normalizedMessage);
+}
+
+function isGroundedFilteredSearchRequest(normalizedMessage: string, tokens: Set<string>): boolean {
+	if (!/^(?:find|list|locate|search|show(?: me)?)\b/u.test(normalizedMessage)) return false;
+	if (!intersects(tokens, GROUNDED_STATE_SIGNALS)) return false;
+
+	for (const token of tokens) {
+		if (ACTION_SIGNALS.has(token) && !GROUNDED_STATE_SIGNALS.has(token)) return false;
+	}
+
+	return true;
 }
 
 function hasPotentialActionIntent(clause: string): boolean {
