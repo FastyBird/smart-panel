@@ -114,6 +114,9 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Are any windows open, close them if so.')).toEqual(
 			definitions.map((definition) => definition.name),
 		);
+		expect(selectNames('Jaká je teplota a nastav termostat na 20.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 	});
 
 	it('does not use condition targets to narrow an ambiguous command target', () => {
@@ -132,6 +135,9 @@ describe('BuddyToolSelectionService', () => {
 
 	it('retains live reads needed to evaluate conditional actions', () => {
 		expect(selectNames('If Aurora is on, run Bedtime.')).toEqual(definitions.map((definition) => definition.name));
+		expect(selectNames('If the hallway sensor is triggered, run Bedtime.')).toEqual(
+			definitions.map((definition) => definition.name),
+		);
 	});
 
 	it.each([
