@@ -2,7 +2,10 @@ export interface SqliteFtsNameRankOptions {
 	ftsTable: string;
 	vocabularyTable: string;
 	entityIdExpression: string;
-	fallbackVocabularyColumn?: 'identifier';
+	fallbackName?: {
+		vocabularyColumn: 'identifier';
+		whenPrimaryNameExpression: string;
+	};
 	rawQuery?: string;
 	normalizedQuery?: string;
 	normalizedTokens?: string[];
@@ -43,24 +46,22 @@ export function buildSqliteFtsNameRankExpression(options: SqliteFtsNameRankOptio
 	const primaryExact = tokens.length > 0 ? buildColumnPredicate('name', false, 'name') : null;
 	const primaryPrefix = tokens.length > 0 ? buildColumnPredicate('name', true, 'name') : null;
 	const fallbackExact =
-		tokens.length > 0 && options.fallbackVocabularyColumn
-			? buildColumnPredicate(options.fallbackVocabularyColumn, false, 'fallback')
+		tokens.length > 0 && options.fallbackName
+			? buildColumnPredicate(options.fallbackName.vocabularyColumn, false, 'fallback')
 			: null;
 	const fallbackPrefix =
-		tokens.length > 0 && options.fallbackVocabularyColumn
-			? buildColumnPredicate(options.fallbackVocabularyColumn, true, 'fallback')
+		tokens.length > 0 && options.fallbackName
+			? buildColumnPredicate(options.fallbackName.vocabularyColumn, true, 'fallback')
 			: null;
-	const primaryNameMissing =
-		`NOT EXISTS (SELECT 1 FROM ${options.vocabularyTable} primary_name_term ` +
-		`WHERE primary_name_term.doc = ${options.ftsTable}.rowid AND primary_name_term.col = 'name')`;
+	const fallbackNameAllowed = options.fallbackName ? `${options.fallbackName.whenPrimaryNameExpression} IS NULL` : '0';
 	const exactNamePredicate = primaryExact
 		? fallbackExact
-			? `(${primaryExact.sql} OR (${primaryNameMissing} AND ${fallbackExact.sql}))`
+			? `(${primaryExact.sql} OR (${fallbackNameAllowed} AND ${fallbackExact.sql}))`
 			: primaryExact.sql
 		: '0';
 	const prefixNamePredicate = primaryPrefix
 		? fallbackPrefix
-			? `(${primaryPrefix.sql} OR (${primaryNameMissing} AND ${fallbackPrefix.sql}))`
+			? `(${primaryPrefix.sql} OR (${fallbackNameAllowed} AND ${fallbackPrefix.sql}))`
 			: primaryPrefix.sql
 		: '0';
 

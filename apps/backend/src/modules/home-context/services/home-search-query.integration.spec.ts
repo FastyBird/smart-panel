@@ -201,6 +201,44 @@ describe('HomeSearchQueryService SQLite integration', () => {
 		expect(result.truncated).toBe(true);
 	});
 
+	it('does not rank an identifier as the display name when a symbol-only property name is non-null', async () => {
+		await dataSource.query(
+			`INSERT INTO devices_module_devices
+			 (id, name, identifier, type, category, enabled, hidden, "roomId")
+			 VALUES ('symbol-owner', 'Symbol owner', 'symbol-owner', 'test', 'sensor', 1, 0, NULL)`,
+		);
+		await dataSource.query(
+			`INSERT INTO devices_module_channels (id, name, category, "deviceId")
+			 VALUES ('symbol-channel', 'Symbol channel', 'generic', 'symbol-owner')`,
+		);
+		await dataSource.query(
+			`INSERT INTO devices_module_channels_properties
+			 (id, name, identifier, type, category, "dataType", permissions, "channelId") VALUES
+			 ('genuine-display-name', 'Symbol fallback', 'genuine', 'test', 'generic', 'string', 'ro', 'symbol-channel'),
+			 ('symbol-only-name', '---', 'symbol-fallback', 'test', 'generic', 'string', 'ro', 'symbol-channel')`,
+		);
+
+		const propertiesService = Object.create(ChannelsPropertiesService.prototype) as ChannelsPropertiesService;
+		Object.defineProperty(propertiesService, 'dataSource', { value: dataSource });
+		const service = new HomeSearchQueryService(
+			{ findOne: jest.fn(), searchSummaryPage: jest.fn() } as unknown as SpacesService,
+			{ searchVisibleSummaryPage: jest.fn() } as unknown as DevicesService,
+			propertiesService,
+			{ searchSummaryPage: jest.fn() } as unknown as ScenesService,
+		);
+
+		const result = await service.searchEntities({
+			profile: HOME_SEARCH_PROFILE_BUDDY_V1,
+			query: 'symbol-fallback',
+			kinds: ['property'],
+		});
+
+		expect(result.entities.map((entity) => ({ id: entity.id, name: entity.name, score: entity.score }))).toEqual([
+			{ id: 'genuine-display-name', name: 'Symbol fallback', score: 900 },
+			{ id: 'symbol-only-name', name: '---', score: 600 },
+		]);
+	});
+
 	it('executes all four owning-domain queries against the real FTS index and joined metadata', async () => {
 		await dataSource.query(
 			`INSERT INTO spaces_module_spaces (id, name, type, category, "parentId")

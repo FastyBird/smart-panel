@@ -350,6 +350,7 @@ describe('ChannelsPropertiesService', () => {
 			expect(selectSql).toContain('FROM home_context_entity_search_vocab exact_count');
 			expect(selectSql).toContain('FROM home_context_entity_search_vocab prefix_term');
 			expect(selectSql).toContain("exact_term_fallback.col = 'identifier'");
+			expect(selectSql).toContain('property.name IS NULL');
 			expect(selectSql).toContain('ORDER BY "rankTier" ASC, "lexicalScore" ASC');
 			expect(selectParameters).toEqual([
 				'temperature',

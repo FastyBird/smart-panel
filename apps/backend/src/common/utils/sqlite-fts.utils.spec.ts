@@ -33,12 +33,15 @@ describe('buildSqliteFtsNameRankExpression', () => {
 			ftsTable: 'search_fts',
 			vocabularyTable: 'search_vocab',
 			entityIdExpression: 'property.id',
-			fallbackVocabularyColumn: 'identifier',
+			fallbackName: {
+				vocabularyColumn: 'identifier',
+				whenPrimaryNameExpression: 'property.name',
+			},
 			rawQuery: 'target-identifier',
 			normalizedTokens: ['target', 'identifier'],
 		});
 
-		expect(result.sql).toContain("primary_name_term.col = 'name'");
+		expect(result.sql).toContain('property.name IS NULL');
 		expect(result.sql).toContain("exact_term_fallback.col = 'identifier'");
 		expect(result.sql).toContain("prefix_term_fallback.col = 'identifier'");
 		expect(result.parameters).toEqual([
