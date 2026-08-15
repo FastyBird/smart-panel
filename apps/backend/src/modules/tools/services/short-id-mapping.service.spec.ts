@@ -195,13 +195,13 @@ describe('ShortIdMappingService', () => {
 			expect(service.resolveScoped('conversation-1', first, ScopedShortIdTargetKind.PROPERTY)).toBe('property-0');
 		});
 
-		it('evicts only another conversation under global pressure and never reassigns its stale token', () => {
+		it('rejects new global-cap exposures without invalidating any retained conversation', () => {
 			const activeToken = service.exposeScoped(
 				'active-conversation',
 				'property-kept',
 				ScopedShortIdTargetKind.PROPERTY,
 			);
-			let evictedToken: string | null = null;
+			let otherConversationToken: string | null = null;
 			let remaining = MAX_SCOPED_SHORT_ID_MAPPINGS - 1;
 
 			for (let conversationIndex = 1; remaining > 0; conversationIndex += 1) {
@@ -215,7 +215,7 @@ describe('ShortIdMappingService', () => {
 					);
 
 					if (conversationIndex === 1 && targetIndex === 0) {
-						evictedToken = token;
+						otherConversationToken = token;
 					}
 				}
 
@@ -225,20 +225,13 @@ describe('ShortIdMappingService', () => {
 			expect(service.scopedSize).toBe(MAX_SCOPED_SHORT_ID_MAPPINGS);
 			const newest = service.exposeScoped('active-conversation', 'property-new', ScopedShortIdTargetKind.PROPERTY);
 
-			expect(newest).not.toBeNull();
-			expect(service.resolveScoped('conversation-1', evictedToken ?? '', ScopedShortIdTargetKind.PROPERTY)).toBeNull();
+			expect(newest).toBeNull();
+			expect(
+				service.resolveScoped('conversation-1', otherConversationToken ?? '', ScopedShortIdTargetKind.PROPERTY),
+			).toBe('property-0');
 			expect(service.resolveScoped('active-conversation', activeToken ?? '', ScopedShortIdTargetKind.PROPERTY)).toBe(
 				'property-kept',
 			);
-			expect(service.resolveScoped('active-conversation', newest ?? '', ScopedShortIdTargetKind.PROPERTY)).toBe(
-				'property-new',
-			);
-
-			const replacement = service.exposeScoped('conversation-1', 'property-0', ScopedShortIdTargetKind.PROPERTY);
-
-			expect(replacement).not.toBeNull();
-			expect(replacement).not.toBe(evictedToken);
-			expect(service.resolveScoped('conversation-1', evictedToken ?? '', ScopedShortIdTargetKind.PROPERTY)).toBeNull();
 			expect(service.scopedSize).toBe(MAX_SCOPED_SHORT_ID_MAPPINGS);
 		});
 	});

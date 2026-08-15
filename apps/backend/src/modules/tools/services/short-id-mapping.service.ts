@@ -154,7 +154,7 @@ export class ShortIdMappingService {
 			}
 		} while (this.scopedMappings.has(this.scopedMappingKey(conversationId, token)));
 
-		if (!this.reserveScopedCapacity(conversationId)) {
+		if (!this.reserveScopedCapacity()) {
 			return null;
 		}
 
@@ -226,27 +226,10 @@ export class ShortIdMappingService {
 		}
 	}
 
-	private reserveScopedCapacity(activeConversationId: string): boolean {
-		while (this.scopedMappings.size >= MAX_SCOPED_SHORT_ID_MAPPINGS) {
-			const oldestKey = [...this.scopedMappings].find(
-				([, mapping]) => mapping.conversationId !== activeConversationId,
-			)?.[0];
-
-			if (!oldestKey) {
-				return false;
-			}
-
-			const oldest = this.scopedMappings.get(oldestKey);
-
-			this.scopedMappings.delete(oldestKey);
-
-			if (oldest) {
-				this.scopedTargets.delete(this.scopedTargetKey(oldest.conversationId, oldest.kind, oldest.canonicalId));
-				this.decrementScopedConversationSize(oldest.conversationId);
-			}
-		}
-
-		return true;
+	private reserveScopedCapacity(): boolean {
+		// Never evict a reference that may still be present in an in-flight prompt.
+		// Conversation deletion and module reset provide explicit reclamation points.
+		return this.scopedMappings.size < MAX_SCOPED_SHORT_ID_MAPPINGS;
 	}
 
 	private getScopedConversationSize(conversationId: string): number {

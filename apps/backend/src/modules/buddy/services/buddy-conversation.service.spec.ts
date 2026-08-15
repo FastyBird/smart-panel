@@ -32,6 +32,7 @@ import {
 import { BuddyContextService } from './buddy-context.service';
 import { BuddyConversationService } from './buddy-conversation.service';
 import { BuddyPersonalityService } from './buddy-personality.service';
+import { QUERY_HOME_STATE_TOOL_NAME, SEARCH_HOME_TOOL_NAME } from './home-context-tool-provider.service';
 import { LlmProviderService } from './llm-provider.service';
 
 const BUDDY_EVALUATION_HISTORY: Partial<BuddyMessageEntity>[] = Array.from({ length: 19 }, (_, index) => ({
@@ -335,6 +336,36 @@ describe('BuddyConversationService', () => {
 				]),
 				expect.objectContaining({}),
 			);
+		});
+
+		it('does not advertise structured home read tools without native tool-result support', async () => {
+			const legacyCompatibleTool = createToolDefinition({
+				name: 'run_scene',
+				description: 'Run a scene.',
+				audiences: [ToolAudience.BUDDY],
+				access: ToolAccessKind.TRIGGER,
+				inputSchema: z.object({ scene_id: z.string() }),
+				outputSchema: toolOutputSchema,
+			});
+			const structuredReadTools = [SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME].map((name) =>
+				createToolDefinition({
+					name,
+					description: 'Return structured home data.',
+					audiences: [ToolAudience.BUDDY],
+					access: ToolAccessKind.READ,
+					inputSchema: z.object({}),
+					outputSchema: toolOutputSchema,
+				}),
+			);
+			llmProvider.supportsTools.mockReturnValue(true);
+			llmProvider.supportsNativeToolResults.mockReturnValue(false);
+			toolProviderRegistry.getAllToolDefinitions.mockReturnValue([...structuredReadTools, legacyCompatibleTool]);
+
+			await service.sendMessage('conv-1', 'Run a scene.');
+
+			expect(llmProvider.sendMessage).toHaveBeenCalledWith(expect.any(String), expect.any(Array), {
+				tools: [legacyCompatibleTool],
+			});
 		});
 
 		it('should format energy values with kW units and omit battery when absent', async () => {

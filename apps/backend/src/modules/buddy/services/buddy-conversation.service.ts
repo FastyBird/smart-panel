@@ -42,6 +42,7 @@ import {
 
 import { BuddyContext, BuddyContextService } from './buddy-context.service';
 import { BuddyPersonalityService } from './buddy-personality.service';
+import { QUERY_HOME_STATE_TOOL_NAME, SEARCH_HOME_TOOL_NAME } from './home-context-tool-provider.service';
 import { ChatMessage, LlmProviderService } from './llm-provider.service';
 
 const MAX_HISTORY_MESSAGES = 20;
@@ -156,8 +157,16 @@ export class BuddyConversationService {
 		chatMessages.push({ role: MessageRole.USER, content });
 
 		// 3. Call LLM provider with tool support if available
-		const tools = this.llmProvider.supportsTools()
-			? this.toolProviderRegistry.getAllToolDefinitions({ audience: ToolAudience.BUDDY })
+		const supportsTools = this.llmProvider.supportsTools();
+		const supportsNativeToolResults = supportsTools && this.llmProvider.supportsNativeToolResults();
+		const tools = supportsTools
+			? this.toolProviderRegistry
+					.getAllToolDefinitions({ audience: ToolAudience.BUDDY })
+					.filter(
+						(definition) =>
+							supportsNativeToolResults ||
+							(definition.name !== SEARCH_HOME_TOOL_NAME && definition.name !== QUERY_HOME_STATE_TOOL_NAME),
+					)
 			: undefined;
 		const maxIterations = this.getMaxToolIterations();
 		const llmResponse = await this.sendWithToolExecution(

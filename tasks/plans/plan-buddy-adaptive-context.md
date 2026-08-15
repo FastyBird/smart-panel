@@ -1563,9 +1563,9 @@ busy response leaves an ownerless nonterminal sequence capable of blocking later
 - [x] Return concise messages plus bounded structured data and freshness/truncation/coverage metadata.
 - [x] Add bounded, opaque, kind-bound conversation-scoped Buddy mappings to `ShortIdMappingService`; register only
       references rendered in that conversation and require the same scope in every Buddy action lookup, with no
-      unscoped/global or canonical fallback. Capacity exhaustion omits further action references instead of invalidating
-      references already rendered in the active conversation. Preserve existing non-Buddy mapping behavior and canonical
-      UUID fallback.
+      unscoped/global or canonical fallback. Per-conversation or global capacity exhaustion omits further action references
+      instead of invalidating any reference that may be present in an in-flight prompt. Preserve existing non-Buddy mapping
+      behavior and canonical UUID fallback.
 - [ ] Add tool selection support so unrelated schemas are not advertised on every turn.
 - [x] Register the initial read tools behind conversation-scoped action-reference containment: discovered canonical IDs
       remain valid for dependent reads but cannot authorize Buddy writes/triggers. This containment is not the complete
