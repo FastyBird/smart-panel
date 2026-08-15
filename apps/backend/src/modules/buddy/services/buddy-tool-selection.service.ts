@@ -239,6 +239,7 @@ export class BuddyToolSelectionService {
 		}
 
 		if (hasActionSignal) {
+			selected.add(SEARCH_HOME_TOOL_NAME);
 			this.selectActionTools(tokens, selected);
 		}
 

@@ -55,19 +55,28 @@ describe('BuddyToolSelectionService', () => {
 	});
 
 	it('selects scene execution without unrelated device or lighting actions', () => {
-		expect(selectNames('Run the evening scene.')).toEqual([names.scene]);
+		expect(selectNames('Run the evening scene.')).toEqual([SEARCH_HOME_TOOL_NAME, names.scene]);
 	});
 
 	it('selects individual device control for a specific lamp', () => {
-		expect(selectNames('Dim the desk lamp.')).toEqual([names.control]);
+		expect(selectNames('Dim the desk lamp.')).toEqual([SEARCH_HOME_TOOL_NAME, names.control]);
 	});
 
 	it('keeps both lighting action shapes when the request names a room', () => {
-		expect(selectNames('Turn off the kitchen lights.')).toEqual([names.control, names.spaceLighting]);
+		expect(selectNames('Turn off the kitchen lights.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			names.control,
+			names.spaceLighting,
+		]);
 	});
 
 	it('keeps all action shapes for an ambiguous follow-up reference', () => {
-		expect(selectNames('Turn it off.')).toEqual([names.control, names.scene, names.spaceLighting]);
+		expect(selectNames('Turn it off.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			names.control,
+			names.scene,
+			names.spaceLighting,
+		]);
 	});
 
 	it('combines read and relevant action tools for a compound request', () => {
