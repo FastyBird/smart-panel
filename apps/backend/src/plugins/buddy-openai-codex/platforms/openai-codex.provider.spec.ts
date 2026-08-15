@@ -36,6 +36,14 @@ const assistantMessageItem = {
 	status: 'completed',
 } satisfies LlmConversationAssistantMessageItem;
 
+const assistantMessageWithoutPhase = {
+	id: 'message-1',
+	type: 'message',
+	role: 'assistant',
+	content: [{ type: 'output_text', text: 'I will check both sensors.', annotations: [] }],
+	status: 'completed',
+} satisfies LlmConversationAssistantMessageItem;
+
 const firstFunctionCallItem = {
 	id: 'function-item-1',
 	type: 'function_call',
@@ -181,7 +189,7 @@ describe('OpenAiCodexProvider native transcript', () => {
 		expect(provider.supportsNativeToolResults()).toBe(true);
 	});
 
-	it('captures and replays completed message, reasoning, and calls in exact response output order', async () => {
+	it('captures exact output order and normalizes a null completed-message phase before replay', async () => {
 		const events = [
 			{
 				type: 'response.output_item.done',
@@ -208,7 +216,7 @@ describe('OpenAiCodexProvider native transcript', () => {
 				type: 'response.completed',
 				response: {
 					output: [
-						assistantMessageItem,
+						{ ...assistantMessageItem, phase: null },
 						reasoningItem,
 						firstFunctionCallItem,
 						secondReasoningItem,
@@ -238,9 +246,13 @@ describe('OpenAiCodexProvider native transcript', () => {
 				{ id: 'provider-call-2', name: 'get_humidity', arguments: { room: 'kitchen' } },
 			]);
 			expect(response.providerItems).toEqual(
-				[assistantMessageItem, reasoningItem, firstFunctionCallItem, secondReasoningItem, secondFunctionCallItem].map(
-					(item, outputIndex) => ({ provider: BUDDY_OPENAI_CODEX_PLUGIN_NAME, outputIndex, item }),
-				),
+				[
+					assistantMessageWithoutPhase,
+					reasoningItem,
+					firstFunctionCallItem,
+					secondReasoningItem,
+					secondFunctionCallItem,
+				].map((item, outputIndex) => ({ provider: BUDDY_OPENAI_CODEX_PLUGIN_NAME, outputIndex, item })),
 			);
 
 			const requestBody = fetchSpy.mock.calls[0][1]?.body;
@@ -287,7 +299,7 @@ describe('OpenAiCodexProvider native transcript', () => {
 
 			expect(continuationPayload.input).toEqual([
 				{ role: 'user', content: 'Read the kitchen.', type: 'message' },
-				assistantMessageItem,
+				assistantMessageWithoutPhase,
 				reasoningItem,
 				firstFunctionCallItem,
 				secondReasoningItem,

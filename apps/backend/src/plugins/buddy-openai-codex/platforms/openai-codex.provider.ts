@@ -273,7 +273,7 @@ function parseOpenAiCodexAssistantMessageItem(item: OpenAiCodexOutputItem): LlmC
 	const allowedPhases = ['commentary', 'final_answer'] as const;
 	const phase = allowedPhases.find((candidate) => candidate === item.phase);
 
-	if (item.phase !== undefined && phase === undefined) {
+	if (item.phase !== undefined && item.phase !== null && phase === undefined) {
 		throw new TypeError('OpenAI Codex assistant message continuation has an invalid phase');
 	}
 	const status = parseOpenAiCodexOutputStatus(item.status, 'assistant message');
