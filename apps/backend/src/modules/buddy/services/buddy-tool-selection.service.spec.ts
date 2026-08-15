@@ -238,6 +238,7 @@ describe('BuddyToolSelectionService', () => {
 
 	it('treats an action verb used in an interrogative predicate as a state read', () => {
 		expect(selectNames('Is the thermostat set to 20?')).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
+		expect(selectNames('Is the thermostat set to 20')).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
 	});
 
 	it('does not classify an explicit current-status question as a generic explanation', () => {

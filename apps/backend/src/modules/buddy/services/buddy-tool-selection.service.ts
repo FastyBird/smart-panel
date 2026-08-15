@@ -92,6 +92,7 @@ const ACTION_CLAUSE_PATTERN = new RegExp(
 );
 const READ_CLAUSE_PATTERN = /\b(?:a|and|potom|then)\s+(?:check|find|show|tell|what|whether|which)\b/u;
 const STATE_QUESTION_PATTERN = /^(?:are|do|does|how|is|what|which|where|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u;
+const PREDICATE_QUESTION_PATTERN = /^(?:are|is)\b/u;
 const CONDITION_PATTERN =
 	/\b(?:after|as long as|as soon as|before|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|unless|when|whenever)\b/u;
 const LEADING_CONDITION_PATTERN =
@@ -320,7 +321,9 @@ export class BuddyToolSelectionService {
 			/[,;]/u.test(normalizedMessage);
 		const hasHomeSignal = intersects(tokens, HOME_SIGNALS);
 		const hasInterrogativeHomeQuestion =
-			hasHomeSignal && message.includes('?') && STATE_QUESTION_PATTERN.test(normalizedMessage);
+			hasHomeSignal &&
+			STATE_QUESTION_PATTERN.test(normalizedMessage) &&
+			(message.includes('?') || isSyntacticPredicateQuestion(normalizedMessage, tokens));
 		const isGenericExplanation = isGenericHomeExplanation(normalizedMessage, tokens);
 		const hasUnrecognizedStateIntent =
 			hasStateSignal &&
@@ -516,7 +519,8 @@ function getActionIntentTokens(
 		(hasStateSignal &&
 			(STATE_QUESTION_PATTERN.test(normalizedMessage) ||
 				/^(?:please\s+)?tell\b.*\b(?:if|whether)\b/u.test(normalizedMessage))) ||
-		(STATE_QUESTION_PATTERN.test(normalizedMessage) && normalizedMessage.includes('?'));
+		(STATE_QUESTION_PATTERN.test(normalizedMessage) &&
+			(normalizedMessage.includes('?') || isSyntacticPredicateQuestion(normalizedMessage, tokens)));
 
 	if (isStateQuestion) {
 		const questionEnd = normalizedMessage.indexOf('?');
@@ -554,6 +558,10 @@ function getActionIntentTokens(
 	}
 
 	return tokens;
+}
+
+function isSyntacticPredicateQuestion(normalizedMessage: string, tokens: Set<string>): boolean {
+	return PREDICATE_QUESTION_PATTERN.test(normalizedMessage) && intersects(tokens, ACTION_SIGNALS);
 }
 
 function sliceAfterFirst(value: string, delimiter: RegExp): string {
