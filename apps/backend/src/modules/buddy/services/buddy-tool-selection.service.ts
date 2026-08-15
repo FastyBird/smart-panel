@@ -90,6 +90,10 @@ const ACTION_CLAUSE_PATTERN = new RegExp(
 	String.raw`(?:\ba\b|\band\b|\bplus\b|\bpotom\b|\bthen\b|[,;])\s*(?:(?:also|please|take)\s+)*(?:${[...ACTION_SIGNALS].join('|')})\b`,
 	'u',
 );
+const STATE_QUESTION_CLAUSE_PATTERN = new RegExp(
+	String.raw`[,;]|\ba\b(?=\s+(?:${[...ACTION_SIGNALS].join('|')})\b)|\b(?:after|and|assuming(?: that)?|before|if not|if so|once|plus|potom|then|until|when|while)\b`,
+	'u',
+);
 const READ_CLAUSE_PATTERN =
 	/(?:\ba\b|\band\b|\bplus\b|\bpotom\b|\bthen\b|[,;])\s*(?:check|confirm|determine|ensure|fetch|find|get|make sure|read|report|see|show|tell|verify|what|whether|which)\b/u;
 const STATE_QUESTION_PATTERN =
@@ -614,10 +618,7 @@ function getActionIntentTokens(
 		const questionEnd = normalizedMessage.indexOf('?');
 		const questionBody = questionEnd >= 0 ? normalizedMessage.slice(0, questionEnd) : normalizedMessage;
 		const trailingClause = [
-			sliceAfterFirst(
-				questionBody,
-				/[,;]|\b(?:a|after|and|assuming(?: that)?|before|if not|if so|once|plus|potom|then|until|when|while)\b/u,
-			),
+			sliceAfterFirst(questionBody, STATE_QUESTION_CLAUSE_PATTERN),
 			questionEnd >= 0 ? normalizedMessage.slice(questionEnd + 1) : '',
 		].join(' ');
 		const trailingTokens = tokenize(trailingClause);
