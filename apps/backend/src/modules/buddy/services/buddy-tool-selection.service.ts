@@ -79,6 +79,10 @@ const ACTION_SIGNALS = new Set([
 	'zapni',
 	'zavri',
 ]);
+const ACTION_CLAUSE_PATTERN = new RegExp(
+	String.raw`(?:\band\b|\bthen\b|[,;])\s*(?:please\s+)?(?:${[...ACTION_SIGNALS].join('|')})\b`,
+	'u',
+);
 const HOME_SIGNALS = new Set([
 	'air',
 	'bathroom',
@@ -234,17 +238,18 @@ export class BuddyToolSelectionService {
 		const hasStateSignal = intersects(tokens, STATE_SIGNALS);
 		const actionTokens = getActionIntentTokens(normalizedMessage, tokens, hasStateSignal);
 		const hasHomeSignal = intersects(tokens, HOME_SIGNALS);
+		const isGenericExplanation = isGenericHomeExplanation(normalizedMessage, tokens);
 
-		if (hasSearchSignal || hasStateSignal || (message.includes('?') && hasHomeSignal)) {
+		if (hasSearchSignal || hasStateSignal || (message.includes('?') && hasHomeSignal && !isGenericExplanation)) {
 			for (const name of READ_TOOL_NAMES) selected.add(name);
 		}
 
 		if (actionTokens) {
 			selected.add(SEARCH_HOME_TOOL_NAME);
-			this.selectActionTools(actionTokens, selected);
+			this.selectActionTools(actionTokens, selected, ACTION_CLAUSE_PATTERN.test(normalizedMessage));
 		}
 
-		if (selected.size === 0 && (hasHomeSignal || !isClearlyGeneralConversation(tokens))) {
+		if (selected.size === 0 && !isGenericExplanation && (hasHomeSignal || !isClearlyGeneralConversation(tokens))) {
 			for (const name of BUILT_IN_TOOL_NAMES) selected.add(name);
 		}
 
@@ -253,7 +258,13 @@ export class BuddyToolSelectionService {
 		);
 	}
 
-	private selectActionTools(tokens: Set<string>, selected: Set<string>): void {
+	private selectActionTools(tokens: Set<string>, selected: Set<string>, hasAdditionalActionClause: boolean): void {
+		if (hasAdditionalActionClause) {
+			for (const name of ACTION_TOOL_NAMES) selected.add(name);
+
+			return;
+		}
+
 		const hasSceneSignal = intersects(tokens, SCENE_SIGNALS);
 		const hasLightingSignal = intersects(tokens, LIGHTING_SIGNALS);
 		const hasDeviceSignal = intersects(tokens, DEVICE_SIGNALS);
@@ -307,6 +318,17 @@ function isClearlyGeneralConversation(tokens: Set<string>): boolean {
 	}
 
 	return true;
+}
+
+function isGenericHomeExplanation(normalizedMessage: string, tokens: Set<string>): boolean {
+	if (!intersects(tokens, HOME_SIGNALS)) return false;
+
+	return (
+		/^how (?:do|does) .+ work(?:s|ing)?\b/u.test(normalizedMessage) ||
+		/^what (?:do|does) .+ mean\b/u.test(normalizedMessage) ||
+		/^what (?:is|are) (?:a|an)\b/u.test(normalizedMessage) ||
+		/^explain\b/u.test(normalizedMessage)
+	);
 }
 
 function getActionIntentTokens(

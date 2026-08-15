@@ -88,6 +88,15 @@ describe('BuddyToolSelectionService', () => {
 		]);
 	});
 
+	it('retains every action schema for multiple commands with an arbitrary target name', () => {
+		expect(selectNames('Close the blinds and run Bedtime.')).toEqual([
+			SEARCH_HOME_TOOL_NAME,
+			names.control,
+			names.scene,
+			names.spaceLighting,
+		]);
+	});
+
 	it.each(['Are any windows open? If so, close them.', 'Are all doors closed, and open them if not.'])(
 		'preserves a command that follows a state-first clause: %s',
 		(message) => {
@@ -100,6 +109,13 @@ describe('BuddyToolSelectionService', () => {
 			definitions.map((definition) => definition.name),
 		);
 	});
+
+	it.each(['How does a thermostat work?', 'Explain how smart-home lighting works.'])(
+		'keeps generic smart-home explanations tool-free: %s',
+		(message) => {
+			expect(selectNames(message)).toEqual([]);
+		},
+	);
 
 	it('falls back to every built-in tool for ambiguous home-related wording', () => {
 		expect(selectNames('Help me with my smart home.')).toEqual(definitions.map((definition) => definition.name));
