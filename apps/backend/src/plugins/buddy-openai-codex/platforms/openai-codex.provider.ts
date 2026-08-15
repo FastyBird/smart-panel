@@ -10,8 +10,12 @@ import {
 } from '../../../modules/buddy/platforms/llm-conversation.utils';
 import {
 	ILlmProvider,
+	LlmAssistantToolCallsItem,
+	LlmConversationAssistantMessageItem,
+	LlmConversationFunctionCallItem,
 	LlmConversationItem,
 	LlmConversationProviderItem,
+	LlmConversationProviderOutputItem,
 	LlmConversationReasoningItem,
 	LlmOptions,
 	LlmResponse,
@@ -38,6 +42,7 @@ interface OpenAiCodexOutputItem {
 	summary?: unknown;
 	content?: unknown;
 	status?: unknown;
+	role?: unknown;
 }
 
 interface OpenAiCodexStreamEvent {
@@ -72,24 +77,19 @@ export function buildOpenAiCodexRequestPayload(
 
 		if (isLlmAssistantToolCallsItem(message)) {
 			const providerItems = message.providerItems ?? [];
-			const nativeCalls = message.calls.flatMap<Record<string, unknown>>((call) => [
-				...providerItems
-					.filter((providerItem) => providerItem.beforeProviderCallId === call.providerCallId)
-					.map(toOpenAiCodexProviderItem),
-				{
+
+			if (providerItems.length > 0) {
+				return serializeOpenAiCodexProviderItems(message.content, message.calls, providerItems);
+			}
+
+			return [
+				...(message.content.length === 0 ? [] : [{ role: 'assistant', content: message.content, type: 'message' }]),
+				...message.calls.map((call) => ({
 					type: 'function_call',
 					call_id: requireProviderCallId('OpenAI Codex', call.providerCallId),
 					name: call.name,
 					arguments: call.rawArguments ?? JSON.stringify(call.arguments),
-				},
-			]);
-
-			return [
-				...(message.content.length === 0 ? [] : [{ role: 'assistant', content: message.content, type: 'message' }]),
-				...nativeCalls,
-				...providerItems
-					.filter((providerItem) => providerItem.beforeProviderCallId === null)
-					.map(toOpenAiCodexProviderItem),
+				})),
 			];
 		}
 
@@ -119,12 +119,77 @@ export function buildOpenAiCodexRequestPayload(
 	};
 }
 
-function toOpenAiCodexProviderItem(providerItem: LlmConversationProviderItem): Record<string, unknown> {
+function serializeOpenAiCodexProviderItems(
+	content: string,
+	calls: LlmAssistantToolCallsItem['calls'],
+	providerItems: LlmConversationProviderItem[],
+): Record<string, unknown>[] {
+	const orderedProviderItems = [...providerItems].sort((left, right) => left.outputIndex - right.outputIndex);
+	const nativeItems = orderedProviderItems.map(toOpenAiCodexProviderItem);
+	const providerMessages = nativeItems.filter(
+		(item): item is LlmConversationAssistantMessageItem => item.type === 'message',
+	);
+	const providerCalls = nativeItems.filter(
+		(item): item is LlmConversationFunctionCallItem => item.type === 'function_call',
+	);
+	const providerContent = providerMessages
+		.flatMap((message) => message.content)
+		.map((part) => part.text)
+		.join('');
+
+	if (providerContent !== content) {
+		throw new TypeError('OpenAI Codex provider message state does not match canonical assistant content');
+	}
+
+	if (providerCalls.length !== calls.length) {
+		throw new TypeError('OpenAI Codex provider state must contain exactly one native item per function call');
+	}
+
+	for (const [callIndex, call] of calls.entries()) {
+		const providerCall = providerCalls[callIndex];
+		const providerCallId = requireProviderCallId('OpenAI Codex', call.providerCallId);
+		let providerArguments: unknown;
+
+		try {
+			providerArguments = JSON.parse(providerCall.arguments);
+		} catch {
+			throw new TypeError('OpenAI Codex provider function call contains invalid arguments');
+		}
+
+		if (
+			providerCall.call_id !== providerCallId ||
+			providerCall.name !== call.name ||
+			JSON.stringify(providerArguments) !== JSON.stringify(call.arguments)
+		) {
+			throw new TypeError(`OpenAI Codex provider function call at index ${callIndex} is ambiguous`);
+		}
+	}
+
+	return nativeItems.map((item) => ({ ...item }));
+}
+
+function toOpenAiCodexProviderItem(providerItem: LlmConversationProviderItem): LlmConversationProviderOutputItem {
 	if (providerItem.provider !== BUDDY_OPENAI_CODEX_PLUGIN_NAME) {
 		throw new TypeError(`OpenAI Codex cannot replay provider item for "${providerItem.provider}"`);
 	}
 
-	return { ...parseOpenAiCodexReasoningItem(providerItem.item) };
+	return parseOpenAiCodexProviderOutputItem(providerItem.item);
+}
+
+function parseOpenAiCodexProviderOutputItem(item: OpenAiCodexOutputItem): LlmConversationProviderOutputItem {
+	if (item.type === 'reasoning') {
+		return parseOpenAiCodexReasoningItem(item);
+	}
+
+	if (item.type === 'message') {
+		return parseOpenAiCodexAssistantMessageItem(item);
+	}
+
+	if (item.type === 'function_call') {
+		return parseOpenAiCodexFunctionCallItem(item);
+	}
+
+	throw new TypeError('OpenAI Codex provider continuation contains an unsupported output item');
 }
 
 function parseOpenAiCodexReasoningItem(item: OpenAiCodexOutputItem): LlmConversationReasoningItem {
@@ -178,6 +243,84 @@ function parseOpenAiCodexReasoningItem(item: OpenAiCodexOutputItem): LlmConversa
 		encrypted_content: item.encrypted_content,
 		...(status === undefined ? {} : { status }),
 	};
+}
+
+function parseOpenAiCodexAssistantMessageItem(item: OpenAiCodexOutputItem): LlmConversationAssistantMessageItem {
+	if (
+		item.type !== 'message' ||
+		typeof item.id !== 'string' ||
+		item.id.length === 0 ||
+		item.role !== 'assistant' ||
+		!Array.isArray(item.content)
+	) {
+		throw new TypeError('OpenAI Codex assistant message continuation is incomplete');
+	}
+
+	const content = item.content.map((part) => {
+		if (
+			!isRecord(part) ||
+			part.type !== 'output_text' ||
+			typeof part.text !== 'string' ||
+			!Array.isArray(part.annotations) ||
+			part.annotations.length !== 0
+		) {
+			throw new TypeError('OpenAI Codex assistant message continuation has invalid content');
+		}
+
+		return { type: 'output_text' as const, text: part.text, annotations: [] as [] };
+	});
+	const status = parseOpenAiCodexOutputStatus(item.status, 'assistant message');
+
+	return {
+		type: 'message',
+		id: item.id,
+		role: 'assistant',
+		content,
+		...(status === undefined ? {} : { status }),
+	};
+}
+
+function parseOpenAiCodexFunctionCallItem(item: OpenAiCodexOutputItem): LlmConversationFunctionCallItem {
+	if (
+		item.type !== 'function_call' ||
+		typeof item.call_id !== 'string' ||
+		item.call_id.length === 0 ||
+		typeof item.name !== 'string' ||
+		item.name.length === 0 ||
+		typeof item.arguments !== 'string'
+	) {
+		throw new TypeError('OpenAI Codex function call continuation is incomplete');
+	}
+
+	if (item.id !== undefined && (typeof item.id !== 'string' || item.id.length === 0)) {
+		throw new TypeError('OpenAI Codex function call continuation has an invalid ID');
+	}
+
+	const status = parseOpenAiCodexOutputStatus(item.status, 'function call');
+
+	return {
+		type: 'function_call',
+		...(item.id === undefined ? {} : { id: item.id }),
+		call_id: item.call_id,
+		name: item.name,
+		arguments: item.arguments,
+		...(status === undefined ? {} : { status }),
+	};
+}
+
+function parseOpenAiCodexOutputStatus(
+	value: unknown,
+	label: string,
+): 'in_progress' | 'completed' | 'incomplete' | undefined {
+	if (value === undefined) {
+		return undefined;
+	}
+
+	if (value === 'in_progress' || value === 'completed' || value === 'incomplete') {
+		return value;
+	}
+
+	throw new TypeError(`OpenAI Codex ${label} continuation has an invalid status`);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -314,12 +457,11 @@ export class OpenAiCodexProvider implements ILlmProvider {
 		// Track tool calls: Responses API emits function_call_arguments.delta events
 		// with a call_id, and we accumulate the JSON argument strings per call
 		const toolCallMap = new Map<string, { id: string; name: string; args: string; outputIndex: number }>();
-		const reasoningItemMap = new Map<number, LlmConversationReasoningItem>();
+		const providerItemMap = new Map<number, LlmConversationProviderOutputItem>();
 
 		const captureOutputItem = (item: OpenAiCodexOutputItem, outputIndex: number, complete: boolean): void => {
-			if (item.type === 'reasoning' && complete) {
-				reasoningItemMap.set(outputIndex, parseOpenAiCodexReasoningItem(item));
-				return;
+			if (complete) {
+				providerItemMap.set(outputIndex, parseOpenAiCodexProviderOutputItem(item));
 			}
 
 			if (item.type !== 'function_call' || typeof item.call_id !== 'string' || item.call_id.length === 0) {
@@ -405,15 +547,27 @@ export class OpenAiCodexProvider implements ILlmProvider {
 			}
 		}
 
-		const providerItems = [...reasoningItemMap.entries()]
+		const providerItems = [...providerItemMap.entries()]
 			.sort(([leftIndex], [rightIndex]) => leftIndex - rightIndex)
 			.map(
-				([reasoningIndex, item]): LlmConversationProviderItem => ({
+				([outputIndex, item]): LlmConversationProviderItem => ({
 					provider: BUDDY_OPENAI_CODEX_PLUGIN_NAME,
-					beforeProviderCallId: orderedToolCalls.find((toolCall) => toolCall.outputIndex > reasoningIndex)?.id ?? null,
+					outputIndex,
 					item,
 				}),
 			);
+		const providerContent = [...providerItemMap.entries()]
+			.sort(([leftIndex], [rightIndex]) => leftIndex - rightIndex)
+			.flatMap(([, item]) => (item.type === 'message' ? item.content : []))
+			.map((part) => part.text)
+			.join('');
+
+		if (providerContent.length > 0) {
+			if (content.length > 0 && content !== providerContent) {
+				throw new TypeError('OpenAI Codex streamed text does not match its completed message output');
+			}
+			content = providerContent;
+		}
 
 		return { content, toolCalls, providerItems };
 	}

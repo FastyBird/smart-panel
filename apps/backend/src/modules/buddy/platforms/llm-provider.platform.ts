@@ -58,16 +58,44 @@ export interface LlmConversationReasoningItem {
 	status?: 'in_progress' | 'completed' | 'incomplete';
 }
 
+export interface LlmConversationAssistantTextPart {
+	type: 'output_text';
+	text: string;
+	annotations: [];
+}
+
+export interface LlmConversationAssistantMessageItem {
+	type: 'message';
+	id: string;
+	role: 'assistant';
+	content: LlmConversationAssistantTextPart[];
+	status?: 'in_progress' | 'completed' | 'incomplete';
+}
+
+export interface LlmConversationFunctionCallItem {
+	type: 'function_call';
+	id?: string;
+	call_id: string;
+	name: string;
+	arguments: string;
+	status?: 'in_progress' | 'completed' | 'incomplete';
+}
+
+export type LlmConversationProviderOutputItem =
+	| LlmConversationReasoningItem
+	| LlmConversationAssistantMessageItem
+	| LlmConversationFunctionCallItem;
+
 /**
  * Provider-owned active-turn state that must be replayed to continue a native
  * tool exchange. It is never persisted as ordinary conversation history.
  */
 export interface LlmConversationProviderItem {
 	provider: string;
-	/** Native call before which this output item appeared, or null when it followed all calls. */
-	beforeProviderCallId: string | null;
-	/** Validated active-turn reasoning output returned by the provider. */
-	item: LlmConversationReasoningItem;
+	/** Exact position in the provider's response output array. */
+	outputIndex: number;
+	/** Validated active-turn output returned by the provider. */
+	item: LlmConversationProviderOutputItem;
 }
 
 export interface LlmAssistantToolCallsItem {

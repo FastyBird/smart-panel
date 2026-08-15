@@ -1,5 +1,7 @@
 import { MessageRole } from '../../../modules/buddy/buddy.constants';
 import {
+	LlmConversationAssistantMessageItem,
+	LlmConversationFunctionCallItem,
 	LlmConversationItem,
 	LlmConversationReasoningItem,
 } from '../../../modules/buddy/platforms/llm-provider.platform';
@@ -25,6 +27,32 @@ const secondReasoningItem = {
 	status: 'completed',
 } satisfies LlmConversationReasoningItem;
 
+const assistantMessageItem = {
+	id: 'message-1',
+	type: 'message',
+	role: 'assistant',
+	content: [{ type: 'output_text', text: 'I will check both sensors.', annotations: [] }],
+	status: 'completed',
+} satisfies LlmConversationAssistantMessageItem;
+
+const firstFunctionCallItem = {
+	id: 'function-item-1',
+	type: 'function_call',
+	call_id: 'provider-call-1',
+	name: 'get_temperature',
+	arguments: '{"room":"kitchen"}',
+	status: 'completed',
+} satisfies LlmConversationFunctionCallItem;
+
+const secondFunctionCallItem = {
+	id: 'function-item-2',
+	type: 'function_call',
+	call_id: 'provider-call-2',
+	name: 'get_humidity',
+	arguments: '{"room":"kitchen"}',
+	status: 'completed',
+} satisfies LlmConversationFunctionCallItem;
+
 const transcript: LlmConversationItem[] = [
 	{ role: MessageRole.USER, content: 'Read the kitchen.' },
 	{
@@ -33,13 +61,28 @@ const transcript: LlmConversationItem[] = [
 		providerItems: [
 			{
 				provider: BUDDY_OPENAI_CODEX_PLUGIN_NAME,
-				beforeProviderCallId: 'provider-call-1',
+				outputIndex: 0,
+				item: assistantMessageItem,
+			},
+			{
+				provider: BUDDY_OPENAI_CODEX_PLUGIN_NAME,
+				outputIndex: 1,
 				item: reasoningItem,
 			},
 			{
 				provider: BUDDY_OPENAI_CODEX_PLUGIN_NAME,
-				beforeProviderCallId: 'provider-call-2',
+				outputIndex: 2,
+				item: firstFunctionCallItem,
+			},
+			{
+				provider: BUDDY_OPENAI_CODEX_PLUGIN_NAME,
+				outputIndex: 3,
 				item: secondReasoningItem,
+			},
+			{
+				provider: BUDDY_OPENAI_CODEX_PLUGIN_NAME,
+				outputIndex: 4,
+				item: secondFunctionCallItem,
 			},
 		],
 		calls: [
@@ -91,21 +134,11 @@ describe('OpenAiCodexProvider native transcript', () => {
 			instructions: 'system',
 			input: [
 				{ role: 'user', content: 'Read the kitchen.', type: 'message' },
-				{ role: 'assistant', content: 'I will check both sensors.', type: 'message' },
+				assistantMessageItem,
 				reasoningItem,
-				{
-					type: 'function_call',
-					call_id: 'provider-call-1',
-					name: 'get_temperature',
-					arguments: '{"room":"kitchen"}',
-				},
+				firstFunctionCallItem,
 				secondReasoningItem,
-				{
-					type: 'function_call',
-					call_id: 'provider-call-2',
-					name: 'get_humidity',
-					arguments: '{"room":"kitchen"}',
-				},
+				secondFunctionCallItem,
 				{
 					type: 'function_call_output',
 					call_id: 'provider-call-1',
@@ -147,15 +180,7 @@ describe('OpenAiCodexProvider native transcript', () => {
 		expect(provider.supportsNativeToolResults()).toBe(true);
 	});
 
-	it('captures complete encrypted reasoning output and associates it with the following native function call', async () => {
-		const functionCallItem = {
-			id: 'function-item-1',
-			type: 'function_call',
-			call_id: 'provider-call-1',
-			name: 'get_temperature',
-			arguments: '{"room":"kitchen"}',
-			status: 'completed',
-		};
+	it('captures and replays completed message, reasoning, and calls in exact response output order', async () => {
 		const events = [
 			{
 				type: 'response.output_item.done',
@@ -166,17 +191,30 @@ describe('OpenAiCodexProvider native transcript', () => {
 				output_index: -1,
 				item: { ...reasoningItem, encrypted_content: 'must-not-use-with-a-negative-output-index' },
 			},
-			{ type: 'response.output_item.added', output_index: 0, item: { ...reasoningItem, encrypted_content: null } },
-			{ type: 'response.output_item.done', output_index: 0, item: reasoningItem },
-			{ type: 'response.output_item.added', output_index: 1, item: { ...functionCallItem, arguments: '' } },
+			{ type: 'response.output_item.added', output_index: 0, item: { ...assistantMessageItem, content: [] } },
+			{ type: 'response.output_text.delta', output_index: 0, delta: 'I will check both sensors.' },
+			{ type: 'response.output_item.added', output_index: 1, item: { ...reasoningItem, encrypted_content: null } },
+			{ type: 'response.output_item.done', output_index: 1, item: reasoningItem },
+			{ type: 'response.output_item.added', output_index: 2, item: { ...firstFunctionCallItem, arguments: '' } },
 			{
 				type: 'response.function_call_arguments.delta',
-				output_index: 1,
+				output_index: 2,
 				call_id: 'provider-call-1',
 				delta: '{"room":"kitchen"}',
 			},
-			{ type: 'response.output_item.done', output_index: 1, item: functionCallItem },
-			{ type: 'response.completed', response: { output: [reasoningItem, functionCallItem] } },
+			{ type: 'response.output_item.done', output_index: 2, item: firstFunctionCallItem },
+			{
+				type: 'response.completed',
+				response: {
+					output: [
+						assistantMessageItem,
+						reasoningItem,
+						firstFunctionCallItem,
+						secondReasoningItem,
+						secondFunctionCallItem,
+					],
+				},
+			},
 		];
 		const body = `${events.map((event) => `data: ${JSON.stringify(event)}`).join('\n')}\ndata: [DONE]\n`;
 		const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(body, { status: 200 }));
@@ -193,16 +231,16 @@ describe('OpenAiCodexProvider native transcript', () => {
 				{ maxTokens: 321 },
 			);
 
+			expect(response.content).toBe('I will check both sensors.');
 			expect(response.toolCalls).toEqual([
 				{ id: 'provider-call-1', name: 'get_temperature', arguments: { room: 'kitchen' } },
+				{ id: 'provider-call-2', name: 'get_humidity', arguments: { room: 'kitchen' } },
 			]);
-			expect(response.providerItems).toEqual([
-				{
-					provider: BUDDY_OPENAI_CODEX_PLUGIN_NAME,
-					beforeProviderCallId: 'provider-call-1',
-					item: reasoningItem,
-				},
-			]);
+			expect(response.providerItems).toEqual(
+				[assistantMessageItem, reasoningItem, firstFunctionCallItem, secondReasoningItem, secondFunctionCallItem].map(
+					(item, outputIndex) => ({ provider: BUDDY_OPENAI_CODEX_PLUGIN_NAME, outputIndex, item }),
+				),
+			);
 
 			const requestBody = fetchSpy.mock.calls[0][1]?.body;
 
@@ -219,6 +257,43 @@ describe('OpenAiCodexProvider native transcript', () => {
 					max_output_tokens: 321,
 				}),
 			);
+
+			const continuationPayload = buildOpenAiCodexRequestPayload('codex-test', 'system', [
+				{ role: MessageRole.USER, content: 'Read the kitchen.' },
+				{
+					type: 'assistant_tool_calls',
+					content: response.content,
+					calls: response.toolCalls.map((call, index) => ({
+						callId: `call-${index + 1}`,
+						providerCallId: call.id,
+						name: call.name,
+						arguments: call.arguments,
+					})),
+					providerItems: response.providerItems,
+				},
+				{
+					type: 'tool_results',
+					results: response.toolCalls.map((call, index) => ({
+						callId: `call-${index + 1}`,
+						providerCallId: call.id,
+						toolName: call.name,
+						status: 'completed',
+						message: 'ok',
+						truncated: false,
+					})),
+				},
+			]);
+
+			expect(continuationPayload.input).toEqual([
+				{ role: 'user', content: 'Read the kitchen.', type: 'message' },
+				assistantMessageItem,
+				reasoningItem,
+				firstFunctionCallItem,
+				secondReasoningItem,
+				secondFunctionCallItem,
+				expect.objectContaining({ type: 'function_call_output', call_id: 'provider-call-1' }),
+				expect.objectContaining({ type: 'function_call_output', call_id: 'provider-call-2' }),
+			]);
 		} finally {
 			fetchSpy.mockRestore();
 		}
@@ -260,7 +335,7 @@ describe('OpenAiCodexProvider native transcript', () => {
 				providerItems: [
 					{
 						provider: BUDDY_OPENAI_CODEX_PLUGIN_NAME,
-						beforeProviderCallId: 'provider-call-1',
+						outputIndex: 0,
 						item: { type: 'reasoning', id: 'reasoning-1' } as unknown as LlmConversationReasoningItem,
 					},
 				],
@@ -282,6 +357,21 @@ describe('OpenAiCodexProvider native transcript', () => {
 
 		expect(() => buildOpenAiCodexRequestPayload('codex-test', 'system', invalidProviderItems)).toThrow(
 			'OpenAI Codex reasoning continuation requires complete encrypted content',
+		);
+	});
+
+	it('rejects native message state that does not exactly match canonical assistant content', () => {
+		const ambiguousProviderState = structuredClone(transcript);
+		const assistantTurn = ambiguousProviderState[1];
+
+		if (!('type' in assistantTurn) || assistantTurn.type !== 'assistant_tool_calls') {
+			throw new TypeError('Expected an assistant tool call fixture');
+		}
+
+		assistantTurn.content = 'Different canonical content.';
+
+		expect(() => buildOpenAiCodexRequestPayload('codex-test', 'system', ambiguousProviderState)).toThrow(
+			'OpenAI Codex provider message state does not match canonical assistant content',
 		);
 	});
 

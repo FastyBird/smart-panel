@@ -90,19 +90,23 @@ export function validateLlmConversationItems(items: LlmConversationItem[]): void
 			}
 		}
 
+		const seenProviderOutputIndexes = new Set<number>();
+
 		for (const [providerItemIndex, providerItem] of (item.providerItems ?? []).entries()) {
 			if (providerItem.provider.length === 0) {
 				throw new TypeError(`Provider item at index ${index}:${providerItemIndex} has an empty provider`);
 			}
 
 			if (
-				providerItem.beforeProviderCallId !== null &&
-				!item.calls.some((call) => call.providerCallId === providerItem.beforeProviderCallId)
+				!Number.isInteger(providerItem.outputIndex) ||
+				providerItem.outputIndex < 0 ||
+				seenProviderOutputIndexes.has(providerItem.outputIndex)
 			) {
 				throw new TypeError(
-					`Provider item at index ${index}:${providerItemIndex} references an unknown provider call ID`,
+					`Provider item at index ${index}:${providerItemIndex} has an invalid or duplicate output index`,
 				);
 			}
+			seenProviderOutputIndexes.add(providerItem.outputIndex);
 		}
 
 		index += 1;
