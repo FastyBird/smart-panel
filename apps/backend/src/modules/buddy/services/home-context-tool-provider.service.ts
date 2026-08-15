@@ -7,6 +7,7 @@ import { ChannelCategory, DataTypeType, PropertyCategory } from '../../devices/d
 import {
 	HOME_CURRENT_STATE_EQUALITY_OPERATORS,
 	HOME_CURRENT_STATE_LIMIT_PROFILES,
+	HOME_CURRENT_STATE_OPERATIONS,
 	HOME_CURRENT_STATE_ORDERING_OPERATORS,
 	HOME_CURRENT_STATE_PROFILE_BUDDY_V1,
 	HOME_SEARCH_CANDIDATE_CAPABILITIES,
@@ -103,12 +104,22 @@ const stateInputShape = {
 	limit: z.number().int().min(1).max(BUDDY_CURRENT_STATE_MAX_EVIDENCE_ROWS).optional(),
 };
 
-export const queryHomeStateToolInputSchema = z.discriminatedUnion('operation', [
-	z.object({ ...stateInputShape, operation: z.literal('rows'), predicate: statePredicateSchema.optional() }).strict(),
-	z.object({ ...stateInputShape, operation: z.literal('any'), predicate: statePredicateSchema }).strict(),
-	z.object({ ...stateInputShape, operation: z.literal('all'), predicate: statePredicateSchema }).strict(),
-	z.object({ ...stateInputShape, operation: z.literal('count_matches'), predicate: statePredicateSchema }).strict(),
-]);
+export const queryHomeStateToolInputSchema = z
+	.object({
+		...stateInputShape,
+		operation: z.enum(HOME_CURRENT_STATE_OPERATIONS),
+		predicate: statePredicateSchema.optional(),
+	})
+	.strict()
+	.superRefine((input, context) => {
+		if (input.operation !== 'rows' && input.predicate === undefined) {
+			context.addIssue({
+				code: 'custom',
+				path: ['predicate'],
+				message: `A predicate is required for the ${input.operation} operation`,
+			});
+		}
+	});
 
 @Injectable()
 export class HomeContextToolProviderService extends BaseToolProviderService {

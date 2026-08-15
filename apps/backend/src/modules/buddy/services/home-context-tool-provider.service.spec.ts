@@ -11,6 +11,8 @@ import { HomeCurrentStateQueryService } from '../../home-context/services/home-c
 import { HomeSearchQueryService } from '../../home-context/services/home-search-query.service';
 import { ToolAccessKind, ToolAudience, ToolExecutionStatus } from '../../tools/platforms/tool-provider.platform';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
+import { MessageRole } from '../buddy.constants';
+import { buildAnthropicRequestPayload } from '../platforms/anthropic-sdk.utils';
 
 import {
 	BUDDY_CURRENT_STATE_MAX_EVIDENCE_ROWS,
@@ -39,6 +41,7 @@ describe('HomeContextToolProviderService', () => {
 
 	it('publishes exactly two Buddy-only READ tools with server-owned profiles', () => {
 		const definitions = provider.getToolDefinitions();
+		const stateDefinition = definitions[1];
 
 		expect(provider.getType()).toBe(BUDDY_HOME_READ_TOOLS_PROVIDER);
 		expect(definitions.map(({ name }) => name)).toEqual([SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME]);
@@ -47,6 +50,32 @@ describe('HomeContextToolProviderService', () => {
 			expect(definition.access).toBe(ToolAccessKind.READ);
 			expect(definition.parameters).not.toHaveProperty('properties.profile');
 		}
+		expect(stateDefinition.parameters).toMatchObject({
+			type: 'object',
+			properties: {
+				operation: {
+					type: 'string',
+					enum: ['rows', 'any', 'all', 'count_matches'],
+				},
+			},
+		});
+		expect(stateDefinition.parameters).not.toHaveProperty('oneOf');
+
+		const anthropicPayload = buildAnthropicRequestPayload(
+			'claude-test',
+			'system',
+			[{ role: MessageRole.USER, content: 'Are any windows open?' }],
+			1024,
+			[stateDefinition],
+		);
+		expect(anthropicPayload).toMatchObject({
+			tools: [
+				{
+					name: QUERY_HOME_STATE_TOOL_NAME,
+					input_schema: { type: 'object' },
+				},
+			],
+		});
 
 		expect(searchHomeToolInputSchema.safeParse({ query: 'kitchen', profile: 'mcp-compatibility' }).success).toBe(false);
 		expect(queryHomeStateToolInputSchema.safeParse({ operation: 'any' }).success).toBe(false);
