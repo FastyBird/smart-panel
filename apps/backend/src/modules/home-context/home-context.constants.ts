@@ -57,10 +57,12 @@ export interface HomeSearchLimitProfile {
 	defaultResults: number;
 	maxResults: number;
 	maxCandidatesPerKind: number;
+	maxPageableResults: number;
 	maxQueryCharacters: number;
 	maxQueryTokens: number;
 	maxKinds: number;
 	maxCategories: number;
+	maxCursorCharacters: number;
 }
 
 export const HOME_SEARCH_LIMIT_PROFILES: Readonly<Record<HomeSearchProfile, Readonly<HomeSearchLimitProfile>>> =
@@ -68,17 +70,23 @@ export const HOME_SEARCH_LIMIT_PROFILES: Readonly<Record<HomeSearchProfile, Read
 		[HOME_SEARCH_PROFILE_BUDDY_V1]: Object.freeze({
 			defaultResults: 10,
 			maxResults: 20,
-			maxCandidatesPerKind: 21,
+			maxCandidatesPerKind: 100,
+			maxPageableResults: 100,
 			maxQueryCharacters: 128,
 			maxQueryTokens: 8,
 			maxKinds: 4,
 			maxCategories: 16,
+			maxCursorCharacters: 512,
 		}),
 	});
 
 export const HOME_SEARCH_ENTITY_KINDS = ['space', 'device', 'property', 'scene'] as const;
 
 export type HomeSearchEntityKind = (typeof HOME_SEARCH_ENTITY_KINDS)[number];
+
+export const HOME_SEARCH_CANDIDATE_CAPABILITIES = ['read', 'write', 'trigger'] as const;
+
+export type HomeSearchCandidateCapability = (typeof HOME_SEARCH_CANDIDATE_CAPABILITIES)[number];
 
 export const HOME_SEARCH_MATCH_REASONS = [
 	'exact_id',
@@ -87,6 +95,7 @@ export const HOME_SEARCH_MATCH_REASONS = [
 	'lexical_match',
 	'space_filter',
 	'category_filter',
+	'candidate_capability_filter',
 ] as const;
 
 export type HomeSearchMatchReason = (typeof HOME_SEARCH_MATCH_REASONS)[number];

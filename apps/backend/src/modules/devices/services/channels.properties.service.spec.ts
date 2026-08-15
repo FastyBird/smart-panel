@@ -352,6 +352,9 @@ describe('ChannelsPropertiesService', () => {
 			expect(selectSql).toContain("exact_term_fallback.col = 'identifier'");
 			expect(selectSql).toContain('property.name IS NULL');
 			expect(selectSql).toContain('ORDER BY "rankTier" ASC, "lexicalScore" ASC');
+			expect(selectSql).toContain('LOWER(COALESCE(property.name, property.identifier, property.id)) ASC');
+			expect(selectSql).not.toContain('LOWER(device.name) ASC');
+			expect(selectSql).not.toContain('LOWER(channel.name) ASC');
 			expect(selectParameters).toEqual([
 				'temperature',
 				1,
@@ -383,6 +386,89 @@ describe('ChannelsPropertiesService', () => {
 				}),
 			).resolves.toEqual({ properties: [], total: 0 });
 			expect(dataSource.query).not.toHaveBeenCalled();
+		});
+
+		it('filters readable candidates by exact permission boundaries while retaining disabled owners', async () => {
+			const query = jest.spyOn(dataSource, 'query');
+			query.mockResolvedValueOnce([]).mockResolvedValueOnce([{ total: 0 }]);
+
+			await channelsPropertiesService.searchVisibleSummaryPage({
+				match: '"sensor"*',
+				offset: 7,
+				limit: 10,
+				scope: { zoneId: 'zone-id' },
+				categories: [PropertyCategory.GENERIC],
+				candidateCapability: 'read',
+			});
+
+			const [selectSql, selectParameters] = query.mock.calls[0] as [string, unknown[]];
+			const [countSql, countParameters] = query.mock.calls[1] as [string, unknown[]];
+			for (const sql of [selectSql, countSql]) {
+				expect(sql).toContain('device.hidden = 0');
+				expect(sql).toContain('devices_module_devices_zones scoped_zone');
+				expect(sql).toContain('property.category IN (?)');
+				expect(sql).toContain('property.permissions = ?');
+				expect(sql).toContain('property.permissions LIKE ?');
+				expect(sql).not.toContain('device.enabled = 1');
+				expect(sql).not.toContain('property."dataType" IN');
+			}
+			const filterParameters = [
+				'property',
+				'"sensor"*',
+				'zone-id',
+				PropertyCategory.GENERIC,
+				PermissionType.READ_ONLY,
+				`${PermissionType.READ_ONLY},%`,
+				`%,${PermissionType.READ_ONLY},%`,
+				`%,${PermissionType.READ_ONLY}`,
+				PermissionType.READ_WRITE,
+				`${PermissionType.READ_WRITE},%`,
+				`%,${PermissionType.READ_WRITE},%`,
+				`%,${PermissionType.READ_WRITE}`,
+			];
+			expect(selectParameters).toEqual([null, ...filterParameters, 10, 7]);
+			expect(countParameters).toEqual(filterParameters);
+		});
+
+		it('filters writable candidates by permissions, command data type, and enabled owner before paging', async () => {
+			const query = jest.spyOn(dataSource, 'query');
+			query.mockResolvedValueOnce([]).mockResolvedValueOnce([{ total: 0 }]);
+
+			await channelsPropertiesService.searchVisibleSummaryPage({
+				match: '"switch"*',
+				offset: 5,
+				limit: 20,
+				roomParentId: 'floor-id',
+				candidateCapability: 'write',
+			});
+
+			const [selectSql, selectParameters] = query.mock.calls[0] as [string, unknown[]];
+			const [countSql, countParameters] = query.mock.calls[1] as [string, unknown[]];
+			for (const sql of [selectSql, countSql]) {
+				expect(sql).toContain('device.hidden = 0');
+				expect(sql).toContain('scoped_room."parentId" = ?');
+				expect(sql).toContain('property.permissions = ?');
+				expect(sql).toContain('device.enabled = 1');
+				expect(sql).toContain(
+					`property."dataType" IN (${SUPPORTED_PROPERTY_COMMAND_DATA_TYPES.map(() => '?').join(', ')})`,
+				);
+			}
+			const filterParameters = [
+				'property',
+				'"switch"*',
+				'floor-id',
+				PermissionType.READ_WRITE,
+				`${PermissionType.READ_WRITE},%`,
+				`%,${PermissionType.READ_WRITE},%`,
+				`%,${PermissionType.READ_WRITE}`,
+				PermissionType.WRITE_ONLY,
+				`${PermissionType.WRITE_ONLY},%`,
+				`%,${PermissionType.WRITE_ONLY},%`,
+				`%,${PermissionType.WRITE_ONLY}`,
+				...SUPPORTED_PROPERTY_COMMAND_DATA_TYPES,
+			];
+			expect(selectParameters).toEqual([null, ...filterParameters, 20, 5]);
+			expect(countParameters).toEqual(filterParameters);
 		});
 	});
 

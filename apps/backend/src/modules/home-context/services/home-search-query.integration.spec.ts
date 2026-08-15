@@ -101,8 +101,8 @@ describe('HomeSearchQueryService SQLite integration', () => {
 		expect(result.truncated).toBe(false);
 	});
 
-	it('keeps a diacritic-normalized exact name ahead of more than 21 competing matches before the hard cap', async () => {
-		for (let index = 0; index < 30; index += 1) {
+	it('keeps a diacritic-normalized exact name ahead of more than 100 competing matches before the hard cap', async () => {
+		for (let index = 0; index < 110; index += 1) {
 			await dataSource.query(
 				`INSERT INTO devices_module_devices
 				 (id, name, identifier, type, category, enabled, hidden, "roomId")
@@ -140,7 +140,7 @@ describe('HomeSearchQueryService SQLite integration', () => {
 			reasons: ['exact_name'],
 			enabled: false,
 		});
-		expect(result.total).toBe(31);
+		expect(result.total).toBe(111);
 		expect(result.truncated).toBe(true);
 	});
 
@@ -177,7 +177,7 @@ describe('HomeSearchQueryService SQLite integration', () => {
 	});
 
 	it('folds Greek final sigma like unicode61 before applying the candidate cap', async () => {
-		for (let index = 0; index < 30; index += 1) {
+		for (let index = 0; index < 110; index += 1) {
 			await dataSource.query(
 				`INSERT INTO devices_module_devices
 				 (id, name, identifier, type, category, enabled, hidden, "roomId")
@@ -213,7 +213,7 @@ describe('HomeSearchQueryService SQLite integration', () => {
 			score: 900,
 			reasons: ['exact_name'],
 		});
-		expect(result.total).toBe(31);
+		expect(result.total).toBe(111);
 		expect(result.truncated).toBe(true);
 	});
 
@@ -227,7 +227,7 @@ describe('HomeSearchQueryService SQLite integration', () => {
 			`INSERT INTO devices_module_channels (id, name, category, "deviceId")
 			 VALUES ('property-channel', 'Target channel', 'generic', 'property-owner')`,
 		);
-		for (let index = 0; index < 30; index += 1) {
+		for (let index = 0; index < 110; index += 1) {
 			await dataSource.query(
 				`INSERT INTO devices_module_channels_properties
 				 (id, name, identifier, type, category, "dataType", permissions, "channelId")
@@ -270,7 +270,7 @@ describe('HomeSearchQueryService SQLite integration', () => {
 			score: 900,
 			reasons: ['exact_name'],
 		});
-		expect(result.total).toBe(31);
+		expect(result.total).toBe(111);
 		expect(result.truncated).toBe(true);
 	});
 
@@ -310,6 +310,58 @@ describe('HomeSearchQueryService SQLite integration', () => {
 			{ id: 'genuine-display-name', name: 'Symbol fallback', score: 900 },
 			{ id: 'symbol-only-name', name: '---', score: 600 },
 		]);
+	});
+
+	it('uses the global property display-name tie-break before the 100-candidate SQL cap', async () => {
+		await dataSource.query(
+			`INSERT INTO devices_module_devices
+			 (id, name, identifier, type, category, enabled, hidden, "roomId") VALUES
+			 ('alpha-owner', 'Alpha owner', 'alpha-owner', 'test', 'sensor', 1, 0, NULL),
+			 ('zulu-owner', 'Zulu owner', 'zulu-owner', 'test', 'sensor', 1, 0, NULL)`,
+		);
+		await dataSource.query(
+			`INSERT INTO devices_module_channels (id, name, category, "deviceId") VALUES
+			 ('alpha-channel', 'Alpha channel', 'generic', 'alpha-owner'),
+			 ('zulu-channel', 'Zulu channel', 'generic', 'zulu-owner')`,
+		);
+		for (let index = 0; index < 100; index += 1) {
+			await dataSource.query(
+				`INSERT INTO devices_module_channels_properties
+				 (id, name, identifier, type, category, "dataType", permissions, "channelId")
+				 VALUES (?, ?, ?, 'test', 'generic', 'string', 'ro', 'alpha-channel')`,
+				[
+					`tie-competitor-${String(index).padStart(3, '0')}`,
+					`Target competitor ${String(index).padStart(3, '0')}`,
+					`tie-competitor-${index}`,
+				],
+			);
+		}
+		await dataSource.query(
+			`INSERT INTO devices_module_channels_properties
+			 (id, name, identifier, type, category, "dataType", permissions, "channelId")
+			 VALUES ('tie-aardvark', 'Target aardvark', 'tie-aardvark', 'test', 'generic', 'string', 'ro',
+			         'zulu-channel')`,
+		);
+
+		const propertiesService = Object.create(ChannelsPropertiesService.prototype) as ChannelsPropertiesService;
+		Object.defineProperty(propertiesService, 'dataSource', { value: dataSource });
+		const service = new HomeSearchQueryService(
+			{ findOne: jest.fn(), searchSummaryPage: jest.fn() } as unknown as SpacesService,
+			{ searchVisibleSummaryPage: jest.fn() } as unknown as DevicesService,
+			propertiesService,
+			{ searchSummaryPage: jest.fn() } as unknown as ScenesService,
+		);
+
+		const result = await service.searchEntities({
+			profile: HOME_SEARCH_PROFILE_BUDDY_V1,
+			query: 'target',
+			kinds: ['property'],
+			limit: 20,
+		});
+
+		expect(result.entities[0]).toMatchObject({ kind: 'property', id: 'tie-aardvark', name: 'Target aardvark' });
+		expect(result.total).toBe(101);
+		expect(result.refine_required).toBe(false);
 	});
 
 	it('executes all four owning-domain queries against the real FTS index and joined metadata', async () => {
@@ -372,6 +424,134 @@ describe('HomeSearchQueryService SQLite integration', () => {
 			enabled: false,
 			triggerable: false,
 		});
+	});
+
+	it('walks a stable mixed-kind candidate window through opaque cursors without duplicates', async () => {
+		for (let index = 0; index < 25; index += 1) {
+			await dataSource.query(
+				`INSERT INTO devices_module_devices
+				 (id, name, identifier, type, category, enabled, hidden, "roomId")
+				 VALUES (?, ?, ?, 'test', 'sensor', 1, 0, NULL)`,
+				[`page-device-${index}`, `Pageable ${String(index).padStart(2, '0')}`, `page-device-${index}`],
+			);
+		}
+		for (let index = 0; index < 5; index += 1) {
+			await dataSource.query(
+				`INSERT INTO scenes_module_scenes (id, name, category, enabled, triggerable, "primarySpaceId")
+				 VALUES (?, ?, 'generic', 1, 1, NULL)`,
+				[`page-scene-${index}`, `Pageable ${String(index).padStart(2, '0')}`],
+			);
+		}
+
+		const devicesService = Object.create(DevicesService.prototype) as DevicesService;
+		Object.defineProperty(devicesService, 'dataSource', { value: dataSource });
+		const scenesService = Object.create(ScenesService.prototype) as ScenesService;
+		Object.defineProperty(scenesService, 'dataSource', { value: dataSource });
+		const service = new HomeSearchQueryService(
+			{ findOne: jest.fn(), searchSummaryPage: jest.fn() } as unknown as SpacesService,
+			devicesService,
+			{ searchVisibleSummaryPage: jest.fn() } as unknown as ChannelsPropertiesService,
+			scenesService,
+		);
+		const ids: string[] = [];
+		let cursor: string | undefined;
+		let pages = 0;
+
+		do {
+			const result = await service.searchEntities({
+				profile: HOME_SEARCH_PROFILE_BUDDY_V1,
+				query: 'pageable',
+				kinds: ['device', 'scene'],
+				limit: 7,
+				cursor,
+			});
+
+			expect(result.total).toBe(30);
+			expect(result.refine_required).toBe(false);
+			ids.push(...result.entities.map(({ id }) => id));
+			cursor = result.next_cursor;
+			pages += 1;
+		} while (cursor);
+
+		expect(pages).toBe(5);
+		expect(ids).toHaveLength(30);
+		expect(new Set(ids).size).toBe(30);
+	});
+
+	it('applies static property and scene candidate capabilities in real SQL before limits', async () => {
+		await dataSource.query(
+			`INSERT INTO devices_module_devices
+			 (id, name, identifier, type, category, enabled, hidden, "roomId") VALUES
+			 ('enabled-owner', 'Capability enabled', 'enabled-owner', 'test', 'lighting', 1, 0, NULL),
+			 ('disabled-owner', 'Capability disabled', 'disabled-owner', 'test', 'lighting', 0, 0, NULL),
+			 ('hidden-owner', 'Capability hidden', 'hidden-owner', 'test', 'lighting', 1, 1, NULL)`,
+		);
+		await dataSource.query(
+			`INSERT INTO devices_module_channels (id, name, category, "deviceId") VALUES
+			 ('enabled-channel', 'Capability enabled', 'light', 'enabled-owner'),
+			 ('disabled-channel', 'Capability disabled', 'light', 'disabled-owner'),
+			 ('hidden-channel', 'Capability hidden', 'light', 'hidden-owner')`,
+		);
+		await dataSource.query(
+			`INSERT INTO devices_module_channels_properties
+			 (id, name, identifier, type, category, "dataType", permissions, "channelId") VALUES
+			 ('read-only', 'Capability read only', 'read-only', 'test', 'generic', 'bool', 'ro', 'enabled-channel'),
+			 ('read-write', 'Capability read write', 'read-write', 'test', 'generic', 'bool', 'rw', 'enabled-channel'),
+			 ('write-only', 'Capability write only', 'write-only', 'test', 'generic', 'bool', 'wo', 'enabled-channel'),
+			 ('event-only', 'Capability event only', 'event-only', 'test', 'generic', 'bool', 'ev', 'enabled-channel'),
+			 ('unsupported-write', 'Capability unsupported', 'unsupported-write', 'test', 'generic', 'unknown', 'rw',
+			  'enabled-channel'),
+			 ('disabled-write', 'Capability disabled write', 'disabled-write', 'test', 'generic', 'bool', 'wo',
+			  'disabled-channel'),
+			 ('hidden-write', 'Capability hidden write', 'hidden-write', 'test', 'generic', 'bool', 'rw',
+			  'hidden-channel')`,
+		);
+		await dataSource.query(
+			`INSERT INTO scenes_module_scenes (id, name, category, enabled, triggerable, "primarySpaceId") VALUES
+			 ('trigger-ready', 'Capability trigger ready', 'generic', 1, 1, NULL),
+			 ('trigger-disabled', 'Capability trigger disabled', 'generic', 0, 1, NULL),
+			 ('trigger-blocked', 'Capability trigger blocked', 'generic', 1, 0, NULL)`,
+		);
+
+		const propertiesService = Object.create(ChannelsPropertiesService.prototype) as ChannelsPropertiesService;
+		Object.defineProperty(propertiesService, 'dataSource', { value: dataSource });
+		const scenesService = Object.create(ScenesService.prototype) as ScenesService;
+		Object.defineProperty(scenesService, 'dataSource', { value: dataSource });
+		const service = new HomeSearchQueryService(
+			{ findOne: jest.fn(), searchSummaryPage: jest.fn() } as unknown as SpacesService,
+			{ searchVisibleSummaryPage: jest.fn() } as unknown as DevicesService,
+			propertiesService,
+			scenesService,
+		);
+
+		const readable = await service.searchEntities({
+			profile: HOME_SEARCH_PROFILE_BUDDY_V1,
+			query: 'capability',
+			candidateCapability: 'read',
+		});
+		const writable = await service.searchEntities({
+			profile: HOME_SEARCH_PROFILE_BUDDY_V1,
+			query: 'capability',
+			candidateCapability: 'write',
+		});
+		const triggerable = await service.searchEntities({
+			profile: HOME_SEARCH_PROFILE_BUDDY_V1,
+			query: 'capability',
+			candidateCapability: 'trigger',
+		});
+
+		expect(readable.entities.map(({ id }) => id).sort()).toEqual(['read-only', 'read-write', 'unsupported-write']);
+		expect(readable.total).toBe(3);
+		expect(writable.entities.map(({ id }) => id).sort()).toEqual(['read-write', 'write-only']);
+		expect(writable.total).toBe(2);
+		expect(triggerable.entities.map(({ id }) => id)).toEqual(['trigger-ready']);
+		expect(triggerable.total).toBe(1);
+		expect(
+			writable.entities.every(
+				(entity) => entity.kind === 'property' && entity.candidate_capabilities.includes('write'),
+			),
+		).toBe(true);
+		expect(triggerable.entities[0]).toMatchObject({ candidate_capabilities: ['trigger'] });
 	});
 
 	it('applies floor scope, category filters, and hidden-owner visibility in real SQL', async () => {

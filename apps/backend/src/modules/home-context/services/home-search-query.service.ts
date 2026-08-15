@@ -1,6 +1,8 @@
+import { createHash } from 'node:crypto';
+
 import { Injectable } from '@nestjs/common';
 
-import { PropertyCategory } from '../../devices/devices.constants';
+import { PermissionType, PropertyCategory } from '../../devices/devices.constants';
 import {
 	ChannelsPropertiesService,
 	VisiblePropertySearchSummary,
@@ -12,6 +14,7 @@ import {
 	VisibleDeviceSearchSummaryPage,
 	VisibleDeviceSummaryScope,
 } from '../../devices/services/devices.service';
+import { isSupportedPropertyCommandDataType } from '../../devices/utils/property-command-value.utils';
 import { SceneCategory } from '../../scenes/scenes.constants';
 import { SceneSearchSummary, SceneSearchSummaryPage, ScenesService } from '../../scenes/services/scenes.service';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
@@ -20,11 +23,12 @@ import { SpaceType, isFloorZoneCategory } from '../../spaces/spaces.constants';
 import {
 	HOME_SEARCH_ENTITY_KINDS,
 	HOME_SEARCH_LIMIT_PROFILES,
+	HomeSearchCandidateCapability,
 	HomeSearchEntityKind,
 	HomeSearchMatchReason,
 } from '../home-context.constants';
 import { HomeContextSpaceNotFoundError } from '../home-context.errors';
-import { HomeSearchInvalidQueryError } from '../home-search.errors';
+import { HomeSearchInvalidCursorError, HomeSearchInvalidQueryError } from '../home-search.errors';
 import { HomeEntitySearchQuery } from '../models/home-search-query.model';
 import {
 	HomeDeviceSearchResult,
@@ -71,6 +75,12 @@ interface RankedHomeEntity {
 	id: string;
 }
 
+interface HomeSearchCursorPayload {
+	v: 1;
+	fingerprint: string;
+	offset: number;
+}
+
 @Injectable()
 export class HomeSearchQueryService {
 	constructor(
@@ -93,9 +103,12 @@ export class HomeSearchQueryService {
 			throw new HomeSearchInvalidQueryError('too_many_tokens', profile.maxQueryTokens);
 		}
 
-		const selectedKinds = input.kinds ?? [...HOME_SEARCH_ENTITY_KINDS];
+		const requestedKinds = input.kinds ?? [...HOME_SEARCH_ENTITY_KINDS];
+		const selectedKinds = this.getEffectiveKinds(requestedKinds, input.candidateCapability);
 		const selectedKindSet = new Set(selectedKinds);
 		const match = tokens.map((token) => `"${token}"*`).join(' AND ');
+		const fingerprint = this.createCursorFingerprint(input, normalizedQuery, requestedKinds);
+		const cursorOffset = this.decodeCursor(input.cursor, fingerprint, profile.maxPageableResults);
 		const selectedSpace = input.spaceId ? await this.spacesService.findOne(input.spaceId) : null;
 
 		if (input.spaceId && !selectedSpace) {
@@ -149,6 +162,10 @@ export class HomeSearchQueryService {
 						scope: scope.deviceScope,
 						roomParentId: scope.roomParentId,
 						categories: propertyCategories,
+						candidateCapability:
+							input.candidateCapability === 'read' || input.candidateCapability === 'write'
+								? input.candidateCapability
+								: undefined,
 					})
 				: Promise.resolve(emptyPropertyPage),
 			selectedKindSet.has('scene')
@@ -163,6 +180,7 @@ export class HomeSearchQueryService {
 						primarySpaceId: scope.primarySpaceId,
 						primarySpaceParentId: scope.primarySpaceParentId,
 						categories: sceneCategories,
+						candidateTrigger: input.candidateCapability === 'trigger' ? true : undefined,
 					})
 				: Promise.resolve(emptyScenePage),
 		]);
@@ -197,9 +215,9 @@ export class HomeSearchQueryService {
 				id: scene.id,
 			})),
 		].sort((left, right) => this.compareRankedEntities(left, right));
-		const entities = rankedEntities.map(({ entity }) => entity);
+		const entities = rankedEntities.map(({ entity }) => entity).slice(0, profile.maxPageableResults);
 		const limit = input.limit ?? profile.defaultResults;
-		const returnedEntities = entities.slice(0, limit);
+		const returnedEntities = entities.slice(cursorOffset, cursorOffset + limit);
 		const totalsByKind = {
 			space: spacePage.total,
 			device: devicePage.total,
@@ -207,7 +225,10 @@ export class HomeSearchQueryService {
 			scene: scenePage.total,
 		};
 		const total = Object.values(totalsByKind).reduce((sum, count) => sum + count, 0);
-		const truncated = total > returnedEntities.length;
+		const nextOffset = cursorOffset + returnedEntities.length;
+		const hasMoreCandidates = nextOffset < entities.length;
+		const truncated = nextOffset < total;
+		const refineRequired = truncated && !hasMoreCandidates;
 		const result: HomeEntitySearchResponse = {
 			query: input.query,
 			entities: returnedEntities,
@@ -217,7 +238,9 @@ export class HomeSearchQueryService {
 			totals_by_kind: totalsByKind,
 			partial: false,
 			truncated,
-			refine_required: truncated,
+			refine_required: refineRequired,
+			...(input.candidateCapability ? { candidate_capability_filter: input.candidateCapability } : {}),
+			...(hasMoreCandidates ? { next_cursor: this.encodeCursor(fingerprint, nextOffset) } : {}),
 		};
 
 		homeEntitySearchResponseSchema.parse(result);
@@ -235,6 +258,7 @@ export class HomeSearchQueryService {
 			type: space.type,
 			category: space.category,
 			parent_id: space.parentId,
+			candidate_capabilities: [],
 		};
 	}
 
@@ -249,6 +273,7 @@ export class HomeSearchQueryService {
 			category: device.category,
 			enabled: device.enabled,
 			room_id: device.roomId,
+			candidate_capabilities: [],
 		};
 	}
 
@@ -276,6 +301,7 @@ export class HomeSearchQueryService {
 				name: property.channelName,
 				category: property.channelCategory,
 			},
+			candidate_capabilities: this.getPropertyCandidateCapabilities(property),
 		};
 	}
 
@@ -290,6 +316,7 @@ export class HomeSearchQueryService {
 			enabled: scene.enabled,
 			triggerable: scene.triggerable,
 			primary_space_id: scene.primarySpaceId,
+			candidate_capabilities: scene.enabled && scene.triggerable ? ['trigger'] : [],
 		};
 	}
 
@@ -306,7 +333,117 @@ export class HomeSearchQueryService {
 			matchReason,
 			...(query.spaceId ? (['space_filter'] as const) : []),
 			...(query.categories ? (['category_filter'] as const) : []),
+			...(query.candidateCapability ? (['candidate_capability_filter'] as const) : []),
 		];
+	}
+
+	private getEffectiveKinds(
+		requestedKinds: HomeSearchEntityKind[],
+		candidateCapability?: HomeSearchCandidateCapability,
+	): HomeSearchEntityKind[] {
+		if (candidateCapability === 'read' || candidateCapability === 'write') {
+			return requestedKinds.includes('property') ? ['property'] : [];
+		}
+		if (candidateCapability === 'trigger') {
+			return requestedKinds.includes('scene') ? ['scene'] : [];
+		}
+
+		return requestedKinds;
+	}
+
+	private getPropertyCandidateCapabilities(property: VisiblePropertySearchSummary): Array<'read' | 'write'> {
+		const capabilities: Array<'read' | 'write'> = [];
+		const permissions = new Set(property.permissions);
+
+		if (permissions.has(PermissionType.READ_ONLY) || permissions.has(PermissionType.READ_WRITE)) {
+			capabilities.push('read');
+		}
+		if (
+			property.deviceEnabled &&
+			isSupportedPropertyCommandDataType(property.dataType) &&
+			(permissions.has(PermissionType.READ_WRITE) || permissions.has(PermissionType.WRITE_ONLY))
+		) {
+			capabilities.push('write');
+		}
+
+		return capabilities;
+	}
+
+	private createCursorFingerprint(
+		query: HomeEntitySearchQuery,
+		normalizedQuery: string,
+		requestedKinds: HomeSearchEntityKind[],
+	): string {
+		const requestedKindSet = new Set(requestedKinds);
+		const canonicalKinds = HOME_SEARCH_ENTITY_KINDS.filter((kind) => requestedKindSet.has(kind));
+		const canonicalCategories = query.categories ? [...query.categories].sort() : [];
+		const serializedFilters = JSON.stringify({
+			cursorVersion: 1,
+			rankingVersion: 1,
+			profile: query.profile,
+			rawQuery: query.query,
+			query: normalizedQuery,
+			kinds: canonicalKinds,
+			spaceId: query.spaceId ?? null,
+			categories: canonicalCategories,
+			candidateCapability: query.candidateCapability ?? null,
+			maxCandidatesPerKind: HOME_SEARCH_LIMIT_PROFILES[query.profile].maxCandidatesPerKind,
+			maxPageableResults: HOME_SEARCH_LIMIT_PROFILES[query.profile].maxPageableResults,
+		});
+
+		return createHash('sha256').update(serializedFilters).digest('base64url');
+	}
+
+	private decodeCursor(cursor: string | undefined, fingerprint: string, maxOffset: number): number {
+		if (cursor === undefined) {
+			return 0;
+		}
+
+		try {
+			if (!/^[A-Za-z0-9_-]+$/.test(cursor)) {
+				throw new HomeSearchInvalidCursorError('malformed');
+			}
+
+			const cursorBuffer = Buffer.from(cursor, 'base64url');
+
+			if (cursorBuffer.toString('base64url') !== cursor) {
+				throw new HomeSearchInvalidCursorError('malformed');
+			}
+
+			const decoded = cursorBuffer.toString('utf8');
+			const parsed = JSON.parse(decoded) as Partial<HomeSearchCursorPayload>;
+
+			if (
+				Object.keys(parsed).length !== 3 ||
+				parsed.v !== 1 ||
+				typeof parsed.fingerprint !== 'string' ||
+				typeof parsed.offset !== 'number' ||
+				!Number.isSafeInteger(parsed.offset) ||
+				parsed.offset < 0
+			) {
+				throw new HomeSearchInvalidCursorError('malformed');
+			}
+			if (parsed.fingerprint !== fingerprint) {
+				throw new HomeSearchInvalidCursorError('query_mismatch');
+			}
+			if (parsed.offset >= maxOffset) {
+				throw new HomeSearchInvalidCursorError('offset_out_of_range');
+			}
+
+			return parsed.offset;
+		} catch (error) {
+			if (error instanceof HomeSearchInvalidCursorError) {
+				throw error;
+			}
+
+			throw new HomeSearchInvalidCursorError('malformed');
+		}
+	}
+
+	private encodeCursor(fingerprint: string, offset: number): string {
+		const payload: HomeSearchCursorPayload = { v: 1, fingerprint, offset };
+
+		return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
 	}
 
 	private compareRankedEntities(left: RankedHomeEntity, right: RankedHomeEntity): number {

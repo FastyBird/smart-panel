@@ -74,6 +74,7 @@ export interface VisiblePropertySearchSummaryInput {
 	};
 	roomParentId?: string;
 	categories?: PropertyCategory[];
+	candidateCapability?: 'read' | 'write';
 }
 
 export interface VisiblePropertySearchSummaryPage {
@@ -299,6 +300,23 @@ export class ChannelsPropertiesService {
 			parameters.push(...input.categories);
 		}
 
+		if (input.candidateCapability) {
+			const permissionFilter = this.buildSearchPermissionFilter(
+				input.candidateCapability === 'read'
+					? [PermissionType.READ_ONLY, PermissionType.READ_WRITE]
+					: [PermissionType.READ_WRITE, PermissionType.WRITE_ONLY],
+			);
+
+			predicates.push(permissionFilter.sql);
+			parameters.push(...permissionFilter.parameters);
+
+			if (input.candidateCapability === 'write') {
+				predicates.push('device.enabled = 1');
+				predicates.push(`property."dataType" IN (${SUPPORTED_PROPERTY_COMMAND_DATA_TYPES.map(() => '?').join(', ')})`);
+				parameters.push(...SUPPORTED_PROPERTY_COMMAND_DATA_TYPES);
+			}
+		}
+
 		interface PropertySearchRow extends Omit<
 			VisiblePropertySearchSummary,
 			'deviceEnabled' | 'rankTier' | 'lexicalScore' | 'permissions'
@@ -351,8 +369,8 @@ export class ChannelsPropertiesService {
 				        bm25(home_context_entity_search_fts) AS "lexicalScore"
 				 ${joins}
 				 WHERE ${where}
-				 ORDER BY "rankTier" ASC, "lexicalScore" ASC, LOWER(device.name) ASC, LOWER(channel.name) ASC,
-				          LOWER(COALESCE(property.name, '')) ASC, property.id ASC
+				 ORDER BY "rankTier" ASC, "lexicalScore" ASC,
+				          LOWER(COALESCE(property.name, property.identifier, property.id)) ASC, property.id ASC
 				 LIMIT ? OFFSET ?`,
 				[...rank.parameters, ...parameters, input.limit, input.offset ?? 0],
 			),
@@ -373,6 +391,29 @@ export class ChannelsPropertiesService {
 				permissions: row.permissions.split(',') as PermissionType[],
 			})),
 			total: Number(countRows[0]?.total ?? 0),
+		};
+	}
+
+	private buildSearchPermissionFilter(permissions: PermissionType[]): {
+		sql: string;
+		parameters: string[];
+	} {
+		const predicate = permissions
+			.map(
+				() =>
+					'(property.permissions = ? OR property.permissions LIKE ? OR property.permissions LIKE ? ' +
+					'OR property.permissions LIKE ?)',
+			)
+			.join(' OR ');
+
+		return {
+			sql: `(${predicate})`,
+			parameters: permissions.flatMap((permission) => [
+				permission,
+				`${permission},%`,
+				`%,${permission},%`,
+				`%,${permission}`,
+			]),
 		};
 	}
 

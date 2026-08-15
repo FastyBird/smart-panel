@@ -53,6 +53,7 @@ export interface SceneSearchSummaryInput {
 	primarySpaceId?: string;
 	primarySpaceParentId?: string;
 	categories?: SceneCategory[];
+	candidateTrigger?: boolean;
 }
 
 export interface SceneSearchSummaryPage {
@@ -193,6 +194,11 @@ export class ScenesService {
 		if (input.categories) {
 			predicates.push(`scene.category IN (${input.categories.map(() => '?').join(', ')})`);
 			parameters.push(...input.categories);
+		}
+
+		if (input.candidateTrigger === true) {
+			predicates.push('scene.enabled = 1');
+			predicates.push('scene.triggerable = 1');
 		}
 
 		interface SceneSearchRow extends Omit<SceneSearchSummary, 'enabled' | 'triggerable' | 'rankTier' | 'lexicalScore'> {

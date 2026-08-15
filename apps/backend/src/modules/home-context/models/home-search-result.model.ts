@@ -1,4 +1,4 @@
-import { HomeSearchEntityKind, HomeSearchMatchReason } from '../home-context.constants';
+import { HomeSearchCandidateCapability, HomeSearchEntityKind, HomeSearchMatchReason } from '../home-context.constants';
 
 export interface HomeEntitySearchResultBase {
 	kind: HomeSearchEntityKind;
@@ -6,10 +6,12 @@ export interface HomeEntitySearchResultBase {
 	name: string;
 	score: number;
 	reasons: HomeSearchMatchReason[];
+	candidate_capabilities: HomeSearchCandidateCapability[];
 }
 
 export interface HomeSpaceSearchResult extends HomeEntitySearchResultBase {
 	kind: 'space';
+	candidate_capabilities: [];
 	type: string;
 	category: string | null;
 	parent_id: string | null;
@@ -17,6 +19,7 @@ export interface HomeSpaceSearchResult extends HomeEntitySearchResultBase {
 
 export interface HomeDeviceSearchResult extends HomeEntitySearchResultBase {
 	kind: 'device';
+	candidate_capabilities: [];
 	identifier: string | null;
 	category: string;
 	enabled: boolean;
@@ -25,6 +28,7 @@ export interface HomeDeviceSearchResult extends HomeEntitySearchResultBase {
 
 export interface HomePropertySearchResult extends HomeEntitySearchResultBase {
 	kind: 'property';
+	candidate_capabilities: Array<'read' | 'write'>;
 	property_name: string | null;
 	identifier: string | null;
 	category: string;
@@ -44,6 +48,7 @@ export interface HomePropertySearchResult extends HomeEntitySearchResultBase {
 
 export interface HomeSceneSearchResult extends HomeEntitySearchResultBase {
 	kind: 'scene';
+	candidate_capabilities: Array<'trigger'>;
 	category: string;
 	enabled: boolean;
 	triggerable: boolean;
@@ -73,4 +78,7 @@ export interface HomeEntitySearchResponse {
 	partial: false;
 	truncated: boolean;
 	refine_required: boolean;
+	candidate_capability_filter?: HomeSearchCandidateCapability;
+	/** Best-effort continuation for the current bounded candidate window, not an authorization artifact. */
+	next_cursor?: string;
 }
