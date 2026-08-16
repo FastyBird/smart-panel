@@ -642,6 +642,97 @@ describe('BuddyContextPlannerService', () => {
 		).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
 	});
 
+	it('does not treat a word-valued action amount as a recent-entity reference', () => {
+		expect(
+			service.plan({
+				message: 'Set kitchen light to one percent',
+				knownSpaces: [{ id: 'space-kitchen', name: 'Kitchen' }],
+				recentEntityReferences: [
+					{
+						kind: 'device',
+						id: 'device-old-light',
+						name: 'Old light',
+						compatibleActionTypes: ['set'],
+					},
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ scope: { spaceId: 'space-kitchen' }, ambiguityRisk: 'none', strategy: 'model-tools' });
+	});
+
+	it('keeps a subject-form plural pronoun follow-up on the home read path', () => {
+		expect(
+			service.plan({
+				message: 'Are they on?',
+				recentEntityReferences: [
+					{
+						kind: 'device',
+						id: 'device-lights',
+						name: 'Lights',
+						compatibleActionTypes: ['turn'],
+					},
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			scope: { referencedEntityIds: ['device-lights'] },
+			strategy: 'model-tools',
+		});
+	});
+
+	it('routes run with an explicit device target to device control', () => {
+		expect(
+			service.plan({
+				message: 'Run bedroom fan',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ intent: 'write', toolNames: ['search_home', 'query_home_state', 'control_device'] });
+	});
+
+	it('treats an explicit known space as a home-domain signal', () => {
+		expect(
+			service.plan({
+				message: 'What is happening in the nursery?',
+				knownSpaces: [{ id: 'space-nursery', name: 'Nursery' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			scope: { spaceId: 'space-nursery' },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-nursery' },
+				{ kind: 'current-state', spaceId: 'space-nursery' },
+			],
+		});
+	});
+
+	it('keeps explain-how questions on the general path', () => {
+		expect(
+			service.plan({
+				message: 'Explain how a thermostat works',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ domains: ['general'], intent: 'none', queries: [], toolNames: [] });
+	});
+
+	it('uses metadata search without current-state reads for capability discovery', () => {
+		expect(
+			service.plan({
+				message: 'Which lights can I dim?',
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			strategy: 'prefetch',
+			queries: [{ kind: 'search-home' }],
+		});
+	});
+
 	it.each([
 		{ message: 'Are any windows open in the whole house?', knownSpaces: [], expectedScope: {} },
 		{

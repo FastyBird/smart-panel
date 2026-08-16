@@ -42,6 +42,7 @@ const WRITE_PATTERN =
 	/\b(?:adjust|brighten|change|close|decrease|dim|increase|lock|lower|make|open|raise|set|switch|turn|unlock)\b/u;
 const TRIGGER_PATTERN = /\b(?:activate|deactivate|run|start|stop|trigger)\b/u;
 const TARGET_DEPENDENT_ACTION_PATTERN = /\b(?:activate|deactivate|start|stop)\b/u;
+const DEVICE_RUN_TARGET_PATTERN = /\brun\b.*\b(?:device|fan|switch)\b/u;
 const ACTION_COMMAND_PATTERN =
 	/^[?!,.;\s]*(?:(?:and|if so|please|then)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\b/u;
 const CONDITION_PATTERN =
@@ -49,8 +50,8 @@ const CONDITION_PATTERN =
 const LEADING_CONDITION_PATTERN =
 	/^(?:after|as long as|as soon as|assuming|before|given that|if|in case|once|only if|provided|so long as|unless|until|when|whenever|while)\b/u;
 const RELATIVE_PATTERN = /\b(?:brighter|colder|cooler|darker|down|higher|hotter|less|lower|more|times as|up|warmer)\b/u;
-const PRONOUN_PATTERN = /\b(?:it|one|that|them|these|this|those)\b/u;
-const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:it|one|that|this)\b/u;
+const PRONOUN_PATTERN = /\b(?:it|that|them|these|they|this|those)\b|\bthe one\b/u;
+const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:it|that|this)\b|\bthe one\b/u;
 const CAPABILITY_DISCOVERY_PATTERN = /^(?:what|which)\b.*\b(?:am i able to|can i)\b/u;
 const CONTEXTUAL_SCOPE_PATTERN = /\b(?:here|in this room|this space)\b/u;
 const GENERIC_ACTION_TARGET_PATTERN =
@@ -128,12 +129,15 @@ export class BuddyContextPlannerService {
 			!isGenericExplanation &&
 			!isReadOnlyPredicate &&
 			ACTION_COMMAND_PATTERN.test(actionMessage) &&
-			(WRITE_PATTERN.test(actionMessage) || TARGET_DEPENDENT_ACTION_PATTERN.test(actionMessage));
+			(WRITE_PATTERN.test(actionMessage) ||
+				TARGET_DEPENDENT_ACTION_PATTERN.test(actionMessage) ||
+				DEVICE_RUN_TARGET_PATTERN.test(actionMessage));
 		const hasTrigger =
 			!isGenericExplanation &&
 			!isReadOnlyPredicate &&
 			ACTION_COMMAND_PATTERN.test(actionMessage) &&
-			TRIGGER_PATTERN.test(actionMessage);
+			TRIGGER_PATTERN.test(actionMessage) &&
+			!DEVICE_RUN_TARGET_PATTERN.test(actionMessage);
 		const hasAction = hasWrite || hasTrigger;
 		const referenceActionTypes = getReferenceActionTypes(actionReferenceMessage);
 		const domains = classifyDomains(
@@ -141,6 +145,7 @@ export class BuddyContextPlannerService {
 			hasAction || isReadOnlyPredicate,
 			isGenericExplanation,
 			hasRecentReferencePronoun,
+			explicitSpaces.length > 0,
 		);
 		const referenceMessage = hasAction ? actionReferenceMessage : domains.includes('home') ? normalizedMessage : '';
 		const references = resolveRecentReferences(referenceMessage, recentEntityReferences);
@@ -165,7 +170,9 @@ export class BuddyContextPlannerService {
 			explicitSpaces,
 		);
 		const strategy = selectStrategy(intent, ambiguityRisk, domains, input.providerCapabilities);
-		const includeCurrentStateForRead = !domains.includes('history') || CURRENT_STATE_PATTERN.test(normalizedMessage);
+		const includeCurrentStateForRead =
+			(!domains.includes('history') || CURRENT_STATE_PATTERN.test(normalizedMessage)) &&
+			!CAPABILITY_DISCOVERY_PATTERN.test(normalizedMessage);
 		const scopedReferences =
 			references.length !== 1 ||
 			(hasAction && !isActionReferenceCompatible(references[0], hasWrite, hasTrigger, referenceActionTypes))
@@ -221,6 +228,7 @@ function classifyDomains(
 	hasAction: boolean,
 	isGenericExplanation: boolean,
 	hasRecentReferencePronoun = false,
+	hasExplicitSpace = false,
 ): BuddyContextDomain[] {
 	if (isGenericExplanation) return ['general'];
 
@@ -229,7 +237,13 @@ function classifyDomains(
 	const hasContextualHomeState =
 		HOME_STATE_PATTERN.test(message) && (!hasWeather || CONTEXTUAL_SCOPE_PATTERN.test(message));
 
-	if (HOME_ENTITY_PATTERN.test(message) || hasContextualHomeState || hasAction || hasRecentReferencePronoun) {
+	if (
+		HOME_ENTITY_PATTERN.test(message) ||
+		hasContextualHomeState ||
+		hasAction ||
+		hasRecentReferencePronoun ||
+		hasExplicitSpace
+	) {
 		domains.add('home');
 	}
 	if (hasWeather) domains.add('weather');
@@ -252,6 +266,7 @@ function classifyDomains(
 function isGeneralExplanation(message: string): boolean {
 	return (
 		/^how (?:can|could|do|does|would)\b.*\b(?:work|works|working|i)\b/u.test(message) ||
+		/^explain (?:how|what|why)\b/u.test(message) ||
 		/^(?:explain|show me|tell me) how to\b/u.test(message) ||
 		/^what (?:do|does) .+ mean\b/u.test(message) ||
 		/^what (?:is|are) (?:a|an)\b/u.test(message)
