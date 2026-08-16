@@ -8,6 +8,21 @@ export type BuddyContextStrategy = 'no-home-context' | 'model-tools' | 'prefetch
 
 export type BuddyToolCallingCapability = 'reliable' | 'limited' | 'unsupported';
 
+export type BuddyContextActionType =
+	| 'activate'
+	| 'adjust'
+	| 'close'
+	| 'dim'
+	| 'lock'
+	| 'open'
+	| 'run'
+	| 'set'
+	| 'start'
+	| 'switch'
+	| 'trigger'
+	| 'turn'
+	| 'unlock';
+
 export type BuddyContextQueryKind =
 	| 'search-home'
 	| 'current-state'
@@ -25,11 +40,18 @@ export interface BuddyContextEntityReference {
 	kind: 'device' | 'space' | 'scene' | 'property';
 	id: string;
 	name: string;
+	compatibleActionTypes: readonly BuddyContextActionType[];
+}
+
+export interface BuddyContextSpaceReference {
+	id: string;
+	name: string;
 }
 
 export interface BuddyContextPlannerInput {
 	message: string;
 	conversationSpaceId?: string | null;
+	knownSpaces?: readonly BuddyContextSpaceReference[];
 	recentEntityReferences?: readonly BuddyContextEntityReference[];
 	providerCapabilities: BuddyContextProviderCapabilities;
 }

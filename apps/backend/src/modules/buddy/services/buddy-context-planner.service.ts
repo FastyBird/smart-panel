@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import {
+	BuddyContextActionType,
 	BuddyContextAmbiguityRisk,
 	BuddyContextDomain,
 	BuddyContextEntityReference,
@@ -8,6 +9,7 @@ import {
 	BuddyContextPlan,
 	BuddyContextPlannerInput,
 	BuddyContextQueryPlan,
+	BuddyContextSpaceReference,
 	BuddyContextStrategy,
 } from '../models/context-plan.model';
 
@@ -46,23 +48,33 @@ const EXPLICIT_SPACE_PATTERN =
 	/\b(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\b/u;
 const WHOLE_HOME_SCOPE_PATTERN =
 	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b/u;
+const TRAILING_ACTION_PATTERN =
+	/(?:[?;,]|\b(?:and|then)\b)\s*(?:(?:if so|please)\s+)*(?:activate|adjust|brighten|close|decrease|dim|increase|lock|lower|open|raise|run|set|start|switch|trigger|turn|unlock)\b/u;
 
 @Injectable()
 export class BuddyContextPlannerService {
 	plan(input: BuddyContextPlannerInput): BuddyContextPlan {
 		const normalizedMessage = normalize(input.message);
-		const conversationSpaceId = resolveConversationSpaceHint(normalizedMessage, input.conversationSpaceId);
+		const explicitSpace = findExplicitSpace(normalizedMessage, input.knownSpaces ?? []);
+		const conversationSpaceId = resolveConversationSpaceHint(
+			normalizedMessage,
+			input.conversationSpaceId,
+			explicitSpace?.id,
+		);
 		const isGenericExplanation = isGeneralExplanation(normalizedMessage);
+		const hasTrailingAction = TRAILING_ACTION_PATTERN.test(normalizedMessage);
 		const isReadOnlyPredicate =
-			isStatePredicateQuestion(normalizedMessage) ||
-			(READ_PATTERN.test(normalizedMessage) &&
-				(CAPABILITY_DISCOVERY_PATTERN.test(normalizedMessage) || hasOnlyGroundedActionTokens(normalizedMessage)));
+			!hasTrailingAction &&
+			(isStatePredicateQuestion(normalizedMessage) ||
+				(READ_PATTERN.test(normalizedMessage) &&
+					(CAPABILITY_DISCOVERY_PATTERN.test(normalizedMessage) || hasOnlyGroundedActionTokens(normalizedMessage))));
 		const hasWrite =
 			!isGenericExplanation &&
 			!isReadOnlyPredicate &&
 			(WRITE_PATTERN.test(normalizedMessage) || TARGET_DEPENDENT_ACTION_PATTERN.test(normalizedMessage));
 		const hasTrigger = !isGenericExplanation && !isReadOnlyPredicate && TRIGGER_PATTERN.test(normalizedMessage);
 		const hasAction = hasWrite || hasTrigger;
+		const requestedActionTypes = getRequestedActionTypes(normalizedMessage);
 		const domains = classifyDomains(normalizedMessage, hasAction || isReadOnlyPredicate, isGenericExplanation);
 		const references = resolveRecentReferences(normalizedMessage, input.recentEntityReferences ?? []);
 		const hasRead =
@@ -74,8 +86,10 @@ export class BuddyContextPlannerService {
 			normalizedMessage,
 			hasWrite,
 			hasTrigger,
+			requestedActionTypes,
 			references,
 			conversationSpaceId,
+			explicitSpace !== undefined,
 		);
 		const strategy = selectStrategy(intent, ambiguityRisk, input.providerCapabilities);
 		const scope = {
@@ -158,19 +172,22 @@ function classifyAmbiguityRisk(
 	message: string,
 	hasWrite: boolean,
 	hasTrigger: boolean,
+	requestedActionTypes: readonly BuddyContextActionType[],
 	references: readonly BuddyContextEntityReference[],
 	conversationSpaceId?: string,
+	hasExplicitKnownSpace = false,
 ): BuddyContextAmbiguityRisk {
 	const isAction = hasWrite || hasTrigger;
 
 	if (isAction) {
 		if (
 			ACTION_PRONOUN_PATTERN.test(message) &&
-			(references.length !== 1 || !isActionReferenceCompatible(references[0], hasWrite, hasTrigger))
+			(references.length !== 1 ||
+				!isActionReferenceCompatible(references[0], hasWrite, hasTrigger, requestedActionTypes))
 		) {
 			return 'action';
 		}
-		if (AMBIGUOUS_TARGET_PATTERN.test(message) && !EXPLICIT_SPACE_PATTERN.test(message)) {
+		if (AMBIGUOUS_TARGET_PATTERN.test(message) && !EXPLICIT_SPACE_PATTERN.test(message) && !hasExplicitKnownSpace) {
 			return 'action';
 		}
 
@@ -186,20 +203,76 @@ function isActionReferenceCompatible(
 	reference: BuddyContextEntityReference,
 	hasWrite: boolean,
 	hasTrigger: boolean,
+	requestedActionTypes: readonly BuddyContextActionType[],
 ): boolean {
+	if (requestedActionTypes.length === 0) return false;
+	if (!requestedActionTypes.every((actionType) => reference.compatibleActionTypes.includes(actionType))) return false;
 	if (hasTrigger && hasWrite) return true;
 	if (hasTrigger) return reference.kind === 'scene';
-	if (hasWrite && !hasTrigger) return reference.kind !== 'scene';
+	if (hasWrite) return reference.kind !== 'scene';
 
 	return false;
 }
 
-function resolveConversationSpaceHint(message: string, conversationSpaceId?: string | null): string | undefined {
-	if (!conversationSpaceId || WHOLE_HOME_SCOPE_PATTERN.test(message) || EXPLICIT_SPACE_PATTERN.test(message)) {
+function resolveConversationSpaceHint(
+	message: string,
+	conversationSpaceId?: string | null,
+	explicitSpaceId?: string,
+): string | undefined {
+	if (
+		!conversationSpaceId ||
+		WHOLE_HOME_SCOPE_PATTERN.test(message) ||
+		(explicitSpaceId !== undefined && explicitSpaceId !== conversationSpaceId)
+	) {
 		return undefined;
 	}
 
 	return conversationSpaceId;
+}
+
+function findExplicitSpace(
+	message: string,
+	knownSpaces: readonly BuddyContextSpaceReference[],
+): { id: string; name: string } | undefined {
+	return knownSpaces.find((space) => containsNormalizedPhrase(message, normalize(space.name)));
+}
+
+function containsNormalizedPhrase(message: string, phrase: string): boolean {
+	if (phrase.length === 0) return false;
+
+	const index = message.indexOf(phrase);
+	if (index < 0) return false;
+
+	const before = index === 0 ? '' : message[index - 1];
+	const afterIndex = index + phrase.length;
+	const after = afterIndex >= message.length ? '' : message[afterIndex];
+
+	return !/[\p{Letter}\p{Number}]/u.test(before) && !/[\p{Letter}\p{Number}]/u.test(after);
+}
+
+function getRequestedActionTypes(message: string): BuddyContextActionType[] {
+	const actions = new Set<BuddyContextActionType>();
+	const mappings: readonly [RegExp, BuddyContextActionType][] = [
+		[/\bactivate\b/u, 'activate'],
+		[/\b(?:adjust|brighten|decrease|increase|lower|raise)\b/u, 'adjust'],
+		[/\bclose\b/u, 'close'],
+		[/\bdim\b/u, 'dim'],
+		[/\block\b/u, 'lock'],
+		[/\bopen\b/u, 'open'],
+		[/\brun\b/u, 'run'],
+		[/\bset\b/u, 'set'],
+		[/\bstart\b/u, 'start'],
+		[/\bswitch\b/u, 'switch'],
+		[/\btrigger\b/u, 'trigger'],
+		[/\bturn\b/u, 'turn'],
+		[/\bunlock\b/u, 'unlock'],
+	];
+
+	for (const [pattern, action] of mappings) {
+		if (pattern.test(message)) actions.add(action);
+	}
+
+	return [...actions];
 }
 
 function selectStrategy(

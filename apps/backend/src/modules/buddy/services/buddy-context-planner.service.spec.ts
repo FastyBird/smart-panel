@@ -35,13 +35,18 @@ describe('BuddyContextPlannerService', () => {
 			service.plan({
 				message: 'If it is colder outside, lower the office thermostat',
 				conversationSpaceId: 'space-office',
+				knownSpaces: [{ id: 'space-office', name: 'Office' }],
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			}),
 		).toEqual({
 			domains: ['home', 'weather'],
 			intent: 'mixed',
-			scope: {},
-			queries: [{ kind: 'search-home' }, { kind: 'current-state' }, { kind: 'weather' }],
+			scope: { spaceId: 'space-office' },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-office' },
+				{ kind: 'current-state', spaceId: 'space-office' },
+				{ kind: 'weather' },
+			],
 			toolNames: ['search_home', 'query_home_state', 'control_device'],
 			ambiguityRisk: 'none',
 			strategy: 'model-tools',
@@ -115,8 +120,18 @@ describe('BuddyContextPlannerService', () => {
 
 	it('requires a unique recent reference to match the requested action kind', () => {
 		const providerCapabilities = { toolCalling: 'reliable' as const, supportsStructuredToolResults: true };
-		const device = { kind: 'device' as const, id: 'device-lamp', name: 'Lamp' };
-		const scene = { kind: 'scene' as const, id: 'scene-movie-night', name: 'Movie night' };
+		const device = {
+			kind: 'device' as const,
+			id: 'device-lamp',
+			name: 'Lamp',
+			compatibleActionTypes: ['turn'] as const,
+		};
+		const scene = {
+			kind: 'scene' as const,
+			id: 'scene-movie-night',
+			name: 'Movie night',
+			compatibleActionTypes: ['run'] as const,
+		};
 
 		expect(service.plan({ message: 'Run it', recentEntityReferences: [device], providerCapabilities })).toMatchObject({
 			ambiguityRisk: 'action',
@@ -142,6 +157,35 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('requires the recent reference to support the requested write operation', () => {
+		const result = service.plan({
+			message: 'Lock it',
+			recentEntityReferences: [
+				{
+					kind: 'property',
+					id: 'property-dimmer-level',
+					name: 'Dimmer level',
+					compatibleActionTypes: ['set'],
+				},
+			],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(result).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+	});
+
+	it.each(['Are any windows open, close them if so', 'Is the bedroom cold? Turn off the heater'])(
+		'preserves an action that follows a state predicate: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({ intent: 'mixed' });
+		},
+	);
+
 	it('does not treat an action value as evidence of a unique target', () => {
 		expect(
 			service.plan({
@@ -166,12 +210,22 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
-	it.each(['Are any windows open in the whole house?', 'What is the bedroom temperature?'])(
-		'does not force an explicit global or named-space read into conversation scope: %s',
-		(message) => {
+	it.each([
+		{ message: 'Are any windows open in the whole house?', knownSpaces: [] },
+		{
+			message: 'What is the nursery temperature?',
+			knownSpaces: [
+				{ id: 'space-office', name: 'Office' },
+				{ id: 'space-nursery', name: 'Nursery' },
+			],
+		},
+	])(
+		'does not force an explicit global or named-space read into conversation scope: $message',
+		({ message, knownSpaces }) => {
 			const result = service.plan({
 				message,
 				conversationSpaceId: 'space-office',
+				knownSpaces,
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			});
 
@@ -197,7 +251,12 @@ describe('BuddyContextPlannerService', () => {
 
 	it('uses a unique recent reference and clarifies missing or ambiguous pronouns', () => {
 		const providerCapabilities = { toolCalling: 'unsupported' as const, supportsStructuredToolResults: false };
-		const reference = { kind: 'device' as const, id: 'device-reading-lamp', name: 'Reading lamp' };
+		const reference = {
+			kind: 'device' as const,
+			id: 'device-reading-lamp',
+			name: 'Reading lamp',
+			compatibleActionTypes: ['turn'] as const,
+		};
 
 		expect(
 			service.plan({ message: 'Turn it off', recentEntityReferences: [reference], providerCapabilities }),
@@ -213,7 +272,15 @@ describe('BuddyContextPlannerService', () => {
 		expect(
 			service.plan({
 				message: 'Turn them off',
-				recentEntityReferences: [reference, { kind: 'device', id: 'device-desk-lamp', name: 'Desk lamp' }],
+				recentEntityReferences: [
+					reference,
+					{
+						kind: 'device',
+						id: 'device-desk-lamp',
+						name: 'Desk lamp',
+						compatibleActionTypes: ['turn'],
+					},
+				],
 				providerCapabilities,
 			}),
 		).toMatchObject({

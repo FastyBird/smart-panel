@@ -11,6 +11,7 @@ export interface BuddyContextEvaluationEntityReference {
 	kind: 'device' | 'space' | 'scene' | 'property';
 	id: string;
 	name: string;
+	compatibleActionTypes: readonly ['turn'];
 }
 
 export interface BuddyContextEvaluationPriorTurn {
@@ -163,7 +164,14 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 			{
 				role: 'assistant',
 				content: 'The reading lamp is now on.',
-				entityReferences: [{ kind: 'device', id: 'device-reading-lamp', name: 'Reading lamp' }],
+				entityReferences: [
+					{
+						kind: 'device',
+						id: 'device-reading-lamp',
+						name: 'Reading lamp',
+						compatibleActionTypes: ['turn'],
+					},
+				],
 			},
 		],
 		expectedDomains: ['home'],
@@ -190,8 +198,18 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 				role: 'assistant',
 				content: 'Both bedside lamps are now on.',
 				entityReferences: [
-					{ kind: 'device', id: 'device-left-bedside-lamp', name: 'Left bedside lamp' },
-					{ kind: 'device', id: 'device-right-bedside-lamp', name: 'Right bedside lamp' },
+					{
+						kind: 'device',
+						id: 'device-left-bedside-lamp',
+						name: 'Left bedside lamp',
+						compatibleActionTypes: ['turn'],
+					},
+					{
+						kind: 'device',
+						id: 'device-right-bedside-lamp',
+						name: 'Right bedside lamp',
+						compatibleActionTypes: ['turn'],
+					},
 				],
 			},
 		],
