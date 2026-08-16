@@ -100,6 +100,20 @@ describe('BuddyContextPlannerService', () => {
 		expect(result.queries).toContainEqual(query);
 	});
 
+	it('keeps outdoor temperature language on the weather-only path', () => {
+		expect(
+			service.plan({
+				message: 'Will it be warm outside tomorrow?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['weather'],
+			queries: [{ kind: 'weather' }],
+			strategy: 'prefetch',
+			toolNames: [],
+		});
+	});
+
 	it('selects prefetch for tool-less reads and no tools for the provider', () => {
 		const result = service.plan({
 			message: 'Are any windows open?',
@@ -254,6 +268,18 @@ describe('BuddyContextPlannerService', () => {
 		},
 	);
 
+	it.each(['Is the bedroom cold. Turn off the heater.', 'Is the bedroom cold! Turn off the heater.'])(
+		'preserves a sentence-separated action after a state predicate: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({ intent: 'mixed' });
+		},
+	);
+
 	it('preserves a polite modal action after a state question', () => {
 		expect(
 			service.plan({
@@ -288,6 +314,16 @@ describe('BuddyContextPlannerService', () => {
 	it('retains a trailing read clause after a command', () => {
 		const result = service.plan({
 			message: 'Set kitchen thermostat to 20 and tell me whether the window is open',
+			providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+		});
+
+		expect(result).toMatchObject({ intent: 'mixed', strategy: 'deterministic-action' });
+		expect(result.queries).toContainEqual({ kind: 'current-state' });
+	});
+
+	it('retains a sentence-separated read clause after a command', () => {
+		const result = service.plan({
+			message: 'Turn off the heater. Tell me whether the window is open.',
 			providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
 		});
 
@@ -346,6 +382,15 @@ describe('BuddyContextPlannerService', () => {
 		expect(
 			service.plan({
 				message: 'Turn kitchen light off if it is dark',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ ambiguityRisk: 'none', intent: 'mixed', strategy: 'model-tools' });
+	});
+
+	it('does not attach a trailing read pronoun as an action reference', () => {
+		expect(
+			service.plan({
+				message: 'Turn kitchen light off and tell me whether it is dark',
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			}),
 		).toMatchObject({ ambiguityRisk: 'none', intent: 'mixed', strategy: 'model-tools' });
