@@ -45,9 +45,9 @@ const TARGET_DEPENDENT_ACTION_PATTERN = /\b(?:activate|deactivate|start|stop)\b/
 const ACTION_COMMAND_PATTERN =
 	/^[?!,.;\s]*(?:(?:and|if so|please|then)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\b/u;
 const CONDITION_PATTERN =
-	/\b(?:after|as soon as|assuming|before|given that|if|once|provided|unless|until|when|whenever|while)\b/u;
+	/\b(?:after|as long as|as soon as|assuming|before|given that|if|in case|once|only if|provided|so long as|unless|until|when|whenever|while)\b/u;
 const LEADING_CONDITION_PATTERN =
-	/^(?:after|as soon as|assuming|before|given that|if|once|provided|unless|until|when|whenever|while)\b/u;
+	/^(?:after|as long as|as soon as|assuming|before|given that|if|in case|once|only if|provided|so long as|unless|until|when|whenever|while)\b/u;
 const RELATIVE_PATTERN = /\b(?:brighter|colder|cooler|darker|down|higher|hotter|less|lower|more|times as|up|warmer)\b/u;
 const PRONOUN_PATTERN = /\b(?:it|one|that|them|these|this|those)\b/u;
 const CAPABILITY_DISCOVERY_PATTERN = /^(?:what|which)\b.*\b(?:am i able to|can i)\b/u;
@@ -94,12 +94,14 @@ const WHOLE_HOME_SCOPE_PATTERN =
 const TRAILING_ACTION_PATTERN =
 	/(?:[?!,.;]|\b(?:and|then)\b)\s*(?:(?:if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\b/u;
 const TRAILING_READ_PATTERN =
-	/(?:[?!,.;]|\b(?:and|then)\b)\s*(?:(?:also|please)\s+)*(?:check|confirm|determine|fetch|find|get|read|report|show|tell(?: me)?|verify|what|whether|which)\b/u;
+	/(?:[?!,.;]|\b(?:and|then)\b)\s*(?:(?:also|please)\s+)*(?:check|confirm|determine|ensure|fetch|find|get|make sure|read|report|see|show|tell(?: me)?|verify|what|whether|which)\b/u;
 
 @Injectable()
 export class BuddyContextPlannerService {
 	plan(input: BuddyContextPlannerInput): BuddyContextPlan {
 		const normalizedMessage = normalize(input.message);
+		const recentEntityReferences = input.recentEntityReferences ?? [];
+		const hasRecentReferencePronoun = PRONOUN_PATTERN.test(normalizedMessage) && recentEntityReferences.length > 0;
 		const explicitSpaces = findExplicitSpaces(normalizedMessage, input.knownSpaces ?? []);
 		const conversationSpaceId = resolveConversationSpaceHint(
 			normalizedMessage,
@@ -133,9 +135,14 @@ export class BuddyContextPlannerService {
 			TRIGGER_PATTERN.test(actionMessage);
 		const hasAction = hasWrite || hasTrigger;
 		const referenceActionTypes = getReferenceActionTypes(actionReferenceMessage);
-		const domains = classifyDomains(normalizedMessage, hasAction || isReadOnlyPredicate, isGenericExplanation);
+		const domains = classifyDomains(
+			normalizedMessage,
+			hasAction || isReadOnlyPredicate,
+			isGenericExplanation,
+			hasRecentReferencePronoun,
+		);
 		const referenceMessage = hasAction ? actionReferenceMessage : domains.includes('home') ? normalizedMessage : '';
-		const references = resolveRecentReferences(referenceMessage, input.recentEntityReferences ?? []);
+		const references = resolveRecentReferences(referenceMessage, recentEntityReferences);
 		const hasRead =
 			domains.some((domain) => domain !== 'general') &&
 			(((!hasAction || !ACTION_REQUEST_PATTERN.test(normalizedMessage)) &&
@@ -159,9 +166,8 @@ export class BuddyContextPlannerService {
 		const strategy = selectStrategy(intent, ambiguityRisk, domains, input.providerCapabilities);
 		const includeCurrentStateForRead = !domains.includes('history') || CURRENT_STATE_PATTERN.test(normalizedMessage);
 		const scopedReferences =
-			hasAction &&
-			(references.length !== 1 ||
-				!isActionReferenceCompatible(references[0], hasWrite, hasTrigger, referenceActionTypes))
+			references.length !== 1 ||
+			(hasAction && !isActionReferenceCompatible(references[0], hasWrite, hasTrigger, referenceActionTypes))
 				? []
 				: references;
 		const scope = {
@@ -198,7 +204,7 @@ function getActionReferenceMessage(message: string): string {
 		'',
 	);
 	const trailingCondition =
-		/\b(?:after|as soon as|assuming|before|given that|if|once|provided|unless|until|when|whenever|while)\b/u.exec(
+		/\b(?:after|as long as|as soon as|assuming|before|given that|if|in case|once|only if|provided|so long as|unless|until|when|whenever|while)\b/u.exec(
 			actionOnlyMessage,
 		);
 	const trailingRead = TRAILING_READ_PATTERN.exec(actionOnlyMessage);
@@ -209,7 +215,12 @@ function getActionReferenceMessage(message: string): string {
 	return boundaryIndexes.length > 0 ? actionOnlyMessage.slice(0, Math.min(...boundaryIndexes)) : actionOnlyMessage;
 }
 
-function classifyDomains(message: string, hasAction: boolean, isGenericExplanation: boolean): BuddyContextDomain[] {
+function classifyDomains(
+	message: string,
+	hasAction: boolean,
+	isGenericExplanation: boolean,
+	hasRecentReferencePronoun = false,
+): BuddyContextDomain[] {
 	if (isGenericExplanation) return ['general'];
 
 	const domains = new Set<BuddyContextDomain>();
@@ -217,7 +228,9 @@ function classifyDomains(message: string, hasAction: boolean, isGenericExplanati
 	const hasContextualHomeState =
 		HOME_STATE_PATTERN.test(message) && (!hasWeather || CONTEXTUAL_SCOPE_PATTERN.test(message));
 
-	if (HOME_ENTITY_PATTERN.test(message) || hasContextualHomeState || hasAction) domains.add('home');
+	if (HOME_ENTITY_PATTERN.test(message) || hasContextualHomeState || hasAction || hasRecentReferencePronoun) {
+		domains.add('home');
+	}
 	if (hasWeather) domains.add('weather');
 	if (ENERGY_PATTERN.test(message)) domains.add('energy');
 	if (SECURITY_PATTERN.test(message)) domains.add('security');

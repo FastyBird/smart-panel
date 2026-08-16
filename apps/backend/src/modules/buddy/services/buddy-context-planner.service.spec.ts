@@ -230,6 +230,29 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('uses a unique recent reference for a pronoun-only state read', () => {
+		expect(
+			service.plan({
+				message: 'Is it on?',
+				recentEntityReferences: [
+					{
+						kind: 'device',
+						id: 'device-reading-lamp',
+						name: 'Reading lamp',
+						compatibleActionTypes: ['turn'],
+					},
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			scope: { referencedEntityIds: ['device-reading-lamp'] },
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+			strategy: 'model-tools',
+		});
+	});
+
 	it('requires the recent reference to support the requested write operation', () => {
 		const result = service.plan({
 			message: 'Lock it',
@@ -356,6 +379,20 @@ describe('BuddyContextPlannerService', () => {
 		expect(result.queries).toContainEqual({ kind: 'current-state' });
 	});
 
+	it.each([
+		'Run Bedtime and make sure the hallway sensor is triggered',
+		'Run Bedtime and ensure the hallway sensor is triggered',
+		'Run Bedtime and see whether the hallway sensor is triggered',
+	])('retains an established trailing verification clause: %s', (message) => {
+		const result = service.plan({
+			message,
+			providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+		});
+
+		expect(result).toMatchObject({ intent: 'mixed', strategy: 'deterministic-action' });
+		expect(result.queries).toContainEqual({ kind: 'current-state' });
+	});
+
 	it('checks only the trailing action operation against a compound reference', () => {
 		expect(
 			service.plan({
@@ -423,6 +460,20 @@ describe('BuddyContextPlannerService', () => {
 			).toMatchObject({ ambiguityRisk: 'none', intent: 'mixed', strategy: 'model-tools' });
 		},
 	);
+
+	it.each([
+		'As long as it is dark, turn kitchen light on',
+		'In case it is dark, turn kitchen light on',
+		'Only if it is dark, turn kitchen light on',
+		'So long as it is dark, turn kitchen light on',
+	])('recognizes every established leading conditional prefix: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ ambiguityRisk: 'none', intent: 'mixed', strategy: 'model-tools' });
+	});
 
 	it('does not attach a trailing read pronoun as an action reference', () => {
 		expect(
