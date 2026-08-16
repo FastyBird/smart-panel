@@ -624,6 +624,19 @@ describe('BuddyContextPlannerService', () => {
 		expect(result.toolNames).toContain('set_space_lighting');
 	});
 
+	it.each(['Turn on the lamp and set bedroom thermostat to 20', 'Turn all bedroom lights off and open the window'])(
+		'does not let an exact action target hide ambiguity in another clause: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+		},
+	);
+
 	it('keeps a declarative home-state observation on the read path', () => {
 		expect(
 			service.plan({
@@ -777,6 +790,21 @@ describe('BuddyContextPlannerService', () => {
 				{ kind: 'search-home', spaceId: 'space-bedroom' },
 				{ kind: 'current-state', spaceId: 'space-bedroom' },
 			],
+		});
+	});
+
+	it('keeps explicit-space discovery explanations on the scoped home path', () => {
+		expect(
+			service.plan({
+				message: 'Explain what devices are in Nursery',
+				knownSpaces: [{ id: 'space-nursery', name: 'Nursery' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			scope: { spaceId: 'space-nursery' },
+			strategy: 'model-tools',
 		});
 	});
 

@@ -279,7 +279,7 @@ function classifyDomains(
 }
 
 function isGeneralExplanation(message: string, hasExplicitSpace = false): boolean {
-	if (hasExplicitSpace && HOME_STATE_PATTERN.test(message)) return false;
+	if (hasExplicitSpace) return false;
 
 	return (
 		/^how (?:can|could|do|does|would)\b.*\b(?:work|works|working|i)\b/u.test(message) ||
@@ -355,6 +355,12 @@ function classifyAmbiguityRisk(
 }
 
 function hasGenericActionTarget(message: string, explicitSpaces: readonly BuddyContextSpaceReference[]): boolean {
+	const clauses = message.split(/(?:[?!,.;]|\b(?:and|then)\b)/u).filter((clause) => clause.trim().length > 0);
+
+	return clauses.some((clause) => hasGenericActionTargetClause(clause, explicitSpaces));
+}
+
+function hasGenericActionTargetClause(message: string, explicitSpaces: readonly BuddyContextSpaceReference[]): boolean {
 	if (explicitSpaces.length === 1 && /\ball\b.*\b(?:lighting|lights)\b/u.test(message)) return false;
 	if (EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN.test(message)) return false;
 	if (GENERIC_ACTION_TARGET_PATTERN.test(message)) return true;
