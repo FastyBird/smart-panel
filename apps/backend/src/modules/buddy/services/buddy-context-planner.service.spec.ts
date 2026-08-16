@@ -242,6 +242,29 @@ describe('BuddyContextPlannerService', () => {
 		).toMatchObject({ intent: 'mixed', strategy: 'model-tools' });
 	});
 
+	it('keeps a modal state-read wrapper off the action path', () => {
+		expect(
+			service.plan({
+				message: 'Could you tell me what the thermostat is set to?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			intent: 'read',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state'],
+		});
+	});
+
+	it('retains a trailing read clause after a command', () => {
+		const result = service.plan({
+			message: 'Set kitchen thermostat to 20 and tell me whether the window is open',
+			providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+		});
+
+		expect(result).toMatchObject({ intent: 'mixed', strategy: 'deterministic-action' });
+		expect(result.queries).toContainEqual({ kind: 'current-state' });
+	});
+
 	it('checks only the trailing action operation against a compound reference', () => {
 		expect(
 			service.plan({

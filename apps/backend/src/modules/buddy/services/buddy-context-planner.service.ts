@@ -33,6 +33,8 @@ const PREDICATE_QUESTION_PATTERN =
 	/^(?:are|can|could|did|do|does|had|has|have|is|may|might|will|would|was|were|(?:how|what|when|where|which|who|why)['’]s|(?:what|why) (?:are|did|do|does|had|has|have|is|was|were))\b/u;
 const ACTION_REQUEST_PATTERN =
 	/^(?:(?:can|could|may|might|will|would) you\b|are you able to\b|is it possible to\b|is there any way you can\b)/u;
+const MODAL_STATE_READ_PATTERN =
+	/^(?:can|could|may|might|will|would) you (?:check|confirm|determine|fetch|get|read|report|show|tell|verify)(?: me)?\b.*\b(?:how|if|what|when|where|whether|which|why)\b/u;
 const WRITE_PATTERN =
 	/\b(?:adjust|brighten|change|close|decrease|dim|increase|lock|lower|make|open|raise|set|switch|turn|unlock)\b/u;
 const TRIGGER_PATTERN = /\b(?:activate|deactivate|run|start|stop|trigger)\b/u;
@@ -50,6 +52,8 @@ const WHOLE_HOME_SCOPE_PATTERN =
 	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b/u;
 const TRAILING_ACTION_PATTERN =
 	/(?:[?;,]|\b(?:and|then)\b)\s*(?:(?:if so|please)\s+)*(?:(?:can|could|may|might|will|would) you\s+)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\b/u;
+const TRAILING_READ_PATTERN =
+	/(?:[?;,]|\b(?:and|then)\b)\s*(?:(?:also|please)\s+)*(?:check|confirm|determine|fetch|find|get|read|report|show|tell(?: me)?|verify|what|whether|which)\b/u;
 
 @Injectable()
 export class BuddyContextPlannerService {
@@ -63,12 +67,16 @@ export class BuddyContextPlannerService {
 		);
 		const isGenericExplanation = isGeneralExplanation(normalizedMessage);
 		const isPredicateQuestion = isStatePredicateQuestion(normalizedMessage);
-		const trailingActionMatch = isPredicateQuestion ? TRAILING_ACTION_PATTERN.exec(normalizedMessage) : null;
+		const isWrappedStateRead = MODAL_STATE_READ_PATTERN.test(normalizedMessage);
+		const trailingActionMatch =
+			isPredicateQuestion || isWrappedStateRead ? TRAILING_ACTION_PATTERN.exec(normalizedMessage) : null;
 		const hasTrailingAction = trailingActionMatch !== null;
+		const hasTrailingRead = TRAILING_READ_PATTERN.test(normalizedMessage);
 		const actionMessage = getActionMessage(normalizedMessage, trailingActionMatch);
 		const isReadOnlyPredicate =
 			!hasTrailingAction &&
 			(isPredicateQuestion ||
+				isWrappedStateRead ||
 				(READ_PATTERN.test(normalizedMessage) &&
 					(CAPABILITY_DISCOVERY_PATTERN.test(normalizedMessage) || hasOnlyGroundedActionTokens(normalizedMessage))));
 		const hasWrite =
@@ -82,9 +90,11 @@ export class BuddyContextPlannerService {
 		const referenceMessage = hasAction ? actionMessage : domains.includes('home') ? normalizedMessage : '';
 		const references = resolveRecentReferences(referenceMessage, input.recentEntityReferences ?? []);
 		const hasRead =
-			domains.some((domain) => domain !== 'general') && (READ_PATTERN.test(normalizedMessage) || !hasAction);
+			domains.some((domain) => domain !== 'general') &&
+			(READ_PATTERN.test(normalizedMessage) || isWrappedStateRead || hasTrailingRead || !hasAction);
 		const requiresReadForAction =
-			hasAction && (CONDITION_PATTERN.test(normalizedMessage) || RELATIVE_PATTERN.test(normalizedMessage));
+			hasAction &&
+			(CONDITION_PATTERN.test(normalizedMessage) || RELATIVE_PATTERN.test(normalizedMessage) || hasTrailingRead);
 		const intent = classifyIntent(hasWrite, hasTrigger, hasRead || requiresReadForAction);
 		const ambiguityRisk = classifyAmbiguityRisk(
 			normalizedMessage,
