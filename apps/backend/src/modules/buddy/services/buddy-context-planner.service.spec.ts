@@ -87,6 +87,43 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it.each([
+		'Is the thermostat set to 20?',
+		'What is the thermostat set to?',
+		'Was the thermostat set to 20?',
+		'Did I turn off the kitchen light?',
+		'Why is the thermostat set to 20?',
+	])('keeps an action verb used in a state predicate on the read path: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			intent: 'read',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state'],
+		});
+	});
+
+	it.each(['Run it', 'Start that', 'Trigger them'])('clarifies unresolved trigger pronouns: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+	});
+
+	it('does not treat an action value as evidence of a unique target', () => {
+		expect(
+			service.plan({
+				message: 'Set the lamp to 40%',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+	});
+
 	it('uses a unique recent reference and clarifies missing or ambiguous pronouns', () => {
 		const providerCapabilities = { toolCalling: 'unsupported' as const, supportsStructuredToolResults: false };
 		const reference = { kind: 'device' as const, id: 'device-reading-lamp', name: 'Reading lamp' };
