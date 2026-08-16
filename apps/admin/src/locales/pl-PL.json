@@ -1,7 +1,7 @@
 {
 	"application": {
 		"menu": {
-			"root": "FastyBird SmartPanel",
+			"root": "SmartPanel FastyBird",
 			"user": "Użytkownik"
 		},
 		"userMenu": {

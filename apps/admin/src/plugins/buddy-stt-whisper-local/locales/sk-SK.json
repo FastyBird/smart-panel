@@ -9,7 +9,7 @@
 			},
 			"model": {
 				"title": "Model",
-				"placeholder": "base",
+				"placeholder": "základňu",
 				"description": "Veľkosť modelu Whisper: tiny, base, small, medium alebo large"
 			},
 			"language": {

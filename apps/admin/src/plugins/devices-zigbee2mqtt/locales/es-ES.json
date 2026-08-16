@@ -1,11 +1,11 @@
 {
 	"headings": {
 		"aboutPluginStatus": "Estado del plugin",
-		"aboutConnection": "Connection type",
+		"aboutConnection": "Tipo de conexión",
 		"aboutMqtt": "Conexión MQTT",
 		"advancedMqttSettings": "Configuración avanzada de MQTT",
-		"aboutWs": "WebSocket connection",
-		"advancedWsSettings": "Advanced WebSocket settings",
+		"aboutWs": "Conexión WebSocket",
+		"advancedWsSettings": "Configuración avanzada de WebSocket",
 		"aboutTls": "Configuración TLS/SSL",
 		"aboutDiscovery": "Descubrimiento de dispositivos",
 		"steps": {
@@ -32,9 +32,9 @@
 	},
 	"texts": {
 		"aboutPluginStatus": "Habilitar o deshabilitar el plugin Zigbee2MQTT. Cuando está deshabilitado, no se monitorizarán ni controlarán dispositivos Zigbee.",
-		"aboutConnection": "Choose how to connect to Zigbee2MQTT. Use MQTT to connect via an MQTT broker, or WebSocket to connect directly to the Zigbee2MQTT frontend.",
+		"aboutConnection": "Seleccione cómo conectarse a Zigbee2MQTT. Use MQTT para conectarse mediante un broker MQTT o WebSocket para conectarse directamente al frontend de Zigbee2MQTT.",
 		"aboutMqtt": "Configure la conexión al broker MQTT donde Zigbee2MQTT publica los datos de los dispositivos.",
-		"aboutWs": "Configure the direct WebSocket connection to the Zigbee2MQTT frontend. This eliminates the need for a separate MQTT broker.",
+		"aboutWs": "Configure la conexión WebSocket directa al frontend de Zigbee2MQTT. Esto elimina la necesidad de un broker MQTT separado.",
 		"aboutTls": "Configure los ajustes TLS/SSL para conexiones MQTT seguras. Habilite TLS si su broker requiere conexiones cifradas.",
 		"aboutDiscovery": "Configure cómo se descubren y agregan los dispositivos desde el puente Zigbee2MQTT.",
 		"steps": {
@@ -57,9 +57,9 @@
 				"title": "Habilitado"
 			},
 			"connectionType": {
-				"title": "Connection type",
-				"mqtt": "MQTT broker",
-				"ws": "WebSocket (direct)"
+				"title": "Tipo de conexión",
+				"mqtt": "Broker MQTT",
+				"ws": "WebSocket (directo)"
 			},
 			"mqtt": {
 				"host": {
@@ -70,7 +70,7 @@
 					}
 				},
 				"port": {
-					"title": "Puerto",
+					"title": "Keepalive (s)",
 					"validation": {
 						"required": "El puerto es obligatorio",
 						"range": "El puerto debe estar entre 1 y 65535"
@@ -92,14 +92,14 @@
 					}
 				},
 				"clientId": {
-					"title": "ID de cliente",
+					"title": "ID de cliente MQTT",
 					"placeholder": "Generado automáticamente si se deja vacío"
 				},
 				"cleanSession": {
 					"title": "Sesión limpia"
 				},
 				"keepalive": {
-					"title": "Keepalive (s)",
+					"title": "Mantener vivo (s)",
 					"validation": {
 						"number": "Debe ser un número >= 10"
 					}
@@ -119,39 +119,39 @@
 			},
 			"ws": {
 				"host": {
-					"title": "Zigbee2MQTT host",
-					"placeholder": "e.g., localhost or 192.168.1.100",
+					"title": "Host de Zigbee2MQTT",
+					"placeholder": "p. ej. localhost o 192.168.1.100",
 					"validation": {
-						"required": "Zigbee2MQTT host is required"
+						"required": "Se requiere el host de Zigbee2MQTT"
 					}
 				},
 				"port": {
-					"title": "Port",
+					"title": "Puerto",
 					"validation": {
-						"required": "Port is required",
-						"range": "Port must be between 1 and 65535"
+						"required": "Se requiere un puerto",
+						"range": "El puerto debe ser entre 1 y 65535"
 					}
 				},
 				"baseTopic": {
-					"title": "Base topic",
-					"placeholder": "e.g., zigbee2mqtt",
+					"title": "Tema base",
+					"placeholder": "p. ej. zigbee2mqtt",
 					"validation": {
-						"required": "Base topic is required"
+						"required": "Se requiere el tema base"
 					}
 				},
 				"secure": {
-					"title": "Use secure connection (wss://)"
+					"title": "Usar conexión segura (wss://)"
 				},
 				"connectTimeout": {
-					"title": "Timeout (ms)",
+					"title": "Tiempo de espera (ms)",
 					"validation": {
-						"number": "Must be a number >= 1000"
+						"number": "Debe ser un número >= 1000"
 					}
 				},
 				"reconnectInterval": {
-					"title": "Reconnect (ms)",
+					"title": "Reconexión (ms)",
 					"validation": {
-						"number": "Must be a number >= 1000"
+						"number": "Debe ser un número >= 1000"
 					}
 				}
 			},
@@ -311,7 +311,7 @@
 		"breadcrumb": "asistente de descubrimiento",
 		"bridge": {
 			"offline": {
-				"title": "Bridge sin conexión",
+				"title": "Bridge está offline.",
 				"message": "El bridge de Zigbee2MQTT está actualmente sin conexión. Configure la conexión para continuar.",
 				"openConfig": "Abrir configuración"
 			}

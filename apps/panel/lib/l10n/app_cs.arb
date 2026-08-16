@@ -207,7 +207,7 @@
   "settings_weather_settings_temperature_location_description": "Vyberte zdroj meteorologických dat.",
   "settings_weather_settings_temperature_location_single": "K dispozici je pouze jedna poloha.",
   "settings_maintenance_title": "Údržba",
-  "settings_maintenance_restart_title": "Restart",
+  "settings_maintenance_restart_title": "Restartovat",
   "settings_maintenance_restart_description": "Restartujte zařízení pro použití změn.",
   "settings_maintenance_restart_confirm_title": "Restart zařízení",
   "settings_maintenance_restart_confirm_description": "Opravdu chcete restartovat zařízení? Tato akce dočasně přeruší funkčnost.",
@@ -239,10 +239,10 @@
   "settings_language_settings_time_format_description": "12hodinový nebo 24hodinový formát.",
   "settings_language_settings_number_format_title": "Formát čísel",
   "settings_language_settings_number_format_description": "Jak se zobrazují čísla (oddělovače tisíců a desetinných míst).",
-  "number_format_comma_dot": "1,234.56",
+  "number_format_comma_dot": "1 234,56",
   "number_format_dot_comma": "1.234,56",
   "number_format_space_comma": "1 234,56",
-  "number_format_none": "1234.56",
+  "number_format_none": "1234,56",
   "settings_display_settings_title": "Nastavení displeje",
   "settings_display_settings_theme_mode_title": "Režim motivu",
   "settings_display_settings_theme_mode_description": "Přepnout mezi světlým a tmavým motivem.",
@@ -252,8 +252,8 @@
   "settings_display_settings_screen_lock_description": "Automatické zamknutí při nečinnosti.",
   "settings_display_settings_screen_saver_title": "Spořič obrazovky",
   "settings_display_settings_screen_saver_description": "Zobrazit spořič při nečinnosti.",
-  "settings_display_settings_screen_power_off_title": "Screen Power Off",
-  "settings_display_settings_screen_power_off_description": "Turn off the display when screen is locked.",
+  "settings_display_settings_screen_power_off_title": "Vypnutí displeje",
+  "settings_display_settings_screen_power_off_description": "Vypnout displej při uzamčení obrazovky.",
   "settings_display_settings_unit_overrides_section": "Přepsání jednotek",
   "settings_display_settings_temperature_unit_title": "Jednotka teploty",
   "settings_display_settings_temperature_unit_description": "Přepsat systémovou jednotku teploty pro tento displej.",
@@ -378,7 +378,6 @@
   "discovery_button_try_again": "Zkusit znovu",
   "discovery_button_manual": "Zadat ručně",
   "discovery_button_cancel": "Zrušit",
-
   "room_selection_title": "Vyberte místnost",
   "room_selection_description": "Zvolte, ke které místnosti tento displej patří ({count} k dispozici):",
   "room_selection_button_confirm": "Přiřadit k této místnosti",
@@ -386,12 +385,11 @@
   "room_selection_error": "Přiřazení místnosti se nezdařilo. Zkuste to znovu.",
   "room_selection_empty_title": "Žádné místnosti",
   "room_selection_empty_description": "Zatím nebyly vytvořeny žádné místnosti. Otevřete administraci a přidejte alespoň jednu místnost.",
-
   "action_success": "Akce byla úspěšně dokončena",
   "space_lighting_controls_title": "Ovládání osvětlení",
   "space_lighting_mode_off": "Vyp",
   "space_lighting_mode_work": "Práce",
-  "space_lighting_mode_relax": "Relax",
+  "space_lighting_mode_relax": "Relaxační",
   "space_lighting_mode_night": "Noc",
   "space_devices_title": "Zařízení",
   "space_devices_placeholder": "Zařízení v této místnosti se zobrazí zde",
@@ -415,7 +413,6 @@
   "house_overview_no_spaces_description": "Vytvořte místnosti přes administraci, aby se zde zobrazily",
   "house_overview_no_space_page": "Pro tuto místnost není nakonfigurována stránka",
   "house_overview_tap_to_view": "Klepnutím zobrazíte",
-
   "house_modes_home": "Doma",
   "house_modes_home_description": "Normální provoz doma",
   "house_modes_away": "Pryč",
@@ -429,7 +426,6 @@
   "space_scenes_title": "Rychlé scény",
   "space_scene_triggered": "Scéna aktivována",
   "space_scene_partial_success": "Scéna částečně aktivována",
-
   "window_covering_status_open": "Otevřeno",
   "window_covering_status_closed": "Zavřeno",
   "window_covering_status_opening": "Otevírání",
@@ -524,7 +520,7 @@
   "device_category_sensors": "Senzory",
   "device_category_media": "Média",
   "media_devices_summary": "{count} zařízení",
-  "media_devices_summary_on": "{count} zařízení \u2022 {on} zapnuto",
+  "media_devices_summary_on": "{count} zařízení • {on} zapnuto",
   "media_modes_title": "Režimy",
   "media_action_power_on": "Zapnout",
   "media_action_power_off": "Vypnout",
@@ -565,9 +561,8 @@
   "entry_security": "Zabezpečení",
   "entry_no_security_devices": "Žádná bezpečnostní zařízení nejsou nakonfigurována",
   "entry_locks": "Zámky",
-  "entry_alarm": "Alarm",
+  "entry_alarm": "Poplach",
   "entry_cameras": "Kamery",
-
   "air_quality_level_excellent": "Vynikající",
   "air_quality_level_good": "Dobrá",
   "air_quality_level_fair": "Přijatelná",
@@ -581,7 +576,7 @@
   "aqi_label_very_unhealthy": "Velmi nezdravá",
   "aqi_label_hazardous": "Nebezpečná",
   "particulate_label_pm1": "PM1",
-  "particulate_label_pm25": "PM2.5",
+  "particulate_label_pm25": "PM2,5",
   "particulate_label_pm10": "PM10",
   "sensor_enum_voc_level_low": "Nízká",
   "sensor_enum_voc_level_low_long": "Nízká úroveň VOC",
@@ -602,7 +597,7 @@
   "fan_speed_turbo": "Turbo",
   "fan_speed_auto": "Automaticky",
   "fan_timer_off": "Vypnuto",
-  "fan_timer_30m": "30m",
+  "fan_timer_30m": "30 m",
   "fan_timer_1h": "1h",
   "fan_timer_2h": "2h",
   "fan_timer_4h": "4h",
@@ -667,7 +662,7 @@
   "device_voc": "VOC",
   "device_co2": "CO₂",
   "device_co": "CO",
-  "device_no2": "NO₂",
+  "device_no2": "NE₂",
   "device_o3": "O₃",
   "device_so2": "SO₂",
   "device_pressure": "Tlak",
@@ -687,20 +682,28 @@
   "duration_format_hours_minutes": "{hours}h {minutes}m",
   "@duration_format_hours_minutes": {
     "placeholders": {
-      "hours": {"type": "int"},
-      "minutes": {"type": "int"}
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "duration_format_hours": "{hours}h",
   "@duration_format_hours": {
     "placeholders": {
-      "hours": {"type": "int"}
+      "hours": {
+        "type": "int"
+      }
     }
   },
-  "duration_format_minutes": "{minutes}m",
+  "duration_format_minutes": "{minutes} m",
   "@duration_format_minutes": {
     "placeholders": {
-      "minutes": {"type": "int"}
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "media_playing": "Přehrává",
@@ -716,7 +719,6 @@
   "device_status_inactive": "Neaktivní",
   "climate_devices_section": "Klimatizační zařízení",
   "climate_more_sensors": "Více senzorů",
-
   "domain_shading": "Stínění",
   "domain_shading_empty_title": "Stínění nenastaveno",
   "domain_shading_empty_description": "Role stínění nebyly pro tuto místnost nastaveny. Nakonfigurujte role v administraci.",
@@ -725,7 +727,9 @@
   "shading_devices_count": "{count, plural, =1{1 zařízení} few{{count} zařízení} other{{count} zařízení}}",
   "@shading_devices_count": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "shading_action_open": "Otevřít",
@@ -774,7 +778,7 @@
   "light_cap_hue": "Odstín",
   "light_cap_saturation": "Sytost",
   "light_cap_white": "Bílá",
-  "light_header_mode_count": "{mode} \u2022 {count} zap.",
+  "light_header_mode_count": "{mode} • {count} zap.",
   "@light_header_mode_count": {
     "placeholders": {
       "mode": {
@@ -796,32 +800,24 @@
       }
     }
   },
-
   "popup_label_mode": "Režim",
-
   "connection_banner_reconnecting": "Připojování...",
   "connection_banner_retry": "Zkusit znovu",
-
   "connection_overlay_title_reconnecting": "Připojování",
   "connection_overlay_message_reconnecting": "Pokus o opětovné připojení...",
   "connection_overlay_message_still_trying": "Stále se pokoušíme připojit...",
   "connection_overlay_retry": "Zkusit znovu",
   "connection_overlay_retrying": "Připojování...",
-
   "connection_recovery_connected": "Připojeno",
-
   "connection_auth_error_title": "Relace vypršela",
   "connection_auth_error_message": "Vaše relace vypršela nebo byla zrušena. Resetujte prosím zařízení pro opětovné připojení.",
   "connection_auth_error_button_reset": "Resetovat zařízení",
-
   "connection_network_error_title": "Síť nedostupná",
   "connection_network_error_message": "Nelze se připojit k serveru. Zkontrolujte prosím síťové připojení.",
   "connection_network_error_button_retry": "Zkusit znovu",
-
   "connection_server_error_title": "Server nedostupný",
   "connection_server_error_message": "Server je dočasně nedostupný. Zkuste to prosím později.",
   "connection_server_error_button_retry": "Zkusit znovu",
-
   "sensor_enum_illuminance_bright": "Jasno",
   "sensor_enum_illuminance_bright_long": "Jasno",
   "sensor_enum_illuminance_moderate": "Střední",
@@ -830,21 +826,18 @@
   "sensor_enum_illuminance_dusky_long": "Šero",
   "sensor_enum_illuminance_dark": "Tma",
   "sensor_enum_illuminance_dark_long": "Tma",
-
   "sensor_enum_gas_status_normal": "OK",
   "sensor_enum_gas_status_normal_long": "Normální",
   "sensor_enum_gas_status_warning": "Var.",
   "sensor_enum_gas_status_warning_long": "Varování",
-  "sensor_enum_gas_status_alarm": "Alarm",
+  "sensor_enum_gas_status_alarm": "Poplach",
   "sensor_enum_gas_status_alarm_long": "Alarm plynu",
-
   "sensor_enum_leak_level_low": "Nízký",
   "sensor_enum_leak_level_low_long": "Nízký únik",
   "sensor_enum_leak_level_medium": "Stř.",
   "sensor_enum_leak_level_medium_long": "Střední únik",
   "sensor_enum_leak_level_high": "Vys.",
   "sensor_enum_leak_level_high_long": "Závažný únik",
-
   "sensor_enum_battery_level_critical": "Krit.",
   "sensor_enum_battery_level_critical_long": "Kritická",
   "sensor_enum_battery_level_low": "Nízká",
@@ -855,14 +848,12 @@
   "sensor_enum_battery_level_high_long": "Vysoká",
   "sensor_enum_battery_level_full": "Plná",
   "sensor_enum_battery_level_full_long": "Plná",
-
   "sensor_enum_battery_status_ok": "OK",
   "sensor_enum_battery_status_ok_long": "Baterie OK",
   "sensor_enum_battery_status_low": "Nízká",
   "sensor_enum_battery_status_low_long": "Nízká baterie",
   "sensor_enum_battery_status_charging": "Nabíjí",
   "sensor_enum_battery_status_charging_long": "Nabíjení",
-
   "sensor_enum_alarm_alarm_idle": "Klid",
   "sensor_enum_alarm_alarm_idle_long": "Alarm v klidu",
   "sensor_enum_alarm_alarm_pending": "Čeká",
@@ -871,7 +862,6 @@
   "sensor_enum_alarm_alarm_triggered_long": "Alarm spuštěn",
   "sensor_enum_alarm_alarm_silenced": "Ticho",
   "sensor_enum_alarm_alarm_silenced_long": "Alarm ztišen",
-
   "sensor_enum_alarm_disarmed": "Vyp.",
   "sensor_enum_alarm_disarmed_long": "Deaktivován",
   "sensor_enum_alarm_armed_home": "Doma",
@@ -880,14 +870,12 @@
   "sensor_enum_alarm_armed_away_long": "Aktivní pryč",
   "sensor_enum_alarm_armed_night": "Noc",
   "sensor_enum_alarm_armed_night_long": "Aktivní noc",
-
   "sensor_enum_filter_good": "Dobrý",
   "sensor_enum_filter_good_long": "Filtr dobrý",
   "sensor_enum_filter_replace_soon": "Brzy",
   "sensor_enum_filter_replace_soon_long": "Brzy vyměnit",
   "sensor_enum_filter_replace_now": "Teď!",
   "sensor_enum_filter_replace_now_long": "Vyměnit nyní",
-
   "sensor_enum_door_opened": "Otev.",
   "sensor_enum_door_opened_long": "Dveře otevřeny",
   "sensor_enum_door_closed": "Zavř.",
@@ -898,12 +886,10 @@
   "sensor_enum_door_closing_long": "Dveře se zavírají",
   "sensor_enum_door_stopped": "Stop",
   "sensor_enum_door_stopped_long": "Dveře zastaveny",
-
   "sensor_enum_lock_locked": "Zamč.",
   "sensor_enum_lock_locked_long": "Zamčeno",
   "sensor_enum_lock_unlocked": "Otev.",
   "sensor_enum_lock_unlocked_long": "Odemčeno",
-
   "sensor_enum_camera_available": "Zap.",
   "sensor_enum_camera_available_long": "Kamera dostupná",
   "sensor_enum_camera_in_use": "Použ.",
@@ -916,7 +902,6 @@
   "sensor_enum_camera_initializing_long": "Kamera se inicializuje",
   "sensor_enum_camera_error": "Chyba",
   "sensor_enum_camera_error_long": "Chyba kamery",
-
   "sensor_enum_device_info_connected": "Zap.",
   "sensor_enum_device_info_connected_long": "Připojeno",
   "sensor_enum_device_info_disconnected": "Vyp.",
@@ -929,15 +914,14 @@
   "sensor_enum_device_info_running_long": "Běží",
   "sensor_enum_device_info_sleeping": "Spí",
   "sensor_enum_device_info_sleeping_long": "Spí",
-  "sensor_enum_device_info_stopped": "Stop",
+  "sensor_enum_device_info_stopped": "Zastávka",
   "sensor_enum_device_info_stopped_long": "Zastaveno",
   "sensor_enum_device_info_lost": "Ztr.",
   "sensor_enum_device_info_lost_long": "Spojení ztraceno",
-  "sensor_enum_device_info_alert": "Alert",
-  "sensor_enum_device_info_alert_long": "Alert",
+  "sensor_enum_device_info_alert": "Alarm",
+  "sensor_enum_device_info_alert_long": "Alarm",
   "sensor_enum_device_info_unknown": "N/A",
   "sensor_enum_device_info_unknown_long": "Neznámý",
-
   "sensor_freshness_live": "Živě",
   "sensor_freshness_stale": "Zastaralé",
   "sensor_freshness_offline": "Offline",
@@ -947,7 +931,7 @@
   "media_input_hdmi4": "HDMI 4",
   "media_input_hdmi5": "HDMI 5",
   "media_input_hdmi6": "HDMI 6",
-  "media_input_arc": "ARC",
+  "media_input_arc": "OBLOUK",
   "media_input_earc": "eARC",
   "media_input_tv": "TV",
   "media_input_cable": "Kabel",
@@ -1034,7 +1018,7 @@
   "media_detail_connection_lost_description": "Ovládání médií vyžaduje aktivní WebSocket připojení.",
   "media_detail_go_back": "Zpět",
   "media_detail_section_display": "Displej",
-  "media_detail_section_audio": "Audio",
+  "media_detail_section_audio": "Zvuk",
   "media_detail_section_source": "Zdroj",
   "media_detail_section_remote": "Dálkové ovládání",
   "media_detail_input": "Vstup",
@@ -1047,7 +1031,6 @@
   "filter_all": "Vše",
   "sensor_alert_high_title": "Výstraha: vysoká hodnota {name}",
   "sensor_alert_exceeded_threshold": "{name} překročil prahovou hodnotu",
-
   "sensor_state_detected": "Detekováno",
   "sensor_state_not_detected": "Nedetekováno",
   "sensor_state_clear": "V pořádku",
@@ -1061,7 +1044,6 @@
   "sensor_state_gas_detected": "Detekován plyn",
   "sensor_state_leak_detected": "Detekován únik",
   "sensor_state_co_detected": "Detekován CO",
-
   "sensor_label_temperature": "Teplota",
   "sensor_label_humidity": "Vlhkost",
   "sensor_label_pressure": "Tlak",
@@ -1079,7 +1061,7 @@
   "sensor_label_leak": "Únik",
   "sensor_label_smoke": "Kouř",
   "sensor_label_battery": "Baterie",
-  "sensor_label_alarm": "Alarm",
+  "sensor_label_alarm": "Poplach",
   "sensor_label_door": "Dveře",
   "sensor_label_lock": "Zámek",
   "sensor_label_camera": "Kamera",
@@ -1089,11 +1071,9 @@
   "sensor_label_electrical_energy": "Energie",
   "sensor_label_electrical_generation": "Výroba",
   "sensor_label_electrical_power": "Výkon",
-
   "sensor_alert_high_level": "Vysoká úroveň",
   "sensor_alert_low_battery": "Slabá baterie",
   "sensor_alert_charging": "Nabíjení",
-
   "sensor_category_temperature": "Teplota",
   "sensor_category_humidity": "Vlhkost",
   "sensor_category_air_quality": "Kvalita vzduchu",
@@ -1101,7 +1081,6 @@
   "sensor_category_safety": "Bezpečnost",
   "sensor_category_light": "Světlo",
   "sensor_category_energy": "Energie",
-
   "sensor_ui_event_log": "Historie událostí",
   "sensor_ui_history": "Historie",
   "sensor_ui_current": "Aktuální",
@@ -1118,7 +1097,6 @@
   "sensor_ui_period_24h": "24H",
   "sensor_ui_period_7d": "7D",
   "sensor_ui_period_30d": "30D",
-
   "sensor_empty_no_events": "Žádné zaznamenané události",
   "sensor_empty_no_state_changes": "Žádné změny stavu",
   "sensor_empty_no_history": "Žádná historická data",
@@ -1126,7 +1104,6 @@
   "sensor_status_loading": "Načítání dat...",
   "sensor_status_failed": "Načítání dat selhalo",
   "sensor_status_retry": "Opakovat",
-
   "sensors_domain_title": "Senzory",
   "sensors_domain_empty_title": "Senzory nenastaveny",
   "sensors_domain_empty_description": "Role senzorů nebyly pro tuto místnost nastaveny. Nakonfigurujte přiřazení senzorů v administraci.",
@@ -1140,50 +1117,40 @@
   "sensors_domain_avg_humidity": "Prům. vlhkost",
   "sensors_domain_all_sensors": "Všechny senzory",
   "sensors_domain_sensor_count": "{count} senzorů",
-
   "domain_security": "Zabezpečení",
-
   "security_tab_entry_points": "Vstupní body",
   "security_tab_alerts": "Upozornění",
   "security_tab_events": "Události",
   "security_header_recent_events": "Nedávné události",
-
   "security_status_triggered": "Spuštěno",
   "security_status_warning": "Varování",
   "security_status_secure": "Zabezpečeno",
-
   "security_armed_disarmed": "Deaktivováno",
   "security_armed_home": "Aktivní doma",
   "security_armed_away": "Aktivní pryč",
   "security_armed_night": "Aktivní noc",
   "security_armed_unknown": "Neznámý",
-
   "security_alarm_idle": "Klidový",
   "security_alarm_pending": "Čekající",
   "security_alarm_triggered": "Spuštěno",
   "security_alarm_silenced": "Ztlumeno",
   "security_alarm_unknown": "Neznámý",
-
   "security_entry_open_count": "{count} otevřeno",
   "security_entry_all_secure": "Vše zabezpečeno",
   "security_entry_status_breach": "Průnik",
   "security_entry_status_open": "Otevřeno",
   "security_entry_status_unknown": "Neznámý",
   "security_entry_status_closed": "Zavřeno",
-
   "security_summary_all_clear": "Vše v pořádku · {count} vstupních bodů zabezpečeno",
   "security_summary_alerts": "{count} upozornění",
   "security_summary_alerts_label": "Upozornění",
   "security_summary_entry_points_open": "{count} vstupních bodů otevřeno",
   "security_summary_open_label": "Otevřeno",
-
   "security_no_active_alerts": "Žádná aktivní upozornění",
   "security_ack_all": "Potvrdit vše",
-
   "security_no_recent_events": "Žádné nedávné události",
   "security_events_load_failed": "Nepodařilo se načíst události",
   "security_retry": "Opakovat",
-
   "security_alert_type_intrusion": "Detekován průnik",
   "security_alert_type_entry_open": "Vstup otevřen",
   "security_alert_type_smoke": "Detekován kouř",
@@ -1194,28 +1161,23 @@
   "security_alert_type_fault": "Chyba systému",
   "security_alert_type_device_offline": "Zařízení offline",
   "security_alert_type_unknown": "Neznámý",
-
   "security_event_alert_raised": "Upozornění vyvoláno",
   "security_event_alert_resolved": "Upozornění vyřešeno",
   "security_event_alert_acknowledged": "Upozornění potvrzeno",
   "security_event_alarm_state_changed": "Stav alarmu změněn",
   "security_event_arming_mode_changed": "Režim zabezpečení změněn",
-
   "security_event_title_alert_raised": "Upozornění vyvoláno: {alertType}",
   "security_event_title_alert_resolved": "Upozornění vyřešeno: {alertType}",
   "security_event_title_alert_acknowledged": "Upozornění potvrzeno: {alertType}",
   "security_event_title_alarm_state_changed": "Stav alarmu změněn: {from} → {to}",
   "security_event_title_arming_mode_changed": "Režim zabezpečení změněn: {from} → {to}",
-
   "security_state_transition": "{from} → {to}",
   "security_state_unknown": "neznámý",
-
   "security_overlay_alarm_triggered": "Alarm spuštěn",
   "security_overlay_default_title": "Bezpečnostní upozornění",
   "security_overlay_acknowledge": "Potvrdit",
   "security_overlay_open_security": "Otevřít zabezpečení",
   "security_overlay_more_alerts": "+{count} dalších upozornění",
-
   "action_retry": "Opakovat",
   "room_overview_no_room": "K tomuto displeji není přiřazena žádná místnost",
   "room_overview_display_not_configured": "Displej není nakonfigurován",
@@ -1231,10 +1193,8 @@
   "shading_fully_closed": "Zcela zavřeno",
   "shading_fully_open": "Zcela otevřeno",
   "sensor_label_light": "Světlo",
-
   "settings_save_failed": "Uložení nastavení selhalo.",
   "settings_about_version_loading": "Načítání...",
-
   "app_error_failed_to_start": "Aplikaci se nepodařilo spustit",
   "app_error_failed_to_start_short": "Spuštění selhalo",
   "app_error_unexpected": "Při spouštění aplikace došlo k neočekávané chybě.",
@@ -1245,28 +1205,20 @@
   "app_error_connection_failed_backend": "Nepodařilo se připojit k {name} na {address}",
   "app_error_initialization_failed": "Inicializace připojení k serveru selhala.",
   "app_error_connection_failed_url": "Nepodařilo se připojit k {url}",
-
   "deck_empty_title": "Žádné stránky nejsou nakonfigurovány",
   "deck_empty_description": "Nakonfigurujte si dashboard v administraci.",
-
   "alert_banner_view_button": "Zobrazit",
-
   "sensor_chart_label_now": "Teď",
-
   "room_name_fallback": "Místnost",
-
   "weather_tile_not_configured": "Není nakonfigurováno",
-
   "entry_error_load_security_data": "Nepodařilo se načíst bezpečnostní data",
   "entry_locks_all_locked": "Vše zamčeno",
   "entry_locks_status_partial": "{locked}/{total} zamčeno",
   "entry_alarm_armed": "Aktivní",
   "entry_alarm_disarmed": "Neaktivní",
   "entry_cameras_status_active": "{count} aktivních",
-
   "master_error_load_house_data": "Nepodařilo se načíst data domu",
   "master_room_device_count": "{online}/{total} zařízení",
-
   "buddy_dismiss": "Zavřít",
   "buddy_apply": "Použít",
   "buddy_got_it": "Rozumím",
@@ -1291,17 +1243,13 @@
   "buddy_recording_cancel": "Zrušit",
   "buddy_recording_too_short": "Nahrávka je příliš krátká. Podržte déle.",
   "buddy_recording_permission_error": "Nelze spustit nahrávání. Zkontrolujte oprávnění mikrofonu.",
-
   "buddy_voice_listening": "Naslouchám...",
-  "buddy_voice_recording_timer": "{seconds}s / {maxSeconds}s",
+  "buddy_voice_recording_timer": "{seconds} s / {maxSeconds} s",
   "buddy_voice_recording_progress": "Nahrávání {seconds}s / {maxSeconds}s",
   "buddy_voice_processing": "Zpracovávám...",
   "buddy_voice_transcribing": "Přepisuji zvuk...",
-
   "security_events_error_unexpected_response": "Neočekávaná odpověď",
-
   "media_activation_step_fallback": "Krok {index}",
-
   "intent_error_deck_not_initialized": "Deck není inicializován",
   "intent_error_deck_item_not_found": "Položka decku nenalezena",
   "intent_error_no_home_item": "Domovská položka není dostupná",
@@ -1313,6 +1261,5 @@
   "intent_error_set_property_error": "Chyba při nastavení hodnoty vlastnosti",
   "intent_error_toggle_device_failed": "Nepodařilo se přepnout zařízení",
   "intent_error_toggle_device_error": "Chyba při přepínání zařízení",
-
   "settings_display_screen_lock_never": "Nikdy"
 }

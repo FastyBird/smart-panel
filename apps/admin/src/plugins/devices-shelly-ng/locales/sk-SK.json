@@ -9,7 +9,7 @@
 			"supported": "Gratulujeme! Zariadenie je podporované",
 			"notSupported": "Ľutujeme, vaše zariadenie nie je podporované",
 			"model": "Model",
-			"firmware": "Firmware"
+			"firmware": "Firmvér"
 		},
 		"wizard": {
 			"title": "Sprievodca vyhľadaním Shelly NG"
@@ -59,6 +59,14 @@
 				"validation": {
 					"required": "Prosím vyplňte hostname alebo IP adresu zariadenia"
 				}
+			},
+			"ethernetAddress": {
+				"title": "Ethernetová adresa",
+				"placeholder": "IP adresa Ethernet (napr. 192.168.1.100)"
+			},
+			"wifiAddress": {
+				"title": "Wi-Fi adresa",
+				"placeholder": "Wi-Fi IP adresa (napr. 192.168.1.101)"
 			}
 		},
 		"config": {

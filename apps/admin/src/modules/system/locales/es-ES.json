@@ -18,6 +18,11 @@
 			"detail": {
 				"title": "Detalle del registro"
 			}
+		},
+		"systemBackups": {
+			"list": {
+				"title": "Copias de seguridad del sistema"
+			}
 		}
 	},
 	"breadcrumbs": {
@@ -28,6 +33,9 @@
 		"systemLogs": {
 			"list": "registros de la aplicación",
 			"detail": "detalle del registro"
+		},
+		"systemBackups": {
+			"list": "Copias"
 		}
 	},
 	"headings": {
@@ -47,7 +55,8 @@
 			"factoryReset": "Restablecimiento de fábrica",
 			"poweredOff": "Apagado completado",
 			"rebooting": "Reiniciando",
-			"systemLogs": "Registros de la aplicación"
+			"systemLogs": "Registros de la aplicación",
+			"systemBackups": "Copias de seguridad del sistema"
 		},
 		"systemLogs": {
 			"list": "Registros de la aplicación",
@@ -56,7 +65,10 @@
 		},
 		"aboutLanguageSettings": "Idioma y unidades",
 		"aboutSystemSettings": "Configuración del sistema",
-		"aboutHouseModeSettings": "Modo de la casa"
+		"aboutHouseModeSettings": "Modo de la casa",
+		"systemBackups": {
+			"list": "Copias de seguridad del sistema"
+		}
 	},
 	"subHeadings": {
 		"system": "Información del estado del sistema del panel inteligente",
@@ -66,6 +78,9 @@
 			"detail": "Vista previa de los detalles del registro",
 			"edit": "Vista previa de los detalles del registro",
 			"adjustFilters": "Ajustar filtros de registros"
+		},
+		"systemBackups": {
+			"list": "Cree, restaure y administre copias de seguridad del sistema"
 		}
 	},
 	"messages": {
@@ -131,7 +146,8 @@
 			"factoryResetWaiting": "Esperando a que el panel inteligente se reinicie después del restablecimiento de fábrica...",
 			"factoryResetTimeout": "El restablecimiento de fábrica está tardando más de lo esperado. Por favor, verifica el dispositivo manualmente.",
 			"poweredOff": "Puedes cerrar esta ventana — no se requiere ninguna acción adicional.",
-			"systemLogs": "Vista previa y diagnóstico de los registros de la aplicación."
+			"systemLogs": "Vista previa y diagnóstico de los registros de la aplicación.",
+			"systemBackups": "Cree, restaure y gestione copias de seguridad del sistema."
 		},
 		"update": {
 			"available": "Versión {version} disponible",
@@ -471,5 +487,52 @@
 		"display": "Aplicación de pantalla",
 		"backend": "Backend de la aplicación",
 		"other": "Otro"
+	},
+	"backups": {
+		"title": "Copias de seguridad",
+		"noBackups": "Aún no se han creado copias de seguridad.",
+		"noMatches": "No hay copias de seguridad que coincidan con la búsqueda.",
+		"search": {
+			"placeholder": "Buscar copias de seguridad..."
+		},
+		"contributions": "contribuciones",
+		"columns": {
+			"name": "Nombre",
+			"version": "Versión",
+			"created": "Creado",
+			"size": "Tamaño",
+			"actions": "Acciones"
+		},
+		"createDialog": {
+			"title": "Crear copia de seguridad",
+			"name": "Nombre de la copia",
+			"namePlaceholder": "Nombre de copia opcional",
+			"submit": "Crear"
+		},
+		"deleteDialog": {
+			"title": "Eliminar copia de seguridad",
+			"message": "¿Está seguro de que desea eliminar la copia de seguridad \"{name}\"? "
+		},
+		"restoreDialog": {
+			"title": "Restaurar copia de seguridad",
+			"warning": "Restaurar una copia de seguridad sobrescribirá su configuración y datos actuales. El sistema se reiniciará cuando finalice la restauración.",
+			"message": "¿Está seguro de que desea restaurar desde la copia de seguridad \"{name}\"?",
+			"confirm": "Restaurar"
+		},
+		"messages": {
+			"created": "La copia de seguridad se creó correctamente.",
+			"createError": "No se pudo crear la copia de seguridad. Intente de nuevo.",
+			"deleted": "La copia de seguridad se eliminó.",
+			"deleteError": "No se pudo eliminar la copia de seguridad. Intente de nuevo.",
+			"restored": "Se ha iniciado la restauración de la copia de seguridad. El sistema se reiniciará pronto.",
+			"restoreError": "No se pudo restaurar la copia de seguridad. Intente de nuevo.",
+			"downloadError": "No se pudo descargar la copia de seguridad. Intente de nuevo.",
+			"uploaded": "La copia de seguridad se cargó correctamente.",
+			"uploadError": "No se pudo cargar la copia de seguridad. Intente de nuevo."
+		},
+		"buttons": {
+			"create": "Crear copia",
+			"upload": "Subir copia"
+		}
 	}
 }

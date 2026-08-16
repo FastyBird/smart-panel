@@ -18,6 +18,11 @@
 			"detail": {
 				"title": "Detail protokolu"
 			}
+		},
+		"systemBackups": {
+			"list": {
+				"title": "Systémové zálohy"
+			}
 		}
 	},
 	"breadcrumbs": {
@@ -28,6 +33,9 @@
 		"systemLogs": {
 			"list": "aplikační protokoly",
 			"detail": "detail protokolu"
+		},
+		"systemBackups": {
+			"list": "Zálohy"
 		}
 	},
 	"headings": {
@@ -47,7 +55,8 @@
 			"factoryReset": "Tovární reset",
 			"poweredOff": "Vypnutí dokončeno",
 			"rebooting": "Restartování",
-			"systemLogs": "Aplikační protokoly"
+			"systemLogs": "Aplikační protokoly",
+			"systemBackups": "Systémové zálohy"
 		},
 		"systemLogs": {
 			"list": "Aplikační protokoly",
@@ -56,7 +65,10 @@
 		},
 		"aboutLanguageSettings": "Jazyk a jednotky",
 		"aboutSystemSettings": "Nastavení systému",
-		"aboutHouseModeSettings": "Režim domu"
+		"aboutHouseModeSettings": "Režim domu",
+		"systemBackups": {
+			"list": "Systémové zálohy"
+		}
 	},
 	"subHeadings": {
 		"system": "Informace o stavu systému smart panelu",
@@ -66,6 +78,9 @@
 			"detail": "Náhled podrobností záznamu protokolu",
 			"edit": "Náhled podrobností záznamu protokolu",
 			"adjustFilters": "Upravit filtry protokolů"
+		},
+		"systemBackups": {
+			"list": "Vytvářejte, obnovte a spravujte systémové zálohy"
 		}
 	},
 	"messages": {
@@ -131,7 +146,8 @@
 			"factoryResetWaiting": "Čekání na restart Smart Panelu po továrním resetu...",
 			"factoryResetTimeout": "Tovární reset trvá déle, než se očekávalo. Zkontrolujte prosím zařízení ručně.",
 			"poweredOff": "Můžete zavřít toto okno — není vyžadována žádná další akce.",
-			"systemLogs": "Náhled a diagnostika aplikačních protokolů."
+			"systemLogs": "Náhled a diagnostika aplikačních protokolů.",
+			"systemBackups": "Vytvářejte, obnovujte a spravujte systémové zálohy."
 		},
 		"update": {
 			"available": "Verze {version} je k dispozici",
@@ -209,7 +225,7 @@
 				"description": "Jednotka zobrazení teploty",
 				"placeholder": "Vyberte jednotku teploty",
 				"values": {
-					"celsius": "Celsius (°C)",
+					"celsius": "Celsia (°C)",
 					"fahrenheit": "Fahrenheit (°F)"
 				},
 				"validation": {
@@ -277,7 +293,7 @@
 				"values": {
 					"silent": "Tichý",
 					"verbose": "Podrobný",
-					"debug": "Debug",
+					"debug": "Ladit",
 					"trace": "Trasování",
 					"log": "Protokol",
 					"info": "Info",
@@ -337,10 +353,10 @@
 				"title": "Verze aplikace"
 			},
 			"url": {
-				"title": "URL"
+				"title": "URL adresa"
 			},
 			"userAgent": {
-				"title": "User agent"
+				"title": "Uživatelský agent"
 			},
 			"locale": {
 				"title": "Lokalizace"
@@ -384,7 +400,7 @@
 			"title": "Ne"
 		},
 		"reset": {
-			"title": "Reset"
+			"title": "Resetovat"
 		},
 		"edit": {
 			"title": "Upravit"
@@ -461,8 +477,8 @@
 		"fail": "Selhání",
 		"ready": "Připraven",
 		"start": "Start",
-		"box": "Box",
-		"debug": "Debug",
+		"box": "Krabice",
+		"debug": "Ladit",
 		"trace": "Trasování",
 		"verbose": "Podrobný"
 	},
@@ -471,5 +487,52 @@
 		"display": "Aplikace displeje",
 		"backend": "Backend aplikace",
 		"other": "Ostatní"
+	},
+	"backups": {
+		"title": "Zálohy",
+		"noBackups": "Zatím nebyly vytvořeny žádné zálohy.",
+		"noMatches": "Žádné zálohy neodpovídají vyhledávání.",
+		"search": {
+			"placeholder": "Hledat zálohy…"
+		},
+		"contributions": "Příspěvky",
+		"columns": {
+			"name": "Název",
+			"version": "Verze",
+			"created": "Vytvořeno",
+			"size": "Velikost",
+			"actions": "Akce"
+		},
+		"createDialog": {
+			"title": "Vytvořit zálohu",
+			"name": "Název zálohy",
+			"namePlaceholder": "Nepovinný název zálohy",
+			"submit": "Vytvořit"
+		},
+		"deleteDialog": {
+			"title": "Odstranit zálohu",
+			"message": "Opravdu chcete smazat zálohu „{name}“? "
+		},
+		"restoreDialog": {
+			"title": "Obnovit zálohu",
+			"warning": "Obnova zálohy přepíše stávající konfiguraci a data. Po dokončení obnovy systém restartuje.",
+			"message": "Opravdu chcete obnovit ze zálohy „{name}“?",
+			"confirm": "Obnovit"
+		},
+		"messages": {
+			"created": "Záloha byla úspěšně vytvořena.",
+			"createError": "Nepodařilo se vytvořit zálohu. Zkuste to znovu.",
+			"deleted": "Záloha byla odstraněna.",
+			"deleteError": "Nepodařilo se odstranit zálohu. Zkuste to znovu.",
+			"restored": "Obnova zálohy byla zahájena. Systém brzy restartuje.",
+			"restoreError": "Nepodařilo se obnovit zálohu. Zkuste to znovu.",
+			"downloadError": "Nepodařilo se stáhnout zálohu. Zkuste to znovu.",
+			"uploaded": "Záloha byla úspěšně nahrána.",
+			"uploadError": "Nepodařilo se nahrát zálohu. Zkuste to znovu."
+		},
+		"buttons": {
+			"create": "Vytvořit zálohu",
+			"upload": "Nahrát zálohu"
+		}
 	}
 }

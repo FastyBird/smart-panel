@@ -29,7 +29,7 @@
 				}
 			},
 			"bucket": {
-				"title": "Bucket",
+				"title": "Vedro",
 				"placeholder": "fastybird",
 				"validation": {
 					"required": "Názov bucketu je povinný"

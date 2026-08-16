@@ -9,7 +9,7 @@
 			"supported": "¡Felicidades! El dispositivo es compatible",
 			"notSupported": "Lo sentimos, su dispositivo no es compatible",
 			"model": "Modelo",
-			"firmware": "Firmware"
+			"firmware": "firmware"
 		},
 		"wizard": {
 			"title": "Asistente de descubrimiento de Shelly NG"
@@ -59,6 +59,14 @@
 				"validation": {
 					"required": "Por favor, introduzca el nombre de host o la dirección IP del dispositivo"
 				}
+			},
+			"ethernetAddress": {
+				"title": "Dirección Ethernet",
+				"placeholder": "Dirección IP de Ethernet (p. ej. 192.168.1.100)"
+			},
+			"wifiAddress": {
+				"title": "Dirección WiFi",
+				"placeholder": "Dirección IP de WiFi (p. ej. 192.168.1.101)"
 			}
 		},
 		"config": {
@@ -118,10 +126,10 @@
 			"failedLoadSupportedDevices": "Algo salió mal. No se pudieron cargar los dispositivos compatibles del plugin."
 		},
 		"wizard": {
-			"discoveryNotStarted": "Something went wrong. Shelly discovery could not be started.",
-			"discoveryNotLoaded": "Something went wrong. Shelly discovery could not be loaded.",
-			"manualNotAdded": "Something went wrong. Manual Shelly device lookup could not be added.",
-			"adoptionNotCreated": "Something went wrong. Shelly device could not be adopted."
+			"discoveryNotStarted": "Algo salió mal. No se pudo iniciar el descubrimiento de Shelly.",
+			"discoveryNotLoaded": "Algo salió mal. No se pudo cargar el descubrimiento de Shelly.",
+			"manualNotAdded": "Algo salió mal. No se pudo agregar la búsqueda manual de un dispositivo Shelly.",
+			"adoptionNotCreated": "Algo salió mal. No se pudo adoptar el dispositivo Shelly."
 		}
 	},
 	"texts": {
@@ -129,8 +137,8 @@
 		"aboutMdns": "Configure cómo el plugin descubre dispositivos Shelly en su red local usando DNS Multidifusión (mDNS). Esto permite la detección automática sin necesidad de introducir direcciones IP manualmente.",
 		"aboutWebsockets": "Gestione los parámetros de conexión WebSocket para los dispositivos Shelly. Estos ajustes controlan la estabilidad de la comunicación, el manejo de solicitudes y el comportamiento de reconexión.",
 		"wizard": {
-			"discovery": "The wizard scans the local network for Shelly NG devices and also accepts a manually entered hostname or IP address.",
-			"scanStatus": "{count} devices found"
+			"discovery": "El asistente busca dispositivos Shelly NG en la red local y también acepta un nombre de host o una dirección IP introducidos manualmente.",
+			"scanStatus": "{count} dispositivos encontrados"
 		}
 	},
 	"buttons": {
@@ -139,10 +147,10 @@
 		},
 		"wizard": {
 			"restart": {
-				"title": "Scan again"
+				"title": "Escanear de nuevo"
 			},
 			"addManual": {
-				"title": "Add"
+				"title": "Añadir"
 			}
 		}
 	}

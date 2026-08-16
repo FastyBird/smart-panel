@@ -8,7 +8,7 @@
 				"title": "Povolený"
 			},
 			"accessToken": {
-				"title": "Setup token",
+				"title": "Inštalačný token",
 				"placeholder": "Vložte sem svoj setup token",
 				"howTo": "Spustite",
 				"howToSuffix": "vo svojom termináli a vložte vygenerovaný token sem.",

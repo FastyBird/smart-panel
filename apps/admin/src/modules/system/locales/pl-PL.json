@@ -18,6 +18,11 @@
 			"detail": {
 				"title": "Szczegóły logu"
 			}
+		},
+		"systemBackups": {
+			"list": {
+				"title": "Kopie zapasowe systemu"
+			}
 		}
 	},
 	"breadcrumbs": {
@@ -28,6 +33,9 @@
 		"systemLogs": {
 			"list": "logi aplikacji",
 			"detail": "szczegóły logu"
+		},
+		"systemBackups": {
+			"list": "Kopie zapasowe"
 		}
 	},
 	"headings": {
@@ -47,7 +55,8 @@
 			"factoryReset": "Przywróć ustawienia fabryczne",
 			"poweredOff": "Zasilanie wyłączone",
 			"rebooting": "Ponowne uruchamianie",
-			"systemLogs": "Logi aplikacji"
+			"systemLogs": "Logi aplikacji",
+			"systemBackups": "Kopie zapasowe systemu"
 		},
 		"systemLogs": {
 			"list": "Logi aplikacji",
@@ -56,7 +65,10 @@
 		},
 		"aboutLanguageSettings": "Język i jednostki",
 		"aboutSystemSettings": "Ustawienia systemu",
-		"aboutHouseModeSettings": "Tryb domu"
+		"aboutHouseModeSettings": "Tryb domu",
+		"systemBackups": {
+			"list": "Kopie zapasowe systemu"
+		}
 	},
 	"subHeadings": {
 		"system": "Informacje o stanie systemu smart panelu",
@@ -66,6 +78,9 @@
 			"detail": "Podgląd szczegółów wpisu logu",
 			"edit": "Podgląd szczegółów wpisu logu",
 			"adjustFilters": "Dostosuj filtry logów"
+		},
+		"systemBackups": {
+			"list": "Twórz, przywracaj i zarządzaj kopiami zapasowymi systemu"
 		}
 	},
 	"messages": {
@@ -131,7 +146,8 @@
 			"factoryResetWaiting": "Oczekiwanie na ponowne uruchomienie Smart Panel po resecie fabrycznym...",
 			"factoryResetTimeout": "Reset fabryczny trwa dłużej niż oczekiwano. Sprawdź urządzenie ręcznie.",
 			"poweredOff": "Możesz zamknąć to okno — nie są wymagane żadne dalsze działania.",
-			"systemLogs": "Podgląd i diagnostyka logów aplikacji."
+			"systemLogs": "Podgląd i diagnostyka logów aplikacji.",
+			"systemBackups": "Twórz, przywracaj i zarządzaj kopiami zapasowymi systemu."
 		},
 		"update": {
 			"available": "Wersja {version} jest dostępna",
@@ -210,7 +226,7 @@
 				"placeholder": "Wybierz jednostkę temperatury",
 				"values": {
 					"celsius": "Celsjusz (°C)",
-					"fahrenheit": "Fahrenheit (°F)"
+					"fahrenheit": "Stopnie Fahrenheita (°F)"
 				},
 				"validation": {
 					"required": "Jednostka temperatury jest wymagana"
@@ -277,10 +293,10 @@
 				"values": {
 					"silent": "Cichy",
 					"verbose": "Szczegółowy",
-					"debug": "Debug",
-					"trace": "Trace",
-					"log": "Log",
-					"info": "Info",
+					"debug": "Odpluskwić",
+					"trace": "Namierzać",
+					"log": "Dziennik",
+					"info": "Informacje",
 					"success": "Sukces",
 					"warn": "Ostrzeżenie",
 					"error": "Błąd",
@@ -328,7 +344,7 @@
 				"noMessage": "Brak wiadomości"
 			},
 			"tag": {
-				"title": "Tag"
+				"title": "Etykietka"
 			},
 			"user": {
 				"title": "Użytkownik"
@@ -337,7 +353,7 @@
 				"title": "Wersja aplikacji"
 			},
 			"url": {
-				"title": "URL"
+				"title": "Adres URL"
 			},
 			"userAgent": {
 				"title": "Przeglądarka"
@@ -455,15 +471,15 @@
 		"fatal": "Krytyczny",
 		"error": "Błąd",
 		"warn": "Ostrzeżenie",
-		"log": "Log",
-		"info": "Info",
+		"log": "Dziennik",
+		"info": "Informacje",
 		"success": "Sukces",
 		"fail": "Niepowodzenie",
 		"ready": "Gotowy",
 		"start": "Start",
-		"box": "Box",
-		"debug": "Debug",
-		"trace": "Trace",
+		"box": "Skrzynka",
+		"debug": "Odpluskwić",
+		"trace": "Namierzać",
 		"verbose": "Szczegółowy"
 	},
 	"sources": {
@@ -471,5 +487,52 @@
 		"display": "Aplikacja wyświetlacza",
 		"backend": "Backend aplikacji",
 		"other": "Inne"
+	},
+	"backups": {
+		"title": "Kopie zapasowe",
+		"noBackups": "Nie utworzono jeszcze żadnych kopii zapasowych.",
+		"noMatches": "Brak kopii zapasowych pasujących do wyszukiwania.",
+		"search": {
+			"placeholder": "Wyszukaj kopie zapasowe..."
+		},
+		"contributions": "wnioski",
+		"columns": {
+			"name": "Nazwa",
+			"version": "Wersja",
+			"created": "Utworzono",
+			"size": "Rozmiar",
+			"actions": "Akcje"
+		},
+		"createDialog": {
+			"title": "Utwórz kopię zapasową",
+			"name": "Nazwa kopii",
+			"namePlaceholder": "Opcjonalna nazwa kopii zapasowej",
+			"submit": "Utwórz"
+		},
+		"deleteDialog": {
+			"title": "Usuń kopię zapasową",
+			"message": "Czy na pewno chcesz usunąć kopię zapasową „{name}”? "
+		},
+		"restoreDialog": {
+			"title": "Przywróć kopię zapasową",
+			"warning": "Przywracanie kopii zapasowej zastąpi obecną konfigurację i dane. Po zakończeniu przywracania system uruchomi się ponownie.",
+			"message": "Czy na pewno chcesz przywrócić dane z kopii zapasowej „{name}”?",
+			"confirm": "Przywróć"
+		},
+		"messages": {
+			"created": "Kopia zapasowa została pomyślnie utworzona.",
+			"createError": "Nie udało się utworzyć kopii zapasowej. Spróbuj ponownie.",
+			"deleted": "Kopia zapasowa została usunięta.",
+			"deleteError": "Nie udało się usunąć kopii zapasowej. Spróbuj ponownie.",
+			"restored": "Przywracanie kopii zapasowej zostało rozpoczęte. System wkrótce się uruchomi ponownie.",
+			"restoreError": "Nie udało się przywrócić kopii zapasowej. Spróbuj ponownie.",
+			"downloadError": "Nie udało się pobrać kopii zapasowej. Spróbuj ponownie.",
+			"uploaded": "Kopia zapasowa została pomyślnie przesłana.",
+			"uploadError": "Nie udało się przesłać kopii zapasowej. Spróbuj ponownie."
+		},
+		"buttons": {
+			"create": "Utwórz kopię",
+			"upload": "Prześlij kopię"
+		}
 	}
 }

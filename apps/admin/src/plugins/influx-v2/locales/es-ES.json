@@ -29,7 +29,7 @@
 				}
 			},
 			"bucket": {
-				"title": "Bucket",
+				"title": "Balde",
 				"placeholder": "fastybird",
 				"validation": {
 					"required": "El nombre del bucket es obligatorio"

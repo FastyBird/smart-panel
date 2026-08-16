@@ -1,141 +1,237 @@
 {
-	"menu": { "clients": "Klienti MCP" },
-	"actions": {
-		"create": "Vytvoriť klienta",
-		"edit": "Upraviť",
-		"save": "Uložiť",
-		"rotate": "Obnoviť",
-		"revoke": "Odvolať",
-		"delete": "Odstrániť",
-		"cancel": "Zrušiť",
-		"done": "Hotovo",
-		"addOrigin": "Pridať zdroj",
-		"removeOrigin": "Odobrať zdroj",
-		"copyEndpoint": "Kopírovať koncový bod"
-	},
-	"capabilities": {
-		"read": { "title": "Čítanie", "description": "Čítanie obmedzeného kontextu domácnosti, zariadení, počasia, energie a zabezpečenia." },
-		"write": { "title": "Zápis", "description": "Priame nastavovanie podporovaných vlastností zariadení. Môže ovplyvniť fyzické zariadenia." },
-		"trigger": { "title": "Spúšťanie", "description": "Spúšťanie scén a nadradených akcií osvetlenia. Môže ovplyvniť fyzické zariadenia." }
-	},
-	"config": {
-		"about": {
-			"title": "Bezpečný prístup pre agentov",
-			"description": "MCP sprístupňuje lokálnym klientom iba vybraný katalóg. Nie je všeobecným proxy rozhraním OpenAPI."
-		},
-		"enabled": { "title": "Povoliť koncový bod MCP" },
-		"endpoint": {
-			"title": "Koncový bod MCP tejto inštalácie",
-			"description": "Použite túto adresu URL s dôveryhodným klientom MCP a jednorazovo zobrazenými prihlasovacími údajmi."
-		},
-		"oauth": {
-			"warningTitle": "Autorizácia dostupná z internetu",
-			"warningDescription": "OAuth sprístupňuje autorizačné trasy pod nastavenou verejnou identitou. Pred povolením použite dôveryhodný reverzný proxy server a platný certifikát HTTPS.",
-			"publicBaseUrlTitle": "Verejná základná URL OAuth",
-			"publicBaseUrlDescription": "Kanonická externá HTTPS URL používaná ako identita OAuth. Jej zmena odvolá všetok prístup OAuth a zachová statických klientov MCP.",
-			"publicBaseUrlPlaceholder": "https://panel.example.com",
-			"publicBaseUrlInvalid": "Použite absolútnu HTTPS URL bez prihlasovacích údajov, parametrov, fragmentu a koncovej lomky.",
-			"enabledTitle": "Povoliť MCP OAuth",
-			"enabledDescription": "Pred otvorením všetkých trás OAuth overí pripravenosť zabezpečenia. Vypnutie odvolá všetky oprávnenia a tokeny OAuth a uzavrie iba odbery OAuth."
-		},
-		"capabilities": {
-			"title": "Limit oprávnení inštalácie",
-			"warningTitle": "Prístup k fyzickým zariadeniam",
-			"warningDescription": "Oprávnenia na zápis a spúšťanie môžu meniť stav fyzických zariadení. Každému klientovi udeľte iba potrebné oprávnenia."
-		},
-		"allowedOrigins": {
-			"title": "Ďalšie povolené zdroje prehliadača",
-			"description": "Voliteľné normalizované zdroje pre klientov MCP v prehliadači. Klienti v lokálnej sieti ich zvyčajne nepotrebujú.",
-			"placeholder": "https://agent.example.com",
-			"invalid": "Použite absolútny zdroj HTTP(S) bez cesty, parametrov, fragmentu a prihlasovacích údajov."
-		}
-	},
-	"clients": {
-		"title": "Klienti MCP",
-		"subtitle": "Vytvárajte a spravujte lokálne prihlasovacie údaje agentov pre túto inštaláciu.",
-		"securityTitle": "Používajte dôveryhodné siete",
-		"securityDescription": "Uprednostnite prístup cez LAN alebo VPN a HTTPS. Prihlasovacie údaje sa zobrazia iba raz a neskôr ich nemožno získať.",
-		"columns": {
-			"name": "Klient",
-			"status": "Stav",
-			"capabilities": "Oprávnenia",
-			"expires": "Platnosť do",
-			"lastUsed": "Naposledy použité",
-			"actions": "Akcie"
-		},
-		"empty": "Zatiaľ neboli vytvorení žiadni klienti MCP.",
-		"none": "Žiadne",
-		"never": "Nikdy",
-		"noDescription": "Bez popisu"
-	},
-	"clientForm": {
-		"createTitle": "Vytvoriť klienta MCP",
-		"editTitle": "Upraviť klienta MCP",
-		"name": "Názov",
-		"nameRequired": "Zadajte názov klienta.",
-		"description": "Popis",
-		"enabled": "Povolené",
-		"capabilities": "Oprávnenia klienta",
-		"ceilingHint": "Udeliť možno iba oprávnenia povolené v konfigurácii modulu.",
-		"expiresInDays": "Platnosť prihlasovacích údajov (dni)",
-		"expiryRequired": "Vyberte konečnú dobu platnosti prihlasovacích údajov."
-	},
-	"rotate": {
-		"title": "Obnoviť prihlasovacie údaje",
-		"warning": "Aktuálne prihlasovacie údaje budú okamžite odvolané. Pripojených klientov treba aktualizovať novým tokenom."
-	},
-	"token": {
-		"title": "Teraz skopírujte prihlasovacie údaje MCP",
-		"warningTitle": "Zobrazia sa iba raz",
-		"warningDescription": "Uložte prihlasovacie údaje klienta {name} do bezpečného správcu hesiel. Po zatvorení tohto dialógu ich už nemožno získať.",
-		"copy": "Kopírovať prihlasovacie údaje",
-		"copied": "Skopírované"
-	},
-	"status": { "active": "Aktívny", "disabled": "Zakázaný", "revoked": "Odvolaný", "expired": "Platnosť vypršala" },
-	"confirm": {
-		"revoke": "Odvolať aktuálne prihlasovacie údaje klienta {name}? Pripojení klienti okamžite stratia prístup.",
-		"delete": "Odstrániť klienta {name}? Jeho prihlasovacie údaje budú odvolané a záznam klienta nebude možné obnoviť."
-	},
-	"oauthConsent": {
-		"title": "Povoliť prístup MCP",
-		"subtitle": "Pred schválením skontrolujte, čo presne môže vzdialený klient robiť.",
-		"installation": "Inštalácia",
-		"client": "Žiadajúci klient",
-		"redirect": "Cieľ presmerovania",
-		"scopes": "Požadovaný prístup",
-		"grantExpiry": "Platnosť oprávnenia (dni)",
-		"accessExpiry": "Prístupové tokeny vypršia po {minutes} minútach.",
-		"offlineAccess": "Obnovovacie tokeny umožňujú pokračovať v prístupe najviac 30 dní, aj keď oprávnenie platí dlhšie.",
-		"physicalWarningTitle": "Tento klient môže ovplyvniť fyzické zariadenia",
-		"physicalWarning": "Prístup na zápis alebo spúšťanie môže meniť stav zariadení, spúšťať scény a ovplyvniť osoby v inštalácii.",
-		"approve": "Povoliť prístup",
-		"deny": "Zamietnuť",
-		"loading": "Načítava sa žiadosť o autorizáciu…",
-		"invalid": "Táto žiadosť o autorizáciu je neplatná, vypršala alebo už nie je dostupná.",
-		"scopeRequired": "Povoľte aspoň jedno oprávnenie MCP alebo žiadosť zamietnite.",
-		"scope": {
-			"mcp:read": "Čítať kontext inštalácie a podporovaný stav zariadení",
-			"mcp:write": "Meniť podporované vlastnosti fyzických zariadení",
-			"mcp:trigger": "Spúšťať scény a nadradené fyzické akcie",
-			"offline_access": "Obnovovať prístup bez ďalšieho potvrdenia najviac 30 dní"
-		}
-	},
-	"messages": {
-		"configSaved": "Konfigurácia MCP bola uložená.",
-		"configSaveFailed": "Konfiguráciu MCP sa nepodarilo uložiť.",
-		"endpointCopied": "Koncový bod MCP bol skopírovaný.",
-		"copyFailed": "Hodnotu sa nepodarilo skopírovať.",
-		"capabilitiesOutsideCeiling": "Oprávnenia klienta musia zostať v rámci limitu oprávnení modulu.",
-		"loadFailed": "Klientov MCP sa nepodarilo načítať.",
-		"created": "Klient MCP bol vytvorený.",
-		"createFailed": "Klienta MCP sa nepodarilo vytvoriť.",
-		"updated": "Klient MCP bol aktualizovaný.",
-		"updateFailed": "Klienta MCP sa nepodarilo aktualizovať.",
-		"rotated": "Prihlasovacie údaje MCP boli obnovené.",
-		"rotateFailed": "Prihlasovacie údaje MCP sa nepodarilo obnoviť.",
-		"revoked": "Klient MCP bol odvolaný.",
-		"revokeFailed": "Klienta MCP sa nepodarilo odvolať.",
-		"deleted": "Klient MCP bol odstránený.",
-		"deleteFailed": "Klienta MCP sa nepodarilo odstrániť."
-	}
+  "menu": {
+    "clients": "Klienti MCP",
+    "oauth": "Prístup MCP OAuth"
+  },
+  "actions": {
+    "create": "Vytvoriť klienta",
+    "edit": "Upraviť",
+    "save": "Uložiť",
+    "rotate": "Obnoviť",
+    "revoke": "Odvolať",
+    "delete": "Odstrániť",
+    "cancel": "Zrušiť",
+    "done": "Hotovo",
+    "addOrigin": "Pridať zdroj",
+    "removeOrigin": "Odobrať zdroj",
+    "copyEndpoint": "Kopírovať koncový bod"
+  },
+  "capabilities": {
+    "read": {
+      "title": "Čítanie",
+      "description": "Čítanie obmedzeného kontextu domácnosti, zariadení, počasia, energie a zabezpečenia."
+    },
+    "write": {
+      "title": "Zápis",
+      "description": "Priame nastavovanie podporovaných vlastností zariadení. Môže ovplyvniť fyzické zariadenia."
+    },
+    "trigger": {
+      "title": "Spúšťanie",
+      "description": "Spúšťanie scén a nadradených akcií osvetlenia. Môže ovplyvniť fyzické zariadenia."
+    }
+  },
+  "config": {
+    "about": {
+      "title": "Bezpečný prístup pre agentov",
+      "description": "MCP sprístupňuje lokálnym klientom iba vybraný katalóg. Nie je všeobecným proxy rozhraním OpenAPI."
+    },
+    "enabled": {
+      "title": "Povoliť koncový bod MCP"
+    },
+    "endpoint": {
+      "title": "Koncový bod MCP tejto inštalácie",
+      "description": "Použite túto adresu URL s dôveryhodným klientom MCP a jednorazovo zobrazenými prihlasovacími údajmi."
+    },
+    "oauth": {
+      "warningTitle": "Autorizácia dostupná z internetu",
+      "warningDescription": "OAuth sprístupňuje autorizačné trasy pod nastavenou verejnou identitou. Pred povolením použite dôveryhodný reverzný proxy server a platný certifikát HTTPS.",
+      "publicBaseUrlTitle": "Verejná základná URL OAuth",
+      "publicBaseUrlDescription": "Kanonická externá HTTPS URL používaná ako identita OAuth. Jej zmena odvolá všetok prístup OAuth a zachová statických klientov MCP.",
+      "publicBaseUrlPlaceholder": "https://panel.example.com",
+      "publicBaseUrlInvalid": "Použite absolútnu HTTPS URL bez prihlasovacích údajov, parametrov, fragmentu a koncovej lomky.",
+      "enabledTitle": "Povoliť MCP OAuth",
+      "enabledDescription": "Pred otvorením všetkých trás OAuth overí pripravenosť zabezpečenia. Vypnutie odvolá všetky oprávnenia a tokeny OAuth a uzavrie iba odbery OAuth."
+    },
+    "capabilities": {
+      "title": "Limit oprávnení inštalácie",
+      "warningTitle": "Prístup k fyzickým zariadeniam",
+      "warningDescription": "Oprávnenia na zápis a spúšťanie môžu meniť stav fyzických zariadení. Každému klientovi udeľte iba potrebné oprávnenia."
+    },
+    "allowedOrigins": {
+      "title": "Ďalšie povolené zdroje prehliadača",
+      "description": "Voliteľné normalizované zdroje pre klientov MCP v prehliadači. Klienti v lokálnej sieti ich zvyčajne nepotrebujú.",
+      "placeholder": "https://agent.example.com",
+      "invalid": "Použite absolútny zdroj HTTP(S) bez cesty, parametrov, fragmentu a prihlasovacích údajov."
+    }
+  },
+  "clients": {
+    "title": "Klienti MCP",
+    "subtitle": "Vytvárajte a spravujte lokálne prihlasovacie údaje agentov pre túto inštaláciu.",
+    "securityTitle": "Používajte dôveryhodné siete",
+    "securityDescription": "Uprednostnite prístup cez LAN alebo VPN a HTTPS. Prihlasovacie údaje sa zobrazia iba raz a neskôr ich nemožno získať.",
+    "columns": {
+      "name": "Klient",
+      "status": "Stav",
+      "capabilities": "Oprávnenia",
+      "expires": "Platnosť do",
+      "lastUsed": "Naposledy použité",
+      "actions": "Akcie"
+    },
+    "empty": "Zatiaľ neboli vytvorení žiadni klienti MCP.",
+    "none": "Žiadne",
+    "never": "Nikdy",
+    "noDescription": "Bez popisu"
+  },
+  "clientForm": {
+    "createTitle": "Vytvoriť klienta MCP",
+    "editTitle": "Upraviť klienta MCP",
+    "name": "Názov",
+    "nameRequired": "Zadajte názov klienta.",
+    "description": "Popis",
+    "enabled": "Povolené",
+    "capabilities": "Oprávnenia klienta",
+    "ceilingHint": "Udeliť možno iba oprávnenia povolené v konfigurácii modulu.",
+    "expiresInDays": "Platnosť prihlasovacích údajov (dni)",
+    "expiryRequired": "Vyberte konečnú dobu platnosti prihlasovacích údajov."
+  },
+  "rotate": {
+    "title": "Obnoviť prihlasovacie údaje",
+    "warning": "Aktuálne prihlasovacie údaje budú okamžite odvolané. Pripojených klientov treba aktualizovať novým tokenom."
+  },
+  "token": {
+    "title": "Teraz skopírujte prihlasovacie údaje MCP",
+    "warningTitle": "Zobrazia sa iba raz",
+    "warningDescription": "Uložte prihlasovacie údaje klienta {name} do bezpečného správcu hesiel. Po zatvorení tohto dialógu ich už nemožno získať.",
+    "copy": "Kopírovať prihlasovacie údaje",
+    "copied": "Skopírované"
+  },
+  "status": {
+    "active": "Aktívny",
+    "disabled": "Zakázaný",
+    "revoked": "Odvolaný",
+    "expired": "Platnosť vypršala"
+  },
+  "confirm": {
+    "revoke": "Odvolať aktuálne prihlasovacie údaje klienta {name}? Pripojení klienti okamžite stratia prístup.",
+    "delete": "Odstrániť klienta {name}? Jeho prihlasovacie údaje budú odvolané a záznam klienta nebude možné obnoviť."
+  },
+  "oauthConsent": {
+    "title": "Povoliť prístup MCP",
+    "subtitle": "Pred schválením skontrolujte, čo presne môže vzdialený klient robiť.",
+    "installation": "Inštalácia",
+    "client": "Žiadajúci klient",
+    "redirect": "Cieľ presmerovania",
+    "scopes": "Požadovaný prístup",
+    "grantExpiry": "Platnosť oprávnenia (dni)",
+    "accessExpiry": "Prístupové tokeny vypršia po {minutes} minútach.",
+    "offlineAccess": "Obnovovacie tokeny umožňujú pokračovať v prístupe najviac 30 dní, aj keď oprávnenie platí dlhšie.",
+    "physicalWarningTitle": "Tento klient môže ovplyvniť fyzické zariadenia",
+    "physicalWarning": "Prístup na zápis alebo spúšťanie môže meniť stav zariadení, spúšťať scény a ovplyvniť osoby v inštalácii.",
+    "approve": "Povoliť prístup",
+    "deny": "Zamietnuť",
+    "loading": "Načítava sa žiadosť o autorizáciu…",
+    "invalid": "Táto žiadosť o autorizáciu je neplatná, vypršala alebo už nie je dostupná.",
+    "scopeRequired": "Povoľte aspoň jedno oprávnenie MCP alebo žiadosť zamietnite.",
+    "scope": {
+      "mcp:read": "Čítať kontext inštalácie a podporovaný stav zariadení",
+      "mcp:write": "Meniť podporované vlastnosti fyzických zariadení",
+      "mcp:trigger": "Spúšťať scény a nadradené fyzické akcie",
+      "offline_access": "Obnovovať prístup bez ďalšieho potvrdenia najviac 30 dní"
+    }
+  },
+  "messages": {
+    "configSaved": "Konfigurácia MCP bola uložená.",
+    "configSaveFailed": "Konfiguráciu MCP sa nepodarilo uložiť.",
+    "endpointCopied": "Koncový bod MCP bol skopírovaný.",
+    "copyFailed": "Hodnotu sa nepodarilo skopírovať.",
+    "capabilitiesOutsideCeiling": "Oprávnenia klienta musia zostať v rámci limitu oprávnení modulu.",
+    "loadFailed": "Klientov MCP sa nepodarilo načítať.",
+    "created": "Klient MCP bol vytvorený.",
+    "createFailed": "Klienta MCP sa nepodarilo vytvoriť.",
+    "updated": "Klient MCP bol aktualizovaný.",
+    "updateFailed": "Klienta MCP sa nepodarilo aktualizovať.",
+    "rotated": "Prihlasovacie údaje MCP boli obnovené.",
+    "rotateFailed": "Prihlasovacie údaje MCP sa nepodarilo obnoviť.",
+    "revoked": "Klient MCP bol odvolaný.",
+    "revokeFailed": "Klienta MCP sa nepodarilo odvolať.",
+    "deleted": "Klient MCP bol odstránený.",
+    "deleteFailed": "Klienta MCP sa nepodarilo odstrániť."
+  },
+  "oauthManagement": {
+    "title": "Prístup MCP OAuth",
+    "subtitle": "Predregistrovať vzdialené klienty a odobrať ich povolenia a tokeny.",
+    "securityTitle": "OAuth tajomstvá sa nikdy nezobrazujú",
+    "securityDescription": "Táto stránka zobrazuje iba nesekretné identifikátory správy. Odvolanie okamžite uzavrie zodpovedajúce MCP odbery. Obnovenie hesla Smart Panel neodvolá prístup OAuth.",
+    "tabs": {
+      "clients": "Klienti",
+      "grants": "Povolenia",
+      "accessTokens": "Prístupové tokeny",
+      "refreshFamilies": "Obnovovacie rodiny"
+    },
+    "columns": {
+      "client": "Klient",
+      "status": "Stav",
+      "scopes": "Rozsahy",
+      "expires": "Uplynie",
+      "activeTokens": "Aktívne tokeny",
+      "actions": "Akcie"
+    },
+    "empty": {
+      "clients": "Žiadni klienti OAuth zatiaľ neboli vopred zaregistrovaní.",
+      "grants": "Nebol schválený žiadny OAuth grant.",
+      "accessTokens": "Žiadne aktívne tokeny prístupu OAuth.",
+      "refreshFamilies": "Žiadne aktívne OAuth refresh rodiny."
+    },
+    "clientId": "ID klienta",
+    "grantId": "ID povolenia",
+    "familyId": "ID rodiny",
+    "redirectUris": "URI presmerovania",
+    "createClient": "Predregistrovať OAuth klienta",
+    "revokeAll": "Odobrať celý prístup OAuth",
+    "editClient": "Upraviť klienta OAuth",
+    "editGrant": "Znížiť rozsahy OAuth povolenia",
+    "name": "Názov",
+    "nameRequired": "Zadajte názov klienta.",
+    "redirectRequired": "Pridajte aspoň jedno presné URI presmerovania.",
+    "scopesRequired": "Vyberte aspoň jeden maximálny rozsah.",
+    "grantScopesRequired": "Ponechajte aspoň jeden schválený rozsah.",
+    "grantReductionNotice": "Rozsahy schopností je možné iba odobrať. Pridanie prístupu vyžaduje nové schválenie; odoberte povolenie pre zrušenie offline prístupu.",
+    "addRedirect": "Pridať URI presmerovania",
+    "physicalWarning": "Rozsahy zápisu alebo spúšťania môžu ovplyvniť fyzické zariadenia.",
+    "status": {
+      "active": "Aktívny",
+      "disabled": "Zakázaný",
+      "inactive": "Neaktívny",
+      "revoked": "Zrušený",
+      "expired": "Vypršal"
+    },
+    "scope": {
+      "mcp:read": "Čítanie",
+      "mcp:write": "Zápis",
+      "mcp:trigger": "Spustenie",
+      "offline_access": "Offline prístup"
+    },
+    "confirm": {
+      "all": "Odobrať každý MCP OAuth grant a token a zatvoriť každé OAuth predplatné? Statické MCP prihlasovacie údaje a toky zostávajú aktívne. Použite túto explicitnú obnovovaciu akciu, pretože obnovenie hesla Smart Panel neodoberá prístup OAuth.",
+      "client": "Vypnúť {name}, odobrať všetky jeho granty a tokeny a zatvoriť jeho OAuth predplatné?",
+      "grant": "Odobrať tento grant pre {name}, jeho tokeny a zodpovedajúce predplatné?",
+      "accessToken": "Odobrať tento prístupový token pre {name} a zatvoriť zodpovedajúce predplatné?",
+      "refreshFamily": "Odobrať túto refresh rodinu pre {name}, všetky vydané prístupové tokeny z nej a zodpovedajúce predplatné?"
+    },
+    "messages": {
+      "loadFailed": "Nepodarilo sa načítať údaje OAuth autorizácie.",
+      "created": "OAuth klient bol vopred zaregistrovaný.",
+      "createFailed": "Nepodarilo sa vytvoriť klienta OAuth.",
+      "updated": "Klient OAuth bol aktualizovaný.",
+      "updateFailed": "Nepodarilo sa aktualizovať klienta OAuth.",
+      "clientRevoked": "Klient OAuth bol deaktivovaný a odobratý.",
+      "grantRevoked": "OAuth grant odobratý.",
+      "grantUpdated": "OAuth grantové rozsahy boli znížené.",
+      "grantUpdateFailed": "Nepodarilo sa aktualizovať rozsahy OAuth grantu.",
+      "accessTokenRevoked": "Prístupový token OAuth odobratý.",
+      "refreshFamilyRevoked": "OAuth refresh rodina odobratá.",
+      "allRevoked": "Odobratý celý MCP OAuth prístup.",
+      "revokeFailed": "Nepodarilo sa odobrať OAuth autorizáciu."
+    }
+  }
 }

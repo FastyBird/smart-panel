@@ -121,7 +121,7 @@
 		"breadcrumb": "Asistente de adopción WLED",
 		"columns": {
 			"identifier": "Dirección MAC o nombre de host",
-			"host": "Host"
+			"host": "Anfitrión"
 		},
 		"actions": {
 			"rescan": "Volver a explorar la red",

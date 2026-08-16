@@ -1,147 +1,237 @@
 {
-	"menu": { "clients": "Klienci MCP" },
-	"actions": {
-		"create": "Utwórz klienta",
-		"edit": "Edytuj",
-		"save": "Zapisz",
-		"rotate": "Odnów",
-		"revoke": "Unieważnij",
-		"delete": "Usuń",
-		"cancel": "Anuluj",
-		"done": "Gotowe",
-		"addOrigin": "Dodaj źródło",
-		"removeOrigin": "Usuń źródło",
-		"copyEndpoint": "Kopiuj endpoint"
-	},
-	"capabilities": {
-		"read": { "title": "Odczyt", "description": "Odczyt ograniczonych informacji o domu, urządzeniach, pogodzie, energii i bezpieczeństwie." },
-		"write": {
-			"title": "Zapis",
-			"description": "Bezpośrednie ustawianie obsługiwanych właściwości urządzeń. Może to wpływać na urządzenia fizyczne."
-		},
-		"trigger": {
-			"title": "Uruchamianie",
-			"description": "Uruchamianie scen i nadrzędnych akcji oświetlenia. Może to wpływać na urządzenia fizyczne."
-		}
-	},
-	"config": {
-		"about": {
-			"title": "Bezpieczny dostęp agentów",
-			"description": "MCP udostępnia lokalnym klientom tylko wybrany katalog. Nie jest ogólnym proxy OpenAPI."
-		},
-		"enabled": { "title": "Włącz endpoint MCP" },
-		"endpoint": {
-			"title": "Endpoint MCP instalacji",
-			"description": "Użyj tego adresu URL z zaufanym klientem MCP i poświadczeniem wyświetlanym tylko raz."
-		},
-		"oauth": {
-			"warningTitle": "Autoryzacja dostępna z Internetu",
-			"warningDescription": "OAuth udostępnia trasy autoryzacji pod skonfigurowaną publiczną tożsamością. Przed włączeniem użyj zaufanego reverse proxy i prawidłowego certyfikatu HTTPS.",
-			"publicBaseUrlTitle": "Publiczny bazowy adres URL OAuth",
-			"publicBaseUrlDescription": "Kanoniczny zewnętrzny adres HTTPS używany jako tożsamość OAuth. Jego zmiana unieważnia cały dostęp OAuth, zachowując statycznych klientów MCP.",
-			"publicBaseUrlPlaceholder": "https://panel.example.com",
-			"publicBaseUrlInvalid": "Użyj bezwzględnego adresu HTTPS bez poświadczeń, zapytania, fragmentu ani końcowego ukośnika.",
-			"enabledTitle": "Włącz MCP OAuth",
-			"enabledDescription": "Przed otwarciem wszystkich tras OAuth sprawdza gotowość zabezpieczeń. Wyłączenie unieważnia wszystkie granty i tokeny OAuth oraz zamyka tylko subskrypcje OAuth."
-		},
-		"capabilities": {
-			"title": "Limit uprawnień instalacji",
-			"warningTitle": "Dostęp do urządzeń fizycznych",
-			"warningDescription": "Uprawnienia zapisu i uruchamiania mogą zmieniać stan urządzeń fizycznych. Przyznawaj klientom tylko niezbędne uprawnienia."
-		},
-		"allowedOrigins": {
-			"title": "Dodatkowe dozwolone źródła przeglądarki",
-			"description": "Opcjonalne znormalizowane źródła dla klientów MCP w przeglądarce. Klienci w sieci lokalnej zwykle ich nie potrzebują.",
-			"placeholder": "https://agent.example.com",
-			"invalid": "Użyj bezwzględnego źródła HTTP(S) bez ścieżki, zapytania, fragmentu ani poświadczeń."
-		}
-	},
-	"clients": {
-		"title": "Klienci MCP",
-		"subtitle": "Twórz i zarządzaj lokalnymi poświadczeniami agentów dla tej instalacji.",
-		"securityTitle": "Korzystaj z zaufanych sieci",
-		"securityDescription": "Preferuj dostęp przez LAN lub VPN oraz HTTPS. Poświadczenia są wyświetlane tylko raz i nie można ich później odzyskać.",
-		"columns": {
-			"name": "Klient",
-			"status": "Stan",
-			"capabilities": "Uprawnienia",
-			"expires": "Wygasa",
-			"lastUsed": "Ostatnio użyto",
-			"actions": "Akcje"
-		},
-		"empty": "Nie utworzono jeszcze żadnych klientów MCP.",
-		"none": "Brak",
-		"never": "Nigdy",
-		"noDescription": "Bez opisu"
-	},
-	"clientForm": {
-		"createTitle": "Utwórz klienta MCP",
-		"editTitle": "Edytuj klienta MCP",
-		"name": "Nazwa",
-		"nameRequired": "Wprowadź nazwę klienta.",
-		"description": "Opis",
-		"enabled": "Włączony",
-		"capabilities": "Uprawnienia klienta",
-		"ceilingHint": "Można przyznać tylko uprawnienia włączone w konfiguracji modułu.",
-		"expiresInDays": "Okres ważności poświadczenia (dni)",
-		"expiryRequired": "Wybierz ograniczony okres ważności poświadczenia."
-	},
-	"rotate": {
-		"title": "Odnów poświadczenie",
-		"warning": "Bieżące poświadczenie zostanie natychmiast unieważnione. Połączone klienty trzeba zaktualizować przy użyciu nowego tokenu."
-	},
-	"token": {
-		"title": "Skopiuj teraz poświadczenie MCP",
-		"warningTitle": "Wyświetlane tylko raz",
-		"warningDescription": "Zapisz poświadczenie klienta {name} w bezpiecznym menedżerze haseł. Po zamknięciu tego okna nie będzie można go odzyskać.",
-		"copy": "Kopiuj poświadczenie",
-		"copied": "Skopiowano"
-	},
-	"status": { "active": "Aktywny", "disabled": "Wyłączony", "revoked": "Unieważniony", "expired": "Wygasły" },
-	"confirm": {
-		"revoke": "Unieważnić bieżące poświadczenie klienta {name}? Połączeni klienci natychmiast utracą dostęp.",
-		"delete": "Usunąć klienta {name}? Jego poświadczenie zostanie unieważnione, a rekordu klienta nie będzie można odzyskać."
-	},
-	"oauthConsent": {
-		"title": "Autoryzuj dostęp MCP",
-		"subtitle": "Przed zatwierdzeniem sprawdź dokładnie, co będzie mógł robić ten zdalny klient.",
-		"installation": "Instalacja",
-		"client": "Klient żądający dostępu",
-		"redirect": "Cel przekierowania",
-		"scopes": "Żądany dostęp",
-		"grantExpiry": "Okres ważności zgody (dni)",
-		"accessExpiry": "Tokeny dostępu wygasają po {minutes} minutach.",
-		"offlineAccess": "Tokeny odświeżania umożliwiają ciągły dostęp przez maksymalnie 30 dni, nawet jeśli zgoda jest ważna dłużej.",
-		"physicalWarningTitle": "Ten klient może wpływać na urządzenia fizyczne",
-		"physicalWarning": "Dostęp do zapisu lub uruchamiania może zmieniać stan urządzeń, uruchamiać sceny i wpływać na osoby w instalacji.",
-		"approve": "Zatwierdź dostęp",
-		"deny": "Odrzuć",
-		"loading": "Wczytywanie żądania autoryzacji…",
-		"invalid": "To żądanie autoryzacji jest nieprawidłowe, wygasło lub nie jest już dostępne.",
-		"scopeRequired": "Zatwierdź co najmniej jedno uprawnienie MCP albo odrzuć żądanie.",
-		"scope": {
-			"mcp:read": "Odczytuj kontekst instalacji i obsługiwany stan urządzeń",
-			"mcp:write": "Zmieniaj obsługiwane właściwości urządzeń fizycznych",
-			"mcp:trigger": "Uruchamiaj sceny i nadrzędne akcje fizyczne",
-			"offline_access": "Odświeżaj dostęp bez ponownego pytania przez maksymalnie 30 dni"
-		}
-	},
-	"messages": {
-		"configSaved": "Konfiguracja MCP została zapisana.",
-		"configSaveFailed": "Nie udało się zapisać konfiguracji MCP.",
-		"endpointCopied": "Endpoint MCP został skopiowany.",
-		"copyFailed": "Nie udało się skopiować wartości.",
-		"capabilitiesOutsideCeiling": "Uprawnienia klienta muszą mieścić się w limicie uprawnień modułu.",
-		"loadFailed": "Nie udało się wczytać klientów MCP.",
-		"created": "Klient MCP został utworzony.",
-		"createFailed": "Nie udało się utworzyć klienta MCP.",
-		"updated": "Klient MCP został zaktualizowany.",
-		"updateFailed": "Nie udało się zaktualizować klienta MCP.",
-		"rotated": "Poświadczenie MCP zostało odnowione.",
-		"rotateFailed": "Nie udało się odnowić poświadczenia MCP.",
-		"revoked": "Klient MCP został unieważniony.",
-		"revokeFailed": "Nie udało się unieważnić klienta MCP.",
-		"deleted": "Klient MCP został usunięty.",
-		"deleteFailed": "Nie udało się usunąć klienta MCP."
-	}
+  "menu": {
+    "clients": "Klienci MCP",
+    "oauth": "Dostęp OAuth MCP"
+  },
+  "actions": {
+    "create": "Utwórz klienta",
+    "edit": "Edytuj",
+    "save": "Zapisz",
+    "rotate": "Odnów",
+    "revoke": "Unieważnij",
+    "delete": "Usuń",
+    "cancel": "Anuluj",
+    "done": "Gotowe",
+    "addOrigin": "Dodaj źródło",
+    "removeOrigin": "Usuń źródło",
+    "copyEndpoint": "Kopiuj endpoint"
+  },
+  "capabilities": {
+    "read": {
+      "title": "Odczyt",
+      "description": "Odczyt ograniczonych informacji o domu, urządzeniach, pogodzie, energii i bezpieczeństwie."
+    },
+    "write": {
+      "title": "Zapis",
+      "description": "Bezpośrednie ustawianie obsługiwanych właściwości urządzeń. Może to wpływać na urządzenia fizyczne."
+    },
+    "trigger": {
+      "title": "Uruchamianie",
+      "description": "Uruchamianie scen i nadrzędnych akcji oświetlenia. Może to wpływać na urządzenia fizyczne."
+    }
+  },
+  "config": {
+    "about": {
+      "title": "Bezpieczny dostęp agentów",
+      "description": "MCP udostępnia lokalnym klientom tylko wybrany katalog. Nie jest ogólnym proxy OpenAPI."
+    },
+    "enabled": {
+      "title": "Włącz endpoint MCP"
+    },
+    "endpoint": {
+      "title": "Endpoint MCP instalacji",
+      "description": "Użyj tego adresu URL z zaufanym klientem MCP i poświadczeniem wyświetlanym tylko raz."
+    },
+    "oauth": {
+      "warningTitle": "Autoryzacja dostępna z Internetu",
+      "warningDescription": "OAuth udostępnia trasy autoryzacji pod skonfigurowaną publiczną tożsamością. Przed włączeniem użyj zaufanego reverse proxy i prawidłowego certyfikatu HTTPS.",
+      "publicBaseUrlTitle": "Publiczny bazowy adres URL OAuth",
+      "publicBaseUrlDescription": "Kanoniczny zewnętrzny adres HTTPS używany jako tożsamość OAuth. Jego zmiana unieważnia cały dostęp OAuth, zachowując statycznych klientów MCP.",
+      "publicBaseUrlPlaceholder": "https://panel.example.com",
+      "publicBaseUrlInvalid": "Użyj bezwzględnego adresu HTTPS bez poświadczeń, zapytania, fragmentu ani końcowego ukośnika.",
+      "enabledTitle": "Włącz MCP OAuth",
+      "enabledDescription": "Przed otwarciem wszystkich tras OAuth sprawdza gotowość zabezpieczeń. Wyłączenie unieważnia wszystkie granty i tokeny OAuth oraz zamyka tylko subskrypcje OAuth."
+    },
+    "capabilities": {
+      "title": "Limit uprawnień instalacji",
+      "warningTitle": "Dostęp do urządzeń fizycznych",
+      "warningDescription": "Uprawnienia zapisu i uruchamiania mogą zmieniać stan urządzeń fizycznych. Przyznawaj klientom tylko niezbędne uprawnienia."
+    },
+    "allowedOrigins": {
+      "title": "Dodatkowe dozwolone źródła przeglądarki",
+      "description": "Opcjonalne znormalizowane źródła dla klientów MCP w przeglądarce. Klienci w sieci lokalnej zwykle ich nie potrzebują.",
+      "placeholder": "https://agent.example.com",
+      "invalid": "Użyj bezwzględnego źródła HTTP(S) bez ścieżki, zapytania, fragmentu ani poświadczeń."
+    }
+  },
+  "clients": {
+    "title": "Klienci MCP",
+    "subtitle": "Twórz i zarządzaj lokalnymi poświadczeniami agentów dla tej instalacji.",
+    "securityTitle": "Korzystaj z zaufanych sieci",
+    "securityDescription": "Preferuj dostęp przez LAN lub VPN oraz HTTPS. Poświadczenia są wyświetlane tylko raz i nie można ich później odzyskać.",
+    "columns": {
+      "name": "Klient",
+      "status": "Stan",
+      "capabilities": "Uprawnienia",
+      "expires": "Wygasa",
+      "lastUsed": "Ostatnio użyto",
+      "actions": "Akcje"
+    },
+    "empty": "Nie utworzono jeszcze żadnych klientów MCP.",
+    "none": "Brak",
+    "never": "Nigdy",
+    "noDescription": "Bez opisu"
+  },
+  "clientForm": {
+    "createTitle": "Utwórz klienta MCP",
+    "editTitle": "Edytuj klienta MCP",
+    "name": "Nazwa",
+    "nameRequired": "Wprowadź nazwę klienta.",
+    "description": "Opis",
+    "enabled": "Włączony",
+    "capabilities": "Uprawnienia klienta",
+    "ceilingHint": "Można przyznać tylko uprawnienia włączone w konfiguracji modułu.",
+    "expiresInDays": "Okres ważności poświadczenia (dni)",
+    "expiryRequired": "Wybierz ograniczony okres ważności poświadczenia."
+  },
+  "rotate": {
+    "title": "Odnów poświadczenie",
+    "warning": "Bieżące poświadczenie zostanie natychmiast unieważnione. Połączone klienty trzeba zaktualizować przy użyciu nowego tokenu."
+  },
+  "token": {
+    "title": "Skopiuj teraz poświadczenie MCP",
+    "warningTitle": "Wyświetlane tylko raz",
+    "warningDescription": "Zapisz poświadczenie klienta {name} w bezpiecznym menedżerze haseł. Po zamknięciu tego okna nie będzie można go odzyskać.",
+    "copy": "Kopiuj poświadczenie",
+    "copied": "Skopiowano"
+  },
+  "status": {
+    "active": "Aktywny",
+    "disabled": "Wyłączony",
+    "revoked": "Unieważniony",
+    "expired": "Wygasły"
+  },
+  "confirm": {
+    "revoke": "Unieważnić bieżące poświadczenie klienta {name}? Połączeni klienci natychmiast utracą dostęp.",
+    "delete": "Usunąć klienta {name}? Jego poświadczenie zostanie unieważnione, a rekordu klienta nie będzie można odzyskać."
+  },
+  "oauthConsent": {
+    "title": "Autoryzuj dostęp MCP",
+    "subtitle": "Przed zatwierdzeniem sprawdź dokładnie, co będzie mógł robić ten zdalny klient.",
+    "installation": "Instalacja",
+    "client": "Klient żądający dostępu",
+    "redirect": "Cel przekierowania",
+    "scopes": "Żądany dostęp",
+    "grantExpiry": "Okres ważności zgody (dni)",
+    "accessExpiry": "Tokeny dostępu wygasają po {minutes} minutach.",
+    "offlineAccess": "Tokeny odświeżania umożliwiają ciągły dostęp przez maksymalnie 30 dni, nawet jeśli zgoda jest ważna dłużej.",
+    "physicalWarningTitle": "Ten klient może wpływać na urządzenia fizyczne",
+    "physicalWarning": "Dostęp do zapisu lub uruchamiania może zmieniać stan urządzeń, uruchamiać sceny i wpływać na osoby w instalacji.",
+    "approve": "Zatwierdź dostęp",
+    "deny": "Odrzuć",
+    "loading": "Wczytywanie żądania autoryzacji…",
+    "invalid": "To żądanie autoryzacji jest nieprawidłowe, wygasło lub nie jest już dostępne.",
+    "scopeRequired": "Zatwierdź co najmniej jedno uprawnienie MCP albo odrzuć żądanie.",
+    "scope": {
+      "mcp:read": "Odczytuj kontekst instalacji i obsługiwany stan urządzeń",
+      "mcp:write": "Zmieniaj obsługiwane właściwości urządzeń fizycznych",
+      "mcp:trigger": "Uruchamiaj sceny i nadrzędne akcje fizyczne",
+      "offline_access": "Odświeżaj dostęp bez ponownego pytania przez maksymalnie 30 dni"
+    }
+  },
+  "messages": {
+    "configSaved": "Konfiguracja MCP została zapisana.",
+    "configSaveFailed": "Nie udało się zapisać konfiguracji MCP.",
+    "endpointCopied": "Endpoint MCP został skopiowany.",
+    "copyFailed": "Nie udało się skopiować wartości.",
+    "capabilitiesOutsideCeiling": "Uprawnienia klienta muszą mieścić się w limicie uprawnień modułu.",
+    "loadFailed": "Nie udało się wczytać klientów MCP.",
+    "created": "Klient MCP został utworzony.",
+    "createFailed": "Nie udało się utworzyć klienta MCP.",
+    "updated": "Klient MCP został zaktualizowany.",
+    "updateFailed": "Nie udało się zaktualizować klienta MCP.",
+    "rotated": "Poświadczenie MCP zostało odnowione.",
+    "rotateFailed": "Nie udało się odnowić poświadczenia MCP.",
+    "revoked": "Klient MCP został unieważniony.",
+    "revokeFailed": "Nie udało się unieważnić klienta MCP.",
+    "deleted": "Klient MCP został usunięty.",
+    "deleteFailed": "Nie udało się usunąć klienta MCP."
+  },
+  "oauthManagement": {
+    "title": "Dostęp OAuth MCP",
+    "subtitle": "Przedrejestruj zdalnych klientów i cofnij ich uprawnienia i tokeny.",
+    "securityTitle": "Sekrety OAuth nigdy nie są wyświetlane",
+    "securityDescription": "Ta strona ujawnia wyłącznie niejawne identyfikatory zarządzania. Cofnięcie natychmiast zamyka pasujące subskrypcje MCP. Zresetowanie hasła Smart Panel nie cofa dostępu OAuth.",
+    "tabs": {
+      "clients": "Klienci",
+      "grants": "Uprawnienia",
+      "accessTokens": "Tokeny dostępu",
+      "refreshFamilies": "Grupy odświeżania"
+    },
+    "columns": {
+      "client": "Klient",
+      "status": "Status",
+      "scopes": "Zakresy",
+      "expires": "Wygasa",
+      "activeTokens": "Aktywne tokeny",
+      "actions": "Akcje"
+    },
+    "empty": {
+      "clients": "Nie zarejestrowano jeszcze żadnych klientów OAuth.",
+      "grants": "Nie zatwierdzono żadnych uprawnień OAuth.",
+      "accessTokens": "Brak aktywnych tokenów dostępu OAuth.",
+      "refreshFamilies": "Brak aktywnych rodzin odświeżania OAuth."
+    },
+    "clientId": "ID klienta",
+    "grantId": "ID przyznania",
+    "familyId": "ID rodziny",
+    "redirectUris": "URI przekierowania",
+    "createClient": "Przedrejestruj klienta OAuth",
+    "revokeAll": "Cofnij cały dostęp OAuth",
+    "editClient": "Edytuj klienta OAuth",
+    "editGrant": "Ogranicz zakresy uprawnień OAuth",
+    "name": "Nazwa",
+    "nameRequired": "Wprowadź nazwę klienta.",
+    "redirectRequired": "Dodaj co najmniej jedno dokładne URI przekierowania.",
+    "scopesRequired": "Wybierz co najmniej jeden maksymalny zakres.",
+    "grantScopesRequired": "Pozostaw co najmniej jeden zatwierdzony zakres.",
+    "grantReductionNotice": "Zakresy możliwości można jedynie usunąć. Dodanie dostępu wymaga nowej zgody; cofnij przyznanie, aby usunąć dostęp offline.",
+    "addRedirect": "Dodaj URI przekierowania",
+    "physicalWarning": "Zakresy zapisu lub uruchamiania mogą wpływać na urządzenia fizyczne.",
+    "status": {
+      "active": "Aktywne",
+      "disabled": "Wyłączone",
+      "inactive": "Nieaktywne",
+      "revoked": "Cofnięte",
+      "expired": "Wygasłe"
+    },
+    "scope": {
+      "mcp:read": "Odczyt",
+      "mcp:write": "Zapis",
+      "mcp:trigger": "Wyzwalanie",
+      "offline_access": "Dostęp offline"
+    },
+    "confirm": {
+      "all": "Cofnąć każde uprawnienie OAuth MCP i token oraz zamknąć każdą subskrypcję OAuth? Statyczne dane uwierzytelniające MCP i strumienie pozostają aktywne. Użyj tej jawnej akcji odzyskiwania, ponieważ reset hasła Smart Panel nie cofa dostępu OAuth.",
+      "client": "Wyłącz {name}, cofnij wszystkie jego uprawnienia i tokeny oraz zamknij subskrypcje OAuth?",
+      "grant": "Cofnąć to uprawnienie dla {name}, jego tokeny i pasujące subskrypcje?",
+      "accessToken": "Cofnąć ten token dostępu dla {name} i zamknąć pasującą subskrypcję?",
+      "refreshFamily": "Cofnąć tę rodzinę odświeżania dla {name}, wszystkie wydane z niej tokeny dostępu i pasujące subskrypcje?"
+    },
+    "messages": {
+      "loadFailed": "Nie udało się wczytać danych autoryzacji OAuth.",
+      "created": "Klient OAuth został przedrejestrowany.",
+      "createFailed": "Nie udało się utworzyć klienta OAuth.",
+      "updated": "Klient OAuth został zaktualizowany.",
+      "updateFailed": "Nie udało się zaktualizować klienta OAuth.",
+      "clientRevoked": "Klient OAuth wyłączony i cofnięty.",
+      "grantRevoked": "Uprawnienie OAuth cofnięte.",
+      "grantUpdated": "Zakresy uprawnień OAuth zostały ograniczone.",
+      "grantUpdateFailed": "Nie udało się zaktualizować zakresów uprawnień OAuth.",
+      "accessTokenRevoked": "Token dostępu OAuth cofnięty.",
+      "refreshFamilyRevoked": "Rodzina odświeżania OAuth cofnięta.",
+      "allRevoked": "Cofnięto cały dostęp OAuth MCP.",
+      "revokeFailed": "Nie można było cofnąć autoryzacji OAuth."
+    }
+  }
 }

@@ -1,9 +1,9 @@
 {
 	"menu": {
-		"title": "Buddy"
+		"title": "Kumpel"
 	},
 	"headings": {
-		"settings": "Buddy",
+		"settings": "Kumpel",
 		"chat": "Czat Buddy",
 		"chats": "Czaty",
 		"aboutBuddy": "Konfiguracja AI Buddy"
@@ -180,8 +180,8 @@
 		"summaryMessagingSkipped": "Wiadomości pominięte",
 		"notSelected": "Nie wybrano",
 		"skipped": "Pominięto",
-		"ttsHeading": "Text-to-Speech (TTS)",
-		"sttHeading": "Speech-to-Text (STT)",
+		"ttsHeading": "Zamiana tekstu na mowę (TTS)",
+		"sttHeading": "Zamiana mowy na tekst (STT)",
 		"buttons": {
 			"back": "Wstecz",
 			"next": "Dalej",

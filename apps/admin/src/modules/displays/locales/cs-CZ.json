@@ -76,7 +76,7 @@
 			"permitJoinDurationMs": {
 				"title": "Doba povolení připojení",
 				"description": "Doba v milisekundách, po kterou zůstane povolení připojení aktivní",
-				"placeholder": "120000",
+				"placeholder": "120 000",
 				"unit": "ms",
 				"validation": {
 					"required": "Doba povolení připojení je povinná",
@@ -207,7 +207,7 @@
 				"title": "Jednotka teploty",
 				"placeholder": "Výchozí systémová",
 				"values": {
-					"celsius": "Celsius (°C)",
+					"celsius": "Celsia (°C)",
 					"fahrenheit": "Fahrenheit (°F)"
 				}
 			},

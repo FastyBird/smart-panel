@@ -9,7 +9,7 @@
 			},
 			"model": {
 				"title": "Modell",
-				"placeholder": "base",
+				"placeholder": "Base",
 				"description": "Whisper-Modellgröße: tiny, base, small, medium oder large"
 			},
 			"language": {

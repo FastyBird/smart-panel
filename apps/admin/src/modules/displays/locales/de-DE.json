@@ -2,10 +2,10 @@
 	"menu": {
 		"title": "Anzeigen"
 	},
-	"title": "Displays",
+	"title": "Anzeigen",
 	"description": "Verwalten Sie Ihre Display-Geräte",
 	"headings": {
-		"list": "Displays",
+		"list": "Anzeigen",
 		"adjustFilters": "Displays filtern",
 		"removeDisplay": "Display entfernen",
 		"removeBulkDisplays": "Displays entfernen",
@@ -18,7 +18,7 @@
 	},
 	"breadcrumbs": {
 		"displays": {
-			"list": "Displays",
+			"list": "Anzeigen",
 			"detail": "Display: {display}",
 			"edit": "Display bearbeiten",
 			"tokens": "Zugriffstoken"
@@ -33,7 +33,7 @@
 				"title": "Display bearbeiten: {display}"
 			},
 			"detail": {
-				"title": "Display: {display}"
+				"title": "Anzeige: {display}"
 			},
 			"tokens": {
 				"title": "Zugriffstoken: {display}"
@@ -370,7 +370,7 @@
 			"title": "Display-Informationen",
 			"macAddress": "MAC-Adresse",
 			"version": "Version",
-			"build": "Build",
+			"build": "Bauen",
 			"resolution": "Auflösung",
 			"pixelRatio": "Pixelverhältnis",
 			"gridSize": "Rastergröße",

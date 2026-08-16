@@ -13,9 +13,9 @@
 	"headings": {
 		"stats": "Przegląd aplikacji",
 		"systemInformation": "Informacje o systemie",
-		"applicationOverview": "Smart Panel",
+		"applicationOverview": "Inteligentny panel",
 		"quickLinks": "Szybkie łącza",
-		"cpu": "CPU",
+		"cpu": "Procesor",
 		"memory": "Pamięć",
 		"uptime": "Czas pracy",
 		"logs": "Logi",
@@ -58,7 +58,7 @@
 				"tooltip": "95. percentyl czasu odpowiedzi API (ostatnie 5 minut). Pokazuje, jak szybko obsługiwanych jest 95% żądań API."
 			},
 			"webSocket": {
-				"title": "WebSocket",
+				"title": "Gniazdo sieciowe",
 				"tooltip": "Dostępność 5m: {wsAvailability5m} (zaktualizowano {last})",
 				"state": {
 					"connected": "Połączony",

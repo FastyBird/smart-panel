@@ -9,7 +9,7 @@
 			},
 			"model": {
 				"title": "Model",
-				"placeholder": "base",
+				"placeholder": "báze",
 				"description": "Velikost modelu Whisper: tiny, base, small, medium nebo large"
 			},
 			"language": {

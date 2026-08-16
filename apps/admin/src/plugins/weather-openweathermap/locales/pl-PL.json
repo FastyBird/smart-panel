@@ -20,7 +20,7 @@
 				"placeholder": "Wybierz jednostkę temperatury",
 				"values": {
 					"celsius": "Celsjusz (°C)",
-					"fahrenheit": "Fahrenheit (°F)"
+					"fahrenheit": "Fahrenheita (°F)"
 				}
 			}
 		},

@@ -1,9 +1,9 @@
 {
 	"menu": {
-		"title": "Buddy"
+		"title": "Kumpel"
 	},
 	"headings": {
-		"settings": "Buddy",
+		"settings": "Kumpel",
 		"chat": "Buddy-Chat",
 		"chats": "Chats",
 		"aboutBuddy": "KI-Buddy-Konfiguration"
@@ -156,7 +156,7 @@
 		"steps": {
 			"provider": "KI-Anbieter",
 			"voice": "Sprache",
-			"messaging": "Messaging",
+			"messaging": "Nachrichten",
 			"done": "Fertig"
 		},
 		"providerDescription": "Wählen Sie einen KI-Anbieter für die Chat-Funktionen Ihres Buddys. Jeder Anbieter benötigt eigene API-Schlüssel oder Anmeldedaten.",

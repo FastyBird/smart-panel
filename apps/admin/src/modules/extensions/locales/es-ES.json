@@ -116,12 +116,13 @@
 				"6h": "Últimas 6 horas",
 				"24h": "Últimas 24 horas",
 				"7d": "Últimos 7 días"
-			}
+			},
+			"detail": "Detalle del registro"
 		}
 	},
 	"buttons": {
 		"actions": "Acciones",
-		"documentation": "Docs",
+		"documentation": "Documentos",
 		"repository": "Repositorio",
 		"issues": "Incidencias",
 		"enable": "Activar",

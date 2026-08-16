@@ -121,7 +121,7 @@
 		"breadcrumb": "Kreator przyjmowania WLED",
 		"columns": {
 			"identifier": "Adres MAC lub nazwa hosta",
-			"host": "Host"
+			"host": "Gospodarz"
 		},
 		"actions": {
 			"rescan": "Skanuj sieć ponownie",

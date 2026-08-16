@@ -9,12 +9,12 @@
 				"title": "Povolený"
 			},
 			"clientId": {
-				"title": "Client ID",
+				"title": "ID klienta",
 				"placeholder": "Zadajte svoj OAuth client ID",
 				"description": "OAuth client ID pre OpenAI Codex API"
 			},
 			"clientSecret": {
-				"title": "Client secret",
+				"title": "Tajomstvo klienta",
 				"placeholder": "Zadajte svoj OAuth client secret"
 			},
 			"accessToken": {

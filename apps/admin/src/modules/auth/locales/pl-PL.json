@@ -135,5 +135,55 @@
     "close": {
       "title": "Zamknij"
     }
+  },
+  "tokens": {
+    "title": "Tokeny dostępu osobistego",
+    "create": "Utwórz token",
+    "revoke": "Cofnij",
+    "never": "Nigdy",
+    "description": "Tokeny dostępu osobistego pozwalają zewnętrznym aplikacjom uwierzytelniać się w API w Twoim imieniu.",
+    "noTokens": "Brak jeszcze tokenów dostępu osobistego.",
+    "columns": {
+      "name": "Nazwa",
+      "created": "Utworzony",
+      "lastUsed": "Ostatnio używany",
+      "expires": "Wygasa",
+      "actions": "Akcje"
+    },
+    "createDialog": {
+      "title": "Utwórz token dostępu osobistego",
+      "name": "Nazwa tokena",
+      "namePlaceholder": "np. CI/CD Pipeline, Home Assistant",
+      "nameRequired": "Nazwa tokena jest wymagana",
+      "description": "Opis (opcjonalnie)",
+      "descriptionPlaceholder": "Do czego służy ten token?",
+      "expiry": "Wygasa",
+      "expiry30": "30 dni",
+      "expiry90": "90 dni",
+      "expiry365": "1 rok",
+      "expiryNever": "Bez wygaśnięcia",
+      "cancel": "Anuluj",
+      "submit": "Utwórz token"
+    },
+    "createdDialog": {
+      "title": "Token utworzony pomyślnie",
+      "warning": "Skopiuj teraz ten token. Nie będzie można go ponownie wyświetlić.",
+      "copy": "Kopiuj",
+      "copied": "Skopiowano!",
+      "done": "Gotowe"
+    },
+    "revokeDialog": {
+      "title": "Cofnij token",
+      "message": "Czy na pewno chcesz cofnąć ten token? Tej operacji nie można cofnąć.",
+      "confirm": "Cofnij",
+      "cancel": "Anuluj"
+    },
+    "messages": {
+      "created": "Token dostępu osobistego utworzony pomyślnie.",
+      "createError": "Nie udało się utworzyć tokena dostępu osobistego.",
+      "revoked": "Token pomyślnie cofnięty.",
+      "revokeError": "Nie udało się cofnąć tokena.",
+      "copyError": "Nie udało się skopiować tokena do schowka."
+    }
   }
 }

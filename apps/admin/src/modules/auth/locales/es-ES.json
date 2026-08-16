@@ -25,7 +25,7 @@
   "breadcrumbs": {
     "homepage": "inicio",
     "profile": "perfil",
-    "general": "general",
+    "general": "General",
     "security": "seguridad"
   },
   "headings": {
@@ -134,6 +134,56 @@
     },
     "close": {
       "title": "Cerrar"
+    }
+  },
+  "tokens": {
+    "title": "Tokens de acceso personal",
+    "create": "Crear token",
+    "revoke": "Revocar",
+    "never": "Nunca",
+    "description": "Los tokens de acceso personal permiten que aplicaciones externas se autentiquen con la API en su nombre.",
+    "noTokens": "Aún no hay tokens de acceso personal.",
+    "columns": {
+      "name": "Nombre",
+      "created": "Creado",
+      "lastUsed": "Último uso",
+      "expires": "Caduca",
+      "actions": "Acciones"
+    },
+    "createDialog": {
+      "title": "Crear token de acceso personal",
+      "name": "Nombre del token",
+      "namePlaceholder": "p. ej. CI/CD Pipeline, Home Assistant",
+      "nameRequired": "El nombre del token es obligatorio",
+      "description": "Descripción (opcional)",
+      "descriptionPlaceholder": "¿Para qué se usa este token?",
+      "expiry": "Expiración",
+      "expiry30": "30 días",
+      "expiry90": "90 días",
+      "expiry365": "1 año",
+      "expiryNever": "Sin expiración",
+      "cancel": "Cancelar",
+      "submit": "Crear token"
+    },
+    "createdDialog": {
+      "title": "Token creado correctamente",
+      "warning": "Copia este token ahora. No podrá verlo de nuevo.",
+      "copy": "Copiar",
+      "copied": "¡Copiado!",
+      "done": "Listo"
+    },
+    "revokeDialog": {
+      "title": "Revocar token",
+      "message": "¿Seguro que quieres revocar este token? Esta acción no se puede deshacer.",
+      "confirm": "Revocar",
+      "cancel": "Cancelar"
+    },
+    "messages": {
+      "created": "Token de acceso personal creado correctamente.",
+      "createError": "No se pudo crear el token de acceso personal.",
+      "revoked": "Token revocado correctamente.",
+      "revokeError": "No se pudo revocar el token.",
+      "copyError": "No se pudo copiar el token al portapapeles."
     }
   }
 }

@@ -1,147 +1,237 @@
 {
-	"menu": { "clients": "Clientes MCP" },
-	"actions": {
-		"create": "Crear cliente",
-		"edit": "Editar",
-		"save": "Guardar",
-		"rotate": "Rotar",
-		"revoke": "Revocar",
-		"delete": "Eliminar",
-		"cancel": "Cancelar",
-		"done": "Listo",
-		"addOrigin": "Añadir origen",
-		"removeOrigin": "Eliminar origen",
-		"copyEndpoint": "Copiar endpoint"
-	},
-	"capabilities": {
-		"read": { "title": "Lectura", "description": "Leer información limitada del hogar, dispositivos, tiempo, energía y seguridad." },
-		"write": {
-			"title": "Escritura",
-			"description": "Establecer directamente propiedades compatibles de dispositivos. Esto puede afectar a dispositivos físicos."
-		},
-		"trigger": {
-			"title": "Activación",
-			"description": "Ejecutar escenas y acciones generales de iluminación. Esto puede afectar a dispositivos físicos."
-		}
-	},
-	"config": {
-		"about": {
-			"title": "Acceso seguro para agentes",
-			"description": "MCP solo expone un catálogo seleccionado a clientes locales de la instalación. No es un proxy genérico de OpenAPI."
-		},
-		"enabled": { "title": "Habilitar endpoint MCP" },
-		"endpoint": {
-			"title": "Endpoint MCP de la instalación",
-			"description": "Utiliza esta URL con un cliente MCP de confianza y la credencial mostrada una sola vez."
-		},
-		"oauth": {
-			"warningTitle": "Autorización expuesta a Internet",
-			"warningDescription": "OAuth expone rutas de autorización en la identidad pública configurada. Usa un proxy inverso de confianza y un certificado HTTPS válido antes de habilitarlo.",
-			"publicBaseUrlTitle": "URL base pública de OAuth",
-			"publicBaseUrlDescription": "URL HTTPS externa canónica usada como identidad OAuth. Cambiarla revoca todo el acceso OAuth y conserva los clientes MCP estáticos.",
-			"publicBaseUrlPlaceholder": "https://panel.example.com",
-			"publicBaseUrlInvalid": "Utiliza una URL HTTPS absoluta sin credenciales, consulta, fragmento ni barra final.",
-			"enabledTitle": "Habilitar MCP OAuth",
-			"enabledDescription": "Comprueba la preparación de seguridad antes de abrir todas las rutas OAuth. Al deshabilitarlo se revocan todas las concesiones y tokens OAuth y solo se cierran las suscripciones OAuth."
-		},
-		"capabilities": {
-			"title": "Límite de capacidades de la instalación",
-			"warningTitle": "Acceso a dispositivos físicos",
-			"warningDescription": "Las capacidades de escritura y activación pueden cambiar el estado de dispositivos físicos. Concede a cada cliente solo lo necesario."
-		},
-		"allowedOrigins": {
-			"title": "Orígenes adicionales permitidos en el navegador",
-			"description": "Orígenes normalizados opcionales para clientes MCP en el navegador. Los clientes de la red local normalmente no los necesitan.",
-			"placeholder": "https://agent.example.com",
-			"invalid": "Utiliza un origen HTTP(S) absoluto sin ruta, consulta, fragmento ni credenciales."
-		}
-	},
-	"clients": {
-		"title": "Clientes MCP",
-		"subtitle": "Crea y administra credenciales de agentes locales para esta instalación.",
-		"securityTitle": "Utiliza redes de confianza",
-		"securityDescription": "Da prioridad al acceso por LAN o VPN y a HTTPS. Las credenciales se muestran una sola vez y no pueden recuperarse después.",
-		"columns": {
-			"name": "Cliente",
-			"status": "Estado",
-			"capabilities": "Capacidades",
-			"expires": "Caduca",
-			"lastUsed": "Último uso",
-			"actions": "Acciones"
-		},
-		"empty": "Todavía no se ha creado ningún cliente MCP.",
-		"none": "Ninguna",
-		"never": "Nunca",
-		"noDescription": "Sin descripción"
-	},
-	"clientForm": {
-		"createTitle": "Crear cliente MCP",
-		"editTitle": "Editar cliente MCP",
-		"name": "Nombre",
-		"nameRequired": "Introduce un nombre para el cliente.",
-		"description": "Descripción",
-		"enabled": "Habilitado",
-		"capabilities": "Capacidades del cliente",
-		"ceilingHint": "Solo se pueden conceder las capacidades habilitadas en la configuración del módulo.",
-		"expiresInDays": "Duración de la credencial (días)",
-		"expiryRequired": "Elige una duración finita para la credencial."
-	},
-	"rotate": {
-		"title": "Rotar credencial",
-		"warning": "La credencial actual se revoca de inmediato. Los clientes conectados deben actualizarse con el nuevo token."
-	},
-	"token": {
-		"title": "Copia ahora la credencial MCP",
-		"warningTitle": "Solo se muestra una vez",
-		"warningDescription": "Guarda la credencial de {name} en un gestor de contraseñas seguro. No podrá recuperarse después de cerrar este diálogo.",
-		"copy": "Copiar credencial",
-		"copied": "Copiada"
-	},
-	"status": { "active": "Activo", "disabled": "Deshabilitado", "revoked": "Revocado", "expired": "Caducado" },
-	"confirm": {
-		"revoke": "¿Revocar la credencial actual de {name}? Los clientes conectados perderán el acceso inmediatamente.",
-		"delete": "¿Eliminar {name}? Su credencial se revocará y el registro del cliente no podrá recuperarse."
-	},
-	"oauthConsent": {
-		"title": "Autorizar acceso MCP",
-		"subtitle": "Revisa exactamente lo que este cliente remoto podrá hacer antes de aprobar el acceso.",
-		"installation": "Instalación",
-		"client": "Cliente solicitante",
-		"redirect": "Destino de redirección",
-		"scopes": "Acceso solicitado",
-		"grantExpiry": "Duración de la autorización (días)",
-		"accessExpiry": "Los tokens de acceso caducan después de {minutes} minutos.",
-		"offlineAccess": "Los tokens de actualización permiten mantener el acceso durante un máximo de 30 días, aunque la autorización dure más.",
-		"physicalWarningTitle": "Este cliente puede afectar a dispositivos físicos",
-		"physicalWarning": "El acceso de escritura o ejecución puede cambiar el estado de dispositivos, ejecutar escenas y afectar a personas en la instalación.",
-		"approve": "Aprobar acceso",
-		"deny": "Denegar",
-		"loading": "Cargando solicitud de autorización…",
-		"invalid": "Esta solicitud de autorización no es válida, ha caducado o ya no está disponible.",
-		"scopeRequired": "Aprueba al menos una capacidad MCP o deniega la solicitud.",
-		"scope": {
-			"mcp:read": "Leer el contexto de la instalación y el estado compatible de dispositivos",
-			"mcp:write": "Cambiar propiedades compatibles de dispositivos físicos",
-			"mcp:trigger": "Ejecutar escenas y acciones físicas de nivel superior",
-			"offline_access": "Actualizar el acceso sin volver a preguntar durante un máximo de 30 días"
-		}
-	},
-	"messages": {
-		"configSaved": "La configuración de MCP se ha guardado.",
-		"configSaveFailed": "No se pudo guardar la configuración de MCP.",
-		"endpointCopied": "Endpoint MCP copiado.",
-		"copyFailed": "No se pudo copiar el valor.",
-		"capabilitiesOutsideCeiling": "Las capacidades del cliente deben respetar el límite de capacidades del módulo.",
-		"loadFailed": "No se pudieron cargar los clientes MCP.",
-		"created": "Cliente MCP creado.",
-		"createFailed": "No se pudo crear el cliente MCP.",
-		"updated": "Cliente MCP actualizado.",
-		"updateFailed": "No se pudo actualizar el cliente MCP.",
-		"rotated": "Credencial MCP rotada.",
-		"rotateFailed": "No se pudo rotar la credencial MCP.",
-		"revoked": "Cliente MCP revocado.",
-		"revokeFailed": "No se pudo revocar el cliente MCP.",
-		"deleted": "Cliente MCP eliminado.",
-		"deleteFailed": "No se pudo eliminar el cliente MCP."
-	}
+  "menu": {
+    "clients": "Clientes MCP",
+    "oauth": "Acceso OAuth de MCP"
+  },
+  "actions": {
+    "create": "Crear cliente",
+    "edit": "Editar",
+    "save": "Guardar",
+    "rotate": "Rotar",
+    "revoke": "Revocar",
+    "delete": "Eliminar",
+    "cancel": "Cancelar",
+    "done": "Listo",
+    "addOrigin": "Añadir origen",
+    "removeOrigin": "Eliminar origen",
+    "copyEndpoint": "Copiar endpoint"
+  },
+  "capabilities": {
+    "read": {
+      "title": "Lectura",
+      "description": "Leer información limitada del hogar, dispositivos, tiempo, energía y seguridad."
+    },
+    "write": {
+      "title": "Escritura",
+      "description": "Establecer directamente propiedades compatibles de dispositivos. Esto puede afectar a dispositivos físicos."
+    },
+    "trigger": {
+      "title": "Activación",
+      "description": "Ejecutar escenas y acciones generales de iluminación. Esto puede afectar a dispositivos físicos."
+    }
+  },
+  "config": {
+    "about": {
+      "title": "Acceso seguro para agentes",
+      "description": "MCP solo expone un catálogo seleccionado a clientes locales de la instalación. No es un proxy genérico de OpenAPI."
+    },
+    "enabled": {
+      "title": "Habilitar endpoint MCP"
+    },
+    "endpoint": {
+      "title": "Endpoint MCP de la instalación",
+      "description": "Utiliza esta URL con un cliente MCP de confianza y la credencial mostrada una sola vez."
+    },
+    "oauth": {
+      "warningTitle": "Autorización expuesta a Internet",
+      "warningDescription": "OAuth expone rutas de autorización en la identidad pública configurada. Usa un proxy inverso de confianza y un certificado HTTPS válido antes de habilitarlo.",
+      "publicBaseUrlTitle": "URL base pública de OAuth",
+      "publicBaseUrlDescription": "URL HTTPS externa canónica usada como identidad OAuth. Cambiarla revoca todo el acceso OAuth y conserva los clientes MCP estáticos.",
+      "publicBaseUrlPlaceholder": "https://panel.example.com",
+      "publicBaseUrlInvalid": "Utiliza una URL HTTPS absoluta sin credenciales, consulta, fragmento ni barra final.",
+      "enabledTitle": "Habilitar MCP OAuth",
+      "enabledDescription": "Comprueba la preparación de seguridad antes de abrir todas las rutas OAuth. Al deshabilitarlo se revocan todas las concesiones y tokens OAuth y solo se cierran las suscripciones OAuth."
+    },
+    "capabilities": {
+      "title": "Límite de capacidades de la instalación",
+      "warningTitle": "Acceso a dispositivos físicos",
+      "warningDescription": "Las capacidades de escritura y activación pueden cambiar el estado de dispositivos físicos. Concede a cada cliente solo lo necesario."
+    },
+    "allowedOrigins": {
+      "title": "Orígenes adicionales permitidos en el navegador",
+      "description": "Orígenes normalizados opcionales para clientes MCP en el navegador. Los clientes de la red local normalmente no los necesitan.",
+      "placeholder": "https://agent.example.com",
+      "invalid": "Utiliza un origen HTTP(S) absoluto sin ruta, consulta, fragmento ni credenciales."
+    }
+  },
+  "clients": {
+    "title": "Clientes MCP",
+    "subtitle": "Crea y administra credenciales de agentes locales para esta instalación.",
+    "securityTitle": "Utiliza redes de confianza",
+    "securityDescription": "Da prioridad al acceso por LAN o VPN y a HTTPS. Las credenciales se muestran una sola vez y no pueden recuperarse después.",
+    "columns": {
+      "name": "Cliente",
+      "status": "Estado",
+      "capabilities": "Capacidades",
+      "expires": "Caduca",
+      "lastUsed": "Último uso",
+      "actions": "Acciones"
+    },
+    "empty": "Todavía no se ha creado ningún cliente MCP.",
+    "none": "Ninguna",
+    "never": "Nunca",
+    "noDescription": "Sin descripción"
+  },
+  "clientForm": {
+    "createTitle": "Crear cliente MCP",
+    "editTitle": "Editar cliente MCP",
+    "name": "Nombre",
+    "nameRequired": "Introduce un nombre para el cliente.",
+    "description": "Descripción",
+    "enabled": "Habilitado",
+    "capabilities": "Capacidades del cliente",
+    "ceilingHint": "Solo se pueden conceder las capacidades habilitadas en la configuración del módulo.",
+    "expiresInDays": "Duración de la credencial (días)",
+    "expiryRequired": "Elige una duración finita para la credencial."
+  },
+  "rotate": {
+    "title": "Rotar credencial",
+    "warning": "La credencial actual se revoca de inmediato. Los clientes conectados deben actualizarse con el nuevo token."
+  },
+  "token": {
+    "title": "Copia ahora la credencial MCP",
+    "warningTitle": "Solo se muestra una vez",
+    "warningDescription": "Guarda la credencial de {name} en un gestor de contraseñas seguro. No podrá recuperarse después de cerrar este diálogo.",
+    "copy": "Copiar credencial",
+    "copied": "Copiada"
+  },
+  "status": {
+    "active": "Activo",
+    "disabled": "Deshabilitado",
+    "revoked": "Revocado",
+    "expired": "Caducado"
+  },
+  "confirm": {
+    "revoke": "¿Revocar la credencial actual de {name}? Los clientes conectados perderán el acceso inmediatamente.",
+    "delete": "¿Eliminar {name}? Su credencial se revocará y el registro del cliente no podrá recuperarse."
+  },
+  "oauthConsent": {
+    "title": "Autorizar acceso MCP",
+    "subtitle": "Revisa exactamente lo que este cliente remoto podrá hacer antes de aprobar el acceso.",
+    "installation": "Instalación",
+    "client": "Cliente solicitante",
+    "redirect": "Destino de redirección",
+    "scopes": "Acceso solicitado",
+    "grantExpiry": "Duración de la autorización (días)",
+    "accessExpiry": "Los tokens de acceso caducan después de {minutes} minutos.",
+    "offlineAccess": "Los tokens de actualización permiten mantener el acceso durante un máximo de 30 días, aunque la autorización dure más.",
+    "physicalWarningTitle": "Este cliente puede afectar a dispositivos físicos",
+    "physicalWarning": "El acceso de escritura o ejecución puede cambiar el estado de dispositivos, ejecutar escenas y afectar a personas en la instalación.",
+    "approve": "Aprobar acceso",
+    "deny": "Denegar",
+    "loading": "Cargando solicitud de autorización…",
+    "invalid": "Esta solicitud de autorización no es válida, ha caducado o ya no está disponible.",
+    "scopeRequired": "Aprueba al menos una capacidad MCP o deniega la solicitud.",
+    "scope": {
+      "mcp:read": "Leer el contexto de la instalación y el estado compatible de dispositivos",
+      "mcp:write": "Cambiar propiedades compatibles de dispositivos físicos",
+      "mcp:trigger": "Ejecutar escenas y acciones físicas de nivel superior",
+      "offline_access": "Actualizar el acceso sin volver a preguntar durante un máximo de 30 días"
+    }
+  },
+  "messages": {
+    "configSaved": "La configuración de MCP se ha guardado.",
+    "configSaveFailed": "No se pudo guardar la configuración de MCP.",
+    "endpointCopied": "Endpoint MCP copiado.",
+    "copyFailed": "No se pudo copiar el valor.",
+    "capabilitiesOutsideCeiling": "Las capacidades del cliente deben respetar el límite de capacidades del módulo.",
+    "loadFailed": "No se pudieron cargar los clientes MCP.",
+    "created": "Cliente MCP creado.",
+    "createFailed": "No se pudo crear el cliente MCP.",
+    "updated": "Cliente MCP actualizado.",
+    "updateFailed": "No se pudo actualizar el cliente MCP.",
+    "rotated": "Credencial MCP rotada.",
+    "rotateFailed": "No se pudo rotar la credencial MCP.",
+    "revoked": "Cliente MCP revocado.",
+    "revokeFailed": "No se pudo revocar el cliente MCP.",
+    "deleted": "Cliente MCP eliminado.",
+    "deleteFailed": "No se pudo eliminar el cliente MCP."
+  },
+  "oauthManagement": {
+    "title": "Acceso OAuth de MCP",
+    "subtitle": "Pre-registre clientes remotos y revoque sus permisos y tokens.",
+    "securityTitle": "Los secretos de OAuth nunca se muestran",
+    "securityDescription": "Esta página solo expone identificadores de gestión no secretos. La revocación cierra inmediatamente las suscripciones MCP coincidentes. Restablecer la contraseña de Smart Panel no revoca el acceso OAuth.",
+    "tabs": {
+      "clients": "Clientes",
+      "grants": "Permisos",
+      "accessTokens": "Tokens de acceso",
+      "refreshFamilies": "Familias de actualización"
+    },
+    "columns": {
+      "client": "Cliente",
+      "status": "Estado",
+      "scopes": "Ámbitos",
+      "expires": "Caduca",
+      "activeTokens": "Tokens activos",
+      "actions": "Acciones"
+    },
+    "empty": {
+      "clients": "No se han preregistrado clientes OAuth.",
+      "grants": "No se han aprobado permisos OAuth.",
+      "accessTokens": "No hay tokens de acceso OAuth activos.",
+      "refreshFamilies": "No hay familias de actualización OAuth activas."
+    },
+    "clientId": "ID de cliente",
+    "grantId": "ID de permiso",
+    "familyId": "ID de familia",
+    "redirectUris": "URI de redirección",
+    "createClient": "Pre-registrar cliente OAuth",
+    "revokeAll": "Revocar todo el acceso OAuth",
+    "editClient": "Editar cliente OAuth",
+    "editGrant": "Reducir ámbitos de permiso OAuth",
+    "name": "Nombre",
+    "nameRequired": "Ingrese un nombre de cliente.",
+    "redirectRequired": "Añada al menos una URI de redirección exacta.",
+    "scopesRequired": "Seleccione al menos un ámbito máximo.",
+    "grantScopesRequired": "Conserve al menos un ámbito aprobado.",
+    "grantReductionNotice": "Los ámbitos de capacidad solo se pueden eliminar. Para añadir acceso se requiere una aprobación nueva; revoque el permiso para quitar el acceso sin conexión.",
+    "addRedirect": "Agregar URI de redirección",
+    "physicalWarning": "Los ámbitos de escritura o activación pueden afectar a dispositivos físicos.",
+    "status": {
+      "active": "Activo",
+      "disabled": "Desactivado",
+      "inactive": "Inactivo",
+      "revoked": "Revocado",
+      "expired": "Caducado"
+    },
+    "scope": {
+      "mcp:read": "Lectura",
+      "mcp:write": "Escritura",
+      "mcp:trigger": "Activación",
+      "offline_access": "Acceso sin conexión"
+    },
+    "confirm": {
+      "all": "¿Revocar todos los permisos y tokens OAuth de MCP y cerrar cada suscripción OAuth? Las credenciales y flujos estáticos de MCP permanecen activos. Use esta acción de recuperación explícita porque restablecer la contraseña de Smart Panel no revoca el acceso OAuth.",
+      "client": "¿Deshabilitar {name}, revocar todos sus permisos y tokens y cerrar sus suscripciones OAuth?",
+      "grant": "¿Revocar este permiso para {name}, sus tokens y sus suscripciones coincidentes?",
+      "accessToken": "¿Revocar este token de acceso para {name} y cerrar su suscripción coincidente?",
+      "refreshFamily": "¿Revocar esta familia de refresco para {name}, todos los tokens de acceso emitidos desde ella y las suscripciones coincidentes?"
+    },
+    "messages": {
+      "loadFailed": "No se pudieron cargar los datos de autorización OAuth.",
+      "created": "Cliente OAuth preregistrado.",
+      "createFailed": "No se pudo crear el cliente OAuth.",
+      "updated": "Cliente OAuth actualizado.",
+      "updateFailed": "No se pudo actualizar el cliente OAuth.",
+      "clientRevoked": "Cliente OAuth deshabilitado y revocado.",
+      "grantRevoked": "Permiso OAuth revocado.",
+      "grantUpdated": "Ámbitos de permiso OAuth reducidos.",
+      "grantUpdateFailed": "No se pudieron actualizar los ámbitos de permiso OAuth.",
+      "accessTokenRevoked": "Token de acceso OAuth revocado.",
+      "refreshFamilyRevoked": "Familia de actualización OAuth revocada.",
+      "allRevoked": "Todo el acceso OAuth de MCP revocado.",
+      "revokeFailed": "No se pudo revocar la autorización OAuth."
+    }
+  }
 }

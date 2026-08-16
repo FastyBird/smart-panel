@@ -1,5 +1,8 @@
 {
-	"menu": { "clients": "MCP-Clients" },
+	"menu": {
+		"clients": "MCP-Clients",
+		"oauth": "MCP OAuth-Zugriff"
+	},
 	"actions": {
 		"create": "Client erstellen",
 		"edit": "Bearbeiten",
@@ -14,8 +17,14 @@
 		"copyEndpoint": "Endpunkt kopieren"
 	},
 	"capabilities": {
-		"read": { "title": "Lesen", "description": "Begrenzte Informationen zu Zuhause, Geräten, Wetter, Energie und Sicherheit lesen." },
-		"write": { "title": "Schreiben", "description": "Unterstützte Geräteeigenschaften direkt setzen. Dies kann physische Geräte beeinflussen." },
+		"read": {
+			"title": "Lesen",
+			"description": "Begrenzte Informationen zu Zuhause, Geräten, Wetter, Energie und Sicherheit lesen."
+		},
+		"write": {
+			"title": "Schreiben",
+			"description": "Unterstützte Geräteeigenschaften direkt setzen. Dies kann physische Geräte beeinflussen."
+		},
 		"trigger": {
 			"title": "Auslösen",
 			"description": "Szenen und übergeordnete Beleuchtungsaktionen ausführen. Dies kann physische Geräte beeinflussen."
@@ -26,7 +35,9 @@
 			"title": "Sicherer Agentenzugriff",
 			"description": "MCP stellt lokalen Clients nur einen kuratierten Katalog bereit. Es ist kein allgemeiner OpenAPI-Proxy."
 		},
-		"enabled": { "title": "MCP-Endpunkt aktivieren" },
+		"enabled": {
+			"title": "MCP-Endpunkt aktivieren"
+		},
 		"endpoint": {
 			"title": "MCP-Endpunkt der Installation",
 			"description": "Verwenden Sie diese URL mit einem vertrauenswürdigen MCP-Client und den einmalig angezeigten Zugangsdaten."
@@ -59,7 +70,7 @@
 		"securityTitle": "Vertrauenswürdige Netzwerke verwenden",
 		"securityDescription": "Bevorzugen Sie LAN- oder VPN-Zugriff und HTTPS. Zugangsdaten werden nur einmal angezeigt und können später nicht erneut abgerufen werden.",
 		"columns": {
-			"name": "Client",
+			"name": "Kunde",
 			"status": "Status",
 			"capabilities": "Berechtigungen",
 			"expires": "Gültig bis",
@@ -94,7 +105,12 @@
 		"copy": "Zugangsdaten kopieren",
 		"copied": "Kopiert"
 	},
-	"status": { "active": "Aktiv", "disabled": "Deaktiviert", "revoked": "Widerrufen", "expired": "Abgelaufen" },
+	"status": {
+		"active": "Aktiv",
+		"disabled": "Deaktiviert",
+		"revoked": "Widerrufen",
+		"expired": "Abgelaufen"
+	},
 	"confirm": {
 		"revoke": "Aktuelle Zugangsdaten für {name} widerrufen? Verbundene Clients verlieren sofort den Zugriff.",
 		"delete": "{name} löschen? Die Zugangsdaten werden widerrufen und der Client-Datensatz kann nicht wiederhergestellt werden."
@@ -140,5 +156,82 @@
 		"revokeFailed": "MCP-Client konnte nicht widerrufen werden.",
 		"deleted": "MCP-Client wurde gelöscht.",
 		"deleteFailed": "MCP-Client konnte nicht gelöscht werden."
+	},
+	"oauthManagement": {
+		"title": "MCP OAuth-Zugriff",
+		"subtitle": "Registrieren Sie entfernte Clients vorab und widerrufen Sie deren Berechtigungen und Token.",
+		"securityTitle": "OAuth-Geheimnisse werden niemals angezeigt",
+		"securityDescription": "Diese Seite zeigt nur nicht-geheime Verwaltungskennungen an. Ein Widerruf schließt sofort passende MCP-Abonnements. Das Zurücksetzen eines Smart-Panel-Passworts entzieht keinen OAuth-Zugriff.",
+		"tabs": {
+			"clients": "Kunden",
+			"grants": "Berechtigungen",
+			"accessTokens": "Zugriffstoken",
+			"refreshFamilies": "Aktualisierungsfamilien"
+		},
+		"columns": {
+			"client": "Kunde",
+			"status": "Status",
+			"scopes": "Bereiche",
+			"expires": "Läuft ab",
+			"activeTokens": "Aktive Token",
+			"actions": "Aktionen"
+		},
+		"empty": {
+			"clients": "Es wurden keine OAuth-Clients vorab registriert.",
+			"grants": "Es wurden keine OAuth-Berechtigungen genehmigt.",
+			"accessTokens": "Keine aktiven OAuth-Zugriffstoken.",
+			"refreshFamilies": "Keine aktiven OAuth-Refresh-Familien."
+		},
+		"clientId": "Client-ID",
+		"grantId": "Grant-ID",
+		"familyId": "Familien-ID",
+		"redirectUris": "Redirect-URIs",
+		"createClient": "OAuth-Client vorab registrieren",
+		"revokeAll": "Gesamten OAuth-Zugriff widerrufen",
+		"editClient": "OAuth-Client bearbeiten",
+		"editGrant": "OAuth-Grant-Berechtigungen reduzieren",
+		"name": "Name",
+		"nameRequired": "Geben Sie einen Client-Namen ein.",
+		"redirectRequired": "Fügen Sie mindestens eine exakte Redirect-URI hinzu.",
+		"scopesRequired": "Wählen Sie mindestens einen maximalen Scope.",
+		"grantScopesRequired": "Mindestens einen genehmigten Scope beibehalten.",
+		"grantReductionNotice": "Berechtigungsscopes können nur entfernt werden. Für neuen Zugriff ist eine neue Genehmigung nötig; widerrufen Sie den Grant, um Offline-Zugriff zu entfernen.",
+		"addRedirect": "Redirect-URI hinzufügen",
+		"physicalWarning": "Schreib- oder Trigger-Scopes können physische Geräte beeinflussen.",
+		"status": {
+			"active": "Aktiv",
+			"disabled": "Deaktiviert",
+			"inactive": "Inaktiv",
+			"revoked": "Widerrufen",
+			"expired": "Abgelaufen"
+		},
+		"scope": {
+			"mcp:read": "Lesen",
+			"mcp:write": "Schreiben",
+			"mcp:trigger": "Auslösen",
+			"offline_access": "Offline-Zugriff"
+		},
+		"confirm": {
+			"all": "Jeden MCP-OAuth-Grant und alle Token widerrufen und jedes OAuth-Abonnement schließen? Statische MCP-Anmeldedaten und Streams bleiben aktiv. Verwenden Sie diese explizite Wiederherstellungsaktion, da das Zurücksetzen des Smart-Panel-Passworts keinen OAuth-Zugriff widerruft.",
+			"client": "{name} deaktivieren, alle Grants und Token widerrufen und dessen OAuth-Abonnements schließen?",
+			"grant": "Diesen Grant für {name}, seine Token und passende Abonnements widerrufen?",
+			"accessToken": "Diesen Zugriffstoken für {name} widerrufen und das passende Abonnement schließen?",
+			"refreshFamily": "Diese Refresh-Familie für {name}, alle daraus ausgestellten Zugriffstoken und passende Abonnements widerrufen?"
+		},
+		"messages": {
+			"loadFailed": "OAuth-Autorisierungsdaten konnten nicht geladen werden.",
+			"created": "OAuth-Client vorab registriert.",
+			"createFailed": "OAuth-Client konnte nicht erstellt werden.",
+			"updated": "OAuth-Client aktualisiert.",
+			"updateFailed": "OAuth-Client konnte nicht aktualisiert werden.",
+			"clientRevoked": "OAuth-Client deaktiviert und widerrufen.",
+			"grantRevoked": "OAuth-Grant widerrufen.",
+			"grantUpdated": "OAuth-Grant-Berechtigungen reduziert.",
+			"grantUpdateFailed": "OAuth-Grant-Berechtigungen konnten nicht aktualisiert werden.",
+			"accessTokenRevoked": "OAuth-Zugriffstoken widerrufen.",
+			"refreshFamilyRevoked": "OAuth-Refresh-Familie widerrufen.",
+			"allRevoked": "Gesamter MCP-OAuth-Zugriff widerrufen.",
+			"revokeFailed": "OAuth-Autorisierung konnte nicht widerrufen werden."
+		}
 	}
 }

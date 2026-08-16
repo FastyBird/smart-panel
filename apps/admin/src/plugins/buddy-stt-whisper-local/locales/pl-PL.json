@@ -9,7 +9,7 @@
 			},
 			"model": {
 				"title": "Model",
-				"placeholder": "base",
+				"placeholder": "opierać",
 				"description": "Rozmiar modelu Whisper: tiny, base, small, medium lub large"
 			},
 			"language": {

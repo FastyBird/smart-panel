@@ -23,7 +23,7 @@
 		},
 		"icon": {
 			"title": "Vlastní ikona",
-			"placeholder": "mdi:thermometer"
+			"placeholder": "mdi: teploměr"
 		}
 	},
 	"fieldOptions": {

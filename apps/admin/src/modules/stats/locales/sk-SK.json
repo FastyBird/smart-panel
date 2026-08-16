@@ -36,7 +36,7 @@
 				"title": "OS"
 			},
 			"hostname": {
-				"title": "Hostname"
+				"title": "Názov hostiteľa"
 			},
 			"ipv4": {
 				"title": "IPv4"
@@ -54,7 +54,7 @@
 				"title": "Verzia"
 			},
 			"apip95": {
-				"title": "API p95 (5m)",
+				"title": "API p95 (5 m)",
 				"tooltip": "95. percentil odozvy API (posledných 5 minút). Zobrazuje, ako rýchlo je obslúžených 95% API požiadaviek."
 			},
 			"webSocket": {

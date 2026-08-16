@@ -13,9 +13,9 @@
 	"headings": {
 		"stats": "Resumen de la aplicación",
 		"systemInformation": "Información del sistema",
-		"applicationOverview": "Smart Panel",
+		"applicationOverview": "Panel inteligente",
 		"quickLinks": "Accesos rápidos",
-		"cpu": "CPU",
+		"cpu": "UPC",
 		"memory": "Memoria",
 		"uptime": "Tiempo activo",
 		"logs": "Registros",
@@ -108,7 +108,7 @@
 			"title": "Configuración"
 		},
 		"docs": {
-			"title": "Docs"
+			"title": "Documentos"
 		},
 		"resetFilters": {
 			"title": "Restablecer filtros"

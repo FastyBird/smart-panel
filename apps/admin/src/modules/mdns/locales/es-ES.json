@@ -15,14 +15,14 @@
 		"config": {
 			"serviceName": {
 				"title": "Nombre del servicio",
-				"placeholder": "FastyBird Smart Panel",
+				"placeholder": "Panel inteligente FastyBird",
 				"validation": {
 					"required": "El nombre del servicio es obligatorio"
 				}
 			},
 			"serviceType": {
 				"title": "Tipo de servicio",
-				"placeholder": "fastybird-panel",
+				"placeholder": "panel-fastybird",
 				"validation": {
 					"required": "El tipo de servicio es obligatorio"
 				}
