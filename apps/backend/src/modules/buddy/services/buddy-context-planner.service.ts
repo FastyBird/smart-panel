@@ -39,6 +39,8 @@ const WRITE_PATTERN =
 	/\b(?:adjust|brighten|change|close|decrease|dim|increase|lock|lower|make|open|raise|set|switch|turn|unlock)\b/u;
 const TRIGGER_PATTERN = /\b(?:activate|deactivate|run|start|stop|trigger)\b/u;
 const TARGET_DEPENDENT_ACTION_PATTERN = /\b(?:activate|deactivate|start|stop)\b/u;
+const ACTION_COMMAND_PATTERN =
+	/^[?;,\s]*(?:(?:and|if so|please|then)\s+)*(?:(?:can|could|may|might|will|would) you\s+)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\b/u;
 const CONDITION_PATTERN = /\b(?:after|assuming|before|given that|if|provided|unless|until|when|whenever|while)\b/u;
 const LEADING_CONDITION_PATTERN =
 	/^(?:after|assuming|before|given that|if|provided|unless|until|when|whenever|while)\b/u;
@@ -47,7 +49,7 @@ const PRONOUN_PATTERN = /\b(?:it|one|that|them|these|this|those)\b/u;
 const CAPABILITY_DISCOVERY_PATTERN = /^(?:what|which)\b.*\b(?:am i able to|can i)\b/u;
 const CONTEXTUAL_SCOPE_PATTERN = /\b(?:here|in this room|this space)\b/u;
 const GENERIC_ACTION_TARGET_PATTERN =
-	/\b(?:a|all|an|any|the)\s+(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:device|fan|lamp|light|lights|scene|switch)\b/u;
+	/\b(?:a|all|an|any|the)\s+(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:device|devices|fan|fans|lamp|lamps|light|lights|scene|scenes|switch|switches)\b|\b(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:devices|fans|lamps|lights|scenes|switches)\b|^[?;,\s]*(?:(?:and|if so|please|then)\s+)*(?:(?:can|could|may|might|will|would) you\s+)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\s+(?:off\s+|on\s+)?(?:device|fan|lamp|light|scene|switch)\b/u;
 const WHOLE_HOME_SCOPE_PATTERN =
 	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b/u;
 const TRAILING_ACTION_PATTERN =
@@ -82,10 +84,15 @@ export class BuddyContextPlannerService {
 		const hasWrite =
 			!isGenericExplanation &&
 			!isReadOnlyPredicate &&
+			ACTION_COMMAND_PATTERN.test(actionMessage) &&
 			(WRITE_PATTERN.test(actionMessage) || TARGET_DEPENDENT_ACTION_PATTERN.test(actionMessage));
-		const hasTrigger = !isGenericExplanation && !isReadOnlyPredicate && TRIGGER_PATTERN.test(actionMessage);
+		const hasTrigger =
+			!isGenericExplanation &&
+			!isReadOnlyPredicate &&
+			ACTION_COMMAND_PATTERN.test(actionMessage) &&
+			TRIGGER_PATTERN.test(actionMessage);
 		const hasAction = hasWrite || hasTrigger;
-		const requestedActionTypes = getRequestedActionTypes(actionMessage);
+		const referenceActionTypes = getReferenceActionTypes(actionMessage);
 		const domains = classifyDomains(normalizedMessage, hasAction || isReadOnlyPredicate, isGenericExplanation);
 		const referenceMessage = hasAction ? actionMessage : domains.includes('home') ? normalizedMessage : '';
 		const references = resolveRecentReferences(referenceMessage, input.recentEntityReferences ?? []);
@@ -101,7 +108,7 @@ export class BuddyContextPlannerService {
 			actionMessage,
 			hasWrite,
 			hasTrigger,
-			requestedActionTypes,
+			referenceActionTypes,
 			references,
 			conversationSpaceId,
 		);
@@ -109,7 +116,7 @@ export class BuddyContextPlannerService {
 		const scopedReferences =
 			hasAction &&
 			(references.length !== 1 ||
-				!isActionReferenceCompatible(references[0], hasWrite, hasTrigger, requestedActionTypes))
+				!isActionReferenceCompatible(references[0], hasWrite, hasTrigger, referenceActionTypes))
 				? []
 				: references;
 		const scope = {
@@ -250,15 +257,14 @@ function resolveConversationSpaceHint(
 	conversationSpaceId?: string | null,
 	explicitSpaceIds: readonly string[] = [],
 ): string | undefined {
-	if (
-		!conversationSpaceId ||
-		WHOLE_HOME_SCOPE_PATTERN.test(message) ||
-		explicitSpaceIds.some((spaceId) => spaceId !== conversationSpaceId)
-	) {
-		return undefined;
-	}
+	if (WHOLE_HOME_SCOPE_PATTERN.test(message)) return undefined;
 
-	return conversationSpaceId;
+	const uniqueExplicitSpaceIds = [...new Set(explicitSpaceIds)];
+
+	if (uniqueExplicitSpaceIds.length === 1) return uniqueExplicitSpaceIds[0];
+	if (uniqueExplicitSpaceIds.length > 1) return undefined;
+
+	return conversationSpaceId ?? undefined;
 }
 
 function findExplicitSpaces(
@@ -316,6 +322,18 @@ function getRequestedActionTypes(message: string): BuddyContextActionType[] {
 	}
 
 	return [...actions];
+}
+
+function getReferenceActionTypes(message: string): BuddyContextActionType[] {
+	const clauses = message.split(/(?:[?;,]|\b(?:and|then)\b)/u);
+	const actionTypes = new Set<BuddyContextActionType>();
+
+	for (const clause of clauses) {
+		if (!PRONOUN_PATTERN.test(clause)) continue;
+		for (const actionType of getRequestedActionTypes(clause)) actionTypes.add(actionType);
+	}
+
+	return [...actionTypes];
 }
 
 function selectStrategy(

@@ -221,6 +221,27 @@ describe('BuddyContextPlannerService', () => {
 		expect(result).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
 	});
 
+	it('checks a pronoun reference only against the action in its clause', () => {
+		expect(
+			service.plan({
+				message: 'Turn it off and run movie night',
+				recentEntityReferences: [
+					{
+						kind: 'device',
+						id: 'device-lamp',
+						name: 'Lamp',
+						compatibleActionTypes: ['turn'],
+					},
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: { referencedEntityIds: ['device-lamp'] },
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+		});
+	});
+
 	it.each(['Are any windows open, close them if so', 'Is the bedroom cold? Turn off the heater'])(
 		'preserves an action that follows a state predicate: %s',
 		(message) => {
@@ -345,6 +366,27 @@ describe('BuddyContextPlannerService', () => {
 		).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
 	});
 
+	it.each(['Turn lights on', 'Turn bedroom lights on', 'Turn lamp on'])(
+		'clarifies a bare generic action target: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+		},
+	);
+
+	it('keeps a declarative home-state observation on the read path', () => {
+		expect(
+			service.plan({
+				message: 'The front door is open',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ intent: 'read', strategy: 'model-tools' });
+	});
+
 	it('recognizes an action-target pronoun separated by a determiner', () => {
 		expect(
 			service.plan({
@@ -355,17 +397,18 @@ describe('BuddyContextPlannerService', () => {
 	});
 
 	it.each([
-		{ message: 'Are any windows open in the whole house?', knownSpaces: [] },
+		{ message: 'Are any windows open in the whole house?', knownSpaces: [], expectedScope: {} },
 		{
 			message: 'What is the nursery temperature?',
 			knownSpaces: [
 				{ id: 'space-office', name: 'Office' },
 				{ id: 'space-nursery', name: 'Nursery' },
 			],
+			expectedScope: { spaceId: 'space-nursery' },
 		},
 	])(
-		'does not force an explicit global or named-space read into conversation scope: $message',
-		({ message, knownSpaces }) => {
+		'uses explicit global or named-space scope instead of conversation scope: $message',
+		({ message, knownSpaces, expectedScope }) => {
 			const result = service.plan({
 				message,
 				conversationSpaceId: 'space-office',
@@ -373,7 +416,7 @@ describe('BuddyContextPlannerService', () => {
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			});
 
-			expect(result.scope).toEqual({});
+			expect(result.scope).toEqual(expectedScope);
 			expect(result.queries).not.toContainEqual(expect.objectContaining({ spaceId: 'space-office' }));
 		},
 	);
