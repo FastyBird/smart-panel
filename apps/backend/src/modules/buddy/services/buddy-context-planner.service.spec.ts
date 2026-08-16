@@ -387,6 +387,18 @@ describe('BuddyContextPlannerService', () => {
 		).toMatchObject({ ambiguityRisk: 'none', intent: 'mixed', strategy: 'model-tools' });
 	});
 
+	it.each(['Once it gets dark, turn kitchen light on', 'As soon as the window opens, stop bedroom fan'])(
+		'recognizes an established leading conditional action: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({ ambiguityRisk: 'none', intent: 'mixed', strategy: 'model-tools' });
+		},
+	);
+
 	it('does not attach a trailing read pronoun as an action reference', () => {
 		expect(
 			service.plan({
@@ -431,6 +443,18 @@ describe('BuddyContextPlannerService', () => {
 
 	it.each(['Turn lights on', 'Turn bedroom lights on', 'Turn lamp on'])(
 		'clarifies a bare generic action target: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+		},
+	);
+
+	it.each(['Open the window', 'Close doors', 'Lower the blinds', 'Set thermostat to 20'])(
+		'clarifies an omitted generic device category: %s',
 		(message) => {
 			expect(
 				service.plan({
@@ -542,6 +566,20 @@ describe('BuddyContextPlannerService', () => {
 			expect(result.queries).toEqual([{ kind: 'search-home' }, { kind: 'property-timeseries' }]);
 		},
 	);
+
+	it('retains current state alongside a historical comparison', () => {
+		const result = service.plan({
+			message: 'What was the bedroom temperature yesterday, and what is it now?',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(result.domains).toEqual(['home', 'history']);
+		expect(result.queries).toEqual([
+			{ kind: 'search-home' },
+			{ kind: 'current-state' },
+			{ kind: 'property-timeseries' },
+		]);
+	});
 
 	it('uses a unique recent reference and clarifies missing or ambiguous pronouns', () => {
 		const providerCapabilities = { toolCalling: 'unsupported' as const, supportsStructuredToolResults: false };

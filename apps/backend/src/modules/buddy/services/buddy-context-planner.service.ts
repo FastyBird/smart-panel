@@ -25,6 +25,7 @@ const ENERGY_PATTERN = /\b(?:consumption|energy|kwh|power|production|usage)\b/u;
 const SECURITY_PATTERN = /\b(?:alarm|armed|intrusion|secure|security)\b/u;
 const HISTORY_PATTERN =
 	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:month|night|week|year))\b|\b(?:for|over)\s+\d+\s+(?:hours?|days?)\b|\b\d{4}-\d{2}-\d{2}\b/u;
+const CURRENT_STATE_PATTERN = /\b(?:at present|currently|now|right now)\b/u;
 const HOME_ENTITY_PATTERN =
 	/\b(?:air|blind|blinds|device|door|doors|fan|garage|lamp|light|lighting|lights|room|scene|sensor|switch|thermostat|window|windows)\b/u;
 const HOME_STATE_PATTERN = /\b(?:cold|cooling|heating|humidity|temperature|warm)\b/u;
@@ -42,18 +43,23 @@ const TRIGGER_PATTERN = /\b(?:activate|deactivate|run|start|stop|trigger)\b/u;
 const TARGET_DEPENDENT_ACTION_PATTERN = /\b(?:activate|deactivate|start|stop)\b/u;
 const ACTION_COMMAND_PATTERN =
 	/^[?!,.;\s]*(?:(?:and|if so|please|then)\s+)*(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\b/u;
-const CONDITION_PATTERN = /\b(?:after|assuming|before|given that|if|provided|unless|until|when|whenever|while)\b/u;
+const CONDITION_PATTERN =
+	/\b(?:after|as soon as|assuming|before|given that|if|once|provided|unless|until|when|whenever|while)\b/u;
 const LEADING_CONDITION_PATTERN =
-	/^(?:after|assuming|before|given that|if|provided|unless|until|when|whenever|while)\b/u;
+	/^(?:after|as soon as|assuming|before|given that|if|once|provided|unless|until|when|whenever|while)\b/u;
 const RELATIVE_PATTERN = /\b(?:brighter|colder|cooler|darker|down|higher|hotter|less|lower|more|times as|up|warmer)\b/u;
 const PRONOUN_PATTERN = /\b(?:it|one|that|them|these|this|those)\b/u;
 const CAPABILITY_DISCOVERY_PATTERN = /^(?:what|which)\b.*\b(?:am i able to|can i)\b/u;
 const CONTEXTUAL_SCOPE_PATTERN = /\b(?:here|in this room|this space)\b/u;
 const GENERIC_ACTION_TARGET_PATTERN =
-	/\b(?:a|all|an|any|the)\s+(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:device|devices|fan|fans|lamp|lamps|light|lights|scene|scenes|switch|switches)\b|\b(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:devices|fans|lamps|lights|scenes|switches)\b|^[?!,.;\s]*(?:(?:and|if so|please|then)\s+)*(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\s+(?:off\s+|on\s+)?(?:device|fan|lamp|light|scene|switch)\b/u;
+	/\b(?:a|all|an|any|the)\s+(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:blind|blinds|device|devices|door|doors|fan|fans|lamp|lamps|light|lights|scene|scenes|switch|switches|thermostat|thermostats|window|windows)\b|\b(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:blinds|devices|doors|fans|lamps|lights|scenes|switches|thermostats|windows)\b|^[?!,.;\s]*(?:(?:and|if so|please|then)\s+)*(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\s+(?:off\s+|on\s+)?(?:blind|device|door|fan|lamp|light|scene|switch|thermostat|window)\b/u;
 const GENERIC_ACTION_TARGET_NAMES = [
+	'blind',
+	'blinds',
 	'device',
 	'devices',
+	'door',
+	'doors',
 	'fan',
 	'fans',
 	'lamp',
@@ -64,7 +70,36 @@ const GENERIC_ACTION_TARGET_NAMES = [
 	'scenes',
 	'switch',
 	'switches',
+	'thermostat',
+	'thermostats',
+	'window',
+	'windows',
 ] as const;
+const BUILT_IN_ACTION_SPACE_NAMES = new Set([
+	'bathroom',
+	'bedroom',
+	'downstairs',
+	'garage',
+	'hallway',
+	'kitchen',
+	'living room',
+	'office',
+	'upstairs',
+]);
+const EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN =
+	/\b(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs) thermostat\b/u;
+const GENERIC_SINGULAR_ACTION_TARGET_NAMES = new Set([
+	'blind',
+	'device',
+	'door',
+	'fan',
+	'lamp',
+	'light',
+	'scene',
+	'switch',
+	'thermostat',
+	'window',
+]);
 const WHOLE_HOME_SCOPE_PATTERN =
 	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b/u;
 const TRAILING_ACTION_PATTERN =
@@ -130,6 +165,7 @@ export class BuddyContextPlannerService {
 			explicitSpaces,
 		);
 		const strategy = selectStrategy(intent, ambiguityRisk, domains, input.providerCapabilities);
+		const includeCurrentStateForRead = !domains.includes('history') || CURRENT_STATE_PATTERN.test(normalizedMessage);
 		const scopedReferences =
 			hasAction &&
 			(references.length !== 1 ||
@@ -147,7 +183,7 @@ export class BuddyContextPlannerService {
 			domains,
 			intent,
 			scope,
-			queries: buildQueries(domains, hasAction, requiresReadForAction, conversationSpaceId),
+			queries: buildQueries(domains, hasAction, requiresReadForAction, conversationSpaceId, includeCurrentStateForRead),
 			toolNames: buildToolNames(domains, hasWrite, hasTrigger, strategy, normalizedMessage),
 			ambiguityRisk,
 			strategy,
@@ -166,7 +202,9 @@ function getActionMessage(message: string, trailingActionMatch: RegExpExecArray 
 
 function getActionReferenceMessage(message: string): string {
 	const trailingCondition =
-		/\b(?:after|assuming|before|given that|if|provided|unless|until|when|whenever|while)\b/u.exec(message);
+		/\b(?:after|as soon as|assuming|before|given that|if|once|provided|unless|until|when|whenever|while)\b/u.exec(
+			message,
+		);
 	const trailingRead = TRAILING_READ_PATTERN.exec(message);
 	const boundaryIndexes = [trailingCondition?.index, trailingRead?.index].filter(
 		(index): index is number => index !== undefined,
@@ -270,13 +308,32 @@ function classifyAmbiguityRisk(
 }
 
 function hasGenericActionTarget(message: string, explicitSpaces: readonly BuddyContextSpaceReference[]): boolean {
+	if (EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN.test(message)) return false;
+
+	const hasBuiltInExplicitTarget = explicitSpaces.some((space) => {
+		const normalizedSpaceName = normalize(space.name);
+
+		return (
+			BUILT_IN_ACTION_SPACE_NAMES.has(normalizedSpaceName) &&
+			[...GENERIC_SINGULAR_ACTION_TARGET_NAMES].some((target) =>
+				containsNormalizedPhrase(message, `${normalizedSpaceName} ${target}`),
+			)
+		);
+	});
+
+	if (hasBuiltInExplicitTarget) return false;
 	if (GENERIC_ACTION_TARGET_PATTERN.test(message)) return true;
 
-	return explicitSpaces.some((space) =>
-		GENERIC_ACTION_TARGET_NAMES.some((target) =>
-			containsNormalizedPhrase(message, `${normalize(space.name)} ${target}`),
-		),
-	);
+	return explicitSpaces.some((space) => {
+		const normalizedSpaceName = normalize(space.name);
+
+		return (
+			!BUILT_IN_ACTION_SPACE_NAMES.has(normalizedSpaceName) &&
+			GENERIC_ACTION_TARGET_NAMES.some((target) =>
+				containsNormalizedPhrase(message, `${normalizedSpaceName} ${target}`),
+			)
+		);
+	});
 }
 
 function isActionReferenceCompatible(
@@ -430,13 +487,14 @@ function buildQueries(
 	hasAction: boolean,
 	requiresReadForAction: boolean,
 	spaceId?: string,
+	includeCurrentStateForRead = true,
 ): BuddyContextQueryPlan[] {
 	const queries: BuddyContextQueryPlan[] = [];
 	const scoped = spaceId ? { spaceId } : {};
 
 	if (domains.includes('home')) {
 		queries.push({ kind: 'search-home', ...scoped });
-		if ((!hasAction && !domains.includes('history')) || requiresReadForAction) {
+		if ((!hasAction && includeCurrentStateForRead) || requiresReadForAction) {
 			queries.push({ kind: 'current-state', ...scoped });
 		}
 	}
