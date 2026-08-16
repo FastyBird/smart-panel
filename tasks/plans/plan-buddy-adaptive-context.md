@@ -1601,6 +1601,10 @@ An exposed search ID alone never satisfies Buddy action-resolution proof.
 
 **Tasks:**
 
+- [x] Add a side-effect-free deterministic planner foundation that classifies the stable evaluation matrix into ordered
+      domains, read/write/trigger/mixed intent, conversation-scope and recent-reference hints, bounded query labels,
+      ambiguity risk, selected Buddy tool names, and reliable/limited/unsupported provider strategy. Keep live
+      conversation integration, prefetch execution, clarification drafts, and action handoff in the open tasks below.
 - [ ] Implement multi-label message classification, scope/reference extraction, risk, and provider strategy selection.
 - [ ] Implement deterministic prefetch through the same shared query contracts with a whole-prefetch deadline,
       per-query timeouts, bounded concurrency, cancellation propagation where supported, and late-result disposal.

@@ -1,0 +1,236 @@
+import { Injectable } from '@nestjs/common';
+
+import {
+	BuddyContextAmbiguityRisk,
+	BuddyContextDomain,
+	BuddyContextEntityReference,
+	BuddyContextIntent,
+	BuddyContextPlan,
+	BuddyContextPlannerInput,
+	BuddyContextQueryPlan,
+	BuddyContextStrategy,
+} from '../models/context-plan.model';
+
+import { QUERY_HOME_STATE_TOOL_NAME, SEARCH_HOME_TOOL_NAME } from './home-context-tool-provider.service';
+
+const CONTROL_DEVICE_TOOL_NAME = 'control_device';
+const RUN_SCENE_TOOL_NAME = 'run_scene';
+const SET_SPACE_LIGHTING_TOOL_NAME = 'set_space_lighting';
+
+const DOMAIN_ORDER: readonly BuddyContextDomain[] = ['general', 'home', 'weather', 'energy', 'security', 'history'];
+const WEATHER_PATTERN = /\b(?:forecast|outside|rain|raining|snow|weather|wind)\b/u;
+const ENERGY_PATTERN = /\b(?:consumption|energy|kwh|power|production|usage)\b/u;
+const SECURITY_PATTERN = /\b(?:alarm|armed|intrusion|secure|security)\b/u;
+const HISTORY_PATTERN = /\b(?:chart|graph|history|historical|past|trend)\b|\b(?:for|over)\s+\d+\s+(?:hours?|days?)\b/u;
+const HOME_PATTERN =
+	/\b(?:blind|blinds|cold|device|door|doors|garage|humidity|lamp|light|lights|room|scene|sensor|switch|temperature|thermostat|warm|window|windows)\b/u;
+const READ_PATTERN =
+	/^(?:are|can you (?:check|fetch|get|report|show|tell)|check|fetch|find|get|how (?:many|much)|is|list|report|search|show|what|which|will)\b/u;
+const WRITE_PATTERN =
+	/\b(?:adjust|brighten|close|decrease|dim|increase|lock|lower|open|raise|set|switch|turn|unlock)\b/u;
+const TRIGGER_PATTERN = /\b(?:activate|run|start|trigger)\b/u;
+const CONDITION_PATTERN = /\b(?:after|assuming|before|given that|if|provided|unless|until|when|whenever|while)\b/u;
+const RELATIVE_PATTERN = /\b(?:brighter|colder|cooler|darker|down|higher|hotter|less|lower|more|times as|up|warmer)\b/u;
+const PRONOUN_PATTERN = /\b(?:it|one|that|them|these|this|those)\b/u;
+const ACTION_PRONOUN_PATTERN =
+	/\b(?:adjust|close|dim|lock|lower|open|raise|set|switch|turn|unlock)\s+(?:it|one|that|them|these|this|those)\b/u;
+const CAPABILITY_DISCOVERY_PATTERN = /^(?:what|which)\b.*\b(?:am i able to|can i)\b/u;
+const CONTEXTUAL_SCOPE_PATTERN = /\b(?:here|in this room|this space)\b/u;
+const AMBIGUOUS_TARGET_PATTERN = /\b(?:device|lamp|light|scene|switch|thermostat)\b/u;
+const EXPLICIT_TARGET_PATTERN =
+	/\b(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\b|\b\d+(?:\.\d+)?%\b/u;
+
+@Injectable()
+export class BuddyContextPlannerService {
+	plan(input: BuddyContextPlannerInput): BuddyContextPlan {
+		const normalizedMessage = normalize(input.message);
+		const isGenericExplanation = isGeneralExplanation(normalizedMessage);
+		const isReadOnlyPredicate =
+			READ_PATTERN.test(normalizedMessage) &&
+			(CAPABILITY_DISCOVERY_PATTERN.test(normalizedMessage) || hasOnlyGroundedActionTokens(normalizedMessage));
+		const hasWrite = !isGenericExplanation && !isReadOnlyPredicate && WRITE_PATTERN.test(normalizedMessage);
+		const hasTrigger = !isGenericExplanation && TRIGGER_PATTERN.test(normalizedMessage);
+		const hasAction = hasWrite || hasTrigger;
+		const domains = classifyDomains(normalizedMessage, hasAction, isGenericExplanation);
+		const references = resolveRecentReferences(normalizedMessage, input.recentEntityReferences ?? []);
+		const hasRead =
+			domains.some((domain) => domain !== 'general') && (READ_PATTERN.test(normalizedMessage) || !hasAction);
+		const requiresReadForAction =
+			hasAction && (CONDITION_PATTERN.test(normalizedMessage) || RELATIVE_PATTERN.test(normalizedMessage));
+		const intent = classifyIntent(hasWrite, hasTrigger, hasRead || requiresReadForAction);
+		const ambiguityRisk = classifyAmbiguityRisk(
+			normalizedMessage,
+			intent,
+			references,
+			input.conversationSpaceId ?? undefined,
+		);
+		const strategy = selectStrategy(intent, ambiguityRisk, input.providerCapabilities);
+		const scope = {
+			...(input.conversationSpaceId ? { spaceId: input.conversationSpaceId } : {}),
+			...(references.length > 0 ? { referencedEntityIds: references.map((reference) => reference.id) } : {}),
+		};
+
+		return {
+			domains,
+			intent,
+			scope,
+			queries: buildQueries(domains, hasAction, requiresReadForAction, input.conversationSpaceId ?? undefined),
+			toolNames: buildToolNames(domains, hasWrite, hasTrigger, strategy, normalizedMessage),
+			ambiguityRisk,
+			strategy,
+		};
+	}
+}
+
+function classifyDomains(message: string, hasAction: boolean, isGenericExplanation: boolean): BuddyContextDomain[] {
+	if (isGenericExplanation) return ['general'];
+
+	const domains = new Set<BuddyContextDomain>();
+
+	if (HOME_PATTERN.test(message) || hasAction) domains.add('home');
+	if (WEATHER_PATTERN.test(message)) domains.add('weather');
+	if (ENERGY_PATTERN.test(message)) domains.add('energy');
+	if (SECURITY_PATTERN.test(message)) domains.add('security');
+	if (HISTORY_PATTERN.test(message)) {
+		domains.add('home');
+		domains.add('history');
+	}
+
+	if (domains.size === 0) domains.add('general');
+
+	return DOMAIN_ORDER.filter((domain) => domains.has(domain));
+}
+
+function isGeneralExplanation(message: string): boolean {
+	return (
+		/^how (?:can|could|do|does|would)\b.*\b(?:work|works|working|i)\b/u.test(message) ||
+		/^(?:explain|show me|tell me) how to\b/u.test(message) ||
+		/^what (?:do|does) .+ mean\b/u.test(message) ||
+		/^what (?:is|are) (?:a|an)\b/u.test(message)
+	);
+}
+
+function hasOnlyGroundedActionTokens(message: string): boolean {
+	const tokens = new Set(message.split(/[^\p{Letter}\p{Number}]+/u).filter((token) => token.length > 0));
+	let hasActionToken = false;
+
+	for (const token of tokens) {
+		if (!WRITE_PATTERN.test(token)) continue;
+		hasActionToken = true;
+		if (!/^(?:close|closed|lock|locked|off|on|open|unlock|unlocked)$/u.test(token)) return false;
+	}
+
+	return hasActionToken;
+}
+
+function classifyIntent(hasWrite: boolean, hasTrigger: boolean, hasRead: boolean): BuddyContextIntent {
+	if ((hasWrite || hasTrigger) && hasRead) return 'mixed';
+	if (hasWrite && hasTrigger) return 'mixed';
+	if (hasWrite) return 'write';
+	if (hasTrigger) return 'trigger';
+	if (hasRead) return 'read';
+
+	return 'none';
+}
+
+function classifyAmbiguityRisk(
+	message: string,
+	intent: BuddyContextIntent,
+	references: readonly BuddyContextEntityReference[],
+	conversationSpaceId?: string,
+): BuddyContextAmbiguityRisk {
+	const isAction = intent === 'write' || intent === 'trigger' || intent === 'mixed';
+
+	if (isAction) {
+		if (ACTION_PRONOUN_PATTERN.test(message) && references.length !== 1) return 'action';
+		if (AMBIGUOUS_TARGET_PATTERN.test(message) && !EXPLICIT_TARGET_PATTERN.test(message) && !conversationSpaceId) {
+			return 'action';
+		}
+
+		return 'none';
+	}
+
+	if (CONTEXTUAL_SCOPE_PATTERN.test(message) && !conversationSpaceId) return 'read';
+
+	return 'none';
+}
+
+function selectStrategy(
+	intent: BuddyContextIntent,
+	ambiguityRisk: BuddyContextAmbiguityRisk,
+	providerCapabilities: BuddyContextPlannerInput['providerCapabilities'],
+): BuddyContextStrategy {
+	if (intent === 'none') return 'no-home-context';
+	if (ambiguityRisk !== 'none') return 'clarify';
+
+	const hasAction = intent === 'write' || intent === 'trigger' || intent === 'mixed';
+	const canUseModelTools =
+		providerCapabilities.toolCalling === 'reliable' && providerCapabilities.supportsStructuredToolResults;
+
+	if (hasAction) return canUseModelTools ? 'model-tools' : 'deterministic-action';
+
+	return canUseModelTools ? 'model-tools' : 'prefetch';
+}
+
+function buildQueries(
+	domains: readonly BuddyContextDomain[],
+	hasAction: boolean,
+	requiresReadForAction: boolean,
+	spaceId?: string,
+): BuddyContextQueryPlan[] {
+	const queries: BuddyContextQueryPlan[] = [];
+	const scoped = spaceId ? { spaceId } : {};
+
+	if (domains.includes('home')) {
+		queries.push({ kind: 'search-home', ...scoped });
+		if (!hasAction || requiresReadForAction) queries.push({ kind: 'current-state', ...scoped });
+	}
+	if (domains.includes('weather')) queries.push({ kind: 'weather' });
+	if (domains.includes('energy')) queries.push({ kind: 'energy-summary', ...scoped });
+	if (domains.includes('security')) queries.push({ kind: 'security-status' });
+	if (domains.includes('history')) queries.push({ kind: 'property-timeseries', ...scoped });
+
+	return queries;
+}
+
+function buildToolNames(
+	domains: readonly BuddyContextDomain[],
+	hasWrite: boolean,
+	hasTrigger: boolean,
+	strategy: BuddyContextStrategy,
+	message: string,
+): string[] {
+	if (strategy !== 'model-tools') return [];
+
+	const names: string[] = [];
+
+	if (domains.includes('home')) names.push(SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME);
+	if (hasWrite) {
+		names.push(CONTROL_DEVICE_TOOL_NAME);
+		if (/\b(?:all|lighting|lights|room)\b/u.test(message)) names.push(SET_SPACE_LIGHTING_TOOL_NAME);
+	}
+	if (hasTrigger) names.push(RUN_SCENE_TOOL_NAME);
+
+	return names;
+}
+
+function resolveRecentReferences(
+	message: string,
+	references: readonly BuddyContextEntityReference[],
+): BuddyContextEntityReference[] {
+	if (!PRONOUN_PATTERN.test(message)) return [];
+
+	const unique = new Map<string, BuddyContextEntityReference>();
+
+	for (const reference of references) unique.set(reference.id, reference);
+
+	return [...unique.values()];
+}
+
+function normalize(value: string): string {
+	return value
+		.normalize('NFKD')
+		.replace(/\p{Mark}/gu, '')
+		.toLocaleLowerCase('en-US')
+		.trim();
+}
