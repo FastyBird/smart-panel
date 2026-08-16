@@ -186,6 +186,23 @@ describe('BuddyContextPlannerService', () => {
 		},
 	);
 
+	it('checks only the trailing action operation against a compound reference', () => {
+		expect(
+			service.plan({
+				message: 'Are any windows open, close them if so',
+				recentEntityReferences: [
+					{
+						kind: 'property',
+						id: 'property-window-contact',
+						name: 'Window contact',
+						compatibleActionTypes: ['close'],
+					},
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ ambiguityRisk: 'none', strategy: 'model-tools' });
+	});
+
 	it('does not treat an action value as evidence of a unique target', () => {
 		expect(
 			service.plan({

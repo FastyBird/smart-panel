@@ -55,14 +55,16 @@ const TRAILING_ACTION_PATTERN =
 export class BuddyContextPlannerService {
 	plan(input: BuddyContextPlannerInput): BuddyContextPlan {
 		const normalizedMessage = normalize(input.message);
-		const explicitSpace = findExplicitSpace(normalizedMessage, input.knownSpaces ?? []);
+		const explicitSpaces = findExplicitSpaces(normalizedMessage, input.knownSpaces ?? []);
 		const conversationSpaceId = resolveConversationSpaceHint(
 			normalizedMessage,
 			input.conversationSpaceId,
-			explicitSpace?.id,
+			explicitSpaces.map((space) => space.id),
 		);
 		const isGenericExplanation = isGeneralExplanation(normalizedMessage);
-		const hasTrailingAction = TRAILING_ACTION_PATTERN.test(normalizedMessage);
+		const trailingActionMatch = TRAILING_ACTION_PATTERN.exec(normalizedMessage);
+		const hasTrailingAction = trailingActionMatch !== null;
+		const actionMessage = trailingActionMatch ? normalizedMessage.slice(trailingActionMatch.index) : normalizedMessage;
 		const isReadOnlyPredicate =
 			!hasTrailingAction &&
 			(isStatePredicateQuestion(normalizedMessage) ||
@@ -71,10 +73,10 @@ export class BuddyContextPlannerService {
 		const hasWrite =
 			!isGenericExplanation &&
 			!isReadOnlyPredicate &&
-			(WRITE_PATTERN.test(normalizedMessage) || TARGET_DEPENDENT_ACTION_PATTERN.test(normalizedMessage));
-		const hasTrigger = !isGenericExplanation && !isReadOnlyPredicate && TRIGGER_PATTERN.test(normalizedMessage);
+			(WRITE_PATTERN.test(actionMessage) || TARGET_DEPENDENT_ACTION_PATTERN.test(actionMessage));
+		const hasTrigger = !isGenericExplanation && !isReadOnlyPredicate && TRIGGER_PATTERN.test(actionMessage);
 		const hasAction = hasWrite || hasTrigger;
-		const requestedActionTypes = getRequestedActionTypes(normalizedMessage);
+		const requestedActionTypes = getRequestedActionTypes(actionMessage);
 		const domains = classifyDomains(normalizedMessage, hasAction || isReadOnlyPredicate, isGenericExplanation);
 		const references = resolveRecentReferences(normalizedMessage, input.recentEntityReferences ?? []);
 		const hasRead =
@@ -89,7 +91,7 @@ export class BuddyContextPlannerService {
 			requestedActionTypes,
 			references,
 			conversationSpaceId,
-			explicitSpace !== undefined,
+			explicitSpaces.length > 0,
 		);
 		const strategy = selectStrategy(intent, ambiguityRisk, input.providerCapabilities);
 		const scope = {
@@ -217,12 +219,12 @@ function isActionReferenceCompatible(
 function resolveConversationSpaceHint(
 	message: string,
 	conversationSpaceId?: string | null,
-	explicitSpaceId?: string,
+	explicitSpaceIds: readonly string[] = [],
 ): string | undefined {
 	if (
 		!conversationSpaceId ||
 		WHOLE_HOME_SCOPE_PATTERN.test(message) ||
-		(explicitSpaceId !== undefined && explicitSpaceId !== conversationSpaceId)
+		explicitSpaceIds.some((spaceId) => spaceId !== conversationSpaceId)
 	) {
 		return undefined;
 	}
@@ -230,24 +232,32 @@ function resolveConversationSpaceHint(
 	return conversationSpaceId;
 }
 
-function findExplicitSpace(
+function findExplicitSpaces(
 	message: string,
 	knownSpaces: readonly BuddyContextSpaceReference[],
-): { id: string; name: string } | undefined {
-	return knownSpaces.find((space) => containsNormalizedPhrase(message, normalize(space.name)));
+): BuddyContextSpaceReference[] {
+	return knownSpaces.filter((space) => containsNormalizedPhrase(message, normalize(space.name)));
 }
 
 function containsNormalizedPhrase(message: string, phrase: string): boolean {
 	if (phrase.length === 0) return false;
 
-	const index = message.indexOf(phrase);
-	if (index < 0) return false;
+	let offset = 0;
 
-	const before = index === 0 ? '' : message[index - 1];
-	const afterIndex = index + phrase.length;
-	const after = afterIndex >= message.length ? '' : message[afterIndex];
+	while (offset <= message.length - phrase.length) {
+		const index = message.indexOf(phrase, offset);
+		if (index < 0) return false;
 
-	return !/[\p{Letter}\p{Number}]/u.test(before) && !/[\p{Letter}\p{Number}]/u.test(after);
+		const before = index === 0 ? '' : message[index - 1];
+		const afterIndex = index + phrase.length;
+		const after = afterIndex >= message.length ? '' : message[afterIndex];
+
+		if (!/[\p{Letter}\p{Number}]/u.test(before) && !/[\p{Letter}\p{Number}]/u.test(after)) return true;
+
+		offset = index + phrase.length;
+	}
+
+	return false;
 }
 
 function getRequestedActionTypes(message: string): BuddyContextActionType[] {
