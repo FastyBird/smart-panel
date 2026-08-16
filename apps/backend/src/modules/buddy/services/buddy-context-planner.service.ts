@@ -50,6 +50,7 @@ const LEADING_CONDITION_PATTERN =
 	/^(?:after|as long as|as soon as|assuming|before|given that|if|in case|once|only if|provided|so long as|unless|until|when|whenever|while)\b/u;
 const RELATIVE_PATTERN = /\b(?:brighter|colder|cooler|darker|down|higher|hotter|less|lower|more|times as|up|warmer)\b/u;
 const PRONOUN_PATTERN = /\b(?:it|one|that|them|these|this|those)\b/u;
+const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:it|one|that|this)\b/u;
 const CAPABILITY_DISCOVERY_PATTERN = /^(?:what|which)\b.*\b(?:am i able to|can i)\b/u;
 const CONTEXTUAL_SCOPE_PATTERN = /\b(?:here|in this room|this space)\b/u;
 const GENERIC_ACTION_TARGET_PATTERN =
@@ -235,8 +236,12 @@ function classifyDomains(
 	if (ENERGY_PATTERN.test(message)) domains.add('energy');
 	if (SECURITY_PATTERN.test(message)) domains.add('security');
 	if (HISTORY_PATTERN.test(message)) {
-		domains.add('home');
-		domains.add('history');
+		const hasDomainSpecificHistory = domains.has('weather') || domains.has('energy') || domains.has('security');
+
+		if (domains.has('home') || !hasDomainSpecificHistory) {
+			domains.add('home');
+			domains.add('history');
+		}
 	}
 
 	if (domains.size === 0) domains.add('general');
@@ -310,6 +315,7 @@ function classifyAmbiguityRisk(
 
 		return 'none';
 	}
+	if (SINGULAR_REFERENCE_PRONOUN_PATTERN.test(message) && references.length > 1) return 'read';
 
 	if (CONTEXTUAL_SCOPE_PATTERN.test(message) && !conversationSpaceId) return 'read';
 
@@ -317,6 +323,7 @@ function classifyAmbiguityRisk(
 }
 
 function hasGenericActionTarget(message: string, explicitSpaces: readonly BuddyContextSpaceReference[]): boolean {
+	if (explicitSpaces.length === 1 && /\ball\b.*\b(?:lighting|lights)\b/u.test(message)) return false;
 	if (EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN.test(message)) return false;
 	if (GENERIC_ACTION_TARGET_PATTERN.test(message)) return true;
 

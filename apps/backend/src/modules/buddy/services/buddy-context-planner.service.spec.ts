@@ -126,6 +126,23 @@ describe('BuddyContextPlannerService', () => {
 		},
 	);
 
+	it.each([
+		{ message: 'What was the weather yesterday?', domains: ['weather'], query: { kind: 'weather' } },
+		{
+			message: 'How much energy did we use yesterday?',
+			domains: ['energy'],
+			query: { kind: 'energy-summary' },
+		},
+	])('keeps non-home history on its bounded $query.kind path', ({ message, domains, query }) => {
+		const result = service.plan({
+			message,
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(result.domains).toEqual(domains);
+		expect(result.queries).toEqual([query]);
+	});
+
 	it('selects prefetch for tool-less reads and no tools for the provider', () => {
 		const result = service.plan({
 			message: 'Are any windows open?',
@@ -251,6 +268,29 @@ describe('BuddyContextPlannerService', () => {
 			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
 			strategy: 'model-tools',
 		});
+	});
+
+	it('clarifies a singular pronoun state read with multiple recent references', () => {
+		expect(
+			service.plan({
+				message: 'Is it on?',
+				recentEntityReferences: [
+					{
+						kind: 'device',
+						id: 'device-left-lamp',
+						name: 'Left lamp',
+						compatibleActionTypes: ['turn'],
+					},
+					{
+						kind: 'device',
+						id: 'device-right-lamp',
+						name: 'Right lamp',
+						compatibleActionTypes: ['turn'],
+					},
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ domains: ['home'], ambiguityRisk: 'read', strategy: 'clarify', toolNames: [] });
 	});
 
 	it('requires the recent reference to support the requested write operation', () => {
@@ -567,6 +607,21 @@ describe('BuddyContextPlannerService', () => {
 			ambiguityRisk: 'action',
 			strategy: 'clarify',
 		});
+	});
+
+	it('routes all lights in one resolved space to the group action tool', () => {
+		const result = service.plan({
+			message: 'Turn all bedroom lights off',
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(result).toMatchObject({
+			scope: { spaceId: 'space-bedroom' },
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+		});
+		expect(result.toolNames).toContain('set_space_lighting');
 	});
 
 	it('keeps a declarative home-state observation on the read path', () => {
