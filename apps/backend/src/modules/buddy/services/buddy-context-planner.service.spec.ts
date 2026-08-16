@@ -762,6 +762,54 @@ describe('BuddyContextPlannerService', () => {
 		).toMatchObject({ domains: ['general'], intent: 'none', queries: [], toolNames: [] });
 	});
 
+	it('keeps an installation-specific explanation on the scoped home path', () => {
+		expect(
+			service.plan({
+				message: 'Explain why the bedroom is cold',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			scope: { spaceId: 'space-bedroom' },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'current-state', spaceId: 'space-bedroom' },
+			],
+		});
+	});
+
+	it.each(['Turn on the outside light', 'Turn off the power switch'])(
+		'keeps a domain keyword used in a device name on the home action path: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({
+				domains: ['home'],
+				intent: 'write',
+				toolNames: ['search_home', 'query_home_state', 'control_device'],
+			});
+		},
+	);
+
+	it('detects an action after a direct read command', () => {
+		expect(
+			service.plan({
+				message: 'Check whether the window is open, then turn off the heater',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'mixed',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device'],
+		});
+	});
+
 	it('uses metadata search without current-state reads for capability discovery', () => {
 		expect(
 			service.plan({

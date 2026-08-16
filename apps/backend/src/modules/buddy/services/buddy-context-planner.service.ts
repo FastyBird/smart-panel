@@ -22,7 +22,10 @@ const SET_SPACE_LIGHTING_TOOL_NAME = 'set_space_lighting';
 const DOMAIN_ORDER: readonly BuddyContextDomain[] = ['general', 'home', 'weather', 'energy', 'security', 'history'];
 const WEATHER_PATTERN =
 	/\b(?:cloud|cloudy|fog|foggy|forecast|outside|rain|raining|snow|storm|stormy|sun|sunny|thunder|weather|wind)\b/u;
+const ACTION_WEATHER_CONTEXT_PATTERN =
+	/\b(?:cloud|cloudy|fog|foggy|forecast|rain|raining|snow|storm|stormy|sun|sunny|thunder|weather|wind)\b|\b(?:cold|colder|cooler|hot|hotter|temperature|warm|warmer)\b.*\boutside\b|\boutside\b.*\b(?:cold|colder|cooler|hot|hotter|temperature|warm|warmer)\b/u;
 const ENERGY_PATTERN = /\b(?:consumption|energy|kwh|power|production|usage)\b/u;
+const ACTION_ENERGY_CONTEXT_PATTERN = /\b(?:consumption|energy|kwh|production|usage)\b/u;
 const SECURITY_PATTERN = /\b(?:alarm|armed|intrusion|secure|security)\b/u;
 const HISTORY_PATTERN =
 	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:month|night|week|year))\b|\b(?:for|last|over)\s+\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b/u;
@@ -111,11 +114,13 @@ export class BuddyContextPlannerService {
 			input.conversationSpaceId,
 			explicitSpaces.map((space) => space.id),
 		);
-		const isGenericExplanation = isGeneralExplanation(normalizedMessage);
+		const isGenericExplanation = isGeneralExplanation(normalizedMessage, explicitSpaces.length > 0);
 		const isPredicateQuestion = isStatePredicateQuestion(normalizedMessage);
 		const isWrappedStateRead = MODAL_STATE_READ_PATTERN.test(normalizedMessage);
 		const trailingActionMatch =
-			isPredicateQuestion || isWrappedStateRead ? TRAILING_ACTION_PATTERN.exec(normalizedMessage) : null;
+			isPredicateQuestion || isWrappedStateRead || READ_PATTERN.test(normalizedMessage)
+				? TRAILING_ACTION_PATTERN.exec(normalizedMessage)
+				: null;
 		const hasTrailingAction = trailingActionMatch !== null;
 		const hasTrailingRead = TRAILING_READ_PATTERN.test(normalizedMessage);
 		const actionMessage = getActionMessage(normalizedMessage, trailingActionMatch);
@@ -147,6 +152,7 @@ export class BuddyContextPlannerService {
 			isGenericExplanation,
 			hasRecentReferencePronoun,
 			explicitSpaces.length > 0,
+			hasAction,
 		);
 		const referenceMessage = hasAction ? actionReferenceMessage : domains.includes('home') ? normalizedMessage : '';
 		const references = resolveRecentReferences(referenceMessage, recentEntityReferences);
@@ -229,16 +235,17 @@ function getActionReferenceMessage(message: string): string {
 
 function classifyDomains(
 	message: string,
-	hasAction: boolean,
+	hasHomeActionOrPredicate: boolean,
 	isGenericExplanation: boolean,
 	hasRecentReferencePronoun = false,
 	hasExplicitSpace = false,
+	hasAction = false,
 ): BuddyContextDomain[] {
 	if (isGenericExplanation) return ['general'];
 
 	const domains = new Set<BuddyContextDomain>();
-	const hasWeather = WEATHER_PATTERN.test(message);
-	const hasEnergy = ENERGY_PATTERN.test(message);
+	const hasWeather = WEATHER_PATTERN.test(message) && (!hasAction || ACTION_WEATHER_CONTEXT_PATTERN.test(message));
+	const hasEnergy = ENERGY_PATTERN.test(message) && (!hasAction || ACTION_ENERGY_CONTEXT_PATTERN.test(message));
 	const hasSecurity = SECURITY_PATTERN.test(message);
 	const hasInstallationHome = HOME_INSTALLATION_PATTERN.test(message) && !hasWeather && !hasEnergy && !hasSecurity;
 	const hasContextualHomeState =
@@ -247,7 +254,7 @@ function classifyDomains(
 	if (
 		HOME_ENTITY_PATTERN.test(message) ||
 		hasContextualHomeState ||
-		hasAction ||
+		hasHomeActionOrPredicate ||
 		hasRecentReferencePronoun ||
 		hasExplicitSpace ||
 		hasInstallationHome
@@ -271,7 +278,9 @@ function classifyDomains(
 	return DOMAIN_ORDER.filter((domain) => domains.has(domain));
 }
 
-function isGeneralExplanation(message: string): boolean {
+function isGeneralExplanation(message: string, hasExplicitSpace = false): boolean {
+	if (hasExplicitSpace && HOME_STATE_PATTERN.test(message)) return false;
+
 	return (
 		/^how (?:can|could|do|does|would)\b.*\b(?:work|works|working|i)\b/u.test(message) ||
 		/^explain (?:how|what|why)\b/u.test(message) ||
