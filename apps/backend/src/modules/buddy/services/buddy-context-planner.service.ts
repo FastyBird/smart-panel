@@ -23,7 +23,8 @@ const DOMAIN_ORDER: readonly BuddyContextDomain[] = ['general', 'home', 'weather
 const WEATHER_PATTERN = /\b(?:forecast|outside|rain|raining|snow|weather|wind)\b/u;
 const ENERGY_PATTERN = /\b(?:consumption|energy|kwh|power|production|usage)\b/u;
 const SECURITY_PATTERN = /\b(?:alarm|armed|intrusion|secure|security)\b/u;
-const HISTORY_PATTERN = /\b(?:chart|graph|history|historical|past|trend)\b|\b(?:for|over)\s+\d+\s+(?:hours?|days?)\b/u;
+const HISTORY_PATTERN =
+	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:month|night|week|year))\b|\b(?:for|over)\s+\d+\s+(?:hours?|days?)\b|\b\d{4}-\d{2}-\d{2}\b/u;
 const HOME_PATTERN =
 	/\b(?:blind|blinds|cold|device|door|doors|fan|garage|humidity|lamp|light|lights|room|scene|sensor|switch|temperature|thermostat|warm|window|windows)\b/u;
 const READ_PATTERN =
@@ -39,17 +40,14 @@ const TARGET_DEPENDENT_ACTION_PATTERN = /\b(?:activate|start)\b/u;
 const CONDITION_PATTERN = /\b(?:after|assuming|before|given that|if|provided|unless|until|when|whenever|while)\b/u;
 const RELATIVE_PATTERN = /\b(?:brighter|colder|cooler|darker|down|higher|hotter|less|lower|more|times as|up|warmer)\b/u;
 const PRONOUN_PATTERN = /\b(?:it|one|that|them|these|this|those)\b/u;
-const ACTION_PRONOUN_PATTERN =
-	/\b(?:activate|adjust|close|dim|lock|lower|open|raise|run|set|start|switch|trigger|turn|unlock)\s+(?:it|one|that|them|these|this|those)\b/u;
 const CAPABILITY_DISCOVERY_PATTERN = /^(?:what|which)\b.*\b(?:am i able to|can i)\b/u;
 const CONTEXTUAL_SCOPE_PATTERN = /\b(?:here|in this room|this space)\b/u;
-const AMBIGUOUS_TARGET_PATTERN = /\b(?:device|fan|lamp|light|scene|switch|thermostat)\b/u;
-const EXPLICIT_SPACE_PATTERN =
-	/\b(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\b/u;
+const GENERIC_ACTION_TARGET_PATTERN =
+	/\b(?:a|all|an|any|the)\s+(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:device|fan|lamp|light|lights|scene|switch)\b/u;
 const WHOLE_HOME_SCOPE_PATTERN =
 	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b/u;
 const TRAILING_ACTION_PATTERN =
-	/(?:[?;,]|\b(?:and|then)\b)\s*(?:(?:if so|please)\s+)*(?:activate|adjust|brighten|close|decrease|dim|increase|lock|lower|open|raise|run|set|start|switch|trigger|turn|unlock)\b/u;
+	/(?:[?;,]|\b(?:and|then)\b)\s*(?:(?:if so|please)\s+)*(?:(?:can|could|may|might|will|would) you\s+)?(?:activate|adjust|brighten|close|decrease|dim|increase|lock|lower|open|raise|run|set|start|switch|trigger|turn|unlock)\b/u;
 
 @Injectable()
 export class BuddyContextPlannerService {
@@ -86,12 +84,12 @@ export class BuddyContextPlannerService {
 		const intent = classifyIntent(hasWrite, hasTrigger, hasRead || requiresReadForAction);
 		const ambiguityRisk = classifyAmbiguityRisk(
 			normalizedMessage,
+			actionMessage,
 			hasWrite,
 			hasTrigger,
 			requestedActionTypes,
 			references,
 			conversationSpaceId,
-			explicitSpaces.length > 0,
 		);
 		const strategy = selectStrategy(intent, ambiguityRisk, input.providerCapabilities);
 		const scope = {
@@ -172,24 +170,24 @@ function classifyIntent(hasWrite: boolean, hasTrigger: boolean, hasRead: boolean
 
 function classifyAmbiguityRisk(
 	message: string,
+	actionMessage: string,
 	hasWrite: boolean,
 	hasTrigger: boolean,
 	requestedActionTypes: readonly BuddyContextActionType[],
 	references: readonly BuddyContextEntityReference[],
 	conversationSpaceId?: string,
-	hasExplicitKnownSpace = false,
 ): BuddyContextAmbiguityRisk {
 	const isAction = hasWrite || hasTrigger;
 
 	if (isAction) {
 		if (
-			ACTION_PRONOUN_PATTERN.test(message) &&
+			PRONOUN_PATTERN.test(actionMessage) &&
 			(references.length !== 1 ||
 				!isActionReferenceCompatible(references[0], hasWrite, hasTrigger, requestedActionTypes))
 		) {
 			return 'action';
 		}
-		if (AMBIGUOUS_TARGET_PATTERN.test(message) && !EXPLICIT_SPACE_PATTERN.test(message) && !hasExplicitKnownSpace) {
+		if (GENERIC_ACTION_TARGET_PATTERN.test(actionMessage)) {
 			return 'action';
 		}
 
@@ -313,7 +311,9 @@ function buildQueries(
 
 	if (domains.includes('home')) {
 		queries.push({ kind: 'search-home', ...scoped });
-		if (!hasAction || requiresReadForAction) queries.push({ kind: 'current-state', ...scoped });
+		if ((!hasAction && !domains.includes('history')) || requiresReadForAction) {
+			queries.push({ kind: 'current-state', ...scoped });
+		}
 	}
 	if (domains.includes('weather')) queries.push({ kind: 'weather' });
 	if (domains.includes('energy')) queries.push({ kind: 'energy-summary', ...scoped });

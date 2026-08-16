@@ -78,7 +78,7 @@ describe('BuddyContextPlannerService', () => {
 		});
 		expect(
 			service.plan({
-				message: 'Turn off the kitchen light',
+				message: 'Set kitchen light to 40%',
 				providerCapabilities,
 			}),
 		).toMatchObject({
@@ -186,6 +186,15 @@ describe('BuddyContextPlannerService', () => {
 		},
 	);
 
+	it('preserves a polite modal action after a state question', () => {
+		expect(
+			service.plan({
+				message: 'Is the bedroom cold? Could you turn off the heater?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ intent: 'mixed', strategy: 'model-tools' });
+	});
+
 	it('checks only the trailing action operation against a compound reference', () => {
 		expect(
 			service.plan({
@@ -227,6 +236,24 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('does not use an explicit room name as proof that a generic target is unique', () => {
+		expect(
+			service.plan({
+				message: 'Turn on the bedroom lamp',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+	});
+
+	it('recognizes an action-target pronoun separated by a determiner', () => {
+		expect(
+			service.plan({
+				message: 'Turn the one off',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+	});
+
 	it.each([
 		{ message: 'Are any windows open in the whole house?', knownSpaces: [] },
 		{
@@ -260,11 +287,24 @@ describe('BuddyContextPlannerService', () => {
 		).toMatchObject({
 			domains: ['home'],
 			intent: 'mixed',
-			ambiguityRisk: 'none',
-			strategy: 'model-tools',
-			toolNames: ['search_home', 'query_home_state', 'control_device', 'run_scene'],
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
 		});
 	});
+
+	it.each(['What was the bedroom temperature yesterday?', 'Graph the temperature for 2026-08-15'])(
+		'routes relative and explicit historical dates to timeseries: %s',
+		(message) => {
+			const result = service.plan({
+				message,
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			});
+
+			expect(result.domains).toEqual(['home', 'history']);
+			expect(result.queries).toEqual([{ kind: 'search-home' }, { kind: 'property-timeseries' }]);
+		},
+	);
 
 	it('uses a unique recent reference and clarifies missing or ambiguous pronouns', () => {
 		const providerCapabilities = { toolCalling: 'unsupported' as const, supportsStructuredToolResults: false };
