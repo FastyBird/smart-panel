@@ -20,11 +20,12 @@ const RUN_SCENE_TOOL_NAME = 'run_scene';
 const SET_SPACE_LIGHTING_TOOL_NAME = 'set_space_lighting';
 
 const DOMAIN_ORDER: readonly BuddyContextDomain[] = ['general', 'home', 'weather', 'energy', 'security', 'history'];
-const WEATHER_PATTERN = /\b(?:forecast|outside|rain|raining|snow|weather|wind)\b/u;
+const WEATHER_PATTERN =
+	/\b(?:cloud|cloudy|fog|foggy|forecast|outside|rain|raining|snow|storm|stormy|sun|sunny|thunder|weather|wind)\b/u;
 const ENERGY_PATTERN = /\b(?:consumption|energy|kwh|power|production|usage)\b/u;
 const SECURITY_PATTERN = /\b(?:alarm|armed|intrusion|secure|security)\b/u;
 const HISTORY_PATTERN =
-	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:month|night|week|year))\b|\b(?:for|over)\s+\d+\s+(?:hours?|days?)\b|\b\d{4}-\d{2}-\d{2}\b/u;
+	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:month|night|week|year))\b|\b(?:for|over)\s+\d+\s+(?:hours?|days?)\b|\b\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b/u;
 const CURRENT_STATE_PATTERN = /\b(?:at present|currently|now|right now)\b/u;
 const HOME_ENTITY_PATTERN =
 	/\b(?:air|blind|blinds|device|door|doors|fan|garage|lamp|light|lighting|lights|room|scene|sensor|switch|thermostat|window|windows)\b/u;
@@ -42,7 +43,7 @@ const WRITE_PATTERN =
 const TRIGGER_PATTERN = /\b(?:activate|deactivate|run|start|stop|trigger)\b/u;
 const TARGET_DEPENDENT_ACTION_PATTERN = /\b(?:activate|deactivate|start|stop)\b/u;
 const ACTION_COMMAND_PATTERN =
-	/^[?!,.;\s]*(?:(?:and|if so|please|then)\s+)*(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\b/u;
+	/^[?!,.;\s]*(?:(?:and|if so|please|then)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\b/u;
 const CONDITION_PATTERN =
 	/\b(?:after|as soon as|assuming|before|given that|if|once|provided|unless|until|when|whenever|while)\b/u;
 const LEADING_CONDITION_PATTERN =
@@ -88,22 +89,10 @@ const BUILT_IN_ACTION_SPACE_NAMES = new Set([
 ]);
 const EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN =
 	/\b(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs) thermostat\b/u;
-const GENERIC_SINGULAR_ACTION_TARGET_NAMES = new Set([
-	'blind',
-	'device',
-	'door',
-	'fan',
-	'lamp',
-	'light',
-	'scene',
-	'switch',
-	'thermostat',
-	'window',
-]);
 const WHOLE_HOME_SCOPE_PATTERN =
 	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b/u;
 const TRAILING_ACTION_PATTERN =
-	/(?:[?!,.;]|\b(?:and|then)\b)\s*(?:(?:if so|please)\s+)*(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\b/u;
+	/(?:[?!,.;]|\b(?:and|then)\b)\s*(?:(?:if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\b/u;
 const TRAILING_READ_PATTERN =
 	/(?:[?!,.;]|\b(?:and|then)\b)\s*(?:(?:also|please)\s+)*(?:check|confirm|determine|fetch|find|get|read|report|show|tell(?: me)?|verify|what|whether|which)\b/u;
 
@@ -149,7 +138,10 @@ export class BuddyContextPlannerService {
 		const references = resolveRecentReferences(referenceMessage, input.recentEntityReferences ?? []);
 		const hasRead =
 			domains.some((domain) => domain !== 'general') &&
-			(READ_PATTERN.test(normalizedMessage) || isWrappedStateRead || hasTrailingRead || !hasAction);
+			(((!hasAction || !ACTION_REQUEST_PATTERN.test(normalizedMessage)) &&
+				(READ_PATTERN.test(normalizedMessage) || isWrappedStateRead)) ||
+				hasTrailingRead ||
+				!hasAction);
 		const requiresReadForAction =
 			hasAction &&
 			(CONDITION_PATTERN.test(normalizedMessage) || RELATIVE_PATTERN.test(normalizedMessage) || hasTrailingRead);
@@ -201,16 +193,20 @@ function getActionMessage(message: string, trailingActionMatch: RegExpExecArray 
 }
 
 function getActionReferenceMessage(message: string): string {
+	const actionOnlyMessage = message.replace(
+		/^[?!,.;\s]*(?:(?:and|if so|please|then)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)/u,
+		'',
+	);
 	const trailingCondition =
 		/\b(?:after|as soon as|assuming|before|given that|if|once|provided|unless|until|when|whenever|while)\b/u.exec(
-			message,
+			actionOnlyMessage,
 		);
-	const trailingRead = TRAILING_READ_PATTERN.exec(message);
+	const trailingRead = TRAILING_READ_PATTERN.exec(actionOnlyMessage);
 	const boundaryIndexes = [trailingCondition?.index, trailingRead?.index].filter(
 		(index): index is number => index !== undefined,
 	);
 
-	return boundaryIndexes.length > 0 ? message.slice(0, Math.min(...boundaryIndexes)) : message;
+	return boundaryIndexes.length > 0 ? actionOnlyMessage.slice(0, Math.min(...boundaryIndexes)) : actionOnlyMessage;
 }
 
 function classifyDomains(message: string, hasAction: boolean, isGenericExplanation: boolean): BuddyContextDomain[] {
@@ -309,19 +305,6 @@ function classifyAmbiguityRisk(
 
 function hasGenericActionTarget(message: string, explicitSpaces: readonly BuddyContextSpaceReference[]): boolean {
 	if (EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN.test(message)) return false;
-
-	const hasBuiltInExplicitTarget = explicitSpaces.some((space) => {
-		const normalizedSpaceName = normalize(space.name);
-
-		return (
-			BUILT_IN_ACTION_SPACE_NAMES.has(normalizedSpaceName) &&
-			[...GENERIC_SINGULAR_ACTION_TARGET_NAMES].some((target) =>
-				containsNormalizedPhrase(message, `${normalizedSpaceName} ${target}`),
-			)
-		);
-	});
-
-	if (hasBuiltInExplicitTarget) return false;
 	if (GENERIC_ACTION_TARGET_PATTERN.test(message)) return true;
 
 	return explicitSpaces.some((space) => {

@@ -114,6 +114,18 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it.each(['Will it be sunny tomorrow?', 'Will it be cloudy tomorrow?'])(
+		'routes a common weather condition to bounded weather retrieval: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({ domains: ['weather'], queries: [{ kind: 'weather' }], strategy: 'prefetch' });
+		},
+	);
+
 	it('selects prefetch for tool-less reads and no tools for the provider', () => {
 		const result = service.plan({
 			message: 'Are any windows open?',
@@ -293,6 +305,19 @@ describe('BuddyContextPlannerService', () => {
 		expect(
 			service.plan({
 				message: 'Could you please turn off kitchen light?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ intent: 'write', strategy: 'model-tools' });
+	});
+
+	it.each([
+		'Is it possible to turn off reading lamp?',
+		'Are you able to turn off reading lamp?',
+		'Is there any way you can turn off reading lamp?',
+	])('recognizes an established action-request prefix: %s', (message) => {
+		expect(
+			service.plan({
+				message,
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			}),
 		).toMatchObject({ intent: 'write', strategy: 'model-tools' });
@@ -479,6 +504,20 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('keeps a known built-in space category target ambiguous', () => {
+		expect(
+			service.plan({
+				message: 'Turn on the bedroom lamp',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: { spaceId: 'space-bedroom' },
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+		});
+	});
+
 	it('keeps a declarative home-state observation on the read path', () => {
 		expect(
 			service.plan({
@@ -566,6 +605,18 @@ describe('BuddyContextPlannerService', () => {
 			expect(result.queries).toEqual([{ kind: 'search-home' }, { kind: 'property-timeseries' }]);
 		},
 	);
+
+	it('routes a relative duration ending in ago to timeseries', () => {
+		expect(
+			service.plan({
+				message: 'What was the bedroom temperature 2 hours ago?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			queries: [{ kind: 'search-home' }, { kind: 'property-timeseries' }],
+		});
+	});
 
 	it('retains current state alongside a historical comparison', () => {
 		const result = service.plan({
