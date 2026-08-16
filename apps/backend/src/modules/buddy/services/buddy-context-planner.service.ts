@@ -25,10 +25,11 @@ const WEATHER_PATTERN =
 const ENERGY_PATTERN = /\b(?:consumption|energy|kwh|power|production|usage)\b/u;
 const SECURITY_PATTERN = /\b(?:alarm|armed|intrusion|secure|security)\b/u;
 const HISTORY_PATTERN =
-	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:month|night|week|year))\b|\b(?:for|over)\s+\d+\s+(?:hours?|days?)\b|\b\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b/u;
+	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:month|night|week|year))\b|\b(?:for|last|over)\s+\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b/u;
 const CURRENT_STATE_PATTERN = /\b(?:at present|currently|now|right now)\b/u;
 const HOME_ENTITY_PATTERN =
 	/\b(?:air|blind|blinds|device|door|doors|fan|garage|lamp|light|lighting|lights|room|scene|sensor|switch|thermostat|window|windows)\b/u;
+const HOME_INSTALLATION_PATTERN = /\b(?:home|house)\b/u;
 const HOME_STATE_PATTERN = /\b(?:cold|cooling|heating|humidity|temperature|warm)\b/u;
 const READ_PATTERN =
 	/^(?:are|can you (?:check|fetch|get|report|show|tell)|check|fetch|find|get|how (?:many|much)|is|list|report|search|show|what|which|will)\b/u;
@@ -173,9 +174,12 @@ export class BuddyContextPlannerService {
 		const includeCurrentStateForRead =
 			(!domains.includes('history') || CURRENT_STATE_PATTERN.test(normalizedMessage)) &&
 			!CAPABILITY_DISCOVERY_PATTERN.test(normalizedMessage);
-		const scopedReferences =
-			references.length !== 1 ||
-			(hasAction && !isActionReferenceCompatible(references[0], hasWrite, hasTrigger, referenceActionTypes))
+		const scopedReferences = hasAction
+			? references.length === 1 &&
+				isActionReferenceCompatible(references[0], hasWrite, hasTrigger, referenceActionTypes)
+				? references
+				: []
+			: SINGULAR_REFERENCE_PRONOUN_PATTERN.test(normalizedMessage) && references.length !== 1
 				? []
 				: references;
 		const scope = {
@@ -234,6 +238,9 @@ function classifyDomains(
 
 	const domains = new Set<BuddyContextDomain>();
 	const hasWeather = WEATHER_PATTERN.test(message);
+	const hasEnergy = ENERGY_PATTERN.test(message);
+	const hasSecurity = SECURITY_PATTERN.test(message);
+	const hasInstallationHome = HOME_INSTALLATION_PATTERN.test(message) && !hasWeather && !hasEnergy && !hasSecurity;
 	const hasContextualHomeState =
 		HOME_STATE_PATTERN.test(message) && (!hasWeather || CONTEXTUAL_SCOPE_PATTERN.test(message));
 
@@ -242,13 +249,14 @@ function classifyDomains(
 		hasContextualHomeState ||
 		hasAction ||
 		hasRecentReferencePronoun ||
-		hasExplicitSpace
+		hasExplicitSpace ||
+		hasInstallationHome
 	) {
 		domains.add('home');
 	}
 	if (hasWeather) domains.add('weather');
-	if (ENERGY_PATTERN.test(message)) domains.add('energy');
-	if (SECURITY_PATTERN.test(message)) domains.add('security');
+	if (hasEnergy) domains.add('energy');
+	if (hasSecurity) domains.add('security');
 	if (HISTORY_PATTERN.test(message)) {
 		const hasDomainSpecificHistory = domains.has('weather') || domains.has('energy') || domains.has('security');
 

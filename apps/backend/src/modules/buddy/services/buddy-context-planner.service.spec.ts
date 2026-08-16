@@ -682,6 +682,49 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('retains every recent reference for a plural-pronoun state read', () => {
+		expect(
+			service.plan({
+				message: 'Are they on?',
+				recentEntityReferences: [
+					{
+						kind: 'device',
+						id: 'device-left-lamp',
+						name: 'Left lamp',
+						compatibleActionTypes: ['turn'],
+					},
+					{
+						kind: 'device',
+						id: 'device-right-lamp',
+						name: 'Right lamp',
+						compatibleActionTypes: ['turn'],
+					},
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			scope: { referencedEntityIds: ['device-left-lamp', 'device-right-lamp'] },
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+		});
+	});
+
+	it('routes an installation-level home request to bounded home retrieval', () => {
+		expect(
+			service.plan({
+				message: 'What is happening at home?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+			strategy: 'model-tools',
+		});
+	});
+
 	it('routes run with an explicit device target to device control', () => {
 		expect(
 			service.plan({
@@ -807,6 +850,18 @@ describe('BuddyContextPlannerService', () => {
 		expect(
 			service.plan({
 				message: 'What was the bedroom temperature 2 hours ago?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			queries: [{ kind: 'search-home' }, { kind: 'property-timeseries' }],
+		});
+	});
+
+	it('routes a numeric last-duration range to timeseries', () => {
+		expect(
+			service.plan({
+				message: 'What was the bedroom temperature in the last 24 hours?',
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			}),
 		).toMatchObject({
