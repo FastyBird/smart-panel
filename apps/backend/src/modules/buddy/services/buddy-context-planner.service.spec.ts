@@ -92,6 +92,8 @@ describe('BuddyContextPlannerService', () => {
 		'What is the thermostat set to?',
 		'Was the thermostat set to 20?',
 		'Did I turn off the kitchen light?',
+		'Did I run movie night?',
+		'Which scenes can I run?',
 		'Why is the thermostat set to 20?',
 	])('keeps an action verb used in a state predicate on the read path: %s', (message) => {
 		expect(
@@ -113,6 +115,35 @@ describe('BuddyContextPlannerService', () => {
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			}),
 		).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+	});
+
+	it('requires a unique recent reference to match the requested action kind', () => {
+		const providerCapabilities = { toolCalling: 'reliable' as const, supportsStructuredToolResults: true };
+		const device = { kind: 'device' as const, id: 'device-lamp', name: 'Lamp' };
+		const scene = { kind: 'scene' as const, id: 'scene-movie-night', name: 'Movie night' };
+
+		expect(service.plan({ message: 'Run it', recentEntityReferences: [device], providerCapabilities })).toMatchObject({
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+		expect(
+			service.plan({ message: 'Turn it off', recentEntityReferences: [scene], providerCapabilities }),
+		).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+		expect(service.plan({ message: 'Run it', recentEntityReferences: [scene], providerCapabilities })).toMatchObject({
+			scope: { referencedEntityIds: ['scene-movie-night'] },
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'run_scene'],
+		});
+		expect(
+			service.plan({ message: 'Turn it off', recentEntityReferences: [device], providerCapabilities }),
+		).toMatchObject({
+			scope: { referencedEntityIds: ['device-lamp'] },
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device'],
+		});
 	});
 
 	it('does not treat an action value as evidence of a unique target', () => {

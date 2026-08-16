@@ -54,9 +54,9 @@ export class BuddyContextPlannerService {
 			(READ_PATTERN.test(normalizedMessage) &&
 				(CAPABILITY_DISCOVERY_PATTERN.test(normalizedMessage) || hasOnlyGroundedActionTokens(normalizedMessage)));
 		const hasWrite = !isGenericExplanation && !isReadOnlyPredicate && WRITE_PATTERN.test(normalizedMessage);
-		const hasTrigger = !isGenericExplanation && TRIGGER_PATTERN.test(normalizedMessage);
+		const hasTrigger = !isGenericExplanation && !isReadOnlyPredicate && TRIGGER_PATTERN.test(normalizedMessage);
 		const hasAction = hasWrite || hasTrigger;
-		const domains = classifyDomains(normalizedMessage, hasAction, isGenericExplanation);
+		const domains = classifyDomains(normalizedMessage, hasAction || isReadOnlyPredicate, isGenericExplanation);
 		const references = resolveRecentReferences(normalizedMessage, input.recentEntityReferences ?? []);
 		const hasRead =
 			domains.some((domain) => domain !== 'general') && (READ_PATTERN.test(normalizedMessage) || !hasAction);
@@ -65,7 +65,8 @@ export class BuddyContextPlannerService {
 		const intent = classifyIntent(hasWrite, hasTrigger, hasRead || requiresReadForAction);
 		const ambiguityRisk = classifyAmbiguityRisk(
 			normalizedMessage,
-			intent,
+			hasWrite,
+			hasTrigger,
 			references,
 			input.conversationSpaceId ?? undefined,
 		);
@@ -148,14 +149,20 @@ function classifyIntent(hasWrite: boolean, hasTrigger: boolean, hasRead: boolean
 
 function classifyAmbiguityRisk(
 	message: string,
-	intent: BuddyContextIntent,
+	hasWrite: boolean,
+	hasTrigger: boolean,
 	references: readonly BuddyContextEntityReference[],
 	conversationSpaceId?: string,
 ): BuddyContextAmbiguityRisk {
-	const isAction = intent === 'write' || intent === 'trigger' || intent === 'mixed';
+	const isAction = hasWrite || hasTrigger;
 
 	if (isAction) {
-		if (ACTION_PRONOUN_PATTERN.test(message) && references.length !== 1) return 'action';
+		if (
+			ACTION_PRONOUN_PATTERN.test(message) &&
+			(references.length !== 1 || !isActionReferenceCompatible(references[0], hasWrite, hasTrigger))
+		) {
+			return 'action';
+		}
 		if (AMBIGUOUS_TARGET_PATTERN.test(message) && !EXPLICIT_TARGET_PATTERN.test(message) && !conversationSpaceId) {
 			return 'action';
 		}
@@ -166,6 +173,17 @@ function classifyAmbiguityRisk(
 	if (CONTEXTUAL_SCOPE_PATTERN.test(message) && !conversationSpaceId) return 'read';
 
 	return 'none';
+}
+
+function isActionReferenceCompatible(
+	reference: BuddyContextEntityReference,
+	hasWrite: boolean,
+	hasTrigger: boolean,
+): boolean {
+	if (hasTrigger && !hasWrite) return reference.kind === 'scene';
+	if (hasWrite && !hasTrigger) return reference.kind !== 'scene';
+
+	return false;
 }
 
 function selectStrategy(
