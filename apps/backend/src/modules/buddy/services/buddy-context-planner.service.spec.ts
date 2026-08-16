@@ -212,6 +212,36 @@ describe('BuddyContextPlannerService', () => {
 		).toMatchObject({ ambiguityRisk: 'none', strategy: 'model-tools' });
 	});
 
+	it('retains every action in a command compound', () => {
+		expect(
+			service.plan({
+				message: 'Turn kitchen light off and run movie night',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			intent: 'mixed',
+			toolNames: ['search_home', 'query_home_state', 'control_device', 'run_scene'],
+		});
+	});
+
+	it('does not attach a condition pronoun as an action reference', () => {
+		expect(
+			service.plan({
+				message: 'If it is colder outside, lower the office thermostat',
+				knownSpaces: [{ id: 'space-office', name: 'Office' }],
+				recentEntityReferences: [
+					{
+						kind: 'device',
+						id: 'device-weather-station',
+						name: 'Weather station',
+						compatibleActionTypes: ['adjust'],
+					},
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ scope: {} });
+	});
+
 	it('does not treat an action value as evidence of a unique target', () => {
 		expect(
 			service.plan({

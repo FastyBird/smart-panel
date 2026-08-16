@@ -38,6 +38,8 @@ const WRITE_PATTERN =
 const TRIGGER_PATTERN = /\b(?:activate|run|start|trigger)\b/u;
 const TARGET_DEPENDENT_ACTION_PATTERN = /\b(?:activate|start)\b/u;
 const CONDITION_PATTERN = /\b(?:after|assuming|before|given that|if|provided|unless|until|when|whenever|while)\b/u;
+const LEADING_CONDITION_PATTERN =
+	/^(?:after|assuming|before|given that|if|provided|unless|until|when|whenever|while)\b/u;
 const RELATIVE_PATTERN = /\b(?:brighter|colder|cooler|darker|down|higher|hotter|less|lower|more|times as|up|warmer)\b/u;
 const PRONOUN_PATTERN = /\b(?:it|one|that|them|these|this|those)\b/u;
 const CAPABILITY_DISCOVERY_PATTERN = /^(?:what|which)\b.*\b(?:am i able to|can i)\b/u;
@@ -60,12 +62,13 @@ export class BuddyContextPlannerService {
 			explicitSpaces.map((space) => space.id),
 		);
 		const isGenericExplanation = isGeneralExplanation(normalizedMessage);
-		const trailingActionMatch = TRAILING_ACTION_PATTERN.exec(normalizedMessage);
+		const isPredicateQuestion = isStatePredicateQuestion(normalizedMessage);
+		const trailingActionMatch = isPredicateQuestion ? TRAILING_ACTION_PATTERN.exec(normalizedMessage) : null;
 		const hasTrailingAction = trailingActionMatch !== null;
-		const actionMessage = trailingActionMatch ? normalizedMessage.slice(trailingActionMatch.index) : normalizedMessage;
+		const actionMessage = getActionMessage(normalizedMessage, trailingActionMatch);
 		const isReadOnlyPredicate =
 			!hasTrailingAction &&
-			(isStatePredicateQuestion(normalizedMessage) ||
+			(isPredicateQuestion ||
 				(READ_PATTERN.test(normalizedMessage) &&
 					(CAPABILITY_DISCOVERY_PATTERN.test(normalizedMessage) || hasOnlyGroundedActionTokens(normalizedMessage))));
 		const hasWrite =
@@ -76,7 +79,8 @@ export class BuddyContextPlannerService {
 		const hasAction = hasWrite || hasTrigger;
 		const requestedActionTypes = getRequestedActionTypes(actionMessage);
 		const domains = classifyDomains(normalizedMessage, hasAction || isReadOnlyPredicate, isGenericExplanation);
-		const references = resolveRecentReferences(normalizedMessage, input.recentEntityReferences ?? []);
+		const referenceMessage = hasAction ? actionMessage : domains.includes('home') ? normalizedMessage : '';
+		const references = resolveRecentReferences(referenceMessage, input.recentEntityReferences ?? []);
 		const hasRead =
 			domains.some((domain) => domain !== 'general') && (READ_PATTERN.test(normalizedMessage) || !hasAction);
 		const requiresReadForAction =
@@ -92,9 +96,17 @@ export class BuddyContextPlannerService {
 			conversationSpaceId,
 		);
 		const strategy = selectStrategy(intent, ambiguityRisk, input.providerCapabilities);
+		const scopedReferences =
+			hasAction &&
+			(references.length !== 1 ||
+				!isActionReferenceCompatible(references[0], hasWrite, hasTrigger, requestedActionTypes))
+				? []
+				: references;
 		const scope = {
 			...(conversationSpaceId ? { spaceId: conversationSpaceId } : {}),
-			...(references.length > 0 ? { referencedEntityIds: references.map((reference) => reference.id) } : {}),
+			...(scopedReferences.length > 0
+				? { referencedEntityIds: scopedReferences.map((reference) => reference.id) }
+				: {}),
 		};
 
 		return {
@@ -107,6 +119,15 @@ export class BuddyContextPlannerService {
 			strategy,
 		};
 	}
+}
+
+function getActionMessage(message: string, trailingActionMatch: RegExpExecArray | null): string {
+	if (trailingActionMatch) return message.slice(trailingActionMatch.index);
+	if (!LEADING_CONDITION_PATTERN.test(message)) return message;
+
+	const conditionalActionMatch = TRAILING_ACTION_PATTERN.exec(message);
+
+	return conditionalActionMatch ? message.slice(conditionalActionMatch.index) : message;
 }
 
 function classifyDomains(message: string, hasAction: boolean, isGenericExplanation: boolean): BuddyContextDomain[] {
