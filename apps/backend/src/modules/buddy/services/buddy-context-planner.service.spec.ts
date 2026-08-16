@@ -47,10 +47,57 @@ describe('BuddyContextPlannerService', () => {
 				{ kind: 'current-state', spaceId: 'space-office' },
 				{ kind: 'weather' },
 			],
-			toolNames: ['search_home', 'query_home_state', 'control_device'],
+			toolNames: [],
 			ambiguityRisk: 'none',
-			strategy: 'model-tools',
+			strategy: 'deterministic-action',
 		});
+	});
+
+	it('treats do and does action predicates as state reads', () => {
+		expect(
+			service.plan({
+				message: 'Does the fan run?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ intent: 'read', strategy: 'model-tools', toolNames: ['search_home', 'query_home_state'] });
+	});
+
+	it('recognizes established target-dependent action verbs', () => {
+		expect(
+			service.plan({
+				message: 'Stop bedroom fan',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			intent: 'mixed',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device', 'run_scene'],
+		});
+	});
+
+	it('keeps established heating, cooling, lighting, and air categories on the home read path', () => {
+		for (const message of ['Is the heating on?', 'What is the air quality?', 'Is cooling active?', 'List lighting']) {
+			expect(
+				service.plan({
+					message,
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({ domains: ['home'], intent: 'read', strategy: 'model-tools' });
+		}
+	});
+
+	it.each([
+		{ message: 'Will it rain tomorrow?', query: { kind: 'weather' } },
+		{ message: 'How much power did we use today?', query: { kind: 'energy-summary' } },
+		{ message: 'Is the house secure?', query: { kind: 'security-status' } },
+	])('prefetches $query.kind while no matching Buddy model tool exists', ({ message, query }) => {
+		const result = service.plan({
+			message,
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(result).toMatchObject({ strategy: 'prefetch', toolNames: [] });
+		expect(result.queries).toContainEqual(query);
 	});
 
 	it('selects prefetch for tool-less reads and no tools for the provider', () => {

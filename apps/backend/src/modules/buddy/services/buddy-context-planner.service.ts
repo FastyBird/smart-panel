@@ -26,17 +26,17 @@ const SECURITY_PATTERN = /\b(?:alarm|armed|intrusion|secure|security)\b/u;
 const HISTORY_PATTERN =
 	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:month|night|week|year))\b|\b(?:for|over)\s+\d+\s+(?:hours?|days?)\b|\b\d{4}-\d{2}-\d{2}\b/u;
 const HOME_PATTERN =
-	/\b(?:blind|blinds|cold|device|door|doors|fan|garage|humidity|lamp|light|lights|room|scene|sensor|switch|temperature|thermostat|warm|window|windows)\b/u;
+	/\b(?:air|blind|blinds|cold|cooling|device|door|doors|fan|garage|heating|humidity|lamp|light|lighting|lights|room|scene|sensor|switch|temperature|thermostat|warm|window|windows)\b/u;
 const READ_PATTERN =
 	/^(?:are|can you (?:check|fetch|get|report|show|tell)|check|fetch|find|get|how (?:many|much)|is|list|report|search|show|what|which|will)\b/u;
 const PREDICATE_QUESTION_PATTERN =
-	/^(?:are|can|could|did|had|has|have|is|may|might|will|would|was|were|(?:how|what|when|where|which|who|why)['’]s|(?:what|why) (?:are|did|had|has|have|is|was|were))\b/u;
+	/^(?:are|can|could|did|do|does|had|has|have|is|may|might|will|would|was|were|(?:how|what|when|where|which|who|why)['’]s|(?:what|why) (?:are|did|do|does|had|has|have|is|was|were))\b/u;
 const ACTION_REQUEST_PATTERN =
 	/^(?:(?:can|could|may|might|will|would) you\b|are you able to\b|is it possible to\b|is there any way you can\b)/u;
 const WRITE_PATTERN =
-	/\b(?:adjust|brighten|close|decrease|dim|increase|lock|lower|open|raise|set|switch|turn|unlock)\b/u;
-const TRIGGER_PATTERN = /\b(?:activate|run|start|trigger)\b/u;
-const TARGET_DEPENDENT_ACTION_PATTERN = /\b(?:activate|start)\b/u;
+	/\b(?:adjust|brighten|change|close|decrease|dim|increase|lock|lower|make|open|raise|set|switch|turn|unlock)\b/u;
+const TRIGGER_PATTERN = /\b(?:activate|deactivate|run|start|stop|trigger)\b/u;
+const TARGET_DEPENDENT_ACTION_PATTERN = /\b(?:activate|deactivate|start|stop)\b/u;
 const CONDITION_PATTERN = /\b(?:after|assuming|before|given that|if|provided|unless|until|when|whenever|while)\b/u;
 const LEADING_CONDITION_PATTERN =
 	/^(?:after|assuming|before|given that|if|provided|unless|until|when|whenever|while)\b/u;
@@ -49,7 +49,7 @@ const GENERIC_ACTION_TARGET_PATTERN =
 const WHOLE_HOME_SCOPE_PATTERN =
 	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b/u;
 const TRAILING_ACTION_PATTERN =
-	/(?:[?;,]|\b(?:and|then)\b)\s*(?:(?:if so|please)\s+)*(?:(?:can|could|may|might|will|would) you\s+)?(?:activate|adjust|brighten|close|decrease|dim|increase|lock|lower|open|raise|run|set|start|switch|trigger|turn|unlock)\b/u;
+	/(?:[?;,]|\b(?:and|then)\b)\s*(?:(?:if so|please)\s+)*(?:(?:can|could|may|might|will|would) you\s+)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\b/u;
 
 @Injectable()
 export class BuddyContextPlannerService {
@@ -95,7 +95,7 @@ export class BuddyContextPlannerService {
 			references,
 			conversationSpaceId,
 		);
-		const strategy = selectStrategy(intent, ambiguityRisk, input.providerCapabilities);
+		const strategy = selectStrategy(intent, ambiguityRisk, domains, input.providerCapabilities);
 		const scopedReferences =
 			hasAction &&
 			(references.length !== 1 ||
@@ -284,13 +284,17 @@ function getRequestedActionTypes(message: string): BuddyContextActionType[] {
 	const mappings: readonly [RegExp, BuddyContextActionType][] = [
 		[/\bactivate\b/u, 'activate'],
 		[/\b(?:adjust|brighten|decrease|increase|lower|raise)\b/u, 'adjust'],
+		[/\bchange\b/u, 'change'],
 		[/\bclose\b/u, 'close'],
+		[/\bdeactivate\b/u, 'deactivate'],
 		[/\bdim\b/u, 'dim'],
 		[/\block\b/u, 'lock'],
+		[/\bmake\b/u, 'make'],
 		[/\bopen\b/u, 'open'],
 		[/\brun\b/u, 'run'],
 		[/\bset\b/u, 'set'],
 		[/\bstart\b/u, 'start'],
+		[/\bstop\b/u, 'stop'],
 		[/\bswitch\b/u, 'switch'],
 		[/\btrigger\b/u, 'trigger'],
 		[/\bturn\b/u, 'turn'],
@@ -307,6 +311,7 @@ function getRequestedActionTypes(message: string): BuddyContextActionType[] {
 function selectStrategy(
 	intent: BuddyContextIntent,
 	ambiguityRisk: BuddyContextAmbiguityRisk,
+	domains: readonly BuddyContextDomain[],
 	providerCapabilities: BuddyContextPlannerInput['providerCapabilities'],
 ): BuddyContextStrategy {
 	if (intent === 'none') return 'no-home-context';
@@ -314,7 +319,9 @@ function selectStrategy(
 
 	const hasAction = intent === 'write' || intent === 'trigger' || intent === 'mixed';
 	const canUseModelTools =
-		providerCapabilities.toolCalling === 'reliable' && providerCapabilities.supportsStructuredToolResults;
+		providerCapabilities.toolCalling === 'reliable' &&
+		providerCapabilities.supportsStructuredToolResults &&
+		domains.every((domain) => domain === 'general' || domain === 'home');
 
 	if (hasAction) return canUseModelTools ? 'model-tools' : 'deterministic-action';
 
