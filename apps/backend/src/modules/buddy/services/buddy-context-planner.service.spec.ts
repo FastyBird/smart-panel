@@ -40,12 +40,8 @@ describe('BuddyContextPlannerService', () => {
 		).toEqual({
 			domains: ['home', 'weather'],
 			intent: 'mixed',
-			scope: { spaceId: 'space-office' },
-			queries: [
-				{ kind: 'search-home', spaceId: 'space-office' },
-				{ kind: 'current-state', spaceId: 'space-office' },
-				{ kind: 'weather' },
-			],
+			scope: {},
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }, { kind: 'weather' }],
 			toolNames: ['search_home', 'query_home_state', 'control_device'],
 			ambiguityRisk: 'none',
 			strategy: 'model-tools',
@@ -153,6 +149,50 @@ describe('BuddyContextPlannerService', () => {
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			}),
 		).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+	});
+
+	it('does not use conversation scope as proof that a generic action target is unique', () => {
+		expect(
+			service.plan({
+				message: 'Turn on the lamp',
+				conversationSpaceId: 'space-bedroom',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: { spaceId: 'space-bedroom' },
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
+	it.each(['Are any windows open in the whole house?', 'What is the bedroom temperature?'])(
+		'does not force an explicit global or named-space read into conversation scope: %s',
+		(message) => {
+			const result = service.plan({
+				message,
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			});
+
+			expect(result.scope).toEqual({});
+			expect(result.queries).not.toContainEqual(expect.objectContaining({ spaceId: 'space-office' }));
+		},
+	);
+
+	it('keeps target-dependent start verbs available to compatible action tools', () => {
+		expect(
+			service.plan({
+				message: 'Start the bedroom fan',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'mixed',
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device', 'run_scene'],
+		});
 	});
 
 	it('uses a unique recent reference and clarifies missing or ambiguous pronouns', () => {

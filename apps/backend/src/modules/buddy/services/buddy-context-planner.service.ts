@@ -23,7 +23,7 @@ const ENERGY_PATTERN = /\b(?:consumption|energy|kwh|power|production|usage)\b/u;
 const SECURITY_PATTERN = /\b(?:alarm|armed|intrusion|secure|security)\b/u;
 const HISTORY_PATTERN = /\b(?:chart|graph|history|historical|past|trend)\b|\b(?:for|over)\s+\d+\s+(?:hours?|days?)\b/u;
 const HOME_PATTERN =
-	/\b(?:blind|blinds|cold|device|door|doors|garage|humidity|lamp|light|lights|room|scene|sensor|switch|temperature|thermostat|warm|window|windows)\b/u;
+	/\b(?:blind|blinds|cold|device|door|doors|fan|garage|humidity|lamp|light|lights|room|scene|sensor|switch|temperature|thermostat|warm|window|windows)\b/u;
 const READ_PATTERN =
 	/^(?:are|can you (?:check|fetch|get|report|show|tell)|check|fetch|find|get|how (?:many|much)|is|list|report|search|show|what|which|will)\b/u;
 const PREDICATE_QUESTION_PATTERN =
@@ -33,6 +33,7 @@ const ACTION_REQUEST_PATTERN =
 const WRITE_PATTERN =
 	/\b(?:adjust|brighten|close|decrease|dim|increase|lock|lower|open|raise|set|switch|turn|unlock)\b/u;
 const TRIGGER_PATTERN = /\b(?:activate|run|start|trigger)\b/u;
+const TARGET_DEPENDENT_ACTION_PATTERN = /\b(?:activate|start)\b/u;
 const CONDITION_PATTERN = /\b(?:after|assuming|before|given that|if|provided|unless|until|when|whenever|while)\b/u;
 const RELATIVE_PATTERN = /\b(?:brighter|colder|cooler|darker|down|higher|hotter|less|lower|more|times as|up|warmer)\b/u;
 const PRONOUN_PATTERN = /\b(?:it|one|that|them|these|this|those)\b/u;
@@ -40,20 +41,26 @@ const ACTION_PRONOUN_PATTERN =
 	/\b(?:activate|adjust|close|dim|lock|lower|open|raise|run|set|start|switch|trigger|turn|unlock)\s+(?:it|one|that|them|these|this|those)\b/u;
 const CAPABILITY_DISCOVERY_PATTERN = /^(?:what|which)\b.*\b(?:am i able to|can i)\b/u;
 const CONTEXTUAL_SCOPE_PATTERN = /\b(?:here|in this room|this space)\b/u;
-const AMBIGUOUS_TARGET_PATTERN = /\b(?:device|lamp|light|scene|switch|thermostat)\b/u;
-const EXPLICIT_TARGET_PATTERN =
+const AMBIGUOUS_TARGET_PATTERN = /\b(?:device|fan|lamp|light|scene|switch|thermostat)\b/u;
+const EXPLICIT_SPACE_PATTERN =
 	/\b(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\b/u;
+const WHOLE_HOME_SCOPE_PATTERN =
+	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b/u;
 
 @Injectable()
 export class BuddyContextPlannerService {
 	plan(input: BuddyContextPlannerInput): BuddyContextPlan {
 		const normalizedMessage = normalize(input.message);
+		const conversationSpaceId = resolveConversationSpaceHint(normalizedMessage, input.conversationSpaceId);
 		const isGenericExplanation = isGeneralExplanation(normalizedMessage);
 		const isReadOnlyPredicate =
 			isStatePredicateQuestion(normalizedMessage) ||
 			(READ_PATTERN.test(normalizedMessage) &&
 				(CAPABILITY_DISCOVERY_PATTERN.test(normalizedMessage) || hasOnlyGroundedActionTokens(normalizedMessage)));
-		const hasWrite = !isGenericExplanation && !isReadOnlyPredicate && WRITE_PATTERN.test(normalizedMessage);
+		const hasWrite =
+			!isGenericExplanation &&
+			!isReadOnlyPredicate &&
+			(WRITE_PATTERN.test(normalizedMessage) || TARGET_DEPENDENT_ACTION_PATTERN.test(normalizedMessage));
 		const hasTrigger = !isGenericExplanation && !isReadOnlyPredicate && TRIGGER_PATTERN.test(normalizedMessage);
 		const hasAction = hasWrite || hasTrigger;
 		const domains = classifyDomains(normalizedMessage, hasAction || isReadOnlyPredicate, isGenericExplanation);
@@ -68,11 +75,11 @@ export class BuddyContextPlannerService {
 			hasWrite,
 			hasTrigger,
 			references,
-			input.conversationSpaceId ?? undefined,
+			conversationSpaceId,
 		);
 		const strategy = selectStrategy(intent, ambiguityRisk, input.providerCapabilities);
 		const scope = {
-			...(input.conversationSpaceId ? { spaceId: input.conversationSpaceId } : {}),
+			...(conversationSpaceId ? { spaceId: conversationSpaceId } : {}),
 			...(references.length > 0 ? { referencedEntityIds: references.map((reference) => reference.id) } : {}),
 		};
 
@@ -80,7 +87,7 @@ export class BuddyContextPlannerService {
 			domains,
 			intent,
 			scope,
-			queries: buildQueries(domains, hasAction, requiresReadForAction, input.conversationSpaceId ?? undefined),
+			queries: buildQueries(domains, hasAction, requiresReadForAction, conversationSpaceId),
 			toolNames: buildToolNames(domains, hasWrite, hasTrigger, strategy, normalizedMessage),
 			ambiguityRisk,
 			strategy,
@@ -163,7 +170,7 @@ function classifyAmbiguityRisk(
 		) {
 			return 'action';
 		}
-		if (AMBIGUOUS_TARGET_PATTERN.test(message) && !EXPLICIT_TARGET_PATTERN.test(message) && !conversationSpaceId) {
+		if (AMBIGUOUS_TARGET_PATTERN.test(message) && !EXPLICIT_SPACE_PATTERN.test(message)) {
 			return 'action';
 		}
 
@@ -180,10 +187,19 @@ function isActionReferenceCompatible(
 	hasWrite: boolean,
 	hasTrigger: boolean,
 ): boolean {
-	if (hasTrigger && !hasWrite) return reference.kind === 'scene';
+	if (hasTrigger && hasWrite) return true;
+	if (hasTrigger) return reference.kind === 'scene';
 	if (hasWrite && !hasTrigger) return reference.kind !== 'scene';
 
 	return false;
+}
+
+function resolveConversationSpaceHint(message: string, conversationSpaceId?: string | null): string | undefined {
+	if (!conversationSpaceId || WHOLE_HOME_SCOPE_PATTERN.test(message) || EXPLICIT_SPACE_PATTERN.test(message)) {
+		return undefined;
+	}
+
+	return conversationSpaceId;
 }
 
 function selectStrategy(
