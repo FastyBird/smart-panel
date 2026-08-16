@@ -263,6 +263,15 @@ describe('BuddyContextPlannerService', () => {
 		).toMatchObject({ intent: 'mixed', strategy: 'model-tools' });
 	});
 
+	it('accepts politeness inside a modal action request', () => {
+		expect(
+			service.plan({
+				message: 'Could you please turn off kitchen light?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ intent: 'write', strategy: 'model-tools' });
+	});
+
 	it('keeps a modal state-read wrapper off the action path', () => {
 		expect(
 			service.plan({
@@ -333,6 +342,15 @@ describe('BuddyContextPlannerService', () => {
 		).toMatchObject({ scope: {} });
 	});
 
+	it('does not attach a trailing condition pronoun as an action reference', () => {
+		expect(
+			service.plan({
+				message: 'Turn kitchen light off if it is dark',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ ambiguityRisk: 'none', intent: 'mixed', strategy: 'model-tools' });
+	});
+
 	it('does not treat an action value as evidence of a unique target', () => {
 		expect(
 			service.plan({
@@ -378,6 +396,20 @@ describe('BuddyContextPlannerService', () => {
 		},
 	);
 
+	it('clarifies a generic category target in an arbitrary known space', () => {
+		expect(
+			service.plan({
+				message: 'Turn on the nursery lamp',
+				knownSpaces: [{ id: 'space-nursery', name: 'Nursery' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: { spaceId: 'space-nursery' },
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+		});
+	});
+
 	it('keeps a declarative home-state observation on the read path', () => {
 		expect(
 			service.plan({
@@ -420,6 +452,23 @@ describe('BuddyContextPlannerService', () => {
 			expect(result.queries).not.toContainEqual(expect.objectContaining({ spaceId: 'space-office' }));
 		},
 	);
+
+	it('prefers the longest overlapping explicit space name', () => {
+		const result = service.plan({
+			message: 'What is the temperature in Bedroom 2?',
+			knownSpaces: [
+				{ id: 'space-bedroom', name: 'Bedroom' },
+				{ id: 'space-bedroom-2', name: 'Bedroom 2' },
+			],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(result.scope).toEqual({ spaceId: 'space-bedroom-2' });
+		expect(result.queries).toEqual([
+			{ kind: 'search-home', spaceId: 'space-bedroom-2' },
+			{ kind: 'current-state', spaceId: 'space-bedroom-2' },
+		]);
+	});
 
 	it('keeps target-dependent start verbs available to compatible action tools', () => {
 		expect(

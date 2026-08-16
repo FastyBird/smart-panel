@@ -40,7 +40,7 @@ const WRITE_PATTERN =
 const TRIGGER_PATTERN = /\b(?:activate|deactivate|run|start|stop|trigger)\b/u;
 const TARGET_DEPENDENT_ACTION_PATTERN = /\b(?:activate|deactivate|start|stop)\b/u;
 const ACTION_COMMAND_PATTERN =
-	/^[?;,\s]*(?:(?:and|if so|please|then)\s+)*(?:(?:can|could|may|might|will|would) you\s+)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\b/u;
+	/^[?;,\s]*(?:(?:and|if so|please|then)\s+)*(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\b/u;
 const CONDITION_PATTERN = /\b(?:after|assuming|before|given that|if|provided|unless|until|when|whenever|while)\b/u;
 const LEADING_CONDITION_PATTERN =
 	/^(?:after|assuming|before|given that|if|provided|unless|until|when|whenever|while)\b/u;
@@ -49,11 +49,25 @@ const PRONOUN_PATTERN = /\b(?:it|one|that|them|these|this|those)\b/u;
 const CAPABILITY_DISCOVERY_PATTERN = /^(?:what|which)\b.*\b(?:am i able to|can i)\b/u;
 const CONTEXTUAL_SCOPE_PATTERN = /\b(?:here|in this room|this space)\b/u;
 const GENERIC_ACTION_TARGET_PATTERN =
-	/\b(?:a|all|an|any|the)\s+(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:device|devices|fan|fans|lamp|lamps|light|lights|scene|scenes|switch|switches)\b|\b(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:devices|fans|lamps|lights|scenes|switches)\b|^[?;,\s]*(?:(?:and|if so|please|then)\s+)*(?:(?:can|could|may|might|will|would) you\s+)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\s+(?:off\s+|on\s+)?(?:device|fan|lamp|light|scene|switch)\b/u;
+	/\b(?:a|all|an|any|the)\s+(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:device|devices|fan|fans|lamp|lamps|light|lights|scene|scenes|switch|switches)\b|\b(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:devices|fans|lamps|lights|scenes|switches)\b|^[?;,\s]*(?:(?:and|if so|please|then)\s+)*(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\s+(?:off\s+|on\s+)?(?:device|fan|lamp|light|scene|switch)\b/u;
+const GENERIC_ACTION_TARGET_NAMES = [
+	'device',
+	'devices',
+	'fan',
+	'fans',
+	'lamp',
+	'lamps',
+	'light',
+	'lights',
+	'scene',
+	'scenes',
+	'switch',
+	'switches',
+] as const;
 const WHOLE_HOME_SCOPE_PATTERN =
 	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b/u;
 const TRAILING_ACTION_PATTERN =
-	/(?:[?;,]|\b(?:and|then)\b)\s*(?:(?:if so|please)\s+)*(?:(?:can|could|may|might|will|would) you\s+)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\b/u;
+	/(?:[?;,]|\b(?:and|then)\b)\s*(?:(?:if so|please)\s+)*(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\b/u;
 const TRAILING_READ_PATTERN =
 	/(?:[?;,]|\b(?:and|then)\b)\s*(?:(?:also|please)\s+)*(?:check|confirm|determine|fetch|find|get|read|report|show|tell(?: me)?|verify|what|whether|which)\b/u;
 
@@ -75,6 +89,7 @@ export class BuddyContextPlannerService {
 		const hasTrailingAction = trailingActionMatch !== null;
 		const hasTrailingRead = TRAILING_READ_PATTERN.test(normalizedMessage);
 		const actionMessage = getActionMessage(normalizedMessage, trailingActionMatch);
+		const actionReferenceMessage = getActionReferenceMessage(actionMessage);
 		const isReadOnlyPredicate =
 			!hasTrailingAction &&
 			(isPredicateQuestion ||
@@ -92,9 +107,9 @@ export class BuddyContextPlannerService {
 			ACTION_COMMAND_PATTERN.test(actionMessage) &&
 			TRIGGER_PATTERN.test(actionMessage);
 		const hasAction = hasWrite || hasTrigger;
-		const referenceActionTypes = getReferenceActionTypes(actionMessage);
+		const referenceActionTypes = getReferenceActionTypes(actionReferenceMessage);
 		const domains = classifyDomains(normalizedMessage, hasAction || isReadOnlyPredicate, isGenericExplanation);
-		const referenceMessage = hasAction ? actionMessage : domains.includes('home') ? normalizedMessage : '';
+		const referenceMessage = hasAction ? actionReferenceMessage : domains.includes('home') ? normalizedMessage : '';
 		const references = resolveRecentReferences(referenceMessage, input.recentEntityReferences ?? []);
 		const hasRead =
 			domains.some((domain) => domain !== 'general') &&
@@ -105,12 +120,13 @@ export class BuddyContextPlannerService {
 		const intent = classifyIntent(hasWrite, hasTrigger, hasRead || requiresReadForAction);
 		const ambiguityRisk = classifyAmbiguityRisk(
 			normalizedMessage,
-			actionMessage,
+			actionReferenceMessage,
 			hasWrite,
 			hasTrigger,
 			referenceActionTypes,
 			references,
 			conversationSpaceId,
+			explicitSpaces,
 		);
 		const strategy = selectStrategy(intent, ambiguityRisk, domains, input.providerCapabilities);
 		const scopedReferences =
@@ -145,6 +161,13 @@ function getActionMessage(message: string, trailingActionMatch: RegExpExecArray 
 	const conditionalActionMatch = TRAILING_ACTION_PATTERN.exec(message);
 
 	return conditionalActionMatch ? message.slice(conditionalActionMatch.index) : message;
+}
+
+function getActionReferenceMessage(message: string): string {
+	const trailingCondition =
+		/\b(?:after|assuming|before|given that|if|provided|unless|until|when|whenever|while)\b/u.exec(message);
+
+	return trailingCondition ? message.slice(0, trailingCondition.index) : message;
 }
 
 function classifyDomains(message: string, hasAction: boolean, isGenericExplanation: boolean): BuddyContextDomain[] {
@@ -208,24 +231,25 @@ function classifyIntent(hasWrite: boolean, hasTrigger: boolean, hasRead: boolean
 
 function classifyAmbiguityRisk(
 	message: string,
-	actionMessage: string,
+	actionReferenceMessage: string,
 	hasWrite: boolean,
 	hasTrigger: boolean,
 	requestedActionTypes: readonly BuddyContextActionType[],
 	references: readonly BuddyContextEntityReference[],
 	conversationSpaceId?: string,
+	explicitSpaces: readonly BuddyContextSpaceReference[] = [],
 ): BuddyContextAmbiguityRisk {
 	const isAction = hasWrite || hasTrigger;
 
 	if (isAction) {
 		if (
-			PRONOUN_PATTERN.test(actionMessage) &&
+			PRONOUN_PATTERN.test(actionReferenceMessage) &&
 			(references.length !== 1 ||
 				!isActionReferenceCompatible(references[0], hasWrite, hasTrigger, requestedActionTypes))
 		) {
 			return 'action';
 		}
-		if (GENERIC_ACTION_TARGET_PATTERN.test(actionMessage)) {
+		if (hasGenericActionTarget(actionReferenceMessage, explicitSpaces)) {
 			return 'action';
 		}
 
@@ -235,6 +259,16 @@ function classifyAmbiguityRisk(
 	if (CONTEXTUAL_SCOPE_PATTERN.test(message) && !conversationSpaceId) return 'read';
 
 	return 'none';
+}
+
+function hasGenericActionTarget(message: string, explicitSpaces: readonly BuddyContextSpaceReference[]): boolean {
+	if (GENERIC_ACTION_TARGET_PATTERN.test(message)) return true;
+
+	return explicitSpaces.some((space) =>
+		GENERIC_ACTION_TARGET_NAMES.some((target) =>
+			containsNormalizedPhrase(message, `${normalize(space.name)} ${target}`),
+		),
+	);
 }
 
 function isActionReferenceCompatible(
@@ -271,28 +305,55 @@ function findExplicitSpaces(
 	message: string,
 	knownSpaces: readonly BuddyContextSpaceReference[],
 ): BuddyContextSpaceReference[] {
-	return knownSpaces.filter((space) => containsNormalizedPhrase(message, normalize(space.name)));
+	const matches = knownSpaces
+		.map((space) => ({
+			space,
+			name: normalize(space.name),
+			ranges: findNormalizedPhraseRanges(message, normalize(space.name)),
+		}))
+		.filter((match) => match.ranges.length > 0);
+
+	return matches
+		.filter((match) =>
+			match.ranges.some(
+				(range) =>
+					!matches.some(
+						(other) =>
+							other.name.length > match.name.length &&
+							other.ranges.some((otherRange) => otherRange.start <= range.start && otherRange.end >= range.end),
+					),
+			),
+		)
+		.map((match) => match.space);
 }
 
 function containsNormalizedPhrase(message: string, phrase: string): boolean {
-	if (phrase.length === 0) return false;
+	return findNormalizedPhraseRanges(message, phrase).length > 0;
+}
+
+function findNormalizedPhraseRanges(message: string, phrase: string): Array<{ start: number; end: number }> {
+	if (phrase.length === 0) return [];
+
+	const ranges: Array<{ start: number; end: number }> = [];
 
 	let offset = 0;
 
 	while (offset <= message.length - phrase.length) {
 		const index = message.indexOf(phrase, offset);
-		if (index < 0) return false;
+		if (index < 0) break;
 
 		const before = index === 0 ? '' : message[index - 1];
 		const afterIndex = index + phrase.length;
 		const after = afterIndex >= message.length ? '' : message[afterIndex];
 
-		if (!/[\p{Letter}\p{Number}]/u.test(before) && !/[\p{Letter}\p{Number}]/u.test(after)) return true;
+		if (!/[\p{Letter}\p{Number}]/u.test(before) && !/[\p{Letter}\p{Number}]/u.test(after)) {
+			ranges.push({ start: index, end: afterIndex });
+		}
 
 		offset = index + phrase.length;
 	}
 
-	return false;
+	return ranges;
 }
 
 function getRequestedActionTypes(message: string): BuddyContextActionType[] {
