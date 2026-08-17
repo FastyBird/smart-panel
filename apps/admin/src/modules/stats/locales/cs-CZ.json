@@ -36,7 +36,7 @@
 				"title": "OS"
 			},
 			"hostname": {
-				"title": "Hostname"
+				"title": "Název hostitele"
 			},
 			"ipv4": {
 				"title": "IPv4"

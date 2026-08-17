@@ -16,7 +16,7 @@
 				"title": "Jednotka teploty",
 				"placeholder": "Vyberte jednotku teploty",
 				"values": {
-					"celsius": "Celsius (°C)",
+					"celsius": "Celzia (°C)",
 					"fahrenheit": "Fahrenheit (°F)"
 				}
 			}

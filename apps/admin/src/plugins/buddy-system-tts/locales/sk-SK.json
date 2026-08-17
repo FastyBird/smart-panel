@@ -8,7 +8,7 @@
 				"title": "Povolený"
 			},
 			"engine": {
-				"title": "Engine",
+				"title": "Motor",
 				"placeholder": "piper alebo espeak (automatická detekcia ak prázdne)",
 				"description": "TTS engine na použitie. Ponechajte prázdne na automatickú detekciu (preferuje piper, záloha espeak)"
 			},

@@ -1,11 +1,11 @@
 {
 	"menu": {
-		"title": "Buddy"
+		"title": "Compañero"
 	},
 	"headings": {
-		"settings": "Buddy",
+		"settings": "Compañero",
 		"chat": "Chat de Buddy",
-		"chats": "Chats",
+		"chats": "Charlas",
 		"aboutBuddy": "Configuración del Buddy IA"
 	},
 	"subHeadings": {
@@ -180,8 +180,8 @@
 		"summaryMessagingSkipped": "Mensajería omitida",
 		"notSelected": "No seleccionado",
 		"skipped": "Omitido",
-		"ttsHeading": "Text-to-Speech (TTS)",
-		"sttHeading": "Speech-to-Text (STT)",
+		"ttsHeading": "Texto a voz (TTS)",
+		"sttHeading": "Voz a texto (STT)",
 		"buttons": {
 			"back": "Atrás",
 			"next": "Siguiente",

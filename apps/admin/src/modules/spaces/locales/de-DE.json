@@ -87,7 +87,7 @@
 			"description": "Beschreibung",
 			"order": "Reihenfolge",
 			"devices": "Geräte",
-			"displays": "Displays",
+			"displays": "Zeigt an",
 			"actions": "Aktionen"
 		},
 		"empty": "Keine Bereiche gefunden. Erstellen Sie Ihren ersten Bereich, um zu beginnen."
@@ -329,7 +329,7 @@
 			"select": "Stockwerk auswählen"
 		},
 		"displays": {
-			"title": "Displays",
+			"title": "Zeigt an",
 			"add": "Display hinzufügen",
 			"empty": "Diesem Bereich sind keine Displays zugewiesen",
 			"loading": "Displays werden geladen...",

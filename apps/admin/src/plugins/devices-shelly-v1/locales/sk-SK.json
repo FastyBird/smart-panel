@@ -9,7 +9,7 @@
 			"supported": "Gratulujeme! Zariadenie je podporované",
 			"notSupported": "Ľutujeme, vaše zariadenie nie je podporované",
 			"model": "Model",
-			"firmware": "Firmware"
+			"firmware": "Firmvér"
 		},
 		"wizard": {
 			"title": "Sprievodca vyhľadaním Shelly Gen 1"

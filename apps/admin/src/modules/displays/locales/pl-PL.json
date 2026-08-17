@@ -76,7 +76,7 @@
 			"permitJoinDurationMs": {
 				"title": "Czas dołączania",
 				"description": "Czas w milisekundach, przez który dołączanie pozostaje aktywne",
-				"placeholder": "120000",
+				"placeholder": "120 000",
 				"unit": "ms",
 				"validation": {
 					"required": "Czas dołączania jest wymagany",
@@ -208,7 +208,7 @@
 				"placeholder": "Domyślna systemowa",
 				"values": {
 					"celsius": "Celsjusz (°C)",
-					"fahrenheit": "Fahrenheit (°F)"
+					"fahrenheit": "Fahrenheita (°F)"
 				}
 			},
 			"windSpeedUnit": {

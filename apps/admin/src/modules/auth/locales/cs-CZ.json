@@ -135,5 +135,55 @@
     "close": {
       "title": "Zavřít"
     }
+  },
+  "tokens": {
+    "title": "Osobní přístupové tokeny",
+    "create": "Vytvořit token",
+    "revoke": "Odvolat",
+    "never": "Nikdy",
+    "description": "Osobní přístupové tokeny umožňují externím aplikacím autentifikovat se v API vaším jménem.",
+    "noTokens": "Zatím nebyly vytvořeny žádné osobní přístupové tokeny.",
+    "columns": {
+      "name": "Název",
+      "created": "Vytvořeno",
+      "lastUsed": "Naposledy použito",
+      "expires": "Vyprší",
+      "actions": "Akce"
+    },
+    "createDialog": {
+      "title": "Vytvořit osobní přístupový token",
+      "name": "Název tokenu",
+      "namePlaceholder": "např. CI/CD Pipeline, Home Assistant",
+      "nameRequired": "Název tokenu je povinný",
+      "description": "Popis (volitelné)",
+      "descriptionPlaceholder": "K čemu se tento token používá?",
+      "expiry": "Vypršení",
+      "expiry30": "30 dní",
+      "expiry90": "90 dní",
+      "expiry365": "1 rok",
+      "expiryNever": "Bez vypršení",
+      "cancel": "Zrušit",
+      "submit": "Vytvořit token"
+    },
+    "createdDialog": {
+      "title": "Token úspěšně vytvořen",
+      "warning": "Zkopírujte tento token nyní. Znovu ho neuvidíte.",
+      "copy": "Kopírovat",
+      "copied": "Zkopírováno!",
+      "done": "Hotovo"
+    },
+    "revokeDialog": {
+      "title": "Odvolat token",
+      "message": "Opravdu chcete tento token odvolat? Tuto akci nelze vrátit zpět.",
+      "confirm": "Odvolat",
+      "cancel": "Zrušit"
+    },
+    "messages": {
+      "created": "Osobní přístupový token byl úspěšně vytvořen.",
+      "createError": "Nepodařilo se vytvořit osobní přístupový token.",
+      "revoked": "Token byl úspěšně odvolán.",
+      "revokeError": "Nepodařilo se odvolat token.",
+      "copyError": "Nepodařilo se zkopírovat token do schránky."
+    }
   }
 }

@@ -19,28 +19,28 @@
 	"edit": {
 		"sections": {
 			"general": {
-				"title": "General"
+				"title": "generál"
 			},
 			"organization": {
-				"title": "Organization",
-				"hint": "Assign this room to a zone (e.g. \"Ground Floor\", \"Upstairs\") to group related rooms together."
+				"title": "Organizácia",
+				"hint": "Priraďte túto miestnosť k zóne (napr. „Prízemie“, „Na poschodí“), aby ste mohli zoskupiť súvisiace miestnosti."
 			},
 			"devicesDisplays": {
-				"title": "Devices & Displays",
-				"titleDevicesOnly": "Devices",
-				"summary": "{devices} devices and {displays} displays are currently assigned to this space.",
-				"summaryDevicesOnly": "{devices} devices are currently assigned to this space.",
-				"manageDevices": "Manage devices",
-				"manageDisplays": "Manage displays"
+				"title": "Zariadenia a displeje",
+				"titleDevicesOnly": "Zariadenia",
+				"summary": "K tomuto priestoru je momentálne priradených {devices} zariadení a {displays} displejov.",
+				"summaryDevicesOnly": "K tomuto priestoru je momentálne priradených {devices} zariadení.",
+				"manageDevices": "Spravovať zariadenia",
+				"manageDisplays": "Správa displejov"
 			},
 			"statusWidgets": {
-				"title": "Status widgets",
-				"hint": "Configure widgets displayed in the space status area on the panel."
+				"title": "Stavové widgety",
+				"hint": "Nakonfigurujte widgety zobrazené v oblasti stavu priestoru na paneli."
 			},
 			"smartOverrides": {
-				"title": "Smart overrides",
-				"badge": "Advanced",
-				"hint": "Optional settings to improve smart behavior and intent-based control."
+				"title": "Inteligentné prepísania",
+				"badge": "Pokročilé",
+				"hint": "Voliteľné nastavenia na zlepšenie inteligentného správania a ovládania založeného na zámeroch."
 			}
 		}
 	},
@@ -192,22 +192,22 @@
 				"hint": "Môžete organizovať túto miestnosť priradením k zóne, ako napríklad 'Prízemie' alebo 'Poschodie'. To pomáha zoskupovať súvisiace miestnosti."
 			},
 			"suggestionsEnabled": {
-				"title": "Enable suggestions",
-				"hint": "When enabled, the panel will show non-intrusive lighting suggestions based on time of day and current state."
+				"title": "Povoliť návrhy",
+				"hint": "Keď je táto možnosť povolená, panel bude zobrazovať návrhy nerušivého osvetlenia na základe denného času a aktuálneho stavu."
 			},
 			"statusWidgets": {
 				"energy": {
-					"title": "Energy",
+					"title": "Energia",
 					"range": {
-						"title": "Range",
+						"title": "Rozsah",
 						"options": {
-							"today": "Today",
-							"week": "Week",
-							"month": "Month"
+							"today": "Dnes",
+							"week": "týždeň",
+							"month": "mesiac"
 						}
 					},
 					"showProduction": {
-						"title": "Show production"
+						"title": "Zobraziť produkciu"
 					}
 				}
 			}
@@ -295,58 +295,58 @@
 		}
 	},
 	"detail": {
-		"title": "Space detail",
+		"title": "Detail priestoru",
 		"domains": {
 			"title": "Domény"
 		},
 		"info": {
-			"title": "Space information",
-			"name": "Name",
-			"description": "Description",
-			"type": "Type",
-			"icon": "Icon",
-			"displayOrder": "Display order"
+			"title": "Informácie o vesmíre",
+			"name": "Meno",
+			"description": "Popis",
+			"type": "Typ",
+			"icon": "Ikona",
+			"displayOrder": "Zobraziť poradie"
 		},
 		"devices": {
-			"title": "Devices",
-			"add": "Add device",
-			"empty": "No devices assigned to this space",
-			"loading": "Loading devices...",
-			"remove": "Remove",
-			"removeHeading": "Remove device from space",
-			"reassign": "Reassign",
-			"assign": "Assign",
-			"selectDevice": "Select devices to add",
-			"confirmRemove": "Remove device \"{name}\" from this space?",
-			"selectRoom": "Select room for device",
-			"noAvailable": "No devices available to add",
-			"removed": "Device \"{name}\" was removed from this space.",
-			"removeCanceled": "Device removal was canceled."
+			"title": "Zariadenia",
+			"add": "Pridať zariadenie",
+			"empty": "K tomuto priestoru nie sú priradené žiadne zariadenia",
+			"loading": "Načítavajú sa zariadenia...",
+			"remove": "Odstrániť",
+			"removeHeading": "Odstráňte zariadenie z vesmíru",
+			"reassign": "Preradiť",
+			"assign": "Priradiť",
+			"selectDevice": "Vyberte zariadenia, ktoré chcete pridať",
+			"confirmRemove": "Odstrániť zariadenie „{name}“ z tohto priestoru?",
+			"selectRoom": "Vyberte miestnosť pre zariadenie",
+			"noAvailable": "Nie sú k dispozícii žiadne zariadenia na pridanie",
+			"removed": "Zariadenie „{name}“ bolo z tohto priestoru odstránené.",
+			"removeCanceled": "Odstránenie zariadenia bolo zrušené."
 		},
 		"parentZone": {
-			"title": "Floor",
-			"none": "No floor assigned",
-			"select": "Select floor"
+			"title": "Poschodie",
+			"none": "Nie je priradené žiadne poschodie",
+			"select": "Vyberte podlahu"
 		},
 		"displays": {
-			"title": "Displays",
-			"add": "Add display",
-			"empty": "No displays assigned to this space",
-			"loading": "Loading displays...",
-			"remove": "Remove",
-			"removeHeading": "Remove display from space",
-			"reassign": "Reassign",
-			"assign": "Assign",
-			"selectDisplay": "Select display to add",
-			"confirmRemove": "Remove display \"{name}\" from this space?",
-			"selectRoom": "Select the room for this display",
-			"noAvailable": "No displays available to add",
-			"removed": "Display \"{name}\" was removed from this space.",
-			"removeCanceled": "Display removal was canceled."
+			"title": "Displeje",
+			"add": "Pridať displej",
+			"empty": "K tomuto priestoru nie sú priradené žiadne obrazovky",
+			"loading": "Načítavajú sa displeje...",
+			"remove": "Odstrániť",
+			"removeHeading": "Odstráňte displej z priestoru",
+			"reassign": "Preradiť",
+			"assign": "Priradiť",
+			"selectDisplay": "Vyberte zobrazenie, ktoré chcete pridať",
+			"confirmRemove": "Odstrániť zobrazenie „{name}“ z tohto priestoru?",
+			"selectRoom": "Vyberte miestnosť pre toto zobrazenie",
+			"noAvailable": "Nie sú k dispozícii žiadne zobrazenia na pridanie",
+			"removed": "Obrazovka „{name}“ bola z tohto priestoru odstránená.",
+			"removeCanceled": "Odstránenie zobrazenia bolo zrušené."
 		},
 		"scenes": {
-			"title": "Scenes",
-			"add": "Add scene"
+			"title": "Scény",
+			"add": "Pridať scénu"
 		}
 	},
 	"messages": {
@@ -376,76 +376,76 @@
 		}
 	},
 	"wizard": {
-		"title": "Spaces setup wizard",
-		"devices": "devices",
-		"displays": "displays",
-		"selectSpace": "Select space",
-		"selectZones": "Select zones...",
-		"deviceName": "Device name",
-		"displayName": "Display name",
-		"assignedSpace": "Assigned space",
-		"spaceName": "Space name",
-		"zones": "Zones (optional)",
-		"advanced": "Advanced",
-		"basic": "Basic",
+		"title": "Sprievodca nastavením priestorov",
+		"devices": "zariadení",
+		"displays": "zobrazuje",
+		"selectSpace": "Vyberte priestor",
+		"selectZones": "Vyberte zóny...",
+		"deviceName": "Názov zariadenia",
+		"displayName": "Zobrazovaný názov",
+		"assignedSpace": "Pridelený priestor",
+		"spaceName": "Názov priestoru",
+		"zones": "Zóny (voliteľné)",
+		"advanced": "Pokročilé",
+		"basic": "Základné",
 		"steps": {
 			"spaces": {
-				"title": "Create spaces",
-				"description": "Spaces help you organize your devices and displays by rooms or zones (e.g., Living Room, Kitchen, Bedroom). We've automatically detected some spaces from your device names - review and select the ones you want to create, or add your own custom spaces below.",
-				"alertTitle": "Spaces represent rooms or areas in your home",
-				"alertDescription": "We've suggested some spaces based on your device names. You can adjust them now or change everything later.",
-				"proposed": "Proposed spaces",
-				"custom": "Custom spaces",
-				"existing": "Existing spaces",
-				"matchedExisting": "Using existing spaces",
-				"usingExisting": "Using existing",
-				"matchedWith": "Will use: {name}",
-				"addManual": "Add custom space",
-				"placeholder": "Enter space name (e.g., Living Room)",
-				"noProposals": "No spaces could be detected from your device names. Add spaces manually below.",
-				"duplicateWarning": "A space similar to \"{name}\" already exists.",
-				"convertedToMatch": "This space matches an existing space and has been moved to the 'Using existing spaces' section.",
-				"multipleMatchedWith": "{count} detected spaces will use existing space '{name}'",
-				"existingTag": "Existing"
+				"title": "Vytvorte priestory",
+				"description": "Priestory vám pomôžu usporiadať zariadenia a displeje podľa miestností alebo zón (napr. obývačka, kuchyňa, spálňa). ",
+				"alertTitle": "Priestory predstavujú miestnosti alebo oblasti vo vašej domácnosti",
+				"alertDescription": "Navrhli sme niekoľko priestorov na základe názvov vašich zariadení. ",
+				"proposed": "Navrhované priestory",
+				"custom": "Vlastné priestory",
+				"existing": "Existujúce priestory",
+				"matchedExisting": "Použitie existujúcich priestorov",
+				"usingExisting": "Používanie existujúcich",
+				"matchedWith": "Použije sa: {name}",
+				"addManual": "Pridajte vlastný priestor",
+				"placeholder": "Zadajte názov priestoru (napr. obývačka)",
+				"noProposals": "Z názvov vašich zariadení sa nepodarilo zistiť žiadne medzery. ",
+				"duplicateWarning": "Priestor podobný „{name}“ už existuje.",
+				"convertedToMatch": "Tento priestor sa zhoduje s existujúcim priestorom a bol presunutý do sekcie „Používanie existujúcich priestorov“.",
+				"multipleMatchedWith": "{count} rozpoznaných priestorov použije existujúci priestor '{name}'",
+				"existingTag": "Existujúce"
 			},
 			"displays": {
-				"title": "Assign displays",
-				"description": "Assign each display to a space. This determines which space the display will show by default.",
-				"alertTitle": "Choose a default space for each display",
-				"alertDescription": "This only sets the initial view—you can switch spaces anytime from the display itself.",
-				"noDisplays": "No displays registered yet."
+				"title": "Priraďte zobrazenia",
+				"description": "Priraďte každý displej k priestoru. ",
+				"alertTitle": "Vyberte predvolený priestor pre každý displej",
+				"alertDescription": "Tým sa nastaví iba počiatočné zobrazenie – priestory môžete kedykoľvek prepínať zo samotného displeja.",
+				"noDisplays": "Zatiaľ nie sú zaregistrované žiadne displeje."
 			},
 			"devices": {
-				"title": "Assign devices",
-				"description": "Assign devices to spaces. Devices will be pre-assigned based on their names if detected.",
-				"alertTitle": "Connect your devices to rooms",
-				"alertDescription": "Some devices are pre-filled based on their names. Feel free to adjust—you can always change assignments later.",
-				"noDevices": "No devices found."
+				"title": "Priraďte zariadenia",
+				"description": "Priraďte zariadenia k priestorom. ",
+				"alertTitle": "Pripojte svoje zariadenia k miestnostiam",
+				"alertDescription": "Niektoré zariadenia sú vopred vyplnené na základe ich názvov. ",
+				"noDevices": "Nenašli sa žiadne zariadenia."
 			},
 			"summary": {
-				"title": "Summary",
-				"description": "Review your configuration before applying changes.",
-				"alertTitle": "Summary of your setup",
-				"alertDescription": "You can still go back and adjust anything before finishing."
+				"title": "Zhrnutie",
+				"description": "Pred použitím zmien skontrolujte svoju konfiguráciu.",
+				"alertTitle": "Zhrnutie vášho nastavenia",
+				"alertDescription": "Pred dokončením sa stále môžete vrátiť a upraviť čokoľvek."
 			}
 		},
 		"summary": {
-			"overview": "Summary",
-			"totalSpaces": "Total spaces",
-			"assignedDevices": "Assigned devices",
-			"unassignedDevices": "Unassigned devices",
-			"assignedDisplays": "Assigned displays",
-			"unassignedDisplays": "Unassigned displays",
-			"bySpace": "Assignments by space",
-			"unassignedDevicesTitle": "Unassigned devices",
-			"unassignedDisplaysTitle": "Unassigned displays",
-			"noDevices": "No devices",
-			"clickToAssignDevices": "Click to assign devices",
-			"clickToAssignDisplays": "Click to assign displays"
+			"overview": "Zhrnutie",
+			"totalSpaces": "Celkový počet priestorov",
+			"assignedDevices": "Priradené zariadenia",
+			"unassignedDevices": "Nepriradené zariadenia",
+			"assignedDisplays": "Priradené displeje",
+			"unassignedDisplays": "Nepriradené displeje",
+			"bySpace": "Zadania podľa priestoru",
+			"unassignedDevicesTitle": "Nepriradené zariadenia",
+			"unassignedDisplaysTitle": "Nepriradené displeje",
+			"noDevices": "Žiadne zariadenia",
+			"clickToAssignDevices": "Kliknutím priradíte zariadenia",
+			"clickToAssignDisplays": "Kliknutím priradíte zobrazenia"
 		},
 		"messages": {
-			"spacesCreated": "{count} space(s) created successfully",
-			"completed": "Wizard complete! {devices} device(s), {displays} display(s), and {zones} zone assignment(s)."
+			"spacesCreated": "Úspešne vytvorených {count} priestorov",
+			"completed": "Nastavenie dokončené! {devices} zariadenie(a), {displays} displej(e) a {zones} priradenie zón."
 		}
 	},
 	"labels": {

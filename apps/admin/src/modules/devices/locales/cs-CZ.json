@@ -233,7 +233,8 @@
 				"noLogs": "Žádné protokoly nejsou k dispozici",
 				"noLogsDescription": "Pro toto zařízení zatím nebyly zaznamenány žádné protokoly",
 				"noMessage": "(žádná zpráva)",
-				"noMoreEntries": "Žádné další záznamy protokolu"
+				"noMoreEntries": "Žádné další záznamy protokolu",
+				"detail": "Podrobnosti protokolu"
 			}
 		},
 		"channels": {
@@ -710,16 +711,16 @@
 		"ev": "Událost"
 	},
 	"dataTypes": {
-		"char": "Char",
-		"uchar": "Unsigned char",
-		"short": "Short integer",
-		"ushort": "Unsigned short integer",
-		"int": "Integer",
-		"uint": "Unsigned integer",
-		"float": "Float",
-		"bool": "Boolean",
-		"string": "String",
-		"enum": "Enum",
+		"char": "Znak",
+		"uchar": "Neznaménkový znak",
+		"short": "Krátké celé číslo",
+		"ushort": "Neznaménkové krátké celé číslo",
+		"int": "Celé číslo",
+		"uint": "Neznaménkové celé číslo",
+		"float": "Desetinné číslo",
+		"bool": "Logická hodnota",
+		"string": "Řetězec",
+		"enum": "Výčet",
 		"unknown": "Neznámý"
 	},
 	"categories": {
@@ -729,7 +730,7 @@
 			"air_dehumidifier": "Odvlhčovač vzduchu",
 			"air_humidifier": "Zvlhčovač vzduchu",
 			"air_purifier": "Čistička vzduchu",
-			"alarm": "Alarm",
+			"alarm": "Poplach",
 			"av_receiver": "AV přijímač",
 			"camera": "Kamera",
 			"door": "Dveře",
@@ -762,7 +763,7 @@
 			"accelerometer": "Akcelerometr",
 			"air_particulate": "Pevné částice ve vzduchu",
 			"air_quality": "Kvalita vzduchu",
-			"alarm": "Alarm",
+			"alarm": "Poplach",
 			"battery": "Baterie",
 			"button": "Tlačítko",
 			"buzzer": "Bzučák",
@@ -821,7 +822,7 @@
 			"alarm_state": "Stav alarmu",
 			"album": "Album",
 			"angle": "Úhel",
-			"aqi": "AQI",
+			"aqi": "AQI (index kvality ovzduší)",
 			"artist": "Interpret",
 			"artwork_url": "URL obalu",
 			"average_power": "Průměrný výkon",
@@ -886,7 +887,7 @@
 			"rate": "Průtok",
 			"remaining": "Zbývající",
 			"repeat": "Opakování",
-			"reset": "Reset",
+			"reset": "Resetovat",
 			"remote_key": "Dálkové tlačítko",
 			"saturation": "Sytost",
 			"serial_number": "Sériové číslo",

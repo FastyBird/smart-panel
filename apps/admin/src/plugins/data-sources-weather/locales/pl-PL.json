@@ -23,7 +23,7 @@
 		},
 		"icon": {
 			"title": "Ikona niestandardowa",
-			"placeholder": "mdi:thermometer"
+			"placeholder": "mdi:termometr"
 		}
 	},
 	"fieldOptions": {

@@ -15,7 +15,7 @@
 	"fields": {
 		"config": {
 			"host": {
-				"title": "Host",
+				"title": "Gospodarz",
 				"placeholder": "127.0.0.1",
 				"validation": {
 					"required": "Host jest wymagany"
@@ -23,7 +23,7 @@
 			},
 			"database": {
 				"title": "Baza danych",
-				"placeholder": "fastybird",
+				"placeholder": "szybki ptak",
 				"validation": {
 					"required": "Nazwa bazy danych jest wymagana"
 				}

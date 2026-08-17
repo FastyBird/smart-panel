@@ -22,7 +22,7 @@
 			},
 			"serviceType": {
 				"title": "Diensttyp",
-				"placeholder": "fastybird-panel",
+				"placeholder": "Fastybird-Panel",
 				"validation": {
 					"required": "Diensttyp ist erforderlich"
 				}

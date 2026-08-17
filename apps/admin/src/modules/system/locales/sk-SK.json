@@ -18,6 +18,11 @@
 			"detail": {
 				"title": "Detail logu"
 			}
+		},
+		"systemBackups": {
+			"list": {
+				"title": "Systémové zálohy"
+			}
 		}
 	},
 	"breadcrumbs": {
@@ -28,6 +33,9 @@
 		"systemLogs": {
 			"list": "aplikačné logy",
 			"detail": "detail logu"
+		},
+		"systemBackups": {
+			"list": "Zálohy"
 		}
 	},
 	"headings": {
@@ -47,7 +55,8 @@
 			"factoryReset": "Továrenský reset",
 			"poweredOff": "Vypnutie dokončené",
 			"rebooting": "Reštartovanie",
-			"systemLogs": "Aplikačné logy"
+			"systemLogs": "Aplikačné logy",
+			"systemBackups": "Systémové zálohy"
 		},
 		"systemLogs": {
 			"list": "Aplikačné logy",
@@ -56,7 +65,10 @@
 		},
 		"aboutLanguageSettings": "Jazyk a jednotky",
 		"aboutSystemSettings": "Systémové nastavenia",
-		"aboutHouseModeSettings": "Režim domu"
+		"aboutHouseModeSettings": "Režim domu",
+		"systemBackups": {
+			"list": "Systémové zálohy"
+		}
 	},
 	"subHeadings": {
 		"system": "Informácie o stave systému smart panelu",
@@ -66,6 +78,9 @@
 			"detail": "Zobraziť detail záznamu logu",
 			"edit": "Zobraziť detail záznamu logu",
 			"adjustFilters": "Upraviť filtre logov"
+		},
+		"systemBackups": {
+			"list": "Vytvárajte, obnovujte a spravujte systémové zálohy"
 		}
 	},
 	"messages": {
@@ -131,7 +146,8 @@
 			"factoryResetWaiting": "Čakanie na reštart Smart Panelu po továrenskom resete...",
 			"factoryResetTimeout": "Továrenský reset trvá dlhšie ako sa očakávalo. Skontrolujte zariadenie manuálne.",
 			"poweredOff": "Môžete zavrieť toto okno — nie je potrebná žiadna ďalšia akcia.",
-			"systemLogs": "Zobraziť a diagnostikovať aplikačné logy."
+			"systemLogs": "Zobraziť a diagnostikovať aplikačné logy.",
+			"systemBackups": "Vytvárajte, obnovujte a spravujte systémové zálohy."
 		},
 		"update": {
 			"available": "Verzia {version} je k dispozícii",
@@ -209,7 +225,7 @@
 				"description": "Jednotka zobrazenia teploty",
 				"placeholder": "Vyberte jednotku teploty",
 				"values": {
-					"celsius": "Celsius (°C)",
+					"celsius": "Celzia (°C)",
 					"fahrenheit": "Fahrenheit (°F)"
 				},
 				"validation": {
@@ -337,10 +353,10 @@
 				"title": "Verzia aplikácie"
 			},
 			"url": {
-				"title": "URL"
+				"title": "URL adresa"
 			},
 			"userAgent": {
-				"title": "User agent"
+				"title": "Používateľský agent"
 			},
 			"locale": {
 				"title": "Jazyk"
@@ -349,7 +365,7 @@
 				"title": "Argumenty"
 			},
 			"rawJson": {
-				"title": "Raw JSON"
+				"title": "Surový JSON"
 			}
 		}
 	},
@@ -471,5 +487,52 @@
 		"display": "Aplikácia displeja",
 		"backend": "Backend aplikácie",
 		"other": "Ostatné"
+	},
+	"backups": {
+		"title": "Zálohy",
+		"noBackups": "Zatiaľ neboli vytvorené žiadne zálohy.",
+		"noMatches": "Žiadne zálohy nezodpovedajú vyhľadávaniu.",
+		"search": {
+			"placeholder": "Hľadať zálohy..."
+		},
+		"contributions": "Príspevky",
+		"columns": {
+			"name": "Názov",
+			"version": "Verzia",
+			"created": "Vytvorené",
+			"size": "Veľkosť",
+			"actions": "Akcie"
+		},
+		"createDialog": {
+			"title": "Vytvoriť zálohu",
+			"name": "Názov zálohy",
+			"namePlaceholder": "Voliteľný názov zálohy",
+			"submit": "Vytvoriť"
+		},
+		"deleteDialog": {
+			"title": "Odstrániť zálohu",
+			"message": "Naozaj chcete odstrániť zálohu „{name}“? "
+		},
+		"restoreDialog": {
+			"title": "Obnoviť zálohu",
+			"warning": "Obnovenie zálohy prepíše aktuálnu konfiguráciu a dáta. Systém sa reštartuje po dokončení obnovy.",
+			"message": "Naozaj chcete obnoviť zo zálohy „{name}“?",
+			"confirm": "Obnoviť"
+		},
+		"messages": {
+			"created": "Záloha bola úspešne vytvorená.",
+			"createError": "Nepodarilo sa vytvoriť zálohu. Prosím, skúste to znova.",
+			"deleted": "Záloha bola odstránená.",
+			"deleteError": "Nepodarilo sa odstrániť zálohu. Prosím, skúste to znova.",
+			"restored": "Obnovenie zálohy sa spustilo. Systém čoskoro reštartuje.",
+			"restoreError": "Nepodarilo sa obnoviť zálohu. Prosím, skúste to znova.",
+			"downloadError": "Nepodarilo sa stiahnuť zálohu. Prosím, skúste to znova.",
+			"uploaded": "Záloha bola úspešne nahraná.",
+			"uploadError": "Nepodarilo sa nahrať zálohu. Prosím, skúste to znova."
+		},
+		"buttons": {
+			"create": "Vytvoriť zálohu",
+			"upload": "Nahrať zálohu"
+		}
 	}
 }

@@ -8,7 +8,7 @@
 				"title": "Aktiviert"
 			},
 			"engine": {
-				"title": "Engine",
+				"title": "Motor",
 				"placeholder": "piper oder espeak (automatisch erkannt wenn leer)",
 				"description": "Zu verwendende TTS-Engine. Leer lassen für automatische Erkennung (bevorzugt piper, fällt auf espeak zurück)"
 			},

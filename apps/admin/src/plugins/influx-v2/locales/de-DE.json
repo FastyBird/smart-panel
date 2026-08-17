@@ -23,14 +23,14 @@
 			},
 			"org": {
 				"title": "Organisation",
-				"placeholder": "fastybird",
+				"placeholder": "Fastybird",
 				"validation": {
 					"required": "Organisation ist erforderlich"
 				}
 			},
 			"bucket": {
-				"title": "Bucket",
-				"placeholder": "fastybird",
+				"title": "Eimer",
+				"placeholder": "Fastybird",
 				"validation": {
 					"required": "Bucket-Name ist erforderlich"
 				}

@@ -9,7 +9,7 @@
 			"supported": "Gratulacje! Urzadzenie jest obslugiwane",
 			"notSupported": "Przepraszamy, Twoje urzadzenie nie jest obslugiwane",
 			"model": "Model",
-			"firmware": "Firmware"
+			"firmware": "Oprogramowanie sprzętowe"
 		},
 		"wizard": {
 			"title": "Kreator wyszukiwania Shelly Gen 1"

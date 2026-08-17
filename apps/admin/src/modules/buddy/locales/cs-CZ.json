@@ -1,9 +1,9 @@
 {
 	"menu": {
-		"title": "Buddy"
+		"title": "Kamarád"
 	},
 	"headings": {
-		"settings": "Buddy",
+		"settings": "Kamarád",
 		"chat": "Buddy Chat",
 		"chats": "Konverzace",
 		"aboutBuddy": "Konfigurace AI Buddy"
@@ -180,8 +180,8 @@
 		"summaryMessagingSkipped": "Zprávy přeskočeny",
 		"notSelected": "Nevybráno",
 		"skipped": "Přeskočeno",
-		"ttsHeading": "Text-to-Speech (TTS)",
-		"sttHeading": "Speech-to-Text (STT)",
+		"ttsHeading": "Převod textu na řeč (TTS)",
+		"sttHeading": "Převod řeči na text (STT)",
 		"buttons": {
 			"back": "Zpět",
 			"next": "Další",

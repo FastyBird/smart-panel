@@ -1,404 +1,404 @@
 {
-	"plugin": {
-		"name": "Priestory domáceho ovládania",
-		"description": "Pridáva fyzické miestnosti a zóny s ovládaním osvetlenia, klímy, tienenia, senzorov a médií."
-	},
-	"typeLabels": {
-		"room": "Miestnosť",
-		"zone": "Zóna"
-	},
-	"lightingRoles": {
-		"main": "Main",
-		"task": "Task",
-		"ambient": "Ambient",
-		"accent": "Accent",
-		"night": "Night",
-		"other": "Other",
-		"hidden": "Hidden",
-		"unassigned": "Unassigned",
-		"descriptions": {
-			"main": "Primary lighting for the space, typically overhead or central fixtures used for general illumination.",
-			"task": "Focused lighting for specific activities like reading, cooking, or working.",
-			"ambient": "Soft background lighting used to create atmosphere and comfort.",
-			"accent": "Decorative lighting used to highlight features or create visual interest.",
-			"night": "Low-level lighting for nighttime navigation and safety.",
-			"other": "Lighting that doesn't fit into standard categories.",
-			"hidden": "Hidden lights are excluded from the panel UI and intent-based control."
-		}
-	},
-	"climateRoles": {
-		"heating_only": "Heating Only",
-		"cooling_only": "Cooling Only",
-		"auto": "Auto",
-		"auxiliary": "Auxiliary",
-		"sensor": "Sensor",
-		"hidden": "Hidden",
-		"unassigned": "Unassigned",
-		"descriptions": {
-			"heating_only": "Device is used only for heating in the climate domain.",
-			"cooling_only": "Device is used only for cooling in the climate domain.",
-			"auto": "Device can be used for both heating and cooling automatically.",
-			"auxiliary": "Auxiliary climate devices like dehumidifiers, humidifiers, air purifiers, and fans.",
-			"sensor": "Climate sensor providing readings (temperature, humidity, air quality, etc.) for the space.",
-			"hidden": "Hidden devices are excluded from the climate domain UI and control."
-		}
-	},
-	"coversRoles": {
-		"primary": "Primary",
-		"blackout": "Blackout",
-		"sheer": "Sheer",
-		"outdoor": "Outdoor",
-		"hidden": "Hidden",
-		"unassigned": "Unassigned",
-		"descriptions": {
-			"primary": "Main window covering for the space, typically used for general privacy and light control.",
-			"blackout": "Light-blocking covers designed for complete darkness, ideal for bedrooms or media rooms.",
-			"sheer": "Semi-transparent covers that provide privacy while allowing natural light to filter through.",
-			"outdoor": "External shutters, awnings, or pergola covers for outdoor protection.",
-			"hidden": "Hidden covers are excluded from the panel UI and intent-based control."
-		}
-	},
-	"sensorRoles": {
-		"environment": "Environment",
-		"safety": "Safety",
-		"security": "Security",
-		"air_quality": "Air quality",
-		"energy": "Energy",
-		"other": "Other",
-		"hidden": "Hidden",
-		"descriptions": {
-			"environment": "Environmental sensors such as temperature, humidity, pressure, or light levels.",
-			"safety": "Safety sensors like smoke, gas, leak, or carbon monoxide detectors.",
-			"security": "Security and presence sensors like motion, occupancy, and contact sensors.",
-			"air_quality": "Air quality sensors including CO2, VOC, particulate matter, and other pollutants.",
-			"energy": "Energy monitoring sensors such as power or energy consumption.",
-			"other": "Sensors that don't fit a specific category.",
-			"hidden": "Hidden sensors are excluded from the UI."
-		},
-		"categories": {
-			"temperature": "Temperature",
-			"humidity": "Humidity",
-			"pressure": "Pressure",
-			"illuminance": "Illuminance",
-			"smoke": "Smoke",
-			"gas": "Gas",
-			"carbon_monoxide": "Carbon monoxide",
-			"carbon_dioxide": "Carbon dioxide",
-			"leak": "Leak",
-			"motion": "Motion",
-			"occupancy": "Occupancy",
-			"contact": "Contact",
-			"air_quality": "Air quality",
-			"air_particulate": "Air particulate",
-			"nitrogen_dioxide": "Nitrogen dioxide",
-			"ozone": "Ozone",
-			"sulphur_dioxide": "Sulphur dioxide",
-			"volatile_organic_compounds": "Volatile organic compounds",
-			"electrical_energy": "Energy",
-			"electrical_generation": "Generation",
-			"electrical_power": "Power",
-			"battery": "Battery"
-		}
-	},
-	"media": {
-		"endpointTypes": {
-			"display": "Display",
-			"audio_output": "Audio Output",
-			"source": "Source",
-			"remote_target": "Remote Target"
-		},
-		"capabilities": {
-			"power": "Power",
-			"input": "Input",
-			"volume": "Volume",
-			"playback": "Playback",
-			"track": "Track",
-			"remote": "Remote",
-			"mute": "Mute"
-		},
-		"activityLabels": {
-			"watch": "Watch",
-			"listen": "Listen",
-			"gaming": "Gaming",
-			"background": "Background",
-			"off": "Off"
-		},
-		"activities": {
-			"loading": "Loading media configuration...",
-			"description": "Assign display, audio, source, and remote devices to each media activity. Changes are saved automatically.",
-			"applyDefaults": "Apply defaults",
-			"applyDefaultsHint": "Auto-assigns endpoints based on device types and capabilities",
-			"defaultsApplied": "Default bindings have been applied.",
-			"defaultsFailed": "Failed to apply default bindings.",
-			"selectPrompt": "Select an activity from the list to configure its bindings.",
-			"selectEndpoint": "Select endpoint...",
-			"save": "Save",
-			"reset": "Reset",
-			"saveError": "Failed to save binding",
-			"savedSuccessfully": "Binding saved successfully.",
-			"slots": {
-				"display": "Display",
-				"audio": "Audio output",
-				"source": "Source",
-				"remote": "Remote target"
-			},
-			"overrides": {
-				"displayInput": "Display input preset",
-				"displayInputPlaceholder": "e.g. HDMI1, Apps",
-				"audioInput": "Audio input preset",
-				"audioInputPlaceholder": "e.g. HDMI1, ARC",
-				"sourceInput": "Source input preset",
-				"sourceInputPlaceholder": "e.g. HDMI1, Apps",
-				"audioVolume": "Audio volume preset"
-			},
-			"mediaInputSources": {
-				"hdmi1": "HDMI 1",
-				"hdmi2": "HDMI 2",
-				"hdmi3": "HDMI 3",
-				"hdmi4": "HDMI 4",
-				"hdmi5": "HDMI 5",
-				"hdmi6": "HDMI 6",
-				"arc": "ARC",
-				"earc": "eARC",
-				"tv": "TV",
-				"cable": "Cable",
-				"satellite": "Satellite",
-				"antenna": "Antenna",
-				"av1": "AV 1",
-				"av2": "AV 2",
-				"component": "Component",
-				"vga": "VGA",
-				"dvi": "DVI",
-				"usb": "USB",
-				"bluetooth": "Bluetooth",
-				"wifi": "Wi-Fi",
-				"airplay": "AirPlay",
-				"cast": "Chromecast",
-				"dlna": "DLNA",
-				"miracast": "Miracast",
-				"app_netflix": "Netflix",
-				"app_youtube": "YouTube",
-				"app_spotify": "Spotify",
-				"app_prime_video": "Prime Video",
-				"app_disney_plus": "Disney+",
-				"app_hbo_max": "HBO Max",
-				"app_apple_tv": "Apple TV",
-				"app_plex": "Plex",
-				"app_kodi": "Kodi",
-				"other": "Other"
-			},
-			"status": {
-				"configured": "Configured",
-				"incomplete": "Incomplete",
-				"unconfigured": "Not set"
-			},
-			"run": "Run",
-			"deactivate": "Deactivate",
-			"refreshStatus": "Refresh status",
-			"rerun": "Re-run",
-			"copyDebugJson": "Copy debug JSON",
-			"copiedToClipboard": "Debug JSON copied to clipboard.",
-			"activateSuccess": "Activity activated successfully.",
-			"activateFailed": "Failed to activate activity.",
-			"deactivateSuccess": "Activity deactivated.",
-			"deactivateFailed": "Failed to deactivate activity.",
-			"fetchFailed": "Failed to refresh activity status.",
-			"preview": "Preview",
-			"previewFailed": "Failed to preview activity.",
-			"previewDialog": {
-				"title": "Execution Plan Preview",
-				"resolvedDevices": "Resolved devices",
-				"executionPlan": "Execution plan",
-				"step": "#",
-				"action": "Action",
-				"device": "Device",
-				"critical": "Critical",
-				"criticalYes": "Critical",
-				"criticalNo": "Optional",
-				"warnings": "Warnings & skipped steps",
-				"noSteps": "No execution steps in plan.",
-				"close": "Close"
-			},
-			"activePanel": {
-				"title": "Active State",
-				"currentActivity": "Current activity",
-				"none": "None",
-				"state": "State",
-				"activatedAt": "Activated at",
-				"updatedAt": "Updated at",
-				"resolvedDevices": "Resolved devices",
-				"display": "Display",
-				"audio": "Audio",
-				"source": "Source",
-				"remote": "Remote"
-			},
-			"failures": {
-				"title": "Failures",
-				"total": "Total steps",
-				"succeeded": "Succeeded",
-				"failed": "Failed",
-				"stepIndex": "Step",
-				"device": "Device",
-				"property": "Property",
-				"reason": "Reason"
-			},
-			"activationState": {
-				"activating": "Activating",
-				"active": "Active",
-				"failed": "Failed",
-				"deactivated": "Deactivated"
-			}
-		}
-	},
-	"dialogs": {
-		"lightingRoles": {
-			"title": "Edit Lighting Roles"
-		},
-		"climateRoles": {
-			"title": "Edit Climate Roles"
-		},
-		"coversRoles": {
-			"title": "Edit Covers Roles"
-		},
-		"sensorRoles": {
-			"title": "Edit Sensor Roles"
-		},
-		"mediaActivities": {
-			"title": "Edit Media Activities"
-		}
-	},
-	"fields": {
-		"spaces": {
-			"lightingRoles": {
-				"title": "Lighting roles",
-				"description": "Assign roles to lights to help the panel understand how each light is typically used (Work, Relax, Night)",
-				"noLights": "No lights found in this space",
-				"role": {
-					"title": "Role",
-					"placeholder": "Select a role"
-				},
-				"applyDefaults": "Apply defaults",
-				"applyDefaultsHint": "Sets first light as Main, others as Ambient"
-			},
-			"climateRoles": {
-				"title": "Climate roles",
-				"description": "Assign roles to climate devices to help the panel understand how each device controls temperature and air quality",
-				"noDevices": "No climate devices found in this space",
-				"role": {
-					"title": "Role",
-					"placeholder": "Select a role"
-				},
-				"applyDefaults": "Apply defaults",
-				"applyDefaultsHint": "Auto-assigns roles based on device type"
-			},
-			"coversRoles": {
-				"title": "Covers roles",
-				"description": "Assign roles to window coverings to help the panel understand how each cover is used (primary, blackout, sheer)",
-				"noCovers": "No window coverings found in this space",
-				"role": {
-					"title": "Role",
-					"placeholder": "Select a role"
-				},
-				"applyDefaults": "Apply defaults",
-				"applyDefaultsHint": "Sets first cover as Primary, others based on type"
-			},
-			"sensorRoles": {
-				"title": "Sensor roles",
-				"description": "Assign roles to sensor channels so the panel can group environment, safety, security, air quality, and energy readings.",
-				"noSensors": "No sensors found in this space",
-				"channel": {
-					"title": "Channel"
-				},
-				"role": {
-					"title": "Role",
-					"placeholder": "Select a role"
-				},
-				"applyDefaults": "Apply defaults",
-				"applyDefaultsHint": "Auto-assigns roles based on sensor channel category"
-			}
-		}
-	},
-	"detail": {
-		"lightingRoles": {
-			"title": "Lighting roles",
-			"lightsAssigned": "Lights assigned",
-			"noRolesAssigned": "No roles assigned yet"
-		},
-		"climateRoles": {
-			"title": "Climate roles",
-			"devicesAssigned": "Devices assigned",
-			"noRolesAssigned": "No roles assigned yet"
-		},
-		"coversRoles": {
-			"title": "Covers roles",
-			"coversAssigned": "Covers assigned",
-			"noRolesAssigned": "No roles assigned yet"
-		},
-		"sensorRoles": {
-			"title": "Sensor roles",
-			"sensorsAssigned": "Sensors assigned",
-			"noRolesAssigned": "No roles assigned yet"
-		},
-		"mediaActivities": {
-			"title": "Media Activities",
-			"noActivities": "No activities configured yet"
-		},
-		"domains": {
-			"notConfigured": "Nenakonfigurované",
-			"lighting": {
-				"title": "Osvetlenie",
-				"description": "Nastavte, ako sa v tomto priestore používajú svetlá — hlavné, pracovné, ambientné, akcentové a nočné role osvetlenia."
-			},
-			"climate": {
-				"title": "Klíma",
-				"description": "Priraďte role vykurovania, chladenia a senzorov ku klimatickým zariadeniam v tomto priestore."
-			},
-			"covers": {
-				"title": "Žalúzie",
-				"description": "Nastavte role okenných krytín — primárne, zatemňovacie, záclonové a vonkajšie žalúzie."
-			},
-			"sensor": {
-				"title": "Senzory",
-				"description": "Zoskupte senzorové kanály podľa účelu — prostredie, bezpečnosť, zabezpečenie, kvalita vzduchu a energia."
-			},
-			"media": {
-				"title": "Médiá",
-				"description": "Definujte mediálne aktivity ako sledovanie, počúvanie a hranie hier so smerovaním koncových bodov zariadení."
-			}
-		},
-		"scenes": {
-			"loading": "Loading scenes...",
-			"name": "Scene name",
-			"category": "Category",
-			"status": "Status",
-			"enabled": "Enabled",
-			"disabled": "Disabled",
-			"remove": "Remove",
-			"removeHeading": "Remove scene from space",
-			"reassign": "Reassign",
-			"reassigned": "Scene \"{name}\" was reassigned successfully.",
-			"selectScene": "Select scene to add",
-			"selectSpace": "Select space for scene",
-			"searchPlaceholder": "Search scenes...",
-			"confirmRemove": "Remove scene \"{name}\" from this space?",
-			"assignedSpace": "Assigned space",
-			"noAvailable": "No scenes available to add",
-			"noFilteredScenes": "No scenes match your search",
-			"assigned": "Scene \"{name}\" was assigned to this space.",
-			"removed": "Scene \"{name}\" was removed from this space.",
-			"removeCanceled": "Scene removal was canceled.",
-			"empty": "No scenes assigned to this space",
-			"assign": "Assign"
-		}
-	},
-	"edit": {
-		"sections": {
-			"smartOverrides": {
-				"lightingRoles": "Lighting roles",
-				"climateRoles": "Climate roles",
-				"coversRoles": "Covers roles",
-				"sensorRoles": "Sensor roles"
-			}
-		}
-	}
+  "plugin": {
+    "name": "Priestory domáceho ovládania",
+    "description": "Pridáva fyzické miestnosti a zóny s ovládaním osvetlenia, klímy, tienenia, senzorov a médií."
+  },
+  "typeLabels": {
+    "room": "Miestnosť",
+    "zone": "Zóna"
+  },
+  "lightingRoles": {
+    "main": "Hlavné",
+    "task": "Úloha",
+    "ambient": "Atmosférické",
+    "accent": "Akcent",
+    "night": "Nočné",
+    "other": "Iné",
+    "hidden": "Skryté",
+    "unassigned": "Nepriradené",
+    "descriptions": {
+      "main": "Hlavné osvetlenie pre priestor, zvyčajne stropové alebo centrálné svetlá pre všeobecné osvetlenie.",
+      "task": "Cielené osvetlenie pre konkrétne činnosti, napríklad čítanie, varenie alebo prácu.",
+      "ambient": "Mäkké podporné osvetlenie vytvárajúce atmosféru a príjemnú náladu.",
+      "accent": "Dekoratívne osvetlenie zvýrazňujúce prvky alebo vytvárajúce vizuálny dojem.",
+      "night": "Nízka hladina osvetlenia pre nočnú orientáciu a bezpečnosť.",
+      "other": "Osvetlenie, ktoré sa nehodí do štandardných kategórií.",
+      "hidden": "Skryté svetlá sú vylúčené z používateľského rozhrania panela a ovládania založeného na úmysloch."
+    }
+  },
+  "climateRoles": {
+    "heating_only": "Iba vykurovanie",
+    "cooling_only": "Iba chladenie",
+    "auto": "Automatické",
+    "auxiliary": "Pomocná",
+    "sensor": "Senzor",
+    "hidden": "Skryté",
+    "unassigned": "Nepriradené",
+    "descriptions": {
+      "heating_only": "Zariadenie sa používa len na vykurovanie.",
+      "cooling_only": "Zariadenie sa používa len na chladenie.",
+      "auto": "Zariadenie môže byť používané na vykurovanie aj chladenie automaticky.",
+      "auxiliary": "Pomocné klimatizačné zariadenia, napríklad odvlhčovače, zvlhčovače, čističky vzduchu a ventilátory.",
+      "sensor": "Senzor klímy poskytujúci odčítania (teplota, vlhkosť, kvalita vzduchu a pod.) pre priestor.",
+      "hidden": "Skryté zariadenia sú vylúčené z používateľského rozhrania oblasti klímy a ovládania."
+    }
+  },
+  "coversRoles": {
+    "primary": "Primárna",
+    "blackout": "Zatienenie",
+    "sheer": "Priehľadná",
+    "outdoor": "Exteriérová",
+    "hidden": "Skrytá",
+    "unassigned": "Nepriradená",
+    "descriptions": {
+      "primary": "Hlavné tienidlo pre priestor, zvyčajne používané na všeobecnú súkromnosť a kontrolu svetla.",
+      "blackout": "Zatemňovacie tienidla navrhnuté na úplnú tmu, ideálne pre spálne alebo mediálne miestnosti.",
+      "sheer": "Polopriehľadné tienidla poskytujúce súkromie a zároveň prepúšťajúce prirodzené svetlo.",
+      "outdoor": "Vonkajšie rolety, markízy alebo pergoly na ochranu v exteriéri.",
+      "hidden": "Skryté tienidla sú vylúčené z používateľského rozhrania panela a ovládania založeného na úmysloch."
+    }
+  },
+  "sensorRoles": {
+    "environment": "Prostredie",
+    "safety": "Bezpečnosť",
+    "security": "Zabezpečenie",
+    "air_quality": "Kvalita vzduchu",
+    "energy": "Energia",
+    "other": "Iné",
+    "hidden": "Skryté",
+    "descriptions": {
+      "environment": "Environmentálne senzory, napríklad teplota, vlhkosť, tlak alebo intenzita svetla.",
+      "safety": "Bezpečnostné senzory, ako dymové, plynové, únikové a detektory oxidu uhoľnatého.",
+      "security": "Bezpečnostné a prítomnostné senzory, ako napríklad senzory pohybu, obsadenosti a kontaktné senzory.",
+      "air_quality": "Senzory kvality vzduchu vrátane CO2, VOC, prachových častíc a iných škodlivín.",
+      "energy": "Senzory monitorovania energie, ako napríklad spotreba energie alebo výkonu.",
+      "other": "Senzory, ktoré sa nehodia do konkrétnej kategórie.",
+      "hidden": "Skryté senzory sú vylúčené z používateľského rozhrania."
+    },
+    "categories": {
+      "temperature": "Teplota",
+      "humidity": "Vlhkosť",
+      "pressure": "Tlak",
+      "illuminance": "Svetlosť",
+      "smoke": "Dym",
+      "gas": "Plyn",
+      "carbon_monoxide": "Oxid uhoľnatý",
+      "carbon_dioxide": "Oxid uhličitý",
+      "leak": "Únik",
+      "motion": "Pohyb",
+      "occupancy": "Pobyt",
+      "contact": "Dotyk",
+      "air_quality": "Kvalita vzduchu",
+      "air_particulate": "Prachové častice",
+      "nitrogen_dioxide": "Oxid dusičitý",
+      "ozone": "Ozón",
+      "sulphur_dioxide": "Oxid siričitý",
+      "volatile_organic_compounds": "Prchavé organické látky",
+      "electrical_energy": "Energia",
+      "electrical_generation": "Výroba",
+      "electrical_power": "Výkon",
+      "battery": "Batéria"
+    }
+  },
+  "media": {
+    "endpointTypes": {
+      "display": "Obrazovka",
+      "audio_output": "Zvukový výstup",
+      "source": "Zdroj",
+      "remote_target": "Diaľkový cieľ"
+    },
+    "capabilities": {
+      "power": "Výkon",
+      "input": "Vstup",
+      "volume": "Hlasitosť",
+      "playback": "Prehrávanie",
+      "track": "Stopa",
+      "remote": "Diaľkové",
+      "mute": "Stlmiť"
+    },
+    "activityLabels": {
+      "watch": "Sledovať",
+      "listen": "Počúvať",
+      "gaming": "Hranie",
+      "background": "Pozadie",
+      "off": "Vypnuté"
+    },
+    "activities": {
+      "loading": "Načítava sa konfigurácia médií...",
+      "description": "Priraďte zariadenia zobrazenia, zvuku, zdroja a diaľkového ovládania ku každej mediálnej aktivite. Zmeny sa ukladajú automaticky.",
+      "applyDefaults": "Použiť predvolené",
+      "applyDefaultsHint": "Automaticky priraďuje koncové body podľa typu zariadení a ich schopností.",
+      "defaultsApplied": "Predvolené väzby boli použité.",
+      "defaultsFailed": "Nepodarilo sa použiť predvolené väzby.",
+      "selectPrompt": "Vyberte aktivitu zo zoznamu a nastavte jej väzby.",
+      "selectEndpoint": "Vyberte koncový bod...",
+      "save": "Uložiť",
+      "reset": "Obnoviť",
+      "saveError": "Nepodarilo sa uložiť väzbu.",
+      "savedSuccessfully": "Väzba bola úspešne uložená.",
+      "slots": {
+        "display": "Obrazovka",
+        "audio": "Zvukový výstup",
+        "source": "Zdroj",
+        "remote": "Diaľkový cieľ"
+      },
+      "overrides": {
+        "displayInput": "Predvoľba vstupu displeja",
+        "displayInputPlaceholder": "napr. HDMI1, Aplikácie",
+        "audioInput": "Predvoľba vstupu zvuku",
+        "audioInputPlaceholder": "napr. HDMI1, ARC",
+        "sourceInput": "Predvoľba vstupu zdroja",
+        "sourceInputPlaceholder": "napr. HDMI1, Aplikácie",
+        "audioVolume": "Predvoľba hlasitosti zvuku"
+      },
+      "mediaInputSources": {
+        "hdmi1": "Vstup HDMI 1",
+        "hdmi2": "Vstup HDMI 2",
+        "hdmi3": "Vstup HDMI 3",
+        "hdmi4": "Vstup HDMI 4",
+        "hdmi5": "Vstup HDMI 5",
+        "hdmi6": "Vstup HDMI 6",
+        "arc": "ARC",
+        "earc": "eARC",
+        "tv": "Televízia",
+        "cable": "Kábel",
+        "satellite": "Satelit",
+        "antenna": "Anténa",
+        "av1": "Vstup AV 1",
+        "av2": "Vstup AV 2",
+        "component": "Komponent",
+        "vga": "VGA",
+        "dvi": "DVI",
+        "usb": "USB",
+        "bluetooth": "Bluetooth",
+        "wifi": "Wi‑Fi",
+        "airplay": "AirPlay",
+        "cast": "Chromecast",
+        "dlna": "DLNA",
+        "miracast": "Miracast",
+        "app_netflix": "Netflix",
+        "app_youtube": "YouTube",
+        "app_spotify": "Spotify",
+        "app_prime_video": "Prime Video",
+        "app_disney_plus": "Disney+",
+        "app_hbo_max": "HBO Max",
+        "app_apple_tv": "Apple TV",
+        "app_plex": "Plex",
+        "app_kodi": "Kodi",
+      "other": "Iné"
+      },
+      "status": {
+        "configured": "Nakonfigurované",
+        "incomplete": "Nedokončené",
+        "unconfigured": "Nenakonfigurované"
+      },
+      "run": "Spustiť",
+      "deactivate": "Deaktivovať",
+      "refreshStatus": "Obnoviť stav",
+      "rerun": "Znova spustiť",
+      "copyDebugJson": "Kopírovať ladicí JSON",
+      "copiedToClipboard": "Ladiaci JSON bol skopírovaný do schránky.",
+      "activateSuccess": "Aktivita bola úspešne aktivovaná.",
+      "activateFailed": "Nepodarilo sa aktivovať aktivitu.",
+      "deactivateSuccess": "Aktivita bola deaktivovaná.",
+      "deactivateFailed": "Nepodarilo sa deaktivovať aktivitu.",
+      "fetchFailed": "Nepodarilo sa obnoviť stav aktivity.",
+      "preview": "Náhľad",
+      "previewFailed": "Nepodarilo sa náhľad aktivity.",
+      "previewDialog": {
+        "title": "Náhľad plánu vykonania",
+        "resolvedDevices": "Rozpoznané zariadenia",
+        "executionPlan": "Plán vykonania",
+        "step": "Krok",
+        "action": "Akcia",
+        "device": "Zariadenie",
+        "critical": "Kritické",
+        "criticalYes": "Kritické",
+        "criticalNo": "Voliteľne",
+        "warnings": "Výstrahy a preskočené kroky",
+        "noSteps": "V pláne nie sú kroky vykonania.",
+        "close": "Zatvoriť"
+      },
+      "activePanel": {
+        "title": "Aktívny stav",
+        "currentActivity": "Aktuálna aktivita",
+        "none": "Žiadne",
+        "state": "Stav",
+        "activatedAt": "Aktivované o",
+        "updatedAt": "Aktualizované o",
+        "resolvedDevices": "Rozpoznané zariadenia",
+        "display": "Obrazovka",
+        "audio": "Zvuk",
+        "source": "Zdroj",
+        "remote": "Diaľkový"
+      },
+      "failures": {
+        "title": "Neúspechy",
+        "total": "Celkom krokov",
+        "succeeded": "Úspešne",
+        "failed": "Neúspešne",
+        "stepIndex": "Krok",
+        "device": "Zariadenie",
+        "property": "Vlastnosť",
+        "reason": "Dôvod"
+      },
+      "activationState": {
+        "activating": "Aktivuje sa",
+        "active": "Aktívne",
+        "failed": "Neúspešné",
+        "deactivated": "Deaktivované"
+      }
+    }
+  },
+  "dialogs": {
+    "lightingRoles": {
+      "title": "Upraviť role osvetlenia"
+    },
+    "climateRoles": {
+      "title": "Upraviť role klímy"
+    },
+    "coversRoles": {
+      "title": "Upraviť role tienenia"
+    },
+    "sensorRoles": {
+      "title": "Upraviť role senzorov"
+    },
+    "mediaActivities": {
+      "title": "Upraviť mediálne aktivity"
+    }
+  },
+  "fields": {
+    "spaces": {
+      "lightingRoles": {
+        "title": "Role osvetlenia",
+        "description": "Priraďte role svetlám, aby panel rozumel, ako sa každé svetlo typicky používa (Práca, Uvoľnenie, Noc)",
+        "noLights": "V tejto oblasti sa nenašli žiadne svetlá",
+        "role": {
+          "title": "Rola",
+          "placeholder": "Vyberte rolu"
+        },
+        "applyDefaults": "Použiť predvolené",
+        "applyDefaultsHint": "Prvné svetlo nastaví ako Hlavné, ostatné ako Ambientné"
+      },
+      "climateRoles": {
+        "title": "Role klímy",
+        "description": "Priraďte role klimatizačným zariadeniam, aby panel rozumel, ako každé zariadenie reguluje teplotu a kvalitu vzduchu",
+        "noDevices": "V tejto oblasti sa nenašli žiadne klimatické zariadenia",
+        "role": {
+          "title": "Rola",
+          "placeholder": "Vyberte rolu"
+        },
+        "applyDefaults": "Použiť predvolené",
+        "applyDefaultsHint": "Automaticky priradí role podľa typu zariadenia"
+      },
+      "coversRoles": {
+        "title": "Role tienenia",
+        "description": "Priraďte role okenným tienidlám, aby panel rozumel, ako sa každé tienidlo používa (primárne, zatemnené, priehľadné)",
+        "noCovers": "V tejto oblasti sa nenašli žiadne tienenia okien",
+        "role": {
+          "title": "Rola",
+          "placeholder": "Vyberte rolu"
+        },
+        "applyDefaults": "Použiť predvolené",
+        "applyDefaultsHint": "Prvé tienenie nastaví ako Primárne, ostatné podľa typu"
+      },
+      "sensorRoles": {
+        "title": "Role senzorov",
+        "description": "Priraďte role senzorovým kanálom, aby panel mohol zoskupovať odčítania prostredia, bezpečnosti, ochrany, kvality vzduchu a energie.",
+        "noSensors": "V tejto oblasti sa nenašli žiadne senzory",
+        "channel": {
+          "title": "Kanál"
+        },
+        "role": {
+          "title": "Rola",
+          "placeholder": "Vyberte rolu"
+        },
+        "applyDefaults": "Použiť predvolené",
+        "applyDefaultsHint": "Automaticky priradí role podľa kategórie senzorového kanála"
+      }
+    }
+  },
+  "detail": {
+    "lightingRoles": {
+      "title": "Role osvetlenia",
+      "lightsAssigned": "Priradené svetlá",
+      "noRolesAssigned": "Zatiaľ nie sú priradené žiadne role"
+    },
+    "climateRoles": {
+      "title": "Role klímy",
+      "devicesAssigned": "Priradené zariadenia",
+      "noRolesAssigned": "Zatiaľ nie sú priradené žiadne role"
+    },
+    "coversRoles": {
+      "title": "Role tienenia",
+      "coversAssigned": "Priradené tiene",
+      "noRolesAssigned": "Zatiaľ nie sú priradené žiadne role"
+    },
+    "sensorRoles": {
+      "title": "Role senzorov",
+      "sensorsAssigned": "Priradené senzory",
+      "noRolesAssigned": "Zatiaľ nie sú priradené žiadne role"
+    },
+    "mediaActivities": {
+      "title": "Mediálne aktivity",
+      "noActivities": "Zatiaľ nie sú nakonfigurované žiadne aktivity"
+    },
+    "domains": {
+      "notConfigured": "Nenakonfigurované",
+      "lighting": {
+        "title": "Osvetlenie",
+        "description": "Nastavte, ako sa v tomto priestore používajú svetlá — hlavné, pracovné, ambientné, akcentové a nočné role osvetlenia."
+      },
+      "climate": {
+        "title": "Klíma",
+        "description": "Priraďte role vykurovania, chladenia a senzorov ku klimatickým zariadeniam v tomto priestore."
+      },
+      "covers": {
+        "title": "Žalúzie",
+        "description": "Nastavte role okenných krytín — primárne, zatemňovacie, záclonové a vonkajšie žalúzie."
+      },
+      "sensor": {
+        "title": "Senzory",
+        "description": "Zoskupte senzorové kanály podľa účelu — prostredie, bezpečnosť, zabezpečenie, kvalita vzduchu a energia."
+      },
+      "media": {
+        "title": "Médiá",
+        "description": "Definujte mediálne aktivity ako sledovanie, počúvanie a hranie hier so smerovaním koncových bodov zariadení."
+      }
+    },
+    "scenes": {
+      "loading": "Načítava sa zoznam scén...",
+      "name": "Názov scény",
+      "category": "Kategória",
+      "status": "Stav",
+      "enabled": "Povolené",
+      "disabled": "Zakázané",
+      "remove": "Odstrániť",
+      "removeHeading": "Odstrániť scénu z priestoru",
+      "reassign": "Prepriradiť",
+      "reassigned": "Scéna \"{name}\" bola úspešne prepriradená.",
+      "selectScene": "Vyberte scénu na pridanie",
+      "selectSpace": "Vyberte priestor pre scénu",
+      "searchPlaceholder": "Vyhľadať scény...",
+      "confirmRemove": "Odstrániť scénu \"{name}\" z tohto priestoru?",
+      "assignedSpace": "Priradený priestor",
+      "noAvailable": "Nie sú dostupné žiadne scény na pridanie",
+      "noFilteredScenes": "Žiadne scény sa nezhodujú s hľadaním",
+      "assigned": "Scéna \"{name}\" bola priradená k tomuto priestoru.",
+      "removed": "Scéna \"{name}\" bola odstránená z tohto priestoru.",
+      "removeCanceled": "Odstraňovanie scény bolo zrušené.",
+      "empty": "Pre tento priestor nie sú priradené žiadne scény",
+      "assign": "Priradiť"
+    }
+  },
+  "edit": {
+    "sections": {
+      "smartOverrides": {
+        "lightingRoles": "Role osvetlenia",
+        "climateRoles": "Role klímy",
+        "coversRoles": "Role tienenia",
+        "sensorRoles": "Role senzorov"
+      }
+    }
+  }
 }

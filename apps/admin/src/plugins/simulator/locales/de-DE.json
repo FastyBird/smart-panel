@@ -42,7 +42,7 @@
 		"results": {
 			"summary": "Erstellt: {succeeded}, fehlgeschlagen: {failed}",
 			"status": "Status",
-			"details": "Details",
+			"details": "Einzelheiten",
 			"created": "Erstellt",
 			"failed": "Fehlgeschlagen"
 		}

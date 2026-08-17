@@ -15,7 +15,7 @@
 		"config": {
 			"serviceName": {
 				"title": "Název služby",
-				"placeholder": "FastyBird Smart Panel",
+				"placeholder": "Inteligentní panel FastyBird",
 				"validation": {
 					"required": "Název služby je povinný"
 				}

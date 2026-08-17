@@ -1,149 +1,157 @@
 {
-	"headings": {
-		"aboutPluginStatus": "Plugin-Status",
-		"aboutMdns": "MDNS-Einstellungen",
-		"aboutWebsockets": "WebSocket-Einstellungen",
-		"device": {
-			"deviceConnection": "Geräteverbindung",
-			"information": "Geräteinformationen",
-			"supported": "Glückwunsch! Gerät wird unterstützt",
-			"notSupported": "Leider wird Ihr Gerät nicht unterstützt",
-			"model": "Modell",
-			"firmware": "Firmware"
-		},
-		"wizard": {
-			"title": "Shelly NG Discovery-Assistent"
-		}
-	},
-	"subHeadings": {
-		"wizard": "Finden und übernehmen Sie Shelly NG-Geräte in Ihrem Netzwerk"
-	},
-	"breadcrumbs": {
-		"wizard": "Discovery-Assistent"
-	},
-	"fields": {
-		"devices": {
-			"id": {
-				"title": "Interner Bezeichner",
-				"placeholder": "Geräte-ID"
-			},
-			"category": {
-				"title": "Kategorie",
-				"placeholder": "Gerätekategorie",
-				"validation": {
-					"required": "Bitte wählen Sie eine Gerätekategorie"
-				}
-			},
-			"name": {
-				"title": "Name",
-				"placeholder": "Gerätename",
-				"validation": {
-					"required": "Bitte geben Sie den Gerätenamen ein"
-				}
-			},
-			"description": {
-				"title": "Beschreibung",
-				"placeholder": "Gerätebeschreibung"
-			},
-			"enabled": {
-				"title": "Aktiviert",
-				"placeholder": "Gerät aktivieren oder deaktivieren"
-			},
-			"password": {
-				"title": "Admin-Passwort",
-				"placeholder": "Gerätepasswort eingeben, falls das Gerät geschützt ist"
-			},
-			"hostname": {
-				"title": "Geräte-Hostname",
-				"placeholder": "Netzwerkname oder IP-Adresse des Geräts",
-				"validation": {
-					"required": "Bitte geben Sie den Geräte-Hostname oder die IP-Adresse ein"
-				}
-			}
-		},
-		"config": {
-			"enabled": {
-				"title": "Aktiviert"
-			},
-			"mdns": {
-				"enabled": {
-					"title": "Erkennung aktiviert"
-				},
-				"interface": {
-					"title": "Schnittstelle",
-					"placeholder": "Die zu verwendende Netzwerkschnittstelle. Wenn keine angegeben ist, werden alle verfügbaren Schnittstellen verwendet."
-				}
-			},
-			"websockets": {
-				"requestTimeout": {
-					"title": "Anfragezeitlimit",
-					"placeholder": "Die Zeit in Sekunden, die auf eine Antwort gewartet wird, bevor eine Anfrage abgebrochen wird.",
-					"validation": {
-						"required": "Bitte geben Sie das Anfragezeitlimit ein",
-						"number": "Anfragezeitlimit muss eine Zahl sein"
-					}
-				},
-				"pingInterval": {
-					"title": "Ping-Intervall",
-					"placeholder": "Das Intervall in Sekunden, in dem Ping-Anfragen gesendet werden, um zu überprüfen, ob die Verbindung offen ist. Auf 0 setzen zum Deaktivieren.",
-					"validation": {
-						"required": "Bitte geben Sie das Ping-Intervall ein",
-						"number": "Ping-Intervall muss eine Zahl sein"
-					}
-				},
-				"reconnectInterval": {
-					"title": "Wiederverbindungsintervall",
-					"placeholder": "Das Intervall in Sekunden, in dem ein Verbindungsversuch nach dem Schließen eines Sockets unternommen wird.",
-					"validation": {
-						"required": "Bitte geben Sie das Wiederverbindungsintervall ein",
-						"number": "Wiederverbindungsintervall muss eine Zahl sein",
-						"array": "Wiederverbindungsintervall muss ein Array von Zahlen sein"
-					}
-				}
-			}
-		}
-	},
-	"messages": {
-		"config": {
-			"edited": "Änderungen gespeichert! Die Shelly Next Generation Plugin-Konfiguration wurde aktualisiert.",
-			"notEdited": "Etwas ist schiefgelaufen. Die Aktualisierung der Shelly Next Generation Plugin-Konfiguration war nicht erfolgreich."
-		},
-		"devices": {
-			"exists": "Ein Gerät mit diesem Hostname und Passwort ist bereits im System registriert.",
-			"created": "Neues Shelly Next-Generation-Gerät erfolgreich hinzugefügt.",
-			"notCreated": "Etwas ist schiefgelaufen. Das Shelly Next-Generation-Gerät konnte nicht erstellt werden.",
-			"notChecked": "Etwas ist schiefgelaufen. Geräteinformationen konnten nicht geladen werden. Überprüfen Sie den Geräte-Hostname oder das Passwort.",
-			"edited": "Änderungen gespeichert! Das Shelly Next-Generation-Gerät: {device} wurde aktualisiert.",
-			"notEdited": "Etwas ist schiefgelaufen. Die Aktualisierung des Shelly Next-Generation-Geräts war nicht erfolgreich.",
-			"failedLoadSupportedDevices": "Etwas ist schiefgelaufen. Die unterstützten Geräte des Plugins konnten nicht geladen werden."
-		},
-		"wizard": {
-			"discoveryNotStarted": "Something went wrong. Shelly discovery could not be started.",
-			"discoveryNotLoaded": "Something went wrong. Shelly discovery could not be loaded.",
-			"manualNotAdded": "Something went wrong. Manual Shelly device lookup could not be added.",
-			"adoptionNotCreated": "Something went wrong. Shelly device could not be adopted."
-		}
-	},
-	"texts": {
-		"aboutPluginStatus": "Aktivieren oder deaktivieren Sie die Shelly Next Generation Geräteintegration. Wenn aktiviert, können Shelly-Geräte über das Smart Panel erkannt und gesteuert werden.",
-		"aboutMdns": "Konfigurieren Sie, wie das Plugin Shelly-Geräte in Ihrem lokalen Netzwerk über Multicast DNS (mDNS) erkennt. Dies ermöglicht die automatische Erkennung ohne manuelle Eingabe von IP-Adressen.",
-		"aboutWebsockets": "Verwalten Sie WebSocket-Verbindungsparameter für Shelly-Geräte. Diese Einstellungen steuern Kommunikationsstabilität, Anfrageverarbeitung und Wiederverbindungsverhalten.",
-		"wizard": {
-			"discovery": "The wizard scans the local network for Shelly NG devices and also accepts a manually entered hostname or IP address.",
-			"scanStatus": "{count} devices found"
-		}
-	},
-	"buttons": {
-		"next": {
-			"title": "Weiter"
-		},
-		"wizard": {
-			"restart": {
-				"title": "Scan again"
-			},
-			"addManual": {
-				"title": "Add"
-			}
-		}
-	}
+  "headings": {
+    "aboutPluginStatus": "Plugin-Status",
+    "aboutMdns": "MDNS-Einstellungen",
+    "aboutWebsockets": "WebSocket-Einstellungen",
+    "device": {
+      "deviceConnection": "Geräteverbindung",
+      "information": "Geräteinformationen",
+      "supported": "Glückwunsch! Gerät wird unterstützt",
+      "notSupported": "Leider wird Ihr Gerät nicht unterstützt",
+      "model": "Modell",
+      "firmware": "Firmware"
+    },
+    "wizard": {
+      "title": "Shelly NG Discovery-Assistent"
+    }
+  },
+  "subHeadings": {
+    "wizard": "Finden und übernehmen Sie Shelly NG-Geräte in Ihrem Netzwerk"
+  },
+  "breadcrumbs": {
+    "wizard": "Discovery-Assistent"
+  },
+  "fields": {
+    "devices": {
+      "id": {
+        "title": "Interner Bezeichner",
+        "placeholder": "Geräte-ID"
+      },
+      "category": {
+        "title": "Kategorie",
+        "placeholder": "Gerätekategorie",
+        "validation": {
+          "required": "Bitte wählen Sie eine Gerätekategorie"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Gerätename",
+        "validation": {
+          "required": "Bitte geben Sie den Gerätenamen ein"
+        }
+      },
+      "description": {
+        "title": "Beschreibung",
+        "placeholder": "Gerätebeschreibung"
+      },
+      "enabled": {
+        "title": "Aktiviert",
+        "placeholder": "Gerät aktivieren oder deaktivieren"
+      },
+      "password": {
+        "title": "Admin-Passwort",
+        "placeholder": "Gerätepasswort eingeben, falls das Gerät geschützt ist"
+      },
+      "hostname": {
+        "title": "Geräte-Hostname",
+        "placeholder": "Netzwerkname oder IP-Adresse des Geräts",
+        "validation": {
+          "required": "Bitte geben Sie den Geräte-Hostname oder die IP-Adresse ein"
+        }
+      },
+      "ethernetAddress": {
+        "title": "Ethernet-Adresse",
+        "placeholder": "Ethernet IP-Adresse (z. B. 192.168.1.100)"
+      },
+      "wifiAddress": {
+        "title": "Wi-Fi-Adresse",
+        "placeholder": "Wi-Fi IP-Adresse (z. B. 192.168.1.101)"
+      }
+    },
+    "config": {
+      "enabled": {
+        "title": "Aktiviert"
+      },
+      "mdns": {
+        "enabled": {
+          "title": "Erkennung aktiviert"
+        },
+        "interface": {
+          "title": "Schnittstelle",
+          "placeholder": "Die zu verwendende Netzwerkschnittstelle. Wenn keine angegeben ist, werden alle verfügbaren Schnittstellen verwendet."
+        }
+      },
+      "websockets": {
+        "requestTimeout": {
+          "title": "Anfragezeitlimit",
+          "placeholder": "Die Zeit in Sekunden, die auf eine Antwort gewartet wird, bevor eine Anfrage abgebrochen wird.",
+          "validation": {
+            "required": "Bitte geben Sie das Anfragezeitlimit ein",
+            "number": "Anfragezeitlimit muss eine Zahl sein"
+          }
+        },
+        "pingInterval": {
+          "title": "Ping-Intervall",
+          "placeholder": "Das Intervall in Sekunden, in dem Ping-Anfragen gesendet werden, um zu überprüfen, ob die Verbindung offen ist. Auf 0 setzen zum Deaktivieren.",
+          "validation": {
+            "required": "Bitte geben Sie das Ping-Intervall ein",
+            "number": "Ping-Intervall muss eine Zahl sein"
+          }
+        },
+        "reconnectInterval": {
+          "title": "Wiederverbindungsintervall",
+          "placeholder": "Das Intervall in Sekunden, in dem ein Verbindungsversuch nach dem Schließen eines Sockets unternommen wird.",
+          "validation": {
+            "required": "Bitte geben Sie das Wiederverbindungsintervall ein",
+            "number": "Wiederverbindungsintervall muss eine Zahl sein",
+            "array": "Wiederverbindungsintervall muss ein Array von Zahlen sein"
+          }
+        }
+      }
+    }
+  },
+  "messages": {
+    "config": {
+      "edited": "Änderungen gespeichert! Die Shelly Next Generation Plugin-Konfiguration wurde aktualisiert.",
+      "notEdited": "Etwas ist schiefgelaufen. Die Aktualisierung der Shelly Next Generation Plugin-Konfiguration war nicht erfolgreich."
+    },
+    "devices": {
+      "exists": "Ein Gerät mit diesem Hostname und Passwort ist bereits im System registriert.",
+      "created": "Neues Shelly Next-Generation-Gerät erfolgreich hinzugefügt.",
+      "notCreated": "Etwas ist schiefgelaufen. Das Shelly Next-Generation-Gerät konnte nicht erstellt werden.",
+      "notChecked": "Etwas ist schiefgelaufen. Geräteinformationen konnten nicht geladen werden. Überprüfen Sie den Geräte-Hostname oder das Passwort.",
+      "edited": "Änderungen gespeichert! Das Shelly Next-Generation-Gerät: {device} wurde aktualisiert.",
+      "notEdited": "Etwas ist schiefgelaufen. Die Aktualisierung des Shelly Next-Generation-Geräts war nicht erfolgreich.",
+      "failedLoadSupportedDevices": "Etwas ist schiefgelaufen. Die unterstützten Geräte des Plugins konnten nicht geladen werden."
+    },
+    "wizard": {
+      "discoveryNotStarted": "Etwas ist schiefgelaufen. Die Shelly-Suche konnte nicht gestartet werden.",
+      "discoveryNotLoaded": "Etwas ist schiefgelaufen. Die Shelly-Suche konnte nicht geladen werden.",
+      "manualNotAdded": "Etwas ist schiefgelaufen. Die manuelle Suche nach einem Shelly-Gerät konnte nicht hinzugefügt werden.",
+      "adoptionNotCreated": "Etwas ist schiefgelaufen. Das Shelly-Gerät konnte nicht übernommen werden."
+    }
+  },
+  "texts": {
+    "aboutPluginStatus": "Aktivieren oder deaktivieren Sie die Shelly Next Generation Geräteintegration. Wenn aktiviert, können Shelly-Geräte über das Smart Panel erkannt und gesteuert werden.",
+    "aboutMdns": "Konfigurieren Sie, wie das Plugin Shelly-Geräte in Ihrem lokalen Netzwerk über Multicast DNS (mDNS) erkennt. Dies ermöglicht die automatische Erkennung ohne manuelle Eingabe von IP-Adressen.",
+    "aboutWebsockets": "Verwalten Sie WebSocket-Verbindungsparameter für Shelly-Geräte. Diese Einstellungen steuern Kommunikationsstabilität, Anfrageverarbeitung und Wiederverbindungsverhalten.",
+    "wizard": {
+      "discovery": "Der Assistent durchsucht das lokale Netzwerk nach Shelly NG-Geräten und akzeptiert auch einen manuell eingegebenen Hostnamen oder eine IP-Adresse.",
+      "scanStatus": "{count} Geräte gefunden"
+    }
+  },
+  "buttons": {
+    "next": {
+      "title": "Weiter"
+    },
+    "wizard": {
+      "restart": {
+        "title": "Erneut scannen"
+      },
+      "addManual": {
+        "title": "Hinzufügen"
+      }
+    }
+  }
 }

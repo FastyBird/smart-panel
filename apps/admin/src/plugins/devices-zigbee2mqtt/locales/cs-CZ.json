@@ -1,11 +1,11 @@
 {
 	"headings": {
 		"aboutPluginStatus": "Stav pluginu",
-		"aboutConnection": "Connection type",
+		"aboutConnection": "Typ připojení",
 		"aboutMqtt": "MQTT připojení",
 		"advancedMqttSettings": "Pokročilé nastavení MQTT",
-		"aboutWs": "WebSocket connection",
-		"advancedWsSettings": "Advanced WebSocket settings",
+		"aboutWs": "Připojení WebSocket",
+		"advancedWsSettings": "Pokročilá nastavení WebSocket",
 		"aboutTls": "Konfigurace TLS/SSL",
 		"aboutDiscovery": "Vyhledávání zařízení",
 		"steps": {
@@ -32,9 +32,9 @@
 	},
 	"texts": {
 		"aboutPluginStatus": "Povolte nebo zakažte plugin Zigbee2MQTT. Pokud je zakázán, žádná Zigbee zařízení nebudou monitorována ani ovládána.",
-		"aboutConnection": "Choose how to connect to Zigbee2MQTT. Use MQTT to connect via an MQTT broker, or WebSocket to connect directly to the Zigbee2MQTT frontend.",
+		"aboutConnection": "Vyberte, jak se připojit ke službě Zigbee2MQTT. Použijte MQTT pro připojení přes MQTT broker nebo WebSocket pro přímé připojení k rozhraní Zigbee2MQTT.",
 		"aboutMqtt": "Nakonfigurujte připojení k vašemu MQTT brokeru, kde Zigbee2MQTT publikuje data zařízení.",
-		"aboutWs": "Configure the direct WebSocket connection to the Zigbee2MQTT frontend. This eliminates the need for a separate MQTT broker.",
+		"aboutWs": "Nastavte přímé WebSocket připojení k rozhraní Zigbee2MQTT. Tím odpadá potřeba samostatného MQTT brokeru.",
 		"aboutTls": "Nakonfigurujte nastavení TLS/SSL pro zabezpečená MQTT připojení. Povolte TLS, pokud váš broker vyžaduje šifrovaná připojení.",
 		"aboutDiscovery": "Nakonfigurujte, jak jsou zařízení vyhledávána a přidávána z bridge Zigbee2MQTT.",
 		"steps": {
@@ -57,9 +57,9 @@
 				"title": "Povoleno"
 			},
 			"connectionType": {
-				"title": "Connection type",
-				"mqtt": "MQTT broker",
-				"ws": "WebSocket (direct)"
+				"title": "Typ připojení",
+				"mqtt": "Broker MQTT",
+				"ws": "WebSocket (přímé)"
 			},
 			"mqtt": {
 				"host": {
@@ -70,7 +70,7 @@
 					}
 				},
 				"port": {
-					"title": "Port",
+					"title": "Keepalive (s)",
 					"validation": {
 						"required": "Port je povinný",
 						"range": "Port musí být mezi 1 a 65535"
@@ -92,14 +92,14 @@
 					}
 				},
 				"clientId": {
-					"title": "ID klienta",
+					"title": "MQTT Client ID",
 					"placeholder": "Automaticky generováno pokud prázdné"
 				},
 				"cleanSession": {
 					"title": "Čistá relace"
 				},
 				"keepalive": {
-					"title": "Keepalive (s)",
+					"title": "Životnost připojení (s)",
 					"validation": {
 						"number": "Musí být číslo >= 10"
 					}
@@ -107,7 +107,7 @@
 				"connectTimeout": {
 					"title": "Časový limit (ms)",
 					"validation": {
-						"number": "Musí být číslo >= 1000"
+						"number": "Hodnota musí být číslo >= 1000"
 					}
 				},
 				"reconnectInterval": {
@@ -119,39 +119,39 @@
 			},
 			"ws": {
 				"host": {
-					"title": "Zigbee2MQTT host",
-					"placeholder": "e.g., localhost or 192.168.1.100",
+					"title": "Hostitel Zigbee2MQTT",
+					"placeholder": "např. localhost nebo 192.168.1.100",
 					"validation": {
-						"required": "Zigbee2MQTT host is required"
+						"required": "Je vyžadován hostitel Zigbee2MQTT"
 					}
 				},
 				"port": {
-					"title": "Port",
+					"title": "Přístav",
 					"validation": {
-						"required": "Port is required",
-						"range": "Port must be between 1 and 65535"
+						"required": "Je vyžadován port",
+						"range": "Port musí být v rozsahu 1 až 65535"
 					}
 				},
 				"baseTopic": {
-					"title": "Base topic",
-					"placeholder": "e.g., zigbee2mqtt",
+					"title": "Základní téma",
+					"placeholder": "např. zigbee2mqtt",
 					"validation": {
-						"required": "Base topic is required"
+						"required": "Je vyžadováno základní téma"
 					}
 				},
 				"secure": {
-					"title": "Use secure connection (wss://)"
+					"title": "Použít zabezpečené připojení (wss://)"
 				},
 				"connectTimeout": {
-					"title": "Timeout (ms)",
+					"title": "Časový limit (ms)",
 					"validation": {
-						"number": "Must be a number >= 1000"
+						"number": "Musí být číslo >= 1000"
 					}
 				},
 				"reconnectInterval": {
-					"title": "Reconnect (ms)",
+					"title": "Opětovné připojení (ms)",
 					"validation": {
-						"number": "Must be a number >= 1000"
+						"number": "Musí být číslo >= 1000"
 					}
 				}
 			},
@@ -224,7 +224,7 @@
 				"title": "Výrobce"
 			},
 			"model": {
-				"title": "Model"
+				"title": "Model zařízení"
 			},
 			"zigbee2mqttDeviceId": {
 				"title": "Připojené zařízení Zigbee2MQTT",
@@ -311,7 +311,7 @@
 		"breadcrumb": "průvodce přidáním",
 		"bridge": {
 			"offline": {
-				"title": "Bridge offline",
+				"title": "Most je offline.",
 				"message": "Zigbee2MQTT bridge je momentálně offline. Pro pokračování nakonfigurujte připojení.",
 				"openConfig": "Otevřít konfiguraci"
 			}

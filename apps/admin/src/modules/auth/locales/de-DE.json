@@ -135,5 +135,55 @@
     "close": {
       "title": "Schließen"
     }
+  },
+  "tokens": {
+    "title": "Persönliche Zugriffstoken",
+    "create": "Token erstellen",
+    "revoke": "Widerrufen",
+    "never": "Nie",
+    "description": "Persönliche Zugriffstoken ermöglichen externen Anwendungen, sich in Ihrem Namen mit der API zu authentifizieren.",
+    "noTokens": "Noch keine persönlichen Zugriffstoken.",
+    "columns": {
+      "name": "Name",
+      "created": "Erstellt",
+      "lastUsed": "Zuletzt verwendet",
+      "expires": "Läuft ab",
+      "actions": "Aktionen"
+    },
+    "createDialog": {
+      "title": "Persönlichen Zugriffstoken erstellen",
+      "name": "Token-Name",
+      "namePlaceholder": "z. B. CI/CD-Pipeline, Home Assistant",
+      "nameRequired": "Token-Name ist erforderlich",
+      "description": "Beschreibung (optional)",
+      "descriptionPlaceholder": "Wofür wird dieses Token verwendet?",
+      "expiry": "Ablauf",
+      "expiry30": "30 Tage",
+      "expiry90": "90 Tage",
+      "expiry365": "1 Jahr",
+      "expiryNever": "Kein Ablauf",
+      "cancel": "Abbrechen",
+      "submit": "Token erstellen"
+    },
+    "createdDialog": {
+      "title": "Token erfolgreich erstellt",
+      "warning": "Kopieren Sie dieses Token jetzt. Sie können es später nicht mehr sehen.",
+      "copy": "Kopieren",
+      "copied": "Kopiert!",
+      "done": "Fertig"
+    },
+    "revokeDialog": {
+      "title": "Token widerrufen",
+      "message": "Möchten Sie diesen Token wirklich widerrufen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "confirm": "Widerrufen",
+      "cancel": "Abbrechen"
+    },
+    "messages": {
+      "created": "Persönlicher Zugriffstoken erfolgreich erstellt.",
+      "createError": "Fehler beim Erstellen des persönlichen Zugriffstokens.",
+      "revoked": "Token erfolgreich widerrufen.",
+      "revokeError": "Fehler beim Widerrufen des Tokens.",
+      "copyError": "Fehler beim Kopieren des Tokens in die Zwischenablage."
+    }
   }
 }

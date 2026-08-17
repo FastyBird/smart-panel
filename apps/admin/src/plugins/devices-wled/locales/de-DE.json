@@ -121,7 +121,7 @@
 		"breadcrumb": "WLED-Übernahmeassistent",
 		"columns": {
 			"identifier": "MAC-Adresse oder Hostname",
-			"host": "Host"
+			"host": "Gastgeber"
 		},
 		"actions": {
 			"rescan": "Netzwerk erneut durchsuchen",

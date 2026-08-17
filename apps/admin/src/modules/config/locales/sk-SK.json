@@ -287,17 +287,17 @@
 		"zip_code": "PSČ"
 	},
 	"weatherUnits": {
-		"celsius": "Celsius",
-		"fahrenheit": "Fahrenheit"
+		"celsius": "Celzia",
+		"fahrenheit": "Fahrenheita"
 	},
 	"screenLockDurations": {
 		"15s": "15s",
-		"30s": "30s",
-		"60s": "1min",
-		"120s": "2min",
-		"300s": "5min",
-		"600s": "10min",
-		"1800s": "30min",
+		"30s": "30-te roky",
+		"60s": "1 min",
+		"120s": "2 min",
+		"300s": "5 min",
+		"600s": "10 min",
+		"1800s": "30 min",
 		"0s": "Nikdy"
 	},
 	"logLevels": {

@@ -51,7 +51,7 @@
 		"status": "Status",
 		"configuration": "Konfiguration",
 		"description": "Beschreibung",
-		"details": "Details",
+		"details": "Einzelheiten",
 		"links": "Links",
 		"readme": "Über",
 		"documentation": "Dokumentation",
@@ -116,7 +116,8 @@
 				"6h": "Letzte 6 Stunden",
 				"24h": "Letzte 24 Stunden",
 				"7d": "Letzte 7 Tage"
-			}
+			},
+			"detail": "Protokoll-Detail"
 		}
 	},
 	"buttons": {
@@ -215,7 +216,7 @@
 			"healthy": "Gesund",
 			"unhealthy": "Fehlerhaft",
 			"uptime": "Betriebszeit",
-			"startCount": "Starts",
+			"startCount": "Beginnt",
 			"lastStarted": "Zuletzt gestartet",
 			"lastStopped": "Zuletzt gestoppt",
 			"lastError": "Letzter Fehler"

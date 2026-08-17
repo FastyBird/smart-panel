@@ -152,7 +152,7 @@
 				}
 			},
 			"hostname": {
-				"title": "Hostname",
+				"title": "Názov hostiteľa",
 				"placeholder": "Zadajte hostname Home Assistant (napr. homeassistant.local:8123)",
 				"validation": {
 					"required": "Prosím vyplňte hostname"
@@ -263,9 +263,16 @@
 			"channelsCount": "Počet kanálov: {count}",
 			"warningsCount": "Počet upozornení mapovania: {count}"
 		},
-		"kinds": { "device": "Zariadenie", "helper": "Pomocná entita" },
-		"statuses": { "needsAttention": "Ručná kontrola" },
-		"actions": { "refresh": "Obnoviť inventár" },
+		"kinds": {
+			"device": "Zariadenie",
+			"helper": "Pomocná entita"
+		},
+		"statuses": {
+			"needsAttention": "Ručná kontrola"
+		},
+		"actions": {
+			"refresh": "Obnoviť inventár"
+		},
 		"manualReview": {
 			"title": "Položky vyžadujúce ručnú kontrolu: {count}",
 			"message": "Tieto položky nie sú vybrané na hromadný import. Na kontrolu kategórie, kanálov a vlastností použite existujúce riadené pridanie.",

@@ -13,7 +13,7 @@
 		"headings": {
 			"loadingFailed": "Ein Fehler ist aufgetreten",
 			"notFound": "Seite nicht gefunden",
-			"home": "Administration"
+			"home": "Verwaltung"
 		},
 		"messages": {
 			"connectionRecoveryFailed": "Die Verbindung konnte nicht wiederhergestellt werden. Die angezeigten Daten sind möglicherweise veraltet.",
