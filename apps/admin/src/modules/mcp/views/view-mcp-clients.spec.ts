@@ -45,6 +45,10 @@ vi.mock('../../../common', () => ({
 	ViewHeader: { name: 'ViewHeader', template: '<header><slot name="extra" /></header>' },
 	useFlashMessage: () => ({ success: mocks.flashSuccess, error: mocks.flashError }),
 	useBreakpoints: () => ({ isLGDevice: ref(true) }),
+	AppBar: { name: 'AppBar', template: '<div><slot name="heading" /><slot name="button-right" /></div>' },
+	AppBarHeading: { name: 'AppBarHeading', template: '<div><slot name="icon" /><slot name="title" /></div>' },
+	AppBarButton: { name: 'AppBarButton', template: '<button><slot name="icon" /></button>' },
+	AppBarButtonAlign: { LEFT: 'left', RIGHT: 'right' },
 }));
 
 vi.mock('../../config/composables/useConfigModule', () => ({
@@ -73,6 +77,11 @@ const mountView = () =>
 		global: {
 			stubs: {
 				ElCard: { name: 'ElCard', template: '<section><slot name="header" /><slot /></section>' },
+				// Render the drawer body so its contents can be asserted on.
+				ElDrawer: { name: 'ElDrawer', template: '<aside><slot /></aside>' },
+				ElScrollbar: { name: 'ElScrollbar', template: '<div><slot /></div>' },
+				ElForm: { name: 'ElForm', template: '<form><slot /></form>' },
+				ElFormItem: { name: 'ElFormItem', template: '<div><slot /></div>' },
 				// shallowMount would otherwise auto-stub this away and drop the
 				// header actions rendered into its `extra` slot.
 				ViewHeader: { name: 'ViewHeader', template: '<header><slot name="extra" /></header>' },
@@ -113,6 +122,16 @@ describe('ViewMcpClients', () => {
 		// The admin edits records in a drawer (see the devices module); MCP was
 		// the only place presenting an add/edit form as a modal dialog.
 		expect(wrapper.find('[data-test-id="mcp-client-form-drawer"]').exists()).toBe(true);
+	});
+
+	it('presents the capability ceiling hint as an alert', () => {
+		const wrapper = mountView();
+
+		const hint = wrapper.find('[data-test-id="mcp-client-capability-ceiling-hint"]');
+
+		expect(hint.exists()).toBe(true);
+		// Guidance in this module is carried by el-alert, not loose grey text.
+		expect(hint.element.tagName.toLowerCase()).toContain('alert');
 	});
 
 	it('requires confirmation before revoking a credential', async () => {

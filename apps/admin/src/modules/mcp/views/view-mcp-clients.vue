@@ -121,7 +121,8 @@
 				<el-table-column
 					fixed="right"
 					:label="t('mcpModule.clients.columns.actions')"
-					width="250"
+					:width="230"
+					align="right"
 				>
 					<template #default="scope">
 						<mcp-client-actions
@@ -273,7 +274,14 @@
 								{{ t(`mcpModule.capabilities.${capability}.title`) }}
 							</el-checkbox>
 						</el-checkbox-group>
-						<div class="text-sm text-gray-500 mt-1">{{ t('mcpModule.clientForm.ceilingHint') }}</div>
+						<el-alert
+							class="mt-1"
+							type="info"
+							:description="t('mcpModule.clientForm.ceilingHint')"
+							:closable="false"
+							show-icon
+							data-test-id="mcp-client-capability-ceiling-hint"
+						/>
 					</el-form-item>
 					<el-form-item
 						v-if="!editingClient"
