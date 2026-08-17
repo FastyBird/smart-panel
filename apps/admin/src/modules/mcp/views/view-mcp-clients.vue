@@ -183,10 +183,11 @@
 		</div>
 	</div>
 
-	<el-dialog
+	<el-drawer
 		v-model="showClientDialog"
 		:title="editingClient ? t('mcpModule.clientForm.editTitle') : t('mcpModule.clientForm.createTitle')"
-		width="min(620px, 94vw)"
+		:size="isLGDevice ? '40%' : '100%'"
+		data-test-id="mcp-client-form-drawer"
 		@closed="resetClientForm"
 	>
 		<el-form
@@ -266,7 +267,7 @@
 				{{ editingClient ? t('mcpModule.actions.save') : t('mcpModule.actions.create') }}
 			</el-button>
 		</template>
-	</el-dialog>
+	</el-drawer>
 
 	<el-dialog
 		v-model="showRotateDialog"
@@ -320,6 +321,7 @@ import {
 	ElCheckbox,
 	ElCheckboxGroup,
 	ElDialog,
+	ElDrawer,
 	ElForm,
 	ElFormItem,
 	ElInput,
@@ -336,7 +338,7 @@ import {
 
 import { Icon } from '@iconify/vue';
 
-import { ViewHeader, useFlashMessage } from '../../../common';
+import { ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import { useConfigModule } from '../../config/composables/useConfigModule';
 import McpClientActions from '../components/mcp-client-actions.vue';
 import McpTokenDialog from '../components/mcp-token-dialog.vue';
@@ -350,6 +352,7 @@ defineOptions({ name: 'ViewMcpClients' });
 
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
+const { isLGDevice } = useBreakpoints();
 const { clients, loading, error, fetchClients, createClient, updateClient, rotateClient, revokeClient, deleteClient } = useMcpClients();
 const { configModule, fetchConfigModule } = useConfigModule({ type: MCP_MODULE_NAME });
 

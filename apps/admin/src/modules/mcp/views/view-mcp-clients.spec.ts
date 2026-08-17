@@ -44,6 +44,7 @@ vi.mock('vue-i18n', () => ({
 vi.mock('../../../common', () => ({
 	ViewHeader: { name: 'ViewHeader', template: '<header><slot name="extra" /></header>' },
 	useFlashMessage: () => ({ success: mocks.flashSuccess, error: mocks.flashError }),
+	useBreakpoints: () => ({ isLGDevice: ref(true) }),
 }));
 
 vi.mock('../../config/composables/useConfigModule', () => ({
@@ -104,6 +105,14 @@ describe('ViewMcpClients', () => {
 		expect(create.exists()).toBe(true);
 		expect(create.attributes('type')).toBe('primary');
 		expect(create.attributes('plain')).toBeDefined();
+	});
+
+	it('hosts the client form in a drawer rather than a dialog', () => {
+		const wrapper = mountView();
+
+		// The admin edits records in a drawer (see the devices module); MCP was
+		// the only place presenting an add/edit form as a modal dialog.
+		expect(wrapper.find('[data-test-id="mcp-client-form-drawer"]').exists()).toBe(true);
 	});
 
 	it('requires confirmation before revoking a credential', async () => {

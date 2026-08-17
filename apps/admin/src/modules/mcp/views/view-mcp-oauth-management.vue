@@ -275,10 +275,11 @@
 		</el-card>
 	</div>
 
-	<el-dialog
+	<el-drawer
 		v-model="showClientDialog"
 		:title="editingClient ? t('mcpModule.oauthManagement.editClient') : t('mcpModule.oauthManagement.createClient')"
-		width="min(680px, 94vw)"
+		:size="isLGDevice ? '40%' : '100%'"
+		data-test-id="mcp-oauth-client-form-drawer"
 		@closed="resetClientForm"
 	>
 		<el-form
@@ -353,12 +354,13 @@
 				{{ editingClient ? t('mcpModule.actions.save') : t('mcpModule.actions.create') }}
 			</el-button>
 		</template>
-	</el-dialog>
+	</el-drawer>
 
-	<el-dialog
+	<el-drawer
 		v-model="showGrantDialog"
 		:title="t('mcpModule.oauthManagement.editGrant')"
-		width="min(560px, 94vw)"
+		:size="isLGDevice ? '40%' : '100%'"
+		data-test-id="mcp-oauth-grant-form-drawer"
 		@closed="resetGrantForm"
 	>
 		<el-form
@@ -406,7 +408,7 @@
 				{{ t('mcpModule.actions.save') }}
 			</el-button>
 		</template>
-	</el-dialog>
+	</el-drawer>
 </template>
 
 <script setup lang="ts">
@@ -419,7 +421,7 @@ import {
 	ElCard,
 	ElCheckbox,
 	ElCheckboxGroup,
-	ElDialog,
+	ElDrawer,
 	ElForm,
 	ElFormItem,
 	ElInput,
@@ -436,7 +438,7 @@ import {
 
 import { Icon } from '@iconify/vue';
 
-import { ViewHeader, useFlashMessage } from '../../../common';
+import { ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import { useMcpOAuthManagement } from '../composables/useMcpOAuthManagement';
 import { McpOAuthScope } from '../mcp.constants';
 import type { IMcpOAuthAccessToken, IMcpOAuthClient, IMcpOAuthGrant, IMcpOAuthRefreshFamily } from '../schemas/oauth-management.types';
@@ -445,6 +447,7 @@ defineOptions({ name: 'ViewMcpOAuthManagement' });
 
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
+const { isLGDevice } = useBreakpoints();
 const {
 	clients,
 	grants,
@@ -628,11 +631,7 @@ const confirmRefreshFamilyRevoke = (family: IMcpOAuthRefreshFamily): Promise<voi
 		'mcpModule.oauthManagement.messages.refreshFamilyRevoked'
 	);
 const confirmGlobalRevoke = (): Promise<void> =>
-	confirmRevoke(
-		t('mcpModule.oauthManagement.confirm.all'),
-		() => revokeAll(),
-		'mcpModule.oauthManagement.messages.allRevoked'
-	);
+	confirmRevoke(t('mcpModule.oauthManagement.confirm.all'), () => revokeAll(), 'mcpModule.oauthManagement.messages.allRevoked');
 
 const grantStatus = (grant: IMcpOAuthGrant): { key: 'active' | 'expired' | 'inactive' | 'revoked'; type: 'success' | 'danger' | 'warning' } => {
 	if (grant.revokedAt) return { key: 'revoked', type: 'danger' };
