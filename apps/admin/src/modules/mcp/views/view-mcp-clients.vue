@@ -58,130 +58,21 @@
 			show-icon
 		/>
 
-		<div class="mcp-client-table-wrap">
-			<el-table
-				v-loading="loading"
-				:data="clients"
-				class="mcp-client-table"
-				row-key="id"
-			>
-				<el-table-column
-					prop="name"
-					:label="t('mcpModule.clients.columns.name')"
-					min-width="190"
-				>
-					<template #default="scope">
-						<div class="font-600">{{ scope.row.name }}</div>
-						<div class="text-sm text-gray-500">{{ scope.row.description || t('mcpModule.clients.noDescription') }}</div>
-					</template>
-				</el-table-column>
-				<el-table-column
-					:label="t('mcpModule.clients.columns.status')"
-					width="120"
-				>
-					<template #default="scope">
-						<el-tag :type="status(scope.row).type">
-							{{ t(`mcpModule.status.${status(scope.row).key}`) }}
-						</el-tag>
-					</template>
-				</el-table-column>
-				<el-table-column
-					:label="t('mcpModule.clients.columns.capabilities')"
-					min-width="210"
-				>
-					<template #default="scope">
-						<div class="flex flex-wrap gap-1">
-							<el-tag
-								v-for="capability in scope.row.capabilities"
-								:key="capability"
-								type="info"
-							>
-								{{ t(`mcpModule.capabilities.${capability}.title`) }}
-							</el-tag>
-							<span v-if="scope.row.capabilities.length === 0">{{ t('mcpModule.clients.none') }}</span>
-						</div>
-					</template>
-				</el-table-column>
-				<el-table-column
-					:label="t('mcpModule.clients.columns.expires')"
-					width="180"
-				>
-					<template #default="scope">
-						{{ formatNullableDate(scope.row.credentialExpiresAt) }}
-					</template>
-				</el-table-column>
-				<el-table-column
-					:label="t('mcpModule.clients.columns.lastUsed')"
-					width="180"
-				>
-					<template #default="scope">
-						{{ formatNullableDate(scope.row.lastUsedAt) }}
-					</template>
-				</el-table-column>
-				<el-table-column
-					fixed="right"
-					:label="t('mcpModule.clients.columns.actions')"
-					:width="320"
-					align="right"
-				>
-					<template #default="scope">
-						<mcp-client-actions
-							:client="scope.row"
-							@edit="openEdit"
-							@rotate="openRotate"
-							@revoke="confirmRevoke"
-							@delete="confirmDelete"
-						/>
-					</template>
-				</el-table-column>
-				<template #empty>
-					{{ t('mcpModule.clients.empty') }}
-				</template>
-			</el-table>
-		</div>
-
-		<div
-			v-loading="loading"
-			class="mcp-client-cards"
-		>
-			<el-card
-				v-for="cardClient in clients"
-				:key="cardClient.id"
-				shadow="never"
-			>
-				<div class="flex justify-between gap-2 mb-2">
-					<div>
-						<div class="font-600">{{ cardClient.name }}</div>
-						<div class="text-sm text-gray-500">{{ cardClient.description || t('mcpModule.clients.noDescription') }}</div>
-					</div>
-					<el-tag :type="status(cardClient).type">{{ t(`mcpModule.status.${status(cardClient).key}`) }}</el-tag>
-				</div>
-				<div class="flex flex-wrap gap-1 mb-3">
-					<el-tag
-						v-for="capability in cardClient.capabilities"
-						:key="capability"
-						type="info"
-					>
-						{{ t(`mcpModule.capabilities.${capability}.title`) }}
-					</el-tag>
-				</div>
-				<div class="text-sm mb-1">{{ t('mcpModule.clients.columns.expires') }}: {{ formatNullableDate(cardClient.credentialExpiresAt) }}</div>
-				<div class="text-sm mb-3">{{ t('mcpModule.clients.columns.lastUsed') }}: {{ formatNullableDate(cardClient.lastUsedAt) }}</div>
-				<mcp-client-actions
-					:client="cardClient"
-					@edit="openEdit"
-					@rotate="openRotate"
-					@revoke="confirmRevoke"
-					@delete="confirmDelete"
-				/>
-			</el-card>
-			<div
-				v-if="!loading && clients.length === 0"
-				class="text-center text-gray-500 py-6"
-			>
-				{{ t('mcpModule.clients.empty') }}
-			</div>
-		</div>
+		<list-mcp-clients
+			v-model:sort-by="sortBy"
+			v-model:sort-dir="sortDir"
+			v-model:paginate-size="paginateSize"
+			v-model:paginate-page="paginatePage"
+			:items="clientsPaginated"
+			:total-rows="totalRows"
+			:loading="loading"
+			:filters-active="filtersActive"
+			@edit="openEdit"
+			@rotate="openRotate"
+			@revoke="confirmRevoke"
+			@delete="confirmDelete"
+			@reset-filters="resetFilter"
+		/>
 	</div>
 
 	<el-drawer
@@ -384,21 +275,18 @@ import {
 	ElMessageBox,
 	ElScrollbar,
 	ElSwitch,
-	ElTable,
-	ElTableColumn,
-	ElTag,
 	type FormInstance,
 	type FormRules,
-	vLoading,
 } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import { useConfigModule } from '../../config/composables/useConfigModule';
-import McpClientActions from '../components/mcp-client-actions.vue';
+import ListMcpClients from '../components/list-mcp-clients.vue';
 import McpTokenDialog from '../components/mcp-token-dialog.vue';
 import { useMcpClients } from '../composables/useMcpClients';
+import { useMcpClientsDataSource } from '../composables/useMcpClientsDataSource';
 import { MCP_DEFAULT_TOKEN_EXPIRATION_DAYS, MCP_MAX_TOKEN_EXPIRATION_DAYS, MCP_MODULE_NAME, McpCapability } from '../mcp.constants';
 import { isCapabilitySubset, resolveMcpEndpoint } from '../mcp.utils';
 import type { IMcpClient } from '../schemas/client.types';
@@ -410,6 +298,7 @@ const { t } = useI18n();
 const flashMessage = useFlashMessage();
 const { isLGDevice } = useBreakpoints();
 const { clients, loading, error, fetchClients, createClient, updateClient, rotateClient, revokeClient, deleteClient } = useMcpClients();
+const { clientsPaginated, totalRows, filtersActive, sortBy, sortDir, paginateSize, paginatePage, resetFilter } = useMcpClientsDataSource(clients);
 const { configModule, fetchConfigModule } = useConfigModule({ type: MCP_MODULE_NAME });
 
 const capabilityOptions = Object.values(McpCapability);
@@ -562,16 +451,6 @@ const confirmDelete = async (client: IMcpClient): Promise<void> => {
 	}
 };
 
-const status = (client: IMcpClient): { key: string; type: 'success' | 'warning' | 'danger' | 'info' } => {
-	if (client.credentialRevoked) return { key: 'revoked', type: 'danger' };
-	if (client.credentialExpiresAt && new Date(client.credentialExpiresAt).getTime() <= Date.now()) return { key: 'expired', type: 'danger' };
-	if (!client.enabled) return { key: 'disabled', type: 'warning' };
-	return { key: 'active', type: 'success' };
-};
-
-const formatNullableDate = (value: string | null): string =>
-	value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : t('mcpModule.clients.never');
-
 const copyEndpoint = async (): Promise<void> => {
 	try {
 		await navigator.clipboard.writeText(endpointUrl);
@@ -594,33 +473,12 @@ onMounted(async (): Promise<void> => {
 	gap: 16px;
 	margin: 16px;
 	min-width: 0;
-}
-
-.mcp-client-table-wrap {
-	overflow-x: auto;
-}
-
-.mcp-client-table {
-	min-width: 1050px;
-}
-
-.mcp-client-cards {
-	display: none;
-	flex-direction: column;
-	gap: 12px;
+	overflow: hidden;
 }
 
 @media (max-width: 767px) {
 	.mcp-clients-page {
 		margin: 8px;
-	}
-
-	.mcp-client-table-wrap {
-		display: none;
-	}
-
-	.mcp-client-cards {
-		display: flex;
 	}
 }
 </style>

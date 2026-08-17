@@ -44,7 +44,14 @@ vi.mock('vue-i18n', () => ({
 vi.mock('../../../common', () => ({
 	ViewHeader: { name: 'ViewHeader', template: '<header><slot name="extra" /></header>' },
 	useFlashMessage: () => ({ success: mocks.flashSuccess, error: mocks.flashError }),
-	useBreakpoints: () => ({ isLGDevice: ref(true) }),
+	useBreakpoints: () => ({ isLGDevice: ref(true), isMDDevice: ref(true) }),
+	useListQuery: () => ({
+		filters: ref({ search: undefined, status: 'all', enabled: 'all', capabilities: [] }),
+		sort: ref([{ by: 'name', dir: 'asc' }]),
+		pagination: ref({ page: 1, size: 25 }),
+		viewMode: ref('table'),
+		reset: vi.fn(),
+	}),
 	AppBar: { name: 'AppBar', template: '<div><slot name="heading" /><slot name="button-right" /></div>' },
 	AppBarHeading: { name: 'AppBarHeading', template: '<div><slot name="icon" /><slot name="title" /></div>' },
 	AppBarButton: { name: 'AppBarButton', template: '<button><slot name="icon" /></button>' },
@@ -96,11 +103,12 @@ describe('ViewMcpClients', () => {
 		(ElMessageBox.confirm as Mock).mockResolvedValue('confirm');
 	});
 
-	it('renders dedicated desktop and mobile client layouts', () => {
+	it('renders the shared list component rather than a bespoke table', () => {
 		const wrapper = mountView();
 
-		expect(wrapper.find('.mcp-client-table-wrap').exists()).toBe(true);
-		expect(wrapper.find('.mcp-client-cards').exists()).toBe(true);
+		// The separate desktop table and mobile card markup were replaced by the
+		// list/table pair every other module uses, which handles both viewports.
+		expect(wrapper.findComponent({ name: 'ListMcpClients' }).exists()).toBe(true);
 	});
 
 	it('renders the header create action as a plain primary button', () => {
@@ -136,10 +144,10 @@ describe('ViewMcpClients', () => {
 
 	it('requires confirmation before revoking a credential', async () => {
 		const wrapper = mountView();
-		const actions = wrapper.findAllComponents({ name: 'McpClientActions' });
+		const list = wrapper.findComponent({ name: 'ListMcpClients' });
 
-		expect(actions.length).toBeGreaterThan(0);
-		actions[0]?.vm.$emit('revoke', client);
+		expect(list.exists()).toBe(true);
+		list.vm.$emit('revoke', client);
 		await nextTick();
 		await flushPromises();
 

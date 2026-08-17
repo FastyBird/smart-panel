@@ -14,7 +14,8 @@
 		"done": "Fertig",
 		"addOrigin": "Origin hinzufügen",
 		"removeOrigin": "Origin entfernen",
-		"copyEndpoint": "Endpunkt kopieren"
+		"copyEndpoint": "Endpunkt kopieren",
+		"resetFilters": "Filter zurücksetzen"
 	},
 	"capabilities": {
 		"read": {
@@ -80,7 +81,9 @@
 		"empty": "Es wurden noch keine MCP-Clients erstellt.",
 		"none": "Keine",
 		"never": "Nie",
-		"noDescription": "Keine Beschreibung"
+		"noDescription": "Keine Beschreibung",
+		"loading": "MCP-Clients werden geladen…",
+		"noFilteredResults": "Kein MCP-Client entspricht den aktuellen Filtern."
 	},
 	"clientForm": {
 		"createTitle": "MCP-Client erstellen",

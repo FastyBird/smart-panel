@@ -14,7 +14,8 @@
     "done": "Hotovo",
     "addOrigin": "Přidat zdroj",
     "removeOrigin": "Odebrat zdroj",
-    "copyEndpoint": "Kopírovat koncový bod"
+    "copyEndpoint": "Kopírovat koncový bod",
+    "resetFilters": "Zrušit filtry"
   },
   "capabilities": {
     "read": {
@@ -80,7 +81,9 @@
     "empty": "Dosud nebyli vytvořeni žádní klienti MCP.",
     "none": "Žádné",
     "never": "Nikdy",
-    "noDescription": "Bez popisu"
+    "noDescription": "Bez popisu",
+    "loading": "Načítání MCP klientů…",
+    "noFilteredResults": "Žádný MCP klient neodpovídá zvoleným filtrům."
   },
   "clientForm": {
     "createTitle": "Vytvořit klienta MCP",
