@@ -2,7 +2,7 @@ import type { RouteRecordRaw } from 'vue-router';
 
 import i18n from '../../../locales';
 import { UsersModuleUserRole } from '../../../openapi.constants';
-import { RouteNames } from '../mcp.constants';
+import { MCP_MODULE_NAME, RouteNames } from '../mcp.constants';
 
 export const ModuleRoutes: RouteRecordRaw[] = [
 	{
@@ -17,6 +17,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			title: () => i18n.global.t('mcpModule.menu.clients'),
 			icon: 'mdi:robot-outline',
 			menu: 6500,
+			module: MCP_MODULE_NAME,
 		},
 	},
 	{
@@ -31,6 +32,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			title: () => i18n.global.t('mcpModule.menu.oauth'),
 			icon: 'mdi:shield-key-outline',
 			menu: 6510,
+			module: MCP_MODULE_NAME,
 		},
 	},
 	{
