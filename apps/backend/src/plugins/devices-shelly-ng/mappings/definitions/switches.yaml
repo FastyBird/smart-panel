@@ -11,7 +11,7 @@ transformers:
     false_value: false
 
 mappings:
-  # Switch as Switcher (default for SWITCHER, OUTLET, PUMP devices)
+  # Switch as Switcher (default for SWITCHER and PUMP devices)
   - name: switch_as_switcher
     description: "Shelly switch component mapped as switcher channel"
     priority: 100
@@ -20,12 +20,33 @@ mappings:
         - component_type: switch
         - any_of:
             - device_category: SWITCHER
-            - device_category: OUTLET
             - device_category: PUMP
     channels:
       - identifier: "switch:{key}"
         name: "Switch: {key}"
         category: SWITCHER
+        properties:
+          - shelly_property: output
+            panel:
+              identifier: ON
+              data_type: BOOL
+            transformer: boolean_state
+
+  # Switch as Outlet (for OUTLET category)
+  # The devices spec permits only outlet / device_information / electrical_*
+  # channels on an outlet device, so a switcher channel here would produce a
+  # device structure that fails validation.
+  - name: switch_as_outlet
+    description: "Shelly switch component mapped as outlet channel"
+    priority: 100
+    match:
+      all_of:
+        - component_type: switch
+        - device_category: OUTLET
+    channels:
+      - identifier: "switch:{key}"
+        name: "Outlet: {key}"
+        category: OUTLET
         properties:
           - shelly_property: output
             panel:

@@ -426,6 +426,33 @@ mappings:
 		});
 	});
 
+	describe('Built-in switch mappings', () => {
+		// No user mappings are written here, so only the shipped definitions load.
+		beforeEach(() => {
+			service.loadAllMappings();
+		});
+
+		it.each([
+			[DeviceCategory.OUTLET, ChannelCategory.OUTLET],
+			[DeviceCategory.SWITCHER, ChannelCategory.SWITCHER],
+			[DeviceCategory.PUMP, ChannelCategory.SWITCHER],
+			[DeviceCategory.LIGHTING, ChannelCategory.LIGHT],
+		])('maps a switch component on a %s device to a %s channel', (deviceCategory, expectedChannel) => {
+			const context: MappingContext = {
+				componentType: ComponentType.SWITCH,
+				componentKey: 0,
+				deviceCategory,
+			};
+
+			const result = service.findMatchingMapping(context);
+
+			// The devices spec allows an `outlet` device to carry only
+			// outlet / device_information / electrical_* channels, so emitting a
+			// SWITCHER channel for it produced an unadoptable device structure.
+			expect(result?.channels[0]?.category).toBe(expectedChannel);
+		});
+	});
+
 	describe('Path Traversal Protection', () => {
 		it('should validate paths and prevent traversal', () => {
 			// This test verifies that path validation is working
