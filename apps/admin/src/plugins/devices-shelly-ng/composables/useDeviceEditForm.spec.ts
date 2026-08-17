@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { StoreInjectionKey } from '../../../common';
 import { DevicesValidationException, FormResult, channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices';
-import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
+import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory, DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import type { IShellyNgDevice } from '../store/devices.store.types';
 
 import { useDeviceEditForm } from './useDeviceEditForm';
@@ -31,6 +31,9 @@ const mockDevice = {
 
 const mockEdit = vi.fn();
 const mockSave = vi.fn();
+
+const mockFindForDevice = vi.fn();
+const mockFindForChannel = vi.fn();
 
 const mockSuccess = vi.fn();
 const mockError = vi.fn();
@@ -63,11 +66,11 @@ vi.mock('../../../common', async () => {
 					};
 				} else if (key === channelsStoreKey) {
 					return {
-						findForDevice: vi.fn(),
+						findForDevice: mockFindForDevice,
 					};
 				} else if (key === channelsPropertiesStoreKey) {
 					return {
-						findForChannel: vi.fn(),
+						findForChannel: mockFindForChannel,
 					};
 				} else {
 					throw new Error('Unknown key');
@@ -98,6 +101,40 @@ describe('useDeviceEditForm', () => {
 		mockSave.mockClear();
 		mockSuccess.mockClear();
 		mockError.mockClear();
+		mockFindForDevice.mockReset().mockReturnValue([]);
+		mockFindForChannel.mockReset().mockReturnValue([]);
+	});
+
+	it('derives category options from the stored model property value', () => {
+		const channelId = uuid().toString();
+
+		mockFindForDevice.mockReturnValue([{ id: channelId, category: DevicesModuleChannelCategory.device_information }]);
+		// The channels-properties store normalizes every value into
+		// `{ value, lastUpdated, trend }` — never a bare scalar.
+		mockFindForChannel.mockReturnValue([
+			{
+				id: uuid().toString(),
+				category: DevicesModuleChannelPropertyCategory.model,
+				value: { value: 'SNSW-001P16EU', lastUpdated: null, trend: null },
+			},
+		]);
+
+		const form = useDeviceEditForm({ device: mockDevice });
+
+		form.supportedDevices.value = [
+			{
+				group: 'shelly-plus-1pm',
+				name: 'Shelly Plus 1PM',
+				models: ['SNSW-001P16EU'],
+				categories: [DevicesModuleDeviceCategory.outlet, DevicesModuleDeviceCategory.lighting],
+				components: [],
+				system: [],
+			},
+		] as unknown as typeof form.supportedDevices.value;
+
+		expect(form.categoriesOptions.value.map((option) => option.value)).toEqual(
+			expect.arrayContaining([DevicesModuleDeviceCategory.outlet, DevicesModuleDeviceCategory.lighting])
+		);
 	});
 
 	it('initializes model with device data', () => {

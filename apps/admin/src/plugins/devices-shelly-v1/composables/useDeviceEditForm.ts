@@ -55,7 +55,11 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 		if (channel !== undefined) {
 			const property = channelsPropertiesStore.findForChannel(channel.id).find((p) => p.category === DevicesModuleChannelPropertyCategory.model);
 
-			return typeof property?.value === 'string' ? property?.value : undefined;
+			// Property values are normalized by the store into
+			// `{ value, lastUpdated, trend }`, so the scalar is nested.
+			const value = property?.value?.value;
+
+			return typeof value === 'string' ? value : undefined;
 		}
 
 		return undefined;
