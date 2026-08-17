@@ -40,6 +40,7 @@ vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock('../../../common', () => ({
 	ViewHeader: { name: 'ViewHeader', template: '<header><slot name="extra" /></header>' },
 	useFlashMessage: () => ({ success: mocks.flashSuccess, error: mocks.flashError }),
+	useBreakpoints: () => ({ isLGDevice: ref(true) }),
 }));
 vi.mock('../composables/useMcpOAuthManagement', () => ({
 	useMcpOAuthManagement: () => ({
@@ -109,6 +110,14 @@ describe('ViewMcpOAuthManagement', () => {
 		expect(vm.canRevokeGrant({ ...grant, active: false })).toBe(true);
 		expect(vm.canRevokeGrant({ ...grant, active: false, revokedAt: '2026-01-02T00:00:00.000Z' })).toBe(false);
 		expect(vm.canRevokeGrant({ ...grant, active: false, expiresAt: '2020-01-01T00:00:00.000Z' })).toBe(false);
+	});
+
+	it('hosts the client and grant forms in drawers rather than dialogs', () => {
+		const wrapper = shallowMount(ViewMcpOAuthManagement);
+
+		// Matches the rest of the admin, which edits records in a drawer.
+		expect(wrapper.find('[data-test-id="mcp-oauth-client-form-drawer"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="mcp-oauth-grant-form-drawer"]').exists()).toBe(true);
 	});
 
 	it('allows scope editing only while the grant is active', () => {

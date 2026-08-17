@@ -275,138 +275,232 @@
 		</el-card>
 	</div>
 
-	<el-dialog
+	<el-drawer
 		v-model="showClientDialog"
-		:title="editingClient ? t('mcpModule.oauthManagement.editClient') : t('mcpModule.oauthManagement.createClient')"
-		width="min(680px, 94vw)"
+		:show-close="false"
+		:with-header="false"
+		:size="isLGDevice ? '40%' : '100%'"
+		data-test-id="mcp-oauth-client-form-drawer"
 		@closed="resetClientForm"
 	>
-		<el-form
-			ref="clientFormEl"
-			:model="clientForm"
-			:rules="clientRules"
-			label-position="top"
-		>
-			<el-form-item
-				:label="t('mcpModule.oauthManagement.name')"
-				prop="name"
-			>
-				<el-input
-					v-model="clientForm.name"
-					maxlength="100"
-				/>
-			</el-form-item>
-			<el-form-item
-				:label="t('mcpModule.oauthManagement.redirectUris')"
-				prop="redirectUris"
-			>
-				<div class="redirect-list">
-					<div
-						v-for="(_redirectUri, index) in clientForm.redirectUris"
-						:key="index"
-						class="redirect-row"
+		<div class="flex flex-col h-full">
+			<app-bar menu-button-hidden>
+				<template #heading>
+					<app-bar-heading>
+						<template #icon>
+							<icon icon="mdi:shield-key-outline" />
+						</template>
+
+						<template #title>
+							{{ editingClient ? t('mcpModule.oauthManagement.editClient') : t('mcpModule.oauthManagement.createClient') }}
+						</template>
+					</app-bar-heading>
+				</template>
+
+				<template #button-right>
+					<app-bar-button
+						:align="AppBarButtonAlign.RIGHT"
+						class="mr-2"
+						@click="showClientDialog = false"
 					>
-						<el-input v-model="clientForm.redirectUris[index]" />
-						<el-button
-							:aria-label="t('mcpModule.actions.removeOrigin')"
-							:disabled="clientForm.redirectUris.length === 1"
-							@click="clientForm.redirectUris.splice(index, 1)"
-						>
-							<icon icon="mdi:delete-outline" />
-						</el-button>
-					</div>
-					<el-button @click="clientForm.redirectUris.push('')">
-						<icon icon="mdi:plus" />
-						{{ t('mcpModule.oauthManagement.addRedirect') }}
+						<template #icon>
+							<el-icon>
+								<icon icon="mdi:close" />
+							</el-icon>
+						</template>
+					</app-bar-button>
+				</template>
+			</app-bar>
+
+			<el-scrollbar class="grow-1 p-2 md:px-4">
+				<el-form
+					ref="clientFormEl"
+					:model="clientForm"
+					:rules="clientRules"
+					label-position="top"
+				>
+					<el-form-item
+						:label="t('mcpModule.oauthManagement.name')"
+						prop="name"
+					>
+						<el-input
+							v-model="clientForm.name"
+							maxlength="100"
+						/>
+					</el-form-item>
+					<el-form-item
+						:label="t('mcpModule.oauthManagement.redirectUris')"
+						prop="redirectUris"
+					>
+						<div class="redirect-list">
+							<div
+								v-for="(_redirectUri, index) in clientForm.redirectUris"
+								:key="index"
+								class="redirect-row"
+							>
+								<el-input v-model="clientForm.redirectUris[index]" />
+								<el-button
+									:aria-label="t('mcpModule.actions.removeOrigin')"
+									:disabled="clientForm.redirectUris.length === 1"
+									@click="clientForm.redirectUris.splice(index, 1)"
+								>
+									<icon icon="mdi:delete-outline" />
+								</el-button>
+							</div>
+							<el-button @click="clientForm.redirectUris.push('')">
+								<icon icon="mdi:plus" />
+								{{ t('mcpModule.oauthManagement.addRedirect') }}
+							</el-button>
+						</div>
+					</el-form-item>
+					<el-form-item
+						:label="t('mcpModule.oauthManagement.columns.scopes')"
+						prop="maximumScopes"
+					>
+						<el-checkbox-group v-model="clientForm.maximumScopes">
+							<el-checkbox
+								v-for="scope in scopeOptions"
+								:key="scope"
+								:value="scope"
+							>
+								{{ t(`mcpModule.oauthManagement.scope.${scope}`) }}
+							</el-checkbox>
+						</el-checkbox-group>
+					</el-form-item>
+					<el-alert
+						v-if="clientHasPhysicalScope"
+						type="warning"
+						:description="t('mcpModule.oauthManagement.physicalWarning')"
+						:closable="false"
+						show-icon
+					/>
+				</el-form>
+			</el-scrollbar>
+
+			<div
+				class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
+				style="background-color: var(--el-drawer-bg-color)"
+			>
+				<div class="p-2">
+					<el-button
+						link
+						class="mr-2"
+						@click="showClientDialog = false"
+					>
+						{{ t('mcpModule.actions.cancel') }}
+					</el-button>
+
+					<el-button
+						type="primary"
+						:loading="saving"
+						@click="saveClient"
+					>
+						{{ editingClient ? t('mcpModule.actions.save') : t('mcpModule.actions.create') }}
 					</el-button>
 				</div>
-			</el-form-item>
-			<el-form-item
-				:label="t('mcpModule.oauthManagement.columns.scopes')"
-				prop="maximumScopes"
-			>
-				<el-checkbox-group v-model="clientForm.maximumScopes">
-					<el-checkbox
-						v-for="scope in scopeOptions"
-						:key="scope"
-						:value="scope"
-					>
-						{{ t(`mcpModule.oauthManagement.scope.${scope}`) }}
-					</el-checkbox>
-				</el-checkbox-group>
-			</el-form-item>
-			<el-alert
-				v-if="clientHasPhysicalScope"
-				type="warning"
-				:description="t('mcpModule.oauthManagement.physicalWarning')"
-				:closable="false"
-				show-icon
-			/>
-		</el-form>
-		<template #footer>
-			<el-button @click="showClientDialog = false">{{ t('mcpModule.actions.cancel') }}</el-button>
-			<el-button
-				type="primary"
-				:loading="saving"
-				@click="saveClient"
-			>
-				{{ editingClient ? t('mcpModule.actions.save') : t('mcpModule.actions.create') }}
-			</el-button>
-		</template>
-	</el-dialog>
+			</div>
+		</div>
+	</el-drawer>
 
-	<el-dialog
+	<el-drawer
 		v-model="showGrantDialog"
-		:title="t('mcpModule.oauthManagement.editGrant')"
-		width="min(560px, 94vw)"
+		:show-close="false"
+		:with-header="false"
+		:size="isLGDevice ? '40%' : '100%'"
+		data-test-id="mcp-oauth-grant-form-drawer"
 		@closed="resetGrantForm"
 	>
-		<el-form
-			ref="grantFormEl"
-			:model="grantForm"
-			:rules="grantRules"
-			label-position="top"
-		>
-			<el-form-item
-				:label="t('mcpModule.oauthManagement.columns.scopes')"
-				prop="approvedScopes"
-			>
-				<el-checkbox-group v-model="grantForm.approvedScopes">
-					<el-checkbox
-						v-for="scope in grantScopeOptions"
-						:key="scope"
-						:value="scope"
-						:disabled="scope === McpOAuthScope.OFFLINE_ACCESS"
+		<div class="flex flex-col h-full">
+			<app-bar menu-button-hidden>
+				<template #heading>
+					<app-bar-heading>
+						<template #icon>
+							<icon icon="mdi:shield-key-outline" />
+						</template>
+
+						<template #title>
+							{{ t('mcpModule.oauthManagement.editGrant') }}
+						</template>
+					</app-bar-heading>
+				</template>
+
+				<template #button-right>
+					<app-bar-button
+						:align="AppBarButtonAlign.RIGHT"
+						class="mr-2"
+						@click="showGrantDialog = false"
 					>
-						{{ t(`mcpModule.oauthManagement.scope.${scope}`) }}
-					</el-checkbox>
-				</el-checkbox-group>
-			</el-form-item>
-			<el-alert
-				v-if="grantHasPhysicalScope"
-				type="warning"
-				:description="t('mcpModule.oauthManagement.physicalWarning')"
-				:closable="false"
-				show-icon
-			/>
-			<el-alert
-				type="info"
-				:description="t('mcpModule.oauthManagement.grantReductionNotice')"
-				:closable="false"
-				show-icon
-			/>
-		</el-form>
-		<template #footer>
-			<el-button @click="showGrantDialog = false">{{ t('mcpModule.actions.cancel') }}</el-button>
-			<el-button
-				type="primary"
-				:loading="saving"
-				@click="saveGrant"
+						<template #icon>
+							<el-icon>
+								<icon icon="mdi:close" />
+							</el-icon>
+						</template>
+					</app-bar-button>
+				</template>
+			</app-bar>
+
+			<el-scrollbar class="grow-1 p-2 md:px-4">
+				<el-form
+					ref="grantFormEl"
+					:model="grantForm"
+					:rules="grantRules"
+					label-position="top"
+				>
+					<el-form-item
+						:label="t('mcpModule.oauthManagement.columns.scopes')"
+						prop="approvedScopes"
+					>
+						<el-checkbox-group v-model="grantForm.approvedScopes">
+							<el-checkbox
+								v-for="scope in grantScopeOptions"
+								:key="scope"
+								:value="scope"
+								:disabled="scope === McpOAuthScope.OFFLINE_ACCESS"
+							>
+								{{ t(`mcpModule.oauthManagement.scope.${scope}`) }}
+							</el-checkbox>
+						</el-checkbox-group>
+					</el-form-item>
+					<el-alert
+						v-if="grantHasPhysicalScope"
+						type="warning"
+						:description="t('mcpModule.oauthManagement.physicalWarning')"
+						:closable="false"
+						show-icon
+					/>
+					<el-alert
+						type="info"
+						:description="t('mcpModule.oauthManagement.grantReductionNotice')"
+						:closable="false"
+						show-icon
+					/>
+				</el-form>
+			</el-scrollbar>
+
+			<div
+				class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
+				style="background-color: var(--el-drawer-bg-color)"
 			>
-				{{ t('mcpModule.actions.save') }}
-			</el-button>
-		</template>
-	</el-dialog>
+				<div class="p-2">
+					<el-button
+						link
+						class="mr-2"
+						@click="showGrantDialog = false"
+					>
+						{{ t('mcpModule.actions.cancel') }}
+					</el-button>
+
+					<el-button
+						type="primary"
+						:loading="saving"
+						@click="saveGrant"
+					>
+						{{ t('mcpModule.actions.save') }}
+					</el-button>
+				</div>
+			</div>
+		</div>
+	</el-drawer>
 </template>
 
 <script setup lang="ts">
@@ -419,11 +513,13 @@ import {
 	ElCard,
 	ElCheckbox,
 	ElCheckboxGroup,
-	ElDialog,
+	ElDrawer,
 	ElForm,
 	ElFormItem,
+	ElIcon,
 	ElInput,
 	ElMessageBox,
+	ElScrollbar,
 	ElTabPane,
 	ElTable,
 	ElTableColumn,
@@ -436,7 +532,7 @@ import {
 
 import { Icon } from '@iconify/vue';
 
-import { ViewHeader, useFlashMessage } from '../../../common';
+import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import { useMcpOAuthManagement } from '../composables/useMcpOAuthManagement';
 import { McpOAuthScope } from '../mcp.constants';
 import type { IMcpOAuthAccessToken, IMcpOAuthClient, IMcpOAuthGrant, IMcpOAuthRefreshFamily } from '../schemas/oauth-management.types';
@@ -445,6 +541,7 @@ defineOptions({ name: 'ViewMcpOAuthManagement' });
 
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
+const { isLGDevice } = useBreakpoints();
 const {
 	clients,
 	grants,
@@ -628,11 +725,7 @@ const confirmRefreshFamilyRevoke = (family: IMcpOAuthRefreshFamily): Promise<voi
 		'mcpModule.oauthManagement.messages.refreshFamilyRevoked'
 	);
 const confirmGlobalRevoke = (): Promise<void> =>
-	confirmRevoke(
-		t('mcpModule.oauthManagement.confirm.all'),
-		() => revokeAll(),
-		'mcpModule.oauthManagement.messages.allRevoked'
-	);
+	confirmRevoke(t('mcpModule.oauthManagement.confirm.all'), () => revokeAll(), 'mcpModule.oauthManagement.messages.allRevoked');
 
 const grantStatus = (grant: IMcpOAuthGrant): { key: 'active' | 'expired' | 'inactive' | 'revoked'; type: 'success' | 'danger' | 'warning' } => {
 	if (grant.revokedAt) return { key: 'revoked', type: 'danger' };

@@ -7,9 +7,15 @@
 		<template #extra>
 			<el-button
 				type="primary"
+				plain
+				class="px-4!"
+				data-test-id="create-mcp-client"
 				@click="openCreate"
 			>
-				<icon icon="mdi:plus" />
+				<template #icon>
+					<icon icon="mdi:plus" />
+				</template>
+
 				{{ t('mcpModule.actions.create') }}
 			</el-button>
 		</template>
@@ -115,7 +121,8 @@
 				<el-table-column
 					fixed="right"
 					:label="t('mcpModule.clients.columns.actions')"
-					width="250"
+					:width="320"
+					align="right"
 				>
 					<template #default="scope">
 						<mcp-client-actions
@@ -177,90 +184,144 @@
 		</div>
 	</div>
 
-	<el-dialog
+	<el-drawer
 		v-model="showClientDialog"
-		:title="editingClient ? t('mcpModule.clientForm.editTitle') : t('mcpModule.clientForm.createTitle')"
-		width="min(620px, 94vw)"
+		:show-close="false"
+		:with-header="false"
+		:size="isLGDevice ? '40%' : '100%'"
+		data-test-id="mcp-client-form-drawer"
 		@closed="resetClientForm"
 	>
-		<el-form
-			ref="clientFormEl"
-			:model="clientForm"
-			:rules="clientRules"
-			label-position="top"
-		>
-			<el-form-item
-				:label="t('mcpModule.clientForm.name')"
-				prop="name"
-			>
-				<el-input
-					v-model="clientForm.name"
-					maxlength="100"
-					name="clientName"
-				/>
-			</el-form-item>
-			<el-form-item
-				:label="t('mcpModule.clientForm.description')"
-				prop="description"
-			>
-				<el-input
-					v-model="clientForm.description"
-					type="textarea"
-					maxlength="500"
-					show-word-limit
-					name="clientDescription"
-				/>
-			</el-form-item>
-			<el-form-item
-				v-if="editingClient"
-				:label="t('mcpModule.clientForm.enabled')"
-				prop="enabled"
-			>
-				<el-switch
-					v-model="clientForm.enabled"
-					name="clientEnabled"
-				/>
-			</el-form-item>
-			<el-form-item
-				:label="t('mcpModule.clientForm.capabilities')"
-				prop="capabilities"
-			>
-				<el-checkbox-group v-model="clientForm.capabilities">
-					<el-checkbox
-						v-for="capability in capabilityOptions"
-						:key="capability"
-						:value="capability"
-						:disabled="!capabilityCeiling.includes(capability) && !clientForm.capabilities.includes(capability)"
+		<div class="flex flex-col h-full">
+			<app-bar menu-button-hidden>
+				<template #heading>
+					<app-bar-heading>
+						<template #icon>
+							<icon icon="mdi:robot-outline" />
+						</template>
+
+						<template #title>
+							{{ editingClient ? t('mcpModule.clientForm.editTitle') : t('mcpModule.clientForm.createTitle') }}
+						</template>
+					</app-bar-heading>
+				</template>
+
+				<template #button-right>
+					<app-bar-button
+						:align="AppBarButtonAlign.RIGHT"
+						class="mr-2"
+						@click="showClientDialog = false"
 					>
-						{{ t(`mcpModule.capabilities.${capability}.title`) }}
-					</el-checkbox>
-				</el-checkbox-group>
-				<div class="text-sm text-gray-500 mt-1">{{ t('mcpModule.clientForm.ceilingHint') }}</div>
-			</el-form-item>
-			<el-form-item
-				v-if="!editingClient"
-				:label="t('mcpModule.clientForm.expiresInDays')"
-				prop="expiresInDays"
+						<template #icon>
+							<el-icon>
+								<icon icon="mdi:close" />
+							</el-icon>
+						</template>
+					</app-bar-button>
+				</template>
+			</app-bar>
+
+			<el-scrollbar class="grow-1 p-2 md:px-4">
+				<el-form
+					ref="clientFormEl"
+					:model="clientForm"
+					:rules="clientRules"
+					label-position="top"
+				>
+					<el-form-item
+						:label="t('mcpModule.clientForm.name')"
+						prop="name"
+					>
+						<el-input
+							v-model="clientForm.name"
+							maxlength="100"
+							name="clientName"
+						/>
+					</el-form-item>
+					<el-form-item
+						:label="t('mcpModule.clientForm.description')"
+						prop="description"
+					>
+						<el-input
+							v-model="clientForm.description"
+							type="textarea"
+							maxlength="500"
+							show-word-limit
+							name="clientDescription"
+						/>
+					</el-form-item>
+					<el-form-item
+						v-if="editingClient"
+						:label="t('mcpModule.clientForm.enabled')"
+						prop="enabled"
+					>
+						<el-switch
+							v-model="clientForm.enabled"
+							name="clientEnabled"
+						/>
+					</el-form-item>
+					<el-form-item
+						:label="t('mcpModule.clientForm.capabilities')"
+						prop="capabilities"
+					>
+						<el-checkbox-group v-model="clientForm.capabilities">
+							<el-checkbox
+								v-for="capability in capabilityOptions"
+								:key="capability"
+								:value="capability"
+								:disabled="!capabilityCeiling.includes(capability) && !clientForm.capabilities.includes(capability)"
+							>
+								{{ t(`mcpModule.capabilities.${capability}.title`) }}
+							</el-checkbox>
+						</el-checkbox-group>
+						<el-alert
+							class="mt-1"
+							type="info"
+							:description="t('mcpModule.clientForm.ceilingHint')"
+							:closable="false"
+							show-icon
+							data-test-id="mcp-client-capability-ceiling-hint"
+						/>
+					</el-form-item>
+					<el-form-item
+						v-if="!editingClient"
+						:label="t('mcpModule.clientForm.expiresInDays')"
+						prop="expiresInDays"
+					>
+						<el-input-number
+							v-model="clientForm.expiresInDays"
+							:min="1"
+							:max="MCP_MAX_TOKEN_EXPIRATION_DAYS"
+							name="expiresInDays"
+						/>
+					</el-form-item>
+				</el-form>
+			</el-scrollbar>
+
+			<div
+				class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
+				style="background-color: var(--el-drawer-bg-color)"
 			>
-				<el-input-number
-					v-model="clientForm.expiresInDays"
-					:min="1"
-					:max="MCP_MAX_TOKEN_EXPIRATION_DAYS"
-					name="expiresInDays"
-				/>
-			</el-form-item>
-		</el-form>
-		<template #footer>
-			<el-button @click="showClientDialog = false">{{ t('mcpModule.actions.cancel') }}</el-button>
-			<el-button
-				type="primary"
-				:loading="saving"
-				@click="saveClient"
-			>
-				{{ editingClient ? t('mcpModule.actions.save') : t('mcpModule.actions.create') }}
-			</el-button>
-		</template>
-	</el-dialog>
+				<div class="p-2">
+					<el-button
+						link
+						class="mr-2"
+						@click="showClientDialog = false"
+					>
+						{{ t('mcpModule.actions.cancel') }}
+					</el-button>
+
+					<el-button
+						type="primary"
+						:loading="saving"
+						@click="saveClient"
+					>
+						{{ editingClient ? t('mcpModule.actions.save') : t('mcpModule.actions.create') }}
+					</el-button>
+				</div>
+			</div>
+		</div>
+	</el-drawer>
 
 	<el-dialog
 		v-model="showRotateDialog"
@@ -314,11 +375,14 @@ import {
 	ElCheckbox,
 	ElCheckboxGroup,
 	ElDialog,
+	ElDrawer,
 	ElForm,
 	ElFormItem,
+	ElIcon,
 	ElInput,
 	ElInputNumber,
 	ElMessageBox,
+	ElScrollbar,
 	ElSwitch,
 	ElTable,
 	ElTableColumn,
@@ -330,7 +394,7 @@ import {
 
 import { Icon } from '@iconify/vue';
 
-import { ViewHeader, useFlashMessage } from '../../../common';
+import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import { useConfigModule } from '../../config/composables/useConfigModule';
 import McpClientActions from '../components/mcp-client-actions.vue';
 import McpTokenDialog from '../components/mcp-token-dialog.vue';
@@ -344,6 +408,7 @@ defineOptions({ name: 'ViewMcpClients' });
 
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
+const { isLGDevice } = useBreakpoints();
 const { clients, loading, error, fetchClients, createClient, updateClient, rotateClient, revokeClient, deleteClient } = useMcpClients();
 const { configModule, fetchConfigModule } = useConfigModule({ type: MCP_MODULE_NAME });
 
