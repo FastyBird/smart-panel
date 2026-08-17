@@ -114,7 +114,7 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-	CMD wget -qO- http://localhost:${FB_BACKEND_PORT}/api/system/health || exit 1
+	CMD wget -qO- http://localhost:${FB_BACKEND_PORT}/api/v1/modules/system/system/health || exit 1
 
 # Use tini for proper signal handling
 ENTRYPOINT ["/sbin/tini", "--"]
