@@ -83,7 +83,9 @@
 		"never": "Never",
 		"noDescription": "No description",
 		"loading": "Loading MCP clients…",
-		"noFilteredResults": "No MCP client matches the current filters."
+		"noFilteredResults": "No MCP client matches the current filters.",
+		"searchPlaceholder": "Search by name or description",
+		"filterAll": "All"
 	},
 	"clientForm": {
 		"createTitle": "Create MCP client",
@@ -116,7 +118,9 @@
 	},
 	"confirm": {
 		"revoke": "Revoke the current credential for {name}? Connected clients will lose access immediately.",
-		"delete": "Delete {name}? Its credential will be revoked and the client record cannot be recovered."
+		"delete": "Delete {name}? Its credential will be revoked and the client record cannot be recovered.",
+		"bulkRevoke": "Revoke credentials for {count} selected clients?",
+		"bulkDelete": "Delete {count} selected clients?"
 	},
 	"oauthConsent": {
 		"title": "Authorize MCP access",
@@ -235,6 +239,8 @@
 		"revoked": "MCP client revoked.",
 		"revokeFailed": "MCP client could not be revoked.",
 		"deleted": "MCP client deleted.",
-		"deleteFailed": "MCP client could not be deleted."
+		"deleteFailed": "MCP client could not be deleted.",
+		"bulkFailed": "{count} clients could not be updated.",
+		"bulkSucceeded": "{count} clients were updated."
 	}
 }

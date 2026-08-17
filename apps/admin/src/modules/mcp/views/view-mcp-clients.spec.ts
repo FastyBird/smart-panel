@@ -142,6 +142,48 @@ describe('ViewMcpClients', () => {
 		expect(hint.element.tagName.toLowerCase()).toContain('alert');
 	});
 
+	it('confirms once for a bulk revoke rather than per selected client', async () => {
+		const wrapper = mountView();
+		const list = wrapper.findComponent({ name: 'ListMcpClients' });
+
+		list.vm.$emit('bulk-action', 'revoke', [client, { ...client, id: 'second' }]);
+		await nextTick();
+		await flushPromises();
+
+		expect(ElMessageBox.confirm).toHaveBeenCalledOnce();
+		expect(mocks.revokeClient).toHaveBeenCalledTimes(2);
+	});
+
+	it('sends the untouched fields back when bulk toggling enabled', async () => {
+		const wrapper = mountView();
+		const list = wrapper.findComponent({ name: 'ListMcpClients' });
+
+		list.vm.$emit('bulk-action', 'disable', [client]);
+		await nextTick();
+		await flushPromises();
+
+		// The update endpoint replaces the record — sending only `enabled` would
+		// blank the name and capabilities.
+		expect(mocks.updateClient).toHaveBeenCalledWith(client.id, {
+			name: client.name,
+			description: client.description,
+			enabled: false,
+			capabilities: client.capabilities,
+		});
+	});
+
+	it('does nothing when a bulk action runs with an empty selection', async () => {
+		const wrapper = mountView();
+		const list = wrapper.findComponent({ name: 'ListMcpClients' });
+
+		list.vm.$emit('bulk-action', 'delete', []);
+		await nextTick();
+		await flushPromises();
+
+		expect(ElMessageBox.confirm).not.toHaveBeenCalled();
+		expect(mocks.deleteClient).not.toHaveBeenCalled();
+	});
+
 	it('requires confirmation before revoking a credential', async () => {
 		const wrapper = mountView();
 		const list = wrapper.findComponent({ name: 'ListMcpClients' });

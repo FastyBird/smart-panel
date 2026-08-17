@@ -83,7 +83,9 @@
     "never": "Nunca",
     "noDescription": "Sin descripción",
     "loading": "Cargando clientes MCP…",
-    "noFilteredResults": "Ningún cliente MCP coincide con los filtros actuales."
+    "noFilteredResults": "Ningún cliente MCP coincide con los filtros actuales.",
+    "searchPlaceholder": "Buscar por nombre o descripción",
+    "filterAll": "Todos"
   },
   "clientForm": {
     "createTitle": "Crear cliente MCP",
@@ -116,7 +118,9 @@
   },
   "confirm": {
     "revoke": "¿Revocar la credencial actual de {name}? Los clientes conectados perderán el acceso inmediatamente.",
-    "delete": "¿Eliminar {name}? Su credencial se revocará y el registro del cliente no podrá recuperarse."
+    "delete": "¿Eliminar {name}? Su credencial se revocará y el registro del cliente no podrá recuperarse.",
+    "bulkRevoke": "¿Revocar las credenciales de {count} clientes seleccionados?",
+    "bulkDelete": "¿Eliminar {count} clientes seleccionados?"
   },
   "oauthConsent": {
     "title": "Autorizar acceso MCP",
@@ -158,7 +162,9 @@
     "revoked": "Cliente MCP revocado.",
     "revokeFailed": "No se pudo revocar el cliente MCP.",
     "deleted": "Cliente MCP eliminado.",
-    "deleteFailed": "No se pudo eliminar el cliente MCP."
+    "deleteFailed": "No se pudo eliminar el cliente MCP.",
+    "bulkFailed": "No se pudieron actualizar {count} clientes.",
+    "bulkSucceeded": "Se actualizaron {count} clientes."
   },
   "oauthManagement": {
     "title": "Acceso OAuth de MCP",

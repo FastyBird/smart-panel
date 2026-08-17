@@ -59,6 +59,7 @@
 		/>
 
 		<list-mcp-clients
+			v-model:filters="filters"
 			v-model:sort-by="sortBy"
 			v-model:sort-dir="sortDir"
 			v-model:paginate-size="paginateSize"
@@ -72,6 +73,7 @@
 			@revoke="confirmRevoke"
 			@delete="confirmDelete"
 			@reset-filters="resetFilter"
+			@bulk-action="onBulkAction"
 		/>
 	</div>
 
@@ -298,7 +300,8 @@ const { t } = useI18n();
 const flashMessage = useFlashMessage();
 const { isLGDevice } = useBreakpoints();
 const { clients, loading, error, fetchClients, createClient, updateClient, rotateClient, revokeClient, deleteClient } = useMcpClients();
-const { clientsPaginated, totalRows, filtersActive, sortBy, sortDir, paginateSize, paginatePage, resetFilter } = useMcpClientsDataSource(clients);
+const { clientsPaginated, totalRows, filters, filtersActive, sortBy, sortDir, paginateSize, paginatePage, resetFilter } =
+	useMcpClientsDataSource(clients);
 const { configModule, fetchConfigModule } = useConfigModule({ type: MCP_MODULE_NAME });
 
 const capabilityOptions = Object.values(McpCapability);
@@ -420,6 +423,66 @@ const confirmRotate = async (): Promise<void> => {
 		flashMessage.error(t('mcpModule.messages.rotateFailed'));
 	} finally {
 		saving.value = false;
+	}
+};
+
+const onBulkAction = async (action: string, items: IMcpClient[]): Promise<void> => {
+	if (items.length === 0) {
+		return;
+	}
+
+	// Destructive actions confirm once for the whole selection rather than per
+	// row, matching the bulk behaviour of the other list views.
+	if (action === 'revoke' || action === 'delete') {
+		try {
+			await ElMessageBox.confirm(
+				t(action === 'revoke' ? 'mcpModule.confirm.bulkRevoke' : 'mcpModule.confirm.bulkDelete', { count: items.length }),
+				t(action === 'revoke' ? 'mcpModule.actions.revoke' : 'mcpModule.actions.delete'),
+				{
+					type: 'warning',
+					confirmButtonText: t(action === 'revoke' ? 'mcpModule.actions.revoke' : 'mcpModule.actions.delete'),
+					cancelButtonText: t('mcpModule.actions.cancel'),
+				}
+			);
+		} catch {
+			return;
+		}
+	}
+
+	const results = await Promise.allSettled(
+		items.map((item) => {
+			switch (action) {
+				// The update endpoint replaces the record, so the untouched fields
+				// have to be sent back alongside the flag being flipped.
+				case 'enable':
+					return updateClient(item.id, {
+						name: item.name,
+						description: item.description,
+						enabled: true,
+						capabilities: item.capabilities,
+					});
+				case 'disable':
+					return updateClient(item.id, {
+						name: item.name,
+						description: item.description,
+						enabled: false,
+						capabilities: item.capabilities,
+					});
+				case 'revoke':
+					return revokeClient(item.id);
+				default:
+					return deleteClient(item.id);
+			}
+		})
+	);
+
+	const failed = results.filter((result) => result.status === 'rejected').length;
+
+	if (failed > 0) {
+		// Partial success is reported rather than swallowed — some rows changed.
+		flashMessage.error(t('mcpModule.messages.bulkFailed', { count: failed }));
+	} else {
+		flashMessage.success(t('mcpModule.messages.bulkSucceeded', { count: items.length }));
 	}
 };
 
