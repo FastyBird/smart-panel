@@ -9,6 +9,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { THROTTLER_LIMIT, THROTTLER_TTL } from '@nestjs/throttler/dist/throttler.constants';
 
 import { MappingLoaderService } from '../mappings';
 import { DeviceManagerService } from '../services/device-manager.service';
@@ -114,6 +115,22 @@ describe('ShellyNgDevicesController', () => {
 			discoveryService.get.mockReturnValue(null);
 
 			expect(() => controller.getDiscovery('missing')).toThrow(NotFoundException);
+		});
+
+		it('raises the throttle ceiling for the polled discovery session route', () => {
+			// The wizard polls this route once per second for the whole scan, so
+			// the default 30 req/60s budget is exhausted mid-scan and every later
+			// request — including device adoption — is rejected with 429.
+			const limit = Reflect.getMetadata(
+				`${THROTTLER_LIMIT}default`,
+				ShellyNgDevicesController.prototype.getDiscovery,
+			) as number | undefined;
+			const ttl = Reflect.getMetadata(`${THROTTLER_TTL}default`, ShellyNgDevicesController.prototype.getDiscovery) as
+				| number
+				| undefined;
+
+			expect(ttl).toBe(60_000);
+			expect(limit).toBeGreaterThanOrEqual(120);
 		});
 
 		it('adds manual device lookup to a discovery session', async () => {
