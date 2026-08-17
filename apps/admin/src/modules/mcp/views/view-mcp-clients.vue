@@ -7,9 +7,15 @@
 		<template #extra>
 			<el-button
 				type="primary"
+				plain
+				class="px-4!"
+				data-test-id="create-mcp-client"
 				@click="openCreate"
 			>
-				<icon icon="mdi:plus" />
+				<template #icon>
+					<icon icon="mdi:plus" />
+				</template>
+
 				{{ t('mcpModule.actions.create') }}
 			</el-button>
 		</template>

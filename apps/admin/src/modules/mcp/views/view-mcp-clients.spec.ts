@@ -72,6 +72,9 @@ const mountView = () =>
 		global: {
 			stubs: {
 				ElCard: { name: 'ElCard', template: '<section><slot name="header" /><slot /></section>' },
+				// shallowMount would otherwise auto-stub this away and drop the
+				// header actions rendered into its `extra` slot.
+				ViewHeader: { name: 'ViewHeader', template: '<header><slot name="extra" /></header>' },
 			},
 		},
 	});
@@ -88,6 +91,19 @@ describe('ViewMcpClients', () => {
 
 		expect(wrapper.find('.mcp-client-table-wrap').exists()).toBe(true);
 		expect(wrapper.find('.mcp-client-cards').exists()).toBe(true);
+	});
+
+	it('renders the header create action as a plain primary button', () => {
+		const wrapper = mountView();
+
+		// Every other list header in the admin uses `type="primary" plain`
+		// for its add action; MCP rendered a solid primary, which reads as a
+		// different control.
+		const create = wrapper.find('[data-test-id="create-mcp-client"]');
+
+		expect(create.exists()).toBe(true);
+		expect(create.attributes('type')).toBe('primary');
+		expect(create.attributes('plain')).toBeDefined();
 	});
 
 	it('requires confirmation before revoking a credential', async () => {
