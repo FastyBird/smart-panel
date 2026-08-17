@@ -121,7 +121,7 @@
 				<el-table-column
 					fixed="right"
 					:label="t('mcpModule.clients.columns.actions')"
-					:width="230"
+					:width="320"
 					align="right"
 				>
 					<template #default="scope">

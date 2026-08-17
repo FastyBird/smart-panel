@@ -2,26 +2,26 @@
 	<el-button
 		size="small"
 		plain
+		:title="t('mcpModule.actions.edit')"
 		data-test-id="edit-mcp-client"
 		@click.stop="emit('edit', client)"
 	>
 		<template #icon>
 			<icon icon="mdi:pencil" />
 		</template>
-
-		{{ t('mcpModule.actions.edit') }}
 	</el-button>
 	<el-button
 		size="small"
 		plain
 		class="ml-1!"
-		:title="t('mcpModule.actions.rotate')"
 		data-test-id="rotate-mcp-client"
 		@click.stop="emit('rotate', client)"
 	>
 		<template #icon>
 			<icon icon="mdi:autorenew" />
 		</template>
+
+		{{ t('mcpModule.actions.rotate') }}
 	</el-button>
 	<el-button
 		size="small"
@@ -29,13 +29,14 @@
 		plain
 		class="ml-1!"
 		:disabled="client.credentialRevoked"
-		:title="t('mcpModule.actions.revoke')"
 		data-test-id="revoke-mcp-client"
 		@click.stop="emit('revoke', client)"
 	>
 		<template #icon>
 			<icon icon="mdi:key-remove" />
 		</template>
+
+		{{ t('mcpModule.actions.revoke') }}
 	</el-button>
 	<el-button
 		size="small"

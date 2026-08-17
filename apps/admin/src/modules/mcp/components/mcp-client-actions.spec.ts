@@ -51,15 +51,18 @@ describe('McpClientActions', () => {
 		}
 	});
 
-	it('labels only the primary action so the row stays on one line', () => {
+	it('labels only the actions a glyph cannot carry on its own', () => {
 		const wrapper = mountActions();
 
-		// Four labelled buttons wrapped onto a second row in the actions column.
-		// Other tables label the primary action only and leave the rest as icons.
-		const labelled = wrapper.findAll('button').filter((button) => button.text().trim() !== '');
+		// Labelling all four wrapped the actions column onto a second row. Pencil
+		// and trash read on their own; rotate and revoke are close enough in
+		// meaning that dropping their labels would leave them ambiguous.
+		const labelled = wrapper
+			.findAll('button')
+			.filter((button) => button.text().trim() !== '')
+			.map((button) => button.attributes('data-test-id'));
 
-		expect(labelled).toHaveLength(1);
-		expect(labelled[0]?.attributes('data-test-id')).toBe('edit-mcp-client');
+		expect(labelled).toEqual(['rotate-mcp-client', 'revoke-mcp-client']);
 	});
 
 	it('uses the warning colour for destructive actions', () => {
