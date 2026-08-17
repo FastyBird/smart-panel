@@ -29,6 +29,24 @@ describe('SimulatorController', () => {
 		jest.clearAllMocks();
 	});
 
+	it('serializes device categories with their identifier and name preserved', () => {
+		const response = controller.getCategories();
+
+		expect(response.data.length).toBeGreaterThan(0);
+
+		// Regression: the response model exposed `data` without `@Type`, so
+		// `excludeExtraneousValues` stripped every nested category down to an
+		// empty object and the admin wizard rendered options with no value.
+		for (const category of response.data) {
+			expect(typeof category.category).toBe('string');
+			expect(category.category.length).toBeGreaterThan(0);
+			expect(typeof category.name).toBe('string');
+			expect(category.name.length).toBeGreaterThan(0);
+		}
+
+		expect(response.data.map((category) => category.category)).toContain(DeviceCategory.LIGHTING);
+	});
+
 	it('returns the persisted device when initial connectivity setup fails', async () => {
 		const dto = {
 			category: DeviceCategory.LIGHTING,

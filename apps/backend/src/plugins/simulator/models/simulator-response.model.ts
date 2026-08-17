@@ -1,4 +1,4 @@
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
@@ -59,6 +59,7 @@ export class DeviceCategoriesResponseModel extends BaseSuccessResponseModel<Devi
 		items: { type: 'object' },
 	})
 	@Expose()
+	@Type(() => DeviceCategoryModel)
 	declare data: DeviceCategoryModel[];
 }
 
