@@ -14,7 +14,8 @@
     "done": "Listo",
     "addOrigin": "Añadir origen",
     "removeOrigin": "Eliminar origen",
-    "copyEndpoint": "Copiar endpoint"
+    "copyEndpoint": "Copiar endpoint",
+    "resetFilters": "Restablecer filtros"
   },
   "capabilities": {
     "read": {
@@ -80,7 +81,9 @@
     "empty": "Todavía no se ha creado ningún cliente MCP.",
     "none": "Ninguna",
     "never": "Nunca",
-    "noDescription": "Sin descripción"
+    "noDescription": "Sin descripción",
+    "loading": "Cargando clientes MCP…",
+    "noFilteredResults": "Ningún cliente MCP coincide con los filtros actuales."
   },
   "clientForm": {
     "createTitle": "Crear cliente MCP",
