@@ -2,6 +2,7 @@ import { validate } from 'class-validator';
 
 import { Body, Controller, Get, NotFoundException, Param, Post, UnprocessableEntityException } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -74,6 +75,12 @@ export class ShellyNgDevicesController {
 	@ApiSuccessResponse(ShellyNgDiscoverySessionResponseModel, 'Shelly NG discovery session was successfully retrieved.')
 	@ApiNotFoundResponse('Discovery session could not be found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	// The wizard polls this route once per second for the duration of a scan, so
+	// the default 30 req/60s budget is spent before the scan finishes and every
+	// later request — including adopting the discovered devices — gets a 429.
+	// Reading a discovery session is an in-memory lookup with no I/O, so a higher
+	// ceiling costs nothing while still bounding abuse.
+	@Throttle({ default: { limit: 240, ttl: 60000 } })
 	@Get('discovery/:id')
 	getDiscovery(@Param('id') id: string): ShellyNgDiscoverySessionResponseModel {
 		const session = this.discoveryService.get(id);
