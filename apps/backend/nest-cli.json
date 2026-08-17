@@ -6,7 +6,7 @@
     "deleteOutDir": true,
     "assets": [
       {
-        "include": "modules/spaces/spec/definitions/**/*.yaml",
+        "include": "plugins/spaces-home-control/spec/definitions/**/*.yaml",
         "outDir": "dist"
       },
       {
