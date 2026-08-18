@@ -15,7 +15,12 @@
 		"addOrigin": "Add origin",
 		"removeOrigin": "Remove origin",
 		"copyEndpoint": "Copy endpoint",
-		"resetFilters": "Reset filters"
+		"resetFilters": "Reset filters",
+		"add": "Add",
+		"close": "Close",
+		"discard": "Discard",
+		"yes": "Yes",
+		"no": "No"
 	},
 	"capabilities": {
 		"read": {
@@ -120,7 +125,8 @@
 		"revoke": "Revoke the current credential for {name}? Connected clients will lose access immediately.",
 		"delete": "Delete {name}? Its credential will be revoked and the client record cannot be recovered.",
 		"bulkRevoke": "Revoke credentials for {count} selected clients?",
-		"bulkDelete": "Delete {count} selected clients?"
+		"bulkDelete": "Delete {count} selected clients?",
+		"discard": "Discard the unsaved changes?"
 	},
 	"oauthConsent": {
 		"title": "Authorize MCP access",
@@ -242,5 +248,8 @@
 		"deleteFailed": "MCP client could not be deleted.",
 		"bulkFailed": "{count} clients could not be updated.",
 		"bulkSucceeded": "{count} clients were updated."
+	},
+	"headings": {
+		"discard": "Discard changes"
 	}
 }

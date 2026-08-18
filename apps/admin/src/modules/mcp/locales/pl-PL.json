@@ -15,7 +15,12 @@
     "addOrigin": "Dodaj źródło",
     "removeOrigin": "Usuń źródło",
     "copyEndpoint": "Kopiuj endpoint",
-    "resetFilters": "Resetuj filtry"
+    "resetFilters": "Resetuj filtry",
+    "add": "Dodaj",
+    "close": "Zamknij",
+    "discard": "Odrzuć",
+    "yes": "Tak",
+    "no": "Nie"
   },
   "capabilities": {
     "read": {
@@ -120,7 +125,8 @@
     "revoke": "Unieważnić bieżące poświadczenie klienta {name}? Połączeni klienci natychmiast utracą dostęp.",
     "delete": "Usunąć klienta {name}? Jego poświadczenie zostanie unieważnione, a rekordu klienta nie będzie można odzyskać.",
     "bulkRevoke": "Unieważnić poświadczenia dla {count} wybranych klientów?",
-    "bulkDelete": "Usunąć {count} wybranych klientów?"
+    "bulkDelete": "Usunąć {count} wybranych klientów?",
+    "discard": "Odrzucić niezapisane zmiany?"
   },
   "oauthConsent": {
     "title": "Autoryzuj dostęp MCP",
@@ -242,5 +248,8 @@
       "allRevoked": "Cofnięto cały dostęp OAuth MCP.",
       "revokeFailed": "Nie można było cofnąć autoryzacji OAuth."
     }
+  },
+  "headings": {
+    "discard": "Odrzuć zmiany"
   }
 }

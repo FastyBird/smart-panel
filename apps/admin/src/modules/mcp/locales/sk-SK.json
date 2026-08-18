@@ -15,7 +15,12 @@
     "addOrigin": "Pridať zdroj",
     "removeOrigin": "Odobrať zdroj",
     "copyEndpoint": "Kopírovať koncový bod",
-    "resetFilters": "Zrušiť filtre"
+    "resetFilters": "Zrušiť filtre",
+    "add": "Pridať",
+    "close": "Zavrieť",
+    "discard": "Zahodiť",
+    "yes": "Áno",
+    "no": "Nie"
   },
   "capabilities": {
     "read": {
@@ -120,7 +125,8 @@
     "revoke": "Odvolať aktuálne prihlasovacie údaje klienta {name}? Pripojení klienti okamžite stratia prístup.",
     "delete": "Odstrániť klienta {name}? Jeho prihlasovacie údaje budú odvolané a záznam klienta nebude možné obnoviť.",
     "bulkRevoke": "Odvolať poverenia pre {count} vybraných klientov?",
-    "bulkDelete": "Odstrániť {count} vybraných klientov?"
+    "bulkDelete": "Odstrániť {count} vybraných klientov?",
+    "discard": "Zahodiť neuložené zmeny?"
   },
   "oauthConsent": {
     "title": "Povoliť prístup MCP",
@@ -242,5 +248,8 @@
       "allRevoked": "Odobratý celý MCP OAuth prístup.",
       "revokeFailed": "Nepodarilo sa odobrať OAuth autorizáciu."
     }
+  },
+  "headings": {
+    "discard": "Zahodiť zmeny"
   }
 }
