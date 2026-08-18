@@ -50,6 +50,7 @@
 			<el-tab-pane
 				name="clients"
 				:label="t('mcpModule.oauthManagement.tabs.clients')"
+				class="h-full overflow-hidden flex flex-col gap-2"
 			>
 				<el-card
 					shadow="never"
@@ -162,6 +163,7 @@
 			<el-tab-pane
 				name="grants"
 				:label="t('mcpModule.oauthManagement.tabs.grants')"
+				class="h-full overflow-hidden flex flex-col gap-2"
 			>
 				<el-card
 					shadow="never"
@@ -258,6 +260,7 @@
 			<el-tab-pane
 				name="accessTokens"
 				:label="t('mcpModule.oauthManagement.tabs.accessTokens')"
+				class="h-full overflow-hidden flex flex-col gap-2"
 			>
 				<el-card
 					shadow="never"
@@ -338,6 +341,7 @@
 			<el-tab-pane
 				name="refreshFamilies"
 				:label="t('mcpModule.oauthManagement.tabs.refreshFamilies')"
+				class="h-full overflow-hidden flex flex-col gap-2"
 			>
 				<el-card
 					shadow="never"

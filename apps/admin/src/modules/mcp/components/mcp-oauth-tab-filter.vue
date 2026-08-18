@@ -1,9 +1,9 @@
 <template>
-	<div class="flex w-full items-center gap-2 px-1 py-2">
+	<div class="flex min-w-0 flex-wrap items-center gap-2 px-1 py-2">
 		<el-input
 			v-model="innerFilters.search"
 			:placeholder="props.searchPlaceholder"
-			class="max-w[280px]"
+			class="max-w[280px] min-w-0"
 			clearable
 			:data-test-id="`search-${props.testId}`"
 		>
