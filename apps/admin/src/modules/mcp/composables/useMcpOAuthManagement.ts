@@ -1,17 +1,15 @@
 import { type Ref, ref } from 'vue';
 
-import { snakeToCamel, useBackend } from '../../../common';
+import { useBackend } from '../../../common';
 import { MCP_MODULE_PREFIX } from '../mcp.constants';
 import { McpApiException } from '../mcp.exceptions';
+import { McpOAuthCreateClientSchema, McpOAuthUpdateClientSchema, McpOAuthUpdateGrantSchema } from '../schemas/oauth-management.schemas';
 import {
-	McpOAuthAccessTokenSchema,
-	McpOAuthClientSchema,
-	McpOAuthCreateClientSchema,
-	McpOAuthGrantSchema,
-	McpOAuthRefreshFamilySchema,
-	McpOAuthUpdateClientSchema,
-	McpOAuthUpdateGrantSchema,
-} from '../schemas/oauth-management.schemas';
+	transformOAuthAccessToken,
+	transformOAuthClient,
+	transformOAuthGrant,
+	transformOAuthRefreshFamily,
+} from '../schemas/oauth-management.transformers';
 import type {
 	IMcpOAuthAccessToken,
 	IMcpOAuthClient,
@@ -79,10 +77,10 @@ export const useMcpOAuthManagement = (): IUseMcpOAuthManagement => {
 				throw new McpApiException('Failed to load MCP OAuth authorization data.', status);
 			}
 
-			clients.value = clientsResult.data.data.map((item) => McpOAuthClientSchema.parse(snakeToCamel(item)));
-			grants.value = grantsResult.data.data.map((item) => McpOAuthGrantSchema.parse(snakeToCamel(item)));
-			accessTokens.value = accessResult.data.data.map((item) => McpOAuthAccessTokenSchema.parse(snakeToCamel(item)));
-			refreshFamilies.value = familiesResult.data.data.map((item) => McpOAuthRefreshFamilySchema.parse(snakeToCamel(item)));
+			clients.value = clientsResult.data.data.map(transformOAuthClient);
+			grants.value = grantsResult.data.data.map(transformOAuthGrant);
+			accessTokens.value = accessResult.data.data.map(transformOAuthAccessToken);
+			refreshFamilies.value = familiesResult.data.data.map(transformOAuthRefreshFamily);
 		} catch (caught) {
 			error.value = caught instanceof Error ? caught : new Error('Failed to load MCP OAuth authorization data.');
 			throw error.value;
@@ -113,7 +111,7 @@ export const useMcpOAuthManagement = (): IUseMcpOAuthManagement => {
 
 		if (!data) throw new McpApiException('Failed to create MCP OAuth client.', response.status);
 
-		return setClient(McpOAuthClientSchema.parse(snakeToCamel(data.data)));
+		return setClient(transformOAuthClient(data.data));
 	};
 
 	const updateClient = async (id: string, payload: IMcpOAuthUpdateClient): Promise<IMcpOAuthClient> => {
@@ -131,7 +129,7 @@ export const useMcpOAuthManagement = (): IUseMcpOAuthManagement => {
 
 		if (!data) throw new McpApiException('Failed to update MCP OAuth client.', response.status);
 
-		return setClient(McpOAuthClientSchema.parse(snakeToCamel(data.data)));
+		return setClient(transformOAuthClient(data.data));
 	};
 
 	const revokeClient = async (id: string): Promise<IMcpOAuthClient> => {
@@ -139,7 +137,7 @@ export const useMcpOAuthManagement = (): IUseMcpOAuthManagement => {
 
 		if (!data) throw new McpApiException('Failed to disable MCP OAuth client.', response.status);
 
-		const client = setClient(McpOAuthClientSchema.parse(snakeToCamel(data.data)));
+		const client = setClient(transformOAuthClient(data.data));
 		grants.value = grants.value.map((grant) =>
 			grant.clientId === id ? { ...grant, active: false, revokedAt: grant.revokedAt ?? new Date().toISOString() } : grant
 		);
@@ -154,7 +152,7 @@ export const useMcpOAuthManagement = (): IUseMcpOAuthManagement => {
 
 		if (!data) throw new McpApiException('Failed to revoke MCP OAuth grant.', response.status);
 
-		const grant = McpOAuthGrantSchema.parse(snakeToCamel(data.data));
+		const grant = transformOAuthGrant(data.data);
 		grants.value = grants.value.map((item) => (item.id === id ? grant : item));
 		accessTokens.value = accessTokens.value.filter((token) => token.grantId !== id);
 		refreshFamilies.value = refreshFamilies.value.filter((family) => family.grantId !== id);
@@ -171,7 +169,7 @@ export const useMcpOAuthManagement = (): IUseMcpOAuthManagement => {
 
 		if (!data) throw new McpApiException('Failed to update MCP OAuth grant.', response.status);
 
-		const grant = McpOAuthGrantSchema.parse(snakeToCamel(data.data));
+		const grant = transformOAuthGrant(data.data);
 		grants.value = grants.value.map((item) => (item.id === id ? grant : item));
 
 		return grant;

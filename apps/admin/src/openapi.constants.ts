@@ -66,6 +66,10 @@ export type McpModuleClientCredentialSchema = components['schemas']['McpModuleDa
 export type McpModuleCreateClientSchema = components['schemas']['McpModuleCreateClient'];
 export type McpModuleUpdateClientSchema = components['schemas']['McpModuleUpdateClient'];
 export type McpModuleRotateClientTokenSchema = components['schemas']['McpModuleRotateClientToken'];
+export type McpModuleOAuthClientSchema = components['schemas']['McpModuleDataOAuthClient'];
+export type McpModuleOAuthGrantSchema = components['schemas']['McpModuleDataOAuthGrant'];
+export type McpModuleOAuthAccessTokenSchema = components['schemas']['McpModuleDataOAuthAccessToken'];
+export type McpModuleOAuthRefreshFamilySchema = components['schemas']['McpModuleDataOAuthRefreshFamily'];
 export { McpModuleCreateClientCapabilities as McpModuleCapability } from './openapi';
 export { McpModuleCreateOAuthClientMaximum_scopes as McpModuleOAuthScope } from './openapi';
 
