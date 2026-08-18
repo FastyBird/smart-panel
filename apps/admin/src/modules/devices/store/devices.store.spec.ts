@@ -15,12 +15,15 @@ const mockBackendClient = {
 	DELETE: vi.fn(),
 };
 
-// Permissive: this spec only exercises `fetch()`'s own dedup/staleness handling, not what ends up in
-// the related controls/channels stores, so every key gets the same push-able, no-op-set stub.
+// Permissive: this spec exercises `fetch()`'s dedup/staleness handling and the bulk actions' own
+// bookkeeping, not what ends up in the related controls/channels stores, so every key gets the same
+// push-able, no-op stub. `findForDevice` answers empty because the cascade's fan-out is the channels
+// store's concern; what matters here is that the cascade runs for the right devices.
 const mockGetStore = vi.fn(() => ({
 	firstLoad: [] as string[],
 	set: vi.fn(),
 	unset: vi.fn(),
+	findForDevice: vi.fn(() => []),
 }));
 
 vi.mock('../../../common', async () => {
@@ -469,4 +472,113 @@ describe('Devices Store', () => {
 			expect(requestInit.body.data.room_id).toBe(null);
 		});
 	});
+
+	describe('bulk actions', () => {
+		const seed = async (count: number): Promise<string[]> => {
+			const records = Array.from({ length: count }, (_, index) => deviceFixture(`Device ${index}`));
+
+			mockBackendClient.GET.mockResolvedValue({
+				data: { data: records },
+				error: undefined,
+				response: { status: 200 },
+			});
+
+			await store.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
+
+			return records.map((record) => record.id);
+		};
+
+		// The whole point of the endpoint: a selection is one request, not one per
+		// device. Sending one each tripped the backend's 30-per-minute limit and
+		// left the tail of a large selection unprocessed.
+		it('removes a large selection with a single request', async () => {
+			const ids = await seed(45);
+
+			mockBackendClient.POST.mockResolvedValue({
+				data: { data: { succeeded: ids, failed: [] } },
+				error: undefined,
+				response: { ok: true, status: 200 },
+			});
+
+			const result = await store.bulkRemove({ ids: [ids[0]!, ...ids.slice(1)] });
+
+			expect(mockBackendClient.POST).toHaveBeenCalledTimes(1);
+			expect(mockBackendClient.DELETE).not.toHaveBeenCalled();
+			expect(result.succeeded).toHaveLength(45);
+			expect(store.findAll()).toHaveLength(0);
+		});
+
+		it('keeps a device the backend refused', async () => {
+			const ids = await seed(3);
+
+			mockBackendClient.POST.mockResolvedValue({
+				data: {
+					data: {
+						succeeded: [ids[0]!, ids[2]!],
+						failed: [{ id: ids[1]!, reason: 'Device is hidden' }],
+					},
+				},
+				error: undefined,
+				response: { ok: true, status: 200 },
+			});
+
+			const result = await store.bulkRemove({ ids: [ids[0]!, ids[1]!, ids[2]!] });
+
+			expect(result.failed).toEqual([{ id: ids[1], reason: 'Device is hidden' }]);
+			expect(store.findAll().map((device) => device.id)).toEqual([ids[1]]);
+		});
+
+		it('sets the enabled state locally for the devices the backend confirmed', async () => {
+			const ids = await seed(2);
+
+			mockBackendClient.POST.mockResolvedValue({
+				data: {
+					data: { succeeded: [ids[0]!], failed: [{ id: ids[1]!, reason: 'Device could not be updated' }] },
+				},
+				error: undefined,
+				response: { ok: true, status: 200 },
+			});
+
+			await store.bulkSetEnabled({ ids: [ids[0]!, ids[1]!], enabled: false });
+
+			expect(mockBackendClient.POST).toHaveBeenCalledTimes(1);
+			expect(store.findById(ids[0]!)?.enabled).toBe(false);
+			// Untouched: the backend did not accept this one, so the row must keep
+			// showing the state the backend still holds.
+			expect(store.findById(ids[1]!)?.enabled).toBe(true);
+		});
+
+		it('sends the selection in the request body', async () => {
+			const ids = await seed(2);
+
+			mockBackendClient.POST.mockResolvedValue({
+				data: { data: { succeeded: ids, failed: [] } },
+				error: undefined,
+				response: { ok: true, status: 200 },
+			});
+
+			await store.bulkSetEnabled({ ids: [ids[0]!, ids[1]!], enabled: true });
+
+			expect(mockBackendClient.POST).toHaveBeenCalledWith(
+				expect.stringContaining('bulk-update'),
+				expect.objectContaining({ body: { data: { ids, enabled: true } } })
+			);
+		});
+
+		it('raises when the request itself fails', async () => {
+			const ids = await seed(2);
+
+			mockBackendClient.POST.mockResolvedValue({
+				data: undefined,
+				error: { detail: 'nope' },
+				response: { ok: false, status: 500 },
+			});
+
+			await expect(store.bulkRemove({ ids: [ids[0]!, ids[1]!] })).rejects.toThrow();
+
+			// Nothing was confirmed, so nothing may be dropped from the cache.
+			expect(store.findAll()).toHaveLength(2);
+		});
+	});
+
 });

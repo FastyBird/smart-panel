@@ -8,6 +8,8 @@ import { MODULES_PREFIX } from '../../../app.constants';
 import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
 import type {
 	DevicesModuleCreateDeviceOperation,
+	DevicesModuleCreateDevicesBulkRemoveOperation,
+	DevicesModuleCreateDevicesBulkUpdateOperation,
 	DevicesModuleDeleteDeviceOperation,
 	DevicesModuleGetDeviceOperation,
 	DevicesModuleGetDevicesOperation,
@@ -31,6 +33,7 @@ import {
 	DeviceSchema,
 	DeviceUpdateReqSchema,
 	DevicesAddActionPayloadSchema,
+	DevicesBulkResultSchema,
 	DevicesEditActionPayloadSchema,
 } from './devices.store.schemas';
 import type {
@@ -41,6 +44,9 @@ import type {
 	IDeviceUpdateReq,
 	IDevicesAddActionPayload,
 	IDevicesAddZoneActionPayload,
+	IDevicesBulkRemoveActionPayload,
+	IDevicesBulkResult,
+	IDevicesBulkSetEnabledActionPayload,
 	IDevicesEditActionPayload,
 	IDevicesFetchActionPayload,
 	IDevicesGetActionPayload,
@@ -647,22 +653,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				});
 
 				if (response.status === 204) {
-					const devicesControlsStore = storesManager.getStore(devicesControlsStoreKey);
-
-					devicesControlsStore.unset({ deviceId: payload.id });
-
-					const channelsStore = storesManager.getStore(channelsStoreKey);
-					const channelsControlsStore = storesManager.getStore(channelsControlsStoreKey);
-					const channelsPropertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
-
-					const channels = channelsStore.findForDevice(payload.id);
-
-					channels.forEach((channel) => {
-						channelsControlsStore.unset({ channelId: channel.id });
-						channelsPropertiesStore.unset({ channelId: channel.id });
-					});
-
-					channelsStore.unset({ deviceId: payload.id });
+					purgeLocally(payload.id);
 
 					return true;
 				}
@@ -683,6 +674,147 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		}
 
 		return true;
+	};
+
+	/**
+	 * Drops a device from this store and every store that hangs off it.
+	 *
+	 * `remove` did this inline; the bulk paths need the same cascade for each
+	 * device the backend confirmed, so it lives here rather than being written
+	 * out twice with a chance of drifting apart.
+	 */
+	const purgeLocally = (id: IDevice['id']): void => {
+		const devicesControlsStore = storesManager.getStore(devicesControlsStoreKey);
+
+		devicesControlsStore.unset({ deviceId: id });
+
+		const channelsStore = storesManager.getStore(channelsStoreKey);
+		const channelsControlsStore = storesManager.getStore(channelsControlsStoreKey);
+		const channelsPropertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
+
+		const channels = channelsStore.findForDevice(id);
+
+		channels.forEach((channel) => {
+			channelsControlsStore.unset({ channelId: channel.id });
+			channelsPropertiesStore.unset({ channelId: channel.id });
+		});
+
+		channelsStore.unset({ deviceId: id });
+	};
+
+	/**
+	 * Removes a selection in one request.
+	 *
+	 * The per-device alternative was one request each, which the backend's
+	 * shared rate limit rejects past thirty - so a large selection failed
+	 * halfway through with no way to tell which half. The outcome is reported
+	 * per device because the backend still refuses individual devices for
+	 * individual reasons.
+	 */
+	const bulkRemove = async (payload: IDevicesBulkRemoveActionPayload): Promise<IDevicesBulkResult> => {
+		// Drafts were never sent to the backend, so they are dropped here and
+		// counted as done rather than being handed to an endpoint that would
+		// correctly report them as unknown.
+		const drafts: string[] = [];
+		const persisted: string[] = [];
+
+		for (const id of payload.ids) {
+			const record = data.value[id];
+
+			if (record === undefined) {
+				continue;
+			}
+
+			(record.draft ? drafts : persisted).push(id);
+		}
+
+		for (const id of drafts) {
+			forget(id);
+			purgeLocally(id);
+		}
+
+		if (persisted.length === 0) {
+			return { succeeded: drafts, failed: [] };
+		}
+
+		semaphore.value.deleting.push(...persisted);
+
+		try {
+			const { data: responseBody, error, response } = await backend.client.POST(
+				`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/bulk-remove`,
+				{ body: { data: { ids: persisted } } }
+			);
+
+			if (typeof responseBody === 'undefined' || !response.ok) {
+				let errorReason: string | null = 'Remove devices failed.';
+
+				if (error) {
+					errorReason = getErrorReason<DevicesModuleCreateDevicesBulkRemoveOperation>(error, errorReason);
+				}
+
+				throw new DevicesApiException(errorReason, response.status);
+			}
+
+			const result = DevicesBulkResultSchema.parse(responseBody.data);
+
+			for (const id of result.succeeded) {
+				forget(id);
+				purgeLocally(id);
+			}
+
+			return { succeeded: [...drafts, ...result.succeeded], failed: result.failed };
+		} finally {
+			semaphore.value.deleting = semaphore.value.deleting.filter((item) => !persisted.includes(item));
+		}
+	};
+
+	/**
+	 * Enables or disables a selection in one request. Same reasoning as
+	 * `bulkRemove`.
+	 */
+	const bulkSetEnabled = async (payload: IDevicesBulkSetEnabledActionPayload): Promise<IDevicesBulkResult> => {
+		const persisted = payload.ids.filter((id) => data.value[id] !== undefined && !data.value[id]!.draft);
+
+		if (persisted.length === 0) {
+			return { succeeded: [], failed: [] };
+		}
+
+		semaphore.value.updating.push(...persisted);
+
+		try {
+			const { data: responseBody, error, response } = await backend.client.POST(
+				`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/bulk-update`,
+				{ body: { data: { ids: persisted, enabled: payload.enabled } } }
+			);
+
+			if (typeof responseBody === 'undefined' || !response.ok) {
+				let errorReason: string | null = 'Update devices failed.';
+
+				if (error) {
+					errorReason = getErrorReason<DevicesModuleCreateDevicesBulkUpdateOperation>(error, errorReason);
+				}
+
+				throw new DevicesApiException(errorReason, response.status);
+			}
+
+			const result = DevicesBulkResultSchema.parse(responseBody.data);
+
+			// The response carries only the outcome, so the local records are
+			// nudged to the state the backend just confirmed instead of being
+			// re-fetched one by one - which would reintroduce the request storm
+			// this endpoint exists to remove.
+			for (const id of result.succeeded) {
+				const record = data.value[id];
+
+				if (record !== undefined) {
+					data.value[id] = { ...record, enabled: payload.enabled };
+				}
+			}
+
+			return result;
+		} finally {
+			semaphore.value.updating = semaphore.value.updating.filter((item) => !persisted.includes(item));
+		}
 	};
 
 	const addZone = async (payload: IDevicesAddZoneActionPayload): Promise<IDevice> => {
@@ -826,6 +958,8 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		edit,
 		save,
 		remove,
+		bulkRemove,
+		bulkSetEnabled,
 		addZone,
 		removeZone,
 	};

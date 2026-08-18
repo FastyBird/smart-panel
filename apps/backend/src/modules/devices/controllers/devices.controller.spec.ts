@@ -20,6 +20,7 @@ import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
 import { DeviceValidationService } from '../services/device-validation.service';
 import { DeviceZonesService } from '../services/device-zones.service';
+import { DevicesBulkService } from '../services/devices-bulk.service';
 import { DevicesTypeMapperService } from '../services/devices-type-mapper.service';
 import { DevicesService } from '../services/devices.service';
 
@@ -29,6 +30,7 @@ describe('DevicesController', () => {
 	let controller: DevicesController;
 	let service: DevicesService;
 	let deviceZonesService: DeviceZonesService;
+	let bulkService: DevicesBulkService;
 	let mapper: DevicesTypeMapperService;
 
 	const mockDevice = {
@@ -99,12 +101,20 @@ describe('DevicesController', () => {
 						getDeviceZones: jest.fn().mockResolvedValue([]),
 					},
 				},
+				{
+					provide: DevicesBulkService,
+					useValue: {
+						remove: jest.fn().mockResolvedValue({ succeeded: [], failed: [] }),
+						setEnabled: jest.fn().mockResolvedValue({ succeeded: [], failed: [] }),
+					},
+				},
 			],
 		}).compile();
 
 		controller = module.get<DevicesController>(DevicesController);
 		service = module.get<DevicesService>(DevicesService);
 		deviceZonesService = module.get<DeviceZonesService>(DeviceZonesService);
+		bulkService = module.get<DevicesBulkService>(DevicesBulkService);
 		mapper = module.get<DevicesTypeMapperService>(DevicesTypeMapperService);
 	});
 
@@ -254,6 +264,47 @@ describe('DevicesController', () => {
 
 			expect(result).toBeUndefined();
 			expect(service.remove).toHaveBeenCalledWith(mockDevice.id);
+		});
+	});
+
+	describe('Bulk', () => {
+		it('hands the whole selection to the bulk service in one call', async () => {
+			const ids = [uuid().toString(), uuid().toString(), uuid().toString()];
+
+			jest.spyOn(bulkService, 'remove').mockResolvedValue({ succeeded: ids, failed: [] });
+
+			const result = await controller.bulkRemove({ data: { ids } });
+
+			expect(bulkService.remove).toHaveBeenCalledTimes(1);
+			expect(bulkService.remove).toHaveBeenCalledWith(ids);
+			expect(result.data.succeeded).toEqual(ids);
+		});
+
+		// A device the backend refused belongs in the response, not in an
+		// exception: the rest of the selection went through and the caller has to
+		// be able to say so.
+		it('reports refusals in the response rather than throwing', async () => {
+			const ids = [uuid().toString(), uuid().toString()];
+
+			jest.spyOn(bulkService, 'remove').mockResolvedValue({
+				succeeded: [ids[0]],
+				failed: [{ id: ids[1], reason: 'Device is hidden' }],
+			});
+
+			const result = await controller.bulkRemove({ data: { ids } });
+
+			expect(result.data.succeeded).toEqual([ids[0]]);
+			expect(result.data.failed).toEqual([{ id: ids[1], reason: 'Device is hidden' }]);
+		});
+
+		it('passes the requested enabled state through', async () => {
+			const ids = [uuid().toString()];
+
+			jest.spyOn(bulkService, 'setEnabled').mockResolvedValue({ succeeded: ids, failed: [] });
+
+			await controller.bulkUpdate({ data: { ids, enabled: false } });
+
+			expect(bulkService.setEnabled).toHaveBeenCalledWith(ids, false);
 		});
 	});
 });

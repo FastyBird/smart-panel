@@ -61,6 +61,7 @@ import { DeviceProvisionQueueService } from './services/device-provision-queue.s
 import { DeviceStructureLockService } from './services/device-structure-lock.service';
 import { DeviceValidationService } from './services/device-validation.service';
 import { DeviceZonesService } from './services/device-zones.service';
+import { DevicesBulkService } from './services/devices-bulk.service';
 import { DevicesSeederService } from './services/devices-seeder.service';
 import { DevicesTypeMapperService } from './services/devices-type-mapper.service';
 import { DevicesControlsService } from './services/devices.controls.service';
@@ -113,6 +114,7 @@ import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidd
 		ChannelsTypeMapperService,
 		ChannelsPropertiesTypeMapperService,
 		DevicesService,
+		DevicesBulkService,
 		DevicesControlsService,
 		DeviceZonesService,
 		ChannelsService,
@@ -155,6 +157,7 @@ import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidd
 	],
 	exports: [
 		DevicesService,
+		DevicesBulkService,
 		DevicesControlsService,
 		DeviceZonesService,
 		ChannelsService,

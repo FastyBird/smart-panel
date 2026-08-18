@@ -45,14 +45,16 @@ import {
 	DevicesNotFoundException,
 	DevicesValidationException,
 } from '../devices.exceptions';
+import { ReqBulkRemoveDevicesDto, ReqBulkUpdateDevicesDto } from '../dto/bulk-devices.dto';
 import { CreateDeviceDto, ReqCreateDeviceDto } from '../dto/create-device.dto';
 import { ListDevicesQueryDto } from '../dto/list-devices-query.dto';
 import { ReqUpdateDeviceDto, UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
 import { DeviceValidationResponseModel, DevicesValidationResponseModel } from '../models/device-validation.model';
-import { DeviceResponseModel, DevicesResponseModel } from '../models/devices-response.model';
+import { BulkResultResponseModel, DeviceResponseModel, DevicesResponseModel } from '../models/devices-response.model';
 import { DeviceValidationService } from '../services/device-validation.service';
 import { DeviceZonesService } from '../services/device-zones.service';
+import { DevicesBulkService } from '../services/devices-bulk.service';
 import { DeviceTypeMapping, DevicesTypeMapperService } from '../services/devices-type-mapper.service';
 import { DevicesService } from '../services/devices.service';
 
@@ -66,6 +68,7 @@ export class DevicesController {
 		private readonly devicesMapperService: DevicesTypeMapperService,
 		private readonly deviceValidationService: DeviceValidationService,
 		private readonly deviceZonesService: DeviceZonesService,
+		private readonly devicesBulkService: DevicesBulkService,
 	) {}
 
 	@ApiOperation({
@@ -424,6 +427,52 @@ export class DevicesController {
 		await this.devicesService.remove(device.id);
 
 		this.logger.debug(`Successfully deleted device id=${id}`);
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: 'Remove several devices',
+		description:
+			'Removes every device in the supplied selection. Each device is processed independently, so a device that can not be removed is reported in the response rather than aborting the rest of the selection. This exists so that acting on a large selection is one request instead of one per device.',
+		operationId: 'create-devices-module-devices-bulk-remove',
+	})
+	@ApiBody({ type: ReqBulkRemoveDevicesDto, description: 'The devices to remove' })
+	@ApiSuccessResponse(BulkResultResponseModel, 'Returns which devices were removed and which were not')
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post('bulk-remove')
+	@HttpCode(200)
+	async bulkRemove(@Body() body: ReqBulkRemoveDevicesDto): Promise<BulkResultResponseModel> {
+		this.logger.debug(`Incoming request to remove ${body.data.ids.length} device(s)`);
+
+		const response = new BulkResultResponseModel();
+
+		response.data = await this.devicesBulkService.remove(body.data.ids);
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: 'Enable or disable several devices',
+		description:
+			'Sets the enabled state of every device in the supplied selection. Each device is processed independently, so a device that can not be updated is reported in the response rather than aborting the rest of the selection. This exists so that acting on a large selection is one request instead of one per device.',
+		operationId: 'create-devices-module-devices-bulk-update',
+	})
+	@ApiBody({ type: ReqBulkUpdateDevicesDto, description: 'The devices to update and the state to set' })
+	@ApiSuccessResponse(BulkResultResponseModel, 'Returns which devices were updated and which were not')
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post('bulk-update')
+	@HttpCode(200)
+	async bulkUpdate(@Body() body: ReqBulkUpdateDevicesDto): Promise<BulkResultResponseModel> {
+		this.logger.debug(`Incoming request to update ${body.data.ids.length} device(s)`);
+
+		const response = new BulkResultResponseModel();
+
+		response.data = await this.devicesBulkService.setEnabled(body.data.ids, body.data.enabled);
+
+		return response;
 	}
 
 	@ApiOperation({

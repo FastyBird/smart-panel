@@ -22,6 +22,7 @@ import {
 	DevicesModuleDeviceCategory,
 } from './models/devices-enums.model';
 import {
+	BulkResultResponseModel,
 	ChannelControlResponseModel,
 	ChannelControlsResponseModel,
 	ChannelPropertiesResponseModel,
@@ -37,6 +38,8 @@ import {
 	PropertyTimeseriesResponseModel,
 } from './models/devices-response.model';
 import {
+	BulkFailureModel,
+	BulkResultModel,
 	ChannelPropertySpecModel,
 	ChannelSpecModel,
 	DeviceChannelSpecModel,
@@ -53,6 +56,7 @@ import {
 
 export const DEVICES_SWAGGER_EXTRA_MODELS = [
 	// Response models
+	BulkResultResponseModel,
 	DeviceResponseModel,
 	DevicesResponseModel,
 	ChannelResponseModel,
@@ -75,6 +79,8 @@ export const DEVICES_SWAGGER_EXTRA_MODELS = [
 	ValidationSummaryModel,
 	ValidationIssueModel,
 	// Data models
+	BulkResultModel,
+	BulkFailureModel,
 	DeviceChannelSpecModel,
 	DeviceSpecModel,
 	ChannelPropertySpecModel,
