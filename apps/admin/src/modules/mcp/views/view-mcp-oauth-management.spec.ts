@@ -48,6 +48,13 @@ vi.mock('../../../common', () => ({
 	},
 	AppBarButton: { name: 'AppBarButton', template: '<button><slot name="icon" /></button>' },
 	AppBarButtonAlign: { LEFT: 'left', RIGHT: 'right' },
+	useListQuery: () => ({
+		filters: ref({ search: undefined, status: 'all' }),
+		sort: ref([{ by: 'name', dir: 'asc' }]),
+		pagination: ref({}),
+		viewMode: ref('table'),
+		reset: vi.fn(),
+	}),
 }));
 vi.mock('../composables/useMcpOAuthManagement', () => ({
 	useMcpOAuthManagement: () => ({
@@ -89,6 +96,7 @@ const formStubs = {
 	ElCard: { name: 'ElCard', template: '<section><slot /></section>' },
 	ElTable: { name: 'ElTable', template: '<table><slot /><slot name="empty" /></table>' },
 	ElTableColumn: { name: 'ElTableColumn', template: '<td></td>' },
+	McpOAuthTabFilter: { name: 'McpOAuthTabFilter', props: ['statusOptions', 'filters', 'filtersActive'], template: '<div />' },
 	AppBar: { name: 'AppBar', template: '<div><slot name="heading" /><slot name="button-right" /></div>' },
 	AppBarHeading: {
 		name: 'AppBarHeading',
@@ -133,6 +141,20 @@ describe('ViewMcpOAuthManagement form conventions', () => {
 			expect(empty.props('failed')).toBe(false);
 			expect(empty.props('loading')).toBe(false);
 		}
+	});
+
+	it('gives every tab its own search and filter bar', () => {
+		const wrapper = mountForms();
+
+		const bars = wrapper.findAllComponents({ name: 'McpOAuthTabFilter' });
+
+		expect(bars).toHaveLength(4);
+
+		// Refresh families have no status of their own, so that tab shows search
+		// alone rather than a select with nothing meaningful in it.
+		const withStatus = bars.filter((bar) => (bar.props('statusOptions') as unknown[]).length > 0);
+
+		expect(withStatus).toHaveLength(3);
 	});
 
 	it('labels the header create action the way the other list headers do', () => {

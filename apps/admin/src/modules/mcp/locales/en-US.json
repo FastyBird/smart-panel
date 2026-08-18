@@ -200,7 +200,8 @@
 			"disabled": "Disabled",
 			"inactive": "Inactive",
 			"revoked": "Revoked",
-			"expired": "Expired"
+			"expired": "Expired",
+			"enabled": "Enabled"
 		},
 		"scope": {
 			"mcp:read": "Read",
@@ -231,7 +232,8 @@
 			"revokeFailed": "OAuth authorization could not be revoked."
 		},
 		"clientFormSubtitle": "Register the redirect URIs and the scope ceiling for this client.",
-		"grantFormSubtitle": "Narrow the scopes this grant already holds."
+		"grantFormSubtitle": "Narrow the scopes this grant already holds.",
+		"searchPlaceholder": "Search by client name"
 	},
 	"messages": {
 		"configSaved": "MCP configuration saved.",

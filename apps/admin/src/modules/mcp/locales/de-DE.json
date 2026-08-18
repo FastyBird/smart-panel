@@ -220,7 +220,8 @@
 			"disabled": "Deaktiviert",
 			"inactive": "Inaktiv",
 			"revoked": "Widerrufen",
-			"expired": "Abgelaufen"
+			"expired": "Abgelaufen",
+			"enabled": "Aktiviert"
 		},
 		"scope": {
 			"mcp:read": "Lesen",
@@ -251,7 +252,8 @@
 			"revokeFailed": "OAuth-Autorisierung konnte nicht widerrufen werden."
 		},
 		"clientFormSubtitle": "Legen Sie Redirect-URIs und die Berechtigungsobergrenze fest.",
-		"grantFormSubtitle": "Schränken Sie die bereits erteilten Berechtigungen ein."
+		"grantFormSubtitle": "Schränken Sie die bereits erteilten Berechtigungen ein.",
+		"searchPlaceholder": "Nach Client-Namen suchen"
 	},
 	"headings": {
 		"discard": "Änderungen verwerfen"

@@ -55,10 +55,20 @@
 					shadow="never"
 					body-class="p-0!"
 				>
+					<McpOAuthTabFilter
+						v-model:filters="clientsQuery.filters.value"
+						:filters-active="clientsQuery.filtersActive.value"
+						:search-placeholder="t('mcpModule.oauthManagement.searchPlaceholder')"
+						:status-options="clientStatusOptions"
+						test-id="mcp-oauth-clients"
+						@reset-filters="clientsQuery.resetFilter"
+					/>
+
 					<el-table
 						v-loading="loading"
-						:data="clients"
+						:data="clientsQuery.items.value"
 						row-key="id"
+						@sort-change="(change: { prop: string; order: string | null }) => onSortChange(clientsQuery, change)"
 					>
 						<el-table-column type="expand">
 							<template #default="scope">
@@ -83,6 +93,8 @@
 						</el-table-column>
 						<el-table-column
 							prop="name"
+							sortable="custom"
+							:sort-orders="['ascending', 'descending']"
 							:label="t('mcpModule.oauthManagement.columns.client')"
 							min-width="180"
 						/>
@@ -130,8 +142,10 @@
 								icon="mdi:application-cog"
 								:loading="loading"
 								:failed="error !== null"
+								:filters-active="clientsQuery.filtersActive.value"
 								empty-label="mcpModule.oauthManagement.empty.clients"
 								@retry="fetchAll"
+								@reset-filters="clientsQuery.resetFilter"
 							/>
 						</template>
 					</el-table>
@@ -146,13 +160,25 @@
 					shadow="never"
 					body-class="p-0!"
 				>
+					<McpOAuthTabFilter
+						v-model:filters="grantsQuery.filters.value"
+						:filters-active="grantsQuery.filtersActive.value"
+						:search-placeholder="t('mcpModule.oauthManagement.searchPlaceholder')"
+						:status-options="grantStatusOptions"
+						test-id="mcp-oauth-grants"
+						@reset-filters="grantsQuery.resetFilter"
+					/>
+
 					<el-table
 						v-loading="loading"
-						:data="grants"
+						:data="grantsQuery.items.value"
 						row-key="id"
+						@sort-change="(change: { prop: string; order: string | null }) => onSortChange(grantsQuery, change)"
 					>
 						<el-table-column
 							prop="clientName"
+							sortable="custom"
+							:sort-orders="['ascending', 'descending']"
 							:label="t('mcpModule.oauthManagement.columns.client')"
 							min-width="170"
 						/>
@@ -205,8 +231,10 @@
 								icon="mdi:key-chain"
 								:loading="loading"
 								:failed="error !== null"
+								:filters-active="grantsQuery.filtersActive.value"
 								empty-label="mcpModule.oauthManagement.empty.grants"
 								@retry="fetchAll"
+								@reset-filters="grantsQuery.resetFilter"
 							/>
 						</template>
 					</el-table>
@@ -221,13 +249,25 @@
 					shadow="never"
 					body-class="p-0!"
 				>
+					<McpOAuthTabFilter
+						v-model:filters="accessTokensQuery.filters.value"
+						:filters-active="accessTokensQuery.filtersActive.value"
+						:search-placeholder="t('mcpModule.oauthManagement.searchPlaceholder')"
+						:status-options="tokenStatusOptions"
+						test-id="mcp-oauth-accessTokens"
+						@reset-filters="accessTokensQuery.resetFilter"
+					/>
+
 					<el-table
 						v-loading="loading"
-						:data="accessTokens"
+						:data="accessTokensQuery.items.value"
 						row-key="id"
+						@sort-change="(change: { prop: string; order: string | null }) => onSortChange(accessTokensQuery, change)"
 					>
 						<el-table-column
 							prop="clientName"
+							sortable="custom"
+							:sort-orders="['ascending', 'descending']"
 							:label="t('mcpModule.oauthManagement.columns.client')"
 							min-width="170"
 						/>
@@ -264,8 +304,10 @@
 								icon="mdi:key"
 								:loading="loading"
 								:failed="error !== null"
+								:filters-active="accessTokensQuery.filtersActive.value"
 								empty-label="mcpModule.oauthManagement.empty.accessTokens"
 								@retry="fetchAll"
+								@reset-filters="accessTokensQuery.resetFilter"
 							/>
 						</template>
 					</el-table>
@@ -280,18 +322,32 @@
 					shadow="never"
 					body-class="p-0!"
 				>
+					<McpOAuthTabFilter
+						v-model:filters="refreshFamiliesQuery.filters.value"
+						:filters-active="refreshFamiliesQuery.filtersActive.value"
+						:search-placeholder="t('mcpModule.oauthManagement.searchPlaceholder')"
+						:status-options="[]"
+						test-id="mcp-oauth-refreshFamilies"
+						@reset-filters="refreshFamiliesQuery.resetFilter"
+					/>
+
 					<el-table
 						v-loading="loading"
-						:data="refreshFamilies"
+						:data="refreshFamiliesQuery.items.value"
 						row-key="id"
+						@sort-change="(change: { prop: string; order: string | null }) => onSortChange(refreshFamiliesQuery, change)"
 					>
 						<el-table-column
 							prop="clientName"
+							sortable="custom"
+							:sort-orders="['ascending', 'descending']"
 							:label="t('mcpModule.oauthManagement.columns.client')"
 							min-width="180"
 						/>
 						<el-table-column
 							prop="activeTokenCount"
+							sortable="custom"
+							:sort-orders="['ascending', 'descending']"
 							:label="t('mcpModule.oauthManagement.columns.activeTokens')"
 							width="140"
 						/>
@@ -322,8 +378,10 @@
 								icon="mdi:key-link"
 								:loading="loading"
 								:failed="error !== null"
+								:filters-active="refreshFamiliesQuery.filtersActive.value"
 								empty-label="mcpModule.oauthManagement.empty.refreshFamilies"
 								@retry="fetchAll"
+								@reset-filters="refreshFamiliesQuery.resetFilter"
 							/>
 						</template>
 					</el-table>
@@ -579,7 +637,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, h, onMounted, reactive, ref } from 'vue';
+import { type Ref, computed, defineComponent, h, onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import {
@@ -609,8 +667,10 @@ import { isEqual } from 'lodash';
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import McpOAuthTabFilter from '../components/mcp-oauth-tab-filter.vue';
 import McpTableEmpty from '../components/mcp-table-empty.vue';
 import { useMcpOAuthManagement } from '../composables/useMcpOAuthManagement';
+import { useMcpOAuthTabQuery } from '../composables/useMcpOAuthTabQuery';
 import { McpOAuthScope } from '../mcp.constants';
 import type { IMcpOAuthAccessToken, IMcpOAuthClient, IMcpOAuthGrant, IMcpOAuthRefreshFamily } from '../schemas/oauth-management.types';
 
@@ -878,7 +938,86 @@ const grantStatus = (grant: IMcpOAuthGrant): { key: 'active' | 'expired' | 'inac
 const canRevokeGrant = (grant: IMcpOAuthGrant): boolean => grant.revokedAt === null && new Date(grant.expiresAt).getTime() > Date.now();
 const canEditGrant = (grant: IMcpOAuthGrant): boolean => grant.active;
 
+// El-table reports its own sort state; the tab query owns it, so the two are
+// joined here rather than in each table's markup.
+const onSortChange = (
+	query: { sortBy: Ref<string | undefined>; sortDir: Ref<'asc' | 'desc' | null> },
+	{ prop, order }: { prop: string; order: string | null }
+): void => {
+	query.sortBy.value = order === null ? undefined : prop;
+	query.sortDir.value = order === null ? null : order === 'descending' ? 'desc' : 'asc';
+};
+
 const formatDate = (value: string): string => new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+const clientsQuery = useMcpOAuthTabQuery<IMcpOAuthClient>({
+	key: 'clients',
+	items: clients,
+	searchable: (client) => [client.name, client.clientIdentifier],
+	sortable: {
+		name: (client) => client.name,
+		createdAt: (client) => new Date(client.createdAt).getTime(),
+	},
+	defaultSortBy: 'name',
+	statusOf: (client) => (client.enabled ? 'enabled' : 'disabled'),
+});
+
+const grantsQuery = useMcpOAuthTabQuery<IMcpOAuthGrant>({
+	key: 'grants',
+	items: grants,
+	searchable: (grant) => [grant.clientName],
+	sortable: {
+		clientName: (grant) => grant.clientName,
+		expiresAt: (grant) => new Date(grant.expiresAt).getTime(),
+		createdAt: (grant) => new Date(grant.createdAt).getTime(),
+	},
+	defaultSortBy: 'clientName',
+	// Reuses the same helper the status column renders, so a row can never be
+	// labelled one thing and matched by another.
+	statusOf: (grant) => grantStatus(grant).key,
+});
+
+const accessTokensQuery = useMcpOAuthTabQuery<IMcpOAuthAccessToken>({
+	key: 'accessTokens',
+	items: accessTokens,
+	searchable: (token) => [token.clientName],
+	sortable: {
+		clientName: (token) => token.clientName,
+		expiresAt: (token) => new Date(token.expiresAt).getTime(),
+	},
+	defaultSortBy: 'clientName',
+	statusOf: (token) => (new Date(token.expiresAt).getTime() <= Date.now() ? 'expired' : 'active'),
+});
+
+// Refresh families carry no status of their own — a family is described by the
+// tokens counted against it — so this tab filters on search alone.
+const refreshFamiliesQuery = useMcpOAuthTabQuery<IMcpOAuthRefreshFamily>({
+	key: 'refreshFamilies',
+	items: refreshFamilies,
+	searchable: (family) => [family.clientName],
+	sortable: {
+		clientName: (family) => family.clientName,
+		expiresAt: (family) => new Date(family.expiresAt).getTime(),
+		activeTokenCount: (family) => family.activeTokenCount,
+	},
+	defaultSortBy: 'clientName',
+});
+
+const grantStatusOptions = [
+	{ value: 'active', label: 'mcpModule.oauthManagement.status.active' },
+	{ value: 'inactive', label: 'mcpModule.oauthManagement.status.inactive' },
+	{ value: 'expired', label: 'mcpModule.oauthManagement.status.expired' },
+	{ value: 'revoked', label: 'mcpModule.oauthManagement.status.revoked' },
+];
+
+const tokenStatusOptions = [
+	{ value: 'active', label: 'mcpModule.oauthManagement.status.active' },
+	{ value: 'expired', label: 'mcpModule.oauthManagement.status.expired' },
+];
+
+const clientStatusOptions = [
+	{ value: 'enabled', label: 'mcpModule.oauthManagement.status.enabled' },
+	{ value: 'disabled', label: 'mcpModule.oauthManagement.status.disabled' },
+];
 
 onMounted(() => void fetchAll().catch(() => undefined));
 </script>
