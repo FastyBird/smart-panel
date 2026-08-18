@@ -1779,6 +1779,302 @@ export class DeviceManagerService {
 							resource: device.id,
 						});
 					}
+				} else if (type === String(ComponentType.EM)) {
+					const tasks = ids.map((key) =>
+						limit(async () => {
+							const [emConfig, emStatus] = await retry(
+								() =>
+									withTimeout(
+										Promise.all([
+											this.shellyRpcClientService.getEmConfig(host, key, { password }),
+											this.shellyRpcClientService.getEmStatus(host, key, { password }),
+										]),
+										this.timeoutSec * 1000,
+										`EM.GetConfig+EM.GetStatus - ${key}`,
+									),
+								{ retries: 2, baseMs: 300, factor: 2 },
+							).catch((err: Error) => {
+								this.logger.error(`Failed load for em=${key} on device=${device.id}`, {
+									resource: device.id,
+									message: err.message,
+									stack: err.stack,
+								});
+
+								throw err;
+							});
+
+							const label = emConfig.name ?? `Meter: ${key}`;
+
+							const phases = [
+								{
+									id: 'a',
+									power: emStatus.a_act_power,
+									voltage: emStatus.a_voltage,
+									current: emStatus.a_current,
+									frequency: emStatus.a_freq,
+								},
+								{
+									id: 'b',
+									power: emStatus.b_act_power,
+									voltage: emStatus.b_voltage,
+									current: emStatus.b_current,
+									frequency: emStatus.b_freq,
+								},
+								{
+									id: 'c',
+									power: emStatus.c_act_power,
+									voltage: emStatus.c_voltage,
+									current: emStatus.c_current,
+									frequency: emStatus.c_freq,
+								},
+							];
+
+							for (const phase of phases) {
+								const channel = await this.ensureMeterChannel(
+									device,
+									ChannelCategory.ELECTRICAL_POWER,
+									`power:${key}:${phase.id}`,
+									`${label} - phase ${phase.id.toUpperCase()}`,
+									[
+										{ category: PropertyCategory.POWER, identifier: `${phase.id}_act_power`, value: phase.power },
+										{ category: PropertyCategory.VOLTAGE, identifier: `${phase.id}_voltage`, value: phase.voltage },
+										{ category: PropertyCategory.CURRENT, identifier: `${phase.id}_current`, value: phase.current },
+										{ category: PropertyCategory.FREQUENCY, identifier: `${phase.id}_freq`, value: phase.frequency },
+									],
+								);
+
+								if (channel) {
+									channelsIds.push(channel.id);
+								}
+							}
+
+							const total = await this.ensureMeterChannel(
+								device,
+								ChannelCategory.ELECTRICAL_POWER,
+								`power:${key}:total`,
+								`${label} - total`,
+								[
+									{ category: PropertyCategory.POWER, identifier: 'total_act_power', value: emStatus.total_act_power },
+									{ category: PropertyCategory.CURRENT, identifier: 'total_current', value: emStatus.total_current },
+								],
+							);
+
+							if (total) {
+								channelsIds.push(total.id);
+							}
+						}),
+					);
+
+					const settled = await Promise.allSettled(tasks);
+
+					const failed = settled.filter((r) => r.status === 'rejected').length;
+
+					if (failed) {
+						this.logger.warn(`${failed}/${ids.length} em component(s) failed for device=${device.id}`, {
+							resource: device.id,
+						});
+					}
+				} else if (type === String(ComponentType.EM_DATA)) {
+					const tasks = ids.map((key) =>
+						limit(async () => {
+							const emDataStatus = await retry(
+								() =>
+									withTimeout(
+										this.shellyRpcClientService.getEmDataStatus(host, key, { password }),
+										this.timeoutSec * 1000,
+										`EMData.GetStatus - ${key}`,
+									),
+								{ retries: 2, baseMs: 300, factor: 2 },
+							).catch((err: Error) => {
+								this.logger.error(`Failed load for emdata=${key} on device=${device.id}`, {
+									resource: device.id,
+									message: err.message,
+									stack: err.stack,
+								});
+
+								throw err;
+							});
+
+							const phases = [
+								{
+									id: 'a',
+									consumption: emDataStatus.a_total_act_energy,
+									returned: emDataStatus.a_total_act_ret_energy,
+								},
+								{
+									id: 'b',
+									consumption: emDataStatus.b_total_act_energy,
+									returned: emDataStatus.b_total_act_ret_energy,
+								},
+								{
+									id: 'c',
+									consumption: emDataStatus.c_total_act_energy,
+									returned: emDataStatus.c_total_act_ret_energy,
+								},
+							];
+
+							for (const phase of phases) {
+								const channel = await this.ensureMeterChannel(
+									device,
+									ChannelCategory.ELECTRICAL_ENERGY,
+									`energy:${key}:${phase.id}`,
+									`Consumption: ${key} - phase ${phase.id.toUpperCase()}`,
+									[
+										{
+											category: PropertyCategory.CONSUMPTION,
+											identifier: `${phase.id}_total_act_energy`,
+											value: phase.consumption,
+										},
+										{
+											category: PropertyCategory.GRID_EXPORT,
+											identifier: `${phase.id}_total_act_ret_energy`,
+											value: phase.returned,
+										},
+									],
+								);
+
+								if (channel) {
+									channelsIds.push(channel.id);
+								}
+							}
+
+							const total = await this.ensureMeterChannel(
+								device,
+								ChannelCategory.ELECTRICAL_ENERGY,
+								`energy:${key}:total`,
+								`Consumption: ${key} - total`,
+								[
+									{ category: PropertyCategory.CONSUMPTION, identifier: 'total_act', value: emDataStatus.total_act },
+									{
+										category: PropertyCategory.GRID_EXPORT,
+										identifier: 'total_act_ret',
+										value: emDataStatus.total_act_ret,
+									},
+								],
+							);
+
+							if (total) {
+								channelsIds.push(total.id);
+							}
+						}),
+					);
+
+					const settled = await Promise.allSettled(tasks);
+
+					const failed = settled.filter((r) => r.status === 'rejected').length;
+
+					if (failed) {
+						this.logger.warn(`${failed}/${ids.length} emdata component(s) failed for device=${device.id}`, {
+							resource: device.id,
+						});
+					}
+				} else if (type === String(ComponentType.EM1)) {
+					const tasks = ids.map((key) =>
+						limit(async () => {
+							const [em1Config, em1Status] = await retry(
+								() =>
+									withTimeout(
+										Promise.all([
+											this.shellyRpcClientService.getEm1Config(host, key, { password }),
+											this.shellyRpcClientService.getEm1Status(host, key, { password }),
+										]),
+										this.timeoutSec * 1000,
+										`EM1.GetConfig+EM1.GetStatus - ${key}`,
+									),
+								{ retries: 2, baseMs: 300, factor: 2 },
+							).catch((err: Error) => {
+								this.logger.error(`Failed load for em1=${key} on device=${device.id}`, {
+									resource: device.id,
+									message: err.message,
+									stack: err.stack,
+								});
+
+								throw err;
+							});
+
+							const channel = await this.ensureMeterChannel(
+								device,
+								ChannelCategory.ELECTRICAL_POWER,
+								`power:${key}`,
+								em1Config.name ?? `Power: ${key}`,
+								[
+									{ category: PropertyCategory.POWER, identifier: 'act_power', value: em1Status.act_power },
+									{ category: PropertyCategory.VOLTAGE, identifier: 'voltage', value: em1Status.voltage },
+									{ category: PropertyCategory.CURRENT, identifier: 'current', value: em1Status.current },
+									{ category: PropertyCategory.FREQUENCY, identifier: 'freq', value: em1Status.freq },
+								],
+							);
+
+							if (channel) {
+								channelsIds.push(channel.id);
+							}
+						}),
+					);
+
+					const settled = await Promise.allSettled(tasks);
+
+					const failed = settled.filter((r) => r.status === 'rejected').length;
+
+					if (failed) {
+						this.logger.warn(`${failed}/${ids.length} em1 component(s) failed for device=${device.id}`, {
+							resource: device.id,
+						});
+					}
+				} else if (type === String(ComponentType.EM1_DATA)) {
+					const tasks = ids.map((key) =>
+						limit(async () => {
+							const em1DataStatus = await retry(
+								() =>
+									withTimeout(
+										this.shellyRpcClientService.getEm1DataStatus(host, key, { password }),
+										this.timeoutSec * 1000,
+										`EM1Data.GetStatus - ${key}`,
+									),
+								{ retries: 2, baseMs: 300, factor: 2 },
+							).catch((err: Error) => {
+								this.logger.error(`Failed load for em1data=${key} on device=${device.id}`, {
+									resource: device.id,
+									message: err.message,
+									stack: err.stack,
+								});
+
+								throw err;
+							});
+
+							const channel = await this.ensureMeterChannel(
+								device,
+								ChannelCategory.ELECTRICAL_ENERGY,
+								`energy:${key}`,
+								`Consumption: ${key}`,
+								[
+									{
+										category: PropertyCategory.CONSUMPTION,
+										identifier: 'total_act_energy',
+										value: em1DataStatus.total_act_energy,
+									},
+									{
+										category: PropertyCategory.GRID_EXPORT,
+										identifier: 'total_act_ret_energy',
+										value: em1DataStatus.total_act_ret_energy,
+									},
+								],
+							);
+
+							if (channel) {
+								channelsIds.push(channel.id);
+							}
+						}),
+					);
+
+					const settled = await Promise.allSettled(tasks);
+
+					const failed = settled.filter((r) => r.status === 'rejected').length;
+
+					if (failed) {
+						this.logger.warn(`${failed}/${ids.length} em1data component(s) failed for device=${device.id}`, {
+							resource: device.id,
+						});
+					}
 				}
 			}
 
@@ -2183,6 +2479,43 @@ export class DeviceManagerService {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Creates one electrical channel from an energy-meter reading.
+	 *
+	 * The first reading is the one the devices spec marks required - `power` for
+	 * ELECTRICAL_POWER, `consumption` for ELECTRICAL_ENERGY. A meter reports
+	 * `null` for a phase whose CT is not connected, so when that value is absent
+	 * the channel is skipped entirely rather than written without its required
+	 * property, which would fail spec validation.
+	 */
+	private async ensureMeterChannel(
+		device: ShellyNgDeviceEntity,
+		category: ChannelCategory.ELECTRICAL_POWER | ChannelCategory.ELECTRICAL_ENERGY,
+		identifier: string,
+		name: string,
+		readings: { category: PropertyCategory; identifier: string; value: number | null | undefined }[],
+	): Promise<ShellyNgChannelEntity | null> {
+		const [required, ...optional] = readings;
+
+		if (!required || required.value === null || typeof required.value === 'undefined') {
+			return null;
+		}
+
+		const channel = await this.ensureChannel(device, 'identifier', identifier, category, name);
+
+		await this.ensureProperty(channel, required.category, 'identifier', required.identifier, required.value);
+
+		for (const reading of optional) {
+			if (reading.value === null || typeof reading.value === 'undefined') {
+				continue;
+			}
+
+			await this.ensureProperty(channel, reading.category, 'identifier', reading.identifier, reading.value);
+		}
+
+		return channel;
 	}
 
 	private async ensureElectricalEnergy(

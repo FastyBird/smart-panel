@@ -89,6 +89,13 @@ const mockRpc = {
 
 	getPm1Config: jest.fn(),
 	getPm1Status: jest.fn(),
+
+	getEmConfig: jest.fn(),
+	getEmStatus: jest.fn(),
+	getEmDataStatus: jest.fn(),
+	getEm1Config: jest.fn(),
+	getEm1Status: jest.fn(),
+	getEm1DataStatus: jest.fn(),
 } as unknown as jest.Mocked<ShellyRpcClientService>;
 
 jest.mock('../../../spec/channels', () => {
@@ -123,6 +130,7 @@ jest.mock('../../../spec/channels', () => {
 		[ChannelCategory.ELECTRICAL_ENERGY]: {
 			properties: {
 				[PropertyCategory.CONSUMPTION]: { ...common(), data_type: 'number' as any },
+				[PropertyCategory.GRID_EXPORT]: { ...common(), data_type: 'number' as any },
 			},
 		},
 		[ChannelCategory.ELECTRICAL_POWER]: {
@@ -130,6 +138,7 @@ jest.mock('../../../spec/channels', () => {
 				[PropertyCategory.POWER]: { ...common(), data_type: 'number' as any },
 				[PropertyCategory.VOLTAGE]: { ...common(), data_type: 'number' as any },
 				[PropertyCategory.CURRENT]: { ...common(), data_type: 'number' as any },
+				[PropertyCategory.FREQUENCY]: { ...common(), data_type: 'number' as any },
 			},
 		},
 		[ChannelCategory.LIGHT]: {
@@ -177,6 +186,10 @@ jest.mock('../devices-shelly-ng.constants', () => ({
 		HUMIDITY: 'humidity',
 		TEMPERATURE: 'temperature',
 		PM: 'pm1',
+		EM: 'em',
+		EM_DATA: 'emdata',
+		EM1: 'em1',
+		EM1_DATA: 'em1data',
 		WIFI: 'wifi',
 		ETHERNET: 'ethernet',
 	},
@@ -400,6 +413,214 @@ describe('DeviceManagerService.createOrUpdate', () => {
 		// Switch ON property was created with 'output' value
 		const onCall = mockChannelsPropertiesService.create.mock.calls.find((c) => c[1]?.category === PropertyCategory.ON);
 		expect(onCall).toBeTruthy();
+	});
+});
+
+describe('DeviceManagerService energy meters', () => {
+	const baseDeviceInfo = {
+		id: 'shelly-dev-id',
+		mac: 'mac',
+		model: 'SPEM-003CEBEU',
+		fw_id: 'fw',
+		ver: '1.2.3',
+		app: 'app',
+		auth_en: false,
+		auth_domain: null,
+		discoverable: true,
+		key: 'key',
+		batch: 'batch',
+		fw_sbits: 'sbits',
+	};
+
+	const arrange = (svc: any, components: { key: string }[]) => {
+		jest.spyOn<any, any>(svc, 'getSpecification').mockReturnValue({
+			models: ['SPEM-003CEBEU'],
+			system: [{ type: 'wifi' }],
+		});
+
+		mockRpc.getDeviceInfo.mockResolvedValue(baseDeviceInfo as any);
+		mockRpc.getComponents.mockResolvedValue(components.map((c) => ({ ...c, config: {}, status: {} })) as any);
+		mockRpc.getSystemConfig.mockResolvedValue({
+			device: { name: 'Main meter', eco_mode: false, mac: 'mac', fw_id: 'fw', discoverable: true },
+			location: { tz: null, lat: null, lon: null },
+			debug: { mqtt: { enabled: false }, websocket: { enabled: false }, udp: { addr: null } },
+			rpc_udp: { dst_addr: '', listen_port: null },
+			sntp: { server: '' },
+			cfg_rev: 1,
+		} as any);
+		mockRpc.getWifiStatus.mockResolvedValue({ rssi: -55 } as any);
+
+		mockChannelsService.findOneBy.mockResolvedValue(null);
+		mockChannelsService.findAll.mockResolvedValue([]);
+
+		let channelCounter = 0;
+		mockChannelsService.create.mockImplementation(async (dto: any) => ({ id: `ch_${++channelCounter}`, ...dto }));
+		mockChannelsService.update.mockImplementation(async (id: string, dto: any) => ({ id, ...dto }));
+
+		let propCounter = 0;
+		mockChannelsPropertiesService.findOneBy.mockResolvedValue(null);
+		mockChannelsPropertiesService.create.mockImplementation(async (channelId: string, dto: any) => ({
+			id: `p_${++propCounter}`,
+			channel: channelId,
+			...dto,
+		}));
+		mockChannelsPropertiesService.update.mockImplementation(async (id: string, dto: any) => ({ id, ...dto }));
+	};
+
+	const createdChannels = () =>
+		mockChannelsService.create.mock.calls.map((call: any[]) => call[0]).filter((dto: any) => dto?.identifier);
+
+	const propertiesOf = (identifier: string) => {
+		const index = mockChannelsService.create.mock.calls.findIndex((call: any[]) => call[0]?.identifier === identifier);
+
+		if (index === -1) {
+			return [];
+		}
+
+		const channelId = `ch_${index + 1}`;
+
+		return mockChannelsPropertiesService.create.mock.calls
+			.filter((call: any[]) => call[0] === channelId)
+			.map((call: any[]) => call[1]);
+	};
+
+	test('three-phase meter creates a channel per phase plus the device-reported total', async () => {
+		const svc = makeService();
+		const device = { id: 'db-em-1', password: null, category: DeviceCategory.SENSOR } as any;
+
+		mockDevicesService.findOne.mockResolvedValue(device);
+		arrange(svc, [{ key: 'em:0' }, { key: 'emdata:0' }]);
+
+		mockRpc.getEmConfig.mockResolvedValue({ id: 0, name: null } as any);
+		mockRpc.getEmStatus.mockResolvedValue({
+			id: 0,
+			a_current: 1.1,
+			a_voltage: 231,
+			a_act_power: 250,
+			a_freq: 50,
+			b_current: 2.2,
+			b_voltage: 232,
+			b_act_power: 500,
+			b_freq: 50,
+			c_current: 3.3,
+			c_voltage: 233,
+			c_act_power: 750,
+			c_freq: 50,
+			n_current: null,
+			total_current: 6.6,
+			total_act_power: 1500,
+		} as any);
+		mockRpc.getEmDataStatus.mockResolvedValue({
+			id: 0,
+			a_total_act_energy: 10,
+			a_total_act_ret_energy: 1,
+			b_total_act_energy: 20,
+			b_total_act_ret_energy: 2,
+			c_total_act_energy: 30,
+			c_total_act_ret_energy: 3,
+			total_act: 60,
+			total_act_ret: 6,
+		} as any);
+
+		await svc.createOrUpdate(device.id);
+
+		const identifiers = createdChannels().map((dto: any) => dto.identifier);
+
+		expect(identifiers).toEqual(
+			expect.arrayContaining([
+				'power:0:a',
+				'power:0:b',
+				'power:0:c',
+				'power:0:total',
+				'energy:0:a',
+				'energy:0:b',
+				'energy:0:c',
+				'energy:0:total',
+			]),
+		);
+
+		// The total comes straight from the meter, never summed by us.
+		const total = propertiesOf('power:0:total');
+
+		expect(total.find((prop: any) => prop.category === PropertyCategory.POWER)?.value).toBe(1500);
+
+		// Phase B carries the full instantaneous set the spec allows.
+		expect(
+			propertiesOf('power:0:b')
+				.map((prop: any) => prop.category)
+				.sort(),
+		).toEqual(
+			[PropertyCategory.CURRENT, PropertyCategory.FREQUENCY, PropertyCategory.POWER, PropertyCategory.VOLTAGE].sort(),
+		);
+
+		// Returned energy is the only spec property that can carry it.
+		expect(propertiesOf('energy:0:c').find((prop: any) => prop.category === PropertyCategory.GRID_EXPORT)?.value).toBe(
+			3,
+		);
+	});
+
+	test('a phase with no CT attached is skipped rather than written without its required power', async () => {
+		const svc = makeService();
+		const device = { id: 'db-em-2', password: null, category: DeviceCategory.SENSOR } as any;
+
+		mockDevicesService.findOne.mockResolvedValue(device);
+		arrange(svc, [{ key: 'em:0' }]);
+
+		mockRpc.getEmConfig.mockResolvedValue({ id: 0, name: null } as any);
+		mockRpc.getEmStatus.mockResolvedValue({
+			id: 0,
+			a_current: 1.1,
+			a_voltage: 231,
+			a_act_power: 250,
+			a_freq: 50,
+			b_current: null,
+			b_voltage: null,
+			b_act_power: null,
+			b_freq: null,
+			c_current: null,
+			c_voltage: null,
+			c_act_power: null,
+			c_freq: null,
+			n_current: null,
+			total_current: 1.1,
+			total_act_power: 250,
+		} as any);
+
+		await svc.createOrUpdate(device.id);
+
+		const identifiers = createdChannels().map((dto: any) => dto.identifier);
+
+		expect(identifiers).toContain('power:0:a');
+		expect(identifiers).not.toContain('power:0:b');
+		expect(identifiers).not.toContain('power:0:c');
+	});
+
+	test('single-phase meters create one channel per em1 component', async () => {
+		const svc = makeService();
+		const device = { id: 'db-em-3', password: null, category: DeviceCategory.SWITCHER } as any;
+
+		mockDevicesService.findOne.mockResolvedValue(device);
+		arrange(svc, [{ key: 'em1:0' }, { key: 'em1:1' }, { key: 'em1data:0' }, { key: 'em1data:1' }]);
+
+		mockRpc.getEm1Config.mockImplementation(async (_host: string, id: number) => ({ id, name: null }) as any);
+		mockRpc.getEm1Status.mockImplementation(
+			async (_host: string, id: number) =>
+				({ id, current: 1 + id, voltage: 230, act_power: 100 * (id + 1), freq: 50 }) as any,
+		);
+		mockRpc.getEm1DataStatus.mockImplementation(
+			async (_host: string, id: number) => ({ id, total_act_energy: 10 * (id + 1), total_act_ret_energy: id }) as any,
+		);
+
+		await svc.createOrUpdate(device.id);
+
+		const identifiers = createdChannels().map((dto: any) => dto.identifier);
+
+		expect(identifiers).toEqual(expect.arrayContaining(['power:0', 'power:1', 'energy:0', 'energy:1']));
+
+		// No three-phase channels: this profile has no `em` component at all.
+		expect(identifiers.some((identifier: string) => identifier.endsWith(':total'))).toBe(false);
+
+		expect(propertiesOf('power:1').find((prop: any) => prop.category === PropertyCategory.POWER)?.value).toBe(200);
 	});
 });
 
