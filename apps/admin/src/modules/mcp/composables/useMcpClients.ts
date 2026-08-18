@@ -3,13 +3,8 @@ import { type Ref, ref } from 'vue';
 import { snakeToCamel, useBackend } from '../../../common';
 import { MCP_MODULE_PREFIX } from '../mcp.constants';
 import { McpApiException } from '../mcp.exceptions';
-import {
-	McpClientCredentialSchema,
-	McpClientSchema,
-	McpCreateClientSchema,
-	McpRotateClientSchema,
-	McpUpdateClientSchema,
-} from '../schemas/client.schemas';
+import { McpClientCredentialSchema, McpCreateClientSchema, McpRotateClientSchema, McpUpdateClientSchema } from '../schemas/client.schemas';
+import { transformMcpClient } from '../schemas/client.transformers';
 import type { IMcpClient, IMcpClientCredential, IMcpCreateClient, IMcpRotateClient, IMcpUpdateClient } from '../schemas/client.types';
 
 interface IUseMcpClients {
@@ -53,7 +48,7 @@ export const useMcpClients = (): IUseMcpClients => {
 
 			if (!data) throw new McpApiException('Failed to load MCP clients.', response.status);
 
-			clients.value = data.data.map((client) => McpClientSchema.parse(snakeToCamel(client)));
+			clients.value = data.data.map((client) => transformMcpClient(client));
 
 			return clients.value;
 		} catch (caught) {
@@ -94,7 +89,7 @@ export const useMcpClients = (): IUseMcpClients => {
 
 		if (!data) throw new McpApiException('Failed to update MCP client.', response.status);
 
-		return setClient(McpClientSchema.parse(snakeToCamel(data.data)));
+		return setClient(transformMcpClient(data.data));
 	};
 
 	const rotateClient = async (id: string, payload: IMcpRotateClient): Promise<IMcpClientCredential> => {
@@ -117,7 +112,7 @@ export const useMcpClients = (): IUseMcpClients => {
 
 		if (!data) throw new McpApiException('Failed to revoke MCP client.', response.status);
 
-		return setClient(McpClientSchema.parse(snakeToCamel(data.data)));
+		return setClient(transformMcpClient(data.data));
 	};
 
 	const deleteClient = async (id: string): Promise<void> => {
