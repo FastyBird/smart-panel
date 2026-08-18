@@ -1,7 +1,8 @@
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useListQuery } from '../../../common';
 import { McpCapability } from '../mcp.constants';
 import type { IMcpClient } from '../schemas/client.types';
 
@@ -30,7 +31,7 @@ const disabled = build({ id: '4', name: 'delta', enabled: false, capabilities: [
 const clients = ref<IMcpClient[]>([active, revoked, expired, disabled]);
 
 const mockFilters = ref({ ...defaultMcpClientsFilter });
-const mockPagination = ref<{ page?: number; size?: number }>({ page: 1, size: 25 });
+const mockPagination = ref<{ page?: number; size?: number }>({ page: 1, size: 10 });
 const mockSort = ref([defaultMcpClientsSort]);
 
 vi.mock('../../../common', () => ({
@@ -48,7 +49,7 @@ vi.mock('../../../common', () => ({
 describe('useMcpClientsDataSource', () => {
 	beforeEach(() => {
 		mockFilters.value = { ...defaultMcpClientsFilter };
-		mockPagination.value = { page: 1, size: 25 };
+		mockPagination.value = { page: 1, size: 10 };
 		mockSort.value = [defaultMcpClientsSort];
 		clients.value = [active, revoked, expired, disabled];
 	});
@@ -121,6 +122,66 @@ describe('useMcpClientsDataSource', () => {
 		expect(clientsPaginated.value).toHaveLength(2);
 		// The count drives the pager, so it must describe the whole filtered set.
 		expect(totalRows.value).toBe(4);
+	});
+
+	it('defaults to a page size the pager can actually offer', () => {
+		useMcpClientsDataSource(clients);
+
+		const options = (useListQuery as unknown as Mock).mock.calls[0]?.[0] as {
+			pagination: { defaults: { page: number; size: number } };
+		};
+
+		// El-pagination offers 10/20/30/40/50/100, and every other module defaults
+		// to 10 — a size outside that list shows in the pager but cannot be
+		// re-selected once changed.
+		expect(options.pagination.defaults.size).toBe(10);
+		expect([10, 20, 30, 40, 50, 100]).toContain(options.pagination.defaults.size);
+		expect(options.pagination.defaults.page).toBe(1);
+	});
+
+	describe('query state write-back', () => {
+		// `useListQuery` is what persists list state to the URL, so a change made
+		// in the table has to land back on its refs — reading them without ever
+		// writing leaves the address bar stuck on the initial state.
+		it('writes a sort change back to the query state', async () => {
+			const { sortBy, sortDir } = useMcpClientsDataSource(clients);
+
+			sortBy.value = 'lastUsed';
+			sortDir.value = 'desc';
+			await nextTick();
+
+			expect(mockSort.value).toEqual([{ by: 'lastUsed', dir: 'desc' }]);
+		});
+
+		it('clears the query sort when sorting is turned off', async () => {
+			const { sortDir } = useMcpClientsDataSource(clients);
+
+			sortDir.value = null;
+			await nextTick();
+
+			expect(mockSort.value).toEqual([]);
+		});
+
+		it('writes page and size changes back to the query state', async () => {
+			const { paginatePage, paginateSize } = useMcpClientsDataSource(clients);
+
+			paginatePage.value = 3;
+			paginateSize.value = 50;
+			await nextTick();
+
+			expect(mockPagination.value.page).toBe(3);
+			expect(mockPagination.value.size).toBe(50);
+		});
+
+		it('follows the query state when it changes externally', async () => {
+			const { paginatePage } = useMcpClientsDataSource(clients);
+
+			// e.g. the user edits the URL or uses the back button.
+			mockPagination.value = { page: 2, size: 10 };
+			await nextTick();
+
+			expect(paginatePage.value).toBe(2);
+		});
 	});
 
 	it('sorts clients with no expiry last when sorting by expiry ascending', () => {

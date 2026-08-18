@@ -1,4 +1,19 @@
 <template>
+	<el-card
+		shadow="never"
+		class="px-1 py-2 shrink-0"
+		body-class="p-0!"
+	>
+		<mcp-clients-filter
+			v-model:filters="innerFilters"
+			:filters-active="props.filtersActive"
+			:selected-count="selectedItems.length"
+			:bulk-actions="bulkActions"
+			@reset-filters="emit('reset-filters')"
+			@bulk-action="onBulkAction"
+		/>
+	</el-card>
+
 	<div
 		ref="wrapper"
 		class="flex-grow overflow-hidden"
@@ -42,15 +57,19 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { ElCard, ElPagination } from 'element-plus';
 
-import { useBreakpoints } from '../../../common';
-import type { IMcpClientsSortBy } from '../composables/types';
+import { useVModel } from '@vueuse/core';
+
+import { type IBulkAction, useBreakpoints } from '../../../common';
+import type { IMcpClientsFilter, IMcpClientsSortBy } from '../composables/types';
 import type { IMcpClient } from '../schemas/client.types';
 
 import type { IListMcpClientsProps } from './list-mcp-clients.types';
+import McpClientsFilter from './mcp-clients-filter.vue';
 import McpClientsTable from './mcp-clients-table.vue';
 
 defineOptions({
@@ -65,6 +84,8 @@ const emit = defineEmits<{
 	(e: 'revoke', client: IMcpClient): void;
 	(e: 'delete', client: IMcpClient): void;
 	(e: 'reset-filters'): void;
+	(e: 'update:filters', filters: IMcpClientsFilter): void;
+	(e: 'bulk-action', action: string, items: IMcpClient[]): void;
 	(e: 'update:paginate-size', size: number): void;
 	(e: 'update:paginate-page', page: number): void;
 	(e: 'update:sort-by', by: IMcpClientsSortBy | undefined): void;
@@ -72,7 +93,43 @@ const emit = defineEmits<{
 	(e: 'selected-changes', selected: IMcpClient[]): void;
 }>();
 
+const { t } = useI18n();
 const { isMDDevice } = useBreakpoints();
+
+const innerFilters = useVModel(props, 'filters', emit);
+
+const selectedItems = ref<IMcpClient[]>([]);
+
+const bulkActions = computed<IBulkAction[]>((): IBulkAction[] => [
+	{
+		key: 'enable',
+		label: t('application.bulkActions.enable'),
+		icon: 'mdi:check-circle-outline',
+		type: 'success',
+	},
+	{
+		key: 'disable',
+		label: t('application.bulkActions.disable'),
+		icon: 'mdi:close-circle-outline',
+		type: 'warning',
+	},
+	{
+		key: 'revoke',
+		label: t('mcpModule.actions.revoke'),
+		icon: 'mdi:key-remove',
+		type: 'warning',
+	},
+	{
+		key: 'delete',
+		label: t('application.bulkActions.delete'),
+		icon: 'mdi:trash',
+		type: 'danger',
+	},
+]);
+
+const onBulkAction = (action: string): void => {
+	emit('bulk-action', action, selectedItems.value);
+};
 
 let observer: ResizeObserver | null = null;
 
@@ -95,6 +152,8 @@ const onPaginatePage = (page: number): void => {
 };
 
 const onSelectionChange = (selected: IMcpClient[]): void => {
+	selectedItems.value = selected;
+
 	emit('selected-changes', selected);
 };
 

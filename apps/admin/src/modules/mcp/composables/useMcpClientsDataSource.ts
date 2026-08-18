@@ -4,15 +4,12 @@ import { isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
 import { type ISortEntry, useListQuery } from '../../../common';
-import { MCP_MODULE_NAME, McpCapability } from '../mcp.constants';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, MCP_MODULE_NAME, McpCapability } from '../mcp.constants';
 import { resolveMcpClientStatus } from '../mcp.utils';
 import type { IMcpClient } from '../schemas/client.types';
 
 import { McpClientsFilterSchema } from './schemas';
 import type { IMcpClientsFilter, IUseMcpClientsDataSource } from './types';
-
-const DEFAULT_PAGE = 1;
-const DEFAULT_PAGE_SIZE = 25;
 
 export const defaultMcpClientsFilter: IMcpClientsFilter = {
 	search: undefined,
@@ -136,11 +133,29 @@ export const useMcpClientsDataSource = (clients: Ref<IMcpClient[]>): IUseMcpClie
 	// Counts what the list is showing, so the pager cannot disagree with the rows.
 	const totalRows = computed<number>((): number => clientsFiltered.value.length);
 
+	// `useListQuery` owns the URL-synced state, so every one of these pairs has to
+	// run in both directions: inwards so a pasted link or the back button restores
+	// the list, outwards so sorting or paging updates the address bar.
 	watch(
 		(): { page?: number; size?: number } => pagination.value,
 		(val: { page?: number; size?: number }): void => {
 			paginatePage.value = val.page ?? DEFAULT_PAGE;
 			paginateSize.value = val.size ?? DEFAULT_PAGE_SIZE;
+		},
+		{ deep: true }
+	);
+
+	watch(
+		(): number => paginatePage.value,
+		(val: number): void => {
+			pagination.value.page = val;
+		}
+	);
+
+	watch(
+		(): number => paginateSize.value,
+		(val: number): void => {
+			pagination.value.size = val;
 		}
 	);
 
@@ -149,6 +164,20 @@ export const useMcpClientsDataSource = (clients: Ref<IMcpClient[]>): IUseMcpClie
 		(val: ISortEntry[]): void => {
 			sortBy.value = val.length > 0 ? (val[0]?.by as 'name' | 'status' | 'expires' | 'lastUsed') : undefined;
 			sortDir.value = val.length > 0 ? (val[0]?.dir ?? null) : null;
+		}
+	);
+
+	watch(
+		(): 'asc' | 'desc' | null => sortDir.value,
+		(val: 'asc' | 'desc' | null): void => {
+			sort.value = typeof sortBy.value === 'undefined' || val === null ? [] : [{ by: sortBy.value, dir: val }];
+		}
+	);
+
+	watch(
+		(): 'name' | 'status' | 'expires' | 'lastUsed' | undefined => sortBy.value,
+		(val: 'name' | 'status' | 'expires' | 'lastUsed' | undefined): void => {
+			sort.value = typeof val === 'undefined' || sortDir.value === null ? [] : [{ by: val, dir: sortDir.value }];
 		}
 	);
 

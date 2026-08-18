@@ -102,9 +102,12 @@
 			align="center"
 		>
 			<template #default>
-				<el-icon :size="20">
-					<icon icon="mdi:robot-outline" />
-				</el-icon>
+				<el-avatar :size="32">
+					<icon
+						icon="mdi:robot-outline"
+						class="w[20px] h[20px]"
+					/>
+				</el-avatar>
 			</template>
 		</el-table-column>
 
@@ -207,7 +210,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElIcon, ElResult, ElTable, ElTableColumn, ElTag, ElText, vLoading } from 'element-plus';
+import { ElAvatar, ElButton, ElResult, ElTable, ElTableColumn, ElTag, ElText, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 

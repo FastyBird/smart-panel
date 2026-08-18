@@ -48,7 +48,7 @@ vi.mock('../../../common', () => ({
 	useListQuery: () => ({
 		filters: ref({ search: undefined, status: 'all', enabled: 'all', capabilities: [] }),
 		sort: ref([{ by: 'name', dir: 'asc' }]),
-		pagination: ref({ page: 1, size: 25 }),
+		pagination: ref({ page: 1, size: 10 }),
 		viewMode: ref('table'),
 		reset: vi.fn(),
 	}),
@@ -140,6 +140,48 @@ describe('ViewMcpClients', () => {
 		expect(hint.exists()).toBe(true);
 		// Guidance in this module is carried by el-alert, not loose grey text.
 		expect(hint.element.tagName.toLowerCase()).toContain('alert');
+	});
+
+	it('confirms once for a bulk revoke rather than per selected client', async () => {
+		const wrapper = mountView();
+		const list = wrapper.findComponent({ name: 'ListMcpClients' });
+
+		list.vm.$emit('bulk-action', 'revoke', [client, { ...client, id: 'second' }]);
+		await nextTick();
+		await flushPromises();
+
+		expect(ElMessageBox.confirm).toHaveBeenCalledOnce();
+		expect(mocks.revokeClient).toHaveBeenCalledTimes(2);
+	});
+
+	it('sends the untouched fields back when bulk toggling enabled', async () => {
+		const wrapper = mountView();
+		const list = wrapper.findComponent({ name: 'ListMcpClients' });
+
+		list.vm.$emit('bulk-action', 'disable', [client]);
+		await nextTick();
+		await flushPromises();
+
+		// The update endpoint replaces the record — sending only `enabled` would
+		// blank the name and capabilities.
+		expect(mocks.updateClient).toHaveBeenCalledWith(client.id, {
+			name: client.name,
+			description: client.description,
+			enabled: false,
+			capabilities: client.capabilities,
+		});
+	});
+
+	it('does nothing when a bulk action runs with an empty selection', async () => {
+		const wrapper = mountView();
+		const list = wrapper.findComponent({ name: 'ListMcpClients' });
+
+		list.vm.$emit('bulk-action', 'delete', []);
+		await nextTick();
+		await flushPromises();
+
+		expect(ElMessageBox.confirm).not.toHaveBeenCalled();
+		expect(mocks.deleteClient).not.toHaveBeenCalled();
 	});
 
 	it('requires confirmation before revoking a credential', async () => {
