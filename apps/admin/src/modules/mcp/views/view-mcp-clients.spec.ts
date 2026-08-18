@@ -87,7 +87,25 @@ const mountView = () =>
 				// Render the drawer body so its contents can be asserted on.
 				ElDrawer: { name: 'ElDrawer', template: '<aside><slot /></aside>' },
 				ElScrollbar: { name: 'ElScrollbar', template: '<div><slot /></div>' },
-				ElForm: { name: 'ElForm', template: '<form><slot /></form>' },
+				// Rendered so button labels can be asserted on.
+				ElButton: {
+					name: 'ElButton',
+					props: { type: String, plain: Boolean, disabled: Boolean },
+					// `type` is deliberately not bound to the native attribute — doing so
+					// collides with the button's own `type` and reads back as "submit".
+					template: '<button :disabled="disabled"><slot name="icon" /><slot /></button>',
+				},
+				ElText: { name: 'ElText', template: '<span><slot /></span>' },
+				AppBar: { name: 'AppBar', template: '<div><slot name="heading" /><slot name="button-right" /></div>' },
+				AppBarHeading: { name: 'AppBarHeading', template: '<div><slot name="icon" /><slot name="title" /></div>' },
+				ElForm: {
+					name: 'ElForm',
+					template: '<form><slot /></form>',
+					methods: {
+						clearValidate: () => undefined,
+						validate: () => Promise.resolve(true),
+					},
+				},
 				ElFormItem: { name: 'ElFormItem', template: '<div><slot /></div>' },
 				// shallowMount would otherwise auto-stub this away and drop the
 				// header actions rendered into its `extra` slot.
@@ -117,11 +135,11 @@ describe('ViewMcpClients', () => {
 		// Every other list header in the admin uses `type="primary" plain`
 		// for its add action; MCP rendered a solid primary, which reads as a
 		// different control.
-		const create = wrapper.find('[data-test-id="create-mcp-client"]');
+		const create = wrapper.findAllComponents({ name: 'ElButton' }).find((candidate) => candidate.attributes('data-test-id') === 'create-mcp-client');
 
-		expect(create.exists()).toBe(true);
-		expect(create.attributes('type')).toBe('primary');
-		expect(create.attributes('plain')).toBeDefined();
+		expect(create).toBeDefined();
+		expect(create?.props('type')).toBe('primary');
+		expect(create?.props('plain')).toBe(true);
 	});
 
 	it('hosts the client form in a drawer rather than a dialog', () => {
@@ -182,6 +200,81 @@ describe('ViewMcpClients', () => {
 
 		expect(ElMessageBox.confirm).not.toHaveBeenCalled();
 		expect(mocks.deleteClient).not.toHaveBeenCalled();
+	});
+
+	it('labels the header action the way the other list headers do', () => {
+		const wrapper = mountView();
+
+		// Other modules label this "Add"; "Create client" was MCP-only phrasing.
+		expect(wrapper.find('[data-test-id="create-mcp-client"]').text()).toContain('mcpModule.actions.add');
+	});
+
+	it('renders the drawer heading through el-text so it picks up the bar styling', () => {
+		const wrapper = mountView();
+
+		// `.app-bar-heading__title > span` is what colours the heading; a bare
+		// text node in the title slot never matches it.
+		const heading = wrapper.findComponent({ name: 'AppBarHeading' });
+
+		expect(heading.exists()).toBe(true);
+		expect(heading.findComponent({ name: 'ElText' }).exists()).toBe(true);
+	});
+
+	it('keeps save disabled until the form changes', async () => {
+		const wrapper = mountView();
+		const vm = wrapper.vm as unknown as { openCreate: () => void; clientFormChanged: boolean; clientForm: { name: string } };
+
+		vm.openCreate();
+		await nextTick();
+
+		expect(vm.clientFormChanged).toBe(false);
+
+		vm.clientForm.name = 'Something';
+		await nextTick();
+
+		expect(vm.clientFormChanged).toBe(true);
+	});
+
+	it('offers close on an untouched form and discard once it changed', async () => {
+		const wrapper = mountView();
+		const vm = wrapper.vm as unknown as { openCreate: () => void; clientForm: { name: string } };
+
+		vm.openCreate();
+		await nextTick();
+
+		expect(wrapper.find('[data-test-id="cancel-mcp-client-form"]').text()).toContain('mcpModule.actions.close');
+
+		vm.clientForm.name = 'Something';
+		await nextTick();
+
+		expect(wrapper.find('[data-test-id="cancel-mcp-client-form"]').text()).toContain('mcpModule.actions.discard');
+	});
+
+	it('asks to confirm before discarding a changed form', async () => {
+		const wrapper = mountView();
+		const vm = wrapper.vm as unknown as { openCreate: () => void; clientForm: { name: string }; onCancelClientForm: () => Promise<void> };
+
+		vm.openCreate();
+		vm.clientForm.name = 'Something';
+		await nextTick();
+
+		await vm.onCancelClientForm();
+		await flushPromises();
+
+		expect(ElMessageBox.confirm).toHaveBeenCalledOnce();
+	});
+
+	it('closes without confirming when nothing was edited', async () => {
+		const wrapper = mountView();
+		const vm = wrapper.vm as unknown as { openCreate: () => void; onCancelClientForm: () => Promise<void> };
+
+		vm.openCreate();
+		await nextTick();
+
+		await vm.onCancelClientForm();
+		await flushPromises();
+
+		expect(ElMessageBox.confirm).not.toHaveBeenCalled();
 	});
 
 	it('requires confirmation before revoking a credential', async () => {

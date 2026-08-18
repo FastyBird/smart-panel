@@ -15,7 +15,12 @@
 		"addOrigin": "Origin hinzufügen",
 		"removeOrigin": "Origin entfernen",
 		"copyEndpoint": "Endpunkt kopieren",
-		"resetFilters": "Filter zurücksetzen"
+		"resetFilters": "Filter zurücksetzen",
+		"add": "Hinzufügen",
+		"close": "Schließen",
+		"discard": "Verwerfen",
+		"yes": "Ja",
+		"no": "Nein"
 	},
 	"capabilities": {
 		"read": {
@@ -120,7 +125,8 @@
 		"revoke": "Aktuelle Zugangsdaten für {name} widerrufen? Verbundene Clients verlieren sofort den Zugriff.",
 		"delete": "{name} löschen? Die Zugangsdaten werden widerrufen und der Client-Datensatz kann nicht wiederhergestellt werden.",
 		"bulkRevoke": "Anmeldedaten für {count} ausgewählte Clients widerrufen?",
-		"bulkDelete": "{count} ausgewählte Clients löschen?"
+		"bulkDelete": "{count} ausgewählte Clients löschen?",
+		"discard": "Nicht gespeicherte Änderungen verwerfen?"
 	},
 	"oauthConsent": {
 		"title": "MCP-Zugriff autorisieren",
@@ -242,5 +248,8 @@
 			"allRevoked": "Gesamter MCP-OAuth-Zugriff widerrufen.",
 			"revokeFailed": "OAuth-Autorisierung konnte nicht widerrufen werden."
 		}
+	},
+	"headings": {
+		"discard": "Änderungen verwerfen"
 	}
 }

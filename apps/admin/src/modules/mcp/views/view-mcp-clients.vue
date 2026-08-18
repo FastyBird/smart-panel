@@ -16,7 +16,7 @@
 					<icon icon="mdi:plus" />
 				</template>
 
-				{{ t('mcpModule.actions.create') }}
+				{{ t('mcpModule.actions.add') }}
 			</el-button>
 		</template>
 	</view-header>
@@ -94,7 +94,9 @@
 						</template>
 
 						<template #title>
-							{{ editingClient ? t('mcpModule.clientForm.editTitle') : t('mcpModule.clientForm.createTitle') }}
+							<el-text truncated>
+								{{ editingClient ? t('mcpModule.clientForm.editTitle') : t('mcpModule.clientForm.createTitle') }}
+							</el-text>
 						</template>
 					</app-bar-heading>
 				</template>
@@ -199,17 +201,20 @@
 					<el-button
 						link
 						class="mr-2"
-						@click="showClientDialog = false"
+						data-test-id="cancel-mcp-client-form"
+						@click="onCancelClientForm"
 					>
-						{{ t('mcpModule.actions.cancel') }}
+						{{ clientFormChanged ? t('mcpModule.actions.discard') : t('mcpModule.actions.close') }}
 					</el-button>
 
 					<el-button
 						type="primary"
 						:loading="saving"
+						:disabled="saving || !clientFormChanged"
+						data-test-id="save-mcp-client-form"
 						@click="saveClient"
 					>
-						{{ editingClient ? t('mcpModule.actions.save') : t('mcpModule.actions.create') }}
+						{{ t('mcpModule.actions.save') }}
 					</el-button>
 				</div>
 			</div>
@@ -277,9 +282,11 @@ import {
 	ElMessageBox,
 	ElScrollbar,
 	ElSwitch,
+	ElText,
 	type FormInstance,
 	type FormRules,
 } from 'element-plus';
+import { isEqual } from 'lodash';
 
 import { Icon } from '@iconify/vue';
 
@@ -332,6 +339,22 @@ const clientRules = reactive<FormRules>({
 	expiresInDays: [{ required: true, type: 'number', min: 1, max: MCP_MAX_TOKEN_EXPIRATION_DAYS, message: t('mcpModule.clientForm.expiryRequired') }],
 });
 
+type ClientFormSnapshot = { name: string; description: string; enabled: boolean; capabilities: McpCapability[]; expiresInDays: number };
+
+const snapshotClientForm = (): ClientFormSnapshot => ({
+	name: clientForm.name,
+	description: clientForm.description,
+	enabled: clientForm.enabled,
+	capabilities: [...clientForm.capabilities],
+	expiresInDays: clientForm.expiresInDays,
+});
+
+// Taken whenever the drawer opens, so "changed" means changed since it opened
+// rather than merely non-empty.
+const initialClientForm = ref<ClientFormSnapshot>(snapshotClientForm());
+
+const clientFormChanged = computed<boolean>((): boolean => !isEqual(snapshotClientForm(), initialClientForm.value));
+
 const resetClientForm = (): void => {
 	editingClient.value = null;
 	clientForm.name = '';
@@ -340,6 +363,23 @@ const resetClientForm = (): void => {
 	clientForm.capabilities = [];
 	clientForm.expiresInDays = MCP_DEFAULT_TOKEN_EXPIRATION_DAYS;
 	clientFormEl.value?.clearValidate();
+	initialClientForm.value = snapshotClientForm();
+};
+
+const onCancelClientForm = async (): Promise<void> => {
+	if (clientFormChanged.value) {
+		try {
+			await ElMessageBox.confirm(t('mcpModule.confirm.discard'), t('mcpModule.headings.discard'), {
+				confirmButtonText: t('mcpModule.actions.yes'),
+				cancelButtonText: t('mcpModule.actions.no'),
+				type: 'warning',
+			});
+		} catch {
+			return;
+		}
+	}
+
+	showClientDialog.value = false;
 };
 
 const openCreate = (): void => {
@@ -353,6 +393,7 @@ const openEdit = (client: IMcpClient): void => {
 	clientForm.description = client.description ?? '';
 	clientForm.enabled = client.enabled;
 	clientForm.capabilities = [...client.capabilities];
+	initialClientForm.value = snapshotClientForm();
 	showClientDialog.value = true;
 };
 

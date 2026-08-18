@@ -15,7 +15,12 @@
     "addOrigin": "Añadir origen",
     "removeOrigin": "Eliminar origen",
     "copyEndpoint": "Copiar endpoint",
-    "resetFilters": "Restablecer filtros"
+    "resetFilters": "Restablecer filtros",
+    "add": "Añadir",
+    "close": "Cerrar",
+    "discard": "Descartar",
+    "yes": "Sí",
+    "no": "No"
   },
   "capabilities": {
     "read": {
@@ -120,7 +125,8 @@
     "revoke": "¿Revocar la credencial actual de {name}? Los clientes conectados perderán el acceso inmediatamente.",
     "delete": "¿Eliminar {name}? Su credencial se revocará y el registro del cliente no podrá recuperarse.",
     "bulkRevoke": "¿Revocar las credenciales de {count} clientes seleccionados?",
-    "bulkDelete": "¿Eliminar {count} clientes seleccionados?"
+    "bulkDelete": "¿Eliminar {count} clientes seleccionados?",
+    "discard": "¿Descartar los cambios sin guardar?"
   },
   "oauthConsent": {
     "title": "Autorizar acceso MCP",
@@ -242,5 +248,8 @@
       "allRevoked": "Todo el acceso OAuth de MCP revocado.",
       "revokeFailed": "No se pudo revocar la autorización OAuth."
     }
+  },
+  "headings": {
+    "discard": "Descartar cambios"
   }
 }
