@@ -7,8 +7,30 @@ import { McpConfigSchema, McpConfigUpdateReqSchema } from '../store/config.store
 
 import { McpCreateClientSchema } from './client.schemas';
 import { McpConfigEditFormSchema, McpOAuthPublicBaseUrlSchema, McpOriginSchema } from './config.schemas';
+import { McpOAuthClientSchema } from './oauth-management.schemas';
 
 describe('MCP admin schemas', () => {
+	it('reads the oauth client identifier from the field the api actually sends', () => {
+		// The backend exposes the public identifier as `client_id`, which reaches
+		// the schema as `clientId` after snake-to-camel. Expecting
+		// `clientIdentifier` made every client row fail to parse, and with it the
+		// whole OAuth page — all four tabs load in one `Promise.all`.
+		const parsed = McpOAuthClientSchema.parse({
+			id: '10000000-0000-4000-8000-000000000001',
+			clientId: 'codex-cli',
+			name: 'Codex',
+			redirectUris: ['https://example.test/callback'],
+			maximumScopes: [],
+			enabled: true,
+			createdAt: '2026-01-01T00:00:00.000Z',
+			updatedAt: null,
+		});
+
+		// Kept as `clientIdentifier` in the admin: `clientId` means the internal
+		// record id on every other OAuth model, and reusing it here would collide.
+		expect(parsed.clientIdentifier).toBe('codex-cli');
+	});
+
 	const capabilityCombinations = [
 		[],
 		[McpCapability.read],

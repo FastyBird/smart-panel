@@ -6,16 +6,24 @@ const dateSchema = z.string().datetime({ offset: true });
 const nullableDateSchema = dateSchema.nullable().default(null);
 const scopeSchema = z.nativeEnum(McpOAuthScope);
 
-export const McpOAuthClientSchema = z.object({
-	id: z.string().uuid(),
-	clientIdentifier: z.string().min(1),
-	name: z.string().trim().min(1).max(100),
-	redirectUris: z.array(z.string().url()).min(1),
-	maximumScopes: z.array(scopeSchema),
-	enabled: z.boolean(),
-	createdAt: dateSchema,
-	updatedAt: nullableDateSchema,
-});
+/**
+ * The API sends the public identifier as `client_id`, which arrives here as
+ * `clientId`. It is renamed on the way in rather than adopted: `clientId` means
+ * the internal record id on the grant, access token and refresh family models,
+ * so carrying that name here would give one field two meanings.
+ */
+export const McpOAuthClientSchema = z
+	.object({
+		id: z.string().uuid(),
+		clientId: z.string().min(1),
+		name: z.string().trim().min(1).max(100),
+		redirectUris: z.array(z.string().url()).min(1),
+		maximumScopes: z.array(scopeSchema),
+		enabled: z.boolean(),
+		createdAt: dateSchema,
+		updatedAt: nullableDateSchema,
+	})
+	.transform(({ clientId, ...client }) => ({ ...client, clientIdentifier: clientId }));
 
 export const McpOAuthGrantSchema = z.object({
 	id: z.string().uuid(),

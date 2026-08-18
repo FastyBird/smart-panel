@@ -195,6 +195,20 @@ describe('ViewMcpOAuthManagement form conventions', () => {
 		expect(mocks.routerReplace).toHaveBeenCalledWith(expect.objectContaining({ query: expect.objectContaining({ tab: 'grants' }) }));
 	});
 
+	it('does not let a failed retry escape as an unhandled rejection', async () => {
+		mocks.fetchAll.mockRejectedValueOnce(new Error('still broken'));
+
+		const wrapper = mountForms();
+		const vm = wrapper.vm as unknown as { onRetry: () => void };
+
+		// `fetchAll` rethrows so callers can react; as an event handler that
+		// rejection has nowhere to go and Vue reports it as an unhandled error.
+		expect(() => vm.onRetry()).not.toThrow();
+		await flushPromises();
+
+		expect(mocks.fetchAll).toHaveBeenCalled();
+	});
+
 	it('labels the header create action the way the other list headers do', () => {
 		const wrapper = mountForms();
 
