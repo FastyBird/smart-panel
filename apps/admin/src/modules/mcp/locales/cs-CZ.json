@@ -102,7 +102,8 @@
     "capabilities": "Oprávnění klienta",
     "ceilingHint": "Udělit lze pouze oprávnění povolená v konfiguraci modulu.",
     "expiresInDays": "Platnost přihlašovacích údajů (dny)",
-    "expiryRequired": "Zvolte konečnou dobu platnosti přihlašovacích údajů."
+    "expiryRequired": "Zvolte konečnou dobu platnosti přihlašovacích údajů.",
+    "formSubtitle": "Pojmenujte agenta a zvolte, k čemu smí přistupovat."
   },
   "rotate": {
     "title": "Obnovit přihlašovací údaje",
@@ -247,7 +248,9 @@
       "refreshFamilyRevoked": "Skupina obnovy OAuth byla odvolána.",
       "allRevoked": "Veškerý MCP OAuth přístup byl odvolán.",
       "revokeFailed": "Nepodařilo se odvolat OAuth autorizaci."
-    }
+    },
+    "clientFormSubtitle": "Zadejte přesměrovací URI a strop oprávnění pro tohoto klienta.",
+    "grantFormSubtitle": "Zužte oprávnění, která toto udělení již má."
   },
   "headings": {
     "discard": "Zahodit změny"

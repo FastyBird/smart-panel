@@ -211,15 +211,18 @@ describe('ViewMcpClients', () => {
 		expect(wrapper.find('[data-test-id="create-mcp-client"]').text()).toContain('mcpModule.actions.add');
 	});
 
-	it('renders the drawer heading through el-text so it picks up the bar styling', () => {
+	it('gives the drawer heading a title and a subtitle row', () => {
 		const wrapper = mountView();
 
-		// `.app-bar-heading__title > span` is what colours the heading; a bare
-		// text node in the title slot never matches it.
 		const heading = wrapper.findComponent({ name: 'AppBarHeading' });
 
 		expect(heading.exists()).toBe(true);
-		expect(heading.findComponent({ name: 'ElText' }).exists()).toBe(true);
+
+		// Two `el-text` rows reproduce the DOM the teleported heading produces —
+		// `.app-bar-heading__title > span:first-child` / `:last-child` are what
+		// size and colour the two lines. A `#subtitle` slot would instead render
+		// a `<small>`, which neither rule matches.
+		expect(heading.findAllComponents({ name: 'ElText' })).toHaveLength(2);
 	});
 
 	it('keeps save disabled until the form changes', async () => {

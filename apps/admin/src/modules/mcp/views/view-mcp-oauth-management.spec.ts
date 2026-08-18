@@ -108,7 +108,7 @@ describe('ViewMcpOAuthManagement form conventions', () => {
 		expect(create?.text()).toContain('mcpModule.actions.add');
 	});
 
-	it('renders both drawer headings through el-text', () => {
+	it('gives both drawer headings a title and a subtitle row', () => {
 		const wrapper = mountForms();
 
 		const headings = wrapper.findAllComponents({ name: 'AppBarHeading' });
@@ -116,7 +116,9 @@ describe('ViewMcpOAuthManagement form conventions', () => {
 		expect(headings.length).toBe(2);
 
 		for (const heading of headings) {
-			expect(heading.findComponent({ name: 'ElText' }).exists()).toBe(true);
+			// Two rows, as the devices drawers show — see the clients spec for why
+			// these are `el-text` rather than a `#subtitle` slot.
+			expect(heading.findAllComponents({ name: 'ElText' })).toHaveLength(2);
 		}
 	});
 

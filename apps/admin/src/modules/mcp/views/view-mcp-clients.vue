@@ -98,6 +98,10 @@
 							<el-text truncated>
 								{{ editingClient ? t('mcpModule.clientForm.editTitle') : t('mcpModule.clientForm.createTitle') }}
 							</el-text>
+
+							<el-text truncated>
+								{{ t('mcpModule.clientForm.formSubtitle') }}
+							</el-text>
 						</template>
 					</app-bar-heading>
 				</template>

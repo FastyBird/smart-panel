@@ -102,7 +102,8 @@
 		"capabilities": "Client capabilities",
 		"ceilingHint": "Only capabilities enabled in the module configuration can be granted.",
 		"expiresInDays": "Credential lifetime (days)",
-		"expiryRequired": "Choose a finite credential lifetime."
+		"expiryRequired": "Choose a finite credential lifetime.",
+		"formSubtitle": "Give the agent a name and choose what it may access."
 	},
 	"rotate": {
 		"title": "Rotate credential",
@@ -227,7 +228,9 @@
 			"refreshFamilyRevoked": "OAuth refresh family revoked.",
 			"allRevoked": "All MCP OAuth access revoked.",
 			"revokeFailed": "OAuth authorization could not be revoked."
-		}
+		},
+		"clientFormSubtitle": "Register the redirect URIs and the scope ceiling for this client.",
+		"grantFormSubtitle": "Narrow the scopes this grant already holds."
 	},
 	"messages": {
 		"configSaved": "MCP configuration saved.",

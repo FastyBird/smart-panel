@@ -307,6 +307,10 @@
 							<el-text truncated>
 								{{ editingClient ? t('mcpModule.oauthManagement.editClient') : t('mcpModule.oauthManagement.createClient') }}
 							</el-text>
+
+							<el-text truncated>
+								{{ t('mcpModule.oauthManagement.clientFormSubtitle') }}
+							</el-text>
 						</template>
 					</app-bar-heading>
 				</template>
@@ -439,6 +443,10 @@
 						<template #title>
 							<el-text truncated>
 								{{ t('mcpModule.oauthManagement.editGrant') }}
+							</el-text>
+
+							<el-text truncated>
+								{{ t('mcpModule.oauthManagement.grantFormSubtitle') }}
 							</el-text>
 						</template>
 					</app-bar-heading>

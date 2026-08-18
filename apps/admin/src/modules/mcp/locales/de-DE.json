@@ -102,7 +102,8 @@
 		"capabilities": "Client-Berechtigungen",
 		"ceilingHint": "Es können nur in der Modulkonfiguration aktivierte Berechtigungen gewährt werden.",
 		"expiresInDays": "Gültigkeitsdauer der Zugangsdaten (Tage)",
-		"expiryRequired": "Wählen Sie eine begrenzte Gültigkeitsdauer."
+		"expiryRequired": "Wählen Sie eine begrenzte Gültigkeitsdauer.",
+		"formSubtitle": "Benennen Sie den Agenten und wählen Sie, worauf er zugreifen darf."
 	},
 	"rotate": {
 		"title": "Zugangsdaten erneuern",
@@ -247,7 +248,9 @@
 			"refreshFamilyRevoked": "OAuth-Refresh-Familie widerrufen.",
 			"allRevoked": "Gesamter MCP-OAuth-Zugriff widerrufen.",
 			"revokeFailed": "OAuth-Autorisierung konnte nicht widerrufen werden."
-		}
+		},
+		"clientFormSubtitle": "Legen Sie Redirect-URIs und die Berechtigungsobergrenze fest.",
+		"grantFormSubtitle": "Schränken Sie die bereits erteilten Berechtigungen ein."
 	},
 	"headings": {
 		"discard": "Änderungen verwerfen"
