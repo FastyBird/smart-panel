@@ -36,6 +36,7 @@ node_modules/
 var/data/config.yaml
 var/data/extensions.manifest.json
 var/data/extensions.ts
+var/data/.mcp-oauth-provider.json
 var/backups/
 var/buddy/
 var/db/database.sqlite
