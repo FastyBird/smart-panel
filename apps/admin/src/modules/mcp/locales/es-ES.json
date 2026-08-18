@@ -220,7 +220,8 @@
       "disabled": "Desactivado",
       "inactive": "Inactivo",
       "revoked": "Revocado",
-      "expired": "Caducado"
+      "expired": "Caducado",
+      "enabled": "Habilitado"
     },
     "scope": {
       "mcp:read": "Lectura",
@@ -251,7 +252,8 @@
       "revokeFailed": "No se pudo revocar la autorización OAuth."
     },
     "clientFormSubtitle": "Registre las URI de redirección y el límite de permisos del cliente.",
-    "grantFormSubtitle": "Reduzca los permisos que ya tiene esta concesión."
+    "grantFormSubtitle": "Reduzca los permisos que ya tiene esta concesión.",
+    "searchPlaceholder": "Buscar por nombre de cliente"
   },
   "headings": {
     "discard": "Descartar cambios"

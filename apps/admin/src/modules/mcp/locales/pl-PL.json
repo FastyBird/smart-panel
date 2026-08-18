@@ -220,7 +220,8 @@
       "disabled": "Wyłączone",
       "inactive": "Nieaktywne",
       "revoked": "Cofnięte",
-      "expired": "Wygasłe"
+      "expired": "Wygasłe",
+      "enabled": "Włączony"
     },
     "scope": {
       "mcp:read": "Odczyt",
@@ -251,7 +252,8 @@
       "revokeFailed": "Nie można było cofnąć autoryzacji OAuth."
     },
     "clientFormSubtitle": "Podaj identyfikatory URI przekierowania i limit uprawnień klienta.",
-    "grantFormSubtitle": "Zawęź uprawnienia, które już posiada to nadanie."
+    "grantFormSubtitle": "Zawęź uprawnienia, które już posiada to nadanie.",
+    "searchPlaceholder": "Szukaj według nazwy klienta"
   },
   "headings": {
     "discard": "Odrzuć zmiany"

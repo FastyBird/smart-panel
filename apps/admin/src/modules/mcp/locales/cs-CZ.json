@@ -220,7 +220,8 @@
       "disabled": "Zakázaný",
       "inactive": "Neaktivní",
       "revoked": "Odvolaný",
-      "expired": "Vypršelo"
+      "expired": "Vypršelo",
+      "enabled": "Povoleno"
     },
     "scope": {
       "mcp:read": "Čtení",
@@ -251,7 +252,8 @@
       "revokeFailed": "Nepodařilo se odvolat OAuth autorizaci."
     },
     "clientFormSubtitle": "Zadejte přesměrovací URI a strop oprávnění pro tohoto klienta.",
-    "grantFormSubtitle": "Zužte oprávnění, která toto udělení již má."
+    "grantFormSubtitle": "Zužte oprávnění, která toto udělení již má.",
+    "searchPlaceholder": "Hledat podle názvu klienta"
   },
   "headings": {
     "discard": "Zahodit změny"
