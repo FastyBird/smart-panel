@@ -105,7 +105,7 @@ jest.mock('../devices-shelly-ng.constants', () => {
 				{ type: 'light', cls: Light, ids: [0] },
 				{ type: 'cover', cls: Cover, ids: [0] },
 				{ type: 'input', cls: Input, ids: [0] },
-				{ type: 'devicePower', cls: DevicePower, ids: [0] },
+				{ type: 'devicepower', cls: DevicePower, ids: [0] },
 				{ type: 'humidity', cls: Humidity, ids: [0] },
 				{ type: 'temperature', cls: Temperature, ids: [0] },
 				// POZOR: typ pro PM1 musí odpovídat ComponentType.PM1 v implementaci
@@ -122,7 +122,7 @@ jest.mock('../devices-shelly-ng.constants', () => {
 			COVER: 'cover',
 			PM1: 'pm1',
 			INPUT: 'input',
-			DEVICE_POWER: 'devicePower',
+			DEVICE_POWER: 'devicepower',
 			HUMIDITY: 'humidity',
 			TEMPERATURE: 'temperature',
 		},
@@ -143,7 +143,7 @@ describe('ShellyDeviceDelegate', () => {
 			['light:0', new Light('light:0')],
 			['cover:0', new Cover('cover:0')],
 			['input:0', new Input('input:0')],
-			['devicePower:0', new DevicePower('devicePower:0')],
+			['devicepower:0', new DevicePower('devicepower:0')],
 			['humidity:0', new Humidity('humidity:0')],
 			['temperature:0', new Temperature('temperature:0')],
 			// PM1 – klíč musí odpovídat type 'pm1'

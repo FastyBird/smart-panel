@@ -117,7 +117,9 @@ export enum ComponentType {
 	RGBW = 'rgbw',
 	CCT = 'cct',
 	INPUT = 'input',
-	DEVICE_POWER = 'devicePower',
+	// Component keys are the library's lower-cased class names; the delegate and
+	// DeviceManagerService both match on them, so the casing has to be exact.
+	DEVICE_POWER = 'devicepower',
 	HUMIDITY = 'humidity',
 	TEMPERATURE = 'temperature',
 	PM1 = 'pm1',

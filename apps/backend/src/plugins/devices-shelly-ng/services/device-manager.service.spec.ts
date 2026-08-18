@@ -41,6 +41,18 @@ const mockChannelsPropertiesService = {
 const mockMappingLoaderService = {
 	findMatchingMapping: jest.fn().mockImplementation((context: any) => {
 		// Return a valid mapping for switch components
+		if (context.componentType === 'devicepower') {
+			return {
+				channels: [
+					{
+						identifier: `devicePower:${context.componentKey}`,
+						name: `Battery: ${context.componentKey}`,
+						category: ChannelCategory.BATTERY,
+						properties: [],
+					},
+				],
+			};
+		}
 		if (context.componentType === 'switch') {
 			return {
 				channels: [
@@ -621,6 +633,84 @@ describe('DeviceManagerService energy meters', () => {
 		expect(identifiers.some((identifier: string) => identifier.endsWith(':total'))).toBe(false);
 
 		expect(propertiesOf('power:1').find((prop: any) => prop.category === PropertyCategory.POWER)?.value).toBe(200);
+	});
+});
+
+describe('DeviceManagerService battery devices', () => {
+	// The component type is matched against the key prefix the device reports,
+	// which is lower-case. While the constant read `devicePower` this branch never
+	// ran, so battery devices such as the Plus H&T got no battery channel at all.
+	test('a devicepower component produces a battery channel', async () => {
+		const svc = makeService();
+		const device = { id: 'db-ht-1', password: null, category: DeviceCategory.SENSOR } as any;
+
+		mockDevicesService.findOne.mockResolvedValue(device);
+
+		jest.spyOn<any, any>(svc as any, 'getSpecification').mockReturnValue({
+			models: ['SNSN-0013A'],
+			system: [{ type: 'wifi' }],
+		});
+
+		mockRpc.getDeviceInfo.mockResolvedValue({
+			id: 'shelly-ht',
+			mac: 'mac',
+			model: 'SNSN-0013A',
+			fw_id: 'fw',
+			ver: '1.2.3',
+			app: 'app',
+			auth_en: false,
+			auth_domain: null,
+			discoverable: true,
+			key: 'key',
+			batch: 'batch',
+			fw_sbits: 'sbits',
+		} as any);
+
+		mockRpc.getComponents.mockResolvedValue([{ key: 'devicepower:0', config: {}, status: {} }] as any);
+		mockRpc.getSystemConfig.mockResolvedValue({
+			device: { name: 'Hall sensor', eco_mode: false, mac: 'mac', fw_id: 'fw', discoverable: true },
+			location: { tz: null, lat: null, lon: null },
+			debug: { mqtt: { enabled: false }, websocket: { enabled: false }, udp: { addr: null } },
+			rpc_udp: { dst_addr: '', listen_port: null },
+			sntp: { server: '' },
+			cfg_rev: 1,
+		} as any);
+		mockRpc.getWifiStatus.mockResolvedValue({ rssi: -70 } as any);
+		mockRpc.getDevicePowerStatus.mockResolvedValue({
+			id: 0,
+			battery: { V: 5.9, percent: 88 },
+			external: { present: false },
+		} as any);
+
+		mockChannelsService.findOneBy.mockResolvedValue(null);
+		mockChannelsService.findAll.mockResolvedValue([]);
+
+		let channelCounter = 0;
+		mockChannelsService.create.mockImplementation(async (dto: any) => ({ id: `ch_${++channelCounter}`, ...dto }));
+		mockChannelsService.update.mockImplementation(async (id: string, dto: any) => ({ id, ...dto }));
+
+		mockChannelsPropertiesService.findOneBy.mockResolvedValue(null);
+		let propCounter = 0;
+		mockChannelsPropertiesService.create.mockImplementation(async (channelId: string, dto: any) => ({
+			id: `p_${++propCounter}`,
+			channel: channelId,
+			...dto,
+		}));
+		mockChannelsPropertiesService.update.mockImplementation(async (id: string, dto: any) => ({ id, ...dto }));
+
+		await svc.createOrUpdate(device.id);
+
+		const battery = mockChannelsService.create.mock.calls
+			.map((call: any[]) => call[0])
+			.find((dto: any) => dto?.category === ChannelCategory.BATTERY);
+
+		expect(battery).toBeTruthy();
+
+		const percentage = mockChannelsPropertiesService.create.mock.calls
+			.map((call: any[]) => call[1])
+			.find((dto: any) => dto?.category === PropertyCategory.PERCENTAGE);
+
+		expect(percentage?.value).toBe(88);
 	});
 });
 

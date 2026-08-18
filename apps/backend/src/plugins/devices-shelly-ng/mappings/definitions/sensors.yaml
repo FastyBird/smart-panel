@@ -74,7 +74,7 @@ mappings:
     description: "Shelly device power component mapped as battery channel"
     priority: 100
     match:
-      component_type: devicePower
+      component_type: devicepower
     channels:
       - identifier: "devicePower:{key}"
         name: "Battery: {key}"
