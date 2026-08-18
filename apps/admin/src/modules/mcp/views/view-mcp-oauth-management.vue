@@ -43,24 +43,20 @@
 			show-icon
 		/>
 
-		<el-alert
-			v-if="error"
-			type="error"
-			:title="t('mcpModule.oauthManagement.messages.loadFailed')"
-			:closable="false"
-			show-icon
-		/>
-
-		<el-card
-			v-loading="loading"
-			shadow="never"
+		<el-tabs
+			v-model="activeTab"
+			class="grow-1 overflow-hidden flex-1"
 		>
-			<el-tabs v-model="activeTab">
-				<el-tab-pane
-					name="clients"
-					:label="t('mcpModule.oauthManagement.tabs.clients')"
+			<el-tab-pane
+				name="clients"
+				:label="t('mcpModule.oauthManagement.tabs.clients')"
+			>
+				<el-card
+					shadow="never"
+					body-class="p-0!"
 				>
 					<el-table
+						v-loading="loading"
 						:data="clients"
 						row-key="id"
 					>
@@ -129,15 +125,29 @@
 								</el-button>
 							</template>
 						</el-table-column>
-						<template #empty>{{ t('mcpModule.oauthManagement.empty.clients') }}</template>
+						<template #empty>
+							<mcp-table-empty
+								icon="mdi:application-cog"
+								:loading="loading"
+								:failed="error !== null"
+								empty-label="mcpModule.oauthManagement.empty.clients"
+								@retry="fetchAll"
+							/>
+						</template>
 					</el-table>
-				</el-tab-pane>
+				</el-card>
+			</el-tab-pane>
 
-				<el-tab-pane
-					name="grants"
-					:label="t('mcpModule.oauthManagement.tabs.grants')"
+			<el-tab-pane
+				name="grants"
+				:label="t('mcpModule.oauthManagement.tabs.grants')"
+			>
+				<el-card
+					shadow="never"
+					body-class="p-0!"
 				>
 					<el-table
+						v-loading="loading"
 						:data="grants"
 						row-key="id"
 					>
@@ -190,15 +200,29 @@
 								</el-button>
 							</template>
 						</el-table-column>
-						<template #empty>{{ t('mcpModule.oauthManagement.empty.grants') }}</template>
+						<template #empty>
+							<mcp-table-empty
+								icon="mdi:key-chain"
+								:loading="loading"
+								:failed="error !== null"
+								empty-label="mcpModule.oauthManagement.empty.grants"
+								@retry="fetchAll"
+							/>
+						</template>
 					</el-table>
-				</el-tab-pane>
+				</el-card>
+			</el-tab-pane>
 
-				<el-tab-pane
-					name="accessTokens"
-					:label="t('mcpModule.oauthManagement.tabs.accessTokens')"
+			<el-tab-pane
+				name="accessTokens"
+				:label="t('mcpModule.oauthManagement.tabs.accessTokens')"
+			>
+				<el-card
+					shadow="never"
+					body-class="p-0!"
 				>
 					<el-table
+						v-loading="loading"
 						:data="accessTokens"
 						row-key="id"
 					>
@@ -235,15 +259,29 @@
 								</el-button>
 							</template>
 						</el-table-column>
-						<template #empty>{{ t('mcpModule.oauthManagement.empty.accessTokens') }}</template>
+						<template #empty>
+							<mcp-table-empty
+								icon="mdi:key"
+								:loading="loading"
+								:failed="error !== null"
+								empty-label="mcpModule.oauthManagement.empty.accessTokens"
+								@retry="fetchAll"
+							/>
+						</template>
 					</el-table>
-				</el-tab-pane>
+				</el-card>
+			</el-tab-pane>
 
-				<el-tab-pane
-					name="refreshFamilies"
-					:label="t('mcpModule.oauthManagement.tabs.refreshFamilies')"
+			<el-tab-pane
+				name="refreshFamilies"
+				:label="t('mcpModule.oauthManagement.tabs.refreshFamilies')"
+			>
+				<el-card
+					shadow="never"
+					body-class="p-0!"
 				>
 					<el-table
+						v-loading="loading"
 						:data="refreshFamilies"
 						row-key="id"
 					>
@@ -279,11 +317,19 @@
 								</el-button>
 							</template>
 						</el-table-column>
-						<template #empty>{{ t('mcpModule.oauthManagement.empty.refreshFamilies') }}</template>
+						<template #empty>
+							<mcp-table-empty
+								icon="mdi:key-link"
+								:loading="loading"
+								:failed="error !== null"
+								empty-label="mcpModule.oauthManagement.empty.refreshFamilies"
+								@retry="fetchAll"
+							/>
+						</template>
 					</el-table>
-				</el-tab-pane>
-			</el-tabs>
-		</el-card>
+				</el-card>
+			</el-tab-pane>
+		</el-tabs>
 	</div>
 
 	<el-drawer
@@ -563,6 +609,7 @@ import { isEqual } from 'lodash';
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import McpTableEmpty from '../components/mcp-table-empty.vue';
 import { useMcpOAuthManagement } from '../composables/useMcpOAuthManagement';
 import { McpOAuthScope } from '../mcp.constants';
 import type { IMcpOAuthAccessToken, IMcpOAuthClient, IMcpOAuthGrant, IMcpOAuthRefreshFamily } from '../schemas/oauth-management.types';

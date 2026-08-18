@@ -20,7 +20,8 @@
     "close": "Zamknij",
     "discard": "Odrzuć",
     "yes": "Tak",
-    "no": "Nie"
+    "no": "Nie",
+    "retry": "Ponów"
   },
   "capabilities": {
     "read": {

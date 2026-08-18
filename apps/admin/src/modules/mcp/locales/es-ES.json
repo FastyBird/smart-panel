@@ -20,7 +20,8 @@
     "close": "Cerrar",
     "discard": "Descartar",
     "yes": "Sí",
-    "no": "No"
+    "no": "No",
+    "retry": "Reintentar"
   },
   "capabilities": {
     "read": {

@@ -54,9 +54,9 @@ vi.mock('../../../common', () => ({
 	}),
 	AppBar: { name: 'AppBar', template: '<div><slot name="heading" /><slot name="button-right" /></div>' },
 	AppBarHeading: {
-					name: 'AppBarHeading',
-					template: '<div><slot name="icon" /><slot name="title" /><slot name="subtitle" /></div>',
-				},
+		name: 'AppBarHeading',
+		template: '<div><slot name="icon" /><slot name="title" /><slot name="subtitle" /></div>',
+	},
 	AppBarButton: { name: 'AppBarButton', template: '<button><slot name="icon" /></button>' },
 	AppBarButtonAlign: { LEFT: 'left', RIGHT: 'right' },
 }));

@@ -20,7 +20,8 @@
 		"close": "Schließen",
 		"discard": "Verwerfen",
 		"yes": "Ja",
-		"no": "Nein"
+		"no": "Nein",
+		"retry": "Erneut versuchen"
 	},
 	"capabilities": {
 		"read": {

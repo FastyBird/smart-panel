@@ -20,7 +20,8 @@
 		"close": "Close",
 		"discard": "Discard",
 		"yes": "Yes",
-		"no": "No"
+		"no": "No",
+		"retry": "Retry"
 	},
 	"capabilities": {
 		"read": {

@@ -43,9 +43,9 @@ vi.mock('../../../common', () => ({
 	useBreakpoints: () => ({ isLGDevice: ref(true), isMDDevice: ref(true) }),
 	AppBar: { name: 'AppBar', template: '<div><slot name="heading" /><slot name="button-right" /></div>' },
 	AppBarHeading: {
-					name: 'AppBarHeading',
-					template: '<div><slot name="icon" /><slot name="title" /><slot name="subtitle" /></div>',
-				},
+		name: 'AppBarHeading',
+		template: '<div><slot name="icon" /><slot name="title" /><slot name="subtitle" /></div>',
+	},
 	AppBarButton: { name: 'AppBarButton', template: '<button><slot name="icon" /></button>' },
 	AppBarButtonAlign: { LEFT: 'left', RIGHT: 'right' },
 }));
@@ -84,11 +84,16 @@ const formStubs = {
 		methods: { clearValidate: () => undefined, validate: () => Promise.resolve(true) },
 	},
 	ElFormItem: { name: 'ElFormItem', template: '<div><slot /></div>' },
+	ElTabs: { name: 'ElTabs', template: '<div><slot /></div>' },
+	ElTabPane: { name: 'ElTabPane', template: '<div><slot /></div>' },
+	ElCard: { name: 'ElCard', template: '<section><slot /></section>' },
+	ElTable: { name: 'ElTable', template: '<table><slot /><slot name="empty" /></table>' },
+	ElTableColumn: { name: 'ElTableColumn', template: '<td></td>' },
 	AppBar: { name: 'AppBar', template: '<div><slot name="heading" /><slot name="button-right" /></div>' },
 	AppBarHeading: {
-					name: 'AppBarHeading',
-					template: '<div><slot name="icon" /><slot name="title" /><slot name="subtitle" /></div>',
-				},
+		name: 'AppBarHeading',
+		template: '<div><slot name="icon" /><slot name="title" /><slot name="subtitle" /></div>',
+	},
 	ViewHeader: { name: 'ViewHeader', template: '<header><slot name="extra" /></header>' },
 };
 
@@ -99,6 +104,35 @@ describe('ViewMcpOAuthManagement form conventions', () => {
 		vi.clearAllMocks();
 		vi.spyOn(ElMessageBox, 'confirm');
 		(ElMessageBox.confirm as Mock).mockReset().mockResolvedValue('confirm');
+	});
+
+	it('puts the tabs above the cards rather than inside one', () => {
+		const wrapper = mountForms();
+
+		const tabs = wrapper.findComponent({ name: 'ElTabs' });
+
+		expect(tabs.exists()).toBe(true);
+		// A card wrapping the tab strip is the layout this page had; every other
+		// tabbed view puts the tabs first and a card inside each pane.
+		expect(tabs.element.closest('section')).toBeNull();
+	});
+
+	it('gives every tab a card of its own', () => {
+		const wrapper = mountForms();
+
+		expect(wrapper.findAllComponents({ name: 'ElTabPane' })).toHaveLength(4);
+		expect(wrapper.findAllComponents({ name: 'McpTableEmpty' })).toHaveLength(4);
+	});
+
+	it('reports a load failure inside each table instead of as a page banner', () => {
+		const wrapper = mountForms();
+
+		for (const empty of wrapper.findAllComponents({ name: 'McpTableEmpty' })) {
+			// Bound to the load error, so the table offers a retry rather than the
+			// page carrying a dead-end alert.
+			expect(empty.props('failed')).toBe(false);
+			expect(empty.props('loading')).toBe(false);
+		}
 	});
 
 	it('labels the header create action the way the other list headers do', () => {
