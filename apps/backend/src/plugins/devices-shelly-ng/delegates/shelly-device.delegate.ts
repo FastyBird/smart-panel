@@ -4,6 +4,10 @@ import {
 	Cover,
 	Device,
 	DevicePower,
+	Em,
+	Em1,
+	Em1Data,
+	EmData,
 	Humidity,
 	Input,
 	Light,
@@ -38,7 +42,11 @@ type SupportedComponent =
 	| DevicePower
 	| Humidity
 	| Temperature
-	| Pm1;
+	| Pm1
+	| Em
+	| EmData
+	| Em1
+	| Em1Data;
 
 export class ShellyDeviceDelegate extends EventEmitter2 {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(

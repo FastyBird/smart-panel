@@ -2,6 +2,10 @@ import {
 	Cct,
 	Cover,
 	DevicePower,
+	Em,
+	Em1,
+	Em1Data,
+	EmData,
 	Ethernet,
 	Humidity,
 	Input,
@@ -21,9 +25,11 @@ import {
 	Shelly2LGen3,
 	Shelly2PmGen3,
 	Shelly2PmGen4,
+	Shelly3EmGen3,
 	ShellyDaliDimmerGen3,
 	ShellyDimmerGen3,
 	ShellyDimmerPmGen3,
+	ShellyEmGen3,
 	ShellyI4Gen3,
 	ShellyOutdoorPlugSGen3,
 	ShellyPlugAzGen3,
@@ -64,12 +70,16 @@ import {
 	ShellyPro2Rev1,
 	ShellyPro2Rev2,
 	ShellyPro3,
+	ShellyPro3Em,
+	ShellyPro3Em3CT63,
+	ShellyPro3Em400,
 	ShellyPro4Pm,
 	ShellyPro4PmV2,
 	ShellyProDimmer,
 	ShellyProDimmer1Pm,
 	ShellyProDimmer2Pm,
 	ShellyProDualCoverPm,
+	ShellyProEm,
 	ShellyProRGBWPm,
 	Switch,
 	Temperature,
@@ -111,6 +121,10 @@ export enum ComponentType {
 	HUMIDITY = 'humidity',
 	TEMPERATURE = 'temperature',
 	PM1 = 'pm1',
+	EM = 'em',
+	EM_DATA = 'emdata',
+	EM1 = 'em1',
+	EM1_DATA = 'em1data',
 	WIFI = 'wifi',
 	ETHERNET = 'ethernet',
 }
@@ -139,7 +153,11 @@ export type ComponentSpec =
 	| { type: ComponentType.DEVICE_POWER; cls: Ctor<DevicePower>; ids: number[] }
 	| { type: ComponentType.HUMIDITY; cls: Ctor<Humidity>; ids: number[] }
 	| { type: ComponentType.TEMPERATURE; cls: Ctor<Temperature>; ids: number[] }
-	| { type: ComponentType.PM1; cls: Ctor<Pm1>; ids: number[] };
+	| { type: ComponentType.PM1; cls: Ctor<Pm1>; ids: number[] }
+	| { type: ComponentType.EM; cls: Ctor<Em>; ids: number[] }
+	| { type: ComponentType.EM_DATA; cls: Ctor<EmData>; ids: number[] }
+	| { type: ComponentType.EM1; cls: Ctor<Em1>; ids: number[] }
+	| { type: ComponentType.EM1_DATA; cls: Ctor<Em1Data>; ids: number[] };
 
 export type SystemSpec =
 	| { type: ComponentType.WIFI; cls: Ctor<WiFi> }
@@ -505,6 +523,45 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 		],
 		categories: [DeviceCategory.LIGHTING],
 	},
+	// Energy meters expose their CTs under two mutually exclusive profiles: the
+	// `triphase` profile reports a single three-phase `em` component, while
+	// `monophase` reports one `em1` per phase. Both are declared here because the
+	// profile is only known once the device reports its live components.
+	SHELLYPROEM: {
+		name: ShellyProEm.modelName,
+		models: [ShellyProEm.model.toUpperCase()],
+		components: [
+			{ type: ComponentType.SWITCH, cls: Switch, ids: [0] },
+			{ type: ComponentType.EM1, cls: Em1, ids: [0, 1] },
+			{ type: ComponentType.EM1_DATA, cls: Em1Data, ids: [0, 1] },
+		],
+		system: [
+			{ type: ComponentType.WIFI, cls: WiFi },
+			{ type: ComponentType.ETHERNET, cls: Ethernet },
+		],
+		// The relay makes SWITCHER the more capable default: it still permits the
+		// electrical channels, whereas SENSOR would leave the relay unmapped.
+		categories: [DeviceCategory.SWITCHER, DeviceCategory.OUTLET, DeviceCategory.SENSOR],
+	},
+	SHELLYPRO3EM: {
+		name: ShellyPro3Em.modelName,
+		models: [
+			ShellyPro3Em.model.toUpperCase(),
+			ShellyPro3Em400.model.toUpperCase(),
+			ShellyPro3Em3CT63.model.toUpperCase(),
+		],
+		components: [
+			{ type: ComponentType.EM, cls: Em, ids: [0] },
+			{ type: ComponentType.EM_DATA, cls: EmData, ids: [0] },
+			{ type: ComponentType.EM1, cls: Em1, ids: [0, 1, 2] },
+			{ type: ComponentType.EM1_DATA, cls: Em1Data, ids: [0, 1, 2] },
+		],
+		system: [
+			{ type: ComponentType.WIFI, cls: WiFi },
+			{ type: ComponentType.ETHERNET, cls: Ethernet },
+		],
+		categories: [DeviceCategory.SENSOR],
+	},
 	SHELLY1GEN3: {
 		name: Shelly1Gen3.modelName,
 		models: [Shelly1Gen3.model.toUpperCase()],
@@ -687,6 +744,29 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 		],
 		system: [{ type: ComponentType.WIFI, cls: WiFi }],
 		categories: [DeviceCategory.LIGHTING],
+	},
+	SHELLYEMGEN3: {
+		name: ShellyEmGen3.modelName,
+		models: [ShellyEmGen3.model.toUpperCase()],
+		components: [
+			{ type: ComponentType.SWITCH, cls: Switch, ids: [0] },
+			{ type: ComponentType.EM1, cls: Em1, ids: [0, 1] },
+			{ type: ComponentType.EM1_DATA, cls: Em1Data, ids: [0, 1] },
+		],
+		system: [{ type: ComponentType.WIFI, cls: WiFi }],
+		categories: [DeviceCategory.SWITCHER, DeviceCategory.OUTLET, DeviceCategory.SENSOR],
+	},
+	SHELLY3EMGEN3: {
+		name: Shelly3EmGen3.modelName,
+		models: [Shelly3EmGen3.model.toUpperCase()],
+		components: [
+			{ type: ComponentType.EM, cls: Em, ids: [0] },
+			{ type: ComponentType.EM_DATA, cls: EmData, ids: [0] },
+			{ type: ComponentType.EM1, cls: Em1, ids: [0, 1, 2] },
+			{ type: ComponentType.EM1_DATA, cls: Em1Data, ids: [0, 1, 2] },
+		],
+		system: [{ type: ComponentType.WIFI, cls: WiFi }],
+		categories: [DeviceCategory.SENSOR],
 	},
 	SHELLY1GEN4: {
 		name: Shelly1Gen4.modelName,

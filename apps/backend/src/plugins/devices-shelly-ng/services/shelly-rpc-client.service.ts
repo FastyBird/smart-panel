@@ -430,6 +430,82 @@ export interface Pm1Status {
 	errors: string[];
 }
 
+export interface EmConfig {
+	id: number;
+	name: string | null;
+	phase_selector?: 'a' | 'b' | 'c' | 'all';
+	ct_type?: string;
+}
+
+/**
+ * Three-phase energy meter, reported by devices running the `triphase` profile.
+ * Every measurement is nullable: a phase with no CT attached reports `null`
+ * rather than omitting the field.
+ */
+export interface EmStatus {
+	id: number;
+	a_current: number | null;
+	a_voltage: number | null;
+	a_act_power: number | null;
+	a_freq: number | null;
+	b_current: number | null;
+	b_voltage: number | null;
+	b_act_power: number | null;
+	b_freq: number | null;
+	c_current: number | null;
+	c_voltage: number | null;
+	c_act_power: number | null;
+	c_freq: number | null;
+	n_current: number | null;
+	total_current: number | null;
+	total_act_power: number | null;
+	errors?: string[];
+}
+
+export interface Em1Config {
+	id: number;
+	name: string | null;
+	reverse?: boolean;
+	ct_type?: string;
+}
+
+/**
+ * Single-phase energy meter, reported by devices running the `monophase`
+ * profile and by the two-channel EM models.
+ */
+export interface Em1Status {
+	id: number;
+	current: number | null;
+	voltage: number | null;
+	act_power: number | null;
+	freq?: number | null;
+	errors?: string[];
+}
+
+/**
+ * Cumulative counters for the three-phase meter. Unlike the instantaneous
+ * readings these are plain numbers, so absence of a phase shows up as 0.
+ */
+export interface EmDataStatus {
+	id: number;
+	a_total_act_energy: number;
+	a_total_act_ret_energy: number;
+	b_total_act_energy: number;
+	b_total_act_ret_energy: number;
+	c_total_act_energy: number;
+	c_total_act_ret_energy: number;
+	total_act: number;
+	total_act_ret: number;
+	errors?: string[];
+}
+
+export interface Em1DataStatus {
+	id: number;
+	total_act_energy: number;
+	total_act_ret_energy: number;
+	errors?: string[];
+}
+
 export interface DeviceComponentsResponse {
 	components: DeviceComponent[];
 	cfg_rev: number;
@@ -657,6 +733,54 @@ export class ShellyRpcClientService {
 		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
 	): Promise<Pm1Status> {
 		return this.call<Pm1Status>(host, 'PM1.GetStatus', { id }, options);
+	}
+
+	getEmConfig(
+		host: string,
+		id: number,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<EmConfig> {
+		return this.call<EmConfig>(host, 'EM.GetConfig', { id }, options);
+	}
+
+	getEmStatus(
+		host: string,
+		id: number,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<EmStatus> {
+		return this.call<EmStatus>(host, 'EM.GetStatus', { id }, options);
+	}
+
+	getEmDataStatus(
+		host: string,
+		id: number,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<EmDataStatus> {
+		return this.call<EmDataStatus>(host, 'EMData.GetStatus', { id }, options);
+	}
+
+	getEm1Config(
+		host: string,
+		id: number,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<Em1Config> {
+		return this.call<Em1Config>(host, 'EM1.GetConfig', { id }, options);
+	}
+
+	getEm1Status(
+		host: string,
+		id: number,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<Em1Status> {
+		return this.call<Em1Status>(host, 'EM1.GetStatus', { id }, options);
+	}
+
+	getEm1DataStatus(
+		host: string,
+		id: number,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<Em1DataStatus> {
+		return this.call<Em1DataStatus>(host, 'EM1Data.GetStatus', { id }, options);
 	}
 
 	/**
