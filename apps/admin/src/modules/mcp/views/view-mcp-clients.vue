@@ -82,6 +82,7 @@
 		:show-close="false"
 		:with-header="false"
 		:size="isLGDevice ? '40%' : '100%'"
+		:before-close="onCloseClientForm"
 		data-test-id="mcp-client-form-drawer"
 		@closed="resetClientForm"
 	>
@@ -105,7 +106,7 @@
 					<app-bar-button
 						:align="AppBarButtonAlign.RIGHT"
 						class="mr-2"
-						@click="showClientDialog = false"
+						@click="() => onCloseClientForm()"
 					>
 						<template #icon>
 							<el-icon>
@@ -202,7 +203,7 @@
 						link
 						class="mr-2"
 						data-test-id="cancel-mcp-client-form"
-						@click="onCancelClientForm"
+						@click="() => onCloseClientForm()"
 					>
 						{{ clientFormChanged ? t('mcpModule.actions.discard') : t('mcpModule.actions.close') }}
 					</el-button>
@@ -366,7 +367,15 @@ const resetClientForm = (): void => {
 	initialClientForm.value = snapshotClientForm();
 };
 
-const onCancelClientForm = async (): Promise<void> => {
+/**
+ * Guards every route out of the drawer — the footer action, the close button in
+ * its bar, and the drawer's own `before-close` (overlay click and escape). All
+ * three have to run the same check, or the edits disappear without a word.
+ *
+ * `done` is supplied only by `before-close`; withholding it leaves the drawer
+ * open when the confirmation is dismissed.
+ */
+const onCloseClientForm = async (done?: () => void): Promise<void> => {
 	if (clientFormChanged.value) {
 		try {
 			await ElMessageBox.confirm(t('mcpModule.confirm.discard'), t('mcpModule.headings.discard'), {
@@ -380,6 +389,8 @@ const onCancelClientForm = async (): Promise<void> => {
 	}
 
 	showClientDialog.value = false;
+
+	done?.();
 };
 
 const openCreate = (): void => {

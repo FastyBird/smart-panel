@@ -85,7 +85,7 @@ const mountView = () =>
 			stubs: {
 				ElCard: { name: 'ElCard', template: '<section><slot name="header" /><slot /></section>' },
 				// Render the drawer body so its contents can be asserted on.
-				ElDrawer: { name: 'ElDrawer', template: '<aside><slot /></aside>' },
+				ElDrawer: { name: 'ElDrawer', props: ['beforeClose'], template: '<aside><slot /></aside>' },
 				ElScrollbar: { name: 'ElScrollbar', template: '<div><slot /></div>' },
 				// Rendered so button labels can be asserted on.
 				ElButton: {
@@ -118,7 +118,9 @@ describe('ViewMcpClients', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.spyOn(ElMessageBox, 'confirm');
-		(ElMessageBox.confirm as Mock).mockResolvedValue('confirm');
+		// `clearAllMocks` leaves any queued `…Once` implementation in place, which
+		// would leak a rejection into the next test.
+		(ElMessageBox.confirm as Mock).mockReset().mockResolvedValue('confirm');
 	});
 
 	it('renders the shared list component rather than a bespoke table', () => {
@@ -252,13 +254,13 @@ describe('ViewMcpClients', () => {
 
 	it('asks to confirm before discarding a changed form', async () => {
 		const wrapper = mountView();
-		const vm = wrapper.vm as unknown as { openCreate: () => void; clientForm: { name: string }; onCancelClientForm: () => Promise<void> };
+		const vm = wrapper.vm as unknown as { openCreate: () => void; clientForm: { name: string }; onCloseClientForm: () => Promise<void> };
 
 		vm.openCreate();
 		vm.clientForm.name = 'Something';
 		await nextTick();
 
-		await vm.onCancelClientForm();
+		await vm.onCloseClientForm();
 		await flushPromises();
 
 		expect(ElMessageBox.confirm).toHaveBeenCalledOnce();
@@ -266,15 +268,59 @@ describe('ViewMcpClients', () => {
 
 	it('closes without confirming when nothing was edited', async () => {
 		const wrapper = mountView();
-		const vm = wrapper.vm as unknown as { openCreate: () => void; onCancelClientForm: () => Promise<void> };
+		const vm = wrapper.vm as unknown as { openCreate: () => void; onCloseClientForm: () => Promise<void> };
 
 		vm.openCreate();
 		await nextTick();
 
-		await vm.onCancelClientForm();
+		await vm.onCloseClientForm();
 		await flushPromises();
 
 		expect(ElMessageBox.confirm).not.toHaveBeenCalled();
+	});
+
+	it('guards the drawer close event, not just the footer button', async () => {
+		const wrapper = mountView();
+		const vm = wrapper.vm as unknown as { openCreate: () => void; clientForm: { name: string } };
+
+		vm.openCreate();
+		vm.clientForm.name = 'Something';
+		await nextTick();
+
+		// Closing via the drawer itself — overlay click, escape, its own close
+		// button — must run the same guard as the footer action, otherwise the
+		// edits vanish without a word.
+		const drawer = wrapper.findComponent({ name: 'ElDrawer' });
+		const beforeClose = drawer.props('beforeClose') as (done: () => void) => Promise<void>;
+
+		expect(typeof beforeClose).toBe('function');
+
+		const done = vi.fn();
+		await beforeClose(done);
+		await flushPromises();
+
+		expect(ElMessageBox.confirm).toHaveBeenCalledOnce();
+		expect(done).toHaveBeenCalledOnce();
+	});
+
+	it('keeps the drawer open when the discard confirmation is dismissed', async () => {
+		(ElMessageBox.confirm as Mock).mockRejectedValueOnce('cancel');
+
+		const wrapper = mountView();
+		const vm = wrapper.vm as unknown as { openCreate: () => void; clientForm: { name: string } };
+
+		vm.openCreate();
+		vm.clientForm.name = 'Something';
+		await nextTick();
+
+		const drawer = wrapper.findComponent({ name: 'ElDrawer' });
+		const beforeClose = drawer.props('beforeClose') as (done: () => void) => Promise<void>;
+
+		const done = vi.fn();
+		await beforeClose(done);
+		await flushPromises();
+
+		expect(done).not.toHaveBeenCalled();
 	});
 
 	it('requires confirmation before revoking a credential', async () => {
