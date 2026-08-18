@@ -28,6 +28,15 @@
 			font-size: 1.3rem;
 		}
 
+		// The inline (non-teleported) markup renders the second row as `small`,
+		// which none of the rules above reach.
+		> small {
+			color: var(--el-color-white);
+			display: block;
+			line-height: 1.1rem;
+			font-size: 0.9rem;
+		}
+
 		@include m(align-center) {
 			text-align: center;
 		}

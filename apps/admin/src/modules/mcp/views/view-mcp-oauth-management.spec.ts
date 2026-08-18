@@ -42,7 +42,10 @@ vi.mock('../../../common', () => ({
 	useFlashMessage: () => ({ success: mocks.flashSuccess, error: mocks.flashError }),
 	useBreakpoints: () => ({ isLGDevice: ref(true), isMDDevice: ref(true) }),
 	AppBar: { name: 'AppBar', template: '<div><slot name="heading" /><slot name="button-right" /></div>' },
-	AppBarHeading: { name: 'AppBarHeading', template: '<div><slot name="icon" /><slot name="title" /></div>' },
+	AppBarHeading: {
+					name: 'AppBarHeading',
+					template: '<div><slot name="icon" /><slot name="title" /><slot name="subtitle" /></div>',
+				},
 	AppBarButton: { name: 'AppBarButton', template: '<button><slot name="icon" /></button>' },
 	AppBarButtonAlign: { LEFT: 'left', RIGHT: 'right' },
 }));
@@ -82,7 +85,10 @@ const formStubs = {
 	},
 	ElFormItem: { name: 'ElFormItem', template: '<div><slot /></div>' },
 	AppBar: { name: 'AppBar', template: '<div><slot name="heading" /><slot name="button-right" /></div>' },
-	AppBarHeading: { name: 'AppBarHeading', template: '<div><slot name="icon" /><slot name="title" /></div>' },
+	AppBarHeading: {
+					name: 'AppBarHeading',
+					template: '<div><slot name="icon" /><slot name="title" /><slot name="subtitle" /></div>',
+				},
 	ViewHeader: { name: 'ViewHeader', template: '<header><slot name="extra" /></header>' },
 };
 
@@ -108,7 +114,7 @@ describe('ViewMcpOAuthManagement form conventions', () => {
 		expect(create?.text()).toContain('mcpModule.actions.add');
 	});
 
-	it('renders both drawer headings through el-text', () => {
+	it('gives both drawer headings a title and a subtitle row', () => {
 		const wrapper = mountForms();
 
 		const headings = wrapper.findAllComponents({ name: 'AppBarHeading' });
@@ -116,7 +122,8 @@ describe('ViewMcpOAuthManagement form conventions', () => {
 		expect(headings.length).toBe(2);
 
 		for (const heading of headings) {
-			expect(heading.findComponent({ name: 'ElText' }).exists()).toBe(true);
+			expect(heading.find('[data-test-id="drawer-heading-title"]').exists()).toBe(true);
+			expect(heading.find('[data-test-id="drawer-heading-subtitle"]').exists()).toBe(true);
 		}
 	});
 

@@ -102,7 +102,8 @@
     "capabilities": "Uprawnienia klienta",
     "ceilingHint": "Można przyznać tylko uprawnienia włączone w konfiguracji modułu.",
     "expiresInDays": "Okres ważności poświadczenia (dni)",
-    "expiryRequired": "Wybierz ograniczony okres ważności poświadczenia."
+    "expiryRequired": "Wybierz ograniczony okres ważności poświadczenia.",
+    "formSubtitle": "Nazwij agenta i wybierz, do czego ma dostęp."
   },
   "rotate": {
     "title": "Odnów poświadczenie",
@@ -247,7 +248,9 @@
       "refreshFamilyRevoked": "Rodzina odświeżania OAuth cofnięta.",
       "allRevoked": "Cofnięto cały dostęp OAuth MCP.",
       "revokeFailed": "Nie można było cofnąć autoryzacji OAuth."
-    }
+    },
+    "clientFormSubtitle": "Podaj identyfikatory URI przekierowania i limit uprawnień klienta.",
+    "grantFormSubtitle": "Zawęź uprawnienia, które już posiada to nadanie."
   },
   "headings": {
     "discard": "Odrzuć zmiany"

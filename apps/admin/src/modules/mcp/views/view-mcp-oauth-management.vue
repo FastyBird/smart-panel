@@ -304,9 +304,13 @@
 						</template>
 
 						<template #title>
-							<el-text truncated>
+							<span data-test-id="drawer-heading-title">
 								{{ editingClient ? t('mcpModule.oauthManagement.editClient') : t('mcpModule.oauthManagement.createClient') }}
-							</el-text>
+							</span>
+						</template>
+
+						<template #subtitle>
+							<span data-test-id="drawer-heading-subtitle">{{ t('mcpModule.oauthManagement.clientFormSubtitle') }}</span>
 						</template>
 					</app-bar-heading>
 				</template>
@@ -437,9 +441,11 @@
 						</template>
 
 						<template #title>
-							<el-text truncated>
-								{{ t('mcpModule.oauthManagement.editGrant') }}
-							</el-text>
+							<span data-test-id="drawer-heading-title">{{ t('mcpModule.oauthManagement.editGrant') }}</span>
+						</template>
+
+						<template #subtitle>
+							<span data-test-id="drawer-heading-subtitle">{{ t('mcpModule.oauthManagement.grantFormSubtitle') }}</span>
 						</template>
 					</app-bar-heading>
 				</template>
@@ -548,7 +554,6 @@ import {
 	ElTableColumn,
 	ElTabs,
 	ElTag,
-	ElText,
 	type FormInstance,
 	type FormRules,
 	vLoading,

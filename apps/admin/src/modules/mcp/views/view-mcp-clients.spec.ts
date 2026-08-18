@@ -53,7 +53,10 @@ vi.mock('../../../common', () => ({
 		reset: vi.fn(),
 	}),
 	AppBar: { name: 'AppBar', template: '<div><slot name="heading" /><slot name="button-right" /></div>' },
-	AppBarHeading: { name: 'AppBarHeading', template: '<div><slot name="icon" /><slot name="title" /></div>' },
+	AppBarHeading: {
+					name: 'AppBarHeading',
+					template: '<div><slot name="icon" /><slot name="title" /><slot name="subtitle" /></div>',
+				},
 	AppBarButton: { name: 'AppBarButton', template: '<button><slot name="icon" /></button>' },
 	AppBarButtonAlign: { LEFT: 'left', RIGHT: 'right' },
 }));
@@ -97,7 +100,10 @@ const mountView = () =>
 				},
 				ElText: { name: 'ElText', template: '<span><slot /></span>' },
 				AppBar: { name: 'AppBar', template: '<div><slot name="heading" /><slot name="button-right" /></div>' },
-				AppBarHeading: { name: 'AppBarHeading', template: '<div><slot name="icon" /><slot name="title" /></div>' },
+				AppBarHeading: {
+					name: 'AppBarHeading',
+					template: '<div><slot name="icon" /><slot name="title" /><slot name="subtitle" /></div>',
+				},
 				ElForm: {
 					name: 'ElForm',
 					template: '<form><slot /></form>',
@@ -211,15 +217,18 @@ describe('ViewMcpClients', () => {
 		expect(wrapper.find('[data-test-id="create-mcp-client"]').text()).toContain('mcpModule.actions.add');
 	});
 
-	it('renders the drawer heading through el-text so it picks up the bar styling', () => {
+	it('gives the drawer heading a title and a subtitle row', () => {
 		const wrapper = mountView();
 
-		// `.app-bar-heading__title > span` is what colours the heading; a bare
-		// text node in the title slot never matches it.
 		const heading = wrapper.findComponent({ name: 'AppBarHeading' });
 
 		expect(heading.exists()).toBe(true);
-		expect(heading.findComponent({ name: 'ElText' }).exists()).toBe(true);
+
+		// Both rows must come from the component's own slots. Elements rendered
+		// in this view's scope carry the wrong `data-v-` attribute and so never
+		// match `app-bar-heading`'s scoped rules.
+		expect(heading.find('[data-test-id="drawer-heading-title"]').exists()).toBe(true);
+		expect(heading.find('[data-test-id="drawer-heading-subtitle"]').exists()).toBe(true);
 	});
 
 	it('keeps save disabled until the form changes', async () => {

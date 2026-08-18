@@ -102,7 +102,8 @@
     "capabilities": "Capacidades del cliente",
     "ceilingHint": "Solo se pueden conceder las capacidades habilitadas en la configuración del módulo.",
     "expiresInDays": "Duración de la credencial (días)",
-    "expiryRequired": "Elige una duración finita para la credencial."
+    "expiryRequired": "Elige una duración finita para la credencial.",
+    "formSubtitle": "Asigne un nombre al agente y elija a qué puede acceder."
   },
   "rotate": {
     "title": "Rotar credencial",
@@ -247,7 +248,9 @@
       "refreshFamilyRevoked": "Familia de actualización OAuth revocada.",
       "allRevoked": "Todo el acceso OAuth de MCP revocado.",
       "revokeFailed": "No se pudo revocar la autorización OAuth."
-    }
+    },
+    "clientFormSubtitle": "Registre las URI de redirección y el límite de permisos del cliente.",
+    "grantFormSubtitle": "Reduzca los permisos que ya tiene esta concesión."
   },
   "headings": {
     "discard": "Descartar cambios"

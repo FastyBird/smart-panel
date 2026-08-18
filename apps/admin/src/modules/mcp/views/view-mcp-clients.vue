@@ -95,9 +95,13 @@
 						</template>
 
 						<template #title>
-							<el-text truncated>
+							<span data-test-id="drawer-heading-title">
 								{{ editingClient ? t('mcpModule.clientForm.editTitle') : t('mcpModule.clientForm.createTitle') }}
-							</el-text>
+							</span>
+						</template>
+
+						<template #subtitle>
+							<span data-test-id="drawer-heading-subtitle">{{ t('mcpModule.clientForm.formSubtitle') }}</span>
 						</template>
 					</app-bar-heading>
 				</template>
@@ -283,7 +287,6 @@ import {
 	ElMessageBox,
 	ElScrollbar,
 	ElSwitch,
-	ElText,
 	type FormInstance,
 	type FormRules,
 } from 'element-plus';
