@@ -20,7 +20,8 @@
     "close": "Zavřít",
     "discard": "Zahodit",
     "yes": "Ano",
-    "no": "Ne"
+    "no": "Ne",
+    "retry": "Zkusit znovu"
   },
   "capabilities": {
     "read": {
