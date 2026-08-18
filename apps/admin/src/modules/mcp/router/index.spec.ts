@@ -26,6 +26,15 @@ describe('MCP routes', () => {
 		}
 	});
 
+	it('gates the oauth menu route on the oauth feature flag', () => {
+		const route = ModuleRoutes.find(({ name }) => name === RouteNames.OAUTH_MANAGEMENT);
+
+		// Module-enabled alone is not enough: the provider can be off inside an
+		// enabled module, leaving the page with nothing to show.
+		expect(route?.meta?.module).toBe(MCP_MODULE_NAME);
+		expect(route?.meta?.moduleFlag).toBe('oauthEnabled');
+	});
+
 	it('registers consent as a hidden owner/admin route', () => {
 		const route = ModuleRoutes.find(({ name }) => name === RouteNames.OAUTH_CONSENT);
 

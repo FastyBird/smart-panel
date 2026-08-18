@@ -29,6 +29,11 @@ vi.mock('../composables/useMenu', () => ({
 				children: [],
 			},
 			{
+				name: 'flagged',
+				meta: { title: 'Flagged', icon: 'mdi:flag', module: 'mcp-module', moduleFlag: 'oauthEnabled' },
+				children: [],
+			},
+			{
 				name: 'settings',
 				meta: { title: 'Settings', icon: 'mdi:cog' },
 				children: [
@@ -42,7 +47,7 @@ vi.mock('../composables/useMenu', () => ({
 
 vi.mock('../../modules/config/composables/useConfigModules', () => ({
 	useConfigModules: vi.fn(() => ({
-		configModules: { value: [] },
+		configModules: { value: [{ type: 'mcp-module', enabled: true, oauthEnabled: false }] },
 		areLoading: { value: false },
 		loaded: { value: true },
 		enabled: () => true,
@@ -102,6 +107,13 @@ describe('AppNavigation', () => {
 
 	it('renders correctly', () => {
 		expect(wrapper.exists()).toBe(true);
+	});
+
+	it('hides a menu item whose module flag is off', () => {
+		// The module is enabled, but the feature the route depends on is not, so
+		// the page could only ever be empty.
+		expect(wrapper.text()).not.toContain('Flagged');
+		expect(wrapper.text()).toContain('Dashboard');
 	});
 
 	it('displays menu items', () => {

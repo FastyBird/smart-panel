@@ -164,7 +164,7 @@ const ns = useNamespace('app-navigation');
 
 const { isMDDevice } = useBreakpoints();
 const { mainMenuItems } = useMenu();
-const { enabled: isModuleEnabled, loaded: modulesLoaded, fetchConfigModules } = useConfigModules();
+const { configModules, enabled: isModuleEnabled, loaded: modulesLoaded, fetchConfigModules } = useConfigModules();
 
 const accountManager = injectAccountManager();
 
@@ -187,7 +187,17 @@ const visibleMenuItems = computed(() => {
 			// If fetch failed, show all as degraded fallback
 			if (!modulesLoaded.value) return configFetchFailed.value;
 
-			return isModuleEnabled(moduleType);
+			if (!isModuleEnabled(moduleType)) return false;
+
+			// Some routes depend on a feature within an otherwise enabled module —
+			// the page exists but has nothing to show while the feature is off.
+			const moduleFlag = menuRoute.meta?.moduleFlag as string | undefined;
+
+			if (!moduleFlag) return true;
+
+			const moduleConfig = configModules.value.find((module) => module.type === moduleType) as Record<string, unknown> | undefined;
+
+			return moduleConfig?.[moduleFlag] === true;
 		})
 	);
 });
