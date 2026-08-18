@@ -1,4 +1,6 @@
-import { Em, Em1, Em1Data, EmData, Shelly3EmGen3, ShellyEmGen3, ShellyPro3Em, ShellyProEm } from 'shellies-ds9';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { Shelly3EmGen3, ShellyEmGen3, ShellyPro3Em, ShellyProEm } from 'shellies-ds9';
 
 import { devicesSchema } from '../../spec/devices';
 
@@ -61,18 +63,40 @@ describe('Shelly NG energy meters', () => {
 		}
 	});
 
-	// ComponentType values are compared against the key prefix the device reports,
-	// so a value whose casing differs from the library's silently disables the
-	// whole component. `devicePower` is exactly that bug, still present.
-	it.each([
-		[ComponentType.EM, Em],
-		[ComponentType.EM_DATA, EmData],
-		[ComponentType.EM1, Em1],
-		[ComponentType.EM1_DATA, Em1Data],
-	])('uses the component key the library reports for %s', (type, cls) => {
-		const instance = new (cls as unknown as new (device: unknown, id: number) => { key: string })({}, 0);
+	// The delegate builds `${type}:${id}` and looks the component up by that key,
+	// and DeviceManagerService compares the type against the key prefix the device
+	// reports. A value whose casing differs from the library's therefore disables
+	// the component on both paths, silently.
+	it('declares every component type using the key the library reports', () => {
+		const instantiate = (cls: unknown): string => {
+			const ctor = cls as new (device: unknown, id: number) => { key: string };
 
-		expect(instance.key.split(':')[0]).toBe(String(type));
+			return new ctor({}, 0).key.split(':')[0];
+		};
+
+		const mismatches = new Set<string>();
+
+		for (const descriptor of Object.values(DESCRIPTORS)) {
+			for (const component of descriptor.components) {
+				const key = instantiate(component.cls);
+
+				if (key !== String(component.type)) {
+					mismatches.add(`${String(component.type)} != ${key}`);
+				}
+			}
+		}
+
+		expect([...mismatches]).toEqual([]);
+	});
+
+	// SystemSpec types are only ever compared against other descriptors - nothing
+	// looks a system component up by key - so ETHERNET declaring `ethernet` while
+	// the library uses `eth` is inert. Pinned so a future use of it as a lookup
+	// key has to confront this first.
+	it('never looks a system component up by key', () => {
+		const source = readFileSync(join(__dirname, 'delegates', 'shelly-device.delegate.ts'), 'utf8');
+
+		expect(source).not.toContain('DESCRIPTOR.system');
 	});
 
 	it('only assigns categories whose device spec permits the electrical channels', () => {
