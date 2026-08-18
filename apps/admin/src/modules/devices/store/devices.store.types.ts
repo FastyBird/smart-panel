@@ -11,6 +11,9 @@ import {
 	DeviceUpdateReqSchema,
 	DevicesAddActionPayloadSchema,
 	DevicesAddZoneActionPayloadSchema,
+	DevicesBulkRemoveActionPayloadSchema,
+	DevicesBulkResultSchema,
+	DevicesBulkSetEnabledActionPayloadSchema,
 	DevicesEditActionPayloadSchema,
 	DevicesFetchActionPayloadSchema,
 	DevicesGetActionPayloadSchema,
@@ -51,6 +54,12 @@ export type IDevicesSaveActionPayload = z.infer<typeof DevicesSaveActionPayloadS
 
 export type IDevicesRemoveActionPayload = z.infer<typeof DevicesRemoveActionPayloadSchema>;
 
+export type IDevicesBulkRemoveActionPayload = z.infer<typeof DevicesBulkRemoveActionPayloadSchema>;
+
+export type IDevicesBulkSetEnabledActionPayload = z.infer<typeof DevicesBulkSetEnabledActionPayloadSchema>;
+
+export type IDevicesBulkResult = z.infer<typeof DevicesBulkResultSchema>;
+
 export type IDevicesAddZoneActionPayload = z.infer<typeof DevicesAddZoneActionPayloadSchema>;
 
 export type IDevicesRemoveZoneActionPayload = z.infer<typeof DevicesRemoveZoneActionPayloadSchema>;
@@ -81,6 +90,8 @@ export interface IDevicesStoreActions {
 	edit: (payload: IDevicesEditActionPayload) => Promise<IDevice>;
 	save: (payload: IDevicesSaveActionPayload) => Promise<IDevice>;
 	remove: (payload: IDevicesRemoveActionPayload) => Promise<boolean>;
+	bulkRemove: (payload: IDevicesBulkRemoveActionPayload) => Promise<IDevicesBulkResult>;
+	bulkSetEnabled: (payload: IDevicesBulkSetEnabledActionPayload) => Promise<IDevicesBulkResult>;
 	addZone: (payload: IDevicesAddZoneActionPayload) => Promise<IDevice>;
 	removeZone: (payload: IDevicesRemoveZoneActionPayload) => Promise<IDevice>;
 	isLoaded: () => boolean;

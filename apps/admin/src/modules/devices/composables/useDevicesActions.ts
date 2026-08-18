@@ -83,28 +83,26 @@ export const useDevicesActions = (): IUseDevicesActions => {
 					type: 'warning',
 				}
 			);
-
-			let successCount = 0;
-			let failCount = 0;
-
-			for (const device of devices) {
-				try {
-					await devicesStore.remove({ id: device.id });
-					successCount++;
-				} catch {
-					failCount++;
-				}
-			}
-
-			if (successCount > 0) {
-				flashMessage.success(t('devicesModule.messages.devices.bulkRemoved', { count: successCount }));
-			}
-
-			if (failCount > 0) {
-				flashMessage.error(t('devicesModule.messages.devices.bulkRemoveFailed', { count: failCount }));
-			}
 		} catch {
 			// User cancelled - do nothing
+			return;
+		}
+
+		// One request for the whole selection. Sending one per device tripped the
+		// backend's shared rate limit once a selection went past thirty, which
+		// left the rest of the selection silently unprocessed.
+		try {
+			const result = await devicesStore.bulkRemove({ ids: devices.map((device) => device.id) });
+
+			if (result.succeeded.length > 0) {
+				flashMessage.success(t('devicesModule.messages.devices.bulkRemoved', { count: result.succeeded.length }));
+			}
+
+			if (result.failed.length > 0) {
+				flashMessage.error(t('devicesModule.messages.devices.bulkRemoveFailed', { count: result.failed.length }));
+			}
+		} catch {
+			flashMessage.error(t('devicesModule.messages.devices.bulkRemoveFailed', { count: devices.length }));
 		}
 	};
 
@@ -123,34 +121,25 @@ export const useDevicesActions = (): IUseDevicesActions => {
 					type: 'info',
 				}
 			);
-
-			let successCount = 0;
-			let failCount = 0;
-
-			for (const device of devices) {
-				try {
-					await devicesStore.edit({
-						id: device.id,
-						data: {
-							type: device.type,
-							enabled: true,
-						},
-					});
-					successCount++;
-				} catch {
-					failCount++;
-				}
-			}
-
-			if (successCount > 0) {
-				flashMessage.success(t('devicesModule.messages.devices.bulkEnabled', { count: successCount }));
-			}
-
-			if (failCount > 0) {
-				flashMessage.error(t('devicesModule.messages.devices.bulkEnableFailed', { count: failCount }));
-			}
 		} catch {
 			flashMessage.info(t('devicesModule.messages.devices.bulkEnableCanceled'));
+
+			return;
+		}
+
+		// See bulkRemove: one request for the whole selection.
+		try {
+			const result = await devicesStore.bulkSetEnabled({ ids: devices.map((device) => device.id), enabled: true });
+
+			if (result.succeeded.length > 0) {
+				flashMessage.success(t('devicesModule.messages.devices.bulkEnabled', { count: result.succeeded.length }));
+			}
+
+			if (result.failed.length > 0) {
+				flashMessage.error(t('devicesModule.messages.devices.bulkEnableFailed', { count: result.failed.length }));
+			}
+		} catch {
+			flashMessage.error(t('devicesModule.messages.devices.bulkEnableFailed', { count: devices.length }));
 		}
 	};
 
@@ -169,34 +158,25 @@ export const useDevicesActions = (): IUseDevicesActions => {
 					type: 'warning',
 				}
 			);
-
-			let successCount = 0;
-			let failCount = 0;
-
-			for (const device of devices) {
-				try {
-					await devicesStore.edit({
-						id: device.id,
-						data: {
-							type: device.type,
-							enabled: false,
-						},
-					});
-					successCount++;
-				} catch {
-					failCount++;
-				}
-			}
-
-			if (successCount > 0) {
-				flashMessage.success(t('devicesModule.messages.devices.bulkDisabled', { count: successCount }));
-			}
-
-			if (failCount > 0) {
-				flashMessage.error(t('devicesModule.messages.devices.bulkDisableFailed', { count: failCount }));
-			}
 		} catch {
 			flashMessage.info(t('devicesModule.messages.devices.bulkDisableCanceled'));
+
+			return;
+		}
+
+		// See bulkRemove: one request for the whole selection.
+		try {
+			const result = await devicesStore.bulkSetEnabled({ ids: devices.map((device) => device.id), enabled: false });
+
+			if (result.succeeded.length > 0) {
+				flashMessage.success(t('devicesModule.messages.devices.bulkDisabled', { count: result.succeeded.length }));
+			}
+
+			if (result.failed.length > 0) {
+				flashMessage.error(t('devicesModule.messages.devices.bulkDisableFailed', { count: result.failed.length }));
+			}
+		} catch {
+			flashMessage.error(t('devicesModule.messages.devices.bulkDisableFailed', { count: devices.length }));
 		}
 	};
 

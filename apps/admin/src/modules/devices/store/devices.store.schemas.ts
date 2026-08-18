@@ -161,6 +161,20 @@ export const DevicesRemoveActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 });
 
+export const DevicesBulkRemoveActionPayloadSchema = z.object({
+	ids: z.array(ItemIdSchema).nonempty(),
+});
+
+export const DevicesBulkSetEnabledActionPayloadSchema = z.object({
+	ids: z.array(ItemIdSchema).nonempty(),
+	enabled: z.boolean(),
+});
+
+export const DevicesBulkResultSchema = z.object({
+	succeeded: z.array(z.string()),
+	failed: z.array(z.object({ id: z.string(), reason: z.string() })),
+});
+
 export const DevicesAddZoneActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	zoneId: z.string().uuid(),

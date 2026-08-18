@@ -11,7 +11,7 @@ import {
 	DeviceEntity,
 } from '../entities/devices.entity';
 
-import { PropertyTimeseriesModel } from './devices.model';
+import { BulkResultModel, PropertyTimeseriesModel } from './devices.model';
 
 /**
  * Response wrapper for DeviceEntity
@@ -186,4 +186,17 @@ export class PropertyTimeseriesResponseModel extends BaseSuccessResponseModel<Pr
 	})
 	@Expose()
 	declare data: PropertyTimeseriesModel;
+}
+
+/**
+ * Response wrapper for the outcome of a bulk operation
+ */
+@ApiSchema({ name: 'DevicesModuleResBulkResult' })
+export class BulkResultResponseModel extends BaseSuccessResponseModel<BulkResultModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => BulkResultModel,
+	})
+	@Expose()
+	declare data: BulkResultModel;
 }

@@ -283,6 +283,10 @@ export type DevicesModuleGetDevicesOperation = operations['get-devices-module-de
 export type DevicesModuleCreateDeviceOperation = operations['create-devices-module-device'];
 export type DevicesModuleUpdateDeviceOperation = operations['update-devices-module-device'];
 export type DevicesModuleDeleteDeviceOperation = operations['delete-devices-module-device'];
+
+export type DevicesModuleCreateDevicesBulkRemoveOperation = operations['create-devices-module-devices-bulk-remove'];
+
+export type DevicesModuleCreateDevicesBulkUpdateOperation = operations['create-devices-module-devices-bulk-update'];
 export type DevicesModuleGetChannelOperation = operations['get-devices-module-channel'];
 export type DevicesModuleGetDeviceChannelOperation = operations['get-devices-module-device-channel'];
 export type DevicesModuleGetChannelsOperation = operations['get-devices-module-channels'];
