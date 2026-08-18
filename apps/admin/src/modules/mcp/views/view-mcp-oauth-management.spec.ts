@@ -22,6 +22,12 @@ const mocks = vi.hoisted(() => ({
 	revokeAll: vi.fn().mockResolvedValue(undefined),
 	flashSuccess: vi.fn(),
 	flashError: vi.fn(),
+	routerReplace: vi.fn(),
+}));
+
+vi.mock('vue-router', () => ({
+	useRoute: () => ({ query: {} }),
+	useRouter: () => ({ replace: mocks.routerReplace }),
 }));
 
 const grant: IMcpOAuthGrant = {
@@ -94,7 +100,7 @@ const formStubs = {
 	ElTabs: { name: 'ElTabs', template: '<div><slot /></div>' },
 	ElTabPane: { name: 'ElTabPane', template: '<div><slot /></div>' },
 	ElCard: { name: 'ElCard', template: '<section><slot /></section>' },
-	ElTable: { name: 'ElTable', template: '<table><slot /><slot name="empty" /></table>' },
+	ElTable: { name: 'ElTable', props: ['defaultSort'], template: '<table><slot /><slot name="empty" /></table>' },
 	ElTableColumn: { name: 'ElTableColumn', template: '<td></td>' },
 	McpOAuthTabFilter: { name: 'McpOAuthTabFilter', props: ['statusOptions', 'filters', 'filtersActive'], template: '<div />' },
 	AppBar: { name: 'AppBar', template: '<div><slot name="heading" /><slot name="button-right" /></div>' },
@@ -155,6 +161,38 @@ describe('ViewMcpOAuthManagement form conventions', () => {
 		const withStatus = bars.filter((bar) => (bar.props('statusOptions') as unknown[]).length > 0);
 
 		expect(withStatus).toHaveLength(3);
+	});
+
+	it('puts the filter bar in its own card, separate from the table', () => {
+		const wrapper = mountForms();
+
+		// The other modules separate the two: filters in a slim card above, the
+		// table in its own below.
+		expect(wrapper.findAllComponents({ name: 'ElCard' }).length).toBeGreaterThanOrEqual(8);
+	});
+
+	it('tells each table which column it is sorted by', () => {
+		const wrapper = mountForms();
+
+		const tables = wrapper.findAllComponents({ name: 'ElTable' });
+
+		expect(tables).toHaveLength(4);
+
+		for (const table of tables) {
+			// Without `default-sort` the header renders no active arrow, so the
+			// list looks unsorted while actually being sorted.
+			expect(table.props('defaultSort')).toEqual({ prop: expect.any(String), order: 'ascending' });
+		}
+	});
+
+	it('reflects the selected tab in the url', async () => {
+		const wrapper = mountForms();
+		const vm = wrapper.vm as unknown as { activeTab: string };
+
+		vm.activeTab = 'grants';
+		await nextTick();
+
+		expect(mocks.routerReplace).toHaveBeenCalledWith(expect.objectContaining({ query: expect.objectContaining({ tab: 'grants' }) }));
 	});
 
 	it('labels the header create action the way the other list headers do', () => {

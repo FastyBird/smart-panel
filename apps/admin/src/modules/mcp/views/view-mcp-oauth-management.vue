@@ -53,6 +53,7 @@
 			>
 				<el-card
 					shadow="never"
+					class="px-1 py-2 shrink-0"
 					body-class="p-0!"
 				>
 					<McpOAuthTabFilter
@@ -63,10 +64,16 @@
 						test-id="mcp-oauth-clients"
 						@reset-filters="clientsQuery.resetFilter"
 					/>
+				</el-card>
 
+				<el-card
+					shadow="never"
+					body-class="p-0!"
+				>
 					<el-table
 						v-loading="loading"
 						:data="clientsQuery.items.value"
+						:default-sort="sortDescriptor(clientsQuery)"
 						row-key="id"
 						@sort-change="(change: { prop: string; order: string | null }) => onSortChange(clientsQuery, change)"
 					>
@@ -158,6 +165,7 @@
 			>
 				<el-card
 					shadow="never"
+					class="px-1 py-2 shrink-0"
 					body-class="p-0!"
 				>
 					<McpOAuthTabFilter
@@ -168,10 +176,16 @@
 						test-id="mcp-oauth-grants"
 						@reset-filters="grantsQuery.resetFilter"
 					/>
+				</el-card>
 
+				<el-card
+					shadow="never"
+					body-class="p-0!"
+				>
 					<el-table
 						v-loading="loading"
 						:data="grantsQuery.items.value"
+						:default-sort="sortDescriptor(grantsQuery)"
 						row-key="id"
 						@sort-change="(change: { prop: string; order: string | null }) => onSortChange(grantsQuery, change)"
 					>
@@ -247,6 +261,7 @@
 			>
 				<el-card
 					shadow="never"
+					class="px-1 py-2 shrink-0"
 					body-class="p-0!"
 				>
 					<McpOAuthTabFilter
@@ -257,10 +272,16 @@
 						test-id="mcp-oauth-accessTokens"
 						@reset-filters="accessTokensQuery.resetFilter"
 					/>
+				</el-card>
 
+				<el-card
+					shadow="never"
+					body-class="p-0!"
+				>
 					<el-table
 						v-loading="loading"
 						:data="accessTokensQuery.items.value"
+						:default-sort="sortDescriptor(accessTokensQuery)"
 						row-key="id"
 						@sort-change="(change: { prop: string; order: string | null }) => onSortChange(accessTokensQuery, change)"
 					>
@@ -320,6 +341,7 @@
 			>
 				<el-card
 					shadow="never"
+					class="px-1 py-2 shrink-0"
 					body-class="p-0!"
 				>
 					<McpOAuthTabFilter
@@ -330,10 +352,16 @@
 						test-id="mcp-oauth-refreshFamilies"
 						@reset-filters="refreshFamiliesQuery.resetFilter"
 					/>
+				</el-card>
 
+				<el-card
+					shadow="never"
+					body-class="p-0!"
+				>
 					<el-table
 						v-loading="loading"
 						:data="refreshFamiliesQuery.items.value"
+						:default-sort="sortDescriptor(refreshFamiliesQuery)"
 						row-key="id"
 						@sort-change="(change: { prop: string; order: string | null }) => onSortChange(refreshFamiliesQuery, change)"
 					>
@@ -637,8 +665,9 @@
 </template>
 
 <script setup lang="ts">
-import { type Ref, computed, defineComponent, h, onMounted, reactive, ref } from 'vue';
+import { type Ref, computed, defineComponent, h, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 
 import {
 	ElAlert,
@@ -697,7 +726,17 @@ const {
 	revokeAll,
 } = useMcpOAuthManagement();
 
-const activeTab = ref('clients');
+const route = useRoute();
+const router = useRouter();
+
+const tabNames = ['clients', 'grants', 'accessTokens', 'refreshFamilies'];
+
+const activeTab = ref<string>(typeof route.query.tab === 'string' && tabNames.includes(route.query.tab) ? route.query.tab : 'clients');
+
+watch(activeTab, (val: string): void => {
+	// `replace`, not `push`: flipping between tabs should not fill the back stack.
+	router.replace({ query: { ...route.query, tab: val } });
+});
 const showClientDialog = ref(false);
 const showGrantDialog = ref(false);
 const saving = ref(false);
@@ -937,6 +976,19 @@ const grantStatus = (grant: IMcpOAuthGrant): { key: 'active' | 'expired' | 'inac
 
 const canRevokeGrant = (grant: IMcpOAuthGrant): boolean => grant.revokedAt === null && new Date(grant.expiresAt).getTime() > Date.now();
 const canEditGrant = (grant: IMcpOAuthGrant): boolean => grant.active;
+
+// El-table only draws the active sort arrow when it is told what the sort is;
+// without this the tabs looked unsorted while being sorted by client name.
+const sortDescriptor = (query: {
+	sortBy: Ref<string | undefined>;
+	sortDir: Ref<'asc' | 'desc' | null>;
+}): { prop: string; order: 'ascending' | 'descending' } | undefined => {
+	if (typeof query.sortBy.value === 'undefined' || query.sortDir.value === null) {
+		return undefined;
+	}
+
+	return { prop: query.sortBy.value, order: query.sortDir.value === 'desc' ? 'descending' : 'ascending' };
+};
 
 // El-table reports its own sort state; the tab query owns it, so the two are
 // joined here rather than in each table's markup.
