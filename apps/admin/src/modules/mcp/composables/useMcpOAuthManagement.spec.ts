@@ -15,9 +15,12 @@ vi.mock('../../../common', () => ({
 	snakeToCamel: (value: unknown): unknown => value,
 }));
 
+// Mirrors what the API sends: the public identifier travels as `client_id`,
+// which reaches the schema as `clientId`. The fixture previously used the
+// admin's own field name, so it agreed with the schema instead of testing it.
 const client = {
 	id: '10000000-0000-4000-8000-000000000001',
-	clientIdentifier: 'public-client-id',
+	clientId: 'public-client-id',
 	name: 'Codex',
 	redirectUris: ['http://127.0.0.1:1455/callback'],
 	maximumScopes: [McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS],
@@ -25,6 +28,9 @@ const client = {
 	createdAt: '2026-01-01T00:00:00.000Z',
 	updatedAt: null,
 };
+// What the schema yields once the wire field has been renamed.
+const parsedClient = (({ clientId, ...rest }) => ({ ...rest, clientIdentifier: clientId }))(client);
+
 const grant = {
 	id: '20000000-0000-4000-8000-000000000001',
 	clientId: client.id,
@@ -66,7 +72,7 @@ describe('useMcpOAuthManagement', () => {
 
 		await management.fetchAll();
 
-		expect(management.clients.value).toEqual([client]);
+		expect(management.clients.value).toEqual([parsedClient]);
 		expect(management.grants.value).toEqual([grant]);
 		expect(management.accessTokens.value).toEqual([accessToken]);
 		expect(management.refreshFamilies.value).toEqual([family]);
@@ -91,7 +97,7 @@ describe('useMcpOAuthManagement', () => {
 				},
 			},
 		});
-		expect(management.clients.value).toEqual([client]);
+		expect(management.clients.value).toEqual([parsedClient]);
 	});
 
 	it('removes a revoked refresh family and all access tokens issued from it', async () => {
@@ -124,10 +130,8 @@ describe('useMcpOAuthManagement', () => {
 		await management.revokeAll();
 
 		expect(backendClient.POST).toHaveBeenCalledWith('/modules/mcp/oauth/revoke-all', {});
-		expect(management.clients.value).toEqual([client]);
-		expect(management.grants.value).toEqual([
-			expect.objectContaining({ id: grant.id, active: false, revokedAt: expect.any(String) }),
-		]);
+		expect(management.clients.value).toEqual([parsedClient]);
+		expect(management.grants.value).toEqual([expect.objectContaining({ id: grant.id, active: false, revokedAt: expect.any(String) })]);
 		expect(management.accessTokens.value).toEqual([]);
 		expect(management.refreshFamilies.value).toEqual([]);
 	});

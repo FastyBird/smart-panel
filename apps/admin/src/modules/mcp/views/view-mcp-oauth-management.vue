@@ -152,7 +152,7 @@
 								:failed="error !== null"
 								:filters-active="clientsQuery.filtersActive.value"
 								empty-label="mcpModule.oauthManagement.empty.clients"
-								@retry="fetchAll"
+								@retry="onRetry"
 								@reset-filters="clientsQuery.resetFilter"
 							/>
 						</template>
@@ -249,7 +249,7 @@
 								:failed="error !== null"
 								:filters-active="grantsQuery.filtersActive.value"
 								empty-label="mcpModule.oauthManagement.empty.grants"
-								@retry="fetchAll"
+								@retry="onRetry"
 								@reset-filters="grantsQuery.resetFilter"
 							/>
 						</template>
@@ -330,7 +330,7 @@
 								:failed="error !== null"
 								:filters-active="accessTokensQuery.filtersActive.value"
 								empty-label="mcpModule.oauthManagement.empty.accessTokens"
-								@retry="fetchAll"
+								@retry="onRetry"
 								@reset-filters="accessTokensQuery.resetFilter"
 							/>
 						</template>
@@ -412,7 +412,7 @@
 								:failed="error !== null"
 								:filters-active="refreshFamiliesQuery.filtersActive.value"
 								empty-label="mcpModule.oauthManagement.empty.refreshFamilies"
-								@retry="fetchAll"
+								@retry="onRetry"
 								@reset-filters="refreshFamiliesQuery.resetFilter"
 							/>
 						</template>
@@ -980,6 +980,15 @@ const grantStatus = (grant: IMcpOAuthGrant): { key: 'active' | 'expired' | 'inac
 
 const canRevokeGrant = (grant: IMcpOAuthGrant): boolean => grant.revokedAt === null && new Date(grant.expiresAt).getTime() > Date.now();
 const canEditGrant = (grant: IMcpOAuthGrant): boolean => grant.active;
+
+// `fetchAll` records the failure and rethrows so callers can react. As an event
+// handler that rejection has nowhere to go, and Vue reports it as an unhandled
+// error — the state is already on screen, so swallowing it here is the point.
+const onRetry = (): void => {
+	fetchAll().catch(() => {
+		// Already surfaced by the table's failed state.
+	});
+};
 
 // El-table only draws the active sort arrow when it is told what the sort is;
 // without this the tabs looked unsorted while being sorted by client name.
