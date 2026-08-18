@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 
 import { ElMessageBox } from 'element-plus';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -40,7 +40,11 @@ vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock('../../../common', () => ({
 	ViewHeader: { name: 'ViewHeader', template: '<header><slot name="extra" /></header>' },
 	useFlashMessage: () => ({ success: mocks.flashSuccess, error: mocks.flashError }),
-	useBreakpoints: () => ({ isLGDevice: ref(true) }),
+	useBreakpoints: () => ({ isLGDevice: ref(true), isMDDevice: ref(true) }),
+	AppBar: { name: 'AppBar', template: '<div><slot name="heading" /><slot name="button-right" /></div>' },
+	AppBarHeading: { name: 'AppBarHeading', template: '<div><slot name="icon" /><slot name="title" /></div>' },
+	AppBarButton: { name: 'AppBarButton', template: '<button><slot name="icon" /></button>' },
+	AppBarButtonAlign: { LEFT: 'left', RIGHT: 'right' },
 }));
 vi.mock('../composables/useMcpOAuthManagement', () => ({
 	useMcpOAuthManagement: () => ({
@@ -61,6 +65,108 @@ vi.mock('../composables/useMcpOAuthManagement', () => ({
 		revokeAll: mocks.revokeAll,
 	}),
 }));
+
+const formStubs = {
+	ElDrawer: { name: 'ElDrawer', props: ['beforeClose'], template: '<aside><slot /></aside>' },
+	ElScrollbar: { name: 'ElScrollbar', template: '<div><slot /></div>' },
+	ElText: { name: 'ElText', template: '<span><slot /></span>' },
+	ElButton: {
+		name: 'ElButton',
+		props: { type: String, plain: Boolean, disabled: Boolean },
+		template: '<button :disabled="disabled"><slot name="icon" /><slot /></button>',
+	},
+	ElForm: {
+		name: 'ElForm',
+		template: '<form><slot /></form>',
+		methods: { clearValidate: () => undefined, validate: () => Promise.resolve(true) },
+	},
+	ElFormItem: { name: 'ElFormItem', template: '<div><slot /></div>' },
+	AppBar: { name: 'AppBar', template: '<div><slot name="heading" /><slot name="button-right" /></div>' },
+	AppBarHeading: { name: 'AppBarHeading', template: '<div><slot name="icon" /><slot name="title" /></div>' },
+	ViewHeader: { name: 'ViewHeader', template: '<header><slot name="extra" /></header>' },
+};
+
+const mountForms = () => shallowMount(ViewMcpOAuthManagement, { global: { stubs: formStubs } });
+
+describe('ViewMcpOAuthManagement form conventions', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.spyOn(ElMessageBox, 'confirm');
+		(ElMessageBox.confirm as Mock).mockReset().mockResolvedValue('confirm');
+	});
+
+	it('labels the header create action the way the other list headers do', () => {
+		const wrapper = mountForms();
+
+		const create = wrapper
+			.findAllComponents({ name: 'ElButton' })
+			.find((candidate) => candidate.attributes('data-test-id') === 'create-mcp-oauth-client');
+
+		expect(create).toBeDefined();
+		expect(create?.props('type')).toBe('primary');
+		expect(create?.props('plain')).toBe(true);
+		expect(create?.text()).toContain('mcpModule.actions.add');
+	});
+
+	it('renders both drawer headings through el-text', () => {
+		const wrapper = mountForms();
+
+		const headings = wrapper.findAllComponents({ name: 'AppBarHeading' });
+
+		expect(headings.length).toBe(2);
+
+		for (const heading of headings) {
+			expect(heading.findComponent({ name: 'ElText' }).exists()).toBe(true);
+		}
+	});
+
+	it.each([
+		['client', 'openCreate', 'clientFormChanged'],
+		['grant', 'openGrantEdit', 'grantFormChanged'],
+	])('tracks changes on the %s form', async (_label, opener, changedKey) => {
+		const wrapper = mountForms();
+		const vm = wrapper.vm as unknown as Record<string, unknown>;
+
+		(vm[opener] as (value?: unknown) => void)(grant);
+		await nextTick();
+
+		expect(vm[changedKey]).toBe(false);
+	});
+
+	it('guards the client drawer close event', async () => {
+		const wrapper = mountForms();
+		const vm = wrapper.vm as unknown as { openCreate: () => void; clientForm: { name: string } };
+
+		vm.openCreate();
+		vm.clientForm.name = 'Something';
+		await nextTick();
+
+		const drawer = wrapper.findComponent({ name: 'ElDrawer' });
+		const beforeClose = drawer.props('beforeClose') as (done: () => void) => Promise<void>;
+		const done = vi.fn();
+
+		await beforeClose(done);
+		await flushPromises();
+
+		expect(ElMessageBox.confirm).toHaveBeenCalledOnce();
+		expect(done).toHaveBeenCalledOnce();
+	});
+
+	it('offers close on an untouched client form and discard once it changed', async () => {
+		const wrapper = mountForms();
+		const vm = wrapper.vm as unknown as { openCreate: () => void; clientForm: { name: string } };
+
+		vm.openCreate();
+		await nextTick();
+
+		expect(wrapper.find('[data-test-id="cancel-mcp-oauth-client-form"]').text()).toContain('mcpModule.actions.close');
+
+		vm.clientForm.name = 'Something';
+		await nextTick();
+
+		expect(wrapper.find('[data-test-id="cancel-mcp-oauth-client-form"]').text()).toContain('mcpModule.actions.discard');
+	});
+});
 
 describe('ViewMcpOAuthManagement', () => {
 	beforeEach(() => {

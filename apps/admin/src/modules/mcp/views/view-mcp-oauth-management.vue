@@ -8,17 +8,28 @@
 			<el-button
 				type="danger"
 				plain
+				class="px-4!"
+				data-test-id="revoke-all-mcp-oauth"
 				@click="confirmGlobalRevoke"
 			>
-				<icon icon="mdi:shield-remove-outline" />
+				<template #icon>
+					<icon icon="mdi:shield-remove-outline" />
+				</template>
+
 				{{ t('mcpModule.oauthManagement.revokeAll') }}
 			</el-button>
 			<el-button
 				type="primary"
+				plain
+				class="px-4! ml-2!"
+				data-test-id="create-mcp-oauth-client"
 				@click="openCreate"
 			>
-				<icon icon="mdi:plus" />
-				{{ t('mcpModule.oauthManagement.createClient') }}
+				<template #icon>
+					<icon icon="mdi:plus" />
+				</template>
+
+				{{ t('mcpModule.actions.add') }}
 			</el-button>
 		</template>
 	</view-header>
@@ -280,6 +291,7 @@
 		:show-close="false"
 		:with-header="false"
 		:size="isLGDevice ? '40%' : '100%'"
+		:before-close="onCloseClientForm"
 		data-test-id="mcp-oauth-client-form-drawer"
 		@closed="resetClientForm"
 	>
@@ -292,7 +304,9 @@
 						</template>
 
 						<template #title>
-							{{ editingClient ? t('mcpModule.oauthManagement.editClient') : t('mcpModule.oauthManagement.createClient') }}
+							<el-text truncated>
+								{{ editingClient ? t('mcpModule.oauthManagement.editClient') : t('mcpModule.oauthManagement.createClient') }}
+							</el-text>
 						</template>
 					</app-bar-heading>
 				</template>
@@ -301,7 +315,7 @@
 					<app-bar-button
 						:align="AppBarButtonAlign.RIGHT"
 						class="mr-2"
-						@click="showClientDialog = false"
+						@click="() => onCloseClientForm()"
 					>
 						<template #icon>
 							<el-icon>
@@ -385,17 +399,20 @@
 					<el-button
 						link
 						class="mr-2"
-						@click="showClientDialog = false"
+						data-test-id="cancel-mcp-oauth-client-form"
+						@click="() => onCloseClientForm()"
 					>
-						{{ t('mcpModule.actions.cancel') }}
+						{{ clientFormChanged ? t('mcpModule.actions.discard') : t('mcpModule.actions.close') }}
 					</el-button>
 
 					<el-button
 						type="primary"
 						:loading="saving"
+						:disabled="saving || !clientFormChanged"
+						data-test-id="save-mcp-oauth-client-form"
 						@click="saveClient"
 					>
-						{{ editingClient ? t('mcpModule.actions.save') : t('mcpModule.actions.create') }}
+						{{ t('mcpModule.actions.save') }}
 					</el-button>
 				</div>
 			</div>
@@ -407,6 +424,7 @@
 		:show-close="false"
 		:with-header="false"
 		:size="isLGDevice ? '40%' : '100%'"
+		:before-close="onCloseGrantForm"
 		data-test-id="mcp-oauth-grant-form-drawer"
 		@closed="resetGrantForm"
 	>
@@ -419,7 +437,9 @@
 						</template>
 
 						<template #title>
-							{{ t('mcpModule.oauthManagement.editGrant') }}
+							<el-text truncated>
+								{{ t('mcpModule.oauthManagement.editGrant') }}
+							</el-text>
 						</template>
 					</app-bar-heading>
 				</template>
@@ -428,7 +448,7 @@
 					<app-bar-button
 						:align="AppBarButtonAlign.RIGHT"
 						class="mr-2"
-						@click="showGrantDialog = false"
+						@click="() => onCloseGrantForm()"
 					>
 						<template #icon>
 							<el-icon>
@@ -485,14 +505,17 @@
 					<el-button
 						link
 						class="mr-2"
-						@click="showGrantDialog = false"
+						data-test-id="cancel-mcp-oauth-grant-form"
+						@click="() => onCloseGrantForm()"
 					>
-						{{ t('mcpModule.actions.cancel') }}
+						{{ grantFormChanged ? t('mcpModule.actions.discard') : t('mcpModule.actions.close') }}
 					</el-button>
 
 					<el-button
 						type="primary"
 						:loading="saving"
+						:disabled="saving || !grantFormChanged"
+						data-test-id="save-mcp-oauth-grant-form"
 						@click="saveGrant"
 					>
 						{{ t('mcpModule.actions.save') }}
@@ -525,10 +548,12 @@ import {
 	ElTableColumn,
 	ElTabs,
 	ElTag,
+	ElText,
 	type FormInstance,
 	type FormRules,
 	vLoading,
 } from 'element-plus';
+import { isEqual } from 'lodash';
 
 import { Icon } from '@iconify/vue';
 
@@ -606,12 +631,50 @@ const ScopeTags = defineComponent({
 		),
 });
 
+type ClientSnapshot = { name: string; redirectUris: string[]; maximumScopes: McpOAuthScope[] };
+
+const snapshotClientForm = (): ClientSnapshot => ({
+	name: clientForm.name,
+	redirectUris: [...clientForm.redirectUris],
+	maximumScopes: [...clientForm.maximumScopes],
+});
+
+// Captured when the drawer opens, so "changed" means edited since opening
+// rather than simply populated.
+const initialClientForm = ref<ClientSnapshot>(snapshotClientForm());
+
+const clientFormChanged = computed<boolean>((): boolean => !isEqual(snapshotClientForm(), initialClientForm.value));
+
 const resetClientForm = (): void => {
 	editingClient.value = null;
 	clientForm.name = '';
 	clientForm.redirectUris = [''];
 	clientForm.maximumScopes = [McpOAuthScope.READ];
 	clientFormEl.value?.clearValidate();
+	initialClientForm.value = snapshotClientForm();
+};
+
+/**
+ * Shared by the footer action, the close button in the drawer's bar and the
+ * drawer's own `before-close`, so no route out of the form skips the check.
+ * `done` arrives only from `before-close`; withholding it keeps the drawer open.
+ */
+const onCloseClientForm = async (done?: () => void): Promise<void> => {
+	if (clientFormChanged.value) {
+		try {
+			await ElMessageBox.confirm(t('mcpModule.confirm.discard'), t('mcpModule.headings.discard'), {
+				confirmButtonText: t('mcpModule.actions.yes'),
+				cancelButtonText: t('mcpModule.actions.no'),
+				type: 'warning',
+			});
+		} catch {
+			return;
+		}
+	}
+
+	showClientDialog.value = false;
+
+	done?.();
 };
 
 const openCreate = (): void => {
@@ -624,20 +687,45 @@ const openEdit = (client: IMcpOAuthClient): void => {
 	clientForm.name = client.name;
 	clientForm.redirectUris = [...client.redirectUris];
 	clientForm.maximumScopes = [...client.maximumScopes];
+	initialClientForm.value = snapshotClientForm();
 	showClientDialog.value = true;
 };
+
+const initialGrantForm = ref<McpOAuthScope[]>([...grantForm.approvedScopes]);
+
+const grantFormChanged = computed<boolean>((): boolean => !isEqual([...grantForm.approvedScopes], initialGrantForm.value));
 
 const resetGrantForm = (): void => {
 	editingGrant.value = null;
 	grantScopeOptions.value = [];
 	grantForm.approvedScopes = [McpOAuthScope.READ];
 	grantFormEl.value?.clearValidate();
+	initialGrantForm.value = [...grantForm.approvedScopes];
+};
+
+const onCloseGrantForm = async (done?: () => void): Promise<void> => {
+	if (grantFormChanged.value) {
+		try {
+			await ElMessageBox.confirm(t('mcpModule.confirm.discard'), t('mcpModule.headings.discard'), {
+				confirmButtonText: t('mcpModule.actions.yes'),
+				cancelButtonText: t('mcpModule.actions.no'),
+				type: 'warning',
+			});
+		} catch {
+			return;
+		}
+	}
+
+	showGrantDialog.value = false;
+
+	done?.();
 };
 
 const openGrantEdit = (grant: IMcpOAuthGrant): void => {
 	editingGrant.value = grant;
 	grantScopeOptions.value = [...grant.approvedScopes];
 	grantForm.approvedScopes = [...grant.approvedScopes];
+	initialGrantForm.value = [...grantForm.approvedScopes];
 	showGrantDialog.value = true;
 };
 
