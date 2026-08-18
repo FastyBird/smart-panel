@@ -33,6 +33,9 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			icon: 'mdi:shield-key-outline',
 			menu: 6510,
 			module: MCP_MODULE_NAME,
+			// The provider's endpoints are not mounted while this is off, so the
+			// page would have nothing to show.
+			moduleFlag: 'oauthEnabled',
 		},
 	},
 	{

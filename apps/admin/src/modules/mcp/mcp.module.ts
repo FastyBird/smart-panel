@@ -5,13 +5,15 @@ import { defaultsDeep } from 'lodash';
 
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
-import { type IModule, type ModuleInjectionKey, injectModulesManager } from '../../common';
+import { type IModule, type ModuleInjectionKey, injectModulesManager, injectRouterGuard, injectStoresManager } from '../../common';
 import { CONFIG_MODULE_MODULE_TYPE, CONFIG_MODULE_NAME } from '../config';
+import { configModulesStoreKey } from '../config/store/keys';
 
 import { McpConfigForm } from './components/components';
 import { locales } from './locales';
 import { MCP_MODULE_NAME } from './mcp.constants';
 import { ModuleRoutes } from './router';
+import oauthEnabledGuard from './router/guards/oauth-enabled.guard';
 import { McpConfigEditFormSchema } from './schemas/config.schemas';
 import { McpConfigSchema, McpConfigUpdateReqSchema } from './store/config.store.schemas';
 
@@ -49,6 +51,15 @@ export default {
 			modules: [CONFIG_MODULE_NAME],
 			isCore: true,
 		});
+
+		const storesManager = injectStoresManager(app);
+		const routerGuard = injectRouterGuard(app);
+
+		// Consulted for both the menu and navigation, so the OAuth pages are
+		// hidden and unreachable while the provider is switched off.
+		routerGuard.register(
+			oauthEnabledGuard(() => storesManager.getStore(configModulesStoreKey).findByType(MCP_MODULE_NAME) as { oauthEnabled?: boolean } | null)
+		);
 
 		const rootRoute = options.router.getRoutes().find((route) => route.name === AppRouteNames.ROOT);
 
