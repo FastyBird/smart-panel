@@ -1,6 +1,7 @@
 /**
  * OpenAPI extra models for Devices Shelly NG plugin
  */
+import { AdoptDeviceDto, AdoptDevicesDto } from './dto/adopt-devices.dto';
 import { CreateShellyNgChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateShellyNgChannelDto } from './dto/create-channel.dto';
 import { CreateShellyNgDeviceDto } from './dto/create-device.dto';
@@ -19,12 +20,14 @@ import {
 } from './entities/devices-shelly-ng.entity';
 import { ShellyNgConfigModel, ShellyNgMdnsConfigModel, ShellyNgWebsocketsConfigModel } from './models/config.model';
 import {
+	ShellyNgAdoptionResponseModel,
 	ShellyNgDeviceInfoResponseModel,
 	ShellyNgDiscoverySessionResponseModel,
 	ShellyNgMappingReloadResponseModel,
 	ShellyNgSupportedDevicesResponseModel,
 } from './models/shelly-ng-response.model';
 import {
+	ShellyNgAdoptionResultModel,
 	ShellyNgDeviceInfoAuthenticationModel,
 	ShellyNgDeviceInfoComponentModel,
 	ShellyNgDeviceInfoModel,
@@ -49,12 +52,16 @@ export const DEVICES_SHELLY_NG_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	ShellyNgUpdatePluginConfigDto,
 	ShellyNgUpdatePluginConfigMdnsDto,
 	ShellyNgUpdatePluginConfigWebsocketsDto,
+	AdoptDeviceDto,
+	AdoptDevicesDto,
 	// Response models
+	ShellyNgAdoptionResponseModel,
 	ShellyNgDeviceInfoResponseModel,
 	ShellyNgDiscoverySessionResponseModel,
 	ShellyNgMappingReloadResponseModel,
 	ShellyNgSupportedDevicesResponseModel,
 	// Data models
+	ShellyNgAdoptionResultModel,
 	ShellyNgDiscoveryDeviceAuthenticationModel,
 	ShellyNgDiscoveryDeviceModel,
 	ShellyNgDiscoverySessionModel,

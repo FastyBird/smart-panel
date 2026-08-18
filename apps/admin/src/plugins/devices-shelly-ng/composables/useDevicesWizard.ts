@@ -2,7 +2,6 @@ import { computed, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { orderBy } from 'natural-orderby';
-import { v4 as uuid } from 'uuid';
 
 import { useNow } from '@vueuse/core';
 
@@ -21,11 +20,12 @@ import {
 } from '../../../modules/devices';
 import {
 	type DevicesModuleDeviceCategory,
+	type DevicesShellyNgPluginCreateAdoptOperation,
 	type DevicesShellyNgPluginCreateDiscoveryManualOperation,
 	type DevicesShellyNgPluginCreateDiscoveryOperation,
 	type DevicesShellyNgPluginGetDiscoveryOperation,
 } from '../../../openapi.constants';
-import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_PLUGIN_PREFIX, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
+import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_PLUGIN_PREFIX } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgApiException, DevicesShellyNgValidationException } from '../devices-shelly-ng.exceptions';
 import type { IShellyNgDiscoveryDevice, IShellyNgDiscoverySession } from '../schemas/devices.types';
 import { transformDeviceInfoRequest, transformDiscoverySessionResponse } from '../utils/devices.transformers';
@@ -463,56 +463,37 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		},
 	]);
 
-	const updateRegistered = async (
-		id: string,
-		{ name, category, password }: { name: string; category: DevicesModuleDeviceCategory; password: string | null }
-	): Promise<void> => {
-		const data: { type: string; name: string; category: DevicesModuleDeviceCategory; password?: string } = {
-			type: DEVICES_SHELLY_NG_TYPE,
-			name,
-			category,
-		};
-
-		if (password !== null) {
-			data.password = password;
-		}
-
-		// `devicesStore.edit` requires the device to be present in the local store. When the
-		// main connector auto-adopts a device after the wizard's snapshot was taken, the new
-		// row may not be in the admin store yet — pull it in first so the edit can land.
-		if (devicesStore.findById(id) === null) {
-			await devicesStore.get({ id });
-		}
-
-		await devicesStore.edit({ id, data });
-	};
-
 	const adopt = async (selection: IWizardAdoptSelection[]): Promise<IWizardResult[]> => {
 		formResult.value = FormResult.WORKING;
 
 		// Snapshot the descriptors BEFORE refreshing. The shell already captured the user's
 		// intent (name / category) in `selection`, but the refresh below can drop a device from
-		// the live list entirely, and we still need its identifier and registration state to
-		// adopt the device the user chose.
+		// the live list entirely, and we still need its identifier to adopt the device the user
+		// chose.
 		const snapshot = devices.value.slice();
 
-		// Refresh once so we see any device the main service auto-adopted between scan and adoption.
-		// Lets us route those through `edit` instead of getting a duplicate-identifier error from `add`.
 		if (session.value !== null) {
 			try {
 				await refreshDiscovery();
 			} catch {
-				// Stale snapshot is fine — the per-device fallback below still handles late races.
+				// Stale snapshot is fine — the identifiers we need are already in hand.
 			}
 		}
 
 		const outcomes: IShellyNgWizardAdoptionResult[] = [];
+		const payload: {
+			identifier: string;
+			hostname: string;
+			name: string;
+			category: DevicesModuleDeviceCategory;
+			password?: string | null;
+		}[] = [];
 
 		for (const item of selection) {
 			const device =
 				devices.value.find((candidate) => candidate.hostname === item.key) ?? snapshot.find((candidate) => candidate.hostname === item.key);
 
-			if (device === undefined) {
+			if (device === undefined || device.identifier === null) {
 				outcomes.push({
 					hostname: item.key,
 					name: item.name,
@@ -523,84 +504,58 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 				continue;
 			}
 
-			// The shell already trims and defaults the name, but a blank one must never reach
-			// the backend — fall back to the same chain that seeded the field.
-			const name = item.name.trim() || suggestedNameFor(device);
-			const category = item.category;
-			const password = passwordByHostname[device.hostname] ?? null;
+			payload.push({
+				identifier: device.identifier,
+				hostname: device.hostname,
+				// The shell already trims and defaults the name, but a blank one must never reach
+				// the backend — fall back to the same chain that seeded the field.
+				name: item.name.trim() || suggestedNameFor(device),
+				category: item.category,
+				password: passwordByHostname[device.hostname] ?? null,
+			});
+		}
 
+		if (payload.length > 0) {
+			// One request for the whole selection. Sending one per device tripped the backend's
+			// shared rate limit past thirty devices, and left this composable racing the
+			// connector's own auto-adoption — which the backend now settles against current
+			// state instead of a snapshot taken here.
 			try {
-				if (device.status === 'already_registered' && device.registeredDeviceId !== null) {
-					await updateRegistered(device.registeredDeviceId, { name, category, password });
+				const { data: responseBody, error, response } = await backend.client.POST(
+					`/${PLUGINS_PREFIX}/${DEVICES_SHELLY_NG_PLUGIN_PREFIX}/devices/adopt`,
+					{ body: { data: { devices: payload } } }
+				);
 
-					outcomes.push({
-						hostname: device.hostname,
-						name,
-						status: 'updated',
-						error: null,
-					});
+				if (typeof responseBody === 'undefined' || !response.ok) {
+					const errorReason = error
+						? getErrorReason<DevicesShellyNgPluginCreateAdoptOperation>(
+								error,
+								t('devicesShellyNgPlugin.messages.wizard.adoptionNotCreated')
+							)
+						: t('devicesShellyNgPlugin.messages.wizard.adoptionNotCreated');
 
-					continue;
+					throw new DevicesShellyNgApiException(errorReason, response.status);
 				}
 
-				const id = uuid().toString();
-
-				try {
-					await devicesStore.add({
-						id,
-						draft: false,
-						data: {
-							id,
-							type: DEVICES_SHELLY_NG_TYPE,
-							category,
-							identifier: device.identifier,
-							name,
-							description: null,
-							enabled: true,
-							password,
-							wifiAddress: device.hostname,
-						},
-					});
+				for (const result of responseBody.data) {
+					const requested = payload.find((item) => item.hostname === result.hostname);
 
 					outcomes.push({
-						hostname: device.hostname,
-						name,
-						status: 'created',
-						error: null,
+						hostname: result.hostname,
+						name: requested?.name ?? result.hostname,
+						status: result.status,
+						error: result.reason,
 					});
-				} catch (createError: unknown) {
-					// The device may have been auto-created by the main shelly-ng service after the discovery
-					// snapshot was taken. Re-poll, and if it now shows as already_registered, fall back to update.
-					try {
-						await refreshDiscovery();
-					} catch {
-						// ignore — handled below
-					}
-
-					const refreshed = devices.value.find((candidate) => candidate.hostname === device.hostname);
-
-					if (refreshed?.status === 'already_registered' && refreshed.registeredDeviceId !== null) {
-						await updateRegistered(refreshed.registeredDeviceId, { name, category, password });
-
-						outcomes.push({
-							hostname: device.hostname,
-							name,
-							status: 'updated',
-							error: null,
-						});
-
-						continue;
-					}
-
-					throw createError;
 				}
+
+				await devicesStore.fetch();
 			} catch (error: unknown) {
-				outcomes.push({
-					hostname: device.hostname,
-					name,
-					status: 'failed',
-					error: error instanceof Error ? error.message : t('devicesShellyNgPlugin.messages.wizard.adoptionNotCreated'),
-				});
+				const reason =
+					error instanceof Error ? error.message : t('devicesShellyNgPlugin.messages.wizard.adoptionNotCreated');
+
+				for (const item of payload) {
+					outcomes.push({ hostname: item.hostname, name: item.name, status: 'failed', error: reason });
+				}
 			}
 		}
 

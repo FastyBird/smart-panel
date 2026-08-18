@@ -19,9 +19,11 @@ import {
 	DEVICES_SHELLY_NG_PLUGIN_NAME,
 } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
+import { ReqAdoptDevicesDto } from '../dto/adopt-devices.dto';
 import { DevicesShellyNgPluginReqGetInfo } from '../dto/shelly-ng-get-info.dto';
 import { MappingLoaderService } from '../mappings';
 import {
+	ShellyNgAdoptionResponseModel,
 	ShellyNgDeviceInfoResponseModel,
 	ShellyNgDiscoverySessionResponseModel,
 	ShellyNgMappingReloadResponseModel,
@@ -29,6 +31,7 @@ import {
 } from '../models/shelly-ng-response.model';
 import { ShellyNgDeviceInfoModel, ShellyNgSupportedDeviceModel } from '../models/shelly-ng.model';
 import { DeviceManagerService } from '../services/device-manager.service';
+import { ShellyNgAdoptionService } from '../services/shelly-ng-adoption.service';
 import { ShellyNgDiscoveryService } from '../services/shelly-ng-discovery.service';
 
 @ApiTags(DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME)
@@ -43,6 +46,7 @@ export class ShellyNgDevicesController {
 		private readonly deviceManagerService: DeviceManagerService,
 		private readonly mappingLoaderService: MappingLoaderService,
 		private readonly discoveryService: ShellyNgDiscoveryService,
+		private readonly adoptionService: ShellyNgAdoptionService,
 	) {}
 
 	@ApiOperation({
@@ -312,5 +316,27 @@ export class ShellyNgDevicesController {
 
 			throw new UnprocessableEntityException('Failed to reload mapping configurations');
 		}
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME],
+		summary: 'Adopt discovered Shelly NG devices',
+		description:
+			'Adopts a selection of discovered devices in a single request. Each device is adopted independently and its outcome reported separately, so one device that can not be adopted does not discard the rest of the selection. A device the connector has already registered on its own is updated rather than reported as a conflict.',
+		operationId: 'create-devices-shelly-ng-plugin-adopt',
+	})
+	@ApiBody({ type: ReqAdoptDevicesDto, description: 'The devices to adopt' })
+	@ApiSuccessResponse(ShellyNgAdoptionResponseModel, 'Returns the outcome for each device in the selection')
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post('adopt')
+	async adopt(@Body() body: ReqAdoptDevicesDto): Promise<ShellyNgAdoptionResponseModel> {
+		this.logger.debug(`Incoming request to adopt ${body.data.devices.length} device(s)`);
+
+		const response = new ShellyNgAdoptionResponseModel();
+
+		response.data = await this.adoptionService.adopt(body.data.devices);
+
+		return response;
 	}
 }

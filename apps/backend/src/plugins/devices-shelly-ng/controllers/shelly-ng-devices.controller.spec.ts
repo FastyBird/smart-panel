@@ -13,6 +13,7 @@ import { THROTTLER_LIMIT, THROTTLER_TTL } from '@nestjs/throttler/dist/throttler
 
 import { MappingLoaderService } from '../mappings';
 import { DeviceManagerService } from '../services/device-manager.service';
+import { ShellyNgAdoptionService } from '../services/shelly-ng-adoption.service';
 import { ShellyNgDiscoveryService } from '../services/shelly-ng-discovery.service';
 
 import { ShellyNgDevicesController } from './shelly-ng-devices.controller';
@@ -50,6 +51,7 @@ describe('ShellyNgDevicesController', () => {
 	let controller: ShellyNgDevicesController;
 	let deviceManager: jest.Mocked<DeviceManagerService>;
 	let discoveryService: jest.Mocked<ShellyNgDiscoveryService>;
+	let adoptionService: jest.Mocked<ShellyNgAdoptionService>;
 
 	beforeAll(() => {});
 
@@ -62,12 +64,16 @@ describe('ShellyNgDevicesController', () => {
 			get: jest.fn(),
 			manual: jest.fn(),
 		};
+		const adoptionServiceMock: Partial<jest.Mocked<ShellyNgAdoptionService>> = {
+			adopt: jest.fn(),
+		};
 
 		const module: TestingModule = await Test.createTestingModule({
 			controllers: [ShellyNgDevicesController],
 			providers: [
 				{ provide: DeviceManagerService, useValue: deviceManagerMock },
 				{ provide: ShellyNgDiscoveryService, useValue: discoveryServiceMock },
+				{ provide: ShellyNgAdoptionService, useValue: adoptionServiceMock },
 				{
 					provide: MappingLoaderService,
 					useValue: {
@@ -81,6 +87,7 @@ describe('ShellyNgDevicesController', () => {
 		controller = module.get(ShellyNgDevicesController);
 		deviceManager = module.get(DeviceManagerService) as jest.Mocked<DeviceManagerService>;
 		discoveryService = module.get(ShellyNgDiscoveryService) as jest.Mocked<ShellyNgDiscoveryService>;
+		adoptionService = module.get(ShellyNgAdoptionService) as jest.Mocked<ShellyNgAdoptionService>;
 	});
 
 	describe('Shelly NG discovery endpoints', () => {
@@ -257,6 +264,37 @@ describe('ShellyNgDevicesController', () => {
 			expect(groups).toContain('SHELLYPLUS1');
 			expect(groups).toContain('SHELLYDIMMER');
 			expect(groups).not.toContain('BROKEN');
+		});
+	});
+
+	describe('Shelly NG adoption endpoint', () => {
+		it('hands the whole selection to the adoption service in one call', async () => {
+			const devices = [
+				{
+					identifier: 'shellyplus1-aabbcc',
+					hostname: '192.168.1.10',
+					name: 'Kitchen relay',
+					category: 'lighting',
+					password: null,
+				},
+			];
+
+			adoptionService.adopt.mockResolvedValue([
+				{
+					hostname: '192.168.1.10',
+					identifier: 'shellyplus1-aabbcc',
+					status: 'created',
+					deviceId: 'dev-1',
+					reason: null,
+				},
+			]);
+
+			const response = await controller.adopt({ data: { devices } } as never);
+
+			expect(adoptionService.adopt).toHaveBeenCalledTimes(1);
+			expect(adoptionService.adopt).toHaveBeenCalledWith(devices);
+			expect(response.data).toHaveLength(1);
+			expect(response.data[0]?.status).toBe('created');
 		});
 	});
 });
