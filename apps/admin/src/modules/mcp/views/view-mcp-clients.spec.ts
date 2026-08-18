@@ -48,7 +48,7 @@ vi.mock('../../../common', () => ({
 	useListQuery: () => ({
 		filters: ref({ search: undefined, status: 'all', enabled: 'all', capabilities: [] }),
 		sort: ref([{ by: 'name', dir: 'asc' }]),
-		pagination: ref({ page: 1, size: 25 }),
+		pagination: ref({ page: 1, size: 10 }),
 		viewMode: ref('table'),
 		reset: vi.fn(),
 	}),

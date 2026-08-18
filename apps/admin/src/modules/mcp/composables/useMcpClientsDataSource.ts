@@ -4,15 +4,12 @@ import { isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
 import { type ISortEntry, useListQuery } from '../../../common';
-import { MCP_MODULE_NAME, McpCapability } from '../mcp.constants';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, MCP_MODULE_NAME, McpCapability } from '../mcp.constants';
 import { resolveMcpClientStatus } from '../mcp.utils';
 import type { IMcpClient } from '../schemas/client.types';
 
 import { McpClientsFilterSchema } from './schemas';
 import type { IMcpClientsFilter, IUseMcpClientsDataSource } from './types';
-
-const DEFAULT_PAGE = 1;
-const DEFAULT_PAGE_SIZE = 25;
 
 export const defaultMcpClientsFilter: IMcpClientsFilter = {
 	search: undefined,

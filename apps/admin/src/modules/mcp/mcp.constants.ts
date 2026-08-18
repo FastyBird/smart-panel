@@ -26,3 +26,6 @@ export const RouteNames = {
 	OAUTH_MANAGEMENT: 'mcp_module-oauth-management',
 	OAUTH_CONSENT: 'mcp_module-oauth-consent',
 };
+
+export const DEFAULT_PAGE = 1;
+export const DEFAULT_PAGE_SIZE = 10;
