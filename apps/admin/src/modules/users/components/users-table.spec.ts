@@ -20,6 +20,17 @@ vi.mock('vue-i18n', () => ({
 	}),
 }));
 
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		// The selection column is behind `v-if="isMDDevice"`, and jsdom reports a
+		// narrow viewport, so without this the column under test never renders.
+		useBreakpoints: () => ({ isMDDevice: true }),
+	};
+});
+
 describe('UsersTable', (): void => {
 	let wrapper: VueWrapper<UsersTableInstance>;
 
@@ -165,4 +176,43 @@ describe('UsersTable', (): void => {
 		expect(wrapper.emitted('remove')).toBeTruthy();
 		expect(wrapper.emitted('remove')?.[0]).toEqual(['1']);
 	});
+
+	// The backend refuses both of these, so offering them for selection only
+	// produces a failure the operator can do nothing about - and "select all"
+	// would always report one.
+	describe('protected rows', (): void => {
+		const selectableFor = (props: Partial<IUsersTableProps> = {}): ((row: IUser) => boolean) => {
+			createWrapper(props);
+
+			const column = wrapper.findAllComponents(ElTableColumn).find((c) => c.props('type') === 'selection');
+
+			return column!.props('selectable') as (row: IUser) => boolean;
+		};
+
+		it('does not let the owner account be selected', (): void => {
+			const isSelectable = selectableFor();
+
+			// usersMock[1] is the owner
+			expect(isSelectable(usersMock[1]!)).toBe(false);
+		});
+
+		it("does not let the operator select their own account", (): void => {
+			const isSelectable = selectableFor({ currentUserId: '1' });
+
+			expect(isSelectable(usersMock[0]!)).toBe(false);
+		});
+
+		it('lets any other account be selected', (): void => {
+			const isSelectable = selectableFor({ currentUserId: '2' });
+
+			expect(isSelectable(usersMock[0]!)).toBe(true);
+		});
+
+		it('selects normally when the current user is unknown', (): void => {
+			const isSelectable = selectableFor({ currentUserId: null });
+
+			expect(isSelectable(usersMock[0]!)).toBe(true);
+		});
+	});
+
 });
