@@ -9,7 +9,7 @@ import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
  * could fail on its own, so the outcome has to stay per item: one resource
  * refusing must not discard the rest of the selection.
  */
-@ApiSchema({ name: 'CommonBulkFailureModel' })
+@ApiSchema({ name: 'CommonDataBulkFailure' })
 export class BulkFailureModel {
 	@ApiProperty({
 		description: 'Identifier of the item that could not be processed',
@@ -36,7 +36,7 @@ export class BulkFailureModel {
  * plain strings rather than UUIDs because not every resource is keyed by one -
  * extensions are keyed by their type.
  */
-@ApiSchema({ name: 'CommonBulkResultModel' })
+@ApiSchema({ name: 'CommonDataBulkResult' })
 export class BulkResultModel {
 	@ApiProperty({
 		description: 'Identifiers of the items that were processed successfully',
