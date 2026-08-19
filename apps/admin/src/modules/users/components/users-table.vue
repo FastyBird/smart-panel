@@ -96,6 +96,7 @@
 			v-if="isMDDevice"
 			type="selection"
 			:width="30"
+			:selectable="isSelectable"
 		/>
 
 		<el-table-column
@@ -256,6 +257,27 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const { isMDDevice } = useBreakpoints();
+
+/**
+ * The backend refuses to delete either of these, so offering them for selection
+ * only produces a failure the operator can do nothing about - and a bulk delete
+ * of "everything" would always report one.
+ *
+ * Same two rules the edit form already applies to the role field.
+ */
+const isSelectable = (row: IUser): boolean => {
+	// Users cannot delete their own account
+	if (typeof props.currentUserId === 'string' && props.currentUserId === row.id) {
+		return false;
+	}
+
+	// The owner account cannot be deleted
+	if (row.role === UsersModuleUserRole.owner) {
+		return false;
+	}
+
+	return true;
+};
 
 const noResults = computed<boolean>((): boolean => props.totalRows === 0);
 

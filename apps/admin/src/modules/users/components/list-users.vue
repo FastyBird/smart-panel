@@ -32,6 +32,7 @@
 				:loading="props.loading"
 				:filters-active="props.filtersActive"
 				:table-height="tableHeight"
+				:current-user-id="props.currentUserId"
 				@edit="onEdit"
 				@remove="onRemove"
 				@reset-filters="onResetFilters"

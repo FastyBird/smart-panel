@@ -96,6 +96,7 @@
 			v-if="isMDDevice"
 			type="selection"
 			:width="30"
+			:selectable="isSelectable"
 		/>
 
 		<el-table-column
@@ -263,6 +264,15 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const { isMDDevice } = useBreakpoints();
+
+/**
+ * The backend refuses to delete the primary location - it says to reassign the
+ * primary first - so offering it for selection only produces a failure the
+ * operator can do nothing about, and "select all" would always report one.
+ *
+ * The row already renders a Primary tag from the same prop.
+ */
+const isSelectable = (row: IWeatherLocation): boolean => row.id !== props.primaryLocationId;
 
 const innerFilters = useVModel(props, 'filters', emit);
 

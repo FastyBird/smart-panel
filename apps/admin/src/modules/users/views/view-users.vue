@@ -85,6 +85,7 @@
 			:total-rows="totalRows"
 			:loading="areLoading"
 			:filters-active="filtersActive"
+			:current-user-id="profile?.id ?? null"
 			@edit="onUserEdit"
 			@remove="onUserRemove"
 			@reset-filters="onResetFilters"
@@ -163,6 +164,7 @@ import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
 import ListUsers from '../components/list-users.vue';
+import { useSession } from '../../auth/composables/composables';
 import { useUsersActions, useUsersDataSource } from '../composables/composables';
 import type { IUser } from '../store/users.store.types';
 import { RouteNames } from '../users.constants';
@@ -179,6 +181,8 @@ const props = defineProps<IViewUsersProps>();
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
+
+const { profile } = useSession();
 
 useMeta({
 	title: t('usersModule.meta.users.list.title'),
