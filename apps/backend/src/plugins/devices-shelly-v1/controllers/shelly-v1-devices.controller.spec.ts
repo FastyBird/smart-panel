@@ -10,6 +10,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { DevicesShellyV1Exception } from '../devices-shelly-v1.exceptions';
 import { ShellyV1DeviceInfoModel } from '../models/shelly-v1.model';
+import { ShellyV1AdoptionService } from '../services/shelly-v1-adoption.service';
 import { ShellyV1DiscoveryService } from '../services/shelly-v1-discovery.service';
 import { ShellyV1ProbeService } from '../services/shelly-v1-probe.service';
 
@@ -18,6 +19,7 @@ import { ShellyV1DevicesController } from './shelly-v1-devices.controller';
 describe('ShellyV1DevicesController', () => {
 	let controller: ShellyV1DevicesController;
 	let probeService: jest.Mocked<ShellyV1ProbeService>;
+	let adoptionService: jest.Mocked<ShellyV1AdoptionService>;
 
 	beforeAll(() => {});
 
@@ -32,16 +34,22 @@ describe('ShellyV1DevicesController', () => {
 			manual: jest.fn(),
 		};
 
+		const adoptionServiceMock: Partial<jest.Mocked<ShellyV1AdoptionService>> = {
+			adopt: jest.fn(),
+		};
+
 		const module: TestingModule = await Test.createTestingModule({
 			controllers: [ShellyV1DevicesController],
 			providers: [
 				{ provide: ShellyV1ProbeService, useValue: probeServiceMock },
 				{ provide: ShellyV1DiscoveryService, useValue: discoveryServiceMock },
+				{ provide: ShellyV1AdoptionService, useValue: adoptionServiceMock },
 			],
 		}).compile();
 
 		controller = module.get(ShellyV1DevicesController);
 		probeService = module.get(ShellyV1ProbeService) as jest.Mocked<ShellyV1ProbeService>;
+		adoptionService = module.get(ShellyV1AdoptionService) as jest.Mocked<ShellyV1AdoptionService>;
 	});
 
 	afterEach(() => {
@@ -158,6 +166,36 @@ describe('ShellyV1DevicesController', () => {
 			expect(firstDevice).toHaveProperty('categories');
 			expect(Array.isArray(firstDevice.models)).toBe(true);
 			expect(Array.isArray(firstDevice.categories)).toBe(true);
+		});
+	});
+
+	describe('POST /devices/adopt', () => {
+		it('hands the whole selection to the adoption service in one call', async () => {
+			const devices = [
+				{
+					identifier: 'shelly1-a4cf12df3b21',
+					hostname: '192.168.1.100',
+					name: 'Kitchen light',
+					category: 'lighting',
+					password: null,
+				},
+			];
+
+			adoptionService.adopt.mockResolvedValue([
+				{
+					hostname: '192.168.1.100',
+					identifier: 'shelly1-a4cf12df3b21',
+					status: 'created',
+					deviceId: 'dev-1',
+					reason: null,
+				},
+			]);
+
+			const response = await controller.adopt({ data: { devices } } as never);
+
+			expect(adoptionService.adopt).toHaveBeenCalledTimes(1);
+			expect(adoptionService.adopt).toHaveBeenCalledWith(devices);
+			expect(response.data[0]?.status).toBe('created');
 		});
 	});
 });
