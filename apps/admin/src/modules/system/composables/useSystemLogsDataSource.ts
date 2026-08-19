@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue';
+import { computed, onScopeDispose, ref, watch } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
@@ -104,10 +104,27 @@ export const useSystemLogsDataSource = (props?: IUseSystemLogsDataSourceProps): 
 			}
 
 			if (on) {
-				timer = setInterval(() => logsStore.fetch({ append: true }), 3000);
+				timer = setInterval((): void => {
+					// A slow backend must not stack overlapping requests, and a failed tick
+					// simply retries on the next one.
+					if (semaphore.value.fetching.items) {
+						return;
+					}
+
+					logsStore.fetch({ append: true }).catch((): void => undefined);
+				}, 3000);
 			}
 		}
 	);
+
+	// Clean up timer when composable scope is disposed
+	onScopeDispose((): void => {
+		if (timer) {
+			clearInterval(timer);
+
+			timer = null;
+		}
+	});
 
 	return {
 		systemLogs,

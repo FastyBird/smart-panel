@@ -30,6 +30,11 @@ import type {
 } from './logs-entries.store.types';
 import { transformLogEntryCreateRequest, transformLogEntryResponse } from './logs-entries.transformers';
 
+// A live tail re-reads the newest page every few seconds forever; cap what it retains so a
+// long-running tab stays bounded. Cursor pagination (afterId) keeps everything the user
+// explicitly paged to.
+export const MAX_LIVE_LOG_ENTRIES = 1000;
+
 const defaultSemaphore: ILogsEntriesStateSemaphore = {
 	fetching: {
 		items: false,
@@ -141,7 +146,21 @@ export const useLogsEntries = defineStore<'system_module-logs', LogsEntriesStore
 						})
 					);
 
-					data.value = payload?.append ? { ...data.value, ...transformed } : transformed;
+					if (payload?.append) {
+						const merged = { ...data.value, ...transformed };
+
+						if (!payload.afterId && Object.keys(merged).length > MAX_LIVE_LOG_ENTRIES) {
+							const newest = Object.values(merged)
+								.sort((a, b): number => new Date(b.ts).getTime() - new Date(a.ts).getTime())
+								.slice(0, MAX_LIVE_LOG_ENTRIES);
+
+							data.value = Object.fromEntries(newest.map((logEntry) => [logEntry.id, logEntry]));
+						} else {
+							data.value = merged;
+						}
+					} else {
+						data.value = transformed;
+					}
 
 					firstLoad.value = true;
 
