@@ -1,13 +1,10 @@
 import { type ZodType, z } from 'zod';
 
-import type {
-	ConfigModuleModuleSchema,
-	ConfigModuleUpdateModuleSchema,
-} from '../../../openapi.constants';
+import type { ConfigModuleDisplaysSchema, ConfigModuleUpdateModuleSchema } from '../../../openapi.constants';
 import { ConfigModuleResSchema, ConfigModuleSchema, ConfigModuleUpdateReqSchema } from '../../config/store/config-modules.store.schemas';
-import { DISPLAYS_MODULE_NAME } from '../displays.constants';
+import { DISPLAYS_MODULE_NAME, DeploymentMode } from '../displays.constants';
 
-type ApiConfigModule = ConfigModuleModuleSchema;
+type ApiConfigModule = ConfigModuleDisplaysSchema;
 type ApiConfigUpdateModule = ConfigModuleUpdateModuleSchema;
 
 // STORE STATE
@@ -15,7 +12,7 @@ type ApiConfigUpdateModule = ConfigModuleUpdateModuleSchema;
 
 export const DisplaysConfigSchema = ConfigModuleSchema.extend({
 	type: z.literal(DISPLAYS_MODULE_NAME),
-	deploymentMode: z.enum(['standalone', 'all-in-one', 'combined']),
+	deploymentMode: z.nativeEnum(DeploymentMode),
 	permitJoinDurationMs: z.number().int().min(1000),
 });
 
@@ -25,7 +22,7 @@ export const DisplaysConfigSchema = ConfigModuleSchema.extend({
 export const DisplaysConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = ConfigModuleUpdateReqSchema.and(
 	z.object({
 		type: z.literal(DISPLAYS_MODULE_NAME),
-		deployment_mode: z.enum(['standalone', 'all-in-one', 'combined']).optional(),
+		deployment_mode: z.nativeEnum(DeploymentMode).optional(),
 		permit_join_duration_ms: z.number().int().min(1000).optional(),
 	})
 );
@@ -33,7 +30,7 @@ export const DisplaysConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = Con
 export const DisplaysConfigResSchema: ZodType<ApiConfigModule> = ConfigModuleResSchema.and(
 	z.object({
 		type: z.literal(DISPLAYS_MODULE_NAME),
-		deployment_mode: z.enum(['standalone', 'all-in-one', 'combined']),
+		deployment_mode: z.nativeEnum(DeploymentMode),
 		permit_join_duration_ms: z.number().int().min(1000),
 	})
 );
