@@ -44,7 +44,7 @@ import { LocationsBulkService } from '../services/locations-bulk.service';
 import { LocationTypeMapping, LocationsTypeMapperService } from '../services/locations-type-mapper.service';
 import { LocationsService } from '../services/locations.service';
 import { WEATHER_MODULE_API_TAG_NAME, WEATHER_MODULE_NAME, WEATHER_MODULE_PREFIX } from '../weather.constants';
-import { WeatherException } from '../weather.exceptions';
+import { WeatherException, WeatherValidationException } from '../weather.exceptions';
 
 @ApiTags(WEATHER_MODULE_API_TAG_NAME)
 @Controller('locations')
@@ -302,6 +302,7 @@ export class LocationsController {
 	@ApiNoContentResponse({ description: 'Location deleted successfully' })
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Location not found')
+	@ApiUnprocessableEntityResponse('Location could not be deleted')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Delete(':id')
 	@HttpCode(204)
@@ -310,7 +311,18 @@ export class LocationsController {
 
 		const location = await this.getOneOrThrow(id);
 
-		await this.locationsService.remove(location.id);
+		try {
+			await this.locationsService.remove(location.id);
+		} catch (error) {
+			// Refusing to delete the primary location is a deliberate policy, and the
+			// message says which location to reassign first. Unmapped it escaped as a
+			// 500, telling the operator the server broke rather than what to do.
+			if (error instanceof WeatherValidationException) {
+				throw new UnprocessableEntityException(error.message);
+			}
+
+			throw error;
+		}
 
 		this.logger.debug(`Successfully deleted location id=${id}`);
 	}

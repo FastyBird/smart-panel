@@ -18,7 +18,7 @@ import { WeatherLocationEntity } from '../entities/locations.entity';
 import { LocationsBulkService } from '../services/locations-bulk.service';
 import { LocationsTypeMapperService } from '../services/locations-type-mapper.service';
 import { LocationsService } from '../services/locations.service';
-import { WeatherException } from '../weather.exceptions';
+import { WeatherException, WeatherValidationException } from '../weather.exceptions';
 
 import { LocationsController } from './locations.controller';
 
@@ -221,6 +221,37 @@ describe('LocationsController', () => {
 			jest.spyOn(service, 'findOne').mockResolvedValue(null);
 
 			await expect(controller.remove('non-existent-id')).rejects.toThrow(NotFoundException);
+		});
+
+		// Refusing the primary location is policy, not a fault, and the message says
+		// which location to reassign first. Unmapped it escaped as a 500, which told
+		// the operator the server broke rather than what to do about it.
+		it('answers 422 with the reason when the primary location is refused', async () => {
+			jest
+				.spyOn(service, 'remove')
+				.mockRejectedValue(
+					new WeatherValidationException(
+						'Cannot delete the primary weather location. Please set a different primary location first.',
+					),
+				);
+
+			const result = controller.remove(mockLocation.id);
+
+			await expect(result).rejects.toBeInstanceOf(UnprocessableEntityException);
+			await expect(result).rejects.toThrow(
+				'Cannot delete the primary weather location. Please set a different primary location first.',
+			);
+		});
+
+		it('lets an unexpected failure through rather than dressing it as a refusal', async () => {
+			jest.spyOn(service, 'remove').mockRejectedValue(new Error('database is on fire'));
+
+			const result = controller.remove(mockLocation.id);
+
+			// Asserting the message alone is not enough: wrapping *everything* in a 422
+			// would carry the same message through and satisfy it.
+			await expect(result).rejects.not.toBeInstanceOf(UnprocessableEntityException);
+			await expect(result).rejects.toThrow('database is on fire');
 		});
 	});
 });
