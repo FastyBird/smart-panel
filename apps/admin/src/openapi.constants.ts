@@ -61,6 +61,7 @@ export type ConfigModuleModuleSchema = components['schemas']['ConfigModuleDataMo
 
 export type ConfigModuleBuddySchema = components['schemas']['ConfigModuleDataBuddy'];
 
+export type ConfigModuleDisplaysSchema = components['schemas']['ConfigModuleDataDisplays'];
 
 export type ConfigModuleMcpSchema = components['schemas']['ConfigModuleDataMcp'];
 
@@ -70,6 +71,7 @@ export type ConfigModuleScenesSchema = components['schemas']['ConfigModuleDataSc
 
 export type ConfigModuleStorageSchema = components['schemas']['ConfigModuleDataStorage'];
 
+export type ConfigModuleSystemSchema = components['schemas']['ConfigModuleDataSystem'];
 
 export type ConfigModuleWeatherSchema = components['schemas']['ConfigModuleDataWeather'];
 export type ConfigModuleUpdateModuleSchema = components['schemas']['ConfigModuleUpdateModule'];
@@ -93,6 +95,7 @@ export type DisplaysModuleUpdateDisplaySchema = components['schemas']['DisplaysM
 export type DisplaysModuleRegisterDisplaySchema = components['schemas']['DisplaysModuleRegisterDisplay'];
 export type DisplaysModuleRegistrationSchema = components['schemas']['DisplaysModuleDataRegistration'];
 export type DisplaysModuleLongLiveTokenSchema = components['schemas']['AuthModuleDataLongLiveToken'];
+export { ConfigModuleDataDisplaysDeployment_mode as DisplaysModuleDeploymentMode } from './openapi';
 
 // System Module Schemas
 export type SystemModuleCreateLogEntrySchema = components['schemas']['SystemModuleCreateLogEntry'];
@@ -514,6 +517,25 @@ export { SystemModuleCreateLogEntrySource as SystemModuleLogEntrySource } from '
 export { SystemModuleCreateLogEntryType as SystemModuleLogEntryType } from './openapi';
 
 export { SystemModuleDataSystemInfoNetwork_mode as SystemModuleNetworkMode } from './openapi';
+
+export { ConfigModuleDataSystemLanguage as SystemModuleLanguage } from './openapi';
+
+export { ConfigModuleDataSystemTime_format as SystemModuleTimeFormat } from './openapi';
+
+export { ConfigModuleDataSystemHouse_mode as SystemModuleHouseMode } from './openapi';
+
+// The unit and number-format enums are deduped by the generator onto the displays
+// update DTO, which declares the same members. Temperature already has an alias -
+// TemperatureUnit, used by the weather plugins - so only five are aliased here.
+export { DisplaysModuleUpdateDisplayNumber_format as SystemModuleNumberFormat } from './openapi';
+
+export { DisplaysModuleUpdateDisplayWind_speed_unit as SystemModuleWindSpeedUnit } from './openapi';
+
+export { DisplaysModuleUpdateDisplayPressure_unit as SystemModulePressureUnit } from './openapi';
+
+export { DisplaysModuleUpdateDisplayPrecipitation_unit as SystemModulePrecipitationUnit } from './openapi';
+
+export { DisplaysModuleUpdateDisplayDistance_unit as SystemModuleDistanceUnit } from './openapi';
 
 // Scenes Module Types
 // ====================

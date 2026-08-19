@@ -1,8 +1,14 @@
+import { DisplaysModuleDeploymentMode } from '../../openapi.constants';
+
 export const DISPLAYS_MODULE_PREFIX = 'displays';
 
 export const DISPLAYS_MODULE_NAME = 'displays-module';
 
 export const DISPLAYS_MODULE_EVENT_PREFIX = 'DisplaysModule.';
+
+export const DeploymentMode = DisplaysModuleDeploymentMode;
+
+export type DeploymentMode = DisplaysModuleDeploymentMode;
 
 export enum EventType {
 	DISPLAY_CREATED = 'DisplaysModule.Display.Created',
