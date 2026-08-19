@@ -16,12 +16,13 @@ import {
 	refreshLoadedStores,
 } from '../../common';
 
-import { CONFIG_MODULE_EVENT_PREFIX, CONFIG_MODULE_NAME, EventType } from './config.constants';
+import { CONFIG_MODULE_NAME } from './config.constants';
 import { locales } from './locales';
 import { ModuleRoutes } from './router';
 import { registerConfigModuleStore } from './store/config-modules.store';
 import { registerConfigPluginStore } from './store/config-plugins.store';
 import { configAppStoreKey, configModulesStoreKey, configPluginsStoreKey } from './store/keys';
+import { handleConfigChangeEvent } from './utils/config-change-event';
 import { registerConfigAppStore } from './store/stores';
 
 const configAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Config');
@@ -79,45 +80,9 @@ export default {
 			(): Promise<void> => refreshLoadedStores([configAppStore, configModulesStore, configPluginsStore])
 		);
 
-		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
-			if (!data?.event?.startsWith(CONFIG_MODULE_EVENT_PREFIX)) {
-				return;
-			}
-
-			if (data.payload === null || typeof data.payload !== 'object') {
-				return;
-			}
-
-			switch (data.event) {
-				case EventType.CONFIG_UPDATED:
-					// Language, weather, and system configs are now part of modules - handled via modules store
-					if ('plugins' in data.payload && Array.isArray(data.payload.plugins)) {
-						data.payload.plugins.forEach((plugin) => {
-							if (typeof plugin === 'object' && plugin !== null && 'type' in plugin && typeof plugin.type === 'string') {
-								configPluginsStore.onEvent({
-									type: plugin.type,
-									data: plugin,
-								});
-							}
-						});
-					}
-
-					if ('modules' in data.payload && Array.isArray(data.payload.modules)) {
-						data.payload.modules.forEach((module) => {
-							if (typeof module === 'object' && module !== null && 'type' in module && typeof module.type === 'string') {
-								configModulesStore.onEvent({
-									type: module.type,
-									data: module,
-								});
-							}
-						});
-					}
-					break;
-
-				default:
-					logger.warn('Unhandled config module event:', data.event);
-			}
-		});
+		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void =>
+			handleConfigChangeEvent(data, { configModulesStore, configPluginsStore, logger })
+		);
 
 		options.router.isReady().then(() => {
 			if (configPluginsStore.firstLoadFinished() === false) {
