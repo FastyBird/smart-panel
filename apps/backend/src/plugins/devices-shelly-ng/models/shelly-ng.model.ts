@@ -586,3 +586,59 @@ export class ShellyNgMappingReloadModel {
 	@Type(() => ShellyNgMappingReloadStatsModel)
 	reloadStats: ShellyNgMappingReloadStatsModel;
 }
+
+/**
+ * What happened to one device in an adoption request.
+ *
+ * Adoption is a set of independent intents, so the outcome is reported per
+ * device: one device refusing must not discard the rest of the selection, and
+ * the wizard shows the operator exactly which ones landed.
+ */
+@ApiSchema({ name: 'DevicesShellyNgPluginDataAdoptionResult' })
+export class ShellyNgAdoptionResultModel {
+	@ApiProperty({
+		description: 'Address the device was discovered on',
+		type: 'string',
+		example: '192.168.1.100',
+	})
+	@Expose()
+	hostname: string;
+
+	@ApiProperty({
+		description: 'Shelly device identifier',
+		type: 'string',
+		example: 'shellyplus1pm-441793ad07bc',
+	})
+	@Expose()
+	identifier: string;
+
+	@ApiProperty({
+		description:
+			'Whether the device was newly created, or updated because it was already registered - including when the connector adopted it on its own while the wizard was open',
+		type: 'string',
+		enum: ['created', 'updated', 'failed'],
+		example: 'created',
+	})
+	@Expose()
+	status: 'created' | 'updated' | 'failed';
+
+	@ApiProperty({
+		name: 'device_id',
+		description: 'Identifier of the resulting device, when there is one',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+	})
+	@Expose({ name: 'device_id' })
+	deviceId: string | null;
+
+	@ApiProperty({
+		description: 'Why this device could not be adopted',
+		type: 'string',
+		nullable: true,
+		example: 'Device could not be adopted',
+	})
+	@Expose()
+	reason: string | null;
+}

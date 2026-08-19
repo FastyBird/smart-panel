@@ -287,6 +287,8 @@ export type DevicesModuleDeleteDeviceOperation = operations['delete-devices-modu
 export type DevicesModuleCreateDevicesBulkRemoveOperation = operations['create-devices-module-devices-bulk-remove'];
 
 export type DevicesModuleCreateDevicesBulkUpdateOperation = operations['create-devices-module-devices-bulk-update'];
+
+export type DevicesShellyNgPluginCreateAdoptOperation = operations['create-devices-shelly-ng-plugin-adopt'];
 export type DevicesModuleGetChannelOperation = operations['get-devices-module-channel'];
 export type DevicesModuleGetDeviceChannelOperation = operations['get-devices-module-device-channel'];
 export type DevicesModuleGetChannelsOperation = operations['get-devices-module-channels'];
