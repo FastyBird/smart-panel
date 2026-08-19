@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { IWizardActionControl, IWizardFormControl, IWizardProgressControl } from '../../../modules/devices';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
-import { DEVICES_SHELLY_V1_PLUGIN_PREFIX, DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
+import { DEVICES_SHELLY_V1_PLUGIN_PREFIX } from '../devices-shelly-v1.constants';
 import type { IShellyV1DiscoverySession } from '../schemas/devices.types';
 
 import { useDevicesWizard } from './useDevicesWizard';
@@ -11,6 +11,7 @@ const mockAdd = vi.fn();
 const mockEdit = vi.fn();
 const mockGet = vi.fn();
 const mockFindById = vi.fn();
+const mockFetch = vi.fn();
 
 const backendClient = {
 	GET: vi.fn(),
@@ -41,6 +42,7 @@ vi.mock('../../../common', async () => {
 				add: mockAdd,
 				edit: mockEdit,
 				get: mockGet,
+				fetch: mockFetch,
 				findById: mockFindById,
 			}),
 		}),
@@ -422,15 +424,24 @@ describe('useDevicesWizard', () => {
 		await adapter.start();
 		await findControl<IWizardFormControl>(adapter.controls.value, 'manual').handler({ hostname: 'shelly-1.local', password: 'secret' });
 
+		backendClient.POST.mockResolvedValueOnce({
+			data: {
+				data: [
+					{ hostname: 'shelly-1.local', identifier: 'shelly1-aabbcc', status: 'created', device_id: 'dev-1', reason: null },
+				],
+			},
+			error: undefined,
+			response: { ok: true, status: 200 },
+		});
+
 		await adapter.adopt([{ key: 'shelly-1.local', name: 'Bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
 
-		expect(mockAdd).toHaveBeenCalledWith(
-			expect.objectContaining({
-				data: expect.objectContaining({
-					password: 'secret',
-					hostname: 'shelly-1.local',
-				}),
-			})
+		const adopted = backendClient.POST.mock.calls.find((call: unknown[]) => String(call[0]).includes('/devices/adopt'))![1] as {
+			body: { data: { devices: Record<string, unknown>[] } };
+		};
+
+		expect(adopted.body.data.devices[0]).toEqual(
+			expect.objectContaining({ password: 'secret', hostname: 'shelly-1.local' })
 		);
 	});
 
@@ -469,13 +480,26 @@ describe('useDevicesWizard', () => {
 		await adapter.start();
 		await findControl<IWizardFormControl>(adapter.controls.value, 'manual').handler({ hostname: 'shelly-1.local', password: 'wrong-password' });
 
+		backendClient.POST.mockResolvedValueOnce({
+			data: {
+				data: [
+					{ hostname: 'shelly-1.local', identifier: 'shelly1-aabbcc', status: 'created', device_id: 'dev-1', reason: null },
+				],
+			},
+			error: undefined,
+			response: { ok: true, status: 200 },
+		});
+
 		await adapter.adopt([{ key: 'shelly-1.local', name: 'Existing bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
 
-		expect(mockEdit).toHaveBeenCalledWith(
-			expect.objectContaining({
-				data: expect.not.objectContaining({ password: expect.anything() }),
-			})
-		);
+		const adopted = backendClient.POST.mock.calls.find((call: unknown[]) => String(call[0]).includes('/devices/adopt'))![1] as {
+			body: { data: { devices: Record<string, unknown>[] } };
+		};
+
+		// The wrong password was never cached, so nothing is sent for it. The
+		// backend omits a null password rather than clearing the stored one, so the
+		// correct on-disk password survives — which is the guarantee this protects.
+		expect(adopted.body.data.devices[0]!.password).toBeNull();
 	});
 
 	it('drops a manually entered password when the user rescans', async () => {
@@ -505,15 +529,23 @@ describe('useDevicesWizard', () => {
 		// not silently travel with the device into the next adoption.
 		await adapter.start();
 
+		backendClient.POST.mockResolvedValueOnce({
+			data: {
+				data: [
+					{ hostname: 'shelly-1.local', identifier: 'shelly1-aabbcc', status: 'created', device_id: 'dev-1', reason: null },
+				],
+			},
+			error: undefined,
+			response: { ok: true, status: 200 },
+		});
+
 		await adapter.adopt([{ key: 'shelly-1.local', name: 'Bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
 
-		expect(mockAdd).toHaveBeenCalledWith(
-			expect.objectContaining({
-				data: expect.objectContaining({
-					password: null,
-				}),
-			})
-		);
+		const adopted = backendClient.POST.mock.calls.find((call: unknown[]) => String(call[0]).includes('/devices/adopt'))![1] as {
+			body: { data: { devices: Record<string, unknown>[] } };
+		};
+
+		expect(adopted.body.data.devices[0]!.password).toBeNull();
 	});
 
 	it('exposes a fresh session key on rescan so the shell drops the previous scan selections', async () => {
@@ -884,38 +916,57 @@ describe('useDevicesWizard', () => {
 		expect(backendClient.GET).toHaveBeenCalledTimes(1);
 	});
 
-	it('adopts the selection handed over by the shell through the devices store', async () => {
-		backendClient.POST.mockResolvedValue({
-			data: { data: discoverySession },
-			response: { status: 200 },
-		});
+	// Adoption is one request for the whole selection. The create-or-update
+	// decision, and the race with the connector adopting a device on its own,
+	// now belong to the backend - see shelly-ng-adoption.service.spec.ts. What is
+	// tested here is what this composable is still responsible for: which devices
+	// it puts in the payload, and how it reads the answer back.
+	const arrangeAdoption = (results: unknown[]): void => {
 		backendClient.GET.mockResolvedValue({
 			data: { data: discoverySession },
 			response: { status: 200 },
 		});
+		backendClient.POST.mockImplementation((url: string) => {
+			if (url.includes('/devices/adopt')) {
+				return Promise.resolve({ data: { data: results }, error: undefined, response: { ok: true, status: 200 } });
+			}
+
+			return Promise.resolve({ data: { data: discoverySession }, response: { ok: true, status: 200 } });
+		});
+	};
+
+	const adoptCall = (): { body: { data: { devices: Record<string, unknown>[] } } } =>
+		backendClient.POST.mock.calls.find((call: unknown[]) => String(call[0]).includes('/devices/adopt'))![1] as {
+			body: { data: { devices: Record<string, unknown>[] } };
+		};
+
+	it('adopts the whole selection in a single request', async () => {
+		arrangeAdoption([
+			{ hostname: 'shelly-1.local', identifier: 'shelly1-aabbcc', status: 'created', device_id: 'dev-1', reason: null },
+		]);
 
 		const adapter = useDevicesWizard();
 
 		await adapter.start();
 
-		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
+		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Kitchen relay', category: DevicesModuleDeviceCategory.lighting }]);
 
-		expect(mockAdd).toHaveBeenCalledWith({
-			id: expect.any(String),
-			draft: false,
-			data: expect.objectContaining({
-				type: DEVICES_SHELLY_V1_TYPE,
-				category: DevicesModuleDeviceCategory.lighting,
+		const adoptCalls = backendClient.POST.mock.calls.filter((call: unknown[]) => String(call[0]).includes('/devices/adopt'));
+
+		expect(adoptCalls).toHaveLength(1);
+		expect(adoptCall().body.data.devices).toEqual([
+			{
 				identifier: 'shelly1-aabbcc',
-				name: 'Bathroom heater',
-				password: null,
 				hostname: 'shelly-1.local',
-			}),
-		});
+				name: 'Kitchen relay',
+				category: DevicesModuleDeviceCategory.lighting,
+				password: null,
+			},
+		]);
 		expect(results).toEqual([
 			{
 				key: 'shelly-1.local',
-				name: 'Bathroom heater',
+				name: 'Kitchen relay',
 				identifier: 'shelly-1.local',
 				status: 'created',
 				error: null,
@@ -924,216 +975,139 @@ describe('useDevicesWizard', () => {
 		expect(adapter.results.value).toEqual(results);
 	});
 
+	it('never sends one request per device', async () => {
+		arrangeAdoption(
+			discoverySession.devices.map((device) => ({
+				hostname: device.hostname,
+				identifier: device.identifier,
+				status: 'created',
+				device_id: 'dev',
+				reason: null,
+			}))
+		);
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		await adapter.adopt(
+			discoverySession.devices.map((device) => ({
+				key: device.hostname,
+				name: device.name ?? device.hostname,
+				category: DevicesModuleDeviceCategory.lighting,
+			}))
+		);
+
+		const adoptCalls = backendClient.POST.mock.calls.filter((call: unknown[]) => String(call[0]).includes('/devices/adopt'));
+
+		expect(adoptCalls).toHaveLength(1);
+		expect(mockAdd).not.toHaveBeenCalled();
+		expect(mockEdit).not.toHaveBeenCalled();
+	});
+
 	it('adopts with the name and category the shell hands over, not the discovered ones', async () => {
-		backendClient.POST.mockResolvedValue({
-			data: { data: discoverySession },
-			response: { status: 200 },
-		});
-		backendClient.GET.mockResolvedValue({
-			data: { data: discoverySession },
-			response: { status: 200 },
-		});
+		arrangeAdoption([
+			{ hostname: 'shelly-1.local', identifier: 'shelly1-aabbcc', status: 'created', device_id: 'dev-1', reason: null },
+		]);
 
 		const adapter = useDevicesWizard();
 
 		await adapter.start();
 		await adapter.adopt([{ key: 'shelly-1.local', name: 'Hallway light', category: DevicesModuleDeviceCategory.switcher }]);
 
-		expect(mockAdd).toHaveBeenCalledWith(
-			expect.objectContaining({
-				data: expect.objectContaining({
-					name: 'Hallway light',
-					category: DevicesModuleDeviceCategory.switcher,
-				}),
-			})
+		expect(adoptCall().body.data.devices[0]).toEqual(
+			expect.objectContaining({ name: 'Hallway light', category: DevicesModuleDeviceCategory.switcher })
 		);
 	});
 
 	it('falls back to the suggested name when the shell hands over a blank one', async () => {
-		backendClient.POST.mockResolvedValue({
-			data: { data: discoverySession },
-			response: { status: 200 },
-		});
-		backendClient.GET.mockResolvedValue({
-			data: { data: discoverySession },
-			response: { status: 200 },
-		});
+		arrangeAdoption([
+			{ hostname: 'shelly-1.local', identifier: 'shelly1-aabbcc', status: 'created', device_id: 'dev-1', reason: null },
+		]);
 
 		const adapter = useDevicesWizard();
 
 		await adapter.start();
 		await adapter.adopt([{ key: 'shelly-1.local', name: '   ', category: DevicesModuleDeviceCategory.lighting }]);
 
-		expect(mockAdd).toHaveBeenCalledWith(
-			expect.objectContaining({
-				data: expect.objectContaining({
-					name: 'Bathroom heater',
-				}),
-			})
-		);
+		expect(adoptCall().body.data.devices[0]!.name).toBe('Bathroom heater');
 	});
 
-	it('updates an already registered device via edit instead of creating a duplicate', async () => {
-		const alreadyRegisteredSession: IShellyV1DiscoverySession = {
-			...discoverySession,
-			devices: [
-				{
-					...discoverySession.devices[0]!,
-					status: 'already_registered',
-					registeredDeviceId: 'device-uuid-1',
-					registeredDeviceName: 'Existing bathroom heater',
-					registeredDeviceCategory: DevicesModuleDeviceCategory.lighting,
-				},
-			],
-		};
+	// The backend decides this, but the wizard still has to show it: a device the
+	// connector had already registered comes back as an update, not a failure.
+	it('reports back whatever outcome the backend returned for each device', async () => {
+		arrangeAdoption([
+			{ hostname: 'shelly-1.local', identifier: 'shelly1-aabbcc', status: 'updated', device_id: 'dev-1', reason: null },
+		]);
 
-		backendClient.POST.mockResolvedValue({
-			data: { data: alreadyRegisteredSession },
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Kitchen relay', category: DevicesModuleDeviceCategory.lighting }]);
+
+		expect(results[0]).toEqual(expect.objectContaining({ status: 'updated', error: null }));
+	});
+
+	it('surfaces a per-device refusal without failing the rest', async () => {
+		arrangeAdoption([
+			{ hostname: 'shelly-1.local', identifier: 'shelly1-aabbcc', status: 'failed', device_id: null, reason: 'Device is unreachable' },
+		]);
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Kitchen relay', category: DevicesModuleDeviceCategory.lighting }]);
+
+		expect(results[0]).toEqual(expect.objectContaining({ status: 'failed', error: 'Device is unreachable' }));
+	});
+
+	it('reports a failed outcome instead of throwing when the request itself fails', async () => {
+		backendClient.GET.mockResolvedValue({
+			data: { data: discoverySession },
 			response: { status: 200 },
 		});
-		backendClient.GET.mockResolvedValue({
-			data: { data: alreadyRegisteredSession },
-			response: { status: 200 },
+		backendClient.POST.mockImplementation((url: string) => {
+			if (url.includes('/devices/adopt')) {
+				return Promise.resolve({ data: undefined, error: { detail: 'boom' }, response: { ok: false, status: 500 } });
+			}
+
+			return Promise.resolve({ data: { data: discoverySession }, response: { ok: true, status: 200 } });
 		});
 
 		const adapter = useDevicesWizard();
 
 		await adapter.start();
-		await adapter.adopt([{ key: 'shelly-1.local', name: 'Existing bathroom heater', category: DevicesModuleDeviceCategory.switcher }]);
 
-		expect(mockEdit).toHaveBeenCalledWith({
-			id: 'device-uuid-1',
-			data: expect.objectContaining({
-				type: DEVICES_SHELLY_V1_TYPE,
-				category: DevicesModuleDeviceCategory.switcher,
-				name: 'Existing bathroom heater',
-			}),
-		});
-		expect(mockAdd).not.toHaveBeenCalled();
-		expect(adapter.results.value).toEqual([
-			expect.objectContaining({
-				key: 'shelly-1.local',
-				status: 'updated',
-			}),
-		]);
+		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Kitchen relay', category: DevicesModuleDeviceCategory.lighting }]);
+
+		expect(results[0]).toEqual(expect.objectContaining({ status: 'failed' }));
 	});
 
-	it('falls back to update when create fails because the main service auto-adopted the device', async () => {
-		const racedSession: IShellyV1DiscoverySession = {
-			...discoverySession,
-			devices: [
-				{
-					...discoverySession.devices[0]!,
-					status: 'already_registered',
-					registeredDeviceId: 'device-uuid-2',
-					registeredDeviceName: 'Auto-adopted heater',
-				},
-			],
-		};
+	// The refresh inside `adopt` can drop a device from the live session; the
+	// snapshot taken beforehand is what keeps the operator's choice adoptable.
+	it('adopts a device that the refresh inside adopt dropped from the session entirely', async () => {
+		backendClient.POST.mockImplementation((url: string) => {
+			if (url.includes('/devices/adopt')) {
+				return Promise.resolve({
+					data: {
+						data: [
+							{ hostname: 'shelly-1.local', identifier: 'shelly1-aabbcc', status: 'created', device_id: 'dev-1', reason: null },
+						],
+					},
+					error: undefined,
+					response: { ok: true, status: 200 },
+				});
+			}
 
-		backendClient.POST.mockResolvedValue({
-			data: { data: discoverySession },
-			response: { status: 200 },
+			return Promise.resolve({ data: { data: discoverySession }, response: { ok: true, status: 200 } });
 		});
-		// First refresh in adopt: still shows the snapshot's `ready` status.
-		// Second refresh (after add fails): shows the device now exists.
 		backendClient.GET.mockResolvedValueOnce({
 			data: { data: discoverySession },
 			response: { status: 200 },
 		}).mockResolvedValue({
-			data: { data: racedSession },
-			response: { status: 200 },
-		});
-
-		mockAdd.mockRejectedValueOnce(new Error('Duplicate identifier'));
-
-		const adapter = useDevicesWizard();
-
-		await adapter.start();
-		await adapter.adopt([{ key: 'shelly-1.local', name: 'Bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
-
-		expect(mockAdd).toHaveBeenCalledTimes(1);
-		expect(mockEdit).toHaveBeenCalledWith({
-			id: 'device-uuid-2',
-			data: expect.objectContaining({
-				type: DEVICES_SHELLY_V1_TYPE,
-				category: DevicesModuleDeviceCategory.lighting,
-				name: 'Bathroom heater',
-			}),
-		});
-		expect(adapter.results.value).toEqual([
-			expect.objectContaining({
-				key: 'shelly-1.local',
-				status: 'updated',
-			}),
-		]);
-	});
-
-	it('loads the device into the local store before editing if it was just auto-adopted', async () => {
-		const racedSession: IShellyV1DiscoverySession = {
-			...discoverySession,
-			devices: [
-				{
-					...discoverySession.devices[0]!,
-					status: 'already_registered',
-					registeredDeviceId: 'device-uuid-fresh',
-					registeredDeviceName: 'Auto-adopted heater',
-				},
-			],
-		};
-
-		backendClient.POST.mockResolvedValue({
-			data: { data: racedSession },
-			response: { status: 200 },
-		});
-		backendClient.GET.mockResolvedValue({
-			data: { data: racedSession },
-			response: { status: 200 },
-		});
-
-		// Device exists in the backend (already_registered) but not yet in the admin store —
-		// `devicesStore.edit` would otherwise reject the id.
-		mockFindById.mockReturnValue(null);
-
-		const adapter = useDevicesWizard();
-
-		await adapter.start();
-		await adapter.adopt([{ key: 'shelly-1.local', name: 'Auto-adopted heater', category: DevicesModuleDeviceCategory.switcher }]);
-
-		expect(mockGet).toHaveBeenCalledWith({ id: 'device-uuid-fresh' });
-		expect(mockEdit).toHaveBeenCalledWith(
-			expect.objectContaining({
-				id: 'device-uuid-fresh',
-			})
-		);
-		expect(adapter.results.value).toEqual([
-			expect.objectContaining({
-				key: 'shelly-1.local',
-				status: 'updated',
-			}),
-		]);
-	});
-
-	it('still adopts a device the shell selected if the refresh inside adopt flips it to already_registered', async () => {
-		const racedSession: IShellyV1DiscoverySession = {
-			...discoverySession,
-			devices: [
-				{
-					...discoverySession.devices[0]!,
-					status: 'already_registered',
-					registeredDeviceId: 'device-uuid-in-flight',
-					registeredDeviceName: 'Auto-adopted heater',
-				},
-			],
-		};
-
-		backendClient.POST.mockResolvedValue({
-			data: { data: discoverySession },
-			response: { status: 200 },
-		});
-		// The refresh at the top of `adopt` reports the status flip.
-		backendClient.GET.mockResolvedValue({
-			data: { data: racedSession },
+			data: { data: { ...discoverySession, devices: [] } },
 			response: { status: 200 },
 		});
 
@@ -1141,85 +1115,10 @@ describe('useDevicesWizard', () => {
 
 		await adapter.start();
 
-		// The user chose the device while it was still `ready`; the shell handed that intent over.
-		await adapter.adopt([{ key: 'shelly-1.local', name: 'Bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
+		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Kitchen relay', category: DevicesModuleDeviceCategory.lighting }]);
 
-		expect(mockEdit).toHaveBeenCalledWith(
-			expect.objectContaining({
-				id: 'device-uuid-in-flight',
-			})
-		);
-		expect(mockAdd).not.toHaveBeenCalled();
-		expect(adapter.results.value).toEqual([
-			expect.objectContaining({
-				key: 'shelly-1.local',
-				status: 'updated',
-			}),
-		]);
-	});
-
-	it('adopts a device that the refresh inside adopt dropped from the session entirely', async () => {
-		// The refresh at the top of `adopt` can return a session that no longer lists the device
-		// — the scan expired it, or it stopped answering mDNS. The shell's selection carries only
-		// key / name / category, so without the pre-refresh descriptor snapshot we would lose the
-		// identifier and fail a device the user explicitly asked for.
-		backendClient.POST.mockResolvedValue({
-			data: { data: discoverySession },
-			response: { status: 200 },
-		});
-		backendClient.GET.mockResolvedValue({
-			data: { data: emptySession },
-			response: { status: 200 },
-		});
-
-		const adapter = useDevicesWizard();
-
-		await adapter.start();
-
-		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
-
-		expect(mockAdd).toHaveBeenCalledWith(
-			expect.objectContaining({
-				data: expect.objectContaining({
-					identifier: 'shelly1-aabbcc',
-					name: 'Bathroom heater',
-					hostname: 'shelly-1.local',
-				}),
-			})
-		);
-		expect(results).toEqual([
-			expect.objectContaining({
-				key: 'shelly-1.local',
-				status: 'created',
-			}),
-		]);
-	});
-
-	it('reports a failed outcome instead of throwing when adoption fails', async () => {
-		backendClient.POST.mockResolvedValue({
-			data: { data: discoverySession },
-			response: { status: 200 },
-		});
-		backendClient.GET.mockResolvedValue({
-			data: { data: discoverySession },
-			response: { status: 200 },
-		});
-
-		mockAdd.mockRejectedValue(new Error('Backend refused the device'));
-
-		const adapter = useDevicesWizard();
-
-		await adapter.start();
-
-		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
-
-		expect(results).toEqual([
-			expect.objectContaining({
-				key: 'shelly-1.local',
-				status: 'failed',
-				error: 'Backend refused the device',
-			}),
-		]);
+		expect(adoptCall().body.data.devices[0]!.identifier).toBe('shelly1-aabbcc');
+		expect(results[0]).toEqual(expect.objectContaining({ status: 'created' }));
 	});
 
 	it('reports the discovered device count and scan progress through the progress control', async () => {

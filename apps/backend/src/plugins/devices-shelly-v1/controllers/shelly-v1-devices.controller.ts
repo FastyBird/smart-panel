@@ -18,8 +18,10 @@ import {
 	DEVICES_SHELLY_V1_PLUGIN_NAME,
 } from '../devices-shelly-v1.constants';
 import { DevicesShellyV1Exception } from '../devices-shelly-v1.exceptions';
+import { ReqAdoptDevicesDto } from '../dto/adopt-devices.dto';
 import { DevicesShellyV1PluginReqGetInfo } from '../dto/shelly-v1-probe.dto';
 import {
+	ShellyV1AdoptionResponseModel,
 	ShellyV1DeviceInfoResponseModel,
 	ShellyV1DiscoverySessionResponseModel,
 	ShellyV1SupportedDevicesResponseModel,
@@ -29,6 +31,7 @@ import {
 	ShellyV1DiscoverySessionModel,
 	ShellyV1SupportedDeviceModel,
 } from '../models/shelly-v1.model';
+import { ShellyV1AdoptionService } from '../services/shelly-v1-adoption.service';
 import { ShellyV1DiscoveryService } from '../services/shelly-v1-discovery.service';
 import { ShellyV1ProbeService } from '../services/shelly-v1-probe.service';
 
@@ -43,6 +46,7 @@ export class ShellyV1DevicesController {
 	constructor(
 		private readonly probeService: ShellyV1ProbeService,
 		private readonly discoveryService: ShellyV1DiscoveryService,
+		private readonly adoptionService: ShellyV1AdoptionService,
 	) {}
 
 	@ApiOperation({
@@ -234,6 +238,28 @@ export class ShellyV1DevicesController {
 
 		const response = new ShellyV1SupportedDevicesResponseModel();
 		response.data = devices;
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_SHELLY_V1_PLUGIN_API_TAG_NAME],
+		summary: 'Adopt discovered Shelly V1 devices',
+		description:
+			'Adopts a selection of discovered devices in a single request. Each device is adopted independently and its outcome reported separately, so one device that can not be adopted does not discard the rest of the selection. A device the connector has already registered on its own is updated rather than reported as a conflict.',
+		operationId: 'create-devices-shelly-v1-plugin-adopt',
+	})
+	@ApiBody({ type: ReqAdoptDevicesDto, description: 'The devices to adopt' })
+	@ApiSuccessResponse(ShellyV1AdoptionResponseModel, 'Returns the outcome for each device in the selection')
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post('adopt')
+	async adopt(@Body() body: ReqAdoptDevicesDto): Promise<ShellyV1AdoptionResponseModel> {
+		this.logger.debug(`Incoming request to adopt ${body.data.devices.length} device(s)`);
+
+		const response = new ShellyV1AdoptionResponseModel();
+
+		response.data = await this.adoptionService.adopt(body.data.devices);
 
 		return response;
 	}

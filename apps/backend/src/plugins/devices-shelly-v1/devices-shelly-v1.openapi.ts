@@ -1,6 +1,7 @@
 /**
  * OpenAPI extra models for Devices Shelly V1 plugin
  */
+import { AdoptDeviceDto, AdoptDevicesDto } from './dto/adopt-devices.dto';
 import { CreateShellyV1ChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateShellyV1ChannelDto } from './dto/create-channel.dto';
 import { CreateShellyV1DeviceDto } from './dto/create-device.dto';
@@ -19,11 +20,13 @@ import {
 } from './entities/devices-shelly-v1.entity';
 import { ShellyV1ConfigModel, ShellyV1DiscoveryConfigModel, ShellyV1TimeoutsConfigModel } from './models/config.model';
 import {
+	ShellyV1AdoptionResponseModel,
 	ShellyV1DeviceInfoResponseModel,
 	ShellyV1DiscoverySessionResponseModel,
 	ShellyV1SupportedDevicesResponseModel,
 } from './models/shelly-v1-response.model';
 import {
+	ShellyV1AdoptionResultModel,
 	ShellyV1DeviceInfoModel,
 	ShellyV1DiscoveryDeviceAuthenticationModel,
 	ShellyV1DiscoveryDeviceModel,
@@ -42,11 +45,15 @@ export const DEVICES_SHELLY_V1_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	ShellyV1UpdatePluginConfigDto,
 	ShellyV1UpdatePluginConfigDiscoveryDto,
 	ShellyV1UpdatePluginConfigTimeoutsDto,
+	AdoptDeviceDto,
+	AdoptDevicesDto,
 	// Response models
+	ShellyV1AdoptionResponseModel,
 	ShellyV1DeviceInfoResponseModel,
 	ShellyV1DiscoverySessionResponseModel,
 	ShellyV1SupportedDevicesResponseModel,
 	// Data models
+	ShellyV1AdoptionResultModel,
 	ShellyV1SupportedDeviceModel,
 	ShellyV1DeviceInfoModel,
 	ShellyV1DiscoveryDeviceAuthenticationModel,

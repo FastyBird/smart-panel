@@ -5,6 +5,7 @@ import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
 
 import {
+	ShellyV1AdoptionResultModel,
 	ShellyV1DeviceInfoModel,
 	ShellyV1DiscoverySessionModel,
 	ShellyV1SupportedDeviceModel,
@@ -48,4 +49,18 @@ export class ShellyV1DiscoverySessionResponseModel extends BaseSuccessResponseMo
 	})
 	@Expose()
 	declare data: ShellyV1DiscoverySessionModel;
+}
+
+/**
+ * Response wrapper for the per-device outcome of an adoption request
+ */
+@ApiSchema({ name: 'DevicesShellyV1PluginResAdoption' })
+export class ShellyV1AdoptionResponseModel extends BaseSuccessResponseModel<ShellyV1AdoptionResultModel[]> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: 'array',
+		items: { $ref: getSchemaPath(ShellyV1AdoptionResultModel) },
+	})
+	@Expose()
+	declare data: ShellyV1AdoptionResultModel[];
 }
