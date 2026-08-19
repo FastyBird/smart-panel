@@ -27,6 +27,7 @@ export class StorageConfigModel extends ModuleConfigModel {
 	override enabled: boolean = true;
 
 	@ApiProperty({
+		name: 'primary_storage',
 		description: 'Primary storage plugin',
 		type: 'string',
 		example: 'influx-v1-plugin',
@@ -36,6 +37,7 @@ export class StorageConfigModel extends ModuleConfigModel {
 	primaryStorage: string = STORAGE_DEFAULT_PRIMARY;
 
 	@ApiProperty({
+		name: 'fallback_storage',
 		description: 'Fallback storage plugin (used when primary is unavailable)',
 		type: 'string',
 		example: 'memory-storage-plugin',

@@ -1,13 +1,13 @@
 import { type ZodType, z } from 'zod';
 
 import type {
-	ConfigModuleModuleSchema,
+	ConfigModuleWeatherSchema,
 	ConfigModuleUpdateModuleSchema,
 } from '../../../openapi.constants';
 import { ConfigModuleResSchema, ConfigModuleSchema, ConfigModuleUpdateReqSchema } from '../../config/store/config-modules.store.schemas';
 import { WEATHER_MODULE_NAME } from '../weather.constants';
 
-type ApiConfigModule = ConfigModuleModuleSchema;
+type ApiConfigModule = ConfigModuleWeatherSchema;
 type ApiConfigUpdateModule = ConfigModuleUpdateModuleSchema;
 
 // STORE STATE

@@ -58,6 +58,20 @@ export type ConfigModuleAppSchema = components['schemas']['ConfigModuleDataApp']
 export type ConfigModulePluginSchema = components['schemas']['ConfigModuleDataPlugin'];
 export type ConfigModuleUpdatePluginSchema = components['schemas']['ConfigModuleUpdatePlugin'];
 export type ConfigModuleModuleSchema = components['schemas']['ConfigModuleDataModule'];
+
+export type ConfigModuleBuddySchema = components['schemas']['ConfigModuleDataBuddy'];
+
+
+export type ConfigModuleMcpSchema = components['schemas']['ConfigModuleDataMcp'];
+
+export type ConfigModuleMdnsSchema = components['schemas']['ConfigModuleDataMdns'];
+
+export type ConfigModuleScenesSchema = components['schemas']['ConfigModuleDataScenes'];
+
+export type ConfigModuleStorageSchema = components['schemas']['ConfigModuleDataStorage'];
+
+
+export type ConfigModuleWeatherSchema = components['schemas']['ConfigModuleDataWeather'];
 export type ConfigModuleUpdateModuleSchema = components['schemas']['ConfigModuleUpdateModule'];
 
 // MCP Module Schemas

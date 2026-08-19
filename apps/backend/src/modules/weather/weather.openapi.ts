@@ -3,6 +3,7 @@
  */
 import { WeatherLocationEntity } from './entities/locations.entity';
 import { LocationAlertsResponseModel, WeatherAlertModel } from './models/alert.model';
+import { WeatherConfigModel } from './models/config.model';
 import {
 	WeatherHistoryPointModel,
 	WeatherHistoryResponseModel,
@@ -34,6 +35,8 @@ import {
 } from './models/weather.model';
 
 export const WEATHER_SWAGGER_EXTRA_MODELS = [
+	// Module configuration
+	WeatherConfigModel,
 	// Response models
 	LocationWeatherResponseModel,
 	AllLocationsWeatherResponseModel,

@@ -1,13 +1,13 @@
 import { type ZodType, z } from 'zod';
 
 import type {
-	ConfigModuleModuleSchema,
+	ConfigModuleStorageSchema,
 	ConfigModuleUpdateModuleSchema,
 } from '../../../openapi.constants';
 import { ConfigModuleResSchema, ConfigModuleSchema, ConfigModuleUpdateReqSchema } from '../../config/store/config-modules.store.schemas';
 import { STORAGE_MODULE_NAME } from '../storage.constants';
 
-type ApiConfigModule = ConfigModuleModuleSchema;
+type ApiConfigModule = ConfigModuleStorageSchema;
 type ApiConfigUpdateModule = ConfigModuleUpdateModuleSchema;
 
 // STORE STATE
@@ -34,6 +34,6 @@ export const StorageConfigResSchema: ZodType<ApiConfigModule> = ConfigModuleResS
 	z.object({
 		type: z.literal(STORAGE_MODULE_NAME),
 		primary_storage: z.string(),
-		fallback_storage: z.string().optional(),
+		fallback_storage: z.string(),
 	})
 );

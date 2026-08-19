@@ -5,6 +5,7 @@ import { BulkAssignDto, ReqBulkAssignDto } from './dto/bulk-assign.dto';
 import { CreateSpaceDto, ReqCreateSpaceDto } from './dto/create-space.dto';
 import { ReqUpdateSpaceDto, UpdateSpaceDto } from './dto/update-space.dto';
 import { SpaceEntity } from './entities/space.entity';
+import { SpacesConfigModel } from './models/config.model';
 import {
 	BulkAssignmentDataModel,
 	BulkAssignmentResponseModel,
@@ -17,6 +18,8 @@ import {
 } from './models/spaces-response.model';
 
 export const SPACES_SWAGGER_EXTRA_MODELS = [
+	// Module configuration
+	SpacesConfigModel,
 	// DTOs
 	CreateSpaceDto,
 	ReqCreateSpaceDto,
