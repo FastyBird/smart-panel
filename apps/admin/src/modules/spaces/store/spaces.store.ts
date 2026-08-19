@@ -24,7 +24,17 @@ import { type ApiSpace, transformSpaceCreateRequest, transformSpaceEditRequest, 
 
 type SpacesStoreSetup = ISpacesStoreState & ISpacesStoreActions;
 
-const defaultSemaphore: ISpacesStateSemaphore = {
+/**
+ * Built fresh per store rather than shared, so the arrays cannot outlive one
+ * pinia instance.
+ *
+ * The previous `{ ...defaultSemaphore }` looked safe but was the one shape that
+ * leaked: the spread copies the object, not the arrays, so `push` mutated the
+ * module-level constant while the reassignment in each `finally` replaced the
+ * property only on the copy. Anything pushed stayed on the constant, and the
+ * next pinia - the next test - started with it.
+ */
+const createSemaphore = (): ISpacesStateSemaphore => ({
 	fetching: {
 		items: false,
 		item: [],
@@ -32,13 +42,13 @@ const defaultSemaphore: ISpacesStateSemaphore = {
 	creating: [],
 	updating: [],
 	deleting: [],
-};
+});
 
 export const useSpacesStore = defineStore<'spaces_module-spaces', SpacesStoreSetup>('spaces_module-spaces', (): SpacesStoreSetup => {
 	const backend = useBackend();
 
 	const data = ref<{ [key: ISpace['id']]: ISpace }>({});
-	const semaphore = ref({ ...defaultSemaphore });
+	const semaphore = ref<ISpacesStateSemaphore>(createSemaphore());
 	const firstLoad = ref<boolean>(false);
 
 	const firstLoadFinished = (): boolean => firstLoad.value;

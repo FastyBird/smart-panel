@@ -167,4 +167,30 @@ describe('Spaces store', () => {
 			expect(store.semaphore.deleting).not.toContain(keptId);
 		});
 	});
+
+
+	// The semaphore used to be `{ ...defaultSemaphore }` - a spread that copies the
+	// object but not its arrays - so a push leaked onto the module-level constant
+	// and the next pinia started with it. This pins that a fresh store starts clean
+	// even after a previous one has pushed.
+	describe('semaphore isolation', () => {
+		it('does not carry semaphore state into the next store instance', () => {
+			// Reach the semaphore the way an in-flight action does, then leave it as a
+			// completed action would.
+			store.semaphore.deleting.push(removedId);
+			store.semaphore.deleting = store.semaphore.deleting.filter((id) => id !== removedId);
+
+			store.semaphore.creating.push(keptId);
+
+			setActivePinia(createPinia());
+
+			const fresh = useSpacesStore();
+
+			expect(fresh.semaphore.deleting).toEqual([]);
+			expect(fresh.semaphore.creating).toEqual([]);
+			expect(fresh.semaphore.updating).toEqual([]);
+			expect(fresh.semaphore.fetching.item).toEqual([]);
+		});
+	});
+
 });
