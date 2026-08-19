@@ -29,6 +29,7 @@ import { ExtensionsConfigModel } from './models/config.model';
 import { ExtensionsStatsProvider } from './providers/extensions-stats.provider';
 import { ActionAuditService } from './services/action-audit.service';
 import { ExtensionActionRegistryService } from './services/extension-action-registry.service';
+import { ExtensionsBulkService } from './services/extensions-bulk.service';
 import { ExtensionsService } from './services/extensions.service';
 import { ModuleResetService } from './services/module-reset.service';
 import { PluginServiceManagerService } from './services/plugin-service-manager.service';
@@ -43,6 +44,7 @@ import { PluginServiceManagerService } from './services/plugin-service-manager.s
 	imports: [NestConfigModule, StatsModule],
 	controllers: [ExtensionsController, DiscoveredExtensionsController, ServicesController, ActionsController],
 	providers: [
+		ExtensionsBulkService,
 		ModuleResetService,
 		PluginServiceManagerService,
 		ExtensionActionRegistryService,
