@@ -16,6 +16,7 @@ import {
 	UnprocessableEntityErrorModel,
 } from './models/api-response.model';
 import { ErrorRate5MinModel, ModuleStatsModel, P95Ms5MModel, RequestsPerMinModel } from './models/api.model';
+import { BulkFailureModel, BulkResultModel } from './models/bulk.model';
 
 export const API_SWAGGER_EXTRA_MODELS = [
 	// Response models
@@ -28,6 +29,8 @@ export const API_SWAGGER_EXTRA_MODELS = [
 	InternalServerErrorModel,
 	ServiceUnavailableErrorModel,
 	// Data models
+	BulkResultModel,
+	BulkFailureModel,
 	ErrorDetailFieldModel,
 	ErrorObjectModel,
 	ResponseMetadataModel,

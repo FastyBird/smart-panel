@@ -139,6 +139,20 @@ export const ScenesSaveActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 });
 
+export const ScenesBulkRemoveActionPayloadSchema = z.object({
+	ids: z.array(ItemIdSchema).nonempty(),
+});
+
+export const ScenesBulkSetEnabledActionPayloadSchema = z.object({
+	ids: z.array(ItemIdSchema).nonempty(),
+	enabled: z.boolean(),
+});
+
+export const ScenesBulkResultSchema = z.object({
+	succeeded: z.array(z.string()),
+	failed: z.array(z.object({ id: z.string(), reason: z.string() })),
+});
+
 export const ScenesRemoveActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 });

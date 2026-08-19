@@ -38,8 +38,6 @@ import {
 	PropertyTimeseriesResponseModel,
 } from './models/devices-response.model';
 import {
-	BulkFailureModel,
-	BulkResultModel,
 	ChannelPropertySpecModel,
 	ChannelSpecModel,
 	DeviceChannelSpecModel,
@@ -79,8 +77,6 @@ export const DEVICES_SWAGGER_EXTRA_MODELS = [
 	ValidationSummaryModel,
 	ValidationIssueModel,
 	// Data models
-	BulkResultModel,
-	BulkFailureModel,
 	DeviceChannelSpecModel,
 	DeviceSpecModel,
 	ChannelPropertySpecModel,

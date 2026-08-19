@@ -12,6 +12,9 @@ import type {
 	ScenesEditActionPayloadSchema,
 	ScenesGetActionPayloadSchema,
 	ScenesOnEventActionPayloadSchema,
+	ScenesBulkRemoveActionPayloadSchema,
+	ScenesBulkResultSchema,
+	ScenesBulkSetEnabledActionPayloadSchema,
 	ScenesRemoveActionPayloadSchema,
 	ScenesSaveActionPayloadSchema,
 	ScenesSetActionPayloadSchema,
@@ -37,6 +40,12 @@ export type IScenesAddActionPayload = z.infer<typeof ScenesAddActionPayloadSchem
 export type IScenesEditActionPayload = z.infer<typeof ScenesEditActionPayloadSchema>;
 
 export type IScenesSaveActionPayload = z.infer<typeof ScenesSaveActionPayloadSchema>;
+
+export type IScenesBulkRemoveActionPayload = z.infer<typeof ScenesBulkRemoveActionPayloadSchema>;
+
+export type IScenesBulkSetEnabledActionPayload = z.infer<typeof ScenesBulkSetEnabledActionPayloadSchema>;
+
+export type IScenesBulkResult = z.infer<typeof ScenesBulkResultSchema>;
 
 export type IScenesRemoveActionPayload = z.infer<typeof ScenesRemoveActionPayloadSchema>;
 
@@ -74,6 +83,8 @@ export interface IScenesStoreActions {
 	edit: (payload: IScenesEditActionPayload) => Promise<IScene>;
 	save: (payload: IScenesSaveActionPayload) => Promise<IScene>;
 	remove: (payload: IScenesRemoveActionPayload) => Promise<void>;
+	bulkRemove: (payload: IScenesBulkRemoveActionPayload) => Promise<IScenesBulkResult>;
+	bulkSetEnabled: (payload: IScenesBulkSetEnabledActionPayload) => Promise<IScenesBulkResult>;
 	trigger: (payload: IScenesTriggerActionPayload) => Promise<ISceneExecutionResult>;
 	isLoaded: () => boolean;
 	refresh: () => Promise<unknown>;

@@ -51,27 +51,26 @@ export const useScenesActions = (): IUseScenesActions => {
 				}
 			);
 
-			let successCount = 0;
-			let failCount = 0;
-
-			for (const scene of scenes) {
-				try {
-					await scenesStore.remove({ id: scene.id });
-					successCount++;
-				} catch {
-					failCount++;
-				}
-			}
-
-			if (successCount > 0) {
-				flashMessage.success(t('scenes.messages.bulkRemoved', { count: successCount }));
-			}
-
-			if (failCount > 0) {
-				flashMessage.error(t('scenes.messages.bulkRemoveFailed', { count: failCount }));
-			}
 		} catch {
 			// User cancelled - do nothing
+			return;
+		}
+
+		// One request for the whole selection. Sending one per scene tripped the
+		// backend's shared rate limit once a selection went past thirty, which left
+		// the rest of the selection silently unprocessed.
+		try {
+			const result = await scenesStore.bulkRemove({ ids: scenes.map((scene) => scene.id) });
+
+			if (result.succeeded.length > 0) {
+				flashMessage.success(t('scenes.messages.bulkRemoved', { count: result.succeeded.length }));
+			}
+
+			if (result.failed.length > 0) {
+				flashMessage.error(t('scenes.messages.bulkRemoveFailed', { count: result.failed.length }));
+			}
+		} catch {
+			flashMessage.error(t('scenes.messages.bulkRemoveFailed', { count: scenes.length }));
 		}
 	};
 
@@ -91,32 +90,25 @@ export const useScenesActions = (): IUseScenesActions => {
 				}
 			);
 
-			let successCount = 0;
-			let failCount = 0;
-
-			for (const scene of scenes) {
-				try {
-					await scenesStore.edit({
-						id: scene.id,
-						data: {
-							enabled: true,
-						},
-					});
-					successCount++;
-				} catch {
-					failCount++;
-				}
-			}
-
-			if (successCount > 0) {
-				flashMessage.success(t('scenes.messages.bulkEnabled', { count: successCount }));
-			}
-
-			if (failCount > 0) {
-				flashMessage.error(t('scenes.messages.bulkEnableFailed', { count: failCount }));
-			}
 		} catch {
 			flashMessage.info(t('scenes.messages.bulkEnableCanceled'));
+
+			return;
+		}
+
+		// See bulkRemove: one request for the whole selection.
+		try {
+			const result = await scenesStore.bulkSetEnabled({ ids: scenes.map((scene) => scene.id), enabled: true });
+
+			if (result.succeeded.length > 0) {
+				flashMessage.success(t('scenes.messages.bulkEnabled', { count: result.succeeded.length }));
+			}
+
+			if (result.failed.length > 0) {
+				flashMessage.error(t('scenes.messages.bulkEnableFailed', { count: result.failed.length }));
+			}
+		} catch {
+			flashMessage.error(t('scenes.messages.bulkEnableFailed', { count: scenes.length }));
 		}
 	};
 
@@ -136,32 +128,25 @@ export const useScenesActions = (): IUseScenesActions => {
 				}
 			);
 
-			let successCount = 0;
-			let failCount = 0;
-
-			for (const scene of scenes) {
-				try {
-					await scenesStore.edit({
-						id: scene.id,
-						data: {
-							enabled: false,
-						},
-					});
-					successCount++;
-				} catch {
-					failCount++;
-				}
-			}
-
-			if (successCount > 0) {
-				flashMessage.success(t('scenes.messages.bulkDisabled', { count: successCount }));
-			}
-
-			if (failCount > 0) {
-				flashMessage.error(t('scenes.messages.bulkDisableFailed', { count: failCount }));
-			}
 		} catch {
 			flashMessage.info(t('scenes.messages.bulkDisableCanceled'));
+
+			return;
+		}
+
+		// See bulkRemove: one request for the whole selection.
+		try {
+			const result = await scenesStore.bulkSetEnabled({ ids: scenes.map((scene) => scene.id), enabled: false });
+
+			if (result.succeeded.length > 0) {
+				flashMessage.success(t('scenes.messages.bulkDisabled', { count: result.succeeded.length }));
+			}
+
+			if (result.failed.length > 0) {
+				flashMessage.error(t('scenes.messages.bulkDisableFailed', { count: result.failed.length }));
+			}
+		} catch {
+			flashMessage.error(t('scenes.messages.bulkDisableFailed', { count: scenes.length }));
 		}
 	};
 

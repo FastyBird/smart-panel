@@ -32,15 +32,22 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
+import { ReqBulkRemoveScenesDto, ReqBulkUpdateScenesDto } from '../dto/bulk-scenes.dto';
 import { CreateSceneDto, ReqCreateSceneDto } from '../dto/create-scene.dto';
 import { ReqTriggerSceneDto, TriggerSceneDto } from '../dto/trigger-scene.dto';
 import { ReqUpdateSceneDto, UpdateSceneDto } from '../dto/update-scene.dto';
 import { SceneEntity } from '../entities/scenes.entity';
-import { SceneExecutionResponseModel, SceneResponseModel, ScenesResponseModel } from '../models/scenes-response.model';
+import {
+	BulkResultResponseModel,
+	SceneExecutionResponseModel,
+	SceneResponseModel,
+	ScenesResponseModel,
+} from '../models/scenes-response.model';
 import { SceneExecutionResultModel } from '../models/scenes.model';
 import { SCENES_MODULE_API_TAG_NAME, SCENES_MODULE_NAME, SCENES_MODULE_PREFIX } from '../scenes.constants';
 import { ScenesException, ScenesNotEditableException, ScenesNotTriggerableException } from '../scenes.exceptions';
 import { SceneExecutorService } from '../services/scene-executor.service';
+import { ScenesBulkService } from '../services/scenes-bulk.service';
 import { ScenesService } from '../services/scenes.service';
 
 @ApiTags(SCENES_MODULE_API_TAG_NAME)
@@ -51,6 +58,7 @@ export class ScenesController {
 	constructor(
 		private readonly scenesService: ScenesService,
 		private readonly sceneExecutorService: SceneExecutorService,
+		private readonly scenesBulkService: ScenesBulkService,
 	) {}
 
 	@ApiOperation({
@@ -261,6 +269,48 @@ export class ScenesController {
 
 			throw error;
 		}
+	}
+
+	@ApiOperation({
+		tags: [SCENES_MODULE_API_TAG_NAME],
+		summary: 'Remove several scenes',
+		description:
+			'Removes every scene in the supplied selection. Each scene is processed independently, so a scene that can not be removed is reported in the response rather than aborting the rest of the selection. This exists so that acting on a large selection is one request instead of one per scene.',
+		operationId: 'create-scenes-module-scenes-bulk-remove',
+	})
+	@ApiBody({ type: ReqBulkRemoveScenesDto, description: 'The scenes to remove' })
+	@ApiSuccessResponse(BulkResultResponseModel, 'Returns which scenes were removed and which were not')
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post('bulk-remove')
+	@HttpCode(200)
+	async bulkRemove(@Body() body: ReqBulkRemoveScenesDto): Promise<BulkResultResponseModel> {
+		const response = new BulkResultResponseModel();
+
+		response.data = await this.scenesBulkService.remove(body.data.ids);
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [SCENES_MODULE_API_TAG_NAME],
+		summary: 'Enable or disable several scenes',
+		description:
+			'Sets the enabled state of every scene in the supplied selection. Each scene is processed independently, so a scene that can not be updated is reported in the response rather than aborting the rest of the selection. This exists so that acting on a large selection is one request instead of one per scene.',
+		operationId: 'create-scenes-module-scenes-bulk-update',
+	})
+	@ApiBody({ type: ReqBulkUpdateScenesDto, description: 'The scenes to update and the state to set' })
+	@ApiSuccessResponse(BulkResultResponseModel, 'Returns which scenes were updated and which were not')
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post('bulk-update')
+	@HttpCode(200)
+	async bulkUpdate(@Body() body: ReqBulkUpdateScenesDto): Promise<BulkResultResponseModel> {
+		const response = new BulkResultResponseModel();
+
+		response.data = await this.scenesBulkService.setEnabled(body.data.ids, body.data.enabled);
+
+		return response;
 	}
 
 	@ApiOperation({
