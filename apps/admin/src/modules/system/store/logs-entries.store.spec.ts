@@ -100,17 +100,56 @@ describe('LogsEntries Store', () => {
 		expect(store.findById(makeLogEntryId(1004))).not.toBeNull();
 	});
 
-	it('never prunes when appending a paginated page (afterId set)', async () => {
-		(backendClient.GET as Mock).mockResolvedValueOnce(makeLogsResponse(0, 999, { has_more: true, next_cursor: makeLogEntryId(999) }));
+	// Real afterId pagination is the user scrolling further back into history: the paginated page
+	// is always OLDER than whatever's already in the store, never newer.
+	it('never prunes when paging in older entries (afterId set)', async () => {
+		(backendClient.GET as Mock).mockResolvedValueOnce(makeLogsResponse(10, 1009, { has_more: true, next_cursor: makeLogEntryId(10) }));
 
 		await store.fetch({ append: true });
 
 		expect(Object.keys(store.data).length).toBe(MAX_LIVE_LOG_ENTRIES);
 
-		(backendClient.GET as Mock).mockResolvedValueOnce(makeLogsResponse(1000, 1009, { has_more: false }));
+		(backendClient.GET as Mock).mockResolvedValueOnce(makeLogsResponse(0, 9, { has_more: false }));
 
-		await store.fetch({ afterId: makeLogEntryId(999), append: true });
+		await store.fetch({ afterId: makeLogEntryId(10), append: true });
+
+		// The paginated page (indices 0-9) is older than everything already in the store
+		// (indices 10-1009). Appending it pushes the map over the cap, but afterId exempts
+		// this fetch from pruning.
+		expect(Object.keys(store.data).length).toBe(MAX_LIVE_LOG_ENTRIES + 10);
+		expect(store.findById(makeLogEntryId(0))).not.toBeNull();
+	});
+
+	it('prunes previously paged-in older entries on the next live append once the cap is exceeded', async () => {
+		(backendClient.GET as Mock).mockResolvedValueOnce(makeLogsResponse(10, 1009, { has_more: true, next_cursor: makeLogEntryId(10) }));
+
+		await store.fetch({ append: true });
+
+		(backendClient.GET as Mock).mockResolvedValueOnce(makeLogsResponse(0, 9, { has_more: false }));
+
+		await store.fetch({ afterId: makeLogEntryId(10), append: true });
 
 		expect(Object.keys(store.data).length).toBe(MAX_LIVE_LOG_ENTRIES + 10);
+		expect(store.findById(makeLogEntryId(0))).not.toBeNull();
+
+		// The live poller ticks again (no afterId). This newest page doesn't overlap what's
+		// already in the store, so the merge is unambiguously over the cap by 30, and the 30
+		// oldest entries -- indices 0-29, which fully contain the page paged in above -- are pruned.
+		(backendClient.GET as Mock).mockResolvedValueOnce(makeLogsResponse(1010, 1029, { has_more: false }));
+
+		await store.fetch({ append: true });
+
+		expect(Object.keys(store.data).length).toBe(MAX_LIVE_LOG_ENTRIES);
+
+		// The entire paginated-in older page is gone.
+		expect(store.findById(makeLogEntryId(0))).toBeNull();
+		expect(store.findById(makeLogEntryId(9))).toBeNull();
+
+		// Exact cutoff: index 29 is dropped, index 30 is the oldest survivor.
+		expect(store.findById(makeLogEntryId(29))).toBeNull();
+		expect(store.findById(makeLogEntryId(30))).not.toBeNull();
+
+		// The newest entries from this live tick are retained.
+		expect(store.findById(makeLogEntryId(1029))).not.toBeNull();
 	});
 });

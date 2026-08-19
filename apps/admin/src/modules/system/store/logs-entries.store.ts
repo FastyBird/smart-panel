@@ -31,8 +31,9 @@ import type {
 import { transformLogEntryCreateRequest, transformLogEntryResponse } from './logs-entries.transformers';
 
 // A live tail re-reads the newest page every few seconds forever; cap what it retains so a
-// long-running tab stays bounded. Cursor pagination (afterId) keeps everything the user
-// explicitly paged to.
+// long-running tab stays bounded. A cursor-paginated fetch (afterId set) never prunes on its
+// own, but the next live append (no afterId) caps the whole map to the newest
+// MAX_LIVE_LOG_ENTRIES by ts — including entries paged in earlier that fall outside that window.
 export const MAX_LIVE_LOG_ENTRIES = 1000;
 
 const defaultSemaphore: ILogsEntriesStateSemaphore = {
