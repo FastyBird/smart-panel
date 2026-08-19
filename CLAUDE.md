@@ -70,7 +70,7 @@ Note: `apps/admin/src/openapi.constants.ts` is manually maintained (exports from
 ### TypeScript (Backend & Admin)
 
 - **Indentation**: tabs (not spaces)
-- **Print width**: 120 characters
+- **Print width**: 120 characters, except `apps/admin` which is 150 (see each app's `prettier.config.mjs`)
 - **Quotes**: single quotes
 - **Semicolons**: always
 - **Trailing commas**: always on multiline
