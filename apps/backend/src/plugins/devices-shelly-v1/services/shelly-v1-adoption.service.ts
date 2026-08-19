@@ -12,10 +12,10 @@ export type ShellyV1AdoptionStatus = 'created' | 'updated' | 'failed';
 
 export interface ShellyV1AdoptionOutcome {
 	hostname: string;
-	identifier: string;
+	name: string;
 	status: ShellyV1AdoptionStatus;
+	error: string | null;
 	deviceId: string | null;
-	reason: string | null;
 }
 
 /**
@@ -73,10 +73,10 @@ export class ShellyV1AdoptionService {
 
 			return {
 				hostname: device.hostname,
-				identifier: device.identifier,
+				name: device.name,
 				status: 'created',
+				error: null,
 				deviceId: created.id,
-				reason: null,
 			};
 		} catch (error) {
 			// The connector may have adopted this device between the lookup above
@@ -98,10 +98,10 @@ export class ShellyV1AdoptionService {
 
 			return {
 				hostname: device.hostname,
-				identifier: device.identifier,
+				name: device.name,
 				status: 'failed',
+				error: err.message.length > 0 ? err.message : 'Device could not be adopted',
 				deviceId: null,
-				reason: err.message.length > 0 ? err.message : 'Device could not be adopted',
 			};
 		}
 	}
@@ -121,10 +121,10 @@ export class ShellyV1AdoptionService {
 
 			return {
 				hostname: device.hostname,
-				identifier: device.identifier,
+				name: device.name,
 				status: 'updated',
+				error: null,
 				deviceId: existing.id,
-				reason: null,
 			};
 		} catch (error) {
 			const err = error as Error;
@@ -136,10 +136,10 @@ export class ShellyV1AdoptionService {
 
 			return {
 				hostname: device.hostname,
-				identifier: device.identifier,
+				name: device.name,
 				status: 'failed',
+				error: err.message.length > 0 ? err.message : 'Device could not be updated',
 				deviceId: existing.id,
-				reason: err.message.length > 0 ? err.message : 'Device could not be updated',
 			};
 		}
 	}

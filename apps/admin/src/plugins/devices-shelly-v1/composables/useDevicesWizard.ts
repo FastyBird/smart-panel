@@ -551,13 +551,11 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 				}
 
 				for (const result of responseBody.data) {
-					const requested = payload.find((item) => item.hostname === result.hostname);
-
 					outcomes.push({
 						hostname: result.hostname,
-						name: requested?.name ?? result.hostname,
+						name: result.name,
 						status: result.status,
-						error: result.reason,
+						error: result.error,
 					});
 				}
 

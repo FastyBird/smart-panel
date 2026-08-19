@@ -409,7 +409,7 @@ describe('useDevicesWizard', () => {
 		})	.mockResolvedValueOnce({
 			data: {
 				data: [
-					{ hostname: '192.168.1.10', identifier: 'shellyplus1-aabbcc', status: 'created', device_id: 'dev-1', reason: null },
+					{ hostname: '192.168.1.10', name: 'Kitchen relay', status: 'created', error: null, device_id: 'dev-1' },
 				],
 			},
 			error: undefined,
@@ -451,7 +451,7 @@ describe('useDevicesWizard', () => {
 			})		.mockResolvedValueOnce({
 			data: {
 				data: [
-					{ hostname: '192.168.1.10', identifier: 'shellyplus1-aabbcc', status: 'created', device_id: 'dev-1', reason: null },
+					{ hostname: '192.168.1.10', name: 'Kitchen relay', status: 'created', error: null, device_id: 'dev-1' },
 				],
 			},
 			error: undefined,
@@ -900,7 +900,7 @@ describe('useDevicesWizard', () => {
 
 	it('adopts the whole selection in a single request', async () => {
 		arrangeAdoption([
-			{ hostname: '192.168.1.10', identifier: 'shellyplus1-aabbcc', status: 'created', device_id: 'dev-1', reason: null },
+			{ hostname: '192.168.1.10', name: 'Kitchen relay', status: 'created', error: null, device_id: 'dev-1' },
 		]);
 
 		const adapter = useDevicesWizard();
@@ -937,10 +937,10 @@ describe('useDevicesWizard', () => {
 		arrangeAdoption(
 			discoverySession.devices.map((device) => ({
 				hostname: device.hostname,
-				identifier: device.identifier,
+				name: device.name ?? device.hostname,
 				status: 'created',
+				error: null,
 				device_id: 'dev',
-				reason: null,
 			}))
 		);
 
@@ -965,7 +965,7 @@ describe('useDevicesWizard', () => {
 
 	it('adopts with the name and category the shell hands over, not the discovered ones', async () => {
 		arrangeAdoption([
-			{ hostname: '192.168.1.10', identifier: 'shellyplus1-aabbcc', status: 'created', device_id: 'dev-1', reason: null },
+			{ hostname: '192.168.1.10', name: 'Kitchen relay', status: 'created', error: null, device_id: 'dev-1' },
 		]);
 
 		const adapter = useDevicesWizard();
@@ -980,7 +980,7 @@ describe('useDevicesWizard', () => {
 
 	it('falls back to the suggested name when the shell hands over a blank one', async () => {
 		arrangeAdoption([
-			{ hostname: '192.168.1.10', identifier: 'shellyplus1-aabbcc', status: 'created', device_id: 'dev-1', reason: null },
+			{ hostname: '192.168.1.10', name: 'Kitchen relay', status: 'created', error: null, device_id: 'dev-1' },
 		]);
 
 		const adapter = useDevicesWizard();
@@ -995,7 +995,7 @@ describe('useDevicesWizard', () => {
 	// connector had already registered comes back as an update, not a failure.
 	it('reports back whatever outcome the backend returned for each device', async () => {
 		arrangeAdoption([
-			{ hostname: '192.168.1.10', identifier: 'shellyplus1-aabbcc', status: 'updated', device_id: 'dev-1', reason: null },
+			{ hostname: '192.168.1.10', name: 'Kitchen relay', status: 'updated', error: null, device_id: 'dev-1' },
 		]);
 
 		const adapter = useDevicesWizard();
@@ -1009,7 +1009,7 @@ describe('useDevicesWizard', () => {
 
 	it('surfaces a per-device refusal without failing the rest', async () => {
 		arrangeAdoption([
-			{ hostname: '192.168.1.10', identifier: 'shellyplus1-aabbcc', status: 'failed', device_id: null, reason: 'Device is unreachable' },
+			{ hostname: '192.168.1.10', name: 'Kitchen relay', status: 'failed', error: 'Device is unreachable', device_id: null },
 		]);
 
 		const adapter = useDevicesWizard();
@@ -1051,7 +1051,7 @@ describe('useDevicesWizard', () => {
 				return Promise.resolve({
 					data: {
 						data: [
-							{ hostname: '192.168.1.10', identifier: 'shellyplus1-aabbcc', status: 'created', device_id: 'dev-1', reason: null },
+							{ hostname: '192.168.1.10', name: 'Kitchen relay', status: 'created', error: null, device_id: 'dev-1' },
 						],
 					},
 					error: undefined,

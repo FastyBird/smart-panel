@@ -282,10 +282,10 @@ describe('ShellyNgDevicesController', () => {
 			adoptionService.adopt.mockResolvedValue([
 				{
 					hostname: '192.168.1.10',
-					identifier: 'shellyplus1-aabbcc',
+					name: 'Kitchen light',
 					status: 'created',
+					error: null,
 					deviceId: 'dev-1',
-					reason: null,
 				},
 			]);
 

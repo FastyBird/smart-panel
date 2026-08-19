@@ -85,7 +85,7 @@ describe('ShellyNgAdoptionService', () => {
 		const [outcome] = await service.adopt([selection()]);
 
 		expect(outcome.status).toBe('failed');
-		expect(outcome.reason).toBe('Device could not be created');
+		expect(outcome.error).toBe('Device could not be created');
 		expect(outcome.deviceId).toBeNull();
 	});
 

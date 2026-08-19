@@ -427,7 +427,7 @@ describe('useDevicesWizard', () => {
 		backendClient.POST.mockResolvedValueOnce({
 			data: {
 				data: [
-					{ hostname: 'shelly-1.local', identifier: 'shelly1-aabbcc', status: 'created', device_id: 'dev-1', reason: null },
+					{ hostname: 'shelly-1.local', name: 'Bathroom heater', status: 'created', error: null, device_id: 'dev-1' },
 				],
 			},
 			error: undefined,
@@ -483,7 +483,7 @@ describe('useDevicesWizard', () => {
 		backendClient.POST.mockResolvedValueOnce({
 			data: {
 				data: [
-					{ hostname: 'shelly-1.local', identifier: 'shelly1-aabbcc', status: 'created', device_id: 'dev-1', reason: null },
+					{ hostname: 'shelly-1.local', name: 'Bathroom heater', status: 'created', error: null, device_id: 'dev-1' },
 				],
 			},
 			error: undefined,
@@ -532,7 +532,7 @@ describe('useDevicesWizard', () => {
 		backendClient.POST.mockResolvedValueOnce({
 			data: {
 				data: [
-					{ hostname: 'shelly-1.local', identifier: 'shelly1-aabbcc', status: 'created', device_id: 'dev-1', reason: null },
+					{ hostname: 'shelly-1.local', name: 'Bathroom heater', status: 'created', error: null, device_id: 'dev-1' },
 				],
 			},
 			error: undefined,
@@ -942,14 +942,14 @@ describe('useDevicesWizard', () => {
 
 	it('adopts the whole selection in a single request', async () => {
 		arrangeAdoption([
-			{ hostname: 'shelly-1.local', identifier: 'shelly1-aabbcc', status: 'created', device_id: 'dev-1', reason: null },
+			{ hostname: 'shelly-1.local', name: 'Bathroom heater', status: 'created', error: null, device_id: 'dev-1' },
 		]);
 
 		const adapter = useDevicesWizard();
 
 		await adapter.start();
 
-		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Kitchen relay', category: DevicesModuleDeviceCategory.lighting }]);
+		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
 
 		const adoptCalls = backendClient.POST.mock.calls.filter((call: unknown[]) => String(call[0]).includes('/devices/adopt'));
 
@@ -958,7 +958,7 @@ describe('useDevicesWizard', () => {
 			{
 				identifier: 'shelly1-aabbcc',
 				hostname: 'shelly-1.local',
-				name: 'Kitchen relay',
+				name: 'Bathroom heater',
 				category: DevicesModuleDeviceCategory.lighting,
 				password: null,
 			},
@@ -966,7 +966,7 @@ describe('useDevicesWizard', () => {
 		expect(results).toEqual([
 			{
 				key: 'shelly-1.local',
-				name: 'Kitchen relay',
+				name: 'Bathroom heater',
 				identifier: 'shelly-1.local',
 				status: 'created',
 				error: null,
@@ -979,10 +979,10 @@ describe('useDevicesWizard', () => {
 		arrangeAdoption(
 			discoverySession.devices.map((device) => ({
 				hostname: device.hostname,
-				identifier: device.identifier,
+				name: device.name ?? device.hostname,
 				status: 'created',
+				error: null,
 				device_id: 'dev',
-				reason: null,
 			}))
 		);
 
@@ -1007,7 +1007,7 @@ describe('useDevicesWizard', () => {
 
 	it('adopts with the name and category the shell hands over, not the discovered ones', async () => {
 		arrangeAdoption([
-			{ hostname: 'shelly-1.local', identifier: 'shelly1-aabbcc', status: 'created', device_id: 'dev-1', reason: null },
+			{ hostname: 'shelly-1.local', name: 'Bathroom heater', status: 'created', error: null, device_id: 'dev-1' },
 		]);
 
 		const adapter = useDevicesWizard();
@@ -1022,7 +1022,7 @@ describe('useDevicesWizard', () => {
 
 	it('falls back to the suggested name when the shell hands over a blank one', async () => {
 		arrangeAdoption([
-			{ hostname: 'shelly-1.local', identifier: 'shelly1-aabbcc', status: 'created', device_id: 'dev-1', reason: null },
+			{ hostname: 'shelly-1.local', name: 'Bathroom heater', status: 'created', error: null, device_id: 'dev-1' },
 		]);
 
 		const adapter = useDevicesWizard();
@@ -1037,28 +1037,28 @@ describe('useDevicesWizard', () => {
 	// connector had already registered comes back as an update, not a failure.
 	it('reports back whatever outcome the backend returned for each device', async () => {
 		arrangeAdoption([
-			{ hostname: 'shelly-1.local', identifier: 'shelly1-aabbcc', status: 'updated', device_id: 'dev-1', reason: null },
+			{ hostname: 'shelly-1.local', name: 'Bathroom heater', status: 'updated', error: null, device_id: 'dev-1' },
 		]);
 
 		const adapter = useDevicesWizard();
 
 		await adapter.start();
 
-		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Kitchen relay', category: DevicesModuleDeviceCategory.lighting }]);
+		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
 
 		expect(results[0]).toEqual(expect.objectContaining({ status: 'updated', error: null }));
 	});
 
 	it('surfaces a per-device refusal without failing the rest', async () => {
 		arrangeAdoption([
-			{ hostname: 'shelly-1.local', identifier: 'shelly1-aabbcc', status: 'failed', device_id: null, reason: 'Device is unreachable' },
+			{ hostname: 'shelly-1.local', name: 'Bathroom heater', status: 'failed', error: 'Device is unreachable', device_id: null },
 		]);
 
 		const adapter = useDevicesWizard();
 
 		await adapter.start();
 
-		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Kitchen relay', category: DevicesModuleDeviceCategory.lighting }]);
+		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
 
 		expect(results[0]).toEqual(expect.objectContaining({ status: 'failed', error: 'Device is unreachable' }));
 	});
@@ -1080,7 +1080,7 @@ describe('useDevicesWizard', () => {
 
 		await adapter.start();
 
-		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Kitchen relay', category: DevicesModuleDeviceCategory.lighting }]);
+		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
 
 		expect(results[0]).toEqual(expect.objectContaining({ status: 'failed' }));
 	});
@@ -1093,7 +1093,7 @@ describe('useDevicesWizard', () => {
 				return Promise.resolve({
 					data: {
 						data: [
-							{ hostname: 'shelly-1.local', identifier: 'shelly1-aabbcc', status: 'created', device_id: 'dev-1', reason: null },
+							{ hostname: 'shelly-1.local', name: 'Bathroom heater', status: 'created', error: null, device_id: 'dev-1' },
 						],
 					},
 					error: undefined,
@@ -1115,7 +1115,7 @@ describe('useDevicesWizard', () => {
 
 		await adapter.start();
 
-		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Kitchen relay', category: DevicesModuleDeviceCategory.lighting }]);
+		const results = await adapter.adopt([{ key: 'shelly-1.local', name: 'Bathroom heater', category: DevicesModuleDeviceCategory.lighting }]);
 
 		expect(adoptCall().body.data.devices[0]!.identifier).toBe('shelly1-aabbcc');
 		expect(results[0]).toEqual(expect.objectContaining({ status: 'created' }));
