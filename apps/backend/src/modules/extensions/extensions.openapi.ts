@@ -13,6 +13,7 @@ import {
 	ActionResultResponseModel,
 	ExtensionActionsResponseModel,
 } from './models/actions-response.model';
+import { ExtensionsConfigModel } from './models/config.model';
 import {
 	DiscoveredExtensionAdminModel,
 	DiscoveredExtensionBackendModel,
@@ -32,6 +33,8 @@ import {
 } from './models/service-status.model';
 
 export const EXTENSIONS_SWAGGER_EXTRA_MODELS = [
+	// Module configuration
+	ExtensionsConfigModel,
 	ExtensionModel,
 	ExtensionLinksModel,
 	ExtensionResponseModel,

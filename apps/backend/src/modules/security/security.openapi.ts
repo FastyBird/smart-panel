@@ -1,3 +1,4 @@
+import { SecurityConfigModel } from './models/config.model';
 import {
 	SecurityAlertAckAllResponseModel,
 	SecurityAlertAckModel,
@@ -8,6 +9,8 @@ import { SecurityStatusResponseModel } from './models/security-response.model';
 import { SecurityAlertModel, SecurityLastEventModel, SecurityStatusModel } from './models/security-status.model';
 
 export const SECURITY_SWAGGER_EXTRA_MODELS = [
+	// Module configuration
+	SecurityConfigModel,
 	// Response models
 	SecurityStatusResponseModel,
 	SecurityAlertAckResponseModel,

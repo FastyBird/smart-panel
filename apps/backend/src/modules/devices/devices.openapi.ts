@@ -8,6 +8,7 @@ import {
 	DeviceControlEntity,
 	DeviceEntity,
 } from './entities/devices.entity';
+import { DevicesConfigModel } from './models/config.model';
 import {
 	DeviceValidationResponseModel,
 	DeviceValidationResultModel,
@@ -53,6 +54,8 @@ import {
 } from './models/devices.model';
 
 export const DEVICES_SWAGGER_EXTRA_MODELS = [
+	// Module configuration
+	DevicesConfigModel,
 	// Response models
 	BulkResultResponseModel,
 	DeviceResponseModel,

@@ -1,10 +1,10 @@
 import { type ZodType, z } from 'zod';
 
-import type { ConfigModuleModuleSchema, ConfigModuleUpdateModuleSchema } from '../../../openapi.constants';
+import type { ConfigModuleMcpSchema, ConfigModuleUpdateModuleSchema } from '../../../openapi.constants';
 import { ConfigModuleResSchema, ConfigModuleSchema, ConfigModuleUpdateReqSchema } from '../../config/store/config-modules.store.schemas';
 import { MCP_MODULE_NAME, McpCapability } from '../mcp.constants';
 
-type ApiConfigModule = ConfigModuleModuleSchema;
+type ApiConfigModule = ConfigModuleMcpSchema;
 type ApiConfigUpdateModule = ConfigModuleUpdateModuleSchema;
 
 export const McpConfigSchema = ConfigModuleSchema.extend({

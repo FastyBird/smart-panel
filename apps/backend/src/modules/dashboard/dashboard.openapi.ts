@@ -5,6 +5,7 @@ import { CreateDataSourceDto } from './dto/create-data-source.dto';
 import { CreateTileDto } from './dto/create-tile.dto';
 import { UpdateDataSourceDto } from './dto/update-data-source.dto';
 import { UpdateTileDto } from './dto/update-tile.dto';
+import { DashboardConfigModel } from './models/config.model';
 import {
 	BulkResultResponseModel,
 	DataSourceResponseModel,
@@ -22,6 +23,8 @@ import {
 } from './models/dashboard.model';
 
 export const DASHBOARD_SWAGGER_EXTRA_MODELS = [
+	// Module configuration
+	DashboardConfigModel,
 	// DTOs (abstract classes need type assertion)
 	CreateDataSourceDto,
 	CreateTileDto,

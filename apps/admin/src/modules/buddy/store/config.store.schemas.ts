@@ -1,11 +1,11 @@
 import { type ZodType, z } from 'zod';
 
-import type { ConfigModuleModuleSchema, ConfigModuleUpdateModuleSchema } from '../../../openapi.constants';
+import type { ConfigModuleBuddySchema, ConfigModuleUpdateModuleSchema } from '../../../openapi.constants';
 import { ConfigModuleResSchema, ConfigModuleSchema, ConfigModuleUpdateReqSchema } from '../../config/store/config-modules.store.schemas';
 import { BUDDY_MODULE_NAME } from '../buddy.constants';
 
 type ApiConfigUpdateModule = ConfigModuleUpdateModuleSchema;
-type ApiConfigModule = ConfigModuleModuleSchema;
+type ApiConfigModule = ConfigModuleBuddySchema;
 
 // STORE STATE
 // ===========

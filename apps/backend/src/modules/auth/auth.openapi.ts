@@ -26,8 +26,11 @@ import {
 	TokensResponseModel,
 } from './models/auth-response.model';
 import { CheckModel, LoggedInModel, RefreshTokenModel, TokenPairModel } from './models/auth.model';
+import { AuthConfigModel } from './models/config.model';
 
 export const AUTH_SWAGGER_EXTRA_MODELS = [
+	// Module configuration
+	AuthConfigModel,
 	// DTOs
 	CreateAccessTokenDto,
 	CreateRefreshTokenDto,

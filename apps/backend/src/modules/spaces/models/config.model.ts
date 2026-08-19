@@ -6,7 +6,7 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { ModuleConfigModel } from '../../config/models/config.model';
 import { SPACES_MODULE_NAME } from '../spaces.constants';
 
-@ApiSchema({ name: 'SpacesModuleDataConfig' })
+@ApiSchema({ name: 'ConfigModuleDataSpaces' })
 export class SpacesConfigModel extends ModuleConfigModel {
 	@ApiProperty({
 		description: 'Module type',

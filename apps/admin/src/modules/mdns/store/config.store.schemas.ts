@@ -1,13 +1,13 @@
 import { type ZodType, z } from 'zod';
 
 import type {
-	ConfigModuleModuleSchema,
+	ConfigModuleMdnsSchema,
 	ConfigModuleUpdateModuleSchema,
 } from '../../../openapi.constants';
 import { ConfigModuleResSchema, ConfigModuleSchema, ConfigModuleUpdateReqSchema } from '../../config/store/config-modules.store.schemas';
 import { MDNS_MODULE_NAME } from '../mdns.constants';
 
-type ApiConfigModule = ConfigModuleModuleSchema;
+type ApiConfigModule = ConfigModuleMdnsSchema;
 type ApiConfigUpdateModule = ConfigModuleUpdateModuleSchema;
 
 // STORE STATE
