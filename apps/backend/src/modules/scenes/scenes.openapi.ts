@@ -3,6 +3,7 @@
  */
 import { SceneActionEntity, SceneEntity } from './entities/scenes.entity';
 import {
+	BulkResultResponseModel,
 	SceneActionResponseModel,
 	SceneActionsResponseModel,
 	SceneExecutionResponseModel,
@@ -13,6 +14,7 @@ import { ActionExecutionResultModel, SceneExecutionResultModel } from './models/
 
 export const SCENES_SWAGGER_EXTRA_MODELS = [
 	// Response models
+	BulkResultResponseModel,
 	SceneResponseModel,
 	ScenesResponseModel,
 	SceneActionResponseModel,

@@ -13,16 +13,20 @@ import type { ISceneActionRes } from './scenes.actions.store.types';
 import { transformSceneActionResponse } from './scenes.actions.transformers';
 import {
 	SceneCreateReqSchema,
-	SceneSchema,
-	SceneUpdateReqSchema,
 	ScenesAddActionPayloadSchema,
+	ScenesBulkResultSchema,
+	SceneSchema,
 	ScenesEditActionPayloadSchema,
+	SceneUpdateReqSchema,
 } from './scenes.store.schemas';
 import type {
 	IScene,
-	ISceneRes,
 	ISceneExecutionResult,
+	ISceneRes,
 	IScenesAddActionPayload,
+	IScenesBulkRemoveActionPayload,
+	IScenesBulkResult,
+	IScenesBulkSetEnabledActionPayload,
 	IScenesEditActionPayload,
 	IScenesGetActionPayload,
 	IScenesOnEventActionPayload,
@@ -32,8 +36,8 @@ import type {
 	IScenesStateSemaphore,
 	IScenesStoreActions,
 	IScenesStoreState,
-	IScenesUnsetActionPayload,
 	IScenesTriggerActionPayload,
+	IScenesUnsetActionPayload,
 } from './scenes.store.types';
 import { transformSceneCreateRequest, transformSceneResponse, transformSceneUpdateRequest } from './scenes.transformers';
 
@@ -471,6 +475,115 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 		}
 	};
 
+	/**
+	 * Removes a selection in one request.
+	 *
+	 * The per-scene alternative was one request each, which the backend's shared
+	 * rate limit rejects past thirty - so a large selection failed halfway
+	 * through with no way to tell which half. The outcome is reported per scene
+	 * because the backend still refuses individual scenes for individual reasons,
+	 * a non-editable one above all.
+	 */
+	const bulkRemove = async (payload: IScenesBulkRemoveActionPayload): Promise<IScenesBulkResult> => {
+		// Drafts were never sent to the backend, so they are dropped here and
+		// counted as done rather than handed to an endpoint that would correctly
+		// report them as unknown.
+		const drafts: string[] = [];
+		const persisted: string[] = [];
+
+		for (const id of payload.ids) {
+			const record = data.value.get(id);
+
+			if (record === undefined) {
+				continue;
+			}
+
+			(record.draft ? drafts : persisted).push(id);
+		}
+
+		for (const id of drafts) {
+			unset({ id });
+		}
+
+		if (persisted.length === 0) {
+			return { succeeded: drafts, failed: [] };
+		}
+
+		semaphore.value.deleting.push(...persisted);
+
+		try {
+			const { data: responseBody, error } = await backend.client.POST(
+				`/${MODULES_PREFIX}/${SCENES_MODULE_PREFIX}/scenes/bulk-remove`,
+				{ body: { data: { ids: persisted } } }
+			);
+
+			if (typeof error !== 'undefined' || typeof responseBody === 'undefined') {
+				throw new ScenesApiException('Received unexpected response.');
+			}
+
+			const result = ScenesBulkResultSchema.parse(responseBody.data);
+
+			for (const id of result.succeeded) {
+				unset({ id });
+			}
+
+			return { succeeded: [...drafts, ...result.succeeded], failed: result.failed };
+		} catch (e) {
+			throw new ScenesApiException('Failed to remove scenes.', null, e as Error);
+		} finally {
+			semaphore.value.deleting = semaphore.value.deleting.filter((item) => !persisted.includes(item));
+		}
+	};
+
+	/**
+	 * Enables or disables a selection in one request. Same reasoning as
+	 * `bulkRemove`.
+	 */
+	const bulkSetEnabled = async (payload: IScenesBulkSetEnabledActionPayload): Promise<IScenesBulkResult> => {
+		const persisted = payload.ids.filter((id) => {
+			const record = data.value.get(id);
+
+			return record !== undefined && !record.draft;
+		});
+
+		if (persisted.length === 0) {
+			return { succeeded: [], failed: [] };
+		}
+
+		semaphore.value.updating.push(...persisted);
+
+		try {
+			const { data: responseBody, error } = await backend.client.POST(
+				`/${MODULES_PREFIX}/${SCENES_MODULE_PREFIX}/scenes/bulk-update`,
+				{ body: { data: { ids: persisted, enabled: payload.enabled } } }
+			);
+
+			if (typeof error !== 'undefined' || typeof responseBody === 'undefined') {
+				throw new ScenesApiException('Received unexpected response.');
+			}
+
+			const result = ScenesBulkResultSchema.parse(responseBody.data);
+
+			// The response carries only the outcome, so the local records are nudged
+			// to the state the backend just confirmed instead of being re-fetched one
+			// by one - which would reintroduce the request storm this endpoint exists
+			// to remove.
+			for (const id of result.succeeded) {
+				const record = data.value.get(id);
+
+				if (record !== undefined) {
+					data.value.set(id, { ...record, enabled: payload.enabled });
+				}
+			}
+
+			return result;
+		} catch (e) {
+			throw new ScenesApiException('Failed to update scenes.', null, e as Error);
+		} finally {
+			semaphore.value.updating = semaphore.value.updating.filter((item) => !persisted.includes(item));
+		}
+	};
+
 	const trigger = async (payload: IScenesTriggerActionPayload): Promise<ISceneExecutionResult> => {
 		const existingRecord = data.value.get(payload.id);
 
@@ -554,6 +667,8 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 		edit,
 		save,
 		remove,
+		bulkRemove,
+		bulkSetEnabled,
 		trigger,
 	};
 });

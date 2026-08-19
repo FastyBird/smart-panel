@@ -3,6 +3,7 @@ import { Expose } from 'class-transformer';
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
+import { BulkResultModel } from '../../api/models/bulk.model';
 import {
 	ChannelControlEntity,
 	ChannelEntity,
@@ -11,7 +12,7 @@ import {
 	DeviceEntity,
 } from '../entities/devices.entity';
 
-import { BulkResultModel, PropertyTimeseriesModel } from './devices.model';
+import { PropertyTimeseriesModel } from './devices.model';
 
 /**
  * Response wrapper for DeviceEntity
