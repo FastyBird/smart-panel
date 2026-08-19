@@ -11,10 +11,16 @@ import type {
 import { ExtensionKind } from '../extensions.constants';
 import { ExtensionsApiException, ExtensionsValidationException } from '../extensions.exceptions';
 
-import { ExtensionSchema, ExtensionsUpdateActionPayloadSchema } from './extensions.store.schemas';
+import {
+	ExtensionsBulkResultSchema,
+	ExtensionSchema,
+	ExtensionsUpdateActionPayloadSchema,
+} from './extensions.store.schemas';
 import type {
 	ExtensionsStoreSetup,
 	IExtension,
+	IExtensionsBulkResult,
+	IExtensionsBulkSetEnabledActionPayload,
 	IExtensionsFetchActionPayload,
 	IExtensionsGetActionPayload,
 	IExtensionsSetActionPayload,
@@ -256,6 +262,53 @@ export const useExtensions = defineStore<'extensions_module-extensions', Extensi
 			}
 		};
 
+		/**
+		 * Enables or disables a selection in one request.
+		 *
+		 * The per-extension alternative was one request each, which the backend's
+		 * shared rate limit rejects past thirty. The outcome is reported per
+		 * extension because the backend still refuses individual ones for
+		 * individual reasons - a core extension above all.
+		 */
+		const bulkSetEnabled = async (payload: IExtensionsBulkSetEnabledActionPayload): Promise<IExtensionsBulkResult> => {
+			const types = payload.types.filter((type) => typeof data.value[type] !== 'undefined');
+
+			if (types.length === 0) {
+				return { succeeded: [], failed: [] };
+			}
+
+			semaphore.value.updating.push(...types);
+
+			try {
+				const { data: responseBody, error } = await backend.client.POST(
+					'/modules/extensions/extensions/bulk-update',
+					{ body: { data: { types, enabled: payload.enabled } } }
+				);
+
+				if (typeof error !== 'undefined' || typeof responseBody === 'undefined') {
+					throw new ExtensionsApiException('Received unexpected response.');
+				}
+
+				const result = ExtensionsBulkResultSchema.parse(responseBody.data);
+
+				// The response carries only the outcome, so the local records are
+				// nudged to the state the backend just confirmed instead of being
+				// re-fetched one by one - which would reintroduce the request storm
+				// this endpoint exists to remove.
+				for (const type of result.succeeded) {
+					const record = data.value[type];
+
+					if (typeof record !== 'undefined') {
+						data.value[type] = { ...record, enabled: payload.enabled };
+					}
+				}
+
+				return result;
+			} finally {
+				semaphore.value.updating = semaphore.value.updating.filter((item) => !types.includes(item));
+			}
+		};
+
 		return {
 			semaphore,
 			firstLoad,
@@ -270,6 +323,7 @@ export const useExtensions = defineStore<'extensions_module-extensions', Extensi
 			get,
 			fetch,
 			update,
+			bulkSetEnabled,
 		};
 	}
 );

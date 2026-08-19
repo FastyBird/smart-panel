@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Param, Patch } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post } from '@nestjs/common';
+import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import {
@@ -9,9 +9,15 @@ import {
 } from '../../swagger/decorators/api-documentation.decorator';
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
+import { ReqBulkUpdateExtensionsDto } from '../dto/bulk-extensions.dto';
 import { ReqUpdateExtensionDto } from '../dto/update-extension.dto';
 import { EXTENSIONS_MODULE_API_TAG_NAME, EXTENSIONS_MODULE_NAME } from '../extensions.constants';
-import { ExtensionResponseModel, ExtensionsResponseModel } from '../models/extensions-response.model';
+import {
+	BulkResultResponseModel,
+	ExtensionResponseModel,
+	ExtensionsResponseModel,
+} from '../models/extensions-response.model';
+import { ExtensionsBulkService } from '../services/extensions-bulk.service';
 import { ExtensionsService } from '../services/extensions.service';
 
 @ApiTags(EXTENSIONS_MODULE_API_TAG_NAME)
@@ -19,7 +25,10 @@ import { ExtensionsService } from '../services/extensions.service';
 export class ExtensionsController {
 	private readonly logger = createExtensionLogger(EXTENSIONS_MODULE_NAME, 'ExtensionsController');
 
-	constructor(private readonly extensionsService: ExtensionsService) {}
+	constructor(
+		private readonly extensionsService: ExtensionsService,
+		private readonly extensionsBulkService: ExtensionsBulkService,
+	) {}
 
 	@Get()
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
@@ -108,6 +117,26 @@ export class ExtensionsController {
 
 		const response = new ExtensionResponseModel();
 		response.data = extension;
+
+		return response;
+	}
+
+	@ApiOperation({
+		operationId: 'create-extensions-module-extensions-bulk-update',
+		summary: 'Enable or disable several extensions',
+		description:
+			'Sets the enabled state of every extension in the supplied selection. Each extension is processed independently, so one that can not be updated - a core extension, or an unknown type - is reported in the response rather than aborting the rest of the selection. This exists so that acting on a large selection is one request instead of one per extension. Requires owner or admin role.',
+	})
+	@ApiBody({ type: ReqBulkUpdateExtensionsDto, description: 'The extensions to update and the state to set' })
+	@ApiSuccessResponse(BulkResultResponseModel, 'Returns which extensions were updated and which were not')
+	@ApiBadRequestResponse('Invalid request data')
+	@Post('bulk-update')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@HttpCode(200)
+	async bulkUpdate(@Body() body: ReqBulkUpdateExtensionsDto): Promise<BulkResultResponseModel> {
+		const response = new BulkResultResponseModel();
+
+		response.data = await this.extensionsBulkService.setEnabled(body.data.types, body.data.enabled);
 
 		return response;
 	}

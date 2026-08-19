@@ -20,7 +20,11 @@ import {
 } from './models/discovered-extension.model';
 import { DiscoveredExtensionsResponseModel } from './models/discovered-extensions-response.model';
 import { ExtensionLinksModel, ExtensionModel } from './models/extension.model';
-import { ExtensionResponseModel, ExtensionsResponseModel } from './models/extensions-response.model';
+import {
+	BulkResultResponseModel,
+	ExtensionResponseModel,
+	ExtensionsResponseModel,
+} from './models/extensions-response.model';
 import {
 	ServiceStatusModel,
 	ServiceStatusResponseModel,
@@ -32,6 +36,7 @@ export const EXTENSIONS_SWAGGER_EXTRA_MODELS = [
 	ExtensionLinksModel,
 	ExtensionResponseModel,
 	ExtensionsResponseModel,
+	BulkResultResponseModel,
 	ReqUpdateExtensionDto,
 	UpdateExtensionDataDto,
 	// Action models

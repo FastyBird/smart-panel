@@ -61,6 +61,18 @@ export interface IExtensionsUpdateActionPayload {
 	};
 }
 
+export interface IExtensionsBulkSetEnabledActionPayload {
+	types: IExtension['type'][];
+	enabled: boolean;
+}
+
+export interface IExtensionsBulkResult {
+	// Extensions are keyed by type rather than by a generated id, so the shared
+	// bulk result reports those types in its identifier field.
+	succeeded: IExtension['type'][];
+	failed: { id: IExtension['type']; reason: string }[];
+}
+
 export interface IExtensionsStoreActions {
 	firstLoadFinished: () => boolean;
 	getting: (type: IExtension['type']) => boolean;
@@ -72,6 +84,7 @@ export interface IExtensionsStoreActions {
 	get: (payload: IExtensionsGetActionPayload) => Promise<IExtension>;
 	fetch: (payload?: IExtensionsFetchActionPayload) => Promise<IExtension[]>;
 	update: (payload: IExtensionsUpdateActionPayload) => Promise<IExtension>;
+	bulkSetEnabled: (payload: IExtensionsBulkSetEnabledActionPayload) => Promise<IExtensionsBulkResult>;
 }
 
 export type ExtensionsStoreSetup = IExtensionsStoreState & IExtensionsStoreActions;

@@ -23,6 +23,16 @@ export const ExtensionSchema = z.object({
 	links: ExtensionLinksSchema.optional(),
 });
 
+export const ExtensionsBulkSetEnabledActionPayloadSchema = z.object({
+	types: z.array(z.string()).nonempty(),
+	enabled: z.boolean(),
+});
+
+export const ExtensionsBulkResultSchema = z.object({
+	succeeded: z.array(z.string()),
+	failed: z.array(z.object({ id: z.string(), reason: z.string() })),
+});
+
 export const ExtensionsUpdateActionPayloadSchema = z.object({
 	type: z.string(),
 	data: z.object({

@@ -9,6 +9,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { ExtensionKind } from '../extensions.constants';
 import { ExtensionModel } from '../models/extension.model';
+import { ExtensionsBulkService } from '../services/extensions-bulk.service';
 import { ExtensionsService } from '../services/extensions.service';
 
 import { ExtensionsController } from './extensions.controller';
@@ -28,6 +29,10 @@ describe('ExtensionsController', () => {
 		return { ...extension, ...overrides } as ExtensionModel;
 	};
 
+	const mockExtensionsBulkService = {
+		setEnabled: jest.fn().mockResolvedValue({ succeeded: [], failed: [] }),
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			controllers: [ExtensionsController],
@@ -41,6 +46,10 @@ describe('ExtensionsController', () => {
 						findOne: jest.fn(),
 						updateEnabled: jest.fn(),
 					},
+				},
+				{
+					provide: ExtensionsBulkService,
+					useValue: mockExtensionsBulkService,
 				},
 			],
 		}).compile();
@@ -138,6 +147,37 @@ describe('ExtensionsController', () => {
 
 			expect(result.data.enabled).toBe(true);
 			expect(extensionsService.updateEnabled).toHaveBeenCalledWith('devices-module', true);
+		});
+	});
+
+	describe('bulkUpdate', () => {
+		// Extensions are addressed by type, not by a generated id, so the selection
+		// travels as types all the way through.
+		it('hands the whole selection to the bulk service in one call', async () => {
+			const types = ['devices-shelly-ng-plugin', 'devices-wled-plugin'];
+
+			mockExtensionsBulkService.setEnabled.mockResolvedValue({ succeeded: types, failed: [] });
+
+			const response = await controller.bulkUpdate({ data: { types, enabled: true } } as never);
+
+			expect(mockExtensionsBulkService.setEnabled).toHaveBeenCalledTimes(1);
+			expect(mockExtensionsBulkService.setEnabled).toHaveBeenCalledWith(types, true);
+			expect(response.data.succeeded).toEqual(types);
+		});
+
+		it('reports a refusal in the response rather than throwing', async () => {
+			mockExtensionsBulkService.setEnabled.mockResolvedValue({
+				succeeded: ['devices-wled-plugin'],
+				failed: [{ id: 'devices-module', reason: 'Extension devices-module is not configurable' }],
+			});
+
+			const response = await controller.bulkUpdate({
+				data: { types: ['devices-wled-plugin', 'devices-module'], enabled: false },
+			} as never);
+
+			expect(response.data.failed).toEqual([
+				{ id: 'devices-module', reason: 'Extension devices-module is not configurable' },
+			]);
 		});
 	});
 });

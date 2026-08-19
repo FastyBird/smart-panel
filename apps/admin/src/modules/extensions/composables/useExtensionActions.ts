@@ -85,31 +85,30 @@ export const useExtensionActions = (): IUseExtensionActions => {
 					type: 'info',
 				}
 			);
-
-			let successCount = 0;
-			let failCount = 0;
-
-			for (const extension of togglableExtensions) {
-				try {
-					await extensionsStore.update({
-						type: extension.type,
-						data: { enabled: true },
-					});
-					successCount++;
-				} catch {
-					failCount++;
-				}
-			}
-
-			if (successCount > 0) {
-				flashMessage.success(t('extensionsModule.messages.bulkEnabled', { count: successCount }));
-			}
-
-			if (failCount > 0) {
-				flashMessage.error(t('extensionsModule.messages.bulkEnableFailed', { count: failCount }));
-			}
 		} catch {
 			flashMessage.info(t('extensionsModule.messages.bulkEnableCanceled'));
+
+			return;
+		}
+
+		// One request for the whole selection. Sending one per extension tripped the
+		// backend's shared rate limit once a selection went past thirty, which left
+		// the rest of the selection silently unprocessed.
+		try {
+			const result = await extensionsStore.bulkSetEnabled({
+				types: togglableExtensions.map((extension) => extension.type),
+				enabled: true,
+			});
+
+			if (result.succeeded.length > 0) {
+				flashMessage.success(t('extensionsModule.messages.bulkEnabled', { count: result.succeeded.length }));
+			}
+
+			if (result.failed.length > 0) {
+				flashMessage.error(t('extensionsModule.messages.bulkEnableFailed', { count: result.failed.length }));
+			}
+		} catch {
+			flashMessage.error(t('extensionsModule.messages.bulkEnableFailed', { count: togglableExtensions.length }));
 		}
 	};
 
@@ -132,31 +131,30 @@ export const useExtensionActions = (): IUseExtensionActions => {
 					type: 'warning',
 				}
 			);
-
-			let successCount = 0;
-			let failCount = 0;
-
-			for (const extension of togglableExtensions) {
-				try {
-					await extensionsStore.update({
-						type: extension.type,
-						data: { enabled: false },
-					});
-					successCount++;
-				} catch {
-					failCount++;
-				}
-			}
-
-			if (successCount > 0) {
-				flashMessage.success(t('extensionsModule.messages.bulkDisabled', { count: successCount }));
-			}
-
-			if (failCount > 0) {
-				flashMessage.error(t('extensionsModule.messages.bulkDisableFailed', { count: failCount }));
-			}
 		} catch {
 			flashMessage.info(t('extensionsModule.messages.bulkDisableCanceled'));
+
+			return;
+		}
+
+		// One request for the whole selection. Sending one per extension tripped the
+		// backend's shared rate limit once a selection went past thirty, which left
+		// the rest of the selection silently unprocessed.
+		try {
+			const result = await extensionsStore.bulkSetEnabled({
+				types: togglableExtensions.map((extension) => extension.type),
+				enabled: false,
+			});
+
+			if (result.succeeded.length > 0) {
+				flashMessage.success(t('extensionsModule.messages.bulkDisabled', { count: result.succeeded.length }));
+			}
+
+			if (result.failed.length > 0) {
+				flashMessage.error(t('extensionsModule.messages.bulkDisableFailed', { count: result.failed.length }));
+			}
+		} catch {
+			flashMessage.error(t('extensionsModule.messages.bulkDisableFailed', { count: togglableExtensions.length }));
 		}
 	};
 
