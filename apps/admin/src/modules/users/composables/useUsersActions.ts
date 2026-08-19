@@ -79,28 +79,26 @@ export const useUsersActions = (): IUseUsersActions => {
 				cancelButtonText: t('usersModule.buttons.no.title'),
 				type: 'warning',
 			});
-
-			let successCount = 0;
-			let failCount = 0;
-
-			for (const user of users) {
-				try {
-					await usersStore.remove({ id: user.id });
-					successCount++;
-				} catch {
-					failCount++;
-				}
-			}
-
-			if (successCount > 0) {
-				flashMessage.success(t('usersModule.messages.bulkRemoved', { count: successCount }));
-			}
-
-			if (failCount > 0) {
-				flashMessage.error(t('usersModule.messages.bulkRemoveFailed', { count: failCount }));
-			}
 		} catch {
 			// User cancelled - do nothing
+			return;
+		}
+
+		// One request for the whole selection. Sending one per user tripped the
+		// backend's shared rate limit once a selection went past thirty, which left
+		// the rest of the selection silently unprocessed.
+		try {
+			const result = await usersStore.bulkRemove({ ids: users.map((user) => user.id) });
+
+			if (result.succeeded.length > 0) {
+				flashMessage.success(t('usersModule.messages.bulkRemoved', { count: result.succeeded.length }));
+			}
+
+			if (result.failed.length > 0) {
+				flashMessage.error(t('usersModule.messages.bulkRemoveFailed', { count: result.failed.length }));
+			}
+		} catch {
+			flashMessage.error(t('usersModule.messages.bulkRemoveFailed', { count: users.length }));
 		}
 	};
 

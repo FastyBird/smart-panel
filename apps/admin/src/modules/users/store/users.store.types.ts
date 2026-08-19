@@ -10,6 +10,8 @@ import {
 	UserSchema,
 	UserUpdateReqSchema,
 	UsersAddActionPayloadSchema,
+	UsersBulkRemoveActionPayloadSchema,
+	UsersBulkResultSchema,
 	UsersEditActionPayloadSchema,
 	UsersGetActionPayloadSchema,
 	UsersOnEventActionPayloadSchema,
@@ -44,6 +46,10 @@ export type IUsersEditActionPayload = z.infer<typeof UsersEditActionPayloadSchem
 
 export type IUsersSaveActionPayload = z.infer<typeof UsersSaveActionPayloadSchema>;
 
+export type IUsersBulkRemoveActionPayload = z.infer<typeof UsersBulkRemoveActionPayloadSchema>;
+
+export type IUsersBulkResult = z.infer<typeof UsersBulkResultSchema>;
+
 export type IUsersRemoveActionPayload = z.infer<typeof UsersRemoveActionPayloadSchema>;
 
 // STORE
@@ -72,6 +78,7 @@ export interface IUsersStoreActions {
 	edit: (payload: IUsersEditActionPayload) => Promise<IUser>;
 	save: (payload: IUsersSaveActionPayload) => Promise<IUser>;
 	remove: (payload: IUsersRemoveActionPayload) => Promise<boolean>;
+	bulkRemove: (payload: IUsersBulkRemoveActionPayload) => Promise<IUsersBulkResult>;
 	isLoaded: () => boolean;
 	refresh: () => Promise<unknown>;
 }

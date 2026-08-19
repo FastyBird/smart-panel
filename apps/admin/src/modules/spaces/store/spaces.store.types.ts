@@ -1,6 +1,10 @@
 import type { Ref } from 'vue';
 
+import type { z } from 'zod';
+
 import type { IStatusWidget, SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
+
+import type { SpacesBulkRemoveActionPayloadSchema, SpacesBulkResultSchema } from './spaces.store.schemas';
 
 export interface ISpace {
 	id: string;
@@ -43,6 +47,10 @@ export interface ISpaceCreateData {
 	statusWidgets?: IStatusWidget[] | null;
 }
 
+export type ISpacesBulkRemoveActionPayload = z.infer<typeof SpacesBulkRemoveActionPayloadSchema>;
+
+export type ISpacesBulkResult = z.infer<typeof SpacesBulkResultSchema>;
+
 export interface ISpacesStoreState {
 	data: Ref<{ [key: ISpace['id']]: ISpace }>;
 	semaphore: Ref<ISpacesStateSemaphore>;
@@ -72,6 +80,7 @@ export interface ISpacesStoreActions {
 	edit: (payload: { id: ISpace['id']; data: ISpaceEditData }) => Promise<ISpace>;
 	save: (payload: { id: ISpace['id'] }) => Promise<ISpace>;
 	remove: (payload: { id: ISpace['id'] }) => Promise<void>;
+	bulkRemove: (payload: ISpacesBulkRemoveActionPayload) => Promise<ISpacesBulkResult>;
 	set: (payload: { id: ISpace['id']; data: Partial<ISpace> }) => void;
 	unset: (payload: { id: ISpace['id'] }) => void;
 	onEvent: (payload: { id: ISpace['id']; data: Record<string, unknown> }) => void;

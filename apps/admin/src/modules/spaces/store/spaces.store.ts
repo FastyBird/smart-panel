@@ -9,7 +9,17 @@ import { SPACES_MODULE_PREFIX } from '../spaces.constants';
 
 import { SpacesApiException } from '../spaces.exceptions';
 
-import type { ISpace, ISpaceCreateData, ISpaceEditData, ISpacesStateSemaphore, ISpacesStoreActions, ISpacesStoreState } from './spaces.store.types';
+import { SpacesBulkResultSchema } from './spaces.store.schemas';
+import type {
+	ISpace,
+	ISpaceCreateData,
+	ISpaceEditData,
+	ISpacesBulkRemoveActionPayload,
+	ISpacesBulkResult,
+	ISpacesStateSemaphore,
+	ISpacesStoreActions,
+	ISpacesStoreState,
+} from './spaces.store.types';
 import { type ApiSpace, transformSpaceCreateRequest, transformSpaceEditRequest, transformSpaceResponse } from './spaces.transformers';
 
 type SpacesStoreSetup = ISpacesStoreState & ISpacesStoreActions;
@@ -247,6 +257,64 @@ export const useSpacesStore = defineStore<'spaces_module-spaces', SpacesStoreSet
 		}
 	};
 
+	/**
+	 * Removes a selection in one request.
+	 *
+	 * The per-space alternative was one request each, which the backend's shared rate limit rejects past
+	 * thirty - so a large selection failed halfway through with no way to tell which half. The outcome is
+	 * reported per space because the backend still refuses individual spaces for individual reasons.
+	 */
+	const bulkRemove = async (payload: ISpacesBulkRemoveActionPayload): Promise<ISpacesBulkResult> => {
+		// Drafts were never sent to the backend, so they are dropped here and counted as done rather than
+		// handed to an endpoint that would correctly report them as unknown.
+		const drafts: string[] = [];
+		const persisted: string[] = [];
+
+		for (const id of payload.ids) {
+			const existing = findById(id);
+
+			if (!existing) {
+				continue;
+			}
+
+			(existing.draft ? drafts : persisted).push(id);
+		}
+
+		for (const id of drafts) {
+			unset({ id });
+		}
+
+		if (persisted.length === 0) {
+			return { succeeded: drafts, failed: [] };
+		}
+
+		semaphore.value.deleting.push(...persisted);
+
+		try {
+			const { data: responseData, error } = await backend.client.POST(`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/bulk-remove`, {
+				body: {
+					data: { ids: persisted },
+				},
+			});
+
+			if (error || !responseData) {
+				throw new SpacesApiException('Received unexpected response');
+			}
+
+			const result = SpacesBulkResultSchema.parse(responseData.data);
+
+			for (const id of result.succeeded) {
+				unset({ id });
+			}
+
+			return { succeeded: [...drafts, ...result.succeeded], failed: result.failed };
+		} catch (e) {
+			throw new SpacesApiException('Failed to remove spaces', null, e as Error);
+		} finally {
+			semaphore.value.deleting = semaphore.value.deleting.filter((id) => !persisted.includes(id));
+		}
+	};
+
 	const set = (payload: { id: ISpace['id']; data: Partial<ISpace> }): void => {
 		const existing = data.value[payload.id];
 		if (existing) {
@@ -288,6 +356,7 @@ export const useSpacesStore = defineStore<'spaces_module-spaces', SpacesStoreSet
 		edit,
 		save,
 		remove,
+		bulkRemove,
 		set,
 		unset,
 		onEvent,

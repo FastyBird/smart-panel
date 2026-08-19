@@ -28,6 +28,7 @@ import { RegistrationGuard } from './guards/registration.guard';
 import { WebsocketExchangeListener } from './listeners/websocket-exchange.listener';
 import { DisplaysConfigModel } from './models/config.model';
 import { DisplayConnectionStateService } from './services/display-connection-state.service';
+import { DisplaysBulkService } from './services/displays-bulk.service';
 import { DisplaysService } from './services/displays.service';
 import { HomeResolutionService } from './services/home-resolution.service';
 import { DisplaysModuleResetService } from './services/module-reset.service';
@@ -53,6 +54,7 @@ import { DisplayExistsConstraint } from './validators/display-exists-constraint.
 	controllers: [DisplaysController, RegistrationController],
 	providers: [
 		DisplaysService,
+		DisplaysBulkService,
 		RegistrationService,
 		DisplaysModuleResetService,
 		DisplayExistsConstraint,
@@ -67,6 +69,7 @@ import { DisplayExistsConstraint } from './validators/display-exists-constraint.
 	],
 	exports: [
 		DisplaysService,
+		DisplaysBulkService,
 		DisplaysModuleResetService,
 		DisplayExistsConstraint,
 		PermitJoinService,

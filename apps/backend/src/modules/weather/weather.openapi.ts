@@ -9,7 +9,11 @@ import {
 	WeatherStatisticsModel,
 	WeatherStatisticsResponseModel,
 } from './models/history.model';
-import { LocationResponseModel, LocationsResponseModel } from './models/locations-response.model';
+import {
+	BulkResultResponseModel,
+	LocationResponseModel,
+	LocationsResponseModel,
+} from './models/locations-response.model';
 import {
 	AllLocationsWeatherResponseModel,
 	LocationCurrentResponseModel,
@@ -41,6 +45,7 @@ export const WEATHER_SWAGGER_EXTRA_MODELS = [
 	WeatherStatisticsResponseModel,
 	LocationResponseModel,
 	LocationsResponseModel,
+	BulkResultResponseModel,
 	// Data models
 	WindModel,
 	WeatherModel,

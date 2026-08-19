@@ -45,3 +45,12 @@ export const SpaceEditSchema = z.object({
 	displayOrder: z.number().int().min(0).optional(),
 	statusWidgets: z.array(StatusWidgetSchema).nullable().optional(),
 });
+
+export const SpacesBulkRemoveActionPayloadSchema = z.object({
+	ids: z.array(z.string().uuid()).nonempty(),
+});
+
+export const SpacesBulkResultSchema = z.object({
+	succeeded: z.array(z.string()),
+	failed: z.array(z.object({ id: z.string(), reason: z.string() })),
+});

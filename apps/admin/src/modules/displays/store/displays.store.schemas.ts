@@ -195,6 +195,15 @@ export const DisplaysSaveActionPayloadSchema = z.object({
 	id: DisplayIdSchema,
 });
 
+export const DisplaysBulkRemoveActionPayloadSchema = z.object({
+	ids: z.array(DisplayIdSchema).nonempty(),
+});
+
+export const DisplaysBulkResultSchema = z.object({
+	succeeded: z.array(z.string()),
+	failed: z.array(z.object({ id: z.string(), reason: z.string() })),
+});
+
 export const DisplaysRemoveActionPayloadSchema = z.object({
 	id: DisplayIdSchema,
 });

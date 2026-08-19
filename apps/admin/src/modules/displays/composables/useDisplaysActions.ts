@@ -58,28 +58,26 @@ export const useDisplaysActions = (): IUseDisplaysActions => {
 					type: 'warning',
 				}
 			);
-
-			let successCount = 0;
-			let failCount = 0;
-
-			for (const display of displays) {
-				try {
-					await displaysStore.remove({ id: display.id });
-					successCount++;
-				} catch {
-					failCount++;
-				}
-			}
-
-			if (successCount > 0) {
-				flashMessage.success(t('displaysModule.messages.bulkRemoved', { count: successCount }));
-			}
-
-			if (failCount > 0) {
-				flashMessage.error(t('displaysModule.messages.bulkRemoveFailed', { count: failCount }));
-			}
 		} catch {
 			// User cancelled - do nothing
+			return;
+		}
+
+		// One request for the whole selection. Sending one per display tripped the
+		// backend's shared rate limit once a selection went past thirty, which left
+		// the rest of the selection silently unprocessed.
+		try {
+			const result = await displaysStore.bulkRemove({ ids: displays.map((display) => display.id) });
+
+			if (result.succeeded.length > 0) {
+				flashMessage.success(t('displaysModule.messages.bulkRemoved', { count: result.succeeded.length }));
+			}
+
+			if (result.failed.length > 0) {
+				flashMessage.error(t('displaysModule.messages.bulkRemoveFailed', { count: result.failed.length }));
+			}
+		} catch {
+			flashMessage.error(t('displaysModule.messages.bulkRemoveFailed', { count: displays.length }));
 		}
 	};
 

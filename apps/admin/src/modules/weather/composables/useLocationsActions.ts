@@ -79,28 +79,27 @@ export const useLocationsActions = (): IUseWeatherLocationsActions => {
 					type: 'warning',
 				}
 			);
-
-			let successCount = 0;
-			let failCount = 0;
-
-			for (const location of locations) {
-				try {
-					await locationsStore.remove({ id: location.id });
-					successCount++;
-				} catch {
-					failCount++;
-				}
-			}
-
-			if (successCount > 0) {
-				flashMessage.success(t('weatherModule.messages.locations.bulkDeleted', { count: successCount }));
-			}
-
-			if (failCount > 0) {
-				flashMessage.error(t('weatherModule.messages.locations.bulkDeleteFailed', { count: failCount }));
-			}
 		} catch {
 			flashMessage.info(t('weatherModule.messages.locations.bulkDeleteCanceled'));
+
+			return;
+		}
+
+		// One request for the whole selection. Sending one per location tripped the
+		// backend's shared rate limit once a selection went past thirty, which left
+		// the rest of the selection silently unprocessed.
+		try {
+			const result = await locationsStore.bulkRemove({ ids: locations.map((location) => location.id) });
+
+			if (result.succeeded.length > 0) {
+				flashMessage.success(t('weatherModule.messages.locations.bulkDeleted', { count: result.succeeded.length }));
+			}
+
+			if (result.failed.length > 0) {
+				flashMessage.error(t('weatherModule.messages.locations.bulkDeleteFailed', { count: result.failed.length }));
+			}
+		} catch {
+			flashMessage.error(t('weatherModule.messages.locations.bulkDeleteFailed', { count: locations.length }));
 		}
 	};
 

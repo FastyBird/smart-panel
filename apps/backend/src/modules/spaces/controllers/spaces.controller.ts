@@ -19,6 +19,7 @@ import { DevicesResponseModel } from '../../devices/models/devices-response.mode
 import { DisplaysResponseModel } from '../../displays/models/displays-response.model';
 import {
 	ApiBadRequestResponse,
+	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
@@ -26,14 +27,17 @@ import {
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
 import { ReqBulkAssignDto } from '../dto/bulk-assign.dto';
+import { ReqBulkRemoveSpacesDto } from '../dto/bulk-spaces.dto';
 import { ReqCreateSpaceDto } from '../dto/create-space.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
 import {
 	BulkAssignmentResponseModel,
 	BulkAssignmentResultDataModel,
+	BulkResultResponseModel,
 	SpaceResponseModel,
 	SpacesResponseModel,
 } from '../models/spaces-response.model';
+import { SpacesBulkService } from '../services/spaces-bulk.service';
 import { SpacesService } from '../services/spaces.service';
 import { SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from '../spaces.constants';
 
@@ -42,7 +46,10 @@ import { SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from '../spaces.consta
 export class SpacesController {
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'SpacesController');
 
-	constructor(private readonly spacesService: SpacesService) {}
+	constructor(
+		private readonly spacesService: SpacesService,
+		private readonly spacesBulkService: SpacesBulkService,
+	) {}
 
 	@Get()
 	@ApiOperation({
@@ -196,6 +203,32 @@ export class SpacesController {
 		await this.spacesService.remove(id);
 
 		this.logger.debug(`Successfully removed space with id=${id}`);
+	}
+
+	@ApiOperation({
+		tags: [SPACES_MODULE_API_TAG_NAME],
+		summary: 'Remove several spaces',
+		description:
+			'Removes every space in the supplied selection. Each space is processed independently, so a space that can not be removed is reported in the response rather than aborting the rest of the selection. This exists so that acting on a large selection is one request instead of one per space. Requires owner or admin role.',
+		operationId: 'create-spaces-module-spaces-bulk-remove',
+	})
+	@ApiBody({ type: ReqBulkRemoveSpacesDto, description: 'The spaces to remove' })
+	@ApiSuccessResponse(BulkResultResponseModel, 'Returns which spaces were removed and which were not')
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post('bulk-remove')
+	// The single delete is owner/admin only, so the bulk form has to be too - without
+	// this the endpoint would be a way around that check.
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@HttpCode(200)
+	async bulkRemove(@Body() body: ReqBulkRemoveSpacesDto): Promise<BulkResultResponseModel> {
+		this.logger.debug(`Incoming request to remove ${body.data.ids.length} space(s)`);
+
+		const response = new BulkResultResponseModel();
+
+		response.data = await this.spacesBulkService.remove(body.data.ids);
+
+		return response;
 	}
 
 	@Get(':id/devices')

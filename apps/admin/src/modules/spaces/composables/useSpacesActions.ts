@@ -74,28 +74,26 @@ export const useSpacesActions = (): IUseSpacesActions => {
 					type: 'warning',
 				}
 			);
-
-			let successCount = 0;
-			let failCount = 0;
-
-			for (const space of spaces) {
-				try {
-					await spacesStore.remove({ id: space.id });
-					successCount++;
-				} catch {
-					failCount++;
-				}
-			}
-
-			if (successCount > 0) {
-				flashMessage.success(t('spacesModule.messages.bulkRemoved', { count: successCount }));
-			}
-
-			if (failCount > 0) {
-				flashMessage.error(t('spacesModule.messages.bulkRemoveFailed', { count: failCount }));
-			}
 		} catch {
 			// User cancelled - do nothing
+			return;
+		}
+
+		// One request for the whole selection. Sending one per space tripped the backend's shared rate
+		// limit once a selection went past thirty, which left the rest of the selection silently
+		// unprocessed.
+		try {
+			const result = await spacesStore.bulkRemove({ ids: spaces.map((space) => space.id) });
+
+			if (result.succeeded.length > 0) {
+				flashMessage.success(t('spacesModule.messages.bulkRemoved', { count: result.succeeded.length }));
+			}
+
+			if (result.failed.length > 0) {
+				flashMessage.error(t('spacesModule.messages.bulkRemoveFailed', { count: result.failed.length }));
+			}
+		} catch {
+			flashMessage.error(t('spacesModule.messages.bulkRemoveFailed', { count: spaces.length }));
 		}
 	};
 

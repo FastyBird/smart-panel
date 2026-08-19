@@ -31,6 +31,7 @@ import { SpacesModuleResetService } from './services/module-reset.service';
 import { SpaceCreateBuilderRegistryService } from './services/space-create-builder-registry.service';
 import { SpaceRelationsLoaderRegistryService } from './services/space-relations-loader-registry.service';
 import { SpaceRolesTypeMapperService } from './services/space-roles-type-mapper.service';
+import { SpacesBulkService } from './services/spaces-bulk.service';
 import { SpacesTypeMapperService } from './services/spaces-type-mapper.service';
 import { SpacesService } from './services/spaces.service';
 import { SPACES_MODULE_API_TAG_DESCRIPTION, SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from './spaces.constants';
@@ -72,6 +73,7 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 	controllers: [SpacesController, SpacesDomainController],
 	providers: [
 		SpacesService,
+		SpacesBulkService,
 		SpacesTypeMapperService,
 		SpaceRolesTypeMapperService,
 		SpaceCreateBuilderRegistryService,
@@ -80,6 +82,7 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 	],
 	exports: [
 		SpacesService,
+		SpacesBulkService,
 		SpacesTypeMapperService,
 		SpaceRolesTypeMapperService,
 		SpaceCreateBuilderRegistryService,

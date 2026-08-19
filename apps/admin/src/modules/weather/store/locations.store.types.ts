@@ -13,6 +13,8 @@ import type {
 	WeatherLocationsAddActionPayloadSchema,
 	WeatherLocationsEditActionPayloadSchema,
 	WeatherLocationsSaveActionPayloadSchema,
+	WeatherLocationsBulkRemoveActionPayloadSchema,
+	WeatherLocationsBulkResultSchema,
 	WeatherLocationsRemoveActionPayloadSchema,
 	WeatherLocationResSchema,
 	WeatherLocationCreateReqSchema,
@@ -44,6 +46,10 @@ export type IWeatherLocationsAddActionPayload = z.infer<typeof WeatherLocationsA
 export type IWeatherLocationsEditActionPayload = z.infer<typeof WeatherLocationsEditActionPayloadSchema>;
 
 export type IWeatherLocationsSaveActionPayload = z.infer<typeof WeatherLocationsSaveActionPayloadSchema>;
+
+export type IWeatherLocationsBulkRemoveActionPayload = z.infer<typeof WeatherLocationsBulkRemoveActionPayloadSchema>;
+
+export type IWeatherLocationsBulkResult = z.infer<typeof WeatherLocationsBulkResultSchema>;
 
 export type IWeatherLocationsRemoveActionPayload = z.infer<typeof WeatherLocationsRemoveActionPayloadSchema>;
 
@@ -89,6 +95,7 @@ export interface IWeatherLocationsStoreActions {
 	edit: (payload: IWeatherLocationsEditActionPayload) => Promise<IWeatherLocation>;
 	save: (payload: IWeatherLocationsSaveActionPayload) => Promise<IWeatherLocation>;
 	remove: (payload: IWeatherLocationsRemoveActionPayload) => Promise<boolean>;
+	bulkRemove: (payload: IWeatherLocationsBulkRemoveActionPayload) => Promise<IWeatherLocationsBulkResult>;
 	isLoaded: () => boolean;
 	refresh: () => Promise<unknown>;
 }

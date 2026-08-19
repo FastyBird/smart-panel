@@ -5,6 +5,7 @@ import { RegisterDisplayDto, ReqRegisterDisplayDto } from './dto/register-displa
 import { ReqUpdateDisplayDto, UpdateDisplayDto } from './dto/update-display.dto';
 import { DisplayEntity } from './entities/displays.entity';
 import {
+	BulkResultResponseModel,
 	DisplayRegistrationDataModel,
 	DisplayRegistrationResponseModel,
 	DisplayResponseModel,
@@ -27,6 +28,7 @@ export const DISPLAYS_SWAGGER_EXTRA_MODELS = [
 	UpdateDisplayDto,
 	ReqUpdateDisplayDto,
 	// Response models
+	BulkResultResponseModel,
 	DisplayResponseModel,
 	DisplaysResponseModel,
 	DisplayRegistrationDataModel,

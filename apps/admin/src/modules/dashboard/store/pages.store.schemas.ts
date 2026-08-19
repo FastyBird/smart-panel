@@ -131,6 +131,15 @@ export const PagesRemoveActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 });
 
+export const PagesBulkRemoveActionPayloadSchema = z.object({
+	ids: z.array(ItemIdSchema).nonempty(),
+});
+
+export const PagesBulkResultSchema = z.object({
+	succeeded: z.array(z.string()),
+	failed: z.array(z.object({ id: z.string(), reason: z.string() })),
+});
+
 // BACKEND API
 // ===========
 

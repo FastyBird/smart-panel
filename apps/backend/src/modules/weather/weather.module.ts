@@ -17,6 +17,7 @@ import { WeatherController } from './controllers/weather.controller';
 import { UpdateWeatherConfigDto } from './dto/update-config.dto';
 import { WeatherLocationEntity } from './entities/locations.entity';
 import { WeatherConfigModel } from './models/config.model';
+import { LocationsBulkService } from './services/locations-bulk.service';
 import { LocationsTypeMapperService } from './services/locations-type-mapper.service';
 import { LocationsService } from './services/locations.service';
 import { WeatherModuleResetService } from './services/module-reset.service';
@@ -42,6 +43,7 @@ import { WEATHER_SWAGGER_EXTRA_MODELS } from './weather.openapi';
 	providers: [
 		WeatherService,
 		LocationsService,
+		LocationsBulkService,
 		LocationsTypeMapperService,
 		WeatherProviderRegistryService,
 		WeatherHistoryService,

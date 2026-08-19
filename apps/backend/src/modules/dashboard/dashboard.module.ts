@@ -35,6 +35,7 @@ import { DataSourcesService } from './services/data-sources.service';
 import { ModuleResetService } from './services/module-reset.service';
 import { PageCreateBuilderRegistryService } from './services/page-create-builder-registry.service';
 import { PageRelationsLoaderRegistryService } from './services/page-relations-loader-registry.service';
+import { PagesBulkService } from './services/pages-bulk.service';
 import { PagesTypeMapperService } from './services/pages-type-mapper.service';
 import { PagesService } from './services/pages.service';
 import { TileCreateBuilderRegistryService } from './services/tile-create-builder-registry.service';
@@ -60,6 +61,7 @@ import { TileTypeConstraintValidator } from './validators/tile-type-constraint.v
 	],
 	providers: [
 		PagesService,
+		PagesBulkService,
 		TilesService,
 		DataSourcesService,
 		PagesTypeMapperService,

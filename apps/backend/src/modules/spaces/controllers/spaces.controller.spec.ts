@@ -16,9 +16,11 @@ import { DevicesNotAllowedException } from '../../devices/devices.exceptions';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { ReqBulkAssignDto } from '../dto/bulk-assign.dto';
+import { ReqBulkRemoveSpacesDto } from '../dto/bulk-spaces.dto';
 import { ReqCreateSpaceDto } from '../dto/create-space.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
 import { SpaceEntity } from '../entities/space.entity';
+import { SpacesBulkService } from '../services/spaces-bulk.service';
 import { SpacesService } from '../services/spaces.service';
 import { SpaceType } from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
@@ -28,6 +30,7 @@ import { SpacesController } from './spaces.controller';
 describe('SpacesController', () => {
 	let controller: SpacesController;
 	let spacesService: SpacesService;
+	let spacesBulkService: SpacesBulkService;
 
 	const mockSpace: SpaceEntity = {
 		id: uuid().toString(),
@@ -76,11 +79,18 @@ describe('SpacesController', () => {
 						bulkAssign: jest.fn().mockResolvedValue({ devicesAssigned: 2, displaysAssigned: 1 }),
 					},
 				},
+				{
+					provide: SpacesBulkService,
+					useValue: {
+						remove: jest.fn().mockResolvedValue({ succeeded: [], failed: [] }),
+					},
+				},
 			],
 		}).compile();
 
 		controller = module.get<SpacesController>(SpacesController);
 		spacesService = module.get<SpacesService>(SpacesService);
+		spacesBulkService = module.get<SpacesBulkService>(SpacesBulkService);
 	});
 
 	it('should be defined', () => {
@@ -239,6 +249,24 @@ describe('SpacesController', () => {
 			jest.spyOn(spacesService, 'remove').mockRejectedValue(new SpacesNotFoundException('Not found'));
 
 			await expect(controller.remove('non-existent-id')).rejects.toThrow(SpacesNotFoundException);
+		});
+	});
+
+	describe('bulkRemove', () => {
+		it('should return the per-space outcome of the removal', async () => {
+			const removed = uuid();
+			const refused = uuid();
+
+			jest.spyOn(spacesBulkService, 'remove').mockResolvedValue({
+				succeeded: [removed],
+				failed: [{ id: refused, reason: 'Requested space does not exist' }],
+			});
+
+			const result = await controller.bulkRemove({ data: { ids: [removed, refused] } } as ReqBulkRemoveSpacesDto);
+
+			expect(result.data.succeeded).toEqual([removed]);
+			expect(result.data.failed).toEqual([{ id: refused, reason: 'Requested space does not exist' }]);
+			expect(spacesBulkService.remove).toHaveBeenCalledWith([removed, refused]);
 		});
 	});
 

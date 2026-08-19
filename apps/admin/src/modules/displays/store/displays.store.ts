@@ -9,13 +9,15 @@ import { MODULES_PREFIX } from '../../../app.constants';
 import { DISPLAYS_MODULE_PREFIX } from '../displays.constants';
 import { DisplaysApiException, DisplaysException, DisplaysValidationException } from '../displays.exceptions';
 
-import { DisplaySchema, DisplaysAddActionPayloadSchema, DisplaysEditActionPayloadSchema } from './displays.store.schemas';
+import { DisplaySchema, DisplaysAddActionPayloadSchema, DisplaysBulkResultSchema, DisplaysEditActionPayloadSchema } from './displays.store.schemas';
 import type {
 	DisplaysStoreSetup,
 	IDisplay,
 	IDisplayRes,
 	IDisplayToken,
 	IDisplaysAddActionPayload,
+	IDisplaysBulkRemoveActionPayload,
+	IDisplaysBulkResult,
 	IDisplaysEditActionPayload,
 	IDisplaysGetActionPayload,
 	IDisplaysOnEventActionPayload,
@@ -440,6 +442,64 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 		return true;
 	};
 
+	/**
+	 * Removes a selection in one request.
+	 *
+	 * The per-display alternative was one request each, which the backend's shared
+	 * rate limit rejects past thirty - so a large selection failed halfway through
+	 * with no way to tell which half. The outcome is reported per display because
+	 * the backend still refuses individual displays for individual reasons.
+	 */
+	const bulkRemove = async (payload: IDisplaysBulkRemoveActionPayload): Promise<IDisplaysBulkResult> => {
+		// Drafts were never sent to the backend, so they are dropped here and
+		// counted as done rather than handed to an endpoint that would correctly
+		// report them as unknown.
+		const drafts: string[] = [];
+		const persisted: string[] = [];
+
+		for (const id of payload.ids) {
+			const record = data.value[id];
+
+			if (record === undefined) {
+				continue;
+			}
+
+			(record.draft ? drafts : persisted).push(id);
+		}
+
+		for (const id of drafts) {
+			unset({ id });
+		}
+
+		if (persisted.length === 0) {
+			return { succeeded: drafts, failed: [] };
+		}
+
+		semaphore.value.deleting.push(...persisted);
+
+		try {
+			const { data: responseData, error } = await backend.client.POST(`/${MODULES_PREFIX}/${DISPLAYS_MODULE_PREFIX}/displays/bulk-remove`, {
+				body: { data: { ids: persisted } },
+			});
+
+			if (typeof error !== 'undefined' || typeof responseData === 'undefined') {
+				throw new DisplaysApiException('Received unexpected response.');
+			}
+
+			const result = DisplaysBulkResultSchema.parse(responseData.data);
+
+			for (const id of result.succeeded) {
+				unset({ id });
+			}
+
+			return { succeeded: [...drafts, ...result.succeeded], failed: result.failed };
+		} catch (e) {
+			throw new DisplaysApiException('Failed to remove displays.', null, e as Error);
+		} finally {
+			semaphore.value.deleting = semaphore.value.deleting.filter((item) => !persisted.includes(item));
+		}
+	};
+
 	const getTokens = async (payload: IDisplaysGetActionPayload): Promise<IDisplayToken[]> => {
 		try {
 			const {
@@ -539,6 +599,7 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 		edit,
 		save,
 		remove,
+		bulkRemove,
 		getTokens,
 		revokeToken,
 		refreshTokensForDisplay,

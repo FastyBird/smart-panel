@@ -5,6 +5,7 @@ import {
 	Controller,
 	Delete,
 	Get,
+	HttpCode,
 	NotFoundException,
 	Param,
 	ParseUUIDPipe,
@@ -14,7 +15,7 @@ import {
 	Res,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { setLocationHeader } from '../../api/utils/location-header.utils';
@@ -27,11 +28,13 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
+import { ReqBulkRemoveUsersDto } from '../dto/bulk-users.dto';
 import { ReqCreateUserDto } from '../dto/create-user.dto';
 import { ReqUpdateUserDto } from '../dto/update-user.dto';
 import { UserEntity } from '../entities/users.entity';
 import { Roles } from '../guards/roles.guard';
-import { UserResponseModel, UsersResponseModel } from '../models/users-response.model';
+import { BulkResultResponseModel, UserResponseModel, UsersResponseModel } from '../models/users-response.model';
+import { UsersBulkService } from '../services/users-bulk.service';
 import { UsersService } from '../services/users.service';
 import { USERS_MODULE_API_TAG_NAME, USERS_MODULE_NAME, USERS_MODULE_PREFIX, UserRole } from '../users.constants';
 
@@ -40,7 +43,10 @@ import { USERS_MODULE_API_TAG_NAME, USERS_MODULE_NAME, USERS_MODULE_PREFIX, User
 export class UsersController {
 	private readonly logger = createExtensionLogger(USERS_MODULE_NAME, 'UsersController');
 
-	constructor(private readonly usersService: UsersService) {}
+	constructor(
+		private readonly usersService: UsersService,
+		private readonly usersBulkService: UsersBulkService,
+	) {}
 
 	@ApiOperation({
 		tags: [USERS_MODULE_API_TAG_NAME],
@@ -296,6 +302,36 @@ export class UsersController {
 		await this.usersService.remove(user.id);
 
 		this.logger.debug(`Successfully deleted user id=${id}`);
+	}
+
+	@ApiOperation({
+		tags: [USERS_MODULE_API_TAG_NAME],
+		summary: 'Remove several users',
+		description:
+			'Removes every user in the supplied selection. Each user is processed independently, so a user that can not be removed - the account of the caller, or the owner account - is reported in the response rather than aborting the rest of the selection. This exists so that acting on a large selection is one request instead of one per user.',
+		operationId: 'create-users-module-users-bulk-remove',
+	})
+	@ApiBody({ type: ReqBulkRemoveUsersDto, description: 'The users to remove' })
+	@ApiSuccessResponse(BulkResultResponseModel, 'Returns which users were removed and which were not')
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@Post('bulk-remove')
+	@HttpCode(200)
+	async bulkRemove(
+		@Body() body: ReqBulkRemoveUsersDto,
+		@Req() req: AuthenticatedRequest,
+	): Promise<BulkResultResponseModel> {
+		const { auth } = req;
+
+		// Resolve the authenticated user's ID (works for both access tokens and long-live tokens)
+		const authenticatedUserId = auth?.type === 'user' ? auth.id : auth?.type === 'token' ? auth.ownerId : null;
+
+		const response = new BulkResultResponseModel();
+
+		response.data = await this.usersBulkService.remove(body.data.ids, authenticatedUserId);
+
+		return response;
 	}
 
 	private async getOneOrThrow(id: string): Promise<UserEntity> {
