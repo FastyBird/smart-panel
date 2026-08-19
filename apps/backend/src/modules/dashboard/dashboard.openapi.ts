@@ -6,6 +6,7 @@ import { CreateTileDto } from './dto/create-tile.dto';
 import { UpdateDataSourceDto } from './dto/update-data-source.dto';
 import { UpdateTileDto } from './dto/update-tile.dto';
 import {
+	BulkResultResponseModel,
 	DataSourceResponseModel,
 	DataSourcesResponseModel,
 	PageResponseModel,
@@ -27,6 +28,7 @@ export const DASHBOARD_SWAGGER_EXTRA_MODELS = [
 	UpdateDataSourceDto,
 	UpdateTileDto,
 	// Response models
+	BulkResultResponseModel,
 	PageResponseModel,
 	PagesResponseModel,
 	TileResponseModel,

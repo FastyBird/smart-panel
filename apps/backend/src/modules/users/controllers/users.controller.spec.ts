@@ -16,6 +16,7 @@ import { AuthenticatedRequest } from '../../auth/guards/auth.guard';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { UserEntity } from '../entities/users.entity';
+import { UsersBulkService } from '../services/users-bulk.service';
 import { UsersService } from '../services/users.service';
 import { USERS_MODULE_PREFIX, UserRole } from '../users.constants';
 
@@ -49,6 +50,10 @@ describe('UsersController', () => {
 		findByEmail: jest.fn().mockResolvedValue(null),
 	};
 
+	const mockUsersBulkService = {
+		remove: jest.fn().mockResolvedValue({ succeeded: [], failed: [] }),
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			controllers: [UsersController],
@@ -56,6 +61,10 @@ describe('UsersController', () => {
 				{
 					provide: UsersService,
 					useValue: mockUserService,
+				},
+				{
+					provide: UsersBulkService,
+					useValue: mockUsersBulkService,
 				},
 			],
 		}).compile();
@@ -170,6 +179,40 @@ describe('UsersController', () => {
 			await expect(controller.remove('invalid-id', requestMock as unknown as AuthenticatedRequest)).rejects.toThrow(
 				NotFoundException,
 			);
+		});
+	});
+
+	// The two delete protections live in this controller, not in UsersService, so
+	// the bulk route has to hand the caller down for the self-deletion rule to
+	// survive at all. Without this, passing `null` there would disable that
+	// protection with every service-level test still green.
+	describe('bulkRemove', () => {
+		it('hands the authenticated user down so the self-deletion rule still applies', async () => {
+			const ids = [uuid().toString(), uuid().toString()];
+
+			await controller.bulkRemove(
+				{ data: { ids } } as never,
+				{
+					auth: { type: 'user', id: 'caller-id' },
+				} as never,
+			);
+
+			expect(mockUsersBulkService.remove).toHaveBeenCalledWith(ids, 'caller-id');
+		});
+
+		// A long-lived token acts as its owner, which is how the single delete
+		// route resolves it too.
+		it('resolves a long-lived token to its owner', async () => {
+			const ids = [uuid().toString()];
+
+			await controller.bulkRemove(
+				{ data: { ids } } as never,
+				{
+					auth: { type: 'token', ownerId: 'owner-id' },
+				} as never,
+			);
+
+			expect(mockUsersBulkService.remove).toHaveBeenCalledWith(ids, 'owner-id');
 		});
 	});
 });

@@ -19,6 +19,7 @@ import { RolesGuard } from './guards/roles.guard';
 import { UsersConfigModel } from './models/config.model';
 import { ModuleResetService } from './services/module-reset.service';
 import { UserLifecycleMutationRegistryService } from './services/user-lifecycle-mutation-registry.service';
+import { UsersBulkService } from './services/users-bulk.service';
 import { UsersSeederService } from './services/users-seeder.service';
 import { UsersService } from './services/users.service';
 import { USERS_MODULE_API_TAG_DESCRIPTION, USERS_MODULE_API_TAG_NAME, USERS_MODULE_NAME } from './users.constants';
@@ -34,6 +35,7 @@ import { UserExistsConstraintValidator } from './validators/user-exists-constrai
 	imports: [TypeOrmModule.forFeature([UserEntity]), SwaggerModule, SeedModule],
 	providers: [
 		UsersService,
+		UsersBulkService,
 		UserExistsConstraintValidator,
 		ListUsersCommand,
 		{

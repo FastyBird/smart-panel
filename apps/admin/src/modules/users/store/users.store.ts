@@ -16,11 +16,13 @@ import type {
 import { USERS_MODULE_PREFIX } from '../users.constants';
 import { UsersApiException, UsersException, UsersValidationException } from '../users.exceptions';
 
-import { UserSchema, UsersAddActionPayloadSchema, UsersEditActionPayloadSchema } from './users.store.schemas';
+import { UserSchema, UsersAddActionPayloadSchema, UsersBulkResultSchema, UsersEditActionPayloadSchema } from './users.store.schemas';
 import type {
 	IUser,
 	IUserRes,
 	IUsersAddActionPayload,
+	IUsersBulkRemoveActionPayload,
+	IUsersBulkResult,
 	IUsersEditActionPayload,
 	IUsersGetActionPayload,
 	IUsersOnEventActionPayload,
@@ -436,6 +438,65 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 		return true;
 	};
 
+	/**
+	 * Removes a selection in one request.
+	 *
+	 * The per-user alternative was one request each, which the backend's shared
+	 * rate limit rejects past thirty - so a large selection failed halfway
+	 * through with no way to tell which half. The outcome is reported per user
+	 * because the backend still refuses individual users for individual reasons,
+	 * the caller's own account and the owner account above all.
+	 */
+	const bulkRemove = async (payload: IUsersBulkRemoveActionPayload): Promise<IUsersBulkResult> => {
+		// Drafts were never sent to the backend, so they are dropped here and
+		// counted as done rather than handed to an endpoint that would correctly
+		// report them as unknown.
+		const drafts: string[] = [];
+		const persisted: string[] = [];
+
+		for (const id of payload.ids) {
+			const record = data.value[id];
+
+			if (typeof record === 'undefined') {
+				continue;
+			}
+
+			(record.draft ? drafts : persisted).push(id);
+		}
+
+		for (const id of drafts) {
+			unset({ id });
+		}
+
+		if (persisted.length === 0) {
+			return { succeeded: drafts, failed: [] };
+		}
+
+		semaphore.value.deleting.push(...persisted);
+
+		try {
+			const { data: responseBody, error } = await backend.client.POST(`/${MODULES_PREFIX}/${USERS_MODULE_PREFIX}/users/bulk-remove`, {
+				body: { data: { ids: persisted } },
+			});
+
+			if (typeof error !== 'undefined' || typeof responseBody === 'undefined') {
+				throw new UsersApiException('Received unexpected response.');
+			}
+
+			const result = UsersBulkResultSchema.parse(responseBody.data);
+
+			for (const id of result.succeeded) {
+				unset({ id });
+			}
+
+			return { succeeded: [...drafts, ...result.succeeded], failed: result.failed };
+		} catch (e) {
+			throw new UsersApiException('Failed to remove users.', null, e as Error);
+		} finally {
+			semaphore.value.deleting = semaphore.value.deleting.filter((item) => !persisted.includes(item));
+		}
+	};
+
 	// Reconnect refresh contract: the store itself says whether it holds anything worth
 	// re-reading, so the caller never has to guess from a flag it does not maintain.
 	const isLoaded = (): boolean => firstLoadFinished() || findAll().length > 0;
@@ -462,6 +523,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 		edit,
 		save,
 		remove,
+		bulkRemove,
 	};
 });
 

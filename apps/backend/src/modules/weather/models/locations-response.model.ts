@@ -3,6 +3,7 @@ import { Expose } from 'class-transformer';
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
+import { BulkResultModel } from '../../api/models/bulk.model';
 import { WeatherLocationEntity } from '../entities/locations.entity';
 
 /**
@@ -30,4 +31,17 @@ export class LocationsResponseModel extends BaseSuccessResponseModel<WeatherLoca
 	})
 	@Expose()
 	declare data: WeatherLocationEntity[];
+}
+
+/**
+ * Response wrapper for the outcome of a bulk operation
+ */
+@ApiSchema({ name: 'WeatherModuleResBulkResult' })
+export class BulkResultResponseModel extends BaseSuccessResponseModel<BulkResultModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => BulkResultModel,
+	})
+	@Expose()
+	declare data: BulkResultModel;
 }

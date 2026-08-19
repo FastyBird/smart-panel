@@ -15,6 +15,7 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { CreateLocationDto } from '../dto/create-location.dto';
 import { UpdateLocationDto } from '../dto/update-location.dto';
 import { WeatherLocationEntity } from '../entities/locations.entity';
+import { LocationsBulkService } from '../services/locations-bulk.service';
 import { LocationsTypeMapperService } from '../services/locations-type-mapper.service';
 import { LocationsService } from '../services/locations.service';
 import { WeatherException } from '../weather.exceptions';
@@ -53,6 +54,12 @@ describe('LocationsController', () => {
 						create: jest.fn().mockResolvedValue(toInstance(WeatherLocationEntity, mockLocation)),
 						update: jest.fn().mockResolvedValue(toInstance(WeatherLocationEntity, mockLocation)),
 						remove: jest.fn().mockResolvedValue(undefined),
+					},
+				},
+				{
+					provide: LocationsBulkService,
+					useValue: {
+						remove: jest.fn().mockResolvedValue({ succeeded: [], failed: [] }),
 					},
 				},
 			],

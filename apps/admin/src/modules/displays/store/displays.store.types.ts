@@ -11,6 +11,8 @@ import {
 	DisplayTokenResSchema,
 	DisplayUpdateReqSchema,
 	DisplaysAddActionPayloadSchema,
+	DisplaysBulkRemoveActionPayloadSchema,
+	DisplaysBulkResultSchema,
 	DisplaysEditActionPayloadSchema,
 	DisplaysGetActionPayloadSchema,
 	DisplaysOnEventActionPayloadSchema,
@@ -48,6 +50,10 @@ export type IDisplaysEditActionPayload = z.infer<typeof DisplaysEditActionPayloa
 
 export type IDisplaysSaveActionPayload = z.infer<typeof DisplaysSaveActionPayloadSchema>;
 
+export type IDisplaysBulkRemoveActionPayload = z.infer<typeof DisplaysBulkRemoveActionPayloadSchema>;
+
+export type IDisplaysBulkResult = z.infer<typeof DisplaysBulkResultSchema>;
+
 export type IDisplaysRemoveActionPayload = z.infer<typeof DisplaysRemoveActionPayloadSchema>;
 
 export type IDisplaysRevokeTokenActionPayload = z.infer<typeof DisplaysRevokeTokenActionPayloadSchema>;
@@ -79,6 +85,7 @@ export interface IDisplaysStoreActions {
 	edit: (payload: IDisplaysEditActionPayload) => Promise<IDisplay>;
 	save: (payload: IDisplaysSaveActionPayload) => Promise<IDisplay>;
 	remove: (payload: IDisplaysRemoveActionPayload) => Promise<boolean>;
+	bulkRemove: (payload: IDisplaysBulkRemoveActionPayload) => Promise<IDisplaysBulkResult>;
 	getTokens: (payload: IDisplaysGetActionPayload) => Promise<IDisplayToken[]>;
 	revokeToken: (payload: IDisplaysRevokeTokenActionPayload) => Promise<boolean>;
 	refreshTokensForDisplay: (payload: IDisplaysGetActionPayload) => void;

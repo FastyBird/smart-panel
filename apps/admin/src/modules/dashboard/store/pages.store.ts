@@ -28,6 +28,7 @@ import {
 	PageSchema,
 	PageUpdateReqSchema,
 	PagesAddActionPayloadSchema,
+	PagesBulkResultSchema,
 	PagesEditActionPayloadSchema,
 } from './pages.store.schemas';
 import type {
@@ -36,6 +37,8 @@ import type {
 	IPageRes,
 	IPageUpdateReq,
 	IPagesAddActionPayload,
+	IPagesBulkRemoveActionPayload,
+	IPagesBulkResult,
 	IPagesEditActionPayload,
 	IPagesGetActionPayload,
 	IPagesOnEventActionPayload,
@@ -509,18 +512,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 				});
 
 				if (response.status === 204) {
-					const tilesStore = storesManager.getStore(tilesStoreKey);
-					const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
-
-					dataSourcesStore.unset({ parent: { type: 'page', id: payload.id } });
-
-					const tiles = tilesStore.findForParent('page', payload.id);
-
-					tiles.forEach((tile) => {
-						dataSourcesStore.unset({ parent: { type: 'tile', id: tile.id } });
-					});
-
-					tilesStore.unset({ parent: { type: 'page', id: payload.id } });
+					purgeLocally(payload.id);
 
 					return true;
 				}
@@ -541,6 +533,90 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 		}
 
 		return true;
+	};
+
+	/**
+	 * Drops the tiles and data sources that hang off a page.
+	 *
+	 * `remove` did this inline; the bulk path needs the same cascade for each
+	 * page the backend confirmed, so it lives here rather than being written out
+	 * twice with a chance of drifting apart.
+	 */
+	const purgeLocally = (id: IPage['id']): void => {
+		const tilesStore = storesManager.getStore(tilesStoreKey);
+		const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
+
+		dataSourcesStore.unset({ parent: { type: 'page', id } });
+
+		const tiles = tilesStore.findForParent('page', id);
+
+		tiles.forEach((tile) => {
+			dataSourcesStore.unset({ parent: { type: 'tile', id: tile.id } });
+		});
+
+		tilesStore.unset({ parent: { type: 'page', id } });
+	};
+
+	/**
+	 * Removes a selection in one request.
+	 *
+	 * The per-page alternative was one request each, which the backend's shared
+	 * rate limit rejects past thirty - so a large selection failed halfway
+	 * through with no way to tell which half. The outcome is reported per page
+	 * because the backend still refuses individual pages for individual reasons.
+	 */
+	const bulkRemove = async (payload: IPagesBulkRemoveActionPayload): Promise<IPagesBulkResult> => {
+		// Drafts were never sent to the backend, so they are dropped here and
+		// counted as done rather than handed to an endpoint that would correctly
+		// report them as unknown.
+		const drafts: string[] = [];
+		const persisted: string[] = [];
+
+		for (const id of payload.ids) {
+			const record = data.value[id];
+
+			if (record === undefined) {
+				continue;
+			}
+
+			(record.draft ? drafts : persisted).push(id);
+		}
+
+		for (const id of drafts) {
+			unset({ id });
+			purgeLocally(id);
+		}
+
+		if (persisted.length === 0) {
+			return { succeeded: drafts, failed: [] };
+		}
+
+		semaphore.value.deleting.push(...persisted);
+
+		try {
+			const { data: responseBody, error } = await backend.client.POST(`/${MODULES_PREFIX}/${DASHBOARD_MODULE_PREFIX}/pages/bulk-remove`, {
+				body: { data: { ids: persisted } },
+			});
+
+			if (typeof error !== 'undefined' || typeof responseBody === 'undefined') {
+				throw new DashboardApiException('Received unexpected response.');
+			}
+
+			const result = PagesBulkResultSchema.parse(responseBody.data);
+
+			// Removing a page cascades to its tiles and data sources on the backend,
+			// so the same cascade is applied locally for every page it confirmed.
+			for (const id of result.succeeded) {
+				unset({ id });
+				purgeLocally(id);
+			}
+
+			return { succeeded: [...drafts, ...result.succeeded], failed: result.failed };
+		} catch (e) {
+			throw new DashboardApiException('Failed to remove pages.', null, e as Error);
+		} finally {
+			semaphore.value.deleting = semaphore.value.deleting.filter((item) => !persisted.includes(item));
+		}
 	};
 
 	const insertDataSourceRelations = (page: IPage, dataSources: IDataSourceRes[]): void => {
@@ -614,6 +690,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 		edit,
 		save,
 		remove,
+		bulkRemove,
 	};
 });
 

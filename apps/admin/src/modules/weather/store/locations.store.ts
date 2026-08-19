@@ -12,6 +12,7 @@ import { WeatherApiException, WeatherValidationException } from '../weather.exce
 import {
 	WeatherLocationSchema,
 	WeatherLocationsAddActionPayloadSchema,
+	WeatherLocationsBulkResultSchema,
 	WeatherLocationsEditActionPayloadSchema,
 } from './locations.store.schemas';
 import type {
@@ -26,6 +27,8 @@ import type {
 	IWeatherLocationsEditActionPayload,
 	IWeatherLocationsSaveActionPayload,
 	IWeatherLocationsRemoveActionPayload,
+	IWeatherLocationsBulkRemoveActionPayload,
+	IWeatherLocationsBulkResult,
 	IWeatherLocationsStoreState,
 	IWeatherLocationsStoreActions,
 	WeatherLocationsStoreSetup,
@@ -486,6 +489,68 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 			}
 		};
 
+		/**
+		 * Removes a selection in one request.
+		 *
+		 * The per-location alternative was one request each, which the backend's
+		 * shared rate limit rejects past thirty - so a large selection failed
+		 * halfway through with no way to tell which half. The outcome is reported
+		 * per location because the backend still refuses individual locations for
+		 * individual reasons, the configured primary one above all.
+		 */
+		const bulkRemove = async (
+			payload: IWeatherLocationsBulkRemoveActionPayload
+		): Promise<IWeatherLocationsBulkResult> => {
+			// Drafts were never sent to the backend, so they are dropped here and
+			// counted as done rather than handed to an endpoint that would correctly
+			// report them as unknown.
+			const drafts: string[] = [];
+			const persisted: string[] = [];
+
+			for (const id of payload.ids) {
+				const record = data.value[id];
+
+				if (typeof record === 'undefined') {
+					continue;
+				}
+
+				(record.draft ? drafts : persisted).push(id);
+			}
+
+			for (const id of drafts) {
+				unset({ id });
+			}
+
+			if (persisted.length === 0) {
+				return { succeeded: drafts, failed: [] };
+			}
+
+			semaphore.value.deleting.push(...persisted);
+
+			try {
+				const { data: responseBody, error } = await backend.client.POST(
+					`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations/bulk-remove`,
+					{ body: { data: { ids: persisted } } }
+				);
+
+				if (typeof error !== 'undefined' || typeof responseBody === 'undefined') {
+					throw new WeatherApiException('Received unexpected response.');
+				}
+
+				const result = WeatherLocationsBulkResultSchema.parse(responseBody.data);
+
+				for (const id of result.succeeded) {
+					unset({ id });
+				}
+
+				return { succeeded: [...drafts, ...result.succeeded], failed: result.failed };
+			} catch (error: unknown) {
+				throw new WeatherApiException('Failed to remove locations.', null, error as Error);
+			} finally {
+				semaphore.value.deleting = semaphore.value.deleting.filter((item) => !persisted.includes(item));
+			}
+		};
+
 		// Reconnect refresh contract: the store itself says whether it holds anything worth
 		// re-reading, so the caller never has to guess from a flag it does not maintain.
 		const isLoaded = (): boolean => firstLoadFinished() || findAll().length > 0;
@@ -512,6 +577,7 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 			edit,
 			save,
 			remove,
+			bulkRemove,
 		};
 	}
 );

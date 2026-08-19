@@ -10,6 +10,8 @@ import {
 	PageSchema,
 	PageUpdateReqSchema,
 	PagesAddActionPayloadSchema,
+	PagesBulkRemoveActionPayloadSchema,
+	PagesBulkResultSchema,
 	PagesEditActionPayloadSchema,
 	PagesGetActionPayloadSchema,
 	PagesOnSetActionPayloadSchema,
@@ -46,6 +48,10 @@ export type IPagesSaveActionPayload = z.infer<typeof PagesSaveActionPayloadSchem
 
 export type IPagesRemoveActionPayload = z.infer<typeof PagesRemoveActionPayloadSchema>;
 
+export type IPagesBulkRemoveActionPayload = z.infer<typeof PagesBulkRemoveActionPayloadSchema>;
+
+export type IPagesBulkResult = z.infer<typeof PagesBulkResultSchema>;
+
 // STORE
 // =====
 
@@ -72,6 +78,7 @@ export interface IPagesStoreActions {
 	edit: (payload: IPagesEditActionPayload) => Promise<IPage>;
 	save: (payload: IPagesSaveActionPayload) => Promise<IPage>;
 	remove: (payload: IPagesRemoveActionPayload) => Promise<boolean>;
+	bulkRemove: (payload: IPagesBulkRemoveActionPayload) => Promise<IPagesBulkResult>;
 	isLoaded: () => boolean;
 	refresh: () => Promise<unknown>;
 }

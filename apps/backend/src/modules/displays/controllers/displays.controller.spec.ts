@@ -17,6 +17,7 @@ import { TokensService } from '../../auth/services/tokens.service';
 import { ConnectionState, HomeMode } from '../displays.constants';
 import { DisplaysNotFoundException } from '../displays.exceptions';
 import { DisplayEntity } from '../entities/displays.entity';
+import { DisplaysBulkService } from '../services/displays-bulk.service';
 import { DisplaysService } from '../services/displays.service';
 import { HomeResolutionService } from '../services/home-resolution.service';
 import { PermitJoinService } from '../services/permit-join.service';
@@ -28,6 +29,7 @@ describe('DisplaysController', () => {
 	let controller: DisplaysController;
 	let service: DisplaysService;
 	let tokensService: TokensService;
+	let bulkService: DisplaysBulkService;
 
 	const mockDisplay: DisplayEntity = {
 		id: uuid().toString(),
@@ -165,6 +167,12 @@ describe('DisplaysController', () => {
 					},
 				},
 				{
+					provide: DisplaysBulkService,
+					useValue: {
+						remove: jest.fn().mockResolvedValue({ succeeded: [], failed: [] }),
+					},
+				},
+				{
 					provide: EventEmitter2,
 					useValue: {
 						emit: jest.fn(),
@@ -176,6 +184,7 @@ describe('DisplaysController', () => {
 		controller = module.get<DisplaysController>(DisplaysController);
 		service = module.get<DisplaysService>(DisplaysService);
 		tokensService = module.get<TokensService>(TokensService);
+		bulkService = module.get<DisplaysBulkService>(DisplaysBulkService);
 	});
 
 	afterEach(() => {
@@ -350,6 +359,37 @@ describe('DisplaysController', () => {
 			jest.spyOn(service, 'getOneOrThrow').mockRejectedValue(new DisplaysNotFoundException('Display not found'));
 
 			await expect(controller.revokeToken('non-existent-id')).rejects.toThrow(DisplaysNotFoundException);
+		});
+	});
+
+	describe('bulkRemove', () => {
+		it('should hand the whole selection to the bulk service in one call', async () => {
+			const ids = [uuid().toString(), uuid().toString(), uuid().toString()];
+
+			jest.spyOn(bulkService, 'remove').mockResolvedValue({ succeeded: ids, failed: [] });
+
+			const result = await controller.bulkRemove({ data: { ids } });
+
+			expect(bulkService.remove).toHaveBeenCalledTimes(1);
+			expect(bulkService.remove).toHaveBeenCalledWith(ids);
+			expect(result.data.succeeded).toEqual(ids);
+		});
+
+		// A display the backend refused belongs in the response, not in an
+		// exception: the rest of the selection went through and the caller has to
+		// be able to say so.
+		it('should report refusals in the response rather than throwing', async () => {
+			const ids = [uuid().toString(), uuid().toString()];
+
+			jest.spyOn(bulkService, 'remove').mockResolvedValue({
+				succeeded: [ids[0]],
+				failed: [{ id: ids[1], reason: 'Requested display does not exist' }],
+			});
+
+			const result = await controller.bulkRemove({ data: { ids } });
+
+			expect(result.data.succeeded).toEqual([ids[0]]);
+			expect(result.data.failed).toEqual([{ id: ids[1], reason: 'Requested display does not exist' }]);
 		});
 	});
 });

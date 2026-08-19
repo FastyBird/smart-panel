@@ -96,6 +96,15 @@ export const WeatherLocationsSaveActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 });
 
+export const WeatherLocationsBulkRemoveActionPayloadSchema = z.object({
+	ids: z.array(ItemIdSchema).nonempty(),
+});
+
+export const WeatherLocationsBulkResultSchema = z.object({
+	succeeded: z.array(z.string()),
+	failed: z.array(z.object({ id: z.string(), reason: z.string() })),
+});
+
 export const WeatherLocationsRemoveActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 });

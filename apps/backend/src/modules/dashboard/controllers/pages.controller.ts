@@ -33,10 +33,12 @@ import {
 } from '../../swagger/decorators/api-documentation.decorator';
 import { DASHBOARD_MODULE_API_TAG_NAME, DASHBOARD_MODULE_NAME, DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
+import { ReqBulkRemovePagesDto } from '../dto/bulk-pages.dto';
 import { CreatePageDto, ReqCreatePageDto } from '../dto/create-page.dto';
 import { ReqUpdatePageDto, UpdatePageDto } from '../dto/update-page.dto';
 import { PageEntity } from '../entities/dashboard.entity';
-import { PageResponseModel, PagesResponseModel } from '../models/dashboard-response.model';
+import { BulkResultResponseModel, PageResponseModel, PagesResponseModel } from '../models/dashboard-response.model';
+import { PagesBulkService } from '../services/pages-bulk.service';
 import { PageTypeMapping, PagesTypeMapperService } from '../services/pages-type-mapper.service';
 import { PagesService } from '../services/pages.service';
 
@@ -48,6 +50,7 @@ export class PagesController {
 	constructor(
 		private readonly pagesService: PagesService,
 		private readonly pagesMapperService: PagesTypeMapperService,
+		private readonly pagesBulkService: PagesBulkService,
 	) {}
 
 	// Pages
@@ -302,6 +305,27 @@ export class PagesController {
 		await this.pagesService.remove(page.id);
 
 		this.logger.debug(`Successfully deleted page id=${id}`);
+	}
+
+	@ApiOperation({
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		summary: 'Remove several pages',
+		description:
+			'Removes every page in the supplied selection. Each page is processed independently, so a page that can not be removed is reported in the response rather than aborting the rest of the selection. This exists so that acting on a large selection is one request instead of one per page.',
+		operationId: 'create-dashboard-module-pages-bulk-remove',
+	})
+	@ApiBody({ type: ReqBulkRemovePagesDto, description: 'The pages to remove' })
+	@ApiSuccessResponse(BulkResultResponseModel, 'Returns which pages were removed and which were not')
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post('bulk-remove')
+	@HttpCode(200)
+	async bulkRemove(@Body() body: ReqBulkRemovePagesDto): Promise<BulkResultResponseModel> {
+		const response = new BulkResultResponseModel();
+
+		response.data = await this.pagesBulkService.remove(body.data.ids);
+
+		return response;
 	}
 
 	private async getOneOrThrow(id: string): Promise<PageEntity> {

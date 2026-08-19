@@ -31,10 +31,16 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
+import { ReqBulkRemoveLocationsDto } from '../dto/bulk-locations.dto';
 import { CreateLocationDto, ReqCreateLocationDto } from '../dto/create-location.dto';
 import { ReqUpdateLocationDto, UpdateLocationDto } from '../dto/update-location.dto';
 import { WeatherLocationEntity } from '../entities/locations.entity';
-import { LocationResponseModel, LocationsResponseModel } from '../models/locations-response.model';
+import {
+	BulkResultResponseModel,
+	LocationResponseModel,
+	LocationsResponseModel,
+} from '../models/locations-response.model';
+import { LocationsBulkService } from '../services/locations-bulk.service';
 import { LocationTypeMapping, LocationsTypeMapperService } from '../services/locations-type-mapper.service';
 import { LocationsService } from '../services/locations.service';
 import { WEATHER_MODULE_API_TAG_NAME, WEATHER_MODULE_NAME, WEATHER_MODULE_PREFIX } from '../weather.constants';
@@ -48,6 +54,7 @@ export class LocationsController {
 	constructor(
 		private readonly locationsService: LocationsService,
 		private readonly locationsMapperService: LocationsTypeMapperService,
+		private readonly locationsBulkService: LocationsBulkService,
 	) {}
 
 	@ApiOperation({
@@ -306,6 +313,27 @@ export class LocationsController {
 		await this.locationsService.remove(location.id);
 
 		this.logger.debug(`Successfully deleted location id=${id}`);
+	}
+
+	@ApiOperation({
+		tags: [WEATHER_MODULE_API_TAG_NAME],
+		summary: 'Remove several locations',
+		description:
+			'Removes every location in the supplied selection. Each location is processed independently, so a location that can not be removed is reported in the response rather than aborting the rest of the selection. This exists so that acting on a large selection is one request instead of one per location.',
+		operationId: 'create-weather-module-locations-bulk-remove',
+	})
+	@ApiBody({ type: ReqBulkRemoveLocationsDto, description: 'The locations to remove' })
+	@ApiSuccessResponse(BulkResultResponseModel, 'Returns which locations were removed and which were not')
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post('bulk-remove')
+	@HttpCode(200)
+	async bulkRemove(@Body() body: ReqBulkRemoveLocationsDto): Promise<BulkResultResponseModel> {
+		const response = new BulkResultResponseModel();
+
+		response.data = await this.locationsBulkService.remove(body.data.ids);
+
+		return response;
 	}
 
 	private async getOneOrThrow(id: string): Promise<WeatherLocationEntity> {

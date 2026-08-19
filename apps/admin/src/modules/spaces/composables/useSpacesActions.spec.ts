@@ -1,3 +1,4 @@
+import { ElMessageBox } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SpaceRoomCategory, SpaceType } from '../spaces.constants';
@@ -32,6 +33,7 @@ const mockFindById = vi.fn((id: string) => {
 });
 
 const mockRemove = vi.fn();
+const mockBulkRemove = vi.fn();
 
 const mockSuccess = vi.fn();
 const mockError = vi.fn();
@@ -64,6 +66,7 @@ vi.mock('../../../common', async () => {
 			getStore: () => ({
 				findById: mockFindById,
 				remove: mockRemove,
+				bulkRemove: mockBulkRemove,
 			}),
 		}),
 		useFlashMessage: () => ({
@@ -108,25 +111,41 @@ describe('useSpacesActions', () => {
 	});
 
 	describe('bulkRemove', () => {
+		beforeEach(() => {
+			mockBulkRemove.mockResolvedValue({ succeeded: [], failed: [] });
+		});
+
 		it('does nothing when spaces array is empty', async () => {
 			const { bulkRemove } = useSpacesActions();
 
 			await bulkRemove([]);
 
-			expect(mockRemove).not.toHaveBeenCalled();
+			expect(mockBulkRemove).not.toHaveBeenCalled();
 		});
 
-		it('calls remove for each space when confirmed', async () => {
+		it('sends the whole selection in one call when confirmed', async () => {
 			const { bulkRemove } = useSpacesActions();
 
 			await bulkRemove([mockSpace1, mockSpace2]);
 
-			expect(mockRemove).toHaveBeenCalledTimes(2);
-			expect(mockRemove).toHaveBeenCalledWith({ id: 'space-1' });
-			expect(mockRemove).toHaveBeenCalledWith({ id: 'space-2' });
+			expect(mockBulkRemove).toHaveBeenCalledTimes(1);
+			expect(mockBulkRemove).toHaveBeenCalledWith({ ids: ['space-1', 'space-2'] });
+		});
+
+		it('does not call the store when the confirmation is cancelled', async () => {
+			vi.mocked(ElMessageBox.confirm).mockRejectedValueOnce(new Error('cancel'));
+
+			const { bulkRemove } = useSpacesActions();
+
+			await bulkRemove([mockSpace1, mockSpace2]);
+
+			expect(mockBulkRemove).not.toHaveBeenCalled();
+			expect(mockError).not.toHaveBeenCalled();
 		});
 
 		it('shows success message after bulk removing', async () => {
+			mockBulkRemove.mockResolvedValue({ succeeded: ['space-1', 'space-2'], failed: [] });
+
 			const { bulkRemove } = useSpacesActions();
 
 			await bulkRemove([mockSpace1, mockSpace2]);
@@ -135,11 +154,7 @@ describe('useSpacesActions', () => {
 		});
 
 		it('shows error message when some removes fail', async () => {
-			mockRemove.mockImplementation(({ id }) => {
-				if (id === 'space-2') {
-					throw new Error('Failed to remove');
-				}
-			});
+			mockBulkRemove.mockResolvedValue({ succeeded: ['space-1'], failed: [{ id: 'space-2', reason: 'Failed to remove' }] });
 
 			const { bulkRemove } = useSpacesActions();
 
@@ -147,6 +162,17 @@ describe('useSpacesActions', () => {
 
 			expect(mockSuccess).toHaveBeenCalled();
 			expect(mockError).toHaveBeenCalledWith(expect.stringContaining('spacesModule.messages.bulkRemoveFailed'));
+		});
+
+		it('reports a failed request as failed rather than cancelled', async () => {
+			mockBulkRemove.mockRejectedValue(new Error('Request failed'));
+
+			const { bulkRemove } = useSpacesActions();
+
+			await bulkRemove([mockSpace1, mockSpace2]);
+
+			expect(mockError).toHaveBeenCalledWith(expect.stringContaining('spacesModule.messages.bulkRemoveFailed'));
+			expect(mockInfo).not.toHaveBeenCalled();
 		});
 	});
 });

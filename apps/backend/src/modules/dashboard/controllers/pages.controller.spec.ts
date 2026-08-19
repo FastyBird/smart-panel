@@ -20,6 +20,7 @@ import { CreatePageDto } from '../dto/create-page.dto';
 import { UpdatePageDto } from '../dto/update-page.dto';
 import { PageEntity } from '../entities/dashboard.entity';
 import { DataSourcesTypeMapperService } from '../services/data-source-type-mapper.service';
+import { PagesBulkService } from '../services/pages-bulk.service';
 import { PagesTypeMapperService } from '../services/pages-type-mapper.service';
 import { PagesService } from '../services/pages.service';
 import { TilesTypeMapperService } from '../services/tiles-type-mapper.service';
@@ -151,6 +152,12 @@ describe('PagesController', () => {
 						create: jest.fn().mockResolvedValue(toInstance(MockPageEntity, mockPageOne)),
 						update: jest.fn().mockResolvedValue(toInstance(MockPageEntity, mockPageOne)),
 						remove: jest.fn().mockResolvedValue(undefined),
+					},
+				},
+				{
+					provide: PagesBulkService,
+					useValue: {
+						remove: jest.fn().mockResolvedValue({ succeeded: [], failed: [] }),
 					},
 				},
 			],

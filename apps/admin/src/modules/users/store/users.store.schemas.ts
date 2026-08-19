@@ -145,6 +145,15 @@ export const UsersSaveActionPayloadSchema = z.object({
 	id: UserIdSchema,
 });
 
+export const UsersBulkRemoveActionPayloadSchema = z.object({
+	ids: z.array(UserIdSchema).nonempty(),
+});
+
+export const UsersBulkResultSchema = z.object({
+	succeeded: z.array(z.string()),
+	failed: z.array(z.object({ id: z.string(), reason: z.string() })),
+});
+
 export const UsersRemoveActionPayloadSchema = z.object({
 	id: UserIdSchema,
 });

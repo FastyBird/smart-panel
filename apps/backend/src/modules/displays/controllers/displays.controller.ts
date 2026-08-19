@@ -13,7 +13,7 @@ import {
 	Req,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { TokenOwnerType } from '../../auth/auth.constants';
@@ -22,6 +22,7 @@ import { TokensService } from '../../auth/services/tokens.service';
 import {
 	ApiBadRequestResponse,
 	ApiForbiddenResponse,
+	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
@@ -29,8 +30,10 @@ import {
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
 import { DISPLAYS_MODULE_API_TAG_NAME, DISPLAYS_MODULE_NAME, DeploymentMode, EventType } from '../displays.constants';
+import { ReqBulkRemoveDisplaysDto } from '../dto/bulk-displays.dto';
 import { ReqUpdateDisplayDto } from '../dto/update-display.dto';
 import {
+	BulkResultResponseModel,
 	DisplayResponseModel,
 	DisplayTokenRefreshDataModel,
 	DisplayTokenRefreshResponseModel,
@@ -41,6 +44,7 @@ import {
 	PermitJoinStatusDataModel,
 	PermitJoinStatusResponseModel,
 } from '../models/displays-response.model';
+import { DisplaysBulkService } from '../services/displays-bulk.service';
 import { DisplaysService } from '../services/displays.service';
 import { HomeResolutionService } from '../services/home-resolution.service';
 import { PermitJoinService } from '../services/permit-join.service';
@@ -57,6 +61,7 @@ export class DisplaysController {
 		private readonly registrationService: RegistrationService,
 		private readonly permitJoinService: PermitJoinService,
 		private readonly homeResolutionService: HomeResolutionService,
+		private readonly displaysBulkService: DisplaysBulkService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
@@ -290,6 +295,30 @@ export class DisplaysController {
 		await this.displaysService.remove(id);
 
 		this.logger.debug(`Successfully removed display with id=${id}`);
+	}
+
+	@ApiOperation({
+		tags: [DISPLAYS_MODULE_API_TAG_NAME],
+		summary: 'Remove several displays',
+		description:
+			'Removes every display in the supplied selection. Each display is processed independently, so a display that can not be removed is reported in the response rather than aborting the rest of the selection. This exists so that acting on a large selection is one request instead of one per display. Requires owner or admin role.',
+		operationId: 'create-displays-module-displays-bulk-remove',
+	})
+	@ApiBody({ type: ReqBulkRemoveDisplaysDto, description: 'The displays to remove' })
+	@ApiSuccessResponse(BulkResultResponseModel, 'Returns which displays were removed and which were not')
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@Post('bulk-remove')
+	@HttpCode(200)
+	async bulkRemove(@Body() body: ReqBulkRemoveDisplaysDto): Promise<BulkResultResponseModel> {
+		this.logger.debug(`Removing ${body.data.ids.length} display(s)`);
+
+		const response = new BulkResultResponseModel();
+
+		response.data = await this.displaysBulkService.remove(body.data.ids);
+
+		return response;
 	}
 
 	@Get(':id/tokens')

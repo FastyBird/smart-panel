@@ -9,6 +9,7 @@ import {
 	BulkAssignmentDataModel,
 	BulkAssignmentResponseModel,
 	BulkAssignmentResultDataModel,
+	BulkResultResponseModel,
 	CategoryTemplateDataModel,
 	CategoryTemplatesResponseModel,
 	SpaceResponseModel,
@@ -29,6 +30,7 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	BulkAssignmentDataModel,
 	BulkAssignmentResultDataModel,
 	BulkAssignmentResponseModel,
+	BulkResultResponseModel,
 	CategoryTemplateDataModel,
 	CategoryTemplatesResponseModel,
 	// Entities

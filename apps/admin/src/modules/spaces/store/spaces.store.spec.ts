@@ -9,6 +9,7 @@ import { useSpacesStore } from './spaces.store';
 
 const backendClient = {
 	GET: vi.fn(),
+	POST: vi.fn(),
 };
 
 vi.mock('../../../common', async () => {
@@ -115,5 +116,55 @@ describe('Spaces store', () => {
 		expect(store.findAll()).toHaveLength(1);
 		expect(store.findById(removedId)).toBeNull();
 		expect(store.findById(keptId)).not.toBeNull();
+	});
+
+	describe('bulkRemove', () => {
+		const seed = async (): Promise<void> => {
+			backendClient.GET.mockResolvedValueOnce({
+				data: { data: [spaceResponse(keptId, 'Kept'), spaceResponse(removedId, 'Removed')] },
+				error: undefined,
+			});
+
+			await store.fetch();
+		};
+
+		it('sends the whole selection in one request and drops what the backend removed', async () => {
+			await seed();
+
+			backendClient.POST.mockResolvedValueOnce({ data: { data: { succeeded: [removedId], failed: [] } }, error: undefined });
+
+			const result = await store.bulkRemove({ ids: [keptId, removedId] });
+
+			expect(backendClient.POST).toHaveBeenCalledTimes(1);
+			expect(backendClient.POST).toHaveBeenCalledWith('/modules/spaces/spaces/bulk-remove', {
+				body: { data: { ids: [keptId, removedId] } },
+			});
+			expect(result).toEqual({ succeeded: [removedId], failed: [] });
+			expect(store.findById(removedId)).toBeNull();
+			expect(store.findById(keptId)).not.toBeNull();
+		});
+
+		it('drops drafts locally and never asks the backend about them', async () => {
+			await seed();
+
+			store.set({ id: removedId, data: { draft: true } });
+
+			const result = await store.bulkRemove({ ids: [removedId] });
+
+			expect(backendClient.POST).not.toHaveBeenCalled();
+			expect(result).toEqual({ succeeded: [removedId], failed: [] });
+			expect(store.findById(removedId)).toBeNull();
+		});
+
+		it('reports a rejected request as a failure and keeps the selection', async () => {
+			await seed();
+
+			backendClient.POST.mockResolvedValueOnce({ data: undefined, error: { message: 'Nope' } });
+
+			await expect(store.bulkRemove({ ids: [keptId] })).rejects.toThrow('Failed to remove spaces');
+
+			expect(store.findById(keptId)).not.toBeNull();
+			expect(store.semaphore.deleting).not.toContain(keptId);
+		});
 	});
 });
