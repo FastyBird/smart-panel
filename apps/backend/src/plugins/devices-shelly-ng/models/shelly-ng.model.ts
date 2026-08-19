@@ -593,6 +593,9 @@ export class ShellyNgMappingReloadModel {
  * Adoption is a set of independent intents, so the outcome is reported per
  * device: one device refusing must not discard the rest of the selection, and
  * the wizard shows the operator exactly which ones landed.
+ *
+ * The field set matches the other device plugins' adoption results (WLED,
+ * Zigbee2MQTT, Home Assistant) so a wizard reads the same answer everywhere.
  */
 @ApiSchema({ name: 'DevicesShellyNgPluginDataAdoptionResult' })
 export class ShellyNgAdoptionResultModel {
@@ -605,12 +608,12 @@ export class ShellyNgAdoptionResultModel {
 	hostname: string;
 
 	@ApiProperty({
-		description: 'Shelly device identifier',
+		description: 'Name the device was adopted under',
 		type: 'string',
-		example: 'shellyplus1pm-441793ad07bc',
+		example: 'Kitchen light',
 	})
 	@Expose()
-	identifier: string;
+	name: string;
 
 	@ApiProperty({
 		description:
@@ -623,6 +626,15 @@ export class ShellyNgAdoptionResultModel {
 	status: 'created' | 'updated' | 'failed';
 
 	@ApiProperty({
+		description: 'Why this device could not be adopted',
+		type: 'string',
+		nullable: true,
+		example: 'Device could not be adopted',
+	})
+	@Expose()
+	error: string | null;
+
+	@ApiProperty({
 		name: 'device_id',
 		description: 'Identifier of the resulting device, when there is one',
 		type: 'string',
@@ -632,13 +644,4 @@ export class ShellyNgAdoptionResultModel {
 	})
 	@Expose({ name: 'device_id' })
 	deviceId: string | null;
-
-	@ApiProperty({
-		description: 'Why this device could not be adopted',
-		type: 'string',
-		nullable: true,
-		example: 'Device could not be adopted',
-	})
-	@Expose()
-	reason: string | null;
 }

@@ -184,10 +184,10 @@ describe('ShellyV1DevicesController', () => {
 			adoptionService.adopt.mockResolvedValue([
 				{
 					hostname: '192.168.1.100',
-					identifier: 'shelly1-a4cf12df3b21',
+					name: 'Kitchen light',
 					status: 'created',
+					error: null,
 					deviceId: 'dev-1',
-					reason: null,
 				},
 			]);
 
