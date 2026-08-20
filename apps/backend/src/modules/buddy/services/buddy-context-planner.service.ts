@@ -85,11 +85,11 @@ const CLOCK_TIME_HISTORY_PATTERN = new RegExp(
 	'u',
 );
 const SCHEDULED_ACTION_PATTERN = new RegExp(
-	String.raw`\b(?:at\s+${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE}(?!\s*(?:%|celsius\b|degrees?\b|fahrenheit\b|percent\b|°\s*(?:c|f)?))|tomorrow|tonight|next\s+(?:day|evening|morning|night|week)|(?:for|in)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?)|(?:each|every)\s+(?:day|evening|friday|monday|morning|night|saturday|sunday|thursday|tuesday|wednesday|week|weekday|weekend)|daily|weekly)\b`,
+	String.raw`\b(?:at\s+${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE}(?!\s*(?:%|celsius\b|degrees?\b|fahrenheit\b|percent\b|°\s*(?:c|f)?))|tomorrow|tonight|next\s+(?:day|evening|morning|night|week)|(?:after|for|in)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:seconds?|minutes?|hours?|days?|weeks?)|(?:each|every)\s+(?:day|evening|friday|monday|morning|night|saturday|sunday|thursday|tuesday|wednesday|week|weekday|weekend)|daily|weekly)\b`,
 	'u',
 );
 const ACTION_DURATION_PATTERN =
-	/\bfor\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?)\b/u;
+	/\bfor\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:seconds?|minutes?|hours?|days?|weeks?)\b/u;
 const HISTORY_PATTERN =
 	/\b(?:chart|graph|history|historical|past|trend|vcera|yesterday)\b|\bhow\s+(?:did|has|have|is|was)\b.*\b(?:change|changed|changing|varied)\b|\b(?:at\s+)?what time did\b|\bwhen did\b|\b(?:earlier today|last (?:day|hour|minute|month|night|week|weekend|year)|this (?:afternoon|evening|morning|night))\b|\b(?:last|since)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b(?:did|was|were)\b.*\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*\b(?:did|was|were)\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
 const LEADING_WEEKDAY_HISTORY_PATTERN = /^\s*on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*$/u;
@@ -137,7 +137,8 @@ const RELATIVE_PATTERN = new RegExp(
 );
 const REPEATED_ACTION_PATTERN =
 	/\b(?:once|thrice|twice)\b(?!\s+as\b)|\b(?:\d+|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+times?\b/u;
-const ACTION_RANGE_PATTERN = /\b(?:between\b[^?!,.;]+\band\b|from\b[^?!,.;]+\b(?:to|until)\b)/u;
+const ACTION_RANGE_PATTERN =
+	/\b(?:between\b[^?!,.;]+\band\b|from\b[^?!,.;]+\b(?:to|until)\b|\d+(?:\.\d+)?\s*[-–—]\s*\d+(?:\.\d+)?\b)/u;
 const PRONOUN_PATTERN = /\b(?:ho|it|its|that|their|them|these|they|this|those)\b|\bthe one\b/u;
 const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:ho|it|its|that|this)\b|\bthe one\b/u;
 const PLURAL_REFERENCE_PRONOUN_PATTERN = /\b(?:their|them|these|they|those)\b/u;
@@ -321,7 +322,7 @@ export class BuddyContextPlannerService {
 				!hasAction);
 		const requiresReadForAction =
 			hasAction &&
-			(CONDITION_PATTERN.test(normalizedMessage) ||
+			(CONDITION_PATTERN.test(normalizedMessage.replace(SCHEDULED_ACTION_PATTERN, ' ')) ||
 				RELATIVE_PATTERN.test(normalizedMessage) ||
 				hasTrailingRead ||
 				hasLeadingHomeRead);
@@ -943,7 +944,7 @@ function classifyAmbiguityRisk(
 		if (/\bor\b/u.test(actionReferenceMessage)) return 'action';
 		if (REPEATED_ACTION_PATTERN.test(actionReferenceMessage)) return 'action';
 		if (ACTION_RANGE_PATTERN.test(message)) return 'action';
-		if (SCHEDULED_ACTION_PATTERN.test(actionReferenceMessage)) return 'action';
+		if (SCHEDULED_ACTION_PATTERN.test(message)) return 'action';
 		if (
 			hasGenericActionTarget(actionReferenceMessage, explicitSpaces, conversationSpaceId !== undefined) &&
 			!hasMultiSpaceLightingTarget(message, explicitSpaces)

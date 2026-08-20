@@ -2914,26 +2914,27 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
-	it.each(['Set the Bedroom thermostat from 8 to 10 degrees', 'Set the Bedroom thermostat between 18 and 22 degrees'])(
-		'clarifies a numeric thermostat range before scalar control handoff: %s',
-		(message) => {
-			expect(
-				service.plan({
-					message,
-					knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
-					providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
-				}),
-			).toMatchObject({
-				domains: ['home'],
-				intent: 'write',
-				scope: { spaceId: 'space-bedroom' },
-				queries: [{ kind: 'search-home', spaceId: 'space-bedroom' }],
-				ambiguityRisk: 'action',
-				strategy: 'clarify',
-				toolNames: [],
-			});
-		},
-	);
+	it.each([
+		'Set the Bedroom thermostat from 8 to 10 degrees',
+		'Set the Bedroom thermostat between 18 and 22 degrees',
+		'Set the Bedroom thermostat to 20-22 degrees',
+	])('clarifies a numeric thermostat range before scalar control handoff: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'write',
+			scope: { spaceId: 'space-bedroom' },
+			queries: [{ kind: 'search-home', spaceId: 'space-bedroom' }],
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
 
 	it('propagates exclusions across repeated prepositions in a space list', () => {
 		expect(
@@ -3398,20 +3399,23 @@ describe('BuddyContextPlannerService', () => {
 		},
 	);
 
-	it('clarifies an unsupported recurring action schedule', () => {
-		expect(
-			service.plan({
-				message: 'Turn Bedroom lights on every Monday',
-				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
-				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
-			}),
-		).toMatchObject({
-			intent: 'write',
-			ambiguityRisk: 'action',
-			strategy: 'clarify',
-			toolNames: [],
-		});
-	});
+	it.each(['Turn Bedroom lights on every Monday', 'Turn Bedroom lights on after 30 seconds'])(
+		'clarifies an unsupported action schedule: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({
+				intent: 'write',
+				ambiguityRisk: 'action',
+				strategy: 'clarify',
+				toolNames: [],
+			});
+		},
+	);
 
 	it('preserves a plural lamp target across conjoined configured spaces', () => {
 		expect(
