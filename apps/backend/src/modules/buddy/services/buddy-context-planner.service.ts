@@ -83,7 +83,7 @@ const SCHEDULED_ACTION_PATTERN = new RegExp(
 	'u',
 );
 const HISTORY_PATTERN =
-	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:at\s+)?what time did\b|\bwhen did\b|\b(?:earlier today|last (?:day|hour|minute|month|night|week|weekend|year)|this (?:afternoon|evening|morning|night))\b|\b(?:last|since)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b(?:did|was|were)\b.*\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*\b(?:did|was|were)\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
+	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\bhow\s+(?:did|has|have|is|was)\b.*\b(?:change|changed|changing|varied)\b|\b(?:at\s+)?what time did\b|\bwhen did\b|\b(?:earlier today|last (?:day|hour|minute|month|night|week|weekend|year)|this (?:afternoon|evening|morning|night))\b|\b(?:last|since)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b(?:did|was|were)\b.*\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*\b(?:did|was|were)\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
 const LEADING_WEEKDAY_HISTORY_PATTERN = /^\s*on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*$/u;
 const TEMPORAL_HISTORY_PATTERN = new RegExp(
 	String.raw`(?:${HISTORY_PATTERN.source}|${CLOCK_TIME_HISTORY_PATTERN.source})`,
@@ -1188,11 +1188,13 @@ function resolveTemporalHomeSpaceIds(
 
 	if (temporalClauses.some((clause) => WHOLE_HOME_SCOPE_PATTERN.test(clause))) return [];
 
-	const explicitTemporalSpaceIds = expandConjoinedSpaceIds(
+	const directTemporalSpaceIds = resolveTemporalExplicitSpaceIds(temporalClauses, explicitSpaces, temporalPattern);
+	const coordinatedTemporalSpaceIds = expandCoordinatedTemporalPropertySpaceIds(
 		message,
 		explicitSpaces,
-		resolveTemporalExplicitSpaceIds(temporalClauses, explicitSpaces, temporalPattern),
+		directTemporalSpaceIds,
 	);
+	const explicitTemporalSpaceIds = expandConjoinedSpaceIds(message, explicitSpaces, coordinatedTemporalSpaceIds);
 
 	if (explicitTemporalSpaceIds.length > 0) return explicitTemporalSpaceIds;
 	if (
@@ -1221,9 +1223,44 @@ function resolveConjoinedTemporalSpaceIds(
 		TEMPORAL_HISTORY_PATTERN,
 	);
 
-	return expandConjoinedSpaceIds(message, explicitSpaces, directlyTemporalSpaceIds).filter(
+	const coordinatedTemporalSpaceIds = expandCoordinatedTemporalPropertySpaceIds(
+		message,
+		explicitSpaces,
+		directlyTemporalSpaceIds,
+	);
+
+	return expandConjoinedSpaceIds(message, explicitSpaces, coordinatedTemporalSpaceIds).filter(
 		(spaceId) => !directlyTemporalSpaceIds.includes(spaceId),
 	);
+}
+
+function expandCoordinatedTemporalPropertySpaceIds(
+	message: string,
+	explicitSpaces: readonly BuddyContextSpaceReference[],
+	selectedSpaceIds: readonly string[],
+): string[] {
+	const occurrences = findExplicitSpaceOccurrences(message, explicitSpaces).sort(
+		(left, right) => left.range.start - right.range.start,
+	);
+	const selectedIds = new Set(selectedSpaceIds);
+	const propertySource = HOME_STATE_PATTERN.source;
+	const coordinatedPropertyConnector = new RegExp(String.raw`^\s*(?:${propertySource})\s*,?\s+(?:and|or)\s+$`, 'u');
+	const trailingTemporalProperty = new RegExp(
+		String.raw`^\s*(?:${propertySource})\b[^?!,.;]*${TEMPORAL_HISTORY_PATTERN.source}`,
+		'u',
+	);
+
+	for (let index = occurrences.length - 2; index >= 0; index -= 1) {
+		const left = occurrences[index];
+		const right = occurrences[index + 1];
+		if (!selectedIds.has(right.space.id)) continue;
+		if (!coordinatedPropertyConnector.test(message.slice(left.range.end, right.range.start))) continue;
+		if (!trailingTemporalProperty.test(message.slice(right.range.end))) continue;
+
+		selectedIds.add(left.space.id);
+	}
+
+	return explicitSpaces.filter((space) => selectedIds.has(space.id)).map((space) => space.id);
 }
 
 function resolveConjoinedEnergySpaceIds(

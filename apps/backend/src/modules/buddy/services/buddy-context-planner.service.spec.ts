@@ -1682,6 +1682,43 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('propagates a trailing temporal qualifier across coordinated space properties', () => {
+		expect(
+			service.plan({
+				message: 'What were the Bedroom temperature and Kitchen humidity yesterday?',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'search-home', spaceId: 'space-kitchen' },
+				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-kitchen' },
+			],
+		});
+	});
+
+	it('routes change-over-time questions to property history', () => {
+		expect(
+			service.plan({
+				message: 'How has the Bedroom temperature changed?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+			],
+		});
+	});
+
 	it('prefers the longest overlapping explicit space name', () => {
 		const result = service.plan({
 			message: 'What is the temperature in Bedroom 2?',
