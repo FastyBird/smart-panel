@@ -201,6 +201,19 @@ export class HomeyService extends BaseManagedPluginService {
 		return status;
 	}
 
+	getInventorySnapshot(): readonly HomeyDevice[] | null {
+		if (
+			this.state !== 'started' ||
+			this.lastInventorySyncAt === null ||
+			(this.connectionState !== HomeyConnectionState.CONNECTED &&
+				this.connectionState !== HomeyConnectionState.DEGRADED_POLLING)
+		) {
+			return null;
+		}
+
+		return structuredClone([...this.devices.values()]);
+	}
+
 	private getPluginConfig(): HomeyConfigModel {
 		if (!this.pluginConfig) {
 			this.pluginConfig = this.configService.getPluginConfig<HomeyConfigModel>(DEVICES_HOMEY_PLUGIN_NAME);

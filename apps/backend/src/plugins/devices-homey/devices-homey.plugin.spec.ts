@@ -9,6 +9,7 @@ import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swa
 
 import { HomeyLocalConnectorFactory } from './connectors/homey-local-connector.factory';
 import { HomeySdkClientFactoryService } from './connectors/homey-sdk.client';
+import { HomeyDevicesController } from './controllers/homey-devices.controller';
 import { HomeyTestConnectionController } from './controllers/homey-test-connection.controller';
 import { DEVICES_HOMEY_PLUGIN_NAME, DEVICES_HOMEY_TYPE, HOMEY_CONNECTOR_FACTORY } from './devices-homey.constants';
 import { DEVICES_HOMEY_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-homey.openapi';
@@ -19,6 +20,7 @@ import { HomeyMappingTransformerService } from './mappings/mapping-transformer.s
 import { HomeyPropertyMappingStorageService } from './mappings/property-mapping-storage.service';
 import { HomeyConfigModel } from './models/config.model';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
+import { HomeyDeviceInventoryService } from './services/homey-device-inventory.service';
 import { HomeyService } from './services/homey.service';
 
 describe('DevicesHomeyPlugin', () => {
@@ -87,6 +89,7 @@ describe('DevicesHomeyPlugin', () => {
 				HomeyMappingLoaderService,
 				HomeyMappingTransformerService,
 				HomeyPropertyMappingStorageService,
+				HomeyDeviceInventoryService,
 			]),
 		);
 		expect(providers).toContainEqual({
@@ -94,5 +97,6 @@ describe('DevicesHomeyPlugin', () => {
 			useExisting: HomeyLocalConnectorFactory,
 		});
 		expect(controllers).toContain(HomeyTestConnectionController);
+		expect(controllers).toContain(HomeyDevicesController);
 	});
 });

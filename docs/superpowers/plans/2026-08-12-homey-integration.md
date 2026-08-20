@@ -21,16 +21,16 @@
 
 ## Delivery map
 
-| Milestone | Outcome | Estimate |
-|---|---|---:|
-| 0 | Verified SHS contract and sanitized fixture corpus | 2–3 days |
-| 1 | Secret-safe config foundation and backend plugin shell | 3–4 days |
-| 2 | Local connector, lifecycle, normalization, and health | 4–6 days |
-| 3 | Mapping, preview, discovery, and adoption | 6–8 days |
-| 4 | Real-time sync, reconciliation, and control | 4–6 days |
-| 5 | Admin wizard/config and panel integration | 4–6 days |
-| 6 | Hardening, live matrix, docs, and release gate | 2–3 days |
-| 7 | Homey Cloud connector | 7–12 additional days |
+| Milestone | Outcome                                                |             Estimate |
+| --------- | ------------------------------------------------------ | -------------------: |
+| 0         | Verified SHS contract and sanitized fixture corpus     |             2–3 days |
+| 1         | Secret-safe config foundation and backend plugin shell |             3–4 days |
+| 2         | Local connector, lifecycle, normalization, and health  |             4–6 days |
+| 3         | Mapping, preview, discovery, and adoption              |             6–8 days |
+| 4         | Real-time sync, reconciliation, and control            |             4–6 days |
+| 5         | Admin wizard/config and panel integration              |             4–6 days |
+| 6         | Hardening, live matrix, docs, and release gate         |             2–3 days |
+| 7         | Homey Cloud connector                                  | 7–12 additional days |
 
 Local MVP total: approximately 25–36 engineering days. Backend and admin tasks can overlap after Milestone 3 stabilizes the API contract.
 
@@ -317,11 +317,17 @@ metadata remains visible to mapping preview and user overrides.
 - `controllers/homey-devices.controller.ts`
 - Inventory models/response models/specs
 
-- [ ] Return normalized devices with resolved zone path, capabilities summary, availability, support state, and adoption state.
-- [ ] Determine adoption by plugin discriminator plus Homey device identifier.
-- [ ] Keep unsupported devices visible with reasons.
-- [ ] Support stable sorting/filtering without exposing raw SDK data.
-- [ ] Add list and single-device endpoints with authorization, standard response envelopes, and tests.
+- [x] Return normalized devices with resolved zone path, capabilities summary, availability, support state, and adoption state.
+- [x] Determine adoption by plugin discriminator plus Homey device identifier.
+- [x] Keep unsupported devices visible with reasons.
+- [x] Support stable sorting/filtering without exposing raw SDK data.
+- [x] Add list and single-device endpoints with authorization, standard response envelopes, and tests.
+
+The API reads an immutable snapshot only while the managed connector has completed an authoritative inventory sync in
+connected or degraded-polling state. Capability summaries deliberately exclude current values, SDK payloads, energy
+objects, availability messages, and update timestamps. Focused tests cover lifecycle gating, stable ordering and
+filtering, type-scoped adoption lookup, unsupported/conflicted reason codes, response serialization, authorization, and
+fixed 404/422 errors; the complete Homey backend suite and OpenAPI generation pass.
 
 ### Task 3.4: Implement mapping preview
 

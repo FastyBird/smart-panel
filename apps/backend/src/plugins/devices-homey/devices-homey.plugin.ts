@@ -24,6 +24,7 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { HomeyLocalConnectorFactory } from './connectors/homey-local-connector.factory';
 import { HomeySdkClientFactoryService } from './connectors/homey-sdk.client';
+import { HomeyDevicesController } from './controllers/homey-devices.controller';
 import { HomeyStatusController } from './controllers/homey-status.controller';
 import { HomeyTestConnectionController } from './controllers/homey-test-connection.controller';
 import {
@@ -48,6 +49,7 @@ import { HomeyPropertyMappingStorageService } from './mappings/property-mapping-
 import { HomeyConfigModel } from './models/config.model';
 import { HomeyConfigValidatorService } from './services/homey-config-validator.service';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
+import { HomeyDeviceInventoryService } from './services/homey-device-inventory.service';
 import { HomeyService } from './services/homey.service';
 
 @ApiTag({
@@ -75,13 +77,15 @@ import { HomeyService } from './services/homey.service';
 		HomeyMappingLoaderService,
 		HomeyMappingTransformerService,
 		HomeyPropertyMappingStorageService,
+		HomeyDeviceInventoryService,
 		HomeyService,
 	],
-	controllers: [HomeyStatusController, HomeyTestConnectionController],
+	controllers: [HomeyStatusController, HomeyTestConnectionController, HomeyDevicesController],
 	exports: [
 		HomeyMappingLoaderService,
 		HomeyMappingTransformerService,
 		HomeyPropertyMappingStorageService,
+		HomeyDeviceInventoryService,
 		HomeyService,
 	],
 })

@@ -127,6 +127,7 @@ describe('HomeyService', () => {
 
 	it('connects, subscribes before inventory, and stops idempotently', async () => {
 		const order: string[] = [];
+		expect(service.getInventorySnapshot()).toBeNull();
 		connector.connect.mockImplementation(() => {
 			order.push('connect');
 			return Promise.resolve();
@@ -160,6 +161,13 @@ describe('HomeyService', () => {
 		});
 		expect(service.getState()).toBe('started');
 		expect(await service.isHealthy()).toBe(true);
+		const inventory = service.getInventorySnapshot();
+		expect(inventory).toStrictEqual([staleDevice]);
+		expect(inventory?.[0]).not.toBe(staleDevice);
+		if (inventory) {
+			(inventory[0]?.zonePath as string[]).push('mutated');
+		}
+		expect(service.getInventorySnapshot()).toStrictEqual([staleDevice]);
 		expect(service.getStatus()).toMatchObject({
 			connectionState: HomeyConnectionState.CONNECTED,
 			degraded: false,
@@ -180,6 +188,7 @@ describe('HomeyService', () => {
 		expect(connector.disconnect.mock.calls).toHaveLength(1);
 		expect(service.getState()).toBe('stopped');
 		expect(await service.isHealthy()).toBe(false);
+		expect(service.getInventorySnapshot()).toBeNull();
 	});
 
 	it('tracks successful events and exposes every lifecycle transition', async () => {
@@ -236,6 +245,7 @@ describe('HomeyService', () => {
 			lastErrorCategory: HomeyConnectorErrorCategory.UNSUPPORTED,
 			lastError: 'Homey event subscription is unavailable; polling is active',
 		});
+		expect(service.getInventorySnapshot()).toStrictEqual([staleDevice]);
 		expect(jest.getTimerCount()).toBe(1);
 
 		jest.setSystemTime(new Date('2026-08-15T10:05:00.000Z'));
