@@ -1823,4 +1823,39 @@ describe('BuddyContextPlannerService', () => {
 			});
 		},
 	);
+
+	it('uses an explicit space only to scope a domain-specific energy read', () => {
+		expect(
+			service.plan({
+				message: 'How much energy did Nursery use?',
+				knownSpaces: [{ id: 'space-nursery', name: 'Nursery' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['energy'],
+			queries: [{ kind: 'energy-summary', spaceId: 'space-nursery' }],
+		});
+	});
+
+	it.each(['Vypni ho', 'Vypni to'])('resolves a localized reference pronoun: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				recentEntityReferences: [
+					{
+						kind: 'device',
+						id: 'device-reading-lamp',
+						name: 'Reading lamp',
+						compatibleActionTypes: ['turn'],
+					},
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: { referencedEntityIds: ['device-reading-lamp'] },
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device'],
+		});
+	});
 });

@@ -87,8 +87,10 @@ const RELATIVE_PATTERN = new RegExp(
 	String.raw`\b(?:${[...BUDDY_RELATIVE_ADJUSTMENT_SIGNALS].join('|')}|times as)\b`,
 	'u',
 );
-const PRONOUN_PATTERN = /\b(?:it|its|that|them|these|they|this|those)\b|\bthe one\b/u;
-const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:it|its|that|this)\b|\bthe one\b/u;
+const PRONOUN_PATTERN = /\b(?:ho|it|its|that|them|these|they|this|those)\b|\bthe one\b/u;
+const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:ho|it|its|that|this)\b|\bthe one\b/u;
+const LOCALIZED_REFERENCE_PRONOUN_PATTERN =
+	/\b(?:aktivuj|nastav|odemkni|otevri|sniz|spust|vypni|zamkni|zapni|zavri|zvys)\s+(?:ho|to)\b/u;
 const CAPABILITY_DISCOVERY_PATTERN = new RegExp(
 	String.raw`^(?:(?:what|which)\b|(?:can|could|would) you (?:show|tell)(?: me)?\b).*\b(?:am i able to|can i|i can)\b.*\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
@@ -149,7 +151,7 @@ export class BuddyContextPlannerService {
 		const normalizedMessage = normalize(input.message);
 		const recentEntityReferences = input.recentEntityReferences ?? [];
 		const hasRecentReferencePronoun =
-			PRONOUN_PATTERN.test(stripContextualScopeReferences(normalizedMessage)) && recentEntityReferences.length > 0;
+			hasReferencePronoun(stripContextualScopeReferences(normalizedMessage)) && recentEntityReferences.length > 0;
 		const explicitSpaces = findExplicitSpaces(normalizedMessage, input.knownSpaces ?? []);
 		const explicitSpaceIds = [...new Set(explicitSpaces.map((space) => space.id))];
 		const conversationSpaceId = resolveConversationSpaceHint(
@@ -205,7 +207,7 @@ export class BuddyContextPlannerService {
 			hasAction || isReadOnlyPredicate,
 			isGenericExplanation,
 			hasRecentReferencePronoun,
-			explicitSpaces.length > 0,
+			explicitSpaces,
 			hasAction,
 		);
 		const referenceMessage = hasAction ? actionReferenceMessage : domains.includes('home') ? normalizedMessage : '';
@@ -242,8 +244,7 @@ export class BuddyContextPlannerService {
 				isActionReferenceCompatible(references[0], hasWrite, hasTrigger, referenceActionTypes)
 				? references
 				: []
-			: SINGULAR_REFERENCE_PRONOUN_PATTERN.test(stripContextualScopeReferences(normalizedMessage)) &&
-				  references.length !== 1
+			: hasSingularReferencePronoun(stripContextualScopeReferences(normalizedMessage)) && references.length !== 1
 				? []
 				: references;
 		const querySpaceIds = scopedReferences.length > 0 && explicitSpaceIds.length === 0 ? [] : resolvedSpaceIds;
@@ -347,7 +348,7 @@ function classifyDomains(
 	hasHomeActionOrPredicate: boolean,
 	isGenericExplanation: boolean,
 	hasRecentReferencePronoun = false,
-	hasExplicitSpace = false,
+	explicitSpaces: readonly BuddyContextSpaceReference[] = [],
 	hasAction = false,
 ): BuddyContextDomain[] {
 	if (isGenericExplanation) return ['general'];
@@ -377,7 +378,7 @@ function classifyDomains(
 				const referenceClause = stripContextualScopeReferences(clause);
 
 				return (
-					PRONOUN_PATTERN.test(referenceClause) &&
+					hasReferencePronoun(referenceClause) &&
 					!hasDomainSignalInClause(clause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) &&
 					!hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) &&
 					!hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN)
@@ -394,6 +395,15 @@ function classifyDomains(
 			!hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN)
 		);
 	});
+	const hasExplicitHomeSpace = explicitSpaces.some((space) =>
+		clauses.some(
+			(clause) =>
+				containsNormalizedPhrase(clause, normalize(space.name)) &&
+				!hasDomainSignalInClause(clause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) &&
+				!hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) &&
+				!hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN),
+		),
+	);
 
 	if (
 		HOME_ENTITY_PATTERN.test(message) ||
@@ -402,7 +412,7 @@ function classifyDomains(
 		hasHomeActionOrPredicate ||
 		hasRecentReferenceHome ||
 		hasCategoryFreeHomeState ||
-		hasExplicitSpace ||
+		hasExplicitHomeSpace ||
 		hasInstallationHome
 	) {
 		domains.add('home');
@@ -535,7 +545,7 @@ function classifyAmbiguityRisk(
 
 	if (isAction) {
 		if (
-			PRONOUN_PATTERN.test(stripContextualScopeReferences(actionReferenceMessage)) &&
+			hasReferencePronoun(stripContextualScopeReferences(actionReferenceMessage)) &&
 			(references.length !== 1 ||
 				!isActionReferenceCompatible(references[0], hasWrite, hasTrigger, requestedActionTypes))
 		) {
@@ -550,7 +560,7 @@ function classifyAmbiguityRisk(
 
 		return 'none';
 	}
-	if (SINGULAR_REFERENCE_PRONOUN_PATTERN.test(stripContextualScopeReferences(message)) && references.length > 1) {
+	if (hasSingularReferencePronoun(stripContextualScopeReferences(message)) && references.length > 1) {
 		return 'read';
 	}
 
@@ -829,23 +839,23 @@ function findNormalizedPhraseRanges(message: string, phrase: string): Array<{ st
 function getRequestedActionTypes(message: string): BuddyContextActionType[] {
 	const actions = new Set<BuddyContextActionType>();
 	const mappings: readonly [RegExp, BuddyContextActionType][] = [
-		[/\bactivate\b/u, 'activate'],
-		[/\b(?:adjust|brighten|decrease|increase|lower|raise)\b/u, 'adjust'],
+		[/\b(?:activate|aktivuj)\b/u, 'activate'],
+		[/\b(?:adjust|brighten|decrease|increase|lower|raise|sniz|zvys)\b/u, 'adjust'],
 		[/\bchange\b/u, 'change'],
-		[/\bclose\b/u, 'close'],
+		[/\b(?:close|zavri)\b/u, 'close'],
 		[/\bdeactivate\b/u, 'deactivate'],
 		[/\bdim\b/u, 'dim'],
-		[/\block\b/u, 'lock'],
+		[/\b(?:lock|zamkni)\b/u, 'lock'],
 		[/\bmake\b/u, 'make'],
-		[/\bopen\b/u, 'open'],
-		[/\brun\b/u, 'run'],
-		[/\bset\b/u, 'set'],
+		[/\b(?:open|otevri)\b/u, 'open'],
+		[/\b(?:run|spust)\b/u, 'run'],
+		[/\b(?:set|nastav)\b/u, 'set'],
 		[/\bstart\b/u, 'start'],
 		[/\bstop\b/u, 'stop'],
 		[/\bswitch\b/u, 'switch'],
 		[/\btrigger\b/u, 'trigger'],
-		[/\bturn\b/u, 'turn'],
-		[/\bunlock\b/u, 'unlock'],
+		[/\b(?:turn|vypni|zapni)\b/u, 'turn'],
+		[/\b(?:unlock|odemkni)\b/u, 'unlock'],
 	];
 
 	for (const [pattern, action] of mappings) {
@@ -860,7 +870,7 @@ function getReferenceActionTypes(message: string): BuddyContextActionType[] {
 	const actionTypes = new Set<BuddyContextActionType>();
 
 	for (const clause of clauses) {
-		if (!PRONOUN_PATTERN.test(stripContextualScopeReferences(clause))) continue;
+		if (!hasReferencePronoun(stripContextualScopeReferences(clause))) continue;
 		for (const actionType of getRequestedActionTypes(clause)) actionTypes.add(actionType);
 	}
 
@@ -978,7 +988,7 @@ function resolveRecentReferences(
 	message: string,
 	references: readonly BuddyContextEntityReference[],
 ): BuddyContextEntityReference[] {
-	if (!PRONOUN_PATTERN.test(stripContextualScopeReferences(message))) return [];
+	if (!hasReferencePronoun(stripContextualScopeReferences(message))) return [];
 
 	const unique = new Map<string, BuddyContextEntityReference>();
 
@@ -989,6 +999,14 @@ function resolveRecentReferences(
 
 function stripContextualScopeReferences(message: string): string {
 	return message.replace(CONTEXTUAL_SCOPE_REFERENCE_PATTERN, ' ');
+}
+
+function hasReferencePronoun(message: string): boolean {
+	return PRONOUN_PATTERN.test(message) || LOCALIZED_REFERENCE_PRONOUN_PATTERN.test(message);
+}
+
+function hasSingularReferencePronoun(message: string): boolean {
+	return SINGULAR_REFERENCE_PRONOUN_PATTERN.test(message) || LOCALIZED_REFERENCE_PRONOUN_PATTERN.test(message);
 }
 
 function normalize(value: string): string {
