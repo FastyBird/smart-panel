@@ -42,6 +42,7 @@ const HOME_ENTITY_SIGNAL_PATTERN_SOURCE = [...BUDDY_HOME_SIGNALS]
 	.join('|');
 const GROUNDED_STATE_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_GROUNDED_STATE_SIGNALS].join('|')})\b`, 'u');
 const STATE_SIGNAL_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_STATE_SIGNALS].join('|')})\b`, 'u');
+const ACTION_CONDITION_STATE_PATTERN = /\b(?:dark|darker|light|lighter|ready)\b/u;
 const LIGHTING_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_LIGHTING_SIGNALS].join('|')})\b`, 'u');
 const LIGHTING_GROUP_PATTERN = new RegExp(
 	String.raw`\b(?:every|${[...BUDDY_SPACE_SIGNALS]
@@ -49,9 +50,10 @@ const LIGHTING_GROUP_PATTERN = new RegExp(
 		.join('|')})\b`,
 	'u',
 );
-const LIGHTING_GROUP_EXCLUSION_PATTERN = /\b(?:but not|but|except|excluding|krome|other than|without)\b/u;
+const LIGHTING_GROUP_EXCLUSION_PATTERN =
+	/\b(?:but not|but|except|excluding|instead of|krome|other than|rather than|without)\b/u;
 const PARTIAL_LIGHTING_GROUP_PATTERN =
-	/\b(?:a couple of|a few|eight|five|four|half|nine|one|one third|one quarter|part of|portion of|seven|several|six|some|three|two|\d+)\b.*\b(?:lamp|lamps|light|lights)\b/u;
+	/\b(?:a couple of|a few|a majority of|eight|five|four|half|most of|nine|one|one third|one quarter|part of|portion of|seven|several|six|some|three|two|\d+)\b.*\b(?:lamp|lamps|light|lights)\b/u;
 const ZERO_QUANTITY_LIGHTING_PATTERN = /\b(?:no|none|zero)\b.*\b(?:lamp|lamps|light|lights)\b/u;
 
 const DOMAIN_ORDER: readonly BuddyContextDomain[] = ['general', 'home', 'weather', 'energy', 'security', 'history'];
@@ -86,9 +88,19 @@ const CLOCK_TIME_HISTORY_PATTERN = new RegExp(
 	'u',
 );
 const SCHEDULED_ACTION_PATTERN = new RegExp(
-	String.raw`\b(?:at\s+${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE}(?!\s*(?:%|celsius\b|degrees?\b|fahrenheit\b|percent\b|°\s*(?:c|f)?))|tomorrow|tonight|next\s+(?:day|evening|morning|night|week)|(?:after|for|in)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:seconds?|minutes?|hours?|days?|weeks?)|(?:each|every)\s+(?:day|evening|friday|monday|morning|night|saturday|sunday|thursday|tuesday|wednesday|week|weekday|weekend)|daily|weekly)\b`,
+	String.raw`\b(?:at\s+(?:dawn|dusk|sunrise|sunset|${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE})(?!\s*(?:%|celsius\b|degrees?\b|fahrenheit\b|percent\b|°\s*(?:c|f)?))|after\s+(?:dawn|dusk|sunrise|sunset)|in\s+(?:a\s+little\s+while|half\s+an?\s+hour|(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|thirty)\s*(?:seconds?|secs?|minutes?|mins?|hours?|days?|weeks?|months?))|later|(?<!as\s)soon|this\s+(?:afternoon|evening|friday|monday|morning|night|saturday|sunday|thursday|tuesday|wednesday|week|weekend)|tomorrow|tonight|next\s+(?:day|evening|friday|monday|month|morning|night|saturday|sunday|thursday|tuesday|wednesday|week|weekend)|on\s+(?:friday|monday|saturday|sunday|thursday|tuesday|wednesday|weekdays?|weekends?)|when\s+i\s+(?:arrive|get\s+home|leave)|(?:after|for)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|thirty)\s+(?:seconds?|minutes?|hours?|days?|weeks?|months?)|(?:each|every)\s+(?:(?:other|working)\s+)?(?:day|evening|friday|monday|morning|night|saturday|sunday|thursday|time|tuesday|wednesday|week|weekday|weekend)|daily|weekly|whenever)\b|^(?:at\s+(?:dawn|dusk|sunrise|sunset)|(?:friday|monday|saturday|sunday|thursday|tuesday|wednesday))\b`,
 	'u',
 );
+const LEADING_RECURRING_ACTION_PATTERN =
+	/^(?:after\b|as\s+soon\s+as\b|before\b|every time\b|once\b|until\b|when\b|whenever\b)/u;
+const LEADING_UNSUPPORTED_ACTION_TEMPORAL_PATTERN =
+	/^on\s+(?:halloween|my\s+anniversary|new\s+year's\s+(?:day|eve)|thanksgiving)\b/u;
+const UNSUPPORTED_ACTION_TEMPORAL_PATTERN =
+	/\b(?:(?:after|before|during|following|near|until|upon)\b|as\s+soon\s+as\b|at\s+(?:(?:(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b|(?:a\s+)?quarter\s+(?:past|to)\s+(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b)(?!\s*(?:%|celsius\b|degrees?\b|fahrenheit\b|percent\b|°\s*(?:c|f)?))|bedtime\b|breakfast\b|dinner\b|lunchtime\b|the\s+end\b)|(?:around|by)\s+(?:(?:breakfast|dinner|lunchtime)\b|(?:friday|monday|saturday|sunday|thursday|tuesday|wednesday)\b|(?:dawn|dusk|sunrise|sunset)\b|(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b|\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)?\b)|come\s+(?:dawn|dusk|friday|monday|saturday|sunday|sunrise|sunset|thursday|tuesday|wednesday)\b|in\s+(?:a\s+quarter\s+(?:of\s+an?\s+)?hour|the\s+future\b|(?:the\s+)?(?:autumn|fall|spring|summer|winter)\b|(?:[\p{Letter}\d.]+\s+){0,3}(?:days?|hours?|minutes?|months?|weeks?|years?))|(?:next|this)\s+(?:christmas|holiday|month|season|weekend|year)|on\s+(?:(?:april|august|december|february|january|july|june|march|may|november|october|september)\s+\d{1,2}|christmas|new\s+year's\s+day)\b|(?<!at\s)once\b|the\s+next\s+time\b|(?:[\p{Letter}\d.]+\s+){1,3}from\s+now|towards\s+evening\b|when\b|within\s+(?:[\p{Letter}\d.]+\s+){0,3}(?:days?|hours?|minutes?|months?|weeks?|years?)|(?:each|every)\s+(?:[\p{Letter}\d.]+\s+){0,2}(?:days?|fortnight|hours?|minutes?|months?|weeks?|years?)|annually\b|biweekly\b|eventually\b|fortnightly\b|monthly\b|quarterly\b|semiannually\b|sometime\b|yearly\b)\b/u;
+const UNSUPPORTED_ACTION_TEMPORAL_ADJUNCT_PATTERN =
+	/\b(?:(?:effective|starting)\s+(?:friday|monday|saturday|sunday|thursday|tuesday|wednesday)|from\s+(?:friday|monday|saturday|sunday|thursday|tuesday|wednesday)\s+onward|by\s+the\s+end\s+of\s+the\s+day|at\s+(?:closing\s+time|daybreak|nightfall)|for\s+the\s+(?:night|weekend)|all\s+weekend|on\s+my\s+birthday|overnight)\b/u;
+const UNSUPPORTED_ACTION_TEMPORAL_CALENDAR_PATTERN =
+	/\b(?:at\s+(?:supper|tea\s+time|the\s+weekend)|biannually|bimonthly|(?:around|at|by|come|effective|for|next|on|over|starting)\s+(?:christmas|easter|halloween|thanksgiving)|hourly|in\s+q[1-4]|next\s+(?:bank\s+)?holiday|next\s+quarter|(?:around|at|by|come|effective|for|on|over|starting)\s+(?:(?:my|our|the|your)\s+)?(?:[\p{Letter}'’-]+\s+){0,2}(?:anniversary|birthday|day|eve|holiday)\b|on\s+(?:\d{1,2}\/\d{1,2}|(?:the\s+)?(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)\s+of\s+(?:april|august|december|february|january|july|june|march|may|november|october|september)|(?:april|august|december|february|january|july|june|march|may|november|october|september)\s+\d{1,2}(?:st|nd|rd|th)?)|weeknights)\b/u;
 const ACTION_DURATION_PATTERN =
 	/\bfor\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:seconds?|minutes?|hours?|days?|weeks?)\b/u;
 const HISTORY_PATTERN =
@@ -108,11 +120,11 @@ const GENERAL_KNOWLEDGE_INVENTORY_PATTERN = /^how (?:many|much)\b.*\b(?:does|do)
 const HOME_INSTALLATION_PATTERN = /\b(?:home|house)\b/u;
 const HOME_STATE_PATTERN = /\b(?:cold|cooling|heating|humidity|temperature|warm)\b/u;
 const READ_PATTERN =
-	/^(?:are|can you (?:check|confirm|determine|fetch|get|read|report|show|tell|verify)|check|confirm|determine|ensure|fetch|find|get|how (?:many|much)|is|list|make sure|read|report|search|see|show|tell(?: me)?|verify|what|which|will)\b/u;
+	/^(?:are|can you (?:check|compare|confirm|determine|fetch|get|read|report|show|tell|verify)|check|compare|confirm|determine|ensure|fetch|find|get|how (?:many|much)|is|list|make sure|read|report|search|see|show|tell(?: me)?|verify|what|which|will)\b/u;
 const PREDICATE_QUESTION_PATTERN =
 	/^(?:are|can|could|did|do|does|had|has|have|is|may|might|must|should|when|will|would|was|were|je|jsou|jaka|jaky|ktere|kolik|(?:how|what|when|where|which|who|why)['’]s|(?:what|why) (?:are|did|do|does|had|has|have|is|was|were))\b/u;
 const ACTION_REQUEST_PATTERN =
-	/^(?:(?:can|could|may|might|will|would) you\b|are you able to\b|is it possible to\b|is there any way you can\b)/u;
+	/^(?:(?:can|could|may|might|will|would) you\b|are you able to\b|i(?: want you to| would like you to|'d like you to)\b|is it possible to\b|is there any way you can\b)/u;
 const MODAL_STATE_READ_PATTERN =
 	/^(?:can|could|may|might|will|would) you (?:check|confirm|determine|fetch|get|read|report|show|tell|verify)(?: me)?\b.*\b(?:how|if|what|when|where|whether|which|why)\b/u;
 const WRITE_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_DEVICE_ACTION_SIGNALS].join('|')})\b`, 'u');
@@ -122,12 +134,17 @@ const TRIGGER_PATTERN = new RegExp(
 );
 const TARGET_DEPENDENT_ACTION_PATTERN = /\b(?:activate|deactivate|start|stop)\b/u;
 const DEVICE_RUN_TARGET_PATTERN = /\brun\b.*\b(?:device|fan|switch)\b/u;
-const SCENE_RUN_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_SCENE_ACTION_SIGNALS].join('|')})\b`, 'u');
+const SCENE_RUN_PATTERN = new RegExp(String.raw`\b(?:trigger|${[...BUDDY_SCENE_ACTION_SIGNALS].join('|')})\b`, 'u');
 const DEVICE_ACTION_TARGET_PATTERN =
 	/\b(?:blind|blinds|device|devices|door|doors|fan|fans|heater|heaters|lamp|lamps|light|lights|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
-const SCENE_ACTION_TARGET_PATTERN = /\b(?:automation|bedtime|movie night|preset|routine|scene|scenes)\b/u;
+const TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN =
+	/\b(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|reading|security|upstairs)\s+(?:blind|blinds|device|devices|door|doors|fan|fans|heater|heaters|lamp|lamps|light|lights|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)|bedside\s+(?:lamp|lamps|light|lights)|(?:outdoor|outside)\s+(?:light|lights|sensor|sensors)|power\s+(?:switch|switches))\b/u;
+const PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN =
+	/\b(?:air purifier|aquarium pump|coffee maker|irrigation|media volume|robot vacuum|skylight|sprinkler)\b/u;
+const CLEAR_NON_HOME_ACTION_OBJECT_PATTERN =
+	/^(?:(?:a|an|my|our|the|your)\s+)?(?:another|app|application|around|bluetooth|browser|build|car|chrome|conversation|countdown|deployment|dialog|dinner|dishwasher|docker|document|figma|file|hand|jest|lanes?|meeting|new|npm|page|password|payroll|recording|reminder|right|sandwich|screen|spotify|tabs?|talking|terminal|tests?|timer|voice|volume)\b/u;
 const ACTION_COMMAND_PATTERN = new RegExp(
-	String.raw`^[?!,.;\s]*(?:(?:a|also|${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:(?:also|please)\s+)*)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
+	String.raw`^[?!,.;\s]*(?:(?:a|also|${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|i(?: want you to| would like you to|'d like you to)|is it possible to|is there any way you can)\s+(?:(?:also|please)\s+)*)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
 );
 const CONDITION_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_CONDITION_SIGNALS].join('|')})\b`, 'u');
@@ -137,15 +154,28 @@ const RELATIVE_PATTERN = new RegExp(
 	'u',
 );
 const REPEATED_ACTION_PATTERN =
-	/\b(?:once|thrice|twice)\b(?!\s+as\b)|\b(?:\d+|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+times?\b/u;
+	/(?<!at\s)\b(?:once|thrice|twice)\b(?!\s+as\b)|\b(?:\d+|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+times?\b/u;
 const ACTION_RANGE_PATTERN =
 	/\b(?:between\b[^?!,.;]+\band\b|from\b[^?!,.;]+\b(?:to|until)\b|\d+(?:\.\d+)?\s*[-–—]\s*\d+(?:\.\d+)?\b)/u;
 const ACTION_NON_SCALAR_BOUND_PATTERN =
 	/\b(?:above|at least|at most|below|greater than|less than|more than|over|under)\s+[-+]?\d+(?:\.\d+)?\b/u;
-const NEGATED_ACTION_PATTERN = new RegExp(
-	String.raw`\b(?:do\s+not|don't|never|not\s+to)\s+(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
+const RELATIVE_SCALAR_ADJUSTMENT_PATTERN =
+	/\bby\s+(?:\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(?:%|celsius\b|degrees?\b|fahrenheit\b|percent\b|°\s*(?:c|f)?)/u;
+const UNSUPPORTED_SCENE_INVERSE_PATTERN = /\b(?:deactivate|stop)\b/u;
+const SCENE_TARGET_PATTERN = /\b(?:automation|automations|preset|presets|routine|routines|scena|scenu|scene|scenes)\b/u;
+const CONFLICTING_DEVICE_SCENE_QUALIFIER_PATTERN = new RegExp(
+	String.raw`${DEVICE_ACTION_TARGET_PATTERN.source}\s+(?:in|with)\b[^,;.!?]*${SCENE_TARGET_PATTERN.source}`,
 	'u',
 );
+const QUOTED_ENTITY_TARGET_PATTERN =
+	/"[^"]+"\s+(?:automation|device|door|fan|heater|lamp|light|preset|routine|scene|sensor|switch|thermostat|window)\b/u;
+const QUOTED_SCENE_TARGET_PATTERN = /"[^"]+"\s+(?:automation|preset|routine|scene)\b/u;
+const EXPLICIT_SCENE_KIND_SUFFIX_PATTERN =
+	/\b(?:automation|preset|routine|scene)s?(?:\s+(?:asap|at\s+once|for\s+(?:me|us)|immediately|now|please|right\s+(?:away|now)|straight\s+away))*\s*[?!.,]*$/u;
+const EXPLICIT_SCENE_KIND_PREFIX_PATTERN = /^\s*(?:the\s+)?(?:automation|preset|routine|scene)s?\b(?:\s+called\b)?/u;
+const ACTION_TARGET_NEGATION_PATTERN = /\b(?:neither|rather than|instead of)\b|,\s*not\b|\bnot\s+(?:off|on)\b/u;
+const ACTION_PROHIBITION_PREFIX_PATTERN =
+	/^(?:(?:but|please)\s+)?(?:avoid\b|be\s+sure\b[^,;.!?]*\bnot\s+to\b|do\b[^,;.!?]*(?:\bnot\b|\banything\s+(?:but|except)\b|\beverything\s+other\s+than\b)|don't\b|ensure\s+you\s+do\s+not\b|i\s+(?:(?:do\s+not|don't)\s+want|forbid)\s+you\s+to\b|i\s+request\s+you\s+not\b|it\s+is\s+(?:forbidden|not\s+allowed)\s+to\b|make\s+(?:[\p{Letter}-]+\s+){0,3}(?:certain|sure)\b[^,;.!?]*(?:\bnot\s+to\b|\bto\s+never\b|\byou\s+(?:do\s+not|don't|never)\b)|never\b|no\s+way\s+should\b|refrain\s+from\b|remember\s+not\s+to\b|try\b[^,;.!?]*\bnot\s+to\b|under\s+no\s+circumstances\b|you(?:'re|\s+are)\s+not\s+allowed\s+to\b|you\s+(?:had\s+better\s+not\b|may\s+under\s+no\s+circumstances\b|ought\s+not\b|(?:(?:cannot|can't|couldn't|mayn't|mightn't|mustn't|shouldn't|won't|wouldn't)\b|(?:must|should|will|would)\b[^,;.!?]*\bnot\b|are\b[^,;.!?]*(?:forbidden|not\s+allowed)\b))|(?:can|could|would)\s+you\b[^,;.!?]*\bnot\b)/u;
 const PRONOUN_PATTERN = /\b(?:ho|it|its|that|their|them|these|they|this|those)\b|\bthe one\b/u;
 const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:ho|it|its|that|this)\b|\bthe one\b/u;
 const PLURAL_REFERENCE_PRONOUN_PATTERN = /\b(?:their|them|these|they|those)\b/u;
@@ -229,7 +259,7 @@ const TRAILING_ACTION_PATTERN = new RegExp(
 	'u',
 );
 const TRAILING_READ_PATTERN = new RegExp(
-	String.raw`(?:[?!,.;]|\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:also|please)\s+)*(?:are|can|check|confirm|could|determine|did|do|does|ensure|fetch|find|get|had|has|have|how|is|make sure|may|might|read|report|see|show|tell(?: me)?|verify|was|were|what|whether|which|will|would)\b`,
+	String.raw`(?:[?!,.;]|\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:also|please)\s+)*(?:are|can|check|compare|confirm|could|determine|did|do|does|ensure|fetch|find|get|had|has|have|how|is|make sure|may|might|read|report|see|show|tell(?: me)?|verify|was|were|what|whether|which|will|would)\b`,
 	'u',
 );
 
@@ -238,8 +268,8 @@ export class BuddyContextPlannerService {
 	plan(input: BuddyContextPlannerInput): BuddyContextPlan {
 		const normalizedMessage = normalizeGerundActionRequest(normalize(input.message));
 		const recentEntityReferences = input.recentEntityReferences ?? [];
-		const hasRecentReferencePronoun =
-			hasReferencePronoun(stripContextualScopeReferences(normalizedMessage)) && recentEntityReferences.length > 0;
+		const hasAnyReferencePronoun = hasReferencePronoun(stripContextualScopeReferences(normalizedMessage));
+		const hasRecentReferencePronoun = hasAnyReferencePronoun && recentEntityReferences.length > 0;
 		const explicitSpaces = findExplicitSpaces(normalizedMessage, input.knownSpaces ?? []);
 		const excludedOnlySpaceIds = findExcludedOnlyExplicitSpaceIds(normalizedMessage, explicitSpaces);
 		const duplicateNameSpaceIds = findDuplicateNameSpaceIds(explicitSpaces);
@@ -294,70 +324,222 @@ export class BuddyContextPlannerService {
 				isWrappedStateRead ||
 				(READ_PATTERN.test(normalizedMessage) &&
 					(CAPABILITY_DISCOVERY_PATTERN.test(normalizedMessage) || hasOnlyGroundedActionTokens(normalizedMessage))));
-		const hasWrite =
-			!isGenericExplanation &&
-			!isReadOnlyPredicate &&
-			splitPlannerClauses(actionReferenceMessage, explicitSpaces).some(
-				(clause) =>
-					ACTION_COMMAND_PATTERN.test(clause) &&
-					(WRITE_PATTERN.test(clause) ||
-						(TARGET_DEPENDENT_ACTION_PATTERN.test(clause) &&
-							targetsDeviceActionClause(clause, recentEntityReferences)) ||
-						DEVICE_RUN_TARGET_PATTERN.test(clause) ||
-						(SCENE_RUN_PATTERN.test(clause) && targetsDeviceActionClause(clause, recentEntityReferences))),
+		const hasHomeReferenceEvidence =
+			explicitSpaces.length > 0 ||
+			(input.conversationSpaceId !== undefined && input.conversationSpaceId !== null) ||
+			hasRecentReferencePronoun ||
+			hasAnyReferencePronoun ||
+			HOME_ENTITY_PATTERN.test(normalizedMessage) ||
+			HOME_VOCABULARY_PATTERN.test(normalizedMessage) ||
+			HOME_STATE_PATTERN.test(normalizedMessage) ||
+			POSSESSIVE_HOME_ENTITY_PATTERN.test(normalizedMessage);
+		const plannerClauses = splitPlannerClauses(normalizedMessage, explicitSpaces);
+		const actionMessageClauses = splitPlannerClauses(actionMessage, explicitSpaces);
+		const actionClauses = actionMessageClauses.filter((clause) => ACTION_COMMAND_PATTERN.test(clause));
+		const hasProhibitedActionRequest = hasActionProhibition(normalizedMessage);
+		const independentHomeReadClauses = plannerClauses.filter((clause) => {
+			const normalizedClause = clause.trim();
+			const isActionStatusRead =
+				READ_PATTERN.test(normalizedClause) &&
+				/\b(?:if|whether)\b/u.test(normalizedClause) &&
+				(WRITE_PATTERN.test(normalizedClause) || TRIGGER_PATTERN.test(normalizedClause));
+
+			return (
+				(!ACTION_COMMAND_PATTERN.test(clause) ||
+					(READ_PATTERN.test(normalizedClause) && !ACTION_REQUEST_PATTERN.test(normalizedClause))) &&
+				(hasHomeStateReadClause(clause, explicitSpaces) || isActionStatusRead)
 			);
-		const hasTrigger =
-			!isGenericExplanation &&
-			!isReadOnlyPredicate &&
-			ACTION_COMMAND_PATTERN.test(actionMessage) &&
-			splitPlannerClauses(actionMessage, explicitSpaces).some(
-				(clause) =>
-					ACTION_COMMAND_PATTERN.test(clause) &&
-					TRIGGER_PATTERN.test(clause) &&
-					!DEVICE_RUN_TARGET_PATTERN.test(clause) &&
-					!targetsDeviceActionClause(clause, recentEntityReferences) &&
-					(!TARGET_DEPENDENT_ACTION_PATTERN.test(clause) ||
-						targetsSceneActionClause(clause, recentEntityReferences) ||
-						PRONOUN_PATTERN.test(getActionTargetClause(clause))),
+		});
+		const leadingActionConditionReadClauses = plannerClauses.filter(
+			(clause) =>
+				!ACTION_COMMAND_PATTERN.test(clause) &&
+				LEADING_CONDITION_PATTERN.test(clause.trim()) &&
+				hasHomeActionConditionClause(clause, explicitSpaces),
+		);
+		const trailingActionConditionReadClauses = actionClauses
+			.map((clause) => getActionConditionClause(clause))
+			.filter(
+				(clause): clause is string => clause !== undefined && hasHomeActionConditionClause(clause, explicitSpaces),
 			);
-		const hasAction = hasWrite || hasTrigger;
+		const actionConditionReadClauses = [
+			...new Set([...leadingActionConditionReadClauses, ...trailingActionConditionReadClauses]),
+		];
+		const homeReadClauses = [...independentHomeReadClauses, ...actionConditionReadClauses];
+		const currentStateReadClauses = homeReadClauses.filter(
+			(clause) =>
+				!CAPABILITY_DISCOVERY_PATTERN.test(clause) &&
+				(!hasHistorySignalInClause(clause) || CURRENT_STATE_PATTERN.test(clause)),
+		);
+		const unscopedHomeReadClauses = homeReadClauses.filter(
+			(clause) =>
+				!CONTEXTUAL_SCOPE_PATTERN.test(clause) &&
+				!explicitSpaces.some((space) => hasExplicitSpaceOccurrence(clause, space, explicitSpaces)),
+		);
+		const hasUnscopedHomeRead = unscopedHomeReadClauses.length > 0;
+		const independentCurrentStateSpaceIds: Array<string | undefined> = [
+			...new Set(
+				currentStateReadClauses.flatMap((clause) => {
+					const clauseSpaceIds = explicitSpaces
+						.filter((space) => hasExplicitSpaceOccurrence(clause, space, explicitSpaces))
+						.map((space) => space.id);
+
+					if (clauseSpaceIds.length > 0) return clauseSpaceIds;
+					if (CONTEXTUAL_SCOPE_PATTERN.test(clause) && input.conversationSpaceId) {
+						return [input.conversationSpaceId];
+					}
+
+					return [undefined];
+				}),
+			),
+		];
+		const isDeviceActionClause = (clause: string): boolean =>
+			!hasExplicitSceneKindTarget(getActionObjectClause(clause)) &&
+			(((WRITE_PATTERN.test(clause) || TARGET_DEPENDENT_ACTION_PATTERN.test(clause)) &&
+				hasPositiveDeviceActionEvidence(clause, explicitSpaces, recentEntityReferences)) ||
+				DEVICE_RUN_TARGET_PATTERN.test(clause) ||
+				(SCENE_RUN_PATTERN.test(clause) && targetsDeviceActionClause(clause, recentEntityReferences)));
+		const isSceneActionClause = (clause: string): boolean =>
+			TRIGGER_PATTERN.test(clause) &&
+			(!DEVICE_RUN_TARGET_PATTERN.test(clause) || hasExplicitSceneKindTarget(getActionObjectClause(clause))) &&
+			!targetsDeviceActionClause(clause, recentEntityReferences) &&
+			hasPositiveSceneActionEvidence(clause, recentEntityReferences);
+		const hasWrite = !isGenericExplanation && !isReadOnlyPredicate && actionClauses.some(isDeviceActionClause);
+		const hasTrigger = !isGenericExplanation && !isReadOnlyPredicate && actionClauses.some(isSceneActionClause);
+		const hasUnresolvedActionCandidate =
+			(!isGenericExplanation &&
+				!isReadOnlyPredicate &&
+				actionClauses.some(
+					(clause) =>
+						!isDeviceActionClause(clause) &&
+						!isSceneActionClause(clause) &&
+						(!isClearlyNonHomeActionClause(clause) || hasWrite || hasTrigger) &&
+						(hasWrite ||
+							hasTrigger ||
+							hasImmediateActionCondition(clause) ||
+							hasReferencePronoun(clause) ||
+							explicitSpaces.some((space) => hasExplicitSpaceOccurrence(clause, space, explicitSpaces)) ||
+							DEVICE_ACTION_TARGET_PATTERN.test(getActionObjectClause(clause)) ||
+							hasPlausibleCustomActionTarget(clause)),
+				)) ||
+			hasProhibitedActionRequest;
+		const hasUnresolvedWrite =
+			hasUnresolvedActionCandidate && actionClauses.some((clause) => WRITE_PATTERN.test(clause));
+		const hasUnresolvedTrigger =
+			hasUnresolvedActionCandidate &&
+			actionClauses.some((clause) => SCENE_RUN_PATTERN.test(clause) || TARGET_DEPENDENT_ACTION_PATTERN.test(clause));
+		const effectiveHasWrite = hasWrite || hasProhibitedActionRequest || (hasUnresolvedWrite && !hasUnresolvedTrigger);
+		const effectiveHasTrigger = hasTrigger || hasUnresolvedTrigger;
+		const hasAction = effectiveHasWrite || effectiveHasTrigger;
 		const referenceActionTypes = getReferenceActionTypes(actionReferenceMessage);
 		const domains = classifyDomains(
 			normalizedMessage,
-			hasAction || isReadOnlyPredicate,
+			hasAction || (isReadOnlyPredicate && hasHomeReferenceEvidence),
 			isGenericExplanation,
-			hasRecentReferencePronoun,
+			hasAnyReferencePronoun,
 			explicitSpaces,
 			hasAction,
+			input.conversationSpaceId !== undefined && input.conversationSpaceId !== null,
 		);
-		const hasUnsupportedScopedSecurityRead =
-			domains.includes('security') && (explicitSpaceIds.length > 0 || CONTEXTUAL_SCOPE_PATTERN.test(normalizedMessage));
+		const hasUnsupportedScopedSecurityRead = plannerClauses.some((clause) => {
+			const securityClause = ACTION_COMMAND_PATTERN.test(clause) ? (getActionConditionClause(clause) ?? '') : clause;
+
+			return (
+				hasDomainSignalInClause(
+					removeExplicitSpaceOccurrencesForDomain(securityClause, explicitSpaces),
+					SECURITY_PATTERN,
+					SECURITY_ENTITY_NAME_PATTERN,
+				) &&
+				(CONTEXTUAL_SCOPE_PATTERN.test(securityClause) ||
+					explicitSpaces.some((space) => hasExplicitSpaceOccurrence(securityClause, space, explicitSpaces)))
+			);
+		});
 		const referenceMessage = hasAction ? actionReferenceMessage : domains.includes('home') ? normalizedMessage : '';
 		const references = resolveRecentReferences(referenceMessage, recentEntityReferences);
 		const hasExcessiveReferenceScope = references.length > MAX_RECENT_ENTITY_REFERENCES;
+		const hasNonHomeRetrievalForAction =
+			hasAction && domains.some((domain) => ['energy', 'history', 'security', 'weather'].includes(domain));
 		const hasRead =
 			domains.some((domain) => domain !== 'general') &&
 			(((!hasAction || !ACTION_REQUEST_PATTERN.test(normalizedMessage)) &&
 				(READ_PATTERN.test(normalizedMessage) || isWrappedStateRead)) ||
 				hasTrailingRead ||
+				hasNonHomeRetrievalForAction ||
 				!hasAction);
+		const hasActionScopedStateRequirement =
+			hasAction &&
+			actionClauses.some((clause) => {
+				const actionTargetClause = getActionTargetClause(clause);
+
+				return (
+					RELATIVE_PATTERN.test(actionTargetClause) ||
+					/\b(?:that|which)\s+(?:are|is|was|were)\s+(?:active|closed|high|inactive|locked|low|off|on|open|unlocked)\b/u.test(
+						actionTargetClause,
+					)
+				);
+			});
 		const requiresReadForAction =
 			hasAction &&
-			(CONDITION_PATTERN.test(normalizedMessage.replace(SCHEDULED_ACTION_PATTERN, ' ')) ||
-				RELATIVE_PATTERN.test(normalizedMessage) ||
-				hasTrailingRead ||
-				hasLeadingHomeRead);
-		const intent = classifyIntent(hasWrite, hasTrigger, hasRead || requiresReadForAction);
+			(actionConditionReadClauses.length > 0 || hasActionScopedStateRequirement || currentStateReadClauses.length > 0);
+		const intent = classifyIntent(effectiveHasWrite, effectiveHasTrigger, hasRead || requiresReadForAction);
+		const actionScopeClauses: string[] = [];
+		let acceptsActionTargetContinuation = false;
+		for (const clause of actionMessageClauses) {
+			if (ACTION_COMMAND_PATTERN.test(clause)) {
+				actionScopeClauses.push(clause);
+				acceptsActionTargetContinuation = true;
+				continue;
+			}
+
+			const isActionTargetContinuation: boolean = Boolean(
+				acceptsActionTargetContinuation &&
+				!READ_PATTERN.test(clause.trim()) &&
+				!PREDICATE_QUESTION_PATTERN.test(clause.trim()) &&
+				!hasDomainSignalInClause(clause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) &&
+				!hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) &&
+				!hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN) &&
+				(HOME_ENTITY_PATTERN.test(clause) || HOME_VOCABULARY_PATTERN.test(clause)),
+			);
+			if (isActionTargetContinuation) actionScopeClauses.push(clause);
+			acceptsActionTargetContinuation = isActionTargetContinuation;
+		}
+		const actionTargetScopeClauses = actionScopeClauses.map((clause) => getActionTargetClause(clause));
+		const actionScopeIds = [
+			...new Set([
+				...explicitSpaces
+					.filter((space) =>
+						actionTargetScopeClauses.some((clause) => hasExplicitSpaceOccurrence(clause, space, explicitSpaces)),
+					)
+					.map((space) => space.id),
+				...(actionTargetScopeClauses.some((clause) => CONTEXTUAL_SCOPE_PATTERN.test(clause)) &&
+				input.conversationSpaceId
+					? [input.conversationSpaceId]
+					: []),
+			]),
+		];
+		const referenceActionClauses = actionClauses.filter((clause) => hasReferencePronoun(clause));
+		const referenceActionScopeIds = [
+			...new Set([
+				...explicitSpaces
+					.filter((space) =>
+						referenceActionClauses.some((clause) => hasExplicitSpaceOccurrence(clause, space, explicitSpaces)),
+					)
+					.map((space) => space.id),
+				...(referenceActionClauses.some((clause) => CONTEXTUAL_SCOPE_PATTERN.test(clause)) && input.conversationSpaceId
+					? [input.conversationSpaceId]
+					: []),
+			]),
+		];
 		const ambiguityRisk = classifyAmbiguityRisk(
 			normalizedMessage,
 			actionMessage,
 			actionReferenceMessage,
-			hasWrite,
-			hasTrigger,
+			effectiveHasWrite,
+			effectiveHasTrigger,
 			referenceActionTypes,
 			references,
 			domains,
-			conversationSpaceId,
+			referenceActionScopeIds,
+			CONTEXTUAL_SCOPE_PATTERN.test(normalizedMessage) && conversationSpaceId !== undefined,
 			explicitSpaces,
 			hasUnrepresentableSpaceExclusion,
 			hasDuplicateNameSpaceAmbiguity,
@@ -365,16 +547,17 @@ export class BuddyContextPlannerService {
 			hasExcessiveReferenceScope,
 			hasUnsupportedScopedFutureTemperature,
 			hasUnsupportedScopedSecurityRead,
+			hasUnresolvedActionCandidate,
 		);
 		const strategy = selectStrategy(intent, ambiguityRisk, domains, input.providerCapabilities);
 		const includeCurrentStateForRead =
 			(!domains.includes('history') || hasCurrentStateReadClause(normalizedMessage, explicitSpaces)) &&
-			!CAPABILITY_DISCOVERY_PATTERN.test(normalizedMessage);
+			(!CAPABILITY_DISCOVERY_PATTERN.test(normalizedMessage) || hasTrailingRead || hasLeadingHomeRead);
 		const scopedReferences = hasExcessiveReferenceScope
 			? []
 			: hasAction
 				? references.length === 1 &&
-					isActionReferenceCompatible(references[0], hasWrite, hasTrigger, referenceActionTypes)
+					isActionReferenceCompatible(references[0], effectiveHasWrite, effectiveHasTrigger, referenceActionTypes)
 					? references
 					: []
 				: hasSingularReferencePronoun(stripContextualScopeReferences(normalizedMessage)) && references.length !== 1
@@ -395,7 +578,15 @@ export class BuddyContextPlannerService {
 					querySpaceIds,
 				)
 			: querySpaceIds;
-		const currentStateSpaceIds = resolvedCurrentStateSpaceIds ?? [];
+		const currentStateSpaceIds: Array<string | undefined> =
+			hasAction && independentCurrentStateSpaceIds.length > 0
+				? [
+						...independentCurrentStateSpaceIds,
+						...(hasActionScopedStateRequirement
+							? actionScopeIds.filter((spaceId) => !independentCurrentStateSpaceIds.includes(spaceId))
+							: []),
+					]
+				: (resolvedCurrentStateSpaceIds ?? []);
 		const shouldIncludeCurrentStateForRead = includeCurrentStateForRead && resolvedCurrentStateSpaceIds !== undefined;
 		const historySpaceIds = domains.includes('history')
 			? resolveTemporalHomeSpaceIds(
@@ -412,18 +603,47 @@ export class BuddyContextPlannerService {
 				...(domains.includes('history') ? historySpaceIds : []),
 			]),
 		];
-		const searchSpaceIds =
-			hasCurrentStateQuery || domains.includes('history')
+		const actionSearchSpaceIds: Array<string | undefined> = hasAction
+			? scopedReferences.length > 0
+				? []
+				: actionScopeIds.length > 0
+					? actionScopeIds
+					: [undefined]
+			: [];
+		const scopedSearchSpaceIds = hasAction
+			? [...actionSearchSpaceIds, ...homeRetrievalSpaceIds.filter((spaceId) => !actionSearchSpaceIds.includes(spaceId))]
+			: hasCurrentStateQuery || domains.includes('history')
 				? [
 						...querySpaceIds.filter((spaceId) => homeRetrievalSpaceIds.includes(spaceId)),
 						...homeRetrievalSpaceIds.filter((spaceId) => !querySpaceIds.includes(spaceId)),
 					]
 				: querySpaceIds;
+		const actionReferenceSearchSpaceIds: Array<string | undefined> = hasAction
+			? scopedReferences.map((reference) => reference.spaceId ?? undefined)
+			: [];
+		const searchSpaceIds: Array<string | undefined> = [
+			...(hasAction && actionScopeIds.length > 0 && hasUnscopedHomeRead ? [undefined] : []),
+			...actionReferenceSearchSpaceIds,
+			...scopedSearchSpaceIds,
+		].filter((spaceId, index, values) => values.indexOf(spaceId) === index);
+		const aggregateScopeSpaceIds = [
+			...new Set(
+				hasAction
+					? actionScopeIds.length > 0
+						? actionScopeIds
+						: scopedReferences.length > 0
+							? []
+							: input.conversationSpaceId
+								? [input.conversationSpaceId]
+								: []
+					: querySpaceIds,
+			),
+		];
 		const scope = {
-			...(querySpaceIds.length === 1
-				? { spaceId: querySpaceIds[0] }
-				: querySpaceIds.length > 1
-					? { spaceIds: querySpaceIds }
+			...(aggregateScopeSpaceIds.length === 1
+				? { spaceId: aggregateScopeSpaceIds[0] }
+				: aggregateScopeSpaceIds.length > 1
+					? { spaceIds: aggregateScopeSpaceIds }
 					: {}),
 			...(scopedReferences.length > 0
 				? { referencedEntityIds: scopedReferences.map((reference) => reference.id) }
@@ -447,7 +667,15 @@ export class BuddyContextPlannerService {
 							currentStateSpaceIds,
 							historySpaceIds,
 						),
-			toolNames: buildToolNames(domains, hasWrite, hasTrigger, strategy, normalizedMessage, explicitSpaces),
+			toolNames: buildToolNames(
+				domains,
+				effectiveHasWrite,
+				effectiveHasTrigger,
+				strategy,
+				normalizedMessage,
+				explicitSpaces,
+				hasCurrentStateQuery,
+			),
 			ambiguityRisk,
 			strategy,
 		};
@@ -456,6 +684,11 @@ export class BuddyContextPlannerService {
 
 function getActionMessage(message: string, trailingActionMatch: RegExpExecArray | null): string {
 	if (trailingActionMatch) return message.slice(trailingActionMatch.index);
+	if (LEADING_UNSUPPORTED_ACTION_TEMPORAL_PATTERN.test(message)) {
+		const action = new RegExp(String.raw`\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`, 'u').exec(message);
+
+		if (action) return message.slice(action.index);
+	}
 	if (!LEADING_CONDITION_PATTERN.test(message)) return message;
 
 	const unpunctuatedActionIndex = findLeadingConditionalActionIndex(message);
@@ -520,17 +753,13 @@ function getActionReferenceMessage(
 		.map((clause) => {
 			const actionOnlyClause = clause.replace(
 				new RegExp(
-					String.raw`^[?!,.;\s]*(?:(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?`,
+					String.raw`^[?!,.;\s]*(?:(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|i(?: want you to| would like you to|'d like you to)|is it possible to|is there any way you can)\s+(?:please\s+)?)?`,
 					'u',
 				),
 				'',
 			);
-			const trailingCondition =
-				/\b(?:after|as long as|as soon as|assuming|before|given that|if|in case|once|only if|provided|so long as|unless|until|when|whenever|while)\b/u.exec(
-					actionOnlyClause,
-				);
 
-			return trailingCondition ? actionOnlyClause.slice(0, trailingCondition.index) : actionOnlyClause;
+			return getActionTargetClause(actionOnlyClause);
 		})
 		.join(' and ');
 }
@@ -542,6 +771,7 @@ function classifyDomains(
 	hasRecentReferencePronoun = false,
 	explicitSpaces: readonly BuddyContextSpaceReference[] = [],
 	hasAction = false,
+	hasConversationSpace = false,
 ): BuddyContextDomain[] {
 	if (isGenericExplanation) return ['general'];
 
@@ -619,6 +849,7 @@ function classifyDomains(
 		return (
 			PREDICATE_QUESTION_PATTERN.test(normalizedClause) &&
 			(GROUNDED_STATE_PATTERN.test(normalizedClause) || STATE_SIGNAL_PATTERN.test(normalizedClause)) &&
+			(hasConversationSpace || hasRecentReferencePronoun || explicitSpaces.length > 0) &&
 			!hasDomainSignalInClause(clause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) &&
 			!hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) &&
 			!hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN)
@@ -628,7 +859,12 @@ function classifyDomains(
 		clauses.some((clause) => {
 			if (!hasExplicitSpaceOccurrence(clause, space, explicitSpaces)) return false;
 
-			const clauseWithoutSpace = removeExplicitSpaceOccurrencesForDomain(clause, [space]);
+			const clauseWithoutSpace = removeExplicitSpaceOccurrencesForDomain(
+				clause,
+				conjoinedEnergySpaceIds.has(space.id)
+					? explicitSpaces.filter((candidate) => conjoinedEnergySpaceIds.has(candidate.id))
+					: [space],
+			);
 			const hasNonHomeSignal =
 				hasDomainSignalInClause(clauseWithoutSpace, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) ||
 				hasDomainSignalInClause(clauseWithoutSpace, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) ||
@@ -754,6 +990,8 @@ function splitPlannerClauses(message: string, protectedSpaces: readonly BuddyCon
 		...findExplicitSpaceOccurrences(message, protectedSpaces).map((occurrence) => occurrence.range),
 		...findConjoinedSpaceTargetRanges(message, protectedSpaces),
 		...findPatternRanges(message, CLOCK_TIME_HISTORY_PATTERN),
+		...findPatternRanges(message, ACTION_RANGE_PATTERN),
+		...findPatternRanges(message, /\d+\.\d+/u),
 	];
 	const separatorPattern = new RegExp(
 		String.raw`(?:[?!,.;]|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b|\ba\b(?=\s*(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b))`,
@@ -826,7 +1064,14 @@ function findConjoinedSpaceTargetRanges(
 	const occurrences = findExplicitSpaceOccurrences(message, spaces).sort(
 		(left, right) => left.range.start - right.range.start,
 	);
-	const sharedTargetPattern = new RegExp(String.raw`^\s*(?:${HOME_ENTITY_PATTERN.source})`, 'u');
+	const sharedTargetPattern = new RegExp(
+		String.raw`^\s*(?:temperatures?\b|${HOME_ENTITY_PATTERN.source}|${HOME_STATE_PATTERN.source}|${ENERGY_PATTERN.source}|${SECURITY_PATTERN.source}|${EXPLICIT_WEATHER_PATTERN.source})`,
+		'u',
+	);
+	const precedingSharedTargetPattern = new RegExp(
+		String.raw`(?:temperatures?|${HOME_ENTITY_PATTERN.source}|${HOME_STATE_PATTERN.source}|${ENERGY_PATTERN.source}|${SECURITY_PATTERN.source}|${EXPLICIT_WEATHER_PATTERN.source})\b[^?!,.;]{0,40}$`,
+		'u',
+	);
 	const ranges: Array<{ start: number; end: number }> = [];
 
 	for (let index = 0; index < occurrences.length - 1; index += 1) {
@@ -835,7 +1080,22 @@ function findConjoinedSpaceTargetRanges(
 		const connector = message.slice(left.range.end, right.range.start);
 
 		if (!/^\s*(?:,\s*|,?\s+(?:and|or)\s+)$/u.test(connector)) continue;
-		if (!sharedTargetPattern.test(message.slice(right.range.end))) continue;
+		let chainEndIndex = index + 1;
+		while (chainEndIndex < occurrences.length - 1) {
+			const chainLeft = occurrences[chainEndIndex];
+			const chainRight = occurrences[chainEndIndex + 1];
+			if (!/^\s*(?:,\s*|,?\s+(?:and|or)\s+)$/u.test(message.slice(chainLeft.range.end, chainRight.range.start))) {
+				break;
+			}
+			chainEndIndex += 1;
+		}
+		const chainEnd = occurrences[chainEndIndex];
+		if (
+			!sharedTargetPattern.test(message.slice(chainEnd.range.end)) &&
+			!precedingSharedTargetPattern.test(message.slice(0, left.range.start))
+		) {
+			continue;
+		}
 
 		ranges.push({ start: left.range.end, end: right.range.start });
 	}
@@ -875,6 +1135,23 @@ function hasCurrentStateReadClause(
 function hasHomeStateReadClause(message: string, explicitSpaces: readonly BuddyContextSpaceReference[] = []): boolean {
 	return splitPlannerClauses(message, explicitSpaces).some((clause) => {
 		const normalizedClause = clause.trim();
+		const clauseWithoutExplicitSpaces = removeExplicitSpaceOccurrencesForDomain(normalizedClause, explicitSpaces);
+		const clauseWithoutDomainEntityNames = clauseWithoutExplicitSpaces
+			.replace(WEATHER_ENTITY_NAME_PATTERN, ' ')
+			.replace(ENERGY_ENTITY_NAME_PATTERN, ' ')
+			.replace(SECURITY_ENTITY_NAME_PATTERN, ' ');
+		const hasNonHomeDomainSignal =
+			hasDomainSignalInClause(normalizedClause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) ||
+			hasDomainSignalInClause(normalizedClause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) ||
+			hasDomainSignalInClause(normalizedClause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN);
+		const hasExplicitWeatherSignal = EXPLICIT_WEATHER_PATTERN.test(clauseWithoutDomainEntityNames);
+		const hasIndependentHomeSignal =
+			HOME_ENTITY_PATTERN.test(clauseWithoutDomainEntityNames) ||
+			(!hasExplicitWeatherSignal &&
+				(HOME_VOCABULARY_PATTERN.test(clauseWithoutDomainEntityNames) ||
+					HOME_STATE_PATTERN.test(clauseWithoutDomainEntityNames))) ||
+			CONTEXTUAL_SCOPE_PATTERN.test(clauseWithoutDomainEntityNames);
+		if (hasNonHomeDomainSignal && !hasIndependentHomeSignal) return false;
 
 		return (
 			HOME_ENTITY_PATTERN.test(normalizedClause) ||
@@ -886,11 +1163,44 @@ function hasHomeStateReadClause(message: string, explicitSpaces: readonly BuddyC
 	});
 }
 
+function hasHomeActionConditionClause(
+	message: string,
+	explicitSpaces: readonly BuddyContextSpaceReference[] = [],
+): boolean {
+	if (hasHomeStateReadClause(message, explicitSpaces)) return true;
+	if (
+		!GROUNDED_STATE_PATTERN.test(message) &&
+		!STATE_SIGNAL_PATTERN.test(message) &&
+		!ACTION_CONDITION_STATE_PATTERN.test(message)
+	) {
+		return false;
+	}
+
+	return (
+		!hasDomainSignalInClause(message, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) &&
+		!hasDomainSignalInClause(message, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) &&
+		!hasDomainSignalInClause(message, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN)
+	);
+}
+
 function isGeneralExplanation(message: string, hasExplicitSpace = false): boolean {
 	if (hasExplicitSpace || POSSESSIVE_HOME_ENTITY_PATTERN.test(message)) return false;
+	if (/\b(?:my|our)\b/u.test(message) && /\b(?:energy|power|secure|security|weather)\b/u.test(message)) return false;
+	const isConceptualDomainRequest =
+		/^(?:define|describe|explain|tell me about|what (?:is|are))\b/u.test(message) &&
+		/\b(?:energy|power|security|weather)\b/u.test(message) &&
+		!HOME_ENTITY_PATTERN.test(message) &&
+		!/\b(?:alarm|armed|consumption|current|currently|forecast|now|outside|production|rain|today|tonight|usage)\b/u.test(
+			message,
+		);
 
 	return (
 		GENERAL_KNOWLEDGE_INVENTORY_PATTERN.test(message) ||
+		isConceptualDomainRequest ||
+		/^(?:explain|tell me about)\b.*\b(?:energy conservation|website security)\b/u.test(message) ||
+		/^what is (?:electrical|kinetic|potential|renewable) (?:energy|power)[?!.]*$/u.test(message) ||
+		/^what is (?:security|weather)[?!.]*$/u.test(message) ||
+		/^(?:explain|is)\b.*\b(?:password|website)\b.*\b(?:secure|security)\b/u.test(message) ||
 		/^what (?:is|are) (?:smart )?(?:device|devices|home|home automation|lighting|scene|scenes|sensor|sensors|thermostat|thermostats)[?!.]*$/u.test(
 			message,
 		) ||
@@ -943,7 +1253,8 @@ function classifyAmbiguityRisk(
 	requestedActionTypes: readonly BuddyContextActionType[],
 	references: readonly BuddyContextEntityReference[],
 	domains: readonly BuddyContextDomain[],
-	conversationSpaceId?: string,
+	actionScopeIds: readonly string[] = [],
+	hasResolvedContextualScope = false,
 	explicitSpaces: readonly BuddyContextSpaceReference[] = [],
 	hasUnrepresentableSpaceExclusion = false,
 	hasDuplicateNameSpaceAmbiguity = false,
@@ -951,13 +1262,32 @@ function classifyAmbiguityRisk(
 	hasExcessiveReferenceScope = false,
 	hasUnsupportedScopedFutureTemperature = false,
 	hasUnsupportedScopedSecurityRead = false,
+	hasUnresolvedNamedAction = false,
 ): BuddyContextAmbiguityRisk {
 	const isAction = hasWrite || hasTrigger;
 	if (hasUnsupportedScopedFutureTemperature) return isAction ? 'action' : 'read';
 	if (hasUnsupportedScopedSecurityRead) return isAction ? 'action' : 'read';
 
 	if (isAction) {
-		if (NEGATED_ACTION_PATTERN.test(message)) return 'action';
+		const splitActionClauses = splitPlannerClauses(actionMessage, explicitSpaces);
+		const firstActionClauseIndex = splitActionClauses.findIndex((clause) => ACTION_COMMAND_PATTERN.test(clause));
+		const leadingActionAdjuncts = firstActionClauseIndex > 0 ? splitActionClauses.slice(0, firstActionClauseIndex) : [];
+		const scopedActionClauses = splitActionClauses.filter((clause) => ACTION_COMMAND_PATTERN.test(clause));
+		const actionTargetClauses = scopedActionClauses.map((clause) => getActionTargetClause(clause));
+		if (hasNegatedAction(message, actionMessage, explicitSpaces)) return 'action';
+		if (hasUnresolvedNamedAction) return 'action';
+		if (hasTrigger && UNSUPPORTED_SCENE_INVERSE_PATTERN.test(actionMessage)) return 'action';
+		if (
+			actionScopeIds.length > 0 &&
+			references.length > 0 &&
+			(references.length !== 1 ||
+				actionScopeIds.length !== 1 ||
+				references[0].spaceId === undefined ||
+				references[0].spaceId === null ||
+				!actionScopeIds.includes(references[0].spaceId))
+		) {
+			return 'action';
+		}
 		if (hasDuplicateNameSpaceAmbiguity || hasExcessiveExplicitSpaceScope || hasExcessiveReferenceScope) {
 			return 'action';
 		}
@@ -972,15 +1302,47 @@ function classifyAmbiguityRisk(
 			return 'action';
 		}
 		if (/\bor\b/u.test(actionReferenceMessage)) return 'action';
-		if (REPEATED_ACTION_PATTERN.test(actionReferenceMessage)) return 'action';
-		if (ACTION_RANGE_PATTERN.test(actionMessage)) return 'action';
-		if (ACTION_NON_SCALAR_BOUND_PATTERN.test(actionMessage)) return 'action';
-		if (SCHEDULED_ACTION_PATTERN.test(actionMessage)) return 'action';
-		if (ZERO_QUANTITY_LIGHTING_PATTERN.test(actionMessage)) return 'action';
+		if (scopedActionClauses.some((clause) => REPEATED_ACTION_PATTERN.test(getActionTemporalClause(clause)))) {
+			return 'action';
+		}
+		if (actionTargetClauses.some((clause) => ACTION_RANGE_PATTERN.test(clause))) return 'action';
+		if (actionTargetClauses.some((clause) => ACTION_NON_SCALAR_BOUND_PATTERN.test(clause))) return 'action';
 		if (
-			hasGenericActionTarget(actionReferenceMessage, explicitSpaces, conversationSpaceId !== undefined) &&
-			!hasMultiSpaceLightingTarget(message, explicitSpaces)
+			actionTargetClauses.some(hasConflictingDeviceSceneTarget) ||
+			CONFLICTING_DEVICE_SCENE_QUALIFIER_PATTERN.test(actionMessage)
 		) {
+			return 'action';
+		}
+		if (
+			scopedActionClauses.some((clause) => {
+				const temporalClause = getActionTemporalClause(clause).replace(RELATIVE_SCALAR_ADJUSTMENT_PATTERN, ' ');
+
+				return (
+					SCHEDULED_ACTION_PATTERN.test(temporalClause) ||
+					UNSUPPORTED_ACTION_TEMPORAL_PATTERN.test(temporalClause) ||
+					UNSUPPORTED_ACTION_TEMPORAL_ADJUNCT_PATTERN.test(temporalClause) ||
+					UNSUPPORTED_ACTION_TEMPORAL_CALENDAR_PATTERN.test(temporalClause)
+				);
+			}) ||
+			leadingActionAdjuncts.some(
+				(clause) =>
+					SCHEDULED_ACTION_PATTERN.test(clause.trim()) ||
+					UNSUPPORTED_ACTION_TEMPORAL_PATTERN.test(clause.trim()) ||
+					UNSUPPORTED_ACTION_TEMPORAL_ADJUNCT_PATTERN.test(clause.trim()) ||
+					UNSUPPORTED_ACTION_TEMPORAL_CALENDAR_PATTERN.test(clause.trim()),
+			) ||
+			LEADING_RECURRING_ACTION_PATTERN.test(message) ||
+			LEADING_UNSUPPORTED_ACTION_TEMPORAL_PATTERN.test(message)
+		) {
+			return 'action';
+		}
+		if (ZERO_QUANTITY_LIGHTING_PATTERN.test(actionMessage)) return 'action';
+		const hasUnsafeGenericActionClause = splitPlannerClauses(actionReferenceMessage, explicitSpaces).some(
+			(clause) =>
+				hasGenericActionTargetClause(clause, explicitSpaces, actionScopeIds.length > 0) &&
+				!hasMultiSpaceLightingTarget(clause, explicitSpaces),
+		);
+		if (hasUnsafeGenericActionClause) {
 			return 'action';
 		}
 
@@ -1022,7 +1384,7 @@ function classifyAmbiguityRisk(
 		domains.includes('home') &&
 		hasSingularHomeReference &&
 		references.length !== 1 &&
-		!(conversationSpaceId && CONTEXTUAL_SCOPE_PATTERN.test(message))
+		!(hasResolvedContextualScope && CONTEXTUAL_SCOPE_PATTERN.test(message))
 	) {
 		return 'read';
 	}
@@ -1031,12 +1393,12 @@ function classifyAmbiguityRisk(
 		hasPluralHomeReference &&
 		!hasPluralReferenceTarget(references) &&
 		!hasPluralReferenceAntecedent(message) &&
-		!(conversationSpaceId && CONTEXTUAL_SCOPE_PATTERN.test(message))
+		!(hasResolvedContextualScope && CONTEXTUAL_SCOPE_PATTERN.test(message))
 	) {
 		return 'read';
 	}
 
-	if (CONTEXTUAL_SCOPE_PATTERN.test(message) && !conversationSpaceId) return 'read';
+	if (CONTEXTUAL_SCOPE_PATTERN.test(message) && !hasResolvedContextualScope) return 'read';
 
 	return 'none';
 }
@@ -1055,16 +1417,6 @@ function hasPluralReferenceTarget(references: readonly BuddyContextEntityReferen
 	return (
 		references.length > 1 || (references.length === 1 && PLURAL_HOME_TARGET_PATTERN.test(normalize(references[0].name)))
 	);
-}
-
-function hasGenericActionTarget(
-	message: string,
-	explicitSpaces: readonly BuddyContextSpaceReference[],
-	hasConversationSpace = false,
-): boolean {
-	const clauses = splitPlannerClauses(message, explicitSpaces).filter((clause) => clause.trim().length > 0);
-
-	return clauses.some((clause) => hasGenericActionTargetClause(clause, explicitSpaces, hasConversationSpace));
 }
 
 function hasGenericActionTargetClause(
@@ -1087,7 +1439,16 @@ function hasGenericActionTargetClause(
 		return false;
 	}
 	if (EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN.test(message)) return false;
+	if (QUOTED_ENTITY_TARGET_PATTERN.test(message)) return false;
 	if (GENERIC_ACTION_TARGET_PATTERN.test(message) || BARE_GENERIC_ACTION_TARGET_PATTERN.test(message)) return true;
+	if (
+		!hasClauseSpace &&
+		!hasResolvedContextualSpace &&
+		DEVICE_ACTION_TARGET_PATTERN.test(getActionObjectClause(message)) &&
+		!TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN.test(getActionObjectClause(message))
+	) {
+		return true;
+	}
 
 	return explicitSpaces.some((space) => {
 		const normalizedSpaceName = normalize(space.name);
@@ -1099,29 +1460,251 @@ function hasGenericActionTargetClause(
 }
 
 function targetsDeviceActionClause(clause: string, references: readonly BuddyContextEntityReference[]): boolean {
-	const targetClause = getActionTargetClause(clause);
+	if (hasExplicitSceneKindTarget(getActionObjectClause(clause))) return false;
+	if (DEVICE_ACTION_TARGET_PATTERN.test(getActionObjectClause(clause))) return true;
 
-	if (DEVICE_ACTION_TARGET_PATTERN.test(targetClause)) return true;
+	const resolvedReferences = resolveRecentReferences(clause, references);
 
-	const resolvedReferences = resolveRecentReferences(targetClause, references);
-
-	return resolvedReferences.length === 1 && resolvedReferences[0].kind !== 'scene';
+	return resolvedReferences.length === 1 && ['device', 'property'].includes(resolvedReferences[0].kind);
 }
 
-function targetsSceneActionClause(clause: string, references: readonly BuddyContextEntityReference[]): boolean {
-	const targetClause = getActionTargetClause(clause);
+function hasPositiveDeviceActionEvidence(
+	clause: string,
+	explicitSpaces: readonly BuddyContextSpaceReference[],
+	references: readonly BuddyContextEntityReference[],
+): boolean {
+	const targetClause = getActionObjectClause(clause);
+	if (hasExplicitSceneKindTarget(targetClause)) return false;
+	if (isClearlyNonHomeActionClause(clause)) return false;
+	const resolvedReferences = resolveRecentReferences(clause, references);
+	if (resolvedReferences.length === 1 && ['device', 'property'].includes(resolvedReferences[0].kind)) {
+		return true;
+	}
 
-	if (SCENE_ACTION_TARGET_PATTERN.test(targetClause)) return true;
+	return (
+		DEVICE_ACTION_TARGET_PATTERN.test(targetClause) ||
+		explicitSpaces.some((space) => hasScopedDeviceTarget(targetClause, space, explicitSpaces)) ||
+		(CONTEXTUAL_SCOPE_PATTERN.test(targetClause) && HOME_VOCABULARY_PATTERN.test(targetClause))
+	);
+}
 
-	const resolvedReferences = resolveRecentReferences(targetClause, references);
+function hasScopedDeviceTarget(
+	targetClause: string,
+	space: BuddyContextSpaceReference,
+	explicitSpaces: readonly BuddyContextSpaceReference[],
+): boolean {
+	if (!hasExplicitSpaceOccurrence(targetClause, space, explicitSpaces)) return false;
+
+	const residual = removeNormalizedPhrase(targetClause, normalize(space.name))
+		.split(/\b(?:at|to)\b/u, 1)[0]
+		.replace(
+			/\b(?:a|all|an|back|blue|completely|eco|green|in|mode|now|off|on|red|the|white)\b|[-+]?\d+(?:\.\d+)?%?/gu,
+			' ',
+		)
+		.replace(/\s+/gu, ' ')
+		.trim();
+
+	return residual.length > 0;
+}
+
+function hasPlausibleCustomActionTarget(clause: string): boolean {
+	const targetClause = getActionObjectClause(clause);
+	if (PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.test(targetClause)) return true;
+
+	const significantTokens = targetClause
+		.split(/[^\p{Letter}\p{Number}]+/u)
+		.filter((token) => token.length > 0 && !/^(?:a|all|an|my|off|on|our|the|to|trigger|your)$/u.test(token));
+
+	return significantTokens.length >= 1;
+}
+
+function isClearlyNonHomeActionClause(clause: string): boolean {
+	return CLEAR_NON_HOME_ACTION_OBJECT_PATTERN.test(getActionObjectClause(clause).trim());
+}
+
+function hasPositiveSceneActionEvidence(clause: string, references: readonly BuddyContextEntityReference[]): boolean {
+	if (SCENE_TARGET_PATTERN.test(getActionObjectClause(clause))) return true;
+
+	const resolvedReferences = resolveRecentReferences(clause, references);
 
 	return resolvedReferences.length === 1 && resolvedReferences[0].kind === 'scene';
 }
 
-function getActionTargetClause(clause: string): string {
-	const condition = CONDITION_PATTERN.exec(clause);
+function hasExplicitSceneKindTarget(targetClause: string): boolean {
+	if (
+		QUOTED_SCENE_TARGET_PATTERN.test(targetClause) ||
+		EXPLICIT_SCENE_KIND_PREFIX_PATTERN.test(targetClause) ||
+		EXPLICIT_SCENE_KIND_SUFFIX_PATTERN.test(targetClause)
+	) {
+		return true;
+	}
 
-	return condition ? clause.slice(0, condition.index) : clause;
+	const sceneKind = [...targetClause.matchAll(new RegExp(SCENE_TARGET_PATTERN.source, 'gu'))].at(-1);
+	const deviceKind = [...targetClause.matchAll(new RegExp(DEVICE_ACTION_TARGET_PATTERN.source, 'gu'))].at(-1);
+	if (!sceneKind) return false;
+	if (!deviceKind) return true;
+	if (sceneKind.index <= deviceKind.index) return false;
+
+	const separator = targetClause.slice(deviceKind.index + deviceKind[0].length, sceneKind.index);
+	const suffix = targetClause.slice(sceneKind.index + sceneKind[0].length);
+
+	return separator.trim().length === 0 && !/^\s+mode\b/u.test(suffix);
+}
+
+function hasConflictingDeviceSceneTarget(targetClause: string): boolean {
+	const sceneKind = [...targetClause.matchAll(new RegExp(SCENE_TARGET_PATTERN.source, 'gu'))].at(-1);
+	const deviceKind = [...targetClause.matchAll(new RegExp(DEVICE_ACTION_TARGET_PATTERN.source, 'gu'))].at(-1);
+
+	return Boolean(
+		sceneKind && deviceKind && sceneKind.index > deviceKind.index && !hasExplicitSceneKindTarget(targetClause),
+	);
+}
+
+function hasNegatedAction(
+	message: string,
+	actionMessage: string,
+	explicitSpaces: readonly BuddyContextSpaceReference[],
+): boolean {
+	const actionClauses = splitPlannerClauses(actionMessage, explicitSpaces)
+		.filter((clause) => ACTION_COMMAND_PATTERN.test(clause))
+		.map((clause) => clause.trim());
+	if (hasActionProhibition(message)) return true;
+
+	return (
+		ACTION_TARGET_NEGATION_PATTERN.test(actionMessage) ||
+		actionClauses.some((clause) => ACTION_TARGET_NEGATION_PATTERN.test(getActionTargetClause(clause)))
+	);
+}
+
+function hasActionProhibition(message: string): boolean {
+	if (
+		/^(?:avoid|refrain\s+from)\s+(?:activating|adjusting|changing|closing|deactivating|dimming|locking|lowering|opening|raising|running|setting|starting|stopping|switching|triggering|turning|unlocking)\b/u.test(
+			message,
+		)
+	) {
+		return true;
+	}
+	const actionPattern = new RegExp(String.raw`\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`, 'gu');
+
+	return [...message.matchAll(actionPattern)].some((action) => {
+		const prefix = message.slice(0, action.index);
+		const sentencePrefix = prefix.slice(
+			Math.max(prefix.lastIndexOf('.'), prefix.lastIndexOf(';'), prefix.lastIndexOf('?')) + 1,
+		);
+
+		return sentencePrefix
+			.split(',')
+			.map((segment) => segment.trim())
+			.some((segment) => ACTION_PROHIBITION_PREFIX_PATTERN.test(segment));
+	});
+}
+
+function getActionTargetClause(clause: string): string {
+	const conditionIndex = findActionConditionIndex(clause);
+
+	return conditionIndex === undefined ? clause : clause.slice(0, conditionIndex);
+}
+
+function hasImmediateActionCondition(clause: string): boolean {
+	const action = new RegExp(String.raw`\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`, 'u').exec(clause);
+	const conditionIndex = findActionConditionIndex(clause);
+	if (!action || conditionIndex === undefined) return false;
+
+	return (
+		clause
+			.slice(action.index + action[0].length, conditionIndex)
+			.replace(/\b(?:a|an|please|the)\b/gu, ' ')
+			.trim().length === 0
+	);
+}
+
+function getActionConditionClause(clause: string): string | undefined {
+	const conditionIndex = findActionConditionIndex(clause);
+
+	return conditionIndex === undefined ? undefined : clause.slice(conditionIndex);
+}
+
+function findActionConditionIndex(clause: string): number | undefined {
+	const action = new RegExp(String.raw`\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`, 'u').exec(clause);
+	if (!action) return undefined;
+
+	const conditionPattern = new RegExp(CONDITION_PATTERN.source, 'gu');
+	for (const condition of clause.matchAll(conditionPattern)) {
+		if (condition.index <= action.index) continue;
+		if (condition[0] === 'once' && /\bat\s*$/u.test(clause.slice(0, condition.index))) continue;
+
+		if (!isActionEntityTitleCondition(clause, action.index + action[0].length, condition)) return condition.index;
+	}
+
+	return undefined;
+}
+
+function getActionTemporalClause(clause: string): string {
+	const action = new RegExp(String.raw`\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`, 'u').exec(clause);
+	if (!action) return clause;
+	const actionEnd = action.index + action[0].length;
+	const targetNoun = [
+		...clause
+			.slice(actionEnd)
+			.matchAll(
+				new RegExp(String.raw`\b(?:${DEVICE_ACTION_TARGET_PATTERN.source}|${SCENE_TARGET_PATTERN.source})\b`, 'gu'),
+			),
+	].find((match) => !isInsideDoubleQuotes(clause, actionEnd + match.index));
+	if (targetNoun) {
+		const targetEnd = actionEnd + targetNoun.index + targetNoun[0].length;
+		const conditionsBeforeTarget = [
+			...clause.slice(0, targetEnd).matchAll(new RegExp(CONDITION_PATTERN.source, 'gu')),
+		].filter((condition) => condition.index > action.index);
+
+		if (conditionsBeforeTarget.every((condition) => isActionEntityTitleCondition(clause, actionEnd, condition))) {
+			return `${clause.slice(0, actionEnd)} ${clause.slice(targetEnd)}`;
+		}
+	}
+
+	const conditionPattern = new RegExp(CONDITION_PATTERN.source, 'gu');
+	const titleConditions = [...clause.matchAll(conditionPattern)].filter(
+		(condition) =>
+			condition.index > action.index &&
+			isActionEntityTitleCondition(clause, action.index + action[0].length, condition),
+	);
+
+	return titleConditions
+		.reverse()
+		.reduce(
+			(result, condition) =>
+				`${result.slice(0, condition.index)} ${result.slice(condition.index + condition[0].length)}`,
+			clause,
+		);
+}
+
+function isActionEntityTitleCondition(clause: string, actionEnd: number, condition: RegExpMatchArray): boolean {
+	const rawBeforeCondition = clause.slice(actionEnd, condition.index);
+	const beforeCondition = rawBeforeCondition
+		.replace(/\b(?:a|an|please|the)\b/gu, ' ')
+		.replace(/\s+/gu, ' ')
+		.trim();
+	const afterCondition = clause.slice(condition.index + condition[0].length);
+	if (isInsideDoubleQuotes(clause, condition.index)) return true;
+	if (!/^(?:after|before|once|until)$/u.test(condition[0])) return false;
+	const hasLeadingTitleArticle = /\b(?:a|an|the)\s*$/u.test(rawBeforeCondition);
+	const conditionStartsPredicate = /^\s*(?:a|an|the)\b/u.test(afterCondition);
+
+	return (
+		beforeCondition.length === 0 &&
+		(hasLeadingTitleArticle || !conditionStartsPredicate) &&
+		(DEVICE_ACTION_TARGET_PATTERN.test(afterCondition) || SCENE_TARGET_PATTERN.test(afterCondition))
+	);
+}
+
+function isInsideDoubleQuotes(value: string, index: number): boolean {
+	return (value.slice(0, index).match(/"/gu)?.length ?? 0) % 2 === 1;
+}
+
+function getActionObjectClause(clause: string): string {
+	const targetClause = getActionTargetClause(clause);
+	const action = new RegExp(String.raw`\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`, 'u').exec(targetClause);
+
+	return action ? targetClause.slice(action.index + action[0].length) : targetClause;
 }
 
 function isActionReferenceCompatible(
@@ -1130,6 +1713,7 @@ function isActionReferenceCompatible(
 	hasTrigger: boolean,
 	requestedActionTypes: readonly BuddyContextActionType[],
 ): boolean {
+	if (reference.kind === 'space') return false;
 	if (requestedActionTypes.length === 0) return false;
 	if (!requestedActionTypes.every((actionType) => reference.compatibleActionTypes.includes(actionType))) return false;
 	if (hasTrigger && hasWrite) return true;
@@ -1187,9 +1771,9 @@ function resolveEnergySpaceIds(
 	explicitSpaces: readonly BuddyContextSpaceReference[],
 	conversationSpaceId?: string,
 ): Array<string | undefined> {
-	const energyClauses = splitPlannerClauses(message, explicitSpaces).filter((clause) =>
-		hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN),
-	);
+	const energyClauses = splitPlannerClauses(message, explicitSpaces)
+		.map((clause) => (ACTION_COMMAND_PATTERN.test(clause) ? (getActionConditionClause(clause) ?? '') : clause))
+		.filter((clause) => hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN));
 	const includesWholeHome = energyClauses.some(
 		(clause) =>
 			WHOLE_HOME_SCOPE_PATTERN.test(clause) ||
@@ -1399,9 +1983,7 @@ function resolveConjoinedEnergySpaceIds(
 		.filter((space) => energyClauses.some((clause) => hasExplicitSpaceOccurrence(clause, space, explicitSpaces)))
 		.map((space) => space.id);
 
-	return expandConjoinedSpaceIds(message, explicitSpaces, directlyEnergySpaceIds).filter(
-		(spaceId) => !directlyEnergySpaceIds.includes(spaceId),
-	);
+	return expandConjoinedSpaceIds(message, explicitSpaces, directlyEnergySpaceIds);
 }
 
 function expandConjoinedSpaceIds(
@@ -1754,18 +2336,19 @@ function buildQueries(
 	domains: readonly BuddyContextDomain[],
 	hasAction: boolean,
 	requiresReadForAction: boolean,
-	spaceIds: readonly string[] = [],
+	spaceIds: readonly (string | undefined)[] = [],
 	includeCurrentStateForRead = true,
 	energySpaceIds: readonly (string | undefined)[] = spaceIds,
-	currentStateSpaceIds: readonly string[] = spaceIds,
-	historySpaceIds: readonly string[] = spaceIds,
+	currentStateSpaceIds: readonly (string | undefined)[] = spaceIds,
+	historySpaceIds: readonly (string | undefined)[] = spaceIds,
 ): BuddyContextQueryPlan[] {
 	const queries: BuddyContextQueryPlan[] = [];
-	const scopes = spaceIds.length > 0 ? spaceIds.map((spaceId) => ({ spaceId })) : [{}];
+	const scopes = spaceIds.length > 0 ? spaceIds.map((spaceId) => (spaceId ? { spaceId } : {})) : [{}];
 	const energyScopes = energySpaceIds.length > 0 ? energySpaceIds.map((spaceId) => (spaceId ? { spaceId } : {})) : [{}];
 	const currentStateScopes =
-		currentStateSpaceIds.length > 0 ? currentStateSpaceIds.map((spaceId) => ({ spaceId })) : [{}];
-	const historyScopes = historySpaceIds.length > 0 ? historySpaceIds.map((spaceId) => ({ spaceId })) : [{}];
+		currentStateSpaceIds.length > 0 ? currentStateSpaceIds.map((spaceId) => (spaceId ? { spaceId } : {})) : [{}];
+	const historyScopes =
+		historySpaceIds.length > 0 ? historySpaceIds.map((spaceId) => (spaceId ? { spaceId } : {})) : [{}];
 
 	if (domains.includes('home')) {
 		for (const scoped of scopes) queries.push({ kind: 'search-home', ...scoped });
@@ -1792,12 +2375,14 @@ function buildToolNames(
 	strategy: BuddyContextStrategy,
 	message: string,
 	explicitSpaces: readonly BuddyContextSpaceReference[],
+	includeCurrentState: boolean,
 ): string[] {
 	if (strategy !== 'model-tools') return [];
 
 	const names: string[] = [];
 
-	if (domains.includes('home')) names.push(SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME);
+	if (domains.includes('home')) names.push(SEARCH_HOME_TOOL_NAME);
+	if (domains.includes('home') && includeCurrentState) names.push(QUERY_HOME_STATE_TOOL_NAME);
 	if (hasWrite) {
 		names.push(CONTROL_DEVICE_TOOL_NAME);
 		const hasLightingGroupTarget =
@@ -1895,6 +2480,7 @@ function normalize(value: string): string {
 	return value
 		.normalize('NFKD')
 		.replace(/\p{Mark}/gu, '')
+		.replace(/[‘’]/gu, "'")
 		.toLocaleLowerCase('en-US')
 		.trim();
 }

@@ -44,6 +44,7 @@ export interface BuddyContextEntityReference {
 	kind: 'device' | 'space' | 'scene' | 'property';
 	id: string;
 	name: string;
+	spaceId?: string | null;
 	compatibleActionTypes: readonly BuddyContextActionType[];
 }
 

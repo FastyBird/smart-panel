@@ -1,3 +1,5 @@
+import type { BuddyContextActionType } from '../models/context-plan.model';
+
 export type BuddyContextEvaluationStrategy =
 	| 'no-home-context'
 	| 'model-tools'
@@ -6,12 +8,14 @@ export type BuddyContextEvaluationStrategy =
 	| 'clarify';
 
 export type BuddyContextEvaluationDomain = 'general' | 'home' | 'weather' | 'energy' | 'security' | 'history';
+export type BuddyContextEvaluationProviderProfile = 'reliable' | 'unsupported';
 
 export interface BuddyContextEvaluationEntityReference {
 	kind: 'device' | 'space' | 'scene' | 'property';
 	id: string;
 	name: string;
-	compatibleActionTypes: readonly ['turn'];
+	spaceId?: string | null;
+	compatibleActionTypes: readonly BuddyContextActionType[];
 }
 
 export interface BuddyContextEvaluationPriorTurn {
@@ -24,6 +28,7 @@ export interface BuddyContextEvaluationCase {
 	id: string;
 	message: string;
 	conversationSpaceId: string | null;
+	providerProfile: BuddyContextEvaluationProviderProfile;
 	priorTurns?: readonly BuddyContextEvaluationPriorTurn[];
 	expectedDomains: BuddyContextEvaluationDomain[];
 	expectedStrategy: BuddyContextEvaluationStrategy;
@@ -42,6 +47,7 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 		id: 'casual-greeting',
 		message: 'Hi',
 		conversationSpaceId: null,
+		providerProfile: 'reliable',
 		expectedDomains: ['general'],
 		expectedStrategy: 'no-home-context',
 		expectsAction: false,
@@ -51,6 +57,7 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 		id: 'general-explanation',
 		message: 'How does a thermostat work?',
 		conversationSpaceId: null,
+		providerProfile: 'reliable',
 		expectedDomains: ['general'],
 		expectedStrategy: 'no-home-context',
 		expectsAction: false,
@@ -60,6 +67,7 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 		id: 'scoped-current-state',
 		message: 'What is the bedroom temperature?',
 		conversationSpaceId: null,
+		providerProfile: 'reliable',
 		expectedDomains: ['home'],
 		expectedStrategy: 'model-tools',
 		expectsAction: false,
@@ -69,6 +77,7 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 		id: 'contextual-current-state',
 		message: 'Is it too warm in here?',
 		conversationSpaceId: 'space-000',
+		providerProfile: 'reliable',
 		expectedDomains: ['home'],
 		expectedStrategy: 'model-tools',
 		expectsAction: false,
@@ -78,6 +87,7 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 		id: 'global-aggregate',
 		message: 'Are any windows open?',
 		conversationSpaceId: null,
+		providerProfile: 'reliable',
 		expectedDomains: ['home'],
 		expectedStrategy: 'model-tools',
 		expectsAction: false,
@@ -87,6 +97,7 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 		id: 'target-discovery',
 		message: 'Which lights can I dim?',
 		conversationSpaceId: null,
+		providerProfile: 'reliable',
 		expectedDomains: ['home'],
 		expectedStrategy: 'model-tools',
 		expectsAction: false,
@@ -96,6 +107,7 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 		id: 'exact-device-control',
 		message: 'Set kitchen light to 40%',
 		conversationSpaceId: 'space-000',
+		providerProfile: 'unsupported',
 		expectedDomains: ['home'],
 		expectedStrategy: 'deterministic-action',
 		expectsAction: true,
@@ -105,6 +117,7 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 		id: 'ambiguous-control',
 		message: 'Turn on the lamp',
 		conversationSpaceId: null,
+		providerProfile: 'reliable',
 		expectedDomains: ['home'],
 		expectedStrategy: 'clarify',
 		expectsAction: true,
@@ -114,8 +127,9 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 		id: 'scene-trigger',
 		message: 'Start movie night',
 		conversationSpaceId: null,
+		providerProfile: 'reliable',
 		expectedDomains: ['home'],
-		expectedStrategy: 'deterministic-action',
+		expectedStrategy: 'clarify',
 		expectsAction: true,
 		currentEagerSnapshot: true,
 	},
@@ -123,6 +137,7 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 		id: 'weather',
 		message: 'Will it rain tomorrow?',
 		conversationSpaceId: null,
+		providerProfile: 'reliable',
 		expectedDomains: ['weather'],
 		expectedStrategy: 'prefetch',
 		expectsAction: false,
@@ -132,6 +147,7 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 		id: 'energy',
 		message: 'How much power did we use today?',
 		conversationSpaceId: null,
+		providerProfile: 'reliable',
 		expectedDomains: ['energy'],
 		expectedStrategy: 'prefetch',
 		expectsAction: false,
@@ -141,6 +157,7 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 		id: 'security',
 		message: 'Is the house secure?',
 		conversationSpaceId: null,
+		providerProfile: 'reliable',
 		expectedDomains: ['security'],
 		expectedStrategy: 'prefetch',
 		expectsAction: false,
@@ -150,6 +167,7 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 		id: 'historical',
 		message: 'Graph the living-room temperature for 24 hours',
 		conversationSpaceId: null,
+		providerProfile: 'reliable',
 		expectedDomains: ['home', 'history'],
 		expectedStrategy: 'prefetch',
 		expectsAction: false,
@@ -159,6 +177,7 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 		id: 'recent-reference-follow-up-resolvable',
 		message: 'Turn it off',
 		conversationSpaceId: 'space-000',
+		providerProfile: 'unsupported',
 		priorTurns: [
 			{ role: 'user', content: 'Turn on the reading lamp.' },
 			{
@@ -183,6 +202,7 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 		id: 'recent-reference-follow-up-missing',
 		message: 'Turn it off',
 		conversationSpaceId: 'space-000',
+		providerProfile: 'reliable',
 		expectedDomains: ['home'],
 		expectedStrategy: 'clarify',
 		expectsAction: true,
@@ -192,6 +212,7 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 		id: 'recent-reference-follow-up-ambiguous',
 		message: 'Turn it off',
 		conversationSpaceId: 'space-000',
+		providerProfile: 'reliable',
 		priorTurns: [
 			{ role: 'user', content: 'Turn on both bedside lamps.' },
 			{
@@ -222,6 +243,7 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 		id: 'compound-multi-domain',
 		message: 'If it is colder outside, lower the office thermostat',
 		conversationSpaceId: null,
+		providerProfile: 'unsupported',
 		expectedDomains: ['home', 'weather'],
 		expectedStrategy: 'deterministic-action',
 		expectsAction: true,
@@ -231,6 +253,7 @@ export const BUDDY_CONTEXT_EVALUATION_MATRIX: readonly BuddyContextEvaluationCas
 		id: 'unsupported-domain',
 		message: 'Book a flight',
 		conversationSpaceId: null,
+		providerProfile: 'reliable',
 		expectedDomains: ['general'],
 		expectedStrategy: 'no-home-context',
 		expectsAction: false,
