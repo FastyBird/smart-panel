@@ -332,7 +332,7 @@ mappings:
   - name: battery-level
     priority: 100
     match:
-      classes: [sensor, thermostat, lock, windowcoverings, curtain, blinds, sunshade, shutterblinds]
+      classes: [sensor, lock, windowcoverings, curtain, blinds, sunshade, shutterblinds]
       capability_base_ids: [measure_battery]
     property:
       channel: battery
@@ -345,7 +345,7 @@ mappings:
   - name: battery-alarm
     priority: 100
     match:
-      classes: [sensor, thermostat, lock, windowcoverings, curtain, blinds, sunshade, shutterblinds]
+      classes: [sensor, lock, windowcoverings, curtain, blinds, sunshade, shutterblinds]
       capability_base_ids: [alarm_battery]
       all_capabilities: [measure_battery]
     property:
@@ -361,7 +361,7 @@ mappings:
     description: Derive the required Smart Panel status when Homey exposes only a battery percentage
     priority: 100
     match:
-      classes: [sensor, thermostat, lock, windowcoverings, curtain, blinds, sunshade, shutterblinds]
+      classes: [sensor, lock, windowcoverings, curtain, blinds, sunshade, shutterblinds]
       capability_base_ids: [measure_battery]
       none_capabilities: [alarm_battery]
     property:

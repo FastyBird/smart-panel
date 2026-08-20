@@ -187,6 +187,8 @@ describe('Homey MVP mapping catalog', () => {
 			capability('measure_temperature', 21.5, { unit: '°C' }),
 			capability('target_temperature', 22.5, { unit: '°C', writable: true, minimum: 4, maximum: 35 }),
 			capability('thermostat_mode', 'heat', { writable: true }),
+			capability('measure_battery', 80),
+			capability('alarm_battery', false),
 		]);
 		const bindings = bindingsByName(device);
 		expectMappedChannelsComplete(device);
@@ -204,6 +206,8 @@ describe('Homey MVP mapping catalog', () => {
 		expect(read(bindings, 'thermostat-heater-on', 'cool')).toBe(false);
 		expect(write(bindings, 'thermostat-heater-on', true)).toBe('heat');
 		expect(read(bindings, 'thermostat-heater-status', 'off')).toBe(false);
+		expect(bindings.has('battery-level')).toBe(false);
+		expect(bindings.has('battery-alarm')).toBe(false);
 		expect(
 			loader
 				.resolvePropertyMappings(device)

@@ -174,7 +174,7 @@ mappings:
   - name: battery
     priority: 100
     match:
-      classes: [sensor, thermostat, lock, windowcoverings, curtain, blinds, sunshade, shutterblinds]
+      classes: [sensor, lock, windowcoverings, curtain, blinds, sunshade, shutterblinds]
       all_capabilities: [measure_battery]
     channel:
       identifier: battery

@@ -79,11 +79,12 @@ Thermostat device eligibility requires `measure_temperature`, `target_temperatur
 Partial target-only or mode-only devices stay unsupported instead of losing their control or producing incomplete
 climate channels.
 
-The battery channel is emitted only when `measure_battery` exists. When Homey also exposes `alarm_battery`, that alarm
-maps directly to the required status; otherwise status is derived as `low` at or below 20 percent and `ok` above it.
-Alarm-only devices do not produce an invalid percentage-less battery channel. Window-covering classes provide their
-required `type` through a read-only constant projection; the generic class defaults to `roller` and remains replaceable
-by an operator override.
+The battery channel is emitted only when `measure_battery` exists and the selected Smart Panel device contract permits
+that channel. Thermostats are excluded because their current contract does not accept battery channels. When Homey also
+exposes `alarm_battery`, that alarm maps directly to the required status; otherwise status is derived as `low` at or
+below 20 percent and `ok` above it. Alarm-only devices do not produce an invalid percentage-less battery channel.
+Window-covering classes provide their required `type` through a read-only constant projection; the generic class
+defaults to `roller` and remains replaceable by an operator override.
 
 `HomeyMappingTransformerService` is the single read/write execution path for inline transforms. It rejects forbidden
 directions, invalid target types, and unmapped enum values with fixed errors that never include the rejected value.
