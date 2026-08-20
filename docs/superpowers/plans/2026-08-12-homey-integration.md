@@ -333,13 +333,21 @@ fixed 404/422 errors; the complete Homey backend suite and OpenAPI generation pa
 
 **Proposed service:** `services/mapping-preview.service.ts`
 
-- [ ] Fetch a fresh normalized device snapshot.
-- [ ] Infer suggested category and valid alternatives.
-- [ ] Produce proposed channels/properties with identifiers, transformed values, access, and conversion metadata.
-- [ ] Warn for unsupported capabilities, unavailable values, conflicting descriptors, and lossy/ambiguous conversions.
-- [ ] Keep output deterministic for identical snapshot/mapping versions.
-- [ ] Add request/response models and `POST mapping-preview` endpoint.
-- [ ] Add comprehensive fixture-backed tests.
+- [x] Fetch a fresh normalized device snapshot.
+- [x] Infer suggested category and valid alternatives.
+- [x] Produce proposed channels/properties with identifiers, transformed values, access, and conversion metadata.
+- [x] Warn for unsupported capabilities, unavailable values, conflicting descriptors, and lossy/ambiguous conversions.
+- [x] Keep output deterministic for identical snapshot/mapping versions.
+- [x] Add request/response models and `POST mapping-preview` endpoint.
+- [x] Add comprehensive fixture-backed tests.
+
+The preview endpoint performs one fresh connector read, retains authoritative full capability identifiers, evaluates
+valid Smart Panel categories against the proposed structure, and returns transformed current values, effective access,
+conversion metadata, unsupported capability IDs, and stable sanitized warnings without mutating either system. Captured
+fixtures cover every normalized MVP device family plus unavailable and repeated-capability cases; focused tests also
+exercise conflicts, orphaned mappings, access mismatches, failed conversions, lossy and ambiguous conversions, fixed
+404/422 behavior, authorization, and deterministic output. The generated OpenAPI contract exposes
+`POST /plugins/devices-homey/mapping-preview` with the standard response envelope.
 
 ### Task 3.5: Implement idempotent adoption
 

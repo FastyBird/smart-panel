@@ -18,6 +18,7 @@ import {
 	HomeyConnectorErrorCategory,
 	HomeyConnectorOperation,
 } from '../errors/homey-connector.error';
+import { HomeyInventoryUnavailableError } from '../errors/homey-inventory.error';
 import { HomeyConfigModel } from '../models/config.model';
 import { HomeyDevice } from '../models/homey-device.model';
 import { HomeyEvent, HomeyEventType } from '../models/homey-event.model';
@@ -212,6 +213,23 @@ export class HomeyService extends BaseManagedPluginService {
 		}
 
 		return structuredClone([...this.devices.values()]);
+	}
+
+	async getFreshDevice(deviceId: string): Promise<HomeyDevice | null> {
+		const connector = this.connector;
+
+		if (
+			this.state !== 'started' ||
+			connector === null ||
+			(this.connectionState !== HomeyConnectionState.CONNECTED &&
+				this.connectionState !== HomeyConnectionState.DEGRADED_POLLING)
+		) {
+			throw new HomeyInventoryUnavailableError();
+		}
+
+		const device = await connector.getDevice(deviceId);
+
+		return device === null ? null : structuredClone(device);
 	}
 
 	private getPluginConfig(): HomeyConfigModel {

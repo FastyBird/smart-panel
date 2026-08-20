@@ -14,6 +14,7 @@ import {
 	HomeyConnectorErrorCategory,
 	HomeyConnectorOperation,
 } from '../errors/homey-connector.error';
+import { HomeyInventoryUnavailableError } from '../errors/homey-inventory.error';
 import { HomeyConfigModel } from '../models/config.model';
 import { HomeyDevice } from '../models/homey-device.model';
 import { HomeyEventType } from '../models/homey-event.model';
@@ -189,6 +190,26 @@ describe('HomeyService', () => {
 		expect(service.getState()).toBe('stopped');
 		expect(await service.isHealthy()).toBe(false);
 		expect(service.getInventorySnapshot()).toBeNull();
+	});
+
+	it('reads one fresh device only while connected and returns a defensive copy', async () => {
+		await expect(service.getFreshDevice(staleDevice.id)).rejects.toBeInstanceOf(HomeyInventoryUnavailableError);
+
+		await service.start();
+
+		const fresh = await service.getFreshDevice(staleDevice.id);
+
+		expect(connector.getDevice.mock.calls).toContainEqual([staleDevice.id]);
+		expect(fresh).toStrictEqual(staleDevice);
+		expect(fresh).not.toBe(staleDevice);
+		(fresh?.zonePath as string[]).push('mutated');
+		expect(staleDevice.zonePath).toStrictEqual(['Living room']);
+
+		connector.getDevice.mockResolvedValueOnce(null);
+		await expect(service.getFreshDevice('missing')).resolves.toBeNull();
+
+		await service.stop();
+		await expect(service.getFreshDevice(staleDevice.id)).rejects.toBeInstanceOf(HomeyInventoryUnavailableError);
 	});
 
 	it('tracks successful events and exposes every lifecycle transition', async () => {
