@@ -10,6 +10,7 @@ import {
 } from '../errors/homey-mapping-preview.error';
 import { HomeyMappingLoaderService } from '../mappings/mapping-loader.service';
 import { HomeyMappingTransformerService } from '../mappings/mapping-transformer.service';
+import { HomeyCapabilityType } from '../models/homey-capability.model';
 import { HomeyDevice } from '../models/homey-device.model';
 import { HomeyMappingPreviewWarningCode, HomeyMappingPreviewWarningSeverity } from '../models/mapping-preview.model';
 
@@ -355,6 +356,102 @@ describe('HomeyMappingPreviewService', () => {
 				code: HomeyMappingPreviewWarningCode.NON_REVERSIBLE_CONVERSION,
 				severity: HomeyMappingPreviewWarningSeverity.ERROR,
 				identifier: 'onoff',
+			}),
+		);
+		expect(preview.readyToAdopt).toBe(false);
+	});
+
+	it('blocks a readable map that omits a declared Homey enum value', async () => {
+		const fixture = readDeviceFixture('light');
+		const device: HomeyDevice = {
+			...fixture,
+			capabilities: fixture.capabilities.map((capability) =>
+				capability.id === 'onoff'
+					? {
+							...capability,
+							type: HomeyCapabilityType.ENUM,
+							value: 'off',
+							enumValues: [
+								{ id: 'off', title: 'Off' },
+								{ id: 'on', title: 'On' },
+								{ id: 'standby', title: 'Standby' },
+							],
+						}
+					: capability,
+			),
+		};
+		homeyService.getFreshDevice.mockResolvedValue(device);
+		const propertyResolution = mappingLoader.resolvePropertyMappings(device);
+		jest.spyOn(mappingLoader, 'resolvePropertyMappings').mockReturnValue({
+			conflicts: propertyResolution.conflicts,
+			mappings: propertyResolution.mappings.map((binding) =>
+				binding.capabilityId === 'onoff'
+					? {
+							...binding,
+							mapping: {
+								...binding.mapping,
+								property: {
+									...binding.mapping.property,
+									transform: {
+										type: 'map',
+										read: { off: false, on: true },
+										write: { false: 'off', true: 'on' },
+									},
+								},
+							},
+						}
+					: binding,
+			),
+		});
+
+		const preview = await service.generatePreview({ deviceId: device.id });
+
+		expect(preview.warnings).toContainEqual(
+			expect.objectContaining({
+				code: HomeyMappingPreviewWarningCode.INCOMPLETE_CAPABILITY_DOMAIN,
+				severity: HomeyMappingPreviewWarningSeverity.ERROR,
+				identifier: 'onoff',
+			}),
+		);
+		expect(preview.readyToAdopt).toBe(false);
+	});
+
+	it('blocks potential transformed enum values outside the Smart Panel property format', async () => {
+		const device = readDeviceFixture('cover');
+		homeyService.getFreshDevice.mockResolvedValue(device);
+		const propertyResolution = mappingLoader.resolvePropertyMappings(device);
+		jest.spyOn(mappingLoader, 'resolvePropertyMappings').mockReturnValue({
+			conflicts: propertyResolution.conflicts,
+			mappings: propertyResolution.mappings.map((binding) =>
+				binding.mapping.name === 'window-covering-status'
+					? {
+							...binding,
+							mapping: {
+								...binding.mapping,
+								property: {
+									...binding.mapping.property,
+									transform: {
+										type: 'thresholds',
+										thresholds: [
+											{ minimum: 1, value: 'open' },
+											{ minimum: 0.000001, value: 'stopped' },
+										],
+										default: 'closed',
+									},
+								},
+							},
+						}
+					: binding,
+			),
+		});
+
+		const preview = await service.generatePreview({ deviceId: device.id });
+
+		expect(preview.warnings).toContainEqual(
+			expect.objectContaining({
+				code: HomeyMappingPreviewWarningCode.INVALID_PROPERTY_VALUE_DOMAIN,
+				severity: HomeyMappingPreviewWarningSeverity.ERROR,
+				identifier: 'windowcoverings_set',
 			}),
 		);
 		expect(preview.readyToAdopt).toBe(false);

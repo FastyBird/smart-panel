@@ -7,7 +7,10 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
+import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelDataInput, DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
+import { validatePropertyCommandValue } from '../../../modules/devices/utils/property-command-value.utils';
+import { getPropertyMetadata } from '../../../modules/devices/utils/schema.utils';
 import { HomeyMappingPreviewRequestDto } from '../dto/mapping-preview.dto';
 import {
 	HomeyMappingPreviewDeviceNotFoundError,
@@ -19,11 +22,12 @@ import {
 	HomeyMappingConflict,
 	HomeyMappingDirection,
 	HomeyMappingResolution,
+	HomeyMappingScalar,
 	HomeyTransformDefinition,
 	ResolvedHomeyChannelMapping,
 	ResolvedHomeyPropertyBinding,
 } from '../mappings/mapping.types';
-import { HomeyCapability } from '../models/homey-capability.model';
+import { HomeyCapability, HomeyCapabilityType } from '../models/homey-capability.model';
 import { HomeyDevice } from '../models/homey-device.model';
 import {
 	HomeyMappingConversionType,
@@ -243,7 +247,7 @@ export class HomeyMappingPreviewService {
 				continue;
 			}
 
-			channel.properties.push(this.createProperty(binding, capability, warnings));
+			channel.properties.push(this.createProperty(binding, capability, channel.category, warnings));
 		}
 
 		for (const channel of channels) {
@@ -261,6 +265,7 @@ export class HomeyMappingPreviewService {
 	private createProperty(
 		binding: ResolvedHomeyPropertyBinding,
 		capability: HomeyCapability,
+		channelCategory: ChannelCategory,
 		warnings: HomeyMappingPreviewWarningModel[],
 	): HomeyMappingPreviewPropertyModel {
 		const { mapping } = binding;
@@ -306,6 +311,8 @@ export class HomeyMappingPreviewService {
 				),
 			);
 		}
+
+		this.addCapabilityDomainWarning(mapping.property.transform, mapping.name, capability, mappingCanRead, warnings);
 
 		if (capability.available === false) {
 			warnings.push(
@@ -394,7 +401,173 @@ export class HomeyMappingPreviewService {
 			);
 		}
 
+		const potentialPanelValues = this.getPotentialPanelValues(
+			mapping.property.transform,
+			capability,
+			mappingCanRead,
+			mappingCanWrite,
+		);
+		if (property.valueAvailable) {
+			potentialPanelValues.push(property.currentValue);
+		}
+
+		if (
+			potentialPanelValues.some(
+				(value) => !this.isValidPanelValue(channelCategory, property.category, property.dataType, value),
+			) ||
+			this.hasIncompleteWritableEnumDomain(
+				channelCategory,
+				property.category,
+				property.dataType,
+				mapping.property.transform,
+				mappingCanWrite,
+			)
+		) {
+			warnings.push(
+				this.warning(
+					HomeyMappingPreviewWarningCode.INVALID_PROPERTY_VALUE_DOMAIN,
+					HomeyMappingPreviewWarningSeverity.ERROR,
+					HomeyMappingPreviewWarningScope.CONVERSION,
+					capability.id,
+					[mapping.name],
+					'The mapping value domain is incompatible with the Smart Panel property constraints',
+				),
+			);
+		}
+
 		return property;
+	}
+
+	private addCapabilityDomainWarning(
+		transform: HomeyTransformDefinition | undefined,
+		mappingName: string,
+		capability: HomeyCapability,
+		mappingCanRead: boolean,
+		warnings: HomeyMappingPreviewWarningModel[],
+	): void {
+		if (!mappingCanRead || transform?.type !== 'map') {
+			return;
+		}
+
+		const sourceDomain =
+			capability.enumValues.length > 0
+				? capability.enumValues.map((value) => value.id)
+				: capability.type === HomeyCapabilityType.BOOLEAN
+					? ['false', 'true']
+					: [];
+		const readTable = transform.read ?? {};
+
+		if (sourceDomain.some((value) => !Object.hasOwn(readTable, value))) {
+			warnings.push(
+				this.warning(
+					HomeyMappingPreviewWarningCode.INCOMPLETE_CAPABILITY_DOMAIN,
+					HomeyMappingPreviewWarningSeverity.ERROR,
+					HomeyMappingPreviewWarningScope.CONVERSION,
+					capability.id,
+					[mappingName],
+					'The readable map does not cover every declared Homey capability value',
+				),
+			);
+		}
+	}
+
+	private getPotentialPanelValues(
+		transform: HomeyTransformDefinition | undefined,
+		capability: HomeyCapability,
+		mappingCanRead: boolean,
+		mappingCanWrite: boolean,
+	): HomeyMappingScalar[] {
+		if (!transform) {
+			return mappingCanRead && capability.enumValues.length > 0 ? capability.enumValues.map((value) => value.id) : [];
+		}
+
+		const values: HomeyMappingScalar[] = [];
+
+		if (mappingCanRead) {
+			switch (transform.type) {
+				case 'scale':
+					values.push(...transform.output_range);
+					break;
+				case 'map':
+					values.push(...Object.values(transform.read ?? {}));
+					break;
+				case 'boolean':
+					values.push(false, true);
+					break;
+				case 'clamp':
+					values.push(transform.minimum, transform.maximum);
+					break;
+				case 'constant':
+					values.push(transform.value);
+					break;
+				case 'threshold':
+					values.push(transform.less_than_or_equal, transform.greater_than);
+					break;
+				case 'thresholds':
+					values.push(...transform.thresholds.map((entry) => entry.value), transform.default);
+					break;
+				case 'round':
+					break;
+			}
+		}
+
+		if (mappingCanWrite && transform.type === 'map') {
+			values.push(...Object.keys(transform.write ?? {}));
+		}
+
+		return values;
+	}
+
+	private isValidPanelValue(
+		channelCategory: ChannelCategory,
+		propertyCategory: PropertyCategory,
+		dataType: DataTypeType,
+		value: HomeyMappingScalar,
+	): boolean {
+		const metadata = getPropertyMetadata(channelCategory, propertyCategory);
+
+		if (metadata === null) {
+			return true;
+		}
+
+		const variant = metadata.dataTypeVariants?.find((candidate) => candidate.data_type === dataType);
+		const constraints = variant ?? metadata;
+		const invalid =
+			typeof constraints.invalid === 'string' ||
+			typeof constraints.invalid === 'number' ||
+			typeof constraints.invalid === 'boolean'
+				? constraints.invalid
+				: null;
+		const property = {
+			dataType,
+			format: constraints.format,
+			invalid,
+			step: constraints.step,
+		} as ChannelPropertyEntity;
+
+		return validatePropertyCommandValue(property, value).valid;
+	}
+
+	private hasIncompleteWritableEnumDomain(
+		channelCategory: ChannelCategory,
+		propertyCategory: PropertyCategory,
+		dataType: DataTypeType,
+		transform: HomeyTransformDefinition | undefined,
+		mappingCanWrite: boolean,
+	): boolean {
+		if (!mappingCanWrite || dataType !== DataTypeType.ENUM || transform?.type !== 'map') {
+			return false;
+		}
+
+		const metadata = getPropertyMetadata(channelCategory, propertyCategory);
+		const variant = metadata?.dataTypeVariants?.find((candidate) => candidate.data_type === dataType);
+		const format = variant ? variant.format : metadata?.format;
+
+		return (
+			Array.isArray(format) &&
+			format.every((value): value is string => typeof value === 'string') &&
+			format.some((value) => !Object.hasOwn(transform.write ?? {}, value))
+		);
 	}
 
 	private createConversion(transform: HomeyTransformDefinition | undefined): HomeyMappingPreviewConversionModel {
