@@ -26,6 +26,8 @@ const ACTION_WEATHER_CONTEXT_PATTERN =
 	/\b(?:cloud|cloudy|fog|foggy|forecast|rain|raining|snow|storm|stormy|sun|sunny|thunder|weather|wind)\b|\b(?:cold|colder|cooler|hot|hotter|temperature|warm|warmer)\b.*\boutside\b|\boutside\b.*\b(?:cold|colder|cooler|hot|hotter|temperature|warm|warmer)\b/u;
 const ENERGY_PATTERN = /\b(?:consumption|energy|kwh|power|production|usage)\b/u;
 const ACTION_ENERGY_CONTEXT_PATTERN = /\b(?:consumption|energy|kwh|production|usage)\b/u;
+const WEATHER_ENTITY_NAME_PATTERN = /\boutside\s+(?:device|fan|lamp|light|sensor|switch)\b/u;
+const ENERGY_ENTITY_NAME_PATTERN = /\bpower\s+(?:device|fan|lamp|light|sensor|switch)\b/u;
 const SECURITY_PATTERN = /\b(?:alarm|armed|intrusion|secure|security)\b/u;
 const HISTORY_PATTERN =
 	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:month|night|week|year))\b|\b(?:for|last|over)\s+\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b/u;
@@ -56,7 +58,8 @@ const LEADING_CONDITION_PATTERN =
 const RELATIVE_PATTERN = /\b(?:brighter|colder|cooler|darker|down|higher|hotter|less|lower|more|times as|up|warmer)\b/u;
 const PRONOUN_PATTERN = /\b(?:it|that|them|these|they|this|those)\b|\bthe one\b/u;
 const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:it|that|this)\b|\bthe one\b/u;
-const CAPABILITY_DISCOVERY_PATTERN = /^(?:what|which)\b.*\b(?:am i able to|can i)\b/u;
+const CAPABILITY_DISCOVERY_PATTERN =
+	/^(?:(?:what|which)\b|(?:can|could|would) you (?:show|tell)(?: me)?\b).*\b(?:am i able to|can i|i can)\b.*\b(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\b/u;
 const CONTEXTUAL_SCOPE_PATTERN = /\b(?:here|in this room|this space)\b/u;
 const GENERIC_ACTION_TARGET_PATTERN =
 	/\b(?:a|all|an|any|the)\s+(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:blind|blinds|device|devices|door|doors|fan|fans|lamp|lamps|light|lights|scene|scenes|switch|switches|thermostat|thermostats|window|windows)\b|\b(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:blinds|devices|doors|fans|lamps|lights|scenes|switches|thermostats|windows)\b|^[?!,.;\s]*(?:(?:and|if so|please|then)\s+)*(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\s+(?:off\s+|on\s+)?(?:blind|device|door|fan|lamp|light|scene|switch|thermostat|window)\b/u;
@@ -244,18 +247,24 @@ function classifyDomains(
 	if (isGenericExplanation) return ['general'];
 
 	const domains = new Set<BuddyContextDomain>();
-	const hasWeather = WEATHER_PATTERN.test(message) && (!hasAction || ACTION_WEATHER_CONTEXT_PATTERN.test(message));
-	const hasEnergy = ENERGY_PATTERN.test(message) && (!hasAction || ACTION_ENERGY_CONTEXT_PATTERN.test(message));
+	const hasWeather =
+		WEATHER_PATTERN.test(message) &&
+		(hasAction ? ACTION_WEATHER_CONTEXT_PATTERN.test(message) : !WEATHER_ENTITY_NAME_PATTERN.test(message));
+	const hasEnergy =
+		ENERGY_PATTERN.test(message) &&
+		(hasAction ? ACTION_ENERGY_CONTEXT_PATTERN.test(message) : !ENERGY_ENTITY_NAME_PATTERN.test(message));
 	const hasSecurity = SECURITY_PATTERN.test(message);
+	const hasNonHomeDomain = hasWeather || hasEnergy || hasSecurity;
 	const hasInstallationHome = HOME_INSTALLATION_PATTERN.test(message) && !hasWeather && !hasEnergy && !hasSecurity;
 	const hasContextualHomeState =
 		HOME_STATE_PATTERN.test(message) && (!hasWeather || CONTEXTUAL_SCOPE_PATTERN.test(message));
+	const hasRecentReferenceHome = hasRecentReferencePronoun && (hasAction || !hasNonHomeDomain);
 
 	if (
 		HOME_ENTITY_PATTERN.test(message) ||
 		hasContextualHomeState ||
 		hasHomeActionOrPredicate ||
-		hasRecentReferencePronoun ||
+		hasRecentReferenceHome ||
 		hasExplicitSpace ||
 		hasInstallationHome
 	) {
@@ -361,7 +370,9 @@ function hasGenericActionTarget(message: string, explicitSpaces: readonly BuddyC
 }
 
 function hasGenericActionTargetClause(message: string, explicitSpaces: readonly BuddyContextSpaceReference[]): boolean {
-	if (explicitSpaces.length === 1 && /\ball\b.*\b(?:lighting|lights)\b/u.test(message)) return false;
+	const hasClauseSpace = explicitSpaces.some((space) => containsNormalizedPhrase(message, normalize(space.name)));
+
+	if (hasClauseSpace && /\ball\b.*\b(?:lighting|lights)\b/u.test(message)) return false;
 	if (EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN.test(message)) return false;
 	if (GENERIC_ACTION_TARGET_PATTERN.test(message)) return true;
 

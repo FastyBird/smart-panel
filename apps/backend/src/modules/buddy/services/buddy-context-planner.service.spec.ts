@@ -624,6 +624,21 @@ describe('BuddyContextPlannerService', () => {
 		expect(result.toolNames).toContain('set_space_lighting');
 	});
 
+	it('requires an all-lights clause to name its own resolved space', () => {
+		expect(
+			service.plan({
+				message: 'Turn all lights off and set bedroom thermostat to 20',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: { spaceId: 'space-bedroom' },
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
 	it.each(['Turn on the lamp and set bedroom thermostat to 20', 'Turn all bedroom lights off and open the window'])(
 		'does not let an exact action target hide ambiguity in another clause: %s',
 		(message) => {
@@ -824,6 +839,46 @@ describe('BuddyContextPlannerService', () => {
 		},
 	);
 
+	it.each(['Is the outside light on?', 'What is the power switch state?'])(
+		'keeps a domain keyword used in a device name on the home read path: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({
+				domains: ['home'],
+				intent: 'read',
+				strategy: 'model-tools',
+				queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+			});
+		},
+	);
+
+	it('does not attach a stale home reference to an explicit weather question', () => {
+		expect(
+			service.plan({
+				message: 'Is it raining?',
+				recentEntityReferences: [
+					{
+						kind: 'device',
+						id: 'device-lamp',
+						name: 'Lamp',
+						compatibleActionTypes: ['turn'],
+					},
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['weather'],
+			intent: 'read',
+			scope: {},
+			queries: [{ kind: 'weather' }],
+			strategy: 'prefetch',
+		});
+	});
+
 	it('detects an action after a direct read command', () => {
 		expect(
 			service.plan({
@@ -842,6 +897,20 @@ describe('BuddyContextPlannerService', () => {
 		expect(
 			service.plan({
 				message: 'Which lights can I dim?',
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			strategy: 'prefetch',
+			queries: [{ kind: 'search-home' }],
+		});
+	});
+
+	it('uses metadata search for modal capability discovery', () => {
+		expect(
+			service.plan({
+				message: 'Can you show me which lights I can dim?',
 				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
 			}),
 		).toMatchObject({
