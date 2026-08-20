@@ -54,8 +54,14 @@ const PARTIAL_LIGHTING_GROUP_PATTERN =
 	/\b(?:a couple of|a few|eight|five|four|half|nine|one|one third|one quarter|part of|portion of|seven|several|six|some|three|two|\d+)\b.*\b(?:lamp|lamps|light|lights)\b/u;
 
 const DOMAIN_ORDER: readonly BuddyContextDomain[] = ['general', 'home', 'weather', 'energy', 'security', 'history'];
-const WEATHER_PATTERN =
-	/\b(?:cloud|cloudy|fog|foggy|forecast|outdoor|outside|rain|raining|snow|storm|stormy|sun|sunny|thunder|weather|wind)\b|\btemperature\b.*\b(?:tomorrow|next (?:day|morning|week))\b|\b(?:tomorrow|next (?:day|morning|week))\b.*\btemperature\b/u;
+const EXPLICIT_WEATHER_PATTERN =
+	/\b(?:cloud|cloudy|fog|foggy|forecast|outdoor|outside|rain|raining|snow|storm|stormy|sun|sunny|thunder|weather|wind)\b/u;
+const FUTURE_TEMPERATURE_PATTERN =
+	/\btemperature\b.*\b(?:tomorrow|next (?:day|morning|week))\b|\b(?:tomorrow|next (?:day|morning|week))\b.*\btemperature\b/u;
+const WEATHER_PATTERN = new RegExp(
+	String.raw`${EXPLICIT_WEATHER_PATTERN.source}|${FUTURE_TEMPERATURE_PATTERN.source}`,
+	'u',
+);
 const ENERGY_PATTERN = /\b(?:consumption|electricity|energy|kwh|power|production|usage)\b/u;
 const DOMAIN_ENTITY_CATEGORY_PATTERN_SOURCE =
 	'device|devices|fan|fans|lamp|lamps|light|lights|sensor|sensors|switch|switches';
@@ -79,11 +85,11 @@ const CLOCK_TIME_HISTORY_PATTERN = new RegExp(
 	'u',
 );
 const SCHEDULED_ACTION_PATTERN = new RegExp(
-	String.raw`\b(?:at\s+${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE}|tomorrow|tonight|next\s+(?:day|evening|morning|night|week)|in\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?))\b`,
+	String.raw`\b(?:at\s+${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE}(?!\s*(?:%|percent\b))|tomorrow|tonight|next\s+(?:day|evening|morning|night|week)|in\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?))\b`,
 	'u',
 );
 const HISTORY_PATTERN =
-	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\bhow\s+(?:did|has|have|is|was)\b.*\b(?:change|changed|changing|varied)\b|\b(?:at\s+)?what time did\b|\bwhen did\b|\b(?:earlier today|last (?:day|hour|minute|month|night|week|weekend|year)|this (?:afternoon|evening|morning|night))\b|\b(?:last|since)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b(?:did|was|were)\b.*\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*\b(?:did|was|were)\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
+	/\b(?:chart|graph|history|historical|past|trend|vcera|yesterday)\b|\bhow\s+(?:did|has|have|is|was)\b.*\b(?:change|changed|changing|varied)\b|\b(?:at\s+)?what time did\b|\bwhen did\b|\b(?:earlier today|last (?:day|hour|minute|month|night|week|weekend|year)|this (?:afternoon|evening|morning|night))\b|\b(?:last|since)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b(?:did|was|were)\b.*\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*\b(?:did|was|were)\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
 const LEADING_WEEKDAY_HISTORY_PATTERN = /^\s*on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*$/u;
 const TEMPORAL_HISTORY_PATTERN = new RegExp(
 	String.raw`(?:${HISTORY_PATTERN.source}|${CLOCK_TIME_HISTORY_PATTERN.source})`,
@@ -127,6 +133,8 @@ const RELATIVE_PATTERN = new RegExp(
 	String.raw`\b(?:${[...BUDDY_RELATIVE_ADJUSTMENT_SIGNALS].join('|')}|times as)\b`,
 	'u',
 );
+const REPEATED_ACTION_PATTERN =
+	/\b(?:once|thrice|twice)\b(?!\s+as\b)|\b(?:\d+|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+times?\b/u;
 const PRONOUN_PATTERN = /\b(?:ho|it|its|that|their|them|these|they|this|those)\b|\bthe one\b/u;
 const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:ho|it|its|that|this)\b|\bthe one\b/u;
 const PLURAL_REFERENCE_PRONOUN_PATTERN = /\b(?:their|them|these|they|those)\b/u;
@@ -214,7 +222,7 @@ const TRAILING_READ_PATTERN = new RegExp(
 @Injectable()
 export class BuddyContextPlannerService {
 	plan(input: BuddyContextPlannerInput): BuddyContextPlan {
-		const normalizedMessage = normalize(input.message);
+		const normalizedMessage = normalizeGerundActionRequest(normalize(input.message));
 		const recentEntityReferences = input.recentEntityReferences ?? [];
 		const hasRecentReferencePronoun =
 			hasReferencePronoun(stripContextualScopeReferences(normalizedMessage)) && recentEntityReferences.length > 0;
@@ -239,6 +247,9 @@ export class BuddyContextPlannerService {
 		const isGenericExplanation = isGeneralExplanation(normalizedMessage, explicitSpaces.length > 0);
 		const isPredicateQuestion = isStatePredicateQuestion(normalizedMessage);
 		const isWrappedStateRead = MODAL_STATE_READ_PATTERN.test(normalizedMessage);
+		const hasUnsupportedScopedFutureTemperature = splitPlannerClauses(normalizedMessage, explicitSpaces).some(
+			(clause) => isScopedIndoorFutureTemperatureClause(clause, explicitSpaces),
+		);
 		const trailingActionMatch =
 			isPredicateQuestion || isWrappedStateRead || READ_PATTERN.test(normalizedMessage)
 				? TRAILING_ACTION_PATTERN.exec(normalizedMessage)
@@ -319,6 +330,7 @@ export class BuddyContextPlannerService {
 			hasDuplicateNameSpaceAmbiguity,
 			hasExcessiveExplicitSpaceScope,
 			hasExcessiveReferenceScope,
+			hasUnsupportedScopedFutureTemperature,
 		);
 		const strategy = selectStrategy(intent, ambiguityRisk, domains, input.providerCapabilities);
 		const includeCurrentStateForRead =
@@ -493,11 +505,15 @@ function classifyDomains(
 	if (isGenericExplanation) return ['general'];
 
 	const domains = new Set<BuddyContextDomain>();
-	const hasWeather = hasDomainSignalOutsideEntityName(
-		message,
-		WEATHER_PATTERN,
-		WEATHER_ENTITY_NAME_PATTERN,
-		explicitSpaces,
+	const clauses = splitPlannerClauses(message, explicitSpaces);
+	const hasWeather = clauses.some(
+		(clause) =>
+			!isScopedIndoorFutureTemperatureClause(clause, explicitSpaces) &&
+			hasDomainSignalInClause(
+				removeExplicitSpaceOccurrencesForDomain(getRetrievalClause(clause), explicitSpaces),
+				WEATHER_PATTERN,
+				WEATHER_ENTITY_NAME_PATTERN,
+			),
 	);
 	const hasEnergy = hasDomainSignalOutsideEntityName(
 		message,
@@ -511,7 +527,6 @@ function classifyDomains(
 		SECURITY_ENTITY_NAME_PATTERN,
 		explicitSpaces,
 	);
-	const clauses = splitPlannerClauses(message, explicitSpaces);
 	const conjoinedEnergySpaceIds = new Set(resolveConjoinedEnergySpaceIds(message, explicitSpaces));
 	const hasHomeEntity = clauses.some((clause) => {
 		const retrievalClause = removeExplicitSpaceOccurrencesForDomain(
@@ -670,6 +685,17 @@ function getRetrievalClause(clause: string): string {
 
 function hasDomainSignalInClause(clause: string, domainPattern: RegExp, entityNamePattern: RegExp): boolean {
 	return domainPattern.test(clause.replace(entityNamePattern, ' '));
+}
+
+function isScopedIndoorFutureTemperatureClause(
+	clause: string,
+	explicitSpaces: readonly BuddyContextSpaceReference[],
+): boolean {
+	return (
+		FUTURE_TEMPERATURE_PATTERN.test(clause) &&
+		!EXPLICIT_WEATHER_PATTERN.test(clause) &&
+		explicitSpaces.some((space) => hasExplicitSpaceOccurrence(clause, space, explicitSpaces))
+	);
 }
 
 function hasHistorySignalInClause(clause: string): boolean {
@@ -879,8 +905,10 @@ function classifyAmbiguityRisk(
 	hasDuplicateNameSpaceAmbiguity = false,
 	hasExcessiveExplicitSpaceScope = false,
 	hasExcessiveReferenceScope = false,
+	hasUnsupportedScopedFutureTemperature = false,
 ): BuddyContextAmbiguityRisk {
 	const isAction = hasWrite || hasTrigger;
+	if (hasUnsupportedScopedFutureTemperature) return isAction ? 'action' : 'read';
 
 	if (isAction) {
 		if (hasDuplicateNameSpaceAmbiguity || hasExcessiveExplicitSpaceScope || hasExcessiveReferenceScope) {
@@ -894,6 +922,7 @@ function classifyAmbiguityRisk(
 			return 'action';
 		}
 		if (/\bor\b/u.test(actionReferenceMessage)) return 'action';
+		if (REPEATED_ACTION_PATTERN.test(actionReferenceMessage)) return 'action';
 		if (SCHEDULED_ACTION_PATTERN.test(actionReferenceMessage)) return 'action';
 		if (
 			hasGenericActionTarget(actionReferenceMessage, explicitSpaces, conversationSpaceId !== undefined) &&
@@ -1437,7 +1466,9 @@ function findExplicitSpaceOccurrences(
 	const occurrences = spaces.flatMap((space) => {
 		const name = normalize(space.name);
 
-		return findNormalizedPhraseRanges(message, name).map((range) => ({ space, name, range }));
+		return getNormalizedSpaceNameVariants(name).flatMap((variant) =>
+			findNormalizedPhraseRanges(message, variant).map((range) => ({ space, name, range })),
+		);
 	});
 
 	return occurrences
@@ -1451,6 +1482,10 @@ function findExplicitSpaceOccurrences(
 				),
 		)
 		.map(({ space, range }) => ({ space, range }));
+}
+
+function getNormalizedSpaceNameVariants(name: string): string[] {
+	return name.endsWith('ice') ? [name, `${name.slice(0, -1)}i`] : [name];
 }
 
 function hasExplicitSpaceOccurrence(
@@ -1751,4 +1786,40 @@ function normalize(value: string): string {
 		.replace(/\p{Mark}/gu, '')
 		.toLocaleLowerCase('en-US')
 		.trim();
+}
+
+function normalizeGerundActionRequest(message: string): string {
+	const gerundActions: Readonly<Record<string, string>> = {
+		activating: 'activate',
+		adjusting: 'adjust',
+		brightening: 'brighten',
+		changing: 'change',
+		closing: 'close',
+		deactivating: 'deactivate',
+		decreasing: 'decrease',
+		dimming: 'dim',
+		increasing: 'increase',
+		locking: 'lock',
+		lowering: 'lower',
+		making: 'make',
+		opening: 'open',
+		raising: 'raise',
+		running: 'run',
+		setting: 'set',
+		starting: 'start',
+		stopping: 'stop',
+		switching: 'switch',
+		triggering: 'trigger',
+		turning: 'turn',
+		unlocking: 'unlock',
+	};
+	const gerundPattern = Object.keys(gerundActions).join('|');
+	const politeGerundRequest = new RegExp(
+		String.raw`\b(?:(would you)\s+mind|((?:can|could|will|would) you)(?:\s+please)?\s+try)\s+(${gerundPattern})\b`,
+		'gu',
+	);
+
+	return message.replace(politeGerundRequest, (_match, mindPrefix, tryPrefix, gerund: string) => {
+		return `${mindPrefix ?? tryPrefix} ${gerundActions[gerund]}`;
+	});
 }

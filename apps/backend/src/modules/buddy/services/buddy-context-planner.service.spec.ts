@@ -3240,4 +3240,96 @@ describe('BuddyContextPlannerService', () => {
 			],
 		});
 	});
+
+	it('clarifies an unsupported repeated scene action', () => {
+		expect(
+			service.plan({
+				message: 'Run Movie Night twice',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'mixed',
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
+	it('clarifies a scoped indoor future-temperature request instead of fetching outdoor weather', () => {
+		expect(
+			service.plan({
+				message: 'What will the Bedroom temperature be tomorrow?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			ambiguityRisk: 'read',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
+	it('recognizes polite gerund device-action requests', () => {
+		const providerCapabilities = { toolCalling: 'reliable' as const, supportsStructuredToolResults: true };
+
+		expect(
+			service.plan({
+				message: 'Would you mind turning off the Bedroom lights?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities,
+			}),
+		).toMatchObject({
+			intent: 'write',
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+		});
+
+		expect(
+			service.plan({
+				message: 'Could you try turning it off?',
+				recentEntityReferences: [{ kind: 'device', id: 'device-fan', name: 'Fan', compatibleActionTypes: ['turn'] }],
+				providerCapabilities,
+			}),
+		).toMatchObject({
+			intent: 'write',
+			scope: { referencedEntityIds: ['device-fan'] },
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+		});
+	});
+
+	it('treats a percentage after at as an action value rather than a schedule', () => {
+		expect(
+			service.plan({
+				message: 'Set Kitchen Accent at 8%',
+				knownSpaces: [{ id: 'space-kitchen', name: 'Kitchen' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			intent: 'write',
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device'],
+		});
+	});
+
+	it('routes a Czech yesterday temperature question to property history', () => {
+		expect(
+			service.plan({
+				message: 'Jaká byla teplota v ložnici včera?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Ložnice' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			scope: { spaceId: 'space-bedroom' },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+			],
+		});
+	});
 });
