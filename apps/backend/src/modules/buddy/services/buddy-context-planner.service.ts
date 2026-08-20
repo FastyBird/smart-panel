@@ -1415,16 +1415,20 @@ function resolveTemporalExplicitSpaceIds(
 		for (const match of matches) {
 			const start = match.index;
 			const temporalCenter = start + match[0].length / 2;
-			const nearestSpace = clauseSpaces
-				.flatMap(({ space, ranges }) =>
-					ranges.map((range) => ({
-						space,
-						distance: Math.abs((range.start + range.end) / 2 - temporalCenter),
-					})),
-				)
+			const spaceRanges = clauseSpaces.flatMap(({ space, ranges }) => ranges.map((range) => ({ space, range })));
+			const precedingSpace = spaceRanges
+				.filter(({ range }) => range.end <= start)
+				.sort((left, right) => right.range.end - left.range.end)[0]?.space;
+			const nearestSpace = spaceRanges
+				.map(({ space, range }) => ({
+					space,
+					distance: Math.abs((range.start + range.end) / 2 - temporalCenter),
+				}))
 				.sort((left, right) => left.distance - right.distance)[0]?.space;
 
-			if (nearestSpace) spaceIds.push(nearestSpace.id);
+			const selectedSpace = precedingSpace ?? nearestSpace;
+
+			if (selectedSpace) spaceIds.push(selectedSpace.id);
 		}
 	}
 

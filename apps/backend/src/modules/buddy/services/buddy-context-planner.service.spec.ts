@@ -1452,6 +1452,26 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('binds postfix temporal qualifiers to their preceding space properties', () => {
+		expect(
+			service.plan({
+				message: 'Compare the Bedroom temperature now with the Kitchen temperature yesterday',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'search-home', spaceId: 'space-kitchen' },
+				{ kind: 'current-state', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-kitchen' },
+			],
+		});
+	});
+
 	it('keeps an unqualified temporal clause in conversation scope', () => {
 		expect(
 			service.plan({
