@@ -6,8 +6,8 @@ interface IConfigChangeEvent {
 }
 
 interface IConfigChangeTargets {
-	configModulesStore: { get: (payload: { type: string }) => Promise<unknown> };
-	configPluginsStore: { get: (payload: { type: string }) => Promise<unknown> };
+	configModulesStore: { get: (payload: { type: string; force?: boolean }) => Promise<unknown> };
+	configPluginsStore: { get: (payload: { type: string; force?: boolean }) => Promise<unknown> };
 	logger: { warn: (message: string, ...args: unknown[]) => void; error: (message: string, ...args: unknown[]) => void };
 }
 
@@ -49,11 +49,14 @@ export const handleConfigChangeEvent = (data: IConfigChangeEvent, targets: IConf
 			}
 
 			if (type === 'module') {
-				configModulesStore.get({ type: source }).catch((error: unknown): void => {
+				// `force: true` because this call is racing an already-in-flight `get()` for the same
+				// type just as often as it is racing `fetch()`: reusing that in-flight request's result
+				// would silently hand back a read taken before this change happened. See config-modules.store.ts.
+				configModulesStore.get({ type: source, force: true }).catch((error: unknown): void => {
 					logger.error('Failed to refresh a module config after a change event', error);
 				});
 			} else if (type === 'plugin') {
-				configPluginsStore.get({ type: source }).catch((error: unknown): void => {
+				configPluginsStore.get({ type: source, force: true }).catch((error: unknown): void => {
 					logger.error('Failed to refresh a plugin config after a change event', error);
 				});
 			} else {

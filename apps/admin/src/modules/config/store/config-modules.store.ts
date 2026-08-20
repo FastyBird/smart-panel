@@ -67,6 +67,21 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 
 		const pendingFetchPromises: Record<string, Promise<IConfigModule[]>> = {};
 
+		// Stamped on every write that is not `fetch()` applying its own response — a websocket event,
+		// a change-driven `get()`, an `edit()`. `fetch()` remembers the stamp it went out under, so
+		// when its response lands it can tell which entries were written since: for those the snapshot
+		// is the older story and must not overwrite them. See the guard inside `fetch()` below.
+		let mutationToken = 0;
+		const mutationTokenByType: Record<IConfigModule['type'], number> = {};
+
+		// The one way an entry is written outside `fetch()`. Every direct `data.value[...] = ...`
+		// write below goes through it, which is what keeps the stamp complete.
+		const commit = (config: IConfigModule): IConfigModule => {
+			mutationTokenByType[config.type] = ++mutationToken;
+
+			return (data.value[config.type] = config);
+		};
+
 		const updating = (module: IConfigModule['type']): boolean => semaphore.value.updating.includes(module);
 
 		const onEvent = (payload: IConfigModulesOnEventActionPayload): IConfigModule => {
@@ -89,7 +104,7 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 					throw new ConfigValidationException('Failed to insert module configuration.');
 				}
 
-				return (data.value[parsed.data.type] = parsed.data);
+				return commit(parsed.data);
 			}
 
 			const parsed = (element?.schemas?.moduleConfigSchema || ConfigModuleSchema).safeParse(payload.data);
@@ -102,13 +117,22 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 
 			data.value ??= {};
 
-			return (data.value[parsed.data.type] = parsed.data);
+			return commit(parsed.data);
 		};
 
 		const get = async (payload: IConfigModulesGetActionPayload): Promise<IConfigModule> => {
 			const existingPromise = pendingGetPromises[payload.type];
 			if (existingPromise) {
-				return existingPromise;
+				if (payload.force) {
+					// A change-driven refresh must be a genuinely fresh read: reusing an in-flight
+					// request could hand back a snapshot taken before the change this call is
+					// reacting to. Its result does not matter here, only that it has finished — that
+					// is what frees the semaphore below for the new request this call makes instead
+					// of throwing 'Already getting module config.' by firing concurrently.
+					await existingPromise.catch(() => undefined);
+				} else {
+					return existingPromise;
+				}
 			}
 
 			const getPromise = (async (): Promise<IConfigModule> => {
@@ -136,9 +160,7 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 
 						const transformed = transformConfigModuleResponse(responseData.data, element?.schemas?.moduleConfigSchema || ConfigModuleSchema);
 
-						data.value[transformed.type] = transformed;
-
-						return transformed;
+						return commit(transformed);
 					}
 
 					let errorReason: string | null = 'Failed to fetch module config.';
@@ -167,6 +189,10 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 				return pendingFetchPromises['all'];
 			}
 
+			// Read before the request goes out: every entry stamped later than this was written while
+			// the server was assembling its answer, so for those entries this response is out of date.
+			const requestedAt = mutationToken;
+
 			const fetchPromise = (async (): Promise<IConfigModule[]> => {
 				if (semaphore.value.fetching.items) {
 					throw new ConfigApiException('Already fetching modules config.');
@@ -177,16 +203,42 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 				try {
 					const { data: responseData, error, response } = await backend.client.GET(`/${MODULES_PREFIX}/${CONFIG_MODULE_PREFIX}/config/modules`);
 
-				if (typeof responseData !== 'undefined') {
-					data.value = Object.fromEntries(
-						responseData.data.map((module) => {
+					if (typeof responseData !== 'undefined') {
+						// Applied entry by entry rather than assigned wholesale: an entry written since
+						// `requestedAt` is newer than this snapshot and keeps what it holds — including
+						// having been dropped locally, which is why a stamped type with nothing behind
+						// it is left out rather than restored. Entries the response does not carry are
+						// still evicted, which is what makes this a replacement rather than a merge
+						// that can only ever grow.
+						const applied: { [key: IConfigModule['type']]: IConfigModule } = {};
+
+						for (const module of responseData.data) {
 							const element = getModuleElement(module.type);
 
 							const transformed = transformConfigModuleResponse(module, element?.schemas?.moduleConfigSchema || ConfigModuleSchema);
 
-							return [transformed.type, transformed];
-						})
-					);
+							if ((mutationTokenByType[transformed.type] ?? 0) > requestedAt) {
+								const local = data.value[transformed.type];
+
+								if (local) {
+									applied[transformed.type] = local;
+								}
+
+								continue;
+							}
+
+							applied[transformed.type] = transformed;
+						}
+
+						// Written while the request was in flight and absent from its answer: the
+						// server read its list before this entry's local write landed.
+						for (const [type, token] of Object.entries(mutationTokenByType)) {
+							if (token > requestedAt && !(type in applied) && data.value[type]) {
+								applied[type] = data.value[type];
+							}
+						}
+
+						data.value = applied;
 
 						firstLoad.value = true;
 
@@ -246,7 +298,7 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 
 			semaphore.value.updating.push(payload.data.type);
 
-			data.value[parsedEditedConfig.data.type] = parsedEditedConfig.data;
+			commit(parsedEditedConfig.data);
 
 			try {
 				const {
@@ -270,9 +322,7 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 				if (typeof responseData !== 'undefined') {
 					const transformed = transformConfigModuleResponse(responseData.data, element?.schemas?.moduleConfigSchema || ConfigModuleSchema);
 
-					data.value[transformed.type] = transformed;
-
-					return transformed;
+					return commit(transformed);
 				}
 
 				// Updating the record on api failed, we need to refresh the record

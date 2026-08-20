@@ -548,6 +548,46 @@ describe('Devices Store', () => {
 			expect(store.findById(ids[1]!)?.enabled).toBe(true);
 		});
 
+		// The race the mutation-token stamp exists to prevent: a `fetch()` already in flight when the
+		// bulk update lands resolves afterwards with the response the server assembled before the
+		// update - still carrying the pre-update `enabled` value. Applying that snapshot must not
+		// undo the confirmed bulk outcome.
+		it('keeps the bulk-confirmed value against a fetch that resolves later with the stale value', async () => {
+			const device = deviceFixture('device-1');
+
+			mockBackendClient.GET.mockResolvedValueOnce({ data: { data: [device] }, error: undefined, response: { status: 200 } });
+
+			await store.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
+
+			let resolveRequest!: (value: unknown) => void;
+
+			const request = new Promise((resolve) => {
+				resolveRequest = resolve;
+			});
+
+			(mockBackendClient.GET as Mock).mockReturnValueOnce(request);
+
+			// A refresh - e.g. on reconnect - starts before the bulk update goes out ...
+			const pendingFetch = store.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
+
+			mockBackendClient.POST.mockResolvedValue({
+				data: { data: { succeeded: [device.id], failed: [] } },
+				error: undefined,
+				response: { ok: true, status: 200 },
+			});
+
+			await store.bulkSetEnabled({ ids: [device.id], enabled: false });
+
+			expect(store.findById(device.id)?.enabled).toBe(false);
+
+			// ... and resolves only now, with the response the server built before the bulk update
+			// committed - still `enabled: true`.
+			resolveRequest({ data: { data: [device] } });
+			await pendingFetch;
+
+			expect(store.findById(device.id)?.enabled).toBe(false);
+		});
+
 		it('sends the selection in the request body', async () => {
 			const ids = await seed(2);
 

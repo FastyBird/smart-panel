@@ -209,6 +209,85 @@ describe('ConfigModule Store', () => {
 		expect(store.firstLoadFinished()).toBe(true);
 	});
 
+	// The race the mutation-token stamp exists to prevent: a change event fires a `get()` for the
+	// changed type while an already-in-flight `fetch()` is still reading the pre-change configuration.
+	// Without the stamp, `fetch()`'s wholesale replace lands after `get()` and wipes it out with the
+	// older snapshot, so the admin stays stale until something else happens to refresh it.
+	it('keeps an entry refreshed by get() while fetch() is in flight, rather than restoring the snapshot it answers with', async () => {
+		let resolveFetch!: (value: unknown) => void;
+
+		const fetchRequest = new Promise((resolve) => {
+			resolveFetch = resolve;
+		});
+
+		(backendClient.GET as Mock).mockReturnValueOnce(fetchRequest).mockResolvedValueOnce({
+			data: { data: { ...mockModuleRes, mockValue: 'fresh value' } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		const pendingFetch = store.fetch();
+
+		// The change-driven refresh lands before the response the server assembled ahead of it.
+		await store.get({ type: 'custom-module' });
+
+		resolveFetch({ data: { data: [mockModuleRes] } });
+		await pendingFetch;
+
+		expect((store.data[mockModule.type] as ICustomModuleConfig).mockValue).toBe('fresh value');
+	});
+
+	// The other half of the same rule: an entry the response *does* carry, and that nothing has
+	// touched since the request went out, is still applied — otherwise this guard would freeze the
+	// store rather than merely protecting entries genuinely written since the request was made.
+	it('applies an entry the fetch response carries when nothing has written it since the request went out', async () => {
+		let resolveFetch!: (value: unknown) => void;
+
+		const fetchRequest = new Promise((resolve) => {
+			resolveFetch = resolve;
+		});
+
+		(backendClient.GET as Mock).mockReturnValueOnce(fetchRequest);
+
+		store.data = { [mockModule.type]: { ...mockModule } };
+
+		const pendingFetch = store.fetch();
+
+		resolveFetch({ data: { data: [{ ...mockModuleRes, mockValue: 'server value' }] } });
+		await pendingFetch;
+
+		expect((store.data[mockModule.type] as ICustomModuleConfig).mockValue).toBe('server value');
+	});
+
+	// The other race: a change event calling `get({ force: true })` while an earlier `get()` for the
+	// same type is still in flight must not just hand back that older request's answer. It should wait
+	// for it to settle, then issue a genuinely new request.
+	it('issues a new request for a forced get() instead of reusing an in-flight one', async () => {
+		let resolveFirst!: (value: unknown) => void;
+
+		const firstRequest = new Promise((resolve) => {
+			resolveFirst = resolve;
+		});
+
+		(backendClient.GET as Mock).mockReturnValueOnce(firstRequest).mockResolvedValueOnce({
+			data: { data: { ...mockModuleRes, mockValue: 'forced value' } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		const firstGet = store.get({ type: 'custom-module' });
+		const forcedGet = store.get({ type: 'custom-module', force: true });
+
+		resolveFirst({ data: { data: mockModuleRes } });
+
+		const [firstResult, forcedResult] = await Promise.all([firstGet, forcedGet]);
+
+		expect(backendClient.GET).toHaveBeenCalledTimes(2);
+		expect(firstResult).toEqual(mockModule);
+		expect((forcedResult as ICustomModuleConfig).mockValue).toBe('forced value');
+		expect((store.data[mockModule.type] as ICustomModuleConfig).mockValue).toBe('forced value');
+	});
+
 	it('should handle onEvent and update module config', () => {
 		const eventPayload = {
 			type: 'custom-module',

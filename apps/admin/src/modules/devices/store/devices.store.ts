@@ -807,7 +807,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				const record = data.value[id];
 
 				if (record !== undefined) {
-					data.value[id] = { ...record, enabled: payload.enabled };
+					commit({ ...record, enabled: payload.enabled });
 				}
 			}
 
