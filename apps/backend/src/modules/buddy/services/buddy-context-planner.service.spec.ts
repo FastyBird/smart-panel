@@ -69,9 +69,9 @@ describe('BuddyContextPlannerService', () => {
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			}),
 		).toMatchObject({
-			intent: 'mixed',
+			intent: 'write',
 			strategy: 'model-tools',
-			toolNames: ['search_home', 'query_home_state', 'control_device', 'run_scene'],
+			toolNames: ['search_home', 'query_home_state', 'control_device'],
 		});
 	});
 
@@ -1561,7 +1561,7 @@ describe('BuddyContextPlannerService', () => {
 			}),
 		).toMatchObject({
 			domains: ['home'],
-			intent: 'mixed',
+			intent: 'write',
 			ambiguityRisk: 'action',
 			strategy: 'clarify',
 			toolNames: [],
@@ -2377,6 +2377,384 @@ describe('BuddyContextPlannerService', () => {
 				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
 			],
 			strategy: 'prefetch',
+		});
+	});
+
+	it('clarifies a lighting target shared by duplicate configured space names', () => {
+		expect(
+			service.plan({
+				message: 'Turn Office lights off',
+				knownSpaces: [
+					{ id: 'space-office-east', name: 'Office' },
+					{ id: 'space-office-west', name: 'Office' },
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			scope: {},
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
+	it('propagates an exclusion across a conjoined configured-space list', () => {
+		expect(
+			service.plan({
+				message: 'What is the temperature everywhere except Bedroom and Kitchen?',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			scope: {},
+			ambiguityRisk: 'read',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
+	it('routes an explicit clock-time range to bounded history retrieval', () => {
+		expect(
+			service.plan({
+				message: 'Show the Bedroom temperature from 8am to 10am',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			scope: { spaceId: 'space-bedroom' },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+			],
+			strategy: 'prefetch',
+		});
+	});
+
+	it('keeps article-free smart-lighting definitions off home retrieval', () => {
+		expect(
+			service.plan({
+				message: 'What is smart lighting?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toEqual({
+			domains: ['general'],
+			intent: 'none',
+			scope: {},
+			queries: [],
+			toolNames: [],
+			ambiguityRisk: 'none',
+			strategy: 'no-home-context',
+		});
+	});
+
+	it('clarifies a lighting action when one configured name resolves multiple spaces', () => {
+		expect(
+			service.plan({
+				message: 'Turn Office lights off',
+				knownSpaces: [
+					{ id: 'space-office-east', name: 'Office' },
+					{ id: 'space-office-west', name: 'Office' },
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			scope: {},
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
+	it('propagates an exclusion across a conjoined configured-space list', () => {
+		expect(
+			service.plan({
+				message: 'What is the temperature everywhere except Bedroom and Kitchen?',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			scope: {},
+			ambiguityRisk: 'read',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
+	it('routes an explicit clock-time range to bounded history retrieval', () => {
+		expect(
+			service.plan({
+				message: 'Show the Bedroom temperature from 8am to 10am',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			scope: { spaceId: 'space-bedroom' },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+			],
+			strategy: 'prefetch',
+		});
+	});
+
+	it('keeps article-free smart-lighting definitions off home retrieval', () => {
+		expect(
+			service.plan({
+				message: 'What is smart lighting?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toEqual({
+			domains: ['general'],
+			intent: 'none',
+			scope: {},
+			queries: [],
+			toolNames: [],
+			ambiguityRisk: 'none',
+			strategy: 'no-home-context',
+		});
+	});
+
+	it('clarifies explicit space scopes beyond the bounded planner limit without query fan-out', () => {
+		const knownSpaces = Array.from({ length: 21 }, (_, index) => ({
+			id: `space-zone-${index}`,
+			name: `Zone ${index}`,
+		}));
+		const result = service.plan({
+			message: `What is the temperature in ${knownSpaces.map((space) => space.name).join(' and ')}?`,
+			knownSpaces,
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(result).toMatchObject({
+			domains: ['home'],
+			scope: {},
+			queries: [],
+			toolNames: [],
+			ambiguityRisk: 'read',
+			strategy: 'clarify',
+		});
+	});
+
+	it.each(['Start bedroom fan', 'Stop bedroom fan', 'Deactivate bedroom fan'])(
+		'keeps an explicit device command off the scene-trigger tool path: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({
+				domains: ['home'],
+				intent: 'write',
+				toolNames: ['search_home', 'query_home_state', 'control_device'],
+			});
+		},
+	);
+
+	it('uses the recent reference kind to separate device and scene start commands', () => {
+		const providerCapabilities = { toolCalling: 'reliable' as const, supportsStructuredToolResults: true };
+
+		expect(
+			service.plan({
+				message: 'Start it',
+				recentEntityReferences: [
+					{
+						kind: 'device',
+						id: 'device-fan',
+						name: 'Fan',
+						compatibleActionTypes: ['start'],
+					},
+				],
+				providerCapabilities,
+			}),
+		).toMatchObject({
+			intent: 'write',
+			toolNames: ['search_home', 'query_home_state', 'control_device'],
+		});
+
+		expect(
+			service.plan({
+				message: 'Start it',
+				recentEntityReferences: [
+					{
+						kind: 'scene',
+						id: 'scene-bedtime',
+						name: 'Bedtime',
+						compatibleActionTypes: ['start'],
+					},
+				],
+				providerCapabilities,
+			}),
+		).toMatchObject({
+			intent: 'trigger',
+			toolNames: ['search_home', 'query_home_state', 'run_scene'],
+		});
+	});
+
+	it('does not classify a numeric thermostat adjustment range as history', () => {
+		expect(
+			service.plan({
+				message: 'Set the Bedroom thermostat from 8 to 10 degrees',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'write',
+			scope: { spaceId: 'space-bedroom' },
+			queries: [{ kind: 'search-home', spaceId: 'space-bedroom' }],
+			strategy: 'deterministic-action',
+		});
+	});
+
+	it('propagates exclusions across repeated prepositions in a space list', () => {
+		expect(
+			service.plan({
+				message: 'What is the temperature everywhere except in Bedroom and in Kitchen?',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ scope: {}, ambiguityRisk: 'read', strategy: 'clarify', toolNames: [] });
+	});
+
+	it('does not add conversation-space current state to an energy and history compound', () => {
+		expect(
+			service.plan({
+				message: 'How much energy did Bedroom use and what was Kitchen temperature yesterday?',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'energy', 'history'],
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-kitchen' },
+				{ kind: 'energy-summary', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-kitchen' },
+			],
+		});
+	});
+
+	it.each([
+		'Also turn off Bedroom lights',
+		'Please also turn off Bedroom lights',
+		'Could you also turn off Bedroom lights',
+	])('recognizes a leading also action command: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'write',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device', 'set_space_lighting'],
+		});
+	});
+
+	it('clarifies possessive entity pronouns without a safe recent reference', () => {
+		expect(
+			service.plan({
+				message: 'What is its status?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ ambiguityRisk: 'read', strategy: 'clarify', toolNames: [] });
+
+		expect(
+			service.plan({
+				message: 'Are their lights on?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ ambiguityRisk: 'read', strategy: 'clarify', toolNames: [] });
+	});
+
+	it.each(['living   room', 'living-room'])(
+		'matches configured space names across normalized separators: %s',
+		(spacePhrase) => {
+			expect(
+				service.plan({
+					message: `What is the ${spacePhrase} temperature?`,
+					knownSpaces: [{ id: 'space-living-room', name: 'Living Room' }],
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({ scope: { spaceId: 'space-living-room' } });
+		},
+	);
+
+	it.each([
+		'What was the Bedroom temperature between 8am and 10am?',
+		'What was the Bedroom temperature at 8am?',
+		'What was the Bedroom temperature last weekend?',
+	])('routes another bounded temporal form to history: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+			],
+		});
+	});
+
+	it.each(['What is smart home?', 'What is home automation?', 'What are smart devices?'])(
+		'keeps another article-free definition off planner retrieval: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({ domains: ['general'], intent: 'none', queries: [], toolNames: [] });
+		},
+	);
+
+	it('clarifies plural recent-reference scopes beyond the bounded planner limit', () => {
+		const recentEntityReferences = Array.from({ length: 21 }, (_, index) => ({
+			kind: 'device' as const,
+			id: `device-${index}`,
+			name: `Device ${index}`,
+			compatibleActionTypes: ['turn'] as const,
+		}));
+
+		expect(
+			service.plan({
+				message: 'Are they on?',
+				recentEntityReferences,
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: {},
+			queries: [],
+			toolNames: [],
+			ambiguityRisk: 'read',
+			strategy: 'clarify',
 		});
 	});
 });

@@ -665,6 +665,12 @@ function hasUnknownLeadingIntentBeforeRead(normalizedMessage: string): boolean {
 }
 
 function isGenericHomeExplanation(normalizedMessage: string, tokens: Set<string>): boolean {
+	const isArticleFreeDefinition =
+		/^what (?:is|are) (?:smart )?(?:device|devices|home|home automation|lighting|scene|scenes|sensor|sensors|thermostat|thermostats)[?!.]*$/u.test(
+			normalizedMessage,
+		);
+
+	if (isArticleFreeDefinition) return true;
 	if (!intersects(tokens, HOME_SIGNALS)) return false;
 	if (/^(?:explain how to|how (?:can|could|do|would) i|(?:show|tell) me how to)\b/u.test(normalizedMessage)) {
 		return true;

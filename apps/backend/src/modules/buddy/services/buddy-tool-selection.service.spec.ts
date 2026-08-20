@@ -330,6 +330,9 @@ describe('BuddyToolSelectionService', () => {
 		'How can I adjust a thermostat?',
 		'Tell me how to turn off the kitchen light.',
 		'Show me how to turn off the kitchen light.',
+		'What is smart home?',
+		'What is home automation?',
+		'What are smart devices?',
 	])('keeps generic smart-home explanations tool-free: %s', (message) => {
 		expect(selectNames(message)).toEqual([]);
 	});
