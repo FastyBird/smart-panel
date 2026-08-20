@@ -358,6 +358,16 @@ function classifyDomains(
 	const hasEnergy = hasDomainSignalOutsideEntityName(message, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN);
 	const hasSecurity = hasDomainSignalOutsideEntityName(message, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN);
 	const clauses = splitPlannerClauses(message);
+	const hasHomeEntity = clauses.some((clause) => {
+		const retrievalClause = getRetrievalClause(clause);
+		const hasHomeSignal = HOME_ENTITY_PATTERN.test(retrievalClause) || HOME_VOCABULARY_PATTERN.test(retrievalClause);
+		const hasNonHomeSignal =
+			hasDomainSignalInClause(retrievalClause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) ||
+			hasDomainSignalInClause(retrievalClause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) ||
+			hasDomainSignalInClause(retrievalClause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN);
+
+		return hasHomeSignal && (!hasNonHomeSignal || CONTEXTUAL_SCOPE_PATTERN.test(retrievalClause));
+	});
 	const hasInstallationHome = clauses.some(
 		(clause) =>
 			HOME_INSTALLATION_PATTERN.test(clause) &&
@@ -396,18 +406,26 @@ function classifyDomains(
 		);
 	});
 	const hasExplicitHomeSpace = explicitSpaces.some((space) =>
-		clauses.some(
-			(clause) =>
-				containsNormalizedPhrase(clause, normalize(space.name)) &&
-				!hasDomainSignalInClause(clause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) &&
-				!hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) &&
-				!hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN),
-		),
+		clauses.some((clause) => {
+			if (!containsNormalizedPhrase(clause, normalize(space.name))) return false;
+
+			const clauseWithoutSpace = removeNormalizedPhrase(clause, normalize(space.name));
+			const hasNonHomeSignal =
+				hasDomainSignalInClause(clauseWithoutSpace, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) ||
+				hasDomainSignalInClause(clauseWithoutSpace, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) ||
+				hasDomainSignalInClause(clauseWithoutSpace, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN);
+			const hasHomeSignal =
+				HOME_ENTITY_PATTERN.test(clauseWithoutSpace) ||
+				HOME_VOCABULARY_PATTERN.test(clauseWithoutSpace) ||
+				HOME_STATE_PATTERN.test(clauseWithoutSpace) ||
+				CONTEXTUAL_SCOPE_PATTERN.test(clauseWithoutSpace);
+
+			return !hasNonHomeSignal || hasHomeSignal;
+		}),
 	);
 
 	if (
-		HOME_ENTITY_PATTERN.test(message) ||
-		HOME_VOCABULARY_PATTERN.test(message) ||
+		hasHomeEntity ||
 		hasContextualHomeState ||
 		hasHomeActionOrPredicate ||
 		hasRecentReferenceHome ||
@@ -446,8 +464,16 @@ function classifyDomains(
 
 function hasDomainSignalOutsideEntityName(message: string, domainPattern: RegExp, entityNamePattern: RegExp): boolean {
 	return splitPlannerClauses(message).some((clause) =>
-		hasDomainSignalInClause(clause, domainPattern, entityNamePattern),
+		hasDomainSignalInClause(getRetrievalClause(clause), domainPattern, entityNamePattern),
 	);
+}
+
+function getRetrievalClause(clause: string): string {
+	if (!ACTION_COMMAND_PATTERN.test(clause)) return clause;
+
+	const condition = CONDITION_PATTERN.exec(clause);
+
+	return condition ? clause.slice(condition.index) : '';
 }
 
 function hasDomainSignalInClause(clause: string, domainPattern: RegExp, entityNamePattern: RegExp): boolean {
@@ -695,7 +721,21 @@ function resolveCurrentStateSpaceIds(
 			hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) ||
 			hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN);
 
-		return hasHomeSignal && (!hasNonHomeSignal || CONTEXTUAL_SCOPE_PATTERN.test(clause));
+		const hasExplicitSpace = explicitSpaces.some((space) => containsNormalizedPhrase(clause, normalize(space.name)));
+		const clauseWithoutExplicitSpaces = explicitSpaces.reduce(
+			(result, space) => removeNormalizedPhrase(result, normalize(space.name)),
+			clause,
+		);
+		const hasIndependentHomeSignal =
+			HOME_ENTITY_PATTERN.test(clauseWithoutExplicitSpaces) ||
+			HOME_VOCABULARY_PATTERN.test(clauseWithoutExplicitSpaces) ||
+			HOME_STATE_PATTERN.test(clauseWithoutExplicitSpaces) ||
+			CONTEXTUAL_SCOPE_PATTERN.test(clauseWithoutExplicitSpaces);
+
+		return (
+			hasHomeSignal &&
+			(!hasNonHomeSignal || CONTEXTUAL_SCOPE_PATTERN.test(clause) || (hasExplicitSpace && hasIndependentHomeSignal))
+		);
 	});
 
 	const explicitCurrentSpaceIds = resolveTemporalExplicitSpaceIds(
@@ -814,6 +854,12 @@ function findExplicitSpaces(
 
 function containsNormalizedPhrase(message: string, phrase: string): boolean {
 	return findNormalizedPhraseRanges(message, phrase).length > 0;
+}
+
+function removeNormalizedPhrase(message: string, phrase: string): string {
+	return findNormalizedPhraseRanges(message, phrase)
+		.reverse()
+		.reduce((result, range) => `${result.slice(0, range.start)} ${result.slice(range.end)}`, message);
 }
 
 function findNormalizedPhraseRanges(message: string, phrase: string): Array<{ start: number; end: number }> {

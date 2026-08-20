@@ -1898,4 +1898,49 @@ describe('BuddyContextPlannerService', () => {
 			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
 		});
 	});
+
+	it('preserves an explicit room span inside a mixed weather clause', () => {
+		expect(
+			service.plan({
+				message: 'Compare the outside temperature with Bedroom temperature',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'weather'],
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'current-state', spaceId: 'space-bedroom' },
+				{ kind: 'weather' },
+			],
+		});
+	});
+
+	it('keeps a domain word inside a scene name on the action path', () => {
+		expect(
+			service.plan({
+				message: 'Run Security Night',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'trigger',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'run_scene'],
+		});
+	});
+
+	it('keeps an outside-temperature request on the weather-only path', () => {
+		expect(
+			service.plan({
+				message: 'What is the outside temperature?',
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['weather'],
+			queries: [{ kind: 'weather' }],
+		});
+	});
 });
