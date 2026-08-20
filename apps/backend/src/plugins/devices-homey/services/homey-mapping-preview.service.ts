@@ -52,6 +52,23 @@ const WARNING_SEVERITY_ORDER: Record<HomeyMappingPreviewWarningSeverity, number>
 	[HomeyMappingPreviewWarningSeverity.WARNING]: 1,
 };
 
+const INTEGER_DATA_TYPES = new Set<DataTypeType>([
+	DataTypeType.CHAR,
+	DataTypeType.UCHAR,
+	DataTypeType.SHORT,
+	DataTypeType.USHORT,
+	DataTypeType.INT,
+	DataTypeType.UINT,
+]);
+const MAX_EXHAUSTIVE_NUMERIC_GRID_VALUES = 10_000;
+
+interface NumericGrid {
+	readonly base: number;
+	readonly minimum: number | null;
+	readonly maximum: number | null;
+	readonly step: number | null;
+}
+
 @Injectable()
 export class HomeyMappingPreviewService {
 	constructor(
@@ -275,7 +292,12 @@ export class HomeyMappingPreviewService {
 		const mappingCanWrite = this.mappingCanWrite(mapping.property.direction);
 		const readable = mappingCanRead && capability.readable;
 		const writable = mappingCanWrite && capability.writable;
-		const conversion = this.createConversion(mapping.property.transform);
+		const conversion = this.createConversion(
+			mapping.property.transform,
+			mapping.property.dataType,
+			capability,
+			mappingCanRead,
+		);
 		const property = new HomeyMappingPreviewPropertyModel();
 
 		property.capabilityId = binding.capabilityId;
@@ -488,17 +510,9 @@ export class HomeyMappingPreviewService {
 			return;
 		}
 
-		const sourceDomain =
-			capability.enumValues.length > 0
-				? capability.enumValues.map((value) => value.id)
-				: capability.type === HomeyCapabilityType.BOOLEAN
-					? ['false', 'true']
-					: [];
 		const readTable = transform.read ?? {};
-		const sourceDomainIsUnbounded =
-			capability.type === HomeyCapabilityType.STRING && capability.enumValues.length === 0;
 
-		if (sourceDomainIsUnbounded || sourceDomain.some((value) => !Object.hasOwn(readTable, value))) {
+		if (!this.isReadableMapDomainComplete(capability, readTable)) {
 			warnings.push(
 				this.warning(
 					HomeyMappingPreviewWarningCode.INCOMPLETE_CAPABILITY_DOMAIN,
@@ -510,6 +524,64 @@ export class HomeyMappingPreviewService {
 				),
 			);
 		}
+	}
+
+	private isReadableMapDomainComplete(
+		capability: HomeyCapability,
+		readTable: Readonly<Record<string, HomeyMappingScalar>>,
+	): boolean {
+		if (capability.enumValues.length > 0) {
+			return capability.enumValues.every((value) => Object.hasOwn(readTable, value.id));
+		}
+
+		switch (capability.type) {
+			case HomeyCapabilityType.BOOLEAN:
+				return ['false', 'true'].every((value) => Object.hasOwn(readTable, value));
+			case HomeyCapabilityType.NUMBER:
+				return this.isNumericReadMapDomainComplete(capability, readTable);
+			case HomeyCapabilityType.STRING:
+			case HomeyCapabilityType.UNKNOWN:
+			case HomeyCapabilityType.ENUM:
+				return false;
+		}
+	}
+
+	private isNumericReadMapDomainComplete(
+		capability: HomeyCapability,
+		readTable: Readonly<Record<string, HomeyMappingScalar>>,
+	): boolean {
+		if (
+			capability.minimum === null ||
+			capability.maximum === null ||
+			capability.step === null ||
+			capability.step <= 0 ||
+			capability.maximum < capability.minimum
+		) {
+			return false;
+		}
+
+		const quotient = (capability.maximum - capability.minimum) / capability.step;
+		const tolerance = Number.EPSILON * Math.max(1, Math.abs(quotient)) * 16;
+		const expectedValues = Math.floor(quotient + tolerance) + 1;
+		const coveredValues = new Set<number>();
+
+		for (const key of Object.keys(readTable)) {
+			const numericValue = Number(key);
+			if (
+				key.trim() === '' ||
+				!Number.isFinite(numericValue) ||
+				String(numericValue) !== key ||
+				numericValue < capability.minimum ||
+				numericValue > capability.maximum ||
+				!matchesStep(numericValue, capability.step, capability.minimum)
+			) {
+				continue;
+			}
+
+			coveredValues.add(numericValue);
+		}
+
+		return coveredValues.size === expectedValues;
 	}
 
 	private getPotentialPanelValues(
@@ -793,53 +865,139 @@ export class HomeyMappingPreviewService {
 		}
 
 		const transform = mapping.property.transform;
-		if (transform !== undefined && transform.type !== 'scale') {
+		const panelGrid = this.getPanelNumericGrid(channelCategory, propertyCategory, dataType, mappingRange);
+		const exhaustiveValues = this.getExhaustiveGridValues(panelGrid);
+
+		if (exhaustiveValues !== null) {
+			return exhaustiveValues
+				.filter((value) => this.isValidPanelValue(channelCategory, propertyCategory, dataType, mappingRange, value))
+				.every((value) => this.isValidTransformedHomeyWrite(mapping, capability, value));
+		}
+
+		if (transform?.type === 'constant' || transform?.type === 'threshold' || transform?.type === 'thresholds') {
 			return true;
 		}
-		const scaleTransform = transform?.type === 'scale' ? transform : null;
+		if (panelGrid.step === null || !Number.isFinite(panelGrid.step) || panelGrid.step <= 0) {
+			return false;
+		}
 
+		switch (transform?.type) {
+			case undefined:
+				return (
+					this.isValidTransformedHomeyWrite(mapping, capability, panelGrid.base) &&
+					matchesStep(panelGrid.step, capability.step, 0)
+				);
+			case 'scale': {
+				const panelSpan = transform.output_range[1] - transform.output_range[0];
+				if (panelSpan === 0 || !this.isValidTransformedHomeyWrite(mapping, capability, panelGrid.base)) {
+					return false;
+				}
+
+				const transformedStep = Math.abs(
+					(panelGrid.step * (transform.input_range[1] - transform.input_range[0])) / panelSpan,
+				);
+
+				return Number.isFinite(transformedStep) && matchesStep(transformedStep, capability.step, 0);
+			}
+			case 'clamp':
+				return this.isClampedGridCompatible(mapping, capability, panelGrid, transform.minimum, transform.maximum);
+			case 'round': {
+				const quantum = 10 ** -(transform.precision ?? 0);
+				return (
+					matchesStep(panelGrid.step, quantum, 0) &&
+					this.isValidTransformedHomeyWrite(mapping, capability, panelGrid.base) &&
+					matchesStep(panelGrid.step, capability.step, 0)
+				);
+			}
+			case 'map':
+			case 'boolean':
+				return false;
+		}
+	}
+
+	private getPanelNumericGrid(
+		channelCategory: ChannelCategory,
+		propertyCategory: PropertyCategory,
+		dataType: DataTypeType,
+		mappingRange: HomeyValueRangeDefinition | undefined,
+	): NumericGrid {
 		const metadata = getPropertyMetadata(channelCategory, propertyCategory);
 		const variant = metadata?.dataTypeVariants?.find((candidate) => candidate.data_type === dataType);
 		const constraints = variant ?? metadata;
-		const canonicalFormat = constraints?.format;
-		const canonicalMinimum =
-			Array.isArray(canonicalFormat) && typeof canonicalFormat[0] === 'number' ? canonicalFormat[0] : null;
-		const panelBase = mappingRange?.minimum ?? canonicalMinimum ?? 0;
-		const panelStep = mappingRange?.step ?? constraints?.step ?? (dataType === DataTypeType.FLOAT ? null : 1);
+		const format = constraints?.format;
+		const canonicalMinimum = Array.isArray(format) && typeof format[0] === 'number' ? format[0] : null;
+		const canonicalMaximum = Array.isArray(format) && typeof format[1] === 'number' ? format[1] : null;
+		const minimumCandidates = [canonicalMinimum, mappingRange?.minimum ?? null].filter(
+			(value): value is number => value !== null,
+		);
+		const maximumCandidates = [canonicalMaximum, mappingRange?.maximum ?? null].filter(
+			(value): value is number => value !== null,
+		);
 
-		if (panelStep === null || !Number.isFinite(panelStep) || panelStep <= 0) {
-			return false;
+		return {
+			base: mappingRange?.minimum ?? canonicalMinimum ?? 0,
+			minimum: minimumCandidates.length > 0 ? Math.max(...minimumCandidates) : null,
+			maximum: maximumCandidates.length > 0 ? Math.min(...maximumCandidates) : null,
+			step: mappingRange?.step ?? constraints?.step ?? (INTEGER_DATA_TYPES.has(dataType) ? 1 : null),
+		};
+	}
+
+	private getExhaustiveGridValues(grid: NumericGrid): number[] | null {
+		if (
+			grid.minimum === null ||
+			grid.maximum === null ||
+			grid.maximum < grid.minimum ||
+			grid.step === null ||
+			!Number.isFinite(grid.step) ||
+			grid.step <= 0
+		) {
+			return null;
 		}
 
-		let transformedBase: HomeyMappingScalar;
+		const firstIndex = Math.ceil((grid.minimum - grid.base) / grid.step - Number.EPSILON * 16);
+		const firstValue = grid.base + firstIndex * grid.step;
+		const valueCount = Math.floor((grid.maximum - firstValue) / grid.step + Number.EPSILON * 16) + 1;
+
+		if (valueCount < 0 || valueCount > MAX_EXHAUSTIVE_NUMERIC_GRID_VALUES) {
+			return null;
+		}
+
+		return Array.from({ length: valueCount }, (_, index) => Number((firstValue + index * grid.step).toPrecision(15)));
+	}
+
+	private isValidTransformedHomeyWrite(
+		mapping: ResolvedHomeyPropertyMapping,
+		capability: HomeyCapability,
+		panelValue: number,
+	): boolean {
 		try {
-			transformedBase = this.mappingTransformer.write(mapping, panelBase);
+			return this.isValidHomeyValue(capability, this.mappingTransformer.write(mapping, panelValue));
 		} catch {
 			return false;
 		}
+	}
 
-		if (!this.isValidHomeyValue(capability, transformedBase)) {
+	private isClampedGridCompatible(
+		mapping: ResolvedHomeyPropertyMapping,
+		capability: HomeyCapability,
+		grid: NumericGrid,
+		minimum: number,
+		maximum: number,
+	): boolean {
+		if (
+			grid.step === null ||
+			capability.step === null ||
+			!matchesStep(grid.step, capability.step, 0) ||
+			!this.isValidHomeyValue(capability, minimum) ||
+			!this.isValidHomeyValue(capability, maximum)
+		) {
 			return false;
 		}
 
-		const transformedStep = (() => {
-			if (scaleTransform === null) {
-				return panelStep;
-			}
+		const firstInteriorIndex = Math.ceil((minimum - grid.base) / grid.step - Number.EPSILON * 16);
+		const firstInteriorValue = Number((grid.base + firstInteriorIndex * grid.step).toPrecision(15));
 
-			const panelSpan = scaleTransform.output_range[1] - scaleTransform.output_range[0];
-			if (panelSpan === 0) {
-				return null;
-			}
-
-			return Math.abs((panelStep * (scaleTransform.input_range[1] - scaleTransform.input_range[0])) / panelSpan);
-		})();
-
-		// Identity and scale transforms are linear, so an aligned base plus an output increment that is an
-		// integer multiple of Homey's step proves every value on the panel command grid remains on its grid.
-		return (
-			transformedStep !== null && Number.isFinite(transformedStep) && matchesStep(transformedStep, capability.step, 0)
-		);
+		return firstInteriorValue > maximum || this.isValidTransformedHomeyWrite(mapping, capability, firstInteriorValue);
 	}
 
 	private hasIncompleteWritableEnumDomain(
@@ -864,7 +1022,12 @@ export class HomeyMappingPreviewService {
 		);
 	}
 
-	private createConversion(transform: HomeyTransformDefinition | undefined): HomeyMappingPreviewConversionModel {
+	private createConversion(
+		transform: HomeyTransformDefinition | undefined,
+		dataType: DataTypeType,
+		capability: HomeyCapability,
+		mappingCanRead: boolean,
+	): HomeyMappingPreviewConversionModel {
 		const conversion = new HomeyMappingPreviewConversionModel();
 		conversion.type = (transform?.type ?? HomeyMappingConversionType.IDENTITY) as HomeyMappingConversionType;
 		conversion.reversible = true;
@@ -879,11 +1042,9 @@ export class HomeyMappingPreviewService {
 		conversion.readTableSize = null;
 		conversion.writeTableSize = null;
 
-		if (!transform) {
-			return conversion;
-		}
-
-		switch (transform.type) {
+		switch (transform?.type) {
+			case undefined:
+				break;
 			case 'scale':
 				conversion.inputRange = [...transform.input_range];
 				conversion.outputRange = [...transform.output_range];
@@ -932,7 +1093,59 @@ export class HomeyMappingPreviewService {
 				break;
 		}
 
+		if (this.integerNormalizationCanLoseValues(transform, dataType, capability, mappingCanRead)) {
+			conversion.lossy = true;
+			conversion.reversible = false;
+		}
+
 		return conversion;
+	}
+
+	private integerNormalizationCanLoseValues(
+		transform: HomeyTransformDefinition | undefined,
+		dataType: DataTypeType,
+		capability: HomeyCapability,
+		mappingCanRead: boolean,
+	): boolean {
+		if (!mappingCanRead || capability.type !== HomeyCapabilityType.NUMBER || !INTEGER_DATA_TYPES.has(dataType)) {
+			return false;
+		}
+
+		switch (transform?.type) {
+			case undefined:
+				return (
+					capability.step === null || !Number.isInteger(capability.minimum ?? 0) || !Number.isInteger(capability.step)
+				);
+			case 'scale': {
+				if (transform.clamp === true || capability.step === null) {
+					return true;
+				}
+
+				const inputSpan = transform.input_range[1] - transform.input_range[0];
+				if (inputSpan === 0) {
+					return true;
+				}
+
+				const outputSpan = transform.output_range[1] - transform.output_range[0];
+				const sourceBase = capability.minimum ?? transform.input_range[0];
+				const outputBase =
+					transform.output_range[0] + ((sourceBase - transform.input_range[0]) / inputSpan) * outputSpan;
+				const outputStep = (capability.step / inputSpan) * outputSpan;
+
+				return !Number.isInteger(outputBase) || !Number.isInteger(outputStep);
+			}
+			case 'map':
+				return Object.values(transform.read ?? {}).some(
+					(value) => typeof value !== 'number' || !Number.isInteger(value),
+				);
+			case 'boolean':
+			case 'clamp':
+			case 'round':
+			case 'constant':
+			case 'threshold':
+			case 'thresholds':
+				return false;
+		}
 	}
 
 	private createRange(

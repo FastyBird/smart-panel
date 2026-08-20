@@ -795,6 +795,139 @@ describe('HomeyMappingPreviewService', () => {
 		expect(preview.readyToAdopt).toBe(false);
 	});
 
+	it('blocks readable maps that omit a value from a finite Homey numeric grid', async () => {
+		const fixture = readDeviceFixture('light');
+		const device: HomeyDevice = {
+			...fixture,
+			capabilities: fixture.capabilities.map((capability) =>
+				capability.id === 'dim' ? { ...capability, value: 0, minimum: 0, maximum: 2, step: 1 } : capability,
+			),
+		};
+		homeyService.getFreshDevice.mockResolvedValue(device);
+		const propertyResolution = mappingLoader.resolvePropertyMappings(device);
+		jest.spyOn(mappingLoader, 'resolvePropertyMappings').mockReturnValue({
+			conflicts: propertyResolution.conflicts,
+			mappings: propertyResolution.mappings.map((binding) =>
+				binding.capabilityId === 'dim'
+					? {
+							...binding,
+							mapping: {
+								...binding.mapping,
+								property: {
+									...binding.mapping.property,
+									direction: 'read_only',
+									transform: { type: 'map', read: { '0': 0, '2': 2 } },
+								},
+							},
+						}
+					: binding,
+			),
+		});
+
+		const preview = await service.generatePreview({ deviceId: device.id });
+
+		expect(preview.warnings).toContainEqual(
+			expect.objectContaining({
+				code: HomeyMappingPreviewWarningCode.INCOMPLETE_CAPABILITY_DOMAIN,
+				severity: HomeyMappingPreviewWarningSeverity.ERROR,
+				identifier: 'dim',
+			}),
+		);
+		expect(preview.readyToAdopt).toBe(false);
+	});
+
+	it.each([
+		['clamp', { type: 'clamp' as const, minimum: 0, maximum: 100 }],
+		['round', { type: 'round' as const, precision: 0 }],
+	])('blocks %s writes whose panel grid is finer than the Homey step', async (_name, transform) => {
+		const fixture = readDeviceFixture('light');
+		const device: HomeyDevice = {
+			...fixture,
+			capabilities: fixture.capabilities.map((capability) =>
+				capability.id === 'dim' ? { ...capability, value: 20, minimum: 0, maximum: 100, step: 10 } : capability,
+			),
+		};
+		homeyService.getFreshDevice.mockResolvedValue(device);
+		const propertyResolution = mappingLoader.resolvePropertyMappings(device);
+		jest.spyOn(mappingLoader, 'resolvePropertyMappings').mockReturnValue({
+			conflicts: propertyResolution.conflicts,
+			mappings: propertyResolution.mappings.map((binding) =>
+				binding.capabilityId === 'dim'
+					? {
+							...binding,
+							mapping: {
+								...binding.mapping,
+								property: {
+									...binding.mapping.property,
+									range: { minimum: 0, maximum: 100, step: 1 },
+									transform,
+								},
+							},
+						}
+					: binding,
+			),
+		});
+
+		const preview = await service.generatePreview({ deviceId: device.id });
+
+		expect(preview.warnings).toContainEqual(
+			expect.objectContaining({
+				code: HomeyMappingPreviewWarningCode.INVALID_CAPABILITY_VALUE_DOMAIN,
+				severity: HomeyMappingPreviewWarningSeverity.ERROR,
+				identifier: 'dim',
+			}),
+		);
+		expect(preview.readyToAdopt).toBe(false);
+	});
+
+	it('reports integer read normalization as lossy conversion metadata', async () => {
+		const fixture = readDeviceFixture('light');
+		const device: HomeyDevice = {
+			...fixture,
+			capabilities: fixture.capabilities.map((capability) =>
+				capability.id === 'dim' ? { ...capability, value: 0.4, minimum: 0, maximum: 1, step: 0.1 } : capability,
+			),
+		};
+		homeyService.getFreshDevice.mockResolvedValue(device);
+		const propertyResolution = mappingLoader.resolvePropertyMappings(device);
+		jest.spyOn(mappingLoader, 'resolvePropertyMappings').mockReturnValue({
+			conflicts: propertyResolution.conflicts,
+			mappings: propertyResolution.mappings.map((binding) =>
+				binding.capabilityId === 'dim'
+					? {
+							...binding,
+							mapping: {
+								...binding.mapping,
+								property: {
+									...binding.mapping.property,
+									direction: 'read_only',
+									transform: undefined,
+								},
+							},
+						}
+					: binding,
+			),
+		});
+
+		const preview = await service.generatePreview({ deviceId: device.id });
+
+		expect(findProperty(preview, 'dim')).toMatchObject({
+			currentValue: 0,
+			conversion: {
+				type: 'identity',
+				reversible: false,
+				lossy: true,
+				ambiguous: false,
+			},
+		});
+		expect(preview.warnings).toContainEqual(
+			expect.objectContaining({
+				code: HomeyMappingPreviewWarningCode.LOSSY_CONVERSION,
+				identifier: 'dim',
+			}),
+		);
+	});
+
 	it('uses fixed not-found and unavailable errors for fresh inventory failures', async () => {
 		homeyService.getFreshDevice.mockResolvedValueOnce(null).mockRejectedValueOnce(new Error('private endpoint detail'));
 
