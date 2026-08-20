@@ -4,6 +4,7 @@ import { createExtensionLogger } from '../../../common/logger';
 import { BulkResultModel } from '../../api/models/bulk.model';
 import { runBulkOperation } from '../../api/utils/bulk.utils';
 import { SPACES_MODULE_NAME } from '../spaces.constants';
+import { SpacesNotFoundException } from '../spaces.exceptions';
 
 import { SpacesService } from './spaces.service';
 
@@ -26,7 +27,7 @@ export class SpacesBulkService {
 			// The service raises for a missing space with a reason worth reading, and
 			// runBulkOperation carries that through per item.
 			(id) => this.spacesService.remove(id),
-			'Space could not be removed',
+			{ fallbackReason: 'Space could not be removed', safeErrors: [SpacesNotFoundException], logger: this.logger },
 		);
 
 		this.logger.debug(`Bulk removal finished succeeded=${result.succeeded.length} failed=${result.failed.length}`);

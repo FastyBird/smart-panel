@@ -4,6 +4,7 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { BulkResultModel } from '../../api/models/bulk.model';
 import { runBulkOperation } from '../../api/utils/bulk.utils';
 import { SCENES_MODULE_NAME } from '../scenes.constants';
+import { ScenesException } from '../scenes.exceptions';
 
 import { ScenesService } from './scenes.service';
 
@@ -26,7 +27,7 @@ export class ScenesBulkService {
 			// The service raises for a missing or non-deletable scene with a reason
 			// worth reading, and runBulkOperation carries that through per item.
 			(id) => this.scenesService.remove(id),
-			'Scene could not be removed',
+			{ fallbackReason: 'Scene could not be removed', safeErrors: [ScenesException], logger: this.logger },
 		);
 
 		this.logger.debug(`Bulk removal finished succeeded=${result.succeeded.length} failed=${result.failed.length}`);
@@ -40,7 +41,7 @@ export class ScenesBulkService {
 			async (id) => {
 				await this.scenesService.update(id, { enabled });
 			},
-			'Scene could not be updated',
+			{ fallbackReason: 'Scene could not be updated', safeErrors: [ScenesException], logger: this.logger },
 		);
 
 		this.logger.debug(

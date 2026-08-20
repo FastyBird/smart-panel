@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { DashboardNotFoundException } from '../dashboard.exceptions';
+
 import { PagesBulkService } from './pages-bulk.service';
 import { PagesService } from './pages.service';
 
@@ -32,7 +34,9 @@ describe('PagesBulkService', () => {
 		// that explanation is more use to the operator than "failed".
 		it('carries the service refusal through as the reason', async () => {
 			pagesService.remove.mockImplementation((id: string) =>
-				id === 'b' ? Promise.reject(new Error('Requested page does not exist')) : Promise.resolve(),
+				id === 'b'
+					? Promise.reject(new DashboardNotFoundException('Requested page does not exist'))
+					: Promise.resolve(),
 			);
 
 			const result = await service.remove(['a', 'b', 'c']);

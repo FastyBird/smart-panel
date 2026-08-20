@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { WeatherValidationException } from '../weather.exceptions';
+import { WeatherNotFoundException, WeatherValidationException } from '../weather.exceptions';
 
 import { LocationsBulkService } from './locations-bulk.service';
 import { LocationsService } from './locations.service';
@@ -34,7 +34,7 @@ describe('LocationsBulkService', () => {
 		// and that explanation is more use to the operator than "failed".
 		it('carries the service refusal through as the reason', async () => {
 			locationsService.remove.mockImplementation((id: string) =>
-				id === 'b' ? Promise.reject(new Error('Location does not exist')) : Promise.resolve(),
+				id === 'b' ? Promise.reject(new WeatherNotFoundException('Location does not exist')) : Promise.resolve(),
 			);
 
 			const result = await service.remove(['a', 'b', 'c']);

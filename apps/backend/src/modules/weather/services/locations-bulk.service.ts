@@ -4,6 +4,7 @@ import { createExtensionLogger } from '../../../common/logger';
 import { BulkResultModel } from '../../api/models/bulk.model';
 import { runBulkOperation } from '../../api/utils/bulk.utils';
 import { WEATHER_MODULE_NAME } from '../weather.constants';
+import { WeatherException } from '../weather.exceptions';
 
 import { LocationsService } from './locations.service';
 
@@ -27,7 +28,7 @@ export class LocationsBulkService {
 			// refuses to delete, with a reason worth reading; runBulkOperation
 			// carries that through per item.
 			(id) => this.locationsService.remove(id),
-			'Location could not be removed',
+			{ fallbackReason: 'Location could not be removed', safeErrors: [WeatherException], logger: this.logger },
 		);
 
 		this.logger.debug(`Bulk removal finished succeeded=${result.succeeded.length} failed=${result.failed.length}`);

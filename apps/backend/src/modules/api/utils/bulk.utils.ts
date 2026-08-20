@@ -1,4 +1,31 @@
+import { ExtensionLoggerService } from '../../../common/logger';
 import { BulkFailureModel, BulkResultModel } from '../models/bulk.model';
+
+/**
+ * A constructor for an `Error` subclass, used to name which thrown types are
+ * safe to forward to the client.
+ */
+type SafeErrorClass = new (...args: unknown[]) => Error;
+
+export interface RunBulkOperationOptions {
+	/** Reason reported for a failure whose message is not safe to forward. */
+	fallbackReason: string;
+	/**
+	 * Error constructors whose message is safe to return to the client - the
+	 * module's own exception types, the deliberate refusals a single-item
+	 * endpoint would also translate into a response. Anything thrown that is
+	 * not an instance of one of these is treated as unexpected and reported as
+	 * `fallbackReason` instead, so a TypeORM error, a subscriber, or a plugin
+	 * hook never forwards internal detail into the response. Defaults to none,
+	 * so an operation that forgets to declare any leaks nothing.
+	 */
+	safeErrors?: SafeErrorClass[];
+	/**
+	 * Records an unexpected failure server-side. Sanitizing that failure out of
+	 * the response would otherwise be the only trace it happened at all.
+	 */
+	logger: ExtensionLoggerService;
+}
 
 /**
  * Runs one operation across a selection and reports the outcome per item.
@@ -15,14 +42,24 @@ import { BulkFailureModel, BulkResultModel } from '../models/bulk.model';
  * @param ids Identifiers to act on. Duplicates are acted on once, so the counts
  *   the caller reports stay honest when a selection lists the same item twice.
  * @param perform Runs the operation for one identifier. Throwing marks that
- *   item failed; the thrown message becomes the reported reason, so refusals
- *   that carry an explanation keep it.
+ *   item failed. The thrown message becomes the reported reason only when the
+ *   error is an instance of one of `options.safeErrors` - the refusals that
+ *   carry an explanation worth keeping. Anything else is logged server-side
+ *   through `options.logger` and reported as `options.fallbackReason` instead,
+ *   so an unexpected failure never forwards its raw message to the client.
+ * @param options.fallbackReason Reason reported for a failure whose message is
+ *   not safe to forward.
+ * @param options.safeErrors Error constructors whose message is safe to
+ *   forward to the client.
+ * @param options.logger Records an unexpected failure server-side.
  */
 export const runBulkOperation = async (
 	ids: string[],
 	perform: (id: string) => Promise<void>,
-	fallbackReason = 'Item could not be processed',
+	options: RunBulkOperationOptions,
 ): Promise<BulkResultModel> => {
+	const { fallbackReason, safeErrors = [], logger } = options;
+
 	const result = new BulkResultModel();
 
 	result.succeeded = [];
@@ -37,7 +74,16 @@ export const runBulkOperation = async (
 			const failure = new BulkFailureModel();
 
 			failure.id = id;
-			failure.reason = error instanceof Error && error.message.length > 0 ? error.message : fallbackReason;
+
+			const isSafe = safeErrors.some((SafeError) => error instanceof SafeError);
+
+			if (isSafe && error instanceof Error && error.message.length > 0) {
+				failure.reason = error.message;
+			} else {
+				logger.error(`Bulk operation failed for id=${id}`, error instanceof Error ? error : String(error));
+
+				failure.reason = fallbackReason;
+			}
 
 			result.failed.push(failure);
 		}

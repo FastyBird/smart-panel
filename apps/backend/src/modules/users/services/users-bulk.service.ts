@@ -4,6 +4,7 @@ import { createExtensionLogger } from '../../../common/logger';
 import { BulkResultModel } from '../../api/models/bulk.model';
 import { runBulkOperation } from '../../api/utils/bulk.utils';
 import { USERS_MODULE_NAME, UserRole } from '../users.constants';
+import { UsersException, UsersNotAllowedException } from '../users.exceptions';
 
 import { UsersService } from './users.service';
 
@@ -35,16 +36,16 @@ export class UsersBulkService {
 				const user = await this.usersService.getOneOrThrow(id);
 
 				if (authenticatedUserId !== null && authenticatedUserId === user.id) {
-					throw new Error('You cannot delete your own account');
+					throw new UsersNotAllowedException('You cannot delete your own account');
 				}
 
 				if (user.role === UserRole.OWNER) {
-					throw new Error('The owner account cannot be deleted');
+					throw new UsersNotAllowedException('The owner account cannot be deleted');
 				}
 
 				await this.usersService.remove(user.id);
 			},
-			'User could not be removed',
+			{ fallbackReason: 'User could not be removed', safeErrors: [UsersException], logger: this.logger },
 		);
 
 		this.logger.debug(`Bulk removal finished succeeded=${result.succeeded.length} failed=${result.failed.length}`);

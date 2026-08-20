@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { DevicesNotAllowedException } from '../devices.exceptions';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
 
@@ -52,7 +53,9 @@ describe('DevicesBulkService', () => {
 		it('keeps going after a device fails and reports it', async () => {
 			devicesService.findOne.mockImplementation((id: string) => Promise.resolve(device(id)));
 			devicesService.remove.mockImplementation((id: string) =>
-				id === 'b' ? Promise.reject(new Error('Device is hidden and can not be removed')) : Promise.resolve(),
+				id === 'b'
+					? Promise.reject(new DevicesNotAllowedException('Device is hidden and can not be removed'))
+					: Promise.resolve(),
 			);
 
 			const result = await service.remove(['a', 'b', 'c']);
@@ -118,7 +121,7 @@ describe('DevicesBulkService', () => {
 
 		it('carries the refusal reason back rather than a generic message', async () => {
 			devicesService.findOne.mockImplementation((id: string) => Promise.resolve(device(id)));
-			devicesService.update.mockRejectedValue(new Error('Hidden device placement is immutable'));
+			devicesService.update.mockRejectedValue(new DevicesNotAllowedException('Hidden device placement is immutable'));
 
 			const result = await service.setEnabled(['a'], true);
 

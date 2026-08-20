@@ -1,10 +1,31 @@
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
+
 import { runBulkOperation } from './bulk.utils';
 
+// Stands in for a module's own exception type - one of `safeErrors` - the
+// deliberate, user-facing refusal a single-item endpoint would also translate
+// into a response.
+class ModuleRefusalError extends Error {}
+
+// Stands in for a failure nobody declared safe: a TypeORM error, a
+// subscriber, or a plugin hook, none of which were ever meant to reach a
+// client verbatim.
+class QueryFailedError extends Error {}
+
 describe('runBulkOperation', () => {
+	let logger: ExtensionLoggerService;
+
+	beforeEach(() => {
+		logger = createExtensionLogger('test-module', 'TestComponent');
+	});
+
 	it('reports every item that went through', async () => {
 		const perform = jest.fn().mockResolvedValue(undefined);
 
-		const result = await runBulkOperation(['a', 'b', 'c'], perform);
+		const result = await runBulkOperation(['a', 'b', 'c'], perform, {
+			fallbackReason: 'Item could not be processed',
+			logger,
+		});
 
 		expect(result.succeeded).toEqual(['a', 'b', 'c']);
 		expect(result.failed).toEqual([]);
@@ -18,10 +39,14 @@ describe('runBulkOperation', () => {
 		const perform = jest
 			.fn()
 			.mockImplementation((id: string) =>
-				id === 'b' ? Promise.reject(new Error('Item is hidden')) : Promise.resolve(),
+				id === 'b' ? Promise.reject(new ModuleRefusalError('Item is hidden')) : Promise.resolve(),
 			);
 
-		const result = await runBulkOperation(['a', 'b', 'c'], perform);
+		const result = await runBulkOperation(['a', 'b', 'c'], perform, {
+			fallbackReason: 'Item could not be processed',
+			safeErrors: [ModuleRefusalError],
+			logger,
+		});
 
 		expect(result.succeeded).toEqual(['a', 'c']);
 		expect(result.failed).toEqual([{ id: 'b', reason: 'Item is hidden' }]);
@@ -29,19 +54,28 @@ describe('runBulkOperation', () => {
 	});
 
 	// Refusals that carry an explanation are worth passing back, the same way the
-	// single-item endpoints translate them instead of answering "try again later".
-	it('reports the thrown message as the reason', async () => {
-		const perform = jest.fn().mockRejectedValue(new Error('Placement is immutable'));
+	// single-item endpoints translate them instead of answering "try again later" -
+	// but only once the error is named as one the caller is willing to show.
+	it('forwards the message of a declared safe error', async () => {
+		const perform = jest.fn().mockRejectedValue(new ModuleRefusalError('Placement is immutable'));
 
-		const result = await runBulkOperation(['a'], perform);
+		const result = await runBulkOperation(['a'], perform, {
+			fallbackReason: 'Item could not be processed',
+			safeErrors: [ModuleRefusalError],
+			logger,
+		});
 
 		expect(result.failed).toEqual([{ id: 'a', reason: 'Placement is immutable' }]);
 	});
 
-	it('falls back to the supplied reason when the failure carries no message', async () => {
-		const perform = jest.fn().mockRejectedValue(new Error(''));
+	it('falls back to the supplied reason when a safe failure carries no message', async () => {
+		const perform = jest.fn().mockRejectedValue(new ModuleRefusalError(''));
 
-		const result = await runBulkOperation(['a'], perform, 'Scene could not be removed');
+		const result = await runBulkOperation(['a'], perform, {
+			fallbackReason: 'Scene could not be removed',
+			safeErrors: [ModuleRefusalError],
+			logger,
+		});
 
 		expect(result.failed).toEqual([{ id: 'a', reason: 'Scene could not be removed' }]);
 	});
@@ -49,7 +83,11 @@ describe('runBulkOperation', () => {
 	it('falls back for a rejection that is not an Error at all', async () => {
 		const perform = jest.fn().mockRejectedValue('just a string');
 
-		const result = await runBulkOperation(['a'], perform, 'Scene could not be removed');
+		const result = await runBulkOperation(['a'], perform, {
+			fallbackReason: 'Scene could not be removed',
+			safeErrors: [ModuleRefusalError],
+			logger,
+		});
 
 		expect(result.failed).toEqual([{ id: 'a', reason: 'Scene could not be removed' }]);
 	});
@@ -60,7 +98,10 @@ describe('runBulkOperation', () => {
 	it('acts once on an item listed twice', async () => {
 		const perform = jest.fn().mockResolvedValue(undefined);
 
-		const result = await runBulkOperation(['a', 'a', 'b'], perform);
+		const result = await runBulkOperation(['a', 'a', 'b'], perform, {
+			fallbackReason: 'Item could not be processed',
+			logger,
+		});
 
 		expect(result.succeeded).toEqual(['a', 'b']);
 		expect(perform).toHaveBeenCalledTimes(2);
@@ -69,7 +110,7 @@ describe('runBulkOperation', () => {
 	it('answers an empty selection with an empty result', async () => {
 		const perform = jest.fn();
 
-		const result = await runBulkOperation([], perform);
+		const result = await runBulkOperation([], perform, { fallbackReason: 'Item could not be processed', logger });
 
 		expect(result).toEqual({ succeeded: [], failed: [] });
 		expect(perform).not.toHaveBeenCalled();
@@ -88,8 +129,47 @@ describe('runBulkOperation', () => {
 			order.push(`end:${id}`);
 		});
 
-		await runBulkOperation(['a', 'b'], perform);
+		await runBulkOperation(['a', 'b'], perform, { fallbackReason: 'Item could not be processed', logger });
 
 		expect(order).toEqual(['start:a', 'end:a', 'start:b', 'end:b']);
+	});
+
+	// The leak this option exists to close: an internal failure must never reach
+	// a 200 response body verbatim, even though it is still an instance of
+	// `Error` and even though older code forwarded any `Error` message.
+	describe('an error that is not declared safe', () => {
+		it('is reported as the fallback reason, not its own message', async () => {
+			const perform = jest.fn().mockRejectedValue(new QueryFailedError('SELECT * FROM users WHERE id = ?'));
+
+			const result = await runBulkOperation(['a'], perform, {
+				fallbackReason: 'Item could not be processed',
+				safeErrors: [ModuleRefusalError],
+				logger,
+			});
+
+			expect(result.failed).toEqual([{ id: 'a', reason: 'Item could not be processed' }]);
+
+			// Assert the raw text is genuinely gone from what a client would receive,
+			// not merely that the reason happens to equal the fallback string.
+			const serialized = JSON.stringify(result);
+
+			expect(serialized).not.toContain('SELECT');
+			expect(serialized).not.toContain('users');
+		});
+
+		it('is logged server-side, so the failure leaves a trace somewhere', async () => {
+			const error = new QueryFailedError('SELECT * FROM users WHERE id = ?');
+			const perform = jest.fn().mockRejectedValue(error);
+			const errorSpy = jest.spyOn(logger, 'error');
+
+			await runBulkOperation(['a'], perform, {
+				fallbackReason: 'Item could not be processed',
+				safeErrors: [ModuleRefusalError],
+				logger,
+			});
+
+			expect(errorSpy).toHaveBeenCalledTimes(1);
+			expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('id=a'), error);
+		});
 	});
 });

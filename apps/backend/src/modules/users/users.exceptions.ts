@@ -18,3 +18,10 @@ export class UsersValidationException extends UsersException {
 		this.name = 'UsersValidationException';
 	}
 }
+
+export class UsersNotAllowedException extends UsersException {
+	constructor(message: string) {
+		super(message);
+		this.name = 'UsersNotAllowedException';
+	}
+}
