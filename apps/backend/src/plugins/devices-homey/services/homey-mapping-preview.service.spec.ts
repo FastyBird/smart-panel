@@ -457,6 +457,139 @@ describe('HomeyMappingPreviewService', () => {
 		expect(preview.readyToAdopt).toBe(false);
 	});
 
+	it('blocks map write outputs outside the declared Homey enum domain', async () => {
+		const fixture = readDeviceFixture('light');
+		const device: HomeyDevice = {
+			...fixture,
+			capabilities: fixture.capabilities.map((capability) =>
+				capability.id === 'onoff'
+					? {
+							...capability,
+							type: HomeyCapabilityType.ENUM,
+							value: 'off',
+							enumValues: [
+								{ id: 'off', title: 'Off' },
+								{ id: 'on', title: 'On' },
+							],
+						}
+					: capability,
+			),
+		};
+		homeyService.getFreshDevice.mockResolvedValue(device);
+		const propertyResolution = mappingLoader.resolvePropertyMappings(device);
+		jest.spyOn(mappingLoader, 'resolvePropertyMappings').mockReturnValue({
+			conflicts: propertyResolution.conflicts,
+			mappings: propertyResolution.mappings.map((binding) =>
+				binding.capabilityId === 'onoff'
+					? {
+							...binding,
+							mapping: {
+								...binding.mapping,
+								property: {
+									...binding.mapping.property,
+									transform: {
+										type: 'map',
+										read: { off: false, on: true },
+										write: { false: 'off', true: 'standby' },
+									},
+								},
+							},
+						}
+					: binding,
+			),
+		});
+
+		const preview = await service.generatePreview({ deviceId: device.id });
+
+		expect(preview.warnings).toContainEqual(
+			expect.objectContaining({
+				code: HomeyMappingPreviewWarningCode.INVALID_CAPABILITY_VALUE_DOMAIN,
+				severity: HomeyMappingPreviewWarningSeverity.ERROR,
+				identifier: 'onoff',
+			}),
+		);
+		expect(preview.readyToAdopt).toBe(false);
+	});
+
+	it('validates transformed values against the mapping declared range', async () => {
+		const device = readDeviceFixture('light');
+		homeyService.getFreshDevice.mockResolvedValue(device);
+		const propertyResolution = mappingLoader.resolvePropertyMappings(device);
+		jest.spyOn(mappingLoader, 'resolvePropertyMappings').mockReturnValue({
+			conflicts: propertyResolution.conflicts,
+			mappings: propertyResolution.mappings.map((binding) =>
+				binding.capabilityId === 'dim'
+					? {
+							...binding,
+							mapping: {
+								...binding.mapping,
+								property: {
+									...binding.mapping.property,
+									range: { minimum: 0, maximum: 50, step: 1 },
+								},
+							},
+						}
+					: binding,
+			),
+		});
+
+		const preview = await service.generatePreview({ deviceId: device.id });
+
+		expect(findProperty(preview, 'dim')?.currentValue).toBe(24);
+		expect(preview.warnings).toContainEqual(
+			expect.objectContaining({
+				code: HomeyMappingPreviewWarningCode.INVALID_PROPERTY_VALUE_DOMAIN,
+				severity: HomeyMappingPreviewWarningSeverity.ERROR,
+				identifier: 'dim',
+			}),
+		);
+		expect(preview.readyToAdopt).toBe(false);
+	});
+
+	it('blocks a boolean transform with identical Homey representations', async () => {
+		const device = readDeviceFixture('light');
+		homeyService.getFreshDevice.mockResolvedValue(device);
+		const propertyResolution = mappingLoader.resolvePropertyMappings(device);
+		jest.spyOn(mappingLoader, 'resolvePropertyMappings').mockReturnValue({
+			conflicts: propertyResolution.conflicts,
+			mappings: propertyResolution.mappings.map((binding) =>
+				binding.capabilityId === 'onoff'
+					? {
+							...binding,
+							mapping: {
+								...binding.mapping,
+								property: {
+									...binding.mapping.property,
+									transform: {
+										type: 'boolean',
+										true_value: false,
+										false_value: false,
+									},
+								},
+							},
+						}
+					: binding,
+			),
+		});
+
+		const preview = await service.generatePreview({ deviceId: device.id });
+
+		expect(findProperty(preview, 'onoff')?.conversion).toMatchObject({
+			type: 'boolean',
+			reversible: false,
+			lossy: true,
+			ambiguous: true,
+		});
+		expect(preview.warnings).toContainEqual(
+			expect.objectContaining({
+				code: HomeyMappingPreviewWarningCode.NON_REVERSIBLE_CONVERSION,
+				severity: HomeyMappingPreviewWarningSeverity.ERROR,
+				identifier: 'onoff',
+			}),
+		);
+		expect(preview.readyToAdopt).toBe(false);
+	});
+
 	it('uses fixed not-found and unavailable errors for fresh inventory failures', async () => {
 		homeyService.getFreshDevice.mockResolvedValueOnce(null).mockRejectedValueOnce(new Error('private endpoint detail'));
 

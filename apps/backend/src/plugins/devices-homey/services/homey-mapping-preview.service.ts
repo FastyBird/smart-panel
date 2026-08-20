@@ -9,7 +9,7 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelDataInput, DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
-import { validatePropertyCommandValue } from '../../../modules/devices/utils/property-command-value.utils';
+import { matchesStep, validatePropertyCommandValue } from '../../../modules/devices/utils/property-command-value.utils';
 import { getPropertyMetadata } from '../../../modules/devices/utils/schema.utils';
 import { HomeyMappingPreviewRequestDto } from '../dto/mapping-preview.dto';
 import {
@@ -24,6 +24,7 @@ import {
 	HomeyMappingResolution,
 	HomeyMappingScalar,
 	HomeyTransformDefinition,
+	HomeyValueRangeDefinition,
 	ResolvedHomeyChannelMapping,
 	ResolvedHomeyPropertyBinding,
 } from '../mappings/mapping.types';
@@ -385,9 +386,9 @@ export class HomeyMappingPreviewService {
 		}
 
 		if (
-			conversion.type === HomeyMappingConversionType.MAP &&
-			mapping.property.direction === 'bidirectional' &&
-			!conversion.reversible
+			!conversion.reversible &&
+			((conversion.type === HomeyMappingConversionType.MAP && mapping.property.direction === 'bidirectional') ||
+				conversion.type === HomeyMappingConversionType.BOOLEAN)
 		) {
 			warnings.push(
 				this.warning(
@@ -407,13 +408,20 @@ export class HomeyMappingPreviewService {
 			mappingCanRead,
 			mappingCanWrite,
 		);
+		if (mapping.property.range?.minimum !== undefined) {
+			potentialPanelValues.push(mapping.property.range.minimum);
+		}
+		if (mapping.property.range?.maximum !== undefined) {
+			potentialPanelValues.push(mapping.property.range.maximum);
+		}
 		if (property.valueAvailable) {
 			potentialPanelValues.push(property.currentValue);
 		}
 
 		if (
 			potentialPanelValues.some(
-				(value) => !this.isValidPanelValue(channelCategory, property.category, property.dataType, value),
+				(value) =>
+					!this.isValidPanelValue(channelCategory, property.category, property.dataType, mapping.property.range, value),
 			) ||
 			this.hasIncompleteWritableEnumDomain(
 				channelCategory,
@@ -431,6 +439,23 @@ export class HomeyMappingPreviewService {
 					capability.id,
 					[mapping.name],
 					'The mapping value domain is incompatible with the Smart Panel property constraints',
+				),
+			);
+		}
+
+		if (
+			this.getPotentialHomeyWriteValues(mapping.property.transform, mappingCanWrite).some(
+				(value) => !this.isValidHomeyValue(capability, value),
+			)
+		) {
+			warnings.push(
+				this.warning(
+					HomeyMappingPreviewWarningCode.INVALID_CAPABILITY_VALUE_DOMAIN,
+					HomeyMappingPreviewWarningSeverity.ERROR,
+					HomeyMappingPreviewWarningScope.CONVERSION,
+					capability.id,
+					[mapping.name],
+					'The write conversion can produce a value outside the declared Homey capability constraints',
 				),
 			);
 		}
@@ -522,6 +547,7 @@ export class HomeyMappingPreviewService {
 		channelCategory: ChannelCategory,
 		propertyCategory: PropertyCategory,
 		dataType: DataTypeType,
+		mappingRange: HomeyValueRangeDefinition | undefined,
 		value: HomeyMappingScalar,
 	): boolean {
 		const metadata = getPropertyMetadata(channelCategory, propertyCategory);
@@ -538,14 +564,90 @@ export class HomeyMappingPreviewService {
 			typeof constraints.invalid === 'boolean'
 				? constraints.invalid
 				: null;
-		const property = {
+		const canonicalProperty = {
 			dataType,
 			format: constraints.format,
 			invalid,
 			step: constraints.step,
 		} as ChannelPropertyEntity;
 
-		return validatePropertyCommandValue(property, value).valid;
+		if (!validatePropertyCommandValue(canonicalProperty, value).valid) {
+			return false;
+		}
+
+		if (mappingRange === undefined) {
+			return true;
+		}
+
+		const hasMappingBounds = mappingRange.minimum !== undefined || mappingRange.maximum !== undefined;
+		const mappingProperty = {
+			dataType,
+			format: hasMappingBounds
+				? ([mappingRange.minimum ?? null, mappingRange.maximum ?? null] as unknown as number[])
+				: constraints.format,
+			invalid,
+			step: mappingRange.step ?? constraints.step,
+		} as ChannelPropertyEntity;
+
+		return validatePropertyCommandValue(mappingProperty, value).valid;
+	}
+
+	private getPotentialHomeyWriteValues(
+		transform: HomeyTransformDefinition | undefined,
+		mappingCanWrite: boolean,
+	): HomeyMappingScalar[] {
+		if (!mappingCanWrite || !transform) {
+			return [];
+		}
+
+		switch (transform.type) {
+			case 'scale':
+				return [...transform.input_range];
+			case 'map':
+				return Object.values(transform.write ?? {});
+			case 'boolean':
+				return [transform.true_value, transform.false_value];
+			case 'clamp':
+				return [transform.minimum, transform.maximum];
+			case 'constant':
+				return [transform.value];
+			case 'threshold':
+				return [transform.less_than_or_equal, transform.greater_than];
+			case 'thresholds':
+				return [...transform.thresholds.map((entry) => entry.value), transform.default];
+			case 'round':
+				return [];
+		}
+	}
+
+	private isValidHomeyValue(capability: HomeyCapability, value: HomeyMappingScalar): boolean {
+		switch (capability.type) {
+			case HomeyCapabilityType.BOOLEAN:
+				return typeof value === 'boolean';
+			case HomeyCapabilityType.ENUM:
+				return (
+					typeof value === 'string' &&
+					(capability.enumValues.length === 0 || capability.enumValues.some((candidate) => candidate.id === value))
+				);
+			case HomeyCapabilityType.STRING:
+				return typeof value === 'string';
+			case HomeyCapabilityType.NUMBER:
+				if (typeof value !== 'number' || !Number.isFinite(value)) {
+					return false;
+				}
+				if (capability.minimum !== null && value < capability.minimum) {
+					return false;
+				}
+				if (capability.maximum !== null && value > capability.maximum) {
+					return false;
+				}
+				return (
+					capability.step === null ||
+					(capability.step > 0 && matchesStep(value, capability.step, capability.minimum ?? 0))
+				);
+			case HomeyCapabilityType.UNKNOWN:
+				return false;
+		}
 	}
 
 	private hasIncompleteWritableEnumDomain(
@@ -612,8 +714,13 @@ export class HomeyMappingPreviewService {
 					writeEntries.every(([target, source]) => String(transform.read?.[String(source)]) === target);
 				break;
 			}
-			case 'boolean':
+			case 'boolean': {
+				const representationsEqual = transform.true_value === transform.false_value;
+				conversion.reversible = !representationsEqual;
+				conversion.lossy = representationsEqual;
+				conversion.ambiguous = representationsEqual;
 				break;
+			}
 			case 'clamp':
 				conversion.minimum = transform.minimum;
 				conversion.maximum = transform.maximum;
