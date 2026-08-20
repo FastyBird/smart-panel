@@ -557,9 +557,10 @@ function resolveTemporalHomeSpaceIds(
 	) {
 		return [];
 	}
+	if (conversationSpaceId) return [conversationSpaceId];
 	if (explicitSpaces.length === 1) return [explicitSpaces[0].id];
 
-	return conversationSpaceId ? [conversationSpaceId] : [];
+	return [];
 }
 
 function findExplicitSpaces(
@@ -727,10 +728,14 @@ function buildToolNames(
 	if (domains.includes('home')) names.push(SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME);
 	if (hasWrite) {
 		names.push(CONTROL_DEVICE_TOOL_NAME);
-		const hasLightingTarget = /\b(?:lamp|lamps|light|lighting|lights)\b/u.test(message);
-		const hasLightingGroup = /\b(?:all|every|lighting|lights|room)\b/u.test(message);
+		const hasLightingGroupTarget = splitPlannerClauses(message).some(
+			(clause) =>
+				ACTION_COMMAND_PATTERN.test(clause) &&
+				/\b(?:lamp|lamps|light|lighting|lights)\b/u.test(clause) &&
+				/\b(?:all|every|lighting|lights|room)\b/u.test(clause),
+		);
 
-		if (hasLightingTarget && hasLightingGroup) names.push(SET_SPACE_LIGHTING_TOOL_NAME);
+		if (hasLightingGroupTarget) names.push(SET_SPACE_LIGHTING_TOOL_NAME);
 	}
 	if (hasTrigger) names.push(RUN_SCENE_TOOL_NAME);
 

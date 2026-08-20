@@ -814,6 +814,19 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('does not combine lighting-group signals across action clauses', () => {
+		expect(
+			service.plan({
+				message: 'Turn desk lamp on and turn living room fan on',
+				knownSpaces: [{ id: 'space-living-room', name: 'Living room' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device'],
+		});
+	});
+
 	it('classifies a scene run independently from a later device-run target', () => {
 		expect(
 			service.plan({
@@ -1106,6 +1119,23 @@ describe('BuddyContextPlannerService', () => {
 				{ kind: 'search-home', spaceId: 'space-kitchen' },
 				{ kind: 'current-state', spaceId: 'space-kitchen' },
 				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+			],
+		});
+	});
+
+	it('keeps an unqualified temporal clause in conversation scope', () => {
+		expect(
+			service.plan({
+				message: 'What was the temperature yesterday, and what is the Bedroom temperature now?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'current-state', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-office' },
 			],
 		});
 	});
