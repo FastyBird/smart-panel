@@ -233,6 +233,43 @@ describe('ConfigModule Store', () => {
 		expect((store.data[mockModule.type] as ICustomModuleConfig).mockValue).toBe('server value');
 	});
 
+	// A successful PATCH answers with the configuration as of the moment the server was asked, so
+	// in that respect it is a read like any other. A refresh issued after it - a change event
+	// reacting to somebody else's edit, say - describes a later moment and must win, even when the
+	// slower PATCH response lands after it.
+	it('does not let a slow edit response overwrite a refresh issued after it', async () => {
+		let resolvePatch!: (value: unknown) => void;
+
+		const patchRequest = new Promise((resolve) => {
+			resolvePatch = resolve;
+		});
+
+		store.data = { [mockModule.type]: { ...mockModule } };
+
+		(backendClient.PATCH as Mock).mockReturnValueOnce(patchRequest);
+
+		(backendClient.GET as Mock).mockResolvedValueOnce({
+			data: { data: { ...mockModuleRes, mockValue: 'someone else' } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		const pendingEdit = store.edit({ data: { ...mockModule, mockValue: 'my value' } } as IConfigModulesEditActionPayload);
+
+		// Issued after the PATCH went out, and answered before it comes back.
+		await store.get({ type: 'custom-module', force: true });
+
+		resolvePatch({
+			data: { data: { ...mockModuleRes, mockValue: 'my value' } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		await pendingEdit;
+
+		expect((store.data[mockModule.type] as ICustomModuleConfig).mockValue).toBe('someone else');
+	});
+
 	it('should fetch all modules successfully', async () => {
 		(backendClient.GET as Mock).mockResolvedValue({
 			data: { data: [mockModuleRes] },

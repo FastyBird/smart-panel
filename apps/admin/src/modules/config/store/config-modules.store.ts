@@ -340,6 +340,12 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 
 			commit(parsedEditedConfig.data);
 
+			// Drawn as the request goes out, and so after the optimistic write above, which it is
+			// meant to confirm. What comes back describes the configuration as of the moment the
+			// server was asked, so a read issued later - a change event's forced refresh, say,
+			// picking up somebody else's edit - is the newer story even if it lands first.
+			const requestedAt = nextSequence();
+
 			try {
 				const {
 					data: responseData,
@@ -362,7 +368,7 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 				if (typeof responseData !== 'undefined') {
 					const transformed = transformConfigModuleResponse(responseData.data, element?.schemas?.moduleConfigSchema || ConfigModuleSchema);
 
-					return commit(transformed);
+					return commit(transformed, requestedAt);
 				}
 
 				// Updating the record on api failed, so the optimistic write above has to be rolled

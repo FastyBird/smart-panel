@@ -420,4 +420,41 @@ describe('ConfigPlugin Store', () => {
 
 		expect((store.data[mockPlugin.type] as ICustomPluginConfig).mockValue).toBe('server value');
 	});
+
+	// A successful PATCH answers with the configuration as of the moment the server was asked, so
+	// in that respect it is a read like any other. A refresh issued after it - a change event
+	// reacting to somebody else's edit, say - describes a later moment and must win, even when the
+	// slower PATCH response lands after it.
+	it('does not let a slow edit response overwrite a refresh issued after it', async () => {
+		let resolvePatch!: (value: unknown) => void;
+
+		const patchRequest = new Promise((resolve) => {
+			resolvePatch = resolve;
+		});
+
+		store.data = { [mockPlugin.type]: { ...mockPlugin } };
+
+		(backendClient.PATCH as Mock).mockReturnValueOnce(patchRequest);
+
+		(backendClient.GET as Mock).mockResolvedValueOnce({
+			data: { data: { ...mockPluginRes, mockValue: 'someone else' } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		const pendingEdit = store.edit({ data: { ...mockPlugin, mockValue: 'my value' } } as IConfigPluginsEditActionPayload);
+
+		// Issued after the PATCH went out, and answered before it comes back.
+		await store.get({ type: 'custom-plugin', force: true });
+
+		resolvePatch({
+			data: { data: { ...mockPluginRes, mockValue: 'my value' } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		await pendingEdit;
+
+		expect((store.data[mockPlugin.type] as ICustomPluginConfig).mockValue).toBe('someone else');
+	});
 });
