@@ -36,7 +36,11 @@ const waitingForRestart = ref<boolean>(false);
 // Polling handle for reconnection detection after service restart
 let reconnectPollTimer: ReturnType<typeof setInterval> | null = null;
 const RECONNECT_POLL_INTERVAL_MS = 4_000;
-const RECONNECT_POLL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes max
+const RECONNECT_POLL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes max unreachable gap
+// A backend stuck reporting a non-terminal status must not keep the poll alive forever:
+// every successful response resets the unreachable timeout, so without an absolute
+// ceiling the interval outlives navigation for as long as the tab does.
+const RECONNECT_POLL_MAX_LIFETIME_MS = 30 * 60 * 1000;
 
 // Simulated progress ticker during backend restart gap
 let progressTickTimer: ReturnType<typeof setInterval> | null = null;
@@ -222,13 +226,16 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 		// Capture the version we're updating TO before the poll overwrites it
 		const targetVersion = latestVersion.value;
 
-		let lastSuccessAt = Date.now();
+		const startedAt = Date.now();
+
+		let lastSuccessAt = startedAt;
 
 		reconnectPollTimer = setInterval(async () => {
-			// Timeout only applies to the reconnection gap (backend unreachable).
+			// Timeout only applies to the reconnection gap (backend unreachable); the
+			// absolute ceiling applies regardless of how healthily the backend answers.
 			// Reset the timer on every successful response so slow-but-active
 			// updates aren't incorrectly marked as failed.
-			if (Date.now() - lastSuccessAt > RECONNECT_POLL_TIMEOUT_MS) {
+			if (Date.now() - lastSuccessAt > RECONNECT_POLL_TIMEOUT_MS || Date.now() - startedAt > RECONNECT_POLL_MAX_LIFETIME_MS) {
 				stopReconnectPoll();
 				waitingForRestart.value = false;
 				installing.value = false;
