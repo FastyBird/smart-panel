@@ -449,19 +449,18 @@ function classifyDomains(
 	if (hasEnergy) domains.add('energy');
 	if (hasSecurity) domains.add('security');
 	if (HISTORY_PATTERN.test(message)) {
-		const hasDomainSpecificHistory = domains.has('weather') || domains.has('energy') || domains.has('security');
-		const hasHomeSpecificHistory = message
-			.split(/(?:[?!,;]|\b(?:and(?: also)?|as well as|plus|then)\b)/u)
-			.some(
-				(clause) =>
-					HISTORY_PATTERN.test(clause) &&
-					(HOME_ENTITY_PATTERN.test(clause) ||
-						HOME_VOCABULARY_PATTERN.test(clause) ||
-						HOME_INSTALLATION_PATTERN.test(clause) ||
-						HOME_STATE_PATTERN.test(clause)),
-			);
+		const hasHomeSpecificHistory = clauses.some(
+			(clause) =>
+				HISTORY_PATTERN.test(clause) &&
+				(HOME_ENTITY_PATTERN.test(clause) ||
+					HOME_VOCABULARY_PATTERN.test(clause) ||
+					HOME_INSTALLATION_PATTERN.test(clause) ||
+					HOME_STATE_PATTERN.test(clause) ||
+					explicitSpaces.some((space) => containsNormalizedPhrase(clause, normalize(space.name))) ||
+					(hasRecentReferenceHome && hasReferencePronoun(clause))),
+		);
 
-		if (hasHomeSpecificHistory || !hasDomainSpecificHistory) {
+		if (hasHomeSpecificHistory) {
 			domains.add('home');
 			domains.add('history');
 		}

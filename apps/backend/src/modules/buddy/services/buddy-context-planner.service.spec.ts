@@ -2050,4 +2050,21 @@ describe('BuddyContextPlannerService', () => {
 			strategy: 'deterministic-action',
 		});
 	});
+
+	it('keeps an unrelated historical question off home retrieval', () => {
+		expect(
+			service.plan({
+				message: 'What happened yesterday?',
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toEqual({
+			domains: ['general'],
+			intent: 'none',
+			scope: {},
+			queries: [],
+			toolNames: [],
+			ambiguityRisk: 'none',
+			strategy: 'no-home-context',
+		});
+	});
 });
