@@ -70,7 +70,7 @@ const SECURITY_ENTITY_NAME_PATTERN = new RegExp(
 	String.raw`\b(?:alarm|security)\s+(?:${DOMAIN_ENTITY_CATEGORY_PATTERN_SOURCE})\b`,
 	'gu',
 );
-const CLOCK_TIME_VALUE_PATTERN_SOURCE = String.raw`(?:[01]?\d|2[0-3])(?::[0-5]\d)?\s*(?:a\.?m\.?|p\.?m\.?)?`;
+const CLOCK_TIME_VALUE_PATTERN_SOURCE = String.raw`(?:(?:[01]?\d|2[0-3]):[0-5]\d(?:\s*(?:a\.?m\.?|p\.?m\.?))?|(?:0?[1-9]|1[0-2])\s*(?:a\.?m\.?|p\.?m\.?))`;
 const CLOCK_TIME_HISTORY_PATTERN = new RegExp(
 	String.raw`\b(?:from\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}\s+(?:to|until)\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|between\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}\s+and\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|at\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE})\b`,
 	'u',
@@ -465,7 +465,12 @@ function classifyDomains(
 			hasDomainSignalInClause(retrievalClause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) ||
 			hasDomainSignalInClause(retrievalClause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN);
 
-		return hasHomeSignal && (!hasNonHomeSignal || CONTEXTUAL_SCOPE_PATTERN.test(retrievalClause));
+		const hasDeviceSpecificDomainRead = hasNonHomeSignal && HOME_ENTITY_PATTERN.test(retrievalClause);
+
+		return (
+			hasHomeSignal &&
+			(!hasNonHomeSignal || CONTEXTUAL_SCOPE_PATTERN.test(retrievalClause) || hasDeviceSpecificDomainRead)
+		);
 	});
 	const hasInstallationHome = clauses.some(
 		(clause) =>
@@ -997,7 +1002,10 @@ function resolveCurrentStateSpaceIds(
 
 		return (
 			hasHomeSignal &&
-			(!hasNonHomeSignal || CONTEXTUAL_SCOPE_PATTERN.test(clause) || (hasExplicitSpace && hasIndependentHomeSignal))
+			(!hasNonHomeSignal ||
+				CONTEXTUAL_SCOPE_PATTERN.test(clause) ||
+				(hasExplicitSpace && hasIndependentHomeSignal) ||
+				(hasNonHomeSignal && HOME_ENTITY_PATTERN.test(clauseWithoutExplicitSpaces)))
 		);
 	});
 	if (currentStateClauses.length === 0) return undefined;

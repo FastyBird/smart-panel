@@ -2757,4 +2757,32 @@ describe('BuddyContextPlannerService', () => {
 			strategy: 'clarify',
 		});
 	});
+
+	it('keeps unit-bearing numeric value ranges on current-state retrieval', () => {
+		expect(
+			service.plan({
+				message: 'Show thermostats set from 18 to 20 degrees',
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+			strategy: 'prefetch',
+		});
+	});
+
+	it('preserves bounded home retrieval for a device-specific energy read', () => {
+		expect(
+			service.plan({
+				message: 'What is the power usage of the heater?',
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'energy'],
+			intent: 'read',
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }, { kind: 'energy-summary' }],
+			strategy: 'prefetch',
+		});
+	});
 });
