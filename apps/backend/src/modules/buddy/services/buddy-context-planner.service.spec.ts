@@ -1827,6 +1827,7 @@ describe('BuddyContextPlannerService', () => {
 	it('keeps general explanations and unsupported domains free of home queries and tools', () => {
 		for (const message of [
 			'How does a thermostat work?',
+			'How did thermostats work in 1950?',
 			'Show me how to turn off the kitchen light.',
 			'Book a flight',
 		]) {
@@ -1845,6 +1846,30 @@ describe('BuddyContextPlannerService', () => {
 				strategy: 'no-home-context',
 			});
 		}
+	});
+
+	it('clarifies a shared generic category across conjoined configured spaces', () => {
+		expect(
+			service.plan({
+				message: 'Set Bedroom and Kitchen thermostats to 20',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'write',
+			scope: { spaceIds: ['space-bedroom', 'space-kitchen'] },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'search-home', spaceId: 'space-kitchen' },
+			],
+			toolNames: [],
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+		});
 	});
 
 	it('preserves a conjunction inside a multi-space lighting target', () => {
@@ -2062,6 +2087,39 @@ describe('BuddyContextPlannerService', () => {
 			ambiguityRisk: 'none',
 			strategy: 'model-tools',
 			toolNames: ['search_home', 'query_home_state', 'control_device'],
+		});
+	});
+
+	it('resolves a Czech state-reference pronoun and clarifies when it is missing', () => {
+		const providerCapabilities = { toolCalling: 'reliable' as const, supportsStructuredToolResults: true };
+		const message = 'Je to otevřené?';
+
+		expect(
+			service.plan({
+				message,
+				recentEntityReferences: [
+					{
+						kind: 'device',
+						id: 'device-window',
+						name: 'Window',
+						compatibleActionTypes: ['open'],
+					},
+				],
+				providerCapabilities,
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			scope: { referencedEntityIds: ['device-window'] },
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+		});
+		expect(service.plan({ message, providerCapabilities })).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			ambiguityRisk: 'read',
+			strategy: 'clarify',
+			toolNames: [],
 		});
 	});
 

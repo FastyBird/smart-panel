@@ -130,6 +130,12 @@ const TEMPORAL_THIS_REFERENCE_PATTERN =
 	/\bthis\s+(?:afternoon|day|evening|hour|minute|month|morning|night|week|weekend|year)\b/gu;
 const LOCALIZED_REFERENCE_PRONOUN_PATTERN =
 	/\b(?:aktivuj|nastav|odemkni|otevri|sniz|spust|vypni|zamkni|zapni|zavri|zvys)\s+(?:ho|to)\b/u;
+const LOCALIZED_STATE_REFERENCE_PRONOUN_PATTERN = new RegExp(
+	String.raw`^(?:a\s+)?(?:je|jsou)\s+to\b.*\b(?:${[...BUDDY_GROUNDED_STATE_SIGNALS, ...BUDDY_STATE_SIGNALS].join(
+		'|',
+	)})\b`,
+	'u',
+);
 const CAPABILITY_DISCOVERY_PATTERN = new RegExp(
 	String.raw`^(?:(?:what|which)\b|(?:can|could|would) you (?:show|tell)(?: me)?\b).*\b(?:am i able to|can i|i can)\b.*\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
@@ -667,6 +673,7 @@ function hasHistorySignalInClause(clause: string): boolean {
 function splitPlannerClauses(message: string, protectedSpaces: readonly BuddyContextSpaceReference[] = []): string[] {
 	const protectedRanges = [
 		...findExplicitSpaceOccurrences(message, protectedSpaces).map((occurrence) => occurrence.range),
+		...findConjoinedSpaceTargetRanges(message, protectedSpaces),
 		...findPatternRanges(message, CLOCK_TIME_HISTORY_PATTERN),
 	];
 	const separatorPattern = new RegExp(
@@ -724,6 +731,30 @@ function findPatternRanges(message: string, pattern: RegExp): Array<{ start: num
 	}));
 }
 
+function findConjoinedSpaceTargetRanges(
+	message: string,
+	spaces: readonly BuddyContextSpaceReference[],
+): Array<{ start: number; end: number }> {
+	const occurrences = findExplicitSpaceOccurrences(message, spaces).sort(
+		(left, right) => left.range.start - right.range.start,
+	);
+	const sharedTargetPattern = new RegExp(String.raw`^\s*(?:${HOME_ENTITY_PATTERN.source})`, 'u');
+	const ranges: Array<{ start: number; end: number }> = [];
+
+	for (let index = 0; index < occurrences.length - 1; index += 1) {
+		const left = occurrences[index];
+		const right = occurrences[index + 1];
+		const connector = message.slice(left.range.end, right.range.start);
+
+		if (!/^\s*(?:,\s*|,?\s+(?:and|or)\s+)$/u.test(connector)) continue;
+		if (!sharedTargetPattern.test(message.slice(right.range.end))) continue;
+
+		ranges.push({ start: left.range.end, end: right.range.start });
+	}
+
+	return ranges;
+}
+
 function hasCurrentStateReadClause(
 	message: string,
 	explicitSpaces: readonly BuddyContextSpaceReference[] = [],
@@ -775,7 +806,7 @@ function isGeneralExplanation(message: string, hasExplicitSpace = false): boolea
 		/^what (?:is|are) (?:smart )?(?:device|devices|home|home automation|lighting|scene|scenes|sensor|sensors|thermostat|thermostats)[?!.]*$/u.test(
 			message,
 		) ||
-		/^how (?:can|could|do|does|would)\b.*\b(?:work|works|working|i)\b/u.test(message) ||
+		/^how (?:can|could|did|do|does|would)\b.*\b(?:work|works|working|i)\b/u.test(message) ||
 		/^explain (?:how|what|why)\b/u.test(message) ||
 		/^(?:explain|show me|tell me) how to\b/u.test(message) ||
 		/^what (?:do|does) (?:a|an)\b.*\bdo\b/u.test(message) ||
@@ -1620,7 +1651,11 @@ function stripContextualScopeReferences(message: string): string {
 function hasReferencePronoun(message: string): boolean {
 	const referenceMessage = stripRelativeReferencePronouns(message);
 
-	return PRONOUN_PATTERN.test(referenceMessage) || LOCALIZED_REFERENCE_PRONOUN_PATTERN.test(referenceMessage);
+	return (
+		PRONOUN_PATTERN.test(referenceMessage) ||
+		LOCALIZED_REFERENCE_PRONOUN_PATTERN.test(referenceMessage) ||
+		LOCALIZED_STATE_REFERENCE_PRONOUN_PATTERN.test(referenceMessage)
+	);
 }
 
 function hasSingularReferencePronoun(message: string): boolean {
@@ -1628,7 +1663,8 @@ function hasSingularReferencePronoun(message: string): boolean {
 
 	return (
 		SINGULAR_REFERENCE_PRONOUN_PATTERN.test(referenceMessage) ||
-		LOCALIZED_REFERENCE_PRONOUN_PATTERN.test(referenceMessage)
+		LOCALIZED_REFERENCE_PRONOUN_PATTERN.test(referenceMessage) ||
+		LOCALIZED_STATE_REFERENCE_PRONOUN_PATTERN.test(referenceMessage)
 	);
 }
 
