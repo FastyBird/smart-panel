@@ -1585,6 +1585,7 @@ describe('BuddyContextPlannerService', () => {
 
 	it.each([
 		{ message: 'Are any windows open in the whole house?', knownSpaces: [], expectedScope: {} },
+		{ message: 'What is the temperature in every room?', knownSpaces: [], expectedScope: {} },
 		{
 			message: 'What is the nursery temperature?',
 			knownSpaces: [
@@ -2654,6 +2655,28 @@ describe('BuddyContextPlannerService', () => {
 		expect(
 			service.plan({
 				message: 'What has the Bedroom temperature been since 8am?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			scope: { spaceId: 'space-bedroom' },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+			],
+			strategy: 'prefetch',
+		});
+	});
+
+	it.each([
+		'What was the Bedroom temperature before noon?',
+		'What was the Bedroom temperature after 8?',
+		'What was the Bedroom temperature until midnight?',
+	])('routes a standalone clock bound to bounded history retrieval: %s', (message) => {
+		expect(
+			service.plan({
+				message,
 				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			}),

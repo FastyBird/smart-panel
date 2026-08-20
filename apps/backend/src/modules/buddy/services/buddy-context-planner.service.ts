@@ -75,7 +75,7 @@ const SECURITY_ENTITY_NAME_PATTERN = new RegExp(
 const CLOCK_TIME_VALUE_PATTERN_SOURCE = String.raw`(?:midnight|noon|(?:[01]?\d|2[0-3]):[0-5]\d(?:\s*(?:a\.?m\.?|p\.?m\.?))?|(?:0?[1-9]|1[0-2])\s*(?:a\.?m\.?|p\.?m\.?))`;
 const CLOCK_TIME_AT_VALUE_PATTERN_SOURCE = String.raw`(?:${CLOCK_TIME_VALUE_PATTERN_SOURCE}|(?:[01]?\d|2[0-3]))`;
 const CLOCK_TIME_HISTORY_PATTERN = new RegExp(
-	String.raw`\b(?:from\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}\s+(?:to|until)\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|between\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}\s+and\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|since\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|at\s+${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE})\b`,
+	String.raw`\b(?:from\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}\s+(?:to|until)\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|between\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}\s+and\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|since\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|(?:after|before|until)\s+${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE}|at\s+${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE})\b`,
 	'u',
 );
 const HISTORY_PATTERN =
@@ -197,7 +197,7 @@ const BUILT_IN_ACTION_SPACE_NAMES = new Set([
 const EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN =
 	/\b(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs) thermostat\b/u;
 const WHOLE_HOME_SCOPE_PATTERN =
-	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b/u;
+	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b|\b(?:all|every) rooms?\b/u;
 const TRAILING_ACTION_PATTERN = new RegExp(
 	String.raw`(?:[?!,.;]|\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
