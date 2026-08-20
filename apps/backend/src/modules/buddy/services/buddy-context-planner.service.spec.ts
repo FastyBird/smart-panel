@@ -2914,21 +2914,26 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
-	it('does not classify a numeric thermostat adjustment range as history', () => {
-		expect(
-			service.plan({
-				message: 'Set the Bedroom thermostat from 8 to 10 degrees',
-				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
-				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
-			}),
-		).toMatchObject({
-			domains: ['home'],
-			intent: 'write',
-			scope: { spaceId: 'space-bedroom' },
-			queries: [{ kind: 'search-home', spaceId: 'space-bedroom' }],
-			strategy: 'deterministic-action',
-		});
-	});
+	it.each(['Set the Bedroom thermostat from 8 to 10 degrees', 'Set the Bedroom thermostat between 18 and 22 degrees'])(
+		'clarifies a numeric thermostat range before scalar control handoff: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+					providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+				}),
+			).toMatchObject({
+				domains: ['home'],
+				intent: 'write',
+				scope: { spaceId: 'space-bedroom' },
+				queries: [{ kind: 'search-home', spaceId: 'space-bedroom' }],
+				ambiguityRisk: 'action',
+				strategy: 'clarify',
+				toolNames: [],
+			});
+		},
+	);
 
 	it('propagates exclusions across repeated prepositions in a space list', () => {
 		expect(
@@ -3424,5 +3429,48 @@ describe('BuddyContextPlannerService', () => {
 			strategy: 'model-tools',
 			toolNames: ['search_home', 'query_home_state', 'control_device', 'set_space_lighting'],
 		});
+	});
+
+	it('clarifies a duration-limited action without requesting property history', () => {
+		expect(
+			service.plan({
+				message: 'Turn the Bedroom lights on for 10 minutes',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'write',
+			queries: [{ kind: 'search-home', spaceId: 'space-bedroom' }],
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
+	it.each([
+		{ message: 'Will it rain tomorrow?', spaceName: 'Rain', domains: ['weather'], query: { kind: 'weather' } },
+		{ message: 'What is the weather?', spaceName: 'Weather', domains: ['weather'], query: { kind: 'weather' } },
+		{
+			message: 'How much energy did we use today?',
+			spaceName: 'Energy',
+			domains: ['energy'],
+			query: { kind: 'energy-summary' },
+		},
+		{
+			message: 'Is the house security armed?',
+			spaceName: 'Security',
+			domains: ['security'],
+			query: { kind: 'security-status' },
+		},
+	])('preserves the lexical $spaceName domain word without space syntax', ({ message, spaceName, domains, query }) => {
+		const result = service.plan({
+			message,
+			knownSpaces: [{ id: `space-${spaceName.toLowerCase()}`, name: spaceName }],
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+		});
+
+		expect(result).toMatchObject({ domains, scope: {}, queries: [query] });
 	});
 });

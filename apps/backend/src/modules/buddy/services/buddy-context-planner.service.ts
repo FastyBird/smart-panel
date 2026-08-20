@@ -85,9 +85,11 @@ const CLOCK_TIME_HISTORY_PATTERN = new RegExp(
 	'u',
 );
 const SCHEDULED_ACTION_PATTERN = new RegExp(
-	String.raw`\b(?:at\s+${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE}(?!\s*(?:%|celsius\b|degrees?\b|fahrenheit\b|percent\b|°\s*(?:c|f)?))|tomorrow|tonight|next\s+(?:day|evening|morning|night|week)|in\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?)|(?:each|every)\s+(?:day|evening|friday|monday|morning|night|saturday|sunday|thursday|tuesday|wednesday|week|weekday|weekend)|daily|weekly)\b`,
+	String.raw`\b(?:at\s+${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE}(?!\s*(?:%|celsius\b|degrees?\b|fahrenheit\b|percent\b|°\s*(?:c|f)?))|tomorrow|tonight|next\s+(?:day|evening|morning|night|week)|(?:for|in)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?)|(?:each|every)\s+(?:day|evening|friday|monday|morning|night|saturday|sunday|thursday|tuesday|wednesday|week|weekday|weekend)|daily|weekly)\b`,
 	'u',
 );
+const ACTION_DURATION_PATTERN =
+	/\bfor\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?)\b/u;
 const HISTORY_PATTERN =
 	/\b(?:chart|graph|history|historical|past|trend|vcera|yesterday)\b|\bhow\s+(?:did|has|have|is|was)\b.*\b(?:change|changed|changing|varied)\b|\b(?:at\s+)?what time did\b|\bwhen did\b|\b(?:earlier today|last (?:day|hour|minute|month|night|week|weekend|year)|this (?:afternoon|evening|morning|night))\b|\b(?:last|since)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b(?:did|was|were)\b.*\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*\b(?:did|was|were)\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
 const LEADING_WEEKDAY_HISTORY_PATTERN = /^\s*on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*$/u;
@@ -135,6 +137,7 @@ const RELATIVE_PATTERN = new RegExp(
 );
 const REPEATED_ACTION_PATTERN =
 	/\b(?:once|thrice|twice)\b(?!\s+as\b)|\b(?:\d+|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+times?\b/u;
+const ACTION_RANGE_PATTERN = /\b(?:between\b[^?!,.;]+\band\b|from\b[^?!,.;]+\b(?:to|until)\b)/u;
 const PRONOUN_PATTERN = /\b(?:ho|it|its|that|their|them|these|they|this|those)\b|\bthe one\b/u;
 const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:ho|it|its|that|this)\b|\bthe one\b/u;
 const PLURAL_REFERENCE_PRONOUN_PATTERN = /\b(?:their|them|these|they|those)\b/u;
@@ -713,10 +716,12 @@ function isScopedIndoorFutureTemperatureClause(
 }
 
 function hasHistorySignalInClause(clause: string): boolean {
+	const historyClause = ACTION_COMMAND_PATTERN.test(clause) ? clause.replace(ACTION_DURATION_PATTERN, ' ') : clause;
+
 	return (
-		HISTORY_PATTERN.test(clause) ||
-		LEADING_WEEKDAY_HISTORY_PATTERN.test(clause) ||
-		(!ACTION_COMMAND_PATTERN.test(clause) && CLOCK_TIME_HISTORY_PATTERN.test(clause))
+		HISTORY_PATTERN.test(historyClause) ||
+		LEADING_WEEKDAY_HISTORY_PATTERN.test(historyClause) ||
+		(!ACTION_COMMAND_PATTERN.test(clause) && CLOCK_TIME_HISTORY_PATTERN.test(historyClause))
 	);
 }
 
@@ -937,6 +942,7 @@ function classifyAmbiguityRisk(
 		}
 		if (/\bor\b/u.test(actionReferenceMessage)) return 'action';
 		if (REPEATED_ACTION_PATTERN.test(actionReferenceMessage)) return 'action';
+		if (ACTION_RANGE_PATTERN.test(message)) return 'action';
 		if (SCHEDULED_ACTION_PATTERN.test(actionReferenceMessage)) return 'action';
 		if (
 			hasGenericActionTarget(actionReferenceMessage, explicitSpaces, conversationSpaceId !== undefined) &&
@@ -1485,11 +1491,15 @@ function findExplicitSpaceOccurrences(
 			findNormalizedPhraseRanges(message, variant).map((range) => ({ space, name, range })),
 		);
 	});
+	const unambiguousOccurrences = occurrences.filter(
+		(occurrence) =>
+			explicitSpaceOccurrenceScore(message, occurrence.range) > 0 || !isDomainSignalSpaceName(occurrence.name),
+	);
 
-	return occurrences
+	return unambiguousOccurrences
 		.filter(
 			(occurrence) =>
-				!occurrences.some(
+				!unambiguousOccurrences.some(
 					(other) =>
 						other.name.length > occurrence.name.length &&
 						other.range.start <= occurrence.range.start &&
@@ -1497,6 +1507,12 @@ function findExplicitSpaceOccurrences(
 				),
 		)
 		.map(({ space, range }) => ({ space, range }));
+}
+
+function isDomainSignalSpaceName(name: string): boolean {
+	return [WEATHER_PATTERN, ENERGY_PATTERN, SECURITY_PATTERN].some((pattern) =>
+		new RegExp(String.raw`^(?:${pattern.source})$`, 'u').test(name),
+	);
 }
 
 function getNormalizedSpaceNameVariants(name: string): string[] {
