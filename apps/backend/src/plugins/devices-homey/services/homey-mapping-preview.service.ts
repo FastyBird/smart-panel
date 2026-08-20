@@ -439,6 +439,15 @@ export class HomeyMappingPreviewService {
 
 		if (
 			!potentialPanelDomain.convertible ||
+			!this.isReadableDomainCompatible(
+				mapping,
+				capability,
+				mappingCanRead,
+				channelCategory,
+				property.category,
+				property.dataType,
+				mapping.property.range,
+			) ||
 			potentialPanelValues.some(
 				(value) =>
 					!this.isValidPanelValue(channelCategory, property.category, property.dataType, mapping.property.range, value),
@@ -473,6 +482,14 @@ export class HomeyMappingPreviewService {
 		);
 		if (
 			!potentialHomeyWriteDomain.convertible ||
+			!this.isUnboundedPanelWriteDomainCompatible(
+				mapping,
+				capability,
+				mappingCanWrite,
+				channelCategory,
+				property.category,
+				property.dataType,
+			) ||
 			potentialHomeyWriteDomain.values.some((value) => !this.isValidHomeyValue(capability, value)) ||
 			!this.isNumericWriteGridCompatible(
 				mapping,
@@ -643,6 +660,163 @@ export class HomeyMappingPreviewService {
 		}
 
 		return { values, convertible };
+	}
+
+	private isReadableDomainCompatible(
+		mapping: ResolvedHomeyPropertyMapping,
+		capability: HomeyCapability,
+		mappingCanRead: boolean,
+		channelCategory: ChannelCategory,
+		propertyCategory: PropertyCategory,
+		dataType: DataTypeType,
+		mappingRange: HomeyValueRangeDefinition | undefined,
+	): boolean {
+		if (!mappingCanRead) {
+			return true;
+		}
+
+		if (capability.type === HomeyCapabilityType.STRING) {
+			if (mapping.property.transform?.type === 'constant') {
+				return true;
+			}
+
+			return mapping.property.transform === undefined && dataType === DataTypeType.STRING;
+		}
+		if (capability.type === HomeyCapabilityType.UNKNOWN) {
+			return false;
+		}
+		if (capability.type !== HomeyCapabilityType.NUMBER) {
+			return true;
+		}
+
+		const capabilityGrid: NumericGrid = {
+			base: capability.minimum ?? 0,
+			minimum: capability.minimum,
+			maximum: capability.maximum,
+			step: capability.step,
+		};
+		const exhaustiveValues = this.getExhaustiveGridValues(capabilityGrid);
+
+		if (exhaustiveValues !== null) {
+			return exhaustiveValues.every((value) =>
+				this.isValidTransformedPanelRead(mapping, channelCategory, propertyCategory, dataType, mappingRange, value),
+			);
+		}
+
+		const transform = mapping.property.transform;
+		if (transform?.type === 'constant' || transform?.type === 'threshold' || transform?.type === 'thresholds') {
+			return true;
+		}
+		if (transform?.type === 'map') {
+			return this.isReadableMapDomainComplete(capability, transform.read ?? {});
+		}
+		if (!this.isNumericDataType(dataType) || capability.minimum === null || capability.maximum === null) {
+			return false;
+		}
+
+		const panelGrid = this.getPanelNumericGrid(channelCategory, propertyCategory, dataType, mappingRange);
+		if (capability.step === null) {
+			if (transform?.type === 'boolean') {
+				return false;
+			}
+			if (dataType === DataTypeType.FLOAT) {
+				return panelGrid.step === null;
+			}
+
+			return INTEGER_DATA_TYPES.has(dataType) && (panelGrid.step === null || matchesStep(1, panelGrid.step, 0));
+		}
+		if (
+			capability.step <= 0 ||
+			transform?.type === 'clamp' ||
+			transform?.type === 'round' ||
+			transform?.type === 'boolean'
+		) {
+			return false;
+		}
+
+		const outputStep = (() => {
+			if (transform === undefined) {
+				return capability.step;
+			}
+			if (transform.type !== 'scale') {
+				return null;
+			}
+
+			const inputSpan = transform.input_range[1] - transform.input_range[0];
+			return inputSpan === 0
+				? null
+				: Math.abs((capability.step * (transform.output_range[1] - transform.output_range[0])) / inputSpan);
+		})();
+
+		if (
+			outputStep === null ||
+			!Number.isFinite(outputStep) ||
+			(INTEGER_DATA_TYPES.has(dataType) && !Number.isInteger(outputStep)) ||
+			!this.isValidTransformedPanelRead(
+				mapping,
+				channelCategory,
+				propertyCategory,
+				dataType,
+				mappingRange,
+				capability.minimum,
+			)
+		) {
+			return false;
+		}
+
+		return panelGrid.step === null || matchesStep(outputStep, panelGrid.step, 0);
+	}
+
+	private isValidTransformedPanelRead(
+		mapping: ResolvedHomeyPropertyMapping,
+		channelCategory: ChannelCategory,
+		propertyCategory: PropertyCategory,
+		dataType: DataTypeType,
+		mappingRange: HomeyValueRangeDefinition | undefined,
+		homeyValue: number,
+	): boolean {
+		try {
+			return this.isValidPanelValue(
+				channelCategory,
+				propertyCategory,
+				dataType,
+				mappingRange,
+				this.mappingTransformer.read(mapping, homeyValue),
+			);
+		} catch {
+			return false;
+		}
+	}
+
+	private isUnboundedPanelWriteDomainCompatible(
+		mapping: ResolvedHomeyPropertyMapping,
+		capability: HomeyCapability,
+		mappingCanWrite: boolean,
+		channelCategory: ChannelCategory,
+		propertyCategory: PropertyCategory,
+		dataType: DataTypeType,
+	): boolean {
+		if (!mappingCanWrite || (dataType !== DataTypeType.STRING && dataType !== DataTypeType.ENUM)) {
+			return true;
+		}
+
+		const metadata = getPropertyMetadata(channelCategory, propertyCategory);
+		const variant = metadata?.dataTypeVariants?.find((candidate) => candidate.data_type === dataType);
+		const format = variant ? variant.format : metadata?.format;
+		const hasFiniteEnumDomain =
+			dataType === DataTypeType.ENUM &&
+			Array.isArray(format) &&
+			format.length > 0 &&
+			format.every((value) => typeof value === 'string');
+
+		if (hasFiniteEnumDomain) {
+			return true;
+		}
+		if (mapping.property.transform?.type === 'constant') {
+			return true;
+		}
+
+		return mapping.property.transform === undefined && capability.type === HomeyCapabilityType.STRING;
 	}
 
 	private isValidPanelValue(

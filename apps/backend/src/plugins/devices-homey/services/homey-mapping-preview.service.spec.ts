@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { DeviceCategory, PermissionType } from '../../../modules/devices/devices.constants';
+import { DataTypeType, DeviceCategory, PermissionType } from '../../../modules/devices/devices.constants';
 import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
@@ -117,6 +117,9 @@ describe('HomeyMappingPreviewService', () => {
 			'measure_linkquality',
 			'power_on_behavior',
 		]);
+		expect(
+			preview.warnings.filter((warning) => warning.severity === HomeyMappingPreviewWarningSeverity.ERROR),
+		).toStrictEqual([]);
 		expect(preview.readyToAdopt).toBe(true);
 	});
 
@@ -743,6 +746,9 @@ describe('HomeyMappingPreviewService', () => {
 				identifier: 'dim',
 			}),
 		);
+		expect(
+			preview.warnings.filter((warning) => warning.severity === HomeyMappingPreviewWarningSeverity.ERROR),
+		).toStrictEqual([]);
 		expect(preview.readyToAdopt).toBe(true);
 	});
 
@@ -926,6 +932,144 @@ describe('HomeyMappingPreviewService', () => {
 				identifier: 'dim',
 			}),
 		);
+	});
+
+	it('blocks a readable identity mapping whose declared Homey type cannot produce the panel type', async () => {
+		const fixture = readDeviceFixture('light');
+		const device: HomeyDevice = {
+			...fixture,
+			capabilities: fixture.capabilities.map((capability) =>
+				capability.id === 'onoff'
+					? { ...capability, type: HomeyCapabilityType.STRING, value: null, enumValues: [] }
+					: capability,
+			),
+		};
+		homeyService.getFreshDevice.mockResolvedValue(device);
+		const propertyResolution = mappingLoader.resolvePropertyMappings(device);
+		jest.spyOn(mappingLoader, 'resolvePropertyMappings').mockReturnValue({
+			conflicts: propertyResolution.conflicts,
+			mappings: propertyResolution.mappings.map((binding) =>
+				binding.capabilityId === 'onoff'
+					? {
+							...binding,
+							mapping: {
+								...binding.mapping,
+								property: {
+									...binding.mapping.property,
+									direction: 'read_only',
+									transform: undefined,
+								},
+							},
+						}
+					: binding,
+			),
+		});
+
+		const preview = await service.generatePreview({ deviceId: device.id });
+
+		expect(findProperty(preview, 'onoff')?.currentValue).toBeNull();
+		expect(preview.warnings).toContainEqual(
+			expect.objectContaining({
+				code: HomeyMappingPreviewWarningCode.INVALID_PROPERTY_VALUE_DOMAIN,
+				severity: HomeyMappingPreviewWarningSeverity.ERROR,
+				identifier: 'onoff',
+			}),
+		);
+		expect(preview.readyToAdopt).toBe(false);
+	});
+
+	it('blocks identity writes from an unbounded panel string property to a bounded Homey enum', async () => {
+		const fixture = readDeviceFixture('light');
+		const device: HomeyDevice = {
+			...fixture,
+			capabilities: fixture.capabilities.map((capability) =>
+				capability.id === 'onoff'
+					? {
+							...capability,
+							type: HomeyCapabilityType.ENUM,
+							value: null,
+							enumValues: [
+								{ id: 'off', title: 'Off' },
+								{ id: 'on', title: 'On' },
+							],
+						}
+					: capability,
+			),
+		};
+		homeyService.getFreshDevice.mockResolvedValue(device);
+		const propertyResolution = mappingLoader.resolvePropertyMappings(device);
+		jest.spyOn(mappingLoader, 'resolvePropertyMappings').mockReturnValue({
+			conflicts: propertyResolution.conflicts,
+			mappings: propertyResolution.mappings.map((binding) =>
+				binding.capabilityId === 'onoff'
+					? {
+							...binding,
+							mapping: {
+								...binding.mapping,
+								property: {
+									...binding.mapping.property,
+									dataType: DataTypeType.STRING,
+									direction: 'write_only',
+									transform: undefined,
+								},
+							},
+						}
+					: binding,
+			),
+		});
+
+		const preview = await service.generatePreview({ deviceId: device.id });
+
+		expect(preview.warnings).toContainEqual(
+			expect.objectContaining({
+				code: HomeyMappingPreviewWarningCode.INVALID_CAPABILITY_VALUE_DOMAIN,
+				severity: HomeyMappingPreviewWarningSeverity.ERROR,
+				identifier: 'onoff',
+			}),
+		);
+		expect(preview.readyToAdopt).toBe(false);
+	});
+
+	it('validates every intermediate value in a finite readable Homey numeric grid', async () => {
+		const fixture = readDeviceFixture('light');
+		const device: HomeyDevice = {
+			...fixture,
+			capabilities: fixture.capabilities.map((capability) =>
+				capability.id === 'dim' ? { ...capability, value: 0, minimum: 0, maximum: 2, step: 1 } : capability,
+			),
+		};
+		homeyService.getFreshDevice.mockResolvedValue(device);
+		const propertyResolution = mappingLoader.resolvePropertyMappings(device);
+		jest.spyOn(mappingLoader, 'resolvePropertyMappings').mockReturnValue({
+			conflicts: propertyResolution.conflicts,
+			mappings: propertyResolution.mappings.map((binding) =>
+				binding.capabilityId === 'dim'
+					? {
+							...binding,
+							mapping: {
+								...binding.mapping,
+								property: {
+									...binding.mapping.property,
+									direction: 'read_only',
+									range: { minimum: 0, maximum: 2, step: 2 },
+									transform: undefined,
+								},
+							},
+						}
+					: binding,
+			),
+		});
+
+		const preview = await service.generatePreview({ deviceId: device.id });
+
+		expect(preview.warnings).toContainEqual(
+			expect.objectContaining({
+				code: HomeyMappingPreviewWarningCode.INVALID_PROPERTY_VALUE_DOMAIN,
+				severity: HomeyMappingPreviewWarningSeverity.ERROR,
+				identifier: 'dim',
+			}),
+		);
+		expect(preview.readyToAdopt).toBe(false);
 	});
 
 	it('uses fixed not-found and unavailable errors for fresh inventory failures', async () => {
