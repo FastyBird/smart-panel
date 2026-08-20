@@ -451,7 +451,16 @@ export class HomeyMappingPreviewService {
 		);
 		if (
 			!potentialHomeyWriteDomain.convertible ||
-			potentialHomeyWriteDomain.values.some((value) => !this.isValidHomeyValue(capability, value))
+			potentialHomeyWriteDomain.values.some((value) => !this.isValidHomeyValue(capability, value)) ||
+			!this.isNumericWriteGridCompatible(
+				mapping,
+				capability,
+				mappingCanWrite,
+				channelCategory,
+				property.category,
+				property.dataType,
+				mapping.property.range,
+			)
 		) {
 			warnings.push(
 				this.warning(
@@ -486,8 +495,10 @@ export class HomeyMappingPreviewService {
 					? ['false', 'true']
 					: [];
 		const readTable = transform.read ?? {};
+		const sourceDomainIsUnbounded =
+			capability.type === HomeyCapabilityType.STRING && capability.enumValues.length === 0;
 
-		if (sourceDomain.some((value) => !Object.hasOwn(readTable, value))) {
+		if (sourceDomainIsUnbounded || sourceDomain.some((value) => !Object.hasOwn(readTable, value))) {
 			warnings.push(
 				this.warning(
 					HomeyMappingPreviewWarningCode.INCOMPLETE_CAPABILITY_DOMAIN,
@@ -758,6 +769,77 @@ export class HomeyMappingPreviewService {
 			case HomeyCapabilityType.UNKNOWN:
 				return false;
 		}
+	}
+
+	private isNumericWriteGridCompatible(
+		mapping: ResolvedHomeyPropertyMapping,
+		capability: HomeyCapability,
+		mappingCanWrite: boolean,
+		channelCategory: ChannelCategory,
+		propertyCategory: PropertyCategory,
+		dataType: DataTypeType,
+		mappingRange: HomeyValueRangeDefinition | undefined,
+	): boolean {
+		if (
+			!mappingCanWrite ||
+			capability.type !== HomeyCapabilityType.NUMBER ||
+			capability.step === null ||
+			!this.isNumericDataType(dataType)
+		) {
+			return true;
+		}
+		if (capability.step <= 0) {
+			return false;
+		}
+
+		const transform = mapping.property.transform;
+		if (transform !== undefined && transform.type !== 'scale') {
+			return true;
+		}
+		const scaleTransform = transform?.type === 'scale' ? transform : null;
+
+		const metadata = getPropertyMetadata(channelCategory, propertyCategory);
+		const variant = metadata?.dataTypeVariants?.find((candidate) => candidate.data_type === dataType);
+		const constraints = variant ?? metadata;
+		const canonicalFormat = constraints?.format;
+		const canonicalMinimum =
+			Array.isArray(canonicalFormat) && typeof canonicalFormat[0] === 'number' ? canonicalFormat[0] : null;
+		const panelBase = mappingRange?.minimum ?? canonicalMinimum ?? 0;
+		const panelStep = mappingRange?.step ?? constraints?.step ?? (dataType === DataTypeType.FLOAT ? null : 1);
+
+		if (panelStep === null || !Number.isFinite(panelStep) || panelStep <= 0) {
+			return false;
+		}
+
+		let transformedBase: HomeyMappingScalar;
+		try {
+			transformedBase = this.mappingTransformer.write(mapping, panelBase);
+		} catch {
+			return false;
+		}
+
+		if (!this.isValidHomeyValue(capability, transformedBase)) {
+			return false;
+		}
+
+		const transformedStep = (() => {
+			if (scaleTransform === null) {
+				return panelStep;
+			}
+
+			const panelSpan = scaleTransform.output_range[1] - scaleTransform.output_range[0];
+			if (panelSpan === 0) {
+				return null;
+			}
+
+			return Math.abs((panelStep * (scaleTransform.input_range[1] - scaleTransform.input_range[0])) / panelSpan);
+		})();
+
+		// Identity and scale transforms are linear, so an aligned base plus an output increment that is an
+		// integer multiple of Homey's step proves every value on the panel command grid remains on its grid.
+		return (
+			transformedStep !== null && Number.isFinite(transformedStep) && matchesStep(transformedStep, capability.step, 0)
+		);
 	}
 
 	private hasIncompleteWritableEnumDomain(
