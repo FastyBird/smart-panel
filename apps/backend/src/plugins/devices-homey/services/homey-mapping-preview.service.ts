@@ -685,6 +685,9 @@ export class HomeyMappingPreviewService {
 		if (capability.type === HomeyCapabilityType.UNKNOWN) {
 			return false;
 		}
+		if (capability.type === HomeyCapabilityType.ENUM && capability.enumValues.length === 0) {
+			return false;
+		}
 		if (capability.type !== HomeyCapabilityType.NUMBER) {
 			return true;
 		}
@@ -1043,9 +1046,14 @@ export class HomeyMappingPreviewService {
 		const exhaustiveValues = this.getExhaustiveGridValues(panelGrid);
 
 		if (exhaustiveValues !== null) {
-			return exhaustiveValues
-				.filter((value) => this.isValidPanelValue(channelCategory, propertyCategory, dataType, mappingRange, value))
-				.every((value) => this.isValidTransformedHomeyWrite(mapping, capability, value));
+			const validPanelValues = exhaustiveValues.filter((value) =>
+				this.isValidPanelValue(channelCategory, propertyCategory, dataType, mappingRange, value),
+			);
+
+			return (
+				validPanelValues.length > 0 &&
+				validPanelValues.every((value) => this.isValidTransformedHomeyWrite(mapping, capability, value))
+			);
 		}
 
 		if (transform?.type === 'constant' || transform?.type === 'threshold' || transform?.type === 'thresholds') {
@@ -1107,9 +1115,10 @@ export class HomeyMappingPreviewService {
 		const maximumCandidates = [canonicalMaximum, mappingRange?.maximum ?? null].filter(
 			(value): value is number => value !== null,
 		);
+		const hasMappingBounds = mappingRange?.minimum !== undefined || mappingRange?.maximum !== undefined;
 
 		return {
-			base: mappingRange?.minimum ?? canonicalMinimum ?? 0,
+			base: mappingRange?.minimum ?? (hasMappingBounds ? 0 : (canonicalMinimum ?? 0)),
 			minimum: minimumCandidates.length > 0 ? Math.max(...minimumCandidates) : null,
 			maximum: maximumCandidates.length > 0 ? Math.min(...maximumCandidates) : null,
 			step: mappingRange?.step ?? constraints?.step ?? (INTEGER_DATA_TYPES.has(dataType) ? 1 : null),

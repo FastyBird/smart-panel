@@ -1,7 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { DataTypeType, DeviceCategory, PermissionType } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
@@ -1065,6 +1071,106 @@ describe('HomeyMappingPreviewService', () => {
 		expect(preview.warnings).toContainEqual(
 			expect.objectContaining({
 				code: HomeyMappingPreviewWarningCode.INVALID_PROPERTY_VALUE_DOMAIN,
+				severity: HomeyMappingPreviewWarningSeverity.ERROR,
+				identifier: 'dim',
+			}),
+		);
+		expect(preview.readyToAdopt).toBe(false);
+	});
+
+	it('blocks readable Homey enums whose authoritative value domain is unavailable', async () => {
+		const fixture = readDeviceFixture('light');
+		const device: HomeyDevice = {
+			...fixture,
+			capabilities: fixture.capabilities.map((capability) =>
+				capability.id === 'onoff'
+					? { ...capability, type: HomeyCapabilityType.ENUM, value: null, enumValues: [] }
+					: capability,
+			),
+		};
+		homeyService.getFreshDevice.mockResolvedValue(device);
+		const propertyResolution = mappingLoader.resolvePropertyMappings(device);
+		jest.spyOn(mappingLoader, 'resolvePropertyMappings').mockReturnValue({
+			conflicts: propertyResolution.conflicts,
+			mappings: propertyResolution.mappings.map((binding) =>
+				binding.capabilityId === 'onoff'
+					? {
+							...binding,
+							mapping: {
+								...binding.mapping,
+								property: {
+									...binding.mapping.property,
+									direction: 'read_only',
+									dataType: DataTypeType.ENUM,
+									transform: undefined,
+								},
+							},
+						}
+					: binding,
+			),
+		});
+
+		const preview = await service.generatePreview({ deviceId: device.id });
+
+		expect(preview.warnings).toContainEqual(
+			expect.objectContaining({
+				code: HomeyMappingPreviewWarningCode.INVALID_PROPERTY_VALUE_DOMAIN,
+				severity: HomeyMappingPreviewWarningSeverity.ERROR,
+				identifier: 'onoff',
+			}),
+		);
+		expect(preview.readyToAdopt).toBe(false);
+	});
+
+	it('uses the command validator step base for a max-only mapping range', async () => {
+		const fixture = readDeviceFixture('light');
+		const device: HomeyDevice = {
+			...fixture,
+			capabilities: fixture.capabilities.map((capability) =>
+				capability.id === 'dim' ? { ...capability, value: 3, minimum: 0, maximum: 10, step: 3 } : capability,
+			),
+		};
+		homeyService.getFreshDevice.mockResolvedValue(device);
+		const channelResolution = mappingLoader.resolveChannelMappings(device);
+		jest.spyOn(mappingLoader, 'resolveChannelMappings').mockReturnValue({
+			conflicts: channelResolution.conflicts,
+			mappings: channelResolution.mappings.map((mapping) =>
+				mapping.channel.identifier === 'light'
+					? {
+							...mapping,
+							channel: { ...mapping.channel, category: ChannelCategory.CAMERA },
+						}
+					: mapping,
+			),
+		});
+		const propertyResolution = mappingLoader.resolvePropertyMappings(device);
+		jest.spyOn(mappingLoader, 'resolvePropertyMappings').mockReturnValue({
+			conflicts: propertyResolution.conflicts,
+			mappings: propertyResolution.mappings.map((binding) =>
+				binding.capabilityId === 'dim'
+					? {
+							...binding,
+							mapping: {
+								...binding.mapping,
+								property: {
+									...binding.mapping.property,
+									category: PropertyCategory.ZOOM,
+									dataType: DataTypeType.FLOAT,
+									direction: 'write_only',
+									range: { maximum: 10, step: 2 },
+									transform: undefined,
+								},
+							},
+						}
+					: binding,
+			),
+		});
+
+		const preview = await service.generatePreview({ deviceId: device.id });
+
+		expect(preview.warnings).toContainEqual(
+			expect.objectContaining({
+				code: HomeyMappingPreviewWarningCode.INVALID_CAPABILITY_VALUE_DOMAIN,
 				severity: HomeyMappingPreviewWarningSeverity.ERROR,
 				identifier: 'dim',
 			}),
