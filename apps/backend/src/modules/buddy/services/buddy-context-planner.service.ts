@@ -38,7 +38,7 @@ const GENERAL_KNOWLEDGE_INVENTORY_PATTERN = /^how (?:many|much)\b.*\b(?:does|do)
 const HOME_INSTALLATION_PATTERN = /\b(?:home|house)\b/u;
 const HOME_STATE_PATTERN = /\b(?:cold|cooling|heating|humidity|temperature|warm)\b/u;
 const READ_PATTERN =
-	/^(?:are|can you (?:check|fetch|get|report|show|tell)|check|fetch|find|get|how (?:many|much)|is|list|report|search|show|what|which|will)\b/u;
+	/^(?:are|can you (?:check|confirm|determine|fetch|get|read|report|show|tell|verify)|check|confirm|determine|ensure|fetch|find|get|how (?:many|much)|is|list|make sure|read|report|search|see|show|tell(?: me)?|verify|what|which|will)\b/u;
 const PREDICATE_QUESTION_PATTERN =
 	/^(?:are|can|could|did|do|does|had|has|have|is|may|might|will|would|was|were|(?:how|what|when|where|which|who|why)['’]s|(?:what|why) (?:are|did|do|does|had|has|have|is|was|were))\b/u;
 const ACTION_REQUEST_PATTERN =
@@ -152,7 +152,10 @@ export class BuddyContextPlannerService {
 			!isReadOnlyPredicate &&
 			ACTION_COMMAND_PATTERN.test(actionMessage) &&
 			splitPlannerClauses(actionMessage).some(
-				(clause) => TRIGGER_PATTERN.test(clause) && !DEVICE_RUN_TARGET_PATTERN.test(clause),
+				(clause) =>
+					ACTION_COMMAND_PATTERN.test(clause) &&
+					TRIGGER_PATTERN.test(clause) &&
+					!DEVICE_RUN_TARGET_PATTERN.test(clause),
 			);
 		const hasAction = hasWrite || hasTrigger;
 		const referenceActionTypes = getReferenceActionTypes(actionReferenceMessage);
@@ -204,15 +207,15 @@ export class BuddyContextPlannerService {
 			explicitSpaces,
 			input.conversationSpaceId ?? undefined,
 		);
-		const currentStateSpaceIds =
-			domains.includes('history') && CURRENT_STATE_PATTERN.test(normalizedMessage)
-				? resolveTemporalHomeSpaceIds(
-						normalizedMessage,
-						explicitSpaces,
-						input.conversationSpaceId ?? undefined,
-						CURRENT_STATE_PATTERN,
-					)
-				: querySpaceIds;
+		const hasMixedRetrievalDomain = domains.some((domain) => domain !== 'general' && domain !== 'home');
+		const currentStateSpaceIds = hasMixedRetrievalDomain
+			? resolveCurrentStateSpaceIds(
+					normalizedMessage,
+					explicitSpaces,
+					input.conversationSpaceId ?? undefined,
+					querySpaceIds,
+				)
+			: querySpaceIds;
 		const historySpaceIds = domains.includes('history')
 			? resolveTemporalHomeSpaceIds(
 					normalizedMessage,
@@ -529,6 +532,55 @@ function resolveEnergySpaceIds(
 	}
 
 	return conversationSpaceId ? [conversationSpaceId] : [];
+}
+
+function resolveCurrentStateSpaceIds(
+	message: string,
+	explicitSpaces: readonly BuddyContextSpaceReference[],
+	conversationSpaceId: string | undefined,
+	fallbackSpaceIds: readonly string[],
+): string[] {
+	const currentStateClauses = splitPlannerClauses(message).filter((clause) => {
+		if (HISTORY_PATTERN.test(clause)) return false;
+
+		const hasHomeSignal =
+			HOME_ENTITY_PATTERN.test(clause) ||
+			HOME_INSTALLATION_PATTERN.test(clause) ||
+			HOME_STATE_PATTERN.test(clause) ||
+			CONTEXTUAL_SCOPE_PATTERN.test(clause);
+		const hasNonHomeSignal =
+			hasDomainSignalInClause(clause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) ||
+			hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) ||
+			hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN);
+
+		return hasHomeSignal && (!hasNonHomeSignal || CONTEXTUAL_SCOPE_PATTERN.test(clause));
+	});
+
+	const explicitCurrentSpaceIds = [
+		...new Set(
+			explicitSpaces
+				.filter((space) =>
+					currentStateClauses.some((clause) => containsNormalizedPhrase(clause, normalize(space.name))),
+				)
+				.map((space) => space.id),
+		),
+	];
+
+	if (explicitCurrentSpaceIds.length > 0) return explicitCurrentSpaceIds;
+	if (currentStateClauses.some((clause) => CONTEXTUAL_SCOPE_PATTERN.test(clause)) && conversationSpaceId) {
+		return [conversationSpaceId];
+	}
+	if (
+		currentStateClauses.some((clause) =>
+			[...BUILT_IN_ACTION_SPACE_NAMES].some((spaceName) => containsNormalizedPhrase(clause, spaceName)),
+		)
+	) {
+		return [];
+	}
+	if (conversationSpaceId) return [conversationSpaceId];
+	if (explicitSpaces.length === 1) return [explicitSpaces[0].id];
+
+	return [...fallbackSpaceIds];
 }
 
 function resolveTemporalHomeSpaceIds(

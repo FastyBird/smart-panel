@@ -842,6 +842,19 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('does not classify a trigger verb inside a read clause as a command', () => {
+		expect(
+			service.plan({
+				message: 'Turn on Reading Lamp, then check whether Movie Night will run',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			intent: 'mixed',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device'],
+		});
+	});
+
 	it('treats an explicit known space as a home-domain signal', () => {
 		expect(
 			service.plan({
@@ -1085,6 +1098,23 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('keeps a contextual live clause in conversation scope beside scoped energy', () => {
+		expect(
+			service.plan({
+				message: 'How much energy did Bedroom use, and what is the temperature here?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'current-state', spaceId: 'space-office' },
+				{ kind: 'energy-summary', spaceId: 'space-bedroom' },
+			],
+		});
+	});
+
 	it('includes live state in an explicit historical comparison', () => {
 		expect(
 			service.plan({
@@ -1189,6 +1219,19 @@ describe('BuddyContextPlannerService', () => {
 			}),
 		).toMatchObject({
 			domains: ['home'],
+			intent: 'mixed',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device'],
+		});
+	});
+
+	it.each(['Tell me', 'Confirm'])('inspects a trailing action after a direct %s read prefix', (readPrefix) => {
+		expect(
+			service.plan({
+				message: `${readPrefix} whether the window is open, then turn off Reading Heater`,
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
 			intent: 'mixed',
 			strategy: 'model-tools',
 			toolNames: ['search_home', 'query_home_state', 'control_device'],
