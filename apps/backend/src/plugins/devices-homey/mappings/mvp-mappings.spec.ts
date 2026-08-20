@@ -140,10 +140,17 @@ describe('Homey MVP mapping catalog', () => {
 
 		const repeated = loader.resolvePropertyMappings(readDeviceFixture('repeated-capabilities'));
 		const energyBindings = repeated.mappings.filter((binding) => binding.mapping.name === 'accumulated-energy');
-		expect(energyBindings.map((binding) => binding.capabilityId)).toStrictEqual([
-			'meter_power',
-			'meter_power.capability-suffix-000007',
-		]);
+		expect(energyBindings.map((binding) => binding.capabilityId)).toStrictEqual(['meter_power']);
+	});
+
+	it('selects primary light controls instead of collapsing repeated instances onto one channel', () => {
+		const resolution = loader.resolvePropertyMappings(readDeviceFixture('energy-meter'));
+		const lightPower = resolution.mappings.filter((binding) => binding.mapping.name === 'light-power');
+		const brightness = resolution.mappings.filter((binding) => binding.mapping.name === 'light-brightness');
+
+		expect(resolution.conflicts).toStrictEqual([]);
+		expect(lightPower.map((binding) => binding.capabilityId)).toStrictEqual(['onoff']);
+		expect(brightness.map((binding) => binding.capabilityId)).toStrictEqual(['dim']);
 	});
 
 	it('maps captured environmental and battery values', () => {
@@ -204,6 +211,21 @@ describe('Homey MVP mapping catalog', () => {
 		expect(read(bindings, 'thermostat-cooler-on', 'heat')).toBe(false);
 		expect(write(bindings, 'thermostat-cooler-on', true)).toBe('cool');
 		expect(read(bindings, 'thermostat-cooler-status', 'auto')).toBe(true);
+	});
+
+	it('does not classify an incomplete target-only thermostat as adoptable', () => {
+		const device = publishedContractDevice('thermostat', [
+			capability('measure_temperature', 21.5, { unit: '°C' }),
+			capability('target_temperature', 22.5, { unit: '°C', writable: true }),
+		]);
+
+		expect(loader.resolveDeviceMappings(device).mappings).toStrictEqual([]);
+		expect(loader.resolveChannelMappings(device).mappings.map((mapping) => mapping.channel.identifier)).toStrictEqual([
+			'temperature',
+		]);
+		expect(loader.resolvePropertyMappings(device).mappings.map((binding) => binding.mapping.name)).toStrictEqual([
+			'thermostat-current-temperature',
+		]);
 	});
 
 	it('maps published environment and safety capability contracts', () => {

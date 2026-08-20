@@ -157,21 +157,31 @@ describe('HomeyMappingLoaderService', () => {
 		});
 	});
 
-	it('matches suffixed capabilities by base ID while preserving both full IDs', () => {
+	it('matches suffixed capabilities by base ID and selects one full ID deterministically', () => {
 		writeBuiltin('properties', [propertyDefinition()]);
 		service.loadAllMappings();
 
 		const resolution = service.resolvePropertyMappings(createDevice());
 
 		expect(resolution.conflicts).toEqual([]);
-		expect(resolution.mappings.map((binding) => binding.capabilityBaseId)).toEqual([
-			'measure_temperature',
-			'measure_temperature',
-		]);
-		expect(resolution.mappings.map((binding) => binding.capabilityId)).toEqual([
-			'measure_temperature.inside',
-			'measure_temperature.outside',
-		]);
+		expect(resolution.mappings.map((binding) => binding.capabilityBaseId)).toEqual(['measure_temperature']);
+		expect(resolution.mappings.map((binding) => binding.capabilityId)).toEqual(['measure_temperature.inside']);
+	});
+
+	it('prefers the unsuffixed primary capability over repeated instances', () => {
+		writeBuiltin('properties', [propertyDefinition()]);
+		service.loadAllMappings();
+
+		const resolution = service.resolvePropertyMappings(
+			createDevice({
+				capabilities: [
+					createCapability('measure_temperature.suffix', 18),
+					createCapability('measure_temperature', 21.5),
+				],
+			}),
+		);
+
+		expect(resolution.mappings.map((binding) => binding.capabilityId)).toEqual(['measure_temperature']);
 	});
 
 	it('replaces a built-in descriptor with a same-name user override', () => {

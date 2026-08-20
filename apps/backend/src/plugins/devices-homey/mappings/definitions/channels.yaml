@@ -45,7 +45,7 @@ mappings:
     priority: 200
     match:
       classes: [thermostat]
-      any_capabilities: [target_temperature, thermostat_mode]
+      all_capabilities: [target_temperature, thermostat_mode]
     channel:
       identifier: thermostat
       category: thermostat

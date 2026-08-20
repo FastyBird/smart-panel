@@ -2,12 +2,11 @@ version: 1
 kind: devices
 mappings:
   - name: thermostat
-    description: Homey thermostat with a target temperature or standardized thermostat mode
+    description: Homey thermostat with the complete standardized temperature and mode contract
     priority: 300
     match:
       classes: [thermostat]
-      all_capabilities: [measure_temperature]
-      any_capabilities: [target_temperature, thermostat_mode]
+      all_capabilities: [measure_temperature, target_temperature, thermostat_mode]
     device:
       category: thermostat
 

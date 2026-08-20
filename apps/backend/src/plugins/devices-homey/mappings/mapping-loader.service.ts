@@ -253,7 +253,33 @@ export class HomeyMappingLoaderService implements OnModuleInit {
 			conflicts.push(...resolution.conflicts);
 		}
 
-		return { mappings: bindings, conflicts };
+		return { mappings: this.selectPrimaryPropertyBindings(bindings), conflicts };
+	}
+
+	private selectPrimaryPropertyBindings(
+		bindings: readonly ResolvedHomeyPropertyBinding[],
+	): ResolvedHomeyPropertyBinding[] {
+		const selected = new Map<string, ResolvedHomeyPropertyBinding>();
+
+		for (const binding of bindings) {
+			const current = selected.get(binding.mapping.name);
+			if (current === undefined || this.compareCapabilityInstances(binding, current) < 0) {
+				selected.set(binding.mapping.name, binding);
+			}
+		}
+
+		return [...selected.values()];
+	}
+
+	private compareCapabilityInstances(left: ResolvedHomeyPropertyBinding, right: ResolvedHomeyPropertyBinding): number {
+		const leftIsPrimary = left.capabilityId === left.capabilityBaseId;
+		const rightIsPrimary = right.capabilityId === right.capabilityBaseId;
+
+		if (leftIsPrimary !== rightIsPrimary) {
+			return leftIsPrimary ? -1 : 1;
+		}
+
+		return left.capabilityId < right.capabilityId ? -1 : left.capabilityId > right.capabilityId ? 1 : 0;
 	}
 
 	private applyUserOverrides(

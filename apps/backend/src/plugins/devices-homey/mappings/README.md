@@ -21,7 +21,10 @@ Matches use exact Homey `class` values and capability base IDs. Optional `all_ca
 constraints let a property mapping require or exclude companion capabilities so the resulting Smart Panel channel is
 structurally complete. Optional `driver_ids`, `manufacturers`, and `models` may narrow a descriptor but should not be
 used for generic mappings. Property matching derives the base ID from the first dot only, while every resolved property
-binding retains the original full capability ID for reads and writes.
+binding retains the original full capability ID for reads and writes. When repeated capability instances would target
+the same static channel property, resolution selects the unsuffixed primary instance, or the lexically first full ID
+when no primary exists. Additional instances remain discoverable upstream but are not collapsed into duplicate Smart
+Panel properties.
 
 Every descriptor supports:
 
@@ -70,6 +73,10 @@ Smart Panel's thermostat contract keeps child-lock state on the `thermostat` cha
 `heater` and `cooler` channels. Homey's standard `thermostat_mode` supplies the required power/status projections when
 no separate activity capability exists. The Task 4.3 command platform must coalesce paired heater/cooler power changes
 into one `thermostat_mode` write instead of sending the two projected bindings independently.
+
+Thermostat device eligibility requires `measure_temperature`, `target_temperature`, and `thermostat_mode` together.
+Partial target-only or mode-only devices stay unsupported instead of losing their control or producing incomplete
+climate channels.
 
 The battery channel is emitted only when `measure_battery` exists. When Homey also exposes `alarm_battery`, that alarm
 maps directly to the required status; otherwise status is derived as `low` at or below 20 percent and `ok` above it.
