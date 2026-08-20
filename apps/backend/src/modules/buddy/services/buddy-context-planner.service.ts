@@ -52,6 +52,7 @@ const LIGHTING_GROUP_PATTERN = new RegExp(
 const LIGHTING_GROUP_EXCLUSION_PATTERN = /\b(?:but not|but|except|excluding|krome|other than|without)\b/u;
 const PARTIAL_LIGHTING_GROUP_PATTERN =
 	/\b(?:a couple of|a few|eight|five|four|half|nine|one|one third|one quarter|part of|portion of|seven|several|six|some|three|two|\d+)\b.*\b(?:lamp|lamps|light|lights)\b/u;
+const ZERO_QUANTITY_LIGHTING_PATTERN = /\b(?:no|none|zero)\b.*\b(?:lamp|lamps|light|lights)\b/u;
 
 const DOMAIN_ORDER: readonly BuddyContextDomain[] = ['general', 'home', 'weather', 'energy', 'security', 'history'];
 const EXPLICIT_WEATHER_PATTERN =
@@ -322,6 +323,8 @@ export class BuddyContextPlannerService {
 			explicitSpaces,
 			hasAction,
 		);
+		const hasUnsupportedScopedSecurityRead =
+			domains.includes('security') && (explicitSpaceIds.length > 0 || CONTEXTUAL_SCOPE_PATTERN.test(normalizedMessage));
 		const referenceMessage = hasAction ? actionReferenceMessage : domains.includes('home') ? normalizedMessage : '';
 		const references = resolveRecentReferences(referenceMessage, recentEntityReferences);
 		const hasExcessiveReferenceScope = references.length > MAX_RECENT_ENTITY_REFERENCES;
@@ -354,6 +357,7 @@ export class BuddyContextPlannerService {
 			hasExcessiveExplicitSpaceScope,
 			hasExcessiveReferenceScope,
 			hasUnsupportedScopedFutureTemperature,
+			hasUnsupportedScopedSecurityRead,
 		);
 		const strategy = selectStrategy(intent, ambiguityRisk, domains, input.providerCapabilities);
 		const includeCurrentStateForRead =
@@ -939,9 +943,11 @@ function classifyAmbiguityRisk(
 	hasExcessiveExplicitSpaceScope = false,
 	hasExcessiveReferenceScope = false,
 	hasUnsupportedScopedFutureTemperature = false,
+	hasUnsupportedScopedSecurityRead = false,
 ): BuddyContextAmbiguityRisk {
 	const isAction = hasWrite || hasTrigger;
 	if (hasUnsupportedScopedFutureTemperature) return isAction ? 'action' : 'read';
+	if (hasUnsupportedScopedSecurityRead) return isAction ? 'action' : 'read';
 
 	if (isAction) {
 		if (hasDuplicateNameSpaceAmbiguity || hasExcessiveExplicitSpaceScope || hasExcessiveReferenceScope) {
@@ -962,6 +968,7 @@ function classifyAmbiguityRisk(
 		if (ACTION_RANGE_PATTERN.test(actionMessage)) return 'action';
 		if (ACTION_NON_SCALAR_BOUND_PATTERN.test(actionMessage)) return 'action';
 		if (SCHEDULED_ACTION_PATTERN.test(actionMessage)) return 'action';
+		if (ZERO_QUANTITY_LIGHTING_PATTERN.test(actionMessage)) return 'action';
 		if (
 			hasGenericActionTarget(actionReferenceMessage, explicitSpaces, conversationSpaceId !== undefined) &&
 			!hasMultiSpaceLightingTarget(message, explicitSpaces)
@@ -1176,7 +1183,9 @@ function resolveEnergySpaceIds(
 		hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN),
 	);
 	const includesWholeHome = energyClauses.some(
-		(clause) => HOME_INSTALLATION_PATTERN.test(clause) || WHOLE_HOME_SCOPE_PATTERN.test(clause),
+		(clause) =>
+			WHOLE_HOME_SCOPE_PATTERN.test(clause) ||
+			HOME_INSTALLATION_PATTERN.test(removeExplicitSpaceOccurrencesForDomain(clause, explicitSpaces)),
 	);
 
 	const directEnergySpaceIds = [
@@ -1652,7 +1661,8 @@ function findNormalizedPhraseRanges(message: string, phrase: string): Array<{ st
 
 	const ranges: Array<{ start: number; end: number }> = [];
 	const flexiblePhrase = phrase
-		.split(/\s+/u)
+		.split(/[^\p{Letter}\p{Number}]+/u)
+		.filter((token) => token.length > 0)
 		.map((token) => token.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'))
 		.join(String.raw`[\s\p{Dash_Punctuation}]+`);
 	const phrasePattern = new RegExp(flexiblePhrase, 'gu');

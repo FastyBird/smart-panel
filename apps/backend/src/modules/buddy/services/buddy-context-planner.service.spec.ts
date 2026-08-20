@@ -3566,4 +3566,70 @@ describe('BuddyContextPlannerService', () => {
 			toolNames: [],
 		});
 	});
+
+	it.each(['Turn none of the Bedroom lights on', 'Turn zero Bedroom lights on'])(
+		'clarifies a zero-quantity lighting command: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({
+				ambiguityRisk: 'action',
+				strategy: 'clarify',
+				toolNames: [],
+			});
+		},
+	);
+
+	it.each(['Home', 'House'])('keeps a configured %s space distinct from whole-home energy', (spaceName) => {
+		const spaceId = `space-${spaceName.toLowerCase()}`;
+
+		expect(
+			service.plan({
+				message: `How much energy did ${spaceName} use today?`,
+				knownSpaces: [{ id: spaceId, name: spaceName }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['energy'],
+			scope: { spaceId },
+			queries: [{ kind: 'energy-summary', spaceId }],
+		});
+	});
+
+	it('matches punctuation-equivalent configured space names', () => {
+		expect(
+			service.plan({
+				message: 'What is the living room temperature?',
+				knownSpaces: [{ id: 'space-living-room', name: 'Living-Room' }],
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: { spaceId: 'space-living-room' },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-living-room' },
+				{ kind: 'current-state', spaceId: 'space-living-room' },
+			],
+		});
+	});
+
+	it('clarifies room-scoped security status instead of fetching global alerts', () => {
+		expect(
+			service.plan({
+				message: 'Are there security alerts in Bedroom?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['security'],
+			scope: { spaceId: 'space-bedroom' },
+			ambiguityRisk: 'read',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
 });
