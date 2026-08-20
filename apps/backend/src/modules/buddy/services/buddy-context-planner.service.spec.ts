@@ -755,7 +755,7 @@ describe('BuddyContextPlannerService', () => {
 	it('does not treat a word-valued action amount as a recent-entity reference', () => {
 		expect(
 			service.plan({
-				message: 'Set kitchen light to one percent',
+				message: 'Set Kitchen Accent to one percent',
 				knownSpaces: [{ id: 'space-kitchen', name: 'Kitchen' }],
 				recentEntityReferences: [
 					{
@@ -835,17 +835,17 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
-	it('routes run with an explicit device target to device control', () => {
+	it('clarifies run with an articleless category target in a built-in space', () => {
 		expect(
 			service.plan({
 				message: 'Run bedroom fan',
 				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			}),
-		).toMatchObject({ intent: 'write', toolNames: ['search_home', 'query_home_state', 'control_device'] });
+		).toMatchObject({ intent: 'write', ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
 	});
 
-	it('does not advertise the lighting-group tool for a fan in a room-named space', () => {
+	it('clarifies a fan category in a room-named space', () => {
 		expect(
 			service.plan({
 				message: 'Turn living room fan on',
@@ -854,15 +854,16 @@ describe('BuddyContextPlannerService', () => {
 			}),
 		).toMatchObject({
 			scope: { spaceId: 'space-living-room' },
-			strategy: 'model-tools',
-			toolNames: ['search_home', 'query_home_state', 'control_device'],
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
 		});
 	});
 
 	it('does not combine lighting-group signals across action clauses', () => {
 		expect(
 			service.plan({
-				message: 'Turn desk lamp on and turn living room fan on',
+				message: 'Turn desk lamp on and turn living room air handler on',
 				knownSpaces: [{ id: 'space-living-room', name: 'Living room' }],
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			}),
@@ -875,7 +876,7 @@ describe('BuddyContextPlannerService', () => {
 	it('classifies a scene run independently from a later device-run target', () => {
 		expect(
 			service.plan({
-				message: 'Run movie night then turn bedroom fan on',
+				message: 'Run movie night then turn bedroom air handler on',
 				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			}),
@@ -1130,7 +1131,7 @@ describe('BuddyContextPlannerService', () => {
 	it('preserves an energy read in a compound action request', () => {
 		expect(
 			service.plan({
-				message: 'How much power did we use yesterday, then set kitchen light to 40%',
+				message: 'How much power did we use yesterday, then set Kitchen Accent to 40%',
 				knownSpaces: [{ id: 'space-kitchen', name: 'Kitchen' }],
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			}),
@@ -1856,6 +1857,45 @@ describe('BuddyContextPlannerService', () => {
 			ambiguityRisk: 'none',
 			strategy: 'model-tools',
 			toolNames: ['search_home', 'query_home_state', 'control_device'],
+		});
+	});
+
+	it.each([
+		'What was the bedroom temperature in the last hour?',
+		'What was the bedroom temperature in the last day?',
+		'What was the bedroom temperature an hour ago?',
+	])('routes a singular relative history range to timeseries: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			queries: [{ kind: 'search-home' }, { kind: 'property-timeseries' }],
+		});
+	});
+
+	it('clarifies an articleless fan category in a built-in space', () => {
+		expect(
+			service.plan({
+				message: 'Turn bedroom fan on',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+	});
+
+	it('lets an explicit house scope override conversation scope', () => {
+		expect(
+			service.plan({
+				message: 'Are any windows in the house open?',
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			scope: {},
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
 		});
 	});
 });

@@ -50,7 +50,7 @@ const ENERGY_ENTITY_NAME_PATTERN = /\bpower\s+(?:device|fan|lamp|light|sensor|sw
 const SECURITY_PATTERN = /\b(?:alarm|armed|intrusion|secure|security)\b/u;
 const SECURITY_ENTITY_NAME_PATTERN = /\b(?:alarm|security)\s+(?:device|fan|lamp|light|sensor|switch)\b/gu;
 const HISTORY_PATTERN =
-	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:month|night|week|year))\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
+	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:day|hour|minute|month|night|week|year))\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
 const CURRENT_STATE_PATTERN = /\b(?:at present|current|currently|now|right now)\b/u;
 const HOME_ENTITY_PATTERN =
 	/\b(?:air|blind|blinds|device|devices|door|doors|fan|fans|garage|heater|heaters|lamp|light|lighting|lights|room|scene|scenes|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
@@ -589,17 +589,21 @@ function hasGenericActionTargetClause(
 	const hasClauseSpace = explicitSpaces.some((space) => containsNormalizedPhrase(message, normalize(space.name)));
 	const hasResolvedContextualSpace = hasConversationSpace && CONTEXTUAL_SCOPE_PATTERN.test(message);
 
-	if ((hasClauseSpace || hasResolvedContextualSpace) && /\b(?:lighting|lights)\b/u.test(message)) return false;
+	if (
+		(hasClauseSpace || hasResolvedContextualSpace) &&
+		LIGHTING_PATTERN.test(message) &&
+		LIGHTING_GROUP_PATTERN.test(message)
+	) {
+		return false;
+	}
 	if (EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN.test(message)) return false;
 	if (GENERIC_ACTION_TARGET_PATTERN.test(message)) return true;
 
 	return explicitSpaces.some((space) => {
 		const normalizedSpaceName = normalize(space.name);
 
-		return GENERIC_ACTION_TARGET_NAMES.some(
-			(target) =>
-				(!BUILT_IN_ACTION_SPACE_NAMES.has(normalizedSpaceName) || target === 'lamp' || target === 'lamps') &&
-				containsNormalizedPhrase(message, `${normalizedSpaceName} ${target}`),
+		return GENERIC_ACTION_TARGET_NAMES.some((target) =>
+			containsNormalizedPhrase(message, `${normalizedSpaceName} ${target}`),
 		);
 	});
 }
@@ -630,6 +634,7 @@ function resolveConversationSpaceHint(
 
 	if (uniqueExplicitSpaceIds.length === 1) return uniqueExplicitSpaceIds[0];
 	if (uniqueExplicitSpaceIds.length > 1) return undefined;
+	if (HOME_INSTALLATION_PATTERN.test(message)) return undefined;
 	if ([...BUILT_IN_ACTION_SPACE_NAMES].some((spaceName) => containsNormalizedPhrase(message, spaceName))) {
 		return undefined;
 	}
