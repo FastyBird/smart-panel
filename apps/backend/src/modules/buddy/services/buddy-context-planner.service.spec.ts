@@ -639,6 +639,21 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('advertises the group tool for every light in a resolved space', () => {
+		const result = service.plan({
+			message: 'Turn every bedroom light off',
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(result).toMatchObject({
+			scope: { spaceId: 'space-bedroom' },
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+		});
+		expect(result.toolNames).toContain('set_space_lighting');
+	});
+
 	it.each(['Turn on the lamp and set bedroom thermostat to 20', 'Turn all bedroom lights off and open the window'])(
 		'does not let an exact action target hide ambiguity in another clause: %s',
 		(message) => {
@@ -879,6 +894,57 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('preserves an energy read in a compound action request', () => {
+		expect(
+			service.plan({
+				message: 'How much power did we use yesterday, then set kitchen light to 40%',
+				knownSpaces: [{ id: 'space-kitchen', name: 'Kitchen' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home', 'energy'],
+			intent: 'mixed',
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-kitchen' },
+				{ kind: 'energy-summary', spaceId: 'space-kitchen' },
+			],
+			strategy: 'deterministic-action',
+		});
+	});
+
+	it('includes live state in an explicit historical comparison', () => {
+		expect(
+			service.plan({
+				message: 'What was the bedroom temperature yesterday, and what is the current temperature?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'current-state', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+			],
+		});
+	});
+
+	it('routes a past-tense request bounded by today to history', () => {
+		expect(
+			service.plan({
+				message: 'What was the bedroom temperature today?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+			],
+		});
+	});
+
 	it('detects an action after a direct read command', () => {
 		expect(
 			service.plan({
@@ -945,6 +1011,17 @@ describe('BuddyContextPlannerService', () => {
 			expect(result.queries).not.toContainEqual(expect.objectContaining({ spaceId: 'space-office' }));
 		},
 	);
+
+	it('drops conversation scope for an unresolved explicit built-in room', () => {
+		const result = service.plan({
+			message: 'What is the kitchen temperature?',
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(result).toMatchObject({ domains: ['home'], intent: 'read', scope: {} });
+		expect(result.queries).toEqual([{ kind: 'search-home' }, { kind: 'current-state' }]);
+	});
 
 	it('prefers the longest overlapping explicit space name', () => {
 		const result = service.plan({

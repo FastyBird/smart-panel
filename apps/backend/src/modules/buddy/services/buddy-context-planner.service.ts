@@ -22,16 +22,13 @@ const SET_SPACE_LIGHTING_TOOL_NAME = 'set_space_lighting';
 const DOMAIN_ORDER: readonly BuddyContextDomain[] = ['general', 'home', 'weather', 'energy', 'security', 'history'];
 const WEATHER_PATTERN =
 	/\b(?:cloud|cloudy|fog|foggy|forecast|outside|rain|raining|snow|storm|stormy|sun|sunny|thunder|weather|wind)\b/u;
-const ACTION_WEATHER_CONTEXT_PATTERN =
-	/\b(?:cloud|cloudy|fog|foggy|forecast|rain|raining|snow|storm|stormy|sun|sunny|thunder|weather|wind)\b|\b(?:cold|colder|cooler|hot|hotter|temperature|warm|warmer)\b.*\boutside\b|\boutside\b.*\b(?:cold|colder|cooler|hot|hotter|temperature|warm|warmer)\b/u;
 const ENERGY_PATTERN = /\b(?:consumption|energy|kwh|power|production|usage)\b/u;
-const ACTION_ENERGY_CONTEXT_PATTERN = /\b(?:consumption|energy|kwh|production|usage)\b/u;
 const WEATHER_ENTITY_NAME_PATTERN = /\boutside\s+(?:device|fan|lamp|light|sensor|switch)\b/u;
 const ENERGY_ENTITY_NAME_PATTERN = /\bpower\s+(?:device|fan|lamp|light|sensor|switch)\b/u;
 const SECURITY_PATTERN = /\b(?:alarm|armed|intrusion|secure|security)\b/u;
 const HISTORY_PATTERN =
-	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:month|night|week|year))\b|\b(?:for|last|over)\s+\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b/u;
-const CURRENT_STATE_PATTERN = /\b(?:at present|currently|now|right now)\b/u;
+	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:month|night|week|year))\b|\b(?:did|has|have|was|were)\b.*\btoday\b|\btoday\b.*\b(?:did|has|have|was|were)\b|\b(?:for|last|over)\s+\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b/u;
+const CURRENT_STATE_PATTERN = /\b(?:at present|current|currently|now|right now)\b/u;
 const HOME_ENTITY_PATTERN =
 	/\b(?:air|blind|blinds|device|door|doors|fan|garage|lamp|light|lighting|lights|room|scene|sensor|switch|thermostat|window|windows)\b/u;
 const HOME_INSTALLATION_PATTERN = /\b(?:home|house)\b/u;
@@ -247,12 +244,8 @@ function classifyDomains(
 	if (isGenericExplanation) return ['general'];
 
 	const domains = new Set<BuddyContextDomain>();
-	const hasWeather =
-		WEATHER_PATTERN.test(message) &&
-		(hasAction ? ACTION_WEATHER_CONTEXT_PATTERN.test(message) : !WEATHER_ENTITY_NAME_PATTERN.test(message));
-	const hasEnergy =
-		ENERGY_PATTERN.test(message) &&
-		(hasAction ? ACTION_ENERGY_CONTEXT_PATTERN.test(message) : !ENERGY_ENTITY_NAME_PATTERN.test(message));
+	const hasWeather = hasDomainSignalOutsideEntityName(message, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN);
+	const hasEnergy = hasDomainSignalOutsideEntityName(message, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN);
 	const hasSecurity = SECURITY_PATTERN.test(message);
 	const hasNonHomeDomain = hasWeather || hasEnergy || hasSecurity;
 	const hasInstallationHome = HOME_INSTALLATION_PATTERN.test(message) && !hasWeather && !hasEnergy && !hasSecurity;
@@ -275,8 +268,17 @@ function classifyDomains(
 	if (hasSecurity) domains.add('security');
 	if (HISTORY_PATTERN.test(message)) {
 		const hasDomainSpecificHistory = domains.has('weather') || domains.has('energy') || domains.has('security');
+		const hasHomeSpecificHistory = message
+			.split(/(?:[?!,;]|\b(?:and|then)\b)/u)
+			.some(
+				(clause) =>
+					HISTORY_PATTERN.test(clause) &&
+					(HOME_ENTITY_PATTERN.test(clause) ||
+						HOME_INSTALLATION_PATTERN.test(clause) ||
+						HOME_STATE_PATTERN.test(clause)),
+			);
 
-		if (domains.has('home') || !hasDomainSpecificHistory) {
+		if (hasHomeSpecificHistory || !hasDomainSpecificHistory) {
 			domains.add('home');
 			domains.add('history');
 		}
@@ -285,6 +287,12 @@ function classifyDomains(
 	if (domains.size === 0) domains.add('general');
 
 	return DOMAIN_ORDER.filter((domain) => domains.has(domain));
+}
+
+function hasDomainSignalOutsideEntityName(message: string, domainPattern: RegExp, entityNamePattern: RegExp): boolean {
+	return message
+		.split(/(?:[?!,;]|\b(?:and|then)\b)/u)
+		.some((clause) => domainPattern.test(clause) && !entityNamePattern.test(clause));
 }
 
 function isGeneralExplanation(message: string, hasExplicitSpace = false): boolean {
@@ -414,6 +422,9 @@ function resolveConversationSpaceHint(
 
 	if (uniqueExplicitSpaceIds.length === 1) return uniqueExplicitSpaceIds[0];
 	if (uniqueExplicitSpaceIds.length > 1) return undefined;
+	if ([...BUILT_IN_ACTION_SPACE_NAMES].some((spaceName) => containsNormalizedPhrase(message, spaceName))) {
+		return undefined;
+	}
 
 	return conversationSpaceId ?? undefined;
 }
@@ -572,7 +583,7 @@ function buildToolNames(
 	if (domains.includes('home')) names.push(SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME);
 	if (hasWrite) {
 		names.push(CONTROL_DEVICE_TOOL_NAME);
-		if (/\b(?:all|lighting|lights|room)\b/u.test(message)) names.push(SET_SPACE_LIGHTING_TOOL_NAME);
+		if (/\b(?:all|every|lighting|lights|room)\b/u.test(message)) names.push(SET_SPACE_LIGHTING_TOOL_NAME);
 	}
 	if (hasTrigger) names.push(RUN_SCENE_TOOL_NAME);
 
