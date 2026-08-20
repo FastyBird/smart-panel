@@ -13,12 +13,17 @@ import { useConfigPluginEditForm } from './useConfigPluginEditForm';
 
 const TestConfigPluginSchema = ConfigPluginSchema.extend({
 	value: z.string(),
+	// A redacted secret: never in a response, which is what the reconciliation below is about.
+	apiKey: z.string().nullable().optional(),
+	apiKeyConfigured: z.boolean().optional(),
 });
 
 type ITestConfigPluginSchema = z.infer<typeof TestConfigPluginSchema>;
 
 const TestConfigPluginEditFormSchema = ConfigPluginEditFormSchema.extend({
 	value: z.string(),
+	apiKey: z.string().nullable().optional(),
+	apiKeyConfigured: z.boolean().optional(),
 });
 
 type ITestConfigPluginEditForm = z.infer<typeof TestConfigPluginEditFormSchema>;
@@ -98,8 +103,15 @@ vi.mock('./usePlugins', () => ({
 }));
 
 describe('useConfigPluginEditForm', () => {
+	const validatedForm = (): FormInstance =>
+		({
+			clearValidate: vi.fn(),
+			validate: vi.fn().mockResolvedValue(true),
+		}) as unknown as FormInstance;
+
 	beforeEach(() => {
 		mockEdit.mockClear();
+		mockEdit.mockResolvedValue({ type: 'test-plugin', value: 'test-value' });
 		mockSuccess.mockClear();
 		mockError.mockClear();
 	});
@@ -135,15 +147,63 @@ describe('useConfigPluginEditForm', () => {
 		const config = { ...mockConfig, draft: false };
 		const form = useConfigPluginEditForm<ITestConfigPluginEditForm>({ config });
 
-		form.formEl.value = {
-			clearValidate: vi.fn(),
-			validate: vi.fn().mockResolvedValue(true),
-		} as unknown as FormInstance;
+		form.formEl.value = validatedForm();
 
 		await form.submit();
 
 		expect(mockEdit).toHaveBeenCalled();
 		expect(mockSuccess).toHaveBeenCalled();
 		expect(form.formResult.value).toBe(FormResult.OK);
+	});
+
+	// The model is the object that was submitted, not what the backend answered with, and a
+	// redacted secret is never in an answer. Reconciling the two is what keeps the form honest
+	// about a credential once it has been saved.
+	describe('after a save', () => {
+		it('drops a stored secret and takes the configured flag from the response', async () => {
+			const form = useConfigPluginEditForm<ITestConfigPluginEditForm>({ config: { ...mockConfig, apiKeyConfigured: false } });
+
+			form.formEl.value = validatedForm();
+			form.model.apiKey = 'sk-typed-by-the-operator';
+
+			mockEdit.mockResolvedValueOnce({ type: 'test-plugin', value: 'test-value', apiKeyConfigured: true });
+
+			await form.submit();
+
+			// Left in place it would be sent again on the next save, and the field would still
+			// offer no way to remove the key it had just stored.
+			expect(form.model.apiKey).toBeUndefined();
+			expect(form.model.apiKeyConfigured).toBe(true);
+		});
+
+		it('clears a staged removal the backend has already carried out', async () => {
+			const form = useConfigPluginEditForm<ITestConfigPluginEditForm>({ config: { ...mockConfig, apiKeyConfigured: true } });
+
+			form.formEl.value = validatedForm();
+			// What the remove control stages: null is the one value that asks for a removal.
+			form.model.apiKey = null;
+
+			mockEdit.mockResolvedValueOnce({ type: 'test-plugin', value: 'test-value', apiKeyConfigured: false });
+
+			await form.submit();
+			await nextTick();
+
+			expect(form.model.apiKey).toBeUndefined();
+			expect(form.model.apiKeyConfigured).toBe(false);
+			expect(form.formChanged.value).toBe(false);
+		});
+
+		it('leaves an ordinary field holding what the backend confirmed', async () => {
+			const form = useConfigPluginEditForm<ITestConfigPluginEditForm>({ config: { ...mockConfig } });
+
+			form.formEl.value = validatedForm();
+			form.model.value = 'Updated';
+
+			mockEdit.mockResolvedValueOnce({ type: 'test-plugin', value: 'Updated' });
+
+			await form.submit();
+
+			expect(form.model.value).toBe('Updated');
+		});
 	});
 });

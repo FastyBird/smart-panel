@@ -54,6 +54,30 @@ export const useConfigPluginEditForm = <TForm extends IConfigPluginEditForm = IC
 
 	const formChanged = ref<boolean>(false);
 
+	const markSaved = (): void => {
+		initialModel = deepClone<Reactive<TForm>>(toRaw(model));
+		formChanged.value = false;
+	};
+
+	/**
+	 * Replaces the model's contents with a configuration the backend has confirmed.
+	 *
+	 * Anything the answer does not carry is dropped rather than left in place: a redacted secret
+	 * is absent from every response, and absent is exactly what the model should end up holding.
+	 */
+	const reconcile = (saved: IConfigPlugin): void => {
+		const current = model as unknown as Record<string, unknown>;
+		const next = saved as unknown as Record<string, unknown>;
+
+		for (const key of Object.keys(current)) {
+			if (!(key in next)) {
+				delete current[key];
+			}
+		}
+
+		Object.assign(current, next);
+	};
+
 	const submit = async (): Promise<'saved'> => {
 		const errorMessage = messages && messages.error ? messages.error : t('configModule.messages.configPlugin.notEdited');
 
@@ -73,8 +97,10 @@ export const useConfigPluginEditForm = <TForm extends IConfigPluginEditForm = IC
 
 		formResult.value = FormResult.WORKING;
 
+		let saved: IConfigPlugin;
+
 		try {
-			await configPluginsStore.edit({
+			saved = await configPluginsStore.edit({
 				data: {
 					...parsedModel.data,
 					type: config.type,
@@ -94,13 +120,19 @@ export const useConfigPluginEditForm = <TForm extends IConfigPluginEditForm = IC
 			throw error;
 		}
 
+		// The model is still the object that was submitted, and a secret is never in what comes
+		// back. Left alone it would keep a saved credential in the field and send it again on the
+		// next save, keep announcing a removal that has already happened, and leave a key that was
+		// just stored with no way to remove it until the page is reloaded.
+		reconcile(saved);
+
+		markSaved();
+
 		formResult.value = FormResult.OK;
 
 		timer = window.setTimeout(clear, 2000);
 
 		flashMessage.success(t(messages && messages.success ? messages.success : 'configModule.messages.configPlugin.edited'));
-
-		formChanged.value = false;
 
 		return 'saved';
 	};
@@ -109,11 +141,6 @@ export const useConfigPluginEditForm = <TForm extends IConfigPluginEditForm = IC
 		window.clearTimeout(timer);
 
 		formResult.value = FormResult.NONE;
-	};
-
-	const markSaved = (): void => {
-		initialModel = deepClone<Reactive<TForm>>(toRaw(model));
-		formChanged.value = false;
 	};
 
 	watch(model, (): void => {
