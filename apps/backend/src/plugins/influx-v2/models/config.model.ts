@@ -41,14 +41,24 @@ export class InfluxV2ConfigModel extends PluginConfigModel {
 	url: string = INFLUXDB_V2_DEFAULT_URL;
 
 	@ApiPropertyOptional({
-		description: 'InfluxDB v2 API token for authentication',
+		description: 'InfluxDB v2 API token for authentication. This value is accepted on write and never returned.',
 		type: 'string',
 		example: 'my-token',
+		writeOnly: true,
 	})
 	@Expose()
 	@IsOptional()
 	@IsString()
 	token?: string;
+
+	@ApiProperty({
+		description: 'Whether an InfluxDB v2 API token is configured',
+		name: 'token_configured',
+	})
+	@Expose({ name: 'token_configured' })
+	@IsOptional()
+	@IsBoolean()
+	tokenConfigured?: boolean;
 
 	@ApiProperty({
 		description: 'InfluxDB v2 organization name',

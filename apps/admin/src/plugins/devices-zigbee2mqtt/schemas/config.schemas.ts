@@ -8,7 +8,8 @@ export const Zigbee2mqttConfigEditFormSchema = ConfigPluginEditFormSchema.extend
 		host: z.string().trim().min(1),
 		port: z.coerce.number().int().min(1).max(65535),
 		username: z.string().nullable(),
-		password: z.string().nullable(),
+		// Empty means "keep the stored password" - the backend never sends it back.
+		password: z.string().nullable().optional(),
 		baseTopic: z.string().trim().min(1),
 		clientId: z.string().nullable(),
 		cleanSession: z.boolean(),
@@ -29,7 +30,8 @@ export const Zigbee2mqttConfigEditFormSchema = ConfigPluginEditFormSchema.extend
 		rejectUnauthorized: z.boolean(),
 		ca: z.string().nullable(),
 		cert: z.string().nullable(),
-		key: z.string().nullable(),
+		// Empty means "keep the stored key" - the backend never sends it back.
+		key: z.string().nullable().optional(),
 	}),
 	discovery: z.object({
 		autoAdd: z.boolean(),

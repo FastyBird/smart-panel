@@ -25,10 +25,11 @@ export class BuddyTelegramConfigModel extends PluginConfigModel {
 	enabled: boolean = false;
 
 	@ApiPropertyOptional({
-		description: 'Telegram Bot API token (from @BotFather)',
+		description: 'Telegram Bot API token (from @BotFather). This value is accepted on write and never returned.',
 		name: 'bot_token',
 		type: 'string',
 		nullable: true,
+		writeOnly: true,
 	})
 	@Expose({ name: 'bot_token' })
 	@Transform(
@@ -38,6 +39,15 @@ export class BuddyTelegramConfigModel extends PluginConfigModel {
 	@IsOptional()
 	@IsString()
 	botToken: string | null = null;
+
+	@ApiProperty({
+		description: 'Whether a Telegram Bot API token is configured',
+		name: 'bot_token_configured',
+	})
+	@Expose({ name: 'bot_token_configured' })
+	@IsOptional()
+	@IsBoolean()
+	botTokenConfigured?: boolean;
 
 	@ApiPropertyOptional({
 		description: 'Comma-separated list of Telegram user IDs allowed to interact with the bot (empty = allow all)',

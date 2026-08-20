@@ -13,7 +13,11 @@ export const Zigbee2mqttConfigSchema = ConfigPluginSchema.extend({
 		host: z.string(),
 		port: z.number(),
 		username: z.string().nullable(),
-		password: z.string().nullable(),
+		// The backend redacts the password on read and answers with passwordConfigured
+		// instead, so the stored config has no password at all. It stays declared
+		// because the edit form writes a replacement into it before submitting.
+		password: z.string().nullable().optional(),
+		passwordConfigured: z.boolean().default(false),
 		baseTopic: z.string(),
 		clientId: z.string().nullable(),
 		cleanSession: z.boolean(),
@@ -34,7 +38,11 @@ export const Zigbee2mqttConfigSchema = ConfigPluginSchema.extend({
 		rejectUnauthorized: z.boolean(),
 		ca: z.string().nullable(),
 		cert: z.string().nullable(),
-		key: z.string().nullable(),
+		// The backend redacts the key on read and answers with keyConfigured
+		// instead, so the stored config has no key at all. It stays declared
+		// because the edit form writes a replacement into it before submitting.
+		key: z.string().nullable().optional(),
+		keyConfigured: z.boolean().default(false),
 	}),
 	discovery: z.object({
 		autoAdd: z.boolean(),
@@ -99,7 +107,8 @@ export const Zigbee2mqttConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSch
 			host: z.string(),
 			port: z.number(),
 			username: z.string().nullable(),
-			password: z.string().nullable(),
+			password: z.string().nullable().optional(),
+			password_configured: z.boolean(),
 			base_topic: z.string(),
 			client_id: z.string().nullable(),
 			clean_session: z.boolean(),
@@ -120,7 +129,8 @@ export const Zigbee2mqttConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSch
 			reject_unauthorized: z.boolean(),
 			ca: z.string().nullable(),
 			cert: z.string().nullable(),
-			key: z.string().nullable(),
+			key: z.string().nullable().optional(),
+			key_configured: z.boolean(),
 		}),
 		discovery: z.object({
 			auto_add: z.boolean(),

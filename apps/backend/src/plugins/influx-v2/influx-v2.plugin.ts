@@ -30,6 +30,12 @@ export class InfluxV2Plugin implements OnModuleInit {
 			type: INFLUX_V2_PLUGIN_NAME,
 			class: InfluxV2ConfigModel,
 			configDto: UpdateInfluxV2ConfigDto,
+			secretFields: [
+				{
+					path: 'token',
+					configuredPath: 'token_configured',
+				},
+			],
 		});
 
 		for (const model of INFLUX_V2_SWAGGER_EXTRA_MODELS) {

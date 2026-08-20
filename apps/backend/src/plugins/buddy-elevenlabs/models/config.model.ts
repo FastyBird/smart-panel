@@ -25,10 +25,11 @@ export class BuddyElevenlabsConfigModel extends PluginConfigModel {
 	enabled: boolean = false;
 
 	@ApiPropertyOptional({
-		description: 'ElevenLabs API key',
+		description: 'ElevenLabs API key. This value is accepted on write and never returned.',
 		name: 'api_key',
 		type: 'string',
 		nullable: true,
+		writeOnly: true,
 	})
 	@Expose({ name: 'api_key' })
 	@Transform(({ obj }: { obj: { api_key?: string | null; apiKey?: string | null } }) => obj.api_key ?? obj.apiKey, {
@@ -37,6 +38,15 @@ export class BuddyElevenlabsConfigModel extends PluginConfigModel {
 	@IsOptional()
 	@IsString()
 	apiKey: string | null = null;
+
+	@ApiProperty({
+		description: 'Whether an ElevenLabs API key is configured',
+		name: 'api_key_configured',
+	})
+	@Expose({ name: 'api_key_configured' })
+	@IsOptional()
+	@IsBoolean()
+	apiKeyConfigured?: boolean;
 
 	@ApiPropertyOptional({
 		description: 'ElevenLabs voice ID (e.g. 21m00Tcm4TlvDq8ikWAM for Rachel)',

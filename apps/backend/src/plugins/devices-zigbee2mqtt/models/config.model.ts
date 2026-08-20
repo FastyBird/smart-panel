@@ -56,11 +56,21 @@ export class Z2mMqttConfigModel {
 	@IsOptional()
 	@IsString()
 	@ApiPropertyOptional({
-		description: 'MQTT password for authentication',
+		description: 'MQTT password for authentication. This value is accepted on write and never returned.',
+		writeOnly: true,
 		nullable: true,
 		example: null,
 	})
 	password: string | null = null;
+
+	@Expose({ name: 'password_configured' })
+	@IsOptional()
+	@IsBoolean()
+	@ApiProperty({
+		description: 'Whether an MQTT password is configured',
+		name: 'password_configured',
+	})
+	passwordConfigured?: boolean;
 
 	@Expose({ name: 'base_topic' })
 	@IsString()
@@ -170,11 +180,21 @@ export class Z2mTlsConfigModel {
 	@IsOptional()
 	@IsString()
 	@ApiPropertyOptional({
-		description: 'Client private key content or path',
+		description: 'Client private key content or path. This value is accepted on write and never returned.',
+		writeOnly: true,
 		nullable: true,
 		example: null,
 	})
 	key: string | null = null;
+
+	@Expose({ name: 'key_configured' })
+	@IsOptional()
+	@IsBoolean()
+	@ApiProperty({
+		description: 'Whether a TLS client private key is configured',
+		name: 'key_configured',
+	})
+	keyConfigured?: boolean;
 }
 
 /**
