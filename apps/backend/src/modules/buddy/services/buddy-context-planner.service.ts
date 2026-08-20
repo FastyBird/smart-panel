@@ -85,7 +85,7 @@ const CLOCK_TIME_HISTORY_PATTERN = new RegExp(
 	'u',
 );
 const SCHEDULED_ACTION_PATTERN = new RegExp(
-	String.raw`\b(?:at\s+${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE}(?!\s*(?:%|percent\b))|tomorrow|tonight|next\s+(?:day|evening|morning|night|week)|in\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?))\b`,
+	String.raw`\b(?:at\s+${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE}(?!\s*(?:%|celsius\b|degrees?\b|fahrenheit\b|percent\b|°\s*(?:c|f)?))|tomorrow|tonight|next\s+(?:day|evening|morning|night|week)|in\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?))\b`,
 	'u',
 );
 const HISTORY_PATTERN =
@@ -209,7 +209,7 @@ const BUILT_IN_ACTION_SPACE_NAMES = new Set([
 const EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN =
 	/\b(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs) thermostat\b/u;
 const WHOLE_HOME_SCOPE_PATTERN =
-	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b|\b(?:all|every) rooms?\b/u;
+	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b|\beverywhere\b|\b(?:all|each|every) (?:rooms?|spaces?)\b/u;
 const TRAILING_ACTION_PATTERN = new RegExp(
 	String.raw`(?:[?!,.;]|\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
@@ -247,6 +247,11 @@ export class BuddyContextPlannerService {
 		const isGenericExplanation = isGeneralExplanation(normalizedMessage, explicitSpaces.length > 0);
 		const isPredicateQuestion = isStatePredicateQuestion(normalizedMessage);
 		const isWrappedStateRead = MODAL_STATE_READ_PATTERN.test(normalizedMessage);
+		const isConditionalOutcomeRead =
+			LEADING_CONDITION_PATTERN.test(normalizedMessage) &&
+			/\?\s*$/u.test(normalizedMessage) &&
+			new RegExp(String.raw`\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`, 'u').test(normalizedMessage) &&
+			findLeadingConditionalActionIndex(normalizedMessage) === undefined;
 		const hasUnsupportedScopedFutureTemperature = splitPlannerClauses(normalizedMessage, explicitSpaces).some(
 			(clause) => isScopedIndoorFutureTemperatureClause(clause, explicitSpaces),
 		);
@@ -263,7 +268,8 @@ export class BuddyContextPlannerService {
 			hasHomeStateReadClause(normalizedMessage.slice(0, trailingActionMatch.index), explicitSpaces);
 		const isReadOnlyPredicate =
 			!hasTrailingAction &&
-			(isPredicateQuestion ||
+			(isConditionalOutcomeRead ||
+				isPredicateQuestion ||
 				isWrappedStateRead ||
 				(READ_PATTERN.test(normalizedMessage) &&
 					(CAPABILITY_DISCOVERY_PATTERN.test(normalizedMessage) || hasOnlyGroundedActionTokens(normalizedMessage))));
@@ -452,6 +458,13 @@ function findLeadingConditionalActionIndex(message: string): number | undefined 
 
 function isConditionalOutcomeQuestion(message: string, actionIndex: number): boolean {
 	if (!/\?\s*$/u.test(message)) return false;
+	const trailingBoundary = message.slice(actionIndex).search(/[,;]/u);
+
+	if (LEADING_CONDITION_PATTERN.test(message) && trailingBoundary >= 0) {
+		const mainClause = message.slice(actionIndex + trailingBoundary + 1).trim();
+
+		if (READ_PATTERN.test(mainClause) || PREDICATE_QUESTION_PATTERN.test(mainClause)) return true;
+	}
 
 	const prefix = message.slice(0, actionIndex);
 	const clauseBoundary = Math.max(prefix.lastIndexOf(','), prefix.lastIndexOf(';'));

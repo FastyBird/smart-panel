@@ -3332,4 +3332,48 @@ describe('BuddyContextPlannerService', () => {
 			],
 		});
 	});
+
+	it('keeps a first-person conditional action hypothetical on the read path', () => {
+		expect(
+			service.plan({
+				message: 'If I run Movie Night, what happens?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state'],
+		});
+	});
+
+	it('treats a thermostat degree value after at as an immediate action value', () => {
+		expect(
+			service.plan({
+				message: 'Set the Bedroom thermostat at 20 degrees',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			intent: 'write',
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device'],
+		});
+	});
+
+	it.each(['everywhere', 'in all spaces', 'in each room'])('treats %s as explicit whole-home scope', (scopePhrase) => {
+		expect(
+			service.plan({
+				message: `What is the temperature ${scopePhrase}?`,
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			scope: {},
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+		});
+	});
 });
