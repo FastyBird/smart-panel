@@ -267,16 +267,20 @@ const callbackUrl = ref<string>('');
 const isLoadingUrl = ref<boolean>(false);
 const isExchanging = ref<boolean>(false);
 
-const isConnected = computed<boolean>(() => {
-	return !!(model.accessToken || model.refreshToken);
+const isConnected = computed<boolean>((): boolean => {
+	return !!(model.accessTokenConfigured || model.refreshTokenConfigured || model.accessToken || model.refreshToken);
 });
 
 const handleDisconnect = async (): Promise<void> => {
 	const prevAccessToken = model.accessToken;
 	const prevRefreshToken = model.refreshToken;
+	const prevAccessTokenConfigured = model.accessTokenConfigured;
+	const prevRefreshTokenConfigured = model.refreshTokenConfigured;
 
 	model.accessToken = null;
 	model.refreshToken = null;
+	model.accessTokenConfigured = false;
+	model.refreshTokenConfigured = false;
 	authorizeUrl.value = null;
 	callbackUrl.value = '';
 
@@ -288,6 +292,8 @@ const handleDisconnect = async (): Promise<void> => {
 		// Restore tokens so the UI stays consistent with the server
 		model.accessToken = prevAccessToken;
 		model.refreshToken = prevRefreshToken;
+		model.accessTokenConfigured = prevAccessTokenConfigured;
+		model.refreshTokenConfigured = prevRefreshTokenConfigured;
 
 		// submit() already shows its own error flash — don't duplicate it
 	}
@@ -371,6 +377,17 @@ const handleExchange = async (): Promise<void> => {
 
 			if (updatedConfig.refreshToken) {
 				model.refreshToken = updatedConfig.refreshToken as string;
+			}
+
+			// The backend redacts the actual secrets on read - the *Configured flags on the
+			// refetched config are where the truth about connection state now lives, so they
+			// take precedence over the (likely absent) token values above.
+			if (typeof updatedConfig.accessTokenConfigured === 'boolean') {
+				model.accessTokenConfigured = updatedConfig.accessTokenConfigured;
+			}
+
+			if (typeof updatedConfig.refreshTokenConfigured === 'boolean') {
+				model.refreshTokenConfigured = updatedConfig.refreshTokenConfigured;
 			}
 		}
 
