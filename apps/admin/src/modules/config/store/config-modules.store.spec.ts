@@ -209,10 +209,10 @@ describe('ConfigModule Store', () => {
 		expect(store.firstLoadFinished()).toBe(true);
 	});
 
-	// The race the mutation-token stamp exists to prevent: a change event fires a `get()` for the
+	// The race the sequence exists to prevent: a change event fires a `get()` for the
 	// changed type while an already-in-flight `fetch()` is still reading the pre-change configuration.
-	// Without the stamp, `fetch()`'s wholesale replace lands after `get()` and wipes it out with the
-	// older snapshot, so the admin stays stale until something else happens to refresh it.
+	// Without the ordering, `fetch()`'s wholesale replace lands after `get()` and wipes it out with
+	// the older snapshot, so the admin stays stale until something else happens to refresh it.
 	it('keeps an entry refreshed by get() while fetch() is in flight, rather than restoring the snapshot it answers with', async () => {
 		let resolveFetch!: (value: unknown) => void;
 
@@ -286,6 +286,113 @@ describe('ConfigModule Store', () => {
 		expect(firstResult).toEqual(mockModule);
 		expect((forcedResult as ICustomModuleConfig).mockValue).toBe('forced value');
 		expect((store.data[mockModule.type] as ICustomModuleConfig).mockValue).toBe('forced value');
+	});
+
+	// Ordering by when a response lands is not the same as ordering by when it was asked for, and
+	// only the second is meaningful: a read describes the moment its request went out. An entry
+	// `get()` issued before this `fetch()` and answered during it is the older story of the two, so
+	// the list response — asked for later — is the one worth keeping.
+	it('applies the fetch response over an entry read that was issued before it', async () => {
+		let resolveGet!: (value: unknown) => void;
+		let resolveFetch!: (value: unknown) => void;
+
+		const getRequest = new Promise((resolve) => {
+			resolveGet = resolve;
+		});
+
+		const fetchRequest = new Promise((resolve) => {
+			resolveFetch = resolve;
+		});
+
+		(backendClient.GET as Mock).mockReturnValueOnce(getRequest).mockReturnValueOnce(fetchRequest);
+
+		const pendingGet = store.get({ type: 'custom-module' });
+		const pendingFetch = store.fetch();
+
+		// The earlier request is answered first, and with what the server held before the change.
+		resolveGet({ data: { data: { ...mockModuleRes, mockValue: 'stale value' } } });
+		await pendingGet;
+
+		resolveFetch({ data: { data: [{ ...mockModuleRes, mockValue: 'current value' }] } });
+		await pendingFetch;
+
+		expect((store.data[mockModule.type] as ICustomModuleConfig).mockValue).toBe('current value');
+	});
+
+	// Two change events for the same type can land together. Both forced refreshes then wait on the
+	// one request already in flight and both resume, so unless they are queued the second finds the
+	// semaphore still held by the first and is rejected out of hand.
+	it('serializes forced refreshes that arrive together instead of rejecting the second', async () => {
+		let resolveFirst!: (value: unknown) => void;
+
+		const firstRequest = new Promise((resolve) => {
+			resolveFirst = resolve;
+		});
+
+		(backendClient.GET as Mock)
+			.mockReturnValueOnce(firstRequest)
+			.mockResolvedValueOnce({
+				data: { data: { ...mockModuleRes, mockValue: 'first refresh' } },
+				error: undefined,
+				response: { status: 200 },
+			})
+			.mockResolvedValueOnce({
+				data: { data: { ...mockModuleRes, mockValue: 'second refresh' } },
+				error: undefined,
+				response: { status: 200 },
+			});
+
+		const firstGet = store.get({ type: 'custom-module' });
+		const forcedFirst = store.get({ type: 'custom-module', force: true });
+		const forcedSecond = store.get({ type: 'custom-module', force: true });
+
+		resolveFirst({ data: { data: mockModuleRes } });
+
+		const [, firstRefresh, secondRefresh] = await Promise.all([firstGet, forcedFirst, forcedSecond]);
+
+		expect(backendClient.GET).toHaveBeenCalledTimes(3);
+		expect((firstRefresh as ICustomModuleConfig).mockValue).toBe('first refresh');
+		expect((secondRefresh as ICustomModuleConfig).mockValue).toBe('second refresh');
+		expect((store.data[mockModule.type] as ICustomModuleConfig).mockValue).toBe('second refresh');
+	});
+
+	// The registration a call retires has to be its own. A forced refresh registers itself in place
+	// of the read it is waiting on, so that earlier read finishing would otherwise delete the
+	// successor's entry — and the next caller, finding nothing registered, starts a competing
+	// request that collides with the one still in flight.
+	it('leaves a forced successor registered once the read it waited on finishes', async () => {
+		let resolveFirst!: (value: unknown) => void;
+		let resolveForced!: (value: unknown) => void;
+
+		const firstRequest = new Promise((resolve) => {
+			resolveFirst = resolve;
+		});
+
+		const forcedRequest = new Promise((resolve) => {
+			resolveForced = resolve;
+		});
+
+		(backendClient.GET as Mock).mockReturnValueOnce(firstRequest).mockReturnValueOnce(forcedRequest);
+
+		const firstGet = store.get({ type: 'custom-module' });
+		const forcedGet = store.get({ type: 'custom-module', force: true });
+
+		resolveFirst({ data: { data: mockModuleRes } });
+		await firstGet;
+
+		// Wait for the forced successor to take over and issue its own request.
+		await vi.waitFor(() => expect(backendClient.GET).toHaveBeenCalledTimes(2));
+
+		// Arrives while that refresh is in flight, so it should be handed the same request.
+		const joinedGet = store.get({ type: 'custom-module' });
+
+		resolveForced({ data: { data: { ...mockModuleRes, mockValue: 'forced value' } } });
+
+		const [forcedResult, joinedResult] = await Promise.all([forcedGet, joinedGet]);
+
+		expect(backendClient.GET).toHaveBeenCalledTimes(2);
+		expect((forcedResult as ICustomModuleConfig).mockValue).toBe('forced value');
+		expect((joinedResult as ICustomModuleConfig).mockValue).toBe('forced value');
 	});
 
 	it('should handle onEvent and update module config', () => {
