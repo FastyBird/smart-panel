@@ -45,6 +45,7 @@ export enum HomeyMappingPreviewWarningCode {
 	VALUE_CONVERSION_FAILED = 'value_conversion_failed',
 	LOSSY_CONVERSION = 'lossy_conversion',
 	AMBIGUOUS_CONVERSION = 'ambiguous_conversion',
+	NON_REVERSIBLE_CONVERSION = 'non_reversible_conversion',
 	INVALID_DEVICE_CATEGORY = 'invalid_device_category',
 }
 

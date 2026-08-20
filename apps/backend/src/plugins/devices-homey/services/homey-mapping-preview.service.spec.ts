@@ -316,6 +316,50 @@ describe('HomeyMappingPreviewService', () => {
 		expect(preview.readyToAdopt).toBe(false);
 	});
 
+	it('blocks a non-reversible bidirectional map even when its read outputs are unique', async () => {
+		const device = readDeviceFixture('light');
+		homeyService.getFreshDevice.mockResolvedValue(device);
+		const propertyResolution = mappingLoader.resolvePropertyMappings(device);
+		jest.spyOn(mappingLoader, 'resolvePropertyMappings').mockReturnValue({
+			conflicts: propertyResolution.conflicts,
+			mappings: propertyResolution.mappings.map((binding) =>
+				binding.capabilityId === 'onoff'
+					? {
+							...binding,
+							mapping: {
+								...binding.mapping,
+								property: {
+									...binding.mapping.property,
+									transform: {
+										type: 'map',
+										read: { false: false, true: true },
+										write: { false: true, true: true },
+									},
+								},
+							},
+						}
+					: binding,
+			),
+		});
+
+		const preview = await service.generatePreview({ deviceId: device.id });
+
+		expect(findProperty(preview, 'onoff')?.conversion).toMatchObject({
+			type: 'map',
+			reversible: false,
+			lossy: false,
+			ambiguous: false,
+		});
+		expect(preview.warnings).toContainEqual(
+			expect.objectContaining({
+				code: HomeyMappingPreviewWarningCode.NON_REVERSIBLE_CONVERSION,
+				severity: HomeyMappingPreviewWarningSeverity.ERROR,
+				identifier: 'onoff',
+			}),
+		);
+		expect(preview.readyToAdopt).toBe(false);
+	});
+
 	it('uses fixed not-found and unavailable errors for fresh inventory failures', async () => {
 		homeyService.getFreshDevice.mockResolvedValueOnce(null).mockRejectedValueOnce(new Error('private endpoint detail'));
 

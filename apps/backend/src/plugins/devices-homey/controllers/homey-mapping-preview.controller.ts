@@ -1,4 +1,12 @@
-import { Body, Controller, NotFoundException, Post, UnprocessableEntityException } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	HttpCode,
+	HttpStatus,
+	NotFoundException,
+	Post,
+	UnprocessableEntityException,
+} from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import {
@@ -37,8 +45,9 @@ export class HomeyMappingPreviewController {
 	@ApiNotFoundResponse('Homey mapping preview device not found')
 	@ApiUnprocessableEntityResponse('Homey mapping preview is not currently available')
 	@ApiInternalServerErrorResponse('Internal server error')
-	@Post()
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@HttpCode(HttpStatus.OK)
+	@Post()
 	async preview(@Body() body: HomeyMappingPreviewRequestDto): Promise<HomeyMappingPreviewResponseModel> {
 		try {
 			const response = new HomeyMappingPreviewResponseModel();

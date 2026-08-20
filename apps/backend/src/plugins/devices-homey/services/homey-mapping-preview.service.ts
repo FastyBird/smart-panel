@@ -377,6 +377,23 @@ export class HomeyMappingPreviewService {
 			);
 		}
 
+		if (
+			conversion.type === HomeyMappingConversionType.MAP &&
+			mapping.property.direction === 'bidirectional' &&
+			!conversion.reversible
+		) {
+			warnings.push(
+				this.warning(
+					HomeyMappingPreviewWarningCode.NON_REVERSIBLE_CONVERSION,
+					HomeyMappingPreviewWarningSeverity.ERROR,
+					HomeyMappingPreviewWarningScope.CONVERSION,
+					capability.id,
+					[mapping.name],
+					'The bidirectional map does not preserve values through a write and read round trip',
+				),
+			);
+		}
+
 		return property;
 	}
 

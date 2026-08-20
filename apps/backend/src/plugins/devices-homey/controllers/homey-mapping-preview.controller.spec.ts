@@ -1,6 +1,7 @@
 import { instanceToPlain } from 'class-transformer';
 
-import { NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { HttpStatus, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { HTTP_CODE_METADATA } from '@nestjs/common/constants';
 
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 import { ROLES_KEY } from '../../../modules/users/guards/roles.guard';
@@ -74,5 +75,6 @@ describe('HomeyMappingPreviewController', () => {
 		const handler = HomeyMappingPreviewController.prototype.preview;
 
 		expect(Reflect.getMetadata(ROLES_KEY, handler)).toEqual([UserRole.OWNER, UserRole.ADMIN]);
+		expect(Reflect.getMetadata(HTTP_CODE_METADATA, handler)).toBe(HttpStatus.OK);
 	});
 });
