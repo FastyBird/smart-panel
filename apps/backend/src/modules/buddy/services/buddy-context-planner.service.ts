@@ -212,7 +212,7 @@ export class BuddyContextPlannerService {
 		);
 		const strategy = selectStrategy(intent, ambiguityRisk, domains, input.providerCapabilities);
 		const includeCurrentStateForRead =
-			(!domains.includes('history') || CURRENT_STATE_PATTERN.test(normalizedMessage)) &&
+			(!domains.includes('history') || hasCurrentStateReadClause(normalizedMessage)) &&
 			!CAPABILITY_DISCOVERY_PATTERN.test(normalizedMessage);
 		const scopedReferences = hasAction
 			? references.length === 1 &&
@@ -400,6 +400,20 @@ function hasDomainSignalInClause(clause: string, domainPattern: RegExp, entityNa
 
 function splitPlannerClauses(message: string): string[] {
 	return message.split(/(?:[?!,.;]|\b(?:and(?: also)?|as well as|plus|then)\b)/u);
+}
+
+function hasCurrentStateReadClause(message: string): boolean {
+	return splitPlannerClauses(message).some((clause) => {
+		const normalizedClause = clause.trim();
+
+		if (HISTORY_PATTERN.test(normalizedClause) && !CURRENT_STATE_PATTERN.test(normalizedClause)) return false;
+
+		return (
+			CURRENT_STATE_PATTERN.test(normalizedClause) ||
+			READ_PATTERN.test(normalizedClause) ||
+			PREDICATE_QUESTION_PATTERN.test(normalizedClause)
+		);
+	});
 }
 
 function isGeneralExplanation(message: string, hasExplicitSpace = false): boolean {

@@ -1250,6 +1250,26 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('retains an implicit-current clause beside a historical clause', () => {
+		expect(
+			service.plan({
+				message: 'What was the Bedroom temperature yesterday, and what is the Kitchen temperature?',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'search-home', spaceId: 'space-kitchen' },
+				{ kind: 'current-state', spaceId: 'space-kitchen' },
+				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+			],
+		});
+	});
+
 	it('scopes current and historical spans independently within one clause', () => {
 		expect(
 			service.plan({
