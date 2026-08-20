@@ -47,6 +47,7 @@ const LIGHTING_GROUP_PATTERN = new RegExp(
 		.join('|')})\b`,
 	'u',
 );
+const LIGHTING_GROUP_EXCLUSION_PATTERN = /\b(?:but not|except|excluding|krome|other than|without)\b/u;
 
 const DOMAIN_ORDER: readonly BuddyContextDomain[] = ['general', 'home', 'weather', 'energy', 'security', 'history'];
 const WEATHER_PATTERN =
@@ -203,9 +204,10 @@ export class BuddyContextPlannerService {
 		const hasTrailingAction = trailingActionMatch !== null;
 		const hasTrailingRead = TRAILING_READ_PATTERN.test(normalizedMessage);
 		const actionMessage = getActionMessage(normalizedMessage, trailingActionMatch);
-		const actionReferenceMessage = getActionReferenceMessage(actionMessage);
+		const actionReferenceMessage = getActionReferenceMessage(actionMessage, explicitSpaces);
 		const hasLeadingHomeRead =
-			trailingActionMatch !== null && hasHomeStateReadClause(normalizedMessage.slice(0, trailingActionMatch.index));
+			trailingActionMatch !== null &&
+			hasHomeStateReadClause(normalizedMessage.slice(0, trailingActionMatch.index), explicitSpaces);
 		const isReadOnlyPredicate =
 			!hasTrailingAction &&
 			(isPredicateQuestion ||
@@ -215,7 +217,7 @@ export class BuddyContextPlannerService {
 		const hasWrite =
 			!isGenericExplanation &&
 			!isReadOnlyPredicate &&
-			splitPlannerClauses(actionReferenceMessage).some(
+			splitPlannerClauses(actionReferenceMessage, explicitSpaces).some(
 				(clause) =>
 					ACTION_COMMAND_PATTERN.test(clause) &&
 					(WRITE_PATTERN.test(clause) ||
@@ -226,7 +228,7 @@ export class BuddyContextPlannerService {
 			!isGenericExplanation &&
 			!isReadOnlyPredicate &&
 			ACTION_COMMAND_PATTERN.test(actionMessage) &&
-			splitPlannerClauses(actionMessage).some(
+			splitPlannerClauses(actionMessage, explicitSpaces).some(
 				(clause) =>
 					ACTION_COMMAND_PATTERN.test(clause) &&
 					TRIGGER_PATTERN.test(clause) &&
@@ -358,8 +360,11 @@ function getActionMessage(message: string, trailingActionMatch: RegExpExecArray 
 	return conditionalActionMatch ? message.slice(conditionalActionMatch.index) : message;
 }
 
-function getActionReferenceMessage(message: string): string {
-	return splitPlannerClauses(message)
+function getActionReferenceMessage(
+	message: string,
+	explicitSpaces: readonly BuddyContextSpaceReference[] = [],
+): string {
+	return splitPlannerClauses(message, explicitSpaces)
 		.filter((clause) => ACTION_COMMAND_PATTERN.test(clause))
 		.map((clause) => {
 			const actionOnlyClause = clause.replace(
@@ -390,10 +395,25 @@ function classifyDomains(
 	if (isGenericExplanation) return ['general'];
 
 	const domains = new Set<BuddyContextDomain>();
-	const hasWeather = hasDomainSignalOutsideEntityName(message, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN);
-	const hasEnergy = hasDomainSignalOutsideEntityName(message, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN);
-	const hasSecurity = hasDomainSignalOutsideEntityName(message, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN);
-	const clauses = splitPlannerClauses(message);
+	const hasWeather = hasDomainSignalOutsideEntityName(
+		message,
+		WEATHER_PATTERN,
+		WEATHER_ENTITY_NAME_PATTERN,
+		explicitSpaces,
+	);
+	const hasEnergy = hasDomainSignalOutsideEntityName(
+		message,
+		ENERGY_PATTERN,
+		ENERGY_ENTITY_NAME_PATTERN,
+		explicitSpaces,
+	);
+	const hasSecurity = hasDomainSignalOutsideEntityName(
+		message,
+		SECURITY_PATTERN,
+		SECURITY_ENTITY_NAME_PATTERN,
+		explicitSpaces,
+	);
+	const clauses = splitPlannerClauses(message, explicitSpaces);
 	const hasHomeEntity = clauses.some((clause) => {
 		const retrievalClause = getRetrievalClause(clause);
 		const hasHomeSignal = HOME_ENTITY_PATTERN.test(retrievalClause) || HOME_VOCABULARY_PATTERN.test(retrievalClause);
@@ -505,8 +525,13 @@ function classifyDomains(
 	return DOMAIN_ORDER.filter((domain) => domains.has(domain));
 }
 
-function hasDomainSignalOutsideEntityName(message: string, domainPattern: RegExp, entityNamePattern: RegExp): boolean {
-	return splitPlannerClauses(message).some((clause) =>
+function hasDomainSignalOutsideEntityName(
+	message: string,
+	domainPattern: RegExp,
+	entityNamePattern: RegExp,
+	explicitSpaces: readonly BuddyContextSpaceReference[] = [],
+): boolean {
+	return splitPlannerClauses(message, explicitSpaces).some((clause) =>
 		hasDomainSignalInClause(getRetrievalClause(clause), domainPattern, entityNamePattern),
 	);
 }
@@ -523,8 +548,27 @@ function hasDomainSignalInClause(clause: string, domainPattern: RegExp, entityNa
 	return domainPattern.test(clause.replace(entityNamePattern, ' '));
 }
 
-function splitPlannerClauses(message: string): string[] {
-	return message.split(new RegExp(String.raw`(?:[?!,.;]|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)`, 'u'));
+function splitPlannerClauses(message: string, protectedSpaces: readonly BuddyContextSpaceReference[] = []): string[] {
+	const protectedRanges = protectedSpaces.flatMap((space) =>
+		findNormalizedPhraseRanges(message, normalize(space.name)),
+	);
+	const separatorPattern = new RegExp(String.raw`(?:[?!,.;]|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)`, 'gu');
+	const clauses: string[] = [];
+	let clauseStart = 0;
+
+	for (const separator of message.matchAll(separatorPattern)) {
+		const separatorStart = separator.index;
+		const separatorEnd = separatorStart + separator[0].length;
+
+		if (protectedRanges.some((range) => range.start <= separatorStart && range.end >= separatorEnd)) continue;
+
+		clauses.push(message.slice(clauseStart, separatorStart));
+		clauseStart = separatorEnd;
+	}
+
+	clauses.push(message.slice(clauseStart));
+
+	return clauses;
 }
 
 function hasCurrentStateReadClause(
@@ -533,7 +577,7 @@ function hasCurrentStateReadClause(
 ): boolean {
 	const conjoinedTemporalSpaceIds = new Set(resolveConjoinedTemporalSpaceIds(message, explicitSpaces));
 
-	return splitPlannerClauses(message).some((clause) => {
+	return splitPlannerClauses(message, explicitSpaces).some((clause) => {
 		const normalizedClause = clause.trim();
 
 		if (HISTORY_PATTERN.test(normalizedClause) && !CURRENT_STATE_PATTERN.test(normalizedClause)) return false;
@@ -555,8 +599,8 @@ function hasCurrentStateReadClause(
 	});
 }
 
-function hasHomeStateReadClause(message: string): boolean {
-	return splitPlannerClauses(message).some((clause) => {
+function hasHomeStateReadClause(message: string, explicitSpaces: readonly BuddyContextSpaceReference[] = []): boolean {
+	return splitPlannerClauses(message, explicitSpaces).some((clause) => {
 		const normalizedClause = clause.trim();
 
 		return (
@@ -644,7 +688,7 @@ function classifyAmbiguityRisk(
 
 		return 'none';
 	}
-	const hasSingularHomeReference = splitPlannerClauses(message).some(
+	const hasSingularHomeReference = splitPlannerClauses(message, explicitSpaces).some(
 		(clause) =>
 			hasSingularReferencePronoun(stripContextualScopeReferences(clause)) &&
 			(HOME_ENTITY_PATTERN.test(clause) ||
@@ -674,9 +718,7 @@ function hasGenericActionTarget(
 	explicitSpaces: readonly BuddyContextSpaceReference[],
 	hasConversationSpace = false,
 ): boolean {
-	const clauses = message
-		.split(/(?:[?!,.;]|\b(?:and(?: also)?|as well as|plus|then)\b)/u)
-		.filter((clause) => clause.trim().length > 0);
+	const clauses = splitPlannerClauses(message, explicitSpaces).filter((clause) => clause.trim().length > 0);
 
 	return clauses.some((clause) => hasGenericActionTargetClause(clause, explicitSpaces, hasConversationSpace));
 }
@@ -690,6 +732,7 @@ function hasGenericActionTargetClause(
 	const hasClauseSpace = clauseSpaces.length > 0;
 	const hasResolvedContextualSpace = hasConversationSpace && CONTEXTUAL_SCOPE_PATTERN.test(message);
 
+	if (LIGHTING_GROUP_EXCLUSION_PATTERN.test(message)) return true;
 	if (clauseSpaces.length > 1 && /\bor\b/u.test(message)) return true;
 	if (
 		(hasClauseSpace || hasResolvedContextualSpace) &&
@@ -749,7 +792,7 @@ function resolveEnergySpaceIds(
 	explicitSpaces: readonly BuddyContextSpaceReference[],
 	conversationSpaceId?: string,
 ): string[] {
-	const energyClauses = splitPlannerClauses(message).filter((clause) =>
+	const energyClauses = splitPlannerClauses(message, explicitSpaces).filter((clause) =>
 		hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN),
 	);
 
@@ -784,7 +827,7 @@ function resolveCurrentStateSpaceIds(
 	fallbackSpaceIds: readonly string[],
 ): string[] {
 	const conjoinedTemporalSpaceIds = new Set(resolveConjoinedTemporalSpaceIds(message, explicitSpaces));
-	const currentStateClauses = splitPlannerClauses(message).filter((clause) => {
+	const currentStateClauses = splitPlannerClauses(message, explicitSpaces).filter((clause) => {
 		if (HISTORY_PATTERN.test(clause) && !CURRENT_STATE_PATTERN.test(clause)) return false;
 		if (
 			!CURRENT_STATE_PATTERN.test(clause) &&
@@ -859,7 +902,7 @@ function resolveTemporalHomeSpaceIds(
 	conversationSpaceId: string | undefined,
 	temporalPattern: RegExp,
 ): string[] {
-	const temporalClauses = splitPlannerClauses(message).filter((clause) => temporalPattern.test(clause));
+	const temporalClauses = splitPlannerClauses(message, explicitSpaces).filter((clause) => temporalPattern.test(clause));
 
 	if (temporalClauses.some((clause) => WHOLE_HOME_SCOPE_PATTERN.test(clause))) return [];
 
@@ -887,7 +930,7 @@ function resolveConjoinedTemporalSpaceIds(
 	message: string,
 	explicitSpaces: readonly BuddyContextSpaceReference[],
 ): string[] {
-	const temporalClauses = splitPlannerClauses(message).filter((clause) => HISTORY_PATTERN.test(clause));
+	const temporalClauses = splitPlannerClauses(message, explicitSpaces).filter((clause) => HISTORY_PATTERN.test(clause));
 	const directlyTemporalSpaceIds = resolveTemporalExplicitSpaceIds(temporalClauses, explicitSpaces, HISTORY_PATTERN);
 
 	return expandConjoinedTemporalSpaceIds(message, explicitSpaces, directlyTemporalSpaceIds).filter(
@@ -1138,9 +1181,12 @@ function buildToolNames(
 	if (hasWrite) {
 		names.push(CONTROL_DEVICE_TOOL_NAME);
 		const hasLightingGroupTarget =
-			splitPlannerClauses(message).some(
+			splitPlannerClauses(message, explicitSpaces).some(
 				(clause) =>
-					ACTION_COMMAND_PATTERN.test(clause) && LIGHTING_PATTERN.test(clause) && LIGHTING_GROUP_PATTERN.test(clause),
+					ACTION_COMMAND_PATTERN.test(clause) &&
+					LIGHTING_PATTERN.test(clause) &&
+					LIGHTING_GROUP_PATTERN.test(clause) &&
+					!LIGHTING_GROUP_EXCLUSION_PATTERN.test(clause),
 			) || hasMultiSpaceLightingTarget(message, explicitSpaces);
 
 		if (hasLightingGroupTarget) names.push(SET_SPACE_LIGHTING_TOOL_NAME);
@@ -1151,7 +1197,12 @@ function buildToolNames(
 }
 
 function hasMultiSpaceLightingTarget(message: string, explicitSpaces: readonly BuddyContextSpaceReference[]): boolean {
-	if (explicitSpaces.length < 2 || !ACTION_COMMAND_PATTERN.test(message) || !LIGHTING_PATTERN.test(message)) {
+	if (
+		explicitSpaces.length < 2 ||
+		!ACTION_COMMAND_PATTERN.test(message) ||
+		!LIGHTING_PATTERN.test(message) ||
+		LIGHTING_GROUP_EXCLUSION_PATTERN.test(message)
+	) {
 		return false;
 	}
 

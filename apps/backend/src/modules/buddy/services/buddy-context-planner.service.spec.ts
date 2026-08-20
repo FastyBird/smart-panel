@@ -2225,4 +2225,34 @@ describe('BuddyContextPlannerService', () => {
 			toolNames: [],
 		});
 	});
+
+	it('clarifies a whole-room lighting group with an exclusion', () => {
+		expect(
+			service.plan({
+				message: 'Turn all lights in here off except the desk lamp',
+				conversationSpaceId: 'space-bedroom',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: { spaceId: 'space-bedroom' },
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
+	it('preserves connector words inside a configured space name', () => {
+		expect(
+			service.plan({
+				message: 'How much energy did Research and Development use?',
+				knownSpaces: [{ id: 'space-research-development', name: 'Research and Development' }],
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['energy'],
+			scope: { spaceId: 'space-research-development' },
+			queries: [{ kind: 'energy-summary', spaceId: 'space-research-development' }],
+		});
+	});
 });
