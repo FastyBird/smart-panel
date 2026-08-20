@@ -79,6 +79,29 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 
 		const appliedSequence: Record<IConfigModule['type'], number> = {};
 
+	// Types whose write is in flight. A read issued after that write went out is *not*
+	// guaranteed to include it - the server may not have committed it yet - so for as long as
+	// one is outstanding no read may speak for the entry, however new its number looks. Without
+	// this, a list read issued mid-edit lands with the pre-edit value, takes the higher number,
+	// and then rejects the edit's own confirmation as the older story.
+	const pendingWrites: Record<IConfigModule['type'], number> = {};
+
+	const beginWrite = (type: IConfigModule['type']): void => {
+		pendingWrites[type] = (pendingWrites[type] ?? 0) + 1;
+	};
+
+	const endWrite = (type: IConfigModule['type']): void => {
+		const remaining = (pendingWrites[type] ?? 1) - 1;
+
+		if (remaining > 0) {
+			pendingWrites[type] = remaining;
+		} else {
+			delete pendingWrites[type];
+		}
+	};
+
+	const writePending = (type: IConfigModule['type']): boolean => (pendingWrites[type] ?? 0) > 0;
+
 		// The one way an entry is written outside `fetch()`. Every direct `data.value[...] = ...`
 		// write below goes through it, which is what keeps the sequence complete. `at` places the
 		// write in that sequence; omitting it claims the moment of the call, which is what a write
@@ -183,6 +206,13 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 
 						const transformed = transformConfigModuleResponse(responseData.data, element?.schemas?.moduleConfigSchema || ConfigModuleSchema);
 
+						// A write for this type is in flight, so this answer is not guaranteed to
+						// include it - the server may not have committed it when it was read. The
+						// caller still gets the entry, just the copy the write is putting there.
+						if (writePending(payload.type)) {
+							return data.value[payload.type] ?? transformed;
+						}
+
 						return commit(transformed, requestedAt);
 					}
 
@@ -247,7 +277,7 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 
 							const transformed = transformConfigModuleResponse(module, element?.schemas?.moduleConfigSchema || ConfigModuleSchema);
 
-							if ((appliedSequence[transformed.type] ?? 0) > requestedAt) {
+							if (writePending(transformed.type) || (appliedSequence[transformed.type] ?? 0) > requestedAt) {
 								const local = data.value[transformed.type];
 
 								if (local) {
@@ -272,7 +302,15 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 						// An entry this response does not carry is evicted, and the eviction takes this
 						// response's number like every other write it makes: a read still in flight
 						// from before it must not put back what a newer answer says is gone.
-						for (const type of Object.keys(data.value)) {
+						//
+						// The tombstone has to cover more than what is held right now. A `get()` for a
+						// type that is currently absent carries no number yet, so without a tombstone
+						// of its own it would be free to reinstate an entry this list says no longer
+						// exists. Every type this store has heard of - held, numbered before, or being
+						// read at this moment - gets one.
+						const known = new Set([...Object.keys(data.value), ...Object.keys(appliedSequence), ...Object.keys(pendingGetPromises)]);
+
+						for (const type of known) {
 							if (!(type in applied)) {
 								appliedSequence[type] = requestedAt;
 							}
@@ -346,6 +384,23 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 			// picking up somebody else's edit - is the newer story even if it lands first.
 			const requestedAt = nextSequence();
 
+			// Held from the moment the request goes out until its answer is in hand. A read issued
+			// inside that window carries a higher number but can still be answered from before the
+			// write was committed, so it must not be allowed to speak for the entry.
+			beginWrite(payload.data.type);
+
+			let writeReleased = false;
+
+			const releaseWrite = (): void => {
+				if (writeReleased) {
+					return;
+				}
+
+				writeReleased = true;
+
+				endWrite(payload.data.type);
+			};
+
 			try {
 				const {
 					data: responseData,
@@ -364,6 +419,8 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 						),
 					},
 				});
+
+				releaseWrite();
 
 				if (typeof responseData !== 'undefined') {
 					const transformed = transformConfigModuleResponse(responseData.data, element?.schemas?.moduleConfigSchema || ConfigModuleSchema);
@@ -386,6 +443,10 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 
 				throw new ConfigApiException(errorReason, response.status);
 			} finally {
+				// A backstop for the request throwing outright, which would otherwise leave the
+				// entry held for good.
+				releaseWrite();
+
 				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.data.type);
 			}
 		};
