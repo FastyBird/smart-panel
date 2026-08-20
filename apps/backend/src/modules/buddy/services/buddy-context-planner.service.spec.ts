@@ -1750,6 +1750,24 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('keeps separately named singular lamps out of the room-lighting group path', () => {
+		expect(
+			service.plan({
+				message: 'Turn the Bedroom lamp and Kitchen lamp off',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: { spaceIds: ['space-bedroom', 'space-kitchen'] },
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
 	it('uses a unique recent reference for a possessive entity pronoun', () => {
 		expect(
 			service.plan({

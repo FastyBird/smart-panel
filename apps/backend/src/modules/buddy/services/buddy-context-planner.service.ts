@@ -1101,7 +1101,7 @@ function hasMultiSpaceLightingTarget(message: string, explicitSpaces: readonly B
 	return (
 		ACTION_COMMAND_PATTERN.test(targetPrefix) &&
 		/\band\b/u.test(targetConjunction) &&
-		/^\s*(?:lamp|lamps|light|lighting|lights|lampa|svetla|svetlo)\b/u.test(targetSuffix)
+		/^\s*(?:lamps|lighting|lights|svetla)\b/u.test(targetSuffix)
 	);
 }
 
