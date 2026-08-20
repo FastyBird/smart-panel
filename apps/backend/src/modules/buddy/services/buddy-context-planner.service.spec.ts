@@ -565,6 +565,23 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('clarifies a scheduled action that immediate tools cannot preserve', () => {
+		expect(
+			service.plan({
+				message: 'Turn the Bedroom lights on at 8pm',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'write',
+			scope: { spaceId: 'space-bedroom' },
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
 	it('does not attach a condition pronoun as an action reference', () => {
 		expect(
 			service.plan({
@@ -3127,6 +3144,24 @@ describe('BuddyContextPlannerService', () => {
 			domains: ['energy'],
 			scope: { spaceId: 'space-energy' },
 			queries: [{ kind: 'energy-summary', spaceId: 'space-energy' }],
+			strategy: 'prefetch',
+		});
+	});
+
+	it('masks every repeated syntactic configured-space occurrence', () => {
+		expect(
+			service.plan({
+				message: 'Compare the temperature in Energy with the humidity in Energy',
+				knownSpaces: [{ id: 'space-energy', name: 'Energy' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			scope: { spaceId: 'space-energy' },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-energy' },
+				{ kind: 'current-state', spaceId: 'space-energy' },
+			],
 			strategy: 'prefetch',
 		});
 	});

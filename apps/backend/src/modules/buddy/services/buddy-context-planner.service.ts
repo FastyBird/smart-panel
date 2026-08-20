@@ -78,6 +78,10 @@ const CLOCK_TIME_HISTORY_PATTERN = new RegExp(
 	String.raw`\b(?:from\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}\s+(?:to|until)\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|between\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}\s+and\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|since\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|(?:after|before|until)\s+${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE}|at\s+${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE})\b`,
 	'u',
 );
+const SCHEDULED_ACTION_PATTERN = new RegExp(
+	String.raw`\b(?:at\s+${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE}|tomorrow|tonight|next\s+(?:day|evening|morning|night|week)|in\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?))\b`,
+	'u',
+);
 const HISTORY_PATTERN =
 	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:at\s+)?what time did\b|\bwhen did\b|\b(?:earlier today|last (?:day|hour|minute|month|night|week|weekend|year)|this (?:afternoon|evening|morning|night))\b|\b(?:last|since)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b(?:did|was|were)\b.*\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*\b(?:did|was|were)\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
 const LEADING_WEEKDAY_HISTORY_PATTERN = /^\s*on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*$/u;
@@ -890,6 +894,7 @@ function classifyAmbiguityRisk(
 			return 'action';
 		}
 		if (/\bor\b/u.test(actionReferenceMessage)) return 'action';
+		if (SCHEDULED_ACTION_PATTERN.test(actionReferenceMessage)) return 'action';
 		if (
 			hasGenericActionTarget(actionReferenceMessage, explicitSpaces, conversationSpaceId !== undefined) &&
 			!hasMultiSpaceLightingTarget(message, explicitSpaces)
@@ -1445,25 +1450,36 @@ function removeExplicitSpaceOccurrencesForDomain(
 		}
 	}
 
-	const rangesToRemove = [...rangesByName.values()].map(
-		(ranges) =>
+	const rangesToRemove = [...rangesByName.values()].flatMap((ranges) => {
+		const syntacticRanges = ranges.filter((range) => explicitSpaceOccurrenceScore(message, range) > 0);
+
+		if (syntacticRanges.length > 0) return syntacticRanges;
+
+		return [
 			[...ranges].sort((left, right) => {
-				const leftScore = explicitSpaceOccurrenceScore(message, left.start);
-				const rightScore = explicitSpaceOccurrenceScore(message, right.start);
+				const leftScore = explicitSpaceOccurrenceScore(message, left);
+				const rightScore = explicitSpaceOccurrenceScore(message, right);
 
 				return rightScore - leftScore || right.start - left.start;
 			})[0],
-	);
+		];
+	});
 
 	return rangesToRemove
 		.sort((left, right) => right.start - left.start)
 		.reduce((result, range) => `${result.slice(0, range.start)} ${result.slice(range.end)}`, message);
 }
 
-function explicitSpaceOccurrenceScore(message: string, occurrenceStart: number): number {
-	const prefix = message.slice(0, occurrenceStart);
+function explicitSpaceOccurrenceScore(message: string, range: { start: number; end: number }): number {
+	const prefix = message.slice(0, range.start);
+	const suffix = message.slice(range.end);
 
-	return /\b(?:at|did|does|for|from|in|inside|of|was|were)\s+(?:the\s+)?$/u.test(prefix) ? 1 : 0;
+	if (/\b(?:at|did|does|for|from|in|inside|of|was|were)\s+(?:the\s+)?$/u.test(prefix)) return 2;
+	if (new RegExp(String.raw`^\s*(?:${HOME_ENTITY_PATTERN.source}|${HOME_STATE_PATTERN.source})`, 'u').test(suffix)) {
+		return 1;
+	}
+
+	return 0;
 }
 
 function findNormalizedPhraseRanges(message: string, phrase: string): Array<{ start: number; end: number }> {
