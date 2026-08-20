@@ -34,14 +34,16 @@ describe('handleConfigChangeEvent', (): void => {
 			targets()
 		);
 
-		expect(configModulesStore.get).toHaveBeenCalledWith({ type: 'mock-module' });
+		// `force: true` so the refresh chains onto an in-flight `get()` for the same type rather than
+		// reusing its (possibly pre-change) result — see config-modules.store.ts.
+		expect(configModulesStore.get).toHaveBeenCalledWith({ type: 'mock-module', force: true });
 		expect(configPluginsStore.get).not.toHaveBeenCalled();
 	});
 
 	it('refetches the plugin whose config changed', (): void => {
 		handleConfigChangeEvent({ event: EventType.CONFIG_UPDATED, payload: { source: 'mock', type: 'plugin' } }, targets());
 
-		expect(configPluginsStore.get).toHaveBeenCalledWith({ type: 'mock' });
+		expect(configPluginsStore.get).toHaveBeenCalledWith({ type: 'mock', force: true });
 		expect(configModulesStore.get).not.toHaveBeenCalled();
 	});
 
@@ -57,7 +59,7 @@ describe('handleConfigChangeEvent', (): void => {
 		);
 
 		// Read back through the authenticated endpoint, not taken off the wire.
-		expect(configPluginsStore.get).toHaveBeenCalledWith({ type: 'devices-zigbee2mqtt-plugin' });
+		expect(configPluginsStore.get).toHaveBeenCalledWith({ type: 'devices-zigbee2mqtt-plugin', force: true });
 	});
 
 	it('ignores events from other modules', (): void => {

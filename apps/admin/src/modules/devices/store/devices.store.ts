@@ -132,16 +132,28 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 	let mutationToken = 0;
 	const mutationTokenById: Record<IDevice['id'], number> = {};
 
+	// The subset of those stamps that came from something authoritative - a device event, an edit, a
+	// removal - rather than from a row merely being re-read. A read that lands late is not a newer
+	// write however late it lands, and a confirmation asking whether its row has moved on since it
+	// was requested must not mistake one for the other.
+	const writeTokenById: Record<IDevice['id'], number> = {};
+
 	// The two ways a row is written outside a fetch. Everything else in this store goes through them,
-	// which is what keeps the stamp complete.
-	const commit = (device: IDevice): IDevice => {
+	// which is what keeps the stamp complete. `read` marks a commit that only carries back what the
+	// server already had, so the row is stamped without claiming to have been changed.
+	const commit = (device: IDevice, { read = false }: { read?: boolean } = {}): IDevice => {
 		mutationTokenById[device.id] = ++mutationToken;
+
+		if (!read) {
+			writeTokenById[device.id] = mutationTokenById[device.id];
+		}
 
 		return (data.value[device.id] = device);
 	};
 
 	const forget = (id: IDevice['id']): void => {
 		mutationTokenById[id] = ++mutationToken;
+		writeTokenById[id] = mutationTokenById[id];
 
 		delete data.value[id];
 	};
@@ -225,7 +237,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 					const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
 
-					commit(transformed);
+					commit(transformed, { read: true });
 
 					insertDeviceControlsRelations(transformed, responseData.data.controls);
 					insertChannelsRelations(transformed, responseData.data.channels);
@@ -781,6 +793,13 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 		semaphore.value.updating.push(...persisted);
 
+		// What each row was stamped at before the request goes out. The response says only that the
+		// backend applied the change, not what the row looks like now, so a row that something else
+		// has written since - a `DEVICE_UPDATED` event carrying another client's newer state, most
+		// likely - must not be walked back to the value this request asked for. A row merely re-read
+		// in the meantime has not moved on, so it still takes the confirmation.
+		const stampedBefore = new Map(persisted.map((id): [IDevice['id'], number] => [id, writeTokenById[id] ?? 0]));
+
 		try {
 			const { data: responseBody, error, response } = await backend.client.POST(
 				`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/bulk-update`,
@@ -806,8 +825,8 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			for (const id of result.succeeded) {
 				const record = data.value[id];
 
-				if (record !== undefined) {
-					data.value[id] = { ...record, enabled: payload.enabled };
+				if (record !== undefined && (writeTokenById[id] ?? 0) === stampedBefore.get(id)) {
+					commit({ ...record, enabled: payload.enabled });
 				}
 			}
 

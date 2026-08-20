@@ -40,6 +40,10 @@ export const ConfigPluginsSetActionPayloadSchema = z.object({
 
 export const ConfigPluginsGetActionPayloadSchema = z.object({
 	type: z.string(),
+	// Opt-in, default off so existing callers keep coalescing onto an in-flight request. A
+	// change-driven refresh sets it to force a genuinely fresh read instead of reusing one that may
+	// have been taken before the change it is reacting to. See `get()` in config-plugins.store.ts.
+	force: z.boolean().optional(),
 });
 
 export const ConfigPluginsEditActionPayloadSchema = z.object({
