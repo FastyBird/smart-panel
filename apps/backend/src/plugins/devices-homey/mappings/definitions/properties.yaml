@@ -150,20 +150,6 @@ mappings:
       unit: °C
       range: { minimum: 4, maximum: 35, step: 0.1 }
 
-  - name: thermostat-cooler-target-temperature
-    priority: 200
-    match:
-      classes: [thermostat]
-      capability_base_ids: [target_temperature]
-      all_capabilities: [thermostat_mode]
-    property:
-      channel: cooler
-      category: temperature
-      data_type: float
-      direction: bidirectional
-      unit: °C
-      range: { minimum: 4, maximum: 35, step: 0.1 }
-
   - name: thermostat-heater-on
     description: Project Homey's standard thermostat mode onto Smart Panel's heater power state
     priority: 200
@@ -196,39 +182,6 @@ mappings:
       transform:
         type: map
         read: { auto: true, heat: true, cool: false, 'off': false }
-
-  - name: thermostat-cooler-on
-    description: Project Homey's standard thermostat mode onto Smart Panel's cooler power state
-    priority: 200
-    match:
-      classes: [thermostat]
-      capability_base_ids: [thermostat_mode]
-      all_capabilities: [target_temperature]
-    property:
-      channel: cooler
-      category: on
-      data_type: bool
-      direction: bidirectional
-      transform:
-        type: map
-        read: { auto: true, heat: false, cool: true, 'off': false }
-        write: { 'true': cool, 'false': 'off' }
-
-  - name: thermostat-cooler-status
-    description: Use Homey's configured mode as the available activity fallback
-    priority: 200
-    match:
-      classes: [thermostat]
-      capability_base_ids: [thermostat_mode]
-      all_capabilities: [target_temperature]
-    property:
-      channel: cooler
-      category: status
-      data_type: bool
-      direction: read_only
-      transform:
-        type: map
-        read: { auto: true, heat: false, cool: true, 'off': false }
 
   - name: humidity
     priority: 100

@@ -61,16 +61,6 @@ mappings:
       category: heater
       name: Heating
 
-  - name: thermostat-cooler
-    priority: 200
-    match:
-      classes: [thermostat]
-      all_capabilities: [target_temperature, thermostat_mode]
-    channel:
-      identifier: cooler
-      category: cooler
-      name: Cooling
-
   - name: measured-temperature
     priority: 100
     match:

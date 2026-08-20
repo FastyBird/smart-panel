@@ -69,10 +69,11 @@ These projections are reversible and clamped, but they describe normalized trave
 calibration. Mapping preview must present that conversion metadata so an operator can override it for hardware with a
 narrower or inverted range.
 
-Smart Panel's thermostat contract keeps child-lock state on the `thermostat` channel and climate targets on complete
-`heater` and `cooler` channels. Homey's standard `thermostat_mode` supplies the required power/status projections when
-no separate activity capability exists. The Task 4.3 command platform must coalesce paired heater/cooler power changes
-into one `thermostat_mode` write instead of sending the two projected bindings independently.
+Smart Panel's thermostat contract keeps child-lock state on the `thermostat` channel and projects Homey's single target
+onto one complete `heater` channel. Homey's standard `thermostat_mode` supplies the required power/status projections
+when no separate activity capability exists. The generic mapping deliberately does not create an independent cooler
+setpoint, because both would write the same Homey `target_temperature`; a user override may replace the heater
+projection for cooling-only hardware.
 
 Thermostat device eligibility requires `measure_temperature`, `target_temperature`, and `thermostat_mode` together.
 Partial target-only or mode-only devices stay unsupported instead of losing their control or producing incomplete

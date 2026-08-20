@@ -101,8 +101,8 @@ describe('Homey MVP mapping catalog', () => {
 
 	it('loads the complete built-in catalog without ambiguity', () => {
 		expect(loader.getDeviceMappings()).toHaveLength(7);
-		expect(loader.getChannelMappings()).toHaveLength(21);
-		expect(loader.getPropertyMappings()).toHaveLength(40);
+		expect(loader.getChannelMappings()).toHaveLength(20);
+		expect(loader.getPropertyMappings()).toHaveLength(37);
 	});
 
 	it('maps the captured light fixture and applies inverse lighting transformations', () => {
@@ -194,23 +194,21 @@ describe('Homey MVP mapping catalog', () => {
 		expect(loader.resolveDeviceMappings(device).mappings[0]?.deviceCategory).toBe(DeviceCategory.THERMOSTAT);
 		expect(read(bindings, 'thermostat-current-temperature', 21.5)).toBe(21.5);
 		expect(loader.resolveChannelMappings(device).mappings.map((mapping) => mapping.channel.identifier)).toStrictEqual([
-			'cooler',
 			'heater',
 			'temperature',
 			'thermostat',
 		]);
 		expect(read(bindings, 'thermostat-heater-target-temperature', 22.5)).toBe(22.5);
 		expect(write(bindings, 'thermostat-heater-target-temperature', 19.5)).toBe(19.5);
-		expect(read(bindings, 'thermostat-cooler-target-temperature', 22.5)).toBe(22.5);
-		expect(write(bindings, 'thermostat-cooler-target-temperature', 19.5)).toBe(19.5);
 		expect(read(bindings, 'thermostat-heater-on', 'heat')).toBe(true);
 		expect(read(bindings, 'thermostat-heater-on', 'cool')).toBe(false);
 		expect(write(bindings, 'thermostat-heater-on', true)).toBe('heat');
 		expect(read(bindings, 'thermostat-heater-status', 'off')).toBe(false);
-		expect(read(bindings, 'thermostat-cooler-on', 'cool')).toBe(true);
-		expect(read(bindings, 'thermostat-cooler-on', 'heat')).toBe(false);
-		expect(write(bindings, 'thermostat-cooler-on', true)).toBe('cool');
-		expect(read(bindings, 'thermostat-cooler-status', 'auto')).toBe(true);
+		expect(
+			loader
+				.resolvePropertyMappings(device)
+				.mappings.filter((binding) => binding.capabilityId === 'target_temperature'),
+		).toHaveLength(1);
 	});
 
 	it('does not classify an incomplete target-only thermostat as adoptable', () => {
