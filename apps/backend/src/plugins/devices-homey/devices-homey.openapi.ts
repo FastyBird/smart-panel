@@ -2,6 +2,7 @@ import { CreateHomeyChannelPropertyDto } from './dto/create-channel-property.dto
 import { CreateHomeyChannelDto } from './dto/create-channel.dto';
 import { CreateHomeyDeviceDto } from './dto/create-device.dto';
 import { ListHomeyDevicesQueryDto } from './dto/list-homey-devices.dto';
+import { HomeyMappingPreviewRequestDto } from './dto/mapping-preview.dto';
 import {
 	HomeyTestCandidateConnectionDto,
 	HomeyTestConnectionDto,
@@ -20,6 +21,16 @@ import {
 	HomeyInventoryDeviceResponseModel,
 	HomeyInventoryDevicesResponseModel,
 } from './models/inventory.model';
+import {
+	HomeyMappingPreviewChannelModel,
+	HomeyMappingPreviewConversionModel,
+	HomeyMappingPreviewDeviceModel,
+	HomeyMappingPreviewModel,
+	HomeyMappingPreviewPropertyModel,
+	HomeyMappingPreviewRangeModel,
+	HomeyMappingPreviewResponseModel,
+	HomeyMappingPreviewWarningModel,
+} from './models/mapping-preview.model';
 import { HomeyStatusModel, HomeyStatusResponseModel } from './models/status.model';
 import { HomeyTestConnectionModel, HomeyTestConnectionResponseModel } from './models/test-connection.model';
 
@@ -31,6 +42,15 @@ export const DEVICES_HOMEY_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	HomeyInventoryDeviceModel,
 	HomeyInventoryDevicesResponseModel,
 	HomeyInventoryDeviceResponseModel,
+	HomeyMappingPreviewRequestDto,
+	HomeyMappingPreviewRangeModel,
+	HomeyMappingPreviewConversionModel,
+	HomeyMappingPreviewPropertyModel,
+	HomeyMappingPreviewChannelModel,
+	HomeyMappingPreviewWarningModel,
+	HomeyMappingPreviewDeviceModel,
+	HomeyMappingPreviewModel,
+	HomeyMappingPreviewResponseModel,
 	HomeyStatusModel,
 	HomeyStatusResponseModel,
 	HomeyTestConnectionDto,

@@ -1,4 +1,5 @@
 # Task: Homey Device Provider Integration
+
 ID: FEATURE-PLUGIN-HOMEY
 Type: feature
 Scope: backend, admin, panel
@@ -108,8 +109,8 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - [ ] Authenticated device discovery lists all logical Homey devices with adoption/support status.
 - [ ] Normalization preserves full device and capability IDs, including capability suffixes.
 - [ ] Mapping definitions cover the agreed MVP light, switch, sensor, climate, cover, lock, battery, and energy capabilities.
-- [ ] Unknown capabilities create preview warnings without failing otherwise supported devices.
-- [ ] Mapping preview returns category, channels, properties, identifiers, values, access, conversions, and warnings.
+- [x] Unknown capabilities create preview warnings without failing otherwise supported devices.
+- [x] Mapping preview returns category, channels, properties, identifiers, values, access, conversions, and warnings.
 - [ ] Single and batch adoption are idempotent and return per-device outcomes.
 - [ ] Adoption reuses generic device/channel/property identifiers without a migration, or an incremental migration is added if evidence shows one is required.
 - [ ] Initial reconciliation populates current values and availability for adopted devices.
