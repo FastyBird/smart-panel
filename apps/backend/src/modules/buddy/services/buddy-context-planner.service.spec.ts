@@ -1911,6 +1911,12 @@ describe('BuddyContextPlannerService', () => {
 			strategy: 'clarify',
 		});
 		expect(
+			service.plan({ message: 'Are they on?', recentEntityReferences: [reference], providerCapabilities }),
+		).toMatchObject({
+			ambiguityRisk: 'read',
+			strategy: 'clarify',
+		});
+		expect(
 			service.plan({
 				message: 'Turn them off',
 				recentEntityReferences: [
@@ -2924,6 +2930,7 @@ describe('BuddyContextPlannerService', () => {
 		'Set the Bedroom thermostat from 8 to 10 degrees',
 		'Set the Bedroom thermostat between 18 and 22 degrees',
 		'Set the Bedroom thermostat to 20-22 degrees',
+		'Set the Bedroom thermostat below 20 degrees',
 	])('clarifies a numeric thermostat range before scalar control handoff: %s', (message) => {
 		expect(
 			service.plan({
@@ -3483,4 +3490,23 @@ describe('BuddyContextPlannerService', () => {
 
 		expect(result).toMatchObject({ domains, scope: {}, queries: [query] });
 	});
+
+	it.each(['this week', 'this month', 'this year'])(
+		'routes a past-tense current-period request to property history: %s',
+		(period) => {
+			expect(
+				service.plan({
+					message: `What was the Bedroom temperature ${period}?`,
+					knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+					providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+				}),
+			).toMatchObject({
+				domains: ['home', 'history'],
+				queries: [
+					{ kind: 'search-home', spaceId: 'space-bedroom' },
+					{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+				],
+			});
+		},
+	);
 });

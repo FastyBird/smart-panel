@@ -91,7 +91,7 @@ const SCHEDULED_ACTION_PATTERN = new RegExp(
 const ACTION_DURATION_PATTERN =
 	/\bfor\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:seconds?|minutes?|hours?|days?|weeks?)\b/u;
 const HISTORY_PATTERN =
-	/\b(?:chart|graph|history|historical|past|trend|vcera|yesterday)\b|\bhow\s+(?:did|has|have|is|was)\b.*\b(?:change|changed|changing|varied)\b|\b(?:at\s+)?what time did\b|\bwhen did\b|\b(?:earlier today|last (?:day|hour|minute|month|night|week|weekend|year)|this (?:afternoon|evening|morning|night))\b|\b(?:last|since)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b(?:did|was|were)\b.*\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*\b(?:did|was|were)\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
+	/\b(?:chart|graph|history|historical|past|trend|vcera|yesterday)\b|\bhow\s+(?:did|has|have|is|was)\b.*\b(?:change|changed|changing|varied)\b|\b(?:at\s+)?what time did\b|\bwhen did\b|\b(?:earlier today|last (?:day|hour|minute|month|night|week|weekend|year)|this (?:afternoon|day|evening|hour|minute|month|morning|night|week|weekend|year))\b|\b(?:last|since)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b(?:did|was|were)\b.*\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*\b(?:did|was|were)\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
 const LEADING_WEEKDAY_HISTORY_PATTERN = /^\s*on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*$/u;
 const TEMPORAL_HISTORY_PATTERN = new RegExp(
 	String.raw`(?:${HISTORY_PATTERN.source}|${CLOCK_TIME_HISTORY_PATTERN.source})`,
@@ -139,6 +139,8 @@ const REPEATED_ACTION_PATTERN =
 	/\b(?:once|thrice|twice)\b(?!\s+as\b)|\b(?:\d+|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+times?\b/u;
 const ACTION_RANGE_PATTERN =
 	/\b(?:between\b[^?!,.;]+\band\b|from\b[^?!,.;]+\b(?:to|until)\b|\d+(?:\.\d+)?\s*[-–—]\s*\d+(?:\.\d+)?\b)/u;
+const ACTION_NON_SCALAR_BOUND_PATTERN =
+	/\b(?:above|at least|at most|below|greater than|less than|more than|over|under)\s+[-+]?\d+(?:\.\d+)?\b/u;
 const PRONOUN_PATTERN = /\b(?:ho|it|its|that|their|them|these|they|this|those)\b|\bthe one\b/u;
 const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:ho|it|its|that|this)\b|\bthe one\b/u;
 const PLURAL_REFERENCE_PRONOUN_PATTERN = /\b(?:their|them|these|they|those)\b/u;
@@ -938,7 +940,8 @@ function classifyAmbiguityRisk(
 		}
 		if (
 			(hasPluralReferencePronoun(stripContextualScopeReferences(actionReferenceMessage)) &&
-				!hasPluralActionAntecedent(message, actionReferenceMessage)) ||
+				!hasPluralReferenceAntecedent(message) &&
+				!hasPluralReferenceTarget(references)) ||
 			(hasReferencePronoun(stripContextualScopeReferences(actionReferenceMessage)) &&
 				(references.length !== 1 ||
 					!isActionReferenceCompatible(references[0], hasWrite, hasTrigger, requestedActionTypes)))
@@ -948,6 +951,7 @@ function classifyAmbiguityRisk(
 		if (/\bor\b/u.test(actionReferenceMessage)) return 'action';
 		if (REPEATED_ACTION_PATTERN.test(actionReferenceMessage)) return 'action';
 		if (ACTION_RANGE_PATTERN.test(message)) return 'action';
+		if (ACTION_NON_SCALAR_BOUND_PATTERN.test(message)) return 'action';
 		if (SCHEDULED_ACTION_PATTERN.test(message)) return 'action';
 		if (
 			hasGenericActionTarget(actionReferenceMessage, explicitSpaces, conversationSpaceId !== undefined) &&
@@ -1001,7 +1005,8 @@ function classifyAmbiguityRisk(
 	if (
 		domains.includes('home') &&
 		hasPluralHomeReference &&
-		references.length === 0 &&
+		!hasPluralReferenceTarget(references) &&
+		!hasPluralReferenceAntecedent(message) &&
 		!(conversationSpaceId && CONTEXTUAL_SCOPE_PATTERN.test(message))
 	) {
 		return 'read';
@@ -1012,10 +1017,20 @@ function classifyAmbiguityRisk(
 	return 'none';
 }
 
-function hasPluralActionAntecedent(message: string, actionReferenceMessage: string): boolean {
-	const actionIndex = message.indexOf(actionReferenceMessage);
+function hasPluralReferenceAntecedent(message: string): boolean {
+	const pluralReference = PLURAL_REFERENCE_PRONOUN_PATTERN.exec(message);
 
-	return actionIndex > 0 && PLURAL_HOME_TARGET_PATTERN.test(message.slice(0, actionIndex));
+	return (
+		pluralReference !== null &&
+		pluralReference.index > 0 &&
+		PLURAL_HOME_TARGET_PATTERN.test(message.slice(0, pluralReference.index))
+	);
+}
+
+function hasPluralReferenceTarget(references: readonly BuddyContextEntityReference[]): boolean {
+	return (
+		references.length > 1 || (references.length === 1 && PLURAL_HOME_TARGET_PATTERN.test(normalize(references[0].name)))
+	);
 }
 
 function hasGenericActionTarget(
