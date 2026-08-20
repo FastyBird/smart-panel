@@ -13,11 +13,17 @@ import {
 	BuddyContextStrategy,
 } from '../models/context-plan.model';
 
+import {
+	BUDDY_ACTION_SIGNALS,
+	BUDDY_DEVICE_ACTION_SIGNALS,
+	BUDDY_SCENE_ACTION_SIGNALS,
+} from './buddy-tool-selection.service';
 import { QUERY_HOME_STATE_TOOL_NAME, SEARCH_HOME_TOOL_NAME } from './home-context-tool-provider.service';
 
 const CONTROL_DEVICE_TOOL_NAME = 'control_device';
 const RUN_SCENE_TOOL_NAME = 'run_scene';
 const SET_SPACE_LIGHTING_TOOL_NAME = 'set_space_lighting';
+const ACTION_SIGNAL_PATTERN_SOURCE = [...BUDDY_ACTION_SIGNALS, 'trigger'].join('|');
 
 const DOMAIN_ORDER: readonly BuddyContextDomain[] = ['general', 'home', 'weather', 'energy', 'security', 'history'];
 const WEATHER_PATTERN =
@@ -45,13 +51,17 @@ const ACTION_REQUEST_PATTERN =
 	/^(?:(?:can|could|may|might|will|would) you\b|are you able to\b|is it possible to\b|is there any way you can\b)/u;
 const MODAL_STATE_READ_PATTERN =
 	/^(?:can|could|may|might|will|would) you (?:check|confirm|determine|fetch|get|read|report|show|tell|verify)(?: me)?\b.*\b(?:how|if|what|when|where|whether|which|why)\b/u;
-const WRITE_PATTERN =
-	/\b(?:adjust|brighten|change|close|decrease|dim|increase|lock|lower|make|open|raise|set|switch|turn|unlock)\b/u;
-const TRIGGER_PATTERN = /\b(?:activate|deactivate|run|start|stop|trigger)\b/u;
+const WRITE_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_DEVICE_ACTION_SIGNALS].join('|')})\b`, 'u');
+const TRIGGER_PATTERN = new RegExp(
+	String.raw`\b(?:activate|deactivate|start|stop|trigger|${[...BUDDY_SCENE_ACTION_SIGNALS].join('|')})\b`,
+	'u',
+);
 const TARGET_DEPENDENT_ACTION_PATTERN = /\b(?:activate|deactivate|start|stop)\b/u;
 const DEVICE_RUN_TARGET_PATTERN = /\brun\b.*\b(?:device|fan|switch)\b/u;
-const ACTION_COMMAND_PATTERN =
-	/^[?!,.;\s]*(?:(?:and(?: also)?|as well as|if so|please|plus|then)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\b/u;
+const ACTION_COMMAND_PATTERN = new RegExp(
+	String.raw`^[?!,.;\s]*(?:(?:and(?: also)?|as well as|if so|please|plus|then)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
+	'u',
+);
 const CONDITION_PATTERN =
 	/\b(?:after|as long as|as soon as|assuming|before|given that|if|in case|once|only if|provided|so long as|unless|until|when|whenever|while)\b/u;
 const LEADING_CONDITION_PATTERN =
@@ -59,8 +69,10 @@ const LEADING_CONDITION_PATTERN =
 const RELATIVE_PATTERN = /\b(?:brighter|colder|cooler|darker|down|higher|hotter|less|lower|more|times as|up|warmer)\b/u;
 const PRONOUN_PATTERN = /\b(?:it|that|them|these|they|this|those)\b|\bthe one\b/u;
 const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:it|that|this)\b|\bthe one\b/u;
-const CAPABILITY_DISCOVERY_PATTERN =
-	/^(?:(?:what|which)\b|(?:can|could|would) you (?:show|tell)(?: me)?\b).*\b(?:am i able to|can i|i can)\b.*\b(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\b/u;
+const CAPABILITY_DISCOVERY_PATTERN = new RegExp(
+	String.raw`^(?:(?:what|which)\b|(?:can|could|would) you (?:show|tell)(?: me)?\b).*\b(?:am i able to|can i|i can)\b.*\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
+	'u',
+);
 const CONTEXTUAL_SCOPE_PATTERN = /\b(?:here|in this room|this space)\b/u;
 const GENERIC_ACTION_TARGET_PATTERN =
 	/\b(?:a|all|an|any|the)\s+(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:blind|blinds|device|devices|door|doors|fan|fans|heater|heaters|lamp|lamps|light|lights|scene|scenes|switch|switches|thermostat|thermostats|window|windows)\b|\b(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:blinds|devices|doors|fans|heaters|lamps|lights|scenes|switches|thermostats|windows)\b|^[?!,.;\s]*(?:(?:and(?: also)?|as well as|if so|please|plus|then)\s+)*(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\s+(?:off\s+|on\s+)?(?:blind|device|door|fan|heater|lamp|light|scene|switch|thermostat|window)\b/u;
@@ -103,8 +115,10 @@ const EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN =
 	/\b(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs) thermostat\b/u;
 const WHOLE_HOME_SCOPE_PATTERN =
 	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b/u;
-const TRAILING_ACTION_PATTERN =
-	/(?:[?!,.;]|\b(?:and(?: also)?|as well as|plus|then)\b)\s*(?:(?:if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\b/u;
+const TRAILING_ACTION_PATTERN = new RegExp(
+	String.raw`(?:[?!,.;]|\b(?:and(?: also)?|as well as|plus|then)\b)\s*(?:(?:if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
+	'u',
+);
 const TRAILING_READ_PATTERN =
 	/(?:[?!,.;]|\b(?:and(?: also)?|as well as|plus|then)\b)\s*(?:(?:also|please)\s+)*(?:check|confirm|determine|ensure|fetch|find|get|make sure|read|report|see|show|tell(?: me)?|verify|what|whether|which)\b/u;
 
@@ -386,6 +400,7 @@ function isGeneralExplanation(message: string, hasExplicitSpace = false): boolea
 		/^how (?:can|could|do|does|would)\b.*\b(?:work|works|working|i)\b/u.test(message) ||
 		/^explain (?:how|what|why)\b/u.test(message) ||
 		/^(?:explain|show me|tell me) how to\b/u.test(message) ||
+		/^what (?:do|does) (?:a|an)\b.*\bdo\b/u.test(message) ||
 		/^what (?:do|does) .+ mean\b/u.test(message) ||
 		/^what (?:is|are) (?:a|an)\b/u.test(message)
 	);
@@ -555,7 +570,7 @@ function resolveCurrentStateSpaceIds(
 	fallbackSpaceIds: readonly string[],
 ): string[] {
 	const currentStateClauses = splitPlannerClauses(message).filter((clause) => {
-		if (HISTORY_PATTERN.test(clause)) return false;
+		if (HISTORY_PATTERN.test(clause) && !CURRENT_STATE_PATTERN.test(clause)) return false;
 
 		const hasHomeSignal =
 			HOME_ENTITY_PATTERN.test(clause) ||
@@ -570,15 +585,11 @@ function resolveCurrentStateSpaceIds(
 		return hasHomeSignal && (!hasNonHomeSignal || CONTEXTUAL_SCOPE_PATTERN.test(clause));
 	});
 
-	const explicitCurrentSpaceIds = [
-		...new Set(
-			explicitSpaces
-				.filter((space) =>
-					currentStateClauses.some((clause) => containsNormalizedPhrase(clause, normalize(space.name))),
-				)
-				.map((space) => space.id),
-		),
-	];
+	const explicitCurrentSpaceIds = resolveTemporalExplicitSpaceIds(
+		currentStateClauses,
+		explicitSpaces,
+		CURRENT_STATE_PATTERN,
+	);
 
 	if (explicitCurrentSpaceIds.length > 0) return explicitCurrentSpaceIds;
 	if (currentStateClauses.some((clause) => CONTEXTUAL_SCOPE_PATTERN.test(clause)) && conversationSpaceId) {
@@ -607,13 +618,7 @@ function resolveTemporalHomeSpaceIds(
 
 	if (temporalClauses.some((clause) => WHOLE_HOME_SCOPE_PATTERN.test(clause))) return [];
 
-	const explicitTemporalSpaceIds = [
-		...new Set(
-			explicitSpaces
-				.filter((space) => temporalClauses.some((clause) => containsNormalizedPhrase(clause, normalize(space.name))))
-				.map((space) => space.id),
-		),
-	];
+	const explicitTemporalSpaceIds = resolveTemporalExplicitSpaceIds(temporalClauses, explicitSpaces, temporalPattern);
 
 	if (explicitTemporalSpaceIds.length > 0) return explicitTemporalSpaceIds;
 	if (
@@ -627,6 +632,45 @@ function resolveTemporalHomeSpaceIds(
 	if (explicitSpaces.length === 1) return [explicitSpaces[0].id];
 
 	return [];
+}
+
+function resolveTemporalExplicitSpaceIds(
+	clauses: readonly string[],
+	explicitSpaces: readonly BuddyContextSpaceReference[],
+	temporalPattern: RegExp,
+): string[] {
+	const spaceIds: string[] = [];
+
+	for (const clause of clauses) {
+		const clauseSpaces = explicitSpaces
+			.map((space) => ({ space, ranges: findNormalizedPhraseRanges(clause, normalize(space.name)) }))
+			.filter(({ ranges }) => ranges.length > 0);
+
+		if (!CURRENT_STATE_PATTERN.test(clause) || !HISTORY_PATTERN.test(clause) || clauseSpaces.length <= 1) {
+			spaceIds.push(...clauseSpaces.map(({ space }) => space.id));
+			continue;
+		}
+
+		const globalFlags = temporalPattern.flags.includes('g') ? temporalPattern.flags : `${temporalPattern.flags}g`;
+		const matches = clause.matchAll(new RegExp(temporalPattern.source, globalFlags));
+
+		for (const match of matches) {
+			const start = match.index;
+			const temporalCenter = start + match[0].length / 2;
+			const nearestSpace = clauseSpaces
+				.flatMap(({ space, ranges }) =>
+					ranges.map((range) => ({
+						space,
+						distance: Math.abs((range.start + range.end) / 2 - temporalCenter),
+					})),
+				)
+				.sort((left, right) => left.distance - right.distance)[0]?.space;
+
+			if (nearestSpace) spaceIds.push(nearestSpace.id);
+		}
+	}
+
+	return [...new Set(spaceIds)];
 }
 
 function findExplicitSpaces(

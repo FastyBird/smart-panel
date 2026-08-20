@@ -52,7 +52,7 @@ const STATE_SIGNALS = new Set([
 	'zavrene',
 	'zavreny',
 ]);
-const ACTION_SIGNALS = new Set([
+export const BUDDY_ACTION_SIGNALS: ReadonlySet<string> = new Set([
 	'activate',
 	'adjust',
 	'brighten',
@@ -86,6 +86,7 @@ const ACTION_SIGNALS = new Set([
 	'zavri',
 	'zvys',
 ]);
+const ACTION_SIGNALS = BUDDY_ACTION_SIGNALS;
 const ACTION_CLAUSE_PATTERN = new RegExp(
 	String.raw`(?:\ba\b|\band\b|\bas well as\b|\bplus\b|\bpotom\b|\bthen\b|[,;])\s*(?:(?:also|please|take)\s+)*(?:${[...ACTION_SIGNALS].join('|')})\b`,
 	'u',
@@ -206,9 +207,10 @@ const HOME_SIGNALS = new Set([
 	'zarizeni',
 ]);
 const SCENE_SIGNALS = new Set(['automation', 'preset', 'routine', 'scene', 'scena']);
-const SCENE_ACTION_SIGNALS = new Set(['run', 'spust']);
+export const BUDDY_SCENE_ACTION_SIGNALS: ReadonlySet<string> = new Set(['run', 'spust']);
+const SCENE_ACTION_SIGNALS = BUDDY_SCENE_ACTION_SIGNALS;
 const AMBIGUOUS_ACTION_SIGNALS = new Set(['activate', 'deactivate', 'start', 'stop']);
-const DEVICE_ACTION_SIGNALS = new Set([
+export const BUDDY_DEVICE_ACTION_SIGNALS: ReadonlySet<string> = new Set([
 	'adjust',
 	'brighten',
 	'change',
@@ -235,6 +237,7 @@ const DEVICE_ACTION_SIGNALS = new Set([
 	'zavri',
 	'zvys',
 ]);
+const DEVICE_ACTION_SIGNALS = BUDDY_DEVICE_ACTION_SIGNALS;
 const LIGHTING_SIGNALS = new Set(['lamp', 'lampa', 'light', 'lighting', 'lights', 'svetla', 'svetlo']);
 const SPACE_SIGNALS = new Set([
 	'all',

@@ -75,6 +75,20 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('reuses localized action vocabulary from tool selection', () => {
+		expect(
+			service.plan({
+				message: 'Zapni světlo',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'write',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device'],
+		});
+	});
+
 	it('keeps established heating, cooling, lighting, and air categories on the home read path', () => {
 		for (const message of ['Is the heating on?', 'What is the air quality?', 'Is cooling active?', 'List lighting']) {
 			expect(
@@ -898,6 +912,23 @@ describe('BuddyContextPlannerService', () => {
 		).toMatchObject({ domains: ['general'], intent: 'none', queries: [], toolNames: [] });
 	});
 
+	it('keeps article-led conceptual questions on the general path', () => {
+		expect(
+			service.plan({
+				message: 'What does a thermostat do?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toEqual({
+			domains: ['general'],
+			intent: 'none',
+			scope: {},
+			queries: [],
+			toolNames: [],
+			ambiguityRisk: 'none',
+			strategy: 'no-home-context',
+		});
+	});
+
 	it('keeps unrelated general-knowledge home nouns off retrieval', () => {
 		expect(
 			service.plan({
@@ -1163,6 +1194,27 @@ describe('BuddyContextPlannerService', () => {
 			queries: [
 				{ kind: 'search-home', spaceId: 'space-bedroom' },
 				{ kind: 'search-home', spaceId: 'space-kitchen' },
+				{ kind: 'current-state', spaceId: 'space-kitchen' },
+				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+			],
+		});
+	});
+
+	it('scopes current and historical spans independently within one clause', () => {
+		expect(
+			service.plan({
+				message: 'Compare the current Kitchen temperature with Bedroom yesterday',
+				knownSpaces: [
+					{ id: 'space-kitchen', name: 'Kitchen' },
+					{ id: 'space-bedroom', name: 'Bedroom' },
+				],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			scope: { spaceIds: ['space-kitchen', 'space-bedroom'] },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-kitchen' },
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
 				{ kind: 'current-state', spaceId: 'space-kitchen' },
 				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
 			],
