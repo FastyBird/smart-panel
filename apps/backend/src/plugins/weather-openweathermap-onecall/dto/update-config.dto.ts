@@ -3,6 +3,7 @@ import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
+import { readSubmittedValue } from '../../../common/utils/transform.utils';
 import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
 import { TemperatureUnitType } from '../../../modules/system/system.constants';
 import { WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_NAME } from '../weather-openweathermap-onecall.constants';
@@ -37,9 +38,7 @@ export class UpdateOpenWeatherMapOneCallConfigDto extends UpdatePluginConfigDto 
 		nullable: true,
 	})
 	@Expose({ name: 'api_key' })
-	@Transform(({ obj }: { obj: { api_key?: string | null; apiKey?: string | null } }) => obj.api_key ?? obj.apiKey, {
-		toClassOnly: true,
-	})
+	@Transform(({ obj }) => readSubmittedValue<string>(obj, 'api_key', 'apiKey'), { toClassOnly: true })
 	@IsOptional()
 	@IsString({ message: '[{"field":"api_key","reason":"API key must be a string."}]' })
 	apiKey?: string | null;
