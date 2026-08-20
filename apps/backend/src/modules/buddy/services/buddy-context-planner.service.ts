@@ -73,8 +73,9 @@ const SECURITY_ENTITY_NAME_PATTERN = new RegExp(
 	'gu',
 );
 const CLOCK_TIME_VALUE_PATTERN_SOURCE = String.raw`(?:midnight|noon|(?:[01]?\d|2[0-3]):[0-5]\d(?:\s*(?:a\.?m\.?|p\.?m\.?))?|(?:0?[1-9]|1[0-2])\s*(?:a\.?m\.?|p\.?m\.?))`;
+const CLOCK_TIME_AT_VALUE_PATTERN_SOURCE = String.raw`(?:${CLOCK_TIME_VALUE_PATTERN_SOURCE}|(?:[01]?\d|2[0-3]))`;
 const CLOCK_TIME_HISTORY_PATTERN = new RegExp(
-	String.raw`\b(?:from\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}\s+(?:to|until)\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|between\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}\s+and\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|at\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE})\b`,
+	String.raw`\b(?:from\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}\s+(?:to|until)\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|between\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}\s+and\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|at\s+${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE})\b`,
 	'u',
 );
 const HISTORY_PATTERN =
@@ -401,8 +402,31 @@ function getActionMessage(message: string, trailingActionMatch: RegExpExecArray 
 	if (!LEADING_CONDITION_PATTERN.test(message)) return message;
 
 	const conditionalActionMatch = TRAILING_ACTION_PATTERN.exec(message);
+	if (conditionalActionMatch) return message.slice(conditionalActionMatch.index);
 
-	return conditionalActionMatch ? message.slice(conditionalActionMatch.index) : message;
+	const unpunctuatedActionIndex = findLeadingConditionalActionIndex(message);
+
+	return unpunctuatedActionIndex === undefined ? message : message.slice(unpunctuatedActionIndex);
+}
+
+function findLeadingConditionalActionIndex(message: string): number | undefined {
+	if (!LEADING_CONDITION_PATTERN.test(message)) return undefined;
+
+	const actionPattern = new RegExp(String.raw`\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`, 'gu');
+	const actionMatches = [...message.matchAll(actionPattern)].filter(
+		(match) => !/\b(?:are|is|was|were)\s*$/u.test(message.slice(0, match.index)),
+	);
+	let commandMatch = actionMatches.at(-1);
+
+	for (let index = actionMatches.length - 2; index >= 0 && commandMatch; index -= 1) {
+		const candidate = actionMatches[index];
+		const connector = message.slice(candidate.index + candidate[0].length, commandMatch.index);
+
+		if (!new RegExp(String.raw`\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b`, 'u').test(connector)) break;
+		commandMatch = candidate;
+	}
+
+	return commandMatch?.index;
 }
 
 function getActionReferenceMessage(
@@ -630,7 +654,10 @@ function splitPlannerClauses(message: string, protectedSpaces: readonly BuddyCon
 		...findExplicitSpaceOccurrences(message, protectedSpaces).map((occurrence) => occurrence.range),
 		...findPatternRanges(message, CLOCK_TIME_HISTORY_PATTERN),
 	];
-	const separatorPattern = new RegExp(String.raw`(?:[?!,.;]|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)`, 'gu');
+	const separatorPattern = new RegExp(
+		String.raw`(?:[?!,.;]|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b|\ba\b(?=\s*(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b))`,
+		'gu',
+	);
 	const clauses: string[] = [];
 	let clauseStart = 0;
 
@@ -646,7 +673,15 @@ function splitPlannerClauses(message: string, protectedSpaces: readonly BuddyCon
 
 	clauses.push(message.slice(clauseStart));
 
-	return mergeLeadingTemporalAdjuncts(clauses);
+	const conditionalClauses = clauses.flatMap((clause) => {
+		const actionIndex = findLeadingConditionalActionIndex(clause);
+
+		return actionIndex === undefined || actionIndex === 0
+			? [clause]
+			: [clause.slice(0, actionIndex), clause.slice(actionIndex)];
+	});
+
+	return mergeLeadingTemporalAdjuncts(conditionalClauses);
 }
 
 function mergeLeadingTemporalAdjuncts(clauses: string[]): string[] {

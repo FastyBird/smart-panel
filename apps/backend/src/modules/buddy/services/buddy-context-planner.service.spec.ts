@@ -568,6 +568,45 @@ describe('BuddyContextPlannerService', () => {
 		},
 	);
 
+	it('recognizes an unpunctuated leading conditional action', () => {
+		expect(
+			service.plan({
+				message: 'If the window is open turn the Bedroom lights off',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			intent: 'mixed',
+			scope: { spaceId: 'space-bedroom' },
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device', 'set_space_lighting'],
+		});
+	});
+
+	it('splits a Czech action compound only when a follows with an action', () => {
+		expect(
+			service.plan({
+				message: 'Nastav ho a spusť Movie Night',
+				recentEntityReferences: [
+					{
+						kind: 'device',
+						id: 'device-thermostat',
+						name: 'Thermostat',
+						compatibleActionTypes: ['set'],
+					},
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			intent: 'mixed',
+			scope: { referencedEntityIds: ['device-thermostat'] },
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device', 'run_scene'],
+		});
+	});
+
 	it.each([
 		'As long as it is dark, turn kitchen light on',
 		'In case it is dark, turn kitchen light on',
@@ -2872,22 +2911,23 @@ describe('BuddyContextPlannerService', () => {
 		},
 	);
 
-	it.each(['What was the Bedroom temperature at noon?', 'What was the Bedroom temperature at midnight?'])(
-		'routes a named clock period to history: %s',
-		(message) => {
-			expect(
-				service.plan({
-					message,
-					knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
-					providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
-				}),
-			).toMatchObject({
-				domains: ['home', 'history'],
-				queries: [
-					{ kind: 'search-home', spaceId: 'space-bedroom' },
-					{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
-				],
-			});
-		},
-	);
+	it.each([
+		'What was the Bedroom temperature at noon?',
+		'What was the Bedroom temperature at midnight?',
+		'What was the Bedroom temperature at 8?',
+	])('routes a named clock period to history: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+			],
+		});
+	});
 });
