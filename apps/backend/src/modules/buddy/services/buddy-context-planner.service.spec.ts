@@ -2255,4 +2255,62 @@ describe('BuddyContextPlannerService', () => {
 			queries: [{ kind: 'energy-summary', spaceId: 'space-research-development' }],
 		});
 	});
+
+	it('preserves longest configured-space matches independently per occurrence', () => {
+		expect(
+			service.plan({
+				message: 'How much energy did Living Room use and what is Room temperature?',
+				knownSpaces: [
+					{ id: 'space-living-room', name: 'Living Room' },
+					{ id: 'space-room', name: 'Room' },
+				],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'energy'],
+			scope: { spaceIds: ['space-living-room', 'space-room'] },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-room' },
+				{ kind: 'current-state', spaceId: 'space-room' },
+				{ kind: 'energy-summary', spaceId: 'space-living-room' },
+			],
+		});
+	});
+
+	it('does not resolve a relative-clause that as a recent reference', () => {
+		expect(
+			service.plan({
+				message: 'Show devices that are off',
+				recentEntityReferences: [
+					{
+						kind: 'device',
+						id: 'device-reading-lamp',
+						name: 'Reading lamp',
+						compatibleActionTypes: ['turn'],
+					},
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			scope: {},
+			ambiguityRisk: 'none',
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+		});
+	});
+
+	it('clarifies a plural home-state pronoun without recent references', () => {
+		expect(
+			service.plan({
+				message: 'Are they on?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			ambiguityRisk: 'read',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
 });

@@ -106,6 +106,8 @@ const RELATIVE_PATTERN = new RegExp(
 );
 const PRONOUN_PATTERN = /\b(?:ho|it|its|that|them|these|they|this|those)\b|\bthe one\b/u;
 const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:ho|it|its|that|this)\b|\bthe one\b/u;
+const PLURAL_REFERENCE_PRONOUN_PATTERN = /\b(?:them|these|they|those)\b/u;
+const RELATIVE_REFERENCE_PRONOUN_PATTERN = /\bthat\s+(?:are|is|was|were)\b/gu;
 const LOCALIZED_REFERENCE_PRONOUN_PATTERN =
 	/\b(?:aktivuj|nastav|odemkni|otevri|sniz|spust|vypni|zamkni|zapni|zavri|zvys)\s+(?:ho|to)\b/u;
 const CAPABILITY_DISCOVERY_PATTERN = new RegExp(
@@ -463,7 +465,7 @@ function classifyDomains(
 	});
 	const hasExplicitHomeSpace = explicitSpaces.some((space) =>
 		clauses.some((clause) => {
-			if (!containsNormalizedPhrase(clause, normalize(space.name))) return false;
+			if (!hasExplicitSpaceOccurrence(clause, space, explicitSpaces)) return false;
 
 			const clauseWithoutSpace = removeNormalizedPhrase(clause, normalize(space.name));
 			const hasNonHomeSignal =
@@ -498,7 +500,9 @@ function classifyDomains(
 		const hasHomeSpecificHistory = clauses.some((clause) => {
 			if (!HISTORY_PATTERN.test(clause)) return false;
 
-			const hasExplicitSpace = explicitSpaces.some((space) => containsNormalizedPhrase(clause, normalize(space.name)));
+			const hasExplicitSpace = explicitSpaces.some((space) =>
+				hasExplicitSpaceOccurrence(clause, space, explicitSpaces),
+			);
 			const hasHomeSignal =
 				HOME_ENTITY_PATTERN.test(clause) ||
 				HOME_VOCABULARY_PATTERN.test(clause) ||
@@ -549,9 +553,7 @@ function hasDomainSignalInClause(clause: string, domainPattern: RegExp, entityNa
 }
 
 function splitPlannerClauses(message: string, protectedSpaces: readonly BuddyContextSpaceReference[] = []): string[] {
-	const protectedRanges = protectedSpaces.flatMap((space) =>
-		findNormalizedPhraseRanges(message, normalize(space.name)),
-	);
+	const protectedRanges = findExplicitSpaceOccurrences(message, protectedSpaces).map((occurrence) => occurrence.range);
 	const separatorPattern = new RegExp(String.raw`(?:[?!,.;]|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)`, 'gu');
 	const clauses: string[] = [];
 	let clauseStart = 0;
@@ -585,7 +587,8 @@ function hasCurrentStateReadClause(
 			!CURRENT_STATE_PATTERN.test(normalizedClause) &&
 			explicitSpaces.some(
 				(space) =>
-					conjoinedTemporalSpaceIds.has(space.id) && containsNormalizedPhrase(normalizedClause, normalize(space.name)),
+					conjoinedTemporalSpaceIds.has(space.id) &&
+					hasExplicitSpaceOccurrence(normalizedClause, space, explicitSpaces),
 			)
 		) {
 			return false;
@@ -699,10 +702,29 @@ function classifyAmbiguityRisk(
 			!hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) &&
 			!hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN),
 	);
+	const hasPluralHomeReference = splitPlannerClauses(message, explicitSpaces).some(
+		(clause) =>
+			hasPluralReferencePronoun(stripContextualScopeReferences(clause)) &&
+			(HOME_ENTITY_PATTERN.test(clause) ||
+				HOME_VOCABULARY_PATTERN.test(clause) ||
+				HOME_STATE_PATTERN.test(clause) ||
+				GROUNDED_STATE_PATTERN.test(clause)) &&
+			!hasDomainSignalInClause(clause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) &&
+			!hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) &&
+			!hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN),
+	);
 	if (
 		domains.includes('home') &&
 		hasSingularHomeReference &&
 		references.length !== 1 &&
+		!(conversationSpaceId && CONTEXTUAL_SCOPE_PATTERN.test(message))
+	) {
+		return 'read';
+	}
+	if (
+		domains.includes('home') &&
+		hasPluralHomeReference &&
+		references.length === 0 &&
 		!(conversationSpaceId && CONTEXTUAL_SCOPE_PATTERN.test(message))
 	) {
 		return 'read';
@@ -728,7 +750,7 @@ function hasGenericActionTargetClause(
 	explicitSpaces: readonly BuddyContextSpaceReference[],
 	hasConversationSpace: boolean,
 ): boolean {
-	const clauseSpaces = explicitSpaces.filter((space) => containsNormalizedPhrase(message, normalize(space.name)));
+	const clauseSpaces = explicitSpaces.filter((space) => hasExplicitSpaceOccurrence(message, space, explicitSpaces));
 	const hasClauseSpace = clauseSpaces.length > 0;
 	const hasResolvedContextualSpace = hasConversationSpace && CONTEXTUAL_SCOPE_PATTERN.test(message);
 
@@ -803,7 +825,7 @@ function resolveEnergySpaceIds(
 	const explicitEnergySpaceIds = [
 		...new Set(
 			explicitSpaces
-				.filter((space) => energyClauses.some((clause) => containsNormalizedPhrase(clause, normalize(space.name))))
+				.filter((space) => energyClauses.some((clause) => hasExplicitSpaceOccurrence(clause, space, explicitSpaces)))
 				.map((space) => space.id),
 		),
 	];
@@ -832,7 +854,7 @@ function resolveCurrentStateSpaceIds(
 		if (
 			!CURRENT_STATE_PATTERN.test(clause) &&
 			explicitSpaces.some(
-				(space) => conjoinedTemporalSpaceIds.has(space.id) && containsNormalizedPhrase(clause, normalize(space.name)),
+				(space) => conjoinedTemporalSpaceIds.has(space.id) && hasExplicitSpaceOccurrence(clause, space, explicitSpaces),
 			)
 		) {
 			return false;
@@ -849,7 +871,7 @@ function resolveCurrentStateSpaceIds(
 			hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) ||
 			hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN);
 
-		const hasExplicitSpace = explicitSpaces.some((space) => containsNormalizedPhrase(clause, normalize(space.name)));
+		const hasExplicitSpace = explicitSpaces.some((space) => hasExplicitSpaceOccurrence(clause, space, explicitSpaces));
 		const clauseWithoutExplicitSpaces = explicitSpaces.reduce(
 			(result, space) => removeNormalizedPhrase(result, normalize(space.name)),
 			clause,
@@ -943,9 +965,9 @@ function expandConjoinedTemporalSpaceIds(
 	explicitSpaces: readonly BuddyContextSpaceReference[],
 	selectedSpaceIds: readonly string[],
 ): string[] {
-	const occurrences = explicitSpaces
-		.flatMap((space) => findNormalizedPhraseRanges(message, normalize(space.name)).map((range) => ({ space, range })))
-		.sort((left, right) => left.range.start - right.range.start);
+	const occurrences = findExplicitSpaceOccurrences(message, explicitSpaces).sort(
+		(left, right) => left.range.start - right.range.start,
+	);
 	const selectedIds = new Set(selectedSpaceIds);
 	let changed = true;
 
@@ -977,8 +999,14 @@ function resolveTemporalExplicitSpaceIds(
 	const spaceIds: string[] = [];
 
 	for (const clause of clauses) {
+		const clauseOccurrences = findExplicitSpaceOccurrences(clause, explicitSpaces);
 		const clauseSpaces = explicitSpaces
-			.map((space) => ({ space, ranges: findNormalizedPhraseRanges(clause, normalize(space.name)) }))
+			.map((space) => ({
+				space,
+				ranges: clauseOccurrences
+					.filter((occurrence) => occurrence.space.id === space.id)
+					.map((occurrence) => occurrence.range),
+			}))
 			.filter(({ ranges }) => ranges.length > 0);
 
 		if (!CURRENT_STATE_PATTERN.test(clause) || !HISTORY_PATTERN.test(clause) || clauseSpaces.length <= 1) {
@@ -1012,26 +1040,44 @@ function findExplicitSpaces(
 	message: string,
 	knownSpaces: readonly BuddyContextSpaceReference[],
 ): BuddyContextSpaceReference[] {
-	const matches = knownSpaces
-		.map((space) => ({
-			space,
-			name: normalize(space.name),
-			ranges: findNormalizedPhraseRanges(message, normalize(space.name)),
-		}))
-		.filter((match) => match.ranges.length > 0);
+	const spaces = new Map<string, BuddyContextSpaceReference>();
 
-	return matches
-		.filter((match) =>
-			match.ranges.some(
-				(range) =>
-					!matches.some(
-						(other) =>
-							other.name.length > match.name.length &&
-							other.ranges.some((otherRange) => otherRange.start <= range.start && otherRange.end >= range.end),
-					),
-			),
+	for (const occurrence of findExplicitSpaceOccurrences(message, knownSpaces)) {
+		spaces.set(occurrence.space.id, occurrence.space);
+	}
+
+	return [...spaces.values()];
+}
+
+function findExplicitSpaceOccurrences(
+	message: string,
+	spaces: readonly BuddyContextSpaceReference[],
+): Array<{ space: BuddyContextSpaceReference; range: { start: number; end: number } }> {
+	const occurrences = spaces.flatMap((space) => {
+		const name = normalize(space.name);
+
+		return findNormalizedPhraseRanges(message, name).map((range) => ({ space, name, range }));
+	});
+
+	return occurrences
+		.filter(
+			(occurrence) =>
+				!occurrences.some(
+					(other) =>
+						other.name.length > occurrence.name.length &&
+						other.range.start <= occurrence.range.start &&
+						other.range.end >= occurrence.range.end,
+				),
 		)
-		.map((match) => match.space);
+		.map(({ space, range }) => ({ space, range }));
+}
+
+function hasExplicitSpaceOccurrence(
+	message: string,
+	space: BuddyContextSpaceReference,
+	spaces: readonly BuddyContextSpaceReference[],
+): boolean {
+	return findExplicitSpaceOccurrences(message, spaces).some((occurrence) => occurrence.space.id === space.id);
 }
 
 function containsNormalizedPhrase(message: string, phrase: string): boolean {
@@ -1206,8 +1252,8 @@ function hasMultiSpaceLightingTarget(message: string, explicitSpaces: readonly B
 		return false;
 	}
 
-	const spaceRanges = explicitSpaces
-		.flatMap((space) => findNormalizedPhraseRanges(message, normalize(space.name)))
+	const spaceRanges = findExplicitSpaceOccurrences(message, explicitSpaces)
+		.map((occurrence) => occurrence.range)
 		.sort((left, right) => left.start - right.start);
 
 	if (spaceRanges.length < 2) return false;
@@ -1244,11 +1290,26 @@ function stripContextualScopeReferences(message: string): string {
 }
 
 function hasReferencePronoun(message: string): boolean {
-	return PRONOUN_PATTERN.test(message) || LOCALIZED_REFERENCE_PRONOUN_PATTERN.test(message);
+	const referenceMessage = stripRelativeReferencePronouns(message);
+
+	return PRONOUN_PATTERN.test(referenceMessage) || LOCALIZED_REFERENCE_PRONOUN_PATTERN.test(referenceMessage);
 }
 
 function hasSingularReferencePronoun(message: string): boolean {
-	return SINGULAR_REFERENCE_PRONOUN_PATTERN.test(message) || LOCALIZED_REFERENCE_PRONOUN_PATTERN.test(message);
+	const referenceMessage = stripRelativeReferencePronouns(message);
+
+	return (
+		SINGULAR_REFERENCE_PRONOUN_PATTERN.test(referenceMessage) ||
+		LOCALIZED_REFERENCE_PRONOUN_PATTERN.test(referenceMessage)
+	);
+}
+
+function hasPluralReferencePronoun(message: string): boolean {
+	return PLURAL_REFERENCE_PRONOUN_PATTERN.test(stripRelativeReferencePronouns(message));
+}
+
+function stripRelativeReferencePronouns(message: string): string {
+	return message.replace(RELATIVE_REFERENCE_PRONOUN_PATTERN, ' ');
 }
 
 function normalize(value: string): string {
