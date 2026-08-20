@@ -136,34 +136,99 @@ mappings:
       unit: °C
       range: { minimum: 0, maximum: 100, step: 0.1 }
 
-  - name: thermostat-target-temperature
+  - name: thermostat-heater-target-temperature
     priority: 200
     match:
       classes: [thermostat]
       capability_base_ids: [target_temperature]
+      all_capabilities: [thermostat_mode]
     property:
-      channel: thermostat
+      channel: heater
       category: temperature
       data_type: float
       direction: bidirectional
       unit: °C
       range: { minimum: 4, maximum: 35, step: 0.1 }
 
-  - name: thermostat-mode
-    description: Standard Homey thermostat modes verified from the published capability contract
+  - name: thermostat-cooler-target-temperature
+    priority: 200
+    match:
+      classes: [thermostat]
+      capability_base_ids: [target_temperature]
+      all_capabilities: [thermostat_mode]
+    property:
+      channel: cooler
+      category: temperature
+      data_type: float
+      direction: bidirectional
+      unit: °C
+      range: { minimum: 4, maximum: 35, step: 0.1 }
+
+  - name: thermostat-heater-on
+    description: Project Homey's standard thermostat mode onto Smart Panel's heater power state
     priority: 200
     match:
       classes: [thermostat]
       capability_base_ids: [thermostat_mode]
+      all_capabilities: [target_temperature]
     property:
-      channel: thermostat
-      category: mode
-      data_type: enum
+      channel: heater
+      category: on
+      data_type: bool
       direction: bidirectional
       transform:
         type: map
-        read: { auto: auto, heat: heat, cool: cool, 'off': 'off' }
-        write: { auto: auto, heat: heat, cool: cool, 'off': 'off' }
+        read: { auto: true, heat: true, cool: false, 'off': false }
+        write: { 'true': heat, 'false': 'off' }
+
+  - name: thermostat-heater-status
+    description: Use Homey's configured mode as the available activity fallback
+    priority: 200
+    match:
+      classes: [thermostat]
+      capability_base_ids: [thermostat_mode]
+      all_capabilities: [target_temperature]
+    property:
+      channel: heater
+      category: status
+      data_type: bool
+      direction: read_only
+      transform:
+        type: map
+        read: { auto: true, heat: true, cool: false, 'off': false }
+
+  - name: thermostat-cooler-on
+    description: Project Homey's standard thermostat mode onto Smart Panel's cooler power state
+    priority: 200
+    match:
+      classes: [thermostat]
+      capability_base_ids: [thermostat_mode]
+      all_capabilities: [target_temperature]
+    property:
+      channel: cooler
+      category: on
+      data_type: bool
+      direction: bidirectional
+      transform:
+        type: map
+        read: { auto: true, heat: false, cool: true, 'off': false }
+        write: { 'true': cool, 'false': 'off' }
+
+  - name: thermostat-cooler-status
+    description: Use Homey's configured mode as the available activity fallback
+    priority: 200
+    match:
+      classes: [thermostat]
+      capability_base_ids: [thermostat_mode]
+      all_capabilities: [target_temperature]
+    property:
+      channel: cooler
+      category: status
+      data_type: bool
+      direction: read_only
+      transform:
+        type: map
+        read: { auto: true, heat: false, cool: true, 'off': false }
 
   - name: humidity
     priority: 100
@@ -208,6 +273,25 @@ mappings:
       direction: read_only
       unit: lx
       range: { minimum: 0, maximum: 100000, step: 0.1 }
+
+  - name: illuminance-level
+    description: Derive Smart Panel's required illuminance band from the measured lux value
+    priority: 100
+    match:
+      classes: [sensor]
+      capability_base_ids: [measure_luminance]
+    property:
+      channel: illuminance
+      category: level
+      data_type: enum
+      direction: read_only
+      transform:
+        type: thresholds
+        thresholds:
+          - { minimum: 1000, value: bright }
+          - { minimum: 100, value: moderate }
+          - { minimum: 10, value: dusky }
+        default: dark
 
   - name: carbon-dioxide
     priority: 100
@@ -310,6 +394,7 @@ mappings:
     match:
       classes: [sensor, thermostat, lock, windowcoverings, curtain, blinds, sunshade, shutterblinds]
       capability_base_ids: [alarm_battery]
+      all_capabilities: [measure_battery]
     property:
       channel: battery
       category: status
@@ -319,16 +404,49 @@ mappings:
         type: map
         read: { 'false': ok, 'true': low }
 
-  - name: lock-state
+  - name: battery-status-from-level
+    description: Derive the required Smart Panel status when Homey exposes only a battery percentage
+    priority: 100
+    match:
+      classes: [sensor, thermostat, lock, windowcoverings, curtain, blinds, sunshade, shutterblinds]
+      capability_base_ids: [measure_battery]
+      none_capabilities: [alarm_battery]
+    property:
+      channel: battery
+      category: status
+      data_type: enum
+      direction: read_only
+      transform:
+        type: threshold
+        threshold: 20
+        less_than_or_equal: low
+        greater_than: ok
+
+  - name: lock-on
     priority: 200
     match:
       classes: [lock]
       capability_base_ids: [locked]
     property:
       channel: lock
-      category: locked
+      category: on
       data_type: bool
       direction: bidirectional
+
+  - name: lock-status
+    priority: 200
+    match:
+      classes: [lock]
+      capability_base_ids: [locked]
+    property:
+      channel: lock
+      category: status
+      data_type: enum
+      direction: bidirectional
+      transform:
+        type: map
+        read: { 'true': locked, 'false': unlocked }
+        write: { locked: true, unlocked: false }
 
   - name: window-covering-status
     description: Homey movement state to Smart Panel operational status
@@ -378,6 +496,67 @@ mappings:
         input_range: [0, 1]
         output_range: [0, 100]
         clamp: true
+
+  - name: window-covering-type-generic
+    description: Default Homey's generic window-covering class to Smart Panel's roller presentation
+    priority: 200
+    match:
+      classes: [windowcoverings]
+      capability_base_ids: [windowcoverings_set]
+    property:
+      channel: window-covering
+      category: type
+      data_type: enum
+      direction: read_only
+      transform: { type: constant, value: roller }
+
+  - name: window-covering-type-curtain
+    priority: 200
+    match:
+      classes: [curtain]
+      capability_base_ids: [windowcoverings_set]
+    property:
+      channel: window-covering
+      category: type
+      data_type: enum
+      direction: read_only
+      transform: { type: constant, value: curtain }
+
+  - name: window-covering-type-blind
+    priority: 200
+    match:
+      classes: [blinds]
+      capability_base_ids: [windowcoverings_set]
+    property:
+      channel: window-covering
+      category: type
+      data_type: enum
+      direction: read_only
+      transform: { type: constant, value: blind }
+
+  - name: window-covering-type-sunshade
+    priority: 200
+    match:
+      classes: [sunshade]
+      capability_base_ids: [windowcoverings_set]
+    property:
+      channel: window-covering
+      category: type
+      data_type: enum
+      direction: read_only
+      transform: { type: constant, value: outdoor_blind }
+
+  - name: window-covering-type-shutter
+    priority: 200
+    match:
+      classes: [shutterblinds]
+      capability_base_ids: [windowcoverings_set]
+    property:
+      channel: window-covering
+      category: type
+      data_type: enum
+      direction: read_only
+      transform: { type: constant, value: shutter }
 
   - name: window-covering-tilt
     description: Homey normalized closed-to-open tilt travel to Smart Panel full angular travel

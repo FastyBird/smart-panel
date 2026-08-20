@@ -17,9 +17,11 @@ both have the same `name`; otherwise it is added. Resolution is deterministic: p
 built-in source, then mapping name. Invalid user files are isolated and ignored as a whole, while an invalid built-in
 file prevents the plugin from starting.
 
-Matches use exact Homey `class` values and capability base IDs. Optional `driver_ids`, `manufacturers`, and `models`
-may narrow a descriptor but should not be used for generic mappings. Property matching derives the base ID from the
-first dot only, while every resolved property binding retains the original full capability ID for reads and writes.
+Matches use exact Homey `class` values and capability base IDs. Optional `all_capabilities` and `none_capabilities`
+constraints let a property mapping require or exclude companion capabilities so the resulting Smart Panel channel is
+structurally complete. Optional `driver_ids`, `manufacturers`, and `models` may narrow a descriptor but should not be
+used for generic mappings. Property matching derives the base ID from the first dot only, while every resolved property
+binding retains the original full capability ID for reads and writes.
 
 Every descriptor supports:
 
@@ -27,14 +29,18 @@ Every descriptor supports:
 - `exclusive`: the highest-priority exclusive match suppresses other matches of that kind;
 - `conflict`: `first`, `warn`, or `error` for equal-priority mappings targeting the same output;
 - property `direction`: `read_only`, `write_only`, or `bidirectional`;
-- property unit/range expectations and inline `scale`, `map`, `boolean`, `clamp`, or `round` transforms.
+- property unit/range expectations and inline `scale`, `map`, `boolean`, `clamp`, `round`, `constant`, `threshold`, or
+  `thresholds` transforms.
 
 Map transforms must declare a `read` table for read-capable directions and an explicit `write` table for writable
 directions. Bidirectional maps require both tables; the loader never guesses an inverse from potentially non-injective
 read values.
 
+`constant`, `threshold`, and `thresholds` are read-only derived transforms. Constants can supply a required static
+property even when the source capability has no current value; a threshold derives one of two values, while strictly
+descending thresholds derive a band from a numeric source.
 The JSON schema rejects unknown keys and malformed structures. Semantic validation additionally rejects unknown Smart
-Panel enum values, inverted ranges, and degenerate transformations.
+Panel enum values, inverted ranges, degenerate transformations, and writable use of derived transforms.
 
 ## Built-in MVP catalog
 
@@ -59,6 +65,17 @@ Two relative Homey controls need a deterministic projection into Smart Panel's p
 These projections are reversible and clamped, but they describe normalized travel rather than device-reported physical
 calibration. Mapping preview must present that conversion metadata so an operator can override it for hardware with a
 narrower or inverted range.
+
+Smart Panel's thermostat contract keeps child-lock state on the `thermostat` channel and climate targets on complete
+`heater` and `cooler` channels. Homey's standard `thermostat_mode` supplies the required power/status projections when
+no separate activity capability exists. The Task 4.3 command platform must coalesce paired heater/cooler power changes
+into one `thermostat_mode` write instead of sending the two projected bindings independently.
+
+The battery channel is emitted only when `measure_battery` exists. When Homey also exposes `alarm_battery`, that alarm
+maps directly to the required status; otherwise status is derived as `low` at or below 20 percent and `ok` above it.
+Alarm-only devices do not produce an invalid percentage-less battery channel. Window-covering classes provide their
+required `type` through a read-only constant projection; the generic class defaults to `roller` and remains replaceable
+by an operator override.
 
 `HomeyMappingTransformerService` is the single read/write execution path for inline transforms. It rejects forbidden
 directions, invalid target types, and unmapped enum values with fixed errors that never include the rejected value.

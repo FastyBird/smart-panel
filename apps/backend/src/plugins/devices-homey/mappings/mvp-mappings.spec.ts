@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
+import { getRequiredProperties } from '../../../modules/devices/utils/schema.utils';
 import { HomeyCapabilityType, HomeyCapabilityValue, createHomeyCapability } from '../models/homey-capability.model';
 import { HomeyDevice } from '../models/homey-device.model';
 
@@ -81,19 +82,33 @@ describe('Homey MVP mapping catalog', () => {
 		return transformer.write(binding.mapping, value);
 	};
 
+	const expectMappedChannelsComplete = (device: HomeyDevice): void => {
+		const channels = loader.resolveChannelMappings(device).mappings;
+		const properties = loader.resolvePropertyMappings(device).mappings;
+
+		for (const channel of channels) {
+			const mappedCategories = properties
+				.filter((binding) => binding.mapping.property.channel === channel.channel.identifier)
+				.map((binding) => binding.mapping.property.category);
+
+			expect(mappedCategories).toEqual(expect.arrayContaining(getRequiredProperties(channel.channel.category)));
+		}
+	};
+
 	beforeAll(() => {
 		loader.loadAllMappings();
 	});
 
 	it('loads the complete built-in catalog without ambiguity', () => {
 		expect(loader.getDeviceMappings()).toHaveLength(7);
-		expect(loader.getChannelMappings()).toHaveLength(19);
-		expect(loader.getPropertyMappings()).toHaveLength(28);
+		expect(loader.getChannelMappings()).toHaveLength(21);
+		expect(loader.getPropertyMappings()).toHaveLength(40);
 	});
 
 	it('maps the captured light fixture and applies inverse lighting transformations', () => {
 		const device = readDeviceFixture('light');
 		const bindings = bindingsByName(device);
+		expectMappedChannelsComplete(device);
 
 		expect(loader.resolveDeviceMappings(device)).toMatchObject({
 			conflicts: [],
@@ -116,6 +131,7 @@ describe('Homey MVP mapping catalog', () => {
 	it('maps captured outlet, energy, and repeated full capability IDs', () => {
 		const outlet = readDeviceFixture('switch');
 		const bindings = bindingsByName(outlet);
+		expectMappedChannelsComplete(outlet);
 
 		expect(loader.resolveDeviceMappings(outlet).mappings[0]?.deviceCategory).toBe(DeviceCategory.OUTLET);
 		expect(read(bindings, 'outlet-power', false)).toBe(false);
@@ -133,19 +149,24 @@ describe('Homey MVP mapping catalog', () => {
 	it('maps captured environmental and battery values', () => {
 		const device = readDeviceFixture('sensor-air-quality');
 		const bindings = bindingsByName(device);
+		expectMappedChannelsComplete(device);
 
 		expect(loader.resolveDeviceMappings(device).mappings[0]?.deviceCategory).toBe(DeviceCategory.SENSOR);
 		expect(read(bindings, 'battery-level', 100)).toBe(100);
+		expect(read(bindings, 'battery-status-from-level', 100)).toBe('ok');
 		expect(read(bindings, 'humidity', 28.65)).toBe(29);
 		expect(read(bindings, 'sensor-temperature', 30.6)).toBe(30.6);
 		expect(read(bindings, 'illuminance', 1)).toBe(1);
+		expect(read(bindings, 'illuminance-level', 1)).toBe('dark');
 	});
 
 	it('maps the captured cover and preserves open, close, stop, and position semantics', () => {
 		const device = readDeviceFixture('cover');
 		const bindings = bindingsByName(device);
+		expectMappedChannelsComplete(device);
 
 		expect(loader.resolveDeviceMappings(device).mappings[0]?.deviceCategory).toBe(DeviceCategory.WINDOW_COVERING);
+		expect(read(bindings, 'window-covering-type-generic', null)).toBe('roller');
 		expect(read(bindings, 'window-covering-status', 'down')).toBe('closing');
 		expect(write(bindings, 'window-covering-command', 'open')).toBe('up');
 		expect(write(bindings, 'window-covering-command', 'close')).toBe('down');
@@ -161,15 +182,28 @@ describe('Homey MVP mapping catalog', () => {
 			capability('thermostat_mode', 'heat', { writable: true }),
 		]);
 		const bindings = bindingsByName(device);
+		expectMappedChannelsComplete(device);
 
 		expect(loader.resolveDeviceMappings(device).mappings[0]?.deviceCategory).toBe(DeviceCategory.THERMOSTAT);
 		expect(read(bindings, 'thermostat-current-temperature', 21.5)).toBe(21.5);
-		expect(read(bindings, 'thermostat-target-temperature', 22.5)).toBe(22.5);
-		expect(write(bindings, 'thermostat-target-temperature', 19.5)).toBe(19.5);
-		expect(['auto', 'heat', 'cool', 'off']).toStrictEqual(
-			['auto', 'heat', 'cool', 'off'].map((mode) => read(bindings, 'thermostat-mode', mode)),
-		);
-		expect(write(bindings, 'thermostat-mode', 'cool')).toBe('cool');
+		expect(loader.resolveChannelMappings(device).mappings.map((mapping) => mapping.channel.identifier)).toStrictEqual([
+			'cooler',
+			'heater',
+			'temperature',
+			'thermostat',
+		]);
+		expect(read(bindings, 'thermostat-heater-target-temperature', 22.5)).toBe(22.5);
+		expect(write(bindings, 'thermostat-heater-target-temperature', 19.5)).toBe(19.5);
+		expect(read(bindings, 'thermostat-cooler-target-temperature', 22.5)).toBe(22.5);
+		expect(write(bindings, 'thermostat-cooler-target-temperature', 19.5)).toBe(19.5);
+		expect(read(bindings, 'thermostat-heater-on', 'heat')).toBe(true);
+		expect(read(bindings, 'thermostat-heater-on', 'cool')).toBe(false);
+		expect(write(bindings, 'thermostat-heater-on', true)).toBe('heat');
+		expect(read(bindings, 'thermostat-heater-status', 'off')).toBe(false);
+		expect(read(bindings, 'thermostat-cooler-on', 'cool')).toBe(true);
+		expect(read(bindings, 'thermostat-cooler-on', 'heat')).toBe(false);
+		expect(write(bindings, 'thermostat-cooler-on', true)).toBe('cool');
+		expect(read(bindings, 'thermostat-cooler-status', 'auto')).toBe(true);
 	});
 
 	it('maps published environment and safety capability contracts', () => {
@@ -180,9 +214,11 @@ describe('Homey MVP mapping catalog', () => {
 			capability('alarm_contact', false),
 			capability('alarm_smoke', true),
 			capability('alarm_co', false),
+			capability('measure_battery', 15),
 			capability('alarm_battery', true),
 		]);
 		const bindings = bindingsByName(device);
+		expectMappedChannelsComplete(device);
 
 		expect(read(bindings, 'pressure', 1013)).toBeCloseTo(101.3, 12);
 		expect(read(bindings, 'carbon-dioxide', 850)).toBe(850);
@@ -191,14 +227,27 @@ describe('Homey MVP mapping catalog', () => {
 		expect(read(bindings, 'smoke', true)).toBe(true);
 		expect(read(bindings, 'carbon-monoxide', false)).toBe(false);
 		expect(read(bindings, 'battery-alarm', true)).toBe('low');
+		expect(bindings.has('battery-status-from-level')).toBe(false);
+	});
+
+	it('does not emit an incomplete battery channel for an alarm-only device', () => {
+		const device = publishedContractDevice('sensor', [capability('alarm_battery', true)]);
+
+		expect(loader.resolveChannelMappings(device).mappings.map((mapping) => mapping.channel.identifier)).not.toContain(
+			'battery',
+		);
+		expect(bindingsByName(device).size).toBe(0);
 	});
 
 	it('maps published lock and tilt contracts with inverse control values', () => {
 		const lock = publishedContractDevice('lock', [capability('locked', true, { writable: true })]);
 		const lockBindings = bindingsByName(lock);
+		expectMappedChannelsComplete(lock);
 		expect(loader.resolveDeviceMappings(lock).mappings[0]?.deviceCategory).toBe(DeviceCategory.LOCK);
-		expect(read(lockBindings, 'lock-state', true)).toBe(true);
-		expect(write(lockBindings, 'lock-state', false)).toBe(false);
+		expect(read(lockBindings, 'lock-on', true)).toBe(true);
+		expect(write(lockBindings, 'lock-on', false)).toBe(false);
+		expect(read(lockBindings, 'lock-status', true)).toBe('locked');
+		expect(write(lockBindings, 'lock-status', 'unlocked')).toBe(false);
 
 		const cover = publishedContractDevice('windowcoverings', [
 			capability('windowcoverings_state', 'idle', { writable: true }),
@@ -206,7 +255,9 @@ describe('Homey MVP mapping catalog', () => {
 			capability('windowcoverings_tilt_set', 0.5, { writable: true, minimum: 0, maximum: 1 }),
 		]);
 		const coverBindings = bindingsByName(cover);
+		expectMappedChannelsComplete(cover);
 		expect(loader.resolveDeviceMappings(cover).mappings[0]?.deviceCategory).toBe(DeviceCategory.WINDOW_COVERING);
+		expect(read(coverBindings, 'window-covering-type-generic', null)).toBe('roller');
 		expect(read(coverBindings, 'window-covering-tilt', 0.5)).toBe(0);
 		expect(write(coverBindings, 'window-covering-tilt', 45)).toBe(0.75);
 	});

@@ -49,11 +49,14 @@ export class HomeyMappingTransformerService {
 		direction: HomeyTransformDirection,
 		value: HomeyMappingScalar,
 	): HomeyMappingScalar {
-		if (value === null || mapping.property.transform === undefined) {
+		if (mapping.property.transform === undefined) {
 			return value;
 		}
 
 		const transform = mapping.property.transform;
+		if (value === null && transform.type !== 'constant') {
+			return value;
+		}
 
 		switch (transform.type) {
 			case 'scale':
@@ -66,6 +69,16 @@ export class HomeyMappingTransformerService {
 				return this.clamp(mapping, direction, transform.minimum, transform.maximum, value);
 			case 'round':
 				return this.round(mapping, direction, transform.precision ?? 0, value);
+			case 'constant':
+				return transform.value;
+			case 'threshold':
+				return this.requireFiniteNumber(mapping, direction, value) <= transform.threshold
+					? transform.less_than_or_equal
+					: transform.greater_than;
+			case 'thresholds': {
+				const numericValue = this.requireFiniteNumber(mapping, direction, value);
+				return transform.thresholds.find((entry) => numericValue >= entry.minimum)?.value ?? transform.default;
+			}
 		}
 	}
 

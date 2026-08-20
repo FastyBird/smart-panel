@@ -17,6 +17,8 @@ const mapping = (
 	match: {
 		classes: ['sensor'],
 		capabilityBaseIds: ['test'],
+		allCapabilities: [],
+		noneCapabilities: [],
 		driverIds: [],
 		manufacturers: [],
 		models: [],
@@ -87,6 +89,46 @@ describe('HomeyMappingTransformerService', () => {
 		expect(service.read(mapping({ type: 'clamp', minimum: 0, maximum: 10 }), 12)).toBe(10);
 		expect(service.read(mapping({ type: 'round', precision: 2 }), 1.236)).toBe(1.24);
 		expect(service.read(mapping({ type: 'round', precision: 2 }), null)).toBeNull();
+	});
+
+	it('emits constants even when the source capability value is null', () => {
+		const definition = mapping(
+			{ type: 'constant', value: 'roller' },
+			{ dataType: DataTypeType.ENUM, direction: 'read_only' },
+		);
+
+		expect(service.read(definition, null)).toBe('roller');
+	});
+
+	it('derives values on both sides of an inclusive numeric threshold', () => {
+		const definition = mapping(
+			{ type: 'threshold', threshold: 20, less_than_or_equal: 'low', greater_than: 'ok' },
+			{ dataType: DataTypeType.ENUM, direction: 'read_only' },
+		);
+
+		expect(service.read(definition, 0)).toBe('low');
+		expect(service.read(definition, 20)).toBe('low');
+		expect(service.read(definition, 21)).toBe('ok');
+	});
+
+	it('derives an ordered band value with a below-minimum default', () => {
+		const definition = mapping(
+			{
+				type: 'thresholds',
+				thresholds: [
+					{ minimum: 1000, value: 'bright' },
+					{ minimum: 100, value: 'moderate' },
+					{ minimum: 10, value: 'dusky' },
+				],
+				default: 'dark',
+			},
+			{ dataType: DataTypeType.ENUM, direction: 'read_only' },
+		);
+
+		expect(service.read(definition, 1000)).toBe('bright');
+		expect(service.read(definition, 999)).toBe('moderate');
+		expect(service.read(definition, 10)).toBe('dusky');
+		expect(service.read(definition, 9)).toBe('dark');
 	});
 
 	it('fails closed for forbidden directions and incompatible panel values', () => {

@@ -317,6 +317,8 @@ export class HomeyMappingLoaderService implements OnModuleInit {
 			match: {
 				classes: [...propertyDefinition.match.classes],
 				capabilityBaseIds: [...propertyDefinition.match.capability_base_ids],
+				allCapabilities: [...(propertyDefinition.match.all_capabilities ?? [])],
+				noneCapabilities: [...(propertyDefinition.match.none_capabilities ?? [])],
 				driverIds: [...(propertyDefinition.match.driver_ids ?? [])],
 				manufacturers: [...(propertyDefinition.match.manufacturers ?? [])],
 				models: [...(propertyDefinition.match.models ?? [])],
@@ -375,6 +377,28 @@ export class HomeyMappingLoaderService implements OnModuleInit {
 				throw new Error(`map transform requires a write table for ${direction} direction`);
 			}
 		}
+
+		if (transform?.type === 'constant' && direction !== 'read_only') {
+			throw new Error('constant transform requires read_only direction');
+		}
+
+		if (transform?.type === 'threshold' && direction !== 'read_only') {
+			throw new Error('threshold transform requires read_only direction');
+		}
+
+		if (transform?.type === 'thresholds') {
+			if (direction !== 'read_only') {
+				throw new Error('thresholds transform requires read_only direction');
+			}
+
+			if (
+				transform.thresholds.some(
+					(entry, index) => index > 0 && entry.minimum >= transform.thresholds[index - 1].minimum,
+				)
+			) {
+				throw new Error('thresholds transform minimums must be strictly descending');
+			}
+		}
 	}
 
 	private resolveEnum<TEnum extends Record<string, string>>(
@@ -403,7 +427,16 @@ export class HomeyMappingLoaderService implements OnModuleInit {
 	}
 
 	private matchesPropertyDevice(mapping: ResolvedHomeyPropertyMapping, device: HomeyDevice): boolean {
-		return mapping.match.classes.includes(device.class) && this.matchesNarrowingFilters(mapping.match, device);
+		if (!mapping.match.classes.includes(device.class) || !this.matchesNarrowingFilters(mapping.match, device)) {
+			return false;
+		}
+
+		const capabilityBaseIds = new Set(device.capabilities.map((capability) => capability.baseId));
+
+		return (
+			mapping.match.allCapabilities.every((baseId) => capabilityBaseIds.has(baseId)) &&
+			mapping.match.noneCapabilities.every((baseId) => !capabilityBaseIds.has(baseId))
+		);
 	}
 
 	private matchesNarrowingFilters(

@@ -47,6 +47,8 @@
       "properties": {
         "classes": { "$ref": "#/definitions/uniqueStrings" },
         "capability_base_ids": { "$ref": "#/definitions/uniqueStrings" },
+        "all_capabilities": { "$ref": "#/definitions/uniqueStrings" },
+        "none_capabilities": { "$ref": "#/definitions/uniqueStrings" },
         "driver_ids": { "$ref": "#/definitions/uniqueStrings" },
         "manufacturers": { "$ref": "#/definitions/uniqueStrings" },
         "models": { "$ref": "#/definitions/uniqueStrings" }
@@ -185,6 +187,48 @@
             "precision": { "type": "integer", "minimum": 0, "maximum": 12 }
           },
           "required": ["type"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "constant" },
+            "value": { "$ref": "#/definitions/scalar" }
+          },
+          "required": ["type", "value"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "threshold" },
+            "threshold": { "type": "number" },
+            "less_than_or_equal": { "$ref": "#/definitions/scalar" },
+            "greater_than": { "$ref": "#/definitions/scalar" }
+          },
+          "required": ["type", "threshold", "less_than_or_equal", "greater_than"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "thresholds" },
+            "thresholds": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "minimum": { "type": "number" },
+                  "value": { "$ref": "#/definitions/scalar" }
+                },
+                "required": ["minimum", "value"],
+                "additionalProperties": false
+              },
+              "minItems": 1
+            },
+            "default": { "$ref": "#/definitions/scalar" }
+          },
+          "required": ["type", "thresholds", "default"],
           "additionalProperties": false
         }
       ]

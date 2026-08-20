@@ -33,6 +33,8 @@ export interface HomeyDeviceMatchDefinition {
 export interface HomeyPropertyMatchDefinition {
 	classes: string[];
 	capability_base_ids: string[];
+	all_capabilities?: string[];
+	none_capabilities?: string[];
 	driver_ids?: string[];
 	manufacturers?: string[];
 	models?: string[];
@@ -99,12 +101,36 @@ export interface HomeyRoundTransformDefinition {
 	precision?: number;
 }
 
+export interface HomeyConstantTransformDefinition {
+	type: 'constant';
+	value: HomeyMappingScalar;
+}
+
+export interface HomeyThresholdTransformDefinition {
+	type: 'threshold';
+	threshold: number;
+	less_than_or_equal: HomeyMappingScalar;
+	greater_than: HomeyMappingScalar;
+}
+
+export interface HomeyThresholdsTransformDefinition {
+	type: 'thresholds';
+	thresholds: Array<{
+		minimum: number;
+		value: HomeyMappingScalar;
+	}>;
+	default: HomeyMappingScalar;
+}
+
 export type HomeyTransformDefinition =
 	| HomeyScaleTransformDefinition
 	| HomeyMapTransformDefinition
 	| HomeyBooleanTransformDefinition
 	| HomeyClampTransformDefinition
-	| HomeyRoundTransformDefinition;
+	| HomeyRoundTransformDefinition
+	| HomeyConstantTransformDefinition
+	| HomeyThresholdTransformDefinition
+	| HomeyThresholdsTransformDefinition;
 
 export interface HomeyPropertyMappingDefinition extends HomeyMappingDefinitionBase {
 	match: HomeyPropertyMatchDefinition;
@@ -142,6 +168,8 @@ export interface ResolvedHomeyDeviceMatch {
 export interface ResolvedHomeyPropertyMatch {
 	classes: readonly string[];
 	capabilityBaseIds: readonly string[];
+	allCapabilities: readonly string[];
+	noneCapabilities: readonly string[];
 	driverIds: readonly string[];
 	manufacturers: readonly string[];
 	models: readonly string[];

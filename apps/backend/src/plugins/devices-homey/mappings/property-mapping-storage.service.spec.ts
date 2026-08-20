@@ -13,6 +13,8 @@ const mapping: ResolvedHomeyPropertyMapping = {
 	match: {
 		classes: ['sensor'],
 		capabilityBaseIds: ['measure_temperature'],
+		allCapabilities: [],
+		noneCapabilities: [],
 		driverIds: [],
 		manufacturers: [],
 		models: [],

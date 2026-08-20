@@ -394,6 +394,7 @@ metadata remains visible to mapping preview and user overrides.
 - [ ] Resolve the property mapping and full capability ID.
 - [ ] Validate writable access, value type, enum/range, and device availability.
 - [ ] Apply the inverse transformation.
+- [ ] Coalesce paired heater/cooler power projections into one Homey `thermostat_mode` command.
 - [ ] Serialize writes per device/capability.
 - [ ] Send the command through the connector with a bounded timeout.
 - [ ] Await a matching event as authoritative confirmation.
