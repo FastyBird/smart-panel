@@ -2015,4 +2015,39 @@ describe('BuddyContextPlannerService', () => {
 			queries: [{ kind: 'weather' }],
 		});
 	});
+
+	it.each([
+		['Are the outside lights on?', ['home']],
+		['Are the power switches on?', ['home']],
+		['Are the security sensors active?', ['home']],
+	] as const)('treats plural domain-prefixed entity names as home targets: %s', (message, domains) => {
+		expect(
+			service.plan({
+				message,
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains,
+			intent: 'read',
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+		});
+	});
+
+	it.each([
+		'Pokud je okno otevřené, zapni světlo',
+		'Když je okno otevřené, zapni světlo',
+		'Jakmile je otevřené, zapni světlo',
+	])('retains localized conditional state reads before an action: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'mixed',
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+			strategy: 'deterministic-action',
+		});
+	});
 });

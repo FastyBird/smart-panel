@@ -108,10 +108,33 @@ const PREDICATE_QUESTION_PATTERN =
 const UNKNOWN_ACTION_REQUEST_PATTERN = /^(?:(?:can|could|may|might|will|would)\s+you\b|please\b)/u;
 const ACTION_REQUEST_AUXILIARIES = new Set(['able', 'possible', 'way']);
 const ACTION_REQUEST_MODALS = new Set(['can', 'could', 'may', 'might', 'will', 'would']);
-const CONDITION_PATTERN =
-	/\b(?:after|as long as|as soon as|assuming(?: that)?|before|given that|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|so long as|unless|until|when|whenever|while)\b/u;
-const LEADING_CONDITION_PATTERN =
-	/^(?:after|as long as|as soon as|assuming(?: that)?|before|given that|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|so long as|unless|until|when|whenever|while)\b/u;
+export const BUDDY_CONDITION_SIGNALS: ReadonlySet<string> = new Set([
+	'after',
+	'as long as',
+	'as soon as',
+	'assuming',
+	'assuming that',
+	'before',
+	'given that',
+	'if',
+	'in case',
+	'jakmile',
+	'jestlize',
+	'kdyz',
+	'once',
+	'only if',
+	'pokud',
+	'provided',
+	'provided that',
+	'so long as',
+	'unless',
+	'until',
+	'when',
+	'whenever',
+	'while',
+]);
+const CONDITION_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_CONDITION_SIGNALS].join('|')})\b`, 'u');
+const LEADING_CONDITION_PATTERN = new RegExp(String.raw`^(?:${[...BUDDY_CONDITION_SIGNALS].join('|')})\b`, 'u');
 export const BUDDY_GROUNDED_STATE_SIGNALS: ReadonlySet<string> = new Set([
 	'active',
 	'closed',

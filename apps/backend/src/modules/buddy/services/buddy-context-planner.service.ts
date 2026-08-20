@@ -15,6 +15,7 @@ import {
 
 import {
 	BUDDY_ACTION_SIGNALS,
+	BUDDY_CONDITION_SIGNALS,
 	BUDDY_DEVICE_ACTION_SIGNALS,
 	BUDDY_GROUNDED_STATE_SIGNALS,
 	BUDDY_HOME_SIGNALS,
@@ -45,10 +46,21 @@ const DOMAIN_ORDER: readonly BuddyContextDomain[] = ['general', 'home', 'weather
 const WEATHER_PATTERN =
 	/\b(?:cloud|cloudy|fog|foggy|forecast|outside|rain|raining|snow|storm|stormy|sun|sunny|thunder|weather|wind)\b/u;
 const ENERGY_PATTERN = /\b(?:consumption|electricity|energy|kwh|power|production|usage)\b/u;
-const WEATHER_ENTITY_NAME_PATTERN = /\boutside\s+(?:device|fan|lamp|light|sensor|switch)\b/gu;
-const ENERGY_ENTITY_NAME_PATTERN = /\bpower\s+(?:device|fan|lamp|light|sensor|switch)\b/gu;
+const DOMAIN_ENTITY_CATEGORY_PATTERN_SOURCE =
+	'device|devices|fan|fans|lamp|lamps|light|lights|sensor|sensors|switch|switches';
+const WEATHER_ENTITY_NAME_PATTERN = new RegExp(
+	String.raw`\boutside\s+(?:${DOMAIN_ENTITY_CATEGORY_PATTERN_SOURCE})\b`,
+	'gu',
+);
+const ENERGY_ENTITY_NAME_PATTERN = new RegExp(
+	String.raw`\bpower\s+(?:${DOMAIN_ENTITY_CATEGORY_PATTERN_SOURCE})\b`,
+	'gu',
+);
 const SECURITY_PATTERN = /\b(?:alarm|armed|intrusion|secure|security)\b/u;
-const SECURITY_ENTITY_NAME_PATTERN = /\b(?:alarm|security)\s+(?:device|fan|lamp|light|sensor|switch)\b/gu;
+const SECURITY_ENTITY_NAME_PATTERN = new RegExp(
+	String.raw`\b(?:alarm|security)\s+(?:${DOMAIN_ENTITY_CATEGORY_PATTERN_SOURCE})\b`,
+	'gu',
+);
 const HISTORY_PATTERN =
 	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:day|hour|minute|month|night|week|year))\b|\b(?:last|since)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
 const CURRENT_STATE_PATTERN = /\b(?:at present|current|currently|now|right now)\b/u;
@@ -79,10 +91,8 @@ const ACTION_COMMAND_PATTERN = new RegExp(
 	String.raw`^[?!,.;\s]*(?:(?:and(?: also)?|as well as|if so|please|plus|then)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
 );
-const CONDITION_PATTERN =
-	/\b(?:after|as long as|as soon as|assuming|before|given that|if|in case|once|only if|provided|so long as|unless|until|when|whenever|while)\b/u;
-const LEADING_CONDITION_PATTERN =
-	/^(?:after|as long as|as soon as|assuming|before|given that|if|in case|once|only if|provided|so long as|unless|until|when|whenever|while)\b/u;
+const CONDITION_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_CONDITION_SIGNALS].join('|')})\b`, 'u');
+const LEADING_CONDITION_PATTERN = new RegExp(String.raw`^(?:${[...BUDDY_CONDITION_SIGNALS].join('|')})\b`, 'u');
 const RELATIVE_PATTERN = new RegExp(
 	String.raw`\b(?:${[...BUDDY_RELATIVE_ADJUSTMENT_SIGNALS].join('|')}|times as)\b`,
 	'u',
