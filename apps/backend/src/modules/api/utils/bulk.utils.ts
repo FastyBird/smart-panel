@@ -28,6 +28,35 @@ export interface RunBulkOperationOptions {
 }
 
 /**
+ * Describes a thrown non-Error for the log, without the description itself
+ * being able to throw.
+ *
+ * `String(value)` runs code the thrower controls - a `Symbol.toPrimitive`, or
+ * on a null-prototype object no conversion at all - and a throw here would
+ * escape the catch, abandoning every item still to come. Collecting failures
+ * per item exists precisely so one bad item cannot do that. It also renders
+ * anything object-shaped as a useless `[object Object]`, so the fields are
+ * serialized instead where that is possible.
+ */
+const describeThrown = (value: unknown): string => {
+	if (value === undefined) {
+		return 'undefined';
+	}
+
+	if (typeof value === 'string') {
+		return value;
+	}
+
+	try {
+		// Covers null, numbers and booleans too, and renders an object's fields
+		// rather than the `[object Object]` a plain conversion would produce.
+		return JSON.stringify(value) ?? `<unreadable ${typeof value}>`;
+	} catch {
+		return `<unreadable ${typeof value}>`;
+	}
+};
+
+/**
  * Runs one operation across a selection and reports the outcome per item.
  *
  * Bulk endpoints exist because the per-item alternative was a request each,
@@ -80,7 +109,7 @@ export const runBulkOperation = async (
 			if (isSafe && error instanceof Error && error.message.length > 0) {
 				failure.reason = error.message;
 			} else {
-				logger.error(`Bulk operation failed for id=${id}`, error instanceof Error ? error : String(error));
+				logger.error(`Bulk operation failed for id=${id}`, error instanceof Error ? error : describeThrown(error));
 
 				failure.reason = fallbackReason;
 			}

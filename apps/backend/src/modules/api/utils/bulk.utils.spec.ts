@@ -95,6 +95,35 @@ describe('runBulkOperation', () => {
 	// A selection can carry the same item twice - two rows of one item in
 	// different groupings, for instance. Acting once keeps the caller's counts
 	// honest.
+	// Describing the thrown value for the log must not itself throw. A
+	// null-prototype object has no conversion to a primitive at all, and
+	// `Symbol.toPrimitive` is code the thrower controls - either would escape the
+	// catch and abandon every item still to come, which is the one thing
+	// collecting failures per item exists to prevent.
+	it.each([
+		['an object with no prototype', (): unknown => Object.create(null)],
+		[
+			'an object that throws on conversion',
+			(): unknown => ({
+				[Symbol.toPrimitive]: () => {
+					throw new Error('boom');
+				},
+			}),
+		],
+	])('survives a rejection that cannot be converted to a string - %s', async (_label, makeValue) => {
+		const perform = jest.fn().mockRejectedValueOnce(makeValue()).mockResolvedValueOnce(undefined);
+
+		const result = await runBulkOperation(['a', 'b'], perform, {
+			fallbackReason: 'Item could not be processed',
+			logger,
+		});
+
+		// The later item still ran, which is what a throw here would have prevented.
+		expect(result.succeeded).toEqual(['b']);
+		expect(result.failed).toEqual([{ id: 'a', reason: 'Item could not be processed' }]);
+		expect(perform).toHaveBeenCalledTimes(2);
+	});
+
 	it('acts once on an item listed twice', async () => {
 		const perform = jest.fn().mockResolvedValue(undefined);
 
