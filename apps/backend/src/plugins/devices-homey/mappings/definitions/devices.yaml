@@ -62,7 +62,6 @@ mappings:
         - alarm_smoke
         - alarm_co
         - measure_battery
-        - alarm_battery
     device:
       category: sensor
 

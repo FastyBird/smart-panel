@@ -255,6 +255,7 @@ describe('Homey MVP mapping catalog', () => {
 	it('does not emit an incomplete battery channel for an alarm-only device', () => {
 		const device = publishedContractDevice('sensor', [capability('alarm_battery', true)]);
 
+		expect(loader.resolveDeviceMappings(device).mappings).toStrictEqual([]);
 		expect(loader.resolveChannelMappings(device).mappings.map((mapping) => mapping.channel.identifier)).not.toContain(
 			'battery',
 		);
