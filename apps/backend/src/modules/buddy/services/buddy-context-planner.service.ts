@@ -125,7 +125,7 @@ const DEVICE_RUN_TARGET_PATTERN = /\brun\b.*\b(?:device|fan|switch)\b/u;
 const SCENE_RUN_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_SCENE_ACTION_SIGNALS].join('|')})\b`, 'u');
 const DEVICE_ACTION_TARGET_PATTERN =
 	/\b(?:blind|blinds|device|devices|door|doors|fan|fans|heater|heaters|lamp|lamps|light|lights|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
-const SCENE_ACTION_TARGET_PATTERN = /\b(?:automation|preset|routine|scene|scenes)\b/u;
+const SCENE_ACTION_TARGET_PATTERN = /\b(?:automation|bedtime|movie night|preset|routine|scene|scenes)\b/u;
 const ACTION_COMMAND_PATTERN = new RegExp(
 	String.raw`^[?!,.;\s]*(?:(?:a|also|${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:(?:also|please)\s+)*)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
@@ -142,6 +142,10 @@ const ACTION_RANGE_PATTERN =
 	/\b(?:between\b[^?!,.;]+\band\b|from\b[^?!,.;]+\b(?:to|until)\b|\d+(?:\.\d+)?\s*[-–—]\s*\d+(?:\.\d+)?\b)/u;
 const ACTION_NON_SCALAR_BOUND_PATTERN =
 	/\b(?:above|at least|at most|below|greater than|less than|more than|over|under)\s+[-+]?\d+(?:\.\d+)?\b/u;
+const NEGATED_ACTION_PATTERN = new RegExp(
+	String.raw`\b(?:do\s+not|don't|never|not\s+to)\s+(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
+	'u',
+);
 const PRONOUN_PATTERN = /\b(?:ho|it|its|that|their|them|these|they|this|those)\b|\bthe one\b/u;
 const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:ho|it|its|that|this)\b|\bthe one\b/u;
 const PLURAL_REFERENCE_PRONOUN_PATTERN = /\b(?:their|them|these|they|those)\b/u;
@@ -298,7 +302,7 @@ export class BuddyContextPlannerService {
 					ACTION_COMMAND_PATTERN.test(clause) &&
 					(WRITE_PATTERN.test(clause) ||
 						(TARGET_DEPENDENT_ACTION_PATTERN.test(clause) &&
-							!targetsSceneActionClause(clause, recentEntityReferences)) ||
+							targetsDeviceActionClause(clause, recentEntityReferences)) ||
 						DEVICE_RUN_TARGET_PATTERN.test(clause) ||
 						(SCENE_RUN_PATTERN.test(clause) && targetsDeviceActionClause(clause, recentEntityReferences))),
 			);
@@ -311,7 +315,10 @@ export class BuddyContextPlannerService {
 					ACTION_COMMAND_PATTERN.test(clause) &&
 					TRIGGER_PATTERN.test(clause) &&
 					!DEVICE_RUN_TARGET_PATTERN.test(clause) &&
-					!targetsDeviceActionClause(clause, recentEntityReferences),
+					!targetsDeviceActionClause(clause, recentEntityReferences) &&
+					(!TARGET_DEPENDENT_ACTION_PATTERN.test(clause) ||
+						targetsSceneActionClause(clause, recentEntityReferences) ||
+						PRONOUN_PATTERN.test(getActionTargetClause(clause))),
 			);
 		const hasAction = hasWrite || hasTrigger;
 		const referenceActionTypes = getReferenceActionTypes(actionReferenceMessage);
@@ -950,6 +957,7 @@ function classifyAmbiguityRisk(
 	if (hasUnsupportedScopedSecurityRead) return isAction ? 'action' : 'read';
 
 	if (isAction) {
+		if (NEGATED_ACTION_PATTERN.test(message)) return 'action';
 		if (hasDuplicateNameSpaceAmbiguity || hasExcessiveExplicitSpaceScope || hasExcessiveReferenceScope) {
 			return 'action';
 		}

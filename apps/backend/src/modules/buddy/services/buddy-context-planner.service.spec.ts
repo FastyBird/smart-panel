@@ -2906,6 +2906,41 @@ describe('BuddyContextPlannerService', () => {
 		},
 	);
 
+	it.each(['Start a timer', 'Stop talking'])(
+		'keeps a target-free generic verb off the home action path: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toEqual({
+				domains: ['general'],
+				intent: 'none',
+				scope: {},
+				queries: [],
+				toolNames: [],
+				ambiguityRisk: 'none',
+				strategy: 'no-home-context',
+			});
+		},
+	);
+
+	it('clarifies a negated conditional action without exposing positive action tools', () => {
+		expect(
+			service.plan({
+				message: 'If the window is open, do not turn Bedroom lights on',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
 	it('uses the recent reference kind to separate device and scene start commands', () => {
 		const providerCapabilities = { toolCalling: 'reliable' as const, supportsStructuredToolResults: true };
 
