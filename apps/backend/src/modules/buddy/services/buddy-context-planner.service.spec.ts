@@ -1905,6 +1905,12 @@ describe('BuddyContextPlannerService', () => {
 			strategy: 'clarify',
 		});
 		expect(
+			service.plan({ message: 'Turn them off', recentEntityReferences: [reference], providerCapabilities }),
+		).toMatchObject({
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+		});
+		expect(
 			service.plan({
 				message: 'Turn them off',
 				recentEntityReferences: [

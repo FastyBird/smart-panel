@@ -142,6 +142,8 @@ const ACTION_RANGE_PATTERN =
 const PRONOUN_PATTERN = /\b(?:ho|it|its|that|their|them|these|they|this|those)\b|\bthe one\b/u;
 const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:ho|it|its|that|this)\b|\bthe one\b/u;
 const PLURAL_REFERENCE_PRONOUN_PATTERN = /\b(?:their|them|these|they|those)\b/u;
+const PLURAL_HOME_TARGET_PATTERN =
+	/\b(?:blinds|devices|doors|fans|heaters|lamps|lights|scenes|sensors|switches|thermostats|windows)\b/u;
 const RELATIVE_REFERENCE_PRONOUN_PATTERN = /\bthat\s+(?:are|is|was|were)\b/gu;
 const TEMPORAL_THIS_REFERENCE_PATTERN =
 	/\bthis\s+(?:afternoon|day|evening|hour|minute|month|morning|night|week|weekend|year)\b/gu;
@@ -935,9 +937,11 @@ function classifyAmbiguityRisk(
 			return 'action';
 		}
 		if (
-			hasReferencePronoun(stripContextualScopeReferences(actionReferenceMessage)) &&
-			(references.length !== 1 ||
-				!isActionReferenceCompatible(references[0], hasWrite, hasTrigger, requestedActionTypes))
+			(hasPluralReferencePronoun(stripContextualScopeReferences(actionReferenceMessage)) &&
+				!hasPluralActionAntecedent(message, actionReferenceMessage)) ||
+			(hasReferencePronoun(stripContextualScopeReferences(actionReferenceMessage)) &&
+				(references.length !== 1 ||
+					!isActionReferenceCompatible(references[0], hasWrite, hasTrigger, requestedActionTypes)))
 		) {
 			return 'action';
 		}
@@ -1006,6 +1010,12 @@ function classifyAmbiguityRisk(
 	if (CONTEXTUAL_SCOPE_PATTERN.test(message) && !conversationSpaceId) return 'read';
 
 	return 'none';
+}
+
+function hasPluralActionAntecedent(message: string, actionReferenceMessage: string): boolean {
+	const actionIndex = message.indexOf(actionReferenceMessage);
+
+	return actionIndex > 0 && PLURAL_HOME_TARGET_PATTERN.test(message.slice(0, actionIndex));
 }
 
 function hasGenericActionTarget(
