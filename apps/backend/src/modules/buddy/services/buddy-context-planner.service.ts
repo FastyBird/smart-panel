@@ -80,6 +80,7 @@ const CLOCK_TIME_HISTORY_PATTERN = new RegExp(
 );
 const HISTORY_PATTERN =
 	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\bwhen did\b|\b(?:earlier today|last (?:day|hour|minute|month|night|week|weekend|year)|this (?:afternoon|evening|morning|night))\b|\b(?:last|since)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b(?:did|was|were)\b.*\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*\b(?:did|was|were)\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
+const LEADING_WEEKDAY_HISTORY_PATTERN = /^\s*on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*$/u;
 const TEMPORAL_HISTORY_PATTERN = new RegExp(
 	String.raw`(?:${HISTORY_PATTERN.source}|${CLOCK_TIME_HISTORY_PATTERN.source})`,
 	'u',
@@ -444,7 +445,7 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 	if (clauseBoundary >= 0) return outcomePattern.test(prefix.slice(clauseBoundary + 1).trim());
 
 	const unpunctuatedModalPattern = new RegExp(
-		String.raw`(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?(?:can|could|may|might|must|should|will|would)\s+(?!you\b)`,
+		String.raw`(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?(?:can|could|did|do|does|may|might|must|should|will|would)\s+(?!you\b)`,
 		'gu',
 	);
 	const modalMatch = [...prefix.matchAll(unpunctuatedModalPattern)].at(-1);
@@ -669,7 +670,9 @@ function hasDomainSignalInClause(clause: string, domainPattern: RegExp, entityNa
 
 function hasHistorySignalInClause(clause: string): boolean {
 	return (
-		HISTORY_PATTERN.test(clause) || (!ACTION_COMMAND_PATTERN.test(clause) && CLOCK_TIME_HISTORY_PATTERN.test(clause))
+		HISTORY_PATTERN.test(clause) ||
+		LEADING_WEEKDAY_HISTORY_PATTERN.test(clause) ||
+		(!ACTION_COMMAND_PATTERN.test(clause) && CLOCK_TIME_HISTORY_PATTERN.test(clause))
 	);
 }
 
@@ -886,6 +889,7 @@ function classifyAmbiguityRisk(
 		) {
 			return 'action';
 		}
+		if (/\bor\b/u.test(actionReferenceMessage)) return 'action';
 		if (
 			hasGenericActionTarget(actionReferenceMessage, explicitSpaces, conversationSpaceId !== undefined) &&
 			!hasMultiSpaceLightingTarget(message, explicitSpaces)

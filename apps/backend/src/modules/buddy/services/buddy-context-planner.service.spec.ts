@@ -550,6 +550,21 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('clarifies disjunctive action alternatives instead of selecting one', () => {
+		expect(
+			service.plan({
+				message: 'Run Movie Night or run Bedtime',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'trigger',
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
 	it('does not attach a condition pronoun as an action reference', () => {
 		expect(
 			service.plan({
@@ -611,6 +626,7 @@ describe('BuddyContextPlannerService', () => {
 		'If the window is open will the heater turn on?',
 		'If the window is open, should the heater turn on?',
 		'If the window is open must the heater turn on?',
+		'If the window is open does the heater turn on?',
 	])('keeps a conditional outcome question on the read path: %s', (message) => {
 		expect(
 			service.plan({
@@ -1719,6 +1735,7 @@ describe('BuddyContextPlannerService', () => {
 		'What was the Bedroom temperature last Tuesday?',
 		'Show the Bedroom temperature since Monday',
 		'What was the Bedroom temperature on Monday?',
+		'On Monday, what was the Bedroom temperature?',
 	])('routes weekday history phrasing to timeseries: %s', (message) => {
 		expect(
 			service.plan({
