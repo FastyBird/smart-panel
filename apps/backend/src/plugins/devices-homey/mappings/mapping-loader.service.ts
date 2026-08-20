@@ -347,7 +347,7 @@ export class HomeyMappingLoaderService implements OnModuleInit {
 	}
 
 	private validatePropertyDefinition(definition: HomeyPropertyMappingDefinition): void {
-		const { range, transform } = definition.property;
+		const { direction, range, transform } = definition.property;
 
 		if (range?.minimum !== undefined && range.maximum !== undefined && range.minimum > range.maximum) {
 			throw new Error('range minimum must not exceed maximum');
@@ -364,6 +364,16 @@ export class HomeyMappingLoaderService implements OnModuleInit {
 
 		if (transform?.type === 'clamp' && transform.minimum > transform.maximum) {
 			throw new Error('clamp minimum must not exceed maximum');
+		}
+
+		if (transform?.type === 'map') {
+			if (direction !== 'write_only' && transform.read === undefined) {
+				throw new Error(`map transform requires a read table for ${direction} direction`);
+			}
+
+			if (direction !== 'read_only' && transform.write === undefined) {
+				throw new Error(`map transform requires a write table for ${direction} direction`);
+			}
 		}
 	}
 

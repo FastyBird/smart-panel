@@ -153,7 +153,8 @@
               "minProperties": 1
             }
           },
-          "required": ["type", "read"],
+          "required": ["type"],
+          "anyOf": [{ "required": ["read"] }, { "required": ["write"] }],
           "additionalProperties": false
         },
         {

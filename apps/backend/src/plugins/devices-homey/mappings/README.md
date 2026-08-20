@@ -29,5 +29,9 @@ Every descriptor supports:
 - property `direction`: `read_only`, `write_only`, or `bidirectional`;
 - property unit/range expectations and inline `scale`, `map`, `boolean`, `clamp`, or `round` transforms.
 
+Map transforms must declare a `read` table for read-capable directions and an explicit `write` table for writable
+directions. Bidirectional maps require both tables; the loader never guesses an inverse from potentially non-injective
+read values.
+
 The JSON schema rejects unknown keys and malformed structures. Semantic validation additionally rejects unknown Smart
 Panel enum values, inverted ranges, and degenerate transformations.

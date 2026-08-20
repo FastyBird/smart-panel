@@ -77,7 +77,7 @@ export interface HomeyScaleTransformDefinition {
 
 export interface HomeyMapTransformDefinition {
 	type: 'map';
-	read: Record<string, HomeyMappingScalar>;
+	read?: Record<string, HomeyMappingScalar>;
 	write?: Record<string, HomeyMappingScalar>;
 }
 

@@ -352,4 +352,78 @@ describe('HomeyMappingLoaderService', () => {
 		expect(service.getPropertyMappings()[0]?.source).toBe('builtin');
 		expect(service.getLoadResults().at(-1)).toMatchObject({ source: 'user', success: false });
 	});
+
+	it.each(['bidirectional', 'write_only'] as const)(
+		'rejects a %s map transform without an explicit write table',
+		(direction) => {
+			writeBuiltin('properties', [
+				propertyDefinition({
+					property: {
+						channel: 'temperature',
+						category: 'temperature',
+						data_type: 'float',
+						direction,
+						transform: { type: 'map', read: { cold: 0, warm: 1 } },
+					},
+				}),
+			]);
+
+			try {
+				service.loadAllMappings();
+				throw new Error('Expected writable map validation to fail');
+			} catch (error) {
+				expect(error).toBeInstanceOf(HomeyMappingConfigurationError);
+				expect((error as HomeyMappingConfigurationError).issues).toContain(
+					`Mapping 'measured-temperature' is invalid: map transform requires a write table for ${direction} direction`,
+				);
+			}
+		},
+	);
+
+	it('accepts direction-complete map transforms', () => {
+		writeBuiltin('properties', [
+			propertyDefinition({
+				name: 'read-map',
+				property: {
+					channel: 'temperature',
+					category: 'temperature',
+					data_type: 'enum',
+					direction: 'read_only',
+					transform: { type: 'map', read: { cold: 0, warm: 1 } },
+				},
+			}),
+			propertyDefinition({
+				name: 'write-map',
+				property: {
+					channel: 'temperature',
+					category: 'temperature',
+					data_type: 'enum',
+					direction: 'write_only',
+					transform: { type: 'map', write: { '0': 'cold', '1': 'warm' } },
+				},
+			}),
+			propertyDefinition({
+				name: 'bidirectional-map',
+				property: {
+					channel: 'temperature',
+					category: 'temperature',
+					data_type: 'enum',
+					direction: 'bidirectional',
+					transform: {
+						type: 'map',
+						read: { cold: 0, warm: 1 },
+						write: { '0': 'cold', '1': 'warm' },
+					},
+				},
+			}),
+		]);
+
+		service.loadAllMappings();
+
+		expect(service.getPropertyMappings().map((mapping) => mapping.name)).toEqual([
+			'bidirectional-map',
+			'read-map',
+			'write-map',
+		]);
+	});
 });
