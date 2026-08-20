@@ -3,8 +3,14 @@ import { createPinia, setActivePinia } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DevicesModuleDeviceCategory, DevicesModuleDeviceConnectionStatus, DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
+import {
+	DevicesModuleChannelCategory,
+	DevicesModuleDeviceCategory,
+	DevicesModuleDeviceConnectionStatus,
+	DevicesModuleDevicesHiddenFilter,
+} from '../../../openapi.constants';
 
+import type { IChannelRes } from './channels.store.types';
 import { useDevices } from './devices.store';
 import type { IDeviceRes } from './devices.store.types';
 
@@ -15,16 +21,42 @@ const mockBackendClient = {
 	DELETE: vi.fn(),
 };
 
-// Permissive: this spec exercises `fetch()`'s dedup/staleness handling and the bulk actions' own
-// bookkeeping, not what ends up in the related controls/channels stores, so every key gets the same
-// push-able, no-op stub. `findForDevice` answers empty because the cascade's fan-out is the channels
-// store's concern; what matters here is that the cascade runs for the right devices.
-const mockGetStore = vi.fn(() => ({
-	firstLoad: [] as string[],
-	set: vi.fn(),
-	unset: vi.fn(),
-	findForDevice: vi.fn(() => []),
-}));
+type RelationStoreStub = {
+	firstLoad: string[];
+	set: Mock;
+	unset: Mock;
+	findForDevice: Mock;
+};
+
+// Keyed by store symbol and kept for the life of a test, mirroring the real `storesManager`, which
+// hands back the very same store instance on every `getStore()` call rather than a fresh one. That
+// identity is what the cross-store `firstLoad` dedup regression below depends on: it only sees
+// duplicates pile up if the array a first `fetch()` pushed into is the same array a second `fetch()`
+// pushes into. Otherwise permissive: this spec exercises `fetch()`'s dedup/staleness handling and the
+// bulk actions' own bookkeeping, not the full shape of what ends up in the related controls/channels
+// stores, so every key gets the same push-able, no-op `set`/`unset` stub. `findForDevice` answers
+// empty because the cascade's fan-out is the channels store's concern; what matters here is that the
+// cascade runs for the right devices.
+const relationStores = new Map<symbol, RelationStoreStub>();
+
+const mockGetStore = vi.fn((key: symbol): RelationStoreStub => {
+	const existing = relationStores.get(key);
+
+	if (existing) {
+		return existing;
+	}
+
+	const created: RelationStoreStub = {
+		firstLoad: [],
+		set: vi.fn(),
+		unset: vi.fn(),
+		findForDevice: vi.fn(() => []),
+	};
+
+	relationStores.set(key, created);
+
+	return created;
+});
 
 vi.mock('../../../common', async () => {
 	const utils = await vi.importActual('../../../common/utils/utils');
@@ -90,6 +122,22 @@ const deviceFixture = (name: string): IDeviceRes =>
 		channels: [],
 	}) as unknown as IDeviceRes;
 
+const channelFixture = (deviceId: string, name: string): IChannelRes =>
+	({
+		id: uuid(),
+		type: 'some-channel',
+		device: deviceId,
+		category: DevicesModuleChannelCategory.generic,
+		identifier: null,
+		name,
+		description: null,
+		parent: null,
+		created_at: '2024-03-01T12:00:00Z',
+		updated_at: null,
+		controls: [],
+		properties: [],
+	}) as unknown as IChannelRes;
+
 describe('Devices Store', () => {
 	let store: ReturnType<typeof useDevices>;
 
@@ -98,6 +146,7 @@ describe('Devices Store', () => {
 
 		store = useDevices();
 
+		relationStores.clear();
 		vi.clearAllMocks();
 	});
 
@@ -397,6 +446,31 @@ describe('Devices Store', () => {
 		await olderFetch;
 
 		expect(store.fetching()).toBe(false);
+	});
+
+	// Cross-store relation bookkeeping — `devicesControlsStore.firstLoad`, `channelsStore.firstLoad`,
+	// `channelsControlsStore.firstLoad`, `channelsPropertiesStore.firstLoad` — is written on every
+	// `fetch()`, including a plain reconnect refresh of devices and channels the stores already hold.
+	// A naive push would grow those arrays without bound across repeated fetches of the same rows.
+	it('does not accumulate duplicate ids in cross-store firstLoad markers across repeated fetches', async () => {
+		const deviceOne = deviceFixture('device-1');
+		const deviceTwo = deviceFixture('device-2');
+
+		deviceOne.channels = [channelFixture(deviceOne.id, 'channel-1')];
+		deviceTwo.channels = [channelFixture(deviceTwo.id, 'channel-2')];
+
+		mockBackendClient.GET.mockResolvedValue({ data: { data: [deviceOne, deviceTwo] } });
+
+		await store.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
+		await store.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
+
+		// Guards the regression test itself: if nothing populated `relationStores`, the loop below
+		// would pass vacuously without ever having exercised the cascade.
+		expect(relationStores.size).toBeGreaterThan(0);
+
+		for (const relationStore of relationStores.values()) {
+			expect(relationStore.firstLoad.length).toBe(new Set(relationStore.firstLoad).size);
+		}
 	});
 
 	// `edit()` merges the whole cached record into the object it validates, so schema defaults (e.g.

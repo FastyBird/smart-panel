@@ -5,7 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy, pick } from 'lodash';
 
 import { MODULES_PREFIX } from '../../../app.constants';
-import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
+import { getErrorReason, injectStoresManager, markFirstLoad, useBackend, useLogger } from '../../../common';
 import type {
 	DevicesModuleCreateDeviceOperation,
 	DevicesModuleCreateDevicesBulkRemoveOperation,
@@ -887,7 +887,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			});
 		});
 
-		devicesControlsStore.firstLoad.push(device.id);
+		markFirstLoad(devicesControlsStore.firstLoad, device.id);
 	};
 
 	const insertChannelsRelations = (device: IDevice, channels: IChannelRes[]): void => {
@@ -910,7 +910,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				});
 			});
 
-			channelsControlsStore.firstLoad.push(channel.id);
+			markFirstLoad(channelsControlsStore.firstLoad, channel.id);
 
 			channel.properties.forEach((property) => {
 				const element = getChannelsPropertiesPluginElement(property.type);
@@ -921,10 +921,10 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				});
 			});
 
-			channelsPropertiesStore.firstLoad.push(channel.id);
+			markFirstLoad(channelsPropertiesStore.firstLoad, channel.id);
 		});
 
-		channelsStore.firstLoad.push(device.id);
+		markFirstLoad(channelsStore.firstLoad, device.id);
 	};
 
 	// Reconnect refresh contract: the store itself says whether it holds anything worth

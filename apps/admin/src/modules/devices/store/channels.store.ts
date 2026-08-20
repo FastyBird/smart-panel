@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
+import { getErrorReason, injectStoresManager, markFirstLoad, useBackend, useLogger } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
 import type {
 	DevicesModuleGetChannelOperation,
@@ -647,7 +647,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 			});
 		});
 
-		channelsControlsStore.firstLoad.push(channel.id);
+		markFirstLoad(channelsControlsStore.firstLoad, channel.id);
 	};
 
 	const insertChannelPropertiesRelations = (channel: IChannel, properties: IChannelPropertyRes[]): void => {
@@ -662,7 +662,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 			});
 		});
 
-		channelsPropertiesStore.firstLoad.push(channel.id);
+		markFirstLoad(channelsPropertiesStore.firstLoad, channel.id);
 	};
 
 	return {

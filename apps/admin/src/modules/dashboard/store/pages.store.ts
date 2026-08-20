@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
+import { getErrorReason, injectStoresManager, markFirstLoad, useBackend, useLogger } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
 import type {
 	DashboardModuleGetPageOperation,
@@ -632,7 +632,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 			});
 		});
 
-		dataSourcesStore.firstLoad.push(page.id);
+		markFirstLoad(dataSourcesStore.firstLoad, page.id);
 	};
 
 	const insertTilesRelations = (page: IPage, tiles: ITileRes[]): void => {
@@ -658,10 +658,10 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 				});
 			});
 
-			dataSourcesStore.firstLoad.push(tile.id);
+			markFirstLoad(dataSourcesStore.firstLoad, tile.id);
 		});
 
-		tilesStore.firstLoad.push(page.id);
+		markFirstLoad(tilesStore.firstLoad, page.id);
 	};
 
 	// Reconnect refresh contract: the store itself says whether it holds anything worth

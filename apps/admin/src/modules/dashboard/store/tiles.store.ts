@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
+import { getErrorReason, injectStoresManager, markFirstLoad, useBackend, useLogger } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
 import type {
 	DashboardModuleGetTileOperation,
@@ -570,7 +570,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 			});
 		});
 
-		dataSourcesStore.firstLoad.push(tile.id);
+		markFirstLoad(dataSourcesStore.firstLoad, tile.id);
 	};
 
 	return {
