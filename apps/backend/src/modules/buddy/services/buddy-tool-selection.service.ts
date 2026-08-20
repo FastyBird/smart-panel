@@ -154,7 +154,7 @@ const RELATIVE_ADJUSTMENT_SIGNALS = new Set([
 	'up',
 	'warmer',
 ]);
-const HOME_SIGNALS = new Set([
+export const BUDDY_HOME_SIGNALS: ReadonlySet<string> = new Set([
 	'air',
 	'bathroom',
 	'bedroom',
@@ -206,6 +206,7 @@ const HOME_SIGNALS = new Set([
 	'zaluzie',
 	'zarizeni',
 ]);
+const HOME_SIGNALS = BUDDY_HOME_SIGNALS;
 const SCENE_SIGNALS = new Set(['automation', 'preset', 'routine', 'scene', 'scena']);
 export const BUDDY_SCENE_ACTION_SIGNALS: ReadonlySet<string> = new Set(['run', 'spust']);
 const SCENE_ACTION_SIGNALS = BUDDY_SCENE_ACTION_SIGNALS;
@@ -553,7 +554,7 @@ function normalize(value: string): string {
 		.trim();
 }
 
-function intersects(tokens: Set<string>, signals: Set<string>): boolean {
+function intersects(tokens: ReadonlySet<string>, signals: ReadonlySet<string>): boolean {
 	for (const token of tokens) {
 		if (signals.has(token)) return true;
 	}

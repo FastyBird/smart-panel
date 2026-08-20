@@ -89,6 +89,21 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('reuses localized home vocabulary for state reads', () => {
+		expect(
+			service.plan({
+				message: 'Je světlo zapnuté?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state'],
+		});
+	});
+
 	it('keeps established heating, cooling, lighting, and air categories on the home read path', () => {
 		for (const message of ['Is the heating on?', 'What is the air quality?', 'Is cooling active?', 'List lighting']) {
 			expect(
@@ -1127,6 +1142,41 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('preserves a predicate read after an action clause', () => {
+		expect(
+			service.plan({
+				message: 'Turn Reading Lamp off, and is Bedroom Window open?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'mixed',
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'current-state', spaceId: 'space-bedroom' },
+			],
+			strategy: 'deterministic-action',
+		});
+	});
+
+	it('uses a resolved contextual room for a lighting group action', () => {
+		expect(
+			service.plan({
+				message: 'Turn all lights off in this room',
+				conversationSpaceId: 'space-kitchen',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'write',
+			scope: { spaceId: 'space-kitchen' },
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device', 'set_space_lighting'],
+		});
+	});
+
 	it('scopes energy and home-state queries from their own clauses', () => {
 		expect(
 			service.plan({
@@ -1473,6 +1523,22 @@ describe('BuddyContextPlannerService', () => {
 			expect(result.queries).toEqual([{ kind: 'search-home' }, { kind: 'property-timeseries' }]);
 		},
 	);
+
+	it('routes a natural-language calendar date to timeseries', () => {
+		expect(
+			service.plan({
+				message: 'What was the Bedroom temperature on August 19?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+			],
+		});
+	});
 
 	it('routes a relative duration ending in ago to timeseries', () => {
 		expect(
