@@ -778,6 +778,21 @@ describe('BuddyContextPlannerService', () => {
 		).toMatchObject({ intent: 'write', toolNames: ['search_home', 'query_home_state', 'control_device'] });
 	});
 
+	it('classifies a scene run independently from a later device-run target', () => {
+		expect(
+			service.plan({
+				message: 'Run movie night then turn bedroom fan on',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'mixed',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device', 'run_scene'],
+		});
+	});
+
 	it('treats an explicit known space as a home-domain signal', () => {
 		expect(
 			service.plan({
@@ -820,6 +835,20 @@ describe('BuddyContextPlannerService', () => {
 				{ kind: 'search-home', spaceId: 'space-bedroom' },
 				{ kind: 'current-state', spaceId: 'space-bedroom' },
 			],
+		});
+	});
+
+	it('keeps a possessive installation explanation on the home path', () => {
+		expect(
+			service.plan({
+				message: 'Explain why my thermostat is cold',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+			strategy: 'model-tools',
 		});
 	});
 
@@ -993,6 +1022,31 @@ describe('BuddyContextPlannerService', () => {
 				{ kind: 'search-home', spaceId: 'space-bedroom' },
 				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
 			],
+		});
+	});
+
+	it('keeps present-tense possession bounded by today on the current-state path', () => {
+		expect(
+			service.plan({
+				message: 'What devices have low batteries today?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+		});
+	});
+
+	it('retains have-been wording as a historical today request', () => {
+		expect(
+			service.plan({
+				message: 'Which lights have been on today?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			queries: [{ kind: 'search-home' }, { kind: 'property-timeseries' }],
 		});
 	});
 

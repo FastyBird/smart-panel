@@ -27,10 +27,12 @@ const WEATHER_ENTITY_NAME_PATTERN = /\boutside\s+(?:device|fan|lamp|light|sensor
 const ENERGY_ENTITY_NAME_PATTERN = /\bpower\s+(?:device|fan|lamp|light|sensor|switch)\b/gu;
 const SECURITY_PATTERN = /\b(?:alarm|armed|intrusion|secure|security)\b/u;
 const HISTORY_PATTERN =
-	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:month|night|week|year))\b|\b(?:did|has|have|was|were)\b.*\btoday\b|\btoday\b.*\b(?:did|has|have|was|were)\b|\b(?:for|last|over)\s+\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b/u;
+	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:month|night|week|year))\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b/u;
 const CURRENT_STATE_PATTERN = /\b(?:at present|current|currently|now|right now)\b/u;
 const HOME_ENTITY_PATTERN =
-	/\b(?:air|blind|blinds|device|door|doors|fan|garage|lamp|light|lighting|lights|room|scene|sensor|switch|thermostat|window|windows)\b/u;
+	/\b(?:air|blind|blinds|device|devices|door|doors|fan|garage|lamp|light|lighting|lights|room|scene|sensor|switch|thermostat|window|windows)\b/u;
+const POSSESSIVE_HOME_ENTITY_PATTERN =
+	/\b(?:my|our)\s+(?:air|blind|blinds|device|devices|door|doors|fan|garage|lamp|light|lighting|lights|room|scene|sensor|switch|thermostat|window|windows)\b/u;
 const HOME_INSTALLATION_PATTERN = /\b(?:home|house)\b/u;
 const HOME_STATE_PATTERN = /\b(?:cold|cooling|heating|humidity|temperature|warm)\b/u;
 const READ_PATTERN =
@@ -145,8 +147,9 @@ export class BuddyContextPlannerService {
 			!isGenericExplanation &&
 			!isReadOnlyPredicate &&
 			ACTION_COMMAND_PATTERN.test(actionMessage) &&
-			TRIGGER_PATTERN.test(actionMessage) &&
-			!DEVICE_RUN_TARGET_PATTERN.test(actionMessage);
+			splitPlannerClauses(actionMessage).some(
+				(clause) => TRIGGER_PATTERN.test(clause) && !DEVICE_RUN_TARGET_PATTERN.test(clause),
+			);
 		const hasAction = hasWrite || hasTrigger;
 		const referenceActionTypes = getReferenceActionTypes(actionReferenceMessage);
 		const domains = classifyDomains(
@@ -323,7 +326,7 @@ function splitPlannerClauses(message: string): string[] {
 }
 
 function isGeneralExplanation(message: string, hasExplicitSpace = false): boolean {
-	if (hasExplicitSpace) return false;
+	if (hasExplicitSpace || POSSESSIVE_HOME_ENTITY_PATTERN.test(message)) return false;
 
 	return (
 		/^how (?:can|could|do|does|would)\b.*\b(?:work|works|working|i)\b/u.test(message) ||
