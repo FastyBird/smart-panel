@@ -1,3 +1,192 @@
 version: 1
 kind: channels
-mappings: []
+mappings:
+  - name: light
+    priority: 200
+    match:
+      classes: [light]
+      all_capabilities: [onoff]
+    channel:
+      identifier: light
+      category: light
+      name: Light
+
+  - name: outlet
+    priority: 200
+    match:
+      classes: [socket]
+      all_capabilities: [onoff]
+    channel:
+      identifier: outlet
+      category: outlet
+      name: Outlet
+
+  - name: generic-switch
+    priority: 100
+    match:
+      classes: [other]
+      all_capabilities: [onoff]
+    channel:
+      identifier: switcher
+      category: switcher
+      name: Switch
+
+  - name: thermostat-temperature
+    priority: 200
+    match:
+      classes: [thermostat]
+      all_capabilities: [measure_temperature]
+    channel:
+      identifier: temperature
+      category: temperature
+      name: Current temperature
+
+  - name: thermostat-control
+    priority: 200
+    match:
+      classes: [thermostat]
+      any_capabilities: [target_temperature, thermostat_mode]
+    channel:
+      identifier: thermostat
+      category: thermostat
+      name: Thermostat
+
+  - name: measured-temperature
+    priority: 100
+    match:
+      classes: [sensor]
+      all_capabilities: [measure_temperature]
+    channel:
+      identifier: temperature
+      category: temperature
+      name: Temperature
+
+  - name: measured-humidity
+    priority: 100
+    match:
+      classes: [sensor]
+      all_capabilities: [measure_humidity]
+    channel:
+      identifier: humidity
+      category: humidity
+      name: Humidity
+
+  - name: measured-pressure
+    priority: 100
+    match:
+      classes: [sensor]
+      all_capabilities: [measure_pressure]
+    channel:
+      identifier: pressure
+      category: pressure
+      name: Pressure
+
+  - name: measured-luminance
+    priority: 100
+    match:
+      classes: [sensor]
+      all_capabilities: [measure_luminance]
+    channel:
+      identifier: illuminance
+      category: illuminance
+      name: Illuminance
+
+  - name: measured-carbon-dioxide
+    priority: 100
+    match:
+      classes: [sensor]
+      all_capabilities: [measure_co2]
+    channel:
+      identifier: carbon-dioxide
+      category: carbon_dioxide
+      name: Carbon dioxide
+
+  - name: motion-alarm
+    priority: 100
+    match:
+      classes: [sensor, lock]
+      all_capabilities: [alarm_motion]
+    channel:
+      identifier: motion
+      category: motion
+      name: Motion
+
+  - name: contact-alarm
+    priority: 100
+    match:
+      classes: [sensor, lock]
+      all_capabilities: [alarm_contact]
+    channel:
+      identifier: contact
+      category: contact
+      name: Contact
+
+  - name: smoke-alarm
+    priority: 100
+    match:
+      classes: [sensor]
+      all_capabilities: [alarm_smoke]
+    channel:
+      identifier: smoke
+      category: smoke
+      name: Smoke
+
+  - name: carbon-monoxide-alarm
+    priority: 100
+    match:
+      classes: [sensor]
+      all_capabilities: [alarm_co]
+    channel:
+      identifier: carbon-monoxide
+      category: carbon_monoxide
+      name: Carbon monoxide
+
+  - name: electrical-power
+    priority: 100
+    match:
+      classes: [light, socket]
+      all_capabilities: [measure_power]
+    channel:
+      identifier: electrical-power
+      category: electrical_power
+      name: Electrical power
+
+  - name: electrical-energy
+    priority: 100
+    match:
+      classes: [light, socket]
+      all_capabilities: [meter_power]
+    channel:
+      identifier: electrical-energy
+      category: electrical_energy
+      name: Electrical energy
+
+  - name: battery
+    priority: 100
+    match:
+      classes: [sensor, thermostat, lock, windowcoverings, curtain, blinds, sunshade, shutterblinds]
+      any_capabilities: [measure_battery, alarm_battery]
+    channel:
+      identifier: battery
+      category: battery
+      name: Battery
+
+  - name: lock
+    priority: 200
+    match:
+      classes: [lock]
+      all_capabilities: [locked]
+    channel:
+      identifier: lock
+      category: lock
+      name: Lock
+
+  - name: window-covering
+    priority: 200
+    match:
+      classes: [windowcoverings, curtain, blinds, sunshade, shutterblinds]
+      all_capabilities: [windowcoverings_state, windowcoverings_set]
+    channel:
+      identifier: window-covering
+      category: window_covering
+      name: Window covering

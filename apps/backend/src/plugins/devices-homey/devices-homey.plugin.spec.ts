@@ -15,6 +15,7 @@ import { DEVICES_HOMEY_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-homey.opena
 import { DevicesHomeyPlugin } from './devices-homey.plugin';
 import { HomeyUpdatePluginConfigDto } from './dto/update-config.dto';
 import { HomeyMappingLoaderService } from './mappings/mapping-loader.service';
+import { HomeyMappingTransformerService } from './mappings/mapping-transformer.service';
 import { HomeyPropertyMappingStorageService } from './mappings/property-mapping-storage.service';
 import { HomeyConfigModel } from './models/config.model';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
@@ -84,6 +85,7 @@ describe('DevicesHomeyPlugin', () => {
 				HomeyLocalConnectorFactory,
 				HomeyConnectionTestService,
 				HomeyMappingLoaderService,
+				HomeyMappingTransformerService,
 				HomeyPropertyMappingStorageService,
 			]),
 		);
