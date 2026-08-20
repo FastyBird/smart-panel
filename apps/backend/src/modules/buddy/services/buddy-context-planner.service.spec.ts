@@ -959,6 +959,40 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it.each(['plus', 'as well as', 'and also'])(
+		'recognizes an action after an established compound separator: %s',
+		(separator) => {
+			expect(
+				service.plan({
+					message: `Check whether the window is open ${separator} turn off the heater`,
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({
+				domains: ['home'],
+				intent: 'mixed',
+				strategy: 'model-tools',
+				toolNames: ['search_home', 'query_home_state', 'control_device'],
+			});
+		},
+	);
+
+	it.each(['plus', 'as well as', 'and also'])(
+		'recognizes a read after an established compound separator: %s',
+		(separator) => {
+			expect(
+				service.plan({
+					message: `Turn off the heater ${separator} check whether the window is open`,
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({
+				domains: ['home'],
+				intent: 'mixed',
+				queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+				strategy: 'model-tools',
+			});
+		},
+	);
+
 	it('uses metadata search without current-state reads for capability discovery', () => {
 		expect(
 			service.plan({
@@ -1021,6 +1055,30 @@ describe('BuddyContextPlannerService', () => {
 
 		expect(result).toMatchObject({ domains: ['home'], intent: 'read', scope: {} });
 		expect(result.queries).toEqual([{ kind: 'search-home' }, { kind: 'current-state' }]);
+	});
+
+	it('retains every configured space in an explicit multi-space read', () => {
+		expect(
+			service.plan({
+				message: 'What is the temperature in Bedroom and Kitchen?',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			scope: { spaceIds: ['space-bedroom', 'space-kitchen'] },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'search-home', spaceId: 'space-kitchen' },
+				{ kind: 'current-state', spaceId: 'space-bedroom' },
+				{ kind: 'current-state', spaceId: 'space-kitchen' },
+			],
+		});
 	});
 
 	it('prefers the longest overlapping explicit space name', () => {

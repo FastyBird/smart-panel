@@ -62,6 +62,7 @@ export interface BuddyContextPlannerInput {
 
 export interface BuddyContextScope {
 	spaceId?: string;
+	spaceIds?: string[];
 	referencedEntityIds?: string[];
 }
 
