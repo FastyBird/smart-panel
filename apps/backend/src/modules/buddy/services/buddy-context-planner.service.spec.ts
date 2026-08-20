@@ -894,6 +894,57 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('preserves a genuine weather signal beside an outside-light entity name', () => {
+		expect(
+			service.plan({
+				message: 'Turn on the outside light when it is raining',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home', 'weather'],
+			intent: 'mixed',
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }, { kind: 'weather' }],
+			strategy: 'deterministic-action',
+		});
+	});
+
+	it('classifies a home-state clause independently from a weather clause', () => {
+		expect(
+			service.plan({
+				message: 'Will it rain tomorrow, and is the house warm?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home', 'weather'],
+			intent: 'read',
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }, { kind: 'weather' }],
+			strategy: 'prefetch',
+		});
+	});
+
+	it('lets a unique recent reference override default conversation scope', () => {
+		expect(
+			service.plan({
+				message: 'Is it on?',
+				conversationSpaceId: 'space-office',
+				recentEntityReferences: [
+					{
+						kind: 'device',
+						id: 'device-kitchen-lamp',
+						name: 'Kitchen lamp',
+						compatibleActionTypes: ['turn'],
+					},
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			scope: { referencedEntityIds: ['device-kitchen-lamp'] },
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+		});
+	});
+
 	it('preserves an energy read in a compound action request', () => {
 		expect(
 			service.plan({

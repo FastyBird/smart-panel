@@ -23,8 +23,8 @@ const DOMAIN_ORDER: readonly BuddyContextDomain[] = ['general', 'home', 'weather
 const WEATHER_PATTERN =
 	/\b(?:cloud|cloudy|fog|foggy|forecast|outside|rain|raining|snow|storm|stormy|sun|sunny|thunder|weather|wind)\b/u;
 const ENERGY_PATTERN = /\b(?:consumption|energy|kwh|power|production|usage)\b/u;
-const WEATHER_ENTITY_NAME_PATTERN = /\boutside\s+(?:device|fan|lamp|light|sensor|switch)\b/u;
-const ENERGY_ENTITY_NAME_PATTERN = /\bpower\s+(?:device|fan|lamp|light|sensor|switch)\b/u;
+const WEATHER_ENTITY_NAME_PATTERN = /\boutside\s+(?:device|fan|lamp|light|sensor|switch)\b/gu;
+const ENERGY_ENTITY_NAME_PATTERN = /\bpower\s+(?:device|fan|lamp|light|sensor|switch)\b/gu;
 const SECURITY_PATTERN = /\b(?:alarm|armed|intrusion|secure|security)\b/u;
 const HISTORY_PATTERN =
 	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:month|night|week|year))\b|\b(?:did|has|have|was|were)\b.*\btoday\b|\btoday\b.*\b(?:did|has|have|was|were)\b|\b(?:for|last|over)\s+\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b/u;
@@ -191,11 +191,12 @@ export class BuddyContextPlannerService {
 			: SINGULAR_REFERENCE_PRONOUN_PATTERN.test(normalizedMessage) && references.length !== 1
 				? []
 				: references;
+		const querySpaceIds = scopedReferences.length > 0 && explicitSpaceIds.length === 0 ? [] : resolvedSpaceIds;
 		const scope = {
-			...(resolvedSpaceIds.length === 1
-				? { spaceId: resolvedSpaceIds[0] }
-				: resolvedSpaceIds.length > 1
-					? { spaceIds: resolvedSpaceIds }
+			...(querySpaceIds.length === 1
+				? { spaceId: querySpaceIds[0] }
+				: querySpaceIds.length > 1
+					? { spaceIds: querySpaceIds }
 					: {}),
 			...(scopedReferences.length > 0
 				? { referencedEntityIds: scopedReferences.map((reference) => reference.id) }
@@ -206,7 +207,7 @@ export class BuddyContextPlannerService {
 			domains,
 			intent,
 			scope,
-			queries: buildQueries(domains, hasAction, requiresReadForAction, resolvedSpaceIds, includeCurrentStateForRead),
+			queries: buildQueries(domains, hasAction, requiresReadForAction, querySpaceIds, includeCurrentStateForRead),
 			toolNames: buildToolNames(domains, hasWrite, hasTrigger, strategy, normalizedMessage),
 			ambiguityRisk,
 			strategy,
@@ -255,9 +256,20 @@ function classifyDomains(
 	const hasEnergy = hasDomainSignalOutsideEntityName(message, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN);
 	const hasSecurity = SECURITY_PATTERN.test(message);
 	const hasNonHomeDomain = hasWeather || hasEnergy || hasSecurity;
-	const hasInstallationHome = HOME_INSTALLATION_PATTERN.test(message) && !hasWeather && !hasEnergy && !hasSecurity;
-	const hasContextualHomeState =
-		HOME_STATE_PATTERN.test(message) && (!hasWeather || CONTEXTUAL_SCOPE_PATTERN.test(message));
+	const clauses = splitPlannerClauses(message);
+	const hasInstallationHome = clauses.some(
+		(clause) =>
+			HOME_INSTALLATION_PATTERN.test(clause) &&
+			!hasDomainSignalInClause(clause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) &&
+			!hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) &&
+			!SECURITY_PATTERN.test(clause),
+	);
+	const hasContextualHomeState = clauses.some(
+		(clause) =>
+			HOME_STATE_PATTERN.test(clause) &&
+			(!hasDomainSignalInClause(clause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) ||
+				CONTEXTUAL_SCOPE_PATTERN.test(clause)),
+	);
 	const hasRecentReferenceHome = hasRecentReferencePronoun && (hasAction || !hasNonHomeDomain);
 
 	if (
@@ -297,9 +309,17 @@ function classifyDomains(
 }
 
 function hasDomainSignalOutsideEntityName(message: string, domainPattern: RegExp, entityNamePattern: RegExp): boolean {
-	return message
-		.split(/(?:[?!,;]|\b(?:and(?: also)?|as well as|plus|then)\b)/u)
-		.some((clause) => domainPattern.test(clause) && !entityNamePattern.test(clause));
+	return splitPlannerClauses(message).some((clause) =>
+		hasDomainSignalInClause(clause, domainPattern, entityNamePattern),
+	);
+}
+
+function hasDomainSignalInClause(clause: string, domainPattern: RegExp, entityNamePattern: RegExp): boolean {
+	return domainPattern.test(clause.replace(entityNamePattern, ' '));
+}
+
+function splitPlannerClauses(message: string): string[] {
+	return message.split(/(?:[?!,;]|\b(?:and(?: also)?|as well as|plus|then)\b)/u);
 }
 
 function isGeneralExplanation(message: string, hasExplicitSpace = false): boolean {
