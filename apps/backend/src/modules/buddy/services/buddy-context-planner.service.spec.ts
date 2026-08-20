@@ -1691,6 +1691,28 @@ describe('BuddyContextPlannerService', () => {
 		},
 	);
 
+	it.each(['When did the Bedroom light turn off?', 'What was the Bedroom temperature two days ago?'])(
+		'routes past-tense and word-number history phrasing to timeseries: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+					providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+				}),
+			).toMatchObject({
+				domains: ['home', 'history'],
+				intent: 'read',
+				queries: [
+					{ kind: 'search-home', spaceId: 'space-bedroom' },
+					{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+				],
+				toolNames: [],
+				strategy: 'prefetch',
+			});
+		},
+	);
+
 	it.each([
 		'What was the Bedroom temperature last Tuesday?',
 		'Show the Bedroom temperature since Monday',
