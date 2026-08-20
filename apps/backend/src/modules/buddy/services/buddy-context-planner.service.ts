@@ -55,7 +55,7 @@ const PARTIAL_LIGHTING_GROUP_PATTERN =
 
 const DOMAIN_ORDER: readonly BuddyContextDomain[] = ['general', 'home', 'weather', 'energy', 'security', 'history'];
 const WEATHER_PATTERN =
-	/\b(?:cloud|cloudy|fog|foggy|forecast|outdoor|outside|rain|raining|snow|storm|stormy|sun|sunny|thunder|weather|wind)\b/u;
+	/\b(?:cloud|cloudy|fog|foggy|forecast|outdoor|outside|rain|raining|snow|storm|stormy|sun|sunny|thunder|weather|wind)\b|\btemperature\b.*\b(?:tomorrow|next (?:day|morning|week))\b|\b(?:tomorrow|next (?:day|morning|week))\b.*\btemperature\b/u;
 const ENERGY_PATTERN = /\b(?:consumption|electricity|energy|kwh|power|production|usage)\b/u;
 const DOMAIN_ENTITY_CATEGORY_PATTERN_SOURCE =
 	'device|devices|fan|fans|lamp|lamps|light|lights|sensor|sensors|switch|switches';
@@ -407,9 +407,6 @@ function getActionMessage(message: string, trailingActionMatch: RegExpExecArray 
 	if (trailingActionMatch) return message.slice(trailingActionMatch.index);
 	if (!LEADING_CONDITION_PATTERN.test(message)) return message;
 
-	const conditionalActionMatch = TRAILING_ACTION_PATTERN.exec(message);
-	if (conditionalActionMatch) return message.slice(conditionalActionMatch.index);
-
 	const unpunctuatedActionIndex = findLeadingConditionalActionIndex(message);
 
 	return unpunctuatedActionIndex === undefined ? message : message.slice(unpunctuatedActionIndex);
@@ -441,13 +438,19 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 
 	const prefix = message.slice(0, actionIndex);
 	const clauseBoundary = Math.max(prefix.lastIndexOf(','), prefix.lastIndexOf(';'));
-	if (clauseBoundary < 0) return false;
+	const outcomePattern =
+		/^(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?(?:(?:can|could|may|might|will|would)\s+(?!you\b)|(?:are|did|do|does|had|has|have|is|was|were)\b)/u;
 
-	const outcomePrefix = prefix.slice(clauseBoundary + 1).trim();
+	if (clauseBoundary >= 0) return outcomePattern.test(prefix.slice(clauseBoundary + 1).trim());
 
-	return /^(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?(?:(?:can|could|may|might|will|would)\s+(?!you\b)|(?:are|did|do|does|had|has|have|is|was|were)\b)/u.test(
-		outcomePrefix,
+	const unpunctuatedModalPattern = new RegExp(
+		String.raw`(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?(?:can|could|may|might|will|would)\s+(?!you\b)`,
+		'gu',
 	);
+	const modalMatch = [...prefix.matchAll(unpunctuatedModalPattern)].at(-1);
+	if (!modalMatch) return false;
+
+	return !new RegExp(String.raw`\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`, 'u').test(prefix.slice(modalMatch.index));
 }
 
 function getActionReferenceMessage(
@@ -695,13 +698,19 @@ function splitPlannerClauses(message: string, protectedSpaces: readonly BuddyCon
 
 	clauses.push(message.slice(clauseStart));
 
-	const conditionalClauses = clauses.flatMap((clause) => {
-		const actionIndex = findLeadingConditionalActionIndex(clause);
+	const preservesConditionalOutcomeQuestion =
+		LEADING_CONDITION_PATTERN.test(message) &&
+		/\?\s*$/u.test(message) &&
+		findLeadingConditionalActionIndex(message) === undefined;
+	const conditionalClauses = preservesConditionalOutcomeQuestion
+		? clauses
+		: clauses.flatMap((clause) => {
+				const actionIndex = findLeadingConditionalActionIndex(clause);
 
-		return actionIndex === undefined || actionIndex === 0
-			? [clause]
-			: [clause.slice(0, actionIndex), clause.slice(actionIndex)];
-	});
+				return actionIndex === undefined || actionIndex === 0
+					? [clause]
+					: [clause.slice(0, actionIndex), clause.slice(actionIndex)];
+			});
 
 	return mergeLeadingTemporalAdjuncts(conditionalClauses);
 }

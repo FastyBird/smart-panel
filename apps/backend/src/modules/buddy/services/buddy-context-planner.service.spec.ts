@@ -143,22 +143,40 @@ describe('BuddyContextPlannerService', () => {
 		expect(result.queries).toContainEqual(query);
 	});
 
-	it.each(['Will it be warm outside tomorrow?', 'What is the outdoor temperature?'])(
-		'keeps outdoor temperature language on the weather-only path: %s',
-		(message) => {
-			expect(
-				service.plan({
-					message,
-					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
-				}),
-			).toMatchObject({
-				domains: ['weather'],
-				queries: [{ kind: 'weather' }],
-				strategy: 'prefetch',
-				toolNames: [],
-			});
-		},
-	);
+	it.each([
+		'Will it be warm outside tomorrow?',
+		'What is the outdoor temperature?',
+		'What will the temperature be tomorrow?',
+	])('keeps outdoor temperature language on the weather-only path: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['weather'],
+			queries: [{ kind: 'weather' }],
+			strategy: 'prefetch',
+			toolNames: [],
+		});
+	});
+
+	it('keeps an unqualified current configured-space temperature on the home path', () => {
+		expect(
+			service.plan({
+				message: 'What is the Bedroom temperature?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			scope: { spaceId: 'space-bedroom' },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'current-state', spaceId: 'space-bedroom' },
+			],
+		});
+	});
 
 	it.each(['Will it be sunny tomorrow?', 'Will it be cloudy tomorrow?'])(
 		'routes a common weather condition to bounded weather retrieval: %s',
@@ -587,24 +605,25 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
-	it.each(['If the window is open, will the heater turn on?', 'If the window is open, when will the heater turn on?'])(
-		'keeps a conditional outcome question on the read path: %s',
-		(message) => {
-			expect(
-				service.plan({
-					message,
-					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
-				}),
-			).toMatchObject({
-				domains: ['home'],
-				intent: 'read',
-				queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
-				ambiguityRisk: 'none',
-				strategy: 'model-tools',
-				toolNames: ['search_home', 'query_home_state'],
-			});
-		},
-	);
+	it.each([
+		'If the window is open, will the heater turn on?',
+		'If the window is open, when will the heater turn on?',
+		'If the window is open will the heater turn on?',
+	])('keeps a conditional outcome question on the read path: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state'],
+		});
+	});
 
 	it('retains a polite action request after a leading condition', () => {
 		expect(
