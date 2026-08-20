@@ -781,6 +781,12 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 		semaphore.value.updating.push(...persisted);
 
+		// What each row was stamped at before the request goes out. The response says only that the
+		// backend applied the change, not what the row looks like now, so a row that something else
+		// has written since - a `DEVICE_UPDATED` event carrying another client's newer state, most
+		// likely - must not be walked back to the value this request asked for.
+		const stampedBefore = new Map(persisted.map((id): [IDevice['id'], number] => [id, mutationTokenById[id] ?? 0]));
+
 		try {
 			const { data: responseBody, error, response } = await backend.client.POST(
 				`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/bulk-update`,
@@ -806,7 +812,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			for (const id of result.succeeded) {
 				const record = data.value[id];
 
-				if (record !== undefined) {
+				if (record !== undefined && (mutationTokenById[id] ?? 0) === stampedBefore.get(id)) {
 					commit({ ...record, enabled: payload.enabled });
 				}
 			}

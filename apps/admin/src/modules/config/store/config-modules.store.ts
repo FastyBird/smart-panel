@@ -223,15 +223,7 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 						// than the one this answer carries.
 						if (overlapsWrite) {
 							if (payload.force) {
-								if (writePending(payload.type)) {
-									refreshAfterWrite.add(payload.type);
-								} else {
-									// The write settled while this answer was in transit, so there is
-									// nothing left to wait for - ask again now.
-									void get({ type: payload.type, force: true }).catch((error: unknown): void => {
-										logger.error('Failed to re-read module config after a write settled', error);
-									});
-								}
+								reReadAfterWrite(payload.type);
 							}
 
 							return data.value[payload.type] ?? transformed;
@@ -267,7 +259,22 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 			}
 		};
 
-		const fetch = async (): Promise<IConfigModule[]> => {
+		// Re-issues a read that had to be dropped for overlapping a write. Dropping one silently would
+	// lose whatever prompted it - another client's change, most often - so it is asked again once
+	// the write is out of the way, where the answer cannot predate it.
+	const reReadAfterWrite = (type: IConfigModule['type']): void => {
+		if (writePending(type)) {
+			refreshAfterWrite.add(type);
+
+			return;
+		}
+
+		void get({ type, force: true }).catch((error: unknown): void => {
+			logger.error('Failed to re-read module config after a write settled', error);
+		});
+	};
+
+	const fetch = async (): Promise<IConfigModule[]> => {
 			if ('all' in pendingFetchPromises) {
 				return pendingFetchPromises['all'];
 			}
@@ -329,11 +336,15 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 						}
 
 						// A type whose write overlapped this request is not described reliably by the
-						// answer, present or absent, so it keeps what it holds.
+						// answer, present or absent, so it keeps what it holds - and is asked about
+						// again, because this response may have been the one carrying another client's
+						// change and a reconnect refresh is exactly where that matters.
 						for (const type of overlappedWrites) {
 							if (!(type in applied) && data.value[type]) {
 								applied[type] = data.value[type];
 							}
+
+							reReadAfterWrite(type);
 						}
 
 						// An entry this response does not carry is evicted, and the eviction takes this
@@ -438,14 +449,7 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 				endWrite(payload.data.type);
 
 				if (!writePending(payload.data.type) && refreshAfterWrite.delete(payload.data.type)) {
-					// This is the only attempt left that can bring in whatever the dropped read was
-					// carrying, and the event handler that started it has long since resolved, so a
-					// failure here has nowhere else to surface. It is reported rather than swallowed:
-					// the entry keeps this client's confirmed value, and another client's change
-					// arrives with the next event or refresh instead.
-					void get({ type: payload.data.type, force: true }).catch((error: unknown): void => {
-						logger.error('Failed to re-read module config after an edit settled', error);
-					});
+					reReadAfterWrite(payload.data.type);
 				}
 			};
 

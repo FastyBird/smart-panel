@@ -588,6 +588,41 @@ describe('Devices Store', () => {
 			expect(store.findById(device.id)?.enabled).toBe(false);
 		});
 
+		// The response says only that the backend applied the change, not what the row looks like
+		// now. If something wrote the row while the request was in flight - another client's change
+		// arriving over the socket, most likely - the confirmation would otherwise walk it back to
+		// the value this request asked for, and stamp that older value as the newest thing known.
+		it('does not walk back a row something else wrote while the request was in flight', async () => {
+			const device = deviceFixture('device-1');
+
+			mockBackendClient.GET.mockResolvedValueOnce({ data: { data: [device] }, error: undefined, response: { status: 200 } });
+
+			await store.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
+
+			let resolveRequest!: (value: unknown) => void;
+
+			const request = new Promise((resolve) => {
+				resolveRequest = resolve;
+			});
+
+			mockBackendClient.POST.mockReturnValueOnce(request);
+
+			const pendingBulk = store.bulkSetEnabled({ ids: [device.id], enabled: false });
+
+			// Somebody else turns it back on while the bulk request is still outstanding.
+			store.onEvent({ id: device.id, type: device.type, data: { ...device, enabled: true } });
+
+			resolveRequest({
+				data: { data: { succeeded: [device.id], failed: [] } },
+				error: undefined,
+				response: { ok: true, status: 200 },
+			});
+
+			await pendingBulk;
+
+			expect(store.findById(device.id)?.enabled).toBe(true);
+		});
+
 		it('sends the selection in the request body', async () => {
 			const ids = await seed(2);
 

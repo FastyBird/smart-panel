@@ -594,6 +594,52 @@ describe('ConfigPlugin Store', () => {
 		expect(backendClient.GET).toHaveBeenCalledTimes(2);
 	});
 
+	// A reconnect refresh goes through `fetch()`, and it is exactly where another client's change
+	// is most likely to be waiting. Skipping an overlapped entry without asking again would leave
+	// that change sitting on the server until something else happened to look.
+	it('asks again for an entry a list refresh had to skip', async () => {
+		let resolvePatch!: (value: unknown) => void;
+
+		const patchRequest = new Promise((resolve) => {
+			resolvePatch = resolve;
+		});
+
+		store.data = { [mockPlugin.type]: { ...mockPlugin } };
+
+		(backendClient.PATCH as Mock).mockReturnValueOnce(patchRequest);
+
+		(backendClient.GET as Mock)
+			// The reconnect refresh, answered while the edit is still outstanding.
+			.mockResolvedValueOnce({
+				data: { data: [mockPluginRes] },
+				error: undefined,
+				response: { status: 200 },
+			})
+			// The read that follows once the write is done.
+			.mockResolvedValueOnce({
+				data: { data: { ...mockPluginRes, mockValue: 'someone else' } },
+				error: undefined,
+				response: { status: 200 },
+			});
+
+		const pendingEdit = store.edit({ data: { ...mockPlugin, mockValue: 'my value' } } as IConfigPluginsEditActionPayload);
+
+		await store.fetch();
+
+		// Skipped, because the answer cannot be told apart from one taken before the edit landed.
+		expect((store.data[mockPlugin.type] as ICustomPluginConfig).mockValue).toBe('my value');
+
+		resolvePatch({
+			data: { data: { ...mockPluginRes, mockValue: 'my value' } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		await pendingEdit;
+
+		await vi.waitFor(() => expect((store.data[mockPlugin.type] as ICustomPluginConfig).mockValue).toBe('someone else'));
+	});
+
 	// That deferred read is the only attempt left that can bring in whatever the dropped one was
 	// carrying, and the event handler that started it has long since resolved. A failure there has
 	// nowhere else to surface, so it must not be swallowed.
