@@ -228,7 +228,9 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 								} else {
 									// The write settled while this answer was in transit, so there is
 									// nothing left to wait for - ask again now.
-									void get({ type: payload.type, force: true }).catch(() => undefined);
+									void get({ type: payload.type, force: true }).catch((error: unknown): void => {
+										logger.error('Failed to re-read module config after a write settled', error);
+									});
 								}
 							}
 
@@ -436,7 +438,14 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 				endWrite(payload.data.type);
 
 				if (!writePending(payload.data.type) && refreshAfterWrite.delete(payload.data.type)) {
-					void get({ type: payload.data.type, force: true }).catch(() => undefined);
+					// This is the only attempt left that can bring in whatever the dropped read was
+					// carrying, and the event handler that started it has long since resolved, so a
+					// failure here has nowhere else to surface. It is reported rather than swallowed:
+					// the entry keeps this client's confirmed value, and another client's change
+					// arrives with the next event or refresh instead.
+					void get({ type: payload.data.type, force: true }).catch((error: unknown): void => {
+						logger.error('Failed to re-read module config after an edit settled', error);
+					});
 				}
 			};
 

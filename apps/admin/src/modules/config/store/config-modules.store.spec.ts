@@ -66,6 +66,8 @@ vi.mock('../composables/useModules', () => ({
 	}),
 }));
 
+const mockLoggerError = vi.fn();
+
 vi.mock('../../../common', async () => {
 	const actual = await vi.importActual('../../../common');
 
@@ -75,7 +77,7 @@ vi.mock('../../../common', async () => {
 			client: backendClient,
 		})),
 		useLogger: vi.fn(() => ({
-			error: vi.fn(),
+			error: mockLoggerError,
 			info: vi.fn(),
 			warning: vi.fn(),
 			log: vi.fn(),
@@ -94,6 +96,7 @@ describe('ConfigModule Store', () => {
 		store = useConfigModule();
 
 		vi.clearAllMocks();
+		mockLoggerError.mockClear();
 	});
 
 	it('should set config Module data successfully', () => {
@@ -371,6 +374,51 @@ describe('ConfigModule Store', () => {
 		await vi.waitFor(() => expect((store.data[mockModule.type] as ICustomModuleConfig).mockValue).toBe('someone else'));
 
 		expect(backendClient.GET).toHaveBeenCalledTimes(2);
+	});
+
+	// That deferred read is the only attempt left that can bring in whatever the dropped one was
+	// carrying, and the event handler that started it has long since resolved. A failure there has
+	// nowhere else to surface, so it must not be swallowed.
+	it('reports a deferred refresh that fails rather than losing it silently', async () => {
+		let resolvePatch!: (value: unknown) => void;
+
+		const patchRequest = new Promise((resolve) => {
+			resolvePatch = resolve;
+		});
+
+		store.data = { [mockModule.type]: { ...mockModule } };
+
+		(backendClient.PATCH as Mock).mockReturnValueOnce(patchRequest);
+
+		(backendClient.GET as Mock)
+			.mockResolvedValueOnce({
+				data: { data: mockModuleRes },
+				error: undefined,
+				response: { status: 200 },
+			})
+			// The deferred read, which the backend refuses.
+			.mockResolvedValueOnce({
+				data: undefined,
+				error: new Error('Read error'),
+				response: { status: 500 },
+			});
+
+		const pendingEdit = store.edit({ data: { ...mockModule, mockValue: 'my value' } } as IConfigModulesEditActionPayload);
+
+		await store.get({ type: 'custom-module', force: true });
+
+		resolvePatch({
+			data: { data: { ...mockModuleRes, mockValue: 'my value' } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		await pendingEdit;
+
+		await vi.waitFor(() => expect(mockLoggerError).toHaveBeenCalledWith(expect.stringContaining('re-read'), expect.anything()));
+
+		// The entry keeps this client's confirmed value rather than being left in some other state.
+		expect((store.data[mockModule.type] as ICustomModuleConfig).mockValue).toBe('my value');
 	});
 
 	// The hold is not permanent. Once the edit's answer is in hand the entry is released, and a
