@@ -204,6 +204,23 @@ export class BuddyContextPlannerService {
 			explicitSpaces,
 			input.conversationSpaceId ?? undefined,
 		);
+		const currentStateSpaceIds =
+			domains.includes('history') && CURRENT_STATE_PATTERN.test(normalizedMessage)
+				? resolveTemporalHomeSpaceIds(
+						normalizedMessage,
+						explicitSpaces,
+						input.conversationSpaceId ?? undefined,
+						CURRENT_STATE_PATTERN,
+					)
+				: querySpaceIds;
+		const historySpaceIds = domains.includes('history')
+			? resolveTemporalHomeSpaceIds(
+					normalizedMessage,
+					explicitSpaces,
+					input.conversationSpaceId ?? undefined,
+					HISTORY_PATTERN,
+				)
+			: querySpaceIds;
 		const scope = {
 			...(querySpaceIds.length === 1
 				? { spaceId: querySpaceIds[0] }
@@ -226,6 +243,8 @@ export class BuddyContextPlannerService {
 				querySpaceIds,
 				includeCurrentStateForRead,
 				energySpaceIds,
+				currentStateSpaceIds,
+				historySpaceIds,
 			),
 			toolNames: buildToolNames(domains, hasWrite, hasTrigger, strategy, normalizedMessage),
 			ambiguityRisk,
@@ -512,6 +531,37 @@ function resolveEnergySpaceIds(
 	return conversationSpaceId ? [conversationSpaceId] : [];
 }
 
+function resolveTemporalHomeSpaceIds(
+	message: string,
+	explicitSpaces: readonly BuddyContextSpaceReference[],
+	conversationSpaceId: string | undefined,
+	temporalPattern: RegExp,
+): string[] {
+	const temporalClauses = splitPlannerClauses(message).filter((clause) => temporalPattern.test(clause));
+
+	if (temporalClauses.some((clause) => WHOLE_HOME_SCOPE_PATTERN.test(clause))) return [];
+
+	const explicitTemporalSpaceIds = [
+		...new Set(
+			explicitSpaces
+				.filter((space) => temporalClauses.some((clause) => containsNormalizedPhrase(clause, normalize(space.name))))
+				.map((space) => space.id),
+		),
+	];
+
+	if (explicitTemporalSpaceIds.length > 0) return explicitTemporalSpaceIds;
+	if (
+		temporalClauses.some((clause) =>
+			[...BUILT_IN_ACTION_SPACE_NAMES].some((spaceName) => containsNormalizedPhrase(clause, spaceName)),
+		)
+	) {
+		return [];
+	}
+	if (explicitSpaces.length === 1) return [explicitSpaces[0].id];
+
+	return conversationSpaceId ? [conversationSpaceId] : [];
+}
+
 function findExplicitSpaces(
 	message: string,
 	knownSpaces: readonly BuddyContextSpaceReference[],
@@ -635,15 +685,20 @@ function buildQueries(
 	spaceIds: readonly string[] = [],
 	includeCurrentStateForRead = true,
 	energySpaceIds: readonly string[] = spaceIds,
+	currentStateSpaceIds: readonly string[] = spaceIds,
+	historySpaceIds: readonly string[] = spaceIds,
 ): BuddyContextQueryPlan[] {
 	const queries: BuddyContextQueryPlan[] = [];
 	const scopes = spaceIds.length > 0 ? spaceIds.map((spaceId) => ({ spaceId })) : [{}];
 	const energyScopes = energySpaceIds.length > 0 ? energySpaceIds.map((spaceId) => ({ spaceId })) : [{}];
+	const currentStateScopes =
+		currentStateSpaceIds.length > 0 ? currentStateSpaceIds.map((spaceId) => ({ spaceId })) : [{}];
+	const historyScopes = historySpaceIds.length > 0 ? historySpaceIds.map((spaceId) => ({ spaceId })) : [{}];
 
 	if (domains.includes('home')) {
 		for (const scoped of scopes) queries.push({ kind: 'search-home', ...scoped });
 		if ((!hasAction && includeCurrentStateForRead) || requiresReadForAction) {
-			for (const scoped of scopes) queries.push({ kind: 'current-state', ...scoped });
+			for (const scoped of currentStateScopes) queries.push({ kind: 'current-state', ...scoped });
 		}
 	}
 	if (domains.includes('weather')) queries.push({ kind: 'weather' });
@@ -652,7 +707,7 @@ function buildQueries(
 	}
 	if (domains.includes('security')) queries.push({ kind: 'security-status' });
 	if (domains.includes('history')) {
-		for (const scoped of scopes) queries.push({ kind: 'property-timeseries', ...scoped });
+		for (const scoped of historyScopes) queries.push({ kind: 'property-timeseries', ...scoped });
 	}
 
 	return queries;
@@ -672,7 +727,10 @@ function buildToolNames(
 	if (domains.includes('home')) names.push(SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME);
 	if (hasWrite) {
 		names.push(CONTROL_DEVICE_TOOL_NAME);
-		if (/\b(?:all|every|lighting|lights|room)\b/u.test(message)) names.push(SET_SPACE_LIGHTING_TOOL_NAME);
+		const hasLightingTarget = /\b(?:lamp|lamps|light|lighting|lights)\b/u.test(message);
+		const hasLightingGroup = /\b(?:all|every|lighting|lights|room)\b/u.test(message);
+
+		if (hasLightingTarget && hasLightingGroup) names.push(SET_SPACE_LIGHTING_TOOL_NAME);
 	}
 	if (hasTrigger) names.push(RUN_SCENE_TOOL_NAME);
 

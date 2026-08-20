@@ -800,6 +800,20 @@ describe('BuddyContextPlannerService', () => {
 		).toMatchObject({ intent: 'write', toolNames: ['search_home', 'query_home_state', 'control_device'] });
 	});
 
+	it('does not advertise the lighting-group tool for a fan in a room-named space', () => {
+		expect(
+			service.plan({
+				message: 'Turn living room fan on',
+				knownSpaces: [{ id: 'space-living-room', name: 'Living room' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: { spaceId: 'space-living-room' },
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device'],
+		});
+	});
+
 	it('classifies a scene run independently from a later device-run target', () => {
 		expect(
 			service.plan({
@@ -1070,6 +1084,27 @@ describe('BuddyContextPlannerService', () => {
 			queries: [
 				{ kind: 'search-home', spaceId: 'space-bedroom' },
 				{ kind: 'current-state', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+			],
+		});
+	});
+
+	it('scopes current and historical clauses independently', () => {
+		expect(
+			service.plan({
+				message: 'What was the Bedroom temperature yesterday, and what is the Kitchen temperature now?',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			scope: { spaceIds: ['space-bedroom', 'space-kitchen'] },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'search-home', spaceId: 'space-kitchen' },
+				{ kind: 'current-state', spaceId: 'space-kitchen' },
 				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
 			],
 		});
