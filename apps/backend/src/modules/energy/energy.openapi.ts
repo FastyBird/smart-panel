@@ -1,6 +1,7 @@
 /**
  * OpenAPI extra models for Energy module
  */
+import { UpdateEnergyConfigDto } from './dto/update-config.dto';
 import { EnergyDeltaEntity } from './entities/energy-delta.entity';
 import { EnergyConfigModel } from './models/config.model';
 import { EnergyBreakdownItemModel } from './models/energy-breakdown-item.model';
@@ -23,6 +24,7 @@ import { EnergyTimeseriesPointModel } from './models/energy-timeseries-point.mod
 export const ENERGY_SWAGGER_EXTRA_MODELS = [
 	// Module configuration
 	EnergyConfigModel,
+	UpdateEnergyConfigDto,
 	// Response models
 	EnergySummaryResponseModel,
 	EnergyDeltasResponseModel,

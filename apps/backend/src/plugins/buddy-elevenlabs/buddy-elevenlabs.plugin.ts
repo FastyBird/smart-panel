@@ -50,6 +50,13 @@ export class BuddyElevenlabsPlugin implements OnModuleInit {
 			type: BUDDY_ELEVENLABS_PLUGIN_NAME,
 			class: BuddyElevenlabsConfigModel,
 			configDto: UpdateBuddyElevenlabsConfigDto,
+			secretFields: [
+				{
+					path: 'api_key',
+					configuredPath: 'api_key_configured',
+					inputPaths: ['apiKey'],
+				},
+			],
 		});
 
 		this.sttProviderRegistry.register(this.elevenlabsSttProvider);

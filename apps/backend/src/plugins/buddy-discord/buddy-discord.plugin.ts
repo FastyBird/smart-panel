@@ -46,6 +46,13 @@ export class BuddyDiscordPlugin implements OnModuleInit {
 			type: BUDDY_DISCORD_PLUGIN_NAME,
 			class: BuddyDiscordConfigModel,
 			configDto: UpdateBuddyDiscordConfigDto,
+			secretFields: [
+				{
+					path: 'bot_token',
+					configuredPath: 'bot_token_configured',
+					inputPaths: ['botToken'],
+				},
+			],
 		});
 
 		for (const model of BUDDY_DISCORD_PLUGIN_SWAGGER_EXTRA_MODELS) {

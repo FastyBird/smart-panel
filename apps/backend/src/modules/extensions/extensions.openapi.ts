@@ -1,4 +1,5 @@
 import { ExecuteActionDataDto, ReqExecuteActionDto } from './dto/execute-action.dto';
+import { UpdateExtensionsConfigDto } from './dto/update-config.dto';
 import { ReqUpdateExtensionDto, UpdateExtensionDataDto } from './dto/update-extension.dto';
 import {
 	ActionExecutionRecordModel,
@@ -35,6 +36,7 @@ import {
 export const EXTENSIONS_SWAGGER_EXTRA_MODELS = [
 	// Module configuration
 	ExtensionsConfigModel,
+	UpdateExtensionsConfigDto,
 	ExtensionModel,
 	ExtensionLinksModel,
 	ExtensionResponseModel,

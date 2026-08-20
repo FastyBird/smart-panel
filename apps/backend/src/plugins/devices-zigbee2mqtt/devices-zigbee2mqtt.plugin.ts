@@ -114,6 +114,16 @@ export class DevicesZigbee2mqttPlugin {
 			type: DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
 			class: Zigbee2mqttConfigModel,
 			configDto: Zigbee2mqttUpdatePluginConfigDto,
+			secretFields: [
+				{
+					path: 'mqtt.password',
+					configuredPath: 'mqtt.password_configured',
+				},
+				{
+					path: 'tls.key',
+					configuredPath: 'tls.key_configured',
+				},
+			],
 		});
 
 		// Register device type mapper

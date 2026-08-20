@@ -1,3 +1,4 @@
+import { UpdateSecurityConfigDto } from './dto/update-config.dto';
 import { SecurityConfigModel } from './models/config.model';
 import {
 	SecurityAlertAckAllResponseModel,
@@ -11,6 +12,7 @@ import { SecurityAlertModel, SecurityLastEventModel, SecurityStatusModel } from 
 export const SECURITY_SWAGGER_EXTRA_MODELS = [
 	// Module configuration
 	SecurityConfigModel,
+	UpdateSecurityConfigDto,
 	// Response models
 	SecurityStatusResponseModel,
 	SecurityAlertAckResponseModel,

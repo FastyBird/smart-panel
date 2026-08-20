@@ -54,6 +54,13 @@ export class BuddyOpenaiPlugin implements OnModuleInit {
 			type: BUDDY_OPENAI_PLUGIN_NAME,
 			class: BuddyOpenaiConfigModel,
 			configDto: UpdateBuddyOpenaiConfigDto,
+			secretFields: [
+				{
+					path: 'api_key',
+					configuredPath: 'api_key_configured',
+					inputPaths: ['apiKey'],
+				},
+			],
 		});
 
 		this.llmProviderRegistry.register(this.openAiProvider);

@@ -7,6 +7,7 @@ import {
 	CreateRefreshTokenDto,
 	ReqCreateTokenDto,
 } from './dto/create-token.dto';
+import { UpdateAuthConfigDto } from './dto/update-config.dto';
 import {
 	ReqUpdateTokenDto,
 	UpdateAccessTokenDto,
@@ -40,6 +41,7 @@ export const AUTH_SWAGGER_EXTRA_MODELS = [
 	UpdateRefreshTokenDto,
 	UpdateLongLiveTokenDto,
 	ReqUpdateTokenDto,
+	UpdateAuthConfigDto,
 	// Response models
 	ProfileResponseModel,
 	LoginResponseModel,

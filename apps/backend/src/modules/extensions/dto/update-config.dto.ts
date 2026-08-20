@@ -5,7 +5,7 @@ import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdateModuleConfigDto } from '../../config/dto/config.dto';
 
-@ApiSchema({ name: 'ExtensionsModuleUpdateExtensionsConfig' })
+@ApiSchema({ name: 'ConfigModuleUpdateExtensions' })
 export class UpdateExtensionsConfigDto extends UpdateModuleConfigDto {
 	@ApiPropertyOptional({
 		description: 'Module enabled state',

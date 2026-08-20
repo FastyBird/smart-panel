@@ -46,6 +46,13 @@ export class BuddyTelegramPlugin implements OnModuleInit {
 			type: BUDDY_TELEGRAM_PLUGIN_NAME,
 			class: BuddyTelegramConfigModel,
 			configDto: UpdateBuddyTelegramConfigDto,
+			secretFields: [
+				{
+					path: 'bot_token',
+					configuredPath: 'bot_token_configured',
+					inputPaths: ['botToken'],
+				},
+			],
 		});
 
 		for (const model of BUDDY_TELEGRAM_PLUGIN_SWAGGER_EXTRA_MODELS) {

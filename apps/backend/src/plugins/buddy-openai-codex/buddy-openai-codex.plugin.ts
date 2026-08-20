@@ -47,6 +47,23 @@ export class BuddyOpenaiCodexPlugin implements OnModuleInit {
 			type: BUDDY_OPENAI_CODEX_PLUGIN_NAME,
 			class: BuddyOpenaiCodexConfigModel,
 			configDto: UpdateBuddyOpenaiCodexConfigDto,
+			secretFields: [
+				{
+					path: 'client_secret',
+					configuredPath: 'client_secret_configured',
+					inputPaths: ['clientSecret'],
+				},
+				{
+					path: 'access_token',
+					configuredPath: 'access_token_configured',
+					inputPaths: ['accessToken'],
+				},
+				{
+					path: 'refresh_token',
+					configuredPath: 'refresh_token_configured',
+					inputPaths: ['refreshToken'],
+				},
+			],
 		});
 
 		this.providerRegistry.register(this.openAiCodexProvider);

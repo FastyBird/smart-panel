@@ -46,6 +46,13 @@ export class BuddyClaudeSetupTokenPlugin implements OnModuleInit {
 			type: BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME,
 			class: BuddyClaudeSetupTokenConfigModel,
 			configDto: UpdateBuddyClaudeSetupTokenConfigDto,
+			secretFields: [
+				{
+					path: 'access_token',
+					configuredPath: 'access_token_configured',
+					inputPaths: ['accessToken'],
+				},
+			],
 		});
 
 		this.providerRegistry.register(this.claudeSetupTokenProvider);

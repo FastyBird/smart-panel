@@ -45,6 +45,13 @@ export class BuddyClaudePlugin implements OnModuleInit {
 			type: BUDDY_CLAUDE_PLUGIN_NAME,
 			class: BuddyClaudeConfigModel,
 			configDto: UpdateBuddyClaudeConfigDto,
+			secretFields: [
+				{
+					path: 'api_key',
+					configuredPath: 'api_key_configured',
+					inputPaths: ['apiKey'],
+				},
+			],
 		});
 
 		this.providerRegistry.register(this.claudeProvider);

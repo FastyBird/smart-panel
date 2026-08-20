@@ -25,14 +25,6 @@ export enum EventHandlerName {
 	INTERNAL_PLATFORM_ACTION = 'SystemModule.Internal.PlatformAction',
 }
 
-export enum HouseMode {
-	HOME = 'home',
-	AWAY = 'away',
-	NIGHT = 'night',
-}
-
-export type HouseModeType = HouseMode.HOME | HouseMode.AWAY | HouseMode.NIGHT;
-
 export enum FormResult {
 	NONE = 'none',
 	WORKING = 'working',
