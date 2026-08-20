@@ -425,8 +425,23 @@ function findLeadingConditionalActionIndex(message: string): number | undefined 
 		if (!new RegExp(String.raw`\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b`, 'u').test(connector)) break;
 		commandMatch = candidate;
 	}
+	if (commandMatch && isConditionalOutcomeQuestion(message, commandMatch.index)) return undefined;
 
 	return commandMatch?.index;
+}
+
+function isConditionalOutcomeQuestion(message: string, actionIndex: number): boolean {
+	if (!/\?\s*$/u.test(message)) return false;
+
+	const prefix = message.slice(0, actionIndex);
+	const clauseBoundary = Math.max(prefix.lastIndexOf(','), prefix.lastIndexOf(';'));
+	if (clauseBoundary < 0) return false;
+
+	const outcomePrefix = prefix.slice(clauseBoundary + 1).trim();
+
+	return /^(?:(?:can|could|may|might|will|would)\s+(?!you\b)|(?:are|did|do|does|had|has|have|is|was|were)\b)/u.test(
+		outcomePrefix,
+	);
 }
 
 function getActionReferenceMessage(

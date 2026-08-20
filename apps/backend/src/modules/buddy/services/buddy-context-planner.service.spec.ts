@@ -584,6 +584,38 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('keeps a conditional outcome question on the read path', () => {
+		expect(
+			service.plan({
+				message: 'If the window is open, will the heater turn on?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state'],
+		});
+	});
+
+	it('retains a polite action request after a leading condition', () => {
+		expect(
+			service.plan({
+				message: 'If the window is open, could you turn the Bedroom lights off?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			intent: 'mixed',
+			scope: { spaceId: 'space-bedroom' },
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device', 'set_space_lighting'],
+		});
+	});
+
 	it('splits a Czech action compound only when a follows with an action', () => {
 		expect(
 			service.plan({
