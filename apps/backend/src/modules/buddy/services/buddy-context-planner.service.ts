@@ -31,9 +31,9 @@ const HISTORY_PATTERN =
 	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:month|night|week|year))\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b/u;
 const CURRENT_STATE_PATTERN = /\b(?:at present|current|currently|now|right now)\b/u;
 const HOME_ENTITY_PATTERN =
-	/\b(?:air|blind|blinds|device|devices|door|doors|fan|garage|heater|heaters|lamp|light|lighting|lights|room|scene|sensor|switch|thermostat|window|windows)\b/u;
+	/\b(?:air|blind|blinds|device|devices|door|doors|fan|fans|garage|heater|heaters|lamp|light|lighting|lights|room|scene|scenes|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
 const POSSESSIVE_HOME_ENTITY_PATTERN =
-	/\b(?:my|our)\s+(?:air|blind|blinds|device|devices|door|doors|fan|garage|heater|heaters|lamp|light|lighting|lights|room|scene|sensor|switch|thermostat|window|windows)\b/u;
+	/\b(?:my|our)\s+(?:air|blind|blinds|device|devices|door|doors|fan|fans|garage|heater|heaters|lamp|light|lighting|lights|room|scene|scenes|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
 const GENERAL_KNOWLEDGE_INVENTORY_PATTERN = /^how (?:many|much)\b.*\b(?:does|do) (?:a|an)\b/u;
 const HOME_INSTALLATION_PATTERN = /\b(?:home|house)\b/u;
 const HOME_STATE_PATTERN = /\b(?:cold|cooling|heating|humidity|temperature|warm)\b/u;
@@ -199,6 +199,11 @@ export class BuddyContextPlannerService {
 				? []
 				: references;
 		const querySpaceIds = scopedReferences.length > 0 && explicitSpaceIds.length === 0 ? [] : resolvedSpaceIds;
+		const energySpaceIds = resolveEnergySpaceIds(
+			normalizedMessage,
+			explicitSpaces,
+			input.conversationSpaceId ?? undefined,
+		);
 		const scope = {
 			...(querySpaceIds.length === 1
 				? { spaceId: querySpaceIds[0] }
@@ -214,7 +219,14 @@ export class BuddyContextPlannerService {
 			domains,
 			intent,
 			scope,
-			queries: buildQueries(domains, hasAction, requiresReadForAction, querySpaceIds, includeCurrentStateForRead),
+			queries: buildQueries(
+				domains,
+				hasAction,
+				requiresReadForAction,
+				querySpaceIds,
+				includeCurrentStateForRead,
+				energySpaceIds,
+			),
 			toolNames: buildToolNames(domains, hasWrite, hasTrigger, strategy, normalizedMessage),
 			ambiguityRisk,
 			strategy,
@@ -232,20 +244,21 @@ function getActionMessage(message: string, trailingActionMatch: RegExpExecArray 
 }
 
 function getActionReferenceMessage(message: string): string {
-	const actionOnlyMessage = message.replace(
-		/^[?!,.;\s]*(?:(?:and(?: also)?|as well as|if so|please|plus|then)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)/u,
-		'',
-	);
-	const trailingCondition =
-		/\b(?:after|as long as|as soon as|assuming|before|given that|if|in case|once|only if|provided|so long as|unless|until|when|whenever|while)\b/u.exec(
-			actionOnlyMessage,
-		);
-	const trailingRead = TRAILING_READ_PATTERN.exec(actionOnlyMessage);
-	const boundaryIndexes = [trailingCondition?.index, trailingRead?.index].filter(
-		(index): index is number => index !== undefined,
-	);
+	return splitPlannerClauses(message)
+		.filter((clause) => ACTION_COMMAND_PATTERN.test(clause))
+		.map((clause) => {
+			const actionOnlyClause = clause.replace(
+				/^[?!,.;\s]*(?:(?:and(?: also)?|as well as|if so|please|plus|then)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)/u,
+				'',
+			);
+			const trailingCondition =
+				/\b(?:after|as long as|as soon as|assuming|before|given that|if|in case|once|only if|provided|so long as|unless|until|when|whenever|while)\b/u.exec(
+					actionOnlyClause,
+				);
 
-	return boundaryIndexes.length > 0 ? actionOnlyMessage.slice(0, Math.min(...boundaryIndexes)) : actionOnlyMessage;
+			return trailingCondition ? actionOnlyClause.slice(0, trailingCondition.index) : actionOnlyClause;
+		})
+		.join(' and ');
 }
 
 function classifyDomains(
@@ -326,7 +339,7 @@ function hasDomainSignalInClause(clause: string, domainPattern: RegExp, entityNa
 }
 
 function splitPlannerClauses(message: string): string[] {
-	return message.split(/(?:[?!,;]|\b(?:and(?: also)?|as well as|plus|then)\b)/u);
+	return message.split(/(?:[?!,.;]|\b(?:and(?: also)?|as well as|plus|then)\b)/u);
 }
 
 function isGeneralExplanation(message: string, hasExplicitSpace = false): boolean {
@@ -466,6 +479,39 @@ function resolveConversationSpaceHint(
 	return conversationSpaceId ?? undefined;
 }
 
+function resolveEnergySpaceIds(
+	message: string,
+	explicitSpaces: readonly BuddyContextSpaceReference[],
+	conversationSpaceId?: string,
+): string[] {
+	const energyClauses = splitPlannerClauses(message).filter((clause) =>
+		hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN),
+	);
+
+	if (energyClauses.some((clause) => HOME_INSTALLATION_PATTERN.test(clause) || WHOLE_HOME_SCOPE_PATTERN.test(clause))) {
+		return [];
+	}
+
+	const explicitEnergySpaceIds = [
+		...new Set(
+			explicitSpaces
+				.filter((space) => energyClauses.some((clause) => containsNormalizedPhrase(clause, normalize(space.name))))
+				.map((space) => space.id),
+		),
+	];
+
+	if (explicitEnergySpaceIds.length > 0) return explicitEnergySpaceIds;
+	if (
+		energyClauses.some((clause) =>
+			[...BUILT_IN_ACTION_SPACE_NAMES].some((spaceName) => containsNormalizedPhrase(clause, spaceName)),
+		)
+	) {
+		return [];
+	}
+
+	return conversationSpaceId ? [conversationSpaceId] : [];
+}
+
 function findExplicitSpaces(
 	message: string,
 	knownSpaces: readonly BuddyContextSpaceReference[],
@@ -588,9 +634,11 @@ function buildQueries(
 	requiresReadForAction: boolean,
 	spaceIds: readonly string[] = [],
 	includeCurrentStateForRead = true,
+	energySpaceIds: readonly string[] = spaceIds,
 ): BuddyContextQueryPlan[] {
 	const queries: BuddyContextQueryPlan[] = [];
 	const scopes = spaceIds.length > 0 ? spaceIds.map((spaceId) => ({ spaceId })) : [{}];
+	const energyScopes = energySpaceIds.length > 0 ? energySpaceIds.map((spaceId) => ({ spaceId })) : [{}];
 
 	if (domains.includes('home')) {
 		for (const scoped of scopes) queries.push({ kind: 'search-home', ...scoped });
@@ -600,7 +648,7 @@ function buildQueries(
 	}
 	if (domains.includes('weather')) queries.push({ kind: 'weather' });
 	if (domains.includes('energy')) {
-		for (const scoped of scopes) queries.push({ kind: 'energy-summary', ...scoped });
+		for (const scoped of energyScopes) queries.push({ kind: 'energy-summary', ...scoped });
 	}
 	if (domains.includes('security')) queries.push({ kind: 'security-status' });
 	if (domains.includes('history')) {

@@ -86,6 +86,18 @@ describe('BuddyContextPlannerService', () => {
 		}
 	});
 
+	it.each(['Are the fans on?', 'List sensors', 'Which scenes are active?', 'List switches', 'List thermostats'])(
+		'keeps a plural home category on the home read path: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({ domains: ['home'], intent: 'read', strategy: 'model-tools' });
+		},
+	);
+
 	it.each([
 		{ message: 'Will it rain tomorrow?', query: { kind: 'weather' } },
 		{ message: 'How much power did we use today?', query: { kind: 'energy-summary' } },
@@ -329,6 +341,16 @@ describe('BuddyContextPlannerService', () => {
 			ambiguityRisk: 'none',
 			strategy: 'model-tools',
 		});
+	});
+
+	it('clarifies an unresolved action after an intervening read clause', () => {
+		expect(
+			service.plan({
+				message: 'Turn kitchen light off, check whether the window is open, then close it',
+				knownSpaces: [{ id: 'space-kitchen', name: 'Kitchen' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
 	});
 
 	it.each(['Are any windows open, close them if so', 'Is the bedroom cold? Turn off the heater'])(
@@ -1013,11 +1035,26 @@ describe('BuddyContextPlannerService', () => {
 		).toMatchObject({
 			domains: ['home', 'energy'],
 			intent: 'mixed',
-			queries: [
-				{ kind: 'search-home', spaceId: 'space-kitchen' },
-				{ kind: 'energy-summary', spaceId: 'space-kitchen' },
-			],
+			queries: [{ kind: 'search-home', spaceId: 'space-kitchen' }, { kind: 'energy-summary' }],
 			strategy: 'deterministic-action',
+		});
+	});
+
+	it('scopes energy and home-state queries from their own clauses', () => {
+		expect(
+			service.plan({
+				message: 'How much energy did the house use, and what is the Bedroom temperature?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'energy'],
+			scope: { spaceId: 'space-bedroom' },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'current-state', spaceId: 'space-bedroom' },
+				{ kind: 'energy-summary' },
+			],
 		});
 	});
 
