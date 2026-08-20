@@ -2814,4 +2814,41 @@ describe('BuddyContextPlannerService', () => {
 			strategy: 'prefetch',
 		});
 	});
+
+	it.each(['Turn some Bedroom lights off', 'Turn two Bedroom lights off'])(
+		'clarifies a partial scoped lighting group: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({
+				domains: ['home'],
+				ambiguityRisk: 'action',
+				strategy: 'clarify',
+				toolNames: [],
+			});
+		},
+	);
+
+	it.each(['What was the Bedroom temperature at noon?', 'What was the Bedroom temperature at midnight?'])(
+		'routes a named clock period to history: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+					providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+				}),
+			).toMatchObject({
+				domains: ['home', 'history'],
+				queries: [
+					{ kind: 'search-home', spaceId: 'space-bedroom' },
+					{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+				],
+			});
+		},
+	);
 });

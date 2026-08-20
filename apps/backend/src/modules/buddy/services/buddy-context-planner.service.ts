@@ -50,6 +50,8 @@ const LIGHTING_GROUP_PATTERN = new RegExp(
 	'u',
 );
 const LIGHTING_GROUP_EXCLUSION_PATTERN = /\b(?:but not|except|excluding|krome|other than|without)\b/u;
+const PARTIAL_LIGHTING_GROUP_PATTERN =
+	/\b(?:a couple of|a few|eight|five|four|nine|one|seven|several|six|some|three|two|\d+)\b.*\b(?:lamp|lamps|light|lights)\b/u;
 
 const DOMAIN_ORDER: readonly BuddyContextDomain[] = ['general', 'home', 'weather', 'energy', 'security', 'history'];
 const WEATHER_PATTERN =
@@ -70,7 +72,7 @@ const SECURITY_ENTITY_NAME_PATTERN = new RegExp(
 	String.raw`\b(?:alarm|security)\s+(?:${DOMAIN_ENTITY_CATEGORY_PATTERN_SOURCE})\b`,
 	'gu',
 );
-const CLOCK_TIME_VALUE_PATTERN_SOURCE = String.raw`(?:(?:[01]?\d|2[0-3]):[0-5]\d(?:\s*(?:a\.?m\.?|p\.?m\.?))?|(?:0?[1-9]|1[0-2])\s*(?:a\.?m\.?|p\.?m\.?))`;
+const CLOCK_TIME_VALUE_PATTERN_SOURCE = String.raw`(?:midnight|noon|(?:[01]?\d|2[0-3]):[0-5]\d(?:\s*(?:a\.?m\.?|p\.?m\.?))?|(?:0?[1-9]|1[0-2])\s*(?:a\.?m\.?|p\.?m\.?))`;
 const CLOCK_TIME_HISTORY_PATTERN = new RegExp(
 	String.raw`\b(?:from\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}\s+(?:to|until)\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|between\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}\s+and\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|at\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE})\b`,
 	'u',
@@ -853,6 +855,7 @@ function hasGenericActionTargetClause(
 	const hasResolvedContextualSpace = hasConversationSpace && CONTEXTUAL_SCOPE_PATTERN.test(message);
 
 	if (LIGHTING_GROUP_EXCLUSION_PATTERN.test(message)) return true;
+	if (PARTIAL_LIGHTING_GROUP_PATTERN.test(message)) return true;
 	if (clauseSpaces.length > 1 && /\bor\b/u.test(message)) return true;
 	if (
 		(hasClauseSpace || hasResolvedContextualSpace) &&
