@@ -4,6 +4,7 @@ import { createExtensionLogger } from '../../../common/logger';
 import { BulkResultModel } from '../../api/models/bulk.model';
 import { runBulkOperation } from '../../api/utils/bulk.utils';
 import { DISPLAYS_MODULE_NAME } from '../displays.constants';
+import { DisplaysNotFoundException } from '../displays.exceptions';
 
 import { DisplaysService } from './displays.service';
 
@@ -26,7 +27,11 @@ export class DisplaysBulkService {
 			// The service raises for a display that is not there with a reason worth
 			// reading, and runBulkOperation carries that through per item.
 			(id) => this.displaysService.remove(id),
-			'Display could not be removed',
+			{
+				fallbackReason: 'Display could not be removed',
+				safeErrors: [DisplaysNotFoundException],
+				logger: this.logger,
+			},
 		);
 
 		this.logger.debug(`Bulk removal finished succeeded=${result.succeeded.length} failed=${result.failed.length}`);

@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { ArrayMaxSize, ArrayNotEmpty, IsArray, IsBoolean, IsString, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, ArrayNotEmpty, IsArray, IsBoolean, IsDefined, IsString, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
@@ -45,6 +45,7 @@ export class BulkUpdateExtensionsDto {
 export class ReqBulkUpdateExtensionsDto {
 	@ApiProperty({ description: 'Bulk update data', type: () => BulkUpdateExtensionsDto })
 	@Expose()
+	@IsDefined({ message: '[{"field":"data","reason":"Bulk update data is required."}]' })
 	@ValidateNested()
 	@Type(() => BulkUpdateExtensionsDto)
 	data: BulkUpdateExtensionsDto;

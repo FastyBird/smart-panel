@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { ArrayMaxSize, ArrayNotEmpty, IsArray, IsBoolean, IsUUID, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, ArrayNotEmpty, IsArray, IsBoolean, IsDefined, IsUUID, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
@@ -31,6 +31,7 @@ export class BulkRemoveScenesDto {
 export class ReqBulkRemoveScenesDto {
 	@ApiProperty({ description: 'Bulk removal data', type: () => BulkRemoveScenesDto })
 	@Expose()
+	@IsDefined({ message: '[{"field":"data","reason":"Bulk removal data is required."}]' })
 	@ValidateNested()
 	@Type(() => BulkRemoveScenesDto)
 	data: BulkRemoveScenesDto;
@@ -67,6 +68,7 @@ export class BulkUpdateScenesDto {
 export class ReqBulkUpdateScenesDto {
 	@ApiProperty({ description: 'Bulk update data', type: () => BulkUpdateScenesDto })
 	@Expose()
+	@IsDefined({ message: '[{"field":"data","reason":"Bulk update data is required."}]' })
 	@ValidateNested()
 	@Type(() => BulkUpdateScenesDto)
 	data: BulkUpdateScenesDto;

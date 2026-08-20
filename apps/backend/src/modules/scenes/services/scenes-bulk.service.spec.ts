@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { ScenesNotEditableException, ScenesNotFoundException } from '../scenes.exceptions';
+
 import { ScenesBulkService } from './scenes-bulk.service';
 import { ScenesService } from './scenes.service';
 
@@ -33,7 +35,9 @@ describe('ScenesBulkService', () => {
 		// and that explanation is more use to the operator than "failed".
 		it('carries the service refusal through as the reason', async () => {
 			scenesService.remove.mockImplementation((id: string) =>
-				id === 'b' ? Promise.reject(new Error('Scene with id=b cannot be deleted.')) : Promise.resolve(),
+				id === 'b'
+					? Promise.reject(new ScenesNotEditableException('Scene with id=b cannot be deleted.'))
+					: Promise.resolve(),
 			);
 
 			const result = await service.remove(['a', 'b', 'c']);
@@ -64,7 +68,7 @@ describe('ScenesBulkService', () => {
 		});
 
 		it('reports a scene the service refused', async () => {
-			scenesService.update.mockRejectedValue(new Error('Scene with id=a was not found.'));
+			scenesService.update.mockRejectedValue(new ScenesNotFoundException('Scene with id=a was not found.'));
 
 			const result = await service.setEnabled(['a'], true);
 

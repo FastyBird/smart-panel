@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { DisplaysNotFoundException } from '../displays.exceptions';
+
 import { DisplaysBulkService } from './displays-bulk.service';
 import { DisplaysService } from './displays.service';
 
@@ -33,7 +35,9 @@ describe('DisplaysBulkService', () => {
 		// "failed".
 		it('carries the service refusal through as the reason', async () => {
 			displaysService.remove.mockImplementation((id: string) =>
-				id === 'b' ? Promise.reject(new Error('Requested display does not exist')) : Promise.resolve(),
+				id === 'b'
+					? Promise.reject(new DisplaysNotFoundException('Requested display does not exist'))
+					: Promise.resolve(),
 			);
 
 			const result = await service.remove(['a', 'b', 'c']);

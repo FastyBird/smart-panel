@@ -4,6 +4,11 @@ import { createExtensionLogger } from '../../../common/logger';
 import { BulkResultModel } from '../../api/models/bulk.model';
 import { runBulkOperation } from '../../api/utils/bulk.utils';
 import { EXTENSIONS_MODULE_NAME } from '../extensions.constants';
+import {
+	ExtensionConfigValidationException,
+	ExtensionNotConfigurableException,
+	ExtensionNotFoundException,
+} from '../extensions.exceptions';
 
 import { ExtensionsService } from './extensions.service';
 
@@ -33,7 +38,11 @@ export class ExtensionsBulkService {
 			async (type) => {
 				await this.extensionsService.updateEnabled(type, enabled);
 			},
-			'Extension could not be updated',
+			{
+				fallbackReason: 'Extension could not be updated',
+				safeErrors: [ExtensionNotFoundException, ExtensionNotConfigurableException, ExtensionConfigValidationException],
+				logger: this.logger,
+			},
 		);
 
 		this.logger.debug(

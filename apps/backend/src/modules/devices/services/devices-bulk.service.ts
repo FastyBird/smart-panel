@@ -7,6 +7,7 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { BulkResultModel } from '../../api/models/bulk.model';
 import { runBulkOperation } from '../../api/utils/bulk.utils';
 import { DEVICES_MODULE_NAME } from '../devices.constants';
+import { DevicesException, DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
@@ -38,7 +39,7 @@ export class DevicesBulkService {
 
 				await this.devicesService.remove(device.id);
 			},
-			'Device could not be removed',
+			{ fallbackReason: 'Device could not be removed', safeErrors: [DevicesException], logger: this.logger },
 		);
 
 		this.logger.debug(`Bulk removal finished succeeded=${result.succeeded.length} failed=${result.failed.length}`);
@@ -57,7 +58,7 @@ export class DevicesBulkService {
 				try {
 					mapping = this.devicesMapperService.getMapping<DeviceEntity, CreateDeviceDto, UpdateDeviceDto>(device.type);
 				} catch {
-					throw new Error(`Unsupported device type: ${device.type}`);
+					throw new DevicesException(`Unsupported device type: ${device.type}`);
 				}
 
 				// The single update endpoint routes the body through the type owner's
@@ -77,12 +78,12 @@ export class DevicesBulkService {
 				});
 
 				if (errors.length > 0) {
-					throw new Error('Device could not be updated');
+					throw new DevicesValidationException('Device could not be updated');
 				}
 
 				await this.devicesService.update(device.id, dtoInstance);
 			},
-			'Device could not be updated',
+			{ fallbackReason: 'Device could not be updated', safeErrors: [DevicesException], logger: this.logger },
 		);
 
 		this.logger.debug(
@@ -96,7 +97,7 @@ export class DevicesBulkService {
 		const device = await this.devicesService.findOne(id);
 
 		if (!device) {
-			throw new Error('Requested device does not exist');
+			throw new DevicesNotFoundException('Requested device does not exist');
 		}
 
 		return device;

@@ -1,5 +1,5 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsArray, IsOptional, IsUUID, ValidateNested } from 'class-validator';
+import { IsArray, IsDefined, IsOptional, IsUUID, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -46,6 +46,7 @@ export class ReqBulkAssignDto {
 		type: () => BulkAssignDto,
 	})
 	@Expose()
+	@IsDefined({ message: '[{"field":"data","reason":"Bulk assignment data is required."}]' })
 	@ValidateNested()
 	@Type(() => BulkAssignDto)
 	data: BulkAssignDto;
