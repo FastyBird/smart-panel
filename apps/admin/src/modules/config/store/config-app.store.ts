@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { type Ref, computed, ref } from 'vue';
 
 import { type Pinia, type Store, defineStore, storeToRefs } from 'pinia';
 
@@ -20,6 +20,8 @@ import type {
 	IConfigAppStoreState,
 } from './config-app.store.types';
 import { transformConfigAppResponse } from './config-app.transformers';
+import type { IConfigModule } from './config-modules.store.types';
+import type { IConfigPlugin } from './config-plugins.store.types';
 import {
 	configModulesStoreKey,
 	configPluginsStoreKey,
@@ -41,12 +43,14 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 
 	const dataPartial = ref<Pick<IConfigApp, 'path'> | null>(null);
 
-	const data = computed<IConfigApp | null>((): IConfigApp | null => {
-		const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
-		const configModulesStore = storesManager.getStore(configModulesStoreKey);
+	let pluginsData: Ref<{ [key: string]: IConfigPlugin }> | null = null;
+	let modulesData: Ref<{ [key: string]: IConfigModule }> | null = null;
 
-		const { data: plugins } = storeToRefs(configPluginsStore);
-		const { data: modules } = storeToRefs(configModulesStore);
+	const data = computed<IConfigApp | null>((): IConfigApp | null => {
+		// Resolved once: re-running storeToRefs here allocated a wrapper per store key on every
+		// evaluation and made this computed track both stores' entire surface.
+		pluginsData ??= storeToRefs(storesManager.getStore(configPluginsStoreKey)).data;
+		modulesData ??= storeToRefs(storesManager.getStore(configModulesStoreKey)).data;
 
 		if (dataPartial.value === null) {
 			return null;
@@ -55,8 +59,8 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 		return {
 			path: dataPartial.value.path,
 			// Language, weather, and system configs moved to modules (system-module, weather-module)
-			plugins: Object.values(plugins.value),
-			modules: Object.values(modules.value),
+			plugins: Object.values(pluginsData.value),
+			modules: Object.values(modulesData.value),
 		};
 	});
 

@@ -91,21 +91,9 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 
 		const pendingFetchPromises: Record<string, Promise<IChannelProperty[]>> = {};
 
-		const onEvent = (payload: IChannelsPropertiesOnEventActionPayload): IChannelProperty => {
-			const element = getPluginElement(payload.type);
-
-			return set({
-				id: payload.id,
-				data: transformChannelPropertyResponse(
-					payload.data as IChannelPropertyRes,
-					element?.schemas?.channelPropertySchema || ChannelPropertySchema
-				),
-			});
-		};
-
-		const set = (payload: IChannelsPropertiesSetActionPayload): IChannelProperty => {
-			const element = getPluginElement(payload.data.type);
-
+		// Shared by `set` and `onEvent` so a single incoming event scans the plugin registry once,
+		// not twice: each caller resolves `element` itself and hands it in here.
+		const applySet = (payload: IChannelsPropertiesSetActionPayload, element: ReturnType<typeof getPluginElement>): IChannelProperty => {
 			if (payload.id && data.value && payload.id in data.value) {
 				const parsed = (element?.schemas?.channelPropertySchema || ChannelPropertySchema).safeParse({ ...data.value[payload.id], ...payload.data });
 
@@ -130,6 +118,23 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 
 			return (data.value[parsed.data.id] = parsed.data);
 		};
+
+		const onEvent = (payload: IChannelsPropertiesOnEventActionPayload): IChannelProperty => {
+			const element = getPluginElement(payload.type);
+
+			return applySet(
+				{
+					id: payload.id,
+					data: transformChannelPropertyResponse(
+						payload.data as IChannelPropertyRes,
+						element?.schemas?.channelPropertySchema || ChannelPropertySchema
+					),
+				},
+				element
+			);
+		};
+
+		const set = (payload: IChannelsPropertiesSetActionPayload): IChannelProperty => applySet(payload, getPluginElement(payload.data.type));
 
 		const unset = (payload: IChannelsPropertiesUnsetActionPayload): void => {
 			if (!data.value) {
