@@ -465,12 +465,19 @@ describe('ConfigPlugin Store', () => {
 
 		(backendClient.PATCH as Mock).mockReturnValueOnce(patchRequest);
 
-		// What the server still holds, because it has not committed the edit yet.
-		(backendClient.GET as Mock).mockResolvedValueOnce({
-			data: { data: mockPluginRes },
-			error: undefined,
-			response: { status: 200 },
-		});
+		(backendClient.GET as Mock)
+			// What the server still holds, because it has not committed the edit yet.
+			.mockResolvedValueOnce({
+				data: { data: mockPluginRes },
+				error: undefined,
+				response: { status: 200 },
+			})
+			// And what it holds once it has - the read the store asks for after the write settles.
+			.mockResolvedValueOnce({
+				data: { data: { ...mockPluginRes, mockValue: 'my value' } },
+				error: undefined,
+				response: { status: 200 },
+			});
 
 		const pendingEdit = store.edit({ data: { ...mockPlugin, mockValue: 'my value' } } as IConfigPluginsEditActionPayload);
 
@@ -485,6 +492,8 @@ describe('ConfigPlugin Store', () => {
 		});
 
 		await pendingEdit;
+
+		await vi.waitFor(() => expect(backendClient.GET).toHaveBeenCalledTimes(2));
 
 		expect((store.data[mockPlugin.type] as ICustomPluginConfig).mockValue).toBe('my value');
 	});
@@ -508,7 +517,12 @@ describe('ConfigPlugin Store', () => {
 		store.data = { [mockPlugin.type]: { ...mockPlugin } };
 
 		(backendClient.PATCH as Mock).mockReturnValueOnce(patchRequest);
-		(backendClient.GET as Mock).mockReturnValueOnce(getRequest);
+
+		(backendClient.GET as Mock).mockReturnValueOnce(getRequest).mockResolvedValueOnce({
+			data: { data: { ...mockPluginRes, mockValue: 'my value' } },
+			error: undefined,
+			response: { status: 200 },
+		});
 
 		const pendingEdit = store.edit({ data: { ...mockPlugin, mockValue: 'my value' } } as IConfigPluginsEditActionPayload);
 
@@ -528,7 +542,53 @@ describe('ConfigPlugin Store', () => {
 
 		await pendingGet;
 
+		// Dropped, and asked again now that the write is done.
+		await vi.waitFor(() => expect(backendClient.GET).toHaveBeenCalledTimes(2));
+
 		expect((store.data[mockPlugin.type] as ICustomPluginConfig).mockValue).toBe('my value');
+	});
+
+	// Dropping an overlapping read loses whatever prompted it. A change event is the backend saying
+	// something changed without saying whose change it was, so a refresh reacting to one may be
+	// carrying another client's edit - and silently discarding it would leave that lost until
+	// something else happened to refresh. It is asked again once the write is out of the way.
+	it('asks again after the edit when a change-driven refresh had to be dropped', async () => {
+		let resolvePatch!: (value: unknown) => void;
+
+		const patchRequest = new Promise((resolve) => {
+			resolvePatch = resolve;
+		});
+
+		store.data = { [mockPlugin.type]: { ...mockPlugin } };
+
+		(backendClient.PATCH as Mock).mockReturnValueOnce(patchRequest);
+
+		(backendClient.GET as Mock).mockResolvedValue({
+			data: { data: { ...mockPluginRes, mockValue: 'someone else' } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		const pendingEdit = store.edit({ data: { ...mockPlugin, mockValue: 'my value' } } as IConfigPluginsEditActionPayload);
+
+		// The change event's refresh, issued and answered while the PATCH is still outstanding.
+		await store.get({ type: 'custom-plugin', force: true });
+
+		// Dropped, because nothing here can tell it apart from a read taken before the edit landed.
+		expect((store.data[mockPlugin.type] as ICustomPluginConfig).mockValue).toBe('my value');
+
+		resolvePatch({
+			data: { data: { ...mockPluginRes, mockValue: 'my value' } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		await pendingEdit;
+
+		// Asked again now that the write is done, and this time the answer stands.
+		await vi.waitFor(() => expect((store.data[mockPlugin.type] as ICustomPluginConfig).mockValue).toBe('someone else'));
+
+		expect(backendClient.GET).toHaveBeenCalledTimes(2);
 	});
 
 	// The hold is not permanent. Once the edit's answer is in hand the entry is released, and a

@@ -104,6 +104,13 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 
 	const writePending = (type: IConfigPlugin['type']): boolean => (pendingWrites[type] ?? 0) > 0;
 
+	// Change-driven reads that were dropped for overlapping a write. The write's own answer
+	// settles the entry, but the event that prompted the read was the backend announcing that
+	// *something* changed - it does not say whose change, and it may well be another client's.
+	// Dropping the read silently would lose that until something else happened to refresh, so it
+	// is asked again once the write is out of the way, where the answer cannot predate it.
+	const refreshAfterWrite = new Set<IConfigPlugin['type']>();
+
 		// The one way an entry is written outside `fetch()`. Every direct `data.value[...] = ...`
 		// write below goes through it, which is what keeps the sequence complete. `at` places the
 		// write in that sequence; omitting it claims the moment of the call, which is what a write
@@ -217,6 +224,16 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 						// The caller still gets the entry, just the copy the write left behind rather
 						// than the one this answer carries.
 						if (overlapsWrite) {
+							if (payload.force) {
+								if (writePending(payload.type)) {
+									refreshAfterWrite.add(payload.type);
+								} else {
+									// The write settled while this answer was in transit, so there is
+									// nothing left to wait for - ask again now.
+									void get({ type: payload.type, force: true }).catch(() => undefined);
+								}
+							}
+
 							return data.value[payload.type] ?? transformed;
 						}
 
@@ -419,6 +436,10 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 				writeReleased = true;
 
 				endWrite(payload.data.type);
+
+				if (!writePending(payload.data.type) && refreshAfterWrite.delete(payload.data.type)) {
+					void get({ type: payload.data.type, force: true }).catch(() => undefined);
+				}
 			};
 
 			try {
