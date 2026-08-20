@@ -1122,6 +1122,104 @@ describe('HomeyMappingPreviewService', () => {
 		expect(preview.readyToAdopt).toBe(false);
 	});
 
+	it('passes readable identity enum values through the runtime transformer', async () => {
+		const fixture = readDeviceFixture('light');
+		const device: HomeyDevice = {
+			...fixture,
+			capabilities: fixture.capabilities.map((capability) =>
+				capability.id === 'onoff'
+					? {
+							...capability,
+							type: HomeyCapabilityType.ENUM,
+							value: null,
+							enumValues: [
+								{ id: 'false', title: 'False' },
+								{ id: 'true', title: 'True' },
+							],
+						}
+					: capability,
+			),
+		};
+		homeyService.getFreshDevice.mockResolvedValue(device);
+		const propertyResolution = mappingLoader.resolvePropertyMappings(device);
+		jest.spyOn(mappingLoader, 'resolvePropertyMappings').mockReturnValue({
+			conflicts: propertyResolution.conflicts,
+			mappings: propertyResolution.mappings.map((binding) =>
+				binding.capabilityId === 'onoff'
+					? {
+							...binding,
+							mapping: {
+								...binding.mapping,
+								property: {
+									...binding.mapping.property,
+									direction: 'read_only',
+									transform: undefined,
+								},
+							},
+						}
+					: binding,
+			),
+		});
+
+		const preview = await service.generatePreview({ deviceId: device.id });
+
+		expect(preview.warnings).toContainEqual(
+			expect.objectContaining({
+				code: HomeyMappingPreviewWarningCode.INVALID_PROPERTY_VALUE_DOMAIN,
+				severity: HomeyMappingPreviewWarningSeverity.ERROR,
+				identifier: 'onoff',
+			}),
+		);
+		expect(preview.readyToAdopt).toBe(false);
+	});
+
+	it('blocks writes to Homey enums whose authoritative value domain is unavailable', async () => {
+		const fixture = readDeviceFixture('light');
+		const device: HomeyDevice = {
+			...fixture,
+			capabilities: fixture.capabilities.map((capability) =>
+				capability.id === 'onoff'
+					? { ...capability, type: HomeyCapabilityType.ENUM, value: null, enumValues: [] }
+					: capability,
+			),
+		};
+		homeyService.getFreshDevice.mockResolvedValue(device);
+		const propertyResolution = mappingLoader.resolvePropertyMappings(device);
+		jest.spyOn(mappingLoader, 'resolvePropertyMappings').mockReturnValue({
+			conflicts: propertyResolution.conflicts,
+			mappings: propertyResolution.mappings.map((binding) =>
+				binding.capabilityId === 'onoff'
+					? {
+							...binding,
+							mapping: {
+								...binding.mapping,
+								property: {
+									...binding.mapping.property,
+									direction: 'write_only',
+									transform: {
+										type: 'boolean',
+										true_value: 'on',
+										false_value: 'off',
+									},
+								},
+							},
+						}
+					: binding,
+			),
+		});
+
+		const preview = await service.generatePreview({ deviceId: device.id });
+
+		expect(preview.warnings).toContainEqual(
+			expect.objectContaining({
+				code: HomeyMappingPreviewWarningCode.INVALID_CAPABILITY_VALUE_DOMAIN,
+				severity: HomeyMappingPreviewWarningSeverity.ERROR,
+				identifier: 'onoff',
+			}),
+		);
+		expect(preview.readyToAdopt).toBe(false);
+	});
+
 	it('uses the command validator step base for a max-only mapping range', async () => {
 		const fixture = readDeviceFixture('light');
 		const device: HomeyDevice = {
@@ -1176,6 +1274,23 @@ describe('HomeyMappingPreviewService', () => {
 			}),
 		);
 		expect(preview.readyToAdopt).toBe(false);
+
+		const compatibleDevice: HomeyDevice = {
+			...device,
+			capabilities: device.capabilities.map((capability) =>
+				capability.id === 'dim' ? { ...capability, value: 2, step: 2 } : capability,
+			),
+		};
+		homeyService.getFreshDevice.mockResolvedValue(compatibleDevice);
+
+		const compatiblePreview = await service.generatePreview({ deviceId: compatibleDevice.id });
+
+		expect(compatiblePreview.warnings).not.toContainEqual(
+			expect.objectContaining({
+				code: HomeyMappingPreviewWarningCode.INVALID_CAPABILITY_VALUE_DOMAIN,
+				identifier: 'dim',
+			}),
+		);
 	});
 
 	it('uses fixed not-found and unavailable errors for fresh inventory failures', async () => {

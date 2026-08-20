@@ -613,7 +613,13 @@ export class HomeyMappingPreviewService {
 
 		if (!transform) {
 			if (mappingCanRead) {
-				values.push(...this.getHomeyDomainValues(capability));
+				for (const sourceValue of this.getHomeyDomainValues(capability)) {
+					try {
+						values.push(this.mappingTransformer.read(mapping, sourceValue));
+					} catch {
+						convertible = false;
+					}
+				}
 			}
 
 			return { values, convertible };
@@ -888,6 +894,10 @@ export class HomeyMappingPreviewService {
 		let convertible = true;
 
 		for (const panelValue of this.getPanelDomainValues(channelCategory, propertyCategory, dataType, mappingRange)) {
+			if (!this.isValidPanelValue(channelCategory, propertyCategory, dataType, mappingRange, panelValue)) {
+				continue;
+			}
+
 			try {
 				values.push(this.mappingTransformer.write(mapping, panelValue));
 			} catch {
@@ -997,7 +1007,8 @@ export class HomeyMappingPreviewService {
 			case HomeyCapabilityType.ENUM:
 				return (
 					typeof value === 'string' &&
-					(capability.enumValues.length === 0 || capability.enumValues.some((candidate) => candidate.id === value))
+					capability.enumValues.length > 0 &&
+					capability.enumValues.some((candidate) => candidate.id === value)
 				);
 			case HomeyCapabilityType.STRING:
 				return typeof value === 'string';
