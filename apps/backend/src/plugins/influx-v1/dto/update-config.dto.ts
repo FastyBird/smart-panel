@@ -50,10 +50,11 @@ export class UpdateInfluxV1ConfigDto extends UpdatePluginConfigDto {
 	@ApiPropertyOptional({
 		description: 'InfluxDB password for authentication.',
 		type: 'string',
+		nullable: true,
 		example: 'secret',
 	})
 	@Expose()
 	@IsOptional()
 	@IsString({ message: '[{"field":"password","reason":"Password must be a valid string."}]' })
-	password?: string;
+	password?: string | null;
 }

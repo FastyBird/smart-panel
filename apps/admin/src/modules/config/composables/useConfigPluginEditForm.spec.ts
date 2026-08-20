@@ -161,7 +161,8 @@ describe('useConfigPluginEditForm', () => {
 	// about a credential once it has been saved.
 	describe('after a save', () => {
 		it('drops a stored secret and takes the configured flag from the response', async () => {
-			const form = useConfigPluginEditForm<ITestConfigPluginEditForm>({ config: { ...mockConfig, apiKeyConfigured: false } });
+			const config = { ...mockConfig, apiKeyConfigured: false } as ITestConfigPluginSchema;
+			const form = useConfigPluginEditForm<ITestConfigPluginEditForm>({ config });
 
 			form.formEl.value = validatedForm();
 			form.model.apiKey = 'sk-typed-by-the-operator';
@@ -177,7 +178,8 @@ describe('useConfigPluginEditForm', () => {
 		});
 
 		it('clears a staged removal the backend has already carried out', async () => {
-			const form = useConfigPluginEditForm<ITestConfigPluginEditForm>({ config: { ...mockConfig, apiKeyConfigured: true } });
+			const config = { ...mockConfig, apiKeyConfigured: true } as ITestConfigPluginSchema;
+			const form = useConfigPluginEditForm<ITestConfigPluginEditForm>({ config });
 
 			form.formEl.value = validatedForm();
 			// What the remove control stages: null is the one value that asks for a removal.
@@ -194,7 +196,8 @@ describe('useConfigPluginEditForm', () => {
 		});
 
 		it('leaves an ordinary field holding what the backend confirmed', async () => {
-			const form = useConfigPluginEditForm<ITestConfigPluginEditForm>({ config: { ...mockConfig } });
+			const config = { ...mockConfig } as ITestConfigPluginSchema;
+			const form = useConfigPluginEditForm<ITestConfigPluginEditForm>({ config });
 
 			form.formEl.value = validatedForm();
 			form.model.value = 'Updated';

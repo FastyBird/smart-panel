@@ -30,12 +30,13 @@ export class UpdateInfluxV2ConfigDto extends UpdatePluginConfigDto {
 	@ApiPropertyOptional({
 		description: 'InfluxDB v2 API token for authentication.',
 		type: 'string',
+		nullable: true,
 		example: 'my-token',
 	})
 	@Expose()
 	@IsOptional()
 	@IsString({ message: '[{"field":"token","reason":"Token must be a valid string."}]' })
-	token?: string;
+	token?: string | null;
 
 	@ApiPropertyOptional({
 		description: 'InfluxDB v2 organization name.',
