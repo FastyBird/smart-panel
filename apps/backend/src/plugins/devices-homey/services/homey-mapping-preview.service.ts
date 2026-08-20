@@ -27,6 +27,7 @@ import {
 	HomeyValueRangeDefinition,
 	ResolvedHomeyChannelMapping,
 	ResolvedHomeyPropertyBinding,
+	ResolvedHomeyPropertyMapping,
 } from '../mappings/mapping.types';
 import { HomeyCapability, HomeyCapabilityType } from '../models/homey-capability.model';
 import { HomeyDevice } from '../models/homey-device.model';
@@ -402,12 +403,8 @@ export class HomeyMappingPreviewService {
 			);
 		}
 
-		const potentialPanelValues = this.getPotentialPanelValues(
-			mapping.property.transform,
-			capability,
-			mappingCanRead,
-			mappingCanWrite,
-		);
+		const potentialPanelDomain = this.getPotentialPanelValues(mapping, capability, mappingCanRead, mappingCanWrite);
+		const potentialPanelValues = potentialPanelDomain.values;
 		if (mapping.property.range?.minimum !== undefined) {
 			potentialPanelValues.push(mapping.property.range.minimum);
 		}
@@ -419,6 +416,7 @@ export class HomeyMappingPreviewService {
 		}
 
 		if (
+			!potentialPanelDomain.convertible ||
 			potentialPanelValues.some(
 				(value) =>
 					!this.isValidPanelValue(channelCategory, property.category, property.dataType, mapping.property.range, value),
@@ -443,10 +441,17 @@ export class HomeyMappingPreviewService {
 			);
 		}
 
+		const potentialHomeyWriteDomain = this.getPotentialHomeyWriteValues(
+			mapping,
+			mappingCanWrite,
+			channelCategory,
+			property.category,
+			property.dataType,
+			mapping.property.range,
+		);
 		if (
-			this.getPotentialHomeyWriteValues(mapping.property.transform, mappingCanWrite).some(
-				(value) => !this.isValidHomeyValue(capability, value),
-			)
+			!potentialHomeyWriteDomain.convertible ||
+			potentialHomeyWriteDomain.values.some((value) => !this.isValidHomeyValue(capability, value))
 		) {
 			warnings.push(
 				this.warning(
@@ -497,18 +502,32 @@ export class HomeyMappingPreviewService {
 	}
 
 	private getPotentialPanelValues(
-		transform: HomeyTransformDefinition | undefined,
+		mapping: ResolvedHomeyPropertyMapping,
 		capability: HomeyCapability,
 		mappingCanRead: boolean,
 		mappingCanWrite: boolean,
-	): HomeyMappingScalar[] {
+	): { values: HomeyMappingScalar[]; convertible: boolean } {
+		const transform = mapping.property.transform;
+		const values: HomeyMappingScalar[] = [];
+		let convertible = true;
+
 		if (!transform) {
-			return mappingCanRead && capability.enumValues.length > 0 ? capability.enumValues.map((value) => value.id) : [];
+			if (mappingCanRead) {
+				values.push(...this.getHomeyDomainValues(capability));
+			}
+
+			return { values, convertible };
 		}
 
-		const values: HomeyMappingScalar[] = [];
-
 		if (mappingCanRead) {
+			for (const sourceValue of this.getHomeyDomainValues(capability)) {
+				try {
+					values.push(this.mappingTransformer.read(mapping, sourceValue));
+				} catch {
+					convertible = false;
+				}
+			}
+
 			switch (transform.type) {
 				case 'scale':
 					values.push(...transform.output_range);
@@ -540,7 +559,7 @@ export class HomeyMappingPreviewService {
 			values.push(...Object.keys(transform.write ?? {}));
 		}
 
-		return values;
+		return { values, convertible };
 	}
 
 	private isValidPanelValue(
@@ -593,31 +612,122 @@ export class HomeyMappingPreviewService {
 	}
 
 	private getPotentialHomeyWriteValues(
-		transform: HomeyTransformDefinition | undefined,
+		mapping: ResolvedHomeyPropertyMapping,
 		mappingCanWrite: boolean,
-	): HomeyMappingScalar[] {
-		if (!mappingCanWrite || !transform) {
-			return [];
+		channelCategory: ChannelCategory,
+		propertyCategory: PropertyCategory,
+		dataType: DataTypeType,
+		mappingRange: HomeyValueRangeDefinition | undefined,
+	): { values: HomeyMappingScalar[]; convertible: boolean } {
+		if (!mappingCanWrite) {
+			return { values: [], convertible: true };
+		}
+
+		const transform = mapping.property.transform;
+		const values: HomeyMappingScalar[] = [];
+		let convertible = true;
+
+		for (const panelValue of this.getPanelDomainValues(channelCategory, propertyCategory, dataType, mappingRange)) {
+			try {
+				values.push(this.mappingTransformer.write(mapping, panelValue));
+			} catch {
+				convertible = false;
+			}
+		}
+
+		if (!transform) {
+			return { values, convertible };
 		}
 
 		switch (transform.type) {
 			case 'scale':
-				return [...transform.input_range];
+				values.push(...transform.input_range);
+				break;
 			case 'map':
-				return Object.values(transform.write ?? {});
+				values.push(...Object.values(transform.write ?? {}));
+				break;
 			case 'boolean':
-				return [transform.true_value, transform.false_value];
+				values.push(transform.true_value, transform.false_value);
+				break;
 			case 'clamp':
-				return [transform.minimum, transform.maximum];
+				values.push(transform.minimum, transform.maximum);
+				break;
 			case 'constant':
-				return [transform.value];
+				values.push(transform.value);
+				break;
 			case 'threshold':
-				return [transform.less_than_or_equal, transform.greater_than];
+				values.push(transform.less_than_or_equal, transform.greater_than);
+				break;
 			case 'thresholds':
-				return [...transform.thresholds.map((entry) => entry.value), transform.default];
+				values.push(...transform.thresholds.map((entry) => entry.value), transform.default);
+				break;
 			case 'round':
+				break;
+		}
+
+		return { values, convertible };
+	}
+
+	private getHomeyDomainValues(capability: HomeyCapability): HomeyMappingScalar[] {
+		switch (capability.type) {
+			case HomeyCapabilityType.BOOLEAN:
+				return [false, true];
+			case HomeyCapabilityType.ENUM:
+				return capability.enumValues.map((value) => value.id);
+			case HomeyCapabilityType.NUMBER:
+				return [capability.minimum, capability.maximum].filter((value): value is number => value !== null);
+			case HomeyCapabilityType.STRING:
+			case HomeyCapabilityType.UNKNOWN:
 				return [];
 		}
+	}
+
+	private getPanelDomainValues(
+		channelCategory: ChannelCategory,
+		propertyCategory: PropertyCategory,
+		dataType: DataTypeType,
+		mappingRange: HomeyValueRangeDefinition | undefined,
+	): HomeyMappingScalar[] {
+		const metadata = getPropertyMetadata(channelCategory, propertyCategory);
+		const variant = metadata?.dataTypeVariants?.find((candidate) => candidate.data_type === dataType);
+		const format = variant ? variant.format : metadata?.format;
+		const values: HomeyMappingScalar[] = [];
+
+		if (dataType === DataTypeType.BOOL) {
+			values.push(false, true);
+		} else if (dataType === DataTypeType.ENUM && Array.isArray(format)) {
+			values.push(...format.filter((value): value is string => typeof value === 'string'));
+		} else if (this.isNumericDataType(dataType)) {
+			const canonicalMinimum = Array.isArray(format) && typeof format[0] === 'number' ? format[0] : null;
+			const canonicalMaximum = Array.isArray(format) && typeof format[1] === 'number' ? format[1] : null;
+			const minimumCandidates = [canonicalMinimum, mappingRange?.minimum ?? null].filter(
+				(value): value is number => value !== null,
+			);
+			const maximumCandidates = [canonicalMaximum, mappingRange?.maximum ?? null].filter(
+				(value): value is number => value !== null,
+			);
+
+			if (minimumCandidates.length > 0) {
+				values.push(Math.max(...minimumCandidates));
+			}
+			if (maximumCandidates.length > 0) {
+				values.push(Math.min(...maximumCandidates));
+			}
+		}
+
+		return values;
+	}
+
+	private isNumericDataType(dataType: DataTypeType): boolean {
+		return [
+			DataTypeType.CHAR,
+			DataTypeType.UCHAR,
+			DataTypeType.SHORT,
+			DataTypeType.USHORT,
+			DataTypeType.INT,
+			DataTypeType.UINT,
+			DataTypeType.FLOAT,
+		].includes(dataType);
 	}
 
 	private isValidHomeyValue(capability: HomeyCapability, value: HomeyMappingScalar): boolean {
