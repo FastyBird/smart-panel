@@ -2108,4 +2108,47 @@ describe('BuddyContextPlannerService', () => {
 			strategy: 'no-home-context',
 		});
 	});
+
+	it('clarifies a singular home-state pronoun without a recent reference', () => {
+		expect(
+			service.plan({
+				message: 'Is it on?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			ambiguityRisk: 'read',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
+	it('clarifies every-light actions without a resolved space', () => {
+		expect(
+			service.plan({
+				message: 'Turn every light off',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
+	it('preserves whole-house home scope inside a mixed security read', () => {
+		expect(
+			service.plan({
+				message: 'Is the house secure, and are any windows in the house open?',
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'security'],
+			scope: {},
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }, { kind: 'security-status' }],
+		});
+	});
 });

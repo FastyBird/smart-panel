@@ -108,7 +108,7 @@ const CAPABILITY_DISCOVERY_PATTERN = new RegExp(
 const CONTEXTUAL_SCOPE_PATTERN = /\b(?:here|in this room|this space)\b/u;
 const CONTEXTUAL_SCOPE_REFERENCE_PATTERN = /\b(?:in this room|this space)\b/gu;
 const GENERIC_ACTION_TARGET_PATTERN =
-	/\b(?:a|all|an|any|the)\s+(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:blind|blinds|device|devices|door|doors|fan|fans|heater|heaters|lamp|lamps|light|lights|scene|scenes|switch|switches|thermostat|thermostats|window|windows)\b|\b(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:blinds|devices|doors|fans|heaters|lamps|lights|scenes|switches|thermostats|windows)\b|^[?!,.;\s]*(?:(?:and(?: also)?|as well as|if so|please|plus|then)\s+)*(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\s+(?:off\s+|on\s+)?(?:blind|device|door|fan|heater|lamp|light|scene|switch|thermostat|window)\b/u;
+	/\b(?:a|all|an|any|every|the)\s+(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:blind|blinds|device|devices|door|doors|fan|fans|heater|heaters|lamp|lamps|light|lights|scene|scenes|switch|switches|thermostat|thermostats|window|windows)\b|\b(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:blinds|devices|doors|fans|heaters|lamps|lights|scenes|switches|thermostats|windows)\b|^[?!,.;\s]*(?:(?:and(?: also)?|as well as|if so|please|plus|then)\s+)*(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\s+(?:off\s+|on\s+)?(?:blind|device|door|fan|heater|lamp|light|scene|switch|thermostat|window)\b/u;
 const GENERIC_ACTION_TARGET_NAMES = [
 	'blind',
 	'blinds',
@@ -256,6 +256,7 @@ export class BuddyContextPlannerService {
 			hasTrigger,
 			referenceActionTypes,
 			references,
+			domains,
 			conversationSpaceId,
 			explicitSpaces,
 		);
@@ -601,6 +602,7 @@ function classifyAmbiguityRisk(
 	hasTrigger: boolean,
 	requestedActionTypes: readonly BuddyContextActionType[],
 	references: readonly BuddyContextEntityReference[],
+	domains: readonly BuddyContextDomain[],
 	conversationSpaceId?: string,
 	explicitSpaces: readonly BuddyContextSpaceReference[] = [],
 ): BuddyContextAmbiguityRisk {
@@ -623,7 +625,23 @@ function classifyAmbiguityRisk(
 
 		return 'none';
 	}
-	if (hasSingularReferencePronoun(stripContextualScopeReferences(message)) && references.length > 1) {
+	const hasSingularHomeReference = splitPlannerClauses(message).some(
+		(clause) =>
+			hasSingularReferencePronoun(stripContextualScopeReferences(clause)) &&
+			(HOME_ENTITY_PATTERN.test(clause) ||
+				HOME_VOCABULARY_PATTERN.test(clause) ||
+				HOME_STATE_PATTERN.test(clause) ||
+				GROUNDED_STATE_PATTERN.test(clause)) &&
+			!hasDomainSignalInClause(clause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) &&
+			!hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) &&
+			!hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN),
+	);
+	if (
+		domains.includes('home') &&
+		hasSingularHomeReference &&
+		references.length !== 1 &&
+		!(conversationSpaceId && CONTEXTUAL_SCOPE_PATTERN.test(message))
+	) {
 		return 'read';
 	}
 
@@ -785,6 +803,13 @@ function resolveCurrentStateSpaceIds(
 			(!hasNonHomeSignal || CONTEXTUAL_SCOPE_PATTERN.test(clause) || (hasExplicitSpace && hasIndependentHomeSignal))
 		);
 	});
+	if (
+		currentStateClauses.some(
+			(clause) => HOME_INSTALLATION_PATTERN.test(clause) || WHOLE_HOME_SCOPE_PATTERN.test(clause),
+		)
+	) {
+		return [];
+	}
 
 	const explicitCurrentSpaceIds = resolveTemporalExplicitSpaceIds(
 		currentStateClauses,
