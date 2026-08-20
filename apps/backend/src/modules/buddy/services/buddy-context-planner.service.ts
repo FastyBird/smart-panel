@@ -50,7 +50,7 @@ const ENERGY_ENTITY_NAME_PATTERN = /\bpower\s+(?:device|fan|lamp|light|sensor|sw
 const SECURITY_PATTERN = /\b(?:alarm|armed|intrusion|secure|security)\b/u;
 const SECURITY_ENTITY_NAME_PATTERN = /\b(?:alarm|security)\s+(?:device|fan|lamp|light|sensor|switch)\b/gu;
 const HISTORY_PATTERN =
-	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:day|hour|minute|month|night|week|year))\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
+	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:day|hour|minute|month|night|week|year))\b|\b(?:last|since)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
 const CURRENT_STATE_PATTERN = /\b(?:at present|current|currently|now|right now)\b/u;
 const HOME_ENTITY_PATTERN =
 	/\b(?:air|blind|blinds|device|devices|door|doors|fan|fans|garage|heater|heaters|lamp|light|lighting|lights|room|scene|scenes|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
@@ -143,7 +143,7 @@ const TRAILING_ACTION_PATTERN = new RegExp(
 	'u',
 );
 const TRAILING_READ_PATTERN =
-	/(?:[?!,.;]|\b(?:and(?: also)?|as well as|plus|then)\b)\s*(?:(?:also|please)\s+)*(?:are|check|confirm|could|determine|did|do|does|ensure|fetch|find|get|had|has|have|is|make sure|may|might|read|report|see|show|tell(?: me)?|verify|was|were|what|whether|which|will|would)\b/u;
+	/(?:[?!,.;]|\b(?:and(?: also)?|as well as|plus|then)\b)\s*(?:(?:also|please)\s+)*(?:are|can|check|confirm|could|determine|did|do|does|ensure|fetch|find|get|had|has|have|how|is|make sure|may|might|read|report|see|show|tell(?: me)?|verify|was|were|what|whether|which|will|would)\b/u;
 
 @Injectable()
 export class BuddyContextPlannerService {
@@ -237,7 +237,7 @@ export class BuddyContextPlannerService {
 		);
 		const strategy = selectStrategy(intent, ambiguityRisk, domains, input.providerCapabilities);
 		const includeCurrentStateForRead =
-			(!domains.includes('history') || hasCurrentStateReadClause(normalizedMessage)) &&
+			(!domains.includes('history') || hasCurrentStateReadClause(normalizedMessage, explicitSpaces)) &&
 			!CAPABILITY_DISCOVERY_PATTERN.test(normalizedMessage);
 		const scopedReferences = hasAction
 			? references.length === 1 &&
@@ -484,11 +484,25 @@ function splitPlannerClauses(message: string): string[] {
 	return message.split(/(?:[?!,.;]|\b(?:and(?: also)?|as well as|plus|then)\b)/u);
 }
 
-function hasCurrentStateReadClause(message: string): boolean {
+function hasCurrentStateReadClause(
+	message: string,
+	explicitSpaces: readonly BuddyContextSpaceReference[] = [],
+): boolean {
+	const conjoinedTemporalSpaceIds = new Set(resolveConjoinedTemporalSpaceIds(message, explicitSpaces));
+
 	return splitPlannerClauses(message).some((clause) => {
 		const normalizedClause = clause.trim();
 
 		if (HISTORY_PATTERN.test(normalizedClause) && !CURRENT_STATE_PATTERN.test(normalizedClause)) return false;
+		if (
+			!CURRENT_STATE_PATTERN.test(normalizedClause) &&
+			explicitSpaces.some(
+				(space) =>
+					conjoinedTemporalSpaceIds.has(space.id) && containsNormalizedPhrase(normalizedClause, normalize(space.name)),
+			)
+		) {
+			return false;
+		}
 
 		return (
 			CURRENT_STATE_PATTERN.test(normalizedClause) ||
@@ -707,8 +721,17 @@ function resolveCurrentStateSpaceIds(
 	conversationSpaceId: string | undefined,
 	fallbackSpaceIds: readonly string[],
 ): string[] {
+	const conjoinedTemporalSpaceIds = new Set(resolveConjoinedTemporalSpaceIds(message, explicitSpaces));
 	const currentStateClauses = splitPlannerClauses(message).filter((clause) => {
 		if (HISTORY_PATTERN.test(clause) && !CURRENT_STATE_PATTERN.test(clause)) return false;
+		if (
+			!CURRENT_STATE_PATTERN.test(clause) &&
+			explicitSpaces.some(
+				(space) => conjoinedTemporalSpaceIds.has(space.id) && containsNormalizedPhrase(clause, normalize(space.name)),
+			)
+		) {
+			return false;
+		}
 
 		const hasHomeSignal =
 			HOME_ENTITY_PATTERN.test(clause) ||
@@ -771,7 +794,11 @@ function resolveTemporalHomeSpaceIds(
 
 	if (temporalClauses.some((clause) => WHOLE_HOME_SCOPE_PATTERN.test(clause))) return [];
 
-	const explicitTemporalSpaceIds = resolveTemporalExplicitSpaceIds(temporalClauses, explicitSpaces, temporalPattern);
+	const explicitTemporalSpaceIds = expandConjoinedTemporalSpaceIds(
+		message,
+		explicitSpaces,
+		resolveTemporalExplicitSpaceIds(temporalClauses, explicitSpaces, temporalPattern),
+	);
 
 	if (explicitTemporalSpaceIds.length > 0) return explicitTemporalSpaceIds;
 	if (
@@ -785,6 +812,49 @@ function resolveTemporalHomeSpaceIds(
 	if (explicitSpaces.length === 1) return [explicitSpaces[0].id];
 
 	return [];
+}
+
+function resolveConjoinedTemporalSpaceIds(
+	message: string,
+	explicitSpaces: readonly BuddyContextSpaceReference[],
+): string[] {
+	const temporalClauses = splitPlannerClauses(message).filter((clause) => HISTORY_PATTERN.test(clause));
+	const directlyTemporalSpaceIds = resolveTemporalExplicitSpaceIds(temporalClauses, explicitSpaces, HISTORY_PATTERN);
+
+	return expandConjoinedTemporalSpaceIds(message, explicitSpaces, directlyTemporalSpaceIds).filter(
+		(spaceId) => !directlyTemporalSpaceIds.includes(spaceId),
+	);
+}
+
+function expandConjoinedTemporalSpaceIds(
+	message: string,
+	explicitSpaces: readonly BuddyContextSpaceReference[],
+	selectedSpaceIds: readonly string[],
+): string[] {
+	const occurrences = explicitSpaces
+		.flatMap((space) => findNormalizedPhraseRanges(message, normalize(space.name)).map((range) => ({ space, range })))
+		.sort((left, right) => left.range.start - right.range.start);
+	const selectedIds = new Set(selectedSpaceIds);
+	let changed = true;
+
+	while (changed) {
+		changed = false;
+
+		for (let index = 0; index < occurrences.length - 1; index += 1) {
+			const left = occurrences[index];
+			const right = occurrences[index + 1];
+			const connector = message.slice(left.range.end, right.range.start);
+
+			if (!/^\s*(?:,\s*|,?\s+(?:and|or)\s+)$/u.test(connector)) continue;
+			if (selectedIds.has(left.space.id) === selectedIds.has(right.space.id)) continue;
+
+			selectedIds.add(left.space.id);
+			selectedIds.add(right.space.id);
+			changed = true;
+		}
+	}
+
+	return explicitSpaces.filter((space) => selectedIds.has(space.id)).map((space) => space.id);
 }
 
 function resolveTemporalExplicitSpaceIds(

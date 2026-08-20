@@ -485,6 +485,20 @@ describe('BuddyContextPlannerService', () => {
 		expect(result.queries).toContainEqual({ kind: 'current-state' });
 	});
 
+	it.each([
+		'Turn Reading Lamp off, and how warm is the Bedroom?',
+		'Turn Reading Lamp off, and can you check the Bedroom temperature?',
+	])('retains a trailing interrogative or modal read clause: %s', (message) => {
+		const result = service.plan({
+			message,
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+		});
+
+		expect(result).toMatchObject({ intent: 'mixed', strategy: 'deterministic-action' });
+		expect(result.queries).toContainEqual({ kind: 'current-state', spaceId: 'space-bedroom' });
+	});
+
 	it('checks only the trailing action operation against a compound reference', () => {
 		expect(
 			service.plan({
@@ -1500,6 +1514,27 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('keeps conjoined configured spaces under one temporal qualifier', () => {
+		expect(
+			service.plan({
+				message: 'What were the Bedroom and Kitchen temperatures yesterday?',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'search-home', spaceId: 'space-kitchen' },
+				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-kitchen' },
+			],
+		});
+	});
+
 	it('prefers the longest overlapping explicit space name', () => {
 		const result = service.plan({
 			message: 'What is the temperature in Bedroom 2?',
@@ -1542,6 +1577,25 @@ describe('BuddyContextPlannerService', () => {
 
 			expect(result.domains).toEqual(['home', 'history']);
 			expect(result.queries).toEqual([{ kind: 'search-home' }, { kind: 'property-timeseries' }]);
+		},
+	);
+
+	it.each(['What was the Bedroom temperature last Tuesday?', 'Show the Bedroom temperature since Monday'])(
+		'routes weekday history phrasing to timeseries: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+					providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+				}),
+			).toMatchObject({
+				domains: ['home', 'history'],
+				queries: [
+					{ kind: 'search-home', spaceId: 'space-bedroom' },
+					{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+				],
+			});
 		},
 	);
 
