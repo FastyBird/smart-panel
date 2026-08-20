@@ -3035,6 +3035,28 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('keeps a complete historical energy clause separate from a following current-state clause', () => {
+		expect(
+			service.plan({
+				message: 'How much energy did Bedroom use yesterday, and what is Kitchen temperature now?',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'energy'],
+			scope: { spaceIds: ['space-bedroom', 'space-kitchen'] },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-kitchen' },
+				{ kind: 'current-state', spaceId: 'space-kitchen' },
+				{ kind: 'energy-summary', spaceId: 'space-bedroom' },
+			],
+			strategy: 'prefetch',
+		});
+	});
+
 	it('associates a leading temporal adjunct with the following home-state clause', () => {
 		expect(
 			service.plan({

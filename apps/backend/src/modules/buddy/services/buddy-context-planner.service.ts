@@ -723,6 +723,9 @@ function mergeLeadingTemporalAdjuncts(clauses: string[]): string[] {
 		hasHistorySignalInClause(merged[0].trim()) &&
 		!HOME_ENTITY_PATTERN.test(merged[0]) &&
 		!HOME_STATE_PATTERN.test(merged[0]) &&
+		!hasDomainSignalInClause(merged[0], WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) &&
+		!hasDomainSignalInClause(merged[0], ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) &&
+		!hasDomainSignalInClause(merged[0], SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN) &&
 		!ACTION_COMMAND_PATTERN.test(merged[0])
 	) {
 		merged.splice(0, 2, `${merged[0]} ${merged[1]}`);
