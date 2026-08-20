@@ -1,7 +1,7 @@
 /*
 eslint-disable @typescript-eslint/no-explicit-any
 */
-import { nextTick, ref } from 'vue';
+import { effectScope, nextTick, ref } from 'vue';
 
 import { createPinia, setActivePinia } from 'pinia';
 
@@ -216,5 +216,37 @@ describe('useListQuery (composable)', () => {
 		await nextTick();
 
 		expect(routeQuery.value).toEqual({});
+	});
+
+	it('clears pending debounce timers when the wrapping scope is disposed', async () => {
+		const debounceMs = 150;
+
+		const patchSpy = vi.spyOn(fakeStore, 'patch');
+
+		const scope = effectScope();
+
+		const { filters } = scope.run(() =>
+			useListQuery({
+				key: 'k6',
+				filters: { schema: FilterSchema, defaults: defaultFilters },
+				pagination: { defaults: defaultPagination },
+				sort: { defaults: defaultSort },
+				syncQuery: true,
+				version: 1,
+				debounceMs,
+			})
+		)!;
+
+		filters.value.search = 'x';
+
+		// Let the debounce watcher run and schedule its `setTimeout` before disposing — otherwise
+		// there would be no pending timer for the disposal to actually clear.
+		await nextTick();
+
+		scope.stop();
+
+		await vi.advanceTimersByTimeAsync(debounceMs);
+
+		expect(patchSpy).not.toHaveBeenCalled();
 	});
 });

@@ -379,6 +379,8 @@ const pageChanged = ref<boolean>(false);
 
 let changeTimeout: ReturnType<typeof setTimeout>;
 
+let initTimeout: ReturnType<typeof setTimeout> | undefined;
+
 const onTileRemove = (id: ITile['id']): void => {
 	const el = document.querySelector(`.grid-stack-item[gs-id="${id}"]`);
 
@@ -780,13 +782,16 @@ onMounted((): void => {
 
 	window.addEventListener('resize', updateSquareCells);
 
-	setTimeout(() => {
+	initTimeout = setTimeout(() => {
 		initialized.value = true;
 	}, 500);
 });
 
 onBeforeUnmount((): void => {
 	window.removeEventListener('resize', updateSquareCells);
+
+	clearTimeout(changeTimeout);
+	clearTimeout(initTimeout);
 
 	destroyGrids();
 });

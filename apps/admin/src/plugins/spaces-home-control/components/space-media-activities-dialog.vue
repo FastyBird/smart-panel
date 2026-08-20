@@ -353,7 +353,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { Icon } from '@iconify/vue';
@@ -771,6 +771,16 @@ const onDialogOpen = async (): Promise<void> => {
 	await nextTick();
 	autoSaveReady.value = true;
 };
+
+onBeforeUnmount((): void => {
+	// Unmount without the close flow (route change) must not leave debounced saves
+	// firing against a destroyed component's state.
+	for (const timer of pendingSaves.values()) {
+		clearTimeout(timer);
+	}
+
+	pendingSaves.clear();
+});
 
 const onClose = async (): Promise<void> => {
 	autoSaveReady.value = false;

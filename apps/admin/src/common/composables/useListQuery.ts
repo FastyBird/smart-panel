@@ -4,7 +4,7 @@ import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 import { isEqual } from 'lodash';
 import { z } from 'zod';
 
-import { tryOnMounted } from '@vueuse/core';
+import { tryOnMounted, tryOnScopeDispose } from '@vueuse/core';
 
 import { injectStoresManager } from '../services/store';
 import { listQueryStoreKey } from '../store/keys';
@@ -506,6 +506,14 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined, V exte
 			}, debounceMs);
 		});
 	}
+
+	tryOnScopeDispose((): void => {
+		// A pending debounce firing after unmount would patch the store or rewrite the URL
+		// for a view that no longer exists.
+		for (const timer of [tF, tS, tP, tV, qF, qS, qP, qV]) {
+			window.clearTimeout(timer);
+		}
+	});
 
 	// Hydrate URL once from store if no relevant keys present
 	tryOnMounted(() => {
