@@ -157,21 +157,31 @@ describe('HomeyMappingLoaderService', () => {
 		});
 	});
 
-	it('matches suffixed capabilities by base ID while preserving both full IDs', () => {
+	it('matches suffixed capabilities by base ID and selects one full ID deterministically', () => {
 		writeBuiltin('properties', [propertyDefinition()]);
 		service.loadAllMappings();
 
 		const resolution = service.resolvePropertyMappings(createDevice());
 
 		expect(resolution.conflicts).toEqual([]);
-		expect(resolution.mappings.map((binding) => binding.capabilityBaseId)).toEqual([
-			'measure_temperature',
-			'measure_temperature',
-		]);
-		expect(resolution.mappings.map((binding) => binding.capabilityId)).toEqual([
-			'measure_temperature.inside',
-			'measure_temperature.outside',
-		]);
+		expect(resolution.mappings.map((binding) => binding.capabilityBaseId)).toEqual(['measure_temperature']);
+		expect(resolution.mappings.map((binding) => binding.capabilityId)).toEqual(['measure_temperature.inside']);
+	});
+
+	it('prefers the unsuffixed primary capability over repeated instances', () => {
+		writeBuiltin('properties', [propertyDefinition()]);
+		service.loadAllMappings();
+
+		const resolution = service.resolvePropertyMappings(
+			createDevice({
+				capabilities: [
+					createCapability('measure_temperature.suffix', 18),
+					createCapability('measure_temperature', 21.5),
+				],
+			}),
+		);
+
+		expect(resolution.mappings.map((binding) => binding.capabilityId)).toEqual(['measure_temperature']);
 	});
 
 	it('replaces a built-in descriptor with a same-name user override', () => {
@@ -331,6 +341,40 @@ describe('HomeyMappingLoaderService', () => {
 		expect(service.resolveDeviceMappings(createDevice({ manufacturer: 'Different vendor' })).mappings).toHaveLength(0);
 	});
 
+	it('applies required and excluded device capability filters to property mappings', () => {
+		writeBuiltin('properties', [
+			propertyDefinition({
+				match: {
+					classes: ['sensor'],
+					capability_base_ids: ['measure_temperature'],
+					all_capabilities: ['measure_humidity'],
+					none_capabilities: ['alarm_temperature'],
+				},
+			}),
+		]);
+		service.loadAllMappings();
+
+		expect(service.resolvePropertyMappings(createDevice()).mappings).toHaveLength(0);
+		expect(
+			service.resolvePropertyMappings(
+				createDevice({
+					capabilities: [createCapability('measure_temperature', 21.5), createCapability('measure_humidity', 45)],
+				}),
+			).mappings,
+		).toHaveLength(1);
+		expect(
+			service.resolvePropertyMappings(
+				createDevice({
+					capabilities: [
+						createCapability('measure_temperature', 21.5),
+						createCapability('measure_humidity', 45),
+						createCapability('alarm_temperature', 0),
+					],
+				}),
+			).mappings,
+		).toHaveLength(0);
+	});
+
 	it('isolates semantically invalid ranges and transforms in user overrides', () => {
 		writeBuiltin('properties', [propertyDefinition()]);
 		writeUser('properties', [
@@ -425,5 +469,48 @@ describe('HomeyMappingLoaderService', () => {
 			'read-map',
 			'write-map',
 		]);
+	});
+
+	it.each([
+		{ type: 'constant', value: 'static' },
+		{ type: 'threshold', threshold: 20, less_than_or_equal: 'low', greater_than: 'ok' },
+		{ type: 'thresholds', thresholds: [{ minimum: 20, value: 'high' }], default: 'low' },
+	])('rejects the read-derived $type transform on a writable property', (transform) => {
+		writeBuiltin('properties', [
+			propertyDefinition({
+				property: {
+					channel: 'temperature',
+					category: 'temperature',
+					data_type: 'float',
+					direction: 'bidirectional',
+					transform,
+				},
+			}),
+		]);
+
+		expect(() => service.loadAllMappings()).toThrow(HomeyMappingConfigurationError);
+	});
+
+	it('rejects unordered multi-threshold transforms', () => {
+		writeBuiltin('properties', [
+			propertyDefinition({
+				property: {
+					channel: 'temperature',
+					category: 'temperature',
+					data_type: 'enum',
+					direction: 'read_only',
+					transform: {
+						type: 'thresholds',
+						thresholds: [
+							{ minimum: 10, value: 'low' },
+							{ minimum: 20, value: 'high' },
+						],
+						default: 'none',
+					},
+				},
+			}),
+		]);
+
+		expect(() => service.loadAllMappings()).toThrow(HomeyMappingConfigurationError);
 	});
 });

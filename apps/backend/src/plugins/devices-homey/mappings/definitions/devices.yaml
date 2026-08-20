@@ -1,3 +1,75 @@
 version: 1
 kind: devices
-mappings: []
+mappings:
+  - name: thermostat
+    description: Homey thermostat with the complete standardized temperature and mode contract
+    priority: 300
+    match:
+      classes: [thermostat]
+      all_capabilities: [measure_temperature, target_temperature, thermostat_mode]
+    device:
+      category: thermostat
+
+  - name: lock
+    description: Homey lock exposing the standardized writable lock state
+    priority: 300
+    match:
+      classes: [lock]
+      all_capabilities: [locked]
+    device:
+      category: lock
+
+  - name: window-covering
+    description: Homey window covering with state, position, or tilt control
+    priority: 300
+    match:
+      classes: [windowcoverings, curtain, blinds, sunshade, shutterblinds]
+      all_capabilities: [windowcoverings_state, windowcoverings_set]
+    device:
+      category: window_covering
+
+  - name: light
+    description: Homey light with a power or lighting capability
+    priority: 250
+    match:
+      classes: [light]
+      all_capabilities: [onoff]
+    device:
+      category: lighting
+
+  - name: outlet
+    description: Homey socket with standardized power control
+    priority: 250
+    match:
+      classes: [socket]
+      all_capabilities: [onoff]
+    device:
+      category: outlet
+
+  - name: sensor
+    description: Homey environmental, safety, contact, or battery sensor
+    priority: 200
+    match:
+      classes: [sensor]
+      any_capabilities:
+        - measure_temperature
+        - measure_humidity
+        - measure_pressure
+        - measure_luminance
+        - measure_co2
+        - alarm_motion
+        - alarm_contact
+        - alarm_smoke
+        - alarm_co
+        - measure_battery
+    device:
+      category: sensor
+
+  - name: generic-switch
+    description: Homey generic device exposing standardized power control
+    priority: 100
+    match:
+      classes: [other]
+      all_capabilities: [onoff]
+    device:
+      category: switcher

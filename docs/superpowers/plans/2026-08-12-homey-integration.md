@@ -291,16 +291,23 @@ remain supported. Revisit only after a Homey-specific identity and restart-stabl
 
 ### Task 3.2: Add MVP mapping definitions
 
-- [ ] Power: `onoff`.
-- [ ] Lighting: `dim`, hue, saturation, and temperature.
-- [ ] Climate: measured temperature, target temperature, and verified thermostat modes.
-- [ ] Environment: humidity, pressure, luminance, and CO2.
-- [ ] Safety/contact: motion, contact, smoke, carbon monoxide.
-- [ ] Energy: instantaneous power and accumulated energy.
-- [ ] Battery: level and low-battery alarm.
-- [ ] Lock: state/control when writable.
-- [ ] Covers: state, position, tilt, open/close/stop behavior after fixture validation.
-- [ ] Add representative fixture tests for each mapping family and inverse transformation.
+- [x] Power: `onoff`.
+- [x] Lighting: `dim`, hue, saturation, and temperature.
+- [x] Climate: measured temperature and complete thermostat identity.
+- [ ] Climate control: project target temperature and mode only with a verified actual-activity signal; Homey's standard
+      `thermostat_mode` is configuration, not heater/cooler activity.
+- [x] Environment: humidity, pressure, luminance, and CO2.
+- [x] Safety/contact: motion, contact, smoke, carbon monoxide.
+- [x] Energy: instantaneous power and accumulated energy.
+- [x] Battery: level and low-battery alarm.
+- [x] Lock: state/control when writable.
+- [x] Covers: state, position, tilt, open/close/stop behavior after fixture validation.
+- [x] Add representative fixture tests for each mapping family and inverse transformation.
+
+Live SHS 13.4.0 fixtures cover the capability families present in the captured inventory. Known inventory gaps use
+explicitly named published-contract test devices derived from Athom's public capability definitions; they do not claim
+live provenance. Relative light-temperature and cover-tilt projections are reversible defaults whose conversion
+metadata remains visible to mapping preview and user overrides.
 
 ### Task 3.3: Implement device inventory/discovery service and API
 

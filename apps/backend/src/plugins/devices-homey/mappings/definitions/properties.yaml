@@ -1,3 +1,487 @@
 version: 1
 kind: properties
-mappings: []
+mappings:
+  - name: light-power
+    priority: 200
+    match:
+      classes: [light]
+      capability_base_ids: [onoff]
+    property:
+      channel: light
+      category: on
+      data_type: bool
+      direction: bidirectional
+
+  - name: outlet-power
+    priority: 200
+    match:
+      classes: [socket]
+      capability_base_ids: [onoff]
+    property:
+      channel: outlet
+      category: on
+      data_type: bool
+      direction: bidirectional
+
+  - name: generic-switch-power
+    priority: 100
+    match:
+      classes: [other]
+      capability_base_ids: [onoff]
+    property:
+      channel: switcher
+      category: on
+      data_type: bool
+      direction: bidirectional
+
+  - name: light-brightness
+    description: Homey normalized dim level to Smart Panel percentage
+    priority: 200
+    match:
+      classes: [light]
+      capability_base_ids: [dim]
+    property:
+      channel: light
+      category: brightness
+      data_type: uchar
+      direction: bidirectional
+      unit: '%'
+      range: { minimum: 0, maximum: 100, step: 1 }
+      transform:
+        type: scale
+        input_range: [0, 1]
+        output_range: [0, 100]
+        clamp: true
+
+  - name: light-hue
+    description: Homey normalized hue to Smart Panel degrees
+    priority: 200
+    match:
+      classes: [light]
+      capability_base_ids: [light_hue]
+    property:
+      channel: light
+      category: hue
+      data_type: ushort
+      direction: bidirectional
+      unit: deg
+      range: { minimum: 0, maximum: 360, step: 1 }
+      transform:
+        type: scale
+        input_range: [0, 1]
+        output_range: [0, 360]
+        clamp: true
+
+  - name: light-saturation
+    description: Homey normalized saturation to Smart Panel percentage
+    priority: 200
+    match:
+      classes: [light]
+      capability_base_ids: [light_saturation]
+    property:
+      channel: light
+      category: saturation
+      data_type: uchar
+      direction: bidirectional
+      unit: '%'
+      range: { minimum: 0, maximum: 100, step: 1 }
+      transform:
+        type: scale
+        input_range: [0, 1]
+        output_range: [0, 100]
+        clamp: true
+
+  - name: light-color-temperature
+    description: Homey's warm-relative 0..1 scale to the Smart Panel Kelvin control range
+    priority: 200
+    match:
+      classes: [light]
+      capability_base_ids: [light_temperature]
+    property:
+      channel: light
+      category: color_temperature
+      data_type: ushort
+      direction: bidirectional
+      unit: K
+      range: { minimum: 2000, maximum: 6500, step: 1 }
+      transform:
+        type: scale
+        input_range: [0, 1]
+        output_range: [6500, 2000]
+        clamp: true
+
+  - name: sensor-temperature
+    priority: 100
+    match:
+      classes: [sensor]
+      capability_base_ids: [measure_temperature]
+    property:
+      channel: temperature
+      category: temperature
+      data_type: float
+      direction: read_only
+      unit: °C
+      range: { minimum: 0, maximum: 100, step: 0.1 }
+
+  - name: thermostat-current-temperature
+    priority: 200
+    match:
+      classes: [thermostat]
+      capability_base_ids: [measure_temperature]
+    property:
+      channel: temperature
+      category: temperature
+      data_type: float
+      direction: read_only
+      unit: °C
+      range: { minimum: 0, maximum: 100, step: 0.1 }
+
+  - name: humidity
+    priority: 100
+    match:
+      classes: [sensor]
+      capability_base_ids: [measure_humidity]
+    property:
+      channel: humidity
+      category: humidity
+      data_type: uchar
+      direction: read_only
+      unit: '%'
+      range: { minimum: 0, maximum: 100, step: 1 }
+
+  - name: pressure
+    description: Homey millibar to Smart Panel kilopascal
+    priority: 100
+    match:
+      classes: [sensor]
+      capability_base_ids: [measure_pressure]
+    property:
+      channel: pressure
+      category: pressure
+      data_type: float
+      direction: read_only
+      unit: kPa
+      range: { minimum: 0, maximum: 32767, step: 0.1 }
+      transform:
+        type: scale
+        input_range: [0, 10]
+        output_range: [0, 1]
+
+  - name: illuminance
+    priority: 100
+    match:
+      classes: [sensor]
+      capability_base_ids: [measure_luminance]
+    property:
+      channel: illuminance
+      category: illuminance
+      data_type: float
+      direction: read_only
+      unit: lx
+      range: { minimum: 0, maximum: 100000, step: 0.1 }
+
+  - name: illuminance-level
+    description: Derive Smart Panel's required illuminance band from the measured lux value
+    priority: 100
+    match:
+      classes: [sensor]
+      capability_base_ids: [measure_luminance]
+    property:
+      channel: illuminance
+      category: level
+      data_type: enum
+      direction: read_only
+      transform:
+        type: thresholds
+        thresholds:
+          - { minimum: 1000, value: bright }
+          - { minimum: 100, value: moderate }
+          - { minimum: 10, value: dusky }
+        default: dark
+
+  - name: carbon-dioxide
+    priority: 100
+    match:
+      classes: [sensor]
+      capability_base_ids: [measure_co2]
+    property:
+      channel: carbon-dioxide
+      category: concentration
+      data_type: float
+      direction: read_only
+      unit: ppm
+      range: { minimum: 0, maximum: 100000, step: 1 }
+
+  - name: motion
+    priority: 100
+    match:
+      classes: [sensor, lock]
+      capability_base_ids: [alarm_motion]
+    property:
+      channel: motion
+      category: detected
+      data_type: bool
+      direction: read_only
+
+  - name: contact
+    priority: 100
+    match:
+      classes: [sensor, lock]
+      capability_base_ids: [alarm_contact]
+    property:
+      channel: contact
+      category: detected
+      data_type: bool
+      direction: read_only
+
+  - name: smoke
+    priority: 100
+    match:
+      classes: [sensor]
+      capability_base_ids: [alarm_smoke]
+    property:
+      channel: smoke
+      category: detected
+      data_type: bool
+      direction: read_only
+
+  - name: carbon-monoxide
+    priority: 100
+    match:
+      classes: [sensor]
+      capability_base_ids: [alarm_co]
+    property:
+      channel: carbon-monoxide
+      category: detected
+      data_type: bool
+      direction: read_only
+
+  - name: instantaneous-power
+    priority: 100
+    match:
+      classes: [light, socket]
+      capability_base_ids: [measure_power]
+    property:
+      channel: electrical-power
+      category: power
+      data_type: float
+      direction: read_only
+      unit: W
+      range: { minimum: 0, maximum: 10000, step: 0.1 }
+
+  - name: accumulated-energy
+    priority: 100
+    match:
+      classes: [light, socket]
+      capability_base_ids: [meter_power]
+    property:
+      channel: electrical-energy
+      category: consumption
+      data_type: float
+      direction: read_only
+      unit: kWh
+      range: { minimum: 0, step: 0.001 }
+
+  - name: battery-level
+    priority: 100
+    match:
+      classes: [sensor, lock, windowcoverings, curtain, blinds, sunshade, shutterblinds]
+      capability_base_ids: [measure_battery]
+    property:
+      channel: battery
+      category: percentage
+      data_type: uchar
+      direction: read_only
+      unit: '%'
+      range: { minimum: 0, maximum: 100, step: 1 }
+
+  - name: battery-alarm
+    priority: 100
+    match:
+      classes: [sensor, lock, windowcoverings, curtain, blinds, sunshade, shutterblinds]
+      capability_base_ids: [alarm_battery]
+      all_capabilities: [measure_battery]
+    property:
+      channel: battery
+      category: status
+      data_type: enum
+      direction: read_only
+      transform:
+        type: map
+        read: { 'false': ok, 'true': low }
+
+  - name: battery-status-from-level
+    description: Derive the required Smart Panel status when Homey exposes only a battery percentage
+    priority: 100
+    match:
+      classes: [sensor, lock, windowcoverings, curtain, blinds, sunshade, shutterblinds]
+      capability_base_ids: [measure_battery]
+      none_capabilities: [alarm_battery]
+    property:
+      channel: battery
+      category: status
+      data_type: enum
+      direction: read_only
+      transform:
+        type: threshold
+        threshold: 20
+        less_than_or_equal: low
+        greater_than: ok
+
+  - name: lock-on
+    priority: 200
+    match:
+      classes: [lock]
+      capability_base_ids: [locked]
+    property:
+      channel: lock
+      category: on
+      data_type: bool
+      direction: bidirectional
+
+  - name: lock-status
+    priority: 200
+    match:
+      classes: [lock]
+      capability_base_ids: [locked]
+    property:
+      channel: lock
+      category: status
+      data_type: enum
+      direction: bidirectional
+      transform:
+        type: map
+        read: { 'true': locked, 'false': unlocked }
+        write: { locked: true, unlocked: false }
+
+  - name: window-covering-status
+    description: Derive stable endpoint status from Homey's normalized position
+    priority: 200
+    match:
+      classes: [windowcoverings, curtain, blinds, sunshade, shutterblinds]
+      capability_base_ids: [windowcoverings_set]
+    property:
+      channel: window-covering
+      category: status
+      data_type: enum
+      direction: read_only
+      transform:
+        type: thresholds
+        thresholds:
+          - { minimum: 1, value: opened }
+          - { minimum: 0.000001, value: stopped }
+        default: closed
+
+  - name: window-covering-command
+    description: Smart Panel open, close, and stop commands to Homey's standardized state capability
+    priority: 200
+    match:
+      classes: [windowcoverings, curtain, blinds, sunshade, shutterblinds]
+      capability_base_ids: [windowcoverings_state]
+    property:
+      channel: window-covering
+      category: command
+      data_type: enum
+      direction: write_only
+      transform:
+        type: map
+        write: { open: up, close: down, stop: idle }
+
+  - name: window-covering-position
+    description: Homey normalized closed-to-open position to Smart Panel percentage
+    priority: 200
+    match:
+      classes: [windowcoverings, curtain, blinds, sunshade, shutterblinds]
+      capability_base_ids: [windowcoverings_set]
+    property:
+      channel: window-covering
+      category: position
+      data_type: uchar
+      direction: bidirectional
+      unit: '%'
+      range: { minimum: 0, maximum: 100, step: 1 }
+      transform:
+        type: scale
+        input_range: [0, 1]
+        output_range: [0, 100]
+        clamp: true
+
+  - name: window-covering-type-generic
+    description: Default Homey's generic window-covering class to Smart Panel's roller presentation
+    priority: 200
+    match:
+      classes: [windowcoverings]
+      capability_base_ids: [windowcoverings_set]
+    property:
+      channel: window-covering
+      category: type
+      data_type: enum
+      direction: read_only
+      transform: { type: constant, value: roller }
+
+  - name: window-covering-type-curtain
+    priority: 200
+    match:
+      classes: [curtain]
+      capability_base_ids: [windowcoverings_set]
+    property:
+      channel: window-covering
+      category: type
+      data_type: enum
+      direction: read_only
+      transform: { type: constant, value: curtain }
+
+  - name: window-covering-type-blind
+    priority: 200
+    match:
+      classes: [blinds]
+      capability_base_ids: [windowcoverings_set]
+    property:
+      channel: window-covering
+      category: type
+      data_type: enum
+      direction: read_only
+      transform: { type: constant, value: blind }
+
+  - name: window-covering-type-sunshade
+    priority: 200
+    match:
+      classes: [sunshade]
+      capability_base_ids: [windowcoverings_set]
+    property:
+      channel: window-covering
+      category: type
+      data_type: enum
+      direction: read_only
+      transform: { type: constant, value: outdoor_blind }
+
+  - name: window-covering-type-shutter
+    priority: 200
+    match:
+      classes: [shutterblinds]
+      capability_base_ids: [windowcoverings_set]
+    property:
+      channel: window-covering
+      category: type
+      data_type: enum
+      direction: read_only
+      transform: { type: constant, value: shutter }
+
+  - name: window-covering-tilt
+    description: Homey normalized closed-to-open tilt travel to Smart Panel full angular travel
+    priority: 200
+    match:
+      classes: [windowcoverings, curtain, blinds, sunshade, shutterblinds]
+      capability_base_ids: [windowcoverings_tilt_set]
+    property:
+      channel: window-covering
+      category: tilt
+      data_type: float
+      direction: bidirectional
+      unit: °
+      range: { minimum: -90, maximum: 90, step: 1 }
+      transform:
+        type: scale
+        input_range: [0, 1]
+        output_range: [-90, 90]
+        clamp: true
