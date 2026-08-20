@@ -114,6 +114,10 @@ export default {
 		// Events emitted while the browser was suspended are gone for good - re-read what we hold.
 		dataRefreshRegistry.register(systemAdminModuleKey, (): Promise<void> => refreshLoadedStores([systemInfoStore, throttleStatusStore]));
 
+		if (typeof window !== 'undefined' && isTest) {
+			systemLogsReporter.start();
+		}
+
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(SYSTEM_MODULE_EVENT_PREFIX)) {
 				return;
@@ -199,10 +203,6 @@ export default {
 
 				default:
 					logger.warn('Unhandled system module event:', data.event);
-			}
-
-			if (typeof window !== 'undefined' && isTest) {
-				systemLogsReporter.start();
 			}
 		});
 	},
