@@ -14,6 +14,8 @@ import { DEVICES_HOMEY_PLUGIN_NAME, DEVICES_HOMEY_TYPE, HOMEY_CONNECTOR_FACTORY 
 import { DEVICES_HOMEY_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-homey.openapi';
 import { DevicesHomeyPlugin } from './devices-homey.plugin';
 import { HomeyUpdatePluginConfigDto } from './dto/update-config.dto';
+import { HomeyMappingLoaderService } from './mappings/mapping-loader.service';
+import { HomeyPropertyMappingStorageService } from './mappings/property-mapping-storage.service';
 import { HomeyConfigModel } from './models/config.model';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
 import { HomeyService } from './services/homey.service';
@@ -77,7 +79,13 @@ describe('DevicesHomeyPlugin', () => {
 		const controllers = Reflect.getMetadata('controllers', DevicesHomeyPlugin) as unknown[];
 
 		expect(providers).toEqual(
-			expect.arrayContaining([HomeySdkClientFactoryService, HomeyLocalConnectorFactory, HomeyConnectionTestService]),
+			expect.arrayContaining([
+				HomeySdkClientFactoryService,
+				HomeyLocalConnectorFactory,
+				HomeyConnectionTestService,
+				HomeyMappingLoaderService,
+				HomeyPropertyMappingStorageService,
+			]),
 		);
 		expect(providers).toContainEqual({
 			provide: HOMEY_CONNECTOR_FACTORY,

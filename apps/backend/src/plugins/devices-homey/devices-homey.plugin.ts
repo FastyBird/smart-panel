@@ -42,6 +42,8 @@ import { UpdateHomeyChannelDto } from './dto/update-channel.dto';
 import { HomeyUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateHomeyDeviceDto } from './dto/update-device.dto';
 import { HomeyChannelEntity, HomeyChannelPropertyEntity, HomeyDeviceEntity } from './entities/devices-homey.entity';
+import { HomeyMappingLoaderService } from './mappings/mapping-loader.service';
+import { HomeyPropertyMappingStorageService } from './mappings/property-mapping-storage.service';
 import { HomeyConfigModel } from './models/config.model';
 import { HomeyConfigValidatorService } from './services/homey-config-validator.service';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
@@ -69,10 +71,12 @@ import { HomeyService } from './services/homey.service';
 			useExisting: HomeyLocalConnectorFactory,
 		},
 		HomeyConnectionTestService,
+		HomeyMappingLoaderService,
+		HomeyPropertyMappingStorageService,
 		HomeyService,
 	],
 	controllers: [HomeyStatusController, HomeyTestConnectionController],
-	exports: [HomeyService],
+	exports: [HomeyMappingLoaderService, HomeyPropertyMappingStorageService, HomeyService],
 })
 export class DevicesHomeyPlugin implements OnModuleInit {
 	constructor(

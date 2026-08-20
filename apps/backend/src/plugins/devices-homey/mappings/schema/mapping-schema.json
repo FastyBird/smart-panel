@@ -1,0 +1,257 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "oneOf": [
+    { "$ref": "#/definitions/deviceFile" },
+    { "$ref": "#/definitions/channelFile" },
+    { "$ref": "#/definitions/propertyFile" }
+  ],
+  "definitions": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "uniqueStrings": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/nonEmptyString" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "name": { "$ref": "#/definitions/nonEmptyString" },
+        "description": { "$ref": "#/definitions/nonEmptyString" },
+        "priority": { "type": "integer", "minimum": -100000, "maximum": 100000 },
+        "exclusive": { "type": "boolean" },
+        "conflict": { "enum": ["first", "warn", "error"] }
+      },
+      "required": ["name"],
+      "additionalProperties": true
+    },
+    "deviceMatch": {
+      "type": "object",
+      "properties": {
+        "classes": { "$ref": "#/definitions/uniqueStrings" },
+        "all_capabilities": { "$ref": "#/definitions/uniqueStrings" },
+        "any_capabilities": { "$ref": "#/definitions/uniqueStrings" },
+        "driver_ids": { "$ref": "#/definitions/uniqueStrings" },
+        "manufacturers": { "$ref": "#/definitions/uniqueStrings" },
+        "models": { "$ref": "#/definitions/uniqueStrings" }
+      },
+      "required": ["classes"],
+      "anyOf": [{ "required": ["all_capabilities"] }, { "required": ["any_capabilities"] }],
+      "additionalProperties": false
+    },
+    "propertyMatch": {
+      "type": "object",
+      "properties": {
+        "classes": { "$ref": "#/definitions/uniqueStrings" },
+        "capability_base_ids": { "$ref": "#/definitions/uniqueStrings" },
+        "driver_ids": { "$ref": "#/definitions/uniqueStrings" },
+        "manufacturers": { "$ref": "#/definitions/uniqueStrings" },
+        "models": { "$ref": "#/definitions/uniqueStrings" }
+      },
+      "required": ["classes", "capability_base_ids"],
+      "additionalProperties": false
+    },
+    "deviceMapping": {
+      "allOf": [
+        { "$ref": "#/definitions/metadata" },
+        {
+          "type": "object",
+          "properties": {
+            "name": true,
+            "description": true,
+            "priority": true,
+            "exclusive": true,
+            "conflict": true,
+            "match": { "$ref": "#/definitions/deviceMatch" },
+            "device": {
+              "type": "object",
+              "properties": { "category": { "$ref": "#/definitions/nonEmptyString" } },
+              "required": ["category"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["name", "match", "device"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "channelMapping": {
+      "allOf": [
+        { "$ref": "#/definitions/metadata" },
+        {
+          "type": "object",
+          "properties": {
+            "name": true,
+            "description": true,
+            "priority": true,
+            "exclusive": true,
+            "conflict": true,
+            "match": { "$ref": "#/definitions/deviceMatch" },
+            "channel": {
+              "type": "object",
+              "properties": {
+                "identifier": { "$ref": "#/definitions/nonEmptyString" },
+                "category": { "$ref": "#/definitions/nonEmptyString" },
+                "name": { "$ref": "#/definitions/nonEmptyString" }
+              },
+              "required": ["identifier", "category"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["name", "match", "channel"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "range": {
+      "type": "object",
+      "properties": {
+        "minimum": { "type": "number" },
+        "maximum": { "type": "number" },
+        "step": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "minProperties": 1,
+      "additionalProperties": false
+    },
+    "scalar": {
+      "type": ["boolean", "number", "string", "null"]
+    },
+    "numberPair": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "transform": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "scale" },
+            "input_range": { "$ref": "#/definitions/numberPair" },
+            "output_range": { "$ref": "#/definitions/numberPair" },
+            "clamp": { "type": "boolean" }
+          },
+          "required": ["type", "input_range", "output_range"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "map" },
+            "read": {
+              "type": "object",
+              "additionalProperties": { "$ref": "#/definitions/scalar" },
+              "minProperties": 1
+            },
+            "write": {
+              "type": "object",
+              "additionalProperties": { "$ref": "#/definitions/scalar" },
+              "minProperties": 1
+            }
+          },
+          "required": ["type"],
+          "anyOf": [{ "required": ["read"] }, { "required": ["write"] }],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "boolean" },
+            "true_value": { "$ref": "#/definitions/scalar" },
+            "false_value": { "$ref": "#/definitions/scalar" },
+            "invert": { "type": "boolean" }
+          },
+          "required": ["type", "true_value", "false_value"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "clamp" },
+            "minimum": { "type": "number" },
+            "maximum": { "type": "number" }
+          },
+          "required": ["type", "minimum", "maximum"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "round" },
+            "precision": { "type": "integer", "minimum": 0, "maximum": 12 }
+          },
+          "required": ["type"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "propertyMapping": {
+      "allOf": [
+        { "$ref": "#/definitions/metadata" },
+        {
+          "type": "object",
+          "properties": {
+            "name": true,
+            "description": true,
+            "priority": true,
+            "exclusive": true,
+            "conflict": true,
+            "match": { "$ref": "#/definitions/propertyMatch" },
+            "property": {
+              "type": "object",
+              "properties": {
+                "channel": { "$ref": "#/definitions/nonEmptyString" },
+                "category": { "$ref": "#/definitions/nonEmptyString" },
+                "data_type": {
+                  "enum": ["char", "uchar", "short", "ushort", "int", "uint", "float", "bool", "string", "enum", "unknown"]
+                },
+                "direction": { "enum": ["read_only", "write_only", "bidirectional"] },
+                "unit": { "$ref": "#/definitions/nonEmptyString" },
+                "range": { "$ref": "#/definitions/range" },
+                "transform": { "$ref": "#/definitions/transform" }
+              },
+              "required": ["channel", "category", "data_type", "direction"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["name", "match", "property"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "deviceFile": {
+      "type": "object",
+      "properties": {
+        "version": { "const": 1 },
+        "kind": { "const": "devices" },
+        "mappings": { "type": "array", "items": { "$ref": "#/definitions/deviceMapping" } }
+      },
+      "required": ["version", "kind", "mappings"],
+      "additionalProperties": false
+    },
+    "channelFile": {
+      "type": "object",
+      "properties": {
+        "version": { "const": 1 },
+        "kind": { "const": "channels" },
+        "mappings": { "type": "array", "items": { "$ref": "#/definitions/channelMapping" } }
+      },
+      "required": ["version", "kind", "mappings"],
+      "additionalProperties": false
+    },
+    "propertyFile": {
+      "type": "object",
+      "properties": {
+        "version": { "const": 1 },
+        "kind": { "const": "properties" },
+        "mappings": { "type": "array", "items": { "$ref": "#/definitions/propertyMapping" } }
+      },
+      "required": ["version", "kind", "mappings"],
+      "additionalProperties": false
+    }
+  }
+}
