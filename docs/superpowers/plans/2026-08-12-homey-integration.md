@@ -293,7 +293,9 @@ remain supported. Revisit only after a Homey-specific identity and restart-stabl
 
 - [x] Power: `onoff`.
 - [x] Lighting: `dim`, hue, saturation, and temperature.
-- [x] Climate: measured temperature, target temperature, and verified thermostat modes.
+- [x] Climate: measured temperature and complete thermostat identity.
+- [ ] Climate control: project target temperature and mode only with a verified actual-activity signal; Homey's standard
+      `thermostat_mode` is configuration, not heater/cooler activity.
 - [x] Environment: humidity, pressure, luminance, and CO2.
 - [x] Safety/contact: motion, contact, smoke, carbon monoxide.
 - [x] Energy: instantaneous power and accumulated energy.

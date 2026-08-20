@@ -69,15 +69,16 @@ These projections are reversible and clamped, but they describe normalized trave
 calibration. Mapping preview must present that conversion metadata so an operator can override it for hardware with a
 narrower or inverted range.
 
-Smart Panel's thermostat contract keeps child-lock state on the `thermostat` channel and projects Homey's single target
-onto one complete `heater` channel. Homey's standard `thermostat_mode` supplies the required power/status projections
-when no separate activity capability exists. The generic mapping deliberately does not create an independent cooler
-setpoint, because both would write the same Homey `target_temperature`; a user override may replace the heater
-projection for cooling-only hardware.
+Smart Panel's heater contract requires `status` to mean actual heating activity. Homey's standard `thermostat_mode`
+reports only the configured mode and has no standard activity capability, so the built-in catalog deliberately does not
+fabricate a heater channel or project `target_temperature`. Those capabilities remain visible in Homey inventory and
+mapping preview. A user mapping may add one heater or cooler projection for a device with a verified driver-specific
+activity signal; it must not use `thermostat_mode` itself as `status`.
 
 Thermostat device eligibility requires `measure_temperature`, `target_temperature`, and `thermostat_mode` together.
-Partial target-only or mode-only devices stay unsupported instead of losing their control or producing incomplete
-climate channels.
+Partial target-only or mode-only devices stay unsupported, while complete standard devices receive read-only
+temperature and thermostat identity channels until an actual activity signal can support a structurally complete
+control channel.
 
 The battery channel is emitted only when `measure_battery` exists and the selected Smart Panel device contract permits
 that channel. Thermostats are excluded because their current contract does not accept battery channels. When Homey also

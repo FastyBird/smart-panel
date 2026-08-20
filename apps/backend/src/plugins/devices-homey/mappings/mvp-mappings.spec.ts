@@ -101,8 +101,8 @@ describe('Homey MVP mapping catalog', () => {
 
 	it('loads the complete built-in catalog without ambiguity', () => {
 		expect(loader.getDeviceMappings()).toHaveLength(7);
-		expect(loader.getChannelMappings()).toHaveLength(20);
-		expect(loader.getPropertyMappings()).toHaveLength(37);
+		expect(loader.getChannelMappings()).toHaveLength(19);
+		expect(loader.getPropertyMappings()).toHaveLength(34);
 	});
 
 	it('maps the captured light fixture and applies inverse lighting transformations', () => {
@@ -182,7 +182,7 @@ describe('Homey MVP mapping catalog', () => {
 		expect(write(bindings, 'window-covering-position', 45)).toBe(0.45);
 	});
 
-	it('maps published thermostat modes and target temperature without claiming live fixture provenance', () => {
+	it('does not fabricate thermostat activity from the configured mode', () => {
 		const device = publishedContractDevice('thermostat', [
 			capability('measure_temperature', 21.5, { unit: '°C' }),
 			capability('target_temperature', 22.5, { unit: '°C', writable: true, minimum: 4, maximum: 35 }),
@@ -196,23 +196,14 @@ describe('Homey MVP mapping catalog', () => {
 		expect(loader.resolveDeviceMappings(device).mappings[0]?.deviceCategory).toBe(DeviceCategory.THERMOSTAT);
 		expect(read(bindings, 'thermostat-current-temperature', 21.5)).toBe(21.5);
 		expect(loader.resolveChannelMappings(device).mappings.map((mapping) => mapping.channel.identifier)).toStrictEqual([
-			'heater',
 			'temperature',
 			'thermostat',
 		]);
-		expect(read(bindings, 'thermostat-heater-target-temperature', 22.5)).toBe(22.5);
-		expect(write(bindings, 'thermostat-heater-target-temperature', 19.5)).toBe(19.5);
-		expect(read(bindings, 'thermostat-heater-on', 'heat')).toBe(true);
-		expect(read(bindings, 'thermostat-heater-on', 'cool')).toBe(false);
-		expect(write(bindings, 'thermostat-heater-on', true)).toBe('heat');
-		expect(read(bindings, 'thermostat-heater-status', 'off')).toBe(false);
+		expect(bindings.has('thermostat-heater-target-temperature')).toBe(false);
+		expect(bindings.has('thermostat-heater-on')).toBe(false);
+		expect(bindings.has('thermostat-heater-status')).toBe(false);
 		expect(bindings.has('battery-level')).toBe(false);
 		expect(bindings.has('battery-alarm')).toBe(false);
-		expect(
-			loader
-				.resolvePropertyMappings(device)
-				.mappings.filter((binding) => binding.capabilityId === 'target_temperature'),
-		).toHaveLength(1);
 	});
 
 	it('does not classify an incomplete target-only thermostat as adoptable', () => {
