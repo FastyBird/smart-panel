@@ -75,7 +75,7 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
-	it('reuses localized action vocabulary from tool selection', () => {
+	it('clarifies a localized bare-category action target', () => {
 		expect(
 			service.plan({
 				message: 'Zapni světlo',
@@ -84,8 +84,9 @@ describe('BuddyContextPlannerService', () => {
 		).toMatchObject({
 			domains: ['home'],
 			intent: 'write',
-			strategy: 'model-tools',
-			toolNames: ['search_home', 'query_home_state', 'control_device'],
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
 		});
 	});
 
@@ -1653,6 +1654,28 @@ describe('BuddyContextPlannerService', () => {
 		]);
 	});
 
+	it('keeps a historical recent-reference follow-up independent of conversation space', () => {
+		expect(
+			service.plan({
+				message: 'What was its temperature yesterday?',
+				conversationSpaceId: 'space-office',
+				recentEntityReferences: [
+					{
+						kind: 'device',
+						id: 'device-hall-thermostat',
+						name: 'Hall thermostat',
+						compatibleActionTypes: ['set'],
+					},
+				],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			scope: { referencedEntityIds: ['device-hall-thermostat'] },
+			queries: [{ kind: 'search-home' }, { kind: 'property-timeseries' }],
+		});
+	});
+
 	it('uses a unique recent reference and clarifies missing or ambiguous pronouns', () => {
 		const providerCapabilities = { toolCalling: 'unsupported' as const, supportsStructuredToolResults: false };
 		const reference = {
@@ -1747,6 +1770,24 @@ describe('BuddyContextPlannerService', () => {
 			ambiguityRisk: 'none',
 			strategy: 'model-tools',
 			toolNames: ['search_home', 'query_home_state', 'control_device', 'set_space_lighting'],
+		});
+	});
+
+	it('clarifies disjunctive multi-space lighting alternatives', () => {
+		expect(
+			service.plan({
+				message: 'Turn Bedroom or Kitchen lights off',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: { spaceIds: ['space-bedroom', 'space-kitchen'] },
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
 		});
 	});
 

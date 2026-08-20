@@ -132,7 +132,21 @@ const GENERIC_ACTION_TARGET_NAMES = [
 	'thermostats',
 	'window',
 	'windows',
+	'dvere',
+	'lampa',
+	'okno',
+	'scena',
+	'senzor',
+	'svetlo',
+	'termostat',
+	'vypinac',
+	'zaluzie',
+	'zarizeni',
 ] as const;
+const BARE_GENERIC_ACTION_TARGET_PATTERN = new RegExp(
+	String.raw`^(?:${[...BUDDY_ACTION_SIGNALS].join('|')})\s+(?:${GENERIC_ACTION_TARGET_NAMES.join('|')})\b`,
+	'u',
+);
 const BUILT_IN_ACTION_SPACE_NAMES = new Set([
 	'bathroom',
 	'bedroom',
@@ -276,7 +290,7 @@ export class BuddyContextPlannerService {
 			? resolveTemporalHomeSpaceIds(
 					normalizedMessage,
 					explicitSpaces,
-					input.conversationSpaceId ?? undefined,
+					scopedReferences.length > 0 ? undefined : (input.conversationSpaceId ?? undefined),
 					HISTORY_PATTERN,
 				)
 			: querySpaceIds;
@@ -635,9 +649,11 @@ function hasGenericActionTargetClause(
 	explicitSpaces: readonly BuddyContextSpaceReference[],
 	hasConversationSpace: boolean,
 ): boolean {
-	const hasClauseSpace = explicitSpaces.some((space) => containsNormalizedPhrase(message, normalize(space.name)));
+	const clauseSpaces = explicitSpaces.filter((space) => containsNormalizedPhrase(message, normalize(space.name)));
+	const hasClauseSpace = clauseSpaces.length > 0;
 	const hasResolvedContextualSpace = hasConversationSpace && CONTEXTUAL_SCOPE_PATTERN.test(message);
 
+	if (clauseSpaces.length > 1 && /\bor\b/u.test(message)) return true;
 	if (
 		(hasClauseSpace || hasResolvedContextualSpace) &&
 		LIGHTING_PATTERN.test(message) &&
@@ -646,7 +662,7 @@ function hasGenericActionTargetClause(
 		return false;
 	}
 	if (EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN.test(message)) return false;
-	if (GENERIC_ACTION_TARGET_PATTERN.test(message)) return true;
+	if (GENERIC_ACTION_TARGET_PATTERN.test(message) || BARE_GENERIC_ACTION_TARGET_PATTERN.test(message)) return true;
 
 	return explicitSpaces.some((space) => {
 		const normalizedSpaceName = normalize(space.name);
