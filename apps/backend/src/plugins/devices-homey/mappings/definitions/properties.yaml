@@ -355,19 +355,22 @@ mappings:
         write: { locked: true, unlocked: false }
 
   - name: window-covering-status
-    description: Homey movement state to Smart Panel operational status
+    description: Derive stable endpoint status from Homey's normalized position
     priority: 200
     match:
       classes: [windowcoverings, curtain, blinds, sunshade, shutterblinds]
-      capability_base_ids: [windowcoverings_state]
+      capability_base_ids: [windowcoverings_set]
     property:
       channel: window-covering
       category: status
       data_type: enum
       direction: read_only
       transform:
-        type: map
-        read: { up: opening, idle: stopped, down: closing }
+        type: thresholds
+        thresholds:
+          - { minimum: 1, value: opened }
+          - { minimum: 0.000001, value: stopped }
+        default: closed
 
   - name: window-covering-command
     description: Smart Panel open, close, and stop commands to Homey's standardized state capability

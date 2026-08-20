@@ -174,7 +174,10 @@ describe('Homey MVP mapping catalog', () => {
 
 		expect(loader.resolveDeviceMappings(device).mappings[0]?.deviceCategory).toBe(DeviceCategory.WINDOW_COVERING);
 		expect(read(bindings, 'window-covering-type-generic', null)).toBe('roller');
-		expect(read(bindings, 'window-covering-status', 'down')).toBe('closing');
+		expect(bindings.get('window-covering-status')?.capabilityId).toBe('windowcoverings_set');
+		expect(read(bindings, 'window-covering-status', 0)).toBe('closed');
+		expect(read(bindings, 'window-covering-status', 1)).toBe('opened');
+		expect(read(bindings, 'window-covering-status', 0.5)).toBe('stopped');
 		expect(write(bindings, 'window-covering-command', 'open')).toBe('up');
 		expect(write(bindings, 'window-covering-command', 'close')).toBe('down');
 		expect(write(bindings, 'window-covering-command', 'stop')).toBe('idle');

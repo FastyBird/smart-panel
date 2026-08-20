@@ -69,6 +69,11 @@ These projections are reversible and clamped, but they describe normalized trave
 calibration. Mapping preview must present that conversion metadata so an operator can override it for hardware with a
 narrower or inverted range.
 
+Homey's `windowcoverings_state` is retained as the open/close/stop command source, but it is not treated as live motion:
+captured SHS evidence retains `down` after the covering has reached position `0`. The built-in status therefore derives
+`closed` and `opened` from position endpoints and reports intermediate positions as `stopped`. A driver-specific mapping
+may add `opening` or `closing` only when it has a verified live motion signal.
+
 Smart Panel's heater contract requires `status` to mean actual heating activity. Homey's standard `thermostat_mode`
 reports only the configured mode and has no standard activity capability, so the built-in catalog deliberately does not
 fabricate a heater channel or project `target_temperature`. Those capabilities remain visible in Homey inventory and
