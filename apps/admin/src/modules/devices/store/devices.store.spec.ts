@@ -623,6 +623,46 @@ describe('Devices Store', () => {
 			expect(store.findById(device.id)?.enabled).toBe(true);
 		});
 
+		// The guard above asks whether the row moved on, and a row that was merely re-read has not.
+		// A `get()` answering late with what the server held before the bulk update is an older
+		// story arriving late, not a newer write, and must not suppress the confirmation.
+		it('applies the confirmation even when a read landed while the request was in flight', async () => {
+			const device = deviceFixture('device-1');
+
+			mockBackendClient.GET.mockResolvedValueOnce({ data: { data: [device] }, error: undefined, response: { status: 200 } });
+
+			await store.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
+
+			let resolveRequest!: (value: unknown) => void;
+
+			const request = new Promise((resolve) => {
+				resolveRequest = resolve;
+			});
+
+			mockBackendClient.POST.mockReturnValueOnce(request);
+
+			const pendingBulk = store.bulkSetEnabled({ ids: [device.id], enabled: false });
+
+			// A per-row read answering with the state from before the bulk update was applied.
+			(mockBackendClient.GET as Mock).mockResolvedValueOnce({
+				data: { data: { ...device, controls: [], channels: [] } },
+				error: undefined,
+				response: { status: 200 },
+			});
+
+			await store.get({ id: device.id });
+
+			resolveRequest({
+				data: { data: { succeeded: [device.id], failed: [] } },
+				error: undefined,
+				response: { ok: true, status: 200 },
+			});
+
+			await pendingBulk;
+
+			expect(store.findById(device.id)?.enabled).toBe(false);
+		});
+
 		it('sends the selection in the request body', async () => {
 			const ids = await seed(2);
 
