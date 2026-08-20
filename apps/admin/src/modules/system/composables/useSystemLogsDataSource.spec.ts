@@ -95,6 +95,12 @@ describe('useSystemLogsDataSource', () => {
 		await vi.advanceTimersByTimeAsync(3000);
 		expect(mockFetch).not.toHaveBeenCalled();
 
+		mockStore.semaphore.value.fetching.items = false;
+
+		await vi.advanceTimersByTimeAsync(3000);
+
+		expect(mockFetch).toHaveBeenCalledTimes(1);
+
 		scope.stop();
 
 		vi.useRealTimers();

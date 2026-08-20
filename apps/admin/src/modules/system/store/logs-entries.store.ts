@@ -152,7 +152,7 @@ export const useLogsEntries = defineStore<'system_module-logs', LogsEntriesStore
 
 						if (!payload.afterId && Object.keys(merged).length > MAX_LIVE_LOG_ENTRIES) {
 							const newest = Object.values(merged)
-								.sort((a, b): number => new Date(b.ts).getTime() - new Date(a.ts).getTime())
+								.sort((a, b): number => Date.parse(b.ts) - Date.parse(a.ts))
 								.slice(0, MAX_LIVE_LOG_ENTRIES);
 
 							data.value = Object.fromEntries(newest.map((logEntry) => [logEntry.id, logEntry]));

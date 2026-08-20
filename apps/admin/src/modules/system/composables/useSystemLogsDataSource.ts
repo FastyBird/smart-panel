@@ -55,7 +55,7 @@ export const useSystemLogsDataSource = (props?: IUseSystemLogsDataSourceProps): 
 		return logsStore
 			.findAll()
 			.sort((a, b): number => {
-				return new Date(b.ts).getTime() - new Date(a.ts).getTime();
+				return Date.parse(b.ts) - Date.parse(a.ts);
 			})
 			.filter(
 				(logEntry) =>
