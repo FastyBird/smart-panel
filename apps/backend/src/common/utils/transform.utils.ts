@@ -29,6 +29,34 @@ export function toInstance<T, V>(cls: ClassConstructor<T>, plain: V[] | V, optio
 	});
 }
 
+/**
+ * Reads a submitted field that may arrive under either its wire name or its camelCase
+ * spelling, keeping an explicit `null` distinct from an absent field.
+ *
+ * `obj.wire_name ?? obj.camelName` cannot express that difference: a submitted `null` is
+ * nullish, so it falls through to the other spelling and comes back `undefined` - which
+ * every consumer downstream reads as "not submitted". For a secret that is the difference
+ * between removing a stored credential and silently keeping it, and the removal is the case
+ * that fails silently.
+ */
+export const readSubmittedValue = <T>(obj: unknown, wireName: string, camelName: string): T | null | undefined => {
+	if (obj === null || typeof obj !== 'object') {
+		return undefined;
+	}
+
+	const source = obj as Record<string, unknown>;
+
+	if (wireName in source) {
+		return source[wireName] as T | null;
+	}
+
+	if (camelName in source) {
+		return source[camelName] as T | null;
+	}
+
+	return undefined;
+};
+
 export const clampNumber = (number: number, min: number, max: number): number => {
 	return Math.max(min, Math.min(max, Number(number)));
 };

@@ -26,10 +26,12 @@ export class OpenWeatherMapOneCallConfigModel extends PluginConfigModel {
 	enabled: boolean = false;
 
 	@ApiPropertyOptional({
-		description: 'OpenWeatherMap One Call API 3.0 key (requires subscription)',
+		description:
+			'OpenWeatherMap One Call API 3.0 key (requires subscription). This value is accepted on write and never returned.',
 		name: 'api_key',
 		type: 'string',
 		example: 'your-api-key-here',
+		writeOnly: true,
 		nullable: true,
 	})
 	@Expose({ name: 'api_key' })
@@ -39,6 +41,15 @@ export class OpenWeatherMapOneCallConfigModel extends PluginConfigModel {
 	@IsOptional()
 	@IsString()
 	apiKey: string | null = null;
+
+	@ApiProperty({
+		description: 'Whether an OpenWeatherMap One Call API key is configured',
+		name: 'api_key_configured',
+	})
+	@Expose({ name: 'api_key_configured' })
+	@IsOptional()
+	@IsBoolean()
+	apiKeyConfigured?: boolean;
 
 	@ApiProperty({
 		description: 'Temperature unit',

@@ -7,7 +7,7 @@ type ApiUpdateConfig = {
 	type: typeof INFLUX_V2_PLUGIN_NAME;
 	enabled?: boolean;
 	url?: string;
-	token?: string;
+	token?: string | null;
 	org?: string;
 	bucket?: string;
 };
@@ -18,14 +18,16 @@ type ApiConfig = {
 	url: string;
 	org: string;
 	bucket: string;
-	token?: string;
+	token?: string | null;
+	token_configured: boolean;
 };
 
 export const InfluxV2ConfigSchema = ConfigPluginSchema.extend({
 	url: z.string(),
 	org: z.string(),
 	bucket: z.string(),
-	token: z.string().optional(),
+	token: z.string().nullable().optional(),
+	tokenConfigured: z.boolean().default(false),
 });
 
 // BACKEND API
@@ -35,7 +37,7 @@ export const InfluxV2ConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = ConfigPlu
 	z.object({
 		type: z.literal(INFLUX_V2_PLUGIN_NAME),
 		url: z.string().optional(),
-		token: z.string().optional(),
+		token: z.string().nullable().optional(),
 		org: z.string().optional(),
 		bucket: z.string().optional(),
 	})
@@ -47,6 +49,7 @@ export const InfluxV2ConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchema
 		url: z.string(),
 		org: z.string(),
 		bucket: z.string(),
-		token: z.string().optional(),
+		token: z.string().nullable().optional(),
+		token_configured: z.boolean(),
 	})
 );

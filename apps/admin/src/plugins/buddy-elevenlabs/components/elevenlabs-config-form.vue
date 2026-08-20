@@ -29,12 +29,11 @@
 			:label="t('buddyElevenlabsPlugin.fields.config.apiKey.title')"
 			prop="apiKey"
 		>
-			<el-input
+			<config-secret-input
 				v-model="model.apiKey"
+				:configured="model.apiKeyConfigured"
 				:placeholder="t('buddyElevenlabsPlugin.fields.config.apiKey.placeholder')"
 				name="apiKey"
-				type="password"
-				show-password
 			/>
 			<div class="text-xs text-gray-500 mt-1">
 				{{ t('buddyElevenlabsPlugin.fields.config.apiKey.description') }}
@@ -64,7 +63,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElForm, ElFormItem, ElInput, ElSwitch, type FormRules } from 'element-plus';
 
-import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
+import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import type { IElevenlabsConfigEditForm } from '../schemas/config.types';
 
 import type { IElevenlabsConfigFormProps } from './elevenlabs-config-form.types';

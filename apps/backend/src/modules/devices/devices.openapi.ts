@@ -1,6 +1,7 @@
 /**
  * OpenAPI extra models for Devices module
  */
+import { UpdateDevicesConfigDto } from './dto/update-config.dto';
 import {
 	ChannelControlEntity,
 	ChannelEntity,
@@ -56,6 +57,7 @@ import {
 export const DEVICES_SWAGGER_EXTRA_MODELS = [
 	// Module configuration
 	DevicesConfigModel,
+	UpdateDevicesConfigDto,
 	// Response models
 	BulkResultResponseModel,
 	DeviceResponseModel,

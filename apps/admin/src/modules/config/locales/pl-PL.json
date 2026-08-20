@@ -145,6 +145,10 @@
 		"loadingModuleConfig": "Ładowanie konfiguracji modułu...",
 		"misc": {
 			"confirmDiscard": "Masz niezapisane zmiany. Czy na pewno chcesz je odrzucić?"
+		},
+		"secret": {
+			"stored": "Wartość jest zapisana. Wprowadź nową, aby ją zastąpić.",
+			"willBeRemoved": "Zapisana wartość zostanie usunięta po zapisaniu."
 		}
 	},
 	"fields": {
@@ -270,6 +274,12 @@
 		},
 		"no": {
 			"title": "Nie"
+		},
+		"removeSecret": {
+			"title": "Usuń"
+		},
+		"keepSecret": {
+			"title": "Zachowaj"
 		}
 	},
 	"languages": {

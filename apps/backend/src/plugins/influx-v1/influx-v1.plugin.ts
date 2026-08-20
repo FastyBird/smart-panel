@@ -30,6 +30,12 @@ export class InfluxV1Plugin implements OnModuleInit {
 			type: INFLUX_V1_PLUGIN_NAME,
 			class: InfluxV1ConfigModel,
 			configDto: UpdateInfluxV1ConfigDto,
+			secretFields: [
+				{
+					path: 'password',
+					configuredPath: 'password_configured',
+				},
+			],
 		});
 
 		for (const model of INFLUX_V1_SWAGGER_EXTRA_MODELS) {

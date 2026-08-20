@@ -25,10 +25,11 @@ export class BuddyVoiceaiConfigModel extends PluginConfigModel {
 	enabled: boolean = false;
 
 	@ApiPropertyOptional({
-		description: 'Voice.ai API key',
+		description: 'Voice.ai API key. This value is accepted on write and never returned.',
 		name: 'api_key',
 		type: 'string',
 		nullable: true,
+		writeOnly: true,
 	})
 	@Expose({ name: 'api_key' })
 	@Transform(({ obj }: { obj: { api_key?: string | null; apiKey?: string | null } }) => obj.api_key ?? obj.apiKey, {
@@ -37,6 +38,15 @@ export class BuddyVoiceaiConfigModel extends PluginConfigModel {
 	@IsOptional()
 	@IsString()
 	apiKey: string | null = null;
+
+	@ApiProperty({
+		description: 'Whether a Voice.ai API key is configured',
+		name: 'api_key_configured',
+	})
+	@Expose({ name: 'api_key_configured' })
+	@IsOptional()
+	@IsBoolean()
+	apiKeyConfigured?: boolean;
 
 	@ApiPropertyOptional({
 		description: 'Voice.ai voice ID',

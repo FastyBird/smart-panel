@@ -145,6 +145,10 @@
 		"loadingModuleConfig": "Cargando configuración del módulo...",
 		"misc": {
 			"confirmDiscard": "Tienes cambios sin guardar. ¿Estás seguro de que deseas descartarlos?"
+		},
+		"secret": {
+			"stored": "Hay un valor guardado. Introduce uno nuevo para reemplazarlo.",
+			"willBeRemoved": "El valor guardado se eliminará al guardar."
 		}
 	},
 	"fields": {
@@ -270,6 +274,12 @@
 		},
 		"no": {
 			"title": "No"
+		},
+		"removeSecret": {
+			"title": "Eliminar"
+		},
+		"keepSecret": {
+			"title": "Conservar"
 		}
 	},
 	"languages": {

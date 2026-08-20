@@ -25,10 +25,12 @@ export class BuddyDiscordConfigModel extends PluginConfigModel {
 	enabled: boolean = false;
 
 	@ApiPropertyOptional({
-		description: 'Discord Bot Token from the Discord Developer Portal',
+		description:
+			'Discord Bot Token from the Discord Developer Portal. This value is accepted on write and never returned.',
 		name: 'bot_token',
 		type: 'string',
 		nullable: true,
+		writeOnly: true,
 	})
 	@Expose({ name: 'bot_token' })
 	@Transform(
@@ -38,6 +40,15 @@ export class BuddyDiscordConfigModel extends PluginConfigModel {
 	@IsOptional()
 	@IsString()
 	botToken: string | null = null;
+
+	@ApiProperty({
+		description: 'Whether a Discord Bot Token is configured',
+		name: 'bot_token_configured',
+	})
+	@Expose({ name: 'bot_token_configured' })
+	@IsOptional()
+	@IsBoolean()
+	botTokenConfigured?: boolean;
 
 	@ApiPropertyOptional({
 		description: 'Discord Guild (server) ID',

@@ -65,6 +65,13 @@ export class WeatherOpenweathermapPlugin implements OnModuleInit {
 			type: WEATHER_OPENWEATHERMAP_PLUGIN_NAME,
 			class: OpenWeatherMapConfigModel,
 			configDto: UpdateOpenWeatherMapConfigDto,
+			secretFields: [
+				{
+					path: 'api_key',
+					configuredPath: 'api_key_configured',
+					inputPaths: ['apiKey'],
+				},
+			],
 		});
 
 		// Register location type mapping

@@ -4,7 +4,11 @@ import { ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../module
 import { BUDDY_TELEGRAM_PLUGIN_NAME } from '../buddy-telegram.constants';
 
 export const TelegramConfigSchema = ConfigPluginSchema.extend({
-	botToken: z.string().trim().nullable().default(null),
+	// The backend redacts the token on read and answers with botTokenConfigured
+	// instead, so the stored config has no botToken at all. It stays declared
+	// because the edit form writes a replacement into it before submitting.
+	botToken: z.string().trim().nullable().optional(),
+	botTokenConfigured: z.boolean().default(false),
 	allowedUserIds: z.string().trim().nullable().default(null),
 });
 

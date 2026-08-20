@@ -19,6 +19,7 @@ type ApiConfig = {
 	database: string | null;
 	username?: string | null;
 	password?: string | null;
+	password_configured: boolean;
 };
 
 export const InfluxV1ConfigSchema = ConfigPluginSchema.extend({
@@ -26,6 +27,7 @@ export const InfluxV1ConfigSchema = ConfigPluginSchema.extend({
 	database: z.string().nullable(),
 	username: z.string().nullable().optional(),
 	password: z.string().nullable().optional(),
+	passwordConfigured: z.boolean().default(false),
 });
 
 // BACKEND API
@@ -48,5 +50,6 @@ export const InfluxV1ConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchema
 		database: z.string().nullable(),
 		username: z.string().nullable().optional(),
 		password: z.string().nullable().optional(),
+		password_configured: z.boolean(),
 	})
 );

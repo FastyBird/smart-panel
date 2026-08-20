@@ -53,12 +53,11 @@
 			:label="t('influxV1Plugin.fields.config.password.title')"
 			prop="password"
 		>
-			<el-input
+			<config-secret-input
 				v-model="model.password"
+				:configured="model.passwordConfigured"
 				:placeholder="t('influxV1Plugin.fields.config.password.placeholder')"
 				name="password"
-				type="password"
-				show-password
 			/>
 		</el-form-item>
 	</el-form>
@@ -70,7 +69,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
 
-import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
+import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import type { IInfluxV1ConfigEditForm } from '../schemas/config.types';
 
 import type { IInfluxV1ConfigFormProps } from './influx-v1-config-form.types';

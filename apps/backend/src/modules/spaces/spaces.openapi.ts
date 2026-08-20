@@ -3,6 +3,7 @@
  */
 import { BulkAssignDto, ReqBulkAssignDto } from './dto/bulk-assign.dto';
 import { CreateSpaceDto, ReqCreateSpaceDto } from './dto/create-space.dto';
+import { UpdateSpacesConfigDto } from './dto/update-config.dto';
 import { ReqUpdateSpaceDto, UpdateSpaceDto } from './dto/update-space.dto';
 import { SpaceEntity } from './entities/space.entity';
 import { SpacesConfigModel } from './models/config.model';
@@ -27,6 +28,7 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	ReqUpdateSpaceDto,
 	BulkAssignDto,
 	ReqBulkAssignDto,
+	UpdateSpacesConfigDto,
 	// Response models
 	SpaceResponseModel,
 	SpacesResponseModel,

@@ -40,10 +40,11 @@ export class BuddyOpenaiCodexConfigModel extends PluginConfigModel {
 	clientId: string | null = null;
 
 	@ApiPropertyOptional({
-		description: 'OAuth client secret',
+		description: 'OAuth client secret. This value is accepted on write and never returned.',
 		name: 'client_secret',
 		type: 'string',
 		nullable: true,
+		writeOnly: true,
 	})
 	@Expose({ name: 'client_secret' })
 	@Transform(
@@ -55,11 +56,21 @@ export class BuddyOpenaiCodexConfigModel extends PluginConfigModel {
 	@IsString()
 	clientSecret: string | null = null;
 
+	@ApiProperty({
+		description: 'Whether an OAuth client secret is configured',
+		name: 'client_secret_configured',
+	})
+	@Expose({ name: 'client_secret_configured' })
+	@IsOptional()
+	@IsBoolean()
+	clientSecretConfigured?: boolean;
+
 	@ApiPropertyOptional({
-		description: 'OAuth access token',
+		description: 'OAuth access token. This value is accepted on write and never returned.',
 		name: 'access_token',
 		type: 'string',
 		nullable: true,
+		writeOnly: true,
 	})
 	@Expose({ name: 'access_token' })
 	@Transform(
@@ -71,11 +82,21 @@ export class BuddyOpenaiCodexConfigModel extends PluginConfigModel {
 	@IsString()
 	accessToken: string | null = null;
 
+	@ApiProperty({
+		description: 'Whether an OAuth access token is configured',
+		name: 'access_token_configured',
+	})
+	@Expose({ name: 'access_token_configured' })
+	@IsOptional()
+	@IsBoolean()
+	accessTokenConfigured?: boolean;
+
 	@ApiPropertyOptional({
-		description: 'OAuth refresh token',
+		description: 'OAuth refresh token. This value is accepted on write and never returned.',
 		name: 'refresh_token',
 		type: 'string',
 		nullable: true,
+		writeOnly: true,
 	})
 	@Expose({ name: 'refresh_token' })
 	@Transform(
@@ -86,6 +107,15 @@ export class BuddyOpenaiCodexConfigModel extends PluginConfigModel {
 	@IsOptional()
 	@IsString()
 	refreshToken: string | null = null;
+
+	@ApiProperty({
+		description: 'Whether an OAuth refresh token is configured',
+		name: 'refresh_token_configured',
+	})
+	@Expose({ name: 'refresh_token_configured' })
+	@IsOptional()
+	@IsBoolean()
+	refreshTokenConfigured?: boolean;
 
 	@ApiPropertyOptional({
 		description: 'Model name to use (e.g. codex-mini)',

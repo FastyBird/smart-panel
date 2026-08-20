@@ -6,7 +6,7 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { UpdateModuleConfigDto } from '../../config/dto/config.dto';
 import { SPACES_MODULE_NAME } from '../spaces.constants';
 
-@ApiSchema({ name: 'SpacesModuleUpdateConfig' })
+@ApiSchema({ name: 'ConfigModuleUpdateSpaces' })
 export class UpdateSpacesConfigDto extends UpdateModuleConfigDto {
 	@ApiProperty({
 		description: 'Module type',

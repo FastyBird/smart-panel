@@ -29,12 +29,11 @@
 			:label="t('buddyDiscordPlugin.fields.config.botToken.title')"
 			prop="botToken"
 		>
-			<el-input
+			<config-secret-input
 				v-model="model.botToken"
+				:configured="model.botTokenConfigured"
 				:placeholder="t('buddyDiscordPlugin.fields.config.botToken.placeholder')"
 				name="botToken"
-				type="password"
-				show-password
 			/>
 			<div class="text-xs text-gray-500 mt-1">
 				{{ t('buddyDiscordPlugin.fields.config.botToken.description') }}
@@ -144,7 +143,7 @@ import { useI18n } from 'vue-i18n';
 import { Icon } from '@iconify/vue';
 import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
 
-import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
+import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import { useSpaces } from '../../../modules/spaces';
 import type { IDiscordConfigEditForm } from '../schemas/config.types';
 

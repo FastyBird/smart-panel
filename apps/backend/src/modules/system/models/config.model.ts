@@ -132,6 +132,7 @@ export class SystemConfigModel extends ModuleConfigModel {
 		name: 'log_levels',
 		description: 'Array of enabled log levels',
 		type: 'array',
+		minItems: 1,
 		items: {
 			type: 'string',
 			enum: Object.values(LogLevelType),

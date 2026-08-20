@@ -7,7 +7,12 @@ import { BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME } from '../buddy-claude-setup-toke
 type ApiConfig = BuddyClaudeSetupTokenPluginConfigSchema;
 
 export const ClaudeSetupTokenConfigSchema = ConfigPluginSchema.extend({
-	accessToken: z.string().trim().nullable(),
+	// The backend redacts the token on read and answers with
+	// accessTokenConfigured instead, so the stored config has no accessToken
+	// at all. It stays declared because the edit form writes a replacement
+	// into it before submitting.
+	accessToken: z.string().trim().nullable().optional(),
+	accessTokenConfigured: z.boolean().default(false),
 	model: z.string().trim().nullable(),
 });
 
@@ -25,7 +30,8 @@ export const ClaudeSetupTokenConfigUpdateReqSchema= ConfigPluginUpdateReqSchema.
 export const ClaudeSetupTokenConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME),
-		access_token: z.string().trim().nullable(),
+		access_token: z.string().trim().nullable().optional(),
+		access_token_configured: z.boolean(),
 		model: z.string().trim().nullable(),
 	})
 );

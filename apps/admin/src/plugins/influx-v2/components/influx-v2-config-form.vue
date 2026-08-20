@@ -53,12 +53,11 @@
 			:label="t('influxV2Plugin.fields.config.token.title')"
 			prop="token"
 		>
-			<el-input
+			<config-secret-input
 				v-model="model.token"
+				:configured="model.tokenConfigured"
 				:placeholder="t('influxV2Plugin.fields.config.token.placeholder')"
 				name="token"
-				type="password"
-				show-password
 			/>
 		</el-form-item>
 	</el-form>
@@ -70,7 +69,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
 
-import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
+import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import type { IInfluxV2ConfigEditForm } from '../schemas/config.types';
 
 import type { IInfluxV2ConfigFormProps } from './influx-v2-config-form.types';

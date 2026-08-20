@@ -3,6 +3,7 @@ import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
+import { readSubmittedValue } from '../../../common/utils/transform.utils';
 import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
 import { BUDDY_OPENAI_CODEX_PLUGIN_NAME } from '../buddy-openai-codex.constants';
 
@@ -50,11 +51,7 @@ export class UpdateBuddyOpenaiCodexConfigDto extends UpdatePluginConfigDto {
 		nullable: true,
 	})
 	@Expose({ name: 'client_secret' })
-	@Transform(
-		({ obj }: { obj: { client_secret?: string | null; clientSecret?: string | null } }) =>
-			obj.client_secret ?? obj.clientSecret,
-		{ toClassOnly: true },
-	)
+	@Transform(({ obj }) => readSubmittedValue<string>(obj, 'client_secret', 'clientSecret'), { toClassOnly: true })
 	@IsOptional()
 	@IsString({ message: '[{"field":"client_secret","reason":"Client secret must be a string."}]' })
 	clientSecret?: string | null;
@@ -66,11 +63,7 @@ export class UpdateBuddyOpenaiCodexConfigDto extends UpdatePluginConfigDto {
 		nullable: true,
 	})
 	@Expose({ name: 'access_token' })
-	@Transform(
-		({ obj }: { obj: { access_token?: string | null; accessToken?: string | null } }) =>
-			obj.access_token ?? obj.accessToken,
-		{ toClassOnly: true },
-	)
+	@Transform(({ obj }) => readSubmittedValue<string>(obj, 'access_token', 'accessToken'), { toClassOnly: true })
 	@IsOptional()
 	@IsString({ message: '[{"field":"access_token","reason":"Access token must be a string."}]' })
 	accessToken?: string | null;
@@ -82,11 +75,7 @@ export class UpdateBuddyOpenaiCodexConfigDto extends UpdatePluginConfigDto {
 		nullable: true,
 	})
 	@Expose({ name: 'refresh_token' })
-	@Transform(
-		({ obj }: { obj: { refresh_token?: string | null; refreshToken?: string | null } }) =>
-			obj.refresh_token ?? obj.refreshToken,
-		{ toClassOnly: true },
-	)
+	@Transform(({ obj }) => readSubmittedValue<string>(obj, 'refresh_token', 'refreshToken'), { toClassOnly: true })
 	@IsOptional()
 	@IsString({ message: '[{"field":"refresh_token","reason":"Refresh token must be a string."}]' })
 	refreshToken?: string | null;

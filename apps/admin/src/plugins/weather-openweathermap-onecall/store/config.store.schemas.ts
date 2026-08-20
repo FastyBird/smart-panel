@@ -7,7 +7,11 @@ import { TemperatureUnit, WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_NAME } from '../
 type ApiConfig = WeatherOpenweathermapOnecallPluginConfigSchema;
 
 export const OpenWeatherMapOneCallConfigSchema = ConfigPluginSchema.extend({
-	apiKey: z.string().trim().nullable(),
+	// The backend redacts the key on read and answers with apiKeyConfigured
+	// instead, so the stored config has no apiKey at all. It stays declared
+	// because the edit form writes a replacement into it before submitting.
+	apiKey: z.string().trim().nullable().optional(),
+	apiKeyConfigured: z.boolean().default(false),
 	unit: z.nativeEnum(TemperatureUnit).default(TemperatureUnit.celsius),
 });
 
@@ -25,7 +29,8 @@ export const OpenWeatherMapOneCallConfigUpdateReqSchema= ConfigPluginUpdateReqSc
 export const OpenWeatherMapOneCallConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_NAME),
-		api_key: z.string().trim().nullable(),
+		api_key: z.string().trim().nullable().optional(),
+		api_key_configured: z.boolean(),
 		unit: z.nativeEnum(TemperatureUnit),
 	})
 );

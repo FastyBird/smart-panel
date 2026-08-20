@@ -1,6 +1,7 @@
 /**
  * OpenAPI extra models for Buddy module
  */
+import { UpdateBuddyConfigDto } from './dto/update-config.dto';
 import { BuddyConversationEntity } from './entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from './entities/buddy-message.entity';
 import { BuddyConfigModel } from './models/config.model';
@@ -31,6 +32,7 @@ export const BUDDY_SWAGGER_EXTRA_MODELS = [
 	BuddyMessageEntity,
 	// Config model
 	BuddyConfigModel,
+	UpdateBuddyConfigDto,
 	// Response models
 	ConversationResponseModel,
 	ConversationsResponseModel,

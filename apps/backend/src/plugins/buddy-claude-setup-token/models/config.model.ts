@@ -25,10 +25,12 @@ export class BuddyClaudeSetupTokenConfigModel extends PluginConfigModel {
 	enabled: boolean = false;
 
 	@ApiPropertyOptional({
-		description: 'Setup token obtained from claude setup-token command',
+		description:
+			'Setup token obtained from claude setup-token command. This value is accepted on write and never returned.',
 		name: 'access_token',
 		type: 'string',
 		nullable: true,
+		writeOnly: true,
 	})
 	@Expose({ name: 'access_token' })
 	@Transform(
@@ -42,6 +44,15 @@ export class BuddyClaudeSetupTokenConfigModel extends PluginConfigModel {
 	@IsOptional()
 	@IsString()
 	accessToken: string | null = null;
+
+	@ApiProperty({
+		description: 'Whether a Claude setup token is configured',
+		name: 'access_token_configured',
+	})
+	@Expose({ name: 'access_token_configured' })
+	@IsOptional()
+	@IsBoolean()
+	accessTokenConfigured?: boolean;
 
 	@ApiPropertyOptional({
 		description: 'Model name to use (e.g. claude-sonnet-4-20250514)',

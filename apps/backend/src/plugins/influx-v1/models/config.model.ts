@@ -55,12 +55,22 @@ export class InfluxV1ConfigModel extends PluginConfigModel {
 	username?: string;
 
 	@ApiPropertyOptional({
-		description: 'InfluxDB password for authentication',
+		description: 'InfluxDB password for authentication. This value is accepted on write and never returned.',
 		type: 'string',
 		example: 'secret',
+		writeOnly: true,
 	})
 	@Expose()
 	@IsOptional()
 	@IsString()
 	password?: string;
+
+	@ApiProperty({
+		description: 'Whether an InfluxDB password is configured',
+		name: 'password_configured',
+	})
+	@Expose({ name: 'password_configured' })
+	@IsOptional()
+	@IsBoolean()
+	passwordConfigured?: boolean;
 }

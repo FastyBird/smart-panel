@@ -8,9 +8,16 @@ type ApiConfig = BuddyOpenaiCodexPluginConfigSchema;
 
 export const OpenAiCodexConfigSchema = ConfigPluginSchema.extend({
 	clientId: z.string().trim().nullable(),
-	clientSecret: z.string().trim().nullable(),
-	accessToken: z.string().trim().nullable(),
-	refreshToken: z.string().trim().nullable(),
+	// The backend redacts these on read and answers with the matching
+	// *Configured booleans instead, so the stored config has none of these
+	// values. They stay declared because the edit form writes replacements
+	// into them before submitting.
+	clientSecret: z.string().trim().nullable().optional(),
+	clientSecretConfigured: z.boolean().default(false),
+	accessToken: z.string().trim().nullable().optional(),
+	accessTokenConfigured: z.boolean().default(false),
+	refreshToken: z.string().trim().nullable().optional(),
+	refreshTokenConfigured: z.boolean().default(false),
 	model: z.string().trim().nullable(),
 });
 
@@ -32,9 +39,12 @@ export const OpenAiCodexConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSch
 	z.object({
 		type: z.literal(BUDDY_OPENAI_CODEX_PLUGIN_NAME),
 		client_id: z.string().trim().nullable(),
-		client_secret: z.string().trim().nullable(),
-		access_token: z.string().trim().nullable(),
-		refresh_token: z.string().trim().nullable(),
+		client_secret: z.string().trim().nullable().optional(),
+		client_secret_configured: z.boolean(),
+		access_token: z.string().trim().nullable().optional(),
+		access_token_configured: z.boolean(),
+		refresh_token: z.string().trim().nullable().optional(),
+		refresh_token_configured: z.boolean(),
 		model: z.string().trim().nullable(),
 	})
 );

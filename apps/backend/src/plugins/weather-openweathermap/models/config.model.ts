@@ -26,10 +26,11 @@ export class OpenWeatherMapConfigModel extends PluginConfigModel {
 	enabled: boolean = false;
 
 	@ApiPropertyOptional({
-		description: 'OpenWeatherMap API key',
+		description: 'OpenWeatherMap API key. This value is accepted on write and never returned.',
 		name: 'api_key',
 		type: 'string',
 		example: 'your-api-key-here',
+		writeOnly: true,
 		nullable: true,
 	})
 	@Expose({ name: 'api_key' })
@@ -39,6 +40,15 @@ export class OpenWeatherMapConfigModel extends PluginConfigModel {
 	@IsOptional()
 	@IsString()
 	apiKey: string | null = null;
+
+	@ApiProperty({
+		description: 'Whether an OpenWeatherMap API key is configured',
+		name: 'api_key_configured',
+	})
+	@Expose({ name: 'api_key_configured' })
+	@IsOptional()
+	@IsBoolean()
+	apiKeyConfigured?: boolean;
 
 	@ApiProperty({
 		description: 'Temperature unit',

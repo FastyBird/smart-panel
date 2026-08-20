@@ -3,6 +3,7 @@ import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
+import { readSubmittedValue } from '../../../common/utils/transform.utils';
 import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
 import { BUDDY_DISCORD_PLUGIN_NAME } from '../buddy-discord.constants';
 
@@ -35,10 +36,7 @@ export class UpdateBuddyDiscordConfigDto extends UpdatePluginConfigDto {
 		nullable: true,
 	})
 	@Expose({ name: 'bot_token' })
-	@Transform(
-		({ obj }: { obj: { bot_token?: string | null; botToken?: string | null } }) => obj.bot_token ?? obj.botToken,
-		{ toClassOnly: true },
-	)
+	@Transform(({ obj }) => readSubmittedValue<string>(obj, 'bot_token', 'botToken'), { toClassOnly: true })
 	@IsOptional()
 	@IsString({ message: '[{"field":"bot_token","reason":"Bot token must be a string."}]' })
 	botToken?: string | null;

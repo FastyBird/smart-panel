@@ -73,6 +73,13 @@ export class WeatherOpenweathermapOnecallPlugin implements OnModuleInit {
 			type: WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_NAME,
 			class: OpenWeatherMapOneCallConfigModel,
 			configDto: UpdateOpenWeatherMapOneCallConfigDto,
+			secretFields: [
+				{
+					path: 'api_key',
+					configuredPath: 'api_key_configured',
+					inputPaths: ['apiKey'],
+				},
+			],
 		});
 
 		// Register location type mapping

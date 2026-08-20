@@ -2,6 +2,7 @@
  * OpenAPI extra models for Displays module
  */
 import { RegisterDisplayDto, ReqRegisterDisplayDto } from './dto/register-display.dto';
+import { UpdateDisplaysConfigDto } from './dto/update-config.dto';
 import { ReqUpdateDisplayDto, UpdateDisplayDto } from './dto/update-display.dto';
 import { DisplayEntity } from './entities/displays.entity';
 import { DisplaysConfigModel } from './models/config.model';
@@ -30,6 +31,7 @@ export const DISPLAYS_SWAGGER_EXTRA_MODELS = [
 	ReqRegisterDisplayDto,
 	UpdateDisplayDto,
 	ReqUpdateDisplayDto,
+	UpdateDisplaysConfigDto,
 	// Response models
 	BulkResultResponseModel,
 	DisplayResponseModel,

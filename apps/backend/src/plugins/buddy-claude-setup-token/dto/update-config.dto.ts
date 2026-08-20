@@ -3,6 +3,7 @@ import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
+import { readSubmittedValue } from '../../../common/utils/transform.utils';
 import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
 import { BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME } from '../buddy-claude-setup-token.constants';
 
@@ -36,8 +37,8 @@ export class UpdateBuddyClaudeSetupTokenConfigDto extends UpdatePluginConfigDto 
 	})
 	@Expose({ name: 'access_token' })
 	@Transform(
-		({ obj }: { obj: { access_token?: string | null; accessToken?: string | null } }) => {
-			const raw = obj.access_token ?? obj.accessToken;
+		({ obj }) => {
+			const raw = readSubmittedValue<string>(obj, 'access_token', 'accessToken');
 
 			return typeof raw === 'string' ? raw.replace(/\s+/g, '') || null : raw;
 		},

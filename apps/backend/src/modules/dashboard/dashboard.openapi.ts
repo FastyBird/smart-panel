@@ -3,6 +3,7 @@
  */
 import { CreateDataSourceDto } from './dto/create-data-source.dto';
 import { CreateTileDto } from './dto/create-tile.dto';
+import { UpdateDashboardConfigDto } from './dto/update-config.dto';
 import { UpdateDataSourceDto } from './dto/update-data-source.dto';
 import { UpdateTileDto } from './dto/update-tile.dto';
 import { DashboardConfigModel } from './models/config.model';
@@ -30,6 +31,7 @@ export const DASHBOARD_SWAGGER_EXTRA_MODELS = [
 	CreateTileDto,
 	UpdateDataSourceDto,
 	UpdateTileDto,
+	UpdateDashboardConfigDto,
 	// Response models
 	BulkResultResponseModel,
 	PageResponseModel,

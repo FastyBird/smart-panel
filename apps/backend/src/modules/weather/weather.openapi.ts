@@ -1,6 +1,7 @@
 /**
  * OpenAPI extra models for Weather module
  */
+import { UpdateWeatherConfigDto } from './dto/update-config.dto';
 import { WeatherLocationEntity } from './entities/locations.entity';
 import { LocationAlertsResponseModel, WeatherAlertModel } from './models/alert.model';
 import { WeatherConfigModel } from './models/config.model';
@@ -37,6 +38,7 @@ import {
 export const WEATHER_SWAGGER_EXTRA_MODELS = [
 	// Module configuration
 	WeatherConfigModel,
+	UpdateWeatherConfigDto,
 	// Response models
 	LocationWeatherResponseModel,
 	AllLocationsWeatherResponseModel,

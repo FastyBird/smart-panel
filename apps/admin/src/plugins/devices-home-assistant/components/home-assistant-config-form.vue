@@ -38,13 +38,14 @@
 			prop="apiKey"
 			:error="fieldErrors['apiKey']"
 		>
-			<el-input
+			<config-secret-input
 				v-model="model.apiKey"
+				:configured="model.apiKeyConfigured"
 				:placeholder="t('devicesHomeAssistantPlugin.fields.config.apiKey.placeholder')"
 				:disabled="supervisorMode"
 				name="apiKey"
-				:rows="4"
 				type="textarea"
+				:rows="4"
 			/>
 		</el-form-item>
 
@@ -107,9 +108,9 @@
 import { computed, onMounted, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElAutocomplete, ElButton, ElForm, ElFormItem, ElInput, ElSwitch, ElTooltip, type FormRules } from 'element-plus';
+import { ElAlert, ElAutocomplete, ElButton, ElForm, ElFormItem, ElSwitch, ElTooltip, type FormRules } from 'element-plus';
 
-import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
+import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import { useDiscoveredInstances } from '../composables/useDiscoveredInstances';
 import type { IHomeAssistantConfigEditForm } from '../schemas/config.types';
 

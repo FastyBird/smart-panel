@@ -7,7 +7,11 @@ import { BUDDY_ELEVENLABS_PLUGIN_NAME } from '../buddy-elevenlabs.constants';
 type ApiConfig = BuddyElevenlabsPluginConfigSchema;
 
 export const ElevenlabsConfigSchema = ConfigPluginSchema.extend({
-	apiKey: z.string().trim().nullable(),
+	// The backend redacts the key on read and answers with apiKeyConfigured
+	// instead, so the stored config has no apiKey at all. It stays declared
+	// because the edit form writes a replacement into it before submitting.
+	apiKey: z.string().trim().nullable().optional(),
+	apiKeyConfigured: z.boolean().default(false),
 	voiceId: z.string().trim().nullable(),
 });
 
@@ -25,7 +29,8 @@ export const ElevenlabsConfigUpdateReqSchema= ConfigPluginUpdateReqSchema.and(
 export const ElevenlabsConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(BUDDY_ELEVENLABS_PLUGIN_NAME),
-		api_key: z.string().trim().nullable(),
+		api_key: z.string().trim().nullable().optional(),
+		api_key_configured: z.boolean(),
 		voice_id: z.string().trim().nullable(),
 	})
 );

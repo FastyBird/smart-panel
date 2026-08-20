@@ -30,12 +30,11 @@
 			:label="t('buddyClaudeSetupTokenPlugin.fields.config.accessToken.title')"
 			prop="accessToken"
 		>
-			<el-input
+			<config-secret-input
 				v-model="model.accessToken"
+				:configured="model.accessTokenConfigured"
 				:placeholder="t('buddyClaudeSetupTokenPlugin.fields.config.accessToken.placeholder')"
 				name="accessToken"
-				type="password"
-				show-password
 			/>
 		</el-form-item>
 
@@ -82,18 +81,9 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import {
-	ElAlert,
-	ElForm,
-	ElFormItem,
-	ElInput,
-	ElOption,
-	ElSelect,
-	ElSwitch,
-	type FormRules,
-} from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
 
-import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
+import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import { BUDDY_CLAUDE_SETUP_TOKEN_MODELS } from '../buddy-claude-setup-token.models';
 import type { IClaudeSetupTokenConfigEditForm } from '../schemas/config.types';
 

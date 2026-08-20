@@ -159,6 +159,13 @@ export class DevicesHomeAssistantPlugin {
 			type: DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
 			class: HomeAssistantConfigModel,
 			configDto: HomeAssistantUpdatePluginConfigDto,
+			secretFields: [
+				{
+					path: 'api_key',
+					configuredPath: 'api_key_configured',
+					inputPaths: ['apiKey'],
+				},
+			],
 		});
 
 		this.devicesMapper.registerMapping<

@@ -18,9 +18,10 @@ export class HomeAssistantConfigModel extends PluginConfigModel {
 	type: string = DEVICES_HOME_ASSISTANT_PLUGIN_NAME;
 
 	@ApiPropertyOptional({
-		description: 'Home Assistant API key for authentication',
+		description: 'Home Assistant API key for authentication. This value is accepted on write and never returned.',
 		type: 'string',
 		example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+		writeOnly: true,
 		nullable: true,
 		name: 'api_key',
 	})
@@ -28,6 +29,15 @@ export class HomeAssistantConfigModel extends PluginConfigModel {
 	@IsOptional()
 	@IsString()
 	apiKey: string | null = null;
+
+	@ApiProperty({
+		description: 'Whether a Home Assistant API key is configured',
+		name: 'api_key_configured',
+	})
+	@Expose({ name: 'api_key_configured' })
+	@IsOptional()
+	@IsBoolean()
+	apiKeyConfigured?: boolean;
 
 	@ApiProperty({
 		description: 'Home Assistant hostname or IP address',

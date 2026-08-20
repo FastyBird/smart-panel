@@ -145,6 +145,10 @@
 		"loadingModuleConfig": "Modul-Konfiguration wird geladen...",
 		"misc": {
 			"confirmDiscard": "Sie haben ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?"
+		},
+		"secret": {
+			"stored": "Ein Wert ist gespeichert. Geben Sie einen neuen ein, um ihn zu ersetzen.",
+			"willBeRemoved": "Der gespeicherte Wert wird beim Speichern entfernt."
 		}
 	},
 	"fields": {
@@ -270,6 +274,12 @@
 		},
 		"no": {
 			"title": "Nein"
+		},
+		"removeSecret": {
+			"title": "Entfernen"
+		},
+		"keepSecret": {
+			"title": "Behalten"
 		}
 	},
 	"languages": {

@@ -145,6 +145,10 @@
     "loadingModuleConfig": "Loading module config...",
     "misc": {
       "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+    },
+    "secret": {
+      "stored": "A value is stored. Enter a new one to replace it.",
+      "willBeRemoved": "The stored value will be removed when you save."
     }
   },
   "fields": {
@@ -270,6 +274,12 @@
     },
     "no": {
       "title": "No"
+    },
+    "removeSecret": {
+      "title": "Remove"
+    },
+    "keepSecret": {
+      "title": "Keep it"
     }
   },
   "languages": {

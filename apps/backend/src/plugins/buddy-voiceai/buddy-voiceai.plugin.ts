@@ -46,6 +46,13 @@ export class BuddyVoiceaiPlugin implements OnModuleInit {
 			type: BUDDY_VOICEAI_PLUGIN_NAME,
 			class: BuddyVoiceaiConfigModel,
 			configDto: UpdateBuddyVoiceaiConfigDto,
+			secretFields: [
+				{
+					path: 'api_key',
+					configuredPath: 'api_key_configured',
+					inputPaths: ['apiKey'],
+				},
+			],
 		});
 
 		this.ttsProviderRegistry.register(this.voiceaiTtsProvider);

@@ -29,12 +29,11 @@
 			:label="t('buddyTelegramPlugin.fields.config.botToken.title')"
 			prop="botToken"
 		>
-			<el-input
+			<config-secret-input
 				v-model="model.botToken"
+				:configured="model.botTokenConfigured"
 				:placeholder="t('buddyTelegramPlugin.fields.config.botToken.placeholder')"
 				name="botToken"
-				type="password"
-				show-password
 			/>
 			<div class="text-xs text-gray-500 mt-1">
 				{{ t('buddyTelegramPlugin.fields.config.botToken.description') }}
@@ -63,7 +62,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElForm, ElFormItem, ElInput, ElSwitch, type FormRules } from 'element-plus';
 
-import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
+import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import type { ITelegramConfigEditForm } from '../schemas/config.types';
 
 import type { ITelegramConfigFormProps } from './telegram-config-form.types';
