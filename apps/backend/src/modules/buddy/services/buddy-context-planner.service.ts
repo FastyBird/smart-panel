@@ -45,7 +45,7 @@ const STATE_SIGNAL_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_STATE_SIGNAL
 const LIGHTING_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_LIGHTING_SIGNALS].join('|')})\b`, 'u');
 const LIGHTING_GROUP_PATTERN = new RegExp(
 	String.raw`\b(?:every|${[...BUDDY_SPACE_SIGNALS]
-		.filter((signal) => ['all', 'lighting', 'lights', 'pokoj', 'room', 'svetla'].includes(signal))
+		.filter((signal) => ['all', 'lamps', 'lighting', 'lights', 'pokoj', 'room', 'svetla'].includes(signal))
 		.join('|')})\b`,
 	'u',
 );
@@ -85,7 +85,7 @@ const CLOCK_TIME_HISTORY_PATTERN = new RegExp(
 	'u',
 );
 const SCHEDULED_ACTION_PATTERN = new RegExp(
-	String.raw`\b(?:at\s+${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE}(?!\s*(?:%|celsius\b|degrees?\b|fahrenheit\b|percent\b|°\s*(?:c|f)?))|tomorrow|tonight|next\s+(?:day|evening|morning|night|week)|in\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?))\b`,
+	String.raw`\b(?:at\s+${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE}(?!\s*(?:%|celsius\b|degrees?\b|fahrenheit\b|percent\b|°\s*(?:c|f)?))|tomorrow|tonight|next\s+(?:day|evening|morning|night|week)|in\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?)|(?:each|every)\s+(?:day|evening|friday|monday|morning|night|saturday|sunday|thursday|tuesday|wednesday|week|weekday|weekend)|daily|weekly)\b`,
 	'u',
 );
 const HISTORY_PATTERN =
@@ -97,7 +97,7 @@ const TEMPORAL_HISTORY_PATTERN = new RegExp(
 );
 const CURRENT_STATE_PATTERN = /\b(?:at present|current|currently|now|right now)\b/u;
 const HOME_ENTITY_PATTERN =
-	/\b(?:air|blind|blinds|device|devices|door|doors|fan|fans|garage|heater|heaters|lamp|light|lighting|lights|room|scene|scenes|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
+	/\b(?:air|blind|blinds|device|devices|door|doors|fan|fans|garage|heater|heaters|lamp|lamps|light|lighting|lights|room|scene|scenes|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
 const HOME_VOCABULARY_PATTERN = new RegExp(String.raw`\b(?:${HOME_ENTITY_SIGNAL_PATTERN_SOURCE})\b`, 'u');
 const POSSESSIVE_HOME_ENTITY_PATTERN =
 	/\b(?:my|our)\s+(?:air|blind|blinds|device|devices|door|doors|fan|fans|garage|heater|heaters|lamp|light|lighting|lights|room|scene|scenes|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
@@ -210,6 +210,7 @@ const EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN =
 	/\b(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs) thermostat\b/u;
 const WHOLE_HOME_SCOPE_PATTERN =
 	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b|\beverywhere\b|\b(?:all|each|every) (?:rooms?|spaces?)\b/u;
+const UNSCOPED_AGGREGATE_READ_PATTERN = /^(?:(?:are|is)\s+(?:all|any)\b|count\b|how many\b)/u;
 const TRAILING_ACTION_PATTERN = new RegExp(
 	String.raw`(?:[?!,.;]|\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
@@ -1093,6 +1094,7 @@ function resolveConversationSpaceHint(
 
 	if (uniqueExplicitSpaceIds.length === 1) return uniqueExplicitSpaceIds[0];
 	if (uniqueExplicitSpaceIds.length > 1) return undefined;
+	if (UNSCOPED_AGGREGATE_READ_PATTERN.test(message) && !CONTEXTUAL_SCOPE_PATTERN.test(message)) return undefined;
 	if (HOME_INSTALLATION_PATTERN.test(message)) return undefined;
 	if ([...BUILT_IN_ACTION_SPACE_NAMES].some((spaceName) => containsNormalizedPhrase(message, spaceName))) {
 		return undefined;

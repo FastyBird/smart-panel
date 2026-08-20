@@ -3376,4 +3376,53 @@ describe('BuddyContextPlannerService', () => {
 			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
 		});
 	});
+
+	it.each(['Are any windows open?', 'Are all doors closed?', 'How many lights are on?'])(
+		'treats an unscoped aggregate as whole-home despite conversation scope: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					conversationSpaceId: 'space-office',
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({
+				scope: {},
+				queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+			});
+		},
+	);
+
+	it('clarifies an unsupported recurring action schedule', () => {
+		expect(
+			service.plan({
+				message: 'Turn Bedroom lights on every Monday',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			intent: 'write',
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
+	it('preserves a plural lamp target across conjoined configured spaces', () => {
+		expect(
+			service.plan({
+				message: 'Turn Bedroom and Kitchen lamps on',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: { spaceIds: ['space-bedroom', 'space-kitchen'] },
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device', 'set_space_lighting'],
+		});
+	});
 });

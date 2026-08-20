@@ -280,6 +280,7 @@ export const BUDDY_DEVICE_ACTION_SIGNALS: ReadonlySet<string> = new Set([
 const DEVICE_ACTION_SIGNALS = BUDDY_DEVICE_ACTION_SIGNALS;
 export const BUDDY_LIGHTING_SIGNALS: ReadonlySet<string> = new Set([
 	'lamp',
+	'lamps',
 	'lampa',
 	'light',
 	'lighting',
@@ -296,6 +297,7 @@ export const BUDDY_SPACE_SIGNALS: ReadonlySet<string> = new Set([
 	'garage',
 	'kitchen',
 	'lighting',
+	'lamps',
 	'lights',
 	'room',
 	'upstairs',
