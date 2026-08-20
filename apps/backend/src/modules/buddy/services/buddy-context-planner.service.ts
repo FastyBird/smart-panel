@@ -247,12 +247,19 @@ export class BuddyContextPlannerService {
 		const explicitSpaceIds = hasExcessiveExplicitSpaceScope ? [] : candidateExplicitSpaceIds;
 		const hasUnrepresentableSpaceExclusion = excludedOnlySpaceIds.size > 0 && explicitSpaceIds.length === 0;
 		const hasDuplicateNameSpaceAmbiguity = duplicateNameSpaceIds.size > 0;
-		const conversationSpaceId =
+		const conversationSpaceHint =
 			hasUnrepresentableSpaceExclusion || hasDuplicateNameSpaceAmbiguity || hasExcessiveExplicitSpaceScope
 				? undefined
 				: resolveConversationSpaceHint(normalizedMessage, input.conversationSpaceId, explicitSpaceIds);
-		const resolvedSpaceIds =
-			explicitSpaceIds.length > 1 ? explicitSpaceIds : conversationSpaceId ? [conversationSpaceId] : [];
+		const conversationSpaceId = CONTEXTUAL_SCOPE_PATTERN.test(normalizedMessage)
+			? (input.conversationSpaceId ?? undefined)
+			: conversationSpaceHint;
+		const resolvedSpaceIds = resolveCombinedSpaceIds(
+			normalizedMessage,
+			boundedScopedExplicitSpaces,
+			explicitSpaceIds,
+			conversationSpaceId,
+		);
 		const isGenericExplanation = isGeneralExplanation(normalizedMessage, explicitSpaces.length > 0);
 		const isPredicateQuestion = isStatePredicateQuestion(normalizedMessage);
 		const isWrappedStateRead = MODAL_STATE_READ_PATTERN.test(normalizedMessage);
@@ -333,6 +340,7 @@ export class BuddyContextPlannerService {
 		const intent = classifyIntent(hasWrite, hasTrigger, hasRead || requiresReadForAction);
 		const ambiguityRisk = classifyAmbiguityRisk(
 			normalizedMessage,
+			actionMessage,
 			actionReferenceMessage,
 			hasWrite,
 			hasTrigger,
@@ -917,6 +925,7 @@ function classifyIntent(hasWrite: boolean, hasTrigger: boolean, hasRead: boolean
 
 function classifyAmbiguityRisk(
 	message: string,
+	actionMessage: string,
 	actionReferenceMessage: string,
 	hasWrite: boolean,
 	hasTrigger: boolean,
@@ -950,9 +959,9 @@ function classifyAmbiguityRisk(
 		}
 		if (/\bor\b/u.test(actionReferenceMessage)) return 'action';
 		if (REPEATED_ACTION_PATTERN.test(actionReferenceMessage)) return 'action';
-		if (ACTION_RANGE_PATTERN.test(message)) return 'action';
-		if (ACTION_NON_SCALAR_BOUND_PATTERN.test(message)) return 'action';
-		if (SCHEDULED_ACTION_PATTERN.test(message)) return 'action';
+		if (ACTION_RANGE_PATTERN.test(actionMessage)) return 'action';
+		if (ACTION_NON_SCALAR_BOUND_PATTERN.test(actionMessage)) return 'action';
+		if (SCHEDULED_ACTION_PATTERN.test(actionMessage)) return 'action';
 		if (
 			hasGenericActionTarget(actionReferenceMessage, explicitSpaces, conversationSpaceId !== undefined) &&
 			!hasMultiSpaceLightingTarget(message, explicitSpaces)
@@ -1133,6 +1142,29 @@ function resolveConversationSpaceHint(
 	}
 
 	return conversationSpaceId ?? undefined;
+}
+
+function resolveCombinedSpaceIds(
+	message: string,
+	explicitSpaces: readonly BuddyContextSpaceReference[],
+	explicitSpaceIds: readonly string[],
+	conversationSpaceId?: string,
+): string[] {
+	if (!conversationSpaceId) return [...explicitSpaceIds];
+	if (!CONTEXTUAL_SCOPE_PATTERN.test(message)) {
+		return [...new Set(explicitSpaceIds.length > 0 ? explicitSpaceIds : [conversationSpaceId])];
+	}
+
+	const contextualIndex = message.search(CONTEXTUAL_SCOPE_PATTERN);
+	const firstExplicitIndex = findExplicitSpaceOccurrences(message, explicitSpaces)
+		.map((occurrence) => occurrence.range.start)
+		.sort((left, right) => left - right)[0];
+	const orderedSpaceIds =
+		firstExplicitIndex === undefined || contextualIndex < firstExplicitIndex
+			? [conversationSpaceId, ...explicitSpaceIds]
+			: [...explicitSpaceIds, conversationSpaceId];
+
+	return [...new Set(orderedSpaceIds)];
 }
 
 function resolveEnergySpaceIds(

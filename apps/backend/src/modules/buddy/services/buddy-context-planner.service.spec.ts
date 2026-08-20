@@ -3529,4 +3529,41 @@ describe('BuddyContextPlannerService', () => {
 			});
 		},
 	);
+
+	it('preserves conversation scope beside a separate explicit space', () => {
+		expect(
+			service.plan({
+				message: 'What is the temperature here and the Kitchen humidity?',
+				knownSpaces: [{ id: 'space-kitchen', name: 'Kitchen' }],
+				conversationSpaceId: 'space-bedroom',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: { spaceIds: ['space-bedroom', 'space-kitchen'] },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'search-home', spaceId: 'space-kitchen' },
+				{ kind: 'current-state', spaceId: 'space-bedroom' },
+				{ kind: 'current-state', spaceId: 'space-kitchen' },
+			],
+		});
+	});
+
+	it('keeps a read clock qualifier out of a coordinated immediate action', () => {
+		expect(
+			service.plan({
+				message: 'What was the Bedroom temperature at 8am, then turn all Kitchen lights off',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			intent: 'mixed',
+			ambiguityRisk: 'none',
+			strategy: 'deterministic-action',
+			toolNames: [],
+		});
+	});
 });
