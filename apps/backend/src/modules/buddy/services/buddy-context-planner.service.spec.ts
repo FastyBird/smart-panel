@@ -609,6 +609,8 @@ describe('BuddyContextPlannerService', () => {
 		'If the window is open, will the heater turn on?',
 		'If the window is open, when will the heater turn on?',
 		'If the window is open will the heater turn on?',
+		'If the window is open, should the heater turn on?',
+		'If the window is open must the heater turn on?',
 	])('keeps a conditional outcome question on the read path: %s', (message) => {
 		expect(
 			service.plan({
@@ -2527,22 +2529,25 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
-	it('clarifies a read whose only explicit space is excluded', () => {
-		expect(
-			service.plan({
-				message: 'What is the temperature everywhere except Bedroom?',
-				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
-				conversationSpaceId: 'space-office',
-				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
-			}),
-		).toMatchObject({
-			domains: ['home'],
-			scope: {},
-			ambiguityRisk: 'read',
-			strategy: 'clarify',
-			toolNames: [],
-		});
-	});
+	it.each(['What is the temperature everywhere except Bedroom?', 'What is the temperature everywhere but Bedroom?'])(
+		'clarifies a read whose only explicit space is excluded: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+					conversationSpaceId: 'space-office',
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({
+				domains: ['home'],
+				scope: {},
+				ambiguityRisk: 'read',
+				strategy: 'clarify',
+				toolNames: [],
+			});
+		},
+	);
 
 	it('does not resolve temporal this as a recent entity reference', () => {
 		expect(
@@ -2614,6 +2619,24 @@ describe('BuddyContextPlannerService', () => {
 		expect(
 			service.plan({
 				message: 'Show the Bedroom temperature from 8am to 10am',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			scope: { spaceId: 'space-bedroom' },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+			],
+			strategy: 'prefetch',
+		});
+	});
+
+	it('routes a since-clock interval to bounded history retrieval', () => {
+		expect(
+			service.plan({
+				message: 'What has the Bedroom temperature been since 8am?',
 				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			}),

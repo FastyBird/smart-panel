@@ -49,7 +49,7 @@ const LIGHTING_GROUP_PATTERN = new RegExp(
 		.join('|')})\b`,
 	'u',
 );
-const LIGHTING_GROUP_EXCLUSION_PATTERN = /\b(?:but not|except|excluding|krome|other than|without)\b/u;
+const LIGHTING_GROUP_EXCLUSION_PATTERN = /\b(?:but not|but|except|excluding|krome|other than|without)\b/u;
 const PARTIAL_LIGHTING_GROUP_PATTERN =
 	/\b(?:a couple of|a few|eight|five|four|nine|one|seven|several|six|some|three|two|\d+)\b.*\b(?:lamp|lamps|light|lights)\b/u;
 
@@ -75,7 +75,7 @@ const SECURITY_ENTITY_NAME_PATTERN = new RegExp(
 const CLOCK_TIME_VALUE_PATTERN_SOURCE = String.raw`(?:midnight|noon|(?:[01]?\d|2[0-3]):[0-5]\d(?:\s*(?:a\.?m\.?|p\.?m\.?))?|(?:0?[1-9]|1[0-2])\s*(?:a\.?m\.?|p\.?m\.?))`;
 const CLOCK_TIME_AT_VALUE_PATTERN_SOURCE = String.raw`(?:${CLOCK_TIME_VALUE_PATTERN_SOURCE}|(?:[01]?\d|2[0-3]))`;
 const CLOCK_TIME_HISTORY_PATTERN = new RegExp(
-	String.raw`\b(?:from\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}\s+(?:to|until)\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|between\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}\s+and\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|at\s+${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE})\b`,
+	String.raw`\b(?:from\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}\s+(?:to|until)\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|between\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}\s+and\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|since\s+${CLOCK_TIME_VALUE_PATTERN_SOURCE}|at\s+${CLOCK_TIME_AT_VALUE_PATTERN_SOURCE})\b`,
 	'u',
 );
 const HISTORY_PATTERN =
@@ -96,7 +96,7 @@ const HOME_STATE_PATTERN = /\b(?:cold|cooling|heating|humidity|temperature|warm)
 const READ_PATTERN =
 	/^(?:are|can you (?:check|confirm|determine|fetch|get|read|report|show|tell|verify)|check|confirm|determine|ensure|fetch|find|get|how (?:many|much)|is|list|make sure|read|report|search|see|show|tell(?: me)?|verify|what|which|will)\b/u;
 const PREDICATE_QUESTION_PATTERN =
-	/^(?:are|can|could|did|do|does|had|has|have|is|may|might|when|will|would|was|were|je|jsou|jaka|jaky|ktere|kolik|(?:how|what|when|where|which|who|why)['’]s|(?:what|why) (?:are|did|do|does|had|has|have|is|was|were))\b/u;
+	/^(?:are|can|could|did|do|does|had|has|have|is|may|might|must|should|when|will|would|was|were|je|jsou|jaka|jaky|ktere|kolik|(?:how|what|when|where|which|who|why)['’]s|(?:what|why) (?:are|did|do|does|had|has|have|is|was|were))\b/u;
 const ACTION_REQUEST_PATTERN =
 	/^(?:(?:can|could|may|might|will|would) you\b|are you able to\b|is it possible to\b|is there any way you can\b)/u;
 const MODAL_STATE_READ_PATTERN =
@@ -439,12 +439,12 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 	const prefix = message.slice(0, actionIndex);
 	const clauseBoundary = Math.max(prefix.lastIndexOf(','), prefix.lastIndexOf(';'));
 	const outcomePattern =
-		/^(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?(?:(?:can|could|may|might|will|would)\s+(?!you\b)|(?:are|did|do|does|had|has|have|is|was|were)\b)/u;
+		/^(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?(?:(?:can|could|may|might|must|should|will|would)\s+(?!you\b)|(?:are|did|do|does|had|has|have|is|was|were)\b)/u;
 
 	if (clauseBoundary >= 0) return outcomePattern.test(prefix.slice(clauseBoundary + 1).trim());
 
 	const unpunctuatedModalPattern = new RegExp(
-		String.raw`(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?(?:can|could|may|might|will|would)\s+(?!you\b)`,
+		String.raw`(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?(?:can|could|may|might|must|should|will|would)\s+(?!you\b)`,
 		'gu',
 	);
 	const modalMatch = [...prefix.matchAll(unpunctuatedModalPattern)].at(-1);
@@ -1362,7 +1362,7 @@ function isExcludedExplicitSpaceOccurrence(message: string, occurrenceStart: num
 			.split(/[?!,.;]/u)
 			.at(-1) ?? '';
 
-	return /\b(?:but not|except|excluding|krome|other than|without)\s+(?:(?:in|the)\s+)*$/u.test(precedingClause);
+	return /\b(?:but not|but|except|excluding|krome|other than|without)\s+(?:(?:in|the)\s+)*$/u.test(precedingClause);
 }
 
 function findDuplicateNameSpaceIds(spaces: readonly BuddyContextSpaceReference[]): Set<string> {
