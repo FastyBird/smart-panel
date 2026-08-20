@@ -26,13 +26,15 @@ const ENERGY_PATTERN = /\b(?:consumption|energy|kwh|power|production|usage)\b/u;
 const WEATHER_ENTITY_NAME_PATTERN = /\boutside\s+(?:device|fan|lamp|light|sensor|switch)\b/gu;
 const ENERGY_ENTITY_NAME_PATTERN = /\bpower\s+(?:device|fan|lamp|light|sensor|switch)\b/gu;
 const SECURITY_PATTERN = /\b(?:alarm|armed|intrusion|secure|security)\b/u;
+const SECURITY_ENTITY_NAME_PATTERN = /\b(?:alarm|security)\s+(?:device|fan|lamp|light|sensor|switch)\b/gu;
 const HISTORY_PATTERN =
 	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:month|night|week|year))\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b/u;
 const CURRENT_STATE_PATTERN = /\b(?:at present|current|currently|now|right now)\b/u;
 const HOME_ENTITY_PATTERN =
-	/\b(?:air|blind|blinds|device|devices|door|doors|fan|garage|lamp|light|lighting|lights|room|scene|sensor|switch|thermostat|window|windows)\b/u;
+	/\b(?:air|blind|blinds|device|devices|door|doors|fan|garage|heater|heaters|lamp|light|lighting|lights|room|scene|sensor|switch|thermostat|window|windows)\b/u;
 const POSSESSIVE_HOME_ENTITY_PATTERN =
-	/\b(?:my|our)\s+(?:air|blind|blinds|device|devices|door|doors|fan|garage|lamp|light|lighting|lights|room|scene|sensor|switch|thermostat|window|windows)\b/u;
+	/\b(?:my|our)\s+(?:air|blind|blinds|device|devices|door|doors|fan|garage|heater|heaters|lamp|light|lighting|lights|room|scene|sensor|switch|thermostat|window|windows)\b/u;
+const GENERAL_KNOWLEDGE_INVENTORY_PATTERN = /^how (?:many|much)\b.*\b(?:does|do) (?:a|an)\b/u;
 const HOME_INSTALLATION_PATTERN = /\b(?:home|house)\b/u;
 const HOME_STATE_PATTERN = /\b(?:cold|cooling|heating|humidity|temperature|warm)\b/u;
 const READ_PATTERN =
@@ -61,7 +63,7 @@ const CAPABILITY_DISCOVERY_PATTERN =
 	/^(?:(?:what|which)\b|(?:can|could|would) you (?:show|tell)(?: me)?\b).*\b(?:am i able to|can i|i can)\b.*\b(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\b/u;
 const CONTEXTUAL_SCOPE_PATTERN = /\b(?:here|in this room|this space)\b/u;
 const GENERIC_ACTION_TARGET_PATTERN =
-	/\b(?:a|all|an|any|the)\s+(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:blind|blinds|device|devices|door|doors|fan|fans|lamp|lamps|light|lights|scene|scenes|switch|switches|thermostat|thermostats|window|windows)\b|\b(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:blinds|devices|doors|fans|lamps|lights|scenes|switches|thermostats|windows)\b|^[?!,.;\s]*(?:(?:and(?: also)?|as well as|if so|please|plus|then)\s+)*(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\s+(?:off\s+|on\s+)?(?:blind|device|door|fan|lamp|light|scene|switch|thermostat|window)\b/u;
+	/\b(?:a|all|an|any|the)\s+(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:blind|blinds|device|devices|door|doors|fan|fans|heater|heaters|lamp|lamps|light|lights|scene|scenes|switch|switches|thermostat|thermostats|window|windows)\b|\b(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:blinds|devices|doors|fans|heaters|lamps|lights|scenes|switches|thermostats|windows)\b|^[?!,.;\s]*(?:(?:and(?: also)?|as well as|if so|please|plus|then)\s+)*(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\s+(?:off\s+|on\s+)?(?:blind|device|door|fan|heater|lamp|light|scene|switch|thermostat|window)\b/u;
 const GENERIC_ACTION_TARGET_NAMES = [
 	'blind',
 	'blinds',
@@ -71,6 +73,8 @@ const GENERIC_ACTION_TARGET_NAMES = [
 	'doors',
 	'fan',
 	'fans',
+	'heater',
+	'heaters',
 	'lamp',
 	'lamps',
 	'light',
@@ -257,7 +261,7 @@ function classifyDomains(
 	const domains = new Set<BuddyContextDomain>();
 	const hasWeather = hasDomainSignalOutsideEntityName(message, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN);
 	const hasEnergy = hasDomainSignalOutsideEntityName(message, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN);
-	const hasSecurity = SECURITY_PATTERN.test(message);
+	const hasSecurity = hasDomainSignalOutsideEntityName(message, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN);
 	const hasNonHomeDomain = hasWeather || hasEnergy || hasSecurity;
 	const clauses = splitPlannerClauses(message);
 	const hasInstallationHome = clauses.some(
@@ -265,7 +269,7 @@ function classifyDomains(
 			HOME_INSTALLATION_PATTERN.test(clause) &&
 			!hasDomainSignalInClause(clause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) &&
 			!hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) &&
-			!SECURITY_PATTERN.test(clause),
+			!hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN),
 	);
 	const hasContextualHomeState = clauses.some(
 		(clause) =>
@@ -329,6 +333,7 @@ function isGeneralExplanation(message: string, hasExplicitSpace = false): boolea
 	if (hasExplicitSpace || POSSESSIVE_HOME_ENTITY_PATTERN.test(message)) return false;
 
 	return (
+		GENERAL_KNOWLEDGE_INVENTORY_PATTERN.test(message) ||
 		/^how (?:can|could|do|does|would)\b.*\b(?:work|works|working|i)\b/u.test(message) ||
 		/^explain (?:how|what|why)\b/u.test(message) ||
 		/^(?:explain|show me|tell me) how to\b/u.test(message) ||

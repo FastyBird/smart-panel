@@ -358,7 +358,7 @@ describe('BuddyContextPlannerService', () => {
 	it('preserves a polite modal action after a state question', () => {
 		expect(
 			service.plan({
-				message: 'Is the bedroom cold? Could you turn off the heater?',
+				message: 'Is the bedroom cold? Could you turn off the reading lamp?',
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			}),
 		).toMatchObject({ intent: 'mixed', strategy: 'model-tools' });
@@ -411,7 +411,7 @@ describe('BuddyContextPlannerService', () => {
 
 	it('retains a sentence-separated read clause after a command', () => {
 		const result = service.plan({
-			message: 'Turn off the heater. Tell me whether the window is open.',
+			message: 'Turn off the reading lamp. Tell me whether the window is open.',
 			providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
 		});
 
@@ -569,7 +569,7 @@ describe('BuddyContextPlannerService', () => {
 		},
 	);
 
-	it.each(['Open the window', 'Close doors', 'Lower the blinds', 'Set thermostat to 20'])(
+	it.each(['Open the window', 'Close doors', 'Lower the blinds', 'Set thermostat to 20', 'Turn off the heater'])(
 		'clarifies an omitted generic device category: %s',
 		(message) => {
 			expect(
@@ -820,6 +820,21 @@ describe('BuddyContextPlannerService', () => {
 		).toMatchObject({ domains: ['general'], intent: 'none', queries: [], toolNames: [] });
 	});
 
+	it('keeps unrelated general-knowledge home nouns off retrieval', () => {
+		expect(
+			service.plan({
+				message: 'How many windows does a Boeing 747 have?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['general'],
+			intent: 'none',
+			queries: [],
+			toolNames: [],
+			strategy: 'no-home-context',
+		});
+	});
+
 	it('keeps an installation-specific explanation on the scoped home path', () => {
 		expect(
 			service.plan({
@@ -882,6 +897,20 @@ describe('BuddyContextPlannerService', () => {
 			});
 		},
 	);
+
+	it('keeps a security keyword used in a device name on the home action path', () => {
+		expect(
+			service.plan({
+				message: 'Turn on the security light',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'write',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device'],
+		});
+	});
 
 	it.each(['Is the outside light on?', 'What is the power switch state?'])(
 		'keeps a domain keyword used in a device name on the home read path: %s',
@@ -1053,7 +1082,7 @@ describe('BuddyContextPlannerService', () => {
 	it('detects an action after a direct read command', () => {
 		expect(
 			service.plan({
-				message: 'Check whether the window is open, then turn off the heater',
+				message: 'Check whether the window is open, then turn off the reading lamp',
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			}),
 		).toMatchObject({
@@ -1069,7 +1098,7 @@ describe('BuddyContextPlannerService', () => {
 		(separator) => {
 			expect(
 				service.plan({
-					message: `Check whether the window is open ${separator} turn off the heater`,
+					message: `Check whether the window is open ${separator} turn off the reading lamp`,
 					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 				}),
 			).toMatchObject({
@@ -1086,7 +1115,7 @@ describe('BuddyContextPlannerService', () => {
 		(separator) => {
 			expect(
 				service.plan({
-					message: `Turn off the heater ${separator} check whether the window is open`,
+					message: `Turn off the reading lamp ${separator} check whether the window is open`,
 					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 				}),
 			).toMatchObject({
