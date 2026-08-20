@@ -772,20 +772,8 @@ const onDialogOpen = async (): Promise<void> => {
 	autoSaveReady.value = true;
 };
 
-onBeforeUnmount((): void => {
-	// Unmount without the close flow (route change) must not leave debounced saves
-	// firing against a destroyed component's state.
-	for (const timer of pendingSaves.values()) {
-		clearTimeout(timer);
-	}
-
-	pendingSaves.clear();
-});
-
-const onClose = async (): Promise<void> => {
-	autoSaveReady.value = false;
-
-	// Flush pending debounced saves so no edits are lost
+// Flush pending debounced saves and any dirty forms so no edits are lost
+const flushPendingSaves = (): Promise<void>[] => {
 	const flushPromises: Promise<void>[] = [];
 	const flushedKeys = new Set<string>();
 
@@ -804,7 +792,20 @@ const onClose = async (): Promise<void> => {
 		}
 	}
 
-	await Promise.allSettled(flushPromises);
+	return flushPromises;
+};
+
+onBeforeUnmount((): void => {
+	// Unmount without the close flow (route change) must not leave debounce timers
+	// behind — flush the edits immediately instead of discarding them; the save
+	// promises safely outlive the component.
+	void Promise.allSettled(flushPendingSaves());
+});
+
+const onClose = async (): Promise<void> => {
+	autoSaveReady.value = false;
+
+	await Promise.allSettled(flushPendingSaves());
 
 	emit('bindings-changed');
 	visible.value = false;
