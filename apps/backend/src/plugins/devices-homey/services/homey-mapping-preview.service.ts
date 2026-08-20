@@ -1040,15 +1040,10 @@ export class HomeyMappingPreviewService {
 		dataType: DataTypeType,
 		mappingRange: HomeyValueRangeDefinition | undefined,
 	): boolean {
-		if (
-			!mappingCanWrite ||
-			capability.type !== HomeyCapabilityType.NUMBER ||
-			capability.step === null ||
-			!this.isNumericDataType(dataType)
-		) {
+		if (!mappingCanWrite || capability.type !== HomeyCapabilityType.NUMBER || !this.isNumericDataType(dataType)) {
 			return true;
 		}
-		if (capability.step <= 0) {
+		if (capability.step !== null && capability.step <= 0) {
 			return false;
 		}
 
@@ -1069,6 +1064,9 @@ export class HomeyMappingPreviewService {
 
 		if (transform?.type === 'constant' || transform?.type === 'threshold' || transform?.type === 'thresholds') {
 			return true;
+		}
+		if (capability.step === null) {
+			return transform?.type !== 'map' && transform?.type !== 'boolean';
 		}
 		if (panelGrid.step === null || !Number.isFinite(panelGrid.step) || panelGrid.step <= 0) {
 			return false;

@@ -520,6 +520,50 @@ describe('HomeyMappingPreviewService', () => {
 		expect(preview.readyToAdopt).toBe(false);
 	});
 
+	it('blocks partial numeric write maps when Homey does not declare a target step', async () => {
+		const fixture = readDeviceFixture('light');
+		const device: HomeyDevice = {
+			...fixture,
+			capabilities: fixture.capabilities.map((capability) =>
+				capability.id === 'dim' ? { ...capability, value: 0, minimum: 0, maximum: 1, step: null } : capability,
+			),
+		};
+		homeyService.getFreshDevice.mockResolvedValue(device);
+		const propertyResolution = mappingLoader.resolvePropertyMappings(device);
+		jest.spyOn(mappingLoader, 'resolvePropertyMappings').mockReturnValue({
+			conflicts: propertyResolution.conflicts,
+			mappings: propertyResolution.mappings.map((binding) =>
+				binding.capabilityId === 'dim'
+					? {
+							...binding,
+							mapping: {
+								...binding.mapping,
+								property: {
+									...binding.mapping.property,
+									direction: 'write_only',
+									transform: {
+										type: 'map',
+										write: { '0': 0, '100': 1 },
+									},
+								},
+							},
+						}
+					: binding,
+			),
+		});
+
+		const preview = await service.generatePreview({ deviceId: device.id });
+
+		expect(preview.warnings).toContainEqual(
+			expect.objectContaining({
+				code: HomeyMappingPreviewWarningCode.INVALID_CAPABILITY_VALUE_DOMAIN,
+				severity: HomeyMappingPreviewWarningSeverity.ERROR,
+				identifier: 'dim',
+			}),
+		);
+		expect(preview.readyToAdopt).toBe(false);
+	});
+
 	it('validates transformed values against the mapping declared range', async () => {
 		const device = readDeviceFixture('light');
 		homeyService.getFreshDevice.mockResolvedValue(device);
