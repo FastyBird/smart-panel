@@ -146,9 +146,20 @@ export class HomeyDeviceInventoryService {
 			reasons.push(HomeyDeviceSupportReason.PROPERTY_MAPPING_CONFLICT);
 		} else if (propertyResolution.mappings.length === 0) {
 			reasons.push(HomeyDeviceSupportReason.NO_PROPERTY_MAPPING);
+		} else if (!this.hasCompatiblePropertyMapping(channelResolution, propertyResolution)) {
+			reasons.push(HomeyDeviceSupportReason.NO_COMPATIBLE_PROPERTY_MAPPING);
 		}
 
 		return reasons;
+	}
+
+	private hasCompatiblePropertyMapping(
+		channelResolution: HomeyMappingResolution<ResolvedHomeyChannelMapping>,
+		propertyResolution: HomeyMappingResolution<ResolvedHomeyPropertyBinding>,
+	): boolean {
+		const channelIdentifiers = new Set(channelResolution.mappings.map((mapping) => mapping.channel.identifier));
+
+		return propertyResolution.mappings.some((binding) => channelIdentifiers.has(binding.mapping.property.channel));
 	}
 
 	private hasBlockingConflict(conflicts: readonly HomeyMappingConflict[]): boolean {

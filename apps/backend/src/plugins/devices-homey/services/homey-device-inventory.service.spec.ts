@@ -161,6 +161,22 @@ describe('HomeyDeviceInventoryService', () => {
 		expect(result.supportReasons).toContain(HomeyDeviceSupportReason.DEVICE_MAPPING_CONFLICT);
 	});
 
+	it('rejects property bindings that do not target a resolved channel', async () => {
+		const resolution = mappingLoader.resolveChannelMappings(createDevice());
+		jest.spyOn(mappingLoader, 'resolveChannelMappings').mockReturnValue({
+			mappings: resolution.mappings.map((mapping) => ({
+				...mapping,
+				channel: { ...mapping.channel, identifier: 'unrelated-channel' },
+			})),
+			conflicts: resolution.conflicts,
+		});
+
+		const result = await service.findOne('homey-light-a');
+
+		expect(result.supportState).toBe(HomeyDeviceSupportState.UNSUPPORTED);
+		expect(result.supportReasons).toContain(HomeyDeviceSupportReason.NO_COMPATIBLE_PROPERTY_MAPPING);
+	});
+
 	it('returns one exact device and rejects unavailable or unknown inventory', async () => {
 		await expect(service.findOne('homey-light-a')).resolves.toMatchObject({ id: 'homey-light-a' });
 		await expect(service.findOne('missing')).rejects.toBeInstanceOf(HomeyInventoryDeviceNotFoundError);

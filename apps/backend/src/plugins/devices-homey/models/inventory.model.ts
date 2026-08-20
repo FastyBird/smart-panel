@@ -18,6 +18,7 @@ export enum HomeyDeviceSupportReason {
 	NO_DEVICE_MAPPING = 'no_device_mapping',
 	NO_CHANNEL_MAPPING = 'no_channel_mapping',
 	NO_PROPERTY_MAPPING = 'no_property_mapping',
+	NO_COMPATIBLE_PROPERTY_MAPPING = 'no_compatible_property_mapping',
 	DEVICE_MAPPING_CONFLICT = 'device_mapping_conflict',
 	CHANNEL_MAPPING_CONFLICT = 'channel_mapping_conflict',
 	PROPERTY_MAPPING_CONFLICT = 'property_mapping_conflict',
