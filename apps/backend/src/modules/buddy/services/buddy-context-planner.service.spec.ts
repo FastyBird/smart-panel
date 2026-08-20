@@ -2192,4 +2192,37 @@ describe('BuddyContextPlannerService', () => {
 			strategy: 'clarify',
 		});
 	});
+
+	it('keeps the English indefinite article inside a generic action target', () => {
+		expect(
+			service.plan({
+				message: 'Turn on a light',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
+	it('clarifies mixed disjunctive and conjunctive room-lighting scopes', () => {
+		expect(
+			service.plan({
+				message: 'Turn Bedroom or Kitchen and Office lights off',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+					{ id: 'space-office', name: 'Office' },
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: { spaceIds: ['space-bedroom', 'space-kitchen', 'space-office'] },
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
 });

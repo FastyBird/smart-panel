@@ -94,7 +94,7 @@ const TRIGGER_PATTERN = new RegExp(
 const TARGET_DEPENDENT_ACTION_PATTERN = /\b(?:activate|deactivate|start|stop)\b/u;
 const DEVICE_RUN_TARGET_PATTERN = /\brun\b.*\b(?:device|fan|switch)\b/u;
 const ACTION_COMMAND_PATTERN = new RegExp(
-	String.raw`^[?!,.;\s]*(?:(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
+	String.raw`^[?!,.;\s]*(?:(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
 );
 const CONDITION_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_CONDITION_SIGNALS].join('|')})\b`, 'u');
@@ -169,11 +169,11 @@ const EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN =
 const WHOLE_HOME_SCOPE_PATTERN =
 	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b/u;
 const TRAILING_ACTION_PATTERN = new RegExp(
-	String.raw`(?:[?!,.;]|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
+	String.raw`(?:[?!,.;]|\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
 );
 const TRAILING_READ_PATTERN = new RegExp(
-	String.raw`(?:[?!,.;]|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:also|please)\s+)*(?:are|can|check|confirm|could|determine|did|do|does|ensure|fetch|find|get|had|has|have|how|is|make sure|may|might|read|report|see|show|tell(?: me)?|verify|was|were|what|whether|which|will|would)\b`,
+	String.raw`(?:[?!,.;]|\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:also|please)\s+)*(?:are|can|check|confirm|could|determine|did|do|does|ensure|fetch|find|get|had|has|have|how|is|make sure|may|might|read|report|see|show|tell(?: me)?|verify|was|were|what|whether|which|will|would)\b`,
 	'u',
 );
 
@@ -364,7 +364,7 @@ function getActionReferenceMessage(message: string): string {
 		.map((clause) => {
 			const actionOnlyClause = clause.replace(
 				new RegExp(
-					String.raw`^[?!,.;\s]*(?:(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)`,
+					String.raw`^[?!,.;\s]*(?:(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?`,
 					'u',
 				),
 				'',
@@ -1170,6 +1170,7 @@ function hasMultiSpaceLightingTarget(message: string, explicitSpaces: readonly B
 	return (
 		ACTION_COMMAND_PATTERN.test(targetPrefix) &&
 		/\band\b/u.test(targetConjunction) &&
+		!/\bor\b/u.test(targetConjunction) &&
 		/^\s*(?:lamps|lighting|lights|svetla)\b/u.test(targetSuffix)
 	);
 }

@@ -95,13 +95,12 @@ export const BUDDY_COMPOUND_CONNECTOR_SIGNALS: ReadonlySet<string> = new Set([
 	'plus',
 	'potom',
 	'then',
-	'a',
 ]);
 const COMPOUND_CONNECTOR_PATTERN_SOURCE = [...BUDDY_COMPOUND_CONNECTOR_SIGNALS]
 	.sort((left, right) => right.length - left.length)
 	.join('|');
 const ACTION_CLAUSE_PATTERN = new RegExp(
-	String.raw`(?:\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b|[,;])\s*(?:(?:also|please|take)\s+)*(?:${[...ACTION_SIGNALS].join('|')})\b`,
+	String.raw`(?:\ba\b|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b|[,;])\s*(?:(?:also|please|take)\s+)*(?:${[...ACTION_SIGNALS].join('|')})\b`,
 	'u',
 );
 const STATE_QUESTION_CLAUSE_PATTERN = new RegExp(
@@ -113,7 +112,7 @@ const CAPABILITY_DISCOVERY_PATTERN = new RegExp(
 	'u',
 );
 const READ_CLAUSE_PATTERN = new RegExp(
-	String.raw`(?:\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b|[,;])\s*(?:check|confirm|determine|ensure|fetch|find|get|make sure|read|report|see|show|tell|verify|what|whether|which)\b`,
+	String.raw`(?:\ba\b|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b|[,;])\s*(?:check|confirm|determine|ensure|fetch|find|get|make sure|read|report|see|show|tell|verify|what|whether|which)\b`,
 	'u',
 );
 const STATE_QUESTION_PATTERN =
