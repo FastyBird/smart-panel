@@ -55,12 +55,12 @@ const PARTIAL_LIGHTING_GROUP_PATTERN =
 
 const DOMAIN_ORDER: readonly BuddyContextDomain[] = ['general', 'home', 'weather', 'energy', 'security', 'history'];
 const WEATHER_PATTERN =
-	/\b(?:cloud|cloudy|fog|foggy|forecast|outside|rain|raining|snow|storm|stormy|sun|sunny|thunder|weather|wind)\b/u;
+	/\b(?:cloud|cloudy|fog|foggy|forecast|outdoor|outside|rain|raining|snow|storm|stormy|sun|sunny|thunder|weather|wind)\b/u;
 const ENERGY_PATTERN = /\b(?:consumption|electricity|energy|kwh|power|production|usage)\b/u;
 const DOMAIN_ENTITY_CATEGORY_PATTERN_SOURCE =
 	'device|devices|fan|fans|lamp|lamps|light|lights|sensor|sensors|switch|switches';
 const WEATHER_ENTITY_NAME_PATTERN = new RegExp(
-	String.raw`\boutside\s+(?:${DOMAIN_ENTITY_CATEGORY_PATTERN_SOURCE})\b`,
+	String.raw`\b(?:outdoor|outside)\s+(?:${DOMAIN_ENTITY_CATEGORY_PATTERN_SOURCE})\b`,
 	'gu',
 );
 const ENERGY_ENTITY_NAME_PATTERN = new RegExp(
@@ -79,7 +79,7 @@ const CLOCK_TIME_HISTORY_PATTERN = new RegExp(
 	'u',
 );
 const HISTORY_PATTERN =
-	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:day|hour|minute|month|night|week|weekend|year)|this (?:afternoon|evening|morning|night))\b|\b(?:last|since)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
+	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:day|hour|minute|month|night|week|weekend|year)|this (?:afternoon|evening|morning|night))\b|\b(?:last|since)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b(?:did|was|were)\b.*\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*\b(?:did|was|were)\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
 const TEMPORAL_HISTORY_PATTERN = new RegExp(
 	String.raw`(?:${HISTORY_PATTERN.source}|${CLOCK_TIME_HISTORY_PATTERN.source})`,
 	'u',
@@ -439,7 +439,7 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 
 	const outcomePrefix = prefix.slice(clauseBoundary + 1).trim();
 
-	return /^(?:(?:can|could|may|might|will|would)\s+(?!you\b)|(?:are|did|do|does|had|has|have|is|was|were)\b)/u.test(
+	return /^(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?(?:(?:can|could|may|might|will|would)\s+(?!you\b)|(?:are|did|do|does|had|has|have|is|was|were)\b)/u.test(
 		outcomePrefix,
 	);
 }

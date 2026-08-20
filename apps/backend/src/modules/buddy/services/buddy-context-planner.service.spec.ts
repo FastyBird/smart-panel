@@ -143,19 +143,22 @@ describe('BuddyContextPlannerService', () => {
 		expect(result.queries).toContainEqual(query);
 	});
 
-	it('keeps outdoor temperature language on the weather-only path', () => {
-		expect(
-			service.plan({
-				message: 'Will it be warm outside tomorrow?',
-				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
-			}),
-		).toMatchObject({
-			domains: ['weather'],
-			queries: [{ kind: 'weather' }],
-			strategy: 'prefetch',
-			toolNames: [],
-		});
-	});
+	it.each(['Will it be warm outside tomorrow?', 'What is the outdoor temperature?'])(
+		'keeps outdoor temperature language on the weather-only path: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({
+				domains: ['weather'],
+				queries: [{ kind: 'weather' }],
+				strategy: 'prefetch',
+				toolNames: [],
+			});
+		},
+	);
 
 	it.each(['Will it be sunny tomorrow?', 'Will it be cloudy tomorrow?'])(
 		'routes a common weather condition to bounded weather retrieval: %s',
@@ -584,21 +587,24 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
-	it('keeps a conditional outcome question on the read path', () => {
-		expect(
-			service.plan({
-				message: 'If the window is open, will the heater turn on?',
-				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
-			}),
-		).toMatchObject({
-			domains: ['home'],
-			intent: 'read',
-			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
-			ambiguityRisk: 'none',
-			strategy: 'model-tools',
-			toolNames: ['search_home', 'query_home_state'],
-		});
-	});
+	it.each(['If the window is open, will the heater turn on?', 'If the window is open, when will the heater turn on?'])(
+		'keeps a conditional outcome question on the read path: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({
+				domains: ['home'],
+				intent: 'read',
+				queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+				ambiguityRisk: 'none',
+				strategy: 'model-tools',
+				toolNames: ['search_home', 'query_home_state'],
+			});
+		},
+	);
 
 	it('retains a polite action request after a leading condition', () => {
 		expect(
@@ -1177,6 +1183,20 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('does not treat an outdoor device name as a weather request', () => {
+		expect(
+			service.plan({
+				message: 'Turn on the outdoor light',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'write',
+			queries: [{ kind: 'search-home' }],
+			strategy: 'model-tools',
+		});
+	});
+
 	it('classifies a home-state clause independently from a weather clause', () => {
 		expect(
 			service.plan({
@@ -1652,24 +1672,25 @@ describe('BuddyContextPlannerService', () => {
 		},
 	);
 
-	it.each(['What was the Bedroom temperature last Tuesday?', 'Show the Bedroom temperature since Monday'])(
-		'routes weekday history phrasing to timeseries: %s',
-		(message) => {
-			expect(
-				service.plan({
-					message,
-					knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
-					providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
-				}),
-			).toMatchObject({
-				domains: ['home', 'history'],
-				queries: [
-					{ kind: 'search-home', spaceId: 'space-bedroom' },
-					{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
-				],
-			});
-		},
-	);
+	it.each([
+		'What was the Bedroom temperature last Tuesday?',
+		'Show the Bedroom temperature since Monday',
+		'What was the Bedroom temperature on Monday?',
+	])('routes weekday history phrasing to timeseries: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+			],
+		});
+	});
 
 	it('routes a natural-language calendar date to timeseries', () => {
 		expect(
