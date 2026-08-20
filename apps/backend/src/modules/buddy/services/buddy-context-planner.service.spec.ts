@@ -101,6 +101,7 @@ describe('BuddyContextPlannerService', () => {
 	it.each([
 		{ message: 'Will it rain tomorrow?', query: { kind: 'weather' } },
 		{ message: 'How much power did we use today?', query: { kind: 'energy-summary' } },
+		{ message: 'How much electricity did we use today?', query: { kind: 'energy-summary' } },
 		{ message: 'Is the house secure?', query: { kind: 'security-status' } },
 	])('prefetches $query.kind while no matching Buddy model tool exists', ({ message, query }) => {
 		const result = service.plan({
@@ -646,6 +647,21 @@ describe('BuddyContextPlannerService', () => {
 		expect(result.toolNames).toContain('set_space_lighting');
 	});
 
+	it('routes resolved plural room lighting to the group action tool', () => {
+		const result = service.plan({
+			message: 'Turn Bedroom lights off',
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(result).toMatchObject({
+			scope: { spaceId: 'space-bedroom' },
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+		});
+		expect(result.toolNames).toContain('set_space_lighting');
+	});
+
 	it('requires an all-lights clause to name its own resolved space', () => {
 		expect(
 			service.plan({
@@ -1108,7 +1124,7 @@ describe('BuddyContextPlannerService', () => {
 			}),
 		).toMatchObject({
 			queries: [
-				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'search-home', spaceId: 'space-office' },
 				{ kind: 'current-state', spaceId: 'space-office' },
 				{ kind: 'energy-summary', spaceId: 'space-bedroom' },
 			],
@@ -1164,6 +1180,7 @@ describe('BuddyContextPlannerService', () => {
 		).toMatchObject({
 			queries: [
 				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'search-home', spaceId: 'space-office' },
 				{ kind: 'current-state', spaceId: 'space-bedroom' },
 				{ kind: 'property-timeseries', spaceId: 'space-office' },
 			],

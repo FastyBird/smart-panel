@@ -22,7 +22,7 @@ const SET_SPACE_LIGHTING_TOOL_NAME = 'set_space_lighting';
 const DOMAIN_ORDER: readonly BuddyContextDomain[] = ['general', 'home', 'weather', 'energy', 'security', 'history'];
 const WEATHER_PATTERN =
 	/\b(?:cloud|cloudy|fog|foggy|forecast|outside|rain|raining|snow|storm|stormy|sun|sunny|thunder|weather|wind)\b/u;
-const ENERGY_PATTERN = /\b(?:consumption|energy|kwh|power|production|usage)\b/u;
+const ENERGY_PATTERN = /\b(?:consumption|electricity|energy|kwh|power|production|usage)\b/u;
 const WEATHER_ENTITY_NAME_PATTERN = /\boutside\s+(?:device|fan|lamp|light|sensor|switch)\b/gu;
 const ENERGY_ENTITY_NAME_PATTERN = /\bpower\s+(?:device|fan|lamp|light|sensor|switch)\b/gu;
 const SECURITY_PATTERN = /\b(?:alarm|armed|intrusion|secure|security)\b/u;
@@ -224,6 +224,20 @@ export class BuddyContextPlannerService {
 					HISTORY_PATTERN,
 				)
 			: querySpaceIds;
+		const hasCurrentStateQuery = (!hasAction && includeCurrentStateForRead) || requiresReadForAction;
+		const homeRetrievalSpaceIds = [
+			...new Set([
+				...(hasCurrentStateQuery ? currentStateSpaceIds : []),
+				...(domains.includes('history') ? historySpaceIds : []),
+			]),
+		];
+		const searchSpaceIds =
+			hasCurrentStateQuery || domains.includes('history')
+				? [
+						...querySpaceIds.filter((spaceId) => homeRetrievalSpaceIds.includes(spaceId)),
+						...homeRetrievalSpaceIds.filter((spaceId) => !querySpaceIds.includes(spaceId)),
+					]
+				: querySpaceIds;
 		const scope = {
 			...(querySpaceIds.length === 1
 				? { spaceId: querySpaceIds[0] }
@@ -243,7 +257,7 @@ export class BuddyContextPlannerService {
 				domains,
 				hasAction,
 				requiresReadForAction,
-				querySpaceIds,
+				searchSpaceIds,
 				includeCurrentStateForRead,
 				energySpaceIds,
 				currentStateSpaceIds,
@@ -452,7 +466,7 @@ function hasGenericActionTarget(message: string, explicitSpaces: readonly BuddyC
 function hasGenericActionTargetClause(message: string, explicitSpaces: readonly BuddyContextSpaceReference[]): boolean {
 	const hasClauseSpace = explicitSpaces.some((space) => containsNormalizedPhrase(message, normalize(space.name)));
 
-	if (hasClauseSpace && /\ball\b.*\b(?:lighting|lights)\b/u.test(message)) return false;
+	if (hasClauseSpace && /\b(?:lighting|lights)\b/u.test(message)) return false;
 	if (EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN.test(message)) return false;
 	if (GENERIC_ACTION_TARGET_PATTERN.test(message)) return true;
 
