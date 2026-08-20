@@ -42,46 +42,67 @@ const readMessage = (error: Error): string | undefined => {
 };
 
 /**
+ * Answers whether a thrown value is one of the types the caller declared safe,
+ * without the question itself being able to throw.
+ *
+ * `instanceof` walks the value's prototype chain, and a `Proxy` answers that
+ * walk from a `getPrototypeOf` trap it controls. A throw there is a throw inside
+ * the catch block, which is the one thing that must not happen: anything not
+ * recognisably safe is reported as the fallback reason anyway, so refusing to
+ * classify a hostile value costs nothing.
+ */
+const isSafeError = (value: unknown, safeErrors: readonly SafeErrorClass[]): value is Error => {
+	try {
+		return safeErrors.some((SafeError) => value instanceof SafeError);
+	} catch {
+		return false;
+	}
+};
+
+/**
  * Describes a thrown value for the log, without the description itself being
  * able to throw.
  *
  * Nothing about a thrown value is safe to touch unguarded. `String(value)` runs
  * code the thrower controls - a `Symbol.toPrimitive`, or on a null-prototype
- * object no conversion at all - and an `Error` is no better: `message` and
- * `stack` are plain properties on the exceptions raised here, but a getter that
- * throws is a getter that throws inside the catch block, escaping it and
- * abandoning every item still to come. Collecting failures per item exists
- * precisely so one bad item cannot do that, so every read below is guarded.
+ * object no conversion at all. An `Error` is no better: `message` and `stack`
+ * are plain properties on the exceptions raised here, but a getter that throws
+ * is a getter that throws inside the catch block. Even asking what the value
+ * *is* can throw, from a `Proxy`'s `getPrototypeOf` trap. A throw here would
+ * escape the catch and abandon every item still to come, which is precisely what
+ * collecting failures per item exists to prevent - so each read is guarded for
+ * the sake of a better description, and the whole is guarded so that failing to
+ * describe the value at all is still an answer.
  */
 const describeThrown = (value: unknown): string => {
-	if (typeof value === 'string') {
-		return value;
-	}
-
-	if (value instanceof Error) {
-		try {
-			const { stack } = value;
-
-			if (typeof stack === 'string' && stack.length > 0) {
-				return stack;
-			}
-		} catch {
-			// Falls through to the message, which is guarded in turn.
+	try {
+		if (typeof value === 'string') {
+			return value;
 		}
 
-		return readMessage(value) ?? '<unreadable Error>';
-	}
+		if (value instanceof Error) {
+			try {
+				const { stack } = value;
 
-	if (value === undefined) {
-		return 'undefined';
-	}
+				if (typeof stack === 'string' && stack.length > 0) {
+					return stack;
+				}
+			} catch {
+				// Falls through to the message, which is guarded in turn.
+			}
 
-	try {
+			return readMessage(value) ?? '<unreadable Error>';
+		}
+
+		if (value === undefined) {
+			return 'undefined';
+		}
+
 		// Covers null, numbers and booleans too, and renders an object's fields
 		// rather than the `[object Object]` a plain conversion would produce.
-		return JSON.stringify(value) ?? `<unreadable ${typeof value}>`;
+		return JSON.stringify(value) ?? '<unreadable value>';
 	} catch {
-		return `<unreadable ${typeof value}>`;
+		return '<unreadable value>';
 	}
 };
 
@@ -133,8 +154,7 @@ export const runBulkOperation = async (
 
 			failure.id = id;
 
-			const isSafe = safeErrors.some((SafeError) => error instanceof SafeError);
-			const safeMessage = isSafe && error instanceof Error ? readMessage(error) : undefined;
+			const safeMessage = isSafeError(error, safeErrors) ? readMessage(error) : undefined;
 
 			if (typeof safeMessage === 'string') {
 				failure.reason = safeMessage;

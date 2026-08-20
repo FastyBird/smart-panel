@@ -188,6 +188,57 @@ describe('runBulkOperation', () => {
 		});
 	});
 
+	// Even asking what a thrown value *is* runs code the thrower controls: a `Proxy`
+	// answers the prototype walk behind `instanceof` from a trap of its own. A throw
+	// there lands in the same catch block as everything else here, and would take the
+	// rest of the selection down with it.
+	it('survives a rejection that throws when its type is checked', async () => {
+		const hostile = new Proxy(
+			{},
+			{
+				getPrototypeOf: () => {
+					throw new Error('boom');
+				},
+			},
+		);
+
+		const perform = jest.fn().mockRejectedValueOnce(hostile).mockResolvedValueOnce(undefined);
+
+		const result = await runBulkOperation(['a', 'b'], perform, {
+			fallbackReason: 'Item could not be processed',
+			safeErrors: [ModuleRefusalError],
+			logger,
+		});
+
+		expect(result.succeeded).toEqual(['b']);
+		expect(result.failed).toEqual([{ id: 'a', reason: 'Item could not be processed' }]);
+		expect(perform).toHaveBeenCalledTimes(2);
+	});
+
+	it('still logs a rejection it cannot even describe', async () => {
+		const hostile = new Proxy(
+			{},
+			{
+				getPrototypeOf: () => {
+					throw new Error('boom');
+				},
+				ownKeys: () => {
+					throw new Error('boom');
+				},
+			},
+		);
+
+		const perform = jest.fn().mockRejectedValue(hostile);
+		const errorSpy = jest.spyOn(logger, 'error').mockImplementation(() => undefined);
+
+		await runBulkOperation(['a'], perform, {
+			fallbackReason: 'Item could not be processed',
+			logger,
+		});
+
+		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('id=a'), '<unreadable value>');
+	});
+
 	// A selection can carry the same item twice - two rows of one item in
 	// different groupings, for instance. Acting once keeps the caller's counts
 	// honest.
