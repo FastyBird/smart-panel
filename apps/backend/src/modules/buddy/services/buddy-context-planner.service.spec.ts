@@ -2313,4 +2313,70 @@ describe('BuddyContextPlannerService', () => {
 			toolNames: [],
 		});
 	});
+
+	it.each([
+		['Energy', 'space-energy'],
+		['Security', 'space-security'],
+		['Weather Room', 'space-weather-room'],
+	])('masks the configured space name %s during domain detection', (spaceName, spaceId) => {
+		expect(
+			service.plan({
+				message: `What is the ${spaceName} temperature?`,
+				knownSpaces: [{ id: spaceId, name: spaceName }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			scope: { spaceId },
+			queries: [
+				{ kind: 'search-home', spaceId },
+				{ kind: 'current-state', spaceId },
+			],
+			strategy: 'model-tools',
+		});
+	});
+
+	it('clarifies a read whose only explicit space is excluded', () => {
+		expect(
+			service.plan({
+				message: 'What is the temperature everywhere except Bedroom?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			scope: {},
+			ambiguityRisk: 'read',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
+	it('does not resolve temporal this as a recent entity reference', () => {
+		expect(
+			service.plan({
+				message: 'Was the Bedroom warm this morning?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				recentEntityReferences: [
+					{
+						kind: 'property',
+						id: 'property-stale',
+						name: 'Stale reference',
+						compatibleActionTypes: ['set'],
+					},
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			scope: { spaceId: 'space-bedroom' },
+			ambiguityRisk: 'none',
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+			],
+			strategy: 'prefetch',
+		});
+	});
 });

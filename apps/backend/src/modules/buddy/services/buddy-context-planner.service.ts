@@ -69,7 +69,7 @@ const SECURITY_ENTITY_NAME_PATTERN = new RegExp(
 	'gu',
 );
 const HISTORY_PATTERN =
-	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:day|hour|minute|month|night|week|year))\b|\b(?:last|since)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
+	/\b(?:chart|graph|history|historical|past|trend|yesterday)\b|\b(?:earlier today|last (?:day|hour|minute|month|night|week|year)|this (?:afternoon|evening|morning|night))\b|\b(?:last|since)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
 const CURRENT_STATE_PATTERN = /\b(?:at present|current|currently|now|right now)\b/u;
 const HOME_ENTITY_PATTERN =
 	/\b(?:air|blind|blinds|device|devices|door|doors|fan|fans|garage|heater|heaters|lamp|light|lighting|lights|room|scene|scenes|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
@@ -108,6 +108,8 @@ const PRONOUN_PATTERN = /\b(?:ho|it|its|that|them|these|they|this|those)\b|\bthe
 const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:ho|it|its|that|this)\b|\bthe one\b/u;
 const PLURAL_REFERENCE_PRONOUN_PATTERN = /\b(?:them|these|they|those)\b/u;
 const RELATIVE_REFERENCE_PRONOUN_PATTERN = /\bthat\s+(?:are|is|was|were)\b/gu;
+const TEMPORAL_THIS_REFERENCE_PATTERN =
+	/\bthis\s+(?:afternoon|day|evening|hour|minute|month|morning|night|week|weekend|year)\b/gu;
 const LOCALIZED_REFERENCE_PRONOUN_PATTERN =
 	/\b(?:aktivuj|nastav|odemkni|otevri|sniz|spust|vypni|zamkni|zapni|zavri|zvys)\s+(?:ho|to)\b/u;
 const CAPABILITY_DISCOVERY_PATTERN = new RegExp(
@@ -188,12 +190,13 @@ export class BuddyContextPlannerService {
 		const hasRecentReferencePronoun =
 			hasReferencePronoun(stripContextualScopeReferences(normalizedMessage)) && recentEntityReferences.length > 0;
 		const explicitSpaces = findExplicitSpaces(normalizedMessage, input.knownSpaces ?? []);
-		const explicitSpaceIds = [...new Set(explicitSpaces.map((space) => space.id))];
-		const conversationSpaceId = resolveConversationSpaceHint(
-			normalizedMessage,
-			input.conversationSpaceId,
-			explicitSpaceIds,
-		);
+		const excludedOnlySpaceIds = findExcludedOnlyExplicitSpaceIds(normalizedMessage, explicitSpaces);
+		const scopedExplicitSpaces = explicitSpaces.filter((space) => !excludedOnlySpaceIds.has(space.id));
+		const explicitSpaceIds = [...new Set(scopedExplicitSpaces.map((space) => space.id))];
+		const hasUnrepresentableSpaceExclusion = excludedOnlySpaceIds.size > 0 && explicitSpaceIds.length === 0;
+		const conversationSpaceId = hasUnrepresentableSpaceExclusion
+			? undefined
+			: resolveConversationSpaceHint(normalizedMessage, input.conversationSpaceId, explicitSpaceIds);
 		const resolvedSpaceIds =
 			explicitSpaceIds.length > 1 ? explicitSpaceIds : conversationSpaceId ? [conversationSpaceId] : [];
 		const isGenericExplanation = isGeneralExplanation(normalizedMessage, explicitSpaces.length > 0);
@@ -271,6 +274,7 @@ export class BuddyContextPlannerService {
 			domains,
 			conversationSpaceId,
 			explicitSpaces,
+			hasUnrepresentableSpaceExclusion,
 		);
 		const strategy = selectStrategy(intent, ambiguityRisk, domains, input.providerCapabilities);
 		const includeCurrentStateForRead =
@@ -287,14 +291,14 @@ export class BuddyContextPlannerService {
 		const querySpaceIds = scopedReferences.length > 0 && explicitSpaceIds.length === 0 ? [] : resolvedSpaceIds;
 		const energySpaceIds = resolveEnergySpaceIds(
 			normalizedMessage,
-			explicitSpaces,
+			scopedExplicitSpaces,
 			input.conversationSpaceId ?? undefined,
 		);
 		const hasMixedRetrievalDomain = domains.some((domain) => domain !== 'general' && domain !== 'home');
 		const currentStateSpaceIds = hasMixedRetrievalDomain
 			? resolveCurrentStateSpaceIds(
 					normalizedMessage,
-					explicitSpaces,
+					scopedExplicitSpaces,
 					input.conversationSpaceId ?? undefined,
 					querySpaceIds,
 				)
@@ -302,7 +306,7 @@ export class BuddyContextPlannerService {
 		const historySpaceIds = domains.includes('history')
 			? resolveTemporalHomeSpaceIds(
 					normalizedMessage,
-					explicitSpaces,
+					scopedExplicitSpaces,
 					scopedReferences.length > 0 ? undefined : (input.conversationSpaceId ?? undefined),
 					HISTORY_PATTERN,
 				)
@@ -536,7 +540,11 @@ function hasDomainSignalOutsideEntityName(
 	explicitSpaces: readonly BuddyContextSpaceReference[] = [],
 ): boolean {
 	return splitPlannerClauses(message, explicitSpaces).some((clause) =>
-		hasDomainSignalInClause(getRetrievalClause(clause), domainPattern, entityNamePattern),
+		hasDomainSignalInClause(
+			removeExplicitSpacePhrases(getRetrievalClause(clause), explicitSpaces),
+			domainPattern,
+			entityNamePattern,
+		),
 	);
 }
 
@@ -671,6 +679,7 @@ function classifyAmbiguityRisk(
 	domains: readonly BuddyContextDomain[],
 	conversationSpaceId?: string,
 	explicitSpaces: readonly BuddyContextSpaceReference[] = [],
+	hasUnrepresentableSpaceExclusion = false,
 ): BuddyContextAmbiguityRisk {
 	const isAction = hasWrite || hasTrigger;
 
@@ -691,6 +700,7 @@ function classifyAmbiguityRisk(
 
 		return 'none';
 	}
+	if (hasUnrepresentableSpaceExclusion) return 'read';
 	const hasSingularHomeReference = splitPlannerClauses(message, explicitSpaces).some(
 		(clause) =>
 			hasSingularReferencePronoun(stripContextualScopeReferences(clause)) &&
@@ -1049,6 +1059,34 @@ function findExplicitSpaces(
 	return [...spaces.values()];
 }
 
+function findExcludedOnlyExplicitSpaceIds(message: string, spaces: readonly BuddyContextSpaceReference[]): Set<string> {
+	const occurrences = findExplicitSpaceOccurrences(message, spaces);
+	const excludedOnlyIds = new Set<string>();
+
+	for (const space of spaces) {
+		const spaceOccurrences = occurrences.filter((occurrence) => occurrence.space.id === space.id);
+
+		if (
+			spaceOccurrences.length > 0 &&
+			spaceOccurrences.every((occurrence) => isExcludedExplicitSpaceOccurrence(message, occurrence.range.start))
+		) {
+			excludedOnlyIds.add(space.id);
+		}
+	}
+
+	return excludedOnlyIds;
+}
+
+function isExcludedExplicitSpaceOccurrence(message: string, occurrenceStart: number): boolean {
+	const precedingClause =
+		message
+			.slice(0, occurrenceStart)
+			.split(/[?!,.;]/u)
+			.at(-1) ?? '';
+
+	return /\b(?:but not|except|excluding|krome|other than|without)\s+(?:(?:in|the)\s+)*$/u.test(precedingClause);
+}
+
 function findExplicitSpaceOccurrences(
 	message: string,
 	spaces: readonly BuddyContextSpaceReference[],
@@ -1088,6 +1126,10 @@ function removeNormalizedPhrase(message: string, phrase: string): string {
 	return findNormalizedPhraseRanges(message, phrase)
 		.reverse()
 		.reduce((result, range) => `${result.slice(0, range.start)} ${result.slice(range.end)}`, message);
+}
+
+function removeExplicitSpacePhrases(message: string, spaces: readonly BuddyContextSpaceReference[]): string {
+	return spaces.reduce((result, space) => removeNormalizedPhrase(result, normalize(space.name)), message);
 }
 
 function findNormalizedPhraseRanges(message: string, phrase: string): Array<{ start: number; end: number }> {
@@ -1309,7 +1351,7 @@ function hasPluralReferencePronoun(message: string): boolean {
 }
 
 function stripRelativeReferencePronouns(message: string): string {
-	return message.replace(RELATIVE_REFERENCE_PRONOUN_PATTERN, ' ');
+	return message.replace(RELATIVE_REFERENCE_PRONOUN_PATTERN, ' ').replace(TEMPORAL_THIS_REFERENCE_PATTERN, ' ');
 }
 
 function normalize(value: string): string {
