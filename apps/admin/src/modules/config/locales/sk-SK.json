@@ -145,6 +145,10 @@
 		"loadingModuleConfig": "Načítavanie konfigurácie modulu...",
 		"misc": {
 			"confirmDiscard": "Máte neuložené zmeny. Naozaj ich chcete zahodiť?"
+		},
+		"secret": {
+			"stored": "Hodnota je uložená. Zadajte novú na jej nahradenie.",
+			"willBeRemoved": "Uložená hodnota sa po uložení odstráni."
 		}
 	},
 	"fields": {
@@ -270,6 +274,12 @@
 		},
 		"no": {
 			"title": "Nie"
+		},
+		"removeSecret": {
+			"title": "Odstrániť"
+		},
+		"keepSecret": {
+			"title": "Ponechať"
 		}
 	},
 	"languages": {

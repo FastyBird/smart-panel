@@ -154,12 +154,11 @@
 					:label="t('buddyOpenaiCodexPlugin.fields.config.clientSecret.title')"
 					prop="clientSecret"
 				>
-					<el-input
+					<config-secret-input
 						v-model="model.clientSecret"
+						:configured="model.clientSecretConfigured"
 						:placeholder="t('buddyOpenaiCodexPlugin.fields.config.clientSecret.placeholder')"
 						name="clientSecret"
-						type="password"
-						show-password
 					/>
 				</el-form-item>
 
@@ -216,7 +215,7 @@ import { useBackend } from '../../../common';
 import { useFlashMessage } from '../../../common/composables/useFlashMessage';
 import { injectStoresManager } from '../../../common/services/store';
 import { PLUGINS_PREFIX } from '../../../app.constants';
-import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
+import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import { configPluginsStoreKey } from '../../../modules/config/store/keys';
 import { BUDDY_OPENAI_CODEX_MODELS } from '../buddy-openai-codex.models';
 import { BUDDY_OPENAI_CODEX_PLUGIN_NAME, BUDDY_OPENAI_CODEX_PLUGIN_PREFIX } from '../buddy-openai-codex.constants';

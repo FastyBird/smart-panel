@@ -3,7 +3,12 @@ import { z } from 'zod';
 import { ConfigPluginEditFormSchema } from '../../../modules/config';
 
 export const ClaudeSetupTokenConfigEditFormSchema = ConfigPluginEditFormSchema.extend({
-	// Empty means "keep the stored token" - the backend never sends it back.
+	// Absent or blank keeps the stored token and null removes it. The backend never sends
+	// the token back, so the field always starts blank - which is why removing one needs a
+	// gesture of its own rather than just clearing the input.
 	accessToken: z.string().nullable().optional(),
+	// What the backend answers with in place of the token. Declared so the form knows
+	// whether there is anything to remove; the update request schema drops it again.
+	accessTokenConfigured: z.boolean().optional(),
 	model: z.string().nullable(),
 });

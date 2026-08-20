@@ -127,12 +127,11 @@
 						:label="t('devicesZigbee2mqttPlugin.fields.config.mqtt.password.title')"
 						prop="mqtt.password"
 					>
-						<el-input
+						<config-secret-input
 							v-model="model.mqtt.password"
-							type="password"
+							:configured="model.mqtt.passwordConfigured"
 							:placeholder="t('devicesZigbee2mqttPlugin.fields.config.mqtt.password.placeholder')"
 							name="mqttPassword"
-							show-password
 						/>
 					</el-form-item>
 				</el-col>
@@ -292,8 +291,9 @@
 					:label="t('devicesZigbee2mqttPlugin.fields.config.tls.key.title')"
 					prop="tls.key"
 				>
-					<el-input
+					<config-secret-input
 						v-model="model.tls.key"
+						:configured="model.tls.keyConfigured"
 						type="textarea"
 						:rows="3"
 						:placeholder="t('devicesZigbee2mqttPlugin.fields.config.tls.key.placeholder')"
@@ -469,7 +469,7 @@ import {
 	type FormRules,
 } from 'element-plus';
 
-import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
+import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import type { IZigbee2mqttConfigEditForm } from '../schemas/config.types';
 
 import type { IZigbee2mqttConfigFormProps } from './zigbee2mqtt-config-form.types';

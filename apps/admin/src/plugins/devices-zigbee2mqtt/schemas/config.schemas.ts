@@ -8,8 +8,13 @@ export const Zigbee2mqttConfigEditFormSchema = ConfigPluginEditFormSchema.extend
 		host: z.string().trim().min(1),
 		port: z.coerce.number().int().min(1).max(65535),
 		username: z.string().nullable(),
-		// Empty means "keep the stored password" - the backend never sends it back.
+		// Absent or blank keeps the stored password and null removes it. The backend never sends
+		// the password back, so the field always starts blank - which is why removing one needs a
+		// gesture of its own rather than just clearing the input.
 		password: z.string().nullable().optional(),
+		// What the backend answers with in place of the password. Declared so the form knows
+		// whether there is anything to remove; the update request schema drops it again.
+		passwordConfigured: z.boolean().optional(),
 		baseTopic: z.string().trim().min(1),
 		clientId: z.string().nullable(),
 		cleanSession: z.boolean(),
@@ -30,8 +35,13 @@ export const Zigbee2mqttConfigEditFormSchema = ConfigPluginEditFormSchema.extend
 		rejectUnauthorized: z.boolean(),
 		ca: z.string().nullable(),
 		cert: z.string().nullable(),
-		// Empty means "keep the stored key" - the backend never sends it back.
+		// Absent or blank keeps the stored key and null removes it. The backend never sends
+		// the key back, so the field always starts blank - which is why removing one needs a
+		// gesture of its own rather than just clearing the input.
 		key: z.string().nullable().optional(),
+		// What the backend answers with in place of the key. Declared so the form knows
+		// whether there is anything to remove; the update request schema drops it again.
+		keyConfigured: z.boolean().optional(),
 	}),
 	discovery: z.object({
 		autoAdd: z.boolean(),

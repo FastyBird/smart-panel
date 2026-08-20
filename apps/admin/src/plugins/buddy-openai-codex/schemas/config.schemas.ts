@@ -4,12 +4,15 @@ import { ConfigPluginEditFormSchema } from '../../../modules/config';
 
 export const OpenAiCodexConfigEditFormSchema = ConfigPluginEditFormSchema.extend({
 	clientId: z.string().nullable(),
-	// Empty means "keep the stored value" - the backend never sends these back.
+	// Absent or blank keeps the stored value and null removes it. The backend never sends
+	// these back, so the fields always start blank - which is why removing one needs a
+	// gesture of its own rather than just clearing the input. The two tokens have theirs in
+	// the connect/disconnect pair; the client secret uses the shared remove control.
 	clientSecret: z.string().nullable().optional(),
 	accessToken: z.string().nullable().optional(),
 	refreshToken: z.string().nullable().optional(),
-	// The backend redacts the secrets above on read and sends these booleans instead.
-	// Optional because the form can be constructed before a config has ever been read.
+	// What the backend answers with in place of the secrets above. Declared so the form
+	// knows what is stored; the update request schema drops them again.
 	clientSecretConfigured: z.boolean().optional(),
 	accessTokenConfigured: z.boolean().optional(),
 	refreshTokenConfigured: z.boolean().optional(),

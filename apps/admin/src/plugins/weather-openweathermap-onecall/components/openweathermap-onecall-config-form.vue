@@ -29,12 +29,11 @@
 			:label="t('weatherOpenweathermapOnecallPlugin.fields.config.apiKey.title')"
 			prop="apiKey"
 		>
-			<el-input
+			<config-secret-input
 				v-model="model.apiKey"
+				:configured="model.apiKeyConfigured"
 				:placeholder="t('weatherOpenweathermapOnecallPlugin.fields.config.apiKey.placeholder')"
 				name="apiKey"
-				type="password"
-				show-password
 			/>
 			<div class="text-xs text-gray-500 mt-1">
 				{{ t('weatherOpenweathermapOnecallPlugin.fields.config.apiKey.description') }}
@@ -65,10 +64,10 @@
 import { computed, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
 import type { z } from 'zod';
 
-import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
+import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import { TemperatureUnit } from '../weather-openweathermap-onecall.constants';
 import type { OpenWeatherMapOneCallConfigEditFormSchema } from '../schemas/config.schemas';
 
